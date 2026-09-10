@@ -13,7 +13,10 @@ import (
 )
 
 // Ride achievement thresholds and the clock hours (docs/SPEC.md, defaults —
-// tune in alpha). Clock times are read in the server's zone.
+// tune in alpha). Clock times are read in the RIDER's zone (#2063): Sunrise
+// Club is about getting up early, which is a fact about where the rider is,
+// and the server's zone made 07:30 in Zurich an early ride and 07:30 in
+// Denver a late one.
 const (
 	sufferfestSec  = 45 * 60
 	hotEndSec      = 3 * 60
@@ -55,13 +58,20 @@ func (s *Service) tally(ctx context.Context, userID pgtype.UUID) (*tallies, erro
 	if err != nil {
 		return nil, fmt.Errorf("gamify: achievements: %w", err)
 	}
+	// The rider's own clock (#2063). Nullable, and a rider whose browser
+	// never told us reads as UTC — stats.Zone decides that, here and in the
+	// streak, so the two never disagree.
+	tz, err := q.UserTimezone(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("gamify: timezone: %w", err)
+	}
 	t := &tallies{
 		rides: rides.Rides, kj: rides.Kj, rideXp: rides.Xp,
 		bySource: make(map[string]db.XpBySourceRow, len(sources)),
 		medals:   make(map[string]int64, len(medals)),
 		earned:   make(map[string]time.Time, len(earned)),
 	}
-	t.sunrise, t.night = clockCounts(times, time.Local)
+	t.sunrise, t.night = clockCounts(times, stats.Zone(tz))
 	for _, row := range sources {
 		t.bySource[row.Source] = row
 	}

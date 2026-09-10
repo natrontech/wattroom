@@ -116,8 +116,10 @@ func TestEvaluateAwardsOnce(t *testing.T) {
 
 func TestSunriseClub(t *testing.T) {
 	s, _, alice, _ := setup(t)
+	// alice reported no zone, so her clock is UTC (stats.Zone) — spelling
+	// that rather than time.Local keeps the test off the host's TZ.
 	for i := 0; i < 5; i++ {
-		addRide(t, s, alice, time.Date(2026, 8, 20+i, 6, 15, 0, 0, time.Local), 1800, 300, 330)
+		addRide(t, s, alice, time.Date(2026, 8, 20+i, 6, 15, 0, 0, time.UTC), 1800, 300, 330)
 	}
 	if err := s.evaluate(t.Context(), alice.ID); err != nil {
 		t.Fatalf("evaluate: %v", err)
@@ -182,5 +184,52 @@ func TestSessionClosedPaysVoiceAndCoach(t *testing.T) {
 	s.sessionClosed(t.Context(), short)
 	if got := sources(t, s, alice)[sourceSession]; got.N != 1 {
 		t.Fatalf("a %ds session paid: %+v", short.Seconds, got)
+	}
+}
+
+// The clock achievements read the RIDER's clock, not the server's (#2063).
+// Getting up at 07:30 is not an early ride wherever you live, and 06:30 is
+// one wherever you live — the server's zone made it a fact about the server.
+// Both cases go red against `clockCounts(times, time.Local)` on a UTC host:
+// Zurich's 07:30 is 05:30 UTC and earns it, Denver's 06:30 is 12:30 and
+// does not.
+func TestClockAchievementsReadTheRidersClock(t *testing.T) {
+	cases := []struct {
+		name       string
+		tz         string
+		hour, min  int
+		wantEarned bool
+	}{
+		{"07:30 in Zurich is not an early ride", "Europe/Zurich", 7, 30, false},
+		{"06:30 in Zurich is", "Europe/Zurich", 6, 30, true},
+		{"06:30 in Denver is too, though it is midday in UTC", "America/Denver", 6, 30, true},
+		{"07:30 in Denver is not", "America/Denver", 7, 30, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s, _, alice, _ := setup(t)
+			loc, err := time.LoadLocation(tc.tz)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := s.store.Queries.UpdateUserTimezone(t.Context(), db.UpdateUserTimezoneParams{
+				ID: alice.ID, Timezone: &tc.tz,
+			}); err != nil {
+				t.Fatal(err)
+			}
+			for i := range 5 {
+				addRide(t, s, alice, time.Date(2026, 8, 20+i, tc.hour, tc.min, 0, 0, loc), 1800, 300, 330)
+			}
+			if err := s.evaluate(t.Context(), alice.ID); err != nil {
+				t.Fatalf("evaluate: %v", err)
+			}
+			got := earned(t, s, alice)
+			if got[keySunrise] != tc.wantEarned {
+				t.Fatalf("sunrise club earned = %v, want %v", got[keySunrise], tc.wantEarned)
+			}
+			if got[keyNightShift] {
+				t.Fatal("night shift earned by a morning ride")
+			}
+		})
 	}
 }

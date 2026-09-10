@@ -43,9 +43,9 @@ type Achievement struct {
 // queued "as a joke") are not here: mute state is client-reported and a
 // joke is not a fact the server holds.
 var Catalogue = []Achievement{
-	{Key: keySunrise, Name: "Sunrise Club", How: "5 rides started before 07:00, server time",
+	{Key: keySunrise, Name: "Sunrise Club", How: "5 rides started before 07:00, your time",
 		Icon: "sunrise", XP: XpEasy, Need: 5},
-	{Key: keyNightShift, Name: "Night Shift", How: "5 rides ended after 23:00, server time",
+	{Key: keyNightShift, Name: "Night Shift", How: "5 rides ended after 23:00, your time",
 		Icon: "moon", XP: XpEasy, Need: 5},
 	{Key: key200Rides, Name: "200 Rides", How: "Two hundred rides on WattRoom",
 		Icon: "bike", XP: XpHard, Need: 200},

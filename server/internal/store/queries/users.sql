@@ -54,6 +54,12 @@ where m.room_id = $1 and m.role != 'banned' and m.notify and u.notify_planned
   -- rule structural rather than an accident of write order (audit 2026-09-09).
   and u.email is not null and u.email_verified_at is not null and u.id <> $2;
 
+-- name: UserTimezone :one
+-- The zone a rider's own days are bucketed in (#2063) — nullable, so the
+-- caller falls back to UTC (stats.Zone). One column rather than GetUser
+-- because this runs per rider on every session save.
+select timezone from users where id = $1;
+
 -- name: UpdateUserTimezone :exec
 -- Reported by the browser, never typed. Its own statement rather than a field
 -- on the profile update, because that one validates a whole form and this is a

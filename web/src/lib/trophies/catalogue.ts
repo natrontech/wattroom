@@ -31,14 +31,14 @@ export const ACHIEVEMENTS: AchievementMeta[] = [
 	{
 		key: 'sunrise-club',
 		name: 'Sunrise Club',
-		how: '5 rides started before 07:00, server time',
+		how: '5 rides started before 07:00, your time',
 		icon: Sunrise,
 		xp: 100,
 	},
 	{
 		key: 'night-shift',
 		name: 'Night Shift',
-		how: '5 rides ended after 23:00, server time',
+		how: '5 rides ended after 23:00, your time',
 		icon: Moon,
 		xp: 100,
 	},

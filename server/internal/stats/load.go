@@ -54,18 +54,19 @@ func Load(normWatts, ftpWatts, seconds int) float64 {
 
 // FormPoint is one day of the Fitness/Fatigue/Form series.
 type FormPoint struct {
-	Date    string  `json:"date"` // UTC day, YYYY-MM-DD
+	Date    string  `json:"date"` // the rider's own day (#2063), YYYY-MM-DD
 	Fitness float64 `json:"fitness"`
 	Fatigue float64 `json:"fatigue"`
 	Form    float64 `json:"form"`
 }
 
 // FitnessSeries runs the 42/7-day EWMAs over daily Load from the first ride
-// day through today (UTC days; a day without rides is 0). dailyLoad keys are
-// YYYY-MM-DD.
-func FitnessSeries(dailyLoad map[string]float64, first, today time.Time) []FormPoint {
-	first = first.UTC().Truncate(24 * time.Hour)
-	today = today.UTC().Truncate(24 * time.Hour)
+// day through today (a day without rides is 0). Days are the rider's own, in
+// loc (#2063) — same as the keys the caller built dailyLoad with, which is
+// why loc is passed rather than assumed. dailyLoad keys are YYYY-MM-DD.
+func FitnessSeries(dailyLoad map[string]float64, first, today time.Time, loc *time.Location) []FormPoint {
+	first = DayStart(first, loc)
+	today = DayStart(today, loc)
 	if today.Before(first) {
 		return nil
 	}

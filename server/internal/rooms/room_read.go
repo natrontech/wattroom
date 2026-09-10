@@ -286,7 +286,10 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				for i, w := range weeks {
 					times[i] = w.Time
 				}
-				response.StreakWeeks = stats.WeekStreak(times, time.Now())
+				// UTC, deliberately: this is the ROOM's streak, and a room
+				// whose riders sit in several zones has no one week to use
+				// (#2063). The rider streak that pays is in stats.StreakXP.
+				response.StreakWeeks = stats.WeekStreak(times, time.Now(), time.UTC)
 			}
 			if kj, err := s.store.Queries.RoomMonthKj(r.Context(), room.ID); err == nil {
 				response.MonthKj = kj

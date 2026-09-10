@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
@@ -230,5 +231,80 @@ func TestTheFtpARampProducedReachesTheTrend(t *testing.T) {
 	}
 	if _, present := raw.Rides[1]["ftpAfter"]; !present {
 		t.Fatalf("the ramp does not ship the key: %v", raw.Rides[1])
+	}
+}
+
+// Daily Load buckets in the rider's own day (#2063). Two rides either side of
+// local midnight are two days for the rider; UTC bucketing put both on the
+// earlier day, which doubled that day's load and flattened the next one.
+func TestDailyLoadBucketsDaysInTheRidersZone(t *testing.T) {
+	zurich, err := time.LoadLocation("Europe/Zurich")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := func(at string) db.ListUserProgressionRow {
+		when, err := time.Parse(time.RFC3339, at)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return db.ListUserProgressionRow{
+			StartedAt: pgtype.Timestamptz{Time: when, Valid: true},
+			NormWatts: 200, FtpWatts: 250, Seconds: 3600,
+		}
+	}
+	// 21:00 and 00:30 in Zurich: consecutive local days, one UTC day.
+	rows := []db.ListUserProgressionRow{
+		row("2026-09-06T19:00:00Z"), // Sunday 21:00 local
+		row("2026-09-06T22:30:00Z"), // Monday 00:30 local
+	}
+	one := stats.Load(200, 250, 3600)
+	cases := []struct {
+		name string
+		loc  *time.Location
+		want map[string]float64
+	}{
+		{"the rider's days carry a ride each", zurich, map[string]float64{
+			"2026-09-06": one, "2026-09-07": one,
+		}},
+		{"UTC piled both onto Sunday", time.UTC, map[string]float64{
+			"2026-09-06": 2 * one,
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := dailyLoad(rows, tc.loc)
+			if len(got) != len(tc.want) {
+				t.Fatalf("daily load = %v, want %v", got, tc.want)
+			}
+			for day, want := range tc.want {
+				if got[day] != want {
+					t.Fatalf("daily load = %v, want %v", got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+// The whole payload, end to end: the rider's zone reaches the day keys the
+// client draws, so a 00:30 ride appears on its own day and not yesterday's.
+func TestProgressionSeriesUsesTheRidersDays(t *testing.T) {
+	zurich, err := time.LoadLocation("Europe/Zurich")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := []db.ListUserProgressionRow{{
+		StartedAt: pgtype.Timestamptz{
+			// Monday 2026-09-07 00:30 in Zurich.
+			Time: time.Date(2026, 9, 6, 22, 30, 0, 0, time.UTC), Valid: true,
+		},
+		NormWatts: 200, FtpWatts: 250, Seconds: 3600,
+	}}
+	now := time.Date(2026, 9, 7, 10, 0, 0, 0, time.UTC)
+	load := buildLoad(rows, rows[0].StartedAt.Time, now, zurich)
+	if load == nil || len(load.Series) == 0 {
+		t.Fatal("no load series")
+	}
+	if got := load.Series[0].Date; got != "2026-09-07" {
+		t.Fatalf("the series starts on %s, want 2026-09-07 — the rider's day, not UTC's", got)
 	}
 }
