@@ -90,6 +90,7 @@ func (s *Service) registerCrews(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/crews/join", s.handleJoinCrew)
 	mux.HandleFunc("POST /api/crews/{id}/leave", s.handleLeaveCrew)
 	mux.HandleFunc("PATCH /api/crews/{id}", s.handleUpdateCrew)
+	mux.HandleFunc("POST /api/crews/{id}/code", s.handleRotateCrewCode)
 	mux.HandleFunc("POST /api/crews/{id}/role", s.handleSetCrewRole)
 	mux.HandleFunc("POST /api/crews/{id}/transfer", s.handleTransferCrew)
 	mux.HandleFunc("PATCH /api/crews/{id}/rooms/{roomID}/access", s.handleSetRoomAccess)

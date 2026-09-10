@@ -1,0 +1,1 @@
+- A crew's owner or admin can make a new invite link from the crew's settings; the old code and every link carrying it stop working at once, so a link that got somewhere it should not have is no longer permanent.

@@ -18,6 +18,37 @@ import (
 // handleUpdateCrew: the rename the day-one screen exists for (#1151), and
 // the icon. Owner or admin — "crew admins manage" is the ADR's line, and a
 // name is the crew's, not a room's.
+// handleRotateCrewCode mints a new invite (#1930). The code is the crew's
+// only door and every member may share it, so a leak used to be permanent;
+// now the owner or an admin re-keys, and the old link knocks on a closed
+// door. Minted like the first one: the unique index is the check.
+func (s *Service) handleRotateCrewCode(w http.ResponseWriter, r *http.Request) {
+	crew, user, role, ok := s.crewByID(w, r)
+	if !ok {
+		return
+	}
+	if !administers(role) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can make a new invite link.")
+		return
+	}
+	var code string
+	for attempt := 0; ; attempt++ {
+		code = randomCode(6)
+		err := s.store.Queries.SetCrewCode(r.Context(), db.SetCrewCodeParams{ID: crew.ID, Code: &code})
+		if err == nil {
+			break
+		}
+		if !isUniqueViolation(err) || attempt >= 3 {
+			httpx.Fail(w, s.log, "crew code rotate failed", err, "A new link could not be made. Try again.", "crew", store.UUIDString(crew.ID))
+			return
+		}
+	}
+	// The fact, never the code: an invite in the log is an invite.
+	s.log.Info("crew code rotated", "crew", store.UUIDString(crew.ID), "by", store.UUIDString(user.ID))
+	s.changed()
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"code": code})
+}
+
 func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 	crew, _, role, ok := s.crewByID(w, r)
 	if !ok {
