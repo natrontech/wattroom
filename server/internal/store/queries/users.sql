@@ -1,8 +1,14 @@
 -- name: CreateUser :one
 -- email_required is true for every account created from #781 on: a new rider
 -- verifies an address, an existing one is only asked.
-insert into users (display_name, avatar_url, ftp_watts, weight_kg, email_required)
-values ($1, $2, $3, $4, true)
+--
+-- Both sources are 'default' here and nowhere else (#1484): the FTP and weight
+-- the caller passes are the app's opening guess, not the rider's answer, and
+-- everything downstream — the first-run step, Home's label — reads that word
+-- rather than re-deriving it from "is it still 200".
+insert into users (display_name, avatar_url, ftp_watts, weight_kg, email_required,
+                   ftp_source, weight_source)
+values ($1, $2, $3, $4, true, 'default', 'default')
 returning *;
 
 -- name: GetUser :one
@@ -13,9 +19,14 @@ select * from users where id = $1;
 -- ClearUserEmail. Writing it back from the handler's snapshot let a confirm
 -- click landing mid-save be overwritten by the old address, with
 -- email_verified_at still set (#824).
+--
+-- The two sources travel with the two numbers (#1484). The handler decides the
+-- word — a rider answering the ask, a ramp test, or the value simply not
+-- having changed — so this statement only stores it.
 update users
 set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
-    notify_planned = $6, lthr = sqlc.narg('lthr')::smallint
+    notify_planned = $6, lthr = sqlc.narg('lthr')::smallint,
+    ftp_source = $7, weight_source = $8
 where id = $1
 returning *;
 

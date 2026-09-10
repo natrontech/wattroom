@@ -29,6 +29,14 @@ type meResponse struct {
 	TotalXp  int64 `json:"totalXp"`
 	FtpWatts int16 `json:"ftpWatts"`
 	WeightKg int16 `json:"weightKg"`
+	// Where each of those two came from (#1484): "default" — nobody chose it,
+	// the account was created with the app's opening guess; "manual" — the
+	// rider set it; "ramp" — a ramp test measured it. Every FTP-relative
+	// target, the execution score, the XP bonus, the category and the load all
+	// scale from FtpWatts (docs/SPEC.md), so a client has to be able to tell a
+	// measurement from a placeholder before it prints one as the other.
+	FtpSource    string `json:"ftpSource"`
+	WeightSource string `json:"weightSource"`
 	// The HR anchor (ADR-0014), on the account since #1571; absent until set.
 	Lthr *int16 `json:"lthr,omitempty"`
 	// The FTP auto-detect prompt (#26): filled when the 90-day curve outgrows
@@ -103,6 +111,16 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		// it — it is out of range anyway, and a JSON null cannot be told
 		// from absent here (#1571).
 		Lthr *int16 `json:"lthr"`
+		// Who is claiming these two numbers (#1484). Absent is the common
+		// case and means "read it from the write": a value that differs from
+		// the stored one was set by the rider, and one that does not leaves
+		// the source alone — so the Strava toggle and the email form, which
+		// both PATCH the current FTP back unchanged, cannot promote a
+		// placeholder to an answer. Present ("manual"/"ramp") is a client
+		// saying so outright: the first-run ask, where keeping the prefilled
+		// 200 W IS the rider's answer, and the ramp test's own save.
+		FtpSource    *string `json:"ftpSource"`
+		WeightSource *string `json:"weightSource"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That profile update could not be read.")
@@ -129,6 +147,14 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	case req.Lthr != nil && *req.Lthr != 0 && (*req.Lthr < 100 || *req.Lthr > 210):
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"LTHR has to be between 100 and 210 bpm.", "lthr")
+		return
+	case !claimableSource(req.FtpSource):
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"An FTP is either set by you or measured by a ramp test.", "ftpSource")
+		return
+	case !claimableSource(req.WeightSource):
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"A weight is either set by you or measured by a ramp test.", "weightSource")
 		return
 	}
 	lthr := user.Lthr
@@ -171,6 +197,8 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		ID: user.ID, DisplayName: req.DisplayName, FtpWatts: req.FtpWatts,
 		WeightKg: req.WeightKg, StravaUpload: stravaUpload,
 		NotifyPlanned: notify, Lthr: lthr,
+		FtpSource:    nextSource(sourceOf(user.FtpSource), req.FtpSource, user.FtpWatts != req.FtpWatts),
+		WeightSource: nextSource(sourceOf(user.WeightSource), req.WeightSource, user.WeightKg != req.WeightKg),
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "profile update failed", err, "Your profile could not be saved. Try again.")
@@ -297,6 +325,8 @@ func (s *Service) toMe(u db.User) meResponse {
 		AvatarURL:     u.AvatarUrl,
 		FtpWatts:      u.FtpWatts,
 		WeightKg:      u.WeightKg,
+		FtpSource:     sourceOf(u.FtpSource),
+		WeightSource:  sourceOf(u.WeightSource),
 		Lthr:          u.Lthr,
 		Email:         u.Email,
 		NotifyPlanned: u.NotifyPlanned,
@@ -309,6 +339,48 @@ func (s *Service) toMe(u db.User) meResponse {
 		ColorScheme:   u.ColorScheme,
 		Timezone:      u.Timezone,
 	}
+}
+
+// The provenance of the two profile numbers (#1484), one vocabulary for the
+// column CHECK, the API and the client.
+const (
+	sourceDefault = "default" // nobody chose it: the account was created with it
+	sourceManual  = "manual"  // the rider set it, by typing it or accepting a suggestion
+	sourceRamp    = "ramp"    // a ramp test measured it
+)
+
+// sourceOf reads the column, which is nullable because the migration that
+// added it had to be (ADR-0019, expand only). A row with no word on it was
+// never answered for — the honest reading, and the one that makes the
+// first-run ask appear rather than quietly retire itself.
+func sourceOf(stored *string) string {
+	if stored == nil || *stored == "" {
+		return sourceDefault
+	}
+	return *stored
+}
+
+// claimableSource: a client may claim only the two sources that mean somebody
+// answered. "default" is the server's word for an account nobody has answered
+// for yet, and nothing can talk its way back into it.
+func claimableSource(claim *string) bool {
+	return claim == nil || *claim == sourceManual || *claim == sourceRamp
+}
+
+// nextSource is the whole rule in one place: an outright claim wins, then a
+// changed value is the rider's own, and otherwise the source stands. The last
+// branch is what keeps every incidental PATCH of the profile — the Strava
+// toggle, the email form, an appearance save that round-trips the numbers —
+// from promoting the app's guess to the rider's answer.
+func nextSource(current string, claim *string, changed bool) *string {
+	next := current
+	switch {
+	case claim != nil:
+		next = *claim
+	case changed:
+		next = sourceManual
+	}
+	return &next
 }
 
 // validEmail accepts only a bare RFC 5322 address — no display-name forms.

@@ -56,6 +56,10 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 	if ident.AvatarURL != "" {
 		avatar = &ident.AvatarURL
 	}
+	// The app's opening guess for the two numbers every FTP-relative target
+	// scales from, and CreateUser stamps both sources 'default' beside them
+	// (#1484): nobody has chosen these yet, and the first-run ask and Home's
+	// label both read that word rather than guessing from "is it still 200".
 	user, err = q.CreateUser(ctx, db.CreateUserParams{
 		DisplayName: name, AvatarUrl: avatar, FtpWatts: 200, WeightKg: 75,
 	})

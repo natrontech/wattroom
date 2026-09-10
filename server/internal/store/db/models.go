@@ -329,6 +329,8 @@ type User struct {
 	EmailRequired      bool
 	Timezone           *string
 	Lthr               *int16
+	FtpSource          *string
+	WeightSource       *string
 }
 
 type UserAvatar struct {
