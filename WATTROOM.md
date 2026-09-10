@@ -165,7 +165,7 @@ A game mode is a **rule module** plugged into the room hub: the workout engine s
 
 - **Sprint Roulette** — random 10–15 s sprints fire without warning (3-2-1 klaxon → all-out w/kg battle → mini-podium). Configurable frequency; off by default in serious workouts.
 - **Points Race** — scored moments sprinkled through a session (sprints, best-execution intervals, time-in-zone) accumulate an omnium-style points ladder. Losing one sprint never ends your race.
-- **Watt Golf** — _blind precision_: your power meter is **hidden**. "Hit 230 W for 10 s — starting in 20 s." Closest average to target wins the hole; total deviation = strokes, lowest over 9/18 holes wins. Fitness means nothing here, feel means everything.
+- **Watt Golf** — _blind precision_: your power meter is **hidden**. "Hit 230 W for 10 s — starting in 20 s." Closest average to target wins the hole; total deviation = strokes, lowest over 9 holes wins. Fitness means nothing here, feel means everything.
 
 **Co-op**
 
