@@ -35,7 +35,7 @@ while doing different things, each in its own room.
 
 |                      |                                                                                    |
 | -------------------- | ---------------------------------------------------------------------------------- |
-| a crew carries       | name, icon, membership, its rooms, a crew-wide chat                                |
+| a crew carries       | name, icon, membership, its rooms, ~~a crew-wide chat~~ **Diverged 2026-09-10 (#1334)**: rooms are the conversation; the crew carries no chat |
 | a crew never carries | voice, jukebox deck, session, game state, metrics                                  |
 | a room stays         | one activity: one session, one deck, one game, one conversation, one privacy scope |
 
@@ -538,3 +538,12 @@ in full. docs/SPEC.md's glossary entry for _crew_ and WATTROOM.md's join-flow
 row (line 68), both marked by the cutover PR rather than by this one, on the
 same reasoning as the first cutover: the founding record should describe a repo
 that exists.
+
+## Amendment, 2026-09-10 (#1334): the crew carries no chat
+
+The decision table lists "a crew-wide chat" under what a crew carries. Nothing ever built one — no route, no component, no table — and #1023 left it deliberately undrawn while #1017 rationalised where conversations sit. The row is annotated above rather than deleted, per [ADR-0050](0050-founding-record-and-current-state.md).
+
+**Rooms are the conversation; the crew is membership, naming, and the rooms it holds.** A room already holds exactly one conversation ([ADR-0020](0020-the-app-takes-discords-shape.md)), and a crew that also talks recreates in reverse the problem this ADR exists to remove: a rider with something to say would have to choose where it goes, and the right answer would differ per crew and per day. The cost of that choice lands on every message, forever, to save the occasional one that had no room to live in.
+
+What a crew chat would have been for — reaching a crew-mate outside any room — is what direct messages already do (#1017). If a real need survives that, it comes back as its own decision with the evidence, not as a table row nobody built.
+
