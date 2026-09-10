@@ -125,12 +125,20 @@
 	// out of a room must not swap rail instances. Only login is its own frame:
 	// the spectator view used to be the other one, and a phone stands in the
 	// framed room itself now (#412).
+	// Public decides whether sign-in is required; framed decides whether the
+	// shell draws (#1859). The legal, privacy and download pages are public
+	// so a stranger can read them — but a signed-in rider who follows the
+	// sidebar's own "Get the desktop app" row used to lose the sidebar, the
+	// crew, the jukebox dock and the way back, for a page that has a row in
+	// the column (ADR-0020's sixth amendment, rule 1).
 	const framed = $derived(
 		!!account.me &&
-			!publicPath &&
 			page.url.pathname !== '/login' &&
+			// Signed in, / is the landing page branching itself (ADR-0009).
+			page.url.pathname !== '/' &&
 			// The HUD is a window of its own (#296): numbers only, no sidebar.
-			page.url.pathname !== '/hud',
+			page.url.pathname !== '/hud' &&
+			!(dev && page.url.pathname.startsWith('/dev')),
 	);
 
 	// The ride is running, here or in a room — the cave below and, in the
