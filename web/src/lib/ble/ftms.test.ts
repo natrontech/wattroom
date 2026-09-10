@@ -263,6 +263,31 @@ describe('FtmsTrainer control-point queue', () => {
 		expect(trainer.status).toBe('disconnected');
 	});
 
+	// connect() on an instance that already holds a device (#1851) attaches
+	// again without a second chooser, and a drop after it still schedules
+	// exactly one reattach.
+	it('keeps its device and its one listener across a second connect', async () => {
+		const device = new FakeDevice();
+		let choosers = 0;
+		vi.stubGlobal('navigator', {
+			bluetooth: {
+				requestDevice: async () => {
+					choosers++;
+					return device;
+				},
+			},
+		});
+		const trainer = new FtmsTrainer();
+		await trainer.connect();
+		device.drop();
+		await trainer.connect();
+		expect(choosers).toBe(1);
+		const attached = device.connects;
+		device.drop();
+		await vi.advanceTimersByTimeAsync(1_100);
+		expect(device.connects).toBe(attached + 1);
+	});
+
 	it('runs the next queued write after one has failed', async () => {
 		// The issue's reduction: with target-200 failing, 250 and 300 never reached
 		// the trainer again for the rest of the session. Written one at a time,

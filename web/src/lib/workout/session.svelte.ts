@@ -2,7 +2,7 @@ import { arbitrate } from '$lib/ble/arbitrate';
 import { publishHud } from '$lib/hud/feed';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
 import type { SensorKind, SensorReading } from '$lib/ble/sensor';
-import type { Trainer, TrainerSample } from '$lib/ble/trainer';
+import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 import { flatten, targetAt } from './engine';
 import { createPersonalGuards, DEFAULTS } from './guards';
 import { createSprintWindow } from './sprint-window.svelte';
@@ -174,6 +174,10 @@ export function createRideSession({
 	let ticker: Ticker | undefined;
 	let wakeLock: WakeLock | undefined;
 	let unsubscribe: (() => void) | undefined;
+	let unsubscribeStatus: (() => void) | undefined;
+	// The link as the driver reports it (#1847): the screen draws the
+	// recovery card from this, not from a slot that let go at Start.
+	let trainerStatus = $state<TrainerStatus>(trainer.status);
 
 	const clockSeconds = $derived(Math.min(total, Math.max(0, elapsed + shift)));
 	const info = $derived(targetAt(segments, ftp, clockSeconds, { bias }));
@@ -386,6 +390,8 @@ export function createRideSession({
 		ticker = undefined;
 		unsubscribe?.();
 		unsubscribe = undefined;
+		unsubscribeStatus?.();
+		unsubscribeStatus = undefined;
 		void trainer.setTargetPower(0);
 		// Let go of the hardware (#1546): after the summary nothing owns
 		// this link, and the next pairing screen showed an unpaired grid
@@ -443,6 +449,33 @@ export function createRideSession({
 		get spiralActive() {
 			return spiralActive;
 		},
+		/** The trainer this ride holds, for the recovery card (#1847). */
+		get trainerName() {
+			return trainer.name;
+		},
+		get trainerStatus() {
+			return trainerStatus;
+		},
+		/**
+		 * Ride on with another trainer (#1847): the recovery card used to pair
+		 * into the slot that let go at Start, so the ride stayed subscribed
+		 * to the first instance and the rider got two links and no watts.
+		 * The old instance is let go — its own reattach loop would otherwise
+		 * keep a second client on the same hardware.
+		 */
+		repair(next: Trainer) {
+			if (state === 'done') return;
+			const old = trainer;
+			unsubscribe?.();
+			unsubscribeStatus?.();
+			trainer = next;
+			unsubscribe = next.onSample(onSample);
+			unsubscribeStatus = next.onStatus((s) => (trainerStatus = s));
+			trainerStatus = next.status;
+			sprintMode = false;
+			applyTarget();
+			void old.disconnect();
+		},
 		/** The sprint block on screen, or the one about to be — null otherwise. */
 		get sprint() {
 			return sprintWindow.current;
@@ -451,6 +484,8 @@ export function createRideSession({
 		async start() {
 			if (trainer.status !== 'connected') await trainer.connect();
 			unsubscribe = trainer.onSample(onSample);
+			unsubscribeStatus = trainer.onStatus((s) => (trainerStatus = s));
+			trainerStatus = trainer.status;
 			state = 'running';
 			latest = {
 				get state() {

@@ -1,0 +1,1 @@
+- When the trainer drops out mid-ride, the "pair the trainer again" button now hands the new connection to the ride that is running, instead of pairing a second trainer the ride never listened to; the ramp test gets the same button. Start waits while a paired trainer is still reconnecting, and the app no longer opens a second device chooser for a trainer it already has.

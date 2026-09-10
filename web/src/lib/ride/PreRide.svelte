@@ -123,9 +123,14 @@
 				const trainer = solo.handOff();
 				if (trainer) onStart(trainer);
 			}}
-			disabled={!solo.trainer}
+			disabled={!solo.trainer || solo.fault === 'reconnecting'}
 			class="btn btn-primary btn-lg">Start the ride</button
 		>
+		{#if solo.fault === 'reconnecting'}
+			<!-- Never a control that will fail (ux.md, #1851): a start on a
+			     trainer mid-reattach opened a second chooser over the ride. -->
+			<p class="text-muted text-xs">Waiting for the trainer to come back.</p>
+		{/if}
 		{#if replayName}
 			<button
 				onclick={onReplay}
