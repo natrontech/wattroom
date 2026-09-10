@@ -55,7 +55,9 @@ export const menu = $state<{
 	y: number;
 	/** What was right-clicked — focus goes back to it on close. */
 	anchor: HTMLElement | null;
-}>({ items: [], x: 0, y: 0, anchor: null });
+	/** What had focus when the menu opened — the keyboard rider's own place. */
+	back: HTMLElement | null;
+}>({ items: [], x: 0, y: 0, anchor: null, back: null });
 
 export function openMenu(
 	items: MenuEntry[],
@@ -67,13 +69,34 @@ export function openMenu(
 	menu.x = x;
 	menu.y = y;
 	menu.anchor = anchor;
+	const active = document.activeElement;
+	menu.back =
+		active instanceof HTMLElement && active !== document.body ? active : null;
 }
 
+/**
+ * Focus goes back where it came from (#1960). Most anchors are a plain
+ * `<li>` or `<div>`, on which `.focus()` is a silent no-op — so a keyboard
+ * rider who pressed Escape landed on the body, mid-ride. The element that
+ * had focus when the menu opened is the keyboard rider's own place; failing
+ * that, the anchor is made focusable and focused so the reader stays on the
+ * object.
+ */
 export function closeMenu(): void {
-	const back = menu.anchor;
+	const anchor = menu.anchor;
+	const back = menu.back;
 	menu.items = [];
 	menu.anchor = null;
-	back?.focus?.({ preventScroll: true });
+	menu.back = null;
+	const target = back?.isConnected ? back : anchor;
+	if (!target) return;
+	if (
+		target === anchor &&
+		target.tabIndex < 0 &&
+		!target.hasAttribute('tabindex')
+	)
+		target.setAttribute('tabindex', '-1');
+	target.focus({ preventScroll: true });
 }
 
 /**

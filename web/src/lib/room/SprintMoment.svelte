@@ -57,10 +57,17 @@
 	<!-- role=status (#1593): the klaxon and the podium are state changes a
 	     rider does not watch for; a screen reader hears them the way
 	     RoomStatus is heard. -->
-	<div class="grid h-full place-items-center" role="status">
+	<!-- The status is a sibling that changes once (#1970): with the ticking
+	     digit inside the region a reader re-spoke the whole klaxon every
+	     second. -->
+	<p class="sr-only" role="status">
+		Sprint in a moment — 15 seconds, all out; your trainer lets go of the target
+	</p>
+	<div class="grid h-full place-items-center">
 		<div class="text-center">
 			<p class="eyebrow">get ready</p>
 			<p
+				aria-hidden="true"
 				class="font-display text-watt glow-text-strong text-[9rem] leading-none font-bold tabular-nums"
 			>
 				{Math.max(0, countdown)}

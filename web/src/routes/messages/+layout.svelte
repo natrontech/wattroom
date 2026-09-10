@@ -16,7 +16,8 @@
 	<aside class="min-h-0 flex-col md:hidden {open ? 'hidden' : 'flex'}">
 		<ThreadList active={page.url.pathname} />
 	</aside>
-	<section class="min-h-0 flex-col {open ? 'flex' : 'hidden md:flex'}">
+	<!-- The page's main landmark (#1968): the skip link lands here. -->
+	<main class="min-h-0 flex-col {open ? 'flex' : 'hidden md:flex'}">
 		{@render children()}
-	</section>
+	</main>
 </div>

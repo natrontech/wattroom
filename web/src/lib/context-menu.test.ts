@@ -49,6 +49,30 @@ describe('contextMenu', () => {
 		detach();
 	});
 
+	// Escape used to drop a keyboard rider on the body (#1960): most anchors
+	// are a plain <div> or <li>, on which focus() is a silent no-op.
+	it('gives focus back to where it came from, or to the object itself', () => {
+		const button = document.createElement('button');
+		const node = document.createElement('div');
+		document.body.append(button, node);
+		const detach = contextMenu(() => [
+			{ label: 'Message', onSelect: () => {} },
+		])(node);
+		button.focus();
+		rightClick(node);
+		closeMenu();
+		expect(document.activeElement).toBe(button);
+
+		// Nothing had focus: the object is made focusable and takes it.
+		(document.activeElement as HTMLElement).blur();
+		rightClick(node);
+		closeMenu();
+		expect(document.activeElement).toBe(node);
+		detach();
+		button.remove();
+		node.remove();
+	});
+
 	// The roster is rebuilt from every server tick, so the attachment on a
 	// rider's row is torn down and re-created about once a second. That is the
 	// row re-rendering, not the rider leaving — and it was shutting the menu a

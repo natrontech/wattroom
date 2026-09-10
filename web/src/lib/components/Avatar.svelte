@@ -67,6 +67,8 @@
 	style="width:{size}px;height:{size}px"
 	title={label}
 >
+	<!-- A reader hears the name and the state; a title on a span is not reliably read (#1966). -->
+	<span class="sr-only">{label}</span>
 	<span
 		class="absolute flex items-center justify-center overflow-hidden rounded-full {status ===
 		'offline'
@@ -131,6 +133,7 @@
 		<span
 			class="absolute -bottom-0.5 -left-0.5 grid place-items-center rounded-full"
 			style="width:{mark}px;height:{mark}px;background:{ring};box-shadow:0 0 0 2px {ring}"
+			role="img"
 			aria-label={STATUS_WORD[status]}
 		>
 			{#if status === 'riding'}
@@ -146,6 +149,7 @@
 			'online'
 				? 'var(--color-z4)'
 				: 'color-mix(in oklab, var(--color-muted) 45%, transparent)'}"
+			role="img"
 			aria-label={STATUS_WORD[status]}
 		></span>
 	{/if}

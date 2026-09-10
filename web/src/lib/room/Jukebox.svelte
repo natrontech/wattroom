@@ -289,7 +289,7 @@
 				<span
 					class="h-1.5 w-1.5 rounded-full {inSync
 						? 'bg-watt glow-stroke'
-						: 'bg-muted animate-pulse'}"
+						: 'bg-muted motion-safe:animate-pulse'}"
 				></span>
 				{inSync ? 'in sync' : 'catching up'}
 			</span>

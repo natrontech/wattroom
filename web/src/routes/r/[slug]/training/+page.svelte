@@ -129,9 +129,16 @@
 	</div>
 {:else if room.phase === 'countdown'}
 	<div class="grid h-full place-items-center">
+		<!-- Announced once (#1970): the start is the biggest state change in
+		     the product, and a reader heard only the cue. The ticking digit is
+		     hidden from it, or the whole block re-reads every second. -->
+		<p class="sr-only" role="status">
+			Starting {room.shared?.workoutName ?? 'the session'} in a moment
+		</p>
 		<div class="text-center">
 			<p class="eyebrow">starting</p>
 			<p
+				aria-hidden="true"
 				class="font-display text-watt glow-text-strong text-[10rem] leading-none font-bold tabular-nums"
 			>
 				{room.shared?.countdownRemaining ?? 0}
