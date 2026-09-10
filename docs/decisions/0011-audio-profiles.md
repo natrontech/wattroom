@@ -43,3 +43,17 @@ channel, it does not set its own volume.
   bitrate/RED confirmation needs the crew AV pass on a real ride
   (docs/LAUNCH.md) — numbers may be tuned there without reopening this ADR;
   the two-profile split stands regardless.
+
+## Amendment — the soundboard is the one channel that does not dip (2026-09-10, #1900)
+
+"Music ducks under voice" above is a property of the **published** Music
+profile, not of the mixer. The soundboard publishes nothing — a clip is a file
+each machine fetches and plays locally (ADR-0033) — and it does **not** duck: a
+pad is meant to interrupt, and clips are short by design. SPEC's room-audio
+defaults carry that behaviour, its reason, and the room's remedy for a long or
+loud clip (the per-rider fader, #463).
+
+"Every audible source hangs off the one mixer" is unchanged: the board has a
+channel of its own (`mixer.board`). A mixer channel is a ceiling, though, never
+a promise to dip under a voice — which is the inference #1900 was filed to
+settle, so it is written here rather than left to be re-read the same way.
