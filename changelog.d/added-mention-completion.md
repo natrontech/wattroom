@@ -1,0 +1,1 @@
+- Typing `@` in a room's chat offers the people in it: arrow keys and Enter or Tab complete the name, Escape puts the list away.

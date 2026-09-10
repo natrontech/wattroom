@@ -57,21 +57,30 @@
 	);
 
 	let outside = $state<ReturnType<typeof createOutsideThread> | null>(null);
+	// The room's members, once per room: read from outside there is no room
+	// layout to have fetched them and a chat line carries no face (#807);
+	// inside and out they are who `@` completes to (#1766) — an offline
+	// member most of all, "@Bob you in tonight?" being the point.
+	let memberNames = $state<string[]>([]);
+	$effect(() => {
+		const room = slug;
+		memberNames = [];
+		void api<{ members?: (Face & { displayName?: string })[] }>(
+			`/api/rooms/${room}`,
+		).then((res) => {
+			if (!res.ok || room !== slug) return;
+			const members = res.data.members ?? [];
+			people.learn(members.map((m) => ({ ...m, name: m.displayName })));
+			memberNames = members.flatMap((m) =>
+				m.displayName ? [m.displayName] : [],
+			);
+		});
+	});
 	$effect(() => {
 		if (conn) {
 			outside = null;
 			return;
 		}
-		// Read from outside there is no room layout to have fetched the
-		// members, and a chat line carries no face (#807). One GET, once.
-		void api<{ members?: (Face & { displayName?: string })[] }>(
-			`/api/rooms/${slug}`,
-		).then((res) => {
-			if (res.ok)
-				people.learn(
-					(res.data.members ?? []).map((m) => ({ ...m, name: m.displayName })),
-				);
-		});
 		const thread = createOutsideThread(slug);
 		thread.start();
 		outside = thread;
@@ -208,6 +217,10 @@
 <MessageThread
 	{source}
 	imageSrc={(imageId) => `/api/rooms/${slug}/chat/images/${imageId}`}
+	mentionNames={[
+		...memberNames,
+		...(conn?.live.tick?.roster.map((rider) => rider.name) ?? []),
+	]}
 	{onQueue}
 	composerPlaceholder={conn
 		? `Message ${name}…`
