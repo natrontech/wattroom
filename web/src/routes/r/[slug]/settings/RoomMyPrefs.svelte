@@ -71,7 +71,9 @@
 			<span class="block text-sm font-medium">Notify me about this room</span>
 			<span class="text-muted block text-xs">
 				Planned sessions here reach you by email. Turning off every room's mail
-				at once lives in your profile.
+				at once is on <a href="/settings/notifications" class="btn-link"
+					>Notifications</a
+				>.
 			</span>
 		</span>
 	</label>
