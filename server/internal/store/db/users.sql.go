@@ -14,12 +14,15 @@ import (
 const clearUserEmail = `-- name: ClearUserEmail :one
 update users
 set email = null, email_verified_at = null, email_pending = null,
-    email_verify_hash = null, email_verify_expires = null, notify_planned = false
+    email_verify_hash = null, email_verify_expires = null,
+    recover_hash = null, recover_expires = null, notify_planned = false
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires
 `
 
-// Removing the address takes the verification and anything in flight with it.
+// Removing the address takes the verification and anything in flight with it
+// — the recovery token included (#1822), which is a live way into the
+// account sitting in an inbox the account no longer claims.
 func (q *Queries) ClearUserEmail(ctx context.Context, id pgtype.UUID) (User, error) {
 	row := q.db.QueryRow(ctx, clearUserEmail, id)
 	var i User
@@ -47,6 +50,51 @@ func (q *Queries) ClearUserEmail(ctx context.Context, id pgtype.UUID) (User, err
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
+	)
+	return i, err
+}
+
+const consumeAccountRecovery = `-- name: ConsumeAccountRecovery :one
+update users
+set recover_hash = null, recover_expires = null
+where recover_hash = $1 and recover_expires > now()
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires
+`
+
+// Single use and time-bounded, like VerifyEmail: the row that matches is the
+// row that clears the token, so the link that already minted a session mints
+// no second one.
+func (q *Queries) ConsumeAccountRecovery(ctx context.Context, recoverHash []byte) (User, error) {
+	row := q.db.QueryRow(ctx, consumeAccountRecovery, recoverHash)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.FtpWatts,
+		&i.WeightKg,
+		&i.CreatedAt,
+		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
+		&i.FriendCode,
+		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
+		&i.Timezone,
+		&i.Lthr,
+		&i.FtpSource,
+		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
 }
@@ -55,7 +103,7 @@ const createUser = `-- name: CreateUser :one
 insert into users (display_name, avatar_url, ftp_watts, weight_kg, email_required,
                    ftp_source, weight_source)
 values ($1, $2, $3, $4, true, 'default', 'default')
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires
 `
 
 type CreateUserParams struct {
@@ -104,6 +152,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
 }
@@ -130,7 +180,7 @@ func (q *Queries) EmailVerifiedElsewhere(ctx context.Context, arg EmailVerifiedE
 }
 
 const getUser = `-- name: GetUser :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source from users where id = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires from users where id = $1
 `
 
 func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -160,6 +210,8 @@ func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
 }
@@ -182,7 +234,7 @@ func (q *Queries) GetUserAvatar(ctx context.Context, userID pgtype.UUID) (GetUse
 }
 
 const getUserByIcsToken = `-- name: GetUserByIcsToken :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source from users where ics_token = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires from users where ics_token = $1
 `
 
 func (q *Queries) GetUserByIcsToken(ctx context.Context, icsToken string) (User, error) {
@@ -212,6 +264,8 @@ func (q *Queries) GetUserByIcsToken(ctx context.Context, icsToken string) (User,
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
 }
@@ -295,7 +349,7 @@ with saved as (
         set mime = excluded.mime, image = excluded.image, set_at = excluded.set_at
 )
 update users set avatar_url = $5 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires
 `
 
 type SetUserAvatarParams struct {
@@ -342,15 +396,35 @@ func (q *Queries) SetUserAvatar(ctx context.Context, arg SetUserAvatarParams) (U
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
+}
+
+const startAccountRecovery = `-- name: StartAccountRecovery :exec
+update users set recover_hash = $2, recover_expires = $3 where id = $1
+`
+
+type StartAccountRecoveryParams struct {
+	ID             pgtype.UUID
+	RecoverHash    []byte
+	RecoverExpires pgtype.Timestamptz
+}
+
+// Stores the hashed single-use recovery token, replacing any still in flight
+// — the same idiom as StartEmailVerification, on its own pair of columns
+// because the two ceremonies overlap in time and unlock different things.
+func (q *Queries) StartAccountRecovery(ctx context.Context, arg StartAccountRecoveryParams) error {
+	_, err := q.db.Exec(ctx, startAccountRecovery, arg.ID, arg.RecoverHash, arg.RecoverExpires)
+	return err
 }
 
 const startEmailVerification = `-- name: StartEmailVerification :one
 update users
 set email_pending = $2, email_verify_hash = $3, email_verify_expires = $4
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires
 `
 
 type StartEmailVerificationParams struct {
@@ -394,6 +468,8 @@ func (q *Queries) StartEmailVerification(ctx context.Context, arg StartEmailVeri
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
 }
@@ -416,7 +492,7 @@ func (q *Queries) UnsubscribePlanned(ctx context.Context, arg UnsubscribePlanned
 }
 
 const updateUserAppearance = `-- name: UpdateUserAppearance :one
-update users set accent_palette = $2, color_scheme = $3 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source
+update users set accent_palette = $2, color_scheme = $3 where id = $1 returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires
 `
 
 type UpdateUserAppearanceParams struct {
@@ -452,6 +528,8 @@ func (q *Queries) UpdateUserAppearance(ctx context.Context, arg UpdateUserAppear
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
 }
@@ -462,7 +540,7 @@ set display_name = $2, ftp_watts = $3, weight_kg = $4, strava_upload = $5,
     notify_planned = $6, lthr = $9::smallint,
     ftp_source = $7, weight_source = $8
 where id = $1
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires
 `
 
 type UpdateUserProfileParams struct {
@@ -522,6 +600,8 @@ func (q *Queries) UpdateUserProfile(ctx context.Context, arg UpdateUserProfilePa
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
 }
@@ -544,7 +624,7 @@ func (q *Queries) UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezone
 }
 
 const userByEmailVerifyHash = `-- name: UserByEmailVerifyHash :one
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source from users where email_verify_hash = $1 and email_verify_expires > now()
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires from users where email_verify_hash = $1 and email_verify_expires > now()
 `
 
 // A read-only peek at the row a confirmation link is about to promote, so the
@@ -578,6 +658,50 @@ func (q *Queries) UserByEmailVerifyHash(ctx context.Context, emailVerifyHash []b
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
+	)
+	return i, err
+}
+
+const userByVerifiedEmail = `-- name: UserByVerifiedEmail :one
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires from users
+where lower(email) = lower($1::text) and email_verified_at is not null
+`
+
+// The account a recovery request is about (#1822). Only a verified address
+// answers: an unverified one is somebody's typo, and `users_email_verified`
+// makes lower(email) unique across the verified ones, so this is at most one
+// row.
+func (q *Queries) UserByVerifiedEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, userByVerifiedEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.FtpWatts,
+		&i.WeightKg,
+		&i.CreatedAt,
+		&i.StravaUpload,
+		&i.Email,
+		&i.NotifyPlanned,
+		&i.UnsubToken,
+		&i.FriendCode,
+		&i.IcsToken,
+		&i.AccentPalette,
+		&i.ColorScheme,
+		&i.EmailVerifiedAt,
+		&i.EmailPending,
+		&i.EmailVerifyHash,
+		&i.EmailVerifyExpires,
+		&i.EmailRequired,
+		&i.Timezone,
+		&i.Lthr,
+		&i.FtpSource,
+		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
 }
@@ -588,13 +712,20 @@ set email = email_pending,
     email_verified_at = now(),
     email_pending = null,
     email_verify_hash = null,
-    email_verify_expires = null
+    email_verify_expires = null,
+    recover_hash = null,
+    recover_expires = null
 where email_verify_hash = $1 and email_verify_expires > now()
-returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source
+returning id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires
 `
 
 // Single use and time-bounded: the row that matches is also the row that
 // clears the token, so a replayed link finds nothing.
+//
+// The recovery token goes with it (#1822): it was mailed to the address this
+// statement replaces, and a live one left behind would let the previous
+// inbox mint a session on the account long after it stopped being the
+// account's address.
 func (q *Queries) VerifyEmail(ctx context.Context, emailVerifyHash []byte) (User, error) {
 	row := q.db.QueryRow(ctx, verifyEmail, emailVerifyHash)
 	var i User
@@ -622,6 +753,8 @@ func (q *Queries) VerifyEmail(ctx context.Context, emailVerifyHash []byte) (User
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
 }

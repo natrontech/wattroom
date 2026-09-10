@@ -332,6 +332,8 @@ type User struct {
 	Lthr               *int16
 	FtpSource          *string
 	WeightSource       *string
+	RecoverHash        []byte
+	RecoverExpires     pgtype.Timestamptz
 }
 
 type UserAvatar struct {

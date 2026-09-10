@@ -17,6 +17,14 @@ const (
 	loginAttemptsPerWindow = 30
 	loginWindow            = time.Minute
 	syntheticPerWindow     = 10
+	// Recovery (#1822) is two ceilings, because the two things worth
+	// bounding are different: how fast one caller may knock, and how much
+	// mail one inbox can be sent no matter how many callers do the knocking.
+	// Room for a rider mistyping their address a few times; nowhere near
+	// enough to walk a list of addresses or to bury someone in link mail.
+	recoverAsksPerWindow  = 5 // per client address, per loginWindow
+	recoverMailsPerWindow = 3 // per email address asked about
+	recoverMailWindow     = time.Hour
 )
 
 // throttle answers 429 and reports true when this address has spent its

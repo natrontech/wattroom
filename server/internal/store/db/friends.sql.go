@@ -142,7 +142,7 @@ func (q *Queries) GetFriendship(ctx context.Context, arg GetFriendshipParams) (F
 
 const getUserByFriendCode = `-- name: GetUserByFriendCode :one
 
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source from users where friend_code = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires from users where friend_code = $1
 `
 
 // an engineering bound (#1416), far past any friend list
@@ -175,6 +175,8 @@ func (q *Queries) GetUserByFriendCode(ctx context.Context, friendCode string) (U
 		&i.Lthr,
 		&i.FtpSource,
 		&i.WeightSource,
+		&i.RecoverHash,
+		&i.RecoverExpires,
 	)
 	return i, err
 }
