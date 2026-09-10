@@ -63,6 +63,8 @@ type Service struct {
 	crews    CrewReleaser
 	revoker  GrantRevoker
 	reaper   BlobReaper
+	// One export in flight per account (#1554). inflight.go.
+	exports *inFlight
 }
 
 // SetStravaRevoker wires the uploader in after construction, like SetCrews.
@@ -78,7 +80,7 @@ type BlobReaper interface {
 func (s *Service) SetTrackReaper(r BlobReaper) { s.reaper = r }
 
 func New(st *store.Store, sessions Sessions, log *slog.Logger) *Service {
-	return &Service{store: st, sessions: sessions, log: log}
+	return &Service{store: st, sessions: sessions, log: log, exports: newInFlight()}
 }
 
 // SetAlerter wires the notify capability in after construction, the shape
@@ -131,6 +133,22 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// The ceiling (#1554): one export in flight per account. Below, this
+	// handler reads and gunzips every ride blob the rider owns, so the thing
+	// worth refusing is a second copy of that running beside the first — a
+	// double-click, or a second tab. After RequireUser, so a slot is only ever
+	// held against a known account and a signed-out caller cannot take one.
+	if !s.exports.acquire(user.ID) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"Your export is already being built. Wait for it to finish, then ask again.")
+		return
+	}
+	// Every return below gives the slot back, and so does a panic on the way
+	// out: an entry left behind would lock this rider out of their own data
+	// until the next restart, which is a worse bug than the one the ceiling
+	// fixes.
+	defer s.exports.release(user.ID)
+
 	rides, err := s.store.Queries.ListUserRidesFull(r.Context(), user.ID)
 	if err != nil {
 		httpx.Fail(w, s.log, "export query failed", err, "The export could not be built. Try again.")
