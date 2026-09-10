@@ -12,10 +12,9 @@
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
-	import PlayerTile from '$lib/room/PlayerTile.svelte';
+	import PlayerTile from '../PlayerTile.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
-	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import UpdateRow from '$lib/nav/UpdateRow.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
@@ -71,16 +70,6 @@
 			...over,
 		};
 	}
-
-	const you = rider({
-		id: 'demo',
-		name: 'You',
-		you: true,
-		ftp: 265,
-		kg: 74,
-		watts: 242,
-		target: 239,
-	});
 
 	const block = {
 		index: 3,
@@ -220,20 +209,6 @@
 				<p class="text-muted mt-1.5 text-[11px]">{sample.label}</p>
 			</div>
 		{/each}
-	</div>
-
-	<h2 class="eyebrow mt-12">Target — two distances</h2>
-	<div class="mt-4 grid gap-4 lg:grid-cols-2">
-		<div>
-			<TargetWidget {you} variant="notch" />
-			<p class="text-muted mt-1.5 text-[11px]">
-				notch bar — arm's length, on the ride screen
-			</p>
-		</div>
-		<div class="bg-surface-raised rounded-lg p-5">
-			<TargetWidget {you} variant="delta" />
-			<p class="text-muted mt-1.5 text-[11px]">delta — three metres, TV mode</p>
-		</div>
 	</div>
 
 	<h2 class="eyebrow mt-12">Palette picker</h2>
