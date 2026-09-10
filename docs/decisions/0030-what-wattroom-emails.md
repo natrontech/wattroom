@@ -87,8 +87,11 @@ sole exception being that address's own confirmation link. An unverified
 address is someone's typo until proven otherwise, and account activity is not
 something to narrate to it.
 
-**No new-sign-in alerts, for now.** There is no session list and no "sign out
-everywhere", so the mail would be anxiety with nothing to press. It becomes a
+**No new-sign-in alerts, for now.** ~~There is no session list and no "sign out
+everywhere", so the mail would be anxiety with nothing to press.~~
+**Diverged 2026-09-10 (#1829, #1607)**: sign-out-everywhere ships, with a button on
+/settings/profile — half the reason is spent. The answer is still no, on the surviving half; see
+the amendment below. It becomes a
 good idea the day sessions are listable, and not before.
 
 **Rendering: one HTML template, inline styles, table layout, sent alongside the
@@ -120,3 +123,13 @@ bulk sender's address.
 - Revisit on org or team accounts, which introduce an invitation — mail to
   someone who is not yet a rider, a class this shape has no room for — and on
   a session list, which makes the sign-in alert actionable.
+
+## Amendment, 2026-09-10 (#1829): half the reason is spent, the answer is unchanged
+
+This ADR refused sign-in alerts on two grounds: no session list, and nothing to press. **The second is gone** — `handleLogoutEverywhere` has shipped since #1607 with a button on `/settings/profile`, and `endOtherSessions` already fires automatically on both credential-removal paths.
+
+**The answer stays no, on the surviving reason:** sessions are still not listable, so the mail cannot say *which* device signed in. An alert a rider cannot act on precisely — "someone signed in somewhere, here is a button that ends everything" — is the anxiety this ADR refused, just with a bigger hammer attached.
+
+Recorded because the next person weighing this would otherwise find the paragraph arguing from a fact that changed, and reasonably conclude the refusal had expired. It has not; it rests on less than it did.
+
+Unchanged: shipping the alert needs its own budget or a first-sign-in-per-device heuristic, or it becomes the mail cannon #827 closed. Building the session list first makes the question moot and is the better order.

@@ -16,8 +16,10 @@ to. #147 requires the visibility questions answered before code.
 
 ## Decision
 
-**Formation — mutual, and only through a shared room.** You can request
-someone as a friend only if you currently share a room membership; the
+**Formation — mutual, and only through a shared room.** ~~You can request
+someone as a friend only if you currently share a room membership~~
+**Diverged 2026-09-10 (#1650, ADR-0038)**: a room your crew can open counts, whether or not either
+of you has entered it — see ADR-0024's amendment of the same date for the argument. The
 picker offers exactly those people. There is no global user search and no
 handle lookup — a stranger cannot find you, address you, or spam you.
 Friendship exists when the other side accepts. Either side can remove it at
@@ -26,8 +28,10 @@ any time; removal is silent and immediate.
 **Visibility — accepting IS the opt-in.** Only accepted friends see
 anything. What they see:
 
-- a boolean: connected to a room right now, or not ("online" = in a room —
-  WattRoom has no ambient presence, ADR-0010);
+- a boolean: ~~connected to a room right now, or not ("online" = in a room —
+  WattRoom has no ambient presence, ADR-0010)~~ **Diverged 2026-09-10 (#653, #1398)**: "online"
+  means the app is open — the lobby socket — as a state of its own beside *in a room* and
+  *riding*. Amended in full below (2026-09-09); this line is what a reader hits first;
 - the room's name and a join affordance **only when the viewer is a member
   of that room**. Otherwise just "riding elsewhere". The room stays the
   privacy boundary; friendship never pierces it.

@@ -31,7 +31,7 @@ The founding record comes in two shapes, so the annotation does too.
 
 > **Diverged 2026-09-10 (#2055, [ADR-0020](0020-the-app-takes-discords-shape.md))** — the app took Discord's shape and a room now has one riding surface, so the switchable layouts this line ticks off were retired.
 
-*Table cells* — §2's decision table, 48 rows — take the marker inline in the cell, because a blockquote cannot live inside a table row. This extends the convention that table already uses: strike the superseded phrase, then
+*Table cells and list items* — §2's decision table is 48 rows, and the ADRs are largely bulleted — take the marker inline, because a blockquote cannot live inside a table row and ends a list rather than continuing it. The rule generalises: a blockquote wherever a block can live, inline wherever it cannot. This extends the convention the table already uses: strike the superseded phrase, then
 
 `**Diverged 2026-09-10 (#1236, ADR-0038)**: rooms are channels a crew member walks into and have no codes of their own.`
 
