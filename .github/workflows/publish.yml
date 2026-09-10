@@ -56,16 +56,22 @@ jobs:
       - name: a fresh volume belongs to the app's uid
         run: |
           image=ghcr.io/${{ github.repository }}:${{ github.sha }}
-          docker volume create probe-volume >/dev/null
-          # Creating the container is what initialises the volume; the
-          # entrypoint never has to run, and must not — it wants a database.
-          docker run --rm --entrypoint /nonexistent -v probe-volume:/data/tracks "$image" || true
-          owner=$(docker run --rm -v probe-volume:/probe alpine stat -c '%u:%g' /probe)
-          docker volume rm probe-volume >/dev/null
-          if [ "$owner" != "65532:65532" ]; then
-            echo "a fresh volume came out owned by $owner — the server runs as 65532 and cannot write to it"
-            exit 1
-          fi
+          # Both writable paths, not one. #1730 was the feedback volume, and a
+          # probe covering only tracks stays green through the same bug
+          # arriving the other way round — which is the failure this check
+          # exists to make impossible rather than unlikely.
+          for path in /data/tracks /data/feedback; do
+            docker volume create probe-volume >/dev/null
+            # Creating the container is what initialises the volume; the
+            # entrypoint never has to run, and must not — it wants a database.
+            docker run --rm --entrypoint /nonexistent -v probe-volume:"$path" "$image" || true
+            owner=$(docker run --rm -v probe-volume:/probe alpine stat -c '%u:%g' /probe)
+            docker volume rm probe-volume >/dev/null
+            if [ "$owner" != "65532:65532" ]; then
+              echo "a fresh volume on $path came out owned by $owner — the server runs as 65532 and cannot write to it"
+              exit 1
+            fi
+          done
 
       # Last, so a release never names an image that failed to push. The notes
       # are the CHANGELOG section this tag was cut with (`make release` writes
