@@ -2,7 +2,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { declineFtp, declinedFtp, suggestionDeclined } from './ftp-decline';
 
-// happy-dom hands vitest no localStorage global; the same stub pane.test uses.
+// A Map-backed store, not the environment's Storage, so this stub is the only
+// thing carrying state between these tests; the same one pane.test uses.
 const store = new Map<string, string>();
 vi.stubGlobal('localStorage', {
 	getItem: (key: string) => store.get(key) ?? null,
