@@ -15,6 +15,7 @@ import (
 
 	"log/slog"
 
+	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
@@ -26,7 +27,10 @@ type fakeAccess struct{}
 func (fakeAccess) Authorize(r *http.Request, slug string) (protocol.Rider, string, error) {
 	v := r.Header.Get("X-Rider")
 	if v == "" {
-		return protocol.Rider{}, "", errors.New("no rider")
+		return protocol.Rider{}, "", av.ErrNotMember
+	}
+	if v == "!db" {
+		return protocol.Rider{}, "", errors.New("membership lookup: connection refused")
 	}
 	name, role, _ := strings.Cut(v, ":")
 	return protocol.Rider{ID: name, Name: name, Role: role, FtpWatts: 250}, strings.ToLower(slug), nil
@@ -106,6 +110,15 @@ func TestWebSocketRoom(t *testing.T) {
 	}
 	if err == nil || res == nil || res.StatusCode != http.StatusForbidden {
 		t.Fatalf("stranger was not refused with 403 (err %v)", err)
+	}
+	// A database that did not answer is not a stranger (#1984): 503, so the
+	// client keeps trying instead of believing it was thrown out.
+	_, res, err = websocket.Dial(ctx, url, &websocket.DialOptions{HTTPHeader: http.Header{"X-Rider": {"!db"}}})
+	if res != nil && res.Body != nil {
+		defer func() { _ = res.Body.Close() }()
+	}
+	if err == nil || res == nil || res.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("a database failure at the door was not a 503 (err %v, res %v)", err, res)
 	}
 
 	coach := dial(t, url, "jan:owner")

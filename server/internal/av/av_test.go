@@ -27,13 +27,19 @@ func (allowAll) Authorize(_ *http.Request, slug string) (protocol.Rider, string,
 type denyAll struct{}
 
 func (denyAll) Authorize(*http.Request, string) (protocol.Rider, string, error) {
-	return protocol.Rider{}, "", errors.New("no")
+	return protocol.Rider{}, "", ErrNotMember
 }
 
 type noSession struct{}
 
 func (noSession) Authorize(*http.Request, string) (protocol.Rider, string, error) {
 	return protocol.Rider{}, "", ErrNoSession
+}
+
+type dbDown struct{}
+
+func (dbDown) Authorize(*http.Request, string) (protocol.Rider, string, error) {
+	return protocol.Rider{}, "", errors.New("membership lookup: connection refused")
 }
 
 // A refused token says which of two very different things went wrong (#642):
@@ -48,6 +54,8 @@ func TestTokenRefusalSaysWhy(t *testing.T) {
 	}{
 		{"no session", noSession{}, http.StatusUnauthorized, "unauthorized"},
 		{"not a member", denyAll{}, http.StatusForbidden, "forbidden"},
+		// The database not answering is neither (#1984).
+		{"database down", dbDown{}, http.StatusInternalServerError, "internal_error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/velvet/av-token", nil)

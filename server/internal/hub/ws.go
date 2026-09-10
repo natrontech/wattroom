@@ -7,6 +7,7 @@ package hub
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 
+	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/workout"
@@ -72,6 +74,13 @@ func canControl(role string) bool { return role == "owner" || role == "coach" }
 func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	rider, slug, err := h.access.Authorize(r, r.PathValue("slug"))
 	if err != nil {
+		if !errors.Is(err, av.ErrNoSession) && !errors.Is(err, av.ErrNotMember) {
+			// The database did not answer (#1984): logged, and a 503 the
+			// client retries — not a refusal it would believe.
+			h.log.Error("room door", "room", r.PathValue("slug"), "err", err)
+			http.Error(w, "the room could not be checked", http.StatusServiceUnavailable)
+			return
+		}
 		// Before the upgrade: a plain 403 is clearer to debug than a WS close code.
 		http.Error(w, "not a member of this room", http.StatusForbidden)
 		return
