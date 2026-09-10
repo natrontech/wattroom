@@ -352,6 +352,8 @@
 			document.getElementById('page-body')?.focus();
 		}}>Skip to the page</a
 	>
+	<!-- Right after the skip link, so Undo is two tabs from the top (#1961). -->
+	<Toasts />
 	<!-- The RIDE is the cave (#113, refined on rider feedback): the lounge is
 	     a desk surface and follows the theme — the lights go down when the
 	     session starts, and come back up when it ends. A solo ride or ramp
@@ -413,7 +415,12 @@
 				onSheet={() => (drawer = false)}
 			/>
 		</div>
-		<div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+		<!-- inert while the drawer is open (#1969): Tab past its last row used
+		     to walk under the backdrop. -->
+		<div
+			inert={device.narrow && drawer}
+			class="flex min-w-0 flex-1 flex-col overflow-hidden"
+		>
 			{#if !caved}
 				<!-- The only chrome the drawer needs. It goes with the lights: the
 				     ride owns the whole screen (#113) — below md the button
@@ -517,7 +524,6 @@
      picture opens over whatever chat sent it: a room's, a DM's, a thread's. -->
 <VerifyEmailGate />
 
-<Toasts />
 <ImageViewer />
 <ContextMenuHost />
 <ConfirmHost />
