@@ -2,6 +2,7 @@ package rooms
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -18,6 +19,12 @@ import (
 
 // Planned rides (#116). The roles matrix gives session-running to coach and
 // owner alike — scheduling is running a session early.
+
+// maxPlannedPerRoom is docs/SPEC.md's per-room ceiling (#1414). Counted the
+// way ListRoomUpcoming counts — upcoming and not yet started — so a plan that
+// ran, was cancelled or fell past its grace hands the slot back, and the
+// number the refusal names is the number the room can see.
+const maxPlannedPerRoom = 50
 
 type scheduledJSON struct {
 	ID          string `json:"id"`
@@ -53,8 +60,12 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := s.store.Queries.ListUserCalendar(r.Context(), db.ListUserCalendarParams{
 		// The same 30-minute grace the in-room list keeps: a session stays
-		// startable a little past its time.
-		UserID: user.ID, StartsAt: pgTime(time.Now().Add(-30 * time.Minute)),
+		// startable a little past its time. The far edge and the row bound are
+		// the feeds' (#1414) — this page builds the same list in memory, and
+		// planning stops three months out, so neither can hide a plan.
+		UserID:      user.ID,
+		StartsFrom:  pgTime(time.Now().Add(-30 * time.Minute)),
+		StartsUntil: calendarUntil(), RowLimit: maxCalendarEvents,
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "schedule list failed", err, "Your planned sessions could not be loaded. Try again.", "user", store.UUIDString(user.ID))
@@ -198,12 +209,46 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 			"A session is planned between now and three months out.", "startsAt")
 		return
 	}
-	row, err := s.store.Queries.CreateScheduledSession(r.Context(), db.CreateScheduledSessionParams{
+	// docs/SPEC.md's per-room ceiling. Counted with the room's row locked, in
+	// the transaction that inserts (#1413's lesson): a count and an insert
+	// that are not the same transaction are a ceiling a burst walks straight
+	// through.
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "schedule begin failed", err, "The session could not be planned. Try again.", "room", room.Slug)
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.LockRoom(r.Context(), room.ID); err != nil {
+		httpx.Fail(w, s.log, "schedule lock failed", err, "The session could not be planned. Try again.", "room", room.Slug)
+		return
+	}
+	planned, err := q.CountRoomUpcoming(r.Context(), room.ID)
+	if err != nil {
+		// Closed, not open: a count that failed must not wave the cap through.
+		httpx.Fail(w, s.log, "planned session count failed", err, "The session could not be planned. Try again.", "room", room.Slug)
+		return
+	}
+	if planned >= maxPlannedPerRoom {
+		// A ceiling is a 429 (errors.md), and worded as a ceiling: waiting
+		// clears nothing here, so the message names the two moves that do.
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			fmt.Sprintf("This room has %d sessions planned, the most it can hold. Cancel one, or wait for the next to start, to plan another.", maxPlannedPerRoom))
+		return
+	}
+	row, err := q.CreateScheduledSession(r.Context(), db.CreateScheduledSessionParams{
 		RoomID: room.ID, WorkoutName: req.WorkoutName, WorkoutJson: []byte(req.WorkoutJSON),
 		StartsAt: pgTime(req.StartsAt), CreatedBy: user.ID,
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "schedule failed", err, "The session could not be planned. Try again.", "room", room.Slug)
+		return
+	}
+	// Nothing below is undoable — a mail goes out, a line lands on the
+	// timeline — so the row is committed before any of it runs.
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Fail(w, s.log, "schedule commit failed", err, "The session could not be planned. Try again.", "room", room.Slug)
 		return
 	}
 	if s.notifier != nil {

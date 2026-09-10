@@ -154,6 +154,21 @@ delete from memberships where room_id = $1 and user_id = $2 and role != 'banned'
 insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)
 values ($1, $2, $3, $4, $5) returning *;
 
+-- name: LockRoom :exec
+-- The room's write lock, held for the length of a transaction. LockUser's
+-- sibling: what serialises a room-scoped ceiling check against the insert
+-- that follows it.
+select 1 from rooms where id = $1 for update;
+
+-- name: CountRoomUpcoming :one
+-- docs/SPEC.md's 50-planned-session ceiling (#1414). Deliberately the same
+-- predicate as ListRoomUpcoming, so what the ceiling counts is exactly what
+-- the room shows as planned: a plan that started, was cancelled, or fell past
+-- its 30-minute grace has given its slot back.
+select count(*) from scheduled_sessions
+where room_id = $1 and starts_at > now() - interval '30 minutes'
+  and started_at is null;
+
 -- name: ListRoomUpcoming :many
 -- Grace of 30 min: a plan stays visible (and startable) a little past its
 -- time, then falls off — no cron, the read is the cleanup. A started plan
@@ -223,14 +238,23 @@ returning *;
 select starts_at from scheduled_sessions where id = $1 and room_id = $2;
 
 -- name: ListRoomCalendar :many
--- The iCal feed (#245): unlike the in-room list, it keeps a month of history
--- and has no cap — a calendar that self-erases reads as broken.
+-- The iCal feed (#245): unlike the in-room list, it keeps a month of history.
+-- Bounded at both ends now (#1414) — the whole result is rendered into one
+-- in-memory ICS string per request, on a URL whose only credential is a
+-- bearer token, so row growth was a memory spike anybody holding the link
+-- could ask for. Neither bound can erase a plan somebody made: planning is
+-- capped three months out (plannableAt), well inside the year, and the row
+-- limit is far above the room's own 50-session ceiling. The window is the
+-- caller's, like ListUserCalendar's, so both feeds read their numbers from
+-- the same Go constants rather than from an interval literal in here.
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
        u.display_name as created_by
 from scheduled_sessions s
 join users u on u.id = s.created_by
-where s.room_id = $1 and s.starts_at > now() - interval '30 days'
-order by s.starts_at;
+where s.room_id = $1
+  and s.starts_at > sqlc.arg(starts_from) and s.starts_at < sqlc.arg(starts_until)
+order by s.starts_at
+limit sqlc.arg(row_limit);
 
 -- name: RotateRoomIcsToken :one
 update rooms set ics_token = replace(gen_random_uuid()::text, '-', '')
@@ -246,10 +270,12 @@ select count(*) from rooms where owner_id = $1;
 update rooms set owner_id = $2 where id = $1;
 
 -- name: ListUserCalendar :many
--- Every room the rider is in, one list (#325). $2 is the horizon and is the
--- only difference between the two callers: the iCal feed keeps a month of
--- history, the sessions page starts at the same 30-minute grace the in-room
--- list uses. Uncapped — a calendar that self-erases reads as broken.
+-- Every room the rider is in, one list (#325). `from` is the only difference
+-- between the two callers: the iCal feed keeps a month of history, the
+-- sessions page starts at the same 30-minute grace the in-room list uses.
+-- `until` and the row limit are the same for both (#1414) — the rider feed is
+-- the wider of the two memory spikes, since membership is uncapped and every
+-- room's 50 plans land in one ICS string.
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
        u.display_name as created_by, r.name as room_name, r.slug as room_slug,
        m.role as your_role
@@ -257,11 +283,12 @@ from scheduled_sessions s
 join rooms r on r.id = s.room_id
 join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'banned'
 join users u on u.id = s.created_by
-where s.starts_at > $2
+where s.starts_at > sqlc.arg(starts_from) and s.starts_at < sqlc.arg(starts_until)
   -- A crew ban leaves the membership row and lives in visible_rooms alone
   -- (#1904): the rail asks it, and so does the calendar.
   and exists (select 1 from visible_rooms v where v.room_id = s.room_id and v.user_id = $1)
-order by s.starts_at;
+order by s.starts_at
+limit sqlc.arg(row_limit);
 
 -- name: SetRsvp :exec
 -- Room events (#450). Saying yes twice is saying yes.

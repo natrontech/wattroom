@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -21,6 +23,24 @@ import (
 // Two feeds, two subjects. The room feed is a room's schedule, shareable with
 // people who aren't members. The rider feed is every room you ride in, and is
 // the one the UI offers first: four rooms used to mean four subscriptions.
+
+// The feeds' bounds, docs/SPEC.md (#1414). Both feeds render their whole
+// result into one in-memory string per request, behind nothing but a bearer
+// token in the URL, so "uncapped" made row growth into a memory spike anybody
+// with the link could ask for. calendarHorizon is generous against
+// plannableAt's three months, and maxCalendarEvents against the 50-session
+// ceiling — twenty rooms' worth of full schedules — so a rider reaching
+// either bound has hit something no product surface can produce.
+const (
+	calendarHistory   = 30 * 24 * time.Hour
+	calendarHorizon   = 365 * 24 * time.Hour
+	maxCalendarEvents = 1000
+)
+
+// calendarUntil is the far edge every calendar read shares — the feeds and
+// the sessions page alike, so none of them can quietly disagree about how far
+// ahead a plan is visible.
+func calendarUntil() pgtype.Timestamptz { return pgTime(time.Now().Add(calendarHorizon)) }
 
 // icsEvent is what both feeds agree on — the row types differ, the calendar
 // entry doesn't.
@@ -46,7 +66,11 @@ func (s *Service) handleCalendar(w http.ResponseWriter, r *http.Request) {
 			"That calendar link is not valid — ask in the room for the current one.")
 		return
 	}
-	rows, err := s.store.Queries.ListRoomCalendar(r.Context(), room.ID)
+	rows, err := s.store.Queries.ListRoomCalendar(r.Context(), db.ListRoomCalendarParams{
+		RoomID:      room.ID,
+		StartsFrom:  pgTime(time.Now().Add(-calendarHistory)),
+		StartsUntil: calendarUntil(), RowLimit: maxCalendarEvents,
+	})
 	if err != nil {
 		httpx.Fail(w, s.log, "calendar feed failed", err, "The calendar could not be loaded. Try again.", "room", room.Slug)
 		return
@@ -72,7 +96,9 @@ func (s *Service) handleUserCalendar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := s.store.Queries.ListUserCalendar(r.Context(), db.ListUserCalendarParams{
-		UserID: user.ID, StartsAt: pgTime(time.Now().AddDate(0, 0, -30)),
+		UserID:      user.ID,
+		StartsFrom:  pgTime(time.Now().Add(-calendarHistory)),
+		StartsUntil: calendarUntil(), RowLimit: maxCalendarEvents,
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "rider calendar feed failed", err, "The calendar could not be loaded. Try again.", "user", store.UUIDString(user.ID))
