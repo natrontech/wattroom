@@ -1,0 +1,1 @@
+- Reading a room's chat from Messages now shows the "starts at" line ten minutes before a planned session, the same as inside the room.
