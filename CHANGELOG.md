@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.112] - 2026-09-10
+
+### Fixed
+
+- Posting to a room's chat from outside the room now has the same per-account ceiling the socket and direct messages have: sixty lines a minute, sixty pictures an hour, refused with a clear "a moment, then again" rather than accepted without limit.
+- The account export is built in full before it is sent: a failure part-way now answers with an error you can retry, instead of a download that silently stops short.
+
 ## [2026.09.111] - 2026-09-10
 
 ### Fixed
@@ -1951,7 +1958,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.111...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.112...HEAD
+[2026.09.112]: https://github.com/natrontech/wattroom/compare/2026.09.111...2026.09.112
 [2026.09.111]: https://github.com/natrontech/wattroom/compare/2026.09.110...2026.09.111
 [2026.09.110]: https://github.com/natrontech/wattroom/compare/2026.09.109...2026.09.110
 [2026.09.109]: https://github.com/natrontech/wattroom/compare/2026.09.108...2026.09.109

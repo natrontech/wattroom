@@ -1,1 +1,0 @@
-- The account export is built in full before it is sent: a failure part-way now answers with an error you can retry, instead of a download that silently stops short.

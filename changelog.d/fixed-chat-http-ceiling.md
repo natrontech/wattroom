@@ -1,1 +1,0 @@
-- Posting to a room's chat from outside the room now has the same per-account ceiling the socket and direct messages have: sixty lines a minute, sixty pictures an hour, refused with a clear "a moment, then again" rather than accepted without limit.
