@@ -33,7 +33,7 @@ test('the room chat scrolls back to its oldest line', async ({
 	// A desk-sized window: the log is the content column at any width, but the
 	// people column beside it only exists from `xl`.
 	await page.setViewportSize({ width: 1440, height: 700 });
-	await signInAs(page, 'Chat Scrollback', '/rooms');
+	await signInAs(page, 'Chat Scrollback', '/home');
 
 	const name = `Chat Scrollback ${Date.now() % 100000}`;
 	const { slug } = await rooms.open(page, name);

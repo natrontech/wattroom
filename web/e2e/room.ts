@@ -78,8 +78,19 @@ export const test = base.extend<{
 		const opened: { page: Page; slug: string }[] = [];
 		await use({
 			async open(page, name) {
-				await page.locator('#open-room-name').fill(name);
-				await page.getByRole('button', { name: 'Open room' }).click();
+				// The shipped door (ADR-0020, #1861): the `+` beside "rooms" in the
+				// sidebar opens the sheet. The retired /rooms stub used to be the
+				// way in, so the door riders actually take had no test. Below md
+				// the sidebar is a drawer — open it first, and the sheet closes it.
+				const plus = page.getByRole('button', {
+					name: 'open a room or join a crew with a code',
+				});
+				if (!(await plus.isVisible()))
+					await page.getByRole('button', { name: 'open navigation' }).click();
+				await plus.click();
+				const sheet = page.getByRole('dialog', { name: 'Open a room' });
+				await sheet.locator('#open-room-name-sheet').fill(name);
+				await sheet.getByRole('button', { name: 'Open room' }).click();
 				await expect(
 					page.getByRole('heading', { name }),
 					`opening "${name}" never landed in the room — the owner is probably at the three-room cap (#594)`,

@@ -19,7 +19,7 @@ test('every place in a room renders, and none of them throws', async ({
 	const errors: string[] = [];
 	page.on('pageerror', (error) => errors.push(error.message.split('\n')[0]));
 
-	await signInAs(page, 'Places Walker', '/rooms');
+	await signInAs(page, 'Places Walker', '/home');
 	const { slug } = await rooms.open(page, `Places Walk ${Date.now() % 100000}`);
 
 	// The sidebar only lists the places once the room it opened is the open one,
@@ -64,7 +64,7 @@ test('a face in the people column opens that rider’s page', async ({
 	page,
 	rooms,
 }) => {
-	await signInAs(page, 'Face Clicker', '/rooms');
+	await signInAs(page, 'Face Clicker', '/home');
 	await rooms.open(page, `Face Click ${Date.now() % 100000}`);
 
 	// The column lists the people, not the nav: a rider link inside a list row.

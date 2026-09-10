@@ -8,7 +8,7 @@ test('opening room chat focuses its composer', async ({ page, rooms }) => {
 			JSON.stringify({ music: 0, cues: 0, board: 0 }),
 		),
 	);
-	await signInAs(page, 'Chat Focus', '/rooms');
+	await signInAs(page, 'Chat Focus', '/home');
 	const name = `Chat Focus ${Date.now() % 100000}`;
 	const { slug } = await rooms.open(page, name);
 	await page.goto(`/r/${slug}/chat`);
