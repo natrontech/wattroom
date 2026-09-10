@@ -17,6 +17,19 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.100] - 2026-09-10
+
+### Added
+
+- Typing `@` in a room's chat offers the people in it: arrow keys and Enter or Tab complete the name, Escape puts the list away.
+
+### Fixed
+
+- Picking a camera while yours is off now picks the camera that opens next, and "System default" no longer fails silently; a camera switch the browser refuses says why. Leaving voice takes the "another tab has the mic" and "let me hear" strips down with it. A network blip no longer moves your mic to a background tab. The "and its sound" note no longer outlives a share ended from the browser's own bar. The voice-failed recovery button comes back the way you left, muted if you were.
+- A trainer that splits its Indoor Bike Data across two Bluetooth notifications (cadence in one, power in the next) no longer reports 0 rpm on every sample. A control-point answer that arrives after its timeout no longer counts as the answer to the next command, so a target the trainer rejected is not reported as applied.
+- Opening a room, or joining a crew with a code, from the sidebar's + no longer leaves the "Open a room" sheet standing over the room you just landed in.
+- Pressing Pair in a room takes the trainer you paired on Settings › Equipment as it is, instead of opening a second Bluetooth chooser over a link that was still up.
+
 ## [2026.09.99] - 2026-09-10
 
 ### Added
@@ -1845,7 +1858,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.99...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.100...HEAD
+[2026.09.100]: https://github.com/natrontech/wattroom/compare/2026.09.99...2026.09.100
 [2026.09.99]: https://github.com/natrontech/wattroom/compare/2026.09.98...2026.09.99
 [2026.09.98]: https://github.com/natrontech/wattroom/compare/2026.09.97...2026.09.98
 [2026.09.97]: https://github.com/natrontech/wattroom/compare/2026.09.96...2026.09.97
