@@ -1,1 +1,0 @@
-- Following "Get the desktop app" from the sidebar, or the legal and privacy links, no longer drops you out of the app: signed in, those pages open inside the shell with the sidebar and the way back still there.
