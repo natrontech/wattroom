@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { tick } from 'svelte';
+import { flushSync, tick } from 'svelte';
 import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 
 vi.mock('$lib/api', () => ({ api: async () => ({ ok: false }) }));
@@ -163,6 +163,22 @@ describe('roomConnection', () => {
 
 		expect(played).not.toContain('leave');
 		expect(toasts.items).toHaveLength(before);
+	});
+
+	it('calls a paired trainer silent on the local second, without a server tick', async () => {
+		// #1852: judged off the tick, losing the socket froze the check.
+		vi.useFakeTimers();
+		try {
+			const connection = roomConnection.join('lounge');
+			await connection.ride.ride(new FakeTrainer());
+			flushSync();
+			expect(connection.ride.fault).toBeNull();
+			vi.advanceTimersByTime(11_000);
+			flushSync();
+			expect(connection.ride.fault).toBe('silent');
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('claims the trainer for this tab, and releases it on unpair', async () => {

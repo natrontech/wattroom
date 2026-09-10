@@ -362,6 +362,26 @@ describe('FtmsTrainer control-point queue', () => {
 		expect(samples).toEqual([250]);
 	});
 
+	it('leaves no link open when Forget lands mid-attach', async () => {
+		// #1852: the reattach's GATT connect resolves after disconnect() ran.
+		const { trainer, device } = await paired();
+		const connect = device.gatt.connect;
+		let open!: () => void;
+		device.gatt.connect = () =>
+			new Promise((resolve) => {
+				open = () => resolve(connect());
+			});
+		device.drop();
+		await vi.advanceTimersByTimeAsync(1_000);
+		await trainer.disconnect();
+		let dropped = 0;
+		device.gatt.disconnect = () => dropped++;
+		open();
+		await vi.advanceTimersByTimeAsync(10);
+		expect(trainer.status).toBe('disconnected');
+		expect(dropped).toBeGreaterThan(0);
+	});
+
 	it('serializes writes behind the indication of the one before', async () => {
 		const { trainer, control } = await paired();
 		control.answer = () => 'silent';

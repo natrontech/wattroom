@@ -17,7 +17,7 @@ The one-page mental model. The founding decisions live in [WATTROOM.md](../WATTR
 
 ## The three load-bearing seams
 
-**1. The client owns the trainer.** ERG targets are computed and written to the trainer locally — a network hiccup never drops your watts mid-interval. Three drivers behind one `Trainer` interface: `FtmsTrainer` (standard, Kickr Core etc.), `WcpsTrainer` (Wahoo legacy — Kickr v2), `SimulatedTrainer` (dev/CI, no hardware). Trainer control-point writes are strictly serialized behind their response indications — both protocols reject concurrent writes.
+**1. The client owns the trainer.** ERG targets are computed and written to the trainer locally — a network hiccup never drops your watts mid-interval. Two drivers behind one `Trainer` interface: `FtmsTrainer` (standard, Kickr Core etc.) and `SimulatedTrainer` (dev/CI, no hardware); `WcpsTrainer` for the pre-FTMS Kickr v2 is backlog (#4, [ADR-0007](decisions/0007-alpha-hardware-is-all-ftms.md)), so a CPS-only unit gets an empty chooser today. Trainer control-point writes are strictly serialized behind their response indications — both protocols reject concurrent writes.
 
 **2. The server owns shared truth, in memory.** One goroutine per room holds membership, the synchronized interval timer, jukebox queue+position, and game-mode state. Riders send ~1 Hz samples; the hub coalesces **all riders into one tick message per room per second** (n in, 1 out — never n²), bursting to 4 Hz during sprint moments. Room state never touches the database; if the process restarts, live rooms re-form from reconnecting clients (which hold the ride data — see seam 3).
 
