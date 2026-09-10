@@ -387,7 +387,15 @@
 			</div>
 
 			{#if streaming}
-				<p class="text-watt text-[10px] tracking-wider uppercase">
+				<!-- The watt on the dot, the words in ink (#1965): the accent is
+				     a graphic at 3:1, not 10 px text. -->
+				<p
+					class="text-muted flex items-center gap-1.5 text-[10px] tracking-wider uppercase"
+				>
+					<span
+						class="bg-watt glow-stroke h-1.5 w-1.5 rounded-full"
+						aria-hidden="true"
+					></span>
 					live · playing at the stream edge
 				</p>
 			{:else}

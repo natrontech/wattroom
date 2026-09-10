@@ -71,8 +71,8 @@
 						>{show(row)}</span
 					>
 					{#if badge?.earnedAt && meta}
-						<span class="text-neon ml-auto flex items-center gap-1 text-[11px]"
-							><Check size={12} />{meta.name}</span
+						<span class="text-muted ml-auto flex items-center gap-1 text-[11px]"
+							><Check size={12} class="text-neon" />{meta.name}</span
 						>
 					{:else if badge?.progress && meta}
 						<span class="ml-auto flex items-center gap-2">
