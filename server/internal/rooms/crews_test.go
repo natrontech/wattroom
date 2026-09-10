@@ -1192,3 +1192,65 @@ func TestTheSuccessorOfLastResortIsNeverBanned(t *testing.T) {
 		t.Fatalf("the last resort named a banned rider: %v", err)
 	}
 }
+
+// The door's headcount and the roster agree even when a stray member row
+// for the owner survives (#1932): both skip it.
+func TestTheDoorCountsTheOwnerOnce(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Count Once")
+	crew := h.crewOf(t, slug)
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew.ID, UserID: h.users.ByToken["alice"].ID, Role: "member",
+	}); err != nil {
+		t.Fatalf("stray owner row: %v", err)
+	}
+	status, door := h.call(t, "", http.MethodGet, "/api/crew-doors/"+code, "")
+	if status != http.StatusOK {
+		t.Fatalf("door: %d %v", status, door)
+	}
+	if door["members"] != float64(1) {
+		t.Fatalf("the door counts the owner twice: %v", door["members"])
+	}
+}
+
+// A pre-emptive ban of an id that is nobody is a 404, not a foreign-key
+// violation dressed as a 500 (#1933).
+func TestBanningNobodyIsNotFound(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Ban Nobody")
+	crew := h.crewOf(t, slug)
+	status, body := h.call(t, "alice", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/role",
+		`{"userId":"00000000-0000-4000-8000-000000000000","role":"banned"}`)
+	if status != http.StatusNotFound || body["error"] != "not_found" {
+		t.Fatalf("banning nobody: %d %v, want 404 not_found", status, body)
+	}
+}
+
+// The undo of a shut restores the listing the shut took with it (#1929).
+func TestReopeningWithTheListingRestoresIt(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Crew Reopen Listed")
+	path := "/api/rooms/" + slug
+	if status, body := h.call(t, "alice", http.MethodPatch, path, `{"name":"Crew Reopen Listed","listed":true,"crewVisible":true}`); status != http.StatusOK || body["listed"] != true {
+		t.Fatalf("list: %d %v", status, body)
+	}
+	crew := h.crewOf(t, slug)
+	access := "/api/crews/" + store.UUIDString(crew.ID) + "/rooms/" + store.UUIDString(roomID(t, h, slug)) + "/access"
+	if status, _ := h.call(t, "alice", http.MethodPatch, access, `{"crewVisible":false}`); status != http.StatusNoContent {
+		t.Fatalf("shut: %d", status)
+	}
+	// Reopening alone leaves it unlisted — the shut's rule (#1671) holds.
+	if status, _ := h.call(t, "alice", http.MethodPatch, access, `{"crewVisible":true}`); status != http.StatusNoContent {
+		t.Fatalf("reopen: %d", status)
+	}
+	if _, body := h.call(t, "alice", http.MethodGet, path, ""); body["listed"] != false {
+		t.Fatalf("reopened alone, listed again: %v", body["listed"])
+	}
+	// The undo carries the listing back with the door.
+	if status, _ := h.call(t, "alice", http.MethodPatch, access, `{"crewVisible":true,"listed":true}`); status != http.StatusNoContent {
+		t.Fatalf("undo: %d", status)
+	}
+	if _, body := h.call(t, "alice", http.MethodGet, path, ""); body["listed"] != true || body["crewVisible"] != true {
+		t.Fatalf("the undo did not restore both: listed=%v crewVisible=%v", body["listed"], body["crewVisible"])
+	}
+}

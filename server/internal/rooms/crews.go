@@ -50,6 +50,9 @@ type crewRoomJSON struct {
 	Name   string `json:"name"`
 	Icon   string `json:"icon,omitempty"`
 	Access string `json:"access"`
+	// In the public directory too (#1929): shutting the room to the crew
+	// drops it from there as well, and the page has to say so.
+	Listed bool `json:"listed,omitempty"`
 }
 
 type crewJSON struct {
@@ -204,7 +207,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		if room.CrewID == crew.ID {
 			out.Rooms = append(out.Rooms, crewRoomJSON{
 				ID: store.UUIDString(room.ID), Slug: room.Slug, Name: room.Name, Icon: room.Icon,
-				Access: accessOf(room.CrewVisible, true, false),
+				Access: accessOf(room.CrewVisible, true, false), Listed: room.Listed,
 			})
 		}
 	}

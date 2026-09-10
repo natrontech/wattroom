@@ -29,6 +29,8 @@ export interface CrewRoom {
 	name: string;
 	icon?: string;
 	access: RoomAccess;
+	/** In the public directory too (#1929). */
+	listed?: boolean;
 }
 
 export interface Crew {
@@ -112,10 +114,12 @@ export function setRoomAccess(
 	crewId: string,
 	roomId: string,
 	crewVisible: boolean,
+	/** With the door, the listing to restore (#1929) — the undo of a shut. */
+	listed?: boolean,
 ): Promise<ApiResult<void>> {
 	return api<void>(`/api/crews/${crewId}/rooms/${roomId}/access`, {
 		method: 'PATCH',
-		json: { crewVisible },
+		json: listed === undefined ? { crewVisible } : { crewVisible, listed },
 	});
 }
 

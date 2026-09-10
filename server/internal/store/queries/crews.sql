@@ -32,7 +32,12 @@ delete from room_grants g using rooms r
 where r.id = g.room_id and r.crew_id = $1 and g.user_id = $2;
 
 -- name: CountCrewMembers :one
-select 1 + count(*) from crew_roles where crew_id = $1 and role in ('member', 'admin');
+-- The owner, plus every member and admin — never the owner twice: a stray
+-- member row for the owner (#1671) is skipped here as ListCrewPeople skips
+-- it, or the door said one more than the roster showed (#1932).
+select 1 + count(*) from crew_roles
+where crew_id = $1 and role in ('member', 'admin')
+  and user_id <> (select owner_id from crews where id = $1);
 
 -- name: GetCrew :one
 -- Everything but the image bytes (#1237): GetCrewImage serves those.
@@ -299,3 +304,8 @@ select * from rooms where id = $1 and crew_id = $2;
 -- crew_visible were independent columns, and the join admitted a stranger
 -- through the listing after the crew page had made the room private.
 update rooms set crew_visible = $2, listed = (listed and $2) where id = $1;
+
+-- name: SetRoomCrewVisibleAndListed :exec
+-- The undo of a shut (#1929): the toggle above dropped the listing with the
+-- crew door, and reopening alone could never bring it back.
+update rooms set crew_visible = $2, listed = ($3 and $2) where id = $1;

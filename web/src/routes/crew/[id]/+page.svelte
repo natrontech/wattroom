@@ -179,6 +179,11 @@
 			</p>
 		{/if}
 
+		<CrewRooms {crew} {administers} onchange={() => void load(id)} />
+		<CrewPeople {crew} onchange={() => void load(id)} />
+
+		<!-- After the rooms and the people (#1931): a newcomer used to read a
+		     code before the room they came for. Still the invite's one home. -->
 		{#if crew.code}
 			<h2 class="eyebrow mt-8">invite</h2>
 			<!-- Stacked on a phone: the sentence between the code and the
@@ -203,9 +208,6 @@
 				>
 			</div>
 		{/if}
-
-		<CrewRooms {crew} {administers} onchange={() => void load(id)} />
-		<CrewPeople {crew} onchange={() => void load(id)} />
 
 		<!-- The way out (#1228): the one thing a member can do to the crew. It
 		     says exactly what it does, and the danger token sits last (ux.md).

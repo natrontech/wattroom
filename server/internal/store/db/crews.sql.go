@@ -55,9 +55,14 @@ func (q *Queries) ClearCrewRole(ctx context.Context, arg ClearCrewRoleParams) er
 }
 
 const countCrewMembers = `-- name: CountCrewMembers :one
-select 1 + count(*) from crew_roles where crew_id = $1 and role in ('member', 'admin')
+select 1 + count(*) from crew_roles
+where crew_id = $1 and role in ('member', 'admin')
+  and user_id <> (select owner_id from crews where id = $1)
 `
 
+// The owner, plus every member and admin — never the owner twice: a stray
+// member row for the owner (#1671) is skipped here as ListCrewPeople skips
+// it, or the door said one more than the roster showed (#1932).
 func (q *Queries) CountCrewMembers(ctx context.Context, crewID pgtype.UUID) (int32, error) {
 	row := q.db.QueryRow(ctx, countCrewMembers, crewID)
 	var column_1 int32
@@ -971,6 +976,23 @@ type SetRoomCrewVisibleParams struct {
 // through the listing after the crew page had made the room private.
 func (q *Queries) SetRoomCrewVisible(ctx context.Context, arg SetRoomCrewVisibleParams) error {
 	_, err := q.db.Exec(ctx, setRoomCrewVisible, arg.ID, arg.CrewVisible)
+	return err
+}
+
+const setRoomCrewVisibleAndListed = `-- name: SetRoomCrewVisibleAndListed :exec
+update rooms set crew_visible = $2, listed = ($3 and $2) where id = $1
+`
+
+type SetRoomCrewVisibleAndListedParams struct {
+	ID          pgtype.UUID
+	CrewVisible bool
+	Listed      bool
+}
+
+// The undo of a shut (#1929): the toggle above dropped the listing with the
+// crew door, and reopening alone could never bring it back.
+func (q *Queries) SetRoomCrewVisibleAndListed(ctx context.Context, arg SetRoomCrewVisibleAndListedParams) error {
+	_, err := q.db.Exec(ctx, setRoomCrewVisibleAndListed, arg.ID, arg.CrewVisible, arg.Listed)
 	return err
 }
 

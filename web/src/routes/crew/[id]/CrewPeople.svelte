@@ -108,6 +108,20 @@
 		onchange();
 	}
 
+	/** The banned row's menu (#1934): the person, and the one lift. */
+	function bannedEntries(person: CrewPerson): MenuEntry[] {
+		return [
+			...personMenu(person.id, goto, { you: false }),
+			'separator',
+			{
+				label: 'Lift the crew ban',
+				icon: Shield,
+				onSelect: () =>
+					act(person, 'member', `${person.displayName} is back in the crew.`),
+			},
+		];
+	}
+
 	function personEntries(person: CrewPerson): MenuEntry[] {
 		const entries: MenuEntry[] = personMenu(person.id, goto, {
 			you: person.id === account.me?.id,
@@ -218,16 +232,26 @@
 	</p>
 	<ul class="divide-ink/5 panel mt-2 divide-y">
 		{#each crew.banned as person (person.id)}
-			<li class="flex min-h-11 items-center gap-3 px-4 py-2.5">
-				<Avatar
-					name={person.displayName}
-					avatarUrl={person.avatarUrl}
-					ring="var(--color-surface-raised)"
-					size={32}
-				/>
+			<!-- The same links and menu as a person's row (#1934): an admin
+			     checks whom they banned before lifting it. -->
+			<li
+				class="flex min-h-11 items-center gap-3 px-4 py-2.5"
+				title={MENU_HINT}
+				{@attach contextMenu(() => bannedEntries(person))}
+			>
+				<a href="/u/{person.id}" class="shrink-0">
+					<Avatar
+						name={person.displayName}
+						avatarUrl={person.avatarUrl}
+						ring="var(--color-surface-raised)"
+						size={32}
+					/>
+				</a>
 				<span class="min-w-0 flex-1">
-					<span class="block truncate text-sm font-medium"
-						>{person.displayName}</span
+					<a
+						href="/u/{person.id}"
+						class="hover:text-ink block truncate text-sm font-medium hover:underline"
+						>{person.displayName}</a
 					>
 					<span class="text-muted block text-[11px]"
 						>banned from the crew · {formatMonth(person.since)}</span
