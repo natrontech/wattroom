@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.105] - 2026-09-10
+
+### Fixed
+
+- A planned session that was started no longer offers itself again after the ride: the Sessions place and the sidebar's "next" line drop it, the hour-before email is not sent for it, and a coach cannot start the same plan twice. The Sessions place lists every upcoming plan instead of silently stopping at ten.
+
 ## [2026.09.104] - 2026-09-10
 
 ### Fixed
@@ -1890,7 +1896,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.104...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.105...HEAD
+[2026.09.105]: https://github.com/natrontech/wattroom/compare/2026.09.104...2026.09.105
 [2026.09.104]: https://github.com/natrontech/wattroom/compare/2026.09.103...2026.09.104
 [2026.09.103]: https://github.com/natrontech/wattroom/compare/2026.09.102...2026.09.103
 [2026.09.102]: https://github.com/natrontech/wattroom/compare/2026.09.101...2026.09.102

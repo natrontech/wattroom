@@ -1,1 +1,0 @@
-- A planned session that was started no longer offers itself again after the ride: the Sessions place and the sidebar's "next" line drop it, the hour-before email is not sent for it, and a coach cannot start the same plan twice. The Sessions place lists every upcoming plan instead of silently stopping at ten.
