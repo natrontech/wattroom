@@ -10,11 +10,37 @@ export interface YTPlayer {
 	destroy?: () => void;
 	cuePlaylist?: (opts: { listType: string; list: string }) => void;
 	getPlaylist?: () => string[] | null;
-	// The playback half, used by the dock.
+	/** Off, always: with the player's chrome hidden (RMF) there is no CC button to undo a rider's own preference. */
+	unloadModule?: (module: string) => void;
+	// The playback half, used by the dock and the chase it runs.
 	loadVideoById?: (id: string, start?: number) => void;
 	cueVideoById?: (id: string, start?: number) => void;
+	playVideo?: () => void;
+	pauseVideo?: () => void;
+	stopVideo?: () => void;
+	seekTo?: (seconds: number, allowSeekAhead: boolean) => void;
+	getCurrentTime?: () => number;
+	getDuration?: () => number;
+	getPlayerState?: () => number;
+	getPlaybackRate?: () => number;
+	setPlaybackRate?: (rate: number) => void;
+	getVideoData?: () => { isLive?: boolean } | undefined;
+	getVolume?: () => number;
+	setVolume?: (volume: number) => void;
 	[key: string]: unknown;
 }
+
+/**
+ * The states the player reports, as the IFrame API numbers them. The dock
+ * reads them in its own event handler and the chase reads them on its own
+ * timer, so the numbers have one home rather than a copy in each.
+ */
+export const UNSTARTED = -1;
+export const ENDED = 0;
+export const PLAYING = 1;
+export const PAUSED = 2;
+export const BUFFERING = 3;
+export const CUED = 5;
 
 /** Run cb once `YT.Player` exists, loading the script if nobody has yet. */
 export function withYouTubeApi(cb: () => void) {
