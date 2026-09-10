@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 
@@ -58,7 +59,7 @@ func checkDefinition(name string, raw json.RawMessage) (code, message, field str
 	if err != nil || len(segments) == 0 {
 		return "validation_error", "That is not a workout the engine can ride.", "workout"
 	}
-	if name == "" || len(name) > 80 {
+	if name == "" || utf8.RuneCountInString(name) > 80 {
 		return "validation_error", "A workout name has to be 1-80 characters.", "name"
 	}
 	// Then the editor's own bounds, so the API cannot store what the shelf

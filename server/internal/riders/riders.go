@@ -154,8 +154,12 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	// confirm that an id exists.
 	const notVisible = "No rider there — a page shows only to people who share a room or a friendship with them."
 	rider, err := s.store.Queries.GetUser(r.Context(), id)
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", notVisible)
+		return
+	}
+	if err != nil {
+		httpx.Fail(w, s.log, "rider lookup", err, "The rider's page could not be loaded. Try again.", "rider", store.UUIDString(id))
 		return
 	}
 	ctx := r.Context()

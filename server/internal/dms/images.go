@@ -65,8 +65,12 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 	img, err := s.store.Queries.GetDmImage(r.Context(), db.GetDmImageParams{
 		ImageID: id, ViewerID: me.ID,
 	})
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such image.")
+		return
+	}
+	if err != nil {
+		httpx.Fail(w, s.log, "dm image lookup", err, "The picture could not be read. Try again.", "user", store.UUIDString(me.ID))
 		return
 	}
 	httpx.ServeImmutableImage(w, img.Mime, img.Bytes)

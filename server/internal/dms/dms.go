@@ -172,9 +172,14 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 	msg, err := s.store.Queries.GetDmMessage(r.Context(), db.GetDmMessageParams{
 		ID: mid, Column2: me.ID, Column3: peer,
 	})
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		// Pair-scoped read: not this conversation's message, or none at all.
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")
+		return
+	}
+	if err != nil {
+		// Not "no such message": the database did not answer (#1984).
+		httpx.Fail(w, s.log, "dm message lookup", err, "The message could not be read. Try again.", "user", store.UUIDString(me.ID))
 		return
 	}
 	if msg.SenderID != me.ID {
@@ -190,8 +195,12 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 	edited, err := s.store.Queries.EditDmMessage(r.Context(), db.EditDmMessageParams{
 		ID: mid, SenderID: me.ID, Column3: peer, Text: text,
 	})
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")
+		return
+	}
+	if err != nil {
+		httpx.Fail(w, s.log, "dm edit", err, "The edit could not be saved. Try again.", "user", store.UUIDString(me.ID))
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, protocol.ChatEdit{
@@ -230,8 +239,7 @@ func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 		MessageID: mid, UserID: me.ID, Emoji: req.Emoji, Column4: me.ID, Column5: peer,
 	})
 	if err != nil {
-		s.log.Warn("add dm reaction", "err", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The reaction could not be saved.")
+		httpx.Fail(w, s.log, "add dm reaction", err, "The reaction could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
 	isAdd := added > 0
@@ -240,8 +248,7 @@ func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 			MessageID: mid, UserID: me.ID, Emoji: req.Emoji, Column4: me.ID, Column5: peer,
 		})
 		if err != nil {
-			s.log.Warn("remove dm reaction", "err", err)
-			httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The reaction could not be saved.")
+			httpx.Fail(w, s.log, "remove dm reaction", err, "The reaction could not be saved.", "user", store.UUIDString(me.ID))
 			return
 		}
 		if removed == 0 {

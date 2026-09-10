@@ -132,3 +132,9 @@ where m.room_id = $1
 -- Where the "N new" divider goes when a room's chat is read from outside
 -- the room (#468). No row = never opened: everything is new.
 select read_at from room_reads where room_id = $1 and user_id = $2;
+
+-- name: ChatImageInRoom :one
+-- The picture a line points at must be this room's (#1987): the insert
+-- refuses a foreign id the same way it refuses a fault, so the handler asks
+-- first and answers a 400 the client can act on.
+select exists(select 1 from chat_images where id = $1 and room_id = $2)::boolean;

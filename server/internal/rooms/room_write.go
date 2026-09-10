@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"fmt"
 
@@ -34,7 +35,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" || len(req.Name) > 60 || hasControl(req.Name) {
+	if req.Name == "" || utf8.RuneCountInString(req.Name) > 60 || hasControl(req.Name) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A room name has to be 1-60 characters on one line.", "name")
 		return
@@ -166,6 +167,12 @@ func (s *Service) creationCrew(w http.ResponseWriter, r *http.Request, user db.U
 		httpx.Fail(w, s.log, "crew role lookup failed", err, "The room could not be created. Try again.", "crew", crewID)
 		return db.GetCrewRow{}, "", false
 	}
+	// A crew you are not in does not exist to you (#1988): every other crew
+	// route says 404, and a 403 here told a removed member the crew is live.
+	if role == "" || role == "banned" {
+		httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "No crew lives here.", "crewId")
+		return db.GetCrewRow{}, "", false
+	}
 	if !administers(role) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden",
 			"Only the crew's owner or an admin can open a room in it — ask them, or open one in your own crew.")
@@ -198,7 +205,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" || len(req.Name) > 60 || hasControl(req.Name) {
+	if req.Name == "" || utf8.RuneCountInString(req.Name) > 60 || hasControl(req.Name) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A room name has to be 1-60 characters on one line.", "name")
 		return

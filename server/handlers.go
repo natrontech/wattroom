@@ -3,6 +3,7 @@
 package main
 
 import (
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	// The zone database, embedded rather than the host's (#858): session mail
 	// formats times in each rider's zone, and a distroless image is not where
 	// that should depend on what the base layer happens to ship.
@@ -41,7 +42,11 @@ func healthzHandler(st *store.Store, log *slog.Logger) http.HandlerFunc {
 			defer cancel()
 			if err := st.Pool.Ping(ctx); err != nil {
 				log.Error("healthz: database unreachable", "err", err)
-				http.Error(w, "database unreachable", http.StatusServiceUnavailable)
+				// The one route whose job is to say what is wrong, in the shape
+				// the app can read (#1985): plain text under /api read as
+				// "did not answer properly".
+				httpx.WriteError(w, http.StatusServiceUnavailable, "internal_error",
+					"The database is unreachable — the server cannot serve rides right now.")
 				return
 			}
 		}

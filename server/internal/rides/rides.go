@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -260,7 +261,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.WorkoutName = strings.TrimSpace(req.WorkoutName)
-	if req.WorkoutName == "" || len(req.WorkoutName) > 80 {
+	if req.WorkoutName == "" || utf8.RuneCountInString(req.WorkoutName) > 80 {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A workout name has to be 1-80 characters.", "workoutName")
 		return

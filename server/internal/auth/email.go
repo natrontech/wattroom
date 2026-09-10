@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/natrontech/wattroom/server/internal/store"
 	"html"
 	"net/http"
 	"strings"
@@ -189,7 +190,7 @@ func (s *Service) handleVerifyEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.log.Info("email verified", "user", user.ID)
+	s.log.Info("email verified", "user", store.UUIDString(user.ID))
 	address := ""
 	if user.Email != nil {
 		address = *user.Email

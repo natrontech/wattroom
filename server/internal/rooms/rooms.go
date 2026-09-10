@@ -192,6 +192,11 @@ func (s *Service) requireRole(w http.ResponseWriter, r *http.Request, role strin
 	// A role row does not outrank a ban (#1763): the crew-ban sweep that
 	// takes the row can fail and is only logged, so ask isBanned here too,
 	// as RequireMember does.
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		// The database did not answer (#1984): not a refusal.
+		httpx.Fail(w, s.log, "membership lookup", err, "The room could not be checked. Try again.", "room", room.Slug)
+		return db.Room{}, db.User{}, false
+	}
 	if err != nil || m.Role != role || s.isBanned(r, room, user) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the room's "+role+" can do that.")
 		return db.Room{}, db.User{}, false
@@ -218,6 +223,11 @@ func (s *Service) RequireMember(w http.ResponseWriter, r *http.Request, refusal 
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
 	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		// The database did not answer (#1984): not a refusal.
+		httpx.Fail(w, s.log, "membership lookup", err, "The room could not be checked. Try again.", "room", room.Slug)
+		return db.Room{}, db.User{}, false
+	}
 	if err != nil || m.Role == "banned" || s.isBanned(r, room, user) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", refusal)
 		return db.Room{}, db.User{}, false
@@ -242,6 +252,11 @@ func (s *Service) RequireModerator(w http.ResponseWriter, r *http.Request, refus
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
 	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		// The database did not answer (#1984): not a refusal.
+		httpx.Fail(w, s.log, "membership lookup", err, "The room could not be checked. Try again.", "room", room.Slug)
+		return db.Room{}, db.User{}, false
+	}
 	if err != nil || (m.Role != "owner" && m.Role != "coach") || s.isBanned(r, room, user) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", refusal)
 		return db.Room{}, db.User{}, false
@@ -309,6 +324,10 @@ func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, strin
 	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
 		RoomID: room.ID, UserID: user.ID,
 	})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		// The database did not answer (#1984): an error, not "not a member".
+		return protocol.Rider{}, "", fmt.Errorf("rooms: authorize membership: %w", err)
+	}
 	if err != nil || m.Role == "banned" || s.isBanned(r, room, user) {
 		return protocol.Rider{}, "", errNotMember
 	}
