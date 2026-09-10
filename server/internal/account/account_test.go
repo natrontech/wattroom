@@ -596,7 +596,7 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		"trophies.json":           "first-ride",
 		"medals.json":             "diesel",
 		"identities.json":         "acct-export-alice",
-		"passkeys.json":           "YubiKey on the desk",
+		"passkeys.json":           "YubiKey on the desk", //nolint:gosec // a file name, not a password
 		"profile.json":            "\"lthr\"",
 		// Every field the ride page shows (#1550).
 		"rides.json": "\"sharedWithFriends\"",
