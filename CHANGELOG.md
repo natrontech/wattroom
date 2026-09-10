@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.108] - 2026-09-10
+
+### Fixed
+
+- Joining a crew with one room lands you in that room, and the crew page puts its rooms and people before the invite code. Making a listed room private from the crew page says it leaves the directory too, and Undo brings both back. The crew door counts its owner once. A banned person's row links to their page and has the same menu as everyone else's, with "Lift the crew ban" in it.
+
 ## [2026.09.107] - 2026-09-10
 
 ### Added
@@ -1913,7 +1919,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.107...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.108...HEAD
+[2026.09.108]: https://github.com/natrontech/wattroom/compare/2026.09.107...2026.09.108
 [2026.09.107]: https://github.com/natrontech/wattroom/compare/2026.09.106...2026.09.107
 [2026.09.106]: https://github.com/natrontech/wattroom/compare/2026.09.105...2026.09.106
 [2026.09.105]: https://github.com/natrontech/wattroom/compare/2026.09.104...2026.09.105
