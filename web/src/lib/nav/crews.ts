@@ -182,8 +182,11 @@ export function creationCrew(
 	// fallback opened the room in another crew — for good, a room never
 	// moves. The server still refuses a crew you may not open rooms in.
 	if (explicit) return openable.find((c) => c.id === explicit.id) ?? explicit;
+	// The crew you founded before any other you own (#1928): a crew handed
+	// to you must not become where your rooms land.
 	return (
 		openable.find((c) => c.id === preferred) ??
+		openable.find((c) => c.founded) ??
 		openable.find((c) => c.role === 'owner') ??
 		openable[0] ??
 		null

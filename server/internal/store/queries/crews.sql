@@ -3,7 +3,9 @@
 -- and read by everything else. The owner is crews.owner_id and holds no row.
 
 -- name: CreateCrew :one
-insert into crews (name, owner_id, code) values ($1, $2, $3) returning *;
+-- Founded by its first owner (#1928): what "your own crew" means after a
+-- hand-over, when a rider may own more than one.
+insert into crews (name, owner_id, code, founded_by) values ($1, $2, $3, $2) returning *;
 
 -- name: GetCrewByCode :one
 -- The crew's door (#1236). A code is a secret: the caller learns the crew it
@@ -117,10 +119,10 @@ select (
 )::boolean;
 
 -- name: GetCrewOwnedBy :one
--- The crew a room is created into when the caller names none (#1201). One
--- crew per owner, made with their first room and named after them — the
--- migration's rule, applied to accounts that arrive after it.
-select * from crews where owner_id = $1 order by created_at limit 1;
+-- The crew a room is created into when the caller names none (#1201): the
+-- one the rider founded, made with their first room and named after them —
+-- else the oldest they own (#1928: a handed-over crew used to win by age).
+select * from crews where owner_id = $1 order by (founded_by = $1) desc, created_at limit 1;
 
 -- name: PlaceRoomInCrew :exec
 -- Crewless rooms are forbidden in code from the cutover (ADR-0038). A
@@ -235,6 +237,7 @@ select c.id, c.name, c.icon,
        coalesce(c.code, '')::text as code,
        (c.renamed_at is not null)::boolean as named,
        (c.owner_id = sqlc.arg(user_id))::boolean as owned,
+       (c.founded_by = sqlc.arg(user_id))::boolean as founded,
        exists (select 1 from crew_roles cr
                where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin')::boolean as admin
 from crews c

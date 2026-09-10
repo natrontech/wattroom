@@ -75,6 +75,7 @@ type Crew struct {
 	Image      []byte
 	ImageSetAt pgtype.Timestamptz
 	RenamedAt  pgtype.Timestamptz
+	FoundedBy  pgtype.UUID
 }
 
 type CrewRole struct {

@@ -1277,3 +1277,26 @@ func TestANewInviteCodeShutsTheOldDoor(t *testing.T) {
 		t.Errorf("the new code does not open the door: %d %v", status, door)
 	}
 }
+
+// "Your own crew" is the one founded for you (#1928): after a hand-over a
+// rider owns two, and the older one — somebody else's founding crew — used
+// to be where their next room landed.
+func TestANewRoomLandsInTheCrewYouFoundedNotTheOneHandedToYou(t *testing.T) {
+	h := setup(t)
+	aliceSlug, aliceCode := h.createRoom(t, "alice", "Alice Founds")
+	_, bobCode := h.createRoom(t, "bob", "Bob Founds")
+	if aliceCode == bobCode {
+		t.Fatal("two crews, one code — test proves nothing")
+	}
+	h.enter(t, "bob", aliceCode, aliceSlug)
+	alice := h.crewOf(t, aliceSlug)
+	if status, body := h.call(t, "alice", http.MethodPost, "/api/crews/"+store.UUIDString(alice.ID)+"/transfer",
+		`{"userId":"`+store.UUIDString(h.users.ByToken["bob"].ID)+`"}`); status != http.StatusOK && status != http.StatusNoContent {
+		t.Fatalf("hand-over: %d %v", status, body)
+	}
+	// Bob now owns both. His next room lands in the one made for him.
+	_, code := h.createRoom(t, "bob", "Bob Again")
+	if code != bobCode {
+		t.Fatalf("bob's new room landed in code %q, want his founded crew's %q (alice's was %q)", code, bobCode, aliceCode)
+	}
+}
