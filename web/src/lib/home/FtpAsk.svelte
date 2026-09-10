@@ -18,6 +18,9 @@
 	import { account } from '$lib/account.svelte';
 	import { PROFILE_LIMITS } from '$lib/profile.svelte';
 
+	/** The step's own label, so the row reads the same open as struck out. */
+	let { label }: { label: string } = $props();
+
 	let ftp = $state(account.me?.ftpWatts ?? 200);
 	let kg = $state(account.me?.weightKg ?? 75);
 	let saving = $state(false);
@@ -41,7 +44,7 @@
 </script>
 
 <div class="py-2">
-	<p class="text-sm font-medium">Set your FTP and weight</p>
+	<p class="text-sm font-medium">{label}</p>
 	<p class="text-muted mt-0.5 text-xs">
 		Every workout's targets scale from your FTP, so the 200 W we start everyone
 		on makes every session a guess.

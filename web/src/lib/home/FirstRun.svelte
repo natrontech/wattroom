@@ -1,9 +1,9 @@
 <script lang="ts">
-	// The setup steps that decide whether a rider ever rides (#1333): set the
-	// two numbers every target scales from, take a first ride, name the crew,
-	// invite someone. Each row is a link to
-	// where the step is done and retires itself once it is; the card goes
-	// when the last one does. The first step is everyone's (#1857): it used
+	// The setup steps that decide whether a rider ever rides (#1333, #1484):
+	// set the two numbers every target scales from, take a first ride, name
+	// the crew, invite someone. Each row is a link to where the step is done —
+	// or, for the one step that is a question, the question itself — and
+	// retires itself once it is done; the card goes when the last one does. The first step is everyone's (#1857): it used
 	// to be gated with the crew steps on OWNING a crew, so a brand-new
 	// account — no crew yet — and a rider who joined someone else's saw no
 	// card at all, and the one instruction that makes a watt appear went
@@ -20,7 +20,8 @@
 	type Step = {
 		done: boolean;
 		label: string;
-		hint: string;
+		/** The small grey line under a link row; the ask writes its own. */
+		hint?: string;
 		href?: string;
 		ask?: boolean;
 	};
@@ -74,7 +75,6 @@
 					{
 						done: !unchosen(account.me.ftpSource),
 						label: 'Set your FTP and weight',
-						hint: 'every target scales from your FTP',
 						ask: true,
 					},
 				]
@@ -115,7 +115,7 @@
 							<span class="line-through">{step.label}</span>
 						</p>
 					{:else if step.ask}
-						<FtpAsk />
+						<FtpAsk label={step.label} />
 					{:else}
 						<a
 							href={step.href}

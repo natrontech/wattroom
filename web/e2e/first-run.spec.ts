@@ -29,6 +29,17 @@ test('a rider who has never ridden is shown the first step on Home', async ({
 test('a new account is asked for its FTP and weight, and answering retires the step', async ({
 	page,
 }) => {
+	test.skip(
+		!!process.env.WATTROOM_SYNTHETIC_TOKEN,
+		'this needs an account that has never answered, and must not purge the production synthetic',
+	);
+	// A source only ever moves away from "nobody chose it" — by design, so a
+	// rider cannot talk their way back into being unasked. This spec's rider
+	// is stable and reused, so the run that answered leaves nothing to ask
+	// the next time: purge the account through the rider's own route and come
+	// back through the same door, which mints it afresh.
+	await signInAs(page, 'Unasked Rider', '/home');
+	expect((await page.request.delete('/api/me')).ok()).toBeTruthy();
 	await signInAs(page, 'Unasked Rider', '/home');
 
 	const ask = page.getByText('Set your FTP and weight');
