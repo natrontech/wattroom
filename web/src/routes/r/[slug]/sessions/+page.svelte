@@ -29,6 +29,8 @@
 	import UserCheck from '@lucide/svelte/icons/user-check';
 	import UserMinus from '@lucide/svelte/icons/user-minus';
 	import { serverNow } from '$lib/room/server-clock';
+	import { account } from '$lib/account.svelte';
+	import { toLocalInput } from '$lib/components/when';
 
 	const room = useRoom();
 	// The roles matrix gives a spectator none of this (docs/SPEC.md) — the
@@ -104,7 +106,7 @@
 				icon: CalendarClock,
 				onSelect: () => {
 					movingId = entry.id;
-					moveAt = '';
+					moveAt = toLocalInput(new Date(entry.startsAt));
 				},
 			},
 			'separator',
@@ -123,14 +125,21 @@
 	async function cancelPlan(entry: {
 		id: string;
 		workoutName: string;
+		startsAt: string;
 		going?: { id: string; displayName: string }[];
 	}) {
 		const n = going(entry).length;
+		// Say what is certain (#1911): the mail goes only for a plan still
+		// ahead, on a server that can send, under the room's hourly budget —
+		// so it is a clause, not the promise.
+		const mailed =
+			!!account.me?.mailAvailable && Date.parse(entry.startsAt) > serverNow();
+		const who = n
+			? `${n} rider${n === 1 ? ' has' : 's have'} said they're in — they lose the plan`
+			: 'The room loses the plan';
 		const ok = await confirm({
 			title: `Cancel “${entry.workoutName}”?`,
-			body: n
-				? `${n} rider${n === 1 ? ' has' : 's have'} said they're in — they get an email. It cannot be put back.`
-				: 'The room gets an email. It cannot be put back.',
+			body: `${who}${mailed ? ', and get an email' : ''}. It cannot be put back.`,
 			action: 'Cancel the session',
 			cancel: 'Keep it',
 		});
@@ -216,7 +225,8 @@
 								<button
 									onclick={() => {
 										movingId = movingId === entry.id ? null : entry.id;
-										moveAt = '';
+										// The time it has, to move from — not an empty field (#1911).
+										moveAt = toLocalInput(new Date(entry.startsAt));
 									}}
 									disabled={room.adminBusy}
 									class="btn btn-secondary btn-xs">Move</button

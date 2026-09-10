@@ -13,7 +13,6 @@
 		suggestedFocuses,
 		type Suggestion,
 	} from '$lib/progression';
-	import Select from '$lib/components/Select.svelte';
 	import { countModal } from '$lib/modals.svelte';
 	import { focusTrap } from '$lib/components/focus-trap';
 	import { GAME_MODES } from '$lib/room/modes';
@@ -27,7 +26,6 @@
 		intent = 'start',
 		busy = false,
 		gameRunning = false,
-		rooms = [],
 		onStart,
 		onPlan,
 		onStartGame,
@@ -46,16 +44,12 @@
 		intent?: 'start' | 'plan';
 		busy?: boolean;
 		gameRunning?: boolean;
-		/** Rooms this plan could land in (#359) — the cross-room surface passes
-		 *  them and gets a chooser; inside a room there is nothing to choose. */
-		rooms?: { value: string; label: string }[];
 		/** Absent when this picker only plans: no room to start anything in. */
 		onStart?: (workout: Workout) => void;
 		onPlan: (
 			name: string,
 			json: string,
 			startsAtIso: string,
-			roomSlug: string,
 		) => void | Promise<void>;
 		/** Absent hides the Games tab — games are a room's, not a calendar's. */
 		onStartGame?: (id: string) => void;
@@ -101,12 +95,6 @@
 			{ label: 'yours', entries: yours },
 			{ label: 'library', entries: rest },
 		].filter((g) => g.entries.length > 0);
-	});
-	// svelte-ignore state_referenced_locally
-	let roomSlug = $state(rooms[0]?.value ?? '');
-	$effect(() => {
-		if (!rooms.some((room) => room.value === roomSlug))
-			roomSlug = rooms[0]?.value ?? '';
 	});
 
 	// SPEC's "suggested for today" marks matching shelf entries (#222) —
@@ -325,18 +313,6 @@
 							>
 						{:else}
 							<div class="flex flex-wrap items-end gap-3">
-								{#if rooms.length > 0}
-									<div class="min-w-40 flex-1">
-										<span class="eyebrow">room</span>
-										<div class="mt-1">
-											<Select
-												options={rooms}
-												bind:value={roomSlug}
-												label="Room"
-											/>
-										</div>
-									</div>
-								{/if}
 								<div>
 									<span class="eyebrow">when</span>
 									<div class="mt-1"><WhenPicker bind:value={planAt} /></div>
@@ -347,9 +323,8 @@
 											picked.workout.name,
 											JSON.stringify(picked.workout),
 											new Date(planAt).toISOString(),
-											roomSlug,
 										)}
-									disabled={busy || !planAt || (rooms.length > 0 && !roomSlug)}
+									disabled={busy || !planAt}
 									class="btn btn-primary btn-lg ml-auto shrink-0 disabled:opacity-40"
 									>Plan it</button
 								>
