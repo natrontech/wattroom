@@ -19,6 +19,7 @@
 	import { sensors } from '$lib/sensors.svelte';
 	import Gauge from '@lucide/svelte/icons/gauge';
 	import { RAMP_TAKES } from '$lib/workout/ramp';
+	import { trainerHint } from '$lib/room/sensor-status';
 
 	// A room holds its BLE connection for as long as you stand in one (#521),
 	// and this page could not see it (#565) — so when there IS a room, its
@@ -79,10 +80,7 @@
 				// Live-ness is the honest confirmation: paired but silent is not
 				// working (#520), and this is the screen a rider checks it on.
 				reading: roomHolds ? ride?.reading : solo.reading,
-				hint:
-					(roomHolds ? ride?.fault : solo.fault) === 'silent'
-						? 'no watts yet — turn the cranks'
-						: undefined,
+				hint: trainerHint(roomHolds ? ride?.fault : solo.fault),
 				error: roomHolds ? ride?.error : solo.error,
 				onPair: () => void pairTrainer(),
 				onForget: forgetTrainer,

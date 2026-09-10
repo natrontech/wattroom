@@ -3,6 +3,7 @@ import { FtmsTrainer } from '$lib/ble/ftms';
 import { pairError } from '$lib/ble/pair-error';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 import { type PairState, trainerState } from '$lib/room/sensor-status';
+import { quietFault, type TrainerFault } from '$lib/room/sensor-status';
 
 /**
  * The trainer of the SOLO screens — /ride, /ramp and Settings › Equipment
@@ -38,10 +39,10 @@ export function createSoloTrainer() {
 		return () => clearInterval(id);
 	});
 
-	const fault = $derived.by((): 'reconnecting' | 'silent' | null => {
+	const fault = $derived.by((): TrainerFault => {
 		if (!trainer) return null;
 		if (status !== 'connected') return 'reconnecting';
-		return now - lastSampleAt > 10_000 ? 'silent' : null;
+		return now - lastSampleAt > 10_000 ? quietFault(trainer) : null;
 	});
 
 	function release() {

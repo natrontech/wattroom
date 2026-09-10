@@ -9,6 +9,7 @@ import { targetAt } from '$lib/workout/engine';
 import type { Segment } from '$lib/workout/types';
 import type { GameState, SprintState } from '$lib/protocol';
 import type { createRecording } from '$lib/room/recording.svelte';
+import { quietFault, type TrainerFault } from '$lib/room/sensor-status';
 
 interface RideDeps {
 	/** The room socket: metrics go out on it, targets and ticks come off it. */
@@ -68,13 +69,13 @@ export function createRide(deps: RideDeps) {
 	// The local second the guards' countdowns run on; the silence check reads
 	// it too (#1852) — off the server tick, losing the socket froze the check.
 	let now = $state(Date.now());
-	const fault = $derived.by((): 'reconnecting' | 'silent' | null => {
+	const fault = $derived.by((): TrainerFault => {
 		if (!trainer) return null;
 		if (status !== 'connected') return 'reconnecting';
 		void now;
 		// Counted from the connect, not the first sample: a trainer that never
 		// sends one is the reported failure, and exempting it would hide it.
-		return Date.now() - lastSampleAt > 10_000 ? 'silent' : null;
+		return Date.now() - lastSampleAt > 10_000 ? quietFault(trainer) : null;
 	});
 
 	// Bias is personal: ±% on my own targets, the shared timeline untouched.

@@ -188,6 +188,16 @@ describe('roomConnection', () => {
 			vi.advanceTimersByTime(11_000);
 			flushSync();
 			expect(connection.ride.fault).toBe('silent');
+			// Frames without watts are the other quiet (#1849).
+			connection.ride.unpair();
+			const reporting = new FakeTrainer();
+			(reporting as { frames?: number }).frames = 3;
+			(reporting as { poweredFrames?: number }).poweredFrames = 0;
+			await connection.ride.ride(reporting);
+			flushSync();
+			vi.advanceTimersByTime(11_000);
+			flushSync();
+			expect(connection.ride.fault).toBe('no-power');
 		} finally {
 			vi.useRealTimers();
 		}
