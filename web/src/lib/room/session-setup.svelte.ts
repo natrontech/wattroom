@@ -1,4 +1,5 @@
 import { api } from '$lib/api';
+import { copyCalendarLink } from '$lib/calendar-link';
 import { toasts } from '$lib/toast.svelte';
 import { buildShelf } from '$lib/workout/shelf';
 import { customWorkouts } from '$lib/workout/custom.svelte';
@@ -57,18 +58,8 @@ export function createSessionSetup(deps: SessionSetupDeps) {
 	);
 
 	function copyIcsUrl() {
-		const link = `${location.origin}/api/rooms/${deps.slug()}/calendar/${deps.icsToken()}.ics`;
-		// A denied clipboard used to get the same "copied" (#1764).
-		void navigator.clipboard.writeText(link).then(
-			() =>
-				toasts.push(
-					'Calendar link copied — subscribe "from URL" in your calendar app.',
-				),
-			() =>
-				toasts.push(`Could not copy — the link is ${link}`, {
-					tone: 'error',
-					seconds: 12,
-				}),
+		void copyCalendarLink(
+			`${location.origin}/api/rooms/${deps.slug()}/calendar/${deps.icsToken()}.ics`,
 		);
 	}
 

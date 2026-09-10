@@ -8,8 +8,10 @@
 	import { downloadBlob } from '$lib/download';
 	import { discardRide, unfinishedRides } from '$lib/ride/buffer';
 	import {
+		confirmDiscard,
 		exportFilename,
 		exportPayload,
+		recordedMinutes,
 		uploadPayload,
 		type RecoveredRide,
 	} from '$lib/ride/recovered';
@@ -29,10 +31,18 @@
 	let busy = $state(false);
 	void unfinishedRides().then((found) => (rides = found));
 
+	// `forget` is also how a saved or exported ride leaves the card, so the ask
+	// belongs on the Discard button and not in here (errors.md, #1493): by the
+	// time download() and save() call it, the samples exist somewhere else.
 	const forget = async (rideId: string) => {
 		await discardRide(rideId);
 		rides = rides.filter((r) => r.rideId !== rideId);
 	};
+
+	async function discard(ride: RecoveredRide) {
+		if (!(await confirmDiscard(ride))) return;
+		await forget(ride.rideId);
+	}
 
 	async function download(ride: RecoveredRide) {
 		busy = true;
@@ -81,7 +91,7 @@
 		<p>
 			Recovered an unfinished ride — {ride.workoutName},
 			{new Date(ride.startedAt).toLocaleString()},
-			{Math.round(ride.samples.length / 60)} min recorded.
+			{recordedMinutes(ride)} min recorded.
 		</p>
 		<div class="mt-2 flex gap-2">
 			{#if ride.workoutJson}
@@ -97,9 +107,8 @@
 				class="btn {ride.workoutJson ? 'btn-secondary' : 'btn-primary'} btn-xs"
 				>Download .fit</button
 			>
-			<button
-				onclick={() => forget(ride.rideId)}
-				class="btn btn-secondary btn-xs">Discard</button
+			<button onclick={() => discard(ride)} class="btn btn-secondary btn-xs"
+				>Discard</button
 			>
 		</div>
 	</div>

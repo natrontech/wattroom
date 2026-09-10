@@ -8,6 +8,7 @@
  * neither the index nor that spelling. Both were inline in the ride screen with
  * nothing checking them.
  */
+import { confirm } from '$lib/confirm.svelte';
 import type { BufferedSample, RideMeta } from './buffer';
 
 export type RecoveredRide = RideMeta & { samples: BufferedSample[] };
@@ -51,4 +52,29 @@ export function uploadPayload(ride: RecoveredRide) {
 export function exportFilename(ride: RecoveredRide): string {
 	const day = new Date(ride.startedAt).toISOString().slice(0, 10);
 	return `wattroom-recovered-${day}.fit`;
+}
+
+/** Minutes recorded, as the card says it. */
+export function recordedMinutes(ride: RecoveredRide): number {
+	return Math.round(ride.samples.length / 60);
+}
+
+/** What discarding takes, and the two ways to keep it instead. */
+export function discardBody(ride: RecoveredRide): string {
+	return `“${ride.workoutName}”, ${recordedMinutes(ride)} min recorded — these samples are on this device and nowhere else, so discarding deletes the only copy. Save it to your account or download the .fit first if you want to keep it.`;
+}
+
+/**
+ * The ask before a discard (errors.md, #1493). This is the file's original
+ * confirm case rather than its third one — the samples are destroyed — and
+ * /history's "Clear device rides" already asks the same question about the
+ * same data; one card offering it in one click was the inconsistency.
+ */
+export function confirmDiscard(ride: RecoveredRide): Promise<boolean> {
+	return confirm({
+		title: 'Discard the recovered ride?',
+		body: discardBody(ride),
+		action: 'Discard it',
+		cancel: 'Keep it',
+	});
 }

@@ -47,7 +47,10 @@
 		await refresh();
 	}
 
+	// Asked first: nothing puts a credential back, and the authenticator
+	// cannot re-create this one (errors.md, #1493).
 	async function remove(key: passkeys.Passkey) {
+		if (!(await passkeys.confirmRemoval(key))) return;
 		error = (await passkeys.remove(key.id)) ?? '';
 		await refresh();
 	}

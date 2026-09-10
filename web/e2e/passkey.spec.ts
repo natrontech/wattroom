@@ -47,8 +47,23 @@ test('a passkey registers, and signs the rider back in where they were going', a
 	await expect(row).toBeVisible();
 	await expect(row).toContainText('last used');
 
+	// A removal asks first (#1493): the authenticator cannot re-mint the same
+	// credential, so one click must not be able to end it. "Keep it" leaves
+	// the key exactly where it was — the half that would ship quietly.
+	await row.getByRole('button', { name: 'Remove' }).click();
+	const ask = page.getByRole('dialog', { name: new RegExp(`Remove .${name}`) });
+	await expect(ask).toBeVisible();
+	await expect(ask).toContainText('cannot re-create this same passkey');
+	await ask.getByRole('button', { name: 'Keep it' }).click();
+	await expect(ask).toBeHidden();
+	await expect(row).toBeVisible();
+
 	// The rider is reused across runs (signin.ts): take the key back so the
 	// list does not grow by one per run. The dev identity keeps them in.
 	await row.getByRole('button', { name: 'Remove' }).click();
+	await page
+		.getByRole('dialog')
+		.getByRole('button', { name: 'Remove' })
+		.click();
 	await expect(row).toBeHidden();
 });
