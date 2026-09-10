@@ -96,6 +96,18 @@ The three legitimate differences, and nothing else:
    exist; solo the rider owns it outright. This is the one place the *controls*
    legitimately differ, and it is a protocol fact, not a design choice.
 
+**The count-in is not a fourth exception** ([#1800](https://github.com/natrontech/wattroom/issues/1800), decided by the repo
+owner 2026-09-10). Who owns the timeline is a difference; *counting the
+timeline in* is not — a rider taps Start on the laptop beside the bike and
+needs a moment to get back on it whether or not anybody else is waiting. So
+every riding surface counts in before its clock moves: ten seconds in a room
+because a roster is being gathered, three solo and on the ramp because nobody
+is, and the same 3-2-1-go cues and one-digit screen on all three
+(`lib/room/CountdownScreen.svelte`, `countdown` on `RideSoundDeps`). The
+clock starting late is the point of it: the first block's target reaches the
+trainer when the count-in ends, not at the tap. Specced in docs/SPEC.md's
+session lifecycle.
+
 **The ramp test is a workout, not a third thing.** `buildRampTest()` already
 returns a normal `Workout` on the normal engine, so `describeBlock()` gives it
 the same header every other ride gets — the absolute target of the next step,

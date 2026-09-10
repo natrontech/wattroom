@@ -116,6 +116,8 @@ spot, and only the owner sees the ban list. Unban restores plain membership.
 
 Session lifecycle: room idles (voice/jukebox lounge) → coach picks workout → 10 s countdown **(default)** → shared timeline runs → riders execute their own %FTP targets → session closes when the timeline ends (or coach ends it) → server computes stats + medals in one transaction. Late joiners sync to the current timeline position. A member stopping mid-session pauses _their own_ targets (auto-pause) — the shared timeline never waits.
 
+A ride **alone** has the same lifecycle with the roster removed: rider picks workout → **3 s count-in** → their own timeline runs → closes when it ends (or they end it) → the ride is saved to their account. The count-in is the room's, shortened because nobody else is being waited for — same 3-2-1-go cues, same one-digit screen, and the same three seconds the resume countdown gets below. It is **not** an exception to ADR-0046's parity rule: the clock starts when the count-in ends, so the first block's target reaches the trainer then and not at the tap. A rider who changes their mind during it cancels back to the setup screen with the trainer still paired — nothing was ridden, so nothing is saved. The ramp test counts in the same way; it is a workout, not a third thing.
+
 ## Workout JSON (draft — M1 finalizes)
 
 **HR bands (#67 flavour 1, shipped)**: `steady` steps may carry `hrLow`/`hrHigh`

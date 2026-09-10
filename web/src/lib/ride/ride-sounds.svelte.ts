@@ -13,8 +13,7 @@ import type { RideState } from '$lib/workout/session.svelte';
  * solo rider was auto-paused, released, dropped and finished in silence, with
  * one block cue the page played by hand. ADR-0046's parity rule: a rider
  * alone hears what the same rider in a room hears. The room composes this
- * and adds what needs people — the shared countdown, the coach's pause, the
- * games.
+ * and adds what needs people — the coach's pause, the games.
  */
 export interface RideSoundDeps {
 	/**
@@ -30,6 +29,14 @@ export interface RideSoundDeps {
 	spiral: () => boolean | undefined;
 	/** The block you are in while the session runs; undefined otherwise. */
 	block: () => number | undefined;
+	/**
+	 * The count-in into the start, in seconds left — `0` the moment it hands
+	 * over to the running clock, `undefined` when nothing is counting in
+	 * (including a count-in the coach cancelled, which must not say `go`).
+	 * Both the room's shared countdown and a solo ride's own (#1800) feed
+	 * this: one 3-2-1 for the surface, not one per screen.
+	 */
+	countdown?: () => number | undefined;
 	/**
 	 * The ride just ended by its own clock or the rider's button. The room
 	 * says its end from the shared phase instead and leaves this out.
@@ -47,6 +54,31 @@ export function guardOfRide(
 }
 
 export function createRideSounds(deps: RideSoundDeps) {
+	// The start is the biggest state change in the product, so it is counted
+	// in out loud. The last count spoken, so a tick is said once — and -1 is
+	// "nothing yet", which is also what makes `go` fire exactly once on the
+	// way out. Lifted from createRoomSounds (#834) when a solo ride got its
+	// own count-in (#1800); the room now feeds this instead of repeating it.
+	let heardCount = -1;
+	$effect(() => {
+		const left = deps.countdown?.();
+		if (left === undefined) {
+			heardCount = -1;
+			return;
+		}
+		if (left <= 0) {
+			if (heardCount > 0) {
+				heardCount = -1;
+				play('go');
+			}
+			return;
+		}
+		if (left <= 3 && left !== heardCount) {
+			heardCount = left;
+			playCountdownTick(left);
+		}
+	});
+
 	// A block change is the most frequent "your legs do something different"
 	// there is. Only while the session runs: the index going to undefined at
 	// the end is the end, not a block.

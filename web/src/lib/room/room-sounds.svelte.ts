@@ -32,25 +32,6 @@ export interface SoundDeps extends RideSoundDeps {
 }
 
 export function createRoomSounds(deps: SoundDeps) {
-	// The last count spoken, so a tick is said once. -1 is "nothing yet",
-	// which is also what makes `go` fire exactly once on the way out.
-	let heardCount = -1;
-
-	$effect(() => {
-		if (deps.phase() !== 'countdown') {
-			if (deps.phase() === 'running' && heardCount > 0) {
-				heardCount = -1;
-				play('go');
-			}
-			return;
-		}
-		const left = deps.countdownRemaining() ?? 0;
-		if (left <= 3 && left > 0 && left !== heardCount) {
-			heardCount = left;
-			playCountdownTick(left);
-		}
-	});
-
 	// Pause and resume are the one phase change that tells the legs to do
 	// something different, and they were the silent one (#834). The block cue
 	// is exactly right for it: the target just changed.
@@ -68,9 +49,21 @@ export function createRoomSounds(deps: SoundDeps) {
 	});
 	$effect(() => heardEnd(deps.phase() ?? 'idle'));
 
-	// The rider's own cues — block, guard, spiral, fault, the sprint — are
-	// the ride's, not the room's (#1792): a rider alone hears them too.
-	createRideSounds(deps);
+	// The rider's own cues — block, guard, spiral, fault, the sprint and now
+	// the count-in — are the ride's, not the room's (#1792, #1800): a rider
+	// alone hears them too. The shared countdown is fed in as seconds left,
+	// `0` once the timeline is running so the `go` lands, and undefined
+	// otherwise — a countdown the coach cancelled goes back to idle and must
+	// stay silent.
+	createRideSounds({
+		...deps,
+		countdown: () =>
+			deps.phase() === 'countdown'
+				? Math.max(1, deps.countdownRemaining() ?? 0)
+				: deps.phase() === 'running'
+					? 0
+					: undefined,
+	});
 
 	// A game's cues from here, like the sprint's (#1412 for sprints, audit
 	// 2026-09-09 for games): they lived in GamePanel, which only the Training

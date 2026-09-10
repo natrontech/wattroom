@@ -1,0 +1,1 @@
+- Riding alone now counts you in: three seconds and a 3-2-1 before the clock starts, so you can tap Start and get back on the bike before the first target lands. The ramp test counts in the same way, and Cancel during the count-in puts you back on the setup screen with your trainer still paired.

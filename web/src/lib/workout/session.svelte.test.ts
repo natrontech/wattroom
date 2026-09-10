@@ -10,6 +10,7 @@ vi.mock('$lib/hud/feed', () => ({
 }));
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import {
+	COUNTDOWN_SECONDS,
 	createRideSession,
 	DEFAULTS,
 	soloRide,
@@ -31,6 +32,19 @@ function ride() {
 	const trainer = new SimulatedTrainer();
 	const session = createRideSession({ trainer, workout, ftp: 200 });
 	return session;
+}
+
+/**
+ * Start and count in (#1800): every ride now spends COUNTDOWN_SECONDS in
+ * `countdown` before its clock moves, and every test below is about the
+ * riding. The count-in's own behaviour has its own describe block.
+ */
+async function startRiding(session: {
+	start: () => Promise<void>;
+	tick: (seconds?: number) => void;
+}) {
+	await session.start();
+	session.tick(COUNTDOWN_SECONDS);
 }
 
 /** Feed one second of rider behaviour without waiting on a real clock. */
@@ -72,7 +86,7 @@ describe('the recovery (#1847)', () => {
 	it('carries the ride over to another trainer and lets the first go', async () => {
 		const first = new SimulatedTrainer();
 		const session = createRideSession({ trainer: first, workout, ftp: 200 });
-		await session.start();
+		await startRiding(session);
 		expect(session.trainerStatus).toBe('connected');
 		pedal(session, 200, 90, 3);
 
@@ -97,7 +111,7 @@ describe('the sprint window (#1793)', () => {
 			workout: sprintWorkout,
 			ftp: 200,
 		});
-		await session.start();
+		await startRiding(session);
 		const window = session.sprint;
 		expect(window).not.toBeNull();
 		expect(window!.endsAtMs - window!.startsAtMs).toBe(15_000);
@@ -121,7 +135,7 @@ describe('the sprint window (#1793)', () => {
 			},
 			ftp: 200,
 		});
-		await session.start();
+		await startRiding(session);
 		expect(session.sprint).toBeNull();
 		session.tick(60 - SPRINT_LEAD_SECONDS - 1);
 		expect(session.sprint).toBeNull();
@@ -150,7 +164,7 @@ describe('a sprint block', () => {
 
 	it('releases the trainer to slope instead of commanding ERG 0 W (#1529)', async () => {
 		const { session, slope, erg } = sprintRide();
-		await session.start();
+		await startRiding(session);
 		pedal(session, 700, 110, 3);
 		expect(slope).toHaveBeenCalledWith(0);
 		// The bug: `info.targetWatts ?? 0` made a sprint indistinguishable from
@@ -160,7 +174,7 @@ describe('a sprint block', () => {
 
 	it('holds ftp × 2 on a single-speed setup, where slope has no range', async () => {
 		const { session, slope, erg } = sprintRide(true);
-		await session.start();
+		await startRiding(session);
 		pedal(session, 700, 110, 3);
 		expect(erg).toHaveBeenCalledWith(400);
 		expect(slope).not.toHaveBeenCalled();
@@ -172,7 +186,7 @@ describe('a sprint block', () => {
 		vi.useFakeTimers();
 		try {
 			const { session, slope } = sprintRide();
-			await session.start();
+			await startRiding(session);
 			pedal(session, 700, 110, 3);
 			expect(slope).toHaveBeenCalledWith(0);
 			session.stop();
@@ -185,7 +199,7 @@ describe('a sprint block', () => {
 
 	it('goes back to the workout target when the window closes', async () => {
 		const { session, erg } = sprintRide();
-		await session.start();
+		await startRiding(session);
 		pedal(session, 700, 110, 20);
 		expect(erg).toHaveBeenCalledWith(120);
 	});
@@ -198,7 +212,7 @@ describe('the recording', () => {
 	// an execution they never saw (#1530).
 	it('keeps the trim each second was ridden at', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		for (let i = 0; i < 4; i++) {
 			if (i === 2) session.nudgeBias(-DEFAULTS.biasStep);
 			session.onSample({ watts: 200, cadence: 90, at: i * 1000 });
@@ -221,14 +235,14 @@ describe('toleranceBand', () => {
 describe('createRideSession', () => {
 	it('holds the workout target, scaled by FTP', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		expect(session.target).toBe(200); // 100 % of a 200 W FTP
 		session.stop();
 	});
 
 	it('scales the target by bias, clamped to the allowed range', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		session.nudgeBias(0.05);
 		expect(session.target).toBe(210);
 		for (let i = 0; i < 100; i++) session.nudgeBias(0.05);
@@ -238,7 +252,7 @@ describe('createRideSession', () => {
 
 	it('auto-pauses after the rider stops, and releases the target', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		pedal(session, 0, 0, DEFAULTS.pauseAfterSeconds);
 		expect(session.state).toBe('autopaused');
 		expect(session.target).toBe(0);
@@ -247,7 +261,7 @@ describe('createRideSession', () => {
 
 	it('counts down before resuming rather than snapping back to target', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		pedal(session, 0, 0, DEFAULTS.pauseAfterSeconds);
 		session.onSample({ watts: 100, cadence: 85, at: 0 });
 		expect(session.state).toBe('resuming');
@@ -259,7 +273,7 @@ describe('createRideSession', () => {
 
 	it('trips the spiral guard on collapsing cadence and releases the target', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		pedal(session, 190, 40, DEFAULTS.spiralAfterSeconds);
 		expect(session.spiralActive).toBe(true);
 		expect(session.target).toBe(0);
@@ -269,7 +283,7 @@ describe('createRideSession', () => {
 	it('falls back to power collapse when there is no cadence source at all', async () => {
 		// The Kickr v2 case: cadence is absent, not merely low (RESEARCH.md §9).
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		pedal(session, 60, 0, DEFAULTS.spiralAfterSeconds);
 		expect(session.spiralActive).toBe(true);
 		session.stop();
@@ -277,7 +291,7 @@ describe('createRideSession', () => {
 
 	it('excludes auto-paused time from the execution score', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		pedal(session, 200, 90, 5); // five seconds dead on target
 		expect(session.execution).toBe(1);
 		pedal(session, 0, 0, 10); // stopped: must not count as missed seconds
@@ -307,7 +321,7 @@ describe('createRideSession', () => {
 		// #1733: the record counts wall seconds; the score is keyed on the
 		// workout clock, so a stop mid-block must not shift what follows.
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		for (let at = 0; at < 15; at++) {
 			const riding = at < 5;
 			session.onSample({
@@ -331,7 +345,7 @@ describe('createRideSession', () => {
 
 	it('skip jumps to the next block', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		expect(session.target).toBe(200);
 		session.skip();
 		expect(session.target).toBe(100); // second block is 50 % FTP
@@ -340,7 +354,7 @@ describe('createRideSession', () => {
 
 	it('extend keeps the current block going', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		pedal(session, 200, 90, 59);
 		session.extend(30);
 		expect(session.target).toBe(200); // still in block one rather than block two
@@ -357,7 +371,7 @@ describe('a throttled tick', () => {
 	 */
 	it('advances the ride by the seconds it covers, not by one', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 
 		session.tick(45);
 
@@ -367,7 +381,7 @@ describe('a throttled tick', () => {
 
 	it('crosses a block boundary and lands on the new target', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		expect(session.target).toBe(200);
 
 		// One fire covering the whole first block plus a second of the next.
@@ -383,7 +397,7 @@ describe('a throttled tick', () => {
 	it('lets go of the trainer and the recorder when the clock runs out', async () => {
 		const trainer = new SimulatedTrainer();
 		const session = createRideSession({ trainer, workout, ftp: 200 });
-		await session.start();
+		await startRiding(session);
 		expect(trainer.status).toBe('connected');
 		pedal(session, 200, 90, 120);
 		expect(session.state).toBe('done');
@@ -397,7 +411,7 @@ describe('a throttled tick', () => {
 	// after SPEC's seconds, not half of them.
 	it('auto-pauses after SPEC seconds on a trainer notifying twice a second', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		for (let s = 0; s < DEFAULTS.pauseAfterSeconds; s++) {
 			session.onSample({ watts: 0, cadence: 0, at: s * 1000 });
 			if (s < DEFAULTS.pauseAfterSeconds - 1)
@@ -411,7 +425,7 @@ describe('a throttled tick', () => {
 
 	it('finishes a workout that ended inside the gap', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 
 		session.tick(600);
 
@@ -421,7 +435,7 @@ describe('a throttled tick', () => {
 
 	it('does not leave the spiral guard held open past its release', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		pedal(session, 40, 40, DEFAULTS.spiralAfterSeconds);
 		expect(session.spiralActive).toBe(true);
 
@@ -452,7 +466,7 @@ describe('sensor arbitration inside a ride', () => {
 		const session = rideWith(() => ({
 			'power-meter': { watts: 213, at: 0 },
 		}));
-		await session.start();
+		await startRiding(session);
 		session.onSample({ watts: 200, cadence: 85, at: 0 });
 
 		expect(session.sample?.watts).toBe(213);
@@ -463,7 +477,7 @@ describe('sensor arbitration inside a ride', () => {
 		const session = rideWith(() => ({
 			'heart-rate': { heartRate: 148, at: 0 },
 		}));
-		await session.start();
+		await startRiding(session);
 		session.onSample({ watts: 200, cadence: 85, at: 0 });
 
 		expect(session.recording.at(-1)?.heartRate).toBe(148);
@@ -472,7 +486,7 @@ describe('sensor arbitration inside a ride', () => {
 
 	it('records zero heart rate when nothing reports it, which the encoder omits', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		session.onSample({ watts: 200, cadence: 85, at: 0 });
 
 		expect(session.recording.at(-1)?.heartRate).toBe(0);
@@ -483,7 +497,7 @@ describe('sensor arbitration inside a ride', () => {
 		// Kickr cadence is firmware-estimated and drops out on sprint-to-easy
 		// transitions (RESEARCH.md §11); a real sensor saying 0 is the truth.
 		const session = rideWith(() => ({ cadence: { cadence: 0, at: 0 } }));
-		await session.start();
+		await startRiding(session);
 		for (let i = 0; i < DEFAULTS.pauseAfterSeconds; i++) {
 			session.onSample({ watts: 0, cadence: 80, at: i * 1000 });
 			session.tick();
@@ -494,16 +508,110 @@ describe('sensor arbitration inside a ride', () => {
 	});
 });
 
+describe("the count-in (#1800, docs/SPEC.md's session lifecycle)", () => {
+	it('holds the clock for COUNTDOWN_SECONDS before the ride runs', async () => {
+		const session = ride();
+		await session.start();
+		expect(session.state).toBe('countdown');
+		expect(session.countdownRemaining).toBe(COUNTDOWN_SECONDS);
+
+		// The seconds a rider is climbing back onto the bike: the workout
+		// clock stays at zero and the record stays empty through all of them.
+		for (let second = 1; second <= COUNTDOWN_SECONDS - 1; second++) {
+			session.onSample({ watts: 0, cadence: 0, at: second * 1000 });
+			session.tick();
+			expect(session.state).toBe('countdown');
+			expect(session.countdownRemaining).toBe(COUNTDOWN_SECONDS - second);
+			expect(session.elapsed).toBe(0);
+			expect(session.recording).toHaveLength(0);
+		}
+
+		session.tick();
+		expect(session.state).toBe('running');
+		expect(session.countdownRemaining).toBe(0);
+		expect(session.elapsed).toBe(0);
+		session.stop();
+	});
+
+	it('writes the first block\'s target only once the count-in ends', async () => {
+		const trainer = new SimulatedTrainer();
+		const erg = vi.spyOn(trainer, 'setTargetPower');
+		const session = createRideSession({ trainer, workout, ftp: 200 });
+		await session.start();
+		// Half the bug: the target used to land at Start, so the trainer was
+		// already holding 200 W while the rider walked back to the bike.
+		expect(erg).not.toHaveBeenCalled();
+		expect(session.target).toBe(0);
+
+		session.tick(COUNTDOWN_SECONDS);
+		expect(erg).toHaveBeenCalledWith(200);
+		expect(session.target).toBe(200);
+		session.stop();
+	});
+
+	it('cannot be started twice', async () => {
+		const trainer = new SimulatedTrainer();
+		const connect = vi.spyOn(trainer, 'connect');
+		const session = createRideSession({ trainer, workout, ftp: 200 });
+		// Both taps in flight before either resolves — the count-in leaves the
+		// Start button on screen for three seconds.
+		await Promise.all([session.start(), session.start(), session.start()]);
+		expect(connect).toHaveBeenCalledTimes(1);
+		expect(session.countdownRemaining).toBe(COUNTDOWN_SECONDS);
+
+		session.tick(COUNTDOWN_SECONDS);
+		expect(session.state).toBe('running');
+		// And not from a ride already under way: a second start would rewind
+		// the clock and re-subscribe to the same trainer.
+		pedal(session, 200, 90, 4);
+		await session.start();
+		expect(session.state).toBe('running');
+		expect(session.elapsed).toBe(4);
+		session.stop();
+	});
+
+	it('goes back to idle when the rider aborts it, trainer still paired', async () => {
+		const trainer = new SimulatedTrainer();
+		const gone = vi.spyOn(trainer, 'disconnect');
+		const session = createRideSession({ trainer, workout, ftp: 200 });
+		await session.start();
+		expect(session.state).toBe('countdown');
+		session.tick();
+
+		session.abort();
+		expect(session.state).toBe('idle');
+		expect(session.countdownRemaining).toBe(0);
+		expect(soloRide.active).toBe(false);
+		// Not an End: nothing was ridden, so the pairing survives for the next
+		// Start rather than being handed back to the pairing grid.
+		expect(gone).not.toHaveBeenCalled();
+		// And the session is not wedged half-started: a stale tick moves
+		// nothing.
+		session.tick();
+		expect(session.elapsed).toBe(0);
+		expect(session.recording).toHaveLength(0);
+	});
+
+	it('aborts nothing once the ride is running', async () => {
+		const session = ride();
+		await startRiding(session);
+		pedal(session, 200, 90, 2);
+		session.abort();
+		expect(session.state).toBe('running');
+		session.stop();
+	});
+});
+
 describe('soloRide', () => {
 	it('is active from start until the ride ends, by stop or by the clock', async () => {
 		const stopped = ride();
-		await stopped.start();
+		await startRiding(stopped);
 		expect(soloRide.active).toBe(true);
 		stopped.stop();
 		expect(soloRide.active).toBe(false);
 
 		const finished = ride();
-		await finished.start();
+		await startRiding(finished);
 		expect(soloRide.active).toBe(true);
 		pedal(finished, 200, 90, 120);
 		expect(finished.state).toBe('done');
@@ -535,7 +643,7 @@ describe('the execution score (#795)', () => {
 		setup: ReturnType<typeof scored>,
 		seconds = 30,
 	): Promise<number> {
-		await setup.session.start();
+		await startRiding(setup.session);
 		for (let i = 0; i < Math.round((setup.bias - 1) / DEFAULTS.biasStep); i++)
 			setup.session.nudgeBias(DEFAULTS.biasStep);
 		for (let i = 0; i > Math.round((setup.bias - 1) / DEFAULTS.biasStep); i--)
@@ -584,7 +692,7 @@ describe('the execution score (#795)', () => {
 describe('the ride record', () => {
 	it('admits one sample per ride second however often the trainer notifies', async () => {
 		const session = ride();
-		await session.start();
+		await startRiding(session);
 		for (let i = 0; i < 4; i++)
 			session.onSample({ watts: 200, cadence: 90, at: i * 250 });
 		expect(session.recording.length).toBe(1);
@@ -609,7 +717,7 @@ describe('the HUD feed (#1665)', () => {
 			ftp: 200,
 			now: () => t,
 		});
-		await session.start();
+		await startRiding(session);
 		hud.published.length = 0;
 		session.onSample({ watts: 150, cadence: 90, at: 0 });
 		session.tick();
@@ -640,7 +748,7 @@ describe('the trace the graph draws (#2017)', () => {
 			},
 			ftp: 200,
 		});
-		await session.start();
+		await startRiding(session);
 		// Twenty minutes, past the 900 the trace used to keep.
 		for (let i = 0; i < 1200; i++) {
 			session.onSample({ watts: 140 + (i % 20), cadence: 90, at: i * 1000 });

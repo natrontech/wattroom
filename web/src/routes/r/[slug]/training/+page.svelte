@@ -6,6 +6,7 @@
 	// instrument. A sprint takes the screen and gives it back, a game replaces
 	// the workout, a shared screen replaces both, and the instrument is what
 	// returns. The player is never overlaid — RMF — so the numbers go below it.
+	import CountdownScreen from '$lib/room/CountdownScreen.svelte';
 	import CrewStrip from '$lib/room/CrewStrip.svelte';
 	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
 	import GamePanel from '$lib/room/GamePanel.svelte';
@@ -128,30 +129,15 @@
 		</div>
 	</div>
 {:else if room.phase === 'countdown'}
-	<div class="grid h-full place-items-center">
-		<!-- Announced once (#1970): the start is the biggest state change in
-		     the product, and a reader heard only the cue. The ticking digit is
-		     hidden from it, or the whole block re-reads every second. -->
-		<p class="sr-only" role="status">
-			Starting {room.shared?.workoutName ?? 'the session'} in a moment
-		</p>
-		<div class="text-center">
-			<p class="eyebrow">starting</p>
-			<p
-				aria-hidden="true"
-				class="font-display text-watt glow-text-strong text-[10rem] leading-none font-bold tabular-nums"
-			>
-				{room.shared?.countdownRemaining ?? 0}
-			</p>
-			<p class="font-display mt-4 text-2xl font-bold">
-				{room.shared?.workoutName ?? ''}
-			</p>
-			<p class="text-muted mt-1 text-sm">
-				{room.riders.length} rider{room.riders.length === 1 ? '' : 's'}
-			</p>
-			<div class="mt-4 flex justify-center"><SessionControls compact /></div>
-		</div>
-	</div>
+	<!-- One count-in for the surface (ADR-0046, #1800): the same screen a solo
+	     ride draws, with a rider count instead of what is first up. -->
+	<CountdownScreen
+		remaining={room.shared?.countdownRemaining ?? 0}
+		title={room.shared?.workoutName ?? ''}
+		note="{room.riders.length} rider{room.riders.length === 1 ? '' : 's'}"
+	>
+		{#snippet controls()}<SessionControls compact />{/snippet}
+	</CountdownScreen>
 {:else if device.narrow}
 	<!-- One column, the followed rider's instrument, the crew strip (#412). -->
 	<TrainingPhone />
