@@ -42,7 +42,7 @@ func TestRemindDueMailsTheHourAheadOnce(t *testing.T) {
 	// remindDue claims across every room, and `go test` runs packages in
 	// parallel against one database — so count only what reached this
 	// harness's rider rather than everything the fake saw.
-	mine := fake.subjectsTo(h.optIn.DisplayName + "@example.test")
+	mine := fake.subjectsTo(h.email(h.optIn))
 	if len(mine) != 1 {
 		t.Fatalf("sent %d reminders, want exactly the one starting inside the hour: %v", len(mine), mine)
 	}
@@ -55,7 +55,7 @@ func TestRemindDueMailsTheHourAheadOnce(t *testing.T) {
 	// The claim is the update, so a second tick finds nothing left to send —
 	// this is what a restart mid-send or a doubled ticker must not break.
 	s.remindDue(t.Context())
-	if again := fake.subjectsTo(h.optIn.DisplayName + "@example.test"); len(again) != 1 {
+	if again := fake.subjectsTo(h.email(h.optIn)); len(again) != 1 {
 		t.Fatalf("a second pass sent %d more reminders: %v", len(again)-1, again)
 	}
 }
@@ -86,7 +86,7 @@ func TestAMovedSessionIsRemindedAgain(t *testing.T) {
 	}
 	s.remindDue(t.Context())
 
-	mine := fake.subjectsTo(h.optIn.DisplayName + "@example.test")
+	mine := fake.subjectsTo(h.email(h.optIn))
 	if len(mine) != 2 {
 		t.Fatalf("a moved session was reminded %d times, want one per start: %v", len(mine), mine)
 	}
@@ -114,7 +114,7 @@ func TestAStartedPlanIsNotReminded(t *testing.T) {
 		t.Fatalf("mark started: %v", err)
 	}
 	s.remindDue(t.Context())
-	if mine := fake.subjectsTo(h.optIn.DisplayName + "@example.test"); len(mine) != 0 {
+	if mine := fake.subjectsTo(h.email(h.optIn)); len(mine) != 0 {
 		t.Fatalf("a started plan was reminded: %v", mine)
 	}
 }
@@ -159,7 +159,7 @@ func TestReminderMailsEveryOptedInMember(t *testing.T) {
 	// mail would have skipped them.
 	if _, err := h.store.Pool.Exec(t.Context(),
 		"update users set email = $2, email_verified_at = now(), notify_planned = true where id = $1",
-		h.planner.ID, "planner@example.test"); err != nil {
+		h.planner.ID, h.email(h.planner)); err != nil {
 		t.Fatalf("opt the planner in: %v", err)
 	}
 

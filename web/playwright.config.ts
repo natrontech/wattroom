@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Ports come from scripts/dev-env.sh, so a run in a worktree neither binds nor
+// probes the main tree's (e2e/env.js).
+import { BASE_URL } from './e2e/env.js';
+
 /**
  * PLAYWRIGHT_BASE_URL points the suite at a deployed target (the production
  * synthetic, #153). Unset, everything below behaves exactly as before: build,
@@ -35,7 +39,7 @@ export default defineConfig({
 	retries: process.env.CI ? 2 : 0,
 	reporter: process.env.CI ? 'github' : 'list',
 	use: {
-		baseURL: external || 'http://localhost:4173',
+		baseURL: external || BASE_URL,
 		trace: 'retain-on-failure',
 	},
 	projects: [
@@ -105,7 +109,7 @@ export default defineConfig({
 		? undefined
 		: {
 				command: 'pnpm build && node e2e/server.js',
-				url: 'http://localhost:4173/ride',
+				url: `${BASE_URL}/ride`,
 				reuseExistingServer: false,
 				timeout: 120_000,
 			},

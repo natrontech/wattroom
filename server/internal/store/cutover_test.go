@@ -9,9 +9,9 @@ package store
 // lapse. So this test migrates up to the release BEFORE the crew, writes the
 // old world with raw SQL, finishes migrating, and looks.
 //
-// It runs on a scratch database of its own. `wattroom_test` is shared by every
-// worktree and is always fully migrated; stepping it backwards would break
-// whoever else is running `make test` at the time.
+// It runs on a scratch database of its own. The test database is always fully
+// migrated and every package in this run shares it; stepping it backwards
+// would break whichever of them is mid-query at the time.
 
 import (
 	"context"
@@ -31,6 +31,8 @@ import (
 // stops one short of it, whatever else lands in between.
 const crewMigrationVersion int64 = 20260908145114
 
+// cutoverDSN duplicates storetest.DSN deliberately: this file is in package
+// store, and importing storetest — which imports store — is an import cycle.
 func cutoverDSN(t *testing.T) string {
 	t.Helper()
 	if dsn := os.Getenv("WATTROOM_TEST_DB"); dsn != "" {

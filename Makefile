@@ -40,7 +40,7 @@ dev-web: changelog ## run Vite dev server
 	@$(DEV_ENV) banner web
 	@eval "$$($(DEV_ENV) print)"; cd web && PORT="$$WATTROOM_DEV_WEB_PORT" WATTROOM_API="http://localhost:$$WATTROOM_DEV_SERVER_PORT" pnpm dev
 
-dev-db-drop: ## drop this worktree's database (nothing removes it on `git worktree remove`)
+dev-db-drop: ## drop this worktree's dev AND test databases (nothing removes them on `git worktree remove`)
 	@$(DEV_ENV) drop-db
 
 changelog: ## stage CHANGELOG.md as a static asset (#345)
@@ -87,14 +87,23 @@ build: web ## single binary with embedded frontend
 
 test:
 	@# Tests get their own database — a suite that deletes users must never
-	@# point at the dev data (it did once; the seed world paid for it). The
-	@# container is whichever one `make infra` started here, not a name: from a
-	@# worktree it is `<worktree>-postgres-1`, and guessing wrong used to create
-	@# the database nowhere and skip every DB-backed test to a green `ok` (#814).
+	@# point at the dev data (it did once; the seed world paid for it) — and
+	@# their own PER CHECKOUT, because one `wattroom_test` for every worktree
+	@# is the same race in a different table: two agents running `make test`
+	@# at the same moment each delete the other's rows, and both go red on
+	@# code that is fine. The container is whichever one `make infra` started
+	@# here, not a name: from a worktree it is `<worktree>-postgres-1`, and
+	@# guessing wrong used to create the database nowhere and skip every
+	@# DB-backed test to a green `ok` (#814).
 	@$(DEV_ENV) ensure-test-db
+	@$(DEV_ENV) banner test
 	@# WATTROOM_REQUIRE_DB turns "no database" from 17 quiet skips into one
-	@# loud failure. A bare `go test` without it still skips.
-	cd server && WATTROOM_REQUIRE_DB=1 go test -race -shuffle=on -timeout=5m ./...
+	@# loud failure. A bare `go test` without it still skips — and, without
+	@# WATTROOM_TEST_DB, still points at the shared `wattroom_test`; this
+	@# target is what hands a checkout its own.
+	@# A WATTROOM_TEST_DB already in the environment wins: CI runs `go test`
+	@# against a service container of its own and names it there.
+	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_REQUIRE_DB=1 WATTROOM_TEST_DB="$${WATTROOM_TEST_DB:-$$WATTROOM_DEV_TEST_DSN}" go test -race -shuffle=on -timeout=5m ./...
 	cd web && pnpm run test
 
 lint:

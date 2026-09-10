@@ -99,8 +99,8 @@ func TestStreakXPPaysTheRidersOwnWeeksNotTheRooms(t *testing.T) {
 	}
 	regular := newUser("streak-input-regular")
 	newcomer := newUser("streak-input-newcomer")
-	// wattroom_test is shared and rooms.slug is globally unique: a run killed
-	// before its cleanup must not wedge every later one.
+	// rooms.slug is globally unique and the test database is reused: a run
+	// killed before its cleanup must not wedge every later one.
 	slug := fmt.Sprintf("streak-input-room-%d", time.Now().UnixNano())
 	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: slug, Name: "Streak input", OwnerID: regular})
 	if err != nil {

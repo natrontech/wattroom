@@ -14,9 +14,8 @@ import (
 )
 
 // track puts one row in the pool. The sha is random rather than derived from
-// the test name: `tracks.sha256` is globally unique and wattroom_test is
-// shared between worktrees, so a fixed one collides with whoever else is
-// running right now.
+// the test name: `tracks.sha256` is globally unique and the test database
+// outlives the run, so a fixed one collides with the previous run's row.
 func (h *harness) track(t *testing.T, uploader, title string) string {
 	t.Helper()
 	var raw [32]byte
@@ -50,8 +49,9 @@ func (h *harness) weights(t *testing.T, slug string) map[string]float64 {
 		t.Fatalf("room: %v", err)
 	}
 	rows, err := h.store.Queries.SmartShuffleTracks(t.Context(), db.SmartShuffleTracksParams{
-		// wattroom_test is shared: ask for more than the pool can plausibly
-		// hold, so a neighbouring suite's tracks cannot push ours out of range.
+		// The pool is the whole database's: ask for more than it can
+		// plausibly hold, so a neighbouring suite's tracks cannot push ours
+		// out of range.
 		RoomID: room.ID, Lim: 1000, Within: nil,
 		AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 	})

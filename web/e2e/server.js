@@ -5,10 +5,11 @@ import { createServer, request as httpRequest } from 'node:http';
 import { connect } from 'node:net';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
+import { API_PORT, DB_DSN, WEB_PORT, ensureDatabase } from './env.js';
 
-const WEB_PORT = 4173;
-const API_PORT = 8081;
 const dist = new URL('../build/', import.meta.url).pathname;
+
+ensureDatabase();
 
 const types = {
 	'.html': 'text/html',
@@ -25,10 +26,10 @@ const go = spawn('go', ['run', '.'], {
 		...process.env,
 		WATTROOM_ADDR: `:${API_PORT}`,
 		// The login gate (ADR-0009) means even the e2e ride signs in — the dev
-		// provider against a real Postgres, same doors production uses.
-		WATTROOM_DB:
-			process.env.WATTROOM_DB ??
-			'postgres://wattroom:wattroom@localhost:5432/wattroom',
+		// provider against a real Postgres, same doors production uses. Which
+		// Postgres is env.js's decision: this checkout's own, so a run here
+		// cannot write the rooms another checkout is asserting about.
+		WATTROOM_DB: DB_DSN,
 		WATTROOM_DEV_LOGIN: '1',
 		// The passkey relying party is derived from this (passkey.go): the
 		// ceremony's origin is the page's, which is this proxy, not the API.
@@ -110,7 +111,7 @@ web.on('upgrade', (req, socket, head) => {
 	socket.on('error', drop);
 });
 
-// Playwright's readiness probe hits :4173 — only answer once the Go API is
+// Playwright's readiness probe hits WEB_PORT — only answer once the Go API is
 // actually up, so the probe covers both processes and no spec ever races a
 // cold `go run` compile.
 async function apiReady() {

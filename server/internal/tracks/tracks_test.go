@@ -530,8 +530,9 @@ func TestATrackWithNoGenreCarriesAnEmptyTagList(t *testing.T) {
 
 func TestTagsFilterThePoolAndCountThemselves(t *testing.T) {
 	h := setup(t)
-	// Tag names unique to this run: the pool is global and `wattroom_test` is
-	// shared, so a facet count is only ever assertable about our own tags.
+	// Tag names unique to this run: the pool is global and the test database
+	// is shared with every other package in the run and reused by the next
+	// one, so a facet count is only ever assertable about our own tags.
 	mine := fmt.Sprintf("sprint-%d", time.Now().UnixNano())
 	other := mine + "-cooldown"
 
@@ -635,8 +636,9 @@ func TestDeletingOneShelfsCopyLeavesTheFileForTheOther(t *testing.T) {
 // a leak — while still having named somebody else's taste.
 func TestTagFacetsCountOnlyYourOwnShelf(t *testing.T) {
 	h := setup(t)
-	// Unique to this run: `wattroom_test` is shared between suites, so a
-	// facet assertion is only ever safe about tags nobody else wrote.
+	// Unique to this run: the test database is shared between the run's
+	// suites, so a facet assertion is only ever safe about tags nobody else
+	// wrote.
 	hers := fmt.Sprintf("herowntag-%d", time.Now().UnixNano())
 
 	track := h.upload(t, "alice", song(20, 383), "Hers.mp3")
