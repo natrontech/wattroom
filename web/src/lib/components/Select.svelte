@@ -168,7 +168,7 @@
 					aria-label="filter {label}"
 					aria-controls="{uid}-list"
 					aria-activedescendant={optionId(active)}
-					class="placeholder:text-muted/60 border-ink/5 w-full border-b bg-transparent px-3 py-2 text-xs outline-none"
+					class="placeholder:text-muted-dim border-ink/5 w-full border-b bg-transparent px-3 py-2 text-xs outline-none"
 					{@attach (node) => node.focus()}
 				/>
 			{/if}

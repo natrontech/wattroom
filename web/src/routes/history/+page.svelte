@@ -375,7 +375,7 @@
 			<div class="panel px-6 py-5">
 				<h2 class="text-ink text-sm font-semibold">Best power by duration</h2>
 				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
-				<span class="text-muted/70 ml-2 text-[11px]"
+				<span class="text-muted-dim ml-2 text-[11px]"
 					>based on your WattRoom rides</span
 				>
 				<!-- Interpretation lives in the UI, not the rider's head: every
@@ -408,7 +408,7 @@
 			<div class="panel px-6 py-5">
 				<h2 class="text-ink text-sm font-semibold">FTP over the last year</h2>
 				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
-				<span class="text-muted/70 ml-2 text-[11px]"
+				<span class="text-muted-dim ml-2 text-[11px]"
 					>based on your WattRoom rides</span
 				>
 				<p class="text-muted mt-0.5 mb-4 max-w-2xl text-xs">
@@ -427,7 +427,7 @@
 					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 						<h2 class="text-ink text-sm font-semibold">Training load</h2>
 						<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
-						<span class="text-muted/70 ml-2 text-[11px]"
+						<span class="text-muted-dim ml-2 text-[11px]"
 							>based on your WattRoom rides</span
 						>
 						{#if load.building}

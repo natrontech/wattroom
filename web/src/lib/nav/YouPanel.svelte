@@ -178,7 +178,7 @@
 					     (WATTROOM.md) and the mic gates on speech (docs/SPEC.md). Said
 					     on the marketing page and in settings, never here — where a
 					     rider first opens a microphone into a room (audit 2026-09-09). -->
-					<p class="text-muted/70 basis-full px-1 text-[10px]">
+					<p class="text-muted-dim basis-full px-1 text-[10px]">
 						Never recorded. Your mic opens when you speak.
 					</p>
 				{/if}
@@ -212,7 +212,7 @@
 					onclick={() => onCam?.()}
 					class="flex h-11 flex-1 items-center justify-center rounded {camOn
 						? 'text-z4'
-						: 'text-muted/50 hover:text-muted'}"
+						: 'text-muted-dim hover:text-muted'}"
 					title={camOn ? 'turn camera off' : 'turn camera on'}
 					aria-label="camera"
 					aria-pressed={camOn}
@@ -227,7 +227,7 @@
 					onclick={() => onShare?.()}
 					class="flex h-11 flex-1 items-center justify-center rounded {sharing
 						? 'bg-danger/15 text-danger'
-						: 'text-muted/50 hover:text-muted'}"
+						: 'text-muted-dim hover:text-muted'}"
 					title={sharing ? 'stop sharing your screen' : 'share your screen'}
 					aria-label="share screen"
 					aria-pressed={sharing}
@@ -239,7 +239,7 @@
 				<QuickAudio compact />
 				<button
 					onclick={() => onLeaveVoice?.()}
-					class="text-muted/50 hover:text-danger flex h-11 flex-1 items-center justify-center rounded"
+					class="text-muted-dim hover:text-danger flex h-11 flex-1 items-center justify-center rounded"
 					title="leave voice"
 					aria-label="leave voice"><LogOut size={16} /></button
 				>

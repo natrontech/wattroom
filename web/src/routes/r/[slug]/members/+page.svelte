@@ -175,7 +175,7 @@
 
 	<!-- Ordering the crew is room-scoped on purpose (ADR-0027). -->
 	<div class="mb-5 flex items-center gap-1.5">
-		<span class="text-muted/70 mr-1 text-[11px]">by</span>
+		<span class="text-muted-dim mr-1 text-[11px]">by</span>
 		{#each ORDERS as option (option.id)}
 			<button
 				onclick={() => (order = option.id)}
@@ -218,7 +218,7 @@
 						{#if member.role === 'owner'}
 							<Crown size={12} class="text-muted" />
 						{/if}
-						<span class="text-muted/70 text-[10px]"
+						<span class="text-muted-dim text-[10px]"
 							>lv {levelFromXp(member.totalXp ?? 0)}</span
 						>
 					</span>
@@ -277,7 +277,7 @@
 							class="btn btn-ghost btn-xs">Unban from {room.roomName}</button
 						>
 						{#if member.crewBanned}
-							<span class="text-muted/70 text-[11px]"
+							<span class="text-muted-dim text-[11px]"
 								>still crew-banned afterwards — this does not readmit them</span
 							>
 						{/if}
@@ -410,7 +410,7 @@
 					<Award size={13} class="text-neon shrink-0" aria-label="Medal" />
 					<span class="min-w-0 flex-1 truncate">{medal.rider}</span>
 					<span class="text-muted truncate">{medal.kind}</span>
-					<span class="text-muted/60 shrink-0 tabular-nums"
+					<span class="text-muted-dim shrink-0 tabular-nums"
 						>{new Date(medal.awardedAt).toLocaleDateString()}</span
 					>
 				</li>

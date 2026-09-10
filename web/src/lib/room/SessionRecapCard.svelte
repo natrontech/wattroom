@@ -68,7 +68,7 @@
 				</li>
 			{/each}
 		</ul>
-		<p class="text-muted/70 mt-2 flex items-center gap-3 text-[10px]">
+		<p class="text-muted-dim mt-2 flex items-center gap-3 text-[10px]">
 			<span class="flex items-center gap-1">
 				<span class="bg-watt size-1.5 rounded-full" aria-hidden="true"></span>
 				rode

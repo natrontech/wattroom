@@ -81,7 +81,7 @@
 				{:else}
 					in {rider.room}
 				{/if}
-				<span class="text-muted/50">·</span> riding here since {rider.since}
+				<span class="text-muted-dim">·</span> riding here since {rider.since}
 			</p>
 			<div class="mt-3 flex items-center gap-3">
 				<span class="font-display text-lg font-bold tabular-nums"
@@ -128,7 +128,7 @@
 			<section>
 				<div class="flex items-baseline gap-3">
 					<h2 class="eyebrow">Activity</h2>
-					<span class="text-muted/70 flex items-center gap-1 text-[11px]"
+					<span class="text-muted-dim flex items-center gap-1 text-[11px]"
 						><Eye size={11} /> rides David chose to share</span
 					>
 				</div>
@@ -211,7 +211,7 @@
 						FTP — room-scoped, as today.
 					</li>
 				</ul>
-				<p class="text-muted/70 mt-2 flex items-center gap-1 text-[10px]">
+				<p class="text-muted-dim mt-2 flex items-center gap-1 text-[10px]">
 					<CalendarClock size={10} /> A proposal for the ADR, not a rule yet.
 				</p>
 			</section>

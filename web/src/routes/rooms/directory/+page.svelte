@@ -88,7 +88,7 @@
 			<EmptyState>
 				{#snippet icon()}<Compass
 						size={22}
-						class="text-muted/60 mb-2"
+						class="text-muted-dim mb-2"
 					/>{/snippet}
 				<p class="text-sm">
 					No room has listed itself yet. A room is invite-only until its owner

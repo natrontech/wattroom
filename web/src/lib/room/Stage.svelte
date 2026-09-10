@@ -344,7 +344,7 @@
 				{source.label}
 			</button>
 		{/each}
-		<span class="text-muted/70 ml-auto text-[10px]"
+		<span class="text-muted-dim ml-auto text-[10px]"
 			>{seated
 				? 'the room is watching together'
 				: 'scroll to zoom · drag to pan'}{popped

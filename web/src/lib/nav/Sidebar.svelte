@@ -204,8 +204,8 @@
 				: browsing
 					? 'text-ink/90'
 					: open_
-						? 'text-muted/70 hover:text-ink'
-						: 'text-muted/45'}"
+						? 'text-muted hover:text-ink'
+						: 'text-muted-dim'}"
 		>
 			<span class="flex items-center gap-2">
 				<RoomIcon icon={room.icon} size={14} />
@@ -217,13 +217,13 @@
 							: room.unread
 								? 'text-ink/80 text-sm font-medium'
 								: open_
-									? 'text-muted/70 text-sm'
-									: 'text-muted/45 text-sm'}">{room.name}</span
+									? 'text-muted text-sm'
+									: 'text-muted-dim text-sm'}">{room.name}</span
 				>
 				{#if mark}
 					<mark.icon
 						size={11}
-						class="text-muted/60 shrink-0"
+						class="text-muted-dim shrink-0"
 						aria-label={mark.label}
 					/>
 				{/if}
@@ -258,12 +258,12 @@
 				{:else if (room.connected ?? 0) > 0}
 					<span class="ml-auto flex shrink-0 items-center gap-1">
 						<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
-						<span class="text-muted/70 font-mono text-[10px]"
+						<span class="text-muted-dim font-mono text-[10px]"
 							>{room.connected}</span
 						>
 					</span>
 				{:else if room.members > 0}
-					<span class="text-muted/50 ml-auto shrink-0 font-mono text-[10px]"
+					<span class="text-muted-dim ml-auto shrink-0 font-mono text-[10px]"
 						>{room.members}</span
 					>
 				{/if}
@@ -282,7 +282,7 @@
 						: `${Math.round(room.session.elapsedSec / 60)} min in`}
 				</span>
 			{:else if subline === 'next' && room.next}
-				<span class="text-muted/70 mt-0.5 block truncate text-[10px]"
+				<span class="text-muted-dim mt-0.5 block truncate text-[10px]"
 					>next: {room.next.workoutName} · {formatWhen(
 						room.next.startsAt,
 					)}</span
@@ -302,7 +302,7 @@
 			<a
 				href="/r/{room.slug}/members"
 				title="who is here · {MENU_HINT}"
-				class="text-muted/80 hover:bg-ink/5 hover:text-ink flex items-center gap-1 rounded px-2 pt-1 pb-1.5 text-[10px]"
+				class="text-muted-dim hover:bg-ink/5 hover:text-ink flex items-center gap-1 rounded px-2 pt-1 pb-1.5 text-[10px]"
 				{@attach contextMenu(() =>
 					railPeopleMenu(
 						room.riders,

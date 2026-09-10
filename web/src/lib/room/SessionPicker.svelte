@@ -236,7 +236,7 @@
 									>
 									<span class="block font-mono text-[11px] tabular-nums"
 										>{formatClock(durationSeconds(entry.workout))}
-										<span class="text-muted/70 font-sans"
+										<span class="text-muted-dim font-sans"
 											>· {entry.focus ?? (entry.yours ? 'yours' : '')}</span
 										></span
 									>

@@ -92,7 +92,7 @@
 				</p>
 			{/each}
 			<p class="text-muted ml-auto text-sm tabular-nums">
-				{formatClock(elapsed)}<span class="text-muted/50"
+				{formatClock(elapsed)}<span class="text-muted-dim"
 					>/{formatClock(total)}</span
 				>
 			</p>
@@ -227,7 +227,7 @@
 		{#if device.spectator}
 			<!-- Says why there is nothing to pair, once, where the numbers are —
 			     not a banner on every place (ux.md: teach, never apologise). -->
-			<p class="text-muted/70 px-4 py-3 text-center text-[11px]">
+			<p class="text-muted-dim px-4 py-3 text-center text-[11px]">
 				Spectating — cheers and chat land in the room. Bring a laptop to ride.
 			</p>
 		{/if}

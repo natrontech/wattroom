@@ -211,7 +211,7 @@
 			{#if !room.banned && (room.canEnter || room.listed)}
 				<!-- Privacy is architecture (WATTROOM.md): say what the room sees
 				     before the button, not in a policy page after it. -->
-				<p class="text-muted/70 mt-4 text-[11px]">
+				<p class="text-muted-dim mt-4 text-[11px]">
 					Your watts are visible to this room while you ride here, and nowhere
 					else. Voice and camera pass through and are never recorded.
 				</p>

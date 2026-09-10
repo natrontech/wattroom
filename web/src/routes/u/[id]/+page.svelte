@@ -250,11 +250,11 @@
 						{:else}
 							in {rider.presence.room.name}
 						{/if}
-						<span class="text-muted/50">·</span>
+						<span class="text-muted-dim">·</span>
 					{:else if rider.presence.inRoom}
-						in a room <span class="text-muted/50">·</span>
+						in a room <span class="text-muted-dim">·</span>
 					{:else if rider.presence.online}
-						online <span class="text-muted/50">·</span>
+						online <span class="text-muted-dim">·</span>
 					{/if}
 					riding here since {since}
 				</p>
@@ -337,7 +337,7 @@
 					<section>
 						<div class="flex items-baseline gap-3">
 							<h2 class="eyebrow">Activity</h2>
-							<span class="text-muted/70 flex items-center gap-1 text-[11px]"
+							<span class="text-muted-dim flex items-center gap-1 text-[11px]"
 								><Eye size={11} />
 								{rider.friend === 'self'
 									? 'rides you chose to share'

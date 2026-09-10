@@ -126,7 +126,7 @@
 					{#if rider.speaking}
 						<Mic size={11} class="text-z4 shrink-0 motion-safe:animate-pulse" />
 					{:else if rider.muted}
-						<MicOff size={11} class="text-muted/50 shrink-0" />
+						<MicOff size={11} class="text-muted-dim shrink-0" />
 					{/if}
 					{#if rider.sounding}
 						<!-- The tile's own drum (#1681): the roster is the other place
@@ -167,7 +167,7 @@
 
 {#snippet absent(member: RoomMember)}
 	<li
-		class="text-ink/35 flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
+		class="text-muted-dim flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
 		{@attach contextMenu(() =>
 			personMenu(member.id, goto, {
 				poke: onPoke

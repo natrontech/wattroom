@@ -133,7 +133,7 @@
 						>
 							{entry.name}
 							<span
-								class="text-muted/60 block font-mono text-[10px] tabular-nums"
+								class="text-muted-dim block font-mono text-[10px] tabular-nums"
 								>{formatClock(durationSeconds(entry))}</span
 							>
 						</button>

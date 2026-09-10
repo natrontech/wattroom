@@ -273,7 +273,7 @@
 						disabled={busy}
 						class="btn btn-ghost btn-xs">Unban from the crew</button
 					>
-					<span class="text-muted/70 text-[11px]"
+					<span class="text-muted-dim text-[11px]"
 						>restores nothing a room's owner decided</span
 					>
 				</span>

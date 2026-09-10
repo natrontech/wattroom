@@ -74,7 +74,7 @@
 
 	<p class="text-muted px-4 pt-3 text-xs leading-relaxed">
 		{theme.note}
-		<span class="text-muted/70 block">{surface === 'cave' ? CAVE : DESK}</span>
+		<span class="text-muted-dim block">{surface === 'cave' ? CAVE : DESK}</span>
 	</p>
 
 	<div class="space-y-6 p-4">
@@ -115,7 +115,7 @@
 		     actually scores against this theme's surfaces. -->
 		<div>
 			<span class="eyebrow">the ramp, Z1 → Z7</span>
-			<p class="text-muted/70 mt-1 text-[11px] leading-snug">
+			<p class="text-muted-dim mt-1 text-[11px] leading-snug">
 				Shared, not themed (ADR-0023 §4) — a zone reading is learned across the
 				room. Only its fitting against these surfaces moves, and the numbers
 				under each swatch are that fit.

@@ -169,7 +169,7 @@
 			{/each}
 		</ul>
 	{:else}
-		<p class="text-muted/70 mt-0.5 text-[11px] leading-snug">
+		<p class="text-muted-dim mt-0.5 text-[11px] leading-snug">
 			Everyone at 100 %. Each rider in voice has a volume of their own —
 			right-click them, in the people column or on their tile.
 		</p>

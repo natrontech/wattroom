@@ -59,7 +59,7 @@
 {#if voiceMode === 'gate' && gateNow !== gateThreshold}
 	<!-- SPEC doubles the gate under music; the mark shows where it actually
 	     sits, or the panel would be lying. -->
-	<p class="text-muted/70 mt-0.5 text-xs leading-snug">
+	<p class="text-muted-dim mt-0.5 text-xs leading-snug">
 		Music is playing — the gate is held at the mark, above where you set it.
 	</p>
 {/if}

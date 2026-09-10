@@ -68,7 +68,7 @@
 	{/if}
 </div>
 {#if devices.mics.length > 0 && !devices.mics.some((d) => d.label)}
-	<p class="text-muted/70 mt-2 text-[11px]">
+	<p class="text-muted-dim mt-2 text-[11px]">
 		{#if onName}
 			Names appear once the browser grants the mic —
 			<button type="button" class="btn-link" onclick={onName}

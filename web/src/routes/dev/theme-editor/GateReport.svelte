@@ -25,7 +25,7 @@
 		the gate · {checks.length - failing.length - waived.length}/{checks.length}
 		pass{waived.length ? ` · ${waived.length} waived` : ''}
 	</span>
-	<p class="text-muted/70 mt-1 text-[11px] leading-snug">
+	<p class="text-muted-dim mt-1 text-[11px] leading-snug">
 		Every check `make test` runs against this theme — contrast, the dark/white
 		ceiling, accent separability, and adjacent-zone distance under both
 		simulated colour-vision deficiencies. Zones aren't editable here, but a
@@ -59,7 +59,7 @@
 						</span>
 						<span class="text-z5 shrink-0 font-mono text-[10px]">waived</span>
 					</div>
-					<p class="text-muted/70 mt-0.5 pr-16 text-[11px] leading-snug">
+					<p class="text-muted-dim mt-0.5 pr-16 text-[11px] leading-snug">
 						{c.exempt}
 					</p>
 				</li>

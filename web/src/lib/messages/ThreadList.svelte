@@ -122,7 +122,8 @@
 							<span class="truncate text-sm {t.unread ? 'font-semibold' : ''}"
 								>{t.name}</span
 							>
-							<span class="text-muted/60 ml-auto shrink-0 font-mono text-[10px]"
+							<span
+								class="text-muted-dim ml-auto shrink-0 font-mono text-[10px]"
 								>{formatThreadWhen(t.at)}</span
 							>
 						</span>
@@ -146,7 +147,7 @@
 						</span>
 						{#if t.kind === 'room' && (t.here || t.voice)}
 							<span
-								class="text-muted/70 mt-0.5 flex items-center gap-1.5 text-[10px]"
+								class="text-muted-dim mt-0.5 flex items-center gap-1.5 text-[10px]"
 							>
 								{#if t.riding}<RidingBars size={8} />{/if}
 								{t.here} here{#if t.voice}

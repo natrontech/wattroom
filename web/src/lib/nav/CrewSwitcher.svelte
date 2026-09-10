@@ -141,7 +141,7 @@
 			>{c.name}</span
 		>
 		{#if c.role === 'owner'}
-			<Shield size={12} class="text-muted/60 shrink-0" aria-label="yours" />
+			<Shield size={12} class="text-muted-dim shrink-0" aria-label="yours" />
 		{/if}
 	{/snippet}
 	{#if crews.length > 1}
