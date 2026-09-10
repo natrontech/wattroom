@@ -15,7 +15,6 @@
 	import { page } from '$app/state';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
-	import CalendarFeed from '$lib/home/CalendarFeed.svelte';
 	import FirstRun from '$lib/home/FirstRun.svelte';
 	import RecentRides from '$lib/home/RecentRides.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -539,13 +538,25 @@
 							{/if}
 						</p>
 					{/if}
-					<!-- Your own feed, under the list it mirrors (ADR-0021, #1374) —
-					     once there is a room to plan in; a subscription to nothing,
-					     with its key warning, is noise on the screen meant to teach. -->
+					<!-- The feed is offered under the list it mirrors (ADR-0021, #1374)
+					     — once there is a room to plan in; a subscription to nothing is
+					     noise on the screen meant to teach. The link itself lives with the
+					     account's other bearer secrets now (#1860), so this is the way to
+					     it rather than a second copy of it. -->
 					{#if rooms.length}
-						<div class="mt-3">
-							<CalendarFeed />
-						</div>
+						<a
+							href="/settings/data"
+							class="panel hover:bg-surface mt-3 flex flex-wrap items-center gap-3 px-4 py-3 transition-colors"
+						>
+							<CalendarClock size={15} class="text-muted shrink-0" />
+							<span class="text-muted min-w-0 flex-1 text-xs">
+								Put all of this in your calendar app — one subscription, every
+								room you are in.
+							</span>
+							<span class="btn-link shrink-0 text-xs"
+								>Get your calendar link</span
+							>
+						</a>
 					{/if}
 				</section>
 			</div>

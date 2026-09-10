@@ -33,7 +33,7 @@ interface Guarded {
 const GUARDED: Guarded[] = [
 	// The four #1493 closed.
 	{
-		file: 'lib/home/CalendarFeed.svelte',
+		file: 'lib/profile/CalendarFeed.svelte',
 		action: "reset your own calendar link — every subscriber's feed goes quiet",
 		asks: /confirmCalendarReset\('yours'\)/,
 	},
@@ -149,7 +149,7 @@ const PRIMITIVES: { call: RegExp; callers: string[]; guard: string }[] = [
 	{
 		call: /\/calendar\/rotate/,
 		callers: [
-			'lib/home/CalendarFeed.svelte',
+			'lib/profile/CalendarFeed.svelte',
 			'routes/r/[slug]/+layout.svelte', // wiring; the ask is on Sessions
 		],
 		guard: 'confirmCalendarReset in lib/calendar-link.ts',

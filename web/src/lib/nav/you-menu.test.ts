@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
+import { account } from '$lib/account.svelte';
 import { youMenu } from '$lib/nav/you-menu';
 import { mixer } from '$lib/sound/mixer.svelte';
 
@@ -110,12 +111,43 @@ describe('youMenu speakers', () => {
 			(entry): entry is MenuItem =>
 				entry !== 'separator' && entry.kind !== 'slider',
 		);
-		expect(entries.map((item) => [item.label, item.hint]).slice(-2)).toEqual([
+		// The outputs are no longer the tail of the menu — Sign out is (#1860).
+		expect(
+			entries.map((item) => [item.label, item.hint]).slice(-3, -1),
+		).toEqual([
 			['System default', 'on'],
 			['LG Display', undefined],
 		]);
-		entries.at(-1)!.onSelect();
+		entries.at(-2)!.onSelect();
 		expect(setOut).toHaveBeenCalledWith('hdmi');
 		room.current = null;
+	});
+});
+
+/**
+ * The way out of the account (#1860). It was only ever on Settings › Your data,
+ * between "Export everything" and "Delete account" — a heading nobody looking
+ * to sign out would open. Riders reach for their avatar, which is what opens
+ * this menu.
+ */
+describe('youMenu sign out', () => {
+	it('offers the way out last, marked destructive', () => {
+		room.current = null;
+		const entries = youMenu(() => {});
+		// After a separator, and the tail of the menu (ux.md).
+		expect(entries.at(-2)).toBe('separator');
+		const last = entries.filter(isItem).at(-1)!;
+		expect(entries.at(-1)).toBe(last);
+		expect([last.label, last.danger]).toEqual(['Sign out', true]);
+	});
+
+	it('signs the account out when chosen', () => {
+		const signOut = vi.spyOn(account, 'signOut').mockResolvedValue();
+		const last = youMenu(() => {})
+			.filter(isItem)
+			.at(-1)!;
+		last.onSelect();
+		expect(signOut).toHaveBeenCalled();
+		signOut.mockRestore();
 	});
 });

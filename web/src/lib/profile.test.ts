@@ -86,6 +86,22 @@ describe('update rejects rather than coerces', () => {
 		expect(store.update({ ftp: 265 })).toBeNull();
 		expect(store.current.ftp).toBe(265);
 	});
+
+	/**
+	 * The field self-saves on Equipment (#1860), so the coercing path is what a
+	 * rider would have met: 20 went in, parseProfile handed back the default 5,
+	 * and the sprint ran at a grade nobody chose with nothing on screen to say
+	 * so. Silent, which is why it is pinned here.
+	 */
+	it('refuses an out-of-range sprint grade instead of quietly riding the default', () => {
+		const store = createProfileStore();
+		const before = store.current.sprintGrade;
+		expect(store.update({ sprintGrade: 20 })).toMatch(/between 1 and 15/);
+		expect(store.current.sprintGrade).toBe(before);
+		expect(store.update({ sprintGrade: 0 })).toMatch(/between 1 and 15/);
+		expect(store.update({ sprintGrade: 8 })).toBeNull();
+		expect(store.current.sprintGrade).toBe(8);
+	});
 });
 
 describe('lthr (ADR-0014)', () => {
