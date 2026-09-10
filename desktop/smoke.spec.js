@@ -66,12 +66,14 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		'keepAwake',
 		'notify',
 		'onBleScan',
+		'onHandoff',
 		'onNotification',
 		'onUpdate',
 		'pickDevice',
 		'platform',
 		'retry',
 		'titleBar',
+		'updateFailed',
 		'version',
 	]);
 	// The strip the app draws where the OS title bar was (#1188): a number,
@@ -217,41 +219,52 @@ test('the Bluetooth chooser holds the scan open and streams it to the app', asyn
 	await app.close();
 });
 
-test('a wattroom://auth link loads the handoff on our origin, and nothing else does', async () => {
+test('a wattroom://auth link is handed to the page after a sign-in started here, and nothing else is', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
 
-	// loadURL from main fires no will-navigate, so watch the navigation itself.
-	await app.evaluate(({ BrowserWindow }) => {
+	// Nothing may navigate the window (#1941): the token travels over IPC.
+	await app.evaluate(({ BrowserWindow, shell }) => {
 		globalThis.__nav = [];
+		shell.openExternal = async () => {};
 		const [w] = BrowserWindow.getAllWindows();
 		w.webContents.on('did-start-navigation', (e) => {
 			if (e.isMainFrame) globalThis.__nav.push(e.url);
 		});
+	});
+	await win.evaluate(() => {
+		window.__handoff = [];
+		window.wattroom.onHandoff((token) => window.__handoff.push(token));
 	});
 	const emit = (link) =>
 		app.evaluate(
 			({ app }, l) => app.emit('open-url', { preventDefault() {} }, l),
 			link,
 		);
+	const token = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
-	// Not ours, and not the auth path: dropped, no navigation.
+	// A well-formed link with no sign-in started from this app: dropped.
+	await emit(`wattroom://auth/${token}`);
+	await new Promise((r) => setTimeout(r, 300));
+	expect(await win.evaluate(() => window.__handoff)).toEqual([]);
+
+	// The app sends the rider to the browser to sign in…
+	await win.evaluate(
+		(origin) => {
+			window.open(`${origin}/login?desktop=nonce`, '_blank');
+		},
+		DEAD_URL.replace(/\/$/, ''),
+	);
+	// …and only then is a link accepted — the good one, never the others.
 	await emit('https://example.com/login?handoff=abcdefghijklmnopqrstuvwxyz');
 	await emit('wattroom://evil/abcdefghijklmnopqrstuvwxyz');
 	await emit('wattroom://auth/short');
 	await emit('wattroom://auth/has%20space%20and%20more%20chars');
+	await emit(`wattroom://auth/${token}`);
 	await new Promise((r) => setTimeout(r, 500));
+	expect(await win.evaluate(() => window.__handoff)).toEqual([token]);
 	expect(await app.evaluate(() => globalThis.__nav)).toEqual([]);
-
-	// The real thing: /login?handoff=<token> on the app's origin, never the
-	// link's own host.
-	await emit('wattroom://auth/abcdefghijklmnopqrstuvwxyz0123456789');
-	await new Promise((r) => setTimeout(r, 1500));
-	const nav = await app.evaluate(() => globalThis.__nav);
-	expect(nav[0]).toBe(
-		`${DEAD_URL.replace(/\/$/, '')}/login?handoff=abcdefghijklmnopqrstuvwxyz0123456789`,
-	);
 
 	await app.close();
 });

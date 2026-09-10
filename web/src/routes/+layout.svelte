@@ -42,8 +42,9 @@
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 	import DevicePicker from '$lib/ble/DevicePicker.svelte';
 	import { devicePicker } from '$lib/ble/device-picker.svelte';
-	import { shellTitleBar } from '$lib/desktop';
+	import { onShellHandoff, shellTitleBar } from '$lib/desktop';
 	import { notify } from '$lib/notify.svelte';
+	import { toasts } from '$lib/toast.svelte';
 
 	let { children } = $props();
 
@@ -152,6 +153,17 @@
 				(phase === 'countdown' || phase === 'running' || phase === 'paused')) ||
 			soloRide.active
 		);
+	});
+	// The shell's sign-in hand-off (#1941): the token arrives over IPC and the
+	// app decides — /login redeems it; a signed-in shell says so and stays put.
+	$effect(() => {
+		onShellHandoff((token) => {
+			if (account.me) {
+				toasts.push('You are already signed in here.');
+				return;
+			}
+			void goto(`/login?handoff=${encodeURIComponent(token)}`);
+		});
 	});
 	$effect(() => {
 		// The HUD window runs this layout too (#1938): with no ride in its own
