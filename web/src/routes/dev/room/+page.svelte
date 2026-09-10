@@ -5,13 +5,12 @@
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
-	import PlayerTile from '$lib/room/PlayerTile.svelte';
+	import PlayerTile from '../PlayerTile.svelte';
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import SidePanel from '$lib/room/SidePanel.svelte';
 	import Stage from '$lib/room/Stage.svelte';
-	import TargetWidget from '$lib/room/TargetWidget.svelte';
 	import TvMode from '$lib/room/TvMode.svelte';
 	import {
 		createRoom,
@@ -427,9 +426,6 @@
 							bias={room.bias}
 							onBias={(step) => room.nudgeBias(step)}
 						/>
-					</div>
-					<div class="mt-2">
-						<TargetWidget {you} variant="notch" />
 					</div>
 				{/if}
 				<div class="mt-2 grid gap-2 lg:grid-cols-[1fr_260px]">
