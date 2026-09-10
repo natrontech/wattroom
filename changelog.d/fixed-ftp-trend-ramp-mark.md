@@ -1,0 +1,1 @@
+- Your FTP chart now marks a ramp test's result on the test itself, the day you take it, instead of waiting for your next ride to show the new number. The line still follows the FTP each ride was scored against; the new diamond is what the test measured.
