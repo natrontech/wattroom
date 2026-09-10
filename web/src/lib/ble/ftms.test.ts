@@ -362,6 +362,45 @@ describe('FtmsTrainer control-point queue', () => {
 		expect(samples).toEqual([250]);
 	});
 
+	it('merges a frame split across notifications and emits on the one with power', async () => {
+		// #1849: cadence in the first frame (speed present, bit 0 clear), power
+		// in the continuation (More Data set). One sample, with both.
+		const { trainer, device } = await paired();
+		const samples: { watts: number; cadence: number }[] = [];
+		trainer.onSample((s) =>
+			samples.push({ watts: s.watts, cadence: s.cadence }),
+		);
+
+		// flags 0x0004: speed 0.00 km/h, cadence 180 half-rpm = 90 rpm.
+		device.bikeData.notify(Uint8Array.of(0x04, 0x00, 0x00, 0x00, 0xb4, 0x00));
+		expect(samples).toEqual([]);
+		// flags 0x0041: no speed, instantaneous power 250 W.
+		device.bikeData.notify(Uint8Array.of(0x41, 0x00, 0xfa, 0x00));
+		expect(samples).toEqual([{ watts: 250, cadence: 90 }]);
+	});
+
+	it('ignores a late indication for an op that already timed out', async () => {
+		// #1850: A times out, B is written, A's indication arrives — B stays
+		// pending until its own answer.
+		const { trainer, control } = await paired();
+		control.answer = () => 'silent';
+		// Caught before the clock moves: a rejection with no handler at the
+		// moment it lands is an unhandled error to vitest, whatever awaits later.
+		const a = trainer.setTargetPower(200).catch((e: Error) => e);
+		await vi.advanceTimersByTimeAsync(3_100);
+		expect(await a).toMatchObject({ message: /timed out/ });
+		// A different op than A's, so the match is on the op and not on luck.
+		let settled = false;
+		const b = trainer.setSimulation(2).then(() => (settled = true));
+		await vi.advanceTimersByTimeAsync(0);
+		control.indicate(0x05);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(settled).toBe(false);
+		control.indicate(0x11);
+		await b;
+		expect(settled).toBe(true);
+	});
+
 	it('serializes writes behind the indication of the one before', async () => {
 		const { trainer, control } = await paired();
 		control.answer = () => 'silent';
