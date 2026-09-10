@@ -137,14 +137,27 @@ var toolList = []map[string]any{
 		"inputSchema": map[string]any{"type": "object", "properties": map[string]any{}},
 	},
 	{
-		"name":        "list_rides",
-		"description": "The rider's recent ride summaries, newest first: workout, date, duration, average watts, kJ, execution score.",
+		"name": "list_rides",
+		"description": "The rider's recent ride summaries, newest first: workout, date, duration, " +
+			"average watts, kJ, execution score. Answers `more` when older rides remain, with " +
+			"`nextBefore`/`nextBeforeId` to pass back for the next page.",
 		"inputSchema": map[string]any{
 			"type": "object",
 			"properties": map[string]any{
 				"limit": map[string]any{
 					"type":        "integer",
 					"description": "How many rides (1-200, default 30).",
+				},
+				// Declared, because a hidden parameter is one no model can
+				// use: `before` was read here and named nowhere (#2064), so
+				// nothing ever paged past the first answer.
+				"before": map[string]any{
+					"type":        "string",
+					"description": "Page from a previous answer's nextBefore. Send with beforeId.",
+				},
+				"beforeId": map[string]any{
+					"type":        "string",
+					"description": "Page from a previous answer's nextBeforeId. Send with before.",
 				},
 			},
 		},
@@ -201,13 +214,14 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 	params := db.ListUserRidesParams{UserID: user.ID, Limit: 30}
 	if len(args) > 0 && string(args) != "null" {
 		var in struct {
-			Limit  *int32 `json:"limit"`
-			Before string `json:"before"`
+			Limit    *int32 `json:"limit"`
+			Before   string `json:"before"`
+			BeforeID string `json:"beforeId"`
 		}
 		dec := json.NewDecoder(bytes.NewReader(args))
 		dec.DisallowUnknownFields()
 		if err := dec.Decode(&in); err != nil {
-			return nil, errInvalidParams("arguments must be an object with limit (1-200) and before (RFC 3339)")
+			return nil, errInvalidParams("arguments must be an object with limit (1-200) and the before/beforeId pair from a previous answer")
 		}
 		// Out of range used to fall silently back to 30 (#1758): a model that
 		// asked for 200 and got 30 concluded the rider has 30 rides.
@@ -217,12 +231,22 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 			}
 			params.Limit = *in.Limit
 		}
+		// One cursor, two halves (#2064). `before` alone reads as a time with
+		// no tie-break, which is how the page boundary silently stepped over
+		// every ride inside one second.
+		if (in.Before == "") != (in.BeforeID == "") {
+			return nil, errInvalidParams("before and beforeId are one cursor — send the pair a previous answer gave you, or neither")
+		}
 		if in.Before != "" {
 			at, err := time.Parse(time.RFC3339, in.Before)
 			if err != nil {
 				return nil, errInvalidParams("before must be an RFC 3339 time")
 			}
-			params.Before = pgtype.Timestamptz{Time: at, Valid: true}
+			id, err := store.ParseUUID(in.BeforeID)
+			if err != nil {
+				return nil, errInvalidParams("beforeId must be a ride id")
+			}
+			params.Before, params.BeforeID = pgtype.Timestamptz{Time: at, Valid: true}, id
 		}
 	}
 	rows, err := s.store.Queries.ListUserRides(ctx, params)
@@ -230,8 +254,8 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 		return nil, err
 	}
 	// The HTTP list's fields (ADR-0017: the tools mirror it), the id included
-	// so a follow-up can name a ride, and `more` with the last start as the
-	// next `before`.
+	// so a follow-up can name a ride, and `more` with the cursor for the
+	// next page.
 	type ride struct {
 		ID                string  `json:"id"`
 		Workout           string  `json:"workout"`
@@ -255,7 +279,17 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 			Room: row.RoomID.Valid, SharedWithFriends: row.SharedAt.Valid,
 		})
 	}
-	return map[string]any{"rides": out, "more": len(rows) == int(params.Limit)}, nil
+	payload := map[string]any{"rides": out, "more": len(rows) == int(params.Limit)}
+	// The cursor comes from here rather than from the caller re-reading
+	// `date`: that field is RFC 3339 to the second where started_at is
+	// microseconds, and a cursor rounded down by a fraction of a second
+	// steps over every ride inside it (#2064).
+	if len(rows) == int(params.Limit) {
+		last := rows[len(rows)-1]
+		payload["nextBefore"] = last.StartedAt.Time.UTC().Format(time.RFC3339Nano)
+		payload["nextBeforeId"] = store.UUIDString(last.ID)
+	}
+	return payload, nil
 }
 
 // isBatch says whether the body began a JSON array — a batch, which the

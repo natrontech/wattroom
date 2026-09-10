@@ -137,13 +137,27 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := db.ListUserRidesParams{UserID: user.ID, Limit: listPage, Destination: exportDestination}
-	if before := r.URL.Query().Get("before"); before != "" {
+	// The cursor is the previous page's last row, handed back verbatim: a
+	// time and the ride id that breaks its tie. Both or neither — half a
+	// cursor would page from a time with no tie-break, which is #2064.
+	before, beforeID := r.URL.Query().Get("before"), r.URL.Query().Get("beforeId")
+	if (before == "") != (beforeID == "") {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
+			"before and beforeId are one cursor — send the pair this list gave you, or neither.")
+		return
+	}
+	if before != "" {
 		at, err := time.Parse(time.RFC3339, before)
 		if err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "before must be an RFC 3339 time.")
 			return
 		}
-		params.Before = pgtype.Timestamptz{Time: at, Valid: true}
+		id, err := store.ParseUUID(beforeID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "beforeId must be a ride id.")
+			return
+		}
+		params.Before, params.BeforeID = pgtype.Timestamptz{Time: at, Valid: true}, id
 	}
 	rows, err := s.store.Queries.ListUserRides(r.Context(), params)
 	if err != nil {
@@ -154,9 +168,20 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		out = append(out, rideJSONOf(row))
 	}
-	// A full page means there may be more: the client asks again with the
-	// last row's start as `before`.
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"rides": out, "more": len(rows) == listPage})
+	body := map[string]any{"rides": out, "more": len(rows) == listPage}
+	// A full page means there may be more, and the cursor comes from the
+	// server rather than from the rider's own `startedAt`: that field is
+	// RFC 3339 to the second where started_at is microseconds, and a cursor
+	// rounded down by a fraction of a second stepped over every ride inside
+	// it (#2064) — including ones this page had not handed over.
+	if len(rows) == listPage {
+		last := rows[len(rows)-1]
+		// UTC, so the cursor never carries a "+" that a caller has to
+		// remember to percent-encode before handing it back.
+		body["nextBefore"] = last.StartedAt.Time.UTC().Format(time.RFC3339Nano)
+		body["nextBeforeId"] = store.UUIDString(last.ID)
+	}
+	httpx.WriteJSON(w, http.StatusOK, body)
 }
 
 func rideJSONOf(row db.ListUserRidesRow) rideJSON {

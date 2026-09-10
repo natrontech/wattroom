@@ -374,7 +374,9 @@ type FindRideAtParams struct {
 
 // The ride a save would duplicate (audit 2026-09-09): a retry after a lost
 // response — the recovery card, the room saver's second attempt — finds the
-// row it already made instead of paying its XP twice.
+// row it already made instead of paying its XP twice. `unique (user_id,
+// started_at)` stands behind it now (#2064): this read still spares the
+// retry an error, but two saves racing each other no longer both insert.
 func (q *Queries) FindRideAt(ctx context.Context, arg FindRideAtParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, findRideAt, arg.UserID, arg.StartedAt)
 	var id pgtype.UUID
@@ -910,8 +912,9 @@ select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, ex
 from rides
 left join ride_exports e on e.ride_id = rides.id and e.destination = $3::text
 where user_id = $1
-  and ($4::timestamptz is null or started_at < $4::timestamptz)
-order by started_at desc
+  and ($4::timestamptz is null
+       or (started_at, rides.id) < ($4::timestamptz, $5::uuid))
+order by started_at desc, rides.id desc
 limit $2
 `
 
@@ -920,6 +923,7 @@ type ListUserRidesParams struct {
 	Limit       int32
 	Destination string
 	Before      pgtype.Timestamptz
+	BeforeID    pgtype.UUID
 }
 
 type ListUserRidesRow struct {
@@ -942,12 +946,19 @@ type ListUserRidesRow struct {
 // Paged by start (#1549): `before` is the oldest row the caller has, or
 // null for the first page. The delivery state rides along (#1553): a failed
 // Strava upload used to be visible only by opening every ride.
+//
+// The cursor carries the id too, and the order breaks the tie on it (#2064).
+// On the timestamp alone the boundary was `started_at < before` against a
+// cursor the client had rounded down to the second, so every ride inside that
+// second went unread — including ones the client had not been given yet. The
+// row comparison is exact, which is the same shape ListUserWorkouts uses.
 func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([]ListUserRidesRow, error) {
 	rows, err := q.db.Query(ctx, listUserRides,
 		arg.UserID,
 		arg.Limit,
 		arg.Destination,
 		arg.Before,
+		arg.BeforeID,
 	)
 	if err != nil {
 		return nil, err

@@ -39,7 +39,13 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Users from '@lucide/svelte/icons/users';
 	import type { PageData } from './$types';
-	import type { ServerRide } from './+page';
+	import {
+		rideCursorOf,
+		rideCursorQuery,
+		type RideCursor,
+		type RidesPage,
+		type ServerRide,
+	} from '$lib/ride/list';
 
 	let { data }: { data: PageData } = $props();
 
@@ -91,23 +97,28 @@
 	// and the next page begins before the oldest one here. Its failure is
 	// its own inline line — the page banner is for the page.
 	let more = $state(untrack(() => data.more));
+	// The cursor is the server's own (#2064) — see rideCursorOf. `more` says
+	// there are older rides AND that we were told where they start: a page
+	// that claims one without the other would loop on the same rows.
+	let cursor = $state<RideCursor | null>(untrack(() => data.cursor));
 	let loadingMore = $state(false);
 	let moreError = $state<string | null>(null);
+	function takePage(page: RidesPage) {
+		cursor = rideCursorOf(page);
+		more = !!page.more && !!cursor;
+	}
 	async function loadMore() {
-		const oldest = rides?.at(-1);
-		if (!oldest || loadingMore) return;
+		if (!cursor || loadingMore) return;
 		loadingMore = true;
 		moreError = null;
-		const res = await api<{ rides: ServerRide[]; more?: boolean }>(
-			`/api/rides?before=${encodeURIComponent(oldest.startedAt)}`,
-		);
+		const res = await api<RidesPage>(`/api/rides?${rideCursorQuery(cursor)}`);
 		loadingMore = false;
 		if (!res.ok) {
 			moreError = res.error.message;
 			return;
 		}
 		rides = [...(rides ?? []), ...res.data.rides];
-		more = !!res.data.more;
+		takePage(res.data);
 	}
 
 	// One helper for the row, its menu and the ride page (#1691).
@@ -143,12 +154,13 @@
 	let highlightId = $state<string | null>(null);
 
 	async function load() {
-		const res = await api<{ rides: ServerRide[]; more?: boolean }>(
-			'/api/rides',
-		);
+		const res = await api<RidesPage>('/api/rides');
 		if (res.ok) {
 			rides = res.data.rides;
-			more = !!res.data.more;
+			// Retry starts the list over, so the cursor has to as well —
+			// keeping the old one would page from a row this list no longer
+			// ends on.
+			takePage(res.data);
 			error = null;
 			await ring(rides);
 		} else {
