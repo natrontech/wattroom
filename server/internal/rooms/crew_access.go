@@ -79,12 +79,22 @@ func (s *Service) handleSetRoomAccess(w http.ResponseWriter, r *http.Request) {
 	}
 	var req struct {
 		CrewVisible bool `json:"crewVisible"`
+		// Optional: the listing to restore with the door (#1929). Absent, a
+		// shut still takes the listing with it and an open leaves it be.
+		Listed *bool `json:"listed"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
 		return
 	}
-	if err := s.store.Queries.SetRoomCrewVisible(r.Context(), db.SetRoomCrewVisibleParams{ID: room.ID, CrewVisible: req.CrewVisible}); err != nil {
+	if req.Listed != nil {
+		err = s.store.Queries.SetRoomCrewVisibleAndListed(r.Context(), db.SetRoomCrewVisibleAndListedParams{
+			ID: room.ID, CrewVisible: req.CrewVisible, Listed: *req.Listed,
+		})
+	} else {
+		err = s.store.Queries.SetRoomCrewVisible(r.Context(), db.SetRoomCrewVisibleParams{ID: room.ID, CrewVisible: req.CrewVisible})
+	}
+	if err != nil {
 		httpx.Fail(w, s.log, "room access update failed", err, "The room could not be changed.", "room", room.Slug)
 		return
 	}

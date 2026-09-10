@@ -7,9 +7,10 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
-	import { joinCrew } from '$lib/crew';
+	import { fetchCrew, joinCrew } from '$lib/crew';
 	import { presence } from '$lib/presence.svelte';
 	import type { PageData } from './$types';
+	import { reachable } from '$lib/nav/crews';
 
 	let { data }: { data: PageData } = $props();
 	let busy = $state(false);
@@ -25,7 +26,15 @@
 			return;
 		}
 		presence.reload();
-		await goto(`/crew/${res.data.id}`);
+		// A one-room crew lands you in the room you came for (#1931), not on
+		// a roster with a code above it; anything else, the crew page.
+		const crew = await fetchCrew(res.data.id);
+		const doors = crew.ok
+			? crew.data.rooms.filter((room) => room.slug && reachable(room.access))
+			: [];
+		await goto(
+			doors.length === 1 ? `/r/${doors[0].slug}` : `/crew/${res.data.id}`,
+		);
 	}
 </script>
 

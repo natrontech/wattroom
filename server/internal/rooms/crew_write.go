@@ -4,6 +4,8 @@
 package rooms
 
 import (
+	"errors"
+	"github.com/jackc/pgx/v5"
 	"net/http"
 	"strings"
 
@@ -118,6 +120,17 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A crew role is for someone already in the crew — share the code instead.", "userId")
 		return
+	}
+	if req.Role == "banned" && standing == "" {
+		// A pre-emptive ban takes an arbitrary id (#1933): one that is nobody
+		// used to hit the foreign key and come back as a 500.
+		if _, err := s.store.Queries.GetUser(r.Context(), target); errors.Is(err, pgx.ErrNoRows) {
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider with that id.")
+			return
+		} else if err != nil {
+			httpx.Fail(w, s.log, "crew ban target lookup failed", err, "The role could not be changed.", "crew", store.UUIDString(crew.ID))
+			return
+		}
 	}
 	if req.Role == "banned" {
 		// A room never leaves its crew, so its owner cannot either (#1212):

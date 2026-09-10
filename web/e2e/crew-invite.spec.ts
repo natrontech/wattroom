@@ -58,11 +58,11 @@ test("a crew's invite link carries a rider in: gate, door, crew, room", async ({
 		b.getByText('You have been invited to ride with this crew'),
 	).toBeVisible();
 	await b.getByRole('button', { name: `Join ${crewName}` }).click();
-	await b.waitForURL(/\/crew\//, { timeout: 15_000 });
-	await expect(b.getByText(name, { exact: true }).first()).toBeVisible();
+	// A one-room crew lands the newcomer in the room they came for (#1931),
+	// not on the crew's roster with a code above it.
+	await b.waitForURL(new RegExp(`/r/${room.slug}`), { timeout: 15_000 });
 
 	// 3. A room open to the crew opens: the door says walk in, and it does.
-	await b.goto(`/r/${room.slug}`);
 	await b.getByRole('button', { name: 'Walk in' }).click();
 	await expect(b.getByRole('heading', { name })).toBeVisible({
 		timeout: 15_000,

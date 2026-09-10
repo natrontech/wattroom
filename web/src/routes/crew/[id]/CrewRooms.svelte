@@ -45,11 +45,21 @@
 				toasts.push(res.error.message, { tone: 'error' });
 				return;
 			}
+			// A shut takes the listing with it (#1671), so the toast says so
+			// and the undo restores both — reopening alone never could (#1929).
 			toasts.push(
 				open
-					? `${room.name} is private now — its members, and whoever you let in.`
+					? `${room.name} is private now — its members, and whoever you let in${room.listed ? ', and it leaves the directory' : ''}.`
 					: `${room.name} is open to the crew.`,
-				{ undo: () => void setRoomAccess(crewId, room.id, open) },
+				{
+					undo: () =>
+						void setRoomAccess(
+							crewId,
+							room.id,
+							open,
+							open ? room.listed : undefined,
+						),
+				},
 			);
 			presence.reload();
 			onchange();
