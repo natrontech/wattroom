@@ -40,7 +40,18 @@ export const pages: {
 	/** Pages this row is the parent of (ADR-0020, rule 1): lit while you are there. */
 	covers?: string[];
 }[] = [
-	{ href: '/home', label: 'Home', icon: House },
+	{
+		href: '/home',
+		label: 'Home',
+		icon: House,
+		// `/rooms` was retired INTO Home's "your rooms" section — the open/join
+		// card, reached as `/home#rooms` — and the directory is that section's
+		// other half, the "No code? Find a room" line inside it (#1118). Neither
+		// is a destination of its own, and ADR-0020 rule 1 wants the row above
+		// them lit all the same: the column went dark on `/rooms/directory` and
+		// on the `/rooms` stub still receiving live navigation (#1863).
+		covers: ['/rooms'],
+	},
 	{
 		href: '/workouts',
 		label: 'Workouts',
@@ -107,6 +118,29 @@ export function activeHref(pathname: string): string | undefined {
 			pathname.startsWith(p.href) ||
 			p.covers?.some((c) => pathname.startsWith(c)),
 	)?.href;
+}
+
+/**
+ * Whether the direct-messages heading is what a path lights.
+ *
+ * ADR-0020 rule 1 wants one lit row per page, and this section's rows cannot
+ * always supply it: `/messages` is the section's own index — on a desk it is
+ * the page that says the list is in the column — so no thread row belongs to
+ * it at all, and a thread's row can be off screen while you read it (the fold
+ * is shut, or the list has not landed, or the conversation is new enough to
+ * have no entry yet). The heading answers whenever the row cannot, the way
+ * the crew header answers for `/crew/[id]` (#1335) and the way this heading
+ * already carries the unread dot for messages behind it.
+ *
+ * `threadOnScreen` is therefore the whole test, not the fold: it is the one
+ * question that has the same answer in every reason the row is missing.
+ * A row that IS on screen lights itself and the heading stays dark, so
+ * exactly one thing is current either way. A room's chat is not under this
+ * heading — the room's own row above carries `/messages/r/[slug]`.
+ */
+export function dmsCurrent(pathname: string, threadOnScreen: boolean): boolean {
+	if (pathname === '/messages') return true;
+	return pathname.startsWith('/messages/dm/') && !threadOnScreen;
 }
 
 /**

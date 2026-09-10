@@ -27,7 +27,13 @@
 		unreadCount,
 	} from '$lib/messages/unread-marks';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { activeHref, activePlace, pages, placesFor } from './pages';
+	import {
+		activeHref,
+		activePlace,
+		dmsCurrent,
+		pages,
+		placesFor,
+	} from './pages';
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomNavState } from './room-state';
 	import {
@@ -128,6 +134,19 @@
 		dmsFolded = !dmsFolded;
 		rememberDmsFolded(dmsFolded);
 	}
+	// The heading is the lit row for the pages under it whose own row is not
+	// on screen to be lit (#1863) — see `dmsCurrent`. A shut fold draws no
+	// rows, and a thread reached by its link before the list lands, or one
+	// with no entry yet, has none to draw.
+	const dmsOn = $derived(
+		dmsCurrent(
+			pathname,
+			!dmsFolded &&
+				dmHeads.heads.some(
+					(head) => pathname === `/messages/dm/${head.peerId}`,
+				),
+		),
+	);
 </script>
 
 <!-- A crew's mark: its icon, or its initial in the same box. -->
@@ -495,10 +514,21 @@
 			     taught that. A button resets text-transform, so the eyebrow's
 			     uppercase is said again here. /messages itself is reached below
 			     md, where the drawer's thread list stands in for this column. -->
+			<!-- Lit while you are on a page under it whose own row cannot say so
+			     (#1863): the same fill and ink every current row in this column
+			     wears, so "where am I" has one answer everywhere. Chrome, so
+			     `--color-ink` — never watt, never a glow (ADR-0005). The padding
+			     against equal negative margins does two jobs and moves the
+			     label by nothing: it puts the fill in the destination rows' own
+			     box, and it takes the fold off a 15 px target, under ux.md's
+			     24 px floor (WCAG 2.2 SC 2.5.8), up to 27. -->
 			<button
 				onclick={toggleDms}
 				aria-expanded={!dmsFolded}
-				class="hover:text-ink flex w-full items-center text-left uppercase"
+				aria-current={dmsOn ? 'page' : undefined}
+				class="-mx-2 -my-1.5 flex w-full items-center rounded px-2 py-1.5 text-left uppercase {dmsOn
+					? 'bg-ink/10 text-ink'
+					: 'hover:text-ink'}"
 				title={dmsFolded
 					? 'show your conversations'
 					: 'hide your conversations'}
