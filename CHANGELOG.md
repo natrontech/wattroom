@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.106] - 2026-09-10
+
+### Fixed
+
+- Cancelling a planned session says what is certain — who loses the plan, and an email only when one will actually go. "Move…" opens on the time the session has instead of an empty field. Home's empty calendar links straight to a room's Sessions place.
+
 ## [2026.09.105] - 2026-09-10
 
 ### Fixed
@@ -1896,7 +1902,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.105...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.106...HEAD
+[2026.09.106]: https://github.com/natrontech/wattroom/compare/2026.09.105...2026.09.106
 [2026.09.105]: https://github.com/natrontech/wattroom/compare/2026.09.104...2026.09.105
 [2026.09.104]: https://github.com/natrontech/wattroom/compare/2026.09.103...2026.09.104
 [2026.09.103]: https://github.com/natrontech/wattroom/compare/2026.09.102...2026.09.103
