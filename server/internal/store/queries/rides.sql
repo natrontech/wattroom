@@ -54,7 +54,22 @@ select id from rides where user_id = $1 and started_at = $2 limit 1;
 -- name: DeleteRide :execrows
 -- Owner-only by the where clause. The medals awarded for this ride go with
 -- it through medals.ride_id's on-delete-cascade — no cleanup pass to forget.
-delete from rides where id = $1 and user_id = $2;
+--
+-- The XP does NOT go with it (#1452, ADR-0047): the ride was ridden, and
+-- deleting the record is privacy, not un-riding. One statement, so the delete
+-- and its offsetting ledger row cannot come apart — the ride leaves
+-- `sum(rides.xp)` and the `ride_deleted` row puts the same amount back, which
+-- leaves `user_total_xp` (rides + ledger) exactly where it was and the level
+-- where docs/SPEC.md says it stays. `ref` is the ride's id, so the ledger's
+-- unique (user, source, ref) makes a replay impossible to double-count; no
+-- `on conflict do nothing` here on purpose, because swallowing a collision
+-- would report the delete as a 404 it did not get.
+with gone as (
+    delete from rides where rides.id = $1 and rides.user_id = $2
+    returning rides.id as ride_id, rides.user_id as rider, rides.xp as xp
+)
+insert into xp_events (user_id, source, amount, ref)
+select gone.rider, 'ride_deleted', gone.xp, gone.ride_id::text from gone;
 
 -- name: ListRideMedals :many
 -- What one ride won. A medal is always a room's, so the room names itself
