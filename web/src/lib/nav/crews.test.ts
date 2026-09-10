@@ -128,6 +128,18 @@ describe('creationCrew', () => {
 	it('falls back to your own crew when the one on screen is not yours to open in', () => {
 		expect(creationCrew(openableCrews(crews), 'c2')?.id).toBe('c1');
 	});
+	it('lands in the crew you founded before one that was handed to you (#1928)', () => {
+		const handed = { id: 'c8', name: 'Handed on', role: 'owner' as const };
+		const founded = {
+			id: 'c9',
+			name: 'Mine',
+			role: 'owner' as const,
+			founded: true,
+		};
+		expect(creationCrew(openableCrews([handed, founded]), undefined)?.id).toBe(
+			'c9',
+		);
+	});
 	it('is null before the room list has landed', () => {
 		expect(creationCrew([], 'c1')).toBeNull();
 	});

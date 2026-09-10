@@ -62,6 +62,9 @@ type roomCrewJSON struct {
 	// The crew's join code (#1236), members only — the room's own code opens
 	// nothing now, and the TV shows this one when the lounge is idle.
 	Code string `json:"code,omitempty"`
+	// Minted for the caller with their first room (#1928): "your own crew"
+	// on Home and where a new room lands, even once they own another.
+	Founded bool `json:"founded,omitempty"`
 	// What the caller is to the crew: owner | admin | member. The switcher's
 	// owner mark reads it; it is small because the guarantee behind it is
 	// about permissions, not a reading power (ADR-0038, second amendment).

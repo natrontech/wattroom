@@ -124,11 +124,16 @@
 	// The rider's own crew, for the first-run card (#1333); null until the
 	// room list has landed, so the card never flashes for a rider who has
 	// no crew to set up.
-	const ownCrew = $derived(
-		rooms
-			? (crewsOf(rooms, presence.crews).find((c) => c.role === 'owner') ?? null)
-			: null,
-	);
+	const ownCrew = $derived.by(() => {
+		if (!rooms) return null;
+		const crews = crewsOf(rooms, presence.crews);
+		// The one founded for you (#1928), before any you were handed.
+		return (
+			crews.find((c) => c.founded) ??
+			crews.find((c) => c.role === 'owner') ??
+			null
+		);
+	});
 	// "Open a room" opens the same sheet the sidebar's + does (#1199, #1333)
 	// — on Home's own body, because the drawer the sidebar lives in below md
 	// is translated off-screen and takes a dialog inside it along.

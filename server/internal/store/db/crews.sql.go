@@ -91,7 +91,7 @@ func (q *Queries) CountRoomsOwnedInCrew(ctx context.Context, arg CountRoomsOwned
 
 const createCrew = `-- name: CreateCrew :one
 
-insert into crews (name, owner_id, code) values ($1, $2, $3) returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at
+insert into crews (name, owner_id, code, founded_by) values ($1, $2, $3, $2) returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by
 `
 
 type CreateCrewParams struct {
@@ -103,6 +103,8 @@ type CreateCrewParams struct {
 // The crew (ADR-0038, #1106; amended #1236). Crew membership is a row in
 // crew_roles — member, admin or banned — written by the crew's door (JoinCrew)
 // and read by everything else. The owner is crews.owner_id and holds no row.
+// Founded by its first owner (#1928): what "your own crew" means after a
+// hand-over, when a rider may own more than one.
 func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, error) {
 	row := q.db.QueryRow(ctx, createCrew, arg.Name, arg.OwnerID, arg.Code)
 	var i Crew
@@ -117,6 +119,7 @@ func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, e
 		&i.Image,
 		&i.ImageSetAt,
 		&i.RenamedAt,
+		&i.FoundedBy,
 	)
 	return i, err
 }
@@ -277,12 +280,12 @@ func (q *Queries) GetCrewImage(ctx context.Context, id pgtype.UUID) (GetCrewImag
 }
 
 const getCrewOwnedBy = `-- name: GetCrewOwnedBy :one
-select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at from crews where owner_id = $1 order by created_at limit 1
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by from crews where owner_id = $1 order by (founded_by = $1) desc, created_at limit 1
 `
 
-// The crew a room is created into when the caller names none (#1201). One
-// crew per owner, made with their first room and named after them — the
-// migration's rule, applied to accounts that arrive after it.
+// The crew a room is created into when the caller names none (#1201): the
+// one the rider founded, made with their first room and named after them —
+// else the oldest they own (#1928: a handed-over crew used to win by age).
 func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew, error) {
 	row := q.db.QueryRow(ctx, getCrewOwnedBy, ownerID)
 	var i Crew
@@ -297,6 +300,7 @@ func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew
 		&i.Image,
 		&i.ImageSetAt,
 		&i.RenamedAt,
+		&i.FoundedBy,
 	)
 	return i, err
 }
@@ -737,6 +741,7 @@ select c.id, c.name, c.icon,
        coalesce(c.code, '')::text as code,
        (c.renamed_at is not null)::boolean as named,
        (c.owner_id = $1)::boolean as owned,
+       (c.founded_by = $1)::boolean as founded,
        exists (select 1 from crew_roles cr
                where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin')::boolean as admin
 from crews c
@@ -755,6 +760,7 @@ type ListCrewsForRow struct {
 	Code     string
 	Named    bool
 	Owned    bool
+	Founded  bool
 	Admin    bool
 }
 
@@ -779,6 +785,7 @@ func (q *Queries) ListCrewsFor(ctx context.Context, userID pgtype.UUID) ([]ListC
 			&i.Code,
 			&i.Named,
 			&i.Owned,
+			&i.Founded,
 			&i.Admin,
 		); err != nil {
 			return nil, err
@@ -792,7 +799,7 @@ func (q *Queries) ListCrewsFor(ctx context.Context, userID pgtype.UUID) ([]ListC
 }
 
 const listCrewsOwnedBy = `-- name: ListCrewsOwnedBy :many
-select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at from crews where owner_id = $1 order by created_at
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by from crews where owner_id = $1 order by created_at
 `
 
 func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]Crew, error) {
@@ -815,6 +822,7 @@ func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]
 			&i.Image,
 			&i.ImageSetAt,
 			&i.RenamedAt,
+			&i.FoundedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -1038,7 +1046,7 @@ func (q *Queries) TransferCrew(ctx context.Context, arg TransferCrewParams) erro
 const updateCrew = `-- name: UpdateCrew :one
 update crews set name = $2, icon = $3,
        renamed_at = case when name <> $2 then now() else renamed_at end
-where id = $1 returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at
+where id = $1 returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by
 `
 
 type UpdateCrewParams struct {
@@ -1063,6 +1071,7 @@ func (q *Queries) UpdateCrew(ctx context.Context, arg UpdateCrewParams) (Crew, e
 		&i.Image,
 		&i.ImageSetAt,
 		&i.RenamedAt,
+		&i.FoundedBy,
 	)
 	return i, err
 }
