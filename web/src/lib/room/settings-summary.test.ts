@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	deleteRoomBody,
 	joinedOn,
 	memberCount,
 	ownerName,
@@ -104,5 +105,31 @@ describe('packLabel', () => {
 	// wrong statement.
 	it('shows an unknown pack rather than an empty cell', () => {
 		expect(packLabel(packs, 'thunderdome')).toBe('thunderdome');
+	});
+});
+
+describe('deleteRoomBody', () => {
+	// The silent one. Deleting the last room of a crew nobody else is in
+	// deletes the crew — its name, its logo and its invite link — and the
+	// confirm said nothing about it either way, so the crew simply was not
+	// there afterwards (#1935).
+	it('says the crew goes when the server says it does', () => {
+		const body = deleteRoomBody({ name: 'Watt Club', goesWithRoom: true });
+		expect(body).toContain('Watt Club');
+		expect(body).toContain('the crew goes with it');
+	});
+
+	// And never otherwise: a crew with another room or another person in it
+	// survives, and promising its end would be the same lie the other way up.
+	it('says nothing about the crew when the crew survives', () => {
+		for (const crew of [
+			undefined,
+			{ name: 'Watt Club' },
+			{ name: 'Watt Club', goesWithRoom: false },
+		]) {
+			const body = deleteRoomBody(crew);
+			expect(body).not.toContain('crew');
+			expect(body).toContain("This can't be undone.");
+		}
 	});
 });

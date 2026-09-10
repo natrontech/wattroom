@@ -286,22 +286,47 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 // rides survive with room_id set null — history stays each rider's own.
 // ponytail: a live hub room drifts until its sockets close; nobody new can
 // join a deleted room, so it dies of natural causes.
+//
+// In one transaction with the crew's own end (#1935), so the two commit
+// together or neither does.
 func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	room, _, ok := s.requireRole(w, r, "owner")
 	if !ok {
 		return
 	}
-	if err := s.store.Queries.DeleteRoom(r.Context(), room.ID); err != nil {
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "room delete begin failed", err, "The room could not be deleted. Try again.", "room", room.Slug)
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.DeleteRoom(r.Context(), room.ID); err != nil {
 		httpx.Fail(w, s.log, "room delete failed", err, "The room could not be deleted. Try again.", "room", room.Slug)
+		return
+	}
+	// A crew with rooms or people left in it is still a crew (#1236, #1476):
+	// its members stay, and its owner opens the next room in it. One with
+	// neither goes with this room (#1935) — its owner could otherwise neither
+	// leave it, hand it on nor delete it. The confirm said so before the
+	// button: crew.goesWithRoom on the room read is this same predicate.
+	crewGone := false
+	if room.CrewID.Valid {
+		crewGone, err = s.deleteCrewIfEmpty(r.Context(), q, room.CrewID)
+		if err != nil {
+			httpx.Fail(w, s.log, "empty crew delete failed", err, "The room could not be deleted. Try again.", "room", room.Slug)
+			return
+		}
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Fail(w, s.log, "room delete commit failed", err, "The room could not be deleted. Try again.", "room", room.Slug)
 		return
 	}
 	// Durable row gone; the hub still holds everything live about it (#618).
 	if s.presence != nil {
 		s.presence.CloseRoom(room.Slug)
 	}
-	// A crew with no rooms left is still a crew (#1236): its members stay,
-	// and its owner opens the next room in it.
-	s.log.Info("room deleted", "room", room.Slug)
+	s.log.Info("room deleted", "room", room.Slug, "crewGone", crewGone)
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }

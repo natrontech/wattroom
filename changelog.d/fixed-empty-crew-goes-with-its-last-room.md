@@ -1,0 +1,1 @@
+- Deleting the last room of a crew nobody else is in now deletes the crew too, instead of leaving you with one you could not leave, hand on or delete. The delete confirm says so first, and names what goes with it — the crew's name, its logo and its invite link — so your next room starts a fresh crew. A crew that still holds another room or another rider is untouched.

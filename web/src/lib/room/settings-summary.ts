@@ -56,3 +56,23 @@ export function packLabel(
 	const id = soundPack ?? 'base';
 	return packs.find((p) => p.id === id)?.label ?? id;
 }
+
+/**
+ * What deleting the room takes, said before the button (#1935).
+ *
+ * The crew clause is the part that can be quietly wrong. A crew with another
+ * room, or anyone besides its owner, survives the deletion; one with neither
+ * goes with the room, and the confirm used to say nothing either way — so an
+ * owner deleting their last room lost the crew's name, its logo and its invite
+ * link without having been told. The server answers the question
+ * (`crew.goesWithRoom`), because it is the same predicate the delete itself
+ * applies; guessing it from the room list is how the two come to disagree.
+ */
+export function deleteRoomBody(
+	crew: { name: string; goesWithRoom?: boolean } | undefined,
+): string {
+	const room =
+		"Removes the room for everyone in it — its chat, its planned sessions and their RSVPs, its session recaps, its medal history and its streak. Rides already ridden stay in each rider's own history. This can't be undone.";
+	if (!crew?.goesWithRoom) return room;
+	return `${room} It is ${crew.name}'s only room and nobody else is in the crew, so the crew goes with it — its name, its logo and its invite link. Your next room starts a fresh crew.`;
+}
