@@ -10,9 +10,9 @@ By the rule _bug or high_ (no high this time), the one security gap, the newcome
 
 | #     | Finding                                                                                       | Severity   | Status                                                                   |
 | ----- | --------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------ |
-| #1928 | "Your own crew" resolves to the oldest crew you own, so a handed-over crew steals the default | bug, drift | open                                                                     |
+| #1928 | "Your own crew" resolves to the oldest crew you own, so a handed-over crew steals the default | bug, drift | fixed (#1954): `crews.founded_by` |
 | #1929 | Shutting a listed room from the crew page unlists it, and the Undo cannot put it back         | bug        | fixed (#1937): `listed` on the row, the undo restores both               |
-| #1930 | A crew's code cannot be rotated, so a leaked invite link is permanent                         | security   | open                                                                     |
+| #1930 | A crew's code cannot be rotated, so a leaked invite link is permanent                         | security   | built (#1953): `POST /api/crews/{id}/code` from the crew's settings |
 | #1931 | A newcomer's first crew screen leads with the invite code, not the room they came for         | design     | fixed (#1937): rooms and people first; a one-room crew lands in the room |
 | #1932 | The door's headcount and the roster disagree when a stray owner row survives                  | bug        | fixed (#1937)                                                            |
 | #1933 | Banning a user id that is not a user answers 500                                              | bug        | fixed (#1937)                                                            |
