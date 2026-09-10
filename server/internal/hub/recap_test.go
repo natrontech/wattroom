@@ -215,19 +215,21 @@ func (c *recapCatcher) saved() []protocol.SessionRecap {
 	return append([]protocol.SessionRecap(nil), c.rows...)
 }
 
-// tickingRoom is a room on the real tick loop with a recap keeper wired in,
-// stopped when the test ends. Only inside a synctest bubble.
-func tickingRoom(t *testing.T, riders ...string) (*room, *recapCatcher) {
+// tickingRoom is a room on the real tick loop with a recap keeper wired in.
+// Only inside a synctest bubble, and the caller defers stop(): a t.Fatal
+// unwinds the bubble's own goroutine, and a tick loop still running when it
+// does panics the bubble over whatever actually failed.
+func tickingRoom(t *testing.T, riders ...string) (rm *room, saved *recapCatcher, stop func()) {
 	t.Helper()
-	rm := newRoom("velvet")
+	rm = newRoom("velvet")
 	rm.now = time.Now
-	catcher := &recapCatcher{}
-	rm.recaps = catcher
+	saved = &recapCatcher{}
+	rm.recaps = saved
 	go rm.run(slog.New(slog.DiscardHandler), time.Now, nil)
 	for _, id := range riders {
 		rm.join(socket(id, id))
 	}
-	return rm, catcher
+	return rm, saved, sync.OnceFunc(func() { close(rm.stop) })
 }
 
 // coach drives the session the way a coach's socket does.
@@ -322,12 +324,13 @@ func TestOnlyASessionThatRanLeavesARecap(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
-				rm, catcher := tickingRoom(t, tc.riders...)
+				rm, catcher, stop := tickingRoom(t, tc.riders...)
+				defer stop()
 				tc.ride(t, rm)
 				// A tick to close on, and the hand-off is a goroutine.
 				time.Sleep(2 * time.Second)
 				synctest.Wait()
-				close(rm.stop)
+				stop()
 
 				rows := catcher.saved()
 				if tc.want {
@@ -362,14 +365,15 @@ func TestOnlyASessionThatRanLeavesARecap(t *testing.T) {
 // agrees — mood() and sprintBlockAt() both refuse a countdown (#1539, #2016).
 func TestTheRecapClockStartsWhenTheTimelineDoes(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		rm, catcher := tickingRoom(t, "jan")
+		rm, catcher, stop := tickingRoom(t, "jan")
+		defer stop()
 		startSession(t, rm)
 		running := time.Now().Add(countdownSeconds * time.Second)
 		time.Sleep(countdownSeconds*time.Second + 30*time.Second)
 		coach(t, rm, protocol.Control{Action: "end"})
 		time.Sleep(2 * time.Second)
 		synctest.Wait()
-		close(rm.stop)
+		stop()
 
 		rows := catcher.saved()
 		if len(rows) != 1 {
