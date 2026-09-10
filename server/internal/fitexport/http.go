@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 // Bounds on untrusted input. A ride is client-recorded, so the request is
@@ -59,10 +60,21 @@ type exportSample struct {
 	HeartRate int `json:"heartRate"`
 }
 
-// Handler returns the .fit export endpoint. Stateless: the client owns the ride
-// until there is somewhere to persist it (#15), so this encodes and returns.
-func Handler(log *slog.Logger) http.HandlerFunc {
+// UserSource is the sign-in gate — the same shape rides and rooms consume.
+// An account is the whole requirement: the ride arrives in the body, so
+// there is no row to own and nobody else's data to reach.
+type UserSource interface {
+	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
+}
+
+// Handler returns the .fit export endpoint: stateless — the ride arrives in
+// the body and leaves as a file — but signed-in, because ADR-0009 gates the
+// whole app and a stranger was buying a 21 600-sample encode for free (#1547).
+func Handler(users UserSource, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := users.RequireUser(w, r, "Sign in to export a ride."); !ok {
+			return
+		}
 		r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 
 		var req exportRequest
@@ -100,7 +112,8 @@ func Handler(log *slog.Logger) http.HandlerFunc {
 
 // toRide validates untrusted input into a Ride, answering the refusal in
 // the rider's words — a string, never an error, so err.Error() cannot reach
-// the wire from the one route a stranger can post to (#1736, errors.md).
+// the wire (#1736, errors.md). A session does not make the body any more
+// trustworthy: the ride is still recorded on the rider's own machine.
 func toRide(req exportRequest) (Ride, string) {
 	switch {
 	case req.StartedAt.IsZero():
