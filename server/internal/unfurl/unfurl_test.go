@@ -116,7 +116,9 @@ func TestUnfurlHappyPathAndItsBoundary(t *testing.T) {
 	}
 }
 
-func TestUnfurlCachesSoOneLinkCostsTheSiteOneRequest(t *testing.T) {
+// One rider re-reading one link costs the site one request. Not one per
+// instance any more — the cache is keyed on (rider, url) since #1739.
+func TestUnfurlCachesSoOneRidersLinkCostsTheSiteOneRequest(t *testing.T) {
 	var hits int
 	_, mux, upstream := setup(t, func(w http.ResponseWriter, _ *http.Request) {
 		hits++
@@ -216,6 +218,89 @@ func TestOneRidersRationIsNotAnothersLimit(t *testing.T) {
 	// A rider who has spent nothing is not made to wait for one who has.
 	if code := get(t, mux, "ada", ask("/api/unfurl", upstream.URL+"/c")).Code; code != http.StatusOK {
 		t.Fatalf("ada paid for kim's asks: %d", code)
+	}
+}
+
+// The security test for #1739. The cache is consulted before the ration, so
+// an entry another rider paid for would answer for free — and a free answer
+// is a yes/no on whether somebody else on the instance pasted that link
+// inside the TTL. Negatives carry the same tell: a page with no metadata is
+// cached too, so the question works on links that never draw a card.
+//
+// Keyed on (rider, url) the question cannot be asked, and a regression shows
+// up twice below: ada's ask would not reach the site, and it would not cost
+// ada a token.
+func TestTheCacheIsNotACrossRiderOracle(t *testing.T) {
+	hits := map[string]int{}
+	svc, mux, upstream := setup(t, func(w http.ResponseWriter, r *http.Request) {
+		hits[r.URL.Path]++
+		w.Header().Set("Content-Type", "text/html")
+		if r.URL.Path == "/kim-read-this" {
+			_, _ = io.WriteString(w, samplePage)
+			return
+		}
+		_, _ = io.WriteString(w, "<html><body>nothing to say</body></html>")
+	})
+	other, err := store.ParseUUID("22222222-2222-2222-2222-222222222222")
+	if err != nil {
+		t.Fatal(err)
+	}
+	users, ok := svc.users.(*testx.Users)
+	if !ok {
+		t.Fatal("setup handed back a service with somebody else's user source")
+	}
+	users.ByToken["ada"] = db.User{ID: other, DisplayName: "ada"}
+	// Two asks each, never refilled: enough for both links, and nothing
+	// spare, so a free answer is visible as a token ada still has.
+	svc.burst, svc.refill = 2, 0
+
+	links := []struct {
+		name, path string
+		want       int
+	}{
+		{"a link that draws a card", "/kim-read-this", http.StatusOK},
+		{"a link that draws nothing", "/kim-read-nothing", http.StatusNoContent},
+	}
+	for _, l := range links {
+		if code := get(t, mux, "kim", ask("/api/unfurl", upstream.URL+l.path)).Code; code != l.want {
+			t.Fatalf("kim, %s: %d, want %d", l.name, code, l.want)
+		}
+	}
+	for _, l := range links {
+		t.Run(l.name, func(t *testing.T) {
+			if code := get(t, mux, "ada", ask("/api/unfurl", upstream.URL+l.path)).Code; code != l.want {
+				t.Fatalf("ada: %d, want %d", code, l.want)
+			}
+			if hits[l.path] != 2 {
+				t.Fatalf("the site was asked %d times for %s: ada was served from kim's cache entry, "+
+					"which tells ada that somebody else pasted it", hits[l.path], l.path)
+			}
+		})
+	}
+	// The other half of the tell: a cross-rider hit is free, so it would
+	// leave ada's ration untouched and this third ask would go through.
+	if code := get(t, mux, "ada", ask("/api/unfurl", upstream.URL+"/ada-third")).Code; code != http.StatusTooManyRequests {
+		t.Fatalf("ada's third ask: %d, want 429 — the first two did not cost ada anything", code)
+	}
+}
+
+// Per-rider keys multiply the entries a set of links can occupy, so the
+// ceiling has to count entries (#1739). It does, and it is the same ceiling
+// as before: what per-rider keying spends is hit rate, not memory.
+func TestTheCacheCeilingCountsEntriesNotLinks(t *testing.T) {
+	svc, _, _ := setup(t, func(http.ResponseWriter, *http.Request) {
+		t.Error("the ceiling is a property of the map, not of the network")
+	})
+	for rider := range 8 {
+		for link := range maxCacheKeys {
+			svc.remember(cacheKey{
+				rider: "rider-" + strconv.Itoa(rider),
+				url:   "https://example.test/l" + strconv.Itoa(link),
+			}, Card{Title: "a ride worth reading about"}, true)
+			if n := len(svc.cache); n > maxCacheKeys {
+				t.Fatalf("cache holds %d entries, ceiling is %d", n, maxCacheKeys)
+			}
+		}
 	}
 }
 
