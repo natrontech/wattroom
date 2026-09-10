@@ -347,35 +347,111 @@ func TestPermissionsPolicyGrantsOnlyWhatTheAppUses(t *testing.T) {
 	}
 }
 
-// The report-only policy is the one that gets promoted, so every origin the
-// app actually reaches for has to be in it — a host missing here is a broken
-// ride the day someone enforces it (#1737).
-func TestReportOnlyCSPNamesEveryOriginTheAppLoads(t *testing.T) {
-	policy := securedHeaders(t, false).Get("Content-Security-Policy-Report-Only")
+// directives splits a CSP into name → source-list. The name is compared
+// lowercase because CSP directive names are ASCII case-insensitive, and a
+// policy that named one twice would let the FIRST win (CSP3 §4.2.1, the
+// opposite of the Permissions-Policy rule above) — so a duplicate is called out
+// here rather than silently folded.
+func directives(t *testing.T, policy string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	for _, entry := range strings.Split(policy, ";") {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		name, sources, _ := strings.Cut(entry, " ")
+		name = strings.ToLower(name)
+		if _, dupe := out[name]; dupe {
+			t.Errorf("%s is named twice; the FIRST entry silently wins", name)
+		}
+		out[name] = strings.TrimSpace(sources)
+	}
+	return out
+}
 
-	for _, tc := range []struct{ what, directive string }{
-		// web/src/lib/room/youtube-api.ts loads this as a <script> tag; the
-		// frame-src entry below does not cover it.
-		{"the YouTube IFrame API script", "script-src 'self' 'unsafe-inline' https://www.youtube.com"},
-		// The deck's thumbnails, and a GIF drawn straight at its own CDN
-		// (web/src/lib/chat/media.ts, server/internal/gifs) whose hostnames
-		// are sharded, hence the wildcards.
-		{"deck thumbnails and chat GIFs", "img-src 'self' data: blob: https://i.ytimg.com https://*.giphy.com https://*.tenor.com"},
-		{"the player iframe", "frame-src https://www.youtube-nocookie.com https://www.youtube.com"},
-		{"LiveKit signaling", "connect-src 'self' wss: https:"},
+// The enforced policy is the one a browser acts on, so every origin the app
+// actually reaches for has to be in it — a host missing here is a white screen,
+// or a feature that fails quietly into a handled error, for every rider
+// (#1737). Each row names the fetch site it was read off, and every one of them
+// was then watched in a real browser under this policy.
+func TestEnforcedCSPNamesEveryOriginTheAppLoads(t *testing.T) {
+	got := directives(t, securedHeaders(t, false).Get("Content-Security-Policy"))
+
+	for _, tc := range []struct{ what, directive, sources string }{
+		// The floor: anything not named below lands on same-origin.
+		{"the fallback for every unnamed directive", "default-src", "'self'"},
+		// web/src/lib/room/youtube-api.ts loads the IFrame API as a <script>
+		// tag — the frame-src row does not cover a script. blob: is the mic
+		// meter's AudioWorklet (web/src/lib/room/mic-level.ts): a worklet module
+		// is matched against script-src, and refusing it reports NO violation,
+		// so only trying it in a browser could establish that.
+		{"the YouTube IFrame API script and the mic worklet", "script-src", "'self' 'unsafe-inline' blob: https://www.youtube.com"},
+		// The theme block at app.html:8 injects a <style>, and Svelte renders
+		// `style=` attributes, which fall back to here from style-src-attr.
+		{"the theme block's stylesheet and every style= attribute", "style-src", "'self' 'unsafe-inline'"},
+		// Not the report-only list: a provider sign-in picture is served by
+		// Google, GitHub or Strava, so the host stays open and only the scheme
+		// is enforced until #2078 serves those ourselves.
+		{"pictures, including a provider's sign-in avatar", "img-src", "'self' data: blob: https:"},
+		// The audio pool streams from /api/tracks/{id}/audio; a pasted image
+		// previews from a blob.
+		{"the audio pool and a pasted image's preview", "media-src", "'self' blob:"},
+		// Barlow and Chakra Petch ship through @fontsource, served by us.
+		{"the two bundled typefaces", "font-src", "'self' data:"},
+		// The app's own /ws is same-origin. wss: is LiveKit, whose URL is the
+		// operator's; https: is oEmbed (ADR-0031), the update feed, and
+		// livekit-client's own Cloud region lookup.
+		{"the room socket, LiveKit and the oEmbed endpoints", "connect-src", "'self' wss: https:"},
+		{"the player iframe", "frame-src", "https://www.youtube-nocookie.com https://www.youtube.com"},
 		// The ride ticker's blob Worker (web/src/lib/workout/ticker.ts).
-		{"the ride ticker's worker", "worker-src 'self' blob:"},
-		// The theme block at app.html:8 is inline script, pinned by the
-		// script-src row above; this is the inline <style> it injects.
-		{"the theme block's injected stylesheet", "style-src 'self' 'unsafe-inline'"},
+		{"the ride ticker's worker", "worker-src", "'self' blob:"},
+		// Enforced since #1775.
+		{"nothing may frame WattRoom", "frame-ancestors", "'none'"},
+		{"no <base> may redirect a relative URL", "base-uri", "'none'"},
+		{"no plugin loads", "object-src", "'none'"},
 	} {
-		if !strings.Contains(policy, tc.directive) {
-			t.Errorf("%s: policy is missing %q\ngot %q", tc.what, tc.directive, policy)
+		if got[tc.directive] != tc.sources {
+			t.Errorf("%s: %s = %q, want %q", tc.what, tc.directive, got[tc.directive], tc.sources)
 		}
 	}
 
-	// Nothing is enforced beyond the three directives a ride cannot break.
-	if enforcedCSP != "frame-ancestors 'none'; base-uri 'none'; object-src 'none'" {
-		t.Errorf("enforced CSP grew without a ride: %q", enforcedCSP)
+	// A directive the app needs but nobody named does not go unrestricted: it
+	// falls back to default-src 'self' and is blocked. So an addition here is a
+	// deliberate act, and this count is what makes someone say so.
+	if len(got) != 12 {
+		t.Errorf("the enforced policy names %d directives, want 12: %v", len(got), got)
+	}
+}
+
+// The two policies must differ in `img-src` and nowhere else (#1737). Without
+// this, a directive added to one and not the other ships a host that either
+// nothing enforces or nothing reports — and the report-only header is the only
+// warning anyone gets before the next promotion.
+func TestTheTwoPoliciesDifferOnlyInImgSrc(t *testing.T) {
+	h := securedHeaders(t, false)
+	enforced := directives(t, h.Get("Content-Security-Policy"))
+	reported := directives(t, h.Get("Content-Security-Policy-Report-Only"))
+
+	if len(enforced) != len(reported) {
+		t.Errorf("the policies name different directives:\n enforced %v\n reported %v", enforced, reported)
+	}
+	for name, sources := range enforced {
+		other, ok := reported[name]
+		switch {
+		case !ok:
+			t.Errorf("%s is enforced but never reported", name)
+		case name == "img-src":
+			// The deliberate difference. Report-only is the target: the host
+			// list the app knowingly loads pictures from.
+			if other != "'self' data: blob: https://i.ytimg.com https://*.giphy.com https://*.tenor.com" {
+				t.Errorf("the report-only img-src is not the target host list: %q", other)
+			}
+			if sources == other {
+				t.Error("img-src no longer differs — if #2078 landed, promote it and delete reportOnlyCSP")
+			}
+		case sources != other:
+			t.Errorf("%s differs between the policies: enforced %q, reported %q", name, sources, other)
+		}
 	}
 }
