@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.97] - 2026-09-10
+
+### Changed
+
+- Messages: a wide picture no longer runs off a phone screen; the empty Messages page and the sidebar point at Friends to start a first conversation; opening a thread no longer marks it read before its lines have loaded; an edit in a direct message says "they see the change" rather than "the room"; and direct messages no longer refuse two quick lines for a rule only rooms have. Your export now carries a direct message's picture id and edit time.
+
+### Fixed
+
+- A room ride whose connection dropped near the end and came back after the session closed now gets its last minutes added to the saved ride — its duration, energy, score and XP grow with them — instead of losing everything after the drop. Medals stay as they were awarded in the room.
+
 ## [2026.09.96] - 2026-09-10
 
 ### Changed
@@ -1816,7 +1826,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.96...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.97...HEAD
+[2026.09.97]: https://github.com/natrontech/wattroom/compare/2026.09.96...2026.09.97
 [2026.09.96]: https://github.com/natrontech/wattroom/compare/2026.09.95...2026.09.96
 [2026.09.95]: https://github.com/natrontech/wattroom/compare/2026.09.94...2026.09.95
 [2026.09.94]: https://github.com/natrontech/wattroom/compare/2026.09.93...2026.09.94
