@@ -277,7 +277,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, roomJSON{
 		Slug: updated.Slug, Name: updated.Name, Icon: updated.Icon,
 		Listed: updated.Listed, SoundPack: updated.SoundPack,
-		Cheers: cheerSet(updated.Cheers), Role: "owner",
+		Cheers: CheerSet(updated.Cheers), Role: "owner",
 		BoardEnabled: updated.BoardEnabled, CrewVisible: updated.CrewVisible,
 	})
 }

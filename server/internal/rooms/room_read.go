@@ -34,7 +34,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 		// room reacts in the room's own vocabulary without opening the room —
 		// which handleGet would count as reading it.
 		entry := roomJSON{ID: store.UUIDString(room.ID), Slug: room.Slug, Name: room.Name, Listed: room.Listed,
-			Icon: room.Icon, Role: room.Role, Cheers: cheerSet(room.Cheers)}
+			Icon: room.Icon, Role: room.Role, Cheers: CheerSet(room.Cheers)}
 		entry.MemberCount = int(room.MemberCount)
 		entry.Access = accessOf(room.CrewVisible, true, false)
 		// The sidebar groups by this (ADR-0038, and #1023's option C). Absent
@@ -205,7 +205,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				s.log.Warn("mark room read failed", "err", err, "room", room.Slug)
 			}
 			response.SoundPack = room.SoundPack
-			response.Cheers = cheerSet(room.Cheers)
+			response.Cheers = CheerSet(room.Cheers)
 			response.IcsToken = room.IcsToken
 			rows, err := s.store.Queries.ListRoomUpcoming(r.Context(), room.ID)
 			if err != nil {
