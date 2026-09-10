@@ -16,6 +16,7 @@ const {
 	desktopCapturer,
 	dialog,
 	ipcMain,
+	Menu,
 	Notification,
 	powerSaveBlocker,
 	screen,
@@ -369,8 +370,16 @@ function installHandlers(win) {
  * same hole as the permission default, one step removed. Every window the
  * shell opens gets this — the main one and the HUD.
  */
+// When the app last sent the rider to the system browser to sign in
+// (#1941): a wattroom:// link is accepted only for a little while after,
+// so a page in the rider's browser cannot throw a riding shell onto /login.
+let signInStartedAt = 0;
+const SIGN_IN_WINDOW_MS = 10 * 60 * 1000;
+
 function guardNavigation(win) {
 	win.webContents.setWindowOpenHandler(({ url }) => {
+		if (url.startsWith(`${APP_ORIGIN}/login?desktop=`))
+			signInStartedAt = Date.now();
 		if (/^https?:/.test(url)) void shell.openExternal(url);
 		return { action: 'deny' };
 	});
@@ -455,7 +464,10 @@ function watchForUpdates() {
 	// stdout: nothing in a Dock launch, everything when run from a terminal —
 	// which is how "why did it not update" gets answered in a minute.
 	autoUpdater.logger = console;
+	autoUpdater.on('update-available', () => (updateFailures = 0));
+	autoUpdater.on('update-not-available', () => (updateFailures = 0));
 	autoUpdater.on('update-downloaded', (info) => {
+		updateFailures = 0;
 		updateReady = { version: info.version };
 		// Every window, not the one at launch (#1947): on macOS a window
 		// closed and reopened from the Dock is a new one.
@@ -463,8 +475,10 @@ function watchForUpdates() {
 			if (!w.isDestroyed()) w.webContents.send('wattroom:update', updateReady);
 	});
 	autoUpdater.on('error', (err) => {
-		// Offline, or the feed is missing: not worth a dialog. The next check
-		// is a few hours away and the nudge on home still shows the download.
+		// Offline, or the feed is missing: not worth a dialog. Counted (#1940):
+		// after three in a row the app's home offers the download instead of
+		// waiting for a self-update that is not coming.
+		updateFailures += 1;
 		console.warn('update check failed:', err?.message ?? err);
 	});
 	// On macOS closing the window leaves the app running, and a click on the
@@ -486,6 +500,9 @@ function watchForUpdates() {
 
 // The renderer asks on mount, in case the download finished before it did.
 ipcMain.handle('wattroom:update-ready', () => updateReady);
+// Consecutive failures of the updater (#1940): three is "not coming".
+let updateFailures = 0;
+ipcMain.handle('wattroom:update-failed', () => updateFailures >= 3);
 ipcMain.on('wattroom:install-update', () => installUpdate());
 
 // Restarting into the update, and why "Restart" used to just close the app.
@@ -661,7 +678,7 @@ ipcMain.on('wattroom:notify', (event, n) => {
 // an odd-looking token is dropped, not loaded.
 const DEEP_LINK_TOKEN = /^[A-Za-z0-9_-]{20,200}$/;
 
-function deepLinkTarget(link) {
+function deepLinkToken(link) {
 	let url;
 	try {
 		url = new URL(link);
@@ -670,29 +687,29 @@ function deepLinkTarget(link) {
 	}
 	if (url.protocol !== 'wattroom:' || url.hostname !== 'auth') return null;
 	const token = url.pathname.replace(/^\//, '');
-	if (!DEEP_LINK_TOKEN.test(token)) return null;
-	// APP_ORIGIN, not APP_URL: a WATTROOM_URL with a trailing slash made this
-	// `//login`, which the smoke caught.
-	return `${APP_ORIGIN}/login?handoff=${encodeURIComponent(token)}`;
+	return DEEP_LINK_TOKEN.test(token) ? token : null;
 }
 
-// macOS delivers the link before the window exists when the app was not
-// running; hold it until ready-to-show.
-let pendingDeepLink = null;
-
+// The token goes to the page over IPC (#1941), never as a navigation: the
+// app decides what to do with it — redeem on /login, or say it is already
+// signed in — and a ride in progress is never loaded over. Only within the
+// sign-in window this shell itself opened; a link arriving cold, with no
+// sign-in started here, is dropped (ponytail: a shell quit mid-sign-in
+// loses the link and the rider starts again — a restart is not a session).
 function openDeepLink(link) {
-	const target = deepLinkTarget(link);
-	if (!target) return;
-	const [win] = BrowserWindow.getAllWindows();
-	if (!win) {
-		pendingDeepLink = target;
+	const token = deepLinkToken(link);
+	if (!token) return;
+	if (Date.now() - signInStartedAt > SIGN_IN_WINDOW_MS) {
+		console.warn(
+			'wattroom:// link ignored: no sign-in was started from this app',
+		);
 		return;
 	}
+	const [win] = BrowserWindow.getAllWindows();
+	if (!win || win.isDestroyed()) return;
 	if (win.isMinimized()) win.restore();
 	win.focus();
-	win.loadURL(target).catch(() => {
-		/* did-fail-load shows the offline screen */
-	});
+	win.webContents.send('wattroom:handoff', token);
 }
 
 const deepLinkIn = (argv) => argv.find((a) => a.startsWith('wattroom://'));
@@ -728,16 +745,26 @@ if (!app.requestSingleInstanceLock()) {
 	});
 
 	app.whenReady().then(() => {
+		// An explicit menu (#1943): Electron's default one shipped into the
+		// frameless window, Help and all. macOS keeps the roles a Mac app
+		// needs (copy and paste, reload); Windows and Linux draw none —
+		// the app's own strip is the top of the window there.
+		Menu.setApplicationMenu(
+			process.platform === 'darwin'
+				? Menu.buildFromTemplate([
+						{ role: 'appMenu' },
+						{ role: 'editMenu' },
+						{ role: 'viewMenu' },
+						{ role: 'windowMenu' },
+					])
+				: null,
+		);
 		const win = createWindow();
 		watchForUpdates();
-		// A cold start from a link, on Windows and Linux.
-		const link = deepLinkIn(process.argv);
-		if (link) pendingDeepLink = deepLinkTarget(link);
-		if (pendingDeepLink) {
-			const target = pendingDeepLink;
-			pendingDeepLink = null;
-			win.once('ready-to-show', () => void win.loadURL(target).catch(() => {}));
-		}
+		// A cold start from a link is dropped (#1941): no sign-in was started
+		// from this run, and the rider starts the sign-in again.
+		if (deepLinkIn(process.argv))
+			console.warn('wattroom:// link at launch ignored');
 		app.on('activate', () => {
 			if (BrowserWindow.getAllWindows().length === 0) createWindow();
 		});

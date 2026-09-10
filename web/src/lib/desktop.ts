@@ -66,6 +66,40 @@ export function shellSelfUpdates(): boolean {
 }
 
 /**
+ * Whether the shell's updater has given up for now (#1940) — three failed
+ * checks in a row — so the page offers the download instead of waiting for
+ * a self-update that is not coming. False in a browser and in an older shell.
+ */
+export async function shellUpdateFailed(): Promise<boolean> {
+	const shell = (
+		globalThis as { wattroom?: { updateFailed?: () => Promise<unknown> } }
+	).wattroom;
+	if (typeof shell?.updateFailed !== 'function') return false;
+	try {
+		return (await shell.updateFailed()) === true;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * The sign-in hand-off (#1941): the shell hands the token from
+ * wattroom://auth/<token> to the page instead of loading /login over it, so
+ * the app decides — redeem on /login, or say it is already signed in.
+ */
+export function onShellHandoff(cb: (token: string) => void): void {
+	const shell = (
+		globalThis as {
+			wattroom?: { onHandoff?: (cb: (t: string) => void) => void };
+		}
+	).wattroom;
+	shell?.onHandoff?.((token) => {
+		if (typeof token === 'string' && /^[A-Za-z0-9_-]{20,200}$/.test(token))
+			cb(token);
+	});
+}
+
+/**
  * The height of the strip the app draws where the shell hid the OS title bar
  * (#1188), or 0 in a browser and in a shell old enough to keep its own bar.
  */

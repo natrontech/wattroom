@@ -9,6 +9,7 @@
 		shellVersion,
 		type DesktopRelease,
 		type Installer,
+		shellUpdateFailed,
 	} from '$lib/desktop';
 
 	// The desktop app, on home (#296, #1235). Two riders, one panel:
@@ -43,10 +44,14 @@
 		void latestRelease().then((r) => (latest = r));
 
 	// The download link is for a shell without an updater; one that has it
-	// fetches the release itself and this panel waits for "ready" instead.
+	// fetches the release itself and this panel waits for "ready" instead —
+	// unless the updater has given up (#1940), when the download is the way.
+	let updaterFailed = $state(false);
+	if (running && shellSelfUpdates())
+		void shellUpdateFailed().then((failed) => (updaterFailed = failed));
 	const update = $derived(
 		running &&
-			!shellSelfUpdates() &&
+			(!shellSelfUpdates() || updaterFailed) &&
 			latest &&
 			isNewer(latest.version, running) &&
 			skipped !== latest.version
@@ -91,6 +96,9 @@
 			<p class="eyebrow">desktop app</p>
 			<p class="mt-1 text-sm">
 				WattRoom {update.version} is out — you are on {running}.
+				{#if updaterFailed}
+					The app could not fetch it on its own.
+				{/if}
 			</p>
 		</div>
 		<a href="/download" class="btn btn-primary">Get the update</a>

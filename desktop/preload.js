@@ -45,6 +45,13 @@ contextBridge.exposeInMainWorld('wattroom', {
 			.then((update) => update && cb(update));
 	},
 	installUpdate: () => ipcRenderer.send('wattroom:install-update'),
+	// Whether the updater has given up for now (#1940): three failed checks
+	// in a row, and the app offers the download instead.
+	updateFailed: () => ipcRenderer.invoke('wattroom:update-failed'),
+	// The sign-in hand-off (#1941): the token from wattroom://auth/<token>,
+	// handed to the page instead of loaded over it.
+	onHandoff: (cb) =>
+		ipcRenderer.on('wattroom:handoff', (_event, token) => cb(token)),
 	// The device picker (#1716). Electron ships no Bluetooth chooser, so the
 	// app draws it: `cb` hears the scan's devices as it finds them, then null
 	// when the request is over. Registering is also the handshake that tells
