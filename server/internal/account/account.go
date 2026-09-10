@@ -181,9 +181,15 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	profile := map[string]any{
-		"displayName":   user.DisplayName,
-		"ftpWatts":      user.FtpWatts,
-		"weightKg":      user.WeightKg,
+		"displayName": user.DisplayName,
+		"ftpWatts":    user.FtpWatts,
+		"weightKg":    user.WeightKg,
+		// And where each of those came from (#1484): the export claims
+		// Art. 15's scope, so it carries the row — a file saying 200 W
+		// without saying nobody chose it is the same half-truth Home used
+		// to tell.
+		"ftpSource":     user.FtpSource,
+		"weightSource":  user.WeightSource,
 		"createdAt":     user.CreatedAt.Time,
 		"email":         user.Email,
 		"notifyPlanned": user.NotifyPlanned,
