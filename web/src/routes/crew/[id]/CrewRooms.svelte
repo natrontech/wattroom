@@ -14,6 +14,7 @@
 	import { setRoomAccess, type Crew } from '$lib/crew';
 	import { accessMark, reachable } from '$lib/nav/crews';
 	import { presence } from '$lib/presence.svelte';
+	import { REACH_LABELS } from '$lib/rooms/reach';
 	import { toasts } from '$lib/toast.svelte';
 	import DoorOpen from '@lucide/svelte/icons/door-open';
 	import Eye from '@lucide/svelte/icons/eye';
@@ -35,8 +36,11 @@
 	// One toggle for the row's button and its menu entry (#1372): the
 	// admin-state row is the one an admin came here to act on, and it used
 	// to look disabled with its only action three fingers away in a menu.
+	// The label names the step it moves the room to, in the room's own words
+	// (#2007) — "Make private" was a second vocabulary for the ladder's
+	// bottom step, and a rider could not match the two surfaces up.
 	const accessLabel = (room: Crew['rooms'][number]) =>
-		room.access === 'open' ? 'Make private' : 'Open to the crew';
+		room.access === 'open' ? REACH_LABELS.members : REACH_LABELS.crew;
 	function toggleAccess(room: Crew['rooms'][number]) {
 		const crewId = crew.id;
 		const open = room.access === 'open';
@@ -47,10 +51,12 @@
 			}
 			// A shut takes the listing with it (#1671), so the toast says so
 			// and the undo restores both — reopening alone never could (#1929).
+			// Both name the step in the ladder's words so the toast, the button
+			// and the room's own settings cannot drift apart (#2007).
 			toasts.push(
 				open
-					? `${room.name} is private now — its members, and whoever you let in${room.listed ? ', and it leaves the directory' : ''}.`
-					: `${room.name} is open to the crew.`,
+					? `${REACH_LABELS.members} can find ${room.name} now — them, and whoever you let in${room.listed ? ', and it leaves the directory' : ''}.`
+					: `${room.name} is ${REACH_LABELS.crew.toLowerCase()}.`,
 				{
 					undo: () =>
 						void setRoomAccess(

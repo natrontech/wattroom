@@ -1,10 +1,16 @@
 <script lang="ts">
-	// Who can find the room, as one ladder (#1204). The server keeps two
-	// columns — listed is the public directory, crewVisible the crew's
-	// sidebar — but a room listed to strangers and hidden from its own crew
-	// is not a state anyone means, so the page walks them as one question.
+	// Who can find the room, as one ladder (#1204). The steps, their words and
+	// the two columns each one means live in $lib/rooms/reach — a crew row asks
+	// the same question and must not word it differently (#2007).
 	// Split from the settings page (#1265); the page owns the two values and
 	// saves on `onchange`.
+	import {
+		REACH_FLAGS,
+		reachOf,
+		reachSteps,
+		type Reach,
+	} from '$lib/rooms/reach';
+
 	let {
 		listed = $bindable(),
 		crewVisible = $bindable(),
@@ -19,18 +25,10 @@
 		onchange: () => void;
 	} = $props();
 
-	type Reach = 'members' | 'crew' | 'everyone';
-	const REACH: Record<Reach, { crewVisible: boolean; listed: boolean }> = {
-		members: { crewVisible: false, listed: false },
-		crew: { crewVisible: true, listed: false },
-		everyone: { crewVisible: true, listed: true },
-	};
-
-	const reach = $derived<Reach>(
-		listed ? 'everyone' : crewVisible ? 'crew' : 'members',
-	);
+	const steps = $derived(reachSteps(crewName));
+	const reach = $derived(reachOf(listed, crewVisible));
 	function setReach(next: Reach) {
-		({ crewVisible, listed } = REACH[next]);
+		({ crewVisible, listed } = REACH_FLAGS[next]);
 		onchange();
 	}
 </script>
@@ -52,7 +50,7 @@
 		role="radiogroup"
 		aria-label="who can find this room"
 	>
-		{#each [{ key: 'members', label: 'Its members', hint: 'Its members, and the crew-mates you let in from the Members place. The rest of the crew sees that it exists and that it is private — not a way in.' }, { key: 'crew', label: crewName ? `The crew — ${crewName}` : 'The crew', hint: 'Everyone in the crew sees it in their sidebar and can walk in without a code. This is how a new room starts.' }, { key: 'everyone', label: 'Everyone on WattRoom', hint: 'Anyone signed in can find it by name in the directory and join — which puts them in the crew. They see its name and icon first, nothing about who rides here or what you did.' }] as const as step (step.key)}
+		{#each steps as step (step.key)}
 			<button
 				role="radio"
 				aria-checked={reach === step.key}
