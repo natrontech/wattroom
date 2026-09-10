@@ -31,7 +31,7 @@
 		SIGNAL_LOST_MS,
 	} from '$lib/workout/session.svelte';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
-	import { uploadRide } from '$lib/ride/save';
+	import { stampFtpAfter, uploadRide } from '$lib/ride/save';
 	import {
 		buildRampTest,
 		RAMP,
@@ -63,6 +63,13 @@
 	let savedId = $state<string | null>(null);
 	let rideStatus = $state<string | null>(null);
 	let recorded = false;
+	// The number this test produced, once the rider accepts it (#1572). The
+	// ride is saved the moment the test ends — carrying the FTP it was SCORED
+	// against — and the rider accepts a new one seconds later, so the two
+	// arrive in either order: the effect below waits for both.
+	let producedFtp = $state<number | null>(null);
+	let ftpMarked = false;
+	let ftpMarkStatus = $state<string | null>(null);
 
 	// Paired before the test, not by starting it (#611): the paired-devices
 	// grid owns the trainer until Start hands it to the session.
@@ -85,6 +92,9 @@
 			recorded = false;
 			savedId = null;
 			rideStatus = null;
+			producedFtp = null;
+			ftpMarked = false;
+			ftpMarkStatus = null;
 			buffer = await openRideBuffer({
 				rideId: String(startedAt),
 				startedAt,
@@ -203,6 +213,9 @@
 		recorded = false;
 		done = false;
 		error = null;
+		producedFtp = null;
+		ftpMarked = false;
+		ftpMarkStatus = null;
 	}
 
 	const usable = $derived(rampUsable(session?.elapsed ?? 0));
@@ -275,6 +288,22 @@
 				: `${outcome.failure.message} The riding is kept on this device — /ride offers it back with a Save.`;
 		});
 	}
+	// The FTP the test produced, onto the ride the test became (#1572) — once,
+	// and only once both halves exist. `ftp_watts` on that row is the number
+	// the ride was scored against, so the trend drew the ramp's result a ride
+	// late; this is what puts the mark on the ramp itself.
+	$effect(() => {
+		const rideId = savedId;
+		const ftp = producedFtp;
+		if (!rideId || !ftp || ftpMarked) return;
+		ftpMarked = true;
+		void stampFtpAfter(rideId, ftp).then((message) => {
+			// The FTP is already on the account; only the chart mark is lost,
+			// so this says exactly that rather than reading as a lost test.
+			if (message)
+				ftpMarkStatus = `${message} Your FTP is saved — the chart picks it up on your next ride.`;
+		});
+	});
 	// One mis-tap on the rail at minute 14 must not lose the number: the same
 	// confirm /ride has, only while the test is alive.
 	guardLeaving(
@@ -319,6 +348,9 @@
 		</p>
 	{:else if rideStatus}
 		<div class="mt-3"><Banner tone="warn">{rideStatus}</Banner></div>
+	{/if}
+	{#if ftpMarkStatus}
+		<div class="mt-3"><Banner tone="warn">{ftpMarkStatus}</Banner></div>
 	{/if}
 {/snippet}
 
@@ -531,7 +563,12 @@
 	{:else}
 		<!-- The number, and what to do with it: its own component (#1799),
 		     which also keeps this page under the ceiling. -->
-		<RampResult {session} {stepsDone} onRestart={restart}>
+		<RampResult
+			{session}
+			{stepsDone}
+			onRestart={restart}
+			onFtpSaved={(ftp) => (producedFtp = ftp)}
+		>
 			{@render rideLine()}
 			<RideFlags {flags} />
 		</RampResult>

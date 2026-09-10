@@ -74,6 +74,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rides/{id}/export", s.handleExport)
 	mux.HandleFunc("POST /api/rides/{id}/export/retry", s.handleRetryExport)
 	mux.HandleFunc("PATCH /api/rides/{id}", s.handleShare)
+	mux.HandleFunc("PUT /api/rides/{id}/ftp-after", s.handleFtpAfter)
 	mux.HandleFunc("DELETE /api/rides/{id}", s.handleDelete)
 }
 

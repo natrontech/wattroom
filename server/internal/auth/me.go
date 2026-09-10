@@ -3,6 +3,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/mail"
 	"strconv"
@@ -136,9 +137,9 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"Display name has to be 1-60 characters.", "displayName")
 		return
-	case req.FtpWatts < 50 || req.FtpWatts > 600:
+	case req.FtpWatts < stats.MinFtpWatts || req.FtpWatts > stats.MaxFtpWatts:
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"FTP has to be between 50 and 600 W.", "ftpWatts")
+			fmt.Sprintf("FTP has to be between %d and %d W.", stats.MinFtpWatts, stats.MaxFtpWatts), "ftpWatts")
 		return
 	case req.WeightKg < 30 || req.WeightKg > 200:
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",

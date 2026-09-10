@@ -215,6 +215,9 @@ where user_id = $1;
 -- time, so FTP history is free; best20m feeds the Category/w-kg trend.
 -- norm_watts falls back to avg_watts for rides the backfill has not reached.
 select id, started_at, seconds, kj, execution, execution_scored, ftp_watts,
+       -- The FTP this ride PRODUCED, null on all but a ramp whose number was
+       -- accepted (#1572) — the trend marks it on the ramp's own ride.
+       ftp_after_watts,
        coalesce((curve->>'best20m')::int, 0)::int as best20m,
        coalesce(norm_watts, avg_watts)::int as norm_watts
 from rides
@@ -264,6 +267,14 @@ where r.id = $1;
 -- #253: lifetime XP → level (docs/SPEC.md thresholds, computed client-side).
 -- Rides plus the off-bike ledger (#467) — user_total_xp is the one definition.
 select user_total_xp($1)::bigint;
+
+-- name: SetRideFtpAfter :execrows
+-- The number a ramp test produced, on the ramp's own ride (#1572). Owner-only
+-- by the where clause, so someone else's ride reads as absent rather than as
+-- forbidden. Last write wins: re-testing the same ride is not a thing, and a
+-- retried stamp must land on the row it already wrote.
+update rides set ftp_after_watts = sqlc.arg(ftp_after_watts)::smallint
+where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
 
 -- name: SetRideShared :execrows
 -- Per-ride opt-in (WATTROOM.md privacy): the owner flips it, the timestamp

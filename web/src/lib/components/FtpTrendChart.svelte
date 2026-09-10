@@ -1,11 +1,13 @@
 <script lang="ts">
 	// FTP over time as a step line (captured at ride time — history, not
-	// reconstruction), each ride's best 20-min effort as a dot (#222). Drawn
+	// reconstruction), each ride's best 20-min effort as a dot (#222), and the
+	// FTP a ramp test SET as a diamond on the ramp's own ride (#1572). Drawn
 	// 1:1 in container pixels so type never scales down; neon grid per
-	// ADR-0005. Identity is carried by shape (line vs dot) plus the legend,
-	// never color alone. Hover for a ride's numbers; click to jump to it.
+	// ADR-0005. Identity is carried by shape (line, dot, diamond) plus the
+	// legend, never color alone. Hover for a ride's numbers; click to jump.
 	import ChartTip from '$lib/components/ChartTip.svelte';
 	import type { TrendRide } from '$lib/progression';
+	import { atMs, ftpMarks, trendDomain, trendSparse } from './ftp-trend';
 
 	let {
 		rides,
@@ -17,18 +19,11 @@
 		height?: number;
 	} = $props();
 
-	// Not enough to draw (#1572): one day of rides gave a flat line across a
-	// collapsed axis reading "9 Sept – 9 Sept", no dots, and nothing saying
-	// why. Empty states teach (ux.md).
-	const t = (d: string) => new Date(d).getTime();
-	const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-	const sparse = $derived.by(() => {
-		if (rides.length < 2) return true;
-		const days = t(rides[rides.length - 1].date) - t(rides[0].date);
-		const ftps = new Set(rides.map((r) => r.ftp));
-		const dots = rides.some((r) => r.best20m > 0);
-		return days < WEEK_MS && ftps.size < 2 && !dots;
-	});
+	// What the chart can draw, and how wide its axis has to be, live in
+	// ftp-trend.ts — where they can be tested without a DOM (#1572).
+	const sparse = $derived(trendSparse(rides));
+	// The rides that SET an FTP — a ramp test's own, and nothing else.
+	const marks = $derived(ftpMarks(rides));
 
 	let width = $state(600);
 	const W = $derived(Math.max(width, 280));
@@ -38,19 +33,13 @@
 	const plotH = $derived(H - PAD.top - PAD.bottom);
 
 	const span = $derived.by(() => {
-		const first = t(rides[0].date);
-		const last = t(rides[rides.length - 1].date);
+		const first = atMs(rides[0].date);
+		const last = atMs(rides[rides.length - 1].date);
 		return { first, len: Math.max(last - first, 1) };
 	});
-	const x = (d: string) => ((t(d) - span.first) / span.len) * plotW;
+	const x = (d: string) => ((atMs(d) - span.first) / span.len) * plotW;
 
-	const domain = $derived.by(() => {
-		const watts = rides.flatMap((r) => [r.ftp, r.best20m]).filter((w) => w > 0);
-		const lo = Math.min(...watts);
-		const hi = Math.max(...watts);
-		const margin = Math.max((hi - lo) * 0.15, 10);
-		return { lo: Math.max(lo - margin, 0), hi: hi + margin };
-	});
+	const domain = $derived(trendDomain(rides));
 	const y = (watts: number) =>
 		PAD.top + plotH - ((watts - domain.lo) / (domain.hi - domain.lo)) * plotH;
 
@@ -91,10 +80,10 @@
 
 {#if sparse}
 	<p class="text-muted text-sm leading-relaxed">
-		Your FTP history appears here once there is one to draw. The line follows
-		the FTP your rides were scored against, and a ride with a hard 20 minutes
-		adds a dot — so a new FTP (a ramp test sets one) shows up with the next ride
-		you do at it.
+		Your FTP history appears here once there is one to draw — two rides is where
+		a line starts. It follows the FTP your rides were scored against, a ride
+		with a hard 20 minutes adds a dot, and a ramp test marks the FTP it set on
+		the ride you set it in.
 	</p>
 {:else}
 	<div class="flex items-center gap-4 text-xs" role="list" aria-label="legend">
@@ -106,6 +95,15 @@
 			<span class="bg-z2 inline-block h-2.5 w-2.5 rounded-full"></span>
 			best 20 min of a ride
 		</span>
+		{#if marks.length > 0}
+			<!-- Only when there is one to explain (ux.md capability gating): a
+			     rider who has never tested is not taught a mark they have not
+			     got. Shape carries the identity, the colour reinforces it. -->
+			<span class="text-muted flex items-center gap-1.5" role="listitem">
+				<span class="bg-watt inline-block h-2 w-2 rotate-45"></span>
+				FTP a ramp test set
+			</span>
+		{/if}
 	</div>
 
 	<div class="mt-3 w-full" bind:clientWidth={width}>
@@ -116,7 +114,9 @@
 			height={H}
 			class="block {onpick ? 'cursor-pointer' : ''}"
 			role="img"
-			aria-label="FTP and 20-minute bests over time"
+			aria-label={marks.length > 0
+				? 'FTP, 20-minute bests and the FTP each ramp test set, over time'
+				: 'FTP and 20-minute bests over time'}
 			onpointermove={(e) => (hovered = nearest(e))}
 			onpointerleave={() => (hovered = null)}
 			onclick={(e) => {
@@ -166,6 +166,23 @@
 					class="fill-z2"
 				/>
 			{/each}
+			<!-- The FTP a ramp test set, on the ramp's own ride (#1572). A
+			     DIAMOND, not a second circle: the 20-min dots are a per-ride
+			     effort and this is the moment the line moved, and the two must
+			     not read as one series. Watt magenta because it is a number the
+			     rider measured, flat because it is not live (ADR-0005); the
+			     panel-coloured stroke keeps it legible where it lands on a
+			     20-minute dot. -->
+			{#each marks as ride (ride.id)}
+				{@const r = hovered === ride ? 8 : 6.5}
+				{@const cx = x(ride.date)}
+				{@const cy = y(ride.ftpAfter ?? 0)}
+				<path
+					d="M {cx} {cy - r} L {cx + r} {cy} L {cx} {cy + r} L {cx - r} {cy} Z"
+					class="fill-watt stroke-surface-raised"
+					stroke-width="1.5"
+				/>
+			{/each}
 			<text x="0" y={H - 8} class="fill-muted font-display text-[12px]"
 				>{monthLabel(rides[0].date)}</text
 			>
@@ -190,13 +207,16 @@
 				/>
 				<ChartTip
 					x={x(hovered.date)}
-					y={y(Math.max(hovered.ftp, hovered.best20m))}
+					y={y(Math.max(hovered.ftp, hovered.best20m, hovered.ftpAfter ?? 0))}
 					maxX={W}
 					lines={[
 						monthLabel(hovered.date),
 						hovered.best20m > 0
 							? `best 20 min ${hovered.best20m} W · FTP ${hovered.ftp} W`
 							: `FTP ${hovered.ftp} W`,
+						...(hovered.ftpAfter
+							? [`ramp test set FTP ${hovered.ftpAfter} W`]
+							: []),
 					]}
 				/>
 			{/if}

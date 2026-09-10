@@ -413,8 +413,8 @@
 				>
 				<p class="text-muted mt-0.5 mb-4 max-w-2xl text-xs">
 					The line is the FTP your rides were scored against; each dot is a
-					ride's best 20 minutes. Dots climbing away above the line mean your
-					FTP is due a retest.
+					ride's best 20 minutes, and each diamond the FTP a ramp test set. Dots
+					climbing away above the line mean your FTP is due a retest.
 				</p>
 				<FtpTrendChart
 					rides={progression.rides}

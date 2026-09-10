@@ -51,3 +51,24 @@ export async function uploadRide(
 		failure: { message: res.error.message, final: FINAL.has(res.error.error) },
 	};
 }
+
+/**
+ * Tell a ride which FTP it produced (#1572). Only the ramp calls this, and
+ * only once the rider has accepted the number: the ride itself was saved the
+ * moment the test ended, carrying the FTP it was SCORED against, so without
+ * this the trend could not draw the ramp's own result until the next ride.
+ *
+ * Returns the server's sentence, or null. Never blocks the result screen —
+ * the FTP is already on the account by the time this runs; all that is at
+ * stake is a mark on a chart.
+ */
+export async function stampFtpAfter(
+	rideId: string,
+	ftp: number,
+): Promise<string | null> {
+	const res = await api(`/api/rides/${rideId}/ftp-after`, {
+		method: 'PUT',
+		json: { ftpAfter: ftp },
+	});
+	return res.ok ? null : res.error.message;
+}

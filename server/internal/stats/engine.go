@@ -165,6 +165,15 @@ func Category(best20mWatts int, kg float64) string {
 	}
 }
 
+// The bounds an FTP has to sit inside, in watts. The same pair lives in the
+// users and rides CHECKs and in the profile form (web PROFILE_LIMITS); named
+// here because a second handler now asks for it — the FTP a ramp test produced
+// on its own ride (#1572), beside the profile write that always did.
+const (
+	MinFtpWatts = 50
+	MaxFtpWatts = 600
+)
+
 // SuggestFTP is docs/SPEC.md's auto-detect rule: when 0.95 × the 90-day best
 // 20-min exceeds the set FTP by more than 2 %, suggest — never auto-apply,
 // because FTP moves every workout's difficulty.
