@@ -1,0 +1,1 @@
+- A workout's sprint block is now a real sprint moment in a room: the klaxon counts you in on the block's own length, the tick speeds up while you are on it, and the w/kg podium appears when it ends — the same as when a coach arms one by hand. Sprint Snob counts these sprints too.

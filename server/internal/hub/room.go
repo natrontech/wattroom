@@ -43,9 +43,14 @@ type room struct {
 	music    *jukebox
 	// riders ever seen this session, so someone who left before the end still
 	// gets their ride; saved guards against persisting one session twice.
-	sprint   *sprint
-	game     gameMode
-	lastGame *protocol.GameState
+	sprint *sprint
+	// The sprint block the timeline has already armed (#2016) — without it
+	// the tick would re-arm once a second for the whole block, wiping the
+	// samples the podium is computed from. Zero value is "none yet", and it
+	// is keyed by the session's run so a restart or a new pick lets go.
+	armedBlock sprintBlockKey
+	game       gameMode
+	lastGame   *protocol.GameState
 	// The running game's roster, merged from seen on every tick (#1581).
 	gameRoster map[string]protocol.Rider
 	// The mode's id, for the ledger; and the tick that first saw it done,
