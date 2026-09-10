@@ -205,7 +205,10 @@ type roomJSON struct {
 	InCrew bool `json:"inCrew,omitempty"`
 	// Whether this room has turned its ordered board on (ADR-0036). Off is the
 	// default and stays the default: being in a room must not put a rider on a
-	// board. Members only, like the setting it mirrors.
+	// board. Reaches the door as well as the roster (#1651) — ADR-0036 wants
+	// the board legible "before anyone is inside it", and a rider deciding
+	// whether to walk in is exactly who that is for. The rows below are still
+	// a member's; only the fact that there is a board travels.
 	BoardEnabled bool `json:"boardEnabled,omitempty"`
 	// This week's board, present only when the room has enabled it. Resets on
 	// Monday with the streak's week — a bad week is never permanent.

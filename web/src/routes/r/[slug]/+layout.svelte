@@ -8,6 +8,7 @@
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import RoomShell from '$lib/room/RoomShell.svelte';
+	import { doorDisclosure } from '$lib/room/door';
 	import type { Room, RoomLoadData } from '$lib/room/room-data';
 	import { toasts } from '$lib/toast.svelte';
 	import { formatWhen } from '$lib/format';
@@ -210,11 +211,16 @@
 			{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
 			{#if !room.banned && (room.canEnter || room.listed)}
 				<!-- Privacy is architecture (WATTROOM.md): say what the room sees
-				     before the button, not in a policy page after it. -->
-				<p class="text-muted-dim mt-4 text-[11px]">
-					Your watts are visible to this room while you ride here, and nowhere
-					else. Voice and camera pass through and are never recorded.
-				</p>
+				     before the button, not in a policy page after it. The words
+				     are in $lib/room/door.ts, where a test guards them. -->
+				{@const said = doorDisclosure(room)}
+				{#if said.board}
+					<!-- A step larger than the standing line below, and above it:
+					     this is the one that decides whether the rider presses
+					     the button (ADR-0036, #1651). -->
+					<p class="text-muted mt-4 text-xs">{said.board}</p>
+				{/if}
+				<p class="text-muted-dim mt-4 text-[11px]">{said.privacy}</p>
 			{/if}
 		</div>
 	</main>

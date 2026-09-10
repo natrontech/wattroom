@@ -27,6 +27,37 @@
 > mandatory group challenges actually bite: nobody joins a challenge, they
 > find they are in one.
 
+> **Amended by [#1651](https://github.com/natrontech/wattroom/issues/1651)
+> (2026-09-10):** *"turned on … visibly"* is honoured **at the join door**, and
+> was not. `boardEnabled` was set only in the members-only branch of the room
+> read, so the outsider view never mentioned a board: a rider walking into a
+> room whose board was already on had their week published to the room without
+> the door ever having said the board existed — this ADR's own "enrolment by
+> existence", arriving through the one path the room-level switch was supposed
+> to close. The flag now reaches any rider the door would let in, and the
+> door's copy names what the board publishes and where the per-rider switch
+> above lives (`$lib/room/door.ts`).
+>
+> **The fact, not the rows.** `board` stays a member's — knowing that a room
+> keeps a board is not reading it — and the flag reaches only a rider who could
+> walk in, because [0039](0039-the-public-room-directory-shows-a-door-not-a-window.md)'s
+> asymmetry keeps what anybody else learns about a room as narrow as it is.
+> The **directory** entry is untouched and stays a name, an icon and a link.
+>
+> **Not a door-time toggle**, which was the tempting third option. `ux.md`'s
+> 95% rule: a rider who reads the line and presses the button wants to be on
+> the board, and the #1100 amendment above already gives the rest the switch.
+> A second control at the door would be a preference where a default plus a
+> sentence does the job.
+>
+> **Known and not fixed here:** the per-rider opt-out does not survive leaving.
+> `DeleteMembership` removes the row `on_board` lives on, so a rider who
+> switched themselves off, left, and walked back in is on the board again with
+> the column at its default — and the undo on "You left <room>" is the likeliest
+> way to hit it. Remembering a preference past the membership that holds it
+> needs somewhere to keep it, which is a schema decision and an amendment of
+> its own rather than a line in this one.
+
 ## Context
 
 A room's page showed four tiles — riders, streak, this month, medals. For a

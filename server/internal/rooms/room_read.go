@@ -325,7 +325,6 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					}
 				}
 			}
-			response.BoardEnabled = room.BoardEnabled
 			response.CrewVisible = room.CrewVisible
 			if room.BoardEnabled {
 				response.Board = s.board(r.Context(), room.ID)
@@ -342,6 +341,18 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 					})
 				}
 			}
+		}
+		// Whether this room keeps a weekly board — a member's own setting, and
+		// since #1651 the door's fourth fact too. ADR-0036 requires the board
+		// be turned on "visibly — what the room shares is fixed and legible
+		// *before* anyone is inside it"; set inside the members-only block
+		// above, it meant walking in published the joiner's week with the door
+		// never having said a board existed. Only the fact travels: the rows
+		// stay behind the membership, and it reaches only a rider the door
+		// would let in, because ADR-0039's asymmetry keeps what anybody else
+		// reads about a room as narrow as it already was.
+		if !banned && (response.Role != "" || response.CanEnter || room.Listed) {
+			response.BoardEnabled = room.BoardEnabled
 		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
