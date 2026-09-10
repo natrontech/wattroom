@@ -74,7 +74,8 @@
 		/>
 		<span
 			>Push to talk
-			<span class="text-muted block text-xs">for spectating from a desk</span
+			<span class="text-muted block text-xs"
+				>hold Space — for spectating from a desk</span
 			></span
 		>
 	</label>

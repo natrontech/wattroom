@@ -49,7 +49,7 @@
 	{:else if voiceMode === 'ptt'}
 		{transmitting
 			? 'transmitting — the room hears you'
-			: 'closed until you hold to talk'}
+			: 'closed until you hold Space to talk'}
 	{:else if transmitting}
 		<span class="text-z4">gate open</span> — the room hears you
 	{:else}

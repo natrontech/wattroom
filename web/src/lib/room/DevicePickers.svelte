@@ -1,6 +1,6 @@
 <script lang="ts">
 	// The three device selects (#1858): /settings/voice draws them with and
-	// without a room, and the room's Sound panel deep-links to #devices. One
+	// without a room, and the room's Sound panel draws them too (#1883). One
 	// component, so the two never disagree on what an unnamed device is called.
 	import Select from '$lib/components/Select.svelte';
 	import { deviceOptions } from '$lib/room/device-options';
@@ -32,8 +32,6 @@
 
 <div class="grid gap-4 sm:grid-cols-3">
 	<label class="block">
-		<!-- Anchors the room's Sound panel deep-links to (#1330). -->
-		<span id="devices"></span>
 		<span class="eyebrow">microphone</span>
 		<div class="mt-1">
 			<Select

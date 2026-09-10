@@ -28,3 +28,17 @@ export function spaceBelongsTo(
 	);
 	return !!control && focusVisible(control);
 }
+
+/**
+ * Whether push-to-talk can be offered here at all (#1879): Space is its
+ * only binding, and a phone or tablet has no key to hold. A fine pointer
+ * (mouse, trackpad) is the browser's own word for "there is a keyboard".
+ * ponytail: a touch laptop with a mouse passes; a tablet with a keyboard
+ * case does not — an on-screen hold target would answer both.
+ */
+export function canHoldToTalk(): boolean {
+	if (typeof matchMedia === 'undefined') return true;
+	return (
+		matchMedia('(pointer: fine)').matches || navigator.maxTouchPoints === 0
+	);
+}
