@@ -16,4 +16,17 @@ describe('createRecording', () => {
 		recording.record(0, 100);
 		expect(recording.samples.length).toBe(1);
 	});
+
+	// The trace is keyed on the workout clock and drawn across the whole ride,
+	// so dropping its oldest entries erased the start of the line rather than
+	// scrolling it: past 15 minutes the graph, the TV mode and the summary all
+	// began at t = elapsed − 899 (#2017).
+	it('keeps the whole ride, not the last quarter-hour', () => {
+		const recording = createRecording();
+		// An hour, well past the 898 the trace used to keep.
+		for (let t = 0; t < 3600; t++) recording.record(t, 150 + (t % 50));
+		expect(recording.trace.length).toBe(3600);
+		expect(recording.trace[0]).toEqual({ t: 0, w: 150 });
+		expect(recording.trace.at(-1)).toEqual({ t: 3599, w: 150 + (3599 % 50) });
+	});
 });

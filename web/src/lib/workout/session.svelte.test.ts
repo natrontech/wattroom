@@ -625,3 +625,31 @@ describe('the HUD feed (#1665)', () => {
 		vi.useRealTimers();
 	});
 });
+
+describe('the trace the graph draws (#2017)', () => {
+	// It is keyed on the workout clock and drawn across the whole ride, so
+	// dropping the oldest entries erased the start of the line rather than
+	// scrolling it. Past 15 minutes every surface reading it — the riding
+	// screen, the TV mode, the saved summary — began at elapsed − 900.
+	it('keeps the start of a ride longer than a quarter-hour', async () => {
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: {
+				name: 'an hour',
+				steps: [{ type: 'steady', seconds: 3600, target: 0.7 }],
+			},
+			ftp: 200,
+		});
+		await session.start();
+		// Twenty minutes, past the 900 the trace used to keep.
+		for (let i = 0; i < 1200; i++) {
+			session.onSample({ watts: 140 + (i % 20), cadence: 90, at: i * 1000 });
+			session.tick();
+		}
+
+		expect(session.trace.length).toBe(1200);
+		expect(session.trace[0].t).toBe(0);
+		expect(session.trace[0].w).toBe(140);
+		await session.stop();
+	});
+});

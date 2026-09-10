@@ -1,0 +1,1 @@
+- The power line on the ride graph keeps the whole ride again. Past fifteen minutes it used to drop the oldest readings, so the start of a long ride vanished from the graph, the TV mode and the saved summary.
