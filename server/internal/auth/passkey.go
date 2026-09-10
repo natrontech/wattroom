@@ -179,7 +179,10 @@ func (s *Service) handlePasskeyRegisterStart(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	// ADR-0029's ordering: the recovery address comes before the credential
-	// it would otherwise be the only way back from (#1611).
+	// it would otherwise be the only way back from (#1611). Start is the whole
+	// gate — a finish can only spend a challenge its own start issued, because
+	// go-webauthn binds the registration session to the user handle and a
+	// login's session carries none — so the rule lives in one place.
 	if !s.requireVerifiedEmail(w, user) {
 		return
 	}
