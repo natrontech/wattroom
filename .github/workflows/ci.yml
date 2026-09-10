@@ -126,16 +126,21 @@ jobs:
           fi
           echo "Divergence annotations are well formed."
 
-      - name: Relative links in docs/decisions resolve
+      # WATTROOM.md and the top-level docs are in scope too, not just the ADRs
+      # (#2055): docs/ROADMAP.md alone carries 36 links into docs/decisions/,
+      # and eight of them were written against guessed filenames that the old
+      # docs/decisions-only loop could never have seen.
+      - name: Relative links in the docs resolve
         run: |
           broken=""
-          for f in docs/decisions/*.md; do
+          for f in docs/decisions/*.md docs/*.md WATTROOM.md AGENTS.md; do
+            [ -e "$f" ] || continue
             for target in $(grep -oE '\]\([^)]+\)' "$f" | sed -E 's/^\]\(//; s/\)$//; s/[ #].*$//' | grep -vE '^([a-z]+:|$)'); do
               [ -e "$(dirname "$f")/$target" ] || broken="$broken $f->$target"
             done
           done
           if [ -n "$broken" ]; then
-            echo "Broken relative link(s) in docs/decisions:$broken" >&2
+            echo "Broken relative link(s):$broken" >&2
             exit 1
           fi
 
