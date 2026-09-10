@@ -2,6 +2,7 @@ package main
 
 import (
 	"compress/gzip"
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -251,18 +252,122 @@ func TestUnknownAPIRouteAndSecurityHeaders(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("the shell: %d", rec.Code)
 	}
+	if got := rec.Header().Get("Content-Security-Policy"); got != enforcedCSP {
+		t.Errorf("the shell's CSP = %q, want %q", got, enforcedCSP)
+	}
+}
+
+// securedHeaders runs one request through secured() and hands back what the
+// middleware wrote. overTLS mirrors a request that reached this binary over TLS,
+// which in production it never does — Caddy terminates (ADR-0002).
+func securedHeaders(t *testing.T, overTLS bool) http.Header {
+	t.Helper()
+	handler := secured(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	req := httptest.NewRequestWithContext(t.Context(), "GET", "/r/velvet", nil)
+	if overTLS {
+		req.TLS = &tls.ConnectionState{}
+	}
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	return rec.Header()
+}
+
+// Every hardening header the middleware owns, asserted by value (#1609, #1737).
+func TestSecuredSetsEveryHardeningHeader(t *testing.T) {
 	for header, want := range map[string]string{
-		"Content-Security-Policy":   enforcedCSP,
-		"X-Content-Type-Options":    "nosniff",
-		"Referrer-Policy":           "strict-origin-when-cross-origin",
-		"Strict-Transport-Security": "max-age=31536000",
+		"Content-Security-Policy":             enforcedCSP,
+		"Content-Security-Policy-Report-Only": reportOnlyCSP,
+		"X-Content-Type-Options":              "nosniff",
+		"Referrer-Policy":                     "strict-origin-when-cross-origin",
+		"Strict-Transport-Security":           "max-age=31536000",
+		"Permissions-Policy":                  permissionsPolicy,
 	} {
-		if got := rec.Header().Get(header); got != want {
+		if got := securedHeaders(t, false).Get(header); got != want {
 			t.Errorf("%s = %q, want %q", header, got, want)
 		}
 	}
-	// The full policy rides report-only until a ride has run under it (#1737).
-	if got := rec.Header().Get("Content-Security-Policy-Report-Only"); got != reportOnlyCSP || !strings.Contains(got, "frame-src https://www.youtube-nocookie.com") {
-		t.Errorf("report-only CSP = %q", got)
+}
+
+// HSTS rides plain http too, and must: this binary never terminates TLS, so
+// gating on the request's own transport would drop the header behind Caddy
+// and leave production with none. A browser ignores it unless it arrived over
+// a secure transport (RFC 6797 §8.1), which is what leaves `make dev-server`
+// on http://localhost untouched. No includeSubDomains — a self-hoster's other
+// subdomains are not this binary's to claim (#1737).
+func TestHSTSRidesEveryResponseAndClaimsNoSubdomains(t *testing.T) {
+	for _, overTLS := range []bool{false, true} {
+		got := securedHeaders(t, overTLS).Get("Strict-Transport-Security")
+		if got != "max-age=31536000" {
+			t.Errorf("over TLS=%v: HSTS = %q, want max-age=31536000", overTLS, got)
+		}
+		if strings.Contains(strings.ToLower(got), "includesubdomains") {
+			t.Errorf("over TLS=%v: HSTS claims subdomains: %q", overTLS, got)
+		}
+	}
+}
+
+// The Permissions-Policy grants exactly the three features the app calls and
+// denies the rest (#1737). A wrong entry here is a rider who cannot pair a
+// trainer or speak, so the whole policy is pinned entry by entry — including
+// that nothing beyond these five is named.
+func TestPermissionsPolicyGrantsOnlyWhatTheAppUses(t *testing.T) {
+	want := map[string]string{
+		"camera":      "(self)", // LiveKit video
+		"microphone":  "(self)", // LiveKit voice
+		"bluetooth":   "(self)", // the trainer and its sensors
+		"geolocation": "()",     // never called
+		"payment":     "()",     // never called
+	}
+
+	got := map[string]string{}
+	for _, entry := range strings.Split(securedHeaders(t, false).Get("Permissions-Policy"), ",") {
+		feature, allowlist, ok := strings.Cut(strings.TrimSpace(entry), "=")
+		if !ok {
+			t.Fatalf("entry %q is not feature=allowlist", entry)
+		}
+		got[feature] = allowlist
+	}
+
+	if len(got) != len(want) {
+		t.Errorf("policy names %d features, want %d: %v", len(got), len(want), got)
+	}
+	for feature, allowlist := range want {
+		if got[feature] != allowlist {
+			t.Errorf("%s = %q, want %q", feature, got[feature], allowlist)
+		}
+	}
+}
+
+// The report-only policy is the one that gets promoted, so every origin the
+// app actually reaches for has to be in it — a host missing here is a broken
+// ride the day someone enforces it (#1737).
+func TestReportOnlyCSPNamesEveryOriginTheAppLoads(t *testing.T) {
+	policy := securedHeaders(t, false).Get("Content-Security-Policy-Report-Only")
+
+	for _, tc := range []struct{ what, directive string }{
+		// web/src/lib/room/youtube-api.ts loads this as a <script> tag; the
+		// frame-src entry below does not cover it.
+		{"the YouTube IFrame API script", "script-src 'self' 'unsafe-inline' https://www.youtube.com"},
+		// The deck's thumbnails, and a GIF drawn straight at its own CDN
+		// (web/src/lib/chat/media.ts, server/internal/gifs) whose hostnames
+		// are sharded, hence the wildcards.
+		{"deck thumbnails and chat GIFs", "img-src 'self' data: blob: https://i.ytimg.com https://*.giphy.com https://*.tenor.com"},
+		{"the player iframe", "frame-src https://www.youtube-nocookie.com https://www.youtube.com"},
+		{"LiveKit signaling", "connect-src 'self' wss: https:"},
+		// The ride ticker's blob Worker (web/src/lib/workout/ticker.ts).
+		{"the ride ticker's worker", "worker-src 'self' blob:"},
+		// app.html:8 paints the rider's cached theme before the bundle runs.
+		{"the inline theme block", "'unsafe-inline'"},
+	} {
+		if !strings.Contains(policy, tc.directive) {
+			t.Errorf("%s: policy is missing %q\ngot %q", tc.what, tc.directive, policy)
+		}
+	}
+
+	// Nothing is enforced beyond the three directives a ride cannot break.
+	if enforcedCSP != "frame-ancestors 'none'; base-uri 'none'; object-src 'none'" {
+		t.Errorf("enforced CSP grew without a ride: %q", enforcedCSP)
 	}
 }
