@@ -154,8 +154,8 @@
 {/snippet}
 
 <div class="page">
-	<div class="mb-5 flex items-center gap-3">
-		<h2 class="font-display text-xl font-bold">What's planned here</h2>
+	<div class="mb-1 flex items-center gap-3">
+		<h2 class="font-display text-xl font-bold">Sessions</h2>
 		<!-- One button to plan with: the empty state's while the list is
 		     empty, this one once it is not. -->
 		{#if manages && room.upcoming.length > 0}
@@ -166,6 +166,7 @@
 			>
 		{/if}
 	</div>
+	<p class="text-muted mb-5 text-xs">What's planned here.</p>
 
 	{#if room.upcoming.length === 0}
 		<!-- ux.md: empty states teach, never apologise — and never tell a

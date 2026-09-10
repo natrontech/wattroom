@@ -167,7 +167,7 @@
 
 <div class="page">
 	<h2 class="font-display mb-1 text-xl font-bold">
-		Who rides here — {room.members.length}
+		Members — {room.members.length}
 	</h2>
 	<p class="text-muted mb-3 text-xs">
 		The people column is the live read; this is the paperwork.
