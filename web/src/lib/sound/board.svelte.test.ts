@@ -14,12 +14,14 @@ const started: { start: number; kept: number }[] = [];
 let stopped = 0;
 let ended: (() => void) | undefined;
 
+/** Every level any gain node was aimed at, in order (#1894). */
+const aimed: number[] = [];
 function fakeParam() {
 	return {
 		value: 0,
-		setValueAtTime: () => {},
-		linearRampToValueAtTime: () => {},
-		setTargetAtTime: () => {},
+		setValueAtTime: (v: number) => void aimed.push(v),
+		linearRampToValueAtTime: (v: number) => void aimed.push(v),
+		setTargetAtTime: (v: number) => void aimed.push(v),
 	};
 }
 
@@ -64,6 +66,7 @@ vi.mock('$lib/sound/mixer.svelte', () => ({
 }));
 
 const {
+	applyLevels,
 	catchUp,
 	fire,
 	forget,
@@ -117,6 +120,18 @@ beforeEach(() => {
 	stopped = 0;
 });
 afterEach(() => vi.unstubAllGlobals());
+
+describe('levels', () => {
+	it("keeps a clip's own gain when a fader moves mid-clip (#1894)", async () => {
+		served.set('clip-q', { gainDb: -12 });
+		await fire('clip-q', ME);
+		// The play's peak carries the clip's gain; a re-aim must too.
+		const peak = aimed.at(-1)!;
+		aimed.length = 0;
+		applyLevels();
+		expect(aimed.at(-1)).toBeCloseTo(peak, 6);
+	});
+});
 
 describe('audition', () => {
 	it('says what it is playing, and stops on the second press', async () => {

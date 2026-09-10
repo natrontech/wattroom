@@ -69,6 +69,7 @@ vi.mock('livekit-client', () => ({
 }));
 
 import { prepareRoomAv, roomConnection } from '$lib/room/connection.svelte';
+import { listening } from '$lib/room/listening.svelte';
 import { toasts } from '$lib/toast.svelte';
 
 // The room layout's load does this before the shell joins (#1514).
@@ -122,6 +123,14 @@ describe('roomConnection', () => {
 		expect(again).toBe(first);
 		expect(again.ride).toBe(first.ride);
 		expect(again.recording).toBe(first.recording);
+	});
+
+	it('puts you back in the music when you leave (#1898)', async () => {
+		roomConnection.join('lounge');
+		listening.stepOut('stop', null);
+		expect(listening.out).toBe(true);
+		roomConnection.leave();
+		expect(listening.out).toBe(false);
 	});
 
 	it('releases the trainer when you leave, not when a page unmounts', async () => {

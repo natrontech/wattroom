@@ -72,6 +72,11 @@ function hole(box: {
 }
 
 describe('seatOf', () => {
+	it('offers nothing under the 200 px floor a playing embed needs (#1893)', () => {
+		const r = { left: 0, top: 0, width: 156, height: 200 } as DOMRectReadOnly;
+		expect(seatOf(r, true)).toBeNull();
+	});
+
 	it('is the rect while visible, and nothing while hidden or unlaid-out', () => {
 		const r = rect({ left: 10, top: 20, width: 300, height: 200 });
 		expect(seatOf(r, true)).toEqual({ x: 10, y: 20, w: 300, h: 200 });
