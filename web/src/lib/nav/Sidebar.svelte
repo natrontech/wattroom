@@ -108,8 +108,15 @@
 	function pick(id: string) {
 		chosenCrew.set(id);
 	}
-	// The + beside rooms opens the open/join forms in a sheet (#1199).
+	// The + beside rooms opens the open/join forms in a sheet (#1199). The
+	// sheet closes when the room opens: Home's copy died with its page, this
+	// one outlives every page, and it stood over the room it had just
+	// opened, trapping focus (found by e2e/room.ts taking the door, #1861).
 	let opening = $state(false);
+	$effect(() => {
+		pathname;
+		opening = false;
+	});
 	// The direct-messages heading folds its list (#1359), remembered per
 	// device. Folded, the heading carries the unread dot itself: a message
 	// that arrived behind a fold is still announced (ux.md).
