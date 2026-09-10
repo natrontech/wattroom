@@ -33,7 +33,7 @@
 		type MenuEntry,
 		type MenuItem,
 	} from '$lib/context-menu.svelte';
-	import DeleteRideDialog from '$lib/ride/DeleteRideDialog.svelte';
+	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { untrack } from 'svelte';
 	import Lock from '@lucide/svelte/icons/lock';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -113,8 +113,12 @@
 	// One helper for the row, its menu and the ride page (#1691).
 	const setShared = setRideShared;
 
-	// The ride the confirm is asking about; null while nothing is being deleted.
-	let deleting = $state<ServerRide | null>(null);
+	async function removeRide(ride: ServerRide) {
+		if (!(await deleteRideAfterConfirm(ride))) return;
+		rides = rides?.filter((r) => r.id !== ride.id) ?? null;
+		// The charts count this ride — they have to be asked again.
+		void loadProgression();
+	}
 
 	// The row's verbs, as menu items too (#486). A device-only ride has no
 	// server to flip or delete, so its row offers nothing and keeps the
@@ -131,7 +135,7 @@
 			label: 'Delete ride',
 			icon: Trash2,
 			danger: true,
-			onSelect: () => (deleting = ride),
+			onSelect: () => void removeRide(ride),
 		} satisfies MenuItem,
 	];
 
@@ -541,19 +545,5 @@
 		<button onclick={() => void clearDevice()} class="btn btn-danger mt-4"
 			>Clear device rides</button
 		>
-	{/if}
-
-	{#if deleting}
-		{@const gone = deleting}
-		<DeleteRideDialog
-			ride={gone}
-			onclose={() => (deleting = null)}
-			ondeleted={() => {
-				rides = rides?.filter((ride) => ride.id !== gone.id) ?? null;
-				deleting = null;
-				// The charts count this ride — they have to be asked again.
-				void loadProgression();
-			}}
-		/>
 	{/if}
 </main>
