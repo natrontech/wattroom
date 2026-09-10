@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.99] - 2026-09-10
+
+### Added
+
+- Settings → Voice & audio lets you choose your microphone, camera and speakers before you are in a room. The pick is the one your next voice join uses, and a "name them now" link grants the mic once so the list shows names instead of numbers.
+
+### Fixed
+
+- Following "Get the desktop app" from the sidebar, or the legal and privacy links, no longer drops you out of the app: signed in, those pages open inside the shell with the sidebar and the way back still there.
+- When the trainer drops out mid-ride, the "pair the trainer again" button now hands the new connection to the ride that is running, instead of pairing a second trainer the ride never listened to; the ramp test gets the same button. Start waits while a paired trainer is still reconnecting, and the app no longer opens a second device chooser for a trainer it already has.
+
 ## [2026.09.98] - 2026-09-10
 
 ### Fixed
@@ -1834,7 +1845,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.98...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.99...HEAD
+[2026.09.99]: https://github.com/natrontech/wattroom/compare/2026.09.98...2026.09.99
 [2026.09.98]: https://github.com/natrontech/wattroom/compare/2026.09.97...2026.09.98
 [2026.09.97]: https://github.com/natrontech/wattroom/compare/2026.09.96...2026.09.97
 [2026.09.96]: https://github.com/natrontech/wattroom/compare/2026.09.95...2026.09.96
