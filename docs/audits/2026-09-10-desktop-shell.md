@@ -10,10 +10,10 @@
 | ----- | --------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------- |
 | #1938 | The HUD window closes itself the moment it loads                                  | high      | fixed (#1950): the layout skips `/hud`, the shell ignores the HUD's own message; the smoke drives it |
 | #1939 | Permissions are decided by the top frame's URL, not the requesting frame          | security  | fixed (#1950)                                                                                        |
-| #1940 | A self-update that never succeeds is never mentioned to anyone                    | bug       | open                                                                                                 |
-| #1941 | Any web page can throw a riding shell onto `/login`                               | security  | open                                                                                                 |
+| #1940 | A self-update that never succeeds is never mentioned to anyone                    | bug       | fixed (#1955) |
+| #1941 | Any web page can throw a riding shell onto `/login`                               | security  | fixed (#1955): gated on a sign-in started here, handed over IPC |
 | #1942 | A crashed renderer leaves a blank window with no way back                         | bug       | fixed (#1950)                                                                                        |
-| #1943 | The shell ships Electron's default menu into a frameless window                   | bug       | open                                                                                                 |
+| #1943 | The shell ships Electron's default menu into a frameless window                   | bug       | fixed (#1955) |
 | #1944 | A dev run steals the `wattroom://` handler from the installed app                 | bug       | fixed (#1950)                                                                                        |
 | #1945 | A notification reply over 500 characters is silently cut                          | bug       | fixed (#1950)                                                                                        |
 | #1946 | `ownPath` lets a backslash through the notification href gate                     | security  | fixed (#1950)                                                                                        |
