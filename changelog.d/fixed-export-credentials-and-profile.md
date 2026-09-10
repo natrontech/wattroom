@@ -1,1 +1,0 @@
-- "Export everything" now carries the rest of what the account holds: which sign-in providers are connected and the ids they know you by, your passkeys' names and dates, your LTHR, timezone, the Strava switch and when your address was verified — never a token or a credential itself.

@@ -17,6 +17,14 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.98] - 2026-09-10
+
+### Fixed
+
+- "Export everything" now carries the rest of what the account holds: which sign-in providers are connected and the ids they know you by, your passkeys' names and dates, your LTHR, timezone, the Strava switch and when your address was verified — never a token or a credential itself.
+- Home's "getting set up" card now appears for every new account — it used to show only for riders who owned a crew, so the account that needed it most saw nothing — and its first step reads "Take your first ride", which is what it checks. Home also says where rides land before you have one, an old /sessions link now scrolls to the sessions, and the "new account" notice reaches riders who arrived through an invite link.
+- Two trainer fixes: the trainer is now told to release its resistance before the app lets go of it at the end of a ride or on unpair — a Kickr used to keep the last target it was given — and in a room a trainer whose Bluetooth link drops and comes back mid-block gets its target set again instead of freewheeling for the rest of the interval.
+
 ## [2026.09.97] - 2026-09-10
 
 ### Changed
@@ -1826,7 +1834,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.97...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.98...HEAD
+[2026.09.98]: https://github.com/natrontech/wattroom/compare/2026.09.97...2026.09.98
 [2026.09.97]: https://github.com/natrontech/wattroom/compare/2026.09.96...2026.09.97
 [2026.09.96]: https://github.com/natrontech/wattroom/compare/2026.09.95...2026.09.96
 [2026.09.95]: https://github.com/natrontech/wattroom/compare/2026.09.94...2026.09.95
