@@ -103,11 +103,35 @@ a home that is not a chat message.
 ## 8. Separate the decisions — never implement them
 
 Some findings are product, privacy, legal or process **decisions**. An agent must not settle them by
-picking the option that is easiest to build. Bring each one to the maintainer with three parts:
+picking the option that is easiest to build.
+
+**First, the decidability test — most findings fail it.** `needs-human-input` means the answer is not
+derivable from this repository. *Two plausible options is not the test*; canon usually picks one.
+Before reaching for the label, check WATTROOM.md, [docs/SPEC.md](../../../docs/SPEC.md), the ADRs and
+[`.claude/rules/`](../../rules/):
+
+- **Canon answers it** → it is a **defect**, not a decision. File it as a bug and fix it. #1651 (a
+  room's board enrols joiners invisibly) reads as a decision until you notice ADR-0036 already
+  requires the board be visible "*before* anyone is inside it" — the issue's own recommended option
+  was the ADR's wording quoted back at it.
+- **The doc is merely stale** → amending it *is* the fix, not a question. Write the amendment.
+- **Two documents disagree** → ADR-0001 makes the ADR canon. Follow it, and record the divergence.
+- **Nothing in the repo can answer it** — it needs taste, money, legal exposure, risk appetite or
+  roadmap priority → this is a real decision. Continue below.
+
+Applied loosely the label does the opposite of its job. On a defect it *protects* the defect: no agent
+may touch it and the maintainer never reaches it. #1507 — Strava activity ids surviving a disconnect,
+against the §7.4 WATTROOM.md binds us to — sat behind the label for exactly that reason.
+
+**Then ask; do not file.** If the maintainer is at the keyboard, put the question to them now and act
+on the answer in the same run. An issue is the fallback for when nobody is there. A filed decision
+waits on one person and costs a context load to re-enter; an asked one costs a sentence.
+
+Either way, bring it with three parts:
 
 1. **What was found** — stated without assuming any context
-2. **Why it needs their input** — what makes it a judgement rather than a defect, and what you
-   genuinely cannot decide for them
+2. **Why it needs their input** — which check above it failed, what makes it a judgement rather
+   than a defect, and what you genuinely cannot decide for them
 3. **Options, with a recommendation and its reasoning** — including the option of doing nothing
 
 Label the resulting issues **`needs-human-input`** and say in the body that an agent must not build
@@ -134,3 +158,5 @@ a record of the divergence; a fix plus the question it exposes) — that is norm
   finding with no `path:line` is worse than silence: it costs a maintainer a read to disprove.
 - **A decision disguised as a bug** → step 8, always. Filing it as a bug invites an agent to
   implement one side of an open question.
+- **A bug disguised as a decision** → step 8's decidability test. The label parks it somewhere nobody
+  is allowed to fix it, which is how 38 of 65 open issues came to be waiting on one person.
