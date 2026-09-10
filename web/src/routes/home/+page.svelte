@@ -29,7 +29,6 @@
 	import { changelog } from '$lib/changelog.svelte';
 	import WhatsNewNotice from '$lib/components/WhatsNewNotice.svelte';
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
-	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
@@ -199,9 +198,15 @@
 	// /home#rooms — lands on them once the page is up (#1199).
 	$effect(() => {
 		// The forms render once the room list has landed; before that there
-		// is nothing to reveal.
-		if (page.url.hash !== '#rooms' || rooms === null) return;
-		queueMicrotask(revealRooms);
+		// is nothing to reveal. #sessions the same way (#1862): the old
+		// /sessions redirect landed on the top, because the section it named
+		// was behind the same fetch when the hash was applied.
+		if (rooms === null) return;
+		if (page.url.hash === '#rooms') queueMicrotask(revealRooms);
+		else if (page.url.hash === '#sessions')
+			queueMicrotask(() =>
+				document.getElementById('sessions')?.scrollIntoView({ block: 'start' }),
+			);
 	});
 </script>
 
@@ -293,7 +298,6 @@
 	     queueing is the stylesheet's: every notice renders its own element or
 	     nothing at all, so "first child" is "first that has something to say". -->
 	<div class="notices">
-		<NewAccountNotice />
 		<DesktopNotice />
 		{#if changelog.unseen}
 			<WhatsNewNotice />

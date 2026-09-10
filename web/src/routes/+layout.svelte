@@ -35,6 +35,7 @@
 	import { openMember } from '$lib/nav/open-member';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Toasts from '$lib/components/Toasts.svelte';
+	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
 	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
@@ -442,6 +443,10 @@
 				tabindex="-1"
 				class="min-h-0 flex-1 overflow-y-auto outline-none"
 			>
+				<!-- On the shell, not on Home (#1862): the invite path never
+				     passes Home, and "if you meant to sign into one you already
+				     had" has to arrive while undoing it is still cheap. -->
+				<NewAccountNotice />
 				{@render children()}
 			</div>
 		</div>

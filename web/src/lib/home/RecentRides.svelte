@@ -11,7 +11,17 @@
 	const recent = $derived(rides);
 </script>
 
-{#if recent.length > 0}
+{#if recent.length === 0}
+	<!-- Empty states teach (ux.md, #1862): the section used to vanish
+	     whole, and a fresh account was never told the app keeps a ride log. -->
+	<section>
+		<h2 class="eyebrow">Recent rides</h2>
+		<p class="text-muted mt-2 text-sm">
+			No rides yet — every ride you finish lands here.
+			<a href="/workouts" class="btn-link">Ride solo</a>
+		</p>
+	</section>
+{:else}
 	<section>
 		<div class="flex items-baseline gap-3">
 			<h2 class="eyebrow">Recent rides</h2>

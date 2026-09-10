@@ -552,6 +552,7 @@ rather than redrawing it. Nothing in the column changes shape.
 ```
 ┌───────────────────────────────┐
 │ [W] Wadlichlepfer ⌄           │ → /crew/[id]: people · rooms · invite · settings
+│ ↑ a new version is ready      │   only while one is (the desktop shell, #1235)
 │ Home                          │
 │ Workouts                      │ → /workouts/edit · /ride · /ramp  (Workouts stays lit)
 │ Rides                         │ → /history/[id]  (the URL follows the label with #1330)
@@ -564,9 +565,11 @@ rather than redrawing it. Nothing in the column changes shape.
 │     Settings                  │
 │ DIRECT MESSAGES             › │ → /messages/dm/[peer]
 │ [with you in MFW 5]           │   only while connected and off the Lounge
+│ Get the desktop app           │ → /download, on a desk in a browser only (#1235)
 │ you · ⚙                       │ → /u/me · /settings/{profile,equipment,voice,…}
 └───────────────────────────────┘
 Outside the tree on purpose: /c/[code] (it arrives from outside) and /hud (the shell's window).
+The two rows above without a page of their own were added after the drawing (#1862): the update row and the desktop row.
 Retired once their parents exist: /profile, /pair, /trophies, and the five stubs.
 ```
 

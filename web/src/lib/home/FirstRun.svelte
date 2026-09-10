@@ -1,10 +1,12 @@
 <script lang="ts">
 	// The three setup steps that decide whether a rider ever rides (#1333):
-	// pair a trainer, name the crew, invite someone. Each row is a link to
+	// take a first ride, name the crew, invite someone. Each row is a link to
 	// where the step is done and retires itself once it is; the card goes
-	// when the last one does. Only the owner of a crew sees it — the crew
-	// steps are theirs, and a rider who joined someone else's crew has
-	// nothing to name or fill.
+	// when the last one does. The first step is everyone's (#1857): it used
+	// to be gated with the crew steps on OWNING a crew, so a brand-new
+	// account — no crew yet — and a rider who joined someone else's saw no
+	// card at all, and the one instruction that makes a watt appear went
+	// down with the two that are the owner's alone.
 	import { fetchCrew } from '$lib/crew';
 	import type { RoomCrew } from '$lib/room/room-data';
 	import Check from '@lucide/svelte/icons/check';
@@ -36,15 +38,19 @@
 	// name retired the step when the OWNER renamed themselves (audit 2026-09-09).
 	const named = $derived(!!crew?.named);
 	const invited = $derived(people !== null && people > 1);
+	// Labelled for what it tests (#1857): a finished ride. "Pair your
+	// trainer" stayed open after a rider paired one, with the real rule in
+	// the small grey line.
+	const first = $derived({
+		done: ridden,
+		label: 'Take your first ride',
+		hint: 'pair your trainer, or ride simulated once to see the room work',
+		href: '/settings/equipment',
+	});
 	const steps = $derived(
 		crew && people !== null
 			? [
-					{
-						done: ridden,
-						label: 'Pair your trainer',
-						hint: 'or ride simulated once to see the room work',
-						href: '/settings/equipment',
-					},
+					first,
 					{
 						done: named,
 						label: 'Name your crew',
@@ -58,7 +64,7 @@
 						href: `/crew/${crew.id}`,
 					},
 				]
-			: [],
+			: [first],
 	);
 	const left = $derived(steps.filter((s) => !s.done).length);
 </script>
