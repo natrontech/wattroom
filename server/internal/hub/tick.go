@@ -145,10 +145,17 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		rm.metrics = make(map[string]protocol.RiderMetrics)
 		rm.cheers = nil
 		rm.board = nil
-		// Who the session has seen, sampled once a second while it runs
-		// (ADR-0034). Cheap, and it needs no join/leave hook: the roster is
-		// right here, already folded across a rider's several screens.
-		if tick.State.Phase == "countdown" || tick.State.Phase == "running" || tick.State.Phase == "paused" {
+		// Who the session has seen, sampled once a second while the timeline
+		// runs (ADR-0034). Cheap, and it needs no join/leave hook: the roster
+		// is right here, already folded across a rider's several screens.
+		//
+		// The countdown is not the session (#1539): a coach who starts and
+		// cancels inside the ten seconds rode nothing, and both docs/SPEC.md
+		// and ADR-0034 say a session that never started leaves nothing. An
+		// empty presence map is how closeLocked hears that, so this gate is
+		// the whole of it — and it is what `countdown` already means to the
+		// rest of the timeline, which mood() and sprintBlockAt() both refuse.
+		if tick.State.Phase == "running" || tick.State.Phase == "paused" {
 			rm.sawLocked(now())
 		}
 		// The session just closed: hand the ride record to the saver exactly

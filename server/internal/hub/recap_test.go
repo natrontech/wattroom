@@ -2,8 +2,12 @@ package hub
 
 import (
 	"encoding/json"
+	"log/slog"
 	"strings"
+	"sync"
 	"testing"
+	"testing/synctest"
+	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
@@ -185,4 +189,201 @@ func TestARecapCarriesNoMetrics(t *testing.T) {
 			t.Errorf("a recap must not carry %q: %s", banned, blob)
 		}
 	}
+}
+
+// A session that never started leaves nothing (docs/SPEC.md, ADR-0034) — and
+// the ten-second countdown is not a session (#1539). These drive the real
+// tick loop rather than the sampler, because the phase gate the rule lives in
+// is the tick's, and an empty presence map is the only thing that tells
+// closeLocked there is no card to write.
+
+// recapCatcher stands in for the recap service: whatever the room handed off.
+type recapCatcher struct {
+	mu   sync.Mutex
+	rows []protocol.SessionRecap
+}
+
+func (c *recapCatcher) SaveRecap(_ string, rec protocol.SessionRecap) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.rows = append(c.rows, rec)
+}
+
+func (c *recapCatcher) saved() []protocol.SessionRecap {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return append([]protocol.SessionRecap(nil), c.rows...)
+}
+
+// tickingRoom is a room on the real tick loop with a recap keeper wired in.
+// Only inside a synctest bubble, and the caller defers stop(): a t.Fatal
+// unwinds the bubble's own goroutine, and a tick loop still running when it
+// does panics the bubble over whatever actually failed.
+func tickingRoom(t *testing.T, riders ...string) (rm *room, saved *recapCatcher, stop func()) {
+	t.Helper()
+	rm = newRoom("velvet")
+	rm.now = time.Now
+	saved = &recapCatcher{}
+	rm.recaps = saved
+	go rm.run(slog.New(slog.DiscardHandler), time.Now, nil)
+	for _, id := range riders {
+		rm.join(socket(id, id))
+	}
+	return rm, saved, sync.OnceFunc(func() { close(rm.stop) })
+}
+
+// coach drives the session the way a coach's socket does.
+func coach(t *testing.T, rm *room, c protocol.Control) {
+	t.Helper()
+	if !rm.control(c, "jan", time.Now()) {
+		t.Fatalf("the session refused %q", c.Action)
+	}
+}
+
+func startSession(t *testing.T, rm *room) {
+	t.Helper()
+	coach(t, rm, protocol.Control{Action: "pick", WorkoutName: "Openers", WorkoutJSON: "{}", TotalSeconds: 600})
+	coach(t, rm, protocol.Control{Action: "start"})
+}
+
+func TestOnlyASessionThatRanLeavesARecap(t *testing.T) {
+	tests := []struct {
+		name   string
+		riders []string
+		ride   func(t *testing.T, rm *room)
+		want   bool
+	}{
+		{
+			// The bug: a coach who thinks better of it inside the ten
+			// seconds left a durable card for a session nobody rode.
+			name:   "a countdown the coach cancels",
+			riders: []string{"jan"},
+			ride: func(t *testing.T, rm *room) {
+				startSession(t, rm)
+				time.Sleep(4 * time.Second)
+				coach(t, rm, protocol.Control{Action: "end"})
+			},
+			want: false,
+		},
+		{
+			// A full room does not make a cancelled countdown a session.
+			name:   "a countdown cancelled with the room full",
+			riders: []string{"jan", "kim", "lena"},
+			ride: func(t *testing.T, rm *room) {
+				startSession(t, rm)
+				time.Sleep(9 * time.Second)
+				coach(t, rm, protocol.Control{Action: "end"})
+			},
+			want: false,
+		},
+		{
+			name:   "the countdown runs out and the timeline rides",
+			riders: []string{"jan", "kim"},
+			ride: func(t *testing.T, rm *room) {
+				startSession(t, rm)
+				time.Sleep(countdownSeconds*time.Second + 30*time.Second)
+				coach(t, rm, protocol.Control{Action: "end"})
+			},
+			want: true,
+		},
+		{
+			// One tick of running is a session; the gate must not need two.
+			name:   "the timeline rides for a single tick",
+			riders: []string{"jan"},
+			ride: func(t *testing.T, rm *room) {
+				startSession(t, rm)
+				time.Sleep(countdownSeconds*time.Second + 2*time.Second)
+				coach(t, rm, protocol.Control{Action: "end"})
+			},
+			want: true,
+		},
+		{
+			name:   "a session paused and then ended",
+			riders: []string{"jan"},
+			ride: func(t *testing.T, rm *room) {
+				startSession(t, rm)
+				time.Sleep(countdownSeconds*time.Second + 20*time.Second)
+				coach(t, rm, protocol.Control{Action: "pause"})
+				time.Sleep(10 * time.Second)
+				coach(t, rm, protocol.Control{Action: "end"})
+			},
+			want: true,
+		},
+		{
+			// The clock closes a session as readily as a coach does.
+			name:   "the timeline running out on its own",
+			riders: []string{"jan"},
+			ride: func(t *testing.T, rm *room) {
+				coach(t, rm, protocol.Control{Action: "pick", WorkoutName: "Openers", WorkoutJSON: "{}", TotalSeconds: 20})
+				coach(t, rm, protocol.Control{Action: "start"})
+				time.Sleep(countdownSeconds*time.Second + 25*time.Second)
+			},
+			want: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				rm, catcher, stop := tickingRoom(t, tc.riders...)
+				defer stop()
+				tc.ride(t, rm)
+				// A tick to close on, and the hand-off is a goroutine.
+				time.Sleep(2 * time.Second)
+				synctest.Wait()
+				stop()
+
+				rows := catcher.saved()
+				if tc.want {
+					if len(rows) != 1 {
+						t.Fatalf("a session that ran should leave one recap, left %d", len(rows))
+					}
+					if len(rows[0].Riders) != len(tc.riders) {
+						t.Errorf("recap holds %d riders, want %d: %+v", len(rows[0].Riders), len(tc.riders), rows[0].Riders)
+					}
+					return
+				}
+				if len(rows) != 0 {
+					t.Fatalf("a session that never started should leave nothing, left %+v", rows)
+				}
+				// Not an empty row either: nothing was recorded to write one
+				// from, which is what closeLocked reads.
+				rm.mu.Lock()
+				defer rm.mu.Unlock()
+				if len(rm.present) != 0 {
+					t.Errorf("a cancelled countdown left %d presence rows", len(rm.present))
+				}
+				if !rm.presentSince.IsZero() {
+					t.Error("a cancelled countdown started the recap's clock")
+				}
+			})
+		})
+	}
+}
+
+// The card's clock is the timeline's, not the countdown's: ten seconds of
+// 3-2-1 are not ten seconds of riding, and the rest of the timeline already
+// agrees — mood() and sprintBlockAt() both refuse a countdown (#1539, #2016).
+func TestTheRecapClockStartsWhenTheTimelineDoes(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		rm, catcher, stop := tickingRoom(t, "jan")
+		defer stop()
+		startSession(t, rm)
+		running := time.Now().Add(countdownSeconds * time.Second)
+		time.Sleep(countdownSeconds*time.Second + 30*time.Second)
+		coach(t, rm, protocol.Control{Action: "end"})
+		time.Sleep(2 * time.Second)
+		synctest.Wait()
+		stop()
+
+		rows := catcher.saved()
+		if len(rows) != 1 {
+			t.Fatalf("want one recap, got %d", len(rows))
+		}
+		if off := time.UnixMilli(rows[0].StartedAt).Sub(running); off < 0 || off > 2*time.Second {
+			t.Errorf("the card's clock starts %s off the timeline's", off)
+		}
+		if rows[0].Riders[0].From < running.UnixMilli() {
+			t.Error("a rider's bar reaches back into the countdown")
+		}
+	})
 }
