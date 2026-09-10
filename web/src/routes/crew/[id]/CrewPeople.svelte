@@ -114,7 +114,7 @@
 			...personMenu(person.id, goto, { you: false }),
 			'separator',
 			{
-				label: 'Lift the crew ban',
+				label: 'Unban from the crew',
 				icon: Shield,
 				onSelect: () =>
 					act(person, 'member', `${person.displayName} is back in the crew.`),
@@ -271,7 +271,7 @@
 								`${person.displayName} is back in the crew.`,
 							)}
 						disabled={busy}
-						class="btn btn-ghost btn-xs">Unban</button
+						class="btn btn-ghost btn-xs">Unban from the crew</button
 					>
 					<span class="text-muted/70 text-[11px]"
 						>restores nothing a room's owner decided</span

@@ -135,7 +135,7 @@
 
 			<h2 class="eyebrow">your workouts</h2>
 			<a href="/workouts/edit" class="hover:text-ink text-xs underline"
-				>New workout</a
+				>Build a workout</a
 			>
 		</div>
 		{#if custom.error}

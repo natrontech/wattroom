@@ -21,9 +21,9 @@
 {#if nothingYet}
 	<EmptyState>
 		The case fills as you ride and as you hang out: every kJ is an XP, every
-		five minutes in a lounge's voice channel is one more.
+		five minutes in a lounge's voice is one more.
 		{#snippet cta()}
-			<a href="/workouts" class="btn btn-primary btn-xs">Ride a workout</a>
+			<a href="/workouts" class="btn btn-primary btn-xs">Ride solo</a>
 		{/snippet}
 	</EmptyState>
 {:else}

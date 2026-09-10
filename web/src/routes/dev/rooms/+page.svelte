@@ -167,7 +167,7 @@
 				/>
 				<button
 					class="bg-ink text-paper hover:bg-ink/90 mt-3 w-full rounded px-4 py-2.5 text-sm font-medium"
-					>Open room</button
+					>Open a room</button
 				>
 			</div>
 

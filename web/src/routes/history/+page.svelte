@@ -487,7 +487,7 @@
 					export any ride as a .fit for Strava or your head unit.
 				</p>
 				{#snippet cta()}
-					<a href="/workouts" class="btn btn-primary">Pick a workout</a>
+					<a href="/workouts" class="btn btn-primary">Ride solo</a>
 				{/snippet}
 			</EmptyState>
 		</div>

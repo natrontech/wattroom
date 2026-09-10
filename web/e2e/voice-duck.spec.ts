@@ -92,7 +92,7 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 	await signInAs(a, A, '/home#rooms');
 	const name = `Voice Duck ${Date.now() % 100000}`;
 	await a.locator('#open-room-name').fill(name);
-	await a.getByRole('button', { name: 'Open room' }).click();
+	await a.getByRole('button', { name: 'Open a room' }).click();
 	await expect(
 		a.getByRole('heading', { name }),
 		`opening "${name}" never landed ${A} in the room`,

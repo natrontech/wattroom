@@ -203,7 +203,8 @@
 					This room belongs to a crew you are not in. Ask whoever rides here for
 					the crew's invite link.
 				</p>
-				<a href="/home" class="btn btn-secondary btn-lg mt-6">Back to Home</a>
+				<a href="/home" class="btn btn-secondary btn-lg mt-6">Back to your rooms</a
+				>
 			{/if}
 			{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
 			{#if !room.banned && (room.canEnter || room.listed)}
