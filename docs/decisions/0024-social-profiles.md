@@ -17,8 +17,9 @@ this ADR fixes it.
 ## Decision
 
 **A page exists only for people who already know you.** `GET /api/riders/{id}`
-answers to a signed-in viewer who shares a live room membership with the
-rider, holds an accepted friendship, or has a pending request *from* them;
+answers to a signed-in viewer who ~~shares a live room membership with the
+rider~~ **Diverged 2026-09-10 (#1650, ADR-0038)**: shares a room either may enter — see the
+amendment below — holds an accepted friendship, or has a pending request *from* them;
 everyone else gets a 404 — the same 404 an unknown id gets, so the endpoint
 confirms nothing. A request you sent by code is not a door: ADR-0012's code
 grants "may ask", not "may look". There is no public web profile and no
@@ -74,3 +75,13 @@ anyone pass it on to strangers.
 - Revisit trigger: a request for a public share link of a ride. That is a
   different artifact (the `og` package's territory), not a widening of the
   page.
+
+## Amendment, 2026-09-10 (#1650): the audience is a room you may both enter
+
+`SharesRoomOrFriends`, `ListRoomsInCommon` and the friend-request-by-id gate all read `visible_rooms`, which since [ADR-0038](0038-the-crew-is-the-layer-above-rooms.md)'s third amendment unions membership with *"a room open to its crew, and you are in that crew"* — and every new room is crew-visible. So two riders who joined a crew by its code and never entered a room can already see each other's page and trophy case, request each other by id, and get `roomsInCommon` naming rooms neither has joined.
+
+**That is what ships, and it follows ADR-0038's thesis rather than contradicting it**: the crew is the layer above rooms, and permissions inherit into it. What went wrong is only that the audience change rode along unrecorded — the refactor's comment explains the view was adopted for ban correctness, which it was, and says nothing about who can now see a rider.
+
+**The audience is therefore "a rider you share a room with, or could".** Recorded here rather than left implicit, because this ADR is the privacy record for the rider page and an unwritten widening is the one kind this ADR exists to prevent.
+
+Deliberately not narrowed. #1650 offers a `RoomsSharedByMembership` query for the three gates while `visible_rooms` keeps room access, and that stays the option if the crew should *not* be the social boundary — but that is a change to ADR-0038's thesis, argued there, not a quiet re-narrowing here.

@@ -59,5 +59,16 @@ EWMA series are derived on read, never stored.
   percentages.
 - Daily buckets are UTC. A late-evening ride can land on "tomorrow" for a
   CET rider; accepted at alpha scale, revisit only if riders actually notice.
+  **Diverged 2026-09-10 (#1694)**: `users.timezone` now exists and #1657 put the rider page's
+  month on it, so the revisit condition is half met — held at UTC here deliberately, with the
+  inconsistency written down; see the amendment below.
 - The 28-day cold start means new riders see charts before they see verdicts.
   That is the intended order: numbers first, opinions once they mean something.
+
+## Amendment, 2026-09-10 (#1694): the timezone column exists, and Load still buckets at UTC
+
+The bullet above says to revisit "only if riders actually notice". Nobody has, but the ground moved anyway: `users.timezone` exists, and #1657 already moved the rider page's month onto it.
+
+**Daily Load (`progression.go`), the streak week (`queries/rides.sql`) and the achievement clock stay UTC.** Not because UTC is right, but because moving them is a change to numbers riders already have — a streak that has been counting one way should not silently re-bucket — and nothing has been reported. A 21:00 CET ride still lands on tomorrow's Load.
+
+What this amendment fixes is the record, not the behaviour: the revisit condition should not read as unmet when the column it was waiting for is already in the schema and already used one surface over. **The surfaces now disagree with each other**, which is worse than either answer alone, and that is the thing to fix when this is picked up — filed as #2063 rather than left as a footnote here.
