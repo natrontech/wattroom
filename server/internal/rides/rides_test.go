@@ -7,6 +7,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
 	"log/slog"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -645,5 +646,67 @@ func TestABearerNeverReadsTheRecord(t *testing.T) {
 	}
 	if status, _ := call(t, h.mux, "alice", http.MethodGet, "/api/rides", ""); status != http.StatusOK {
 		t.Fatalf("the summary list: %d", status)
+	}
+}
+
+// #1400: a ramp test is saved as a ride and the ride is not scored. The
+// workout is the shape buildRampTest() produces — a warmup and steady steps
+// in absolute watts — so nothing but its own `unscored` flag keeps the score
+// out of the row, off the ride page, and out of the XP bonus.
+func TestRampTestIsSavedUnscoredAndPaysNoExecutionBonus(t *testing.T) {
+	h := setup(t)
+
+	samples := make([]string, 120)
+	for i := range samples {
+		// Dead on each step in turn, which is what a trainer in ERG produces:
+		// the rider does not choose this number, the ramp does.
+		watts := 100
+		if i >= 60 {
+			watts = 120
+		}
+		samples[i] = fmt.Sprintf(`{"watts":%d,"cadence":90}`, watts)
+	}
+	steps := `{\"type\":\"steady\",\"seconds\":60,\"watts\":100},{\"type\":\"steady\",\"seconds\":60,\"watts\":120}`
+	body := func(flag string) string {
+		return fmt.Sprintf(
+			`{"workoutName":"Ramp test","workoutJson":"{\"name\":\"Ramp test\",%s\"steps\":[%s]}","startedAt":%q,"samples":[%s]}`,
+			flag, steps, rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second).Format(time.RFC3339),
+			strings.Join(samples, ","))
+	}
+
+	// The ramp first, on an account with no ride this week — so the streak
+	// bonus is zero and XP is the ride's own work and nothing else.
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body(`\"unscored\":true,`))
+	if status != http.StatusCreated {
+		t.Fatalf("unscored create: %d %v", status, got)
+	}
+	if got["executionScored"] != false {
+		t.Fatalf("a ramp test is not scored: %v", got)
+	}
+	if execution, _ := got["execution"].(float64); execution != 0 {
+		t.Fatalf("execution %v, want 0 — a score left in the row is still paid as XP: %v", execution, got)
+	}
+	kj, _ := got["kj"].(float64)
+	xp, _ := got["xp"].(float64)
+	if kj == 0 || xp != kj {
+		t.Fatalf("xp %v, want the ride's %v kJ and no execution bonus: %v", xp, kj, got)
+	}
+
+	// The control: the same ride without the flag is scorable and, because a
+	// trainer in ERG holds the rider on the target, scores near 1.0 — the
+	// bogus number, and the ~50 XP it used to pay for riding to failure.
+	status, got = call(t, h.mux, "alice", http.MethodPost, "/api/rides", body(""))
+	if status != http.StatusCreated {
+		t.Fatalf("scored create: %d %v", status, got)
+	}
+	if got["executionScored"] != true {
+		t.Fatalf("steady steps are scorable: %v", got)
+	}
+	execution, _ := got["execution"].(float64)
+	if execution < 0.99 {
+		t.Fatalf("on-target ramp scored %v, want ~1 (the number this fixes): %v", execution, got)
+	}
+	if scoredXP, _ := got["xp"].(float64); scoredXP < xp+math.Round(execution*50) {
+		t.Fatalf("scored xp %v did not include the execution bonus: %v", scoredXP, got)
 	}
 }
