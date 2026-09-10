@@ -227,3 +227,14 @@ already the thing that says what the room can see.
   has the rider's answer already, and defaulting to off would silently
   overrule the box they ticked. What was wrong was never that the sound went;
   it was that it went every time with no way to say no.
+
+## Amendment, 2026-09-10 (#1949): the shell rests on one of its two capabilities, and says so
+
+This ADR justified the shell with two things the browser cannot do — ANT+ and macOS system audio. **One shipped; the other was never started.**
+
+macOS system audio is built, and amended in above (2026-09-09, #1699): the machine's sound is offered, not assumed. **ANT+ is unbuilt and was untracked** — no `ant` match exists anywhere in `desktop/` or `web/src/lib/ble/`, and no issue carried it until #2056.
+
+The reversal condition in Consequences needs *both* capabilities to fail, so it has not fired and this decision is not reversed. But the ADR reads as though it stands on two legs when it stands on one — plus the things the shell grew afterwards, which no browser tab could host either: the floating HUD ([ADR-0041](0041-the-hud-mirrors-the-riding-screen.md)), notifications that answer back ([ADR-0042](0042-notifications-answer-back.md)), deep links, and self-update (#1303).
+
+**This decision now rests on macOS system audio, the HUD, notifications, deep links and self-update.** ANT+ is backlogged as #2056 — built when a rider brings an ANT+-only trainer, not before. Every trainer in the alpha speaks FTMS over BLE ([ADR-0007](0007-alpha-hardware-is-all-ftms.md)), so nothing is waiting on it. If macOS system audio is ever lost as well, the reversal condition fires on its own terms and the shell should be argued again from scratch.
+
