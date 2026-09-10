@@ -28,6 +28,8 @@
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import type { RoomEvent } from '$lib/protocol';
 	import { roomTimeline } from '$lib/room/timeline';
+	import { remindersFor } from '$lib/room/reminders';
+	import { serverNow } from '$lib/room/server-clock';
 
 	let {
 		slug,
@@ -62,20 +64,38 @@
 	// inside and out they are who `@` completes to (#1766) — an offline
 	// member most of all, "@Bob you in tonight?" being the point.
 	let memberNames = $state<string[]>([]);
+	// And its plans, for the one timeline line no server sends (#359): from
+	// outside there is no shell to derive the due line from (#1907), and the
+	// rider reading a room from /messages is exactly who it is for.
+	let upcoming = $state<
+		{ id: string; workoutName: string; startsAt: string }[]
+	>([]);
 	$effect(() => {
 		const room = slug;
 		memberNames = [];
-		void api<{ members?: (Face & { displayName?: string })[] }>(
-			`/api/rooms/${room}`,
-		).then((res) => {
+		upcoming = [];
+		void api<{
+			members?: (Face & { displayName?: string })[];
+			upcoming?: { id: string; workoutName: string; startsAt: string }[];
+		}>(`/api/rooms/${room}`).then((res) => {
 			if (!res.ok || room !== slug) return;
 			const members = res.data.members ?? [];
 			people.learn(members.map((m) => ({ ...m, name: m.displayName })));
 			memberNames = members.flatMap((m) =>
 				m.displayName ? [m.displayName] : [],
 			);
+			upcoming = res.data.upcoming ?? [];
 		});
 	});
+	// The local second the outside line comes due on; inside, the tick's
+	// clock does this through `reminders`.
+	let now = $state(serverNow());
+	$effect(() => {
+		if (conn) return;
+		const id = setInterval(() => (now = serverNow()), 1000);
+		return () => clearInterval(id);
+	});
+	const outsideReminders = $derived(conn ? [] : remindersFor(upcoming, now));
 	$effect(() => {
 		if (conn) {
 			outside = null;
@@ -101,7 +121,7 @@
 	const timeline = $derived(
 		roomTimeline(
 			messages,
-			conn ? [...conn.live.roomEvents, ...reminders] : [],
+			conn ? [...conn.live.roomEvents, ...reminders] : outsideReminders,
 			account.me?.displayName,
 			recaps,
 		),
