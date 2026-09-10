@@ -381,7 +381,7 @@
 	<h3 class="eyebrow mt-8">this room, this month</h3>
 	<div class="panel mt-2 grid grid-cols-2 gap-4 px-4 py-3">
 		<div>
-			<p class="eyebrow">streak</p>
+			<p class="eyebrow">this room's streak</p>
 			<p class="font-display text-xl font-bold tabular-nums">
 				{room.streakWeeks} week{room.streakWeeks === 1 ? '' : 's'}
 			</p>
