@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Instrument from '$lib/room/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
+	import CountdownScreen from '$lib/room/CountdownScreen.svelte';
 	import RideHeader from '$lib/room/RideHeader.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
 	import { describeBlock } from '$lib/room/view';
@@ -107,9 +108,14 @@
 				},
 			});
 			flags.riding(trainer.name, 'starting the ramp test');
-			await next.start();
+			// On screen before the clock (#1800): start() counts the test in,
+			// and the page has to draw those seconds.
 			session = next;
+			await next.start();
 		} catch (cause) {
+			session = null;
+			buffer?.end();
+			buffer = null;
 			error = cause instanceof Error ? cause.message : String(cause);
 		}
 	}
@@ -153,6 +159,7 @@
 	});
 	const signalLost = $derived(
 		!!session &&
+			session.state !== 'countdown' &&
 			session.state !== 'done' &&
 			!!session.sample &&
 			nowMs - session.sample.at > SIGNAL_LOST_MS,
@@ -167,9 +174,19 @@
 		guard: () => guardOfRide(session?.state),
 		spiral: () => session?.spiralActive,
 		block: () =>
-			session && session.state !== 'idle' && session.state !== 'done'
+			session &&
+			session.state !== 'idle' &&
+			session.state !== 'countdown' &&
+			session.state !== 'done'
 				? session.info.segmentIndex
 				: undefined,
+		// The count-in, said the way the room and /ride say theirs (#1800).
+		countdown: () =>
+			session?.state === 'countdown'
+				? Math.max(1, session.countdownRemaining)
+				: session?.state === 'running'
+					? 0
+					: undefined,
 		ended: () => session?.state === 'done',
 	});
 
@@ -265,7 +282,10 @@
 			!!session &&
 			!done &&
 			session.state !== 'done' &&
-			session.state !== 'idle',
+			session.state !== 'idle' &&
+			// Nothing has been ridden during the count-in (#1800) — onDestroy
+			// aborts it rather than asking about a number that does not exist.
+			session.state !== 'countdown',
 		{
 			title: 'Stop the ramp test and leave?',
 			body: 'The test cannot be resumed — its number is lost. The riding so far is saved to your history.',
@@ -277,6 +297,13 @@
 	// trainer holds a step with nobody watching and the frame stays caved.
 	onDestroy(() => {
 		if (!session) return;
+		// Left during the count-in (#1800): no test to stop and no riding to
+		// save.
+		if (session.state === 'countdown') {
+			session.abort();
+			buffer?.end();
+			return;
+		}
 		session.stop();
 		saveRide(session);
 	});
@@ -305,7 +332,7 @@
 		FTP is {Math.round(RAMP.ftpFraction * 100)} % of your best minute.
 	</p>
 
-	{#if !session}
+	{#if !session || session.state === 'idle'}
 		<div class="panel mt-8 max-w-2xl p-8 text-center">
 			<p class="text-sm">
 				Takes {RAMP_TAKES}, and the last two are unpleasant.
@@ -377,6 +404,28 @@
 				hold them.
 			</p>
 		{/if}
+	{:else if session.state === 'countdown'}
+		<!-- One count-in for the surface (ADR-0046, #1800): the same screen the
+		     room and /ride draw, so the test starts the way every ride does. -->
+		<div class="mt-8 min-h-[24rem]">
+			<CountdownScreen
+				remaining={session.countdownRemaining}
+				title={workout.name}
+				note="first up · {RAMP.startWatts} W warm-up"
+			>
+				{#snippet controls()}
+					<button
+						onclick={() => {
+							session?.abort();
+							session = null;
+							buffer?.end();
+							buffer = null;
+						}}
+						class="btn btn-secondary btn-lg">Cancel</button
+					>
+				{/snippet}
+			</CountdownScreen>
+		</div>
 	{:else if !done}
 		<!-- One riding surface (ADR-0046): the header, the instrument, your own
 		     numbers and the horizon, in the order the room and the solo ride use

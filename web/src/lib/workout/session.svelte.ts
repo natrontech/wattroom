@@ -23,7 +23,18 @@ export function toleranceBand(target: number): number {
 	return Math.max(target * 0.05, 10);
 }
 
-export type RideState = 'idle' | 'running' | 'autopaused' | 'resuming' | 'done';
+export type RideState =
+	'idle' | 'countdown' | 'running' | 'autopaused' | 'resuming' | 'done';
+
+/**
+ * The count-in before the clock starts (#1800, docs/SPEC.md's session
+ * lifecycle). A rider taps Start on the laptop beside the bike and needs a
+ * moment to get back on it — the room has always given them one, and
+ * ADR-0046's parity rule makes it the surface's, not the room's. Shorter than
+ * the room's ten seconds because nobody else is being waited for; the same
+ * three seconds SPEC gives the resume countdown, and the same 3-2-1 cues.
+ */
+export const COUNTDOWN_SECONDS = 3;
 
 /** Past this without a sample the dashboard, and the HUD, say so (#37). */
 export const SIGNAL_LOST_MS = 3000;
@@ -105,6 +116,8 @@ export function createRideSession({
 	const startedAt = new Date(startedAtMs ?? now());
 	let elapsed = $state(0);
 	let state = $state<RideState>('idle');
+	/** Seconds left in the count-in; 0 whenever the ride is not counting in. */
+	let countdownRemaining = $state(0);
 	let bias = $state(1);
 	let sample = $state<TrainerSample | null>(null);
 	/**
@@ -175,6 +188,10 @@ export function createRideSession({
 	let wakeLock: WakeLock | undefined;
 	let unsubscribe: (() => void) | undefined;
 	let unsubscribeStatus: (() => void) | undefined;
+	// Flipped synchronously by start(), before it awaits the trainer: two taps
+	// a frame apart both got past a state check that only moved once the
+	// hardware answered (#1800).
+	let starting = false;
 	// The link as the driver reports it (#1847): the screen draws the
 	// recovery card from this, not from a slot that let go at Start.
 	let trainerStatus = $state<TrainerStatus>(trainer.status);
@@ -182,9 +199,15 @@ export function createRideSession({
 	const clockSeconds = $derived(Math.min(total, Math.max(0, elapsed + shift)));
 	const info = $derived(targetAt(segments, ftp, clockSeconds, { bias }));
 
-	/** Released during spiral guard and while auto-paused — both mean "no target". */
+	/**
+	 * Released during spiral guard and while auto-paused — both mean "no
+	 * target" — and zero through the count-in, which has not asked for one
+	 * yet (#1800).
+	 */
 	const target = $derived(
-		state === 'autopaused' || spiralActive ? 0 : (info.targetWatts ?? 0),
+		state === 'autopaused' || state === 'countdown' || spiralActive
+			? 0
+			: (info.targetWatts ?? 0),
 	);
 
 	const execution = $derived(
@@ -218,6 +241,11 @@ export function createRideSession({
 	}));
 
 	function applyTarget() {
+		// Nothing reaches the trainer during the count-in (#1800). This is the
+		// one chokepoint for every target write — start(), the ticker, a bias
+		// nudge, skip/extend and repair() all come through here — so the first
+		// block's target lands when the clock does and not three seconds early.
+		if (state === 'countdown') return;
 		if (sprinting) {
 			// A sprint outranks the guards, for the reason the room gives
 			// (room/ride.svelte.ts): auto-pause is an INFERENCE that the rider
@@ -279,6 +307,10 @@ export function createRideSession({
 		};
 		sample = next;
 		publish();
+		// Nothing is ridden during the count-in (#1800): the sample is kept, so
+		// the numbers are live the instant the clock starts, but the record, the
+		// score and the guards belong to a ride that has not begun.
+		if (state === 'countdown') return;
 		// The record and the score admit one sample per ride second; the
 		// guards below look at every one — a stop is noticed by the sample
 		// that stopped, not by the second's first.
@@ -350,7 +382,7 @@ export function createRideSession({
 	// so the floating window follows the ride off /ride — and carries the
 	// fault the screen would be shouting about.
 	function publish() {
-		if (state === 'idle' || state === 'done') return;
+		if (state === 'idle' || state === 'countdown' || state === 'done') return;
 		publishHud({
 			watts: sample?.watts ?? 0,
 			target,
@@ -362,6 +394,18 @@ export function createRideSession({
 	}
 
 	function tick(seconds = 1) {
+		// The count-in runs on the ride's own clock (#1800), so the digit on
+		// screen and the 3-2-1 cue cannot drift apart — and a throttled tab
+		// catches up here the way the ride does. The workout clock, the score
+		// and the first ERG write all wait for it.
+		if (state === 'countdown') {
+			countdownRemaining = Math.max(0, countdownRemaining - seconds);
+			if (countdownRemaining > 0) return;
+			state = 'running';
+			applyTarget();
+			sprintWindow.sync();
+			return;
+		}
 		publish();
 		if (state === 'resuming') {
 			const actuate = guards.tick(seconds);
@@ -404,6 +448,7 @@ export function createRideSession({
 		unsubscribeStatus?.();
 		unsubscribeStatus = undefined;
 		leaveSprint();
+		countdownRemaining = 0;
 		void trainer.setTargetPower(0);
 		// Let go of the hardware (#1546): after the summary nothing owns
 		// this link, and the next pairing screen showed an unpaired grid
@@ -493,23 +538,60 @@ export function createRideSession({
 			return sprintWindow.current;
 		},
 
+		/** Seconds left in the count-in — 0 unless `state` is `countdown`. */
+		get countdownRemaining() {
+			return countdownRemaining;
+		},
+
 		async start() {
-			if (trainer.status !== 'connected') await trainer.connect();
+			// One Start per session (#1800): the count-in leaves the button on
+			// screen for three seconds, and a second tap used to build a second
+			// ride on the same trainer.
+			if (starting || state !== 'idle') return;
+			starting = true;
+			try {
+				if (trainer.status !== 'connected') await trainer.connect();
+			} catch (cause) {
+				starting = false;
+				throw cause;
+			}
 			unsubscribe = trainer.onSample(onSample);
 			unsubscribeStatus = trainer.onStatus((s) => (trainerStatus = s));
 			trainerStatus = trainer.status;
-			state = 'running';
+			// The clock starts when the count-in ends, not when Start is pressed
+			// (#1800, ADR-0046): tick() owns the move to 'running', and with it
+			// the first target write.
+			state = 'countdown';
+			countdownRemaining = COUNTDOWN_SECONDS;
 			latest = {
 				get state() {
 					return state;
 				},
 			};
-			applyTarget();
-			sprintWindow.sync();
 			ticker = createTicker(tick, { now });
 			// The screen staying on is part of "a ride is running" — owned here so
 			// /ride and /ramp cannot each forget it separately (#58).
 			wakeLock = acquireWakeLock();
+		},
+		/**
+		 * The rider changed their mind during the count-in (#1800). Not stop():
+		 * nothing has been ridden, so there is no ride to end, save or export —
+		 * the session goes back to idle and the trainer stays paired, exactly as
+		 * it was before Start.
+		 */
+		abort() {
+			if (state !== 'countdown') return;
+			ticker?.stop();
+			ticker = undefined;
+			wakeLock?.release();
+			wakeLock = undefined;
+			unsubscribe?.();
+			unsubscribe = undefined;
+			unsubscribeStatus?.();
+			unsubscribeStatus = undefined;
+			countdownRemaining = 0;
+			state = 'idle';
+			starting = false;
 		},
 		stop() {
 			finish();

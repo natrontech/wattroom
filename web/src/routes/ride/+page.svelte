@@ -29,6 +29,7 @@
 	import { createRideFlags } from '$lib/ride/flags.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import PreRide from '$lib/ride/PreRide.svelte';
+	import CountdownScreen from '$lib/room/CountdownScreen.svelte';
 	import TvOverlay from '$lib/room/TvOverlay.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
 	import { describeBlock } from '$lib/room/view';
@@ -157,12 +158,30 @@
 					});
 				},
 			});
-			await next.start();
-			ridingSince = Date.now();
+			// On screen before the clock (#1800): start() counts in for three
+			// seconds, and the page has to draw those seconds — which also
+			// takes PreRide's Start button away, so there is no second tap to
+			// build a second ride with.
 			session = next;
+			await next.start();
 		} catch (cause) {
+			session = null;
+			buffer?.end();
+			buffer = undefined;
 			error = cause instanceof Error ? cause.message : String(cause);
 		}
+	}
+
+	/**
+	 * Changed their mind during the count-in (#1800). Nothing was ridden, so
+	 * this is not an End: the page goes back to PreRide with the trainer still
+	 * paired, and no zero-sample ride is filed.
+	 */
+	function cancelCountdown() {
+		session?.abort();
+		session = null;
+		buffer?.end();
+		buffer = undefined;
 	}
 
 	// What the ride says out loud (#1792): the cues the room plays for its
@@ -174,9 +193,21 @@
 		guard: () => guardOfRide(session?.state),
 		spiral: () => session?.spiralActive,
 		block: () =>
-			session && session.state !== 'idle' && session.state !== 'done'
+			session &&
+			session.state !== 'idle' &&
+			session.state !== 'countdown' &&
+			session.state !== 'done'
 				? session.info.segmentIndex
 				: undefined,
+		// The 3-2-1 and the go, from the room's own implementation (#1800):
+		// seconds left while counting in, 0 once the clock runs so the `go`
+		// lands, undefined when a cancelled count-in must stay silent.
+		countdown: () =>
+			session?.state === 'countdown'
+				? Math.max(1, session.countdownRemaining)
+				: session?.state === 'running'
+					? 0
+					: undefined,
 		ended: () => session?.state === 'done',
 	});
 
@@ -295,11 +326,20 @@
 	// From the start, not from the first sample (#1799): a trainer that
 	// streams frames without a power field never delivered one, and the ride
 	// used to run its full length with nothing on screen and "Nothing was
-	// recorded" at the end.
+	// recorded" at the end. Stamped when the CLOCK starts rather than when
+	// Start was pressed (#1800) — the count-in is not a gap in the trainer's
+	// reporting, and stamping it there had the banner up on the first tick.
 	let ridingSince = 0;
+	$effect(() => {
+		if (session?.state === 'running' && ridingSince === 0)
+			ridingSince = Date.now();
+		if (!session) ridingSince = 0;
+	});
 	const signalLost = $derived(
 		!!session &&
+			session.state !== 'countdown' &&
 			session.state !== 'done' &&
+			ridingSince > 0 &&
 			nowMs - (session.sample?.at ?? ridingSince) > SIGNAL_LOST_MS,
 	);
 
@@ -374,7 +414,13 @@
 	// confirm, only while the session is actually alive, and the browser's
 	// unload guard for tab closes — shared with /ramp.
 	guardLeaving(
-		() => !!session && session.state !== 'done' && session.state !== 'idle',
+		() =>
+			!!session &&
+			session.state !== 'done' &&
+			session.state !== 'idle' &&
+			// Nothing has been ridden yet during the count-in (#1800), so there
+			// is nothing to confirm losing — onDestroy aborts it instead.
+			session.state !== 'countdown',
 		{
 			title: 'End the ride and leave?',
 			body: 'The ride so far is saved to your account.',
@@ -388,6 +434,14 @@
 	onDestroy(() => {
 		gone = true;
 		if (!session) return;
+		// Left during the count-in (#1800): there is no ride to end or save, and
+		// a zero-sample save would file "Nothing was recorded" against a ride
+		// that never started.
+		if (session.state === 'countdown') {
+			session.abort();
+			buffer?.end();
+			return;
+		}
 		session.stop();
 		save(session);
 	});
@@ -405,7 +459,10 @@
      ADR-0020): the layout reads soloRide.active. Setup and the summary are
      desk surfaces, the effort itself gets the dark. -->
 <main class="bg-surface text-ink flex min-h-screen flex-col px-6 py-5">
-	{#if !session}
+	{#if !session || session.state === 'idle'}
+		<!-- Idle with a session in hand is the moment between Start and the
+		     trainer answering it (#1800): still the setup screen, because
+		     nothing is counting in yet. -->
 		{#if shelfPending}
 			<Skeleton class="h-8 w-56" />
 			<Skeleton class="mt-6 h-48" />
@@ -443,6 +500,23 @@
 				onError={(message) => (error = message)}
 			/>
 		{/if}
+	{:else if session.state === 'countdown'}
+		<!-- Sound AND visual (.claude/rules/ux.md): the cue alone reaches a
+		     rider who is climbing back onto the bike, not the one still walking
+		     to it. The room's own count-in screen (ADR-0046). -->
+		<CountdownScreen
+			remaining={session.countdownRemaining}
+			title={workout.name}
+			note={block
+				? `first up · ${block.label}${block.watts > 0 ? ` ${block.watts} W` : ''}`
+				: undefined}
+		>
+			{#snippet controls()}
+				<button onclick={cancelCountdown} class="btn btn-secondary btn-lg"
+					>Cancel</button
+				>
+			{/snippet}
+		</CountdownScreen>
 	{:else if session.state !== 'done'}
 		<RidingScreen
 			{session}

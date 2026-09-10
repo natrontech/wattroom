@@ -46,6 +46,55 @@ describe('createRideSounds', () => {
 		stop();
 	});
 
+	// The count-in, shared by the room's ten seconds and a solo ride's three
+	// (#1800): one 3-2-1 for the surface, and the `go` only when it actually
+	// handed over to a running clock.
+	it('counts the start in and says go once, at the handover', async () => {
+		heard.cues.length = 0;
+		let left = $state<number | undefined>(undefined);
+		const stop = $effect.root(() => {
+			createRideSounds(quiet({ countdown: () => left }));
+		});
+		await tick();
+		expect(heard.cues).toEqual([]);
+		for (const second of [3, 3, 2, 1, 0, 0]) {
+			left = second;
+			await tick();
+		}
+		// A re-render inside a second is silent, and `go` is said once.
+		expect(heard.cues).toEqual(['tick:3', 'tick:2', 'tick:1', 'go']);
+		stop();
+	});
+
+	it('stays silent when a count-in is cancelled instead of handed over', async () => {
+		heard.cues.length = 0;
+		let left = $state<number | undefined>(undefined);
+		const stop = $effect.root(() => {
+			createRideSounds(quiet({ countdown: () => left }));
+		});
+		await tick();
+		left = 3;
+		await tick();
+		left = 2;
+		await tick();
+		// Back to nothing counting in — the coach cancelled, or the rider hit
+		// Cancel. A `go` here would announce a ride that is not starting.
+		left = undefined;
+		await tick();
+		expect(heard.cues).toEqual(['tick:3', 'tick:2']);
+		stop();
+	});
+
+	it('says nothing for a ride that was already running when the screen opened', async () => {
+		heard.cues.length = 0;
+		const stop = $effect.root(() => {
+			createRideSounds(quiet({ countdown: () => 0 }));
+		});
+		await tick();
+		expect(heard.cues).toEqual([]);
+		stop();
+	});
+
 	it('hears auto-pause and the resume count from the session state', async () => {
 		heard.cues.length = 0;
 		let state = $state<'running' | 'autopaused' | 'resuming' | 'done'>(
