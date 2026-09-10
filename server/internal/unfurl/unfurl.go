@@ -31,9 +31,10 @@ type UserSource interface {
 }
 
 const (
-	// cacheTTL: a link pasted in a busy room is fetched once, not once per
-	// reader. Long enough that a conversation about one article costs the
-	// article one request; short enough that a fixed title fixes itself.
+	// cacheTTL: a rider who scrolls past the same link twice costs the site
+	// one request, not two. Long enough that re-reading one conversation
+	// about one article is free; short enough that a fixed title fixes
+	// itself.
 	cacheTTL = 30 * time.Minute
 	// A miss costs a third party one request, so the ration is per rider —
 	// but it has to be a bucket rather than a spacing. Opening a busy channel
@@ -41,11 +42,30 @@ const (
 	// between asks would refuse most of them for no reason anybody could see.
 	// Burst covers a screenful; the refill is what bounds a rider who keeps
 	// pasting.
-	riderBurst   = 15
-	riderRefill  = 3 // tokens per second
+	riderBurst  = 15
+	riderRefill = 3 // tokens per second
+	// maxCacheKeys bounds entries, not links (#1739). Keyed on (rider, url),
+	// one article held for twenty riders is twenty of these — so per-rider
+	// keying costs hit rate, never the ceiling. An entry is one Card, whose
+	// text parse.go truncates and whose URLs cannot outrun the read cap, so
+	// the ceiling holds whatever the mix of riders and links behind it.
 	maxCacheKeys = 2048
 	maxRiderKeys = 4096
 )
+
+// cacheKey is why a hit tells a rider nothing about anybody else (#1739).
+// The cache was keyed on the URL alone and consulted before the ration, so
+// any signed-in rider could time GET /api/unfurl?url=X and learn for free
+// whether somebody else on the instance had pasted X inside the TTL —
+// negatives included, since a page that offers nothing is cached too. With
+// the rider in the key, a hit can only be their own paste coming back.
+//
+// The price, chosen over spending a ration unit on hits: the same link is
+// fetched once per rider who sees it rather than once per instance.
+type cacheKey struct {
+	rider string
+	url   string
+}
 
 type entry struct {
 	card Card
@@ -61,7 +81,7 @@ type Service struct {
 	client *http.Client
 
 	mu      sync.Mutex
-	cache   map[string]entry
+	cache   map[cacheKey]entry
 	buckets map[string]*bucket
 	now     func() time.Time
 	// The ports an outbound fetch may use; nil means any (tests only).
@@ -76,7 +96,7 @@ func New(users UserSource, log *slog.Logger) *Service {
 	s := &Service{
 		users:   users,
 		log:     log,
-		cache:   map[string]entry{},
+		cache:   map[cacheKey]entry{},
 		buckets: map[string]*bucket{},
 		now:     time.Now,
 		burst:   riderBurst,
@@ -111,13 +131,14 @@ func (s *Service) handleUnfurl(w http.ResponseWriter, r *http.Request) {
 	// The fragment is the reader's business, not the page's — dropping it
 	// keeps one cache entry per page instead of one per anchor.
 	target.Fragment = ""
-	key := target.String()
+	rider := rationKey(me)
+	key := cacheKey{rider: rider, url: target.String()}
 
 	if cached, hit := s.cached(key); hit {
 		s.respond(w, cached)
 		return
 	}
-	if !s.allow(rationKey(me)) {
+	if !s.allow(rider) {
 		// 429 rate_limited, not 204. They mean different things to the client:
 		// 204 is "we looked and there is nothing", which it remembers, and
 		// this is "ask again in a moment", which it must not. errors.md gives
@@ -126,7 +147,7 @@ func (s *Service) handleUnfurl(w http.ResponseWriter, r *http.Request) {
 			"Too many previews at once — give it a moment.")
 		return
 	}
-	card, found := s.fetch(r.Context(), key)
+	card, found := s.fetch(r.Context(), key.url)
 	s.remember(key, card, found)
 	s.respond(w, entry{card: card, ok: found})
 }
@@ -246,7 +267,7 @@ func isHTML(contentType string) bool {
 // rationKey is the rider's ration key. Their id, never their name.
 func rationKey(u db.User) string { return store.UUIDString(u.ID) }
 
-func (s *Service) cached(key string) (entry, bool) {
+func (s *Service) cached(key cacheKey) (entry, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	e, ok := s.cache[key]
@@ -256,14 +277,14 @@ func (s *Service) cached(key string) (entry, bool) {
 	return e, true
 }
 
-func (s *Service) remember(key string, card Card, ok bool) {
+func (s *Service) remember(key cacheKey, card Card, ok bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// A bound, not an eviction policy: the map is a cache, and dropping all
 	// of it costs one round of refetching. An LRU here would be machinery
 	// for a map that holds titles.
 	if len(s.cache) >= maxCacheKeys {
-		s.cache = map[string]entry{}
+		s.cache = map[cacheKey]entry{}
 	}
 	s.cache[key] = entry{card: card, ok: ok, exp: s.now().Add(cacheTTL)}
 }
