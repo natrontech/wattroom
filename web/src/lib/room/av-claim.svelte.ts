@@ -67,6 +67,8 @@ export interface ClaimHost {
 	noteVoice(): void;
 }
 
+export type Claims = ReturnType<typeof createClaims>;
+
 export function createClaims(host: ClaimHost) {
 	let mine: Claim | null = null;
 	/** Whether the mic was open when this tab handed over, for taking it back. */

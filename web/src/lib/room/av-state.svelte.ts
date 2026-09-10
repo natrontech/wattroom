@@ -4,17 +4,18 @@ import type { AvError, AvStatus, LiveKitClient } from '$lib/room/av-types';
 /**
  * One room's AV connection, in two named places (#892).
  *
- * Four seams have left this store already (#926, #1035, #1051), each behind
- * an interface its host implements. `wire()` cannot go the same way, and the
- * reason is these bindings: it ASSIGNS seven of them — `speaking`, `voice`,
- * `camOn`, `micOn`, `sharing`, `handedOff`, `status` — and an imported `let`
- * cannot be assigned. `$state` reactivity rides on assignment in the scope
- * that declared it, so every piece that writes any of this was pinned to the
- * same file as the `let`. That is the real reason the closure kept growing.
+ * This split is what let every other seam leave. The bindings below used to
+ * be `let`s in one closure, and `$state` reactivity rides on assignment in
+ * the scope that declared it — an imported `let` cannot be assigned at all.
+ * So every piece that wrote any of this was pinned to the same file as the
+ * declaration, which is why that closure kept growing.
  *
  * Fields of a `$state` object have neither limit: they can be written from
- * anywhere holding the object, and stay reactive. Naming the scope is what
- * makes the next seam possible; this change deliberately stops there.
+ * anywhere holding the object, and stay reactive. #892 named the scope and
+ * stopped there, judging the event surface unliftable; on this footing it
+ * lifted like the rest (#1698, `av-wire.ts`), and seven of the fields below
+ * — `speaking`, `voice`, `camOn`, `micOn`, `sharing`, `handedOff`, `status` —
+ * are written from there.
  *
  * Two containers, and the split is not cosmetic. `AvState` is what the UI
  * reads, so it is `$state`. `AvConn` is the connection's own bookkeeping and
@@ -134,8 +135,6 @@ export interface AvConn {
 	/** This connection's identity and the rider behind it (#293). */
 	myIdentity: string;
 	me: string;
-	/** The heartbeat behind the "I was in voice here" note (#480). */
-	heartbeat: ReturnType<typeof setInterval> | null;
 	/** What was live when the rider stepped out, so coming back restores it. */
 	micBeforeAway: boolean;
 	camBeforeAway: boolean;
@@ -153,7 +152,6 @@ export function createAvConn(): AvConn {
 		room: null,
 		myIdentity: '',
 		me: '',
-		heartbeat: null,
 		micBeforeAway: false,
 		camBeforeAway: false,
 		micBeforeDrop: false,
