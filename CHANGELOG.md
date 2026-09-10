@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.111] - 2026-09-10
+
+### Fixed
+
+- Nine small API refusals now say what happened: a database hiccup no longer reads as "not signed in" or "not a member", a picture from another room attached to a chat line is refused with a field the app can point at, banning a rider by an oddly-cased id now also closes their socket, a crew you were removed from answers "no crew here" like every other crew route, names are bounded in characters rather than bytes so accented names get their full length, and the health and LiveKit-webhook routes answer in the API's error shape.
+
 ## [2026.09.110] - 2026-09-10
 
 ### Added
@@ -1945,7 +1951,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.110...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.111...HEAD
+[2026.09.111]: https://github.com/natrontech/wattroom/compare/2026.09.110...2026.09.111
 [2026.09.110]: https://github.com/natrontech/wattroom/compare/2026.09.109...2026.09.110
 [2026.09.109]: https://github.com/natrontech/wattroom/compare/2026.09.108...2026.09.109
 [2026.09.108]: https://github.com/natrontech/wattroom/compare/2026.09.107...2026.09.108
