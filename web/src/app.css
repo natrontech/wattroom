@@ -204,6 +204,11 @@ body {
 @utility icon-btn-lg {
 	@apply h-11 w-11;
 }
+/* 28 px: the browse-surface floor (WCAG 2.2 SC 2.5.8, ux.md) for a row of
+ * icons that has to fit a narrow column — the jukebox rail's transport. */
+@utility icon-btn-sm {
+	@apply h-7 w-7;
+}
 
 /* The quiet secondary action — "Measure it with a ramp test", "See all".
  * Sizing and margin stay at the call site, like input. */
