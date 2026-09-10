@@ -404,10 +404,10 @@ func TestDeleteTakesTheRidersOwnAudioOffDiskAndLeavesSharedContent(t *testing.T)
 	shared := strings.Repeat("b", 64)
 	for _, sha := range []string{mine, shared} {
 		path := filepath.Join(dir, sha[:2], sha+".mp3")
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(path, []byte("mp3"), 0o644); err != nil {
+		if err := os.WriteFile(path, []byte("mp3"), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
