@@ -260,7 +260,7 @@
 			><Coffee size={13} /> {away ? "I'm back" : 'Away'}</button
 		>
 	{/if}
-	{#if showAv && playbackBlocked}
+	{#if showAv && voiceStatus !== 'off' && playbackBlocked}
 		<!-- The room is playing and this rider can hear none of it: the browser
 		     refused to start audio with no gesture behind it, and once the
 		     voices run through the bus there is nothing else making a sound
@@ -297,7 +297,7 @@
 			{/if}
 		</div>
 	{/if}
-	{#if showAv && handedOff}
+	{#if showAv && voiceStatus !== 'off' && handedOff}
 		<!-- Not a toast: the rider went quiet and needs to still be able to
 		     read why a minute later, mid-interval (errors.md). -->
 		<div class="border-z5/40 mt-2 rounded border px-2 py-1.5">

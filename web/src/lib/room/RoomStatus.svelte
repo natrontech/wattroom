@@ -131,7 +131,7 @@
 			<FaultBanner
 				fault={{ kind: 'voice', state: 'reconnecting' }}
 				bufferedSeconds={0}
-				onRecover={() => void av.join()}
+				onRecover={() => void av.join({ mic: av.micBeforeDrop })}
 			/>
 		</div>
 	{:else if av.status === 'failed'}
@@ -142,7 +142,7 @@
 			<FaultBanner
 				fault={{ kind: 'voice', state: 'lost' }}
 				bufferedSeconds={0}
-				onRecover={() => void av.join()}
+				onRecover={() => void av.join({ mic: av.micBeforeDrop })}
 			/>
 		</div>
 	{:else if av.status === 'live' && av.micFault}

@@ -33,7 +33,15 @@ vi.mock('livekit-client', () => {
 	// The machine's sound, which a share takes only if it asked for it (#1751).
 	let shareAudio: { stopped: boolean } | null = null;
 	let lastShareOptions: Record<string, unknown> | undefined;
+	// Every device switch asked of the SDK (#1876), and whether to refuse it.
+	const switched: { kind: string; id: string; exact?: boolean }[] = [];
+	let refuseSwitch = false;
 	class Room {
+		async switchActiveDevice(kind: string, id: string, exact?: boolean) {
+			if (refuseSwitch) throw new Error('NotReadableError: in use');
+			switched.push({ kind, id, exact });
+			return true;
+		}
 		constructor(options: Record<string, unknown> = {}) {
 			roomOptions = options;
 		}
@@ -110,6 +118,33 @@ vi.mock('livekit-client', () => {
 		Room,
 		/** What the last share asked getDisplayMedia for (#1751). */
 		shareOptions: () => lastShareOptions,
+		switches: () => switched,
+		refuseSwitches(on: boolean) {
+			refuseSwitch = on;
+		},
+		// Another connection of a rider walking in and out (#1878), the way
+		// the SDK reports it: on the roster, then the event.
+		arrive(identity: string, joinedAt: Date, micOpen = true) {
+			const p = {
+				identity,
+				joinedAt,
+				getTrackPublication: (source: string) =>
+					source === 'microphone' ? { isMuted: !micOpen } : undefined,
+			};
+			joined?.remoteParticipants.set(identity, p);
+			joined?.handlers.get('ParticipantConnected')?.(p);
+		},
+		depart(identity: string) {
+			const p = joined?.remoteParticipants.get(identity);
+			joined?.remoteParticipants.delete(identity);
+			joined?.handlers.get('ParticipantDisconnected')?.(p ?? { identity });
+		},
+		reconnecting() {
+			joined?.handlers.get('Reconnecting')?.();
+		},
+		reconnected() {
+			joined?.handlers.get('Reconnected')?.();
+		},
 		/**
 		 * The tap on the machine's output: null once nothing holds it, and
 		 * `stopped` only if it was ended rather than merely unpublished — an
@@ -219,6 +254,7 @@ vi.mock('livekit-client', () => {
 
 interface FakeRoom {
 	handlers: Map<string, (...args: unknown[]) => void>;
+	remoteParticipants: Map<string, unknown>;
 }
 
 // The mic chain wants a real AudioContext; the meter is the one piece of it
@@ -243,10 +279,22 @@ const {
 	startAudioAsks,
 	playbackChanged,
 	shareOptions,
+	switches,
+	refuseSwitches,
+	arrive,
+	depart,
+	reconnecting,
+	reconnected,
 	shareAudioTap,
 } = (await import('livekit-client')) as unknown as {
 	hangConnect: (on: boolean) => void;
 	shareOptions: () => { audio?: unknown } | undefined;
+	switches: () => { kind: string; id: string; exact?: boolean }[];
+	refuseSwitches: (on: boolean) => void;
+	arrive: (identity: string, joinedAt: Date, micOpen?: boolean) => void;
+	depart: (identity: string) => void;
+	reconnecting: () => void;
+	reconnected: () => void;
 	shareAudioTap: () => { stopped: boolean } | null;
 	stopSharingNatively: () => void;
 	dropNatively: () => void;
@@ -740,6 +788,42 @@ describe('createRoomAv', () => {
 	// clock a minute behind made "use this tab instead" read older than the
 	// other tab's join, and that tab kept the mic — the rider heard themselves
 	// twice. The takeover has to sit on the server's clock too.
+	it('does not take the mic back while a full reconnect unwinds the room (#1878)', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(1_000_000);
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+			await av.takeOver();
+			// A newer tab of mine walks in: this one stands down.
+			arrive('me#2', new Date(1_000_500));
+			await vi.advanceTimersByTimeAsync(1);
+			expect(av.handedOff).toBe(true);
+
+			// The SDK restarts: every remote is unwound before Reconnecting
+			// is even emitted, and the other tab is still there.
+			reconnecting();
+			depart('me#2');
+			await vi.advanceTimersByTimeAsync(1);
+			expect(av.handedOff).toBe(true);
+			arrive('me#2', new Date(1_000_500));
+			reconnected();
+			await vi.advanceTimersByTimeAsync(1);
+			expect(av.handedOff).toBe(true);
+
+			// Once the link is back, a tab that really leaves hands it back.
+			depart('me#2');
+			await vi.advanceTimersByTimeAsync(1);
+			expect(av.handedOff).toBe(false);
+			dispose();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('stamps a takeover on the server clock, not the browser', async () => {
 		vi.useFakeTimers();
 		try {
@@ -753,7 +837,8 @@ describe('createRoomAv', () => {
 			await av.join();
 			await av.takeOver();
 
-			const claim = broadcasts().find((b) => b.t === 'av-claim');
+			// The last claim: the harness keeps every broadcast of the file.
+			const claim = [...broadcasts()].reverse().find((b) => b.t === 'av-claim');
 			expect(claim?.at).toBe(1_060_000);
 			dispose();
 		} finally {
@@ -1154,6 +1239,20 @@ describe("the machine's sound, which the sharer decides on", () => {
 	});
 	afterEach(() => vi.unstubAllGlobals());
 
+	it('drops the sound flag with a share the browser ended (#1881)', async () => {
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		await av.toggleShare();
+		expect(av.sharingAudio).toBe(true);
+		stopSharingNatively();
+		expect(av.sharing).toBe(false);
+		expect(av.sharingAudio).toBe(false);
+		dispose();
+	});
+
 	it('takes the sound out of the room and remembers, without ending the share', async () => {
 		let av!: ReturnType<typeof createRoomAv>;
 		const dispose = $effect.root(() => {
@@ -1300,5 +1399,50 @@ describe('the duck effect surviving av.speaking changing shape mid-conversation'
 
 			dispose();
 		});
+	});
+	describe('the camera pick (#1876, #1880)', () => {
+		it('is told to the SDK while the camera is off, and never as an exact empty id', async () => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+			expect(av.camOn).toBe(false);
+			await av.setCam('usb-cam');
+			await av.setCam('');
+			expect(switches()).toEqual([
+				{ kind: 'videoinput', id: 'usb-cam', exact: true },
+				{ kind: 'videoinput', id: '', exact: false },
+			]);
+			dispose();
+		});
+
+		it('says why when the switch is refused', async () => {
+			let av!: ReturnType<typeof createRoomAv>;
+			const dispose = $effect.root(() => {
+				av = createRoomAv('mfw');
+			});
+			await av.join();
+			refuseSwitches(true);
+			await av.setCam('usb-cam');
+			refuseSwitches(false);
+			expect(av.error?.message).toMatch(/camera/i);
+			dispose();
+		});
+	});
+
+	it('leaving takes the blocked-playback and hand-off strips down (#1877)', async () => {
+		blockAudio();
+		let av!: ReturnType<typeof createRoomAv>;
+		const dispose = $effect.root(() => {
+			av = createRoomAv('mfw');
+		});
+		await av.join();
+		expect(av.playbackBlocked).toBe(true);
+		await av.leave();
+		expect(av.playbackBlocked).toBe(false);
+		expect(av.handedOff).toBe(false);
+		allowAudio();
+		dispose();
 	});
 });
