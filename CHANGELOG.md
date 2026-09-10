@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.102] - 2026-09-10
+
+### Fixed
+
+- Deleting your account also removes the music you uploaded from the server's disk, not only its listing; a song someone else uploaded too stays for them.
+
 ## [2026.09.101] - 2026-09-10
 
 ### Changed
@@ -1872,7 +1878,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.101...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.102...HEAD
+[2026.09.102]: https://github.com/natrontech/wattroom/compare/2026.09.101...2026.09.102
 [2026.09.101]: https://github.com/natrontech/wattroom/compare/2026.09.100...2026.09.101
 [2026.09.100]: https://github.com/natrontech/wattroom/compare/2026.09.99...2026.09.100
 [2026.09.99]: https://github.com/natrontech/wattroom/compare/2026.09.98...2026.09.99
