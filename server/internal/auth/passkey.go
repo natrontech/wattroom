@@ -178,6 +178,11 @@ func (s *Service) handlePasskeyRegisterStart(w http.ResponseWriter, r *http.Requ
 	if !ok {
 		return
 	}
+	// ADR-0029's ordering: the recovery address comes before the credential
+	// it would otherwise be the only way back from (#1611).
+	if !s.requireVerifiedEmail(w, user) {
+		return
+	}
 	pu, err := s.passkeyUserFor(r, user)
 	if err != nil {
 		httpx.Fail(w, s.log, "passkey user load failed", err, "Adding a passkey could not start. Try again.")
