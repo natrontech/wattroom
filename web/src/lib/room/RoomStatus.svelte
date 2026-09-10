@@ -17,7 +17,7 @@
 	import FaultBanner from '$lib/room/FaultBanner.svelte';
 	import { DISCONNECT_GRACE_SECONDS, ELIMINATION_MODES } from '$lib/room/modes';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { FtmsTrainer } from '$lib/ble/ftms';
+	import { trainerForRoom } from '$lib/ride/solo-trainer.svelte';
 
 	const connection = $derived(roomConnection.current);
 	const live = $derived(connection?.live);
@@ -121,7 +121,7 @@
 				bufferedSeconds={0}
 				onRecover={() => {
 					rideCtl.unpair();
-					void rideCtl.ride(new FtmsTrainer());
+					void rideCtl.ride(trainerForRoom());
 				}}
 			/>
 		</div>

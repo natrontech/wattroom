@@ -80,7 +80,9 @@ class FakeTrainer implements Trainer {
 	mode = 'erg' as const;
 	targets: number[] = [];
 	disconnected = false;
+	connects = 0;
 	async connect() {
+		this.connects++;
 		this.status = 'connected';
 	}
 	async disconnect() {
@@ -163,6 +165,16 @@ describe('roomConnection', () => {
 
 		expect(played).not.toContain('leave');
 		expect(toasts.items).toHaveLength(before);
+	});
+
+	it('takes a trainer handed over live without connecting it again', async () => {
+		// #1851: the solo slot's trainer walks into the room as it is.
+		const connection = roomConnection.join('lounge');
+		const trainer = new FakeTrainer();
+		trainer.status = 'connected';
+		await connection.ride.ride(trainer);
+		expect(connection.ride.trainer).toBe(trainer);
+		expect(trainer.connects).toBe(0);
 	});
 
 	it('claims the trainer for this tab, and releases it on unpair', async () => {

@@ -1,0 +1,1 @@
+- Pressing Pair in a room takes the trainer you paired on Settings › Equipment as it is, instead of opening a second Bluetooth chooser over a link that was still up.

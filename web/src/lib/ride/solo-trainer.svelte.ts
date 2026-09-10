@@ -1,4 +1,5 @@
 import { roomConnection } from '$lib/room/connection.svelte';
+import { FtmsTrainer } from '$lib/ble/ftms';
 import { pairError } from '$lib/ble/pair-error';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 import { type PairState, trainerState } from '$lib/room/sensor-status';
@@ -167,4 +168,15 @@ export function soloTrainer(): ReturnType<typeof createSoloTrainer> {
 		});
 	}
 	return held!;
+}
+
+/**
+ * The trainer a room's Pair button takes (#1851): the one paired on
+ * Settings › Equipment, handed over live, else a fresh chooser. Pairing in a
+ * room used to open a second chooser over a trainer this slot still held —
+ * two GATT clients on one unit, and this slot's reattach loop running for
+ * ever — while the slot's own `pair` already took the room's back (#521).
+ */
+export function trainerForRoom(): Trainer {
+	return soloTrainer().handOff() ?? new FtmsTrainer();
 }
