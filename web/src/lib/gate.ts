@@ -159,7 +159,7 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 	const ref = reference(theme.family, catalogue);
 	const checks: GateCheck[] = [];
 
-	for (const token of ['ink', 'muted'] as const) {
+	for (const token of ['ink', 'muted', 'muted-dim'] as const) {
 		const value = worst(theme, token);
 		checks.push(
 			check(

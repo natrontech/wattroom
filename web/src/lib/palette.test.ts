@@ -43,7 +43,7 @@ const each = THEMES.map((t) => [t.name, t] as const);
 /** The issue gate, applied to every catalogue entry. */
 function expectLegible(theme: Theme, label: string) {
 	const ref = reference(theme.family, THEMES);
-	for (const token of ['ink', 'muted'] as TokenName[]) {
+	for (const token of ['ink', 'muted', 'muted-dim'] as TokenName[]) {
 		expect(worst(theme, token), `${label} ${token}`).toBeGreaterThanOrEqual(
 			CONTRAST.text,
 		);
@@ -118,6 +118,11 @@ describe('the catalogue', () => {
 		expect(k['surface-raised']).toBe('#1a0736');
 		expect(k.watt).toBe('#ff3d8b');
 		expect(k.neon).toBe('#8b2bff');
+		// app.css ships the derived dim step as a light-dark() pair, because
+		// it paints before the bundle can apply a theme (#398). Both halves
+		// are here so the stylesheet and the derivation cannot drift (#1522).
+		expect(k['muted-dim']).toBe('#8576ab');
+		expect(themeById('outrun-day')!.tokens['muted-dim']).toBe('#71659d');
 	});
 
 	it('gives every identity one theme in each family', () => {
@@ -238,6 +243,37 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 				),
 				`${theme.id} ${token} hue`,
 			).toBeLessThan(8);
+		}
+	});
+});
+
+/**
+ * The text ramp (#1522). Two steps, both legible: `muted` for quiet text and
+ * `muted-dim` for the quietest a theme may draw. Before this, "dimmer" was
+ * spelled `text-muted/70` down to `text-muted/40` at 76 call sites, which
+ * composites to 3.3:1 and 1.8:1 against the cave — an alpha utility routes
+ * around a token gate, so the gate has to own the dim step itself. The floor
+ * above is what stops the ramp drifting back; these two say the step is real
+ * and points the right way.
+ */
+describe.each(each)('%s has a two-step text ramp', (_name, theme: Theme) => {
+	it.each(['surface', 'surface-raised'] as const)(
+		'keeps the dim step legible on %s',
+		(surface) => {
+			expect(
+				contrast(theme.tokens['muted-dim'], theme.tokens[surface]),
+			).toBeGreaterThanOrEqual(CONTRAST.text);
+		},
+	);
+
+	it('makes the dim step actually dimmer than muted', () => {
+		// Otherwise a theme could satisfy the floor by making the two steps
+		// the same colour, and the ramp would quietly stop being a ramp.
+		for (const surface of ['surface', 'surface-raised'] as const) {
+			expect(
+				contrast(theme.tokens['muted-dim'], theme.tokens[surface]),
+				`${theme.name} ${surface}`,
+			).toBeLessThan(contrast(theme.tokens.muted, theme.tokens[surface]));
 		}
 	});
 });

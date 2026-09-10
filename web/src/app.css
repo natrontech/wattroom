@@ -17,6 +17,11 @@
 	--color-surface: light-dark(#f6f2fa, #0a0118);
 	--color-surface-raised: light-dark(#ffffff, #1a0736);
 	--color-muted: light-dark(#60548a, #9182b8);
+	/* The second step of the text ramp (#1522): the quietest text a theme is
+	 * allowed to draw, and still 4.5:1 on both surfaces. Derived in palette.ts
+	 * and gated in palette.test.ts — reaching for `text-muted/70` instead
+	 * composites to 3.3:1, which is what this token exists to end. */
+	--color-muted-dim: light-dark(#71659d, #8576ab);
 	/* live data only, never chrome */
 	--color-watt: light-dark(#e6247d, #ff3d8b);
 	/* horizons, grids, mark accents — structural, doesn't glow */
@@ -218,7 +223,7 @@ body {
 
 /* Text field look. Width/margin at the call site. */
 @utility input {
-	@apply border-muted/25 placeholder:text-muted/60 focus:border-muted/60 rounded border bg-transparent px-3 py-2 text-sm outline-none;
+	@apply border-muted/25 placeholder:text-muted-dim focus:border-muted/60 rounded border bg-transparent px-3 py-2 text-sm outline-none;
 }
 @utility input-xs {
 	@apply px-3 py-1.5 text-xs;
@@ -399,7 +404,7 @@ input[type='number']::-webkit-outer-spin-button {
 	caret-color: var(--color-neon);
 }
 :where(input, textarea)::placeholder {
-	color: color-mix(in oklab, var(--color-muted) 70%, transparent);
+	color: var(--color-muted-dim);
 }
 
 ::selection {

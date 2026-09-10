@@ -12,12 +12,13 @@
  *
  * Pure: the DOM lives in palette.svelte.ts, so every rule here is testable.
  */
-import { fitContrast, oklchToHex, type Oklch } from './color';
+import { fitContrast, hexToOklch, oklchToHex, type Oklch } from './color';
 
 export const TOKENS = [
 	'surface',
 	'surface-raised',
 	'muted',
+	'muted-dim',
 	'watt',
 	'neon',
 	'ink',
@@ -161,6 +162,23 @@ const FAMILY: Record<
  */
 export const CONTRAST = { text: 4.5, accent: 3 } as const;
 
+/**
+ * The second step of the text ramp (#1522). `muted` is the quiet text colour;
+ * `muted-dim` is the quietest one a theme is allowed to have, and it is
+ * derived rather than reached for with an alpha — 76 call sites had spelled
+ * "dimmer" as `text-muted/70` down to `/40`, which composites to 3.3:1 and
+ * 1.8:1 on the cave surface. An alpha routes around the gate; a token does
+ * not.
+ *
+ * The step is the OKLCH lightness `muted-dim` moves toward the surface before
+ * `fitContrast` pulls it back to the text floor. It is deliberately larger
+ * than most themes have room for: `muted` already sits near 4.5:1, so in
+ * practice the fit is what places the step, and `muted-dim` lands as dim as
+ * AA allows. A theme with headroom (Monokai's near-white muted) keeps the
+ * full step instead of being dragged down to the floor.
+ */
+const MUTED_DIM_STEP = 0.08;
+
 /** A dark theme's surface must actually be dark; a white one's actually light. */
 export const DARK_SURFACE_MAX_L = 0.3;
 export const WHITE_SURFACE_MIN_L = 0.9;
@@ -200,6 +218,7 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		surface: at(f.surface, spec.surfaceHue),
 		'surface-raised': at(f.raised, spec.surfaceHue),
 		muted: at(f.muted, spec.surfaceHue),
+		'muted-dim': '',
 		watt: at(spec.wattLc ? { ...spec.wattLc, h: 0 } : f.watt, spec.wattHue),
 		neon: at(f.neon, spec.neonHue),
 		ink: at(f.ink, spec.surfaceHue),
@@ -223,8 +242,21 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 	if (spec.exact?.surface) tokens.surface = spec.exact.surface;
 	if (spec.exact?.['surface-raised'])
 		tokens['surface-raised'] = spec.exact['surface-raised'];
+	// Same reason as the surfaces above: `muted-dim` is one step off whatever
+	// muted the theme actually ships, pinned or derived.
+	if (spec.exact?.muted) tokens.muted = spec.exact.muted;
 	const backgrounds = [tokens.surface, tokens['surface-raised']];
 	const away = spec.family === 'dark' ? 'lighter' : 'darker';
+	const muted = hexToOklch(tokens.muted);
+	const step = spec.family === 'dark' ? -MUTED_DIM_STEP : MUTED_DIM_STEP;
+	tokens['muted-dim'] = oklchToHex(
+		fitContrast(
+			{ ...muted, l: muted.l + step },
+			backgrounds,
+			CONTRAST.text,
+			away,
+		),
+	);
 	tokens.danger = oklchToHex(
 		fitContrast(
 			{ ...f.danger, h: DANGER_HUE },
