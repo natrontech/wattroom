@@ -22,6 +22,7 @@ const {
 	screen,
 	shell,
 } = require('electron');
+const fs = require('node:fs');
 const path = require('node:path');
 
 // Where the shell points. The default is production; a dev build overrides it
@@ -132,10 +133,55 @@ function isOurs(url) {
 	}
 }
 
+// Where the window was (#1948): size, position and whether it was maximized,
+// kept in userData and restored only when the saved rect still lands on a
+// display that is here — a monitor that went with the rider's desk keeps
+// the size and drops the position. The HUD places itself (ADR-0041).
+function windowStateFile() {
+	return path.join(app.getPath('userData'), 'window.json');
+}
+function readWindowState() {
+	try {
+		const s = JSON.parse(fs.readFileSync(windowStateFile(), 'utf8'));
+		if (typeof s.width === 'number' && typeof s.height === 'number') return s;
+	} catch {
+		/* first launch, or a file nobody wrote */
+	}
+	return null;
+}
+function onADisplay(b) {
+	return screen.getAllDisplays().some(({ workArea: a }) => {
+		return (
+			b.x < a.x + a.width &&
+			b.x + b.width > a.x &&
+			b.y < a.y + a.height &&
+			b.y + b.height > a.y
+		);
+	});
+}
+function saveWindowState(win) {
+	try {
+		const bounds = win.isMaximized() ? win.getNormalBounds() : win.getBounds();
+		fs.writeFileSync(
+			windowStateFile(),
+			JSON.stringify({ ...bounds, maximized: win.isMaximized() }),
+		);
+	} catch (err) {
+		console.warn('window state not saved:', err?.message ?? err);
+	}
+}
+
 function createWindow() {
+	const saved = readWindowState();
+	const placed =
+		saved &&
+		typeof saved.x === 'number' &&
+		typeof saved.y === 'number' &&
+		onADisplay(saved)
+			? { x: saved.x, y: saved.y, width: saved.width, height: saved.height }
+			: { width: saved?.width ?? 1280, height: saved?.height ?? 860 };
 	const win = new BrowserWindow({
-		width: 1280,
-		height: 860,
+		...placed,
 		minWidth: 380,
 		backgroundColor: '#0a0118', // --color-surface, so the first paint is not white
 		show: false,
@@ -172,7 +218,11 @@ function createWindow() {
 		},
 	});
 
-	win.once('ready-to-show', () => win.show());
+	win.once('ready-to-show', () => {
+		if (saved?.maximized) win.maximize();
+		win.show();
+	});
+	win.on('close', () => saveWindowState(win));
 	// The HUD shows only while this window is NOT in front (ADR-0041): in
 	// front, the riding screen has the numbers, and floating them over the
 	// jukebox's player would put a HUD over video, which YouTube's terms forbid.
