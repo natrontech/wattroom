@@ -112,7 +112,8 @@ func Handler(users UserSource, log *slog.Logger) http.HandlerFunc {
 
 // toRide validates untrusted input into a Ride, answering the refusal in
 // the rider's words — a string, never an error, so err.Error() cannot reach
-// the wire from the one route a stranger can post to (#1736, errors.md).
+// the wire (#1736, errors.md). A session does not make the body any more
+// trustworthy: the ride is still recorded on the rider's own machine.
 func toRide(req exportRequest) (Ride, string) {
 	switch {
 	case req.StartedAt.IsZero():
