@@ -1,0 +1,1 @@
+- A crew's invite link no longer tells anyone holding the code how many riders are in the crew. The count was on the wire before you signed in; it is now a crew member's to see, on the crew's own page. The invite still names the crew and shows its picture.

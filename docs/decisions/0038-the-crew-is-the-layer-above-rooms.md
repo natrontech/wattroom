@@ -547,3 +547,34 @@ The decision table lists "a crew-wide chat" under what a crew carries. Nothing e
 
 What a crew chat would have been for — reaching a crew-mate outside any room — is what direct messages already do (#1017). If a real need survives that, it comes back as its own decision with the evidence, not as a table row nobody built.
 
+
+## Amendment, 2026-09-10 (#1399): what the door puts on the wire
+
+The #1236 amendment says the door page "names the crew, and says what joining
+shows". What shipped also put a member count on it, and
+`GET /api/crew-doors/{code}` needs no sign-in — so anybody holding a
+six-character code learned the size of the crew behind it. That was decided in
+a PR, and the next reader of the amendment above had no way to know a count
+was on the wire. [ADR-0039](0039-the-public-room-directory.md) had already
+refused a headcount to a stranger as "a separate disclosure", on an asymmetry
+that applies here word for word: a column can be added the day somebody
+decides it, and cannot be taken back.
+
+**The door's response is the crew's name, its icon and its image URL, and for
+a caller in the crew also its id, `inCrew`, and the member count.** A `banned`
+flag replaces the last three for a rider the crew removed. Nothing else — not
+the rooms, not the people, not the size — reaches a caller who only holds the
+code, signed in or not. The count stays for a member because they can read the
+roster itself on `/crew/{id}`; it is not a new disclosure to them, and it is
+the whole disclosure to everyone else.
+
+An invite is thereby less legible than it could be — "12 riders" is a better
+card than a bare name. That is the trade ADR-0039 already made and this ADR's
+own privacy inversion asks for: a crew's size is the crew's, and the rider
+gets it one click later, having joined. The route is metered either way
+(`throttleDoor`, #1673): 30 codes a minute per address over a 31^6 space, so
+the code is a capability and not a guess.
+
+`TestTheDoorTellsAStrangerNothingAboutCrewSize` is the assertion — two crews
+alike but for their size must read identically at the door — not this
+paragraph.

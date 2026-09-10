@@ -66,7 +66,7 @@
 				<!-- Your own crew's link, followed again: the door is already
 				     open, so the button is the page, not a Join that does nothing. -->
 				<p class="text-muted mt-2 text-sm">
-					You are in this crew{data.crew.members > 1
+					You are in this crew{data.crew.members && data.crew.members > 1
 						? ` with ${data.crew.members - 1} ${data.crew.members === 2 ? 'other' : 'others'}`
 						: ''}.
 				</p>
@@ -83,10 +83,11 @@
 					>Back to your rooms</a
 				>
 			{:else}
+				<!-- No headcount here (#1399): whoever holds the code is still a
+				     stranger to the crew, and how many are in it is not the
+				     invitation's to tell (ADR-0038 amended, ADR-0039). -->
 				<p class="text-muted mt-2 text-sm">
-					You have been invited to ride with this crew{data.crew.members > 1
-						? ` — ${data.crew.members} people are in it`
-						: ''}.
+					You have been invited to ride with this crew.
 				</p>
 				<button
 					onclick={join}
