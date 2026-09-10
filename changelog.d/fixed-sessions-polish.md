@@ -1,1 +1,0 @@
-- Cancelling a planned session says what is certain — who loses the plan, and an email only when one will actually go. "Move…" opens on the time the session has instead of an empty field. Home's empty calendar links straight to a room's Sessions place.
