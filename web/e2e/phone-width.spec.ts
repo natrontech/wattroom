@@ -282,14 +282,14 @@ test('no page outside a room scrolls sideways on a phone', async ({
 });
 
 /**
- * The two pages a rider meets first, and the two most likely to be opened on
- * a phone from a pasted link — reached signed out, so outside the shell that
- * gives everything else `page-body`. Out there the document is the page, and
- * the document's own width is the honest measure.
+ * The pages a rider meets first, and the ones most likely to be opened on a
+ * phone from a pasted link or an alarm mail — reached signed out, so outside
+ * the shell that gives everything else `page-body`. Out there the document is
+ * the page, and the document's own width is the honest measure.
  */
-test('the landing and the gate fit a phone', async ({ page }) => {
+test('the landing, the gate and recovery fit a phone', async ({ page }) => {
 	const wide: string[] = [];
-	for (const route of ['/', '/login']) {
+	for (const route of ['/', '/login', '/login/recover']) {
 		await page.goto(route);
 		const excessOf = () =>
 			page.evaluate(
