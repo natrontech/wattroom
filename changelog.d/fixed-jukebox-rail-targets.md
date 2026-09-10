@@ -1,1 +1,0 @@
-- The sidebar jukebox's play, skip, ±30 s and stop-for-me buttons are big enough to tap mid-ride.

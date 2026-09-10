@@ -1,1 +1,0 @@
-- A session starting in one of your rooms reaches you wherever you are in the app — a toast in front, a system notification behind another window — not only once you are already in the room.
