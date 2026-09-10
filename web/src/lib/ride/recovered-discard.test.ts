@@ -7,10 +7,11 @@ vi.mock('$lib/confirm.svelte', () => ({ confirm: mocks.confirm }));
 const { confirmDiscard, discardBody, recordedMinutes } =
 	await import('./recovered');
 
-const ride = (samples: number): RecoveredRide =>
+const ride = (samples: number, workoutJson = '{}'): RecoveredRide =>
 	({
 		rideId: 'r1',
 		workoutName: 'Sweet Spot',
+		workoutJson,
 		startedAt: 1_700_000_000_000,
 		samples: Array.from({ length: samples }, () => ({ watts: 200 })),
 	}) as unknown as RecoveredRide;
@@ -32,6 +33,14 @@ describe('discardBody', () => {
 		expect(body).toMatch(/on this device and nowhere else/);
 		expect(body).toMatch(/only copy/);
 		expect(body).toMatch(/Save it to your account or download the \.fit/);
+	});
+
+	// The card hides "Save to your account" for a ride buffered before #794,
+	// which carries no workout JSON — so the copy must not name that button.
+	it('offers only the .fit when there is no workout to save', () => {
+		const body = discardBody(ride(2520, ''));
+		expect(body).toMatch(/Download the \.fit first if you want to keep it/);
+		expect(body).not.toMatch(/Save it to your account/);
 	});
 });
 

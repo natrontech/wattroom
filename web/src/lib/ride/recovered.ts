@@ -59,9 +59,18 @@ export function recordedMinutes(ride: RecoveredRide): number {
 	return Math.round(ride.samples.length / 60);
 }
 
-/** What discarding takes, and the two ways to keep it instead. */
+/**
+ * What discarding takes, and the ways to keep it instead — only the ways the
+ * card is actually offering: a ride buffered before #794 carries no workout
+ * JSON, so `uploadPayload` returns null and "Save to your account" never
+ * renders. Naming a button that is not there is the same fault as rendering
+ * one that will fail (errors.md).
+ */
 export function discardBody(ride: RecoveredRide): string {
-	return `“${ride.workoutName}”, ${recordedMinutes(ride)} min recorded — these samples are on this device and nowhere else, so discarding deletes the only copy. Save it to your account or download the .fit first if you want to keep it.`;
+	const keep = ride.workoutJson
+		? 'Save it to your account or download the .fit first'
+		: 'Download the .fit first';
+	return `“${ride.workoutName}”, ${recordedMinutes(ride)} min recorded — these samples are on this device and nowhere else, so discarding deletes the only copy. ${keep} if you want to keep it.`;
 }
 
 /**
