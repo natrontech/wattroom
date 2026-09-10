@@ -45,7 +45,7 @@
 			<p class="text-muted text-[11px]">ridden together</p>
 		</div>
 		<div class="panel px-4 py-3">
-			<p class="eyebrow">streak</p>
+			<p class="eyebrow">this room's streak</p>
 			<p class="font-display text-2xl font-bold tabular-nums">
 				{room.streakWeeks}<span class="text-muted ml-1 text-sm"
 					>wk{room.streakWeeks === 1 ? '' : 's'}</span

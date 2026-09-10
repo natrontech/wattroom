@@ -228,7 +228,8 @@
 					</li>
 				</ul>
 				<p class="text-muted mt-2 text-[11px]">
-					Streak bonus and level land on your account with the ride.
+					Your own streak bonus and level land on your account with the ride —
+					your weeks, not this room's.
 				</p>
 			</section>
 		</div>

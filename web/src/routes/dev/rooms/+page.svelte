@@ -121,8 +121,9 @@
 				{/each}
 			</ul>
 			<p class="text-muted mt-4 text-xs">
-				Room streak: <span class="text-ink">4 weeks</span> — everyone rode at least
-				once each week.
+				This room's streak: <span class="text-ink">4 weeks</span> — a session here
+				every week. Your own streak is a separate number, and it is the one that pays
+				XP.
 			</p>
 		</section>
 
