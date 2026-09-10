@@ -327,3 +327,33 @@ func TestProfileXpCountsTheLedgerNotJustRides(t *testing.T) {
 		t.Fatalf("totalXp = %v, want 580 (400 ride + 180 ledger)", body["totalXp"])
 	}
 }
+
+// The rider page's month is bucketed in the rider's own zone, and the zone
+// comes out of a column any client can write (POST /api/me/timezone validates
+// with time.LoadLocation). LoadLocation accepts "Local", Postgres does not
+// know that name at all, and the page 500'd — so stats.ZoneName refuses it.
+// Swap it back for `*rider.Timezone` and this returns 500 with an empty body.
+func TestRiderMonthSurvivesAZoneNamePostgresRefuses(t *testing.T) {
+	h := setup(t)
+	h.befriend(t, "alice", "dan")
+	h.ride(t, "dan", pgtype.UUID{}, 250, false)
+
+	for _, tz := range []string{"Local", "Europe/Zurich"} {
+		t.Run(tz, func(t *testing.T) {
+			dan := h.users.ByToken["dan"]
+			if err := h.store.Queries.UpdateUserTimezone(t.Context(), db.UpdateUserTimezoneParams{
+				ID: dan.ID, Timezone: &tz,
+			}); err != nil {
+				t.Fatal(err)
+			}
+			code, body := h.get(t, "alice", "/api/riders/"+h.id("dan"))
+			if code != http.StatusOK {
+				t.Fatalf("got %d %v", code, body)
+			}
+			month, _ := body["month"].(map[string]any)
+			if month["rides"] != float64(1) {
+				t.Fatalf("month: %v", month)
+			}
+		})
+	}
+}

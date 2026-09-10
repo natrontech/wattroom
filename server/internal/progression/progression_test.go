@@ -12,12 +12,15 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-func setup(t *testing.T) (*http.ServeMux, *store.Store, db.User) {
+// users comes back so a test can change the signed-in rider's row the way the
+// real auth path would on the next request.
+func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users, db.User) {
 	t.Helper()
 	st := storetest.Open(t)
 
@@ -33,7 +36,7 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, db.User) {
 	users := &testx.Users{ByToken: map[string]db.User{"alice": u}}
 	mux := http.NewServeMux()
 	New(st, users, slog.New(slog.DiscardHandler)).Register(mux)
-	return mux, st, u
+	return mux, st, users, u
 }
 
 // Returns the row's id — the FTP a ramp produced is stamped onto one (#1572).
@@ -75,7 +78,8 @@ type bodyJSON struct {
 		Fitness  float64 `json:"fitness"`
 		Zone     string  `json:"zone"`
 		Series   []struct {
-			Date string `json:"date"`
+			Date    string  `json:"date"`
+			Fatigue float64 `json:"fatigue"`
 		} `json:"series"`
 	} `json:"load"`
 }
@@ -96,7 +100,7 @@ func get(t *testing.T, mux *http.ServeMux, user string) (int, bodyJSON) {
 }
 
 func TestUnauthorized(t *testing.T) {
-	mux, _, _ := setup(t)
+	mux, _, _, _ := setup(t)
 	code, body := get(t, mux, "")
 	if code != http.StatusUnauthorized || body.Error != "unauthorized" {
 		t.Fatalf("got %d %+v", code, body)
@@ -104,7 +108,7 @@ func TestUnauthorized(t *testing.T) {
 }
 
 func TestEmptyHistory(t *testing.T) {
-	mux, _, _ := setup(t)
+	mux, _, _, _ := setup(t)
 	code, body := get(t, mux, "alice")
 	if code != http.StatusOK {
 		t.Fatalf("got %d %+v", code, body)
@@ -118,7 +122,7 @@ func TestEmptyHistory(t *testing.T) {
 }
 
 func TestTrends(t *testing.T) {
-	mux, st, u := setup(t)
+	mux, st, _, u := setup(t)
 	addRide(t, st, u, 100, 260) // outside 90 d, inside the 365 d trend window
 	addRide(t, st, u, 5, 230)
 
@@ -160,7 +164,7 @@ func TestTrends(t *testing.T) {
 }
 
 func TestEmptyHistoryHasNoLoad(t *testing.T) {
-	mux, _, _ := setup(t)
+	mux, _, _, _ := setup(t)
 	_, body := get(t, mux, "alice")
 	if body.Load != nil {
 		t.Fatalf("no rides must mean no load block, got %+v", body.Load)
@@ -170,7 +174,7 @@ func TestEmptyHistoryHasNoLoad(t *testing.T) {
 // SPEC: form shows 28 days after the rider's FIRST saved ride — not the
 // oldest inside the year window, which after a long break was last week's.
 func TestColdStartCountsFromTheFirstRide(t *testing.T) {
-	mux, st, u := setup(t)
+	mux, st, _, u := setup(t)
 	addRide(t, st, u, 400, 240)
 	addRide(t, st, u, 5, 230)
 	status, body := get(t, mux, "alice")
@@ -186,7 +190,7 @@ func TestColdStartCountsFromTheFirstRide(t *testing.T) {
 // (#1572). Everything else says nothing: the field is absent, not zero, so a
 // chart cannot mistake an ordinary ride for a test that measured 0 W.
 func TestTheFtpARampProducedReachesTheTrend(t *testing.T) {
-	mux, st, u := setup(t)
+	mux, st, _, u := setup(t)
 	addRide(t, st, u, 10, 0)
 	ramp := addRide(t, st, u, 3, 0)
 	if _, err := st.Pool.Exec(t.Context(),
@@ -230,5 +234,132 @@ func TestTheFtpARampProducedReachesTheTrend(t *testing.T) {
 	}
 	if _, present := raw.Rides[1]["ftpAfter"]; !present {
 		t.Fatalf("the ramp does not ship the key: %v", raw.Rides[1])
+	}
+}
+
+// Daily Load buckets in the rider's own day (#2063). Two rides either side of
+// local midnight are two days for the rider; UTC bucketing put both on the
+// earlier day, which doubled that day's load and flattened the next one.
+func TestDailyLoadBucketsDaysInTheRidersZone(t *testing.T) {
+	zurich, err := time.LoadLocation("Europe/Zurich")
+	if err != nil {
+		t.Fatal(err)
+	}
+	row := func(at string) db.ListUserProgressionRow {
+		when, err := time.Parse(time.RFC3339, at)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return db.ListUserProgressionRow{
+			StartedAt: pgtype.Timestamptz{Time: when, Valid: true},
+			NormWatts: 200, FtpWatts: 250, Seconds: 3600,
+		}
+	}
+	// 21:00 and 00:30 in Zurich: consecutive local days, one UTC day.
+	rows := []db.ListUserProgressionRow{
+		row("2026-09-06T19:00:00Z"), // Sunday 21:00 local
+		row("2026-09-06T22:30:00Z"), // Monday 00:30 local
+	}
+	one := stats.Load(200, 250, 3600)
+	cases := []struct {
+		name string
+		loc  *time.Location
+		want map[string]float64
+	}{
+		{"the rider's days carry a ride each", zurich, map[string]float64{
+			"2026-09-06": one, "2026-09-07": one,
+		}},
+		{"UTC piled both onto Sunday", time.UTC, map[string]float64{
+			"2026-09-06": 2 * one,
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := dailyLoad(rows, tc.loc)
+			if len(got) != len(tc.want) {
+				t.Fatalf("daily load = %v, want %v", got, tc.want)
+			}
+			for day, want := range tc.want {
+				if got[day] != want {
+					t.Fatalf("daily load = %v, want %v", got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+// The whole payload, end to end: the rider's zone reaches the day keys the
+// client draws, so a 00:30 ride appears on its own day and not yesterday's.
+func TestProgressionSeriesUsesTheRidersDays(t *testing.T) {
+	zurich, err := time.LoadLocation("Europe/Zurich")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := []db.ListUserProgressionRow{{
+		StartedAt: pgtype.Timestamptz{
+			// Monday 2026-09-07 00:30 in Zurich.
+			Time: time.Date(2026, 9, 6, 22, 30, 0, 0, time.UTC), Valid: true,
+		},
+		NormWatts: 200, FtpWatts: 250, Seconds: 3600,
+	}}
+	now := time.Date(2026, 9, 7, 10, 0, 0, 0, time.UTC)
+	load := buildLoad(rows, rows[0].StartedAt.Time, now, zurich)
+	if load == nil || len(load.Series) == 0 {
+		t.Fatal("no load series")
+	}
+	if got := load.Series[0].Date; got != "2026-09-07" {
+		t.Fatalf("the series starts on %s, want 2026-09-07 — the rider's day, not UTC's", got)
+	}
+}
+
+// The endpoint, not just buildLoad: the zone has to travel from the signed-in
+// rider's row to the day keys the chart draws (#2063). A ride at 00:30 in
+// Zurich is 22:30 the day before in UTC, so under UTC bucketing the series
+// began a day early and the rider's first ride sat on a day they were asleep.
+func TestProgressionEndpointDrawsTheRidersDays(t *testing.T) {
+	mux, st, users, u := setup(t)
+	zurich := "Europe/Zurich"
+	if err := st.Queries.UpdateUserTimezone(t.Context(), db.UpdateUserTimezoneParams{
+		ID: u.ID, Timezone: &zurich,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	u.Timezone = &zurich
+	users.ByToken["alice"] = u
+
+	// Yesterday at 00:30 Zurich, whenever "yesterday" is — the series runs to
+	// today, so an absolute date would age out of the 120-day window.
+	loc, err := time.LoadLocation(zurich)
+	if err != nil {
+		t.Fatal(err)
+	}
+	norm := int16(200)
+	y, m, d := time.Now().In(loc).AddDate(0, 0, -1).Date()
+	local := time.Date(y, m, d, 0, 30, 0, 0, loc)
+	if _, err := st.Queries.CreateRide(t.Context(), db.CreateRideParams{
+		UserID: u.ID, WorkoutName: "midnight",
+		StartedAt: pgtype.Timestamptz{Time: local, Valid: true},
+		Seconds:   3600, AvgWatts: 200, NormWatts: &norm, Kj: 720, Execution: 0.9,
+		ExecutionScored: true, FtpWatts: u.FtpWatts, Samples: []byte{}, Curve: []byte("[]"),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	code, body := get(t, mux, "alice")
+	if code != http.StatusOK {
+		t.Fatalf("got %d %+v", code, body)
+	}
+	if len(body.Load.Series) == 0 {
+		t.Fatal("no load series")
+	}
+	want := local.Format(time.DateOnly)
+	if got := body.Load.Series[0].Date; got != want {
+		t.Fatalf("the series starts on %s, want %s — the rider's day, not UTC's", got, want)
+	}
+	// And the ride's load has to land ON that day. Bucketing the ride at UTC
+	// keys it a day before the series begins, where nothing reads it: the
+	// rider's only ride vanishes from their own Load chart.
+	if got := body.Load.Series[0].Fatigue; got <= 0 {
+		t.Fatalf("the first day's fatigue is %v, want the ride's load on it", got)
 	}
 }

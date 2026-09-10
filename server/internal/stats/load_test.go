@@ -67,7 +67,7 @@ func TestFitnessSeries(t *testing.T) {
 	for d := first; !d.After(today); d = d.AddDate(0, 0, 1) {
 		daily[d.UTC().Format(time.DateOnly)] = 100
 	}
-	series := FitnessSeries(daily, first, today)
+	series := FitnessSeries(daily, first, today, time.UTC)
 	if len(series) != 300 {
 		t.Fatalf("expected 300 days, got %d", len(series))
 	}
@@ -91,7 +91,7 @@ func TestFitnessSeries(t *testing.T) {
 	for d := today.AddDate(0, 0, -6); !d.After(today); d = d.AddDate(0, 0, 1) {
 		rest[d.UTC().Format(time.DateOnly)] = 0
 	}
-	restSeries := FitnessSeries(rest, first, today)
+	restSeries := FitnessSeries(rest, first, today, time.UTC)
 	lastRest := restSeries[len(restSeries)-1]
 	if lastRest.Form <= 0 {
 		t.Fatalf("after a rest week form must be positive, got %v", lastRest.Form)
@@ -156,5 +156,69 @@ func TestFormZone(t *testing.T) {
 		if got := FormZone(tt.pct); got != tt.want {
 			t.Fatalf("FormZone(%v) = %q, want %q", tt.pct, got, tt.want)
 		}
+	}
+}
+
+// The day loop steps calendar days, and a DST transition must neither skip
+// one nor emit it twice — a series with a missing day would run the EWMAs one
+// day short and a doubled one would count that day's load twice (#2063).
+func TestFitnessSeriesStepsCalendarDaysAcrossDST(t *testing.T) {
+	zurich, err := time.LoadLocation("Europe/Zurich")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name         string
+		first, today string // instants, RFC3339
+		want         []string
+	}{
+		{
+			// Clocks go forward on Sunday 2026-03-29: local midnights are
+			// 23 h apart across it.
+			name:  "spring forward",
+			first: "2026-03-27T09:00:00Z",
+			today: "2026-03-31T09:00:00Z",
+			want:  []string{"2026-03-27", "2026-03-28", "2026-03-29", "2026-03-30", "2026-03-31"},
+		},
+		{
+			// And back on Sunday 2026-10-25: 25 h apart.
+			name:  "fall back",
+			first: "2026-10-23T09:00:00Z",
+			today: "2026-10-27T09:00:00Z",
+			want:  []string{"2026-10-23", "2026-10-24", "2026-10-25", "2026-10-26", "2026-10-27"},
+		},
+		{
+			// The rider's own days, not UTC's: the first ride was 00:30 on
+			// the 7th in Zurich, so the series starts there and not on the 6th.
+			name:  "a ride just after local midnight starts the series on its own day",
+			first: "2026-09-06T22:30:00Z",
+			today: "2026-09-08T09:00:00Z",
+			want:  []string{"2026-09-07", "2026-09-08"},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			first, err := time.Parse(time.RFC3339, tc.first)
+			if err != nil {
+				t.Fatal(err)
+			}
+			today, err := time.Parse(time.RFC3339, tc.today)
+			if err != nil {
+				t.Fatal(err)
+			}
+			series := FitnessSeries(map[string]float64{}, first, today, zurich)
+			got := make([]string, len(series))
+			for i, p := range series {
+				got[i] = p.Date
+			}
+			if len(got) != len(tc.want) {
+				t.Fatalf("series days = %v, want %v", got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("series days = %v, want %v", got, tc.want)
+				}
+			}
+		})
 	}
 }

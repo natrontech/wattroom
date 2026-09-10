@@ -260,8 +260,20 @@ func DecodeSamples(blob []byte) ([]protocol.RiderMetrics, error) {
 // consecutive-week streak, read before this ride lands so this week only
 // counts if already ridden — then this ride extends it next time. A read
 // failure is zero bonus, never a failed save.
+//
+// The week is the rider's own (#2063), which is why the zone is read here
+// rather than at the three call sites: a session save has the rider's hub
+// identity, not their user row, and the query and WeekStreak have to bucket
+// in the same zone or the streak breaks on the seam between them. An
+// unreadable zone is UTC, not a lost bonus.
 func StreakXP(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Time) int32 {
-	weeks, err := q.ListUserRideWeeks(ctx, userID)
+	tz, err := q.UserTimezone(ctx, userID)
+	if err != nil {
+		tz = nil
+	}
+	weeks, err := q.ListUserRideWeeks(ctx, db.ListUserRideWeeksParams{
+		UserID: userID, Tz: ZoneName(tz),
+	})
 	if err != nil {
 		return 0
 	}
@@ -269,7 +281,7 @@ func StreakXP(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Ti
 	for i, w := range weeks {
 		times[i] = w.Time
 	}
-	return int32(StreakBonus(WeekStreak(times, at))) //nolint:gosec // capped at 250
+	return int32(StreakBonus(WeekStreak(times, at, Zone(tz)))) //nolint:gosec // capped at 250
 }
 
 // Retry policy for session saves (#235): a Postgres blip at session close

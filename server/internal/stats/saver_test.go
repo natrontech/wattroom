@@ -135,7 +135,7 @@ func TestStreakXPPaysTheRidersOwnWeeksNotTheRooms(t *testing.T) {
 	for i, w := range roomWeeks {
 		times[i] = w.Time
 	}
-	if got := WeekStreak(times, now); got != 6 {
+	if got := WeekStreak(times, now, time.UTC); got != 6 {
 		t.Fatalf("the room's streak = %d weeks, want 6 — the fixture is wrong, not StreakXP", got)
 	}
 
@@ -145,5 +145,76 @@ func TestStreakXPPaysTheRidersOwnWeeksNotTheRooms(t *testing.T) {
 	}
 	if got := StreakXP(ctx, st.Queries, regular, now); got != 150 {
 		t.Fatalf("StreakXP for the six-week rider = %d, want 150", got)
+	}
+}
+
+// StreakXP is the whole seam: the query buckets the weeks in SQL and
+// WeekStreak re-buckets `now` in Go, and #2063 was those two using different
+// zones from the rider's. A rider in Zurich who rode last Wednesday and again
+// at 00:30 on Monday has a two-week streak; UTC filed the Monday ride into the
+// week before, collapsed the two into one, and paid half.
+//
+// Both halves of that seam are pinned here: put `Tz: "UTC"` back in the query
+// and the 50 becomes 25; put `time.UTC` back in the WeekStreak call and it
+// becomes 0, because UTC still has the rider in last week and their newest
+// bucketed week is then a week in the future.
+func TestStreakXPBucketsWeeksInTheRidersZone(t *testing.T) {
+	st := storetest.Open(t)
+	ctx := context.Background()
+	newUser := func(name string, tz *string) pgtype.UUID {
+		t.Helper()
+		u, err := st.Queries.CreateUser(ctx, db.CreateUserParams{DisplayName: name, FtpWatts: 250, WeightKg: 75})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID) })
+		if tz != nil {
+			if err := st.Queries.UpdateUserTimezone(ctx, db.UpdateUserTimezoneParams{ID: u.ID, Timezone: tz}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return u.ID
+	}
+	ride := func(user pgtype.UUID, at time.Time) {
+		t.Helper()
+		if _, err := st.Queries.CreateRide(ctx, db.CreateRideParams{
+			UserID: user, WorkoutName: "W",
+			StartedAt: pgtype.Timestamptz{Time: at, Valid: true},
+			Seconds:   600, AvgWatts: 200, Kj: 120, Execution: 1, ExecutionScored: true,
+			FtpWatts: 250, Samples: []byte{}, Curve: []byte("[]"),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	zurich := "Europe/Zurich"
+	// Monday 2026-09-07 00:30 in Zurich is Sunday 2026-09-06 22:30 in UTC:
+	// this week for the rider, last week for UTC.
+	mondayLocal := time.Date(2026, 9, 6, 22, 30, 0, 0, time.UTC)
+	// The week before, unambiguously — a Wednesday midday.
+	weekBefore := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+	// Reading the streak as the 00:30 ride is saved: 01:00 Monday in Zurich,
+	// which is still 23:00 Sunday in UTC. The rider is in a new week and UTC
+	// is not, so the query's zone and WeekStreak's both have to be theirs.
+	now := time.Date(2026, 9, 6, 23, 0, 0, 0, time.UTC)
+
+	cases := []struct {
+		name string
+		tz   *string
+		want int32
+	}{
+		{"a rider in Zurich is paid for both weeks", &zurich, 50},
+		// Not a claim UTC is right — it is the fallback for a rider whose
+		// browser never reported a zone, and their weeks are UTC's weeks.
+		{"a rider with no zone falls back to UTC", nil, 25},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			rider := newUser(fmt.Sprintf("streak-zone-%d", time.Now().UnixNano()), tc.tz)
+			ride(rider, weekBefore)
+			ride(rider, mondayLocal)
+			if got := StreakXP(ctx, st.Queries, rider, now); got != tc.want {
+				t.Fatalf("StreakXP = %d, want %d", got, tc.want)
+			}
+		})
 	}
 }

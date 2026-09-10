@@ -1,0 +1,2 @@
+- Your Load chart, your riding streak and your early-bird and night-owl trophies now use your own calendar day instead of UTC. A ride that finished at 00:30 no longer lands on yesterday, a ride at 07:30 counts as early where you actually live, and the week your streak bonus is paid for is the week you rode. A room's own numbers still run on UTC weeks, because a room's riders are in several timezones.
+- Fixed a rider page that could fail to load, and a streak bonus that could quietly go unpaid, for riders whose browser reported an unusable timezone name.

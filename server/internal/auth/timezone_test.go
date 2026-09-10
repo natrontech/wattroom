@@ -52,6 +52,9 @@ func TestUpdateTimezoneRefusesJunk(t *testing.T) {
 		// A path is the shape that would matter: LoadLocation reads the
 		// embedded database by name, so a name is all it may ever be handed.
 		`{"timezone":"../../etc/passwd"}`,
+		// The one name LoadLocation accepts and we still refuse: it means
+		// the SERVER's zone, and Postgres does not know it (#2063).
+		`{"timezone":"Local"}`,
 	} {
 		w := putTimezone(t, s, cookie, body)
 		if w.Code != http.StatusBadRequest {

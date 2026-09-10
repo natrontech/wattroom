@@ -107,19 +107,27 @@ where room_id = $1
 group by user_id;
 
 -- name: ListUserRideWeeks :many
--- Distinct ISO weeks with at least one ride, newest first — the streak input.
--- Truncated at UTC, which is where stats.WeekStreak re-buckets: date_trunc
--- on a timestamptz otherwise runs in the session's zone and the two disagreed
--- (audit 2026-09-09).
-select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
-from rides where user_id = $1
+-- Distinct weeks with at least one ride, newest first — the input to the
+-- RIDER streak, the one docs/SPEC.md says pays.
+-- Truncated in the rider's own zone (#2063), because their week is the week
+-- they rode: a Monday 00:30 ride in Zurich is Sunday 23:30 in UTC, which
+-- bucketed it into the week before and broke a streak the rider had kept.
+-- The zone is named explicitly rather than left to the session, which is how
+-- date_trunc on a timestamptz and stats.WeekStreak came to disagree at all
+-- (audit 2026-09-09); stats.ZoneName is the one place that picks it, so the
+-- SQL and the Go always agree, and it falls back to UTC for a rider whose
+-- browser never told us.
+select distinct date_trunc('week', started_at at time zone sqlc.arg(tz)::text)::date as week
+from rides where user_id = sqlc.arg(user_id)
 order by week desc
 limit 60;
 
 -- name: ListRoomRideWeeks :many
--- Truncated at UTC, which is where stats.WeekStreak re-buckets: date_trunc
--- on a timestamptz otherwise runs in the session's zone and the two disagreed
--- (audit 2026-09-09).
+-- The ROOM streak — the one on screen, and the one that pays nothing.
+-- Still UTC, and not by omission: a room's riders are in several zones and a
+-- room has no zone of its own, so there is no rider's week to use here. The
+-- rider streak moved to the rider's zone in #2063; which zone a room's week
+-- belongs to is an open question in that issue.
 select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
 from rides where room_id = $1
 order by week desc

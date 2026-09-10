@@ -17,6 +17,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -212,7 +213,12 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	out.Presence = s.presenceOf(rider, inCommon, trusted)
 
 	if trusted {
-		month, err := s.store.Queries.RiderMonth(ctx, db.RiderMonthParams{UserID: id, Tz: monthZone(rider)})
+		// The zone "this month" is counted in (#1653) is the rider's own —
+		// stats.ZoneName, the same resolver the streak and the Load chart
+		// use since #2063, so the four surfaces cannot drift apart again.
+		month, err := s.store.Queries.RiderMonth(ctx, db.RiderMonthParams{
+			UserID: id, Tz: stats.ZoneName(rider.Timezone),
+		})
 		if err != nil {
 			s.fail(w, "month", err, me)
 			return
@@ -294,15 +300,3 @@ func (s *Service) fail(w http.ResponseWriter, what string, err error, me db.User
 	httpx.Fail(w, s.log, "rider page: "+what, err, "That rider's page could not be loaded.", "user", store.UUIDString(me.ID))
 }
 
-// monthZone is the zone "this month" is counted in (#1653): the rider's
-// own, as the browser reported it, or UTC when it never did or reported
-// something Postgres would refuse.
-func monthZone(rider db.User) string {
-	if rider.Timezone == nil || *rider.Timezone == "" {
-		return "UTC"
-	}
-	if _, err := time.LoadLocation(*rider.Timezone); err != nil {
-		return "UTC"
-	}
-	return *rider.Timezone
-}

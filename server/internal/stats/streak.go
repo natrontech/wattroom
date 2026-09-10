@@ -6,21 +6,21 @@ import "time"
 // previous week — riding this Monday keeps last week's streak alive, and a
 // streak is not broken mid-week by not having ridden yet (docs/SPEC.md's
 // streak bonus counts the current streak, not a lapsed one).
-func WeekStreak(weeks []time.Time, now time.Time) int {
+//
+// loc decides where the week begins: the rider's own zone for the rider
+// streak that pays (#2063), UTC for a room's, which has no one zone.
+// `weeks` are already-bucketed week starts — the query truncated them in the
+// same loc and they arrive as bare dates — so only `now` is an instant that
+// still needs converting.
+func WeekStreak(weeks []time.Time, now time.Time, loc *time.Location) int {
 	if len(weeks) == 0 {
 		return 0
 	}
-	weekOf := func(t time.Time) time.Time {
-		t = t.UTC()
-		// Monday-start weeks, matching Postgres date_trunc('week').
-		offset := (int(t.Weekday()) + 6) % 7
-		return time.Date(t.Year(), t.Month(), t.Day()-offset, 0, 0, 0, 0, time.UTC)
-	}
-	current := weekOf(now)
+	current := WeekStart(now, loc)
 	streak := 0
 	expect := current
 	for _, week := range weeks {
-		w := weekOf(week)
+		w := WeekStart(week, time.UTC)
 		if streak == 0 && w.Equal(current.AddDate(0, 0, -7)) {
 			// No ride yet this week: the streak stands from last week.
 			expect = w

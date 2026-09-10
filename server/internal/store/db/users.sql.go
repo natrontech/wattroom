@@ -582,6 +582,20 @@ func (q *Queries) UserByEmailVerifyHash(ctx context.Context, emailVerifyHash []b
 	return i, err
 }
 
+const userTimezone = `-- name: UserTimezone :one
+select timezone from users where id = $1
+`
+
+// The zone a rider's own days are bucketed in (#2063) — nullable, so the
+// caller falls back to UTC (stats.Zone). One column rather than GetUser
+// because this runs per rider on every session save.
+func (q *Queries) UserTimezone(ctx context.Context, id pgtype.UUID) (*string, error) {
+	row := q.db.QueryRow(ctx, userTimezone, id)
+	var timezone *string
+	err := row.Scan(&timezone)
+	return timezone, err
+}
+
 const verifyEmail = `-- name: VerifyEmail :one
 update users
 set email = email_pending,

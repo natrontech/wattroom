@@ -94,16 +94,14 @@ const (
 	seriesDays    = 120
 )
 
-func buildLoad(rows []db.ListUserProgressionRow, first, now time.Time) *loadJSON {
+// loc is the rider's own zone (#2063): a ride finished at 00:30 in Zurich is
+// theirs on that day, not on the one UTC was still having.
+func buildLoad(rows []db.ListUserProgressionRow, first, now time.Time, loc *time.Location) *loadJSON {
 	if len(rows) == 0 {
 		return nil
 	}
-	daily := make(map[string]float64, len(rows))
-	for _, row := range rows {
-		day := row.StartedAt.Time.UTC().Format(time.DateOnly)
-		daily[day] += stats.Load(int(row.NormWatts), int(row.FtpWatts), int(row.Seconds))
-	}
-	series := stats.FitnessSeries(daily, rows[0].StartedAt.Time, now)
+	daily := dailyLoad(rows, loc)
+	series := stats.FitnessSeries(daily, rows[0].StartedAt.Time, now, loc)
 	if len(series) == 0 {
 		return nil
 	}
@@ -129,13 +127,24 @@ func buildLoad(rows []db.ListUserProgressionRow, first, now time.Time) *loadJSON
 		if len(series) >= 8 {
 			fitness7dAgo = series[len(series)-8].Fitness
 		}
-		yesterday := daily[now.UTC().AddDate(0, 0, -1).Format(time.DateOnly)]
+		yesterday := daily[stats.DayStart(now, loc).AddDate(0, 0, -1).Format(time.DateOnly)]
 		daysSinceLast := int(now.Sub(rows[len(rows)-1].StartedAt.Time).Hours() / 24)
 		out.Suggestion = stats.SuggestToday(
 			formPct, last.Fitness, fitness7dAgo, yesterday,
 			medianRideLoad(rows), daysSinceLast)
 	}
 	return out
+}
+
+// dailyLoad sums each ride's Load onto the day it was ridden — the rider's
+// own day (#2063), so a ride at 00:30 is theirs and not the previous day's.
+func dailyLoad(rows []db.ListUserProgressionRow, loc *time.Location) map[string]float64 {
+	daily := make(map[string]float64, len(rows))
+	for _, row := range rows {
+		daily[stats.DayKey(row.StartedAt.Time, loc)] += stats.Load(
+			int(row.NormWatts), int(row.FtpWatts), int(row.Seconds))
+	}
+	return daily
 }
 
 func medianRideLoad(rows []db.ListUserProgressionRow) float64 {
@@ -194,7 +203,7 @@ func Summary(ctx context.Context, q *db.Queries, user db.User) (Response, error)
 		},
 		Rides:    make([]rideTrendJSON, 0, len(rows)),
 		Category: stats.Category(int(bests.D90Best20m), float64(user.WeightKg)),
-		Load:     buildLoad(rows, first.Time, time.Now()),
+		Load:     buildLoad(rows, first.Time, time.Now(), stats.Zone(user.Timezone)),
 	}
 	if user.WeightKg > 0 {
 		out.WKg = float64(bests.D90Best20m) / float64(user.WeightKg)
