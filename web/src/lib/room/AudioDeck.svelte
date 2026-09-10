@@ -23,6 +23,7 @@
 	import { listening } from '$lib/room/listening.svelte';
 	import { deckDuration, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import { trackFailureIsGlobal } from '$lib/room/playback-failure';
 
 	/** Past this, assign rather than let it ride. SPEC's in-sync bar is 0.6 s. */
 	const DRIFT_SEC = 0.6;
@@ -139,11 +140,28 @@
 	// sat on it. Same answer the dock gives an unplayable video: say so, and
 	// report the end — the anchor makes every rider's report but the first
 	// an echo.
-	function failed() {
+	async function failed() {
+		const title = deck?.current?.title ?? 'That track';
+		// Gone for everyone, or this browser's own trouble (#1896)? One HEAD
+		// says which; a network that cannot even answer is the latter.
+		const status = await fetch(audioSrc(track), { method: 'HEAD' })
+			.then((res) => res.status)
+			.catch(() => 0);
+		if (trackFailureIsGlobal(status)) {
+			toasts.push(`“${title}” could not be played here — skipped.`);
+			reportEnded();
+			return;
+		}
 		toasts.push(
-			`“${deck?.current?.title ?? 'That track'}” could not be played here — skipped.`,
+			`“${title}” could not be played here — the room plays on; you are back in on the next track.`,
 		);
-		reportEnded();
+		const now = deck;
+		if (now?.current)
+			listening.stepOut(
+				'skip',
+				{ videoId: now.current.videoId, anchorMs: now.anchorMs },
+				audio?.duration ?? 0,
+			);
 	}
 </script>
 
