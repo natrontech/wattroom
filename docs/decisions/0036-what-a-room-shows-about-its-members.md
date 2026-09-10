@@ -40,7 +40,7 @@
 >
 > **The fact, not the rows.** `board` stays a member's — knowing that a room
 > keeps a board is not reading it — and the flag reaches only a rider who could
-> walk in, because [0039](0039-the-public-room-directory-shows-a-door-not-a-window.md)'s
+> walk in, because [0039](0039-the-public-room-directory.md)'s
 > asymmetry keeps what anybody else learns about a room as narrow as it is.
 > The **directory** entry is untouched and stays a name, an icon and a link.
 >
