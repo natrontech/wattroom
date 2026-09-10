@@ -1,0 +1,1 @@
+- A finished ramp test no longer reports an execution score. The ride still lands on your history with its work, XP, power curve and exports — but a ramp is ridden in ERG against its own climbing target, so the percentage only ever said the trainer held the wattage. It now reads "not scored", and the ramp stops competing for Metronome.
