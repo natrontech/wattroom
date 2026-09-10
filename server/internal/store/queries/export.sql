@@ -75,3 +75,19 @@ join rooms rm on rm.id = m.room_id
 join rides r on r.id = m.ride_id
 where m.user_id = $1
 order by m.awarded_at;
+
+-- name: ExportUserIdentities :many
+-- The credential set's provider half (#1826): which provider, the id it knows
+-- the rider by, and when it was connected — never a token, sealed or not.
+select provider, provider_user_id, created_at
+from identities
+where user_id = $1
+order by created_at;
+
+-- name: ExportUserPasskeys :many
+-- The passkeys' public metadata (#1826): the rider's name for each, when it
+-- was added and last used — never the credential record itself.
+select name, created_at, last_used_at
+from passkeys
+where user_id = $1
+order by created_at;

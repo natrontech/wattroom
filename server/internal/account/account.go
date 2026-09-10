@@ -152,6 +152,14 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		"notifyPlanned": user.NotifyPlanned,
 		"accentPalette": user.AccentPalette,
 		"colorScheme":   user.ColorScheme,
+		// The rest of what the row holds about the rider (#1826): their own
+		// LTHR, the timezone the app observed, the Strava switch, and when
+		// the address was verified. The export claims Art. 15's scope; it
+		// has to carry the row.
+		"lthr":            user.Lthr,
+		"timezone":        user.Timezone,
+		"stravaUpload":    user.StravaUpload,
+		"emailVerifiedAt": timeOrNil(user.EmailVerifiedAt),
 	}
 	if !writeJSON("profile.json", profile) {
 		return
@@ -297,6 +305,23 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 				return map[string]any{"trophy": row.Key, "earnedAt": row.EarnedAt.Time}
 			})
 		}},
+		{"identities.json", func() (any, error) {
+			// The credential set (#1826): the privacy page says the provider
+			// user id is kept, so the export carries it; never a token.
+			rows, err := s.store.Queries.ExportUserIdentities(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserIdentitiesRow) any {
+				return map[string]any{"provider": row.Provider, "providerUserId": row.ProviderUserID,
+					"connectedAt": row.CreatedAt.Time}
+			})
+		}},
+		{"passkeys.json", func() (any, error) {
+			// The public half only: the rider's name for each, added, last used.
+			rows, err := s.store.Queries.ExportUserPasskeys(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserPasskeysRow) any {
+				return map[string]any{"name": row.Name, "addedAt": row.CreatedAt.Time,
+					"lastUsedAt": timeOrNil(row.LastUsedAt)}
+			})
+		}},
 		{"medals.json", func() (any, error) {
 			// Shown on the ride and rider pages, purged with the account —
 			// and never exported until #1550.
@@ -417,6 +442,15 @@ func (s *Service) purge(ctx context.Context, user pgtype.UUID) error {
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// timeOrNil is a nullable timestamp as the file should read it: a time, or
+// null — never Go's zero date dressed as one.
+func timeOrNil(t pgtype.Timestamptz) any {
+	if !t.Valid {
+		return nil
+	}
+	return t.Time
 }
 
 // mapRows turns a query's rows into the shape the export writes: the reader's
