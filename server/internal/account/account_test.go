@@ -6,11 +6,15 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -23,6 +27,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
+	"github.com/natrontech/wattroom/server/internal/tracks"
 )
 
 type harness struct {
@@ -388,6 +393,47 @@ func TestDeletePurgesEverythingOfTheRiderAndNothingOfAnyoneElse(t *testing.T) {
 // still leave. Their own rooms go with them as before; a crew holding only
 // those is deleted, and one still holding other people's rooms is handed to
 // the person left in it — never cascaded, never left ownerless.
+func TestDeleteTakesTheRidersOwnAudioOffDiskAndLeavesSharedContent(t *testing.T) {
+	h := setup(t)
+	dir := t.TempDir()
+	t.Setenv("WATTROOM_TRACKS_DIR", dir)
+	h.svc.SetTrackReaper(tracks.New(h.store, h.users, slog.New(slog.DiscardHandler)))
+	// One sha alice alone holds, one she shares with bob (#1095: one blob,
+	// two rows). Both files exist the way the pool lays them out.
+	mine := strings.Repeat("a", 64)
+	shared := strings.Repeat("b", 64)
+	for _, sha := range []string{mine, shared} {
+		path := filepath.Join(dir, sha[:2], sha+".mp3")
+		if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("mp3"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, row := range []struct{ who, sha string }{{"alice", mine}, {"alice", shared}, {"bob", shared}} {
+		if _, err := h.store.Queries.CreateTrack(t.Context(), db.CreateTrackParams{
+			Sha256: row.sha, UploadedBy: h.id(row.who), Title: "t", SizeBytes: 3, DurationMs: 1000, Tags: []string{},
+		}); err != nil {
+			t.Fatalf("track %s/%s: %v", row.who, row.sha[:4], err)
+		}
+	}
+
+	rec := h.call(t, "alice", http.MethodDelete, "/api/me")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("delete: %d %s", rec.Code, rec.Body.String())
+	}
+	if _, err := os.Stat(filepath.Join(dir, mine[:2], mine+".mp3")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("alice's own audio should be gone, stat: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, shared[:2], shared+".mp3")); err != nil {
+		t.Fatalf("the song bob also holds must stay: %v", err)
+	}
+	if got := h.count(t, "select count(*) from tracks where uploaded_by = $1", "bob"); got != 1 {
+		t.Fatalf("bob's row: %d", got)
+	}
+}
+
 func TestDeleteHandsTheCrewOnBeforeTheRowGoes(t *testing.T) {
 	h := setup(t)
 	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "alice", OwnerID: h.id("alice")})
