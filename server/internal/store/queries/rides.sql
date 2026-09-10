@@ -12,13 +12,20 @@ returning id;
 -- Paged by start (#1549): `before` is the oldest row the caller has, or
 -- null for the first page. The delivery state rides along (#1553): a failed
 -- Strava upload used to be visible only by opening every ride.
+--
+-- The cursor carries the id too, and the order breaks the tie on it (#2064).
+-- On the timestamp alone the boundary was `started_at < before` against a
+-- cursor the client had rounded down to the second, so every ride inside that
+-- second went unread — including ones the client had not been given yet. The
+-- row comparison is exact, which is the same shape ListUserWorkouts uses.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
        e.state as export_state
 from rides
 left join ride_exports e on e.ride_id = rides.id and e.destination = sqlc.arg(destination)::text
 where user_id = $1
-  and (sqlc.narg('before')::timestamptz is null or started_at < sqlc.narg('before')::timestamptz)
-order by started_at desc
+  and (sqlc.narg('before')::timestamptz is null
+       or (started_at, rides.id) < (sqlc.narg('before')::timestamptz, sqlc.narg('before_id')::uuid))
+order by started_at desc, rides.id desc
 limit $2;
 
 -- name: BestUserRideOfWorkout :one
@@ -48,7 +55,9 @@ where r.id = $1 and r.user_id = $2;
 -- name: FindRideAt :one
 -- The ride a save would duplicate (audit 2026-09-09): a retry after a lost
 -- response — the recovery card, the room saver's second attempt — finds the
--- row it already made instead of paying its XP twice.
+-- row it already made instead of paying its XP twice. `unique (user_id,
+-- started_at)` stands behind it now (#2064): this read still spares the
+-- retry an error, but two saves racing each other no longer both insert.
 select id from rides where user_id = $1 and started_at = $2 limit 1;
 
 -- name: DeleteRide :execrows

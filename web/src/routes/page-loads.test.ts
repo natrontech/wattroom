@@ -41,6 +41,43 @@ describe('route page loads', () => {
 		expect(data.progression?.category).toBe('D');
 	});
 
+	// The cursor is the server's pair (#2064), and it is what "more" means:
+	// a page claiming older rides without saying where they start would send
+	// Load more at the same rows forever.
+	it('takes the page cursor, and only calls it more when it has one', async () => {
+		const paired = fetchMap({
+			'/api/rides': {
+				rides: [],
+				more: true,
+				nextBefore: '2026-09-01T18:30:00.123456Z',
+				nextBeforeId: 'ride-1',
+			},
+			'/api/progression': { rides: [] },
+		});
+		const withCursor = (await loadHistory({
+			fetch: paired.fetch,
+		} as never)) as HistoryPageData;
+		expect(withCursor.cursor).toEqual({
+			before: '2026-09-01T18:30:00.123456Z',
+			beforeId: 'ride-1',
+		});
+		expect(withCursor.more).toBe(true);
+
+		const halved = fetchMap({
+			'/api/rides': {
+				rides: [],
+				more: true,
+				nextBefore: '2026-09-01T18:30:00Z',
+			},
+			'/api/progression': { rides: [] },
+		});
+		const halfCursor = (await loadHistory({
+			fetch: halved.fetch,
+		} as never)) as HistoryPageData;
+		expect(halfCursor.cursor).toBeNull();
+		expect(halfCursor.more).toBe(false);
+	});
+
 	// Settings is a tree now (#1330): each section loads only what it draws,
 	// and the version footer is the layout's.
 	it('the Profile section loads the trend and nothing else', async () => {
