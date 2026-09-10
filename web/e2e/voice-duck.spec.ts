@@ -92,7 +92,13 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 	await signInAs(a, A, '/home#rooms');
 	const name = `Voice Duck ${Date.now() % 100000}`;
 	await a.locator('#open-room-name').fill(name);
-	await a.getByRole('button', { name: 'Open a room' }).click();
+	// Scoped to the form whose field this test just filled: Home says
+	// "Open a room" on the sheet-opener too, and the sidebar's + carries it
+	// inside an aria-label, so an unscoped name matches three buttons.
+	await a
+		.locator('#rooms')
+		.getByRole('button', { name: 'Open a room' })
+		.click();
 	await expect(
 		a.getByRole('heading', { name }),
 		`opening "${name}" never landed ${A} in the room`,

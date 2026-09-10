@@ -33,10 +33,10 @@ test('a workout is shaped, guarded, saved, and comes back through ?w=', async ({
 	await expect(blocks).toHaveText(/2 blocks/);
 
 	// Twenty minutes of shaping must not leave without a word (#1711).
-	await page.getByRole('link', { name: 'Cancel' }).click();
+	await page.getByRole('link', { name: 'Discard' }).click();
 	const guard = page.getByRole('dialog', { name: 'Leave without saving?' });
 	await expect(guard).toBeVisible();
-	await guard.getByRole('button', { name: 'Stay' }).click();
+	await guard.getByRole('button', { name: 'Keep it' }).click();
 	await expect(page).toHaveURL(/\/workouts\/edit$/);
 	await expect(page.getByLabel('Workout name')).toHaveValue(name);
 

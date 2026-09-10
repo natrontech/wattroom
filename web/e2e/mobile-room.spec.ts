@@ -112,7 +112,7 @@ test('no place in a room scrolls sideways on a phone', async ({
 
 /**
  * The rows the sweep above calls widest never rendered in it (#1766): a phone
- * is a spectator, so the coach's Move and Cancel never drew, and a room of
+ * is a spectator, so the coach's Move and Cancel session never drew, and a room of
  * one has no member row but the owner's. So: a guest, the cockpit (`?full=1`
  * spends the spectator gate, #412), and the three overlays nothing at 375
  * measured — the confirm, a context menu and the session picker.
@@ -168,12 +168,14 @@ test('the coach rows, the confirm, a menu and the picker fit a phone', async ({
 		expect(await excessOf(), `${what} overflows`).toBe(0);
 	};
 
-	// The coach's row: Move and Cancel beside "I'm in".
+	// The coach's row: Move and Cancel session beside "I'm in".
 	await page.goto(`/r/${room.slug}/sessions?full=1`);
 	await expect(page.getByRole('button', { name: 'Move' })).toBeVisible();
 	await noOverflow('the Sessions place with the coach row');
-	// The confirm behind Cancel.
-	await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+	// The confirm behind Cancel session.
+	await page
+		.getByRole('button', { name: 'Cancel session', exact: true })
+		.click();
 	await fits('the cancel confirm', page.getByRole('dialog'));
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('dialog')).toHaveCount(0);
