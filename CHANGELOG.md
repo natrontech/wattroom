@@ -17,6 +17,22 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.110] - 2026-09-10
+
+### Added
+
+- Desktop app: the window opens where you left it — size, position and maximized — and falls back to the main display's default position when that screen is gone.
+
+### Fixed
+
+- Renaming a soundboard clip edits in a field of its own, and deleting one asks in the app's dialog. Planning a session: the day chips announce which one is chosen, and a time the box cannot read says so instead of silently snapping back.
+- A toast with Undo no longer vanishes before you can reach it, timed toasts pause while your pointer or focus is on them, and the toast stack sits two Tab presses from the top of the page. Escape closes only the topmost dialog. On a phone, Tab stays inside the open navigation drawer.
+- The crew and room icon picker walks with the arrow keys and has one tab stop, as a radio group should.
+- Keyboard and screen-reader riders: closing a right-click menu puts focus back where it was instead of at the top of the page; the chat's @ list, a menu's fader, a reaction you pressed, a rider's presence dot and the voice gate meter now say what they are and what state they are in; the session countdown and the sprint klaxon are announced once instead of every second or not at all; the sidebar's navigation has a name; the jukebox's sync dots respect reduced motion.
+- The small "live", "N new" and badge-earned lines are readable again: the magenta and violet stay on their dot, bars, line or tick, and the words are drawn in ink.
+- Desktop app: a sign-in link from the browser is accepted only after the app itself sent you there, and it never loads over a ride in progress — a signed-in app says so instead. An updater that keeps failing is no longer silent: after three failed checks Home offers the download. Windows and Linux lose Electron's default menu bar under the app's own strip; macOS keeps copy, paste and reload.
+- "Your own crew" is the one made for you with your first room, even after someone hands you another: a new room lands there, and Home's getting-started card sets up that one.
+
 ## [2026.09.109] - 2026-09-10
 
 ### Added
@@ -1929,7 +1945,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.109...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.110...HEAD
+[2026.09.110]: https://github.com/natrontech/wattroom/compare/2026.09.109...2026.09.110
 [2026.09.109]: https://github.com/natrontech/wattroom/compare/2026.09.108...2026.09.109
 [2026.09.108]: https://github.com/natrontech/wattroom/compare/2026.09.107...2026.09.108
 [2026.09.107]: https://github.com/natrontech/wattroom/compare/2026.09.106...2026.09.107

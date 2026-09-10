@@ -1,1 +1,0 @@
-- The crew and room icon picker walks with the arrow keys and has one tab stop, as a radio group should.

@@ -1,1 +1,0 @@
-- Renaming a soundboard clip edits in a field of its own, and deleting one asks in the app's dialog. Planning a session: the day chips announce which one is chosen, and a time the box cannot read says so instead of silently snapping back.
