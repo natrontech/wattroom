@@ -17,18 +17,50 @@
 		/** id of the visible label, when there is one. */
 		labelledby?: string;
 	} = $props();
+
+	/** Whether the current value names an icon in the set, else "None" is the stop. */
+	const hasValue = $derived(value !== '' && value in ROOM_ICONS);
+	/** Arrow keys walk the radios; Home and End jump; the walked-to one is picked. */
+	function walk(event: KeyboardEvent) {
+		const radios = [
+			...event.currentTarget.querySelectorAll<HTMLButtonElement>(
+				'[role=radio]',
+			),
+		];
+		const at = radios.indexOf(document.activeElement as HTMLButtonElement);
+		if (at < 0) return;
+		const step: Record<string, number> = {
+			ArrowRight: 1,
+			ArrowDown: 1,
+			ArrowLeft: -1,
+			ArrowUp: -1,
+		};
+		let next = at;
+		if (event.key in step)
+			next = (at + step[event.key] + radios.length) % radios.length;
+		else if (event.key === 'Home') next = 0;
+		else if (event.key === 'End') next = radios.length - 1;
+		else return;
+		event.preventDefault();
+		radios[next].focus();
+		radios[next].click();
+	}
 </script>
 
+<!-- A radiogroup walks by arrow keys and has one tab stop (#1971): the
+     checked radio, or the first. -->
 <div
 	class="flex flex-wrap items-center gap-1.5"
 	role="radiogroup"
 	aria-labelledby={labelledby}
 	aria-label={labelledby ? undefined : 'icon'}
+	onkeydown={walk}
 >
 	<button
 		type="button"
 		role="radio"
 		aria-checked={value === ''}
+		tabindex={value === '' || !hasValue ? 0 : -1}
 		onclick={() => onpick('')}
 		{disabled}
 		class="btn btn-secondary btn-xs {value === ''
@@ -40,6 +72,7 @@
 			type="button"
 			role="radio"
 			aria-checked={value === key}
+			tabindex={value === key ? 0 : -1}
 			aria-label={key}
 			title={key}
 			onclick={() => onpick(key)}
