@@ -23,15 +23,21 @@ The marking that does exist is inconsistent. Some rows carry a struck-through ph
 
 **WATTROOM.md §5 moves to `docs/ROADMAP.md`** and becomes current state. A roadmap is a claim about the present; freezing one guarantees it goes false, and guarantees the freeze gets broken to fix it. §5's place in WATTROOM.md keeps a pointer and a divergence annotation, so the founding record still says a roadmap was part of the founding set, and where it went.
 
-**A divergence is annotated inline, in a fixed format, immediately below the statement it corrects:**
+**A divergence is annotated at the statement it corrects, never in a ledger elsewhere.** Someone reading WATTROOM.md gets the correction at the point of the error; a ledger only helps a reader who already knows to go and check one.
 
-> **Diverged 2026-09-10 (#654, [ADR-0020](0020-the-app-takes-discords-shape.md))** — the app took Discord's shape and a room now has one riding surface, so the switchable layouts this line ticks off were retired.
+The founding record comes in two shapes, so the annotation does too.
 
-Three parts, all required: the date; **at least one issue or PR number, or an ADR reference** — the *where*, which is what today's markings never carry; and the argument in plain words. The statement above it is left standing. It is what was decided, and deleting it is the thing the freeze exists to prevent.
+*Prose and bullets* — §§5–9, and where the three false claims live — take a blockquote immediately below the statement:
 
-Inline rather than a separate ledger, deliberately: someone reading WATTROOM.md gets the correction at the point of the error. A ledger only helps a reader who already knows to go and check one.
+> **Diverged 2026-09-10 (#2055, [ADR-0020](0020-the-app-takes-discords-shape.md))** — the app took Discord's shape and a room now has one riding surface, so the switchable layouts this line ticks off were retired.
 
-`ci.yml`'s `docs` job checks the shape — every `> **Diverged` line in the founding record carries an ISO date and at least one `#nnn` or `ADR-nnnn`. Same shape as the ADR-number, index and link checks already there.
+*Table cells* — §2's decision table, 48 rows — take the marker inline in the cell, because a blockquote cannot live inside a table row. This extends the convention that table already uses: strike the superseded phrase, then
+
+`**Diverged 2026-09-10 (#1236, ADR-0038)**: rooms are channels a crew member walks into and have no codes of their own.`
+
+Three parts either way, all required: the ISO date; **at least one issue or PR number, or an ADR reference** — the *where*; and the argument in plain words. Exactly one of the six markings in the file today carries a reference at all (`WATTROOM.md:68`, `(#1236)`), and that gap is why this has a format instead of a habit. The statement above or beside the marker is left standing: it is what was decided, and deleting it is the thing the freeze exists to prevent.
+
+`ci.yml`'s `docs` job checks the shape — every divergence marker in the founding record, in either form, carries an ISO date and at least one `#nnn` or `ADR-nnnn`. Same shape as the ADR-number, index and link checks already there.
 
 **Who may edit what.** Current-state documents: anyone, any PR, like code. Founding record: an annotation only, and the annotation names the PR that earned it. Moving a section from one class to the other is itself an ADR.
 

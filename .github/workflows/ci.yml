@@ -109,11 +109,13 @@ jobs:
           fi
       # ADR-0050: a frozen statement is never rewritten, only annotated — and an
       # annotation is worth little without the date and the issue or ADR that
-      # earned it, which is exactly what the informal "Superseded by" markings
-      # it replaces never carried.
+      # earned it, which exactly one of the six markings already in the file
+      # carries. Unanchored on purpose: the founding record is prose *and* a
+      # 48-row table, and a blockquote cannot live inside a table cell, so the
+      # marker appears both at the start of a line and inside one.
       - name: Divergence annotations name where they happened
         run: |
-          bad=$(grep -rn '^> \*\*Diverged' WATTROOM.md docs/decisions/ \
+          bad=$(grep -rn '\*\*Diverged' WATTROOM.md docs/decisions/ \
                 | grep -vE 'Diverged [0-9]{4}-[0-9]{2}-[0-9]{2} \([^)]*(#[0-9]+|ADR-[0-9]{4})' || true)
           if [ -n "$bad" ]; then
             echo 'A divergence annotation must read:' >&2
