@@ -199,7 +199,8 @@
 						? 'text-z4'
 						: 'text-danger'}"
 					title="{micOn ? 'mute' : 'unmute'} · {MENU_HINT}"
-					aria-label={micOn ? 'mute microphone' : 'unmute microphone'}
+					aria-label="microphone"
+					aria-pressed={micOn}
 					{@attach contextMenu(() => {
 						const voice = roomConnection.current?.av;
 						return voice ? micMenu(voice, () => onMic?.()) : [];
@@ -213,7 +214,8 @@
 						? 'text-z4'
 						: 'text-muted/50 hover:text-muted'}"
 					title={camOn ? 'turn camera off' : 'turn camera on'}
-					aria-label={camOn ? 'turn camera off' : 'turn camera on'}
+					aria-label="camera"
+					aria-pressed={camOn}
 				>
 					{#if camOn}<Video size={16} />{:else}<VideoOff size={16} />{/if}
 				</button>
@@ -227,9 +229,8 @@
 						? 'bg-danger/15 text-danger'
 						: 'text-muted/50 hover:text-muted'}"
 					title={sharing ? 'stop sharing your screen' : 'share your screen'}
-					aria-label={sharing
-						? 'stop sharing your screen'
-						: 'share your screen'}
+					aria-label="share screen"
+					aria-pressed={sharing}
 				>
 					{#if sharing}<ScreenShareOff size={16} />{:else}<ScreenShare
 							size={16}

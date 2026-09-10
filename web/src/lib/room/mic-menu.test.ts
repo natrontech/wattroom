@@ -43,7 +43,8 @@ describe('micMenu (#914)', () => {
 		expect(gate.map((item) => [item.label, item.hint])).toEqual([
 			['Mute', undefined],
 			['Voice activation', 'on'],
-			['Push to talk', undefined],
+			// The key is the instruction (#1879).
+			['Push to talk', 'hold Space'],
 			['System default', undefined],
 			['MacBook Pro Microphone', 'on'],
 			['Microphone 2', undefined],

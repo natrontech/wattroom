@@ -1,0 +1,1 @@
+- Push to talk says its key — hold Space — wherever it is offered, and is not offered on a phone or tablet, where there is no key to hold. The room's Sound panel uses the same device pickers as Settings, unnamed-device hint included, and the mic, camera and share buttons announce their on/off state to screen readers.

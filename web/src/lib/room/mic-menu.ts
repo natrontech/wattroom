@@ -25,6 +25,7 @@ import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
 import type { MenuEntry } from '$lib/context-menu.svelte';
 import { type Device, deviceOptions } from '$lib/room/device-options';
 import { openSoundPanel } from '$lib/room/sound-panel.svelte';
+import { canHoldToTalk } from '$lib/room/ptt-keys';
 
 export interface MicVoice {
 	micOn: boolean;
@@ -42,12 +43,13 @@ export function micMenu(voice: MicVoice, onMic: () => void): MenuEntry[] {
 		id: 'gate' | 'ptt',
 		label: string,
 		icon: typeof Radio,
+		hint?: string,
 	): MenuEntry => ({
 		label,
 		icon,
 		// The current one is marked, not disabled: a menu that greys out where
 		// you already are makes you check twice which one that was.
-		hint: voice.mode === id ? 'on' : undefined,
+		hint: voice.mode === id ? 'on' : hint,
 		onSelect: () => voice.setMode(id),
 	});
 	return [
@@ -58,7 +60,12 @@ export function micMenu(voice: MicVoice, onMic: () => void): MenuEntry[] {
 		},
 		'separator',
 		mode('gate', 'Voice activation', Radio),
-		mode('ptt', 'Push to talk', Mic),
+		// The key is the whole instruction (#1879): a rider who picked this
+		// mid-ride went quiet with no way to learn how to come back. And no
+		// key, no mode — a control that cannot work is not drawn (ux.md).
+		...(canHoldToTalk()
+			? [mode('ptt', 'Push to talk', Mic, 'hold Space')]
+			: []),
 		...(inputs.length > 1
 			? ([
 					'separator',

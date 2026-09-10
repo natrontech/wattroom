@@ -11,11 +11,11 @@
 	// from a bike, and `Modal` already keeps the jukebox dock clear of it.
 	import Sliders from '@lucide/svelte/icons/sliders';
 	import Modal from '$lib/components/Modal.svelte';
-	import Select from '$lib/components/Select.svelte';
+	import DevicePickers from '$lib/room/DevicePickers.svelte';
 	import GateTune from '$lib/room/GateTune.svelte';
 	import MixFaders from '$lib/room/MixFaders.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { deviceOptions } from '$lib/room/device-options';
+	import { canHoldToTalk } from '$lib/room/ptt-keys';
 	import { openSoundPanel, soundPanel } from '$lib/room/sound-panel.svelte';
 
 	// `compact` is the sidebar's you-panel: an icon in a row of icons, next to
@@ -67,13 +67,21 @@
 						? 'btn-primary'
 						: 'btn-secondary'}">Voice activation</button
 				>
-				<button
-					onclick={() => voice.setMode('ptt')}
-					aria-pressed={voice.mode === 'ptt'}
-					class="btn flex-1 {voice.mode === 'ptt'
-						? 'btn-primary'
-						: 'btn-secondary'}">Push to talk</button
-				>
+				<!-- Space is the key, and the button says so (#1879); where there
+				     is no key to hold, the mode is not offered. -->
+				{#if canHoldToTalk()}
+					<button
+						onclick={() => voice.setMode('ptt')}
+						aria-pressed={voice.mode === 'ptt'}
+						class="btn flex-1 flex-col gap-0 leading-tight {voice.mode === 'ptt'
+							? 'btn-primary'
+							: 'btn-secondary'}"
+						>Push to talk
+						<span class="block text-[10px] font-normal opacity-70"
+							>hold Space</span
+						></button
+					>
+				{/if}
 			</div>
 			<div class="mt-3">
 				<GateTune
@@ -111,46 +119,23 @@
 		</div>
 
 		<div class="border-ink/5 mt-4 border-t pt-4">
-			<div class="grid gap-3 sm:grid-cols-2">
-				<label class="block">
-					<span class="eyebrow">microphone</span>
-					<div class="mt-1">
-						<Select
-							label="Microphone"
-							value={voice.micId}
-							options={deviceOptions(voice.mics, 'Microphone')}
-							onchange={(id) => void voice.setMic(id)}
-						/>
-					</div>
-				</label>
-				<!-- The camera sits here too (#945): the you-panel puts its button
-				     next to the mic's, so the device it opens belongs next to the
-				     mic's device, not one page away. -->
-				<label class="block">
-					<span class="eyebrow">camera</span>
-					<div class="mt-1">
-						<Select
-							label="Camera"
-							value={voice.camId}
-							options={deviceOptions(voice.cams, 'Camera')}
-							onchange={(id) => void voice.setCam(id)}
-						/>
-					</div>
-				</label>
-				{#if voice.canPickOutput}
-					<label class="block">
-						<span class="eyebrow">speakers · voice only</span>
-						<div class="mt-1">
-							<Select
-								label="Speakers"
-								value={voice.outId}
-								options={deviceOptions(voice.outs, 'Speakers')}
-								onchange={(id) => voice.setOut(id)}
-							/>
-						</div>
-					</label>
-				{/if}
-			</div>
+			<!-- The camera sits here too (#945): the you-panel puts its button
+			     next to the mic's, so the device it opens belongs next to the
+			     mic's device, not one page away. The same pickers as
+			     /settings/voice (#1883), unnamed-device hint included. -->
+			<DevicePickers
+				devices={{ mics: voice.mics, cams: voice.cams, outs: voice.outs }}
+				micId={voice.micId}
+				camId={voice.camId}
+				outId={voice.outId}
+				canPickOutput={voice.canPickOutput}
+				onDevice={(kind, id) =>
+					kind === 'mic'
+						? void voice.setMic(id)
+						: kind === 'cam'
+							? void voice.setCam(id)
+							: voice.setOut(id)}
+			/>
 		</div>
 
 		<div class="mt-5 flex justify-end">

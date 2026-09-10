@@ -130,11 +130,11 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 		await a.goto(`/r/${slug}?voice=1`);
 		await b.goto(`/r/${slug}?voice=1`);
 		await expect(
-			a.getByRole('button', { name: 'mute microphone' }),
+			a.getByRole('button', { name: 'microphone', pressed: true }),
 			`${A} never finished joining voice with an open mic`,
 		).toBeVisible({ timeout: 20_000 });
 		await expect(
-			b.getByRole('button', { name: 'mute microphone' }),
+			b.getByRole('button', { name: 'microphone', pressed: true }),
 			`${B} never finished joining voice with an open mic`,
 		).toBeVisible({ timeout: 20_000 });
 
@@ -206,7 +206,7 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 
 		// Muting takes the level away — the ring has to follow it down, not
 		// linger (#987: a rider who stops must not stay lit up forever).
-		await b.getByRole('button', { name: 'mute microphone' }).click();
+		await b.getByRole('button', { name: 'microphone', pressed: true }).click();
 		await expect(
 			bTile,
 			`${B}'s tile stayed ringed as speaking after muting`,
