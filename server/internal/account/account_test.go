@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -240,6 +241,10 @@ func TestExportIsAZipOfTheRidersOwnData(t *testing.T) {
 	}
 	if cd := rec.Header().Get("Content-Disposition"); !strings.HasPrefix(cd, `attachment; filename="wattroom-export-`) {
 		t.Errorf("Content-Disposition = %q", cd)
+	}
+	// Built before the first byte went out (#1990): the length is known.
+	if cl := rec.Header().Get("Content-Length"); cl != strconv.Itoa(rec.Body.Len()) {
+		t.Errorf("Content-Length = %q, body is %d bytes", cl, rec.Body.Len())
 	}
 
 	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
