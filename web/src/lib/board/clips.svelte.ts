@@ -3,6 +3,7 @@
  * YOUR library, and the audio of everyone else's clips is fetched by id as
  * their fires arrive (`$lib/sound/board.svelte`).
  */
+import { api } from '$lib/api';
 import { prefetch } from '$lib/sound/board.svelte';
 
 export interface Edit {
@@ -49,16 +50,13 @@ let loaded = $state(false);
 let loading: Promise<void> | undefined;
 
 async function fetchAll(): Promise<void> {
-	const res = await fetch('/api/board/clips');
+	const res = await api<{ clips: Clip[]; used: number; limit: number }>(
+		'/api/board/clips',
+	);
 	if (!res.ok) return;
-	const body = (await res.json()) as {
-		clips: Clip[];
-		used: number;
-		limit: number;
-	};
-	clips = body.clips;
-	used = body.used;
-	limit = body.limit;
+	clips = res.data.clips;
+	used = res.data.used;
+	limit = res.data.limit;
 	loaded = true;
 	// Warm your own pads: the first press of a ride should not be the one
 	// that pays for the download.
@@ -125,15 +123,12 @@ export interface Refusal {
  * so the rule has one home.
  */
 export async function upload(file: File): Promise<Refusal | undefined> {
-	const res = await fetch(
+	const res = await api<{ id: string }>(
 		`/api/board/clips?name=${encodeURIComponent(nameFromFile(file.name))}`,
 		{ method: 'POST', body: file },
 	);
-	if (!res.ok) {
-		const body = await res.json().catch(() => ({}));
-		return { message: body.message ?? 'The clip could not be saved.' };
-	}
-	const { id } = (await res.json()) as { id: string };
+	if (!res.ok) return { message: res.error.message };
+	const { id } = res.data;
 	await board.refresh();
 	// A clip nobody can press is not much of a clip: the first free pad takes
 	// it. Beyond nine, the upload lands in the library and the rider chooses.
@@ -168,10 +163,9 @@ export async function assign(
 	clipId: string,
 	pad: number | null,
 ): Promise<void> {
-	const res = await fetch(`/api/board/clips/${clipId}/pad`, {
+	const res = await api(`/api/board/clips/${clipId}/pad`, {
 		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ pad }),
+		json: { pad },
 	});
 	if (res.ok) await board.refresh();
 }
@@ -201,15 +195,11 @@ export async function rename(
 	clipId: string,
 	name: string,
 ): Promise<Refusal | undefined> {
-	const res = await fetch(`/api/board/clips/${clipId}/name`, {
+	const res = await api(`/api/board/clips/${clipId}/name`, {
 		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ name }),
+		json: { name },
 	});
-	if (!res.ok) {
-		const body = await res.json().catch(() => ({}));
-		return { message: body.message ?? 'The name could not be changed.' };
-	}
+	if (!res.ok) return { message: res.error.message };
 	await board.refresh();
 	return undefined;
 }
@@ -221,7 +211,7 @@ export async function rename(
 // silently drop. An undo toast becomes possible the day a delete is a soft
 // one, and this is the only place that would change.
 export async function remove(clipId: string): Promise<void> {
-	const res = await fetch(`/api/board/clips/${clipId}`, { method: 'DELETE' });
+	const res = await api(`/api/board/clips/${clipId}`, { method: 'DELETE' });
 	if (res.ok) await board.refresh();
 }
 
@@ -230,15 +220,11 @@ export async function saveEdit(
 	clipId: string,
 	edit: Edit,
 ): Promise<Refusal | undefined> {
-	const res = await fetch(`/api/board/clips/${clipId}/edit`, {
+	const res = await api(`/api/board/clips/${clipId}/edit`, {
 		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(edit),
+		json: edit,
 	});
-	if (!res.ok) {
-		const body = await res.json().catch(() => ({}));
-		return { message: body.message ?? 'The edit could not be saved.' };
-	}
+	if (!res.ok) return { message: res.error.message };
 	await board.refresh();
 	return undefined;
 }
@@ -251,15 +237,11 @@ export async function bindKey(
 	clipId: string,
 	key: string | null,
 ): Promise<Refusal | undefined> {
-	const res = await fetch(`/api/board/clips/${clipId}/key`, {
+	const res = await api(`/api/board/clips/${clipId}/key`, {
 		method: 'PUT',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ key }),
+		json: { key },
 	});
-	if (!res.ok) {
-		const body = await res.json().catch(() => ({}));
-		return { message: body.message ?? 'The key could not be set.' };
-	}
+	if (!res.ok) return { message: res.error.message };
 	await board.refresh();
 	return undefined;
 }
