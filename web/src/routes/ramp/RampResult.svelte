@@ -66,8 +66,11 @@
 	// reported "Saved" on a push that never landed, and the next boot pulled
 	// the old number back over the new one.
 	async function saveFtp() {
+		// 'ramp' is the provenance (#1484): this number was measured, so the
+		// account stops labelling its FTP a starting guess even if the test
+		// happens to land on the 200 W it was created with.
 		const message =
-			(await pushProfile({ ftpWatts: result.ftp })) ??
+			(await pushProfile({ ftpWatts: result.ftp, ftpSource: 'ramp' })) ??
 			profile.update({ ftp: result.ftp, ftpMeasuredAt: Date.now() });
 		if (message) error = message;
 		else saved = true;

@@ -10,6 +10,13 @@
 import { api } from '$lib/api';
 import { people } from '$lib/people.svelte';
 
+export type ProfileSource = 'default' | 'manual' | 'ramp';
+
+/** Whether the app, rather than the rider, chose this number (#1484). */
+export function unchosen(source: ProfileSource | undefined): boolean {
+	return source === 'default';
+}
+
 export interface Me {
 	id: string;
 	displayName: string;
@@ -20,6 +27,13 @@ export interface Me {
 	totalXp?: number;
 	ftpWatts: number;
 	weightKg: number;
+	/** Where each of those came from (#1484): `default` — nobody chose it,
+	 * the account was created with the app's opening guess; `manual` — the
+	 * rider set it; `ramp` — a ramp test measured it. Absent on a server
+	 * that predates the fields, which reads as answered rather than putting
+	 * a "starting guess" label on numbers that may well be measured. */
+	ftpSource?: ProfileSource;
+	weightSource?: ProfileSource;
 	/** The HR anchor (ADR-0014), on the account since #1571. */
 	lthr?: number;
 	/** When "send again" sends again — ISO 8601, absent once it can (#1608). */
@@ -156,6 +170,13 @@ function createAccountStore() {
 			displayName: string;
 			ftpWatts: number;
 			weightKg: number;
+			/** Claim a number as answered even when its value did not change
+			 * (#1484) — the first-run ask, where keeping the prefilled 200 W
+			 * IS the answer, and the ramp test's own save. Absent lets the
+			 * server read it from the write, so an incidental PATCH of the
+			 * current numbers leaves the guess a guess. */
+			ftpSource?: Exclude<ProfileSource, 'default'>;
+			weightSource?: Exclude<ProfileSource, 'default'>;
 			/** Absent keeps the anchor; 0 clears it (#1571). */
 			lthr?: number;
 			stravaUpload?: boolean;

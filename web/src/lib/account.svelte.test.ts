@@ -135,3 +135,20 @@ describe('account.load timezone', () => {
 		expect(writes()).toBe(0);
 	});
 });
+
+/**
+ * #1484: an account is created holding 200 W and 75 kg that nobody chose, and
+ * `unchosen` is what every surface asks before printing one of them as though
+ * somebody had. The absent case is the one that matters — a server predating
+ * the fields says nothing, and reading silence as "unchosen" would put a
+ * "starting guess" label on numbers a rider may well have measured.
+ */
+describe('unchosen', () => {
+	it('is only true of the source that means nobody chose it', async () => {
+		const { unchosen } = await import('$lib/account.svelte');
+		expect(unchosen('default')).toBe(true);
+		expect(unchosen('manual')).toBe(false);
+		expect(unchosen('ramp')).toBe(false);
+		expect(unchosen(undefined)).toBe(false);
+	});
+});

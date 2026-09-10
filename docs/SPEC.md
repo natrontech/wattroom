@@ -203,6 +203,25 @@ colours the rider's **own** bpm readout, never anyone else's, never scored
   real measurement) — one tap to apply, never
   auto-applied (same posture as FTP suggestions).
 
+## The rider's two numbers (ADR-0048)
+
+FTP and weight are what everything else here is relative to: every workout target is a
+fraction of FTP, and so are the execution score, the XP bonus, the category, the training
+load and every later FTP suggestion; weight is the denominator of every w/kg the app prints.
+Bounds, enforced identically by the schema CHECKs, the profile PATCH and the web store
+(`PROFILE_LIMITS`): **FTP 50–600 W**, **weight 30–200 kg**, **LTHR 100–210 bpm**.
+
+- **Where they come from** is recorded per number as `default` (nobody chose it — the account
+  was created with the app's opening 200 W / 75 kg), `manual` (the rider set it, by typing it
+  or accepting a suggestion) or `ramp` (a ramp test measured it). Rejected, never coerced: a
+  typed 900 is a refusal naming the field, not a silent 200.
+- **A new account is asked, and never gated.** The first-run card's first step asks for both,
+  prefilled with 200 W and 75 kg — keeping them is a valid answer and records `manual`. A
+  rider who skips it rides anyway.
+- **An unchosen number never reads as a measured one.** While the source is `default`, Home's
+  FTP tile says it is a starting guess, and w/kg is withheld until at least one of the pair is
+  the rider's own — two guesses divided by each other is a fiction with a decimal point.
+
 ## Stats formulas (defaults — tune in alpha)
 
 - **Tolerance band**: within ±5 % of target power, floor ±10 W (beginners at 100 W targets need the floor). The target is the rider's **own**: the prescribed fraction × their bias (0.8–1.2, set during the ride, #795), so the band follows the plan they were actually on; the weight below stays the prescribed intensity.

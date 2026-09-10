@@ -1,16 +1,29 @@
 <script lang="ts">
-	// The three setup steps that decide whether a rider ever rides (#1333):
-	// take a first ride, name the crew, invite someone. Each row is a link to
+	// The setup steps that decide whether a rider ever rides (#1333): set the
+	// two numbers every target scales from, take a first ride, name the crew,
+	// invite someone. Each row is a link to
 	// where the step is done and retires itself once it is; the card goes
 	// when the last one does. The first step is everyone's (#1857): it used
 	// to be gated with the crew steps on OWNING a crew, so a brand-new
 	// account — no crew yet — and a rider who joined someone else's saw no
 	// card at all, and the one instruction that makes a watt appear went
 	// down with the two that are the owner's alone.
+	import { account, unchosen } from '$lib/account.svelte';
 	import { fetchCrew } from '$lib/crew';
+	import FtpAsk from '$lib/home/FtpAsk.svelte';
 	import type { RoomCrew } from '$lib/room/room-data';
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+
+	/** A row: a link to where the step is done, or the one step that is a
+	 *  question and is answered in place (#1484). */
+	type Step = {
+		done: boolean;
+		label: string;
+		hint: string;
+		href?: string;
+		ask?: boolean;
+	};
 
 	let {
 		crew,
@@ -41,15 +54,36 @@
 	// Labelled for what it tests (#1857): a finished ride. "Pair your
 	// trainer" stayed open after a rider paired one, with the real rule in
 	// the small grey line.
-	const first = $derived({
+	const first: Step = $derived({
 		done: ridden,
 		label: 'Take your first ride',
 		hint: 'pair your trainer, or ride simulated once to see the room work',
 		href: '/settings/equipment',
 	});
-	const steps = $derived(
+	// Above the trainer step, because it is above it in consequence (#1484):
+	// an account is created holding 200 W and 75 kg that nobody chose, and
+	// every target, the execution score, the XP bonus, the category and the
+	// load scale from them. Answered in place rather than behind a link — the
+	// one step that is a question should not send the rider to a settings page
+	// to answer it — and never a gate: skipping it still rides, and Home
+	// labels the number a starting guess until it is answered. Signed out
+	// there is no account to ask about, so the step stays away.
+	const numbers: Step[] = $derived(
+		account.me
+			? [
+					{
+						done: !unchosen(account.me.ftpSource),
+						label: 'Set your FTP and weight',
+						hint: 'every target scales from your FTP',
+						ask: true,
+					},
+				]
+			: [],
+	);
+	const steps: Step[] = $derived(
 		crew && people !== null
 			? [
+					...numbers,
 					first,
 					{
 						done: named,
@@ -64,7 +98,7 @@
 						href: `/crew/${crew.id}`,
 					},
 				]
-			: [first],
+			: [...numbers, first],
 	);
 	const left = $derived(steps.filter((s) => !s.done).length);
 </script>
@@ -80,6 +114,8 @@
 							<Check size={16} class="text-z4 shrink-0" />
 							<span class="line-through">{step.label}</span>
 						</p>
+					{:else if step.ask}
+						<FtpAsk />
 					{:else}
 						<a
 							href={step.href}

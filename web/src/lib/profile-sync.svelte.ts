@@ -38,6 +38,11 @@ export function pullProfile(profile: ProfileStore): void {
 export async function pushProfile(next: {
 	ftpWatts?: number;
 	weightKg?: number;
+	/** Who is claiming the number (#1484) — the ramp test says 'ramp', so the
+	 * account stops calling its FTP a starting guess. Absent lets the server
+	 * read it from the write. */
+	ftpSource?: 'manual' | 'ramp';
+	weightSource?: 'manual' | 'ramp';
 	/** 0 clears the anchor (#1571). */
 	lthr?: number;
 }): Promise<string | null> {
@@ -50,6 +55,8 @@ export async function pushProfile(next: {
 		displayName: me.displayName,
 		ftpWatts: next.ftpWatts ?? me.ftpWatts,
 		weightKg: next.weightKg ?? me.weightKg,
+		...(next.ftpSource ? { ftpSource: next.ftpSource } : {}),
+		...(next.weightSource ? { weightSource: next.weightSource } : {}),
 		lthr: next.lthr,
 	});
 	return err ? err.message : null;
