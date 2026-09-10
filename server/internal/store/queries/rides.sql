@@ -306,3 +306,13 @@ where ride_id = $1 and destination = $2;
 update ride_exports
 set state = 'pending', attempts = 0, last_error = null, updated_at = now()
 where ride_id = $1 and destination = $2 and state = 'failed';
+
+-- name: AmendRide :execrows
+-- A saved ride grown from a longer record (#1536): a socket that dropped
+-- before the close and replayed its buffer after it. Only ever longer —
+-- a replay of what was already saved changes nothing — and the medals
+-- stay as awarded; xp moves with the row, which user_total_xp sums live.
+update rides
+set seconds = $2, avg_watts = $3, kj = $4, execution = $5, execution_scored = $6,
+    samples = $7, curve = $8, xp = $9, norm_watts = $10
+where id = $1 and seconds < $2;

@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"testing"
@@ -107,13 +108,14 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	rm.backfill(sock("jan"), []protocol.RiderMetrics{
 		{Watts: 200, Seq: 2}, {Watts: 201, Seq: 3}, {Watts: 202, Seq: 4},
 		{Watts: 203, Seq: 5}, {Watts: 204, Seq: 6},
-	})
+	},
+		nil, nil)
 	if got := rm.record.count("jan"); got != 6 {
 		t.Fatalf("expected exactly 6 samples after dedupe, got %d", got)
 	}
 
 	// A hostile batch cannot grow memory: junk is dropped at the bound.
-	rm.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 9999, Seq: 7}})
+	rm.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 9999, Seq: 7}}, nil, nil)
 	if got := rm.record.count("jan"); got != 6 {
 		t.Fatalf("out-of-bounds sample was recorded: %d", got)
 	}
@@ -141,11 +143,11 @@ func TestBackfillNeedsTheTrainerClaim(t *testing.T) {
 	rm.join(other)
 	rm.claimSensors(holder, protocol.SensorClaim{Held: []string{"trainer"}, Tab: "desk", Device: "desktop"})
 
-	rm.backfill(other, []protocol.RiderMetrics{{Watts: 200, Seq: 1}})
+	rm.backfill(other, []protocol.RiderMetrics{{Watts: 200, Seq: 1}}, nil, nil)
 	if got := rm.record.count("jan"); got != 0 {
 		t.Fatalf("a tab without the claim backfilled %d samples", got)
 	}
-	rm.backfill(holder, []protocol.RiderMetrics{{Watts: 200, Seq: 1}})
+	rm.backfill(holder, []protocol.RiderMetrics{{Watts: 200, Seq: 1}}, nil, nil)
 	if got := rm.record.count("jan"); got != 1 {
 		t.Fatalf("the holder's backfill recorded %d samples, want 1", got)
 	}
@@ -226,7 +228,7 @@ func TestRecordKeepsGrowingAcrossASeqRestart(t *testing.T) {
 				rm.setMetrics(sock("jan"), m)
 			}
 			if len(tt.replay) > 0 {
-				rm.backfill(sock("jan"), tt.replay)
+				rm.backfill(sock("jan"), tt.replay, nil, nil)
 			}
 			if got := rm.record.count("jan"); got != tt.want {
 				t.Errorf("record holds %d samples, want %d", got, tt.want)
@@ -239,7 +241,7 @@ func TestBackfillSurvivesAnIdleRoom(t *testing.T) {
 	// After a server restart the room comes back idle; the reconnect replay
 	// must still land — dropping it there is exactly the loss #19 prevents.
 	rm := newRoom("test")
-	rm.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 200, Seq: 1}, {Watts: 201, Seq: 2}})
+	rm.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 200, Seq: 1}, {Watts: 201, Seq: 2}}, nil, nil)
 	if got := rm.record.count("jan"); got != 2 {
 		t.Fatalf("idle-room backfill dropped: %d", got)
 	}
@@ -488,7 +490,8 @@ func TestOneSecondOfRidingIsOneSample(t *testing.T) {
 	// the buffer exists to prevent (#19).
 	rm.backfill(sock("jan"), []protocol.RiderMetrics{
 		{Watts: 180, Seq: 900}, {Watts: 185, Seq: 901},
-	})
+	},
+		nil, nil)
 	if got := rm.record.count("jan"); got != 8 {
 		t.Errorf("a reconnect's replay recorded %d samples in total, want 8", got)
 	}
@@ -520,5 +523,56 @@ func TestExecutionIsUnscoredUntilATargetWasRidden(t *testing.T) {
 	record.add("jan", protocol.RiderMetrics{Watts: 200, Seq: 2}, segments, 200, 1)
 	if score, scored := record.execution("jan"); !scored || score != 1 {
 		t.Fatalf("a second on target reads %v scored=%v, want 1 scored", score, scored)
+	}
+}
+
+// A backfill after the close grows the saved ride (#1536): the record was
+// snapshotted and saved at the close, and what a returning socket replayed
+// afterwards landed in it unread. The whole record — live and replayed —
+// goes to the saver again.
+type amendingSaver struct {
+	saverFunc
+	amended chan RiderRecord
+}
+
+func (a *amendingSaver) AmendRide(_ context.Context, _, _, _ string, _ time.Time, rider RiderRecord) {
+	a.amended <- rider
+}
+
+func TestBackfillAfterTheCloseAmendsTheRide(t *testing.T) {
+	rm := newRoom("late-tail")
+	log := slog.New(slog.DiscardHandler)
+	saver := &amendingSaver{saverFunc: func(time.Time, []RiderRecord) {}, amended: make(chan RiderRecord, 1)}
+	c := sock("jan")
+	rm.seen["jan"] = c.rider
+	rm.seenOrder = append(rm.seenOrder, "jan")
+	segments, _ := workout.Parse(`{"steps":[{"type":"steady","seconds":600,"target":0.8}]}`)
+	for seq := 1; seq <= 5; seq++ {
+		rm.record.add("jan", protocol.RiderMetrics{Watts: 200, Cadence: 90, Seq: seq}, segments, 250, seq)
+	}
+	now := time.Unix(1_000, 0)
+	end := rm.closeLocked(protocol.SessionState{Phase: "done", Elapsed: 5, WorkoutName: "W", WorkoutJSON: "{}"}, now, true)
+	if end == nil || len(end.records) != 1 || len(end.records[0].Samples) != 5 {
+		t.Fatalf("the close: %+v", end)
+	}
+	rm.handOff(log, func() time.Time { return now }, saver, end)
+
+	// The socket comes back and replays what the drop swallowed.
+	rm.backfill(c, []protocol.RiderMetrics{{Watts: 210, Cadence: 90, Seq: 6}, {Watts: 220, Cadence: 90, Seq: 7}}, log, saver)
+	select {
+	case whole := <-saver.amended:
+		if whole.Rider.ID != "jan" || len(whole.Samples) != 7 {
+			t.Fatalf("the amendment carries %d samples for %s, want 7 for jan", len(whole.Samples), whole.Rider.ID)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("the backfill after the close amended nothing")
+	}
+	// Before the close nothing is amended: the record is live, the save is ahead.
+	fresh := newRoom("live")
+	fresh.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 200, Seq: 1}}, log, saver)
+	select {
+	case <-saver.amended:
+		t.Fatal("a backfill before the close was handed to the saver")
+	case <-time.After(50 * time.Millisecond):
 	}
 }

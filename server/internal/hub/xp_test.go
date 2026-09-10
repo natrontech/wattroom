@@ -100,8 +100,8 @@ func TestSessionClosedNamesRidersAndListeners(t *testing.T) {
 	for i := range samples {
 		samples[i] = protocol.RiderMetrics{Watts: 200, Seq: i}
 	}
-	rm.backfill(&client{rider: protocol.Rider{ID: "kim", Name: "Kim"}}, samples)
-	rm.backfill(&client{rider: protocol.Rider{ID: "lena", Name: "Lena"}}, samples[:5])
+	rm.backfill(&client{rider: protocol.Rider{ID: "kim", Name: "Kim"}}, samples, nil, nil)
+	rm.backfill(&client{rider: protocol.Rider{ID: "lena", Name: "Lena"}}, samples[:5], nil, nil)
 
 	ev := rm.closedLocked(protocol.SessionState{Phase: "done", Elapsed: 60}, t0.Add(time.Minute))
 	if ev.StartedBy != "coach" || ev.Seconds != 60 || ev.Slug != "velvet" {

@@ -299,6 +299,57 @@ func (s *Saver) SaveSession(
 	}
 }
 
+// AmendRide grows a saved ride from a longer record (#1536): a socket that
+// dropped before the close and replayed its buffer after it used to land
+// samples nothing read again. The row is rebuilt from the whole record —
+// only when it grew — its xp moves by the difference (user_total_xp sums
+// rides.xp live), and the medals stay as awarded: they were announced in
+// the room. A rider with no ride to grow (under a minute at the close) is
+// the client's to offer back as a .fit.
+func (s *Saver) AmendRide(
+	ctx context.Context,
+	slug, workoutName, workoutJSON string,
+	startedAt time.Time,
+	rider hub.RiderRecord,
+) {
+	if len(rider.Samples) < hub.MinRideSamples {
+		return
+	}
+	err := retrySave(ctx, s.log, slug, func(ctx context.Context) error {
+		room, err := s.store.Queries.GetRoomBySlug(ctx, strings.ToLower(slug))
+		if err != nil {
+			return fmt.Errorf("stats: room %q: %w", slug, err)
+		}
+		row, err := s.rideRow(room.ID, workoutName, workoutJSON, startedAt, rider)
+		if err != nil {
+			s.log.Warn("ride amendment skipped", "err", err, "rider", rider.Rider.ID)
+			return nil
+		}
+		q := s.store.Queries
+		existing, err := q.FindRideAt(ctx, db.FindRideAtParams{UserID: row.UserID, StartedAt: row.StartedAt})
+		if err != nil {
+			s.log.Info("no ride to amend", "room", slug, "rider", rider.Rider.ID)
+			return nil
+		}
+		row.Xp += StreakXP(ctx, q, row.UserID, startedAt)
+		grown, err := q.AmendRide(ctx, db.AmendRideParams{
+			ID: existing, Seconds: row.Seconds, AvgWatts: row.AvgWatts, Kj: row.Kj,
+			Execution: row.Execution, ExecutionScored: row.ExecutionScored,
+			Samples: row.Samples, Curve: row.Curve, Xp: row.Xp, NormWatts: row.NormWatts,
+		})
+		if err != nil {
+			return fmt.Errorf("stats: amend ride: %w", err)
+		}
+		if grown > 0 {
+			s.log.Info("ride amended", "room", slug, "ride", store.UUIDString(existing), "samples", len(rider.Samples))
+		}
+		return nil
+	})
+	if err != nil {
+		s.log.Error("ride amendment failed, tail lost", "err", err, "room", slug)
+	}
+}
+
 // retrySave is retry.Do with the saver's own policy (#235), kept as a name
 // so the tests and the call site read as they always did.
 func retrySave(

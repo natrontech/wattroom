@@ -254,7 +254,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			if !rm.allow("backfill", rider.ID, h.now(), time.Second) {
 				continue
 			}
-			rm.backfill(c, samples)
+			rm.backfill(c, samples, h.log, h.saver)
 			h.log.Debug("backfill received", "room", slug, "rider", rider.ID, "samples", len(samples))
 		}
 		if msg.Control != nil {

@@ -16,6 +16,8 @@ func (f saverFunc) SaveSession(_ context.Context, _, _, _ string, startedAt time
 	f(startedAt, riders)
 }
 
+func (saverFunc) AmendRide(context.Context, string, string, string, time.Time, RiderRecord) {}
+
 // A shutdown waits for the saver (audit 2026-09-09): the deploy replaces the
 // container the moment the riding gauge drops, which is exactly when a
 // session's save starts retrying, and an untracked goroutine died with it.

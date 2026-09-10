@@ -4,6 +4,8 @@
 package hub
 
 import (
+	"context"
+	"log/slog"
 	"maps"
 	"time"
 
@@ -53,7 +55,7 @@ func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
 // room comes back idle, and dropping the replay then is exactly the data loss
 // this exists to prevent. The record is bounded per rider and reset on the
 // next start, so out-of-session samples cost nothing and hurt nobody.
-func (rm *room) backfill(c *client, samples []protocol.RiderMetrics) {
+func (rm *room) backfill(c *client, samples []protocol.RiderMetrics, log *slog.Logger, saver SessionSaver) {
 	rider := c.rider
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
@@ -84,6 +86,20 @@ func (rm *room) backfill(c *client, samples []protocol.RiderMetrics) {
 	// (#1576, docs/SPEC.md's disconnect grace).
 	if p, ok := rm.game.(pedalled); ok && kept > 0 {
 		p.keptPedalling(rider.ID, kept, rm.now())
+	}
+	// After the close the record has been snapshotted and saved, and what
+	// lands here was read by nothing (#1536): a socket that dropped at
+	// minute 55 and came back after the timeline ended lost its tail. The
+	// rider's whole record goes to the saver again, which grows the saved
+	// ride from it — outside the lock, like every hand-off.
+	if kept > 0 && rm.saved && saver != nil {
+		if record, ok := rm.record.byRider[rider.ID]; ok {
+			whole := RiderRecord{Rider: rider, Samples: append([]protocol.RiderMetrics(nil), record.samples...)}
+			meta, start := rm.savedMeta, rm.savedStart
+			rm.detach(log, "ride amend "+rm.slug, func() {
+				saver.AmendRide(context.Background(), rm.slug, meta.WorkoutName, meta.WorkoutJSON, start, whole)
+			})
+		}
 	}
 }
 
