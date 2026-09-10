@@ -414,7 +414,7 @@ func (q *Queries) FirstRideAt(ctx context.Context, userID pgtype.UUID) (pgtype.T
 }
 
 const getRide = `-- name: GetRide :one
-select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored,
+select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts,
        coalesce(rm.slug, '')::text as room_slug,
        coalesce(rm.name, '')::text as room_name
 from rides r
@@ -445,6 +445,7 @@ type GetRideRow struct {
 	Xp              int32
 	NormWatts       *int16
 	ExecutionScored bool
+	FtpAfterWatts   *int16
 	RoomSlug        string
 	RoomName        string
 }
@@ -474,6 +475,7 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.Xp,
 		&i.NormWatts,
 		&i.ExecutionScored,
+		&i.FtpAfterWatts,
 		&i.RoomSlug,
 		&i.RoomName,
 	)
@@ -798,6 +800,9 @@ func (q *Queries) ListRoomSessionDays(ctx context.Context, arg ListRoomSessionDa
 
 const listUserProgression = `-- name: ListUserProgression :many
 select id, started_at, seconds, kj, execution, execution_scored, ftp_watts,
+       -- The FTP this ride PRODUCED, null on all but a ramp whose number was
+       -- accepted (#1572) — the trend marks it on the ramp's own ride.
+       ftp_after_watts,
        coalesce((curve->>'best20m')::int, 0)::int as best20m,
        coalesce(norm_watts, avg_watts)::int as norm_watts
 from rides
@@ -814,6 +819,7 @@ type ListUserProgressionRow struct {
 	Execution       float32
 	ExecutionScored bool
 	FtpWatts        int16
+	FtpAfterWatts   *int16
 	Best20m         int32
 	NormWatts       int32
 }
@@ -840,6 +846,7 @@ func (q *Queries) ListUserProgression(ctx context.Context, userID pgtype.UUID) (
 			&i.Execution,
 			&i.ExecutionScored,
 			&i.FtpWatts,
+			&i.FtpAfterWatts,
 			&i.Best20m,
 			&i.NormWatts,
 		); err != nil {
@@ -1154,6 +1161,29 @@ func (q *Queries) RoomWeekBoard(ctx context.Context, roomID pgtype.UUID) ([]Room
 		return nil, err
 	}
 	return items, nil
+}
+
+const setRideFtpAfter = `-- name: SetRideFtpAfter :execrows
+update rides set ftp_after_watts = $1::smallint
+where id = $2 and user_id = $3
+`
+
+type SetRideFtpAfterParams struct {
+	FtpAfterWatts int16
+	ID            pgtype.UUID
+	UserID        pgtype.UUID
+}
+
+// The number a ramp test produced, on the ramp's own ride (#1572). Owner-only
+// by the where clause, so someone else's ride reads as absent rather than as
+// forbidden. Last write wins: re-testing the same ride is not a thing, and a
+// retried stamp must land on the row it already wrote.
+func (q *Queries) SetRideFtpAfter(ctx context.Context, arg SetRideFtpAfterParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setRideFtpAfter, arg.FtpAfterWatts, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setRideNormWatts = `-- name: SetRideNormWatts :exec

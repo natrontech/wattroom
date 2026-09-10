@@ -54,6 +54,11 @@ type rideTrendJSON struct {
 	ExecutionScored bool `json:"executionScored"`
 	Ftp             int  `json:"ftp"`
 	Best20m         int  `json:"best20m,omitempty"`
+	// The FTP this ride PRODUCED (#1572) — a ramp test's own number, absent
+	// on every other ride. `Ftp` above is what the ride was scored against,
+	// so a ramp carried the old value and the trend could not draw the one
+	// event it exists for until the next ride.
+	FtpAfter int `json:"ftpAfter,omitempty"`
 }
 
 type loadJSON struct {
@@ -204,7 +209,17 @@ func Summary(ctx context.Context, q *db.Queries, user db.User) (Response, error)
 			ExecutionScored: row.ExecutionScored,
 			Ftp:             int(row.FtpWatts),
 			Best20m:         int(row.Best20m),
+			FtpAfter:        ftpAfterOf(row.FtpAfterWatts),
 		})
 	}
 	return out, nil
+}
+
+// ftpAfterOf is the nullable column as the JSON wants it: absent, not zero,
+// for the rides that produced no FTP — which is all of them but a ramp.
+func ftpAfterOf(watts *int16) int {
+	if watts == nil {
+		return 0
+	}
+	return int(*watts)
 }
