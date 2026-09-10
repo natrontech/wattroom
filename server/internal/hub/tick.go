@@ -111,6 +111,9 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// drain below or it waits a whole second for the next one.
 		rm.sayDepartedLocked(now())
 		rm.accrueVoiceLocked(state.Phase, dt)
+		// Before the sprint is rendered, so a block's window rides the tick
+		// that entered it rather than the one after.
+		rm.armWorkoutSprintLocked(now())
 		sprintNow, sprintWinner := rm.scoreSprintLocked(now())
 		eventsNow := rm.events.drain()
 		tick := protocol.ServerTick{
@@ -363,6 +366,54 @@ func (rm *room) sayPhaseLocked(state protocol.SessionState, now time.Time) {
 	case "done":
 		rm.events.add(sessionLine("ended", "", state.WorkoutName, time.Time{}, now), now)
 	}
+}
+
+// armedSprintKey names one sprint block of one run of the timeline. Both
+// halves matter: the block's second tells two sprints of the same workout
+// apart, and the run number lets go of the latch when the session is
+// restarted or a new workout picked (session.run). Plain ints, so the latch
+// compares by value and never by an instant derived twice.
+//
+// The zero value cannot collide with a real block: session.run is 0 until
+// start() bumps it, and only a running timeline has a block at all.
+type armedSprintKey struct {
+	run    int
+	second int
+}
+
+// armWorkoutSprintLocked gives a workout's `{"type":"sprint"}` block the
+// server-side sprint moment a coach's button gets (#2016): the podium, the
+// 4 Hz tick burst and Sprint Snob XP. docs/SPEC.md's glossary has always
+// said a sprint moment is "coach- or workout-armed"; only the coach half
+// existed. #2014 gave the block a client-computed window, which covers the
+// slope flip and the countdown but nothing the server scores.
+//
+// Armed once per block, and never over a sprint that is still running: a
+// coach who armed one seconds before the block keeps their window and its
+// podium, rather than having the samples wiped out from under it. The latch
+// is set either way, so the declined block is not retried a second later
+// with most of its window already gone.
+//
+// The window's length is the coach's to choose only as far as the workout
+// boundary allows: workout.Validate bounds every step, so the 4 Hz burst
+// this puts the room on lasts as long as the block the room's own coach
+// picked and no longer.
+//
+// Caller holds rm.mu.
+func (rm *room) armWorkoutSprintLocked(now time.Time) {
+	block, ok := rm.session.sprintBlockAt(now, sprintKlaxon)
+	if !ok {
+		return
+	}
+	key := armedSprintKey{run: rm.session.run, second: block.second}
+	if rm.armedBlock == key {
+		return
+	}
+	rm.armedBlock = key
+	if sp := rm.sprint; sp != nil && now.Before(sp.endsAt) {
+		return
+	}
+	rm.armSprintWindow(block.startsAt, block.endsAt)
 }
 
 // scoreSprintLocked renders the sprint for the tick and names the winner on

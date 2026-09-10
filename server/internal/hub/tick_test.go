@@ -147,3 +147,63 @@ func TestRideIsDatedAtItsStartWhenARiderCrossesTheEnd(t *testing.T) {
 		}
 	})
 }
+
+// The tick is what arms a workout's sprint block (#2016). docs/SPEC.md's
+// glossary has always called a sprint moment "coach- or workout-armed", but
+// nothing read the timeline: a `{"type":"sprint"}` block reached the room
+// with no podium, no 4 Hz burst and no Sprint Snob credit. #2014 gave the
+// block a client-computed window, which covers the slope flip and the
+// countdown and nothing the server scores.
+func TestWorkoutSprintBlockGetsAPodium(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		// A 10 s sprint at timeline second 20 — not the coach button's 15 s.
+		const timeline = `{"steps":[` +
+			`{"type":"steady","seconds":20,"target":0.6},` +
+			`{"type":"sprint","seconds":10},` +
+			`{"type":"steady","seconds":30,"target":0.5}]}`
+		rm := newRoom("podium")
+		rm.now = time.Now
+		go rm.run(slog.New(slog.DiscardHandler), time.Now, nil)
+		rm.mu.Lock()
+		rm.session.pick("Openers", timeline, 0)
+		rm.session.start(time.Now())
+		rm.mu.Unlock()
+		running := time.Now().Add(countdownSeconds * time.Second)
+
+		kim := &client{rider: protocol.Rider{ID: "kim", Name: "Kim", WeightKg: 70}}
+		lena := &client{rider: protocol.Rider{ID: "lena", Name: "Lena", WeightKg: 70}}
+		rm.join(kim)
+		rm.join(lena)
+		// Both ride the whole timeline; Kim wins the sprint.
+		for seq := 1; seq <= 45; seq++ {
+			rm.setMetrics(kim, protocol.RiderMetrics{Watts: 800, Seq: seq})
+			rm.setMetrics(lena, protocol.RiderMetrics{Watts: 600, Seq: seq})
+			time.Sleep(time.Second)
+		}
+		synctest.Wait()
+		close(rm.stop)
+
+		rm.mu.Lock()
+		defer rm.mu.Unlock()
+		if rm.sprint == nil {
+			t.Fatal("the sprint block never armed")
+		}
+		// The block's own place and length, anchored on the timeline rather
+		// than on whichever tick happened to notice it.
+		if !rm.sprint.startsAt.Equal(running.Add(20*time.Second)) || !rm.sprint.endsAt.Equal(running.Add(30*time.Second)) {
+			t.Fatalf("window %v–%v, want %v–%v", rm.sprint.startsAt, rm.sprint.endsAt,
+				running.Add(20*time.Second), running.Add(30*time.Second))
+		}
+		// The 4 Hz burst rides on the same window (SPEC: "4 Hz during sprint
+		// windows").
+		if got := rm.tickIntervalLocked(running.Add(25 * time.Second)); got != burstTick {
+			t.Fatalf("tick interval inside the block %v, want %v", got, burstTick)
+		}
+		if !rm.sprint.scored {
+			t.Fatal("the block's window closed without a podium")
+		}
+		if len(rm.sprint.results) != 2 || rm.sprint.results[0].RiderID != "kim" {
+			t.Fatalf("podium %+v, want Kim over Lena", rm.sprint.results)
+		}
+	})
+}

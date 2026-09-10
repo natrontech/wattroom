@@ -35,11 +35,19 @@ type sprint struct {
 	seconds map[string]int64
 }
 
-// armSprint replaces any previous sprint — re-arming is the coach's restart.
+// armSprint arms the coach button's sprint: the klaxon lead, then SPEC's
+// 15 s. Replaces any previous sprint — re-arming is the coach's restart.
 func (rm *room) armSprint(now time.Time) {
+	rm.armSprintWindow(now.Add(sprintKlaxon), now.Add(sprintKlaxon+sprintWindow))
+}
+
+// armSprintWindow arms a sprint over an explicit window. The workout
+// timeline arms this way (#2016): the block carries its own length and its
+// own place on the timeline, so neither the 15 s nor `now` is the answer.
+func (rm *room) armSprintWindow(startsAt, endsAt time.Time) {
 	rm.sprint = &sprint{
-		startsAt: now.Add(sprintKlaxon),
-		endsAt:   now.Add(sprintKlaxon + sprintWindow),
+		startsAt: startsAt,
+		endsAt:   endsAt,
 		samples:  make(map[string][]int),
 	}
 }

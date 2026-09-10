@@ -29,6 +29,11 @@ type session struct {
 	banked    time.Duration
 	// Parsed once at start for the live meter; nil when the JSON is junk.
 	segments []workout.Segment
+	// How many times this session has been started, so anything latched
+	// against one run of the timeline lets go when a new one begins (#2016).
+	// A new pick only reaches the timeline through a start, so this counts
+	// workout changes too.
+	run int
 }
 
 func newSession() *session {
@@ -62,6 +67,7 @@ func (s *session) start(now time.Time) bool {
 	s.startedAt = now
 	s.banked = 0
 	s.segments, _ = workout.Parse(s.workoutJSON)
+	s.run++
 	return true
 }
 
@@ -229,4 +235,48 @@ func (s *session) mood(now time.Time) SessionMood {
 		return SessionMood{}
 	}
 	return SessionMood{TargetPct: pct, CadenceLow: seg.CadenceLow, CadenceHigh: seg.CadenceHigh}
+}
+
+// sprintBlock is one sprint block of the timeline placed in wall-clock time.
+// The second is the block's own place in the workout, which is what tells
+// two sprints of the same ride apart; the window is that place resolved
+// against the clock the room and its riders share.
+type sprintBlock struct {
+	second           int
+	startsAt, endsAt time.Time
+}
+
+// sprintBlockAt is the sprint block under way, or the one starting within
+// `lead` so the klaxon has its run-up (#2016). The block's own Seconds is
+// the length — a workout says how long its sprint is, and Sprint Roulette
+// already asks for 10–15 s (docs/SPEC.md).
+//
+// Anchored on the block, never on `now`: the tick that notices a block is up
+// to a second late, so the window is computed from the timeline's origin
+// (startedAt minus the time banked before the last pause) and lands on the
+// same instant the client's own window does. Reads the timeline WITHOUT
+// advancing it, like mood().
+func (s *session) sprintBlockAt(now time.Time, lead time.Duration) (sprintBlock, bool) {
+	if s.phase != "running" {
+		return sprintBlock{}, false
+	}
+	// Wall-clock instant of workout second zero.
+	origin := s.startedAt.Add(-s.banked)
+	// Blocks are sequential, so the first match is the answer — and a sprint
+	// still running outranks the lead of the sprint immediately after it.
+	for _, seg := range s.segments {
+		if seg.Kind != "sprint" || seg.Seconds <= 0 {
+			continue
+		}
+		block := sprintBlock{
+			second:   seg.Start,
+			startsAt: origin.Add(time.Duration(seg.Start) * time.Second),
+		}
+		block.endsAt = block.startsAt.Add(time.Duration(seg.Seconds) * time.Second)
+		if now.Before(block.startsAt.Add(-lead)) || !now.Before(block.endsAt) {
+			continue
+		}
+		return block, true
+	}
+	return sprintBlock{}, false
 }

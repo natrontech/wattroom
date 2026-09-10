@@ -1,0 +1,1 @@
+- A workout's sprint block is a real sprint moment in a room now, not just a change of resistance: the klaxon counts everyone in on the same second, the numbers go live while you are on it, and the w/kg podium lands when it ends — the same as a sprint a coach arms by hand, Sprint Snob included.
