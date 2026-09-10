@@ -78,24 +78,37 @@ func (q *Queries) DeleteWorkout(ctx context.Context, arg DeleteWorkoutParams) (i
 const listUserWorkouts = `-- name: ListUserWorkouts :many
 select id, owner_id, name, author, definition, created_at from workouts
 where owner_id = $1
-  and ($3::timestamptz is null or created_at < $3::timestamptz)
-order by created_at desc
+  and ($3::timestamptz is null
+       or (created_at, id) < ($3::timestamptz, $4::uuid))
+order by created_at desc, id desc
 limit $2
 `
 
 type ListUserWorkoutsParams struct {
-	OwnerID pgtype.UUID
-	Limit   int32
-	Before  pgtype.Timestamptz
+	OwnerID  pgtype.UUID
+	Limit    int32
+	Before   pgtype.Timestamptz
+	BeforeID pgtype.UUID
 }
 
-// Paged by save time (#1414), the cursor shape ListUserRides uses: `before`
-// is the oldest row the caller holds, null for the first page. The read used
-// to stop at a flat `limit 1000` (#1416), which is the failure this issue is
-// actually about — workout 1001 was gone with nothing said. A ceiling is not
-// what keeps a read small; paging is.
+// Paged by save time (#1414), the `before` cursor ListUserRides uses: the
+// oldest row the caller holds, null for the first page. The read used to stop
+// at a flat `limit 1000` (#1416), which is the failure this issue is actually
+// about — workout 1001 was gone with nothing said. A ceiling is not what
+// keeps a read small; paging is.
+//
+// The cursor carries the id as well, and the order breaks its tie on the id:
+// created_at defaults to now(), which is the transaction's clock and not
+// unique, so rows saved in one transaction share it exactly. A cursor on the
+// timestamp alone would step over every one of them at a page boundary —
+// silently, which is the bug this query exists to stop making.
 func (q *Queries) ListUserWorkouts(ctx context.Context, arg ListUserWorkoutsParams) ([]Workout, error) {
-	rows, err := q.db.Query(ctx, listUserWorkouts, arg.OwnerID, arg.Limit, arg.Before)
+	rows, err := q.db.Query(ctx, listUserWorkouts,
+		arg.OwnerID,
+		arg.Limit,
+		arg.Before,
+		arg.BeforeID,
+	)
 	if err != nil {
 		return nil, err
 	}

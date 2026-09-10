@@ -112,15 +112,28 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := db.ListUserWorkoutsParams{OwnerID: user.ID, Limit: listPage}
-	// `before` is the oldest savedAt the caller already holds — the same
-	// cursor the rides list takes, and in the same RFC 3339 form.
-	if before := r.URL.Query().Get("before"); before != "" {
+	// The cursor is the previous page's last row, handed back verbatim: a
+	// time (`before`, the rides list's name for it) and the id that breaks
+	// its tie. Both or neither — half a cursor would page from a time with no
+	// tie-break and step over the rows sharing it.
+	before, beforeID := r.URL.Query().Get("before"), r.URL.Query().Get("beforeId")
+	if (before == "") != (beforeID == "") {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
+			"before and beforeId are one cursor — send the pair this list gave you, or neither.")
+		return
+	}
+	if before != "" {
 		at, err := time.Parse(time.RFC3339, before)
 		if err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "before must be an RFC 3339 time.")
 			return
 		}
-		params.Before = pgtype.Timestamptz{Time: at, Valid: true}
+		id, err := store.ParseUUID(beforeID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "validation_error", "beforeId must be a workout id.")
+			return
+		}
+		params.Before, params.BeforeID = pgtype.Timestamptz{Time: at, Valid: true}, id
 	}
 	rows, err := s.store.Queries.ListUserWorkouts(r.Context(), params)
 	if err != nil {
@@ -134,15 +147,19 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			SavedAt: row.CreatedAt.Time.UnixMilli(),
 		})
 	}
-	// A full page means there may be more, and the cursor for the next one
-	// comes from the server rather than from the rider's own `savedAt`: that
-	// field is milliseconds, created_at is microseconds, and a cursor rounded
-	// down by a fraction of a millisecond skips every row inside it. Silent
-	// skipping is the bug being fixed here, not one to reintroduce at the
-	// page boundary.
+	// A full page means there may be more, and the cursor comes from the
+	// server rather than from the rider's own `savedAt`: that field is
+	// milliseconds where created_at is microseconds, and a cursor rounded down
+	// by a fraction of a millisecond steps over every row inside it. Silent
+	// skipping is the bug being fixed here, not one to reintroduce at the page
+	// boundary.
 	body := map[string]any{"workouts": out, "more": len(rows) == listPage}
 	if len(rows) == listPage {
-		body["nextBefore"] = rows[len(rows)-1].CreatedAt.Time.Format(time.RFC3339Nano)
+		last := rows[len(rows)-1]
+		// UTC, so the cursor never carries a "+" that a caller has to
+		// remember to percent-encode before handing it back.
+		body["nextBefore"] = last.CreatedAt.Time.UTC().Format(time.RFC3339Nano)
+		body["nextBeforeId"] = store.UUIDString(last.ID)
 	}
 	httpx.WriteJSON(w, http.StatusOK, body)
 }
