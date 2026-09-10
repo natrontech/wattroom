@@ -150,7 +150,7 @@
 			>
 				<!-- svelte-ignore a11y_autofocus -->
 				<input
-					id="open-room-name"
+					id={compact ? 'open-room-name-sheet' : 'open-room-name'}
 					bind:value={newRoomName}
 					maxlength="60"
 					class="input mt-3 w-full"
@@ -187,7 +187,7 @@
 				}}
 			>
 				<input
-					id="join-code"
+					id={compact ? 'join-code-sheet' : 'join-code'}
 					bind:value={joinCode}
 					maxlength="8"
 					class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode ||
