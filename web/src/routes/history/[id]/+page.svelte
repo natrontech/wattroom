@@ -11,7 +11,7 @@
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock, formatDuration } from '$lib/format';
 	import { MEDAL_META, medalName } from '$lib/medals';
-	import DeleteRideDialog from '$lib/ride/DeleteRideDialog.svelte';
+	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
 	import RideComparison from '$lib/ride/RideComparison.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
@@ -34,7 +34,9 @@
 	// A ride that is not yours reads as absent, and retrying will not find it —
 	// so it gets the empty state, not the error-with-retry one.
 	let missing = $state(false);
-	let confirming = $state(false);
+	async function removeRide() {
+		if (ride && (await deleteRideAfterConfirm(ride))) void goto('/history');
+	}
 	let exporting = $state(false);
 	let exportError = $state<string | null>(null);
 
@@ -251,7 +253,7 @@
 				<Download size={13} />
 				{exporting ? 'Preparing…' : 'Download FIT'}
 			</button>
-			<button onclick={() => (confirming = true)} class="btn btn-danger btn-xs">
+			<button onclick={() => void removeRide()} class="btn btn-danger btn-xs">
 				<Trash2 size={13} /> Delete ride
 			</button>
 		</header>
@@ -449,14 +451,6 @@
 					{/if}
 				</p>
 			</section>
-		{/if}
-
-		{#if confirming}
-			<DeleteRideDialog
-				{ride}
-				onclose={() => (confirming = false)}
-				ondeleted={() => void goto('/history')}
-			/>
 		{/if}
 	{/if}
 </main>
