@@ -163,7 +163,12 @@ export class FtmsTrainer implements Trainer {
 	 * addressed to a control grant that no longer exists.
 	 */
 	#generation = 0;
-	#pending?: { resolve: () => void; reject: (e: Error) => void; timer: number };
+	#pending?: {
+		op: number;
+		resolve: () => void;
+		reject: (e: Error) => void;
+		timer: number;
+	};
 	#range: PowerRange = DEFAULT_POWER_RANGE;
 	/** Scopes one attach's characteristic listeners, so a reattach drops them. */
 	#attachment?: AbortController;
@@ -240,16 +245,25 @@ export class FtmsTrainer implements Trainer {
 				const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
 				if (!view) return;
 				const data = parseIndoorBikeData(view);
-				this.lastFrame = data;
+				// A conformant unit may split Indoor Bike Data across notifications
+				// (More Data, #1849): cadence in one frame, power in the next. Read
+				// from the frame alone, cadence was 0 on every sample and the spiral
+				// guard fell back to its power-collapse rule. Merged field by field,
+				// the sample goes out on the frame that carries power, with cadence
+				// and heart rate from the merged view.
+				// ponytail: a field the unit stops reporting stays at its last value;
+				// reset on the cycle's first frame (bit 0 clear) if that ever bites.
+				this.lastFrame = { ...this.lastFrame, ...data };
 				this.frames += 1;
 				if (data.watts === undefined) return;
 				this.poweredFrames += 1;
+				const merged = this.lastFrame;
 				for (const cb of this.#sampleCbs) {
 					cb({
 						watts: data.watts,
-						cadence: Math.round(data.cadence ?? 0),
+						cadence: Math.round(merged.cadence ?? 0),
 						// Already parsed out of Indoor Bike Data; it used to stop here (#44).
-						heartRate: data.heartRate,
+						heartRate: merged.heartRate,
 						at: Date.now(),
 					});
 				}
@@ -264,6 +278,12 @@ export class FtmsTrainer implements Trainer {
 			(event) => {
 				const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
 				if (!view || view.getUint8(0) !== OP_RESPONSE) return;
+				// Matched to the op in flight (#1850): past the timeout the queue has
+				// moved on, and the previous op's late indication must not settle
+				// the next write's slot — a rejected target read as applied.
+				// ponytail: two targets in a row share op 0x05 and cannot be told
+				// apart; the indication carries no sequence.
+				if (view.getUint8(1) !== this.#pending?.op) return;
 				const result = view.getUint8(2);
 				this.#settlePending(
 					result === RESULT_SUCCESS
@@ -398,13 +418,14 @@ export class FtmsTrainer implements Trainer {
 	async #send(bytes: ArrayBuffer): Promise<void> {
 		if (!this.#control) throw new Error('not connected');
 		const sentAt = performance.now();
+		const op = new Uint8Array(bytes)[0];
 		const done = new Promise<void>((resolve, reject) => {
 			// A trainer that never indicates would otherwise wedge the queue forever.
 			const timer = setTimeout(
 				() => this.#settlePending(new Error('FTMS control point timed out')),
 				CONTROL_POINT_TIMEOUT_MS,
 			) as unknown as number;
-			this.#pending = { resolve, reject, timer };
+			this.#pending = { op, resolve, reject, timer };
 		});
 		// A failed write reports through `done` too, so the slot and its timer are
 		// always cleared — a stale timer would otherwise fire into the *next*
