@@ -1,1 +1,1 @@
-- Your account export now includes the music-pool tracks you uploaded — the titles, artists and tags you typed. It carries the metadata you own, never the audio files themselves.
+- Your account export now carries the music library you uploaded: every track's title, artist, album, tags and BPM, and a playlist entry that points at one of your uploads now names it instead of exporting a blank. The audio files themselves stay out of the zip — a track's row names the file it belongs to. The privacy page now says what we store about uploaded music, which it had never mentioned.

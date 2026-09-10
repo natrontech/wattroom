@@ -35,8 +35,26 @@ order by f.created_at;
 
 -- name: ExportUserPlaylists :many
 -- Personal playlists only. A room's playlist belongs to the room.
+--
+-- An entry is what a JukeboxEntry is (ADR-0045): a video, a pasted YouTube
+-- playlist, or a track from the rider's own library. Exporting only
+-- `video_id` made the last two unreadable (#1089) — a library entry has no
+-- video id at all, so a playlist of the rider's own uploads exported as a
+-- list of blanks, and a pasted playlist lost its name and its resolved
+-- videos. `source` says which of the three an entry is, so nothing has to be
+-- inferred from an empty string; the track is named rather than pointed at,
+-- because a uuid means nothing outside this database.
 select p.name, p.created_at, coalesce(
-    (select json_agg(json_build_object('title', t.title, 'videoId', t.video_id) order by t.position)
+    (select json_agg(json_build_object(
+        'source', case when t.track_id is not null then 'library'
+                       when t.yt_playlist_id <> '' then 'youtubePlaylist'
+                       else 'video' end,
+        'title', t.title,
+        'videoId', nullif(t.video_id, ''),
+        'startSec', t.start_sec,
+        'youtubePlaylistTitle', nullif(t.yt_playlist_title, ''),
+        'videos', case when t.yt_playlist_id <> '' then t.tracks else null end
+     ) order by t.position)
      from playlist_tracks t where t.playlist_id = p.id), '[]')::text as tracks
 from playlists p
 where p.user_id = $1
@@ -91,3 +109,24 @@ select name, created_at, last_used_at
 from passkeys
 where user_id = $1
 order by created_at;
+
+-- name: ExportUserTracks :many
+-- The music the rider uploaded (#1089): their own shelf's rows, which since
+-- #1095 is exactly what they can see in the pool — every field they typed,
+-- plus what the file itself measured. The AUDIO is not here and must not be:
+-- ADR-0015's copyright fence has no public share links to audio files, and
+-- the ADR already settled the same question for backups ("metadata is; files
+-- are re-uploadable"). The content address is, so a row still names its file.
+--
+-- Bounded, unlike the categories above: ADR-0015's quota is 2 GB per rider
+-- and nothing bounds how small an MP3 may be, so the row count is the one
+-- here that a rider can run up on purpose. The handler says what the bound
+-- is and the manifest says when it bit.
+--
+-- Newest first under that bound, the order the shelf itself is browsed in —
+-- ascending with a limit would drop the tracks they just uploaded.
+select sha256, title, artist, album, tags, bpm, duration_ms, size_bytes, created_at
+from tracks
+where uploaded_by = $1
+order by created_at desc
+limit sqlc.arg(lim)::int;
