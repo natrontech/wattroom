@@ -257,7 +257,7 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 // Deliberately absent from /api/auth/providers — this is not a button, and no
 // human should ever see it offered.
 func (s *Service) handleSynthetic(w http.ResponseWriter, r *http.Request) {
-	if s.throttle(w, r, s.syntheticBudget) {
+	if s.throttle(w, r, s.syntheticBudget, tooManySignIns) {
 		return
 	}
 	p, ok := s.providers["synthetic"]

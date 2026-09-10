@@ -27,13 +27,20 @@ const (
 	recoverMailWindow     = time.Hour
 )
 
-// throttle answers 429 and reports true when this address has spent its
+// throttle answers 429 and reports true when this client has spent its
 // window on `b`. A nil budget (a bare test service) never throttles.
-func (s *Service) throttle(w http.ResponseWriter, r *http.Request, b *budget.Budget[string]) bool {
+//
+// The message is the caller's, because "this address" means the network on
+// the sign-in doors and would mean the rider's email on the recovery one
+// (#1822) — a refusal aimed at the wrong input is a refusal a rider acts on
+// wrongly (.claude/rules/errors.md).
+func (s *Service) throttle(w http.ResponseWriter, r *http.Request, b *budget.Budget[string], message string) bool {
 	if b == nil || b.Spend(httpx.ClientIP(r)) {
 		return false
 	}
-	httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
-		"Too many sign-in attempts from this address — wait a minute and try again.")
+	httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited", message)
 	return true
 }
+
+// tooManySignIns is the message on the doors a stranger knocks on (#1606).
+const tooManySignIns = "Too many sign-in attempts from this address — wait a minute and try again."

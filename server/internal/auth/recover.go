@@ -80,7 +80,8 @@ func (s *Service) handleRecover(w http.ResponseWriter, r *http.Request) {
 	// validation above: a rider mistyping their own address must not spend
 	// the door on the attempt that was never going to send anything, and a
 	// malformed body costs a bounded JSON decode and nothing else.
-	if s.throttle(w, r, s.recoverDoor) {
+	if s.throttle(w, r, s.recoverDoor,
+		"Too many attempts from this connection — wait a minute and try again.") {
 		return
 	}
 	// Spending the second on the address the caller typed rather than on the
