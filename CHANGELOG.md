@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.104] - 2026-09-10
+
+### Fixed
+
+- Reading a room's chat from Messages now shows the "starts at" line ten minutes before a planned session, the same as inside the room.
+
 ## [2026.09.103] - 2026-09-10
 
 ### Fixed
@@ -1884,7 +1890,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.103...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.104...HEAD
+[2026.09.104]: https://github.com/natrontech/wattroom/compare/2026.09.103...2026.09.104
 [2026.09.103]: https://github.com/natrontech/wattroom/compare/2026.09.102...2026.09.103
 [2026.09.102]: https://github.com/natrontech/wattroom/compare/2026.09.101...2026.09.102
 [2026.09.101]: https://github.com/natrontech/wattroom/compare/2026.09.100...2026.09.101
