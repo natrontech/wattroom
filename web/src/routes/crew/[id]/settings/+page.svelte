@@ -292,9 +292,9 @@
 			     account, and one with nobody and nothing in it is now deleted
 			     the moment its last room is. -->
 			<p class="text-muted mt-1 text-xs">
-				A crew has no delete button. It goes when its last room does, if
-				nobody else is in it. With people still in it, it passes to one of
-				them — hand it on yourself, or your account's deletion does.
+				A crew has no delete button. It goes when its last room does, if nobody
+				else is in it. With people still in it, it passes to one of them — hand
+				it on yourself, or your account's deletion does.
 			</p>
 		{/if}
 		<button
