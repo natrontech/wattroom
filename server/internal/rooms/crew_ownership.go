@@ -43,6 +43,31 @@ func (s *Service) releaseCrew(ctx context.Context, q *db.Queries, crew db.Crew) 
 	return nil
 }
 
+// deleteCrewIfEmpty removes a crew that has nothing left in it — no rooms, and
+// nobody but its owner (#1935). ADR-0038's second amendment already says such
+// a crew "is deleted rather than left ownerless", but until now only the
+// account purge ever did it: an owner whose last room went kept a crew they
+// could not leave (they own it), could not hand on (nobody to hand it to) and
+// could not delete (there is no such button). The delete is one statement, so
+// the crew's emptiness is decided at the moment it goes rather than read here
+// and acted on afterwards.
+//
+// Runs in the caller's transaction: the room's deletion and the crew's are one
+// commit, so no window exists where the crew is empty and still standing.
+// Reports whether the crew went, which is what the log line is for — the rider
+// was told by the confirm (crew.goesWithRoom on the room read).
+func (s *Service) deleteCrewIfEmpty(ctx context.Context, q *db.Queries, crew pgtype.UUID) (bool, error) {
+	gone, err := q.DeleteCrewIfEmpty(ctx, crew)
+	if err != nil {
+		return false, err
+	}
+	if gone == 0 {
+		return false, nil
+	}
+	s.log.Info("crew deleted", "crew", store.UUIDString(crew), "why", "nothing left in it")
+	return true, nil
+}
+
 // makeOwner is the only way a crew changes hands. Owner beats every role, so
 // the new owner's crew_roles row — an admin grant at best, a stale ban at
 // worst — goes with the transfer (#1212): visible_rooms and IsBannedFromRoom

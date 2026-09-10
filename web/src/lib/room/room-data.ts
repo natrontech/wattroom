@@ -63,6 +63,13 @@ export interface RoomCrew {
 	 * comparing the name to the owner's display name (audit 2026-09-09).
 	 */
 	named?: boolean;
+	/**
+	 * Deleting THIS room deletes the crew (#1935): it is the crew's only room
+	 * and nobody but its owner is in it. Sent to the room's owner alone — the
+	 * only caller who can delete it — and the delete confirm has to say so,
+	 * because the crew's name, logo and invite link go with the room.
+	 */
+	goesWithRoom?: boolean;
 }
 
 /**

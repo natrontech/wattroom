@@ -72,6 +72,12 @@ type roomCrewJSON struct {
 	// A person has named it (#1151): until then it carries the owner's name
 	// and the set-up step stays open. Carried on the crews list only.
 	Named bool `json:"named,omitempty"`
+	// Deleting THIS room deletes the crew (#1935): it is the crew's only room
+	// and nobody but its owner is in it, so the crew's name, logo and invite
+	// go with the room. The delete confirm has to say so — the crew silently
+	// vanishing afterwards is the surprise. Carried on the single-room read
+	// for the room's owner, the only caller who can delete it.
+	GoesWithRoom bool `json:"goesWithRoom,omitempty"`
 }
 
 // One rider's week on a room's ordered board (#995, ADR-0036). Category is a

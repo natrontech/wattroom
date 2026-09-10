@@ -305,6 +305,21 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 						Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role,
 						ImageURL: crewImageURL(crew.ID, crew.HasImage), Code: codeOf(crew.Code),
 					}
+					// Whether deleting this room takes the crew with it
+					// (#1935) — asked only of the room's owner, since only
+					// they can delete it and only their confirm says so.
+					// Soft-fails to absent like the reads above: an unanswered
+					// query is a confirm without the extra line, never a room
+					// that will not open.
+					if m.Role == "owner" {
+						if goes, err := s.store.Queries.CrewGoesWithRoom(r.Context(), db.CrewGoesWithRoomParams{
+							CrewID: crew.ID, RoomID: room.ID,
+						}); err == nil {
+							response.Crew.GoesWithRoom = goes
+						} else {
+							s.log.Warn("crew goes-with-room check failed", "err", err, "room", room.Slug)
+						}
+					}
 				}
 			}
 			response.BoardEnabled = room.BoardEnabled

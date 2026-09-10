@@ -159,6 +159,41 @@ select * from crews where owner_id = $1 order by created_at;
 -- name: DeleteCrew :exec
 delete from crews where id = $1;
 
+-- name: DeleteCrewIfEmpty :execrows
+-- A crew with nothing left in it goes (#1935), which is ADR-0038's second
+-- amendment said as a statement: "a crew whose rooms are all gone has no
+-- members and nothing to own; it is deleted rather than left ownerless".
+-- Until now only the account purge ever deleted one, so an owner whose last
+-- room went kept a crew they could not leave, hand on or delete.
+--
+-- One statement, not a read the caller acts on: the predicate is tested at
+-- the moment of the delete, so a room created into the crew a millisecond
+-- earlier keeps it. `rooms.crew_id` is ON DELETE RESTRICT as well, which
+-- turns any future disagreement between this predicate and the constraint
+-- into a loud failure rather than an orphaned room (ADR-0038's fourth
+-- amendment; #1301 sets `crew_id` not null).
+--
+-- A `banned` row does not save a crew. It is not somebody who is IN the crew
+-- — CountCrewMembers counts these same two roles — and a ban outliving every
+-- room would be the whole bug again for any owner who ever banned anyone.
+delete from crews where crews.id = sqlc.arg(crew_id)
+  and not exists (select 1 from rooms r where r.crew_id = sqlc.arg(crew_id))
+  and not exists (select 1 from crew_roles cr
+                  where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin'));
+
+-- name: CrewGoesWithRoom :one
+-- Whether deleting THIS room deletes its crew, so the confirm can say so
+-- before the button rather than the crew disappearing afterwards (#1935).
+-- The same predicate as DeleteCrewIfEmpty with the room still there: change
+-- one and change the other, or the confirm promises what the delete will not
+-- do.
+select (
+    not exists (select 1 from rooms r
+                where r.crew_id = sqlc.arg(crew_id) and r.id <> sqlc.arg(room_id))
+    and not exists (select 1 from crew_roles cr
+                    where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin'))
+)::boolean;
+
 -- name: DeleteRoomsOwnedBy :exec
 -- The purge's first step, done explicitly rather than left to the cascade so
 -- the crew's fate is decided by the rooms that REMAIN (ADR-0038, second

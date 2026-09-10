@@ -124,6 +124,32 @@ func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, e
 	return i, err
 }
 
+const crewGoesWithRoom = `-- name: CrewGoesWithRoom :one
+select (
+    not exists (select 1 from rooms r
+                where r.crew_id = $1 and r.id <> $2)
+    and not exists (select 1 from crew_roles cr
+                    where cr.crew_id = $1 and cr.role in ('member', 'admin'))
+)::boolean
+`
+
+type CrewGoesWithRoomParams struct {
+	CrewID pgtype.UUID
+	RoomID pgtype.UUID
+}
+
+// Whether deleting THIS room deletes its crew, so the confirm can say so
+// before the button rather than the crew disappearing afterwards (#1935).
+// The same predicate as DeleteCrewIfEmpty with the room still there: change
+// one and change the other, or the confirm promises what the delete will not
+// do.
+func (q *Queries) CrewGoesWithRoom(ctx context.Context, arg CrewGoesWithRoomParams) (bool, error) {
+	row := q.db.QueryRow(ctx, crewGoesWithRoom, arg.CrewID, arg.RoomID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const crewRoleOf = `-- name: CrewRoleOf :one
 select case
     when c.owner_id = $1 then 'owner'
@@ -155,6 +181,37 @@ delete from crews where id = $1
 func (q *Queries) DeleteCrew(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteCrew, id)
 	return err
+}
+
+const deleteCrewIfEmpty = `-- name: DeleteCrewIfEmpty :execrows
+delete from crews where crews.id = $1
+  and not exists (select 1 from rooms r where r.crew_id = $1)
+  and not exists (select 1 from crew_roles cr
+                  where cr.crew_id = $1 and cr.role in ('member', 'admin'))
+`
+
+// A crew with nothing left in it goes (#1935), which is ADR-0038's second
+// amendment said as a statement: "a crew whose rooms are all gone has no
+// members and nothing to own; it is deleted rather than left ownerless".
+// Until now only the account purge ever deleted one, so an owner whose last
+// room went kept a crew they could not leave, hand on or delete.
+//
+// One statement, not a read the caller acts on: the predicate is tested at
+// the moment of the delete, so a room created into the crew a millisecond
+// earlier keeps it. `rooms.crew_id` is ON DELETE RESTRICT as well, which
+// turns any future disagreement between this predicate and the constraint
+// into a loud failure rather than an orphaned room (ADR-0038's fourth
+// amendment; #1301 sets `crew_id` not null).
+//
+// A `banned` row does not save a crew. It is not somebody who is IN the crew
+// — CountCrewMembers counts these same two roles — and a ban outliving every
+// room would be the whole bug again for any owner who ever banned anyone.
+func (q *Queries) DeleteCrewIfEmpty(ctx context.Context, crewID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCrewIfEmpty, crewID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteRoomsOwnedBy = `-- name: DeleteRoomsOwnedBy :exec

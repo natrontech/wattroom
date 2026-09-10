@@ -20,6 +20,7 @@
 	import { confirm } from '$lib/confirm.svelte';
 	import { device } from '$lib/device.svelte';
 	import {
+		deleteRoomBody,
 		joinedOn,
 		memberCount,
 		ownerName,
@@ -47,7 +48,8 @@
 		boardEnabled?: boolean;
 		/** Open to the crew (ADR-0038) — absent means shut (#1204). */
 		crewVisible?: boolean;
-		crew?: { id: string; name: string };
+		/** goesWithRoom: deleting this room deletes the crew too (#1935). */
+		crew?: { id: string; name: string; goesWithRoom?: boolean };
 		role?: string;
 		code?: string;
 		members?: Member[];
@@ -161,7 +163,7 @@
 		const n = room.members?.length ?? 0;
 		const ok = await confirm({
 			title: `Delete “${room.name}” for all ${n} member${n === 1 ? '' : 's'}?`,
-			body: "Removes the room for everyone in it — its chat, its planned sessions and their RSVPs, its session recaps, its medal history and its streak. Rides already ridden stay in each rider's own history. This can't be undone.",
+			body: deleteRoomBody(room.crew),
 			action: 'Delete room',
 			cancel: 'Keep it',
 		});
