@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.103] - 2026-09-10
+
+### Fixed
+
+- The hour-before session email says how far off the start really is — "in 30 minutes" for a plan made half an hour ahead or moved inside the hour — instead of "in an hour" whatever the gap. A rider banned from a crew no longer receives that crew's planned sessions in their calendar feed or their inbox. The session-email switch waits for a confirmed address and says what it turns on (planned, moved, cancelled, and the hour before). "Start now" reads the same clock as the room's reminder line.
+
 ## [2026.09.102] - 2026-09-10
 
 ### Fixed
@@ -1878,7 +1884,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.102...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.103...HEAD
+[2026.09.103]: https://github.com/natrontech/wattroom/compare/2026.09.102...2026.09.103
 [2026.09.102]: https://github.com/natrontech/wattroom/compare/2026.09.101...2026.09.102
 [2026.09.101]: https://github.com/natrontech/wattroom/compare/2026.09.100...2026.09.101
 [2026.09.100]: https://github.com/natrontech/wattroom/compare/2026.09.99...2026.09.100
