@@ -1,0 +1,1 @@
+- Your Load chart, your riding streak and your early-bird and night-owl trophies now use your own calendar day instead of UTC. A ride that finished at 00:30 no longer lands on yesterday, and the streak on your rider page is the same streak the XP bonus pays for.
