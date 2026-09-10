@@ -44,7 +44,13 @@
 </script>
 
 <div class="relative {onThreshold ? 'h-5' : 'h-2.5'} {cls}" {title}>
+	<!-- Named (#1966): whether the room hears you was colour on a bar and
+	     nothing else — the one mid-ride state a rider checks for that reason. -->
 	<div
+		role="img"
+		aria-label={transmitting
+			? 'transmitting — the room hears you'
+			: 'below the gate — the room hears nothing'}
 		class="bg-muted/25 absolute top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full"
 		style="left: {HALF_THUMB}px; right: {HALF_THUMB}px"
 	>

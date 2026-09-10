@@ -51,6 +51,8 @@
 		draft === dismissed ? null : mentionCompletion(draft, names),
 	);
 	let pick = $state(0);
+	const listId = `mention-${Math.random().toString(36).slice(2, 8)}`;
+	const optionId = (i: number) => `${listId}-${i}`;
 	$effect(() => {
 		mention;
 		pick = 0;
@@ -141,16 +143,21 @@
 	<ImageChip image={pending.current} onClear={pending.clear} />
 	{#if mention}
 		<ul
+			id={listId}
 			role="listbox"
 			aria-label="people to mention"
 			class="panel absolute bottom-full left-5 z-30 mb-1 min-w-44 p-1 shadow-2xl"
 		>
 			{#each mention.hits as name, i (name)}
 				<li>
-					<!-- mousedown is swallowed so the input keeps focus for the next word. -->
+					<!-- mousedown is swallowed so the input keeps focus for the next word.
+					     tabindex -1 and ids (#1962): the input is the combobox and names
+					     the active option; the buttons are not stops of their own. -->
 					<button
 						type="button"
+						id={optionId(i)}
 						role="option"
+						tabindex="-1"
 						aria-selected={i === pick}
 						onmousedown={(e) => e.preventDefault()}
 						onclick={() => complete(name)}
@@ -206,8 +213,11 @@
 			bind:value={draft}
 			onpaste={pending.paste}
 			onkeydown={onKey}
+			role="combobox"
 			aria-autocomplete="list"
 			aria-expanded={!!mention}
+			aria-controls={mention ? listId : undefined}
+			aria-activedescendant={mention ? optionId(pick) : undefined}
 			maxlength="500"
 			{placeholder}
 			aria-label={placeholder}

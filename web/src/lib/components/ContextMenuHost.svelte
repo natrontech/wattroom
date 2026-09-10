@@ -90,7 +90,13 @@
 				{@const value = dragged[i] ?? item.value}
 				<!-- A fader wide enough to be dragged from a bike; the arrows step
 				     it while the menu's own up/down keep walking the entries. -->
-				<label class="block rounded px-3 py-2 text-sm">
+				<!-- role=group (#1964): a bare label and a slider are not menu
+				     children, and were pruned or mis-announced under role=menu. -->
+				<div
+					role="group"
+					aria-label={item.label}
+					class="block rounded px-3 py-2 text-sm"
+				>
 					<span class="flex items-center gap-2.5">
 						{#if item.icon}<item.icon
 								size={14}
@@ -117,7 +123,7 @@
 						aria-label={item.label}
 						class="mt-1.5 w-full"
 					/>
-				</label>
+				</div>
 			{:else}
 				<button
 					role="menuitem"

@@ -96,11 +96,12 @@
 				<span
 					class="h-1.5 w-1.5 shrink-0 rounded-full {inSync
 						? 'bg-watt glow-stroke'
-						: 'bg-muted animate-pulse'}"
+						: 'bg-muted motion-safe:animate-pulse'}"
 					title={inSync
 						? 'in sync with the room'
 						: "catching up to the room's playhead"}
 				></span>
+				<span class="sr-only">{inSync ? 'in sync' : 'catching up'}</span>
 			{/if}
 			<span class="truncate normal-case">{current.title}</span>
 		</div>
