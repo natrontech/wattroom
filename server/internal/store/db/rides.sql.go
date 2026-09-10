@@ -11,6 +11,49 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const amendRide = `-- name: AmendRide :execrows
+update rides
+set seconds = $2, avg_watts = $3, kj = $4, execution = $5, execution_scored = $6,
+    samples = $7, curve = $8, xp = $9, norm_watts = $10
+where id = $1 and seconds < $2
+`
+
+type AmendRideParams struct {
+	ID              pgtype.UUID
+	Seconds         int32
+	AvgWatts        int16
+	Kj              int32
+	Execution       float32
+	ExecutionScored bool
+	Samples         []byte
+	Curve           []byte
+	Xp              int32
+	NormWatts       *int16
+}
+
+// A saved ride grown from a longer record (#1536): a socket that dropped
+// before the close and replayed its buffer after it. Only ever longer —
+// a replay of what was already saved changes nothing — and the medals
+// stay as awarded; xp moves with the row, which user_total_xp sums live.
+func (q *Queries) AmendRide(ctx context.Context, arg AmendRideParams) (int64, error) {
+	result, err := q.db.Exec(ctx, amendRide,
+		arg.ID,
+		arg.Seconds,
+		arg.AvgWatts,
+		arg.Kj,
+		arg.Execution,
+		arg.ExecutionScored,
+		arg.Samples,
+		arg.Curve,
+		arg.Xp,
+		arg.NormWatts,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const best20mIn90Days = `-- name: Best20mIn90Days :one
 select coalesce(max((curve->>'best20m')::int), 0)::int from rides
 where user_id = $1 and started_at >= now() - interval '90 days'

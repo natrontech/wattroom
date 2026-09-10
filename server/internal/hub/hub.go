@@ -29,6 +29,11 @@ type RiderRecord struct {
 // retries and may block for minutes — the hub calls it from a goroutine.
 type SessionSaver interface {
 	SaveSession(ctx context.Context, slug, workoutName, workoutJSON string, startedAt time.Time, riders []RiderRecord)
+	// AmendRide hands over one rider's record again, longer than at the
+	// close (#1536): a socket that dropped before the end and replayed its
+	// buffer after it. The saver grows the saved ride from it, or does
+	// nothing if there was no ride to grow.
+	AmendRide(ctx context.Context, slug, workoutName, workoutJSON string, startedAt time.Time, rider RiderRecord)
 }
 
 // ChatKeeper persists chat and reactions (ADR-0010 amended, #201). Defined

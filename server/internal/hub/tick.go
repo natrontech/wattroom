@@ -269,9 +269,12 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 type sessionEnd struct {
 	records []RiderRecord
 	meta    protocol.SessionState
-	closed  *SessionClosed
-	recap   *protocol.SessionRecap
-	recaps  RecapKeeper
+	// When the timeline started, as the saver is told: one value, computed
+	// once, so a later amendment finds the same ride (#1536).
+	startedAt time.Time
+	closed    *SessionClosed
+	recap     *protocol.SessionRecap
+	recaps    RecapKeeper
 }
 
 // closeLocked snapshots the session exactly once, on the tick its phase
@@ -281,8 +284,10 @@ func (rm *room) closeLocked(state protocol.SessionState, now time.Time, saving b
 		return nil
 	}
 	rm.saved = true
-	end := &sessionEnd{meta: state}
+	end := &sessionEnd{meta: state, startedAt: time.UnixMilli(now.UnixMilli() - int64(state.Elapsed)*1000)}
 	if saving {
+		// What a backfill after the close amends against (#1536).
+		rm.savedMeta, rm.savedStart = state, end.startedAt
 		for _, id := range rm.seenOrder {
 			if record, ok := rm.record.byRider[id]; ok {
 				end.records = append(end.records, RiderRecord{Rider: rm.seen[id], Samples: record.samples})
@@ -314,8 +319,7 @@ func (rm *room) handOff(log *slog.Logger, now func() time.Time, saver SessionSav
 		// the hub counts it so a shutdown waits for it.
 		rm.detach(log, "session save "+rm.slug, func() {
 			saver.SaveSession(context.Background(), rm.slug,
-				end.meta.WorkoutName, end.meta.WorkoutJSON,
-				time.UnixMilli(now().UnixMilli()-int64(end.meta.Elapsed)*1000), end.records)
+				end.meta.WorkoutName, end.meta.WorkoutJSON, end.startedAt, end.records)
 		})
 	}
 	// The keeper returns at once (it queues its own I/O).

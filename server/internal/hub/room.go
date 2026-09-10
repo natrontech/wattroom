@@ -56,6 +56,9 @@ type room struct {
 	// First-seen order this session — the SPEC medal tie-break.
 	seenOrder []string
 	saved     bool
+	// What the close handed the saver, for a backfill that arrives after it (#1536).
+	savedMeta  protocol.SessionState
+	savedStart time.Time
 	// kind+rider → last accepted time: limits are per RIDER, not per socket —
 	// a second tab must not double every allowance (audit #219).
 	lastInput map[string]time.Time
