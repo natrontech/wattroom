@@ -359,9 +359,11 @@ describe('FtmsTrainer control-point queue', () => {
 		// pending until its own answer.
 		const { trainer, control } = await paired();
 		control.answer = () => 'silent';
-		const a = trainer.setTargetPower(200);
+		// Caught before the clock moves: a rejection with no handler at the
+		// moment it lands is an unhandled error to vitest, whatever awaits later.
+		const a = trainer.setTargetPower(200).catch((e: Error) => e);
 		await vi.advanceTimersByTimeAsync(3_100);
-		await expect(a).rejects.toThrow(/timed out/);
+		expect(await a).toMatchObject({ message: /timed out/ });
 		// A different op than A's, so the match is on the op and not on luck.
 		let settled = false;
 		const b = trainer.setSimulation(2).then(() => (settled = true));
