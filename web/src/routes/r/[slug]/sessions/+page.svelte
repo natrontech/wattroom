@@ -231,11 +231,13 @@
 									disabled={room.adminBusy}
 									class="btn btn-secondary btn-xs">Move</button
 								>
-								<!-- "Cancel", as the chat line, the mail and SPEC say. -->
+								<!-- "Cancel", as the chat line, the mail and SPEC say — with
+								     its object, because a bare "Cancel" is the button that
+								     backs out of a form everywhere else. -->
 								<button
 									onclick={() => void cancelPlan(entry)}
 									disabled={room.adminBusy}
-									class="btn btn-danger btn-xs">Cancel</button
+									class="btn btn-danger btn-xs">Cancel session</button
 								>
 							{/if}
 						</span>

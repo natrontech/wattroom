@@ -75,6 +75,7 @@
 			title: `Remove ${member.displayName} from ${room.roomName}?`,
 			body: 'They stay in the crew and can walk back in if the room is open to it.',
 			action: 'Remove',
+			cancel: 'Keep it',
 		});
 		if (ok) room.removeMember(member.id);
 	}
@@ -102,6 +103,7 @@
 			title: `Hand ${room.roomName} to ${member.displayName}?`,
 			body: 'They become its owner and you stay on as a coach. You cannot take this back; only they can hand it back to you.',
 			action: 'Hand it over',
+			cancel: 'Keep it',
 		});
 		if (ok) room.transfer(member.id);
 	}

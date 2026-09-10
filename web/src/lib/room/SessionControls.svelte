@@ -66,7 +66,7 @@
 		>
 	{:else if phase === 'countdown'}
 		<button onclick={() => room.control('end')} class="btn btn-danger btn-lg"
-			><Square size={13} /> Cancel</button
+			><Square size={13} /> Stop the countdown</button
 		>
 	{:else}
 		<div class="border-muted/20 flex gap-1 rounded border p-0.5">

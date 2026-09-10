@@ -70,7 +70,7 @@
 					? `They leave ${which} of the crew they are in, and any coach role there. Lifting the ban later lets them back into the crew, not into the rooms.`
 					: `They cannot come back through the crew's code until you lift the ban.`,
 			action: 'Ban',
-			cancel: 'Keep',
+			cancel: 'Keep it',
 		});
 		if (!sure) return;
 		const res = await setCrewRole(crew.id, person.id, 'banned');

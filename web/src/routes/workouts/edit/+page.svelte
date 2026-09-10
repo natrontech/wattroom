@@ -59,7 +59,7 @@
 				},
 	);
 	let hydrated = $state(!requestedId);
-	// Twenty minutes of shaping used to leave without a word (#1711): Cancel
+	// Twenty minutes of shaping used to leave without a word (#1711): Discard
 	// is a link and the sidebar is one tap away. The guard /ride and /ramp
 	// share; a save stands it down before the navigation it triggers.
 	let saved = $state(false);
@@ -67,7 +67,7 @@
 		title: 'Leave without saving?',
 		body: 'The changes to this workout are not saved. Leave, and they are gone.',
 		action: 'Leave',
-		cancel: 'Stay',
+		cancel: 'Keep it',
 	});
 	$effect(() => {
 		if (hydrated || !custom.loaded) return;
@@ -244,7 +244,7 @@
 				class="btn btn-secondary btn-xs"
 				title="Redo (⇧⌘Z)">Redo</button
 			>
-			<a href="/workouts" class="text-muted hover:text-ink text-sm">Cancel</a>
+			<a href="/workouts" class="text-muted hover:text-ink text-sm">Discard</a>
 			<button
 				onclick={save}
 				disabled={!check.ok || !hydrated}
