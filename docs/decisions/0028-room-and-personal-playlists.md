@@ -9,6 +9,14 @@
   rider-owned is the rule; 0015 said otherwise for a month and misled a
   reader into nearly filing a scope bug against working code (#1097)
 
+> **Amended 2026-09-10 (#695, recorded by the jukebox audit):** "any room
+> member can create, rename, delete, and edit them" below is half true.
+> Creating a room playlist and adding to it are member verbs; **renaming,
+> deleting and removing a track are the coach's and the admins'**
+> (`roomModeratorScope`, docs/SPEC.md's matrix as amended by #695). The
+> Decision paragraph stood unamended for a day and read as evidence against
+> working code — the exact failure this ADR was written to end.
+>
 > **Amended 2026-09-09 (#1422):** the optional _fixed start_ is dropped
 > (the 95 % rule — the active playlist's first entry is the start), and
 > autoplay is set on the room's Settings page rather than in the jukebox

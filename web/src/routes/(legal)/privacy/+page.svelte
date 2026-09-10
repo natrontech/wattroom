@@ -158,8 +158,9 @@
 		<li>
 			<strong class="text-ink font-medium">YouTube.</strong> The room jukebox plays
 			music through YouTube's embedded player in privacy-enhanced mode (youtube-nocookie.com).
-			It loads only inside a room while media plays; Google may process your IP address
-			under its own privacy policy.
+			The player is created when you enter a room; the player script and the lookups
+			that name a pasted link come from www.youtube.com, and a track's artwork from
+			i.ytimg.com. Google may process your IP address under its own privacy policy.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Resend, Inc. (USA).</strong> Delivers every

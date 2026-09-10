@@ -1,6 +1,7 @@
 /**
- * The music pool, client side (#268, ADR-0015): one global library every
- * signed-in rider browses and uploads to.
+ * The music pool, client side (#268, ADR-0015 as amended by #1095): a
+ * rider browses and edits what they uploaded; playing is wider — a track
+ * plays in any room its uploader may be seen in (`visible_rooms`).
  *
  * The fetch goes through `$lib/api` like everything else; what lives here is
  * the shape and the two things worth stating once — how a track is labelled
