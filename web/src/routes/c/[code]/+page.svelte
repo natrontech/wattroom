@@ -79,7 +79,8 @@
 				<p class="text-muted mt-2 text-sm">
 					This crew removed you. Its code will not let you back in.
 				</p>
-				<a href="/home" class="btn btn-secondary btn-lg mt-6">Back to your rooms</a
+				<a href="/home" class="btn btn-secondary btn-lg mt-6"
+					>Back to your rooms</a
 				>
 			{:else}
 				<p class="text-muted mt-2 text-sm">

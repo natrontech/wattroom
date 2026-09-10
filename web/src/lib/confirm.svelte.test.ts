@@ -13,7 +13,11 @@ describe('confirm', () => {
 		await expect(asked).resolves.toBe(true);
 		expect(confirmation.current).toBeNull();
 
-		const again = confirm({ title: 'Again?', action: 'Yes', cancel: 'Keep it' });
+		const again = confirm({
+			title: 'Again?',
+			action: 'Yes',
+			cancel: 'Keep it',
+		});
 		confirmation.settle(false);
 		await expect(again).resolves.toBe(false);
 	});
