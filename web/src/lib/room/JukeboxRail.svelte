@@ -130,10 +130,13 @@
 			{/if}
 		</div>
 
+		<!-- Below xl the rail IS the jukebox, so these are mid-ride controls:
+		     28 px clears ux.md's 24 px floor and six of them still fit the
+		     rail at its narrowest (#1899); p-1 around a 13 px icon was 21. -->
 		<div class="text-muted flex items-center gap-0.5 pt-1">
 			<button
 				onclick={() => transport(jukebox?.playing ? 'pause' : 'play')}
-				class="hover:text-ink shrink-0 rounded p-1"
+				class="icon-btn icon-btn-sm hover:text-ink"
 				aria-label={jukebox?.playing
 					? 'pause for everyone'
 					: 'play for everyone'}
@@ -145,20 +148,20 @@
 				<!-- A livestream has no timeline to jump around in. -->
 				<button
 					onclick={() => nudge(-30)}
-					class="hover:text-ink shrink-0 rounded p-1"
+					class="icon-btn icon-btn-sm hover:text-ink"
 					aria-label="back 30 seconds"
 					title="back 30 seconds"><Rewind size={13} /></button
 				>
 				<button
 					onclick={() => nudge(30)}
-					class="hover:text-ink shrink-0 rounded p-1"
+					class="icon-btn icon-btn-sm hover:text-ink"
 					aria-label="forward 30 seconds"
 					title="forward 30 seconds"><FastForward size={13} /></button
 				>
 			{/if}
 			<button
 				onclick={() => transport('skip')}
-				class="hover:text-ink shrink-0 rounded p-1"
+				class="icon-btn icon-btn-sm hover:text-ink"
 				aria-label="skip for the room"
 				title="skip for the room"><SkipForward size={13} /></button
 			>
@@ -167,14 +170,14 @@
 			{#if listening.out}
 				<button
 					onclick={() => listening.rejoin()}
-					class="hover:text-ink shrink-0 rounded p-1"
+					class="icon-btn icon-btn-sm hover:text-ink"
 					aria-label="rejoin the music"
 					title="rejoin the music"><Headphones size={13} /></button
 				>
 			{:else}
 				<button
 					onclick={stopForMe}
-					class="hover:text-ink shrink-0 rounded p-1"
+					class="icon-btn icon-btn-sm hover:text-ink"
 					aria-label="stop the music for you"
 					title="Stop for you — the room keeps playing"
 					><HeadphoneOff size={13} /></button
