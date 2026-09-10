@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SensorPairing } from '$lib/protocol';
-import { pairedElsewhere } from '$lib/room/sensor-status';
+import { mayActuate, pairedElsewhere } from '$lib/room/sensor-status';
 
 describe('pairedElsewhere', () => {
 	const held = (elsewhere: Record<string, string>): SensorPairing => ({
@@ -31,5 +31,29 @@ describe('pairedElsewhere', () => {
 		// pair buttons.
 		expect(pairedElsewhere('trainer', undefined, 'desktop')).toBeUndefined();
 		expect(pairedElsewhere('trainer', {}, 'desktop')).toBeUndefined();
+	});
+});
+
+describe('mayActuate (#1853)', () => {
+	it('refuses the screen whose claim the hub gave to another', () => {
+		expect(mayActuate({ elsewhere: { trainer: 'phone' } })).toBe(false);
+	});
+
+	it('lets the granted screen drive', () => {
+		expect(mayActuate({ held: ['trainer'] })).toBe(true);
+	});
+
+	it('cares only about the trainer', () => {
+		// A strap held on the phone says nothing about who writes the
+		// control point.
+		expect(mayActuate({ elsewhere: { 'heart-rate': 'phone' } })).toBe(true);
+	});
+
+	it('rides as before when the hub has arbitrated nothing', () => {
+		// The hub's own rule (ownsTrainerLocked): no claim, no refusal. The
+		// solo screens, and a tab whose answer has not arrived or whose
+		// socket is down, keep their resistance.
+		expect(mayActuate(undefined)).toBe(true);
+		expect(mayActuate({})).toBe(true);
 	});
 });

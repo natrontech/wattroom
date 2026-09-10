@@ -104,6 +104,28 @@ export function pairedElsewhere(
 }
 
 /**
+ * May this screen write the trainer's control point? (#1853)
+ *
+ * ADR-0025's claim arbitrated the sample stream and the pairing affordance
+ * and stopped there, so two tabs with a GATT link to one trainer both
+ * actuated — the same watts until their per-tab `bias` differed, and then a
+ * 1 Hz fight over the trainer of a ride in progress. The claim covers
+ * actuation too (ADR-0025, amended 2026-09-10).
+ *
+ * The rule is the hub's own `ownsTrainerLocked`, said again on this side
+ * because the hub cannot refuse a Bluetooth write it never sees: a trainer
+ * claim held by another of the rider's screens refuses this one, and
+ * everything else rides exactly as before. That "everything else" is
+ * load-bearing — it is the solo `/ride` and `/ramp` screens, which hold no
+ * socket to arbitrate on, and it is a tab whose answer has not arrived yet or
+ * whose socket is down. Silencing either would take a rider's resistance
+ * away with nothing at all contending for the trainer.
+ */
+export function mayActuate(pairing: SensorPairing | undefined): boolean {
+	return !pairing?.elsewhere?.trainer;
+}
+
+/**
  * Every kind the rider holds on another screen, ready to render (#610) —
  * what the paired-devices grid takes, so the grid itself needs to know
  * nothing about sockets or claims.
