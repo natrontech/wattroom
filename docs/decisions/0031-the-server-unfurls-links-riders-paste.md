@@ -74,10 +74,14 @@ all of it enforced in `server/internal/unfurl`:
 - **No WattRoom credential ever leaves.** The outbound request carries a
   `User-Agent` naming the bot and nothing else — no cookie, no token, no header
   derived from the rider's request.
-- **A per-rider ration and a shared response cache**, so a room full of people
-  reading the same link costs that site one request, and no rider can turn the
-  endpoint into an amplifier pointed at somebody else. The ration is a bucket,
-  not a spacing between asks: opening a busy channel asks for every distinct
+- **A per-rider ration and ~~a shared response cache~~**, so ~~a room full of
+  people reading the same link costs that site one request, and~~ no rider can
+  turn the endpoint into an amplifier pointed at somebody else.
+  **Diverged 2026-09-10 (#1739)**: the cache is keyed on `(rider, url)`. Shared,
+  it was read before the ration was spent, so a free answer told any signed-in
+  rider whether somebody else had pasted that link inside the TTL — the
+  amendment below has the argument and the price. The ration is a bucket, not
+  a spacing between asks: opening a busy channel asks for every distinct
   link on the screen at once, and a fixed gap would refuse most of them for no
   reason the rider could see. A spent bucket answers **429, never 204** — the
   client remembers "there is nothing here" for the session and must never
@@ -170,7 +174,9 @@ costs nothing — the link still works.
   longer assume the app never speaks to them — it will not, but that is now a
   property of code rather than a property of the app having no such feature.
 - The preview cache means a title fixed at the source takes up to half an hour
-  to be fixed here. That is the trade for not asking a site once per reader.
+  to be fixed here. ~~That is the trade for not asking a site once per reader.~~
+  **Diverged 2026-09-10 (#1739)**: a site now is asked once per reader. What the
+  TTL buys is one rider re-reading one conversation for free.
 - The proxy puts preview-image bandwidth on the WattRoom host. Bounded per
   image and per rider, but it is a cost the previous design did not have —
   paid, deliberately, so no rider's address leaks to strangers' hosts.
@@ -178,3 +184,35 @@ costs nothing — the link still works.
   `golang.org/x/image` the OG card renderer already uses. Hand-rolling an HTML
   scanner is exactly where parsing bugs live, and this is the tokenizer the Go
   team maintains.
+
+## Amendment, 2026-09-10 (#1739): the preview cache is keyed on `(rider, url)`
+
+The cache above was keyed on the URL alone and shared across the instance, and
+`handleUnfurl` reads it before spending a ration token — it has to, or a rider
+opening a chat with fifteen links would be refused their own second look at it.
+Both halves are right on their own and wrong together: an entry another rider
+paid for answered for free, and a free answer is a yes/no on whether somebody
+else on this instance pasted that URL inside the last half hour. A rider only
+has to time `GET /api/unfurl?url=…` against a link they suspect. Negatives carry
+the same tell, because a page with no metadata is cached too, so it works on
+URLs that never draw a card — an unlisted document, a job posting, a clinic.
+That is other people's reading, which is not a thing this app holds.
+
+Three ways out were on the table: spend a ration token on hits, key the cache
+per rider, or accept the tell. Spending a token on hits makes the question cost
+something without making it unanswerable, and it prices the ordinary case — a
+busy channel re-rendering — as if it were the attack. Keying per rider ends the
+question outright.
+
+**The cache is keyed on `(rider, url)`.** The price is stated rather than
+hidden: a link twenty riders read is fetched twenty times, not once, and this
+ADR's "costs that site one request" no longer holds. The ceilings that make
+that acceptable are the ones already here — the per-rider bucket bounds what
+one rider can aim anywhere, and the entry ceiling counts entries, so per-rider
+keying spends hit rate and not memory. Rides, metrics and rooms are all
+room-scoped or rider-scoped by construction (WATTROOM.md's privacy rules); a
+cache that let one rider read a fact about another's reading was the odd one
+out, and outbound politeness is the cheaper of the two things to give up.
+
+The share-card half of #1739 — the OG renderer's own cache and budget — landed
+separately in #1750 and changed nothing here.
