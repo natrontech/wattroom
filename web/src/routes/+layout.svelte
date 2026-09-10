@@ -109,6 +109,7 @@
 		page.url.pathname.startsWith('/login') ||
 			page.url.pathname === '/' ||
 			page.url.pathname === '/legal' ||
+			page.url.pathname === '/legal/licenses' ||
 			page.url.pathname === '/terms' ||
 			page.url.pathname === '/privacy' ||
 			page.url.pathname === '/download' ||

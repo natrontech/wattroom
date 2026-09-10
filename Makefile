@@ -117,3 +117,10 @@ release: ## cut a release: promote the changelog, tag, push (version is CalVer, 
 
 desktop-release: ## cut a desktop release: bump desktop/package.json, tag, push (CalVer, computed; ADR-0037)
 	@scripts/desktop-release.sh
+
+# Third-party notices (#1670). Two generators because each needs a different
+# toolchain, and each runs in the CI job that already has one.
+.PHONY: licenses
+licenses:
+	python3 scripts/licenses-go.py
+	node scripts/licenses-web.mjs

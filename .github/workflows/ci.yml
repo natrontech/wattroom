@@ -63,6 +63,15 @@ jobs:
         run: |
           go tool tygo generate
           git diff --exit-code ../web/src/lib/protocol.ts
+      # Third-party notices (#1670): MIT, ISC, BSD, Apache and the OFL all
+      # require the notice to travel with the artifact. Same shape as the
+      # protocol check above — generated, committed, and CI fails on drift, so
+      # a new dependency cannot ship unnamed. Split by toolchain: this job has
+      # Go, the web job has pnpm, and neither needs the other installed.
+      - name: third-party notices cover what the binary links
+        run: |
+          python3 ../scripts/licenses-go.py
+          git diff --exit-code ../web/static/legal/go.json
 
   # Six of the seven changes in 2026.09.2 shipped with no changelog line, so
   # the release notes described one of them. A rule nobody checks is not a
@@ -162,5 +171,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
       - run: pnpm run format:check
+      - name: third-party notices cover what the SPA bundles
+        run: |
+          node ../scripts/licenses-web.mjs
+          git diff --exit-code static/legal/web.json
       - run: pnpm run test
       - run: pnpm run build

@@ -37,6 +37,7 @@ const ROUTES = [
 	'/rooms/directory',
 	'/download',
 	'/legal',
+	'/legal/licenses',
 	'/terms',
 	'/privacy',
 ];
