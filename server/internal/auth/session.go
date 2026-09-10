@@ -135,7 +135,13 @@ func currentSessionHash(r *http.Request) []byte {
 // removal does on its own — whoever added the passkey being removed may be
 // holding a session too. Returns how many it ended.
 func (s *Service) endOtherSessions(ctx context.Context, userID pgtype.UUID, r *http.Request) int64 {
-	keep := currentSessionHash(r)
+	return s.endSessions(ctx, userID, currentSessionHash(r))
+}
+
+// endSessions ends every session of the account except the one `keep` hashes
+// to; a nil keep ends all of them, which is what recovery needs (#1822) and
+// what "pass a hash no session has" means in the query. Returns how many.
+func (s *Service) endSessions(ctx context.Context, userID pgtype.UUID, keep []byte) int64 {
 	if keep == nil {
 		keep = []byte{}
 	}
@@ -143,7 +149,7 @@ func (s *Service) endOtherSessions(ctx context.Context, userID pgtype.UUID, r *h
 		UserID: userID, TokenHash: keep,
 	})
 	if err != nil {
-		s.log.Error("ending other sessions failed", "err", err)
+		s.log.Error("ending sessions failed", "err", err)
 	}
 	return n
 }

@@ -23,7 +23,17 @@ type fakeMailer struct {
 	calls  int
 	err    error
 	alerts []alert
+	// The recovery links this mailer would have sent (#1822) and the error
+	// the transport should answer with. A slice rather than one field: the
+	// send is detached from the request that caused it, so a test waits for
+	// arrivals instead of reading the last one.
+	recoveries   []recovery
+	recoverCalls int
+	recoverErr   error
 }
+
+// recovery is one SendAccountRecovery the code under test would have sent.
+type recovery struct{ to, link string }
 
 // alert is one AccountAlert the code under test would have sent (#840).
 type alert struct {
@@ -38,6 +48,17 @@ func (m *fakeMailer) SendEmailVerification(_ context.Context, to, link string) e
 	m.calls++
 	m.to, m.link = to, link
 	return m.err
+}
+
+func (m *fakeMailer) SendAccountRecovery(_ context.Context, to, link string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.recoverCalls++
+	if m.recoverErr != nil {
+		return m.recoverErr
+	}
+	m.recoveries = append(m.recoveries, recovery{to: to, link: link})
+	return nil
 }
 
 func (m *fakeMailer) AccountAlert(user db.User, heading, line string) {

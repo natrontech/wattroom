@@ -397,6 +397,41 @@ a WattRoom account, ignore this — nothing happens until someone follows it.`, 
 	})
 }
 
+// SendAccountRecovery puts the way back in front of a rider who has lost
+// every credential (#1822, ADR-0051). The second link mail beside the
+// confirmation above, and deliberately not the one-line alarm template: this
+// one is the thing being asked for rather than a report of something that
+// already happened, and the words have to be plain enough that a rider who
+// asked for it recognises it and a rider who did not knows to ignore it.
+//
+// From the alarm's sender, not the bulk one: it is on the account's critical
+// path, and a filter on the ride mail must not be what stops a lockout from
+// clearing.
+func (s *Service) SendAccountRecovery(ctx context.Context, to, link string) error {
+	text := fmt.Sprintf(`Use this link to sign in to your WattRoom account:
+
+%s
+
+It works once and expires in a day. Signing in this way signs your account out
+everywhere else, so add a passkey or connect a sign-in provider afterwards.
+
+If you did not ask to get back into a WattRoom account, ignore this — nothing
+happens until someone follows the link.`, link)
+	// No Lead: nothing in this mail is live data, so nothing in it glows.
+	return s.send(ctx, mail{
+		From: s.alertFrom,
+		To:   to, Subject: "Get back into your WattRoom account",
+		Heading: "Sign in with this link",
+		Body: []string{
+			"Use this link to sign in to your WattRoom account.",
+			"It works once and expires in a day. Signing in this way signs your account out everywhere else, so add a passkey or connect a sign-in provider afterwards.",
+			"If you did not ask to get back into a WattRoom account, ignore this — nothing happens until someone follows the link.",
+		},
+		Action: "Sign in", URL: link,
+		Text: text,
+	})
+}
+
 // AccountAlert mails a rider that a way into their account changed (#840,
 // ADR-0030). One template and one variable line across every trigger — a
 // passkey, a provider, the recovery address — because the moment there are two
@@ -424,7 +459,17 @@ func (s *Service) AccountDeleted(user db.User) {
 }
 
 func (s *Service) alert(user db.User, heading, line, action, url string) {
-	m, ok := alertMail(user, heading, line, action, url)
+	// The alarm's button goes to /settings/profile, behind the sign-in a
+	// rider reading a hostile alarm may no longer have (#1822): an alert
+	// that only links there tells someone locked out what happened and
+	// nothing they can do about it. The way back in rides along with every
+	// alarm that has a button; the purge receipt, which has none, has no
+	// account left to recover.
+	recoverURL := ""
+	if action != "" {
+		recoverURL = s.baseURL + "/login/recover"
+	}
+	m, ok := alertMail(user, heading, line, action, url, recoverURL)
 	if !ok {
 		return
 	}
@@ -444,7 +489,7 @@ func (s *Service) alert(user db.User, heading, line, action, url string) {
 // alertMail builds the alert, or reports that there is nobody to send it to.
 // Separate from the sending so the rule that decides who hears about an
 // account event is a plain function a test can ask directly.
-func alertMail(user db.User, heading, line, action, url string) (mail, bool) {
+func alertMail(user db.User, heading, line, action, url, recoverURL string) (mail, bool) {
 	if user.Email == nil || !user.EmailVerifiedAt.Valid {
 		return mail{}, false
 	}
@@ -454,6 +499,11 @@ func alertMail(user db.User, heading, line, action, url string) (mail, bool) {
 		body = append(body,
 			"If that was you, there is nothing to do. If it was not, open your settings and check what your account signs in with.")
 		text += "\n\nIf that was you, there is nothing to do. If it was not, check what your\naccount signs in with: " + url
+		if recoverURL != "" {
+			body = append(body,
+				"Cannot sign in at all any more? Get back into the account with this address: "+recoverURL)
+			text += "\n\nCannot sign in at all any more? Get back into the account with this\naddress: " + recoverURL
+		}
 	}
 	return mail{
 		To: *user.Email, Subject: heading, Heading: heading, Body: body,

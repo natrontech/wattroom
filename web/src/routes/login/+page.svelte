@@ -356,7 +356,18 @@
 						{/if}
 					{/each}
 				</div>
-				<p class="text-muted mt-6 text-[11px]">
+				<p class="mt-6 text-[11px]">
+					<!-- The lockout door (#1822, ADR-0051): a rider whose passkey
+					     or provider is gone has nothing else on this screen to
+					     press. Hidden where mail is unconfigured, since nobody on
+					     such a server has a confirmed address to recover from. -->
+					{#if account.mailAvailable}
+						<a href="/login/recover" class="text-muted hover:text-ink underline"
+							>Lost your passkey or sign-in?</a
+						>
+					{/if}
+				</p>
+				<p class="text-muted mt-3 text-[11px]">
 					No passwords — use an account you already have.
 					{#if account.mailAvailable}
 						<!-- The gate (ADR-0029) is the first screen after sign-in for a

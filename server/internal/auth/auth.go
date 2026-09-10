@@ -79,6 +79,9 @@ type Service struct {
 	verifyMail *mailBudget
 	// Per-address ceilings on the unauthenticated sign-in doors (#1606).
 	loginBudget, syntheticBudget *budget.Budget[string]
+	// Recovery (#1822): one per client address, one per email address it is
+	// asked about. recover.go says why it takes both.
+	recoverDoor, recoverMail *budget.Budget[string]
 }
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
@@ -96,9 +99,11 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *s
 		// Always present, even where mail is not: the ceiling is cheap, and a
 		// nil one would be a panic waiting for the day a mailer appears.
 		verifyMail: newMailBudget(),
-		// The doors a stranger can knock on (#1606).
+		// The doors a stranger can knock on (#1606, #1822).
 		loginBudget:     budget.New[string](loginAttemptsPerWindow, loginWindow),
 		syntheticBudget: budget.New[string](syntheticPerWindow, loginWindow),
+		recoverDoor:     budget.New[string](recoverAsksPerWindow, loginWindow),
+		recoverMail:     budget.New[string](recoverMailsPerWindow, recoverMailWindow),
 	}
 	if _, ok := svc.providers["dev"]; ok {
 		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")
@@ -131,6 +136,11 @@ func (s *Service) Register(mux *http.ServeMux) {
 	// Every other session of the account (#1607): the response to
 	// ADR-0030's "a passkey was added" alarm, and a settings button.
 	mux.HandleFunc("POST /api/auth/logout-everywhere", s.handleLogoutEverywhere)
+	// The way back in when every credential is gone (#1822, ADR-0051):
+	// recover mails the link, finish spends it. recover.go.
+	mux.HandleFunc("POST /api/auth/recover", s.handleRecover)
+	mux.HandleFunc("GET /api/auth/recover/finish", s.handleRecoverFinishForm)
+	mux.HandleFunc("POST /api/auth/recover/finish", s.handleRecoverFinish)
 	// The emailed confirm link (#781): GET renders the button, POST verifies.
 	mux.HandleFunc("GET /api/auth/verify-email", s.handleVerifyEmailForm)
 	mux.HandleFunc("POST /api/auth/verify-email", s.handleVerifyEmail)
@@ -247,7 +257,7 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 // Deliberately absent from /api/auth/providers — this is not a button, and no
 // human should ever see it offered.
 func (s *Service) handleSynthetic(w http.ResponseWriter, r *http.Request) {
-	if s.throttle(w, r, s.syntheticBudget) {
+	if s.throttle(w, r, s.syntheticBudget, tooManySignIns) {
 		return
 	}
 	p, ok := s.providers["synthetic"]

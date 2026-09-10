@@ -44,6 +44,9 @@ const emailResendAfter = 2 * time.Minute
 // refuses the field (capability gating, .claude/rules/ux.md).
 type Mailer interface {
 	SendEmailVerification(ctx context.Context, to, link string) error
+	// SendAccountRecovery is the way back in (#1822); recover.go is the only
+	// caller.
+	SendAccountRecovery(ctx context.Context, to, link string) error
 	// AccountAlert is the security alarm (#840); alerts.go is the only caller.
 	AccountAlert(user db.User, heading, line string)
 }

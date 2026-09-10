@@ -106,3 +106,21 @@ at the one moment undoing it is cheap. There is deliberately no merge tool.
   unverified email, and the reason #781 goes first.
 - Revisit if the alpha ever wants shared-device sign-in or an org/team login,
   neither of which this shape anticipates.
+
+## Amendment, 2026-09-10 (#1822): the recovery half is built, and it has a price
+
+"Email is a verified recovery attribute" was stated here, repeated in
+WATTROOM.md and said to every new rider by the address gate — and for four
+days nothing recovered anything. One stolen session could add its own passkey,
+disconnect the rider's only provider, and leave the rider outside their own
+account permanently; both alarm mails linked to a page behind the sign-in they
+had just lost.
+
+[ADR-0051](0051-a-mailed-link-is-the-way-back-into-an-account.md) builds the
+flow this ADR promised — a hashed single-use link to the confirmed address,
+which ends every session and mints one — and records the consequence this ADR
+did not spell out: **a mail-account compromise is now a WattRoom account
+compromise.** Read there for why that trade is accepted.
+
+Unchanged: recovery is still the only thing the address unlocks, it is still
+never the login identifier, and there is still no magic link as a daily door.

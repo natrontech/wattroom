@@ -94,21 +94,54 @@ select * from users where email_verify_hash = $1 and email_verify_expires > now(
 -- name: VerifyEmail :one
 -- Single use and time-bounded: the row that matches is also the row that
 -- clears the token, so a replayed link finds nothing.
+--
+-- The recovery token goes with it (#1822): it was mailed to the address this
+-- statement replaces, and a live one left behind would let the previous
+-- inbox mint a session on the account long after it stopped being the
+-- account's address.
 update users
 set email = email_pending,
     email_verified_at = now(),
     email_pending = null,
     email_verify_hash = null,
-    email_verify_expires = null
+    email_verify_expires = null,
+    recover_hash = null,
+    recover_expires = null
 where email_verify_hash = $1 and email_verify_expires > now()
 returning *;
 
 -- name: ClearUserEmail :one
--- Removing the address takes the verification and anything in flight with it.
+-- Removing the address takes the verification and anything in flight with it
+-- — the recovery token included (#1822), which is a live way into the
+-- account sitting in an inbox the account no longer claims.
 update users
 set email = null, email_verified_at = null, email_pending = null,
-    email_verify_hash = null, email_verify_expires = null, notify_planned = false
+    email_verify_hash = null, email_verify_expires = null,
+    recover_hash = null, recover_expires = null, notify_planned = false
 where id = $1
+returning *;
+
+-- name: UserByVerifiedEmail :one
+-- The account a recovery request is about (#1822). Only a verified address
+-- answers: an unverified one is somebody's typo, and `users_email_verified`
+-- makes lower(email) unique across the verified ones, so this is at most one
+-- row.
+select * from users
+where lower(email) = lower(@email::text) and email_verified_at is not null;
+
+-- name: StartAccountRecovery :exec
+-- Stores the hashed single-use recovery token, replacing any still in flight
+-- — the same idiom as StartEmailVerification, on its own pair of columns
+-- because the two ceremonies overlap in time and unlock different things.
+update users set recover_hash = $2, recover_expires = $3 where id = $1;
+
+-- name: ConsumeAccountRecovery :one
+-- Single use and time-bounded, like VerifyEmail: the row that matches is the
+-- row that clears the token, so the link that already minted a session mints
+-- no second one.
+update users
+set recover_hash = null, recover_expires = null
+where recover_hash = $1 and recover_expires > now()
 returning *;
 
 -- name: EmailVerifiedElsewhere :one

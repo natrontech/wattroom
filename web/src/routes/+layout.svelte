@@ -99,12 +99,14 @@
 		});
 	});
 
-	// ADR-0009: everything behind sign-in. /login is the only public route;
+	// ADR-0009: everything behind sign-in. /login and what hangs off it are
+	// the only public routes — recovery (#1822) lives at /login/recover and
+	// is reached by definition without a session;
 	// /dev mocks stay open in dev builds (they 404 in production anyway).
 	// '/' is public since #111: signed out it is the marketing landing, the
 	// page branches itself (ADR-0009, amended).
 	const publicPath = $derived(
-		page.url.pathname === '/login' ||
+		page.url.pathname.startsWith('/login') ||
 			page.url.pathname === '/' ||
 			page.url.pathname === '/legal' ||
 			page.url.pathname === '/terms' ||
@@ -135,7 +137,7 @@
 	// the column (ADR-0020's sixth amendment, rule 1).
 	const framed = $derived(
 		!!account.me &&
-			page.url.pathname !== '/login' &&
+			!page.url.pathname.startsWith('/login') &&
 			// Signed in, / is the landing page branching itself (ADR-0009).
 			page.url.pathname !== '/' &&
 			// The HUD is a window of its own (#296): numbers only, no sidebar.

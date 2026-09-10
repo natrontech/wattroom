@@ -476,7 +476,7 @@ func TestAccountAlertOnlyReachesAVerifiedAddress(t *testing.T) {
 		{"address still unverified", db.User{Email: &pending}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			m, ok := alertMail(tc.user, "A passkey was added to your account", "line", "Check your account", "https://wattroom.example/profile")
+			m, ok := alertMail(tc.user, "A passkey was added to your account", "line", "Check your account", "https://wattroom.example/profile", "https://wattroom.example/login/recover")
 			if ok != tc.want {
 				t.Fatalf("sendable = %v, want %v", ok, tc.want)
 			}
@@ -493,11 +493,37 @@ func TestAccountAlertOnlyReachesAVerifiedAddress(t *testing.T) {
 	}
 }
 
+// Every alarm with a button also names the way back in (#1822). Without it
+// the mail says "a passkey was added to your account" and points at a page
+// behind the sign-in the rider reading it may have just lost — which is the
+// lockout this whole flow exists to end.
+func TestAccountAlertCarriesTheWayBackIn(t *testing.T) {
+	const recover = "https://wattroom.example/login/recover"
+	m, ok := alertMail(verifiedUser("rider@example.test"), "A passkey was added to your account",
+		"line", "Check your account", "https://wattroom.example/settings/profile", recover)
+	if !ok {
+		t.Fatal("no alarm for a verified address")
+	}
+	if !strings.Contains(strings.Join(m.Body, "\n"), recover) {
+		t.Fatalf("the alarm does not say how to get back in: %q", m.Body)
+	}
+	// And in the part a client that renders no HTML shows.
+	if !strings.Contains(m.Text, recover) {
+		t.Fatalf("the text part does not say how to get back in: %q", m.Text)
+	}
+	// The receipt is the exception: there is no account left to recover.
+	receipt, _ := alertMail(verifiedUser("rider@example.test"), "Your WattRoom account was deleted",
+		"It is gone.", "", "", "")
+	if strings.Contains(strings.Join(receipt.Body, "\n")+receipt.Text, "recover") {
+		t.Fatalf("the purge receipt offers recovery: %q", receipt.Body)
+	}
+}
+
 // The purge receipt is the one alert with nothing to check afterwards, so it
 // carries no button and none of the "if that was not you" reassurance that
 // assumes an account still exists.
 func TestAccountDeletedReceiptHasNothingToPress(t *testing.T) {
-	m, ok := alertMail(verifiedUser("rider@example.test"), "Your WattRoom account was deleted", "It is gone.", "", "")
+	m, ok := alertMail(verifiedUser("rider@example.test"), "Your WattRoom account was deleted", "It is gone.", "", "", "")
 	if !ok {
 		t.Fatal("no receipt for a verified address")
 	}
@@ -571,7 +597,7 @@ func TestAlarmsShipFromTheirOwnSender(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := alertMail(rider, "h", "l", "", ""); !ok {
+	if _, ok := alertMail(rider, "h", "l", "", "", ""); !ok {
 		t.Fatalf("the harness's member has no verified address: %v", rider.Email)
 	}
 	s.AccountAlert(rider, "A passkey was added", "one line")

@@ -69,6 +69,8 @@ that undoes it. The triggers it serves:
   gap that motivates this class more than any other
 - the account was deleted, as a receipt; the purge is irreversible and the
   mail is the only evidence it happened
+- **added 2026-09-10 (#1822)**: the account was recovered from its address —
+  see the amendment at the end of this file
 
 Six call sites, one body, one place to read to answer "do we mail on this?".
 Adding a seventh is a normal change; adding a second security template is an
@@ -133,3 +135,27 @@ This ADR refused sign-in alerts on two grounds: no session list, and nothing to 
 Recorded because the next person weighing this would otherwise find the paragraph arguing from a fact that changed, and reasonably conclude the refusal had expired. It has not; it rests on less than it did.
 
 Unchanged: shipping the alert needs its own budget or a first-sign-in-per-device heuristic, or it becomes the mail cannon #827 closed. Building the session list first makes the question moot and is the better order.
+
+## Amendment, 2026-09-10 (#1822): a second link mail, and the alarm says how to get back in
+
+[ADR-0051](0051-a-mailed-link-is-the-way-back-into-an-account.md) builds
+account recovery, which this ADR's class list did not anticipate, and two
+things here move.
+
+**A recovery link is the second link mail**, beside the address confirmation.
+It is not the one-line alarm template: it is the thing a rider asked for
+rather than a report of something that happened, and it carries a link that
+signs them in. So "security mail is one template" now reads: one *alarm*
+template, plus two mails that carry a link somebody asked for. A third link
+mail is an amendment.
+
+**Every alarm with a button now also names the way back in.** The alarm's
+button goes to `/settings/profile`, and the rider most in need of an alarm is
+the one who can no longer reach it — #1822's whole finding. One standing line
+in the template (`/login/recover`), not a per-trigger variation. The purge
+receipt is exempt: it has no button and no account left to recover.
+
+**The trigger list gains a seventh**: a recovery link was spent, sent to the
+address it was mailed to. The refusal of sign-in alerts is untouched — this
+one is not "somebody signed in somewhere", it is "somebody used the one thing
+that can take this account over", and the rider can act on it precisely.

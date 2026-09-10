@@ -68,6 +68,8 @@ func TestCrossSiteRequestsNeverMintOrMutate(t *testing.T) {
 		{http.MethodPost, "/api/auth/logout", ``},
 		{http.MethodPost, "/api/auth/logout-everywhere", ``},
 		{http.MethodPost, "/api/auth/verify-email", `token=x`},
+		{http.MethodPost, "/api/auth/recover", `{"email":"stranger@example.test"}`},
+		{http.MethodPost, "/api/auth/recover/finish", ``},
 		{http.MethodPatch, "/api/me", `{"displayName":"x","ftpWatts":250,"weightKg":80}`},
 		{http.MethodPost, "/api/me/avatar", ``},
 		{http.MethodPatch, "/api/me/appearance", `{}`},
