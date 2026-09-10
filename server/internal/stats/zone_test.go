@@ -26,6 +26,12 @@ func TestZoneFallsBackToUTC(t *testing.T) {
 		{"reported empty", ptr(""), "UTC"},
 		{"a name Go cannot load", ptr("Nowhere/Atlantis"), "UTC"},
 		{"a path, not a name", ptr("../../etc/passwd"), "UTC"},
+		// LoadLocation accepts "Local" and answers with the server's zone,
+		// which is the one thing a rider's day must never be. Postgres also
+		// refuses the name outright ("time zone \"Local\" not recognized"),
+		// so leaving it through cost the rider their streak bonus silently
+		// and 500'd their own page.
+		{"the server's own zone, asked for by name", ptr("Local"), "UTC"},
 		{"a real zone", ptr("Europe/Zurich"), "Europe/Zurich"},
 		{"a real zone west of UTC", ptr("America/Denver"), "America/Denver"},
 	}

@@ -2,7 +2,7 @@ package stats
 
 import "time"
 
-// The rider's calendar day (#2063, ADR-0016's 2026-09-11 amendment, and the
+// The rider's calendar day (#2063, ADR-0016's second 2026-09-10 amendment, and the
 // day-boundary rule in docs/SPEC.md). Four surfaces used to disagree about
 // when a rider's day starts — the rider page's month read `users.timezone`
 // while Load, the streak week and the achievement clock bucketed at UTC — so
@@ -13,11 +13,11 @@ import "time"
 // zones and a room has no zone of its own.
 
 // Zone is the zone a rider's own days are counted in: the one the browser
-// reported, or UTC when it never did or reported a name Go cannot load.
+// reported, or UTC when it never did or reported a name we will not use.
 // `users.timezone` is nullable — a rider who has never opened the app in a
 // browser that told us has no zone at all.
 func Zone(tz *string) *time.Location {
-	if tz == nil || *tz == "" {
+	if tz == nil || *tz == "" || *tz == localZone {
 		return time.UTC
 	}
 	loc, err := time.LoadLocation(*tz)
@@ -26,6 +26,14 @@ func Zone(tz *string) *time.Location {
 	}
 	return loc
 }
+
+// localZone is the one name LoadLocation accepts that we must refuse. It
+// resolves to the SERVER's zone, which is precisely what a rider's day is not
+// allowed to depend on, and it is a name Postgres does not know at all — `at
+// time zone 'Local'` is an error, so letting it through cost the rider their
+// streak bonus without a word and 500'd their own page. POST /api/me/timezone
+// validates with LoadLocation and so accepts it from any client.
+const localZone = "Local"
 
 // ZoneName is Zone's answer as Postgres wants it, for the queries that bucket
 // in SQL (`at time zone $tz`). Derived from Zone rather than validated again,
