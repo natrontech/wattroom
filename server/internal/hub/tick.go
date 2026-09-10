@@ -368,12 +368,15 @@ func (rm *room) sayPhaseLocked(state protocol.SessionState, now time.Time) {
 	}
 }
 
-// sprintBlockKey names one sprint block of one run of the timeline. Both
+// armedSprintKey names one sprint block of one run of the timeline. Both
 // halves matter: the block's second tells two sprints of the same workout
 // apart, and the run number lets go of the latch when the session is
 // restarted or a new workout picked (session.run). Plain ints, so the latch
 // compares by value and never by an instant derived twice.
-type sprintBlockKey struct {
+//
+// The zero value cannot collide with a real block: session.run is 0 until
+// start() bumps it, and only a running timeline has a block at all.
+type armedSprintKey struct {
 	run    int
 	second int
 }
@@ -391,13 +394,18 @@ type sprintBlockKey struct {
 // is set either way, so the declined block is not retried a second later
 // with most of its window already gone.
 //
+// The window's length is the coach's to choose only as far as the workout
+// boundary allows: workout.Validate bounds every step, so the 4 Hz burst
+// this puts the room on lasts as long as the block the room's own coach
+// picked and no longer.
+//
 // Caller holds rm.mu.
 func (rm *room) armWorkoutSprintLocked(now time.Time) {
 	block, ok := rm.session.sprintBlockAt(now, sprintKlaxon)
 	if !ok {
 		return
 	}
-	key := sprintBlockKey{run: rm.session.run, second: block.second}
+	key := armedSprintKey{run: rm.session.run, second: block.second}
 	if rm.armedBlock == key {
 		return
 	}

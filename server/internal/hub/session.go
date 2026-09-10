@@ -262,6 +262,8 @@ func (s *session) sprintBlockAt(now time.Time, lead time.Duration) (sprintBlock,
 	}
 	// Wall-clock instant of workout second zero.
 	origin := s.startedAt.Add(-s.banked)
+	// Blocks are sequential, so the first match is the answer — and a sprint
+	// still running outranks the lead of the sprint immediately after it.
 	for _, seg := range s.segments {
 		if seg.Kind != "sprint" || seg.Seconds <= 0 {
 			continue

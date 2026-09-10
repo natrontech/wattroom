@@ -48,7 +48,7 @@ type room struct {
 	// the tick would re-arm once a second for the whole block, wiping the
 	// samples the podium is computed from. Zero value is "none yet", and it
 	// is keyed by the session's run so a restart or a new pick lets go.
-	armedBlock sprintBlockKey
+	armedBlock armedSprintKey
 	game       gameMode
 	lastGame   *protocol.GameState
 	// The running game's roster, merged from seen on every tick (#1581).
