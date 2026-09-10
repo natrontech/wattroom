@@ -10,7 +10,7 @@
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import { createProfileStore } from '$lib/profile.svelte';
+	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
@@ -59,6 +59,28 @@
 	function forgetTrainer() {
 		if (roomHolds) ride?.unpair();
 		else solo.forget();
+	}
+
+	// How a sprint moment drives the trainer (#1860). It lived on Profile, which
+	// is who you are and the numbers a ride scales from — these two are
+	// statements about a drivetrain and a trainer, and this is the page with the
+	// trainer on it. Each saves itself: there is no other field here to press a
+	// Save for, and a checkbox a rider ticks and walks away from has to have
+	// taken (errors.md).
+	let singleSpeed = $state(profile.current.singleSpeed);
+	let sprintGrade = $state(profile.current.sprintGrade);
+	let sprintError = $state<string | null>(null);
+
+	function saveSprint(next: { singleSpeed?: boolean; sprintGrade?: number }) {
+		sprintError = profile.update(next);
+		// A refused number is not the stored one: put the stored one back, so the
+		// field never shows a value the ride will not use. An emptied box lands
+		// here too — there is no "no grade", and stored as nothing it would read
+		// back later as the 5 % default with nothing having said so.
+		if (sprintError) {
+			singleSpeed = profile.current.singleSpeed;
+			sprintGrade = profile.current.sprintGrade;
+		}
 	}
 </script>
 
@@ -130,6 +152,59 @@
 			>
 		{/if}
 	</div>
+
+	<!-- docs/SPEC.md's word for the thing being configured: a sprint moment is
+	     "coach- or workout-armed 15 s all-out window; trainer flips ERG→slope".
+	     Which is why it is filed with the trainer. -->
+	<section class="panel mt-8 p-6">
+		<h2 class="font-display font-bold">Sprint moments</h2>
+		<p class="text-muted mt-1 text-xs">
+			What your trainer does when a sprint is armed.
+		</p>
+		<!-- Labelled by what it does, hinted with the hardware (#1573): "Single-speed
+		     setup (Zwift Cog)" read as "not for me" to the rider it was for. -->
+		<label class="mt-4 block">
+			<span class="flex items-center gap-2 text-sm">
+				<input
+					type="checkbox"
+					bind:checked={singleSpeed}
+					onchange={() => saveSprint({ singleSpeed })}
+				/>
+				Sprints stay in ERG — don't make me shift
+			</span>
+			<span class="text-muted mt-1 block text-[11px]">
+				A sprint moment holds a hard target instead of switching to slope.
+				Choose this if you ride single-speed (a Zwift Cog), or just prefer not
+				to shift indoors.
+			</span>
+		</label>
+		{#if !singleSpeed}
+			<!-- One number, and the default is right for almost everyone (ux.md's
+			     95% rule): folded, the way the calendar link's reset is. -->
+			<details class="mt-3">
+				<summary class="text-muted hover:text-ink cursor-pointer text-[11px]"
+					>Advanced</summary
+				>
+				<label class="mt-2 block max-w-40">
+					<span class="eyebrow">sprint grade (%)</span>
+					<input
+						type="number"
+						bind:value={sprintGrade}
+						min={PROFILE_LIMITS.minSprintGrade}
+						max={PROFILE_LIMITS.maxSprintGrade}
+						onchange={() => saveSprint({ sprintGrade })}
+						class="input mt-1 w-full font-mono tabular-nums"
+					/>
+					<span class="text-muted mt-1 block text-[11px]"
+						>The slope a sprint moment throws you onto.</span
+					>
+				</label>
+			</details>
+		{/if}
+		{#if sprintError}
+			<p class="text-danger mt-2 text-xs">{sprintError}</p>
+		{/if}
+	</section>
 
 	<section class="panel mt-8 p-6">
 		<h2 class="font-display font-bold">Measurement</h2>

@@ -14,6 +14,8 @@ export const PROFILE_LIMITS = {
 	maxKg: 200,
 	minLthr: 100,
 	maxLthr: 210,
+	minSprintGrade: 1,
+	maxSprintGrade: 15,
 } as const;
 
 export interface Profile {
@@ -78,7 +80,11 @@ export function parseProfile(value: unknown): Profile {
 			? lthr
 			: undefined,
 		shareHr: typeof shareHr === 'boolean' ? shareHr : true,
-		sprintGrade: inRange(sprintGrade, 1, 15)
+		sprintGrade: inRange(
+			sprintGrade,
+			PROFILE_LIMITS.minSprintGrade,
+			PROFILE_LIMITS.maxSprintGrade,
+		)
 			? sprintGrade
 			: DEFAULT_PROFILE.sprintGrade,
 		singleSpeed: typeof singleSpeed === 'boolean' ? singleSpeed : false,
@@ -126,6 +132,20 @@ export function createProfileStore() {
 				!inRange(next.lthr, PROFILE_LIMITS.minLthr, PROFILE_LIMITS.maxLthr)
 			) {
 				return `LTHR has to be between ${PROFILE_LIMITS.minLthr} and ${PROFILE_LIMITS.maxLthr} bpm.`;
+			}
+			// Same reason as FTP, and it became reachable when the field moved to
+			// Equipment and started saving itself (#1860): a typed 20 used to be
+			// coerced to 5 by parseProfile on the way out, so the rider read their
+			// own number back as a different one with nothing said.
+			if (
+				next.sprintGrade !== undefined &&
+				!inRange(
+					next.sprintGrade,
+					PROFILE_LIMITS.minSprintGrade,
+					PROFILE_LIMITS.maxSprintGrade,
+				)
+			) {
+				return `Sprint grade has to be between ${PROFILE_LIMITS.minSprintGrade} and ${PROFILE_LIMITS.maxSprintGrade} %.`;
 			}
 			const merged = parseProfile({ ...profile, ...next });
 			try {

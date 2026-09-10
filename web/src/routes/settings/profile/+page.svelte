@@ -38,8 +38,6 @@
 
 	// null = no anchor set; saving null clears it (ADR-0014, device-local).
 	let lthr = $state<number | null>(profile.current.lthr ?? null);
-	let sprintGrade = $state(profile.current.sprintGrade);
-	let singleSpeed = $state(profile.current.singleSpeed);
 	let status = $state<string | null>(null);
 	let saveError = $state<{ message: string; field?: string } | null>(null);
 	let signingOut = $state(false);
@@ -131,8 +129,6 @@
 				: (profile.update({
 						ftp: nextFtp,
 						kg,
-						sprintGrade,
-						singleSpeed,
 						lthr: lthr ?? undefined,
 					}) ?? 'Saved.');
 			return;
@@ -141,8 +137,6 @@
 			profile.update({
 				ftp: nextFtp,
 				kg,
-				sprintGrade,
-				singleSpeed,
 				lthr: lthr ?? undefined,
 			}) ?? 'Saved.';
 	}
@@ -379,35 +373,6 @@
 							only, and are never scored.
 						</p>
 					</div>
-				{/if}
-				<!-- Labelled by what it does, hinted with the hardware (#1573): "Single-speed
-				     setup (Zwift Cog)" read as "not for me" to the rider it was for. The
-				     grade does nothing while sprints stay in ERG, so it steps aside. -->
-				<label class="block sm:col-span-2">
-					<span class="flex items-center gap-2 text-sm">
-						<input type="checkbox" bind:checked={singleSpeed} />
-						Sprints stay in ERG — don't make me shift
-					</span>
-					<span class="text-muted mt-1 block text-[11px]">
-						A sprint moment holds a hard target instead of switching to slope.
-						Choose this if you ride single-speed (a Zwift Cog), or just prefer
-						not to shift indoors.
-					</span>
-				</label>
-				{#if !singleSpeed}
-					<label class="block">
-						<span class="eyebrow">sprint grade (%)</span>
-						<input
-							type="number"
-							bind:value={sprintGrade}
-							min="1"
-							max="15"
-							class="input mt-1 w-full font-mono tabular-nums"
-						/>
-						<span class="text-muted mt-1 block text-[11px]"
-							>The slope a sprint moment throws you onto.</span
-						>
-					</label>
 				{/if}
 				{#if account.me?.mailAvailable}
 					<label class="block">

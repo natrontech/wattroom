@@ -9,8 +9,10 @@
  */
 import Bell from '@lucide/svelte/icons/bell';
 import ChevronsDown from '@lucide/svelte/icons/chevrons-down';
+import LogOut from '@lucide/svelte/icons/log-out';
 import Settings from '@lucide/svelte/icons/settings';
 import User from '@lucide/svelte/icons/user';
+import { account } from '$lib/account.svelte';
 import type { MenuEntry, MenuSlider } from '$lib/context-menu.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
 import { deviceOptions } from '$lib/room/device-options';
@@ -91,5 +93,19 @@ export function youMenu(go: (href: string) => void): MenuEntry[] {
 		cueFader(),
 		...(duck ? [duck] : []),
 		...speakers(),
+		// Signing out is not a setting, and it was only ever reachable from
+		// Settings › Your data, between "Export everything" and "Delete account"
+		// (#1860). A rider looking for the way out reaches for their avatar, and
+		// this menu is what the avatar opens. Last, after a separator, with the
+		// danger token (ux.md) — and still on Your data, because nothing lives
+		// only in a menu. The shell sends a signed-out session to /login itself,
+		// so there is nowhere to navigate to here.
+		'separator',
+		{
+			label: 'Sign out',
+			icon: LogOut,
+			danger: true,
+			onSelect: () => void account.signOut(),
+		},
 	];
 }
