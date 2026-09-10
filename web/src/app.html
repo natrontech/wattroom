@@ -3,7 +3,8 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="text-scale" content="scale" />
+		<!-- No text-scale meta (#1971): it was not a standard and did nothing. The
+		     scaling story is page zoom, which the viewport above leaves enabled. -->
 		%sveltekit.head%
 		<script>
 			// The rider's theme before the bundle runs (#398): palette.svelte.ts
