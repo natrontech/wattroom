@@ -24,19 +24,26 @@ test('every destination the sidebar parents lights exactly one row', async ({
 	await expect(nav).toBeVisible();
 	const current = nav.locator('[aria-current]');
 
+	// Anchored, but tolerant of the whitespace a row's own markup leaves
+	// around its label — `toHaveText` matches a regex against the text as it
+	// stands, so `/^Home$/` misses the " Home " the icon and the newlines
+	// leave behind. Anchoring is what makes this say WHICH row rather than
+	// merely that the word appears somewhere in the column.
+	const row = (label: string) => new RegExp(`^\\s*${label}\\s*$`, 'i');
+
 	// Home last as well as first: the walk has to prove the row it lit on the
 	// way out goes dark again, not merely that each page lights something.
 	const walk: { path: string; label: RegExp }[] = [
-		{ path: '/home', label: /^Home$/ },
-		{ path: '/workouts', label: /^Workouts$/ },
+		{ path: '/home', label: row('Home') },
+		{ path: '/workouts', label: row('Workouts') },
 		// The directory is the other half of Home's open/join card, so Home
 		// stays lit under it — the way Workouts stays lit under a ride.
-		{ path: '/rooms/directory', label: /^Home$/ },
+		{ path: '/rooms/directory', label: row('Home') },
 		// No thread row belongs to the messages index, so the section heading
 		// is the row that answers for it.
-		{ path: '/messages', label: /direct messages/i },
-		{ path: '/history', label: /^Rides$/ },
-		{ path: '/home', label: /^Home$/ },
+		{ path: '/messages', label: row('direct messages') },
+		{ path: '/history', label: row('Rides') },
+		{ path: '/home', label: row('Home') },
 	];
 
 	for (const { path, label } of walk) {
