@@ -87,9 +87,11 @@ export const test = base.extend<{
 				});
 				const menu = page.getByRole('button', { name: 'open navigation' });
 				// The shell draws once /api/me answers: wait for whichever of the
-				// two is this width's way in before asking which it was.
+				// two is this width's way in. Below md the closed drawer is in the
+				// DOM, translated off-screen — "visible" to Playwright and
+				// unclickable — so the hamburger, not the +, decides the width.
 				await expect(plus.or(menu).first()).toBeVisible({ timeout: 15_000 });
-				if (!(await plus.isVisible())) await menu.click();
+				if (await menu.isVisible()) await menu.click();
 				await plus.click();
 				const sheet = page.getByRole('dialog', { name: 'Open a room' });
 				await sheet.locator('#open-room-name-sheet').fill(name);
