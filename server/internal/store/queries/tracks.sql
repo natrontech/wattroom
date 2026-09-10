@@ -122,3 +122,13 @@ select gone.sha256,
     (select count(*) from tracks t
      where t.sha256 = gone.sha256 and t.id <> sqlc.arg(id))::bigint as others
 from gone;
+
+-- name: OrphanShasOfUser :many
+-- The content only this rider's rows point at (#1897): what a purge may
+-- take from disk once the rows are gone. One blob per sha however many
+-- shelves hold it (#1095), so a sha another rider also holds stays.
+select distinct t.sha256 from tracks t
+where t.uploaded_by = $1
+  and not exists (
+    select 1 from tracks o where o.sha256 = t.sha256 and o.uploaded_by <> $1
+  );

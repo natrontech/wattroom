@@ -67,6 +67,17 @@ type Service struct {
 	dir   string
 }
 
+// RemoveBlobs deletes stored audio nothing points at any more — the purge's
+// half of #1897, after the rows went with the account. Best effort: a file
+// that will not go is disk to reclaim and a log line, never a failed delete.
+func (s *Service) RemoveBlobs(shas []string) {
+	for _, sha := range shas {
+		if err := s.remove(sha); err != nil {
+			s.log.Error("track file remove after purge", "err", err, "sha", sha)
+		}
+	}
+}
+
 func New(st *store.Store, a Auth, log *slog.Logger) *Service {
 	dir := os.Getenv("WATTROOM_TRACKS_DIR")
 	if dir == "" {

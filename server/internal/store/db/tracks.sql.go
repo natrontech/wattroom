@@ -218,6 +218,37 @@ func (q *Queries) ListTracks(ctx context.Context, arg ListTracksParams) ([]ListT
 	return items, nil
 }
 
+const orphanShasOfUser = `-- name: OrphanShasOfUser :many
+select distinct t.sha256 from tracks t
+where t.uploaded_by = $1
+  and not exists (
+    select 1 from tracks o where o.sha256 = t.sha256 and o.uploaded_by <> $1
+  )
+`
+
+// The content only this rider's rows point at (#1897): what a purge may
+// take from disk once the rows are gone. One blob per sha however many
+// shelves hold it (#1095), so a sha another rider also holds stays.
+func (q *Queries) OrphanShasOfUser(ctx context.Context, uploadedBy pgtype.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, orphanShasOfUser, uploadedBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var sha256 string
+		if err := rows.Scan(&sha256); err != nil {
+			return nil, err
+		}
+		items = append(items, sha256)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const trackBySha = `-- name: TrackBySha :one
 select id, sha256, uploaded_by, title, artist, album, duration_ms, size_bytes, bpm, created_at, search, tags from tracks where uploaded_by = $1 and sha256 = $2
 `

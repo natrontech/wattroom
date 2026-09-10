@@ -1,0 +1,1 @@
+- Deleting your account also removes the music you uploaded from the server's disk, not only its listing; a song someone else uploaded too stays for them.
