@@ -44,7 +44,13 @@ func (s *Service) handleUpdateTimezone(w http.ResponseWriter, r *http.Request) {
 			"That is not a timezone name.", "timezone")
 		return
 	}
-	if _, err := time.LoadLocation(req.Timezone); err != nil || req.Timezone == "" {
+	// "Local" is refused although LoadLocation accepts it: it resolves to the
+	// SERVER's zone, which is the one thing a rider's day must not depend on
+	// (#2063), and Postgres does not know the name at all — the queries that
+	// bucket in SQL error on it. stats.Zone refuses it a second time on the
+	// read side, so an already-stored one is harmless; this keeps it out.
+	// Intl.DateTimeFormat never reports it, so no real client loses anything.
+	if _, err := time.LoadLocation(req.Timezone); err != nil || req.Timezone == "" || req.Timezone == "Local" {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"That is not a timezone name.", "timezone")
 		return
