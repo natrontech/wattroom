@@ -193,7 +193,7 @@
 				<button
 					onclick={() => act(`/api/rooms/${room?.slug}/join`)}
 					disabled={busy}
-					class="btn btn-primary btn-lg mt-6">Join {room.name}</button
+					class="btn btn-primary btn-lg mt-6">Walk in</button
 				>
 			{:else}
 				<!-- Rooms have no codes or links of their own (#1236): the way in

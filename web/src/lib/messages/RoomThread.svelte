@@ -229,7 +229,7 @@
 	{:else}
 		<!-- The way in — the one thing this page cannot give you. -->
 		<a href="/r/{slug}" class="btn btn-accent btn-xs ml-auto shrink-0"
-			><Radio size={13} /> Join the room</a
+			><Radio size={13} /> Walk in</a
 		>
 	{/if}
 </header>

@@ -104,7 +104,7 @@
 		entries.push('separator');
 		if (friend.room)
 			entries.push({
-				label: 'Join their room',
+				label: 'Walk in',
 				icon: Radio,
 				onSelect: () => goto(`/r/${friend.room}`),
 			});
@@ -287,7 +287,7 @@
 							</a>
 							{#if friend.room}
 								<a href="/r/{friend.room}" class="btn btn-primary btn-xs"
-									>Join them</a
+									>Walk in</a
 								>
 							{/if}
 							<button
