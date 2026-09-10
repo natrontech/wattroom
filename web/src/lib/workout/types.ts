@@ -52,6 +52,14 @@ export interface Workout {
 	name: string;
 	author?: string;
 	steps: WorkoutStep[];
+	/**
+	 * The workout declaring its own execution score meaningless (#1400), which
+	 * the server reads off this JSON when it saves the ride. Absent is scored.
+	 * The ramp test is the only workout that sets it — its steps are targets
+	 * the trainer holds the rider on, so the score would measure the trainer.
+	 * The editor never writes it; it is not a per-workout setting.
+	 */
+	unscored?: boolean;
 }
 
 /** One entry of the flattened timeline — repeats expanded, absolute offsets. */

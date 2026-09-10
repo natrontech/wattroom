@@ -29,10 +29,20 @@ import (
 //     to return 1 here, a PERFECT score for a ride nobody could score, which
 //     was then stored, paid as XP, and won the Metronome medal off riders who
 //     had actually ridden the intervals.
+//
+// A fourth case is the workout saying so itself (#1400): the ramp test
+// prescribes 25 steady steps, so Scorable below says yes and the loop then
+// scores a rider the trainer was holding on the target — near 1.0 by
+// construction, the same pathology from the other end. A workout that
+// declares itself unscored is answered before the loop, so no number reaches
+// the row or the XP bonus.
 func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics) (score float64, scorable bool, err error) {
 	segments, err := workout.Parse(workoutJSON)
 	if err != nil {
 		return 0, false, fmt.Errorf("stats: workout json: %w", err)
+	}
+	if workout.Unscored(workoutJSON) {
+		return 0, false, nil
 	}
 	scorable = Scorable(segments)
 	var weight, inBand float64

@@ -166,6 +166,8 @@ Targets are fractions of FTP; absolute watts allowed via `"watts": 250` instead 
 
 `repeat` steps nest: a set of sets expresses over-unders without writing every rep out. The engine has always flattened recursively; the type used to forbid it (#12).
 
+A workout may also carry top-level `"unscored": true`, which says its execution score is meaningless and stores the ride with `execution_scored = false` — no percentage on the ride, no `execution% × 50` XP bonus. Absent is scored. The **ramp test is the only workout that sets it**, and the editor never offers it: it is a property of a workout that measures the rider, not a setting (#1400).
+
 ## Power zones (Coggan 7-zone, % of FTP)
 
 Used by Floor is Lava's called zones, time-in-zone scoring, and the interval-graph colour ramp.
@@ -212,6 +214,7 @@ colours the rider's **own** bpm readout, never anyone else's, never scored
 - **Ramp test**: 5-min warmup (35 → 50 % FTP), then target starts at 100 W **(default)**, +20 W/min for up to 25 steps; FTP = 75 % of **best rolling 60 s** (rolling, not per-step — riders fail mid-step and their best minute straddles the boundary). The 75 % is Ric Stern's MAP→FTP midpoint of a 72–77 % band, ±5 % for most riders and worse at the extremes (RESEARCH §17.1).
   - **Blown** = power below 75 % of target for 5 consecutive seconds. The test ends itself; a rider at the end of a ramp will not press a button.
   - **Too short to score**: fewer than warmup + 2 completed steps produces no FTP at all. FTP scales every workout, so a number derived from a warmup is worse than no number.
+  - **Saved as a ride, unscored** (#1400): a finished ramp lands on the history like any other ride — kJ, XP, power curve, FIT and Strava export — and carries `"unscored": true`, so no execution score is stored, shown or paid. The steps are ERG targets the trainer holds the rider on, so a score there measures the trainer; a ramp is still the hardest ride most riders do in a month and discarding it was read as data loss.
 
 ## XP sources (defaults — tune in alpha)
 

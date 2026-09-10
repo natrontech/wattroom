@@ -58,3 +58,24 @@ func TestARampStepHasATarget(t *testing.T) {
 		t.Fatalf("SegmentAt midpoint pct = %v, want ~0.65", pct)
 	}
 }
+
+func TestUnscored(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		json string
+		want bool
+	}{
+		{"absent is scored", `{"name":"t","steps":[]}`, false},
+		{"declared", `{"name":"t","unscored":true,"steps":[]}`, true},
+		{"declared false", `{"name":"t","unscored":false,"steps":[]}`, false},
+		// Parse reports the error; this answers the safe way rather than
+		// handing an unreadable workout a free pass out of scoring.
+		{"junk", `{`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := Unscored(tc.json); got != tc.want {
+				t.Errorf("Unscored = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}

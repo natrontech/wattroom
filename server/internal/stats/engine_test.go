@@ -286,3 +286,40 @@ func TestExecutionDistinguishesNothingToScoreFromPerfect(t *testing.T) {
 		t.Error("a workout of warmup, sprint and cooldown has nothing to score")
 	}
 }
+
+// #1400: the ramp test is saved as a ride, and the ride is not scored. Its
+// steps are steady targets, so Scorable alone says yes and the rider — held
+// on the target by ERG — scores near 1.0 for riding to failure. The workout
+// declaring itself unscored is what stops that reaching the row and the XP.
+func TestExecutionHonoursAWorkoutThatDeclaresItselfUnscored(t *testing.T) {
+	// The ramp's shape: a warmup, then steady steps in absolute watts.
+	steps := `{"type":"warmup","seconds":60,"from":0.35,"to":0.5},
+		{"type":"steady","seconds":60,"watts":100},
+		{"type":"steady","seconds":60,"watts":120}`
+	scored := `{"name":"Ramp test","steps":[` + steps + `]}`
+	declared := `{"name":"Ramp test","unscored":true,"steps":[` + steps + `]}`
+
+	// On target throughout, which is what a trainer in ERG produces.
+	onTarget := ride(flat(0, 60), clocked(100, 60, 60), clocked(120, 60, 120))
+
+	score, ok, err := Execution(scored, 200, onTarget)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ok || score < 0.99 {
+		t.Fatalf("undeclared: scored=%v score=%v, want scorable and ~1 (the score this fixes)", ok, score)
+	}
+
+	score, ok, err = Execution(declared, 200, onTarget)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok {
+		t.Error("a workout carrying unscored:true is not scorable")
+	}
+	// Zero, not the computed number: XP pays execution × 50 off this value
+	// whatever the flag says, so a score left in it would still be paid out.
+	if score != 0 {
+		t.Errorf("unscored workout scored %v, want 0", score)
+	}
+}

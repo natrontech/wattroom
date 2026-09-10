@@ -54,6 +54,10 @@ export function buildRampTest(): Workout {
 	return {
 		name: 'Ramp test',
 		author: 'wattroom',
+		// The ride is kept and paid in XP, but not scored (#1400): a ramp is
+		// ridden in ERG against its own climbing target, so an execution score
+		// says the trainer held the wattage, never how the rider went.
+		unscored: true,
 		steps: [
 			{ type: 'warmup', seconds: RAMP.warmupSeconds, from: 0.35, to: 0.5 },
 			...Array.from({ length: RAMP.steps }, (_, i) => ({

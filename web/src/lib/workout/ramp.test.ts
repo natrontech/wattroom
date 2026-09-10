@@ -55,6 +55,14 @@ describe('buildRampTest', () => {
 		expect(atAnyFtp(200, 360)).toBe(120);
 		expect(atAnyFtp(200, 300 + 10 * 60)).toBe(300);
 	});
+
+	// #1400: the ride is kept, but the flag on this JSON is the only thing
+	// telling the server not to score it — the steps are steady targets, so
+	// without it a rider held on target by ERG scores near 1.0 for a test.
+	it('declares itself unscored, so the saved ride carries no execution', () => {
+		expect(buildRampTest().unscored).toBe(true);
+		expect(validateWorkout(buildRampTest()).ok).toBe(true);
+	});
 });
 
 describe('bestOneMinute', () => {

@@ -47,6 +47,22 @@ type Step struct {
 type definition struct {
 	Name  string `json:"name"`
 	Steps []Step `json:"steps"`
+	// A workout that declares its execution meaningless (#1400). Absent is
+	// scored, which is the rides column's default; the ramp test is the only
+	// workout that sets it — it is 25 steady steps the trainer holds the
+	// rider on, so scoring it against itself measures the trainer.
+	Unscored bool `json:"unscored,omitempty"`
+}
+
+// Unscored reports whether the workout declares its own execution score
+// meaningless. Read from the JSON rather than the POST because the ride
+// buffer carries the JSON, so a ride recovered from a crash answers the same.
+func Unscored(workoutJSON string) bool {
+	var d definition
+	if err := json.Unmarshal([]byte(workoutJSON), &d); err != nil {
+		return false
+	}
+	return d.Unscored
 }
 
 // Segment is one flattened block on the timeline.
