@@ -260,7 +260,7 @@
 		phase: () => shared?.phase,
 		countdownRemaining: () => shared?.countdownRemaining,
 		fault: () => faultKind,
-		sprint: () => live.tick?.sprint ?? null,
+		sprint: () => live.tick?.sprint ?? rideCtl.blockSprint,
 		guard: () => rideCtl.guard,
 		spiral: () => rideCtl.spiralActive,
 		block: () => (running ? roster.block?.index : undefined),
@@ -376,7 +376,7 @@
 		live={phase === 'live'}
 		workoutName={shared?.workoutName ?? ''}
 		playing={!!live.tick?.jukebox?.current}
-		sprint={live.tick?.sprint ?? null}
+		sprint={live.tick?.sprint ?? rideCtl.blockSprint}
 		game={live.tick?.game ?? null}
 		onExit={() => (tv = false)}
 	>

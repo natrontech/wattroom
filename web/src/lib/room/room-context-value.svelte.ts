@@ -161,8 +161,10 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get myRole() {
 			return deps.myRole();
 		},
+		// The coach's armed sprint, or the workout's own block (#2014) — the
+		// server's wins, it is the one with a podium behind it.
 		get sprint() {
-			return live.tick?.sprint;
+			return live.tick?.sprint ?? ride.blockSprint ?? undefined;
 		},
 		get game() {
 			return live.tick?.game;

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import type { RiderMetrics } from '$lib/protocol';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
+import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
 
 // The socket's own dependencies, silenced: IndexedDB, and the module the
 // tick's clock window lives in stays real (it only does arithmetic).
@@ -423,5 +424,135 @@ describe('the personal guards in a group ride (#788)', () => {
 		dispose();
 		live.close();
 		vi.useRealTimers();
+	});
+});
+
+describe("a workout's own sprint block (#2014)", () => {
+	/** Svelte settles its effects on a microtask; flushSync alone does not. */
+	const settle = async () => {
+		await Promise.resolve();
+		flushSync();
+	};
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	// 60 s at 60 %, then the sprint, then 60 % again — the shape of every
+	// workout the report came off.
+	const segments = [
+		{
+			kind: 'steady' as const,
+			startSeconds: 0,
+			seconds: 60,
+			fromFraction: 0.6,
+			toFraction: 0.6,
+			stepPath: [0],
+		},
+		{
+			kind: 'sprint' as const,
+			startSeconds: 60,
+			seconds: 15,
+			stepPath: [1],
+		},
+		{
+			kind: 'steady' as const,
+			startSeconds: 75,
+			seconds: 60,
+			fromFraction: 0.6,
+			toFraction: 0.6,
+			stepPath: [2],
+		},
+	];
+
+	/**
+	 * A room ride whose shared clock the test moves. The clock is $state
+	 * because that is what the room's own is: a tick moves it and everything
+	 * downstream recomputes.
+	 */
+	function riding() {
+		const live = createRoomLive('mfw');
+		let elapsed = $state(0);
+		const deps = {
+			live,
+			profile: {
+				current: {
+					ftp: 200,
+					shareHr: true,
+					singleSpeed: false,
+					sprintGrade: 5,
+				},
+			},
+			recording: { record() {} } as never,
+			myId: () => 'me',
+			shared: () => ({ phase: 'running', elapsed }),
+			segments: () => segments,
+		};
+		return {
+			live,
+			deps,
+			seek(to: number) {
+				elapsed = to;
+			},
+		};
+	}
+
+	// `targetAt` has no target for a sprint block, and the room folded that
+	// null into 0 — which in ERG is a freewheel, not a sprint. The rider
+	// pedalled against nothing for the whole block and reported exactly that.
+	it('flips to slope rather than writing ERG 0', async () => {
+		vi.useFakeTimers();
+		const { live, deps, seek } = riding();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('erg:120');
+
+		trainer.commands.length = 0;
+		seek(61);
+		await settle();
+		// Flat first, then the hill 500 ms later — an FTMS trainer has to be
+		// taken out of ERG before the grade lands.
+		expect(trainer.commands).toEqual(['sim:0']);
+		vi.advanceTimersByTime(500);
+		expect(trainer.commands).toEqual(['sim:0', 'sim:5']);
+		expect(trainer.commands).not.toContain('erg:0');
+
+		// And back onto the target the block after it asks for.
+		seek(80);
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('erg:120');
+
+		dispose();
+		live.close();
+	});
+
+	it('counts the block in on the room screen', async () => {
+		const { live, deps, seek } = riding();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		await settle();
+		expect(ride.blockSprint).toBe(null);
+
+		// Inside the klaxon lead: the window opens so SprintMoment and the
+		// cue have something to count down, exactly as a coach's does.
+		seek(60 - SPRINT_LEAD_SECONDS);
+		await settle();
+		const window = ride.blockSprint;
+		expect(window).not.toBe(null);
+		expect(window!.endsAtMs - window!.startsAtMs).toBe(15_000);
+
+		seek(80);
+		await settle();
+		expect(ride.blockSprint).toBe(null);
+
+		dispose();
+		live.close();
 	});
 });
