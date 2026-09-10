@@ -228,3 +228,69 @@ func TestTheShelfCursorIsAPair(t *testing.T) {
 		})
 	}
 }
+
+// Why the cursor is a type with no half (#2085). Postgres does not refuse
+// `(created_at, id) < (:before, null)`: the row comparison yields NULL for
+// every row that ties on created_at, so those rows are filtered and the read
+// comes back a successful, short page. Nothing errors and nothing logs — the
+// silent skip #1414 and #2064 were about.
+//
+// That is why every paged list narrows its query through keyset.Cursor.Apply,
+// which hands over both halves or neither: a fourth list that set `Before`
+// and forgot `BeforeID` would reintroduce this with a 200. The rows sharing
+// one created_at come from one transaction, as they do in the shelf.
+func TestAHalfCursorSkipsSilentlyInTheQuery(t *testing.T) {
+	_, st, users := setup(t)
+	user := users.ByToken["alice"]
+
+	const rows = 5
+	tx, err := st.Pool.Begin(t.Context())
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	q := st.Queries.WithTx(tx)
+	for i := range rows {
+		if _, err := q.CreateWorkout(t.Context(), db.CreateWorkoutParams{
+			OwnerID: user.ID, Name: fmt.Sprintf("Tied %d", i), Author: user.DisplayName,
+			Definition: json.RawMessage(`{"name":"Tied","steps":[{"type":"steady","seconds":600,"target":0.7}]}`),
+		}); err != nil {
+			t.Fatalf("insert %d: %v", i, err)
+		}
+	}
+	if err := tx.Commit(t.Context()); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+
+	all, err := st.Queries.ListUserWorkouts(t.Context(), db.ListUserWorkoutsParams{
+		OwnerID: user.ID, Limit: rows,
+	})
+	if err != nil || len(all) != rows {
+		t.Fatalf("first page: %d rows, %v", len(all), err)
+	}
+	boundary := all[0].CreatedAt
+	if !all[rows-1].CreatedAt.Time.Equal(boundary.Time) {
+		t.Fatal("the batch did not share one created_at — the tie this test needs is gone")
+	}
+
+	half, err := st.Queries.ListUserWorkouts(t.Context(), db.ListUserWorkoutsParams{
+		OwnerID: user.ID, Limit: rows,
+		Before: boundary, // and no BeforeID — the mistake under test
+	})
+	if err != nil {
+		t.Fatalf("a half cursor errored, so the type is no longer the only guard: %v", err)
+	}
+	if len(half) != 0 {
+		t.Fatalf("half-cursor read returned %d rows — re-derive what the trap looks like now", len(half))
+	}
+
+	whole, err := st.Queries.ListUserWorkouts(t.Context(), db.ListUserWorkoutsParams{
+		OwnerID: user.ID, Limit: rows,
+		Before: boundary, BeforeID: all[0].ID,
+	})
+	if err != nil {
+		t.Fatalf("whole cursor: %v", err)
+	}
+	if len(whole) != rows-1 {
+		t.Fatalf("the whole cursor read %d of the %d tied rows the half one dropped", len(whole), rows-1)
+	}
+}

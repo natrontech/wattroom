@@ -10,13 +10,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/keyset"
 	"github.com/natrontech/wattroom/server/internal/progression"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -233,21 +233,13 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 		}
 		// One cursor, two halves (#2064). `before` alone reads as a time with
 		// no tie-break, which is how the page boundary silently stepped over
-		// every ride inside one second.
-		if (in.Before == "") != (in.BeforeID == "") {
-			return nil, errInvalidParams("before and beforeId are one cursor — send the pair a previous answer gave you, or neither")
+		// every ride inside one second. Same parser the HTTP list uses; the
+		// sentence comes back unpunctuated, which is this transport's voice.
+		cursor, err := keyset.Parse(in.Before, in.BeforeID, "ride")
+		if err != nil {
+			return nil, errInvalidParams(err.Error())
 		}
-		if in.Before != "" {
-			at, err := time.Parse(time.RFC3339, in.Before)
-			if err != nil {
-				return nil, errInvalidParams("before must be an RFC 3339 time")
-			}
-			id, err := store.ParseUUID(in.BeforeID)
-			if err != nil {
-				return nil, errInvalidParams("beforeId must be a ride id")
-			}
-			params.Before, params.BeforeID = pgtype.Timestamptz{Time: at, Valid: true}, id
-		}
+		cursor.Apply(&params.Before, &params.BeforeID)
 	}
 	rows, err := s.store.Queries.ListUserRides(ctx, params)
 	if err != nil {
@@ -286,8 +278,7 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 	// steps over every ride inside it (#2064).
 	if len(rows) == int(params.Limit) {
 		last := rows[len(rows)-1]
-		payload["nextBefore"] = last.StartedAt.Time.UTC().Format(time.RFC3339Nano)
-		payload["nextBeforeId"] = store.UUIDString(last.ID)
+		keyset.Next(payload, last.StartedAt, last.ID)
 	}
 	return payload, nil
 }
