@@ -1,6 +1,11 @@
 import { goto } from '$app/navigation';
 import { confirm } from '$lib/confirm.svelte';
-import { inviteLink, leaveCrew } from '$lib/crew';
+import {
+	inviteLink,
+	leaveCrew,
+	transferCrew,
+	type CrewPerson,
+} from '$lib/crew';
 import { presence } from '$lib/presence.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
 import type { RoomCrew } from '$lib/room/room-data';
@@ -60,6 +65,48 @@ export function leaveBody(
 			: 'Its code gets you back into the crew, and its open rooms are yours to walk into again.';
 	return `You leave ${name} and ${which} of it you are in. ${back}`;
 }
+
+/**
+ * Handing the crew on (#1208, #2095), from wherever it is offered — the
+ * crew's people list, and whatever offers it next — so the ask cannot drift
+ * from the room hand-over it mirrors: one confirm naming what the actor
+ * gives up, then the transfer, then presence reloads because the actor's own
+ * role changed under them. Resolves to whether it happened.
+ *
+ * A confirm, not an undo (errors.md): the cost is paid by another person the
+ * moment it lands, and the actor has no way back — the new owner is the one
+ * person they can no longer demote, remove or ban, so only the new owner can
+ * hand it back.
+ */
+export async function handOverCrewFlow(
+	crew: Pick<RoomCrew, 'id' | 'name'>,
+	to: Pick<CrewPerson, 'id' | 'displayName'>,
+): Promise<boolean> {
+	const sure = await confirm({
+		title: `Hand ${crew.name} to ${to.displayName}?`,
+		body: HAND_OVER_BODY,
+		action: 'Hand it over',
+		cancel: 'Keep it',
+	});
+	if (!sure) return false;
+	const res = await transferCrew(crew.id, to.id);
+	if (!res.ok) {
+		toasts.push(res.error.message, { tone: 'error' });
+		return false;
+	}
+	toasts.push(`${to.displayName} owns ${crew.name} now. You are an admin.`);
+	presence.reload();
+	return true;
+}
+
+/**
+ * What handing it on costs, said before the button. The two halves errors.md
+ * asks for: what happens to them, and what breaks for you.
+ */
+export const HAND_OVER_BODY =
+	'They become its owner — the one person you can no longer demote, remove ' +
+	'or ban — and you drop to admin, which keeps everything but handing the ' +
+	'crew on. You cannot take this back; only they can hand it back to you.';
 
 /**
  * The invite link onto the clipboard, from wherever it is offered — the crew

@@ -8,20 +8,14 @@
 	import { account } from '$lib/account.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import Modal from '$lib/components/Modal.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
-	import {
-		setCrewRole,
-		transferCrew,
-		type Crew,
-		type CrewPerson,
-	} from '$lib/crew';
+	import { setCrewRole, type Crew, type CrewPerson } from '$lib/crew';
+	import { handOverCrewFlow } from '$lib/crew-flows';
 	import { personMenu } from '$lib/person-menu';
-	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Shield from '@lucide/svelte/icons/shield';
@@ -90,22 +84,13 @@
 
 	// Handing the crew on (#1208) is the one thing here behind a confirm
 	// rather than an undo toast: the actor cannot take it back — only the
-	// new owner can hand it back to them.
-	let handover = $state<CrewPerson | null>(null);
-	async function handOver() {
-		const to = handover;
-		handover = null;
-		if (!to) return;
+	// new owner can hand it back to them. The ask and the call live in
+	// `crew-flows.ts` beside leaving, so they cannot drift apart (#2095).
+	async function handOver(person: CrewPerson) {
 		busy = true;
-		const res = await transferCrew(crew.id, to.id);
+		const done = await handOverCrewFlow(crew, person);
 		busy = false;
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		toasts.push(`${to.displayName} owns ${crew.name} now. You are an admin.`);
-		presence.reload();
-		onchange();
+		if (done) onchange();
 	}
 
 	/** The banned row's menu (#1934): the person, and the one lift. */
@@ -136,7 +121,7 @@
 			entries.push({
 				label: `Hand the crew to ${person.displayName}`,
 				icon: Crown,
-				onSelect: () => (handover = person),
+				onSelect: () => handOver(person),
 			});
 		// A room owner cannot be banned from the crew their room is in (#1212):
 		// the entry stays, says why, and does nothing — never a 409 on click.
@@ -154,27 +139,6 @@
 	const roleWord = (role: CrewPerson['role']) =>
 		role === 'owner' ? 'owner' : role === 'admin' ? 'admin' : 'member';
 </script>
-
-{#if handover}
-	<Modal label="Hand the crew on" onclose={() => (handover = null)}>
-		<h2 class="font-display text-lg font-bold">
-			Hand {crew.name} to {handover.displayName}?
-		</h2>
-		<p class="text-muted mt-2 text-sm">
-			They become its owner — the one person nobody can demote, remove or ban —
-			and you stay on as an admin. You cannot take this back; only they can hand
-			it back to you.
-		</p>
-		<div class="mt-4 flex justify-end gap-2">
-			<button onclick={() => (handover = null)} class="btn btn-secondary"
-				>Cancel</button
-			>
-			<button onclick={handOver} disabled={busy} class="btn btn-primary"
-				>Hand it over</button
-			>
-		</div>
-	</Modal>
-{/if}
 
 <h2 class="eyebrow mt-8">people</h2>
 <ul class="divide-ink/5 panel mt-2 divide-y">
