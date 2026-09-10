@@ -147,6 +147,13 @@
 	 * press while it still sounds is the stop (#1321): the room hears it end.
 	 */
 	let glow: ReturnType<typeof setTimeout> | undefined;
+	// The server drops a second fire inside a second (docs/SPEC.md) and says
+	// nothing; the pad used to light for it anyway and the next tap sent a
+	// stop for a clip that never sounded (#1895). Mirror the ceiling: a fire
+	// that would be dropped is not sent, and the pads dim until it may go.
+	let lastFireAt = 0;
+	let cooling = $state(false);
+	let cooldown: ReturnType<typeof setTimeout> | undefined;
 	function fireClip(clip: Clip) {
 		clearTimeout(glow);
 		if (mine?.clipId === clip.id) {
@@ -154,6 +161,14 @@
 			mine = undefined;
 			return;
 		}
+		const wait = 1000 - (Date.now() - lastFireAt);
+		if (wait > 0) {
+			cooling = true;
+			clearTimeout(cooldown);
+			cooldown = setTimeout(() => (cooling = false), wait);
+			return;
+		}
+		lastFireAt = Date.now();
 		onFire(clip.id);
 		mine = { clipId: clip.id, pad: clip.pad };
 		glow = setTimeout(() => (mine = undefined), keptMillis(clip));
@@ -254,6 +269,7 @@
 		{#if face === 'board'}
 			<BoardFace
 				mine={mine?.pad}
+				{cooling}
 				onPress={press}
 				onAudition={(clip) => void preview(clip.id, me, clip)}
 			/>

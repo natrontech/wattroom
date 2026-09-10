@@ -20,6 +20,7 @@
 	import { onSeat, stageSlot } from '$lib/room/stage-slot.svelte';
 	import Music from '@lucide/svelte/icons/music';
 	import VolumeX from '@lucide/svelte/icons/volume-x';
+	import { youtubeFailureIsGlobal } from '$lib/room/playback-failure';
 
 	// THE jukebox player (#216): one iframe, docked on the app frame, alive
 	// as long as the room connection is — music follows you between pages the
@@ -177,16 +178,25 @@
 						if (e.data === CUED || e.data === PLAYING) disableCaptions();
 					},
 					onError: (e: { data: number }) => {
-						// Non-embeddable or broken: skip for everyone rather than
+						// Non-embeddable or gone: skip for everyone rather than
 						// leaving each rider staring at a different error — but SAY
 						// so. Labels and most livestreams refuse embedding, and the
 						// track just vanishing read as the paste being ignored.
+						if (youtubeFailureIsGlobal(e.data)) {
+							toasts.push(
+								e.data === 101 || e.data === 150
+									? 'That video blocks playback outside YouTube — skipped. Try another upload of it.'
+									: 'That video could not be played here — skipped.',
+							);
+							reportEnded();
+							return;
+						}
+						// This browser's own trouble (#1896): the room plays on and
+						// this rider sits the track out, back in on the next one.
 						toasts.push(
-							e.data === 101 || e.data === 150
-								? 'That video blocks playback outside YouTube — skipped. Try another upload of it.'
-								: 'That video could not be played here — skipped.',
+							'That video could not be played here — the room plays on; you are back in on the next track.',
 						);
-						reportEnded();
+						listening.stepOut('skip', play, playerInfo.duration);
 					},
 				},
 			});

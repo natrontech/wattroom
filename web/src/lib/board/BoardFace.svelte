@@ -30,11 +30,14 @@
 
 	let {
 		mine,
+		cooling = false,
 		onPress,
 		onAudition,
 	}: {
 		/** The pad this rider has sounding, so only their own press lights up. */
 		mine: number | undefined;
+		/** Inside the server's one-fire-a-second: a press now would be dropped (#1895). */
+		cooling?: boolean;
 		/** `alt` is the audition: only this rider hears it (#981). */
 		onPress: (pad: number, alt: boolean) => void;
 		onAudition: (clip: Clip) => void;
@@ -171,9 +174,11 @@
 						? playing
 							? 'border-watt/50 bg-watt/8'
 							: 'border-muted/20 bg-surface-raised hover:border-muted/40'
-						: 'border-muted/20 border-dashed'} {dragged === slot
+						: 'border-muted/20 border-dashed'} {dragged === slot ||
+				(cooling && clip && !playing)
 					? 'opacity-40'
 					: ''}"
+				aria-disabled={cooling && !!clip && !playing ? true : undefined}
 				{@attach clip ? contextMenu(() => padMenu(slot, clip)) : () => {}}
 			>
 				{#if clip}

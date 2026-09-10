@@ -1,0 +1,1 @@
+- A video or track that fails only in your browser no longer skips it for the whole room: you sit that one out and rejoin on the next, while a video nobody can play — blocked, removed, or a track that is gone — still moves the room on. A soundboard pad no longer lights for a press the server dropped inside its one-a-second limit; the pads dim until the next press may go.
