@@ -77,8 +77,10 @@ test('a conversation with no row of its own still lights one', async ({
 	await expect(heading).toHaveAttribute('aria-current', 'page');
 
 	// And with the list shut, which is the state a rider who folded it once
-	// keeps for good — it is remembered per device.
-	await heading.click();
+	// keeps for good — it is remembered per device, so the fold is read
+	// rather than assumed before it is toggled.
+	if ((await heading.getAttribute('aria-expanded')) === 'true')
+		await heading.click();
 	await expect(heading).toHaveAttribute('aria-expanded', 'false');
 	await expect(nav.locator('[aria-current]')).toHaveCount(1);
 	await expect(heading).toHaveAttribute('aria-current', 'page');
