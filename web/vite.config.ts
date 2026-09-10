@@ -57,6 +57,8 @@ export default defineConfig({
 		// otherwise and fails with "Playwright Test did not expect test() to be
 		// called here" — which reads like a Playwright problem and is not one.
 		exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', 'e2e/**'],
+		// No socket leaves a unit test (src/vitest.setup.ts).
+		setupFiles: ['src/vitest.setup.ts'],
 	},
 	server: {
 		// 5174 for humans; PORT lets agent harnesses run parallel instances.
