@@ -52,6 +52,7 @@
 <div
 	class="flex flex-wrap items-center gap-1.5"
 	role="radiogroup"
+	tabindex="-1"
 	aria-labelledby={labelledby}
 	aria-label={labelledby ? undefined : 'icon'}
 	onkeydown={walk}
