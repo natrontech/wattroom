@@ -37,9 +37,60 @@ function hardwareLog(): Plugin {
 	};
 }
 
+/**
+ * #1516: the eager shell used to arrive as 122 modulepreload hints, 98 of them
+ * under 2 KB. SvelteKit declares every route node as its own rolldown entry, so
+ * Rolldown's default chunking splits shared code by exact entry-reference-set —
+ * 72 entries produce a long tail of one-module chunks, and 122 separate gzip
+ * streams cost 27 KB more than one. Rolldown's `$initial` tag cannot be used to
+ * name the eager set for the same reason (it matches 4518 of 4534 modules), and
+ * `experimentalMinChunkSize` is a Rollup option Rolldown ignores.
+ *
+ * So compute the eager set instead: the static-import closure of the three
+ * modules the SPA fallback actually preloads — kit's client entry, the generated
+ * app, and route node 0 (the root layout). `buildEnd` runs after the module
+ * graph is complete and before chunk assignment, so the set is populated by the
+ * time `codeSplitting.groups[].test` is consulted.
+ */
+function eagerShell(): { plugin: Plugin; contains: (id: string) => boolean } {
+	const eager = new Set<string>();
+	const isSeed = (id: string) =>
+		id.endsWith('/client-optimized/app.js') ||
+		id.endsWith('/kit/src/runtime/client/entry.js') ||
+		id.endsWith('/client-optimized/nodes/0.js');
+
+	return {
+		contains: (id) => eager.has(id),
+		plugin: {
+			name: 'wattroom-eager-shell',
+			applyToEnvironment: (environment) => environment.name === 'client',
+			buildEnd() {
+				eager.clear();
+				const stack = [...this.getModuleIds()].filter(isSeed);
+				if (stack.length === 0) {
+					// Renamed upstream: the shell silently falls back to Rolldown's
+					// default chunking, which is the 122-preload shape #1516 is about.
+					this.warn('wattroom-eager-shell: no seed module matched');
+				}
+				while (stack.length > 0) {
+					const id = stack.pop() as string;
+					if (eager.has(id)) continue;
+					eager.add(id);
+					// Static imports only — a dynamic import is what makes a route lazy.
+					for (const next of this.getModuleInfo(id)?.importedIds ?? [])
+						stack.push(next);
+				}
+			},
+		},
+	};
+}
+
+const shell = eagerShell();
+
 export default defineConfig({
 	plugins: [
 		hardwareLog(),
+		shell.plugin,
 		tailwindcss(),
 		sveltekit({
 			compilerOptions: {
@@ -52,6 +103,33 @@ export default defineConfig({
 			adapter: adapter({ fallback: 'index.html' }),
 		}),
 	],
+	environments: {
+		// Client only. The same grouping on the SSR build folds browser-only lib
+		// code into a chunk `svelte-kit build`'s prerender pass evaluates, and it
+		// dies with `ReferenceError: document is not defined`.
+		client: {
+			build: {
+				rolldownOptions: {
+					output: {
+						codeSplitting: {
+							groups: [
+								{
+									name: 'eager-vendor',
+									test: (id) =>
+										shell.contains(id) && id.includes('/node_modules/'),
+								},
+								{
+									name: 'eager-app',
+									test: (id) =>
+										shell.contains(id) && !id.includes('/node_modules/'),
+								},
+							],
+						},
+					},
+				},
+			},
+		},
+	},
 	test: {
 		// e2e/ belongs to Playwright. Vitest's default **/*.spec.ts glob picks it up
 		// otherwise and fails with "Playwright Test did not expect test() to be
