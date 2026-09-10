@@ -24,7 +24,10 @@
 	let { remaining, title, note, controls }: Props = $props();
 </script>
 
-<div class="grid h-full place-items-center">
+<!-- `flex-1` so the count-in fills the ride page's column, where the
+     surrounding main is a flex-col and a bare `h-full` collapses to the
+     digit's own height; ignored by the room's grid parent. -->
+<div class="grid h-full min-h-0 flex-1 place-items-center">
 	<!-- Announced once (#1970): the start is the biggest state change in the
 	     product, and a reader heard only the cue. The ticking digit is hidden
 	     from it, or the whole block re-reads every second. -->

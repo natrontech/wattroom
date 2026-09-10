@@ -533,7 +533,7 @@ describe("the count-in (#1800, docs/SPEC.md's session lifecycle)", () => {
 		session.stop();
 	});
 
-	it('writes the first block\'s target only once the count-in ends', async () => {
+	it("writes the first block's target only once the count-in ends", async () => {
 		const trainer = new SimulatedTrainer();
 		const erg = vi.spyOn(trainer, 'setTargetPower');
 		const session = createRideSession({ trainer, workout, ftp: 200 });

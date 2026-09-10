@@ -24,12 +24,7 @@ export function toleranceBand(target: number): number {
 }
 
 export type RideState =
-	| 'idle'
-	| 'countdown'
-	| 'running'
-	| 'autopaused'
-	| 'resuming'
-	| 'done';
+	'idle' | 'countdown' | 'running' | 'autopaused' | 'resuming' | 'done';
 
 /**
  * The count-in before the clock starts (#1800, docs/SPEC.md's session
