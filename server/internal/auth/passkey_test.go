@@ -350,3 +350,79 @@ func TestPasskeyNameCountsCharacters(t *testing.T) {
 		t.Fatalf("blank name = %q", got)
 	}
 }
+
+// ADR-0029's ordering, held by the server and not only by the SPA's gate
+// (#1611). The exemptions matter as much as the refusal: a server that cannot
+// send mail can confirm nobody, and an account that predates the requirement
+// is asked for an address, never required to have one — enforcing on either
+// would be a lockout with nothing the rider could do about it.
+func TestPasskeyRegistrationNeedsTheRequiredAddress(t *testing.T) {
+	registerStart := func(t *testing.T, s *Service, user db.User) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost,
+			"/api/auth/passkey/register/start", nil)
+		req.AddCookie(signedIn(t, s, user))
+		w := httptest.NewRecorder()
+		s.handlePasskeyRegisterStart(w, req)
+		return w
+	}
+
+	for name, tc := range map[string]struct {
+		setUp func(t *testing.T, s *Service) db.User
+		want  int
+	}{
+		"a server that cannot send mail gates nobody": {
+			setUp: func(t *testing.T, s *Service) db.User { return testUser(t, s) },
+			want:  http.StatusOK,
+		},
+		"required and unconfirmed is refused": {
+			setUp: func(t *testing.T, s *Service) db.User {
+				user, _ := verifiable(t, s, "unconfirmed@example.test")
+				return user
+			},
+			want: http.StatusForbidden,
+		},
+		"confirmed since is let through": {
+			setUp: func(t *testing.T, s *Service) db.User {
+				user, mailer := verifiable(t, s, "confirmed@example.test")
+				if w := confirm(t, s, mailer.token(t)); w.Code != http.StatusOK {
+					t.Fatalf("confirming the address = %d: %s", w.Code, w.Body.String())
+				}
+				return user
+			},
+			want: http.StatusOK,
+		},
+		"an account predating the requirement is only asked": {
+			setUp: func(t *testing.T, s *Service) db.User {
+				user, _ := verifiable(t, s, "legacy@example.test")
+				if _, err := s.store.Pool.Exec(t.Context(),
+					"update users set email_required = false where id = $1", user.ID); err != nil {
+					t.Fatalf("clearing the requirement: %v", err)
+				}
+				return user
+			},
+			want: http.StatusOK,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := testService(t)
+			w := registerStart(t, s, tc.setUp(t, s))
+			if w.Code != tc.want {
+				t.Fatalf("register/start = %d, want %d: %s", w.Code, tc.want, w.Body.String())
+			}
+			if tc.want != http.StatusForbidden {
+				return
+			}
+			// The rider hears the machine code, why it is refused, and the one
+			// thing that clears it (.claude/rules/errors.md).
+			if body := w.Body.String(); !strings.Contains(body, `"forbidden"`) ||
+				!strings.Contains(body, "Confirm your email address") {
+				t.Fatalf("the refusal does not say what to do: %s", body)
+			}
+			// Refused before the ceremony, so no challenge is left hanging.
+			if cookies := w.Result().Cookies(); len(cookies) != 0 {
+				t.Fatalf("a refused registration still set %d cookie(s)", len(cookies))
+			}
+		})
+	}
+}

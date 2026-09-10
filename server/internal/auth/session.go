@@ -85,6 +85,41 @@ func (s *Service) RequireUser(w http.ResponseWriter, r *http.Request, signInMess
 	return db.User{}, false
 }
 
+// requireVerifiedEmail holds ADR-0029's ordering on the server instead of
+// only in the SPA's gate (#1611): a passkey is a credential that only the
+// recovery address can recover from, so an account onboarded with the
+// requirement confirms one before it gains a passkey. Reports whether the
+// rider may go on; writes the refusal when they may not.
+//
+// 403, not 401: the session is good and the rider is who they say they are —
+// what is missing is a precondition on their own account (.claude/rules/errors.md).
+//
+// Two conditions narrow it, and both are the difference between a gate and a
+// lockout. They are the same two the client applies in shouldPromptEmail
+// (web/src/lib/account/verify-prompt.ts), so the server refuses exactly where
+// the client already does:
+//
+//   - No mailer, no gate. Where mail is unconfigured, PATCH /api/me refuses
+//     the address field outright, so nobody on that server can confirm one.
+//     Enforcing there would take passkeys away from every account it holds,
+//     permanently and with nothing the rider could do about it.
+//   - email_required only. ADR-0029 requires an address of accounts created
+//     from #781 on and merely asks it of the ones that predate it; those rows
+//     carry email_required = false, and they are exactly the riders — one
+//     Strava grant and nothing else — that passkeys exist for.
+//
+// The synthetic monitor (#822) has no third exemption here because it
+// registers no passkeys; the client needs one because the gate stands in
+// front of riding.
+func (s *Service) requireVerifiedEmail(w http.ResponseWriter, user db.User) bool {
+	if s.mailer == nil || !user.EmailRequired || user.EmailVerifiedAt.Valid {
+		return true
+	}
+	httpx.WriteError(w, http.StatusForbidden, "forbidden",
+		"Confirm your email address before adding a passkey — it is the way back into this account if the passkey is ever lost. Add the address in your WattRoom profile and open the link that arrives.")
+	return false
+}
+
 // currentSessionHash is the hash of the session this request rides on, or
 // nil when it carries none.
 func currentSessionHash(r *http.Request) []byte {

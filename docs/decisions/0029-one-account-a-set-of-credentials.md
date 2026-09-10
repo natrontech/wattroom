@@ -94,6 +94,13 @@ at the one moment undoing it is cheap. There is deliberately no merge tool.
   — to be the place we save a dependency.
 - Passkeys are domain-bound. `wattroom.ch` in production, `localhost` in dev;
   the dev provider and `?as=` are untouched and still carry local work.
+- The ordering is the server's, not the gate's (#1611). `requireVerifiedEmail`
+  in `server/internal/auth/session.go` refuses `POST
+  /api/auth/passkey/register/start` with 403 for an account that carries the
+  requirement and has not confirmed, so a client that skips the SPA does not
+  skip the rule. It narrows to what a rider can actually act on: a server with
+  no mailer can confirm nobody, and accounts that predate the requirement
+  (`email_required = false`) are asked, never required.
 - Riders who lose every credential *and* never verified an address are
   unrecoverable. That is the accepted residue of refusing to merge on
   unverified email, and the reason #781 goes first.
