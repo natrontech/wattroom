@@ -1,0 +1,1 @@
+- The small "live", "N new" and badge-earned lines are readable again: the magenta and violet stay on their dot, bars, line or tick, and the words are drawn in ink.

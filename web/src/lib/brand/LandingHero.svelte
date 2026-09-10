@@ -96,8 +96,8 @@
 	<div class="mb-2 flex items-center justify-between px-1">
 		<span class="eyebrow font-display">Tuesday crew · sweet spot</span>
 		<span
-			class="text-watt glow-text font-display flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase"
-			><span class="live-dot h-1.5 w-1.5 rounded-full bg-current"
+			class="text-ink font-display flex items-center gap-1.5 text-[10px] font-bold tracking-widest uppercase"
+			><span class="live-dot bg-watt glow-stroke h-1.5 w-1.5 rounded-full"
 			></span>live</span
 		>
 	</div>

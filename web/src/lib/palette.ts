@@ -153,7 +153,12 @@ const FAMILY: Record<
 	},
 };
 
-/** Absolute WCAG contrast floors for text and meaning-carrying graphics. */
+/**
+ * Absolute WCAG contrast floors for text and meaning-carrying graphics. The
+ * accents are gated at 3:1 — a graphic's floor, and large text's — so
+ * `text-watt`/`text-neon` are for the giant watt number and marks, never for
+ * 10–11 px words (#1965): the light watt is 3.9:1 and the dark neon 3.8:1.
+ */
 export const CONTRAST = { text: 4.5, accent: 3 } as const;
 
 /** A dark theme's surface must actually be dark; a white one's actually light. */

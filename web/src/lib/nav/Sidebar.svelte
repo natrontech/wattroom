@@ -273,9 +273,10 @@
 				     it sits in lands on Training while it runs (#1332), where the
 				     numbers are, unless you are already standing in the room. -->
 				<span
-					class="text-watt/90 mt-0.5 flex items-center gap-1.5 truncate text-[10px]"
+					class="text-ink/85 mt-0.5 flex items-center gap-1.5 truncate text-[10px]"
 				>
-					<RidingBars size={9} />
+					<!-- The bars carry the watt; 10 px of watt text was under 4.5:1 (#1965). -->
+					<span class="text-watt"><RidingBars size={9} /></span>
 					{room.session.workoutName} · {room.session.elapsedSec < 60
 						? 'starting'
 						: `${Math.round(room.session.elapsedSec / 60)} min in`}
