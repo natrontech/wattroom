@@ -2,6 +2,7 @@ import type { SensorKind } from '$lib/ble/sensor';
 import type { SensorPairing } from '$lib/protocol';
 import type { createRide } from '$lib/room/ride.svelte';
 import { SENSOR_KINDS, sensors } from '$lib/sensors.svelte';
+import type { Trainer } from '$lib/ble/trainer';
 
 /**
  * The pairing state machine, in one place: `/settings/equipment` and the Training place's
@@ -29,6 +30,32 @@ export type PairState =
  * overviews on screen disagreed about which card was connecting and
  * navigating mid-pair lost the spinner.
  */
+/**
+ * The trainer's own trouble (#520): the link is down, or it is up and no
+ * watts arrive — which is `silent` when nothing at all comes over the link,
+ * and `no-power` when frames do but none carries power (#1849): a unit that
+ * reports cadence or speed and never watts, which "turn the cranks" would
+ * not fix and a power meter would.
+ */
+export type TrainerFault = 'reconnecting' | 'silent' | 'no-power' | null;
+
+/** Ten seconds without a sample: which of the two quiet faults is it? */
+export function quietFault(
+	trainer: Pick<Trainer, 'frames' | 'poweredFrames'>,
+): TrainerFault {
+	return trainer.frames && !trainer.poweredFrames ? 'no-power' : 'silent';
+}
+
+/** The one line under a paired-but-quiet trainer, on every pairing surface. */
+export function trainerHint(
+	fault: TrainerFault | undefined,
+): string | undefined {
+	if (fault === 'silent') return 'no watts yet — turn the cranks';
+	if (fault === 'no-power')
+		return 'reporting, but not power — this unit sends no watts; pair a power meter';
+	return undefined;
+}
+
 export function trainerState(
 	ride: Pick<
 		ReturnType<typeof createRide>,

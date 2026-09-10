@@ -185,6 +185,23 @@ describe('the solo pre-ride trainer slot (#611)', () => {
 
 	// #520 on the pre-ride screen: "paired" was the only state it could show,
 	// so a trainer that delivered not one watt read as ready to ride.
+	it('calls a trainer that reports but never powers no-power, not silent (#1849)', async () => {
+		vi.useFakeTimers();
+		try {
+			await withSlot(async (slot) => {
+				const trainer = new FakeTrainer();
+				(trainer as { frames?: number }).frames = 12;
+				(trainer as { poweredFrames?: number }).poweredFrames = 0;
+				await slot.pair(trainer);
+				await vi.advanceTimersByTimeAsync(11_000);
+				flushSync();
+				expect(slot.fault).toBe('no-power');
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('calls a silent trainer silent after ten seconds', async () => {
 		vi.useFakeTimers();
 		await withSlot(async (slot) => {

@@ -1,0 +1,1 @@
+- A trainer that reports over Bluetooth but never sends watts is told apart from a silent one: the pairing card and the room's banner say it sends no power and suggest a power meter, instead of "turn the cranks".

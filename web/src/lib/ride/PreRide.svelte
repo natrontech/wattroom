@@ -26,6 +26,7 @@
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { Workout } from '$lib/workout/types';
+	import { trainerHint } from '$lib/room/sensor-status';
 
 	let {
 		workout,
@@ -94,10 +95,7 @@
 				state: solo.state,
 				device: solo.trainer?.name,
 				reading: solo.reading,
-				hint:
-					solo.fault === 'silent'
-						? 'no watts yet — turn the cranks'
-						: undefined,
+				hint: trainerHint(solo.fault),
 				error: solo.error,
 				onPair: () => void solo.pair(new FtmsTrainer()),
 				onForget: () => solo.forget(),

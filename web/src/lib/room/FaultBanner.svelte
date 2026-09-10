@@ -18,6 +18,12 @@
 	// What went wrong, why it matters, what happens next — never "something went wrong".
 	const copy = $derived.by(() => {
 		if (fault.kind === 'trainer') {
+			if (fault.state === 'no-power')
+				return {
+					title: 'Trainer is connected but sends no power',
+					detail:
+						'It reports over Bluetooth — cadence or speed — but never watts, so nothing here can score you. Pair a power meter as a sensor, or a trainer that measures power.',
+				};
 			if (fault.state === 'silent')
 				return {
 					title: 'Trainer is connected but sending nothing',

@@ -18,6 +18,7 @@
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import { deviceWord } from '$lib/room/sensor-claim';
 	import { pairedElsewhereAll, trainerState } from '$lib/room/sensor-status';
+	import { trainerHint } from '$lib/room/sensor-status';
 
 	// The trainer alone as one row, for a running session's header (#1000) —
 	// what `TrainerButton` used to draw with its own vocabulary.
@@ -51,8 +52,7 @@
 		}),
 		device: ride?.trainer?.name,
 		reading: `${room.you.watts} W · ${room.you.cadence} rpm`,
-		hint:
-			ride?.fault === 'silent' ? 'no watts yet — turn the cranks' : undefined,
+		hint: trainerHint(ride?.fault),
 		error: ride?.error,
 		onPair: () => void ride?.ride(trainerForRoom()),
 		onForget: () => ride?.unpair(),

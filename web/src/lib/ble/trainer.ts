@@ -27,6 +27,14 @@ export interface Trainer {
 	readonly name: string;
 	readonly status: TrainerStatus;
 	readonly mode: ControlMode;
+	/**
+	 * Data frames seen, and how many carried power (#520, #1849). A driver
+	 * that counts lets a unit that reports but never sends watts be told from
+	 * one that is silent — the two want different advice. Optional: the
+	 * simulator does not count, and absent reads as "cannot tell".
+	 */
+	readonly frames?: number;
+	readonly poweredFrames?: number;
 	connect(): Promise<void>;
 	disconnect(): Promise<void>;
 	/** ERG: trainer holds these watts. Implementations serialize writes behind device acks. */
