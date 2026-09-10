@@ -68,6 +68,22 @@ crew**, made with their first room. Rooms-per-crew is not capped separately
 owner and admins open rooms in it, so a crew holds at most 3 × the people
 running it — ADR-0038 asks for two caps and this is the pair.
 
+Shelf ceilings (#1414, defaults — tune in alpha). A room holds at most **50
+planned sessions** — counted the way the room's own list counts them, upcoming
+and not yet started, so a plan that ran, was cancelled or fell past its grace
+gives its slot back. An account holds at most **200 saved workouts**. **Rides
+are not capped**: a rider's history is the product, and nothing may delete or
+refuse it. A ceiling is refused with **429 `rate_limited`** (errors.md, the
+same shape as the ten-token cap) and the message names the number and the
+remedy — never a wait, because a ceiling does not clear on its own.
+
+Ceilings are not what keeps a read small, and a read must never silently drop
+what it cannot fit (#1908): the saved-workout shelf is **paged, 100 a page**,
+by the `?before=` cursor the rides list uses. Calendar feeds carry **30 days of
+history and one year ahead**, at most **1000 events** per render — the ICS body
+is built in memory for a bearer-token URL, and planning is capped three months
+out, so the horizon hides nothing anyone planned.
+
 ### Crew roles ([ADR-0038](decisions/0038-the-crew-is-the-layer-above-rooms.md))
 
 | Capability                                                                                                                          | Crew owner                                            | Crew admin         | Crew member |
