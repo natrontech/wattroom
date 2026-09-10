@@ -30,18 +30,74 @@ const os = require('node:os');
  */
 const DEAD_URL = 'http://localhost:45999/';
 
-async function launch(url) {
+async function launch(url, userData = null) {
 	// Its own userData directory, which is what the single-instance lock is
 	// keyed on. Without this the lock is shared by every checkout on the
 	// machine, so `make desktop` running in one worktree makes a smoke run in
 	// another quit on startup — the same collision #552 fixed for ports and
-	// databases, and this repo runs worktrees in parallel by design.
-	const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'wattroom-smoke-'));
-	return electron.launch({
+	// databases, and this repo runs worktrees in parallel by design. A test
+	// that relaunches passes the same directory back in (#1948).
+	userData ??= fs.mkdtempSync(path.join(os.tmpdir(), 'wattroom-smoke-'));
+	const app = await electron.launch({
 		args: [path.join(__dirname, 'main.js'), `--user-data-dir=${userData}`],
 		env: { ...process.env, WATTROOM_URL: url },
 	});
+	app.userData = userData;
+	return app;
 }
+
+test('the window comes back where it was, unless that is off every display', async () => {
+	const first = await launch(DEAD_URL);
+	const win = await first.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	await first.evaluate(({ BrowserWindow }) => {
+		const [w] = BrowserWindow.getAllWindows();
+		w.setBounds({ x: 40, y: 60, width: 900, height: 700 });
+	});
+	const dir = first.userData;
+	await first.close();
+	const saved = JSON.parse(
+		fs.readFileSync(path.join(dir, 'window.json'), 'utf8'),
+	);
+	expect(saved).toMatchObject({ width: 900, height: 700, maximized: false });
+
+	const second = await launch(DEAD_URL, dir);
+	await expect((await second.firstWindow()).locator('#retry')).toBeVisible();
+	const bounds = await second.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].getBounds(),
+	);
+	expect([bounds.width, bounds.height]).toEqual([900, 700]);
+	await second.close();
+
+	// A position off every display keeps the size and drops the position.
+	fs.writeFileSync(
+		path.join(dir, 'window.json'),
+		JSON.stringify({
+			x: 99999,
+			y: 99999,
+			width: 800,
+			height: 600,
+			maximized: false,
+		}),
+	);
+	const third = await launch(DEAD_URL, dir);
+	await expect((await third.firstWindow()).locator('#retry')).toBeVisible();
+	const placed = await third.evaluate(({ BrowserWindow, screen }) => {
+		const b = BrowserWindow.getAllWindows()[0].getBounds();
+		const on = screen
+			.getAllDisplays()
+			.some(
+				({ workArea: a }) =>
+					b.x < a.x + a.width &&
+					b.x + b.width > a.x &&
+					b.y < a.y + a.height &&
+					b.y + b.height > a.y,
+			);
+		return { on, width: b.width, height: b.height };
+	});
+	expect(placed).toEqual({ on: true, width: 800, height: 600 });
+	await third.close();
+});
 
 test('the window opens and the bridge carries what the app looks for', async () => {
 	const app = await launch(DEAD_URL);
