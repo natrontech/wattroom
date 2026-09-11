@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.114] - 2026-09-11
+
+### Fixed
+
+- `2026.09.113` never reached anyone. The release gate rides a real workout
+  against production before it keeps a new version, and that harness could not
+  start — which read as a failed ride, so a healthy release was rolled back on
+  arrival and every release after it would have been too. Nothing was wrong
+  with `2026.09.113` itself: everything its notes describe ships here.
+
 ## [2026.09.113] - 2026-09-11
 
 ### Added
@@ -2119,7 +2129,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.113...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.114...HEAD
+[2026.09.114]: https://github.com/natrontech/wattroom/compare/2026.09.113...2026.09.114
 [2026.09.113]: https://github.com/natrontech/wattroom/compare/2026.09.112...2026.09.113
 [2026.09.112]: https://github.com/natrontech/wattroom/compare/2026.09.111...2026.09.112
 [2026.09.111]: https://github.com/natrontech/wattroom/compare/2026.09.110...2026.09.111
