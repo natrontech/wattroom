@@ -1,1 +1,0 @@
-- The app's first load now arrives as 6 files instead of 122, and 34 KB less over the wire (110 KB gzipped, down from 145 KB) — the shell used to be split into a long tail of chunks, 65 of them under 600 bytes.

@@ -1,1 +1,0 @@
-- A finished session's card in the room now opens your own ride from it. The card still says only who was there and for how long — a room's history is shared, your watts are not — but the numbers that session produced are one tap away instead of nowhere.

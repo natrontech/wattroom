@@ -1,1 +1,0 @@
-- A room can hold 50 planned sessions and an account 200 saved workouts; going past either says so and names the one that has to go, instead of failing quietly. Your rides stay uncapped — the history is the point. Long shelves now load a page at a time, so a shelf built up over years shows all of it rather than the first slice.

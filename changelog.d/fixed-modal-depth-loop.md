@@ -1,1 +1,0 @@
-- Opening any dialog no longer freezes the page's controls: since the last release the "Open room" button in the sidebar's sheet (and every other form behind a dialog) stayed disabled however much you typed.

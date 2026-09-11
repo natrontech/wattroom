@@ -17,6 +17,167 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.113] - 2026-09-11
+
+### Added
+
+- A room can hold 50 planned sessions and an account 200 saved workouts; going past either says so and names the one that has to go, instead of failing quietly. Your rides stay uncapped — the history is the point. Long shelves now load a page at a time, so a shelf built up over years shows all of it rather than the first slice.
+- Lost every way into your account? The sign-in page now has "Lost your
+  passkey or sign-in?", which emails a one-time link to the address you
+  confirmed on the account and signs you back in. Opening it signs that
+  account out everywhere else, so whoever else was in it is out before you
+  are in — and the account alarm emails now carry the same way back. Needs a
+  confirmed address and a server that can send email.
+- Setting up now asks for your FTP and weight instead of quietly riding on 200 W and 75 kg. Until you answer, Home says that FTP is a starting guess rather than showing it like a measured one, and holds back w/kg — every workout target, your execution score and your training load scale from these two numbers, so a placeholder makes a whole season of them a guess. A ramp test still fills it in for you.
+- Notifications now offer themselves. The first time a session is planned in
+  one of your rooms, Home offers to turn them on, so the app can tell you the
+  room is riding while it sits behind another window. Nothing asks your
+  browser for permission until you press the button, and the offer is gone
+  for good once you answer it either way.
+- **Ride card** — download a ride as a square picture: the power trace coloured by zone against your FTP line, where the time went, the headline numbers and your power curve, on the dark WattRoom card. Strava's API takes the ride but never a photo for it, so the card is the half you add yourself — save it, then attach it to the activity that was already uploaded. It's on the ride's own page next to Download FIT, and on the screen you're standing at when the ride ends.
+- Riding alone now counts you in: three seconds and a 3-2-1 before the clock starts, so you can tap Start and get back on the bike before the first target lands. The ramp test counts in the same way, and Cancel during the count-in puts you back on the setup screen with your trainer still paired.
+- A terms of service page at `/terms`, linked from the sign-in screen, the landing page and the legal footer: what WattRoom is (an alpha on one server), what you may not do in a room, that your messages and rides stay yours and train nothing, how moderation and account closure work, and that Swiss law applies. The privacy page also now names where the service runs — Natron Tech AG's own infrastructure, in Switzerland — instead of saying only who runs it.
+- A third-party notices page at `/legal/licenses`, linked from the legal notice: every open-source component WattRoom ships — 126 in the web app, 36 in the server — with its version and its full licence text. Required by the MIT, ISC, BSD, Apache and Open Font licences the app is built on, and regenerated automatically so a new dependency cannot ship unnamed.
+- A workout's sprint block is a real sprint moment in a room now, not just a change of resistance: the klaxon counts everyone in on the same second, the numbers go live while you are on it, and the w/kg podium lands when it ends — the same as a sprint a coach arms by hand, Sprint Snob included.
+
+### Changed
+
+- The buttons say one thing each. **Cancel** no longer means four things: the
+  red button on a planned session says **Cancel session**, a countdown says
+  **Stop the countdown**, a friend request you sent says **Withdraw** (and now
+  tells you it went, with an undo), and leaving a half-shaped workout says
+  **Discard**. A confirmation's safe answer is **Keep it** everywhere except
+  mid-effort, where it still says **Keep riding** or **Keep going**. Going home
+  from a room says **Back to your rooms**, the Lounge is capitalised like the
+  place it is, lifting a crew ban is **Unban from the crew** in the row and the
+  menu, building a workout has one verb, and riding alone is **Ride solo**
+  wherever it is offered. Destructive right-click entries now sit last behind a
+  separator, the session picker and your rider counts teach instead of
+  apologising, and toasts end in a full stop.
+- Handing a crew to someone else now asks the same question every other
+  unrepeatable action asks, in the same words: the safe answer is "Keep it",
+  the button that does it carries the danger colour, both are thumb-sized, and
+  the dialog opens on the safe answer so a stray Enter cannot give your crew
+  away. It also spells out what you lose — you drop to admin, and only the new
+  owner can hand it back.
+- The app's first load now arrives as 6 files instead of 122, and 34 KB less over the wire (110 KB gzipped, down from 145 KB) — the shell used to be split into a long tail of chunks, 65 of them under 600 bytes.
+- Four actions that could not be taken back no longer happen on a single click. Resetting your calendar link, resetting a room's calendar link, removing a passkey and discarding a recovered ride now ask first, and each says what it breaks — that every calendar on the old link stops updating, that the authenticator cannot re-create the same passkey, that a recovered ride's samples are on this device and nowhere else — before you commit to it.
+- One name per destination. The page at `/u/<id>` is now called your rider page
+  everywhere it is offered — right-clicking a rider says "Rider page" rather
+  than "View profile", and Home's level tile no longer calls it the trophy
+  case. "Profile" now means only the settings section where you edit your own
+  details.
+- A room's streak is now labelled "this room's streak" in the Lounge and on the Sessions page, because it is not the streak that pays you. The XP streak bonus has always counted your own weeks — anywhere you rode, this room, another, or solo — so joining a room on a long run does not pay you for other people's rides, and a solo winter still builds a streak. The ride summary now says so too.
+- The screen you land on when a ride ends looks like the rest of the app now: an icon on every number, and the power trace filled in your zone colours against the FTP line instead of a thin flat stroke. Same numbers, told with the weight they deserve.
+- Three things moved to where you would look for them. The two sprint settings — "Sprints stay in ERG" and the sprint grade — are now on Settings › Equipment with your trainer, instead of on Profile; the grade sits under Advanced and both save themselves as you set them. Your calendar link is now on Settings › Your data with the export, and Home's What's next points at it. And Sign out is on the menu your avatar opens, bottom-left, rather than only inside Settings › Your data between "Export everything" and "Delete account".
+- Entering a room is called **Walk in** everywhere now — the sidebar, Home, a friend's row, a DM, a room's chat read from outside and the invite door all used to word the same door differently. A ride you are stepping into mid-session is still **Join the ride**, and a crew code is still **Join crew**. The RSVP button on a planned session and the share button on a ride now say what pressing them does rather than where you already stand.
+
+### Fixed
+
+- A room that keeps a weekly board now says so on its join door, before you
+  walk in. Walking into one used to put your kJ and time on a board beside
+  everyone else's with nothing having mentioned it — the board is the one room
+  surface that publishes a number from your own rides, so the door now names
+  what it publishes, that it resets each Monday, and where to take yourself off
+  it. A room with no board says nothing, and nobody outside a room can read
+  what is on one.
+- Starting a session and cancelling during the 10 s countdown no longer leaves
+  a session card in the room. A countdown nobody rode out is not a session, so
+  it stores nothing — and a card for a session that did run now measures the
+  ride rather than the ten seconds of counting in front of it.
+- Dim text is legible again. Chat timestamps, the sidebar's room names, the rooms you cannot enter, the composer hint, the offline roster and every other faded line now meet the WCAG AA contrast floor in all ten themes, on both the light and the dark desk — several were previously under 2:1.
+- Deleting the last room of a crew nobody else is in now deletes the crew too, instead of leaving you with one you could not leave, hand on or delete. The delete confirm says so first, and names what goes with it — the crew's name, its logo and its invite link — so your next room starts a fresh crew. A crew that still holds another room or another rider is untouched.
+- Escape closes the session picker and the people sheet again: since the last release both refused it, because they count themselves open for the jukebox dock and the room read that as a dialog stacked on top.
+- Your account export now carries the music library you uploaded: every track's title, artist, album, tags and BPM, and a playlist entry that points at one of your uploads now names it instead of exporting a blank. The audio files themselves stay out of the zip — a track's row names the file it belongs to. The privacy page now says what we store about uploaded music, which it had never mentioned.
+- Your FTP chart now marks a ramp test's result on the test itself, the day you take it, instead of waiting for your next ride to show the new number. The line still follows the FTP each ride was scored against; the new diamond is what the test measured.
+- Loading older rides in your history no longer steps over one. Two rides that
+  started inside the same second landed on either side of a page boundary and
+  the second of them was quietly left out, so a ride you rode was missing from
+  the list with nothing to say so. A ride saved twice from one start is now
+  impossible rather than merely unlikely.
+- Self-hosted instances: the container image now ships the `/data/tracks` and `/data/feedback` mount points owned by the user the server runs as, so a fresh Docker volume is writable. Without it uploads and in-app feedback reports failed against a container that started and reported healthy — existing deployments need a one-time `chown 65532:65532` on those volumes.
+- Deleting a ride no longer costs you a level. The ride's XP now stays on your
+  lifetime total when you throw the record away — you rode it, and deleting it
+  is privacy, not un-riding — so your level, and the badges hanging off it, hold
+  where they were.
+- A coach model reading your rides over MCP can now page past the first
+  answer, and does not step over a ride at the boundary. `list_rides` read a
+  page cursor it never told anyone about, and the one it asked callers to
+  rebuild was accurate only to the second.
+- Opening any dialog no longer freezes the page's controls: since the last release the "Open room" button in the sidebar's sheet (and every other form behind a dialog) stayed disabled however much you typed.
+- The sidebar always says where you are. Finding a room, and reading messages
+  from a link or with the conversation list folded away, used to leave the
+  whole column unlit — nothing marked as the page you were on.
+- Music, Workouts, Rides, Friends, What's new, Find a room and a crew's settings drew their title a size smaller than every other page. They are all the same size now.
+- Deleting a saved playlist, or dropping one track out of it, can be taken
+  back. A menu click used to delete a whole named list with nothing but a note
+  that it was gone, and removing a single track said nothing at all; both now
+  say what went and offer Undo, which brings the playlist back with its tracks
+  in order, or returns the track to the place it held in the list.
+- A finished ramp test no longer reports an execution score. The ride still lands on your history with its work, power curve, FIT and Strava export — but a ramp is ridden in ERG against its own climbing target, so the percentage only ever said the trainer held the wattage. It now reads "not scored", which also means a ramp no longer pays the execution half of its XP: the kJ you turned still count, the bonus for hitting targets you were being held on does not. Ramp rides already saved keep the numbers they were saved with.
+- One word for trying a failed thing again: "Retry". The room directory, Music, the workout editor and a sensor card that could not connect said "Try again", and in the directory and Music the button sat inside the message instead of beside it. Connecting a sign-in provider that failed now gives you a Retry button too, where it used to just tell you to try again.
+- Deleting a ride asks on the same dialog as every other irreversible action, with "Keep it" taking the focus first — pressing Enter as the question appeared used to delete the ride.
+- The power line on the ride graph keeps the whole ride again. Past fifteen minutes it used to drop the oldest readings, so the start of a long ride vanished from the graph, the TV mode and the saved summary.
+- A room's "Notify me about this room" switch now links to the setting that
+  turns off every room's mail at once, and names it correctly: it sits under
+  Settings → Notifications, not on your profile.
+- A room's reach reads the same wherever you change it. Shutting a room from the crew page now says "Only its members" — the same step the room's own "Who can find this room" ladder offers — instead of "Make private", which was a second name for the same state and left you hunting for the setting you had just used.
+- A workout's sprint blocks are sprints in a room again: the trainer flips to your slope and the block counts itself in, instead of silently going to no resistance at all. Solo rides were already right.
+- A finished session's card in the room now opens your own ride from it. The card still says only who was there and for how long — a room's history is shared, your watts are not — but the numbers that session produced are one tap away instead of nowhere.
+- A database hiccup at the moment you open a room no longer reads as "you are not a member": the room socket and the voice token answer with a retryable failure and log it, and the app keeps reconnecting instead of believing it was thrown out.
+- A friend whose laptop went to sleep, dropped off Wi-Fi or lost signal mid-ride
+  no longer sits in a room's roster — or on your friends list as "riding" — for
+  as long as the network takes to notice, which could be forever. Every socket
+  is now pinged every 30 s and dropped when it stops answering, so the presence
+  you see is presence that is really there, and a rider whose connection died a
+  few times can still get back in rather than running out of connections.
+- With the same trainer open on two of your screens, only the screen that
+  holds it now sets your resistance. Both used to write the trainer once a
+  second, so a ±% nudge on one screen was overwritten by the other and the
+  resistance flickered between two targets. The other screen still shows your
+  watts and can still forget the trainer; when it takes the trainer back —
+  after a dropped connection, or once you forget it elsewhere — it applies
+  the interval's current target straight away.
+- Your Load chart, your riding streak and your early-bird and night-owl trophies now use your own calendar day instead of UTC. A ride that finished at 00:30 no longer lands on yesterday, a ride at 07:30 counts as early where you actually live, and the week your streak bonus is paid for is the week you rode. A room's own numbers still run on UTC weeks, because a room's riders are in several timezones.
+- Fixed a rider page that could fail to load, and a streak bonus that could quietly go unpaid, for riders whose browser reported an unusable timezone name.
+
+### Security
+
+- A crew's invite link no longer tells anyone holding the code how many riders are in the crew. The count was on the wire before you signed in; it is now a crew member's to see, on the crew's own page. The invite still names the crew and shows its picture.
+- WattRoom's Content-Security-Policy is now enforced by the browser rather than
+  only reported on: scripts, styles, fonts, ride audio, workers and embedded
+  frames may come only from WattRoom itself and the official YouTube player, so
+  an injected script has nowhere to load from. Which image hosts are allowed
+  stays report-only for now — a sign-in picture from Google, GitHub or Strava is
+  served by them, not by us, and locking that down without breaking those faces
+  needs WattRoom to serve them itself first.
+- Exporting your data is now one export at a time per account. Building the
+  archive reads and unpacks every ride you own, and nothing stopped that from
+  running several times over at once — a double-click or a second tab paid for
+  the whole thing twice. The second request now says your export is already
+  being built and to ask again once it finishes, and your own export is never
+  slowed by anyone else's.
+- Adding a passkey now waits for your confirmed email address on the server, not only in the app. An account that has to confirm one is told so instead of quietly gaining a credential that nothing could recover. Accounts from before the requirement, and servers that cannot send email, are unaffected.
+- WattRoom now sends a `Permissions-Policy` naming the only three device
+  features it ever asks for — the camera and microphone for voice and video,
+  and Bluetooth for your trainer and sensors — and denying location and
+  payment outright. Nothing you can do in a room changes; what changes is that
+  anything embedded in the page can no longer inherit access to your trainer
+  or your microphone.
+- A link preview no longer tells one rider what another has read. A preview the
+  server had already fetched for somebody else came straight back, and that
+  instant answer settled a question nobody should be able to ask: has anyone on
+  this server opened this link in the last half hour? It worked on links that
+  draw no card at all — an unlisted document, a job posting — so it was a
+  reading list, not a preview. Previews are now remembered per rider, so a fast
+  one only ever means you looked at that link yourself. What you see in chat is
+  unchanged.
+- Turning a ride into a .fit file now requires being signed in, like every
+  other ride route. Nothing changes for riders — both buttons that do it sit
+  behind the sign-in gate already — but a stranger can no longer make the
+  server encode six-hour rides for free. A self-hosted server run without a
+  database no longer offers the export at all.
+
 ## [2026.09.112] - 2026-09-10
 
 ### Fixed
@@ -1958,7 +2119,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.112...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.113...HEAD
+[2026.09.113]: https://github.com/natrontech/wattroom/compare/2026.09.112...2026.09.113
 [2026.09.112]: https://github.com/natrontech/wattroom/compare/2026.09.111...2026.09.112
 [2026.09.111]: https://github.com/natrontech/wattroom/compare/2026.09.110...2026.09.111
 [2026.09.110]: https://github.com/natrontech/wattroom/compare/2026.09.109...2026.09.110

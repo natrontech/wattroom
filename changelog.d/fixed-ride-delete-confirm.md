@@ -1,1 +1,0 @@
-- Deleting a ride asks on the same dialog as every other irreversible action, with "Keep it" taking the focus first — pressing Enter as the question appeared used to delete the ride.

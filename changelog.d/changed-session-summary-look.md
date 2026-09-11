@@ -1,1 +1,0 @@
-- The screen you land on when a ride ends looks like the rest of the app now: an icon on every number, and the power trace filled in your zone colours against the FTP line instead of a thin flat stroke. Same numbers, told with the weight they deserve.

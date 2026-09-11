@@ -1,1 +1,0 @@
-- Escape closes the session picker and the people sheet again: since the last release both refused it, because they count themselves open for the jukebox dock and the room read that as a dialog stacked on top.

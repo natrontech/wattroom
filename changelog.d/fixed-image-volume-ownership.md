@@ -1,1 +1,0 @@
-- Self-hosted instances: the container image now ships the `/data/tracks` and `/data/feedback` mount points owned by the user the server runs as, so a fresh Docker volume is writable. Without it uploads and in-app feedback reports failed against a container that started and reported healthy — existing deployments need a one-time `chown 65532:65532` on those volumes.

@@ -1,1 +1,0 @@
-- Adding a passkey now waits for your confirmed email address on the server, not only in the app. An account that has to confirm one is told so instead of quietly gaining a credential that nothing could recover. Accounts from before the requirement, and servers that cannot send email, are unaffected.
