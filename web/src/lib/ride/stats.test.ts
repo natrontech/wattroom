@@ -62,6 +62,27 @@ describe('powerTrace (#1559)', () => {
 		expect(long.path.startsWith('M 0.0 ')).toBe(true);
 	});
 
+	it('hands back columns that tile the box from the same buckets', () => {
+		const spiky = [...flat(100, 600), ...flat(400, 600)];
+		const t = powerTrace(spiky, 250, 600, 120)!;
+		// Edge to edge, and touching: a gap draws a stripe of background
+		// through the trace and an overhang spills out of the panel.
+		expect(t.columns[0].x).toBe(0);
+		const last = t.columns.at(-1)!;
+		expect(last.x + last.width).toBeCloseTo(600, 5);
+		for (let i = 1; i < t.columns.length; i++) {
+			expect(t.columns[i].x).toBeCloseTo(
+				t.columns[i - 1].x + t.columns[i - 1].width,
+				5,
+			);
+		}
+		// Same buckets as the path, so the colour and the line cannot disagree
+		// about the same second.
+		expect(t.columns.length).toBe(t.path.split(/M |L /).length - 1);
+		expect(t.columns[0].watts).toBe(100);
+		expect(last.watts).toBe(400);
+	});
+
 	it('keeps the FTP line inside the box and the peak at the top', () => {
 		const spiky = [...flat(100, 60), ...flat(400, 60)];
 		const t = powerTrace(spiky, 250, 600, 120)!;

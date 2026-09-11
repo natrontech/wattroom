@@ -4,7 +4,16 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import MedalCard, { type Medal } from '$lib/components/MedalCard.svelte';
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
+	import { ZONE_VAR, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
+	import Activity from '@lucide/svelte/icons/activity';
+	import Clock from '@lucide/svelte/icons/clock';
+	import Flame from '@lucide/svelte/icons/flame';
+	import Gauge from '@lucide/svelte/icons/gauge';
+	import Target from '@lucide/svelte/icons/target';
+	import Trophy from '@lucide/svelte/icons/trophy';
+	import Users from '@lucide/svelte/icons/users';
+	import Zap from '@lucide/svelte/icons/zap';
 	import {
 		curvePoints,
 		normalizedPower,
@@ -49,6 +58,17 @@
 	const TRACE_W = 600;
 	const TRACE_H = 120;
 	const trace = $derived(powerTrace(samples, ftp, TRACE_W, TRACE_H));
+	// The trace, coloured by effort (#1559): a flat stroke said how hard it was
+	// only to someone reading the FTP line against it. Every column takes the
+	// colour of the zone it was ridden at — the same mark the downloadable ride
+	// card draws, from the same buckets the path above is drawn from.
+	const columns = $derived(
+		(trace?.columns ?? []).map((column) => ({
+			...column,
+			y: TRACE_H - (column.watts / (trace?.top ?? 1)) * TRACE_H,
+			zone: zoneOf(column.watts, ftp),
+		})),
+	);
 
 	const seconds = $derived(samples.length);
 	// Floored like the server's column — XP derives from it on both sides.
@@ -95,11 +115,18 @@
 		</div>
 	</header>
 
-	<!-- Headline numbers first: what you did, how well, what it earned. -->
+	<!-- Headline numbers first: what you did, how well, what it earned. An icon
+	     per number (#1559): four identical tiles read as one grey block, and
+	     these are the marks the downloadable ride card uses, so a rider meets
+	     one vocabulary across the two surfaces rather than two. -->
 	<section class="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-		{#each [{ label: 'duration', value: formatClock(seconds) }, { label: 'work', value: `${kj} kJ` }, { label: 'execution', value: execution === undefined ? '—' : `${Math.round(execution * 100)}%` }, { label: 'normalised', value: `${np} W` }] as stat (stat.label)}
+		{#each [{ icon: Clock, label: 'duration', value: formatClock(seconds) }, { icon: Flame, label: 'work', value: `${kj} kJ` }, { icon: Target, label: 'execution', value: execution === undefined ? '—' : `${Math.round(execution * 100)}%` }, { icon: Activity, label: 'normalised', value: `${np} W` }] as stat (stat.label)}
+			{@const Mark = stat.icon}
 			<div class="panel p-5">
-				<div class="font-display text-3xl leading-none font-bold tabular-nums">
+				<Mark size={18} class="text-neon" aria-hidden="true" />
+				<div
+					class="font-display mt-3 text-3xl leading-none font-bold tabular-nums"
+				>
 					{stat.value}
 				</div>
 				<div class="eyebrow mt-2">
@@ -112,7 +139,9 @@
 	<div class="mt-3 grid gap-3 {medal ? 'lg:grid-cols-[1fr_400px]' : ''}">
 		<div class="grid gap-3">
 			<section class="panel p-5">
-				<h2 class="eyebrow">time in zone</h2>
+				<h2 class="eyebrow flex items-center gap-1.5">
+					<Gauge size={13} class="text-neon" aria-hidden="true" /> time in zone
+				</h2>
 				{#if totalZoneSeconds > 0}
 					<div class="mt-4">
 						<ZoneBar seconds={zones} legend />
@@ -124,7 +153,9 @@
 
 			{#if trace}
 				<section class="panel p-5">
-					<h2 class="eyebrow">how it went</h2>
+					<h2 class="eyebrow flex items-center gap-1.5">
+						<Activity size={13} class="text-neon" aria-hidden="true" /> how it went
+					</h2>
 					<!-- viewBox and a percentage width, never a pixel width beside a
 					     measured container (ux.md): it has to fit a phone. -->
 					<svg
@@ -136,6 +167,30 @@
 						role="img"
 						aria-label="power over the ride, against your FTP"
 					>
+						<!-- A column per bucket, in the colour of the zone it was
+						     ridden at — not a gradient up the axis, which paints the
+						     bottom of a threshold effort Z1 because that is the height
+						     it passes through. Column by column is how hard it was
+						     *then*, which is the question. -->
+						{#each columns as column (column.x)}
+							<rect
+								x={column.x}
+								y={column.y}
+								width={column.width}
+								height={TRACE_H - column.y}
+								fill={ZONE_VAR[column.zone]}
+								fill-opacity="0.55"
+							/>
+							<!-- The lit edge, at rest: the same mark the downloadable
+							     card draws, and the only thing here at full strength. -->
+							<rect
+								x={column.x}
+								y={column.y}
+								width={column.width}
+								height={Math.min(2, TRACE_H - column.y)}
+								fill={ZONE_VAR[column.zone]}
+							/>
+						{/each}
 						<line
 							x1="0"
 							x2={TRACE_W}
@@ -146,14 +201,6 @@
 							stroke-dasharray="4 4"
 							class="text-neon opacity-60"
 						/>
-						<path
-							d={trace.path}
-							fill="none"
-							stroke="currentColor"
-							stroke-width="1.5"
-							vector-effect="non-scaling-stroke"
-							class="text-watt"
-						/>
 					</svg>
 					<p class="text-muted mt-1 text-[11px]">
 						Power, second by second — the dashed line is your FTP ({ftp} W).
@@ -162,7 +209,9 @@
 			{/if}
 
 			<section class="panel p-5">
-				<h2 class="eyebrow">power curve</h2>
+				<h2 class="eyebrow flex items-center gap-1.5">
+					<Zap size={13} class="text-neon" aria-hidden="true" /> power curve
+				</h2>
 				<div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
 					{#each reached as point (point.label)}
 						<div>
@@ -188,7 +237,9 @@
 				<!-- The moment the session ends is when who was there matters
 				     (#1559): the card used to report one person's numbers. -->
 				<section class="panel p-5">
-					<h2 class="eyebrow">who rode</h2>
+					<h2 class="eyebrow flex items-center gap-1.5">
+						<Users size={13} class="text-neon" aria-hidden="true" /> who rode
+					</h2>
 					<ul class="mt-3 grid gap-1.5 sm:grid-cols-2">
 						{#each together as rider (rider.id)}
 							<li class="flex items-baseline gap-2 text-sm">
@@ -210,7 +261,9 @@
 
 			<section class="panel p-5">
 				<div class="flex items-baseline gap-3">
-					<h2 class="eyebrow">progress</h2>
+					<h2 class="eyebrow flex items-center gap-1.5">
+						<Trophy size={13} class="text-neon" aria-hidden="true" /> progress
+					</h2>
 					<span class="text-muted ml-auto font-mono text-[11px] tabular-nums"
 						>+{xp} XP</span
 					>

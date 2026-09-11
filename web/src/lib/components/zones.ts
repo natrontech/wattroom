@@ -32,6 +32,21 @@ export const ZONE_TEXT = [
 	'text-z7',
 ];
 
+/**
+ * The same ramp as CSS custom properties, for the places a Tailwind class
+ * cannot reach — an SVG `stop-color`, which takes a paint and not a class.
+ */
+export const ZONE_VAR = [
+	'',
+	'var(--color-z1)',
+	'var(--color-z2)',
+	'var(--color-z3)',
+	'var(--color-z4)',
+	'var(--color-z5)',
+	'var(--color-z6)',
+	'var(--color-z7)',
+];
+
 export const ZONE_BG = [
 	'',
 	'bg-z1',
@@ -42,6 +57,37 @@ export const ZONE_BG = [
 	'bg-z6',
 	'bg-z7',
 ];
+
+/** One zone's slice of a vertical axis, as fractions from the axis's floor. */
+export interface ZoneBand {
+	zone: number;
+	from: number;
+	to: number;
+}
+
+/**
+ * The ramp laid against an axis whose full height is `top` watts (#1559) —
+ * what turns a flat trace into one coloured by effort, the way the downloadable
+ * ride card colours its own.
+ *
+ * Bands, not a blend: between Z3 and Z4 there is no colour, there is a
+ * boundary, and a gradient that fades across it paints wattages a colour no
+ * zone owns. A caller emits two stops per band to keep the edge hard.
+ */
+export function zoneBands(ftp: number, top: number): ZoneBand[] {
+	if (!(ftp > 0) || !(top > 0)) return [];
+	const bands: ZoneBand[] = [];
+	let from = 0;
+	for (let zone = 1; zone <= 7 && from < 1; zone++) {
+		// Z7 is open-ended, so the axis's own ceiling closes it.
+		const edge =
+			zone === 7 ? 1 : Math.min(1, (ZONE_TOPS[zone - 1] * ftp) / top);
+		if (edge <= from) continue;
+		bands.push({ zone, from, to: edge });
+		from = edge;
+	}
+	return bands;
+}
 
 export function zoneOf(watts: number, ftp: number): number {
 	const fraction = watts / ftp;

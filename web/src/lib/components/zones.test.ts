@@ -4,6 +4,7 @@ import {
 	hrZoneOf,
 	hrZoneRanges,
 	plannedZoneSeconds,
+	zoneBands,
 	zoneOf,
 } from './zones';
 import type { Segment } from '$lib/workout/types';
@@ -14,6 +15,35 @@ describe('zoneOf', () => {
 		expect(zoneOf(112, 200)).toBe(2); // 56 %
 		expect(zoneOf(210, 200)).toBe(4); // 105 % is still threshold
 		expect(zoneOf(320, 200)).toBe(7); // 160 %
+	});
+});
+
+describe('zoneBands', () => {
+	it('cuts the axis at the SPEC boundaries, floor to ceiling with no gaps', () => {
+		// An axis twice FTP: every zone edge lands inside it.
+		const bands = zoneBands(200, 400);
+		expect(bands.map((b) => b.zone)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+		expect(bands[0]).toEqual({ zone: 1, from: 0, to: 0.275 }); // 55 % of 200 / 400
+		expect(bands[3].from).toBeCloseTo(0.45); // Z4 starts where Z3's 90 % ended
+		// Contiguous, and the last band closes the axis: a gap paints a stripe
+		// of nothing across the trace.
+		for (let i = 1; i < bands.length; i++) {
+			expect(bands[i].from).toBe(bands[i - 1].to);
+		}
+		expect(bands.at(-1)?.to).toBe(1);
+	});
+
+	it('stops at the ceiling rather than drawing zones the axis cannot show', () => {
+		// A steady ride never above threshold: the axis tops out mid-Z4, so
+		// Z5 upward have nowhere to go and Z4 takes the rest.
+		const bands = zoneBands(200, 200);
+		expect(bands.map((b) => b.zone)).toEqual([1, 2, 3, 4]);
+		expect(bands.at(-1)).toEqual({ zone: 4, from: 0.9, to: 1 });
+	});
+
+	it('has no bands to draw without an FTP or an axis', () => {
+		expect(zoneBands(0, 400)).toEqual([]);
+		expect(zoneBands(200, 0)).toEqual([]);
 	});
 });
 

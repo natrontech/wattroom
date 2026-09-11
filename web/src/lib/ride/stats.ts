@@ -86,7 +86,18 @@ export function powerTrace(
 	ftp: number,
 	width: number,
 	height: number,
-): { path: string; ftpY: number; top: number } | null {
+): {
+	path: string;
+	ftpY: number;
+	top: number;
+	/**
+	 * The same buckets the path is drawn from, as columns (#1559): peak watts,
+	 * where the column starts and how wide it is. A caller colouring the ride
+	 * by effort needs the wattage per column, and bucketing a second time to
+	 * get it is two truths about one ride waiting to drift apart.
+	 */
+	columns: { x: number; width: number; watts: number }[];
+} | null {
 	if (samples.length < 2) return null;
 	const bucket = Math.max(1, Math.ceil(samples.length / 300));
 	const points: number[] = [];
@@ -104,5 +115,12 @@ export function powerTrace(
 			(w, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(w).toFixed(1)}`,
 		)
 		.join(' ');
-	return { path, ftpY: y(ftp), top };
+	// Half a step either side of the point the path passes through, so the
+	// columns tile the box edge to edge with no seam and no overhang.
+	const step = width / (points.length - 1);
+	const columns = points.map((watts, i) => {
+		const from = Math.max(0, x(i) - step / 2);
+		return { x: from, width: Math.min(width, x(i) + step / 2) - from, watts };
+	});
+	return { path, ftpY: y(ftp), top, columns };
 }
