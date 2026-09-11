@@ -34,6 +34,7 @@
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
 	import { describeBlock } from '$lib/room/view';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
+	import { downloadRideCard } from '$lib/ride/card';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
 	// is the session most people ride.
@@ -75,6 +76,7 @@
 	let saving = $state(false);
 	let session = $state<ReturnType<typeof createRideSession> | null>(null);
 	let downloading = $state(false);
+	let carding = $state(false);
 	let error = $state<string | null>(null);
 	// The save's outcome is persistent status (errors.md); an export or a
 	// flag failing must not overwrite it (audit 2026-09-09).
@@ -379,6 +381,18 @@
 	const target = $derived(session?.target ?? 0);
 
 	/** The server owns .fit encoding (muktihari/fit is Go); the client owns the ride. */
+	// The picture of the ride that just ended (#2112), offered where the rider
+	// is actually standing — Strava's API takes the activity and never a photo
+	// for it, so this is the half they add by hand. Needs the saved ride: the
+	// server draws it from the row.
+	async function downloadCard() {
+		if (!savedId) return;
+		carding = true;
+		error = null;
+		error = await downloadRideCard(savedId);
+		carding = false;
+	}
+
 	async function downloadFit() {
 		if (!session) return;
 		downloading = true;
@@ -584,6 +598,15 @@
 									: 'btn-primary'}"
 								>{downloading ? 'Preparing…' : 'Export .fit'}</button
 							>
+							{#if savedId}
+								<button
+									onclick={downloadCard}
+									disabled={carding}
+									data-testid="download-card"
+									class="btn btn-secondary"
+									>{carding ? 'Drawing…' : 'Ride card'}</button
+								>
+							{/if}
 							<a href="/workouts" class="btn btn-secondary"
 								>Pick another workout</a
 							>

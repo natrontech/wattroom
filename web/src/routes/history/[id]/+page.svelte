@@ -11,6 +11,7 @@
 	import ZoneBar from '$lib/components/ZoneBar.svelte';
 	import { formatClock, formatDuration } from '$lib/format';
 	import { MEDAL_META, medalName } from '$lib/medals';
+	import { downloadRideCard } from '$lib/ride/card';
 	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
 	import RideComparison from '$lib/ride/RideComparison.svelte';
@@ -23,6 +24,7 @@
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Award from '@lucide/svelte/icons/award';
 	import Download from '@lucide/svelte/icons/download';
+	import ImageDown from '@lucide/svelte/icons/image-down';
 	import Lock from '@lucide/svelte/icons/lock';
 	import Users from '@lucide/svelte/icons/users';
 	import { setRideShared } from '$lib/ride/share';
@@ -38,7 +40,13 @@
 		if (ride && (await deleteRideAfterConfirm(ride))) void goto('/history');
 	}
 	let exporting = $state(false);
-	let exportError = $state<string | null>(null);
+	let carding = $state(false);
+	// One banner for both downloads, carrying the retry that belongs to
+	// whichever one failed — two near-identical banners is the duplication
+	// the second download would have added.
+	let downloadError = $state<{ message: string; retry: () => void } | null>(
+		null,
+	);
 
 	// The comparison (#996) reads two lists the app already serves — every ride
 	// for "your best of this workout", and the curve for the 20-minute line.
@@ -73,12 +81,23 @@
 	async function downloadFit() {
 		if (!ride || ride.samples.length === 0) return;
 		exporting = true;
-		exportError = null;
+		downloadError = null;
 		const res = await apiBlob(`/api/rides/${encodeURIComponent(id)}/export`);
 		if (res.ok) {
 			downloadBlob(res.data.blob, res.data.filename ?? `wattroom-${id}.fit`);
-		} else exportError = res.error.message;
+		} else downloadError = { message: res.error.message, retry: downloadFit };
 		exporting = false;
+	}
+
+	// The picture of this ride (#2112) — the one a rider adds to the Strava
+	// activity by hand, because Strava's API takes the ride and not a photo
+	// of it. Drawn from the numbers on this page, so it needs no samples.
+	async function downloadCard() {
+		carding = true;
+		downloadError = null;
+		const message = await downloadRideCard(id);
+		if (message) downloadError = { message, retry: downloadCard };
+		carding = false;
 	}
 
 	// #1158. A delivery that ran out of attempts used to be a dead row and a
@@ -119,7 +138,7 @@
 		ride = null;
 		error = null;
 		missing = false;
-		exportError = null;
+		downloadError = null;
 		best = null;
 		bestLoaded = false;
 		if (which) void load(which);
@@ -246,6 +265,14 @@
 				{/if}
 			</button>
 			<button
+				onclick={() => void downloadCard()}
+				disabled={carding}
+				class="btn btn-secondary btn-xs disabled:opacity-50"
+			>
+				<ImageDown size={13} />
+				{carding ? 'Drawing…' : 'Ride card'}
+			</button>
+			<button
 				onclick={() => void downloadFit()}
 				disabled={exporting || ride.samples.length === 0}
 				class="btn btn-secondary btn-xs disabled:opacity-50"
@@ -257,12 +284,12 @@
 				<Trash2 size={13} /> Delete ride
 			</button>
 		</header>
-		{#if exportError}<div class="mt-3">
+		{#if downloadError}<div class="mt-3">
 				<Banner tone="error">
-					{exportError}
+					{downloadError.message}
 					{#snippet action()}<button
 							class="text-xs underline"
-							onclick={() => void downloadFit()}>Retry</button
+							onclick={() => downloadError?.retry()}>Retry</button
 						>{/snippet}
 				</Banner>
 			</div>

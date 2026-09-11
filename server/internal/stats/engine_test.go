@@ -323,3 +323,29 @@ func TestExecutionHonoursAWorkoutThatDeclaresItselfUnscored(t *testing.T) {
 		t.Errorf("unscored workout scored %v, want 0", score)
 	}
 }
+
+// The zone boundaries are docs/SPEC.md's table read at its edges: Z1 is
+// "≤ 55 %", so 55 % of FTP is Z1 and a watt more is Z2. An off-by-one here is
+// silent — every ride still renders, in the wrong colour.
+func TestPowerZone(t *testing.T) {
+	const ftp = 200
+	for _, tc := range []struct {
+		watts, want int
+	}{
+		{0, 1}, {110, 1}, // ≤ 55 %
+		{111, 2}, {150, 2}, // 56–75 %
+		{151, 3}, {180, 3}, // 76–90 %
+		{181, 4}, {210, 4}, // 91–105 %
+		{211, 5}, {240, 5}, // 106–120 %
+		{241, 6}, {300, 6}, // 121–150 %
+		{301, 7}, {1400, 7}, // > 150 %
+	} {
+		if got := PowerZone(tc.watts, ftp); got != tc.want {
+			t.Errorf("PowerZone(%d, %d) = Z%d, want Z%d", tc.watts, ftp, got, tc.want)
+		}
+	}
+	// An account with no FTP has no zones to divide by; Z1 beats a panic.
+	if got := PowerZone(300, 0); got != 1 {
+		t.Errorf("PowerZone with no FTP = Z%d, want Z1", got)
+	}
+}

@@ -184,3 +184,23 @@ func SuggestFTP(best20m, currentFtp int) (int, bool) {
 	}
 	return suggested, true
 }
+
+// zoneTops are the upper edges of Z1–Z6 as fractions of FTP (docs/SPEC.md's
+// Coggan table, the same numbers web/src/lib/components/zones.ts bands live
+// power with); Z7 is open-ended.
+var zoneTops = [...]float64{0.55, 0.75, 0.9, 1.05, 1.2, 1.5}
+
+// PowerZone is the zone one wattage sits in, 1–7. A non-positive FTP has no
+// zones to speak of, so everything is Z1 rather than a divide by zero.
+func PowerZone(watts, ftp int) int {
+	if ftp <= 0 {
+		return 1
+	}
+	fraction := float64(watts) / float64(ftp)
+	for i, top := range zoneTops {
+		if fraction <= top {
+			return i + 1
+		}
+	}
+	return 7
+}

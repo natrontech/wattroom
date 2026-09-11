@@ -315,6 +315,11 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 // exportFilename names the download by the day and the workout (#1549): five
 // files named by uuid were five files a rider could not tell apart.
 func exportFilename(startedAt time.Time, workout string) string {
+	return fmt.Sprintf("wattroom-%s-%s.fit", startedAt.UTC().Format("2006-01-02"), workoutSlug(workout))
+}
+
+// workoutSlug is the readable half of that name, shared with the ride card.
+func workoutSlug(workout string) string {
 	var slug []rune
 	dash := true
 	for _, r := range strings.ToLower(workout) {
@@ -333,5 +338,5 @@ func exportFilename(startedAt time.Time, workout string) string {
 	if name == "" {
 		name = "ride"
 	}
-	return fmt.Sprintf("wattroom-%s-%s.fit", startedAt.UTC().Format("2006-01-02"), name)
+	return name
 }

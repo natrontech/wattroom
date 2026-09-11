@@ -73,6 +73,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/rides", s.handleCreate)
 	mux.HandleFunc("GET /api/rides/{id}", s.handleGet)
 	mux.HandleFunc("GET /api/rides/{id}/export", s.handleExport)
+	// A picture of the ride, for the rider to put wherever pictures go (#2112).
+	mux.HandleFunc("GET /api/rides/{id}/card.png", s.handleCard)
 	mux.HandleFunc("POST /api/rides/{id}/export/retry", s.handleRetryExport)
 	mux.HandleFunc("PATCH /api/rides/{id}", s.handleShare)
 	mux.HandleFunc("PUT /api/rides/{id}/ftp-after", s.handleFtpAfter)
