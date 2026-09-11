@@ -14,6 +14,28 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 git fetch --quiet --prune origin main 2>/dev/null || true
 
+# How long a worktree carrying nothing is taken to be somebody's live claim
+# rather than litter. Generous on purpose, because the two costs are nothing
+# alike: keeping litter another day is a line of output, and removing a claim
+# is whatever that agent had not committed yet. Only the `ahead == 0` case
+# consults it — a squash-merged worktree is still removed the moment its PR
+# lands, however new it is.
+fresh_minutes=720
+
+# Minutes since `git worktree add` wrote this worktree's `.git` file. That file
+# is written once and never rewritten; the directory's own mtime is not, since
+# every build output moves it. An unreadable one reads as brand new, because
+# the safe answer when the age cannot be told is to keep.
+minutes_old() {
+	local born
+	born=$(stat -f %m "$1/.git" 2>/dev/null || stat -c %Y "$1/.git" 2>/dev/null || true)
+	if [ -z "$born" ]; then
+		echo 0
+		return
+	fi
+	echo $((($(date +%s) - born) / 60))
+}
+
 main_tree=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
 # Running `make worktree-gc` from inside a worktree must not delete the ground
 # it stands on: a fresh one has nothing beyond origin/main and so looked
@@ -44,6 +66,18 @@ while read -r dir; do
 	# origin/main, so a branch nobody has pushed still has one — which read as
 	# in-flight and hid the orphan this script exists to catch.
 	if [ "$ahead" -eq 0 ]; then
+		# ...which is also exactly what an agent looks like between
+		# `git worktree add` and its first commit, and AGENTS.md step 1 tells
+		# every contributor to read that branch name and stay off it (#2116).
+		# To git the two are one clean tree at origin/main, so age is the only
+		# thing telling them apart — and this script's promise, that it removes
+		# only what is finished, means the young one is reported, not swept.
+		age=$(minutes_old "$dir")
+		if [ "$age" -lt "$fresh_minutes" ]; then
+			echo "keep    $name — ${age}m old on $branch, may be a claim in progress"
+			kept=$((kept + 1))
+			continue
+		fi
 		reason="nothing beyond origin/main"
 	elif [ -z "$branch" ]; then
 		orphans+=("$dir|detached HEAD|$ahead")
