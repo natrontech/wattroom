@@ -2,16 +2,19 @@ import { defineConfig, devices } from '@playwright/test';
 
 // Ports come from scripts/dev-env.sh, so a run in a worktree neither binds nor
 // probes the main tree's (e2e/env.js).
-import { BASE_URL } from './e2e/env.js';
+//
+// PLAYWRIGHT_BASE_URL points the suite at a deployed target (the production
+// synthetic, #153). Unset, everything below behaves exactly as before: build,
+// serve locally, ride that. The workflow used to set this variable while the
+// config ignored it, so the "production" synthetic was really testing a fresh
+// local build — green while production was down.
+//
+// Both questions are env.js's to answer now: asking for a local port is what
+// makes it consult scripts/dev-env.sh, and a run against a deployed target
+// must never ask (#2126).
+import { baseUrl, isExternal } from './e2e/env.js';
 
-/**
- * PLAYWRIGHT_BASE_URL points the suite at a deployed target (the production
- * synthetic, #153). Unset, everything below behaves exactly as before: build,
- * serve locally, ride that. The workflow used to set this variable while the
- * config ignored it, so the "production" synthetic was really testing a fresh
- * local build — green while production was down.
- */
-const external = process.env.PLAYWRIGHT_BASE_URL;
+const external = isExternal();
 
 /**
  * One end-to-end flow (WATTROOM.md): simulated trainer rides a workout and produces
@@ -39,7 +42,7 @@ export default defineConfig({
 	retries: process.env.CI ? 2 : 0,
 	reporter: process.env.CI ? 'github' : 'list',
 	use: {
-		baseURL: external || BASE_URL,
+		baseURL: baseUrl(),
 		trace: 'retain-on-failure',
 	},
 	projects: [
@@ -109,7 +112,7 @@ export default defineConfig({
 		? undefined
 		: {
 				command: 'pnpm build && node e2e/server.js',
-				url: `${BASE_URL}/ride`,
+				url: `${baseUrl()}/ride`,
 				reuseExistingServer: false,
 				timeout: 120_000,
 			},

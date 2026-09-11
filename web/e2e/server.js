@@ -5,7 +5,14 @@ import { createServer, request as httpRequest } from 'node:http';
 import { connect } from 'node:net';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
-import { API_PORT, DB_DSN, WEB_PORT, ensureDatabase } from './env.js';
+import { apiPort, dbDsn, ensureDatabase, webPort } from './env.js';
+
+// Read once, here: this file only ever runs as playwright.config.ts's
+// `webServer` command, which exists precisely when the run needs local ports,
+// so asking for them is always right by the time we get here (#2126).
+const API_PORT = apiPort();
+const WEB_PORT = webPort();
+const DB_DSN = dbDsn();
 
 const dist = new URL('../build/', import.meta.url).pathname;
 

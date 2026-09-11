@@ -131,10 +131,18 @@ export default defineConfig({
 		},
 	},
 	test: {
-		// e2e/ belongs to Playwright. Vitest's default **/*.spec.ts glob picks it up
-		// otherwise and fails with "Playwright Test did not expect test() to be
-		// called here" — which reads like a Playwright problem and is not one.
-		exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', 'e2e/**'],
+		// e2e/*.spec.ts belongs to Playwright. Vitest's default **/*.spec.ts glob
+		// picks those up otherwise and fails with "Playwright Test did not expect
+		// test() to be called here" — which reads like a Playwright problem and is
+		// not one. The specs only: the harness's own helpers live in e2e/ as well,
+		// and a *.test.ts beside them is a plain unit test vitest should run
+		// (e2e/env.test.ts, #2126).
+		exclude: [
+			'**/node_modules/**',
+			'**/dist/**',
+			'**/build/**',
+			'e2e/**/*.spec.ts',
+		],
 		// No socket leaves a unit test (src/vitest.setup.ts).
 		setupFiles: ['src/vitest.setup.ts'],
 	},
