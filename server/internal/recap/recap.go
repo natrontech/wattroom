@@ -98,9 +98,13 @@ func (s *Service) SaveRecap(slug string, rec protocol.SessionRecap) {
 
 // List is a room's recaps for the chat backlog, oldest-first — the caller has
 // already proven membership, which is the only gate this data has.
-func (s *Service) List(ctx context.Context, roomID pgtype.UUID, limit int) ([]protocol.SessionRecap, error) {
+//
+// viewer is whose own ride each card points at (#1560). It narrows nothing
+// else: every member sees the same presence intervals, and the ride id is the
+// one per-viewer field on the card.
+func (s *Service) List(ctx context.Context, roomID, viewer pgtype.UUID, limit int) ([]protocol.SessionRecap, error) {
 	rows, err := s.store.Queries.ListRoomRecaps(ctx, db.ListRoomRecapsParams{
-		RoomID: roomID, Limit: int32(limit), //nolint:gosec // bounded by the caller
+		RoomID: roomID, Limit: int32(limit), UserID: viewer, //nolint:gosec // bounded by the caller
 	})
 	if err != nil {
 		return nil, err
@@ -112,6 +116,9 @@ func (s *Service) List(ctx context.Context, roomID pgtype.UUID, limit int) ([]pr
 			Workout:   row.Workout,
 			StartedAt: row.StartedAt.Time.UnixMilli(),
 			EndedAt:   row.EndedAt.Time.UnixMilli(),
+		}
+		if row.MyRideID.Valid {
+			rec.RideID = store.UUIDString(row.MyRideID)
 		}
 		// A row whose riders will not parse is a row we cannot draw. Skip it
 		// rather than failing the whole backlog: the conversation matters

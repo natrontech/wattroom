@@ -8,6 +8,11 @@
 	// header and nothing here glows. The --color-watt pips mark riders who
 	// rode, at rest.
 	//
+	// The card carries no numbers and is not about to (ADR-0034, point 2) —
+	// but the session did produce some, and every one of them is already on
+	// the rider's own ride page. So the card ends with the way there (#1560):
+	// your ride, never anybody else's, and only when you rode.
+	//
 	// A <details> rather than a toggle: collapsed by default is what the
 	// element already does, and it opens without a line of JavaScript.
 	import { formatTime } from '$lib/format';
@@ -15,6 +20,7 @@
 	import { recapBars, recapSummary } from '$lib/room/recap';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import Clock from '@lucide/svelte/icons/clock';
+	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 
 	let { recap }: { recap: SessionRecap } = $props();
 
@@ -68,6 +74,14 @@
 				</li>
 			{/each}
 		</ul>
+		{#if recap.rideId}
+			<a
+				href="/history/{recap.rideId}"
+				class="text-neon hover:text-ink mt-3 inline-flex items-center gap-1 text-[11px] underline-offset-2 hover:underline"
+			>
+				Your numbers from this session <ArrowRight size={12} />
+			</a>
+		{/if}
 		<p class="text-muted-dim mt-2 flex items-center gap-3 text-[10px]">
 			<span class="flex items-center gap-1">
 				<span class="bg-watt size-1.5 rounded-full" aria-hidden="true"></span>

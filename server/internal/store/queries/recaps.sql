@@ -16,7 +16,25 @@ returning id, created_at;
 -- The room's most recent, oldest-first for rendering — the same shape and the
 -- same reason as ListRoomChat, so the timeline merges two ordered lists rather
 -- than sorting one.
-select r.id, r.workout, r.started_at, r.ended_at, r.riders
+--
+-- my_ride_id is the VIEWER's own ride from that session, and only ever theirs
+-- (#1560): the card carries no numbers, so this is the door to the place the
+-- rider's own numbers already live. Computed per request from $3 and stored
+-- nowhere — ADR-0034's four settled points do not move.
+--
+-- Matched on the window rather than an id, because nothing links the two: the
+-- saver dates a room ride `now - elapsed`, the same arithmetic the recap's
+-- start uses, and a late joiner's ride starts later still. So: any ride of
+-- mine in this room that began inside the session, with a minute of slack at
+-- the front for the two clocks.
+select r.id, r.workout, r.started_at, r.ended_at, r.riders,
+       (select ride.id from rides ride
+         where ride.user_id = $3
+           and ride.room_id = $1
+           and ride.started_at >= r.started_at - interval '1 minute'
+           and ride.started_at <= r.ended_at
+         order by ride.started_at
+         limit 1) as my_ride_id
 from (
     select * from session_recaps
     where room_id = $1

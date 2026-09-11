@@ -648,6 +648,15 @@ export interface SessionRecap {
   startedAt: number /* int64 */;
   endedAt: number /* int64 */;
   riders: SessionRecapRider[];
+  /**
+   * The VIEWER's own ride from this session, if they rode it — never
+   * anybody else's (#1560). The card still carries no numbers, and none of
+   * ADR-0034's four settled points move: this is a door to the page where
+   * the rider's own numbers already live, filled per request and stored
+   * nowhere. Empty for the coach without a trainer, and on the tick that
+   * posts the recap, where the ride has not been written yet.
+   */
+  rideId?: string;
 }
 /**
  * ServerTick is the coalesced 1 Hz room broadcast: every rider's latest

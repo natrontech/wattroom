@@ -148,7 +148,7 @@ func (s *Service) handleBacklog(w http.ResponseWriter, r *http.Request) {
 	if s.recaps != nil {
 		// Bounded like the messages above and by the same argument — the
 		// backlog is what one scrollback can hold, not the whole history.
-		if rows, err := s.recaps.List(r.Context(), room.ID, 50); err == nil {
+		if rows, err := s.recaps.List(r.Context(), room.ID, me.ID, 50); err == nil {
 			recaps = rows
 		} else {
 			s.log.Warn("list recaps", "err", err, "room", room.Slug)

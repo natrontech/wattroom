@@ -32,7 +32,7 @@ type Members interface {
 // checked here. Optional: without it the timeline is messages and live
 // events, exactly as before.
 type Recaps interface {
-	List(ctx context.Context, roomID pgtype.UUID, limit int) ([]protocol.SessionRecap, error)
+	List(ctx context.Context, roomID, viewer pgtype.UUID, limit int) ([]protocol.SessionRecap, error)
 }
 
 // Live is what chat borrows from the hub (#468): a line or a reaction posted
