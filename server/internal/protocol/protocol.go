@@ -523,6 +523,13 @@ type SessionRecap struct {
 	StartedAt int64               `json:"startedAt"`
 	EndedAt   int64               `json:"endedAt"`
 	Riders    []SessionRecapRider `json:"riders"`
+	// The VIEWER's own ride from this session, if they rode it — never
+	// anybody else's (#1560). The card still carries no numbers, and none of
+	// ADR-0034's four settled points move: this is a door to the page where
+	// the rider's own numbers already live, filled per request and stored
+	// nowhere. Empty for the coach without a trainer, and on the tick that
+	// posts the recap, where the ride has not been written yet.
+	RideID string `json:"rideId,omitempty"`
 }
 
 // ServerTick is the coalesced 1 Hz room broadcast: every rider's latest
