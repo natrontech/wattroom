@@ -33,15 +33,16 @@ jobs:
     # A fork has neither the secret nor any business posting to production.
     if: github.repository == 'natrontech/wattroom'
     runs-on: ubuntu-latest
-    permissions:
-      issues: write # to close the issue it files
     steps:
       - name: a tapped flag still becomes a GitHub issue
         env:
           BASE: https://wattroom.ch
           SYNTHETIC_TOKEN: ${{ secrets.WATTROOM_SYNTHETIC_TOKEN }}
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
+          # NOT github.token: the server files into its own feedback repo
+          # (WATTROOM_GITHUB_REPO — a separate, private one), and the workflow
+          # token is scoped to this repository only. This needs issues:write on
+          # whichever repo the server is pointed at.
+          GH_TOKEN: ${{ secrets.WATTROOM_FEEDBACK_TOKEN }}
           # Through env, never interpolated into the script: an ${{ }} inside a
           # run block is substituted before bash sees it, which makes the step
           # untestable outside Actions and is the shape shell-injection through
@@ -118,5 +119,19 @@ jobs:
           # 4. Close it. FileOrComment dedups on OPEN issues only, so closing
           #    here means the next run files a fresh one instead of commenting
           #    forever on this — a closed trail, and nothing on the board.
-          gh issue close "$url" --repo "$REPO" --reason completed \
-            --comment "Filed and closed by the feedback canary (#2108): the chain from \`POST /api/feedback\` to a GitHub issue is working. Run \`$RUN_ID\`."
+          #
+          #    No --repo: the url the server just returned carries it, so this
+          #    follows WATTROOM_GITHUB_REPO wherever it points without this
+          #    workflow having to know or be kept in sync.
+          #
+          #    Best effort on purpose. The assertion above has already passed,
+          #    so the loop IS alive; a red job has to mean that and nothing
+          #    else, or it becomes a check people learn to ignore — which is
+          #    how the loop went unwatched for ten days to begin with.
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::warning::WATTROOM_FEEDBACK_TOKEN is not set, so $url stays open."
+            exit 0
+          fi
+          gh issue close "$url" --reason completed \
+            --comment "Filed and closed by the feedback canary (#2108): the chain from \`POST /api/feedback\` to a GitHub issue is working. Run \`$RUN_ID\`." \
+            || echo "::warning::The loop is healthy, but $url could not be closed — check WATTROOM_FEEDBACK_TOKEN has issues:write on that repo."
