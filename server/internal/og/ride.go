@@ -6,6 +6,8 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -50,8 +52,15 @@ var zoneInk = [8]color.NRGBA{
 
 var (
 	surfaceRaised = color.NRGBA{0x1a, 0x07, 0x36, 0xff}
-	// app.css draws the line around a raised thing as ink at a twelfth.
-	edge = color.NRGBA{0xff, 0xff, 0xff, 0x20}
+	// app.css's second step of the text ramp: the quietest a theme may draw.
+	mutedDim = color.NRGBA{0x85, 0x76, 0xab, 0xff}
+	// `neon` lifted towards ink: a 2-unit stroke at 30 px is a tenth of the
+	// paint a text glyph is, and the structural hue alone disappeared into the
+	// tile it sits on. Still chrome, still glow-free (ADR-0005).
+	iconInk = lerp(neon, ink, 0.34)
+	// The top of the card's ground. Not a token: it is `surface` lifted
+	// towards `surface-raised`, so the page has a sky rather than a flat wall.
+	skyTop = color.NRGBA{0x14, 0x05, 0x2c, 0xff}
 )
 
 // RideCard is one finished ride, as the card draws it. Every number is
@@ -84,6 +93,13 @@ var embeddedFace = sync.OnceValues(func() (*sfnt.Font, error) {
 	return opentype.Parse(fontTTF)
 })
 
+// The two marks inside the ride panel, named so the test that checks they are
+// actually drawn cannot drift away from where they are drawn.
+var (
+	traceBox   = image.Rect(cardMargin+36, 320, cardRight-36, 556)
+	zoneBarBox = image.Rect(cardMargin+36, 578, cardRight-36, 602)
+)
+
 // RenderRide draws the 1080×1080 card as a PNG.
 func RenderRide(c RideCard) ([]byte, error) {
 	fnt, err := embeddedFace()
@@ -93,40 +109,43 @@ func RenderRide(c RideCard) ([]byte, error) {
 	// face and fit are the Service's, and a card wants the face and the
 	// fitting without the room lookup or the preview cache.
 	s := &Service{fnt: fnt}
-
 	img := image.NewNRGBA(image.Rect(0, 0, cardSize, cardSize))
-	fill(img, img.Bounds(), surface)
+	skyFill(img)
 
-	drawLogo(img, cardMargin, 48, 56)
-	wordFace, err := s.face(34)
+	drawLogo(img, cardMargin, 48, 52)
+	wordFace, err := s.face(32)
 	if err != nil {
 		return nil, err
 	}
-	drawText(img, wordFace, cardMargin+72, 104, ink, siteName)
-	drawRight(img, wordFace, cardRight, 104, muted, c.StartedAt.Format("2 Jan 2006 · 15:04"))
+	drawText(img, wordFace, cardMargin+68, 90, ink, siteName)
+	if err := s.datePill(img, c.StartedAt.Format("2 Jan 2006 · 15:04")); err != nil {
+		return nil, err
+	}
 
-	titleFace, title, err := s.fit(c.WorkoutName, cardWidth, 84, 46)
+	titleFace, title, err := s.fit(c.WorkoutName, cardWidth, 80, 44)
 	if err != nil {
 		return nil, err
 	}
-	drawText(img, titleFace, cardMargin, 220, ink, title)
+	drawText(img, titleFace, cardMargin, 190, ink, title)
+	// The logo's own watt→neon gradient, as the card's one rule: data hue into
+	// chrome hue, the way the bars above it climb (ADR-0005).
+	gradientBar(img, image.Rect(cardMargin, 206, cardMargin+160, 212))
 
-	where := "solo ride"
+	where := "Solo ride"
 	if c.RoomName != "" {
 		where = "in " + c.RoomName
 	}
-	subFace, sub, err := s.fit(clock(c.Seconds)+" · "+where, cardWidth, 32, 22)
+	subFace, sub, err := s.fit(where, cardWidth, 30, 22)
 	if err != nil {
 		return nil, err
 	}
-	drawText(img, subFace, cardMargin, 266, muted, sub)
+	drawText(img, subFace, cardMargin, 258, muted, sub)
 
-	fill(img, image.Rect(cardMargin, 300, cardRight, 700), surfaceRaised)
-	traceBox := image.Rect(cardMargin+32, 332, cardRight-32, 596)
+	fillRound(img, image.Rect(cardMargin, 286, cardRight, 660), 28, surfaceRaised)
 	if err := s.drawTrace(img, traceBox, c); err != nil {
 		return nil, err
 	}
-	if err := s.drawZoneBar(img, image.Rect(cardMargin+32, 620, cardRight-32, 648), c); err != nil {
+	if err := s.drawZoneBar(img, zoneBarBox, c); err != nil {
 		return nil, err
 	}
 
@@ -134,39 +153,130 @@ func RenderRide(c RideCard) ([]byte, error) {
 	if c.ExecutionScored {
 		execution = strconv.Itoa(int(c.Execution*100+0.5)) + " %"
 	}
-	if err := s.drawCells(img, 770, 806, 60, 24, [][2]string{
-		{"average", strconv.Itoa(c.AvgWatts) + " W"},
-		{"normalised", strconv.Itoa(c.NormWatts) + " W"},
-		{"work", group(c.Kj) + " kJ"},
-		{"execution", execution},
-	}); err != nil {
-		return nil, err
+	for row, tiles := range [2][3]tile{
+		{
+			{iconClock, clock(c.Seconds), "duration"},
+			{iconZap, strconv.Itoa(c.AvgWatts) + " W", "average"},
+			{iconFlame, group(c.Kj) + " kJ", "work"},
+		},
+		{
+			{iconActivity, strconv.Itoa(c.NormWatts) + " W", "normalised"},
+			{iconTarget, execution, "execution"},
+			{iconTrophy, group(c.Xp) + " XP", "earned"},
+		},
+	} {
+		if err := s.drawTiles(img, 684+row*144, tiles); err != nil {
+			return nil, err
+		}
 	}
 
-	fill(img, image.Rect(cardMargin, 848, cardRight, 849), edge)
-	if err := s.drawCells(img, 908, 942, 38, 22, [][2]string{
-		{"best 5 s", watts(c.Curve.Best5s)},
-		{"best 1 min", watts(c.Curve.Best1m)},
-		{"best 5 min", watts(c.Curve.Best5m)},
-		{"best 20 min", watts(c.Curve.Best20m)},
-	}); err != nil {
+	if err := s.drawCurve(img, 1004, c.Curve); err != nil {
 		return nil, err
 	}
-
-	footFace, err := s.face(26)
-	if err != nil {
-		return nil, err
-	}
-	// Not a domain: a self-hosted instance is not wattroom.ch, and this line
-	// is the one a rider's Strava caption gets for free.
-	drawText(img, footFace, cardMargin, 1008, muted, "Ridden on "+siteName)
-	drawRight(img, footFace, cardRight, 1008, ink, group(c.Xp)+" XP")
 
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// skyFill is the card's ground: the surface, lifted a little at the top so
+// the title has something behind it and the numbers sink into the dark.
+func skyFill(dst *image.NRGBA) {
+	for y := 0; y < cardSize; y++ {
+		fill(dst, image.Rect(0, y, cardSize, y+1), lerp(skyTop, surface, float64(y)/cardSize))
+	}
+}
+
+func gradientBar(dst *image.NRGBA, box image.Rectangle) {
+	for x := box.Min.X; x < box.Max.X; x++ {
+		at := float64(x-box.Min.X) / float64(box.Dx())
+		fill(dst, image.Rect(x, box.Min.Y, x+1, box.Max.Y), lerp(watt, neon, at))
+	}
+}
+
+// datePill sets the date apart from the wordmark it shares a line with.
+func (s *Service) datePill(dst *image.NRGBA, when string) error {
+	face, err := s.face(24)
+	if err != nil {
+		return err
+	}
+	width := font.MeasureString(face, when).Ceil()
+	box := image.Rect(cardRight-width-36, 52, cardRight, 96)
+	fillRound(dst, box, 22, surfaceRaised)
+	drawText(dst, face, box.Min.X+18, 82, muted, when)
+	return nil
+}
+
+// tile is one number with the icon that says what it is.
+type tile struct {
+	mark  icon
+	value string
+	label string
+}
+
+// drawTiles lays a row of three across the card. Each value is fitted to its
+// own tile: "not scored" at the headline size ran off the edge of the card,
+// and a five-digit kJ would too.
+func (s *Service) drawTiles(dst *image.NRGBA, top int, tiles [3]tile) error {
+	labelFace, err := s.face(21)
+	if err != nil {
+		return err
+	}
+	step := cardWidth / len(tiles)
+	for i, t := range tiles {
+		box := image.Rect(cardMargin+i*step, top, cardMargin+i*step+step-16, top+128)
+		fillRound(dst, box, 20, surfaceRaised)
+		t.mark.draw(dst, float64(box.Min.X+24), float64(top+18), 34, iconInk)
+		valueFace, value, err := s.fit(t.value, box.Dx()-48, 46, 21)
+		if err != nil {
+			return err
+		}
+		drawText(dst, valueFace, box.Min.X+24, top+96, ink, value)
+		drawText(dst, labelFace, box.Min.X+24, top+120, muted, t.label)
+	}
+	return nil
+}
+
+// drawCurve is the small print: the four SPEC windows on one centred line,
+// labels quiet and numbers not, with the windows a short ride never reached
+// still named rather than dropped.
+func (s *Service) drawCurve(dst *image.NRGBA, baseline int, curve stats.Curve) error {
+	labelFace, err := s.face(22)
+	if err != nil {
+		return err
+	}
+	valueFace, err := s.face(26)
+	if err != nil {
+		return err
+	}
+	parts := [][2]string{
+		{"5 s", watts(curve.Best5s)},
+		{"1 min", watts(curve.Best1m)},
+		{"5 min", watts(curve.Best5m)},
+		{"20 min", watts(curve.Best20m)},
+	}
+	width := 0
+	for i, part := range parts {
+		width += font.MeasureString(labelFace, part[0]+" ").Ceil()
+		width += font.MeasureString(valueFace, part[1]).Ceil()
+		if i < len(parts)-1 {
+			width += font.MeasureString(labelFace, "   ·   ").Ceil()
+		}
+	}
+	x := cardMargin + (cardWidth-width)/2
+	for i, part := range parts {
+		drawText(dst, labelFace, x, baseline, mutedDim, part[0]+" ")
+		x += font.MeasureString(labelFace, part[0]+" ").Ceil()
+		drawText(dst, valueFace, x, baseline, ink, part[1])
+		x += font.MeasureString(valueFace, part[1]).Ceil()
+		if i < len(parts)-1 {
+			drawText(dst, labelFace, x, baseline, mutedDim, "   ·   ")
+			x += font.MeasureString(labelFace, "   ·   ").Ceil()
+		}
+	}
+	return nil
 }
 
 // drawTrace fills one column per horizontal pixel, coloured by the zone that
@@ -188,25 +298,55 @@ func (s *Service) drawTrace(dst *image.NRGBA, box image.Rectangle, c RideCard) e
 	// Peak per column, like the web's trace: an average flattens the sprints
 	// that are the point of looking at it.
 	peaks := make([]int, w)
-	top := float64(c.Ftp) * 1.2
 	for x := range peaks {
 		from := len(c.Watts) * x / w
 		to := max(from+1, len(c.Watts)*(x+1)/w)
 		for _, v := range c.Watts[from:min(to, len(c.Watts))] {
 			peaks[x] = max(peaks[x], v)
 		}
-		top = max(top, float64(peaks[x]))
 	}
+	// The ceiling is the ride's 99th column, not its highest: scaled to the
+	// peak, one twelve-second sprint squashes an hour of riding into the
+	// bottom third of the box and the card is mostly empty. The few columns
+	// above it clip, and the true peak is printed under the trace as the
+	// best 5 s — so nothing is hidden, it is just not given the whole axis.
+	// Three columns wide, because the buckets alias: 4 000 samples across
+	// 1 760 columns means neighbouring columns cover two samples and three by
+	// turns, and drawing that raw combs the whole trace with a stripe the ride
+	// never rode.
+	smooth := make([]int, len(peaks))
+	for x := range peaks {
+		sum, n := 0, 0
+		for i := max(0, x-1); i <= min(len(peaks)-1, x+1); i++ {
+			sum += peaks[i]
+			n++
+		}
+		smooth[x] = sum / n
+	}
+	peaks = smooth
+	ranked := slices.Sorted(slices.Values(peaks))
+	top := math.Max(float64(c.Ftp)*1.35, float64(ranked[len(ranked)*99/100]))
 
 	tmp := image.NewNRGBA(image.Rect(0, 0, w, h))
 	const capHeight = 5 * ss
+	// One gradient down the whole box rather than one per column: faded from
+	// each column's own cap, a short column and a tall one reached the floor
+	// at different opacities and the recovery stretches grew vertical stripes.
+	shade := make([]uint8, h)
+	for py := range shade {
+		shade[py] = uint8(0xaa - 0x82*float64(py)/float64(h))
+	}
 	for x, peak := range peaks {
 		col := zoneInk[stats.PowerZone(peak, c.Ftp)]
-		y := h - int(float64(peak)/top*float64(h))
-		body := col
-		body.A = 0x6e // the area reads as a tint; the cap carries the colour
-		fill(tmp, image.Rect(x, y+capHeight, x+1, h), body)
+		y := max(0, h-int(float64(peak)/top*float64(h)))
+		// The cap carries the zone's colour and the area under it fades out of
+		// it, so the trace has a lit edge instead of a flat block of paint.
 		fill(tmp, image.Rect(x, y, x+1, min(y+capHeight, h)), col)
+		for py := y + capHeight; py < h; py++ {
+			body := col
+			body.A = shade[py]
+			tmp.SetNRGBA(x, py, body)
+		}
 	}
 	// ApproxBiLinear, not CatmullRom: a cubic kernel rings on an edge this
 	// hard and hangs a halo over the silhouette.
@@ -250,6 +390,9 @@ func (s *Service) drawZoneBar(dst *image.NRGBA, box image.Rectangle, c RideCard)
 	if err != nil {
 		return err
 	}
+	// Painted into its own image and let through a rounded mask, so the bar is
+	// a pill rather than a brick — the bands each end square inside it.
+	bands := image.NewNRGBA(image.Rect(0, 0, box.Dx(), box.Dy()))
 	x := box.Min.X
 	for zone := 1; zone <= 7; zone++ {
 		if seconds[zone] == 0 {
@@ -260,13 +403,14 @@ func (s *Service) drawZoneBar(dst *image.NRGBA, box image.Rectangle, c RideCard)
 		if zone == lastZone(seconds) {
 			end = box.Max.X
 		}
-		fill(dst, image.Rect(x, box.Min.Y, end, box.Max.Y), zoneInk[zone])
+		fill(bands, image.Rect(x-box.Min.X, 0, end-box.Min.X, box.Dy()), zoneInk[zone])
 		if end-x >= 110 {
 			drawCenter(dst, face, (x+end)/2, box.Max.Y+32, muted,
 				"Z"+strconv.Itoa(zone)+" "+clock(seconds[zone]))
 		}
 		x = end
 	}
+	draw.DrawMask(dst, box, bands, image.Point{}, roundMask(box, float64(box.Dy())/2), image.Point{}, draw.Over)
 	return nil
 }
 
@@ -278,27 +422,6 @@ func lastZone(seconds [8]int) int {
 		}
 	}
 	return last
-}
-
-// drawCells lays out evenly spaced value-over-label columns across the card.
-// Each value is fitted to its own column: "not scored" at the headline size
-// ran off the edge of the card (#2112), and a five-digit kJ would too.
-func (s *Service) drawCells(dst *image.NRGBA, valueY, labelY int, valueSize, labelSize float64, cells [][2]string) error {
-	labelFace, err := s.face(labelSize)
-	if err != nil {
-		return err
-	}
-	step := cardWidth / len(cells)
-	for i, cell := range cells {
-		x := cardMargin + i*step
-		valueFace, value, err := s.fit(cell[1], step-16, valueSize, labelSize)
-		if err != nil {
-			return err
-		}
-		drawText(dst, valueFace, x, valueY, ink, value)
-		drawText(dst, labelFace, x, labelY, muted, cell[0])
-	}
-	return nil
 }
 
 func fill(dst *image.NRGBA, r image.Rectangle, c color.NRGBA) {

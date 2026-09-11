@@ -49,8 +49,8 @@ func TestRenderRide(t *testing.T) {
 		what string
 		box  image.Rectangle
 	}{
-		{"trace", image.Rect(cardMargin+32, 332, cardRight-32, 596)},
-		{"zone bar", image.Rect(cardMargin+32, 620, cardRight-32, 648)},
+		{"trace", traceBox},
+		{"zone bar", zoneBarBox},
 	} {
 		if !hasZoneInk(img, band.box) {
 			t.Errorf("%s box has no zone colour in it — nothing was drawn there", band.what)
