@@ -26,6 +26,12 @@ const external = isExternal();
  */
 export default defineConfig({
 	testDir: 'e2e',
+	// Specs only. Playwright's default testMatch takes *.test.ts as well, so it
+	// picked up e2e/env.test.ts — a vitest unit test for the harness's own
+	// helper — and died on `vi.mock` with "Vitest mocker was not initialized".
+	// The pair to vite.config.ts's exclude: Playwright owns e2e/*.spec.ts,
+	// vitest owns e2e/*.test.ts, and neither runner sees the other's files.
+	testMatch: '**/*.spec.ts',
 	// The smoke rides a real minute; the default 30 s cap would kill it.
 	timeout: 5 * 60 * 1000,
 	expect: { timeout: 10_000 },
