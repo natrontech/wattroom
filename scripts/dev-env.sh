@@ -214,6 +214,11 @@ ensure-test-db)
 	container=$(pg_container) || no_postgres
 	create_db "$container" "$test_db_name"
 	;;
+pg-container)
+	# The gc needs the same answer for its stranded-database report, and this
+	# is the only place that knows how to find it.
+	pg_container || no_postgres
+	;;
 drop-db)
 	# Both of this checkout's databases: `git worktree remove` runs no hook, so
 	# whatever this does not take is litter in `psql -l` forever (AGENTS.md).
@@ -228,7 +233,7 @@ drop-db)
 	done
 	;;
 *)
-	echo "usage: dev-env.sh [print|banner <server|web|verify|test|e2e>|ensure-db|ensure-test-db|drop-db]" >&2
+	echo "usage: dev-env.sh [print|banner <server|web|verify|test|e2e>|ensure-db|ensure-test-db|drop-db|pg-container]" >&2
 	exit 2
 	;;
 esac

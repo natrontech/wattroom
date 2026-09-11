@@ -15,7 +15,7 @@ cd "$(git rev-parse --show-toplevel)"
 git fetch --quiet --prune origin main 2>/dev/null || true
 
 main_tree=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
-removed=0 kept=0 orphans=()
+removed=0 kept=0 strand_warned=0 orphans=()
 
 while read -r dir; do
 	[ "$dir" = "$main_tree" ] && continue
@@ -57,6 +57,20 @@ while read -r dir; do
 		continue
 	fi
 
+	# Before the removal, never after: the database name is derived from this
+	# worktree's absolute path (scripts/dev-env.sh), and dev-env.sh computes it
+	# by running inside the worktree. Remove the directory first and the name
+	# cannot be reconstructed from anything that still exists (#2105).
+	# A failure here is worth saying out loud: swallowing it is exactly how two
+	# databases were stranded with no way back to their names. The common cause
+	# is a second postgres container left behind by some other checkout, which
+	# makes dev-env.sh refuse to guess.
+	if ! drop_out=$( (cd "$dir" && ./scripts/dev-env.sh drop-db) 2>&1); then
+		echo "  ! $name — databases NOT dropped: $(tail -1 <<<"$drop_out")"
+		echo "    they can no longer be named once this worktree is gone"
+		strand_warned=1
+	fi
+
 	git worktree remove --force "$dir"
 	echo "removed $name — $reason"
 	removed=$((removed + 1))
@@ -79,6 +93,33 @@ done < <(git branch --format='%(refname:short)')
 
 echo
 echo "worktrees: $removed removed, $kept kept · branches: $pruned pruned"
+
+# Databases stranded before this script learned to drop them, or by a hand
+# `git worktree remove`. Named, never dropped: a second clone of this repo on
+# the same machine has databases this clone's worktree list cannot see, and
+# they look identical from here.
+claimed=$(
+	while read -r d; do
+		[ -d "$d" ] || continue
+		(cd "$d" && ./scripts/dev-env.sh print 2>/dev/null) |
+			sed -n "s/^export WATTROOM_DEV_\(TEST_\)\?DB_NAME='\(.*\)'$/\2/p"
+	done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
+)
+# `docker ps | head -1` picked a leftover container from a removed worktree and
+# reported one stranded database out of eleven. dev-env.sh owns this answer.
+if container=$(./scripts/dev-env.sh pg-container 2>/dev/null); then
+	stranded=$(
+		docker exec "$container" psql -U wattroom -lqt 2>/dev/null |
+			awk -F'|' '{gsub(/ /,"",$1); if ($1 ~ /^wattroom_(test_)?wt_/) print $1}' |
+			grep -vxF "$claimed" || true
+	)
+	if [ -n "$stranded" ]; then
+		echo
+		echo "Databases no worktree here claims — check no other checkout is using them:"
+		sed 's/^/    /' <<<"$stranded"
+		echo "    docker exec $container dropdb -U wattroom --if-exists --force <name>"
+	fi
+fi
 
 if [ ${#orphans[@]} -gt 0 ]; then
 	echo
