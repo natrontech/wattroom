@@ -15,10 +15,19 @@ cd "$(git rev-parse --show-toplevel)"
 git fetch --quiet --prune origin main 2>/dev/null || true
 
 main_tree=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+# Running `make worktree-gc` from inside a worktree must not delete the ground
+# it stands on: a fresh one has nothing beyond origin/main and so looked
+# exactly like litter (#2115).
+self=$PWD
 removed=0 kept=0 strand_warned=0 orphans=()
 
 while read -r dir; do
 	[ "$dir" = "$main_tree" ] && continue
+	if [ "$dir" = "$self" ]; then
+		echo "keep    ${dir##*/} — you are running from it"
+		kept=$((kept + 1))
+		continue
+	fi
 	name=${dir##*/}
 
 	if [ -n "$(git -C "$dir" status --porcelain 2>/dev/null)" ]; then
@@ -102,12 +111,25 @@ claimed=$(
 	while read -r d; do
 		[ -d "$d" ] || continue
 		(cd "$d" && ./scripts/dev-env.sh print 2>/dev/null) |
-			sed -n "s/^export WATTROOM_DEV_\(TEST_\)\?DB_NAME='\(.*\)'$/\2/p"
+			# Two expressions, not one with \(TEST_\)\? — `\?` is a GNU extension and
+			# BSD sed takes it literally, so on macOS this matched nothing, left
+			# `claimed` empty, and reported every live database as stranded (#2115).
+			sed -n \
+				-e "s/^export WATTROOM_DEV_DB_NAME='\(.*\)'$/\1/p" \
+				-e "s/^export WATTROOM_DEV_TEST_DB_NAME='\(.*\)'$/\1/p"
 	done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
 )
 # `docker ps | head -1` picked a leftover container from a removed worktree and
 # reported one stranded database out of eleven. dev-env.sh owns this answer.
-if container=$(./scripts/dev-env.sh pg-container 2>/dev/null); then
+# An empty claimed set with worktrees present means the lookup broke, not that
+# everything is litter — and this report prints a `dropdb --force` beside
+# whatever it names. Say nothing rather than hand over a destructive command
+# built on a failed detection (#2115).
+if [ -z "$claimed" ]; then
+	echo
+	echo "Could not work out which databases are in use — skipping the stranded report."
+	echo "    (scripts/dev-env.sh print returned no database names)"
+elif container=$(./scripts/dev-env.sh pg-container 2>/dev/null); then
 	stranded=$(
 		docker exec "$container" psql -U wattroom -lqt 2>/dev/null |
 			awk -F'|' '{gsub(/ /,"",$1); if ($1 ~ /^wattroom_(test_)?wt_/) print $1}' |
