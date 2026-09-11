@@ -1,1 +1,0 @@
-- One word for trying a failed thing again: "Retry". The room directory, Music, the workout editor and a sensor card that could not connect said "Try again", and in the directory and Music the button sat inside the message instead of beside it. Connecting a sign-in provider that failed now gives you a Retry button too, where it used to just tell you to try again.

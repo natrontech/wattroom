@@ -1,1 +1,0 @@
-- Music, Workouts, Rides, Friends, What's new, Find a room and a crew's settings drew their title a size smaller than every other page. They are all the same size now.

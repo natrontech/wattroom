@@ -1,1 +1,0 @@
-- A workout's sprint blocks are sprints in a room again: the trainer flips to your slope and the block counts itself in, instead of silently going to no resistance at all. Solo rides were already right.

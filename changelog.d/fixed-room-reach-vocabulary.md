@@ -1,1 +1,0 @@
-- A room's reach reads the same wherever you change it. Shutting a room from the crew page now says "Only its members" — the same step the room's own "Who can find this room" ladder offers — instead of "Make private", which was a second name for the same state and left you hunting for the setting you had just used.

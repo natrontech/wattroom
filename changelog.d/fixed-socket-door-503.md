@@ -1,1 +1,0 @@
-- A database hiccup at the moment you open a room no longer reads as "you are not a member": the room socket and the voice token answer with a retryable failure and log it, and the app keeps reconnecting instead of believing it was thrown out.

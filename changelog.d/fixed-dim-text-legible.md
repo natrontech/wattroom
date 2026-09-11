@@ -1,1 +1,0 @@
-- Dim text is legible again. Chat timestamps, the sidebar's room names, the rooms you cannot enter, the composer hint, the offline roster and every other faded line now meet the WCAG AA contrast floor in all ten themes, on both the light and the dark desk — several were previously under 2:1.

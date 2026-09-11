@@ -1,1 +1,0 @@
-- A third-party notices page at `/legal/licenses`, linked from the legal notice: every open-source component WattRoom ships — 126 in the web app, 36 in the server — with its version and its full licence text. Required by the MIT, ISC, BSD, Apache and Open Font licences the app is built on, and regenerated automatically so a new dependency cannot ship unnamed.
