@@ -83,7 +83,7 @@ type Service struct {
 }
 
 func New(baseURL string, lookup LookupRoom, log *slog.Logger) *Service {
-	fnt, err := opentype.Parse(fontTTF)
+	fnt, err := embeddedFace()
 	if err != nil {
 		panic("og: embedded font: " + err.Error()) // build-time asset, not user input
 	}

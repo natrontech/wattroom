@@ -8,12 +8,14 @@ import (
 	"image/png"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
+	"golang.org/x/image/font/sfnt"
 )
 
 // The ride card (#2112). Strava's API uploads an activity and never a photo
@@ -76,9 +78,15 @@ type RideCard struct {
 	Watts []int
 }
 
+// embeddedFace parses the build-time asset once. A card is drawn per request
+// and has no Service to hold the parsed font for it.
+var embeddedFace = sync.OnceValues(func() (*sfnt.Font, error) {
+	return opentype.Parse(fontTTF)
+})
+
 // RenderRide draws the 1080×1080 card as a PNG.
 func RenderRide(c RideCard) ([]byte, error) {
-	fnt, err := opentype.Parse(fontTTF)
+	fnt, err := embeddedFace()
 	if err != nil {
 		return nil, err
 	}
