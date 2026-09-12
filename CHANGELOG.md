@@ -17,6 +17,52 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.115] - 2026-09-12
+
+### Added
+
+- Right-click anyone in a room and pick **Connection** to see how their link is
+  doing: their ping in milliseconds, what the voice server makes of their
+  connection while they are in voice, and whether they are on a PC, a phone or
+  a tablet. The ping is measured by the server rather than reported by the
+  rider's own browser, so it means the same thing for everybody in the room.
+  Your own panel also shows your public IP address — yours alone, on your own
+  screen; nobody else in the room can see it, and it is never stored.
+
+### Fixed
+
+- Your account export now carries the rest of what the app shows you: your soundboard clips, your coach-access tokens, your crew standing and the crews you own, the sessions you scheduled (not only the ones you said yes to), the rooms you own with their settings and calendar link, who you let through a private room's door, your per-room notify and weekly-board choices, your emoji reactions, where each ride was delivered, and your friend code, calendar link and pending email address. Edited and picture chat lines now export their edit time and picture, and a ride exports the FTP it set. As with uploaded music, clip audio stays out of the zip and a row names the clip it belongs to.
+- A ride nothing is backing up now says so. When the browser's storage will not
+  open — a private window, site data switched off, a full disk — the ride used
+  to record an hour with no copy to recover and never mention it. The room and
+  the ride screens now carry it as persistent status, before the first pedal
+  stroke. A browser that refuses storage by throwing (Firefox private windows)
+  also no longer stops a solo ride from starting at all.
+- A room ride the server loses now has a way back. If the server restarts
+  mid-session, the room reappears without it — and the browser used to mark the
+  copy it recorded as finished, which threw away the last one in existence.
+  It now keeps that ride, and the room tells you so with a link to download it
+  as a `.fit` file. The ride still does not reach your account: the hub keeps a
+  session in memory until it closes, and a `.fit` you can upload elsewhere is
+  what the browser's copy can offer.
+
+### Security
+
+- Your sign-in picture from Google, GitHub or Strava is now copied into
+  WattRoom once and served by WattRoom. Until now your browser fetched that
+  picture straight from the provider every time a room, roster, chat or friends
+  list drew your face — which told them which room you were in and at what
+  minute, on every visit. Nothing reaches a provider's servers any more, and
+  existing accounts are converted the first time the upgraded server starts. A
+  picture that cannot be copied leaves your initial in its place, and you can
+  always upload one of your own.
+- With those pictures served by WattRoom, the last piece of the
+  Content-Security-Policy is now enforced rather than only reported on: an
+  image may come only from WattRoom itself and the handful of hosts the app
+  knowingly draws media from, so an injected image has nowhere to send your
+  address. The second, report-only header is gone — it was worth carrying only
+  while one directive was still waiting on this change.
+
 ## [2026.09.114] - 2026-09-11
 
 ### Fixed
@@ -2129,7 +2175,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.114...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.115...HEAD
+[2026.09.115]: https://github.com/natrontech/wattroom/compare/2026.09.114...2026.09.115
 [2026.09.114]: https://github.com/natrontech/wattroom/compare/2026.09.113...2026.09.114
 [2026.09.113]: https://github.com/natrontech/wattroom/compare/2026.09.112...2026.09.113
 [2026.09.112]: https://github.com/natrontech/wattroom/compare/2026.09.111...2026.09.112
