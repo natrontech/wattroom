@@ -16,7 +16,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 
 - A structured workout player with precise smart trainer control (ERG mode)
 - Persistent rooms where people train together in real time, with live metrics for every rider
-- Always-on voice and camera between room members (LiveKit, built in from day one)
+- ~~Always-on~~ voice and camera between room members (LiveKit, built in from day one) **Diverged 2026-09-12 (#681, [ADR-0010](docs/decisions/0010-room-first-positioning.md))**: the channel opens on a tap, never on arrival — entering a room connects nothing, a reload within 60 s restores the mic as it was, and the camera never auto-restores. A hot mic and a live camera the moment you open a door is what people refuse, and two audits judged the shipped opt-in the better product. The rule is in [docs/SPEC.md](docs/SPEC.md)'s "Room audio defaults".
 - A synced jukebox: shared YouTube queue playing in sync for everyone
 - A hosted service at **wattroom.ch**, open source under **AGPL-3.0**
 
