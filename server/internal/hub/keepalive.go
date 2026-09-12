@@ -14,10 +14,19 @@ import (
 	"github.com/coder/websocket"
 )
 
-// How often a quiet socket is pinged, and how long its peer then has to
-// answer before it is treated as gone.
+// How often a socket is pinged, and how long its peer then has to answer
+// before it is treated as gone.
+//
+// Five seconds rather than the thirty this started at (#2131). The ping is
+// now a measurement as well as a liveness check — the round trip is the
+// rider's ping on the roster — and a number that refreshes every thirty
+// seconds is stale on the surface a rider opens to read it. Pinging more
+// often only makes the half-open detection above faster, never more
+// trigger-happy: the peer still gets socketPingTimeout to answer each one.
+// The cost is a ping frame per socket per interval, against a room socket
+// that already writes a whole tick every second.
 const (
-	socketKeepalive   = 30 * time.Second
+	socketKeepalive   = 5 * time.Second
 	socketPingTimeout = 5 * time.Second
 )
 
@@ -41,15 +50,23 @@ func (k keepalive) beat() *time.Ticker { return time.NewTicker(k.every) }
 // parked on it so its handler runs the deferred leave and release, and false
 // tells this socket's writer to return.
 //
+// The round trip comes back with it (#2131). coder/websocket's Ping blocks
+// until the matching pong arrives, so timing the call IS the measurement —
+// there is no second protocol to add, and the number is the server's own
+// rather than something the client reported about itself, which is what makes
+// it safe to show one rider about another.
+//
 // Call it from the goroutine that writes this conn — a ping is a frame, and a
 // conn takes one writer at a time.
-func (k keepalive) pingOrClose(ctx context.Context, conn *websocket.Conn) bool {
+func (k keepalive) pingOrClose(ctx context.Context, conn *websocket.Conn) (time.Duration, bool) {
 	ctx, cancel := context.WithTimeout(ctx, k.pong)
+	start := time.Now()
 	err := conn.Ping(ctx)
+	rtt := time.Since(start)
 	cancel()
 	if err != nil {
 		_ = conn.CloseNow()
-		return false
+		return 0, false
 	}
-	return true
+	return rtt, true
 }

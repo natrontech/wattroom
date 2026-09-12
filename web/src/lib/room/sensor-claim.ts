@@ -1,4 +1,4 @@
-import { device } from '$lib/device.svelte';
+import { deviceWord } from '$lib/device.svelte';
 import type { SensorClaim } from '$lib/protocol';
 import { tabId } from '$lib/room/rejoin';
 import { SENSOR_KINDS, sensors } from '$lib/sensors.svelte';
@@ -29,17 +29,4 @@ export function sensorClaim(hasTrainer: boolean): SensorClaim {
 		tab: tab === 'no-storage' ? '' : tab,
 		device: deviceWord(),
 	};
-}
-
-/**
- * The word another of the rider's screens renders for this one — "paired on
- * your phone". Coarse on purpose: it is a hint about where to go looking, and
- * anything narrower would be a device fingerprint for no benefit.
- *
- * It never leaves the rider's own sockets (the hub addresses SensorPairing to
- * them alone), so this is not a room-visible label.
- */
-export function deviceWord(): string {
-	if (!device.coarse) return 'desktop';
-	return device.narrow ? 'phone' : 'tablet';
 }

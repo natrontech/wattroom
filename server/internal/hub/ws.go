@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/coder/websocket/wsjson"
 
 	"github.com/natrontech/wattroom/server/internal/av"
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/workout"
@@ -55,9 +57,38 @@ type client struct {
 	// read under rm.mu like the rest of the socket's room state.
 	tab    string
 	device string
+	// What this socket says it is running on (#2131). Distinct from `device`
+	// above, which is sensor arbitration between the rider's own screens and
+	// never leaves them: this one is room-visible and arrives whether or not
+	// anything was ever paired. Read under rm.mu like the pair above it.
+	deviceKind string
 	// The workout hash this socket last received the definition for (#1710).
 	// Owned by the tick loop: read and written there alone.
 	workoutSent string
+	// This socket's last measured round trip, in MICROSECONDS, zero until the
+	// first ping has been answered (#2131). Written by this socket's writer
+	// goroutine and read by the room's tick loop — two goroutines, neither
+	// holding the other's lock, so it is atomic rather than guarded by rm.mu.
+	//
+	// Microseconds because zero has to keep meaning "not measured yet": on a
+	// LAN the round trip rounds to nothing in milliseconds, and a real reading
+	// must not be indistinguishable from no reading at all.
+	rttMicros atomic.Int64
+}
+
+// ping is this socket's round trip as the roster reports it: milliseconds,
+// and zero when nothing has been measured yet. A round trip under half a
+// millisecond reads as 1 rather than as 0 — a real measurement is never
+// reported as the absence of one.
+func (c *client) ping() int {
+	micros := c.rttMicros.Load()
+	if micros <= 0 {
+		return 0
+	}
+	if ms := int((micros + 500) / 1000); ms > 0 {
+		return ms
+	}
+	return 1
 }
 
 // Cheers and chat reactions are shape-checked (protocol.IsIconOrEmoji — an
@@ -103,6 +134,16 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	writerDone := make(chan struct{})
 	defer close(writerDone)
 	safego.Go(h.log, "room writer "+slug, func() { c.writeLoop(writerDone, h.keepalive) })
+	// This socket's own address, to this socket alone (#2131). Addressed like
+	// a pairing answer and for a stronger reason: it is NOT on protocol.Rider
+	// and must never be, because the roster is broadcast to the whole room on
+	// every tick. A rider may see everyone's ping and nobody's address but
+	// their own, and keeping the two facts in different messages is what makes
+	// that a property of the shape rather than of a filter somebody has to
+	// remember. Nothing stores it — it is read off the request and sent.
+	c.sendJSON(h.log, protocol.ServerMessage{
+		Connection: &protocol.OwnConnection{IP: httpx.ClientIP(r)},
+	})
 	rm.join(c)
 	h.PresenceChanged()
 	h.log.Info("rider joined", "room", slug, "rider", rider.ID)
@@ -154,6 +195,14 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}) {
 				h.writeError(c, "invalid_request", "That rider is no longer in the room.")
 			}
+		}
+		if msg.Device != nil {
+			// Untrusted input, bounded at the boundary to the closed set
+			// (errors.md): the room renders this, and anything outside the
+			// three words is dropped rather than shown to everyone. Costs one
+			// comparison and changes nothing when repeated, so no rate limit
+			// of its own — the same reasoning as the sensor claim above.
+			rm.setDeviceKind(c, msg.Device.Kind)
 		}
 		if msg.Away != nil {
 			// Unlimited like a sensor claim, and for the same reason: it is
@@ -342,9 +391,11 @@ func (c *client) writeLoop(done <-chan struct{}, k keepalive) {
 		case <-done:
 			return
 		case <-beat.C:
-			if !k.pingOrClose(context.Background(), c.conn) {
+			rtt, alive := k.pingOrClose(context.Background(), c.conn)
+			if !alive {
 				return
 			}
+			c.rttMicros.Store(rtt.Microseconds())
 		case frame := <-c.out:
 			ctx, cancel := context.WithTimeout(context.Background(), writeTimeout)
 			err := c.conn.Write(ctx, websocket.MessageText, frame)

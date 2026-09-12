@@ -17,6 +17,22 @@ import (
 
 const tickInterval = time.Second
 
+// bestScreen is whether this socket describes its rider better than the one
+// held so far (#2131). A measured round trip beats none — a socket in its
+// first few seconds has not been pinged yet, and it must not silence a
+// sibling that has — and between two measured sockets the quicker wins.
+//
+// Chosen once per rider per tick so the roster's ping and device word come
+// from the same connection: a rider's laptop and their phone are two screens
+// and the roster has one row.
+func bestScreen(candidate, held *client) bool {
+	mine, theirs := candidate.ping(), held.ping()
+	if mine == 0 || theirs == 0 {
+		return theirs == 0 && mine > 0
+	}
+	return mine < theirs
+}
+
 // run broadcasts one tick per interval while anyone is connected. The tick
 // always carries the session state and roster — the timer must advance on
 // screens even when nobody is pedalling yet.
@@ -175,8 +191,22 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		for _, id := range ridingIDs {
 			pedalling[id] = struct{}{}
 		}
+		// A rider's connection is the best of their sockets (#2131): the same
+		// person on a dashboard and a phone is one roster entry, and what
+		// describes them is their best screen rather than whichever socket the
+		// map happened to yield first.
+		//
+		// One socket, not two facts: the ping and the device word come from
+		// the same client record, so the roster never says "12 ms" about the
+		// laptop and "phone" about the handset sitting next to it. Collected
+		// across every socket and applied after the roster is built, because
+		// the entry itself is appended from the first socket seen.
+		best := make(map[string]*client, len(rm.clients))
 		for c := range rm.clients {
 			clients = append(clients, c)
+			if was, had := best[c.rider.ID]; !had || bestScreen(c, was) {
+				best[c.rider.ID] = c
+			}
 			if _, dup := seen[c.rider.ID]; !dup {
 				seen[c.rider.ID] = struct{}{}
 				// The socket's captured rider plus the room's live view of
@@ -191,6 +221,15 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 				// a fire is one tick, the sound it started is not.
 				rider.Sounding, rider.SoundingMs = rm.soundingLocked(c.rider.ID, now())
 				tick.Roster = append(tick.Roster, rider)
+			}
+		}
+		for i := range tick.Roster {
+			if on, found := best[tick.Roster[i].ID]; found {
+				// Zero when nothing has been measured yet, which omitempty
+				// then drops — the client draws that as "no reading", never
+				// as a round trip of nothing.
+				tick.Roster[i].PingMs = on.ping()
+				tick.Roster[i].Device = on.deviceKind
 			}
 		}
 		ridingKey := strings.Join(riding, "\n")

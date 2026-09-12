@@ -39,6 +39,7 @@
 	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
+	import ConnectionInfo from '$lib/room/ConnectionInfo.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 	import DevicePicker from '$lib/ble/DevicePicker.svelte';
 	import { devicePicker } from '$lib/ble/device-picker.svelte';
@@ -531,6 +532,10 @@
 <ImageViewer />
 <ContextMenuHost />
 <ConfirmHost />
+<!-- One rider's connection, raised from `personMenu` on any surface (#2131).
+     Here rather than in the room shell: the sidebar and the friends panel
+     draw people too, and the room it reads is the one you are standing in. -->
+<ConnectionInfo />
 <DevicePicker
 	devices={devicePicker.devices}
 	onpick={(id) => devicePicker.pick(id)}

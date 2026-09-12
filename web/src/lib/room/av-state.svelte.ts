@@ -1,5 +1,10 @@
 import type { Room as LiveKitRoom } from 'livekit-client';
-import type { AvError, AvStatus, LiveKitClient } from '$lib/room/av-types';
+import type {
+	AvError,
+	AvStatus,
+	LinkQuality,
+	LiveKitClient,
+} from '$lib/room/av-types';
 
 /**
  * One room's AV connection, in two named places (#892).
@@ -71,6 +76,12 @@ export interface AvState {
 	 */
 	handedOff: boolean;
 	/**
+	 * What the SFU makes of each rider's connection (#2131), by rider id.
+	 * Absent for anyone not in voice — there is no media to judge, and a tier
+	 * invented for them would be a guess wearing a fact's clothes.
+	 */
+	quality: Record<string, LinkQuality>;
+	/**
 	 * The browser refused to start audio without a gesture behind it (#645).
 	 * Persistent status, not a toast: the rider is on a bike three metres from
 	 * the screen, and the room has gone silent — it has to still be there when
@@ -121,6 +132,7 @@ export function createAvState(): AvState {
 		speaking: {},
 		dropped: 0,
 		voice: {},
+		quality: {},
 		handedOff: false,
 		playbackBlocked: false,
 	});

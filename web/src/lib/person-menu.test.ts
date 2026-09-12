@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MenuItem } from '$lib/context-menu.svelte';
 import { personMenu } from '$lib/person-menu';
 import { mixer } from '$lib/sound/mixer.svelte';
@@ -11,9 +11,19 @@ const room = vi.hoisted(() => ({
 			voice: Record<string, 'live' | 'muted'>;
 			setRiderGain: (id: string, gain: number, name?: string) => void;
 		};
+		live?: { tick?: { roster?: { id: string }[] } };
 	},
 }));
 vi.mock('$lib/room/connection.svelte', () => ({ roomConnection: room }));
+
+const opened = vi.hoisted(() => ({ id: null as string | null }));
+vi.mock('$lib/room/connection-info.svelte', () => ({
+	connectionInfo: {
+		open: (id: string) => {
+			opened.id = id;
+		},
+	},
+}));
 
 /** The entries you select; a fader is dragged and has no `onSelect`. */
 const items = (entries: ReturnType<typeof personMenu>): MenuItem[] =>
@@ -164,5 +174,62 @@ describe('personMenu volume', () => {
 		fader.onInput(80);
 		expect(setRiderGain).toHaveBeenCalledWith('u1', 0.8, 'Ada');
 		mixer.setRiderGain('u1', 1);
+	});
+});
+
+// Their connection, as numbers (#2131). The entry is on `personMenu` so that
+// every surface drawing a person offers it, which makes "only where the room
+// can answer" the menu's job rather than each caller's.
+describe('personMenu connection (#2131)', () => {
+	beforeEach(() => {
+		room.current = null;
+		opened.id = null;
+	});
+
+	it('is absent off a room surface, where nothing could fill the panel', () => {
+		expect(labels(personMenu('u1', () => {}))).not.toContain('Connection');
+	});
+
+	it('is absent for someone who is not in the room you are standing in', () => {
+		room.current = {
+			av: { voice: {}, setRiderGain: () => {} },
+			live: { tick: { roster: [{ id: 'someone-else' }] } },
+		};
+		expect(labels(personMenu('u1', () => {}))).not.toContain('Connection');
+	});
+
+	it('is offered for a rider on the roster, and opens their panel', () => {
+		room.current = {
+			av: { voice: {}, setRiderGain: () => {} },
+			live: { tick: { roster: [{ id: 'u1' }] } },
+		};
+		const entries = personMenu('u1', () => {});
+		expect(labels(entries)).toContain('Connection');
+		items(entries)
+			.find((item) => item.label === 'Connection')
+			?.onSelect();
+		expect(opened.id).toBe('u1');
+	});
+
+	// The one entry that is NOT disabled on your own row: everything else on
+	// this menu is about another person, and your address is about you.
+	it('is offered on your own row, and is not disabled there', () => {
+		room.current = {
+			av: { voice: {}, setRiderGain: () => {} },
+			live: { tick: { roster: [{ id: 'me' }] } },
+		};
+		const mine = items(personMenu('me', () => {}, { you: true })).find(
+			(item) => item.label === 'Connection',
+		);
+		expect(mine).toBeDefined();
+		expect(mine?.disabled).toBeFalsy();
+	});
+
+	// A room joined but not yet ticking has no roster to ask, and reading
+	// through it must not throw the whole menu away.
+	it('survives a room that has no tick yet', () => {
+		room.current = { av: { voice: {}, setRiderGain: () => {} } };
+		expect(() => personMenu('u1', () => {})).not.toThrow();
+		expect(labels(personMenu('u1', () => {}))).not.toContain('Connection');
 	});
 });
