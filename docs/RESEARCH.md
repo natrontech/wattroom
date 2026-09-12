@@ -600,6 +600,79 @@ The measurement the field uses instead is Joe Friel's **30-minute time trial**: 
 
 **Verdict.** Keep the ramp's 0.90 × peak as what it already is in SPEC — a suggestion, one tap, never auto-applied — but label it a rough estimate, and offer the 30-minute field test as the way to a real number: the app records HR on every ride, so "average HR of the last 20 minutes of a 30-minute all-out ride" is one derived number away from a proper LTHR suggestion, the same shape as the FTP suggestion. That is a feature, not a docs change, and it is the honest upgrade path.
 
+## 18. Stoat, and what a Discord alternative on the same stack does differently (run of 2026-09-11)
+
+[Stoat](https://github.com/stoatchat) is Revolt renamed: an open-source Discord
+alternative, Rust backend, Solid.js client — and **LiveKit for voice**, which
+makes it the closest mirror WattRoom has for ADR-0020's "the app takes Discord's
+shape". Read for ideas; nothing copied (their client is a different framework
+and their backend is a different language, so the value is in decisions, not
+code).
+
+### 18.1 RNNoise has an off-the-shelf LiveKit implementation — and is not the fix for the join ramp
+
+[ADR-0043](decisions/0043-voice-goes-out-clean.md) left one upgrade path open:
+"an RNNoise/DTLN track processor on the local mic… a rider-side choice behind
+the 95 % rule". That path has a ready-made implementation, so nobody needs to
+derive it again: Stoat's `VoiceProcessor.ts` implements livekit-client's
+`TrackProcessor` around **`livekit-rnnoise-processor`** (npm, v3.0.2 as of
+2026-07), wrapping RNNoise's WASM build in an AudioWorklet with a Web Audio
+chain of highpass → RNNoise → compressor → gain, rebuilt live when the setting
+changes. `mic-chain.svelte.ts` is already that shape.
+
+RNNoise itself is Xiph's 2017 hybrid suppressor: classic DSP splits each 10 ms
+frame into 22 Bark bands, a ~85 k-weight GRU outputs one gain per band, the DSP
+applies them. It cannot synthesise a voice, only attenuate bands, and it costs a
+fraction of a core.
+
+**It is parked, and the "bad voice on a fresh join" report (#2120) is not a
+reason to unpark it.** A suppressor is bad consistently; that symptom improves
+over time, which makes it a convergence problem (AGC ramp, jitter buffer, AEC
+adaptation) that a second processor would not fix. The reasons ADR-0043 gave
+also still stand: RNNoise is nine years old, beaten by modern DNN suppressors on
+hard cases, close to redundant against a fan (the stationary case Chrome's
+suppressor already handled), and it eats heavy breathing — which in a cycling
+room is arguably signal.
+
+### 18.2 LiveKit emits no mute/unmute webhook — they forked the server to get one
+
+The only non-upstream commits on `stoatchat/livekit-server` are
+`feat: Send webhook on mute and unmute`, plus participant count and room
+metadata on telemetry events. Worth knowing before anything server-side is
+planned around authoritative mute state: upstream does not publish it, and
+closing that gap is a fork, not a config flag. Our seam is the client reporting
+`setVoice(id, 'live' | 'muted' | null)` (#151), and it should stay that way.
+
+### 18.3 What this produced
+
+- #2121 — no `offline` connection state. Their
+  `doc/src/components/client/session-lifecycle.md` specifies a state machine
+  every Stoat client must implement, with OFFLINE split from DISCONNECTED and
+  permanent failure split from temporary. We are missing the OFFLINE node.
+- #2122 — SPEC bounds typed twice and drifting twice (#1393, #1986). Stoat
+  publishes every backend limit to the client as `client.limits` and makes
+  mirroring mandatory; we have a better seam already (`make protocol`).
+- #2123 — file-drop hand-rolled three times. They mount one
+  `FileDropAnywhereCollector` once.
+
+### 18.4 Where we are already ahead, so it does not get re-filed as a gap
+
+Per-rider volume with a 0–200 % fader lives in the person menu (#874, #463) —
+their `enableBoosting` plus per-participant volume, in one control. Drafts
+restore a refused line to the box on purpose (#1762). Unread dividers, context
+menus, the GIF picker, sign-out-everywhere and reduced-motion handling are all
+present.
+
+### 18.5 Deliberately not taken
+
+- **i18n.** Stoat carries ~60 Lingui catalogs; we are English-only with strings
+  inline in Svelte, and the retrofit cost grows weekly. Deferred with no issue
+  (maintainer's call, 2026-09-11) — the alpha is not blocked on it and deciding
+  early buys nothing.
+- **Per-crew identity** (their `ServerIdentity` — a different nickname and
+  avatar per server). Runs against privacy-is-architecture and ADR-0036; not
+  proposed, recorded here so the question is not mistaken for an oversight.
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.
