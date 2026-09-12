@@ -16,10 +16,18 @@
 	let {
 		session,
 		signalLost,
+		noCrashSafety = false,
 		lost = 'Trainer signal lost — reconnecting. Keep pedalling; your targets resume the moment it is back.',
 	}: {
 		session: ReturnType<typeof createRideSession>;
 		signalLost: boolean;
+		/**
+		 * The ride buffer would not open, so nothing is writing this ride
+		 * down (#1466 finding 4). Status rather than silence because it is
+		 * known before the first pedal stroke, and the rider can still act
+		 * on it then — ADR-0052 rule 3.
+		 */
+		noCrashSafety?: boolean;
 		/** What the banner says while the trainer is quiet. */
 		lost?: string;
 	} = $props();
@@ -95,5 +103,26 @@
 		{#if repairError}
 			<p class="text-danger mt-2 text-xs">{repairError}</p>
 		{/if}
+	</div>
+{/if}
+
+<!-- No button: the rider cannot open the browser's storage from here, and
+     naming what causes it is the whole of the way back. Warn rather than
+     error — the ride itself records and saves; what is missing is the copy
+     that survives a crash. -->
+{#if noCrashSafety}
+	<div class="mt-4">
+		<Banner tone="warn">
+			<p>
+				<span class="font-medium"
+					>This browser is not keeping its own copy of this ride.</span
+				>
+				<span class="text-muted"
+					>Storage would not open — a private window, or site data switched off.
+					The ride records and saves when it finishes, but if the browser closes
+					before then there will be nothing to recover.</span
+				>
+			</p>
+		</Banner>
 	</div>
 {/if}

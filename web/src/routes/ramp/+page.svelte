@@ -60,6 +60,10 @@
 	// fifteen maximal minutes reach the history, count as load, and survive
 	// a crash at minute fourteen.
 	let buffer: RideBuffer | null = null;
+	// Nothing is writing this ride down (#1466 finding 4): the buffer's open
+	// failed, so a browser crash leaves no .fit to recover. Persistent status
+	// on the riding screen, not a swallowed no-op (ADR-0052 rule 3).
+	let noCrashSafety = $state(false);
 	let savedId = $state<string | null>(null);
 	let rideStatus = $state<string | null>(null);
 	let recorded = false;
@@ -101,6 +105,7 @@
 				workoutName: workout.name,
 				workoutJson: JSON.stringify(workout),
 			});
+			noCrashSafety = !buffer.crashSafe;
 			const next = createRideSession({
 				trainer,
 				workout,
@@ -509,6 +514,7 @@
 			<RideStatus
 				{session}
 				{signalLost}
+				{noCrashSafety}
 				lost="Trainer signal lost — reconnecting. Keep pedalling; the step resumes the moment it is back, and the test will not end on the gap."
 			/>
 

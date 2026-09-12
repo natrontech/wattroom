@@ -8,12 +8,16 @@ const buffered = vi.hoisted(() => ({
 	tail: [] as { watts: number }[],
 	opened: [] as { workoutName: string; startedAt: number }[],
 	ended: 0,
+	// Whether the store opens at all — the test flips it to stand for a
+	// private window or blocked site data (#1466 finding 4).
+	crashSafe: true,
 }));
 vi.mock('$lib/ride/buffer', () => ({
 	MIN_SAMPLES: 60,
 	openRideBuffer: async (meta: { workoutName: string; startedAt: number }) => {
 		buffered.opened.push(meta);
 		return {
+			crashSafe: buffered.crashSafe,
 			append(row: { watts: number }) {
 				buffered.rows.push(row);
 			},
@@ -222,6 +226,7 @@ describe('room live ride buffer follows the session (#1541)', () => {
 		buffered.rows.length = 0;
 		buffered.tail.length = 0;
 		buffered.ended = 0;
+		buffered.crashSafe = true;
 		vi.useFakeTimers();
 		vi.setSystemTime(2_000_000);
 	});
@@ -267,6 +272,34 @@ describe('room live ride buffer follows the session (#1541)', () => {
 		running(socket, 0, 'Main set');
 		await vi.advanceTimersByTimeAsync(0);
 		expect(buffered.opened).toHaveLength(2);
+		vi.useRealTimers();
+	});
+
+	// #1466 finding 4: the buffer degrades to a working-looking object whose
+	// append is a no-op, which is right mid-ride and wrong at the open — a
+	// ride with no crash safety at all used to look exactly like one with it.
+	it('says so when nothing is writing the ride down (#1466 finding 4)', async () => {
+		buffered.crashSafe = false;
+		const live = createRoomLive('nostore');
+		const socket = FakeSocket.last!;
+		socket.open();
+		expect(live.noCrashSafety).toBe(false);
+
+		running(socket, 5, 'Openers');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(live.noCrashSafety).toBe(true);
+
+		// It is about the ride being recorded, so it goes when the session
+		// does — a lounge is not a place with a ride to lose.
+		phase(socket, 'done');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(live.noCrashSafety).toBe(false);
+
+		// And a store that opens says nothing at all.
+		buffered.crashSafe = true;
+		running(socket, 0, 'Main set');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(live.noCrashSafety).toBe(false);
 		vi.useRealTimers();
 	});
 

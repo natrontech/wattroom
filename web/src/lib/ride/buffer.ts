@@ -7,8 +7,11 @@
  * what the socket dropped.
  *
  * Appends are fire-and-forget: a storage problem must never disturb a ride,
- * so every operation swallows failure and the buffer silently degrades to
- * "no crash safety" rather than to "no ride".
+ * so every operation swallows failure and the buffer degrades to "no crash
+ * safety" rather than to "no ride". Silently, except at the open: that one is
+ * known before the first pedal stroke and is the rider's to hear, so it is
+ * reported as `crashSafe` and shown as persistent status (#1466 finding 4,
+ * ADR-0052 rule 3).
  */
 export interface BufferedSample {
 	/** Strictly increasing per ride; doubles as the WS seq for server dedupe. */
@@ -56,14 +59,23 @@ function samplesOf(rideId: string): IDBKeyRange {
 function open(): Promise<IDBDatabase | null> {
 	return new Promise((resolve) => {
 		if (typeof indexedDB === 'undefined') return resolve(null);
-		const request = indexedDB.open(DB_NAME, 1);
-		request.onupgradeneeded = () => {
-			const db = request.result;
-			db.createObjectStore('samples', { keyPath: ['rideId', 'seq'] });
-			db.createObjectStore('rides', { keyPath: 'rideId' });
-		};
-		request.onsuccess = () => resolve(request.result);
-		request.onerror = () => resolve(null);
+		// `indexedDB.open` THROWS in a Firefox private window rather than
+		// firing onerror, and an unguarded throw here rejected the promise:
+		// the room's `.then` had no catch, and the solo page turned a missing
+		// backup into a ride that would not start. A store that will not open
+		// is `null` however it refuses.
+		try {
+			const request = indexedDB.open(DB_NAME, 1);
+			request.onupgradeneeded = () => {
+				const db = request.result;
+				db.createObjectStore('samples', { keyPath: ['rideId', 'seq'] });
+				db.createObjectStore('rides', { keyPath: 'rideId' });
+			};
+			request.onsuccess = () => resolve(request.result);
+			request.onerror = () => resolve(null);
+		} catch {
+			resolve(null);
+		}
 	});
 }
 
@@ -86,6 +98,15 @@ function tx<T>(
 }
 
 export interface RideBuffer {
+	/**
+	 * Whether the buffer is actually storing anything (#1466 finding 4).
+	 * False means the store would not open — a private window, a browser
+	 * with site data blocked, a full disk — and every method below is a
+	 * no-op, so the ride runs with no crash safety at all. Known before the
+	 * first pedal stroke, which is why it is told rather than swallowed:
+	 * the degrading is right for a mid-ride append and wrong for the open.
+	 */
+	readonly crashSafe: boolean;
 	append(sample: BufferedSample): void;
 	/**
 	 * Marks the ride finished — it stops being a crash to recover from. Call
@@ -105,6 +126,7 @@ export async function openRideBuffer(meta: RideMeta): Promise<RideBuffer> {
 		await prune(db);
 	}
 	return {
+		crashSafe: db !== null,
 		append(sample) {
 			if (!db) return;
 			void tx(db, 'readwrite', (samples) =>

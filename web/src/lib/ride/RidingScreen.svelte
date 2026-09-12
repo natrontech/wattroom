@@ -36,6 +36,7 @@
 		watts,
 		target,
 		signalLost,
+		noCrashSafety = false,
 		onFlag,
 		onTv,
 	}: {
@@ -51,6 +52,8 @@
 		watts: number;
 		target: number;
 		signalLost: boolean;
+		/** Nothing is writing this ride down (#1466) — RideStatus says so. */
+		noCrashSafety?: boolean;
 		onFlag: () => void;
 		onTv: () => void;
 	} = $props();
@@ -121,7 +124,7 @@
 	<!-- Ride-critical states are persistent status, never toasts
 	     (.claude/rules/errors.md); the way back from a dropout is the
 	     status's own button, wired to this ride's trainer (#1847). -->
-	<RideStatus {session} {signalLost} />
+	<RideStatus {session} {signalLost} {noCrashSafety} />
 
 	<!-- The focus slot takes the free height rather than sitting under the
 	     header with a screen of nothing below it (#1531: "two thirds empty"). -->
