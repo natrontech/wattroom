@@ -2,6 +2,7 @@ package unfurl
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
 	"log/slog"
@@ -31,13 +32,13 @@ func setup(t *testing.T, handler http.HandlerFunc) (*Service, *http.ServeMux, *h
 	}
 	users := &testx.Users{ByToken: map[string]db.User{"kim": {ID: id, DisplayName: "kim"}}}
 	svc := New(users, slog.New(slog.DiscardHandler))
-	svc.client = upstream.Client() // the guard has its own tests; this is the handler's
-	svc.client.Timeout = fetchTimeout
+	svc.out.client = upstream.Client() // the guard has its own tests; this is the handler's
+	svc.out.client.Timeout = fetchTimeout
 	// Off by default: a test that means to measure the ration turns it on, so
 	// no other test's 204 can quietly be the ration's rather than the page's.
 	svc.burst = 0
 	// httptest picks a random high port; the port policy has its own test.
-	svc.ports = nil
+	svc.out.ports = nil
 	mux := http.NewServeMux()
 	svc.Register(mux)
 	return svc, mux, upstream
@@ -399,5 +400,55 @@ func TestTheRealClientWillNotFetchFromLoopback(t *testing.T) {
 	svc := New(&testx.Users{ByToken: map[string]db.User{}}, slog.New(slog.DiscardHandler))
 	if _, ok := svc.fetch(t.Context(), upstream.URL+"/page"); ok {
 		t.Fatal("the guarded client fetched a page from 127.0.0.1")
+	}
+}
+
+// Fetcher.Image is the read whose bytes get stored and then served from our
+// own origin (a rider's sign-in picture, server/internal/avatars), so what it
+// refuses matters more than what it accepts: a document that calls itself an
+// image, a body over the cap, a host that answers with anything but 200.
+func TestImageTakesTheTypeFromTheBytesAndCapsTheBody(t *testing.T) {
+	big := make([]byte, 64)
+	copy(big, "\x89PNG\r\n\x1a\n")
+	svc, _, upstream := setup(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/face.png":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write([]byte("\x89PNG\r\n\x1a\nrest-of-a-picture"))
+		case "/liar.png":
+			// A provider's URL ends in .png and the header agrees; the bytes
+			// are a document. Served from our origin it would be a stored
+			// XSS, so the bytes decide.
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = io.WriteString(w, "<html><script>alert(1)</script></html>")
+		case "/huge.png":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write(big)
+		case "/gone.png":
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	data, mime, err := svc.out.Image(t.Context(), upstream.URL+"/face.png", 1<<20)
+	if err != nil || mime != "image/png" || string(data) != "\x89PNG\r\n\x1a\nrest-of-a-picture" {
+		t.Fatalf("a picture: %q %q %v", data, mime, err)
+	}
+	// Exactly at the cap is a picture, not a refusal.
+	if _, _, err := svc.out.Image(t.Context(), upstream.URL+"/huge.png", int64(len(big))); err != nil {
+		t.Fatalf("a body exactly at the cap was refused: %v", err)
+	}
+	for _, tc := range []struct {
+		what string
+		path string
+		max  int64
+		want error
+	}{
+		{"a document wearing an image's Content-Type", "/liar.png", 1 << 20, errNotImage},
+		{"one byte over the cap", "/huge.png", int64(len(big)) - 1, errTooBig},
+		{"a host that has no such picture", "/gone.png", 1 << 20, errNotFetched},
+	} {
+		if _, _, err := svc.out.Image(t.Context(), upstream.URL+tc.path, tc.max); !errors.Is(err, tc.want) {
+			t.Errorf("%s: err = %v, want %v", tc.what, err, tc.want)
+		}
 	}
 }

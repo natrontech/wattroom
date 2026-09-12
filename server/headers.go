@@ -6,12 +6,10 @@ import (
 	"github.com/natrontech/wattroom/server/internal/httpx"
 )
 
-// cspShared is every directive the enforced and the report-only policy agree
-// on (#1737, promoted from report-only after #1775 enforced the three a ride
-// cannot break). They differ in exactly one directive, `img-src`, which each
-// appends below — so the difference stays one line rather than two long strings
-// drifting apart, which is the failure mode that would put a host in the policy
-// nobody is watching.
+// enforcedCSP is the policy the browser applies — all of it, since #2078
+// closed the one directive that could not be promoted (see img-src below).
+// There is no report-only policy any more: a second header was worth carrying
+// only while one directive was still waiting on a code change.
 //
 // Every directive was derived from what the app actually loads — the fetch
 // sites, then a real browser under this exact policy — because an enforcing CSP
@@ -69,50 +67,39 @@ import (
 // still needs, the enforced script-src is defence-in-depth and not an XSS
 // boundary. Hashing the theme block is what would change that, and it is its
 // own piece of work.
-const cspShared = "default-src 'self'; " +
+const enforcedCSP = "default-src 'self'; " +
 	"script-src 'self' 'unsafe-inline' blob: https://www.youtube.com; " +
 	"style-src 'self' 'unsafe-inline'; " +
 	"media-src 'self' blob:; font-src 'self' data:; " +
 	"connect-src 'self' wss: https:; " +
 	"frame-src https://www.youtube-nocookie.com https://www.youtube.com; " +
 	"worker-src 'self' blob:; " +
-	"frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
-
-// enforcedCSP is what the browser applies. Everything in cspShared is enforced;
-// `img-src` is deliberately looser here than in the policy below, and the
-// reason is a rider's face (#2078).
-//
-// A rider who signed in with Google, GitHub or Strava has the picture that
-// provider serves, stored as its absolute URL and drawn as a plain <img>
-// (server/internal/auth/providers.go → identities.go, rendered by
-// $lib/components/Avatar.svelte). Only a picture the rider uploaded themselves
-// becomes same-origin, at /api/riders/{id}/avatar. So the host set is those
-// three CDNs plus whatever a self-hoster's own OIDC provider uses: operator
-// config, unbounded, and invisible to any sweep of the code because the URLs
-// arrive from the database at runtime. Enforcing the host list below would
-// blank the avatar of most riders on most deployments.
-//
-// `https:` is the honest floor instead. It still refuses http: and every other
-// scheme an injected <img> would want as an exfiltration sink, and it leaves
-// only the host open. The host list stays in reportOnlyCSP as the target, so a
-// provider avatar is still reported, and the diff to close is one directive
-// wide once WattRoom serves those pictures itself (#2078).
-const enforcedCSP = cspShared + "; img-src 'self' data: blob: https:"
-
-// reportOnlyCSP is where the app is headed: enforcedCSP with `img-src` narrowed
-// to the hosts it knowingly loads pictures from — YouTube's thumbnail CDN for
-// the deck (web/src/lib/room/jukebox-add.ts), and the Giphy and Tenor media
-// hosts, because a picked or pasted GIF is drawn as a direct <img> at its own
-// CDN by design (web/src/lib/chat/media.ts, server/internal/gifs). Both shard
-// their hostnames (media0…mediaN, i, c), so the wildcard host-source is the
-// only form that covers them. Chat link previews need nothing here: the unfurl
-// proxy is already same-origin on purpose, so no rider's IP reaches a
-// stranger's host (server/internal/unfurl).
-//
-// It reports rather than blocks only because of the avatars above. Closing
-// #2078 promotes this directive and deletes this constant.
-const reportOnlyCSP = cspShared +
-	"; img-src 'self' data: blob: https://i.ytimg.com https://*.giphy.com https://*.tenor.com"
+	"frame-ancestors 'none'; base-uri 'none'; object-src 'none'; " +
+	// img-src names the hosts the app knowingly loads pictures from, and
+	// nothing else. It was `https:` — the scheme, any host — until #2078,
+	// because a rider who signed in with Google, GitHub or Strava carried the
+	// picture *that provider serves* as an absolute URL, so the host set was
+	// those three CDNs plus whatever a self-hoster's own OIDC provider uses:
+	// operator config, unbounded, and invisible to a sweep of the code
+	// because the URLs arrived from the database at runtime. Now the picture
+	// is copied onto this origin at sign-in (server/internal/avatars), 'self'
+	// covers every rider's face, and the list is closed:
+	//
+	//   - i.ytimg.com — the jukebox deck's video thumbnails
+	//     (web/src/lib/room/jukebox-add.ts).
+	//   - *.giphy.com, *.tenor.com — a picked or pasted GIF is drawn as a
+	//     direct <img> at its own CDN by design (ADR-0032,
+	//     web/src/lib/chat/media.ts, server/internal/gifs). Both shard their
+	//     hostnames (media0…mediaN, i, c), so the wildcard host-source is the
+	//     only form that covers them.
+	//   - data: for the inline pictures the component gallery draws
+	//     (web/src/routes/dev/components), blob: for the preview of an image
+	//     a rider has pasted but not yet sent.
+	//
+	// Chat link previews and rider pictures need no host here on purpose:
+	// both are proxied or stored, so no rider's address reaches a stranger's
+	// server (server/internal/unfurl, server/internal/avatars).
+	"img-src 'self' data: blob: https://i.ytimg.com https://*.giphy.com https://*.tenor.com"
 
 // permissionsPolicy pins the three powerful features the app actually asks
 // for and denies the rest (#1737). WattRoom needs Web Bluetooth (the trainer
@@ -142,7 +129,6 @@ func secured(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("Content-Security-Policy", enforcedCSP)
-		h.Set("Content-Security-Policy-Report-Only", reportOnlyCSP)
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		h.Set("Strict-Transport-Security", "max-age=31536000")

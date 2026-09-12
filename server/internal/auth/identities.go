@@ -41,7 +41,14 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 			}
 		}
 		found, err := q.GetUser(ctx, existing.UserID)
-		return found, false, err
+		if err != nil {
+			return db.User{}, false, err
+		}
+		// Every sign-in, not only the first (#2078): the provider hands the
+		// picture's URL over each time, so a rider whose mirror failed once —
+		// or whose account predates it — gets their face on the next way in.
+		// A picture they uploaded themselves is what makes this a no-op.
+		return s.pictures.Adopt(ctx, found, ident.AvatarURL), false, nil
 	case errors.Is(err, pgx.ErrNoRows):
 		// fall through to create
 	default:
@@ -52,16 +59,18 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 	if name == "" {
 		name = "Rider"
 	}
-	var avatar *string
-	if ident.AvatarURL != "" {
-		avatar = &ident.AvatarURL
-	}
+	// No avatar_url here on purpose (#2078). The provider's own address is
+	// never what this column holds: the picture is copied onto this origin
+	// below, and until it is the rider draws as an initial. Storing the
+	// address first would put a third party's host in front of every roster
+	// that renders before the copy lands.
+	//
 	// The app's opening guess for the two numbers every FTP-relative target
 	// scales from, and CreateUser stamps both sources 'default' beside them
 	// (#1484): nobody has chosen these yet, and the first-run ask and Home's
 	// label both read that word rather than guessing from "is it still 200".
 	user, err = q.CreateUser(ctx, db.CreateUserParams{
-		DisplayName: name, AvatarUrl: avatar, FtpWatts: 200, WeightKg: 75,
+		DisplayName: name, FtpWatts: 200, WeightKg: 75,
 	})
 	if err != nil {
 		return db.User{}, false, err
@@ -98,7 +107,7 @@ func (s *Service) upsert(r *http.Request, p provider, ident identity, tok *oauth
 		}
 		return db.User{}, false, err
 	}
-	return user, true, nil
+	return s.pictures.Adopt(ctx, user, ident.AvatarURL), true, nil
 }
 
 // errIdentityTaken: the provider account is already somebody else's way in.

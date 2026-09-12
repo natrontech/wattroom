@@ -16,6 +16,7 @@ package auth
 
 import (
 	"crypto/subtle"
+	"github.com/natrontech/wattroom/server/internal/avatars"
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"log/slog"
 	"net/http"
@@ -82,17 +83,23 @@ type Service struct {
 	// Recovery (#1822): one per client address, one per email address it is
 	// asked about. recover.go says why it takes both.
 	recoverDoor, recoverMail *budget.Budget[string]
+	// Copies a sign-in provider's picture onto this origin (#2078). Required
+	// rather than settable: without it a provider's own URL would be what
+	// every roster renders, which is the leak the package exists to close.
+	pictures *avatars.Mirror
 }
 
 // New reads provider credentials from WATTROOM_OAUTH_{GOOGLE,GITHUB,STRAVA}_{ID,SECRET}.
 // baseURL is the public origin for OAuth callbacks (WATTROOM_BASE_URL).
 // keys seals the refresh tokens this service stores (#697); a nil one stores
-// them in the clear, exactly as every release before it did.
-func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *secrets.Cipher) *Service {
+// them in the clear, exactly as every release before it did. pictures copies a
+// provider's sign-in picture onto this origin (#2078).
+func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *secrets.Cipher, pictures *avatars.Mirror) *Service {
 	svc := &Service{
 		store:     st,
 		log:       log,
 		keys:      keys,
+		pictures:  pictures,
 		providers: providersFromEnv(baseURL),
 		secure:    secure,
 		baseURL:   baseURL,

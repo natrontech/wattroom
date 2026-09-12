@@ -11,6 +11,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const clearProviderAvatarURL = `-- name: ClearProviderAvatarURL :exec
+update users set avatar_url = null
+where id = $1 and avatar_url is not null
+  and (avatar_url not like '/%' or avatar_url like '//%')
+`
+
+// Give up on one: the rider gets the initial the app draws for a rider with
+// no picture, rather than a URL that leaks where they are to a host that
+// would not hand the picture over anyway. The not-like guard is what makes it
+// safe beside a concurrent upload — that writes a path on this origin, and
+// this statement will not touch one.
+func (q *Queries) ClearProviderAvatarURL(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearProviderAvatarURL, id)
+	return err
+}
+
 const clearUserEmail = `-- name: ClearUserEmail :one
 update users
 set email = null, email_verified_at = null, email_pending = null,
@@ -233,6 +249,22 @@ func (q *Queries) GetUserAvatar(ctx context.Context, userID pgtype.UUID) (GetUse
 	return i, err
 }
 
+const getUserAvatarSetAt = `-- name: GetUserAvatarSetAt :one
+select set_at from user_avatars where user_id = $1
+`
+
+// Whether a rider has picture bytes of their own, and when they were set —
+// without dragging the bytes along. The mirror asks this on every sign-in
+// (#2078) and the answer for most riders is "yes, so do nothing", so reading
+// the image out to discard it would be a few hundred kB per sign-in for
+// nothing. GetUserAvatar stays for the route that actually serves them.
+func (q *Queries) GetUserAvatarSetAt(ctx context.Context, userID pgtype.UUID) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getUserAvatarSetAt, userID)
+	var set_at pgtype.Timestamptz
+	err := row.Scan(&set_at)
+	return set_at, err
+}
+
 const getUserByIcsToken = `-- name: GetUserByIcsToken :one
 select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires from users where ics_token = $1
 `
@@ -268,6 +300,45 @@ func (q *Queries) GetUserByIcsToken(ctx context.Context, icsToken string) (User,
 		&i.RecoverExpires,
 	)
 	return i, err
+}
+
+const listProviderAvatars = `-- name: ListProviderAvatars :many
+select id, avatar_url from users
+where avatar_url is not null
+  and (avatar_url not like '/%' or avatar_url like '//%')
+order by id
+limit $1
+`
+
+type ListProviderAvatarsRow struct {
+	ID        pgtype.UUID
+	AvatarUrl *string
+}
+
+// The rows still pointing at a sign-in provider's own host (#2078). "Ours" is
+// a path on this origin — one leading slash and not two, because //host/x is
+// a protocol-relative URL that loads from a stranger all the same. A stricter
+// test than 'http%', which would miss both that and a scheme nobody thought
+// of. The backfill converts these; every row it touches leaves this set,
+// whether the picture came back or not.
+func (q *Queries) ListProviderAvatars(ctx context.Context, limit int32) ([]ListProviderAvatarsRow, error) {
+	rows, err := q.db.Query(ctx, listProviderAvatars, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProviderAvatarsRow
+	for rows.Next() {
+		var i ListProviderAvatarsRow
+		if err := rows.Scan(&i.ID, &i.AvatarUrl); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRoomNotifyTargets = `-- name: ListRoomNotifyTargets :many
@@ -400,6 +471,26 @@ func (q *Queries) SetUserAvatar(ctx context.Context, arg SetUserAvatarParams) (U
 		&i.RecoverExpires,
 	)
 	return i, err
+}
+
+const setUserAvatarURL = `-- name: SetUserAvatarURL :exec
+update users set avatar_url = $2
+where id = $1 and avatar_url is not null
+  and (avatar_url not like '/%' or avatar_url like '//%')
+`
+
+type SetUserAvatarURLParams struct {
+	ID        pgtype.UUID
+	AvatarUrl *string
+}
+
+// Point a rider's address at bytes already stored for them, without
+// rewriting the bytes. Guarded to a row that still names somebody else's
+// host, which nothing in the app writes — an upload sets bytes and address in
+// one statement — so this is the belt on a row that somehow held both.
+func (q *Queries) SetUserAvatarURL(ctx context.Context, arg SetUserAvatarURLParams) error {
+	_, err := q.db.Exec(ctx, setUserAvatarURL, arg.ID, arg.AvatarUrl)
+	return err
 }
 
 const startAccountRecovery = `-- name: StartAccountRecovery :exec

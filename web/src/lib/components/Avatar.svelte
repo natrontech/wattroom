@@ -31,6 +31,16 @@
 		ring?: string;
 	} = $props();
 
+	// A picture that will not load falls back to the initial rather than to an
+	// empty disc (.claude/rules/errors.md: a defined fallback, never a broken
+	// <img>). Held as the URL that failed, not as a boolean, so a new address
+	// — a fresh upload, or the copy #2078 makes of a provider's picture —
+	// gets its own try without an effect to reset anything.
+	let failed = $state<string | null>(null);
+	const picture = $derived(
+		avatarUrl && avatarUrl !== failed ? avatarUrl : null,
+	);
+
 	const level = $derived(xp == null ? null : levelFromXp(xp));
 	const stroke = $derived(Math.max(2, Math.round(size / 20)));
 	const radius = $derived((size - stroke) / 2);
@@ -74,13 +84,14 @@
 		'offline'
 			? 'opacity-50'
 			: ''}"
-		style="inset:{inset}px;{avatarUrl ? '' : disc}"
+		style="inset:{inset}px;{picture ? '' : disc}"
 	>
-		{#if avatarUrl}
+		{#if picture}
 			<img
-				src={avatarUrl}
+				src={picture}
 				alt={name}
 				referrerpolicy="no-referrer"
+				onerror={() => (failed = picture)}
 				class="h-full w-full object-cover"
 			/>
 		{:else}
