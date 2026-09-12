@@ -17,7 +17,20 @@ import { expect, test } from './room';
  * capability gate that has to be right anyway.
  */
 
-const B = 'Ruben';
+/**
+ * This spec's own rider, not the shared 'Ruben', and not by taste (#2133).
+ *
+ * A rider's crew is founded with their first room and OUTLIVES every spec, so
+ * `rooms.enter` — which joins by crew code — leaves its rider inside Dev
+ * Rider's crew for the rest of the run. crew-invite.spec.ts needs Ruben to be
+ * a stranger to that crew (its step 2 is the invite a non-member sees), and it
+ * gets that only by being the first Ruben spec in the file order. A spec whose
+ * name sorts before "crew-invite" and enters as Ruben silently breaks it, from
+ * two files away, with nothing in either one saying so — which is exactly what
+ * this spec did on its first CI run. voice-duck.spec.ts takes its own rider for
+ * the same class of reason.
+ */
+const B = 'Conn Dev B';
 
 /** The people column is an xl surface; below it, it is a drawer instead. */
 const WIDE = { width: 1440, height: 900 };
