@@ -994,7 +994,8 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 
 const listUserRidesFull = `-- name: ListUserRidesFull :many
 select id, workout_name, started_at, seconds, avg_watts, kj, execution,
-       execution_scored, norm_watts, ftp_watts, xp, curve, room_id, shared_at
+       execution_scored, norm_watts, ftp_watts, ftp_after_watts, xp, curve,
+       room_id, shared_at
 from rides where user_id = $1 order by started_at
 `
 
@@ -1009,6 +1010,7 @@ type ListUserRidesFullRow struct {
 	ExecutionScored bool
 	NormWatts       *int16
 	FtpWatts        int16
+	FtpAfterWatts   *int16
 	Xp              int32
 	Curve           []byte
 	RoomID          pgtype.UUID
@@ -1019,6 +1021,10 @@ type ListUserRidesFullRow struct {
 // blobs are read one at a time by GetRideSamples below — holding all of them
 // at once grows with how long someone has used WattRoom, which is the one
 // kind of growth an alpha cannot outrun (#894).
+//
+// ftp_after_watts comes too (#2089): the ride page shows the number a ramp
+// test produced (ADR-0049) and the export did not, so the one ride that
+// changed the rider's FTP exported as if it had not.
 func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]ListUserRidesFullRow, error) {
 	rows, err := q.db.Query(ctx, listUserRidesFull, userID)
 	if err != nil {
@@ -1039,6 +1045,7 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 			&i.ExecutionScored,
 			&i.NormWatts,
 			&i.FtpWatts,
+			&i.FtpAfterWatts,
 			&i.Xp,
 			&i.Curve,
 			&i.RoomID,

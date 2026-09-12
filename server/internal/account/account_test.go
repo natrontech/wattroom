@@ -83,6 +83,35 @@ func (h *harness) call(t *testing.T, user, method, path string) *httptest.Respon
 
 func (h *harness) id(name string) pgtype.UUID { return h.users.ByToken[name].ID }
 
+// exportFiles runs one rider's export and returns the archive keyed by file
+// name. Every assertion about the export's contents starts this way, so it is
+// written once (#2089).
+func (h *harness) exportFiles(t *testing.T, user string) map[string]string {
+	t.Helper()
+	rec := h.call(t, user, http.MethodGet, "/api/me/export")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("export: %d %s", rec.Code, rec.Body.String())
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatalf("body is not a zip: %v", err)
+	}
+	files := map[string]string{}
+	for _, f := range zr.File {
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatalf("open %s: %v", f.Name, err)
+		}
+		body, err := io.ReadAll(rc)
+		_ = rc.Close()
+		if err != nil {
+			t.Fatalf("read %s: %v", f.Name, err)
+		}
+		files[f.Name] = string(body)
+	}
+	return files
+}
+
 // gzipped is a samples blob the way the rides handler stores one.
 func gzipped(t *testing.T, raw string) []byte {
 	t.Helper()
@@ -638,27 +667,7 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		t.Fatalf("passkey: %v", err)
 	}
 
-	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("export: %d %s", rec.Code, rec.Body.String())
-	}
-	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
-	if err != nil {
-		t.Fatalf("body is not a zip: %v", err)
-	}
-	files := map[string]string{}
-	for _, f := range zr.File {
-		rc, err := f.Open()
-		if err != nil {
-			t.Fatalf("open %s: %v", f.Name, err)
-		}
-		body, err := io.ReadAll(rc)
-		_ = rc.Close()
-		if err != nil {
-			t.Fatalf("read %s: %v", f.Name, err)
-		}
-		files[f.Name] = string(body)
-	}
+	files := h.exportFiles(t, "alice")
 
 	// Every category, and the content that proves the query ran rather than
 	// an empty array being written.
@@ -783,38 +792,14 @@ func TestExportCarriesTheRidersOwnTracksAndNeverTheAudio(t *testing.T) {
 		t.Fatalf("playlist entry: %v", err)
 	}
 
-	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("export: %d %s", rec.Code, rec.Body.String())
-	}
-	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
-	if err != nil {
-		t.Fatalf("body is not a zip: %v", err)
-	}
-	var body, lists []byte
-	for _, f := range zr.File {
-		if strings.HasSuffix(f.Name, ".mp3") {
-			t.Errorf("the export carries audio (%s) — ADR-0015 says metadata only", f.Name)
-		}
-		if f.Name != "tracks.json" && f.Name != "playlists.json" {
-			continue
-		}
-		rc, err := f.Open()
-		if err != nil {
-			t.Fatalf("open %s: %v", f.Name, err)
-		}
-		read, err := io.ReadAll(rc)
-		_ = rc.Close()
-		if err != nil {
-			t.Fatalf("read %s: %v", f.Name, err)
-		}
-		if f.Name == "tracks.json" {
-			body = read
-		} else {
-			lists = read
+	files := h.exportFiles(t, "alice")
+	for name := range files {
+		if strings.HasSuffix(name, ".mp3") {
+			t.Errorf("the export carries audio (%s) — ADR-0015 says metadata only", name)
 		}
 	}
-	if body == nil {
+	body, lists := []byte(files["tracks.json"]), []byte(files["playlists.json"])
+	if len(body) == 0 {
 		t.Fatalf("the export has no tracks.json — the rider's uploads are missing from their own export")
 	}
 	var got []map[string]any
@@ -870,15 +855,20 @@ func TestExportCarriesTheRidersOwnTracksAndNeverTheAudio(t *testing.T) {
 	}
 }
 
-// A shelf past the bound says so (#1089). The bound exists because ADR-0015's
-// quota is 2 GB of audio and nothing bounds how small an MP3 is, so the row
-// count is the one a rider can run up; an export that goes short without
-// saying so is the bug this file's route is about.
-func TestExportSaysWhenAShelfWasTooLongToCarryWhole(t *testing.T) {
+// A category past the bound says so (#1089, #2089). The bound exists because
+// the quotas around it count BYTES — 2 GB of audio, 100 MB of clips — and
+// nothing bounds how small a file may be, so the row count is the one a rider
+// can run up on purpose; an export that goes short without saying so is the
+// bug this file's route is about.
+//
+// Two categories, not one, because #2089 made the bound shared and gave the
+// truncation note its own wrapper: a guard that has only ever been seen to
+// bite on the category it was written for is a guard for one category.
+func TestExportSaysWhenACategoryWasTooLongToCarryWhole(t *testing.T) {
 	h := setup(t)
-	was := maxExportTracks
-	maxExportTracks = 1
-	t.Cleanup(func() { maxExportTracks = was })
+	was := maxExportRows
+	maxExportRows = 1
+	t.Cleanup(func() { maxExportRows = was })
 	for _, sha := range []string{strings.Repeat("d", 64), strings.Repeat("e", 64)} {
 		if _, err := h.store.Queries.CreateTrack(t.Context(), db.CreateTrackParams{
 			Sha256: sha, UploadedBy: h.id("alice"), Title: "t " + sha[:1],
@@ -887,15 +877,15 @@ func TestExportSaysWhenAShelfWasTooLongToCarryWhole(t *testing.T) {
 			t.Fatalf("track: %v", err)
 		}
 	}
+	for _, name := range []string{"Airhorn", "Cowbell"} {
+		if _, err := h.store.Queries.SaveBoardClip(t.Context(), db.SaveBoardClipParams{
+			UserID: h.id("alice"), Name: name, DurationMs: 900,
+			Bytes: []byte("x"), EndMs: 900,
+		}); err != nil {
+			t.Fatalf("clip: %v", err)
+		}
+	}
 
-	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
-	if rec.Code != http.StatusOK {
-		t.Fatalf("export: %d %s", rec.Code, rec.Body.String())
-	}
-	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
-	if err != nil {
-		t.Fatalf("body is not a zip: %v", err)
-	}
 	var manifest struct {
 		Complete   bool `json:"complete"`
 		Categories []struct {
@@ -904,33 +894,315 @@ func TestExportSaysWhenAShelfWasTooLongToCarryWhole(t *testing.T) {
 			Truncated bool   `json:"truncated"`
 		} `json:"categories"`
 	}
-	for _, f := range zr.File {
-		if f.Name != "manifest.json" {
-			continue
-		}
-		rc, err := f.Open()
-		if err != nil {
-			t.Fatalf("open manifest.json: %v", err)
-		}
-		body, err := io.ReadAll(rc)
-		_ = rc.Close()
-		if err != nil {
-			t.Fatalf("read manifest.json: %v", err)
-		}
-		if err := json.Unmarshal(body, &manifest); err != nil {
-			t.Fatalf("manifest.json: %v (%q)", err, body)
-		}
+	files := h.exportFiles(t, "alice")
+	if err := json.Unmarshal([]byte(files["manifest.json"]), &manifest); err != nil {
+		t.Fatalf("manifest.json: %v (%q)", err, files["manifest.json"])
 	}
-	var said bool
+	said := map[string]bool{}
 	for _, cat := range manifest.Categories {
-		if cat.Name == "tracks.json" {
-			said = cat.Truncated
+		said[cat.Name] = cat.Truncated
+	}
+	for _, name := range []string{"tracks.json", "soundboard.json"} {
+		if !said[name] {
+			t.Errorf("the manifest does not say %s was cut short: %+v", name, manifest.Categories)
+		}
+		// And the bound is really in the QUERY: a category the manifest calls
+		// short while the file holds everything is the note without the bound.
+		var rows []map[string]any
+		if err := json.Unmarshal([]byte(files[name]), &rows); err != nil {
+			t.Fatalf("%s: %v (%q)", name, err, files[name])
+		}
+		if len(rows) != int(maxExportRows) {
+			t.Errorf("%s holds %d rows under a bound of %d — the limit is not in the query",
+				name, len(rows), maxExportRows)
 		}
 	}
-	if !said {
-		t.Errorf("the manifest does not say tracks.json was cut short: %+v", manifest.Categories)
+	// And a category that fit says nothing, so "truncated" means something.
+	if said["profile.json"] || said["friends.json"] {
+		t.Errorf("the manifest calls a category short that was not: %+v", manifest.Categories)
 	}
 	if manifest.Complete {
 		t.Error(`the manifest claims "complete" over a category it cut short`)
+	}
+}
+
+// The sweep in #2089: every table with a column referencing users(id), read
+// against the categories the export already carried. A dozen were on a screen
+// the rider has and in none of the files they could download — which is the
+// same defect #1089 was, one layer wider.
+//
+// One test per category would be a dozen copies of "make a row, export, look
+// for it". This one does the loop once and asserts on the archive, the shape
+// TestExportCarriesEveryCategoryTheLawAsksFor already uses.
+func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
+	h := setup(t)
+	room := h.createRoom(t, "alice")
+	for _, name := range []string{"alice", "bob"} {
+		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
+			RoomID: room, UserID: h.id(name), Role: "member",
+		}); err != nil {
+			t.Fatalf("membership %s: %v", name, err)
+		}
+	}
+
+	// A coach token: the name and the two dates are hers, the hash never is.
+	if _, err := h.store.Queries.CreateToken(t.Context(), db.CreateTokenParams{
+		UserID: h.id("alice"), Name: "Coach laptop", TokenHash: []byte("not-a-real-hash"),
+	}); err != nil {
+		t.Fatalf("token: %v", err)
+	}
+
+	// Her own room line, edited, and a reaction of hers on bob's.
+	mine, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
+		RoomID: room, UserID: h.id("alice"), Text: "first draft",
+	})
+	if err != nil {
+		t.Fatalf("chat: %v", err)
+	}
+	if _, err := h.store.Queries.EditChatMessage(t.Context(), db.EditChatMessageParams{
+		ID: mine, RoomID: room, UserID: h.id("alice"), Text: "second draft",
+	}); err != nil {
+		t.Fatalf("edit: %v", err)
+	}
+	his, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
+		RoomID: room, UserID: h.id("bob"), Text: "bobs own line",
+	})
+	if err != nil {
+		t.Fatalf("chat bob: %v", err)
+	}
+	for id, emoji := range map[pgtype.UUID]string{his: "flame", mine: "skull"} {
+		n, err := h.store.Queries.AddChatReaction(t.Context(), db.AddChatReactionParams{
+			MessageID: id, UserID: h.id("alice"), Emoji: emoji, RoomID: room,
+		})
+		if err != nil || n != 1 {
+			t.Fatalf("chat reaction %s: %d %v", emoji, n, err)
+		}
+	}
+	// And one on a DM, where the whole thread is already hers to read.
+	h.befriend(t, "alice", "bob")
+	dm, err := h.store.Queries.SendDm(t.Context(), db.SendDmParams{
+		SenderID: h.id("bob"), RecipientID: h.id("alice"), Text: "bring legs",
+	})
+	if err != nil {
+		t.Fatalf("dm: %v", err)
+	}
+	n, err := h.store.Queries.AddDmReaction(t.Context(), db.AddDmReactionParams{
+		MessageID: dm.ID, UserID: h.id("alice"), Emoji: "rocket",
+		Column4: h.id("alice"), Column5: h.id("bob"),
+	})
+	if err != nil || n != 1 {
+		t.Fatalf("dm reaction: %d %v", n, err)
+	}
+
+	// A crew she owns, and one she is merely in.
+	code := "ALICECREW"
+	owned, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
+		Name: "Alice's Crew", OwnerID: h.id("alice"), Code: &code,
+	})
+	if err != nil {
+		t.Fatalf("crew: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", owned.ID)
+	})
+	bobsCode := "BOBSCREW1"
+	joined, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
+		Name: "Bob's Crew", OwnerID: h.id("bob"), Code: &bobsCode,
+	})
+	if err != nil {
+		t.Fatalf("crew bob: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", joined.ID)
+	})
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: joined.ID, UserID: h.id("alice"), Role: "admin",
+	}); err != nil {
+		t.Fatalf("crew role: %v", err)
+	}
+
+	// A session she put on the calendar and never said yes to: the whole
+	// point of the category, since planned-sessions.json is her RSVPs.
+	if _, err := h.store.Queries.CreateScheduledSession(t.Context(), db.CreateScheduledSessionParams{
+		RoomID: room, WorkoutName: "Coached Threshold", WorkoutJson: []byte(`{"steps":[]}`),
+		StartsAt:  pgtype.Timestamptz{Time: time.Now().Add(48 * time.Hour), Valid: true},
+		CreatedBy: h.id("alice"),
+	}); err != nil {
+		t.Fatalf("scheduled session: %v", err)
+	}
+
+	// The room's own settings, and her two choices inside it.
+	if _, err := h.store.Queries.UpdateRoom(t.Context(), db.UpdateRoomParams{
+		ID: room, Name: "Account Test", Listed: true, SoundPack: "silent",
+		Icon: "bolt", Cheers: "skull rocket", BoardEnabled: true, CrewVisible: false,
+	}); err != nil {
+		t.Fatalf("update room: %v", err)
+	}
+	if _, err := h.store.Queries.SetMembershipPrefs(t.Context(), db.SetMembershipPrefsParams{
+		RoomID: room, UserID: h.id("alice"), Notify: false, OnBoard: false,
+	}); err != nil {
+		t.Fatalf("membership prefs: %v", err)
+	}
+	// A door she opened for carol into her own room.
+	if err := h.store.Queries.GrantRoomAccess(t.Context(), db.GrantRoomAccessParams{
+		RoomID: room, UserID: h.id("carol"),
+	}); err != nil {
+		t.Fatalf("grant: %v", err)
+	}
+
+	// Two soundboard clips: one untrimmed, which is what the upload stores
+	// for anything under the clip ceiling (end_ms 0, meaning "to the end"),
+	// and one the rider trimmed. One of each because the two read differently
+	// and the untrimmed one is where the export used to lie.
+	clip, err := h.store.Queries.SaveBoardClip(t.Context(), db.SaveBoardClipParams{
+		UserID: h.id("alice"), Name: "Airhorn", DurationMs: 1200,
+		Bytes: []byte("not really audio"), EndMs: 0,
+	})
+	if err != nil {
+		t.Fatalf("clip: %v", err)
+	}
+	if _, err := h.store.Queries.SaveBoardClip(t.Context(), db.SaveBoardClipParams{
+		UserID: h.id("alice"), Name: "Cowbell", DurationMs: 4000,
+		Bytes: []byte("nor is this"), EndMs: 2500,
+	}); err != nil {
+		t.Fatalf("clip trimmed: %v", err)
+	}
+	pad := int16(3)
+	if _, err := h.store.Queries.SetBoardClipPad(t.Context(), db.SetBoardClipPadParams{
+		ID: clip.ID, UserID: h.id("alice"), Pad: &pad,
+	}); err != nil {
+		t.Fatalf("clip pad: %v", err)
+	}
+
+	// A ride, the FTP it set, and where it was delivered. The activity number
+	// and the error string here are ones this test made up: nothing Strava
+	// returned appears in this file (AGENTS.md, RESEARCH §13.5).
+	ride := h.createRide(t, "alice", room, "Ramp Test", gzipped(t, `[]`))
+	if _, err := h.store.Queries.SetRideFtpAfter(t.Context(), db.SetRideFtpAfterParams{
+		FtpAfterWatts: 243, ID: ride, UserID: h.id("alice"),
+	}); err != nil {
+		t.Fatalf("ftp after: %v", err)
+	}
+	if err := h.store.Queries.StartRideExport(t.Context(), db.StartRideExportParams{
+		RideID: ride, Destination: "strava",
+	}); err != nil {
+		t.Fatalf("start delivery: %v", err)
+	}
+	boom := "the upload was refused"
+	if err := h.store.Queries.FailRideExport(t.Context(), db.FailRideExportParams{
+		RideID: ride, Destination: "strava", LastError: &boom, MaxAttempts: 1,
+	}); err != nil {
+		t.Fatalf("fail delivery: %v", err)
+	}
+
+	files := h.exportFiles(t, "alice")
+
+	// Each new category, and one string from it that only its query could
+	// have produced.
+	for name, want := range map[string]string{
+		"coach-access.json":         "Coach laptop",
+		"reactions.json":            "flame",
+		"crews.json":                "Alice's Crew",
+		"sessions-i-scheduled.json": "Coached Threshold",
+		"rooms-i-own.json":          "\"soundPack\": \"silent\"",
+		"room-doors.json":           "carol",
+		"soundboard.json":           "Airhorn",
+		"ride-uploads.json":         "the upload was refused",
+	} {
+		body, ok := files[name]
+		if !ok {
+			t.Errorf("the export has no %s — the category is still missing", name)
+			continue
+		}
+		if !strings.Contains(body, want) {
+			t.Errorf("%s does not carry %q:\n%s", name, want, body)
+		}
+	}
+
+	// The columns hiding inside files that already existed.
+	for name, wants := range map[string][]string{
+		// The five users columns that were on a screen and not in the zip.
+		// (#2089 counted six; sound_pack is a room's column, asserted in
+		// rooms-i-own.json above, and never was one of these.)
+		"profile.json": {"\"friendCode\"", "\"calendarToken\"", "\"unsubscribeToken\"",
+			"\"emailPending\"", "\"avatarUrl\""},
+		// An edited line said so nowhere.
+		"chat.json": {"second draft", "\"editedAt\""},
+		// Her per-room choices.
+		"rooms.json": {"\"notify\": false", "\"onBoard\": false"},
+		// The FTP the ramp set (ADR-0049).
+		"rides.json": {"\"ftpAfterWatts\": 243"},
+	} {
+		for _, want := range wants {
+			if !strings.Contains(files[name], want) {
+				t.Errorf("%s does not carry %s:\n%s", name, want, files[name])
+			}
+		}
+	}
+
+	// The line other people's data sits behind, held in the new categories
+	// too: a reaction of hers on bob's room line must not drag his text
+	// along, and the door she opened names carol and nothing more.
+	if strings.Contains(files["reactions.json"], "bobs own line") {
+		t.Errorf("a reaction carried another rider's chat line:\n%s", files["reactions.json"])
+	}
+	// But her own line, and the DM she can read whole, do come with theirs.
+	for _, want := range []string{"second draft", "bring legs"} {
+		if !strings.Contains(files["reactions.json"], want) {
+			t.Errorf("reactions.json dropped a line she is entitled to (%q):\n%s", want, files["reactions.json"])
+		}
+	}
+	if strings.Contains(files["room-doors.json"], store.UUIDString(h.id("carol"))) {
+		t.Errorf("the door list carries another rider's account id:\n%s", files["room-doors.json"])
+	}
+	// Bob's crew is in there because she administers it; the crew she does
+	// not touch is not, and neither is his standing in hers.
+	if !strings.Contains(files["crews.json"], "\"myRole\": \"admin\"") {
+		t.Errorf("crews.json lost her standing in the crew she administers:\n%s", files["crews.json"])
+	}
+	// A clip's trim reads the way the strip shows it: end_ms 0 means "to the
+	// end of the file", so the export says null and gives the length that
+	// actually plays. A literal 0 there reads as a clip that plays nothing.
+	var clips []struct {
+		Name    string `json:"name"`
+		EndMs   *int   `json:"endMs"`
+		PlaysMs int    `json:"playsMs"`
+	}
+	if err := json.Unmarshal([]byte(files["soundboard.json"]), &clips); err != nil {
+		t.Fatalf("soundboard.json: %v (%q)", err, files["soundboard.json"])
+	}
+	trim := map[string]struct {
+		EndMs   *int
+		PlaysMs int
+	}{}
+	for _, clip := range clips {
+		trim[clip.Name] = struct {
+			EndMs   *int
+			PlaysMs int
+		}{clip.EndMs, clip.PlaysMs}
+	}
+	if got := trim["Airhorn"]; got.EndMs != nil || got.PlaysMs != 1200 {
+		t.Errorf("an untrimmed clip must say endMs null and play its whole 1200 ms: %s",
+			files["soundboard.json"])
+	}
+	if got := trim["Cowbell"]; got.EndMs == nil || *got.EndMs != 2500 || got.PlaysMs != 2500 {
+		t.Errorf("a trimmed clip must carry the end it was cut to: %s", files["soundboard.json"])
+	}
+
+	// The clip's audio stays out, the way a track's does.
+	for _, f := range []string{"soundboard.json", "manifest.json"} {
+		if strings.Contains(files[f], "not really audio") {
+			t.Errorf("%s carries the clip's bytes — rows in, audio out:\n%s", f, files[f])
+		}
+	}
+	// And nothing anywhere hands back a credential.
+	for name, body := range files {
+		if strings.Contains(body, "not-a-real-hash") {
+			t.Errorf("%s carries a token hash:\n%s", name, body)
+		}
+	}
+	// Every category read, so the archive says it is whole.
+	if !strings.Contains(files["manifest.json"], "\"complete\": true") {
+		t.Errorf("a category failed to read:\n%s", files["manifest.json"])
 	}
 }

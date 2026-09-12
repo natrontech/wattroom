@@ -80,6 +80,27 @@
 			file nobody else has uploaded too.
 		</li>
 		<li>
+			<strong class="text-ink font-medium">Soundboard clips.</strong> If you add short
+			sounds to your soundboard we store each file and a row about it: the name you
+			typed, the pad and key you put it on, and the trim you set. Only you see your
+			clips; a room hears what someone in it fires. Delete a clip and both go, and
+			deleting your account takes them all.
+		</li>
+		<li>
+			<strong class="text-ink font-medium">Rooms and crews.</strong> A room you own
+			is a row: its name, icon, who may find it, whether it keeps a weekly board,
+			its jukebox settings and its calendar link. A crew you are in keeps your standing
+			in it — member, admin or banned — and when that was set. Your own choices per
+			room (whether it may mail you, whether you stand on its board) are yours and
+			nobody else's.
+		</li>
+		<li>
+			<strong class="text-ink font-medium">Coach access.</strong> If you mint a read-only
+			token for a coach or a tool, we keep its name, when you made it and when it
+			was last used — never the token itself, only a hash of it. You see the token
+			once, at creation. Revoke it and the row goes.
+		</li>
+		<li>
 			<strong class="text-ink font-medium">Voice, camera, screenshare.</strong>
 			Real-time audio and video run through our own self-hosted LiveKit server. It
 			is transit-only: nothing is ever recorded or stored, by design.
@@ -161,7 +182,10 @@
 			<strong class="text-ink font-medium">Strava upload.</strong> If your
 			account is connected to Strava, finished rides are uploaded to
 			<em>your own</em> Strava account — on by default, and you can switch it off
-			in your profile.
+			in your profile. We keep a small record of each delivery, so the ride page can
+			tell you whether it arrived: the state, how many times we tried, the error if
+			it failed, and the activity number Strava gave it. Nobody but you ever sees
+			it.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">YouTube.</strong> The room jukebox plays
@@ -210,14 +234,21 @@
 		The two big ones are built in: your profile has
 		<strong class="text-ink font-medium">export everything</strong> — a zip of
 		your profile, every ride with its per-second samples, the messages you
-		wrote, your DM threads, friends, rooms, playlists, workouts, planned
-		sessions you said yes to, the library tracks you uploaded, and your XP and
+		wrote, your DM threads and the reactions you left, friends, the rooms you
+		are in and the rooms you own with their settings, who you let through a
+		private room's door, your crews and your standing in them, playlists,
+		workouts, sessions you said yes to <em>and</em> sessions you put on a
+		calendar, the library tracks you uploaded, your soundboard clips, your
+		coach-access tokens, where each ride was delivered, and your XP and
 		trophies, all as machine-readable JSON. It stops where other people begin:
 		someone else's chat line is theirs, not yours, and the only thing it says
 		about anyone else is the display name you already see in the app. The one
-		thing left out is the audio: a track's row is in the zip and names the file
-		it belongs to, the MP3 itself is not — you have the file you uploaded, and
-		we do not hand out audio. There is also
+		thing left out is the audio: a track's or a clip's row is in the zip and
+		names the file it belongs to, the file itself is not — you have what you
+		uploaded, and we do not hand out audio. The zip also carries live links —
+		your calendar feed, a crew's join code, a room's calendar link — so treat it
+		the way you would treat those: it is yours, not something to forward. There
+		is also
 		<strong class="text-ink font-medium">delete account</strong> (a full purge,
 		not a soft delete). Beyond that you have the usual GDPR rights — access,
 		rectification, erasure, restriction, portability, objection, withdrawal of
