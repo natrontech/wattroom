@@ -297,6 +297,79 @@ describe('room live ride buffer follows the session (#1541)', () => {
 		vi.useRealTimers();
 	});
 
+	// A server that restarts mid-session comes back with no session at all:
+	// the phase goes from running straight to idle, never through done. The
+	// hub's per-rider ack says it HEARD the samples, never that it saved
+	// them, and a fresh process acks the live stream while holding nothing
+	// to save — so the empty tail used to stamp the last copy finished
+	// (#1466, ADR-0052).
+	it('keeps the ride, and says so, when the server comes back without the session (#1466)', async () => {
+		const live = createRoomLive('restart');
+		const socket = FakeSocket.last!;
+		socket.open();
+		running(socket, 5, 'Openers');
+		await vi.advanceTimersByTimeAsync(0);
+		for (let i = 0; i < 70; i++) {
+			live.sendMetrics({ watts: 200 });
+			await vi.advanceTimersByTimeAsync(1000);
+		}
+		expect(buffered.rows).toHaveLength(70);
+		buffered.tail = [];
+		phase(socket, 'idle', 70);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(buffered.ended).toBe(0);
+		expect(live.lostSession).toEqual({ workoutName: 'Openers', minutes: 1 });
+		// The next session clears the status; /ride's recovery card still
+		// holds the ride.
+		running(socket, 0, 'Main set');
+		await vi.advanceTimersByTimeAsync(0);
+		expect(live.lostSession).toBeNull();
+		vi.useRealTimers();
+	});
+
+	// A socket that missed the closing tick comes back to an idle room too —
+	// but one that can still name its workout, because a session that closed
+	// keeps it and a new pick replaces it. The hub saved that ride; saying
+	// the server lost it would be a lie.
+	it('does not blame the server for an idle room that still names its workout', async () => {
+		const live = createRoomLive('reconnected');
+		const socket = FakeSocket.last!;
+		socket.open();
+		running(socket, 5, 'Openers');
+		await vi.advanceTimersByTimeAsync(0);
+		for (let i = 0; i < 70; i++) {
+			live.sendMetrics({ watts: 200 });
+			await vi.advanceTimersByTimeAsync(1000);
+		}
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: {
+					at: Date.now(),
+					state: { phase: 'idle', elapsed: 0, workoutName: 'Openers' },
+					riders: { u1: { seq: 70 } },
+				},
+			}),
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		expect(live.lostSession).toBeNull();
+		vi.useRealTimers();
+	});
+
+	// The same restart, to someone watching from a phone: nothing of theirs
+	// was recording, so there is nothing to recover and nothing to say.
+	it('says nothing about a lost session to a rider who buffered nothing', async () => {
+		const live = createRoomLive('spectator');
+		const socket = FakeSocket.last!;
+		socket.open();
+		running(socket, 5, 'Openers');
+		await vi.advanceTimersByTimeAsync(0);
+		phase(socket, 'idle', 0);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(buffered.ended).toBe(0);
+		expect(live.lostSession).toBeNull();
+		vi.useRealTimers();
+	});
+
 	it('opens one on a reload mid-session too', async () => {
 		createRoomLive('reload');
 		const socket = FakeSocket.last!;
