@@ -6,3 +6,9 @@
   existing accounts are converted the first time the upgraded server starts. A
   picture that cannot be copied leaves your initial in its place, and you can
   always upload one of your own.
+- With those pictures served by WattRoom, the last piece of the
+  Content-Security-Policy is now enforced rather than only reported on: an
+  image may come only from WattRoom itself and the handful of hosts the app
+  knowingly draws media from, so an injected image has nowhere to send your
+  address. The second, report-only header is gone — it was worth carrying only
+  while one directive was still waiting on this change.
