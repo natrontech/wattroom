@@ -107,6 +107,10 @@
 	}
 
 	let buffer: RideBuffer | undefined;
+	// Nothing is writing this ride down (#1466 finding 4): the buffer's open
+	// failed, so a browser crash leaves no .fit to recover. Persistent status
+	// on the riding screen, not a swallowed no-op (ADR-0052 rule 3).
+	let noCrashSafety = $state(false);
 	// The ⚑ and what it sends afterwards (#52), shared with /ramp.
 	const flags = createRideFlags('/ride');
 	let tv = $state(false);
@@ -136,6 +140,7 @@
 				// recovery card rather than only exported (#794).
 				workoutJson: JSON.stringify(workout),
 			});
+			noCrashSafety = !buffer.crashSafe;
 			flags.riding(trainer.name, `starting ${workout.name}`);
 			const next = createRideSession({
 				trainer,
@@ -542,6 +547,7 @@
 			{watts}
 			{target}
 			{signalLost}
+			{noCrashSafety}
 			onFlag={() => flags.recorder.flag()}
 			onTv={() => (tv = true)}
 		/>

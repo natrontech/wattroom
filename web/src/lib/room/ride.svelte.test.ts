@@ -9,6 +9,7 @@ import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
 // tick's clock window lives in stays real (it only does arithmetic).
 vi.mock('$lib/ride/buffer', () => ({
 	openRideBuffer: async () => ({
+		crashSafe: true,
 		append() {},
 		end() {},
 		since: async () => [],

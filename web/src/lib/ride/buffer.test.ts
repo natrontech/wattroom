@@ -126,3 +126,61 @@ describe('a solo save that failed (#794)', () => {
 		expect(ride.workoutJson).toBeUndefined();
 	});
 });
+
+// #1466 finding 4. A store that will not open returns a buffer whose every
+// method is a no-op, and the ride runs on with no crash safety at all.
+// That is the right shape — a storage fault must never stop a ride — but
+// it is known before the first pedal stroke, so the buffer has to SAY it.
+describe('a store that will not open', () => {
+	const openable = () =>
+		openRideBuffer({ rideId: '900', startedAt: 900, workoutName: 'Openers' });
+
+	it('is crash safe when the store opens', async () => {
+		expect((await openable()).crashSafe).toBe(true);
+	});
+
+	it('says so when there is no indexedDB at all', async () => {
+		const had = indexedDB;
+		// @ts-expect-error — a browser with site data switched off.
+		indexedDB = undefined;
+		try {
+			const buffer = await openable();
+			expect(buffer.crashSafe).toBe(false);
+			// Still a working-looking object: the ride goes on.
+			buffer.append(sample(1));
+			buffer.end();
+			expect(await buffer.since(0)).toEqual([]);
+		} finally {
+			indexedDB = had;
+		}
+	});
+
+	it('says so when the open fails', async () => {
+		const real = indexedDB.open.bind(indexedDB);
+		indexedDB.open = () => {
+			const request = real('wattroom-rides', 1);
+			queueMicrotask(() => request.onerror?.(new Event('error')));
+			return request;
+		};
+		try {
+			expect((await openable()).crashSafe).toBe(false);
+		} finally {
+			indexedDB.open = real;
+		}
+	});
+
+	// Firefox's private window throws here rather than firing onerror.
+	// Unguarded that rejected the promise: the room's `.then` had no
+	// catch and the solo page refused to start the ride at all.
+	it('says so when the open throws, rather than failing the ride', async () => {
+		const real = indexedDB.open.bind(indexedDB);
+		indexedDB.open = () => {
+			throw new DOMException('denied', 'InvalidStateError');
+		};
+		try {
+			await expect(openable()).resolves.toMatchObject({ crashSafe: false });
+		} finally {
+			indexedDB.open = real;
+		}
+	});
+});

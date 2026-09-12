@@ -184,6 +184,30 @@
 		</div>
 	{/if}
 
+	<!-- No crash safety at all (#1466 finding 4, ADR-0052 rule 3). The banner
+	     above is a ride that was buffered and cannot be saved; this is a ride
+	     nothing is writing down, so neither a restart nor a tab crash leaves
+	     even a .fit. There is no button: the rider cannot open IndexedDB from
+	     here, and naming the two things that cause it is the only action
+	     there is. Warn, not error — the ride itself records and saves. -->
+	{#if live.noCrashSafety}
+		<div class="shrink-0 px-5 pt-4">
+			<Banner tone="warn">
+				<p>
+					<span class="font-medium"
+						>This browser is not keeping its own copy of this ride.</span
+					>
+					<span class="text-muted"
+						>Storage would not open — a private window, or site data switched
+						off. The room records and saves your ride as usual, but if the
+						server restarts or this tab dies there will be nothing here to
+						recover.</span
+					>
+				</p>
+			</Banner>
+		</div>
+	{/if}
+
 	{#if live.refusal}
 		<!-- A refused command — a sprint armed at the wrong moment, a control
 		     from a stale role — is status on every place, not a line under

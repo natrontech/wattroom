@@ -120,6 +120,12 @@ export function createRoomLive(slug: string) {
 	let lostSession = $state<{ workoutName: string; minutes: number } | null>(
 		null,
 	);
+	// The session is riding and nothing is being written down (#1466 finding
+	// 4). Distinct from lostSession above, which is a ride that WAS buffered
+	// and cannot be saved: this one has no buffer at all, so a restart or a
+	// browser crash leaves not even a .fit. Known at the open, so the rider
+	// hears it while they can still act on it (ADR-0052 rule 3).
+	let noCrashSafety = $state(false);
 	function followSession(t: ServerTick) {
 		const phase = t.state?.phase;
 		const now =
@@ -147,6 +153,7 @@ export function createRoomLive(slug: string) {
 					minutes: Math.round(bufferedRows / 60),
 				};
 			buffer = null;
+			noCrashSafety = false;
 			return;
 		}
 		lostSession = null;
@@ -160,7 +167,9 @@ export function createRoomLive(slug: string) {
 			startedAt,
 			workoutName: openedName,
 		}).then((opened) => {
-			if (riding && openedFor === startedAt) buffer = opened;
+			if (!riding || openedFor !== startedAt) return;
+			buffer = opened;
+			noCrashSafety = !opened.crashSafe;
 		});
 	}
 
@@ -350,6 +359,12 @@ export function createRoomLive(slug: string) {
 		 * more of this rider's own samples buffered. */
 		get lostSession() {
 			return lostSession;
+		},
+		/** This room ride is being recorded with no crash safety at all
+		 * (#1466) — the browser's storage would not open, so there is no
+		 * copy to recover from and nothing to replay a dropped socket with. */
+		get noCrashSafety() {
+			return noCrashSafety;
 		},
 		get jukeboxRefusal() {
 			return jukeboxRefusal;
