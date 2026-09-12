@@ -3,6 +3,7 @@
  * DM thread, and the ask to be friends. Built in one place so a friend in the
  * sidebar and a member of a room say the same words in the same order (#486).
  */
+import Activity from '@lucide/svelte/icons/activity';
 import BellRing from '@lucide/svelte/icons/bell-ring';
 import MessageSquare from '@lucide/svelte/icons/message-square';
 import ShieldBan from '@lucide/svelte/icons/shield-ban';
@@ -11,6 +12,7 @@ import UserPlus from '@lucide/svelte/icons/user-plus';
 import Volume2 from '@lucide/svelte/icons/volume-2';
 import { api } from '$lib/api';
 import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
+import { connectionInfo } from '$lib/room/connection-info.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
 import { RIDER_FADER } from '$lib/sound/fader';
 import { mixer } from '$lib/sound/mixer.svelte';
@@ -109,6 +111,18 @@ export function personMenu(
 	// came for mid-ride, but the list still reads person-first.
 	if (options.volume && !options.you)
 		items.splice(items.length - 1, 0, riderVolume(id, options.volume.name));
+	// Their connection, as numbers (#2131) — offered only where the room has an
+	// answer, which is the room you are standing in and the people in it. Off
+	// every other surface by the same rule the fader follows: an entry that
+	// opens an empty panel is worse than no entry. It is offered on your OWN
+	// row too, unlike everything above it, because your own is the only row
+	// that carries an address.
+	if (roomConnection.current?.live?.tick?.roster?.some((r) => r.id === id))
+		items.push({
+			label: 'Connection',
+			icon: Activity,
+			onSelect: () => connectionInfo.open(id),
+		});
 	// Last, after a separator (ux.md). The tile used to append this itself, so
 	// the same griefer was bannable from their tile and not from the roster row
 	// two hundred pixels away (#951).

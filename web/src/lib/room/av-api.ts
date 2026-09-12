@@ -101,6 +101,10 @@ export function roomAvApi(parts: AvParts) {
 		get voice() {
 			return av.voice;
 		},
+		/** What the SFU makes of each rider's link (#2131) — voice only. */
+		get quality() {
+			return av.quality;
+		},
 		get micLevel() {
 			return chain.level;
 		},

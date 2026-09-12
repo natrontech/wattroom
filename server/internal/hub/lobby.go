@@ -77,7 +77,9 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 			case <-done:
 				return
 			case <-beat.C:
-				if !h.keepalive.pingOrClose(r.Context(), conn) {
+				// The lobby has no roster to put a round trip on; only the
+				// liveness half matters here (#2131).
+				if _, alive := h.keepalive.pingOrClose(r.Context(), conn); !alive {
 					return
 				}
 			case <-c.ping:

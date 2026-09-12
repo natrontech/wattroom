@@ -18,6 +18,22 @@ export type AvStatus =
 	'off' | 'connecting' | 'live' | 'reconnecting' | 'failed';
 
 /**
+ * The SFU's own verdict on one participant's connection (#2131).
+ *
+ * LiveKit computes this at the server from the RTCP loss, jitter and round
+ * trip it already sees, and broadcasts it for every participant to every
+ * participant — so it describes THAT rider's link in both directions, which
+ * nothing a browser can measure about someone else does: `getStats()` sees
+ * only the leg from the SFU to this machine, and reporting that under another
+ * rider's name would blame the wrong person for our own downlink.
+ *
+ * Our own spelling of the SDK's enum rather than the enum itself: the SDK
+ * stops at `av-wire.ts` on the way in (see its head), and this crosses into
+ * the room's vocabulary like everything else does.
+ */
+export type LinkQuality = 'excellent' | 'good' | 'poor' | 'lost' | 'unknown';
+
+/**
  * Why the last thing the rider asked of voice did not happen (#642). Not a
  * toast: a rider on a bike reads it a minute later, mid-interval, so the
  * sidebar keeps it until the next attempt clears it. `signIn` marks the one

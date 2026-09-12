@@ -14,7 +14,7 @@
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
-	import { deviceWord } from '$lib/room/sensor-claim';
+	import { deviceWord } from '$lib/device.svelte';
 	import { pairedElsewhereAll, trainerState } from '$lib/room/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
 	import Gauge from '@lucide/svelte/icons/gauge';

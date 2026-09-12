@@ -99,3 +99,20 @@ export const device = {
 		});
 	},
 };
+
+/**
+ * What kind of screen this is, in one coarse word: `desktop`, `phone` or
+ * `tablet`. Coarse on purpose — a hint about what someone is on, never a
+ * device fingerprint, which is also why nothing here reads a user agent.
+ *
+ * Two consumers now, which is why it sits beside `device` rather than inside
+ * either of them (code-quality.md: one canonical home). It labels a sensor
+ * claim between a rider's own screens — "paired on your phone", #610 — and
+ * since #2131 it is also what a socket tells the room it is running on, where
+ * it IS visible to the other riders. The server keeps the two apart; the word
+ * is the same either way.
+ */
+export function deviceWord(): 'desktop' | 'phone' | 'tablet' {
+	if (!device.coarse) return 'desktop';
+	return device.narrow ? 'phone' : 'tablet';
+}

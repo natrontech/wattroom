@@ -413,6 +413,26 @@ export interface AwayState {
   away: boolean;
 }
 /**
+ * DeviceKind is what a socket says it is running on (#2131): one of
+ * "desktop", "phone" or "tablet", sent once when the socket opens and again
+ * on every reconnect, the way SensorClaim is resent.
+ * Its own message rather than a field on SensorClaim, which already carries a
+ * device word: that one is arbitration between a rider's OWN screens and is
+ * addressed back to them alone, so it says nothing to the room and only
+ * exists once a sensor has been paired — which a spectator on a phone never
+ * does. This one is room-visible by design and arrives whether or not
+ * anything is paired.
+ * Unlike the ping beside it on the roster, this is the client's word for
+ * itself and nothing checks it. That is the right trade for a label this
+ * coarse: a rider who lies about being on a phone misleads nobody about
+ * anything, and the alternative is parsing a user agent, which is a
+ * fingerprint. Kept to the three words below for the same reason — the room
+ * learns roughly what screen someone is on, never which device it is.
+ */
+export interface DeviceKind {
+  kind: string;
+}
+/**
  * ClientMessage is the envelope for everything a client sends.
  */
 export interface ClientMessage {
@@ -427,6 +447,7 @@ export interface ClientMessage {
   sensors?: SensorClaim;
   poke?: Poke;
   away?: AwayState;
+  device?: DeviceKind;
 }
 /**
  * Rider is presence: who is in the room right now, with what the dashboard
@@ -474,6 +495,53 @@ export interface Rider {
    */
   sounding?: string;
   soundingMs?: number /* int64 */;
+  /**
+   * Round trip to this rider's socket in milliseconds (#2131), measured by
+   * the server's own keepalive ping rather than reported by the client — so
+   * it is safe to show one rider about another, which a self-reported number
+   * would not be. Absent until the first ping of theirs has been answered.
+   * Room-scoped like the watts and the FTP above it, and for the same
+   * reason: this is live data about someone in the room, visible inside the
+   * room while they are in it and nowhere else. It never reaches
+   * RoomPresence, the friends panel or anything public — a ping is a weak
+   * location signal, and the room is where WATTROOM.md already grants that
+   * class of visibility.
+   * One rider, several sockets: the room folds them to the LOWEST, which is
+   * the rider's best screen. Their own breakdown per tab is the client's,
+   * off the device labels #610 already carries.
+   */
+  pingMs?: number /* int */;
+  /**
+   * What that same socket is running on (#2131) — "desktop", "phone" or
+   * "tablet". The socket the ping came from, so the two describe one screen
+   * rather than two of the rider's; absent from a client that has not said.
+   * See DeviceKind for why this is the client's word and why that is fine
+   * here when it would not be for the ping.
+   */
+  device?: string;
+}
+/**
+ * OwnConnection is what a socket is told about ITSELF, and about no other
+ * socket in the room (#2131).
+ * Its own message rather than a field on Rider, deliberately: Rider is the
+ * roster, the roster rides every tick to everybody, and a "fill this in only
+ * for the socket it belongs to" rule on a broadcast struct is one careless
+ * refactor away from publishing every rider's address to their crew — a
+ * refactor that would pass every test asserting the tick's shape. Addressed
+ * delivery makes the guarantee structural. SensorPairing is delivered the
+ * same way for the same kind of reason (see tick.go, "Addressed to this
+ * socket alone").
+ * Nothing persists it. It is read off the request that opened the socket and
+ * sent straight back, so there is no stored address to export under Art. 15
+ * or to purge with an account.
+ */
+export interface OwnConnection {
+  /**
+   * The address this socket reached the server from, as httpx.ClientIP
+   * resolves it: the last X-Forwarded-For hop behind the deploy's proxy
+   * (#1824), else the peer.
+   */
+  ip: string;
 }
 /**
  * SessionState is the shared timeline, server-owned. Late joiners need no
@@ -806,4 +874,8 @@ export interface ServerMessage {
   error?: Error;
   pairing?: SensorPairing;
   poke?: Poke;
+  /**
+   * This socket's own address, sent once on join and to nobody else (#2131).
+   */
+  connection?: OwnConnection;
 }

@@ -95,16 +95,17 @@
 		rider.speaking,
 		rider.away,
 	)}"
-	title={rider.you ? undefined : MENU_HINT}
+	title={MENU_HINT}
+	data-testid="rider-tile"
 	{@attach contextMenu(() =>
 		menu
 			? menu()
-			: rider.you
-				? []
-				: personMenu(rider.id, goto, {
-						volume: rider.inVoice ? { name: rider.name } : undefined,
-						poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
-					}),
+			: personMenu(rider.id, goto, {
+					you: rider.you,
+					volume:
+						rider.inVoice && !rider.you ? { name: rider.name } : undefined,
+					poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
+				}),
 	)}
 >
 	{#if rider.cameraOn && videoAttach}

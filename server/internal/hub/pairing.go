@@ -110,6 +110,23 @@ func (rm *room) claimSensors(c *client, claim protocol.SensorClaim) bool {
 	return changed
 }
 
+// deviceKinds is the closed set a socket may call itself (#2131). A word
+// outside it is not stored: the room renders this one, so an unbounded string
+// from a client would be a client writing on every screen in the room.
+var deviceKinds = []string{"desktop", "phone", "tablet"}
+
+// setDeviceKind records what this socket says it is running on. Silent when
+// the word is not one of ours — a client too old to send anything, or one
+// sending something we do not draw, leaves the label absent rather than wrong.
+func (rm *room) setDeviceKind(c *client, kind string) {
+	if !slices.Contains(deviceKinds, kind) {
+		return
+	}
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	c.deviceKind = kind
+}
+
 func truncate(s string, max int) string {
 	// Runes, not bytes: four CJK characters is the whole device label.
 	if utf8.RuneCountInString(s) <= max {

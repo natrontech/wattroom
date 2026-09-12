@@ -9,6 +9,7 @@ import type {
 	ServerTick,
 } from '$lib/protocol';
 import { account } from '$lib/account.svelte';
+import { deviceWord } from '$lib/device.svelte';
 import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { createChatLog, type BacklogMessage } from '$lib/room/chat-log.svelte';
 import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
@@ -68,6 +69,12 @@ export function createRoomLive(slug: string) {
 	// Addressed off the tick like pairing: every update is one new request for
 	// this rider's attention, carrying the authenticated sender and server time.
 	let lastPoke = $state<Poke | null>(null);
+	// This socket's own public address (#2131), addressed off the tick for a
+	// stronger reason than either of the two above: the tick goes to the whole
+	// room, and this is the one fact in the room a rider may see about
+	// themselves and about nobody else. It arrives once, on join. Null until
+	// then, and null again on a socket that never got one.
+	let ownIp = $state<string | null>(null);
 	// The last claim sent, replayed on every reconnect — a fresh socket is a
 	// fresh claim as far as the hub is concerned, and a trainer that stays
 	// connected through a drop must not come back as somebody else's.
@@ -206,6 +213,13 @@ export function createRoomLive(slug: string) {
 			const queued = pending;
 			pending = [];
 			for (const message of queued) send(message);
+			// What screen this is (#2131). Resent on every reconnect for the
+			// reason the claim below is: a fresh socket is a fresh socket to
+			// the hub, and a rider whose phone reconnected would otherwise go
+			// blank on everyone's panel. The same coarse word the sensor claim
+			// uses — it just no longer waits for a trainer nobody on a phone
+			// has paired.
+			send({ device: { kind: deviceWord() } });
 			// Before the backfill: the replay below is metrics, and the hub
 			// only takes metrics from the screen holding the trainer.
 			if (claim) send({ sensors: claim });
@@ -239,6 +253,7 @@ export function createRoomLive(slug: string) {
 				// rider's sockets, not to the room.
 				pairing = msg.pairing;
 			}
+			if (msg.connection) ownIp = msg.connection.ip;
 			if (msg.tick) {
 				// Before anything reads it: the tick's own timestamp is what
 				// keeps the jukebox playhead on server time (#286).
@@ -375,6 +390,14 @@ export function createRoomLive(slug: string) {
 		},
 		get lastPoke() {
 			return lastPoke;
+		},
+		/**
+		 * The address this socket reached the server from (#2131). Yours and
+		 * only ever yours — the server sends it to the socket it belongs to
+		 * and puts it nowhere near the roster.
+		 */
+		get ownIp() {
+			return ownIp;
 		},
 		/**
 		 * Tell the hub which sensors this tab has connected. Idempotent: the

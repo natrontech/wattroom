@@ -85,13 +85,15 @@
 			? 'text-ink'
 			: 'text-ink/70'}"
 		{@attach contextMenu(() =>
-			rider.you
-				? []
-				: personMenu(rider.id, goto, {
-						volume: rider.inVoice ? { name: rider.name } : undefined,
-						poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
-						ban: onBan ? () => onBan(rider.id, rider.name) : undefined,
-					}),
+			personMenu(rider.id, goto, {
+				// Your own row has a menu now (#2131): everything on it is
+				// disabled for you as it always was, but the connection entry
+				// is the one thing that is only ever about yourself.
+				you: rider.you,
+				volume: rider.inVoice && !rider.you ? { name: rider.name } : undefined,
+				poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
+				ban: onBan ? () => onBan(rider.id, rider.name) : undefined,
+			}),
 		)}
 	>
 		<!-- Opening a rider was right-click only here, while the members list,

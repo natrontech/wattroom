@@ -180,8 +180,22 @@ export function wireRoom(
 		// Another tab of yours just opened: it is the one you are looking at.
 		claims.consider(claimantOf(p));
 	});
+	// The SFU's verdict on a participant's link (#2131). It arrives for every
+	// participant including this one, which is why the roster can show one
+	// rider what another rider's connection is doing: the number is the
+	// server's, not something the other browser claimed about itself.
+	r.on(client.RoomEvent.ConnectionQualityChanged, (quality, p) => {
+		if (!p) return;
+		av.quality = { ...av.quality, [riderOf(p.identity)]: quality };
+	});
 	r.on(client.RoomEvent.ParticipantDisconnected, (p) => {
 		const rider = riderOf(p.identity);
+		// Their other tab may still be publishing, and a tier left behind by
+		// the tab that went would outlive the only media it described.
+		if (!claims.stillHere(rider, p.identity)) {
+			const { [rider]: _gone, ...rest } = av.quality;
+			av.quality = rest;
+		}
 		// Belt and braces: TrackUnsubscribed normally arrives first and takes
 		// the meter with it, but a connection dropped hard may skip it.
 		if (talk.drop(p.identity)) av.speaking = { ...talk.riders };
@@ -267,6 +281,9 @@ export function wireRoom(
 		seats.clear();
 		stage.clear();
 		av.voice = {};
+		// Nobody's link is being judged in a room we left; a tier kept here
+		// would sit on the roster claiming to be live (#2131).
+		av.quality = {};
 		// Nobody is talking to a room you are no longer in — a stale
 		// speaking flag parked music and cues at duck level forever, and
 		// camOn, sharing and micOn all lied about dead tracks (#219, #354).

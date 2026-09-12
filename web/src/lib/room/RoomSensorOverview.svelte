@@ -16,7 +16,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { useRoom } from '$lib/room/context';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
-	import { deviceWord } from '$lib/room/sensor-claim';
+	import { deviceWord } from '$lib/device.svelte';
 	import { pairedElsewhereAll, trainerState } from '$lib/room/sensor-status';
 	import { trainerHint } from '$lib/room/sensor-status';
 
