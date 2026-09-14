@@ -138,8 +138,9 @@ export interface Fault {
 	/** 'mic' is the capture dying under an open microphone (#640). */
 	kind: 'trainer' | 'room' | 'voice' | 'mic';
 	/** 'silent' and 'no-power' are trainer-only: connected, and delivering
-	 * nothing — or frames without watts (#520, #1849). */
-	state: 'reconnecting' | 'lost' | 'silent' | 'no-power';
+	 * nothing — or frames without watts (#520, #1849). 'offline' is room-only:
+	 * the device itself has no network, so the problem is on this end (#2121). */
+	state: 'reconnecting' | 'lost' | 'silent' | 'no-power' | 'offline';
 }
 
 /** RoomRail's room list entry. */

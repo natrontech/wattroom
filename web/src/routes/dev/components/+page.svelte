@@ -338,6 +338,11 @@
 			onRecover={() => {}}
 		/>
 		<FaultBanner
+			fault={{ kind: 'room', state: 'offline' }}
+			bufferedSeconds={42}
+			onRecover={() => {}}
+		/>
+		<FaultBanner
 			fault={{ kind: 'voice', state: 'reconnecting' }}
 			bufferedSeconds={0}
 			onRecover={() => {}}

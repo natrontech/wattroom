@@ -30,8 +30,7 @@
 	// the drop has to be stamped when it happens, not when it is rendered.
 	let droppedAt = $state<number | null>(null);
 	$effect(() => {
-		if (live?.status === 'reconnecting' && droppedAt === null)
-			droppedAt = Date.now();
+		if (live?.down && droppedAt === null) droppedAt = Date.now();
 		if (live?.status === 'live') droppedAt = null;
 	});
 </script>
@@ -43,7 +42,7 @@
 	<!-- Reconnecting, not "not yet live": the first connect used to paint
 	     "Lost the room" on every entry, which trains riders to ignore the one
 	     banner that must not be ignored (#1411). -->
-	{#if live.status === 'reconnecting'}
+	{#if live.down}
 		{@const droppedFor = droppedAt
 			? Math.round((Date.now() - droppedAt) / 1000)
 			: 0}
@@ -51,9 +50,18 @@
 		<div class="shrink-0 px-5 pt-4">
 			<!-- Past the backoff's settling point the banner turns to "lost" and
 			     grows the one big button (#1500). It dials now; it never reloads,
-			     which would drop the trainer's Bluetooth link mid-ride. -->
+			     which would drop the trainer's Bluetooth link mid-ride. Offline
+			     grows no button: dialling with no network would only fail. -->
 			<FaultBanner
-				fault={{ kind: 'room', state: live.lost ? 'lost' : 'reconnecting' }}
+				fault={{
+					kind: 'room',
+					state:
+						live.status === 'offline'
+							? 'offline'
+							: live.lost
+								? 'lost'
+								: 'reconnecting',
+				}}
 				bufferedSeconds={droppedFor}
 				onRecover={() => live.retry()}
 				note={game?.phase === 'running' && ELIMINATION_MODES.has(game.mode)

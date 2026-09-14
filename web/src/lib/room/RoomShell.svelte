@@ -242,11 +242,11 @@
 	// The cues themselves are room-sounds.svelte.ts; what stays here is the
 	// ranking, because only this component can see all four sources at once.
 	//
-	// `reconnecting` and not the banner's `!== 'live'`: the first connect of
-	// every room entry passes through `connecting`, and a room that has not
+	// `down` (reconnecting or offline) and not `!== 'live'`: the first connect
+	// of every room entry passes through `connecting`, and a room that has not
 	// dropped must not announce that it came back.
 	const faultKind = $derived(
-		live.status === 'reconnecting'
+		live.down
 			? 'room'
 			: rideCtl.fault
 				? 'trainer'
