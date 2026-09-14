@@ -1,1 +1,0 @@
-- The WattRoom mark now shows beside the site in Google results instead of a generic globe, and results are labelled "WattRoom" rather than "wattroom.ch". The served page carries its own icon, canonical URL and site identity, so a crawler that does not run JavaScript sees all three.
