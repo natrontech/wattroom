@@ -1,0 +1,1 @@
+- The landing page now names the category above its headline — WattRoom is a Zwift alternative — so a search result's description matches what the page actually says.

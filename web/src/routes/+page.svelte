@@ -133,6 +133,12 @@
 		<section
 			class="relative mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-10 text-center"
 		>
+			<!-- The category, before the promise (#2139). The search snippet
+			     calls WattRoom a Zwift alternative — WATTROOM.md's own words —
+			     and Google rewrites a description the page does not back up.
+			     Quiet on purpose: an eyebrow, not a claim competing with the
+			     h1 under it. -->
+			<p class="eyebrow mb-3">A Zwift alternative</p>
 			<h1
 				class="font-display text-4xl leading-[0.95] font-bold tracking-tight uppercase sm:text-6xl"
 			>
