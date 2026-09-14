@@ -12,6 +12,12 @@
 
     Regenerate the PNG electron-builder actually reads:
       rsvg-convert -w 1024 -h 1024 icon.svg > icon.png
+
+    This file is also the site's favicon (#2136) — Google does not accept an
+    SVG favicon, so the served icon has to be a raster, and this tile is the
+    mark rather than web/static/favicon.svg's bare bars, which are drawn for a
+    16px tab. 192 is a square multiple of 48, which is what Google asks for:
+      rsvg-convert -w 192 -h 192 icon.svg > ../../web/static/favicon.png
   -->
   <defs>
     <linearGradient id="bars" x1="0" y1="0" x2="0" y2="1">

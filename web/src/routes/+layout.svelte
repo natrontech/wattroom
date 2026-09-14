@@ -10,7 +10,6 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { device } from '$lib/device.svelte';
-	import favicon from '$lib/assets/favicon.svg';
 	import { account } from '$lib/account.svelte';
 	import { noteNewAccount } from '$lib/auth/new-account';
 	import { takeNext } from '$lib/auth/next';
@@ -319,7 +318,9 @@
 	{/if}
 	<!-- The default every page inherits; a page names itself over it. -->
 	<title>WattRoom</title>
-	<link rel="icon" href={favicon} />
+	<!-- No rel="icon" here (#2136): the icons are declared by the head the Go
+	     server writes, because the crawlers that read them never run this
+	     bundle. A link here would only be a second, hashed copy. -->
 </svelte:head>
 
 {#if titleBar}
