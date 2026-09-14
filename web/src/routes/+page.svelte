@@ -76,6 +76,13 @@
 	];
 </script>
 
+<svelte:head>
+	<!-- The layout's bare default would otherwise replace the title the server
+	     served, the moment the bundle boots (#2136) — so the tab, a bookmark
+	     and anyone's screenshot disagree with the search result. -->
+	<title>WattRoom — train together, not alone</title>
+</svelte:head>
+
 {#if !account.loaded}
 	<!-- Hold: a signed-in rider must never flash the marketing page — and a
 	     void reads as broken, so the mark holds the screen (errors.md). -->

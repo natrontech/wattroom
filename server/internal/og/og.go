@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -41,10 +42,26 @@ const (
 
 	siteName     = "WattRoom"
 	defaultTitle = "Train together, not alone."
-	siteDesc     = "Discord for indoor cycling — no virtual world, your watts are the game."
 	roomDesc     = "You're invited to ride. Join the room on WattRoom."
 	roomSub      = "Ride together on WattRoom"
+
+	// siteDesc is the card's subtitle, drawn into a 1200×630 PNG at 24–34px —
+	// so it stays one line. metaDesc is the search snippet, where Google
+	// renders about 155 characters and this was spending 70 of them. The
+	// second sentence is WATTROOM.md's own positioning rather than new copy:
+	// "Zwift alternative", "structured training" and the trainer are what a
+	// rider types into a search box, and all three were sitting in canon,
+	// unindexed.
+	siteDesc = "Discord for indoor cycling — no virtual world, your watts are the game."
+	metaDesc = siteDesc + " A Zwift alternative for structured workouts and smart-trainer rides with friends."
 )
+
+// iconPNG is the favicon a crawler can actually use. Google reads the home
+// page's *served* HTML for rel="icon", and the link this SPA had was written
+// by the bundle; it does not accept SVG, and ours was the only icon; and it
+// drops an icon whose URL keeps moving, which a hashed asset name does every
+// build. One stable path under the static build answers all three.
+const iconPNG = "/favicon.png"
 
 // Dark side of the web/src/app.css @theme light-dark() pairs — cards are
 // always dark, matching the app's synthwave identity (ADR-0005).
@@ -154,7 +171,7 @@ func (s *Service) card(title, sub string) ([]byte, error) {
 // the room's public identity; everything else gets the site card.
 func (s *Service) Meta(r *http.Request) []byte {
 	title := siteName + " — train together, not alone"
-	desc, img := siteDesc, s.baseURL+"/og/default.png"
+	desc, img := metaDesc, s.baseURL+"/og/default.png"
 	if rest, ok := strings.CutPrefix(r.URL.Path, "/r/"); ok && s.lookup != nil {
 		slug, _, _ := strings.Cut(rest, "/")
 		slug = strings.ToLower(slug)
@@ -187,7 +204,51 @@ func (s *Service) Meta(r *http.Request) []byte {
 		fmt.Fprintf(&b, "<meta property=\"%s\" content=\"%s\" />\n", m[0], e(m[1]))
 	}
 	b.WriteString("<meta name=\"twitter:card\" content=\"summary_large_image\" />\n")
+	// The PNG is for search and for an iOS home screen; the SVG is for a
+	// browser tab, where it stays crisp at any zoom. Both are declared and
+	// each consumer takes the one it understands.
+	fmt.Fprintf(&b, "<link rel=\"icon\" href=\"%s\" sizes=\"192x192\" type=\"image/png\" />\n", iconPNG)
+	b.WriteString("<link rel=\"icon\" href=\"/favicon.svg\" type=\"image/svg+xml\" />\n")
+	fmt.Fprintf(&b, "<link rel=\"apple-touch-icon\" href=\"%s\" />\n", iconPNG)
+	// Every path answers 200 with this same shell, so a link that picked up
+	// ?new=, ?as= or a utm tag is a separate URL to a crawler until this
+	// says otherwise.
+	fmt.Fprintf(&b, "<link rel=\"canonical\" href=\"%s\" />\n", e(s.baseURL+r.URL.Path))
+	fmt.Fprintf(&b, "<meta name=\"theme-color\" content=\"#%02x%02x%02x\" />\n", surface.R, surface.G, surface.B)
+	if r.URL.Path == "/" {
+		b.Write(s.identity())
+	}
 	return b.Bytes()
+}
+
+// identity is the home page's WebSite node. It is what Google's site-names
+// feature reads to label a result "WattRoom" rather than "wattroom.ch", and
+// it only ever looks at the root — hence the caller's path check. The
+// publisher is there because the word is not ours alone: an unrelated Italian
+// studio shares it, and sameAs is how an entity gets pinned to a repo rather
+// than to a hostname.
+func (s *Service) identity() []byte {
+	doc, err := json.Marshal(map[string]any{
+		"@context":    "https://schema.org",
+		"@type":       "WebSite",
+		"name":        siteName,
+		"url":         s.baseURL + "/",
+		"description": metaDesc,
+		"publisher": map[string]any{
+			"@type":  "Organization",
+			"name":   siteName,
+			"url":    s.baseURL + "/",
+			"logo":   s.baseURL + iconPNG,
+			"sameAs": []string{"https://github.com/natrontech/wattroom"},
+		},
+	})
+	if err != nil {
+		s.log.Error("og identity", "err", err)
+		return nil
+	}
+	// json.Marshal escapes <, > and & to \u00xx, so the payload cannot close
+	// the script element it sits in.
+	return fmt.Appendf(nil, "<script type=\"application/ld+json\">%s</script>\n", doc)
 }
 
 // Inject splices Meta ahead of </head> in the SPA's index.html.
