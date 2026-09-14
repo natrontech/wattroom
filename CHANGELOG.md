@@ -17,6 +17,17 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.116] - 2026-09-14
+
+### Changed
+
+- The landing page now names the category above its headline — WattRoom is a Zwift alternative — so a search result's description matches what the page actually says.
+
+### Fixed
+
+- The WattRoom mark now shows beside the site in Google results instead of a generic globe, and results are labelled "WattRoom" rather than "wattroom.ch". The served page carries its own icon, canonical URL and site identity, so a crawler that does not run JavaScript sees all three.
+- Switching networks in a room — wifi to ethernet, say — no longer leaves you invisible to everyone while voice keeps working. The app notices within five seconds that the room went quiet and rejoins by itself. When your own device loses its network, the banner now says so instead of "Reconnecting…", and the room comes back the moment the network does.
+
 ## [2026.09.115] - 2026-09-12
 
 ### Added
@@ -2175,7 +2186,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.115...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.116...HEAD
+[2026.09.116]: https://github.com/natrontech/wattroom/compare/2026.09.115...2026.09.116
 [2026.09.115]: https://github.com/natrontech/wattroom/compare/2026.09.114...2026.09.115
 [2026.09.114]: https://github.com/natrontech/wattroom/compare/2026.09.113...2026.09.114
 [2026.09.113]: https://github.com/natrontech/wattroom/compare/2026.09.112...2026.09.113
