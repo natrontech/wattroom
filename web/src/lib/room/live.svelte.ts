@@ -19,7 +19,18 @@ import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
  * and reconnect that never needs a button. The server owns shared truth —
  * this store renders it and forwards commands, deciding nothing itself.
  */
-export type LiveStatus = 'connecting' | 'live' | 'reconnecting';
+export type LiveStatus = 'connecting' | 'live' | 'reconnecting' | 'offline';
+
+/**
+ * How long an open socket may hear nothing before it counts as dropped
+ * (#2135): five of the hub's 1 Hz ticks (docs/SPEC.md). A network path that
+ * dies under an open socket — wifi traded for ethernet, a NAT forgetting the
+ * flow — sends no close, so the browser keeps the socket OPEN for as long as
+ * TCP takes to give up. The hub pings every 5 s and lets an unanswering rider
+ * go, so without this the rider left everyone's roster while their own tab
+ * still said live, and voice carried on underneath on its own connection.
+ */
+export const SILENCE_MS = 5_000;
 
 /**
  * Reconnects failed before the banner turns from "reconnecting" to "lost".
@@ -194,6 +205,67 @@ export function createRoomLive(slug: string) {
 		});
 	}
 
+	// Rearmed by everything the hub sends. Running out means the socket is
+	// dead, whatever its readyState says (SILENCE_MS).
+	let silenceTimer: ReturnType<typeof setTimeout> | null = null;
+	function heard() {
+		if (silenceTimer !== null) clearTimeout(silenceTimer);
+		silenceTimer = setTimeout(abandon, SILENCE_MS);
+	}
+
+	/** Give up on the current socket now. Its handlers go first: a close
+	 * handshake over a dead path waits as long as the silence did, and its
+	 * late onclose would start a second backoff beside this one. */
+	function abandon() {
+		const dead = socket;
+		if (!dead) return;
+		dead.onopen = null;
+		dead.onmessage = null;
+		dead.onclose = null;
+		dead.close();
+		onDrop();
+	}
+
+	function onDrop() {
+		if (silenceTimer !== null) clearTimeout(silenceTimer);
+		silenceTimer = null;
+		if (closed) return;
+		// Remember where the stream broke; the replay starts there.
+		if (gapSeq === null) gapSeq = acked;
+		// Ride-critical errors are persistent status, never toasts
+		// (.claude/rules/errors.md) — and recovery is automatic. Offline says
+		// whose problem it is (#2121), but the backoff runs on either way:
+		// navigator.onLine can call a working network offline, and a room that
+		// believed it would never come back.
+		status = navigator.onLine ? 'reconnecting' : 'offline';
+		if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+		reconnectTimer = setTimeout(
+			connect,
+			Math.min(1000 * 2 ** attempts, 10_000),
+		);
+		attempts += 1;
+	}
+
+	/** Dial now instead of waiting out the backoff. */
+	function dialNow() {
+		if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+		reconnectTimer = null;
+		connect();
+	}
+
+	// The device's own network (#2121). Losing it drops the socket at once
+	// instead of after the silence; getting it back dials at once instead of
+	// at the backoff's next turn, which may be ten seconds out.
+	function wentOffline() {
+		if (socket && socket.readyState <= WebSocket.OPEN) abandon();
+		else if (status === 'reconnecting') status = 'offline';
+	}
+	function cameOnline() {
+		if (status === 'live') return;
+		status = 'reconnecting';
+		dialNow();
+	}
+
 	function connect() {
 		// Never dial while a socket is already in flight or open — an extra dial
 		// is a second presence the server counts and leave() can't reach.
@@ -210,6 +282,7 @@ export function createRoomLive(slug: string) {
 			resetServerClock();
 			status = 'live';
 			attempts = 0;
+			heard();
 			const queued = pending;
 			pending = [];
 			for (const message of queued) send(message);
@@ -246,6 +319,7 @@ export function createRoomLive(slug: string) {
 			}
 		};
 		socket.onmessage = (event) => {
+			heard();
 			const msg = JSON.parse(event.data) as ServerMessage;
 			if (msg.poke) lastPoke = msg.poke;
 			if (msg.pairing) {
@@ -308,21 +382,11 @@ export function createRoomLive(slug: string) {
 					jukeboxRefusal = null;
 			}
 		};
-		socket.onclose = () => {
-			if (closed) return;
-			// Remember where the stream broke; the replay starts there.
-			if (gapSeq === null) gapSeq = acked;
-			// Ride-critical errors are persistent status, never toasts
-			// (.claude/rules/errors.md) — and recovery is automatic.
-			status = 'reconnecting';
-			reconnectTimer = setTimeout(
-				connect,
-				Math.min(1000 * 2 ** attempts, 10_000),
-			);
-			attempts += 1;
-		};
+		socket.onclose = onDrop;
 	}
 	connect();
+	window.addEventListener('offline', wentOffline);
+	window.addEventListener('online', cameOnline);
 
 	// Words typed during a reconnect wait here and flush on reopen — a chat
 	// line must never silently vanish (audit #219). Metrics are continuous
@@ -353,16 +417,17 @@ export function createRoomLive(slug: string) {
 		get status() {
 			return status;
 		},
+		/** Dropped out of the room for now, reconnecting or offline — never the
+		 * first connect of an entry, which must not read as a fault (#1411). */
+		get down() {
+			return status === 'reconnecting' || status === 'offline';
+		},
 		/** Reconnecting past the backoff's settling point: time for the button. */
 		get lost() {
 			return status === 'reconnecting' && attempts >= SETTLED_ATTEMPTS;
 		},
-		/** The one big button: dial now instead of waiting out the backoff. */
-		retry() {
-			if (reconnectTimer !== null) clearTimeout(reconnectTimer);
-			reconnectTimer = null;
-			connect();
-		},
+		/** The one big button. */
+		retry: dialNow,
 		get tick() {
 			return tick;
 		},
@@ -540,6 +605,9 @@ export function createRoomLive(slug: string) {
 		close() {
 			closed = true;
 			if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+			if (silenceTimer !== null) clearTimeout(silenceTimer);
+			window.removeEventListener('offline', wentOffline);
+			window.removeEventListener('online', cameOnline);
 			socket?.close();
 		},
 	};

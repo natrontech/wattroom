@@ -62,6 +62,11 @@
 					'The browser lost the microphone — a headset unplugged, Bluetooth switching to its phone profile, or another app taking it. The room hears nothing from you; your ride is unaffected. Plug it back in and reconnect.',
 			};
 		}
+		if (fault.state === 'offline')
+			return {
+				title: 'Your connection dropped',
+				detail: `This device is offline, so the room can't hear from you. It rejoins by itself the moment your network is back — ${formatClock(bufferedSeconds)} of riding is stored here until then.`,
+			};
 		return fault.state === 'reconnecting'
 			? {
 					title: 'Lost the room',
@@ -73,7 +78,11 @@
 				};
 	});
 
-	const recovering = $derived(fault.state === 'reconnecting');
+	// Offline recovers by itself too, on the network's return — and a
+	// Reconnect button with no network would only fail (errors.md).
+	const recovering = $derived(
+		fault.state === 'reconnecting' || fault.state === 'offline',
+	);
 </script>
 
 <!--

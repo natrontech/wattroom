@@ -61,7 +61,8 @@ class FakeSocket {
 }
 globalThis.WebSocket = FakeSocket as unknown as typeof WebSocket;
 
-const { createRoomLive, SETTLED_ATTEMPTS } = await import('./live.svelte');
+const { createRoomLive, SETTLED_ATTEMPTS, SILENCE_MS } =
+	await import('./live.svelte');
 
 const QUEUE = 16;
 
@@ -344,6 +345,9 @@ describe('room live ride buffer follows the session (#1541)', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		for (let i = 0; i < 70; i++) {
 			live.sendMetrics({ watts: 200 });
+			// The hub ticks every second; a socket left silent for 70 s is
+			// one the store rightly gives up on (#2135).
+			running(socket, 5 + i, 'Openers');
 			await vi.advanceTimersByTimeAsync(1000);
 		}
 		expect(buffered.rows).toHaveLength(70);
@@ -372,6 +376,9 @@ describe('room live ride buffer follows the session (#1541)', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		for (let i = 0; i < 70; i++) {
 			live.sendMetrics({ watts: 200 });
+			// The hub ticks every second; a socket left silent for 70 s is
+			// one the store rightly gives up on (#2135).
+			running(socket, 5 + i, 'Openers');
 			await vi.advanceTimersByTimeAsync(1000);
 		}
 		socket.onmessage?.({
@@ -481,6 +488,78 @@ describe('room live lost (#1500)', () => {
 		const dialled = FakeSocket.last;
 		await vi.advanceTimersByTimeAsync(10_000);
 		expect(FakeSocket.last).toBe(dialled);
+		vi.useRealTimers();
+	});
+});
+
+describe('room live silence and offline (#2135, #2121)', () => {
+	let online = true;
+	beforeEach(() => {
+		FakeSocket.last = null;
+		online = true;
+		Object.defineProperty(navigator, 'onLine', {
+			configurable: true,
+			get: () => online,
+		});
+		vi.useFakeTimers();
+	});
+
+	const tick = (socket: FakeSocket) =>
+		socket.onmessage?.({ data: JSON.stringify({ tick: { at: Date.now() } }) });
+
+	// The report: wifi swapped for ethernet under an open socket. The browser
+	// kept it OPEN with nothing arriving, the hub dropped the rider, and the
+	// tab said live until a refresh.
+	it('drops a socket that stays open but stops hearing ticks', async () => {
+		const live = createRoomLive('silent');
+		const socket = FakeSocket.last!;
+		socket.open();
+		tick(socket);
+		await vi.advanceTimersByTimeAsync(SILENCE_MS - 1);
+		expect(live.status).toBe('live');
+		await vi.advanceTimersByTimeAsync(1);
+		expect(live.status).toBe('reconnecting');
+		expect(socket.readyState).toBe(FakeSocket.CLOSED);
+		// Through the ordinary backoff, without waiting for an onclose a dead
+		// path may not deliver for minutes.
+		await vi.advanceTimersByTimeAsync(1_000);
+		expect(FakeSocket.last).not.toBe(socket);
+		// The abandoned socket's close arrives late, after its replacement is
+		// already live, and must not report that replacement as dropped.
+		FakeSocket.last!.open();
+		socket.onclose?.();
+		expect(live.status).toBe('live');
+		vi.useRealTimers();
+	});
+
+	it('keeps a socket that goes on hearing ticks', async () => {
+		const live = createRoomLive('ticking');
+		const socket = FakeSocket.last!;
+		socket.open();
+		for (let second = 0; second < 30; second++) {
+			tick(socket);
+			await vi.advanceTimersByTimeAsync(1_000);
+		}
+		expect(live.status).toBe('live');
+		expect(FakeSocket.last).toBe(socket);
+		vi.useRealTimers();
+	});
+
+	it('says offline when the device is, and dials the moment it is back', async () => {
+		const live = createRoomLive('offline');
+		const socket = FakeSocket.last!;
+		socket.open();
+		online = false;
+		window.dispatchEvent(new Event('offline'));
+		expect(live.status).toBe('offline');
+		expect(live.lost).toBe(false);
+		const waiting = FakeSocket.last;
+		online = true;
+		window.dispatchEvent(new Event('online'));
+		// Not the backoff's timer: the network is back now.
+		expect(FakeSocket.last).not.toBe(waiting);
+		FakeSocket.last!.open();
+		expect(live.status).toBe('live');
 		vi.useRealTimers();
 	});
 });

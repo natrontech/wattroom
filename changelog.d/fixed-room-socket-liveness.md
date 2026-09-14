@@ -1,0 +1,1 @@
+- Switching networks in a room — wifi to ethernet, say — no longer leaves you invisible to everyone while voice keeps working. The app notices within five seconds that the room went quiet and rejoins by itself. When your own device loses its network, the banner now says so instead of "Reconnecting…", and the room comes back the moment the network does.
