@@ -273,7 +273,8 @@
 	// UNDERNEATH it: invisible, with every tap meant for it landing on the
 	// drawer instead. #1199 fixed that for the sidebar's own sheet by hand,
 	// which left the Sound panel and everything else the you-panel reaches
-	// still buried (#2142: the settings modals do not open on a phone). The count answers for every dialog, with no wiring per button.
+	// still buried (#2142: the settings modals do not open on a phone). The
+	// count answers for every dialog, with no wiring per button.
 	$effect(() => {
 		if (modals.open > 0) drawer = false;
 	});

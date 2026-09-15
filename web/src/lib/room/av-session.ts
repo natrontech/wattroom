@@ -95,12 +95,12 @@ export function createSession(host: SessionHost) {
 	 * the two resumes — the #480 refresh and the #219 drop-rejoin — pass the
 	 * state the rider left in, so a rider who was muted stays muted (#641).
 	 *
-	 * A HANDHELD arrives listening instead, and that is not a second opinion
-	 * about SPEC's default: while the page holds an audio capture, iOS and
-	 * Android play the whole room out of the earpiece, and a rider who joined
-	 * to listen could not hear it (rider report: "no speaker like on phone").
-	 * (#2142). They land on the loudspeaker and the mic button is the way in —
-	 * which is also the only way back off the earpiece.
+	 * A HANDHELD arrives listening instead (#2142), and that is not a second
+	 * opinion about SPEC's default: while the page holds an audio capture, iOS
+	 * and Android play the whole room out of the earpiece, and a rider who
+	 * joined to listen could not hear it. They land on the loudspeaker, and
+	 * the mic button is the way into voice — which is also the only way back
+	 * off the earpiece.
 	 */
 	async function join({
 		mic: wantMic = !device.coarse,
