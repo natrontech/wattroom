@@ -16,6 +16,7 @@
 	import MixFaders from '$lib/room/MixFaders.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { canHoldToTalk } from '$lib/room/ptt-keys';
+	import { device } from '$lib/device.svelte';
 	import { openSoundPanel, soundPanel } from '$lib/room/sound-panel.svelte';
 
 	// `compact` is the sidebar's you-panel: an icon in a row of icons, next to
@@ -58,53 +59,67 @@
 
 		<div class="border-ink/5 mt-4 border-t pt-4">
 			<span class="eyebrow">how you transmit</span>
-			<!-- Two big targets, not radios: this is tapped at 160 bpm (ux.md). -->
-			<div class="mt-1.5 flex gap-2">
-				<button
-					onclick={() => voice.setMode('gate')}
-					aria-pressed={voice.mode === 'gate'}
-					class="btn flex-1 {voice.mode === 'gate'
-						? 'btn-primary'
-						: 'btn-secondary'}">Voice activation</button
-				>
-				<!-- Space is the key, and the button says so (#1879); where there
-				     is no key to hold, the mode is not offered. -->
-				{#if canHoldToTalk()}
+			{#if device.coarse}
+				<!-- There is no gate on a handheld and so no meter to tune: the
+				     chain publishes the capture as it comes, because holding one
+				     open is what puts the room on the earpiece
+				     (`mic-chain.svelte.ts`). Say so rather than draw a slider
+				     over a meter that will never move (ux.md). -->
+				<p class="text-muted mt-1.5 text-xs">
+					The mic button is your gate here. A phone plays the room through its
+					earpiece while anything is capturing, so the mic opens when you tap it
+					and the loudspeaker comes back when you tap it again.
+				</p>
+			{:else}
+				<!-- Two big targets, not radios: this is tapped at 160 bpm (ux.md). -->
+				<div class="mt-1.5 flex gap-2">
 					<button
-						onclick={() => voice.setMode('ptt')}
-						aria-pressed={voice.mode === 'ptt'}
-						class="btn flex-1 flex-col gap-0 leading-tight {voice.mode === 'ptt'
+						onclick={() => voice.setMode('gate')}
+						aria-pressed={voice.mode === 'gate'}
+						class="btn flex-1 {voice.mode === 'gate'
 							? 'btn-primary'
-							: 'btn-secondary'}"
-						>Push to talk
-						<span class="block text-[10px] font-normal opacity-70"
-							>hold Space</span
-						></button
+							: 'btn-secondary'}">Voice activation</button
+					>
+					<!-- Space is the key, and the button says so (#1879); where there
+				     is no key to hold, the mode is not offered. -->
+					{#if canHoldToTalk()}
+						<button
+							onclick={() => voice.setMode('ptt')}
+							aria-pressed={voice.mode === 'ptt'}
+							class="btn flex-1 flex-col gap-0 leading-tight {voice.mode ===
+							'ptt'
+								? 'btn-primary'
+								: 'btn-secondary'}"
+							>Push to talk
+							<span class="block text-[10px] font-normal opacity-70"
+								>hold Space</span
+							></button
+						>
+					{/if}
+				</div>
+				<div class="mt-3">
+					<GateTune
+						micOn={voice.micOn}
+						micLevel={voice.micLevel}
+						transmitting={voice.transmitting}
+						voiceMode={voice.mode}
+						gateThreshold={voice.gateThreshold}
+						effectiveThreshold={voice.effectiveGateThreshold}
+						onGateThreshold={(t) => voice.setGateThreshold(t)}
+						micTesting={voice.micTesting}
+					/>
+				</div>
+				{#if !voice.micOn}
+					<button
+						onclick={() => void voice.toggleMicTest()}
+						class="btn btn-secondary btn-xs mt-3 {voice.micTesting
+							? 'border-z4/60'
+							: ''}"
+						>{voice.micTesting
+							? 'testing — you hear yourself · stop'
+							: 'test my mic'}</button
 					>
 				{/if}
-			</div>
-			<div class="mt-3">
-				<GateTune
-					micOn={voice.micOn}
-					micLevel={voice.micLevel}
-					transmitting={voice.transmitting}
-					voiceMode={voice.mode}
-					gateThreshold={voice.gateThreshold}
-					effectiveThreshold={voice.effectiveGateThreshold}
-					onGateThreshold={(t) => voice.setGateThreshold(t)}
-					micTesting={voice.micTesting}
-				/>
-			</div>
-			{#if !voice.micOn}
-				<button
-					onclick={() => void voice.toggleMicTest()}
-					class="btn btn-secondary btn-xs mt-3 {voice.micTesting
-						? 'border-z4/60'
-						: ''}"
-					>{voice.micTesting
-						? 'testing — you hear yourself · stop'
-						: 'test my mic'}</button
-				>
 			{/if}
 		</div>
 

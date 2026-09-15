@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { navDrawer } from '$lib/nav/drawer.svelte';
+	import { modals } from '$lib/modals.svelte';
 	import { untrack } from 'svelte';
 	import '../app.css';
 	import '@fontsource/barlow/400.css';
@@ -266,6 +267,16 @@
 		page.url.pathname;
 		drawer = false;
 	});
+	// And it steps aside for any dialog opened from inside it. Below md the
+	// drawer is z-50 while dialogs are z-40 — they stay there for the
+	// player's sake — so a modal opened from a control in the drawer mounted
+	// UNDERNEATH it: invisible, with every tap meant for it landing on the
+	// drawer instead. #1199 fixed that for the sidebar's own sheet by hand,
+	// which left the Sound panel and everything else the you-panel reaches
+	// still buried (#2142: the settings modals do not open on a phone). The count answers for every dialog, with no wiring per button.
+	$effect(() => {
+		if (modals.open > 0) drawer = false;
+	});
 
 	// Leaving while standing in the room: the page must leave too, or you
 	// stare at a room you are no longer in with no way back in (rider report).
@@ -418,7 +429,6 @@
 				live={roomConnection.current?.live.tick?.state.phase === 'running'}
 				onLeave={leaveRoom}
 				onMember={showMember}
-				onSheet={() => (drawer = false)}
 			/>
 		</div>
 		<!-- inert while the drawer is open (#1969): Tab past its last row used

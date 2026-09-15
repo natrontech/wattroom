@@ -1,3 +1,4 @@
+import { device } from '$lib/device.svelte';
 import type { AvConn, AvState } from '$lib/room/av-state.svelte';
 import type { DeviceChoices } from '$lib/room/av-devices.svelte';
 import type { Speaking } from '$lib/room/speaking';
@@ -62,6 +63,11 @@ export function createMic(host: MicHost) {
 			av.micOn = false;
 			if (conn.room) setVoice(conn.me, 'muted');
 		},
+		// A finger is the whole test: a machine held in the hand routes the
+		// room to its earpiece for as long as the page holds a capture, so the
+		// chain publishes what the browser gave it and closing the mic hands
+		// the loudspeaker back (`mic-chain.svelte.ts`).
+		handheld: () => device.coarse,
 	});
 
 	/**

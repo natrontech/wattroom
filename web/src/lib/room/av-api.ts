@@ -201,6 +201,7 @@ export function roomAvApi(parts: AvParts) {
 		join: session.join,
 		toggleMic: tabs.toggleMic,
 		toggleCam: publish.toggleCam,
+		flipCam: publish.flipCam,
 		toggleShare: publish.toggleShare,
 		setShareSound: publish.setShareSound,
 		/** Everything the stage can show, screens first (#280). */

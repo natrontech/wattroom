@@ -126,6 +126,38 @@ export function createPublish(host: PublishHost) {
 	}
 
 	/**
+	 * Turn the phone round (#2142: front/back switching does not work).
+	 *
+	 * Two cameras in a hand are not a dropdown. `switchCam` above asks for a
+	 * `deviceId`, which is what the picker has and what iOS honours least —
+	 * both lenses are one "camera" there far more often than not — and a
+	 * rider on a bike does not read a list of device labels anyway (ux.md).
+	 * `facingMode` is the constraint the platform actually answers, and
+	 * `restartTrack` keeps the publication: the room sees the picture turn
+	 * round rather than go away and come back.
+	 *
+	 * Which way it faces is remembered here rather than read back off the
+	 * track: `facingModeFromLocalTrack` guesses from the device label when the
+	 * setting is absent, which is exactly the platform that needed this. A
+	 * refused flip leaves the note where it was, so the next press tries the
+	 * same direction again instead of the one that just failed.
+	 */
+	let facing: 'user' | 'environment' = 'user';
+	async function flipCam() {
+		const track = conn.room?.localParticipant.getTrackPublication(
+			conn.liveKit!.Track.Source.Camera,
+		)?.videoTrack;
+		if (!track) return;
+		const next = facing === 'user' ? 'environment' : 'user';
+		try {
+			await track.restartTrack({ facingMode: next });
+			facing = next;
+		} catch (cause) {
+			failedMedia(cause, 'camera');
+		}
+	}
+
+	/**
 	 * Put a screen on the stage, with the machine's sound if the rider wants
 	 * it (#1751). Asking for no audio at all rather than publishing it muted:
 	 * the loopback tap is the whole machine — their notifications, their calls
@@ -279,6 +311,7 @@ export function createPublish(host: PublishHost) {
 		openCam,
 		closeCam,
 		switchCam,
+		flipCam,
 		startShare,
 		stopShare,
 		setShareSound,

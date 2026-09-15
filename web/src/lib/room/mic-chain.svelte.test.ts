@@ -40,6 +40,8 @@ function fakeTrack() {
 let capture: ReturnType<typeof fakeTrack>;
 let gain: { gain: { value: number; cancelScheduledValues: unknown } };
 const ctxClose = vi.fn();
+/** Whether anything built an audio graph at all — a handheld must not. */
+const ctxMade = vi.fn();
 
 function stubAudio() {
 	// Bound, not read through `capture`: a later stubAudio() must not retarget
@@ -55,6 +57,7 @@ function stubAudio() {
 		connect: vi.fn(),
 	} as never;
 	vi.stubGlobal('AudioContext', function AudioContextStub(this: unknown) {
+		ctxMade();
 		return {
 			currentTime: 0,
 			state: 'running',
@@ -82,6 +85,7 @@ function host(over: Partial<MicChainHost> = {}): MicChainHost {
 		heard: vi.fn(),
 		silenced: vi.fn(),
 		captureLost: vi.fn(),
+		handheld: () => false,
 		...over,
 	};
 }
@@ -89,6 +93,20 @@ function host(over: Partial<MicChainHost> = {}): MicChainHost {
 beforeEach(() => {
 	vi.clearAllMocks();
 	stubAudio();
+});
+
+describe('a handheld', () => {
+	// The silent one: a phone that builds the graph anyway still works — the
+	// room hears it — and is still on the earpiece with a gate holding the
+	// capture open, which is exactly what riders reported.
+	it('publishes the capture itself and builds no audio graph', async () => {
+		const deps = host({ handheld: () => true });
+		const chain = createMicChain(deps);
+		await chain.open();
+		expect(deps.publish).toHaveBeenCalledWith(capture);
+		expect(ctxMade).not.toHaveBeenCalled();
+		expect(chain.transmitting).toBe(true);
+	});
 });
 
 describe('opening and closing', () => {
