@@ -11,7 +11,7 @@
 	import { presence } from '$lib/presence.svelte';
 	import { friends } from '$lib/friends/friends.svelte';
 	import { revealRooms } from '$lib/rooms/reveal';
-	import { othersIn } from '$lib/status';
+	import { othersIn, statusOf } from '$lib/status';
 	import { page } from '$app/state';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
@@ -473,18 +473,23 @@
 										class="panel hover:border-muted/40 flex items-center gap-2 px-2.5 py-1.5 text-xs"
 										title={friend.roomName ? `in ${friend.roomName}` : 'online'}
 									>
+										<!-- The badge Avatar draws, from the one vocabulary
+										     (#807, $lib/status) — not a mark of this row's
+										     own. Home drew RidingBars for anyone `inRoom`,
+										     and those bars say "riding now" to the eye and
+										     to a screen reader, so a friend chatting in a
+										     room was reported as pedalling while the
+										     Friends page called the same person "in a
+										     room". ADR-0012: presence never implies watts
+										     (#2168). -->
 										<Avatar
 											name={friend.name}
 											avatarUrl={friend.avatarUrl}
 											xp={friend.totalXp}
+											status={statusOf(presence.rooms, friend.id, friends.list)}
 											size={20}
 										/>
 										<span class="font-medium">{friend.name}</span>
-										{#if friend.inRoom}
-											<RidingBars size={9} />
-										{:else}
-											<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
-										{/if}
 									</a>
 								</li>
 							{/each}
