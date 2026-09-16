@@ -484,12 +484,8 @@
 						<!-- In no crew at all (#2144): the way in is joining one, and
 						     opening a room of your own is the option, not the ask. -->
 						Not in a crew yet —
-						<button
-							onclick={() => {
-								opening = true;
-								onSheet?.();
-							}}
-							class="btn-link">join one with its code</button
+						<button onclick={() => (opening = true)} class="btn-link"
+							>join one with its code</button
 						>, or open a room of your own.
 					{/if}
 				</li>
