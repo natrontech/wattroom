@@ -637,11 +637,21 @@ function setHud(on) {
 	// Above full-screen apps too, and on every desktop — that is the point.
 	hudWindow.setAlwaysOnTop(true, 'floating');
 	hudWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-	// Top-right of the display the app is on, a finger's width in.
+	// BOTTOM-LEFT of the display the app is on, a finger's width in (#1669).
+	//
+	// It used to sit top-right, which is exactly where TV mode seats the
+	// YouTube player (TvOverlay.svelte: `top-[3vh] right-[3vw]`, ≥240×200) —
+	// and this is an alwaysOnTop OS window, so at 1920×1080 roughly 280×115 px
+	// of the player was under it with nothing the page could do about it.
+	// ADR-0041's focus rule does not cover it: a room on a TV with WattRoom
+	// un-focused is the normal case, and un-focused is when the HUD SHOWS.
+	//
+	// Bottom-left is the one corner nothing else claims — TV's seat is
+	// top-right and the jukebox dock's corner fallback is bottom-right.
 	const { workArea } = screen.getDisplayMatching(main.getBounds());
 	hudWindow.setPosition(
-		workArea.x + workArea.width - HUD_SIZE.width - 16,
-		workArea.y + 16,
+		workArea.x + 16,
+		workArea.y + workArea.height - HUD_SIZE.height - 16,
 	);
 	guardNavigation(hudWindow);
 	hudWindow.on('closed', () => {
