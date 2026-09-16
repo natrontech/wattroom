@@ -281,11 +281,20 @@
 					autofocus
 					class="input input-xs w-full"
 				/>
-			{:else}
+			{:else if canManage}
 				<button
 					onclick={() => (renaming = true)}
 					class="block max-w-full truncate text-left text-xs font-medium"
 					>{playlist.name}</button
+				>
+			{:else}
+				<!-- Not a control for a rider who cannot rename it (#2162, ux.md:
+				     never render one that fails on click). The menu's Rename and
+				     the × are gated on `canManage` and this path was not, so a
+				     member on the Room tab could open the box, type, and read
+				     the server's refusal under the row. -->
+				<span class="block max-w-full truncate text-xs font-medium"
+					>{playlist.name}</span
 				>
 			{/if}
 			<p class="text-muted text-[10px]">
