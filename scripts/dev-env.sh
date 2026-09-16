@@ -109,6 +109,11 @@ if [ "$is_main_tree" = 1 ]; then
 	verify_port=8082
 	e2e_web_port=4173
 	e2e_api_port=8081
+	# The server's own default (#1738), spelled out here so every port this
+	# script hands out is one it names — the main tree's were the numbers a
+	# reader could find in one place, and a missing one is an unbound variable
+	# in CI rather than a wrong port.
+	metrics_port=9091
 	db_name=wattroom
 	test_db_name=wattroom_test
 else
