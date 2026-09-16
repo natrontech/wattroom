@@ -16,6 +16,7 @@
 	import {
 		copyInviteLink,
 		leaveCrewFlow,
+		MAIN_CREW_LABEL,
 		makeMainCrewFlow,
 	} from '$lib/crew-flows';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
@@ -101,7 +102,7 @@
 		// the crew page offers the same button — nothing lives only here.
 		if (crews.length > 1 && account.me?.homeCrewId !== c.id)
 			entries.push({
-				label: 'Make it my main crew',
+				label: MAIN_CREW_LABEL,
 				icon: Star,
 				onSelect: () => void makeMainCrewFlow(c),
 			});

@@ -111,6 +111,16 @@ export const HAND_OVER_BODY =
 	'crew on. You cannot take this back; only they can hand it back to you.';
 
 /**
+ * What the action is called, wherever it is offered (#2175): the crew page
+ * said "Make main crew" and the switcher's menu "Make it my main crew" — one
+ * act with two names, a column apart.
+ */
+export const MAIN_CREW_LABEL = 'Make it my main crew';
+
+/** Why it is worth pressing — the same sentence on both surfaces. */
+export const MAIN_CREW_HINT = 'the sidebar opens in this crew on every device';
+
+/**
  * Naming the main crew (#2144), from wherever it is offered — the crew page
  * and the crew row's menu — with the one toast. The sidebar switches to it
  * here and now; every other device opens in it from its next load.
