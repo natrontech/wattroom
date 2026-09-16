@@ -236,9 +236,7 @@
 			<div class="mb-1 min-w-0">
 				<p class="text-muted flex items-baseline gap-1.5 text-[11px]">
 					<span class="truncate">{current.playlistTitle}</span>
-					<span class="shrink-0 font-mono tabular-nums"
-						>{setPosition}/{setTracks}</span
-					>
+					<span class="num shrink-0">{setPosition}/{setTracks}</span>
 				</p>
 				<span class="bg-muted/20 mt-1 block h-0.5 rounded-full">
 					<span

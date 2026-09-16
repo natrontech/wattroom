@@ -168,7 +168,7 @@
 					<!-- Tempo, and whether it fits the block (#1431): the mark is
 					     live data — it follows the timeline — so it takes the
 					     watt hue, the number stays quiet. -->
-					· <span class="font-mono tabular-nums">{entry.bpm} bpm</span>
+					· <span class="num">{entry.bpm} bpm</span>
 					{#if fits}<span class="text-watt">· fits the block</span>{/if}
 				{/if}
 			</p>
@@ -230,7 +230,7 @@
 		>
 			{#each tracks as track, i (track.videoId + i)}
 				<li class="flex min-w-0 gap-1.5">
-					<span class="shrink-0 font-mono tabular-nums">{i + 1}</span>
+					<span class="num shrink-0">{i + 1}</span>
 					<span class="truncate">{track.title}</span>
 				</li>
 			{/each}

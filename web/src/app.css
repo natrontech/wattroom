@@ -71,6 +71,23 @@
 }
 
 /*
+ * A number, anywhere (#2174). web/AGENTS.md: "Display type and every numeral
+ * use `font-display`" — and seventy-five sites said `font-mono tabular-nums`
+ * instead, which resolves to Tailwind's default stack, so numbers rendered in
+ * whichever monospace the OS ships beside Chakra Petch numbers on the same
+ * row. Chakra Petch's numerals are the brand; this is the rule with a name, so
+ * a surface that wants aligned digits asks for `num` rather than reaching for
+ * a typeface.
+ *
+ * Not for a code, a token or an address: those are strings that happen to
+ * contain digits, and a monospace face is doing real work there.
+ */
+@utility num {
+	font-family: var(--font-display);
+	font-variant-numeric: tabular-nums;
+}
+
+/*
  * Glow scale. Driven by currentColor so a zone-coloured element glows in its own hue.
  * Restraint rule: glow marks live data — chrome stays flat however neon the palette gets.
  */

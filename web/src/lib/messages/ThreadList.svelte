@@ -122,8 +122,7 @@
 							<span class="truncate text-sm {t.unread ? 'font-semibold' : ''}"
 								>{t.name}</span
 							>
-							<span
-								class="text-muted-dim ml-auto shrink-0 font-mono text-[10px]"
+							<span class="text-muted-dim num ml-auto shrink-0 text-[10px]"
 								>{formatThreadWhen(t.at)}</span
 							>
 						</span>

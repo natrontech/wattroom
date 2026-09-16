@@ -94,7 +94,7 @@
 
 			<div class="mt-8 flex items-center justify-between text-sm">
 				<span class="text-muted">Step {minute + 1}</span>
-				<span class="font-mono tabular-nums">{formatClock(elapsed)}</span>
+				<span class="num">{formatClock(elapsed)}</span>
 				<span class="text-muted">+{STEP} W in {secondsToStep}s</span>
 			</div>
 			<div class="bg-surface mt-2 h-1.5 overflow-hidden rounded-full">

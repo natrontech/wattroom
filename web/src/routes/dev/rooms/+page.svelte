@@ -106,9 +106,7 @@
 			<ul class="mt-4 space-y-2">
 				{#each [{ date: '21 Aug', medals: [{ n: 'Metronome', who: 'Sara' }, { n: 'Hammer', who: 'Ruben' }, { n: 'Diesel', who: 'Nina' }] }, { date: '19 Aug', medals: [{ n: 'Metronome', who: 'You' }, { n: 'Hammer', who: 'Ruben' }, { n: 'Lanterne Rouge', who: 'Milo' }] }, { date: '14 Aug', medals: [{ n: 'Diesel', who: 'Tobi' }, { n: 'Metronome', who: 'Nina' }, { n: 'Hammer', who: 'Sara' }] }] as session (session.date)}
 					<li class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-						<span class="text-muted w-14 shrink-0 font-mono tabular-nums"
-							>{session.date}</span
-						>
+						<span class="text-muted num w-14 shrink-0">{session.date}</span>
 						{#each session.medals as medal (medal.n)}
 							<span class="text-muted">
 								{medal.n}
