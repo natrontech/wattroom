@@ -181,11 +181,11 @@
 	// stale guard holding the test open — thirty minutes of nothing and then a
 	// 0 W result. Stamped when the CLOCK starts, not when Start was pressed:
 	// the count-in is not a gap in the trainer's reporting.
-	let ridingSince = 0;
+	let ridingSince: number | undefined = $state();
 	$effect(() => {
-		if (session?.state === 'running' && ridingSince === 0)
+		if (session?.state === 'running' && ridingSince === undefined)
 			ridingSince = Date.now();
-		if (!session) ridingSince = 0;
+		if (!session) ridingSince = undefined;
 	});
 	const signalLost = $derived(isSignalLost(session, ridingSince, nowMs));
 
