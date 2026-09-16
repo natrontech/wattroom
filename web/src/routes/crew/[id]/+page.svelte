@@ -16,6 +16,8 @@
 	import {
 		copyInviteLink,
 		leaveCrewFlow,
+		MAIN_CREW_HINT,
+		MAIN_CREW_LABEL,
 		makeMainCrewFlow,
 	} from '$lib/crew-flows';
 	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
@@ -140,7 +142,12 @@
 		<Skeleton class="h-8 w-48" />
 		<Skeleton class="mt-6 h-40" />
 	{:else}
-		<header class="flex items-start gap-3">
+		<!-- Wraps below sm (#2175): the mark, the name and its line take the
+		     row, and the actions drop to one of their own. Unwrapped, an admin
+		     in two or more crews — the only case the main-crew control renders
+		     in — had "Make main crew" and "Settings" leaving about thirty
+		     pixels for the crew's name at 375 px, so it was an ellipsis. -->
+		<header class="flex flex-wrap items-start gap-3">
 			<CrewMark
 				name={crew.name}
 				icon={crew.icon}
@@ -162,32 +169,39 @@
 					{/if}
 				</p>
 			</div>
-			{#if presence.crews.length > 1}
-				<!-- The main crew (#2144): the one the sidebar opens in on every
-				     device. A choice only once there is one to make. -->
-				{#if account.me?.homeCrewId === crew.id}
-					<span
-						class="text-muted flex shrink-0 items-center gap-1 text-xs"
-						title="the sidebar opens in this crew on every device"
-						><Star size={13} /> main crew</span
-					>
-				{:else}
-					<button
-						onclick={() => crew && makeMainCrewFlow(crew)}
-						class="btn btn-secondary btn-xs shrink-0"
-						title="the sidebar opens in this crew on every device"
-						><Star size={13} /> Make main crew</button
-					>
-				{/if}
-			{/if}
-			{#if administers}
-				<!-- Name, picture, icon and the invite live in one place (#1237),
-				     the way a room's do; this page is the roster. -->
-				<a
-					href="/crew/{crew.id}/settings"
-					class="btn btn-secondary btn-xs shrink-0"
-					><Settings size={13} /> Settings</a
-				>
+			{#if presence.crews.length > 1 || administers}
+				<!-- A row of their own below sm (#2175). Wrapping the header is not
+				     enough on its own: a flex item shrinks before it wraps, so the
+				     title kept giving width back to these two until it was an
+				     ellipsis. `basis-full` makes them a row instead. -->
+				<div class="flex basis-full items-center gap-2 sm:basis-auto">
+					{#if presence.crews.length > 1}
+						<!-- The main crew (#2144): the one the sidebar opens in on every
+					     device. A choice only once there is one to make. -->
+						{#if account.me?.homeCrewId === crew.id}
+							<span
+								class="text-muted flex shrink-0 items-center gap-1 text-xs"
+								title={MAIN_CREW_HINT}><Star size={13} /> main crew</span
+							>
+						{:else}
+							<button
+								onclick={() => crew && makeMainCrewFlow(crew)}
+								class="btn btn-secondary btn-xs shrink-0"
+								title={MAIN_CREW_HINT}
+								><Star size={13} /> {MAIN_CREW_LABEL}</button
+							>
+						{/if}
+					{/if}
+					{#if administers}
+						<!-- Name, picture, icon and the invite live in one place (#1237),
+					     the way a room's do; this page is the roster. -->
+						<a
+							href="/crew/{crew.id}/settings"
+							class="btn btn-secondary btn-xs shrink-0"
+							><Settings size={13} /> Settings</a
+						>
+					{/if}
+				</div>
 			{/if}
 		</header>
 
