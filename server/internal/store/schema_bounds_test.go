@@ -25,34 +25,38 @@ func TestSchemaChecksMatchTheProtocolBounds(t *testing.T) {
 	st := storetest.Open(t)
 
 	for _, want := range []struct {
+		table    string
 		column   string
 		min, max int
 	}{
-		{"ftp_watts", protocol.MinFtpWatts, protocol.MaxFtpWatts},
-		{"weight_kg", protocol.MinWeightKg, protocol.MaxWeightKg},
-		{"lthr", protocol.MinLthrBpm, protocol.MaxLthrBpm},
+		{"users", "ftp_watts", protocol.MinFtpWatts, protocol.MaxFtpWatts},
+		{"users", "weight_kg", protocol.MinWeightKg, protocol.MaxWeightKg},
+		{"users", "lthr", protocol.MinLthrBpm, protocol.MaxLthrBpm},
+		// The FTP a ramp test produced on its own ride (#1572) carries the
+		// same bound in a second table, and its handler reads the same pair.
+		{"rides", "ftp_after_watts", protocol.MinFtpWatts, protocol.MaxFtpWatts},
 	} {
-		t.Run(want.column, func(t *testing.T) {
+		t.Run(want.table+"."+want.column, func(t *testing.T) {
 			var def string
 			err := st.Pool.QueryRow(t.Context(), `
 				select pg_get_constraintdef(c.oid)
 				from pg_constraint c
-				where c.conrelid = 'users'::regclass
+				where c.conrelid = $1::regclass
 				  and c.contype = 'c'
-				  and pg_get_constraintdef(c.oid) like '%' || $1 || '%'
-				limit 1`, want.column).Scan(&def)
+				  and pg_get_constraintdef(c.oid) like '%' || $2 || '%'
+				limit 1`, want.table, want.column).Scan(&def)
 			if err != nil {
-				t.Fatalf("users.%s has no CHECK at all — the bound is only in Go now: %v", want.column, err)
+				t.Fatalf("%s.%s has no CHECK at all — the bound is only in Go now: %v", want.table, want.column, err)
 			}
 			// Postgres rewrites `between x and y` as two comparisons, so the
 			// definition reads `((col >= 50) AND (col <= 600))` whichever way
 			// the migration wrote it.
 			min, max := bound(t, def, want.column, ">="), bound(t, def, want.column, "<=")
 			if min != want.min || max != want.max {
-				t.Errorf("users.%s allows %d–%d, the code enforces %d–%d.\n"+
+				t.Errorf("%s.%s allows %d–%d, the code enforces %d–%d.\n"+
 					"Widening a bound takes an expand migration as well as the constant (ADR-0019); narrowing one needs the rows checked first.\n"+
 					"constraint: %s",
-					want.column, min, max, want.min, want.max, def)
+					want.table, want.column, min, max, want.min, want.max, def)
 			}
 		})
 	}
