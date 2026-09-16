@@ -21,6 +21,7 @@
 		type Clip,
 	} from '$lib/board/clips.svelte';
 	import { boardPanel } from '$lib/board/panel.svelte';
+	import { fileDrop } from '$lib/file-drop.svelte';
 	import KeyBinder from '$lib/board/KeyBinder.svelte';
 	import ToggleBinder from '$lib/board/ToggleBinder.svelte';
 	import { learn, shapeOf } from '$lib/board/shapes.svelte';
@@ -30,8 +31,8 @@
 
 	let busy = $state(false);
 	let refusal = $state<string | undefined>();
-	let dragging = $state(false);
 	let input: HTMLInputElement | undefined = $state();
+	const drop = fileDrop((files) => void take(files));
 
 	async function take(files: FileList | null | undefined) {
 		if (!files || files.length === 0) return;
@@ -73,17 +74,8 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-	ondragover={(e) => {
-		e.preventDefault();
-		dragging = true;
-	}}
-	ondragleave={() => (dragging = false)}
-	ondrop={(e) => {
-		e.preventDefault();
-		dragging = false;
-		void take(e.dataTransfer?.files);
-	}}
-	class="flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed p-4 text-center {dragging
+	{...drop.on}
+	class="flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed p-4 text-center {drop.over
 		? 'border-neon/60'
 		: 'border-muted/30'}"
 >
