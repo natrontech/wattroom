@@ -396,7 +396,7 @@
 							if (parsed !== null) current.seconds = parsed;
 							event.currentTarget.value = formatClock(current.seconds);
 						}}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 					<span class="text-muted mt-1 block text-[10px]"
 						>m:ss — a bare number is minutes</span
@@ -419,7 +419,7 @@
 							((current as SteadyStep).watts = Number(
 								event.currentTarget.value,
 							))}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 					<span class="text-muted mt-1 block text-[11px]">
 						{Math.round(((current.watts ?? 0) / FTP) * 100)}% of {FTP} FTP ·
@@ -443,7 +443,7 @@
 						oninput={(event) =>
 							((current as SteadyStep).target =
 								Number(event.currentTarget.value) / 100)}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 					<span class="text-muted mt-1 block text-[11px]">
 						{Math.round((current.target ?? 0) * FTP)} W at {FTP} FTP ·
@@ -486,7 +486,7 @@
 										event.currentTarget.value === ''
 											? undefined
 											: Number(event.currentTarget.value))}
-								class="input mt-1 w-full font-mono tabular-nums"
+								class="input num mt-1 w-full"
 							/>
 						</label>
 						<label class="block">
@@ -502,7 +502,7 @@
 										event.currentTarget.value === ''
 											? undefined
 											: Number(event.currentTarget.value))}
-								class="input mt-1 w-full font-mono tabular-nums"
+								class="input num mt-1 w-full"
 							/>
 						</label>
 					</div>
@@ -520,7 +520,7 @@
 										event.currentTarget.value === ''
 											? undefined
 											: Number(event.currentTarget.value))}
-								class="input mt-1 w-full font-mono tabular-nums"
+								class="input num mt-1 w-full"
 							/>
 						</label>
 						<label class="block">
@@ -536,7 +536,7 @@
 										event.currentTarget.value === ''
 											? undefined
 											: Number(event.currentTarget.value))}
-								class="input mt-1 w-full font-mono tabular-nums"
+								class="input num mt-1 w-full"
 							/>
 						</label>
 					</div>
@@ -549,7 +549,7 @@
 						min="1"
 						max="50"
 						bind:value={current.times}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 				</label>
 				<p class="text-muted text-[11px]">
@@ -570,7 +570,7 @@
 								oninput={(event) =>
 									((current as RampStep)[field.key as 'from' | 'to'] =
 										Number(event.currentTarget.value) / 100)}
-								class="input mt-1 w-full font-mono tabular-nums"
+								class="input num mt-1 w-full"
 							/>
 						</label>
 					{/each}

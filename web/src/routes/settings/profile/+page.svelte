@@ -331,7 +331,7 @@
 						min={PROFILE_LIMITS.minFtp}
 						max={PROFILE_LIMITS.maxFtp}
 						aria-invalid={saveError?.field === 'ftpWatts' ? 'true' : undefined}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 					{@render fieldError('ftpWatts')}
 					<span class="text-muted mt-1 block text-[11px]">
@@ -365,7 +365,7 @@
 						min={PROFILE_LIMITS.minKg}
 						max={PROFILE_LIMITS.maxKg}
 						aria-invalid={saveError?.field === 'weightKg' ? 'true' : undefined}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 					{@render fieldError('weightKg')}
 					<span class="text-muted mt-1 block text-[11px]"
@@ -381,7 +381,7 @@
 						max={PROFILE_LIMITS.maxLthr}
 						placeholder="—"
 						aria-invalid={saveError?.field === 'lthr' ? 'true' : undefined}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 					{@render fieldError('lthr')}
 					<span class="text-muted mt-1 block text-[11px]">
@@ -406,7 +406,7 @@
 										>Z{range.zone}</span
 									>
 									<span class="text-muted ml-1">{range.name}</span>
-									<span class="ml-1 font-mono tabular-nums"
+									<span class="num ml-1"
 										>{range.zone === 1
 											? `≤ ${range.high}`
 											: range.high !== undefined

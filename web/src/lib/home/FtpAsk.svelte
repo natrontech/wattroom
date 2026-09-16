@@ -60,7 +60,7 @@
 				min={PROFILE_LIMITS.minFtp}
 				max={PROFILE_LIMITS.maxFtp}
 				aria-invalid={error?.field === 'ftpWatts' ? 'true' : undefined}
-				class="input mt-1 w-24 font-mono tabular-nums"
+				class="input num mt-1 w-24"
 			/>
 		</label>
 		<label class="block">
@@ -71,7 +71,7 @@
 				min={PROFILE_LIMITS.minKg}
 				max={PROFILE_LIMITS.maxKg}
 				aria-invalid={error?.field === 'weightKg' ? 'true' : undefined}
-				class="input mt-1 w-24 font-mono tabular-nums"
+				class="input num mt-1 w-24"
 			/>
 		</label>
 		<button onclick={save} disabled={saving} class="btn btn-primary mb-0.5"

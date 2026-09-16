@@ -357,7 +357,7 @@
 								{#if !grouped}
 									<span class="flex items-baseline gap-2">
 										<span class="text-sm font-medium">{message.from}</span>
-										<span class="text-muted-dim font-mono text-[10px]"
+										<span class="text-muted-dim num text-[10px]"
 											>{formatTime(message.at)}</span
 										>
 									</span>

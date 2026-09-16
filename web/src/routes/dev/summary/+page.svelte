@@ -99,9 +99,7 @@
 								<span class="h-2 w-2 shrink-0 rounded-full {ZONE_BG[zone]}"
 								></span>
 								<span class="text-muted">Z{zone} {ZONE_NAMES[zone]}</span>
-								<span class="ml-auto font-mono tabular-nums"
-									>{formatClock(seconds)}</span
-								>
+								<span class="num ml-auto">{formatClock(seconds)}</span>
 							</li>
 						{/if}
 					{/each}

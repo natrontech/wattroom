@@ -37,7 +37,7 @@
 			{#each failing as c (c.id)}
 				<li class="flex items-baseline gap-2 text-xs">
 					<span class="min-w-0 flex-1 truncate">{c.label}</span>
-					<span class="font-mono tabular-nums">
+					<span class="num">
 						{fmt(c.value)}{c.unit} / {fmt(c.floor)}{c.unit}
 					</span>
 					<span class="text-danger shrink-0 font-mono text-[10px]">fail</span>
@@ -54,7 +54,7 @@
 				<li class="text-xs">
 					<div class="flex items-baseline gap-2">
 						<span class="min-w-0 flex-1 truncate">{c.label}</span>
-						<span class="font-mono tabular-nums">
+						<span class="num">
 							{fmt(c.value)}{c.unit} / {fmt(c.floor)}{c.unit}
 						</span>
 						<span class="text-z5 shrink-0 font-mono text-[10px]">waived</span>
@@ -75,7 +75,7 @@
 			{#each checks as c (c.id)}
 				<li class="flex items-baseline gap-2 text-xs">
 					<span class="text-muted min-w-0 flex-1 truncate">{c.label}</span>
-					<span class="text-muted font-mono tabular-nums">
+					<span class="text-muted num">
 						{fmt(c.value)}{c.unit} / {fmt(c.floor)}{c.unit}
 					</span>
 					<span

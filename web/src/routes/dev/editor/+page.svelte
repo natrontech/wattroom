@@ -240,7 +240,7 @@
 							{#each current.steps as inner, j (j)}
 								<li class="flex justify-between gap-2">
 									<span class="capitalize">{inner.type}</span>
-									<span class="font-mono tabular-nums">{describe(inner)}</span>
+									<span class="num">{describe(inner)}</span>
 								</li>
 							{/each}
 						</ul>

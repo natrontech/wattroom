@@ -193,7 +193,7 @@
 						min={PROFILE_LIMITS.minSprintGrade}
 						max={PROFILE_LIMITS.maxSprintGrade}
 						onchange={() => saveSprint({ sprintGrade })}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 					<span class="text-muted mt-1 block text-[11px]"
 						>The slope a sprint moment throws you onto.</span

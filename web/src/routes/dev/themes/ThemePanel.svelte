@@ -180,7 +180,7 @@
 						></span>
 						<span class="font-mono">{reading.token}</span>
 						<span class="text-muted">{reading.job}</span>
-						<span class="ml-auto font-mono tabular-nums">
+						<span class="num ml-auto">
 							{reading.ratio.toFixed(2)}:1
 						</span>
 						<span

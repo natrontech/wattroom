@@ -142,7 +142,7 @@
 		<div class="min-w-0">
 			<p class="eyebrow flex items-center justify-between">
 				<span>up next</span>
-				<span class="font-mono">{queue.length}</span>
+				<span class="num">{queue.length}</span>
 			</p>
 			<ul class="mt-1.5 flex flex-col gap-1.5">
 				{#each queue.slice(0, showAllQueue ? queue.length : QUEUE_PEEK) as entry, i (entry.id)}

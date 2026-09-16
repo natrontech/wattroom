@@ -162,7 +162,7 @@
 			onchange={(event) => onFtp(Number(event.currentTarget.value))}
 			min={PROFILE_LIMITS.minFtp}
 			max={PROFILE_LIMITS.maxFtp}
-			class="input mt-1 w-full font-mono tabular-nums"
+			class="input num mt-1 w-full"
 		/>
 	</label>
 	<a

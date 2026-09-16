@@ -40,7 +40,7 @@
 <section class="mt-5">
 	<p class="eyebrow flex items-center justify-between">
 		<span>playlists</span>
-		{#if store.loaded && store.all.length}<span class="font-mono"
+		{#if store.loaded && store.all.length}<span class="num"
 				>{store.all.length}</span
 			>{/if}
 	</p>

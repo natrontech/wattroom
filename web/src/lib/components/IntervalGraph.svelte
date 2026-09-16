@@ -358,7 +358,7 @@
 		<!-- The number where the hand is. HTML for the same reason as the FTP
 		     label below: the stretched viewBox would distort <text>. -->
 		<span
-			class="bg-surface-raised text-ink border-muted/30 pointer-events-none absolute top-1 rounded border px-1.5 py-0.5 font-mono text-[10px] tabular-nums"
+			class="bg-surface-raised text-ink border-muted/30 num pointer-events-none absolute top-1 rounded border px-1.5 py-0.5 text-[10px]"
 			style="left: {Math.min(78, (drag.at / W) * 100)}%">{drag.readout}</span
 		>
 	{/if}

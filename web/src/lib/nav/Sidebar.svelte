@@ -278,12 +278,10 @@
 				{:else if (room.connected ?? 0) > 0}
 					<span class="ml-auto flex shrink-0 items-center gap-1">
 						<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
-						<span class="text-muted-dim font-mono text-[10px]"
-							>{room.connected}</span
-						>
+						<span class="text-muted-dim num text-[10px]">{room.connected}</span>
 					</span>
 				{:else if room.members > 0}
-					<span class="text-muted-dim ml-auto shrink-0 font-mono text-[10px]"
+					<span class="text-muted-dim num ml-auto shrink-0 text-[10px]"
 						>{room.members}</span
 					>
 				{/if}
