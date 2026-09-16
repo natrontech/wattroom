@@ -12,14 +12,16 @@ package jobmetrics
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/natrontech/wattroom/server/internal/metrics"
 )
 
 var (
-	runs = promauto.NewCounterVec(prometheus.CounterOpts{
+	runs = promauto.With(metrics.Registry).NewCounterVec(prometheus.CounterOpts{
 		Name: "wattroom_job_runs_total",
 		Help: "Background job runs, by job and outcome (ok | error).",
 	}, []string{"job", "outcome"})
-	lastSuccess = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	lastSuccess = promauto.With(metrics.Registry).NewGaugeVec(prometheus.GaugeOpts{
 		Name: "wattroom_job_last_success_timestamp_seconds",
 		Help: "Unix time of each background job's last run that ended without error.",
 	}, []string{"job"})

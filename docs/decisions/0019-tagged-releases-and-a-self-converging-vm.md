@@ -26,6 +26,15 @@
 > them is the operator's.** Everything below about tags, changelogs, gates and
 > expand/contract still stands — those are release properties, not deploy ones.
 
+> **Amended 2026-09-16 (#1738).** The scrape target is **`wattroom:9091`**,
+> not `wattroom:8080`. "Caddy stops proxying `/metrics`" below made an edge the
+> only thing between rider counts and the internet, and wattroom.ch's edge is
+> not `deploy/Caddyfile` — so the endpoint moved to a listener of its own, on a
+> port nothing proxies, with the Caddy block kept as a second lock. Port 8080
+> answers a 404 that says where they went. An operator upgrading past this
+> moves the Prometheus job and the deploy guard's ride check; everything else
+> about monitoring below is unchanged.
+
 ## Context
 
 Jan is the only person with access to the homelab. Every deploy, every rollback, and every "did that break something" is therefore gated on his attention, and a deploy costs enough attention to be worth skipping — which is how a project ends up with a production running an image nobody can name.
@@ -61,7 +70,7 @@ ADR-0006 named the homelab's conventions — repo-is-truth, `make sync-<stack>`,
 
 **Migrations are expand/contract, and this is a hard rule.** A release only adds — nullable columns, new tables, new indexes. Dropping or renaming happens one release *after* the release whose code stopped using the thing. This is the single load-bearing rule of the whole document: it is the only reason retagging to `PREVIOUS` is safe, and every other guarantee here is downstream of it. It sharpens ADR-0006's "forward-only migrations that survive one image rollback" from an aspiration into a review criterion.
 
-**Monitoring moves to the homelab's Prometheus and Alertmanager.** The `prometheus` service, `deploy/prometheus.yml`, and `deploy/alerts.yml` leave this repository; the homelab scrapes `wattroom:8080` and the rules live next to every other alert Jan owns, with a routing path to his phone that already works. This is ADR-0006's "Prometheus as the one metrics system" applied literally — one Prometheus, not one per workload. Caddy stops proxying `/metrics` to the public internet, which it does today: rider counts and runtime internals are currently a `curl` away on a project whose canon is that privacy is architecture.
+**Monitoring moves to the homelab's Prometheus and Alertmanager.** The `prometheus` service, `deploy/prometheus.yml`, and `deploy/alerts.yml` leave this repository; the homelab scrapes `wattroom:9091` (`wattroom:8080` until #1738, see the amendment above) and the rules live next to every other alert Jan owns, with a routing path to his phone that already works. This is ADR-0006's "Prometheus as the one metrics system" applied literally — one Prometheus, not one per workload. Caddy stops proxying `/metrics` to the public internet, which it does today: rider counts and runtime internals are currently a `curl` away on a project whose canon is that privacy is architecture.
 
 **`/api/healthz` learns to ping the database, and `/api/version` learns to report the tag.** Both are a handful of lines, and every gate in this document is worthless without them: the first makes "healthy" mean something, the second is the updater's proof that the image it asked for is the image now serving.
 

@@ -141,3 +141,11 @@ func secured(next http.Handler) http.Handler {
 func apiNotFound(w http.ResponseWriter, _ *http.Request) {
 	httpx.WriteError(w, http.StatusNotFound, "not_found", "No such API route.")
 }
+
+// metricsMoved answers the address /metrics used to be served at (#1738). A
+// scrape left pointing here otherwise reads as "this server has no metrics",
+// which is a worse half-hour than a sentence saying where they went.
+func metricsMoved(w http.ResponseWriter, _ *http.Request) {
+	httpx.WriteError(w, http.StatusNotFound, "not_found",
+		"Metrics are not served on this port. See deploy/README.md.")
+}
