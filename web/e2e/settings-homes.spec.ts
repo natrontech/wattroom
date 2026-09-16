@@ -170,3 +170,31 @@ test("a refused profile field says so under the field, and nothing says 'Saved.'
 	await expect(nameField.getByText(/1-60 characters/)).toBeVisible();
 	await expect(nameField.getByRole('textbox')).toHaveValue('');
 });
+
+test('an account refresh does not overwrite what the rider is typing', async ({
+	page,
+}) => {
+	await signInAs(page, 'Profile Dirty', '/settings/profile');
+	const ftp = page
+		.locator('label')
+		.filter({ hasText: 'FTP (W)' })
+		.getByRole('spinbutton');
+	await ftp.fill('275');
+
+	// A picture upload replaces `account.me`, and the form used to re-fill
+	// itself from it — so a typed FTP went back to the server's with nothing
+	// said (#2165). So does a provider disconnect, and a save from any other
+	// panel; this is the cheapest of the three to drive.
+	await page.setInputFiles('input[type=file]', {
+		name: 'face.png',
+		mimeType: 'image/png',
+		// A 1×1 PNG: the smallest thing the upload path accepts.
+		buffer: Buffer.from(
+			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+			'base64',
+		),
+	});
+	await expect(page.getByText('Picture saved.')).toBeVisible();
+
+	await expect(ftp).toHaveValue('275');
+});

@@ -70,9 +70,19 @@
 
 	// The root layout owns the server → localStorage pull; this only fills
 	// the form fields.
+	//
+	// ONCE, guarded the way VerifyEmailGate guards its address: a later `me`
+	// refresh cannot overwrite what the rider is typing (#2165). `me` is
+	// replaced by things that are not this form — a picture upload, a
+	// provider disconnect, a save from another panel — and each of them used
+	// to put the server's numbers back over a typed FTP with no sign that
+	// anything had happened. A save sets these fields itself, from what was
+	// sent, so nothing needs re-filling after one.
+	let filled = false;
 	$effect(() => {
 		const me = account.me;
-		if (!me) return;
+		if (!me || filled) return;
+		filled = true;
 		ftp = me.ftpWatts;
 		// The anchor follows the account too (#1571); an account without one
 		// leaves whatever this browser holds until the pull pushes it up.
@@ -279,15 +289,25 @@
 					{@render fieldError('displayName')}
 				</label>
 				<ProviderConnections
-					onUploadToggle={(on) =>
+					onUploadToggle={(on) => {
+						// The account's stored values, not the form's live ones,
+						// the way Notifications sends them (#2165): a checkbox
+						// commits a checkbox. It used to PATCH whatever was in
+						// the name, FTP and weight boxes — so ticking it saved
+						// edits the rider had not pressed Save on, and a
+						// half-typed FTP made the checkbox fail with an FTP
+						// error about a field nobody had submitted.
+						const me = account.me;
+						if (!me) return;
 						void account
 							.save({
-								displayName: name || (account.me?.displayName ?? ''),
-								ftpWatts: ftp,
-								weightKg: kg,
+								displayName: me.displayName,
+								ftpWatts: me.ftpWatts,
+								weightKg: me.weightKg,
 								stravaUpload: on,
 							})
-							.then((err) => (saveError = err))}
+							.then((err) => (saveError = err));
+					}}
 				/>
 				<!-- The response to "a passkey was added to your account" (ADR-0030,
 				     #1607): every other screen signed out, this one kept. -->
