@@ -138,3 +138,35 @@ test('signing out is on the you-menu, where a rider reaches for it', async ({
 	// entry needs nowhere to navigate to.
 	await expect(page).toHaveURL(/\/login/);
 });
+
+test("a refused profile field says so under the field, and nothing says 'Saved.'", async ({
+	page,
+}) => {
+	await signInAs(page, 'Profile Errors', '/settings/profile');
+
+	// The server names the field it refused (`WriteFieldError`), and the form
+	// drew that for the display name alone — so a rejected FTP, weight, LTHR
+	// or address appeared only in the banner at the top, away from the box to
+	// fix (#2166, errors.md: "field-level → inline under the field").
+	const ftpField = page.locator('label').filter({ hasText: 'FTP (W)' });
+	await ftpField.getByRole('spinbutton').fill('900');
+	await page.getByRole('button', { name: 'Save' }).click();
+
+	await expect(ftpField.getByText(/FTP has to be between/)).toBeVisible();
+	await expect(ftpField.getByRole('spinbutton')).toHaveAttribute(
+		'aria-invalid',
+		'true',
+	);
+	// And the refusal is the whole answer: the status line beside Save used to
+	// read "Saved." over a form that had saved nothing.
+	await expect(page.getByText('Saved.')).toHaveCount(0);
+
+	// An emptied name is refused too. It used to be swallowed — the form sent
+	// the stored name in its place, said "Saved." and refilled the box.
+	await ftpField.getByRole('spinbutton').fill('200');
+	const nameField = page.locator('label').filter({ hasText: 'display name' });
+	await nameField.getByRole('textbox').fill('');
+	await page.getByRole('button', { name: 'Save' }).click();
+	await expect(nameField.getByText(/1-60 characters/)).toBeVisible();
+	await expect(nameField.getByRole('textbox')).toHaveValue('');
+});

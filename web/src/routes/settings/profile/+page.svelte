@@ -104,7 +104,12 @@
 				}
 			}
 			const err = await account.save({
-				displayName: name || account.me.displayName,
+				// What the rider typed, not a fallback (#2166): `name ||
+				// account.me.displayName` meant emptying the field said
+				// "Saved." and refilled the old name, which is a refusal the
+				// rider never saw. The server's "1-60 characters" reaches the
+				// field now.
+				displayName: name,
 				ftpWatts: nextFtp,
 				weightKg: kg,
 				// On the account since #1571; an empty field clears it.
@@ -151,18 +156,25 @@
 	// several MB and the server caps an upload at 2; an avatar never draws
 	// above 76px, so 512 on the long edge is plenty.
 	let uploading = $state(false);
+	// A refusal about the picture belongs under the picture (errors.md), not
+	// on the Save button's status line two panels down, in the same muted grey
+	// as "Saved." — which is the mistake this file's own comment above
+	// rejects, made again on a different control (#2166).
+	let pictureError = $state<string | null>(null);
 	async function pickPicture(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		input.value = '';
 		if (!file) return;
 		uploading = true;
+		pictureError = null;
 		const image = await compressImage(file, 512);
 		const err = image
 			? await account.setAvatar(image)
 			: { message: 'That file could not be read as a picture.' };
 		uploading = false;
-		status = err ? err.message : 'Picture saved.';
+		pictureError = err ? err.message : null;
+		status = err ? null : 'Picture saved.';
 	}
 </script>
 
@@ -229,6 +241,9 @@
 							>PNG, JPEG, WebP or GIF. Shown wherever you are.</span
 						>
 					</div>
+					{#if pictureError}
+						<span class="text-danger mt-2 block text-xs">{pictureError}</span>
+					{/if}
 				</div>
 			</section>
 		{/if}
@@ -238,6 +253,17 @@
 				<Banner tone="error">{saveError.message}</Banner>
 			</div>
 		{/if}
+		<!-- Field-level, under the field it names (errors.md). The server says
+		     which one — displayName, ftpWatts, weightKg, lthr, email — and the
+		     form drew it for displayName alone, so four of the five refusals
+		     appeared only in the banner above, away from the box to fix
+		     (#2166). One snippet, so a sixth field cannot be forgotten
+		     differently from the other five. -->
+		{#snippet fieldError(field: string)}
+			{#if saveError?.field === field}
+				<span class="text-danger mt-1 block text-xs">{saveError.message}</span>
+			{/if}
+		{/snippet}
 		<section class="panel mt-3 p-6">
 			<div class="grid gap-4 sm:grid-cols-2">
 				<label class="block">
@@ -250,11 +276,7 @@
 							: undefined}
 						class="input mt-1 w-full"
 					/>
-					{#if saveError?.field === 'displayName'}
-						<span class="text-danger mt-1 block text-xs"
-							>{saveError.message}</span
-						>
-					{/if}
+					{@render fieldError('displayName')}
 				</label>
 				<ProviderConnections
 					onUploadToggle={(on) =>
@@ -288,8 +310,10 @@
 						bind:value={ftp}
 						min={PROFILE_LIMITS.minFtp}
 						max={PROFILE_LIMITS.maxFtp}
+						aria-invalid={saveError?.field === 'ftpWatts' ? 'true' : undefined}
 						class="input mt-1 w-full font-mono tabular-nums"
 					/>
+					{@render fieldError('ftpWatts')}
 					<span class="text-muted mt-1 block text-[11px]">
 						Sets every workout's targets.
 						{#if measured}
@@ -320,8 +344,10 @@
 						bind:value={kg}
 						min={PROFILE_LIMITS.minKg}
 						max={PROFILE_LIMITS.maxKg}
+						aria-invalid={saveError?.field === 'weightKg' ? 'true' : undefined}
 						class="input mt-1 w-full font-mono tabular-nums"
 					/>
+					{@render fieldError('weightKg')}
 					<span class="text-muted mt-1 block text-[11px]"
 						>Only used for w/kg — the number every contest here is scored on.</span
 					>
@@ -334,8 +360,10 @@
 						min={PROFILE_LIMITS.minLthr}
 						max={PROFILE_LIMITS.maxLthr}
 						placeholder="—"
+						aria-invalid={saveError?.field === 'lthr' ? 'true' : undefined}
 						class="input mt-1 w-full font-mono tabular-nums"
 					/>
+					{@render fieldError('lthr')}
 					<span class="text-muted mt-1 block text-[11px]">
 						Threshold heart rate — anchors your HR zones the way FTP anchors
 						power zones.
@@ -381,8 +409,10 @@
 							type="email"
 							bind:value={email}
 							maxlength="254"
+							aria-invalid={saveError?.field === 'email' ? 'true' : undefined}
 							class="input mt-1 w-full"
 						/>
+						{@render fieldError('email')}
 						{#if account.me?.emailPending}
 							<span class="text-muted mt-1 block text-[11px]">
 								Waiting on the link sent to {account.me.emailPending} — it works once
