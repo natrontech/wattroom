@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -166,5 +167,121 @@ func TestConcurrentRemovalsKeepOneCredential(t *testing.T) {
 		if (provider.Code == http.StatusNoContent) == (passkey.Code == http.StatusNoContent) {
 			t.Fatalf("round %d: exactly one removal may succeed, got %d and %d", round, provider.Code, passkey.Code)
 		}
+	}
+}
+
+// Disconnecting Strava takes the activity ids Strava issued (#1507).
+// WATTROOM.md binds §7.4 — everything goes within 30 days of deauthorization
+// — and `ride_exports.remote_id` had no delete on any path but a full account
+// purge, so a rider who disconnected and stayed left them behind for good.
+//
+// The row itself stays: that the ride was delivered is our own bookkeeping
+// about a ride we recorded, and the ride page reads it.
+func TestDisconnectingStravaForgetsItsActivityIds(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	other := testUser(t, s)
+	cookie := signedIn(t, s, user)
+	linkIdentity(t, s, user, "strava", "disconnect-strava")
+	linkIdentity(t, s, user, "github", "disconnect-strava-keeps-github")
+	linkIdentity(t, s, other, "strava", "another-riders-strava")
+
+	delivered := func(owner db.User, activity int64) pgtype.UUID {
+		t.Helper()
+		ride, err := s.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
+			UserID: owner.ID, WorkoutName: "Openers",
+			StartedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+			Seconds:   60, AvgWatts: 200, Kj: 12, FtpWatts: 200,
+			Samples: []byte("{}"), Curve: []byte("{}"),
+		})
+		if err != nil {
+			t.Fatalf("create ride: %v", err)
+		}
+		if err := s.store.Queries.StartRideExport(t.Context(), db.StartRideExportParams{
+			RideID: ride, Destination: "strava",
+		}); err != nil {
+			t.Fatalf("start export: %v", err)
+		}
+		if err := s.store.Queries.FinishRideExport(t.Context(), db.FinishRideExportParams{
+			RideID: ride, Destination: "strava", RemoteID: &activity,
+		}); err != nil {
+			t.Fatalf("finish export: %v", err)
+		}
+		return ride
+	}
+	mine, theirs := delivered(user, 111222333), delivered(other, 444555666)
+
+	read := func(ride pgtype.UUID) db.GetRideExportRow {
+		t.Helper()
+		row, err := s.store.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
+			RideID: ride, Destination: "strava",
+		})
+		if err != nil {
+			t.Fatalf("read delivery: %v", err)
+		}
+		return row
+	}
+	if got := read(mine).RemoteID; got == nil || *got != 111222333 {
+		t.Fatalf("the fixture never stored an activity id: %v", got)
+	}
+
+	if w := disconnect(t, s, cookie, "strava"); w.Code != http.StatusNoContent {
+		t.Fatalf("disconnect = %d, want 204: %s", w.Code, w.Body.String())
+	}
+
+	after := read(mine)
+	if after.RemoteID != nil {
+		t.Errorf("the activity id outlived the grant: %d", *after.RemoteID)
+	}
+	// The delivery is still a delivery — only the remote's number went.
+	if after.State != "delivered" {
+		t.Errorf("the delivery record was taken with the id: state %q", after.State)
+	}
+	// And nobody else's.
+	if got := read(theirs).RemoteID; got == nil || *got != 444555666 {
+		t.Errorf("another rider's activity id was cleared: %v", got)
+	}
+}
+
+// The refusal comes first: a rider whose only way in is Strava is told no, and
+// nothing is cleared on the way to telling them (#1507 beside #1826's rule).
+func TestTheLastCredentialKeepsItsActivityIds(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	cookie := signedIn(t, s, user)
+	linkIdentity(t, s, user, "strava", "only-strava")
+
+	ride, err := s.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
+		UserID: user.ID, WorkoutName: "Openers",
+		StartedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		Seconds:   60, AvgWatts: 200, Kj: 12, FtpWatts: 200,
+		Samples: []byte("{}"), Curve: []byte("{}"),
+	})
+	if err != nil {
+		t.Fatalf("create ride: %v", err)
+	}
+	if err := s.store.Queries.StartRideExport(t.Context(), db.StartRideExportParams{
+		RideID: ride, Destination: "strava",
+	}); err != nil {
+		t.Fatalf("start export: %v", err)
+	}
+	activity := int64(777888999)
+	if err := s.store.Queries.FinishRideExport(t.Context(), db.FinishRideExportParams{
+		RideID: ride, Destination: "strava", RemoteID: &activity,
+	}); err != nil {
+		t.Fatalf("finish export: %v", err)
+	}
+
+	if w := disconnect(t, s, cookie, "strava"); w.Code != http.StatusConflict {
+		t.Fatalf("disconnecting the last credential = %d, want 409: %s", w.Code, w.Body.String())
+	}
+	row, err := s.store.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
+		RideID: ride, Destination: "strava",
+	})
+	if err != nil {
+		t.Fatalf("read delivery: %v", err)
+	}
+	if row.RemoteID == nil || *row.RemoteID != activity {
+		t.Errorf("a refused disconnect cleared the ids anyway: %v", row.RemoteID)
 	}
 }

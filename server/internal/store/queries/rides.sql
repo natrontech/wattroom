@@ -366,3 +366,26 @@ update rides
 set seconds = $2, avg_watts = $3, kj = $4, execution = $5, execution_scored = $6,
     samples = $7, curve = $8, xp = $9, norm_watts = $10
 where id = $1 and seconds < $2;
+
+-- name: ForgetRemoteActivityIds :execrows
+-- The ids the remote issued for this rider's uploads, dropped when their grant
+-- is (#1507). WATTROOM.md binds Strava's API Policy §7.4 — everything goes
+-- within 30 days of deauthorization — and an activity id was the one thing
+-- here with no delete on any path except a full account purge, so a rider who
+-- disconnected Strava and kept WattRoom left Strava-issued identifiers behind
+-- for good.
+--
+-- The delivery row stays. That a ride was uploaded, when, how many tries it
+-- took and what it was told is OUR bookkeeping about a ride WE recorded — the
+-- ride page reads it, and the export carries it. Only the remote's own number
+-- goes with the grant.
+--
+-- Nothing is lost by it: a re-connect uploads by `external_id`, which is ours,
+-- and Strava answers with the same activity if it already has one.
+update ride_exports e
+set remote_id = null
+from rides r
+where r.id = e.ride_id
+  and r.user_id = $1
+  and e.destination = $2
+  and e.remote_id is not null;
