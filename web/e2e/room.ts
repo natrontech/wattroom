@@ -4,7 +4,7 @@ import {
 	type BrowserContext,
 	type Page,
 } from '@playwright/test';
-import { signInTo } from './signin';
+import { signInAs } from './signin';
 
 /** A room the test opened: where it lives, and how somebody else gets in. */
 export interface OpenedRoom {
@@ -21,8 +21,9 @@ export interface RoomOwner {
 }
 
 /**
- * Two fixtures the room specs share: a signed-in rider, and a room whose
- * lifetime the FIXTURE owns rather than the happy path.
+ * Three fixtures the room specs share: a signed-in rider, a room whose
+ * lifetime the FIXTURE owns rather than the happy path, and the crews those
+ * rooms live in — the list the two of them hand state back through.
  *
  * Deleting the room in a `finally` only covers a failure inside the block. An
  * assertion that fails before it — or a timeout, or a crashed browser — leaks
@@ -30,18 +31,32 @@ export interface RoomOwner {
  * and disable "Open a room" for every later run (#594). Fixture teardown runs
  * whatever the test did, so the room goes back either way.
  *
+ * A CREW leaks the same way and lives longer: it is founded with its owner's
+ * first room and nothing ever deletes it, so a membership taken in one spec is
+ * still there in the next spec and in the next RUN (#2133). `riders` therefore
+ * gives every crew back at teardown, the way `rooms` gives the rooms back.
+ *
  * `rooms` takes `riders` as a dependency purely for ordering: Playwright tears
  * fixtures down in reverse setup order, so the contexts the deletes are issued
- * from are guaranteed to still be open when they run. A spec opening on the
- * built-in `page` gets the same guarantee by destructuring it FIRST —
- * `{ page, rooms }` — since that is the order they are set up in.
+ * from are guaranteed to still be open when they run — and the rooms are gone
+ * before the leaves, which is what keeps a leave off "you own a room in this
+ * crew". A spec opening on the built-in `page` gets the same guarantee by
+ * destructuring it FIRST — `{ page, rooms }` — since that is the order they
+ * are set up in.
  */
 export const test = base.extend<{
-	riders: (as?: string) => Promise<Page>;
+	/** Every crew a room was opened into, for `riders` to hand back. */
+	crews: string[];
+	riders: (as: string) => Promise<Page>;
 	rooms: RoomOwner;
 }>({
-	riders: async ({ browser, baseURL }, use) => {
+	crews: async ({}, use) => {
+		await use([]);
+	},
+
+	riders: async ({ browser, baseURL, crews }, use) => {
 		const contexts: BrowserContext[] = [];
+		const pages: Page[] = [];
 		await use(async (as) => {
 			const context = await browser.newContext({ baseURL });
 			contexts.push(context);
@@ -54,27 +69,45 @@ export const test = base.extend<{
 				),
 			);
 			const page = await context.newPage();
-			if (as === undefined) {
-				await signInTo(page, '/home#rooms');
-				return page;
-			}
-			// ?as=<name> mints a second dev rider (#409) — the only way to put two
-			// real sessions in one room. It is a redirect, not a button, so it
-			// bypasses the login screen the default rider goes through.
-			await page.goto(`/api/auth/dev/start?as=${encodeURIComponent(as)}`);
-			const me = await page.evaluate(() =>
-				fetch('/api/me').then((res) => (res.ok ? res.json() : null)),
-			);
-			expect(
-				me?.displayName,
-				`?as=${as} did not mint a second rider — is WATTROOM_DEV_LOGIN set on this server?`,
-			).toBe(as);
+			// Every rider is named, and no name may be "Dev Rider" (auth.go):
+			// the one shared identity is exactly what used to make a spec depend
+			// on running before its neighbours (#2133).
+			//
+			// Home, not `/home#rooms`: the hash makes the page focus its own
+			// name field a microtask after mount (reveal.ts, #1199), and
+			// Playwright types a `fill` into whatever is focused WHEN THE KEYS
+			// ARRIVE — so a steal between the two put a room's name into the
+			// section behind the sheet and left the sheet's own button
+			// disabled for the whole five-minute timeout.
+			await signInAs(page, as, '/home');
+			pages.push(page);
 			return page;
 		});
+		// Hand every crew back. A rider who is not in one gets 404 (a crew is
+		// not public), its owner gets 400 (a crew is never ownerless), and
+		// anything else is a membership that outlived the spec.
+		const stuck: string[] = [];
+		for (const page of pages) {
+			for (const crewId of crews) {
+				const status = await page.evaluate(
+					(id) =>
+						fetch(`/api/crews/${id}/leave`, { method: 'POST' }).then(
+							(res) => res.status,
+						),
+					crewId,
+				);
+				if (![204, 400, 404].includes(status))
+					stuck.push(`${crewId}: ${status}`);
+			}
+		}
 		for (const context of contexts) await context.close();
+		expect(
+			stuck,
+			'a rider stayed in a crew — the next spec, and the next run, meet a member where they expect a stranger (#2133)',
+		).toEqual([]);
 	},
 
-	rooms: async ({ riders: _riders }, use) => {
+	rooms: async ({ riders: _riders, crews }, use) => {
 		const opened: { page: Page; slug: string }[] = [];
 		await use({
 			async open(page, name) {
@@ -102,23 +135,26 @@ export const test = base.extend<{
 				).toBeVisible({ timeout: 15_000 });
 				const slug = page.url().split('/r/')[1].split(/[/?#]/)[0];
 				opened.push({ page, slug });
-				const code = await page.evaluate(async (roomSlug) => {
+				const crew = await page.evaluate(async (roomSlug) => {
 					const room = await fetch(`/api/rooms/${roomSlug}`).then((res) =>
 						res.json(),
 					);
-					if (!room.crew?.id) return '';
-					const crew = await fetch(`/api/crews/${room.crew.id}`).then((res) =>
+					if (!room.crew?.id) return { id: '', code: '' };
+					const full = await fetch(`/api/crews/${room.crew.id}`).then((res) =>
 						res.json(),
 					);
-					return String(crew.code ?? '');
+					return { id: String(room.crew.id), code: String(full.code ?? '') };
 				}, slug);
-				expect(code, `room ${slug}'s crew came back without a code`).toMatch(
-					/^[A-Z0-9]{6}$/,
-				);
-				return { slug, code, name };
+				expect(
+					crew.code,
+					`room ${slug}'s crew came back without a code`,
+				).toMatch(/^[A-Z0-9]{6}$/);
+				crews.push(crew.id);
+				return { slug, code: crew.code, name };
 			},
 			async enter(page, room) {
-				await page.goto('/home#rooms');
+				// Plain /home, for the reason `riders` gives above.
+				await page.goto('/home');
 				await page.locator('#join-code').fill(room.code);
 				await page.getByRole('button', { name: 'Join crew' }).click();
 				await page.waitForURL(/\/crew\//, { timeout: 15_000 });

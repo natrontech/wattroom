@@ -17,19 +17,8 @@ import { expect, test } from './room';
  * capability gate that has to be right anyway.
  */
 
-/**
- * This spec's own rider, not the shared 'Ruben', and not by taste (#2133).
- *
- * A rider's crew is founded with their first room and OUTLIVES every spec, so
- * `rooms.enter` — which joins by crew code — leaves its rider inside Dev
- * Rider's crew for the rest of the run. crew-invite.spec.ts needs Ruben to be
- * a stranger to that crew (its step 2 is the invite a non-member sees), and it
- * gets that only by being the first Ruben spec in the file order. A spec whose
- * name sorts before "crew-invite" and enters as Ruben silently breaks it, from
- * two files away, with nothing in either one saying so — which is exactly what
- * this spec did on its first CI run. voice-duck.spec.ts takes its own rider for
- * the same class of reason.
- */
+/** This spec's own two riders — nobody else's (#2133). */
+const A = 'Conn Dev A';
 const B = 'Conn Dev B';
 
 /** The people column is an xl surface; below it, it is a drawer instead. */
@@ -47,7 +36,7 @@ test('a rider sees everyone in the room, and their own address alone', async ({
 		'the ?as= dev provider only exists on a dev server',
 	);
 
-	const a = await riders();
+	const a = await riders(A);
 	await a.setViewportSize(WIDE);
 	const name = `Connection ${Date.now() % 100000}`;
 	const room = await rooms.open(a, name);
@@ -98,7 +87,7 @@ test('a rider sees everyone in the room, and their own address alone', async ({
 	await expect(panel).toHaveCount(0);
 
 	// --- your own ----------------------------------------------------------
-	await tiles.filter({ hasText: 'Dev Rider' }).first().click({
+	await tiles.filter({ hasText: A }).first().click({
 		button: 'right',
 	});
 	await a.getByRole('menuitem', { name: 'Connection' }).click();
