@@ -118,6 +118,23 @@ func (s *Service) handleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 	}
 
 	rows, last, err := s.removeCredential(r.Context(), user.ID, func(q *db.Queries) (int64, error) {
+		// The activity ids Strava issued go with the grant (#1507), in the
+		// transaction that drops it: WATTROOM.md binds §7.4 — everything goes
+		// within 30 days of deauthorization — and nothing deleted them on any
+		// path but a full account purge. Exact rather than a 30-day sweep,
+		// which would need a column to hold the clock and a job to watch it.
+		//
+		// The delivery rows stay: they are our bookkeeping about rides we
+		// recorded, and the ride page reads them. `provider` is the
+		// destination here because the identity and the upload target are the
+		// same word — a second remote would bring its own name for both.
+		if provider == "strava" {
+			if _, err := q.ForgetRemoteActivityIds(r.Context(), db.ForgetRemoteActivityIdsParams{
+				UserID: user.ID, Destination: provider,
+			}); err != nil {
+				return 0, err
+			}
+		}
 		return q.DeleteIdentity(r.Context(), db.DeleteIdentityParams{UserID: user.ID, Provider: provider})
 	})
 	switch {

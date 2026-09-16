@@ -415,6 +415,43 @@ func (q *Queries) FirstRideAt(ctx context.Context, userID pgtype.UUID) (pgtype.T
 	return first_ride, err
 }
 
+const forgetRemoteActivityIds = `-- name: ForgetRemoteActivityIds :execrows
+update ride_exports e
+set remote_id = null
+from rides r
+where r.id = e.ride_id
+  and r.user_id = $1
+  and e.destination = $2
+  and e.remote_id is not null
+`
+
+type ForgetRemoteActivityIdsParams struct {
+	UserID      pgtype.UUID
+	Destination string
+}
+
+// The ids the remote issued for this rider's uploads, dropped when their grant
+// is (#1507). WATTROOM.md binds Strava's API Policy §7.4 — everything goes
+// within 30 days of deauthorization — and an activity id was the one thing
+// here with no delete on any path except a full account purge, so a rider who
+// disconnected Strava and kept WattRoom left Strava-issued identifiers behind
+// for good.
+//
+// The delivery row stays. That a ride was uploaded, when, how many tries it
+// took and what it was told is OUR bookkeeping about a ride WE recorded — the
+// ride page reads it, and the export carries it. Only the remote's own number
+// goes with the grant.
+//
+// Nothing is lost by it: a re-connect uploads by `external_id`, which is ours,
+// and Strava answers with the same activity if it already has one.
+func (q *Queries) ForgetRemoteActivityIds(ctx context.Context, arg ForgetRemoteActivityIdsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, forgetRemoteActivityIds, arg.UserID, arg.Destination)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getRide = `-- name: GetRide :one
 select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts,
        coalesce(rm.slug, '')::text as room_slug,

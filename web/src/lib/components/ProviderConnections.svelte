@@ -48,7 +48,12 @@
 		const ok = await confirm({
 			title: `Disconnect ${name} from this account?`,
 			body:
-				id === 'strava' ? 'Ride upload to Strava stops with it.' : undefined,
+				id === 'strava'
+					? // What it breaks, and the way back (errors.md): the activity
+						// ids go with the grant (#1507), so every past ride loses
+						// its link to Strava. The rides themselves do not move.
+						'Ride upload stops, and each past ride loses its link to the Strava activity it became. The rides stay on Strava.'
+					: undefined,
 			action: `Disconnect ${name}`,
 			cancel: 'Keep it',
 		});
