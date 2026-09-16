@@ -22,6 +22,23 @@ const NETWORK: ApiError = {
 	message: 'The server is not reachable.',
 };
 
+/**
+ * What every caller here may pass. A **string** body is deliberately not one
+ * of them (#2163): fetch stamps it text/plain, and httpx.DecodeStrict refuses
+ * any form-encodable type outright — that is the CSRF fence, not a quirk — so
+ * the request 400s and the screen reports a refusal that looks like the
+ * server's own. One caller sent JSON that way and neither of its switches had
+ * ever saved. `json` is the way to send an object, and now it is the only way.
+ *
+ * A Blob or a File still passes: the picture and track uploads send bytes with
+ * a content type of their own, which is a different thing entirely.
+ */
+type ApiInit = Omit<RequestInit, 'body'> & {
+	body?: Exclude<BodyInit, string> | null;
+	json?: unknown;
+};
+
+// Internal, like `request`: it takes whatever the Fetcher signature hands it.
 function send(path: string, init?: RequestInit & { json?: unknown }) {
 	const { json, ...rest } = init ?? {};
 	return fetch(path, {
@@ -54,6 +71,9 @@ async function failure(res: Response): Promise<{ ok: false; error: ApiError }> {
 async function request<T>(
 	fetcher: Fetcher,
 	path: string,
+	// The last hop before fetch, and the one place a string body is right:
+	// `loadApi` below builds one WITH the content type. The fence is on the
+	// public functions, which is where the mistake is made.
 	init?: RequestInit & { json?: unknown },
 ): Promise<ApiResult<T>> {
 	try {
@@ -78,7 +98,7 @@ async function request<T>(
 
 export async function api<T>(
 	path: string,
-	init?: RequestInit & { json?: unknown },
+	init?: ApiInit,
 ): Promise<ApiResult<T>> {
 	return request<T>(
 		(input, requestInit) => send(String(input), requestInit),
@@ -91,7 +111,7 @@ export async function api<T>(
 export async function loadApi<T>(
 	fetcher: Fetcher,
 	path: string,
-	init?: RequestInit & { json?: unknown },
+	init?: ApiInit,
 ): Promise<ApiResult<T>> {
 	const { json, ...rest } = init ?? {};
 	return request<T>(
@@ -110,7 +130,7 @@ export async function loadApi<T>(
 /** Same contract for binary responses (.fit exports) — api() assumes JSON. */
 export async function apiBlob(
 	path: string,
-	init?: RequestInit & { json?: unknown },
+	init?: ApiInit,
 ): Promise<ApiResult<{ blob: Blob; filename?: string }>> {
 	try {
 		const res = await send(path, init);
