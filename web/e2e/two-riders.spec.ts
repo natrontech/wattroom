@@ -13,9 +13,12 @@ import { expect, test } from './room';
  * websocket. What rider A sees therefore came through the hub.
  */
 
-/** The second dev rider. `?as=` accepts letters and spaces (auth.go). */
-const B = 'Ruben';
-const A = 'Dev Rider';
+/**
+ * This spec's own two riders (#2133). B's weight is set below, so a rider
+ * shared with another spec would be another spec's weight as well.
+ */
+const A = 'Two Riders Host';
+const B = 'Two Riders Guest';
 
 /**
  * Same FTP, different weight, so the w/kg ranking has an answer rather than a
@@ -43,7 +46,7 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 		'the ?as= dev provider only exists on a dev server',
 	);
 
-	const a = await riders();
+	const a = await riders(A);
 	const name = `Two Riders ${Date.now() % 100000}`;
 	const room = await rooms.open(a, name);
 
@@ -51,17 +54,18 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 	// The hub reads FTP and weight from the account once, at websocket connect
 	// (rooms.Authorize) — so this has to happen before B joins.
 	const patched = await b.evaluate(
-		(kg) =>
+		({ displayName, kg }) =>
 			fetch('/api/me', {
 				method: 'PATCH',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({
-					displayName: 'Ruben',
+					// Required by the handler, and this rider's own name already.
+					displayName,
 					ftpWatts: 200,
 					weightKg: kg,
 				}),
 			}).then((res) => res.status),
-		B_KG,
+		{ displayName: B, kg: B_KG },
 	);
 	expect(patched, `could not set ${B}'s weight to ${B_KG} kg`).toBe(200);
 
@@ -136,10 +140,14 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 				timeout: SETTLE_MS,
 			},
 		)
-		.toEqual([
-			{ name: A, width: expect.stringMatching(/^[\d.]+%$/) },
-			{ name: B, width: expect.stringMatching(/^[\d.]+%$/) },
-		]);
+		// Sorted the same way the rows above are, rather than written out in
+		// an order that happens to be alphabetical: the meter ranks on effort,
+		// so the names' own order is not something to assert.
+		.toEqual(
+			[A, B]
+				.sort((x, y) => x.localeCompare(y))
+				.map((name) => ({ name, width: expect.stringMatching(/^[\d.]+%$/) })),
+		);
 
 	// --- A arms a sprint, and the scoreboard ranks both on w/kg -------------
 	await a.getByRole('button', { name: 'arm a sprint' }).click();

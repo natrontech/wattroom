@@ -13,8 +13,16 @@ import { expect, test } from './room';
  * test until this one.
  */
 
-/** The second dev rider. `?as=` accepts letters and spaces (auth.go). */
-const B = 'Ruben';
+/**
+ * This spec's own two riders (#2133). The host matters as much as the guest:
+ * the crew a room is opened into is its OWNER's, so a shared owner means a
+ * shared crew, and a neighbouring spec opening a second room into it turns
+ * step 2's landing below into the roster instead of the room.
+ *
+ * `?as=` accepts letters and spaces, up to 24, and never "Dev Rider" (auth.go).
+ */
+const A = 'Crew Invite Host';
+const B = 'Crew Invite Guest';
 
 test("a crew's invite link carries a rider in: gate, door, crew, room", async ({
 	browser,
@@ -27,7 +35,7 @@ test("a crew's invite link carries a rider in: gate, door, crew, room", async ({
 		'the ?as= dev provider only exists on a dev server',
 	);
 
-	const a = await riders();
+	const a = await riders(A);
 	const name = `Crew Invite ${Date.now() % 100000}`;
 	const room = await rooms.open(a, name);
 	// The door is public (#1236): what the link shows before anyone signs in.

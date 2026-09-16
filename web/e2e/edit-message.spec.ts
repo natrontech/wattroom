@@ -11,8 +11,9 @@ import { expect, test } from './room';
  * the only way to watch it is with a second rider holding the room open.
  */
 
-/** The second dev rider. `?as=` accepts letters and spaces (auth.go). */
-const B = 'Ruben';
+/** This spec's own two riders — nobody else's (#2133). */
+const A = 'Edit Message Host';
+const B = 'Edit Message Guest';
 
 const SENT = 'warmup at 6 sharp';
 const FIXED = 'warmup at 7 sharp';
@@ -26,7 +27,7 @@ test('a rider fixes their line and the room sees the new words', async ({
 		'the ?as= dev provider only exists on a dev server',
 	);
 
-	const a = await riders();
+	const a = await riders(A);
 	const name = `Edit Message ${Date.now() % 100000}`;
 	const room = await rooms.open(a, name);
 
