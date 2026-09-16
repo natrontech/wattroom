@@ -72,8 +72,13 @@
 			>
 		</span>
 	</div>
+	<!-- bpm only when something is reporting it (#2160): a permanent "0 bpm"
+	     reads as a broken strap rather than as no strap, which is the call
+	     #1057 made for the solo ride and SecondaryRow, TvMode and RiderTile
+	     all keep. This strip printed it under every crewmate without one. -->
 	<p class="text-muted mt-1 truncate text-[10px] tabular-nums">
-		{wkg(rider.watts, rider.kg)} w/kg · {rider.cadence} rpm · {rider.hr} bpm
+		{wkg(rider.watts, rider.kg)} w/kg · {rider.cadence} rpm{#if rider.hr > 0}
+			· {rider.hr} bpm{/if}
 	</p>
 {/snippet}
 

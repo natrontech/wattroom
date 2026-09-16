@@ -113,6 +113,14 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 			},
 		)
 		.toBeGreaterThan(0);
+	// And no "0 bpm" under a rider with no strap (#2160): the simulated
+	// trainer reports no heart rate, and a permanent zero reads as a broken
+	// strap rather than as no strap — the call #1057 made for the solo ride,
+	// which every other surface keeps and this strip did not.
+	await expect(
+		tiles.first(),
+		'the crew strip prints a heart rate for a rider who is not wearing a strap',
+	).not.toContainText('bpm');
 
 	// --- both roster rows carry an execution bar ----------------------------
 	// The meter only draws with more than one rider pedalling, which is the
