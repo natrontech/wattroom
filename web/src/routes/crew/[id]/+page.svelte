@@ -13,11 +13,16 @@
 	import CrewPeople from './CrewPeople.svelte';
 	import CrewRooms from './CrewRooms.svelte';
 	import { fetchCrew, type Crew } from '$lib/crew';
-	import { copyInviteLink, leaveCrewFlow } from '$lib/crew-flows';
+	import {
+		copyInviteLink,
+		leaveCrewFlow,
+		makeMainCrewFlow,
+	} from '$lib/crew-flows';
 	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Settings from '@lucide/svelte/icons/settings';
+	import Star from '@lucide/svelte/icons/star';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -157,6 +162,24 @@
 					{/if}
 				</p>
 			</div>
+			{#if presence.crews.length > 1}
+				<!-- The main crew (#2144): the one the sidebar opens in on every
+				     device. A choice only once there is one to make. -->
+				{#if account.me?.homeCrewId === crew.id}
+					<span
+						class="text-muted flex shrink-0 items-center gap-1 text-xs"
+						title="the sidebar opens in this crew on every device"
+						><Star size={13} /> main crew</span
+					>
+				{:else}
+					<button
+						onclick={() => crew && makeMainCrewFlow(crew)}
+						class="btn btn-secondary btn-xs shrink-0"
+						title="the sidebar opens in this crew on every device"
+						><Star size={13} /> Make main crew</button
+					>
+				{/if}
+			{/if}
 			{#if administers}
 				<!-- Name, picture, icon and the invite live in one place (#1237),
 				     the way a room's do; this page is the roster. -->

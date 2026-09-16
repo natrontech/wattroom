@@ -1,4 +1,5 @@
 import { goto } from '$app/navigation';
+import { account } from '$lib/account.svelte';
 import { confirm } from '$lib/confirm.svelte';
 import {
 	inviteLink,
@@ -6,6 +7,7 @@ import {
 	transferCrew,
 	type CrewPerson,
 } from '$lib/crew';
+import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 import { presence } from '$lib/presence.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
 import type { RoomCrew } from '$lib/room/room-data';
@@ -107,6 +109,26 @@ export const HAND_OVER_BODY =
 	'They become its owner — the one person you can no longer demote, remove ' +
 	'or ban — and you drop to admin, which keeps everything but handing the ' +
 	'crew on. You cannot take this back; only they can hand it back to you.';
+
+/**
+ * Naming the main crew (#2144), from wherever it is offered — the crew page
+ * and the crew row's menu — with the one toast. The sidebar switches to it
+ * here and now; every other device opens in it from its next load.
+ */
+export async function makeMainCrewFlow(
+	crew: Pick<RoomCrew, 'id' | 'name'>,
+): Promise<boolean> {
+	const err = await account.setHomeCrew(crew.id);
+	if (err) {
+		toasts.push(err.message, { tone: 'error' });
+		return false;
+	}
+	chosenCrew.set(crew.id);
+	toasts.push(
+		`${crew.name} is your main crew now — it opens first on every device.`,
+	);
+	return true;
+}
 
 /**
  * The invite link onto the clipboard, from wherever it is offered — the crew

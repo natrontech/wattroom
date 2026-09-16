@@ -334,6 +334,8 @@ type User struct {
 	WeightSource       *string
 	RecoverHash        []byte
 	RecoverExpires     pgtype.Timestamptz
+	PendingCrewCode    *string
+	HomeCrewID         pgtype.UUID
 }
 
 type UserAvatar struct {

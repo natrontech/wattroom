@@ -84,6 +84,15 @@ type meResponse struct {
 	// with what this device says and reports a difference; nil means nothing
 	// has yet, and email falls back to the server's zone.
 	Timezone *string `json:"timezone,omitempty"`
+	// The crew the sidebar opens in on every device (#2144), chosen by a rider
+	// in more than one; absent until chosen, and the client falls back to the
+	// crew of the room they stand in, then the first.
+	HomeCrewID *string `json:"homeCrewId,omitempty"`
+	// The invite a rider was sent to and has not joined (#2144): the crew's
+	// code, while it still opens a crew and they are in none. The landing
+	// follows it — the deep link lived in one tab, and a new account's email
+	// confirmation opens another.
+	PendingInvite string `json:"pendingInvite,omitempty"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -316,6 +325,11 @@ func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 	if xp, err := s.store.Queries.UserTotalXp(ctx, user.ID); err == nil {
 		response.TotalXp = xp
 	}
+	// No row is no invite; any other failure keeps the field empty rather
+	// than failing the whole record for a decoration.
+	if code, err := s.store.Queries.PendingCrewInvite(ctx, user.ID); err == nil {
+		response.PendingInvite = code
+	}
 	return response
 }
 
@@ -340,7 +354,16 @@ func (s *Service) toMe(u db.User) meResponse {
 		AccentPalette: u.AccentPalette,
 		ColorScheme:   u.ColorScheme,
 		Timezone:      u.Timezone,
+		HomeCrewID:    homeCrew(u),
 	}
+}
+
+func homeCrew(u db.User) *string {
+	if !u.HomeCrewID.Valid {
+		return nil
+	}
+	id := store.UUIDString(u.HomeCrewID)
+	return &id
 }
 
 // The provenance of the two profile numbers (#1484), one vocabulary for the

@@ -288,10 +288,15 @@
 				><CalendarClock size={15} /> Plan a session</a
 			>
 		{:else}
+			<!-- In no crew, the big button is joining one (#2144); opening a
+			     room — which founds a crew — is one step down the same sheet. -->
 			<button
 				onclick={() => (opening = true)}
 				class="btn {rooms?.length ? 'btn-secondary' : 'btn-primary btn-lg'}"
-				><Plus size={15} /> Open a room</button
+				><Plus size={15} />
+				{presence.loaded && !presence.crews.length
+					? 'Join a crew'
+					: 'Open a room'}</button
 			>
 		{/if}
 	</div>
@@ -452,8 +457,8 @@
 								Nobody's around yet — the crew has no rooms; its owner or an admin
 								opens the first one, and it shows up here.
 							{:else}
-								Nobody's around yet — open your first room and your crew gets a
-								place to appear.
+								Nobody's around yet — join a crew with its invite link or code,
+								or start one of your own by opening a room.
 							{/if}
 						</p>
 					{/if}
