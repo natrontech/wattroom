@@ -66,6 +66,12 @@ export interface Me {
 	/** The IANA zone last reported from a browser (#858). Session email is
 	 * written in it; absent, the server falls back to its own. */
 	timezone?: string | null;
+	/** The crew the sidebar opens in on every device (#2144); absent until
+	 * a rider in more than one crew picks it. */
+	homeCrewId?: string | null;
+	/** The crew's door you were sent to and have not joined (#2144): a code,
+	 * while it still opens a crew and you are in none. */
+	pendingInvite?: string;
 }
 
 function createAccountStore() {
@@ -184,6 +190,18 @@ function createAccountStore() {
 			notifyPlanned?: boolean;
 		}): Promise<{ message: string; field?: string } | null> {
 			const res = await api<Me>('/api/me', { method: 'PATCH', json: next });
+			if (res.ok) {
+				me = res.data;
+				return null;
+			}
+			return res.error;
+		},
+		/** The main crew (#2144): one of yours, or the server says which. */
+		async setHomeCrew(crewId: string): Promise<{ message: string } | null> {
+			const res = await api<Me>('/api/me/home-crew', {
+				method: 'PUT',
+				json: { crewId },
+			});
 			if (res.ok) {
 				me = res.data;
 				return null;

@@ -43,6 +43,12 @@
 		creationCrew(openable, picked ?? crewId, picked ? undefined : crew),
 	);
 
+	// A rider who administers no crew is asked to join one before founding
+	// one (#2144): "Open your first room — it makes your crew" used to lead,
+	// so every newcomer was steered into a crew of their own. The option
+	// stays, as the second panel.
+	const joinFirst = $derived(presence.loaded && openable.length === 0);
+
 	let newRoomName = $state('');
 	let joinCode = $state('');
 	let roomBusy = $state(false);
@@ -108,120 +114,149 @@
 			? 'grid-cols-1'
 			: 'mt-3 sm:grid-cols-2 xl:grid-cols-1'}"
 	>
-		<div class={compact ? '' : 'panel p-5'}>
-			<h3 class="font-display font-bold">
-				{#if presence.loaded && openable.length === 0}
-					Open your first room
-				{:else}
-					Open a room{#if target && openable.length === 1}<span
-							class="text-muted font-normal">&nbsp;in {target.name}</span
-						>{/if}
-				{/if}
-			</h3>
-			<p class="text-muted mt-1 text-xs">
-				{#if presence.loaded && openable.length === 0}
-					<!-- The day-one fact, said before the click rather than in a toast
+		<!-- Two panels, and which comes first is a decision (ux.md): the
+		     DOM order, not a CSS order, so the tab order and a reader agree
+		     with the eye. -->
+		{#snippet openPanel()}
+			<div
+				class={compact
+					? joinFirst
+						? 'border-ink/5 border-t pt-4'
+						: ''
+					: 'panel p-5'}
+			>
+				<h3 class="font-display font-bold">
+					{#if joinFirst}
+						Or start a crew of your own
+					{:else}
+						Open a room{#if target && openable.length === 1}<span
+								class="text-muted font-normal">&nbsp;in {target.name}</span
+							>{/if}
+					{/if}
+				</h3>
+				<p class="text-muted mt-1 text-xs">
+					{#if joinFirst}
+						<!-- The day-one fact, said before the click rather than in a toast
 					     after it (#1151): a first room makes the crew. -->
-					It makes your crew, named after you until you rename it, and the room is
-					open to the crew from the start.
-				{:else}
-					Open to the crew from the start. Anyone new joins the crew with its
-					code or link — rooms have none of their own.
+						Opening a room makes it — named after you until you rename it, and the
+						room is open to the crew from the start.
+					{:else}
+						Open to the crew from the start. Anyone new joins the crew with its
+						code or link — rooms have none of their own.
+					{/if}
+				</p>
+				{#if openable.length > 1}
+					<div class="mt-3">
+						<Select
+							label="crew"
+							options={openable.map((c) => ({ value: c.id, label: c.name }))}
+							value={target?.id}
+							onchange={(v) => (picked = v)}
+						/>
+					</div>
 				{/if}
-			</p>
-			{#if openable.length > 1}
-				<div class="mt-3">
-					<Select
-						label="crew"
-						options={openable.map((c) => ({ value: c.id, label: c.name }))}
-						value={target?.id}
-						onchange={(v) => (picked = v)}
+				{#if createError}
+					<div class="mt-3"><Banner tone="error">{createError}</Banner></div>
+				{/if}
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						void createRoom();
+					}}
+				>
+					<!-- svelte-ignore a11y_autofocus -->
+					<input
+						id={compact ? 'open-room-name-sheet' : 'open-room-name'}
+						bind:value={newRoomName}
+						maxlength="60"
+						class="input mt-3 w-full"
+						placeholder="Room name"
+						aria-label="room name"
+						autofocus={compact && !joinFirst}
 					/>
-				</div>
-			{/if}
-			{#if createError}
-				<div class="mt-3"><Banner tone="error">{createError}</Banner></div>
-			{/if}
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					void createRoom();
-				}}
+					<button
+						disabled={roomBusy || !newRoomName.trim() || ownedOut}
+						class="btn btn-primary mt-3 w-full">Open a room</button
+					>
+					{#if ownedOut}
+						<p class="text-muted mt-2 text-xs">
+							You own {owned} rooms — the cap. Delete one to open another.
+						</p>
+					{/if}
+				</form>
+			</div>
+		{/snippet}
+		{#snippet joinPanel()}
+			<div
+				class={compact
+					? joinFirst
+						? ''
+						: 'border-ink/5 border-t pt-4'
+					: 'panel p-5'}
 			>
-				<!-- svelte-ignore a11y_autofocus -->
-				<input
-					id={compact ? 'open-room-name-sheet' : 'open-room-name'}
-					bind:value={newRoomName}
-					maxlength="60"
-					class="input mt-3 w-full"
-					placeholder="Room name"
-					aria-label="room name"
-					autofocus={compact}
-				/>
-				<button
-					disabled={roomBusy || !newRoomName.trim() || ownedOut}
-					class="btn btn-primary mt-3 w-full">Open a room</button
-				>
-				{#if ownedOut}
-					<p class="text-muted mt-2 text-xs">
-						You own {owned} rooms — the cap. Delete one to open another.
-					</p>
+				<h3 class="font-display font-bold">
+					{compact && !joinFirst
+						? 'Or join a crew with a code'
+						: 'Join a crew with a code'}
+				</h3>
+				<p class="text-muted mt-1 text-xs">
+					Six characters, from whoever invited you to their crew.
+				</p>
+				{#if joinError}
+					<div class="mt-3"><Banner tone="error">{joinError}</Banner></div>
 				{/if}
-			</form>
-		</div>
-
-		<div class={compact ? 'border-ink/5 border-t pt-4' : 'panel p-5'}>
-			<h3 class="font-display font-bold">
-				{compact ? 'Or join a crew with a code' : 'Join a crew with a code'}
-			</h3>
-			<p class="text-muted mt-1 text-xs">
-				Six characters, from whoever invited you to their crew.
-			</p>
-			{#if joinError}
-				<div class="mt-3"><Banner tone="error">{joinError}</Banner></div>
-			{/if}
-			<form
-				onsubmit={(e) => {
-					e.preventDefault();
-					void joinByCode();
-				}}
-			>
-				<input
-					id={compact ? 'join-code-sheet' : 'join-code'}
-					bind:value={joinCode}
-					maxlength="8"
-					class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode ||
-					looksLikeFriendCode
-						? 'border-danger/60'
-						: 'border-muted/25 focus:border-muted/60'}"
-					placeholder="Crew code"
-					aria-label="crew code"
-				/>
-				{#if invalidCode}
-					<!-- Field-level validation lands under the field (errors.md). -->
-					<p class="text-danger mt-1.5 text-xs">
-						Codes are letters and numbers only.
-					</p>
-				{:else if looksLikeFriendCode}
-					<p class="text-danger mt-1.5 text-xs">
-						That looks like a friend code — friends are added on <a
-							href="/friends"
-							class="underline">Friends</a
-						>. A crew's code is six characters.
-					</p>
-				{/if}
-				<button
-					disabled={roomBusy || joinCode.length !== 6 || invalidCode}
-					class="btn btn-secondary mt-3 w-full">Join crew</button
+				<form
+					onsubmit={(e) => {
+						e.preventDefault();
+						void joinByCode();
+					}}
 				>
-			</form>
-			<!-- The directory is the other half of "join a room" (#1118), not a
+					<!-- svelte-ignore a11y_autofocus -->
+					<input
+						id={compact ? 'join-code-sheet' : 'join-code'}
+						bind:value={joinCode}
+						maxlength="8"
+						class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode ||
+						looksLikeFriendCode
+							? 'border-danger/60'
+							: 'border-muted/25 focus:border-muted/60'}"
+						placeholder="Crew code"
+						aria-label="crew code"
+						autofocus={compact && joinFirst}
+					/>
+					{#if invalidCode}
+						<!-- Field-level validation lands under the field (errors.md). -->
+						<p class="text-danger mt-1.5 text-xs">
+							Codes are letters and numbers only.
+						</p>
+					{:else if looksLikeFriendCode}
+						<p class="text-danger mt-1.5 text-xs">
+							That looks like a friend code — friends are added on <a
+								href="/friends"
+								class="underline">Friends</a
+							>. A crew's code is six characters.
+						</p>
+					{/if}
+					<button
+						disabled={roomBusy || joinCode.length !== 6 || invalidCode}
+						class="btn btn-secondary mt-3 w-full">Join crew</button
+					>
+				</form>
+				<!-- The directory is the other half of "join a room" (#1118), not a
 			     place of its own — nav/pages.ts retires anything that is the
 			     second half of a page here, and this is exactly that. -->
-			<p class="text-muted mt-3 text-xs">
-				No code? <a href="/rooms/directory" class="underline">Find a room</a> — it
-				lists the rooms crews chose to be found, and joining one joins its crew.
-			</p>
-		</div>
+				<p class="text-muted mt-3 text-xs">
+					No code? <a href="/rooms/directory" class="underline">Find a room</a> —
+					it lists the rooms crews chose to be found, and joining one joins its crew.
+				</p>
+			</div>
+		{/snippet}
+		{#if joinFirst}
+			{@render joinPanel()}
+			{@render openPanel()}
+		{:else}
+			{@render openPanel()}
+			{@render joinPanel()}
+		{/if}
 	</div>
 </section>

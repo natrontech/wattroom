@@ -207,3 +207,26 @@ select set_at from user_avatars where user_id = $1;
 update users set avatar_url = $2
 where id = $1 and avatar_url is not null
   and (avatar_url not like '/%' or avatar_url like '//%');
+
+-- name: SetUserHomeCrew :one
+-- The crew the sidebar opens in on every device (#2144).
+update users set home_crew_id = $2 where id = $1 returning *;
+
+-- name: SetPendingCrewCode :exec
+-- The invite a rider was sent to and has not joined (#2144): written by the
+-- crew's door, cleared by the join. Null clears.
+update users set pending_crew_code = $2 where id = $1;
+
+-- name: PendingCrewInvite :one
+-- The invite still waiting on a rider (#2144): the code they were sent to,
+-- while it still opens a crew they are not in and they are in no crew at all
+-- — a rider with a crew has somewhere to be, and a rotated code opens nothing.
+-- No row means no invite.
+select c.code::text as code
+from users u
+join crews c on c.code = u.pending_crew_code
+where u.id = $1
+  and c.owner_id <> u.id
+  and not exists (select 1 from crew_roles cr where cr.crew_id = c.id and cr.user_id = u.id)
+  and not exists (select 1 from crews o where o.owner_id = u.id)
+  and not exists (select 1 from crew_roles cr where cr.user_id = u.id and cr.role in ('member', 'admin'));

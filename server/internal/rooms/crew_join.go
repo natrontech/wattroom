@@ -59,6 +59,15 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 			out["inCrew"] = true
 			out["id"] = store.UUIDString(crew.ID)
 			out["members"], _ = s.store.Queries.CountCrewMembers(r.Context(), crew.ID)
+		default:
+			// A stranger at the door holds an invite (#2144): remembered on
+			// the account, because the tab that holds the deep link is not
+			// the tab a new account's email confirmation opens. /api/me hands
+			// it back while they are in no crew, and the join clears it.
+			// Best effort — a door that could not remember still opens.
+			if err := s.store.Queries.SetPendingCrewCode(r.Context(), db.SetPendingCrewCodeParams{ID: user.ID, PendingCrewCode: &code}); err != nil {
+				s.log.Warn("pending crew invite not recorded", "err", err, "rider", store.UUIDString(user.ID))
+			}
 		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
@@ -114,6 +123,9 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.log.Info("crew joined", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID))
+		// The invite is answered (#2144): a rider who leaves again must not
+		// be sent back to this door from every landing.
+		_ = s.store.Queries.SetPendingCrewCode(r.Context(), db.SetPendingCrewCodeParams{ID: user.ID})
 		s.changed()
 		// The role AFTER the join: the row just written (audit 2026-09-09).
 		role = "member"
