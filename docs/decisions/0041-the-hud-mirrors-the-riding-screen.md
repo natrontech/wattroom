@@ -6,6 +6,18 @@
 - Extends: [0037](0037-a-desktop-shell-for-what-the-browser-cannot-reach.md) — the shell's bridge grows one key
 - Answers: the HUD box of [#296](https://github.com/natrontech/wattroom/issues/296)
 
+> **Amended 2026-09-16 (#1669).** "That one rule keeps the RMF constraint
+> honest" was not true, and the placement is what makes it so. The focus rule
+> covers the FRONT window; the HUD is `alwaysOnTop` and shows precisely when
+> WattRoom is behind — a room on a TV with the app un-focused is the normal
+> case, not an edge — and it was placed top-right, which is where TV mode
+> seats the player (`TvOverlay.svelte`). At 1920×1080 that is about 280×115 px
+> of the player under an OS window the page cannot move. The HUD now sits
+> bottom-left, the one corner neither the TV seat (top-right) nor the jukebox
+> dock's fallback (bottom-right) claims, and `desktop/smoke.spec.js` asserts
+> the two rectangles do not meet. The focus rule stands; it was never the
+> whole of it.
+
 ## Context
 
 #296 asked for a frameless, always-on-top window with the rider's watts,
