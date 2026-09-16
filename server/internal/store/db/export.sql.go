@@ -127,12 +127,13 @@ type ExportUserBoardClipsRow struct {
 // name they typed, the pad and key they bound it to, and the edit they set —
 // the same columns ListBoardClips renders, which is what they see.
 //
-// Rows in, AUDIO OUT, the reading ADR-0015 settled for uploaded music and
-// #2081 applied to tracks.json: "metadata is; files are re-uploadable". It is
-// also the only version that fits — a rider's clips may be 100 MB (SPEC's
-// MaxRiderBytes) and this archive is built whole in memory. The clip's id
-// comes along because a clip is served by id and nothing else, so a row still
-// names its file. The bytes a rider uploaded are #2090.
+// Rows here, audio in uploads/soundboard/ (#2090, ADR-0053): ADR-0015's
+// "metadata is; files are re-uploadable" is about somebody else's recording
+// and has nothing to say about a clip the rider trimmed themselves. This
+// query still never selects `bytes` — the export writes them one clip at a
+// time, because a rider may hold 100 MB of them (SPEC's MaxRiderBytes) and
+// the archive is built whole in memory. The id comes along because it names
+// the file: a clip is served by id and nothing else.
 func (q *Queries) ExportUserBoardClips(ctx context.Context, arg ExportUserBoardClipsParams) ([]ExportUserBoardClipsRow, error) {
 	rows, err := q.db.Query(ctx, exportUserBoardClips, arg.UserID, arg.Lim)
 	if err != nil {
@@ -212,6 +213,73 @@ func (q *Queries) ExportUserChat(ctx context.Context, userID pgtype.UUID) ([]Exp
 			&i.ImageID,
 			&i.RoomName,
 			&i.RoomSlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const exportUserChatImages = `-- name: ExportUserChatImages :many
+select i.id, i.mime, octet_length(i.bytes)::int as size_bytes, i.created_at,
+       rm.name as room_name, rm.slug as room_slug,
+       (m.id is not null)::boolean as still_on_a_line
+from chat_images i
+join rooms rm on rm.id = i.room_id
+left join chat_messages m on m.image_id = i.id
+where i.user_id = $1
+order by i.created_at desc
+limit $2::int
+`
+
+type ExportUserChatImagesParams struct {
+	UserID pgtype.UUID
+	Lim    int32
+}
+
+type ExportUserChatImagesRow struct {
+	ID           pgtype.UUID
+	Mime         string
+	SizeBytes    int32
+	CreatedAt    pgtype.Timestamptz
+	RoomName     string
+	RoomSlug     string
+	StillOnALine bool
+}
+
+// The pictures the rider pasted into a room (#2090). chat.json carries the
+// image id on the line it was sent with and nothing resolved it, so the
+// archive named a file it did not describe and did not contain.
+//
+// Not `bytes`: the row says how big the picture is and images.json says why
+// the bytes are not here. A rider's pictures have no per-rider ceiling the way
+// their clips do (SPEC's MaxRiderBytes), and this archive is built whole in
+// memory (#1990).
+//
+// Left join on the message: an image whose line was deleted still belongs to
+// the rider who uploaded it, and `chat_messages.image_id` goes null rather
+// than taking the row with it.
+func (q *Queries) ExportUserChatImages(ctx context.Context, arg ExportUserChatImagesParams) ([]ExportUserChatImagesRow, error) {
+	rows, err := q.db.Query(ctx, exportUserChatImages, arg.UserID, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserChatImagesRow
+	for rows.Next() {
+		var i ExportUserChatImagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Mime,
+			&i.SizeBytes,
+			&i.CreatedAt,
+			&i.RoomName,
+			&i.RoomSlug,
+			&i.StillOnALine,
 		); err != nil {
 			return nil, err
 		}
@@ -359,6 +427,65 @@ func (q *Queries) ExportUserCrews(ctx context.Context, arg ExportUserCrewsParams
 			&i.MyRole,
 			&i.JoinedAt,
 			&i.RoleSetAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const exportUserDmImages = `-- name: ExportUserDmImages :many
+select i.id, i.mime, octet_length(i.bytes)::int as size_bytes, i.created_at,
+       u.display_name as peer_name,
+       (m.id is not null)::boolean as still_on_a_line
+from dm_images i
+join users u on u.id = i.recipient_id
+left join dm_messages m on m.image_id = i.id
+where i.sender_id = $1
+order by i.created_at desc
+limit $2::int
+`
+
+type ExportUserDmImagesParams struct {
+	UserID pgtype.UUID
+	Lim    int32
+}
+
+type ExportUserDmImagesRow struct {
+	ID           pgtype.UUID
+	Mime         string
+	SizeBytes    int32
+	CreatedAt    pgtype.Timestamptz
+	PeerName     string
+	StillOnALine bool
+}
+
+// The pictures the rider SENT in a direct message (#2090, #1819) — the ones
+// they uploaded. A picture a peer sent them is the peer's upload; the line it
+// came on is already whole in messages.json.
+//
+// Same shape and same reason as ExportUserChatImages above: metadata, not
+// bytes.
+func (q *Queries) ExportUserDmImages(ctx context.Context, arg ExportUserDmImagesParams) ([]ExportUserDmImagesRow, error) {
+	rows, err := q.db.Query(ctx, exportUserDmImages, arg.UserID, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserDmImagesRow
+	for rows.Next() {
+		var i ExportUserDmImagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Mime,
+			&i.SizeBytes,
+			&i.CreatedAt,
+			&i.PeerName,
+			&i.StillOnALine,
 		); err != nil {
 			return nil, err
 		}
