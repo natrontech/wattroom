@@ -232,4 +232,40 @@ describe('personMenu connection (#2131)', () => {
 		expect(() => personMenu('u1', () => {})).not.toThrow();
 		expect(labels(personMenu('u1', () => {}))).not.toContain('Connection');
 	});
+
+	// DMs are friends-only, so the sidebar's head is a friend or an ex-friend
+	// (#1814) — it offered "Add friend" to both, and the server refuses it for
+	// the first. A surface that knows the standing says so (#2169).
+	it('leaves out "Add friend" for someone already connected', () => {
+		expect(
+			labels(personMenu('u1', () => {}, { friendship: 'accepted' })),
+		).toEqual(['Rider page', 'Message']);
+		expect(
+			labels(personMenu('u1', () => {}, { friendship: 'pending_out' })),
+		).not.toContain('Add friend');
+		expect(
+			labels(personMenu('u1', () => {}, { friendship: 'pending_in' })),
+		).not.toContain('Add friend');
+		// Not knowing is not "not a friend": a room's roster has no list, and
+		// the ask belongs there.
+		expect(labels(personMenu('u1', () => {}))).toContain('Add friend');
+	});
+
+	// The fader sits before the friendship, and still sits last when there is
+	// no friendship entry to sit before.
+	it('keeps the volume fader in the list when Add friend is gone', () => {
+		const withFriend = labels(
+			personMenu('u1', () => {}, { volume: { name: 'Ruben' } }),
+		);
+		expect(withFriend.at(-1)).toBe('Add friend');
+		expect(withFriend).toContain('Volume');
+		const without = labels(
+			personMenu('u1', () => {}, {
+				volume: { name: 'Ruben' },
+				friendship: 'accepted',
+			}),
+		);
+		expect(without).toContain('Volume');
+		expect(without).not.toContain('Add friend');
+	});
 });
