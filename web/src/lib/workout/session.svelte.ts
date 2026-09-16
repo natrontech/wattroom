@@ -57,10 +57,13 @@ export function signalLost(
 		| { state: RideState; sample: { at: number } | null | undefined }
 		| null
 		| undefined,
-	ridingSince: number,
+	// `undefined` is "the clock has not started", not 0: an injected clock
+	// starts at 0 in a test, and a real timestamp of 0 must not read as no
+	// timestamp at all (#2200).
+	ridingSince: number | undefined,
 	now: number,
 ): boolean {
-	if (!session || ridingSince <= 0) return false;
+	if (!session || ridingSince === undefined) return false;
 	if (session.state === 'countdown' || session.state === 'done') return false;
 	return now - (session.sample?.at ?? ridingSince) > SIGNAL_LOST_MS;
 }
@@ -414,10 +417,19 @@ export function createRideSession({
 			target,
 			remaining: Math.max(0, total - clockSeconds),
 			label: workout.name,
-			fault:
-				sample && now() - sample.at > SIGNAL_LOST_MS ? 'trainer' : undefined,
+			// The rule both riding pages draw their banner from (#2158) — the
+			// HUD used to need a first sample, so the rider who alt-tabbed
+			// away from a trainer that never sends watts had the one surface
+			// they were looking at saying nothing at all (#2200).
+			fault: signalLost({ state, sample }, ridingSince, now())
+				? 'trainer'
+				: undefined,
 		});
 	}
+
+	// Stamped by tick() when the count-in ends, cleared on reset. Not $state:
+	// nothing renders it, and only publish() reads it.
+	let ridingSince: number | undefined;
 
 	function tick(seconds = 1) {
 		// The count-in runs on the ride's own clock (#1800), so the digit on
@@ -428,6 +440,11 @@ export function createRideSession({
 			countdownRemaining = Math.max(0, countdownRemaining - seconds);
 			if (countdownRemaining > 0) return;
 			state = 'running';
+			// When the CLOCK started, for the dropout rule below (#2200): a
+			// trainer that sends frames without a power field never produces a
+			// first sample, so silence has to be counted from something that
+			// is not one.
+			ridingSince = now();
 			applyTarget();
 			sprintWindow.sync();
 			return;
@@ -617,6 +634,7 @@ export function createRideSession({
 			unsubscribeStatus = undefined;
 			countdownRemaining = 0;
 			state = 'idle';
+			ridingSince = undefined;
 			starting = false;
 		},
 		stop() {

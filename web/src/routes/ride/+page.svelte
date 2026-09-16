@@ -336,11 +336,11 @@
 	// recorded" at the end. Stamped when the CLOCK starts rather than when
 	// Start was pressed (#1800) — the count-in is not a gap in the trainer's
 	// reporting, and stamping it there had the banner up on the first tick.
-	let ridingSince = 0;
+	let ridingSince: number | undefined = $state();
 	$effect(() => {
-		if (session?.state === 'running' && ridingSince === 0)
+		if (session?.state === 'running' && ridingSince === undefined)
 			ridingSince = Date.now();
-		if (!session) ridingSince = 0;
+		if (!session) ridingSince = undefined;
 	});
 	const signalLost = $derived(isSignalLost(session, ridingSince, nowMs));
 
