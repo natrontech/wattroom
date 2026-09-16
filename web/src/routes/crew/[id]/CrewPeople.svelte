@@ -11,6 +11,7 @@
 	import {
 		contextMenu,
 		MENU_HINT,
+		openMenu,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import { setCrewRole, type Crew, type CrewPerson } from '$lib/crew';
@@ -18,6 +19,7 @@
 	import { personMenu } from '$lib/person-menu';
 	import { toasts } from '$lib/toast.svelte';
 	import Crown from '@lucide/svelte/icons/crown';
+	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import Shield from '@lucide/svelte/icons/shield';
 	import ShieldBan from '@lucide/svelte/icons/shield-ban';
 	import ShieldOff from '@lucide/svelte/icons/shield-off';
@@ -192,6 +194,30 @@
 					onclick={() => toggleRole(person)}
 					disabled={busy}
 					class="btn btn-ghost btn-xs shrink-0">{roleLabel(person)}</button
+				>
+				<!-- The rest of the owner's paperwork — hand over, ban — has a
+				     visible way in, the way the room's Members place has had one
+				     since #1372: nothing lives only in a menu (ux.md). It was
+				     right-click on a desk and a long-press on touch, with a
+				     tooltip no phone shows — while this same page tells the
+				     owner to "hand it to someone in the people list first"
+				     (#2154). The same menu the right-click opens, so the two
+				     cannot disagree. -->
+				<button
+					onclick={(e) => {
+						const at = e.currentTarget.getBoundingClientRect();
+						openMenu(
+							personEntries(person),
+							at.left,
+							at.bottom + 4,
+							e.currentTarget,
+						);
+					}}
+					disabled={busy}
+					class="btn btn-ghost btn-xs shrink-0"
+					aria-label="more actions for {person.displayName}"
+					title={owner ? 'hand the crew over · ban' : 'ban from the crew'}
+					><Ellipsis size={14} /></button
 				>
 			{/if}
 		</li>
