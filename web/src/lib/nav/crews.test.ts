@@ -4,6 +4,7 @@ import {
 	crewPulse,
 	crewsOf,
 	currentCrew,
+	administersNone,
 	openableCrews,
 	quiet,
 	sidebarGroups,
@@ -121,6 +122,18 @@ describe('creationCrew', () => {
 
 	it('offers the crews you own or administer, never one you only ride in', () => {
 		expect(openableCrews(crews).map((c) => c.id)).toEqual(['c1', 'c3']);
+	});
+	// Three surfaces asked this three ways (#2176): Home's button asked "any
+	// crew at all", which is true for a plain member of somebody else's, so
+	// they were offered "Open a room" and handed a sheet that led with joining
+	// one — and the dialog between them asked nothing and was always "Open a
+	// room".
+	it('says a rider has nowhere to open a room, membership alone not counting', () => {
+		expect(administersNone([])).toBe(true);
+		expect(administersNone([sunday])).toBe(true);
+		expect(administersNone([natron])).toBe(false);
+		expect(administersNone([admined])).toBe(false);
+		expect(administersNone(crews)).toBe(false);
 	});
 	it('lands in the crew on screen when you may open rooms there', () => {
 		expect(creationCrew(openableCrews(crews), 'c3')?.id).toBe('c3');

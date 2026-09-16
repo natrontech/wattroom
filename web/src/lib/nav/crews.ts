@@ -168,6 +168,21 @@ export function openableCrews(crews: readonly RoomCrew[]): RoomCrew[] {
 }
 
 /**
+ * Whether the rider has nowhere to open a room — no crew of their own, and
+ * none they administer (#2176).
+ *
+ * The one question three surfaces were each answering differently: Home's
+ * button read `!presence.crews.length` (false for a plain member of somebody
+ * else's crew), the sheet's order read `openableCrews(...).length === 0`, and
+ * the dialog's own name asked nothing at all. So a crewless rider pressed
+ * "Join a crew" and got a dialog announcing itself as "Open a room", and a
+ * member pressed "Open a room" and got a sheet that led with joining one.
+ */
+export function administersNone(crews: readonly RoomCrew[]): boolean {
+	return openableCrews(crews).length === 0;
+}
+
+/**
  * Where a new room lands: the crew on screen when you may open rooms there,
  * else your own, else whichever you administer. Null while the room list has
  * not landed — the server then defaults to your own crew.

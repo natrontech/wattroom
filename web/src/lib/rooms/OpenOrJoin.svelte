@@ -7,7 +7,12 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import { joinCrew } from '$lib/crew';
-	import { creationCrew, crewsOf, openableCrews } from '$lib/nav/crews';
+	import {
+		administersNone,
+		creationCrew,
+		crewsOf,
+		openableCrews,
+	} from '$lib/nav/crews';
 	import { presence } from '$lib/presence.svelte';
 	import type { RoomCrew } from '$lib/room/room-data';
 
@@ -47,7 +52,9 @@
 	// one (#2144): "Open your first room — it makes your crew" used to lead,
 	// so every newcomer was steered into a crew of their own. The option
 	// stays, as the second panel.
-	const joinFirst = $derived(presence.loaded && openable.length === 0);
+	const joinFirst = $derived(
+		presence.loaded && administersNone(crewsOf(presence.rooms, presence.crews)),
+	);
 
 	let newRoomName = $state('');
 	let joinCode = $state('');
@@ -107,7 +114,10 @@
 
 <section id={compact ? undefined : 'rooms'}>
 	{#if !compact}
-		<h2 class="eyebrow">Your rooms</h2>
+		<!-- Named for what is under it (#2176): the panel leads with joining a
+		     crew for a rider who administers none, and "Your rooms" over that
+		     is a heading about something else. -->
+		<h2 class="eyebrow">{joinFirst ? 'Get into a crew' : 'Your rooms'}</h2>
 	{/if}
 	<div
 		class="grid gap-3 {compact

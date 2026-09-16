@@ -18,7 +18,7 @@
 	import FirstRun from '$lib/home/FirstRun.svelte';
 	import RecentRides from '$lib/home/RecentRides.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import { crewsOf } from '$lib/nav/crews';
+	import { administersNone, crewsOf } from '$lib/nav/crews';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -133,6 +133,14 @@
 	);
 
 	const recent = $derived((rides ?? []).slice(0, 3));
+	// Nowhere to open a room: the one predicate the button's word, this
+	// dialog's name and the sheet's order all read (#2176). Gated on
+	// `presence.loaded` so none of the three says "join" while the list is
+	// still out.
+	const joinFirst = $derived(
+		presence.loaded && administersNone(crewsOf(rooms ?? [], presence.crews)),
+	);
+
 	// The rider's own crew, for the first-run card (#1333); null until the
 	// room list has landed, so the card never flashes for a rider who has
 	// no crew to set up.
@@ -294,9 +302,7 @@
 				onclick={() => (opening = true)}
 				class="btn {rooms?.length ? 'btn-secondary' : 'btn-primary btn-lg'}"
 				><Plus size={15} />
-				{presence.loaded && !presence.crews.length
-					? 'Join a crew'
-					: 'Open a room'}</button
+				{joinFirst ? 'Join a crew' : 'Open a room'}</button
 			>
 		{/if}
 	</div>
@@ -580,7 +586,13 @@
 </main>
 
 {#if opening}
-	<Modal label="Open a room" onclose={() => (opening = false)} class="max-w-sm">
+	<!-- Named for what the rider pressed (#2176): a crewless rider pressed
+	     "Join a crew" and the dialog announced itself as "Open a room". -->
+	<Modal
+		label={joinFirst ? 'Join a crew' : 'Open a room'}
+		onclose={() => (opening = false)}
+		class="max-w-sm"
+	>
 		<OpenOrJoin compact crewId={ownCrew?.id} />
 	</Modal>
 {/if}
