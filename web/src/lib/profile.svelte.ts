@@ -5,15 +5,24 @@
  * session wrong rather than broken — it is bounds-checked on read, and a stored
  * value outside the range is discarded rather than used.
  */
+import * as protocol from '$lib/protocol';
+
 const KEY = 'wattroom.profile.v1';
 
+/**
+ * The bounds this store enforces. The three docs/SPEC.md shares with the
+ * server come from the generated protocol (#2122) — the server's validator
+ * reads the same declaration, so the two can no longer disagree about what a
+ * rider may type. The sprint grade is this side's alone: a slope the trainer
+ * is put on, never sent anywhere to be checked.
+ */
 export const PROFILE_LIMITS = {
-	minFtp: 50,
-	maxFtp: 600,
-	minKg: 30,
-	maxKg: 200,
-	minLthr: 100,
-	maxLthr: 210,
+	minFtp: protocol.MinFtpWatts,
+	maxFtp: protocol.MaxFtpWatts,
+	minKg: protocol.MinWeightKg,
+	maxKg: protocol.MaxWeightKg,
+	minLthr: protocol.MinLthrBpm,
+	maxLthr: protocol.MaxLthrBpm,
 	minSprintGrade: 1,
 	maxSprintGrade: 15,
 } as const;

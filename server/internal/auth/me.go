@@ -14,6 +14,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/avatars"
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -137,17 +138,17 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"Display name has to be 1-60 characters.", "displayName")
 		return
-	case req.FtpWatts < stats.MinFtpWatts || req.FtpWatts > stats.MaxFtpWatts:
+	case req.FtpWatts < protocol.MinFtpWatts || req.FtpWatts > protocol.MaxFtpWatts:
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			fmt.Sprintf("FTP has to be between %d and %d W.", stats.MinFtpWatts, stats.MaxFtpWatts), "ftpWatts")
+			fmt.Sprintf("FTP has to be between %d and %d W.", protocol.MinFtpWatts, protocol.MaxFtpWatts), "ftpWatts")
 		return
-	case req.WeightKg < 30 || req.WeightKg > 200:
+	case req.WeightKg < protocol.MinWeightKg || req.WeightKg > protocol.MaxWeightKg:
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"Weight has to be between 30 and 200 kg.", "weightKg")
+			fmt.Sprintf("Weight has to be between %d and %d kg.", protocol.MinWeightKg, protocol.MaxWeightKg), "weightKg")
 		return
-	case req.Lthr != nil && *req.Lthr != 0 && (*req.Lthr < 100 || *req.Lthr > 210):
+	case req.Lthr != nil && *req.Lthr != 0 && (*req.Lthr < protocol.MinLthrBpm || *req.Lthr > protocol.MaxLthrBpm):
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"LTHR has to be between 100 and 210 bpm.", "lthr")
+			fmt.Sprintf("LTHR has to be between %d and %d bpm.", protocol.MinLthrBpm, protocol.MaxLthrBpm), "lthr")
 		return
 	case !claimableSource(req.FtpSource):
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
