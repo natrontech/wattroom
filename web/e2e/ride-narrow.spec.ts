@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signInTo } from './signin';
+import { signInAs, signInTo } from './signin';
 
 /**
  * The riding screen in a narrow window (#1634, ADR-0046).
@@ -42,4 +42,35 @@ test('the riding screen does not scroll sideways at 375px', async ({
 	const box = await flag.boundingBox();
 	expect(box, 'the ⚑ has a box').not.toBeNull();
 	expect(box!.x + box!.width, 'the ⚑ is on screen').toBeLessThanOrEqual(375);
+});
+
+test('TV mode carries the ride-critical status the page is showing', async ({
+	page,
+}) => {
+	// Storage that will not open, so the ride has no crash-safe copy — one of
+	// the statuses TV mode used to hide (#2156). Chosen because it is the one
+	// fault a browser can be talked into having: a trainer dropout needs
+	// hardware to stop reporting, and the warning is the same snippet either
+	// way.
+	await page.addInitScript(() => {
+		Object.defineProperty(window, 'indexedDB', {
+			value: undefined,
+			configurable: true,
+		});
+	});
+	await signInAs(page, 'TV Status Rider', '/ride');
+	await page.getByRole('button', { name: 'Ride simulated' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+
+	const warning = page.getByText('not keeping its own copy of this ride');
+	await expect(warning).toBeVisible({ timeout: 15_000 });
+
+	// On the TV too — the screen a rider three metres away is watching, where
+	// the one big recovery button also lives (errors.md).
+	await page.getByRole('button', { name: 'TV' }).click();
+	const tv = page.getByRole('dialog', { name: 'TV mode' });
+	await expect(tv).toBeVisible();
+	await expect(
+		tv.getByText('not keeping its own copy of this ride'),
+	).toBeVisible();
 });

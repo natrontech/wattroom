@@ -32,6 +32,7 @@
 	import CountdownScreen from '$lib/room/CountdownScreen.svelte';
 	import TvOverlay from '$lib/room/TvOverlay.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
+	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import { describeBlock } from '$lib/room/view';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { downloadRideCard } from '$lib/ride/card';
@@ -371,7 +372,10 @@
 		watts: session?.sample?.watts ?? 0,
 		cadence: session?.sample?.cadence ?? 0,
 		hr: session?.sample?.heartRate ?? 0,
-		stale: false,
+		// The tile greys out when the trainer goes quiet, the way a room's
+		// does (#2156): a hard-coded false left the TV drawing a confident 0 W
+		// through a dropout.
+		stale: signalLost,
 		target: session?.target ?? 0,
 		trace: session?.trace ?? [],
 	});
@@ -550,6 +554,9 @@
 	{#if session && session.state !== 'done' && tv}
 		<!-- The room's TV, riding alone (#1632, ADR-0046): the same screen at
 		     3 m, with the roster column absent because there is nobody in it. -->
+		<!-- A snippet is a function, so the `session &&` above does not narrow
+		     inside it (#2156). -->
+		{@const ride = session}
 		<TvOverlay
 			riders={[tvRider]}
 			segments={session.segments}
@@ -561,7 +568,17 @@
 			sprint={session.sprint}
 			live
 			onExit={() => (tv = false)}
-		/>
+		>
+			<!-- Ride-critical status on the TV, the way the room's TV has had
+			     it since #1665 (errors.md: persistent status, never a toast).
+			     Without it a trainer drop, auto-pause, the resume count, the
+			     spiral release and the no-crash-safety warning were all
+			     invisible here — and the one big "Pair the trainer again"
+			     button was unreachable without leaving TV mode (#2156). -->
+			{#snippet status()}
+				<RideStatus session={ride} {signalLost} {noCrashSafety} />
+			{/snippet}
+		</TvOverlay>
 	{/if}
 
 	{#if session && session.state === 'done'}

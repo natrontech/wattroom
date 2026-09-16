@@ -595,6 +595,9 @@
 
 {#if session && !done && session.state !== 'done' && tv}
 	<!-- The room's TV, on the ramp (#1799, ADR-0046): the same screen at 3 m. -->
+	<!-- A snippet is a function, so the `session &&` above does not narrow
+	     inside it (#2156). -->
+	{@const ride = session}
 	<TvOverlay
 		riders={[
 			{
@@ -611,7 +614,8 @@
 				watts: session.sample?.watts ?? 0,
 				cadence: session.sample?.cadence ?? 0,
 				hr: session.sample?.heartRate ?? 0,
-				stale: false,
+				// Grey when the trainer is quiet (#2156), not a confident 0 W.
+				stale: signalLost,
 				target: session.target,
 				trace: session.trace,
 			},
@@ -624,5 +628,12 @@
 		workoutName={block?.label ?? ''}
 		live
 		onExit={() => (tv = false)}
-	/>
+	>
+		<!-- The same status the page draws, on the screen the rider is
+		     actually watching (#2156). A ramp is the test whose number you
+		     keep: a dropout that goes unsaid here costs the whole test. -->
+		{#snippet status()}
+			<RideStatus session={ride} {signalLost} {noCrashSafety} />
+		{/snippet}
+	</TvOverlay>
 {/if}
