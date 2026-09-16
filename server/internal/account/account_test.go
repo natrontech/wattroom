@@ -1206,3 +1206,128 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 		t.Errorf("a category failed to read:\n%s", files["manifest.json"])
 	}
 }
+
+// The rider's own uploads travel with the archive (#2090, ADR-0053): the
+// avatar and the soundboard clips as files, the pictures they pasted and sent
+// as rows that finally resolve the ids chat.json and messages.json have been
+// carrying since #2089 and #1819.
+//
+// Somebody else's upload is the other half of the test and the reason it is
+// worth writing: a clip, a picture and an avatar of bob's exist beside
+// alice's, and not one byte of them may be in her zip.
+func TestExportCarriesTheRidersOwnUploads(t *testing.T) {
+	h := setup(t)
+	room := h.createRoom(t, "alice")
+	for _, name := range []string{"alice", "bob"} {
+		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
+			RoomID: room, UserID: h.id(name), Role: "member",
+		}); err != nil {
+			t.Fatalf("membership %s: %v", name, err)
+		}
+	}
+	h.befriend(t, "alice", "bob")
+
+	// Distinct bodies, so "is this the right file" is answerable by content
+	// rather than by length.
+	avatars := map[string][]byte{"alice": []byte("alice-avatar-png"), "bob": []byte("bob-avatar-png")}
+	clips := map[string][]byte{"alice": []byte("alice-clip-mp3"), "bob": []byte("bob-clip-mp3")}
+	chatShots := map[string][]byte{"alice": []byte("alice-pasted-png"), "bob": []byte("bob-pasted-png")}
+
+	clipID, shotID := map[string]pgtype.UUID{}, map[string]pgtype.UUID{}
+	for _, name := range []string{"alice", "bob"} {
+		url := "/api/riders/" + store.UUIDString(h.id(name)) + "/avatar"
+		if _, err := h.store.Queries.SetUserAvatar(t.Context(), db.SetUserAvatarParams{
+			ID: h.id(name), Mime: "image/png", Image: avatars[name],
+			SetAt: pgtype.Timestamptz{Time: time.Now(), Valid: true}, AvatarUrl: &url,
+		}); err != nil {
+			t.Fatalf("avatar %s: %v", name, err)
+		}
+		clip, err := h.store.Queries.SaveBoardClip(t.Context(), db.SaveBoardClipParams{
+			UserID: h.id(name), Name: name + "'s airhorn", DurationMs: 1200, Bytes: clips[name],
+		})
+		if err != nil {
+			t.Fatalf("clip %s: %v", name, err)
+		}
+		clipID[name] = clip.ID
+		shot, err := h.store.Queries.SaveChatImage(t.Context(), db.SaveChatImageParams{
+			RoomID: room, UserID: h.id(name), Mime: "image/png", Bytes: chatShots[name],
+		})
+		if err != nil {
+			t.Fatalf("chat image %s: %v", name, err)
+		}
+		shotID[name] = shot
+	}
+	// One each way, because a DM image belongs to whoever SENT it: the one
+	// bob sent alice is on a line she can read and is still his upload.
+	dmShotID := map[string]pgtype.UUID{}
+	for _, pair := range [][2]string{{"alice", "bob"}, {"bob", "alice"}} {
+		shot, err := h.store.Queries.SaveDmImage(t.Context(), db.SaveDmImageParams{
+			SenderID: h.id(pair[0]), RecipientID: h.id(pair[1]), Mime: "image/webp",
+			Bytes: []byte(pair[0] + "-dm-webp"),
+		})
+		if err != nil {
+			t.Fatalf("dm image %s: %v", pair[0], err)
+		}
+		dmShotID[pair[0]] = shot
+	}
+
+	files := h.exportFiles(t, "alice")
+
+	// The files themselves, byte for byte — an archive that names a picture
+	// and holds a different one is the failure this is really about.
+	for name, want := range map[string]string{
+		"uploads/avatar.png": string(avatars["alice"]),
+		"uploads/soundboard/" + store.UUIDString(clipID["alice"]) + ".mp3": string(clips["alice"]),
+	} {
+		got, ok := files[name]
+		if !ok {
+			t.Errorf("the export has no %s — the rider's own upload is still missing", name)
+			continue
+		}
+		if got != want {
+			t.Errorf("%s holds %q, not the file the rider uploaded (%q)", name, got, want)
+		}
+	}
+	if _, ok := files["uploads/soundboard/"+store.UUIDString(clipID["bob"])+".mp3"]; ok {
+		t.Error("the export carries another rider's soundboard clip")
+	}
+
+	// The rows: what the file is, and the ids the other files already name.
+	for name, wants := range map[string][]string{
+		"avatar.json": {"\"image/png\"", "\"uploads/avatar.png\"", "\"setAt\""},
+		// Her paste and her sent DM picture, each by the id chat.json and
+		// messages.json carry — the resolution that was missing — and the
+		// size that says what is not in the zip.
+		"images.json": {"\"on\": \"room\"", "\"on\": \"dm\"", "\"sizeBytes\"", "\"stillOnALine\"",
+			store.UUIDString(shotID["alice"]), store.UUIDString(dmShotID["alice"])},
+		// Counted, so a clip that failed to read cannot go quietly.
+		"manifest.json": {"\"avatar\": true", "\"clips\"", "\"written\": 1", "\"complete\": true"},
+	} {
+		for _, want := range wants {
+			if !strings.Contains(files[name], want) {
+				t.Errorf("%s does not carry %s:\n%s", name, want, files[name])
+			}
+		}
+	}
+
+	// Nothing of bob's, in any file of the archive. Written over the whole
+	// zip rather than over images.json: the omission that matters is a byte
+	// anywhere, and a per-file assertion only covers the files it names.
+	//
+	// By ID as well as by content, and that is not belt and braces: an
+	// image's bytes are not in the archive at all, so a picture of bob's
+	// leaking into images.json would pass a content check silently. The
+	// first version of this test did exactly that — a DM query widened to
+	// `sender or recipient` handed over his picture and nothing went red.
+	for _, theirs := range []string{
+		string(avatars["bob"]), string(clips["bob"]), string(chatShots["bob"]), "bob-dm-webp",
+		store.UUIDString(clipID["bob"]), store.UUIDString(shotID["bob"]),
+		store.UUIDString(dmShotID["bob"]),
+	} {
+		for name, body := range files {
+			if strings.Contains(body, theirs) {
+				t.Errorf("%s carries another rider's upload (%q)", name, theirs)
+			}
+		}
+	}
+}

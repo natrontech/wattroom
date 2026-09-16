@@ -11,6 +11,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,6 +20,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -326,6 +328,14 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	manifest := []entry{{Name: "profile.json", Ok: true}, {Name: "rides.json", Ok: true}}
 	// Filled by a bounded category, read into its manifest entry below.
 	truncated := map[string]bool{}
+	// The clips soundboard.json listed, for the bytes loop after the
+	// categories: one read serves the rows and the files (#2090).
+	var clipIDs []pgtype.UUID
+	// And the avatar, read once by its own category and written there too.
+	var avatarFile struct {
+		name  string
+		bytes []byte
+	}
 
 	// bounded declares a category read under maxExportRows: the rider gets
 	// the bound's worth and manifest.json says the category was cut short
@@ -656,16 +666,19 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			// and the trim they set — what ClipsFace draws, which is what
 			// they see.
 			//
-			// Rows in, AUDIO OUT, the reading ADR-0015 settled for uploaded
-			// music and #2081 applied to tracks.json: "metadata is; files are
-			// re-uploadable". It is also the only version that fits — SPEC's
-			// per-rider ceiling is 100 MB of clips and this archive is built
-			// whole in memory. A clip is served by its id and nothing else,
-			// so the id comes along and a row still names its file. The bytes
-			// are #2090.
+			// The audio is here too, under uploads/soundboard/ (#2090,
+			// ADR-0053). ADR-0015's "metadata is; files are re-uploadable"
+			// is about somebody else's recording and does not reach a clip
+			// the rider trimmed themselves. The id names the file, because a
+			// clip is served by its id and nothing else. Bounded by SPEC's
+			// 100 MB per rider, which is what lets an archive built whole in
+			// memory carry them.
 			rows, err := s.store.Queries.ExportUserBoardClips(r.Context(), db.ExportUserBoardClipsParams{
 				UserID: user.ID, Lim: maxExportRows,
 			})
+			for _, row := range rows {
+				clipIDs = append(clipIDs, row.ID)
+			}
 			out, err := mapRows(rows, err, func(row db.ExportUserBoardClipsRow) any {
 				// end_ms is stored as 0 for "to the end of the file", the way
 				// keptMillis reads it — so a 500 ms clip exported a literal
@@ -713,6 +726,77 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 					"firstTriedAt":  row.CreatedAt.Time, "lastMovedAt": row.UpdatedAt.Time}
 			})
 			return out, len(rows), err
+		}),
+		{"avatar.json", func() (any, error) {
+			// The picture the rider uploaded, and uploads/avatar.* beside it
+			// (#2090). profile.json carries `avatarUrl`, which is the address
+			// it is served at — an address is not the picture, and a rider
+			// taking their data somewhere else cannot fetch it from a server
+			// they have just left.
+			//
+			// Their own photograph, so ADR-0015's fence — "metadata is; files
+			// are re-uploadable", written about somebody else's recording —
+			// has nothing to say about it, and Art. 15(3) asks for a copy of
+			// the data rather than a description of it.
+			//
+			// No row is not a failure: a rider who never uploaded one keeps
+			// whatever their sign-in provider drew, which lives on that
+			// provider's host and was never ours to hand over (#2078).
+			avatar, err := s.store.Queries.GetUserAvatar(r.Context(), user.ID)
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, nil
+			}
+			if err != nil {
+				return nil, err
+			}
+			avatarFile.name = "uploads/avatar" + imageExt(avatar.Mime)
+			avatarFile.bytes = avatar.Image
+			return map[string]any{"mime": avatar.Mime, "sizeBytes": len(avatar.Image),
+				"setAt": avatar.SetAt.Time, "file": avatarFile.name}, nil
+		}},
+		bounded("images.json", func() (any, int, error) {
+			// The pictures the rider pasted into a room and sent in a DM
+			// (#2090). chat.json and messages.json have carried the image
+			// id on the line since #2089 and #1819 and nothing resolved it,
+			// so the archive named files it neither described nor contained.
+			// Two reads into one file, the way reactions.json holds one act
+			// on two surfaces.
+			//
+			// The BYTES are not here, and this is the one omission left in
+			// the archive: a rider's pictures have no per-rider ceiling the
+			// way their clips do (docs/SPEC.md's MaxRiderBytes), and the zip
+			// is built whole in memory (#1990). That is a limit of the
+			// archive's shape, not a judgement about the files — ADR-0053 —
+			// and they follow when the build streams.
+			chat, err := s.store.Queries.ExportUserChatImages(r.Context(), db.ExportUserChatImagesParams{
+				UserID: user.ID, Lim: maxExportRows,
+			})
+			if err != nil {
+				return nil, 0, err
+			}
+			dms, err := s.store.Queries.ExportUserDmImages(r.Context(), db.ExportUserDmImagesParams{
+				UserID: user.ID, Lim: maxExportRows,
+			})
+			if err != nil {
+				return nil, 0, err
+			}
+			out := make([]any, 0, len(chat)+len(dms))
+			for _, row := range chat {
+				out = append(out, map[string]any{"on": "room", "place": row.RoomName,
+					"roomSlug": row.RoomSlug, "image": store.UUIDString(row.ID),
+					"mime": row.Mime, "sizeBytes": row.SizeBytes,
+					"uploadedAt": row.CreatedAt.Time, "stillOnALine": row.StillOnALine})
+			}
+			for _, row := range dms {
+				out = append(out, map[string]any{"on": "dm", "place": row.PeerName,
+					"image": store.UUIDString(row.ID), "mime": row.Mime,
+					"sizeBytes": row.SizeBytes, "uploadedAt": row.CreatedAt.Time,
+					"stillOnALine": row.StillOnALine})
+			}
+			// The larger read decides, not the sum — reactions.json's rule,
+			// and for its reason: a sum calls a file truncated that neither
+			// bound touched.
+			return out, max(len(chat), len(dms)), nil
 		}),
 		{"medals.json", func() (any, error) {
 			// Shown on the ride and rider pages, purged with the account —
@@ -763,11 +847,52 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		_ = zr.Close()
 		samplesWritten++
 	}
+	// The files the rider uploaded themselves (#2090, ADR-0053). One clip at
+	// a time, the samples loop's rule and for the same reason: docs/SPEC.md
+	// lets a rider hold 100 MB of clips, and holding them all beside the zip
+	// doubles that for no gain.
+	writeUpload := func(name string, body []byte) bool {
+		f, err := archive.Create(name)
+		if err == nil {
+			_, err = f.Write(body)
+		}
+		if err != nil {
+			fail("export write "+name, err)
+			return false
+		}
+		return true
+	}
+	if avatarFile.name != "" && !writeUpload(avatarFile.name, avatarFile.bytes) {
+		return
+	}
+	clipsWritten := 0
+	for _, id := range clipIDs {
+		clip, err := s.store.Queries.GetBoardClip(r.Context(), id)
+		// One unreadable clip loses its audio, not the export — and the
+		// manifest below counts what was written, so it does not go quietly.
+		// The owner check is a second lock on a query that has no rider in
+		// it: a clip is served by id alone, so nothing else here says whose
+		// bytes these are.
+		if err != nil || clip.UserID != user.ID {
+			continue
+		}
+		if !writeUpload("uploads/soundboard/"+store.UUIDString(id)+".mp3", clip.Bytes) {
+			return
+		}
+		clipsWritten++
+	}
 	if !writeJSON("manifest.json", map[string]any{
 		"generatedAt": time.Now().UTC(),
 		"categories":  manifest,
 		"samples":     map[string]int{"rides": len(rides), "written": samplesWritten},
-		"complete": samplesWritten == len(rides) &&
+		// What went in beside the JSON (#2090): the rider's own files. An
+		// avatar is one row or none, so it says whether; clips count, the way
+		// samples do, because a missing one is otherwise silent.
+		"uploads": map[string]any{
+			"avatar": avatarFile.name != "",
+			"clips":  map[string]int{"rows": len(clipIDs), "written": clipsWritten},
+		},
+		"complete": samplesWritten == len(rides) && clipsWritten == len(clipIDs) &&
 			!slices.ContainsFunc(manifest, func(e entry) bool { return !e.Ok || e.Truncated }),
 	}) {
 		return
@@ -868,6 +993,24 @@ func (s *Service) purge(ctx context.Context, user pgtype.UUID) ([]string, error)
 
 // timeOrNil is a nullable timestamp as the file should read it: a time, or
 // null — never Go's zero date dressed as one.
+// imageExt names an uploaded picture's file in the archive. The four types
+// httpx.ReadImageUpload accepts, spelled the way a person expects to see them
+// — mime.ExtensionsByType would answer ".jfif" for a JPEG on one machine and
+// something else on the next, and this is a filename in a zip somebody opens.
+func imageExt(mime string) string {
+	switch mime {
+	case "image/png":
+		return ".png"
+	case "image/jpeg":
+		return ".jpg"
+	case "image/webp":
+		return ".webp"
+	case "image/gif":
+		return ".gif"
+	}
+	return ".bin"
+}
+
 func timeOrNil(t pgtype.Timestamptz) any {
 	if !t.Valid {
 		return nil
