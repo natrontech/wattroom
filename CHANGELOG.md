@@ -17,6 +17,35 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.117] - 2026-09-16
+
+### Added
+
+- A rider in more than one crew can make one their main crew, from the crew's
+  page or the crew row's menu. The sidebar opens in it on every device, instead
+  of whichever crew happened to be listed first.
+
+### Changed
+
+- Joining a crew comes before opening a room for a rider who administers no
+  crew. Home and the "open a room" sheet used to lead with "Open your first
+  room — it makes your crew", so every newcomer was steered into founding a
+  crew of their own; that is still on offer, one step down.
+- The bounds on FTP, weight and LTHR are now declared once and shared by the
+  server and the app, so the number a form lets you type and the number the
+  server accepts can no longer disagree.
+
+### Fixed
+
+- Dragging a file onto the music library or the soundboard's clips no longer
+  flickers its highlight off and on as the pointer crosses the buttons and
+  text inside the drop area.
+- A rider who opens a crew's invite link and signs up now lands in that crew.
+  The invite used to live in one browser tab, and a new account's email
+  confirmation opens another — so the rider came back to an empty Home with
+  no way to the crew they were sent to. The door now remembers the invite on
+  the account until it is joined, and every landing follows it.
+
 ## [2026.09.116] - 2026-09-14
 
 ### Changed
@@ -2186,7 +2215,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.116...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.117...HEAD
+[2026.09.117]: https://github.com/natrontech/wattroom/compare/2026.09.116...2026.09.117
 [2026.09.116]: https://github.com/natrontech/wattroom/compare/2026.09.115...2026.09.116
 [2026.09.115]: https://github.com/natrontech/wattroom/compare/2026.09.114...2026.09.115
 [2026.09.114]: https://github.com/natrontech/wattroom/compare/2026.09.113...2026.09.114
