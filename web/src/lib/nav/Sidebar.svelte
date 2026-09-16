@@ -594,7 +594,16 @@
 					<li
 						title={MENU_HINT}
 						{@attach contextMenu(() =>
-							personMenu(head.peerId, goto, { conversation: true }),
+							// DMs are friends-only (ADR-0012), so a head here is a
+							// friend or an ex-friend (#1814) — the menu offered
+							// "Add friend" to both, and the server refuses it for
+							// the first (#2169). The list this row already reads
+							// for its presence dot answers which.
+							personMenu(head.peerId, goto, {
+								conversation: true,
+								friendship: friends.list?.find((f) => f.id === head.peerId)
+									?.status,
+							}),
 						)}
 					>
 						<a

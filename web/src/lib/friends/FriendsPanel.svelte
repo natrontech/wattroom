@@ -104,13 +104,15 @@
 		});
 	}
 
-	// Same person, same menu (person-menu.ts) — minus "Add friend", which
-	// makes no sense on someone already friended, plus the two actions this
-	// row alone offers: joining their room and ending the friendship (#663).
+	// Same person, same menu (person-menu.ts), plus the two actions this row
+	// alone offers: joining their room and ending the friendship (#663).
+	// "Add friend" is left out by the menu itself now that it is told the
+	// standing — this row used to filter it out by label, and the sidebar's
+	// row, one column away, did not (#2169).
 	function friendMenu(friend: Friend): MenuEntry[] {
-		const entries: MenuEntry[] = personMenu(friend.id, goto).filter(
-			(entry) => entry === 'separator' || entry.label !== 'Add friend',
-		);
+		const entries: MenuEntry[] = personMenu(friend.id, goto, {
+			friendship: friend.status,
+		});
 		entries.push('separator');
 		if (friend.room)
 			entries.push({
