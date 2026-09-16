@@ -1,4 +1,5 @@
 import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
+import { toleranceBand } from '$lib/workout/guards';
 import type { Segment, TargetInfo, Workout } from '$lib/workout/types';
 
 /**
@@ -60,14 +61,11 @@ export const TILE_METRICS: { id: TileMetric; label: string }[] = [
 	{ id: 'wkg', label: 'w/kg' },
 ];
 
-/** docs/SPEC.md tolerance band: ±5 % of target, floor ±10 W. */
-export function bandWatts(target: number): number {
-	return Math.max(target * 0.05, 10);
-}
-
 export function targetState(rider: Pick<RoomRider, 'watts' | 'target'>) {
 	const has = rider.target > 0;
-	const band = has ? bandWatts(rider.target) : 0;
+	// One band, docs/SPEC.md's, shared with the scorer through the generated
+	// protocol (#2159). This file used to carry its own copy of the formula.
+	const band = has ? toleranceBand(rider.target) : 0;
 	const delta = rider.watts - rider.target;
 	return { has, band, delta, inBand: has && Math.abs(delta) <= band };
 }

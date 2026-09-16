@@ -35,6 +35,17 @@ export const MinLthrBpm = 100;
  * zones derive from (ADR-0014). Both sides read these; neither retypes them.
  */
 export const MaxLthrBpm = 210;
+/**
+ * The tolerance band a second is scored in: within ±5 % of target, floor
+ * ±10 W (#2159). The floor is what keeps an easy block scoreable — at
+ * 60 W, 5 % is 3 W, which is inside a trainer's own error.
+ */
+export const TargetBandFraction = 0.05;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const TargetBandFloorWatts = 10;
 
 //////////
 // source: protocol.go

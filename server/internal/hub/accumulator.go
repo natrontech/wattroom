@@ -128,7 +128,7 @@ func (a *accumulator) add(riderID string, m protocol.RiderMetrics, segments []wo
 	// does not also quietly reduce how much that second counts for.
 	wgt := target / ftp
 	target *= m.BiasOr()
-	band := math.Max(target*0.05, 10)
+	band := protocol.TargetBand(target)
 	record.weight += wgt
 	if math.Abs(float64(m.Watts)-target) <= band {
 		record.inBand += wgt
