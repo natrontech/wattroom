@@ -3,23 +3,25 @@ package hub
 import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/natrontech/wattroom/server/internal/metrics"
 )
 
 // The ride vitals #55's alerts watch: the subsystems that go quiet first.
 // Registered once at package load; scraped from /metrics.
 var (
-	metricRiders = promauto.NewGauge(prometheus.GaugeOpts{
+	metricRiders = promauto.With(metrics.Registry).NewGauge(prometheus.GaugeOpts{
 		Name: "wattroom_room_riders",
 		Help: "Riders currently connected across all rooms.",
 	})
-	metricTicks = promauto.NewCounter(prometheus.CounterOpts{
+	metricTicks = promauto.With(metrics.Registry).NewCounter(prometheus.CounterOpts{
 		Name: "wattroom_room_ticks_total",
 		Help: "Room tick broadcasts sent.",
 	})
 	// A socket that has fallen behind its queue (#670). One rider on bad wifi
 	// producing a trickle is normal; a climbing rate is a room where somebody
 	// is not reading, which is exactly what used to slow everyone else down.
-	metricDroppedFrames = promauto.NewCounter(prometheus.CounterOpts{
+	metricDroppedFrames = promauto.With(metrics.Registry).NewCounter(prometheus.CounterOpts{
 		Name: "wattroom_room_frames_dropped_total",
 		Help: "Frames dropped because a client's send queue was full.",
 	})

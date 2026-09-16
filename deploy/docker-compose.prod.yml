@@ -24,16 +24,23 @@ services:
       - postgres
     expose:
       - '8080'
+      # The metrics listener (#1738). Its own port, reachable over the
+      # monitoring network and proxied by nothing — so what it publishes does
+      # not depend on an edge remembering to block a path.
+      - '9091'
     # default keeps postgres/caddy reachable; monitoring is how the homelab
-    # Prometheus gets at /metrics without Caddy publishing it (ADR-0019).
+    # Prometheus gets at /metrics without Caddy publishing it (ADR-0019,
+    # amended by #1738: scrape wattroom:9091, not wattroom:8080).
     networks:
       - default
       - monitoring
     # Loopback only: Caddy fronts the public side, and this is how the updater
-    # on this host asks /api/version, /api/healthz and /metrics. Not an
+    # on this host asks /api/version and /api/healthz — and /metrics on 9091,
+    # for the ride check that refuses to restart into a session. Not an
     # exposure — 127.0.0.1 is not reachable off the VM.
     ports:
       - '127.0.0.1:8080:8080'
+      - '127.0.0.1:9091:9091'
 
   postgres:
     image: postgres:18

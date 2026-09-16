@@ -13,6 +13,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+
+	"github.com/natrontech/wattroom/server/internal/metrics"
 )
 
 // A loop that panics more than Budget times inside Window is a deterministic
@@ -22,7 +24,7 @@ import (
 // room's clock, a queue worker or a sweep is gone for good, and until this
 // it was a log line nothing alerted on (audit 2026-09-09). No label: a
 // room's slug must not reach the metrics route.
-var gaveUp = promauto.NewCounter(prometheus.CounterOpts{
+var gaveUp = promauto.With(metrics.Registry).NewCounter(prometheus.CounterOpts{
 	Name: "wattroom_goroutine_gaveup_total",
 	Help: "Supervised loops abandoned after repeated panics.",
 })

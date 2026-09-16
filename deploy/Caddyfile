@@ -13,10 +13,10 @@
 	# WS upgrade and everything else to the one binary.
 	reverse_proxy wattroom:8080
 
-	# /metrics belongs to the homelab's Prometheus, which reaches the container
-	# directly over the monitoring network (ADR-0019) — it is never the
-	# internet's. Rider counts are room-scoped data, and the Go handler is
-	# mounted bare on the mux, so this block is the only thing gating it.
+	# /metrics is not served on 8080 at all since #1738 — it has its own
+	# listener on 9091, which nothing here proxies. This block stays as a
+	# second lock: an edge that forgets it is no longer the only thing
+	# between rider counts and the internet, which is exactly what it was.
 	handle /metrics* {
 		respond 404
 	}

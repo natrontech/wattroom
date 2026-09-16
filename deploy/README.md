@@ -73,11 +73,17 @@ repo because they describe WattRoom's failure modes; same VM, so there is no
 copy to drift. Routing to a phone and dashboards are the homelab's, per its own
 rules.
 
-`/metrics` is not reachable from the internet — Caddy 404s it, and the Go
-handler is mounted bare on the mux, so that one block is the whole gate. Check
-it from the VM the way Prometheus does:
+`/metrics` has its own listener on **9091** (#1738), which nothing proxies:
+port 8080 answers 404 there, and what the endpoint publishes no longer depends
+on an edge remembering to block a path. Caddy's block stays as a second lock.
+Check it from the VM the way Prometheus does:
 
-    docker run --rm --network monitoring curlimages/curl -s http://wattroom:8080/metrics
+    docker run --rm --network monitoring curlimages/curl -s http://wattroom:9091/metrics
+
+**Upgrading past this change**: move the scrape and the deploy guard's ride
+check from `wattroom:8080/metrics` to `wattroom:9091/metrics`. The old address
+answers a 404 that says so, rather than an empty scrape. `WATTROOM_METRICS_ADDR`
+moves the port, and setting it to the empty string turns the listener off.
 
 The production synthetic ride — the check that proves a *ride* works rather
 than that a homepage returns 200 — is not wired yet (#314). Until it is,

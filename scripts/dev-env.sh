@@ -48,6 +48,11 @@ WEB_PORT_BASE=5500
 VERIFY_PORT_BASE=8500
 E2E_API_PORT_BASE=8700
 E2E_WEB_PORT_BASE=4400
+# The metrics listener (#1738) takes an offset too: it defaults to :9091, and
+# two dev servers on one machine would otherwise fight over it — the second
+# one's listener refuses to bind and logs, every run, for as long as the
+# neighbour is up.
+METRICS_PORT_BASE=9300
 PORT_SPAN=200
 
 PG_USER=${WATTROOM_PG_USER:-wattroom}
@@ -104,6 +109,11 @@ if [ "$is_main_tree" = 1 ]; then
 	verify_port=8082
 	e2e_web_port=4173
 	e2e_api_port=8081
+	# The server's own default (#1738), spelled out here so every port this
+	# script hands out is one it names — the main tree's were the numbers a
+	# reader could find in one place, and a missing one is an unbound variable
+	# in CI rather than a wrong port.
+	metrics_port=9091
 	db_name=wattroom
 	test_db_name=wattroom_test
 else
@@ -115,6 +125,7 @@ else
 	verify_port=$((VERIFY_PORT_BASE + offset))
 	e2e_web_port=$((E2E_WEB_PORT_BASE + offset))
 	e2e_api_port=$((E2E_API_PORT_BASE + offset))
+	metrics_port=$((METRICS_PORT_BASE + offset))
 	# Readable in `psql -l`, and the CRC suffix keeps two worktrees of the same
 	# name at different paths apart. Postgres caps identifiers at 63 bytes.
 	slug=$(printf '%s' "$worktree_name" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '_' | cut -c1-32 | sed 's/_*$//')
@@ -146,7 +157,7 @@ esac
 # talks to Postgres and gets wire-protocol bytes back instead of a refusal.
 pg_port=${PG_DSN_PREFIX##*:}
 case $pg_port in *[!0-9]* | '') pg_port=5432 ;; esac
-for port in "$server_port" "$web_port" "$verify_port" "$e2e_web_port" "$e2e_api_port"; do
+for port in "$server_port" "$web_port" "$verify_port" "$e2e_web_port" "$e2e_api_port" "$metrics_port"; do
 	if [ "$port" = "$pg_port" ]; then
 		echo "dev-env.sh: refusing to hand worktree '$worktree_name' port $port — that is Postgres ($PG_DSN_PREFIX); move the *_PORT_BASE ranges off it" >&2
 		exit 1
@@ -176,6 +187,7 @@ export WATTROOM_DEV_WEB_PORT='$web_port'
 export WATTROOM_DEV_VERIFY_PORT='$verify_port'
 export WATTROOM_E2E_WEB_PORT='$e2e_web_port'
 export WATTROOM_E2E_API_PORT='$e2e_api_port'
+export WATTROOM_DEV_METRICS_PORT='$metrics_port'
 export WATTROOM_DEV_DB_NAME='$db_name'
 export WATTROOM_DEV_DSN='$dsn'
 export WATTROOM_DEV_TEST_DB_NAME='$test_db_name'

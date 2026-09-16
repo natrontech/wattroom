@@ -34,7 +34,7 @@ dev-server: ## run Go server with hot reload (installs air on first use)
 	@# same SFU. Only ports and Postgres are per-checkout.
 	@$(DEV_ENV) ensure-db
 	@$(DEV_ENV) banner server
-	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_ADDR=":$$WATTROOM_DEV_SERVER_PORT" WATTROOM_BASE_URL="http://localhost:$$WATTROOM_DEV_SERVER_PORT" WATTROOM_DB="$$WATTROOM_DEV_DSN" WATTROOM_DEV_LOGIN=1 WATTROOM_LIVEKIT_URL="ws://localhost:7880" WATTROOM_LIVEKIT_KEY="devkey" WATTROOM_LIVEKIT_SECRET="secret" go run github.com/air-verse/air@latest
+	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_ADDR=":$$WATTROOM_DEV_SERVER_PORT" WATTROOM_METRICS_ADDR=":$$WATTROOM_DEV_METRICS_PORT" WATTROOM_BASE_URL="http://localhost:$$WATTROOM_DEV_SERVER_PORT" WATTROOM_DB="$$WATTROOM_DEV_DSN" WATTROOM_DEV_LOGIN=1 WATTROOM_LIVEKIT_URL="ws://localhost:7880" WATTROOM_LIVEKIT_KEY="devkey" WATTROOM_LIVEKIT_SECRET="secret" go run github.com/air-verse/air@latest
 
 dev-web: changelog ## run Vite dev server
 	@$(DEV_ENV) banner web
