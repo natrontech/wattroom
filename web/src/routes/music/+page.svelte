@@ -41,6 +41,7 @@
 		type PoolTag,
 		type Track,
 	} from '$lib/music/pool';
+	import { fileDrop } from '$lib/file-drop.svelte';
 
 	let tracks = $state<Track[]>([]);
 	let facets = $state<PoolTag[]>([]);
@@ -51,7 +52,7 @@
 	let query = $state('');
 	let uploading = $state<string[]>([]);
 	let editing = $state<string | null>(null);
-	let dragging = $state(false);
+	const drop = fileDrop((files) => void add(files));
 
 	// All four states on every fetch (errors.md): loading, error-with-retry,
 	// empty, content. `loading` only covers the first load of a given query —
@@ -352,17 +353,8 @@
 	<div
 		role="region"
 		aria-label="Your library"
-		ondragover={(event) => {
-			event.preventDefault();
-			dragging = true;
-		}}
-		ondragleave={() => (dragging = false)}
-		ondrop={(event) => {
-			event.preventDefault();
-			dragging = false;
-			void add(event.dataTransfer?.files ?? null);
-		}}
-		class="mt-4 rounded-lg {dragging
+		{...drop.on}
+		class="mt-4 rounded-lg {drop.over
 			? 'outline-neon/70 outline-2 outline-dashed'
 			: ''}"
 	>

@@ -578,3 +578,46 @@ the code is a capability and not a guess.
 `TestTheDoorTellsAStrangerNothingAboutCrewSize` is the assertion — two crews
 alike but for their size must read identically at the door — not this
 paragraph.
+
+## Amendment, 2026-09-16 (#2144): the invite follows the account, and a main crew
+
+Two things the crew layer left to the device that belong to the account.
+
+**The invite a rider was sent to.** The door page stashed its deep link in
+`sessionStorage` for the sign-in round trip, which is one browser tab. A new
+account then meets the address gate (ADR-0029), whose confirmation link opens
+in another tab, and that tab's "Back to WattRoom" landed on `/` with no memory
+of the crew — the invited rider arrived at an empty Home and was steered into
+founding a crew of their own. Dev servers have no mailer, so the flow looked
+fine to everyone building it.
+
+**`GET /api/crew-doors/{code}` records the code on a signed-in stranger**
+(`users.pending_crew_code`), and `/api/me` hands it back as `pendingInvite`
+while three things hold: the code still opens a crew, the rider is not in that
+crew, and the rider is in no crew at all. The app's landing on `/` — the OAuth
+return and the mail's way back — follows it to the door; nothing else does, so
+a rider who walks away from a door is not chased from every page. The join
+clears the column outright, so leaving the crew later does not resurrect the
+invite. A rider who already has a crew has somewhere to be, and the door
+remembers nothing for them; the same-tab deep link still serves them as
+before. The disclosure rule above is untouched: the door's response gains
+nothing, the write is on the caller's own row.
+
+**A main crew.** ADR-0020's amendment made the crew the mode the sidebar is
+in, remembered per device, with "the first the server lists" as the fallback
+— so a new device opened in whichever crew was created first, and a rider in
+several crews re-picked on every phone and TV. **A rider in more than one
+crew names a main crew** (`users.home_crew_id`, `PUT /api/me/home-crew`,
+refused for a crew they are not in), offered on the crew page and in the crew
+row's menu, and only once there is a choice to make (the 95% rule). The
+sidebar opens in it on every device; a pick within a session still wins, and
+the device's own memory serves only an account that has named none. The
+column is `ON DELETE SET NULL`: a main crew that no longer exists is no crew,
+and the sidebar falls back the way it always did.
+
+**Join before found.** For a rider who administers no crew, the open-or-join
+sheet and Home led with "Open your first room — it makes your crew". That
+turned every newcomer into a crew founder, including the one who was sent
+an invite. The join panel now leads for them and founding a crew is the
+second panel, still one click away. ADR-0010's "the room is the big button"
+predates crews; it stands for a rider who already administers one.

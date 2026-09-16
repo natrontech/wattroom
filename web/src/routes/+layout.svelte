@@ -13,7 +13,7 @@
 	import { device } from '$lib/device.svelte';
 	import { account } from '$lib/account.svelte';
 	import { noteNewAccount } from '$lib/auth/new-account';
-	import { takeNext } from '$lib/auth/next';
+	import { landing, takeNext } from '$lib/auth/next';
 	import { presence } from '$lib/presence.svelte';
 	// Side-effect imports: both apply their stored choice to :root the moment
 	// they load, so they belong to the shell rather than to whichever screen
@@ -312,7 +312,7 @@
 			void goto(next, { replaceState: true });
 		} else if (page.url.pathname === '/') {
 			routed = true;
-			void goto('/home', { replaceState: true });
+			void goto(landing(account.me.pendingInvite), { replaceState: true });
 		}
 	});
 </script>

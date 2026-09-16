@@ -12,7 +12,7 @@ import (
 	"net/http"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
-	"github.com/natrontech/wattroom/server/internal/stats"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -53,9 +53,9 @@ func (s *Service) handleFtpAfter(w http.ResponseWriter, r *http.Request) {
 	}
 	// The same bounds the profile write and the schema CHECK hold — a number
 	// outside them is not an FTP, and the CHECK would refuse it as a 500.
-	if *body.FtpAfter < stats.MinFtpWatts || *body.FtpAfter > stats.MaxFtpWatts {
+	if *body.FtpAfter < protocol.MinFtpWatts || *body.FtpAfter > protocol.MaxFtpWatts {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			fmt.Sprintf("FTP has to be between %d and %d W.", stats.MinFtpWatts, stats.MaxFtpWatts), "ftpAfter")
+			fmt.Sprintf("FTP has to be between %d and %d W.", protocol.MinFtpWatts, protocol.MaxFtpWatts), "ftpAfter")
 		return
 	}
 	n, err := s.store.Queries.SetRideFtpAfter(r.Context(), db.SetRideFtpAfterParams{

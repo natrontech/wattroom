@@ -1358,3 +1358,51 @@ func TestANewRoomLandsInTheCrewYouFoundedNotTheOneHandedToYou(t *testing.T) {
 		t.Fatalf("bob's new room landed in code %q, want his founded crew's %q (alice's was %q)", code, bobCode, aliceCode)
 	}
 }
+
+// The invite a rider was sent to survives the tab it arrived in (#2144): the
+// door writes it on the account for a stranger, /api/me derives it while they
+// are in no crew and the code still opens one, and the join clears it. A
+// rider who already has a crew has somewhere to be, so nothing is derived for
+// them however many doors they read.
+func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
+	h := setup(t)
+	_, code := h.createRoom(t, "alice", "Door Memory")
+	dave := h.stranger(t)
+	daveID := h.users.ByToken[dave].ID
+
+	if _, err := h.store.Queries.PendingCrewInvite(t.Context(), daveID); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("an invite before any door: %v", err)
+	}
+	if status, _ := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
+		t.Fatalf("door: %d", status)
+	}
+	if got, err := h.store.Queries.PendingCrewInvite(t.Context(), daveID); err != nil || got != code {
+		t.Fatalf("the door forgot the invite: %q, %v", got, err)
+	}
+	// Bob owns a crew of his own: the same door leaves him no invite.
+	h.createRoom(t, "bob", "Bob's Own")
+	if status, _ := h.call(t, "bob", http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
+		t.Fatalf("door for bob: %d", status)
+	}
+	if got, err := h.store.Queries.PendingCrewInvite(t.Context(), h.users.ByToken["bob"].ID); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("a rider with a crew holds an invite: %q, %v", got, err)
+	}
+	// A code that no longer opens anything is no invite.
+	if _, err := h.store.Pool.Exec(t.Context(), "update users set pending_crew_code = 'ZZZZZZ' where id = $1", daveID); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := h.store.Queries.PendingCrewInvite(t.Context(), daveID); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("a dead code is still an invite: %q, %v", got, err)
+	}
+	// Answered: the join clears the code outright, so leaving the crew later
+	// does not send the rider back to its door.
+	if status, _ := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
+		t.Fatalf("door again: %d", status)
+	}
+	if status, body := h.call(t, dave, http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
+		t.Fatalf("join: %d %v", status, body)
+	}
+	if u, err := h.store.Queries.GetUser(t.Context(), daveID); err != nil || u.PendingCrewCode != nil {
+		t.Fatalf("the join left the invite on the account: %v, %v", u.PendingCrewCode, err)
+	}
+}

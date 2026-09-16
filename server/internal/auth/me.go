@@ -14,6 +14,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/avatars"
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -83,6 +84,15 @@ type meResponse struct {
 	// with what this device says and reports a difference; nil means nothing
 	// has yet, and email falls back to the server's zone.
 	Timezone *string `json:"timezone,omitempty"`
+	// The crew the sidebar opens in on every device (#2144), chosen by a rider
+	// in more than one; absent until chosen, and the client falls back to the
+	// crew of the room they stand in, then the first.
+	HomeCrewID *string `json:"homeCrewId,omitempty"`
+	// The invite a rider was sent to and has not joined (#2144): the crew's
+	// code, while it still opens a crew and they are in none. The landing
+	// follows it — the deep link lived in one tab, and a new account's email
+	// confirmation opens another.
+	PendingInvite string `json:"pendingInvite,omitempty"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -137,17 +147,17 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"Display name has to be 1-60 characters.", "displayName")
 		return
-	case req.FtpWatts < stats.MinFtpWatts || req.FtpWatts > stats.MaxFtpWatts:
+	case req.FtpWatts < protocol.MinFtpWatts || req.FtpWatts > protocol.MaxFtpWatts:
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			fmt.Sprintf("FTP has to be between %d and %d W.", stats.MinFtpWatts, stats.MaxFtpWatts), "ftpWatts")
+			fmt.Sprintf("FTP has to be between %d and %d W.", protocol.MinFtpWatts, protocol.MaxFtpWatts), "ftpWatts")
 		return
-	case req.WeightKg < 30 || req.WeightKg > 200:
+	case req.WeightKg < protocol.MinWeightKg || req.WeightKg > protocol.MaxWeightKg:
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"Weight has to be between 30 and 200 kg.", "weightKg")
+			fmt.Sprintf("Weight has to be between %d and %d kg.", protocol.MinWeightKg, protocol.MaxWeightKg), "weightKg")
 		return
-	case req.Lthr != nil && *req.Lthr != 0 && (*req.Lthr < 100 || *req.Lthr > 210):
+	case req.Lthr != nil && *req.Lthr != 0 && (*req.Lthr < protocol.MinLthrBpm || *req.Lthr > protocol.MaxLthrBpm):
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"LTHR has to be between 100 and 210 bpm.", "lthr")
+			fmt.Sprintf("LTHR has to be between %d and %d bpm.", protocol.MinLthrBpm, protocol.MaxLthrBpm), "lthr")
 		return
 	case !claimableSource(req.FtpSource):
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
@@ -315,6 +325,11 @@ func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 	if xp, err := s.store.Queries.UserTotalXp(ctx, user.ID); err == nil {
 		response.TotalXp = xp
 	}
+	// No row is no invite; any other failure keeps the field empty rather
+	// than failing the whole record for a decoration.
+	if code, err := s.store.Queries.PendingCrewInvite(ctx, user.ID); err == nil {
+		response.PendingInvite = code
+	}
 	return response
 }
 
@@ -339,7 +354,16 @@ func (s *Service) toMe(u db.User) meResponse {
 		AccentPalette: u.AccentPalette,
 		ColorScheme:   u.ColorScheme,
 		Timezone:      u.Timezone,
+		HomeCrewID:    homeCrew(u),
 	}
+}
+
+func homeCrew(u db.User) *string {
+	if !u.HomeCrewID.Valid {
+		return nil
+	}
+	id := store.UUIDString(u.HomeCrewID)
+	return &id
 }
 
 // The provenance of the two profile numbers (#1484), one vocabulary for the

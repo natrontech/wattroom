@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { rememberNext, takeNext } from './next';
+import { landing, rememberNext, takeNext } from './next';
 
 // vitest runs in node; the stash only needs get/set/remove, so a Map is the
 // stub — same pattern as profile.test.ts (node's own webstorage global is
@@ -42,5 +42,16 @@ describe('login next-stash', () => {
 		rememberNext('/rooms');
 		rememberNext('//evil.example');
 		expect(takeNext()).toBeNull();
+	});
+});
+
+describe('landing', () => {
+	it('follows the invite the account still holds (#2144)', () => {
+		expect(landing('AB23CD')).toBe('/c/AB23CD');
+	});
+	it('is Home with none', () => {
+		expect(landing(undefined)).toBe('/home');
+		expect(landing(null)).toBe('/home');
+		expect(landing('')).toBe('/home');
 	});
 });

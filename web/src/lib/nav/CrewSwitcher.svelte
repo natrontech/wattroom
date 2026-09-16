@@ -9,10 +9,15 @@
 	// nothing is inset.
 	// Under it, one line per crew you are NOT looking at with something on
 	// (#1148). The sidebar owns which crew is chosen and hands it in.
+	import { account } from '$lib/account.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
-	import { copyInviteLink, leaveCrewFlow } from '$lib/crew-flows';
+	import {
+		copyInviteLink,
+		leaveCrewFlow,
+		makeMainCrewFlow,
+	} from '$lib/crew-flows';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
 	import type { RailRoom } from '$lib/room/room-data';
 	import type { RoomCrew } from '$lib/room/room-data';
@@ -25,6 +30,7 @@
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Settings from '@lucide/svelte/icons/settings';
 	import Shield from '@lucide/svelte/icons/shield';
+	import Star from '@lucide/svelte/icons/star';
 	import Users from '@lucide/svelte/icons/users';
 
 	let {
@@ -56,9 +62,12 @@
 	// The one number that tells two crews apart at a glance (#1238): the
 	// role words went — the header's mark says "yours", and the crew page
 	// says the rest.
+	// ...and which one is the main crew (#2144): the one the sidebar opens
+	// in on every device.
 	function crewLine(c: RoomCrew): string {
 		const n = rooms.filter((r) => r.crew?.id === c.id).length;
-		return n === 1 ? '1 room' : `${n} rooms`;
+		const count = n === 1 ? '1 room' : `${n} rooms`;
+		return c.id === account.me?.homeCrewId ? `${count} · main` : count;
 	}
 	// The crew's menu (#1257, ux.md): everything about the crew that is a
 	// page or two away, from the row that names it. The click stays the
@@ -88,6 +97,14 @@
 				onSelect: () => void copyInviteLink(code),
 			});
 		}
+		// The main crew (#2144): only a choice when there is one to make, and
+		// the crew page offers the same button — nothing lives only here.
+		if (crews.length > 1 && account.me?.homeCrewId !== c.id)
+			entries.push({
+				label: 'Make it my main crew',
+				icon: Star,
+				onSelect: () => void makeMainCrewFlow(c),
+			});
 		// Disabled with the reason rather than withheld (ux.md): the owner's
 		// route out is handing the crew on, and the menu says so.
 		entries.push('separator', {

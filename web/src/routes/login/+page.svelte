@@ -6,7 +6,7 @@
 	import { GITHUB_MARK, GOOGLE_G } from '$lib/brand/icons';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
-	import { rememberNext, takeNext } from '$lib/auth/next';
+	import { landing, rememberNext, takeNext } from '$lib/auth/next';
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import { crewDoor, type CrewDoor } from '$lib/crew';
 	import { lastProvider, rememberProvider } from '$lib/auth/last-provider';
@@ -143,7 +143,9 @@
 			});
 			return;
 		}
-		void goto(takeNext() ?? '/home', { replaceState: true });
+		void goto(takeNext() ?? landing(account.me.pendingInvite), {
+			replaceState: true,
+		});
 	});
 
 	// Which button this browser used last (#784) — the cheapest answer to
