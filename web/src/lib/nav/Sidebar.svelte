@@ -12,6 +12,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import RoomStrip from './RoomStrip.svelte';
 	import CrewSwitcher from './CrewSwitcher.svelte';
 	import { chosenCrew } from './chosen-crew.svelte';
@@ -403,9 +404,17 @@
 	{#if crew}
 		<CrewSwitcher {crews} {crew} {rooms} {pathname} onpick={pick} />
 	{:else}
+		<!-- The wordmark is day zero AND "not read yet" (#2173). Saying so is
+		     the difference between a rider with no crew and a rider whose
+		     first read is still out; the switcher takes the row the moment one
+		     lands, so this is a skeleton's width and nothing more. -->
 		<a href="/home" class="flex items-center gap-2 px-4 py-4">
 			<Logo size={22} {live} />
-			<span class="font-display text-sm font-bold">WattRoom</span>
+			{#if presence.loaded}
+				<span class="font-display text-sm font-bold">WattRoom</span>
+			{:else}
+				<Skeleton class="h-4 w-24" />
+			{/if}
 		</a>
 	{/if}
 	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-3">
@@ -476,40 +485,56 @@
 				><Plus size={16} /></button
 			>
 		</div>
-		<ul class="space-y-0.5">
-			{#each groups.rooms as room (room.slug)}
-				{@render roomRow(room)}
-			{:else}
-				<!-- A crew with no rooms is a crew (#1476): a heading over nothing
+		<!-- All four states, in the column that IS the app's navigation (#2173,
+		     errors.md). Until the first /api/rooms answers, `rooms` is [] —
+		     and an empty list drew the teaching line, so every cold load told
+		     the rider they were in no crew, and a first read that failed left
+		     somebody with ten rooms reading it until they guessed to reload.
+		     The same masquerade the 2026-09-09 audit fixed on Home. -->
+		{#if !presence.loaded}
+			<div class="space-y-1 px-2 py-1"><Skeleton rows={3} class="h-5" /></div>
+		{:else if presence.error && groups.rooms.length === 0}
+			<p class="text-muted px-2 py-1 text-xs">
+				{presence.error}
+				<button onclick={() => presence.reload()} class="btn-link">Retry</button
+				>
+			</p>
+		{:else}
+			<ul class="space-y-0.5">
+				{#each groups.rooms as room (room.slug)}
+					{@render roomRow(room)}
+				{:else}
+					<!-- A crew with no rooms is a crew (#1476): a heading over nothing
 				     taught nothing (ux.md, #1677). The + above is the way in. -->
-				<li class="text-muted px-2 py-1 text-xs">
-					{#if crew?.role === 'owner' || crew?.role === 'admin'}
-						No rooms yet. A room is a channel of the crew —
-						<button
-							onclick={() => {
-								opening = true;
-								onSheet?.();
-							}}
-							class="btn-link">open one</button
-						>.
-					{:else if crew}
-						No rooms yet. A room is a channel of the crew; its owner or an admin
-						opens the first one.
-					{:else}
-						<!-- In no crew at all (#2144): the way in is joining one, and
+					<li class="text-muted px-2 py-1 text-xs">
+						{#if crew?.role === 'owner' || crew?.role === 'admin'}
+							No rooms yet. A room is a channel of the crew —
+							<button
+								onclick={() => {
+									opening = true;
+									onSheet?.();
+								}}
+								class="btn-link">open one</button
+							>.
+						{:else if crew}
+							No rooms yet. A room is a channel of the crew; its owner or an
+							admin opens the first one.
+						{:else}
+							<!-- In no crew at all (#2144): the way in is joining one, and
 						     opening a room of your own is the option, not the ask. -->
-						Not in a crew yet —
-						<button
-							onclick={() => {
-								opening = true;
-								onSheet?.();
-							}}
-							class="btn-link">join one with its code</button
-						>, or open a room of your own.
-					{/if}
-				</li>
-			{/each}
-		</ul>
+							Not in a crew yet —
+							<button
+								onclick={() => {
+									opening = true;
+									onSheet?.();
+								}}
+								class="btn-link">join one with its code</button
+							>, or open a room of your own.
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		{/if}
 
 		<!-- Messages is a place (#468): every room's chat and every DM, one
 		     list, and on a desk the sidebar IS that list (#484). Rooms are
