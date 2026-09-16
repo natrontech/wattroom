@@ -26,7 +26,8 @@
 	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { setRideShared } from '$lib/ride/share';
+	import { setRideShared, shareAction } from '$lib/ride/share';
+	import ShareToggle from '$lib/ride/ShareToggle.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -137,7 +138,7 @@
 	// sharing, it cannot be handed back by an undo toast (errors.md).
 	const rowMenu = (ride: ServerRide): MenuEntry[] => [
 		{
-			label: ride.sharedWithFriends ? 'Make private' : 'Share with friends',
+			label: shareAction(ride.sharedWithFriends).label,
 			icon: ride.sharedWithFriends ? Lock : Users,
 			onSelect: () => void setShared(ride, !ride.sharedWithFriends),
 		} satisfies MenuItem,
@@ -316,22 +317,11 @@
 		>
 		{#if server}
 			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip.
-			     The icon says where the ride stands, the word what the press
-			     does, and aria-pressed carries the state (#2004). -->
-			<button
-				onclick={() => void setShared(server, !server.sharedWithFriends)}
+			     The same toggle the ride's own page draws (#2167). -->
+			<ShareToggle
+				ride={server}
 				class="btn btn-ghost btn-xs relative -my-1 -mr-2"
-				aria-pressed={server.sharedWithFriends}
-				title={server.sharedWithFriends
-					? 'Friends see this ride on your page — make it private'
-					: 'Only you see this ride — share it with your friends'}
-			>
-				{#if server.sharedWithFriends}
-					<Users size={13} /> Make private
-				{:else}
-					<Lock size={13} /> Share
-				{/if}
-			</button>
+			/>
 		{/if}
 	</li>
 {/snippet}

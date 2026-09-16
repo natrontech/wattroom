@@ -25,9 +25,7 @@
 	import Award from '@lucide/svelte/icons/award';
 	import Download from '@lucide/svelte/icons/download';
 	import ImageDown from '@lucide/svelte/icons/image-down';
-	import Lock from '@lucide/svelte/icons/lock';
-	import Users from '@lucide/svelte/icons/users';
-	import { setRideShared } from '$lib/ride/share';
+	import ShareToggle from '$lib/ride/ShareToggle.svelte';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 
 	const id = $derived(page.params.id ?? '');
@@ -251,19 +249,10 @@
 				</p>
 			</div>
 			<!-- The per-ride opt-in, where a rider decides a ride is worth
-			     showing (#1691, ADR-0024): undo over confirm. -->
-			<button
-				onclick={() =>
-					ride && void setRideShared(ride, !ride.sharedWithFriends)}
-				aria-pressed={ride.sharedWithFriends}
-				class="btn btn-secondary btn-xs ml-auto"
-			>
-				{#if ride.sharedWithFriends}
-					<Users size={13} /> Shared with friends
-				{:else}
-					<Lock size={13} /> Private
-				{/if}
-			</button>
+			     showing (#1691, ADR-0024): undo over confirm. The same toggle
+			     the history row draws — this one used to name the STATE, so
+			     "Private" was the button you pressed to share (#2167). -->
+			<ShareToggle {ride} class="btn btn-secondary btn-xs ml-auto" />
 			<button
 				onclick={() => void downloadCard()}
 				disabled={carding}
