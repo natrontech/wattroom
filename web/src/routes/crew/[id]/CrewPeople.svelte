@@ -138,6 +138,16 @@
 
 	const roleWord = (role: CrewPerson['role']) =>
 		role === 'owner' ? 'owner' : role === 'admin' ? 'admin' : 'member';
+
+	// The crew is bigger than this list when the viewer shares no room with
+	// some of it (ADR-0038: visibility follows the rooms you may enter). The
+	// header counts the crew, so without this line the page contradicts
+	// itself — "3 people" over a list of two, with nothing saying why (#1255).
+	// A number, never the names: who is in the private room is exactly what
+	// the rule withholds.
+	const unseen = $derived(
+		Math.max(0, (crew.members ?? 0) - crew.people.length),
+	);
 </script>
 
 <h2 class="eyebrow mt-8">people</h2>
@@ -187,6 +197,12 @@
 		</li>
 	{/each}
 </ul>
+{#if unseen > 0}
+	<p class="text-muted mt-2 text-xs">
+		And {unseen === 1 ? '1 more person' : `${unseen} more people`} you do not share
+		a room with. A crew's list is the crew-mates you have a room in common with.
+	</p>
+{/if}
 
 {#if administers && crew.banned?.length}
 	<h2 class="eyebrow mt-8">banned from the crew</h2>

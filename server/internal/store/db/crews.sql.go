@@ -581,35 +581,46 @@ func (q *Queries) ListCrewBans(ctx context.Context, crewID pgtype.UUID) ([]pgtyp
 
 const listCrewPeople = `-- name: ListCrewPeople :many
 with people as (
-    select c.owner_id as user_id, c.created_at as since from crews c where c.id = $1
+    select c.owner_id as user_id, c.created_at as since from crews c where c.id = $2
     union all
     select cr.user_id, coalesce(cr.joined_at, cr.set_at) from crew_roles cr
-    where cr.crew_id = $1 and cr.role in ('member', 'admin')
+    where cr.crew_id = $2 and cr.role in ('member', 'admin')
       -- A stray member row for the owner (a listed-room join wrote one, #1671)
       -- must not list them twice: the page keys its list by id.
-      and cr.user_id <> (select owner_id from crews where id = $1)
+      and cr.user_id <> (select owner_id from crews where id = $2)
+),
+rows as (
+    select u.id, u.display_name, u.avatar_url, p.since::timestamptz as since,
+           (u.id = $3
+            or exists (select 1 from memberships m
+                       join rooms r on r.id = m.room_id
+                       join visible_rooms v on v.room_id = r.id and v.user_id = $3
+                       where r.crew_id = $2 and m.user_id = u.id and m.role <> 'banned')
+           )::boolean as shares_room,
+           (u.id = (select owner_id from crews where id = $2))::boolean as is_owner,
+           (select count(*) from memberships m join rooms r on r.id = m.room_id
+             where r.crew_id = $2 and m.user_id = u.id and m.role <> 'banned')::bigint as rooms_in,
+           exists (select 1 from memberships m join rooms r on r.id = m.room_id
+                    where r.crew_id = $2 and m.user_id = u.id and m.role = 'owner')::boolean as owns_one
+    from people p
+    join users u on u.id = p.user_id
 )
-select u.id, u.display_name, u.avatar_url,
-       p.since::timestamptz as since,
-       (select count(*) from memberships m join rooms r on r.id = m.room_id
-         where r.crew_id = $1 and m.user_id = u.id and m.role <> 'banned')::bigint as room_count,
-       exists (select 1 from memberships m join rooms r on r.id = m.room_id
-                where r.crew_id = $1 and m.user_id = u.id and m.role = 'owner')::boolean as owns_room
-from people p
-join users u on u.id = p.user_id
-where $2::boolean
-   or u.id = $3
-   or exists (select 1 from memberships m
-              join rooms r on r.id = m.room_id
-              join visible_rooms v on v.room_id = r.id and v.user_id = $3
-              where r.crew_id = $1 and m.user_id = u.id and m.role <> 'banned')
-order by p.since
+select id, display_name, avatar_url, since,
+       -- WHICH of the crew's rooms a person is in is a fact about the rooms,
+       -- so it keeps the room test rather than the roster's (#1255): the
+       -- owner is named to everyone in the crew, and how much of the crew
+       -- they are in is not part of naming them.
+       (case when $1::boolean or shares_room then rooms_in else 0 end)::bigint as room_count,
+       (case when $1::boolean or shares_room then owns_one else false end)::boolean as owns_room
+from rows
+where $1::boolean or shares_room or is_owner
+order by since
 limit 1000
 `
 
 type ListCrewPeopleParams struct {
-	CrewID   pgtype.UUID
 	Everyone bool
+	CrewID   pgtype.UUID
 	Viewer   pgtype.UUID
 }
 
@@ -629,8 +640,20 @@ type ListCrewPeopleRow struct {
 // member sees the crew-mates they share an enterable room with (and
 // themselves); the owner and admins act on people by id, so for them
 // `everyone` is true and the list is the whole crew.
+//
+// The crew's OWNER is named to everyone in it, whatever rooms they share
+// (#1255). Not a widening of the rule above: an owner is not a person in the
+// crew the way a member is — they are whose crew it is, the crew carries their
+// name until somebody renames it, and every hand-over, every "you own a room
+// here" refusal and the Leave that says "hand it to someone first" is about
+// them. A roster that cannot name them reads as broken, and it made the
+// header's own count disagree with the list under it.
+// Everything about a person, and the one test that decides what of it the
+// viewer may have. Written once, in a CTE, because it settles BOTH who is
+// listed and what a listed row says — two copies would drift the moment one
+// of them was tightened.
 func (q *Queries) ListCrewPeople(ctx context.Context, arg ListCrewPeopleParams) ([]ListCrewPeopleRow, error) {
-	rows, err := q.db.Query(ctx, listCrewPeople, arg.CrewID, arg.Everyone, arg.Viewer)
+	rows, err := q.db.Query(ctx, listCrewPeople, arg.Everyone, arg.CrewID, arg.Viewer)
 	if err != nil {
 		return nil, err
 	}

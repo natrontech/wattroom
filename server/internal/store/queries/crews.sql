@@ -226,6 +226,14 @@ select * from crew_roles where crew_id = $1;
 -- member sees the crew-mates they share an enterable room with (and
 -- themselves); the owner and admins act on people by id, so for them
 -- `everyone` is true and the list is the whole crew.
+--
+-- The crew's OWNER is named to everyone in it, whatever rooms they share
+-- (#1255). Not a widening of the rule above: an owner is not a person in the
+-- crew the way a member is — they are whose crew it is, the crew carries their
+-- name until somebody renames it, and every hand-over, every "you own a room
+-- here" refusal and the Leave that says "hand it to someone first" is about
+-- them. A roster that cannot name them reads as broken, and it made the
+-- header's own count disagree with the list under it.
 with people as (
     select c.owner_id as user_id, c.created_at as since from crews c where c.id = sqlc.arg(crew_id)
     union all
@@ -234,22 +242,37 @@ with people as (
       -- A stray member row for the owner (a listed-room join wrote one, #1671)
       -- must not list them twice: the page keys its list by id.
       and cr.user_id <> (select owner_id from crews where id = sqlc.arg(crew_id))
+),
+-- Everything about a person, and the one test that decides what of it the
+-- viewer may have. Written once, in a CTE, because it settles BOTH who is
+-- listed and what a listed row says — two copies would drift the moment one
+-- of them was tightened.
+rows as (
+    select u.id, u.display_name, u.avatar_url, p.since::timestamptz as since,
+           (u.id = sqlc.arg(viewer)
+            or exists (select 1 from memberships m
+                       join rooms r on r.id = m.room_id
+                       join visible_rooms v on v.room_id = r.id and v.user_id = sqlc.arg(viewer)
+                       where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role <> 'banned')
+           )::boolean as shares_room,
+           (u.id = (select owner_id from crews where id = sqlc.arg(crew_id)))::boolean as is_owner,
+           (select count(*) from memberships m join rooms r on r.id = m.room_id
+             where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role <> 'banned')::bigint as rooms_in,
+           exists (select 1 from memberships m join rooms r on r.id = m.room_id
+                    where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role = 'owner')::boolean as owns_one
+    from people p
+    join users u on u.id = p.user_id
 )
-select u.id, u.display_name, u.avatar_url,
-       p.since::timestamptz as since,
-       (select count(*) from memberships m join rooms r on r.id = m.room_id
-         where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role <> 'banned')::bigint as room_count,
-       exists (select 1 from memberships m join rooms r on r.id = m.room_id
-                where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role = 'owner')::boolean as owns_room
-from people p
-join users u on u.id = p.user_id
-where sqlc.arg(everyone)::boolean
-   or u.id = sqlc.arg(viewer)
-   or exists (select 1 from memberships m
-              join rooms r on r.id = m.room_id
-              join visible_rooms v on v.room_id = r.id and v.user_id = sqlc.arg(viewer)
-              where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role <> 'banned')
-order by p.since
+select id, display_name, avatar_url, since,
+       -- WHICH of the crew's rooms a person is in is a fact about the rooms,
+       -- so it keeps the room test rather than the roster's (#1255): the
+       -- owner is named to everyone in the crew, and how much of the crew
+       -- they are in is not part of naming them.
+       (case when sqlc.arg(everyone)::boolean or shares_room then rooms_in else 0 end)::bigint as room_count,
+       (case when sqlc.arg(everyone)::boolean or shares_room then owns_one else false end)::boolean as owns_room
+from rows
+where sqlc.arg(everyone)::boolean or shares_room or is_owner
+order by since
 limit 1000; -- an engineering bound (#1416): a crew is a training circle, not a forum
 
 -- name: ListCrewBanned :many

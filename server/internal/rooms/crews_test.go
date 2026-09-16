@@ -1406,3 +1406,81 @@ func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
 		t.Fatalf("the join left the invite on the account: %v, %v", u.PendingCrewCode, err)
 	}
 }
+
+// The crew's owner is on the roster for everyone in the crew, whatever rooms
+// they share (#1255). Carol joined by the code and can enter one room; the
+// owner is only in another she cannot. Before this, the page showed her two
+// people under a header that said three — and never named whose crew it was.
+func TestTheCrewPageAlwaysNamesItsOwner(t *testing.T) {
+	h := setup(t)
+	// bob founds the crew with a room nobody else can enter.
+	private, _ := h.createRoom(t, "bob", "Owners Private Room")
+	h.makePrivate(t, private)
+	crew := h.crewOf(t, private)
+
+	// alice joins it and is made an admin, so she may open a room in it.
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, codeOf(crew.Code))); status != http.StatusOK {
+		t.Fatal("alice could not join the crew")
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/role",
+		fmt.Sprintf(`{"userId":%q,"role":"admin"}`, h.userID(t, "alice"))); status != http.StatusNoContent {
+		t.Fatal("bob could not make alice an admin")
+	}
+	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms",
+		fmt.Sprintf(`{"name":"Crew Open Room","crewId":%q}`, store.UUIDString(crew.ID)))
+	if status != http.StatusCreated {
+		t.Fatalf("alice could not open a room in the crew: %d %v", status, body)
+	}
+	open, _ := body["slug"].(string)
+	t.Cleanup(func() {
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where slug = $1", open)
+	})
+	if got := h.crewOf(t, open).ID; got != crew.ID {
+		t.Fatalf("alice's room landed in crew %v, not bob's %v", got, crew.ID)
+	}
+
+	// carol comes in by the code and walks into the room she may enter.
+	if status, _ := h.call(t, "carol", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, codeOf(crew.Code))); status != http.StatusOK {
+		t.Fatal("carol could not join the crew")
+	}
+	if status, _ := h.call(t, "carol", http.MethodPost, "/api/rooms/"+open+"/join", ""); status != http.StatusNoContent {
+		t.Fatal("carol could not enter the crew's open room")
+	}
+
+	_, page := h.call(t, "carol", http.MethodGet, "/api/crews/"+store.UUIDString(crew.ID), "")
+	people, _ := page["people"].([]any)
+	seen := map[string]string{}
+	for _, p := range people {
+		person, _ := p.(map[string]any)
+		seen[fmt.Sprint(person["displayName"])] = fmt.Sprint(person["role"])
+	}
+	if seen["bob"] != "owner" {
+		t.Errorf("carol's crew page does not name the owner: %v", seen)
+	}
+	// Named, and no more than named: which of the crew's rooms the owner is
+	// in is a fact about a room she cannot enter, and stays one.
+	for _, p := range people {
+		person, _ := p.(map[string]any)
+		if fmt.Sprint(person["displayName"]) != "bob" {
+			continue
+		}
+		// omitempty: zero and false are absent on the wire, and either is
+		// "this row does not say".
+		if rooms, _ := person["rooms"].(float64); rooms != 0 || person["ownsRoom"] == true {
+			t.Errorf("the owner's row tells carol about a room she shares with nobody: %v", person)
+		}
+	}
+	// And the rule the owner is the exception to still holds: bob's private
+	// room has no one else in it, so nothing else leaked with him.
+	if _, ok := seen["dave"]; ok {
+		t.Errorf("the roster carries someone carol shares no room with: %v", seen)
+	}
+	// The header counts the crew, and the list is allowed to be shorter —
+	// but never shorter than it needs to be by leaving the owner out.
+	if want := float64(3); page["members"] != want {
+		t.Errorf("the crew page counts %v people, want %v", page["members"], want)
+	}
+	if len(seen) != 3 {
+		t.Errorf("carol sees %d people (%v) — alice, bob and herself are all reachable to her", len(seen), seen)
+	}
+}
