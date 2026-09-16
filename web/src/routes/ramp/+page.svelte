@@ -19,6 +19,7 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
+	import { trainerHint } from '$lib/room/sensor-status';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { device } from '$lib/device.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
@@ -29,6 +30,7 @@
 	import {
 		createRideSession,
 		SIGNAL_LOST_MS,
+		signalLost as isSignalLost,
 	} from '$lib/workout/session.svelte';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { stampFtpAfter, uploadRide } from '$lib/ride/save';
@@ -172,13 +174,20 @@
 		const id = setInterval(() => (nowMs = Date.now()), 1000);
 		return () => clearInterval(id);
 	});
-	const signalLost = $derived(
-		!!session &&
-			session.state !== 'countdown' &&
-			session.state !== 'done' &&
-			!!session.sample &&
-			nowMs - session.sample.at > SIGNAL_LOST_MS,
-	);
+	// From the start, not from the first sample (#2158, the way /ride has
+	// counted since #1799): a trainer that streams frames without a power
+	// field never delivers one, so `!!session.sample` was never true and the
+	// ramp ran its full length with no banner, no fault cue, and `rampBlown`'s
+	// stale guard holding the test open — thirty minutes of nothing and then a
+	// 0 W result. Stamped when the CLOCK starts, not when Start was pressed:
+	// the count-in is not a gap in the trainer's reporting.
+	let ridingSince = 0;
+	$effect(() => {
+		if (session?.state === 'running' && ridingSince === 0)
+			ridingSince = Date.now();
+		if (!session) ridingSince = 0;
+	});
+	const signalLost = $derived(isSignalLost(session, ridingSince, nowMs));
 
 	// The ramp speaks like every ride (#1792): each step is a block cue, the
 	// guards and a dropout say so, and the end is heard — the number a rider
@@ -390,10 +399,11 @@
 					state: solo.state,
 					device: solo.trainer?.name,
 					reading: solo.reading,
-					hint:
-						solo.fault === 'silent'
-							? 'no watts yet — turn the cranks'
-							: undefined,
+					// The one place a trainer fault is put into words
+					// (sensor-status.ts): this card retyped the 'silent' case
+					// and had nothing at all for 'no-power', which is the fault
+					// this whole screen most needs to name (#2158).
+					hint: trainerHint(solo.fault),
 					error: solo.error,
 					onPair: () => void solo.pair(new FtmsTrainer()),
 					onForget: () => solo.forget(),

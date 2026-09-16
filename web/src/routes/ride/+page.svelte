@@ -6,7 +6,7 @@
 	import type { Trainer } from '$lib/ble/trainer';
 	import {
 		createRideSession,
-		SIGNAL_LOST_MS,
+		signalLost as isSignalLost,
 	} from '$lib/workout/session.svelte';
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
 	import { byId } from '$lib/workout/library';
@@ -342,13 +342,7 @@
 			ridingSince = Date.now();
 		if (!session) ridingSince = 0;
 	});
-	const signalLost = $derived(
-		!!session &&
-			session.state !== 'countdown' &&
-			session.state !== 'done' &&
-			ridingSince > 0 &&
-			nowMs - (session.sample?.at ?? ridingSince) > SIGNAL_LOST_MS,
-	);
+	const signalLost = $derived(isSignalLost(session, ridingSince, nowMs));
 
 	// The block, derived once for both screens that draw it — the riding
 	// surface and the TV (ADR-0046).
