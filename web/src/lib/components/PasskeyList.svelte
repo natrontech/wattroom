@@ -40,10 +40,23 @@
 		}
 	}
 
-	async function rename(key: passkeys.Passkey) {
-		const next = prompt('Name this passkey', key.name);
-		if (next === null || next.trim() === key.name) return;
-		error = (await passkeys.rename(key.id, next.trim())) ?? '';
+	// Renaming happens on the row (#2155). It used to call `prompt()`, which
+	// Electron does not implement — "prompt() is and will not be supported" —
+	// so in the desktop shell, which loads this same SPA (ADR-0037), Rename
+	// did nothing and said nothing. In a browser it was an OS dialog with none
+	// of the kit's shape. The add row below is the same input-and-button, so
+	// this is the pattern the surface already had.
+	let renaming = $state<string | null>(null);
+	let draft = $state('');
+	function startRename(key: passkeys.Passkey) {
+		renaming = key.id;
+		draft = key.name;
+	}
+	async function commitRename(key: passkeys.Passkey) {
+		const next = draft.trim();
+		renaming = null;
+		if (next === '' || next === key.name) return;
+		error = (await passkeys.rename(key.id, next)) ?? '';
 		await refresh();
 	}
 
@@ -94,20 +107,44 @@
 			<ul class="mt-2 grid gap-1.5">
 				{#each keys as key (key.id)}
 					<li class="flex items-center gap-3 text-sm">
-						<span class="min-w-0 flex-1 truncate">
-							{key.name}
-							<span class="text-muted block text-[11px]">
-								added {when(key.createdAt)} · {key.lastUsedAt
-									? `last used ${when(key.lastUsedAt)}`
-									: 'never used'}
+						{#if renaming === key.id}
+							<!-- svelte-ignore a11y_autofocus -->
+							<input
+								bind:value={draft}
+								maxlength="40"
+								autofocus
+								aria-label="rename {key.name}"
+								onkeydown={(e) => {
+									if (e.key === 'Enter') void commitRename(key);
+									if (e.key === 'Escape') renaming = null;
+								}}
+								class="input input-xs min-w-0 flex-1"
+							/>
+							<button
+								onclick={() => void commitRename(key)}
+								class="btn btn-secondary btn-xs">Save</button
+							>
+							<button
+								onclick={() => (renaming = null)}
+								class="btn btn-ghost btn-xs">Keep it</button
+							>
+						{:else}
+							<span class="min-w-0 flex-1 truncate">
+								{key.name}
+								<span class="text-muted block text-[11px]">
+									added {when(key.createdAt)} · {key.lastUsedAt
+										? `last used ${when(key.lastUsedAt)}`
+										: 'never used'}
+								</span>
 							</span>
-						</span>
-						<button onclick={() => rename(key)} class="btn btn-ghost btn-xs"
-							>Rename</button
-						>
-						<button onclick={() => remove(key)} class="btn btn-danger btn-xs"
-							>Remove</button
-						>
+							<button
+								onclick={() => startRename(key)}
+								class="btn btn-ghost btn-xs">Rename</button
+							>
+							<button onclick={() => remove(key)} class="btn btn-danger btn-xs"
+								>Remove</button
+							>
+						{/if}
 					</li>
 				{/each}
 			</ul>

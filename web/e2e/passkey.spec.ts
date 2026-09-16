@@ -47,23 +47,46 @@ test('a passkey registers, and signs the rider back in where they were going', a
 	await expect(row).toBeVisible();
 	await expect(row).toContainText('last used');
 
+	// Renaming happens on the row (#2155). It used to be `prompt()`, which
+	// Electron does not implement at all — so in the desktop shell the button
+	// did nothing and said nothing. A browser test never saw it either:
+	// Playwright dismisses a native dialog, so the rename silently did
+	// nothing here too.
+	const renamed = `${name} renamed`;
+	await row.getByRole('button', { name: 'Rename' }).click();
+	// Not scoped to `row`: the row swaps its name for the box, so the filter
+	// that found it by name no longer matches it. The box says which key it
+	// is about, which is what a screen reader needs anyway.
+	const box = page.getByRole('textbox', { name: `rename ${name}` });
+	await box.fill(renamed);
+	// The row that holds the box — the profile form below has a Save too.
+	await page
+		.getByRole('listitem')
+		.filter({ has: box })
+		.getByRole('button', { name: 'Save' })
+		.click();
+	const newRow = page.getByRole('listitem').filter({ hasText: renamed });
+	await expect(newRow).toBeVisible();
+
 	// A removal asks first (#1493): the authenticator cannot re-mint the same
 	// credential, so one click must not be able to end it. "Keep it" leaves
 	// the key exactly where it was — the half that would ship quietly.
-	await row.getByRole('button', { name: 'Remove' }).click();
-	const ask = page.getByRole('dialog', { name: new RegExp(`Remove .${name}`) });
+	await newRow.getByRole('button', { name: 'Remove' }).click();
+	const ask = page.getByRole('dialog', {
+		name: new RegExp(`Remove .${renamed}`),
+	});
 	await expect(ask).toBeVisible();
 	await expect(ask).toContainText('cannot re-create this same passkey');
 	await ask.getByRole('button', { name: 'Keep it' }).click();
 	await expect(ask).toBeHidden();
-	await expect(row).toBeVisible();
+	await expect(newRow).toBeVisible();
 
 	// The rider is reused across runs (signin.ts): take the key back so the
 	// list does not grow by one per run. The dev identity keeps them in.
-	await row.getByRole('button', { name: 'Remove' }).click();
+	await newRow.getByRole('button', { name: 'Remove' }).click();
 	await page
 		.getByRole('dialog')
 		.getByRole('button', { name: 'Remove' })
 		.click();
-	await expect(row).toBeHidden();
+	await expect(newRow).toBeHidden();
 });
