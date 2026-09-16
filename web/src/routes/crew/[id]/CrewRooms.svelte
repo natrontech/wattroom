@@ -14,7 +14,7 @@
 	import { setRoomAccess, type Crew } from '$lib/crew';
 	import { accessMark, reachable } from '$lib/nav/crews';
 	import { presence } from '$lib/presence.svelte';
-	import { REACH_LABELS } from '$lib/rooms/reach';
+	import { REACH_ACTIONS, REACH_LABELS } from '$lib/rooms/reach';
 	import { toasts } from '$lib/toast.svelte';
 	import DoorOpen from '@lucide/svelte/icons/door-open';
 	import Eye from '@lucide/svelte/icons/eye';
@@ -36,11 +36,15 @@
 	// One toggle for the row's button and its menu entry (#1372): the
 	// admin-state row is the one an admin came here to act on, and it used
 	// to look disabled with its only action three fingers away in a menu.
-	// The label names the step it moves the room to, in the room's own words
-	// (#2007) — "Make private" was a second vocabulary for the ladder's
-	// bottom step, and a rider could not match the two surfaces up.
+	// Where the room stands, and what the button does — two strings, because
+	// they were one and it read as the opposite of the truth (#2177): an open
+	// room's only descriptor was a ghost button saying "Only its members".
+	// Both from the ladder's own words (#2007), so the crew page and the
+	// room's settings still say the same thing.
+	const reachNow = (room: Crew['rooms'][number]) =>
+		room.access === 'open' ? REACH_LABELS.crew : REACH_LABELS.members;
 	const accessLabel = (room: Crew['rooms'][number]) =>
-		room.access === 'open' ? REACH_LABELS.members : REACH_LABELS.crew;
+		room.access === 'open' ? REACH_ACTIONS.members : REACH_ACTIONS.crew;
 	function toggleAccess(room: Crew['rooms'][number]) {
 		const crewId = crew.id;
 		const open = room.access === 'open';
@@ -148,6 +152,13 @@
 						/>
 						<span class="text-muted-dim hidden text-[11px] sm:inline"
 							>{mark.label}</span
+						>
+					{:else if administers}
+						<!-- An open room has no mark, so the row said nothing about
+						     where it stands and the button beside it said the step
+						     it would MOVE to (#2177). -->
+						<span class="text-muted-dim hidden text-[11px] sm:inline"
+							>{reachNow(room)}</span
 						>
 					{/if}
 				</svelte:element>

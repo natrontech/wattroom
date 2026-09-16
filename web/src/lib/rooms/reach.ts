@@ -27,6 +27,20 @@ export const REACH_LABELS: Record<Reach, string> = {
 	everyone: 'Everyone on WattRoom',
 };
 
+/**
+ * The same steps as something you DO. A row says where a room stands; a
+ * button says what pressing it does (ux.md: items say what happens), and the
+ * two were one string — so an open room's only descriptor was a ghost button
+ * reading "Only its members", which is the truth upside down (#2177).
+ *
+ * The words are the step names above with a verb, not a second vocabulary.
+ */
+export const REACH_ACTIONS: Record<Reach, string> = {
+	members: 'Shut to its members',
+	crew: 'Open to the crew',
+	everyone: 'List for everyone on WattRoom',
+};
+
 /** What each step actually does — including the half riders assume and
  * should not: being findable is not being readable. */
 export const REACH_HINTS: Record<Reach, string> = {
