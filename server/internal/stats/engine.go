@@ -67,7 +67,7 @@ func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics)
 		// all session and is handed another (#795).
 		wgt := target / ftp
 		target *= sample.BiasOr()
-		band := math.Max(target*0.05, 10)
+		band := protocol.TargetBand(target)
 		weight += wgt
 		if math.Abs(float64(sample.Watts)-target) <= band {
 			inBand += wgt

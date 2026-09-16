@@ -16,12 +16,11 @@ import type { Segment, Workout } from './types';
  * (workout/guards), and are re-exported because half the app imports them from
  * this module.
  */
-export { DEFAULTS } from './guards';
-
-/** docs/SPEC.md: within ±5 % of target, floor ±10 W. */
-export function toleranceBand(target: number): number {
-	return Math.max(target * 0.05, 10);
-}
+// `toleranceBand` comes through here because every caller already imports it
+// from the session; it lives in guards.ts so the room's view can read it
+// without importing a rune module (#2159).
+export { DEFAULTS, toleranceBand } from './guards';
+import { toleranceBand } from './guards';
 
 export type RideState =
 	'idle' | 'countdown' | 'running' | 'autopaused' | 'resuming' | 'done';

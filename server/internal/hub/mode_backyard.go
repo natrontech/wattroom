@@ -116,7 +116,11 @@ func (b *backyard) advance(now time.Time, samples map[string]int, roster map[str
 			return
 		}
 		avgPct /= float64(riders)
-		band := math.Max(line*0.05, 10/(ftpSum/float64(riders)))
+		// The same band, in the fraction-of-FTP units this line is measured
+		// in: the floor is watts, so it is divided by the field's average FTP
+		// rather than compared to it. The numbers are protocol's either way.
+		band := math.Max(line*protocol.TargetBandFraction,
+			protocol.TargetBandFloorWatts/(ftpSum/float64(riders)))
 		if avgPct < line-band {
 			b.below["room"]++
 		} else {
@@ -145,7 +149,7 @@ func (b *backyard) advance(now time.Time, samples map[string]int, roster map[str
 			watts = 0
 		}
 		target := line * float64(rider.FtpWatts)
-		band := math.Max(target*0.05, 10)
+		band := protocol.TargetBand(target)
 		if float64(watts) < target-band {
 			b.below[id]++
 		} else {
