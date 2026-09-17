@@ -46,6 +46,13 @@
 	// LTHR suggestion (ADR-0014): a maximal ramp ends near HRmax, and the
 	// SPEC's field estimate is 90 % of that. Suggested, never auto-applied —
 	// the same posture as FTP suggestions.
+	//
+	// SPEC calls this one ROUGH and the panel has to say so (#1619 wrote the
+	// doc and stopped there, #1620 finished it): LT2 sits anywhere in 85–92 %
+	// of HRmax, and a ramp's peak need not BE HRmax — heart rate lags power,
+	// so a rider who blows on step 9 never reached the rate step 12 would have
+	// produced. RESEARCH §17.2. The real measurement is the 30-minute field
+	// test, which the app now reads off a ride on its own.
 	const maxHr = $derived(
 		session.recording.reduce(
 			(peak, sample) => Math.max(peak, sample.heartRate ?? 0),
@@ -99,7 +106,10 @@
 	<p class="text-muted mt-4 text-xs leading-relaxed">
 		Best minute was {result.best} W, and FTP is {Math.round(
 			RAMP.ftpFraction * 100,
-		)} % of that. You lasted {formatClock(session.elapsed)} — {stepsDone}
+		)} % of that — an estimate good to about ±5 %, because that fraction is a population
+		average and yours is your own (RESEARCH §17.1). You lasted {formatClock(
+			session.elapsed,
+		)} — {stepsDone}
 		steps. Every workout you ride from here scales to this number —
 		<a href="/workouts" class="underline">the library</a>
 		and <a href="/home" class="underline">what your rooms have planned</a> already
@@ -147,10 +157,15 @@
 				</p>
 			{:else}
 				<p class="text-muted text-xs">
-					Your heart rate peaked at {maxHr} bpm — that puts your LTHR around
+					Your heart rate peaked at {maxHr} bpm — that puts your LTHR
+					<em>roughly</em>
+					around
 					{suggestedLthr} bpm{profile.current.lthr
 						? ` (currently ${profile.current.lthr})`
-						: ''}.
+						: ''}. It's a wide band: threshold sits anywhere in 85–92 % of a
+					maximum heart rate, and a ramp you stopped early never reached yours.
+					To measure it properly, ride 30 minutes solo all out — WattRoom reads
+					the last 20 minutes' average off the ride and offers it.
 				</p>
 				<button onclick={saveLthr} class="btn btn-secondary btn-xs mt-2"
 					>Set LTHR to {suggestedLthr}</button

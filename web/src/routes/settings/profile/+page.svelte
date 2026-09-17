@@ -3,11 +3,12 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
+	import LthrPrompt from '$lib/components/LthrPrompt.svelte';
 	import {
-		declineFtp,
-		declinedFtp,
+		declineSuggestion,
+		declinedSuggestion,
 		suggestionDeclined,
-	} from '$lib/ftp-decline';
+	} from '$lib/suggestion-decline';
 	import ProviderConnections from '$lib/components/ProviderConnections.svelte';
 	import PasskeyList from '$lib/components/PasskeyList.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
@@ -63,10 +64,17 @@
 		);
 	}
 	// The decline outlives the visit (#1552), keyed on the suggested value.
-	let declined = $state(declinedFtp());
+	let declined = $state(declinedSuggestion('ftp'));
 	let applied = $state(false);
 	const suggestionDismissed = $derived(
 		applied || suggestionDeclined(account.me?.suggestedFtp, declined),
+	);
+	// The same, for the LTHR a hard ride suggests (#1620). Separate memory:
+	// keeping an FTP says nothing about a heart rate.
+	let lthrDeclined = $state(declinedSuggestion('lthr'));
+	let lthrApplied = $state(false);
+	const lthrSuggestionDismissed = $derived(
+		lthrApplied || suggestionDeclined(account.me?.suggestedLthr, lthrDeclined),
 	);
 
 	// The root layout owns the server → localStorage pull; this only fills
@@ -473,6 +481,25 @@
 			</div>
 		</section>
 
+		{#if account.me?.suggestedLthr && account.me.lthr && !lthrSuggestionDismissed}
+			<div class="mt-3">
+				<LthrPrompt
+					current={account.me.lthr}
+					suggested={account.me.suggestedLthr}
+					onApply={() => {
+						lthr = account.me?.suggestedLthr ?? lthr;
+						void save();
+						lthrApplied = true;
+					}}
+					onKeep={() => {
+						const kept = account.me?.suggestedLthr ?? 0;
+						declineSuggestion('lthr', kept);
+						lthrDeclined = kept;
+					}}
+				/>
+			</div>
+		{/if}
+
 		{#if account.me?.suggestedFtp && !suggestionDismissed}
 			<div class="mt-3">
 				<FtpPrompt
@@ -485,7 +512,7 @@
 					}}
 					onKeep={() => {
 						const kept = account.me?.suggestedFtp ?? 0;
-						declineFtp(kept);
+						declineSuggestion('ftp', kept);
 						declined = kept;
 					}}
 				/>

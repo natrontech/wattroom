@@ -4,11 +4,12 @@
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import { account } from '$lib/account.svelte';
+	import LthrPrompt from '$lib/components/LthrPrompt.svelte';
 	import {
-		declineFtp,
-		declinedFtp,
+		declineSuggestion,
+		declinedSuggestion,
 		suggestionDeclined,
-	} from '$lib/ftp-decline';
+	} from '$lib/suggestion-decline';
 	import { pushProfile } from '$lib/profile-sync.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import PowerCurveChart from '$lib/components/PowerCurveChart.svelte';
@@ -46,7 +47,7 @@
 	// and a settings sub-page was the only place that did. The decline is
 	// remembered, keyed on the value.
 	const profile = createProfileStore();
-	let declined = $state(declinedFtp());
+	let declined = $state(declinedSuggestion('ftp'));
 	let applied = $state(false);
 	const suggestion = $derived(
 		account.me?.suggestedFtp &&
@@ -65,6 +66,29 @@
 		}
 		applied = true;
 		toasts.push(`FTP set to ${next} W — every workout now scales to it.`);
+	}
+	// The same, for the LTHR a hard solo ride suggests (#1620). Its own decline
+	// memory: keeping an FTP says nothing about a heart rate.
+	let lthrDeclined = $state(declinedSuggestion('lthr'));
+	let lthrApplied = $state(false);
+	const lthrSuggestion = $derived(
+		account.me?.suggestedLthr &&
+			account.me.lthr &&
+			!lthrApplied &&
+			!suggestionDeclined(account.me.suggestedLthr, lthrDeclined)
+			? account.me.suggestedLthr
+			: null,
+	);
+	async function applyLthr(next: number) {
+		// The account first, this browser second (#1543, #1571).
+		const message =
+			(await pushProfile({ lthr: next })) ?? profile.update({ lthr: next });
+		if (message) {
+			toasts.push(message, { tone: 'error' });
+			return;
+		}
+		lthrApplied = true;
+		toasts.push(`LTHR set to ${next} bpm — your heart-rate zones follow it.`);
 	}
 	// Device-only leftovers: summaries the server did not take — refused for
 	// being under a minute, saved while it was unreachable, or from before
@@ -364,6 +388,19 @@
 					all={progression.curve.all}
 				/>
 			</div>
+			{#if lthrSuggestion && account.me?.lthr}
+				<div class="mb-3">
+					<LthrPrompt
+						current={account.me.lthr}
+						suggested={lthrSuggestion}
+						onApply={() => void applyLthr(lthrSuggestion)}
+						onKeep={() => {
+							declineSuggestion('lthr', lthrSuggestion);
+							lthrDeclined = lthrSuggestion;
+						}}
+					/>
+				</div>
+			{/if}
 			{#if suggestion && account.me}
 				<div class="mb-3">
 					<FtpPrompt
@@ -372,7 +409,7 @@
 						best20={account.me.best20m ?? 0}
 						onApply={() => void applySuggestion(suggestion)}
 						onKeep={() => {
-							declineFtp(suggestion);
+							declineSuggestion('ftp', suggestion);
 							declined = suggestion;
 						}}
 					/>
