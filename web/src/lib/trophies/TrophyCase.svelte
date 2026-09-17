@@ -53,7 +53,7 @@
 							<td class="text-muted px-4 py-2 text-xs">{row.rule}</td>
 							<td
 								class="font-display px-4 py-2 text-right font-semibold tabular-nums"
-								>{trophies.xp[row.key].toLocaleString()} XP</td
+								>{(trophies.xp[row.key] ?? 0).toLocaleString()} XP</td
 							>
 						</tr>
 					{/each}
@@ -63,7 +63,8 @@
 						<td class="px-4 py-2 font-medium">Lifetime</td>
 						<td class="text-muted px-4 py-2 text-xs"
 							>{Math.round(
-								(trophies.xp.rides / Math.max(1, trophies.xp.total)) * 100,
+								((trophies.xp.rides ?? 0) / Math.max(1, trophies.xp.total)) *
+									100,
 							)}% from riding</td
 						>
 						<td class="font-display px-4 py-2 text-right font-bold tabular-nums"

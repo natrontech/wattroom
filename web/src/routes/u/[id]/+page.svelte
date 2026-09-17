@@ -186,7 +186,8 @@
 					label: 'achievements',
 					value: String(trophies.achievements.filter((a) => a.earnedAt).length),
 					unit: `of ${trophies.achievements.length}`,
-					hint: `${trophies.xp.achievements.toLocaleString()} XP from them`,
+					// Own page only, so the breakdown is there (#2236).
+					hint: `${(trophies.xp.achievements ?? 0).toLocaleString()} XP from them`,
 				});
 			}
 		} else {

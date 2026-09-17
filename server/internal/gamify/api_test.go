@@ -341,6 +341,42 @@ func TestTrophyCaseMedalsAreScopedToRoomsInCommon(t *testing.T) {
 	}
 }
 
+// ADR-0027: progress toward an unearned badge is private, always. The strip
+// that enforces it had no test at all, which is how the XP breakdown kept
+// handing the same integers back in another unit (#2236): lounge XP is one
+// per five-minute block, so `lounge × 5` is the minutes Lounge Lizard counts.
+func TestARoomMateSeesNoProgress(t *testing.T) {
+	s, _, alice, bob := setup(t)
+	mux := http.NewServeMux()
+	s.Register(mux)
+	shareRoom(t, s, alice, bob)
+	addRide(t, s, alice, time.Now().Add(-time.Hour), 3600, 720, 100)
+	s.LoungeBlock(t.Context(), store.UUIDString(alice.ID), time.Now())
+
+	aliceCase := "/api/riders/" + store.UUIDString(alice.ID) + "/trophies"
+	_, own := get(t, mux, aliceCase, "alice")
+	if own.Xp.Lounge == 0 || own.Counts == (countsJSON{}) {
+		t.Fatalf("the rider's own case is empty: xp=%+v counts=%+v", own.Xp, own.Counts)
+	}
+
+	_, seen := get(t, mux, aliceCase, "bob")
+	if seen.Counts != (countsJSON{}) {
+		t.Fatalf("a room-mate reads the counts: %+v", seen.Counts)
+	}
+	for _, a := range seen.Achievements {
+		if a.Progress != nil {
+			t.Fatalf("a room-mate reads progress on %s: %+v", a.Key, a.Progress)
+		}
+	}
+	// The lifetime total travels (ADR-0024); where it came from does not.
+	if seen.Xp.Total != own.Xp.Total {
+		t.Fatalf("lifetime xp %d, want the rider's own %d", seen.Xp.Total, own.Xp.Total)
+	}
+	if seen.Xp != (xpJSON{Total: own.Xp.Total}) {
+		t.Fatalf("a room-mate reads the breakdown: %+v", seen.Xp)
+	}
+}
+
 // medalIn hangs a medal of one kind on a fresh ride in a room.
 func medalIn(t *testing.T, s *Service, room pgtype.UUID, user db.User, kind string) {
 	t.Helper()
