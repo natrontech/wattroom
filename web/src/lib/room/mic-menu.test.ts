@@ -8,6 +8,14 @@ vi.mock('$lib/room/connection.svelte', () => ({
 	roomConnection: { current: { av: { refreshDevices: () => {} } } },
 }));
 
+// A phone is the pointer, not the width (#2142) — the one thing the gate
+// entries below branch on.
+const env = vi.hoisted(() => ({ coarse: false }));
+vi.mock('$lib/device.svelte', () => ({
+	device: env,
+	deviceWord: () => (env.coarse ? 'phone' : 'desktop'),
+}));
+
 const items = (entries: ReturnType<typeof micMenu>): MenuItem[] =>
 	entries.filter((entry): entry is MenuItem => entry !== 'separator');
 
@@ -25,7 +33,10 @@ const voice = (over: Partial<Parameters<typeof micMenu>[0]> = {}) => ({
 });
 
 describe('micMenu (#914)', () => {
-	beforeEach(() => (soundPanel.open = false));
+	beforeEach(() => {
+		soundPanel.open = false;
+		env.coarse = false;
+	});
 
 	it('says what the click already does, either way round', () => {
 		const onMic = vi.fn();
@@ -88,6 +99,25 @@ describe('micMenu (#914)', () => {
 		const tune = items(micMenu(voice(), () => {})).at(-1)!;
 		expect(tune.label).toBe('Tune your gate…');
 		tune.onSelect();
+		expect(soundPanel.open).toBe(true);
+	});
+
+	// #2142: a handheld runs no gate — the mic button is it (docs/SPEC.md).
+	// The silent one: the entries still rendered, "Voice activation" was
+	// marked `on` while nothing gated anything, and "Tune your gate…" opened
+	// a panel that says there is no gate to tune.
+	it('offers no gate on a handheld, because there is none', () => {
+		env.coarse = true;
+		const list = items(micMenu(voice(), () => {}));
+		expect(list.map((item) => item.label)).toEqual([
+			'Mute',
+			'System default',
+			'MacBook Pro Microphone',
+			'Microphone 2',
+			// The panel is still where the mix and the microphone live.
+			'Sound…',
+		]);
+		list.at(-1)!.onSelect();
 		expect(soundPanel.open).toBe(true);
 	});
 });

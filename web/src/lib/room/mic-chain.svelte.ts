@@ -7,6 +7,11 @@
  * track broadcasts state, and a gate that flaps everyone's muted chip per pause
  * in speech is worse than no gate.
  *
+ * A HANDHELD takes none of that: it publishes the capture as it comes and the
+ * mic button is the gate, because holding a capture open is what puts the
+ * room on a phone's earpiece. `open()` has the why; docs/SPEC.md has it as a
+ * product fact.
+ *
  * Split out of `av.svelte.ts`, which was one closure wide enough that a
  * cross-wired bug looked local. The host owns the LiveKit connection and hands
  * this two functions to reach it, so nothing here imports the SDK.
@@ -41,13 +46,19 @@ export interface MicChainHost {
 	silenced(): void;
 	/** The capture device went away under an open mic (#640). */
 	captureLost(): void;
+	/**
+	 * Is this a machine held in the hand? A phone publishes its capture as it
+	 * comes — `open()` says why, and it is not a preference.
+	 */
+	handheld(): boolean;
 }
 
 interface Chain {
-	ctx: AudioContext;
+	/** null on a handheld: there is no graph, the capture IS the track. */
+	ctx: AudioContext | null;
 	raw: MediaStream;
-	gain: GainNode;
-	meter: MicMeter;
+	gain: GainNode | null;
+	meter: MicMeter | null;
 	track: MediaStreamTrack;
 	/** The capture track being watched for `ended` (#640). */
 	capture: MediaStreamTrack | undefined;
@@ -64,9 +75,11 @@ export function createMicChain(host: MicChainHost) {
 	let testing = $state(false);
 	/**
 	 * The capture died under us (#640): a headset unplugged, Bluetooth dropping
-	 * to its phone profile, another app taking the device. We publish our own
-	 * WebAudio track, so LiveKit's device-loss recovery never sees it — the
-	 * destination keeps emitting silence and nothing notices. Persistent until
+	 * to its phone profile, another app taking the device. Where we publish our
+	 * own WebAudio track, LiveKit's device-loss recovery never sees it — the
+	 * destination keeps emitting silence and nothing notices. `ended` on the
+	 * capture is watched on both paths regardless, so the rider is told the
+	 * same way whichever one they are on. Persistent until
 	 * the mic is open again: the rider three metres away has to be able to see
 	 * why the room stopped hearing them.
 	 */
@@ -141,7 +154,7 @@ export function createMicChain(host: MicChainHost) {
 	}
 
 	function setGate(openNow: boolean) {
-		if (!chain) return;
+		if (!chain?.gain || !chain.ctx) return;
 		transmitting = openNow;
 		// Up in 5 ms, down over 150 ms (SPEC): opening fast is what keeps the
 		// first syllable, and a close that fades is one the room forgives — it
@@ -156,7 +169,7 @@ export function createMicChain(host: MicChainHost) {
 	}
 
 	function runGate() {
-		if (!chain || (!host.live() && !testing)) return;
+		if (!chain?.ctx || (!host.live() && !testing)) return;
 		if (settings.mode === 'ptt') {
 			setGate(settings.pttHeld);
 			return;
@@ -172,6 +185,42 @@ export function createMicChain(host: MicChainHost) {
 	/** Opens the mic onto the wire. Throws what the browser refused. */
 	async function open() {
 		if (chain) close(); // a mic test or stale chain must not orphan a stream
+		if (host.handheld()) {
+			// A phone publishes what getUserMedia handed over — no meter, no
+			// gate (#2142). Two reasons, and they are the same reason:
+			//
+			//  - While a page holds an audio capture, iOS and Android both put
+			//    the device into its communication mode and play the page —
+			//    WebAudio and media elements alike — out of the EARPIECE.
+			//    Nothing on the web can override that route; releasing the
+			//    capture is the only thing that hands the loudspeaker back.
+			//    A gate holds the capture open for as long as a rider is in
+			//    voice, so a phone sat in earpiece mode the whole time (rider
+			//    report: "no speaker like on phone", and the room sounding
+			//    terrible with it). Here the mic button IS the capture.
+			//  - capture → worklet → MediaStreamDestination is a round trip a
+			//    phone does not always keep up with, and the same report had
+			//    the input lagging and flickering — a gate chattering mid-word
+			//    on a starved audio thread.
+			//
+			// ponytail: no gate on a handheld, and the mic button is it. The
+			// upgrade path would be a meter cheap enough to run there — which
+			// still would not buy the loudspeaker back, so it is not on the
+			// way to anything.
+			const raw = await capture();
+			chain = {
+				ctx: null,
+				raw,
+				gain: null,
+				meter: null,
+				track: raw.getAudioTracks()[0],
+				capture: watchCapture(raw),
+			};
+			await host.publish(chain.track);
+			transmitting = true;
+			fault = false;
+			return;
+		}
 		const { ctx, raw, gain, meter } = await build();
 		const dest = ctx.createMediaStreamDestination();
 		gain.connect(dest);
@@ -217,10 +266,10 @@ export function createMicChain(host: MicChainHost) {
 			const { ctx, raw, track, capture: watched } = chain;
 			// Unhook before stopping: a close the rider asked for is not a fault.
 			watched?.removeEventListener('ended', onCaptureEnded);
-			chain.meter.stop();
+			chain.meter?.stop();
 			host.unpublish(track);
 			for (const t of raw.getTracks()) t.stop();
-			void ctx.close();
+			void ctx?.close();
 		}
 		chain = null;
 		gate = GATE_SHUT;
@@ -245,7 +294,7 @@ export function createMicChain(host: MicChainHost) {
 		},
 		/** Suspended contexts do not run their audio thread — no level, no gate. */
 		resume() {
-			if (chain && chain.ctx.state === 'suspended') void chain.ctx.resume();
+			if (chain?.ctx?.state === 'suspended') void chain.ctx.resume();
 		},
 		/** Stepping away, or handing the mic to another tab, is not a fault. */
 		clearFault() {

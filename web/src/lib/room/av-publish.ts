@@ -94,6 +94,12 @@ export function createPublish(host: PublishHost) {
 		const track = conn.room.localParticipant.getTrackPublication(
 			conn.liveKit!.Track.Source.Camera,
 		)?.videoTrack;
+		// The next capture is a fresh one, and a fresh one faces the rider on
+		// every phone — so the note about which way we turned it goes with the
+		// track it described (#2142). Kept, it would have made the first flip
+		// after a reopen ask for the side the camera was already on: a tap
+		// that changes nothing.
+		facing = 'user';
 		await conn.room.localParticipant.setCameraEnabled(false).catch(() => {});
 		track?.mediaStreamTrack?.stop();
 		if (seats.drop('video', conn.me, conn.myIdentity)) stage.dropVideo(conn.me);
@@ -122,6 +128,44 @@ export function createPublish(host: PublishHost) {
 				)?.videoTrack
 			)
 				av.camOn = false;
+		}
+	}
+
+	/**
+	 * Turn the phone round (#2142: front/back switching does not work).
+	 *
+	 * Two cameras in a hand are not a dropdown. `switchCam` above asks for a
+	 * `deviceId`, which is what the picker has and what iOS honours least —
+	 * both lenses are one "camera" there far more often than not — and a
+	 * rider on a bike does not read a list of device labels anyway (ux.md).
+	 * `facingMode` is the constraint the platform actually answers, and
+	 * `restartTrack` keeps the publication: the room sees the picture turn
+	 * round rather than go away and come back.
+	 *
+	 * Which way it faces is the track's own word where the browser gives one,
+	 * and a note kept here where it does not — which is the platform that
+	 * needed this feature. LiveKit's `facingModeFromLocalTrack` is not used
+	 * for it: absent the setting it guesses from the device label, and a
+	 * wrong guess turns the flip into a tap that changes nothing. A refused
+	 * flip leaves the note where it was, so the next press tries the same
+	 * direction again instead of the one that just failed.
+	 */
+	let facing: 'user' | 'environment' = 'user';
+	function facingOf(track: { mediaStreamTrack?: MediaStreamTrack }) {
+		const said = track.mediaStreamTrack?.getSettings?.().facingMode;
+		return said === 'user' || said === 'environment' ? said : facing;
+	}
+	async function flipCam() {
+		const track = conn.room?.localParticipant.getTrackPublication(
+			conn.liveKit!.Track.Source.Camera,
+		)?.videoTrack;
+		if (!track) return;
+		const next = facingOf(track) === 'user' ? 'environment' : 'user';
+		try {
+			await track.restartTrack({ facingMode: next });
+			facing = next;
+		} catch (cause) {
+			failedMedia(cause, 'camera');
 		}
 	}
 
@@ -279,6 +323,7 @@ export function createPublish(host: PublishHost) {
 		openCam,
 		closeCam,
 		switchCam,
+		flipCam,
 		startShare,
 		stopShare,
 		setShareSound,

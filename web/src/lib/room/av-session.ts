@@ -3,6 +3,7 @@ import type {
 	Track as LiveKitTrack,
 } from 'livekit-client';
 import { api } from '$lib/api';
+import { device } from '$lib/device.svelte';
 import { mixer } from '$lib/sound/mixer.svelte';
 import type { ClaimantSource, LiveKitClient } from '$lib/room/av-types';
 import type { AvConn, AvState } from '$lib/room/av-state.svelte';
@@ -93,8 +94,17 @@ export function createSession(host: SessionHost) {
 	 * button passes nothing and gets the SPEC default of a mic already open;
 	 * the two resumes — the #480 refresh and the #219 drop-rejoin — pass the
 	 * state the rider left in, so a rider who was muted stays muted (#641).
+	 *
+	 * A HANDHELD arrives listening instead (#2142), and that is not a second
+	 * opinion about SPEC's default: while the page holds an audio capture, iOS
+	 * and Android play the whole room out of the earpiece, and a rider who
+	 * joined to listen could not hear it. They land on the loudspeaker, and
+	 * the mic button is the way into voice — which is also the only way back
+	 * off the earpiece.
 	 */
-	async function join({ mic: wantMic = true }: { mic?: boolean } = {}) {
+	async function join({
+		mic: wantMic = !device.coarse,
+	}: { mic?: boolean } = {}) {
 		// Double-click or an impatient rail tap must not build a second
 		// participant with the same identity (audit #219) — nor race the
 		// SDK's own retry while it is reconnecting (#234).
@@ -196,8 +206,8 @@ export function createSession(host: SessionHost) {
 				claims.consider(claimantOf(p));
 			// Post-permission the labels are real — the pickers can name devices.
 			void devices.refresh();
-			// Mic on by default (SPEC); a denied permission downgrades to
-			// listen-only rather than failing the join.
+			// Mic on by default (SPEC), off on a handheld (see join's note); a
+			// denied permission downgrades to listen-only rather than failing.
 			for (const p of conn.room.remoteParticipants.values()) {
 				const pub = p.getTrackPublication(
 					conn.liveKit!.Track.Source.Microphone,

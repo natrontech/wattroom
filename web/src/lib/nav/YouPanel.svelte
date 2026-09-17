@@ -17,6 +17,7 @@
 	import { micMenu } from '$lib/room/mic-menu';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { statusOfRider } from '$lib/status';
+	import { device } from '$lib/device.svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { AWAY_CHOICES, AWAY_STATES, awayState } from '$lib/away';
 	import Headphones from '@lucide/svelte/icons/headphones';
@@ -27,6 +28,7 @@
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import ScreenShareOff from '@lucide/svelte/icons/screen-share-off';
 	import Settings from '@lucide/svelte/icons/settings';
+	import SwitchCamera from '@lucide/svelte/icons/switch-camera';
 	import Video from '@lucide/svelte/icons/video';
 	import VideoOff from '@lucide/svelte/icons/video-off';
 
@@ -71,6 +73,7 @@
 	const onJoin = () => void av?.join();
 	const onMic = () => av?.toggleMic();
 	const onCam = () => av?.toggleCam();
+	const onFlip = () => av?.flipCam();
 	const onShare = () => void av?.toggleShare();
 	const onLeaveVoice = () => av?.leave();
 	const onTakeOver = () => av?.takeOver();
@@ -205,7 +208,17 @@
 					     on the marketing page and in settings, never here — where a
 					     rider first opens a microphone into a room (audit 2026-09-09). -->
 					<p class="text-muted-dim basis-full px-1 text-[10px]">
-						Never recorded. Your mic opens when you speak.
+						{#if device.coarse}
+							<!-- The gate would hold the capture open, and a phone
+							     plays the room through its earpiece for as long as
+							     anything is capturing (`mic-chain.svelte.ts`). So
+							     the mic button is the gate here, and the promise
+							     says what actually happens. -->
+							Never recorded. Tap the mic to talk — while it is open your phone plays
+							the room through the earpiece.
+						{:else}
+							Never recorded. Your mic opens when you speak.
+						{/if}
 					</p>
 				{/if}
 			{:else}
@@ -245,6 +258,18 @@
 				>
 					{#if camOn}<Video size={16} />{:else}<VideoOff size={16} />{/if}
 				</button>
+				<!-- Front or back, on the machines that have both (#2142). Hidden
+				     rather than disabled on a desk: one webcam has no other side,
+				     and the picker in Sound is still where a second USB camera is
+				     chosen. -->
+				{#if camOn && device.coarse}
+					<button
+						onclick={() => onFlip?.()}
+						class="text-muted-dim hover:text-muted flex h-11 flex-1 items-center justify-center rounded"
+						title="front or back camera"
+						aria-label="flip camera"><SwitchCamera size={16} /></button
+					>
+				{/if}
 				<!-- Sharing takes the danger token, like the mic does when it is
 			     muted (#563): a state you might not have noticed, and the one
 			     that can put a private tab on the stage. Chrome, so the token

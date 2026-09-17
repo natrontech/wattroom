@@ -70,7 +70,6 @@
 		connectedSlug = '',
 		live = false,
 		onLeave,
-		onSheet,
 	}: {
 		pathname: string;
 		rooms?: RailRoom[];
@@ -78,13 +77,6 @@
 		connectedSlug?: string;
 		live?: boolean;
 		onLeave?: () => void;
-		/**
-		 * The sidebar is opening a sheet of its own (#1199). Below md the
-		 * layout's drawer sits above dialogs (z-50 over z-40, and dialogs stay
-		 * there for the player's sake), so the drawer has to step aside the
-		 * way it does on navigation.
-		 */
-		onSheet?: () => void;
 	} = $props();
 
 	// Your own badge, on the same rule as everyone else's (#824): the people
@@ -436,10 +428,7 @@
 			     Channel" in the server you are looking at, not a trip to the
 			     bottom of Home. -->
 			<button
-				onclick={() => {
-					opening = true;
-					onSheet?.();
-				}}
+				onclick={() => (opening = true)}
 				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
 				title="open a room or join a crew with a code"
 				aria-label="open a room or join a crew with a code"
@@ -470,12 +459,8 @@
 					<li class="text-muted px-2 py-1 text-xs">
 						{#if crew?.role === 'owner' || crew?.role === 'admin'}
 							No rooms yet. A room is a channel of the crew —
-							<button
-								onclick={() => {
-									opening = true;
-									onSheet?.();
-								}}
-								class="btn-link">open one</button
+							<button onclick={() => (opening = true)} class="btn-link"
+								>open one</button
 							>.
 						{:else if crew}
 							No rooms yet. A room is a channel of the crew; its owner or an
@@ -484,12 +469,8 @@
 							<!-- In no crew at all (#2144): the way in is joining one, and
 						     opening a room of your own is the option, not the ask. -->
 							Not in a crew yet —
-							<button
-								onclick={() => {
-									opening = true;
-									onSheet?.();
-								}}
-								class="btn-link">join one with its code</button
+							<button onclick={() => (opening = true)} class="btn-link"
+								>join one with its code</button
 							>, or open a room of your own.
 						{/if}
 					</li>

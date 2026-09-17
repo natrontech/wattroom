@@ -16,6 +16,8 @@
 	import MixFaders from '$lib/room/MixFaders.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { canHoldToTalk } from '$lib/room/ptt-keys';
+	import { device } from '$lib/device.svelte';
+	import HandheldMicNote from '$lib/room/HandheldMicNote.svelte';
 	import { openSoundPanel, soundPanel } from '$lib/room/sound-panel.svelte';
 
 	// `compact` is the sidebar's you-panel: an icon in a row of icons, next to
@@ -58,53 +60,58 @@
 
 		<div class="border-ink/5 mt-4 border-t pt-4">
 			<span class="eyebrow">how you transmit</span>
-			<!-- Two big targets, not radios: this is tapped at 160 bpm (ux.md). -->
-			<div class="mt-1.5 flex gap-2">
-				<button
-					onclick={() => voice.setMode('gate')}
-					aria-pressed={voice.mode === 'gate'}
-					class="btn flex-1 {voice.mode === 'gate'
-						? 'btn-primary'
-						: 'btn-secondary'}">Voice activation</button
-				>
-				<!-- Space is the key, and the button says so (#1879); where there
-				     is no key to hold, the mode is not offered. -->
-				{#if canHoldToTalk()}
+			{#if device.coarse}
+				<HandheldMicNote />
+			{:else}
+				<!-- Two big targets, not radios: this is tapped at 160 bpm (ux.md). -->
+				<div class="mt-1.5 flex gap-2">
 					<button
-						onclick={() => voice.setMode('ptt')}
-						aria-pressed={voice.mode === 'ptt'}
-						class="btn flex-1 flex-col gap-0 leading-tight {voice.mode === 'ptt'
+						onclick={() => voice.setMode('gate')}
+						aria-pressed={voice.mode === 'gate'}
+						class="btn flex-1 {voice.mode === 'gate'
 							? 'btn-primary'
-							: 'btn-secondary'}"
-						>Push to talk
-						<span class="block text-[10px] font-normal opacity-70"
-							>hold Space</span
-						></button
+							: 'btn-secondary'}">Voice activation</button
+					>
+					<!-- Space is the key, and the button says so (#1879); where there
+				     is no key to hold, the mode is not offered. -->
+					{#if canHoldToTalk()}
+						<button
+							onclick={() => voice.setMode('ptt')}
+							aria-pressed={voice.mode === 'ptt'}
+							class="btn flex-1 flex-col gap-0 leading-tight {voice.mode ===
+							'ptt'
+								? 'btn-primary'
+								: 'btn-secondary'}"
+							>Push to talk
+							<span class="block text-[10px] font-normal opacity-70"
+								>hold Space</span
+							></button
+						>
+					{/if}
+				</div>
+				<div class="mt-3">
+					<GateTune
+						micOn={voice.micOn}
+						micLevel={voice.micLevel}
+						transmitting={voice.transmitting}
+						voiceMode={voice.mode}
+						gateThreshold={voice.gateThreshold}
+						effectiveThreshold={voice.effectiveGateThreshold}
+						onGateThreshold={(t) => voice.setGateThreshold(t)}
+						micTesting={voice.micTesting}
+					/>
+				</div>
+				{#if !voice.micOn}
+					<button
+						onclick={() => void voice.toggleMicTest()}
+						class="btn btn-secondary btn-xs mt-3 {voice.micTesting
+							? 'border-z4/60'
+							: ''}"
+						>{voice.micTesting
+							? 'testing — you hear yourself · stop'
+							: 'test my mic'}</button
 					>
 				{/if}
-			</div>
-			<div class="mt-3">
-				<GateTune
-					micOn={voice.micOn}
-					micLevel={voice.micLevel}
-					transmitting={voice.transmitting}
-					voiceMode={voice.mode}
-					gateThreshold={voice.gateThreshold}
-					effectiveThreshold={voice.effectiveGateThreshold}
-					onGateThreshold={(t) => voice.setGateThreshold(t)}
-					micTesting={voice.micTesting}
-				/>
-			</div>
-			{#if !voice.micOn}
-				<button
-					onclick={() => void voice.toggleMicTest()}
-					class="btn btn-secondary btn-xs mt-3 {voice.micTesting
-						? 'border-z4/60'
-						: ''}"
-					>{voice.micTesting
-						? 'testing — you hear yourself · stop'
-						: 'test my mic'}</button
-				>
 			{/if}
 		</div>
 
