@@ -131,6 +131,25 @@ func (h *harness) befriend(t *testing.T, a, b string) {
 	}
 }
 
+// avatarPNG is enough of a PNG to be served back byte for byte; nothing here
+// decodes it.
+const avatarPNG = "\x89PNG\r\n\x1a\nrest-of-a-picture"
+
+// avatar gives the rider a stored picture and returns its address — the one
+// the page hands out, so a test fetches what a browser would.
+func (h *harness) avatar(t *testing.T, name string) string {
+	t.Helper()
+	url := "/api/riders/" + h.id(name) + "/avatar"
+	if _, err := h.store.Queries.SetUserAvatar(t.Context(), db.SetUserAvatarParams{
+		ID: h.users.ByToken[name].ID, Mime: "image/png", Image: []byte(avatarPNG),
+		SetAt:     pgtype.Timestamptz{Time: time.Now().Truncate(time.Millisecond), Valid: true},
+		AvatarUrl: &url,
+	}); err != nil {
+		t.Fatalf("set avatar for %s: %v", name, err)
+	}
+	return url
+}
+
 func (h *harness) get(t *testing.T, viewer, path string) (int, map[string]any) {
 	t.Helper()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)

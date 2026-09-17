@@ -13,18 +13,24 @@ import (
 
 // ADR-0024 settles ONE audience for a rider's page: a shared live room, an
 // accepted friendship, or a pending request from that rider — plus the rider
-// themselves. Two endpoints serve it, and each used to decide it for itself:
+// themselves. Three endpoints serve it, and each used to decide it for itself:
 // riders.handleGet composed ListRoomsInCommon with friendStatus in Go,
-// gamify.handleRider called the SharesRoomOrFriends SQL (#2298).
+// gamify.handleRider called the SharesRoomOrFriends SQL (#2298), and
+// riders.handleAvatar asked nothing at all and answered everyone (#2239).
 //
 // They agreed by coincidence. This is the test that would have caught them
-// drifting, and the reason it lives here rather than in either package's own
-// gate tests: the property is that the two ANSWER THE SAME, which neither can
-// assert alone.
+// drifting, and the reason it lives here rather than in any package's own gate
+// tests: the property is that the three ANSWER THE SAME, which none can assert
+// alone.
 func TestBothRoutesServeOneAudience(t *testing.T) {
 	h := setup(t)
 	h.room(t, "one-audience-cave", "alice", "bob")
 	h.befriend(t, "alice", "dan")
+	// Every rider carries a picture, so a 404 from the avatar route is the
+	// gate refusing and never "there is nothing stored".
+	for _, name := range []string{"alice", "bob", "cara", "dan"} {
+		h.avatar(t, name)
+	}
 	// dan asked cara; nothing came of it yet.
 	if err := h.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
 		RequesterID: h.users.ByToken["dan"].ID, AddresseeID: h.users.ByToken["cara"].ID,
@@ -68,9 +74,10 @@ func TestBothRoutesServeOneAudience(t *testing.T) {
 			id := h.id(tc.rider)
 			page := ask(t, tc.viewer, "/api/riders/"+id)
 			trophies := ask(t, tc.viewer, "/api/riders/"+id+"/trophies")
-			if page != tc.want || trophies != tc.want {
-				t.Errorf("the page answered %d and the trophy case on it answered %d; ADR-0024 grants one audience, and here it is %d",
-					page, trophies, tc.want)
+			face := ask(t, tc.viewer, "/api/riders/"+id+"/avatar")
+			if page != tc.want || trophies != tc.want || face != tc.want {
+				t.Errorf("the page answered %d, the trophy case on it %d and the face on it %d; ADR-0024 grants one audience, and here it is %d",
+					page, trophies, face, tc.want)
 			}
 		})
 	}
