@@ -125,9 +125,9 @@ select (
 select * from crews where owner_id = $1 order by (founded_by = $1) desc, created_at limit 1;
 
 -- name: PlaceRoomInCrew :exec
--- Crewless rooms are forbidden in code from the cutover (ADR-0038). A
--- separate statement rather than a wider CreateRoom: fifteen call sites make
--- rooms directly and none of them is a creation path a rider can reach.
+-- Crewless rooms are forbidden in code from the cutover (ADR-0038). This
+-- places a room that ALREADY EXISTS; creation carries its own crew in the
+-- insert (CreateRoom, #1301), which a constraint on the column needs it to.
 update rooms set crew_id = $2, crew_visible = $3 where id = $1;
 
 -- name: UpdateCrew :one

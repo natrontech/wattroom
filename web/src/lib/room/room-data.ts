@@ -39,7 +39,9 @@ export interface Together {
  * between. Identity only — a crew carries no voice, deck, session or metrics.
  *
  * Members only, so it is absent for a room you are looking at from outside.
- * Absent too while `crew_id` is nullable, which is one release (#1178).
+ * Absent too while `crew_id` is nullable (#1178), which it still is: the
+ * amendment said one release, the insert that makes a room did not name the
+ * column, and #1301 carries the corrected sequence.
  */
 export interface RoomCrew {
 	id: string;

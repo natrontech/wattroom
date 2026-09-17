@@ -89,8 +89,15 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			httpx.Fail(w, s.log, "room create savepoint failed", err, "The room could not be created. Try again.")
 			return
 		}
+		// The crew rides in the insert, not in a follow-up update
+		// (#1301): a room that is crew-less even for the width of a
+		// transaction is a room the contract half's constraint refuses.
+		// Crew-visible likewise — true here rather than the column's
+		// default, which is false so a rolled-back image and a forgotten
+		// field both fail towards private.
 		created, err := s.store.Queries.WithTx(sp).CreateRoom(r.Context(), db.CreateRoomParams{
 			Slug: strings.ToLower(slug), Name: req.Name, OwnerID: user.ID,
+			CrewID: crew.ID, CrewVisible: true,
 		})
 		if err == nil {
 			if err := sp.Commit(r.Context()); err != nil {
@@ -113,17 +120,6 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "owner membership failed", err, "The room could not be created. Try again.", "room", room.Slug)
-		return
-	}
-	// New rooms are created inside a crew and are open to it (ADR-0038).
-	// Crew-visible is set here and not by the column's default, which is
-	// false so that a rolled-back image and a forgotten INSERT both fail
-	// towards private.
-	err = q.PlaceRoomInCrew(r.Context(), db.PlaceRoomInCrewParams{
-		ID: room.ID, CrewID: crew.ID, CrewVisible: true,
-	})
-	if err != nil {
-		httpx.Fail(w, s.log, "room crew placement failed", err, "The room could not be created. Try again.", "room", room.Slug)
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {
