@@ -30,11 +30,13 @@ func DSN() string {
 
 // Open connects to DSN and migrates it.
 //
-// No database at all is a skip: a laptop without make infra. A database that
-// answers and then refuses is a FAILURE: a test that skips on "migrate: ..."
-// reads as green while running nothing, which is how a whole suite passed for
-// most of a day (2026-09-09). The refusal that day was a missing migration,
-// which the server now applies instead (#1481); the rule outlives its example.
+// No database at all is a skip: a laptop without make infra. Everything else
+// is a FAILURE: a test that skips on "migrate: ..." reads as green while
+// running nothing, which is how a whole suite passed for most of a day
+// (2026-09-09). The refusal that day was a missing migration, which the
+// server now applies instead (#1481); the rule outlives its example — and it
+// covers a dsn that will not parse too, which used to land in the skip and so
+// made a typo in WATTROOM_TEST_DB print ok for seventeen packages (#2352).
 func Open(t testing.TB) *store.Store {
 	t.Helper()
 	dsn := DSN()
@@ -45,7 +47,7 @@ func Open(t testing.TB) *store.Store {
 		if errors.Is(err, store.ErrUnreachable) {
 			t.Skipf("no database available: %v", err)
 		}
-		t.Fatalf("the test database answered but is unusable — a migration it will not take, which is not the same as one it merely has not seen (#1481): %v", err)
+		t.Fatalf("the test database is unusable, and this is not the absence a skip is for: either WATTROOM_TEST_DB is not a dsn (it takes a connection string, not a database name — #2352), or the database answered and refused a migration it will not take, which is not the same as one it merely has not seen (#1481): %v", err)
 	}
 	t.Cleanup(st.Close)
 	return st

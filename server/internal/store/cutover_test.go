@@ -47,7 +47,7 @@ func scratchDB(t *testing.T) string {
 	t.Helper()
 	u, err := url.Parse(cutoverDSN(t))
 	if err != nil {
-		t.Skipf("unparseable DSN: %v", err)
+		t.Fatalf("WATTROOM_TEST_DB is not a dsn, which is a mistake rather than an absent database (#2352): %v", err)
 	}
 	name := fmt.Sprintf("wattroom_cutover_%d", time.Now().UnixNano())
 
@@ -55,13 +55,23 @@ func scratchDB(t *testing.T) string {
 	admin.Path = "/postgres"
 	sqldb, err := sql.Open("pgx", admin.String())
 	if err != nil {
-		t.Skipf("no database available: %v", err)
+		t.Fatalf("open: %v", err)
 	}
 	defer func() { _ = sqldb.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+	// Ping is what separates the two answers, exactly as storetest.Open does
+	// it: nothing there at all is the laptop without `make infra` and skips,
+	// and a server that answers and then refuses to create the scratch
+	// database is a failure — freshDatabase, which does the same thing in
+	// store_test.go, has always been fatal there. Skipping on the refusal
+	// meant a permission or a disk that could stop the cutover suite without
+	// stopping the run (#2352).
+	if err := sqldb.PingContext(ctx); err != nil {
+		t.Skipf("no database available: %v", err)
+	}
 	if _, err := sqldb.ExecContext(ctx, "create database "+name); err != nil {
-		t.Skipf("cannot create a scratch database: %v", err)
+		t.Fatalf("create the scratch database: %v", err)
 	}
 	t.Cleanup(func() {
 		db2, err := sql.Open("pgx", admin.String())

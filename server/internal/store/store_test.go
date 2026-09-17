@@ -27,18 +27,12 @@ import (
 // `go test` stays green on a machine with no database. `make test` and CI set
 // WATTROOM_REQUIRE_DB, which turns that skip into a failure — see
 // TestDatabaseReachableWhenRequired.
-func open(t *testing.T) *store.Store {
-	t.Helper()
-	dsn := storetest.DSN()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	st, err := store.Open(ctx, dsn)
-	if err != nil {
-		t.Skipf("no database available: %v", err)
-	}
-	t.Cleanup(st.Close)
-	return st
-}
+//
+// storetest.Open holds the skip rule for all twenty-one packages that open
+// this database, and this package had its own copy that skipped on every
+// error — including the answered-then-refused one the rule exists to fail
+// on (#2352).
+func open(t *testing.T) *store.Store { return storetest.Open(t) }
 
 // One flow through every table: migrations apply, FKs hold, and a ride's blob
 // comes back byte-identical. Table-per-query unit tests would only re-test sqlc.
@@ -125,6 +119,22 @@ func TestDatabaseReachableWhenRequired(t *testing.T) {
 		t.Fatalf("no test database, so every DB-backed package would skip and the suite would still say ok — run `make infra` here, or set WATTROOM_TEST_DB: %v", err)
 	}
 	st.Close()
+}
+
+// A dsn that will not parse is neither of those answers. It used to be
+// ErrUnreachable, so a typo in WATTROOM_TEST_DB skipped all seventeen
+// DB-backed packages and `go test` printed ok for a suite that ran nothing
+// (#2352). pgxpool.New never connects, so this is the only thing it can mean.
+func TestOpenDoesNotCallAMalformedDSNUnreachable(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	_, err := store.Open(ctx, "wattroom_test_wt_somewhere")
+	if err == nil {
+		t.Fatal("a bare database name opened a store")
+	}
+	if errors.Is(err, store.ErrUnreachable) {
+		t.Fatalf("a dsn that will not parse reported itself as an absent database, which the test helpers skip on: %v", err)
+	}
 }
 
 // A database that is not there is a different answer from one that answered

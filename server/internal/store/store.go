@@ -40,9 +40,14 @@ var ErrUnreachable = errors.New("database unreachable")
 // Open connects, migrates, and returns the ready store. dsn comes from
 // WATTROOM_DB; callers treat an empty dsn as "run without a database".
 func Open(ctx context.Context, dsn string) (*Store, error) {
+	// Deliberately NOT ErrUnreachable: pgxpool.New does not connect — Ping
+	// below is what does — so the only way it fails is a dsn that will not
+	// parse. That is a mistake in the configuration, never the laptop
+	// without `make infra` the skip is for, and a caller that named a
+	// database has asked for that one (#2352).
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		return nil, fmt.Errorf("store: connect: %w (%w)", err, ErrUnreachable)
+		return nil, fmt.Errorf("store: connect: %w", err)
 	}
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
