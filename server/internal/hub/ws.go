@@ -251,9 +251,13 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				}
 				rm.chatLine(line)
 			} else if text != "" || imageID != "" {
-				// Every other throttled channel answers; this one dropped the
-				// line in silence and the composer had already cleared it
-				// (#1762). Two fast lines on a phone keyboard is the normal case.
+				// A deliberate act with a visible result answers when it is
+				// refused: this one dropped the line in silence and the
+				// composer had already cleared it (#1762). Two fast lines on
+				// a phone keyboard is the normal case. Cheer, react and board
+				// stay quiet below because they are fire-and-forget taps and
+				// the rider has lost nothing — the jukebox is not, and says so
+				// (#2232).
 				h.writeError(c, "rate_limited", "One line a second — say that again in a moment.")
 			}
 		}
@@ -295,6 +299,16 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				} else if played != nil && h.xp != nil {
 					h.xp.TrackPlayed(slug, played.riderID, played.ref, h.now())
 				}
+			} else {
+				// Skip, pause, queue: deliberate taps a rider watches for a
+				// result, so a refused one has to say so (#2232). Every other
+				// way this channel refuses already answers — the jukebox's own
+				// refusals right above — and the throttle was the one that did
+				// not, which reads as the button not working.
+				//
+				// jukebox_ so it lands beside the deck the rider tapped rather
+				// than in the room's own refusal slot (live.svelte.ts).
+				h.writeError(c, "jukebox_rate_limited", "That was quick — give the deck a moment.")
 			}
 		}
 		if msg.Backfill != nil {

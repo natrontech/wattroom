@@ -1,0 +1,1 @@
+- A jukebox command refused by the room's throttle now tells you, beside the deck, instead of doing nothing. Two quick taps on skip or pause looked like the button was broken.
