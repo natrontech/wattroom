@@ -423,7 +423,7 @@ future trainer that reports none.
 ## Planned sessions (#116)
 
 - **A room may plan two sessions that overlap, and nothing refuses one** (#1767). Planning is bounded three months out and by the room's 50-plan shelf, and that is the whole of it: two coaches taking the same evening, or a short spin offered against a long one, is a thing a room does, and a room that argued with its own calendar over it would be worse than one that shows both. There is no 409.
-- **Which of two overlapping plans leads is settled by which was planned first**, not by which read asked. The room's list, the rail's next-session line and both calendar feeds order by start time, then creation time, then id — a total order, so the plan labelled _next session in this room_ is the same plan on every read. Ordering by start time alone left that label on whichever row Postgres returned first, which could differ between two reads of an unchanged room.
+- **Which of two overlapping plans leads is settled by which was planned first**, not by which read asked. The room's list, the rail's next-session line, Home's _What's next_ and both calendar feeds order by start time, then creation time, then id — a total order, so the plan labelled _next session in this room_ is the same plan on every read. Ordering by start time alone left that label on whichever row Postgres returned first, which could differ between two reads of an unchanged room.
 
 ## Room chat
 
