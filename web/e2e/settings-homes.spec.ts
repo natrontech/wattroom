@@ -198,3 +198,44 @@ test('an account refresh does not overwrite what the rider is typing', async ({
 
 	await expect(ftp).toHaveValue('275');
 });
+
+test('a switch that saves itself goes back when the save is refused', async ({
+	page,
+}) => {
+	// The account as the switch needs it — mail configured, an address
+	// confirmed — and a server that refuses the save (#2181).
+	await page.route('**/api/me', async (route) => {
+		if (route.request().method() !== 'GET') {
+			return route.fulfill({
+				status: 400,
+				json: {
+					error: 'validation_error',
+					message: 'That could not be saved.',
+				},
+			});
+		}
+		const res = await route.fetch();
+		const me = await res.json();
+		return route.fulfill({
+			json: {
+				...me,
+				mailAvailable: true,
+				emailVerified: '2026-09-01T00:00:00Z',
+				notifyPlanned: false,
+			},
+		});
+	});
+	await signInAs(page, 'Notify Refused', '/settings/notifications');
+
+	const box = page.getByRole('checkbox', { name: /Email me about sessions/ });
+	await expect(box).toBeVisible({ timeout: 15_000 });
+	await expect(box).not.toBeChecked();
+	// A plain click, not check(): check() verifies the box ENDED UP ticked,
+	// and the whole point here is that it does not.
+	await box.click();
+
+	// Nothing was saved, so the tick cannot stay: it said "on" over a mail
+	// that will never come.
+	await expect(box).not.toBeChecked();
+	await expect(page.getByText('That could not be saved.')).toBeVisible();
+});

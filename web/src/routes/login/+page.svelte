@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { EMAIL_IS_FOR } from '$lib/auth/address';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
@@ -376,8 +377,7 @@
 						     new account; say so here rather than let it be a surprise
 						     (audit 2026-09-09). -->
 						<span class="block">
-							New accounts confirm an email address — it is only used to get you
-							back in.
+							New accounts confirm an email address. {EMAIL_IS_FOR}
 						</span>
 					{/if}
 				</p>

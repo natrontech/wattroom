@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { EMAIL_IS_FOR } from '$lib/auth/address';
 	// The address gate (#781, ADR-0029). An email is the account's recovery
 	// attribute — the way back in when every provider and passkey is gone — so
 	// a rider onboarded with the requirement confirms one before riding, and an
@@ -100,10 +101,7 @@
 			use:focusTrap
 		>
 			<h2 class="font-display text-lg font-bold">Confirm an email address</h2>
-			<p class="text-muted mt-2 text-sm">
-				It is how you get back into this account if you ever lose the way you
-				sign in. Nothing else uses it, and it is never shown to anyone.
-			</p>
+			<p class="text-muted mt-2 text-sm">{EMAIL_IS_FOR}</p>
 			{#if page.url.pathname.startsWith('/c/')}
 				<!-- The invited rider (ADR-0038): the door they were sent to is
 				     right behind this, and the gate must not read as a detour

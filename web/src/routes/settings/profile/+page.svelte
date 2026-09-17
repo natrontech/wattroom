@@ -13,6 +13,7 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account, unchosen } from '$lib/account.svelte';
+	import { EMAIL_IS_FOR } from '$lib/auth/address';
 	import { toasts } from '$lib/toast.svelte';
 	import { api } from '$lib/api';
 	import { compressImage } from '$lib/chat/media';
@@ -289,7 +290,7 @@
 					{@render fieldError('displayName')}
 				</label>
 				<ProviderConnections
-					onUploadToggle={(on) => {
+					onUploadToggle={async (on) => {
 						// The account's stored values, not the form's live ones,
 						// the way Notifications sends them (#2165): a checkbox
 						// commits a checkbox. It used to PATCH whatever was in
@@ -298,15 +299,16 @@
 						// half-typed FTP made the checkbox fail with an FTP
 						// error about a field nobody had submitted.
 						const me = account.me;
-						if (!me) return;
-						void account
-							.save({
-								displayName: me.displayName,
-								ftpWatts: me.ftpWatts,
-								weightKg: me.weightKg,
-								stravaUpload: on,
-							})
-							.then((err) => (saveError = err));
+						if (!me) return null;
+						// The refusal goes back to the checkbox (#2181), not into
+						// this form's banner: it is the box that is wrong now.
+						const err = await account.save({
+							displayName: me.displayName,
+							ftpWatts: me.ftpWatts,
+							weightKg: me.weightKg,
+							stravaUpload: on,
+						});
+						return err?.message ?? null;
 					}}
 				/>
 				<!-- The response to "a passkey was added to your account" (ADR-0030,
@@ -323,40 +325,47 @@
 					>
 				</div>
 				<PasskeyList />
-				<label class="block">
-					<span class="eyebrow">FTP (W)</span>
-					<input
-						type="number"
-						bind:value={ftp}
-						min={PROFILE_LIMITS.minFtp}
-						max={PROFILE_LIMITS.maxFtp}
-						aria-invalid={saveError?.field === 'ftpWatts' ? 'true' : undefined}
-						class="input num mt-1 w-full"
-					/>
-					{@render fieldError('ftpWatts')}
-					<span class="text-muted mt-1 block text-[11px]">
-						Sets every workout's targets.
-						{#if measured}
-							Measured by a ramp test on {new Date(
-								measured,
-							).toLocaleDateString()}.
-						{:else}
-							{#if unchosen(account.me?.ftpSource)}
-								<!-- Said where it is fixed, too (#1484): the field
+				<!-- The chart is a SIBLING of the label, not inside it (#2181):
+				     a label passes a click to its control, so tapping the trend
+				     raised a numeric keyboard on a phone. -->
+				<div>
+					<label class="block">
+						<span class="eyebrow">FTP (W)</span>
+						<input
+							type="number"
+							bind:value={ftp}
+							min={PROFILE_LIMITS.minFtp}
+							max={PROFILE_LIMITS.maxFtp}
+							aria-invalid={saveError?.field === 'ftpWatts'
+								? 'true'
+								: undefined}
+							class="input num mt-1 w-full"
+						/>
+						{@render fieldError('ftpWatts')}
+						<span class="text-muted mt-1 block text-[11px]">
+							Sets every workout's targets.
+							{#if measured}
+								Measured by a ramp test on {new Date(
+									measured,
+								).toLocaleDateString()}.
+							{:else}
+								{#if unchosen(account.me?.ftpSource)}
+									<!-- Said where it is fixed, too (#1484): the field
 								     showed 200 W with nothing to say nobody chose it. -->
-								This 200 W is where we start everyone, not a measurement.
+									This 200 W is where we start everyone, not a measurement.
+								{/if}
+								<a href="/ramp" class="hover:text-ink underline"
+									>A ramp test measures it for you.</a
+								>
 							{/if}
-							<a href="/ramp" class="hover:text-ink underline"
-								>A ramp test measures it for you.</a
-							>
-						{/if}
-					</span>
-					{#if trend.length >= 2}
-						<span class="mt-3 block">
-							<FtpTrendChart rides={trend} height={150} />
 						</span>
+					</label>
+					{#if trend.length >= 2}
+						<div class="mt-3">
+							<FtpTrendChart rides={trend} height={150} />
+						</div>
 					{/if}
-				</label>
+				</div>
 				<label class="block">
 					<span class="eyebrow">weight (kg)</span>
 					<input
@@ -439,14 +448,12 @@
 								and expires in a day.
 							</span>
 						{:else if account.me?.emailVerified}
-							<span class="text-z4 mt-1 block text-[11px]">
-								Confirmed — this is how you get back in if you lose the way you
-								sign in.
-							</span>
+							<span class="text-z4 mt-1 block text-[11px]"
+								>Confirmed. {EMAIL_IS_FOR}</span
+							>
 						{:else}
 							<span class="text-muted mt-1 block text-[11px]">
-								Save it and we send a link to confirm. It is how you recover
-								this account, and it is never shown to anyone.
+								Save it and we send a link to confirm. {EMAIL_IS_FOR}
 							</span>
 						{/if}
 						<!-- What the address is used for beyond recovery lives with
