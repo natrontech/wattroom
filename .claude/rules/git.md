@@ -28,11 +28,27 @@ docs: ADR-0003 …
 - **A worktree, a branch and a draft PR are the default for all work** — created before the first edit, not before the first commit (AGENTS.md, "Working on the issue board", has the sequence and the reason a bare branch is not isolation). `git worktree add ../wattroom-worktrees/<slug> -b feat/<slug>`, open a **draft PR early** with `Closes #<n>` — in-flight drafts are how everyone sees what's being worked on. PR title in conventional-commit form (it becomes the squash commit).
 - **No direct pushes to main**, not even trivial doc fixes or ADR text — a repository ruleset rejects them (`GH013: Changes must be made through a pull request`). This superseded the old convention-only rule from #7; the branch + PR path below is the only one that works. `make release` goes through a PR for the same reason.
 - **Every PR adds its changelog entry as its own file**: `changelog.d/<category>-<slug>.md`, category being added / changed / deprecated / removed / fixed / security. Never edit `CHANGELOG.md` directly — eight agents appending to the same section conflicted constantly, and a conflict resolved carelessly during a rebase drops somebody's entry. `make release` collates the files and deletes them. CI fails a PR touching `server/` or `web/src` without one; the `no-changelog` label is the escape for work a rider cannot see. Write it for someone deciding whether to upgrade, not as a second copy of the PR title.
-- **A closing keyword is parsed, not read — and quoting one still counts.** GitHub scans every PR body and commit message for `closes`/`fixes`/`resolves` beside an issue number and acts on it. It does not read the question mark after it, the bold **No** following it, the quotation marks around it, or a whole PR arguing that the issue must stay open. Two closes of one issue, an hour apart, established both halves: a PR body saying the keyword was *not* meant closed the issue as *completed*, and the PR adding this rule closed it a second time because its commit message **quoted that line in order to warn about it**. Markdown code fences do not help; the parser reads through them.
+- **A closing keyword is parsed, not read — in every tense, however you wrap it.** GitHub scans every PR body and commit message for a closing verb beside an issue number and acts on it. The verb set is wider than it looks: `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`, `resolved`. The parser has no notion of quoting, negation, tense, or what the PR is about.
 
-  So: `Refs #<n>` for anything a PR does not finish. Never put a closing keyword adjacent to a real issue number in any text that reaches a commit message or PR body — not in prose, not negated, not quoted. To write *about* the trap, use a placeholder: the keyword followed by `#<n>`. After merging a PR that names an issue it did not finish, check `gh issue view <n> --json state`.
+  One issue was closed three times by three PRs, none of which meant to close anything:
 
-  The cost is not tidiness. An obligation nobody can discharge starts reading as discharged — in this case a hardware validation that no one had performed, on an ADR whose whole point is that a synthetic fixture is not the real thing.
+  1. a **negated** keyword in a body — "…? **No** — it stays open until someone runs it";
+  2. a **quoted** keyword, in the commit message of the PR explaining (1);
+  3. a **past-tense** keyword, in the body of the PR amending the rule after (2) — because the rule then listed only the `-s` forms, and so did the grep used to verify it.
+
+  Every attempt to describe the trap in prose sprang it. Markdown code fences do not help; the parser reads through them.
+
+  So: `Refs #<n>` for anything a PR does not finish, and **never put any inflection of those three verbs next to a live issue number** in text that reaches a PR body or commit message — not negated, not quoted, not in the past tense, not while writing a rule about it. To discuss the mechanism, use a placeholder (`#<n>`) or name the issue in words. Before pushing, check yourself with a pattern that covers the forms:
+
+  ```bash
+  grep -inE '(close[sd]?|fix(es|ed)?|resolve[sd]?)[[:space:]:]+#[0-9]+' <file>
+  ```
+
+  After merging a PR that names an issue it did not finish, confirm with `gh issue view <n> --json state` — all three closes above were silent, and the third was found only because a board count came up one short.
+
+  The cost is not tidiness. An obligation nobody can discharge starts reading as discharged — here a hardware validation nobody had performed, on an ADR whose entire point is that a synthetic fixture is not the real thing.
+
+- **A squash subject comes from the commit, not always from the PR title.** When a branch carries exactly one commit, GitHub's squash takes *that commit's* subject and ignores the PR title, so editing the title before merging changes nothing in `main`'s history. #2341 was retitled `fix: deploy/.env.example carries WATTROOM_TOKEN_KEY` and landed as `feat: add WATTROOM_TOKEN_KEY` — the wrong conventional-commit type, permanently, because `main` rejects the force-push that would fix it. Either amend the branch commit to the subject you want, or pass it explicitly: `gh pr merge <n> --squash --subject '<type>(<scope>): <description>'`.
 
 - **Never**: force-push shared branches, commit secrets/.env, commit with failing `make ci`, mix a generated-file regen with unrelated changes (protocol.ts regens ship WITH the Go struct change that caused them), or cut a release by hand — `make release` is the only path (it computes the CalVer number itself), and it refuses when `## [Unreleased]` is empty.
 
