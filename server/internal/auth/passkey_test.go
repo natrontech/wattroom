@@ -2,6 +2,7 @@ package auth
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -424,5 +425,40 @@ func TestPasskeyRegistrationNeedsTheRequiredAddress(t *testing.T) {
 				t.Fatalf("a refused registration still set %d cookie(s)", len(cookies))
 			}
 		})
+	}
+}
+
+// A server whose WATTROOM_BASE_URL has no hostname — `localhost:8080` with no
+// scheme is the realistic one — boots with passkeys off and the routes never
+// mounted, and used to say nothing about it (#2256). The client then gated on
+// the browser's own passkeys.supported() and offered the primary door
+// ADR-0029 chose, which answered with the API's 404 on click: exactly what
+// .claude/rules/ux.md's capability gating and errors.md both rule out.
+func TestProvidersSayWhetherPasskeysWorkHere(t *testing.T) {
+	available := func(t *testing.T, s *Service) bool {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		s.handleProviders(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/providers", nil))
+		var body struct {
+			PasskeysAvailable *bool `json:"passkeysAvailable"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode: %v: %s", err, rec.Body)
+		}
+		if body.PasskeysAvailable == nil {
+			t.Fatalf("the sign-in page cannot tell: %s", rec.Body)
+		}
+		return *body.PasskeysAvailable
+	}
+
+	s := testService(t)
+	if !available(t, s) {
+		t.Error("a server with a working relying party says passkeys are off")
+	}
+	// The same server as newWebAuthn refuses, which is how it boots in the
+	// first place: New logs and leaves s.wa nil.
+	s.wa = nil
+	if available(t, s) {
+		t.Error("a server with no relying party still offers the passkey door")
 	}
 }

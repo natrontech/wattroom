@@ -1,0 +1,1 @@
+- The passkey button no longer appears on a server that cannot do passkeys. A WattRoom whose `WATTROOM_BASE_URL` has no hostname boots with passkeys off; sign-in and the settings panel now say so in a line instead of offering a button that fails on click.

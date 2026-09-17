@@ -80,6 +80,11 @@ function createAccountStore() {
 	// Whether a new account meets the address gate (ADR-0029) — said on the
 	// sign-in page, before the gate is the first screen after it.
 	let mailAvailable = $state(false);
+	// Whether passkeys work on THIS server (#2256): the relying party comes
+	// from WATTROOM_BASE_URL and a server that cannot derive one boots with
+	// the passkey routes unmounted. passkeys.supported() answers a different
+	// question — the browser's — so both surfaces ask both.
+	let passkeysAvailable = $state(false);
 	let loaded = $state(false);
 	// The last providers read failed to reach the server at all — a first
 	// load on a restarting server used to read as "no providers configured"
@@ -99,9 +104,11 @@ function createAccountStore() {
 		try {
 			const [meRes, provRes] = await Promise.all([
 				api<Me>('/api/me'),
-				api<{ providers?: string[]; mailAvailable?: boolean }>(
-					'/api/auth/providers',
-				),
+				api<{
+					providers?: string[];
+					mailAvailable?: boolean;
+					passkeysAvailable?: boolean;
+				}>('/api/auth/providers'),
 			]);
 			if (mine !== asked) return;
 			if (meRes.ok) {
@@ -121,6 +128,7 @@ function createAccountStore() {
 			if (provRes.ok) {
 				providers = provRes.data.providers ?? [];
 				mailAvailable = provRes.data.mailAvailable ?? false;
+				passkeysAvailable = provRes.data.passkeysAvailable ?? false;
 				unreachable = false;
 			} else if (provRes.error.error === 'network') {
 				unreachable = true;
@@ -160,6 +168,9 @@ function createAccountStore() {
 		},
 		get mailAvailable() {
 			return mailAvailable;
+		},
+		get passkeysAvailable() {
+			return passkeysAvailable;
 		},
 		get providers() {
 			return providers;
