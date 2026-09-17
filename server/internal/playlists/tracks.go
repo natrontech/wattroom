@@ -3,6 +3,7 @@ package playlists
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
@@ -201,7 +202,9 @@ func (s *Service) addTrack(w http.ResponseWriter, r *http.Request, sc scope) {
 		return
 	}
 	if int(next) >= maxSavedTracks {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "A playlist holds at most 300 tracks.")
+		// A ceiling, so a 429 naming the number and the way out (SPEC:79-81,
+		// #2244) — the track being added is not what is wrong.
+		httpx.WriteCeiling(w, fmt.Sprintf("This playlist holds %d tracks, the most it can. Remove one to add another.", maxSavedTracks))
 		return
 	}
 	var params db.InsertPlaylistTrackParams

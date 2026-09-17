@@ -51,7 +51,7 @@ func TestTheOwnerHandsTheRoomToAMember(t *testing.T) {
 		h.createRoom(t, "carol", fmt.Sprintf("Room Handover Full %d", i))
 	}
 	h.join(t, "carol", slug)
-	if status, _ := h.call(t, "bob", http.MethodPost, path, fmt.Sprintf(`{"userId":%q}`, carol)); status != http.StatusConflict {
-		t.Errorf("a room passed to someone at the cap: %d, want 409", status)
+	if status, _ := h.call(t, "bob", http.MethodPost, path, fmt.Sprintf(`{"userId":%q}`, carol)); status != http.StatusTooManyRequests {
+		t.Errorf("a room passed to someone at the cap: %d, want 429 (SPEC:79-81)", status)
 	}
 }
