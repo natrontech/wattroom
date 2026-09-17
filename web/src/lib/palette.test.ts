@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	apca,
 	contrast,
 	dichromatDistance,
 	hexToOklch,
@@ -18,6 +19,7 @@ import {
 	type TokenName,
 } from './palette';
 import {
+	APCA_MIN_LC,
 	EXCEPTIONS,
 	ZONES,
 	adjacentFloor,
@@ -25,6 +27,7 @@ import {
 	gateChecks,
 	reference,
 	worst,
+	worstLc,
 	zoneFloor,
 } from './gate';
 import {
@@ -104,6 +107,23 @@ describe('colour maths', () => {
 		expect(contrast('#ffffff', '#000000')).toBeCloseTo(21, 1);
 		expect(contrast('#0a0118', '#0a0118')).toBeCloseTo(1, 5);
 	});
+
+	/**
+	 * The two published APCA anchors (#621). They pin the implementation to the
+	 * formula that produced the numbers on that thread — if this file and the
+	 * anchors ever disagree, the implementation is wrong and these values are
+	 * not the thing to edit. They are deliberately not equal to each other:
+	 * black-on-white and white-on-black differing is what "polarity-aware"
+	 * means, and it is the property WCAG 2's symmetric ratio does not have.
+	 */
+	it('matches the published APCA anchors', () => {
+		expect(apca('#000000', '#ffffff')).toBeCloseTo(106.04, 2);
+		expect(apca('#ffffff', '#000000')).toBeCloseTo(107.88, 2);
+	});
+
+	it('reads a colour on itself as no contrast at all', () => {
+		expect(apca('#0a0118', '#0a0118')).toBe(0);
+	});
 });
 
 describe('the catalogue', () => {
@@ -170,6 +190,107 @@ describe.each(EXCEPTIONS)(
 		});
 	},
 );
+
+/**
+ * APCA is reported, never gated (ADR-0023 §3, #621). The whole value of the
+ * signal is that it can say something uncomfortable without a theme's verdict
+ * moving, so these say exactly that: the number is present, the number is
+ * sometimes below an absolute floor, and neither fact changes a pass mark.
+ */
+describe('the APCA report', () => {
+	const contrastChecks = (theme: Theme) =>
+		gateChecks(theme, THEMES).filter((c) => c.lc !== undefined);
+
+	it('puts an Lc beside every contrast figure the gate produces', () => {
+		for (const theme of THEMES) {
+			const ids = contrastChecks(theme).map((c) => c.id);
+			for (const expected of [
+				'ink',
+				'muted',
+				'muted-dim',
+				'watt',
+				'neon',
+				'danger',
+				...ZONES,
+				'paper-ink',
+				'paper-danger',
+			]) {
+				expect(ids, `${theme.id} reports Lc for ${expected}`).toContain(
+					expected,
+				);
+			}
+		}
+	});
+
+	it('leaves the checks that are not contrast without one', () => {
+		// Chroma, hue and perceptual distance are not a foreground on a
+		// background, so an Lc there would be a number with no meaning.
+		for (const c of gateChecks(themeById('outrun')!, THEMES)) {
+			if (/-chroma$|-delta$|hue|lightness|deuteranopia|protanopia/.test(c.id))
+				expect(c.lc, `${c.id}`).toBeUndefined();
+		}
+	});
+
+	it('never lets the Lc decide a pass mark', () => {
+		// Every Lc-bearing check is a "clears its floor" check, and its verdict
+		// has to stay exactly that comparison. Enforcing the absolute here is
+		// the change this asserts nobody made by accident.
+		for (const theme of THEMES)
+			for (const c of contrastChecks(theme))
+				expect(c.passes, `${theme.id} ${c.id}`).toBe(c.value >= c.floor);
+	});
+
+	/**
+	 * The guard that matters. Turning the reported warning into a failure is a
+	 * one-word edit in `check()`, and the thing it would break is not this
+	 * file's own assertions but the catalogue: Outrun's own dark Z1 would stop
+	 * shipping. So the set of failures is pinned to the six on-record
+	 * exceptions and nothing else.
+	 */
+	it('leaves the catalogue failing exactly the six recorded exceptions', () => {
+		const failures = THEMES.flatMap((theme) =>
+			gateChecks(theme, THEMES)
+				.filter((c) => !c.passes)
+				.map((c) => `${theme.id} ${c.id}`),
+		).sort();
+		expect(failures).toEqual(
+			EXCEPTIONS.map((e) => `${e.themeId} ${e.checkId}`).sort(),
+		);
+	});
+
+	/**
+	 * The finding #621 was closed on, pinned so it cannot drift unnoticed.
+	 * Outrun's dark Z1 is `#4a3a78`; against `surface-raised` `#1a0736` that is
+	 * Lc 9.23, under APCA's floor for an element being discernible at all —
+	 * and it passes, because `zoneFloor` scales to the family's own reference
+	 * and ADR-0023 §3 says recovery is meant to recede. The palette question
+	 * that raises is ADR-0005's to answer, not this gate's.
+	 */
+	it('reports Outrun dark z1 under the absolute floor, and still passes it', () => {
+		const outrun = themeById('outrun')!;
+		expect(worstLc(outrun, 'z1')).toBeCloseTo(9.23, 2);
+		const z1 = gateChecks(outrun, THEMES).find((c) => c.id === 'z1')!;
+		expect(z1.lc).toBeLessThan(APCA_MIN_LC);
+		expect(z1.warning).toMatch(/not enforced/);
+		expect(z1.passes).toBe(true);
+	});
+
+	it('warns on nothing else in the catalogue', () => {
+		const warned = THEMES.flatMap((theme) =>
+			gateChecks(theme, THEMES)
+				.filter((c) => c.warning)
+				.map((c) => `${theme.id} ${c.id}`),
+		);
+		// Five dark themes, one zone each: the cross-family gap #621 measured is
+		// the reference ramp's Z1, shared by every dark identity. A sixth entry
+		// here is new information and wants reading, not silencing.
+		expect(warned.sort()).toEqual(
+			THEMES.filter((t) => t.family === 'dark')
+				.map((t) => `${t.id} z1`)
+				.sort(),
+		);
+	});
+});
 
 /** The gate: a theme that fails these is not shippable, whoever likes it. */
 describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {

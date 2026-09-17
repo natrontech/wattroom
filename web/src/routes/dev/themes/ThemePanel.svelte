@@ -22,6 +22,7 @@
 	import type { RoomRider } from '$lib/room/view';
 	import type { Segment } from '$lib/workout/types';
 	import type { RailRoom } from '$lib/room/room-data';
+	import { APCA_MIN_LC } from '$lib/gate';
 	import { rampReadings, readings, ZONES, type Surface } from './gallery';
 
 	let {
@@ -129,7 +130,16 @@
 							title="Z{i + 1}"
 						></div>
 						<div class="text-muted pt-1 text-center font-mono text-[9px]">
-							{ramp[i].toFixed(1)}
+							{ramp[i].ratio.toFixed(1)}
+						</div>
+						<div
+							class="pt-px text-center font-mono text-[9px] {ramp[i].lc <
+							APCA_MIN_LC
+								? 'text-z5'
+								: 'text-muted-dim'}"
+							title="APCA Lc — reported, not gated (ADR-0023 §3)"
+						>
+							Lc {ramp[i].lc.toFixed(0)}
 						</div>
 					</div>
 				{/each}
@@ -171,6 +181,13 @@
 		     everything above says whether it is any good. -->
 		<div>
 			<span class="eyebrow">contrast against this theme's surfaces</span>
+			<p class="text-muted-dim mt-1 text-[11px] leading-snug">
+				WCAG 2 is the gate; the APCA Lc beside it is reported and decides
+				nothing (ADR-0023 §3). An Lc under {APCA_MIN_LC} is marked — that is APCA's
+				floor for an element being discernible at all, and the zone floors are scaled
+				to Outrun's own ramp, so a zone can clear its floor and still sit below it
+				(#621).
+			</p>
 			<ul class="mt-2 grid gap-1 text-xs">
 				{#each gate as reading (reading.token)}
 					<li class="flex items-baseline gap-2">
@@ -182,6 +199,14 @@
 						<span class="text-muted">{reading.job}</span>
 						<span class="num ml-auto">
 							{reading.ratio.toFixed(2)}:1
+						</span>
+						<span
+							class="num {reading.lc < APCA_MIN_LC
+								? 'text-z5'
+								: 'text-muted-dim'}"
+							title="APCA Lc — reported, not gated"
+						>
+							Lc {reading.lc.toFixed(1)}
 						</span>
 						<span
 							class="font-mono text-[10px] {reading.passes

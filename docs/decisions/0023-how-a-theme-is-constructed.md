@@ -116,6 +116,32 @@ fallback, and that headroom is how a vivid Z7 stays inside a contrast floor.
 
 ## Notes
 
+**The reported APCA signal now exists in code (#621, 2026-09-17).** §3 above
+says "we gate on AA, and treat APCA as a reported signal, not a pass/fail",
+and for two milestones only the first half of that was true: nothing computed
+an Lc anywhere. `$lib/color`'s `apca()` (W3 0.1.9 constants, pinned in
+`palette.test.ts` against the published Lc 106.04 / 107.88 anchors) now sits
+beside every WCAG figure `gateChecks` produces, on `/dev/themes` and on
+`/dev/theme-editor`.
+
+This is a note, not an amendment: §3's decision is unchanged, and #621
+measured why. Moving the gate onto APCA was the direction that issue opened
+with, and the numbers refused it — APCA ranks Monokai Day's ramp 15–25% below
+the reference in the same zones WCAG does, and degrades in lockstep as a
+`raised` surface is toned away from pure white. The asymmetry was not what
+rejected that palette.
+
+What the signal is actually for is the opposite of loosening. The zone floors
+scale to the family's own reference, so a zone can clear its floor while
+sitting at an absolute nobody has seen: Outrun's dark Z1, `#4a3a78`, is **Lc
+9.23** against `surface-raised` — under APCA's Lc 15, the floor below which an
+element stops being discernible at all. §3 permits that ("Z1 is recovery and
+is *meant* to recede at 1.9:1. There the reference is the floor"), so the
+absolute is surfaced as a **warning and not a failure**: enforcing it would
+fail the reference identity's own ramp and move ADR-0005's palette as a side
+effect of a tooling change. Whether that Z1 should move is a palette question
+for ADR-0005, now askable with the number in hand.
+
 The three 0019s were renumbered in #422 and 0020 is the Discord-shape ADR; this one takes 0023 and does not
 add to that collision.
 
