@@ -11,7 +11,8 @@ import (
 // A grant is the named exception into a private room (ADR-0038, #1224): the
 // crew-mate's row turns from locked to enterable, the owner sees them as
 // invited until they walk in, and taking it back turns the row locked again.
-// Owner only; crew-mates only.
+// The room's own owner here; crew-mates only. Who ELSE may work the door is
+// the test below (#2294).
 func TestTheOwnerLetsACrewMateIntoAPrivateRoom(t *testing.T) {
 	h := setup(t)
 	open, _ := h.createRoom(t, "alice", "Crew Grant Open")
