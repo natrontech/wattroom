@@ -12,8 +12,17 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-func (s *Service) Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/me/trophies", s.handleMine)
+// Register mounts the two trophy-case routes on deliberately different
+// credentials, which is why the source is an argument here rather than a
+// property of the service (#2257). selfAuth is the personal-token read
+// source: ADR-0017's amendment names `GET /api/me/trophies` among what a
+// bearer authenticates, and that route is keyed on the caller. The rider
+// route keeps the cookie source `s.users`, because it is keyed on someone
+// else's id and ADR-0017 says a token never touches another rider — which
+// is all #1736 ever argued; it repointed the whole service and took
+// handleMine's bearer with it.
+func (s *Service) Register(mux *http.ServeMux, selfAuth UserSource) {
+	mux.HandleFunc("GET /api/me/trophies", s.handleMine(selfAuth))
 	mux.HandleFunc("GET /api/riders/{id}/trophies", s.handleRider)
 }
 
@@ -124,14 +133,19 @@ func (s *Service) Trophies(ctx context.Context, userID pgtype.UUID) (Response, e
 	return out, nil
 }
 
-func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
-	// RequireUser (#1983): User() treats a database failure as signed-out,
-	// and "unauthorized" is the one code the app never retries.
-	user, ok := s.users.RequireUser(w, r, "Not signed in.")
-	if !ok {
-		return
+// handleMine shows the caller their own case. It closes over the source
+// Register was handed rather than reading s.users, so the one route a
+// bearer may read is the only one that accepts one.
+func (s *Service) handleMine(users UserSource) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// RequireUser (#1983): User() treats a database failure as signed-out,
+		// and "unauthorized" is the one code the app never retries.
+		user, ok := users.RequireUser(w, r, "Not signed in.")
+		if !ok {
+			return
+		}
+		s.write(w, r, user.ID, user.ID)
 	}
-	s.write(w, r, user.ID, user.ID)
 }
 
 // handleRider shows another rider's case to the people who could already see

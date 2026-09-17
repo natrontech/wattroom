@@ -37,7 +37,7 @@ func get(t *testing.T, mux *http.ServeMux, path, as string) (*httptest.ResponseR
 func TestTrophyCaseCountsADeletedRideAsRiding(t *testing.T) {
 	s, _, alice, _ := setup(t)
 	mux := http.NewServeMux()
-	s.Register(mux)
+	s.Register(mux, s.users)
 	addRide(t, s, alice, time.Now().Add(-2*time.Hour), 3600, 720, 300)
 	addRide(t, s, alice, time.Now().Add(-time.Hour), 3600, 720, 100)
 
@@ -89,7 +89,7 @@ func TestTrophyCaseCountsADeletedRideAsRiding(t *testing.T) {
 func TestTrophies(t *testing.T) {
 	s, _, alice, bob := setup(t)
 	mux := http.NewServeMux()
-	s.Register(mux)
+	s.Register(mux, s.users)
 	addRide(t, s, alice, time.Now().Add(-time.Hour), 3600, 720, 100)
 	s.LoungeBlock(t.Context(), store.UUIDString(alice.ID), time.Now())
 
@@ -215,7 +215,7 @@ func TestTrophies(t *testing.T) {
 func TestCountsPastTheDailyCap(t *testing.T) {
 	s, _, alice, _ := setup(t)
 	mux := http.NewServeMux()
-	s.Register(mux)
+	s.Register(mux, s.users)
 
 	// One UTC day, well past the cap — each block's ref is its own minute, so
 	// they are distinct rows rather than one row replayed.
@@ -242,7 +242,7 @@ func TestCountsPastTheDailyCap(t *testing.T) {
 func TestCountsOfTheZeroXpSources(t *testing.T) {
 	s, _, alice, _ := setup(t)
 	mux := http.NewServeMux()
-	s.Register(mux)
+	s.Register(mux, s.users)
 
 	at := time.Date(2026, 3, 4, 18, 0, 0, 0, time.UTC)
 	for i := range 3 {
@@ -271,7 +271,7 @@ func TestCountsOfTheZeroXpSources(t *testing.T) {
 func TestTrophyCaseVisibilityAfterBan(t *testing.T) {
 	s, _, alice, bob := setup(t)
 	mux := http.NewServeMux()
-	s.Register(mux)
+	s.Register(mux, s.users)
 	aliceCase := "/api/riders/" + store.UUIDString(alice.ID) + "/trophies"
 	bobCase := "/api/riders/" + store.UUIDString(bob.ID) + "/trophies"
 
@@ -303,7 +303,7 @@ func TestTrophyCaseVisibilityAfterBan(t *testing.T) {
 func TestTrophyCaseOpensToAPendingAsk(t *testing.T) {
 	s, _, alice, bob := setup(t)
 	mux := http.NewServeMux()
-	s.Register(mux)
+	s.Register(mux, s.users)
 	if err := s.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
 		RequesterID: alice.ID, AddresseeID: bob.ID,
 	}); err != nil {
@@ -322,7 +322,7 @@ func TestTrophyCaseOpensToAPendingAsk(t *testing.T) {
 func TestTrophyCaseMedalsAreScopedToRoomsInCommon(t *testing.T) {
 	s, _, alice, bob := setup(t)
 	mux := http.NewServeMux()
-	s.Register(mux)
+	s.Register(mux, s.users)
 	shared := shareRoom(t, s, alice, bob)
 	private := shareRoom(t, s, alice)
 	medalIn(t, s, shared, alice, "diesel")
@@ -348,7 +348,7 @@ func TestTrophyCaseMedalsAreScopedToRoomsInCommon(t *testing.T) {
 func TestARoomMateSeesNoProgress(t *testing.T) {
 	s, _, alice, bob := setup(t)
 	mux := http.NewServeMux()
-	s.Register(mux)
+	s.Register(mux, s.users)
 	shareRoom(t, s, alice, bob)
 	addRide(t, s, alice, time.Now().Add(-time.Hour), 3600, 720, 100)
 	s.LoungeBlock(t.Context(), store.UUIDString(alice.ID), time.Now())

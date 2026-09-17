@@ -1,0 +1,1 @@
+- A personal read token can read your own trophy case again at `GET /api/me/trophies`, the way the token settings page has always said it could. A coach agent built against it had been getting "Not signed in." since the route was tightened to keep tokens off *other* riders' cases — that part is unchanged, and now has a test.
