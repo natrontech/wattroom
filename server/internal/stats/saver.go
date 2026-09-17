@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
@@ -219,6 +220,11 @@ func BuildRideRow(
 	}
 
 	normWatts := int16(NormPower(watts)) //nolint:gosec // samples bounded 0-3000
+	// SPEC's LTHR-from-a-ride input (#1620), computed here because the blob is
+	// already in hand; 0 on a ride with no last-20-minute heart rate. Clamped
+	// only to what the column can hold — a reading's sanity is the
+	// suggestion's business (SuggestLTHR), not storage's.
+	lastHR := int16(min(Last20mHR(samples), math.MaxInt16)) //nolint:gosec // clamped on the line
 	return db.CreateRideParams{
 		UserID:      userID,
 		RoomID:      roomID,
@@ -236,6 +242,7 @@ func BuildRideRow(
 		Curve:           curveJSON,
 		Xp:              int32(XP(kj, execution)), //nolint:gosec // bounded by kj
 		NormWatts:       &normWatts,
+		Last20mHr:       &lastHR,
 	}, nil
 }
 

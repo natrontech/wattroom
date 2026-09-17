@@ -229,11 +229,29 @@ colours the rider's **own** bpm readout, never anyone else's, never scored
 | Z4   | Threshold       | 95–105 % |
 | Z5   | VO₂ max         | > 105 %  |
 
-- **LTHR suggestion**: a scoreable ramp test with HR recorded suggests
+- **LTHR suggestion from a ramp test**: a scoreable ramp test with HR recorded suggests
   `0.90 × max test HR` **(default — tune in alpha)** — a rough estimate: LT2 sits at 85–92 % of
   HRmax and a ramp's peak need not be HRmax (RESEARCH §17.2; Friel's 30-min field test is the
   real measurement) — one tap to apply, never
-  auto-applied (same posture as FTP suggestions).
+  auto-applied (same posture as FTP suggestions). The result panel says it is rough.
+- **LTHR suggestion from a hard ride** (#1620): a **solo** ride of **at least 30 minutes**
+  carrying heart rate, whose **average HR over its last 20 minutes** exceeds the rider's set
+  LTHR by **more than 2 %**, prompts with that average — one tap to apply, **never
+  auto-applied**. Scoped to the same rolling **90 days** as the FTP rule below, and the largest
+  such average in the window is the one offered. The measurement is Joe Friel's 30-minute time
+  trial (RESEARCH §17.2): ride 30 minutes alone as hard as is sustainable, and the last 20
+  minutes' average heart rate is LTHR.
+  - **Solo** is a ride with no room — the protocol wants nobody to pace off.
+  - **There is no power gate.** The qualification is duration and the HR gap alone: a rider
+    doing a genuine HR field test need not be near their best 20-minute power, so gating on
+    power would silently skip the very protocol this implements. The cost is prompts after
+    hard rides that were not tests — accepted, because a prompt is one tap to dismiss and
+    never applies itself. **The prompt therefore says out loud that it assumes the ride was
+    all-out**; that sentence is what a power gate would otherwise have done.
+  - Seconds in the window with no reading are not averaged — a dropped strap second is
+    absent, never a zero. A ride with no reading at all in its last 20 minutes has no number.
+  - A rider with **no LTHR set** is not prompted: there is nothing for the average to exceed.
+    The ramp test above is where a first LTHR comes from.
 
 ## The rider's two numbers (ADR-0048)
 

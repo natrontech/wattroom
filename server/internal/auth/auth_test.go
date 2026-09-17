@@ -1015,6 +1015,59 @@ func TestUpdateMeCarriesLthr(t *testing.T) {
 	}
 }
 
+// docs/SPEC.md's LTHR-from-a-ride prompt (#1620) reaches the client on
+// /api/me, and only when it should. A silent failure either way: a body that
+// quietly never carries the field leaves the feature invisible with every
+// test below it green, and one that carries it for a rider with no LTHR set
+// asks them to raise a number they do not have.
+func TestMeSuggestsLthrFromAQualifyingRide(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	ctx := t.Context()
+
+	// A solo 30-minute ride whose last 20 minutes averaged 172 bpm.
+	hr := int16(172)
+	if _, err := s.store.Queries.CreateRide(ctx, db.CreateRideParams{
+		UserID: user.ID, WorkoutName: "Field test",
+		StartedAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+		Seconds:   1800, AvgWatts: 210, Kj: 378, Execution: 0.9, FtpWatts: 200,
+		Samples: []byte("{}"), Curve: []byte(`{}`), Xp: 10, Last20mHr: &hr,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	me := func() meResponse {
+		t.Helper()
+		fresh, err := s.store.Queries.GetUser(ctx, user.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s.fullMe(ctx, fresh)
+	}
+
+	// No LTHR set: nothing for the average to exceed, so no prompt.
+	if got := me().SuggestedLthr; got != 0 {
+		t.Fatalf("suggested %d bpm to a rider with no LTHR set", got)
+	}
+
+	set := func(bpm int16) {
+		t.Helper()
+		if _, err := s.store.Pool.Exec(ctx, "update users set lthr = $2 where id = $1", user.ID, bpm); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// 172 > 160 × 1.02 = 163.2 → prompt with the average itself.
+	set(160)
+	if got := me().SuggestedLthr; got != 172 {
+		t.Fatalf("suggestedLthr = %d, want 172", got)
+	}
+	// Within 2 % of what is already set: silence.
+	set(170)
+	if got := me().SuggestedLthr; got != 0 {
+		t.Fatalf("suggested %d bpm inside the 2 %% tolerance", got)
+	}
+}
+
 // The dev login opens on a local origin only, and never for a cross-site
 // fetch (#1603).
 func TestDevLoginIsLocalOnly(t *testing.T) {

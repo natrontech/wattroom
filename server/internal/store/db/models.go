@@ -203,6 +203,7 @@ type Ride struct {
 	NormWatts       *int16
 	ExecutionScored bool
 	FtpAfterWatts   *int16
+	Last20mHr       *int16
 }
 
 type RideExport struct {

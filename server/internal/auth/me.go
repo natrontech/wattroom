@@ -47,6 +47,11 @@ type meResponse struct {
 	// the setting. A suggestion, never an application — FTP moves every
 	// workout's difficulty (docs/SPEC.md).
 	SuggestedFtp int `json:"suggestedFtp,omitempty"`
+	// The LTHR prompt (#1620, docs/SPEC.md): the last-20-minute average heart
+	// rate of a qualifying solo 30-minute ride, when it outgrows the set LTHR
+	// by more than 2 %. Absent until the rider HAS an LTHR — there is nothing
+	// for an average to exceed — and, like the FTP one, never applied here.
+	SuggestedLthr int `json:"suggestedLthr,omitempty"`
 	// Whether LiveKit is configured — the client hides voice/cam controls
 	// instead of serving 404s on click (#219, capability gating).
 	AvEnabled bool `json:"avEnabled"`
@@ -315,7 +320,7 @@ func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 	response := s.toMe(user)
 	response.AvEnabled = s.avEnabled
 	response.GifsEnabled = s.gifsEnabled
-	// Each of the four is optional: a failure leaves its field empty rather
+	// Each of these is optional: a failure leaves its field empty rather
 	// than failing the whole record. What it may not do is pass unnoticed
 	// (#2258) — the Providers list drives the profile's connect rows (#719),
 	// so a transient failure used to answer 200 with the account rendered as
@@ -325,6 +330,16 @@ func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 	} else if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
 		response.SuggestedFtp = suggested
 		response.Best20m = int(best)
+	}
+	// SPEC's LTHR-from-a-ride rule (#1620). Only asked when the rider has an
+	// LTHR set: without one there is no number for a ride's average to exceed,
+	// and the ramp test is where a first one comes from.
+	if user.Lthr != nil {
+		if best, err := s.store.Queries.BestLast20mHRIn90Days(ctx, user.ID); err != nil {
+			s.log.Warn("me: last-20 HR unavailable", "err", err, "user", store.UUIDString(user.ID))
+		} else if suggested, ok := stats.SuggestLTHR(int(best), int(*user.Lthr)); ok {
+			response.SuggestedLthr = suggested
+		}
 	}
 	if providers, err := s.store.Queries.ListUserProviders(ctx, user.ID); err != nil {
 		s.log.Warn("me: provider list unavailable — the profile will draw no connected accounts", "err", err, "user", store.UUIDString(user.ID))

@@ -272,6 +272,9 @@ func main() {
 		})
 		// One-pass norm_watts fill for pre-ADR-0016 rides; exits when done.
 		safego.Go(log, "norm watts backfill", func() { stats.BackfillNormWatts(ctx, st, log) })
+		// The same, for last20m_hr on rides saved before #1620 — so a rider's
+		// existing 30-minute efforts can suggest an LTHR, not only future ones.
+		safego.Go(log, "last-20 HR backfill", func() { stats.BackfillLast20mHR(ctx, st, log) })
 		ridesService := rides.New(st, readAuth, log)
 		if uploader != nil {
 			ridesService.SetUploader(uploader)
