@@ -13,9 +13,11 @@ package auth
 // manager and a YubiKey all register through one path.
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -80,6 +82,16 @@ const challengeMax = 4096
 // unmarshals every credential the account holds, and nothing bounded the rows.
 const maxPasskeys = 10
 
+// tooManyPasskeys is one sentence in one place, beside tooManySignIns: the
+// start and the finish refuse the same ceiling, and a rider who hit it
+// mid-ceremony should not be told something different from one who hit it
+// before starting.
+const tooManyPasskeys = "Ten passkeys is the cap — remove one you no longer use first." //nolint:gosec // G101 matches any name containing "pass"; this is the refusal a rider reads
+
+// errPasskeyCap carries the ceiling out of the locked transaction, where a
+// refusal is not a database failure and must not be reported as one.
+var errPasskeyCap = errors.New("auth: passkey cap reached")
+
 func newChallengeStore() *challengeStore {
 	return &challengeStore{m: map[string]challengeEntry{}}
 }
@@ -122,15 +134,27 @@ func (c *challengeStore) take(token string) (webauthn.SessionData, bool) {
 // newWebAuthn derives the relying party from the public origin. The RP ID is
 // the hostname without the port, so one config covers the dev server and the
 // Vite port in front of it; WATTROOM_EXTRA_ORIGINS is how that second origin
-// gets allowed, and is unset in production where there is only one.
-func newWebAuthn(baseURL string) (*webauthn.WebAuthn, error) {
+// gets allowed.
+//
+// Local origins only (#2258). An origin listed here can complete a WebAuthn
+// ceremony for this RP ID, which makes the list a credential boundary; the
+// hatch was written for the Vite port, a dev-only need, and localOrigin()
+// already decides exactly that question for the dev login one door over.
+// "Unset in production where there is only one" was a comment, not a rule.
+// A public entry is dropped and named, never silently honoured.
+func newWebAuthn(baseURL string, log *slog.Logger) (*webauthn.WebAuthn, error) {
 	parsed, err := url.Parse(baseURL)
 	if err != nil || parsed.Hostname() == "" {
 		return nil, errors.New("auth: passkeys need a parseable WATTROOM_BASE_URL")
 	}
 	origins := []string{parsed.Scheme + "://" + parsed.Host}
 	for _, extra := range strings.Split(os.Getenv("WATTROOM_EXTRA_ORIGINS"), ",") {
-		if extra = strings.TrimSpace(extra); extra != "" {
+		extra = strings.TrimSpace(extra)
+		switch {
+		case extra == "":
+		case !localOrigin(extra):
+			log.Warn("ignoring a public WATTROOM_EXTRA_ORIGINS entry: an extra passkey origin can complete a ceremony for this relying party, and the hatch is for the dev server's second port", "origin", extra)
+		default:
 			origins = append(origins, extra)
 		}
 	}
@@ -192,9 +216,10 @@ func (s *Service) handlePasskeyRegisterStart(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	if len(pu.creds) >= maxPasskeys {
-		// A per-account ceiling: 429, like the tokens (errors.md).
-		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
-			"Ten passkeys is the cap — remove one you no longer use first.")
+		// A per-account ceiling: 429, like the tokens (errors.md). Courtesy,
+		// not the rule — a rider at the cap should not be shown a browser
+		// prompt whose result is refused. The finish holds the real one.
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited", tooManyPasskeys)
 		return
 	}
 
@@ -243,10 +268,14 @@ func (s *Service) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Req
 		httpx.Fail(w, s.log, "passkey encode failed", err, "That passkey could not be saved. Try again.")
 		return
 	}
-	row, err := s.store.Queries.CreatePasskey(r.Context(), db.CreatePasskeyParams{
+	row, err := s.createPasskeyCapped(r.Context(), db.CreatePasskeyParams{
 		CredentialID: credential.ID, UserID: user.ID, Credential: encoded,
 		Name: passkeyName(r.URL.Query().Get("name")),
 	})
+	if errors.Is(err, errPasskeyCap) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited", tooManyPasskeys)
+		return
+	}
 	if err != nil {
 		httpx.Fail(w, s.log, "passkey save failed", err, "That passkey could not be saved. Try again.")
 		return
@@ -254,6 +283,29 @@ func (s *Service) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Req
 	s.alert(user, "A passkey was added to your account",
 		"The passkey "+strconv.Quote(row.Name)+" can now sign in to your WattRoom account.")
 	httpx.WriteJSON(w, http.StatusOK, toPasskey(row))
+}
+
+// createPasskeyCapped is the ceiling's real enforcement (#2258), and it is
+// where it has to live: the start of the ceremony counts too, but a count at
+// the start and an insert at the finish are two statements with a whole
+// browser prompt between them, so concurrent ceremonies all counted nine and
+// all landed. Holding the rider's row makes the second one wait, then count
+// what the first wrote. Returns errPasskeyCap when the account is full —
+// a refusal, not a database failure.
+func (s *Service) createPasskeyCapped(ctx context.Context, params db.CreatePasskeyParams) (db.Passkey, error) {
+	var row db.Passkey
+	err := s.store.WithUserLocked(ctx, params.UserID, func(q *db.Queries) error {
+		n, err := q.CountUserPasskeys(ctx, params.UserID)
+		if err != nil {
+			return err
+		}
+		if n >= maxPasskeys {
+			return errPasskeyCap
+		}
+		row, err = q.CreatePasskey(ctx, params)
+		return err
+	})
+	return row, err
 }
 
 func (s *Service) handlePasskeyLoginStart(w http.ResponseWriter, r *http.Request) {

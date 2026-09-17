@@ -3,6 +3,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -10,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/avatars"
@@ -313,22 +315,32 @@ func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 	response := s.toMe(user)
 	response.AvEnabled = s.avEnabled
 	response.GifsEnabled = s.gifsEnabled
-	if best, err := s.store.Queries.Best20mIn90Days(ctx, user.ID); err == nil {
-		if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
-			response.SuggestedFtp = suggested
-			response.Best20m = int(best)
-		}
+	// Each of the four is optional: a failure leaves its field empty rather
+	// than failing the whole record. What it may not do is pass unnoticed
+	// (#2258) — the Providers list drives the profile's connect rows (#719),
+	// so a transient failure used to answer 200 with the account rendered as
+	// holding no sign-in provider at all, and nothing anywhere said so.
+	if best, err := s.store.Queries.Best20mIn90Days(ctx, user.ID); err != nil {
+		s.log.Warn("me: best 20m unavailable", "err", err, "user", store.UUIDString(user.ID))
+	} else if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
+		response.SuggestedFtp = suggested
+		response.Best20m = int(best)
 	}
-	if providers, err := s.store.Queries.ListUserProviders(ctx, user.ID); err == nil {
+	if providers, err := s.store.Queries.ListUserProviders(ctx, user.ID); err != nil {
+		s.log.Warn("me: provider list unavailable — the profile will draw no connected accounts", "err", err, "user", store.UUIDString(user.ID))
+	} else {
 		response.Providers = providers
 	}
-	if xp, err := s.store.Queries.UserTotalXp(ctx, user.ID); err == nil {
+	if xp, err := s.store.Queries.UserTotalXp(ctx, user.ID); err != nil {
+		s.log.Warn("me: total xp unavailable", "err", err, "user", store.UUIDString(user.ID))
+	} else {
 		response.TotalXp = xp
 	}
-	// No row is no invite; any other failure keeps the field empty rather
-	// than failing the whole record for a decoration.
+	// No row is no invite, which is the ordinary case and not worth a line.
 	if code, err := s.store.Queries.PendingCrewInvite(ctx, user.ID); err == nil {
 		response.PendingInvite = code
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		s.log.Warn("me: pending invite unavailable", "err", err, "user", store.UUIDString(user.ID))
 	}
 	return response
 }

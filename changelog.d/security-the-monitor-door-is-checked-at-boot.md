@@ -1,0 +1,1 @@
+- A server set up with a too-short `WATTROOM_SYNTHETIC_TOKEN` now refuses to start instead of opening the ride monitor's door behind it, and an extra passkey origin (`WATTROOM_EXTRA_ORIGINS`) is honoured only when it is a local address — that hatch exists for the dev server's second port.

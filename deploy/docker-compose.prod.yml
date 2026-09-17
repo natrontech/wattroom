@@ -17,6 +17,13 @@ services:
       # are here. Its own volume, because the pg_dump before a rollout does
       # not carry it and a 2 GB-per-rider library has no business in one.
       WATTROOM_TRACKS_DIR: /data/tracks
+      # Caddy is in front (see Caddyfile) and appends the peer it saw to
+      # X-Forwarded-For, so the last hop is the caller's real address and the
+      # per-address ceilings key on it. Unset — a binary facing the internet
+      # directly — the header is whatever the caller typed, and the server
+      # keys on the socket instead (#2258). Set this ONLY with a proxy in
+      # front that appends.
+      WATTROOM_TRUSTED_PROXY: '1'
     volumes:
       - feedback:/data/feedback
       - tracks:/data/tracks

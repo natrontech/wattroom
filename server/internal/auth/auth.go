@@ -115,7 +115,7 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *s
 	if _, ok := svc.providers["dev"]; ok {
 		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")
 	}
-	if wa, err := newWebAuthn(baseURL); err != nil {
+	if wa, err := newWebAuthn(baseURL, log); err != nil {
 		log.Error("passkeys are off: could not build the relying party", "err", err)
 	} else {
 		svc.wa = wa

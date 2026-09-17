@@ -13,6 +13,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
@@ -66,6 +67,10 @@ func readMessages(t *testing.T, conn *websocket.Conn, n int) []protocol.ServerMe
 // well as the presence, over the wire, on the bytes the other rider's socket
 // actually received.
 func TestAnAddressReachesItsOwnSocketAndNoOther(t *testing.T) {
+	// dialFrom speaks through X-Forwarded-For, which ClientIP believes only
+	// where a proxy is declared (#2258) — as one is in the deploy this models.
+	httpx.TrustProxyHeader(true)
+	t.Cleanup(func() { httpx.TrustProxyHeader(false) })
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)

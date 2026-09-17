@@ -36,6 +36,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/gamify"
 	"github.com/natrontech/wattroom/server/internal/gifs"
 	"github.com/natrontech/wattroom/server/internal/housekeeping"
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/metrics"
@@ -195,6 +196,18 @@ func main() {
 			log.Error("refusing to start", "err", err)
 			os.Exit(1)
 		}
+		// The other unauthenticated-by-default door, held to the same bar
+		// (#2258): its only protection is the value's secrecy.
+		if err := auth.SyntheticTokenMisconfigured(); err != nil {
+			log.Error("refusing to start", "err", err)
+			os.Exit(1)
+		}
+		// X-Forwarded-For is believed only where the deploy says a proxy
+		// writes it (#2258). Unset means the socket's peer, which is right
+		// for a binary facing the internet directly and wrong only for the
+		// operator who put a proxy in front and did not say so — a case a
+		// warning cannot distinguish from an attack.
+		httpx.TrustProxyHeader(os.Getenv("WATTROOM_TRUSTED_PROXY") == "1")
 		// A rider's sign-in picture is copied onto this origin rather than
 		// fetched from Google, GitHub or Strava by every browser that draws
 		// their face (#2078) — through the same guarded outbound client the

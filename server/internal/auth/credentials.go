@@ -51,31 +51,34 @@ func (s *Service) refuseIfLastCredential(w http.ResponseWriter, r *http.Request,
 	return false
 }
 
+// errLastCredential is the refusal, carried out of the locked transaction so
+// the rollback releases the row the moment the answer is known rather than at
+// a commit that had nothing to write.
+var errLastCredential = errors.New("auth: that is the last credential")
+
 // removeCredential runs del with the rider's row locked, so two removals
 // cannot both count two credentials and both proceed (#824): the second waits
 // on the row, then counts one. last reports that the count refused it; rows
 // is what del removed.
 func (s *Service) removeCredential(ctx context.Context, userID pgtype.UUID, del func(q *db.Queries) (int64, error)) (rows int64, last bool, err error) {
-	tx, err := s.store.Pool.Begin(ctx)
-	if err != nil {
-		return 0, false, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	q := s.store.Queries.WithTx(tx)
-	if err := q.LockUser(ctx, userID); err != nil {
-		return 0, false, err
-	}
-	total, err := q.CountUserCredentials(ctx, userID)
-	if err != nil {
-		return 0, false, err
-	}
-	if total <= 1 {
+	err = s.store.WithUserLocked(ctx, userID, func(q *db.Queries) error {
+		total, err := q.CountUserCredentials(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if total <= 1 {
+			return errLastCredential
+		}
+		rows, err = del(q)
+		return err
+	})
+	if errors.Is(err, errLastCredential) {
 		return 0, true, nil
 	}
-	if rows, err = del(q); err != nil {
+	if err != nil {
 		return 0, false, err
 	}
-	return rows, false, tx.Commit(ctx)
+	return rows, false, nil
 }
 
 // handleDisconnectProvider removes one identity from the account. Until this

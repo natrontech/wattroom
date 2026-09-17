@@ -4,8 +4,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -130,7 +132,7 @@ func TestPasskeyLoginStartRefusesWhenFull(t *testing.T) {
 
 func TestNewWebAuthnDerivesRelyingParty(t *testing.T) {
 	t.Setenv("WATTROOM_EXTRA_ORIGINS", "")
-	wa, err := newWebAuthn("https://wattroom.ch")
+	wa, err := newWebAuthn("https://wattroom.ch", slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -146,7 +148,7 @@ func TestNewWebAuthnDerivesRelyingParty(t *testing.T) {
 	// Dev is served from Vite's port, on the same host — the origin check is
 	// exact about ports, so that second origin has to be named.
 	t.Setenv("WATTROOM_EXTRA_ORIGINS", "http://localhost:5507, http://localhost:5508")
-	wa, err = newWebAuthn("http://localhost:8107")
+	wa, err = newWebAuthn("http://localhost:8107", slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("build with extras: %v", err)
 	}
@@ -157,8 +159,23 @@ func TestNewWebAuthnDerivesRelyingParty(t *testing.T) {
 		t.Fatalf("extra origins not added: %v", wa.Config.RPOrigins)
 	}
 
-	if _, err := newWebAuthn("::not a url"); err == nil {
+	if _, err := newWebAuthn("::not a url", slog.New(slog.DiscardHandler)); err == nil {
 		t.Error("an unparseable base URL built a relying party")
+	}
+}
+
+// An extra origin can complete a ceremony for this relying party, so the
+// hatch is dev-only in fact and not only in a comment (#2258). A public entry
+// is dropped; the local ones beside it still land.
+func TestNewWebAuthnDropsAPublicExtraOrigin(t *testing.T) {
+	t.Setenv("WATTROOM_EXTRA_ORIGINS", "https://evil.example, http://localhost:5507, http://192.168.1.4:5173")
+	wa, err := newWebAuthn("http://localhost:8107", slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	want := []string{"http://localhost:8107", "http://localhost:5507", "http://192.168.1.4:5173"}
+	if !slices.Equal(wa.Config.RPOrigins, want) {
+		t.Errorf("origins = %v, want %v", wa.Config.RPOrigins, want)
 	}
 }
 
