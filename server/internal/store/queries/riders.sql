@@ -9,8 +9,10 @@
 -- have known about: crew visibility, private-room grants and the crew ban.
 
 -- name: ListRoomsInCommon :many
--- Rooms where both hold a live (non-banned) membership — the gate for the
--- whole page, and the scope of the medals shown on it.
+-- Rooms both may enter (`visible_rooms`) — the gate for the whole page, and
+-- the scope of the medals shown on it. Since ADR-0038's person-visibility
+-- section this is wider than "both joined it" on purpose: a crew-visible
+-- room neither has joined still puts two riders in common.
 select r.id, r.slug, r.name
 from rooms r
 join visible_rooms a on a.room_id = r.id and a.user_id = sqlc.arg(rider)
@@ -40,8 +42,9 @@ where user_id = sqlc.arg(user_id)
   and started_at >= (date_trunc('month', now() at time zone sqlc.arg(tz)::text) at time zone sqlc.arg(tz)::text);
 
 -- name: CountRiderMedalsInCommon :many
--- Medals the rider earned in rooms the viewer shares with them, by kind.
--- Rooms they have since left are not "rooms you share" any more.
+-- Medals the rider earned in rooms both may enter (`visible_rooms`), by kind.
+-- A room the rider has left, or is banned from at either level, is no longer
+-- one they may enter, so its medals drop out.
 select m.kind, count(*)::bigint as count
 from medals m
 join visible_rooms a on a.room_id = m.room_id and a.user_id = sqlc.arg(rider)
@@ -52,8 +55,9 @@ order by m.kind;
 
 -- name: ListSharedRides :many
 -- The rides the rider marked shared, newest first — friends only. The room
--- is named only when the viewer is a member of it (ADR-0012: friendship
--- never pierces the room boundary); otherwise the ride just "was in a room".
+-- is named only when the viewer may enter it (`visible_rooms`, ADR-0038's
+-- person-visibility section; ADR-0012: friendship never pierces the room
+-- boundary); otherwise the ride just "was in a room".
 select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution, r.execution_scored,
        (r.room_id is not null)::boolean as in_room,
        coalesce(case when v.user_id is not null then rm.name end, '')::text as room_name,
