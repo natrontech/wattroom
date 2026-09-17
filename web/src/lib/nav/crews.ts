@@ -71,8 +71,11 @@ export function sidebarGroups(
 	current: RoomCrew | null,
 	connectedSlug: string,
 ): SidebarGroups {
-	// A crewless room (the one-release nullable window, ADR-0038's fourth
-	// amendment) belongs to no mode and is never hidden by one.
+	// A crewless room belongs to no mode and is never hidden by one. The
+	// window ADR-0038's fourth amendment gave one release is still open
+	// (#1301): a NOT VALID check stops new ones without proving anything
+	// about the old, so this branch goes when the constraint is validated,
+	// not when it is added.
 	const shown = rooms.filter(
 		(r) => !r.crew || !current || r.crew.id === current.id,
 	);

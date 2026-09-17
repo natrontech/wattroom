@@ -62,9 +62,11 @@ func (f *crewFixture) room(t *testing.T, slug string, owner pgtype.UUID, crew pg
 	t.Helper()
 	n := roomSeq.Add(1) % 10000
 	r, err := f.st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug:    fmt.Sprintf("%s-%d", slug, n),
-		Name:    slug,
-		OwnerID: owner,
+		Slug:        fmt.Sprintf("%s-%d", slug, n),
+		Name:        slug,
+		OwnerID:     owner,
+		CrewID:      crew,
+		CrewVisible: crewVisible,
 	})
 	if err != nil {
 		t.Fatalf("create room %s: %v", slug, err)
@@ -72,10 +74,6 @@ func (f *crewFixture) room(t *testing.T, slug string, owner pgtype.UUID, crew pg
 	t.Cleanup(func() {
 		_, _ = f.st.Pool.Exec(context.Background(), "delete from rooms where id = $1", r.ID)
 	})
-	if _, err := f.st.Pool.Exec(t.Context(),
-		"update rooms set crew_id = $2, crew_visible = $3 where id = $1", r.ID, crew, crewVisible); err != nil {
-		t.Fatalf("place room %s in crew: %v", slug, err)
-	}
 	f.join(t, r.ID, owner, "owner")
 	return r.ID
 }

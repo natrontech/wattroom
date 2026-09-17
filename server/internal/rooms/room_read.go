@@ -37,8 +37,12 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			Icon: room.Icon, Role: room.Role, Cheers: CheerSet(room.Cheers)}
 		entry.MemberCount = int(room.MemberCount)
 		entry.Access = accessOf(room.CrewVisible, true, false)
-		// The sidebar groups by this (ADR-0038, and #1023's option C). Absent
-		// while crew_id is still nullable, which is one release only.
+		// The sidebar groups by this (ADR-0038, and #1023's option C).
+		// Absent while crew_id is still nullable, and it still is: the
+		// fourth amendment's "one release later" was written before anyone
+		// noticed the insert does not name the column (#1301), so the
+		// window has outlived its sentence and the hedge stays until the
+		// constraint is not just added but validated.
 		if room.CrewID.Valid {
 			entry.Crew = &roomCrewJSON{
 				Id: store.UUIDString(room.CrewID), Name: room.CrewName, Icon: room.CrewIcon,

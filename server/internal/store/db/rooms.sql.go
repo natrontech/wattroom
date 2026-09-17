@@ -150,19 +150,40 @@ func (q *Queries) CreateMembership(ctx context.Context, arg CreateMembershipPara
 }
 
 const createRoom = `-- name: CreateRoom :one
-insert into rooms (slug, name, owner_id)
-values ($1, $2, $3)
+insert into rooms (slug, name, owner_id, crew_id, crew_visible)
+values ($1, $2, $3, $4, $5)
 returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, board_enabled, crew_id, crew_visible
 `
 
 type CreateRoomParams struct {
-	Slug    string
-	Name    string
-	OwnerID pgtype.UUID
+	Slug        string
+	Name        string
+	OwnerID     pgtype.UUID
+	CrewID      pgtype.UUID
+	CrewVisible bool
 }
 
+// A room is born in its crew (ADR-0038, #1301). The crew used to arrive a
+// statement later, from PlaceRoomInCrew, which meant every room this app has
+// ever made existed crew-less for the width of one transaction. Invisible to
+// anyone outside it, and fatal to the contract half: a `not null` on crew_id
+// (and equally any `check (crew_id is not null)`, NOT VALID or otherwise) is
+// evaluated on THIS insert, so the constraint #1301 asks for would have
+// broken room creation on a database with zero null rows. The count the
+// issue was waiting on would have come back 0 and the release would still
+// have gone down.
+//
+// crew_visible is written here for the same reason and keeps its failsafe:
+// the column's default is false, so a call site that names no value still
+// gets the private one (20260908145114's argument, RESEARCH.md 16.3).
 func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, error) {
-	row := q.db.QueryRow(ctx, createRoom, arg.Slug, arg.Name, arg.OwnerID)
+	row := q.db.QueryRow(ctx, createRoom,
+		arg.Slug,
+		arg.Name,
+		arg.OwnerID,
+		arg.CrewID,
+		arg.CrewVisible,
+	)
 	var i Room
 	err := row.Scan(
 		&i.ID,
@@ -892,8 +913,8 @@ select r.id, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r
        -- The crew this room belongs to (ADR-0038), joined rather than fetched
        -- per room: this query's own comment is about the 1+4N it replaced, and
        -- the sidebar's switcher would have reintroduced exactly that. LEFT,
-       -- because crew_id is nullable for one release (ADR-0038's fourth
-       -- amendment) and a room without one must still list.
+       -- because crew_id is still nullable (ADR-0038's fourth amendment,
+       -- corrected sequence in #1301) and a room without one must still list.
        -- Not c.id: r.* already carries crew_id, and selecting both makes sqlc
        -- name the second one CrewID_2.
        coalesce(c.name, '')::text as crew_name,

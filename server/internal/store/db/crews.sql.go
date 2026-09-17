@@ -1028,9 +1028,9 @@ type PlaceRoomInCrewParams struct {
 	CrewVisible bool
 }
 
-// Crewless rooms are forbidden in code from the cutover (ADR-0038). A
-// separate statement rather than a wider CreateRoom: fifteen call sites make
-// rooms directly and none of them is a creation path a rider can reach.
+// Crewless rooms are forbidden in code from the cutover (ADR-0038). This
+// places a room that ALREADY EXISTS; creation carries its own crew in the
+// insert (CreateRoom, #1301), which a constraint on the column needs it to.
 func (q *Queries) PlaceRoomInCrew(ctx context.Context, arg PlaceRoomInCrewParams) error {
 	_, err := q.db.Exec(ctx, placeRoomInCrew, arg.ID, arg.CrewID, arg.CrewVisible)
 	return err
