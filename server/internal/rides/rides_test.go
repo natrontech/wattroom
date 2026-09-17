@@ -784,10 +784,10 @@ func TestBestRideOfWorkout(t *testing.T) {
 	}
 }
 
-// read issues one GET as alice and hands back the raw bytes rather than a
-// decoded map: what a bearer may read is a question about the whole body,
-// including fields nobody has written yet.
-func read(t *testing.T, h *harness, path string, bearer bool) (int, string) {
+// rawGet issues one GET as alice, with or without a personal token, and
+// hands back the raw bytes rather than a decoded map: what a bearer may read
+// is a question about the whole body, fields nobody has written yet included.
+func rawGet(t *testing.T, h *harness, path string, bearer bool) (int, string) {
 	t.Helper()
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
 	req.Header.Set("X-Test-User", "alice")
@@ -805,7 +805,7 @@ func TestABearerNeverReadsTheRecord(t *testing.T) {
 	h := setup(t)
 	id := h.save(t, "alice", 120, 200)
 	for _, path := range []string{"/api/rides/" + id, "/api/rides/" + id + "/export"} {
-		if code, _ := read(t, h, path, true); code != http.StatusForbidden {
+		if code, _ := rawGet(t, h, path, true); code != http.StatusForbidden {
 			t.Fatalf("%s with a bearer: %d, want 403", path, code)
 		}
 	}
@@ -831,33 +831,40 @@ func TestABearerNeverReadsTheDeliveryRecord(t *testing.T) {
 	// Both sentinels are invented here: no payload from the destination is
 	// ever fixtured in this repository (AGENTS.md).
 	remoteID := int64(4242424242)
-	lastError := "sentinel: the destination refused this one"
-	sentinels := []string{strconv.FormatInt(remoteID, 10), lastError}
+	refusal := "sentinel: the destination refused this one"
+	number := strconv.FormatInt(remoteID, 10)
 
-	delivered, failed := h.save(t, "alice", 120, 200), h.save(t, "alice", 120, 210)
-	h.deliver(t, delivered, &remoteID, nil)
-	h.deliver(t, failed, nil, &lastError)
+	// One record of each kind: a row carries the number or the sentence, not
+	// both, so proving one field off the wire would prove nothing about the
+	// other.
+	records := []struct{ ride, sentinel string }{
+		{h.save(t, "alice", 120, 200), number},
+		{h.save(t, "alice", 120, 210), refusal},
+	}
+	h.deliver(t, records[0].ride, &remoteID, nil)
+	h.deliver(t, records[1].ride, nil, &refusal)
 
 	// The fixture reaches the owner's own page first. Without this the sweep
 	// below passes on an empty table and says nothing at all.
-	for i, id := range []string{delivered, failed} {
-		code, body := read(t, h, "/api/rides/"+id, false)
-		if code != http.StatusOK || !strings.Contains(body, sentinels[i]) {
+	for _, record := range records {
+		code, body := rawGet(t, h, "/api/rides/"+record.ride, false)
+		if code != http.StatusOK || !strings.Contains(body, record.sentinel) {
 			t.Fatalf("the owner's own ride page: %d, and %q is not in it — the fixture never landed: %s",
-				code, sentinels[i], body)
+				code, record.sentinel, body)
 		}
 	}
 
 	paths := []string{"/api/rides", "/api/rides/best?workout=Openers"}
-	for _, id := range []string{delivered, failed} {
-		paths = append(paths, "/api/rides/"+id, "/api/rides/"+id+"/export", "/api/rides/"+id+"/card.png")
+	for _, record := range records {
+		paths = append(paths, "/api/rides/"+record.ride,
+			"/api/rides/"+record.ride+"/export", "/api/rides/"+record.ride+"/card.png")
 	}
 	for _, path := range paths {
-		code, body := read(t, h, path, true)
+		code, body := rawGet(t, h, path, true)
 		if code == http.StatusNotFound {
 			t.Fatalf("%s is not a route this service serves — the sweep is reading a typo, not an answer", path)
 		}
-		for _, sentinel := range sentinels {
+		for _, sentinel := range []string{number, refusal} {
 			if strings.Contains(body, sentinel) {
 				t.Errorf("%s answered a bearer with the delivery record (%q): %s", path, sentinel, body)
 			}
