@@ -107,9 +107,11 @@ while read -r dir; do
 	# A failure here is worth saying out loud: swallowing it is exactly how two
 	# databases were stranded with no way back to their names. The common cause
 	# is a second postgres container left behind by some other checkout, which
-	# makes dev-env.sh refuse to guess.
+	# makes dev-env.sh refuse to guess — so its whole complaint is relayed, the
+	# container names it prints included, rather than one line of it.
 	if ! drop_out=$( (cd "$dir" && ./scripts/dev-env.sh drop-db) 2>&1); then
-		echo "  ! $name — databases NOT dropped: $(tail -1 <<<"$drop_out")"
+		echo "  ! $name — databases NOT dropped:"
+		sed 's/^/      /' <<<"$drop_out"
 		echo "    they can no longer be named once this worktree is gone"
 		strand_warned=1
 	fi
@@ -174,6 +176,21 @@ elif container=$(./scripts/dev-env.sh pg-container 2>/dev/null); then
 		echo "Databases no worktree here claims — check no other checkout is using them:"
 		sed 's/^/    /' <<<"$stranded"
 		echo "    docker exec $container dropdb -U wattroom --if-exists --force <name>"
+	fi
+fi
+
+# The containers, for the same reason and with the same caution. `make infra`
+# now pins one compose project, so nothing new starts a server per checkout —
+# but a stray from before that pin, or from a hand `git worktree remove`, still
+# holds :5432 and still makes dev-env.sh refuse to name a container, which is
+# how a removed worktree broke `make` in every checkout on the machine (#2107).
+# Reported and never stopped: another clone of this repo looks identical here.
+strays=$(./scripts/dev-env.sh pg-strays 2>/dev/null || true)
+if [ -n "$strays" ]; then
+	echo
+	printf '%s\n' "$strays"
+	if [ "$strand_warned" = 1 ]; then
+		echo "    (and that is the usual reason a drop above failed)"
 	fi
 fi
 
