@@ -2,7 +2,7 @@
 # Multi-stage: SPA build -> Go build with the SPA embedded -> distroless (#36).
 # Build stages run on $BUILDPLATFORM and cross-compile — no QEMU emulation,
 # and the SPA (arch-independent) builds once instead of once per arch.
-FROM --platform=$BUILDPLATFORM node:22-alpine AS web
+FROM --platform=$BUILDPLATFORM node:24-alpine AS web
 RUN corepack enable
 WORKDIR /src/web
 COPY web/package.json web/pnpm-lock.yaml ./
