@@ -121,6 +121,39 @@ async function seedATaggedTrack(page: Page): Promise<void> {
 	if (ok !== true) throw new Error(`could not seed a tagged track: ${ok}`);
 }
 
+/**
+ * And Home's "What's next" is empty until something is planned, so /home used
+ * to be measured with that section rendering one line of prose (#1693). Each
+ * row is a workout name, a date, a room name and a planner on a 375px column —
+ * the widest thing on the page once it has content.
+ *
+ * Idempotent: this rider and its room are stable across runs (signin.ts), and
+ * a plan a run leaves behind would walk the room into docs/SPEC.md's 50-session
+ * ceiling after fifty of them.
+ */
+async function seedAPlannedSession(page: Page, slug: string): Promise<void> {
+	const ok = await page.evaluate(async (slug) => {
+		const mine = (await (await fetch('/api/schedule')).json()) as {
+			sessions?: unknown[];
+		};
+		if (mine.sessions?.length) return true;
+		const res = await fetch(`/api/rooms/${slug}/schedule`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				workoutName: 'Phone Width Threshold Intervals',
+				workoutJson: JSON.stringify({
+					name: 'Phone Width Threshold Intervals',
+					steps: [{ type: 'steady', seconds: 2400, target: 0.95 }],
+				}),
+				startsAt: new Date(Date.now() + 48 * 3600_000).toISOString(),
+			}),
+		});
+		return res.ok;
+	}, slug);
+	if (!ok) throw new Error("could not plan a session for Home's What's next");
+}
+
 test('no page outside a room scrolls sideways on a phone', async ({
 	page,
 	browser,
@@ -266,6 +299,8 @@ test('no page outside a room scrolls sideways on a phone', async ({
 			peer: expect.stringMatching(/.+/),
 		}),
 	);
+
+	await seedAPlannedSession(page, byId.room);
 
 	const wide: string[] = [];
 	for (const route of routes) {

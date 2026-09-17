@@ -7,7 +7,6 @@
 	import Radio from '@lucide/svelte/icons/radio';
 	import { account, unchosen } from '$lib/account.svelte';
 	import { api } from '$lib/api';
-	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
 	import { friends } from '$lib/friends/friends.svelte';
 	import { revealRooms } from '$lib/rooms/reveal';
@@ -17,6 +16,7 @@
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import FirstRun from '$lib/home/FirstRun.svelte';
 	import RecentRides from '$lib/home/RecentRides.svelte';
+	import WhatsNext from '$lib/home/WhatsNext.svelte';
 	import type { ServerRide } from '$lib/ride/list';
 	import Modal from '$lib/components/Modal.svelte';
 	import { administersNone, crewsOf } from '$lib/nav/crews';
@@ -29,7 +29,6 @@
 	import { changelog } from '$lib/changelog.svelte';
 	import WhatsNewNotice from '$lib/components/WhatsNewNotice.svelte';
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
-	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
@@ -192,13 +191,6 @@
 			};
 		return null;
 	});
-	const planned = $derived(
-		(rooms ?? [])
-			.filter((r) => r.next)
-			.sort(
-				(a, b) => Date.parse(a.next!.startsAt) - Date.parse(b.next!.startsAt),
-			),
-	);
 	const week = $derived.by(() => {
 		const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
 		const recent = (rides ?? []).filter(
@@ -504,75 +496,10 @@
 						(rides = rides?.filter((r) => r.id !== ride.id) ?? null)}
 				/>
 
-				<!-- What's next: every room's plan, across every room you are in
-		     (ADR-0020 — /sessions retired into this). Planning itself happens in
-		     the room whose session it is. -->
-				<section id="sessions">
-					<div class="flex items-baseline gap-3">
-						<h2 class="eyebrow">What's next</h2>
-					</div>
-					{#if planned.length > 0}
-						<div class="panel mt-3">
-							{#each planned as room (room.slug)}
-								<!-- The date too: this is the one list that spans rooms and
-								     weeks, and "Tue 19:00" could not tell next week's from
-								     tomorrow's. Same destination as the Lounge's card. -->
-								<a
-									href="/r/{room.slug}/sessions"
-									class="border-ink/5 hover:bg-surface flex items-center gap-3 border-b px-4 py-3 transition-colors last:border-b-0"
-								>
-									<CalendarClock size={15} class="text-muted shrink-0" />
-									<div class="min-w-0">
-										<p class="truncate text-sm font-medium">
-											{room.next?.workoutName}
-										</p>
-										<p class="text-muted text-xs">
-											{formatWhen(room.next?.startsAt ?? '', true)} · {room.name}
-										</p>
-									</div>
-								</a>
-							{/each}
-						</div>
-						<!-- Notifications, offered where they would matter (#1485): the
-						     rider can see a session is coming, so this is the moment to
-						     say the app can tell them when it starts. Once, and only
-						     where the button can succeed — NotifyOffer decides. -->
-						<NotifyOffer />
-					{:else}
-						<p class="text-muted mt-3 text-sm">
-							Nothing on the calendar.
-							{#if firstRoom}
-								<!-- The CTA that creates the first one (ux.md), not a word in italics (#1911). -->
-								<a href="/r/{firstRoom.slug}/sessions" class="btn-link"
-									>Plan one</a
-								> — it shows up here, and in everyone's calendar.
-							{:else}
-								Open a room's <em>Sessions</em> and plan one — it shows up here, and
-								in everyone's calendar.
-							{/if}
-						</p>
-					{/if}
-					<!-- The feed is offered under the list it mirrors (ADR-0021, #1374)
-					     — once there is a room to plan in; a subscription to nothing is
-					     noise on the screen meant to teach. The link itself lives with the
-					     account's other bearer secrets now (#1860), so this is the way to
-					     it rather than a second copy of it. -->
-					{#if rooms.length}
-						<a
-							href="/settings/data"
-							class="panel hover:bg-surface mt-3 flex flex-wrap items-center gap-3 px-4 py-3 transition-colors"
-						>
-							<CalendarClock size={15} class="text-muted shrink-0" />
-							<span class="text-muted min-w-0 flex-1 text-xs">
-								Put all of this in your calendar app — one subscription, every
-								room you are in.
-							</span>
-							<span class="btn-link shrink-0 text-xs"
-								>Get your calendar link</span
-							>
-						</a>
-					{/if}
-				</section>
+				<!-- What's next: every planned session, across every room you are
+			     in (ADR-0020 — /sessions retired into this). Planning and saying
+			     you are in both happen in the room whose session it is. -->
+				<WhatsNext planSlug={firstRoom?.slug} hasRooms={rooms.length > 0} />
 			</div>
 			<!-- Friends is its own place (ADR-0020); the heading that stayed here
 			     with nothing under it went with #1333. -->

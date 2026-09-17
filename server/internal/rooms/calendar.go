@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -38,8 +39,8 @@ const (
 )
 
 // calendarUntil is the far edge every calendar read shares — the feeds and
-// the sessions page alike, so none of them can quietly disagree about how far
-// ahead a plan is visible.
+// Home's list alike, so none of them can quietly disagree about how far ahead
+// a plan is visible.
 func calendarUntil() pgtype.Timestamptz { return pgTime(time.Now().Add(calendarHorizon)) }
 
 // warnIfTruncated says so when a read came back exactly full. A row bound
@@ -105,7 +106,7 @@ func (s *Service) handleUserCalendar(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.Queries.GetUserByIcsToken(r.Context(), icsPathToken(r))
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found",
-			"That calendar link is not valid — copy the current one from your sessions page.")
+			"That calendar link is not valid — copy the current one from Settings, under Your data.")
 		return
 	}
 	rows, err := s.store.Queries.ListUserCalendar(r.Context(), db.ListUserCalendarParams{
@@ -201,6 +202,13 @@ func workoutLength(workoutJSON string) time.Duration {
 	}
 	last := segments[len(segments)-1]
 	return time.Duration(last.Start+last.Seconds) * time.Second
+}
+
+// workoutMinutes is workoutLength as a cross-room list shows it (#1693),
+// rounded the way the room's own Sessions place rounds it so one plan never
+// reads as two lengths on two screens.
+func workoutMinutes(workoutJSON string) int {
+	return int(math.Round(workoutLength(workoutJSON).Minutes()))
 }
 
 // icsTime is RFC 5545's UTC basic format.
