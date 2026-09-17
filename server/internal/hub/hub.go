@@ -449,10 +449,11 @@ func (h *Hub) room(slug string) *room {
 		// One clock for the room and the hub that owns it. newRoom defaults to
 		// time.Now, which is identical in production and divergent the moment
 		// either is injected: join/leave/setAway/setMetrics/fire stamp on the
-		// room's, run/sayDepartedLocked/allow on the hub's, and a test moving
-		// one put a departure in the other's future. Indirect on purpose — a
-		// captured h.now would pin whatever the field held at room creation.
-		rm.now = func() time.Time { return h.now() }
+		// room's, run/sayDepartedLocked/rm.allow on the hub's, so a departure
+		// landed in the future of the grace window measuring it. Captured like
+		// safego.Supervise captures it in New — h.now is set once, before any
+		// room exists, and a later write races every room goroutine reading it.
+		rm.now = h.now
 		rm.pending = &h.handoffs
 		rm.changed = h.PresenceChanged
 		rm.deckIdled = func() { h.triggerAutoplay(rm, slug) }

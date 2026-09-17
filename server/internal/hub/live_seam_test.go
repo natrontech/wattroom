@@ -14,12 +14,16 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
-// The closed set errors.md pins. A WS refusal carries one of these, optionally
-// behind a surface prefix that routes it — never a vocabulary of its own.
-var errorCodes = map[string]bool{
-	"validation_error": true, "invalid_request": true, "unauthorized": true,
-	"forbidden": true, "not_found": true, "conflict": true,
-	"rate_limited": true, "internal_error": true,
+// knownErrorCode reports whether a code is in the closed set errors.md pins. A
+// WS refusal carries one of these, optionally behind a surface prefix that
+// routes it — never a vocabulary of its own.
+func knownErrorCode(code string) bool {
+	switch code {
+	case "validation_error", "invalid_request", "unauthorized", "forbidden",
+		"not_found", "conflict", "rate_limited", "internal_error":
+		return true
+	}
+	return false
 }
 
 func TestJukeboxRefusalsSpeakTheClosedSet(t *testing.T) {
@@ -39,7 +43,7 @@ func TestJukeboxRefusalsSpeakTheClosedSet(t *testing.T) {
 		{refusalInvalidTrackID, "validation_error"},
 	} {
 		got := tc.refusal.code()
-		if !errorCodes[got] {
+		if !knownErrorCode(got) {
 			t.Errorf("%s: code %q is outside errors.md's set", tc.refusal, got)
 		}
 		if got != tc.want {
@@ -49,7 +53,7 @@ func TestJukeboxRefusalsSpeakTheClosedSet(t *testing.T) {
 			t.Errorf("%s: no actionable message", tc.refusal)
 		}
 		if code := jukeboxCode(got); !strings.HasPrefix(code, "jukebox_") ||
-			!errorCodes[strings.TrimPrefix(code, "jukebox_")] {
+			!knownErrorCode(strings.TrimPrefix(code, "jukebox_")) {
 			t.Errorf("%s: namespaced code %q does not decompose", tc.refusal, code)
 		}
 	}
@@ -93,23 +97,31 @@ func TestPokeCooldownAnswersRateLimited(t *testing.T) {
 
 func TestRoomAndHubShareOneClock(t *testing.T) {
 	// newRoom defaults to time.Now and Hub.room() never overrode it, so
-	// join/setMetrics/fire stamped on one function and run/allow on another —
-	// identical in production, divergent the moment either is injected.
+	// join/leave/setAway/setMetrics/fire stamped on one function and
+	// run/sayDepartedLocked/rm.allow on another — identical in production,
+	// divergent the moment either is injected, which is what the tests do.
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	frozen := time.Unix(1_700_000_000, 0)
-	h.now = func() time.Time { return frozen }
+	h.now = func() time.Time { return frozen } // before any room exists
 
 	rm := h.room("velvet")
 	if got := rm.now(); !got.Equal(frozen) {
 		t.Fatalf("room clock = %v, hub clock = %v", got, frozen)
 	}
-	// And it FOLLOWS the field, rather than capturing whatever function it
-	// held when the room was built: a test that replaces the hub's clock
-	// after the first join is otherwise back to two clocks, silently.
-	later := frozen.Add(time.Hour)
-	h.now = func() time.Time { return later }
-	if got := rm.now(); !got.Equal(later) {
-		t.Fatalf("room clock = %v after the hub's became %v", got, later)
+
+	// The seam it costs: leave() stamps the departure on the room's clock and
+	// the tick measures the grace window on the hub's. Two clocks put the
+	// stamp years in the measuring clock's future, and the room was never
+	// told anybody had gone.
+	c := &client{rider: protocol.Rider{ID: "jan", Name: "Jan"}}
+	rm.join(c)
+	rm.leave(c)
+	rm.mu.Lock()
+	rm.sayDepartedLocked(h.now().Add(presenceGrace + time.Second))
+	events := rm.events.drain()
+	rm.mu.Unlock()
+	if len(events) == 0 || events[len(events)-1].Verb != "left" {
+		t.Fatalf("timeline = %+v, want Jan's departure past the grace window", events)
 	}
 }
 
