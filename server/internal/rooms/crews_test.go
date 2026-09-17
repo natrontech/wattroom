@@ -54,6 +54,17 @@ func (h *harness) makeCrewAdmin(t *testing.T, crew db.GetCrewRow, who string) {
 	}
 }
 
+// crewRole is the one word the crew makes of a person — "" for somebody it
+// has never heard of — read the way every gate in the app reads it.
+func (h *harness) crewRole(t *testing.T, crew db.GetCrewRow, user pgtype.UUID) string {
+	t.Helper()
+	role, err := h.store.Queries.CrewRoleOf(t.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user})
+	if err != nil {
+		t.Fatalf("crew role: %v", err)
+	}
+	return role
+}
+
 // enter is the front door (#1236): the crew by its code, then the room by
 // its address. Asserted to succeed at both.
 func (h *harness) enter(t *testing.T, who, code, slug string) {
@@ -812,7 +823,7 @@ func TestACrewOutlivesItsRoomsAndPassesOnWithItsOwner(t *testing.T) {
 	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); err != nil {
 		t.Fatalf("a crew with no rooms left was deleted: %v", err)
 	}
-	if role, _ := h.store.Queries.CrewRoleOf(t.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: h.users.ByToken["bob"].ID}); role != "member" {
+	if role := h.crewRole(t, crew, h.users.ByToken["bob"].ID); role != "member" {
 		t.Errorf("bob's standing went with the room: %q, want member", role)
 	}
 	// And the client still hears of it (#1476): the room list carries the

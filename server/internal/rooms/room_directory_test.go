@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"slices"
 	"testing"
+
+	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/store"
 )
 
 // The opt-in public directory (#1118, ADR-0039). Two invariants matter more
@@ -42,22 +45,34 @@ func TestDirectoryListsOnlyWhatOwnersChose(t *testing.T) {
 	}
 }
 
-// Listing widens DISCOVERY, never ACCESS. Bob can find the room; he still
-// meets every gate he met before. This is the invariant that makes the
-// feature safe, and it fails silently — the directory would look identical.
-func TestListingARoomOpensNoDoor(t *testing.T) {
+// A listing discloses nothing and admits to the crew — the two halves of
+// ADR-0038's 2026-09-17 amendment (#2245), which are one decision and so are
+// one test. The read stays the narrowest in the app: a name, an icon, a link.
+// The POST beside it is the crew's second, public door, and it has been open
+// since #1671 with nothing asserting it — this test was named
+// TestListingARoomOpensNoDoor and stopped at the read, so its name said the
+// opposite of the product.
+func TestListingDisclosesNothingAndAdmitsToTheCrew(t *testing.T) {
 	h := setup(t)
-	slug, _ := h.createRoom(t, "alice", "Findable Room")
+	// Three rooms in one crew, which is the cap exactly: the listed one is
+	// the door, and the other two are what lies behind it — one left open to
+	// the crew, one shut to it.
+	slug, crewCode := h.createRoom(t, "alice", "Findable Room")
+	sibling, _ := h.createRoom(t, "alice", "Sibling Room")
+	shut, _ := h.createRoom(t, "alice", "Shut Room")
+	h.makePrivate(t, shut)
 	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
 		`{"name":"Findable Room","listed":true,"soundPack":"base","cheers":["flame"]}`); status != http.StatusOK {
 		t.Fatalf("list it: %d", status)
 	}
+	crew := h.crewOf(t, slug)
+	carol := h.users.ByToken["carol"].ID
 
 	// Carol is not a member. She can see it exists…
-	if names := h.directory(t, "carol"); len(names) != 1 {
+	if names := h.directory(t, "carol"); len(names) != 1 || names[0] != "Findable Room" {
 		t.Fatalf("carol cannot find a listed room: %v", names)
 	}
-	// …and that is the whole of what she gains.
+	// …and that is the whole of what she gains by reading.
 	_, body := h.call(t, "carol", http.MethodGet, "/api/rooms/"+slug, "")
 	for _, leak := range []string{"code", "members", "soundPack", "cheers", "icsToken", "board", "me"} {
 		if body[leak] != nil {
@@ -78,6 +93,49 @@ func TestListingARoomOpensNoDoor(t *testing.T) {
 		if key != "slug" && key != "name" && key != "icon" {
 			t.Errorf("a directory entry carries %q — the columns are the disclosure decision", key)
 		}
+	}
+	// Nothing of the crew is hers yet: the door has to be the thing that
+	// opens all of it below, not a state she was already in.
+	if role := h.crewRole(t, crew, carol); role != "" {
+		t.Fatalf("carol is already %q in the crew before joining anything", role)
+	}
+	if status, _ := h.call(t, "carol", http.MethodGet, "/api/crews/"+store.UUIDString(crew.ID), ""); status != http.StatusNotFound {
+		t.Fatalf("the crew page answered a stranger: %d", status)
+	}
+
+	// The door: posting to a listed room joins the CREW, then the room.
+	if status, body := h.call(t, "carol", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusNoContent {
+		t.Fatalf("the listed room refused a stranger: %d %v", status, body)
+	}
+	if role := h.crewRole(t, crew, carol); role != "member" {
+		t.Fatalf("the directory admitted carol to the room alone: crew role = %q, want member", role)
+	}
+
+	// Transitive, part one: every member is handed the crew's invite
+	// (ListCrewRoomsFor and handleGetCrew both select it), so a rider who
+	// walked in off the directory can admit others through the front door
+	// with the listing out of it entirely. Rotating the code is the only
+	// take-back and it breaks every other outstanding link (#1930).
+	status, page := h.call(t, "carol", http.MethodGet, "/api/crews/"+store.UUIDString(crew.ID), "")
+	if status != http.StatusOK {
+		t.Fatalf("the crew page refused its newest member: %d %v", status, page)
+	}
+	code, _ := page["code"].(string)
+	if code != crewCode {
+		t.Errorf("crew code handed over = %q, want the crew's own %q", code, crewCode)
+	}
+	if len(code) != protocol.CrewCodeLen {
+		t.Errorf("the invite is %d characters, not %d", len(code), protocol.CrewCodeLen)
+	}
+
+	// Transitive, part two: the crew's other rooms open to her, and only the
+	// ones their owner left open to the crew. That limit is the whole of the
+	// widening, so it is asserted from both sides.
+	if status, body := h.call(t, "carol", http.MethodPost, "/api/rooms/"+sibling+"/join", ""); status != http.StatusNoContent {
+		t.Errorf("a crew-visible sibling stayed shut to a crew member: %d %v", status, body)
+	}
+	if status, _ := h.call(t, "carol", http.MethodPost, "/api/rooms/"+shut+"/join", ""); status != http.StatusForbidden {
+		t.Errorf("a room shut to its crew opened anyway: %d", status)
 	}
 }
 
