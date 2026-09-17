@@ -272,4 +272,17 @@ test('a phone plans a session and still does not start one', async ({
 	).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Start now' })).toHaveCount(0);
 	await expect(page.getByText('starting soon')).toBeVisible();
+
+	// And the menu says where it went rather than hiding it (ux.md: a missing
+	// precondition is a disabled control with a one-line hint).
+	await page
+		.getByRole('listitem')
+		.filter({ hasText: 'Phone Planner Session' })
+		.first()
+		.click({ button: 'right' });
+	const menu = page.getByRole('menu');
+	await expect(menu).toBeVisible();
+	await expect(
+		menu.getByText('start it from the screen you ride on'),
+	).toBeVisible();
 });

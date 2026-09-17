@@ -410,14 +410,20 @@ func TestOverlappingPlansLeadInTheOrderTheyWerePlanned(t *testing.T) {
 	// not disagree about which session a room's next one is.
 	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms", "")
 	rooms, _ := body["rooms"].([]any)
+	var railed bool
 	for _, entry := range rooms {
 		row, _ := entry.(map[string]any)
 		if row["slug"] != slug {
 			continue
 		}
+		railed = true
 		next, _ := row["nextSession"].(map[string]any)
 		if next == nil || next["workoutName"] != "Elder" {
 			t.Fatalf("the rail's next session is %v, the room's is Elder", next)
 		}
+	}
+	// Without this the loop asserts nothing the day the room stops listing.
+	if !railed {
+		t.Fatalf("the rail never listed %s: %v", slug, body["rooms"])
 	}
 }
