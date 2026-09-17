@@ -70,6 +70,21 @@ const (
 	refusalInvalidTrackID  jukeboxRefusal = "invalid_track"
 )
 
+// code is the refusal as errors.md's closed set says it: what the rider has
+// to do about it, not which branch of newEntry returned. The caller namespaces
+// it with the surface ("jukebox_validation_error") so the client lands it on
+// the deck; message() stays the human half. A full queue and a track cap are
+// rate_limited and not conflict, for the same reason a 503 is: the rider's
+// move is to wait and try again, and nothing about their paste was wrong.
+func (r jukeboxRefusal) code() string {
+	switch r {
+	case refusalQueueFull, refusalTrackCap:
+		return "rate_limited"
+	default:
+		return "validation_error"
+	}
+}
+
 func (r jukeboxRefusal) message() string {
 	switch r {
 	case refusalQueueFull:

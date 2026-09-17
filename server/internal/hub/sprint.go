@@ -128,7 +128,13 @@ func podium(samples map[string][]sprintSample, seen map[string]protocol.Rider) [
 				best, ranked = sum, true
 			}
 		}
-		if !ranked {
+		// An idle trainer is not a sprinter. A rider sitting in the room with
+		// a trainer paired reports 0 W every second, which is five whole
+		// seconds of samples and used to rank them at 0.0 w/kg — enough for
+		// minSprintField to read a field of two and hand the one person who
+		// actually sprinted the podium and the Sprint Snob credit. The
+		// constant's own comment says someone ELSE has to have sprinted.
+		if !ranked || best <= 0 {
 			continue
 		}
 		avg := best / window

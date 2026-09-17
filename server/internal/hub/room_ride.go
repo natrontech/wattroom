@@ -218,12 +218,23 @@ func (rm *room) startGame(mode string, now time.Time) string {
 }
 
 // endGame stops the running mode; false when nothing was running (#1582).
-func (rm *room) endGame() bool {
+// It is the coach's out and the only end Team Relay has — relay.done() is
+// never true — so it puts the ending on the timeline itself, unless the game
+// already announced its own: advanceGameLocked stamped gameDoneAt on the tick
+// it put a "won" or "gameEnded" line up, and a coach clearing a finished
+// game's podium is not a second ending.
+func (rm *room) endGame(now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	running := rm.game != nil
+	if rm.game == nil {
+		return false
+	}
+	if rm.gameDoneAt.IsZero() {
+		gs := rm.game.state(now)
+		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
+	}
 	rm.game, rm.lastGame, rm.gameDoneAt = nil, nil, time.Time{}
-	return running
+	return true
 }
 
 // gameRosterLocked is the roster the game scores against: everyone the room

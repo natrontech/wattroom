@@ -102,6 +102,16 @@ export function eventText(event: RoomEvent): string {
 		// A game's end (#1575): the subject is the mode's id, labelled here.
 		case 'won':
 			return `${event.actor} won ${gameMode(event.subject ?? '')?.label ?? subject}`;
+		// The same end with nobody to name (#2235): a collective ramp ends on
+		// the room's average, not on one rider outlasting the rest, and the
+		// coach's end is the only end Team Relay has. The count is the round
+		// it reached — for a collective ramp, the score the room rode for.
+		case 'gameEnded': {
+			const mode = gameMode(event.subject ?? '')?.label ?? subject;
+			return event.count > 1
+				? `${mode} ended after ${event.count} rounds`
+				: `${mode} ended`;
+		}
 		// 'due' is the one line no server sends: the hub does not know the
 		// schedule, so each client derives the reminder from the same upcoming
 		// list the lounge card renders.

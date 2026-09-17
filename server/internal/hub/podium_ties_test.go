@@ -111,10 +111,10 @@ func TestStartGameNamesItsRefusal(t *testing.T) {
 	if got := rm.startGame("team-relay", gat(1)); got != refuseGameRunning {
 		t.Fatalf("second start: %q", got)
 	}
-	if !rm.endGame() {
+	if !rm.endGame(gat(2)) {
 		t.Fatal("end with a game running said nothing ran")
 	}
-	if rm.endGame() {
+	if rm.endGame(gat(3)) {
 		t.Fatal("end with no game said one ran")
 	}
 }
