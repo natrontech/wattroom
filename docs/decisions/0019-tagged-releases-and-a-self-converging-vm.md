@@ -35,6 +35,30 @@
 > moves the Prometheus job and the deploy guard's ride check; everything else
 > about monitoring below is unchanged.
 
+> **Amended 2026-09-17 (#1481).** The server **applies a migration that
+> arrived late** rather than refusing to boot. Two branches cut from the same
+> main stamp timestamps minutes apart; the later-written one merges first, and
+> goose's default then rejects the other one on every database that already
+> took the winner — in production, a health gate rolling the release back
+> until somebody edits `goose_db_version` by hand. `store.Open` passes
+> `goose.WithAllowMissing()`, so the late file is applied at the next boot, in
+> version order, before anything pending. This is expand/contract being spent:
+> a release only adds, so applying an addition late gives exactly the schema a
+> fresh database would have had, and it is the same property that makes
+> retagging to `PREVIOUS` safe. The risk it accepts is the one already listed
+> below — expand/contract is enforced by nobody — now with a second way to
+> bite: a migration that quietly reads what a *newer* file left behind would
+> be applied against a schema it did not expect. CI warns on a PR whose
+> migration predates the newest on the base branch (`migration-order` in
+> `ci.yml`) and does not block on it: main's ruleset does not require branches
+> to be up to date, so a blocking check would not see the winner's file
+> anyway, and making it see one would cost a rebase and a full CI re-run on
+> every merge. "What the database is at" therefore means *the highest version
+> it has recorded*, and no longer implies that every lower version ran before
+> it. Nothing about rollback changes: the image goes back, the schema never
+> does.
+
+
 ## Context
 
 Jan is the only person with access to the homelab. Every deploy, every rollback, and every "did that break something" is therefore gated on his attention, and a deploy costs enough attention to be worth skipping — which is how a project ends up with a production running an image nobody can name.
@@ -84,7 +108,7 @@ Accepted, each with its trigger:
 
 - **The VM holds a deploy key and reaches out on a timer.** New outbound surface and a credential on the box, against a homelab convention that nothing auto-pulls. Accepted for one private repo and one developer; revisit if the VM ever hosts something that is not WattRoom.
 - **Cutting a release is two commits** — the tag here, the pin bump there. Deliberate: the pin bump *is* the promotion gate. If it turns out to be friction rather than ceremony, teaching the pin file to accept the literal `latest` is a two-line change. Not built now.
-- **Expand/contract is enforced by nobody.** A migration that drops a column passes CI and breaks rollback silently, discovered only when a rollback is attempted — the worst possible moment. Accepted because the alternative is a schema-diff check nobody has written; the first time it bites is the trigger to write one.
+- **Expand/contract is enforced by nobody.** A migration that drops a column passes CI and breaks rollback silently, discovered only when a rollback is attempted — the worst possible moment. Accepted because the alternative is a schema-diff check nobody has written; the first time it bites is the trigger to write one. *(Amended 2026-09-17, #1481: it now also carries out-of-order application — see the amendment above. Still accepted, still unenforced, and the `migration-order` warning is the whole of the mitigation.)*
 - **Auto-rollback only covers "the new image did not come up healthy."** An image that comes up fine and is subtly wrong is caught by the 30-minute synthetic, and the response to that is a human reverting the pin. Automated recovery deliberately stops at the boundary where "broken" stops being mechanically decidable.
 - **A release can sit undeployed through a long group ride.** That is the rider guard working, not failing.
 - **The updater moves only the wattroom image.** Postgres, LiveKit, and Caddy stay pinned and are bumped by hand, deliberately, with a human watching.
