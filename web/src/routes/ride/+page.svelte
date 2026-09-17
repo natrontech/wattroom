@@ -475,7 +475,9 @@
 <!-- Mid-ride the whole frame is the cave, sidebar included (#113 refined,
      ADR-0020): the layout reads soloRide.active. Setup and the summary are
      desk surfaces, the effort itself gets the dark. -->
-<main class="bg-surface text-ink flex min-h-screen flex-col px-6 py-5">
+<!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
+     surface is not a `page` — it fills the window — so it spells the two. -->
+<main class="bg-surface text-ink flex min-h-screen flex-col px-4 py-5 sm:px-6">
 	{#if !session || session.state === 'idle'}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because

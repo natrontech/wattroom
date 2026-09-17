@@ -479,7 +479,10 @@
 		     numbers and the horizon, in the order the room and the solo ride use
 		     them. The ramp's real differences are two words — it prescribes a
 		     STEP, and it counts steps rather than blocks. -->
-		<div class="panel mt-8 flex flex-col gap-5 p-8">
+		<!-- The bottom padding is the floating navigation button's, as
+		     RidingScreen has it (ux.md: the last item clears the chrome) — the
+		     graph's bottom-left corner sat under it at 375 px (#2161). -->
+		<div class="panel mt-8 flex flex-col gap-5 p-8 pb-16 sm:pb-8">
 			<RideHeader
 				{block}
 				elapsed={session.elapsed}

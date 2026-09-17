@@ -23,6 +23,10 @@
 					title: 'Trainer is connected but sends no power',
 					detail:
 						'It reports over Bluetooth — cadence or speed — but never watts, so nothing here can score you. Pair a power meter as a sensor, or a trainer that measures power.',
+					// The button opens the chooser, which is what this copy asks
+					// for — "Reconnect" named the one thing that will not help
+					// here, since the device is connected (#2161).
+					action: 'Pair another device',
 				};
 			if (fault.state === 'silent')
 				return {
@@ -117,7 +121,7 @@
 		<button
 			onclick={onRecover}
 			class="btn btn-primary btn-lg ml-auto shrink-0 max-sm:ml-0 max-sm:w-full"
-			>Reconnect</button
+			>{copy.action ?? 'Reconnect'}</button
 		>
 	{/if}
 </div>

@@ -161,10 +161,14 @@
 					<SessionControls compact />
 					<!-- The 3 m view, from the place the rider is on (#1667): the
 					     Lounge had the only button, off the numbers, mid-interval. -->
+					<!-- btn-lg, as /ride and /ramp give the same control and as
+					     every neighbour in this header already is (#2161): it is
+					     pressed while pedalling, which is what ux.md's 44 px is
+					     about. -->
 					<button
 						onclick={() => room.openTv()}
-						class="btn btn-ghost btn-xs"
-						aria-label="TV mode"><MonitorUp size={13} /> TV</button
+						class="btn btn-secondary btn-lg"
+						aria-label="TV mode"><MonitorUp size={15} /> TV</button
 					>
 					<RoomFlag />
 				{/snippet}
