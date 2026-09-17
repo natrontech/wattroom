@@ -20,8 +20,12 @@ describe('gate scale', () => {
 		expect(gatePct(GATE_FLOOR)).toBe(0);
 		expect(gatePct(GATE_CEIL)).toBe(100);
 		// A threshold equal to the level sits exactly where the level ends.
+		// Across the two clamps, not gatePct against itself (#2366): the
+		// meter's bar and the threshold's mark are both gatePct in
+		// GateMeter.svelte, so what can still drift apart is gatePct's own
+		// clamp and clampThreshold's bounds.
 		for (const level of [0.004, 0.02, 0.05, 0.2]) {
-			expect(gatePct(level)).toBeCloseTo(gatePct(level), 10);
+			expect(gatePct(clampThreshold(level))).toBeCloseTo(gatePct(level), 10);
 			expect(gatePct(level)).toBeGreaterThan(0);
 			expect(gatePct(level)).toBeLessThan(100);
 		}
