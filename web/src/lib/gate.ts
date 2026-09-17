@@ -141,8 +141,10 @@ function check(
  * looked at. Add an entry here only after checking the failure is the kind
  * that genuinely can't be resolved by moving a colour (#620): the surface
  * pair itself is the point of the theme, and the shared white-family zone
- * ramp can't separate against it without erasing that. See #621 for the
- * standing question of whether the gate itself should change instead.
+ * ramp can't separate against it without erasing that. #621 asked whether the
+ * gate should change rather than the palette and answered no: APCA ranks the
+ * same zones 15–25% below the reference, so the formula was not what rejected
+ * them. The list stays the escape hatch; there is no better one.
  */
 export const EXCEPTIONS: {
 	themeId: string;
