@@ -52,11 +52,12 @@ test('an action picked in the phone drawer is not left under it', async ({
 		.getByRole('status')
 		.or(a.getByRole('region', { name: 'notifications' }).getByRole('alert'));
 	await expect(toast).toBeVisible();
-	// The pointer resting on the stack pauses every toast's clock, so the rest
-	// happens off the mouse: the keyboard opens the drawer again, the pointer
-	// never leaves, and the toast is still there to be measured.
+	// The pointer resting on the stack pauses every toast's clock; leaving it
+	// gives every toast a second more, which is the window the rest of this
+	// runs in. The click is also the check from #2210: the stack sat over the
+	// navigation button, so this very line used to be refused.
 	await toast.hover();
-	await hamburger.press('Enter');
+	await hamburger.click();
 	await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
 	await a.waitForTimeout(300); // the drawer's 200 ms slide
 
