@@ -1,0 +1,126 @@
+import { expect, test } from './room';
+
+/**
+ * The phone drawer and what its own menus raise (#2153). The drawer is
+ * `z-50` and stayed open by itself, so a confirm dialog (`z-40`) came up
+ * mostly behind it with the focus trap holding focus inside, and a toast —
+ * `z-50` too, and mounted earlier — showed a right-hand sliver and its ×.
+ *
+ * Two properties, one flow: the drawer steps aside for the action it was
+ * asked for, and a toast is readable even with the drawer back over it.
+ */
+
+/** This spec's own riders — nobody else's (#2133). */
+const RIDER = 'Drawer Menu Rider';
+const OTHER = 'Drawer Menu Other';
+const PHONE = { width: 375, height: 812 };
+
+test('an action picked in the phone drawer is not left under it', async ({
+	riders,
+	rooms,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+
+	const a = await riders(RIDER);
+	await a.setViewportSize(PHONE);
+	// The first room founds the crew whose row carries the menu.
+	await rooms.open(a, `Drawer Menu ${Date.now() % 100000}`);
+
+	await a.goto('/home');
+	const hamburger = a.getByRole('button', { name: 'open navigation' });
+	await hamburger.click();
+	await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
+
+	// Long-press is the finger's right-click; Playwright's right button opens
+	// the same menu through the same handler. "Copy invite link" is the item
+	// that raises a toast either way — a clipboard the browser refuses says
+	// so in one, which is the point of that fallback.
+	await a
+		.locator('a[title="the crew — its people and rooms"]')
+		.click({ button: 'right' });
+	await a.getByRole('menuitem', { name: 'Copy invite link' }).click();
+
+	// The drawer went, rather than staying over whatever the item raised —
+	// this is what a confirm dialog at z-40 depends on.
+	await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
+
+	const toast = a
+		.getByRole('region', { name: 'notifications' })
+		.getByRole('status')
+		.or(a.getByRole('region', { name: 'notifications' }).getByRole('alert'));
+	await expect(toast).toBeVisible();
+	// The pointer resting on the stack pauses every toast's clock, so the rest
+	// happens off the mouse: the keyboard opens the drawer again, the pointer
+	// never leaves, and the toast is still there to be measured.
+	await toast.hover();
+	await hamburger.press('Enter');
+	await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
+	await a.waitForTimeout(300); // the drawer's 200 ms slide
+
+	const hit = await toast.evaluate((el) => {
+		const box = el.getBoundingClientRect();
+		const on = document.elementFromPoint(
+			box.left + box.width / 2,
+			box.top + box.height / 2,
+		);
+		return {
+			mine: el.contains(on),
+			what: on
+				? `${on.tagName.toLowerCase()}.${on.className}`.slice(0, 60)
+				: '',
+		};
+	});
+	expect(hit.mine, `the toast's centre hits ${hit.what}`).toBe(true);
+
+	// And the dialog the issue was reported for: a crew this rider is in but
+	// does not own, whose menu offers a confirm. Under an open drawer it came
+	// up with its body and its danger button behind it, while the focus trap
+	// held focus inside (#2153).
+	const b = await riders(OTHER);
+	const theirs = await rooms.open(b, `Drawer Other ${Date.now() % 100000}`);
+	await rooms.enter(a, theirs);
+	const crew = await a.evaluate(
+		(slug) =>
+			fetch(`/api/rooms/${slug}`)
+				.then((res) => res.json())
+				.then((r) => String(r.crew?.name ?? '')),
+		theirs.slug,
+	);
+
+	await a.goto('/home');
+	await hamburger.click();
+	// Two crews now, so the row is a switcher: its list is where the other
+	// crew's own menu lives.
+	await a.getByRole('button', { name: /switch crew/ }).click();
+	await a
+		.getByRole('button', { name: new RegExp(`crew: ${crew}`) })
+		.click({ button: 'right' });
+	await a.getByRole('menuitem', { name: 'Leave the crew' }).click();
+
+	await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
+	const dialog = a.getByRole('dialog');
+	const danger = dialog.getByRole('button', { name: 'Leave the crew' });
+	await expect(danger).toBeVisible();
+	const onDanger = await danger.evaluate((el) => {
+		const box = el.getBoundingClientRect();
+		const on = document.elementFromPoint(
+			box.left + box.width / 2,
+			box.top + box.height / 2,
+		);
+		return {
+			mine: el.contains(on),
+			what: on
+				? `${on.tagName.toLowerCase()}.${on.className}`.slice(0, 60)
+				: '',
+		};
+	});
+	expect(
+		onDanger.mine,
+		`the danger button's centre hits ${onDanger.what}`,
+	).toBe(true);
+	// Nothing left behind: the safe answer, which the trap focuses first.
+	await dialog.getByRole('button', { name: 'Keep it' }).click();
+});

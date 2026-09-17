@@ -7,7 +7,13 @@
      drawer and people buttons in the corners, and the jukebox's corner
      player from 80 px up, which nothing may cover (WATTROOM.md's player
      rule, #1626) — so the stack drops from the top instead. -->
-<!-- A live region that exists before anything lands in it, and one that is
+<!-- Above the drawer, under the player (#2153). A toast raised from the
+     drawer's own menus — or a DM landing while it is open — used to paint
+     behind it at the same z-50, DOM order deciding, with only its right
+     sliver showing. It stays BELOW the popped-out stage (z-[55]) and the
+     seated dock (z-[56]): those are the YouTube player, which none of our
+     chrome may cover (WATTROOM.md, #483).
+     A live region that exists before anything lands in it, and one that is
      early in the tab order (mounted right after the skip link, #1961): the
      Undo used to sit after every control on the page and expire under the
      rider reaching for it. Timed toasts hold while the pointer or focus is
@@ -23,7 +29,7 @@
 		if (!e.currentTarget.contains(e.relatedTarget as Node | null))
 			toasts.release();
 	}}
-	class="pointer-events-none fixed left-1/2 z-50 flex w-full max-w-sm -translate-x-1/2 flex-col items-center gap-2 px-4 max-md:top-4 md:bottom-6"
+	class="pointer-events-none fixed left-1/2 z-[52] flex w-full max-w-sm -translate-x-1/2 flex-col items-center gap-2 px-4 max-md:top-4 md:bottom-6"
 >
 	{#each toasts.items as toast (toast.id)}
 		<div
