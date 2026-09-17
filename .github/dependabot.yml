@@ -22,6 +22,24 @@
 # layers no rider ever runs. The Node version used to build the SPA does
 # matter, but it has to track ci.yml's `web` job rather than the registry, so
 # it is a human's edit in both files at once.
+#
+# A hand-sweep of web/ wedges the npm updater for three days, and the error
+# names the wrong package. Dependabot resolves the pnpm lockfile with
+# `--config.minimumReleaseAge=4320` — a 72-hour maturity gate — and pnpm
+# applies that to every direct dependency in the file, not only the one being
+# updated. So the very first run after #2344 failed like this:
+#
+#     ERR_PNPM_NO_MATURE_MATCHING_VERSION  Version 3.9.7 (released 35 hours
+#     ago) of prettier does not meet the minimumReleaseAge constraint
+#
+# on a job whose subject was vitest. #2344's sweep had taken prettier 3.9.7 the
+# day after it was published, so nothing in web/ could resolve until it turned
+# three days old. Nothing to fix and nothing to configure: it clears itself,
+# the other three ecosystems are unaffected, and a monthly schedule almost
+# never lands inside the window. Worth knowing so the next red run is read in
+# ten seconds rather than debugged — if you sweep by hand, expect this, and
+# read the failing package name as "something in the lockfile is fresh", not
+# as a fact about the dependency in the job title.
 version: 2
 
 updates:
