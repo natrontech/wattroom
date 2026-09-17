@@ -5,9 +5,9 @@
 - Answers: [#1118](https://github.com/natrontech/wattroom/issues/1118), split
   out of [#1099](https://github.com/natrontech/wattroom/issues/1099)
 - Sits beside: [0038](0038-the-crew-is-the-layer-above-rooms.md), whose
-  crew-visibility is a **different axis** and stays one — **Diverged
-  2026-09-17 (#2245, ADR-0038)**: the axes are coupled, `listed ⇒
-  crew_visible`, and a listed room is a public door into its crew
+  crew-visibility is a **different axis** and stays one.
+  **Diverged 2026-09-17 (#2245, ADR-0038)**: the axes are coupled,
+  `listed ⇒ crew_visible`, and a listed room is a public door into its crew
 - Constrained by: WATTROOM.md's locked privacy rules — metrics room-scoped,
   rides private by default, no public leaderboards
 
