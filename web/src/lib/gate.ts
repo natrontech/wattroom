@@ -4,8 +4,14 @@
  * editor (routes/dev/theme-editor) can show the same pass/fail live, against
  * a draft that has never been near a test run. One set of rules, two callers
  * — a floor changed here changes both at once, which is the point (#402).
+ *
+ * Every contrast check also carries its APCA Lc and, where that Lc falls under
+ * APCA's absolute floor, a warning. Both are **reported** (ADR-0023 §3, #621):
+ * nothing here reads `lc` or `warning` to decide `passes`, because enforcing an
+ * absolute would fail Outrun's own Z1 and move ADR-0005's palette sideways.
  */
 import {
+	apca,
 	contrast,
 	dichromatDistance,
 	hexToOklch,
@@ -31,6 +37,29 @@ export function worst(theme: Theme, token: TokenName): number {
 		contrast(theme.tokens[token], theme.tokens['surface-raised']),
 	);
 }
+
+/**
+ * The worst APCA Lc this token scores against the theme's own two surfaces —
+ * the same question `worst` asks, under the other formula. Reported beside the
+ * WCAG figure, never compared to a floor that decides anything (ADR-0023 §3).
+ */
+export function worstLc(theme: Theme, token: TokenName): number {
+	return Math.min(
+		apca(theme.tokens[token], theme.tokens.surface),
+		apca(theme.tokens[token], theme.tokens['surface-raised']),
+	);
+}
+
+/**
+ * APCA's absolute floor for a non-text element to be discernible at all.
+ * Reported as a warning and nothing more (#621): `zoneFloor` scales to the
+ * family's own reference, so a zone can clear its floor while sitting under
+ * this — Outrun's dark Z1 does, at Lc 9.23. Enforcing the number would fail
+ * the reference identity's own ramp and change ADR-0005's palette as a side
+ * effect of a tooling change, which is a decision a person makes with the
+ * number in front of them, not something a gate does on their behalf.
+ */
+export const APCA_MIN_LC = 15;
 
 /**
  * The identity every other theme is measured against (ADR-0023). Takes the
@@ -77,6 +106,14 @@ export interface GateCheck {
 	unit: string;
 	/** Set when a known exception waives this failure — never blank the reason out. */
 	exempt?: string;
+	/**
+	 * APCA Lc for the same pair, where the check is a contrast one. Reported
+	 * only: it is on the object beside `value`, and nothing reads it to decide
+	 * `passes` (ADR-0023 §3).
+	 */
+	lc?: number;
+	/** A reported observation that deliberately does not fail the check (#621). */
+	warning?: string;
 }
 
 function check(
@@ -86,8 +123,17 @@ function check(
 	floor: number,
 	passes: boolean,
 	unit = ':1',
+	lc?: number,
 ): GateCheck {
-	return { id, label, value, floor, passes, unit };
+	const c: GateCheck = { id, label, value, floor, passes, unit };
+	if (lc !== undefined) {
+		c.lc = lc;
+		// "issue 621", not "#621": no-raw-hex.test.ts cannot tell a three-digit
+		// hex from an issue number, and it scans strings after stripping comments.
+		if (lc < APCA_MIN_LC)
+			c.warning = `Lc ${lc.toFixed(2)} is under APCA's Lc ${APCA_MIN_LC}, the floor below which an element stops being discernible at all. Reported, not enforced — see issue 621.`;
+	}
+	return c;
 }
 
 /**
@@ -95,8 +141,10 @@ function check(
  * looked at. Add an entry here only after checking the failure is the kind
  * that genuinely can't be resolved by moving a colour (#620): the surface
  * pair itself is the point of the theme, and the shared white-family zone
- * ramp can't separate against it without erasing that. See #621 for the
- * standing question of whether the gate itself should change instead.
+ * ramp can't separate against it without erasing that. #621 asked whether the
+ * gate should change rather than the palette and answered no: APCA ranks the
+ * same zones 15–25% below the reference, so the formula was not what rejected
+ * them. The list stays the escape hatch; there is no better one.
  */
 export const EXCEPTIONS: {
 	themeId: string;
@@ -168,6 +216,8 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 				value,
 				CONTRAST.text,
 				value >= CONTRAST.text,
+				':1',
+				worstLc(theme, token),
 			),
 		);
 	}
@@ -180,6 +230,8 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 				value,
 				CONTRAST.accent,
 				value >= CONTRAST.accent,
+				':1',
+				worstLc(theme, token),
 			),
 		);
 	}
@@ -187,7 +239,15 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 		const value = worst(theme, token);
 		const floor = zoneFloor(token, ref);
 		checks.push(
-			check(token, `${token} · zone contrast`, value, floor, value >= floor),
+			check(
+				token,
+				`${token} · zone contrast`,
+				value,
+				floor,
+				value >= floor,
+				':1',
+				worstLc(theme, token),
+			),
 		);
 	}
 	for (const token of ZONES) {
@@ -213,6 +273,8 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 				value,
 				CONTRAST.text,
 				value >= CONTRAST.text,
+				':1',
+				apca(theme.tokens.paper, theme.tokens.ink),
 			),
 		);
 	}
@@ -225,6 +287,8 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 				value,
 				CONTRAST.text,
 				value >= CONTRAST.text,
+				':1',
+				apca(theme.tokens.paper, theme.tokens.danger),
 			),
 		);
 	}

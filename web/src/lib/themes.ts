@@ -180,8 +180,9 @@ const SPECS: ThemeSpec[] = [
 			// Kept as picked. This fails six of the shared gate's zone checks —
 			// the ramp can't fully separate against a surface/raised pair this
 			// close in lightness — waived on record in gate.ts's EXCEPTIONS rather
-			// than quietly moved. See #621 for the standing question of whether
-			// the gate itself should change instead.
+			// than quietly moved. #621 asked whether the gate itself should change
+			// instead and decided no: APCA rejects this ramp in the same zones, so
+			// the exceptions stand and APCA is reported beside WCAG, not swapped in.
 			'surface-raised': '#e0dad9',
 			muted: '#504e56',
 			watt: '#ce4770',

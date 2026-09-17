@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { APCA_MIN_LC, worst } from '$lib/gate';
 import { CONTRAST, type Theme } from '$lib/palette';
 import { THEMES } from '$lib/themes';
 import {
@@ -6,7 +7,6 @@ import {
 	GALLERY_THEMES,
 	rampReadings,
 	readings,
-	worstContrast,
 } from './gallery';
 
 describe('the gallery shows every theme (#399)', () => {
@@ -82,6 +82,19 @@ describe('the contrast numbers beside each theme', () => {
 	it('measures the ramp against the darker of the two surfaces', () => {
 		const ramp = rampReadings(outrun);
 		expect(ramp).toHaveLength(7);
-		expect(ramp[0]).toBeCloseTo(worstContrast(outrun, 'z1'), 5);
+		expect(ramp[0].ratio).toBeCloseTo(worst(outrun, 'z1'), 5);
+	});
+
+	/**
+	 * The gallery is where a person judges a palette, so the reported APCA
+	 * number has to reach the page — a signal ADR-0023 §3 names and nobody can
+	 * see is the state #621 found the code in.
+	 */
+	it('carries the reported Lc onto every figure the page draws', () => {
+		for (const reading of readings(outrun))
+			expect(reading.lc, reading.token).toBeGreaterThan(0);
+		// Z1 is the one the page marks: below APCA's absolute floor and passing
+		// the gate anyway, which is exactly what the reader needs to see.
+		expect(rampReadings(outrun)[0].lc).toBeLessThan(APCA_MIN_LC);
 	});
 });

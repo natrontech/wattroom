@@ -8,7 +8,7 @@
  * gallery that silently drops a theme is worse than no gallery, and a theme
  * added to THEMES later is exactly how that happens.
  */
-import { contrast } from '$lib/color';
+import { ZONES, worst, worstLc } from '$lib/gate';
 import {
 	CONTRAST,
 	type Theme,
@@ -78,14 +78,8 @@ export interface Reading {
 	ratio: number;
 	floor: number;
 	passes: boolean;
-}
-
-/** The worst this token scores against either of the theme's own surfaces. */
-export function worstContrast(theme: Theme, token: TokenName): number {
-	return Math.min(
-		contrast(theme.tokens[token], theme.tokens.surface),
-		contrast(theme.tokens[token], theme.tokens['surface-raised']),
-	);
+	/** APCA Lc for the same pair — reported, never gated (ADR-0023 §3, #621). */
+	lc: number;
 }
 
 const GATED: { token: TokenName; job: string; floor: number }[] = [
@@ -101,17 +95,41 @@ const GATED: { token: TokenName; job: string; floor: number }[] = [
  * Zones are deliberately absent: their floor is relative to Outrun's own ramp
  * rather than a constant (ADR-0023 §3), so the ramp reports per-swatch ratios
  * beside the swatches instead of a pass mark that would need its own essay.
+ *
+ * `lc` rides along on every one of them. It decides nothing — the pass mark is
+ * still WCAG's — but the page is where a person judges a palette, and the
+ * absolute APCA number is the thing the reference-scaled floors cannot show.
  */
 export function readings(theme: Theme): Reading[] {
 	return GATED.map(({ token, job, floor }) => {
-		const ratio = worstContrast(theme, token);
-		return { token, job, floor, ratio, passes: ratio >= floor };
+		const ratio = worst(theme, token);
+		return {
+			token,
+			job,
+			floor,
+			ratio,
+			passes: ratio >= floor,
+			lc: worstLc(theme, token),
+		};
 	});
 }
 
-export const ZONES: TokenName[] = ['z1', 'z2', 'z3', 'z4', 'z5', 'z6', 'z7'];
+/** The gate's own list, not a second copy — one ramp, one spelling of it. */
+export { ZONES };
 
-/** Each zone's worst ratio against the theme's surfaces, Z1 → Z7. */
-export function rampReadings(theme: Theme): number[] {
-	return ZONES.map((zone) => worstContrast(theme, zone));
+export interface RampReading {
+	ratio: number;
+	lc: number;
+}
+
+/**
+ * Each zone's worst WCAG ratio and APCA Lc against the theme's surfaces,
+ * Z1 → Z7. Both, because the ramp is where the two measures disagree about
+ * what the per-family scaling has been hiding (#621).
+ */
+export function rampReadings(theme: Theme): RampReading[] {
+	return ZONES.map((zone) => ({
+		ratio: worst(theme, zone),
+		lc: worstLc(theme, zone),
+	}));
 }
