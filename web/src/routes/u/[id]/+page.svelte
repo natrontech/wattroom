@@ -262,7 +262,7 @@
 				size={72}
 			/>
 			<div class="min-w-0 flex-1">
-				<h1 class="font-display text-2xl font-bold">{rider.displayName}</h1>
+				<h1 class="page-title-sm">{rider.displayName}</h1>
 				<p class="text-muted mt-0.5 flex flex-wrap items-center gap-2 text-sm">
 					{#if rider.presence.room}
 						{#if rider.presence.riding}

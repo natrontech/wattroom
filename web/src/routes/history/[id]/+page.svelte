@@ -230,7 +230,7 @@
 	{:else}
 		<header class="mt-4 flex flex-wrap items-end gap-x-4 gap-y-2">
 			<div>
-				<h1 class="font-display text-2xl leading-tight font-bold">
+				<h1 class="page-title-sm leading-tight">
 					{ride.workoutName}
 				</h1>
 				<p class="text-muted mt-0.5 text-xs">
@@ -277,7 +277,7 @@
 				<Banner tone="error">
 					{downloadError.message}
 					{#snippet action()}<button
-							class="text-xs underline"
+							class="btn-link text-xs"
 							onclick={() => downloadError?.retry()}>Retry</button
 						>{/snippet}
 				</Banner>

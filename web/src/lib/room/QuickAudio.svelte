@@ -45,7 +45,7 @@
 	<Modal
 		label="Sound — the mix and your gate"
 		onclose={() => (soundPanel.open = false)}
-		class="max-h-[calc(100dvh-2rem)] max-w-md overflow-y-auto"
+		class="max-w-md"
 	>
 		<h2 class="font-display font-bold">Sound</h2>
 		<p class="text-muted mt-1 text-xs">

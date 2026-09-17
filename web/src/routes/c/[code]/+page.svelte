@@ -61,7 +61,7 @@
 					class="rounded-xl"
 				/>
 			</div>
-			<h1 class="font-display mt-3 text-2xl font-bold">{data.crew.name}</h1>
+			<h1 class="page-title-sm mt-3">{data.crew.name}</h1>
 			{#if data.crew.inCrew && data.crew.id}
 				<!-- Your own crew's link, followed again: the door is already
 				     open, so the button is the page, not a Join that does nothing. -->

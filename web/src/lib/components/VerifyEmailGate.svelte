@@ -96,7 +96,7 @@
 		     mouse could not leave. The trap only handles Tab (focus-trap.ts),
 		     so the deliberate no-Escape above survives. -->
 		<div
-			class="border-muted/20 bg-surface-raised w-full max-w-md rounded-xl border p-7"
+			class="shell-card bg-surface-raised w-full max-w-md p-7"
 			tabindex="-1"
 			use:focusTrap
 		>

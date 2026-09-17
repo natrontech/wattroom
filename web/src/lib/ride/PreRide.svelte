@@ -63,7 +63,7 @@
 <!-- Pre-ride: pick your effort level and how you are getting power in. -->
 <div class="m-auto w-full max-w-2xl text-center">
 	<Logo size={56} />
-	<h1 class="font-display mt-6 text-2xl font-bold">{workout.name}</h1>
+	<h1 class="page-title-sm mt-6">{workout.name}</h1>
 	<p class="text-muted mt-2 text-sm">
 		{formatClock(durationSeconds(workout))} · targets scale to your FTP
 	</p>

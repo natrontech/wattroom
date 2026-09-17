@@ -157,7 +157,7 @@
 				class="rounded-xl"
 			/>
 			<div class="min-w-0 flex-1">
-				<h1 class="font-display truncate text-2xl font-bold tracking-tight">
+				<h1 class="page-title-sm truncate">
 					{crew.name}
 				</h1>
 				<p class="text-muted text-sm">

@@ -1,4 +1,11 @@
 <script lang="ts">
+	import type { Component } from 'svelte';
+	import ChartColumn from '@lucide/svelte/icons/chart-column';
+	import Music from '@lucide/svelte/icons/music';
+	import Shield from '@lucide/svelte/icons/shield';
+	import Star from '@lucide/svelte/icons/star';
+	import Users from '@lucide/svelte/icons/users';
+	import Zap from '@lucide/svelte/icons/zap';
 	import LandingHero from '$lib/brand/LandingHero.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import { GITHUB_MARK } from '$lib/brand/icons';
@@ -35,42 +42,44 @@
 	const repo = 'https://github.com/natrontech/wattroom';
 
 	// Selling points as glanceable chips — the hero scene does the talking.
-	// Icon = feather-style inner SVG (24×24, stroked with currentColor).
+	// The kit's icons, not hand-drawn paths (web/AGENTS.md, #2178): six feather
+	// outlines lived here as `{@html}` strings, the last inline icon set in
+	// the app.
 	const features: {
 		label: string;
 		sub: string;
-		icon: string;
+		icon: Component<{ size?: number | string; class?: string }>;
 		href?: string;
 	}[] = [
 		{
 			label: 'Ride together',
 			sub: 'rooms with voice & camera',
-			icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+			icon: Users,
 		},
 		{
 			label: 'Structured workouts',
 			sub: 'ERG control, scaled to your FTP',
-			icon: '<path d="M4 20v-6"/><path d="M9 20V10"/><path d="M14 20v-8"/><path d="M19 20V4"/>',
+			icon: ChartColumn,
 		},
 		{
 			label: 'Seven game modes',
 			sub: 'sprint klaxons & eliminations',
-			icon: '<path d="M13 2 3 14h7l-1 8 11-14h-7l1-6z"/>',
+			icon: Zap,
 		},
 		{
 			label: 'Shared jukebox',
 			sub: 'one soundtrack for the room',
-			icon: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+			icon: Music,
 		},
 		{
 			label: 'Private by default',
 			sub: 'AV never recorded, rides are yours',
-			icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+			icon: Shield,
 		},
 		{
 			label: 'Free & open source',
 			sub: 'AGPL — star it on GitHub',
-			icon: '<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>',
+			icon: Star,
 			href: repo,
 		},
 	];
@@ -122,11 +131,7 @@
 						<span class="text-muted tabular-nums">{live.stars}</span>
 					{/if}
 				</a>
-				<a
-					href="/login"
-					class="bg-ink text-paper hover:bg-ink/90 rounded-lg px-3.5 py-1.5 text-xs font-semibold"
-					>Sign in</a
-				>
+				<a href="/login" class="btn btn-primary btn-xs">Sign in</a>
 			</div>
 		</header>
 
@@ -147,9 +152,7 @@
 			<p class="text-muted mt-4 max-w-md text-sm text-balance sm:text-base">
 				Discord for indoor cycling — no virtual world, your watts are the game.
 			</p>
-			<a
-				href="/login"
-				class="bg-ink text-paper hover:bg-ink/90 mt-6 rounded-lg px-7 py-3 text-sm font-semibold"
+			<a href="/login" class="btn btn-primary btn-lg mt-6"
 				>Open your first room</a
 			>
 			<a href="/download" class="btn-link mt-3 text-xs"
@@ -184,15 +187,7 @@
 							? 'hover:border-neon/50'
 							: ''}"
 					>
-						<svg
-							viewBox="0 0 24 24"
-							class="text-neon h-5 w-5 shrink-0"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-							stroke-linejoin="round">{@html f.icon}</svg
-						>
+						<f.icon size={20} class="text-neon shrink-0" />
 						<span class="min-w-0">
 							<span class="font-display block text-[13px] font-bold"
 								>{f.label}</span

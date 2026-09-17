@@ -231,10 +231,10 @@
 						id={compact ? 'join-code-sheet' : 'join-code'}
 						bind:value={joinCode}
 						maxlength={FriendCodeLen}
-						class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode ||
-						looksLikeFriendCode
-							? 'border-danger/60'
-							: 'border-muted/25 focus:border-muted/60'}"
+						class="input mt-3 w-full font-mono tracking-[0.3em] uppercase placeholder:tracking-normal placeholder:normal-case"
+						aria-invalid={invalidCode || looksLikeFriendCode
+							? 'true'
+							: undefined}
 						placeholder="Crew code"
 						aria-label="crew code"
 						autofocus={compact && joinFirst}

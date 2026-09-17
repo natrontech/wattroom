@@ -108,7 +108,7 @@
 	{/if}
 	<button
 		onclick={onExit}
-		class="border-muted/30 text-muted hover:text-ink absolute bottom-4 left-4 z-10 rounded border px-3 py-1.5 text-xs"
+		class="btn btn-secondary btn-xs absolute bottom-4 left-4 z-10"
 		>Exit TV mode (esc)</button
 	>
 	<TvMode

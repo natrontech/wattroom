@@ -56,8 +56,11 @@
 	class="bg-paper/50 fixed inset-0 z-40 flex items-center justify-center p-4"
 	onclick={(event) => event.target === event.currentTarget && onclose()}
 >
+	<!-- The dialog never grows past the window (#2178): two call sites spelled
+	     their own cap and the rest had none, so a sheet taller than a landscape
+	     phone was clipped at both ends with no way to scroll it. -->
 	<div
-		class="panel w-full p-5 {cls}"
+		class="panel max-h-[calc(100dvh-2rem)] w-full overflow-y-auto p-5 {cls}"
 		role="dialog"
 		aria-modal="true"
 		aria-label={label}
