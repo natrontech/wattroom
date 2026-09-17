@@ -1,1 +1,0 @@
-- Right-click (or long-press) now works where it did not: the phone's conversation list offers a room its places and a friend the person menu, exactly as the sidebar does, and Home's recent rides offer Share and Delete like the same ride on the history page.

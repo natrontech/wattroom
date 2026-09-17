@@ -1,1 +1,0 @@
-- Fixed: a sprint's "best five seconds" could be measured across a gap in a rider's samples — a dropped connection or a trainer blip — stitching two separate efforts into one and putting the wrong rider on the podium.

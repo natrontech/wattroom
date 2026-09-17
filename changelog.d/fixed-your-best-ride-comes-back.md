@@ -1,1 +1,0 @@
-- Fixed: "against your best" on a ride page found nothing whenever it was asked without a ride to exclude, so a rider comparing a workout to their own history was told there was none.

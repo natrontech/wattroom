@@ -1,1 +1,0 @@
-- On a phone a toast no longer sits over the button that opens navigation: the stack drops below the header bar, so the way out of a page is reachable even while an undo toast is waiting for you.

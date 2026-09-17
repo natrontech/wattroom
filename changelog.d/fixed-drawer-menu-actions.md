@@ -1,1 +1,0 @@
-- On a phone, an action picked from the navigation drawer's own menus no longer happens behind it: the drawer steps aside for the dialog or toast it raised, and a toast now sits above the drawer instead of showing a sliver of itself.

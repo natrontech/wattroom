@@ -1,1 +1,0 @@
-- A flag from a ride now refuses a flight-recorder buffer larger than the recorder can honestly have produced, instead of accepting it and failing silently when the report turns out to be too big to file.
