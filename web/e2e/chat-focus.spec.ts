@@ -2,12 +2,6 @@ import { expect, test } from './room';
 import { signInAs } from './signin';
 
 test('opening room chat focuses its composer', async ({ page, rooms }) => {
-	await page.addInitScript(() =>
-		localStorage.setItem(
-			'wattroom.mixer.v1',
-			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
-		),
-	);
 	await signInAs(page, 'Chat Focus', '/home');
 	const name = `Chat Focus ${Date.now() % 100000}`;
 	const { slug } = await rooms.open(page, name);

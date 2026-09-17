@@ -24,6 +24,16 @@ const external = isExternal();
  *
  * Chromium only: Web Bluetooth exists nowhere else, and the app says so itself.
  */
+// Mute before you play (AGENTS.md), at the browser rather than at the app.
+// The zeroed mixer in e2e/room.ts covers the `riders` contexts; it cannot
+// cover a spec that takes Playwright's own `page`, which is most of them —
+// ride.spec.ts rides a real minute with the cue bus at its 0.7 default, and
+// chat-focus.spec.ts had to hand-copy the mixer write to stay quiet (#2358).
+// A launch flag cannot be forgotten by the next spec, and it needs to know
+// nothing about which channels exist. `voice` is the carve-out, below: there
+// the audio IS the thing under test.
+const MUTE = '--mute-audio';
+
 export default defineConfig({
 	testDir: 'e2e',
 	// Specs only. Playwright's default testMatch takes *.test.ts as well, so it
@@ -59,7 +69,7 @@ export default defineConfig({
 				'phone-width.spec.ts',
 				'voice-duck.spec.ts',
 			],
-			use: { ...devices['Desktop Chrome'] },
+			use: { ...devices['Desktop Chrome'], launchOptions: { args: [MUTE] } },
 		},
 		{
 			// A real phone profile, not a narrow desktop window: device.svelte.ts
@@ -70,7 +80,7 @@ export default defineConfig({
 			// standard is written at, and keeps this device's touch pointer.
 			name: 'phone',
 			testMatch: ['mobile-room.spec.ts', 'phone-width.spec.ts'],
-			use: { ...devices['Pixel 5'] },
+			use: { ...devices['Pixel 5'], launchOptions: { args: [MUTE] } },
 		},
 		{
 			// voice-duck.spec.ts is the one spec that needs a real microphone
@@ -86,7 +96,7 @@ export default defineConfig({
 			// only cover what a script-supplied stream cannot: auto-granting
 			// the getUserMedia prompt and letting audio start without a
 			// user-gesture wait. Scoped to its own project — every other spec
-			// keeps the plain Desktop Chrome launch.
+			// launches muted (MUTE, above).
 			// No --mute-audio and no zeroed mixer (AGENTS.md's usual "mute
 			// before you play"): this spec's whole point is a real voice
 			// actually being heard, which AGENTS.md itself carves out —
