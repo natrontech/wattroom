@@ -1,0 +1,1 @@
+- Fixed: when the GIF provider could not be reached, the failure was logged with the request URL — which carries the server's API key — into the log ring that rider reports attach to a public issue. The refusal now says what failed and nothing else.
