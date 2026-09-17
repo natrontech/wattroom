@@ -356,3 +356,21 @@ func TestNewWithoutKeyIsNil(t *testing.T) {
 		t.Fatal("a keyless server should leave the route unmounted")
 	}
 }
+
+// ADR-0032's whole reason for proxying is that the key stays on the server —
+// and a log line is not "on the server" once a rider files a report: the
+// feedback ring is stapled onto a public issue. A *url.Error prints the URL
+// the key rides in, so the transport's refusal has to be unwrapped (#2237).
+func TestAFailedUpstreamCallNeverCarriesTheKey(t *testing.T) {
+	dead := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	dead.Close() // nothing is listening: the request fails in the transport
+	svc, _ := newService(t, dead.URL+"/v1/gifs")
+
+	_, err := svc.fetch(t.Context(), "cats", 0)
+	if err == nil {
+		t.Fatal("a dead upstream answered without an error")
+	}
+	if strings.Contains(err.Error(), svc.key) || strings.Contains(err.Error(), "api_key") {
+		t.Fatalf("the error carries the key: %q", err)
+	}
+}
