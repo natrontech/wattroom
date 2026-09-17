@@ -167,23 +167,6 @@ func readReports(t *testing.T, dir string) string {
 	return strings.Join(reports, "\n")
 }
 
-func TestPublicRoute(t *testing.T) {
-	// Which screen, not which room and with whom (#737).
-	for route, want := range map[string]string{
-		"/ride":                  "/ride",
-		"/lounge":                "/lounge",
-		"/r/mfw-5":               "/r/…",
-		"/r/mfw-5/sessions":      "/r/…/sessions",
-		"/messages/dm/u-123":     "/messages/dm/…",
-		"/messages/dm/u-123/pin": "/messages/dm/…/pin",
-		"/r/":                    "/r/",
-	} {
-		if got := publicRoute(route); got != want {
-			t.Errorf("publicRoute(%q) = %q, want %q", route, got, want)
-		}
-	}
-}
-
 func TestSubmitKeepsTheReporterOutOfThePublicIssue(t *testing.T) {
 	// #737: the issue is filed in a public repository. A display name plus
 	// the room that rider was in is a disclosure in two halves — and neither

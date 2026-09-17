@@ -106,3 +106,13 @@ its progress; every other rider's page draws the bare earned grid, and the
 server strips `progress` and zeroes `counts` for anyone who is not you. The
 double grid the merge first produced (the case's own grid plus the bare one)
 was the audit's first finding and went with the same fix.
+
+## Amendment, 2026-09-17 (#2240): the badges are their own endpoint
+
+The first Consequence above says `GET /api/riders/{id}` gains the earned
+achievements. It never did: `riderJSON` has no such field, and the badges are
+served by `GET /api/riders/{id}/trophies` — which is what docs/SPEC.md has
+documented all along, and what the rider page reads. The decision is unchanged
+in every respect that matters; only the endpoint named here was wrong. A
+second call rather than a wider payload also keeps the trophy case out of the
+response every other rider-page reader pays for.
