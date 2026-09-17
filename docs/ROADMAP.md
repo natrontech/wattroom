@@ -47,7 +47,9 @@ An Electron shell for what a tab cannot reach ([ADR-0037](decisions/0037-a-deskt
 
 WATTROOM.md called seven things "explicitly not MVP". Four shipped in M7: **text chat**, **scheduling + RSVP + iCal**, **in-app invites** (as the crew's invite, [ADR-0038](decisions/0038-the-crew-is-the-layer-above-rooms.md)) and the **opt-in public room directory** ([ADR-0039](decisions/0039-the-public-room-directory.md)). **Custom sound and reaction packs** have their groundwork in the soundboard ([ADR-0033](decisions/0033-a-clip-is-a-file-the-room-fetches.md)) but no per-room upload.
 
-Still not built: **`.zwo`/`.erg` import** and **intervals.icu sync**. The ride-export destinations — Garmin ([ADR-0044](decisions/0044-garmin-completed-rides-via-manual-fit.md)), Apple Health, intervals.icu, TrainingPeaks, Android Health Connect — are indexed on #806, and all five wait on the same prerequisite: FIT download from `/history`, validated through one manual import.
+Still not built: **`.zwo`/`.erg` import** and **intervals.icu sync**, which are inbound and now tracked together as #2327 — pulling a planned workout in, not pushing a ride out, so the Garmin gate below does not hold them up.
+
+The ride-export destinations — Garmin ([ADR-0044](decisions/0044-garmin-completed-rides-via-manual-fit.md)), Apple Health, intervals.icu, TrainingPeaks, Android Health Connect — are **not planned**. All five closed that way on 2026-09-10 (#801–#805) and #806, the audit that had indexed them, closed on 2026-09-17; each keeps its own thread, to be reopened when its gate clears or when a rider asks for that destination by name. The gate is shared and half of it has lifted: FIT download from `/history` shipped (#800), and **a real WattRoom FIT validated through one manual import has not** — that is #2330, a session that needs a person with a Garmin account and that no agent can close.
 
 ## What decides what comes next
 
