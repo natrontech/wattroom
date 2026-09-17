@@ -56,18 +56,18 @@ update playlist_tracks set position = position + 1000000 where playlist_id = $1;
 -- name: SetPlaylistTrackPosition :exec
 update playlist_tracks set position = $3 where id = $1 and playlist_id = $2;
 
--- name: SetActivePlaylist :execrows
+-- name: SetAutoplay :one
+-- The whole setting in one statement (#2248): the switch, the order and the
+-- active playlist were three writes, so a failure between them left autoplay
+-- on with the list the coach had just cleared, and a playlist that turned out
+-- not to be this room's was refused after the other two had committed.
 -- The exists() check enforces "active must be one of this room's own
--- playlists" in one round trip rather than a second SELECT the caller could
--- forget — same shape as UpdateWorkout's ownership WHERE clause.
-update rooms r set autoplay_playlist_id = $2
-where r.id = $1 and exists (select 1 from playlists p where p.id = $2 and p.room_id = r.id);
-
--- name: ClearActivePlaylist :exec
-update rooms set autoplay_playlist_id = null where id = $1;
-
--- name: UpdateAutoplay :one
--- autoplay_fixed_video_id/_title stopped being written in #1422 and were
--- dropped one release later (#1430, ADR-0019 expand/contract).
-update rooms set autoplay_enabled = $2, autoplay_order = $3
-where id = $1 returning *;
+-- playlists" in the same round trip — same shape as UpdateWorkout's ownership
+-- WHERE clause — so no row comes back when it is not, and the caller has
+-- written nothing. autoplay_fixed_video_id/_title stopped being written in
+-- #1422 and were dropped one release later (#1430, ADR-0019 expand/contract).
+update rooms r set autoplay_enabled = $2, autoplay_order = $3, autoplay_playlist_id = $4
+where r.id = $1
+  and ($4::uuid is null
+       or exists (select 1 from playlists p where p.id = $4 and p.room_id = r.id))
+returning *;
