@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
@@ -137,7 +138,22 @@ func fetchStrava(_ context.Context, _ *oauth2.Config, tok *oauth2.Token) (identi
 	return identity{ProviderUserID: fmt.Sprint(int64(id)), DisplayName: name, AvatarURL: avatar}, nil
 }
 
+// oauthTimeout bounds every outbound call the sign-in makes, the way the
+// sibling strava package bounds its own client (strava.go). oauth2 falls back
+// to http.DefaultClient, which has no timeout at all, so a provider host that
+// accepts the connection and then says nothing pinned a goroutine for as long
+// as the caller held on (#2255). A var so a test can shrink it.
+var oauthTimeout = 30 * time.Second
+
+// oauthCtx hands the oauth2 package the bounded client. Exchange, Client and
+// everything built from them read it off the context, so the decoration
+// travels with ctx rather than being threaded through each call.
+func oauthCtx(ctx context.Context) context.Context {
+	return context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Timeout: oauthTimeout})
+}
+
 func getJSON(ctx context.Context, cfg *oauth2.Config, tok *oauth2.Token, url string, into any) error {
+	ctx = oauthCtx(ctx)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("auth: build request: %w", err)
