@@ -19,8 +19,13 @@ func TestTheCrewSurfaceRefusesTheSignedOut(t *testing.T) {
 		t.Fatal(err)
 	}
 	roomID := store.UUIDString(room.ID)
+	code := ""
+	if crew.Code != nil {
+		code = *crew.Code
+	}
 	for _, route := range []struct{ method, path, body string }{
 		{http.MethodGet, "/api/crews/" + id, ""},
+		{http.MethodPost, "/api/crew-doors/" + code + "/remember", ""},
 		{http.MethodPost, "/api/crews/join", `{"code":"ABCDEF"}`},
 		{http.MethodPost, "/api/crews/" + id + "/leave", ""},
 		{http.MethodPatch, "/api/crews/" + id, `{"name":"x"}`},

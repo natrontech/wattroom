@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -87,6 +88,7 @@ func (s *Service) registerCrews(mux *http.ServeMux) {
 	// "/api/crews/{id}/image" are both four segments, and Go's mux refuses a
 	// pair where "by-code/image" would match either.
 	mux.HandleFunc("GET /api/crew-doors/{code}", s.handleCrewDoor)
+	mux.HandleFunc("POST /api/crew-doors/{code}/remember", s.handleRememberCrewDoor)
 	mux.HandleFunc("POST /api/crews/join", s.handleJoinCrew)
 	mux.HandleFunc("POST /api/crews/{id}/leave", s.handleLeaveCrew)
 	mux.HandleFunc("PATCH /api/crews/{id}", s.handleUpdateCrew)
@@ -120,7 +122,7 @@ func (s *Service) crewFor(ctx context.Context, user db.User) (db.Crew, error) {
 	// The code is the crew's invite (#1236); the unique index is the check,
 	// so a collision retries rather than being looked for first.
 	for attempt := 0; ; attempt++ {
-		code := randomCode(6)
+		code := randomCode(protocol.CrewCodeLen)
 		crew, err := s.store.Queries.CreateCrew(ctx, db.CreateCrewParams{Name: name, OwnerID: user.ID, Code: &code})
 		if err == nil || !isUniqueViolation(err) || attempt >= 3 {
 			return crew, err

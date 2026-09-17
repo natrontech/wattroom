@@ -360,6 +360,47 @@ test('the HUD is a second window on our origin, opened and closed by the app', a
 			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
 		),
 	).toBe(2);
+	// It sits in the corner nothing else claims (#1669). The HUD is
+	// alwaysOnTop and shows while the main window is NOT in front — which is
+	// exactly the TV-on-the-wall case — so where it lands is the only thing
+	// keeping it off the YouTube player TV mode seats top-right. It used to
+	// land top-right too, roughly 280×115 px of the player underneath it, and
+	// nothing in the page could move an OS window.
+	const seated = await app.evaluate(({ BrowserWindow, screen }, first) => {
+		const hud = BrowserWindow.getAllWindows().find((w) => w.id !== first);
+		const main = BrowserWindow.fromId(first);
+		return {
+			hud: hud.getBounds(),
+			work: screen.getDisplayMatching(main.getBounds()).workArea,
+		};
+	}, mainId);
+	const { hud, work } = seated;
+	// The rectangles do not meet — asserted FIRST, because it is the thing
+	// that matters and a corner check failing first would say "16, got 3104"
+	// about a rule nobody would remember the reason for. TV mode's seat is
+	// `top-[3vh] right-[3vw]`, `w-[24vw] min-w-[240px]`, 16:9 — against the
+	// viewport, which on the display this is about is the work area within a
+	// window chrome's worth.
+	const seatWidth = Math.max(240, work.width * 0.24);
+	const seat = {
+		x: work.x + work.width - work.width * 0.03 - seatWidth,
+		y: work.y + work.height * 0.03,
+		width: seatWidth,
+		height: (seatWidth * 9) / 16,
+	};
+	const overlaps =
+		hud.x < seat.x + seat.width &&
+		seat.x < hud.x + hud.width &&
+		hud.y < seat.y + seat.height &&
+		seat.y < hud.y + hud.height;
+	expect(
+		overlaps,
+		`the HUD at ${JSON.stringify(hud)} covers TV mode's player seat at ${JSON.stringify(seat)} — YouTube's terms forbid anything over the player`,
+	).toBe(false);
+	// And it is in the corner on purpose, not merely somewhere clear.
+	expect(hud.x).toBe(work.x + 16);
+	expect(hud.y).toBe(work.y + work.height - hud.height - 16);
+
 	// The HUD's own renderer runs the app's layout, which reports no ride
 	// there (#1938): a hud(false) from THAT window must not close it.
 	await app.evaluate(async ({ BrowserWindow }, first) => {

@@ -81,6 +81,14 @@ type roomCrewJSON struct {
 	// vanishing afterwards is the surprise. Carried on the single-room read
 	// for the room's owner, the only caller who can delete it.
 	GoesWithRoom bool `json:"goesWithRoom,omitempty"`
+	// LEAVING deletes the crew (#2079): the same end by the other door — no
+	// rooms left in it and nobody in it but the caller and its owner, so the
+	// caller's Leave is the sweep. The leave confirm otherwise promises "its
+	// code gets you back in", which is a lie once the code is gone with the
+	// crew. The client cannot work this out: it knows the rooms it is IN, not
+	// the rooms the crew has, and holds no headcount at the crew row's menu.
+	// Carried on the crews list, the one read every Leave has in hand.
+	LastOut bool `json:"lastOut,omitempty"`
 }
 
 // One rider's week on a room's ordered board (#995, ADR-0036). Category is a
@@ -92,7 +100,11 @@ type boardRowJSON struct {
 	DisplayName string `json:"displayName"`
 	Kj          int64  `json:"kj"`
 	Seconds     int64  `json:"seconds"`
-	Category    string `json:"category"`
+	// Absent while both of the pair it is computed from are still the
+	// account's defaults (ADR-0048, #2243): an unchosen number never reads as
+	// a measured one, and two guesses divided by each other is a fiction with
+	// a decimal point. The row still ranks — kJ is ridden, not typed.
+	Category string `json:"category,omitempty"`
 }
 
 type memberJSON struct {
@@ -164,10 +176,11 @@ type roomJSON struct {
 	// The caller's own role; empty when they are not a member.
 	Role    string       `json:"role,omitempty"`
 	Members []memberJSON `json:"members,omitempty"`
-	// A private room's named exceptions (ADR-0038, #1224), owner only:
-	// crew-mates let in who have not walked in yet, and the crew-mates the
-	// owner can see who are outside — the people a grant is for. Absent for
-	// a room open to its crew, where everyone may already walk in.
+	// A private room's named exceptions (ADR-0038, #1224), for whoever may
+	// hand a door out (#2294): crew-mates let in who have not walked in yet,
+	// and the crew-mates they can see who are outside — the people a grant is
+	// for. Absent for a room open to its crew, where everyone may already
+	// walk in.
 	Invited     []memberJSON `json:"invited,omitempty"`
 	CrewOutside []memberJSON `json:"crewOutside,omitempty"`
 	// The caller's own preferences for this room (#1100); nil for a

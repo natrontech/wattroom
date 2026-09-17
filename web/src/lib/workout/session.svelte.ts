@@ -16,12 +16,11 @@ import type { Segment, Workout } from './types';
  * (workout/guards), and are re-exported because half the app imports them from
  * this module.
  */
-export { DEFAULTS } from './guards';
-
-/** docs/SPEC.md: within ±5 % of target, floor ±10 W. */
-export function toleranceBand(target: number): number {
-	return Math.max(target * 0.05, 10);
-}
+// `toleranceBand` comes through here because every caller already imports it
+// from the session; it lives in guards.ts so the room's view can read it
+// without importing a rune module (#2159).
+export { DEFAULTS, toleranceBand } from './guards';
+import { toleranceBand } from './guards';
 
 export type RideState =
 	'idle' | 'countdown' | 'running' | 'autopaused' | 'resuming' | 'done';
@@ -38,6 +37,36 @@ export const COUNTDOWN_SECONDS = 3;
 
 /** Past this without a sample the dashboard, and the HUD, say so (#37). */
 export const SIGNAL_LOST_MS = 3000;
+
+/**
+ * Whether the trainer has gone quiet — the rule both riding pages draw their
+ * dropout banner from (#2158).
+ *
+ * It counts from the moment the CLOCK started, not from the first sample
+ * (#1799). A trainer that streams frames with no power field never delivers
+ * one, so a rule of the shape `sample && now - sample.at > …` is never true
+ * for the rider it matters most to: /ramp ran its whole length that way, with
+ * no banner, no fault cue, and its own stale guard holding the test open.
+ *
+ * `ridingSince` is stamped when the clock starts and not when Start was
+ * pressed (#1800): the count-in is not a gap in the trainer's reporting, and
+ * stamping it there put the banner up on the first tick.
+ */
+export function signalLost(
+	session:
+		| { state: RideState; sample: { at: number } | null | undefined }
+		| null
+		| undefined,
+	// `undefined` is "the clock has not started", not 0: an injected clock
+	// starts at 0 in a test, and a real timestamp of 0 must not read as no
+	// timestamp at all (#2200).
+	ridingSince: number | undefined,
+	now: number,
+): boolean {
+	if (!session || ridingSince === undefined) return false;
+	if (session.state === 'countdown' || session.state === 'done') return false;
+	return now - (session.sample?.at ?? ridingSince) > SIGNAL_LOST_MS;
+}
 
 /**
  * The frame caves while a solo session is live (ADR-0020: the ride is the
@@ -388,10 +417,19 @@ export function createRideSession({
 			target,
 			remaining: Math.max(0, total - clockSeconds),
 			label: workout.name,
-			fault:
-				sample && now() - sample.at > SIGNAL_LOST_MS ? 'trainer' : undefined,
+			// The rule both riding pages draw their banner from (#2158) — the
+			// HUD used to need a first sample, so the rider who alt-tabbed
+			// away from a trainer that never sends watts had the one surface
+			// they were looking at saying nothing at all (#2200).
+			fault: signalLost({ state, sample }, ridingSince, now())
+				? 'trainer'
+				: undefined,
 		});
 	}
+
+	// Stamped by tick() when the count-in ends, cleared on reset. Not $state:
+	// nothing renders it, and only publish() reads it.
+	let ridingSince: number | undefined;
 
 	function tick(seconds = 1) {
 		// The count-in runs on the ride's own clock (#1800), so the digit on
@@ -402,6 +440,11 @@ export function createRideSession({
 			countdownRemaining = Math.max(0, countdownRemaining - seconds);
 			if (countdownRemaining > 0) return;
 			state = 'running';
+			// When the CLOCK started, for the dropout rule below (#2200): a
+			// trainer that sends frames without a power field never produces a
+			// first sample, so silence has to be counted from something that
+			// is not one.
+			ridingSince = now();
 			applyTarget();
 			sprintWindow.sync();
 			return;
@@ -591,6 +634,7 @@ export function createRideSession({
 			unsubscribeStatus = undefined;
 			countdownRemaining = 0;
 			state = 'idle';
+			ridingSince = undefined;
 			starting = false;
 		},
 		stop() {

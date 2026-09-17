@@ -153,6 +153,59 @@ jobs:
             exit 1
           fi
 
+  # A migration whose timestamp precedes the newest already on main is not an
+  # error and this job never fails (#1481). Two branches cut from the same main
+  # stamp timestamps minutes apart, the later-written one merges first, and the
+  # server applies the other one late at the next boot — safe by construction
+  # under ADR-0019's expand-only rule, as the amendment there of 2026-09-17
+  # records. What the author still wants to know is that it happened, because
+  # that rule is enforced by nobody: a migration quietly assuming the schema
+  # left by a file it now runs *before* is the one case the option does not
+  # cover.
+  #
+  # Deliberately not a gate. `strict_required_status_checks_policy` is false on
+  # main's ruleset, so a blocking check would not even close the race it names:
+  # the losing branch is green against the main it was cut from and never
+  # re-runs against the winner's file. Turning that on costs a rebase and a
+  # full CI re-run per merge, in a repo where many agents merge in parallel.
+  # The step exits 0 by construction, so this warns however the job is
+  # configured; `continue-on-error` only covers a bug in the step itself, and
+  # the job's name is deliberately not one of the ruleset's required contexts
+  # (server, web, vulncheck, docs).
+  migration-order:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: a new migration older than the base branch's newest
+        run: |
+          dir=server/internal/store/migrations
+          newest=$(git ls-tree -r --name-only "origin/${{ github.base_ref }}" -- "$dir" \
+                   | sed -n 's#.*/\([0-9]\{1,\}\)_.*\.sql$#\1#p' | sort -n | tail -1)
+          if [ -z "$newest" ]; then
+            echo "No migrations on ${{ github.base_ref }} to compare against."
+            exit 0
+          fi
+          # 10# because the original migrations are 000NN and bash reads a
+          # leading zero as octal, in which 00009 is not a number at all.
+          newest=$((10#$newest))
+
+          late=0
+          while IFS= read -r f; do
+            version=$(basename "$f" | sed -n 's#^\([0-9]\{1,\}\)_.*#\1#p')
+            [ -n "$version" ] || continue
+            [ "$((10#$version))" -lt "$newest" ] || continue
+            late=1
+            echo "::warning file=$f::This migration is stamped $version, older than $newest which is already on ${{ github.base_ref }}. The server applies it out of order at its next boot (goose WithAllowMissing, ADR-0019 amended 2026-09-17), so this is not a blocker — but check that it only ADDS, and does not read or depend on anything $newest left behind. If it does, take a fresh name with \`make migration name=<slug>\` and move the body across."
+          done < <(git diff --name-only --diff-filter=AR "origin/${{ github.base_ref }}...HEAD" -- "$dir")
+
+          if [ "$late" -eq 0 ]; then
+            echo "No migration here predates $newest on ${{ github.base_ref }}."
+          fi
+
   web:
     runs-on: ubuntu-latest
     defaults:

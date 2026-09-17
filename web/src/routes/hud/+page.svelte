@@ -3,6 +3,7 @@
 	import { formatClock } from '$lib/format';
 	import { isStale, subscribeHud, type HudSnapshot } from '$lib/hud/feed';
 	import { account } from '$lib/account.svelte';
+	import { toleranceBand } from '$lib/workout/guards';
 
 	// The HUD (#296, ADR-0041): the rider's own numbers in a window of their
 	// own — the shell floats it over whatever else is on screen while a ride
@@ -21,10 +22,14 @@
 	const quiet = $derived(isStale(snapshot, now));
 	const shell = (globalThis as { wattroom?: { hud?: (on: boolean) => void } })
 		.wattroom;
+	// The band the riding screen uses, not a fourth copy of it (#2159): this
+	// one dropped docs/SPEC.md's ±10 W floor, so under a 200 W target the HUD
+	// read "off target" while the instrument it mirrors read "on target".
 	const onTarget = $derived(
 		!!snapshot &&
 			snapshot.target > 0 &&
-			Math.abs(snapshot.watts - snapshot.target) <= snapshot.target * 0.05,
+			Math.abs(snapshot.watts - snapshot.target) <=
+				toleranceBand(snapshot.target),
 	);
 </script>
 

@@ -2,7 +2,8 @@
 // name, level, energy, medals from rooms you share, where they are — plus,
 // for friends, the rides the rider chose to share. Never live watts, heart
 // rate, weight or FTP; those stay room-scoped. Strangers get a 404: without
-// a shared room or a friendship there is no page.
+// a shared room or a friendship there is no page — and, since #2239, no face
+// either. Both routes here answer to one audience.
 package riders
 
 import (
@@ -16,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
-	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -34,7 +34,11 @@ type UserSource interface {
 // nowhere — same two questions the friends list and the rail already ask.
 type PresenceSource interface {
 	WhereIs(userIDs []string) map[string]string
-	Presence(slug string) protocol.RoomPresence
+	// One question, one answer, everywhere it is asked (#1743): the friends
+	// panel needs exactly this and used to have no way to ask, while this
+	// page built the whole of a room's presence — voice fold, sort, session
+	// state — to read one boolean out of it.
+	Riding(userIDs []string) map[string]bool
 }
 
 type Service struct {
@@ -53,16 +57,43 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/riders/{id}/avatar", s.handleAvatar)
 }
 
-// handleAvatar serves a rider's uploaded picture (#1353) to anyone signed in:
-// the face is what every roster, thread and friends list already shows, so it
-// carries none of the page's shared-room gate.
+// notVisible is one message for "no such rider" and "not yours to see": a 404
+// must not confirm that an id exists. Shared by the page and the face below,
+// so a refused caller cannot tell the two routes apart.
+const notVisible = "No rider there — a page shows only to people who share a room or a friendship with them."
+
+// handleAvatar serves a rider's uploaded picture (#1353) to the page's own
+// audience (ADR-0024, amended 2026-09-17 / #2239). It used to answer anyone
+// signed in who held the id, on the reasoning that "the face is what every
+// roster, thread and friends list already shows" — but ids travel where those
+// surfaces do not: a chat backlog carries `fromId` for every author, so one
+// room-mate could fetch the photograph of a rider who had long since left.
+//
+// The gate is the page's, asked the same way (#2300), and the refusal is the
+// page's 404 word for word. That matters twice: it is the same answer an
+// unknown id gets, so the route stops being the existence oracle handleGet
+// declines to be, and it cannot drift from the page it belongs to.
 func (s *Service) handleAvatar(w http.ResponseWriter, r *http.Request) {
-	if _, ok := s.users.RequireUser(w, r, "Sign in to see a rider's picture."); !ok {
+	me, ok := s.users.RequireUser(w, r, "Sign in to see a rider's picture.")
+	if !ok {
 		return
 	}
 	id, err := store.ParseUUID(r.PathValue("id"))
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a rider id.")
+		return
+	}
+	// Asked before the picture is looked up: the refusal must not depend on
+	// whether the row exists, or the 404 tells the caller which 404 it is.
+	mayLook, err := s.store.Queries.SharesRoomOrFriends(r.Context(), db.SharesRoomOrFriendsParams{
+		Viewer: me.ID, Rider: id,
+	})
+	if err != nil {
+		httpx.Fail(w, s.log, "avatar visibility", err, "The picture could not be loaded.", "user", store.UUIDString(me.ID))
+		return
+	}
+	if !mayLook {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", notVisible)
 		return
 	}
 	img, err := s.store.Queries.GetUserAvatar(r.Context(), id)
@@ -71,7 +102,7 @@ func (s *Service) handleAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		httpx.Fail(w, s.log, "avatar read failed", err, "The picture could not be loaded.", "rider", r.PathValue("id"))
+		httpx.Fail(w, s.log, "avatar read failed", err, "The picture could not be loaded.", "rider", store.UUIDString(id))
 		return
 	}
 	httpx.ServeImage(w, r, img.Mime, img.Image, img.SetAt.Time)
@@ -151,9 +182,6 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That is not a rider id.")
 		return
 	}
-	// One message for "no such rider" and "not yours to see": a 404 must not
-	// confirm that an id exists.
-	const notVisible = "No rider there — a page shows only to people who share a room or a friendship with them."
 	rider, err := s.store.Queries.GetUser(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", notVisible)
@@ -164,6 +192,25 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	// ADR-0024's audience, asked as one question (#2298) — the same one the
+	// trophy case on this page asks. It used to be recomposed here out of
+	// ListRoomsInCommon and friendStatus, which agreed with the other gate by
+	// coincidence and would have drifted the moment either rule moved.
+	// "pending_out is not a door" lives in the query now: a code grants "may
+	// ask", not "may look".
+	mayLook, err := s.store.Queries.SharesRoomOrFriends(ctx, db.SharesRoomOrFriendsParams{
+		Viewer: me.ID, Rider: id,
+	})
+	if err != nil {
+		s.fail(w, "rider visibility", err, me)
+		return
+	}
+	if !mayLook {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", notVisible)
+		return
+	}
+	// The rooms themselves are the page's content and the medals' scope, not
+	// the gate.
 	rooms, err := s.store.Queries.ListRoomsInCommon(ctx, db.ListRoomsInCommonParams{Rider: id, Viewer: me.ID})
 	if err != nil {
 		s.fail(w, "rooms in common", err, me)
@@ -173,13 +220,6 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.fail(w, "friendship", err, me)
 		return
-	}
-	// pending_out is not a door: a code grants "may ask", not "may look".
-	if friend == "none" || friend == "pending_out" {
-		if len(rooms) == 0 {
-			httpx.WriteError(w, http.StatusNotFound, "not_found", notVisible)
-			return
-		}
 	}
 
 	totals, err := s.store.Queries.RiderTotals(ctx, id)
@@ -284,7 +324,7 @@ func (s *Service) presenceOf(rider db.User, inCommon []roomRef, trusted bool) pr
 		p.Room = &room
 		// By id (#649): display names are not unique, and two Dans in one
 		// room both showed the bars while one sat in the lounge (#1652).
-		p.Riding = slices.Contains(s.presence.Presence(slug).RidingIDs, id)
+		p.Riding = s.presence.Riding([]string{id})[id]
 	}
 	if trusted {
 		p.Online = online
@@ -299,4 +339,3 @@ func (s *Service) presenceOf(rider db.User, inCommon []roomRef, trusted bool) pr
 func (s *Service) fail(w http.ResponseWriter, what string, err error, me db.User) {
 	httpx.Fail(w, s.log, "rider page: "+what, err, "That rider's page could not be loaded.", "user", store.UUIDString(me.ID))
 }
-

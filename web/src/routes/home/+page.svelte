@@ -7,18 +7,19 @@
 	import Radio from '@lucide/svelte/icons/radio';
 	import { account, unchosen } from '$lib/account.svelte';
 	import { api } from '$lib/api';
-	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
-	import { friends } from '$lib/friends/friends.svelte';
+	import { friendPlace, friends } from '$lib/friends/friends.svelte';
 	import { revealRooms } from '$lib/rooms/reveal';
-	import { othersIn } from '$lib/status';
+	import { othersIn, statusOf } from '$lib/status';
 	import { page } from '$app/state';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import FirstRun from '$lib/home/FirstRun.svelte';
 	import RecentRides from '$lib/home/RecentRides.svelte';
+	import WhatsNext from '$lib/home/WhatsNext.svelte';
+	import type { ServerRide } from '$lib/ride/list';
 	import Modal from '$lib/components/Modal.svelte';
-	import { crewsOf } from '$lib/nav/crews';
+	import { crewsOf, leadsWithJoining } from '$lib/nav/crews';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -28,26 +29,18 @@
 	import { changelog } from '$lib/changelog.svelte';
 	import WhatsNewNotice from '$lib/components/WhatsNewNotice.svelte';
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
-	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 
 	// Home (#212): the between-rides overview — who is around, what is
 	// planned, your friends, your week. ADR-0020 folded /sessions in here and
 	// retired /rooms — the sidebar is the room list.
-	interface Ride {
-		id: string;
-		workoutName: string;
-		startedAt: string;
-		seconds: number;
-		kj: number;
-	}
 
 	void account.load();
 	// What's new (#345). Home is the between-rides surface, which is the only
 	// place this belongs — ux.md: never interrupt a rider mid-interval.
 	void changelog.load();
 
-	let rides = $state<Ride[] | null>(null);
+	let rides = $state<ServerRide[] | null>(null);
 	let ridesError = $state<string | null>(null);
 	// Either read failing is said here with a Retry (errors.md): the rides
 	// read used to fail silently into "0 rides this week", and a failed
@@ -76,7 +69,7 @@
 		void loadRides();
 	});
 	async function loadRides() {
-		const res = await api<{ rides: Ride[] }>('/api/rides');
+		const res = await api<{ rides: ServerRide[] }>('/api/rides');
 		if (res.ok) {
 			rides = res.data.rides;
 			ridesError = null;
@@ -133,6 +126,18 @@
 	);
 
 	const recent = $derived((rides ?? []).slice(0, 3));
+	// Sent to a door and not through it: the one predicate the button's word,
+	// this dialog's name and the sheet's order all read (#2176, #2184). Gated
+	// on `presence.loaded` so none of the three says "join" while the list is
+	// still out.
+	const joinFirst = $derived(
+		presence.loaded &&
+			leadsWithJoining(
+				crewsOf(rooms ?? [], presence.crews),
+				account.me?.pendingInvite,
+			),
+	);
+
 	// The rider's own crew, for the first-run card (#1333); null until the
 	// room list has landed, so the card never flashes for a rider who has
 	// no crew to set up.
@@ -190,13 +195,6 @@
 			};
 		return null;
 	});
-	const planned = $derived(
-		(rooms ?? [])
-			.filter((r) => r.next)
-			.sort(
-				(a, b) => Date.parse(a.next!.startsAt) - Date.parse(b.next!.startsAt),
-			),
-	);
 	const week = $derived.by(() => {
 		const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
 		const recent = (rides ?? []).filter(
@@ -288,15 +286,14 @@
 				><CalendarClock size={15} /> Plan a session</a
 			>
 		{:else}
-			<!-- In no crew, the big button is joining one (#2144); opening a
-			     room — which founds a crew — is one step down the same sheet. -->
+			<!-- Carrying an invite, the big button is joining the crew that sent
+			     it (#2144, #2184); everyone else gets the room the signed-out
+			     landing promised, and joining is one step down the same sheet. -->
 			<button
 				onclick={() => (opening = true)}
 				class="btn {rooms?.length ? 'btn-secondary' : 'btn-primary btn-lg'}"
 				><Plus size={15} />
-				{presence.loaded && !presence.crews.length
-					? 'Join a crew'
-					: 'Open a room'}</button
+				{joinFirst ? 'Join a crew' : 'Open a room'}</button
 			>
 		{/if}
 	</div>
@@ -471,20 +468,25 @@
 											? `/r/${friend.room}`
 											: `/messages/dm/${friend.id}`}
 										class="panel hover:border-muted/40 flex items-center gap-2 px-2.5 py-1.5 text-xs"
-										title={friend.roomName ? `in ${friend.roomName}` : 'online'}
+										title={friendPlace(friend)}
 									>
+										<!-- The badge Avatar draws, from the one vocabulary
+										     (#807, $lib/status) — not a mark of this row's
+										     own. Home drew RidingBars for anyone `inRoom`,
+										     and those bars say "riding now" to the eye and
+										     to a screen reader, so a friend chatting in a
+										     room was reported as pedalling while the
+										     Friends page called the same person "in a
+										     room". ADR-0012: presence never implies watts
+										     (#2168). -->
 										<Avatar
 											name={friend.name}
 											avatarUrl={friend.avatarUrl}
 											xp={friend.totalXp}
+											status={statusOf(presence.rooms, friend.id, friends.list)}
 											size={20}
 										/>
 										<span class="font-medium">{friend.name}</span>
-										{#if friend.inRoom}
-											<RidingBars size={9} />
-										{:else}
-											<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
-										{/if}
 									</a>
 								</li>
 							{/each}
@@ -493,77 +495,16 @@
 				</section>
 
 				<!-- The last few rides: what you did, one line each, the log a click away. -->
-				<RecentRides rides={recent} />
+				<RecentRides
+					rides={recent}
+					ondelete={(ride) =>
+						(rides = rides?.filter((r) => r.id !== ride.id) ?? null)}
+				/>
 
-				<!-- What's next: every room's plan, across every room you are in
-		     (ADR-0020 — /sessions retired into this). Planning itself happens in
-		     the room whose session it is. -->
-				<section id="sessions">
-					<div class="flex items-baseline gap-3">
-						<h2 class="eyebrow">What's next</h2>
-					</div>
-					{#if planned.length > 0}
-						<div class="panel mt-3">
-							{#each planned as room (room.slug)}
-								<!-- The date too: this is the one list that spans rooms and
-								     weeks, and "Tue 19:00" could not tell next week's from
-								     tomorrow's. Same destination as the Lounge's card. -->
-								<a
-									href="/r/{room.slug}/sessions"
-									class="border-ink/5 hover:bg-surface flex items-center gap-3 border-b px-4 py-3 transition-colors last:border-b-0"
-								>
-									<CalendarClock size={15} class="text-muted shrink-0" />
-									<div class="min-w-0">
-										<p class="truncate text-sm font-medium">
-											{room.next?.workoutName}
-										</p>
-										<p class="text-muted text-xs">
-											{formatWhen(room.next?.startsAt ?? '', true)} · {room.name}
-										</p>
-									</div>
-								</a>
-							{/each}
-						</div>
-						<!-- Notifications, offered where they would matter (#1485): the
-						     rider can see a session is coming, so this is the moment to
-						     say the app can tell them when it starts. Once, and only
-						     where the button can succeed — NotifyOffer decides. -->
-						<NotifyOffer />
-					{:else}
-						<p class="text-muted mt-3 text-sm">
-							Nothing on the calendar.
-							{#if firstRoom}
-								<!-- The CTA that creates the first one (ux.md), not a word in italics (#1911). -->
-								<a href="/r/{firstRoom.slug}/sessions" class="btn-link"
-									>Plan one</a
-								> — it shows up here, and in everyone's calendar.
-							{:else}
-								Open a room's <em>Sessions</em> and plan one — it shows up here, and
-								in everyone's calendar.
-							{/if}
-						</p>
-					{/if}
-					<!-- The feed is offered under the list it mirrors (ADR-0021, #1374)
-					     — once there is a room to plan in; a subscription to nothing is
-					     noise on the screen meant to teach. The link itself lives with the
-					     account's other bearer secrets now (#1860), so this is the way to
-					     it rather than a second copy of it. -->
-					{#if rooms.length}
-						<a
-							href="/settings/data"
-							class="panel hover:bg-surface mt-3 flex flex-wrap items-center gap-3 px-4 py-3 transition-colors"
-						>
-							<CalendarClock size={15} class="text-muted shrink-0" />
-							<span class="text-muted min-w-0 flex-1 text-xs">
-								Put all of this in your calendar app — one subscription, every
-								room you are in.
-							</span>
-							<span class="btn-link shrink-0 text-xs"
-								>Get your calendar link</span
-							>
-						</a>
-					{/if}
-				</section>
+				<!-- What's next: every planned session, across every room you are
+			     in (ADR-0020 — /sessions retired into this). Planning and saying
+			     you are in both happen in the room whose session it is. -->
+				<WhatsNext planSlug={firstRoom?.slug} hasRooms={rooms.length > 0} />
 			</div>
 			<!-- Friends is its own place (ADR-0020); the heading that stayed here
 			     with nothing under it went with #1333. -->
@@ -575,7 +516,13 @@
 </main>
 
 {#if opening}
-	<Modal label="Open a room" onclose={() => (opening = false)} class="max-w-sm">
+	<!-- Named for what the rider pressed (#2176): a crewless rider pressed
+	     "Join a crew" and the dialog announced itself as "Open a room". -->
+	<Modal
+		label={joinFirst ? 'Join a crew' : 'Open a room'}
+		onclose={() => (opening = false)}
+		class="max-w-sm"
+	>
 		<OpenOrJoin compact crewId={ownCrew?.id} />
 	</Modal>
 {/if}

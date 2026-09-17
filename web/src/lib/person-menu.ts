@@ -11,6 +11,7 @@ import User from '@lucide/svelte/icons/user';
 import UserPlus from '@lucide/svelte/icons/user-plus';
 import Volume2 from '@lucide/svelte/icons/volume-2';
 import { api } from '$lib/api';
+import type { Friend } from '$lib/friends/friends.svelte';
 import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
 import { connectionInfo } from '$lib/room/connection-info.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
@@ -74,6 +75,17 @@ export function personMenu(
 		};
 		/** Their volume, offered only where they are in voice to hear it. */
 		volume?: { name: string };
+		/**
+		 * Their standing with you, where the surface knows it (#2169). With
+		 * one — a friend, or an ask either way — "Add friend" is not offered:
+		 * the server refuses it with "There is already a request or friendship
+		 * with them", which is a toast a rider gets for pressing something
+		 * that could never work (errors.md, ux.md).
+		 *
+		 * Absent means "this surface does not know", not "not a friend": a
+		 * room's roster has no friends list, and the ask is right there.
+		 */
+		friendship?: Friend['status'];
 		/** The room's own moderation, passed only by an owner. */
 		ban?: () => void;
 	} = {},
@@ -89,12 +101,14 @@ export function personMenu(
 		onSelect: () => go(`/messages/dm/${id}`),
 		disabled: options.you,
 	};
-	const friend: MenuItem = {
-		label: 'Add friend',
-		icon: UserPlus,
-		onSelect: () => void askToBeFriends(id),
-		disabled: options.you,
-	};
+	const friend: MenuItem | undefined = options.friendship
+		? undefined
+		: {
+				label: 'Add friend',
+				icon: UserPlus,
+				onSelect: () => void askToBeFriends(id),
+				disabled: options.you,
+			};
 	const poke: MenuItem | undefined = options.poke && {
 		label: 'Poke',
 		icon: BellRing,
@@ -104,13 +118,18 @@ export function personMenu(
 	};
 	// The menu leads with what a click on the object already does.
 	const items: MenuEntry[] = options.conversation
-		? [message, riderPage, friend]
-		: [riderPage, message, friend];
+		? [message, riderPage]
+		: [riderPage, message];
+	if (friend) items.push(friend);
 	if (poke) items.splice(2, 0, poke);
 	// After the room's own verbs, before the friendship: the fader is what you
 	// came for mid-ride, but the list still reads person-first.
 	if (options.volume && !options.you)
-		items.splice(items.length - 1, 0, riderVolume(id, options.volume.name));
+		items.splice(
+			friend ? items.length - 1 : items.length,
+			0,
+			riderVolume(id, options.volume.name),
+		);
 	// Their connection, as numbers (#2131) — offered only where the room has an
 	// answer, which is the room you are standing in and the people in it. Off
 	// every other surface by the same rule the fader follows: an entry that

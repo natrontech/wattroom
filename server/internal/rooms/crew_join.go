@@ -60,17 +60,60 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 			out["id"] = store.UUIDString(crew.ID)
 			out["members"], _ = s.store.Queries.CountCrewMembers(r.Context(), crew.ID)
 		default:
-			// A stranger at the door holds an invite (#2144): remembered on
-			// the account, because the tab that holds the deep link is not
-			// the tab a new account's email confirmation opens. /api/me hands
-			// it back while they are in no crew, and the join clears it.
-			// Best effort — a door that could not remember still opens.
-			if err := s.store.Queries.SetPendingCrewCode(r.Context(), db.SetPendingCrewCodeParams{ID: user.ID, PendingCrewCode: &code}); err != nil {
-				s.log.Warn("pending crew invite not recorded", "err", err, "rider", store.UUIDString(user.ID))
-			}
+			// A signed-in stranger at the door holds an invite (#2144). The
+			// read used to record it here; it says so instead, and the client
+			// posts the remember below — a GET that wrote let any page set a
+			// rider's pending invite by linking them at it (#2248).
+			out["invited"] = true
 		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// handleRememberCrewDoor keeps the invite the door just showed (#2144) on the
+// account, because the tab holding the deep link is not the tab a new
+// account's email confirmation opens. /api/me hands it back while the rider is
+// in no crew, and the join clears it.
+//
+// It is a POST because it writes (#2248). RequireUser only asks for the Origin
+// on a mutating verb — a SameSite=Lax cookie rides a cross-site top-level
+// navigation — so the same write on the door's GET was one any page could
+// perform for a signed-in rider by linking them at it, steering which crew a
+// brand-new account is pointed at after sign-up.
+func (s *Service) handleRememberCrewDoor(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Sign in to keep this invite.")
+	if !ok {
+		return
+	}
+	if s.throttleDoor(w, r) {
+		return
+	}
+	code := strings.ToUpper(strings.TrimSpace(r.PathValue("code")))
+	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			httpx.Fail(w, s.log, "crew door lookup failed", err, "The invite could not be kept. Try again.")
+			return
+		}
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew has that code. Check it with whoever shared it.")
+		return
+	}
+	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
+	if err != nil {
+		httpx.Fail(w, s.log, "crew role lookup failed", err, "The invite could not be kept. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	if role != "" {
+		// Nothing to keep: a member is already in, and a banned rider is not
+		// coming in. Not a refusal either — the door said so first.
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if err := s.store.Queries.SetPendingCrewCode(r.Context(), db.SetPendingCrewCodeParams{ID: user.ID, PendingCrewCode: &code}); err != nil {
+		httpx.Fail(w, s.log, "pending crew invite not recorded", err, "The invite could not be kept. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleJoinCrew is the one way in (ADR-0038 amended, #1236). Joining stores
@@ -137,6 +180,20 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 // in one move (#1228, #1236). The owner cannot leave — a crew is never
 // ownerless — so they hand it on first (#1208). Sockets in the crew's rooms
 // are severed the way a removal severs them.
+//
+// One transaction, and the crew's own end inside it (#2079). The three
+// statements were three commits: a leave that failed between them left a
+// rider with no memberships and a crew role, or a room grant outliving the
+// membership the confirm said it went with. The sweep then joins them —
+// ADR-0038's second amendment says a crew with nothing left in it "is deleted
+// rather than left ownerless", and the last member out of a ROOM-LESS crew
+// reaches that state by a door nothing swept: its owner could neither leave
+// it (they own it), hand it on (nobody left) nor delete it (there is no such
+// button). What the leaver was told beforehand is crew.lastOut on the crews
+// list, the same predicate one row earlier.
+//
+// The evictions stay AFTER the commit: they close live sockets, which no
+// rollback can reopen.
 func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	crew, user, role, ok := s.crewByID(w, r)
 	if !ok {
@@ -146,7 +203,27 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "You own this crew — hand it to someone first, then leave.")
 		return
 	}
-	owned, err := s.store.Queries.CountRoomsOwnedInCrew(r.Context(), db.CountRoomsOwnedInCrewParams{CrewID: crew.ID, OwnerID: user.ID})
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "crew leave begin failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	// Before anything else, and before any room of the crew is touched: two
+	// people leaving at once would otherwise each see the other's row and
+	// neither sweep (LockCrew), and the room delete takes the same lock in
+	// the same place so the two paths cannot deadlock over the memberships
+	// they share.
+	if err := q.LockCrew(r.Context(), crew.ID); err != nil {
+		httpx.Fail(w, s.log, "crew lock failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	// Under the lock, so the answer is still true when the leave commits: a
+	// room created into the crew a moment later blocks on it rather than
+	// landing between the count and the delete, which would leave its owner
+	// owning a room in a crew they are no longer in.
+	owned, err := q.CountRoomsOwnedInCrew(r.Context(), db.CountRoomsOwnedInCrewParams{CrewID: crew.ID, OwnerID: user.ID})
 	if err != nil {
 		// Fail closed, and say so — not "you own a room" (audit 2026-09-09).
 		httpx.Fail(w, s.log, "crew leave owner check failed", err, "Leaving did not go through. Try again.", "crew", store.UUIDString(crew.ID))
@@ -156,24 +233,42 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusConflict, "conflict", "You own a room in this crew, and a room never leaves its crew — hand it to a member first.")
 		return
 	}
-	slugs, _ := s.store.Queries.ListCrewRoomSlugs(r.Context(), crew.ID)
-	err = s.store.Queries.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
+	// The rooms to sever the rider from, read under the same lock: the set
+	// cannot change until this commits, and it is gone from the table by then
+	// if the crew goes too.
+	slugs, _ := q.ListCrewRoomSlugs(r.Context(), crew.ID)
+	err = q.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
 	if err == nil {
 		// The confirm promised it: "a private room needs a fresh invitation
 		// from its owner" — the grant used to outlive the membership (#1672).
-		err = s.store.Queries.LeaveCrewGrants(r.Context(), db.LeaveCrewGrantsParams{CrewID: crew.ID, UserID: user.ID})
+		err = q.LeaveCrewGrants(r.Context(), db.LeaveCrewGrantsParams{CrewID: crew.ID, UserID: user.ID})
 	}
 	if err == nil {
-		err = s.store.Queries.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
+		err = q.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
 	}
 	if err != nil {
 		httpx.Fail(w, s.log, "crew leave failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
 		return
 	}
+	// Nothing left in it now goes with the person who was the last thing in
+	// it (#2079, #1935). One statement, so the predicate is tested at the
+	// moment of the delete — and under the lock above, a join or a new room
+	// waits for this commit rather than racing it.
+	crewGone, err := s.deleteCrewIfEmpty(r.Context(), q, crew.ID)
+	if err != nil {
+		httpx.Fail(w, s.log, "empty crew delete failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Fail(w, s.log, "crew leave commit failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	// Durable rows gone; the sockets are the hub's and close after the commit
+	// — a rollback cannot reopen one.
 	for _, slug := range slugs {
 		s.evict(slug, store.UUIDString(user.ID))
 	}
-	s.log.Info("crew left", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID))
+	s.log.Info("crew left", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID), "crewGone", crewGone)
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }

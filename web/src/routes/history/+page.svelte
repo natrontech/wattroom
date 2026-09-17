@@ -4,11 +4,12 @@
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
 	import { account } from '$lib/account.svelte';
+	import LthrPrompt from '$lib/components/LthrPrompt.svelte';
 	import {
-		declineFtp,
-		declinedFtp,
+		declineSuggestion,
+		declinedSuggestion,
 		suggestionDeclined,
-	} from '$lib/ftp-decline';
+	} from '$lib/suggestion-decline';
 	import { pushProfile } from '$lib/profile-sync.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import PowerCurveChart from '$lib/components/PowerCurveChart.svelte';
@@ -26,18 +27,10 @@
 	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { setRideShared } from '$lib/ride/share';
-	import {
-		contextMenu,
-		MENU_HINT,
-		type MenuEntry,
-		type MenuItem,
-	} from '$lib/context-menu.svelte';
-	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
+	import ShareToggle from '$lib/ride/ShareToggle.svelte';
+	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
+	import { rideRowMenu } from '$lib/ride/row-menu';
 	import { untrack } from 'svelte';
-	import Lock from '@lucide/svelte/icons/lock';
-	import Trash2 from '@lucide/svelte/icons/trash-2';
-	import Users from '@lucide/svelte/icons/users';
 	import type { PageData } from './$types';
 	import {
 		rideCursorOf,
@@ -54,7 +47,7 @@
 	// and a settings sub-page was the only place that did. The decline is
 	// remembered, keyed on the value.
 	const profile = createProfileStore();
-	let declined = $state(declinedFtp());
+	let declined = $state(declinedSuggestion('ftp'));
 	let applied = $state(false);
 	const suggestion = $derived(
 		account.me?.suggestedFtp &&
@@ -73,6 +66,29 @@
 		}
 		applied = true;
 		toasts.push(`FTP set to ${next} W — every workout now scales to it.`);
+	}
+	// The same, for the LTHR a hard solo ride suggests (#1620). Its own decline
+	// memory: keeping an FTP says nothing about a heart rate.
+	let lthrDeclined = $state(declinedSuggestion('lthr'));
+	let lthrApplied = $state(false);
+	const lthrSuggestion = $derived(
+		account.me?.suggestedLthr &&
+			account.me.lthr &&
+			!lthrApplied &&
+			!suggestionDeclined(account.me.suggestedLthr, lthrDeclined)
+			? account.me.suggestedLthr
+			: null,
+	);
+	async function applyLthr(next: number) {
+		// The account first, this browser second (#1543, #1571).
+		const message =
+			(await pushProfile({ lthr: next })) ?? profile.update({ lthr: next });
+		if (message) {
+			toasts.push(message, { tone: 'error' });
+			return;
+		}
+		lthrApplied = true;
+		toasts.push(`LTHR set to ${next} bpm — your heart-rate zones follow it.`);
 	}
 	// Device-only leftovers: summaries the server did not take — refused for
 	// being under a minute, saved while it was unreachable, or from before
@@ -121,34 +137,12 @@
 		takePage(res.data);
 	}
 
-	// One helper for the row, its menu and the ride page (#1691).
-	const setShared = setRideShared;
-
-	async function removeRide(ride: ServerRide) {
-		if (!(await deleteRideAfterConfirm(ride))) return;
+	// What the row's menu leaves to this page once a ride is gone.
+	function forget(ride: ServerRide) {
 		rides = rides?.filter((r) => r.id !== ride.id) ?? null;
 		// The charts count this ride — they have to be asked again.
 		void loadProgression();
 	}
-
-	// The row's verbs, as menu items too (#486). A device-only ride has no
-	// server to flip or delete, so its row offers nothing and keeps the
-	// browser's menu. Delete opens the confirm rather than acting: unlike
-	// sharing, it cannot be handed back by an undo toast (errors.md).
-	const rowMenu = (ride: ServerRide): MenuEntry[] => [
-		{
-			label: ride.sharedWithFriends ? 'Make private' : 'Share with friends',
-			icon: ride.sharedWithFriends ? Lock : Users,
-			onSelect: () => void setShared(ride, !ride.sharedWithFriends),
-		} satisfies MenuItem,
-		'separator',
-		{
-			label: 'Delete ride',
-			icon: Trash2,
-			danger: true,
-			onSelect: () => void removeRide(ride),
-		} satisfies MenuItem,
-	];
 
 	// A chart's drilldown (the rides chart above, once /progression's) lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);
@@ -263,6 +257,8 @@
 <svelte:head><title>Rides · WattRoom</title></svelte:head>
 
 {#snippet rideRow(ride: RideRecord, badge?: string, server?: ServerRide)}
+	<!-- A device-only ride has no server to flip or delete, so its row offers
+	     nothing and keeps the browser's own menu. -->
 	<li
 		id="ride-{ride.id}"
 		title={server ? MENU_HINT : undefined}
@@ -270,7 +266,7 @@
 		ride.id
 			? 'ring-z2/70 ring-1'
 			: ''}"
-		{@attach contextMenu(() => (server ? rowMenu(server) : []))}
+		{@attach contextMenu(() => (server ? rideRowMenu(server, forget) : []))}
 	>
 		{#if server}
 			<!-- The whole row opens the ride (#503): a tap target the size of the
@@ -316,22 +312,11 @@
 		>
 		{#if server}
 			<!-- Per-ride sharing (ADR-0024): off by default, one tap to flip.
-			     The icon says where the ride stands, the word what the press
-			     does, and aria-pressed carries the state (#2004). -->
-			<button
-				onclick={() => void setShared(server, !server.sharedWithFriends)}
+			     The same toggle the ride's own page draws (#2167). -->
+			<ShareToggle
+				ride={server}
 				class="btn btn-ghost btn-xs relative -my-1 -mr-2"
-				aria-pressed={server.sharedWithFriends}
-				title={server.sharedWithFriends
-					? 'Friends see this ride on your page — make it private'
-					: 'Only you see this ride — share it with your friends'}
-			>
-				{#if server.sharedWithFriends}
-					<Users size={13} /> Make private
-				{:else}
-					<Lock size={13} /> Share
-				{/if}
-			</button>
+			/>
 		{/if}
 	</li>
 {/snippet}
@@ -403,6 +388,19 @@
 					all={progression.curve.all}
 				/>
 			</div>
+			{#if lthrSuggestion && account.me?.lthr}
+				<div class="mb-3">
+					<LthrPrompt
+						current={account.me.lthr}
+						suggested={lthrSuggestion}
+						onApply={() => void applyLthr(lthrSuggestion)}
+						onKeep={() => {
+							declineSuggestion('lthr', lthrSuggestion);
+							lthrDeclined = lthrSuggestion;
+						}}
+					/>
+				</div>
+			{/if}
 			{#if suggestion && account.me}
 				<div class="mb-3">
 					<FtpPrompt
@@ -411,7 +409,7 @@
 						best20={account.me.best20m ?? 0}
 						onApply={() => void applySuggestion(suggestion)}
 						onKeep={() => {
-							declineFtp(suggestion);
+							declineSuggestion('ftp', suggestion);
 							declined = suggestion;
 						}}
 					/>
@@ -489,8 +487,12 @@
 				</div>
 			{/each}
 		</div>
-	{:else if rides.length === 0 && device.all.length === 0}
-		<!-- Empty states teach (.claude/rules/ux.md). -->
+	{:else if rides.length === 0}
+		<!-- Empty states teach (.claude/rules/ux.md), and this one is about
+		     the ACCOUNT's rides: gated on the device list too, a rider with
+		     one device-only summary and no account ride got an empty <ul>
+		     under no heading instead (#2181). The device section below says
+		     its own piece either way. -->
 		<div class="mt-8">
 			<EmptyState>
 				<p class="text-ink text-sm">No rides yet.</p>

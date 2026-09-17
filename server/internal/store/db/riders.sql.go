@@ -31,8 +31,9 @@ type CountRiderMedalsInCommonRow struct {
 	Count int64
 }
 
-// Medals the rider earned in rooms the viewer shares with them, by kind.
-// Rooms they have since left are not "rooms you share" any more.
+// Medals the rider earned in rooms both may enter (`visible_rooms`), by kind.
+// A room the rider has left, or is banned from at either level, is no longer
+// one they may enter, so its medals drop out.
 func (q *Queries) CountRiderMedalsInCommon(ctx context.Context, arg CountRiderMedalsInCommonParams) ([]CountRiderMedalsInCommonRow, error) {
 	rows, err := q.db.Query(ctx, countRiderMedalsInCommon, arg.Rider, arg.Viewer)
 	if err != nil {
@@ -82,8 +83,10 @@ type ListRoomsInCommonRow struct {
 // is exactly how #1109 and #1114 happened — four such joins, one of them
 // missing the guard. The view also carries what a hand-written join could not
 // have known about: crew visibility, private-room grants and the crew ban.
-// Rooms where both hold a live (non-banned) membership — the gate for the
-// whole page, and the scope of the medals shown on it.
+// Rooms both may enter (`visible_rooms`) — the gate for the whole page, and
+// the scope of the medals shown on it. Since ADR-0038's person-visibility
+// section this is wider than "both joined it" on purpose: a crew-visible
+// room neither has joined still puts two riders in common.
 func (q *Queries) ListRoomsInCommon(ctx context.Context, arg ListRoomsInCommonParams) ([]ListRoomsInCommonRow, error) {
 	rows, err := q.db.Query(ctx, listRoomsInCommon, arg.Rider, arg.Viewer)
 	if err != nil {
@@ -137,8 +140,9 @@ type ListSharedRidesRow struct {
 }
 
 // The rides the rider marked shared, newest first — friends only. The room
-// is named only when the viewer is a member of it (ADR-0012: friendship
-// never pierces the room boundary); otherwise the ride just "was in a room".
+// is named only when the viewer may enter it (`visible_rooms`, ADR-0038's
+// person-visibility section; ADR-0012: friendship never pierces the room
+// boundary); otherwise the ride just "was in a room".
 func (q *Queries) ListSharedRides(ctx context.Context, arg ListSharedRidesParams) ([]ListSharedRidesRow, error) {
 	rows, err := q.db.Query(ctx, listSharedRides, arg.Viewer, arg.Rider, arg.Max)
 	if err != nil {
@@ -223,4 +227,57 @@ func (q *Queries) RiderTotals(ctx context.Context, uid pgtype.UUID) (RiderTotals
 	var i RiderTotalsRow
 	err := row.Scan(&i.Rides, &i.TotalKj, &i.TotalXp)
 	return i, err
+}
+
+const sharesRoomOrFriends = `-- name: SharesRoomOrFriends :one
+select (
+    -- Your own page is yours, whatever rooms or friends you have. Stated
+    -- here rather than at each call site, which is what made this two rules.
+    $1::uuid = $2::uuid
+    or exists (
+        -- ` + "`" + `visible_rooms` + "`" + ` is the boundary, not a hand-written membership join
+        -- (ADR-0038, third amendment). #1110 fixed this very query for missing
+        -- ` + "`" + `role != 'banned'` + "`" + `; going through the view is what stops the next
+        -- one being missed, and it brings crew bans and grants along free.
+        select 1 from visible_rooms a
+        join visible_rooms b on a.room_id = b.room_id
+        where a.user_id = $1 and b.user_id = $2
+    )
+    or exists (
+        select 1 from friendships
+        where status = 'accepted'
+          and ((requester_id = $1 and addressee_id = $2)
+            or (requester_id = $2 and addressee_id = $1))
+    )
+    or exists (
+        -- ADR-0024: a pending request *from* them opens their page, "see who
+        -- before you accept", and the case is part of that page (#1654). A
+        -- pending ask *to* them is not a door.
+        select 1 from friendships
+        where status = 'pending' and requester_id = $2 and addressee_id = $1
+    )
+)::boolean
+`
+
+type SharesRoomOrFriendsParams struct {
+	Viewer pgtype.UUID
+	Rider  pgtype.UUID
+}
+
+// ADR-0024's audience for a rider's page, as ONE question (#2298). A shared
+// live room, an accepted friendship, a pending request from them — or the
+// rider themselves.
+//
+// Both routes that serve this audience ask THIS: riders.handleGet for the
+// page, gamify.handleRider for the trophy case on it. They used to decide it
+// separately — one composing ListRoomsInCommon with friendStatus in Go, the
+// other calling this — and agreed only by coincidence. The failure was the
+// quiet direction: a new room state that counts as shared, or a friendship
+// state that should not, would have moved one and left the other answering
+// for an audience the ADR never granted.
+func (q *Queries) SharesRoomOrFriends(ctx context.Context, arg SharesRoomOrFriendsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, sharesRoomOrFriends, arg.Viewer, arg.Rider)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }

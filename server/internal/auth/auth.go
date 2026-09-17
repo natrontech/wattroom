@@ -115,7 +115,7 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *s
 	if _, ok := svc.providers["dev"]; ok {
 		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")
 	}
-	if wa, err := newWebAuthn(baseURL); err != nil {
+	if wa, err := newWebAuthn(baseURL, log); err != nil {
 		log.Error("passkeys are off: could not build the relying party", "err", err)
 	} else {
 		svc.wa = wa
@@ -176,7 +176,18 @@ func (s *Service) handleProviders(w http.ResponseWriter, _ *http.Request) {
 	// Whether a new account will meet the address gate (ADR-0029): said on
 	// the sign-in page, before the gate is the first screen after it
 	// (audit 2026-09-09).
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"providers": ids, "mailAvailable": s.mailer != nil})
+	//
+	// And whether passkeys work here at all (#2256). newWebAuthn refuses a
+	// WATTROOM_BASE_URL it cannot derive a relying party from — `localhost:8080`
+	// with no scheme is the realistic one — and the server boots anyway with
+	// the passkey routes unmounted. Without this the client gates on
+	// passkeys.supported(), which is about the BROWSER, and the primary door
+	// ADR-0029 chose fails on click with the API's 404.
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"providers":         ids,
+		"mailAvailable":     s.mailer != nil,
+		"passkeysAvailable": s.wa != nil,
+	})
 }
 
 // devNames is what ?as= accepts: a display name, letters and spaces, short.
@@ -299,6 +310,13 @@ func (s *Service) handleSynthetic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
+	// The callback is unauthenticated and does outbound work — a token
+	// exchange and an identity fetch — so a loop here is a request amplifier
+	// against the provider, and Strava's tier is the tightest thing this app
+	// depends on (#2255). Same door and same message as the passkey login.
+	if s.throttle(w, r, s.loginBudget, tooManySignIns) {
+		return
+	}
 	p, ok := s.providers[r.PathValue("provider")]
 	if !ok {
 		httpx.WriteError(w, http.StatusNotFound, "not_found",
@@ -318,7 +336,10 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 	linking := strings.HasPrefix(cookie.Value, linkStatePrefix)
 	s.clearCookie(w, stateCookie)
 
-	ctx := r.Context()
+	// Bounded from here down (#2255): the exchange and the identity fetch are
+	// the only outbound calls a signing-in rider makes, and oauth2 falls back
+	// to http.DefaultClient, which has no timeout.
+	ctx := oauthCtx(r.Context())
 	tok, err := p.config.Exchange(ctx, r.URL.Query().Get("code"))
 	if err != nil {
 		s.log.Warn("oauth exchange failed", "provider", p.id, "err", err)

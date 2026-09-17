@@ -25,7 +25,7 @@
 				<span class="text-muted"
 					>Z{zone}{names ? ` ${ZONE_NAMES[zone]}` : ''}</span
 				>
-				<span class="font-mono tabular-nums">{formatClock(zsec)}</span>
+				<span class="num">{formatClock(zsec)}</span>
 			</li>
 		{/if}
 	{/each}

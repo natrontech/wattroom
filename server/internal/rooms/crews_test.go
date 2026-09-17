@@ -42,6 +42,29 @@ func (h *harness) makePrivate(t *testing.T, slug string) {
 	}
 }
 
+// makeCrewAdmin hands someone the crew role every "can a crew admin …" test
+// starts from. Straight to the row, not through /api/crews/{id}/role: the
+// promotion is the fixture here, never the thing under test.
+func (h *harness) makeCrewAdmin(t *testing.T, crew db.GetCrewRow, who string) {
+	t.Helper()
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew.ID, UserID: h.users.ByToken[who].ID, Role: "admin",
+	}); err != nil {
+		t.Fatalf("make %s a crew admin: %v", who, err)
+	}
+}
+
+// crewRole is the one word the crew makes of a person — "" for somebody it
+// has never heard of — read the way every gate in the app reads it.
+func (h *harness) crewRole(t *testing.T, crew db.GetCrewRow, user pgtype.UUID) string {
+	t.Helper()
+	role, err := h.store.Queries.CrewRoleOf(t.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user})
+	if err != nil {
+		t.Fatalf("crew role: %v", err)
+	}
+	return role
+}
+
 // enter is the front door (#1236): the crew by its code, then the room by
 // its address. Asserted to succeed at both.
 func (h *harness) enter(t *testing.T, who, code, slug string) {
@@ -800,7 +823,7 @@ func TestACrewOutlivesItsRoomsAndPassesOnWithItsOwner(t *testing.T) {
 	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); err != nil {
 		t.Fatalf("a crew with no rooms left was deleted: %v", err)
 	}
-	if role, _ := h.store.Queries.CrewRoleOf(t.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: h.users.ByToken["bob"].ID}); role != "member" {
+	if role := h.crewRole(t, crew, h.users.ByToken["bob"].ID); role != "member" {
 		t.Errorf("bob's standing went with the room: %q, want member", role)
 	}
 	// And the client still hears of it (#1476): the room list carries the
@@ -1360,10 +1383,10 @@ func TestANewRoomLandsInTheCrewYouFoundedNotTheOneHandedToYou(t *testing.T) {
 }
 
 // The invite a rider was sent to survives the tab it arrived in (#2144): the
-// door writes it on the account for a stranger, /api/me derives it while they
-// are in no crew and the code still opens one, and the join clears it. A
-// rider who already has a crew has somewhere to be, so nothing is derived for
-// them however many doors they read.
+// door says a stranger is invited, the remember POST writes it on the account,
+// /api/me derives it while they are in no crew and the code still opens one,
+// and the join clears it. A rider who already has a crew has somewhere to be,
+// so nothing is derived for them however many doors they read.
 func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
 	h := setup(t)
 	_, code := h.createRoom(t, "alice", "Door Memory")
@@ -1373,16 +1396,25 @@ func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
 	if _, err := h.store.Queries.PendingCrewInvite(t.Context(), daveID); !errors.Is(err, pgx.ErrNoRows) {
 		t.Fatalf("an invite before any door: %v", err)
 	}
-	if status, _ := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
-		t.Fatalf("door: %d", status)
+	status, door := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, "")
+	if status != http.StatusOK || door["invited"] != true {
+		t.Fatalf("door: %d %v, want an invited stranger", status, door)
+	}
+	if status, body := h.call(t, dave, http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusNoContent {
+		t.Fatalf("remember: %d %v", status, body)
 	}
 	if got, err := h.store.Queries.PendingCrewInvite(t.Context(), daveID); err != nil || got != code {
 		t.Fatalf("the door forgot the invite: %q, %v", got, err)
 	}
-	// Bob owns a crew of his own: the same door leaves him no invite.
+	// Bob owns a crew of his own. The door still offers him the Join — he is
+	// not in this one — and the remember still writes the code, but a rider
+	// with a crew has somewhere to be, so nothing is derived for them.
 	h.createRoom(t, "bob", "Bob's Own")
-	if status, _ := h.call(t, "bob", http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
-		t.Fatalf("door for bob: %d", status)
+	if status, body := h.call(t, "bob", http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK || body["invited"] != true {
+		t.Fatalf("door for bob: %d %v", status, body)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusNoContent {
+		t.Fatalf("remember for bob: %d", status)
 	}
 	if got, err := h.store.Queries.PendingCrewInvite(t.Context(), h.users.ByToken["bob"].ID); !errors.Is(err, pgx.ErrNoRows) {
 		t.Fatalf("a rider with a crew holds an invite: %q, %v", got, err)
@@ -1396,13 +1428,130 @@ func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
 	}
 	// Answered: the join clears the code outright, so leaving the crew later
 	// does not send the rider back to its door.
-	if status, _ := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
-		t.Fatalf("door again: %d", status)
+	if status, _ := h.call(t, dave, http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusNoContent {
+		t.Fatalf("remember again: %d", status)
 	}
 	if status, body := h.call(t, dave, http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
 		t.Fatalf("join: %d %v", status, body)
 	}
 	if u, err := h.store.Queries.GetUser(t.Context(), daveID); err != nil || u.PendingCrewCode != nil {
 		t.Fatalf("the join left the invite on the account: %v, %v", u.PendingCrewCode, err)
+	}
+}
+
+// Reading the crew's door writes nothing to the caller's account (#2248).
+// RequireUser asks for the Origin only on a mutating verb, and a SameSite=Lax
+// cookie rides a cross-site top-level navigation — so while the door's GET set
+// pending_crew_code, any page could pick which crew a signed-in rider's next
+// landing opened, simply by linking them at it.
+func TestReadingTheCrewDoorWritesNothing(t *testing.T) {
+	h := setup(t)
+	_, code := h.createRoom(t, "alice", "Read-Only Door")
+	dave := h.stranger(t)
+	daveID := h.users.ByToken[dave].ID
+
+	for range 3 {
+		if status, _ := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
+			t.Fatalf("door: %d", status)
+		}
+	}
+	u, err := h.store.Queries.GetUser(t.Context(), daveID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.PendingCrewCode != nil {
+		t.Fatalf("reading the door wrote %q to the account", *u.PendingCrewCode)
+	}
+}
+
+// The remember is a write and answers like one (errors.md): signed out is a
+// 401, an unknown code a 404 — the same answer the door gives, because a code
+// is a secret.
+func TestRememberingAnInviteRefusesWhatItShould(t *testing.T) {
+	h := setup(t)
+	_, code := h.createRoom(t, "alice", "Remember Refusals")
+	if status, body := h.call(t, "", http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusUnauthorized {
+		t.Fatalf("signed out: %d %v, want 401", status, body)
+	}
+	if status, body := h.call(t, h.stranger(t), http.MethodPost, "/api/crew-doors/ZZZZZZ/remember", ""); status != http.StatusNotFound || body["error"] != "not_found" {
+		t.Fatalf("an unknown code: %d %v, want 404 not_found", status, body)
+	}
+}
+
+// The crew's owner is on the roster for everyone in the crew, whatever rooms
+// they share (#1255). Carol joined by the code and can enter one room; the
+// owner is only in another she cannot. Before this, the page showed her two
+// people under a header that said three — and never named whose crew it was.
+func TestTheCrewPageAlwaysNamesItsOwner(t *testing.T) {
+	h := setup(t)
+	// bob founds the crew with a room nobody else can enter.
+	private, _ := h.createRoom(t, "bob", "Owners Private Room")
+	h.makePrivate(t, private)
+	crew := h.crewOf(t, private)
+
+	// alice joins it and is made an admin, so she may open a room in it.
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, codeOf(crew.Code))); status != http.StatusOK {
+		t.Fatal("alice could not join the crew")
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/role",
+		fmt.Sprintf(`{"userId":%q,"role":"admin"}`, h.userID(t, "alice"))); status != http.StatusNoContent {
+		t.Fatal("bob could not make alice an admin")
+	}
+	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms",
+		fmt.Sprintf(`{"name":"Crew Open Room","crewId":%q}`, store.UUIDString(crew.ID)))
+	if status != http.StatusCreated {
+		t.Fatalf("alice could not open a room in the crew: %d %v", status, body)
+	}
+	open, _ := body["slug"].(string)
+	t.Cleanup(func() {
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where slug = $1", open)
+	})
+	if got := h.crewOf(t, open).ID; got != crew.ID {
+		t.Fatalf("alice's room landed in crew %v, not bob's %v", got, crew.ID)
+	}
+
+	// carol comes in by the code and walks into the room she may enter.
+	if status, _ := h.call(t, "carol", http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, codeOf(crew.Code))); status != http.StatusOK {
+		t.Fatal("carol could not join the crew")
+	}
+	if status, _ := h.call(t, "carol", http.MethodPost, "/api/rooms/"+open+"/join", ""); status != http.StatusNoContent {
+		t.Fatal("carol could not enter the crew's open room")
+	}
+
+	_, page := h.call(t, "carol", http.MethodGet, "/api/crews/"+store.UUIDString(crew.ID), "")
+	people, _ := page["people"].([]any)
+	seen := map[string]string{}
+	for _, p := range people {
+		person, _ := p.(map[string]any)
+		seen[fmt.Sprint(person["displayName"])] = fmt.Sprint(person["role"])
+	}
+	if seen["bob"] != "owner" {
+		t.Errorf("carol's crew page does not name the owner: %v", seen)
+	}
+	// Named, and no more than named: which of the crew's rooms the owner is
+	// in is a fact about a room she cannot enter, and stays one.
+	for _, p := range people {
+		person, _ := p.(map[string]any)
+		if fmt.Sprint(person["displayName"]) != "bob" {
+			continue
+		}
+		// omitempty: zero and false are absent on the wire, and either is
+		// "this row does not say".
+		if rooms, _ := person["rooms"].(float64); rooms != 0 || person["ownsRoom"] == true {
+			t.Errorf("the owner's row tells carol about a room she shares with nobody: %v", person)
+		}
+	}
+	// And the rule the owner is the exception to still holds: bob's private
+	// room has no one else in it, so nothing else leaked with him.
+	if _, ok := seen["dave"]; ok {
+		t.Errorf("the roster carries someone carol shares no room with: %v", seen)
+	}
+	// The header counts the crew, and the list is allowed to be shorter —
+	// but never shorter than it needs to be by leaving the owner out.
+	if want := float64(3); page["members"] != want {
+		t.Errorf("the crew page counts %v people, want %v", page["members"], want)
+	}
+	if len(seen) != 3 {
+		t.Errorf("carol sees %d people (%v) — alice, bob and herself are all reachable to her", len(seen), seen)
 	}
 }

@@ -78,9 +78,15 @@ describe('railPeople', () => {
 });
 
 describe('railPeopleMenu', () => {
+	/** A room's people line as the feed hands it over: names, and their ids. */
+	const room = (names: string[], ids = names.map((n) => `id-${n}`)) => ({
+		riders: names,
+		riderIds: ids,
+	});
+
 	it('offers each rider the line named, by name', () => {
 		const entries = railPeopleMenu(
-			['Mara', 'Ines'],
+			room(['Mara', 'Ines']),
 			() => {},
 			() => {},
 		);
@@ -90,16 +96,18 @@ describe('railPeopleMenu', () => {
 		]);
 	});
 
-	it('opens the rider the entry names', () => {
-		const onMember = vi.fn();
-		items(railPeopleMenu(['Mara', 'Ines'], onMember, () => {}))[1].onSelect();
-		expect(onMember).toHaveBeenCalledWith('Ines');
+	it('opens the rider the FEED says that is, not the name (#649)', () => {
+		const go = vi.fn();
+		items(
+			railPeopleMenu(room(['Dave', 'Dave'], ['u1', 'u2']), go, () => {}),
+		)[1].onSelect();
+		expect(go).toHaveBeenCalledWith('/u/u2');
 	});
 
 	it('sends the ones it could not name to the roster', () => {
 		const onRoster = vi.fn();
 		const entries = railPeopleMenu(
-			['Mara', 'Ines', 'Bo', 'Kit', 'Rae'],
+			room(['Mara', 'Ines', 'Bo', 'Kit', 'Rae']),
 			() => {},
 			onRoster,
 		);
@@ -114,21 +122,40 @@ describe('railPeopleMenu', () => {
 	it('leaves the roster out when it named everybody', () => {
 		expect(
 			railPeopleMenu(
-				['Mara', 'Ines', 'Bo'],
+				room(['Mara', 'Ines', 'Bo']),
 				() => {},
 				() => {},
 			),
 		).toHaveLength(3);
 	});
 
-	it('offers nothing when the rail was given no way to open a rider', () => {
-		expect(railPeopleMenu(['Mara'], undefined, () => {})).toEqual([]);
+	it('counts a rider it has no id for rather than guessing one', () => {
+		// The feed is a tick ahead of itself now and then; a name without an
+		// id cannot become a page, and the roster is where they all have rows.
+		const entries = railPeopleMenu(
+			room(['Mara', 'Ines'], ['u1']),
+			() => {},
+			() => {},
+		);
+		const labels = items(entries).map((e) => e.label);
+		expect(labels).toEqual(["Mara's page", 'Everyone who is here']);
+		expect(items(entries).at(-1)!.hint).toBe('+1');
+	});
+
+	it('offers nothing when the feed named nobody it can open', () => {
+		expect(
+			railPeopleMenu(
+				room(['Mara'], []),
+				() => {},
+				() => {},
+			),
+		).toEqual([]);
 	});
 
 	it('offers nothing for a room with nobody in it', () => {
 		expect(
 			railPeopleMenu(
-				[],
+				room([]),
 				() => {},
 				() => {},
 			),

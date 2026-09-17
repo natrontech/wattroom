@@ -124,6 +124,20 @@ func presenceLine(verb, actor string, now time.Time) protocol.RoomEvent {
 // riders were reading it nowhere.
 const sessionKind = "session"
 
+// gameEndedLine is a game that ended with nobody to name: a collective ramp
+// the whole room rode — it finishes when the room average falls off the line,
+// not when one rider outlasts the rest — or any mode a coach ended, which is
+// the only end Team Relay has at all. Its own verb rather than the session's
+// "ended", because the subject is a mode id the client labels (as "won" does)
+// and not a workout name it prints. `round` rides on Count: for a collective
+// ramp the rounds survived together IS the score (docs/SPEC.md).
+func gameEndedLine(mode string, round int, now time.Time) protocol.RoomEvent {
+	return protocol.RoomEvent{
+		Kind: sessionKind, Verb: "gameEnded", Subject: mode,
+		Count: max(round, 1), At: now.UnixMilli(),
+	}
+}
+
 // sessionLine is one thing that happened to this room's plan or timeline.
 // `startsAt` is the zero time on the lines that are about right now.
 func sessionLine(verb, actor, workout string, startsAt, now time.Time) protocol.RoomEvent {

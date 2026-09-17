@@ -21,8 +21,33 @@ export interface Friend {
 	at: number;
 	online?: boolean;
 	inRoom?: boolean;
+	/**
+	 * Pedalling right now (ADR-0012's third state, #1743) — never what they
+	 * are pushing, which stays in the room. True for a room the viewer may
+	 * not name, which is exactly what "riding elsewhere" is made of.
+	 */
+	riding?: boolean;
 	room?: string;
 	roomName?: string;
+}
+
+/**
+ * Where a friend is, in the panel's own words (ADR-0012): the room's name
+ * only when the viewer is a member of it — otherwise "riding elsewhere", the
+ * ADR's phrase, which says the state without piercing the boundary. Empty
+ * when there is nothing to say about them.
+ *
+ * Riding is never inferred from being in a room (#2168): a friend chatting in
+ * the lounge is "in a room", and the server answers which of the two it is.
+ */
+export function friendPlace(friend: Friend): string {
+	if (friend.status !== 'accepted') return '';
+	if (friend.roomName)
+		return friend.riding
+			? `riding in ${friend.roomName}`
+			: `in ${friend.roomName}`;
+	if (friend.inRoom) return friend.riding ? 'riding elsewhere' : 'in a room';
+	return friend.online ? 'online' : '';
 }
 
 /** An ask that was dismissed — a sentence for the rider who asked, nothing else. */
@@ -89,6 +114,7 @@ async function refresh() {
 			const event = friendEvent(friend, before[friend.id]);
 			if (!event) continue;
 			announce({
+				kind: 'friend',
 				tag: event.tag,
 				at: friend.at,
 				title: event.title,
@@ -105,6 +131,7 @@ async function refresh() {
 	for (const decline of res.data.declines ?? []) {
 		const event = declineEvent(decline);
 		announce({
+			kind: 'friend',
 			tag: event.tag,
 			at: decline.at,
 			title: event.title,

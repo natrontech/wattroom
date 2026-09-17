@@ -17,6 +17,13 @@ services:
       # are here. Its own volume, because the pg_dump before a rollout does
       # not carry it and a 2 GB-per-rider library has no business in one.
       WATTROOM_TRACKS_DIR: /data/tracks
+      # Caddy is in front (see Caddyfile) and appends the peer it saw to
+      # X-Forwarded-For, so the last hop is the caller's real address and the
+      # per-address ceilings key on it. Unset — a binary facing the internet
+      # directly — the header is whatever the caller typed, and the server
+      # keys on the socket instead (#2258). Set this ONLY with a proxy in
+      # front that appends.
+      WATTROOM_TRUSTED_PROXY: '1'
     volumes:
       - feedback:/data/feedback
       - tracks:/data/tracks
@@ -24,16 +31,23 @@ services:
       - postgres
     expose:
       - '8080'
+      # The metrics listener (#1738). Its own port, reachable over the
+      # monitoring network and proxied by nothing — so what it publishes does
+      # not depend on an edge remembering to block a path.
+      - '9091'
     # default keeps postgres/caddy reachable; monitoring is how the homelab
-    # Prometheus gets at /metrics without Caddy publishing it (ADR-0019).
+    # Prometheus gets at /metrics without Caddy publishing it (ADR-0019,
+    # amended by #1738: scrape wattroom:9091, not wattroom:8080).
     networks:
       - default
       - monitoring
     # Loopback only: Caddy fronts the public side, and this is how the updater
-    # on this host asks /api/version, /api/healthz and /metrics. Not an
+    # on this host asks /api/version and /api/healthz — and /metrics on 9091,
+    # for the ride check that refuses to restart into a session. Not an
     # exposure — 127.0.0.1 is not reachable off the VM.
     ports:
       - '127.0.0.1:8080:8080'
+      - '127.0.0.1:9091:9091'
 
   postgres:
     image: postgres:18

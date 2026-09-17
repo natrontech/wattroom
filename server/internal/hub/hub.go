@@ -166,6 +166,11 @@ type Hub struct {
 	// it IS being online, and every presence change pings it. See lobby.go.
 	lobby     map[*lobbyClient]string
 	lobbyAuth func(*http.Request) (userID string, ok bool)
+	// Rooms a socket is arriving at or standing in, by slug (#2297): the
+	// claim the idle sweep refuses to forget a room under. Held from before
+	// HandleWS is handed the room until after its client has left it, so a
+	// room with no clients and no holds has none coming either.
+	holds map[string]int
 	// Open sockets per rider, room and lobby together (#1415): each costs a
 	// goroutine pair and a walk of the lobby under h.mu on join and leave,
 	// and one account could open any number.
@@ -222,6 +227,7 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 		keepalive: keepalive{every: socketKeepalive, pong: socketPingTimeout},
 		rooms:     make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
 		lobby: make(map[*lobbyClient]string), sockets: make(map[string]int),
+		holds: make(map[string]int),
 		saves: make(chan chatSave, 256), autoplays: make(chan autoplayJob, 64)}
 	// Supervised (#651): a poison job costs one log line and is skipped, not
 	// the rest of the process's chat history or autoplay.
@@ -401,10 +407,6 @@ func (h *Hub) SetRole(slug, userID, role string) {
 	rm.mu.Unlock()
 }
 
-// Presence answers "is anything happening in there" for the rooms list and
-// the rail (#39 design: the nav shows where the action is) — and now who,
-// so a rider can see their crew from any page. Riders, not sockets: a phone
-// spectator next to a desktop is one person. Lock, copy, unlock.
 // SessionAnnounce puts one plan line on a room's live timeline (#359).
 // Planning is an HTTP call, but the people standing in the room are the ones
 // it is about. Only a room that already exists gets the line: spinning one up
@@ -450,10 +452,19 @@ func (h *Hub) room(slug string) *room {
 	rm, ok := h.rooms[slug]
 	if !ok {
 		rm = newRoom(slug)
+		// One clock for the room and the hub that owns it. newRoom defaults to
+		// time.Now, which is identical in production and divergent the moment
+		// either is injected: join/leave/setAway/setMetrics/fire stamp on the
+		// room's, run/sayDepartedLocked/rm.allow on the hub's, so a departure
+		// landed in the future of the grace window measuring it. Captured like
+		// safego.Supervise captures it in New — h.now is set once, before any
+		// room exists, and a later write races every room goroutine reading it.
+		rm.now = h.now
 		rm.pending = &h.handoffs
 		rm.changed = h.PresenceChanged
 		rm.deckIdled = func() { h.triggerAutoplay(rm, slug) }
 		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(slug, ev) }
+		rm.forget = func() bool { return h.forgetRoom(rm) }
 		rm.xp = h.xp
 		rm.recaps = h.recaps
 		// Voice can be live before the first socket opens the room — seed
@@ -526,9 +537,16 @@ func (h *Hub) admitSocket(riderID string) bool {
 func (h *Hub) releaseSocket(riderID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.sockets[riderID] <= 1 {
-		delete(h.sockets, riderID)
+	releaseCount(h.sockets, riderID)
+}
+
+// releaseCount drops one from a counter map, deleting the key on the last —
+// what keeps h.sockets and h.holds bounded by what is live rather than by
+// everything that ever was. Caller holds h.mu.
+func releaseCount(counts map[string]int, key string) {
+	if counts[key] <= 1 {
+		delete(counts, key)
 		return
 	}
-	h.sockets[riderID]--
+	counts[key]--
 }

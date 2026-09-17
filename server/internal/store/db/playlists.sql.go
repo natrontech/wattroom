@@ -11,15 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const clearActivePlaylist = `-- name: ClearActivePlaylist :exec
-update rooms set autoplay_playlist_id = null where id = $1
-`
-
-func (q *Queries) ClearActivePlaylist(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, clearActivePlaylist, id)
-	return err
-}
-
 const createPlaylist = `-- name: CreatePlaylist :one
 insert into playlists (room_id, user_id, name)
 values ($1, $2, $3)
@@ -328,25 +319,57 @@ func (q *Queries) RenamePlaylist(ctx context.Context, arg RenamePlaylistParams) 
 	return i, err
 }
 
-const setActivePlaylist = `-- name: SetActivePlaylist :execrows
-update rooms r set autoplay_playlist_id = $2
-where r.id = $1 and exists (select 1 from playlists p where p.id = $2 and p.room_id = r.id)
+const setAutoplay = `-- name: SetAutoplay :one
+update rooms r set autoplay_enabled = $2, autoplay_order = $3, autoplay_playlist_id = $4
+where r.id = $1
+  and ($4::uuid is null
+       or exists (select 1 from playlists p where p.id = $4 and p.room_id = r.id))
+returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, board_enabled, crew_id, crew_visible
 `
 
-type SetActivePlaylistParams struct {
+type SetAutoplayParams struct {
 	ID                 pgtype.UUID
+	AutoplayEnabled    bool
+	AutoplayOrder      string
 	AutoplayPlaylistID pgtype.UUID
 }
 
+// The whole setting in one statement (#2248): the switch, the order and the
+// active playlist were three writes, so a failure between them left autoplay
+// on with the list the coach had just cleared, and a playlist that turned out
+// not to be this room's was refused after the other two had committed.
 // The exists() check enforces "active must be one of this room's own
-// playlists" in one round trip rather than a second SELECT the caller could
-// forget — same shape as UpdateWorkout's ownership WHERE clause.
-func (q *Queries) SetActivePlaylist(ctx context.Context, arg SetActivePlaylistParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setActivePlaylist, arg.ID, arg.AutoplayPlaylistID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+// playlists" in the same round trip — same shape as UpdateWorkout's ownership
+// WHERE clause — so no row comes back when it is not, and the caller has
+// written nothing. autoplay_fixed_video_id/_title stopped being written in
+// #1422 and were dropped one release later (#1430, ADR-0019 expand/contract).
+func (q *Queries) SetAutoplay(ctx context.Context, arg SetAutoplayParams) (Room, error) {
+	row := q.db.QueryRow(ctx, setAutoplay,
+		arg.ID,
+		arg.AutoplayEnabled,
+		arg.AutoplayOrder,
+		arg.AutoplayPlaylistID,
+	)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.OwnerID,
+		&i.Listed,
+		&i.CreatedAt,
+		&i.SoundPack,
+		&i.Icon,
+		&i.Cheers,
+		&i.IcsToken,
+		&i.AutoplayEnabled,
+		&i.AutoplayOrder,
+		&i.AutoplayPlaylistID,
+		&i.BoardEnabled,
+		&i.CrewID,
+		&i.CrewVisible,
+	)
+	return i, err
 }
 
 const setPlaylistTrackPosition = `-- name: SetPlaylistTrackPosition :exec
@@ -374,41 +397,4 @@ update playlist_tracks set position = position + 1000000 where playlist_id = $1
 func (q *Queries) ShiftPlaylistPositions(ctx context.Context, playlistID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, shiftPlaylistPositions, playlistID)
 	return err
-}
-
-const updateAutoplay = `-- name: UpdateAutoplay :one
-update rooms set autoplay_enabled = $2, autoplay_order = $3
-where id = $1 returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, board_enabled, crew_id, crew_visible
-`
-
-type UpdateAutoplayParams struct {
-	ID              pgtype.UUID
-	AutoplayEnabled bool
-	AutoplayOrder   string
-}
-
-// autoplay_fixed_video_id/_title stopped being written in #1422 and were
-// dropped one release later (#1430, ADR-0019 expand/contract).
-func (q *Queries) UpdateAutoplay(ctx context.Context, arg UpdateAutoplayParams) (Room, error) {
-	row := q.db.QueryRow(ctx, updateAutoplay, arg.ID, arg.AutoplayEnabled, arg.AutoplayOrder)
-	var i Room
-	err := row.Scan(
-		&i.ID,
-		&i.Slug,
-		&i.Name,
-		&i.OwnerID,
-		&i.Listed,
-		&i.CreatedAt,
-		&i.SoundPack,
-		&i.Icon,
-		&i.Cheers,
-		&i.IcsToken,
-		&i.AutoplayEnabled,
-		&i.AutoplayOrder,
-		&i.AutoplayPlaylistID,
-		&i.BoardEnabled,
-		&i.CrewID,
-		&i.CrewVisible,
-	)
-	return i, err
 }

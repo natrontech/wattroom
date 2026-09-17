@@ -49,10 +49,18 @@ from friend_declines d
 join users u on u.id = d.addressee_id
 where d.requester_id = $1;
 
--- name: RestoreFriendRequest :exec
--- The undo of a dismissal (#1652): their pending ask, back as it was. A pair
--- that is already connected again is left alone.
-insert into friendships (requester_id, addressee_id) values ($1, $2)
+-- name: RestoreFriendRequest :execrows
+-- The undo of a dismissal (#1652) and only that (#2225): the ask comes back
+-- where the tombstone says there was one to dismiss. Unconditional, this
+-- insert MADE a pending request — `status` defaults to 'pending' — so two
+-- calls, restore then accept, befriended a stranger who was never asked.
+-- A pair that is already connected again is left alone by the conflict.
+insert into friendships (requester_id, addressee_id)
+select $1, $2
+where exists (
+    select 1 from friend_declines
+    where requester_id = $1 and addressee_id = $2
+)
 on conflict do nothing;
 
 -- name: PruneFriendDeclines :execrows

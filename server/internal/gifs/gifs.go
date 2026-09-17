@@ -11,6 +11,7 @@ package gifs
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -181,7 +182,8 @@ func (s *Service) handleSearch(w http.ResponseWriter, r *http.Request) {
 
 	page, err := s.fetch(r.Context(), query, offset)
 	if err != nil {
-		s.log.Warn("giphy search failed", "err", err, "query", query)
+		// Not the rider's query either: the same ring, the same public issue.
+		s.log.Warn("giphy search failed", "err", err)
 		httpx.WriteError(w, http.StatusServiceUnavailable, "rate_limited",
 			"GIF search is not answering right now. Try again in a moment.")
 		return
@@ -309,7 +311,17 @@ func (s *Service) fetch(ctx context.Context, query string, offset int) (searchRe
 	}
 	resp, err := s.httpc.Do(req)
 	if err != nil {
-		return searchResponse{}, err
+		// The key rides in the query string, and a *url.Error prints the
+		// whole URL (#2237) — into the operator's log AND into the ring that
+		// every rider's feedback report staples onto a public issue. The
+		// cause inside it carries no URL, so unwrap to that. ADR-0032's point
+		// is that the key stays on the server; a log line is not "on the
+		// server" once a report is filed.
+		var urlErr *url.Error
+		if errors.As(err, &urlErr) {
+			err = urlErr.Err
+		}
+		return searchResponse{}, fmt.Errorf("giphy %s: %w", endpoint, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {

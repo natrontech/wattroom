@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { copyText, theLinkItself } from '$lib/copy';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
 	import Link from '@lucide/svelte/icons/link';
 	import {
@@ -6,7 +7,6 @@
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
-	import { toasts } from '$lib/toast.svelte';
 	import { openImage } from './viewer.svelte';
 
 	// One picture in a message (#279): a pasted upload or an allowlisted GIF.
@@ -33,14 +33,8 @@
 	// the URL to something outside the app.
 	const url = $derived(new URL(src, location.origin).href);
 
-	async function copyLink() {
-		try {
-			await navigator.clipboard.writeText(url);
-			toasts.push('Image link copied.');
-		} catch {
-			toasts.push('Could not copy the link.', { tone: 'error' });
-		}
-	}
+	const copyLink = () =>
+		copyText(url, 'Image link copied.', theLinkItself(url));
 </script>
 
 <!-- No loading="lazy": the img carries no dimensions, so its box is 0x0 until

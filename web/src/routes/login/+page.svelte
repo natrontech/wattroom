@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { EMAIL_IS_FOR } from '$lib/auth/address';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Logo from '$lib/brand/Logo.svelte';
@@ -25,8 +26,13 @@
 
 	// A discoverable passkey needs no identifier: the browser resolves the
 	// account and shows the rider which one it is (#782, ADR-0029). Hidden
-	// where the browser cannot do it, rather than failing on click.
-	const canPasskey = passkeys.supported();
+	// where the browser cannot do it, rather than failing on click — and
+	// hidden the same way where THIS SERVER cannot (#2256): a
+	// WATTROOM_BASE_URL with no hostname leaves the passkey routes unmounted,
+	// and the button then answered with the API's 404 on the primary door.
+	const canPasskey = $derived(
+		passkeys.supported() && account.passkeysAvailable,
+	);
 	let passkeyBusy = $state(false);
 	let passkeyError = $state('');
 
@@ -191,7 +197,7 @@
 			</div>
 		{/if}
 		<div
-			class="border-muted/20 bg-surface-raised/80 rounded-xl border px-8 py-10 text-center backdrop-blur"
+			class="shell-card bg-surface-raised/80 px-8 py-10 text-center backdrop-blur"
 		>
 			<a
 				href="/"
@@ -376,8 +382,7 @@
 						     new account; say so here rather than let it be a surprise
 						     (audit 2026-09-09). -->
 						<span class="block">
-							New accounts confirm an email address — it is only used to get you
-							back in.
+							New accounts confirm an email address. {EMAIL_IS_FOR}
 						</span>
 					{/if}
 				</p>

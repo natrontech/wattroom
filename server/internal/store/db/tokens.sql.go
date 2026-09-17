@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countUserTokens = `-- name: CountUserTokens :one
+select count(*) from api_tokens where user_id = $1
+`
+
+// The ceiling's count, read under LockUser in the same transaction as the
+// insert (#2258): list-then-insert let concurrent requests all see nine.
+func (q *Queries) CountUserTokens(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUserTokens, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createToken = `-- name: CreateToken :one
 insert into api_tokens (user_id, name, token_hash)
 values ($1, $2, $3)

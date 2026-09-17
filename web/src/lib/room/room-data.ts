@@ -70,6 +70,15 @@ export interface RoomCrew {
 	 * because the crew's name, logo and invite link go with the room.
 	 */
 	goesWithRoom?: boolean;
+	/**
+	 * LEAVING deletes the crew (#2079): it has no rooms and nobody but its
+	 * owner is left in it, so your Leave is what sweeps it. Carried on the
+	 * crews list, which is why `leaveCrewFlow` reads it from `presence.crews`
+	 * rather than taking it from whichever surface offered the Leave — the
+	 * client cannot work it out, knowing the rooms it is IN and not the rooms
+	 * the crew has, nor how many people are in it.
+	 */
+	lastOut?: boolean;
 }
 
 /**
@@ -88,7 +97,23 @@ export interface BoardRow {
 	displayName: string;
 	kj: number;
 	seconds: number;
-	category: string;
+	/**
+	 * Absent while both the FTP and the weight it brackets are still the
+	 * account's defaults (ADR-0048, #2243) — an unchosen number never reads
+	 * as a measured one, and this board is the surface that publishes it to
+	 * everyone else in the room. The row still ranks: kJ is ridden.
+	 */
+	category?: string;
+}
+
+/**
+ * What YOU chose for this room, as its own object on the room (#1866): the
+ * notifications and whether the soundboard reaches you. Declared here rather
+ * than beside each of the two components that read it (#2180).
+ */
+export interface RiderPrefs {
+	notify: boolean;
+	onBoard: boolean;
 }
 
 export interface Room {
@@ -105,9 +130,14 @@ export interface Room {
 	/** Removed, at either level (audit 2026-09-09) — the door says so. */
 	banned?: boolean;
 	members?: Member[];
+	/** Your own choices for this room, members only. */
+	me?: RiderPrefs;
+	/** The crew's code, carried on the room for the settings page (#1236). */
+	code?: string;
 	/** Open to its crew (ADR-0038); members only, absent = shut. */
 	crewVisible?: boolean;
-	/** A private room's door list (#1224), owner only. */
+	/** A private room's door list (#1224), for whoever may hand a door out
+	 * — the room's owner, or the crew's owner or an admin (#2294). */
 	invited?: Member[];
 	crewOutside?: Member[];
 	medals?: Medal[];

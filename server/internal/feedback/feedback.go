@@ -166,6 +166,16 @@ func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That report is out of shape.")
 		return
 	}
+	// The buffer is rider-controlled too (#2238), and the checks above covered
+	// only the six scalars: its strings reach a public issue and its length
+	// decides whether the issue can be filed at all (GitHub refuses a body
+	// past 65 536 characters, and the only trace was a warning). Two minutes
+	// at 1 Hz is what the recorder holds, so these are ceilings, not limits a
+	// real client meets.
+	if !boundedBuffer(report.Buffer) {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That report is out of shape.")
+		return
+	}
 
 	stored := map[string]any{
 		"at":        now.UTC(),
@@ -248,11 +258,52 @@ func issueBody(sha string, report Report) string {
 	// Every rider-supplied field is fenced (audit 2026-09-09): this lands in
 	// a public issue, and prose there is Markdown — a note could carry an
 	// image or a link. Backticks inside a value would end the fence early.
+	//
+	// The buffer included (#2238). Its `kind`, `text` and `state` are
+	// rider-controlled and JSON does not escape backticks — though a fence
+	// inside one cannot close this block today, because json.Marshal escapes
+	// newlines so the block is a single line and a Markdown fence closes only
+	// at the start of one. The block's integrity should not rest on how we
+	// happen to serialise it, and the replacement costs nothing.
 	return fmt.Sprintf(
 		"Route: %s\nServer: `%s` · Client: %s\nUA: %s\nTrainer: %s\n\n```text\n%s\n```\n\n<details><summary>last two minutes</summary>\n\n```json\n%s\n```\n</details>\n",
 		fenced(publicRoute(report.Route)), sha, fenced(report.ClientBuild), fenced(report.UserAgent),
-		fenced(report.Trainer), strings.ReplaceAll(report.Note, "```", "'''"), string(buffer),
+		fenced(report.Trainer), strings.ReplaceAll(report.Note, "```", "'''"),
+		strings.ReplaceAll(string(buffer), "```", "'''"),
 	)
+}
+
+// What the flight recorder can honestly have seen in its two minutes (#2238),
+// with room to spare: the ring is 1 Hz and its events are rider actions.
+const (
+	maxBufferTicks  = 600
+	maxBufferEvents = 300
+	maxBufferErrors = 200
+	maxBufferText   = 500
+)
+
+// boundedBuffer reports whether the recorder's ring is within those ceilings.
+func boundedBuffer(b Buffer) bool {
+	if len(b.Ticks) > maxBufferTicks || len(b.Events) > maxBufferEvents ||
+		len(b.Errors) > maxBufferErrors {
+		return false
+	}
+	for _, t := range b.Ticks {
+		if len(t.State) > maxBufferText {
+			return false
+		}
+	}
+	for _, e := range b.Events {
+		if len(e.Kind) > maxBufferText || len(e.Text) > maxBufferText {
+			return false
+		}
+	}
+	for _, e := range b.Errors {
+		if len(e.Text) > maxBufferText {
+			return false
+		}
+	}
+	return true
 }
 
 // floodWindow is the one-report-per-rider spacing the limiter keeps.
@@ -263,23 +314,65 @@ func fenced(s string) string {
 	return "`" + strings.NewReplacer("`", "'", "\n", " ", "\r", " ").Replace(s) + "`"
 }
 
-// publicRoute drops the one segment of a route that names somebody: a room
-// slug, or the peer of a DM. Which screen the rider was on is what triage
-// needs; which room, and with whom, is theirs. Fingerprint keeps the full
-// route, so per-room deduplication is unaffected.
+// routeSegments is every path segment the route tree (web/src/routes) spells
+// out literally, and paramUnder is every place in that tree where a parameter
+// stands — keyed by the path above it. Between them they are the whole
+// vocabulary a public issue may quote: everything else a route can hold is a
+// parameter, and every parameter this app has names somebody — a room slug, a
+// rider id, a crew id, a ride id, and `/c/{code}`, a crew invite code where
+// knowing it IS the permission to join.
+//
+// An allowlist rather than the list of name-carrying prefixes this used to be
+// (#2240): that list held two of the eight route shapes that carry a name,
+// and the next shape added would not have been on it either. Inverted, the
+// route nobody has taught these lists about reads as `/…` — the failure that
+// discloses nothing. paramUnder is what keeps a room actually called "chat"
+// from reading as a screen; routeSegments is what catches the screen nobody
+// has declared. The table tests below walk the route tree, so an omission
+// from either is loud rather than silent.
+var (
+	routeSegments = fieldSet(`
+		account appearance brand c chat components crew data dev directory
+		dm download edit editor equipment friends hardware history home
+		hud legal licenses login medal members messages modes music
+		notifications pairing panel privacy profile progression r ramp
+		recover ride room rooms sessions settings sound spectator
+		styleguide summary terms theme-editor themes training trophies u
+		voice watch whats-new workouts
+	`)
+	paramUnder = fieldSet(`
+		/c /crew /dm /history /messages/dm /messages/r /r /u
+	`)
+)
+
+func fieldSet(list string) map[string]bool {
+	m := make(map[string]bool)
+	for _, f := range strings.Fields(list) {
+		m[f] = true
+	}
+	return m
+}
+
+// publicRoute is the route as a stranger may read it: the screen, never who
+// was on it (#737, ADR-0006 — "the public issue names nobody"). A segment
+// standing in a parameter's place, and any segment the route tree does not
+// spell out, become an ellipsis; a query or fragment is dropped whole, the
+// field being rider-supplied and so one more place a name could be posted.
+// Fingerprint keeps the full route, so per-room deduplication is unaffected.
 func publicRoute(route string) string {
-	for _, prefix := range []string{"/r/", "/messages/dm/"} {
-		if !strings.HasPrefix(route, prefix) {
+	if i := strings.IndexAny(route, "?#"); i >= 0 {
+		route = route[:i]
+	}
+	segs := strings.Split(route, "/")
+	out := make([]string, len(segs))
+	copy(out, segs)
+	for i, seg := range segs {
+		if seg == "" {
 			continue
 		}
-		rest := route[len(prefix):]
-		if rest == "" {
-			return route
+		if paramUnder[strings.Join(segs[:i], "/")] || !routeSegments[seg] {
+			out[i] = "…"
 		}
-		if i := strings.IndexByte(rest, '/'); i >= 0 {
-			return prefix + "…" + rest[i:]
-		}
-		return prefix + "…"
 	}
-	return route
+	return strings.Join(out, "/")
 }

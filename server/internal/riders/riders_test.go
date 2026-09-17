@@ -7,12 +7,12 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
@@ -35,9 +35,16 @@ func (f *fakePresence) WhereIs(ids []string) map[string]string {
 	return out
 }
 
-func (f *fakePresence) Presence(slug string) protocol.RoomPresence {
-	// Ids, not names (#1652): the rider page keys "riding" by id.
-	return protocol.RoomPresence{RidingIDs: f.riding[slug]}
+// Ids, not names (#1652): "riding" is keyed by id, and the fixture keeps the
+// hub's own shape — a room holds the ids pedalling in it.
+func (f *fakePresence) Riding(ids []string) map[string]bool {
+	out := map[string]bool{}
+	for _, id := range ids {
+		if slices.Contains(f.riding[f.where[id]], id) {
+			out[id] = true
+		}
+	}
+	return out
 }
 
 type harness struct {
@@ -129,6 +136,25 @@ func (h *harness) befriend(t *testing.T, a, b string) {
 	if _, err := h.store.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams{RequesterID: ua, AddresseeID: ub}); err != nil {
 		t.Fatalf("accept: %v", err)
 	}
+}
+
+// avatarPNG is enough of a PNG to be served back byte for byte; nothing here
+// decodes it.
+const avatarPNG = "\x89PNG\r\n\x1a\nrest-of-a-picture"
+
+// avatar gives the rider a stored picture and returns its address — the one
+// the page hands out, so a test fetches what a browser would.
+func (h *harness) avatar(t *testing.T, name string) string {
+	t.Helper()
+	url := "/api/riders/" + h.id(name) + "/avatar"
+	if _, err := h.store.Queries.SetUserAvatar(t.Context(), db.SetUserAvatarParams{
+		ID: h.users.ByToken[name].ID, Mime: "image/png", Image: []byte(avatarPNG),
+		SetAt:     pgtype.Timestamptz{Time: time.Now().Truncate(time.Millisecond), Valid: true},
+		AvatarUrl: &url,
+	}); err != nil {
+		t.Fatalf("set avatar for %s: %v", name, err)
+	}
+	return url
 }
 
 func (h *harness) get(t *testing.T, viewer, path string) (int, map[string]any) {

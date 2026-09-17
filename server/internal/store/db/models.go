@@ -203,6 +203,7 @@ type Ride struct {
 	NormWatts       *int16
 	ExecutionScored bool
 	FtpAfterWatts   *int16
+	Last20mHr       *int16
 }
 
 type RideExport struct {
@@ -214,6 +215,7 @@ type RideExport struct {
 	RemoteID    *int64
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+	StaleSince  pgtype.Timestamptz
 }
 
 type Room struct {
@@ -280,6 +282,7 @@ type SessionRsvp struct {
 	SessionID pgtype.UUID
 	UserID    pgtype.UUID
 	CreatedAt pgtype.Timestamptz
+	Going     bool
 }
 
 type Track struct {

@@ -17,14 +17,25 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-// fakePresence stands in for the hub: userID → room slug, plus a count of
-// the lobby pings a mutation asked for (#876).
+// fakePresence stands in for the hub: userID → room slug, who of them is
+// pedalling, plus a count of the lobby pings a mutation asked for (#876).
 type fakePresence struct {
-	where map[string]string
-	pings int
+	where  map[string]string
+	riding map[string]bool
+	pings  int
 }
 
 func (f *fakePresence) PresenceChanged() { f.pings++ }
+
+func (f *fakePresence) Riding(ids []string) map[string]bool {
+	out := map[string]bool{}
+	for _, id := range ids {
+		if f.riding[id] {
+			out[id] = true
+		}
+	}
+	return out
+}
 
 func (f *fakePresence) WhereIs(ids []string) map[string]string {
 	out := map[string]string{}
@@ -53,7 +64,7 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users, *fakePrese
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
 	}
-	presence := &fakePresence{where: map[string]string{}}
+	presence := &fakePresence{where: map[string]string{}, riding: map[string]bool{}}
 	mux := http.NewServeMux()
 	New(st, users, presence, slog.New(slog.DiscardHandler)).Register(mux)
 	return mux, st, users, presence
@@ -358,6 +369,69 @@ func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 	}
 }
 
+// The panel's third state (#1743, ADR-0012 amended 2026-09-09). It carried
+// online and in-a-room and nothing else, so a friend on the pedals read
+// exactly like a friend chatting in the lounge — and the client had nothing
+// to build "riding elsewhere" out of for a room it may not name.
+func TestFriendsPanelReportsRiding(t *testing.T) {
+	mux, st, users, presence := setup(t)
+	shareRoom(t, st, users, "riding-cave", "alice", "bob")
+	shareRoom(t, st, users, "riding-lair", "cara")
+	befriend(t, mux, users, "alice", "bob")
+	befriend(t, mux, users, "alice", "cara")
+	id := func(name string) string { return store.UUIDString(users.ByToken[name].ID) }
+
+	// bob shares the room with alice and is pedalling; cara is pedalling in a
+	// room alice is not a member of; the viewer may learn the fact, never the
+	// room. Both are the same one hub answer, filtered by membership.
+	presence.where[id("bob")] = "riding-cave"
+	presence.riding[id("bob")] = true
+	presence.where[id("cara")] = "riding-lair"
+	presence.riding[id("cara")] = true
+
+	byName := map[string]map[string]any{}
+	for _, entry := range friendsOf(t, mux, "alice") {
+		name, _ := entry["name"].(string)
+		byName[name] = entry
+	}
+	if got := byName["bob"]; got["riding"] != true || got["roomName"] != "riding-cave" {
+		t.Fatalf("bob riding in a shared room: %+v", got)
+	}
+	if got := byName["cara"]; got["riding"] != true || got["room"] != nil || got["roomName"] != nil {
+		t.Fatalf("cara riding elsewhere — the room must stay unnamed: %+v", got)
+	}
+
+	// Standing in the room is not riding in it, and the two must not collapse
+	// into each other: the whole reason the flag exists.
+	presence.riding[id("bob")] = false
+	for _, entry := range friendsOf(t, mux, "alice") {
+		if entry["name"] == "bob" && entry["riding"] != nil {
+			t.Fatalf("bob sat in the lounge still reads as riding: %+v", entry)
+		}
+	}
+
+	// Online with no room at all: nothing to ride in, whatever the hub says.
+	presence.where[id("bob")] = ""
+	presence.riding[id("bob")] = true
+	for _, entry := range friendsOf(t, mux, "alice") {
+		if entry["name"] == "bob" && entry["riding"] != nil {
+			t.Fatalf("bob riding in no room: %+v", entry)
+		}
+	}
+}
+
+// befriend runs the two-step the panel needs before presence means anything.
+func befriend(t *testing.T, mux *http.ServeMux, users *testx.Users, asker, target string) {
+	t.Helper()
+	if code := request(t, mux, asker, users.ByToken[target].FriendCode); code != http.StatusOK {
+		t.Fatalf("%s asks %s: %d", asker, target, code)
+	}
+	if code, _ := call(t, mux, target, http.MethodPost,
+		"/api/friends/"+store.UUIDString(users.ByToken[asker].ID)+"/accept"); code != http.StatusOK {
+		t.Fatalf("%s accepts %s: %d", target, asker, code)
+	}
+}
+
 func TestFriendCodeIsTheOnlyDoor(t *testing.T) {
 	mux, _, users, _ := setup(t)
 
@@ -474,5 +548,53 @@ func TestDismissCanBeUndone(t *testing.T) {
 	}
 	if !pending {
 		t.Fatal("bob's ask did not come back as pending")
+	}
+}
+
+// The undo is the undo of a dismissal and nothing else (#2225). Unconditional,
+// the insert MADE a pending request — `status` defaults to 'pending' — so
+// restore-then-accept befriended a rider who was never asked, with neither the
+// friend code ADR-0012 makes the permission to ask nor a shared room.
+func TestRestoreWithoutADismissalIsRefused(t *testing.T) {
+	mux, st, users, _ := setup(t)
+	shareRoom(t, st, users, "forge-cave", "alice", "bob")
+	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
+
+	code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(bob.ID)+"/restore")
+	if code != http.StatusNotFound {
+		t.Fatalf("restore with nothing to undo: %d, want 404", code)
+	}
+	if got := friendsOf(t, mux, "alice"); len(got) != 0 {
+		t.Fatalf("alice has a standing she was never given: %v", got)
+	}
+	if got := friendsOf(t, mux, "bob"); len(got) != 0 {
+		t.Fatalf("bob was befriended without being asked: %v", got)
+	}
+	// And the second half of the two-call forgery has nothing to accept.
+	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(bob.ID)+"/accept"); code != http.StatusNotFound {
+		t.Fatalf("accept after the refused restore: %d, want 404", code)
+	}
+	if got := friendsOf(t, mux, "bob"); len(got) != 0 {
+		t.Fatalf("bob ended up a friend: %v", got)
+	}
+	_ = alice
+}
+
+// The undo toast is one button and a rider can press it twice; the second
+// press has nothing to write and is not an error.
+func TestRestoreTwiceIsNotAnError(t *testing.T) {
+	mux, st, users, _ := setup(t)
+	shareRoom(t, st, users, "twice-cave", "alice", "bob")
+	bob := users.ByToken["bob"]
+	if code := request(t, mux, "bob", users.ByToken["alice"].FriendCode); code != http.StatusOK {
+		t.Fatalf("bob asks alice: %d", code)
+	}
+	if code, _ := call(t, mux, "alice", http.MethodDelete, "/api/friends/"+store.UUIDString(bob.ID)); code != http.StatusOK {
+		t.Fatalf("dismiss: %d", code)
+	}
+	for i := range 2 {
+		if code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(bob.ID)+"/restore"); code != http.StatusOK {
+			t.Fatalf("restore %d: %d, want 200", i+1, code)
+		}
 	}
 }

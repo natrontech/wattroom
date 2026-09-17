@@ -17,12 +17,17 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/riders/{id}/trophies", s.handleRider)
 }
 
+// xpJSON is where the XP came from. The total is public (ADR-0024: level and
+// lifetime XP travel); the breakdown is not, and is omitted for anyone but
+// the rider — two of its four sources are the social counts in another unit
+// (#2236). `omitempty` rather than zeroes, so a reader can tell "not yours to
+// see" from "none earned".
 type xpJSON struct {
 	Total        int64 `json:"total"`
-	Rides        int64 `json:"rides"`
-	Lounge       int64 `json:"lounge"`
-	Sessions     int64 `json:"sessions"`
-	Achievements int64 `json:"achievements"`
+	Rides        int64 `json:"rides,omitempty"`
+	Lounge       int64 `json:"lounge,omitempty"`
+	Sessions     int64 `json:"sessions,omitempty"`
+	Achievements int64 `json:"achievements,omitempty"`
 }
 
 // countsJSON is what the rider has done, as counts rather than as XP —
@@ -120,9 +125,14 @@ func (s *Service) Trophies(ctx context.Context, userID pgtype.UUID) (Response, e
 }
 
 func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
+	// s.self, not s.users (#2257): ADR-0017's amendment names this among the
+	// five routes a personal token authenticates. It is the rider's own case
+	// and is keyed on nobody's id, which is the whole of what #1736 and
+	// #1746 ever ruled out.
+	//
 	// RequireUser (#1983): User() treats a database failure as signed-out,
 	// and "unauthorized" is the one code the app never retries.
-	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	user, ok := s.self.RequireUser(w, r, "Not signed in.")
 	if !ok {
 		return
 	}
@@ -142,6 +152,8 @@ func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider by that id in your rooms or friends.")
 		return
 	}
+	// The query answers for the rider themselves too (#2298); this skips a
+	// round trip for the commonest case rather than stating a second rule.
 	if rider != viewer.ID {
 		shares, err := s.store.Queries.SharesRoomOrFriends(r.Context(),
 			db.SharesRoomOrFriendsParams{Viewer: viewer.ID, Rider: rider})
@@ -200,6 +212,13 @@ func (s *Service) write(w http.ResponseWriter, r *http.Request, userID, viewer p
 		// integers, from the same map — so stripping one and not the other
 		// would leave the strip above decorative (#993 review).
 		out.Counts = countsJSON{}
+		// And so is the XP breakdown, in another unit (#2236): lounge XP is
+		// paid one per five-minute block, so `lounge × 5` is the minutes
+		// Lounge Lizard counts out of 600, and session XP is five per voice
+		// session. The other two sources pay nothing today, which is the
+		// only reason they do not reconstruct their badges as well. The
+		// total stays: ADR-0024 authorises level and lifetime XP.
+		out.Xp = xpJSON{Total: out.Xp.Total}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }

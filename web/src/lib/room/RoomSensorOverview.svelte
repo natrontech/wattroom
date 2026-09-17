@@ -17,7 +17,11 @@
 	import { useRoom } from '$lib/room/context';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
 	import { deviceWord } from '$lib/device.svelte';
-	import { pairedElsewhereAll, trainerState } from '$lib/room/sensor-status';
+	import {
+		pairedElsewhereAll,
+		trainerState,
+		trainerTargetsNote,
+	} from '$lib/room/sensor-status';
 	import { trainerHint } from '$lib/room/sensor-status';
 
 	// The trainer alone as one row, for a running session's header (#1000) —
@@ -30,6 +34,10 @@
 	// socket is what arbitrates — which is why it enters here rather than in
 	// the grid the solo pre-ride screens share.
 	const elsewhere = $derived(pairedElsewhereAll(room.pairing, deviceWord()));
+	// Which screen writes the control point, when it is not this one (#2075).
+	// The claim is the room's to arbitrate, so this is the only place that can
+	// say it — the solo grid renders the same card and never has an answer.
+	const targetsNote = $derived(trainerTargetsNote(room.pairing, deviceWord()));
 
 	// "Connecting…" is the ride store's answer, not this component's (#1716):
 	// the room's shell can unmount while the chooser is open.
@@ -43,6 +51,7 @@
 <SensorOverview
 	{compact}
 	{elsewhere}
+	{targetsNote}
 	trainer={{
 		state: trainerState({
 			trainer: ride?.trainer ?? null,

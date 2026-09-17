@@ -1,6 +1,7 @@
 package unfurl
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"github.com/natrontech/wattroom/server/internal/testx"
@@ -449,6 +450,65 @@ func TestImageTakesTheTypeFromTheBytesAndCapsTheBody(t *testing.T) {
 	} {
 		if _, _, err := svc.out.Image(t.Context(), upstream.URL+tc.path, tc.max); !errors.Is(err, tc.want) {
 			t.Errorf("%s: err = %v, want %v", tc.what, err, tc.want)
+		}
+	}
+}
+
+// The proxy's half of the same rule (#2240). These bytes are served from
+// WattRoom's own origin, so what they ARE decides the Content-Type — the
+// header a stranger's host sent with them decides nothing. Before this, a
+// host declaring image/png and sending a document was believed, and only
+// nosniff and the CSP stood between that and a rider's browser, which is the
+// dependency ADR-0031 did not want to have.
+func TestImageProxyTakesTheTypeFromTheBytes(t *testing.T) {
+	// Past the sniffing window on purpose: the head is buffered to be read
+	// and has to be written back out in front of the rest.
+	long := append([]byte("GIF89a"), bytes.Repeat([]byte("x"), 900)...)
+	avif := append([]byte("\x00\x00\x00\x20ftypavif"), bytes.Repeat([]byte("y"), 40)...)
+	_, mux, upstream := setup(t, func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/liar.png":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = io.WriteString(w, "<html><script>alert(1)</script></html>")
+		case "/mislabelled.png":
+			// A real GIF under a header that says PNG: the bytes win, and
+			// what leaves our origin says what it is.
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write(long)
+		case "/unlabelled":
+			// No usable header at all. The bytes are a picture, so it is one.
+			w.Header().Set("Content-Type", "application/octet-stream")
+			_, _ = w.Write([]byte("\x89PNG\r\n\x1a\nrest-of-a-picture"))
+		case "/photo.avif":
+			w.Header().Set("Content-Type", "image/png")
+			_, _ = w.Write(avif)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	})
+
+	if code := get(t, mux, "kim", ask("/api/unfurl/image", upstream.URL+"/liar.png")).Code; code != http.StatusNotFound {
+		t.Errorf("a document declared image/png came back as %d, want 404", code)
+	}
+	for _, tc := range []struct {
+		path string
+		kind string
+		body []byte
+	}{
+		{"/mislabelled.png", "image/gif", long},
+		{"/unlabelled", "image/png", []byte("\x89PNG\r\n\x1a\nrest-of-a-picture")},
+		{"/photo.avif", "image/avif", avif},
+	} {
+		w := get(t, mux, "kim", ask("/api/unfurl/image", upstream.URL+tc.path))
+		if w.Code != http.StatusOK {
+			t.Errorf("%s: %d", tc.path, w.Code)
+			continue
+		}
+		if got := w.Header().Get("Content-Type"); got != tc.kind {
+			t.Errorf("%s: content type %q, want %q", tc.path, got, tc.kind)
+		}
+		if got := w.Body.Bytes(); !bytes.Equal(got, tc.body) {
+			t.Errorf("%s: served %d bytes, upstream sent %d", tc.path, len(got), len(tc.body))
 		}
 	}
 }

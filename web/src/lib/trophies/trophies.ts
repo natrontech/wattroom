@@ -43,10 +43,16 @@ export interface TrophyCounts {
 export interface Trophies {
 	xp: {
 		total: number;
-		rides: number;
-		lounge: number;
-		sessions: number;
-		achievements: number;
+		/**
+		 * Where it came from — the rider's own case only (#2236). Two of the
+		 * four are the social counts in another unit, which is the progress
+		 * ADR-0027 keeps private, so the server omits the breakdown for
+		 * anyone else and these are absent rather than zero.
+		 */
+		rides?: number;
+		lounge?: number;
+		sessions?: number;
+		achievements?: number;
 	};
 	counts: TrophyCounts;
 	energyKj: number;

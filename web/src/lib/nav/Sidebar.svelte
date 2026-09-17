@@ -12,6 +12,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import RoomStrip from './RoomStrip.svelte';
 	import CrewSwitcher from './CrewSwitcher.svelte';
 	import { chosenCrew } from './chosen-crew.svelte';
@@ -35,6 +36,7 @@
 		placesFor,
 	} from './pages';
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
+	import { roomMenu } from './room-menu';
 	import { roomNavState } from './room-state';
 	import {
 		accessMark,
@@ -44,11 +46,7 @@
 		sidebarGroups,
 	} from './crews';
 	import { readDmsFolded, rememberDmsFolded } from './folds';
-	import {
-		contextMenu,
-		MENU_HINT,
-		type MenuEntry,
-	} from '$lib/context-menu.svelte';
+	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import { personMenu } from '$lib/person-menu';
@@ -58,7 +56,6 @@
 	import type { RailRoom } from '$lib/room/room-data';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Headphones from '@lucide/svelte/icons/headphones';
-	import DoorOpen from '@lucide/svelte/icons/door-open';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Plus from '@lucide/svelte/icons/plus';
 	import { device } from '$lib/device.svelte';
@@ -73,7 +70,6 @@
 		connectedSlug = '',
 		live = false,
 		onLeave,
-		onMember,
 	}: {
 		pathname: string;
 		rooms?: RailRoom[];
@@ -81,8 +77,6 @@
 		connectedSlug?: string;
 		live?: boolean;
 		onLeave?: () => void;
-		/** A rider named in a room's people line — the layout resolves them. */
-		onMember?: (slug: string, name: string) => void;
 	} = $props();
 
 	// Your own badge, on the same rule as everyone else's (#824): the people
@@ -167,37 +161,7 @@
 		     Equal tints read as one slab and the selection disappears. -->
 	<li
 		class="rounded-md {here ? 'bg-ink/5' : browsing ? 'bg-ink/[0.03]' : ''}"
-		{@attach contextMenu(() => {
-			if (!open_) return [];
-			// A room open to the crew that you have not walked into yet (#1236)
-			// has no places of yours and no chat you may read: its one action
-			// is the door, and a menu that offered the rest would 403 on click
-			// (ux.md: never render a button that will fail).
-			if (!room.role)
-				return [
-					{
-						label: 'Walk in',
-						icon: DoorOpen,
-						onSelect: () => void goto(`/r/${room.slug}`),
-					},
-				];
-			const entries: MenuEntry[] = places.map((place) => ({
-				label: place.label,
-				icon: place.icon,
-				onSelect: () => void goto(`/r/${room.slug}${place.path}`),
-			}));
-			// A disconnect, not a leaving: membership stays and so does the
-			// row. It wore the danger token and the word the crew's real
-			// exit uses, and a rider pressing it found the room still there
-			// (audit 2026-09-09).
-			if (here && onLeave)
-				entries.push('separator', {
-					label: 'Disconnect',
-					icon: LogOut,
-					onSelect: onLeave,
-				});
-			return entries;
-		})}
+		{@attach contextMenu(() => roomMenu(room, { here, onLeave }))}
 	>
 		<svelte:element
 			this={open_ ? 'a' : 'div'}
@@ -269,12 +233,10 @@
 				{:else if (room.connected ?? 0) > 0}
 					<span class="ml-auto flex shrink-0 items-center gap-1">
 						<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
-						<span class="text-muted-dim font-mono text-[10px]"
-							>{room.connected}</span
-						>
+						<span class="text-muted-dim num text-[10px]">{room.connected}</span>
 					</span>
 				{:else if room.members > 0}
-					<span class="text-muted-dim ml-auto shrink-0 font-mono text-[10px]"
+					<span class="text-muted-dim num ml-auto shrink-0 text-[10px]"
 						>{room.members}</span
 					>
 				{/if}
@@ -316,9 +278,9 @@
 				class="text-muted-dim hover:bg-ink/5 hover:text-ink flex items-center gap-1 rounded px-2 pt-1 pb-1.5 text-[10px]"
 				{@attach contextMenu(() =>
 					railPeopleMenu(
-						room.riders,
-						onMember && ((name) => onMember(room.slug, name)),
-						() => void goto(`/r/${room.slug}/members`),
+						room,
+						(href) => void goto(href),
+						() => goto(`/r/${room.slug}/members`),
 					),
 				)}
 			>
@@ -395,9 +357,17 @@
 	{#if crew}
 		<CrewSwitcher {crews} {crew} {rooms} {pathname} onpick={pick} />
 	{:else}
+		<!-- The wordmark is day zero AND "not read yet" (#2173). Saying so is
+		     the difference between a rider with no crew and a rider whose
+		     first read is still out; the switcher takes the row the moment one
+		     lands, so this is a skeleton's width and nothing more. -->
 		<a href="/home" class="flex items-center gap-2 px-4 py-4">
 			<Logo size={22} {live} />
-			<span class="font-display text-sm font-bold">WattRoom</span>
+			{#if presence.loaded}
+				<span class="font-display text-sm font-bold">WattRoom</span>
+			{:else}
+				<Skeleton class="h-4 w-24" />
+			{/if}
 		</a>
 	{/if}
 	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-3">
@@ -465,32 +435,48 @@
 				><Plus size={16} /></button
 			>
 		</div>
-		<ul class="space-y-0.5">
-			{#each groups.rooms as room (room.slug)}
-				{@render roomRow(room)}
-			{:else}
-				<!-- A crew with no rooms is a crew (#1476): a heading over nothing
+		<!-- All four states, in the column that IS the app's navigation (#2173,
+		     errors.md). Until the first /api/rooms answers, `rooms` is [] —
+		     and an empty list drew the teaching line, so every cold load told
+		     the rider they were in no crew, and a first read that failed left
+		     somebody with ten rooms reading it until they guessed to reload.
+		     The same masquerade the 2026-09-09 audit fixed on Home. -->
+		{#if !presence.loaded}
+			<div class="space-y-1 px-2 py-1"><Skeleton rows={3} class="h-5" /></div>
+		{:else if presence.error && groups.rooms.length === 0}
+			<p class="text-muted px-2 py-1 text-xs">
+				{presence.error}
+				<button onclick={() => presence.reload()} class="btn-link">Retry</button
+				>
+			</p>
+		{:else}
+			<ul class="space-y-0.5">
+				{#each groups.rooms as room (room.slug)}
+					{@render roomRow(room)}
+				{:else}
+					<!-- A crew with no rooms is a crew (#1476): a heading over nothing
 				     taught nothing (ux.md, #1677). The + above is the way in. -->
-				<li class="text-muted px-2 py-1 text-xs">
-					{#if crew?.role === 'owner' || crew?.role === 'admin'}
-						No rooms yet. A room is a channel of the crew —
-						<button onclick={() => (opening = true)} class="btn-link"
-							>open one</button
-						>.
-					{:else if crew}
-						No rooms yet. A room is a channel of the crew; its owner or an admin
-						opens the first one.
-					{:else}
-						<!-- In no crew at all (#2144): the way in is joining one, and
+					<li class="text-muted px-2 py-1 text-xs">
+						{#if crew?.role === 'owner' || crew?.role === 'admin'}
+							No rooms yet. A room is a channel of the crew —
+							<button onclick={() => (opening = true)} class="btn-link"
+								>open one</button
+							>.
+						{:else if crew}
+							No rooms yet. A room is a channel of the crew; its owner or an
+							admin opens the first one.
+						{:else}
+							<!-- In no crew at all (#2144): the way in is joining one, and
 						     opening a room of your own is the option, not the ask. -->
-						Not in a crew yet —
-						<button onclick={() => (opening = true)} class="btn-link"
-							>join one with its code</button
-						>, or open a room of your own.
-					{/if}
-				</li>
-			{/each}
-		</ul>
+							Not in a crew yet —
+							<button onclick={() => (opening = true)} class="btn-link"
+								>join one with its code</button
+							>, or open a room of your own.
+						{/if}
+					</li>
+				{/each}
+			</ul>
+		{/if}
 
 		<!-- Messages is a place (#468): every room's chat and every DM, one
 		     list, and on a desk the sidebar IS that list (#484). Rooms are
@@ -550,7 +536,16 @@
 					<li
 						title={MENU_HINT}
 						{@attach contextMenu(() =>
-							personMenu(head.peerId, goto, { conversation: true }),
+							// DMs are friends-only (ADR-0012), so a head here is a
+							// friend or an ex-friend (#1814) — the menu offered
+							// "Add friend" to both, and the server refuses it for
+							// the first (#2169). The list this row already reads
+							// for its presence dot answers which.
+							personMenu(head.peerId, goto, {
+								conversation: true,
+								friendship: friends.list?.find((f) => f.id === head.peerId)
+									?.status,
+							}),
 						)}
 					>
 						<a

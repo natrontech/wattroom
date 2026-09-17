@@ -9,11 +9,14 @@
 package board
 
 import (
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/audio"
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -195,11 +198,11 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "board quota", err, "The clip could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
-	// Not 429: the rider's move is to delete something, not to wait — so this
-	// says what is wrong with the request rather than asking them to retry it.
+	// A ceiling, so a 429 (SPEC:79-81, #2244): the same shape the track
+	// quota next door answers with, and a well-formed upload is not a
+	// validation error.
 	if used+int64(len(data)) > MaxRiderBytes {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
-			"Your clips already fill 100 MB. Delete one to make room for this.")
+		httpx.WriteCeiling(w, "Your clips already fill 100 MB. Delete one to make room for this.")
 		return
 	}
 	row, err := q.SaveBoardClip(r.Context(), db.SaveBoardClipParams{
@@ -284,6 +287,12 @@ func (s *Service) handleMeta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clip, err := s.store.Queries.GetBoardClipMeta(r.Context(), id)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		// The database did not answer (#1984): not a deletion. Telling the
+		// owner their clip is gone is the one wrong thing to say here.
+		httpx.Fail(w, s.log, "board clip meta lookup", err, "The clip could not be loaded. Try again.")
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
 		return
@@ -324,6 +333,10 @@ func (s *Service) handleAudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clip, err := s.store.Queries.GetBoardClip(r.Context(), id)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		httpx.Fail(w, s.log, "board clip lookup", err, "The clip could not be loaded. Try again.")
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
 		return

@@ -76,7 +76,10 @@ join room A by its 6-char code   (exactly as today)
 This is not circular, and the reason is worth stating plainly because a reader
 will assume it is: **the first room is always entered by its own code or share
 link**. Room codes and `/r/{slug}` remain the front door and are not
-supplemented by a crew-level equivalent.
+supplemented by a crew-level equivalent. _(This whole section is superseded by
+the 2026-09-08 invite amendment below, which moved the door to the crew; the
+sentence that no other door exists is superseded again by the 2026-09-17
+amendment, which reads the listed room as the second one.)_
 
 ### Permissions: RBAC at the crew, inherited, with per-room overrides
 
@@ -108,7 +111,9 @@ default and amends WATTROOM.md's join-flow paragraph. Three things hold it:
 
 1. **A crew is invite-derived and small.** Nobody is in a crew who did not enter
    one of its rooms by a code somebody handed them. The set that gains visibility
-   is the set that was already let in once, not the public.
+   is the set that was already let in once, not the public. _(Superseded by the
+   2026-09-17 amendment below: a listed room is a second, public door, and a
+   crew with one is no longer invite-derived.)_
 2. **`rooms.listed` is a different axis and is untouched.** It governs the opt-in
    public directory. Crew-visible is not public, and no room becomes listed by
    this change.
@@ -620,4 +625,260 @@ sheet and Home led with "Open your first room — it makes your crew". That
 turned every newcomer into a crew founder, including the one who was sent
 an invite. The join panel now leads for them and founding a crew is the
 second panel, still one click away. ADR-0010's "the room is the big button"
-predates crews; it stands for a rider who already administers one.
+predates crews; it stands for a rider who already administers one. _(Narrowed
+by the 2026-09-17 (#2184) amendment below: it stands for every rider who was
+sent to no door, and the code box leads only for one carrying an invite.)_
+
+## Amendment, 2026-09-17 (#2294): a crew admin keeps the narrow door as well as the wide one
+
+The Decision above says **"Crew admins manage room permissions"**, and #1226
+shipped exactly one: a crew admin opens a private room to the _whole crew_ or
+shuts it, without ever entering the room. The narrower act — naming **one**
+crew-mate through that same door, the grants of #1224/#1225 — stayed
+`requireRole(…, "owner")`. So the broader power was the crew admin's and the
+narrower one was not, which is the wrong way round however you read it.
+
+The 2026-09-08 invite amendment is the sentence that made this look deliberate:
+_"A private room admits its members and its named exceptions (the grants of
+#1225) — the **room-level** control that remains is who may enter a private
+channel."_ That sentence was drawing the line between the **crew's** invite and
+the **room's** access, against room codes; it was never deciding which of a
+room's two doors a crew admin may work. Read as the latter it contradicts
+"crew admins manage room permissions" three hundred lines above, and the
+2026-09-08 ban amendment already leans on that sentence as load-bearing.
+
+### Decision
+
+**A crew's owner and its admins may hand out and take back a room's named
+exceptions, exactly as its own owner may.** One rule behind both doors:
+`administers(crewRole) || room.OwnerID == user.ID`, stated once as
+`keepsTheDoor` and asked by the crew-visible switch and by grant, revoke and
+the door list alike. A ban at either level shuts the door on its keeper too —
+a crew admin the room's owner banned keeps nothing.
+
+The reasoning is that this was an inconsistency rather than a design. Opening
+a room to the whole crew admits every crew-mate including the one a grant
+names, so the power a crew admin already held strictly contains the one they
+did not. No exposure is created that the wide door did not already create;
+what changes is that the admin can now do the _smaller_ thing when the smaller
+thing is what they mean.
+
+**No notification to the room's owner.** It was offered as a third option and
+not chosen: a crew admin flipping a room open to the crew has never notified
+anyone either, and a permission model that announces one of its two doors and
+not the other is harder to hold in the head than one that announces neither.
+
+### What does not change
+
+The crew admin is still not a moderator. "They may not rename it, ban from
+it, delete it, or read its contents" stands word for word, and the door list
+is the test of it: `invited` and `crewOutside` ride the room's **own** read, so
+a doorkeeper who never joined the room sees no roster, no door list and no
+contents — they act on people by id, the way the crew-visible switch already
+does. **Room roles are unchanged**: coach, remove, room ban and room unban stay
+the room owner's, and revoking a grant is a no-op against a member, so this is
+not a back way into removing one.
+
+### Supersedes
+
+The words "the **room-level** control that remains" in the 2026-09-08 invite
+amendment, in that clause only — a private room's access is still not the
+crew's invite, which is the point that amendment was making. docs/SPEC.md's
+crew matrix gains the row; its room-roles row (#2248) is unchanged, since the
+room's own owner may still do this and its coach and members still may not.
+
+## Amendment, 2026-09-17 (#2245): the listed room is the crew's second door, and it is public
+
+The 2026-09-08 invite amendment above already wrote one sentence for this — _"A
+listed room ([ADR-0039](0039-the-public-room-directory.md)) is a public door
+into its crew. Joining it joins the crew, then the room."_ — and the code has
+done exactly that since [#1671](https://github.com/natrontech/wattroom/issues/1671).
+Three older sentences elsewhere say the opposite and were never marked: this
+ADR's _"Nobody is in a crew who did not enter one of its rooms by a code
+somebody handed them"_ and _"the first room is always entered by its own code
+or share link"_, `docs/ARCHITECTURE.md`'s _"The crew's code is the only
+invite"_, and ADR-0039's _"Listing widens discovery, never access"_ with its
+_"listing a room says nothing about any crew"_. The 2026-09-17 rooms-and-crews
+audit read the code against all four and could not tell which was canon, which
+is what [#2245](https://github.com/natrontech/wattroom/issues/2245) asked.
+
+**Decided in session, 2026-09-17: the door stays as the code has it.** No
+behaviour changes; the sentences do. A directory whose rooms cannot be entered
+is the least useful of the three options and the one nothing in the product
+wants — the rider-facing copy on Home and the settings ladder's top step both
+already say joining a listed room puts you in the crew, and #1671's bug was the
+_opposite_ failure, a room shut on the crew page that stayed enterable from the
+directory. The narrow alternative — a room membership without a crew membership,
+so the door admits to that room only — is the shape this ADR forbids everywhere
+else, and buying one directory entry with a second kind of membership is a
+larger change to the model than the widening it would prevent.
+
+### What the door does, exactly
+
+`handleJoin` (`server/internal/rooms/room_members.go`) asks the ban question
+first and fails closed, then asks `visible_rooms` through `CanEnterRoom`. When
+that says no, one fallback remains: if the room is `listed` **and**
+`crew_visible` **and** has a crew, the caller is given a `crew_roles` row of
+role `member` (`JoinCrew`, which never lifts a ban and never demotes an admin;
+the crew's owner holds no row at all and is skipped), and only then a room
+membership. Everyone else is refused with the crew's invite named.
+
+So a listed room's door is the crew's door with the crew's name taken off it.
+Everything crew membership carries follows, and two pieces of it are the real
+price of this decision. Both are stated here so that nobody has to rediscover
+them from the queries:
+
+1. **It is transitive: the stranger receives the crew's invite code.** SPEC's
+   crew matrix already says every member may share the code, and two reads hand
+   it over without being asked — `ListCrewRoomsFor` (`queries/crews.sql`)
+   selects `crew_code` for the sidebar, and `GET /api/crews/{id}`
+   (`handleGetCrew`) returns `Code` to anybody `crewByID` admits, which is any
+   non-banned role. A rider who walked in off the directory can therefore admit
+   others **directly**, through the front door, without the listed room being
+   involved at all. Rotating the code (#1930) is the only take-back, and it
+   breaks every other outstanding link with it.
+2. **It reaches the crew's other rooms, whose owners agreed to nothing.**
+   `visible_rooms` makes every `crew_visible` room in the crew a candidate for
+   any crew member, so the joiner may enter, join and be seen in rooms they
+   never found and whose owners never ticked anything. A room that is *not*
+   open to its crew is untouched — it still admits its members and its named
+   exceptions only — which is the whole of the limit.
+
+**A room owner's "Listed" tick is therefore a crew-level act.** They are not
+opening their room to the instance; they are opening **the crew** to the
+instance, including their crew-mates' open rooms and the crew's invite code.
+That is the sentence this amendment exists to add, and it belongs in the head
+of anyone drawing a surface that offers the tick.
+
+### What is stronger than #2245 assumed
+
+`listed ⇒ crew_visible` is not a client-side nicety. Every writer of either
+column enforces it in SQL: `UpdateRoom` sets `listed = ($3 and $8)`,
+`SetRoomCrewVisible` sets `listed = (listed and $2)`, and
+`SetRoomCrewVisibleAndListed` sets `listed = ($3 and $2)`. A room shut to its
+crew leaves the directory in the same statement, so the door cannot outlive the
+crew visibility it depends on — which is also why `handleJoin` re-checks both
+columns rather than trusting one.
+
+### What was given up
+
+**"A crew is invite-derived and small" is no longer true of a crew that lists a
+room**, and that bullet was one of the three things holding up the
+crew-visible-by-default inversion. The other two still hold — `rooms.listed`
+remains a deliberate opt-in that no room takes by accident, and the default
+still lives in the schema — but the first is now conditional, and the condition
+is one member's tick. A crew with no listed room is exactly as invite-derived
+as it ever was; a crew with one is a public crew.
+
+**A room owner's consent to that is structural rather than asked.** Nobody
+notifies the crew's other room owners, and this amendment does not add a
+notification — for the same reason the 2026-09-17 door-keeping amendment gave:
+a permission model that announces one of its widenings and not the others is
+harder to hold than one that announces none, and the crew-visible switch has
+never announced itself either. What replaces the notification is that the
+ladder's top step says what it does, in the room's settings and on the crew
+page, in `web/src/lib/rooms/reach.ts`'s words. If that turns out to be too
+thin in practice, the fix is a step in the ladder, not a change to the door.
+
+**A stranger is a crew-mate for person-visibility too.** They gain nothing this
+ADR did not already give a crew-mate — visibility follows the rooms a person may
+enter, not flat crew membership — but the set of people who may enter has a
+public member in it now.
+
+### What does not change
+
+ADR-0039's enumeration of what a listed room shows a **non**-member: no chat, no
+roster, no metrics, no sound pack, no join code, and a directory entry of name,
+icon and link. Listing still discloses nothing; it only admits. Both ban levels,
+read through the one view, shut this door like every other — the ban check runs
+before the fallback, and a crew ban keeps the room out of reach however it is
+listed. Private rooms, grants, the crew owner's and admins' non-reader status,
+`/r/{slug}` as an address rather than a door, and `rooms.listed` defaulting to
+`false` in the schema are all untouched.
+
+### Supersedes
+
+- The words _"Nobody is in a crew who did not enter one of its rooms by a code
+  somebody handed them"_ in the privacy-inversion bullet above, and _"Room codes
+  and `/r/{slug}` remain the front door and are not supplemented by a
+  crew-level equivalent"_ in the joining section (whose room codes the
+  2026-09-08 invite amendment had already retired). Both are annotated in place.
+- **[ADR-0039](0039-the-public-room-directory.md)** — _"Listing widens
+  discovery, never access"_ and _"listing a room says nothing about any crew"_,
+  annotated and amended there.
+- `docs/ARCHITECTURE.md`'s _"The crew's code is the only invite"_ and
+  `docs/SPEC.md`'s crew glossary entry, both current-state documents
+  ([ADR-0050](0050-founding-record-and-current-state.md)) and both rewritten by
+  this PR rather than annotated.
+
+### What is still owed
+
+`TestListingARoomOpensNoDoor` (`server/internal/rooms/room_directory_test.go`)
+asserts the **read** and never posts to `/api/rooms/{slug}/join`, so the door
+this amendment describes is undescribed by any test and its name now reads as
+the opposite of the decision. #2245 asks for the coverage either way: a join
+through a listed room, the crew membership it creates, and a sibling
+`crew_visible` room in the same crew becoming enterable. That is behaviour to
+pin down, not prose, and it is deliberately not in this documentation PR.
+
+## Amendment, 2026-09-17 (#2184): the landing speaks to the stranger, and the invite is what leads with joining
+
+The 2026-09-16 amendment above ends _"ADR-0010's 'the room is the big button'
+predates crews; it stands for a rider who already administers one."_ That
+scopes [ADR-0010](0010-room-first-positioning.md) without saying which of
+the two riders the **signed-out landing** is talking to, and the landing has
+one CTA: _"Open your first room"_ (`web/src/routes/+page.svelte`). So the
+front door promised a room and, after #2144, Home met every arrival who
+administered no crew with a code box and _"Or start a crew of your own"_ as the
+second panel. The 2026-09-16 UI/UX sweep filed that as
+[#2184](https://github.com/natrontech/wattroom/issues/2184) and could not
+answer it from this repository: which rider the product's front door sells to
+is roadmap and taste.
+
+**Decided in session, 2026-09-17: join-first is keyed on a pending invite, and
+the landing's CTA stays.** A rider carrying an unconsumed invite
+(`users.pending_crew_code`, already carried end to end by the amendment above)
+gets the code box first; everyone else gets the room the landing promised. The
+invite is the only signal that distinguishes the two riders and the server
+already has it — "administers nothing" is true of the stranger and the invited
+alike, which is why keying on it made the front door lie. A stranger arriving
+with no invite is exactly who the landing speaks to, and **every organic
+arrival is a stranger**: the landing is a public page, so it is reached by
+people nobody sent.
+
+ADR-0010 therefore stands unscoped for the rider who administers no crew and
+was sent to no door — the founder case it was written for. What the 2026-09-16
+amendment took from it is narrower than it said: not "a rider who already
+administers a crew", but "a rider holding an invite to someone else's".
+
+### How small this is, said plainly
+
+An invited rider mostly never reaches Home's sheet at all. `landing()`
+(`web/src/lib/auth/next.ts`) sends a signed-in arrival on `/` to `/c/{code}`,
+and the root layout and the sign-in page are its only two callers — so the OAuth
+return and the confirmation mail's way back both land the invited rider on the
+door itself, not on Home. The audience for join-first is what is left: the rider
+who walked away from a door with the invite unconsumed and came back to Home.
+Real, and small. The value of this amendment is mostly in the other direction —
+that the stranger, who is nearly everyone, is no longer handed a code box the
+landing never mentioned.
+
+### What does not change
+
+The join panel stays, one click down the same sheet, and nothing is hidden from
+anyone: this is an ordering decision, never a gate. The invite's own lifecycle
+is untouched — the door still records it, `/api/me` still hands it back under
+the same three conditions, and joining still clears it. `administersNone`
+(#2176) keeps its own job, which is not this one: it decides whether the sheet
+says the day-one fact _"opening a room makes your crew"_, true of every rider
+who administers none however they arrived. It also guards the order predicate,
+because the invite is read once with the account while the room list moves
+first — a rider who founds a crew in-session carries the stale code until
+`/api/me` is read again.
+
+### Supersedes
+
+The last sentence of the 2026-09-16 (#2144) amendment above, _"it stands for a
+rider who already administers one"_, is narrowed rather than reversed: ADR-0010
+stands for every rider without an invite, including one who administers
+nothing. Annotated in place. No schema, no API and no ADR-0010 text changes.

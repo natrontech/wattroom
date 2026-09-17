@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"time"
 
@@ -54,6 +55,7 @@ func (s *Saver) SetRideKeeper(k RideKeeper) { s.keeper = k }
 
 // savedRide is one ride the keeper hears about once the transaction holds.
 type savedRide struct {
+	rideID pgtype.UUID
 	userID pgtype.UUID
 	facts  RideFacts
 }
@@ -117,7 +119,7 @@ func (s *Saver) save(
 			watts[i] = sample.Watts
 		}
 		kept = append(kept, savedRide{
-			userID: row.UserID, facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
+			rideID: rideID, userID: row.UserID, facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
 		})
 		curve := PowerCurve(watts)
 		wkg := 0.0
@@ -218,6 +220,11 @@ func BuildRideRow(
 	}
 
 	normWatts := int16(NormPower(watts)) //nolint:gosec // samples bounded 0-3000
+	// SPEC's LTHR-from-a-ride input (#1620), computed here because the blob is
+	// already in hand; 0 on a ride with no last-20-minute heart rate. Clamped
+	// only to what the column can hold — a reading's sanity is the
+	// suggestion's business (SuggestLTHR), not storage's.
+	lastHR := int16(min(Last20mHR(samples), math.MaxInt16)) //nolint:gosec // clamped on the line
 	return db.CreateRideParams{
 		UserID:      userID,
 		RoomID:      roomID,
@@ -235,6 +242,7 @@ func BuildRideRow(
 		Curve:           curveJSON,
 		Xp:              int32(XP(kj, execution)), //nolint:gosec // bounded by kj
 		NormWatts:       &normWatts,
+		Last20mHr:       &lastHR,
 	}, nil
 }
 
@@ -267,12 +275,22 @@ func DecodeSamples(blob []byte) ([]protocol.RiderMetrics, error) {
 // in the same zone or the streak breaks on the seam between them. An
 // unreadable zone is UTC, not a lost bonus.
 func StreakXP(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Time) int32 {
+	return streakXPExcept(ctx, q, userID, at, pgtype.UUID{})
+}
+
+// streakXPExcept is StreakXP for a ride that is ALREADY in the table (#2253):
+// an amendment reads after the row landed, so without this the ride's own
+// week came back, the streak was one higher than the identical ride would
+// have earned, and the amended row was written with the difference. Excluding
+// the ride rather than its week keeps the question the same one save asks —
+// a second ride in the same week still counts.
+func streakXPExcept(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Time, except pgtype.UUID) int32 {
 	tz, err := q.UserTimezone(ctx, userID)
 	if err != nil {
 		tz = nil
 	}
 	weeks, err := q.ListUserRideWeeks(ctx, db.ListUserRideWeeksParams{
-		UserID: userID, Tz: ZoneName(tz),
+		UserID: userID, Tz: ZoneName(tz), ExceptID: except,
 	})
 	if err != nil {
 		return 0
@@ -327,7 +345,14 @@ func (s *Saver) AmendRide(
 	if len(rider.Samples) < hub.MinRideSamples {
 		return
 	}
+	// Set inside the closure when the ride actually grew, acted on after the
+	// write settles — the same order save uses, and the reason neither the
+	// trophy case nor the delivery mark is called in there: a retry re-runs
+	// the closure, and the amendment it would re-run is a no-op the second
+	// time round, so a failure in there would judge twice or lose the mark.
+	var judged *savedRide
 	err := retrySave(ctx, s.log, slug, func(ctx context.Context) error {
+		judged = nil
 		room, err := s.store.Queries.GetRoomBySlug(ctx, strings.ToLower(slug))
 		if err != nil {
 			return fmt.Errorf("stats: room %q: %w", slug, err)
@@ -343,7 +368,8 @@ func (s *Saver) AmendRide(
 			s.log.Info("no ride to amend", "room", slug, "rider", rider.Rider.ID)
 			return nil
 		}
-		row.Xp += StreakXP(ctx, q, row.UserID, startedAt)
+		// The ride is already in the table, so the streak is read without it.
+		row.Xp += streakXPExcept(ctx, q, row.UserID, startedAt, existing)
 		grown, err := q.AmendRide(ctx, db.AmendRideParams{
 			ID: existing, Seconds: row.Seconds, AvgWatts: row.AvgWatts, Kj: row.Kj,
 			Execution: row.Execution, ExecutionScored: row.ExecutionScored,
@@ -354,11 +380,45 @@ func (s *Saver) AmendRide(
 		}
 		if grown > 0 {
 			s.log.Info("ride amended", "room", slug, "ride", store.UUIDString(existing), "samples", len(rider.Samples))
+			watts := make([]int, len(rider.Samples))
+			for i, sample := range rider.Samples {
+				watts[i] = sample.Watts
+			}
+			judged = &savedRide{
+				rideID: existing, userID: row.UserID,
+				facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		s.log.Error("ride amendment failed, tail lost", "err", err, "room", slug)
+		return
+	}
+	if judged == nil {
+		return
+	}
+	// Strava already has the short ride, and nothing will ever re-send it
+	// (#2281): StartRideExport does not re-open a delivered row, and the
+	// upload API has no update to re-post through — a second post of the
+	// same external_id is refused as a duplicate, which lands as a failed
+	// delivery. So the divergence is recorded and the ride page says it.
+	// A delivery still pending needs no mark: the upload that follows
+	// carries the grown ride, which is the query's `state = 'delivered'`.
+	if err := s.store.Queries.MarkRideExportStale(ctx, judged.rideID); err != nil {
+		// Worth a loud line and not a lost amendment: the ride itself is
+		// saved, and all that is missing is the sentence about Strava.
+		s.log.Error("ride export stale mark failed", "err", err,
+			"ride", store.UUIDString(judged.rideID))
+	}
+	// The tail is part of the ride, so the ride is judged on all of it
+	// (#2252). facts.go: "Rides store no zone seconds, so this is the only
+	// moment they exist" — a ride that grew from 40 to 50 minutes above FTP
+	// was judged on the 40 and never looked at again. Judging is idempotent
+	// (gamify: a second call re-earns nothing), so the trophies the short
+	// version already won stay won.
+	if s.keeper != nil {
+		s.keeper.RideSaved(judged.userID, judged.facts)
 	}
 }
 

@@ -43,6 +43,8 @@
 	import type { ThreadMessage, ThreadSource } from '$lib/messages/thread-types';
 	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
 	import { eventText } from '$lib/room/timeline';
+	import { copyText } from '$lib/copy';
+	import { MaxMessageChars } from '$lib/protocol';
 	import { toasts } from '$lib/toast.svelte';
 
 	let {
@@ -163,14 +165,8 @@
 		if (refused) toasts.push(refused, { tone: 'error' });
 	}
 
-	async function copy(text: string) {
-		try {
-			await navigator.clipboard.writeText(text);
-			toasts.push('Message copied.');
-		} catch {
-			toasts.push('Copy needs clipboard permission.', { tone: 'error' });
-		}
-	}
+	// The shared copy (#2182): the await and the catch this one already had,
+	// now where every other copy in the app can reach them.
 
 	// The first external link in a line — the same one LinkPreview would
 	// unfurl. addYouTubeUrl already refuses anything that isn't a video or
@@ -227,7 +223,7 @@
 			items.push({
 				label: 'Copy',
 				icon: Copy,
-				onSelect: () => void copy(message.text),
+				onSelect: () => void copyText(message.text, 'Message copied.'),
 			});
 		if (message.id && source.react) {
 			const id = message.id;
@@ -315,9 +311,7 @@
 						{#if startsNew}
 							<div class="flex items-center gap-3 py-1" role="separator">
 								<span class="bg-neon/60 h-px flex-1"></span>
-								<span class="text-muted text-[10px] tracking-widest uppercase"
-									>{newCount} new</span
-								>
+								<span class="eyebrow">{newCount} new</span>
 								<span class="bg-neon/60 h-px flex-1"></span>
 							</div>
 						{/if}
@@ -357,7 +351,7 @@
 								{#if !grouped}
 									<span class="flex items-baseline gap-2">
 										<span class="text-sm font-medium">{message.from}</span>
-										<span class="text-muted-dim font-mono text-[10px]"
+										<span class="text-muted-dim num text-[10px]"
 											>{formatTime(message.at)}</span
 										>
 									</span>
@@ -381,7 +375,7 @@
 										<input
 											bind:value={editDraft}
 											autofocus
-											maxlength="500"
+											maxlength={MaxMessageChars}
 											onkeydown={(e) => {
 												if (e.key === 'Escape') cancelEdit();
 											}}
@@ -464,7 +458,8 @@
 								{/if}
 								{#if message.text}
 									<button
-										onclick={() => copy(message.text)}
+										onclick={() =>
+											void copyText(message.text, 'Message copied.')}
 										class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
 										aria-label="copy message"><Copy size={13} /></button
 									>

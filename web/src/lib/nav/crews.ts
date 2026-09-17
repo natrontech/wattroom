@@ -168,6 +168,42 @@ export function openableCrews(crews: readonly RoomCrew[]): RoomCrew[] {
 }
 
 /**
+ * Whether the rider has nowhere to open a room — no crew of their own, and
+ * none they administer (#2176).
+ *
+ * The one question three surfaces were each answering differently: Home's
+ * button read `!presence.crews.length` (false for a plain member of somebody
+ * else's crew), the sheet's order read `openableCrews(...).length === 0`, and
+ * the dialog's own name asked nothing at all. So a crewless rider pressed
+ * "Join a crew" and got a dialog announcing itself as "Open a room", and a
+ * member pressed "Open a room" and got a sheet that led with joining one.
+ */
+export function administersNone(crews: readonly RoomCrew[]): boolean {
+	return openableCrews(crews).length === 0;
+}
+
+/**
+ * Whether the open-or-join sheet and Home's big button lead with joining a
+ * crew (#2184, ADR-0038 amended 2026-09-17).
+ *
+ * The invite is the key, not administering nothing: `pendingInvite` is the
+ * one signal that somebody sent this rider to a door. A stranger who arrived
+ * off the signed-out landing carries none, and that landing's single CTA is
+ * "Open your first room" — so keying on "administers nothing" made the front
+ * door promise a room and Home hand back a code box.
+ *
+ * `administersNone` still guards it, because the invite is read once with the
+ * account: a rider who founds a crew in this session carries the stale code
+ * until `/api/me` is read again, while the room list has already moved.
+ */
+export function leadsWithJoining(
+	crews: readonly RoomCrew[],
+	pendingInvite: string | null | undefined,
+): boolean {
+	return !!pendingInvite && administersNone(crews);
+}
+
+/**
  * Where a new room lands: the crew on screen when you may open rooms there,
  * else your own, else whichever you administer. Null while the room list has
  * not landed — the server then defaults to your own crew.

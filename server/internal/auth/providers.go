@@ -3,12 +3,14 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
@@ -137,7 +139,22 @@ func fetchStrava(_ context.Context, _ *oauth2.Config, tok *oauth2.Token) (identi
 	return identity{ProviderUserID: fmt.Sprint(int64(id)), DisplayName: name, AvatarURL: avatar}, nil
 }
 
+// oauthTimeout bounds every outbound call the sign-in makes, the way the
+// sibling strava package bounds its own client (strava.go). oauth2 falls back
+// to http.DefaultClient, which has no timeout at all, so a provider host that
+// accepts the connection and then says nothing pinned a goroutine for as long
+// as the caller held on (#2255). A var so a test can shrink it.
+var oauthTimeout = 30 * time.Second
+
+// oauthCtx hands the oauth2 package the bounded client. Exchange, Client and
+// everything built from them read it off the context, so the decoration
+// travels with ctx rather than being threaded through each call.
+func oauthCtx(ctx context.Context) context.Context {
+	return context.WithValue(ctx, oauth2.HTTPClient, &http.Client{Timeout: oauthTimeout})
+}
+
 func getJSON(ctx context.Context, cfg *oauth2.Config, tok *oauth2.Token, url string, into any) error {
+	ctx = oauthCtx(ctx)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("auth: build request: %w", err)
@@ -181,4 +198,35 @@ func DevLoginMisconfigured(baseURL string) error {
 		return nil
 	}
 	return fmt.Errorf("WATTROOM_DEV_LOGIN=1 with a public base URL %q: the dev login is an unauthenticated door and opens on localhost or a private address only", baseURL)
+}
+
+// minSyntheticToken is the floor for WATTROOM_SYNTHETIC_TOKEN: 32 characters,
+// matching the 32 random bytes ADR-0035 requires of WATTROOM_TOKEN_KEY and
+// the 32 a personal token's secret carries. The synthetic door's ONLY
+// protection is this value's secrecy, so a short one is not a weak password —
+// it is an open door with a doorbell.
+const minSyntheticToken = 32
+
+// SyntheticTokenMisconfigured is the boot check for the ride monitor's door
+// (#2258), and it exists for the reason DevLoginMisconfigured does: setting
+// WATTROOM_SYNTHETIC_TOKEN mounts a production route any caller may POST to,
+// and until now nothing looked at what the operator typed. Both neighbouring
+// credential variables are checked loudly — WATTROOM_TOKEN_KEY must decode to
+// 32 bytes or the server refuses to start (ADR-0035) — and a warning in a log
+// nobody reads is how an unauthenticated door reaches production (#1603).
+func SyntheticTokenMisconfigured() error {
+	token := os.Getenv("WATTROOM_SYNTHETIC_TOKEN")
+	if token == "" {
+		return nil
+	}
+	// The door compares the Authorization header byte for byte, so a value
+	// the operator pasted with a stray newline is a door the monitor can
+	// never open — and one nothing else would report.
+	if strings.TrimSpace(token) != token {
+		return errors.New("WATTROOM_SYNTHETIC_TOKEN has leading or trailing whitespace: the door compares the header byte for byte, so the monitor would never get in")
+	}
+	if n := len([]rune(token)); n < minSyntheticToken {
+		return fmt.Errorf("WATTROOM_SYNTHETIC_TOKEN is %d characters: it is the only thing guarding an unauthenticated production door, so it needs at least %d — `openssl rand -hex 32` writes one", n, minSyntheticToken)
+	}
+	return nil
 }

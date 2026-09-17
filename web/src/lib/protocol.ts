@@ -35,6 +35,35 @@ export const MinLthrBpm = 100;
  * zones derive from (ADR-0014). Both sides read these; neither retypes them.
  */
 export const MaxLthrBpm = 210;
+/**
+ * A chat line, in CHARACTERS: the server counts runes because counting
+ * bytes cut non-Latin scripts off at half the advertised limit (#219),
+ * and the box that types it has to cap at the same number.
+ */
+export const MaxMessageChars = 500;
+/**
+ * The two codes a rider is handed, and the one thing that tells them
+ * apart at a glance (#1236): a friend's is eight characters, a crew's
+ * six. Both sides check the length to say WHICH door a pasted code is
+ * for, so both sides have to agree on it.
+ */
+export const FriendCodeLen = 8;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const CrewCodeLen = 6;
+/**
+ * The tolerance band a second is scored in: within ±5 % of target, floor
+ * ±10 W (#2159). The floor is what keeps an easy block scoreable — at
+ * 60 W, 5 % is 3 W, which is inside a trainer's own error.
+ */
+export const TargetBandFraction = 0.05;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const TargetBandFloorWatts = 10;
 
 //////////
 // source: protocol.go
@@ -327,7 +356,8 @@ export interface RoomEvent {
   kind: string; // "jukebox" | "session" | "presence"
   /**
    * jukebox: "queued" | "removed" | "skipped" | "playing" | "restored"
-   * session: "planned" | "moved" | "cancelled" | "started" | "ended"
+   * session: "planned" | "moved" | "cancelled" | "started" | "ended" |
+   *          "won" | "gameEnded"
    * presence: "joined" | "left" | "away" | "back"
    */
   verb: string;
@@ -357,7 +387,9 @@ export interface RoomEvent {
   /**
    * How many things this one line covers — 1 normally, more when a burst
    * coalesced ("queued 8 tracks", "Ana and 2 others joined"). Eight lines
-   * would push the actual conversation off the screen.
+   * would push the actual conversation off the screen. On "gameEnded" it
+   * is instead the round the game reached, which for a collective ramp is
+   * the score the room rode for.
    */
   count: number /* int */;
   at: number /* int64 */; // server millis, for ordering only
@@ -445,6 +477,12 @@ export interface Poke {
  */
 export interface AwayState {
   away: boolean;
+  /**
+   * Why, from AwayReasons — "" is the plain away the button's face has
+   * always sent, and the only thing one tap can produce. Ignored when Away
+   * is false: coming back has no reason.
+   */
+  reason?: string;
 }
 /**
  * DeviceKind is what a socket says it is running on (#2131): one of
@@ -510,6 +548,14 @@ export interface Rider {
    * an open mic over an empty trainer.
    */
   away?: boolean;
+  /**
+   * Which kind of away, from AwayReasons; empty for the plain one. Room
+   * scope only, deliberately: the presence rail and anyone outside the room
+   * keep the plain away dot they have always had, because a reason is a new
+   * detail about a person and a new detail does not get a wider audience
+   * than the old one had.
+   */
+  awayReason?: string;
   /**
    * Pedalling right now (#1016) — watts inside the room's riding window, so
    * a coast holds the mark and sitting down loses it. The server owns the
@@ -876,6 +922,14 @@ export interface RoomPresence {
  * Error tells a client why its connection or command was refused.
  */
 export interface Error {
+  /**
+   * One of errors.md's closed set — validation_error, invalid_request,
+   * unauthorized, forbidden, not_found, conflict, rate_limited,
+   * internal_error — optionally prefixed with the surface the refusal
+   * belongs to ("jukebox_rate_limited"), so a client can land it beside
+   * the control the rider touched instead of in the room's own slot. The
+   * prefix routes; the part after it is always a code from the set.
+   */
   code: string;
   message: string;
 }

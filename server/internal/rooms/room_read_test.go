@@ -299,6 +299,12 @@ func TestBoardIsOffUntilTheRoomTurnsItOn(t *testing.T) {
 	}
 	h.roomRide(t, "alice", room.ID, time.Now(), 3600)
 	h.roomRide(t, "bob", room.ID, time.Now(), 1800)
+	// Alice answered for her FTP, so the bracket below is hers rather than
+	// one computed from two numbers nobody chose (ADR-0048, #2243).
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"update users set ftp_source = 'manual' where id = $1", h.users.ByToken["alice"].ID); err != nil {
+		t.Fatalf("alice's answer: %v", err)
+	}
 
 	// Being in a room does not put you on a board (ADR-0036).
 	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
@@ -417,6 +423,48 @@ func TestOnlyMembersReadTheRoomsCode(t *testing.T) {
 	}
 }
 
+// ADR-0009 puts everything behind the door and ADR-0039 says "public" means
+// every signed-in rider, not the web. handleGet was the one room route with
+// no 401 (#2241): its members-only work hung off `if user, signedIn := ...`
+// and the fall-through wrote {slug, name, listed, icon} with a 200 to a
+// caller with no session, for any room — while PublicIdentity beside it, the
+// share card, narrowed itself to LISTED rooms citing those same two ADRs.
+//
+// The 401 comes before the slug lookup, so the answer is the same for a room
+// that does not exist: an unlisted room's existence is not for the web
+// either.
+func TestTheSignedOutReadNothingAboutARoom(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Unlisted By Default")
+
+	status, body := h.call(t, "", http.MethodGet, "/api/rooms/"+slug, "")
+	if status != http.StatusUnauthorized {
+		t.Fatalf("signed out read: %d %v, want 401", status, body)
+	}
+	if body["name"] != nil || body["slug"] != nil || body["icon"] != nil || body["listed"] != nil {
+		t.Errorf("the refusal carried the room with it: %v", body)
+	}
+	if body["error"] != "unauthorized" || body["message"] == "" {
+		t.Errorf("not errors.md's shape: %v", body)
+	}
+	// Same answer for a room that is not there — the 401 is not a directory.
+	if status, _ := h.call(t, "", http.MethodGet, "/api/rooms/no-room-lives-here", ""); status != http.StatusUnauthorized {
+		t.Errorf("an unknown slug answered %d, so a 404 tells the web which rooms exist", status)
+	}
+	// The share card is still the one thing that speaks to the web, and still
+	// only for a listed room (#1734).
+	if _, _, ok := h.svc.PublicIdentity(t.Context(), slug); ok {
+		t.Error("PublicIdentity named an unlisted room")
+	}
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
+		`{"name":"Unlisted By Default","listed":true}`); status != http.StatusOK {
+		t.Fatalf("list the room: %d", status)
+	}
+	if name, _, ok := h.svc.PublicIdentity(t.Context(), slug); !ok || name != "Unlisted By Default" {
+		t.Errorf("PublicIdentity = %q %v; a listed room's card is still public", name, ok)
+	}
+}
+
 // TestTheDoorSaysTheRoomKeepsABoard is ADR-0036's "turned on ... visibly —
 // what the room shares is fixed and legible *before* anyone is inside it".
 // `boardEnabled` used to be set only in handleGet's members-only branch, so
@@ -458,5 +506,58 @@ func TestTheDoorSaysTheRoomKeepsABoard(t *testing.T) {
 	_, shut := h.call(t, "bob", http.MethodGet, "/api/rooms/"+quiet, "")
 	if enabled, _ := shut["boardEnabled"].(bool); enabled {
 		t.Errorf("a room with no board tells its door otherwise: %v", shut)
+	}
+}
+
+// ADR-0048, quoted in docs/SPEC.md: "An unchosen number never reads as a
+// measured one. … w/kg is withheld until at least one of the pair is the
+// rider's own — two guesses divided by each other is a fiction with a decimal
+// point." The category is that w/kg bracketed, and the weekly board is the one
+// surface ADR-0036 singles out as publishing a ride-derived number about one
+// member to the rest of the room — so it is the worst place for the guess to
+// travel unlabelled, and it did (#2243): every account that had not answered
+// was published as a D.
+func TestTheBoardWithholdsACategoryNobodyChose(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Board Guess")
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
+		`{"name":"Board Guess","listed":false,"boardEnabled":true}`); status != http.StatusOK {
+		t.Fatalf("enable the board")
+	}
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.join(t, "bob", slug)
+	h.join(t, "carol", slug)
+	for _, who := range []string{"bob", "carol"} {
+		h.roomRide(t, who, room.ID, time.Now(), 1800)
+	}
+	// Carol answered for one of the pair; bob has never been asked.
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"update users set ftp_source = 'manual' where id = $1", h.users.ByToken["carol"].ID); err != nil {
+		t.Fatalf("carol's answer: %v", err)
+	}
+
+	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	rows, _ := body["board"].([]any)
+	if len(rows) != 2 {
+		t.Fatalf("board has %d rows, want bob and carol: %v", len(rows), body["board"])
+	}
+	byName := map[string]map[string]any{}
+	for _, row := range rows {
+		r, _ := row.(map[string]any)
+		name, _ := r["displayName"].(string)
+		byName[name] = r
+	}
+	if got, ok := byName["bob"]["category"]; ok {
+		t.Errorf("a rider who was never asked is published as %v", got)
+	}
+	if got := byName["carol"]["category"]; got == nil || got == "" {
+		t.Error("a rider who answered lost their category, which is not the rule")
+	}
+	// The row is still on the board and still ranked: kJ is ridden, not typed.
+	if byName["bob"]["kj"] == nil {
+		t.Error("withholding the category took the rider off the board")
 	}
 }

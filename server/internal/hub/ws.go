@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -128,7 +129,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.SetReadLimit(maxFrame)
-	rm := h.room(slug)
+	// Held from before the join until after the leave (#2297): the idle sweep
+	// must not forget a room in the window where this rider has its pointer
+	// and has not joined with it yet. Registered before the writer's defer, so
+	// it runs after rm.leave below.
+	rm := h.holdRoom(slug)
+	defer h.releaseRoom(slug)
 	c := &client{rider: rider, conn: conn, out: make(chan []byte, clientQueue)}
 	// This socket's own writer, so the room's tick never waits on it (#670).
 	writerDone := make(chan struct{})
@@ -187,7 +193,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			if !rm.allow("poke:"+to, rider.ID, h.now(), pokeCooldown) {
 				// A cooldown that drops in silence reads as a broken button,
 				// and the sender pokes again (errors.md).
-				h.writeError(c, "conflict", "You just poked them — give them a moment to notice.")
+				h.writeError(c, "rate_limited", "You just poked them — give them a moment to notice.")
 				continue
 			}
 			if !rm.queuePoke(to, protocol.Poke{
@@ -208,7 +214,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// Unlimited like a sensor claim, and for the same reason: it is
 			// one map write per rider, so a client repeating itself changes
 			// nothing and queues nothing. The state rides the next tick.
-			rm.setAway(rider.ID, msg.Away.Away)
+			rm.setAway(rider.ID, msg.Away.Away, msg.Away.Reason)
 		}
 		if msg.Metrics != nil {
 			// Rate-shaped like every other channel (audit 2026-09-09): a trainer
@@ -221,11 +227,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		if msg.Chat != nil {
 			// Untrusted input: bounded text, 1/s per rider, sender is presence.
 			text := strings.TrimSpace(msg.Chat.Text)
-			if utf8.RuneCountInString(text) > 500 {
+			if utf8.RuneCountInString(text) > protocol.MaxMessageChars {
 				// The client caps at 500 CHARACTERS — counting bytes here cut
 				// non-Latin scripts off at half the advertised limit and then
 				// dropped the line silently (audit #219).
-				h.writeError(c, "validation_error", "That message is too long — 500 characters is the cap.")
+				h.writeError(c, "validation_error",
+					fmt.Sprintf("That message is too long — %d characters is the cap.", protocol.MaxMessageChars))
 				continue
 			}
 			// Untrusted like the text: an image id is a 36-char UUID the room's
@@ -251,9 +258,13 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				}
 				rm.chatLine(line)
 			} else if text != "" || imageID != "" {
-				// Every other throttled channel answers; this one dropped the
-				// line in silence and the composer had already cleared it
-				// (#1762). Two fast lines on a phone keyboard is the normal case.
+				// A deliberate act with a visible result answers when it is
+				// refused: this one dropped the line in silence and the
+				// composer had already cleared it (#1762). Two fast lines on
+				// a phone keyboard is the normal case. Cheer, react and board
+				// stay quiet below because they are fire-and-forget taps and
+				// the rider has lost nothing — the jukebox is not, and says so
+				// (#2232).
 				h.writeError(c, "rate_limited", "One line a second — say that again in a moment.")
 			}
 		}
@@ -291,10 +302,17 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// every other input — it was the one unlimited channel (audit #219).
 			if rm.allow("jukebox", rider.ID, h.now(), 300*time.Millisecond) {
 				if played, _, refusal := rm.jukeboxWithRefusal(*msg.Jukebox, rider.ID, rider.Name, h.now()); refusal != "" {
-					h.writeError(c, "jukebox_"+string(refusal), refusal.message())
+					h.writeError(c, jukeboxCode(refusal.code()), refusal.message())
 				} else if played != nil && h.xp != nil {
 					h.xp.TrackPlayed(slug, played.riderID, played.ref, h.now())
 				}
+			} else {
+				// Skip, pause, queue: deliberate taps a rider watches for a
+				// result, so a refused one has to say so (#2232). Every other
+				// way this channel refuses already answers — the jukebox's own
+				// refusals right above — and the throttle was the one that did
+				// not, which reads as the button not working.
+				h.writeError(c, jukeboxCode("rate_limited"), "That was quick — give the deck a moment.")
 			}
 		}
 		if msg.Backfill != nil {
@@ -329,7 +347,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if msg.Control.Action == "game-end" {
-				if !rm.endGame() {
+				if !rm.endGame(h.now()) {
 					h.writeError(c, "invalid_request", "No game is running.")
 				}
 				continue
@@ -418,6 +436,14 @@ func logger(log *slog.Logger) *slog.Logger {
 	}
 	return log
 }
+
+// jukeboxCode namespaces one of errors.md's codes onto the deck (#2232), so a
+// refusal lands beside the control the rider tapped rather than in the room's
+// own refusal slot (live.svelte.ts routes on the prefix alone). The suffix is
+// always a code from the closed set — the seven `jukebox_queue_full`-shaped
+// strings this used to emit were a vocabulary of their own that no client and
+// no rule knew (2026-09-17 audit).
+func jukeboxCode(code string) string { return "jukebox_" + code }
 
 func (h *Hub) writeError(c *client, code, message string) {
 	c.sendJSON(h.log, protocol.ServerMessage{

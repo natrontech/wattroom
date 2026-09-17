@@ -26,6 +26,39 @@
 > them is the operator's.** Everything below about tags, changelogs, gates and
 > expand/contract still stands — those are release properties, not deploy ones.
 
+> **Amended 2026-09-16 (#1738).** The scrape target is **`wattroom:9091`**,
+> not `wattroom:8080`. "Caddy stops proxying `/metrics`" below made an edge the
+> only thing between rider counts and the internet, and wattroom.ch's edge is
+> not `deploy/Caddyfile` — so the endpoint moved to a listener of its own, on a
+> port nothing proxies, with the Caddy block kept as a second lock. Port 8080
+> answers a 404 that says where they went. An operator upgrading past this
+> moves the Prometheus job and the deploy guard's ride check; everything else
+> about monitoring below is unchanged.
+
+> **Amended 2026-09-17 (#1481).** The server **applies a migration that
+> arrived late** rather than refusing to boot. Two branches cut from the same
+> main stamp timestamps minutes apart; the later-written one merges first, and
+> goose's default then rejects the other one on every database that already
+> took the winner — in production, a health gate rolling the release back
+> until somebody edits `goose_db_version` by hand. `store.Open` passes
+> `goose.WithAllowMissing()`, so the late file is applied at the next boot, in
+> version order, before anything pending. This is expand/contract being spent:
+> a release only adds, so applying an addition late gives exactly the schema a
+> fresh database would have had, and it is the same property that makes
+> retagging to `PREVIOUS` safe. The risk it accepts is the one already listed
+> below — expand/contract is enforced by nobody — now with a second way to
+> bite: a migration that quietly reads what a *newer* file left behind would
+> be applied against a schema it did not expect. CI warns on a PR whose
+> migration predates the newest on the base branch (`migration-order` in
+> `ci.yml`) and does not block on it: main's ruleset does not require branches
+> to be up to date, so a blocking check would not see the winner's file
+> anyway, and making it see one would cost a rebase and a full CI re-run on
+> every merge. "What the database is at" therefore means *the highest version
+> it has recorded*, and no longer implies that every lower version ran before
+> it. Nothing about rollback changes: the image goes back, the schema never
+> does.
+
+
 ## Context
 
 Jan is the only person with access to the homelab. Every deploy, every rollback, and every "did that break something" is therefore gated on his attention, and a deploy costs enough attention to be worth skipping — which is how a project ends up with a production running an image nobody can name.
@@ -61,7 +94,7 @@ ADR-0006 named the homelab's conventions — repo-is-truth, `make sync-<stack>`,
 
 **Migrations are expand/contract, and this is a hard rule.** A release only adds — nullable columns, new tables, new indexes. Dropping or renaming happens one release *after* the release whose code stopped using the thing. This is the single load-bearing rule of the whole document: it is the only reason retagging to `PREVIOUS` is safe, and every other guarantee here is downstream of it. It sharpens ADR-0006's "forward-only migrations that survive one image rollback" from an aspiration into a review criterion.
 
-**Monitoring moves to the homelab's Prometheus and Alertmanager.** The `prometheus` service, `deploy/prometheus.yml`, and `deploy/alerts.yml` leave this repository; the homelab scrapes `wattroom:8080` and the rules live next to every other alert Jan owns, with a routing path to his phone that already works. This is ADR-0006's "Prometheus as the one metrics system" applied literally — one Prometheus, not one per workload. Caddy stops proxying `/metrics` to the public internet, which it does today: rider counts and runtime internals are currently a `curl` away on a project whose canon is that privacy is architecture.
+**Monitoring moves to the homelab's Prometheus and Alertmanager.** The `prometheus` service, `deploy/prometheus.yml`, and `deploy/alerts.yml` leave this repository; the homelab scrapes `wattroom:9091` (`wattroom:8080` until #1738, see the amendment above) and the rules live next to every other alert Jan owns, with a routing path to his phone that already works. This is ADR-0006's "Prometheus as the one metrics system" applied literally — one Prometheus, not one per workload. Caddy stops proxying `/metrics` to the public internet, which it does today: rider counts and runtime internals are currently a `curl` away on a project whose canon is that privacy is architecture.
 
 **`/api/healthz` learns to ping the database, and `/api/version` learns to report the tag.** Both are a handful of lines, and every gate in this document is worthless without them: the first makes "healthy" mean something, the second is the updater's proof that the image it asked for is the image now serving.
 
@@ -75,7 +108,7 @@ Accepted, each with its trigger:
 
 - **The VM holds a deploy key and reaches out on a timer.** New outbound surface and a credential on the box, against a homelab convention that nothing auto-pulls. Accepted for one private repo and one developer; revisit if the VM ever hosts something that is not WattRoom.
 - **Cutting a release is two commits** — the tag here, the pin bump there. Deliberate: the pin bump *is* the promotion gate. If it turns out to be friction rather than ceremony, teaching the pin file to accept the literal `latest` is a two-line change. Not built now.
-- **Expand/contract is enforced by nobody.** A migration that drops a column passes CI and breaks rollback silently, discovered only when a rollback is attempted — the worst possible moment. Accepted because the alternative is a schema-diff check nobody has written; the first time it bites is the trigger to write one.
+- **Expand/contract is enforced by nobody.** A migration that drops a column passes CI and breaks rollback silently, discovered only when a rollback is attempted — the worst possible moment. Accepted because the alternative is a schema-diff check nobody has written; the first time it bites is the trigger to write one. *(Amended 2026-09-17, #1481: it now also carries out-of-order application — see the amendment above. Still accepted, still unenforced, and the `migration-order` warning is the whole of the mitigation.)*
 - **Auto-rollback only covers "the new image did not come up healthy."** An image that comes up fine and is subtly wrong is caught by the 30-minute synthetic, and the response to that is a human reverting the pin. Automated recovery deliberately stops at the boundary where "broken" stops being mechanically decidable.
 - **A release can sit undeployed through a long group ride.** That is the rider guard working, not failing.
 - **The updater moves only the wattroom image.** Postgres, LiveKit, and Caddy stay pinned and are bumped by hand, deliberately, with a human watching.

@@ -25,9 +25,7 @@
 	import Award from '@lucide/svelte/icons/award';
 	import Download from '@lucide/svelte/icons/download';
 	import ImageDown from '@lucide/svelte/icons/image-down';
-	import Lock from '@lucide/svelte/icons/lock';
-	import Users from '@lucide/svelte/icons/users';
-	import { setRideShared } from '$lib/ride/share';
+	import ShareToggle from '$lib/ride/ShareToggle.svelte';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 
 	const id = $derived(page.params.id ?? '');
@@ -232,7 +230,7 @@
 	{:else}
 		<header class="mt-4 flex flex-wrap items-end gap-x-4 gap-y-2">
 			<div>
-				<h1 class="font-display text-2xl leading-tight font-bold">
+				<h1 class="page-title-sm leading-tight">
 					{ride.workoutName}
 				</h1>
 				<p class="text-muted mt-0.5 text-xs">
@@ -251,19 +249,10 @@
 				</p>
 			</div>
 			<!-- The per-ride opt-in, where a rider decides a ride is worth
-			     showing (#1691, ADR-0024): undo over confirm. -->
-			<button
-				onclick={() =>
-					ride && void setRideShared(ride, !ride.sharedWithFriends)}
-				aria-pressed={ride.sharedWithFriends}
-				class="btn btn-secondary btn-xs ml-auto"
-			>
-				{#if ride.sharedWithFriends}
-					<Users size={13} /> Shared with friends
-				{:else}
-					<Lock size={13} /> Private
-				{/if}
-			</button>
+			     showing (#1691, ADR-0024): undo over confirm. The same toggle
+			     the history row draws — this one used to name the STATE, so
+			     "Private" was the button you pressed to share (#2167). -->
+			<ShareToggle {ride} class="btn btn-secondary btn-xs ml-auto" />
 			<button
 				onclick={() => void downloadCard()}
 				disabled={carding}
@@ -288,7 +277,7 @@
 				<Banner tone="error">
 					{downloadError.message}
 					{#snippet action()}<button
-							class="text-xs underline"
+							class="btn-link text-xs"
 							onclick={() => downloadError?.retry()}>Retry</button
 						>{/snippet}
 				</Banner>
@@ -458,6 +447,21 @@
 								target="_blank"
 								rel="noreferrer noopener">activity {ride.export.remoteId}</a
 							>{/if}.
+						{#if ride.export.staleSince}
+							<!-- #2281: the ride grew after it was delivered, and the
+							     copy on Strava never catches up — StartRideExport will
+							     not re-open a delivered row, and re-posting is refused
+							     as a duplicate. Saying so is the whole fix; replacing
+							     the activity would mean deleting it, and its kudos and
+							     comments with it. -->
+							<span class="mt-2 block">
+								This ride grew after it was sent: a late reconnect added the
+								rest of it here, and Strava still has the shorter version.
+								WattRoom will not replace the activity — that would take its
+								kudos and comments with it — so download the FIT above and add
+								it to Strava yourself if you want the whole ride there.
+							</span>
+						{/if}
 					{:else if ride.export.state === 'pending'}
 						Waiting to reach Strava — it is retried on its own, nothing to do.
 					{:else}

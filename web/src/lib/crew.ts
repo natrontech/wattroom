@@ -137,6 +137,9 @@ export interface CrewDoor {
 	members?: number;
 	/** The crew removed you: no Join, the code will not get you back. */
 	banned?: boolean;
+	/** A signed-in stranger holding the code: the invite is theirs to keep,
+	 *  and `rememberCrewDoor` is what keeps it (#2144, #2248). */
+	invited?: boolean;
 }
 
 export function crewDoor(
@@ -149,12 +152,21 @@ export function crewDoor(
 	);
 }
 
+/** Keep this door's invite on the account (#2144), so a sign-up that finishes
+ *  in another tab still lands on the crew. Its own call because the door's
+ *  read must not write: a GET carries no Origin check, so any page could have
+ *  set a rider's pending invite by linking them at it (#2248). */
+export function rememberCrewDoor(code: string): Promise<ApiResult<void>> {
+	return api<void>(`/api/crew-doors/${encodeURIComponent(code)}/remember`, {
+		method: 'POST',
+	});
+}
+
 /** The one way in (ADR-0038 amended, #1236): the crew, by its code. */
 export function joinCrew(code: string): Promise<ApiResult<RoomCrew>> {
 	return api<RoomCrew>('/api/crews/join', { method: 'POST', json: { code } });
 }
 
-/** Out of the crew and every one of its rooms, in one move (#1228, #1236). */
 /** A new invite (#1930): the old code and every link carrying it stop working. */
 export function rotateCrewCode(
 	id: string,
@@ -162,6 +174,7 @@ export function rotateCrewCode(
 	return api<{ code: string }>(`/api/crews/${id}/code`, { method: 'POST' });
 }
 
+/** Out of the crew and every one of its rooms, in one move (#1228, #1236). */
 export function leaveCrew(id: string): Promise<ApiResult<void>> {
 	return api<void>(`/api/crews/${id}/leave`, { method: 'POST' });
 }

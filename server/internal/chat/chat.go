@@ -5,9 +5,11 @@ package chat
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -45,9 +47,6 @@ type Live interface {
 	PostChatEdit(slug string, edit protocol.ChatEdit)
 }
 
-// maxChatRunes is the cap the socket path and the client's maxlength agree on.
-const maxChatRunes = 500
-
 // The HTTP door's ceilings (#1982), the DM door's numbers: the socket path
 // allows one line a second, and a door with no ceiling beside one with is
 // the one a script uses.
@@ -73,6 +72,19 @@ func New(st *store.Store, members Members, log *slog.Logger) *Service {
 		lines:   budget.New[pgtype.UUID](linesPerMinute, time.Minute),
 		uploads: budget.New[pgtype.UUID](uploadsPerHour, time.Hour),
 	}
+}
+
+// tooLong answers 400 when a line is over the one cap this app has. The
+// number is protocol.MaxMessageChars in the check AND in the sentence: this
+// door used to declare its own 500 and tell the rider about a third one, and
+// protocol/limits.go exists because that is how #1393 and #1986 happened.
+func tooLong(w http.ResponseWriter, text string) bool {
+	if utf8.RuneCountInString(text) <= protocol.MaxMessageChars {
+		return false
+	}
+	httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+		fmt.Sprintf("That message is too long — %d characters is the cap.", protocol.MaxMessageChars), "text")
+	return true
 }
 
 // overLine answers 429 when the account has written its minute's worth.

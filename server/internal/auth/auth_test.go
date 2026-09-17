@@ -1015,6 +1015,59 @@ func TestUpdateMeCarriesLthr(t *testing.T) {
 	}
 }
 
+// docs/SPEC.md's LTHR-from-a-ride prompt (#1620) reaches the client on
+// /api/me, and only when it should. A silent failure either way: a body that
+// quietly never carries the field leaves the feature invisible with every
+// test below it green, and one that carries it for a rider with no LTHR set
+// asks them to raise a number they do not have.
+func TestMeSuggestsLthrFromAQualifyingRide(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	ctx := t.Context()
+
+	// A solo 30-minute ride whose last 20 minutes averaged 172 bpm.
+	hr := int16(172)
+	if _, err := s.store.Queries.CreateRide(ctx, db.CreateRideParams{
+		UserID: user.ID, WorkoutName: "Field test",
+		StartedAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+		Seconds:   1800, AvgWatts: 210, Kj: 378, Execution: 0.9, FtpWatts: 200,
+		Samples: []byte("{}"), Curve: []byte(`{}`), Xp: 10, Last20mHr: &hr,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	me := func() meResponse {
+		t.Helper()
+		fresh, err := s.store.Queries.GetUser(ctx, user.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s.fullMe(ctx, fresh)
+	}
+
+	// No LTHR set: nothing for the average to exceed, so no prompt.
+	if got := me().SuggestedLthr; got != 0 {
+		t.Fatalf("suggested %d bpm to a rider with no LTHR set", got)
+	}
+
+	set := func(bpm int16) {
+		t.Helper()
+		if _, err := s.store.Pool.Exec(ctx, "update users set lthr = $2 where id = $1", user.ID, bpm); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// 172 > 160 × 1.02 = 163.2 → prompt with the average itself.
+	set(160)
+	if got := me().SuggestedLthr; got != 172 {
+		t.Fatalf("suggestedLthr = %d, want 172", got)
+	}
+	// Within 2 % of what is already set: silence.
+	set(170)
+	if got := me().SuggestedLthr; got != 0 {
+		t.Fatalf("suggested %d bpm inside the 2 %% tolerance", got)
+	}
+}
+
 // The dev login opens on a local origin only, and never for a cross-site
 // fetch (#1603).
 func TestDevLoginIsLocalOnly(t *testing.T) {
@@ -1049,6 +1102,30 @@ func TestDevLoginIsLocalOnly(t *testing.T) {
 	s.handleStart(w, req)
 	if w.Code != http.StatusForbidden || len(w.Result().Cookies()) != 0 {
 		t.Fatalf("a cross-site fetch got %d with %d cookies", w.Code, len(w.Result().Cookies()))
+	}
+}
+
+// The synthetic door is unauthenticated by default and guarded by nothing but
+// this value's secrecy, so the operator's string is checked at boot the way
+// WATTROOM_TOKEN_KEY's is (ADR-0035) rather than warned about (#2258).
+func TestSyntheticTokenIsCheckedAtBoot(t *testing.T) {
+	for _, tc := range []struct {
+		name, token string
+		refused     bool
+	}{
+		{"unset — the door is not mounted at all", "", false},
+		{"a short one is an open door with a doorbell", "hunter2", true},
+		{"one character under the floor", strings.Repeat("a", minSyntheticToken-1), true},
+		{"a pasted value with a trailing newline never matches the header", strings.Repeat("a", minSyntheticToken) + "\n", true},
+		{"32 characters", strings.Repeat("a", minSyntheticToken), false},
+		{"openssl rand -hex 32", strings.Repeat("0f", 32), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("WATTROOM_SYNTHETIC_TOKEN", tc.token)
+			if err := SyntheticTokenMisconfigured(); (err != nil) != tc.refused {
+				t.Errorf("err = %v, want refused=%v", err, tc.refused)
+			}
+		})
 	}
 }
 
@@ -1088,6 +1165,11 @@ func TestPasskeyLoginIsThrottledPerAddress(t *testing.T) {
 	if s.wa == nil {
 		t.Skip("no relying party on this base URL")
 	}
+	// The second half of this test is about what happens behind a proxy, so
+	// it declares one (#2258): with none declared the header is caller-written
+	// and ClientIP does not read it at all.
+	httpx.TrustProxyHeader(true)
+	t.Cleanup(func() { httpx.TrustProxyHeader(false) })
 	start := func(ip string) int {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/auth/passkey/login/start", nil)
 		req.RemoteAddr = ip + ":4242"

@@ -130,7 +130,10 @@ func TestReminderNamesNoClockTime(t *testing.T) {
 	s := service(h, srv.URL)
 
 	starts := time.Now().Add(time.Hour)
-	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, noActor, sessionReminder)
+	s.sessionMail(t.Context(), sessionNote{
+		room: h.room, workout: "Sweet Spot 2×20", startsAt: starts,
+		actor: noActor, change: sessionReminder,
+	})
 
 	if len(fake.payloads) != 1 {
 		t.Fatalf("sent %d emails, want 1", len(fake.payloads))
@@ -163,9 +166,74 @@ func TestReminderMailsEveryOptedInMember(t *testing.T) {
 		t.Fatalf("opt the planner in: %v", err)
 	}
 
-	s.sessionMail(t.Context(), h.room, "Openers", time.Now().Add(time.Hour), noActor, sessionReminder)
+	s.sessionMail(t.Context(), sessionNote{
+		room: h.room, workout: "Openers", startsAt: time.Now().Add(time.Hour),
+		actor: noActor, change: sessionReminder,
+	})
 
 	if len(fake.payloads) != 2 {
 		t.Fatalf("sent %d reminders, want both opted-in members", len(fake.payloads))
+	}
+}
+
+// sessionID finds the plan `plan` wrote, for a test that has to say something
+// about one particular session.
+func sessionID(t *testing.T, h *harness, name string) pgtype.UUID {
+	t.Helper()
+	var id pgtype.UUID
+	if err := h.store.Pool.QueryRow(t.Context(),
+		`select id from scheduled_sessions where room_id = $1 and workout_name = $2`,
+		h.room.ID, name).Scan(&id); err != nil {
+		t.Fatalf("find %s: %v", name, err)
+	}
+	return id
+}
+
+// The half a rider actually feels (#1011). The reminder used to mail every
+// opted-in member of the room, because ListRoomNotifyTargets did not consult
+// session_rsvps at all — so a rider who had already decided not to come was
+// mailed about it anyway, with no off switch short of muting the whole room.
+//
+// All three states in one pass, because the risk is a predicate that mails
+// too few as easily as too many: the decline is dropped, the "in" is kept,
+// and a rider who has not answered is still told.
+func TestADeclinedSessionIsNotReminded(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	s := service(h, srv.URL)
+
+	// The planner takes the "has not answered" part, so all three states are
+	// covered by riders this harness already has.
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"update users set email = $2, email_verified_at = now(), notify_planned = true where id = $1",
+		h.planner.ID, h.email(h.planner)); err != nil {
+		t.Fatalf("opt the planner in: %v", err)
+	}
+	plan(t, h, "Turned Down", 30*time.Minute)
+	plan(t, h, "Said Yes", 40*time.Minute)
+	for _, answer := range []struct {
+		workout string
+		going   bool
+	}{{"Turned Down", false}, {"Said Yes", true}} {
+		if err := h.store.Queries.SetRsvp(t.Context(), db.SetRsvpParams{
+			SessionID: sessionID(t, h, answer.workout), UserID: h.optIn.ID, Going: answer.going,
+		}); err != nil {
+			t.Fatalf("rsvp %s: %v", answer.workout, err)
+		}
+	}
+
+	s.remindDue(t.Context())
+
+	declined := h.email(h.optIn)
+	mine := fake.subjectsTo(declined)
+	if len(mine) != 1 || !strings.Contains(mine[0], "Said Yes") {
+		t.Fatalf("a rider who said they are not coming was reminded anyway: %v", mine)
+	}
+	// Nobody else loses their mail to the predicate: an answer is one
+	// rider's, and silence is not a decline.
+	if quiet := fake.subjectsTo(h.email(h.planner)); len(quiet) != 2 {
+		t.Fatalf("a rider who answered nothing got %d of 2 reminders: %v", len(quiet), quiet)
 	}
 }

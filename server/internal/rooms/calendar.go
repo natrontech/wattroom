@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -38,8 +39,8 @@ const (
 )
 
 // calendarUntil is the far edge every calendar read shares — the feeds and
-// the sessions page alike, so none of them can quietly disagree about how far
-// ahead a plan is visible.
+// Home's list alike, so none of them can quietly disagree about how far ahead
+// a plan is visible.
 func calendarUntil() pgtype.Timestamptz { return pgTime(time.Now().Add(calendarHorizon)) }
 
 // warnIfTruncated says so when a read came back exactly full. A row bound
@@ -57,14 +58,34 @@ func (s *Service) warnIfTruncated(rows int, feed string, args ...any) {
 // icsEvent is what both feeds agree on — the row types differ, the calendar
 // entry doesn't.
 type icsEvent struct {
-	id       string
-	stamp    time.Time
-	start    time.Time
-	length   time.Duration
-	summary  string
+	id     string
+	stamp  time.Time
+	start  time.Time
+	length time.Duration
+	// planner is the rider feed's alone and empty everywhere else —
+	// description says why.
 	planner  string
+	summary  string
 	roomName string
 	roomSlug string
+}
+
+// description is the line a subscriber reads under the event, and the one
+// place the two feeds say different things (ADR-0021's 2026-09-17 amendment,
+// #1767).
+//
+// A room's ics_token is handed to every non-banned member, rotates only for
+// the owner, and the feed exists to be shared with people who are not in the
+// room — so one member forwarding the link hands whatever it says to whoever
+// they like. Who planned a session is the only thing in it that names a
+// person, so the room feed does not carry it. The rider feed does: that token
+// is one rider's own, they rotate it themselves, and it lists only rooms they
+// are a member of, where ADR-0036 already gives them the name.
+func (e icsEvent) description() string {
+	if e.planner == "" {
+		return "In " + e.roomName + "."
+	}
+	return "Planned by " + e.planner + " in " + e.roomName + "."
 }
 
 func (s *Service) handleCalendar(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +113,7 @@ func (s *Service) handleCalendar(w http.ResponseWriter, r *http.Request) {
 		events = append(events, icsEvent{
 			id: store.UUIDString(row.ID), stamp: row.CreatedAt.Time, start: row.StartsAt.Time,
 			length: workoutLength(string(row.WorkoutJson)), summary: row.WorkoutName,
-			planner: row.CreatedBy, roomName: room.Name, roomSlug: room.Slug,
+			roomName: room.Name, roomSlug: room.Slug,
 		})
 	}
 	s.warnIfTruncated(len(rows), "room", "room", room.Slug)
@@ -105,7 +126,7 @@ func (s *Service) handleUserCalendar(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.Queries.GetUserByIcsToken(r.Context(), icsPathToken(r))
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found",
-			"That calendar link is not valid — copy the current one from your sessions page.")
+			"That calendar link is not valid — copy the current one from Settings, under Your data.")
 		return
 	}
 	rows, err := s.store.Queries.ListUserCalendar(r.Context(), db.ListUserCalendarParams{
@@ -184,8 +205,7 @@ func buildICS(calName, host string, events []icsEvent) string {
 			"DTSTART:%s\r\nDTEND:%s\r\nSUMMARY:%s\r\nDESCRIPTION:%s\r\n"+
 			"LOCATION:%s\r\nURL:https://%s/r/%s\r\nEND:VEVENT\r\n",
 			e.id, icsTime(e.stamp), icsTime(e.start), icsTime(e.start.Add(e.length)),
-			icsEscape(e.summary),
-			icsEscape("Planned by "+e.planner+" in "+e.roomName+"."),
+			icsEscape(e.summary), icsEscape(e.description()),
 			icsEscape(e.roomName), icsEscape(host), e.roomSlug)
 	}
 	b.WriteString("END:VCALENDAR\r\n")
@@ -201,6 +221,13 @@ func workoutLength(workoutJSON string) time.Duration {
 	}
 	last := segments[len(segments)-1]
 	return time.Duration(last.Start+last.Seconds) * time.Second
+}
+
+// workoutMinutes is workoutLength as a cross-room list shows it (#1693),
+// rounded the way the room's own Sessions place rounds it so one plan never
+// reads as two lengths on two screens.
+func workoutMinutes(workoutJSON string) int {
+	return int(math.Round(workoutLength(workoutJSON).Minutes()))
 }
 
 // icsTime is RFC 5545's UTC basic format.

@@ -6,7 +6,7 @@
 	import type { Trainer } from '$lib/ble/trainer';
 	import {
 		createRideSession,
-		SIGNAL_LOST_MS,
+		signalLost as isSignalLost,
 	} from '$lib/workout/session.svelte';
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
 	import { byId } from '$lib/workout/library';
@@ -32,6 +32,7 @@
 	import CountdownScreen from '$lib/room/CountdownScreen.svelte';
 	import TvOverlay from '$lib/room/TvOverlay.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
+	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import { describeBlock } from '$lib/room/view';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { downloadRideCard } from '$lib/ride/card';
@@ -336,19 +337,13 @@
 	// recorded" at the end. Stamped when the CLOCK starts rather than when
 	// Start was pressed (#1800) — the count-in is not a gap in the trainer's
 	// reporting, and stamping it there had the banner up on the first tick.
-	let ridingSince = 0;
+	let ridingSince: number | undefined = $state();
 	$effect(() => {
-		if (session?.state === 'running' && ridingSince === 0)
+		if (session?.state === 'running' && ridingSince === undefined)
 			ridingSince = Date.now();
-		if (!session) ridingSince = 0;
+		if (!session) ridingSince = undefined;
 	});
-	const signalLost = $derived(
-		!!session &&
-			session.state !== 'countdown' &&
-			session.state !== 'done' &&
-			ridingSince > 0 &&
-			nowMs - (session.sample?.at ?? ridingSince) > SIGNAL_LOST_MS,
-	);
+	const signalLost = $derived(isSignalLost(session, ridingSince, nowMs));
 
 	// The block, derived once for both screens that draw it — the riding
 	// surface and the TV (ADR-0046).
@@ -377,7 +372,10 @@
 		watts: session?.sample?.watts ?? 0,
 		cadence: session?.sample?.cadence ?? 0,
 		hr: session?.sample?.heartRate ?? 0,
-		stale: false,
+		// The tile greys out when the trainer goes quiet, the way a room's
+		// does (#2156): a hard-coded false left the TV drawing a confident 0 W
+		// through a dropout.
+		stale: signalLost,
 		target: session?.target ?? 0,
 		trace: session?.trace ?? [],
 	});
@@ -477,7 +475,9 @@
 <!-- Mid-ride the whole frame is the cave, sidebar included (#113 refined,
      ADR-0020): the layout reads soloRide.active. Setup and the summary are
      desk surfaces, the effort itself gets the dark. -->
-<main class="bg-surface text-ink flex min-h-screen flex-col px-6 py-5">
+<!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
+     surface is not a `page` — it fills the window — so it spells the two. -->
+<main class="bg-surface text-ink flex min-h-screen flex-col px-4 py-5 sm:px-6">
 	{#if !session || session.state === 'idle'}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because
@@ -556,6 +556,9 @@
 	{#if session && session.state !== 'done' && tv}
 		<!-- The room's TV, riding alone (#1632, ADR-0046): the same screen at
 		     3 m, with the roster column absent because there is nobody in it. -->
+		<!-- A snippet is a function, so the `session &&` above does not narrow
+		     inside it (#2156). -->
+		{@const ride = session}
 		<TvOverlay
 			riders={[tvRider]}
 			segments={session.segments}
@@ -567,7 +570,17 @@
 			sprint={session.sprint}
 			live
 			onExit={() => (tv = false)}
-		/>
+		>
+			<!-- Ride-critical status on the TV, the way the room's TV has had
+			     it since #1665 (errors.md: persistent status, never a toast).
+			     Without it a trainer drop, auto-pause, the resume count, the
+			     spiral release and the no-crash-safety warning were all
+			     invisible here — and the one big "Pair the trainer again"
+			     button was unreachable without leaving TV mode (#2156). -->
+			{#snippet status()}
+				<RideStatus session={ride} {signalLost} {noCrashSafety} />
+			{/snippet}
+		</TvOverlay>
 	{/if}
 
 	{#if session && session.state === 'done'}

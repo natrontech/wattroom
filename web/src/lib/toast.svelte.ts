@@ -50,6 +50,7 @@ export const toasts = {
 			tone?: 'info' | 'error';
 			undo?: () => void;
 			href?: string;
+			/** 0 means it waits for the rider — nothing else takes it down. */
 			seconds?: number;
 		},
 	) {
@@ -73,6 +74,9 @@ export const toasts = {
 				dismiss(other.id);
 			return;
 		}
+		// `seconds: 0` is the same promise for a toast the rider is not there
+		// to read (#2157): it waits for them, and Dismiss takes it down.
+		if (opts?.seconds === 0) return;
 		arm(id, (opts?.seconds ?? 4) * 1000);
 	},
 	dismiss,

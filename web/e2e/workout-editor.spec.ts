@@ -13,11 +13,12 @@ test('a workout is shaped, guarded, saved, and comes back through ?w=', async ({
 }) => {
 	await signInAs(page, 'Editor Rider', '/workouts/edit');
 	const name = `Editor Flow ${Date.now() % 100000}`;
-	const blocks = page.getByText(/· \d+ blocks/);
+	// One block is "1 block" (#2183), so the locator counts either way.
+	const blocks = page.getByText(/· \d+ blocks?\b/);
 
 	// A fresh sheet: one steady block, nothing to undo.
 	await expect(page.getByLabel('Workout name')).toHaveValue('New workout');
-	await expect(blocks).toHaveText(/1 blocks/);
+	await expect(blocks).toHaveText(/1 block\b/);
 	await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
 
 	await page.getByLabel('Workout name').fill(name);
@@ -28,7 +29,7 @@ test('a workout is shaped, guarded, saved, and comes back through ?w=', async ({
 
 	// ⌘Z has a face (#1392): the two verbs the whole sheet answers to.
 	await page.getByRole('button', { name: 'Undo' }).click();
-	await expect(blocks).toHaveText(/1 blocks/);
+	await expect(blocks).toHaveText(/1 block\b/);
 	await page.getByRole('button', { name: 'Redo' }).click();
 	await expect(blocks).toHaveText(/2 blocks/);
 

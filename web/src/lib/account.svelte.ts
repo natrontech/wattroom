@@ -40,6 +40,10 @@ export interface Me {
 	emailResendAt?: string;
 	/** Filled when the 90-day curve outgrows the setting (#26). */
 	suggestedFtp?: number;
+	// The LTHR a hard solo ride suggests (#1620, docs/SPEC.md): the last-20-min
+	// average HR of a qualifying ride, when it outgrows the set LTHR by >2 %.
+	// Absent until the rider has an LTHR to outgrow.
+	suggestedLthr?: number;
 	best20m?: number;
 	providers?: string[];
 	/** LiveKit is configured — voice/camera affordances render at all (#219). */
@@ -80,6 +84,11 @@ function createAccountStore() {
 	// Whether a new account meets the address gate (ADR-0029) — said on the
 	// sign-in page, before the gate is the first screen after it.
 	let mailAvailable = $state(false);
+	// Whether passkeys work on THIS server (#2256): the relying party comes
+	// from WATTROOM_BASE_URL and a server that cannot derive one boots with
+	// the passkey routes unmounted. passkeys.supported() answers a different
+	// question — the browser's — so both surfaces ask both.
+	let passkeysAvailable = $state(false);
 	let loaded = $state(false);
 	// The last providers read failed to reach the server at all — a first
 	// load on a restarting server used to read as "no providers configured"
@@ -99,9 +108,11 @@ function createAccountStore() {
 		try {
 			const [meRes, provRes] = await Promise.all([
 				api<Me>('/api/me'),
-				api<{ providers?: string[]; mailAvailable?: boolean }>(
-					'/api/auth/providers',
-				),
+				api<{
+					providers?: string[];
+					mailAvailable?: boolean;
+					passkeysAvailable?: boolean;
+				}>('/api/auth/providers'),
 			]);
 			if (mine !== asked) return;
 			if (meRes.ok) {
@@ -121,6 +132,7 @@ function createAccountStore() {
 			if (provRes.ok) {
 				providers = provRes.data.providers ?? [];
 				mailAvailable = provRes.data.mailAvailable ?? false;
+				passkeysAvailable = provRes.data.passkeysAvailable ?? false;
 				unreachable = false;
 			} else if (provRes.error.error === 'network') {
 				unreachable = true;
@@ -160,6 +172,9 @@ function createAccountStore() {
 		},
 		get mailAvailable() {
 			return mailAvailable;
+		},
+		get passkeysAvailable() {
+			return passkeysAvailable;
 		},
 		get providers() {
 			return providers;

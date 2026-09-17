@@ -22,10 +22,16 @@ const (
 )
 
 type golf struct {
-	rng      *rand.Rand
-	hole     int
-	holePct  float64
-	holeAt   time.Time // window start
+	rng     *rand.Rand
+	hole    int
+	holePct float64
+	holeAt  time.Time // window start
+	// When the next hole is announced, zero while a hole is running. The gap
+	// between holes is the only time the meter is back (#2234): tee sets
+	// holeAt = teeTime + golfLeadIn, so the hidden span IS the lead-in plus
+	// the hole, and teeing the instant the last one was scored left no gap
+	// at all — the meter was hidden for the whole game.
+	teeAt    time.Time
 	strokes  map[string]float64
 	window   map[string][]int
 	joined   map[string]bool
@@ -58,6 +64,16 @@ func (g *golf) advance(now time.Time, samples map[string]int, roster map[string]
 	}
 	for id := range samples {
 		g.joined[id] = true
+	}
+	// Between holes: the hole just played is scored and the next is not
+	// announced yet, so state() reports a holeAt already past and the meter
+	// comes back for golfBetween.
+	if !g.teeAt.IsZero() {
+		if !now.Before(g.teeAt) {
+			g.teeAt = time.Time{}
+			g.tee(now, g.hole+1)
+		}
+		return
 	}
 	windowEnd := g.holeAt.Add(golfWindow)
 
@@ -96,7 +112,7 @@ func (g *golf) advance(now time.Time, samples map[string]int, roster map[string]
 			g.buildPodium(roster)
 			return
 		}
-		g.tee(now.Add(golfBetween-golfLeadIn), g.hole+1)
+		g.teeAt = now.Add(golfBetween)
 	}
 }
 
@@ -122,7 +138,10 @@ func (g *golf) state(now time.Time) protocol.GameState {
 	for id := range g.joined {
 		riders[id] = protocol.GameRider{Score: math.Round(g.strokes[id])}
 	}
-	// The meter hides from the moment the hole is announced to its end (SPEC).
+	// The meter hides from the moment the hole is announced to its end
+	// (SPEC) — which is what this says, because tee announces exactly
+	// golfLeadIn before holeAt. Between holes holeAt is the one just played,
+	// so this is false and the rider gets their numbers back.
 	hidden := now.Before(g.holeAt.Add(golfWindow))
 	return protocol.GameState{
 		Mode: "watt-golf", Phase: phase, Round: g.hole, LinePct: g.holePct,

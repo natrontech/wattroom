@@ -90,9 +90,7 @@
 		.join(' ');
 </script>
 
-<div
-	class="border-muted/20 bg-surface-raised/60 w-full rounded-xl border p-2.5 backdrop-blur sm:p-3"
->
+<div class="shell-card bg-surface-raised/60 w-full p-2.5 backdrop-blur sm:p-3">
 	<div class="mb-2 flex items-center justify-between px-1">
 		<span class="eyebrow font-display">Tuesday crew · sweet spot</span>
 		<span

@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -32,6 +33,10 @@ type UserSource interface {
 // other side now rather than on their next fallback poll (#876).
 type PresenceSource interface {
 	WhereIs(userIDs []string) map[string]string
+	// Who is pedalling right now, of the ids asked about (ADR-0012's third
+	// state). Standing in a room is not riding in it, and WhereIs cannot
+	// tell them apart.
+	Riding(userIDs []string) map[string]bool
 	PresenceChanged()
 }
 
@@ -79,8 +84,16 @@ type friendJSON struct {
 	// Presence — accepted friends only (ADR-0012). Online means "app open"
 	// (the lobby socket, #251 — Slack's green dot), InRoom that they are in
 	// some room, and the room is named ONLY when the viewer is a member of it.
+	//
+	// Riding is the third state the ADR's 2026-09-09 amendment names and the
+	// panel used to be blind to (#1743): pedalling inside the hub's window,
+	// not merely standing in a room. It says nothing about WHAT they are
+	// pushing — watts never leave the room — and it is named without naming
+	// the room, which is what makes "riding elsewhere" sayable for a room the
+	// viewer is not a member of.
 	Online   bool   `json:"online,omitempty"`
 	InRoom   bool   `json:"inRoom,omitempty"`
+	Riding   bool   `json:"riding,omitempty"`
 	Room     string `json:"room,omitempty"` // slug
 	RoomName string `json:"roomName,omitempty"`
 }
@@ -113,6 +126,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	where := s.presence.WhereIs(accepted)
+	riding := s.presence.Riding(accepted)
 
 	// Hoisted out of the per-friend loop (#687): collect every distinct room
 	// slug an online friend is in, resolve them all in one query, then check
@@ -169,6 +183,10 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			slug, online := where[entry.ID]
 			entry.Online = online
 			entry.InRoom = slug != ""
+			// Gated on being in a room, not merely on the riding map: the two
+			// answers are taken back to back, so a friend who left between
+			// them reads as gone rather than as pedalling nowhere.
+			entry.Riding = slug != "" && riding[entry.ID]
 			if slug != "" {
 				// The room is named only for its own members — the boundary holds.
 				if room, ok := roomsBySlug[slug]; ok {
@@ -267,7 +285,7 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 			// (rooms/crews.go). The one people paste into the wrong box is
 			// the crew's, and "double-check it with them" sends them back to
 			// a friend who gave them the right code for a different door.
-			if len(code) == 6 {
+			if len(code) == protocol.CrewCodeLen {
 				httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "That looks like a crew's code — a crew is joined from Home. Friend codes are eight characters.", "code")
 				return
 			}
@@ -322,16 +340,40 @@ func (s *Service) handleAccept(w http.ResponseWriter, r *http.Request) {
 // handleRestore undoes a dismissal (#1652): the pending ask from them is put
 // back as it was and the tombstone that told them goes. Only the addressee
 // can, which is the person who dismissed it.
+//
+// And only where there WAS one (#2225): the insert used to run unconditionally
+// and `status` defaults to 'pending', so it did not restore a request, it made
+// one — from anybody, to the caller. Accepting it needs nothing else, so two
+// calls befriended a rider who was never asked, without the code ADR-0012
+// makes the permission to ask. The tombstone is the record that this rider
+// dismissed that ask, so it is what the undo is allowed to read.
 func (s *Service) handleRestore(w http.ResponseWriter, r *http.Request) {
 	me, target, ok := s.pair(w, r)
 	if !ok {
 		return
 	}
-	if err := s.store.Queries.RestoreFriendRequest(r.Context(), db.RestoreFriendRequestParams{
+	n, err := s.store.Queries.RestoreFriendRequest(r.Context(), db.RestoreFriendRequestParams{
 		RequesterID: target, AddresseeID: me.ID,
-	}); err != nil {
+	})
+	if err != nil {
 		httpx.Fail(w, s.log, "restore friend request", err, "That could not be undone.", "user", store.UUIDString(me.ID))
 		return
+	}
+	if n == 0 {
+		// Nothing was written: either there is no dismissal to undo, or the
+		// pair is connected again already — a second press of one undo toast,
+		// which has nothing left to do and is not an error.
+		_, err := s.store.Queries.GetFriendship(r.Context(), db.GetFriendshipParams{
+			RequesterID: me.ID, AddresseeID: target,
+		})
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "No dismissed request from them.")
+			return
+		case err != nil:
+			httpx.Fail(w, s.log, "restore friend request", err, "That could not be undone.", "user", store.UUIDString(me.ID))
+			return
+		}
 	}
 	s.clearDeclines(r, me.ID, target)
 	s.presence.PresenceChanged()

@@ -85,3 +85,56 @@ anyone pass it on to strangers.
 **The audience is therefore "a rider you share a room with, or could".** Recorded here rather than left implicit, because this ADR is the privacy record for the rider page and an unwritten widening is the one kind this ADR exists to prevent.
 
 Deliberately not narrowed. #1650 offers a `RoomsSharedByMembership` query for the three gates while `visible_rooms` keeps room access, and that stays the option if the crew should *not* be the social boundary — but that is a change to ADR-0038's thesis, argued there, not a quiet re-narrowing here.
+
+## Amendment, 2026-09-17 (#2239): the face is on the page, not beside it
+
+`GET /api/riders/{id}/avatar` served a rider's uploaded photograph to **any**
+signed-in account that held the id. No shared room, no friendship — the route
+asked nothing beyond sign-in. The widening lived in a code comment ("the face
+is what every roster, thread and friends list already shows") and in a test
+that named the viewer a `stranger` and asserted 200. It was never written
+here, which is the kind this ADR exists to prevent, so it is settled here.
+
+**Narrowed: the picture answers the page's audience and nobody else.** The
+route asks `SharesRoomOrFriends` — the same one question the page and the
+trophy case ask (#2298, #2300) — and refuses with the page's own 404 and the
+page's own sentence. Three routes, one audience, one refusal.
+
+The comment's reasoning was true of the *surfaces* and false of the *route*.
+A roster, a thread and a friends list each hand out a face only to someone
+already looking at that room, that conversation or that friendship. The route
+had no such context: ids travel, a chat backlog carries `fromId` for every
+author, and one room-mate could therefore fetch the photograph of a rider who
+had left months ago, or of anyone whose id they had ever seen anywhere. A 200
+also meant "this id exists and has uploaded a picture", which the page next to
+it declines to say.
+
+**What a rider will notice.** Faces the viewer has no standing for become the
+initial that `Avatar.svelte` already falls back to — the picture is the only
+thing that changes, never a name, a row or a link. Nothing in the client builds
+an avatar URL out of a bare id (`web/src/lib/people.svelte.ts`: "Nothing
+fetches for this"); an address only ever arrives inside a payload whose own
+route already gates. So the gate is one call in one handler, and only four
+rendered surfaces sit outside the new audience — each of them the rule working
+rather than a surface breaking:
+
+- a crew-mate listed to a crew admin, who reads the whole crew
+  (`ListCrewPeople` with `everyone`), when the crew holds no crew-visible room
+  the two share;
+- a `pending_out` request made by friend code across no shared room — ADR-0012's
+  code grants "may ask", and this ADR already says an ask you sent is not a door;
+- a crew-banned person in that admin's banned list, and a room-banned member in
+  the room's members list: the ban is exactly what takes them out of
+  `visible_rooms`.
+
+Deliberately **not** on that list: the DM header and the conversation list. A
+peer's face already leaves with the friendship — `ListDmHeads` joins an
+accepted `friendships` row, which is #1814 ("the peer's current name, face and
+level stop reaching someone the rider removed"), and the thread page learns a
+face only from a rider page that answers. `dms.handleImage`'s "unfriending ends
+the conversation, it does not black out the history" is about pictures already
+*sent into* a thread, and a peer's own portrait was never one of those.
+
+**Not narrowed with it: the audience itself.** This route now reads
+`visible_rooms` like the other two, so the 2026-09-10 amendment above still
+holds — a room you may both enter, crew-visible rooms and grants included.

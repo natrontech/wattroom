@@ -7,7 +7,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
-	import { fetchCrew, joinCrew } from '$lib/crew';
+	import { fetchCrew, joinCrew, rememberCrewDoor } from '$lib/crew';
 	import { presence } from '$lib/presence.svelte';
 	import type { PageData } from './$types';
 	import { reachable } from '$lib/nav/crews';
@@ -15,6 +15,19 @@
 	let { data }: { data: PageData } = $props();
 	let busy = $state(false);
 	let error = $state<string | null>(null);
+
+	// The door's read no longer records the invite — a GET that wrote let any
+	// page set a rider's pending invite by linking them at it (#2248). The
+	// page keeps it instead, once per code, for the rider the door says is
+	// invited. Nothing on screen depends on it: what it buys is a sign-up
+	// finished in another tab landing on this crew (#2144).
+	let remembered: string | null = null;
+	$effect(() => {
+		const code = data.code;
+		if (!data.crew?.invited || remembered === code) return;
+		remembered = code;
+		void rememberCrewDoor(code);
+	});
 
 	async function join() {
 		error = null;
@@ -61,7 +74,7 @@
 					class="rounded-xl"
 				/>
 			</div>
-			<h1 class="font-display mt-3 text-2xl font-bold">{data.crew.name}</h1>
+			<h1 class="page-title-sm mt-3">{data.crew.name}</h1>
 			{#if data.crew.inCrew && data.crew.id}
 				<!-- Your own crew's link, followed again: the door is already
 				     open, so the button is the page, not a Join that does nothing. -->
@@ -79,9 +92,10 @@
 				<p class="text-muted mt-2 text-sm">
 					This crew removed you. Its code will not let you back in.
 				</p>
-				<a href="/home" class="btn btn-secondary btn-lg mt-6"
-					>Back to your rooms</a
-				>
+				<!-- Home, not "your rooms" (#2183): a rider who arrived here by
+				     invitation may have none, which is the whole point of the
+				     door. The crew page's own banner says Home too. -->
+				<a href="/home" class="btn btn-secondary btn-lg mt-6">Back to Home</a>
 			{:else}
 				<!-- No headcount here (#1399): whoever holds the code is still a
 				     stranger to the crew, and how many are in it is not the
@@ -94,7 +108,13 @@
 					disabled={busy}
 					class="btn btn-primary btn-lg mt-6">Join {data.crew.name}</button
 				>
-				{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
+				{#if error}
+					<!-- The same shape the join sheet uses for the same refusal
+					     (#2183, errors.md: a submit failure is a banner). -->
+					<div class="mt-4 text-left">
+						<Banner tone="error">{error}</Banner>
+					</div>
+				{/if}
 				<!-- Privacy is architecture (WATTROOM.md): say what joining shows
 				     before the button. Joining a crew shows nobody anything yet. -->
 				<p class="text-muted-dim mt-4 text-[11px]">
@@ -119,7 +139,7 @@
 			<a
 				href="/home"
 				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"
-				>Back to your rooms</a
+				>Back to Home</a
 			>
 		{/if}
 	</div>

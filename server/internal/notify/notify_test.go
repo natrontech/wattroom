@@ -148,7 +148,10 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
-	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, sessionPlanned)
+	s.sessionMail(t.Context(), sessionNote{
+		room: h.room, workout: "Sweet Spot 2×20", startsAt: starts,
+		actor: h.planner.ID, change: sessionPlanned,
+	})
 
 	if len(fake.payloads) != 1 {
 		t.Fatalf("sent %d emails, want exactly 1 (opt-in member only)", len(fake.payloads))
@@ -198,7 +201,10 @@ func TestSessionMailSkipsABannedMember(t *testing.T) {
 
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
-	s.sessionMail(t.Context(), h.room, "Sweet Spot 2\u00d720", starts, h.planner.ID, sessionPlanned)
+	s.sessionMail(t.Context(), sessionNote{
+		room: h.room, workout: "Sweet Spot 2\u00d720", startsAt: starts,
+		actor: h.planner.ID, change: sessionPlanned,
+	})
 	if len(fake.payloads) != 1 {
 		t.Fatalf("sent %d before the ban, want 1 — test proves nothing", len(fake.payloads))
 	}
@@ -210,7 +216,10 @@ func TestSessionMailSkipsABannedMember(t *testing.T) {
 	}
 
 	fake.payloads = nil
-	s.sessionMail(t.Context(), h.room, "Sweet Spot 2\u00d720", starts, h.planner.ID, sessionPlanned)
+	s.sessionMail(t.Context(), sessionNote{
+		room: h.room, workout: "Sweet Spot 2\u00d720", startsAt: starts,
+		actor: h.planner.ID, change: sessionPlanned,
+	})
 	if len(fake.payloads) != 0 {
 		t.Errorf("mailed a banned member: %v", fake.payloads[0]["to"])
 	}
@@ -247,7 +256,10 @@ func TestSessionMailSkipsACrewBannedMember(t *testing.T) {
 	if _, err := h.store.Pool.Exec(t.Context(), "update rooms set crew_id = $2 where id = $1", h.room.ID, crew.ID); err != nil {
 		t.Fatalf("place room in crew: %v", err)
 	}
-	s.sessionMail(t.Context(), h.room, "Sweet Spot", starts, h.planner.ID, sessionPlanned)
+	s.sessionMail(t.Context(), sessionNote{
+		room: h.room, workout: "Sweet Spot", startsAt: starts,
+		actor: h.planner.ID, change: sessionPlanned,
+	})
 	if len(fake.payloads) != 1 {
 		t.Fatalf("sent %d before the ban, want 1 — test proves nothing", len(fake.payloads))
 	}
@@ -258,7 +270,10 @@ func TestSessionMailSkipsACrewBannedMember(t *testing.T) {
 		t.Fatalf("crew ban: %v", err)
 	}
 	fake.payloads = nil
-	s.sessionMail(t.Context(), h.room, "Sweet Spot", starts, h.planner.ID, sessionPlanned)
+	s.sessionMail(t.Context(), sessionNote{
+		room: h.room, workout: "Sweet Spot", startsAt: starts,
+		actor: h.planner.ID, change: sessionPlanned,
+	})
 	if len(fake.payloads) != 0 {
 		t.Errorf("mailed a crew-banned member: %v", fake.payloads[0]["to"])
 	}
@@ -272,7 +287,10 @@ func TestSessionRescheduledSaysMoved(t *testing.T) {
 
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 2, 18, 30, 0, 0, time.Local)
-	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, sessionMoved)
+	s.sessionMail(t.Context(), sessionNote{
+		room: h.room, workout: "Sweet Spot 2×20", startsAt: starts,
+		actor: h.planner.ID, change: sessionMoved,
+	})
 
 	if len(fake.payloads) != 1 {
 		t.Fatalf("sent %d emails, want exactly 1", len(fake.payloads))
@@ -297,7 +315,10 @@ func TestSessionCancelledSaysItIsNotHappening(t *testing.T) {
 
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 3, 19, 0, 0, 0, time.Local)
-	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, sessionCancelled)
+	s.sessionMail(t.Context(), sessionNote{
+		room: h.room, workout: "Sweet Spot 2×20", startsAt: starts,
+		actor: h.planner.ID, change: sessionCancelled,
+	})
 
 	if len(fake.payloads) != 1 {
 		t.Fatalf("sent %d emails, want exactly 1", len(fake.payloads))
@@ -349,7 +370,10 @@ func TestSessionMailUsesEachRidersZone(t *testing.T) {
 	s := service(h, srv.URL)
 	// 17:00 UTC: 19:00 in Zurich, 13:00 in New York.
 	starts := time.Date(2026, 9, 8, 17, 0, 0, 0, time.UTC)
-	s.sessionMail(t.Context(), h.room, "Sweet Spot 2×20", starts, h.planner.ID, sessionPlanned)
+	s.sessionMail(t.Context(), sessionNote{
+		room: h.room, workout: "Sweet Spot 2×20", startsAt: starts,
+		actor: h.planner.ID, change: sessionPlanned,
+	})
 
 	for _, want := range []struct {
 		user db.User
@@ -565,7 +589,10 @@ func TestSessionMailCollapsesControlCharacters(t *testing.T) {
 	s := service(h, srv.URL)
 	room := h.room
 	room.Name = "Velvet\r\nBcc: victim@example.test\nHammer"
-	s.sessionMail(t.Context(), room, "Openers\x00", time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local), h.planner.ID, sessionPlanned)
+	s.sessionMail(t.Context(), sessionNote{
+		room: room, workout: "Openers\x00", startsAt: time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local),
+		actor: h.planner.ID, change: sessionPlanned,
+	})
 	if len(fake.payloads) != 1 {
 		t.Fatalf("sent %d", len(fake.payloads))
 	}

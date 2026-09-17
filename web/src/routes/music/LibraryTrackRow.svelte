@@ -103,7 +103,7 @@
 					max="399"
 					value={track.bpm ?? ''}
 					placeholder="–"
-					class="input mt-1 w-full font-mono tabular-nums"
+					class="input num mt-1 w-full"
 				/>
 			</label>
 			<label class="block sm:col-span-4">

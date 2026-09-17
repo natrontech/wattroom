@@ -16,6 +16,7 @@ import {
 	soloRide,
 	toleranceBand,
 	SIGNAL_LOST_MS,
+	signalLost,
 } from './session.svelte';
 import { SPRINT_LEAD_SECONDS } from './sprint-window.svelte';
 import type { Workout } from './types';
@@ -731,6 +732,84 @@ describe('the HUD feed (#1665)', () => {
 			fault: 'trainer',
 		});
 		vi.useRealTimers();
+	});
+
+	// The rider who alt-tabbed away from a trainer that reports cadence or
+	// speed and never watts (#1849): it delivers no first sample at all, so a
+	// fault rule of the shape `sample && …` never fires and the one surface
+	// they are looking at says nothing (#2200). Silence counts from the clock.
+	it('says the trainer is quiet when no sample ever arrives', async () => {
+		vi.useFakeTimers();
+		let t = 0;
+		const trainer = new SimulatedTrainer();
+		const session = createRideSession({
+			trainer,
+			workout,
+			ftp: 200,
+			now: () => t,
+		});
+		await startRiding(session);
+		hud.published.length = 0;
+
+		session.tick();
+		expect(hud.published.at(-1)?.fault).toBeUndefined();
+
+		t = SIGNAL_LOST_MS + 1000;
+		session.tick();
+		expect(hud.published.at(-1)).toMatchObject({ watts: 0, fault: 'trainer' });
+		vi.useRealTimers();
+	});
+});
+
+describe('signalLost (#2158)', () => {
+	const riding = { state: 'running' as const, sample: null };
+	const started = 1_000;
+
+	it('says so when a trainer never sends a first sample at all', () => {
+		// The case the old rule could not see: a trainer that streams frames
+		// with no power field delivers no sample, so `sample && …` was false
+		// for the whole ride. /ramp ran its full length that way.
+		expect(signalLost(riding, started, started + SIGNAL_LOST_MS + 1)).toBe(
+			true,
+		);
+		expect(signalLost(riding, started, started + SIGNAL_LOST_MS - 1)).toBe(
+			false,
+		);
+	});
+
+	it('counts from the last sample once there is one', () => {
+		const sampled = { state: 'running' as const, sample: { at: 5_000 } };
+		expect(signalLost(sampled, started, 5_000 + SIGNAL_LOST_MS + 1)).toBe(true);
+		expect(signalLost(sampled, started, 5_000 + SIGNAL_LOST_MS - 1)).toBe(
+			false,
+		);
+	});
+
+	it('is quiet before the clock starts, and once the ride is done', () => {
+		// ridingSince is stamped when the CLOCK starts (#1800), so the
+		// count-in is not a gap in the trainer's reporting. `undefined` is
+		// "not started" — 0 is a timestamp, and an injected clock starts there.
+		expect(signalLost(riding, undefined, started + 10 * SIGNAL_LOST_MS)).toBe(
+			false,
+		);
+		expect(signalLost(riding, 0, SIGNAL_LOST_MS + 1)).toBe(true);
+		expect(
+			signalLost(
+				{ state: 'countdown', sample: null },
+				started,
+				started + 10 * SIGNAL_LOST_MS,
+			),
+		).toBe(false);
+		expect(
+			signalLost(
+				{ state: 'done', sample: null },
+				started,
+				started + 10 * SIGNAL_LOST_MS,
+			),
+		).toBe(false);
+		expect(signalLost(null, started, started + 10 * SIGNAL_LOST_MS)).toBe(
+			false,
+		);
 	});
 });
 

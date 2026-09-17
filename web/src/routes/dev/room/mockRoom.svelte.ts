@@ -66,13 +66,12 @@ export const ROOM_NAME = 'Thursday Sufferfest';
 
 // The real module's shapes, not a second copy of them (consolidation sweep
 // 2026-09-09): the gallery half-mocked what it also half-imported.
-export {
-	bandWatts,
-	TILE_METRICS,
-	type Block,
-	type TileMetric,
-} from '$lib/room/view';
-import { bandWatts, type Block } from '$lib/room/view';
+export { TILE_METRICS, type Block, type TileMetric } from '$lib/room/view';
+// The band moved to the one place the app and the scorer share (#2159); the
+// gallery re-exports it from there so its callers keep one import.
+export { toleranceBand } from '$lib/workout/guards';
+import { type Block } from '$lib/room/view';
+import { toleranceBand } from '$lib/workout/guards';
 
 /** Shared by the ride screen's notch bar and TV mode's delta — same data, two distances. */
 
@@ -414,7 +413,9 @@ export function createRoom() {
 							);
 				if (rider.target > 0) {
 					banded[i].ridden++;
-					if (Math.abs(sample.watts - rider.target) <= bandWatts(rider.target))
+					if (
+						Math.abs(sample.watts - rider.target) <= toleranceBand(rider.target)
+					)
 						banded[i].inside++;
 					rider.execution = banded[i].inside / banded[i].ridden;
 				}
@@ -617,6 +618,8 @@ export function createRoom() {
 				Math.max(0.8, Math.round((bias + step) * 100) / 100),
 			);
 		},
+		// The mock room always drives: nothing here arbitrates a claim (#2075).
+		actuating: true,
 		get bias() {
 			return bias;
 		},

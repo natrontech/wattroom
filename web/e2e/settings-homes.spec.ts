@@ -138,3 +138,104 @@ test('signing out is on the you-menu, where a rider reaches for it', async ({
 	// entry needs nowhere to navigate to.
 	await expect(page).toHaveURL(/\/login/);
 });
+
+test("a refused profile field says so under the field, and nothing says 'Saved.'", async ({
+	page,
+}) => {
+	await signInAs(page, 'Profile Errors', '/settings/profile');
+
+	// The server names the field it refused (`WriteFieldError`), and the form
+	// drew that for the display name alone — so a rejected FTP, weight, LTHR
+	// or address appeared only in the banner at the top, away from the box to
+	// fix (#2166, errors.md: "field-level → inline under the field").
+	const ftpField = page.locator('label').filter({ hasText: 'FTP (W)' });
+	await ftpField.getByRole('spinbutton').fill('900');
+	await page.getByRole('button', { name: 'Save' }).click();
+
+	await expect(ftpField.getByText(/FTP has to be between/)).toBeVisible();
+	await expect(ftpField.getByRole('spinbutton')).toHaveAttribute(
+		'aria-invalid',
+		'true',
+	);
+	// And the refusal is the whole answer: the status line beside Save used to
+	// read "Saved." over a form that had saved nothing.
+	await expect(page.getByText('Saved.')).toHaveCount(0);
+
+	// An emptied name is refused too. It used to be swallowed — the form sent
+	// the stored name in its place, said "Saved." and refilled the box.
+	await ftpField.getByRole('spinbutton').fill('200');
+	const nameField = page.locator('label').filter({ hasText: 'display name' });
+	await nameField.getByRole('textbox').fill('');
+	await page.getByRole('button', { name: 'Save' }).click();
+	await expect(nameField.getByText(/1-60 characters/)).toBeVisible();
+	await expect(nameField.getByRole('textbox')).toHaveValue('');
+});
+
+test('an account refresh does not overwrite what the rider is typing', async ({
+	page,
+}) => {
+	await signInAs(page, 'Profile Dirty', '/settings/profile');
+	const ftp = page
+		.locator('label')
+		.filter({ hasText: 'FTP (W)' })
+		.getByRole('spinbutton');
+	await ftp.fill('275');
+
+	// A picture upload replaces `account.me`, and the form used to re-fill
+	// itself from it — so a typed FTP went back to the server's with nothing
+	// said (#2165). So does a provider disconnect, and a save from any other
+	// panel; this is the cheapest of the three to drive.
+	await page.setInputFiles('input[type=file]', {
+		name: 'face.png',
+		mimeType: 'image/png',
+		// A 1×1 PNG: the smallest thing the upload path accepts.
+		buffer: Buffer.from(
+			'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+			'base64',
+		),
+	});
+	await expect(page.getByText('Picture saved.')).toBeVisible();
+
+	await expect(ftp).toHaveValue('275');
+});
+
+test('a switch that saves itself goes back when the save is refused', async ({
+	page,
+}) => {
+	// The account as the switch needs it — mail configured, an address
+	// confirmed — and a server that refuses the save (#2181).
+	await page.route('**/api/me', async (route) => {
+		if (route.request().method() !== 'GET') {
+			return route.fulfill({
+				status: 400,
+				json: {
+					error: 'validation_error',
+					message: 'That could not be saved.',
+				},
+			});
+		}
+		const res = await route.fetch();
+		const me = await res.json();
+		return route.fulfill({
+			json: {
+				...me,
+				mailAvailable: true,
+				emailVerified: '2026-09-01T00:00:00Z',
+				notifyPlanned: false,
+			},
+		});
+	});
+	await signInAs(page, 'Notify Refused', '/settings/notifications');
+
+	const box = page.getByRole('checkbox', { name: /Email me about sessions/ });
+	await expect(box).toBeVisible({ timeout: 15_000 });
+	await expect(box).not.toBeChecked();
+	// A plain click, not check(): check() verifies the box ENDED UP ticked,
+	// and the whole point here is that it does not.
+	await box.click();
+
+	// Nothing was saved, so the tick cannot stay: it said "on" over a mail
+	// that will never come.
+	await expect(box).not.toBeChecked();
+	await expect(page.getByText('That could not be saved.')).toBeVisible();
+});

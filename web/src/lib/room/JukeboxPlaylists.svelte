@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { toasts } from '$lib/toast.svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
@@ -69,7 +70,10 @@
 		const next = { ...autoplay, activePlaylistId: id };
 		const res = await updateAutoplay(slug, next);
 		if (!res.ok) {
-			createError = res.error.message;
+			// A toast, not the create form's error line (#2179): this refusal
+			// used to appear under the "new playlist" box, a panel away from
+			// the row that refused, and stayed there (errors.md).
+			toasts.push(res.error.message, { tone: 'error' });
 			return;
 		}
 		autoplay = res.data ?? next;

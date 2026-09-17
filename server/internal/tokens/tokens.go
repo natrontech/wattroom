@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -19,6 +20,10 @@ import (
 )
 
 const maxTokensPerUser = 10 // plenty for one rider's agents; caps abuse
+
+// errTokenCap carries the ceiling out of the locked transaction: a refusal is
+// not a database failure and must not be reported as one.
+var errTokenCap = errors.New("tokens: per-account cap reached")
 
 type UserSource interface {
 	User(r *http.Request) (db.User, bool)
@@ -91,6 +96,15 @@ func (rs readSource) User(r *http.Request) (db.User, bool) {
 }
 
 func (rs readSource) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+	// A mutating request goes straight to the cookie source, which is the one
+	// CSRF boundary (#678, #2227): `User` resolves a session without checking
+	// the Origin — that check lives in `RequireUser` alone — so shortcutting
+	// through it here took the boundary off every mutating route of every
+	// service built on this source, `DELETE /api/rides/{id}` included. A
+	// bearer is GET-only anyway (ADR-0017), so there is nothing to lose.
+	if r.Method != http.MethodGet {
+		return rs.cookie.RequireUser(w, r, signInMessage)
+	}
 	if user, ok := rs.User(r); ok {
 		return user, true
 	}
@@ -124,18 +138,6 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"A token name has to be 1-60 characters.", "name")
 		return
 	}
-	existing, err := s.store.Queries.ListUserTokens(r.Context(), user.ID)
-	if err != nil {
-		httpx.Fail(w, s.log, "token list failed", err, "Tokens could not be loaded.")
-		return
-	}
-	if len(existing) >= maxTokensPerUser {
-		// A per-account ceiling is a 429 (errors.md), like the mail budget.
-		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
-			"Ten tokens is the cap — revoke one you no longer use first.")
-		return
-	}
-
 	secret := make([]byte, 32)
 	if _, err := rand.Read(secret); err != nil {
 		httpx.Fail(w, s.log, "token entropy failed", err, "The token could not be created.")
@@ -143,9 +145,30 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	raw := "wrt_" + hex.EncodeToString(secret)
 	hash := sha256.Sum256([]byte(raw))
-	row, err := s.store.Queries.CreateToken(r.Context(), db.CreateTokenParams{
-		UserID: user.ID, Name: req.Name, TokenHash: hash[:],
+	// Count and insert in one transaction holding the rider's row (#2258).
+	// Listing then inserting is two statements: ten concurrent creates each
+	// read nine and each landed, which is the shape #824 closed on the
+	// removal side and left open on this one.
+	var row db.CreateTokenRow
+	err := s.store.WithUserLocked(r.Context(), user.ID, func(q *db.Queries) error {
+		n, err := q.CountUserTokens(r.Context(), user.ID)
+		if err != nil {
+			return err
+		}
+		if n >= maxTokensPerUser {
+			return errTokenCap
+		}
+		row, err = q.CreateToken(r.Context(), db.CreateTokenParams{
+			UserID: user.ID, Name: req.Name, TokenHash: hash[:],
+		})
+		return err
 	})
+	if errors.Is(err, errTokenCap) {
+		// A per-account ceiling is a 429 (errors.md), like the mail budget.
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"Ten tokens is the cap — revoke one you no longer use first.")
+		return
+	}
 	if err != nil {
 		httpx.Fail(w, s.log, "token create failed", err, "The token could not be created.")
 		return

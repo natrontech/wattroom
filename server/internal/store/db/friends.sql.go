@@ -304,8 +304,13 @@ func (q *Queries) PruneFriendDeclines(ctx context.Context, dollar_1 int32) (int6
 	return result.RowsAffected(), nil
 }
 
-const restoreFriendRequest = `-- name: RestoreFriendRequest :exec
-insert into friendships (requester_id, addressee_id) values ($1, $2)
+const restoreFriendRequest = `-- name: RestoreFriendRequest :execrows
+insert into friendships (requester_id, addressee_id)
+select $1, $2
+where exists (
+    select 1 from friend_declines
+    where requester_id = $1 and addressee_id = $2
+)
 on conflict do nothing
 `
 
@@ -314,9 +319,15 @@ type RestoreFriendRequestParams struct {
 	AddresseeID pgtype.UUID
 }
 
-// The undo of a dismissal (#1652): their pending ask, back as it was. A pair
-// that is already connected again is left alone.
-func (q *Queries) RestoreFriendRequest(ctx context.Context, arg RestoreFriendRequestParams) error {
-	_, err := q.db.Exec(ctx, restoreFriendRequest, arg.RequesterID, arg.AddresseeID)
-	return err
+// The undo of a dismissal (#1652) and only that (#2225): the ask comes back
+// where the tombstone says there was one to dismiss. Unconditional, this
+// insert MADE a pending request — `status` defaults to 'pending' — so two
+// calls, restore then accept, befriended a stranger who was never asked.
+// A pair that is already connected again is left alone by the conflict.
+func (q *Queries) RestoreFriendRequest(ctx context.Context, arg RestoreFriendRequestParams) (int64, error) {
+	result, err := q.db.Exec(ctx, restoreFriendRequest, arg.RequesterID, arg.AddresseeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

@@ -100,7 +100,42 @@ export function pairedElsewhere(
 ): string | undefined {
 	const where = pairing?.elsewhere?.[kind];
 	if (!where) return undefined;
-	return where === here ? 'in another tab' : `on your ${where}`;
+	return `${where === here ? 'in' : 'on'} ${otherScreen(where, here)}`;
+}
+
+/**
+ * The rider's other screen, as the bare place: "your phone", "another tab".
+ *
+ * One name for it (#2075): the card that says "Paired on your phone" and the
+ * one that says "Targets come from your phone" are about the same screen, and
+ * a rider reading both must not have to work out that they are.
+ */
+function otherScreen(where: string, here: string): string {
+	return where === here ? 'another tab' : `your ${where}`;
+}
+
+/**
+ * The one line a screen that no longer drives the trainer says (#2075) —
+ * "Targets come from your phone", or undefined while this screen is the one
+ * driving.
+ *
+ * The same claim `mayActuate` refuses on, said as a sentence: a screen that
+ * keeps its GATT link, its samples and its Forget and writes no control point
+ * (ADR-0025, amended) otherwise draws the ordinary live card and says nothing
+ * at all about where the resistance comes from.
+ *
+ * It names the other screen and stops there. Nothing is broken, nothing has
+ * to be fixed, and a tone that implied either would be a fault reported where
+ * there is none (errors.md). Written once here because two surfaces say it —
+ * the trainer card, and the bias trim it explains.
+ */
+export function trainerTargetsNote(
+	pairing: SensorPairing | undefined,
+	here: string,
+): string | undefined {
+	const where = pairing?.elsewhere?.trainer;
+	if (!where) return undefined;
+	return `Targets come from ${otherScreen(where, here)}`;
 }
 
 /**

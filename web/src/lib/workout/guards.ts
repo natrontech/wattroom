@@ -10,6 +10,25 @@
  * numbers here are docs/SPEC.md's — do not tune them in code.
  */
 
+import * as protocol from '$lib/protocol';
+
+/**
+ * docs/SPEC.md's tolerance band around a target, in watts: ±5 % with a ±10 W
+ * floor. The numbers come from the generated protocol (#2122), so the server
+ * that scores the ride and the app that draws "on target" cannot disagree
+ * about what counts.
+ *
+ * Here rather than beside the session, and re-exported from there: the room's
+ * view reads it too, and it is a plain function — nothing that pulls a rune
+ * module into a module that has no state of its own (#2159).
+ */
+export function toleranceBand(target: number): number {
+	return Math.max(
+		target * protocol.TargetBandFraction,
+		protocol.TargetBandFloorWatts,
+	);
+}
+
 export const DEFAULTS = {
 	/** Below this cadence AND below pedallingWatts, the rider has stopped. */
 	pauseCadence: 5,

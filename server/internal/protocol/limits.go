@@ -17,6 +17,8 @@ block below, and an expand migration.
 
 package protocol
 
+import "math"
+
 // From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
 // zones derive from (ADR-0014). Both sides read these; neither retypes them.
 const (
@@ -26,4 +28,33 @@ const (
 	MaxWeightKg = 200
 	MinLthrBpm  = 100
 	MaxLthrBpm  = 210
+
+	// A chat line, in CHARACTERS: the server counts runes because counting
+	// bytes cut non-Latin scripts off at half the advertised limit (#219),
+	// and the box that types it has to cap at the same number.
+	MaxMessageChars = 500
+
+	// The two codes a rider is handed, and the one thing that tells them
+	// apart at a glance (#1236): a friend's is eight characters, a crew's
+	// six. Both sides check the length to say WHICH door a pasted code is
+	// for, so both sides have to agree on it.
+	FriendCodeLen = 8
+	CrewCodeLen   = 6
+
+	// The tolerance band a second is scored in: within ±5 % of target, floor
+	// ±10 W (#2159). The floor is what keeps an easy block scoreable — at
+	// 60 W, 5 % is 3 W, which is inside a trainer's own error.
+	TargetBandFraction   = 0.05
+	TargetBandFloorWatts = 10
 )
+
+// TargetBand is docs/SPEC.md's band around a target, in watts.
+//
+// Here rather than in `stats`, which owns the scoring rule, because `hub`
+// needs the same number and does not import `stats` — and a second copy of a
+// SPEC number is exactly what #2122 is about. The web app has one of these
+// too (`$lib/workout/guards.ts`), reading the constants above through the
+// generated protocol.
+func TargetBand(target float64) float64 {
+	return math.Max(target*TargetBandFraction, TargetBandFloorWatts)
+}

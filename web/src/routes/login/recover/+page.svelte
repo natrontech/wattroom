@@ -55,9 +55,7 @@
 	></div>
 
 	<div class="relative w-full max-w-md">
-		<div
-			class="border-muted/20 bg-surface-raised/80 rounded-xl border px-8 py-10 backdrop-blur"
-		>
+		<div class="shell-card bg-surface-raised/80 px-8 py-10 backdrop-blur">
 			<a href="/" class="inline-block" aria-label="WattRoom home">
 				<Logo size={44} wordmark />
 			</a>

@@ -37,7 +37,10 @@ func setup(t *testing.T) (*Service, *testx.Users, db.User, db.User) {
 		return u
 	}
 	alice, bob := newUser("alice"), newUser("bob")
-	s := New(st, users, slog.New(slog.DiscardHandler))
+	// One source for both routes here: the tests below are about the trophy
+	// case, not about which door a caller came through — TestOnlyTheRiders
+	// OwnCaseTakesABearer is the one that cares.
+	s := New(st, users, users, slog.New(slog.DiscardHandler))
 	return s, users, alice, bob
 }
 

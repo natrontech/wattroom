@@ -24,15 +24,18 @@
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	// Leaving while standing in the room: shared with the rail's button, the
+	// mobile chip (#251) and the messages list's row menu (#2171).
+	import { leaveRoom } from '$lib/room/leave';
 	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
+	import { divertDmsWhileRiding } from '$lib/messages/announce';
 	import { friends } from '$lib/friends/friends.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import { activePlace } from '$lib/nav/pages';
-	import { openMember } from '$lib/nav/open-member';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
@@ -159,6 +162,13 @@
 			soloRide.active
 		);
 	});
+	// A solo ride has no timeline to write a DM into (#1743), so it takes the
+	// line and leaves it to the unread badge in the sidebar, which was already
+	// carrying it. Registered from here rather than from /ride and /ramp:
+	// `soloRide` is the app-wide answer to "is a ride under way", and this
+	// layout already reads it for the cave and the HUD.
+	$effect(() => divertDmsWhileRiding(() => untrack(() => soloRide.active)));
+
 	// The shell's sign-in hand-off (#1941): the token arrives over IPC and the
 	// app decides — /login redeems it; a signed-in shell says so and stays put.
 	$effect(() => {
@@ -230,27 +240,20 @@
 		page.url.pathname.startsWith('/r/') ? (page.params?.slug ?? '') : '',
 	);
 
-	// A rider named in a room's people line (#540). The rail knows the name and
-	// the slug; the id — and so their page — comes from the room's member list,
-	// which is member-gated server-side.
-	const showMember = (slug: string, name: string) =>
-		void openMember(slug, name, (href) => void goto(href));
-
 	// Below md the sidebar is a drawer (#391). It closes on navigation —
 	// leaving it open over the page you just asked for is the classic
 	// mobile-nav bug.
-	let drawer = $state(false);
-	// Mirrored for the room's shell (#1625): one Escape, one layer.
-	$effect(() => {
-		navDrawer.open = drawer;
-	});
+	// `navDrawer` holds it, and the room shell shares it (#1625): one Escape,
+	// one layer. It used to be a local $state mirrored INTO the store, one way
+	// — so anything outside this file that closed the drawer had it reopened by
+	// the next flush, which is why a menu item could not step it aside (#2153).
 	// Focus follows the drawer (ux.md): into its first row on open, back to
 	// the button that opened it on close, and Escape closes it.
 	let drawerBox = $state<HTMLElement | null>(null);
 	let hamburger = $state<HTMLElement | null>(null);
 	let drawerWasOpen = false;
 	$effect(() => {
-		const open = drawer;
+		const open = navDrawer.open;
 		if (open === drawerWasOpen) return;
 		drawerWasOpen = open;
 		if (open) {
@@ -265,7 +268,7 @@
 	});
 	$effect(() => {
 		page.url.pathname;
-		drawer = false;
+		navDrawer.open = false;
 	});
 	// And it steps aside for any dialog opened from inside it. Below md the
 	// drawer is z-50 while dialogs are z-40 — they stay there for the
@@ -276,17 +279,8 @@
 	// still buried (#2142: the settings modals do not open on a phone). The
 	// count answers for every dialog, with no wiring per button.
 	$effect(() => {
-		if (modals.open > 0) drawer = false;
+		if (modals.open > 0) navDrawer.open = false;
 	});
-
-	// Leaving while standing in the room: the page must leave too, or you
-	// stare at a room you are no longer in with no way back in (rider report).
-	// Shared by the rail's button and the mobile chip (#251).
-	function leaveRoom() {
-		roomConnection.leave();
-		if (page.url.pathname.startsWith('/r/'))
-			void goto('/home', { replaceState: true });
-	}
 
 	$effect(() => {
 		if (gated) {
@@ -319,7 +313,7 @@
 
 <svelte:window
 	onkeydown={(e) => {
-		if (e.key === 'Escape' && drawer) drawer = false;
+		if (e.key === 'Escape' && navDrawer.open) navDrawer.open = false;
 	}}
 />
 
@@ -398,11 +392,11 @@
 		     capability gating hiding affordances that need a trainer instead of
 		     redirecting to a separate spectator view (ADR-0020 amendment,
 		     2026-09-05). -->
-		{#if drawer}
+		{#if navDrawer.open}
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 			<div
 				class="bg-paper/60 fixed inset-0 z-40 md:hidden"
-				onclick={() => (drawer = false)}
+				onclick={() => (navDrawer.open = false)}
 			></div>
 		{/if}
 		<!-- Off-screen is not gone (audit 2026-09-09): translated away, the
@@ -412,8 +406,8 @@
 		     until it is open. -->
 		<div
 			bind:this={drawerBox}
-			inert={device.narrow && !drawer}
-			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 {drawer
+			inert={device.narrow && !navDrawer.open}
+			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 {navDrawer.open
 				? 'translate-x-0 shadow-2xl'
 				: '-translate-x-full'}"
 			style={titleBar ? `top: ${titleBar}px` : ''}
@@ -429,13 +423,12 @@
 				connectedSlug={roomConnection.current?.slug ?? ''}
 				live={roomConnection.current?.live.tick?.state.phase === 'running'}
 				onLeave={leaveRoom}
-				onMember={showMember}
 			/>
 		</div>
 		<!-- inert while the drawer is open (#1969): Tab past its last row used
 		     to walk under the backdrop. -->
 		<div
-			inert={device.narrow && drawer}
+			inert={device.narrow && navDrawer.open}
 			class="flex min-w-0 flex-1 flex-col overflow-hidden"
 		>
 			{#if !caved}
@@ -448,10 +441,10 @@
 				>
 					<button
 						bind:this={hamburger}
-						onclick={() => (drawer = true)}
+						onclick={() => (navDrawer.open = true)}
 						class="text-muted hover:text-ink -m-1 grid h-11 w-11 place-items-center rounded"
 						aria-label="open navigation"
-						aria-expanded={drawer}><Menu size={20} /></button
+						aria-expanded={navDrawer.open}><Menu size={20} /></button
 					>
 					<Logo
 						size={18}
@@ -503,7 +496,7 @@
 			     button bottom right. Below md only — every wider window still has
 			     the sidebar standing there (#412). -->
 			<button
-				onclick={() => (drawer = true)}
+				onclick={() => (navDrawer.open = true)}
 				class="bg-surface-raised ring-ink/15 fixed left-4 z-40 grid h-12 w-12
 				place-items-center rounded-full shadow-lg ring-1 md:hidden {overComposer
 					? 'bottom-20'

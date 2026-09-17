@@ -159,47 +159,6 @@ func (q *Queries) ListUserRideTimes(ctx context.Context, userID pgtype.UUID) ([]
 	return items, nil
 }
 
-const sharesRoomOrFriends = `-- name: SharesRoomOrFriends :one
-select (
-    exists (
-        -- ` + "`" + `visible_rooms` + "`" + ` is the boundary, not a hand-written membership join
-        -- (ADR-0038, third amendment). #1110 fixed this very query for missing
-        -- ` + "`" + `role != 'banned'` + "`" + `; going through the view is what stops the next
-        -- one being missed, and it brings crew bans and grants along free.
-        select 1 from visible_rooms a
-        join visible_rooms b on a.room_id = b.room_id
-        where a.user_id = $1 and b.user_id = $2
-    )
-    or exists (
-        select 1 from friendships
-        where status = 'accepted'
-          and ((requester_id = $1 and addressee_id = $2)
-            or (requester_id = $2 and addressee_id = $1))
-    )
-    or exists (
-        -- ADR-0024: a pending request *from* them opens their page, "see who
-        -- before you accept", and the case is part of that page (#1654). A
-        -- pending ask *to* them is not a door.
-        select 1 from friendships
-        where status = 'pending' and requester_id = $2 and addressee_id = $1
-    )
-)::boolean
-`
-
-type SharesRoomOrFriendsParams struct {
-	Viewer pgtype.UUID
-	Rider  pgtype.UUID
-}
-
-// Who may see another rider's trophy case: someone in one of your rooms, or
-// a friend. The same reach the members list and the friends panel have.
-func (q *Queries) SharesRoomOrFriends(ctx context.Context, arg SharesRoomOrFriendsParams) (bool, error) {
-	row := q.db.QueryRow(ctx, sharesRoomOrFriends, arg.Viewer, arg.Rider)
-	var column_1 bool
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const userMedalTally = `-- name: UserMedalTally :many
 select kind, count(*)::bigint as n from medals where user_id = $1 group by kind
 `

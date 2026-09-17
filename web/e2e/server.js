@@ -32,6 +32,9 @@ const go = spawn('go', ['run', '.'], {
 	env: {
 		...process.env,
 		WATTROOM_ADDR: `:${API_PORT}`,
+		// No metrics listener for a test run (#1738): nothing scrapes it, and
+		// the default port is one more thing for two runs to collide on.
+		WATTROOM_METRICS_ADDR: '',
 		// The login gate (ADR-0009) means even the e2e ride signs in — the dev
 		// provider against a real Postgres, same doors production uses. Which
 		// Postgres is env.js's decision: this checkout's own, so a run here

@@ -11,6 +11,7 @@
 	import {
 		contextMenu,
 		MENU_HINT,
+		openMenu,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import { setCrewRole, type Crew, type CrewPerson } from '$lib/crew';
@@ -18,6 +19,7 @@
 	import { personMenu } from '$lib/person-menu';
 	import { toasts } from '$lib/toast.svelte';
 	import Crown from '@lucide/svelte/icons/crown';
+	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import Shield from '@lucide/svelte/icons/shield';
 	import ShieldBan from '@lucide/svelte/icons/shield-ban';
 	import ShieldOff from '@lucide/svelte/icons/shield-off';
@@ -138,6 +140,16 @@
 
 	const roleWord = (role: CrewPerson['role']) =>
 		role === 'owner' ? 'owner' : role === 'admin' ? 'admin' : 'member';
+
+	// The crew is bigger than this list when the viewer shares no room with
+	// some of it (ADR-0038: visibility follows the rooms you may enter). The
+	// header counts the crew, so without this line the page contradicts
+	// itself — "3 people" over a list of two, with nothing saying why (#1255).
+	// A number, never the names: who is in the private room is exactly what
+	// the rule withholds.
+	const unseen = $derived(
+		Math.max(0, (crew.members ?? 0) - crew.people.length),
+	);
 </script>
 
 <h2 class="eyebrow mt-8">people</h2>
@@ -183,10 +195,40 @@
 					disabled={busy}
 					class="btn btn-ghost btn-xs shrink-0">{roleLabel(person)}</button
 				>
+				<!-- The rest of the owner's paperwork — hand over, ban — has a
+				     visible way in, the way the room's Members place has had one
+				     since #1372: nothing lives only in a menu (ux.md). It was
+				     right-click on a desk and a long-press on touch, with a
+				     tooltip no phone shows — while this same page tells the
+				     owner to "hand it to someone in the people list first"
+				     (#2154). The same menu the right-click opens, so the two
+				     cannot disagree. -->
+				<button
+					onclick={(e) => {
+						const at = e.currentTarget.getBoundingClientRect();
+						openMenu(
+							personEntries(person),
+							at.left,
+							at.bottom + 4,
+							e.currentTarget,
+						);
+					}}
+					disabled={busy}
+					class="btn btn-ghost btn-xs shrink-0"
+					aria-label="more actions for {person.displayName}"
+					title={owner ? 'hand the crew over · ban' : 'ban from the crew'}
+					><Ellipsis size={14} /></button
+				>
 			{/if}
 		</li>
 	{/each}
 </ul>
+{#if unseen > 0}
+	<p class="text-muted mt-2 text-xs">
+		And {unseen === 1 ? '1 more person' : `${unseen} more people`} you do not share
+		a room with. A crew's list is the crew-mates you have a room in common with.
+	</p>
+{/if}
 
 {#if administers && crew.banned?.length}
 	<h2 class="eyebrow mt-8">banned from the crew</h2>

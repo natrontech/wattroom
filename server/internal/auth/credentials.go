@@ -51,31 +51,34 @@ func (s *Service) refuseIfLastCredential(w http.ResponseWriter, r *http.Request,
 	return false
 }
 
+// errLastCredential is the refusal, carried out of the locked transaction so
+// the rollback releases the row the moment the answer is known rather than at
+// a commit that had nothing to write.
+var errLastCredential = errors.New("auth: that is the last credential")
+
 // removeCredential runs del with the rider's row locked, so two removals
 // cannot both count two credentials and both proceed (#824): the second waits
 // on the row, then counts one. last reports that the count refused it; rows
 // is what del removed.
 func (s *Service) removeCredential(ctx context.Context, userID pgtype.UUID, del func(q *db.Queries) (int64, error)) (rows int64, last bool, err error) {
-	tx, err := s.store.Pool.Begin(ctx)
-	if err != nil {
-		return 0, false, err
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
-	q := s.store.Queries.WithTx(tx)
-	if err := q.LockUser(ctx, userID); err != nil {
-		return 0, false, err
-	}
-	total, err := q.CountUserCredentials(ctx, userID)
-	if err != nil {
-		return 0, false, err
-	}
-	if total <= 1 {
+	err = s.store.WithUserLocked(ctx, userID, func(q *db.Queries) error {
+		total, err := q.CountUserCredentials(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if total <= 1 {
+			return errLastCredential
+		}
+		rows, err = del(q)
+		return err
+	})
+	if errors.Is(err, errLastCredential) {
 		return 0, true, nil
 	}
-	if rows, err = del(q); err != nil {
+	if err != nil {
 		return 0, false, err
 	}
-	return rows, false, tx.Commit(ctx)
+	return rows, false, nil
 }
 
 // handleDisconnectProvider removes one identity from the account. Until this
@@ -118,6 +121,23 @@ func (s *Service) handleDisconnectProvider(w http.ResponseWriter, r *http.Reques
 	}
 
 	rows, last, err := s.removeCredential(r.Context(), user.ID, func(q *db.Queries) (int64, error) {
+		// The activity ids Strava issued go with the grant (#1507), in the
+		// transaction that drops it: WATTROOM.md binds §7.4 — everything goes
+		// within 30 days of deauthorization — and nothing deleted them on any
+		// path but a full account purge. Exact rather than a 30-day sweep,
+		// which would need a column to hold the clock and a job to watch it.
+		//
+		// The delivery rows stay: they are our bookkeeping about rides we
+		// recorded, and the ride page reads them. `provider` is the
+		// destination here because the identity and the upload target are the
+		// same word — a second remote would bring its own name for both.
+		if provider == "strava" {
+			if _, err := q.ForgetRemoteActivityIds(r.Context(), db.ForgetRemoteActivityIdsParams{
+				UserID: user.ID, Destination: provider,
+			}); err != nil {
+				return 0, err
+			}
+		}
 		return q.DeleteIdentity(r.Context(), db.DeleteIdentityParams{UserID: user.ID, Provider: provider})
 	})
 	switch {

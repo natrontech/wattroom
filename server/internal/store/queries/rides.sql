@@ -2,9 +2,9 @@
 insert into rides (
     user_id, room_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
-    ftp_watts, samples, curve, xp, norm_watts
+    ftp_watts, samples, curve, xp, norm_watts, last20m_hr
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 returning id;
 
 -- name: ListUserRides :many
@@ -36,7 +36,11 @@ select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, ex
        e.state as export_state
 from rides
 left join ride_exports e on e.ride_id = rides.id and e.destination = sqlc.arg(destination)::text
-where user_id = $1 and workout_name = $2 and rides.id <> $3
+-- `except` is optional (#2249): omitted it arrives as NULL, and `id <> NULL`
+-- is NULL rather than true, so every row was filtered out and the route
+-- answered "no best ride" for every rider and every workout.
+where user_id = $1 and workout_name = $2
+  and (sqlc.narg(except_id)::uuid is null or rides.id <> sqlc.narg(except_id))
 order by avg_watts desc, started_at desc
 limit 1;
 
@@ -126,8 +130,16 @@ group by user_id;
 -- (audit 2026-09-09); stats.ZoneName is the one place that picks it, so the
 -- SQL and the Go always agree, and it falls back to UTC for a rider whose
 -- browser never told us.
+-- except_id is the ride being amended (#2253). StreakXP's contract is "read
+-- before this ride lands, so this week only counts if already ridden", which
+-- save gets for free by asking before the insert. An amendment cannot: the
+-- row is already in the table, so its own week came back and the bonus was
+-- one week too high. Excluding the ride rather than the week is the same
+-- question save asks — a second ride the same week still counts.
 select distinct date_trunc('week', started_at at time zone sqlc.arg(tz)::text)::date as week
-from rides where user_id = sqlc.arg(user_id)
+from rides
+where user_id = sqlc.arg(user_id)
+  and (sqlc.narg(except_id)::uuid is null or rides.id <> sqlc.narg(except_id))
 order by week desc
 limit 60;
 
@@ -187,6 +199,12 @@ select r.user_id,
        u.display_name,
        u.ftp_watts,
        u.weight_kg,
+       -- Where the pair came from (ADR-0048, #2243): a category computed from
+       -- two numbers nobody chose is two guesses divided by each other, and
+       -- this board is the one surface that publishes a ride-derived number
+       -- about one member to the rest of the room.
+       u.ftp_source,
+       u.weight_source,
        coalesce(sum(r.kj), 0)::bigint as kj,
        coalesce(sum(r.seconds), 0)::bigint as seconds
 from rides r
@@ -200,13 +218,37 @@ where r.room_id = $1
   -- same trap one level up, where the owner turns the board on and everybody
   -- already inside is enrolled by existence.
   and m.on_board
-group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg
+group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg, u.ftp_source, u.weight_source
 order by kj desc, u.display_name asc;
 
 -- name: Best20mIn90Days :one
 -- The FTP auto-detect input (docs/SPEC.md): rolling 90-day best 20-minute power.
 select coalesce(max((curve->>'best20m')::int), 0)::int from rides
 where user_id = $1 and started_at >= now() - interval '90 days';
+
+-- name: BestLast20mHRIn90Days :one
+-- The LTHR-from-a-ride input (docs/SPEC.md, #1620): the largest last-20-minute
+-- average heart rate among the rider's qualifying rides in the rolling 90 days.
+-- Qualifying is SPEC's, and nothing more — solo (no room), at least 30 minutes,
+-- and a heart rate in the window. There is deliberately NO power gate: a
+-- genuine HR field test need not be near the rider's best 20-minute power.
+-- last20m_hr > 0 is what excludes both "no strap" and "not yet backfilled".
+select coalesce(max(last20m_hr), 0)::int from rides
+where user_id = $1
+  and room_id is null
+  and seconds >= 1800 -- stats.MinLTHRRideSeconds (docs/SPEC.md's 30 minutes)
+  and last20m_hr > 0
+  and started_at >= now() - interval '90 days';
+
+-- name: ListRidesMissingLast20mHR :many
+-- The #1620 backfill's read, the shape ListRidesMissingNorm uses: each blob is
+-- read exactly once and goes cold again, so the per-ride-read storage rule
+-- holds. NULL is the only "not computed yet" — a row the backfill has seen
+-- carries a number, 0 included.
+select id, samples from rides where last20m_hr is null limit $1;
+
+-- name: SetRideLast20mHR :exec
+update rides set last20m_hr = $2 where id = $1;
 
 -- name: CurveBests :one
 -- Progression overlay (#222): best per SPEC curve window over three ranges,
@@ -252,7 +294,10 @@ select min(started_at)::timestamptz as first_ride from rides where user_id = $1;
 -- name: ListRidesMissingNorm :many
 -- The ADR-0016 backfill's read: each blob is read exactly once, then goes
 -- cold again — the per-ride-read storage rule holds.
-select id, samples from rides where norm_watts is null limit $1;
+-- avg_watts comes too (#2253): a blob that will not decode stores the average
+-- the readers' own coalesce would have fallen back to, rather than a 0 that
+-- every fallback walks straight past.
+select id, samples, avg_watts from rides where norm_watts is null limit $1;
 
 -- name: SetRideNormWatts :exec
 update rides set norm_watts = $2 where id = $1;
@@ -341,9 +386,25 @@ order by updated_at
 limit sqlc.arg(max_rows)::int;
 
 -- name: GetRideExport :one
-select state, attempts, last_error, remote_id
+select state, attempts, last_error, remote_id, stale_since
 from ride_exports
 where ride_id = $1 and destination = $2;
+
+-- name: MarkRideExportStale :exec
+-- The ride outgrew what was delivered (#2281). AmendRide rebuilds a saved
+-- ride from a longer record after the session closed (#1536); a delivery
+-- that already succeeded keeps the short version for good, because
+-- StartRideExport refuses to re-open a delivered row and the upload
+-- API has no update to re-post through. Nothing here repairs that — the
+-- ride page says it, and the rider decides what to do about it.
+--
+-- `state = 'delivered'` is the whole guard, and it is what makes the notice
+-- honest: a ride amended while its upload was still pending diverges from
+-- nothing, because the upload that follows carries the grown ride. No
+-- destination either — every remote that already has this ride has an old
+-- one. Last amendment wins: the stamp is when the two last came apart.
+update ride_exports set stale_since = now()
+where ride_id = $1 and state = 'delivered';
 
 -- name: RequeueRideExport :execrows
 -- The rider pressing "try again" on a delivery that ran out of attempts
@@ -366,3 +427,32 @@ update rides
 set seconds = $2, avg_watts = $3, kj = $4, execution = $5, execution_scored = $6,
     samples = $7, curve = $8, xp = $9, norm_watts = $10
 where id = $1 and seconds < $2;
+
+-- name: ForgetRemoteActivityIds :execrows
+-- The ids the remote issued for this rider's uploads, dropped when their grant
+-- is (#1507). WATTROOM.md binds Strava's API Policy §7.4 — everything goes
+-- within 30 days of deauthorization — and an activity id was the one thing
+-- here with no delete on any path except a full account purge, so a rider who
+-- disconnected Strava and kept WattRoom left Strava-issued identifiers behind
+-- for good.
+--
+-- The delivery row stays. That a ride was uploaded, when, how many tries it
+-- took and what it was told is OUR bookkeeping about a ride WE recorded — the
+-- ride page reads it, and the export carries it. Only the remote's own number
+-- goes with the grant.
+--
+-- The id does not come back, and nothing pretends otherwise (#2281).
+-- `external_id` is ours, so a re-connect's upload still dedupes on Strava's
+-- side rather than making a second activity — but no code here reads the
+-- answer it dedupes WITH: strava.post turns any `error` in the response into
+-- a Go error, and strava.await does the same, so re-sending a ride Strava
+-- already has surfaces as a FAILED delivery rather than as the activity it
+-- already made. What a rider loses here is the link from the ride page to
+-- their activity; what they keep is the activity.
+update ride_exports e
+set remote_id = null
+from rides r
+where r.id = e.ride_id
+  and r.user_id = $1
+  and e.destination = $2
+  and e.remote_id is not null;

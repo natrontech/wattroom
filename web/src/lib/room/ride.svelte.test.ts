@@ -4,6 +4,7 @@ import { flushSync } from 'svelte';
 import type { RiderMetrics } from '$lib/protocol';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
+import { SIGNAL_LOST_MS } from '$lib/workout/session.svelte';
 
 // The socket's own dependencies, silenced: IndexedDB, and the module the
 // tick's clock window lives in stays real (it only does arithmetic).
@@ -642,6 +643,142 @@ describe('a trainer claim the hub refused (#1853)', () => {
 		await ride.ride(trainer);
 		await settle();
 		expect(trainer.commands).toEqual(['erg:200']);
+
+		dispose();
+		live.close();
+	});
+});
+
+describe('the bias trim on a screen that is not driving (#2075)', () => {
+	const settle = async () => {
+		await Promise.resolve();
+		flushSync();
+	};
+
+	function answer(socket: FakeSocket, pairing: unknown) {
+		socket.onmessage!({ data: JSON.stringify({ pairing }) });
+	}
+
+	/** Every `bias` this socket has put on the wire, in order. */
+	function biasesSentOn(socket: FakeSocket): number[] {
+		return socket.sent
+			.map((line) => JSON.parse(line) as { metrics?: RiderMetrics })
+			.flatMap((message) =>
+				message.metrics ? [message.metrics.bias ?? 1] : [],
+			);
+	}
+
+	// A trim that moves a number and changes no resistance is a control
+	// failing on click (ux.md), and a bias that scores the ride while the
+	// trainer holds someone else's target is the same lie one layer down.
+	it('trims nothing, renders nothing trimmed and sends no trim', async () => {
+		const { live, socket, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		answer(socket, { elsewhere: { trainer: 'phone' } });
+		await settle();
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+
+		ride.nudgeBias(0.05);
+		await settle();
+		expect(ride.bias).toBe(1);
+		expect(ride.target).toBe(200);
+		expect(trainer.commands).toEqual([]);
+
+		trainer.pedal(210, 88);
+		await settle();
+		expect(biasesSentOn(socket)).toEqual([1]);
+
+		dispose();
+		live.close();
+	});
+
+	it('keeps the rider’s own setting and hands it back with the grant', async () => {
+		// Held, not reset: a trim dialled in before a reconnect lost the claim
+		// is the rider's, and asking for it again is a second fault on top of
+		// the first.
+		const { live, socket, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		ride.nudgeBias(0.05);
+		await settle();
+		expect(ride.bias).toBe(1.05);
+		expect(trainer.commands).toEqual(['erg:200', 'erg:210']);
+
+		answer(socket, { elsewhere: { trainer: 'phone' } });
+		await settle();
+		expect(ride.bias).toBe(1);
+		expect(ride.target).toBe(200);
+
+		answer(socket, { held: ['trainer'] });
+		await settle();
+		expect(ride.bias).toBe(1.05);
+		expect(ride.target).toBe(210);
+		expect(trainer.commands).toEqual(['erg:200', 'erg:210', 'erg:210']);
+
+		dispose();
+		live.close();
+	});
+});
+
+describe("the trainer's silence, one number (#2161)", () => {
+	/** Svelte settles its effects on a microtask; flushSync alone does not. */
+	const settle = async () => {
+		await Promise.resolve();
+		flushSync();
+	};
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('is the same three seconds the solo screens wait', async () => {
+		vi.useFakeTimers();
+		const live = createRoomLive('mfw');
+		const deps = {
+			live,
+			profile: {
+				current: {
+					ftp: 200,
+					shareHr: true,
+					singleSpeed: false,
+					sprintGrade: 5,
+				},
+			},
+			recording: { record() {} } as never,
+			myId: () => 'me',
+			shared: () => undefined,
+			segments: () => [],
+		};
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		trainer.pedal(180);
+		await settle();
+		expect(ride.fault).toBeNull();
+
+		// Just under: a slow second is not a dropout.
+		await vi.advanceTimersByTimeAsync(SIGNAL_LOST_MS - 500);
+		await settle();
+		expect(ride.fault, 'a gap shorter than the cap is not a fault').toBeNull();
+
+		// Past it: the room says so, where it used to wait ten seconds for the
+		// same rider's own trainer while /ride and /ramp waited three.
+		await vi.advanceTimersByTimeAsync(1_500);
+		await settle();
+		expect(ride.fault).toBe('silent');
 
 		dispose();
 		live.close();

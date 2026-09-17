@@ -4,11 +4,8 @@
 	// editing the room never touches them. Split from the page (#1265).
 	import { api } from '$lib/api';
 	import { toasts } from '$lib/toast.svelte';
+	import type { RiderPrefs } from '$lib/room/room-data';
 
-	interface RiderPrefs {
-		notify: boolean;
-		onBoard: boolean;
-	}
 	let {
 		slug,
 		me,
@@ -18,30 +15,51 @@
 	let notify = $state(true);
 	let onBoard = $state(true);
 	let saving = $state(false);
+	// What the server last confirmed — the parent's snapshot to start with,
+	// then every save that came back OK (#2163). The rollback below used to
+	// read `me`, which only a re-read of the whole room refreshes: turn Notify
+	// off (it saves), then let the board switch fail, and BOTH went back to a
+	// snapshot taken before the first change. The promise under the rollback
+	// is that the switches never show a preference that did not save; reading
+	// a stale snapshot broke it the other way round, by showing a saved one as
+	// unsaved.
+	// A plain `let`, deliberately: nothing renders it, and making it `$state`
+	// put the effect below in a loop with itself
+	// (`effect_update_depth_exceeded`) — which silently ate the save's whole
+	// failure path, toast and all.
+	let held: RiderPrefs = { notify: true, onBoard: true };
 	$effect(() => {
 		// What the server holds is the truth, on mount and on every re-read of
 		// the room (a lobby ping).
-		notify = me?.notify ?? true;
-		onBoard = me?.onBoard ?? true;
+		held = { notify: me?.notify ?? true, onBoard: me?.onBoard ?? true };
+		notify = held.notify;
+		onBoard = held.onBoard;
 	});
 
 	// Whole object on every change, like the room's own settings: there is no
 	// partial shape to get wrong, and the response is the truth we keep.
 	async function savePrefs(next: Partial<RiderPrefs>) {
 		saving = true;
+		// `json`, never a raw `body` (#2163): api() sets the content type only
+		// for `json`, and fetch defaults a string body to text/plain — which
+		// httpx.DecodeStrict refuses outright, because a form-encodable type
+		// is what a cross-site form can post without a preflight. So this
+		// endpoint answered 400 to every press and NEITHER switch has ever
+		// saved from this screen.
 		const res = await api<RiderPrefs>(`/api/rooms/${slug}/me`, {
 			method: 'PATCH',
-			body: JSON.stringify({ notify, onBoard, ...next }),
+			json: { notify, onBoard, ...next },
 		});
 		saving = false;
 		if (res.ok) {
-			notify = res.data.notify;
-			onBoard = res.data.onBoard;
+			held = { notify: res.data.notify, onBoard: res.data.onBoard };
+			notify = held.notify;
+			onBoard = held.onBoard;
 		} else {
-			// Put the switches back to what the server still holds, so the UI
-			// never shows a preference that did not save.
-			notify = me?.notify ?? true;
-			onBoard = me?.onBoard ?? true;
+			// Back to what the server still holds — which includes whatever
+			// saved a moment ago, not only what the page was loaded with.
+			notify = held.notify;
+			onBoard = held.onBoard;
 			toasts.push(res.error.message, { tone: 'error' });
 		}
 	}

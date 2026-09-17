@@ -90,13 +90,16 @@ from memberships m
 join rooms r on r.id = m.room_id
 left join crews c on c.id = r.crew_id
 -- NextRoomSession's row, per room. Same 30-minute grace: a plan stays visible
--- a little past its time, and the read is the cleanup.
+-- a little past its time, and the read is the cleanup. Same tiebreak as
+-- ListRoomUpcoming (#1767) — this `limit 1` and that list's first row are the
+-- same claim about which session is next, and the rail and the room have to
+-- name the same one.
 left join lateral (
     select s.workout_name, s.starts_at
     from scheduled_sessions s
     where s.room_id = r.id and s.starts_at > now() - interval '30 minutes'
       and s.started_at is null
-    order by s.starts_at
+    order by s.starts_at, s.created_at, s.id
     limit 1
 ) upcoming on true
 left join lateral (
@@ -180,12 +183,19 @@ where room_id = $1 and starts_at > now() - interval '30 minutes'
 -- time, then falls off — no cron, the read is the cleanup. A started plan
 -- is done with (#1905). Uncapped like the rider's calendar (#1908): ten
 -- silently shown of thirteen planned had the two disagreeing about one room.
+--
+-- A room may plan two sessions for the same minute (docs/SPEC.md), so the
+-- tiebreak is load-bearing: the first row of this list is what the place
+-- labels "next session in this room", and `starts_at` alone left that label
+-- on whichever of the two rows Postgres felt like returning first — a
+-- different one between two reads of an unchanged room (#1767). Created
+-- first leads; the id settles a same-instant insert so the order is total.
 select s.id, s.workout_name, s.workout_json, s.starts_at, u.display_name as created_by
 from scheduled_sessions s
 join users u on u.id = s.created_by
 where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
   and s.started_at is null
-order by s.starts_at;
+order by s.starts_at, s.created_at, s.id;
 
 -- name: MarkSessionStarted :execrows
 -- Once: the row count says whether this was the first start (#1905).
@@ -253,13 +263,18 @@ select starts_at from scheduled_sessions where id = $1 and room_id = $2;
 -- limit is far above the room's own 50-session ceiling. The window is the
 -- caller's, like ListUserCalendar's, so both feeds read their numbers from
 -- the same Go constants rather than from an interval literal in here.
-select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
-       u.display_name as created_by
+--
+-- No planner's name, unlike ListUserCalendar (ADR-0021 amended, #1767): a
+-- room's ics_token goes to every non-banned member, rotates only for the
+-- owner, and the feed is meant to be shared with people who are not in the
+-- room — so a member can hand it to anyone. The name is not selected rather
+-- than selected and dropped in Go: what this feed must not say, it does not
+-- read.
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at
 from scheduled_sessions s
-join users u on u.id = s.created_by
 where s.room_id = $1
   and s.starts_at > sqlc.arg(starts_from) and s.starts_at < sqlc.arg(starts_until)
-order by s.starts_at
+order by s.starts_at, s.created_at, s.id
 limit sqlc.arg(row_limit);
 
 -- name: RotateRoomIcsToken :one
@@ -277,14 +292,13 @@ update rooms set owner_id = $2 where id = $1;
 
 -- name: ListUserCalendar :many
 -- Every room the rider is in, one list (#325). `from` is the only difference
--- between the two callers: the iCal feed keeps a month of history, the
--- sessions page starts at the same 30-minute grace the in-room list uses.
+-- between the two callers: the iCal feed keeps a month of history, Home's
+-- "What's next" starts at the same 30-minute grace the in-room list uses.
 -- `until` and the row limit are the same for both (#1414) — the rider feed is
 -- the wider of the two memory spikes, since membership is uncapped and every
 -- room's 50 plans land in one ICS string.
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
-       u.display_name as created_by, r.name as room_name, r.slug as room_slug,
-       m.role as your_role
+       u.display_name as created_by, r.name as room_name, r.slug as room_slug
 from scheduled_sessions s
 join rooms r on r.id = s.room_id
 join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'banned'
@@ -293,25 +307,62 @@ where s.starts_at > sqlc.arg(starts_from) and s.starts_at < sqlc.arg(starts_unti
   -- A crew ban leaves the membership row and lives in visible_rooms alone
   -- (#1904): the rail asks it, and so does the calendar.
   and exists (select 1 from visible_rooms v where v.room_id = s.room_id and v.user_id = $1)
-order by s.starts_at
+order by s.starts_at, s.created_at, s.id
 limit sqlc.arg(row_limit);
 
 -- name: SetRsvp :exec
--- Room events (#450). Saying yes twice is saying yes.
-insert into session_rsvps (session_id, user_id) values ($1, $2)
-on conflict do nothing;
+-- Room events (#450). One row per rider per session, and the row is an
+-- ANSWER (#1011): `going` says which of the two it is, and no row at all is
+-- the third state — nobody has looked yet. Saying the same thing twice is
+-- saying it once; changing your mind rewrites the row rather than needing a
+-- delete first, so there is no moment where a rider has no answer on record.
+--
+-- created_at moves only when the answer actually changed, because that is
+-- what ListRoomRsvps orders the "who is in" line by: a rider who said no in
+-- the morning and yes in the evening committed in the evening, and would
+-- otherwise sort ahead of everyone who said yes at lunchtime.
+insert into session_rsvps (session_id, user_id, going) values ($1, $2, $3)
+on conflict (session_id, user_id) do update
+set going = excluded.going,
+    created_at = case when session_rsvps.going = excluded.going
+                      then session_rsvps.created_at else now() end;
 
 -- name: ClearRsvp :exec
+-- Taking the answer back — in or out, the row goes and the rider is
+-- unanswered again.
 delete from session_rsvps where session_id = $1 and user_id = $2;
+
+-- name: ClearSessionDeclines :exec
+-- A moved session asks the people who said no again (#1011). Only the
+-- declines: somebody who said they are in for a Tuesday has not said
+-- anything about a Wednesday either, but the cost of guessing wrong is
+-- asymmetric — dropping an "in" empties a line the room reads, while a
+-- decline that survives a move silences a reminder for a session the rider
+-- never turned down. Run on the same condition as the reminder's re-arm in
+-- RescheduleSession: only when the time really changed.
+delete from session_rsvps where session_id = $1 and not going;
 
 -- name: SessionInRoom :one
 -- A plan belongs to the room in its URL — an RSVP cannot reach across rooms.
 select id from scheduled_sessions where id = $1 and room_id = $2;
 
 -- name: ListRoomRsvps :many
--- Who is in, for everything ListRoomUpcoming returns. Ordered by when they
--- said yes, so the first names in the line are the ones who committed first.
-select r.session_id, r.user_id, u.display_name
+-- Every answer, for everything ListRoomUpcoming returns. Ordered by when it
+-- was given, so the first names in the "who is in" line are the ones who
+-- committed first.
+--
+-- The declines come along as a column rather than being filtered out here
+-- (#1011): the room shows who is in by name and how many are out as a
+-- number, and one query that returns both is what keeps the two numbers
+-- reading the same room.
+--
+-- A decliner's name is NOT SELECTED, rather than selected and dropped in Go
+-- — ListRoomCalendar's rule, for the same reason: what a query must not say,
+-- it does not say, and no future handler can render what never arrived. The
+-- id still comes, because the caller has to be told their own answer; the
+-- name is the thing a screen would print.
+select r.session_id, r.user_id, r.going,
+       case when r.going then u.display_name else '' end as display_name
 from session_rsvps r
 join users u on u.id = r.user_id
 join scheduled_sessions s on s.id = r.session_id

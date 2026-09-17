@@ -104,6 +104,30 @@ const (
 	sessionReminder
 )
 
+// sessionNote is what one session mail is about: which room, which workout,
+// when, who caused it, and which of the four changes it is.
+//
+// A struct rather than a seventh positional parameter (#1011). The session
+// id joined the list for the reminder alone, and it would have sat next to
+// the actor's id — two pgtype.UUIDs in a row, at two call sites, with the
+// wrong order compiling and mailing the wrong people.
+type sessionNote struct {
+	room     db.Room
+	workout  string
+	startsAt time.Time
+	// Who caused it, and therefore already knows: they are not mailed. The
+	// reminder is caused by the clock, so it passes noActor, which excludes
+	// nobody.
+	actor pgtype.UUID
+	// The session itself, set by the reminder alone — the one mail whose
+	// audience depends on what riders answered (#1011). Left invalid (NULL)
+	// by the other three, where a decline excludes nobody: a plan has no
+	// answers yet, a move clears them, and a cancellation is news whatever
+	// anyone said.
+	session pgtype.UUID
+	change  sessionChange
+}
+
 // SessionPlanned emails every opted-in member except the planner. Fire and
 // forget: the handler must not wait on a mail provider. The goroutine exits
 // when the member list is sent or the one-minute context runs out.
@@ -133,7 +157,10 @@ func (s *Service) sessionAsync(room db.Room, workoutName string, startsAt time.T
 	safego.Go(s.log, "session mail "+room.Slug, func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
-		s.sessionMail(ctx, room, workoutName, startsAt, planner, change)
+		s.sessionMail(ctx, sessionNote{
+			room: room, workout: workoutName, startsAt: startsAt,
+			actor: planner, change: change,
+		})
 	})
 }
 
@@ -175,11 +202,14 @@ func oneLine(text string) string {
 	return strings.TrimSpace(out.String())
 }
 
-func (s *Service) sessionMail(ctx context.Context, room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, change sessionChange) {
+func (s *Service) sessionMail(ctx context.Context, note sessionNote) {
+	// The note holds the subject matter; the words below are the mail's own,
+	// and they read it under the names they have always used.
+	room, startsAt, change := note.room, note.startsAt, note.change
 	room.Name = oneLine(room.Name)
-	workoutName = oneLine(workoutName)
+	workoutName := oneLine(note.workout)
 	targets, err := s.store.Queries.ListRoomNotifyTargets(ctx, db.ListRoomNotifyTargetsParams{
-		RoomID: room.ID, ID: planner,
+		RoomID: room.ID, ID: note.actor, SessionID: note.session,
 	})
 	if err != nil {
 		s.log.Error("notify targets query failed", "err", err, "room", room.Slug)

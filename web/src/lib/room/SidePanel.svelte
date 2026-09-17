@@ -111,6 +111,7 @@
 				avatarUrl={avatarOf.get(rider.id)?.avatarUrl}
 				xp={avatarOf.get(rider.id)?.totalXp}
 				status={statusOfRider(rider)}
+				awayReason={rider.awayReason}
 				size={22}
 			/>
 			<span class="min-w-0 flex-1">

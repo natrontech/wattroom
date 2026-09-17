@@ -92,3 +92,38 @@ test('a conversation with no row of its own still lights one', async ({
 	await expect(nav.locator('[aria-current]')).toHaveCount(1);
 	await expect(heading).toHaveAttribute('aria-current', 'page');
 });
+
+test('the sidebar says a failed read is a failed read, not "no crew"', async ({
+	page,
+}) => {
+	// A room list that cannot be read (#2173): `rooms` is [] before the first
+	// answer and [] when the read fails, and the sidebar drew the day-one
+	// teaching line for both — so a rider with ten rooms was told to join a
+	// crew, with nothing to press. errors.md wants all four states in the
+	// column that IS the app's navigation.
+	let fail = true;
+	await page.route(
+		(url) => url.pathname === '/api/rooms',
+		(route) =>
+			fail
+				? route.fulfill({
+						status: 500,
+						contentType: 'application/json',
+						body: JSON.stringify({
+							error: 'internal_error',
+							message: 'Your rooms could not be read.',
+						}),
+					})
+				: route.continue(),
+	);
+	await signInAs(page, 'Nav Reader', '/home');
+
+	const nav = page.locator('nav[aria-label="rooms and places"]');
+	await expect(nav.getByText('Your rooms could not be read.')).toBeVisible();
+	await expect(nav.getByText('Not in a crew yet')).toHaveCount(0);
+
+	// And the Retry is a retry: the read succeeds, the list arrives.
+	fail = false;
+	await nav.getByRole('button', { name: 'Retry' }).click();
+	await expect(nav.getByText('Your rooms could not be read.')).toHaveCount(0);
+});

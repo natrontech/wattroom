@@ -69,7 +69,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if owned >= maxOwnedRooms {
-		httpx.WriteError(w, http.StatusConflict, "conflict",
+		httpx.WriteCeiling(w,
 			fmt.Sprintf("You already own %d rooms — delete one to open another.", maxOwnedRooms))
 		return
 	}
@@ -301,6 +301,15 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
 	q := s.store.Queries.WithTx(tx)
+	// The crew before the room (#2079, LockCrew): this transaction ends at the
+	// crew either way, and a leave holding the crew while it takes the same
+	// memberships this delete cascades is the other half of the deadlock.
+	if room.CrewID.Valid {
+		if err := q.LockCrew(r.Context(), room.CrewID); err != nil {
+			httpx.Fail(w, s.log, "room delete crew lock failed", err, "The room could not be deleted. Try again.", "room", room.Slug)
+			return
+		}
+	}
 	if err := q.DeleteRoom(r.Context(), room.ID); err != nil {
 		httpx.Fail(w, s.log, "room delete failed", err, "The room could not be deleted. Try again.", "room", room.Slug)
 		return

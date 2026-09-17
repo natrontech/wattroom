@@ -3,6 +3,7 @@ package rooms
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -35,6 +36,18 @@ type scheduledJSON struct {
 	// Who said they are in (#450), first to say so first. A plan with an
 	// RSVP is what this repo calls an event — there is no second object.
 	Going []goingJSON `json:"going,omitempty"`
+	// How many said no, and how many have not answered (#1011). COUNTS, and
+	// never names: the number is what changes a planner's decision — hold
+	// the session or move it — and the names would only add the pressure.
+	// Rooms are small, so a list of who declined is close to naming them
+	// out loud, which is a thing a room does to a person rather than a
+	// thing the software has to do for it.
+	Out        int `json:"out,omitempty"`
+	Unanswered int `json:"unanswered,omitempty"`
+	// The caller's own answer — "in", "out", or absent for not yet asked.
+	// Read rather than derived from Going: that list is the room's public
+	// half and would only ever answer half the question.
+	YourAnswer string `json:"yourAnswer,omitempty"`
 }
 
 type goingJSON struct {
@@ -42,17 +55,38 @@ type goingJSON struct {
 	DisplayName string `json:"displayName"`
 }
 
-// plannedJSON is a scheduled session seen from outside its room — the
-// /sessions page lists every room at once, so each row carries its own.
+// rsvpWord is an answer as the wire and the screen spell it — docs/SPEC.md's
+// glossary words, so no surface invents a synonym for "in" or "out".
+func rsvpWord(going bool) string {
+	if going {
+		return "in"
+	}
+	return "out"
+}
+
+// plannedJSON is a planned session seen from outside its room — Home lists
+// every room at once (ADR-0020), so each row carries its own.
+//
+// Deliberately not scheduledJSON (#1693). That struct carries the RSVPs and
+// the workout, and both stay in the room: `going` was declared here and never
+// populated, so a rider read "nobody has said yes" off a field this route does
+// not fill, and the workout JSON was a kilobyte a row — up to
+// maxCalendarEvents of them — that no cross-room list ever renders. The
+// length is what a rider reads at a glance, so the length is what ships.
 type plannedJSON struct {
-	scheduledJSON
-	RoomSlug   string `json:"roomSlug"`
-	RoomName   string `json:"roomName"`
-	CanControl bool   `json:"canControl"`
+	ID          string `json:"id"`
+	WorkoutName string `json:"workoutName"`
+	Minutes     int    `json:"minutes"`
+	StartsAt    string `json:"startsAt"` // RFC 3339
+	CreatedBy   string `json:"createdBy"`
+	RoomSlug    string `json:"roomSlug"`
+	RoomName    string `json:"roomName"`
 }
 
 // handleMySchedule is the cross-room planning surface (#325): everything you
-// can ride, plus the feed token that subscribes to exactly this list.
+// can ride, plus the feed token that subscribes to exactly this list. Home's
+// "What's next" is what renders it (ADR-0020, ADR-0021 amended) — one row per
+// planned session, which is what the calendar feed beside it has always said.
 func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
@@ -61,7 +95,7 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.store.Queries.ListUserCalendar(r.Context(), db.ListUserCalendarParams{
 		// The same 30-minute grace the in-room list keeps: a session stays
 		// startable a little past its time. The far edge and the row bound are
-		// the feeds' (#1414) — this page builds the same list in memory, and
+		// the feeds' (#1414) — Home builds the same list in memory, and
 		// planning stops three months out, so neither can hide a plan.
 		UserID:      user.ID,
 		StartsFrom:  pgTime(time.Now().Add(-30 * time.Minute)),
@@ -71,17 +105,14 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "schedule list failed", err, "Your planned sessions could not be loaded. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
-	s.warnIfTruncated(len(rows), "sessions page", "user", store.UUIDString(user.ID))
+	s.warnIfTruncated(len(rows), "home", "user", store.UUIDString(user.ID))
 	sessions := make([]plannedJSON, 0, len(rows))
 	for _, row := range rows {
 		sessions = append(sessions, plannedJSON{
-			scheduledJSON: scheduledJSON{
-				ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
-				WorkoutJSON: string(row.WorkoutJson),
-				StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
-			},
+			ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
+			Minutes:  workoutMinutes(string(row.WorkoutJson)),
+			StartsAt: row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
 			RoomSlug: row.RoomSlug, RoomName: row.RoomName,
-			CanControl: row.YourRole == "owner" || row.YourRole == "coach",
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
@@ -89,9 +120,22 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleRsvp records that the caller is in for a planned session, and
-// DELETE takes it back. Any member, not just the coach: turning up is not a
-// role. There is no "maybe" — you are in or you are not (ux.md's 95% rule).
+// handleRsvp writes the caller's answer for a planned session, and DELETE
+// takes it back. Any member, not just the coach: turning up is not a role.
+// A rider still has two things to say — in, or out (docs/SPEC.md: there is
+// no maybe) — and the third state is nobody having said anything yet.
+//
+// PUT carries `{"going": false}` to decline; a PUT with no body at all is
+// the spelling the app used before declines existed and still means "in",
+// so a tab loaded before a deploy keeps working rather than reading
+// "That could not be saved" at a rider on a bike.
+//
+// Why the value and not a second path (#1011): "out" is not a different
+// resource from "in", it is the same answer holding the other value — one
+// row, one primary key, one statement. So PUT writes the answer, DELETE
+// removes it, and HTTP already spells the third state as "not there". A
+// `/rsvp/out` would have made two of the three states routes and left the
+// third as the absence of both.
 func (s *Service) handleRsvp(w http.ResponseWriter, r *http.Request) {
 	room, user, ok := s.RequireMember(w, r, "Join the room to say you are in.")
 	if !ok {
@@ -101,6 +145,21 @@ func (s *Service) handleRsvp(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
 		return
+	}
+	going := true
+	if r.Method != http.MethodDelete {
+		var req struct {
+			Going *bool `json:"going"`
+		}
+		// A pointer and an absent body are the same thing here — both mean
+		// the caller did not say, and the answer they did not say is "in".
+		if err := httpx.DecodeStrict(r, &req); err != nil && !errors.Is(err, io.EOF) {
+			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+			return
+		}
+		if req.Going != nil {
+			going = *req.Going
+		}
 	}
 	if _, err := s.store.Queries.SessionInRoom(r.Context(), db.SessionInRoomParams{
 		ID: id, RoomID: room.ID,
@@ -114,7 +173,7 @@ func (s *Service) handleRsvp(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodDelete {
 		err = s.store.Queries.ClearRsvp(r.Context(), db.ClearRsvpParams{SessionID: id, UserID: user.ID})
 	} else {
-		err = s.store.Queries.SetRsvp(r.Context(), db.SetRsvpParams{SessionID: id, UserID: user.ID})
+		err = s.store.Queries.SetRsvp(r.Context(), db.SetRsvpParams{SessionID: id, UserID: user.ID, Going: going})
 	}
 	if err != nil {
 		httpx.Fail(w, s.log, "rsvp failed", err, "That could not be saved. Try again.", "room", room.Slug)
@@ -241,9 +300,10 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if planned >= maxPlannedPerRoom {
-		// A ceiling is a 429 (errors.md), and worded as a ceiling: waiting
-		// clears nothing here, so the message names the two moves that do.
-		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+		// A ceiling is a 429 (SPEC:79-81, errors.md), and worded as a
+		// ceiling: waiting clears nothing here, so the message names the two
+		// moves that do.
+		httpx.WriteCeiling(w,
 			fmt.Sprintf("This room has %d sessions planned, the most it can hold. Cancel one, or wait for the next to start, to plan another.", maxPlannedPerRoom))
 		return
 	}
@@ -322,6 +382,17 @@ func (s *Service) handleReschedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !before.Time.Equal(req.StartsAt) {
+		// The session that was turned down is not the session now planned
+		// (#1011), so the people who turned it down are asked again — and
+		// their reminder comes back with the question. On the same condition
+		// as the reminder's own re-arm above, for the same reason: a move to
+		// the time it already had is not a move.
+		if err := s.store.Queries.ClearSessionDeclines(r.Context(), id); err != nil {
+			// The plan HAS moved and the row is written; a decline that
+			// outlives it costs one rider one mail, and failing the request
+			// here would tell the coach a move that happened did not.
+			s.log.Warn("clearing declines after a move failed", "err", err, "room", room.Slug, "session", store.UUIDString(id))
+		}
 		if s.notifier != nil {
 			s.notifier.SessionRescheduled(room, row.WorkoutName, req.StartsAt, user.ID)
 		}

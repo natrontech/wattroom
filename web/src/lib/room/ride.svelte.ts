@@ -6,6 +6,7 @@ import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/room/wire';
 import { targetAt } from '$lib/workout/engine';
+import { SIGNAL_LOST_MS } from '$lib/workout/session.svelte';
 import { createSprintWindow } from '$lib/workout/sprint-window.svelte';
 import type { Segment } from '$lib/workout/types';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
@@ -86,7 +87,12 @@ export function createRide(deps: RideDeps) {
 		void now;
 		// Counted from the connect, not the first sample: a trainer that never
 		// sends one is the reported failure, and exempting it would hide it.
-		return Date.now() - lastSampleAt > 10_000 ? quietFault(trainer) : null;
+		// docs/SPEC.md's one number (#2161): this is the rider's OWN trainer,
+		// the same question /ride and /ramp ask, and the room used to wait
+		// ten seconds where they waited three.
+		return Date.now() - lastSampleAt > SIGNAL_LOST_MS
+			? quietFault(trainer)
+			: null;
 	});
 
 	/**
@@ -101,7 +107,25 @@ export function createRide(deps: RideDeps) {
 
 	// Bias is personal: ±% on my own targets, the shared timeline untouched.
 	let bias = $state(1);
+	/**
+	 * The trim this screen is actually applying (#2075).
+	 *
+	 * A screen that writes no control point trims nothing, so a bias here
+	 * would move the number a rider reads and the resistance under their legs
+	 * not at all — and would score the ride against a plan nobody rode. Held
+	 * at 1 in all three places at once, deliberately: the target this screen
+	 * renders, the prescribed watts its guards judge, and the `bias` its
+	 * samples carry. Divergence between those is what the client's meter and
+	 * the hub's score exist not to have.
+	 *
+	 * The rider's own setting is kept rather than reset, so it returns with
+	 * the grant instead of having to be dialled in again.
+	 */
+	const effectiveBias = $derived(actuating ? bias : 1);
 	function nudgeBias(step: number) {
+		// The control is disabled where it is drawn (ux.md); this is the same
+		// answer for anything that reaches past it.
+		if (!actuating) return;
 		bias = Math.min(1.2, Math.max(0.8, Math.round((bias + step) * 100) / 100));
 	}
 
@@ -133,7 +157,10 @@ export function createRide(deps: RideDeps) {
 		const info = targetAt(segments, deps.profile.current.ftp, shared.elapsed);
 		if (!info.done && info.segment?.kind === 'sprint')
 			return { watts: 0, sprint: true };
-		return { watts: Math.round((info.targetWatts ?? 0) * bias), sprint: false };
+		return {
+			watts: Math.round((info.targetWatts ?? 0) * effectiveBias),
+			sprint: false,
+		};
 	});
 	const prescribed = $derived(block.watts);
 
@@ -332,7 +359,7 @@ export function createRide(deps: RideDeps) {
 						wireMetrics(
 							metrics,
 							deps.profile.current.shareHr,
-							bias,
+							effectiveBias,
 							!guards.scoring,
 						),
 					);
@@ -394,8 +421,18 @@ export function createRide(deps: RideDeps) {
 			if (!latest || fault === 'silent') return undefined;
 			return `${Math.round(latest.watts)} W · ${Math.round(latest.cadence)} rpm`;
 		},
+		/** What the trim is doing, not what the rider once set it to (#2075). */
 		get bias() {
-			return bias;
+			return effectiveBias;
+		},
+		/**
+		 * Does this screen write the trainer's control point? (#1853, #2075)
+		 * What the places gate the bias trim on — a link existing is not the
+		 * same question, and gating on that drew a control that changed
+		 * nothing (ux.md).
+		 */
+		get actuating() {
+			return actuating;
 		},
 		get target() {
 			return target;

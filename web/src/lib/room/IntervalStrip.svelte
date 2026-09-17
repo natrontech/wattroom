@@ -37,11 +37,7 @@
 			: 'px-5 py-3'}"
 	>
 		<div class="min-w-0">
-			<p
-				class="text-muted text-[10px] tracking-[0.2em] uppercase {big
-					? 'text-[1.5vh]'
-					: ''}"
-			>
+			<p class="eyebrow {big ? 'text-[1.5vh]' : ''}">
 				block {block.index} of {block.count}
 			</p>
 			<p
@@ -69,24 +65,12 @@
 			>
 				{formatClock(block.secondsLeft)}
 			</p>
-			<p
-				class="text-muted text-[10px] tracking-wider uppercase {big
-					? 'text-[1.5vh]'
-					: ''}"
-			>
-				left in block
-			</p>
+			<p class="eyebrow {big ? 'text-[1.5vh]' : ''}">left in block</p>
 		</div>
 
 		{#if block.next}
 			<div class="border-ink/10 border-l pl-[3%] text-right">
-				<p
-					class="text-muted text-[10px] tracking-[0.2em] uppercase {big
-						? 'text-[1.5vh]'
-						: ''}"
-				>
-					next
-				</p>
+				<p class="eyebrow {big ? 'text-[1.5vh]' : ''}">next</p>
 				<p
 					class="font-display font-semibold tabular-nums {big
 						? 'text-[2.4vh]'

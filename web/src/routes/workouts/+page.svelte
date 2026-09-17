@@ -124,13 +124,16 @@
 
 	<!-- Yours first: they are the ones you had to make on purpose. -->
 	<section class="mt-6">
-		<div class="flex items-baseline gap-3">
+		<!-- Stacked below sm (#2183): side by side, the search box was 207 px
+		     with its placeholder cut off beside a heading that had wrapped to
+		     two lines. -->
+		<div class="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:gap-3">
 			<input
 				bind:value={query}
 				type="search"
 				placeholder="Find a workout — by name or focus"
 				aria-label="Find a workout"
-				class="input mt-6 w-full max-w-sm"
+				class="input mt-4 w-full max-w-sm sm:mt-6"
 			/>
 
 			<h2 class="eyebrow">your workouts</h2>

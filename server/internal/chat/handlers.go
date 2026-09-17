@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 
@@ -179,9 +178,7 @@ func (s *Service) handlePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	text := strings.TrimSpace(req.Text)
-	if utf8.RuneCountInString(text) > maxChatRunes {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"That message is too long — 500 characters is the cap.", "text")
+	if tooLong(w, text) {
 		return
 	}
 	if req.ImageID != "" {
@@ -257,9 +254,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	text := strings.TrimSpace(req.Text)
-	if utf8.RuneCountInString(text) > maxChatRunes {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"That message is too long — 500 characters is the cap.", "text")
+	if tooLong(w, text) {
 		return
 	}
 	msg, err := s.store.Queries.GetChatMessage(r.Context(), db.GetChatMessageParams{ID: id, RoomID: room.ID})

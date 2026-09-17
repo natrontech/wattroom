@@ -2,9 +2,12 @@ package auth
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -129,7 +132,7 @@ func TestPasskeyLoginStartRefusesWhenFull(t *testing.T) {
 
 func TestNewWebAuthnDerivesRelyingParty(t *testing.T) {
 	t.Setenv("WATTROOM_EXTRA_ORIGINS", "")
-	wa, err := newWebAuthn("https://wattroom.ch")
+	wa, err := newWebAuthn("https://wattroom.ch", slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -145,7 +148,7 @@ func TestNewWebAuthnDerivesRelyingParty(t *testing.T) {
 	// Dev is served from Vite's port, on the same host — the origin check is
 	// exact about ports, so that second origin has to be named.
 	t.Setenv("WATTROOM_EXTRA_ORIGINS", "http://localhost:5507, http://localhost:5508")
-	wa, err = newWebAuthn("http://localhost:8107")
+	wa, err = newWebAuthn("http://localhost:8107", slog.New(slog.DiscardHandler))
 	if err != nil {
 		t.Fatalf("build with extras: %v", err)
 	}
@@ -156,8 +159,23 @@ func TestNewWebAuthnDerivesRelyingParty(t *testing.T) {
 		t.Fatalf("extra origins not added: %v", wa.Config.RPOrigins)
 	}
 
-	if _, err := newWebAuthn("::not a url"); err == nil {
+	if _, err := newWebAuthn("::not a url", slog.New(slog.DiscardHandler)); err == nil {
 		t.Error("an unparseable base URL built a relying party")
+	}
+}
+
+// An extra origin can complete a ceremony for this relying party, so the
+// hatch is dev-only in fact and not only in a comment (#2258). A public entry
+// is dropped; the local ones beside it still land.
+func TestNewWebAuthnDropsAPublicExtraOrigin(t *testing.T) {
+	t.Setenv("WATTROOM_EXTRA_ORIGINS", "https://evil.example, http://localhost:5507, http://192.168.1.4:5173")
+	wa, err := newWebAuthn("http://localhost:8107", slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	want := []string{"http://localhost:8107", "http://localhost:5507", "http://192.168.1.4:5173"}
+	if !slices.Equal(wa.Config.RPOrigins, want) {
+		t.Errorf("origins = %v, want %v", wa.Config.RPOrigins, want)
 	}
 }
 
@@ -424,5 +442,40 @@ func TestPasskeyRegistrationNeedsTheRequiredAddress(t *testing.T) {
 				t.Fatalf("a refused registration still set %d cookie(s)", len(cookies))
 			}
 		})
+	}
+}
+
+// A server whose WATTROOM_BASE_URL has no hostname — `localhost:8080` with no
+// scheme is the realistic one — boots with passkeys off and the routes never
+// mounted, and used to say nothing about it (#2256). The client then gated on
+// the browser's own passkeys.supported() and offered the primary door
+// ADR-0029 chose, which answered with the API's 404 on click: exactly what
+// .claude/rules/ux.md's capability gating and errors.md both rule out.
+func TestProvidersSayWhetherPasskeysWorkHere(t *testing.T) {
+	available := func(t *testing.T, s *Service) bool {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		s.handleProviders(rec, httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/providers", nil))
+		var body struct {
+			PasskeysAvailable *bool `json:"passkeysAvailable"`
+		}
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("decode: %v: %s", err, rec.Body)
+		}
+		if body.PasskeysAvailable == nil {
+			t.Fatalf("the sign-in page cannot tell: %s", rec.Body)
+		}
+		return *body.PasskeysAvailable
+	}
+
+	s := testService(t)
+	if !available(t, s) {
+		t.Error("a server with a working relying party says passkeys are off")
+	}
+	// The same server as newWebAuthn refuses, which is how it boots in the
+	// first place: New logs and leaves s.wa nil.
+	s.wa = nil
+	if available(t, s) {
+		t.Error("a server with no relying party still offers the passkey door")
 	}
 }

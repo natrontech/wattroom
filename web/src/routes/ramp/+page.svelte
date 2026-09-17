@@ -10,8 +10,9 @@
 	import RampResult from './RampResult.svelte';
 	import { createRideFlags } from '$lib/ride/flags.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
+	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import TvOverlay from '$lib/room/TvOverlay.svelte';
-	import Flag from '@lucide/svelte/icons/flag';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
@@ -19,6 +20,7 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import SensorOverview from '$lib/room/SensorOverview.svelte';
+	import { trainerHint } from '$lib/room/sensor-status';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { device } from '$lib/device.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
@@ -29,6 +31,7 @@
 	import {
 		createRideSession,
 		SIGNAL_LOST_MS,
+		signalLost as isSignalLost,
 	} from '$lib/workout/session.svelte';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { stampFtpAfter, uploadRide } from '$lib/ride/save';
@@ -53,7 +56,7 @@
 	function flag() {
 		flags.recorder.flag();
 		flagNotice = true;
-		setTimeout(() => (flagNotice = false), 4000);
+		setTimeout(() => (flagNotice = false), FLAG_NOTICE_MS);
 	}
 	let error = $state<string | null>(null);
 	// The test is a ride (#1540): buffered like one and saved like one, so
@@ -172,13 +175,20 @@
 		const id = setInterval(() => (nowMs = Date.now()), 1000);
 		return () => clearInterval(id);
 	});
-	const signalLost = $derived(
-		!!session &&
-			session.state !== 'countdown' &&
-			session.state !== 'done' &&
-			!!session.sample &&
-			nowMs - session.sample.at > SIGNAL_LOST_MS,
-	);
+	// From the start, not from the first sample (#2158, the way /ride has
+	// counted since #1799): a trainer that streams frames without a power
+	// field never delivers one, so `!!session.sample` was never true and the
+	// ramp ran its full length with no banner, no fault cue, and `rampBlown`'s
+	// stale guard holding the test open — thirty minutes of nothing and then a
+	// 0 W result. Stamped when the CLOCK starts, not when Start was pressed:
+	// the count-in is not a gap in the trainer's reporting.
+	let ridingSince: number | undefined = $state();
+	$effect(() => {
+		if (session?.state === 'running' && ridingSince === undefined)
+			ridingSince = Date.now();
+		if (!session) ridingSince = undefined;
+	});
+	const signalLost = $derived(isSignalLost(session, ridingSince, nowMs));
 
 	// The ramp speaks like every ride (#1792): each step is a block cue, the
 	// guards and a dropout say so, and the end is heard — the number a rider
@@ -390,10 +400,11 @@
 					state: solo.state,
 					device: solo.trainer?.name,
 					reading: solo.reading,
-					hint:
-						solo.fault === 'silent'
-							? 'no watts yet — turn the cranks'
-							: undefined,
+					// The one place a trainer fault is put into words
+					// (sensor-status.ts): this card retyped the 'silent' case
+					// and had nothing at all for 'no-power', which is the fault
+					// this whole screen most needs to name (#2158).
+					hint: trainerHint(solo.fault),
 					error: solo.error,
 					onPair: () => void solo.pair(new FtmsTrainer()),
 					onForget: () => solo.forget(),
@@ -468,7 +479,10 @@
 		     numbers and the horizon, in the order the room and the solo ride use
 		     them. The ramp's real differences are two words — it prescribes a
 		     STEP, and it counts steps rather than blocks. -->
-		<div class="panel mt-8 flex flex-col gap-5 p-8">
+		<!-- The bottom padding is the floating navigation button's, as
+		     RidingScreen has it (ux.md: the last item clears the chrome) — the
+		     graph's bottom-left corner sat under it at 375 px (#2161). -->
+		<div class="panel mt-8 flex flex-col gap-5 p-8 pb-16 sm:pb-8">
 			<RideHeader
 				{block}
 				elapsed={session.elapsed}
@@ -491,22 +505,14 @@
 							}}
 							class="btn btn-secondary btn-lg">I'm done</button
 						>
-						<!-- The ⚑ (#52): one tap, no dialog, keep pedalling. -->
-						<button
-							onclick={flag}
-							class="border-neon/40 text-neon hover:bg-neon/10 grid h-11 w-14 place-items-center rounded border"
-							aria-label="Flag a problem"><Flag size={18} /></button
-						>
+						<FlagButton onflag={flag} sends="after" />
 					</div>
 				{/snippet}
 			</RideHeader>
 
 			{#if flagNotice}
 				<!-- Consent in plain words, at the moment of the tap, never blocking. -->
-				<p class="text-muted mt-2 text-xs">
-					Flagged — after the test this sends your last two minutes of ride data
-					and logs to the developers. Only yours, nobody else's.
-				</p>
+				<p class="text-muted mt-2 text-xs">{FLAG_SAID.after}</p>
 			{/if}
 
 			<!-- The guard states and the dropout, as /ride says them (#1799):
@@ -585,6 +591,9 @@
 
 {#if session && !done && session.state !== 'done' && tv}
 	<!-- The room's TV, on the ramp (#1799, ADR-0046): the same screen at 3 m. -->
+	<!-- A snippet is a function, so the `session &&` above does not narrow
+	     inside it (#2156). -->
+	{@const ride = session}
 	<TvOverlay
 		riders={[
 			{
@@ -601,7 +610,8 @@
 				watts: session.sample?.watts ?? 0,
 				cadence: session.sample?.cadence ?? 0,
 				hr: session.sample?.heartRate ?? 0,
-				stale: false,
+				// Grey when the trainer is quiet (#2156), not a confident 0 W.
+				stale: signalLost,
 				target: session.target,
 				trace: session.trace,
 			},
@@ -614,5 +624,12 @@
 		workoutName={block?.label ?? ''}
 		live
 		onExit={() => (tv = false)}
-	/>
+	>
+		<!-- The same status the page draws, on the screen the rider is
+		     actually watching (#2156). A ramp is the test whose number you
+		     keep: a dropout that goes unsaid here costs the whole test. -->
+		{#snippet status()}
+			<RideStatus session={ride} {signalLost} {noCrashSafety} />
+		{/snippet}
+	</TvOverlay>
 {/if}

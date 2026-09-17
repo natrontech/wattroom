@@ -67,12 +67,35 @@ func (q *Queries) Best20mIn90Days(ctx context.Context, userID pgtype.UUID) (int3
 	return column_1, err
 }
 
+const bestLast20mHRIn90Days = `-- name: BestLast20mHRIn90Days :one
+select coalesce(max(last20m_hr), 0)::int from rides
+where user_id = $1
+  and room_id is null
+  and seconds >= 1800 -- stats.MinLTHRRideSeconds (docs/SPEC.md's 30 minutes)
+  and last20m_hr > 0
+  and started_at >= now() - interval '90 days'
+`
+
+// The LTHR-from-a-ride input (docs/SPEC.md, #1620): the largest last-20-minute
+// average heart rate among the rider's qualifying rides in the rolling 90 days.
+// Qualifying is SPEC's, and nothing more — solo (no room), at least 30 minutes,
+// and a heart rate in the window. There is deliberately NO power gate: a
+// genuine HR field test need not be near the rider's best 20-minute power.
+// last20m_hr > 0 is what excludes both "no strap" and "not yet backfilled".
+func (q *Queries) BestLast20mHRIn90Days(ctx context.Context, userID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, bestLast20mHRIn90Days, userID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
        e.state as export_state
 from rides
-left join ride_exports e on e.ride_id = rides.id and e.destination = $4::text
-where user_id = $1 and workout_name = $2 and rides.id <> $3
+left join ride_exports e on e.ride_id = rides.id and e.destination = $3::text
+where user_id = $1 and workout_name = $2
+  and ($4::uuid is null or rides.id <> $4)
 order by avg_watts desc, started_at desc
 limit 1
 `
@@ -80,8 +103,8 @@ limit 1
 type BestUserRideOfWorkoutParams struct {
 	UserID      pgtype.UUID
 	WorkoutName string
-	ID          pgtype.UUID
 	Destination string
+	ExceptID    pgtype.UUID
 }
 
 type BestUserRideOfWorkoutRow struct {
@@ -103,12 +126,15 @@ type BestUserRideOfWorkoutRow struct {
 // The ride page's "against your best" (#1687): the hardest ride of the same
 // workout across the whole history, not the first page of the list. Same
 // columns as ListUserRides so one JSON mapping serves both.
+// `except` is optional (#2249): omitted it arrives as NULL, and `id <> NULL`
+// is NULL rather than true, so every row was filtered out and the route
+// answered "no best ride" for every rider and every workout.
 func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfWorkoutParams) (BestUserRideOfWorkoutRow, error) {
 	row := q.db.QueryRow(ctx, bestUserRideOfWorkout,
 		arg.UserID,
 		arg.WorkoutName,
-		arg.ID,
 		arg.Destination,
+		arg.ExceptID,
 	)
 	var i BestUserRideOfWorkoutRow
 	err := row.Scan(
@@ -190,9 +216,9 @@ const createRide = `-- name: CreateRide :one
 insert into rides (
     user_id, room_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
-    ftp_watts, samples, curve, xp, norm_watts
+    ftp_watts, samples, curve, xp, norm_watts, last20m_hr
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 returning id
 `
 
@@ -211,6 +237,7 @@ type CreateRideParams struct {
 	Curve           []byte
 	Xp              int32
 	NormWatts       *int16
+	Last20mHr       *int16
 }
 
 func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.UUID, error) {
@@ -229,6 +256,7 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 		arg.Curve,
 		arg.Xp,
 		arg.NormWatts,
+		arg.Last20mHr,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -415,8 +443,51 @@ func (q *Queries) FirstRideAt(ctx context.Context, userID pgtype.UUID) (pgtype.T
 	return first_ride, err
 }
 
+const forgetRemoteActivityIds = `-- name: ForgetRemoteActivityIds :execrows
+update ride_exports e
+set remote_id = null
+from rides r
+where r.id = e.ride_id
+  and r.user_id = $1
+  and e.destination = $2
+  and e.remote_id is not null
+`
+
+type ForgetRemoteActivityIdsParams struct {
+	UserID      pgtype.UUID
+	Destination string
+}
+
+// The ids the remote issued for this rider's uploads, dropped when their grant
+// is (#1507). WATTROOM.md binds Strava's API Policy §7.4 — everything goes
+// within 30 days of deauthorization — and an activity id was the one thing
+// here with no delete on any path except a full account purge, so a rider who
+// disconnected Strava and kept WattRoom left Strava-issued identifiers behind
+// for good.
+//
+// The delivery row stays. That a ride was uploaded, when, how many tries it
+// took and what it was told is OUR bookkeeping about a ride WE recorded — the
+// ride page reads it, and the export carries it. Only the remote's own number
+// goes with the grant.
+//
+// The id does not come back, and nothing pretends otherwise (#2281).
+// `external_id` is ours, so a re-connect's upload still dedupes on Strava's
+// side rather than making a second activity — but no code here reads the
+// answer it dedupes WITH: strava.post turns any `error` in the response into
+// a Go error, and strava.await does the same, so re-sending a ride Strava
+// already has surfaces as a FAILED delivery rather than as the activity it
+// already made. What a rider loses here is the link from the ride page to
+// their activity; what they keep is the activity.
+func (q *Queries) ForgetRemoteActivityIds(ctx context.Context, arg ForgetRemoteActivityIdsParams) (int64, error) {
+	result, err := q.db.Exec(ctx, forgetRemoteActivityIds, arg.UserID, arg.Destination)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getRide = `-- name: GetRide :one
-select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts,
+select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr,
        coalesce(rm.slug, '')::text as room_slug,
        coalesce(rm.name, '')::text as room_name
 from rides r
@@ -448,6 +519,7 @@ type GetRideRow struct {
 	NormWatts       *int16
 	ExecutionScored bool
 	FtpAfterWatts   *int16
+	Last20mHr       *int16
 	RoomSlug        string
 	RoomName        string
 }
@@ -478,6 +550,7 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.NormWatts,
 		&i.ExecutionScored,
 		&i.FtpAfterWatts,
+		&i.Last20mHr,
 		&i.RoomSlug,
 		&i.RoomName,
 	)
@@ -485,7 +558,7 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 }
 
 const getRideExport = `-- name: GetRideExport :one
-select state, attempts, last_error, remote_id
+select state, attempts, last_error, remote_id, stale_since
 from ride_exports
 where ride_id = $1 and destination = $2
 `
@@ -496,10 +569,11 @@ type GetRideExportParams struct {
 }
 
 type GetRideExportRow struct {
-	State     string
-	Attempts  int32
-	LastError *string
-	RemoteID  *int64
+	State      string
+	Attempts   int32
+	LastError  *string
+	RemoteID   *int64
+	StaleSince pgtype.Timestamptz
 }
 
 func (q *Queries) GetRideExport(ctx context.Context, arg GetRideExportParams) (GetRideExportRow, error) {
@@ -510,6 +584,7 @@ func (q *Queries) GetRideExport(ctx context.Context, arg GetRideExportParams) (G
 		&i.Attempts,
 		&i.LastError,
 		&i.RemoteID,
+		&i.StaleSince,
 	)
 	return i, err
 }
@@ -646,17 +721,54 @@ func (q *Queries) ListRideMedals(ctx context.Context, rideID pgtype.UUID) ([]Lis
 	return items, nil
 }
 
-const listRidesMissingNorm = `-- name: ListRidesMissingNorm :many
-select id, samples from rides where norm_watts is null limit $1
+const listRidesMissingLast20mHR = `-- name: ListRidesMissingLast20mHR :many
+select id, samples from rides where last20m_hr is null limit $1
 `
 
-type ListRidesMissingNormRow struct {
+type ListRidesMissingLast20mHRRow struct {
 	ID      pgtype.UUID
 	Samples []byte
 }
 
+// The #1620 backfill's read, the shape ListRidesMissingNorm uses: each blob is
+// read exactly once and goes cold again, so the per-ride-read storage rule
+// holds. NULL is the only "not computed yet" — a row the backfill has seen
+// carries a number, 0 included.
+func (q *Queries) ListRidesMissingLast20mHR(ctx context.Context, limit int32) ([]ListRidesMissingLast20mHRRow, error) {
+	rows, err := q.db.Query(ctx, listRidesMissingLast20mHR, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRidesMissingLast20mHRRow
+	for rows.Next() {
+		var i ListRidesMissingLast20mHRRow
+		if err := rows.Scan(&i.ID, &i.Samples); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRidesMissingNorm = `-- name: ListRidesMissingNorm :many
+select id, samples, avg_watts from rides where norm_watts is null limit $1
+`
+
+type ListRidesMissingNormRow struct {
+	ID       pgtype.UUID
+	Samples  []byte
+	AvgWatts int16
+}
+
 // The ADR-0016 backfill's read: each blob is read exactly once, then goes
 // cold again — the per-ride-read storage rule holds.
+// avg_watts comes too (#2253): a blob that will not decode stores the average
+// the readers' own coalesce would have fallen back to, rather than a 0 that
+// every fallback walks straight past.
 func (q *Queries) ListRidesMissingNorm(ctx context.Context, limit int32) ([]ListRidesMissingNormRow, error) {
 	rows, err := q.db.Query(ctx, listRidesMissingNorm, limit)
 	if err != nil {
@@ -666,7 +778,7 @@ func (q *Queries) ListRidesMissingNorm(ctx context.Context, limit int32) ([]List
 	var items []ListRidesMissingNormRow
 	for rows.Next() {
 		var i ListRidesMissingNormRow
-		if err := rows.Scan(&i.ID, &i.Samples); err != nil {
+		if err := rows.Scan(&i.ID, &i.Samples, &i.AvgWatts); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -866,14 +978,17 @@ func (q *Queries) ListUserProgression(ctx context.Context, userID pgtype.UUID) (
 
 const listUserRideWeeks = `-- name: ListUserRideWeeks :many
 select distinct date_trunc('week', started_at at time zone $1::text)::date as week
-from rides where user_id = $2
+from rides
+where user_id = $2
+  and ($3::uuid is null or rides.id <> $3)
 order by week desc
 limit 60
 `
 
 type ListUserRideWeeksParams struct {
-	Tz     string
-	UserID pgtype.UUID
+	Tz       string
+	UserID   pgtype.UUID
+	ExceptID pgtype.UUID
 }
 
 // Distinct weeks with at least one ride, newest first — the input to the
@@ -886,8 +1001,14 @@ type ListUserRideWeeksParams struct {
 // (audit 2026-09-09); stats.ZoneName is the one place that picks it, so the
 // SQL and the Go always agree, and it falls back to UTC for a rider whose
 // browser never told us.
+// except_id is the ride being amended (#2253). StreakXP's contract is "read
+// before this ride lands, so this week only counts if already ridden", which
+// save gets for free by asking before the insert. An amendment cannot: the
+// row is already in the table, so its own week came back and the bonus was
+// one week too high. Excluding the ride rather than the week is the same
+// question save asks — a second ride the same week still counts.
 func (q *Queries) ListUserRideWeeks(ctx context.Context, arg ListUserRideWeeksParams) ([]pgtype.Date, error) {
-	rows, err := q.db.Query(ctx, listUserRideWeeks, arg.Tz, arg.UserID)
+	rows, err := q.db.Query(ctx, listUserRideWeeks, arg.Tz, arg.UserID, arg.ExceptID)
 	if err != nil {
 		return nil, err
 	}
@@ -1061,6 +1182,28 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 	return items, nil
 }
 
+const markRideExportStale = `-- name: MarkRideExportStale :exec
+update ride_exports set stale_since = now()
+where ride_id = $1 and state = 'delivered'
+`
+
+// The ride outgrew what was delivered (#2281). AmendRide rebuilds a saved
+// ride from a longer record after the session closed (#1536); a delivery
+// that already succeeded keeps the short version for good, because
+// StartRideExport refuses to re-open a delivered row and the upload
+// API has no update to re-post through. Nothing here repairs that — the
+// ride page says it, and the rider decides what to do about it.
+//
+// `state = 'delivered'` is the whole guard, and it is what makes the notice
+// honest: a ride amended while its upload was still pending diverges from
+// nothing, because the upload that follows carries the grown ride. No
+// destination either — every remote that already has this ride has an old
+// one. Last amendment wins: the stamp is when the two last came apart.
+func (q *Queries) MarkRideExportStale(ctx context.Context, rideID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markRideExportStale, rideID)
+	return err
+}
+
 const requeueRideExport = `-- name: RequeueRideExport :execrows
 update ride_exports
 set state = 'pending', attempts = 0, last_error = null, updated_at = now()
@@ -1135,6 +1278,12 @@ select r.user_id,
        u.display_name,
        u.ftp_watts,
        u.weight_kg,
+       -- Where the pair came from (ADR-0048, #2243): a category computed from
+       -- two numbers nobody chose is two guesses divided by each other, and
+       -- this board is the one surface that publishes a ride-derived number
+       -- about one member to the rest of the room.
+       u.ftp_source,
+       u.weight_source,
        coalesce(sum(r.kj), 0)::bigint as kj,
        coalesce(sum(r.seconds), 0)::bigint as seconds
 from rides r
@@ -1148,17 +1297,19 @@ where r.room_id = $1
   -- same trap one level up, where the owner turns the board on and everybody
   -- already inside is enrolled by existence.
   and m.on_board
-group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg
+group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg, u.ftp_source, u.weight_source
 order by kj desc, u.display_name asc
 `
 
 type RoomWeekBoardRow struct {
-	UserID      pgtype.UUID
-	DisplayName string
-	FtpWatts    int16
-	WeightKg    int16
-	Kj          int64
-	Seconds     int64
+	UserID       pgtype.UUID
+	DisplayName  string
+	FtpWatts     int16
+	WeightKg     int16
+	FtpSource    *string
+	WeightSource *string
+	Kj           int64
+	Seconds      int64
 }
 
 // The room's ordered board (#995, ADR-0036) — opt-in, and THIS WEEK ONLY.
@@ -1181,6 +1332,8 @@ func (q *Queries) RoomWeekBoard(ctx context.Context, roomID pgtype.UUID) ([]Room
 			&i.DisplayName,
 			&i.FtpWatts,
 			&i.WeightKg,
+			&i.FtpSource,
+			&i.WeightSource,
 			&i.Kj,
 			&i.Seconds,
 		); err != nil {
@@ -1215,6 +1368,20 @@ func (q *Queries) SetRideFtpAfter(ctx context.Context, arg SetRideFtpAfterParams
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const setRideLast20mHR = `-- name: SetRideLast20mHR :exec
+update rides set last20m_hr = $2 where id = $1
+`
+
+type SetRideLast20mHRParams struct {
+	ID        pgtype.UUID
+	Last20mHr *int16
+}
+
+func (q *Queries) SetRideLast20mHR(ctx context.Context, arg SetRideLast20mHRParams) error {
+	_, err := q.db.Exec(ctx, setRideLast20mHR, arg.ID, arg.Last20mHr)
+	return err
 }
 
 const setRideNormWatts = `-- name: SetRideNormWatts :exec

@@ -85,14 +85,13 @@
 				if (e.currentTarget.value) setDay(e.currentTarget.value);
 			}}
 			aria-label="Date"
-			class="border-muted/25 focus:border-muted/60 rounded border bg-transparent px-2 py-1.5 text-xs outline-none"
+			class="input input-xs"
 		/>
 	{:else}
 		<button
 			type="button"
 			onclick={() => (showDate = true)}
-			class="border-muted/25 text-muted hover:text-ink rounded border px-2.5 py-1.5 text-xs"
-			>Later…</button
+			class="btn btn-secondary btn-xs">Later…</button
 		>
 	{/if}
 	<input
@@ -104,7 +103,7 @@
 		aria-label="Time"
 		aria-invalid={timeRefused ? 'true' : undefined}
 		aria-describedby={timeRefused ? timeErrorId : undefined}
-		class="border-muted/25 focus:border-muted/60 w-16 rounded border bg-transparent px-2 py-1.5 text-center font-mono text-xs tabular-nums outline-none"
+		class="input input-xs num w-16 text-center"
 	/>
 	{#if timeRefused}
 		<p id={timeErrorId} role="alert" class="text-danger w-full text-[11px]">

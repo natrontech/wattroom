@@ -1,6 +1,7 @@
 import { goto } from '$app/navigation';
 import { account } from '$lib/account.svelte';
 import { confirm } from '$lib/confirm.svelte';
+import { copyText, theLinkItself } from '$lib/copy';
 import {
 	inviteLink,
 	leaveCrew,
@@ -30,14 +31,20 @@ export async function leaveCrewFlow(
 ): Promise<boolean> {
 	const mine = presence.rooms.filter((r) => r.crew?.id === crew.id && !!r.role);
 	const standing = mine.some((r) => r.slug === roomConnection.current?.slug);
+	// Whether the crew goes when you do is the server's answer (#2079), taken
+	// from the crews list wherever the Leave was offered from: the crew page's
+	// own payload carries a roster and no such flag, and both surfaces must
+	// say the same thing.
+	const lastOut = !!presence.crews.find((c) => c.id === crew.id)?.lastOut;
 	const sure = await confirm({
-		title: `Leave ${crew.name}?`,
+		title: lastOut ? `Leave ${crew.name} and end it?` : `Leave ${crew.name}?`,
 		body: leaveBody(
 			crew.name,
 			mine.length,
 			mine.filter((r) => r.access === 'private').length,
+			lastOut,
 		),
-		action: 'Leave the crew',
+		action: lastOut ? 'Leave and end it' : 'Leave the crew',
 		cancel: 'Keep it',
 	});
 	if (!sure) return false;
@@ -53,12 +60,27 @@ export async function leaveCrewFlow(
 	return true;
 }
 
-/** What leaving takes, said before the button. */
+/**
+ * What leaving takes, said before the button.
+ *
+ * `lastOut` is the server's (#2079): leaving a crew with no rooms and nobody
+ * but its owner left in it deletes the crew, so the promise the other branches
+ * make — the code gets you back in — is a lie there. `rooms` cannot stand in
+ * for it: it counts the rooms YOU are in, so zero also means a crew whose
+ * rooms you simply never joined, where the code does get you back.
+ */
 export function leaveBody(
 	name: string,
 	rooms: number,
 	privateRooms: number,
+	lastOut = false,
 ): string {
+	if (lastOut)
+		return (
+			`You leave ${name}, and the crew goes with you: it has no rooms and ` +
+			`nobody but its owner left in it. Its name, its logo and its invite ` +
+			`code end here, and no code brings it back.`
+		);
 	if (rooms === 0) return `You leave ${name}. Its code gets you back in.`;
 	const which = rooms === 1 ? 'the room' : `the ${rooms} rooms`;
 	const back =
@@ -111,6 +133,16 @@ export const HAND_OVER_BODY =
 	'crew on. You cannot take this back; only they can hand it back to you.';
 
 /**
+ * What the action is called, wherever it is offered (#2175): the crew page
+ * said "Make main crew" and the switcher's menu "Make it my main crew" — one
+ * act with two names, a column apart.
+ */
+export const MAIN_CREW_LABEL = 'Make it my main crew';
+
+/** Why it is worth pressing — the same sentence on both surfaces. */
+export const MAIN_CREW_HINT = 'the sidebar opens in this crew on every device';
+
+/**
  * Naming the main crew (#2144), from wherever it is offered — the crew page
  * and the crew row's menu — with the one toast. The sidebar switches to it
  * here and now; every other device opens in it from its next load.
@@ -136,16 +168,7 @@ export async function makeMainCrewFlow(
  */
 export async function copyInviteLink(code: string): Promise<void> {
 	const link = inviteLink(code);
-	try {
-		await navigator.clipboard.writeText(link);
-	} catch {
-		// A clipboard the browser refused (no permission, no focus) is not a
-		// dead end: the link itself is the feedback (errors.md).
-		toasts.push(`Could not copy — the link is ${link}`, {
-			tone: 'error',
-			seconds: 12,
-		});
-		return;
-	}
-	toasts.push('Invite link copied.');
+	// A clipboard the browser refused (no permission, no focus) is not a dead
+	// end: the link itself is the feedback (errors.md).
+	await copyText(link, 'Invite link copied.', theLinkItself(link));
 }

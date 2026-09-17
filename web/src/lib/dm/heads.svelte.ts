@@ -70,6 +70,7 @@ async function poll() {
 		// A NEW inbound line, announced the one way every message is (#568).
 		if (first) continue;
 		announce({
+			kind: 'dm',
 			tag: `dm-${head.peerId}`,
 			at: head.at,
 			title: head.peerName,

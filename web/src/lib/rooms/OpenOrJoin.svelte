@@ -3,12 +3,22 @@
 	// carried beyond a list the sidebar already is (ADR-0020). Home's "your
 	// rooms" section, and what the sidebar's + points at.
 	import { goto } from '$app/navigation';
+	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import { joinCrew } from '$lib/crew';
-	import { creationCrew, crewsOf, openableCrews } from '$lib/nav/crews';
+	import {
+		administersNone,
+		creationCrew,
+		crewsOf,
+		leadsWithJoining,
+		openableCrews,
+	} from '$lib/nav/crews';
 	import { presence } from '$lib/presence.svelte';
+	// The two code lengths are the server's, generated (#2180): the box that
+	// tells a friend's code from a crew's cannot disagree with the door.
+	import { CrewCodeLen, FriendCodeLen } from '$lib/protocol';
 	import type { RoomCrew } from '$lib/room/room-data';
 
 	let {
@@ -43,11 +53,24 @@
 		creationCrew(openable, picked ?? crewId, picked ? undefined : crew),
 	);
 
-	// A rider who administers no crew is asked to join one before founding
-	// one (#2144): "Open your first room — it makes your crew" used to lead,
-	// so every newcomer was steered into a crew of their own. The option
-	// stays, as the second panel.
-	const joinFirst = $derived(presence.loaded && openable.length === 0);
+	// A rider carrying an invite is asked to join that crew before founding
+	// one (#2144, #2184): the code box leads and founding a crew is the second
+	// panel. Keyed on the invite rather than on administering nothing, because
+	// the signed-out landing promises a stranger "Open your first room" and a
+	// stranger is who arrives without one (ADR-0038 amended 2026-09-17).
+	const joinFirst = $derived(
+		presence.loaded &&
+			leadsWithJoining(
+				crewsOf(presence.rooms, presence.crews),
+				account.me?.pendingInvite,
+			),
+	);
+	// Nowhere to open a room yet — which is what makes the day-one sentence
+	// true ("opening a room makes your crew"), invite or no invite. The order
+	// above is a different question and reads a different signal.
+	const crewless = $derived(
+		presence.loaded && administersNone(crewsOf(presence.rooms, presence.crews)),
+	);
 
 	let newRoomName = $state('');
 	let joinCode = $state('');
@@ -58,14 +81,16 @@
 	let joinError = $state<string | null>(null);
 
 	const invalidCode = $derived(
-		joinCode.length > 0 && !/^[A-Z0-9]{0,8}$/i.test(joinCode),
+		joinCode.length > 0 && !/^[A-Z0-9]*$/i.test(joinCode),
 	);
 	// A crew's code is six characters, a friend's eight (friends.go). The box
 	// used to cut a pasted friend code to six and send it, and the server's
 	// "no crew has that code" sent the rider back to the friend who gave them
 	// the right code for a different door.
 	const looksLikeFriendCode = $derived(
-		joinCode.length > 6 && /^[A-Z0-9]{7,8}$/i.test(joinCode),
+		joinCode.length > CrewCodeLen &&
+			joinCode.length <= FriendCodeLen &&
+			/^[A-Z0-9]+$/i.test(joinCode),
 	);
 	// docs/SPEC.md ownership cap: at the cap the affordance disables with the
 	// reason, instead of a 409 on click (ux.md capability gating). The number
@@ -107,7 +132,17 @@
 
 <section id={compact ? undefined : 'rooms'}>
 	{#if !compact}
-		<h2 class="eyebrow">Your rooms</h2>
+		<!-- Named for what is under it (#2176): the panel leads with joining a
+		     crew for an invited rider, and "Your rooms" over that is a heading
+		     about something else. A rider with no rooms and no invite gets the
+		     landing's own words back (#2184). -->
+		<h2 class="eyebrow">
+			{joinFirst
+				? 'Get into a crew'
+				: crewless
+					? 'Open your first room'
+					: 'Your rooms'}
+		</h2>
 	{/if}
 	<div
 		class="grid gap-3 {compact
@@ -135,9 +170,10 @@
 					{/if}
 				</h3>
 				<p class="text-muted mt-1 text-xs">
-					{#if joinFirst}
+					{#if crewless}
 						<!-- The day-one fact, said before the click rather than in a toast
-					     after it (#1151): a first room makes the crew. -->
+					     after it (#1151): a first room makes the crew. True of every
+					     rider who administers none, whichever panel leads (#2184). -->
 						Opening a room makes it — named after you until you rename it, and the
 						room is open to the crew from the start.
 					{:else}
@@ -215,11 +251,11 @@
 					<input
 						id={compact ? 'join-code-sheet' : 'join-code'}
 						bind:value={joinCode}
-						maxlength="8"
-						class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode ||
-						looksLikeFriendCode
-							? 'border-danger/60'
-							: 'border-muted/25 focus:border-muted/60'}"
+						maxlength={FriendCodeLen}
+						class="input mt-3 w-full font-mono tracking-[0.3em] uppercase placeholder:tracking-normal placeholder:normal-case"
+						aria-invalid={invalidCode || looksLikeFriendCode
+							? 'true'
+							: undefined}
 						placeholder="Crew code"
 						aria-label="crew code"
 						autofocus={compact && joinFirst}
@@ -238,7 +274,9 @@
 						</p>
 					{/if}
 					<button
-						disabled={roomBusy || joinCode.length !== 6 || invalidCode}
+						disabled={roomBusy ||
+							joinCode.length !== CrewCodeLen ||
+							invalidCode}
 						class="btn btn-secondary mt-3 w-full">Join crew</button
 					>
 				</form>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { MaxMessageChars } from '$lib/protocol';
 	// The thread's composer (#468, #672): the draft, an attached or pasted
 	// image, the GIF picker, and the send. Split out of MessageThread for
 	// size; it owns the focus rule too — the box takes focus on navigation
@@ -186,11 +187,14 @@
 				e.currentTarget.value = '';
 			}}
 		/>
+		<!-- The kit's icon button, not a hand-typed one (#2170): these two sat
+		     at 24 px under ux.md's 24 px floor, and only the attach one dimmed
+		     when the box was locked, because each had typed its own skin. -->
 		<button
 			type="button"
 			onclick={() => filePicker?.click()}
 			disabled={!!lock}
-			class="text-muted hover:text-ink rounded p-1 disabled:opacity-40"
+			class="icon-btn text-muted hover:text-ink"
 			aria-label="attach an image"
 			title="attach an image (or paste one)"><ImageIcon size={16} /></button
 		>
@@ -202,7 +206,7 @@
 				onclick={() => (gifOpen = !gifOpen)}
 				disabled={!!lock}
 				data-gif-toggle
-				class="rounded p-1 {gifOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
+				class="icon-btn {gifOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
 				aria-label="send a GIF"
 				aria-expanded={gifOpen}
 				title="send a GIF"><ImagePlay size={16} /></button
@@ -218,7 +222,7 @@
 			aria-expanded={!!mention}
 			aria-controls={mention ? listId : undefined}
 			aria-activedescendant={mention ? optionId(pick) : undefined}
-			maxlength="500"
+			maxlength={MaxMessageChars}
 			{placeholder}
 			aria-label={placeholder}
 			disabled={!!lock}

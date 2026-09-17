@@ -6,6 +6,17 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
+// consecutive turns watts into one sample a second — what a rider who never
+// dropped a packet produces. The podium's window is five SECONDS (#2231), so
+// a test that means "five good seconds" has to say which seconds they were.
+func consecutive(watts ...int) []sprintSample {
+	out := make([]sprintSample, len(watts))
+	for i, w := range watts {
+		out[i] = sprintSample{second: int64(i), watts: w}
+	}
+	return out
+}
+
 // Two riders on the same w/kg used to be placed by map iteration order, so
 // the 5 and the 3 points of a points race went to either at random (#824).
 func TestPodiumBreaksTiesTheSameWayEveryTime(t *testing.T) {
@@ -14,10 +25,10 @@ func TestPodiumBreaksTiesTheSameWayEveryTime(t *testing.T) {
 		"a": {ID: "a", Name: "A", WeightKg: 80},
 		"c": {ID: "c", Name: "C", WeightKg: 80},
 	}
-	samples := map[string][]int{
-		"a": {400, 400, 400, 400, 400},
-		"b": {400, 400, 400, 400, 400},
-		"c": {500, 500, 500, 500, 500},
+	samples := map[string][]sprintSample{
+		"a": consecutive(400, 400, 400, 400, 400),
+		"b": consecutive(400, 400, 400, 400, 400),
+		"c": consecutive(500, 500, 500, 500, 500),
 	}
 	for round := 0; round < 20; round++ {
 		got := podium(samples, seen)

@@ -186,6 +186,11 @@ type exportJSON struct {
 	RemoteID int64 `json:"remoteId,omitempty"`
 	// What went wrong last, while it is still going wrong.
 	Error string `json:"error,omitempty"`
+	// When the ride outgrew what was delivered (#2281) — absent unless it
+	// did. AmendRide rebuilds a ride from a longer record after the session
+	// closed (#1536) and the delivered copy is never re-sent, so this is the
+	// moment the two came apart and the page says so.
+	StaleSince string `json:"staleSince,omitempty"`
 }
 
 func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
@@ -258,6 +263,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		// a scar, not a status.
 		if export.State != "delivered" && export.LastError != nil {
 			out.Export.Error = *export.LastError
+		}
+		if export.StaleSince.Valid {
+			out.Export.StaleSince = export.StaleSince.Time.Format(time.RFC3339)
 		}
 	}
 

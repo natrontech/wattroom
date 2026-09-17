@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"log/slog"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -107,4 +108,47 @@ func TestRidingReachesTheRoster(t *testing.T) {
 		riding, _ := ridingOf(tick.Roster, "kim")
 		return riding
 	})
+}
+
+// Riding is what the friends panel asks (#1743, ADR-0012's third state), and
+// it must answer the rider-facing word rather than the deploy guard's: a
+// trainer that is merely switched on is not somebody riding. It also answers
+// about the ids it was asked about and no others — the panel passes the
+// viewer's friends, and a room full of strangers is not the viewer's business.
+func TestRidingAnswersOnlyTheRidersAsked(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), nil, nil)
+	now := time.Now()
+	h.now = func() time.Time { return now }
+
+	// Every one of them has a trainer talking right now; only the watts differ.
+	for _, slug := range []string{"cave", "lair"} {
+		h.rooms[slug] = newRoom(slug)
+	}
+	join := func(slug, id string, pedalledAgo time.Duration, pedalled bool) {
+		rm := h.rooms[slug]
+		rm.seen[id] = protocol.Rider{ID: id, Name: id}
+		rm.lastMetric[id] = now
+		if pedalled {
+			rm.lastWatts[id] = now.Add(-pedalledAgo)
+		}
+	}
+	join("cave", "jan", 0, true)                // pedalling
+	join("cave", "sven", 0, false)              // in the room, never pedalled
+	join("lair", "kim", 5*time.Second, true)    // coasting inside the window
+	join("lair", "ruben", 15*time.Second, true) // sat down, outside it
+	join("lair", "stranger", 0, true)           // pedalling, nobody's friend
+
+	got := h.Riding([]string{"jan", "sven", "kim", "ruben", "nobody"})
+	want := map[string]bool{"jan": true, "kim": true}
+	if len(got) != len(want) {
+		t.Fatalf("Riding = %v, want exactly %v", got, want)
+	}
+	for id := range want {
+		if !got[id] {
+			t.Fatalf("Riding = %v, want %v riding", got, id)
+		}
+	}
+	if got["stranger"] {
+		t.Fatalf("Riding answered about a rider nobody asked after: %v", got)
+	}
 }

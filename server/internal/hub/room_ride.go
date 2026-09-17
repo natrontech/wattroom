@@ -20,10 +20,15 @@ func validMetrics(m protocol.RiderMetrics) bool {
 }
 
 func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
-	rider := c.rider
 	now := rm.now()
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	// Under the lock (#2229): `SetRole` writes `c.rider.Role` on this same
+	// client from an HTTP handler's goroutine, under this same lock, whenever
+	// a rider is promoted, demoted or handed the room. Read outside it, this
+	// is a race — and the copy is what lands in `rm.seen`, which is what the
+	// saved ride and every podium are built from.
+	rider := c.rider
 	// One stream per rider (#610). Two paired screens do not merely overwrite
 	// each other here — their per-session `seq` counters interleave, which
 	// reads to the accumulator as a fresh stream and lands BOTH sets of
@@ -56,9 +61,9 @@ func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
 // this exists to prevent. The record is bounded per rider and reset on the
 // next start, so out-of-session samples cost nothing and hurt nobody.
 func (rm *room) backfill(c *client, samples []protocol.RiderMetrics, log *slog.Logger, saver SessionSaver) {
-	rider := c.rider
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	rider := c.rider // under the lock, as in setMetrics (#2229)
 	// The claim gates the replay as it gates live metrics: a screen that
 	// lost the trainer to another of the rider's tabs and then reconnected
 	// used to land its buffer in the record beside the holder's (audit
@@ -213,12 +218,23 @@ func (rm *room) startGame(mode string, now time.Time) string {
 }
 
 // endGame stops the running mode; false when nothing was running (#1582).
-func (rm *room) endGame() bool {
+// It is the coach's out and the only end Team Relay has — relay.done() is
+// never true — so it puts the ending on the timeline itself, unless the game
+// already announced its own: advanceGameLocked stamped gameDoneAt on the tick
+// it put a "won" or "gameEnded" line up, and a coach clearing a finished
+// game's podium is not a second ending.
+func (rm *room) endGame(now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	running := rm.game != nil
+	if rm.game == nil {
+		return false
+	}
+	if rm.gameDoneAt.IsZero() {
+		gs := rm.game.state(now)
+		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
+	}
 	rm.game, rm.lastGame, rm.gameDoneAt = nil, nil, time.Time{}
-	return running
+	return true
 }
 
 // gameRosterLocked is the roster the game scores against: everyone the room

@@ -55,28 +55,41 @@ export function railPeople(riders: readonly string[] | undefined): {
 
 /**
  * The line's own menu: the riders it named, then the roster when it hid
- * anybody. The rail carries display names and not ids, so a name cannot build
- * `personMenu` here — the entry resolves the name and lands on `/u/<id>`, which
- * is where message and add-friend live anyway (#533).
+ * anybody. The names go to the pages of the people the FEED says they are —
+ * `riderIds` is index-aligned with `riders` (#649) — rather than to whoever a
+ * member list happens to call that. Display names are not unique, and the
+ * lookup this replaced answered with the wrong rider for two riders called
+ * Dave, one member-gated fetch per click later (#2182).
+ *
+ * A name the feed gave no id for cannot become a page, so it is not offered
+ * one; the roster entry counts it with the rest, which is where every rider
+ * has a row anyway (#533).
  */
 export function railPeopleMenu(
-	riders: readonly string[] | undefined,
-	onMember: ((name: string) => void) | undefined,
+	room: Pick<RailRoom, 'riders' | 'riderIds'>,
+	go: (href: string) => void,
 	onRoster: () => void,
 ): MenuEntry[] {
-	if (!onMember) return [];
-	const { shown, more } = railPeople(riders);
-	const entries: MenuEntry[] = shown.map((name) => ({
-		label: `${name}'s page`,
-		icon: User,
-		onSelect: () => onMember(name),
-	}));
+	const { shown, more } = railPeople(room.riders);
+	const ids = room.riderIds ?? [];
+	const entries: MenuEntry[] = shown.flatMap((name, i) =>
+		ids[i]
+			? [
+					{
+						label: `${name}'s page`,
+						icon: User,
+						onSelect: () => go(`/u/${ids[i]}`),
+					},
+				]
+			: [],
+	);
 	if (entries.length === 0) return [];
-	if (more > 0)
+	const hidden = more + (shown.length - entries.length);
+	if (hidden > 0)
 		entries.push('separator', {
 			label: 'Everyone who is here',
 			icon: Users,
-			hint: `+${more}`,
+			hint: `+${hidden}`,
 			onSelect: onRoster,
 		});
 	return entries;

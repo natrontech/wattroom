@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -94,6 +95,37 @@ func (h *harness) roomRide(t *testing.T, id, medal string) pgtype.UUID {
 		t.Fatalf("create medal: %v", err)
 	}
 	return rideID
+}
+
+// deliver opens the delivery record for one ride and closes it the way the
+// uploader would: an id from the destination, or the sentence it refused
+// with. Exactly one of the two, because a row carries one of them at a time.
+func (h *harness) deliver(t *testing.T, id string, remoteID *int64, lastError *string) {
+	t.Helper()
+	rideID, err := store.ParseUUID(id)
+	if err != nil {
+		t.Fatalf("ride id: %v", err)
+	}
+	if err := h.store.Queries.StartRideExport(t.Context(), db.StartRideExportParams{
+		RideID: rideID, Destination: exportDestination,
+	}); err != nil {
+		t.Fatalf("start export: %v", err)
+	}
+	if remoteID != nil {
+		if err := h.store.Queries.FinishRideExport(t.Context(), db.FinishRideExportParams{
+			RideID: rideID, Destination: exportDestination, RemoteID: remoteID,
+		}); err != nil {
+			t.Fatalf("finish export: %v", err)
+		}
+		return
+	}
+	// MaxAttempts 1: one spent attempt is the last one, which is the state
+	// that keeps last_error on the wire.
+	if err := h.store.Queries.FailRideExport(t.Context(), db.FailRideExportParams{
+		RideID: rideID, Destination: exportDestination, LastError: lastError, MaxAttempts: 1,
+	}); err != nil {
+		t.Fatalf("fail export: %v", err)
+	}
 }
 
 func call(t *testing.T, mux *http.ServeMux, user, method, path, body string) (int, map[string]any) {
@@ -492,6 +524,48 @@ func TestRideDetail(t *testing.T) {
 	}
 }
 
+// A delivery the ride outgrew says so on the ride page (#2281). AmendRide
+// rebuilds a ride from a longer record after the session closed (#1536), and
+// a delivery that already succeeded is never re-opened — so the destination
+// keeps the short ride and only this field lets the page admit it. Without
+// it the page reads "On Strava as activity N" beside a longer ride and
+// nothing is ever wrong on screen.
+func TestRideDetailSaysWhenTheRideOutgrewItsDelivery(t *testing.T) {
+	h := setup(t)
+	id := h.save(t, "alice", 120, 200)
+	// The number is this test's own invention: no payload from the
+	// destination is ever fixtured in this repository (AGENTS.md).
+	remoteID := int64(4242424242)
+	h.deliver(t, id, &remoteID, nil)
+
+	exportOf := func() map[string]any {
+		t.Helper()
+		status, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, "")
+		if status != http.StatusOK {
+			t.Fatalf("ride detail: %d %v", status, body)
+		}
+		export, _ := body["export"].(map[string]any)
+		if export == nil {
+			t.Fatalf("a delivered ride carries no delivery record: %v", body)
+		}
+		return export
+	}
+	if got, ok := exportOf()["staleSince"]; ok {
+		t.Fatalf("a delivery nothing outgrew is stale since %v", got)
+	}
+
+	rideID, err := store.ParseUUID(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.store.Queries.MarkRideExportStale(t.Context(), rideID); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := exportOf()["staleSince"].(string); !ok {
+		t.Fatalf("the ride outgrew its delivery and the page is not told: %v", exportOf())
+	}
+}
+
 func TestRideDetailNamesItsRoomAndMedals(t *testing.T) {
 	h := setup(t)
 	id := h.save(t, "alice", 120, 200)
@@ -736,6 +810,13 @@ func TestBestRideOfWorkout(t *testing.T) {
 	if other, _ := body["ride"].(map[string]any); other["id"] != weak {
 		t.Fatalf("best except the best: %v, want the 180 W ride", body)
 	}
+	// Without `except` at all (#2249): the parameter is optional, and the
+	// query used to compare against NULL — `id <> NULL` is NULL, never true —
+	// so this answered "no best ride" for every rider and every workout.
+	_, body = call(t, h.mux, "alice", http.MethodGet, "/api/rides/best?workout=Openers", "")
+	if best, _ := body["ride"].(map[string]any); best["id"] != strong {
+		t.Fatalf("best of Openers with no except: %v, want the 260 W ride", body)
+	}
 	if _, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides/best?workout=Nothing", ""); body["ride"] != nil {
 		t.Fatalf("a workout never ridden: %v, want ride null", body)
 	}
@@ -745,23 +826,91 @@ func TestBestRideOfWorkout(t *testing.T) {
 	}
 }
 
+// rawGet issues one GET as alice, with or without a personal token, and
+// hands back the raw bytes rather than a decoded map: what a bearer may read
+// is a question about the whole body, fields nobody has written yet included.
+func rawGet(t *testing.T, h *harness, path string, bearer bool) (int, string) {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
+	req.Header.Set("X-Test-User", "alice")
+	if bearer {
+		req.Header.Set("Authorization", "Bearer wrt_"+strings.Repeat("0", 64))
+	}
+	rec := httptest.NewRecorder()
+	h.mux.ServeHTTP(rec, req)
+	return rec.Code, rec.Body.String()
+}
+
 // A personal token reads summaries only (#1757, ADR-0008): the per-second
 // record and the .fit refuse a bearer whatever source authenticated it.
 func TestABearerNeverReadsTheRecord(t *testing.T) {
 	h := setup(t)
 	id := h.save(t, "alice", 120, 200)
 	for _, path := range []string{"/api/rides/" + id, "/api/rides/" + id + "/export"} {
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
-		req.Header.Set("X-Test-User", "alice")
-		req.Header.Set("Authorization", "Bearer wrt_"+strings.Repeat("0", 64))
-		rec := httptest.NewRecorder()
-		h.mux.ServeHTTP(rec, req)
-		if rec.Code != http.StatusForbidden {
-			t.Fatalf("%s with a bearer: %d, want 403", path, rec.Code)
+		if code, _ := rawGet(t, h, path, true); code != http.StatusForbidden {
+			t.Fatalf("%s with a bearer: %d, want 403", path, code)
 		}
 	}
 	if status, _ := call(t, h.mux, "alice", http.MethodGet, "/api/rides", ""); status != http.StatusOK {
 		t.Fatalf("the summary list: %d", status)
+	}
+}
+
+// The delivery record — the destination's own number for the ride, and what
+// it said when it refused one — never crosses a bearer (ADR-0017's amendment,
+// #1760). A ride we recorded and uploaded is ours; the copy the destination
+// hands back is theirs (AGENTS.md), and RESEARCH §13.5 makes the cost of
+// being wrong asymmetric enough that it stays on the account.
+//
+// Today that holds only because the detail route refuses a bearer outright,
+// which is an incidental guard and not the rule: the summary list a bearer
+// CAN read already carries `exportState`, so the next field added beside it
+// would walk around every 403 in this package without touching one. So this
+// asserts the values, not the shape — every GET the service registers is
+// swept for them, and a `remoteId` on a summary fails here.
+func TestABearerNeverReadsTheDeliveryRecord(t *testing.T) {
+	h := setup(t)
+	// Both sentinels are invented here: no payload from the destination is
+	// ever fixtured in this repository (AGENTS.md).
+	remoteID := int64(4242424242)
+	refusal := "sentinel: the destination refused this one"
+	number := strconv.FormatInt(remoteID, 10)
+
+	// One record of each kind: a row carries the number or the sentence, not
+	// both, so proving one field off the wire would prove nothing about the
+	// other.
+	records := []struct{ ride, sentinel string }{
+		{h.save(t, "alice", 120, 200), number},
+		{h.save(t, "alice", 120, 210), refusal},
+	}
+	h.deliver(t, records[0].ride, &remoteID, nil)
+	h.deliver(t, records[1].ride, nil, &refusal)
+
+	// The fixture reaches the owner's own page first. Without this the sweep
+	// below passes on an empty table and says nothing at all.
+	for _, record := range records {
+		code, body := rawGet(t, h, "/api/rides/"+record.ride, false)
+		if code != http.StatusOK || !strings.Contains(body, record.sentinel) {
+			t.Fatalf("the owner's own ride page: %d, and %q is not in it — the fixture never landed: %s",
+				code, record.sentinel, body)
+		}
+	}
+
+	paths := []string{"/api/rides", "/api/rides/best?workout=Openers"}
+	for _, record := range records {
+		paths = append(paths, "/api/rides/"+record.ride,
+			"/api/rides/"+record.ride+"/export", "/api/rides/"+record.ride+"/card.png")
+	}
+	for _, path := range paths {
+		code, body := rawGet(t, h, path, true)
+		if code == http.StatusNotFound {
+			t.Fatalf("%s is not a route this service serves — the sweep is reading a typo, not an answer", path)
+		}
+		for _, sentinel := range []string{number, refusal} {
+			if strings.Contains(body, sentinel) {
+				t.Errorf("%s answered a bearer with the delivery record (%q): %s", path, sentinel, body)
+			}
+		}
 	}
 }
 

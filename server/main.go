@@ -20,8 +20,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
 	"strings"
 
 	"github.com/natrontech/wattroom/server/internal/account"
@@ -38,8 +36,10 @@ import (
 	"github.com/natrontech/wattroom/server/internal/gamify"
 	"github.com/natrontech/wattroom/server/internal/gifs"
 	"github.com/natrontech/wattroom/server/internal/housekeeping"
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/hub"
 	"github.com/natrontech/wattroom/server/internal/mcp"
+	"github.com/natrontech/wattroom/server/internal/metrics"
 	"github.com/natrontech/wattroom/server/internal/notify"
 	"github.com/natrontech/wattroom/server/internal/og"
 	"github.com/natrontech/wattroom/server/internal/playlists"
@@ -69,6 +69,32 @@ var webdist embed.FS
 // info, which is what every deployment has had until now — an operator who
 // mistypes it gets the old behaviour and a line saying so, not a silent
 // server.
+// metricsAddress is where the metrics listener binds (#1738). A separate
+// port rather than a path on the public one: what an endpoint publishes
+// should not depend on an edge proxy's configuration, and wattroom.ch's edge
+// is not deploy/Caddyfile.
+//
+// Unset means the default; empty means off. The two differ on purpose — an
+// operator with no scraper says so by setting it to "".
+func metricsAddress() string {
+	if v, ok := os.LookupEnv("WATTROOM_METRICS_ADDR"); ok {
+		return strings.TrimSpace(v)
+	}
+	return ":9091"
+}
+
+// metricsMux serves the registry at /metrics and nothing anywhere else: a
+// stray request to this port must not find an app route, and a misconfigured
+// scrape should read as a 404 rather than as an empty scrape.
+func metricsMux() http.Handler {
+	mux := http.NewServeMux()
+	mux.Handle("GET /metrics", metrics.Handler())
+	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "this port serves /metrics and nothing else\n", http.StatusNotFound)
+	})
+	return mux
+}
+
 func logLevel() slog.Level {
 	raw := strings.TrimSpace(os.Getenv("WATTROOM_LOG_LEVEL"))
 	if raw == "" {
@@ -133,10 +159,16 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", healthzHandler(st, log))
-	// Public on purpose, like /api/live below: the registered gauges are
-	// aggregate-only by construction (metrics.go refuses a GaugeVec, so no
-	// slug or rider reaches this route), and a scraper cannot sign in.
-	mux.Handle("GET /metrics", promhttp.Handler())
+	// /metrics is NOT here any more (#1738). It went out on the public origin
+	// under a comment claiming the registered collectors were aggregate "by
+	// construction" — which was a convention `jobmetrics` had already broken,
+	// beside the Go runtime's own build info and GC statistics. It has its own
+	// listener now, below, on a port no edge publishes.
+	//
+	// The route stays as a 404 that says so: a scrape pointed at the old
+	// address otherwise fails as "no such path" on a server that plainly has
+	// metrics, which is a worse half-hour than a sentence.
+	mux.HandleFunc("GET /metrics", metricsMoved)
 	mux.HandleFunc("GET /api/version", versionHandler())
 	// What a link preview may say about a room: listed rooms only (#1734).
 	var roomIdentity og.LookupRoom
@@ -164,6 +196,18 @@ func main() {
 			log.Error("refusing to start", "err", err)
 			os.Exit(1)
 		}
+		// The other unauthenticated-by-default door, held to the same bar
+		// (#2258): its only protection is the value's secrecy.
+		if err := auth.SyntheticTokenMisconfigured(); err != nil {
+			log.Error("refusing to start", "err", err)
+			os.Exit(1)
+		}
+		// X-Forwarded-For is believed only where the deploy says a proxy
+		// writes it (#2258). Unset means the socket's peer, which is right
+		// for a binary facing the internet directly and wrong only for the
+		// operator who put a proxy in front and did not say so — a case a
+		// warning cannot distinguish from an attack.
+		httpx.TrustProxyHeader(os.Getenv("WATTROOM_TRUSTED_PROXY") == "1")
 		// A rider's sign-in picture is copied onto this origin rather than
 		// fetched from Google, GitHub or Strava by every browser that draws
 		// their face (#2078) — through the same guarded outbound client the
@@ -228,6 +272,9 @@ func main() {
 		})
 		// One-pass norm_watts fill for pre-ADR-0016 rides; exits when done.
 		safego.Go(log, "norm watts backfill", func() { stats.BackfillNormWatts(ctx, st, log) })
+		// The same, for last20m_hr on rides saved before #1620 — so a rider's
+		// existing 30-minute efforts can suggest an LTHR, not only future ones.
+		safego.Go(log, "last-20 HR backfill", func() { stats.BackfillLast20mHR(ctx, st, log) })
 		ridesService := rides.New(st, readAuth, log)
 		if uploader != nil {
 			ridesService.SetUploader(uploader)
@@ -270,10 +317,13 @@ func main() {
 		// The trophy case (#467): XP off the bike and achievements. It hears
 		// about rides from both savers, about sprints, tracks and sessions
 		// from the hub, and about voice minutes from its own ticker.
-		// The cookie source, not readAuth (#1736): the case's rider route is
-		// keyed on someone else's id, and ADR-0017 says a token never touches
-		// another rider.
-		trophies := gamify.New(st, authService, log)
+		// Both sources, and which route asks which is the rule (#2257):
+		// the case's rider route is keyed on someone else's id and takes the
+		// cookie source, because ADR-0017 says a token never touches another
+		// rider (#1736); the rider's own case is one of the five routes that
+		// same amendment says a bearer DOES authenticate, so it takes
+		// readAuth.
+		trophies := gamify.New(st, authService, readAuth, log)
 		trophies.Register(mux)
 		saver.SetRideKeeper(trophies)
 		ridesService.SetRideKeeper(trophies)
@@ -354,6 +404,37 @@ func main() {
 	if v := os.Getenv("WATTROOM_ADDR"); v != "" {
 		addr = v
 	}
+	// The metrics listener (#1738, ADR-0019 amended): its own port, so what
+	// it publishes cannot be a question about an edge's configuration. The
+	// homelab's Prometheus and the deploy guard reach the container directly
+	// and read this one; nothing publishes it to the internet.
+	//
+	// Empty switches it off, for a deployment with no scraper at all.
+	if metricsAddr := metricsAddress(); metricsAddr != "" {
+		metricsSrv := &http.Server{
+			Addr:              metricsAddr,
+			Handler:           metricsMux(),
+			ReadHeaderTimeout: 10 * time.Second,
+		}
+		go func() {
+			<-ctx.Done()
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), drainGrace)
+			defer cancel()
+			_ = metricsSrv.Shutdown(shutdownCtx)
+		}()
+		safego.Go(log, "metrics listener", func() {
+			log.Info("metrics listening", "addr", metricsAddr, "path", "/metrics")
+			// Not fatal: a scrape target that cannot bind must not stop the
+			// app from serving rides. It is loud in the log and the alert on
+			// the scrape going stale is the one that catches it.
+			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Error("metrics listener exited", "err", err, "addr", metricsAddr)
+			}
+		})
+	} else {
+		log.Info("metrics listener off — WATTROOM_METRICS_ADDR is empty")
+	}
+
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: secured(mux),

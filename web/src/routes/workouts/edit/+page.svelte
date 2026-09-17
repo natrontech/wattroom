@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ChevronUp from '@lucide/svelte/icons/chevron-up';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import { page } from '$app/state';
@@ -232,7 +234,9 @@
 			class="font-display border-muted/25 focus:border-muted/60 rounded border bg-transparent px-2 py-0.5 text-2xl font-bold tracking-tight outline-none"
 		/>
 		<span class="text-muted font-mono text-xs tabular-nums">
-			{formatClock(total)} · {segments.length} blocks
+			{formatClock(total)} · {segments.length === 1
+				? '1 block'
+				: `${segments.length} blocks`}
 		</span>
 		<div class="ml-auto flex items-center gap-3">
 			<!-- ⌘Z has a face (#1392): the two verbs the whole sheet answers to. -->
@@ -396,7 +400,7 @@
 							if (parsed !== null) current.seconds = parsed;
 							event.currentTarget.value = formatClock(current.seconds);
 						}}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 					<span class="text-muted mt-1 block text-[10px]"
 						>m:ss — a bare number is minutes</span
@@ -419,7 +423,7 @@
 							((current as SteadyStep).watts = Number(
 								event.currentTarget.value,
 							))}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 					<span class="text-muted mt-1 block text-[11px]">
 						{Math.round(((current.watts ?? 0) / FTP) * 100)}% of {FTP} FTP ·
@@ -443,7 +447,7 @@
 						oninput={(event) =>
 							((current as SteadyStep).target =
 								Number(event.currentTarget.value) / 100)}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 					<span class="text-muted mt-1 block text-[11px]">
 						{Math.round((current.target ?? 0) * FTP)} W at {FTP} FTP ·
@@ -486,7 +490,7 @@
 										event.currentTarget.value === ''
 											? undefined
 											: Number(event.currentTarget.value))}
-								class="input mt-1 w-full font-mono tabular-nums"
+								class="input num mt-1 w-full"
 							/>
 						</label>
 						<label class="block">
@@ -502,7 +506,7 @@
 										event.currentTarget.value === ''
 											? undefined
 											: Number(event.currentTarget.value))}
-								class="input mt-1 w-full font-mono tabular-nums"
+								class="input num mt-1 w-full"
 							/>
 						</label>
 					</div>
@@ -520,7 +524,7 @@
 										event.currentTarget.value === ''
 											? undefined
 											: Number(event.currentTarget.value))}
-								class="input mt-1 w-full font-mono tabular-nums"
+								class="input num mt-1 w-full"
 							/>
 						</label>
 						<label class="block">
@@ -536,7 +540,7 @@
 										event.currentTarget.value === ''
 											? undefined
 											: Number(event.currentTarget.value))}
-								class="input mt-1 w-full font-mono tabular-nums"
+								class="input num mt-1 w-full"
 							/>
 						</label>
 					</div>
@@ -549,7 +553,7 @@
 						min="1"
 						max="50"
 						bind:value={current.times}
-						class="input mt-1 w-full font-mono tabular-nums"
+						class="input num mt-1 w-full"
 					/>
 				</label>
 				<p class="text-muted text-[11px]">
@@ -570,7 +574,7 @@
 								oninput={(event) =>
 									((current as RampStep)[field.key as 'from' | 'to'] =
 										Number(event.currentTarget.value) / 100)}
-								class="input mt-1 w-full font-mono tabular-nums"
+								class="input num mt-1 w-full"
 							/>
 						</label>
 					{/each}
@@ -589,15 +593,18 @@
 			<!-- Every verb the step's right-click menu holds, visible: a menu
 					     is a shortcut, never the only way (ux.md). -->
 			<div class="border-ink/5 flex flex-wrap gap-2 border-t pt-3">
+				<!-- The menu's words and the menu's icons (#2178): these were the
+				     last unicode glyphs in web/src, and ↑ beside "Duplicate"
+				     read as decoration rather than a verb. -->
 				<button
 					onclick={() => (selected = move(workout, selected!, -1) ?? selected)}
 					class="btn btn-secondary btn-xs"
-					aria-label="Move step up">↑</button
+					><ChevronUp size={13} /> Move up</button
 				>
 				<button
 					onclick={() => (selected = move(workout, selected!, 1) ?? selected)}
 					class="btn btn-secondary btn-xs"
-					aria-label="Move step down">↓</button
+					><ChevronDown size={13} /> Move down</button
 				>
 				<button
 					onclick={() => (selected = duplicate(workout, selected!) ?? selected)}

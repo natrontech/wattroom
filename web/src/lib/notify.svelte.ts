@@ -90,10 +90,19 @@ export function away(): boolean {
 async function answer(tag: string, href: string | undefined, text: string) {
 	const refusal = await replies.get(tag)?.(text);
 	if (typeof refusal !== 'string') return;
-	toasts.push(`Not sent — ${refusal} Your reply: “${text}”`, {
-		tone: 'error',
-		href,
-	});
+	const said = `${refusal} Your reply: “${text}”`;
+	// The rider is away — that is the only time this path runs at all
+	// (ADR-0042) — so the refusal goes back out the way the message came in
+	// (#2157). A toast inside a window nobody is looking at was the silence
+	// #1815 set out to fix, one layer down: the words existed, four seconds
+	// into a hidden tab.
+	//
+	// No reply field on this one: the field that just failed would send the
+	// same text at the same closed door. The href is the thread, where the
+	// reply can be typed again.
+	send('Not sent', said, `${tag}:refused`, { href });
+	// And for when they come back: this one waits rather than expiring.
+	toasts.push(`Not sent — ${said}`, { tone: 'error', href, seconds: 0 });
 }
 
 function send(

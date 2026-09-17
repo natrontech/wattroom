@@ -7,7 +7,6 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
-	import { toasts } from '$lib/toast.svelte';
 	import { levelFromXp } from '$lib/level';
 	import { statusOfRider } from '$lib/status';
 	import { wkg, formatMonth } from '$lib/format';
@@ -80,20 +79,11 @@
 		if (ok) room.removeMember(member.id);
 	}
 
-	// Banning is reversible (Unban sets the role right back), so it gets an
-	// undo toast rather than a confirm dialog (errors.md) — the same pattern
-	// settings/+page.svelte's ban list already uses (#666).
-	function ban(member: Member) {
-		const { id, displayName, role: previousRole } = member;
-		// Said once the server took it (audit 2026-09-09), never beside its
-		// own refusal.
-		void Promise.resolve(room.setRole(id, 'banned')).then((ok) => {
-			if (ok === false) return;
-			toasts.push(`Banned ${displayName}.`, {
-				undo: () => void room.setRole(id, previousRole),
-			});
-		});
-	}
+	// The shell's own ban (#951, #2180): reversible, so an undo toast rather
+	// than a confirm (errors.md), and the roster row now asks for it the way
+	// the tile and the chat do instead of writing the sequence out again —
+	// including the part that waits for the server before saying it happened.
+	const ban = (member: Member) => room.ban(member.id, member.displayName);
 	const unban = (member: Member) => room.setRole(member.id, 'member');
 
 	// Handing the room on (#1227) is the one thing here the actor cannot
@@ -317,11 +307,14 @@
 		{/each}
 	</ul>
 
-	{#if isOwner && !room.crewVisible && (room.invited.length || room.crewOutside.length)}
+	{#if !room.crewVisible && (room.invited.length || room.crewOutside.length)}
 		<!-- A private room's named exceptions (ADR-0038, #1224). A grant is a
 		     door, not a membership: they see the room in their sidebar and walk
 		     in themselves — being let in is not joining, so nothing of theirs
-		     is shown here until they do. -->
+		     is shown here until they do. No role check here: the two lists are
+		     sent only to whoever may hand a door out — the room's owner or the
+		     crew's owner or an admin (#2294) — so the server's answer is the
+		     gate, the way the crew code and the sound pack already work. -->
 		<h3 class="eyebrow mt-8">let in from the crew</h3>
 		<p class="text-muted mt-1 text-xs">
 			This room is private. A crew-mate you let in sees it in their sidebar and

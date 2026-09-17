@@ -10,6 +10,7 @@
 	import RoomShell from '$lib/room/RoomShell.svelte';
 	import { doorDisclosure } from '$lib/room/door';
 	import type { Room, RoomLoadData } from '$lib/room/room-data';
+	import type { RsvpAnswer } from '$lib/room/rsvp';
 	import { toasts } from '$lib/toast.svelte';
 	import { formatWhen } from '$lib/format';
 
@@ -146,7 +147,7 @@
 	<main class="grid min-h-full place-items-center px-6">
 		<div class="panel w-full max-w-md px-6 py-10 text-center">
 			<Logo size={40} />
-			<h1 class="font-display mt-5 text-2xl font-bold">{room.name}</h1>
+			<h1 class="page-title-sm mt-5">{room.name}</h1>
 			{#if room.banned}
 				<!-- Removed, at either level (audit 2026-09-09): said plainly and
 				     with no button. A ban survives the code (docs/SPEC.md), and
@@ -322,11 +323,23 @@
 					},
 				);
 			}}
-			onRsvp={(id: string, going: boolean) =>
+			onRsvp={(id: string, answer: RsvpAnswer | null) =>
 				act(
 					`/api/rooms/${room?.slug}/schedule/${id}/rsvp`,
-					{ method: going ? 'PUT' : 'DELETE' },
-					{ message: going ? "You're in." : "You're out." },
+					// The answer is a value, not a route (#1011): PUT writes
+					// it, DELETE takes it back, and being unanswered is the
+					// absence of one rather than a third thing to send.
+					answer
+						? { method: 'PUT', json: { going: answer === 'in' } }
+						: { method: 'DELETE' },
+					{
+						message:
+							answer === 'in'
+								? "You're in."
+								: answer === 'out'
+									? "You're out."
+									: 'Answer taken back.',
+					},
 				)}
 			icsToken={room.icsToken ?? ''}
 			onRotateIcs={() => act(`/api/rooms/${room?.slug}/calendar/rotate`)}

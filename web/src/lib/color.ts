@@ -1,6 +1,7 @@
 /**
  * Colour maths for the theme system (#331). OKLCH in, sRGB hex out, plus the
- * WCAG contrast used to gate a theme before it can ship.
+ * WCAG contrast used to gate a theme before it can ship and the APCA Lc
+ * reported alongside it (#621).
  *
  * Themes are derived rather than hand-picked, so this file is where "does it
  * look good" becomes arithmetic: lightness and chroma are pinned per family
@@ -108,6 +109,70 @@ export function contrast(a: string, b: string): number {
 		(x, y) => y - x,
 	);
 	return (hi + 0.05) / (lo + 0.05);
+}
+
+/**
+ * APCA (Accessible Perceptual Contrast Algorithm) lightness contrast, W3 0.1.9
+ * constants — the draft WCAG 3 measure, returned as an Lc magnitude.
+ *
+ * **Reported, never enforced** (ADR-0023 §3): APCA models polarity and
+ * predicts dark UI better than WCAG 2's symmetric ratio, but it is a draft,
+ * so the gate stays on AA and this number sits beside it. #621 measured what
+ * swapping would buy and the answer was nothing — APCA ranks the same zones
+ * 15–25% below the reference and degrades in lockstep as a `raised` surface is
+ * toned — so the value of the signal is the absolutes WCAG's reference-scaled
+ * floors hide, not a different verdict.
+ *
+ * Argument order matters and is not symmetric: `apca(ink, surface)` is not
+ * `apca(surface, ink)`. That asymmetry is the whole point of a polarity-aware
+ * measure — black on white is Lc 106.04, white on black Lc 107.88 — so pass
+ * the mark first and the background it lands on second.
+ */
+export function apca(foreground: string, background: string): number {
+	const text = apcaLuminance(foreground);
+	const bg = apcaLuminance(background);
+	if (Math.abs(bg - text) < APCA.deltaYmin) return 0;
+	// Normal polarity is dark-on-light; reverse is the cave. Different
+	// exponents for each is what "models polarity" means in practice.
+	const raw =
+		bg > text
+			? (bg ** APCA.normBg - text ** APCA.normText) * APCA.scale
+			: (bg ** APCA.revBg - text ** APCA.revText) * APCA.scale;
+	if (Math.abs(raw) < APCA.loClip) return 0;
+	return Math.abs(raw - Math.sign(raw) * APCA.loOffset) * 100;
+}
+
+/** W3 0.1.9 constants. Named so a future revision is one diff, not a hunt. */
+const APCA = {
+	trc: 2.4,
+	normBg: 0.56,
+	normText: 0.57,
+	revText: 0.62,
+	revBg: 0.65,
+	blackThreshold: 0.022,
+	blackClamp: 1.414,
+	scale: 1.14,
+	loOffset: 0.027,
+	loClip: 0.1,
+	deltaYmin: 0.0005,
+} as const;
+
+/**
+ * APCA's own luminance: a plain 2.4 power curve rather than WCAG's piecewise
+ * sRGB transfer, then a soft clamp that stops near-blacks reading as more
+ * separable than an eye finds them. Deliberately not `relativeLuminance` —
+ * substituting one for the other is what makes a re-implementation miss the
+ * published anchors.
+ */
+function apcaLuminance(hex: string): number {
+	const n = parseInt(hex.slice(1), 16);
+	const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(
+		(v) => (v / 255) ** APCA.trc,
+	);
+	const y = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
+	return y > APCA.blackThreshold
+		? y
+		: y + (APCA.blackThreshold - y) ** APCA.blackClamp;
 }
 
 /**

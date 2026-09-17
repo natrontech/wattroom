@@ -281,11 +281,20 @@
 					autofocus
 					class="input input-xs w-full"
 				/>
-			{:else}
+			{:else if canManage}
 				<button
 					onclick={() => (renaming = true)}
 					class="block max-w-full truncate text-left text-xs font-medium"
 					>{playlist.name}</button
+				>
+			{:else}
+				<!-- Not a control for a rider who cannot rename it (#2162, ux.md:
+				     never render one that fails on click). The menu's Rename and
+				     the × are gated on `canManage` and this path was not, so a
+				     member on the Room tab could open the box, type, and read
+				     the server's refusal under the row. -->
+				<span class="block max-w-full truncate text-xs font-medium"
+					>{playlist.name}</span
 				>
 			{/if}
 			<p class="text-muted text-[10px]">
@@ -350,11 +359,14 @@
 									>{track.tracks.length}</span
 								>
 							{/if}
+							<!-- Hover reveals it on a desk; a finger has no hover, so on
+							     touch it was an invisible target and the long-press menu
+							     above carries Remove instead (#1628's pattern, #2179). -->
 							{#if canManage}
 								<button
 									onclick={() => void removeTrack(track, i)}
 									aria-label="remove this track"
-									class="text-muted hover:text-danger grid h-6 w-6 shrink-0 place-items-center opacity-0 group-hover:opacity-100"
+									class="text-muted hover:text-danger grid h-6 w-6 shrink-0 place-items-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:hidden"
 									><X size={12} /></button
 								>
 							{/if}

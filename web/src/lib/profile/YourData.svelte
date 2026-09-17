@@ -32,7 +32,10 @@
 			return;
 		}
 		exportError = null;
-		downloadBlob(res.data.blob, res.data.filename ?? 'wattroom-export.json');
+		// A zip since #2150 — the rides' JSON, the pictures and the clips you
+		// uploaded. The fallback name predated it and handed the rider a .json
+		// that was not one.
+		downloadBlob(res.data.blob, res.data.filename ?? 'wattroom-export.zip');
 	}
 
 	async function remove() {
@@ -69,6 +72,13 @@
 			class="btn-link self-center text-xs">Sign out</button
 		>
 	</div>
+	<!-- What "everything" is (#2181, ADR-0053): a zip since #2150, and a
+	     rider deciding whether to press it should know their uploads travel
+	     with it. -->
+	<p class="text-muted mt-2 text-xs">
+		A .zip: your profile, rides and their samples as JSON, plus the picture and
+		soundboard clips you uploaded.
+	</p>
 	{#if exportError}
 		<div class="mt-3"><Banner tone="error">{exportError}</Banner></div>
 	{/if}

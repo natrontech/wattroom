@@ -166,13 +166,21 @@ func (s *Service) Register(mux *http.ServeMux) {
 //     are re-uploadable"), and neither a 2 GB shelf nor 100 MB of clips can
 //     go into an archive this route builds whole in memory. Each row names
 //     its file — a track by its content address, a clip by the id it is
-//     served under — so nothing about the omission is silent. The bytes of
-//     the other things a rider uploads (avatars, clips, chat and DM pictures)
-//     are #2090.
+//     served under — so nothing about the omission is silent.
+//
+//     The rest of what a rider uploads is NO LONGER omitted (ADR-0053,
+//     #2090): the avatar and the clips they posted to chat and DMs are
+//     written into `uploads/` further down, one at a time, and `images.json`
+//     is the index. This note said they were still pending long after they
+//     stopped being, which is the same failure in the other direction
+//     (#2253) — a reader trusting it would have gone looking for a gap that
+//     is not there.
+//
 //   - The auth `sessions` table: a hash of a cookie, with no screen anywhere
 //     that lists a rider's live sessions. There is nothing here to hand back
 //     that would mean anything, and handing back session material is not an
 //     improvement.
+//
 //   - `room_reads` and `track_plays`, which are the same judgement twice:
 //     bookkeeping attributable to the rider that no screen shows them.
 //     room_reads is an unread-marker cursor. track_plays is read back only as
@@ -459,8 +467,14 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		{"planned-sessions.json", func() (any, error) {
 			rows, err := s.store.Queries.ExportUserRsvps(r.Context(), user.ID)
 			return mapRows(rows, err, func(row db.ExportUserRsvpsRow) any {
+				// "answeredAt", not "saidYesAt": since #1011 an answer is in
+				// or out, and only the absence of one means nothing was said.
+				answer := "out"
+				if row.Going {
+					answer = "in"
+				}
 				return map[string]any{"room": row.RoomName, "workoutName": row.WorkoutName,
-					"startsAt": row.StartsAt.Time, "saidYesAt": row.CreatedAt.Time}
+					"startsAt": row.StartsAt.Time, "answer": answer, "answeredAt": row.CreatedAt.Time}
 			})
 		}},
 		{"rooms.json", func() (any, error) {
@@ -905,6 +919,14 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf("attachment; filename=%q", "wattroom-export-"+time.Now().UTC().Format("2006-01-02")+".zip"))
 	w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+	// The largest and most sensitive thing this server hands out — every
+	// ride's heart rate (ADR-0008), the calendar and unsubscribe tokens,
+	// every crew's code, the rider's own uploads — and a 200 with no
+	// directive is heuristically cacheable (RFC 9111 §4.2.2), on a stack
+	// self-hosters put a proxy in front of (#2250). httpx says this on every
+	// JSON answer and the two other downloads say it too; this one did not.
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(buf.Bytes())
 }
 

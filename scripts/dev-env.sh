@@ -21,12 +21,18 @@
 # afternoon; `internal/playlists` and `internal/account` failed in two
 # checkouts at once and passed in isolation from either.
 #
+# The Postgres server itself is the one thing no checkout owns — see PG_PROJECT
+# below, and `make infra`, which is this script too.
+#
 # Usage:
 #   dev-env.sh print       eval-able `export KEY=value` lines
 #   dev-env.sh banner NAME the one loud line `make dev-<name>` prints first
+#   dev-env.sh infra       start the shared Postgres + LiveKit project (`make infra`)
 #   dev-env.sh ensure-db   create this worktree's dev database if it is missing
 #   dev-env.sh ensure-test-db  same for its test database (`make test`)
 #   dev-env.sh drop-db     drop both (never the main tree's `wattroom`)
+#   dev-env.sh pg-container  the container id both of those act in
+#   dev-env.sh pg-strays   report postgres containers outside the shared project
 set -eu
 
 # Ports live above everything the repo already pins: :8080 and :8082 (server and
@@ -48,29 +54,57 @@ WEB_PORT_BASE=5500
 VERIFY_PORT_BASE=8500
 E2E_API_PORT_BASE=8700
 E2E_WEB_PORT_BASE=4400
+# The metrics listener (#1738) takes an offset too: it defaults to :9091, and
+# two dev servers on one machine would otherwise fight over it — the second
+# one's listener refuses to bind and logs, every run, for as long as the
+# neighbour is up.
+METRICS_PORT_BASE=9300
 PORT_SPAN=200
 
 PG_USER=${WATTROOM_PG_USER:-wattroom}
 PG_DSN_PREFIX=${WATTROOM_PG_DSN_PREFIX:-postgres://wattroom:wattroom@localhost:5432}
+
+# Who owns the Postgres server: nobody's checkout. One fixed compose project,
+# started by `make infra` wherever that runs from.
+#
+# Plain `docker compose up -d` names the project after the directory it runs
+# in, which made the server's lifetime one worktree's. Both halves of that hurt:
+# removing the worktree left its container running, and two running postgres
+# containers made pg_container below refuse for *every* checkout on the machine
+# (#2107) — while bringing the project down with its worktree was worse still,
+# because the project that happened to be serving everybody took all of their
+# databases with it, `wattroom_test` included (#2105).
+#
+# `wattroom` is the project name the main working tree already had, so the
+# volume (`wattroom_pgdata`) and the container (`wattroom-postgres-1`) keep the
+# data they have and every checkout converges on them. WATTROOM_COMPOSE_PROJECT
+# is for a second clone on this machine that wants a server of its own.
+PG_PROJECT=${WATTROOM_COMPOSE_PROJECT:-wattroom}
 
 # crc32 of stdin — POSIX cksum, so the same number on Linux and macOS.
 crc() { printf '%s' "$1" | cksum | awk '{print $1}'; }
 
 toplevel=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 
-# Which Postgres to talk to. Never a hardcoded name: compose derives its
-# project from the directory it runs in, so a linked worktree's containers come
-# up as `<worktree>-postgres-1`, and every checkout that guessed
-# `wattroom-postgres-1` created its database nowhere (#814).
+# Which Postgres to talk to. The shared project answers by label, which is an
+# answer and not a guess — the guess is what went wrong in #814, when a
+# checkout assumed `wattroom-postgres-1` while a worktree's own project was
+# serving, and created its database nowhere. Pinning the project is what makes
+# the name knowable again.
 #
-# Two steps, because worktrees share one server (AGENTS.md) but only one of
-# them started it. This checkout's own project answers first, for whoever ran
-# `make infra` here. Otherwise take the shared container by its compose label —
-# whichever checkout started it owns the :5432 bind, and its project name is
-# not ours to guess. Several matches is genuinely ambiguous and asks.
+# The two fallbacks are for a server that came up before the project was
+# pinned: this checkout's own compose project, then a lone postgres container
+# by service label. Several of those is still ambiguous and still asks, but it
+# is no longer the ordinary case, because nothing starts a project per checkout
+# any more.
 pg_container() {
 	if [ -n "${WATTROOM_PG_CONTAINER:-}" ]; then
 		echo "$WATTROOM_PG_CONTAINER"
+		return 0
+	fi
+	cid=$(docker ps -q --filter "label=com.docker.compose.project=$PG_PROJECT" --filter label=com.docker.compose.service=postgres 2>/dev/null) || cid=''
+	if [ "$(printf '%s' "$cid" | grep -c .)" = 1 ]; then
+		echo "$cid"
 		return 0
 	fi
 	cid=$(docker compose --project-directory "$toplevel" ps -q postgres 2>/dev/null) || cid=''
@@ -83,9 +117,35 @@ pg_container() {
 	echo "$cid"
 }
 
+# Running postgres containers that are not the shared project's: a compose
+# project started before it was pinned, one a `git worktree remove` left behind
+# — or another clone of this repo on the same machine, which looks exactly the
+# same from here. So they are named and never stopped, the same caution the
+# stranded-database report in scripts/worktree-gc.sh takes.
+foreign_pg_containers() {
+	docker ps --filter label=com.docker.compose.service=postgres \
+		--format '{{.Names}}	{{.Label "com.docker.compose.project"}}' 2>/dev/null |
+		awk -F'\t' -v mine="$PG_PROJECT" '$2 != mine' || true
+}
+
+# One home for the wording, because `make infra` and `make worktree-gc` both
+# print it — the second one because a worktree it has just removed is the most
+# likely source of a stray.
+report_foreign_pg() {
+	strays=$(foreign_pg_containers)
+	[ -n "$strays" ] || return 0
+	echo "postgres containers running outside the shared '$PG_PROJECT' project:"
+	printf '%s\n' "$strays" | awk -F'\t' '{printf "    %s (compose project %s)\n", $1, $2}'
+	echo "    One of these holds :5432 if \`make infra\` cannot bind it, and any"
+	echo "    two postgres containers made every checkout refuse before the"
+	echo "    project was pinned (#2107). Nothing in this clone needs them — if"
+	echo "    no other clone on this machine does either: docker rm -f <name>"
+}
+
 # no_postgres explains the one failure both database subcommands share.
 no_postgres() {
-	echo "dev-env.sh: no single postgres container to use — run \`make infra\` (in any checkout; they share one server), or set WATTROOM_PG_CONTAINER when several are running" >&2
+	echo "dev-env.sh: no single postgres container to use — run \`make infra\` (in any checkout: it starts the shared '$PG_PROJECT' project), or set WATTROOM_PG_CONTAINER when several are running" >&2
+	report_foreign_pg >&2
 	exit 1
 }
 
@@ -104,6 +164,11 @@ if [ "$is_main_tree" = 1 ]; then
 	verify_port=8082
 	e2e_web_port=4173
 	e2e_api_port=8081
+	# The server's own default (#1738), spelled out here so every port this
+	# script hands out is one it names — the main tree's were the numbers a
+	# reader could find in one place, and a missing one is an unbound variable
+	# in CI rather than a wrong port.
+	metrics_port=9091
 	db_name=wattroom
 	test_db_name=wattroom_test
 else
@@ -115,6 +180,7 @@ else
 	verify_port=$((VERIFY_PORT_BASE + offset))
 	e2e_web_port=$((E2E_WEB_PORT_BASE + offset))
 	e2e_api_port=$((E2E_API_PORT_BASE + offset))
+	metrics_port=$((METRICS_PORT_BASE + offset))
 	# Readable in `psql -l`, and the CRC suffix keeps two worktrees of the same
 	# name at different paths apart. Postgres caps identifiers at 63 bytes.
 	slug=$(printf '%s' "$worktree_name" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '_' | cut -c1-32 | sed 's/_*$//')
@@ -146,7 +212,7 @@ esac
 # talks to Postgres and gets wire-protocol bytes back instead of a refusal.
 pg_port=${PG_DSN_PREFIX##*:}
 case $pg_port in *[!0-9]* | '') pg_port=5432 ;; esac
-for port in "$server_port" "$web_port" "$verify_port" "$e2e_web_port" "$e2e_api_port"; do
+for port in "$server_port" "$web_port" "$verify_port" "$e2e_web_port" "$e2e_api_port" "$metrics_port"; do
 	if [ "$port" = "$pg_port" ]; then
 		echo "dev-env.sh: refusing to hand worktree '$worktree_name' port $port — that is Postgres ($PG_DSN_PREFIX); move the *_PORT_BASE ranges off it" >&2
 		exit 1
@@ -176,6 +242,7 @@ export WATTROOM_DEV_WEB_PORT='$web_port'
 export WATTROOM_DEV_VERIFY_PORT='$verify_port'
 export WATTROOM_E2E_WEB_PORT='$e2e_web_port'
 export WATTROOM_E2E_API_PORT='$e2e_api_port'
+export WATTROOM_DEV_METRICS_PORT='$metrics_port'
 export WATTROOM_DEV_DB_NAME='$db_name'
 export WATTROOM_DEV_DSN='$dsn'
 export WATTROOM_DEV_TEST_DB_NAME='$test_db_name'
@@ -192,6 +259,16 @@ banner)
 	e2e) echo "e2e [$worktree_name] → http://localhost:$e2e_web_port · api :$e2e_api_port · db $db_name" ;;
 	*) echo "$what [$worktree_name] → server :$server_port · web :$web_port · verify :$verify_port · e2e :$e2e_web_port · db $db_name · test db $test_db_name" ;;
 	esac
+	;;
+infra)
+	# `make infra` from anywhere, always the same project (PG_PROJECT above).
+	# The strays go first, before compose speaks: if one of them holds :5432
+	# this is the explanation for the bind failure that follows.
+	report_foreign_pg
+	docker compose --project-directory "$toplevel" -p "$PG_PROJECT" up -d
+	;;
+pg-strays)
+	report_foreign_pg
 	;;
 ensure-db)
 	# The main tree's database is compose's job (POSTGRES_DB); only a worktree
@@ -233,7 +310,7 @@ drop-db)
 	done
 	;;
 *)
-	echo "usage: dev-env.sh [print|banner <server|web|verify|test|e2e>|ensure-db|ensure-test-db|drop-db|pg-container]" >&2
+	echo "usage: dev-env.sh [print|banner <server|web|verify|test|e2e>|infra|ensure-db|ensure-test-db|drop-db|pg-container|pg-strays]" >&2
 	exit 2
 	;;
 esac

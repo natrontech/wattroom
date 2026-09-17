@@ -18,7 +18,12 @@
 	const verified = $derived(!!account.me?.emailVerified);
 	const pending = $derived(!!account.me?.emailPending && !verified);
 	let mailError = $state<string | null>(null);
-	async function setPlanned(on: boolean) {
+	// The box goes back when the save does not land (#2181): `checked` is
+	// read from the account, so a refused save leaves the tick the rider's
+	// click put there with nothing behind it — the switch says "on" and the
+	// mail never comes.
+	async function setPlanned(box: HTMLInputElement) {
+		const on = box.checked;
 		const me = account.me;
 		if (!me) return;
 		mailError = null;
@@ -28,7 +33,10 @@
 			weightKg: me.weightKg,
 			notifyPlanned: on,
 		});
-		if (err) mailError = err.message;
+		if (err) {
+			mailError = err.message;
+			box.checked = !on;
+		}
 	}
 
 	let blocked = $state(notify.permission === 'denied');
@@ -95,7 +103,7 @@
 					type="checkbox"
 					checked={account.me.notifyPlanned ?? false}
 					disabled={!verified}
-					onchange={(e) => void setPlanned(e.currentTarget.checked)}
+					onchange={(e) => void setPlanned(e.currentTarget)}
 					class="mt-1"
 				/>
 				<span>

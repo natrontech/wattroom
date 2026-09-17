@@ -3,6 +3,13 @@ insert into passkeys (credential_id, user_id, credential, name)
 values ($1, $2, $3, $4)
 returning *;
 
+-- name: CountUserPasskeys :one
+-- The ceiling's authoritative count (#2258), read under LockUser at the
+-- moment of the insert. The start of the ceremony counts too, so a rider at
+-- the cap is refused before a browser prompt they cannot use; that read is
+-- courtesy, this one is the rule.
+select count(*) from passkeys where user_id = $1;
+
 -- name: ListUserPasskeys :many
 select * from passkeys where user_id = $1 order by created_at;
 

@@ -51,6 +51,7 @@
 	let {
 		trainer,
 		elsewhere = {},
+		targetsNote,
 		compact = false,
 	}: {
 		trainer: TrainerSlot;
@@ -62,6 +63,14 @@
 		 * room socket and so have nothing to arbitrate.
 		 */
 		elsewhere?: Record<string, string>;
+		/**
+		 * The line a trainer card shows while another of the rider's screens
+		 * writes its control point (#2075) — `trainerTargetsNote`. The same
+		 * claim `elsewhere.trainer` reports, said as the sentence a rider
+		 * reads, because "paired there" and "driven from there" are different
+		 * things to be told. Only a room knows it.
+		 */
+		targetsNote?: string;
 		/** The trainer alone, as one row — a running session's header (#412). */
 		compact?: boolean;
 	} = $props();
@@ -87,6 +96,7 @@
 			supported,
 			elsewhere: elsewhere.trainer,
 			hint: trainer.hint,
+			targetsNote,
 		}),
 	);
 </script>
@@ -101,6 +111,8 @@
 	hint?: string;
 	/** Held by another of the rider's screens: the phrase naming it (#610). */
 	elsewhere?: string;
+	/** Trainer only: the line naming where its targets come from (#2075). */
+	targetsNote?: string;
 	onPair: () => void;
 	onForget: () => void;
 })}
@@ -109,6 +121,7 @@
 		supported,
 		elsewhere: args.elsewhere,
 		hint: args.hint,
+		targetsNote: args.targetsNote,
 	})}
 	<div
 		class="panel flex min-w-0 flex-col items-center gap-2 px-4 py-5 text-center"
@@ -131,7 +144,16 @@
 					</p>
 				{/if}
 				{#if view.note}
-					<p class="text-danger mt-0.5 text-[11px]">{view.note}</p>
+					<!-- The tone is the view's, not this branch's (#2075,
+					     errors.md): a silent trainer is a fault, another screen
+					     driving is not, and the live shape used to paint both red. -->
+					<p
+						class="mt-0.5 text-[11px] {view.tone === 'danger'
+							? 'text-danger'
+							: 'text-muted'}"
+					>
+						{view.note}
+					</p>
 				{/if}
 			{:else}
 				<p
@@ -167,10 +189,19 @@
 		<div class="flex flex-wrap items-center gap-2">
 			{#if trainerView.shape === 'live'}
 				{#if trainerView.note}
-					<!-- Paired but silent (#520). This is the surface a rider is on
+					<!-- Paired but silent (#520), or driven from another of the
+					     rider's screens (#2075). This is the surface a rider is on
 					     while the session runs, so it is the one that most needs to
-					     say a connected trainer is not actually working. -->
-					<p class="text-danger text-xs">{trainerView.note}</p>
+					     say a connected trainer is not doing what it looks like it
+					     is doing — in the view's own tone, since only one of those
+					     two is a fault. -->
+					<p
+						class="text-xs {trainerView.tone === 'danger'
+							? 'text-danger'
+							: 'text-muted'}"
+					>
+						{trainerView.note}
+					</p>
 				{/if}
 				<button onclick={trainer.onForget} class="btn btn-ghost btn-xs"
 					>Unpair trainer</button
@@ -184,7 +215,13 @@
 				     this is — a reconnecting trainer offers the way out, and
 				     wiring that to onPair opened the chooser instead (#1716). -->
 				{#if trainerView.button.variant === 'forget'}
-					<p class="text-danger text-xs">{trainerView.note}</p>
+					<p
+						class="text-xs {trainerView.tone === 'danger'
+							? 'text-danger'
+							: 'text-muted'}"
+					>
+						{trainerView.note}
+					</p>
 					<button onclick={trainer.onForget} class="btn btn-ghost btn-xs"
 						>{trainerView.button.label} trainer</button
 					>
@@ -222,6 +259,7 @@
 				reading: trainer.state === 'connected' ? trainer.reading : undefined,
 				hint: trainer.hint,
 				elsewhere: elsewhere.trainer,
+				targetsNote,
 				onPair: trainer.onPair,
 				onForget: trainer.onForget,
 			})}

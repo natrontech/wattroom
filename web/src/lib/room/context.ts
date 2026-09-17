@@ -8,6 +8,7 @@ import type {
 	SensorPairing,
 	SprintState,
 } from '$lib/protocol';
+import type { RsvpAnswer } from '$lib/room/rsvp';
 import type { StageSource } from '$lib/room/stage';
 
 /**
@@ -61,6 +62,13 @@ export interface RoomContext {
 
 	readonly bias: number;
 	nudgeBias(step: number): void;
+	/**
+	 * Whether this screen writes the trainer's control point (#1853, #2075).
+	 * False while another of the rider's screens holds the claim: the link,
+	 * the samples and Forget all stay, the targets do not. What the bias trim
+	 * is gated on — a trainer being linked is a different question.
+	 */
+	readonly actuating: boolean;
 	readonly trainer: unknown;
 	/** What this tab is paired to, for a ⚑ report's context (#1631). '' = nothing. */
 	readonly trainerName: string;
@@ -96,6 +104,13 @@ export interface RoomContext {
 		createdBy: string;
 		/** Who said they are in (#450), first to say so first. */
 		going?: { id: string; displayName: string }[];
+		/** How many said no, and how many have not answered (#1011). Counts,
+		 *  never names: who is out is a number the room reads, not a list it
+		 *  reads out. Absent is zero. */
+		out?: number;
+		unanswered?: number;
+		/** Your own answer — absent until you give one. */
+		yourAnswer?: RsvpAnswer;
 	}[];
 	/** What already happened here (ADR-0034): the recaps, oldest first. */
 	readonly recaps: import('$lib/protocol').SessionRecap[];
@@ -128,8 +143,10 @@ export interface RoomContext {
 	/** Open to its crew (ADR-0038). */
 	readonly crewVisible: boolean;
 	/**
-	 * A private room's named exceptions (#1224), owner only: crew-mates let
-	 * in who have not walked in yet, and the crew-mates outside.
+	 * A private room's named exceptions (#1224): crew-mates let in who have
+	 * not walked in yet, and the crew-mates outside. Sent only to whoever may
+	 * hand a door out — the room's owner, or the crew's owner or an admin
+	 * (#2294) — so both lists are empty for everyone else.
 	 */
 	readonly invited: RoomContext['members'];
 	readonly crewOutside: RoomContext['members'];
@@ -140,8 +157,9 @@ export interface RoomContext {
 	transfer(userId: string): void;
 	reschedule(id: string, startsAt: string): void;
 	unschedule(id: string): void;
-	/** Say you are in for a planned session, or take it back (#450). */
-	rsvp(id: string, going: boolean): void;
+	/** Answer for a planned session — in, out, or `null` to take the answer
+	 *  back and be unanswered again (#1011). */
+	rsvp(id: string, answer: RsvpAnswer | null): void;
 	/** Resolves to whether the server took it; a caller that toasts waits. */
 	rotateIcs(): void | Promise<boolean>;
 	setRole(userId: string, role: string): void | Promise<boolean>;

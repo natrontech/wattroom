@@ -33,7 +33,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       # One expression per line decides tag-vs-branch; a metadata action would
       # be a new dependency to do exactly this much.
-      - uses: docker/build-push-action@v7
+      - id: build
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -41,9 +42,14 @@ jobs:
           build-args: |
             BUILD_SHA=${{ github.sha }}
             BUILD_VERSION=${{ github.ref_type == 'tag' && github.ref_name || 'dev' }}
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          # One tag per build, because the registry's tag list is a queue the
+          # VM reads (#2268): it pushed a :<sha> tag per merge as well, GHCR
+          # pages that list at 1000, and by release 118 the 883 sha tags had
+          # pushed the newest CalVer onto page two — where the updater, which
+          # read one page, could not see it. Production sat on 117 for three
+          # hours with the release published and every check green. Nothing
+          # consumed the sha tag but the probe below, which has the digest.
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
       # A named volume takes its ownership from the image path it covers, so
@@ -55,7 +61,9 @@ jobs:
       # (#1730: it went unnoticed in production for ten days).
       - name: a fresh volume belongs to the app's uid
         run: |
-          image=ghcr.io/${{ github.repository }}:${{ github.sha }}
+          # By digest: the image this build produced, whatever the tag says
+          # and whatever else has moved :main since (#2268).
+          image=ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
           # Both writable paths, not one. #1730 was the feedback volume, and a
           # probe covering only tracks stays green through the same bug
           # arriving the other way round — which is the failure this check

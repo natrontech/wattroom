@@ -15,7 +15,8 @@
 	 * comes from the components the room draws, because a rider alone deserves
 	 * the screen a rider in a room gets.
 	 */
-	import Flag from '@lucide/svelte/icons/flag';
+	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import Instrument from '$lib/room/Instrument.svelte';
@@ -64,7 +65,7 @@
 	function flag() {
 		onFlag();
 		flagNotice = true;
-		setTimeout(() => (flagNotice = false), 4000);
+		setTimeout(() => (flagNotice = false), FLAG_NOTICE_MS);
 	}
 
 	// The HUD feed (ADR-0041): what this screen shows, once a second, for a
@@ -111,12 +112,7 @@
 				<button onclick={() => session.stop()} class="btn btn-secondary btn-lg"
 					>End ride</button
 				>
-				<!-- The ⚑ (#52): one tap, no dialog, keep pedalling. -->
-				<button
-					onclick={flag}
-					class="border-neon/40 text-neon hover:bg-neon/10 grid h-11 w-14 place-items-center rounded border"
-					aria-label="Flag a problem"><Flag size={18} /></button
-				>
+				<FlagButton onflag={flag} sends="after" />
 			</div>
 		{/snippet}
 	</RideHeader>
@@ -153,10 +149,7 @@
 
 	{#if flagNotice}
 		<!-- Consent in plain words, at the moment of the tap, never blocking. -->
-		<p class="text-muted mt-2 text-xs">
-			Flagged — after the ride this sends your last two minutes of ride data and
-			logs to the developers. Only yours, nobody else's.
-		</p>
+		<p class="text-muted mt-2 text-xs">{FLAG_SAID.after}</p>
 	{/if}
 
 	<div class="mt-4 h-28 shrink-0">

@@ -121,6 +121,39 @@ async function seedATaggedTrack(page: Page): Promise<void> {
 	if (ok !== true) throw new Error(`could not seed a tagged track: ${ok}`);
 }
 
+/**
+ * And Home's "What's next" is empty until something is planned, so /home used
+ * to be measured with that section rendering one line of prose (#1693). Each
+ * row is a workout name, a date, a room name and a planner on a 375px column —
+ * the widest thing on the page once it has content.
+ *
+ * Idempotent: this rider and its room are stable across runs (signin.ts), and
+ * a plan a run leaves behind would walk the room into docs/SPEC.md's 50-session
+ * ceiling after fifty of them.
+ */
+async function seedAPlannedSession(page: Page, slug: string): Promise<void> {
+	const ok = await page.evaluate(async (slug) => {
+		const mine = (await (await fetch('/api/schedule')).json()) as {
+			sessions?: unknown[];
+		};
+		if (mine.sessions?.length) return true;
+		const res = await fetch(`/api/rooms/${slug}/schedule`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				workoutName: 'Phone Width Threshold Intervals',
+				workoutJson: JSON.stringify({
+					name: 'Phone Width Threshold Intervals',
+					steps: [{ type: 'steady', seconds: 2400, target: 0.95 }],
+				}),
+				startsAt: new Date(Date.now() + 48 * 3600_000).toISOString(),
+			}),
+		});
+		return res.ok;
+	}, slug);
+	if (!ok) throw new Error("could not plan a session for Home's What's next");
+}
+
 test('no page outside a room scrolls sideways on a phone', async ({
 	page,
 	browser,
@@ -202,12 +235,18 @@ test('no page outside a room scrolls sideways on a phone', async ({
 		});
 		return `${res.status} ${await res.text()}`;
 	}, peerCode);
-	expect(asked, 'the friend request').toMatch(/^2\d\d/);
+	// 409 is "already" (#2216): these two riders are stable by name — a fresh
+	// identity per run would grow the user table forever (signin.ts) — and a
+	// friendship outlives the run, so the second run in one checkout finds
+	// the one the first made. What matters is the end state, which the DM
+	// below asserts: this is home-presence.spec.ts's rule, one file over.
+	expect(asked, 'the friend request').toMatch(/^(2\d\d|409)/);
 	const accepted = await peerPage.evaluate(async (id) => {
 		const res = await fetch(`/api/friends/${id}/accept`, { method: 'POST' });
 		return `${res.status} ${await res.text()}`;
 	}, myId);
-	expect(accepted, 'the peer accepting').toMatch(/^2\d\d/);
+	// 404 is an accept for a friendship that is already accepted.
+	expect(accepted, 'the peer accepting').toMatch(/^(2\d\d|404|409)/);
 	const sent = await page.evaluate(async (id) => {
 		const res = await fetch(`/api/dms/${id}`, {
 			method: 'POST',
@@ -260,6 +299,8 @@ test('no page outside a room scrolls sideways on a phone', async ({
 			peer: expect.stringMatching(/.+/),
 		}),
 	);
+
+	await seedAPlannedSession(page, byId.room);
 
 	const wide: string[] = [];
 	for (const route of routes) {
@@ -324,4 +365,34 @@ test('the workout editor puts the steps before the library on a phone', async ({
 		.evaluateAll((all) => all.map((h) => h.textContent?.trim().toLowerCase()));
 	expect(headings.indexOf('steps')).toBeGreaterThanOrEqual(0);
 	expect(headings.indexOf('steps')).toBeLessThan(headings.indexOf('library'));
+});
+
+test('the rider page and the workouts search keep their width on a phone', async ({
+	page,
+}) => {
+	await page.setViewportSize(PHONE);
+	await signInAs(page, 'Phone Headers', '/u/me');
+
+	// The name is the page: side by side with the avatar and the action, the
+	// text column was ~90 px and the name broke in two (#2183).
+	const name = page.getByRole('heading', { level: 1 });
+	await expect(name).toBeVisible({ timeout: 15_000 });
+	const title = await name.evaluate((el) => ({
+		cut: el.scrollWidth - el.clientWidth,
+		width: el.clientWidth,
+	}));
+	expect(title.cut, `the rider's name is cut by ${title.cut}px`).toBe(0);
+	expect(
+		title.width,
+		`the rider's name is given ${title.width}px of a 375px phone`,
+	).toBeGreaterThan(200);
+
+	await page.goto('/workouts');
+	const search = page.getByRole('searchbox', { name: 'Find a workout' });
+	await expect(search).toBeVisible({ timeout: 15_000 });
+	const box = (await search.boundingBox())!;
+	expect(
+		Math.round(box.width),
+		`the search box is ${Math.round(box.width)}px wide`,
+	).toBeGreaterThan(300);
 });

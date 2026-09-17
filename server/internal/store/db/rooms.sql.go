@@ -81,8 +81,26 @@ type ClearRsvpParams struct {
 	UserID    pgtype.UUID
 }
 
+// Taking the answer back — in or out, the row goes and the rider is
+// unanswered again.
 func (q *Queries) ClearRsvp(ctx context.Context, arg ClearRsvpParams) error {
 	_, err := q.db.Exec(ctx, clearRsvp, arg.SessionID, arg.UserID)
+	return err
+}
+
+const clearSessionDeclines = `-- name: ClearSessionDeclines :exec
+delete from session_rsvps where session_id = $1 and not going
+`
+
+// A moved session asks the people who said no again (#1011). Only the
+// declines: somebody who said they are in for a Tuesday has not said
+// anything about a Wednesday either, but the cost of guessing wrong is
+// asymmetric — dropping an "in" empties a line the room reads, while a
+// decline that survives a move silences a reminder for a session the rider
+// never turned down. Run on the same condition as the reminder's re-arm in
+// RescheduleSession: only when the time really changed.
+func (q *Queries) ClearSessionDeclines(ctx context.Context, sessionID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearSessionDeclines, sessionID)
 	return err
 }
 
@@ -488,13 +506,11 @@ func (q *Queries) ListMembershipsForUser(ctx context.Context, arg ListMembership
 }
 
 const listRoomCalendar = `-- name: ListRoomCalendar :many
-select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
-       u.display_name as created_by
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at
 from scheduled_sessions s
-join users u on u.id = s.created_by
 where s.room_id = $1
   and s.starts_at > $2 and s.starts_at < $3
-order by s.starts_at
+order by s.starts_at, s.created_at, s.id
 limit $4
 `
 
@@ -511,7 +527,6 @@ type ListRoomCalendarRow struct {
 	WorkoutJson []byte
 	StartsAt    pgtype.Timestamptz
 	CreatedAt   pgtype.Timestamptz
-	CreatedBy   string
 }
 
 // The iCal feed (#245): unlike the in-room list, it keeps a month of history.
@@ -523,6 +538,13 @@ type ListRoomCalendarRow struct {
 // limit is far above the room's own 50-session ceiling. The window is the
 // caller's, like ListUserCalendar's, so both feeds read their numbers from
 // the same Go constants rather than from an interval literal in here.
+//
+// No planner's name, unlike ListUserCalendar (ADR-0021 amended, #1767): a
+// room's ics_token goes to every non-banned member, rotates only for the
+// owner, and the feed is meant to be shared with people who are not in the
+// room — so a member can hand it to anyone. The name is not selected rather
+// than selected and dropped in Go: what this feed must not say, it does not
+// read.
 func (q *Queries) ListRoomCalendar(ctx context.Context, arg ListRoomCalendarParams) ([]ListRoomCalendarRow, error) {
 	rows, err := q.db.Query(ctx, listRoomCalendar,
 		arg.RoomID,
@@ -543,7 +565,6 @@ func (q *Queries) ListRoomCalendar(ctx context.Context, arg ListRoomCalendarPara
 			&i.WorkoutJson,
 			&i.StartsAt,
 			&i.CreatedAt,
-			&i.CreatedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -660,7 +681,8 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 }
 
 const listRoomRsvps = `-- name: ListRoomRsvps :many
-select r.session_id, r.user_id, u.display_name
+select r.session_id, r.user_id, r.going,
+       case when r.going then u.display_name else '' end as display_name
 from session_rsvps r
 join users u on u.id = r.user_id
 join scheduled_sessions s on s.id = r.session_id
@@ -672,11 +694,24 @@ order by r.created_at
 type ListRoomRsvpsRow struct {
 	SessionID   pgtype.UUID
 	UserID      pgtype.UUID
+	Going       bool
 	DisplayName string
 }
 
-// Who is in, for everything ListRoomUpcoming returns. Ordered by when they
-// said yes, so the first names in the line are the ones who committed first.
+// Every answer, for everything ListRoomUpcoming returns. Ordered by when it
+// was given, so the first names in the "who is in" line are the ones who
+// committed first.
+//
+// The declines come along as a column rather than being filtered out here
+// (#1011): the room shows who is in by name and how many are out as a
+// number, and one query that returns both is what keeps the two numbers
+// reading the same room.
+//
+// A decliner's name is NOT SELECTED, rather than selected and dropped in Go
+// — ListRoomCalendar's rule, for the same reason: what a query must not say,
+// it does not say, and no future handler can render what never arrived. The
+// id still comes, because the caller has to be told their own answer; the
+// name is the thing a screen would print.
 // Someone removed or banned since they said yes is not coming (#1675): the
 // row stays, the line does not name them.
 func (q *Queries) ListRoomRsvps(ctx context.Context, roomID pgtype.UUID) ([]ListRoomRsvpsRow, error) {
@@ -688,7 +723,12 @@ func (q *Queries) ListRoomRsvps(ctx context.Context, roomID pgtype.UUID) ([]List
 	var items []ListRoomRsvpsRow
 	for rows.Next() {
 		var i ListRoomRsvpsRow
-		if err := rows.Scan(&i.SessionID, &i.UserID, &i.DisplayName); err != nil {
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.UserID,
+			&i.Going,
+			&i.DisplayName,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -705,7 +745,7 @@ from scheduled_sessions s
 join users u on u.id = s.created_by
 where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
   and s.started_at is null
-order by s.starts_at
+order by s.starts_at, s.created_at, s.id
 `
 
 type ListRoomUpcomingRow struct {
@@ -720,6 +760,13 @@ type ListRoomUpcomingRow struct {
 // time, then falls off — no cron, the read is the cleanup. A started plan
 // is done with (#1905). Uncapped like the rider's calendar (#1908): ten
 // silently shown of thirteen planned had the two disagreeing about one room.
+//
+// A room may plan two sessions for the same minute (docs/SPEC.md), so the
+// tiebreak is load-bearing: the first row of this list is what the place
+// labels "next session in this room", and `starts_at` alone left that label
+// on whichever of the two rows Postgres felt like returning first — a
+// different one between two reads of an unchanged room (#1767). Created
+// first leads; the id settles a same-instant insert so the order is total.
 func (q *Queries) ListRoomUpcoming(ctx context.Context, roomID pgtype.UUID) ([]ListRoomUpcomingRow, error) {
 	rows, err := q.db.Query(ctx, listRoomUpcoming, roomID)
 	if err != nil {
@@ -748,8 +795,7 @@ func (q *Queries) ListRoomUpcoming(ctx context.Context, roomID pgtype.UUID) ([]L
 
 const listUserCalendar = `-- name: ListUserCalendar :many
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
-       u.display_name as created_by, r.name as room_name, r.slug as room_slug,
-       m.role as your_role
+       u.display_name as created_by, r.name as room_name, r.slug as room_slug
 from scheduled_sessions s
 join rooms r on r.id = s.room_id
 join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'banned'
@@ -758,7 +804,7 @@ where s.starts_at > $2 and s.starts_at < $3
   -- A crew ban leaves the membership row and lives in visible_rooms alone
   -- (#1904): the rail asks it, and so does the calendar.
   and exists (select 1 from visible_rooms v where v.room_id = s.room_id and v.user_id = $1)
-order by s.starts_at
+order by s.starts_at, s.created_at, s.id
 limit $4
 `
 
@@ -778,12 +824,11 @@ type ListUserCalendarRow struct {
 	CreatedBy   string
 	RoomName    string
 	RoomSlug    string
-	YourRole    string
 }
 
 // Every room the rider is in, one list (#325). `from` is the only difference
-// between the two callers: the iCal feed keeps a month of history, the
-// sessions page starts at the same 30-minute grace the in-room list uses.
+// between the two callers: the iCal feed keeps a month of history, Home's
+// "What's next" starts at the same 30-minute grace the in-room list uses.
 // `until` and the row limit are the same for both (#1414) — the rider feed is
 // the wider of the two memory spikes, since membership is uncapped and every
 // room's 50 plans land in one ICS string.
@@ -810,7 +855,6 @@ func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarPara
 			&i.CreatedBy,
 			&i.RoomName,
 			&i.RoomSlug,
-			&i.YourRole,
 		); err != nil {
 			return nil, err
 		}
@@ -872,7 +916,7 @@ left join lateral (
     from scheduled_sessions s
     where s.room_id = r.id and s.starts_at > now() - interval '30 minutes'
       and s.started_at is null
-    order by s.starts_at
+    order by s.starts_at, s.created_at, s.id
     limit 1
 ) upcoming on true
 left join lateral (
@@ -943,7 +987,10 @@ type ListUserRoomsRow struct {
 // predicate is CountRoomUnread's, unchanged — the rail and a single room must
 // not be able to disagree about what "new" means.
 // NextRoomSession's row, per room. Same 30-minute grace: a plan stays visible
-// a little past its time, and the read is the cleanup.
+// a little past its time, and the read is the cleanup. Same tiebreak as
+// ListRoomUpcoming (#1767) — this `limit 1` and that list's first row are the
+// same claim about which session is next, and the rail and the room have to
+// name the same one.
 func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]ListUserRoomsRow, error) {
 	rows, err := q.db.Query(ctx, listUserRooms, userID)
 	if err != nil {
@@ -1133,18 +1180,31 @@ func (q *Queries) SetMembershipPrefs(ctx context.Context, arg SetMembershipPrefs
 }
 
 const setRsvp = `-- name: SetRsvp :exec
-insert into session_rsvps (session_id, user_id) values ($1, $2)
-on conflict do nothing
+insert into session_rsvps (session_id, user_id, going) values ($1, $2, $3)
+on conflict (session_id, user_id) do update
+set going = excluded.going,
+    created_at = case when session_rsvps.going = excluded.going
+                      then session_rsvps.created_at else now() end
 `
 
 type SetRsvpParams struct {
 	SessionID pgtype.UUID
 	UserID    pgtype.UUID
+	Going     bool
 }
 
-// Room events (#450). Saying yes twice is saying yes.
+// Room events (#450). One row per rider per session, and the row is an
+// ANSWER (#1011): `going` says which of the two it is, and no row at all is
+// the third state — nobody has looked yet. Saying the same thing twice is
+// saying it once; changing your mind rewrites the row rather than needing a
+// delete first, so there is no moment where a rider has no answer on record.
+//
+// created_at moves only when the answer actually changed, because that is
+// what ListRoomRsvps orders the "who is in" line by: a rider who said no in
+// the morning and yes in the evening committed in the evening, and would
+// otherwise sort ahead of everyone who said yes at lunchtime.
 func (q *Queries) SetRsvp(ctx context.Context, arg SetRsvpParams) error {
-	_, err := q.db.Exec(ctx, setRsvp, arg.SessionID, arg.UserID)
+	_, err := q.db.Exec(ctx, setRsvp, arg.SessionID, arg.UserID, arg.Going)
 	return err
 }
 

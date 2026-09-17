@@ -3,16 +3,18 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
+	import LthrPrompt from '$lib/components/LthrPrompt.svelte';
 	import {
-		declineFtp,
-		declinedFtp,
+		declineSuggestion,
+		declinedSuggestion,
 		suggestionDeclined,
-	} from '$lib/ftp-decline';
+	} from '$lib/suggestion-decline';
 	import ProviderConnections from '$lib/components/ProviderConnections.svelte';
 	import PasskeyList from '$lib/components/PasskeyList.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account, unchosen } from '$lib/account.svelte';
+	import { EMAIL_IS_FOR } from '$lib/auth/address';
 	import { toasts } from '$lib/toast.svelte';
 	import { api } from '$lib/api';
 	import { compressImage } from '$lib/chat/media';
@@ -62,17 +64,34 @@
 		);
 	}
 	// The decline outlives the visit (#1552), keyed on the suggested value.
-	let declined = $state(declinedFtp());
+	let declined = $state(declinedSuggestion('ftp'));
 	let applied = $state(false);
 	const suggestionDismissed = $derived(
 		applied || suggestionDeclined(account.me?.suggestedFtp, declined),
 	);
+	// The same, for the LTHR a hard ride suggests (#1620). Separate memory:
+	// keeping an FTP says nothing about a heart rate.
+	let lthrDeclined = $state(declinedSuggestion('lthr'));
+	let lthrApplied = $state(false);
+	const lthrSuggestionDismissed = $derived(
+		lthrApplied || suggestionDeclined(account.me?.suggestedLthr, lthrDeclined),
+	);
 
 	// The root layout owns the server → localStorage pull; this only fills
 	// the form fields.
+	//
+	// ONCE, guarded the way VerifyEmailGate guards its address: a later `me`
+	// refresh cannot overwrite what the rider is typing (#2165). `me` is
+	// replaced by things that are not this form — a picture upload, a
+	// provider disconnect, a save from another panel — and each of them used
+	// to put the server's numbers back over a typed FTP with no sign that
+	// anything had happened. A save sets these fields itself, from what was
+	// sent, so nothing needs re-filling after one.
+	let filled = false;
 	$effect(() => {
 		const me = account.me;
-		if (!me) return;
+		if (!me || filled) return;
+		filled = true;
 		ftp = me.ftpWatts;
 		// The anchor follows the account too (#1571); an account without one
 		// leaves whatever this browser holds until the pull pushes it up.
@@ -104,7 +123,12 @@
 				}
 			}
 			const err = await account.save({
-				displayName: name || account.me.displayName,
+				// What the rider typed, not a fallback (#2166): `name ||
+				// account.me.displayName` meant emptying the field said
+				// "Saved." and refilled the old name, which is a refusal the
+				// rider never saw. The server's "1-60 characters" reaches the
+				// field now.
+				displayName: name,
 				ftpWatts: nextFtp,
 				weightKg: kg,
 				// On the account since #1571; an empty field clears it.
@@ -151,18 +175,25 @@
 	// several MB and the server caps an upload at 2; an avatar never draws
 	// above 76px, so 512 on the long edge is plenty.
 	let uploading = $state(false);
+	// A refusal about the picture belongs under the picture (errors.md), not
+	// on the Save button's status line two panels down, in the same muted grey
+	// as "Saved." — which is the mistake this file's own comment above
+	// rejects, made again on a different control (#2166).
+	let pictureError = $state<string | null>(null);
 	async function pickPicture(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
 		input.value = '';
 		if (!file) return;
 		uploading = true;
+		pictureError = null;
 		const image = await compressImage(file, 512);
 		const err = image
 			? await account.setAvatar(image)
 			: { message: 'That file could not be read as a picture.' };
 		uploading = false;
-		status = err ? err.message : 'Picture saved.';
+		pictureError = err ? err.message : null;
+		status = err ? null : 'Picture saved.';
 	}
 </script>
 
@@ -229,6 +260,9 @@
 							>PNG, JPEG, WebP or GIF. Shown wherever you are.</span
 						>
 					</div>
+					{#if pictureError}
+						<span class="text-danger mt-2 block text-xs">{pictureError}</span>
+					{/if}
 				</div>
 			</section>
 		{/if}
@@ -238,6 +272,17 @@
 				<Banner tone="error">{saveError.message}</Banner>
 			</div>
 		{/if}
+		<!-- Field-level, under the field it names (errors.md). The server says
+		     which one — displayName, ftpWatts, weightKg, lthr, email — and the
+		     form drew it for displayName alone, so four of the five refusals
+		     appeared only in the banner above, away from the box to fix
+		     (#2166). One snippet, so a sixth field cannot be forgotten
+		     differently from the other five. -->
+		{#snippet fieldError(field: string)}
+			{#if saveError?.field === field}
+				<span class="text-danger mt-1 block text-xs">{saveError.message}</span>
+			{/if}
+		{/snippet}
 		<section class="panel mt-3 p-6">
 			<div class="grid gap-4 sm:grid-cols-2">
 				<label class="block">
@@ -250,22 +295,29 @@
 							: undefined}
 						class="input mt-1 w-full"
 					/>
-					{#if saveError?.field === 'displayName'}
-						<span class="text-danger mt-1 block text-xs"
-							>{saveError.message}</span
-						>
-					{/if}
+					{@render fieldError('displayName')}
 				</label>
 				<ProviderConnections
-					onUploadToggle={(on) =>
-						void account
-							.save({
-								displayName: name || (account.me?.displayName ?? ''),
-								ftpWatts: ftp,
-								weightKg: kg,
-								stravaUpload: on,
-							})
-							.then((err) => (saveError = err))}
+					onUploadToggle={async (on) => {
+						// The account's stored values, not the form's live ones,
+						// the way Notifications sends them (#2165): a checkbox
+						// commits a checkbox. It used to PATCH whatever was in
+						// the name, FTP and weight boxes — so ticking it saved
+						// edits the rider had not pressed Save on, and a
+						// half-typed FTP made the checkbox fail with an FTP
+						// error about a field nobody had submitted.
+						const me = account.me;
+						if (!me) return null;
+						// The refusal goes back to the checkbox (#2181), not into
+						// this form's banner: it is the box that is wrong now.
+						const err = await account.save({
+							displayName: me.displayName,
+							ftpWatts: me.ftpWatts,
+							weightKg: me.weightKg,
+							stravaUpload: on,
+						});
+						return err?.message ?? null;
+					}}
 				/>
 				<!-- The response to "a passkey was added to your account" (ADR-0030,
 				     #1607): every other screen signed out, this one kept. -->
@@ -281,38 +333,47 @@
 					>
 				</div>
 				<PasskeyList />
-				<label class="block">
-					<span class="eyebrow">FTP (W)</span>
-					<input
-						type="number"
-						bind:value={ftp}
-						min={PROFILE_LIMITS.minFtp}
-						max={PROFILE_LIMITS.maxFtp}
-						class="input mt-1 w-full font-mono tabular-nums"
-					/>
-					<span class="text-muted mt-1 block text-[11px]">
-						Sets every workout's targets.
-						{#if measured}
-							Measured by a ramp test on {new Date(
-								measured,
-							).toLocaleDateString()}.
-						{:else}
-							{#if unchosen(account.me?.ftpSource)}
-								<!-- Said where it is fixed, too (#1484): the field
+				<!-- The chart is a SIBLING of the label, not inside it (#2181):
+				     a label passes a click to its control, so tapping the trend
+				     raised a numeric keyboard on a phone. -->
+				<div>
+					<label class="block">
+						<span class="eyebrow">FTP (W)</span>
+						<input
+							type="number"
+							bind:value={ftp}
+							min={PROFILE_LIMITS.minFtp}
+							max={PROFILE_LIMITS.maxFtp}
+							aria-invalid={saveError?.field === 'ftpWatts'
+								? 'true'
+								: undefined}
+							class="input num mt-1 w-full"
+						/>
+						{@render fieldError('ftpWatts')}
+						<span class="text-muted mt-1 block text-[11px]">
+							Sets every workout's targets.
+							{#if measured}
+								Measured by a ramp test on {new Date(
+									measured,
+								).toLocaleDateString()}.
+							{:else}
+								{#if unchosen(account.me?.ftpSource)}
+									<!-- Said where it is fixed, too (#1484): the field
 								     showed 200 W with nothing to say nobody chose it. -->
-								This 200 W is where we start everyone, not a measurement.
+									This 200 W is where we start everyone, not a measurement.
+								{/if}
+								<a href="/ramp" class="hover:text-ink underline"
+									>A ramp test measures it for you.</a
+								>
 							{/if}
-							<a href="/ramp" class="hover:text-ink underline"
-								>A ramp test measures it for you.</a
-							>
-						{/if}
-					</span>
-					{#if trend.length >= 2}
-						<span class="mt-3 block">
-							<FtpTrendChart rides={trend} height={150} />
 						</span>
+					</label>
+					{#if trend.length >= 2}
+						<div class="mt-3">
+							<FtpTrendChart rides={trend} height={150} />
+						</div>
 					{/if}
-				</label>
+				</div>
 				<label class="block">
 					<span class="eyebrow">weight (kg)</span>
 					<input
@@ -320,8 +381,10 @@
 						bind:value={kg}
 						min={PROFILE_LIMITS.minKg}
 						max={PROFILE_LIMITS.maxKg}
-						class="input mt-1 w-full font-mono tabular-nums"
+						aria-invalid={saveError?.field === 'weightKg' ? 'true' : undefined}
+						class="input num mt-1 w-full"
 					/>
+					{@render fieldError('weightKg')}
 					<span class="text-muted mt-1 block text-[11px]"
 						>Only used for w/kg — the number every contest here is scored on.</span
 					>
@@ -334,8 +397,10 @@
 						min={PROFILE_LIMITS.minLthr}
 						max={PROFILE_LIMITS.maxLthr}
 						placeholder="—"
-						class="input mt-1 w-full font-mono tabular-nums"
+						aria-invalid={saveError?.field === 'lthr' ? 'true' : undefined}
+						class="input num mt-1 w-full"
 					/>
+					{@render fieldError('lthr')}
 					<span class="text-muted mt-1 block text-[11px]">
 						Threshold heart rate — anchors your HR zones the way FTP anchors
 						power zones.
@@ -358,7 +423,7 @@
 										>Z{range.zone}</span
 									>
 									<span class="text-muted ml-1">{range.name}</span>
-									<span class="ml-1 font-mono tabular-nums"
+									<span class="num ml-1"
 										>{range.zone === 1
 											? `≤ ${range.high}`
 											: range.high !== undefined
@@ -381,22 +446,22 @@
 							type="email"
 							bind:value={email}
 							maxlength="254"
+							aria-invalid={saveError?.field === 'email' ? 'true' : undefined}
 							class="input mt-1 w-full"
 						/>
+						{@render fieldError('email')}
 						{#if account.me?.emailPending}
 							<span class="text-muted mt-1 block text-[11px]">
 								Waiting on the link sent to {account.me.emailPending} — it works once
 								and expires in a day.
 							</span>
 						{:else if account.me?.emailVerified}
-							<span class="text-z4 mt-1 block text-[11px]">
-								Confirmed — this is how you get back in if you lose the way you
-								sign in.
-							</span>
+							<span class="text-z4 mt-1 block text-[11px]"
+								>Confirmed. {EMAIL_IS_FOR}</span
+							>
 						{:else}
 							<span class="text-muted mt-1 block text-[11px]">
-								Save it and we send a link to confirm. It is how you recover
-								this account, and it is never shown to anyone.
+								Save it and we send a link to confirm. {EMAIL_IS_FOR}
 							</span>
 						{/if}
 						<!-- What the address is used for beyond recovery lives with
@@ -416,6 +481,25 @@
 			</div>
 		</section>
 
+		{#if account.me?.suggestedLthr && account.me.lthr && !lthrSuggestionDismissed}
+			<div class="mt-3">
+				<LthrPrompt
+					current={account.me.lthr}
+					suggested={account.me.suggestedLthr}
+					onApply={() => {
+						lthr = account.me?.suggestedLthr ?? lthr;
+						void save();
+						lthrApplied = true;
+					}}
+					onKeep={() => {
+						const kept = account.me?.suggestedLthr ?? 0;
+						declineSuggestion('lthr', kept);
+						lthrDeclined = kept;
+					}}
+				/>
+			</div>
+		{/if}
+
 		{#if account.me?.suggestedFtp && !suggestionDismissed}
 			<div class="mt-3">
 				<FtpPrompt
@@ -428,7 +512,7 @@
 					}}
 					onKeep={() => {
 						const kept = account.me?.suggestedFtp ?? 0;
-						declineFtp(kept);
+						declineSuggestion('ftp', kept);
 						declined = kept;
 					}}
 				/>

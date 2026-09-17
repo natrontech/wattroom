@@ -1,3 +1,4 @@
+import type { RsvpAnswer } from '$lib/room/rsvp';
 import type { RoomContext, RoomStageSource } from '$lib/room/context';
 import type { roomConnection } from '$lib/room/connection.svelte';
 import type { createRiders } from '$lib/room/riders.svelte';
@@ -75,7 +76,7 @@ export interface RoomShellProps {
 	) => Promise<boolean> | boolean | void;
 	onReschedule: (id: string, startsAt: string) => void;
 	onUnschedule: (id: string) => void;
-	onRsvp: (id: string, going: boolean) => void;
+	onRsvp: (id: string, answer: RsvpAnswer | null) => void;
 	/** Secret calendar-feed token (#245); '' hides the subscribe affordance. */
 	icsToken?: string;
 	onRotateIcs: () => void | Promise<boolean>;
@@ -173,6 +174,9 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 			return ride.bias;
 		},
 		nudgeBias: ride.nudgeBias,
+		get actuating() {
+			return ride.actuating;
+		},
 		get trainerName() {
 			return ride.trainer?.name ?? '';
 		},
@@ -249,7 +253,7 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		},
 		reschedule: (id, at) => props.onReschedule(id, at),
 		unschedule: (id) => props.onUnschedule(id),
-		rsvp: (id, going) => props.onRsvp(id, going),
+		rsvp: (id, answer) => props.onRsvp(id, answer),
 		rotateIcs: () => props.onRotateIcs(),
 		setRole: (userId, next) => props.onRole(userId, next),
 		ban: (userId, name) => deps.ban(userId, name),

@@ -86,13 +86,13 @@
 		{
 			id: 'stage',
 			label: 'Stage',
-			hint: 'the picture big, the crew below',
+			hint: 'the picture big, the riders below',
 			icon: MonitorPlay,
 		},
 		{
 			id: 'split',
 			label: 'Split',
-			hint: 'picture and crew side by side',
+			hint: 'picture and riders side by side',
 			icon: Columns2,
 		},
 		{
@@ -137,7 +137,7 @@
 			: room.stageSources,
 	);
 	const onStage = $derived(pickStage(sources, av?.stagePick ?? null));
-	/** Stage above, crew below — the shape both Stage and Sidebar draw. */
+	/** Stage above, riders below — the shape both Stage and Sidebar draw. */
 	const stacked = $derived(layout !== 'split');
 	const wrap = $derived(
 		!onStage || stacked
@@ -237,13 +237,16 @@
 				role="group"
 				aria-label="layout"
 			>
+				<!-- 28 px, the kit's (#2179): p-1 around a 13 px icon was 21,
+				     the same shape the jukebox rail's transport had before
+				     #1899, and these are pressed mid-ride. -->
 				{#each options as option (option.id)}
 					<button
 						onclick={() => setLayout(option.id)}
 						aria-pressed={layout === option.id}
 						title="{option.label} — {option.hint}"
 						aria-label="{option.label} layout"
-						class="rounded px-2 py-1 {layout === option.id
+						class="icon-btn icon-btn-sm {layout === option.id
 							? 'bg-surface-raised text-ink'
 							: 'text-muted hover:text-ink'}"><option.icon size={13} /></button
 					>

@@ -36,8 +36,10 @@ func bestScreen(candidate, held *client) bool {
 // run broadcasts one tick per interval while anyone is connected. The tick
 // always carries the session state and roster — the timer must advance on
 // screens even when nobody is pedalling yet.
-// ponytail: the ticker runs while the room is empty; rooms are cheap and few,
-// stop-on-empty can land with room GC if it ever shows up in a profile.
+// The ticker runs on while the room is empty — this clock is the only thing
+// that will close and save a session whose last rider shut the tab — and the
+// room is let go of entirely once it has been empty, quiet and between
+// sessions for roomIdleTTL (forget.go).
 func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) {
 	// A timer, not a ticker: the interval bursts to 4 Hz while a sprint window
 	// is live (SPEC) and returns to 1 Hz after.
@@ -83,12 +85,33 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			// left phaseSaid at "running", and the next visitor watched the
 			// session "end" live, hours late (audit 2026-09-09).
 			rm.sayPhaseLocked(state, now())
+			// The departures too, for the same reason (#2230). Skipped here,
+			// the last riders stay parked in `departed` — so the room's
+			// timeline loses the "left" line, and the first rider back hours
+			// later is read as a flap and loses their "joined" one as well.
+			// Silence in both directions, which is the opposite of what the
+			// 15 s grace was for (#984).
+			rm.sayDepartedLocked(now())
 			ended := rm.closeLocked(state, now(), saver != nil)
+			// Resolved here, after the close above: a session that has just
+			// crossed to done releases the room from this tick on, and one
+			// still running holds it however empty the room is (forget.go).
+			idleFor := rm.idleForLocked(state, now())
 			locked = false
 			rm.mu.Unlock()
 			rm.handOff(log, now, saver, ended)
+			// Nothing left to do, and nobody to do it for (#2297): the hub
+			// drops the room and this goroutine ends. Only the hub can say
+			// so — a socket may be arriving that this tick cannot see — and
+			// the next join builds a fresh room (ADR-0052's re-form path).
+			if idleFor >= roomIdleTTL && rm.forget != nil && rm.forget() {
+				logger(log).Info("room forgotten", "room", rm.slug, "idle", idleFor)
+				return
+			}
 			continue
 		}
+		// Somebody is here: the idle window starts over when they go.
+		rm.emptySince = time.Time{}
 		gameWinner := rm.advanceGameLocked(now())
 		// Drain a bounded slice per tick and CARRY the overflow — a burst
 		// above the per-tick cap used to vanish silently (#219).
@@ -214,7 +237,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 				// and riding is the window the room holds rather than the
 				// watts on this one sample (#1016).
 				rider := c.rider
-				_, rider.Away = rm.away[c.rider.ID]
+				rider.AwayReason, rider.Away = rm.away[c.rider.ID]
 				_, rider.Riding = pedalling[c.rider.ID]
 				// And what their board still has going, so a rider who joined
 				// mid-clip catches up (#1681). Read here rather than drained:
@@ -554,9 +577,14 @@ func (rm *room) advanceGameLocked(now time.Time) (winner string) {
 		rm.gameDoneAt = now
 		if len(gs.Podium) > 0 {
 			rm.events.add(sessionLine("won", gs.Podium[0].Name, gs.Mode, time.Time{}, now), now)
-			winner = gs.Podium[0].RiderID
+			return gs.Podium[0].RiderID
 		}
-		return winner
+		// Not every game ends with a winner, and the ones that do not used to
+		// end in silence: a collective ramp finishes on the room's average
+		// falling off the line and builds no podium, so the timeline said
+		// nothing about a game the whole room had just ridden (ADR-0022).
+		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
+		return ""
 	}
 	if now.Sub(rm.gameDoneAt) > gameLinger {
 		rm.game, rm.lastGame, rm.gameDoneAt = nil, nil, time.Time{}

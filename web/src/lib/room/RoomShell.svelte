@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
+	import { device } from '$lib/device.svelte';
 	import { flatten } from '$lib/workout/engine';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { publishHud } from '$lib/hud/feed';
@@ -395,7 +396,6 @@
 		ftp={profile.current.ftp}
 		busy={props.adminBusy}
 		gameRunning={!!live.tick?.game}
-		onStart={(workout) => startWorkout(workout)}
 		onPlan={async (name, json, at) => {
 			// Closed only once the server took it (#1766): a refused time used
 			// to leave a toast and a closed picker — workout, room and time all
@@ -403,10 +403,23 @@
 			if ((await props.onSchedule(name, json, at)) !== false)
 				session.open = false;
 		}}
-		onStartGame={(id) => {
-			live.control('game', undefined, id);
-			session.open = false;
-		}}
+		onStart={device.spectator
+			? // A phone plans, and does not start (#1767). The Sessions place
+				// opens this picker on a spectator device now, and the picker
+				// already has the shape for one that only plans — an absent
+				// `onStart` — so the gate lands here rather than as a second
+				// branch inside it, taking the "Start it now instead" flip with
+				// it. Starting belongs to the screen the coach rides on, which
+				// is the gate SessionControls wears.
+				undefined
+			: (workout) => startWorkout(workout)}
+		onStartGame={device.spectator
+			? // A game IS a session, started the same way.
+				undefined
+			: (id) => {
+					live.control('game', undefined, id);
+					session.open = false;
+				}}
 		onClose={() => (session.open = false)}
 	/>
 {/if}
@@ -417,7 +430,7 @@
 	     and nothing said so — a modal is the room telling you it is over. -->
 	<Modal
 		label="Session summary"
-		class="max-h-[88dvh] max-w-5xl overflow-y-auto"
+		class="max-w-5xl"
 		onclose={() => summary.dismiss()}
 	>
 		<SessionSummary

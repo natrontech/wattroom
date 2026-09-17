@@ -1,4 +1,5 @@
 import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
+import { toleranceBand } from '$lib/workout/guards';
 import type { Segment, TargetInfo, Workout } from '$lib/workout/types';
 
 /**
@@ -24,6 +25,9 @@ export interface RoomRider {
 	speaking: boolean;
 	/** The rider explicitly stepped out; presence, never inferred from watts. */
 	away?: boolean;
+	/** Which away, from $lib/away's keys; '' or absent is the plain one. Room
+	 * surfaces only — outside a room the reason is not carried at all. */
+	awayReason?: string;
 	/** Pedalling inside the room's window (#1016) — the server's word, not this
 	 * tile's reading of the current sample. A coast holds it. */
 	riding?: boolean;
@@ -60,14 +64,11 @@ export const TILE_METRICS: { id: TileMetric; label: string }[] = [
 	{ id: 'wkg', label: 'w/kg' },
 ];
 
-/** docs/SPEC.md tolerance band: ±5 % of target, floor ±10 W. */
-export function bandWatts(target: number): number {
-	return Math.max(target * 0.05, 10);
-}
-
 export function targetState(rider: Pick<RoomRider, 'watts' | 'target'>) {
 	const has = rider.target > 0;
-	const band = has ? bandWatts(rider.target) : 0;
+	// One band, docs/SPEC.md's, shared with the scorer through the generated
+	// protocol (#2159). This file used to carry its own copy of the formula.
+	const band = has ? toleranceBand(rider.target) : 0;
 	const delta = rider.watts - rider.target;
 	return { has, band, delta, inBand: has && Math.abs(delta) <= band };
 }

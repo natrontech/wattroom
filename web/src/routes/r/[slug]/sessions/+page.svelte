@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { copyText, theLinkItself } from '$lib/copy';
 	// The room's Sessions place (ADR-0020). Was a card wedged under the rider
 	// tiles, visible only in the lounge; it has a URL now, and /sessions —
 	// the cross-room list — folded into Home (#388).
@@ -20,6 +21,7 @@
 	import { formatWhen } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import { useRoom } from '$lib/room/context';
+	import { rsvpSummary, type RsvpAnswer } from '$lib/room/rsvp';
 	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import CircleX from '@lucide/svelte/icons/circle-x';
@@ -34,10 +36,18 @@
 	import { toLocalInput } from '$lib/components/when';
 
 	const room = useRoom();
-	// The roles matrix gives a spectator none of this (docs/SPEC.md) — the
-	// same gate SessionControls wears, or a phone plans and starts sessions
-	// it cannot ride.
-	const manages = $derived(room.canControl && !device.spectator);
+	// Planning is not riding (#1767). WATTROOM.md's device row and ADR-0020's
+	// 2026-09-05 amendment both gate "the affordances that need something a
+	// phone does not have" — a plan on a calendar needs nothing of the sort,
+	// and Members and Settings have never gated moderation either. So the role
+	// alone says who plans, moves and cancels here: a room's owner holding
+	// only a phone used to read "Your coach plans them here".
+	const manages = $derived(room.canControl);
+	// The gate stays on the one control that IS the cockpit. Starting hands
+	// every rider in the room a workout and a countdown, from the screen the
+	// coach is riding on — the same gate SessionControls wears, and the same
+	// reason the picker only plans on a phone (RoomShell).
+	const runs = $derived(manages && !device.spectator);
 	// What already happened here (ADR-0034 amended, #1331): the recaps the
 	// backlog seeds and the tick adds, newest first — the same cards the chat
 	// shows in its scrollback, on the place that plans the next one.
@@ -64,40 +74,66 @@
 	}
 
 	/** A plan with an RSVP is what #450 calls an event; no second object. */
-	const going = (entry: { going?: { id: string; displayName: string }[] }) =>
-		entry.going ?? [];
-	const youAreIn = (entry: { going?: { id: string; displayName: string }[] }) =>
-		going(entry).some((who) => who.id === room.you.id);
+	type Plan = (typeof room.upcoming)[number];
+	const going = (entry: Plan) => entry.going ?? [];
+	/** Your own answer, or null while the room has not heard from you — the
+	 *  third state (#1011). Read off the plan rather than looked for in
+	 *  `going`, which only ever carried half the answer. */
+	const answer = (entry: Plan) => entry.yourAnswer ?? null;
+	/** The three states as counts. Who is in is named below; who is out is a
+	 *  number and stays one. */
+	const tally = (entry: Plan) => ({
+		in: going(entry).length,
+		out: entry.out ?? 0,
+		unanswered: entry.unanswered ?? 0,
+	});
+	/** The riders who are in, as the row has width for. */
+	const whoIsIn = (entry: Plan) => {
+		const names = going(entry);
+		const shown = names
+			.slice(0, 4)
+			.map((who) => who.displayName)
+			.join(', ');
+		return names.length > 4 ? `${shown} +${names.length - 4} more` : shown;
+	};
+	/** Pressing your own answer again takes it back; pressing the other one
+	 *  changes your mind. Neither asks: there is nothing to undo that a
+	 *  second tap does not (errors.md). */
+	const choose = (entry: Plan, pressed: RsvpAnswer) =>
+		room.rsvp(entry.id, answer(entry) === pressed ? null : pressed);
 
 	/** The place's address, for a chat or a calendar note. */
 	function copyLink() {
 		const link = `${location.origin}/r/${room.slug}/sessions`;
-		void navigator.clipboard.writeText(link).then(
-			() => toasts.push('Link copied.'),
-			() =>
-				toasts.push(`Could not copy — the link is ${link}`, {
-					tone: 'error',
-					seconds: 12,
-				}),
-		);
+		void copyText(link, 'Link copied.', theLinkItself(link));
 	}
 
 	// The row's right-click (ux.md, #1373): the buttons keep the primary
 	// actions, this holds every one of them plus the link the row has no
 	// room for. A coach's entries name why they are greyed.
-	function planEntries(entry: (typeof room.upcoming)[number]): MenuEntry[] {
-		const inn = youAreIn(entry);
+	function planEntries(entry: Plan): MenuEntry[] {
+		// Both answers, always both (#1011) — a menu that offered only the
+		// one you had not given could not say where you stood, and the
+		// third state has no word of its own to offer.
 		const entries: MenuEntry[] = [
 			{
-				label: inn ? "I'm out" : "I'm in",
-				icon: inn ? UserMinus : UserCheck,
-				onSelect: () => room.rsvp(entry.id, !inn),
+				label: "I'm in",
+				icon: UserCheck,
+				onSelect: () => choose(entry, 'in'),
+				hint: answer(entry) === 'in' ? 'your answer' : undefined,
+				disabled: room.adminBusy,
+			},
+			{
+				label: "I'm out",
+				icon: UserMinus,
+				onSelect: () => choose(entry, 'out'),
+				hint: answer(entry) === 'out' ? 'your answer' : undefined,
 				disabled: room.adminBusy,
 			},
 			{ label: 'Copy link', icon: Link, onSelect: copyLink },
 		];
 		if (!manages) return entries;
-		const startable = due(entry.startsAt) && room.phase === 'lounge';
+		const startable = runs && due(entry.startsAt) && room.phase === 'lounge';
 		entries.push(
 			'separator',
 			{
@@ -107,9 +143,11 @@
 				disabled: !startable || room.adminBusy,
 				hint: startable
 					? undefined
-					: room.phase !== 'lounge'
-						? 'a session is running'
-						: 'not due yet',
+					: !runs
+						? 'start it from the screen you ride on'
+						: room.phase !== 'lounge'
+							? 'a session is running'
+							: 'not due yet',
 			},
 			{
 				label: 'Move…',
@@ -132,12 +170,7 @@
 	}
 
 	/** No inverse exists — the RSVPs go with it — so it asks first (errors.md). */
-	async function cancelPlan(entry: {
-		id: string;
-		workoutName: string;
-		startsAt: string;
-		going?: { id: string; displayName: string }[];
-	}) {
+	async function cancelPlan(entry: Plan) {
 		const n = going(entry).length;
 		// Say what is certain (#1911): the mail goes only for a plan still
 		// ahead, on a server that can send, under the room's hourly budget —
@@ -216,13 +249,18 @@
 								)} min · planned by {entry.createdBy}
 							</p>
 						</div>
-						<span class="flex shrink-0 items-center gap-3">
+						<!-- A row of their own below sm (#2179, #2175's lesson): side
+						     by side the card's text had ~110 px and wrapped to four
+						     lines, because a flex item shrinks before it wraps. -->
+						<span
+							class="flex shrink-0 basis-full items-center gap-3 sm:basis-auto"
+						>
 							<!-- Only while nothing runs: the hub refuses a pick outside
 							     idle, and the tap used to wipe the rider's own recording
 							     before it was refused. A running ride is joined from the
 							     Lounge or Training. -->
 							{#if due(entry.startsAt) && room.phase === 'lounge'}
-								{#if manages}
+								{#if runs}
 									<button
 										onclick={() => room.startScheduled(entry)}
 										disabled={room.adminBusy}
@@ -233,6 +271,9 @@
 								{/if}
 							{/if}
 							{#if manages}
+								<!-- Two buttons, two acts (#2179): the ellipsis opens the
+								     field, the one under it commits — side by side they
+								     both read "Move", and the menu already said "Move…". -->
 								<button
 									onclick={() => {
 										movingId = movingId === entry.id ? null : entry.id;
@@ -240,7 +281,7 @@
 										moveAt = toLocalInput(new Date(entry.startsAt));
 									}}
 									disabled={room.adminBusy}
-									class="btn btn-secondary btn-xs">Move</button
+									class="btn btn-secondary btn-xs">Move…</button
 								>
 								<!-- "Cancel", as the chat line, the mail and SPEC say — with
 								     its object, because a bare "Cancel" is the button that
@@ -253,32 +294,37 @@
 							{/if}
 						</span>
 					</div>
-					<!-- Being there is not a role (#450): every member says yes for
-					     themselves, and there is no maybe. The word is what the
-					     press does, never where you already stand (#2004) — that
-					     is aria-pressed's job, and the fill's. -->
+					<!-- Being there is not a role (#450): every member answers for
+					     themselves, and there is no maybe. Two fixed words, one
+					     per answer, and aria-pressed says which is yours (#2004)
+					     — pressing yours again takes it back, and the room is
+					     unanswered rather than talked out of anything. -->
 					<div class="mt-2 flex flex-wrap items-center gap-3">
 						<button
-							onclick={() => room.rsvp(entry.id, !youAreIn(entry))}
+							onclick={() => choose(entry, 'in')}
 							disabled={room.adminBusy}
-							aria-pressed={youAreIn(entry)}
-							class="btn btn-xs disabled:opacity-40 {youAreIn(entry)
-								? 'btn-secondary'
-								: 'btn-primary'}"
-							>{youAreIn(entry) ? "I'm out" : "I'm in"}</button
+							aria-pressed={answer(entry) === 'in'}
+							class="btn btn-xs disabled:opacity-40 {answer(entry) === 'in'
+								? 'btn-primary'
+								: 'btn-secondary'}">I'm in</button
 						>
-						<span class="text-muted text-xs">
-							{#if going(entry).length}
-								{going(entry)
-									.slice(0, 4)
-									.map((who) => who.displayName)
-									.join(', ')}{going(entry).length > 4
-									? ` +${going(entry).length - 4} more`
-									: ''}
-							{:else}
-								nobody has said yes yet
-							{/if}
-						</span>
+						<button
+							onclick={() => choose(entry, 'out')}
+							disabled={room.adminBusy}
+							aria-pressed={answer(entry) === 'out'}
+							class="btn btn-xs disabled:opacity-40 {answer(entry) === 'out'
+								? 'btn-primary'
+								: 'btn-secondary'}">I'm out</button
+						>
+						<!-- One line: the counts, with the names hanging off the
+						     "in" and off nothing else. A decline is a number here
+						     and nowhere a name (#1011) — the number is what tells
+						     a planner whether to hold the session, and a room is
+						     small enough that a list of who said no would read as
+						     an accusation. -->
+						<span class="text-muted text-xs"
+							>{rsvpSummary(tally(entry), whoIsIn(entry))}</span
+						>
 					</div>
 					{#if manages && movingId === entry.id}
 						<div class="mt-2 flex flex-wrap items-center gap-2">
@@ -290,7 +336,7 @@
 								}}
 								disabled={room.adminBusy || !moveAt}
 								class="btn btn-secondary btn-xs disabled:opacity-40"
-								>Move</button
+								>Move to this time</button
 							>
 						</div>
 					{/if}
@@ -324,9 +370,11 @@
 					class="underline">Home</a
 				>.
 			</p>
+			<!-- Its own row below sm (#2179): beside the button the sentence
+			     was a five-line column. -->
 			<button
 				onclick={() => room.copyIcsUrl()}
-				class="btn btn-secondary btn-xs shrink-0"
+				class="btn btn-secondary btn-xs shrink-0 basis-full sm:basis-auto"
 				><Copy size={13} /> Copy calendar link</button
 			>
 		</div>
@@ -381,20 +429,4 @@
 			</EmptyState>
 		</div>
 	{/if}
-
-	<h3 class="eyebrow mt-8">this room, this month</h3>
-	<div class="panel mt-2 grid grid-cols-2 gap-4 px-4 py-3">
-		<div>
-			<p class="eyebrow">this room's streak</p>
-			<p class="font-display text-xl font-bold tabular-nums">
-				{room.streakWeeks} week{room.streakWeeks === 1 ? '' : 's'}
-			</p>
-		</div>
-		<div>
-			<p class="eyebrow">work</p>
-			<p class="font-display text-xl font-bold tabular-nums">
-				{room.monthKj.toLocaleString()} kJ
-			</p>
-		</div>
-	</div>
 </div>

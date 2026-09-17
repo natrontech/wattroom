@@ -62,10 +62,14 @@ export const test = base.extend<{
 			contexts.push(context);
 			// Mute before you play (AGENTS.md): a sprint fires the klaxon, the
 			// gun and a fanfare out of whatever machine this happens to run on.
+			// ALL FOUR channels, because what is stored REPLACES what was
+			// there: a channel left out comes back at its default, and
+			// `share` — a shared screen's own sound — defaults to 1. That is
+			// the same trap `board`'s 0.7 set in #990, one channel later.
 			await context.addInitScript(() =>
 				localStorage.setItem(
 					'wattroom.mixer.v1',
-					JSON.stringify({ music: 0, cues: 0, board: 0 }),
+					JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
 				),
 			);
 			const page = await context.newPage();

@@ -17,6 +17,270 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.119] - 2026-09-17
+
+### Added
+
+- A hard 30-minute solo ride can now set your threshold heart rate. Ride 30
+  minutes on your own, as hard as you can hold, and WattRoom offers the average
+  heart rate of the last 20 minutes — the field test threshold heart rate
+  actually comes from, and a far better number than the rough one a ramp test
+  estimates. It appears on your profile and beside your power curve when it is
+  more than 2 % above the LTHR you have set, and it is never applied for you:
+  nothing in a ride says whether you were going all out, so that part is your
+  call. Rides you have already done count, not just new ones. Your heart-rate
+  zones follow whatever you accept.
+- **Away now says which.** The arrow beside the Away button offers Nature break, Refuelling and Showering; each draws its own mark on your tile and writes its own line on the room's timeline, so a room can tell a shower from a snack without asking. The button's face is still Away and one tap still does exactly what it always did. Outside the room nothing changes — the sidebar and your friends see the same plain away dot as before.
+- A planned session now takes **"I'm out"** as well as "I'm in" — and once you
+  have said so, it stops nagging you. The hour-before reminder skips anyone who
+  turned that session down; until now it mailed every member of the room, and
+  the only way to stop it was to mute the room entirely. The session shows the
+  answers as counts — "4 in · 2 out · 9 unanswered" — and never names who said
+  no. Changing your mind is one tap, and moving a session to a new time clears
+  the declines, so everyone is asked again.
+
+### Changed
+
+- A crew's owner and admins can now let a single crew-mate into one of the
+  crew's private rooms, and take that door back again — until now only the
+  room's own owner could, even though the same admins could already open the
+  room to the entire crew. Letting one person in is the smaller move of the
+  two, so it no longer needs the bigger permission. Nothing else about a room
+  moves with it: its roster, its chat and its settings stay the room's own
+  members'.
+- A direct message arriving while you are riding no longer throws a toast over
+  the numbers you are holding. The cue still sounds and the unread badge still
+  marks it; in a room, the message also leaves a line on the room's timeline —
+  who wrote, not what they said — so "what did I miss" has an answer when you
+  are off the bike. Room chat, friend requests and a session starting in
+  another room announce exactly as before, riding or not.
+- A room that nobody has been in for two hours — no open tab, nobody in voice,
+  no session running — is now let go of by the server instead of being kept
+  alive until the next deploy. Walk back in and the room is there, but its
+  jukebox queue, its timeline and what it was playing start empty. Chat comes
+  back from your history as usual, and a finished ride was already saved. Two
+  hours is long on purpose: nothing you could still be in the middle of is
+  reclaimed.
+- Every ceiling now refuses the same way: 429, with a message naming the number and what to do about it. Opening a room past the cap answered 409, and a track or clip upload that would cross your storage quota answered 400 as if the file were malformed. The playlist limit says which number it is now, too.
+- A rider's page and the trophy case on it now decide who may see them with one shared rule instead of two written separately. Nothing changes about who can see what today; the two could have drifted apart, and the page is where WattRoom's privacy promise is kept.
+- The coach-access card on Settings › Data now says where a token's reads end
+  up. It promised "your data only, never anyone else's", which was true about
+  whose rides a token reads and silent about the tool you hand it to; it now
+  says that whatever you connect receives them under that provider's terms
+  rather than WattRoom's. Nothing about what a token can reach has changed.
+- **A room's calendar link stops naming who planned each session.** That link is handed to every member, rotates only for the owner, and is meant to be shared with people who are not in the room — so a name in it travels to anyone the link reaches. Events in a room feed now read "In <room>." Your own calendar link, the one on Home covering every room at once, still names the planner: it is yours alone and only ever lists rooms you are in.
+
+### Fixed
+
+- Leaving a crew that has no rooms and nobody else in it now ends the crew,
+  instead of leaving its owner with one they could not leave, hand on or
+  delete. The confirm says which case you are in before you press it: the crew
+  ends here, or its code gets you back in. Banning someone still never ends a
+  crew.
+- Your friends list now tells riding apart from merely being in a room. A
+  friend on the pedals reads "riding in <room>" where you share the room, and
+  "riding elsewhere" where you do not — the room is still named only to its own
+  members. Until now both looked identical to "in a room", so the one person
+  you might have joined was the one you could not spot.
+- A ride that grew after the session closed no longer pays a streak bonus the same ride would not have earned had your connection held.
+- A ride whose stored samples cannot be read now shows its average power instead of a permanent 0 W NormPower, which also left it contributing nothing to that day's Load.
+- A link preview that fails to draw answers in the app's usual error shape rather than plain text.
+- A personal token can read your own trophy case again (`GET /api/me/trophies`), which is one of the five routes ADR-0017 says a token authenticates. It had been answering 401 since a fix to a neighbouring route. Another rider's case still needs a signed-in session, never a token.
+- A ride that grew after the session closed — because your connection dropped and the app replayed the tail — is now judged for achievements on the whole ride. It was judged on the truncated version and never looked at again, so a ride that crossed a trophy's line in its last ten minutes missed it silently.
+- A jukebox command refused by the room's throttle now tells you, beside the deck, instead of doing nothing. Two quick taps on skip or pause looked like the button was broken.
+- Saving a room's autoplay settings is now one write. Picking a playlist that
+  is not the room's own was refused *after* the on/off switch and the order had
+  already been saved, and a failure partway through left autoplay on with the
+  playlist you had just cleared still playing. The refusal now changes nothing,
+  and the panel shows what the room actually holds.
+- A soundboard clip that would not load, and a jukebox queue that would not open, no longer blame you for it: when the database is the thing that failed, the app says so and the operator gets a log line, instead of telling you the clip is gone or that you should join a room you are already in.
+- A sprint moment needs two people who actually sprinted. A rider sitting in the room with a trainer paired reported 0 W every second, which counted as a second sprinter — so the one person who did sprint took the podium and the Sprint Snob trophy off a field of one. An all-zero effort is now left off the podium and out of the count, in sprint moments and in the Points Race sprints that pay by place.
+- A game that ends with nobody to name now says so on the timeline. A Collective Ramp ends when the room average falls off the line and crowns no winner, and Team Relay only ever ends when the coach ends it — both used to stop in complete silence. The room now gets a line naming the mode and the round it reached.
+- A refused jukebox tap and a poke on cooldown now answer in the same vocabulary as every other refusal, so the message reaches the deck and the room consistently rather than depending on which refusal you hit.
+- The server no longer refuses to start when a migration written earlier than
+  one the database has already applied arrives later — it applies the late
+  arrival at boot and carries on. Two branches whose migrations merged in the
+  opposite order to the one they were written in used to leave the next
+  release unable to boot, rolled back by the health gate until someone edited
+  `goose_db_version` by hand. Nothing to do on upgrade.
+- Signing up from the WattRoom home page and being handed a crew-code box is
+  over: the front door says *Open your first room*, and Home now says it too.
+  Joining a crew only leads for a rider who was sent an invite link and has not
+  gone through it yet — for them the code box comes first, as before. Either
+  way both are one sheet, one click apart, and opening your first room still
+  makes your crew.
+- Home's *What's next* lists every planned session you have, not one per room.
+  A room with three rides on the calendar this week showed one of them, while
+  your calendar app showed all three; now the page and the feed say the same
+  thing. Saying you're in still happens in the room whose session it is.
+- **A phone can plan a session again.** A room's owner or coach holding nothing but a phone was shown no plan button and an empty state reading "Your coach plans them here" — told to wait for their own coach. Planning, moving and cancelling now follow your role wherever you are standing; so does moderating, which never was gated. Starting a session still belongs to the screen you ride on, so "Start now" and the workout picker's start half stay off a phone, and the menu says where to go instead.
+- A mid-ride flag no longer risks naming anyone in the public issue it files. The report's route is now redacted against the app's own route list, so a rider id, a crew id, a ride id and a crew invite code are dropped the way a room slug and a DM peer always were.
+- Link previews take a picture's type from the picture, not from the claim the remote host made about it, and the outbound fetch refuses several more address ranges that are not on the public internet.
+- A room chat line that is too long is refused at the same limit the message box enforces, and says that number rather than a second copy of it.
+- The ride page now says when a ride grew after it was sent to Strava. A late reconnect can add the last part of a ride here once the session has closed; the copy on Strava is the one that was sent, and nothing re-sends it — so the page tells you, and points at the FIT download if you want the whole ride over there too. WattRoom will not replace the activity itself: that would mean deleting it, kudos and comments included.
+- A room's weekly board no longer prints a category for a rider who has never set their FTP or weight. It was computing one from the two starting defaults and publishing the result — usually a D — to everyone else in the room. The row still ranks: the kJ on it were ridden.
+- The passkey button no longer appears on a server that cannot do passkeys. A WattRoom whose `WATTROOM_BASE_URL` has no hostname boots with passkeys off; sign-in and the settings panel now say so in a line instead of offering a button that fails on click.
+- The sidebar now says when it has stopped updating. If two reads of your rooms
+  fail in a row, a small mark appears on the crew header at the top of the
+  column: the rooms, the presence dots and "32 min in" below it are frozen at
+  whatever they last were, and until now nothing said so unless the list was
+  empty. It keeps retrying by itself and the mark goes when a read succeeds.
+- A screen that keeps its link to your trainer but no longer drives it now says so — the card reads "Targets come from your phone", and the bias trim is disabled there instead of moving a number that changes no resistance.
+- Watt Golf gives you your numbers back between holes. The meter is meant to hide from 20 seconds before a hole to its end; the next hole was announced the instant the last one was scored, so it hid for the whole game. There is now a 20-second breather between holes with the meter on, which makes a round about seven minutes rather than four and a half.
+- **Two sessions planned for the same minute stop swapping places.** A room may plan overlapping sessions on purpose, but the one labelled "next session in this room" could change between page loads, and the room's list and the sidebar could name different ones. Whichever was planned first now leads, everywhere and on every read.
+- When a database read for your own account hiccups, the profile no longer quietly renders as though you have no connected sign-in providers with nothing recorded anywhere; the failure is logged and the page shows what it could load.
+
+### Security
+
+- The ten-passkey and ten-token caps are now counted and applied in one step, so ten browser tabs asking at once can no longer put eleven on an account.
+- Opening a crew's invite link no longer writes to your account just by being
+  opened. Reading the door at `/c/{code}` used to record that code as your
+  pending invite, and a read carries no cross-site protection — so any page
+  could link a signed-in rider at it and decide which crew a brand-new account
+  is pointed at after sign-up. The invite is now remembered by a separate call
+  the crew page makes, which a foreign page cannot make for you.
+- Your profile picture is now shown only to the people your rider page is shown to — someone you share a room or a crew room with, a friend, or someone who has asked to be your friend. It used to be served to any signed-in account that knew your rider id, and ids travel further than faces should: a chat backlog carries one for every author, so a room-mate could still fetch the photograph of someone who left months ago. Where a viewer has no standing the face falls back to their initial and nothing else on the screen changes — you may see that on a crew roster with no room in common, on a friend request you sent by code, or on a banned person's row.
+- A room's own page no longer answers a caller with no session at all. `GET /api/rooms/{slug}` used to hand anyone its name, slug, icon and listed flag — for any room, listed or not — which the share card had already stopped doing. Link previews are unaffected: a listed room's card still names it.
+- The per-address limits on signing in, account recovery and the crew door now key on the connection the server actually sees, not on an `X-Forwarded-For` header the caller can write. A server running behind a reverse proxy has to say so with `WATTROOM_TRUSTED_PROXY=1` — the bundled `deploy/` sets it. **Self-hosting behind your own proxy: set it, or every visitor will look like your proxy and share one budget.**
+- Saving a ride now has a per-account ceiling of ten a minute, the last rider-created row that had none. A real client posts one ride when a ride ends; nothing legitimate posts more, and each of these rows is up to 4 MB that your data export later has to hold in memory.
+- The OAuth sign-in callback now has the same per-address ceiling the passkey door has, and every call it makes to a provider has a 30-second timeout. Without them an unauthenticated loop could aim WattRoom's outbound requests at Google, GitHub or Strava, and a provider that stopped answering held a connection open indefinitely.
+- A server set up with a too-short `WATTROOM_SYNTHETIC_TOKEN` now refuses to start instead of opening the ride monitor's door behind it, and an extra passkey origin (`WATTROOM_EXTRA_ORIGINS`) is honoured only when it is a local address — that hatch exists for the dev server's second port.
+- The rate limiters that guard sign-in, account recovery and the mail WattRoom sends now bound how many keys they will track at once. Several of them are keyed by something a stranger types — the recovery form's address — so a loop could grow one until the server ran out of memory.
+- Your data export and a downloaded .fit now tell every proxy between you and the server not to keep a copy. Without that, a 200 with no caching directive is one a cache may hold by default — and the export is the file with every ride's heart rate and your account's tokens in it.
+
+## [2026.09.118] - 2026-09-17
+
+### Added
+
+- Your data export now contains the files you uploaded: your profile picture
+  and every soundboard clip, as files in the zip. The pictures you pasted into
+  a room or sent in a message are listed with their ids and sizes, so the
+  archive no longer names a picture it does not describe.
+
+### Changed
+
+- Small consistency pass: the workout editor's move buttons say "Move up" and "Move down" with the same chevrons its menu uses, the landing's icons are the app's own, a dialog taller than the window scrolls instead of being clipped at both ends, selected text is readable in the light theme, and the licences page reports a failed load the way every other page does.
+- Numbers across the app are set in WattRoom's own face rather than whichever
+  monospace your system happens to ship, so a row no longer mixes two
+  typefaces. Codes, tokens and addresses keep their monospace, where the
+  alignment is the point.
+- The ⚑ on a solo ride and a ramp test now says what the tap does before you press it, the way the room's already did, and a copy the browser refuses says so wherever you copy from. Behind both: one clipboard helper, one flag button, one room type and one declaration of the message and code lengths the server and the app have to agree on.
+- The Friends page draws one row for everyone on it: a request now carries the asker's face, a link to their page and the same right-click menu an accepted friend has. And the rider page can answer both ways — Dismiss beside Accept, and Withdraw where it only said "asked — waiting on them".
+
+### Fixed
+
+- A flag from a ride now refuses a flight-recorder buffer larger than the recorder can honestly have produced, instead of accepting it and failing silently when the report turns out to be too big to file.
+- Fixed a race between promoting a rider mid-ride and the samples arriving from their screen: the role the saved ride and the podium recorded was read while it was being written.
+- Fixed: a sprint's "best five seconds" could be measured across a gap in a rider's samples — a dropped connection or a trainer blip — stitching two separate efforts into one and putting the wrong rider on the podium.
+- A crew's name is readable in its own header on a phone. For anyone in more
+  than one crew it was squeezed to an ellipsis by the two buttons beside it,
+  which now take a row of their own. Making a crew your main one is also called
+  the same thing on the page as in the sidebar's menu.
+- Handing a crew over and banning someone from it are now buttons on the
+  people list, not right-click-only actions — so they work on a phone, where
+  the page was already telling owners to hand the crew to someone in that list.
+- On the crew page, a room's row says how far the room currently reaches, and
+  the button beside it says what pressing it will do. The two used to be one
+  label, so an open room's only descriptor read "Only its members" — the
+  opposite of the truth.
+- A crew's people list always names the crew's owner, whatever rooms you have
+  in common with them — it used to leave them out and show fewer people than
+  the header counted. The list now says how many crew-mates it is not showing
+  you, and why.
+- The crew strip no longer prints "0 bpm" under every rider without a heart
+  rate strap — a permanent zero reads as a broken strap. It shows a heart rate
+  only when there is one, the way every other rider surface already did.
+- A direct-message row in the sidebar no longer offers "Add friend" to someone
+  who already is one — pressing it only ever produced a refusal. The friends
+  list and the sidebar now describe the same person the same way.
+- On a phone, an action picked from the navigation drawer's own menus no longer happens behind it: the drawer steps aside for the dialog or toast it raised, and a toast now sits above the drawer instead of showing a sliver of itself.
+- The crew invite door reports a refused join the way the join form does and its way out says Home, not "your rooms" — a rider arriving by invitation may have none. A one-step workout reads "1 block". And two phone layouts stop squeezing: the rider page gives the name its own row above the button, and the workouts search gets the width to show what it searches.
+- Home's "Around right now" no longer says a friend is riding when they are
+  only in a room. It shows the same presence badge as the rest of the app, so
+  one person reads the same way on every screen.
+- The desktop app's floating HUD sits in the bottom-left corner instead of the
+  top-right, where it covered part of the video in TV mode. Nothing in the page
+  could move it, because it is an always-on-top window of the app itself.
+- The desktop HUD now calls a second "on target" exactly when the riding
+  screen does. Under a 200 W target it used a ±5 % band with no floor, so it
+  read off target while the screen it mirrors read on — at a 120 W target,
+  anything more than 6 W out instead of the 10 W everything else allows.
+- The floating HUD now says when the trainer has gone quiet even if it never
+  sent a reading at all — the case a rider meets with a unit that reports
+  cadence or speed but no watts, and exactly when they are looking at the HUD
+  rather than the page.
+- The button that starts a message from the Friends page, the friend-code copy and the chat composer's attach and GIF buttons are real tap targets now: the message one was a 15-pixel icon, and the GIF button stayed bright while a locked box dimmed the one beside it.
+- "Join a crew" and "Open a room" now agree with each other. A rider who is in
+  someone else's crew but administers none was offered "Open a room" and then
+  handed a sheet that led with joining one, and the dialog in between called
+  itself "Open a room" whichever button had been pressed.
+- Renaming a passkey now happens on the row, with a box and a Save, instead of
+  the browser's own prompt — which the desktop app does not implement at all,
+  so Rename there did nothing and said nothing.
+- A room playlist's name is no longer a rename box for riders who are not the
+  room's coach or owner. Tapping it used to open an editor and then refuse the
+  save.
+- A refused profile save now says so under the field it is about — FTP, weight,
+  LTHR and your address, not just the display name — and a picture that cannot
+  be read says so under the picture instead of in the same grey line that says
+  "Saved." Emptying your display name is refused rather than quietly refilled.
+- The profile form no longer throws away what you have typed. Uploading a
+  picture or disconnecting a provider before pressing Save used to put the
+  saved numbers back over your edits without saying anything, and the
+  auto-upload checkbox used to save whatever was in the name, FTP and weight
+  boxes along with it.
+- Someone else's trophy case no longer hands back where their XP came from: two of those four numbers were the private progress counts in another unit, so a room-mate could read a badge's progress bar off the breakdown.
+- A ramp test now says when the trainer has gone quiet, and its pairing card
+  names a trainer that reports everything except watts. A unit that never sends
+  power used to leave the ramp running its full length in silence and then hand
+  back a 0 W result.
+- A reply typed into a notification that the server then refuses now tells you where you are: a notification back, carrying the words you typed and a way into the thread. The toast inside the app waits for you instead of expiring after four seconds into a window you were not looking at, and it shows the whole sentence.
+- Riding surfaces: the room's mid-ride TV button is a thumb's size like its neighbours, the ramp's graph clears the phone's floating navigation button, /ride keeps the 16-pixel gutter every other page has, and a trainer that has gone quiet is reported after the same three seconds wherever you are riding — the room used to wait ten. A trainer that sends everything but watts is offered "Pair another device", which is what its own advice says.
+- Your own settings for a room — "Notify me" and "Include me on the weekly
+  board" — now actually save. Every press was refused by the server, and the
+  switch stayed where you put it, so the screen said yes while nothing
+  changed. A refused save now says so and puts back what the server holds,
+  without undoing a change that saved a moment earlier.
+- A room's Settings page no longer nests a second `main` landmark inside the
+  room's own, which made screen-reader navigation offer two "main" stops for
+  one page.
+- In a room: the lounge's layout buttons are a thumb's size, a refused "Set as active" says so where you pressed it, the two "Move" buttons on a planned session say which one moves it, a lost trainer or room is announced as the alert it is, the picker's hover-only remove stops being an invisible target on touch, and the Sessions place's rows stop squeezing on a phone. The word "crew" now means the crew, not the riders in front of you.
+- Right-click (or long-press) now works where it did not: the phone's conversation list offers a room its places and a friend the person menu, exactly as the sidebar does, and Home's recent rides offer Share and Delete like the same ride on the history page.
+- Settings: a switch that saves itself goes back when the save is refused, and says why beside it instead of at the top of the page; the email address is described the same way on the sign-in page, the confirm dialog and the profile — recovery, and the session mail if you switch it on; a refused ride delete sounds like a refusal; tapping the FTP trend no longer raises the keyboard; "Export everything" says it hands you a .zip with your uploads in it; and a rider with only device-only rides sees the device list rather than an empty panel.
+- The button that shares a ride with your friends now says what pressing it
+  does on the ride's own page as well as in the list. It used to name the
+  ride's current state there, so "Private" was the button you pressed to make
+  a ride public.
+- The sidebar no longer says "Not in a crew yet" while it is still reading your
+  rooms, or when that read fails — a server blip used to tell a rider with ten
+  rooms to go and join a crew. It shows the rooms loading, and a failed read
+  says so with a Retry.
+- Friends: a refused action now says so where you did it instead of leaving a red line at the top of the page, a copy that the browser refuses admits it, a long name gives way rather than pushing Remove off a phone, and right-clicking a room's people line opens the rider the room feed means — not whoever shares their display name.
+- TV mode on a solo ride and on a ramp test now shows what the riding screen
+  shows: a trainer that has gone quiet, auto-pause and the count back in, the
+  spiral release, and the warning that this ride has no crash-safe copy — with
+  the "Pair the trainer again" button reachable without leaving TV mode. The
+  rider's tile also greys out during a dropout instead of drawing a confident
+  0 W.
+- A room that empties now records who left when they left. It used to skip the line while nobody was watching, so the room's timeline lost the departure — and the next rider in was mistaken for the same person coming back, and lost their arrival too.
+- On a phone a toast no longer sits over the button that opens navigation: the stack drops below the header bar, so the way out of a page is reachable even while an undo toast is waiting for you.
+- Fixed: "against your best" on a ride page found nothing whenever it was asked without a ride to exclude, so a rider comparing a workout to their own history was told there was none.
+
+### Security
+
+- Fixed: the undo behind a dismissed friend request could be called without one, which made a request rather than restoring it — two calls and a stranger was your friend, with access to your messages and your presence. The undo now works only where a dismissal happened.
+- `/metrics` now has its own listener on port 9091 and is no longer served on
+  the app's port, where only an edge proxy's configuration kept rider counts
+  and runtime internals off the internet. **Operators upgrading must move their
+  Prometheus job and any deploy check from `:8080/metrics` to `:9091/metrics`**
+  — the old address answers a 404 that says so. `WATTROOM_METRICS_ADDR` changes
+  the port; the empty string turns the listener off.
+- Disconnecting Strava now also removes the Strava activity ids your uploads
+  left behind, instead of keeping them indefinitely. Your rides stay on Strava;
+  what goes is our copy of their numbers, which is what Strava's terms ask for.
+- Fixed: when the GIF provider could not be reached, the failure was logged with the request URL — which carries the server's API key — into the log ring that rider reports attach to a public issue. The refusal now says what failed and nothing else.
+- Fixed: the ride routes — including deleting a ride — accepted a mutating request from another origin. The one cross-origin check every other route goes through was being skipped for them.
+
 ## [2026.09.117] - 2026-09-16
 
 ### Added
@@ -2215,7 +2479,9 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.117...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.119...HEAD
+[2026.09.119]: https://github.com/natrontech/wattroom/compare/2026.09.118...2026.09.119
+[2026.09.118]: https://github.com/natrontech/wattroom/compare/2026.09.117...2026.09.118
 [2026.09.117]: https://github.com/natrontech/wattroom/compare/2026.09.116...2026.09.117
 [2026.09.116]: https://github.com/natrontech/wattroom/compare/2026.09.115...2026.09.116
 [2026.09.115]: https://github.com/natrontech/wattroom/compare/2026.09.114...2026.09.115

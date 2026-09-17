@@ -26,6 +26,21 @@ func (q *Queries) CountUserCredentials(ctx context.Context, userID pgtype.UUID) 
 	return total, err
 }
 
+const countUserPasskeys = `-- name: CountUserPasskeys :one
+select count(*) from passkeys where user_id = $1
+`
+
+// The ceiling's authoritative count (#2258), read under LockUser at the
+// moment of the insert. The start of the ceremony counts too, so a rider at
+// the cap is refused before a browser prompt they cannot use; that read is
+// courtesy, this one is the rule.
+func (q *Queries) CountUserPasskeys(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUserPasskeys, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createPasskey = `-- name: CreatePasskey :one
 insert into passkeys (credential_id, user_id, credential, name)
 values ($1, $2, $3, $4)

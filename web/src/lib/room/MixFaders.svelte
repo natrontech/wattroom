@@ -120,22 +120,29 @@
 		aria-label="how far music and cues dip under a voice"
 	/>
 </label>
-<!-- The fader above says how far; this says whose voice counts. Off, and the
-     room only dips for other people — which is what it has always done. -->
-<label class="mt-2 flex items-start gap-2">
-	<input
-		type="checkbox"
-		checked={mixer.duckSelf}
-		onchange={(e) => mixer.setDuckSelf(e.currentTarget.checked)}
-		class="mt-0.5"
-	/>
-	<span class="text-xs">
-		My voice ducks it too
-		<span class="text-muted block text-[11px]">
-			Off, music and cues dip only when someone else speaks.
+<!-- The fader above says how far; this says whose voice counts, and the
+     default is right for almost everyone (ux.md's 95% rule) — folded, the way
+     sprint grade is (#1860, #2181). The 2026-09-10 navigation audit named
+     both; only the other one got folded. -->
+<details class="mt-2">
+	<summary class="text-muted hover:text-ink cursor-pointer text-[11px]"
+		>Advanced</summary
+	>
+	<label class="mt-2 flex items-start gap-2">
+		<input
+			type="checkbox"
+			checked={mixer.duckSelf}
+			onchange={(e) => mixer.setDuckSelf(e.currentTarget.checked)}
+			class="mt-0.5"
+		/>
+		<span class="text-xs">
+			My voice ducks it too
+			<span class="text-muted block text-[11px]">
+				Off, music and cues dip only when someone else speaks.
+			</span>
 		</span>
-	</span>
-</label>
+	</label>
+</details>
 <!-- A rider's volume lives in their right-click menu now (#874), anywhere
      they appear. Here so it is never ONLY in a menu (ux.md), and so the
      riders you have moved are in one list to undo. -->

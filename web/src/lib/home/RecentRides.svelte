@@ -1,12 +1,18 @@
 <script lang="ts">
 	// Home's last three rides (#1333 split it out for size): each opens the
 	// ride's own page (#1331), and the list links to the rest.
+	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { formatWhen } from '$lib/format';
+	import type { ServerRide } from '$lib/ride/list';
+	import { rideRowMenu } from '$lib/ride/row-menu';
 
 	let {
 		rides,
+		ondelete,
 	}: {
-		rides: { id: string; startedAt: string; seconds: number; kj: number }[];
+		rides: ServerRide[];
+		/** Home's list forgets the ride the menu deleted. */
+		ondelete?: (ride: ServerRide) => void;
 	} = $props();
 	const recent = $derived(rides);
 </script>
@@ -28,8 +34,14 @@
 			<a href="/history" class="btn-link ml-auto text-xs">All rides →</a>
 		</div>
 		<ul class="panel divide-ink/5 mt-3 divide-y">
+			<!-- The same ride carries Share and Delete on /history (#2171): the
+			     row has a menu wherever it is drawn, and nothing lives only in
+			     a menu — the list page keeps both as controls. -->
 			{#each recent as ride (ride.id)}
-				<li>
+				<li
+					title={MENU_HINT}
+					{@attach contextMenu(() => rideRowMenu(ride, ondelete))}
+				>
 					<a
 						href="/history/{ride.id}"
 						class="hover:bg-surface flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"

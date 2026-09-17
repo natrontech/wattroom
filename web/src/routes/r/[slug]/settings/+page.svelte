@@ -6,6 +6,10 @@
 	import { account } from '$lib/account.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	// The room is the room (#2180): this page declared its own Member,
+	// RiderPrefs and Room beside the canonical ones, already missing half
+	// their fields.
+	import type { Room } from '$lib/room/room-data';
 	import { toasts } from '$lib/toast.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
@@ -26,34 +30,6 @@
 		ownerName,
 		packLabel,
 	} from '$lib/room/settings-summary';
-
-	interface Member {
-		id: string;
-		displayName: string;
-		role: string;
-		joinedAt?: string;
-	}
-	interface RiderPrefs {
-		notify: boolean;
-		onBoard: boolean;
-	}
-	interface Room {
-		slug: string;
-		name: string;
-		listed: boolean;
-		me?: RiderPrefs;
-		icon?: string;
-		cheers?: string[];
-		soundPack?: string;
-		boardEnabled?: boolean;
-		/** Open to the crew (ADR-0038) — absent means shut (#1204). */
-		crewVisible?: boolean;
-		/** goesWithRoom: deleting this room deletes the crew too (#1935). */
-		crew?: { id: string; name: string; goesWithRoom?: boolean };
-		role?: string;
-		code?: string;
-		members?: Member[];
-	}
 
 	const slug = $derived(page.params.slug);
 	let room = $state<Room | null>(null);
@@ -208,7 +184,7 @@
 </script>
 
 {#if error && !room}
-	<main class="grid min-h-full place-items-center px-6">
+	<div class="grid min-h-full place-items-center px-6">
 		<div class="text-center">
 			<div class="text-left">
 				<Banner tone="error">
@@ -227,15 +203,15 @@
 				>Back to your rooms</a
 			>
 		</div>
-	</main>
+	</div>
 {:else if !room}
 	<!-- The first round trip: never a blank column (errors.md) — the page
 	     matched no branch at all while the read was in flight (audit
 	     2026-09-09). -->
-	<main class="page">
+	<div class="page">
 		<Skeleton class="h-8 w-48" />
 		<Skeleton class="mt-6 h-40" />
-	</main>
+	</div>
 {:else if room.role !== 'owner'}
 	<!-- Capability gating: no owner, no controls — a hint, never a 403 on click.
 	     But the gating was the whole page (#1099): a member arrived asking what
@@ -243,7 +219,7 @@
 	     they cannot do. The invite and the room's own facts come first now; the
 	     one line about who may change them sits under them rather than being
 	     them. Everything here is already in the member's own room read. -->
-	<main class="page">
+	<div class="page">
 		<header class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 			<h2 class="font-display text-xl font-bold">{room.name}</h2>
 			<p class="text-muted text-xs">
@@ -318,9 +294,9 @@
 				>Leave room</button
 			>
 		</section>
-	</main>
+	</div>
 {:else}
-	<main class="page">
+	<div class="page">
 		<h2 class="font-display text-xl font-bold">Room settings</h2>
 		<p class="text-muted mt-1 text-xs">
 			Owner only — coaches run sessions, owners shape the room.
@@ -435,7 +411,7 @@
 					<span class="text-muted block text-xs">
 						{boardEnabled
 							? 'Everyone here can see how the week is going.'
-							: 'The crew tiles show what you did together, and nobody is ranked.'}
+							: "The room's tiles show what you did together, and nobody is ranked."}
 					</span>
 				</span>
 			</label>
@@ -481,5 +457,5 @@
 				class="btn btn-danger mt-4">Delete room</button
 			>
 		</section>
-	</main>
+	</div>
 {/if}

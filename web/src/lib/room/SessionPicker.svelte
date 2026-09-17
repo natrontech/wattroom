@@ -274,17 +274,16 @@
 					<div
 						class="text-muted mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]"
 					>
-						<span class="font-mono tabular-nums">{formatClock(total)}</span>
+						<span class="num">{formatClock(total)}</span>
 						{#each zoneChips as chip (chip.zone)}
-							<span class="flex items-center gap-1 font-mono tabular-nums">
+							<span class="num flex items-center gap-1">
 								<span class="h-2 w-2 rounded-full {ZONE_BG[chip.zone]}"
 								></span>Z{chip.zone}
 								{chip.minutes}m
 							</span>
 						{/each}
 						{#each bandChips as chip (chip)}
-							<span
-								class="border-muted/25 rounded-full border px-2 py-0.5 font-mono tabular-nums"
+							<span class="border-muted/25 num rounded-full border px-2 py-0.5"
 								>{chip}</span
 							>
 						{/each}

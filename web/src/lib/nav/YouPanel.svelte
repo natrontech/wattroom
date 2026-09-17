@@ -6,14 +6,20 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import QuickAudio from '$lib/room/QuickAudio.svelte';
 	import { account } from '$lib/account.svelte';
-	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
+	import {
+		contextMenu,
+		openMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
 	import { activeHref } from '$lib/nav/pages';
 	import { youMenu } from '$lib/nav/you-menu';
 	import { micMenu } from '$lib/room/mic-menu';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { statusOfRider } from '$lib/status';
 	import { device } from '$lib/device.svelte';
-	import Coffee from '@lucide/svelte/icons/coffee';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
+	import { AWAY_CHOICES, AWAY_STATES, awayState } from '$lib/away';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import VolumeX from '@lucide/svelte/icons/volume-x';
@@ -52,6 +58,15 @@
 	const voiceError = $derived(av?.error ?? null);
 	/** You stepped out (#706) — a statement about YOU, so it lives here. */
 	const away = $derived(av?.away ?? false);
+	// Which away the room currently has for me — the server's word, so a
+	// state set on the phone shows on the desktop. The button's FACE is the
+	// plain cup whenever it offers "Away"; it wears the state's glyph only
+	// once it has become "I'm back", where it reports rather than promises.
+	const myAwayReason = $derived(
+		conn?.live.tick?.roster.find((rider) => rider.id === account.me?.id)
+			?.awayReason ?? '',
+	);
+	const awayFace = $derived(awayState(away ? myAwayReason : ''));
 	/** The browser muted this tab and the room went silent (#645). */
 	const playbackBlocked = $derived(av?.playbackBlocked ?? false);
 
@@ -65,7 +80,18 @@
 	// The CONNECTION's setAway, never av's: it mutes this device AND tells the
 	// room over the socket, and only the pair of them is "away". av.setAway
 	// alone would go quiet without anyone being told.
-	const onAway = (next: boolean) => conn?.setAway(next);
+	const onAway = (next: boolean, reason = '') => conn?.setAway(next, reason);
+
+	// The arrow's menu: the named states, never plain Away — that one is the
+	// face, and putting it in the menu too would offer the same thing twice.
+	// Same list on right-click, because a control with more than one action
+	// gets a context menu (.claude/rules/ux.md) and this one now has four.
+	const awayItems = (): MenuEntry[] =>
+		AWAY_CHOICES.map((key) => ({
+			label: AWAY_STATES[key].label,
+			icon: AWAY_STATES[key].icon,
+			onSelect: () => onAway(true, key),
+		}));
 
 	const destination = $derived(activeHref(pathname));
 	const onOwnPage = $derived(
@@ -279,12 +305,34 @@
 		     beside "Join voice" left both of them fighting for 240 px. No
 		     LiveKit needed: it renders on a server with voice switched
 		     off. -->
-		<button
-			onclick={() => onAway?.(!away)}
-			aria-pressed={away}
-			class="btn mt-2 min-h-11 w-full {away ? 'btn-primary' : 'btn-secondary'}"
-			><Coffee size={13} /> {away ? "I'm back" : 'Away'}</button
-		>
+		<!-- A split button, not a picker (#706): the face is always "Away", so
+		     one tap means the same thing on every ride and a sweating thumb
+		     never has to read it first. The arrow is the only way to a named
+		     state. Coming back collapses to one full-width button — there is
+		     nothing to choose about being back. -->
+		<div class="mt-2 flex gap-px">
+			<button
+				onclick={() => onAway?.(!away, '')}
+				aria-pressed={away}
+				{@attach contextMenu(awayItems)}
+				class="btn min-h-11 grow {away ? 'btn-primary' : 'btn-secondary'} {away
+					? ''
+					: 'rounded-r-none'}"
+				><awayFace.icon size={13} /> {away ? "I'm back" : 'Away'}</button
+			>
+			{#if !away}
+				<button
+					onclick={(event) => {
+						const box = event.currentTarget.getBoundingClientRect();
+						openMenu(awayItems(), box.right, box.bottom, event.currentTarget);
+					}}
+					aria-label="Choose a state"
+					aria-haspopup="menu"
+					class="btn btn-secondary min-h-11 rounded-l-none px-2"
+					><ChevronDown size={13} /></button
+				>
+			{/if}
+		</div>
 	{/if}
 	{#if showAv && voiceStatus !== 'off' && playbackBlocked}
 		<!-- The room is playing and this rider can hear none of it: the browser
@@ -315,9 +363,7 @@
 		<div class="border-danger/40 mt-2 rounded border px-2 py-1.5">
 			<p class="text-muted text-[10px] leading-snug">{voiceError.message}</p>
 			{#if voiceError.signIn}
-				<a
-					href="/login"
-					class="border-muted/25 text-muted hover:text-ink mt-1.5 block w-full rounded border px-2 py-1.5 text-center text-[11px]"
+				<a href="/login" class="btn btn-secondary btn-xs mt-1.5 w-full"
 					>Sign in</a
 				>
 			{/if}
@@ -332,8 +378,8 @@
 			</p>
 			<button
 				onclick={onTakeOver}
-				class="border-muted/25 text-muted hover:text-ink mt-1.5 w-full rounded border px-2 py-1.5 text-[11px]"
-				>use this tab instead</button
+				class="btn btn-secondary btn-xs mt-1.5 w-full"
+				>Use this tab instead</button
 			>
 		</div>
 	{/if}
