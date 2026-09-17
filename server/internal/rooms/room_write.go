@@ -69,7 +69,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if owned >= maxOwnedRooms {
-		httpx.WriteError(w, http.StatusConflict, "conflict",
+		httpx.WriteCeiling(w,
 			fmt.Sprintf("You already own %d rooms — delete one to open another.", maxOwnedRooms))
 		return
 	}

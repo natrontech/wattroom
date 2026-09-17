@@ -85,11 +85,12 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "track quota", err, "The track could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
-	// Not 429: the rider's move is to delete something, not to wait — so this
-	// says what is wrong with the request rather than asking them to retry it.
+	// A ceiling, so a 429 (SPEC:79-81). It used to be a 400 on the grounds
+	// that the rider's move is to delete rather than to wait — which is the
+	// objection SPEC considered and overruled in the same sentence, and the
+	// message is where "do not wait" is said (#2244).
 	if used+int64(len(data)) > MaxRiderBytes {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
-			"Your uploads already fill 2 GB. Delete a track to make room for this.")
+		httpx.WriteCeiling(w, "Your uploads already fill 2 GB. Delete a track to make room for this.")
 		return
 	}
 

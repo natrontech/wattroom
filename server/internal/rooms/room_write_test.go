@@ -175,9 +175,14 @@ func TestOwnedRoomsCap(t *testing.T) {
 	for i := range 3 {
 		h.createRoom(t, "alice", fmt.Sprintf("Cap Room %d", i))
 	}
+	// A ceiling is refused with 429 rate_limited, naming the number and the
+	// remedy (SPEC:79-81, #2244) — not a 409, which said a duplicate.
 	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms", `{"name":"One Too Many"}`)
-	if status != http.StatusConflict || body["error"] != "conflict" {
+	if status != http.StatusTooManyRequests || body["error"] != "rate_limited" {
 		t.Fatalf("fourth room: %d %v", status, body)
+	}
+	if msg, _ := body["message"].(string); !strings.Contains(msg, "3") || !strings.Contains(msg, "delete") {
+		t.Errorf("the refusal names neither the number nor the way out: %q", msg)
 	}
 	// Deleting frees the slot (docs/SPEC.md), and the list carries the role
 	// the frontend gates on.

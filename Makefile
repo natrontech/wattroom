@@ -20,8 +20,13 @@ GO_VERSION := $(shell sed -n 's/^go //p' server/go.mod)
 # both move together; `make print-golangci-version` is what the workflow reads.
 GOLANGCI_VERSION := v2.13.2
 
-infra: ## start Postgres + LiveKit containers
-	docker compose up -d
+infra: ## start the shared Postgres + LiveKit containers (one project, any checkout)
+	@# Not a bare `docker compose up -d`: that names the compose project after
+	@# the directory it runs in, which made the server one worktree's property
+	@# — removed along with it, or left running to break every other checkout
+	@# (#2107). scripts/dev-env.sh pins the project, and names any postgres
+	@# container running outside it, which is what holds :5432 when this fails.
+	@$(DEV_ENV) infra
 
 print-golangci-version: ## the linter version make lint and CI both use (#716)
 	@echo $(GOLANGCI_VERSION)
@@ -91,10 +96,11 @@ test:
 	@# their own PER CHECKOUT, because one `wattroom_test` for every worktree
 	@# is the same race in a different table: two agents running `make test`
 	@# at the same moment each delete the other's rows, and both go red on
-	@# code that is fine. The container is whichever one `make infra` started
-	@# here, not a name: from a worktree it is `<worktree>-postgres-1`, and
-	@# guessing wrong used to create the database nowhere and skip every
-	@# DB-backed test to a green `ok` (#814).
+	@# code that is fine. The container is the shared compose project's, found
+	@# by label rather than guessed: it used to be whichever project the
+	@# directory `make infra` ran in had created, and guessing the name wrong
+	@# created the database nowhere and skipped every DB-backed test to a green
+	@# `ok` (#814, #2107).
 	@$(DEV_ENV) ensure-test-db
 	@$(DEV_ENV) banner test
 	@# WATTROOM_REQUIRE_DB turns "no database" from 17 quiet skips into one

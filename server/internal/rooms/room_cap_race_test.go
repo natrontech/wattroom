@@ -26,7 +26,9 @@ func TestTheOwnedRoomCapHoldsUnderParallelCreates(t *testing.T) {
 			switch status {
 			case http.StatusCreated:
 				created++
-			case http.StatusConflict:
+			// A ceiling is a 429 (SPEC:79-81, #2244), the same answer every
+			// other ceiling gives.
+			case http.StatusTooManyRequests:
 				refused++
 			}
 		}(i)

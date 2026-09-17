@@ -125,9 +125,14 @@ func (s *Service) Trophies(ctx context.Context, userID pgtype.UUID) (Response, e
 }
 
 func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
+	// s.self, not s.users (#2257): ADR-0017's amendment names this among the
+	// five routes a personal token authenticates. It is the rider's own case
+	// and is keyed on nobody's id, which is the whole of what #1736 and
+	// #1746 ever ruled out.
+	//
 	// RequireUser (#1983): User() treats a database failure as signed-out,
 	// and "unauthorized" is the one code the app never retries.
-	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	user, ok := s.self.RequireUser(w, r, "Not signed in.")
 	if !ok {
 		return
 	}
