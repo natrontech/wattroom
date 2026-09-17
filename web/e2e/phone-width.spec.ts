@@ -202,12 +202,18 @@ test('no page outside a room scrolls sideways on a phone', async ({
 		});
 		return `${res.status} ${await res.text()}`;
 	}, peerCode);
-	expect(asked, 'the friend request').toMatch(/^2\d\d/);
+	// 409 is "already" (#2216): these two riders are stable by name — a fresh
+	// identity per run would grow the user table forever (signin.ts) — and a
+	// friendship outlives the run, so the second run in one checkout finds
+	// the one the first made. What matters is the end state, which the DM
+	// below asserts: this is home-presence.spec.ts's rule, one file over.
+	expect(asked, 'the friend request').toMatch(/^(2\d\d|409)/);
 	const accepted = await peerPage.evaluate(async (id) => {
 		const res = await fetch(`/api/friends/${id}/accept`, { method: 'POST' });
 		return `${res.status} ${await res.text()}`;
 	}, myId);
-	expect(accepted, 'the peer accepting').toMatch(/^2\d\d/);
+	// 404 is an accept for a friendship that is already accepted.
+	expect(accepted, 'the peer accepting').toMatch(/^(2\d\d|404|409)/);
 	const sent = await page.evaluate(async (id) => {
 		const res = await fetch(`/api/dms/${id}`, {
 			method: 'POST',
