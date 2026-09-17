@@ -1,0 +1,1 @@
+- A soundboard clip that would not load, and a jukebox queue that would not open, no longer blame you for it: when the database is the thing that failed, the app says so and the operator gets a log line, instead of telling you the clip is gone or that you should join a room you are already in.

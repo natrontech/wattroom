@@ -4,11 +4,14 @@
 package board
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -95,6 +98,10 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	source, err := s.store.Queries.GetBoardClipSource(r.Context(), db.GetBoardClipSourceParams{ID: id, UserID: me.ID})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		httpx.Fail(w, s.log, "board clip source lookup", err, "The clip could not be loaded. Try again.", "user", store.UUIDString(me.ID))
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
 		return

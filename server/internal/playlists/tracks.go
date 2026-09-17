@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -284,33 +283,13 @@ func (s *Service) handleDeletePersonalTrack(w http.ResponseWriter, r *http.Reque
 // queueScope is who may push onto a room's live queue over HTTP: a signed-in
 // member of the room named by {slug} who is banned at neither level. Shared
 // by "queue this playlist" and "queue these tracks" (#1433).
+//
+// The gate itself is the rooms package's (#2242): it asks both ban levels
+// (ADR-0038) and, unlike the copy that stood here, tells a database failure
+// apart from a refusal instead of answering "Join the room" to a member who
+// is already in it.
 func (s *Service) queueScope(w http.ResponseWriter, r *http.Request) (db.Room, db.User, bool) {
-	user, ok := s.users.RequireUser(w, r, "Not signed in.")
-	if !ok {
-		return db.Room{}, db.User{}, false
-	}
-	room, err := s.store.Queries.GetRoomBySlug(r.Context(), strings.ToLower(r.PathValue("slug")))
-	if errors.Is(err, pgx.ErrNoRows) {
-		httpx.WriteError(w, http.StatusNotFound, "not_found", "No room lives at this link.")
-		return db.Room{}, db.User{}, false
-	}
-	if err != nil {
-		httpx.Fail(w, s.log, "room lookup failed", err, "The room could not be loaded.")
-		return db.Room{}, db.User{}, false
-	}
-	// Both ban levels (ADR-0038): a crew ban reaches this door too, and asking
-	// it here rather than trusting the membership row is what stopped the
-	// #1109/#1114 class from recurring one level up.
-	banned, banErr := s.store.Queries.IsBannedFromRoom(r.Context(), db.IsBannedFromRoomParams{
-		RoomID: room.ID, UserID: user.ID,
-	})
-	if m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
-		RoomID: room.ID, UserID: user.ID,
-	}); err != nil || m.Role == "banned" || banErr != nil || banned {
-		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Join the room to use its jukebox.")
-		return db.Room{}, db.User{}, false
-	}
-	return room, user, true
+	return s.members.RequireMember(w, r, "Join the room to use its jukebox.")
 }
 
 // handleQueuePlaylist appends a playlist's tracks onto the room's live queue
