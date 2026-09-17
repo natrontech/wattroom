@@ -58,13 +58,22 @@ Two rulings the original text did not make:
 
 - **Heart rate never crosses a bearer.** ADR-0008 keeps HR out of any shared
   artifact, and a rider's own model provider is a third party; the per-second
-  record (`GET /api/rides/{id}`) and the `.fit` (`…/export`) refuse a bearer
-  with a 403. A per-token opt-in, or the capability column below, is the
-  relaxation on offer (#1760) — not the default.
+  record (`GET /api/rides/{id}`), the `.fit` (`…/export`) and the ride card
+  (`…/card.png`) refuse a bearer with a 403. The relaxations on offer — a
+  per-token opt-in, or the capability column below — were **declined**
+  (#1760, 2026-09-17): the acknowledged cost is that the coach-agent analysis
+  ADR-0008 blesses cannot see HR over a token, and the 403 is a speed bump
+  rather than a wall, since the rider can export the `.fit` themselves and
+  hand it over deliberately.
 - **Nothing Strava handed back crosses a bearer either.** The delivery record
   (`export.remoteId`, `export.error`) rides only the detail, which a bearer
   cannot open; RESEARCH §13.5 names ingestion into a context window, and the
-  cost of being wrong is asymmetric.
+  cost of being wrong is asymmetric. Also upheld by #1760, and no longer
+  resting on that 403 alone: `TestABearerNeverReadsTheDeliveryRecord` sweeps
+  every GET the rides service serves a bearer for the values themselves, so a
+  delivery field added to the **summary** list — which already carries
+  `exportState`, our own bookkeeping about a ride we recorded — fails rather
+  than ships.
 
 The MCP transport budgets calls per account and guesses per address, bounds
 a tool call to ten seconds, and refuses a batch with `-32600` (batching left

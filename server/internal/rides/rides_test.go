@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -94,6 +95,37 @@ func (h *harness) roomRide(t *testing.T, id, medal string) pgtype.UUID {
 		t.Fatalf("create medal: %v", err)
 	}
 	return rideID
+}
+
+// deliver opens the delivery record for one ride and closes it the way the
+// uploader would: an id from the destination, or the sentence it refused
+// with. Exactly one of the two, because a row carries one of them at a time.
+func (h *harness) deliver(t *testing.T, id string, remoteID *int64, lastError *string) {
+	t.Helper()
+	rideID, err := store.ParseUUID(id)
+	if err != nil {
+		t.Fatalf("ride id: %v", err)
+	}
+	if err := h.store.Queries.StartRideExport(t.Context(), db.StartRideExportParams{
+		RideID: rideID, Destination: exportDestination,
+	}); err != nil {
+		t.Fatalf("start export: %v", err)
+	}
+	if remoteID != nil {
+		if err := h.store.Queries.FinishRideExport(t.Context(), db.FinishRideExportParams{
+			RideID: rideID, Destination: exportDestination, RemoteID: remoteID,
+		}); err != nil {
+			t.Fatalf("finish export: %v", err)
+		}
+		return
+	}
+	// MaxAttempts 1: one spent attempt is the last one, which is the state
+	// that keeps last_error on the wire.
+	if err := h.store.Queries.FailRideExport(t.Context(), db.FailRideExportParams{
+		RideID: rideID, Destination: exportDestination, LastError: lastError, MaxAttempts: 1,
+	}); err != nil {
+		t.Fatalf("fail export: %v", err)
+	}
 }
 
 func call(t *testing.T, mux *http.ServeMux, user, method, path, body string) (int, map[string]any) {
@@ -752,23 +784,84 @@ func TestBestRideOfWorkout(t *testing.T) {
 	}
 }
 
+// read issues one GET as alice and hands back the raw bytes rather than a
+// decoded map: what a bearer may read is a question about the whole body,
+// including fields nobody has written yet.
+func read(t *testing.T, h *harness, path string, bearer bool) (int, string) {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
+	req.Header.Set("X-Test-User", "alice")
+	if bearer {
+		req.Header.Set("Authorization", "Bearer wrt_"+strings.Repeat("0", 64))
+	}
+	rec := httptest.NewRecorder()
+	h.mux.ServeHTTP(rec, req)
+	return rec.Code, rec.Body.String()
+}
+
 // A personal token reads summaries only (#1757, ADR-0008): the per-second
 // record and the .fit refuse a bearer whatever source authenticated it.
 func TestABearerNeverReadsTheRecord(t *testing.T) {
 	h := setup(t)
 	id := h.save(t, "alice", 120, 200)
 	for _, path := range []string{"/api/rides/" + id, "/api/rides/" + id + "/export"} {
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, path, nil)
-		req.Header.Set("X-Test-User", "alice")
-		req.Header.Set("Authorization", "Bearer wrt_"+strings.Repeat("0", 64))
-		rec := httptest.NewRecorder()
-		h.mux.ServeHTTP(rec, req)
-		if rec.Code != http.StatusForbidden {
-			t.Fatalf("%s with a bearer: %d, want 403", path, rec.Code)
+		if code, _ := read(t, h, path, true); code != http.StatusForbidden {
+			t.Fatalf("%s with a bearer: %d, want 403", path, code)
 		}
 	}
 	if status, _ := call(t, h.mux, "alice", http.MethodGet, "/api/rides", ""); status != http.StatusOK {
 		t.Fatalf("the summary list: %d", status)
+	}
+}
+
+// The delivery record — the destination's own number for the ride, and what
+// it said when it refused one — never crosses a bearer (ADR-0017's amendment,
+// #1760). A ride we recorded and uploaded is ours; the copy the destination
+// hands back is theirs (AGENTS.md), and RESEARCH §13.5 makes the cost of
+// being wrong asymmetric enough that it stays on the account.
+//
+// Today that holds only because the detail route refuses a bearer outright,
+// which is an incidental guard and not the rule: the summary list a bearer
+// CAN read already carries `exportState`, so the next field added beside it
+// would walk around every 403 in this package without touching one. So this
+// asserts the values, not the shape — every GET the service registers is
+// swept for them, and a `remoteId` on a summary fails here.
+func TestABearerNeverReadsTheDeliveryRecord(t *testing.T) {
+	h := setup(t)
+	// Both sentinels are invented here: no payload from the destination is
+	// ever fixtured in this repository (AGENTS.md).
+	remoteID := int64(4242424242)
+	lastError := "sentinel: the destination refused this one"
+	sentinels := []string{strconv.FormatInt(remoteID, 10), lastError}
+
+	delivered, failed := h.save(t, "alice", 120, 200), h.save(t, "alice", 120, 210)
+	h.deliver(t, delivered, &remoteID, nil)
+	h.deliver(t, failed, nil, &lastError)
+
+	// The fixture reaches the owner's own page first. Without this the sweep
+	// below passes on an empty table and says nothing at all.
+	for i, id := range []string{delivered, failed} {
+		code, body := read(t, h, "/api/rides/"+id, false)
+		if code != http.StatusOK || !strings.Contains(body, sentinels[i]) {
+			t.Fatalf("the owner's own ride page: %d, and %q is not in it — the fixture never landed: %s",
+				code, sentinels[i], body)
+		}
+	}
+
+	paths := []string{"/api/rides", "/api/rides/best?workout=Openers"}
+	for _, id := range []string{delivered, failed} {
+		paths = append(paths, "/api/rides/"+id, "/api/rides/"+id+"/export", "/api/rides/"+id+"/card.png")
+	}
+	for _, path := range paths {
+		code, body := read(t, h, path, true)
+		if code == http.StatusNotFound {
+			t.Fatalf("%s is not a route this service serves — the sweep is reading a typo, not an answer", path)
+		}
+		for _, sentinel := range sentinels {
+			if strings.Contains(body, sentinel) {
+				t.Errorf("%s answered a bearer with the delivery record (%q): %s", path, sentinel, body)
+			}
+		}
 	}
 }
 
