@@ -18,6 +18,15 @@ let maxOwned = $state(0);
 // Home told a rider with ten rooms to open their first (audit 2026-09-09);
 // now the list you had stays and the page can say what happened.
 let error = $state<string | null>(null);
+// How many reads in a row have failed. The socket dropping is not the frozen
+// case — the fallback poll below and the visibility re-fetch bound that — but
+// a read that keeps failing with a list already on screen is unbounded: the
+// rooms, the dots and "32 min in" keep their last values with full confidence
+// for as long as it lasts (#1743).
+let failures = $state(0);
+// Gated on the SECOND failure: the 60 s poll already covers a one-off, and a
+// mark that flickers on every blip teaches people to ignore it.
+const STALE_AFTER = 2;
 let version = $state(0);
 /** Slugs live on the last list — a flip to live is what gets announced. */
 let wasLive = new Set<string>();
@@ -40,7 +49,10 @@ let pingedDuringWindow = false;
 async function refresh() {
 	const list = await fetchRailRooms();
 	error = list.error ?? null;
-	if (!list.error) {
+	if (list.error) {
+		failures += 1;
+	} else {
+		failures = 0;
 		rooms = list.rooms;
 		crews = list.crews;
 		maxOwned = list.maxOwned;
@@ -164,6 +176,16 @@ export const presence = {
 	get error() {
 		return error;
 	},
+	/**
+	 * What is on screen is older than it looks: two reads in a row have
+	 * failed, so the room list, the presence dots and "32 min in" are frozen
+	 * at whatever they last were. The sidebar marks its crew header with it —
+	 * the populated half of errors.md's four states, which only the empty half
+	 * used to have.
+	 */
+	get stale() {
+		return failures >= STALE_AFTER;
+	},
 	/** Bumps on every change ping — pages re-fetch what they show off this. */
 	get version() {
 		return version;
@@ -195,6 +217,7 @@ export const presence = {
 		announced = false;
 		if (fallback) clearInterval(fallback);
 		if (reconnect) clearTimeout(reconnect);
+		failures = 0;
 		if (pingWindow) clearTimeout(pingWindow);
 		pingWindow = null;
 		pingedDuringWindow = false;
