@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ChevronUp from '@lucide/svelte/icons/chevron-up';
+	import ChevronDown from '@lucide/svelte/icons/chevron-down';
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import { page } from '$app/state';
@@ -591,15 +593,18 @@
 			<!-- Every verb the step's right-click menu holds, visible: a menu
 					     is a shortcut, never the only way (ux.md). -->
 			<div class="border-ink/5 flex flex-wrap gap-2 border-t pt-3">
+				<!-- The menu's words and the menu's icons (#2178): these were the
+				     last unicode glyphs in web/src, and ↑ beside "Duplicate"
+				     read as decoration rather than a verb. -->
 				<button
 					onclick={() => (selected = move(workout, selected!, -1) ?? selected)}
 					class="btn btn-secondary btn-xs"
-					aria-label="Move step up">↑</button
+					><ChevronUp size={13} /> Move up</button
 				>
 				<button
 					onclick={() => (selected = move(workout, selected!, 1) ?? selected)}
 					class="btn btn-secondary btn-xs"
-					aria-label="Move step down">↓</button
+					><ChevronDown size={13} /> Move down</button
 				>
 				<button
 					onclick={() => (selected = duplicate(workout, selected!) ?? selected)}

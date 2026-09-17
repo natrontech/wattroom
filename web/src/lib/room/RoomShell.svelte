@@ -417,7 +417,7 @@
 	     and nothing said so — a modal is the room telling you it is over. -->
 	<Modal
 		label="Session summary"
-		class="max-h-[88dvh] max-w-5xl overflow-y-auto"
+		class="max-w-5xl"
 		onclose={() => summary.dismiss()}
 	>
 		<SessionSummary

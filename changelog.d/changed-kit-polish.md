@@ -1,0 +1,1 @@
+- Small consistency pass: the workout editor's move buttons say "Move up" and "Move down" with the same chevrons its menu uses, the landing's icons are the app's own, a dialog taller than the window scrolls instead of being clipped at both ends, selected text is readable in the light theme, and the licences page reports a failed load the way every other page does.

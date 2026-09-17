@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Banner from '$lib/components/Banner.svelte';
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	/**
 	 * Third-party notices (#1670). MIT, ISC, BSD, Apache and the OFL all require
 	 * their notice to travel with the thing they are in, and the SPA is one.
@@ -75,16 +77,22 @@
 </p>
 
 {#if failed}
-	<div class="border-danger/40 bg-danger/5 mt-8 rounded-lg border p-4">
-		<p class="text-ink text-sm">The notices could not be loaded.</p>
-		<p class="text-muted mt-1 text-sm">
-			They are two static files served alongside the app; a network error or a
-			half-finished deploy is the usual reason.
-		</p>
-		<button class="btn btn-lg mt-3" onclick={() => load()}>Try again</button>
+	<!-- The kit's two states, as every other page that loads something says
+	     them (#2178): a Banner with its Retry, and skeletons while it is in
+	     flight. `warn` because the app itself is fine — the notices are two
+	     static files beside it, the way what's-new says the same thing. -->
+	<div class="mt-8">
+		<Banner tone="warn">
+			The notices could not be loaded. They are two static files served
+			alongside the app; a network error or a half-finished deploy is the usual
+			reason.
+			{#snippet action()}
+				<button onclick={() => load()} class="btn-link text-xs">Retry</button>
+			{/snippet}
+		</Banner>
 	</div>
 {:else if web === null || go === null}
-	<p class="text-muted mt-8 text-sm">Loading the notices…</p>
+	<div class="mt-8 space-y-3"><Skeleton /><Skeleton /><Skeleton /></div>
 {:else}
 	{#each [{ title: 'Web application', entries: web }, { title: 'Server', entries: go }] as group (group.title)}
 		<section>

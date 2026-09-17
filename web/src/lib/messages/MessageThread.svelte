@@ -311,9 +311,7 @@
 						{#if startsNew}
 							<div class="flex items-center gap-3 py-1" role="separator">
 								<span class="bg-neon/60 h-px flex-1"></span>
-								<span class="text-muted text-[10px] tracking-widest uppercase"
-									>{newCount} new</span
-								>
+								<span class="eyebrow">{newCount} new</span>
 								<span class="bg-neon/60 h-px flex-1"></span>
 							</div>
 						{/if}

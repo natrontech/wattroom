@@ -110,7 +110,7 @@
 	<header class="flex items-center gap-3">
 		<Logo size={30} />
 		<div>
-			<h1 class="font-display text-2xl leading-tight font-bold">{title}</h1>
+			<h1 class="page-title-sm leading-tight">{title}</h1>
 			<p class="text-muted text-xs">{subtitle}</p>
 		</div>
 	</header>

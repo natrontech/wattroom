@@ -238,9 +238,12 @@ body {
 	@apply text-muted hover:text-ink underline;
 }
 
-/* Text field look. Width/margin at the call site. */
+/* Text field look. Width/margin at the call site. A refused field marks
+ * itself off its own aria-invalid (#2178) — call sites used to retype the
+ * whole border chain to add one red line, which is how three of them ended up
+ * with three different fields. */
 @utility input {
-	@apply border-muted/25 placeholder:text-muted-dim focus:border-muted/60 rounded border bg-transparent px-3 py-2 text-sm outline-none;
+	@apply border-muted/25 placeholder:text-muted-dim focus:border-muted/60 aria-invalid:border-danger/60 rounded border bg-transparent px-3 py-2 text-sm outline-none;
 }
 @utility input-xs {
 	@apply px-3 py-1.5 text-xs;
@@ -249,6 +252,13 @@ body {
 /* Raised card. Padding and margin at the call site. */
 @utility panel {
 	@apply border-muted/15 bg-surface-raised rounded-lg border;
+}
+/* The signed-out shell (#2178): the email gate, the sign-in card, recovery,
+ * and the landing's own panel. A softer corner than `panel` and no background
+ * of its own, because three of the four sit over the hero and blur what is
+ * behind — which is why they had each retyped the border chain instead. */
+@utility shell-card {
+	@apply border-muted/20 rounded-xl border;
 }
 
 /* Section label. One tracking, one size — ends the tracking-wider/tracking-[0.2em] split. */
@@ -260,6 +270,11 @@ body {
    retyped it cannot drift apart. Extras (a margin, truncate) ride beside it. */
 @utility page-title {
 	@apply font-display text-3xl font-bold tracking-tight;
+}
+/* An OBJECT's title — a room, a crew, a rider, a ride — one step down from a
+ * page's (#1697, #2178). Five surfaces had typed it five ways. */
+@utility page-title-sm {
+	@apply font-display text-2xl font-bold tracking-tight;
 }
 
 /* Page rhythm (ADR-0020, amended in #417). Pages fill the content column:
@@ -424,9 +439,13 @@ input[type='number']::-webkit-outer-spin-button {
 	color: var(--color-muted-dim);
 }
 
+/* The selected text stays readable in both themes (#2178): white on 45 % neon
+ * over the light theme's paper is about 2.4:1, and a rider selecting a code to
+ * copy could not read what they had selected. `ink` is the theme's own
+ * foreground, so it is right on either. */
 ::selection {
 	background: color-mix(in oklab, var(--color-neon) 45%, transparent);
-	color: #fff;
+	color: var(--color-ink);
 }
 
 /* Default scrollbars are a bright grey stripe down the side of a near-black app. */

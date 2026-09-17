@@ -290,9 +290,7 @@
 		<div class="border-danger/40 mt-2 rounded border px-2 py-1.5">
 			<p class="text-muted text-[10px] leading-snug">{voiceError.message}</p>
 			{#if voiceError.signIn}
-				<a
-					href="/login"
-					class="border-muted/25 text-muted hover:text-ink mt-1.5 block w-full rounded border px-2 py-1.5 text-center text-[11px]"
+				<a href="/login" class="btn btn-secondary btn-xs mt-1.5 w-full"
 					>Sign in</a
 				>
 			{/if}
@@ -307,8 +305,8 @@
 			</p>
 			<button
 				onclick={onTakeOver}
-				class="border-muted/25 text-muted hover:text-ink mt-1.5 w-full rounded border px-2 py-1.5 text-[11px]"
-				>use this tab instead</button
+				class="btn btn-secondary btn-xs mt-1.5 w-full"
+				>Use this tab instead</button
 			>
 		</div>
 	{/if}

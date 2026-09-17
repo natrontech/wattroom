@@ -192,7 +192,7 @@
 			</div>
 		{/if}
 		<div
-			class="border-muted/20 bg-surface-raised/80 rounded-xl border px-8 py-10 text-center backdrop-blur"
+			class="shell-card bg-surface-raised/80 px-8 py-10 text-center backdrop-blur"
 		>
 			<a
 				href="/"

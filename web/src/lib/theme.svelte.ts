@@ -11,8 +11,6 @@ import { palette } from './palette.svelte';
 const KEY = 'wattroom.theme.v1';
 export type ThemeChoice = 'auto' | 'dark' | 'light';
 
-const ORDER: ThemeChoice[] = ['auto', 'dark', 'light'];
-
 let current = $state<ThemeChoice>('auto');
 try {
 	const saved = localStorage.getItem(KEY);
@@ -53,9 +51,6 @@ export const theme = {
 		remember();
 		apply();
 		syncAppearance({ colorScheme: stored() });
-	},
-	cycle() {
-		theme.set(ORDER[(ORDER.indexOf(current) + 1) % ORDER.length]);
 	},
 	/**
 	 * The account's choice arrived (#326). A string wins over this device;

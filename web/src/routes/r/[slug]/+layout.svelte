@@ -146,7 +146,7 @@
 	<main class="grid min-h-full place-items-center px-6">
 		<div class="panel w-full max-w-md px-6 py-10 text-center">
 			<Logo size={40} />
-			<h1 class="font-display mt-5 text-2xl font-bold">{room.name}</h1>
+			<h1 class="page-title-sm mt-5">{room.name}</h1>
 			{#if room.banned}
 				<!-- Removed, at either level (audit 2026-09-09): said plainly and
 				     with no button. A ban survives the code (docs/SPEC.md), and
