@@ -54,12 +54,58 @@ func TestGolfScoresDeviation(t *testing.T) {
 	if g.strokes["b"] < 40 {
 		t.Fatalf("missed hole scored too few strokes: %v", g.strokes["b"])
 	}
+	// The next hole is announced after the gap, not the instant this one is
+	// scored (#2234) — see TestGolfShowsTheMeterBetweenHoles.
+	g.advance(gat(31+int(golfBetween/time.Second)), map[string]int{"a": 0, "b": 0}, roster)
 	if g.hole != 2 {
 		t.Fatalf("did not tee the next hole: %d", g.hole)
 	}
 	// The meter hides through the lead-in and window (SPEC).
 	if st := g.state(g.holeAt.Add(-5 * time.Second)); !st.MeterHidden {
 		t.Fatal("meter visible during lead-in")
+	}
+}
+
+// SPEC: "meter hidden from 20 s before to hole end". The other side of that
+// sentence is that between holes it is NOT hidden, and it never was (#2234):
+// tee sets holeAt = teeTime + golfLeadIn, so the hidden span is exactly the
+// lead-in plus the hole — and the tee fired the instant the previous hole was
+// scored, which made the hidden spans touch. golfBetween existed and bought
+// nothing. A rider played nine holes with no numbers at all, and the mode
+// that hides the meter on purpose is the one where that looks intended.
+func TestGolfShowsTheMeterBetweenHoles(t *testing.T) {
+	g := newGolf(gat(0), fixedRng())
+	roster := backyardRoster()
+
+	// Hole 1: announced at 0, window 20..30.
+	if st := g.state(gat(5)); !st.MeterHidden {
+		t.Fatal("meter visible during the first lead-in")
+	}
+	if st := g.state(gat(25)); !st.MeterHidden {
+		t.Fatal("meter visible during the hole")
+	}
+	g.advance(gat(31), map[string]int{"a": 200, "b": 300}, roster) // close it
+
+	// The gap: hole 1 is scored, hole 2 is not announced, the meter is back.
+	if g.hole != 1 {
+		t.Fatalf("hole %d teed inside the gap", g.hole)
+	}
+	for _, sec := range []int{31, 40, 50} {
+		if st := g.state(gat(sec)); st.MeterHidden {
+			t.Errorf("meter still hidden %ds into the gap between holes", sec-31)
+		}
+	}
+
+	// And it hides again as soon as the next hole is announced.
+	g.advance(gat(51), map[string]int{"a": 200, "b": 300}, roster)
+	if g.hole != 2 {
+		t.Fatalf("hole 2 was not announced after the gap: hole %d", g.hole)
+	}
+	if st := g.state(gat(51)); !st.MeterHidden {
+		t.Error("meter still visible once hole 2 was announced")
+	}
+	if g.holeAt != gat(51).Add(golfLeadIn) {
+		t.Errorf("hole 2 opens at %v, want %v — the lead-in is what the rider is told", g.holeAt, gat(51).Add(golfLeadIn))
 	}
 }
 
