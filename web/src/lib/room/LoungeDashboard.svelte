@@ -163,11 +163,12 @@
 		     Without the code — never for a member, but the row must not
 		     render a button that fails — the Members place says how. -->
 		{#if room.code}
-			<button onclick={() => copyInviteLink(room.code)} class="btn btn-ghost"
-				><Link size={14} /> Copy invite link</button
+			<button
+				onclick={() => copyInviteLink(room.code)}
+				class="btn btn-secondary"><Link size={14} /> Copy invite link</button
 			>
 		{:else}
-			<a href="/r/{room.slug}/members" class="btn btn-ghost"
+			<a href="/r/{room.slug}/members" class="btn btn-secondary"
 				><UserPlus size={14} /> Invite</a
 			>
 		{/if}

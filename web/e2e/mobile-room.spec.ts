@@ -177,8 +177,9 @@ test('the coach rows, the confirm, a menu and the picker fit a phone', async ({
 
 	// The coach's row: Move and Cancel session beside "I'm in".
 	await page.goto(`/r/${room.slug}/sessions?full=1`);
-	await expect(page.getByRole('button', { name: 'Move' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Move…' })).toBeVisible();
 	await noOverflow('the Sessions place with the coach row');
+
 	// The confirm behind Cancel session.
 	await page
 		.getByRole('button', { name: 'Cancel session', exact: true })

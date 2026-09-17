@@ -210,7 +210,12 @@
 								)} min · planned by {entry.createdBy}
 							</p>
 						</div>
-						<span class="flex shrink-0 items-center gap-3">
+						<!-- A row of their own below sm (#2179, #2175's lesson): side
+						     by side the card's text had ~110 px and wrapped to four
+						     lines, because a flex item shrinks before it wraps. -->
+						<span
+							class="flex shrink-0 basis-full items-center gap-3 sm:basis-auto"
+						>
 							<!-- Only while nothing runs: the hub refuses a pick outside
 							     idle, and the tap used to wipe the rider's own recording
 							     before it was refused. A running ride is joined from the
@@ -227,6 +232,9 @@
 								{/if}
 							{/if}
 							{#if manages}
+								<!-- Two buttons, two acts (#2179): the ellipsis opens the
+								     field, the one under it commits — side by side they
+								     both read "Move", and the menu already said "Move…". -->
 								<button
 									onclick={() => {
 										movingId = movingId === entry.id ? null : entry.id;
@@ -234,7 +242,7 @@
 										moveAt = toLocalInput(new Date(entry.startsAt));
 									}}
 									disabled={room.adminBusy}
-									class="btn btn-secondary btn-xs">Move</button
+									class="btn btn-secondary btn-xs">Move…</button
 								>
 								<!-- "Cancel", as the chat line, the mail and SPEC say — with
 								     its object, because a bare "Cancel" is the button that
@@ -284,7 +292,7 @@
 								}}
 								disabled={room.adminBusy || !moveAt}
 								class="btn btn-secondary btn-xs disabled:opacity-40"
-								>Move</button
+								>Move to this time</button
 							>
 						</div>
 					{/if}
@@ -318,9 +326,11 @@
 					class="underline">Home</a
 				>.
 			</p>
+			<!-- Its own row below sm (#2179): beside the button the sentence
+			     was a five-line column. -->
 			<button
 				onclick={() => room.copyIcsUrl()}
-				class="btn btn-secondary btn-xs shrink-0"
+				class="btn btn-secondary btn-xs shrink-0 basis-full sm:basis-auto"
 				><Copy size={13} /> Copy calendar link</button
 			>
 		</div>
@@ -375,20 +385,4 @@
 			</EmptyState>
 		</div>
 	{/if}
-
-	<h3 class="eyebrow mt-8">this room, this month</h3>
-	<div class="panel mt-2 grid grid-cols-2 gap-4 px-4 py-3">
-		<div>
-			<p class="eyebrow">this room's streak</p>
-			<p class="font-display text-xl font-bold tabular-nums">
-				{room.streakWeeks} week{room.streakWeeks === 1 ? '' : 's'}
-			</p>
-		</div>
-		<div>
-			<p class="eyebrow">work</p>
-			<p class="font-display text-xl font-bold tabular-nums">
-				{room.monthKj.toLocaleString()} kJ
-			</p>
-		</div>
-	</div>
 </div>
