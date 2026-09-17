@@ -140,7 +140,15 @@ func TestACrewBannedMembersShelfLeavesAutoplay(t *testing.T) {
 	if err != nil {
 		t.Fatalf("crew: %v", err)
 	}
-	t.Cleanup(func() { _, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID) })
+	// Release the room first. This cleanup is registered last, so LIFO runs
+	// it first, while rooms.crew_id still points here — and that FK is ON
+	// DELETE RESTRICT, so the delete was refused and `_, _ =` ate it. The
+	// crew then outlived the run and kept its owner alive too, because
+	// crews.owner_id is RESTRICT as well (#2361).
+	t.Cleanup(func() {
+		_, _ = h.store.Pool.Exec(context.Background(), "update rooms set crew_id = null where crew_id = $1", crew.ID)
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID)
+	})
 	if err := h.store.Queries.PlaceRoomInCrew(t.Context(), db.PlaceRoomInCrewParams{ID: room.ID, CrewID: crew.ID, CrewVisible: true}); err != nil {
 		t.Fatalf("place: %v", err)
 	}
