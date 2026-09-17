@@ -40,6 +40,10 @@ export interface Me {
 	emailResendAt?: string;
 	/** Filled when the 90-day curve outgrows the setting (#26). */
 	suggestedFtp?: number;
+	// The LTHR a hard solo ride suggests (#1620, docs/SPEC.md): the last-20-min
+	// average HR of a qualifying ride, when it outgrows the set LTHR by >2 %.
+	// Absent until the rider has an LTHR to outgrow.
+	suggestedLthr?: number;
 	best20m?: number;
 	providers?: string[];
 	/** LiveKit is configured — voice/camera affordances render at all (#219). */

@@ -2,9 +2,9 @@
 insert into rides (
     user_id, room_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
-    ftp_watts, samples, curve, xp, norm_watts
+    ftp_watts, samples, curve, xp, norm_watts, last20m_hr
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 returning id;
 
 -- name: ListUserRides :many
@@ -225,6 +225,30 @@ order by kj desc, u.display_name asc;
 -- The FTP auto-detect input (docs/SPEC.md): rolling 90-day best 20-minute power.
 select coalesce(max((curve->>'best20m')::int), 0)::int from rides
 where user_id = $1 and started_at >= now() - interval '90 days';
+
+-- name: BestLast20mHRIn90Days :one
+-- The LTHR-from-a-ride input (docs/SPEC.md, #1620): the largest last-20-minute
+-- average heart rate among the rider's qualifying rides in the rolling 90 days.
+-- Qualifying is SPEC's, and nothing more — solo (no room), at least 30 minutes,
+-- and a heart rate in the window. There is deliberately NO power gate: a
+-- genuine HR field test need not be near the rider's best 20-minute power.
+-- last20m_hr > 0 is what excludes both "no strap" and "not yet backfilled".
+select coalesce(max(last20m_hr), 0)::int from rides
+where user_id = $1
+  and room_id is null
+  and seconds >= 1800 -- stats.MinLTHRRideSeconds (docs/SPEC.md's 30 minutes)
+  and last20m_hr > 0
+  and started_at >= now() - interval '90 days';
+
+-- name: ListRidesMissingLast20mHR :many
+-- The #1620 backfill's read, the shape ListRidesMissingNorm uses: each blob is
+-- read exactly once and goes cold again, so the per-ride-read storage rule
+-- holds. NULL is the only "not computed yet" — a row the backfill has seen
+-- carries a number, 0 included.
+select id, samples from rides where last20m_hr is null limit $1;
+
+-- name: SetRideLast20mHR :exec
+update rides set last20m_hr = $2 where id = $1;
 
 -- name: CurveBests :one
 -- Progression overlay (#222): best per SPEC curve window over three ranges,

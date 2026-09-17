@@ -67,6 +67,28 @@ func (q *Queries) Best20mIn90Days(ctx context.Context, userID pgtype.UUID) (int3
 	return column_1, err
 }
 
+const bestLast20mHRIn90Days = `-- name: BestLast20mHRIn90Days :one
+select coalesce(max(last20m_hr), 0)::int from rides
+where user_id = $1
+  and room_id is null
+  and seconds >= 1800 -- stats.MinLTHRRideSeconds (docs/SPEC.md's 30 minutes)
+  and last20m_hr > 0
+  and started_at >= now() - interval '90 days'
+`
+
+// The LTHR-from-a-ride input (docs/SPEC.md, #1620): the largest last-20-minute
+// average heart rate among the rider's qualifying rides in the rolling 90 days.
+// Qualifying is SPEC's, and nothing more — solo (no room), at least 30 minutes,
+// and a heart rate in the window. There is deliberately NO power gate: a
+// genuine HR field test need not be near the rider's best 20-minute power.
+// last20m_hr > 0 is what excludes both "no strap" and "not yet backfilled".
+func (q *Queries) BestLast20mHRIn90Days(ctx context.Context, userID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, bestLast20mHRIn90Days, userID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
        e.state as export_state
@@ -194,9 +216,9 @@ const createRide = `-- name: CreateRide :one
 insert into rides (
     user_id, room_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
-    ftp_watts, samples, curve, xp, norm_watts
+    ftp_watts, samples, curve, xp, norm_watts, last20m_hr
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 returning id
 `
 
@@ -215,6 +237,7 @@ type CreateRideParams struct {
 	Curve           []byte
 	Xp              int32
 	NormWatts       *int16
+	Last20mHr       *int16
 }
 
 func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.UUID, error) {
@@ -233,6 +256,7 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 		arg.Curve,
 		arg.Xp,
 		arg.NormWatts,
+		arg.Last20mHr,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -463,7 +487,7 @@ func (q *Queries) ForgetRemoteActivityIds(ctx context.Context, arg ForgetRemoteA
 }
 
 const getRide = `-- name: GetRide :one
-select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts,
+select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr,
        coalesce(rm.slug, '')::text as room_slug,
        coalesce(rm.name, '')::text as room_name
 from rides r
@@ -495,6 +519,7 @@ type GetRideRow struct {
 	NormWatts       *int16
 	ExecutionScored bool
 	FtpAfterWatts   *int16
+	Last20mHr       *int16
 	RoomSlug        string
 	RoomName        string
 }
@@ -525,6 +550,7 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.NormWatts,
 		&i.ExecutionScored,
 		&i.FtpAfterWatts,
+		&i.Last20mHr,
 		&i.RoomSlug,
 		&i.RoomName,
 	)
@@ -685,6 +711,39 @@ func (q *Queries) ListRideMedals(ctx context.Context, rideID pgtype.UUID) ([]Lis
 	for rows.Next() {
 		var i ListRideMedalsRow
 		if err := rows.Scan(&i.Kind, &i.AwardedAt, &i.RoomName); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRidesMissingLast20mHR = `-- name: ListRidesMissingLast20mHR :many
+select id, samples from rides where last20m_hr is null limit $1
+`
+
+type ListRidesMissingLast20mHRRow struct {
+	ID      pgtype.UUID
+	Samples []byte
+}
+
+// The #1620 backfill's read, the shape ListRidesMissingNorm uses: each blob is
+// read exactly once and goes cold again, so the per-ride-read storage rule
+// holds. NULL is the only "not computed yet" — a row the backfill has seen
+// carries a number, 0 included.
+func (q *Queries) ListRidesMissingLast20mHR(ctx context.Context, limit int32) ([]ListRidesMissingLast20mHRRow, error) {
+	rows, err := q.db.Query(ctx, listRidesMissingLast20mHR, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRidesMissingLast20mHRRow
+	for rows.Next() {
+		var i ListRidesMissingLast20mHRRow
+		if err := rows.Scan(&i.ID, &i.Samples); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1309,6 +1368,20 @@ func (q *Queries) SetRideFtpAfter(ctx context.Context, arg SetRideFtpAfterParams
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const setRideLast20mHR = `-- name: SetRideLast20mHR :exec
+update rides set last20m_hr = $2 where id = $1
+`
+
+type SetRideLast20mHRParams struct {
+	ID        pgtype.UUID
+	Last20mHr *int16
+}
+
+func (q *Queries) SetRideLast20mHR(ctx context.Context, arg SetRideLast20mHRParams) error {
+	_, err := q.db.Exec(ctx, setRideLast20mHR, arg.ID, arg.Last20mHr)
+	return err
 }
 
 const setRideNormWatts = `-- name: SetRideNormWatts :exec

@@ -169,6 +169,95 @@ func TestSuggestFTP(t *testing.T) {
 	}
 }
 
+// beats is a run of seconds at one heart rate (watts irrelevant to Last20mHR).
+func beats(hr, seconds int) []protocol.RiderMetrics {
+	out := make([]protocol.RiderMetrics, seconds)
+	for i := range out {
+		out[i] = protocol.RiderMetrics{Watts: 200, HR: hr}
+	}
+	return out
+}
+
+func TestLast20mHR(t *testing.T) {
+	// The LAST 20 minutes, not the best 20 (#1620): a ride that opened at 175
+	// and finished at 150 reads 150 — the number the curve would offer is the
+	// opening block, and it is the wrong one.
+	opening := ride(beats(175, 1200), beats(150, 1200))
+	if got := Last20mHR(opening); got != 150 {
+		t.Fatalf("last 20 of a fading ride: %d, want 150", got)
+	}
+	if got := PowerCurve(wattsOnly(opening)); got.Best20m != 200 {
+		t.Fatalf("guard on the helper: %+v", got)
+	}
+
+	// Half the window at 160, half at 170 → 165.
+	if got := Last20mHR(ride(beats(100, 600), beats(160, 600), beats(170, 600))); got != 165 {
+		t.Fatalf("average over the window: %d, want 165", got)
+	}
+
+	// A dropped strap second is absent, not 0 bpm: 600 s at 170 with 600 s of
+	// silence beside it still averages 170, not 85 — and 600 s is exactly the
+	// half-window SPEC requires, so it still counts.
+	if got := Last20mHR(ride(beats(170, 600), beats(0, 600))); got != 170 {
+		t.Fatalf("dropouts must not be averaged in: %d, want 170", got)
+	}
+
+	// One second short of half the window, and the pathological case the floor
+	// exists for: a strap that woke up once. Skipping absent seconds with no
+	// floor makes that ONE reading the average, and the rider is asked to adopt
+	// a spurious 180 as their threshold for the next 90 days.
+	if got := Last20mHR(ride(beats(0, 601), beats(170, 599))); got != 0 {
+		t.Fatalf("under half the window: %d, want 0", got)
+	}
+	if got := Last20mHR(ride(beats(0, 1199), beats(180, 1))); got != 0 {
+		t.Fatalf("one stray beat became a threshold: %d, want 0", got)
+	}
+
+	// Shorter than the window, and no reading at all: honestly nothing.
+	if got := Last20mHR(beats(170, LTHRRideWindow-1)); got != 0 {
+		t.Fatalf("under the window: %d, want 0", got)
+	}
+	if got := Last20mHR(flat(200, 1800)); got != 0 {
+		t.Fatalf("no strap: %d, want 0", got)
+	}
+	if got := Last20mHR(nil); got != 0 {
+		t.Fatalf("no ride: %d, want 0", got)
+	}
+}
+
+func TestSuggestLTHR(t *testing.T) {
+	// 168 > 160 × 1.02 = 163.2 → suggest the average itself, unscaled: the
+	// field test IS the measurement, so there is no 0.95 here (docs/SPEC.md).
+	if got, ok := SuggestLTHR(168, 160); !ok || got != 168 {
+		t.Fatalf("suggest: %d %v", got, ok)
+	}
+	// Inside the 2 % tolerance — 162 ≤ 163.2 — and exactly on it: silence.
+	if _, ok := SuggestLTHR(162, 160); ok {
+		t.Fatal("suggested inside the tolerance")
+	}
+	if _, ok := SuggestLTHR(163, 160); ok {
+		t.Fatal("suggested on the tolerance edge")
+	}
+	if _, ok := SuggestLTHR(150, 160); ok {
+		t.Fatal("suggested a LOWER number")
+	}
+	// No data, and no LTHR to exceed.
+	if _, ok := SuggestLTHR(0, 160); ok {
+		t.Fatal("suggested from no data")
+	}
+	if _, ok := SuggestLTHR(175, 0); ok {
+		t.Fatal("suggested against an unset LTHR")
+	}
+	// A misreporting strap never reaches the prompt: SPEC's profile bounds
+	// (100–210 bpm) are the filter, because the column carries no CHECK.
+	if _, ok := SuggestLTHR(protocol.MaxLthrBpm+1, 160); ok {
+		t.Fatal("suggested above the profile ceiling")
+	}
+	if _, ok := SuggestLTHR(protocol.MinLthrBpm-1, 90); ok {
+		t.Fatal("suggested below the profile floor")
+	}
+}
+
 // wattsOnly is what PowerCurve still takes: a bare series.
 func wattsOnly(samples []protocol.RiderMetrics) []int {
 	out := make([]int, len(samples))

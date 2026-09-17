@@ -176,6 +176,76 @@ func SuggestFTP(best20m, currentFtp int) (int, bool) {
 	return suggested, true
 }
 
+// LTHRRideWindow is SPEC's measuring window for the LTHR-from-a-ride
+// suggestion: the last 20 minutes, one sample a second. MinLTHRRideSeconds is
+// the ride length that qualifies at all — Friel's 30-minute time trial.
+const (
+	LTHRRideWindow     = 20 * 60
+	MinLTHRRideSeconds = 30 * 60
+)
+
+// Last20mHR is the average heart rate over a ride's LAST 20 minutes — the
+// number Friel's 30-minute field test reads (docs/SPEC.md, RESEARCH §17.2).
+//
+// This is not a curve window. `curve` holds best5s/best1m/best5m/best20m,
+// which are BEST-of-window; the field test asks for the LAST window, and on
+// any ride that was not a time trial those are different numbers.
+//
+// Seconds with no reading are not averaged: a strap that dropped for ten
+// seconds recorded nothing there, and counting those as 0 bpm would pull the
+// average down by a tenth of nothing the rider did. A ride shorter than the
+// window, or one that read for less than half of it, honestly has no number
+// — 0, the same posture PowerCurve takes on a window longer than the ride.
+//
+// The half is SPEC's and it is not fussiness. Skipping absent seconds with no
+// floor under the count means one second of readings IS the average: a strap
+// that re-acquires in the last minute with a single spurious 180 stores 180,
+// clears every gate below, and asks the rider to adopt it as their threshold
+// for the next 90 days — silently, because nothing tells them how little of
+// the window it came from.
+func Last20mHR(samples []protocol.RiderMetrics) int {
+	if len(samples) < LTHRRideWindow {
+		return 0
+	}
+	sum, beats := 0, 0
+	for _, sample := range samples[len(samples)-LTHRRideWindow:] {
+		if sample.HR > 0 {
+			sum += sample.HR
+			beats++
+		}
+	}
+	if beats*2 < LTHRRideWindow {
+		return 0
+	}
+	return int(math.Round(float64(sum) / float64(beats)))
+}
+
+// SuggestLTHR is docs/SPEC.md's LTHR-from-a-ride rule (#1620): when the
+// largest last-20-minute average HR among the rider's qualifying 90-day rides
+// exceeds the set LTHR by more than 2 %, suggest — never auto-apply, and
+// never outside the profile's own bounds, which is what keeps a misreporting
+// strap out of the prompt. Which rides qualify (solo, ≥ 30 min, HR present)
+// is the query's job; this is the arithmetic.
+//
+// Deliberately no power term. SPEC says so and says why: a rider riding the
+// protocol honestly need not be near their best 20-minute power, so a power
+// gate would skip the very test this exists to catch.
+//
+// The lower bound is defence in depth rather than a live guard: today the
+// column holds only 0 (caught by currentLthr's own check, since a rider with
+// no LTHR is not asked at all) or a real reading, and the profile refuses an
+// LTHR under MinLthrBpm. It costs a comparison and it is what a future that
+// lets the anchor go lower will want.
+func SuggestLTHR(last20mHR, currentLthr int) (int, bool) {
+	if currentLthr <= 0 || last20mHR < protocol.MinLthrBpm || last20mHR > protocol.MaxLthrBpm {
+		return 0, false
+	}
+	if float64(last20mHR) <= float64(currentLthr)*1.02 {
+		return 0, false
+	}
+	return last20mHR, true
+}
+
 // zoneTops are the upper edges of Z1–Z6 as fractions of FTP (docs/SPEC.md's
 // Coggan table, the same numbers web/src/lib/components/zones.ts bands live
 // power with); Z7 is open-ended.
