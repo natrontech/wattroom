@@ -127,6 +127,55 @@ describe('in the desktop shell', () => {
 		expect(toast.href).toBe('/messages/dm/mara');
 	});
 
+	// The refusal reaches the rider, not the window they are not looking at
+	// (#2157): this path only runs while they are away, by construction.
+	it('sends the refusal back out as a notification, and waits with it', async () => {
+		vi.useFakeTimers();
+		const sent: { tag?: string; body?: string; replyPlaceholder?: string }[] =
+			[];
+		let deliver: (p: {
+			tag: string;
+			href?: string;
+			reply?: string;
+		}) => void = () => {};
+		(globalThis as W).wattroom = {
+			notify: (n: (typeof sent)[number]) => sent.push(n),
+			onNotification: (cb: typeof deliver) => (deliver = cb),
+		};
+		const { notify } = await fresh();
+		const { toasts } = await import('$lib/toast.svelte');
+		notify.listen(() => {});
+		notify.push('Mara', 'hi', 'dm-mara', {
+			href: '/messages/dm/mara',
+			reply: {
+				placeholder: 'Reply to Mara',
+				send: async () => 'You can only message accepted friends.',
+			},
+		});
+		deliver({
+			tag: 'dm-mara',
+			href: '/messages/dm/mara',
+			reply: 'see you at 7',
+		});
+		await vi.advanceTimersByTimeAsync(0);
+
+		const refusal = sent.at(-1)!;
+		expect(refusal.body).toContain('see you at 7');
+		expect(refusal.tag, 'a tag of its own, or it replaces the message').toBe(
+			'dm-mara:refused',
+		);
+		// No reply field: the one that just failed would send the same text at
+		// the same closed door.
+		expect(refusal.replyPlaceholder).toBeUndefined();
+
+		// And the toast is still there when the rider comes back — four
+		// seconds into a hidden window is the silence this is about.
+		await vi.advanceTimersByTimeAsync(30_000);
+		expect(toasts.items.at(-1)?.text).toContain('see you at 7');
+		toasts.dismiss(toasts.items.at(-1)!.id);
+		vi.useRealTimers();
+	});
+
 	it('stays quiet while the window is the front one', async () => {
 		const sent: unknown[] = [];
 		(globalThis as W).wattroom = {
