@@ -46,9 +46,17 @@ rolls releases out with its own timer.
 
 If you are self-hosting, the three lines above are a complete deploy. Automate
 them wherever your other services are automated, and keep two properties:
-never restart into a ride (`wattroom_room_riding` on `/metrics` tells you — it
-counts riders with a live sample, not everyone holding a room socket), and
-take a dump first, because migrations run at boot and are forward-only.
+never restart into a ride (`wattroom_room_riding` on `wattroom:9091/metrics`
+tells you — it counts riders with a live sample, not everyone holding a room
+socket), and take a dump first, because migrations run at boot and are
+forward-only.
+
+That gauge was absent from the endpoint in **2026.09.118** and **2026.09.119**
+— #1738 gave `/metrics` its own registry and this one collector kept
+registering into the old one (#2321). A guard reading it on either of those two
+releases saw nothing and, if it treats an unreadable count as "someone might be
+riding", deferred every rollout until its own timeout. `wattroom_room_riders`
+is the fallback, and it was never affected.
 
 ## Monitoring
 
@@ -64,7 +72,7 @@ Put the homelab's Prometheus container on that same network, then give it:
     scrape_configs:
       - job_name: wattroom          # the job name WattroomDown matches on
         static_configs:
-          - targets: ['wattroom:8080']
+          - targets: ['wattroom:9091']   # the metrics listener, NOT the app port
     rule_files:
       - /opt/wattroom/alerts.yml
 
@@ -83,7 +91,10 @@ Check it from the VM the way Prometheus does:
 **Upgrading past this change**: move the scrape and the deploy guard's ride
 check from `wattroom:8080/metrics` to `wattroom:9091/metrics`. The old address
 answers a 404 that says so, rather than an empty scrape. `WATTROOM_METRICS_ADDR`
-moves the port, and setting it to the empty string turns the listener off.
+defaults to `:9091` and moves the listener; setting it to the empty string turns
+it off, which is what a deployment with no scraper at all should do. Unset and
+empty differ on purpose — there is no way to ask for the default by writing it
+blank.
 
 The production synthetic ride — the check that proves a *ride* works rather
 than that a homepage returns 200 — is not wired yet (#314). Until it is,

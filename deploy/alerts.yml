@@ -11,6 +11,11 @@
 # The rules alert on the subsystems that go quiet first, not on HTTP 200: a
 # healthy homepage over a broken ride is exactly the failure mode the homelab
 # observability rule was written about.
+#
+# They need a job scraping `wattroom:9091` — the metrics listener, not the app
+# port, which has answered 404 for /metrics since #1738. A job still pointed at
+# 8080 makes every rule here unfirable and only WattroomDown says so (#2321).
+# README.md's Monitoring section has the scrape config to copy.
 groups:
   - name: wattroom-ride
     rules:
