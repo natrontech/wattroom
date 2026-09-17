@@ -7,7 +7,7 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
-	import { fetchCrew, joinCrew } from '$lib/crew';
+	import { fetchCrew, joinCrew, rememberCrewDoor } from '$lib/crew';
 	import { presence } from '$lib/presence.svelte';
 	import type { PageData } from './$types';
 	import { reachable } from '$lib/nav/crews';
@@ -15,6 +15,19 @@
 	let { data }: { data: PageData } = $props();
 	let busy = $state(false);
 	let error = $state<string | null>(null);
+
+	// The door's read no longer records the invite — a GET that wrote let any
+	// page set a rider's pending invite by linking them at it (#2248). The
+	// page keeps it instead, once per code, for the rider the door says is
+	// invited. Nothing on screen depends on it: what it buys is a sign-up
+	// finished in another tab landing on this crew (#2144).
+	let remembered: string | null = null;
+	$effect(() => {
+		const code = data.code;
+		if (!data.crew?.invited || remembered === code) return;
+		remembered = code;
+		void rememberCrewDoor(code);
+	});
 
 	async function join() {
 		error = null;

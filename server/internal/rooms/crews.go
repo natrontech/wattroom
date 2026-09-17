@@ -88,6 +88,7 @@ func (s *Service) registerCrews(mux *http.ServeMux) {
 	// "/api/crews/{id}/image" are both four segments, and Go's mux refuses a
 	// pair where "by-code/image" would match either.
 	mux.HandleFunc("GET /api/crew-doors/{code}", s.handleCrewDoor)
+	mux.HandleFunc("POST /api/crew-doors/{code}/remember", s.handleRememberCrewDoor)
 	mux.HandleFunc("POST /api/crews/join", s.handleJoinCrew)
 	mux.HandleFunc("POST /api/crews/{id}/leave", s.handleLeaveCrew)
 	mux.HandleFunc("PATCH /api/crews/{id}", s.handleUpdateCrew)
