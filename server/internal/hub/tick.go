@@ -83,6 +83,13 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			// left phaseSaid at "running", and the next visitor watched the
 			// session "end" live, hours late (audit 2026-09-09).
 			rm.sayPhaseLocked(state, now())
+			// The departures too, for the same reason (#2230). Skipped here,
+			// the last riders stay parked in `departed` — so the room's
+			// timeline loses the "left" line, and the first rider back hours
+			// later is read as a flap and loses their "joined" one as well.
+			// Silence in both directions, which is the opposite of what the
+			// 15 s grace was for (#984).
+			rm.sayDepartedLocked(now())
 			ended := rm.closeLocked(state, now(), saver != nil)
 			locked = false
 			rm.mu.Unlock()

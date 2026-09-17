@@ -1,0 +1,1 @@
+- A room that empties now records who left when they left. It used to skip the line while nobody was watching, so the room's timeline lost the departure — and the next rider in was mistaken for the same person coming back, and lost their arrival too.

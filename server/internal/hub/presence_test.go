@@ -1,6 +1,8 @@
 package hub
 
 import (
+	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
@@ -187,4 +189,46 @@ func TestPresenceLinesAreEphemeral(t *testing.T) {
 	if got := rm.events.drain(); len(got) != 0 {
 		t.Fatalf("a line survived the drain: %+v", got)
 	}
+}
+
+// A room that empties keeps its clock (the session still closes on time), and
+// it has to keep its timeline too (#2230): the tick used to skip the departure
+// lines entirely while nobody was connected, so the last riders stayed parked
+// in `departed` — the room lost the "left" line, and the first rider back
+// hours later was read as a flap and lost their "joined" one as well. Silence
+// in both directions, which is the opposite of what #984's grace window is for.
+func TestAnEmptyRoomStillSaysWhoLeft(t *testing.T) {
+	var mu sync.Mutex
+	now := pat(0)
+	clock := func() time.Time {
+		mu.Lock()
+		defer mu.Unlock()
+		return now
+	}
+	rm := newRoom("emptied")
+	rm.now = clock
+	kim := socket("r-kim", "Kim")
+	rm.join(kim)
+	rm.events.drain() // the arrival, which is not what this is about
+	rm.leave(kim)     // and now nobody is connected
+
+	go rm.run(slog.New(slog.DiscardHandler), clock, nil)
+	t.Cleanup(func() { close(rm.stop) })
+
+	mu.Lock()
+	now = pat(int(presenceGrace.Seconds()) + 1)
+	mu.Unlock()
+
+	// The tick is 1 Hz; give it a few of those rather than a fixed sleep.
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		rm.mu.Lock()
+		said := verbs(rm)
+		rm.mu.Unlock()
+		if len(said) == 1 && said[0] == "left:Kim" {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("the room emptied and never said the departure")
 }
