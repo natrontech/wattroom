@@ -57,7 +57,7 @@ Confidence tiers: **verified** = survived 3-vote adversarial verification agains
 | Playwright | **~1.61** | official CI image v1.61.0-noble; checkout@v5/setup-node@v6; **don't cache browser binaries** (restore ≈ download time) |
 | golangci-lint | **v2.12.x** | v2 YAML config; `golangci-lint migrate` exists for v1 configs |
 | goose | **v3.27.x** | extracted tier |
-| LiveKit server | **v1.13.3** | monthly cadence — Renovate it |
+| LiveKit server | **v1.13.3** | monthly cadence, and no bot watches it — the tag is written into docker-compose.yml, deploy/docker-compose.prod.yml and e2e.yml by hand (see §7) |
 | livekit server-sdk-go | **v2.18.x** + livekit/protocol for auth | |
 | CloudNativePG | **1.30.x** (2026-06-29) | PG major version support: check CNPG docs at scaffold (releases page doesn't state it) |
 | PostgreSQL | 18 (via CNPG) | inference: PG18 GA since 2025-09; verify against CNPG 1.30 support matrix |
@@ -78,7 +78,8 @@ Confidence tiers: **verified** = survived 3-vote adversarial verification agains
 
 **CI/CD:**
 - Actions: checkout@v5, setup-node@v6, upload-artifact@v5 (per Playwright's current docs); setup-go built-in caching; pnpm needs explicit store caching keyed on pnpm-lock.yaml.
-- **Renovate over Dependabot**: 90+ ecosystems incl. Docker Compose, k8s manifests, Helm; built-in automerge; regex managers for versions embedded in Dockerfiles/CI — all present in this repo.
+- ~~**Renovate over Dependabot**~~: 90+ ecosystems incl. Docker Compose, k8s manifests, Helm; built-in automerge; regex managers for versions embedded in Dockerfiles/CI — all present in this repo.
+  > **Reversed 2026-09-17 (#2343)** — every reason above still holds, and none of it happened. Renovate is a GitHub App: `renovate.json` was committed with the first CI workflow, #9 asked someone to install the app, and two months later `gh pr list --author app/renovate --state all` was still empty. A bot that opens no pull requests has no feature set. Dependabot is activated by a file on the default branch and nothing else, which is a thing this repo's own contributors and agents can actually ship — it is `.github/dependabot.yml` now, and `renovate.json` is gone rather than kept beside it, because two bots means two PRs per bump. What was genuinely given up is the last item on the list: nothing watches a version embedded in a Dockerfile or a workflow any more, so the LiveKit pin above and the Dockerfile's `node:`/`golang:` build stages are a human's edit. Worth revisiting if anyone installs the app.
 - Load testing: **k6** `k6/websockets` module (living-standard API; older k6/experimental/websockets deprecated); VU = long-lived socket with event loop — fits a riders×rooms telemetry simulation; assert on HTTP 101.
 - Deploy proportionality (extracted, opinion-tier): Kustomize > Helm for own services; ArgoCD threshold ≈ >3 environments — plain apply from CI is proportionate for alpha. Staging = a namespace; PR preview deploys not worth it at this scale.
 
