@@ -1,0 +1,1 @@
+- A ride that grew after the session closed — because your connection dropped and the app replayed the tail — is now judged for achievements on the whole ride. It was judged on the truncated version and never looked at again, so a ride that crossed a trophy's line in its last ten minutes missed it silently.
