@@ -78,11 +78,7 @@ func (h *Hub) holdRoom(slug string) *room {
 func (h *Hub) releaseRoom(slug string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.holds[slug] <= 1 {
-		delete(h.holds, slug)
-		return
-	}
-	h.holds[slug]--
+	releaseCount(h.holds, slug)
 }
 
 // forgetRoom drops a room the hub has nothing left to do for, reporting

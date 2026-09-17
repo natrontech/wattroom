@@ -36,8 +36,10 @@ func bestScreen(candidate, held *client) bool {
 // run broadcasts one tick per interval while anyone is connected. The tick
 // always carries the session state and roster — the timer must advance on
 // screens even when nobody is pedalling yet.
-// ponytail: the ticker runs while the room is empty; rooms are cheap and few,
-// stop-on-empty can land with room GC if it ever shows up in a profile.
+// The ticker runs on while the room is empty — this clock is the only thing
+// that will close and save a session whose last rider shut the tab — and the
+// room is let go of entirely once it has been empty, quiet and between
+// sessions for roomIdleTTL (forget.go).
 func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) {
 	// A timer, not a ticker: the interval bursts to 4 Hz while a sprint window
 	// is live (SPEC) and returns to 1 Hz after.

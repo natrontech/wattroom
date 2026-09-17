@@ -537,9 +537,16 @@ func (h *Hub) admitSocket(riderID string) bool {
 func (h *Hub) releaseSocket(riderID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.sockets[riderID] <= 1 {
-		delete(h.sockets, riderID)
+	releaseCount(h.sockets, riderID)
+}
+
+// releaseCount drops one from a counter map, deleting the key on the last —
+// what keeps h.sockets and h.holds bounded by what is live rather than by
+// everything that ever was. Caller holds h.mu.
+func releaseCount(counts map[string]int, key string) {
+	if counts[key] <= 1 {
+		delete(counts, key)
 		return
 	}
-	h.sockets[riderID]--
+	counts[key]--
 }
