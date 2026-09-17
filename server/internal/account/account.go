@@ -905,6 +905,14 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition",
 		fmt.Sprintf("attachment; filename=%q", "wattroom-export-"+time.Now().UTC().Format("2006-01-02")+".zip"))
 	w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
+	// The largest and most sensitive thing this server hands out — every
+	// ride's heart rate (ADR-0008), the calendar and unsubscribe tokens,
+	// every crew's code, the rider's own uploads — and a 200 with no
+	// directive is heuristically cacheable (RFC 9111 §4.2.2), on a stack
+	// self-hosters put a proxy in front of (#2250). httpx says this on every
+	// JSON answer and the two other downloads say it too; this one did not.
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(buf.Bytes())
 }
 

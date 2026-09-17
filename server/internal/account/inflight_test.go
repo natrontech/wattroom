@@ -212,3 +212,26 @@ func TestExportHandsTheSlotBackWhenItSucceedsAndWhenItFails(t *testing.T) {
 		t.Errorf("export after a failed one: %d %s, want 200", rec.Code, rec.Body.String())
 	}
 }
+
+// The export is the largest and most sensitive artifact this server hands out
+// — every ride's heart rate (ADR-0008), the calendar and unsubscribe tokens,
+// every crew's code, the rider's own uploads — and a 200 with no directive is
+// heuristically cacheable (RFC 9111 §4.2.2), on a stack self-hosters put a
+// proxy in front of. httpx says this on every JSON answer and #1688 said it on
+// the calendar feeds; this one was missed (#2250).
+func TestTheExportIsNotCacheable(t *testing.T) {
+	h := setup(t)
+	room := h.createRoom(t, "alice")
+	h.createRide(t, "alice", room, "Openers", gzipped(t, `[{"t":0,"w":200}]`))
+
+	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("export: %d %s", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Cache-Control"); got != "private, no-store" {
+		t.Errorf("Cache-Control %q, want \"private, no-store\"", got)
+	}
+	if got := rec.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Errorf("X-Content-Type-Options %q, want \"nosniff\"", got)
+	}
+}
