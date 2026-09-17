@@ -1,7 +1,8 @@
 import { expect, test } from './room';
 
 /**
- * The phone drawer and what its own menus raise (#2153). The drawer is
+ * The phone drawer and what it raises — from its menus (#2153) and from its
+ * own buttons (#2142). The drawer is
  * `z-50` and stayed open by itself, so a confirm dialog (`z-40`) came up
  * mostly behind it with the focus trap holding focus inside, and a toast —
  * `z-50` too, and mounted earlier — showed a right-hand sliver and its ×.
@@ -13,6 +14,7 @@ import { expect, test } from './room';
 /** This spec's own riders — nobody else's (#2133). */
 const RIDER = 'Drawer Menu Rider';
 const OTHER = 'Drawer Menu Other';
+const BUTTON_RIDER = 'Drawer Button Rider';
 const PHONE = { width: 375, height: 812 };
 
 test('an action picked in the phone drawer is not left under it', async ({
@@ -124,4 +126,62 @@ test('an action picked in the phone drawer is not left under it', async ({
 	).toBe(true);
 	// Nothing left behind: the safe answer, which the trap focuses first.
 	await dialog.getByRole('button', { name: 'Keep it' }).click();
+});
+
+/**
+ * #2142, the other half of the same layering: a dialog opened by a plain
+ * BUTTON in the drawer, with no menu in between. Every AV control a phone has
+ * lives in the you-panel inside the drawer, and the Sound panel mounted
+ * underneath it — invisible, with every tap meant for it landing on the
+ * drawer. The `+` above the room list is the same shape and needs no voice
+ * session to reach, so it is what this rides.
+ *
+ * It used to be hand-wired: the `+` called an `onSheet` prop the layout
+ * turned into "close the drawer", and every other dialog the drawer can raise
+ * was left buried. The count of open modals answers for all of them now, and
+ * this is the test that the hand-wiring's removal did not take the `+` with
+ * it.
+ */
+test('a dialog opened by a button in the phone drawer comes up over it', async ({
+	riders,
+	rooms,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+
+	const a = await riders(BUTTON_RIDER);
+	await a.setViewportSize(PHONE);
+	// The + sits in the header of a crew's room list, so there has to be one.
+	await rooms.open(a, `Drawer Button ${Date.now() % 100000}`);
+
+	await a.goto('/home');
+	const hamburger = a.getByRole('button', { name: 'open navigation' });
+	await hamburger.click();
+	await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
+
+	await a
+		.getByRole('button', { name: 'open a room or join a crew with a code' })
+		.click();
+
+	await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
+	const dialog = a.getByRole('dialog');
+	await expect(dialog).toBeVisible();
+	await a.waitForTimeout(300); // the drawer's 200 ms slide
+
+	// Visible is not reachable: the drawer is z-50 over the dialog's z-40, so
+	// what the rider taps is the question. The top of the dialog is where the
+	// drawer would still be over it.
+	const hit = await dialog.evaluate((el) => {
+		const box = el.getBoundingClientRect();
+		const on = document.elementFromPoint(box.left + box.width / 2, box.top + 8);
+		return {
+			mine: el.contains(on),
+			what: on
+				? `${on.tagName.toLowerCase()}.${on.className}`.slice(0, 60)
+				: '',
+		};
+	});
+	expect(hit.mine, `the top of the dialog hits ${hit.what}`).toBe(true);
 });

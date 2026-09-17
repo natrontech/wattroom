@@ -17,6 +17,13 @@
  * level, and a closed gate looks exactly like a dead mic without one. A
  * number in a menu would not be settable, so the menu opens the surface that
  * has the meter instead.
+ *
+ * On a HANDHELD there is no gate to offer or to tune (#2142, docs/SPEC.md):
+ * the chain publishes the capture as it comes and the mic button is the gate,
+ * so a mode to pick would do nothing and "Tune your gate…" would open a panel
+ * that says there is no gate. The menu offers the panel for what it still
+ * holds there — the mix and the microphone — and nothing that cannot work
+ * (ux.md).
  */
 import Mic from '@lucide/svelte/icons/mic';
 import MicOff from '@lucide/svelte/icons/mic-off';
@@ -26,6 +33,7 @@ import type { MenuEntry } from '$lib/context-menu.svelte';
 import { type Device, deviceOptions } from '$lib/room/device-options';
 import { openSoundPanel } from '$lib/room/sound-panel.svelte';
 import { canHoldToTalk } from '$lib/room/ptt-keys';
+import { device } from '$lib/device.svelte';
 
 export interface MicVoice {
 	micOn: boolean;
@@ -52,33 +60,39 @@ export function micMenu(voice: MicVoice, onMic: () => void): MenuEntry[] {
 		hint: voice.mode === id ? 'on' : hint,
 		onSelect: () => voice.setMode(id),
 	});
+	const handheld = device.coarse;
 	return [
 		{
 			label: voice.micOn ? 'Mute' : 'Unmute',
 			icon: voice.micOn ? MicOff : Mic,
 			onSelect: onMic,
 		},
-		'separator',
-		mode('gate', 'Voice activation', Radio),
-		// The key is the whole instruction (#1879): a rider who picked this
-		// mid-ride went quiet with no way to learn how to come back. And no
-		// key, no mode — a control that cannot work is not drawn (ux.md).
-		...(canHoldToTalk()
-			? [mode('ptt', 'Push to talk', Mic, 'hold Space')]
-			: []),
+		...(handheld
+			? []
+			: ([
+					'separator',
+					mode('gate', 'Voice activation', Radio),
+					// The key is the whole instruction (#1879): a rider who picked
+					// this mid-ride went quiet with no way to learn how to come
+					// back. And no key, no mode — a control that cannot work is
+					// not drawn (ux.md).
+					...(canHoldToTalk()
+						? [mode('ptt', 'Push to talk', Mic, 'hold Space')]
+						: []),
+				] satisfies MenuEntry[])),
 		...(inputs.length > 1
 			? ([
 					'separator',
-					...inputs.map((device): MenuEntry => ({
-						label: device.label,
-						hint: device.value === voice.micId ? 'on' : undefined,
-						onSelect: () => void voice.setMic(device.value),
+					...inputs.map((input): MenuEntry => ({
+						label: input.label,
+						hint: input.value === voice.micId ? 'on' : undefined,
+						onSelect: () => void voice.setMic(input.value),
 					})),
 				] satisfies MenuEntry[])
 			: []),
 		'separator',
 		{
-			label: 'Tune your gate…',
+			label: handheld ? 'Sound…' : 'Tune your gate…',
 			icon: SlidersHorizontal,
 			onSelect: openSoundPanel,
 		},

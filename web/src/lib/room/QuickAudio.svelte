@@ -17,6 +17,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { canHoldToTalk } from '$lib/room/ptt-keys';
 	import { device } from '$lib/device.svelte';
+	import HandheldMicNote from '$lib/room/HandheldMicNote.svelte';
 	import { openSoundPanel, soundPanel } from '$lib/room/sound-panel.svelte';
 
 	// `compact` is the sidebar's you-panel: an icon in a row of icons, next to
@@ -60,16 +61,7 @@
 		<div class="border-ink/5 mt-4 border-t pt-4">
 			<span class="eyebrow">how you transmit</span>
 			{#if device.coarse}
-				<!-- There is no gate on a handheld and so no meter to tune: the
-				     chain publishes the capture as it comes, because holding one
-				     open is what puts the room on the earpiece
-				     (`mic-chain.svelte.ts`). Say so rather than draw a slider
-				     over a meter that will never move (ux.md). -->
-				<p class="text-muted mt-1.5 text-xs">
-					The mic button is your gate here. A phone plays the room through its
-					earpiece while anything is capturing, so the mic opens when you tap it
-					and the loudspeaker comes back when you tap it again.
-				</p>
+				<HandheldMicNote />
 			{:else}
 				<!-- Two big targets, not radios: this is tapped at 160 bpm (ux.md). -->
 				<div class="mt-1.5 flex gap-2">

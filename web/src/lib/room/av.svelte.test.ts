@@ -7,6 +7,21 @@ import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
 import { ducking, resetDucking, setDucking } from '$lib/sound/duck';
 import { DUCK_HOLD_MS, shouldDuck } from '$lib/sound/ducking';
 
+// What kind of machine this is (#2142). A phone is the pointer, not the
+// width: `device.coarse` is what the voice path branches on, so the tests
+// that are about a phone say so here and every other test stays on a desk.
+const env = vi.hoisted(() => ({
+	narrow: false,
+	coarse: false,
+	bluetooth: false,
+	cockpit: false,
+	spectator: false,
+}));
+vi.mock('$lib/device.svelte', () => ({
+	device: env,
+	deviceWord: () => (env.coarse ? 'phone' : 'desktop'),
+}));
+
 vi.mock('$lib/api', () => ({
 	api: vi.fn(async () => ({
 		ok: true,
@@ -367,6 +382,8 @@ interface MicHardware {
 	unplug(): void;
 	/** What enumerateDevices reports next, then the browser says it changed. */
 	plugIn(devices: Partial<MediaDeviceInfo>[]): Promise<void>;
+	/** How many audio graphs were built — a handheld must build none (#2142). */
+	graphs(): number;
 }
 
 /** Enough of Web Audio and getUserMedia for `openMic` to succeed — or, given
@@ -377,8 +394,12 @@ function withMicHardware<T>(
 	initialDevices: Partial<MediaDeviceInfo>[] = [],
 	refuse?: Error,
 ): Promise<T> {
+	let graphs = 0;
 	class FakeAudioContext {
 		currentTime = 0;
+		constructor() {
+			graphs += 1;
+		}
 		createMediaStreamSource() {
 			return {};
 		}
@@ -421,6 +442,7 @@ function withMicHardware<T>(
 		},
 	});
 	const hw: MicHardware = {
+		graphs: () => graphs,
 		unplug() {
 			capture?.dispatchEvent(new Event('ended'));
 		},
@@ -624,6 +646,53 @@ describe('createRoomAv', () => {
 				expect(av.dropped).toBe(1);
 				expect(av.micOn).toBe(false);
 				expect(av.micBeforeDrop).toBe(!mute);
+				dispose();
+			});
+		});
+	});
+
+	// #2142, docs/SPEC.md: a rider report from a phone — the room came out of
+	// the earpiece, badly, and the mic lagged and chopped. All one cause:
+	// while a page holds an audio capture, iOS and Android route the whole
+	// page to the receiver, and the gate holds one open for as long as a
+	// rider is in voice. So a handheld joins listening, and its chain
+	// publishes the capture rather than building a graph around it.
+	describe('a phone', () => {
+		beforeEach(() => (env.coarse = true));
+		afterEach(() => (env.coarse = false));
+
+		// The silent one: a phone that joins with the mic open is in voice and
+		// working — the room hears it — and is on its earpiece the whole time,
+		// which is what riders reported rather than an error anyone could see.
+		it('joins listening, so the room comes out of the loudspeaker', async () => {
+			await withMicHardware(async (hw) => {
+				let av!: ReturnType<typeof createRoomAv>;
+				const dispose = $effect.root(() => {
+					av = createRoomAv('mfw');
+				});
+				await av.join();
+				expect(av.status).toBe('live');
+				expect(av.micOn).toBe(false);
+				expect(hw.graphs()).toBe(0);
+				dispose();
+			});
+		});
+
+		// The mic button is the gate here, and what it publishes is the capture
+		// itself: a meter and a MediaStreamDestination in between is the round
+		// trip a phone's audio thread could not keep up with.
+		it('publishes the capture itself once the rider taps the mic', async () => {
+			await withMicHardware(async (hw) => {
+				let av!: ReturnType<typeof createRoomAv>;
+				const dispose = $effect.root(() => {
+					av = createRoomAv('mfw');
+				});
+				// Told explicitly, so this stands on the chain's wiring alone
+				// and not on the default the test above pins.
+				await av.join({ mic: false });
+				await av.toggleMic();
+				expect(av.micOn).toBe(true);
+				expect(hw.graphs()).toBe(0);
 				dispose();
 			});
 		});

@@ -5,6 +5,8 @@
 	// amendment, #477), never the only way to them, and it renders the same
 	// `GateTune` and `MixFaders` this page does.
 	import GateTune from '$lib/room/GateTune.svelte';
+	import HandheldMicNote from '$lib/room/HandheldMicNote.svelte';
+	import { device } from '$lib/device.svelte';
 	import MixFaders from '$lib/room/MixFaders.svelte';
 	import DevicePickers from '$lib/room/DevicePickers.svelte';
 
@@ -58,50 +60,57 @@
 
 <div class="border-ink/5 mt-5 border-t pt-4">
 	<span class="eyebrow">how you transmit</span>
-	<label class="mt-2 flex items-center gap-2 text-sm">
-		<input
-			type="radio"
-			checked={voiceMode === 'gate'}
-			onchange={() => onVoiceMode?.('gate')}
-		/>
-		Voice activation
-	</label>
-	<label class="mt-1.5 flex items-start gap-2 text-sm">
-		<input
-			type="radio"
-			checked={voiceMode === 'ptt'}
-			onchange={() => onVoiceMode?.('ptt')}
-		/>
-		<span
-			>Push to talk
-			<span class="text-muted block text-xs"
-				>hold Space — for spectating from a desk</span
-			></span
-		>
-	</label>
-	{#if onMicTest && !micOn}
-		<button
-			onclick={onMicTest}
-			class="btn btn-secondary btn-xs mt-3 {micTesting ? 'border-z4/60' : ''}"
-			>{micTesting
-				? 'testing — you hear yourself · stop'
-				: 'test my mic'}</button
-		>
-	{/if}
+	{#if device.coarse}
+		<!-- Same rule as the room's Sound panel: a handheld runs no gate, so
+		     the mode, the meter and the mic test all describe something that
+		     is not there (#2142). -->
+		<HandheldMicNote />
+	{:else}
+		<label class="mt-2 flex items-center gap-2 text-sm">
+			<input
+				type="radio"
+				checked={voiceMode === 'gate'}
+				onchange={() => onVoiceMode?.('gate')}
+			/>
+			Voice activation
+		</label>
+		<label class="mt-1.5 flex items-start gap-2 text-sm">
+			<input
+				type="radio"
+				checked={voiceMode === 'ptt'}
+				onchange={() => onVoiceMode?.('ptt')}
+			/>
+			<span
+				>Push to talk
+				<span class="text-muted block text-xs"
+					>hold Space — for spectating from a desk</span
+				></span
+			>
+		</label>
+		{#if onMicTest && !micOn}
+			<button
+				onclick={onMicTest}
+				class="btn btn-secondary btn-xs mt-3 {micTesting ? 'border-z4/60' : ''}"
+				>{micTesting
+					? 'testing — you hear yourself · stop'
+					: 'test my mic'}</button
+			>
+		{/if}
 
-	<div class="mt-3">
-		<span id="gate"></span>
-		<GateTune
-			{micOn}
-			{micLevel}
-			{transmitting}
-			{voiceMode}
-			{gateThreshold}
-			{effectiveThreshold}
-			{onGateThreshold}
-			{micTesting}
-		/>
-	</div>
+		<div class="mt-3">
+			<span id="gate"></span>
+			<GateTune
+				{micOn}
+				{micLevel}
+				{transmitting}
+				{voiceMode}
+				{gateThreshold}
+				{effectiveThreshold}
+				{onGateThreshold}
+				{micTesting}
+			/>
+		</div>
+	{/if}
 </div>
 
 <div class="border-ink/5 mt-5 border-t pt-4">
