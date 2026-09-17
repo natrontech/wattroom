@@ -1,0 +1,1 @@
+- The ⚑ on a solo ride and a ramp test now says what the tap does before you press it, the way the room's already did, and a copy the browser refuses says so wherever you copy from. Behind both: one clipboard helper, one flag button, one room type and one declaration of the message and code lengths the server and the app have to agree on.

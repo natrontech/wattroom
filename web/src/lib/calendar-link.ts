@@ -12,7 +12,7 @@
  * the control is, never what it breaks (#1493).
  */
 import { confirm } from '$lib/confirm.svelte';
-import { toasts } from '$lib/toast.svelte';
+import { copyText, theLinkItself } from '$lib/copy';
 
 /** Whose calendar: the rider's own feed, or one room's schedule. */
 export type CalendarScope = 'yours' | 'room';
@@ -46,16 +46,9 @@ export const RESET_DONE =
 /** The link onto the clipboard, with the fallback a denied clipboard needs
  *  (#1764): the link itself is the feedback, not a dead "copied". */
 export async function copyCalendarLink(link: string): Promise<void> {
-	try {
-		await navigator.clipboard.writeText(link);
-	} catch {
-		toasts.push(`Could not copy — the link is ${link}`, {
-			tone: 'error',
-			seconds: 12,
-		});
-		return;
-	}
-	toasts.push(
+	await copyText(
+		link,
 		'Calendar link copied — subscribe "from URL" in your calendar app.',
+		theLinkItself(link),
 	);
 }

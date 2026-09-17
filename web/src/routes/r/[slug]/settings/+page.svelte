@@ -6,6 +6,10 @@
 	import { account } from '$lib/account.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	// The room is the room (#2180): this page declared its own Member,
+	// RiderPrefs and Room beside the canonical ones, already missing half
+	// their fields.
+	import type { Room } from '$lib/room/room-data';
 	import { toasts } from '$lib/toast.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
@@ -26,34 +30,6 @@
 		ownerName,
 		packLabel,
 	} from '$lib/room/settings-summary';
-
-	interface Member {
-		id: string;
-		displayName: string;
-		role: string;
-		joinedAt?: string;
-	}
-	interface RiderPrefs {
-		notify: boolean;
-		onBoard: boolean;
-	}
-	interface Room {
-		slug: string;
-		name: string;
-		listed: boolean;
-		me?: RiderPrefs;
-		icon?: string;
-		cheers?: string[];
-		soundPack?: string;
-		boardEnabled?: boolean;
-		/** Open to the crew (ADR-0038) — absent means shut (#1204). */
-		crewVisible?: boolean;
-		/** goesWithRoom: deleting this room deletes the crew too (#1935). */
-		crew?: { id: string; name: string; goesWithRoom?: boolean };
-		role?: string;
-		code?: string;
-		members?: Member[];
-	}
 
 	const slug = $derived(page.params.slug);
 	let room = $state<Room | null>(null);

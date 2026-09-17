@@ -91,6 +91,16 @@ export interface BoardRow {
 	category: string;
 }
 
+/**
+ * What YOU chose for this room, as its own object on the room (#1866): the
+ * notifications and whether the soundboard reaches you. Declared here rather
+ * than beside each of the two components that read it (#2180).
+ */
+export interface RiderPrefs {
+	notify: boolean;
+	onBoard: boolean;
+}
+
 export interface Room {
 	slug: string;
 	name: string;
@@ -105,6 +115,10 @@ export interface Room {
 	/** Removed, at either level (audit 2026-09-09) — the door says so. */
 	banned?: boolean;
 	members?: Member[];
+	/** Your own choices for this room, members only. */
+	me?: RiderPrefs;
+	/** The crew's code, carried on the room for the settings page (#1236). */
+	code?: string;
 	/** Open to its crew (ADR-0038); members only, absent = shut. */
 	crewVisible?: boolean;
 	/** A private room's door list (#1224), owner only. */

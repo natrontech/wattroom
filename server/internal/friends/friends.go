@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -267,7 +268,7 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 			// (rooms/crews.go). The one people paste into the wrong box is
 			// the crew's, and "double-check it with them" sends them back to
 			// a friend who gave them the right code for a different door.
-			if len(code) == 6 {
+			if len(code) == protocol.CrewCodeLen {
 				httpx.WriteFieldError(w, http.StatusNotFound, "not_found", "That looks like a crew's code — a crew is joined from Home. Friend codes are eight characters.", "code")
 				return
 			}

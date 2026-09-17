@@ -26,6 +26,7 @@
 	} from '$lib/friends/actions';
 	import { friends, type Friend } from '$lib/friends/friends.svelte';
 	import { copyText } from '$lib/copy';
+	import { FriendCodeLen } from '$lib/protocol';
 	import { UNREAD_DOT } from '$lib/messages/unread-marks';
 	import { personMenu } from '$lib/person-menu';
 	import { toasts } from '$lib/toast.svelte';
@@ -169,7 +170,7 @@
 					bind:value={codeInput}
 					class="input w-36 uppercase"
 					placeholder="friend code"
-					maxlength="8"
+					maxlength={FriendCodeLen}
 					aria-label="add a friend by code"
 				/>
 				<button class="btn btn-xs" disabled={!codeInput.trim()}>Add</button>

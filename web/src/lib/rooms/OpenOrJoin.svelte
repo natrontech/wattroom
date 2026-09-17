@@ -14,6 +14,9 @@
 		openableCrews,
 	} from '$lib/nav/crews';
 	import { presence } from '$lib/presence.svelte';
+	// The two code lengths are the server's, generated (#2180): the box that
+	// tells a friend's code from a crew's cannot disagree with the door.
+	import { CrewCodeLen, FriendCodeLen } from '$lib/protocol';
 	import type { RoomCrew } from '$lib/room/room-data';
 
 	let {
@@ -65,14 +68,16 @@
 	let joinError = $state<string | null>(null);
 
 	const invalidCode = $derived(
-		joinCode.length > 0 && !/^[A-Z0-9]{0,8}$/i.test(joinCode),
+		joinCode.length > 0 && !/^[A-Z0-9]*$/i.test(joinCode),
 	);
 	// A crew's code is six characters, a friend's eight (friends.go). The box
 	// used to cut a pasted friend code to six and send it, and the server's
 	// "no crew has that code" sent the rider back to the friend who gave them
 	// the right code for a different door.
 	const looksLikeFriendCode = $derived(
-		joinCode.length > 6 && /^[A-Z0-9]{7,8}$/i.test(joinCode),
+		joinCode.length > CrewCodeLen &&
+			joinCode.length <= FriendCodeLen &&
+			/^[A-Z0-9]+$/i.test(joinCode),
 	);
 	// docs/SPEC.md ownership cap: at the cap the affordance disables with the
 	// reason, instead of a 409 on click (ux.md capability gating). The number
@@ -225,7 +230,7 @@
 					<input
 						id={compact ? 'join-code-sheet' : 'join-code'}
 						bind:value={joinCode}
-						maxlength="8"
+						maxlength={FriendCodeLen}
 						class="mt-3 w-full rounded border bg-transparent px-3 py-2 font-mono text-sm tracking-[0.3em] uppercase outline-none placeholder:tracking-normal placeholder:normal-case {invalidCode ||
 						looksLikeFriendCode
 							? 'border-danger/60'
@@ -248,7 +253,9 @@
 						</p>
 					{/if}
 					<button
-						disabled={roomBusy || joinCode.length !== 6 || invalidCode}
+						disabled={roomBusy ||
+							joinCode.length !== CrewCodeLen ||
+							invalidCode}
 						class="btn btn-secondary mt-3 w-full">Join crew</button
 					>
 				</form>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { MaxMessageChars } from '$lib/protocol';
 	// The thread's composer (#468, #672): the draft, an attached or pasted
 	// image, the GIF picker, and the send. Split out of MessageThread for
 	// size; it owns the focus rule too — the box takes focus on navigation
@@ -221,7 +222,7 @@
 			aria-expanded={!!mention}
 			aria-controls={mention ? listId : undefined}
 			aria-activedescendant={mention ? optionId(pick) : undefined}
-			maxlength="500"
+			maxlength={MaxMessageChars}
 			{placeholder}
 			aria-label={placeholder}
 			disabled={!!lock}

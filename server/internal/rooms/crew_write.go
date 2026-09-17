@@ -34,7 +34,7 @@ func (s *Service) handleRotateCrewCode(w http.ResponseWriter, r *http.Request) {
 	}
 	var code string
 	for attempt := 0; ; attempt++ {
-		code = randomCode(6)
+		code = randomCode(protocol.CrewCodeLen)
 		err := s.store.Queries.SetCrewCode(r.Context(), db.SetCrewCodeParams{ID: crew.ID, Code: &code})
 		if err == nil {
 			break

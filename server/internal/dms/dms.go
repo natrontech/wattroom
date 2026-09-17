@@ -103,7 +103,7 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	text := strings.TrimSpace(req.Text)
-	if utf8.RuneCountInString(text) > 500 {
+	if utf8.RuneCountInString(text) > protocol.MaxMessageChars {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "A message is 1–500 characters.", "text")
 		return
 	}
@@ -165,7 +165,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	text := strings.TrimSpace(req.Text)
-	if utf8.RuneCountInString(text) > 500 {
+	if utf8.RuneCountInString(text) > protocol.MaxMessageChars {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "A message is 1–500 characters.", "text")
 		return
 	}
