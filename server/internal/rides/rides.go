@@ -208,7 +208,7 @@ func (s *Service) handleBest(w http.ResponseWriter, r *http.Request) {
 		except = id
 	}
 	row, err := s.store.Queries.BestUserRideOfWorkout(r.Context(), db.BestUserRideOfWorkoutParams{
-		UserID: user.ID, WorkoutName: workout, ID: except, Destination: exportDestination,
+		UserID: user.ID, WorkoutName: workout, ExceptID: except, Destination: exportDestination,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]any{"ride": nil})
