@@ -310,6 +310,13 @@ func (s *Service) handleSynthetic(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
+	// The callback is unauthenticated and does outbound work — a token
+	// exchange and an identity fetch — so a loop here is a request amplifier
+	// against the provider, and Strava's tier is the tightest thing this app
+	// depends on (#2255). Same door and same message as the passkey login.
+	if s.throttle(w, r, s.loginBudget, tooManySignIns) {
+		return
+	}
 	p, ok := s.providers[r.PathValue("provider")]
 	if !ok {
 		httpx.WriteError(w, http.StatusNotFound, "not_found",
@@ -329,7 +336,10 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 	linking := strings.HasPrefix(cookie.Value, linkStatePrefix)
 	s.clearCookie(w, stateCookie)
 
-	ctx := r.Context()
+	// Bounded from here down (#2255): the exchange and the identity fetch are
+	// the only outbound calls a signing-in rider makes, and oauth2 falls back
+	// to http.DefaultClient, which has no timeout.
+	ctx := oauthCtx(r.Context())
 	tok, err := p.config.Exchange(ctx, r.URL.Query().Get("code"))
 	if err != nil {
 		s.log.Warn("oauth exchange failed", "provider", p.id, "err", err)
