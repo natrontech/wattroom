@@ -62,7 +62,7 @@ func TestARefusedStartKeepsTheRecord(t *testing.T) {
 // wall-clock second however fast the trainer notifies (audit 2026-09-09).
 func TestSprintAdmitsOneSampleASecond(t *testing.T) {
 	t0 := time.Unix(2000, 0)
-	sp := &sprint{startsAt: t0, endsAt: t0.Add(sprintWindow), samples: map[string][]int{}}
+	sp := &sprint{startsAt: t0, endsAt: t0.Add(sprintWindow), samples: map[string][]sprintSample{}}
 	for i := 0; i < 20; i++ {
 		sp.collect("jan", 500+i, t0.Add(time.Second+time.Duration(i)*10*time.Millisecond))
 	}
