@@ -119,9 +119,17 @@ updates:
     commit-message:
       prefix: chore(ci)
     groups:
-      # Majors included here, unlike the three above. An action's major is
-      # usually a runner or Node-version bump with an unchanged `with:` block,
-      # and every workflow in this repo pins by major tag — so splitting them
-      # out buys a separate PR per `@v5` → `@v6` and no extra information.
+      # Majors included here, unlike the three above — and grouping matters
+      # more since every action was pinned to a commit SHA (#2353). A tag pin
+      # moved only on a major; a commit pin moves on every patch, so ungrouped
+      # this would be the noisiest ecosystem in the file rather than the
+      # quietest. An action's bump is usually a runner or Node-version change
+      # with an unchanged `with:` block, and the diff is forty hex characters
+      # either way: the release notes Dependabot quotes in the PR body are the
+      # review, not the diff.
+      #
+      # Dependabot is also what keeps those pins current — it rewrites the SHA
+      # *and* the trailing `# vX.Y.Z` comment, which is why ci.yml's `docs` job
+      # insists the comment is there.
       actions:
         patterns: ['*']
