@@ -307,3 +307,123 @@ func TestHomeListsEveryPlanAndNoRsvp(t *testing.T) {
 		t.Fatalf("the room lost the RSVP it owns: %d in %v", rsvps, room["upcoming"])
 	}
 }
+
+// The room feed is handed to every non-banned member, rotates only for the
+// owner, and exists to be forwarded to people who are not in the room — so it
+// names nobody (ADR-0021 amended, #1767). The rider's own feed, one token held
+// by one rider, still says who planned what.
+func TestTheRoomFeedDoesNotNameThePlanner(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Quiet Feed")
+	h.enter(t, "bob", code, slug)
+
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	starts := time.Now().UTC().Add(48 * time.Hour).Truncate(time.Second)
+	plan := fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`, workout, starts.Format(time.RFC3339))
+	if status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule", plan); status != http.StatusCreated {
+		t.Fatalf("schedule: %d %v", status, body)
+	}
+
+	// Whatever display name the harness gave the planner, the room feed must
+	// not carry it — asked of the room read, so the test cannot pass by
+	// looking for a name nobody has.
+	_, room := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	upcoming, _ := room["upcoming"].([]any)
+	if len(upcoming) != 1 {
+		t.Fatalf("upcoming: %v — test proves nothing", room["upcoming"])
+	}
+	first, _ := upcoming[0].(map[string]any)
+	planner, _ := first["createdBy"].(string)
+	if planner == "" {
+		t.Fatalf("no planner on the plan: %v", first)
+	}
+	token, _ := room["icsToken"].(string)
+
+	status, ics, _ := h.rawGet(t, "/api/rooms/"+slug+"/calendar/"+token+".ics")
+	if status != http.StatusOK {
+		t.Fatalf("room feed: %d %s", status, ics)
+	}
+	if strings.Contains(ics, planner) {
+		t.Fatalf("the room feed names its planner %q — a link every member can forward:\n%s", planner, ics)
+	}
+	if !strings.Contains(ics, "DESCRIPTION:In Quiet Feed.") {
+		t.Fatalf("room feed description:\n%s", ics)
+	}
+
+	// The same session, in the feed addressed to the rider: still named.
+	_, mine := h.call(t, "alice", http.MethodGet, "/api/schedule", "")
+	riderToken, _ := mine["icsToken"].(string)
+	status, riderICS, _ := h.rawGet(t, "/api/calendar/"+riderToken+".ics")
+	if status != http.StatusOK {
+		t.Fatalf("rider feed: %d %s", status, riderICS)
+	}
+	if !strings.Contains(riderICS, "DESCRIPTION:Planned by "+planner+" in Quiet Feed.") {
+		t.Fatalf("the rider's own feed lost its planner:\n%s", riderICS)
+	}
+}
+
+// Two sessions may share a minute (docs/SPEC.md) and one of them wears the
+// room's "next" label. Ordering by starts_at alone left that on whichever row
+// the read happened to return first: a plan that is MOVED onto another's time
+// is rewritten, so it comes back last from the heap and from the index alike,
+// and the room named the later-planned session as next — differently from the
+// rail, and differently from itself one read earlier (#1767).
+func TestOverlappingPlansLeadInTheOrderTheyWerePlanned(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Two At Once")
+
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	at := time.Now().UTC().Add(48 * time.Hour).Truncate(time.Second)
+	plan := func(name string, when time.Time) string {
+		status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule",
+			fmt.Sprintf(`{"workoutName":%q,"workoutJson":"%s","startsAt":%q}`, name, workout, when.Format(time.RFC3339)))
+		if status != http.StatusCreated {
+			t.Fatalf("schedule %s: %d %v", name, status, body)
+		}
+		id, _ := body["id"].(string)
+		return id
+	}
+	// Planned first, for later; then the one it will end up sharing a minute
+	// with.
+	elder := plan("Elder", at.Add(time.Hour))
+	plan("Younger", at)
+	if status, body := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/schedule/"+elder,
+		fmt.Sprintf(`{"startsAt":%q}`, at.Format(time.RFC3339))); status != http.StatusNoContent {
+		t.Fatalf("move: %d %v", status, body)
+	}
+
+	// Read the unchanged room several times: same answer every time, and the
+	// answer is the plan that was made first.
+	for i := range 5 {
+		_, room := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+		upcoming, _ := room["upcoming"].([]any)
+		if len(upcoming) != 2 {
+			t.Fatalf("read %d: overlapping plans were refused or lost: %v", i, room["upcoming"])
+		}
+		next, _ := upcoming[0].(map[string]any)
+		if next["workoutName"] != "Elder" {
+			t.Fatalf("read %d: %q leads two tied plans; the one planned first does", i, next["workoutName"])
+		}
+	}
+
+	// The rail answers the same question with its own query, and the two may
+	// not disagree about which session a room's next one is.
+	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms", "")
+	rooms, _ := body["rooms"].([]any)
+	var railed bool
+	for _, entry := range rooms {
+		row, _ := entry.(map[string]any)
+		if row["slug"] != slug {
+			continue
+		}
+		railed = true
+		next, _ := row["nextSession"].(map[string]any)
+		if next == nil || next["workoutName"] != "Elder" {
+			t.Fatalf("the rail's next session is %v, the room's is Elder", next)
+		}
+	}
+	// Without this the loop asserts nothing the day the room stops listing.
+	if !railed {
+		t.Fatalf("the rail never listed %s: %v", slug, body["rooms"])
+	}
+}

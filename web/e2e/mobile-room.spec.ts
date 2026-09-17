@@ -118,11 +118,12 @@ test('no place in a room scrolls sideways on a phone', async ({
 });
 
 /**
- * The rows the sweep above calls widest never rendered in it (#1766): a phone
- * is a spectator, so the coach's Move and Cancel session never drew, and a room of
- * one has no member row but the owner's. So: a guest, the cockpit (`?full=1`
- * spends the spectator gate, #412), and the three overlays nothing at 375
- * measured — the confirm, a context menu and the session picker.
+ * The rows the sweep above calls widest never rendered in it (#1766): a room of
+ * one has no member row but the owner's, and the widest Sessions row is the one
+ * with "Start now" on it, which is the cockpit's (`?full=1` spends the
+ * spectator gate, #412 — Move and Cancel draw without it since #1767). So: a
+ * guest, the cockpit, and the three overlays nothing at 375 measured — the
+ * confirm, a context menu and the session picker.
  */
 test('the coach rows, the confirm, a menu and the picker fit a phone', async ({
 	page,
@@ -203,4 +204,85 @@ test('the coach rows, the confirm, a menu and the picker fit a phone', async ({
 	await noOverflow('the Members place with a guest row');
 	await row.click({ button: 'right' });
 	await fits('the member menu', page.getByRole('menu'));
+});
+
+/**
+ * Planning is not riding (#1767). The spectator gate used to reach past the
+ * cockpit and into the calendar: a room's own OWNER, holding a phone, got no
+ * plan button and an empty state reading "Your coach plans them here". What
+ * still needs the riding screen is starting — so this place offers the one and
+ * not the other, and says which device the other is on.
+ */
+test('a phone plans a session and still does not start one', async ({
+	page,
+	rooms,
+}) => {
+	await signInAs(page, 'Phone Planner', '/home');
+	const { slug } = await rooms.open(
+		page,
+		`Phone Planner ${Date.now() % 100000}`,
+	);
+
+	// The empty state first: this is the sentence the owner used to read.
+	await page.goto(`/r/${slug}/sessions`);
+	await expect(
+		page.getByRole('button', { name: 'Plan the first session' }),
+	).toBeVisible();
+	await expect(page.getByText(/your coach plans them here/i)).toHaveCount(0);
+
+	// The picker it opens only plans on this device. Its start half hangs off
+	// a PICKED workout, so pick one — asserting against the unpicked dialog
+	// would pass whatever the gate did.
+	await page.getByRole('button', { name: 'Plan the first session' }).click();
+	const picker = page.getByRole('dialog');
+	await expect(picker).toBeVisible();
+	await picker.getByRole('listitem').getByRole('button').first().click();
+	await expect(
+		picker.getByRole('button', { name: 'Plan it', exact: true }),
+	).toBeVisible();
+	await expect(
+		picker.getByRole('button', { name: /start it now instead/i }),
+	).toHaveCount(0);
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+
+	// A plan that is due, so "Start now" would draw on a riding screen. Not
+	// here: the coach's own row is the phone's, the cockpit's is not.
+	const planned = await page.evaluate(async (slug) => {
+		const res = await fetch(`/api/rooms/${slug}/schedule`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				workoutName: 'Phone Planner Session',
+				workoutJson: JSON.stringify({
+					name: 'Phone Planner Session',
+					steps: [{ type: 'steady', seconds: 600, target: 0.75 }],
+				}),
+				startsAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+			}),
+		});
+		return res.ok;
+	}, slug);
+	expect(planned, 'could not plan a session').toBe(true);
+
+	await page.goto(`/r/${slug}/sessions`);
+	await expect(page.getByRole('button', { name: 'Move…' })).toBeVisible();
+	await expect(
+		page.getByRole('button', { name: 'Cancel session', exact: true }),
+	).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Start now' })).toHaveCount(0);
+	await expect(page.getByText('starting soon')).toBeVisible();
+
+	// And the menu says where it went rather than hiding it (ux.md: a missing
+	// precondition is a disabled control with a one-line hint).
+	await page
+		.getByRole('listitem')
+		.filter({ hasText: 'Phone Planner Session' })
+		.first()
+		.click({ button: 'right' });
+	const menu = page.getByRole('menu');
+	await expect(menu).toBeVisible();
+	await expect(
+		menu.getByText('start it from the screen you ride on'),
+	).toBeVisible();
 });

@@ -35,10 +35,18 @@
 	import { toLocalInput } from '$lib/components/when';
 
 	const room = useRoom();
-	// The roles matrix gives a spectator none of this (docs/SPEC.md) — the
-	// same gate SessionControls wears, or a phone plans and starts sessions
-	// it cannot ride.
-	const manages = $derived(room.canControl && !device.spectator);
+	// Planning is not riding (#1767). WATTROOM.md's device row and ADR-0020's
+	// 2026-09-05 amendment both gate "the affordances that need something a
+	// phone does not have" — a plan on a calendar needs nothing of the sort,
+	// and Members and Settings have never gated moderation either. So the role
+	// alone says who plans, moves and cancels here: a room's owner holding
+	// only a phone used to read "Your coach plans them here".
+	const manages = $derived(room.canControl);
+	// The gate stays on the one control that IS the cockpit. Starting hands
+	// every rider in the room a workout and a countdown, from the screen the
+	// coach is riding on — the same gate SessionControls wears, and the same
+	// reason the picker only plans on a phone (RoomShell).
+	const runs = $derived(manages && !device.spectator);
 	// What already happened here (ADR-0034 amended, #1331): the recaps the
 	// backlog seeds and the tick adds, newest first — the same cards the chat
 	// shows in its scrollback, on the place that plans the next one.
@@ -91,7 +99,7 @@
 			{ label: 'Copy link', icon: Link, onSelect: copyLink },
 		];
 		if (!manages) return entries;
-		const startable = due(entry.startsAt) && room.phase === 'lounge';
+		const startable = runs && due(entry.startsAt) && room.phase === 'lounge';
 		entries.push(
 			'separator',
 			{
@@ -101,9 +109,11 @@
 				disabled: !startable || room.adminBusy,
 				hint: startable
 					? undefined
-					: room.phase !== 'lounge'
-						? 'a session is running'
-						: 'not due yet',
+					: !runs
+						? 'start it from the screen you ride on'
+						: room.phase !== 'lounge'
+							? 'a session is running'
+							: 'not due yet',
 			},
 			{
 				label: 'Move…',
@@ -221,7 +231,7 @@
 							     before it was refused. A running ride is joined from the
 							     Lounge or Training. -->
 							{#if due(entry.startsAt) && room.phase === 'lounge'}
-								{#if manages}
+								{#if runs}
 									<button
 										onclick={() => room.startScheduled(entry)}
 										disabled={room.adminBusy}

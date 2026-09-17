@@ -90,13 +90,16 @@ from memberships m
 join rooms r on r.id = m.room_id
 left join crews c on c.id = r.crew_id
 -- NextRoomSession's row, per room. Same 30-minute grace: a plan stays visible
--- a little past its time, and the read is the cleanup.
+-- a little past its time, and the read is the cleanup. Same tiebreak as
+-- ListRoomUpcoming (#1767) — this `limit 1` and that list's first row are the
+-- same claim about which session is next, and the rail and the room have to
+-- name the same one.
 left join lateral (
     select s.workout_name, s.starts_at
     from scheduled_sessions s
     where s.room_id = r.id and s.starts_at > now() - interval '30 minutes'
       and s.started_at is null
-    order by s.starts_at
+    order by s.starts_at, s.created_at, s.id
     limit 1
 ) upcoming on true
 left join lateral (
@@ -180,12 +183,19 @@ where room_id = $1 and starts_at > now() - interval '30 minutes'
 -- time, then falls off — no cron, the read is the cleanup. A started plan
 -- is done with (#1905). Uncapped like the rider's calendar (#1908): ten
 -- silently shown of thirteen planned had the two disagreeing about one room.
+--
+-- A room may plan two sessions for the same minute (docs/SPEC.md), so the
+-- tiebreak is load-bearing: the first row of this list is what the place
+-- labels "next session in this room", and `starts_at` alone left that label
+-- on whichever of the two rows Postgres felt like returning first — a
+-- different one between two reads of an unchanged room (#1767). Created
+-- first leads; the id settles a same-instant insert so the order is total.
 select s.id, s.workout_name, s.workout_json, s.starts_at, u.display_name as created_by
 from scheduled_sessions s
 join users u on u.id = s.created_by
 where s.room_id = $1 and s.starts_at > now() - interval '30 minutes'
   and s.started_at is null
-order by s.starts_at;
+order by s.starts_at, s.created_at, s.id;
 
 -- name: MarkSessionStarted :execrows
 -- Once: the row count says whether this was the first start (#1905).
@@ -253,13 +263,18 @@ select starts_at from scheduled_sessions where id = $1 and room_id = $2;
 -- limit is far above the room's own 50-session ceiling. The window is the
 -- caller's, like ListUserCalendar's, so both feeds read their numbers from
 -- the same Go constants rather than from an interval literal in here.
-select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
-       u.display_name as created_by
+--
+-- No planner's name, unlike ListUserCalendar (ADR-0021 amended, #1767): a
+-- room's ics_token goes to every non-banned member, rotates only for the
+-- owner, and the feed is meant to be shared with people who are not in the
+-- room — so a member can hand it to anyone. The name is not selected rather
+-- than selected and dropped in Go: what this feed must not say, it does not
+-- read.
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at
 from scheduled_sessions s
-join users u on u.id = s.created_by
 where s.room_id = $1
   and s.starts_at > sqlc.arg(starts_from) and s.starts_at < sqlc.arg(starts_until)
-order by s.starts_at
+order by s.starts_at, s.created_at, s.id
 limit sqlc.arg(row_limit);
 
 -- name: RotateRoomIcsToken :one
@@ -292,7 +307,7 @@ where s.starts_at > sqlc.arg(starts_from) and s.starts_at < sqlc.arg(starts_unti
   -- A crew ban leaves the membership row and lives in visible_rooms alone
   -- (#1904): the rail asks it, and so does the calendar.
   and exists (select 1 from visible_rooms v where v.room_id = s.room_id and v.user_id = $1)
-order by s.starts_at
+order by s.starts_at, s.created_at, s.id
 limit sqlc.arg(row_limit);
 
 -- name: SetRsvp :exec
