@@ -1,0 +1,109 @@
+# Dependency updates, in place of the Renovate that was never installed (#9,
+# #2343). renovate.json sat in the repo root from the first CI commit and
+# opened exactly zero pull requests in two months, because Renovate is a GitHub
+# App and nobody installed it. Dependabot is native: this file on the default
+# branch is the whole activation. Two bots on one repo means two PRs per bump,
+# so renovate.json goes rather than both staying.
+#
+# The design goal is a mailbox worth reading. Monthly, one grouped PR per
+# ecosystem for everything minor and patch, a hard cap on how many can be open
+# — so a quiet month is one PR against `web` and nothing else, and a loud one
+# still cannot bury the board. Majors deliberately arrive alone: each is a
+# judgement call and wants its own red-or-green.
+#
+# Security updates ignore all of this. Dependabot opens those immediately,
+# outside the schedule and outside the open-PR limit, which is the correct
+# asymmetry — see `vulncheck` in ci.yml for the Go half of the same job.
+#
+# No `docker` ecosystem, on purpose: the only image that ships is
+# `gcr.io/distroless/static-debian12:nonroot`, a floating tag already resolved
+# fresh on every build, and the node/golang stages above it are builders that
+# are discarded in the same Dockerfile. Bumping those would be PRs about
+# layers no rider ever runs. The Node version used to build the SPA does
+# matter, but it has to track ci.yml's `web` job rather than the registry, so
+# it is a human's edit in both files at once.
+version: 2
+
+updates:
+  - package-ecosystem: gomod
+    directory: /server
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - infra
+      # The `changelog` context is required on main's ruleset and matches any
+      # path under `server/` — which every go.mod bump is. A bot cannot write
+      # a changelog entry, and it cannot label its own PR after the fact
+      # either, so creation time is the one moment this can be applied. On a
+      # bump a rider should actually hear about, drop the label by hand and
+      # add the changelog.d/ entry: changelog.yml triggers on `unlabeled` and
+      # re-reports, which is the same path #1044 opened for the label itself.
+      - no-changelog
+    commit-message:
+      # `deps` is one of the scopes in .claude/rules/git.md, and this subject
+      # becomes main's squash commit verbatim — a single-commit branch takes
+      # the commit's subject, not the PR title (#2341).
+      prefix: chore(deps)
+    groups:
+      go:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - infra
+      # web/src is the other half of the `changelog` path match. The reasoning
+      # above applies unchanged, and rather more often: livekit-client and
+      # @lucide/svelte are both rider-visible when they move.
+      - no-changelog
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      web:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /desktop
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    labels:
+      - dependencies
+      - infra
+      # Nothing under desktop/ is on the `changelog` job's path list, so this
+      # one is honest rather than a workaround: the shell ships on its own
+      # train (ADR-0037) and its dependency bumps are invisible in the
+      # server's release notes by construction.
+      - no-changelog
+    commit-message:
+      prefix: chore(deps)
+    groups:
+      desktop:
+        patterns: ['*']
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    labels:
+      - dependencies
+      - infra
+    commit-message:
+      prefix: chore(ci)
+    groups:
+      # Majors included here, unlike the three above. An action's major is
+      # usually a runner or Node-version bump with an unchanged `with:` block,
+      # and every workflow in this repo pins by major tag — so splitting them
+      # out buys a separate PR per `@v5` → `@v6` and no extra information.
+      actions:
+        patterns: ['*']
