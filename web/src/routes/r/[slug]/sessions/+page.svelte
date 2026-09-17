@@ -87,6 +87,15 @@
 		out: entry.out ?? 0,
 		unanswered: entry.unanswered ?? 0,
 	});
+	/** The riders who are in, as the row has width for. */
+	const whoIsIn = (entry: Plan) => {
+		const names = going(entry);
+		const shown = names
+			.slice(0, 4)
+			.map((who) => who.displayName)
+			.join(', ');
+		return names.length > 4 ? `${shown} +${names.length - 4} more` : shown;
+	};
 	/** Pressing your own answer again takes it back; pressing the other one
 	 *  changes your mind. Neither asks: there is nothing to undo that a
 	 *  second tap does not (errors.md). */
@@ -307,22 +316,15 @@
 								? 'btn-primary'
 								: 'btn-secondary'}">I'm out</button
 						>
-						<!-- The counts, and then the names of who is in. A
-						     decline is a number here and nowhere a name (#1011):
-						     the number is what tells a planner whether to hold
-						     the session, and a room is small enough that a list
-						     of who said no would read as an accusation. -->
-						<span class="text-muted text-xs">{rsvpSummary(tally(entry))}</span>
-						{#if going(entry).length}
-							<span class="text-muted text-xs">
-								{going(entry)
-									.slice(0, 4)
-									.map((who) => who.displayName)
-									.join(', ')}{going(entry).length > 4
-									? ` +${going(entry).length - 4} more`
-									: ''}
-							</span>
-						{/if}
+						<!-- One line: the counts, with the names hanging off the
+						     "in" and off nothing else. A decline is a number here
+						     and nowhere a name (#1011) — the number is what tells
+						     a planner whether to hold the session, and a room is
+						     small enough that a list of who said no would read as
+						     an accusation. -->
+						<span class="text-muted text-xs"
+							>{rsvpSummary(tally(entry), whoIsIn(entry))}</span
+						>
 					</div>
 					{#if manages && movingId === entry.id}
 						<div class="mt-2 flex flex-wrap items-center gap-2">
