@@ -1,6 +1,7 @@
 package gamify
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -152,7 +153,7 @@ func TestSessionClosedPaysVoiceAndCoach(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create coach: %v", err)
 	}
-	t.Cleanup(func() { _, _ = s.store.Pool.Exec(t.Context(), "delete from users where id = $1", coach.ID) })
+	t.Cleanup(func() { _, _ = s.store.Pool.Exec(context.Background(), "delete from users where id = $1", coach.ID) })
 
 	ev := hub.SessionClosed{
 		Slug: "velvet", StartedBy: store.UUIDString(coach.ID), Seconds: 1800, At: time.Now(),
