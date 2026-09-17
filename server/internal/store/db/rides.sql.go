@@ -688,16 +688,20 @@ func (q *Queries) ListRideMedals(ctx context.Context, rideID pgtype.UUID) ([]Lis
 }
 
 const listRidesMissingNorm = `-- name: ListRidesMissingNorm :many
-select id, samples from rides where norm_watts is null limit $1
+select id, samples, avg_watts from rides where norm_watts is null limit $1
 `
 
 type ListRidesMissingNormRow struct {
-	ID      pgtype.UUID
-	Samples []byte
+	ID       pgtype.UUID
+	Samples  []byte
+	AvgWatts int16
 }
 
 // The ADR-0016 backfill's read: each blob is read exactly once, then goes
 // cold again — the per-ride-read storage rule holds.
+// avg_watts comes too (#2253): a blob that will not decode stores the average
+// the readers' own coalesce would have fallen back to, rather than a 0 that
+// every fallback walks straight past.
 func (q *Queries) ListRidesMissingNorm(ctx context.Context, limit int32) ([]ListRidesMissingNormRow, error) {
 	rows, err := q.db.Query(ctx, listRidesMissingNorm, limit)
 	if err != nil {
@@ -707,7 +711,7 @@ func (q *Queries) ListRidesMissingNorm(ctx context.Context, limit int32) ([]List
 	var items []ListRidesMissingNormRow
 	for rows.Next() {
 		var i ListRidesMissingNormRow
-		if err := rows.Scan(&i.ID, &i.Samples); err != nil {
+		if err := rows.Scan(&i.ID, &i.Samples, &i.AvgWatts); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -907,14 +911,17 @@ func (q *Queries) ListUserProgression(ctx context.Context, userID pgtype.UUID) (
 
 const listUserRideWeeks = `-- name: ListUserRideWeeks :many
 select distinct date_trunc('week', started_at at time zone $1::text)::date as week
-from rides where user_id = $2
+from rides
+where user_id = $2
+  and ($3::uuid is null or rides.id <> $3)
 order by week desc
 limit 60
 `
 
 type ListUserRideWeeksParams struct {
-	Tz     string
-	UserID pgtype.UUID
+	Tz       string
+	UserID   pgtype.UUID
+	ExceptID pgtype.UUID
 }
 
 // Distinct weeks with at least one ride, newest first — the input to the
@@ -927,8 +934,14 @@ type ListUserRideWeeksParams struct {
 // (audit 2026-09-09); stats.ZoneName is the one place that picks it, so the
 // SQL and the Go always agree, and it falls back to UTC for a rider whose
 // browser never told us.
+// except_id is the ride being amended (#2253). StreakXP's contract is "read
+// before this ride lands, so this week only counts if already ridden", which
+// save gets for free by asking before the insert. An amendment cannot: the
+// row is already in the table, so its own week came back and the bonus was
+// one week too high. Excluding the ride rather than the week is the same
+// question save asks — a second ride the same week still counts.
 func (q *Queries) ListUserRideWeeks(ctx context.Context, arg ListUserRideWeeksParams) ([]pgtype.Date, error) {
-	rows, err := q.db.Query(ctx, listUserRideWeeks, arg.Tz, arg.UserID)
+	rows, err := q.db.Query(ctx, listUserRideWeeks, arg.Tz, arg.UserID, arg.ExceptID)
 	if err != nil {
 		return nil, err
 	}

@@ -267,12 +267,22 @@ func DecodeSamples(blob []byte) ([]protocol.RiderMetrics, error) {
 // in the same zone or the streak breaks on the seam between them. An
 // unreadable zone is UTC, not a lost bonus.
 func StreakXP(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Time) int32 {
+	return streakXPExcept(ctx, q, userID, at, pgtype.UUID{})
+}
+
+// streakXPExcept is StreakXP for a ride that is ALREADY in the table (#2253):
+// an amendment reads after the row landed, so without this the ride's own
+// week came back, the streak was one higher than the identical ride would
+// have earned, and the amended row was written with the difference. Excluding
+// the ride rather than its week keeps the question the same one save asks —
+// a second ride in the same week still counts.
+func streakXPExcept(ctx context.Context, q *db.Queries, userID pgtype.UUID, at time.Time, except pgtype.UUID) int32 {
 	tz, err := q.UserTimezone(ctx, userID)
 	if err != nil {
 		tz = nil
 	}
 	weeks, err := q.ListUserRideWeeks(ctx, db.ListUserRideWeeksParams{
-		UserID: userID, Tz: ZoneName(tz),
+		UserID: userID, Tz: ZoneName(tz), ExceptID: except,
 	})
 	if err != nil {
 		return 0
@@ -348,7 +358,8 @@ func (s *Saver) AmendRide(
 			s.log.Info("no ride to amend", "room", slug, "rider", rider.Rider.ID)
 			return nil
 		}
-		row.Xp += StreakXP(ctx, q, row.UserID, startedAt)
+		// The ride is already in the table, so the streak is read without it.
+		row.Xp += streakXPExcept(ctx, q, row.UserID, startedAt, existing)
 		grown, err := q.AmendRide(ctx, db.AmendRideParams{
 			ID: existing, Seconds: row.Seconds, AvgWatts: row.AvgWatts, Kj: row.Kj,
 			Execution: row.Execution, ExecutionScored: row.ExecutionScored,

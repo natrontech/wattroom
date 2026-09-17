@@ -79,6 +79,76 @@ func TestAmendRideGrowsASavedRideOnlyForward(t *testing.T) {
 	_ = pgtype.UUID{}
 }
 
+// StreakXP's contract is written down at its definition: "read before this
+// ride lands so this week only counts if already ridden". save gets that for
+// free by asking before the insert; an amendment cannot, because the row is
+// already in the table — so the ride's own week came back, the streak was
+// one higher, and the amended row was written with 25 XP more than the
+// identical ride would have earned had the socket not dropped (#2253). It
+// hits whenever the amended ride is the rider's first that week, which is
+// the common case for a weekly group session.
+func TestAnAmendedRideDoesNotPayItsOwnStreak(t *testing.T) {
+	st := storetest.Open(t)
+	ctx := context.Background()
+	user, err := st.Queries.CreateUser(ctx, db.CreateUserParams{DisplayName: "streak-test", FtpWatts: 250, WeightKg: 75})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID) })
+	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: "streak-test-room", Name: "Streak", OwnerID: user.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID) })
+
+	saver := NewSaver(st, slog.New(slog.DiscardHandler))
+	rider := protocol.Rider{ID: store.UUIDString(user.ID), Name: "Streak", FtpWatts: 250, WeightKg: 75}
+	samples := func(n int) []protocol.RiderMetrics {
+		out := make([]protocol.RiderMetrics, n)
+		for i := range out {
+			out[i] = protocol.RiderMetrics{Watts: 200, Cadence: 90, Seq: i + 1}
+		}
+		return out
+	}
+	workoutJSON := `{"name":"W","steps":[{"type":"steady","seconds":600,"target":0.8}]}`
+	startedAt := time.Now().Add(-time.Hour).Truncate(time.Second)
+	xpOf := func() int32 {
+		t.Helper()
+		var xp int32
+		if err := st.Pool.QueryRow(ctx, "select xp from rides where user_id = $1", user.ID).Scan(&xp); err != nil {
+			t.Fatal(err)
+		}
+		return xp
+	}
+
+	// The rider's first ride of the week: the save pays no streak bonus,
+	// because the week only counts once it has already been ridden.
+	if err := saver.save(ctx, room.Slug, "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
+		t.Fatal(err)
+	}
+	saved := xpOf()
+
+	// The tail arrives. The ride is longer, so it is worth more — but not by
+	// a streak week it did not have. StreakBonus(1) is 25, which is the
+	// difference this used to grow by on top of the seconds.
+	saver.AmendRide(ctx, room.Slug, "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(140)})
+	amended := xpOf()
+	if amended <= saved {
+		t.Fatalf("the amended ride is worth %d, was %d — it grew, so it should be worth more", amended, saved)
+	}
+	// What the same ride would have been worth had it been saved whole: the
+	// row goes, and the identical record is saved in one piece.
+	if _, err := st.Pool.Exec(ctx, "delete from rides where user_id = $1", user.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := saver.save(ctx, room.Slug, "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(140)}}); err != nil {
+		t.Fatal(err)
+	}
+	if whole := xpOf(); amended != whole {
+		t.Errorf("amended to 140 s is worth %d xp, saved whole at 140 s is worth %d — a dropped socket must not pay more", amended, whole)
+	}
+}
+
 // fakeKeeper is the trophy case: what it was asked to judge, in order.
 type fakeKeeper struct{ judged []RideFacts }
 

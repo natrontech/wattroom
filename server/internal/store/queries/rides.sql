@@ -130,8 +130,16 @@ group by user_id;
 -- (audit 2026-09-09); stats.ZoneName is the one place that picks it, so the
 -- SQL and the Go always agree, and it falls back to UTC for a rider whose
 -- browser never told us.
+-- except_id is the ride being amended (#2253). StreakXP's contract is "read
+-- before this ride lands, so this week only counts if already ridden", which
+-- save gets for free by asking before the insert. An amendment cannot: the
+-- row is already in the table, so its own week came back and the bonus was
+-- one week too high. Excluding the ride rather than the week is the same
+-- question save asks — a second ride the same week still counts.
 select distinct date_trunc('week', started_at at time zone sqlc.arg(tz)::text)::date as week
-from rides where user_id = sqlc.arg(user_id)
+from rides
+where user_id = sqlc.arg(user_id)
+  and (sqlc.narg(except_id)::uuid is null or rides.id <> sqlc.narg(except_id))
 order by week desc
 limit 60;
 
@@ -262,7 +270,10 @@ select min(started_at)::timestamptz as first_ride from rides where user_id = $1;
 -- name: ListRidesMissingNorm :many
 -- The ADR-0016 backfill's read: each blob is read exactly once, then goes
 -- cold again — the per-ride-read storage rule holds.
-select id, samples from rides where norm_watts is null limit $1;
+-- avg_watts comes too (#2253): a blob that will not decode stores the average
+-- the readers' own coalesce would have fallen back to, rather than a 0 that
+-- every fallback walks straight past.
+select id, samples, avg_watts from rides where norm_watts is null limit $1;
 
 -- name: SetRideNormWatts :exec
 update rides set norm_watts = $2 where id = $1;
