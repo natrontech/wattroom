@@ -1,1 +1,0 @@
-- A room's weekly board no longer prints a category for a rider who has never set their FTP or weight. It was computing one from the two starting defaults and publishing the result — usually a D — to everyone else in the room. The row still ranks: the kJ on it were ridden.

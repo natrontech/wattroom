@@ -1,1 +1,0 @@
-- Every ceiling now refuses the same way: 429, with a message naming the number and what to do about it. Opening a room past the cap answered 409, and a track or clip upload that would cross your storage quota answered 400 as if the file were malformed. The playlist limit says which number it is now, too.

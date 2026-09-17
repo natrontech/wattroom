@@ -1,3 +1,0 @@
-- A ride that grew after the session closed no longer pays a streak bonus the same ride would not have earned had your connection held.
-- A ride whose stored samples cannot be read now shows its average power instead of a permanent 0 W NormPower, which also left it contributing nothing to that day's Load.
-- A link preview that fails to draw answers in the app's usual error shape rather than plain text.
