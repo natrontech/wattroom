@@ -125,12 +125,11 @@ function check(
 	unit = ':1',
 	lc?: number,
 ): GateCheck {
-	// An issue reference spelled `#621` in a *string* trips no-raw-hex.test.ts,
-	// which cannot tell a three-digit hex from an issue number. Comments are
-	// stripped before that scan; this text is not.
 	const c: GateCheck = { id, label, value, floor, passes, unit };
 	if (lc !== undefined) {
 		c.lc = lc;
+		// "issue 621", not "#621": no-raw-hex.test.ts cannot tell a three-digit
+		// hex from an issue number, and it scans strings after stripping comments.
 		if (lc < APCA_MIN_LC)
 			c.warning = `Lc ${lc.toFixed(2)} is under APCA's Lc ${APCA_MIN_LC}, the floor below which an element stops being discernible at all. Reported, not enforced — see issue 621.`;
 	}
