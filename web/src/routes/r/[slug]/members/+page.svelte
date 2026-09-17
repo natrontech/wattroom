@@ -307,11 +307,14 @@
 		{/each}
 	</ul>
 
-	{#if isOwner && !room.crewVisible && (room.invited.length || room.crewOutside.length)}
+	{#if !room.crewVisible && (room.invited.length || room.crewOutside.length)}
 		<!-- A private room's named exceptions (ADR-0038, #1224). A grant is a
 		     door, not a membership: they see the room in their sidebar and walk
 		     in themselves — being let in is not joining, so nothing of theirs
-		     is shown here until they do. -->
+		     is shown here until they do. No role check here: the two lists are
+		     sent only to whoever may hand a door out — the room's owner or the
+		     crew's owner or an admin (#2294) — so the server's answer is the
+		     gate, the way the crew code and the sound pack already work. -->
 		<h3 class="eyebrow mt-8">let in from the crew</h3>
 		<p class="text-muted mt-1 text-xs">
 			This room is private. A crew-mate you let in sees it in their sidebar and
