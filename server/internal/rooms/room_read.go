@@ -167,193 +167,203 @@ func (s *Service) board(ctx context.Context, roomID pgtype.UUID) []boardRowJSON 
 	return out
 }
 
+// handleGet is the room's own read: what a rider sees at /r/{slug} before
+// they are inside it. Signed in — ADR-0009 puts everything behind the door,
+// and "public" means every signed-in rider, not the web (ADR-0039). The
+// unsigned caller used to get {slug, name, listed, icon} with a 200 for any
+// room, listed or not (#2241), while PublicIdentity beside it — the share
+// card, the one thing that IS for the web — narrowed itself to listed rooms
+// for exactly that reason. The 401 comes before the slug lookup, so an
+// unlisted room's existence is not the answer either.
 func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Sign in to open this room.")
+	if !ok {
+		return
+	}
 	room, ok := s.roomBySlug(w, r)
 	if !ok {
 		return
 	}
 	response := roomJSON{Slug: room.Slug, Name: room.Name, Listed: room.Listed, Icon: room.Icon}
 
-	if user, signedIn := s.users.User(r); signedIn {
-		// The outsider's two facts (#1236): whether the door opens for them,
-		// and whether they are at least in the room's crew.
-		banned := s.isBanned(r, room, user)
-		if can, err := s.store.Queries.CanEnterRoom(r.Context(), db.CanEnterRoomParams{UserID: user.ID, RoomID: room.ID}); err == nil {
-			response.CanEnter = can && !banned
+	// The outsider's two facts (#1236): whether the door opens for them,
+	// and whether they are at least in the room's crew.
+	banned := s.isBanned(r, room, user)
+	if can, err := s.store.Queries.CanEnterRoom(r.Context(), db.CanEnterRoomParams{UserID: user.ID, RoomID: room.ID}); err == nil {
+		response.CanEnter = can && !banned
+	}
+	// The third fact (audit 2026-09-09): a removed rider's door used to
+	// send them for an invite link that would be refused, or offer a
+	// Join that always failed. A ban survives the code (docs/SPEC.md),
+	// so saying so gives nothing away.
+	response.Banned = banned
+	if room.CrewID.Valid {
+		if role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: room.CrewID, UserID: user.ID}); err == nil {
+			response.InCrew = role != "" && role != "banned"
 		}
-		// The third fact (audit 2026-09-09): a removed rider's door used to
-		// send them for an invite link that would be refused, or offer a
-		// Join that always failed. A ban survives the code (docs/SPEC.md),
-		// so saying so gives nothing away.
-		response.Banned = banned
-		if room.CrewID.Valid {
-			if role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: room.CrewID, UserID: user.ID}); err == nil {
-				response.InCrew = role != "" && role != "banned"
-			}
-		}
-		// A banned viewer gets the outsider view — the join button tells them.
-		if m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
+	}
+	// A banned viewer gets the outsider view — the join button tells them.
+	if m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
+		RoomID: room.ID, UserID: user.ID,
+	}); err == nil && m.Role != "banned" && !s.isBanned(r, room, user) {
+		response.Role = m.Role
+		response.Me = &riderPrefsJSON{Notify: m.Notify, OnBoard: m.OnBoard}
+		// Opening the room is reading it (#389): the badge clears here, so
+		// the rail stops shouting about a room you are standing in.
+		if err := s.store.Queries.MarkRoomRead(r.Context(), db.MarkRoomReadParams{
 			RoomID: room.ID, UserID: user.ID,
-		}); err == nil && m.Role != "banned" && !s.isBanned(r, room, user) {
-			response.Role = m.Role
-			response.Me = &riderPrefsJSON{Notify: m.Notify, OnBoard: m.OnBoard}
-			// Opening the room is reading it (#389): the badge clears here, so
-			// the rail stops shouting about a room you are standing in.
-			if err := s.store.Queries.MarkRoomRead(r.Context(), db.MarkRoomReadParams{
-				RoomID: room.ID, UserID: user.ID,
-			}); err != nil {
-				s.log.Warn("mark room read failed", "err", err, "room", room.Slug)
-			}
-			response.SoundPack = room.SoundPack
-			response.Cheers = CheerSet(room.Cheers)
-			response.IcsToken = room.IcsToken
-			rows, err := s.store.Queries.ListRoomUpcoming(r.Context(), room.ID)
-			if err != nil {
-				// Loudly, like the members below: an empty list here drew "plan
-				// the first session" over a room that had five (audit 2026-09-09).
-				httpx.Fail(w, s.log, "list upcoming failed", err, "The room could not be loaded.", "room", room.Slug)
-				return
-			}
-			// Who is in, for every plan at once (#450) — one query, not
-			// one per session.
-			going := map[string][]goingJSON{}
-			if yes, err := s.store.Queries.ListRoomRsvps(r.Context(), room.ID); err == nil {
-				for _, row := range yes {
-					id := store.UUIDString(row.SessionID)
-					going[id] = append(going[id], goingJSON{
-						ID: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
-					})
-				}
-			} else {
-				s.log.Warn("list rsvps failed", "err", err, "room", room.Slug)
-			}
-			for _, row := range rows {
-				id := store.UUIDString(row.ID)
-				response.Upcoming = append(response.Upcoming, scheduledJSON{
-					ID: id, WorkoutName: row.WorkoutName,
-					WorkoutJSON: string(row.WorkoutJson),
-					StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
-					Going: going[id],
+		}); err != nil {
+			s.log.Warn("mark room read failed", "err", err, "room", room.Slug)
+		}
+		response.SoundPack = room.SoundPack
+		response.Cheers = CheerSet(room.Cheers)
+		response.IcsToken = room.IcsToken
+		rows, err := s.store.Queries.ListRoomUpcoming(r.Context(), room.ID)
+		if err != nil {
+			// Loudly, like the members below: an empty list here drew "plan
+			// the first session" over a room that had five (audit 2026-09-09).
+			httpx.Fail(w, s.log, "list upcoming failed", err, "The room could not be loaded.", "room", room.Slug)
+			return
+		}
+		// Who is in, for every plan at once (#450) — one query, not
+		// one per session.
+		going := map[string][]goingJSON{}
+		if yes, err := s.store.Queries.ListRoomRsvps(r.Context(), room.ID); err == nil {
+			for _, row := range yes {
+				id := store.UUIDString(row.SessionID)
+				going[id] = append(going[id], goingJSON{
+					ID: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
 				})
 			}
-			members, err := s.store.Queries.ListRoomMembers(r.Context(), room.ID)
-			if err != nil {
-				httpx.Fail(w, s.log, "list members failed", err, "The room could not be loaded.", "room", room.Slug)
-				return
-			}
-			// Which banned rows are also crew-banned (#1150), owner-only like
-			// the ban list itself. One query, not one per row.
-			// Every medal this room awarded, per rider (#1371): the roster's
-			// count. A failure here is a row with no count, not a failed page.
-			medalCount := map[pgtype.UUID]int32{}
-			if rows, err := s.store.Queries.CountRoomMedalsByRider(r.Context(), room.ID); err == nil {
-				for _, row := range rows {
-					medalCount[row.UserID] = row.Medals
-				}
-			} else {
-				s.log.Warn("count medals failed", "err", err, "room", room.Slug)
-			}
-			crewBanned := map[pgtype.UUID]bool{}
-			if m.Role == "owner" && room.CrewID.Valid {
-				if ids, err := s.store.Queries.ListCrewBans(r.Context(), room.CrewID); err == nil {
-					for _, id := range ids {
-						crewBanned[id] = true
-					}
-				}
-			}
-			for _, member := range members {
-				// The ban list is a moderation surface, not roster gossip —
-				// only the owner sees who is out.
-				if member.Role == "banned" && m.Role != "owner" {
-					continue
-				}
-				response.Members = append(response.Members, memberJSON{
-					ID: store.UUIDString(member.ID), DisplayName: member.DisplayName,
-					AvatarURL: member.AvatarUrl,
-					Role:      member.Role, TotalXp: member.TotalXp,
-					FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
-					JoinedAt:   member.JoinedAt.Time.Format("2006-01-02"),
-					Medals:     int(medalCount[member.ID]),
-					Badges:     member.Badges,
-					CrewBanned: member.Role == "banned" && crewBanned[member.ID],
-				})
-			}
-			if m.Role == "owner" && room.CrewID.Valid && !room.CrewVisible {
-				response.Invited, response.CrewOutside = s.exceptions(r.Context(), room, user, members)
-			}
-			if weeks, err := s.store.Queries.ListRoomRideWeeks(r.Context(), room.ID); err == nil {
-				times := make([]time.Time, len(weeks))
-				for i, w := range weeks {
-					times[i] = w.Time
-				}
-				// UTC, deliberately: this is the ROOM's streak, and a room
-				// whose riders sit in several zones has no one week to use
-				// (#2063). The rider streak that pays is in stats.StreakXP.
-				response.StreakWeeks = stats.WeekStreak(times, time.Now(), time.UTC)
-			}
-			if kj, err := s.store.Queries.RoomMonthKj(r.Context(), room.ID); err == nil {
-				response.MonthKj = kj
-			}
-			response.Together = s.together(r.Context(), room.ID, user.ID)
-			// The crew, for members only and on the same rule as the code and
-			// the sound pack: a room's members are in its crew, and someone
-			// outside this room may be outside the crew, whose name is then
-			// not theirs to read. Soft-fails to absent like the reads
-			// above — a crew that cannot be looked up is a switcher entry that
-			// does not render, never a room that will not open.
-			if room.CrewID.Valid {
-				if crew, err := s.store.Queries.GetCrew(r.Context(), room.CrewID); err == nil {
-					role, _ := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
-					response.Crew = &roomCrewJSON{
-						Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role,
-						ImageURL: crewImageURL(crew.ID, crew.HasImage), Code: codeOf(crew.Code),
-					}
-					// Whether deleting this room takes the crew with it
-					// (#1935) — asked only of the room's owner, since only
-					// they can delete it and only their confirm says so.
-					// Soft-fails to absent like the reads above: an unanswered
-					// query is a confirm without the extra line, never a room
-					// that will not open.
-					if m.Role == "owner" {
-						if goes, err := s.store.Queries.CrewGoesWithRoom(r.Context(), db.CrewGoesWithRoomParams{
-							CrewID: crew.ID, RoomID: room.ID,
-						}); err == nil {
-							response.Crew.GoesWithRoom = goes
-						} else {
-							s.log.Warn("crew goes-with-room check failed", "err", err, "room", room.Slug)
-						}
-					}
-				}
-			}
-			response.CrewVisible = room.CrewVisible
-			if room.BoardEnabled {
-				response.Board = s.board(r.Context(), room.ID)
-			}
-			medals, err := s.store.Queries.ListRoomMedals(r.Context(), db.ListRoomMedalsParams{
-				RoomID: room.ID, Limit: 24,
+		} else {
+			s.log.Warn("list rsvps failed", "err", err, "room", room.Slug)
+		}
+		for _, row := range rows {
+			id := store.UUIDString(row.ID)
+			response.Upcoming = append(response.Upcoming, scheduledJSON{
+				ID: id, WorkoutName: row.WorkoutName,
+				WorkoutJSON: string(row.WorkoutJson),
+				StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
+				Going: going[id],
 			})
-			if err == nil {
-				for _, medal := range medals {
-					response.Medals = append(response.Medals, medalJSON{
-						Kind: medal.Kind, Rider: medal.DisplayName, RiderID: store.UUIDString(medal.UserID),
-						AwardedAt:   medal.AwardedAt.Time.Format("2006-01-02"),
-						AwardedAtMs: medal.AwardedAt.Time.UnixMilli(),
-					})
+		}
+		members, err := s.store.Queries.ListRoomMembers(r.Context(), room.ID)
+		if err != nil {
+			httpx.Fail(w, s.log, "list members failed", err, "The room could not be loaded.", "room", room.Slug)
+			return
+		}
+		// Which banned rows are also crew-banned (#1150), owner-only like
+		// the ban list itself. One query, not one per row.
+		// Every medal this room awarded, per rider (#1371): the roster's
+		// count. A failure here is a row with no count, not a failed page.
+		medalCount := map[pgtype.UUID]int32{}
+		if rows, err := s.store.Queries.CountRoomMedalsByRider(r.Context(), room.ID); err == nil {
+			for _, row := range rows {
+				medalCount[row.UserID] = row.Medals
+			}
+		} else {
+			s.log.Warn("count medals failed", "err", err, "room", room.Slug)
+		}
+		crewBanned := map[pgtype.UUID]bool{}
+		if m.Role == "owner" && room.CrewID.Valid {
+			if ids, err := s.store.Queries.ListCrewBans(r.Context(), room.CrewID); err == nil {
+				for _, id := range ids {
+					crewBanned[id] = true
 				}
 			}
 		}
-		// Whether this room keeps a weekly board — a member's own setting, and
-		// since #1651 the door's fourth fact too. ADR-0036 requires the board
-		// be turned on "visibly — what the room shares is fixed and legible
-		// *before* anyone is inside it"; set inside the members-only block
-		// above, it meant walking in published the joiner's week with the door
-		// never having said a board existed. Only the fact travels: the rows
-		// stay behind the membership, and it reaches only a rider the door
-		// would let in, because ADR-0039's asymmetry keeps what anybody else
-		// reads about a room as narrow as it already was.
-		if !banned && (response.Role != "" || response.CanEnter || room.Listed) {
-			response.BoardEnabled = room.BoardEnabled
+		for _, member := range members {
+			// The ban list is a moderation surface, not roster gossip —
+			// only the owner sees who is out.
+			if member.Role == "banned" && m.Role != "owner" {
+				continue
+			}
+			response.Members = append(response.Members, memberJSON{
+				ID: store.UUIDString(member.ID), DisplayName: member.DisplayName,
+				AvatarURL: member.AvatarUrl,
+				Role:      member.Role, TotalXp: member.TotalXp,
+				FtpWatts: member.FtpWatts, WeightKg: member.WeightKg,
+				JoinedAt:   member.JoinedAt.Time.Format("2006-01-02"),
+				Medals:     int(medalCount[member.ID]),
+				Badges:     member.Badges,
+				CrewBanned: member.Role == "banned" && crewBanned[member.ID],
+			})
 		}
+		if m.Role == "owner" && room.CrewID.Valid && !room.CrewVisible {
+			response.Invited, response.CrewOutside = s.exceptions(r.Context(), room, user, members)
+		}
+		if weeks, err := s.store.Queries.ListRoomRideWeeks(r.Context(), room.ID); err == nil {
+			times := make([]time.Time, len(weeks))
+			for i, w := range weeks {
+				times[i] = w.Time
+			}
+			// UTC, deliberately: this is the ROOM's streak, and a room
+			// whose riders sit in several zones has no one week to use
+			// (#2063). The rider streak that pays is in stats.StreakXP.
+			response.StreakWeeks = stats.WeekStreak(times, time.Now(), time.UTC)
+		}
+		if kj, err := s.store.Queries.RoomMonthKj(r.Context(), room.ID); err == nil {
+			response.MonthKj = kj
+		}
+		response.Together = s.together(r.Context(), room.ID, user.ID)
+		// The crew, for members only and on the same rule as the code and
+		// the sound pack: a room's members are in its crew, and someone
+		// outside this room may be outside the crew, whose name is then
+		// not theirs to read. Soft-fails to absent like the reads
+		// above — a crew that cannot be looked up is a switcher entry that
+		// does not render, never a room that will not open.
+		if room.CrewID.Valid {
+			if crew, err := s.store.Queries.GetCrew(r.Context(), room.CrewID); err == nil {
+				role, _ := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
+				response.Crew = &roomCrewJSON{
+					Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role,
+					ImageURL: crewImageURL(crew.ID, crew.HasImage), Code: codeOf(crew.Code),
+				}
+				// Whether deleting this room takes the crew with it
+				// (#1935) — asked only of the room's owner, since only
+				// they can delete it and only their confirm says so.
+				// Soft-fails to absent like the reads above: an unanswered
+				// query is a confirm without the extra line, never a room
+				// that will not open.
+				if m.Role == "owner" {
+					if goes, err := s.store.Queries.CrewGoesWithRoom(r.Context(), db.CrewGoesWithRoomParams{
+						CrewID: crew.ID, RoomID: room.ID,
+					}); err == nil {
+						response.Crew.GoesWithRoom = goes
+					} else {
+						s.log.Warn("crew goes-with-room check failed", "err", err, "room", room.Slug)
+					}
+				}
+			}
+		}
+		response.CrewVisible = room.CrewVisible
+		if room.BoardEnabled {
+			response.Board = s.board(r.Context(), room.ID)
+		}
+		medals, err := s.store.Queries.ListRoomMedals(r.Context(), db.ListRoomMedalsParams{
+			RoomID: room.ID, Limit: 24,
+		})
+		if err == nil {
+			for _, medal := range medals {
+				response.Medals = append(response.Medals, medalJSON{
+					Kind: medal.Kind, Rider: medal.DisplayName, RiderID: store.UUIDString(medal.UserID),
+					AwardedAt:   medal.AwardedAt.Time.Format("2006-01-02"),
+					AwardedAtMs: medal.AwardedAt.Time.UnixMilli(),
+				})
+			}
+		}
+	}
+	// Whether this room keeps a weekly board — a member's own setting, and
+	// since #1651 the door's fourth fact too. ADR-0036 requires the board
+	// be turned on "visibly — what the room shares is fixed and legible
+	// *before* anyone is inside it"; set inside the members-only block
+	// above, it meant walking in published the joiner's week with the door
+	// never having said a board existed. Only the fact travels: the rows
+	// stay behind the membership, and it reaches only a rider the door
+	// would let in, because ADR-0039's asymmetry keeps what anybody else
+	// reads about a room as narrow as it already was.
+	if !banned && (response.Role != "" || response.CanEnter || room.Listed) {
+		response.BoardEnabled = room.BoardEnabled
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
 }

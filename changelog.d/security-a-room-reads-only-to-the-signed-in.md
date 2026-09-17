@@ -1,0 +1,1 @@
+- A room's own page no longer answers a caller with no session at all. `GET /api/rooms/{slug}` used to hand anyone its name, slug, icon and listed flag — for any room, listed or not — which the share card had already stopped doing. Link previews are unaffected: a listed room's card still names it.
