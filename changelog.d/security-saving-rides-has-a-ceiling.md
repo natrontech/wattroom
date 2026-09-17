@@ -1,0 +1,1 @@
+- Saving a ride now has a per-account ceiling of ten a minute, the last rider-created row that had none. A real client posts one ride when a ride ends; nothing legitimate posts more, and each of these rows is up to 4 MB that your data export later has to hold in memory.

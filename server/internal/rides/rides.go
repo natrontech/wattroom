@@ -16,6 +16,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/keyset"
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -37,6 +38,15 @@ const (
 	maxBias    = 1.2
 	maxCadence = 250
 	maxHR      = 250
+	// Saves per account per minute (#2251). POST /api/rides was the one
+	// rider-created row with no ceiling at all, while every neighbour has
+	// one — custom workouts 200 per account, MCP 60 calls a minute, OG cards
+	// 30. A ride is at least a minute of samples and a real client posts one
+	// when a ride ends, so ten covers a rider whose upload failed and who
+	// tried again, and nothing covers a loop: the rows are up to 4 MB each
+	// and they are what GET /api/me/export builds in memory.
+	savesPerWindow = 10
+	saveWindow     = time.Minute
 )
 
 type UserSource interface {
@@ -55,10 +65,12 @@ type Service struct {
 	log      *slog.Logger
 	uploader RideUploader
 	keeper   stats.RideKeeper
+	saves    *budget.Budget[pgtype.UUID]
 }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, log: log}
+	return &Service{store: st, users: users, log: log,
+		saves: budget.New[pgtype.UUID](savesPerWindow, saveWindow)}
 }
 
 func (s *Service) SetUploader(u RideUploader) { s.uploader = u }
@@ -261,6 +273,11 @@ func (s *Service) handleShare(w http.ResponseWriter, r *http.Request) {
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
+		return
+	}
+	if !s.saves.Spend(user.ID) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"Too many rides saved in one minute — give it a moment and try again.")
 		return
 	}
 	// A ride body outgrows DecodeStrict's 64 KB — an hour is ~100 KB of JSON.
