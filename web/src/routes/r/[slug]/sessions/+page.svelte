@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { copyText, theLinkItself } from '$lib/copy';
 	// The room's Sessions place (ADR-0020). Was a card wedged under the rider
 	// tiles, visible only in the lounge; it has a URL now, and /sessions —
 	// the cross-room list — folded into Home (#388).
@@ -9,6 +8,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { parseSharedSegments } from '$lib/room/workout';
+	import { shareLink, shareVerb } from '$lib/share';
 	import { segmentsDuration } from '$lib/workout/engine';
 	import { confirm } from '$lib/confirm.svelte';
 	import { confirmCalendarReset, RESET_DONE } from '$lib/calendar-link';
@@ -102,10 +102,13 @@
 	const choose = (entry: Plan, pressed: RsvpAnswer) =>
 		room.rsvp(entry.id, answer(entry) === pressed ? null : pressed);
 
-	/** The place's address, for a chat or a calendar note. */
-	function copyLink() {
-		const link = `${location.origin}/r/${room.slug}/sessions`;
-		void copyText(link, 'Link copied.', theLinkItself(link));
+	/** The place's address, for a chat or a calendar note — out of the app
+	 *  the one way every link leaves it (#973). */
+	function shareThisPlace() {
+		void shareLink(
+			`${location.origin}/r/${room.slug}/sessions`,
+			'Link copied.',
+		);
 	}
 
 	// The row's right-click (ux.md, #1373): the buttons keep the primary
@@ -130,7 +133,7 @@
 				hint: answer(entry) === 'out' ? 'your answer' : undefined,
 				disabled: room.adminBusy,
 			},
-			{ label: 'Copy link', icon: Link, onSelect: copyLink },
+			{ label: `${shareVerb()} link`, icon: Link, onSelect: shareThisPlace },
 		];
 		if (!manages) return entries;
 		const startable = runs && due(entry.startsAt) && room.phase === 'lounge';

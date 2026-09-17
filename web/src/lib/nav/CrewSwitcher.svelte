@@ -14,14 +14,15 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
 	import {
-		copyInviteLink,
 		leaveCrewFlow,
 		MAIN_CREW_LABEL,
 		makeMainCrewFlow,
+		shareInviteLink,
 	} from '$lib/crew-flows';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
 	import type { RailRoom } from '$lib/room/room-data';
 	import type { RoomCrew } from '$lib/room/room-data';
+	import { shareVerb } from '$lib/share';
 	import { crewPulse, quiet } from './crews';
 	import { goto } from '$app/navigation';
 	import { presence } from '$lib/presence.svelte';
@@ -95,9 +96,9 @@
 		if (c.code) {
 			const code = c.code;
 			entries.push({
-				label: 'Copy invite link',
+				label: `${shareVerb()} invite link`,
 				icon: Link,
-				onSelect: () => void copyInviteLink(code),
+				onSelect: () => void shareInviteLink(code),
 			});
 		}
 		// The main crew (#2144): only a choice when there is one to make, and

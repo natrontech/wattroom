@@ -16,8 +16,9 @@
 		contextMenu,
 		openMenu,
 	} from '$lib/context-menu.svelte';
-	import { copyInviteLink } from '$lib/crew-flows';
+	import { shareInviteLink } from '$lib/crew-flows';
 	import { personMenu } from '$lib/person-menu';
+	import { shareVerb } from '$lib/share';
 	import { goto } from '$app/navigation';
 	import Award from '@lucide/svelte/icons/award';
 	import Ellipsis from '@lucide/svelte/icons/ellipsis';
@@ -382,9 +383,9 @@
 				{/if}
 			</p>
 			<button
-				onclick={() => void copyInviteLink(room.code)}
+				onclick={() => void shareInviteLink(room.code)}
 				class="btn btn-secondary btn-xs shrink-0"
-				><Link size={13} /> Copy invite link</button
+				><Link size={13} /> {shareVerb()} invite link</button
 			>
 		</div>
 	{/if}
