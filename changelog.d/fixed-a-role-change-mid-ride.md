@@ -1,1 +1,0 @@
-- Fixed a race between promoting a rider mid-ride and the samples arriving from their screen: the role the saved ride and the podium recorded was read while it was being written.

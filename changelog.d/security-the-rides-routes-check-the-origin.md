@@ -1,1 +1,0 @@
-- Fixed: the ride routes — including deleting a ride — accepted a mutating request from another origin. The one cross-origin check every other route goes through was being skipped for them.

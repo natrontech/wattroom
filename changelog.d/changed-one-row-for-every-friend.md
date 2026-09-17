@@ -1,1 +1,0 @@
-- The Friends page draws one row for everyone on it: a request now carries the asker's face, a link to their page and the same right-click menu an accepted friend has. And the rider page can answer both ways — Dismiss beside Accept, and Withdraw where it only said "asked — waiting on them".

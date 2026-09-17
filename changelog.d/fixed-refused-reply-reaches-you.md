@@ -1,1 +1,0 @@
-- A reply typed into a notification that the server then refuses now tells you where you are: a notification back, carrying the words you typed and a way into the thread. The toast inside the app waits for you instead of expiring after four seconds into a window you were not looking at, and it shows the whole sentence.

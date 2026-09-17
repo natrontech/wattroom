@@ -1,1 +1,0 @@
-- The button that starts a message from the Friends page, the friend-code copy and the chat composer's attach and GIF buttons are real tap targets now: the message one was a 15-pixel icon, and the GIF button stayed bright while a locked box dimmed the one beside it.

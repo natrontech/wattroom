@@ -1,1 +1,0 @@
-- Someone else's trophy case no longer hands back where their XP came from: two of those four numbers were the private progress counts in another unit, so a room-mate could read a badge's progress bar off the breakdown.

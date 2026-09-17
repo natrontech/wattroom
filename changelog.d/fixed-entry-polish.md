@@ -1,1 +1,0 @@
-- The crew invite door reports a refused join the way the join form does and its way out says Home, not "your rooms" — a rider arriving by invitation may have none. A one-step workout reads "1 block". And two phone layouts stop squeezing: the rider page gives the name its own row above the button, and the workouts search gets the width to show what it searches.

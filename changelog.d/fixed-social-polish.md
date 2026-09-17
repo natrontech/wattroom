@@ -1,1 +1,0 @@
-- Friends: a refused action now says so where you did it instead of leaving a red line at the top of the page, a copy that the browser refuses admits it, a long name gives way rather than pushing Remove off a phone, and right-clicking a room's people line opens the rider the room feed means — not whoever shares their display name.
