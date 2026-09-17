@@ -201,7 +201,20 @@ func TestGoldenFile(t *testing.T) {
 		t.Fatalf("read golden (regenerate with UPDATE_GOLDEN=1): %v", err)
 	}
 	if !bytes.Equal(data, want) {
-		t.Errorf("encoded output differs from golden file (%d vs %d bytes)", len(data), len(want))
+		// The offset is the whole answer: a difference inside the 14-byte FIT
+		// header is a muktihari/fit profile bump — regenerate and move on —
+		// while one past it is the encoder changing a rider's ride. Naming
+		// only the byte counts read identically in both cases (#2347).
+		i := 0
+		for i < len(data) && i < len(want) && data[i] == want[i] {
+			i++
+		}
+		switch {
+		case i == len(data) || i == len(want):
+			t.Errorf("encoded output differs from golden file: identical for the first %d bytes, then one ends (%d vs %d bytes)", i, len(data), len(want))
+		default:
+			t.Errorf("encoded output differs from golden file at byte %d: got %#02x, want %#02x (%d vs %d bytes; bytes 0-13 are the FIT header, where a muktihari/fit profile bump lands)", i, data[i], want[i], len(data), len(want))
+		}
 	}
 }
 
