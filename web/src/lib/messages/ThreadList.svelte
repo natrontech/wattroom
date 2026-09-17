@@ -9,7 +9,13 @@
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
+	import { goto } from '$app/navigation';
+	import { roomMenu } from '$lib/nav/room-menu';
+	import { personMenu } from '$lib/person-menu';
+	import { roomConnection } from '$lib/room/connection.svelte';
+	import { leaveRoom } from '$lib/room/leave';
 	import { formatThreadWhen, orderThreads } from '$lib/messages/threads';
 	import {
 		UNREAD_COUNT,
@@ -56,7 +62,7 @@
 		/>
 	</label>
 </div>
-<ul class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
+<ul data-testid="thread-list" class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
 	{#if !presence.loaded || !dmHeads.loaded}
 		<li class="space-y-1 px-2"><Skeleton rows={4} class="h-12" /></li>
 	{:else if dmHeads.error}
@@ -90,7 +96,29 @@
 	{:else}
 		{#each shown as t (t.key)}
 			{@const on = active === t.href}
-			<li>
+			<!-- The same menus the sidebar's rows carry (#2171): below md this
+			     list stands in for the sidebar, and the rows had arrived
+			     without them. Nothing new is offered here — the builders are
+			     the sidebar's own. -->
+			<li
+				title={MENU_HINT}
+				{@attach contextMenu(() =>
+					t.kind === 'room'
+						? roomMenu(t.room, {
+								here: roomConnection.current?.slug === t.room.slug,
+								onLeave: leaveRoom,
+							})
+						: // DMs are friends-only (ADR-0012), so a head here is a friend
+							// or an ex-friend (#1814); the list this row already reads for
+							// its presence dot says which, and "Add friend" is left out
+							// when the server would refuse it (#2169).
+							personMenu(t.head.peerId, goto, {
+								conversation: true,
+								friendship: friends.list?.find((f) => f.id === t.head.peerId)
+									?.status,
+							}),
+				)}
+			>
 				<a
 					href={t.href}
 					aria-current={on ? 'page' : undefined}

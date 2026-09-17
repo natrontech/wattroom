@@ -20,6 +20,8 @@ export type Thread =
 			here: number;
 			voice: number;
 			riding: boolean;
+			/** The row's own menu is the sidebar's (#2171) — it asks the room. */
+			room: RailRoom;
 	  }
 	| {
 			kind: 'dm';
@@ -48,6 +50,7 @@ export function roomThread(room: RailRoom): Thread {
 		here: room.connected ?? 0,
 		voice: room.voice?.length ?? 0,
 		riding: (room.riding?.length ?? 0) > 0,
+		room,
 	};
 }
 

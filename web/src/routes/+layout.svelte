@@ -23,6 +23,9 @@
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	// Leaving while standing in the room: shared with the rail's button, the
+	// mobile chip (#251) and the messages list's row menu (#2171).
+	import { leaveRoom } from '$lib/room/leave';
 	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
@@ -265,15 +268,6 @@
 		page.url.pathname;
 		navDrawer.open = false;
 	});
-
-	// Leaving while standing in the room: the page must leave too, or you
-	// stare at a room you are no longer in with no way back in (rider report).
-	// Shared by the rail's button and the mobile chip (#251).
-	function leaveRoom() {
-		roomConnection.leave();
-		if (page.url.pathname.startsWith('/r/'))
-			void goto('/home', { replaceState: true });
-	}
 
 	$effect(() => {
 		if (gated) {
