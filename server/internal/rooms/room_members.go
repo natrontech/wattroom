@@ -285,7 +285,7 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if owned >= maxOwnedRooms {
-		httpx.WriteError(w, http.StatusConflict, "conflict",
+		httpx.WriteCeiling(w,
 			fmt.Sprintf("They already own %d rooms — the cap. They would have to delete one first.", maxOwnedRooms))
 		return
 	}

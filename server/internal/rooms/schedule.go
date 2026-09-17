@@ -241,9 +241,10 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if planned >= maxPlannedPerRoom {
-		// A ceiling is a 429 (errors.md), and worded as a ceiling: waiting
-		// clears nothing here, so the message names the two moves that do.
-		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+		// A ceiling is a 429 (SPEC:79-81, errors.md), and worded as a
+		// ceiling: waiting clears nothing here, so the message names the two
+		// moves that do.
+		httpx.WriteCeiling(w,
 			fmt.Sprintf("This room has %d sessions planned, the most it can hold. Cancel one, or wait for the next to start, to plan another.", maxPlannedPerRoom))
 		return
 	}

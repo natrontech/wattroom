@@ -23,6 +23,21 @@ func WriteError(w http.ResponseWriter, status int, code, message string) {
 	writeJSONError(w, status, ErrorResponse{Error: code, Message: message})
 }
 
+// WriteCeiling refuses a per-account or per-room ceiling: 429 rate_limited,
+// with a message that names the number and the remedy. docs/SPEC.md:79-81
+// pins both halves — "never a wait, because a ceiling does not clear on its
+// own" — and errors.md agrees ("429 over a per-account ceiling").
+//
+// One helper because the code had three answers for the same thing (#2244):
+// a 429 here, a 409 there, and a 400 validation_error on a well-formed
+// upload, which blamed the request for a state problem. A client cannot
+// branch on "you hit a ceiling" when the status is whichever the handler
+// felt like. `message` is the handler's — it knows the number and the way
+// out; the status and the code are not negotiable.
+func WriteCeiling(w http.ResponseWriter, message string) {
+	WriteError(w, http.StatusTooManyRequests, "rate_limited", message)
+}
+
 // WriteFieldError is the form-validation variant: the field name lets the
 // client render the message inline under the input.
 func WriteFieldError(w http.ResponseWriter, status int, code, message, field string) {

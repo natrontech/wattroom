@@ -198,11 +198,11 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "board quota", err, "The clip could not be saved.", "user", store.UUIDString(me.ID))
 		return
 	}
-	// Not 429: the rider's move is to delete something, not to wait — so this
-	// says what is wrong with the request rather than asking them to retry it.
+	// A ceiling, so a 429 (SPEC:79-81, #2244): the same shape the track
+	// quota next door answers with, and a well-formed upload is not a
+	// validation error.
 	if used+int64(len(data)) > MaxRiderBytes {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
-			"Your clips already fill 100 MB. Delete one to make room for this.")
+		httpx.WriteCeiling(w, "Your clips already fill 100 MB. Delete one to make room for this.")
 		return
 	}
 	row, err := q.SaveBoardClip(r.Context(), db.SaveBoardClipParams{
