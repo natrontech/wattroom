@@ -68,7 +68,7 @@ func (r *roulette) advance(now time.Time, samples map[string]int, roster map[str
 		r.window = &sprint{
 			startsAt: now.Add(sprintKlaxon),
 			endsAt:   now.Add(sprintKlaxon + length),
-			samples:  make(map[string][]int),
+			samples:  make(map[string][]sprintSample),
 		}
 	}
 	if r.window == nil {

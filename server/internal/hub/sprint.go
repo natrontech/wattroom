@@ -26,13 +26,19 @@ const (
 type sprint struct {
 	startsAt time.Time
 	endsAt   time.Time
-	samples  map[string][]int
-	results  []protocol.SprintScore
-	scored   bool
-	// The last wall-clock second each rider landed a sample in: the podium
-	// is best 5 s w/kg (docs/SPEC.md), and five *packets* from a trainer
-	// notifying at 4 Hz were 1.25 s (audit 2026-09-09).
-	seconds map[string]int64
+	// One sample per rider per wall-clock second, the second kept beside the
+	// watts: the podium is best 5 s w/kg (docs/SPEC.md), five *packets* from
+	// a trainer notifying at 4 Hz were 1.25 s (audit 2026-09-09), and five
+	// samples either side of a gap were not five seconds either (#2231).
+	samples map[string][]sprintSample
+	results []protocol.SprintScore
+	scored  bool
+}
+
+// sprintSample is one rider's second inside the window.
+type sprintSample struct {
+	second int64
+	watts  int
 }
 
 // armSprint arms the coach button's sprint: the klaxon lead, then SPEC's
@@ -48,7 +54,7 @@ func (rm *room) armSprintWindow(startsAt, endsAt time.Time) {
 	rm.sprint = &sprint{
 		startsAt: startsAt,
 		endsAt:   endsAt,
-		samples:  make(map[string][]int),
+		samples:  make(map[string][]sprintSample),
 	}
 }
 
@@ -57,17 +63,14 @@ func (sp *sprint) collect(riderID string, watts int, now time.Time) {
 	if sp == nil || now.Before(sp.startsAt) || now.After(sp.endsAt) {
 		return
 	}
-	if sp.seconds == nil {
-		sp.seconds = make(map[string]int64)
-	}
 	second := now.Unix()
-	if last, ok := sp.seconds[riderID]; ok && second <= last {
+	taken := sp.samples[riderID]
+	if n := len(taken); n > 0 && second <= taken[n-1].second {
 		return
 	}
-	sp.seconds[riderID] = second
 	// The window is 15 s at one sample a second per rider; cap anyway.
-	if len(sp.samples[riderID]) < 64 {
-		sp.samples[riderID] = append(sp.samples[riderID], watts)
+	if len(taken) < 64 {
+		sp.samples[riderID] = append(taken, sprintSample{second: second, watts: watts})
 	}
 }
 
@@ -95,30 +98,38 @@ func (sp *sprint) state(now time.Time, seen map[string]protocol.Rider) *protocol
 }
 
 // podium ranks riders on best rolling 5 s w/kg (the SPEC sprint metric).
-func podium(samples map[string][]int, seen map[string]protocol.Rider) []protocol.SprintScore {
+func podium(samples map[string][]sprintSample, seen map[string]protocol.Rider) []protocol.SprintScore {
 	out := []protocol.SprintScore{}
-	for riderID, watts := range samples {
+	for riderID, taken := range samples {
 		rider, ok := seen[riderID]
-		if !ok || rider.WeightKg <= 0 || len(watts) == 0 {
+		if !ok || rider.WeightKg <= 0 || len(taken) == 0 {
 			continue
 		}
 		// Best 5 s means five seconds: a rider with fewer samples in the
 		// window is not ranked on a shorter one — stats.PowerCurve answers
-		// the same question with zero (audit 2026-09-09).
-		window := 5
-		if len(watts) < window {
-			continue
-		}
-		sum := 0
-		for i := 0; i < window; i++ {
-			sum += watts[i]
-		}
-		best := sum
-		for i := window; i < len(watts); i++ {
-			sum += watts[i] - watts[i-window]
-			if sum > best {
-				best = sum
+		// the same question with zero (audit 2026-09-09) — and five samples
+		// either side of a gap are not five seconds either (#2231). A drop,
+		// a trainer dropout or a throttled tab used to let one window span
+		// the gap and stitch two separate efforts into one.
+		const window = 5
+		sum, best, ranked := 0, 0, false
+		for i, s := range taken {
+			sum += s.watts
+			if i >= window {
+				sum -= taken[i-window].watts
 			}
+			if i < window-1 {
+				continue
+			}
+			if taken[i].second-taken[i-(window-1)].second != window-1 {
+				continue
+			}
+			if !ranked || sum > best {
+				best, ranked = sum, true
+			}
+		}
+		if !ranked {
+			continue
 		}
 		avg := best / window
 		out = append(out, protocol.SprintScore{
