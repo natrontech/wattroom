@@ -305,9 +305,6 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				// way this channel refuses already answers — the jukebox's own
 				// refusals right above — and the throttle was the one that did
 				// not, which reads as the button not working.
-				//
-				// jukebox_ so it lands beside the deck the rider tapped rather
-				// than in the room's own refusal slot (live.svelte.ts).
 				h.writeError(c, jukeboxCode("rate_limited"), "That was quick — give the deck a moment.")
 			}
 		}
