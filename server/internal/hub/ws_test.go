@@ -640,3 +640,49 @@ func TestTheWorkoutRidesOnlyTheTickThatChangesIt(t *testing.T) {
 // A workout the WS pick check accepts (audit 2026-09-09): "{}" used to pass
 // because the hub never looked.
 const wsWorkout = `{"steps":[{"type":"steady","seconds":120,"target":0.8}]}`
+
+// A deliberate tap that is refused has to say so (#2232). The jukebox's own
+// refusals — a bad video id, a queue that is full — already answer; the 300 ms
+// throttle above them dropped the command in silence, so skip, pause and queue
+// read as the button not working. The one channel where that matters, because
+// these are taps a rider watches for a result.
+func TestAThrottledJukeboxCommandAnswers(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+
+	rider := dial(t, url, "jan:member")
+	// Two inside the throttle's 300 ms: the first is answered on its own
+	// merits, the second is refused by the throttle and must not be silent.
+	for range 2 {
+		if err := wsjson.Write(t.Context(), rider, protocol.ClientMessage{
+			Jukebox: &protocol.JukeboxCommand{Action: "skip"},
+		}); err != nil {
+			t.Fatalf("send jukebox command: %v", err)
+		}
+	}
+
+	readCtx, readCancel := context.WithTimeout(t.Context(), 3*time.Second)
+	defer readCancel()
+	var throttled *protocol.Error
+	for throttled == nil {
+		var msg protocol.ServerMessage
+		if err := wsjson.Read(readCtx, rider, &msg); err != nil {
+			t.Fatalf("the throttled command was never answered: %v", err)
+		}
+		if msg.Error != nil && msg.Error.Code == "jukebox_rate_limited" {
+			throttled = msg.Error
+		}
+	}
+	if throttled.Message == "" {
+		t.Error("the refusal has no message, so the rider is told nothing")
+	}
+	// jukebox_ so it lands beside the deck they tapped, not in the room's own
+	// refusal slot (live.svelte.ts routes on the prefix).
+	if !strings.HasPrefix(throttled.Code, "jukebox_") {
+		t.Errorf("code %q does not reach the deck's refusal slot", throttled.Code)
+	}
+}
