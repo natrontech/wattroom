@@ -146,7 +146,7 @@ func TestANewRoomIsMadeInsideItsOwnersCrewAndOpenToIt(t *testing.T) {
 	// The creation response already says so — the client need not re-fetch.
 	_, body := h.call(t, "alice", http.MethodPost, "/api/rooms", `{"name":"Crew Third Room"}`)
 	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(t.Context(), "delete from rooms where slug = $1", body["slug"])
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where slug = $1", body["slug"])
 	})
 	crew, _ := body["crew"].(map[string]any)
 	if crew["role"] != "owner" {
@@ -424,7 +424,7 @@ func TestAnAdminOpensARoomInSomeoneElsesCrew(t *testing.T) {
 		t.Fatalf("an admin could not open a room in the crew: %d %v", status, created)
 	}
 	slug, _ := created["slug"].(string)
-	t.Cleanup(func() { _, _ = h.store.Pool.Exec(t.Context(), "delete from rooms where slug = $1", slug) })
+	t.Cleanup(func() { _, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where slug = $1", slug) })
 	if c, _ := created["crew"].(map[string]any); c["id"] != store.UUIDString(crew.ID) || c["role"] != "admin" {
 		t.Errorf("the room landed in %v, want alice's crew with bob as admin", created["crew"])
 	}
