@@ -9,11 +9,14 @@
 package board
 
 import (
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/audio"
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -284,6 +287,12 @@ func (s *Service) handleMeta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clip, err := s.store.Queries.GetBoardClipMeta(r.Context(), id)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		// The database did not answer (#1984): not a deletion. Telling the
+		// owner their clip is gone is the one wrong thing to say here.
+		httpx.Fail(w, s.log, "board clip meta lookup", err, "The clip could not be loaded. Try again.")
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
 		return
@@ -324,6 +333,10 @@ func (s *Service) handleAudio(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clip, err := s.store.Queries.GetBoardClip(r.Context(), id)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		httpx.Fail(w, s.log, "board clip lookup", err, "The clip could not be loaded. Try again.")
+		return
+	}
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such clip.")
 		return
