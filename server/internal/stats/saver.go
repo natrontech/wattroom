@@ -327,7 +327,12 @@ func (s *Saver) AmendRide(
 	if len(rider.Samples) < hub.MinRideSamples {
 		return
 	}
+	// Set inside the closure when the ride actually grew, handed to the
+	// trophy case after the write settles — the same order save uses, and
+	// the reason it is not called in there: a retry would judge twice.
+	var judged *savedRide
 	err := retrySave(ctx, s.log, slug, func(ctx context.Context) error {
+		judged = nil
 		room, err := s.store.Queries.GetRoomBySlug(ctx, strings.ToLower(slug))
 		if err != nil {
 			return fmt.Errorf("stats: room %q: %w", slug, err)
@@ -354,11 +359,28 @@ func (s *Saver) AmendRide(
 		}
 		if grown > 0 {
 			s.log.Info("ride amended", "room", slug, "ride", store.UUIDString(existing), "samples", len(rider.Samples))
+			watts := make([]int, len(rider.Samples))
+			for i, sample := range rider.Samples {
+				watts[i] = sample.Watts
+			}
+			judged = &savedRide{
+				userID: row.UserID, facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
+			}
 		}
 		return nil
 	})
 	if err != nil {
 		s.log.Error("ride amendment failed, tail lost", "err", err, "room", slug)
+		return
+	}
+	// The tail is part of the ride, so the ride is judged on all of it
+	// (#2252). facts.go: "Rides store no zone seconds, so this is the only
+	// moment they exist" — a ride that grew from 40 to 50 minutes above FTP
+	// was judged on the 40 and never looked at again. Judging is idempotent
+	// (gamify: a second call re-earns nothing), so the trophies the short
+	// version already won stay won.
+	if judged != nil && s.keeper != nil {
+		s.keeper.RideSaved(judged.userID, judged.facts)
 	}
 }
 

@@ -78,3 +78,72 @@ func TestAmendRideGrowsASavedRideOnlyForward(t *testing.T) {
 	}
 	_ = pgtype.UUID{}
 }
+
+// fakeKeeper is the trophy case: what it was asked to judge, in order.
+type fakeKeeper struct{ judged []RideFacts }
+
+func (k *fakeKeeper) RideSaved(_ pgtype.UUID, facts RideFacts) {
+	k.judged = append(k.judged, facts)
+}
+
+// The tail is part of the ride, so the ride is judged on all of it (#2252).
+// stats/facts.go: "Rides store no zone seconds, so this is the only moment
+// they exist" — AmendRide rebuilt the row and told nobody, so a ride that
+// grew from under the sufferfest line to over it silently missed its trophy
+// and there was no second chance to notice, ever.
+func TestAnAmendedRideIsJudgedOnTheWholeRide(t *testing.T) {
+	st := storetest.Open(t)
+	ctx := context.Background()
+	user, err := st.Queries.CreateUser(ctx, db.CreateUserParams{DisplayName: "rejudge-test", FtpWatts: 200, WeightKg: 75})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID) })
+	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: "rejudge-test-room", Name: "Rejudge", OwnerID: user.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID) })
+
+	keeper := &fakeKeeper{}
+	saver := NewSaver(st, slog.New(slog.DiscardHandler))
+	saver.SetRideKeeper(keeper)
+	rider := protocol.Rider{ID: store.UUIDString(user.ID), Name: "Rejudge", FtpWatts: 200, WeightKg: 75}
+	// Every sample is above FTP, so the seconds the trophies are judged on
+	// are the seconds of the ride.
+	samples := func(n int) []protocol.RiderMetrics {
+		out := make([]protocol.RiderMetrics, n)
+		for i := range out {
+			out[i] = protocol.RiderMetrics{Watts: 240, Cadence: 90, Seq: i + 1}
+		}
+		return out
+	}
+	workoutJSON := `{"name":"W","steps":[{"type":"steady","seconds":600,"target":0.8}]}`
+	startedAt := time.Now().Add(-time.Hour).Truncate(time.Second)
+	if err := saver.save(ctx, room.Slug, "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(keeper.judged) != 1 || keeper.judged[0].AboveFtpSec != 70 {
+		t.Fatalf("the close judged %+v, want one ride of 70 s above FTP", keeper.judged)
+	}
+
+	saver.AmendRide(ctx, room.Slug, "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(130)})
+	if len(keeper.judged) != 2 {
+		t.Fatalf("the grown ride was judged %d times, want a second look", len(keeper.judged))
+	}
+	if got := keeper.judged[1]; got.AboveFtpSec != 130 || got.Seconds != 130 {
+		t.Errorf("re-judged on %+v, want the whole 130 s", got)
+	}
+
+	// A replay that grows nothing is not a second judging: the trophy case
+	// is idempotent, but asking it about a ride that did not change is noise.
+	saver.AmendRide(ctx, room.Slug, "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(100)})
+	if len(keeper.judged) != 2 {
+		t.Errorf("a shorter replay asked the trophy case again: %+v", keeper.judged)
+	}
+	// And so is an amendment with no ride to grow.
+	saver.AmendRide(ctx, room.Slug, "W", workoutJSON, startedAt.Add(time.Minute), hub.RiderRecord{Rider: rider, Samples: samples(200)})
+	if len(keeper.judged) != 2 {
+		t.Errorf("an amendment with no ride judged something: %+v", keeper.judged)
+	}
+}
