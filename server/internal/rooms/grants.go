@@ -22,11 +22,12 @@ func (s *Service) registerGrants(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/rooms/{slug}/grants/{userID}", s.handleRevoke)
 }
 
-// handleGrant lets a crew-mate into a private room. Owner only, per the
-// matrix. The target has to be in the crew — a grant is the exception to
-// "open to the crew", not a second invite path around the crew's — and
-// banned at neither level: a ban beats a grant in visible_rooms, so granting
-// a banned person would do nothing and look like it did.
+// handleGrant lets a crew-mate into a private room. Owner only, per the row
+// docs/SPEC.md's roles matrix gained in #2248 — the claim was made here first,
+// and the matrix had no such row. The target has to be in the crew — a grant
+// is the exception to "open to the crew", not a second invite path around the
+// crew's — and banned at neither level: a ban beats a grant in visible_rooms,
+// so granting a banned person would do nothing and look like it did.
 func (s *Service) handleGrant(w http.ResponseWriter, r *http.Request) {
 	room, _, ok := s.requireRole(w, r, "owner")
 	if !ok {

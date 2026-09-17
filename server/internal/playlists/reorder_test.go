@@ -73,3 +73,42 @@ func TestPlaylistReorder(t *testing.T) {
 		t.Fatalf("anonymous: %d", code)
 	}
 }
+
+// A member reorders a room's playlist, and a non-member does not (#2248).
+// #695 moved the verbs that take something off the room's shelf to the coach
+// and the owner and left the ones that put something on it with the member;
+// reordering does neither, and docs/SPEC.md now says which side it is on.
+func TestAMemberReordersARoomPlaylist(t *testing.T) {
+	h := setup(t)
+	slug := h.room(t, "alice")
+	h.join(t, slug, "bob", "member")
+	_, created := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Shared set"}`)
+	id, _ := created["id"].(string)
+	var ids []string
+	for _, video := range []string{"dQw4w9WgXcQ", "9bZkp7q19f0"} {
+		_, row := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+id+"/tracks",
+			`{"action":"add","videoId":"`+video+`","title":"`+video+`"}`)
+		rowID, _ := row["id"].(string)
+		ids = append(ids, rowID)
+	}
+
+	if code, body := h.call(t, "bob", http.MethodPut,
+		"/api/rooms/"+slug+"/playlists/"+id+"/tracks/"+ids[1]+"/position", `{"index":0}`); code != http.StatusNoContent {
+		t.Fatalf("member reorder: %d %v, want 204", code, body)
+	}
+	_, read := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug+"/playlists/"+id, "")
+	tracks, _ := read["tracks"].([]any)
+	if len(tracks) != 2 {
+		t.Fatalf("read back: %v", read)
+	}
+	if first, _ := tracks[0].(map[string]any); first["id"] != ids[1] {
+		t.Fatalf("the move did not take: %v", tracks)
+	}
+
+	// Membership is still the gate: a room playlist is not the caller's own,
+	// so a rider who never joined is a stranger to it.
+	if code, _ := h.call(t, "carol", http.MethodPut,
+		"/api/rooms/"+slug+"/playlists/"+id+"/tracks/"+ids[0]+"/position", `{"index":0}`); code != http.StatusForbidden {
+		t.Fatalf("non-member reorder: %d, want 403", code)
+	}
+}
