@@ -166,6 +166,16 @@ func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That report is out of shape.")
 		return
 	}
+	// The buffer is rider-controlled too (#2238), and the checks above covered
+	// only the six scalars: its strings reach a public issue and its length
+	// decides whether the issue can be filed at all (GitHub refuses a body
+	// past 65 536 characters, and the only trace was a warning). Two minutes
+	// at 1 Hz is what the recorder holds, so these are ceilings, not limits a
+	// real client meets.
+	if !boundedBuffer(report.Buffer) {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That report is out of shape.")
+		return
+	}
 
 	stored := map[string]any{
 		"at":        now.UTC(),
@@ -248,11 +258,52 @@ func issueBody(sha string, report Report) string {
 	// Every rider-supplied field is fenced (audit 2026-09-09): this lands in
 	// a public issue, and prose there is Markdown — a note could carry an
 	// image or a link. Backticks inside a value would end the fence early.
+	//
+	// The buffer included (#2238). Its `kind`, `text` and `state` are
+	// rider-controlled and JSON does not escape backticks — though a fence
+	// inside one cannot close this block today, because json.Marshal escapes
+	// newlines so the block is a single line and a Markdown fence closes only
+	// at the start of one. The block's integrity should not rest on how we
+	// happen to serialise it, and the replacement costs nothing.
 	return fmt.Sprintf(
 		"Route: %s\nServer: `%s` · Client: %s\nUA: %s\nTrainer: %s\n\n```text\n%s\n```\n\n<details><summary>last two minutes</summary>\n\n```json\n%s\n```\n</details>\n",
 		fenced(publicRoute(report.Route)), sha, fenced(report.ClientBuild), fenced(report.UserAgent),
-		fenced(report.Trainer), strings.ReplaceAll(report.Note, "```", "'''"), string(buffer),
+		fenced(report.Trainer), strings.ReplaceAll(report.Note, "```", "'''"),
+		strings.ReplaceAll(string(buffer), "```", "'''"),
 	)
+}
+
+// What the flight recorder can honestly have seen in its two minutes (#2238),
+// with room to spare: the ring is 1 Hz and its events are rider actions.
+const (
+	maxBufferTicks  = 600
+	maxBufferEvents = 300
+	maxBufferErrors = 200
+	maxBufferText   = 500
+)
+
+// boundedBuffer reports whether the recorder's ring is within those ceilings.
+func boundedBuffer(b Buffer) bool {
+	if len(b.Ticks) > maxBufferTicks || len(b.Events) > maxBufferEvents ||
+		len(b.Errors) > maxBufferErrors {
+		return false
+	}
+	for _, t := range b.Ticks {
+		if len(t.State) > maxBufferText {
+			return false
+		}
+	}
+	for _, e := range b.Events {
+		if len(e.Kind) > maxBufferText || len(e.Text) > maxBufferText {
+			return false
+		}
+	}
+	for _, e := range b.Errors {
+		if len(e.Text) > maxBufferText {
+			return false
+		}
+	}
+	return true
 }
 
 // floodWindow is the one-report-per-rider spacing the limiter keeps.
