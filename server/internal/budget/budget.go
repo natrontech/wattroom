@@ -27,6 +27,15 @@ type span struct {
 	until time.Time
 }
 
+// maxKeys bounds the map the way challengeMax and handoffMax bound theirs in
+// the auth package (#827, #1415, #2254). Several of these ceilings are keyed
+// by something a stranger chooses — the recovery door is keyed by the
+// address they type into the form — so without a ceiling a loop grows the
+// map until the process runs out of memory, and grows the sweep in Spend
+// with it, which every other spend waits on behind the same mutex. Far above
+// anything real: 4096 distinct keys inside one window.
+const maxKeys = 4096
+
 // New is `per` spends per key per `window`.
 func New[K comparable](per int, window time.Duration) *Budget[K] {
 	return &Budget[K]{m: map[K]span{}, per: per, window: window}
@@ -47,6 +56,15 @@ func (b *Budget[K]) Spend(key K) bool {
 	}
 	w, ok := b.m[key]
 	if !ok {
+		// Full after the sweep. A key already in the map still spends, so a
+		// flood of new keys cannot lift the ceiling off the ones being
+		// counted; an unseen key is refused rather than admitted. The
+		// caller's refusal is "wait, then try again" (errors.md), which is
+		// the truth — 4096 distinct keys inside one window is the attack,
+		// not a busy evening.
+		if len(b.m) >= maxKeys {
+			return false
+		}
 		w = span{until: now.Add(b.window)}
 	}
 	if w.count >= b.per {
