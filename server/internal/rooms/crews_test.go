@@ -42,6 +42,18 @@ func (h *harness) makePrivate(t *testing.T, slug string) {
 	}
 }
 
+// makeCrewAdmin hands someone the crew role every "can a crew admin …" test
+// starts from. Straight to the row, not through /api/crews/{id}/role: the
+// promotion is the fixture here, never the thing under test.
+func (h *harness) makeCrewAdmin(t *testing.T, crew db.GetCrewRow, who string) {
+	t.Helper()
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew.ID, UserID: h.users.ByToken[who].ID, Role: "admin",
+	}); err != nil {
+		t.Fatalf("make %s a crew admin: %v", who, err)
+	}
+}
+
 // enter is the front door (#1236): the crew by its code, then the room by
 // its address. Asserted to succeed at both.
 func (h *harness) enter(t *testing.T, who, code, slug string) {

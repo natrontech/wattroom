@@ -127,7 +127,8 @@ export interface Room {
 	code?: string;
 	/** Open to its crew (ADR-0038); members only, absent = shut. */
 	crewVisible?: boolean;
-	/** A private room's door list (#1224), owner only. */
+	/** A private room's door list (#1224), for whoever may hand a door out
+	 * — the room's owner, or the crew's owner or an admin (#2294). */
 	invited?: Member[];
 	crewOutside?: Member[];
 	medals?: Medal[];

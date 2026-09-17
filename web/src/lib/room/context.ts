@@ -128,8 +128,10 @@ export interface RoomContext {
 	/** Open to its crew (ADR-0038). */
 	readonly crewVisible: boolean;
 	/**
-	 * A private room's named exceptions (#1224), owner only: crew-mates let
-	 * in who have not walked in yet, and the crew-mates outside.
+	 * A private room's named exceptions (#1224): crew-mates let in who have
+	 * not walked in yet, and the crew-mates outside. Sent only to whoever may
+	 * hand a door out — the room's owner, or the crew's owner or an admin
+	 * (#2294) — so both lists are empty for everyone else.
 	 */
 	readonly invited: RoomContext['members'];
 	readonly crewOutside: RoomContext['members'];
