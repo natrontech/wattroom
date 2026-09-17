@@ -63,3 +63,34 @@ groups:
         labels: { severity: page }
         annotations:
           summary: 'Prometheus cannot scrape wattroom — the binary or the VM is gone'
+
+  - name: wattroom-credentials
+    rules:
+      # ADR-0035's sealing, reported by the deployment instead of run by hand
+      # in psql (#1038). Above zero means one of two things, and the remedy
+      # differs: WATTROOM_TOKEN_KEY is unset, so stored Strava refresh tokens
+      # are in the clear in every pre-rollout pg_dump — which is the single
+      # thing that ADR buys; or the key is set and the boot backfill has not
+      # drained the column yet, in which case a restart retries it.
+      #
+      # An hour of it, because a redeploy legitimately shows a non-zero count
+      # for as long as the backfill takes, and nobody should be paged by a
+      # deploy doing its job. Warn, not page: nothing is broken for a rider.
+      - alert: WattroomPlaintextRefreshTokens
+        expr: wattroom_identities_plaintext_refresh_tokens > 0
+        for: 1h
+        labels: { severity: warn }
+        annotations:
+          summary: 'Stored refresh tokens are still in the clear — WATTROOM_TOKEN_KEY unset, or the sealing backfill has not drained identities.refresh_token (ADR-0035)'
+
+      # The gauge's own freshness. A count that stopped keeps publishing its
+      # last value, and that value is usually 0 — the reading #1038 acts on to
+      # drop the column. A stale all-clear is the failure mode this whole
+      # signal exists to remove, so it gets a rule of its own rather than a
+      # footnote. Refreshed every 15 minutes; an hour is four missed passes.
+      - alert: WattroomTokenSealCountStale
+        expr: time() - wattroom_job_last_success_timestamp_seconds{job="token seal completeness"} > 3600
+        for: 15m
+        labels: { severity: warn }
+        annotations:
+          summary: 'wattroom_identities_plaintext_refresh_tokens has not been recounted in an hour — do not read it as an all-clear'

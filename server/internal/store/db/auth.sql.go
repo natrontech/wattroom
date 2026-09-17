@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countPlaintextRefreshTokens = `-- name: CountPlaintextRefreshTokens :one
+select count(*) from identities
+where refresh_token is not null and refresh_token <> ''
+`
+
+// How many credentials the sealing of ADR-0035 has not reached. This is
+// literally the count #1038 asked an operator to run in psql against the live
+// database, and the reason that issue sat parked for eleven releases: the fact
+// was cheap, reaching the database was not.
+//
+// Deliberately NOT the predicate ListPlaintextRefreshTokens uses. That one adds
+// `refresh_token_enc is null` because it selects work to do; a row holding both
+// a sealed value and a live plaintext one is nothing left to seal, and still a
+// credential in the clear in every dump. The column cannot be dropped while one
+// exists, so the completeness signal must see it.
+func (q *Queries) CountPlaintextRefreshTokens(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, countPlaintextRefreshTokens)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createIdentity = `-- name: CreateIdentity :exec
 insert into identities (provider, provider_user_id, user_id, access_token, refresh_token, refresh_token_enc, token_expires_at)
 values ($1, $2, $3, $4, $5, $6, $7)

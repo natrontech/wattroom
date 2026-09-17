@@ -96,6 +96,36 @@ it off, which is what a deployment with no scraper at all should do. Unset and
 empty differ on purpose — there is no way to ask for the default by writing it
 blank.
 
+### Are the stored credentials actually sealed?
+
+`wattroom_identities_plaintext_refresh_tokens` on the same endpoint. It is the
+number of `identities` rows still holding a Strava refresh token in the clear —
+the completeness signal for ADR-0035, and the thing #1038 used to ask an
+operator to run in psql against the live database:
+
+    docker run --rm --network monitoring curlimages/curl -s http://wattroom:9091/metrics \
+      | grep wattroom_identities_plaintext_refresh_tokens
+
+Read it as:
+
+- **`0`** — sealing is complete. Every stored credential is encrypted, and the
+  `pg_dump` the deploy takes before each rollout no longer carries a usable
+  Strava token. This is the reading `identities.refresh_token` may be dropped
+  on, once it has held across a full release.
+- **above 0** — either `WATTROOM_TOKEN_KEY` is unset, in which case credentials
+  are being stored in the clear and every existing dump contains them, or the
+  key is set and the boot backfill has not drained the column yet. A restart
+  retries the backfill; `WattroomPlaintextRefreshTokens` in `alerts.yml` fires
+  after an hour of it.
+- **`NaN`** — not counted yet, which a fresh boot shows for a moment. It is
+  deliberately not `0`: an uncounted gauge must not read as an all-clear.
+
+The count refreshes every 15 minutes and the gauge keeps its last value when a
+count fails, so a `0` is only worth acting on beside a fresh
+`wattroom_job_last_success_timestamp_seconds{job="token seal completeness"}` —
+`WattroomTokenSealCountStale` is the rule that watches that. Without Prometheus
+at all, the server logs the number whenever it changes, `sealed` or not.
+
 The production synthetic ride — the check that proves a *ride* works rather
 than that a homepage returns 200 — is not wired yet (#314). Until it is,
 `WATTROOM_SYNTHETIC_TOKEN` can stay unset: `POST /api/auth/synthetic` 404s and
