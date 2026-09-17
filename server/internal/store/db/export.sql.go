@@ -1061,7 +1061,7 @@ func (q *Queries) ExportUserRooms(ctx context.Context, userID pgtype.UUID) ([]Ex
 }
 
 const exportUserRsvps = `-- name: ExportUserRsvps :many
-select s.workout_name, s.starts_at, r.name as room_name, v.created_at
+select s.workout_name, s.starts_at, r.name as room_name, v.created_at, v.going
 from session_rsvps v
 join scheduled_sessions s on s.id = v.session_id
 join rooms r on r.id = s.room_id
@@ -1074,8 +1074,12 @@ type ExportUserRsvpsRow struct {
 	StartsAt    pgtype.Timestamptz
 	RoomName    string
 	CreatedAt   pgtype.Timestamptz
+	Going       bool
 }
 
+// The answer comes with it (#1011): a decline lives in this table too, and
+// exporting one as "said yes" would be the export telling the rider
+// something they never said.
 func (q *Queries) ExportUserRsvps(ctx context.Context, userID pgtype.UUID) ([]ExportUserRsvpsRow, error) {
 	rows, err := q.db.Query(ctx, exportUserRsvps, userID)
 	if err != nil {
@@ -1090,6 +1094,7 @@ func (q *Queries) ExportUserRsvps(ctx context.Context, userID pgtype.UUID) ([]Ex
 			&i.StartsAt,
 			&i.RoomName,
 			&i.CreatedAt,
+			&i.Going,
 		); err != nil {
 			return nil, err
 		}
