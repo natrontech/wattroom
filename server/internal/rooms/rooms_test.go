@@ -94,6 +94,11 @@ func (h *harness) userID(t *testing.T, name string) string {
 	return store.UUIDString(h.users.ByToken[name].ID)
 }
 
+func (h *harness) displayName(t *testing.T, name string) string {
+	t.Helper()
+	return h.users.ByToken[name].DisplayName
+}
+
 // plan is the room's one upcoming session, as one viewer reads it — the
 // answer counts and `yourAnswer` are per-reader (#1011), so who asks matters.
 func (h *harness) plan(t *testing.T, viewer, slug string) map[string]any {

@@ -681,7 +681,8 @@ func (q *Queries) ListRoomMembers(ctx context.Context, roomID pgtype.UUID) ([]Li
 }
 
 const listRoomRsvps = `-- name: ListRoomRsvps :many
-select r.session_id, r.user_id, r.going, u.display_name
+select r.session_id, r.user_id, r.going,
+       case when r.going then u.display_name else '' end as display_name
 from session_rsvps r
 join users u on u.id = r.user_id
 join scheduled_sessions s on s.id = r.session_id
@@ -704,8 +705,13 @@ type ListRoomRsvpsRow struct {
 // The declines come along as a column rather than being filtered out here
 // (#1011): the room shows who is in by name and how many are out as a
 // number, and one query that returns both is what keeps the two numbers
-// reading the same room. Naming who said no is the decision this
-// deliberately does not make — see the handler that counts them.
+// reading the same room.
+//
+// A decliner's name is NOT SELECTED, rather than selected and dropped in Go
+// — ListRoomCalendar's rule, for the same reason: what a query must not say,
+// it does not say, and no future handler can render what never arrived. The
+// id still comes, because the caller has to be told their own answer; the
+// name is the thing a screen would print.
 // Someone removed or banned since they said yes is not coming (#1675): the
 // row stays, the line does not name them.
 func (q *Queries) ListRoomRsvps(ctx context.Context, roomID pgtype.UUID) ([]ListRoomRsvpsRow, error) {

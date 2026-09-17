@@ -264,8 +264,10 @@ func TestSessionDecline(t *testing.T) {
 	if err != nil {
 		t.Fatalf("marshal the plan: %v", err)
 	}
-	if bytes.Contains(seen, []byte(h.userID(t, "bob"))) {
-		t.Errorf("the room named who declined: %s", seen)
+	for _, trace := range []string{h.userID(t, "bob"), h.displayName(t, "bob")} {
+		if bytes.Contains(seen, []byte(trace)) {
+			t.Errorf("the room named who declined (%s): %s", trace, seen)
+		}
 	}
 	// Bob's own copy tells him where he stands — nobody else's does.
 	if mine := h.plan(t, "bob", slug)["yourAnswer"]; mine != "out" {
