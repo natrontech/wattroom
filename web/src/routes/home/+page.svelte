@@ -19,7 +19,7 @@
 	import WhatsNext from '$lib/home/WhatsNext.svelte';
 	import type { ServerRide } from '$lib/ride/list';
 	import Modal from '$lib/components/Modal.svelte';
-	import { administersNone, crewsOf } from '$lib/nav/crews';
+	import { crewsOf, leadsWithJoining } from '$lib/nav/crews';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -126,12 +126,16 @@
 	);
 
 	const recent = $derived((rides ?? []).slice(0, 3));
-	// Nowhere to open a room: the one predicate the button's word, this
-	// dialog's name and the sheet's order all read (#2176). Gated on
-	// `presence.loaded` so none of the three says "join" while the list is
+	// Sent to a door and not through it: the one predicate the button's word,
+	// this dialog's name and the sheet's order all read (#2176, #2184). Gated
+	// on `presence.loaded` so none of the three says "join" while the list is
 	// still out.
 	const joinFirst = $derived(
-		presence.loaded && administersNone(crewsOf(rooms ?? [], presence.crews)),
+		presence.loaded &&
+			leadsWithJoining(
+				crewsOf(rooms ?? [], presence.crews),
+				account.me?.pendingInvite,
+			),
 	);
 
 	// The rider's own crew, for the first-run card (#1333); null until the
@@ -282,8 +286,9 @@
 				><CalendarClock size={15} /> Plan a session</a
 			>
 		{:else}
-			<!-- In no crew, the big button is joining one (#2144); opening a
-			     room — which founds a crew — is one step down the same sheet. -->
+			<!-- Carrying an invite, the big button is joining the crew that sent
+			     it (#2144, #2184); everyone else gets the room the signed-out
+			     landing promised, and joining is one step down the same sheet. -->
 			<button
 				onclick={() => (opening = true)}
 				class="btn {rooms?.length ? 'btn-secondary' : 'btn-primary btn-lg'}"

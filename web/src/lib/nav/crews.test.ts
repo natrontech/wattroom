@@ -5,6 +5,7 @@ import {
 	crewsOf,
 	currentCrew,
 	administersNone,
+	leadsWithJoining,
 	openableCrews,
 	quiet,
 	sidebarGroups,
@@ -134,6 +135,23 @@ describe('creationCrew', () => {
 		expect(administersNone([natron])).toBe(false);
 		expect(administersNone([admined])).toBe(false);
 		expect(administersNone(crews)).toBe(false);
+	});
+	// The landing's one CTA is "Open your first room" (routes/+page.svelte),
+	// and #2144 keyed the sheet's order on administering nothing — so every
+	// stranger who took the front door at its word met a code box (#2184).
+	it('leads with joining only for a rider carrying an invite', () => {
+		expect(leadsWithJoining([], 'AB23CD')).toBe(true);
+		expect(leadsWithJoining([sunday], 'AB23CD')).toBe(true);
+		expect(leadsWithJoining([], undefined)).toBe(false);
+		expect(leadsWithJoining([], null)).toBe(false);
+		expect(leadsWithJoining([], '')).toBe(false);
+		expect(leadsWithJoining([sunday], undefined)).toBe(false);
+	});
+	// The invite rides the account, read once; the room list moves first. A
+	// rider who founds a crew in-session still carries the stale code.
+	it('stops leading with joining once the rider has a crew to open rooms in', () => {
+		expect(leadsWithJoining([natron], 'AB23CD')).toBe(false);
+		expect(leadsWithJoining(crews, 'AB23CD')).toBe(false);
 	});
 	it('lands in the crew on screen when you may open rooms there', () => {
 		expect(creationCrew(openableCrews(crews), 'c3')?.id).toBe('c3');

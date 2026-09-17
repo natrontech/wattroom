@@ -3,6 +3,7 @@
 	// carried beyond a list the sidebar already is (ADR-0020). Home's "your
 	// rooms" section, and what the sidebar's + points at.
 	import { goto } from '$app/navigation';
+	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
 	import Select from '$lib/components/Select.svelte';
@@ -11,6 +12,7 @@
 		administersNone,
 		creationCrew,
 		crewsOf,
+		leadsWithJoining,
 		openableCrews,
 	} from '$lib/nav/crews';
 	import { presence } from '$lib/presence.svelte';
@@ -51,11 +53,22 @@
 		creationCrew(openable, picked ?? crewId, picked ? undefined : crew),
 	);
 
-	// A rider who administers no crew is asked to join one before founding
-	// one (#2144): "Open your first room — it makes your crew" used to lead,
-	// so every newcomer was steered into a crew of their own. The option
-	// stays, as the second panel.
+	// A rider carrying an invite is asked to join that crew before founding
+	// one (#2144, #2184): the code box leads and founding a crew is the second
+	// panel. Keyed on the invite rather than on administering nothing, because
+	// the signed-out landing promises a stranger "Open your first room" and a
+	// stranger is who arrives without one (ADR-0038 amended 2026-09-17).
 	const joinFirst = $derived(
+		presence.loaded &&
+			leadsWithJoining(
+				crewsOf(presence.rooms, presence.crews),
+				account.me?.pendingInvite,
+			),
+	);
+	// Nowhere to open a room yet — which is what makes the day-one sentence
+	// true ("opening a room makes your crew"), invite or no invite. The order
+	// above is a different question and reads a different signal.
+	const crewless = $derived(
 		presence.loaded && administersNone(crewsOf(presence.rooms, presence.crews)),
 	);
 
@@ -120,9 +133,16 @@
 <section id={compact ? undefined : 'rooms'}>
 	{#if !compact}
 		<!-- Named for what is under it (#2176): the panel leads with joining a
-		     crew for a rider who administers none, and "Your rooms" over that
-		     is a heading about something else. -->
-		<h2 class="eyebrow">{joinFirst ? 'Get into a crew' : 'Your rooms'}</h2>
+		     crew for an invited rider, and "Your rooms" over that is a heading
+		     about something else. A rider with no rooms and no invite gets the
+		     landing's own words back (#2184). -->
+		<h2 class="eyebrow">
+			{joinFirst
+				? 'Get into a crew'
+				: crewless
+					? 'Open your first room'
+					: 'Your rooms'}
+		</h2>
 	{/if}
 	<div
 		class="grid gap-3 {compact
@@ -150,9 +170,10 @@
 					{/if}
 				</h3>
 				<p class="text-muted mt-1 text-xs">
-					{#if joinFirst}
+					{#if crewless}
 						<!-- The day-one fact, said before the click rather than in a toast
-					     after it (#1151): a first room makes the crew. -->
+					     after it (#1151): a first room makes the crew. True of every
+					     rider who administers none, whichever panel leads (#2184). -->
 						Opening a room makes it — named after you until you rename it, and the
 						room is open to the crew from the start.
 					{:else}
