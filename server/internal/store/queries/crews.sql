@@ -181,6 +181,22 @@ delete from crews where crews.id = sqlc.arg(crew_id)
   and not exists (select 1 from crew_roles cr
                   where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin'));
 
+-- name: LockCrew :exec
+-- The crew's write lock, held for the length of a transaction (#2079).
+-- LockRoom's parent: what serialises the two paths that can find a crew empty
+-- and delete it — the last member leaving, and the last room being deleted.
+-- Without it two members leaving at once each read the OTHER's row as still
+-- there (every statement takes its own snapshot under READ COMMITTED), both
+-- sweeps decline, and the crew is left with an owner who can neither leave it,
+-- hand it on nor delete it — the whole bug, reached by a narrower door.
+--
+-- Lock order in this app is USERS BEFORE CREWS BEFORE ROOMS. A room delete
+-- ends at its crew, so it takes this FIRST and then the room; the reverse
+-- order against a leave holding the crew and reaching for the same membership
+-- rows is a deadlock, which Postgres resolves by killing one of them with a
+-- 500.
+select 1 from crews where id = $1 for update;
+
 -- name: CrewGoesWithRoom :one
 -- Whether deleting THIS room deletes its crew, so the confirm can say so
 -- before the button rather than the crew disappearing afterwards (#1935).
@@ -297,7 +313,18 @@ select c.id, c.name, c.icon,
        (c.owner_id = sqlc.arg(user_id))::boolean as owned,
        (c.founded_by = sqlc.arg(user_id))::boolean as founded,
        exists (select 1 from crew_roles cr
-               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin')::boolean as admin
+               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin')::boolean as admin,
+       -- Leaving this crew deletes it (#2079): it has no rooms and nobody in
+       -- it but you and its owner, so your Leave is the sweep. DeleteCrewIfEmpty's
+       -- predicate with your own row still there, the way CrewGoesWithRoom is
+       -- it with the room still there — change one and change the other, or
+       -- the confirm promises what the leave will not do. False for the owner,
+       -- who cannot leave at all.
+       (c.owner_id <> sqlc.arg(user_id)
+        and not exists (select 1 from rooms r where r.crew_id = c.id)
+        and not exists (select 1 from crew_roles cr
+                        where cr.crew_id = c.id and cr.user_id <> sqlc.arg(user_id)
+                          and cr.role in ('member', 'admin')))::boolean as last_out
 from crews c
 where c.owner_id = sqlc.arg(user_id)
    or exists (select 1 from crew_roles cr

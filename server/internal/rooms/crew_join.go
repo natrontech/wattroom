@@ -180,6 +180,20 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 // in one move (#1228, #1236). The owner cannot leave — a crew is never
 // ownerless — so they hand it on first (#1208). Sockets in the crew's rooms
 // are severed the way a removal severs them.
+//
+// One transaction, and the crew's own end inside it (#2079). The three
+// statements were three commits: a leave that failed between them left a
+// rider with no memberships and a crew role, or a room grant outliving the
+// membership the confirm said it went with. The sweep then joins them —
+// ADR-0038's second amendment says a crew with nothing left in it "is deleted
+// rather than left ownerless", and the last member out of a ROOM-LESS crew
+// reaches that state by a door nothing swept: its owner could neither leave
+// it (they own it), hand it on (nobody left) nor delete it (there is no such
+// button). What the leaver was told beforehand is crew.lastOut on the crews
+// list, the same predicate one row earlier.
+//
+// The evictions stay AFTER the commit: they close live sockets, which no
+// rollback can reopen.
 func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	crew, user, role, ok := s.crewByID(w, r)
 	if !ok {
@@ -200,23 +214,52 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	slugs, _ := s.store.Queries.ListCrewRoomSlugs(r.Context(), crew.ID)
-	err = s.store.Queries.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "crew leave begin failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	// Before anything else, and before any room of the crew is touched: two
+	// people leaving at once would otherwise each see the other's row and
+	// neither sweep (LockCrew), and the room delete takes the same lock in
+	// the same place so the two paths cannot deadlock over the memberships
+	// they share.
+	err = q.LockCrew(r.Context(), crew.ID)
+	if err == nil {
+		err = q.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
+	}
 	if err == nil {
 		// The confirm promised it: "a private room needs a fresh invitation
 		// from its owner" — the grant used to outlive the membership (#1672).
-		err = s.store.Queries.LeaveCrewGrants(r.Context(), db.LeaveCrewGrantsParams{CrewID: crew.ID, UserID: user.ID})
+		err = q.LeaveCrewGrants(r.Context(), db.LeaveCrewGrantsParams{CrewID: crew.ID, UserID: user.ID})
 	}
 	if err == nil {
-		err = s.store.Queries.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
+		err = q.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
 	}
 	if err != nil {
 		httpx.Fail(w, s.log, "crew leave failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
 		return
 	}
+	// Nothing left in it now goes with the person who was the last thing in
+	// it (#2079, #1935). Idempotent and one statement, so a crew that gained
+	// a room or a member while this ran keeps them.
+	crewGone, err := s.deleteCrewIfEmpty(r.Context(), q, crew.ID)
+	if err != nil {
+		httpx.Fail(w, s.log, "empty crew delete failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Fail(w, s.log, "crew leave commit failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	// Durable rows gone; the sockets are the hub's and close after the commit
+	// — a rollback cannot reopen one.
 	for _, slug := range slugs {
 		s.evict(slug, store.UUIDString(user.ID))
 	}
-	s.log.Info("crew left", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID))
+	s.log.Info("crew left", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID), "crewGone", crewGone)
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }
