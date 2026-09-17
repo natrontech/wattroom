@@ -57,36 +57,63 @@ func (s *Service) handleUpdateAutoplay(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "Autoplay order is ordered, shuffled, or smart.", "order")
 		return
 	}
-	if _, err := s.store.Queries.UpdateAutoplay(r.Context(), db.UpdateAutoplayParams{
+	// The id is parsed before anything is written (#2248): a refusal that
+	// lands after a committed write has already changed the room it just
+	// said no to.
+	activeID := strings.TrimSpace(req.ActivePlaylistID)
+	var active pgtype.UUID
+	if activeID != "" {
+		parsed, err := store.ParseUUID(activeID)
+		if err != nil {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That playlist does not exist.", "activePlaylistId")
+			return
+		}
+		active = parsed
+	}
+
+	// One transaction for the pair (#2248). Apart, a failure between them
+	// left autoplay_enabled = true with the playlist the coach had just
+	// cleared still active — and answered 500, so the room went on playing a
+	// list nobody could see had stayed.
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "autoplay begin failed", err, "Autoplay could not be saved. Try again.", "room", sc.room.Slug)
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+
+	if _, err := q.UpdateAutoplay(r.Context(), db.UpdateAutoplayParams{
 		ID: sc.room.ID, AutoplayEnabled: req.Enabled, AutoplayOrder: req.Order,
 	}); err != nil {
 		httpx.Fail(w, s.log, "update autoplay failed", err, "Autoplay could not be saved. Try again.")
 		return
 	}
-	if activeID := strings.TrimSpace(req.ActivePlaylistID); activeID == "" {
-		if err := s.store.Queries.ClearActivePlaylist(r.Context(), sc.room.ID); err != nil {
+	if activeID == "" {
+		if err := q.ClearActivePlaylist(r.Context(), sc.room.ID); err != nil {
 			httpx.Fail(w, s.log, "clear active playlist failed", err, "Autoplay could not be saved. Try again.")
 			return
 		}
 	} else {
-		id, err := store.ParseUUID(activeID)
-		if err != nil {
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That playlist does not exist.", "activePlaylistId")
-			return
-		}
-		rows, err := s.store.Queries.SetActivePlaylist(r.Context(), db.SetActivePlaylistParams{ID: sc.room.ID, AutoplayPlaylistID: id})
+		rows, err := q.SetActivePlaylist(r.Context(), db.SetActivePlaylistParams{ID: sc.room.ID, AutoplayPlaylistID: active})
 		if err != nil {
 			httpx.Fail(w, s.log, "set active playlist failed", err, "Autoplay could not be saved. Try again.")
 			return
 		}
 		if rows == 0 {
+			// The rollback above takes the enable with it: a playlist this
+			// room does not own is a refusal, and a refusal changes nothing.
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That playlist is not one of this room's own.", "activePlaylistId")
 			return
 		}
 	}
-	room, err := s.store.Queries.GetRoomBySlug(r.Context(), sc.room.Slug)
+	room, err := q.GetRoomBySlug(r.Context(), sc.room.Slug)
 	if err != nil {
-		httpx.Fail(w, s.log, "room reload failed", err, "Autoplay was saved but could not be reloaded.")
+		httpx.Fail(w, s.log, "room reload failed", err, "Autoplay could not be saved. Try again.")
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Fail(w, s.log, "autoplay commit failed", err, "Autoplay could not be saved. Try again.", "room", sc.room.Slug)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, autoplayJSONFrom(room))

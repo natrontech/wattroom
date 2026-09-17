@@ -201,6 +201,12 @@ func (s *Service) SameOrigin(r *http.Request) bool {
 // side effects here (the one pre-existing exception, GET /api/rooms/{slug}
 // marking the room read, is tracked separately — #678), so only these verbs
 // need the Origin check on top of the SameSite=Lax cookie.
+//
+// "Exactly one" is load-bearing and was briefly untrue: GET /api/crew-doors/
+// {code} set the caller's pending invite until #2248 moved that onto a POST
+// of its own. A second exception costs nothing to add and is invisible
+// afterwards, which is why the count is written down here rather than left
+// to be recounted.
 func isMutatingMethod(method string) bool {
 	switch method {
 	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:

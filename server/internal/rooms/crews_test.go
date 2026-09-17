@@ -1360,10 +1360,14 @@ func TestANewRoomLandsInTheCrewYouFoundedNotTheOneHandedToYou(t *testing.T) {
 }
 
 // The invite a rider was sent to survives the tab it arrived in (#2144): the
-// door writes it on the account for a stranger, /api/me derives it while they
-// are in no crew and the code still opens one, and the join clears it. A
-// rider who already has a crew has somewhere to be, so nothing is derived for
-// them however many doors they read.
+// door's POST writes it on the account for a stranger, /api/me derives it
+// while they are in no crew and the code still opens one, and the join clears
+// it. A rider who already has a crew has somewhere to be, so nothing is
+// derived for them however many doors they read.
+//
+// The write is its own POST since #2248 — it used to ride the door's GET,
+// where RequireUser's Origin check never runs, so any page could set a
+// brand-new rider's pending invite by linking them at it.
 func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
 	h := setup(t)
 	_, code := h.createRoom(t, "alice", "Door Memory")
@@ -1373,15 +1377,22 @@ func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
 	if _, err := h.store.Queries.PendingCrewInvite(t.Context(), daveID); !errors.Is(err, pgx.ErrNoRows) {
 		t.Fatalf("an invite before any door: %v", err)
 	}
+	// Reading the door changes nothing on the account.
 	if status, _ := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
 		t.Fatalf("door: %d", status)
+	}
+	if _, err := h.store.Queries.PendingCrewInvite(t.Context(), daveID); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("reading the door wrote to the account: %v", err)
+	}
+	if status, _ := h.call(t, dave, http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusNoContent {
+		t.Fatalf("remember: %d", status)
 	}
 	if got, err := h.store.Queries.PendingCrewInvite(t.Context(), daveID); err != nil || got != code {
 		t.Fatalf("the door forgot the invite: %q, %v", got, err)
 	}
 	// Bob owns a crew of his own: the same door leaves him no invite.
 	h.createRoom(t, "bob", "Bob's Own")
-	if status, _ := h.call(t, "bob", http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusNoContent {
 		t.Fatalf("door for bob: %d", status)
 	}
 	if got, err := h.store.Queries.PendingCrewInvite(t.Context(), h.users.ByToken["bob"].ID); !errors.Is(err, pgx.ErrNoRows) {
@@ -1396,7 +1407,7 @@ func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
 	}
 	// Answered: the join clears the code outright, so leaving the crew later
 	// does not send the rider back to its door.
-	if status, _ := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
+	if status, _ := h.call(t, dave, http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusNoContent {
 		t.Fatalf("door again: %d", status)
 	}
 	if status, body := h.call(t, dave, http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {

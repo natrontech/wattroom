@@ -59,18 +59,54 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 			out["inCrew"] = true
 			out["id"] = store.UUIDString(crew.ID)
 			out["members"], _ = s.store.Queries.CountCrewMembers(r.Context(), crew.ID)
-		default:
-			// A stranger at the door holds an invite (#2144): remembered on
-			// the account, because the tab that holds the deep link is not
-			// the tab a new account's email confirmation opens. /api/me hands
-			// it back while they are in no crew, and the join clears it.
-			// Best effort — a door that could not remember still opens.
-			if err := s.store.Queries.SetPendingCrewCode(r.Context(), db.SetPendingCrewCodeParams{ID: user.ID, PendingCrewCode: &code}); err != nil {
-				s.log.Warn("pending crew invite not recorded", "err", err, "rider", store.UUIDString(user.ID))
-			}
 		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// handleRememberCrewDoor records the invite a signed-in stranger is standing
+// at (#2144): remembered on the account, because the tab that holds the deep
+// link is not the tab a new account's email confirmation opens. /api/me hands
+// it back while they are in no crew, and the join clears it.
+//
+// A POST, not the door's own GET (#2248). The write used to ride the read,
+// and RequireUser's Origin check only runs on mutating methods — a Lax cookie
+// rides a cross-site top-level navigation, so any page could set a brand-new
+// rider's pending invite by linking them at the door. Bounded, because
+// PendingCrewInvite only surfaces for a rider in no crew at all; that is
+// exactly the rider it could steer.
+//
+// Best effort, like the write it replaces: a door that could not remember
+// still opens, so this answers 204 either way rather than failing a page that
+// has already loaded.
+func (s *Service) handleRememberCrewDoor(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Sign in to follow this invite.")
+	if !ok {
+		return
+	}
+	code := strings.ToUpper(strings.TrimSpace(r.PathValue("code")))
+	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			httpx.Fail(w, s.log, "crew door lookup failed", err, "That invite could not be remembered. Try again.")
+			return
+		}
+		// A code that opens no door is remembered as nothing, and says so the
+		// way the door itself does.
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew has that code.")
+		return
+	}
+	// Only a stranger: a member's account has nothing to remember, and a
+	// banned rider's invite would open nothing.
+	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
+	if err == nil && role != "" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if err := s.store.Queries.SetPendingCrewCode(r.Context(), db.SetPendingCrewCodeParams{ID: user.ID, PendingCrewCode: &code}); err != nil {
+		s.log.Warn("pending crew invite not recorded", "err", err, "rider", store.UUIDString(user.ID))
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleJoinCrew is the one way in (ADR-0038 amended, #1236). Joining stores

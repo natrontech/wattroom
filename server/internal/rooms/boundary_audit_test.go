@@ -33,6 +33,8 @@ func TestTheCrewSurfaceRefusesTheSignedOut(t *testing.T) {
 		{http.MethodDelete, "/api/rooms/" + slug + "/grants/x", ""},
 		{http.MethodPost, "/api/rooms/" + slug + "/calendar/rotate", ""},
 		{http.MethodPost, "/api/calendar/rotate", ""},
+		// The door's write, once it stopped riding the door's GET (#2248).
+		{http.MethodPost, "/api/crew-doors/ABCDEF/remember", ""},
 	} {
 		if status, _ := h.call(t, "", route.method, route.path, route.body); status != http.StatusUnauthorized {
 			t.Errorf("%s %s signed out: %d, want 401", route.method, route.path, status)

@@ -7,7 +7,8 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
-	import { fetchCrew, joinCrew } from '$lib/crew';
+	import { account } from '$lib/account.svelte';
+	import { fetchCrew, joinCrew, rememberCrewDoor } from '$lib/crew';
 	import { presence } from '$lib/presence.svelte';
 	import type { PageData } from './$types';
 	import { reachable } from '$lib/nav/crews';
@@ -15,6 +16,23 @@
 	let { data }: { data: PageData } = $props();
 	let busy = $state(false);
 	let error = $state<string | null>(null);
+
+	// The invite follows the account, not the tab (#2144): a stranger who
+	// signs up here confirms their address in a tab that never saw this code.
+	// The write is a POST of its own since #2248 — the door's GET must not
+	// have a side effect the Origin check never sees — so the page makes it,
+	// once, and only for a signed-in rider who is not already in.
+	//
+	// A plain let, not $state: nothing renders it, and a $state written from
+	// an effect re-arms the effect (#2163).
+	let remembered = '';
+	$effect(() => {
+		const code = data.code;
+		if (!account.me || !code || remembered === code) return;
+		if (data.crew?.inCrew || data.crew?.banned) return;
+		remembered = code;
+		void rememberCrewDoor(code);
+	});
 
 	async function join() {
 		error = null;

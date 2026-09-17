@@ -149,6 +149,21 @@ export function crewDoor(
 	);
 }
 
+/**
+ * Remember the invite this rider is standing at (#2144, #2248) — so the tab a
+ * new account's email confirmation opens still knows which crew they came
+ * for. A POST because it writes: the door's own GET used to do it, where the
+ * Origin check never runs.
+ *
+ * Best effort on both sides: a door that could not remember still opens, so
+ * nothing here is shown to the rider.
+ */
+export function rememberCrewDoor(code: string): Promise<ApiResult<void>> {
+	return api<void>(`/api/crew-doors/${encodeURIComponent(code)}/remember`, {
+		method: 'POST',
+	});
+}
+
 /** The one way in (ADR-0038 amended, #1236): the crew, by its code. */
 export function joinCrew(code: string): Promise<ApiResult<RoomCrew>> {
 	return api<RoomCrew>('/api/crews/join', { method: 'POST', json: { code } });

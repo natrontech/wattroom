@@ -1,0 +1,2 @@
+- Opening a crew's invite link no longer writes to your account as a side effect of reading it. Any page could previously set a brand-new rider's pending invite just by linking them at a crew door; the app now records it with a request of its own, which the cross-site check covers.
+- Saving a room's autoplay settings is one step: a change refused because the playlist belongs to another room no longer leaves autoplay switched on.
