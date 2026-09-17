@@ -261,6 +261,36 @@ func TestRoomPlaylistMembershipAndActive(t *testing.T) {
 	}
 }
 
+// A refused autoplay save changes nothing (#2248). The switch, the order and
+// the active playlist were three writes, and the one that validates ownership
+// ran last: a coach who picked another room's list turned autoplay off, and
+// was told the playlist was wrong.
+func TestARefusedAutoplaySaveChangesNothing(t *testing.T) {
+	h := setup(t)
+	slug := h.room(t, "alice")
+	_, created := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Warmup"}`)
+	id, _ := created["id"].(string)
+	elsewhere := h.room(t, "alice")
+	_, other := h.call(t, "alice", http.MethodPost, "/api/rooms/"+elsewhere+"/playlists", `{"name":"Elsewhere"}`)
+	otherID, _ := other["id"].(string)
+
+	if status, body := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay",
+		fmt.Sprintf(`{"enabled":true,"order":"shuffled","activePlaylistId":%q}`, id)); status != http.StatusOK {
+		t.Fatalf("activate: %d %v", status, body)
+	}
+	if status, body := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay",
+		fmt.Sprintf(`{"enabled":false,"order":"ordered","activePlaylistId":%q}`, otherID)); status != http.StatusBadRequest {
+		t.Fatalf("cross-room activate: %d %v, want 400", status, body)
+	}
+	status, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug+"/autoplay", "")
+	if status != http.StatusOK {
+		t.Fatalf("read back: %d %v", status, body)
+	}
+	if body["enabled"] != true || body["order"] != "shuffled" || body["activePlaylistId"] != id {
+		t.Fatalf("the refusal changed the room: %v", body)
+	}
+}
+
 func TestQueuePlaylistCrossesRoomAndPersonal(t *testing.T) {
 	h := setup(t)
 	slug := h.room(t, "alice")

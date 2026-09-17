@@ -60,17 +60,60 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 			out["id"] = store.UUIDString(crew.ID)
 			out["members"], _ = s.store.Queries.CountCrewMembers(r.Context(), crew.ID)
 		default:
-			// A stranger at the door holds an invite (#2144): remembered on
-			// the account, because the tab that holds the deep link is not
-			// the tab a new account's email confirmation opens. /api/me hands
-			// it back while they are in no crew, and the join clears it.
-			// Best effort — a door that could not remember still opens.
-			if err := s.store.Queries.SetPendingCrewCode(r.Context(), db.SetPendingCrewCodeParams{ID: user.ID, PendingCrewCode: &code}); err != nil {
-				s.log.Warn("pending crew invite not recorded", "err", err, "rider", store.UUIDString(user.ID))
-			}
+			// A signed-in stranger at the door holds an invite (#2144). The
+			// read used to record it here; it says so instead, and the client
+			// posts the remember below — a GET that wrote let any page set a
+			// rider's pending invite by linking them at it (#2248).
+			out["invited"] = true
 		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
+}
+
+// handleRememberCrewDoor keeps the invite the door just showed (#2144) on the
+// account, because the tab holding the deep link is not the tab a new
+// account's email confirmation opens. /api/me hands it back while the rider is
+// in no crew, and the join clears it.
+//
+// It is a POST because it writes (#2248). RequireUser only asks for the Origin
+// on a mutating verb — a SameSite=Lax cookie rides a cross-site top-level
+// navigation — so the same write on the door's GET was one any page could
+// perform for a signed-in rider by linking them at it, steering which crew a
+// brand-new account is pointed at after sign-up.
+func (s *Service) handleRememberCrewDoor(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Sign in to keep this invite.")
+	if !ok {
+		return
+	}
+	if s.throttleDoor(w, r) {
+		return
+	}
+	code := strings.ToUpper(strings.TrimSpace(r.PathValue("code")))
+	crew, err := s.store.Queries.GetCrewByCode(r.Context(), &code)
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			httpx.Fail(w, s.log, "crew door lookup failed", err, "The invite could not be kept. Try again.")
+			return
+		}
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew has that code. Check it with whoever shared it.")
+		return
+	}
+	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
+	if err != nil {
+		httpx.Fail(w, s.log, "crew role lookup failed", err, "The invite could not be kept. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	if role != "" {
+		// Nothing to keep: a member is already in, and a banned rider is not
+		// coming in. Not a refusal either — the door said so first.
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	if err := s.store.Queries.SetPendingCrewCode(r.Context(), db.SetPendingCrewCodeParams{ID: user.ID, PendingCrewCode: &code}); err != nil {
+		httpx.Fail(w, s.log, "pending crew invite not recorded", err, "The invite could not be kept. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // handleJoinCrew is the one way in (ADR-0038 amended, #1236). Joining stores

@@ -2,11 +2,13 @@ package playlists
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
+	"errors"
 	"math/rand/v2"
 	"net/http"
 	"strings"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/hub"
@@ -57,36 +59,33 @@ func (s *Service) handleUpdateAutoplay(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "Autoplay order is ordered, shuffled, or smart.", "order")
 		return
 	}
-	if _, err := s.store.Queries.UpdateAutoplay(r.Context(), db.UpdateAutoplayParams{
-		ID: sc.room.ID, AutoplayEnabled: req.Enabled, AutoplayOrder: req.Order,
-	}); err != nil {
-		httpx.Fail(w, s.log, "update autoplay failed", err, "Autoplay could not be saved. Try again.")
-		return
-	}
-	if activeID := strings.TrimSpace(req.ActivePlaylistID); activeID == "" {
-		if err := s.store.Queries.ClearActivePlaylist(r.Context(), sc.room.ID); err != nil {
-			httpx.Fail(w, s.log, "clear active playlist failed", err, "Autoplay could not be saved. Try again.")
-			return
-		}
-	} else {
+	// One statement, so a refusal changes nothing (#2248): the switch, the
+	// order and the active playlist used to be three writes, and a playlist
+	// that was not this room's was refused after the first two had committed.
+	var active pgtype.UUID
+	if activeID := strings.TrimSpace(req.ActivePlaylistID); activeID != "" {
 		id, err := store.ParseUUID(activeID)
 		if err != nil {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That playlist does not exist.", "activePlaylistId")
 			return
 		}
-		rows, err := s.store.Queries.SetActivePlaylist(r.Context(), db.SetActivePlaylistParams{ID: sc.room.ID, AutoplayPlaylistID: id})
-		if err != nil {
-			httpx.Fail(w, s.log, "set active playlist failed", err, "Autoplay could not be saved. Try again.")
-			return
-		}
-		if rows == 0 {
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That playlist is not one of this room's own.", "activePlaylistId")
-			return
-		}
+		active = id
 	}
-	room, err := s.store.Queries.GetRoomBySlug(r.Context(), sc.room.Slug)
+	room, err := s.store.Queries.SetAutoplay(r.Context(), db.SetAutoplayParams{
+		ID: sc.room.ID, AutoplayEnabled: req.Enabled, AutoplayOrder: req.Order, AutoplayPlaylistID: active,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// The room was read this request, so the ownership clause is what
+		// declined it — unless the room itself has just been deleted.
+		if !active.Valid {
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "That room is gone.")
+			return
+		}
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That playlist is not one of this room's own.", "activePlaylistId")
+		return
+	}
 	if err != nil {
-		httpx.Fail(w, s.log, "room reload failed", err, "Autoplay was saved but could not be reloaded.")
+		httpx.Fail(w, s.log, "save autoplay failed", err, "Autoplay could not be saved. Try again.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, autoplayJSONFrom(room))

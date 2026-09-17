@@ -137,6 +137,9 @@ export interface CrewDoor {
 	members?: number;
 	/** The crew removed you: no Join, the code will not get you back. */
 	banned?: boolean;
+	/** A signed-in stranger holding the code: the invite is theirs to keep,
+	 *  and `rememberCrewDoor` is what keeps it (#2144, #2248). */
+	invited?: boolean;
 }
 
 export function crewDoor(
@@ -147,6 +150,16 @@ export function crewDoor(
 		fetcher,
 		`/api/crew-doors/${encodeURIComponent(code)}`,
 	);
+}
+
+/** Keep this door's invite on the account (#2144), so a sign-up that finishes
+ *  in another tab still lands on the crew. Its own call because the door's
+ *  read must not write: a GET carries no Origin check, so any page could have
+ *  set a rider's pending invite by linking them at it (#2248). */
+export function rememberCrewDoor(code: string): Promise<ApiResult<void>> {
+	return api<void>(`/api/crew-doors/${encodeURIComponent(code)}/remember`, {
+		method: 'POST',
+	});
 }
 
 /** The one way in (ADR-0038 amended, #1236): the crew, by its code. */

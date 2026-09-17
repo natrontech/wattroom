@@ -1360,10 +1360,10 @@ func TestANewRoomLandsInTheCrewYouFoundedNotTheOneHandedToYou(t *testing.T) {
 }
 
 // The invite a rider was sent to survives the tab it arrived in (#2144): the
-// door writes it on the account for a stranger, /api/me derives it while they
-// are in no crew and the code still opens one, and the join clears it. A
-// rider who already has a crew has somewhere to be, so nothing is derived for
-// them however many doors they read.
+// door says a stranger is invited, the remember POST writes it on the account,
+// /api/me derives it while they are in no crew and the code still opens one,
+// and the join clears it. A rider who already has a crew has somewhere to be,
+// so nothing is derived for them however many doors they read.
 func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
 	h := setup(t)
 	_, code := h.createRoom(t, "alice", "Door Memory")
@@ -1373,16 +1373,25 @@ func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
 	if _, err := h.store.Queries.PendingCrewInvite(t.Context(), daveID); !errors.Is(err, pgx.ErrNoRows) {
 		t.Fatalf("an invite before any door: %v", err)
 	}
-	if status, _ := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
-		t.Fatalf("door: %d", status)
+	status, door := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, "")
+	if status != http.StatusOK || door["invited"] != true {
+		t.Fatalf("door: %d %v, want an invited stranger", status, door)
+	}
+	if status, body := h.call(t, dave, http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusNoContent {
+		t.Fatalf("remember: %d %v", status, body)
 	}
 	if got, err := h.store.Queries.PendingCrewInvite(t.Context(), daveID); err != nil || got != code {
 		t.Fatalf("the door forgot the invite: %q, %v", got, err)
 	}
-	// Bob owns a crew of his own: the same door leaves him no invite.
+	// Bob owns a crew of his own. The door still offers him the Join — he is
+	// not in this one — and the remember still writes the code, but a rider
+	// with a crew has somewhere to be, so nothing is derived for them.
 	h.createRoom(t, "bob", "Bob's Own")
-	if status, _ := h.call(t, "bob", http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
-		t.Fatalf("door for bob: %d", status)
+	if status, body := h.call(t, "bob", http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK || body["invited"] != true {
+		t.Fatalf("door for bob: %d %v", status, body)
+	}
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusNoContent {
+		t.Fatalf("remember for bob: %d", status)
 	}
 	if got, err := h.store.Queries.PendingCrewInvite(t.Context(), h.users.ByToken["bob"].ID); !errors.Is(err, pgx.ErrNoRows) {
 		t.Fatalf("a rider with a crew holds an invite: %q, %v", got, err)
@@ -1396,14 +1405,53 @@ func TestTheDoorRemembersTheInviteForARiderInNoCrew(t *testing.T) {
 	}
 	// Answered: the join clears the code outright, so leaving the crew later
 	// does not send the rider back to its door.
-	if status, _ := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
-		t.Fatalf("door again: %d", status)
+	if status, _ := h.call(t, dave, http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusNoContent {
+		t.Fatalf("remember again: %d", status)
 	}
 	if status, body := h.call(t, dave, http.MethodPost, "/api/crews/join", fmt.Sprintf(`{"code":%q}`, code)); status != http.StatusOK {
 		t.Fatalf("join: %d %v", status, body)
 	}
 	if u, err := h.store.Queries.GetUser(t.Context(), daveID); err != nil || u.PendingCrewCode != nil {
 		t.Fatalf("the join left the invite on the account: %v, %v", u.PendingCrewCode, err)
+	}
+}
+
+// Reading the crew's door writes nothing to the caller's account (#2248).
+// RequireUser asks for the Origin only on a mutating verb, and a SameSite=Lax
+// cookie rides a cross-site top-level navigation — so while the door's GET set
+// pending_crew_code, any page could pick which crew a signed-in rider's next
+// landing opened, simply by linking them at it.
+func TestReadingTheCrewDoorWritesNothing(t *testing.T) {
+	h := setup(t)
+	_, code := h.createRoom(t, "alice", "Read-Only Door")
+	dave := h.stranger(t)
+	daveID := h.users.ByToken[dave].ID
+
+	for range 3 {
+		if status, _ := h.call(t, dave, http.MethodGet, "/api/crew-doors/"+code, ""); status != http.StatusOK {
+			t.Fatalf("door: %d", status)
+		}
+	}
+	u, err := h.store.Queries.GetUser(t.Context(), daveID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.PendingCrewCode != nil {
+		t.Fatalf("reading the door wrote %q to the account", *u.PendingCrewCode)
+	}
+}
+
+// The remember is a write and answers like one (errors.md): signed out is a
+// 401, an unknown code a 404 — the same answer the door gives, because a code
+// is a secret.
+func TestRememberingAnInviteRefusesWhatItShould(t *testing.T) {
+	h := setup(t)
+	_, code := h.createRoom(t, "alice", "Remember Refusals")
+	if status, body := h.call(t, "", http.MethodPost, "/api/crew-doors/"+code+"/remember", ""); status != http.StatusUnauthorized {
+		t.Fatalf("signed out: %d %v, want 401", status, body)
+	}
+	if status, body := h.call(t, h.stranger(t), http.MethodPost, "/api/crew-doors/ZZZZZZ/remember", ""); status != http.StatusNotFound || body["error"] != "not_found" {
+		t.Fatalf("an unknown code: %d %v, want 404 not_found", status, body)
 	}
 }
 
