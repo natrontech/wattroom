@@ -150,16 +150,16 @@ func TestAwayAndBackEachSayItOnce(t *testing.T) {
 	rm.join(socket("r-kim", "Kim"))
 	rm.events.drain()
 
-	rm.setAway("r-kim", true)
+	rm.setAway("r-kim", true, "")
 	// A tab restating what it already said on reconnect must not print again.
-	rm.setAway("r-kim", true)
+	rm.setAway("r-kim", true, "")
 	if got := verbs(rm); len(got) != 1 || got[0] != "away:Kim" {
 		t.Fatalf("away lines: %v", got)
 	}
 	rm.events.drain()
 
-	rm.setAway("r-kim", false)
-	rm.setAway("r-kim", false)
+	rm.setAway("r-kim", false, "")
+	rm.setAway("r-kim", false, "")
 	if got := verbs(rm); len(got) != 1 || got[0] != "back:Kim" {
 		t.Fatalf("back lines: %v", got)
 	}
@@ -170,7 +170,7 @@ func TestAwayAndBackEachSayItOnce(t *testing.T) {
 func TestAwayForSomebodyNotHereSaysNothing(t *testing.T) {
 	now := pat(0)
 	rm := presenceRoom(&now)
-	rm.setAway("r-ghost", true)
+	rm.setAway("r-ghost", true, "")
 	if got := verbs(rm); len(got) != 0 {
 		t.Fatalf("announced a ghost: %v", got)
 	}
@@ -231,4 +231,70 @@ func TestAnEmptyRoomStillSaysWhoLeft(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	t.Fatal("the room emptied and never said the departure")
+}
+
+// A named state is its own verb, and changing between two of them is a change
+// the room should hear: "Kim is refuelling" after "Kim went away" is the room
+// learning something, unlike a tab restating what it already said.
+func TestANamedAwayStateSaysWhichAndOnlyOnChange(t *testing.T) {
+	now := pat(0)
+	rm := presenceRoom(&now)
+	rm.join(socket("r-kim", "Kim"))
+	rm.events.drain()
+
+	rm.setAway("r-kim", true, "food")
+	rm.setAway("r-kim", true, "food") // a reconnect restating itself
+	if got := verbs(rm); len(got) != 1 || got[0] != "away_food:Kim" {
+		t.Fatalf("refuelling lines: %v", got)
+	}
+	rm.events.drain()
+
+	// Still away, now for a different reason.
+	rm.setAway("r-kim", true, "shower")
+	if got := verbs(rm); len(got) != 1 || got[0] != "away_shower:Kim" {
+		t.Fatalf("changing state: %v", got)
+	}
+	rm.events.drain()
+
+	rm.setAway("r-kim", false, "")
+	if got := verbs(rm); len(got) != 1 || got[0] != "back:Kim" {
+		t.Fatalf("back lines: %v", got)
+	}
+}
+
+// The set is closed because the room renders it beside a rider's name
+// (errors.md, the same reasoning as the device word). A client that invents
+// one is still away — the state is the point — but the room is told the plain
+// thing rather than a word nobody chose.
+func TestAnUnknownAwayReasonFallsBackToPlainAway(t *testing.T) {
+	now := pat(0)
+	rm := presenceRoom(&now)
+	rm.join(socket("r-kim", "Kim"))
+	rm.events.drain()
+
+	rm.setAway("r-kim", true, "<script>alert(1)</script>")
+	if got := verbs(rm); len(got) != 1 || got[0] != "away:Kim" {
+		t.Fatalf("unknown reason: %v", got)
+	}
+	if reason := rm.away["r-kim"]; reason != "" {
+		t.Errorf("kept %q on the roster, want it dropped", reason)
+	}
+}
+
+// Coming back has no reason: a client that sends one anyway must not leave a
+// state behind on the roster for the next tick to draw.
+func TestComingBackCarriesNoReason(t *testing.T) {
+	now := pat(0)
+	rm := presenceRoom(&now)
+	rm.join(socket("r-kim", "Kim"))
+	rm.setAway("r-kim", true, "shower")
+	rm.events.drain()
+
+	rm.setAway("r-kim", false, "shower")
+	if got := verbs(rm); len(got) != 1 || got[0] != "back:Kim" {
+		t.Fatalf("back lines: %v", got)
+	}
+	if _, still := rm.away["r-kim"]; still {
+		t.Error("the rider is still marked away")
+	}
 }

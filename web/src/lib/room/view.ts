@@ -25,6 +25,9 @@ export interface RoomRider {
 	speaking: boolean;
 	/** The rider explicitly stepped out; presence, never inferred from watts. */
 	away?: boolean;
+	/** Which away, from $lib/away's keys; '' or absent is the plain one. Room
+	 * surfaces only — outside a room the reason is not carried at all. */
+	awayReason?: string;
 	/** Pedalling inside the room's window (#1016) — the server's word, not this
 	 * tile's reading of the current sample. A coast holds it. */
 	riding?: boolean;

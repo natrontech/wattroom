@@ -344,7 +344,22 @@ type Poke struct {
 // rider away on everyone else's screen.
 type AwayState struct {
 	Away bool `json:"away"`
+	// Why, from AwayReasons — "" is the plain away the button's face has
+	// always sent, and the only thing one tap can produce. Ignored when Away
+	// is false: coming back has no reason.
+	Reason string `json:"reason,omitempty"`
 }
+
+// AwayReasons is the closed set behind the Away button's arrow. Closed and
+// not free text: the room draws this beside a rider's name, so a typed status
+// would be a second chat nobody can reply in — and a closed set is the only
+// kind the server can safely render to everyone (errors.md, the same
+// reasoning as DeviceKind below).
+//
+// The words are the room's vocabulary, not the client's: docs/SPEC.md's
+// glossary owns them, and a screen that invents a synonym disagrees with the
+// timeline line the server writes for the same state.
+var AwayReasons = []string{"nature", "food", "shower"}
 
 // DeviceKind is what a socket says it is running on (#2131): one of
 // "desktop", "phone" or "tablet", sent once when the socket opens and again
@@ -402,6 +417,12 @@ type Rider struct {
 	// Lounge's button, and every screen renders the mark instead of leaving
 	// an open mic over an empty trainer.
 	Away bool `json:"away,omitempty"`
+	// Which kind of away, from AwayReasons; empty for the plain one. Room
+	// scope only, deliberately: the presence rail and anyone outside the room
+	// keep the plain away dot they have always had, because a reason is a new
+	// detail about a person and a new detail does not get a wider audience
+	// than the old one had.
+	AwayReason string `json:"awayReason,omitempty"`
 	// Pedalling right now (#1016) — watts inside the room's riding window, so
 	// a coast holds the mark and sitting down loses it. The server owns the
 	// word: every screen used to decide it from the current sample's watts,

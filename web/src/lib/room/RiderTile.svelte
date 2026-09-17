@@ -221,6 +221,7 @@
 				avatarUrl={face?.avatarUrl}
 				xp={face?.totalXp}
 				status={rider.away ? 'away' : rider.riding ? 'riding' : null}
+				awayReason={rider.awayReason}
 				size={44}
 				ring="var(--color-surface-raised)"
 			/>

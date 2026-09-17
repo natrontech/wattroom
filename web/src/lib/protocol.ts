@@ -477,6 +477,12 @@ export interface Poke {
  */
 export interface AwayState {
   away: boolean;
+  /**
+   * Why, from AwayReasons — "" is the plain away the button's face has
+   * always sent, and the only thing one tap can produce. Ignored when Away
+   * is false: coming back has no reason.
+   */
+  reason?: string;
 }
 /**
  * DeviceKind is what a socket says it is running on (#2131): one of
@@ -542,6 +548,14 @@ export interface Rider {
    * an open mic over an empty trainer.
    */
   away?: boolean;
+  /**
+   * Which kind of away, from AwayReasons; empty for the plain one. Room
+   * scope only, deliberately: the presence rail and anyone outside the room
+   * keep the plain away dot they have always had, because a reason is a new
+   * detail about a person and a new detail does not get a wider audience
+   * than the old one had.
+   */
+  awayReason?: string;
   /**
    * Pedalling right now (#1016) — watts inside the room's riding window, so
    * a coast holds the mark and sitting down loses it. The server owns the

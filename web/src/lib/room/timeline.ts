@@ -1,3 +1,4 @@
+import { awayLineFor } from '$lib/away';
 import { gameMode } from '$lib/room/modes';
 import { formatWhen } from '$lib/format';
 import type { RoomEvent, SessionRecap } from '$lib/protocol';
@@ -42,6 +43,13 @@ export function eventText(event: RoomEvent): string {
 	const at = event.when
 		? formatWhen(new Date(event.when).toISOString(), true)
 		: '';
+	// Stepping out is one family of verbs — `away`, `away_nature`,
+	// `away_food`, `away_shower` — and $lib/away owns the sentence for each,
+	// beside the label the menu shows and the mark the tile draws (#706). A
+	// verb from a newer server draws no line rather than a wrong one.
+	if (event.verb.startsWith('away')) {
+		return awayLineFor(event.verb, event.actor ?? '') ?? '';
+	}
 	switch (event.verb) {
 		case 'queued':
 			// A burst is one line: "queued 8 tracks", never eight lines that
@@ -91,8 +99,6 @@ export function eventText(event: RoomEvent): string {
 				: `${event.actor} joined`;
 		case 'left':
 			return `${event.actor} left`;
-		case 'away':
-			return `${event.actor} went away`;
 		case 'back':
 			return `${event.actor} is back`;
 		case 'started':
