@@ -41,11 +41,16 @@
 		>
 			{#if toast.href}
 				<!-- A message toast IS the way to the thread (#568) — a plain
-				     anchor, so the router does the navigating. -->
+				     anchor, so the router does the navigating. A refusal keeps
+				     its words instead (#2157): it carries the reply the rider
+				     typed, and one truncated line is where that reply went
+				     missing. -->
 				<a
 					href={toast.href}
 					onclick={() => toasts.dismiss(toast.id)}
-					class="min-w-0 flex-1 truncate hover:underline">{toast.text}</a
+					class="min-w-0 flex-1 hover:underline {toast.tone === 'error'
+						? ''
+						: 'truncate'}">{toast.text}</a
 				>
 			{:else}
 				<span class="flex-1">{toast.text}</span>
