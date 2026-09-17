@@ -12,6 +12,11 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
+	import {
+		acceptRequest,
+		dismissRequest,
+		withdrawRequest,
+	} from '$lib/friends/actions';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import { medalName } from '$lib/medals';
 	import { presence } from '$lib/presence.svelte';
@@ -33,6 +38,7 @@
 	import Lock from '@lucide/svelte/icons/lock';
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 	import Pencil from '@lucide/svelte/icons/pencil';
+	import X from '@lucide/svelte/icons/x';
 	import Radio from '@lucide/svelte/icons/radio';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import Users from '@lucide/svelte/icons/users';
@@ -117,14 +123,28 @@
 		if (id && loaded) void load(id);
 	});
 
-	// Add, accept: one call each, then the page re-reads itself. A refused
-	// request is a toast — the page is not a form.
+	// Add: one call, then the page re-reads itself. A refused request is a
+	// toast — the page is not a form.
 	async function friendAction(path: string, json?: unknown) {
 		busy = true;
 		const res = await api(path, { method: 'POST', json });
 		busy = false;
 		if (!res.ok) {
 			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		await load(id);
+	}
+
+	// Answering a request, the friends panel's own acts (#2172): this page is
+	// where the panel sends you to see who is asking, and until now the only
+	// answer here was yes. The undo toast comes with them.
+	async function answer(act: Promise<string | null>) {
+		busy = true;
+		const message = await act;
+		busy = false;
+		if (message) {
+			toasts.push(message, { tone: 'error' });
 			return;
 		}
 		await load(id);
@@ -285,14 +305,30 @@
 						class="btn btn-secondary"><MessageSquare size={15} /> Message</a
 					>
 				{:else if rider.friend === 'pending_in'}
+					{@const them = { id: rider.id, name: rider.displayName }}
 					<button
-						onclick={() => friendAction(`/api/friends/${rider!.id}/accept`)}
+						onclick={() => void answer(acceptRequest(them))}
 						disabled={busy}
 						class="btn btn-primary"><Check size={15} /> Accept friend</button
 					>
+					<!-- The other answer, which this page did not have: a rider
+					     sent here to see who is asking could only say yes. -->
+					<button
+						onclick={() => void answer(dismissRequest(them))}
+						disabled={busy}
+						class="btn btn-ghost"><X size={15} /> Dismiss</button
+					>
 				{:else if rider.friend === 'pending_out'}
-					<button class="btn btn-secondary" disabled
-						><UserPlus size={15} /> Asked — waiting on them</button
+					{@const them = { id: rider.id, name: rider.displayName }}
+					<!-- Was a disabled button saying the state and nothing else;
+					     the panel gained Withdraw in #2008 and this did not. -->
+					<span class="text-muted text-center text-xs"
+						>Asked — waiting on them</span
+					>
+					<button
+						onclick={() => void answer(withdrawRequest(them))}
+						disabled={busy}
+						class="btn btn-secondary"><UserPlus size={15} /> Withdraw</button
 					>
 				{:else if rider.canAdd}
 					<button
