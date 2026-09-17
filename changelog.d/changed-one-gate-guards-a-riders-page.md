@@ -1,0 +1,1 @@
+- A rider's page and the trophy case on it now decide who may see them with one shared rule instead of two written separately. Nothing changes about who can see what today; the two could have drifted apart, and the page is where WattRoom's privacy promise is kept.

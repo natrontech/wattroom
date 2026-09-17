@@ -164,6 +164,25 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	// ADR-0024's audience, asked as one question (#2298) — the same one the
+	// trophy case on this page asks. It used to be recomposed here out of
+	// ListRoomsInCommon and friendStatus, which agreed with the other gate by
+	// coincidence and would have drifted the moment either rule moved.
+	// "pending_out is not a door" lives in the query now: a code grants "may
+	// ask", not "may look".
+	mayLook, err := s.store.Queries.SharesRoomOrFriends(ctx, db.SharesRoomOrFriendsParams{
+		Viewer: me.ID, Rider: id,
+	})
+	if err != nil {
+		s.fail(w, "rider visibility", err, me)
+		return
+	}
+	if !mayLook {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", notVisible)
+		return
+	}
+	// The rooms themselves are the page's content and the medals' scope, not
+	// the gate.
 	rooms, err := s.store.Queries.ListRoomsInCommon(ctx, db.ListRoomsInCommonParams{Rider: id, Viewer: me.ID})
 	if err != nil {
 		s.fail(w, "rooms in common", err, me)
@@ -173,13 +192,6 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.fail(w, "friendship", err, me)
 		return
-	}
-	// pending_out is not a door: a code grants "may ask", not "may look".
-	if friend == "none" || friend == "pending_out" {
-		if len(rooms) == 0 {
-			httpx.WriteError(w, http.StatusNotFound, "not_found", notVisible)
-			return
-		}
 	}
 
 	totals, err := s.store.Queries.RiderTotals(ctx, id)
@@ -299,4 +311,3 @@ func (s *Service) presenceOf(rider db.User, inCommon []roomRef, trusted bool) pr
 func (s *Service) fail(w http.ResponseWriter, what string, err error, me db.User) {
 	httpx.Fail(w, s.log, "rider page: "+what, err, "That rider's page could not be loaded.", "user", store.UUIDString(me.ID))
 }
-

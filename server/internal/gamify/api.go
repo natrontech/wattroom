@@ -152,6 +152,8 @@ func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider by that id in your rooms or friends.")
 		return
 	}
+	// The query answers for the rider themselves too (#2298); this skips a
+	// round trip for the commonest case rather than stating a second rule.
 	if rider != viewer.ID {
 		shares, err := s.store.Queries.SharesRoomOrFriends(r.Context(),
 			db.SharesRoomOrFriendsParams{Viewer: viewer.ID, Rider: rider})
