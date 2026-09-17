@@ -200,6 +200,7 @@ func TestOpenAppliesAMigrationThatArrivedLate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read goose_db_version: %v", err)
 	}
+	defer rows.Close()
 	for rows.Next() {
 		var v int64
 		if err := rows.Scan(&v); err != nil {
@@ -279,9 +280,10 @@ func migrationVersions(t *testing.T) []int64 {
 // version table's shape, so goose creates it rather than a copy of its DDL.
 func seedVersion(t *testing.T, dsn string, version int64) {
 	t.Helper()
+	// Never the dsn in the message: it carries the database's password.
 	sqldb, err := sql.Open("pgx", dsn)
 	if err != nil {
-		t.Fatalf("open %s: %v", dsn, err)
+		t.Fatalf("open the seeded database: %v", err)
 	}
 	defer func() { _ = sqldb.Close() }()
 	if err := goose.SetDialect("postgres"); err != nil {
