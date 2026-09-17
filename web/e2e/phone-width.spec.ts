@@ -331,3 +331,33 @@ test('the workout editor puts the steps before the library on a phone', async ({
 	expect(headings.indexOf('steps')).toBeGreaterThanOrEqual(0);
 	expect(headings.indexOf('steps')).toBeLessThan(headings.indexOf('library'));
 });
+
+test('the rider page and the workouts search keep their width on a phone', async ({
+	page,
+}) => {
+	await page.setViewportSize(PHONE);
+	await signInAs(page, 'Phone Headers', '/u/me');
+
+	// The name is the page: side by side with the avatar and the action, the
+	// text column was ~90 px and the name broke in two (#2183).
+	const name = page.getByRole('heading', { level: 1 });
+	await expect(name).toBeVisible({ timeout: 15_000 });
+	const title = await name.evaluate((el) => ({
+		cut: el.scrollWidth - el.clientWidth,
+		width: el.clientWidth,
+	}));
+	expect(title.cut, `the rider's name is cut by ${title.cut}px`).toBe(0);
+	expect(
+		title.width,
+		`the rider's name is given ${title.width}px of a 375px phone`,
+	).toBeGreaterThan(200);
+
+	await page.goto('/workouts');
+	const search = page.getByRole('searchbox', { name: 'Find a workout' });
+	await expect(search).toBeVisible({ timeout: 15_000 });
+	const box = (await search.boundingBox())!;
+	expect(
+		Math.round(box.width),
+		`the search box is ${Math.round(box.width)}px wide`,
+	).toBeGreaterThan(300);
+});

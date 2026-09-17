@@ -79,9 +79,10 @@
 				<p class="text-muted mt-2 text-sm">
 					This crew removed you. Its code will not let you back in.
 				</p>
-				<a href="/home" class="btn btn-secondary btn-lg mt-6"
-					>Back to your rooms</a
-				>
+				<!-- Home, not "your rooms" (#2183): a rider who arrived here by
+				     invitation may have none, which is the whole point of the
+				     door. The crew page's own banner says Home too. -->
+				<a href="/home" class="btn btn-secondary btn-lg mt-6">Back to Home</a>
 			{:else}
 				<!-- No headcount here (#1399): whoever holds the code is still a
 				     stranger to the crew, and how many are in it is not the
@@ -94,7 +95,13 @@
 					disabled={busy}
 					class="btn btn-primary btn-lg mt-6">Join {data.crew.name}</button
 				>
-				{#if error}<p class="text-danger mt-4 text-sm">{error}</p>{/if}
+				{#if error}
+					<!-- The same shape the join sheet uses for the same refusal
+					     (#2183, errors.md: a submit failure is a banner). -->
+					<div class="mt-4 text-left">
+						<Banner tone="error">{error}</Banner>
+					</div>
+				{/if}
 				<!-- Privacy is architecture (WATTROOM.md): say what joining shows
 				     before the button. Joining a crew shows nobody anything yet. -->
 				<p class="text-muted-dim mt-4 text-[11px]">
@@ -119,7 +126,7 @@
 			<a
 				href="/home"
 				class="text-muted hover:text-ink mt-3 inline-block text-xs underline"
-				>Back to your rooms</a
+				>Back to Home</a
 			>
 		{/if}
 	</div>
