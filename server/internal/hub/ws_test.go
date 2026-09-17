@@ -217,7 +217,7 @@ func TestJukeboxRefusalReachesOnlyTheRiderWhoAddedIt(t *testing.T) {
 			break
 		}
 	}
-	if refused.Error.Code != "jukebox_invalid_video" {
+	if refused.Error.Code != "jukebox_validation_error" {
 		t.Fatalf("sender refusal: %+v", refused.Error)
 	}
 	if refused.Error.Message == "" {

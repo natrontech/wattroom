@@ -187,7 +187,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			if !rm.allow("poke:"+to, rider.ID, h.now(), pokeCooldown) {
 				// A cooldown that drops in silence reads as a broken button,
 				// and the sender pokes again (errors.md).
-				h.writeError(c, "conflict", "You just poked them — give them a moment to notice.")
+				h.writeError(c, "rate_limited", "You just poked them — give them a moment to notice.")
 				continue
 			}
 			if !rm.queuePoke(to, protocol.Poke{
@@ -295,7 +295,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// every other input — it was the one unlimited channel (audit #219).
 			if rm.allow("jukebox", rider.ID, h.now(), 300*time.Millisecond) {
 				if played, _, refusal := rm.jukeboxWithRefusal(*msg.Jukebox, rider.ID, rider.Name, h.now()); refusal != "" {
-					h.writeError(c, "jukebox_"+string(refusal), refusal.message())
+					h.writeError(c, jukeboxCode(refusal.code()), refusal.message())
 				} else if played != nil && h.xp != nil {
 					h.xp.TrackPlayed(slug, played.riderID, played.ref, h.now())
 				}
@@ -308,7 +308,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				//
 				// jukebox_ so it lands beside the deck the rider tapped rather
 				// than in the room's own refusal slot (live.svelte.ts).
-				h.writeError(c, "jukebox_rate_limited", "That was quick — give the deck a moment.")
+				h.writeError(c, jukeboxCode("rate_limited"), "That was quick — give the deck a moment.")
 			}
 		}
 		if msg.Backfill != nil {
@@ -343,7 +343,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if msg.Control.Action == "game-end" {
-				if !rm.endGame() {
+				if !rm.endGame(h.now()) {
 					h.writeError(c, "invalid_request", "No game is running.")
 				}
 				continue
@@ -432,6 +432,14 @@ func logger(log *slog.Logger) *slog.Logger {
 	}
 	return log
 }
+
+// jukeboxCode namespaces one of errors.md's codes onto the deck (#2232), so a
+// refusal lands beside the control the rider tapped rather than in the room's
+// own refusal slot (live.svelte.ts routes on the prefix alone). The suffix is
+// always a code from the closed set — the seven `jukebox_queue_full`-shaped
+// strings this used to emit were a vocabulary of their own that no client and
+// no rule knew (2026-09-17 audit).
+func jukeboxCode(code string) string { return "jukebox_" + code }
 
 func (h *Hub) writeError(c *client, code, message string) {
 	c.sendJSON(h.log, protocol.ServerMessage{

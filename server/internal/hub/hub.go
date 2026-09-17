@@ -401,10 +401,6 @@ func (h *Hub) SetRole(slug, userID, role string) {
 	rm.mu.Unlock()
 }
 
-// Presence answers "is anything happening in there" for the rooms list and
-// the rail (#39 design: the nav shows where the action is) — and now who,
-// so a rider can see their crew from any page. Riders, not sockets: a phone
-// spectator next to a desktop is one person. Lock, copy, unlock.
 // SessionAnnounce puts one plan line on a room's live timeline (#359).
 // Planning is an HTTP call, but the people standing in the room are the ones
 // it is about. Only a room that already exists gets the line: spinning one up
@@ -450,6 +446,13 @@ func (h *Hub) room(slug string) *room {
 	rm, ok := h.rooms[slug]
 	if !ok {
 		rm = newRoom(slug)
+		// One clock for the room and the hub that owns it. newRoom defaults to
+		// time.Now, which is identical in production and divergent the moment
+		// either is injected: join/leave/setAway/setMetrics/fire stamp on the
+		// room's, run/sayDepartedLocked/allow on the hub's, and a test moving
+		// one put a departure in the other's future. Indirect on purpose — a
+		// captured h.now would pin whatever the field held at room creation.
+		rm.now = func() time.Time { return h.now() }
 		rm.pending = &h.handoffs
 		rm.changed = h.PresenceChanged
 		rm.deckIdled = func() { h.triggerAutoplay(rm, slug) }

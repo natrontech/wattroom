@@ -561,9 +561,14 @@ func (rm *room) advanceGameLocked(now time.Time) (winner string) {
 		rm.gameDoneAt = now
 		if len(gs.Podium) > 0 {
 			rm.events.add(sessionLine("won", gs.Podium[0].Name, gs.Mode, time.Time{}, now), now)
-			winner = gs.Podium[0].RiderID
+			return gs.Podium[0].RiderID
 		}
-		return winner
+		// Not every game ends with a winner, and the ones that do not used to
+		// end in silence: a collective ramp finishes on the room's average
+		// falling off the line and builds no podium, so the timeline said
+		// nothing about a game the whole room had just ridden (ADR-0022).
+		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
+		return ""
 	}
 	if now.Sub(rm.gameDoneAt) > gameLinger {
 		rm.game, rm.lastGame, rm.gameDoneAt = nil, nil, time.Time{}

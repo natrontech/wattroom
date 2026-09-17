@@ -254,4 +254,30 @@ describe('every verb the server sends renders', () => {
 			} as never),
 		).toBe('Ada won Watt Golf');
 	});
+
+	it('names a game that ended with nobody to name (#2235)', () => {
+		// A collective ramp ends on the room average falling off the line, so
+		// it builds no podium — and used to leave the timeline silent about a
+		// game the whole room had just ridden.
+		expect(
+			eventText({
+				id: 'g2',
+				kind: 'session',
+				verb: 'gameEnded',
+				subject: 'collective-ramp',
+				count: 7,
+				at: 0,
+			} as never),
+		).toBe('Collective Ramp ended after 7 rounds');
+		expect(
+			eventText({
+				id: 'g3',
+				kind: 'session',
+				verb: 'gameEnded',
+				subject: 'team-relay',
+				count: 1,
+				at: 0,
+			} as never),
+		).toBe('Team Relay ended');
+	});
 });

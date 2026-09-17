@@ -356,7 +356,8 @@ export interface RoomEvent {
   kind: string; // "jukebox" | "session" | "presence"
   /**
    * jukebox: "queued" | "removed" | "skipped" | "playing" | "restored"
-   * session: "planned" | "moved" | "cancelled" | "started" | "ended"
+   * session: "planned" | "moved" | "cancelled" | "started" | "ended" |
+   *          "won" | "gameEnded"
    * presence: "joined" | "left" | "away" | "back"
    */
   verb: string;
@@ -386,7 +387,9 @@ export interface RoomEvent {
   /**
    * How many things this one line covers — 1 normally, more when a burst
    * coalesced ("queued 8 tracks", "Ana and 2 others joined"). Eight lines
-   * would push the actual conversation off the screen.
+   * would push the actual conversation off the screen. On "gameEnded" it
+   * is instead the round the game reached, which for a collective ramp is
+   * the score the room rode for.
    */
   count: number /* int */;
   at: number /* int64 */; // server millis, for ordering only
@@ -905,6 +908,14 @@ export interface RoomPresence {
  * Error tells a client why its connection or command was refused.
  */
 export interface Error {
+  /**
+   * One of errors.md's closed set — validation_error, invalid_request,
+   * unauthorized, forbidden, not_found, conflict, rate_limited,
+   * internal_error — optionally prefixed with the surface the refusal
+   * belongs to ("jukebox_rate_limited"), so a client can land it beside
+   * the control the rider touched instead of in the room's own slot. The
+   * prefix routes; the part after it is always a code from the set.
+   */
   code: string;
   message: string;
 }

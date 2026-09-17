@@ -158,7 +158,7 @@ describe('room live send while reconnecting', () => {
 		socket.onmessage?.({
 			data: JSON.stringify({
 				error: {
-					code: 'jukebox_invalid_video',
+					code: 'jukebox_validation_error',
 					message: 'That video link is not playable here.',
 				},
 			}),

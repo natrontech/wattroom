@@ -19,6 +19,14 @@ type ErrorResponse struct {
 - Status codes: 400 validation, 401 no/expired auth, 403 not-your-room, 404, 409 duplicate, 429 over a per-account ceiling, 503 a shared resource is full, 500 unexpected. The last three all carry `rate_limited`: the rider's move is the same in each case — wait, then try again — and the code says so without pretending the refusal was their input's fault.
 - Every endpoint test covers: happy path, validation → 400, not found → 404, no auth → 401.
 
+## WS command refusals (Go)
+
+A refused WS command sends `protocol.Error{Code, Message}` — the same two halves, minus `Field`: a socket frame has no form to point at, and no status code to carry either, so `Code` is the whole machine answer.
+
+- **`Code` comes from the same closed set.** There is no second vocabulary: `jukebox_queue_full` and its six siblings told a client nothing the set does not, and no rule knew them (2026-09-17 audit). A queue that is full is `rate_limited`, like the 503 it would be over HTTP — the rider's move is to wait and try again, and nothing about their paste was wrong.
+- **One prefix is allowed, and it routes rather than classifies**: `<surface>_<code>`, e.g. `jukebox_rate_limited`. The client lands the message beside the control the rider touched instead of in the room's own refusal slot, and the part after the prefix is still one of the set. Add a prefix only for a surface that has its own place to show a refusal.
+- **A deliberate tap that a rider watches for a result answers when it is refused** (#1762, #2232): chat, the deck, a poke. Fire-and-forget taps — a cheer, a reaction, a soundboard fire — stay quiet, because the rider has lost nothing.
+
 ## Frontend
 
 - Every API call handles failure with user feedback; a page never renders blank on error (loading / error-with-retry / empty / content — always all four states).
