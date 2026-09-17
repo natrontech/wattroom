@@ -780,8 +780,8 @@ type ListUserCalendarRow struct {
 }
 
 // Every room the rider is in, one list (#325). `from` is the only difference
-// between the two callers: the iCal feed keeps a month of history, the
-// sessions page starts at the same 30-minute grace the in-room list uses.
+// between the two callers: the iCal feed keeps a month of history, Home's
+// "What's next" starts at the same 30-minute grace the in-room list uses.
 // `until` and the row limit are the same for both (#1414) — the rider feed is
 // the wider of the two memory spikes, since membership is uncapped and every
 // room's 50 plans land in one ICS string.
