@@ -203,17 +203,6 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "You own this crew — hand it to someone first, then leave.")
 		return
 	}
-	owned, err := s.store.Queries.CountRoomsOwnedInCrew(r.Context(), db.CountRoomsOwnedInCrewParams{CrewID: crew.ID, OwnerID: user.ID})
-	if err != nil {
-		// Fail closed, and say so — not "you own a room" (audit 2026-09-09).
-		httpx.Fail(w, s.log, "crew leave owner check failed", err, "Leaving did not go through. Try again.", "crew", store.UUIDString(crew.ID))
-		return
-	}
-	if owned > 0 {
-		httpx.WriteError(w, http.StatusConflict, "conflict", "You own a room in this crew, and a room never leaves its crew — hand it to a member first.")
-		return
-	}
-	slugs, _ := s.store.Queries.ListCrewRoomSlugs(r.Context(), crew.ID)
 	tx, err := s.store.Pool.Begin(r.Context())
 	if err != nil {
 		httpx.Fail(w, s.log, "crew leave begin failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
@@ -226,10 +215,29 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	// neither sweep (LockCrew), and the room delete takes the same lock in
 	// the same place so the two paths cannot deadlock over the memberships
 	// they share.
-	err = q.LockCrew(r.Context(), crew.ID)
-	if err == nil {
-		err = q.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
+	if err := q.LockCrew(r.Context(), crew.ID); err != nil {
+		httpx.Fail(w, s.log, "crew lock failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
+		return
 	}
+	// Under the lock, so the answer is still true when the leave commits: a
+	// room created into the crew a moment later blocks on it rather than
+	// landing between the count and the delete, which would leave its owner
+	// owning a room in a crew they are no longer in.
+	owned, err := q.CountRoomsOwnedInCrew(r.Context(), db.CountRoomsOwnedInCrewParams{CrewID: crew.ID, OwnerID: user.ID})
+	if err != nil {
+		// Fail closed, and say so — not "you own a room" (audit 2026-09-09).
+		httpx.Fail(w, s.log, "crew leave owner check failed", err, "Leaving did not go through. Try again.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	if owned > 0 {
+		httpx.WriteError(w, http.StatusConflict, "conflict", "You own a room in this crew, and a room never leaves its crew — hand it to a member first.")
+		return
+	}
+	// The rooms to sever the rider from, read under the same lock: the set
+	// cannot change until this commits, and it is gone from the table by then
+	// if the crew goes too.
+	slugs, _ := q.ListCrewRoomSlugs(r.Context(), crew.ID)
+	err = q.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
 	if err == nil {
 		// The confirm promised it: "a private room needs a fresh invitation
 		// from its owner" — the grant used to outlive the membership (#1672).
@@ -243,8 +251,9 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Nothing left in it now goes with the person who was the last thing in
-	// it (#2079, #1935). Idempotent and one statement, so a crew that gained
-	// a room or a member while this ran keeps them.
+	// it (#2079, #1935). One statement, so the predicate is tested at the
+	// moment of the delete — and under the lock above, a join or a new room
+	// waits for this commit rather than racing it.
 	crewGone, err := s.deleteCrewIfEmpty(r.Context(), q, crew.ID)
 	if err != nil {
 		httpx.Fail(w, s.log, "empty crew delete failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
