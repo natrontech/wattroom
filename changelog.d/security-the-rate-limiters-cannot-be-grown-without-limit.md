@@ -1,0 +1,1 @@
+- The rate limiters that guard sign-in, account recovery and the mail WattRoom sends now bound how many keys they will track at once. Several of them are keyed by something a stranger types — the recovery form's address — so a loop could grow one until the server ran out of memory.
