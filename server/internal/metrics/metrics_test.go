@@ -26,6 +26,11 @@ var (
 	labelName      = regexp.MustCompile(`"([^"]*)"`)
 	registersHere  = regexp.MustCompile(`promauto\.With\(metrics\.Registry\)|Registry\.MustRegister`)
 	promauto       = regexp.MustCompile(`promauto\.New`)
+	// The other door into the default registry, and the one #1738 left open:
+	// `prometheus.Register` / `prometheus.MustRegister` are DefaultRegisterer's
+	// methods. `metrics.Registry.Register(…)` does not match — the receiver is
+	// what tells them apart.
+	defaultRegisterer = regexp.MustCompile(`\bprometheus\.(Must)?Register\(`)
 )
 
 // The promise the old comment made and could not keep (#1738): nothing on the
@@ -73,6 +78,11 @@ func TestNoMetricLabelCanNameARoomOrARider(t *testing.T) {
 // Every metric registers into this package's registry, so the list above is
 // the whole list. A `promauto.New…` without `.With(metrics.Registry)` goes to
 // the default registry, where nothing serves it and nothing reviews it.
+//
+// So does a bare `prometheus.Register`, which is how wattroom_room_riding left
+// the endpoint without anything going red (#2321): a GaugeFunc registered
+// inside a method, so neither a promauto call nor a var block, in a file whose
+// promauto declarations had all been converted.
 func TestEveryMetricRegistersIntoTheOneRegistry(t *testing.T) {
 	walk(t, func(path, body string) {
 		if strings.Contains(path, "internal/metrics/") {
@@ -80,6 +90,10 @@ func TestEveryMetricRegistersIntoTheOneRegistry(t *testing.T) {
 		}
 		if promauto.MatchString(body) && !registersHere.MatchString(body) {
 			t.Errorf("%s registers a metric into the default registry — use promauto.With(metrics.Registry)", path)
+		}
+		if defaultRegisterer.MatchString(body) {
+			t.Errorf("%s calls prometheus.Register/MustRegister, which is the DEFAULT registry — nothing serves it.\n"+
+				"Register into the one the handler serves: metrics.Registry.Register(…).", path)
 		}
 	})
 }

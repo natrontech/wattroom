@@ -48,10 +48,14 @@ var (
 // putting room slugs in a metrics endpoint. Metrics are room-scoped by
 // architecture and a GaugeVec would quietly widen that.
 func (h *Hub) registerRidingMetric() {
+	// Into metrics.Registry, the one the handler serves: since #1738 nothing
+	// serves the default registry, so `prometheus.Register` here published the
+	// gauge to no one (#2321).
+	//
 	// The process has one hub. Tests build more, and the duplicate registration
 	// they cause is ignored on purpose — first hub wins, none of them scrape.
 	// Register rather than a package-level sync.Once: no new mutable state.
-	_ = prometheus.Register(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+	_ = metrics.Registry.Register(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 		Name: "wattroom_room_riding",
 		Help: "Riders with a live sample in the last 10s, across all rooms.",
 	}, h.ridingCount))
