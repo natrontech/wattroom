@@ -70,7 +70,6 @@
 		connectedSlug = '',
 		live = false,
 		onLeave,
-		onMember,
 		onSheet,
 	}: {
 		pathname: string;
@@ -79,8 +78,6 @@
 		connectedSlug?: string;
 		live?: boolean;
 		onLeave?: () => void;
-		/** A rider named in a room's people line — the layout resolves them. */
-		onMember?: (slug: string, name: string) => void;
 		/**
 		 * The sidebar is opening a sheet of its own (#1199). Below md the
 		 * layout's drawer sits above dialogs (z-50 over z-40, and dialogs stay
@@ -289,9 +286,9 @@
 				class="text-muted-dim hover:bg-ink/5 hover:text-ink flex items-center gap-1 rounded px-2 pt-1 pb-1.5 text-[10px]"
 				{@attach contextMenu(() =>
 					railPeopleMenu(
-						room.riders,
-						onMember && ((name) => onMember(room.slug, name)),
-						() => void goto(`/r/${room.slug}/members`),
+						room,
+						(href) => void goto(href),
+						() => goto(`/r/${room.slug}/members`),
 					),
 				)}
 			>

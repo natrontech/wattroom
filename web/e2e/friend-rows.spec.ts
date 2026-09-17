@@ -116,3 +116,53 @@ test('a friend request is a row like any other, answerable from either side', as
 	await withdraw.click();
 	await expect(b.getByRole('button', { name: 'Add friend' })).toBeVisible();
 });
+
+test('a long name gives way instead of pushing the row off the phone', async ({
+	riders,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+
+	const a = await riders(A);
+	// docs/SPEC.md allows 60 characters; the dev provider's own names are
+	// short, so the row is fed one (#2182).
+	const long = 'Bartholomew Wolfeschlegelsteinhausenbergerdorff the Third';
+	await a.route('**/api/friends', (route) =>
+		route.fulfill({
+			json: {
+				code: 'LONGNM',
+				declines: [],
+				friends: [
+					{
+						id: 'long-name-peer',
+						name: long,
+						status: 'accepted',
+						at: Date.now(),
+						totalXp: 10,
+					},
+				],
+			},
+		}),
+	);
+
+	await a.setViewportSize({ width: 375, height: 812 });
+	await a.goto('/friends');
+	// The panel's own row: the sidebar names them too, one column away.
+	const name = a
+		.locator('a[href="/u/long-name-peer"]')
+		.filter({ hasText: long })
+		.last();
+	await expect(name).toBeVisible({ timeout: 15_000 });
+
+	// Truncated, rather than a row three controls wide with no room left.
+	const cut = await name.evaluate((el) => el.scrollWidth - el.clientWidth);
+	expect(cut, 'the name is not truncated at all').toBeGreaterThan(0);
+	const remove = a.getByRole('button', { name: 'Remove' });
+	const box = (await remove.boundingBox())!;
+	expect(
+		box.x + box.width,
+		`Remove ends at ${Math.round(box.x + box.width)}px of a 375px phone`,
+	).toBeLessThanOrEqual(375);
+});
