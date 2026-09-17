@@ -1,1 +1,0 @@
-- The OAuth sign-in callback now has the same per-address ceiling the passkey door has, and every call it makes to a provider has a 30-second timeout. Without them an unauthenticated loop could aim WattRoom's outbound requests at Google, GitHub or Strava, and a provider that stopped answering held a connection open indefinitely.

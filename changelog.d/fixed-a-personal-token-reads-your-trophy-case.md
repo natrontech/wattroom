@@ -1,1 +1,0 @@
-- A personal token can read your own trophy case again (`GET /api/me/trophies`), which is one of the five routes ADR-0017 says a token authenticates. It had been answering 401 since a fix to a neighbouring route. Another rider's case still needs a signed-in session, never a token.

@@ -1,1 +1,0 @@
-- Watt Golf gives you your numbers back between holes. The meter is meant to hide from 20 seconds before a hole to its end; the next hole was announced the instant the last one was scored, so it hid for the whole game. There is now a 20-second breather between holes with the meter on, which makes a round about seven minutes rather than four and a half.

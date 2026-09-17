@@ -1,1 +1,0 @@
-- **Two sessions planned for the same minute stop swapping places.** A room may plan overlapping sessions on purpose, but the one labelled "next session in this room" could change between page loads, and the room's list and the sidebar could name different ones. Whichever was planned first now leads, everywhere and on every read.
