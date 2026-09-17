@@ -1,4 +1,3 @@
-import type { Component } from 'svelte';
 import BicepsFlexed from '@lucide/svelte/icons/biceps-flexed';
 import Bike from '@lucide/svelte/icons/bike';
 import Coffee from '@lucide/svelte/icons/coffee';
@@ -20,9 +19,13 @@ import ThumbsUp from '@lucide/svelte/icons/thumbs-up';
 import Tornado from '@lucide/svelte/icons/tornado';
 import Trophy from '@lucide/svelte/icons/trophy';
 import Zap from '@lucide/svelte/icons/zap';
-import { type IconProps } from '@lucide/svelte';
+// Not `Component<IconProps>`: since @lucide/svelte 1.41 `IconProps` belongs to
+// the generic `<Icon icon={…}/>` component and is a union demanding `icon` or
+// `iconNode`, neither of which a concrete icon like `Bike` takes. `LucideIcon`
+// is the type of the per-icon components this file actually collects.
+import { type LucideIcon } from '@lucide/svelte';
 
-export type Icon = Component<IconProps>;
+export type Icon = LucideIcon;
 
 /**
  * A room's icon and its reactions are drawn icons, stored as their lucide
