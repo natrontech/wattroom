@@ -6,6 +6,7 @@ import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/room/wire';
 import { targetAt } from '$lib/workout/engine';
+import { SIGNAL_LOST_MS } from '$lib/workout/session.svelte';
 import { createSprintWindow } from '$lib/workout/sprint-window.svelte';
 import type { Segment } from '$lib/workout/types';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
@@ -86,7 +87,12 @@ export function createRide(deps: RideDeps) {
 		void now;
 		// Counted from the connect, not the first sample: a trainer that never
 		// sends one is the reported failure, and exempting it would hide it.
-		return Date.now() - lastSampleAt > 10_000 ? quietFault(trainer) : null;
+		// docs/SPEC.md's one number (#2161): this is the rider's OWN trainer,
+		// the same question /ride and /ramp ask, and the room used to wait
+		// ten seconds where they waited three.
+		return Date.now() - lastSampleAt > SIGNAL_LOST_MS
+			? quietFault(trainer)
+			: null;
 	});
 
 	/**

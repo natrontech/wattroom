@@ -4,6 +4,7 @@ import { flushSync } from 'svelte';
 import type { RiderMetrics } from '$lib/protocol';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
+import { SIGNAL_LOST_MS } from '$lib/workout/session.svelte';
 
 // The socket's own dependencies, silenced: IndexedDB, and the module the
 // tick's clock window lives in stays real (it only does arithmetic).
@@ -642,6 +643,61 @@ describe('a trainer claim the hub refused (#1853)', () => {
 		await ride.ride(trainer);
 		await settle();
 		expect(trainer.commands).toEqual(['erg:200']);
+
+		dispose();
+		live.close();
+	});
+});
+
+describe("the trainer's silence, one number (#2161)", () => {
+	/** Svelte settles its effects on a microtask; flushSync alone does not. */
+	const settle = async () => {
+		await Promise.resolve();
+		flushSync();
+	};
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('is the same three seconds the solo screens wait', async () => {
+		vi.useFakeTimers();
+		const live = createRoomLive('mfw');
+		const deps = {
+			live,
+			profile: {
+				current: {
+					ftp: 200,
+					shareHr: true,
+					singleSpeed: false,
+					sprintGrade: 5,
+				},
+			},
+			recording: { record() {} } as never,
+			myId: () => 'me',
+			shared: () => undefined,
+			segments: () => [],
+		};
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		trainer.pedal(180);
+		await settle();
+		expect(ride.fault).toBeNull();
+
+		// Just under: a slow second is not a dropout.
+		await vi.advanceTimersByTimeAsync(SIGNAL_LOST_MS - 500);
+		await settle();
+		expect(ride.fault, 'a gap shorter than the cap is not a fault').toBeNull();
+
+		// Past it: the room says so, where it used to wait ten seconds for the
+		// same rider's own trainer while /ride and /ramp waited three.
+		await vi.advanceTimersByTimeAsync(1_500);
+		await settle();
+		expect(ride.fault).toBe('silent');
 
 		dispose();
 		live.close();
