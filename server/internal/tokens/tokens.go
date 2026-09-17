@@ -91,6 +91,15 @@ func (rs readSource) User(r *http.Request) (db.User, bool) {
 }
 
 func (rs readSource) RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool) {
+	// A mutating request goes straight to the cookie source, which is the one
+	// CSRF boundary (#678, #2227): `User` resolves a session without checking
+	// the Origin — that check lives in `RequireUser` alone — so shortcutting
+	// through it here took the boundary off every mutating route of every
+	// service built on this source, `DELETE /api/rides/{id}` included. A
+	// bearer is GET-only anyway (ADR-0017), so there is nothing to lose.
+	if r.Method != http.MethodGet {
+		return rs.cookie.RequireUser(w, r, signInMessage)
+	}
 	if user, ok := rs.User(r); ok {
 		return user, true
 	}
