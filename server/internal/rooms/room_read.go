@@ -106,6 +106,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			Id: store.UUIDString(c.ID), Name: c.Name, Icon: c.Icon,
 			ImageURL: crewImageURL(c.ID, c.HasImage), Code: c.Code,
 			Role: crewRoleWord(c.Owned, c.Admin), Named: c.Named, Founded: c.Founded,
+			LastOut: c.LastOut,
 		})
 	}
 	// maxOwned rides the list so the frontend gates on the server's number

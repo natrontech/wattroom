@@ -823,7 +823,18 @@ select c.id, c.name, c.icon,
        (c.owner_id = $1)::boolean as owned,
        (c.founded_by = $1)::boolean as founded,
        exists (select 1 from crew_roles cr
-               where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin')::boolean as admin
+               where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin')::boolean as admin,
+       -- Leaving this crew deletes it (#2079): it has no rooms and nobody in
+       -- it but you and its owner, so your Leave is the sweep. DeleteCrewIfEmpty's
+       -- predicate with your own row still there, the way CrewGoesWithRoom is
+       -- it with the room still there — change one and change the other, or
+       -- the confirm promises what the leave will not do. False for the owner,
+       -- who cannot leave at all.
+       (c.owner_id <> $1
+        and not exists (select 1 from rooms r where r.crew_id = c.id)
+        and not exists (select 1 from crew_roles cr
+                        where cr.crew_id = c.id and cr.user_id <> $1
+                          and cr.role in ('member', 'admin')))::boolean as last_out
 from crews c
 where c.owner_id = $1
    or exists (select 1 from crew_roles cr
@@ -842,6 +853,7 @@ type ListCrewsForRow struct {
 	Owned    bool
 	Founded  bool
 	Admin    bool
+	LastOut  bool
 }
 
 // Every crew you are in, rooms or none (#1476). The client used to derive
@@ -867,6 +879,7 @@ func (q *Queries) ListCrewsFor(ctx context.Context, userID pgtype.UUID) ([]ListC
 			&i.Owned,
 			&i.Founded,
 			&i.Admin,
+			&i.LastOut,
 		); err != nil {
 			return nil, err
 		}
@@ -955,6 +968,28 @@ func (q *Queries) ListRoomGrantees(ctx context.Context, roomID pgtype.UUID) ([]L
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockCrew = `-- name: LockCrew :exec
+select 1 from crews where id = $1 for update
+`
+
+// The crew's write lock, held for the length of a transaction (#2079).
+// LockRoom's parent: what serialises the two paths that can find a crew empty
+// and delete it — the last member leaving, and the last room being deleted.
+// Without it two members leaving at once each read the OTHER's row as still
+// there (every statement takes its own snapshot under READ COMMITTED), both
+// sweeps decline, and the crew is left with an owner who can neither leave it,
+// hand it on nor delete it — the whole bug, reached by a narrower door.
+//
+// Lock order in this app is USERS BEFORE CREWS BEFORE ROOMS. A room delete
+// ends at its crew, so it takes this FIRST and then the room; the reverse
+// order against a leave holding the crew and reaching for the same membership
+// rows is a deadlock, which Postgres resolves by killing one of them with a
+// 500.
+func (q *Queries) LockCrew(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, lockCrew, id)
+	return err
 }
 
 const pickCrewSuccessor = `-- name: PickCrewSuccessor :one

@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 		access?: string;
 		crew?: { id: string };
 	}[],
+	crews: [] as { id: string; lastOut?: boolean }[],
 }));
 vi.mock('$app/navigation', () => ({ goto: mocks.goto }));
 vi.mock('$lib/confirm.svelte', () => ({ confirm: mocks.confirm }));
@@ -25,6 +26,9 @@ vi.mock('$lib/presence.svelte', () => ({
 	presence: {
 		get rooms() {
 			return mocks.rooms;
+		},
+		get crews() {
+			return mocks.crews;
 		},
 		reload() {},
 	},
@@ -49,6 +53,20 @@ describe('leaveBody', () => {
 			/the 3 rooms .* a private room needs a fresh invitation/,
 		);
 	});
+
+	// #2079: the promise above is a lie for the last one out of a room-less
+	// crew, because the crew — and its code — go with them. The room count
+	// cannot tell the two apart: zero rooms also means a crew whose rooms you
+	// never joined, where the code really does get you back in.
+	it('drops the promise of a way back when the crew goes with you', () => {
+		const ending = leaveBody('Natron', 0, 0, true);
+		expect(ending).toMatch(/the crew goes with you/);
+		expect(ending).toMatch(/no code brings it back/);
+		expect(ending).not.toMatch(/gets you back in/);
+		expect(leaveBody('Natron', 0, 0, false)).toBe(
+			'You leave Natron. Its code gets you back in.',
+		);
+	});
 });
 
 describe('leaveCrewFlow', () => {
@@ -59,6 +77,7 @@ describe('leaveCrewFlow', () => {
 		mocks.rooms = [
 			{ slug: 'a', role: 'member', access: 'private', crew: { id: 'c1' } },
 		];
+		mocks.crews = [{ id: 'c1' }];
 	});
 
 	it('asks first, and a declined confirm leaves nothing (audit 2026-09-09)', async () => {
@@ -74,6 +93,23 @@ describe('leaveCrewFlow', () => {
 		expect(await leaveCrewFlow({ id: 'c1', name: 'Natron' })).toBe(true);
 		expect(mocks.leaveCrew).toHaveBeenCalledWith('c1');
 		expect(mocks.push).toHaveBeenCalledWith('You left Natron.');
+	});
+
+	// The server is the only one who knows (#2079), and it says so on the
+	// crews list — whichever surface offered the Leave. A flow that asked the
+	// ordinary question here would promise a code that no longer opens
+	// anything.
+	it('asks the ending question when the crews list says you are the last out', async () => {
+		mocks.crews = [{ id: 'c1', lastOut: true }];
+		mocks.rooms = [];
+		mocks.confirm.mockResolvedValue(false);
+		await leaveCrewFlow({ id: 'c1', name: 'Natron' });
+		expect(mocks.confirm.mock.calls[0][0]).toEqual({
+			title: 'Leave Natron and end it?',
+			body: leaveBody('Natron', 0, 0, true),
+			action: 'Leave and end it',
+			cancel: 'Keep it',
+		});
 	});
 });
 

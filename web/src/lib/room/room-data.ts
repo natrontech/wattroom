@@ -70,6 +70,15 @@ export interface RoomCrew {
 	 * because the crew's name, logo and invite link go with the room.
 	 */
 	goesWithRoom?: boolean;
+	/**
+	 * LEAVING deletes the crew (#2079): it has no rooms and nobody but its
+	 * owner is left in it, so your Leave is what sweeps it. Carried on the
+	 * crews list, which is why `leaveCrewFlow` reads it from `presence.crews`
+	 * rather than taking it from whichever surface offered the Leave — the
+	 * client cannot work it out, knowing the rooms it is IN and not the rooms
+	 * the crew has, nor how many people are in it.
+	 */
+	lastOut?: boolean;
 }
 
 /**

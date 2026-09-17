@@ -31,14 +31,20 @@ export async function leaveCrewFlow(
 ): Promise<boolean> {
 	const mine = presence.rooms.filter((r) => r.crew?.id === crew.id && !!r.role);
 	const standing = mine.some((r) => r.slug === roomConnection.current?.slug);
+	// Whether the crew goes when you do is the server's answer (#2079), taken
+	// from the crews list wherever the Leave was offered from: the crew page's
+	// own payload carries a roster and no such flag, and both surfaces must
+	// say the same thing.
+	const lastOut = !!presence.crews.find((c) => c.id === crew.id)?.lastOut;
 	const sure = await confirm({
-		title: `Leave ${crew.name}?`,
+		title: lastOut ? `Leave ${crew.name} and end it?` : `Leave ${crew.name}?`,
 		body: leaveBody(
 			crew.name,
 			mine.length,
 			mine.filter((r) => r.access === 'private').length,
+			lastOut,
 		),
-		action: 'Leave the crew',
+		action: lastOut ? 'Leave and end it' : 'Leave the crew',
 		cancel: 'Keep it',
 	});
 	if (!sure) return false;
@@ -54,12 +60,27 @@ export async function leaveCrewFlow(
 	return true;
 }
 
-/** What leaving takes, said before the button. */
+/**
+ * What leaving takes, said before the button.
+ *
+ * `lastOut` is the server's (#2079): leaving a crew with no rooms and nobody
+ * but its owner left in it deletes the crew, so the promise the other branches
+ * make — the code gets you back in — is a lie there. `rooms` cannot stand in
+ * for it: it counts the rooms YOU are in, so zero also means a crew whose
+ * rooms you simply never joined, where the code does get you back.
+ */
 export function leaveBody(
 	name: string,
 	rooms: number,
 	privateRooms: number,
+	lastOut = false,
 ): string {
+	if (lastOut)
+		return (
+			`You leave ${name}, and the crew goes with you: it has no rooms and ` +
+			`nobody but its owner left in it. Its name, its logo and its invite ` +
+			`code end here, and no code brings it back.`
+		);
 	if (rooms === 0) return `You leave ${name}. Its code gets you back in.`;
 	const which = rooms === 1 ? 'the room' : `the ${rooms} rooms`;
 	const back =
