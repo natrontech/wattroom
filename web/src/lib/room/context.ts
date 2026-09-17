@@ -8,6 +8,7 @@ import type {
 	SensorPairing,
 	SprintState,
 } from '$lib/protocol';
+import type { RsvpAnswer } from '$lib/room/rsvp';
 import type { StageSource } from '$lib/room/stage';
 
 /**
@@ -103,6 +104,13 @@ export interface RoomContext {
 		createdBy: string;
 		/** Who said they are in (#450), first to say so first. */
 		going?: { id: string; displayName: string }[];
+		/** How many said no, and how many have not answered (#1011). Counts,
+		 *  never names: who is out is a number the room reads, not a list it
+		 *  reads out. Absent is zero. */
+		out?: number;
+		unanswered?: number;
+		/** Your own answer — absent until you give one. */
+		yourAnswer?: RsvpAnswer;
 	}[];
 	/** What already happened here (ADR-0034): the recaps, oldest first. */
 	readonly recaps: import('$lib/protocol').SessionRecap[];
@@ -149,8 +157,9 @@ export interface RoomContext {
 	transfer(userId: string): void;
 	reschedule(id: string, startsAt: string): void;
 	unschedule(id: string): void;
-	/** Say you are in for a planned session, or take it back (#450). */
-	rsvp(id: string, going: boolean): void;
+	/** Answer for a planned session — in, out, or `null` to take the answer
+	 *  back and be unanswered again (#1011). */
+	rsvp(id: string, answer: RsvpAnswer | null): void;
 	/** Resolves to whether the server took it; a caller that toasts waits. */
 	rotateIcs(): void | Promise<boolean>;
 	setRole(userId: string, role: string): void | Promise<boolean>;

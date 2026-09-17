@@ -21,6 +21,7 @@
 	import { formatWhen } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import { useRoom } from '$lib/room/context';
+	import { rsvpSummary, type RsvpAnswer } from '$lib/room/rsvp';
 	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import CircleX from '@lucide/svelte/icons/circle-x';
@@ -73,10 +74,24 @@
 	}
 
 	/** A plan with an RSVP is what #450 calls an event; no second object. */
-	const going = (entry: { going?: { id: string; displayName: string }[] }) =>
-		entry.going ?? [];
-	const youAreIn = (entry: { going?: { id: string; displayName: string }[] }) =>
-		going(entry).some((who) => who.id === room.you.id);
+	type Plan = (typeof room.upcoming)[number];
+	const going = (entry: Plan) => entry.going ?? [];
+	/** Your own answer, or null while the room has not heard from you — the
+	 *  third state (#1011). Read off the plan rather than looked for in
+	 *  `going`, which only ever carried half the answer. */
+	const answer = (entry: Plan) => entry.yourAnswer ?? null;
+	/** The three states as counts. Who is in is named below; who is out is a
+	 *  number and stays one. */
+	const tally = (entry: Plan) => ({
+		in: going(entry).length,
+		out: entry.out ?? 0,
+		unanswered: entry.unanswered ?? 0,
+	});
+	/** Pressing your own answer again takes it back; pressing the other one
+	 *  changes your mind. Neither asks: there is nothing to undo that a
+	 *  second tap does not (errors.md). */
+	const choose = (entry: Plan, pressed: RsvpAnswer) =>
+		room.rsvp(entry.id, answer(entry) === pressed ? null : pressed);
 
 	/** The place's address, for a chat or a calendar note. */
 	function copyLink() {
@@ -87,13 +102,23 @@
 	// The row's right-click (ux.md, #1373): the buttons keep the primary
 	// actions, this holds every one of them plus the link the row has no
 	// room for. A coach's entries name why they are greyed.
-	function planEntries(entry: (typeof room.upcoming)[number]): MenuEntry[] {
-		const inn = youAreIn(entry);
+	function planEntries(entry: Plan): MenuEntry[] {
+		// Both answers, always both (#1011) — a menu that offered only the
+		// one you had not given could not say where you stood, and the
+		// third state has no word of its own to offer.
 		const entries: MenuEntry[] = [
 			{
-				label: inn ? "I'm out" : "I'm in",
-				icon: inn ? UserMinus : UserCheck,
-				onSelect: () => room.rsvp(entry.id, !inn),
+				label: "I'm in",
+				icon: UserCheck,
+				onSelect: () => choose(entry, 'in'),
+				hint: answer(entry) === 'in' ? 'your answer' : undefined,
+				disabled: room.adminBusy,
+			},
+			{
+				label: "I'm out",
+				icon: UserMinus,
+				onSelect: () => choose(entry, 'out'),
+				hint: answer(entry) === 'out' ? 'your answer' : undefined,
 				disabled: room.adminBusy,
 			},
 			{ label: 'Copy link', icon: Link, onSelect: copyLink },
@@ -136,12 +161,7 @@
 	}
 
 	/** No inverse exists — the RSVPs go with it — so it asks first (errors.md). */
-	async function cancelPlan(entry: {
-		id: string;
-		workoutName: string;
-		startsAt: string;
-		going?: { id: string; displayName: string }[];
-	}) {
+	async function cancelPlan(entry: Plan) {
 		const n = going(entry).length;
 		// Say what is certain (#1911): the mail goes only for a plan still
 		// ahead, on a server that can send, under the room's hourly budget —
@@ -265,32 +285,44 @@
 							{/if}
 						</span>
 					</div>
-					<!-- Being there is not a role (#450): every member says yes for
-					     themselves, and there is no maybe. The word is what the
-					     press does, never where you already stand (#2004) — that
-					     is aria-pressed's job, and the fill's. -->
+					<!-- Being there is not a role (#450): every member answers for
+					     themselves, and there is no maybe. Two fixed words, one
+					     per answer, and aria-pressed says which is yours (#2004)
+					     — pressing yours again takes it back, and the room is
+					     unanswered rather than talked out of anything. -->
 					<div class="mt-2 flex flex-wrap items-center gap-3">
 						<button
-							onclick={() => room.rsvp(entry.id, !youAreIn(entry))}
+							onclick={() => choose(entry, 'in')}
 							disabled={room.adminBusy}
-							aria-pressed={youAreIn(entry)}
-							class="btn btn-xs disabled:opacity-40 {youAreIn(entry)
-								? 'btn-secondary'
-								: 'btn-primary'}"
-							>{youAreIn(entry) ? "I'm out" : "I'm in"}</button
+							aria-pressed={answer(entry) === 'in'}
+							class="btn btn-xs disabled:opacity-40 {answer(entry) === 'in'
+								? 'btn-primary'
+								: 'btn-secondary'}">I'm in</button
 						>
-						<span class="text-muted text-xs">
-							{#if going(entry).length}
+						<button
+							onclick={() => choose(entry, 'out')}
+							disabled={room.adminBusy}
+							aria-pressed={answer(entry) === 'out'}
+							class="btn btn-xs disabled:opacity-40 {answer(entry) === 'out'
+								? 'btn-primary'
+								: 'btn-secondary'}">I'm out</button
+						>
+						<!-- The counts, and then the names of who is in. A
+						     decline is a number here and nowhere a name (#1011):
+						     the number is what tells a planner whether to hold
+						     the session, and a room is small enough that a list
+						     of who said no would read as an accusation. -->
+						<span class="text-muted text-xs">{rsvpSummary(tally(entry))}</span>
+						{#if going(entry).length}
+							<span class="text-muted text-xs">
 								{going(entry)
 									.slice(0, 4)
 									.map((who) => who.displayName)
 									.join(', ')}{going(entry).length > 4
 									? ` +${going(entry).length - 4} more`
 									: ''}
-							{:else}
-								nobody has said yes yet
-							{/if}
-						</span>
+							</span>
+						{/if}
 					</div>
 					{#if manages && movingId === entry.id}
 						<div class="mt-2 flex flex-wrap items-center gap-2">
