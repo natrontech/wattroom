@@ -152,6 +152,10 @@
 			<p class="text-muted mt-4 max-w-md text-sm text-balance sm:text-base">
 				Discord for indoor cycling — no virtual world, your watts are the game.
 			</p>
+			<!-- The promise Home keeps (#2184, ADR-0038 amended 2026-09-17): a
+			     stranger arrives with no invite, so Home's big button says
+			     "Open a room" too. Joining a crew leads only for a rider who
+			     was sent to a door. -->
 			<a href="/login" class="btn btn-primary btn-lg mt-6"
 				>Open your first room</a
 			>

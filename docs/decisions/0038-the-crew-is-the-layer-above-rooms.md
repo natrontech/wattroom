@@ -625,7 +625,9 @@ sheet and Home led with "Open your first room — it makes your crew". That
 turned every newcomer into a crew founder, including the one who was sent
 an invite. The join panel now leads for them and founding a crew is the
 second panel, still one click away. ADR-0010's "the room is the big button"
-predates crews; it stands for a rider who already administers one.
+predates crews; it stands for a rider who already administers one. _(Narrowed
+by the 2026-09-17 (#2184) amendment below: it stands for every rider who was
+sent to no door, and the code box leads only for one carrying an invite.)_
 
 ## Amendment, 2026-09-17 (#2294): a crew admin keeps the narrow door as well as the wide one
 
@@ -818,3 +820,65 @@ the opposite of the decision. #2245 asks for the coverage either way: a join
 through a listed room, the crew membership it creates, and a sibling
 `crew_visible` room in the same crew becoming enterable. That is behaviour to
 pin down, not prose, and it is deliberately not in this documentation PR.
+
+## Amendment, 2026-09-17 (#2184): the landing speaks to the stranger, and the invite is what leads with joining
+
+The 2026-09-16 amendment above ends _"ADR-0010's 'the room is the big button'
+predates crews; it stands for a rider who already administers one."_ That
+scopes [ADR-0010](0010-room-first-positioning.md) without saying which of
+the two riders the **signed-out landing** is talking to, and the landing has
+one CTA: _"Open your first room"_ (`web/src/routes/+page.svelte`). So the
+front door promised a room and, after #2144, Home met every arrival who
+administered no crew with a code box and _"Or start a crew of your own"_ as the
+second panel. The 2026-09-16 UI/UX sweep filed that as
+[#2184](https://github.com/natrontech/wattroom/issues/2184) and could not
+answer it from this repository: which rider the product's front door sells to
+is roadmap and taste.
+
+**Decided in session, 2026-09-17: join-first is keyed on a pending invite, and
+the landing's CTA stays.** A rider carrying an unconsumed invite
+(`users.pending_crew_code`, already carried end to end by the amendment above)
+gets the code box first; everyone else gets the room the landing promised. The
+invite is the only signal that distinguishes the two riders and the server
+already has it — "administers nothing" is true of the stranger and the invited
+alike, which is why keying on it made the front door lie. A stranger arriving
+with no invite is exactly who the landing speaks to, and **every organic
+arrival is a stranger**: the landing is a public page, so it is reached by
+people nobody sent.
+
+ADR-0010 therefore stands unscoped for the rider who administers no crew and
+was sent to no door — the founder case it was written for. What the 2026-09-16
+amendment took from it is narrower than it said: not "a rider who already
+administers a crew", but "a rider holding an invite to someone else's".
+
+### How small this is, said plainly
+
+An invited rider mostly never reaches Home's sheet at all. `landing()`
+(`web/src/lib/auth/next.ts`) sends a signed-in arrival on `/` to `/c/{code}`,
+and the root layout and the sign-in page are its only two callers — so the OAuth
+return and the confirmation mail's way back both land the invited rider on the
+door itself, not on Home. The audience for join-first is what is left: the rider
+who walked away from a door with the invite unconsumed and came back to Home.
+Real, and small. The value of this amendment is mostly in the other direction —
+that the stranger, who is nearly everyone, is no longer handed a code box the
+landing never mentioned.
+
+### What does not change
+
+The join panel stays, one click down the same sheet, and nothing is hidden from
+anyone: this is an ordering decision, never a gate. The invite's own lifecycle
+is untouched — the door still records it, `/api/me` still hands it back under
+the same three conditions, and joining still clears it. `administersNone`
+(#2176) keeps its own job, which is not this one: it decides whether the sheet
+says the day-one fact _"opening a room makes your crew"_, true of every rider
+who administers none however they arrived. It also guards the order predicate,
+because the invite is read once with the account while the room list moves
+first — a rider who founds a crew in-session carries the stale code until
+`/api/me` is read again.
+
+### Supersedes
+
+The last sentence of the 2026-09-16 (#2144) amendment above, _"it stands for a
+rider who already administers one"_, is narrowed rather than reversed: ADR-0010
+stands for every rider without an invite, including one who administers
+nothing. Annotated in place. No schema, no API and no ADR-0010 text changes.
