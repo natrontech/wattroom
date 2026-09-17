@@ -282,6 +282,7 @@ type SessionRsvp struct {
 	SessionID pgtype.UUID
 	UserID    pgtype.UUID
 	CreatedAt pgtype.Timestamptz
+	Going     bool
 }
 
 type Track struct {

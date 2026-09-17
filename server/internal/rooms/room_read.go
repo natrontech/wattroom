@@ -238,12 +238,39 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 			httpx.Fail(w, s.log, "list upcoming failed", err, "The room could not be loaded.", "room", room.Slug)
 			return
 		}
-		// Who is in, for every plan at once (#450) — one query, not
-		// one per session.
+		// Read before the plans, because the third RSVP state is counted
+		// against it: how many have not answered is how many members are
+		// left when the answers are taken away (#1011).
+		members, err := s.store.Queries.ListRoomMembers(r.Context(), room.ID)
+		if err != nil {
+			httpx.Fail(w, s.log, "list members failed", err, "The room could not be loaded.", "room", room.Slug)
+			return
+		}
+		// Who could answer at all: a banned row is a member the room does not
+		// count, and ListRoomRsvps drops their answer on the same rule
+		// (#1675), so both sides of the subtraction agree.
+		asked := 0
+		for _, member := range members {
+			if member.Role != "banned" {
+				asked++
+			}
+		}
+		// Every answer, for every plan at once (#450) — one query, not one
+		// per session. The two halves part here: an "in" is named, an "out"
+		// is a number (#1011).
 		going := map[string][]goingJSON{}
-		if yes, err := s.store.Queries.ListRoomRsvps(r.Context(), room.ID); err == nil {
-			for _, row := range yes {
+		out := map[string]int{}
+		yourAnswer := map[string]string{}
+		if answers, err := s.store.Queries.ListRoomRsvps(r.Context(), room.ID); err == nil {
+			for _, row := range answers {
 				id := store.UUIDString(row.SessionID)
+				if row.UserID == user.ID {
+					yourAnswer[id] = rsvpWord(row.Going)
+				}
+				if !row.Going {
+					out[id]++
+					continue
+				}
 				going[id] = append(going[id], goingJSON{
 					ID: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
 				})
@@ -257,13 +284,13 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				ID: id, WorkoutName: row.WorkoutName,
 				WorkoutJSON: string(row.WorkoutJson),
 				StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
-				Going: going[id],
+				Going: going[id], Out: out[id],
+				// Never below zero: a rider can hold an answer and a
+				// membership the room stopped counting between the two
+				// reads, and "-1 unanswered" is worse than a stale 0.
+				Unanswered: max(0, asked-len(going[id])-out[id]),
+				YourAnswer: yourAnswer[id],
 			})
-		}
-		members, err := s.store.Queries.ListRoomMembers(r.Context(), room.ID)
-		if err != nil {
-			httpx.Fail(w, s.log, "list members failed", err, "The room could not be loaded.", "room", room.Slug)
-			return
 		}
 		// Which banned rows are also crew-banned (#1150), owner-only like
 		// the ban list itself. One query, not one per row.

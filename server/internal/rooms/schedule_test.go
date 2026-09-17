@@ -4,6 +4,8 @@ package rooms
 // rooms_test.go (consolidation sweep 2026-09-09).
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -203,5 +205,159 @@ func TestACrewBannedCoachCannotPlan(t *testing.T) {
 	}
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/schedule", body); status != http.StatusForbidden {
 		t.Fatalf("a crew-banned coach plans: %d, want 403", status)
+	}
+}
+
+// count reads one of the plan's answer tallies. Absent is zero: the counts
+// are omitempty, so "nobody is out" is a field that is not there.
+func count(t *testing.T, plan map[string]any, key string) int {
+	t.Helper()
+	n, ok := plan[key].(float64)
+	if !ok && plan[key] != nil {
+		t.Fatalf("%s is not a number: %v", key, plan[key])
+	}
+	return int(n)
+}
+
+// The third state (#1011): "said no" is a row that says no, and only the
+// absence of a row means nobody has answered. The room reads a decline as a
+// COUNT — who is in is named, who is out is a number, because the number is
+// what tells a planner whether to hold the session and the names would only
+// add the pressure.
+func TestSessionDecline(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Decline Room")
+	h.enter(t, "bob", code, slug)
+	h.enter(t, "carol", code, slug)
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule",
+		fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`,
+			workout, time.Now().Add(2*time.Hour).UTC().Format(time.RFC3339)))
+	if status != http.StatusCreated {
+		t.Fatalf("schedule: %d %v", status, body)
+	}
+	rsvp := "/api/rooms/" + slug + "/schedule/" + fmt.Sprint(body["id"]) + "/rsvp"
+
+	// Three members, nobody has answered — which is three unanswered and no
+	// "out" field at all.
+	plan := h.plan(t, "alice", slug)
+	if got := count(t, plan, "unanswered"); got != 3 {
+		t.Fatalf("unanswered before anyone answers: %d, want 3 — %v", got, plan)
+	}
+
+	// Bob says no. He is not in the list, he is one of the "out", and the
+	// room is down to two who have not answered.
+	if status, body := h.call(t, "bob", http.MethodPut, rsvp, `{"going":false}`); status != http.StatusNoContent {
+		t.Fatalf("decline: %d %v", status, body)
+	}
+	plan = h.plan(t, "alice", slug)
+	if going, _ := plan["going"].([]any); len(going) != 0 {
+		t.Fatalf("a decline joined the who-is-in line: %v", going)
+	}
+	if out, un := count(t, plan, "out"), count(t, plan, "unanswered"); out != 1 || un != 2 {
+		t.Fatalf("after one decline: %d out, %d unanswered, want 1 and 2 — %v", out, un, plan)
+	}
+	// The decision this implements, asserted rather than described: the plan
+	// carries the number and NOT the name. Marshalled whole, because a
+	// decline leaking through some other field is the failure to catch.
+	seen, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatalf("marshal the plan: %v", err)
+	}
+	if bytes.Contains(seen, []byte(h.userID(t, "bob"))) {
+		t.Errorf("the room named who declined: %s", seen)
+	}
+	// Bob's own copy tells him where he stands — nobody else's does.
+	if mine := h.plan(t, "bob", slug)["yourAnswer"]; mine != "out" {
+		t.Errorf("a decliner cannot see their own answer: %v", mine)
+	}
+	if theirs := h.plan(t, "carol", slug)["yourAnswer"]; theirs != nil {
+		t.Errorf("carol was handed an answer she never gave: %v", theirs)
+	}
+
+	// Changing your mind is free and takes no take-back first: one PUT.
+	if status, _ := h.call(t, "bob", http.MethodPut, rsvp, `{"going":true}`); status != http.StatusNoContent {
+		t.Fatalf("change of mind: %d", status)
+	}
+	plan = h.plan(t, "bob", slug)
+	if going, _ := plan["going"].([]any); len(going) != 1 || plan["yourAnswer"] != "in" {
+		t.Fatalf("a rider who changed their mind is not in: %v", plan)
+	}
+	if out, un := count(t, plan, "out"), count(t, plan, "unanswered"); out != 0 || un != 2 {
+		t.Fatalf("after the change of mind: %d out, %d unanswered, want 0 and 2 — %v", out, un, plan)
+	}
+
+	// A PUT with no body is the spelling the app used before declines
+	// existed, and it still means "in" — a tab loaded before the deploy.
+	if status, _ := h.call(t, "carol", http.MethodPut, rsvp, ""); status != http.StatusNoContent {
+		t.Fatalf("body-less rsvp: %d", status)
+	}
+	if answer := h.plan(t, "carol", slug)["yourAnswer"]; answer != "in" {
+		t.Fatalf("a body-less PUT stopped meaning in: %v", answer)
+	}
+
+	// Taking the answer back is the third state again, from either side.
+	if status, _ := h.call(t, "bob", http.MethodDelete, rsvp, ""); status != http.StatusNoContent {
+		t.Fatalf("take it back: %d", status)
+	}
+	plan = h.plan(t, "bob", slug)
+	if plan["yourAnswer"] != nil || count(t, plan, "unanswered") != 2 {
+		t.Fatalf("taking an answer back did not leave it unanswered: %v", plan)
+	}
+
+	// A body that is not an answer is a 400 and changes nothing (errors.md).
+	for _, bad := range []string{`{"going":"nope"}`, `{"coming":false}`, `not json`} {
+		if status, body := h.call(t, "bob", http.MethodPut, rsvp, bad); status != http.StatusBadRequest || body["error"] != "invalid_request" {
+			t.Errorf("%s: %d %v, want 400 invalid_request", bad, status, body)
+		}
+	}
+	if plan := h.plan(t, "bob", slug); plan["yourAnswer"] != nil {
+		t.Errorf("a refused body wrote an answer anyway: %v", plan)
+	}
+}
+
+// A moved session asks the people who said no again (#1011), on the same
+// condition as the reminder's own re-arm: a move to the time it already had
+// is not a move.
+func TestAMoveAsksTheDeclinersAgain(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Moving Room")
+	h.enter(t, "bob", code, slug)
+	h.enter(t, "carol", code, slug)
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	starts := time.Now().Add(2 * time.Hour).UTC().Format(time.RFC3339)
+	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule",
+		fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`, workout, starts))
+	if status != http.StatusCreated {
+		t.Fatalf("schedule: %d %v", status, body)
+	}
+	planID := fmt.Sprint(body["id"])
+	if status, _ := h.call(t, "bob", http.MethodPut, "/api/rooms/"+slug+"/schedule/"+planID+"/rsvp", `{"going":false}`); status != http.StatusNoContent {
+		t.Fatalf("decline: %d", status)
+	}
+	if status, _ := h.call(t, "carol", http.MethodPut, "/api/rooms/"+slug+"/schedule/"+planID+"/rsvp", `{"going":true}`); status != http.StatusNoContent {
+		t.Fatalf("rsvp: %d", status)
+	}
+
+	// A move to the time it already has is not a move, so the answer stands.
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/schedule/"+planID,
+		fmt.Sprintf(`{"startsAt":%q}`, starts)); status != http.StatusNoContent {
+		t.Fatalf("no-op move: %d", status)
+	}
+	if answer := h.plan(t, "bob", slug)["yourAnswer"]; answer != "out" {
+		t.Fatalf("a move to the same time cleared a decline: %v", answer)
+	}
+
+	// A real move does clear it — and leaves the riders who said yes alone.
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/schedule/"+planID,
+		fmt.Sprintf(`{"startsAt":%q}`, time.Now().Add(4*time.Hour).UTC().Format(time.RFC3339))); status != http.StatusNoContent {
+		t.Fatalf("move: %d", status)
+	}
+	if answer := h.plan(t, "bob", slug)["yourAnswer"]; answer != nil {
+		t.Errorf("a session nobody turned down still counts a decline: %v", answer)
+	}
+	plan := h.plan(t, "carol", slug)
+	if plan["yourAnswer"] != "in" || count(t, plan, "out") != 0 || count(t, plan, "unanswered") != 2 {
+		t.Errorf("after the move: %v, want carol in, nobody out, two unanswered", plan)
 	}
 }

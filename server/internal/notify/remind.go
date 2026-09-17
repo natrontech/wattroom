@@ -87,7 +87,14 @@ func (s *Service) remindDue(ctx context.Context) {
 				return
 			}
 			s.log.Info("session reminder", "room", room.Slug, "workout", session.WorkoutName)
-			s.sessionMail(one, room, session.WorkoutName, session.StartsAt.Time, noActor, sessionReminder)
+			// The only mail that names its session (#1011): a rider who has
+			// said they are not coming is not reminded to come. Before this
+			// the audience was every opted-in member and a decline had no
+			// off switch short of muting the whole room.
+			s.sessionMail(one, sessionNote{
+				room: room, workout: session.WorkoutName, startsAt: session.StartsAt.Time,
+				actor: noActor, session: session.ID, change: sessionReminder,
+			})
 		})
 	}
 	wg.Wait()

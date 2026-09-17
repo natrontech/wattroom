@@ -94,16 +94,23 @@ func (h *harness) userID(t *testing.T, name string) string {
 	return store.UUIDString(h.users.ByToken[name].ID)
 }
 
-// going is the RSVP list on the room's one upcoming session.
-func (h *harness) going(t *testing.T, slug string) []any {
+// plan is the room's one upcoming session, as one viewer reads it — the
+// answer counts and `yourAnswer` are per-reader (#1011), so who asks matters.
+func (h *harness) plan(t *testing.T, viewer, slug string) map[string]any {
 	t.Helper()
-	status, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	status, body := h.call(t, viewer, http.MethodGet, "/api/rooms/"+slug, "")
 	upcoming, _ := body["upcoming"].([]any)
 	if status != http.StatusOK || len(upcoming) != 1 {
 		t.Fatalf("upcoming: %d %v", status, body)
 	}
 	entry, _ := upcoming[0].(map[string]any)
-	list, _ := entry["going"].([]any)
+	return entry
+}
+
+// going is the "who is in" list on the room's one upcoming session.
+func (h *harness) going(t *testing.T, slug string) []any {
+	t.Helper()
+	list, _ := h.plan(t, "alice", slug)["going"].([]any)
 	return list
 }
 
