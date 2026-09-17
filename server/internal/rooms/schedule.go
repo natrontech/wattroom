@@ -42,17 +42,29 @@ type goingJSON struct {
 	DisplayName string `json:"displayName"`
 }
 
-// plannedJSON is a scheduled session seen from outside its room — the
-// /sessions page lists every room at once, so each row carries its own.
+// plannedJSON is a planned session seen from outside its room — Home lists
+// every room at once (ADR-0020), so each row carries its own.
+//
+// Deliberately not scheduledJSON (#1693). That struct carries the RSVPs and
+// the workout, and both stay in the room: `going` was declared here and never
+// populated, so a rider read "nobody has said yes" off a field this route does
+// not fill, and the workout JSON was a kilobyte a row — up to
+// maxCalendarEvents of them — that no cross-room list ever renders. The
+// length is what a rider reads at a glance, so the length is what ships.
 type plannedJSON struct {
-	scheduledJSON
-	RoomSlug   string `json:"roomSlug"`
-	RoomName   string `json:"roomName"`
-	CanControl bool   `json:"canControl"`
+	ID          string `json:"id"`
+	WorkoutName string `json:"workoutName"`
+	Minutes     int    `json:"minutes"`
+	StartsAt    string `json:"startsAt"` // RFC 3339
+	CreatedBy   string `json:"createdBy"`
+	RoomSlug    string `json:"roomSlug"`
+	RoomName    string `json:"roomName"`
 }
 
 // handleMySchedule is the cross-room planning surface (#325): everything you
-// can ride, plus the feed token that subscribes to exactly this list.
+// can ride, plus the feed token that subscribes to exactly this list. Home's
+// "What's next" is what renders it (ADR-0020, ADR-0021 amended) — one row per
+// planned session, which is what the calendar feed beside it has always said.
 func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
@@ -61,7 +73,7 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.store.Queries.ListUserCalendar(r.Context(), db.ListUserCalendarParams{
 		// The same 30-minute grace the in-room list keeps: a session stays
 		// startable a little past its time. The far edge and the row bound are
-		// the feeds' (#1414) — this page builds the same list in memory, and
+		// the feeds' (#1414) — Home builds the same list in memory, and
 		// planning stops three months out, so neither can hide a plan.
 		UserID:      user.ID,
 		StartsFrom:  pgTime(time.Now().Add(-30 * time.Minute)),
@@ -71,17 +83,14 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "schedule list failed", err, "Your planned sessions could not be loaded. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
-	s.warnIfTruncated(len(rows), "sessions page", "user", store.UUIDString(user.ID))
+	s.warnIfTruncated(len(rows), "home", "user", store.UUIDString(user.ID))
 	sessions := make([]plannedJSON, 0, len(rows))
 	for _, row := range rows {
 		sessions = append(sessions, plannedJSON{
-			scheduledJSON: scheduledJSON{
-				ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
-				WorkoutJSON: string(row.WorkoutJson),
-				StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
-			},
+			ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
+			Minutes:  workoutMinutes(string(row.WorkoutJson)),
+			StartsAt: row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
 			RoomSlug: row.RoomSlug, RoomName: row.RoomName,
-			CanControl: row.YourRole == "owner" || row.YourRole == "coach",
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{

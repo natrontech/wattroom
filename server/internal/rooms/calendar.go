@@ -4,6 +4,7 @@ import (
 	"crypto/subtle"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -201,6 +202,13 @@ func workoutLength(workoutJSON string) time.Duration {
 	}
 	last := segments[len(segments)-1]
 	return time.Duration(last.Start+last.Seconds) * time.Second
+}
+
+// workoutMinutes is workoutLength as a cross-room list shows it (#1693),
+// rounded the way the room's own Sessions place rounds it so one plan never
+// reads as two lengths on two screens.
+func workoutMinutes(workoutJSON string) int {
+	return int(math.Round(workoutLength(workoutJSON).Minutes()))
 }
 
 // icsTime is RFC 5545's UTC basic format.

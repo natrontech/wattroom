@@ -748,8 +748,7 @@ func (q *Queries) ListRoomUpcoming(ctx context.Context, roomID pgtype.UUID) ([]L
 
 const listUserCalendar = `-- name: ListUserCalendar :many
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
-       u.display_name as created_by, r.name as room_name, r.slug as room_slug,
-       m.role as your_role
+       u.display_name as created_by, r.name as room_name, r.slug as room_slug
 from scheduled_sessions s
 join rooms r on r.id = s.room_id
 join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'banned'
@@ -778,7 +777,6 @@ type ListUserCalendarRow struct {
 	CreatedBy   string
 	RoomName    string
 	RoomSlug    string
-	YourRole    string
 }
 
 // Every room the rider is in, one list (#325). `from` is the only difference
@@ -810,7 +808,6 @@ func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarPara
 			&i.CreatedBy,
 			&i.RoomName,
 			&i.RoomSlug,
-			&i.YourRole,
 		); err != nil {
 			return nil, err
 		}

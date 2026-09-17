@@ -277,14 +277,13 @@ update rooms set owner_id = $2 where id = $1;
 
 -- name: ListUserCalendar :many
 -- Every room the rider is in, one list (#325). `from` is the only difference
--- between the two callers: the iCal feed keeps a month of history, the
--- sessions page starts at the same 30-minute grace the in-room list uses.
+-- between the two callers: the iCal feed keeps a month of history, Home's
+-- "What's next" starts at the same 30-minute grace the in-room list uses.
 -- `until` and the row limit are the same for both (#1414) — the rider feed is
 -- the wider of the two memory spikes, since membership is uncapped and every
 -- room's 50 plans land in one ICS string.
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
-       u.display_name as created_by, r.name as room_name, r.slug as room_slug,
-       m.role as your_role
+       u.display_name as created_by, r.name as room_name, r.slug as room_slug
 from scheduled_sessions s
 join rooms r on r.id = s.room_id
 join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'banned'

@@ -104,15 +104,15 @@ func TestRiderCalendarFeed(t *testing.T) {
 		t.Fatalf("schedule: %d %v", status, body)
 	}
 
-	// A member sees the session with its room attached but no control; the
-	// coach who planned it sees the same row as actionable.
+	// A member sees the session with its room and its length attached — the
+	// row Home draws (#1693).
 	status, body := h.call(t, "bob", http.MethodGet, "/api/schedule", "")
 	sessions, _ := body["sessions"].([]any)
 	if status != http.StatusOK || len(sessions) != 1 {
 		t.Fatalf("bob schedule: %d %v", status, body)
 	}
 	row, _ := sessions[0].(map[string]any)
-	if row["roomSlug"] != slug || row["roomName"] != "Feed Riders" || row["canControl"] != false {
+	if row["roomSlug"] != slug || row["roomName"] != "Feed Riders" || row["minutes"] != float64(10) {
 		t.Fatalf("bob row: %v", row)
 	}
 	token, _ := body["icsToken"].(string)
@@ -123,9 +123,6 @@ func TestRiderCalendarFeed(t *testing.T) {
 	mine, _ := body["sessions"].([]any)
 	if len(mine) != 1 {
 		t.Fatalf("alice schedule: %v", body["sessions"])
-	}
-	if hers, _ := mine[0].(map[string]any); hers["canControl"] != true {
-		t.Fatalf("alice row not controllable: %v", hers)
 	}
 
 	// Someone with no membership gets an empty list, not everyone's plans.
@@ -241,5 +238,72 @@ func TestAStartedPlanStopsOfferingItself(t *testing.T) {
 	}
 	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule/"+id+"/started", ""); status != http.StatusConflict {
 		t.Fatalf("a second start: %d, want 409", status)
+	}
+}
+
+// Home's "What's next" is one row per planned session, across rooms (#1693,
+// ADR-0020) — it used to draw one row per room off the rail feed's `next`,
+// so a room with three plans this week showed one while the same rider's
+// calendar showed all three. And the row is deliberately not the room's:
+// saying you are in stays a room surface, so `going` is absent here rather
+// than present and empty, and the workout JSON no cross-room list renders
+// does not ride along.
+func TestHomeListsEveryPlanAndNoRsvp(t *testing.T) {
+	h := setup(t)
+	slug, code := h.createRoom(t, "alice", "Three Plans")
+	h.enter(t, "bob", code, slug)
+
+	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	ids := make([]string, 0, 3)
+	for _, hours := range []int{72, 24, 48} { // planned out of order, listed in order
+		starts := time.Now().UTC().Add(time.Duration(hours) * time.Hour).Truncate(time.Second)
+		plan := fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`,
+			workout, starts.Format(time.RFC3339))
+		status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule", plan)
+		if status != http.StatusCreated {
+			t.Fatalf("schedule +%dh: %d %v", hours, status, body)
+		}
+		id, _ := body["id"].(string)
+		ids = append(ids, id)
+	}
+
+	// Bob is in for one of them, said in the room where RSVP lives.
+	if status, body := h.call(t, "bob", http.MethodPut,
+		"/api/rooms/"+slug+"/schedule/"+ids[0]+"/rsvp", ""); status != http.StatusNoContent {
+		t.Fatalf("rsvp: %d %v", status, body)
+	}
+
+	_, body := h.call(t, "bob", http.MethodGet, "/api/schedule", "")
+	sessions, _ := body["sessions"].([]any)
+	if len(sessions) != 3 {
+		t.Fatalf("one room with three plans gave %d rows on Home: %v", len(sessions), body["sessions"])
+	}
+	last := ""
+	for i, entry := range sessions {
+		row, _ := entry.(map[string]any)
+		startsAt, _ := row["startsAt"].(string)
+		if startsAt <= last {
+			t.Fatalf("row %d out of order: %q after %q", i, startsAt, last)
+		}
+		last = startsAt
+		for _, gone := range []string{"going", "workoutJson", "canControl"} {
+			if _, ok := row[gone]; ok {
+				t.Errorf("row %d carries %q — RSVP and the workout stay in the room (#1693): %v", i, gone, row)
+			}
+		}
+	}
+
+	// And the room's own route still carries the RSVP, which is the half the
+	// decision kept: the field is dead on the cross-room list, not everywhere.
+	_, room := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	upcoming, _ := room["upcoming"].([]any)
+	var rsvps int
+	for _, entry := range upcoming {
+		row, _ := entry.(map[string]any)
+		going, _ := row["going"].([]any)
+		rsvps += len(going)
+	}
+	if rsvps != 1 {
+		t.Fatalf("the room lost the RSVP it owns: %d in %v", rsvps, room["upcoming"])
 	}
 }
