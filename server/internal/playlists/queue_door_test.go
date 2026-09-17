@@ -9,6 +9,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // The queue door is the rooms package's gate now (#2242), not a sixth
@@ -55,7 +56,7 @@ func TestTheQueueDoorStillRefusesEveryoneItDidBefore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("room: %v", err)
 	}
-	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "alice", OwnerID: room.OwnerID})
+	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "alice", OwnerID: room.OwnerID, Code: testx.CrewCode()})
 	if err != nil {
 		t.Fatalf("crew: %v", err)
 	}
