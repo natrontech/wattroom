@@ -291,7 +291,11 @@
 					>
 				</div>
 			</div>
-			<div class="flex shrink-0 flex-col gap-2">
+			<!-- A row of their own below sm (#2183, the crew header's lesson in
+			     #2175): wrapping is not enough, because a flex item shrinks
+			     before it wraps — side by side the name column was ~90 px, so
+			     "Ben Okri" broke in two and the presence line ran to four. -->
+			<div class="flex shrink-0 basis-full flex-col gap-2 sm:basis-auto">
 				{#if rider.friend === 'self'}
 					<!-- Your own page is where you look for your trophies (#575);
 					     Home's level tile was the only way in. -->

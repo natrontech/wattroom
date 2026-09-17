@@ -154,7 +154,6 @@ export function joinCrew(code: string): Promise<ApiResult<RoomCrew>> {
 	return api<RoomCrew>('/api/crews/join', { method: 'POST', json: { code } });
 }
 
-/** Out of the crew and every one of its rooms, in one move (#1228, #1236). */
 /** A new invite (#1930): the old code and every link carrying it stop working. */
 export function rotateCrewCode(
 	id: string,
@@ -162,6 +161,7 @@ export function rotateCrewCode(
 	return api<{ code: string }>(`/api/crews/${id}/code`, { method: 'POST' });
 }
 
+/** Out of the crew and every one of its rooms, in one move (#1228, #1236). */
 export function leaveCrew(id: string): Promise<ApiResult<void>> {
 	return api<void>(`/api/crews/${id}/leave`, { method: 'POST' });
 }

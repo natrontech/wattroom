@@ -96,7 +96,8 @@
 	// Leaving the crew (#1228, #1236): one call takes the membership and every
 	// room of the crew you were in. Refused up front when you own a room here:
 	// a room never leaves its crew, so neither can its owner — hand it on
-	// first (#1227). Undo rejoins by the code the client still holds.
+	// first (#1227). A confirm, not an undo: rejoining by the code brings back
+	// the membership and nothing else (crew-flows.ts).
 	const myRooms = $derived(
 		presence.rooms.filter((r) => r.crew?.id === crew?.id && !!r.role),
 	);
