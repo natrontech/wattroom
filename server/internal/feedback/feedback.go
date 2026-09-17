@@ -315,20 +315,23 @@ func fenced(s string) string {
 }
 
 // routeSegments is every path segment the route tree (web/src/routes) spells
-// out literally. It is the whole vocabulary a public issue may quote: every
-// other segment a route can hold is a parameter, and every parameter this app
-// has names somebody — a room slug, a rider id, a crew id, a ride id, and
-// `/c/{code}`, a crew invite code where knowing it IS the permission to join.
+// out literally, and paramUnder is every place in that tree where a parameter
+// stands — keyed by the path above it. Between them they are the whole
+// vocabulary a public issue may quote: everything else a route can hold is a
+// parameter, and every parameter this app has names somebody — a room slug, a
+// rider id, a crew id, a ride id, and `/c/{code}`, a crew invite code where
+// knowing it IS the permission to join.
 //
 // An allowlist rather than the list of name-carrying prefixes this used to be
 // (#2240): that list held two of the eight route shapes that carry a name,
 // and the next shape added would not have been on it either. Inverted, the
-// route nobody has taught this list about reads as `/…` — the failure that
-// discloses nothing — and the table test below walks the route tree, so the
-// omission is loud rather than silent.
-var routeSegments = func() map[string]bool {
-	m := make(map[string]bool)
-	for _, seg := range strings.Fields(`
+// route nobody has taught these lists about reads as `/…` — the failure that
+// discloses nothing. paramUnder is what keeps a room actually called "chat"
+// from reading as a screen; routeSegments is what catches the screen nobody
+// has declared. The table tests below walk the route tree, so an omission
+// from either is loud rather than silent.
+var (
+	routeSegments = fieldSet(`
 		account appearance brand c chat components crew data dev directory
 		dm download edit editor equipment friends hardware history home
 		hud legal licenses login medal members messages modes music
@@ -336,28 +339,40 @@ var routeSegments = func() map[string]bool {
 		recover ride room rooms sessions settings sound spectator
 		styleguide summary terms theme-editor themes training trophies u
 		voice watch whats-new workouts
-	`) {
-		m[seg] = true
+	`)
+	paramUnder = fieldSet(`
+		/c /crew /dm /history /messages/dm /messages/r /r /u
+	`)
+)
+
+func fieldSet(list string) map[string]bool {
+	m := make(map[string]bool)
+	for _, f := range strings.Fields(list) {
+		m[f] = true
 	}
 	return m
-}()
+}
 
 // publicRoute is the route as a stranger may read it: the screen, never who
-// was on it (#737, ADR-0006 — "the public issue names nobody"). Every segment
-// the route tree does not spell out is replaced by an ellipsis, and a query
-// or fragment is dropped whole — the field is rider-supplied, so it is one
-// more place a name could be posted. Fingerprint keeps the full route, so
-// per-room deduplication is unaffected.
+// was on it (#737, ADR-0006 — "the public issue names nobody"). A segment
+// standing in a parameter's place, and any segment the route tree does not
+// spell out, become an ellipsis; a query or fragment is dropped whole, the
+// field being rider-supplied and so one more place a name could be posted.
+// Fingerprint keeps the full route, so per-room deduplication is unaffected.
 func publicRoute(route string) string {
 	if i := strings.IndexAny(route, "?#"); i >= 0 {
 		route = route[:i]
 	}
 	segs := strings.Split(route, "/")
+	out := make([]string, len(segs))
+	copy(out, segs)
 	for i, seg := range segs {
-		if seg == "" || routeSegments[seg] {
+		if seg == "" {
 			continue
 		}
-		segs[i] = "…"
+		if paramUnder[strings.Join(segs[:i], "/")] || !routeSegments[seg] {
+			out[i] = "…"
+		}
 	}
-	return strings.Join(segs, "/")
+	return strings.Join(out, "/")
 }
