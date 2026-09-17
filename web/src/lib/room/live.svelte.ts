@@ -528,9 +528,9 @@ export function createRoomLive(slug: string) {
 		 * hub cannot then be left holding the opposite of what the rider sees
 		 * because one message went missing.
 		 */
-		setAway(next: boolean) {
+		setAway(next: boolean, reason = '') {
 			away = next;
-			send({ away: { away: next } });
+			send({ away: { away: next, reason: next ? reason : '' } });
 		},
 		get recaps() {
 			return recaps;

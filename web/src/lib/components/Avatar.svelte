@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Coffee from '@lucide/svelte/icons/coffee';
+	import { awayState } from '$lib/away';
 	import { levelFromXp, levelProgress } from '$lib/level';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import type { PresenceStatus } from '$lib/status';
@@ -18,6 +18,7 @@
 		avatarUrl = null,
 		xp = null,
 		status = null,
+		awayReason = '',
 		size = 40,
 		ring = 'var(--color-surface)',
 	}: {
@@ -26,10 +27,20 @@
 		xp?: number | null;
 		/** Where they are ($lib/status.ts); null draws no badge at all. */
 		status?: PresenceStatus | null;
+		/**
+		 * Which away, from the room's tick ($lib/away). Room surfaces pass it;
+		 * the presence rail and everywhere outside a room leave it unset and
+		 * get the plain cup, which is the whole of what they showed before.
+		 */
+		awayReason?: string;
 		size?: number;
 		/** What the badge punches its hole in — the surface behind the face. */
 		ring?: string;
 	} = $props();
+
+	// The glyph the away mark wears. One lookup, so the tile, the menu item
+	// and the timeline line cannot drift apart.
+	const away = $derived(awayState(awayReason));
 
 	// A picture that will not load falls back to the initial rather than to an
 	// empty disc (.claude/rules/errors.md: a defined fallback, never a broken
@@ -140,17 +151,19 @@
 	{/if}
 	{#if status === 'riding' || status === 'away'}
 		<!-- Riding is motion, never a dot (ADR-0020); away is the Lounge
-		     button's own glyph, quiet chrome like every other mark. -->
+		     button's own glyph, quiet chrome like every other mark — and the
+		     glyph says WHICH away, so a room can tell a shower from a snack
+		     without reading the timeline. -->
 		<span
 			class="absolute -bottom-0.5 -left-0.5 grid place-items-center rounded-full"
 			style="width:{mark}px;height:{mark}px;background:{ring};box-shadow:0 0 0 2px {ring}"
 			role="img"
-			aria-label={STATUS_WORD[status]}
+			aria-label={status === 'away' ? away.label : STATUS_WORD[status]}
 		>
 			{#if status === 'riding'}
 				<RidingBars size={Math.round(mark * 0.6)} />
 			{:else}
-				<Coffee size={Math.round(mark * 0.7)} class="text-muted" />
+				<away.icon size={Math.round(mark * 0.7)} class="text-muted" />
 			{/if}
 		</span>
 	{:else if status}

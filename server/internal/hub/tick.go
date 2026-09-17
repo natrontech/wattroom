@@ -221,7 +221,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 				// and riding is the window the room holds rather than the
 				// watts on this one sample (#1016).
 				rider := c.rider
-				_, rider.Away = rm.away[c.rider.ID]
+				rider.AwayReason, rider.Away = rm.away[c.rider.ID]
 				_, rider.Riding = pedalling[c.rider.ID]
 				// And what their board still has going, so a rider who joined
 				// mid-clip catches up (#1681). Read here rather than drained:

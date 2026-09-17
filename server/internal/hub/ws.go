@@ -208,7 +208,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// Unlimited like a sensor claim, and for the same reason: it is
 			// one map write per rider, so a client repeating itself changes
 			// nothing and queues nothing. The state rides the next tick.
-			rm.setAway(rider.ID, msg.Away.Away)
+			rm.setAway(rider.ID, msg.Away.Away, msg.Away.Reason)
 		}
 		if msg.Metrics != nil {
 			// Rate-shaped like every other channel (audit 2026-09-09): a trainer

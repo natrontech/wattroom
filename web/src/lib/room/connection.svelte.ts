@@ -46,7 +46,8 @@ type Connection = {
 	 * You stepped out, or came back (#706). One home for the pair the state
 	 * needs (#807): the local AV and the hub message.
 	 */
-	setAway: (next: boolean) => void;
+	/** reason is one of $lib/away's keys; '' is the plain away. */
+	setAway: (next: boolean, reason?: string) => void;
 	/** The rider's FTP/weight cache, pulled from the account (ADR-0009). */
 	profile: ReturnType<typeof createProfileStore>;
 	/** What you rode this session — the ride writes it, the summary reads it. */
@@ -542,12 +543,14 @@ function connect(slug: string): Connection {
 		 * everyone watching. One home for the pair (#807) — the button that
 		 * sends it now lives in the sidebar, which has no room context.
 		 */
-		setAway(next: boolean) {
+		setAway(next: boolean, reason = '') {
 			// What we are waiting for the server to echo (#1128), so the tick
-			// already in flight cannot undo the press that produced it.
+			// already in flight cannot undo the press that produced it. The
+			// echo tracks away-ness alone: the reason changes no mic and no
+			// camera, so AV never hears about it.
 			awayEcho = pressed(next);
 			void av.setAway(next);
-			live.setAway(next);
+			live.setAway(next, reason);
 		},
 		profile,
 		recording,

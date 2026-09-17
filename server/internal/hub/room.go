@@ -4,6 +4,7 @@
 package hub
 
 import (
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -113,7 +114,9 @@ type room struct {
 	// because they said so on one of their screens, not because one of them
 	// happened to be the socket that asked. Emptied as the rider's last
 	// socket goes, so away never outlives being in the room.
-	away map[string]struct{}
+	// The value is the reason from protocol.AwayReasons, "" for plain away;
+	// presence in the map is the away-ness, as it always was.
+	away map[string]string
 	// Riders whose last socket has gone, and when. The room is not told until
 	// the grace window is out (#984): a phone in a garage flaps, and a leave
 	// line per flap is a strobe rather than a timeline. Coming back inside the
@@ -218,7 +221,7 @@ func newRoom(slug string) *room {
 		voiceMs:       make(map[string]int64),
 		present:       make(map[string]*span),
 		sounding:      make(map[string]firing),
-		away:          make(map[string]struct{}),
+		away:          make(map[string]string),
 		departed:      make(map[string]time.Time),
 		departedNames: make(map[string]string),
 	}
@@ -328,30 +331,49 @@ const autoplayActor = "Autoplay"
 // setAway records a rider stepping out or coming back (#706). Per rider: it
 // reaches every screen they hold, which is what makes pressing the button on
 // the desktop clear the mark the phone is also drawing.
-func (rm *room) setAway(riderID string, away bool) {
+//
+// reason is one of protocol.AwayReasons or "" for the plain away; anything
+// else is dropped to "" rather than refused, because the state is the point
+// and an unknown word is a client this server is older than.
+func (rm *room) setAway(riderID string, away bool, reason string) {
+	if !away || !slices.Contains(protocol.AwayReasons, reason) {
+		reason = ""
+	}
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	_, was := rm.away[riderID]
+	wasReason, was := rm.away[riderID]
 	if away {
-		rm.away[riderID] = struct{}{}
+		rm.away[riderID] = reason
 	} else {
 		delete(rm.away, riderID)
 	}
 	// Only the change is worth a line: a tab restating what it already said
-	// on every reconnect would print one every time (#984).
-	if was == away {
+	// on every reconnect would print one every time (#984). Changing from one
+	// reason to another IS a change — "Ana is refuelling" after "Ana went
+	// away" is the room learning something.
+	if was == away && wasReason == reason {
 		return
 	}
 	name := rm.nameOfLocked(riderID)
 	if name == "" {
 		return
 	}
-	verb := "back"
-	if away {
-		verb = "away"
-	}
 	now := rm.now()
-	rm.events.add(presenceLine(verb, name, now), now)
+	rm.events.add(presenceLine(awayVerb(away, reason), name, now), now)
+}
+
+// awayVerb is the timeline's word for a state. One verb per state rather than
+// a verb plus a payload, so the client's renderer stays the lookup it already
+// is and an unknown verb from a newer server draws nothing rather than
+// something wrong.
+func awayVerb(away bool, reason string) string {
+	if !away {
+		return "back"
+	}
+	if reason == "" {
+		return "away"
+	}
+	return "away_" + reason
 }
 
 // nameOfLocked is what to call a rider who is in the room right now.
