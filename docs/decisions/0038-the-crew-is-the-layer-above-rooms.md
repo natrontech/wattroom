@@ -459,6 +459,22 @@ Nothing else in that paragraph changes: the backfill, the one-crew-per-owner
 rule, and the rollback-loses-the-crew-layer-not-the-rooms property all hold, and
 they hold _better_ with the column nullable.
 
+> **Diverged 2026-09-17 (#2332, #1301)** — _"every creation path sets it"_ was
+> true of the transaction and not of the insert. `CreateRoom` inserted
+> `(slug, name, owner_id)` and the crew arrived a statement later from
+> `PlaceRoomInCrew`, deliberately, because fifteen call sites make rooms
+> directly — so every room this app has ever made was born crew-less inside
+> its own transaction, invisible from outside it. A `not null`, and equally
+> any `check (crew_id is not null)` whether `not valid` or not, is evaluated
+> on that insert: the contract half would have refused every room creation in
+> the release carrying it, on a database with **zero** null rows. The count
+> this was parked on for eleven releases was never the dangerous precondition.
+> The analogy to `identities.refresh_token` is what hid it — that column is
+> written by the insert that creates its row and `rooms.crew_id` was not, so
+> the comparison carried the conclusion past the step that made it false.
+> #2332 moved the crew into the insert; the check goes the release after it,
+> and #1301 then #2333 carry the two halves that remain.
+
 Two related columns follow the same reasoning and are called out because they
 are easy to get backwards:
 
