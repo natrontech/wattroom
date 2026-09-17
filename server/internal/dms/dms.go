@@ -6,6 +6,7 @@ package dms
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -45,6 +46,11 @@ type Service struct {
 	lines   *budget.Budget[pgtype.UUID]
 	uploads *budget.Budget[pgtype.UUID]
 }
+
+// One sentence, one number: what the rider is told is what the check enforced.
+// protocol/limits.go is where the number lives, and a prose copy of it drifts
+// the way #1393 and #1986 did (#2240).
+var tooLongMessage = fmt.Sprintf("A message is 1–%d characters.", protocol.MaxMessageChars)
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 	return &Service{
@@ -104,7 +110,7 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 	}
 	text := strings.TrimSpace(req.Text)
 	if utf8.RuneCountInString(text) > protocol.MaxMessageChars {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "A message is 1–500 characters.", "text")
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", tooLongMessage, "text")
 		return
 	}
 	// An image is a message body of its own (#285), so text is only required
@@ -115,7 +121,7 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if text == "" && req.ImageID == "" {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "A message is 1–500 characters.", "text")
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", tooLongMessage, "text")
 		return
 	}
 	sent, err := s.store.Queries.SendDm(r.Context(), db.SendDmParams{
@@ -166,7 +172,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 	}
 	text := strings.TrimSpace(req.Text)
 	if utf8.RuneCountInString(text) > protocol.MaxMessageChars {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "A message is 1–500 characters.", "text")
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", tooLongMessage, "text")
 		return
 	}
 	msg, err := s.store.Queries.GetDmMessage(r.Context(), db.GetDmMessageParams{
@@ -189,7 +195,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 	// An image is a message body of its own (#285), so the words may go —
 	// but a text-only line cannot be edited down to nothing.
 	if text == "" && !msg.ImageID.Valid {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "A message is 1–500 characters.", "text")
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", tooLongMessage, "text")
 		return
 	}
 	edited, err := s.store.Queries.EditDmMessage(r.Context(), db.EditDmMessageParams{

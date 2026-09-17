@@ -1,0 +1,3 @@
+- A mid-ride flag no longer risks naming anyone in the public issue it files. The report's route is now redacted against the app's own route list, so a rider id, a crew id, a ride id and a crew invite code are dropped the way a room slug and a DM peer always were.
+- Link previews take a picture's type from the picture, not from the claim the remote host made about it, and the outbound fetch refuses several more address ranges that are not on the public internet.
+- A room chat line that is too long is refused at the same limit the message box enforces, and says that number rather than a second copy of it.

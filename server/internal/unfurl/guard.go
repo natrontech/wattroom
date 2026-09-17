@@ -75,6 +75,7 @@ var (
 // addresses that look public to a resolver and are not.
 var blockedNets = func() []*net.IPNet {
 	cidrs := []string{
+		"0.0.0.0/8",       // "this network" — 0.0.0.0 is local, 0.1.2.3 resolves to it
 		"100.64.0.0/10",   // CGNAT — the ISP's side of a home router
 		"192.0.0.0/24",    // IETF protocol assignments
 		"192.0.2.0/24",    // TEST-NET-1
@@ -82,8 +83,12 @@ var blockedNets = func() []*net.IPNet {
 		"198.51.100.0/24", // TEST-NET-2
 		"203.0.113.0/24",  // TEST-NET-3
 		"192.88.99.0/24",  // deprecated 6to4 relay anycast
+		"240.0.0.0/4",     // reserved, and the broadcast address with it
+		"::/96",           // IPv4-compatible IPv6 — ::a.b.c.d, a v4 address in a costume To4 does not take off
 		"64:ff9b::/96",    // NAT64 — a v6 wrapper around a v4 address
 		"2002::/16",       // 6to4, same trick
+		"2001::/32",       // Teredo, same trick again
+		"2001:db8::/32",   // documentation
 		"100::/64",        // discard-only
 	}
 	nets := make([]*net.IPNet, 0, len(cidrs))
@@ -105,7 +110,10 @@ func publicIP(ip net.IP) bool {
 		return false
 	}
 	// A v4-mapped v6 address is a v4 address; judge it as one, or ::ffff:10.0.0.1
-	// walks past every check below.
+	// walks past every check below. The other v4-in-v6 costumes — v4-compatible,
+	// NAT64, 6to4, Teredo — To4 does not take off, so blockedNets refuses the
+	// wrappers whole. Every one of them is named in guard_test.go: ADR-0031
+	// says the refusal tests are the specification.
 	if v4 := ip.To4(); v4 != nil {
 		ip = v4
 	}

@@ -48,10 +48,25 @@ func (f *Fetcher) Image(ctx context.Context, raw string, max int64) (data []byte
 	if int64(len(data)) > max {
 		return nil, "", errTooBig
 	}
-	if mime = http.DetectContentType(data); !renderableImage(mime) {
+	if mime = detectImage(data); !renderableImage(mime) {
 		return nil, "", fmt.Errorf("%w: %s", errNotImage, mime)
 	}
 	return data, mime, nil
+}
+
+// detectImage is http.DetectContentType with the one container it does not
+// know. AVIF and its HEIF siblings name their brand in the `ftyp` box, and
+// renderableImage has listed image/avif since it shipped — reachable only
+// through the header the thumbnail proxy has now stopped believing (#2240).
+// Without this the list would promise a type the sniffer cannot return.
+func detectImage(head []byte) string {
+	if len(head) >= 12 && string(head[4:8]) == "ftyp" {
+		switch string(head[8:12]) {
+		case "avif", "avis":
+			return "image/avif"
+		}
+	}
+	return http.DetectContentType(head)
 }
 
 // renderableImage is the narrow set a picture from a stranger's host may be.

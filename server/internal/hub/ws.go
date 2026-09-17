@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -225,7 +226,8 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				// The client caps at 500 CHARACTERS — counting bytes here cut
 				// non-Latin scripts off at half the advertised limit and then
 				// dropped the line silently (audit #219).
-				h.writeError(c, "validation_error", "That message is too long — 500 characters is the cap.")
+				h.writeError(c, "validation_error",
+					fmt.Sprintf("That message is too long — %d characters is the cap.", protocol.MaxMessageChars))
 				continue
 			}
 			// Untrusted like the text: an image id is a 36-char UUID the room's

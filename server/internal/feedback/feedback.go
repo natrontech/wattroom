@@ -314,23 +314,50 @@ func fenced(s string) string {
 	return "`" + strings.NewReplacer("`", "'", "\n", " ", "\r", " ").Replace(s) + "`"
 }
 
-// publicRoute drops the one segment of a route that names somebody: a room
-// slug, or the peer of a DM. Which screen the rider was on is what triage
-// needs; which room, and with whom, is theirs. Fingerprint keeps the full
-// route, so per-room deduplication is unaffected.
+// routeSegments is every path segment the route tree (web/src/routes) spells
+// out literally. It is the whole vocabulary a public issue may quote: every
+// other segment a route can hold is a parameter, and every parameter this app
+// has names somebody — a room slug, a rider id, a crew id, a ride id, and
+// `/c/{code}`, a crew invite code where knowing it IS the permission to join.
+//
+// An allowlist rather than the list of name-carrying prefixes this used to be
+// (#2240): that list held two of the eight route shapes that carry a name,
+// and the next shape added would not have been on it either. Inverted, the
+// route nobody has taught this list about reads as `/…` — the failure that
+// discloses nothing — and the table test below walks the route tree, so the
+// omission is loud rather than silent.
+var routeSegments = func() map[string]bool {
+	m := make(map[string]bool)
+	for _, seg := range strings.Fields(`
+		account appearance brand c chat components crew data dev directory
+		dm download edit editor equipment friends hardware history home
+		hud legal licenses login medal members messages modes music
+		notifications pairing panel privacy profile progression r ramp
+		recover ride room rooms sessions settings sound spectator
+		styleguide summary terms theme-editor themes training trophies u
+		voice watch whats-new workouts
+	`) {
+		m[seg] = true
+	}
+	return m
+}()
+
+// publicRoute is the route as a stranger may read it: the screen, never who
+// was on it (#737, ADR-0006 — "the public issue names nobody"). Every segment
+// the route tree does not spell out is replaced by an ellipsis, and a query
+// or fragment is dropped whole — the field is rider-supplied, so it is one
+// more place a name could be posted. Fingerprint keeps the full route, so
+// per-room deduplication is unaffected.
 func publicRoute(route string) string {
-	for _, prefix := range []string{"/r/", "/messages/dm/"} {
-		if !strings.HasPrefix(route, prefix) {
+	if i := strings.IndexAny(route, "?#"); i >= 0 {
+		route = route[:i]
+	}
+	segs := strings.Split(route, "/")
+	for i, seg := range segs {
+		if seg == "" || routeSegments[seg] {
 			continue
 		}
-		rest := route[len(prefix):]
-		if rest == "" {
-			return route
-		}
-		if i := strings.IndexByte(rest, '/'); i >= 0 {
-			return prefix + "…" + rest[i:]
-		}
-		return prefix + "…"
+		segs[i] = "…"
 	}
-	return route
+	return strings.Join(segs, "/")
 }

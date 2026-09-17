@@ -10,7 +10,9 @@
 package unfurl
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"mime"
@@ -220,8 +222,28 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { _ = res.Body.Close() }()
-	kind, _, _ := mime.ParseMediaType(res.Header.Get("Content-Type"))
-	if res.StatusCode != http.StatusOK || !renderableImage(kind) {
+	if res.StatusCode != http.StatusOK {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That preview image could not be loaded.")
+		return
+	}
+	// The type comes from the bytes, never from the header (#2240). Image()
+	// has always read it this way and the reason is the same one here: these
+	// bytes leave WattRoom's own origin, and a host that declares image/png
+	// and sends a document was otherwise believed — with nosniff and the CSP
+	// left holding it, which is exactly the dependency ADR-0031 did not want.
+	//
+	// Only the sniffing window is buffered. http.DetectContentType reads 512
+	// bytes and no more, so the rest of the picture still streams to a rider
+	// who is waiting on it.
+	head := make([]byte, 512)
+	n, err := io.ReadFull(res.Body, head)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "That preview image could not be loaded.")
+		return
+	}
+	head = head[:n]
+	kind := detectImage(head)
+	if !renderableImage(kind) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That preview image could not be loaded.")
 		return
 	}
@@ -233,7 +255,8 @@ func (s *Service) handleImage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, max-age=3600")
 	// Truncating at the cap is deliberate: a half-drawn thumbnail is a better
 	// outcome than an unbounded copy from a host that never stops sending.
-	if _, err := io.Copy(w, io.LimitReader(res.Body, maxImageBytes)); err != nil {
+	rest := io.LimitReader(res.Body, maxImageBytes-int64(n))
+	if _, err := io.Copy(w, io.MultiReader(bytes.NewReader(head), rest)); err != nil {
 		s.log.Debug("unfurl image copy", "err", err)
 	}
 }

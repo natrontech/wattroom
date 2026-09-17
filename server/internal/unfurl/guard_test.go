@@ -46,6 +46,16 @@ func TestPublicIPRefusesEverythingOffThePublicInternet(t *testing.T) {
 		{"::ffff:10.0.0.1", false, "v4-mapped RFC 1918"},
 		{"64:ff9b::7f00:1", false, "NAT64 wrapping loopback"},
 		{"2002:7f00:1::", false, "6to4 wrapping loopback"},
+		{"::7f00:1", false, "v4-compatible IPv6 wrapping loopback"},
+		{"::a9fe:a9fe", false, "v4-compatible IPv6 wrapping the metadata endpoint"},
+		{"2001:0:53aa:64c:0:0:7f00:1", false, "Teredo"},
+
+		// Ranges a resolver will hand back and no host on the public internet
+		// answers on (#2240).
+		{"0.1.2.3", false, "\"this network\""},
+		{"240.0.0.1", false, "reserved for the future"},
+		{"255.255.255.255", false, "broadcast"},
+		{"2001:db8::1", false, "documentation"},
 	}
 	for _, c := range cases {
 		t.Run(c.ip, func(t *testing.T) {
