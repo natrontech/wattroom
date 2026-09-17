@@ -43,7 +43,9 @@ export interface Friend {
 export function friendPlace(friend: Friend): string {
 	if (friend.status !== 'accepted') return '';
 	if (friend.roomName)
-		return friend.riding ? `riding in ${friend.roomName}` : `in ${friend.roomName}`;
+		return friend.riding
+			? `riding in ${friend.roomName}`
+			: `in ${friend.roomName}`;
 	if (friend.inRoom) return friend.riding ? 'riding elsewhere' : 'in a room';
 	return friend.online ? 'online' : '';
 }
@@ -112,6 +114,7 @@ async function refresh() {
 			const event = friendEvent(friend, before[friend.id]);
 			if (!event) continue;
 			announce({
+				kind: 'friend',
 				tag: event.tag,
 				at: friend.at,
 				title: event.title,
@@ -128,6 +131,7 @@ async function refresh() {
 	for (const decline of res.data.declines ?? []) {
 		const event = declineEvent(decline);
 		announce({
+			kind: 'friend',
 			tag: event.tag,
 			at: decline.at,
 			title: event.title,

@@ -109,9 +109,9 @@ describe('friendPlace', () => {
 		friend({ status: 'accepted', ...over });
 
 	it('names the room for a member, and says riding when they are', () => {
-		expect(friendPlace(accepted({ inRoom: true, roomName: 'Velvet Hammer' }))).toBe(
-			'in Velvet Hammer',
-		);
+		expect(
+			friendPlace(accepted({ inRoom: true, roomName: 'Velvet Hammer' })),
+		).toBe('in Velvet Hammer');
 		expect(
 			friendPlace(
 				accepted({ inRoom: true, roomName: 'Velvet Hammer', riding: true }),
@@ -129,6 +129,8 @@ describe('friendPlace', () => {
 	it('says online, and nothing about a request or someone offline', () => {
 		expect(friendPlace(accepted({ online: true }))).toBe('online');
 		expect(friendPlace(accepted())).toBe('');
-		expect(friendPlace(friend({ status: 'pending_in', online: true }))).toBe('');
+		expect(friendPlace(friend({ status: 'pending_in', online: true }))).toBe(
+			'',
+		);
 	});
 });

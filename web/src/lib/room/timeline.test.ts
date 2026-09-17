@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formatWhen } from '$lib/format';
 import type { RoomEvent } from '$lib/protocol';
+import { dmArrivalEvent } from './dm-line';
 import { eventText, roomTimeline, type TimelineMessage } from './timeline';
 
 const event = (over: Partial<RoomEvent> = {}): RoomEvent => ({
@@ -279,5 +280,32 @@ describe('every verb the server sends renders', () => {
 				at: 0,
 			} as never),
 		).toBe('Team Relay ended');
+	});
+});
+
+// A DM that arrived while the rider was on the bike (#1743): the room's own
+// wording for this client's own line, and the sender without the words.
+describe('a DM that arrived mid-ride', () => {
+	it('names the sender, and carries no field the words could ride in', () => {
+		const line = dmArrivalEvent('Ruben', 1000);
+		expect(eventText(line)).toBe('Ruben sent you a message');
+		// Exhaustive on purpose: `track` and `subject` are the two fields an
+		// event renders verbatim, and the line must have neither.
+		expect(line).toEqual({
+			id: 'dm:Ruben:1000',
+			kind: 'dm',
+			verb: 'messaged',
+			actor: 'Ruben',
+			count: 1,
+			at: 1000,
+		});
+	});
+
+	it('is one line per message, and lands in the timeline in order', () => {
+		const first = dmArrivalEvent('Ruben', 1000);
+		const second = dmArrivalEvent('Ruben', 2000);
+		expect(first.id).not.toBe(second.id);
+		const lines = roomTimeline([message({ at: 1500 })], [first, second], 'Ada');
+		expect(lines.map((l) => l.at)).toEqual([1000, 1500, 2000]);
 	});
 });

@@ -1,6 +1,6 @@
 import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
-import { announce } from '$lib/messages/announce';
+import { announce, divertDmsWhileRiding } from '$lib/messages/announce';
 import { shouldAnnounce } from '$lib/notify-once';
 import { away, notify } from '$lib/notify.svelte';
 import { presence } from '$lib/presence.svelte';
@@ -14,6 +14,7 @@ import { sensorClaim } from '$lib/room/sensor-claim';
 import { missedSince, type Missed } from '$lib/room/unread';
 import { announcePoke } from '$lib/room/poke';
 import { comingsAndGoings } from '$lib/room/comings-and-goings';
+import { dmArrivalEvent } from '$lib/room/dm-line';
 import { screenShareChanges, screenShareEvent } from '$lib/room/screen-shares';
 import { parseSharedWorkout } from '$lib/room/workout';
 import { play } from '$lib/sound/cues';
@@ -410,6 +411,7 @@ function connect(slug: string): Connection {
 				// The same tag the presence feed uses for this room: whichever
 				// sees the line first announces it, and never both (#568).
 				announce({
+					kind: 'chat',
 					tag: `chat-${slug}`,
 					at: line.at,
 					title: `${line.from} · ${where}`,
@@ -423,6 +425,27 @@ function connect(slug: string): Connection {
 				});
 			}
 		});
+
+		// A DM arriving while this rider is mid-ride (#1743). The toast it
+		// replaces was the only thing on the Training screen that moved and
+		// was not data; the line lands in the room's timeline instead, where
+		// "what did I miss" is already answered — local-only and never sent
+		// (ADR-0022), so a private message reaches nobody else in the room.
+		//
+		// Running or paused, not merely countdown: the count-in is a rider
+		// still walking back to the bike, and auto-pause is a rider reaching
+		// for a bottle mid-interval, not a rider who has finished.
+		$effect(() =>
+			divertDmsWhileRiding((arrival) => {
+				// Read outside the announcing caller's reactivity: the tick is a
+				// new object every second, and this must not become a dependency
+				// of whatever effect happened to be running when a DM landed.
+				const phase = untrack(() => live.tick?.state.phase);
+				if (phase !== 'running' && phase !== 'paused') return false;
+				live.pushEvent(dmArrivalEvent(arrival.title, arrival.at));
+				return true;
+			}),
+		);
 
 		// A poke is delivered to every socket of this rider. localStorage picks
 		// one tab on each device to make the sound/notification, while each

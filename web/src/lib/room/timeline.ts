@@ -123,6 +123,10 @@ export function eventText(event: RoomEvent): string {
 		// list the lounge card renders.
 		case 'due':
 			return `${subject} starts at ${at}`;
+		// A DM that arrived while this rider was riding (#1743, $lib/room/dm-line)
+		// — this client's own line too, and the sender without the words.
+		case 'messaged':
+			return `${event.actor} sent you a message`;
 		// A screen appearing (#664) — this client's own line, never the
 		// server's: LiveKit is the only one who saw it.
 		case 'shared':

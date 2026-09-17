@@ -77,6 +77,7 @@ async function refresh() {
 		if (here === `/r/${room.slug}` || here.startsWith(`/r/${room.slug}/`))
 			continue;
 		announce({
+			kind: 'session',
 			tag: `session-${room.slug}`,
 			at: Date.now(),
 			title: room.name,
@@ -96,6 +97,7 @@ async function refresh() {
 		const last = room.lastChat;
 		if (!last?.at || !room.unread) continue;
 		announce({
+			kind: 'chat',
 			tag: `chat-${room.slug}`,
 			at: last.at,
 			title: `${last.from} · ${room.name}`,
