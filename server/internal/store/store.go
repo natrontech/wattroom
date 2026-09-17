@@ -31,7 +31,10 @@ type Store struct {
 // say. Tests skip on the first and must fail on the second: for most of a
 // day the rooms suite passed green by skipping every test, because the
 // shared database had taken a neighbour's newer migration first and goose
-// refused the older one as missing (2026-09-09, #928's cousin).
+// refused the older one as missing (2026-09-09, #928's cousin). That
+// particular refusal is gone — see migrate below (#1481) — but a migration a
+// database genuinely will not take is still the second answer, and it still
+// must not read as a skip.
 var ErrUnreachable = errors.New("database unreachable")
 
 // Open connects, migrates, and returns the ready store. dsn comes from
@@ -80,7 +83,17 @@ func Open(ctx context.Context, dsn string) (*Store, error) {
 // and the same for every process that opens this database.
 const migrateLockKey = 7702_2026_0909
 
-// migrate applies every pending migration; the caller holds the lock.
+// migrate applies every pending migration, and any migration written before
+// the version this database already holds; the caller holds the lock.
+//
+// WithAllowMissing is the whole of that second clause (#1481). Two branches
+// stamp timestamps a minute apart, the later-written one merges first, and
+// goose's default refuses the other one forever after — on a laptop that is a
+// database to drop, and in production it is a health gate rolling the release
+// back until somebody edits goose_db_version by hand. It is safe because
+// ADR-0019 makes every migration expand-only: applying one late adds exactly
+// what a fresh database would have got anyway. That rule is enforced by
+// nobody, which the ADR's 2026-09-17 amendment accepts and CI warns about.
 func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	// goose speaks database/sql; stdlib borrows from the same pgx pool config.
 	goose.SetBaseFS(migrations)
@@ -88,7 +101,7 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 		return fmt.Errorf("store: goose dialect: %w", err)
 	}
 	sqldb := stdlib.OpenDBFromPool(pool)
-	if err := goose.UpContext(ctx, sqldb, "migrations"); err != nil {
+	if err := goose.UpContext(ctx, sqldb, "migrations", goose.WithAllowMissing()); err != nil {
 		_ = sqldb.Close()
 		return fmt.Errorf("store: migrate: %w", err)
 	}

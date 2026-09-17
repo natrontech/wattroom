@@ -2,9 +2,12 @@ package store_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +15,8 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	_ "github.com/jackc/pgx/v5/stdlib" // database/sql driver, for goose's own API below
+	"github.com/pressly/goose/v3"
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -139,20 +144,7 @@ func TestOpenSaysWhenTheDatabaseIsUnreachable(t *testing.T) {
 // three (2026-09-09). The database is created here, so the migrations
 // genuinely run for the first time under the race.
 func TestConcurrentOpensMigrateOnce(t *testing.T) {
-	base := storetest.DSN()
-	admin, err := pgx.Connect(t.Context(), strings.TrimRight(base[:strings.LastIndex(base, "/")], "/")+"/postgres")
-	if err != nil {
-		t.Skipf("no database available: %v", err)
-	}
-	t.Cleanup(func() { _ = admin.Close(context.Background()) })
-	name := fmt.Sprintf("wattroom_test_race_%d", time.Now().UnixNano()%1_000_000)
-	if _, err := admin.Exec(t.Context(), "create database "+name); err != nil {
-		t.Fatalf("create database: %v", err)
-	}
-	t.Cleanup(func() {
-		_, _ = admin.Exec(context.Background(), "drop database if exists "+name+" with (force)")
-	})
-	dsn := base[:strings.LastIndex(base, "/")] + "/" + name
+	dsn := freshDatabase(t, "race")
 
 	const openers = 8
 	errs := make(chan error, openers)
@@ -171,5 +163,135 @@ func TestConcurrentOpensMigrateOnce(t *testing.T) {
 		if err := <-errs; err != nil {
 			t.Errorf("a concurrent open failed: %v", err)
 		}
+	}
+}
+
+// A migration written before one the database already holds must be applied,
+// not refused (#1481). Two branches stamped timestamps a minute apart on
+// 2026-09-09; the later-written one merged first, and every database that had
+// taken it rejected the other at boot. On a laptop that costs a dropped
+// database; in production it is the health gate rolling the release back until
+// somebody edits goose_db_version by hand. ADR-0019's expand-only rule is what
+// makes applying one late safe, and goose.WithAllowMissing is what does it.
+//
+// The fixture writes a version above every migration file into a FRESH
+// database's goose_db_version — the neighbour's file, merged first — which
+// leaves every real migration "missing": goose's word for one whose version is
+// below the recorded maximum and which has never run. Same code path and same
+// refusal as the incident, and it stays honest whatever lands in migrations/
+// next; leaving one real migration out of the middle instead would mean
+// unwinding that one file's SQL by hand.
+func TestOpenAppliesAMigrationThatArrivedLate(t *testing.T) {
+	dsn := freshDatabase(t, "late_migration")
+	ours := migrationVersions(t)
+	neighbour := ours[len(ours)-1] + 1
+
+	seedVersion(t, dsn, neighbour)
+
+	st, err := store.Open(t.Context(), dsn)
+	if err != nil {
+		t.Fatalf("a database already holding version %d refused this branch's older migrations, "+
+			"which is the boot goose.WithAllowMissing exists to allow: %v", neighbour, err)
+	}
+	t.Cleanup(st.Close)
+
+	recorded := map[int64]bool{}
+	rows, err := st.Pool.Query(t.Context(), "select version_id from goose_db_version where is_applied")
+	if err != nil {
+		t.Fatalf("read goose_db_version: %v", err)
+	}
+	for rows.Next() {
+		var v int64
+		if err := rows.Scan(&v); err != nil {
+			t.Fatalf("scan version: %v", err)
+		}
+		recorded[v] = true
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read goose_db_version: %v", err)
+	}
+	for _, v := range ours {
+		if !recorded[v] {
+			t.Errorf("migration %d was skipped rather than applied late", v)
+		}
+	}
+
+	// Recorded is not applied: the schema itself has to be there.
+	var users int
+	if err := st.Pool.QueryRow(t.Context(), "select count(*) from users").Scan(&users); err != nil {
+		t.Fatalf("the migrations were recorded but their schema is missing: %v", err)
+	}
+}
+
+// freshDatabase creates an empty database of its own and returns its DSN.
+// Migration behaviour cannot be tested against the shared test database: that
+// one is already migrated, and these tests are about the way there. The name
+// carries the whole nanosecond so two of them in one run cannot collide
+// (#2083).
+func freshDatabase(t *testing.T, purpose string) string {
+	t.Helper()
+	base := storetest.DSN()
+	server := strings.TrimRight(base[:strings.LastIndex(base, "/")], "/")
+	admin, err := pgx.Connect(t.Context(), server+"/postgres")
+	if err != nil {
+		t.Skipf("no database available: %v", err)
+	}
+	t.Cleanup(func() { _ = admin.Close(context.Background()) })
+	name := fmt.Sprintf("wattroom_test_%s_%d", purpose, time.Now().UnixNano())
+	if _, err := admin.Exec(t.Context(), "create database "+name); err != nil {
+		t.Fatalf("create database: %v", err)
+	}
+	t.Cleanup(func() {
+		_, _ = admin.Exec(context.Background(), "drop database if exists "+name+" with (force)")
+	})
+	return server + "/" + name
+}
+
+// migrationVersions lists this branch's migration versions, ascending.
+func migrationVersions(t *testing.T) []int64 {
+	t.Helper()
+	entries, err := os.ReadDir("migrations")
+	if err != nil {
+		t.Fatalf("read migrations: %v", err)
+	}
+	var versions []int64
+	for _, e := range entries {
+		name := e.Name()
+		if !strings.HasSuffix(name, ".sql") {
+			continue
+		}
+		version, _, _ := strings.Cut(name, "_")
+		n, err := strconv.ParseInt(version, 10, 64)
+		if err != nil {
+			t.Fatalf("%s: %v — TestMigrationVersionsAreUnique has the naming rule", name, err)
+		}
+		versions = append(versions, n)
+	}
+	if len(versions) == 0 {
+		t.Fatal("no migrations found")
+	}
+	slices.Sort(versions)
+	return versions
+}
+
+// seedVersion records version as applied in an otherwise empty database, the
+// way a neighbour's migration that merged first would have. goose owns the
+// version table's shape, so goose creates it rather than a copy of its DDL.
+func seedVersion(t *testing.T, dsn string, version int64) {
+	t.Helper()
+	sqldb, err := sql.Open("pgx", dsn)
+	if err != nil {
+		t.Fatalf("open %s: %v", dsn, err)
+	}
+	defer func() { _ = sqldb.Close() }()
+	if err := goose.SetDialect("postgres"); err != nil {
+		t.Fatalf("goose dialect: %v", err)
+	}
+	if _, err := goose.EnsureDBVersionContext(t.Context(), sqldb); err != nil {
+		t.Fatalf("create goose_db_version: %v", err)
+	}
+	if _, err := sqldb.ExecContext(t.Context(),
+		"insert into goose_db_version (version_id, is_applied) values ($1, true)", version); err != nil {
+		t.Fatalf("record version %d: %v", version, err)
 	}
 }
