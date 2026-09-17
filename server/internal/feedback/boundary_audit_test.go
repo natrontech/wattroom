@@ -72,3 +72,61 @@ func TestIssueBodyFencesTheRidersFields(t *testing.T) {
 		t.Fatalf("the note is not in a code block:\n%s", body)
 	}
 }
+
+// The buffer's strings are rider-controlled too (#2238), and they go into the
+// same public issue. Not reachable today — json.Marshal escapes newlines, so
+// the block is one line, and a Markdown fence closes only at the start of one
+// — but the block's integrity should not rest on how we happen to serialise
+// it, so the buffer is neutralised like every other rider-supplied value.
+func TestTheRecordersBufferCarriesNoFenceIntoItsBlock(t *testing.T) {
+	body := issueBody("abc", Report{
+		Route: "/ride",
+		Buffer: Buffer{Events: []BufferEvent{{
+			At:   1,
+			Kind: "note",
+			Text: "``` ![x](https://evil/x.png)",
+		}}},
+	})
+	open := strings.Index(body, "```json\n")
+	if open < 0 {
+		t.Fatalf("no buffer block at all:\n%s", body)
+	}
+	inside := body[open+len("```json\n"):]
+	closed := strings.Index(inside, "\n```")
+	if closed < 0 {
+		t.Fatalf("the buffer block never closes:\n%s", body)
+	}
+	if strings.Contains(inside[:closed], "```") {
+		t.Fatalf("the buffer carries a fence into the block: %s", inside[:closed])
+	}
+}
+
+// The six scalars were bounded and the buffer was not, so the only ceiling on
+// it was the 512 KB body — past which GitHub refuses the issue and the rider
+// is told nothing (#2238).
+func TestABufferPastItsCeilingIsRefused(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		buffer Buffer
+	}{
+		{"too many ticks", Buffer{Ticks: make([]Tick, maxBufferTicks+1)}},
+		{"too many events", Buffer{Events: make([]BufferEvent, maxBufferEvents+1)}},
+		{"too many errors", Buffer{Errors: make([]BufferError, maxBufferErrors+1)}},
+		{"a long event", Buffer{Events: []BufferEvent{{Text: strings.Repeat("x", maxBufferText+1)}}}},
+		{"a long error", Buffer{Errors: []BufferError{{Text: strings.Repeat("x", maxBufferText+1)}}}},
+		{"a long state", Buffer{Ticks: []Tick{{State: strings.Repeat("x", maxBufferText+1)}}}},
+	} {
+		if boundedBuffer(tc.buffer) {
+			t.Errorf("%s was accepted", tc.name)
+		}
+	}
+	// And what the recorder really produces is not refused.
+	ok := Buffer{
+		Ticks:  make([]Tick, 120),
+		Events: []BufferEvent{{Kind: "pause", Text: "rider paused"}},
+		Errors: []BufferError{{Text: "trainer dropped"}},
+	}
+	if !boundedBuffer(ok) {
+		t.Fatal("two minutes of the real ring was refused")
+	}
+}
