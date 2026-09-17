@@ -90,12 +90,16 @@
 	never a transient toast. Recovery is automatic where it can be; the manual path
 	is one big button, because the rider is sweating three metres away.
 -->
+<!-- A lost trainer or room is an alert, not a status (#2179): "reconnecting"
+     is progress and waits its turn politely; "the trainer is gone, here is the
+     button" is the one thing a rider on a bike needs read out now. Banner
+     already splits the two by tone. -->
 <div
 	class="flex flex-wrap items-center gap-4 rounded-lg border px-5 py-3 {recovering
 		? 'border-z5/40 bg-z5/10'
 		: 'border-danger/50 bg-danger/10'}"
-	role="status"
-	aria-live="polite"
+	role={recovering ? 'status' : 'alert'}
+	aria-live={recovering ? 'polite' : 'assertive'}
 >
 	<span
 		class="h-2.5 w-2.5 shrink-0 rounded-full {recovering

@@ -359,11 +359,14 @@
 									>{track.tracks.length}</span
 								>
 							{/if}
+							<!-- Hover reveals it on a desk; a finger has no hover, so on
+							     touch it was an invisible target and the long-press menu
+							     above carries Remove instead (#1628's pattern, #2179). -->
 							{#if canManage}
 								<button
 									onclick={() => void removeTrack(track, i)}
 									aria-label="remove this track"
-									class="text-muted hover:text-danger grid h-6 w-6 shrink-0 place-items-center opacity-0 group-hover:opacity-100"
+									class="text-muted hover:text-danger grid h-6 w-6 shrink-0 place-items-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:hidden"
 									><X size={12} /></button
 								>
 							{/if}

@@ -411,7 +411,7 @@
 					<span class="text-muted block text-xs">
 						{boardEnabled
 							? 'Everyone here can see how the week is going.'
-							: 'The crew tiles show what you did together, and nobody is ranked.'}
+							: "The room's tiles show what you did together, and nobody is ranked."}
 					</span>
 				</span>
 			</label>
