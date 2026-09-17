@@ -187,10 +187,18 @@ func main() {
 		// boot path, with a budget: sealing is not a precondition for
 		// serving, and it used to block the listener for as long as the read
 		// took (audit 2026-09-09).
+		//
+		// Then the number that says whether it got there (#1038): how many
+		// rows are still in the clear, on /metrics and in the log. Started from
+		// inside this goroutine rather than beside it so the first sample an
+		// operator sees is the post-backfill one, not a pre-backfill count
+		// corrected a quarter of an hour later. Watch supervises its own loop
+		// and returns.
 		safego.Go(log, "token backfill", func() {
 			backfillCtx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 			defer cancel()
 			secrets.Backfill(backfillCtx, st, keys, log)
+			secrets.Watch(ctx, st.Queries, log)
 		})
 		if err := auth.DevLoginMisconfigured(baseURL); err != nil {
 			log.Error("refusing to start", "err", err)

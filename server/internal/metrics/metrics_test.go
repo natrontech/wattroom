@@ -15,6 +15,7 @@ import (
 	_ "github.com/natrontech/wattroom/server/internal/jobmetrics"
 	"github.com/natrontech/wattroom/server/internal/metrics"
 	_ "github.com/natrontech/wattroom/server/internal/safego"
+	_ "github.com/natrontech/wattroom/server/internal/secrets"
 )
 
 // labelledMetric finds a labelled collector's declaration: New…Vec(…, []string
@@ -107,7 +108,7 @@ func TestTheHandlerServesTheRegistry(t *testing.T) {
 		t.Fatalf("metrics = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"wattroom_room_riders", "go_build_info", "process_start_time_seconds"} {
+	for _, want := range []string{"wattroom_room_riders", "wattroom_identities_plaintext_refresh_tokens", "go_build_info", "process_start_time_seconds"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the metrics page does not carry %s", want)
 		}

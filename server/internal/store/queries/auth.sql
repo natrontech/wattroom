@@ -24,6 +24,20 @@ limit 500; -- a page (audit 2026-09-09); the backfill loops while pages are full
 update identities set refresh_token_enc = $3, refresh_token = null
 where provider = $1 and provider_user_id = $2;
 
+-- How many credentials the sealing of ADR-0035 has not reached. This is
+-- literally the count #1038 asked an operator to run in psql against the live
+-- database, and the reason that issue sat parked for eleven releases: the fact
+-- was cheap, reaching the database was not.
+--
+-- Deliberately NOT the predicate ListPlaintextRefreshTokens uses. That one adds
+-- `refresh_token_enc is null` because it selects work to do; a row holding both
+-- a sealed value and a live plaintext one is nothing left to seal, and still a
+-- credential in the clear in every dump. The column cannot be dropped while one
+-- exists, so the completeness signal must see it.
+-- name: CountPlaintextRefreshTokens :one
+select count(*) from identities
+where refresh_token is not null and refresh_token <> '';
+
 -- name: CreateSession :exec
 insert into sessions (token_hash, user_id, expires_at)
 values ($1, $2, $3);
