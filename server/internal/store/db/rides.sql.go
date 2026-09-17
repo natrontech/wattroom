@@ -446,8 +446,14 @@ type ForgetRemoteActivityIdsParams struct {
 // ride page reads it, and the export carries it. Only the remote's own number
 // goes with the grant.
 //
-// Nothing is lost by it: a re-connect uploads by `external_id`, which is ours,
-// and Strava answers with the same activity if it already has one.
+// The id does not come back, and nothing pretends otherwise (#2281).
+// `external_id` is ours, so a re-connect's upload still dedupes on Strava's
+// side rather than making a second activity — but no code here reads the
+// answer it dedupes WITH: strava.post turns any `error` in the response into
+// a Go error, and strava.await does the same, so re-sending a ride Strava
+// already has surfaces as a FAILED delivery rather than as the activity it
+// already made. What a rider loses here is the link from the ride page to
+// their activity; what they keep is the activity.
 func (q *Queries) ForgetRemoteActivityIds(ctx context.Context, arg ForgetRemoteActivityIdsParams) (int64, error) {
 	result, err := q.db.Exec(ctx, forgetRemoteActivityIds, arg.UserID, arg.Destination)
 	if err != nil {
@@ -526,7 +532,7 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 }
 
 const getRideExport = `-- name: GetRideExport :one
-select state, attempts, last_error, remote_id
+select state, attempts, last_error, remote_id, stale_since
 from ride_exports
 where ride_id = $1 and destination = $2
 `
@@ -537,10 +543,11 @@ type GetRideExportParams struct {
 }
 
 type GetRideExportRow struct {
-	State     string
-	Attempts  int32
-	LastError *string
-	RemoteID  *int64
+	State      string
+	Attempts   int32
+	LastError  *string
+	RemoteID   *int64
+	StaleSince pgtype.Timestamptz
 }
 
 func (q *Queries) GetRideExport(ctx context.Context, arg GetRideExportParams) (GetRideExportRow, error) {
@@ -551,6 +558,7 @@ func (q *Queries) GetRideExport(ctx context.Context, arg GetRideExportParams) (G
 		&i.Attempts,
 		&i.LastError,
 		&i.RemoteID,
+		&i.StaleSince,
 	)
 	return i, err
 }
@@ -1113,6 +1121,28 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 		return nil, err
 	}
 	return items, nil
+}
+
+const markRideExportStale = `-- name: MarkRideExportStale :exec
+update ride_exports set stale_since = now()
+where ride_id = $1 and state = 'delivered'
+`
+
+// The ride outgrew what was delivered (#2281). AmendRide rebuilds a saved
+// ride from a longer record after the session closed (#1536); a delivery
+// that already succeeded keeps the short version for good, because
+// StartRideExport refuses to re-open a delivered row and the upload
+// API has no update to re-post through. Nothing here repairs that — the
+// ride page says it, and the rider decides what to do about it.
+//
+// `state = 'delivered'` is the whole guard, and it is what makes the notice
+// honest: a ride amended while its upload was still pending diverges from
+// nothing, because the upload that follows carries the grown ride. No
+// destination either — every remote that already has this ride has an old
+// one. Last amendment wins: the stamp is when the two last came apart.
+func (q *Queries) MarkRideExportStale(ctx context.Context, rideID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markRideExportStale, rideID)
+	return err
 }
 
 const requeueRideExport = `-- name: RequeueRideExport :execrows

@@ -54,6 +54,7 @@ func (s *Saver) SetRideKeeper(k RideKeeper) { s.keeper = k }
 
 // savedRide is one ride the keeper hears about once the transaction holds.
 type savedRide struct {
+	rideID pgtype.UUID
 	userID pgtype.UUID
 	facts  RideFacts
 }
@@ -117,7 +118,7 @@ func (s *Saver) save(
 			watts[i] = sample.Watts
 		}
 		kept = append(kept, savedRide{
-			userID: row.UserID, facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
+			rideID: rideID, userID: row.UserID, facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
 		})
 		curve := PowerCurve(watts)
 		wkg := 0.0
@@ -337,9 +338,11 @@ func (s *Saver) AmendRide(
 	if len(rider.Samples) < hub.MinRideSamples {
 		return
 	}
-	// Set inside the closure when the ride actually grew, handed to the
-	// trophy case after the write settles — the same order save uses, and
-	// the reason it is not called in there: a retry would judge twice.
+	// Set inside the closure when the ride actually grew, acted on after the
+	// write settles — the same order save uses, and the reason neither the
+	// trophy case nor the delivery mark is called in there: a retry re-runs
+	// the closure, and the amendment it would re-run is a no-op the second
+	// time round, so a failure in there would judge twice or lose the mark.
 	var judged *savedRide
 	err := retrySave(ctx, s.log, slug, func(ctx context.Context) error {
 		judged = nil
@@ -375,7 +378,8 @@ func (s *Saver) AmendRide(
 				watts[i] = sample.Watts
 			}
 			judged = &savedRide{
-				userID: row.UserID, facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
+				rideID: existing, userID: row.UserID,
+				facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
 			}
 		}
 		return nil
@@ -384,13 +388,29 @@ func (s *Saver) AmendRide(
 		s.log.Error("ride amendment failed, tail lost", "err", err, "room", slug)
 		return
 	}
+	if judged == nil {
+		return
+	}
+	// Strava already has the short ride, and nothing will ever re-send it
+	// (#2281): StartRideExport does not re-open a delivered row, and the
+	// upload API has no update to re-post through — a second post of the
+	// same external_id is refused as a duplicate, which lands as a failed
+	// delivery. So the divergence is recorded and the ride page says it.
+	// A delivery still pending needs no mark: the upload that follows
+	// carries the grown ride, which is the query's `state = 'delivered'`.
+	if err := s.store.Queries.MarkRideExportStale(ctx, judged.rideID); err != nil {
+		// Worth a loud line and not a lost amendment: the ride itself is
+		// saved, and all that is missing is the sentence about Strava.
+		s.log.Error("ride export stale mark failed", "err", err,
+			"ride", store.UUIDString(judged.rideID))
+	}
 	// The tail is part of the ride, so the ride is judged on all of it
 	// (#2252). facts.go: "Rides store no zone seconds, so this is the only
 	// moment they exist" — a ride that grew from 40 to 50 minutes above FTP
 	// was judged on the 40 and never looked at again. Judging is idempotent
 	// (gamify: a second call re-earns nothing), so the trophies the short
 	// version already won stay won.
-	if judged != nil && s.keeper != nil {
+	if s.keeper != nil {
 		s.keeper.RideSaved(judged.userID, judged.facts)
 	}
 }

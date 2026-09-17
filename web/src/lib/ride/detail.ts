@@ -53,6 +53,13 @@ export interface RideExport {
 	remoteId?: number;
 	/** The last failure, while it is still failing. */
 	error?: string;
+	/**
+	 * When the ride outgrew this delivery (#2281) — absent unless it did. A
+	 * late reconnect can grow a ride after its session closed (#1536), and a
+	 * delivery that already succeeded is never re-sent, so the remote keeps
+	 * the shorter version from this moment on.
+	 */
+	staleSince?: string;
 }
 
 export function fetchRide(id: string): Promise<ApiResult<RideDetail>> {

@@ -214,6 +214,7 @@ type RideExport struct {
 	RemoteID    *int64
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
+	StaleSince  pgtype.Timestamptz
 }
 
 type Room struct {
