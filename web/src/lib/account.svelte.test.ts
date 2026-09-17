@@ -81,6 +81,33 @@ describe('account.load', () => {
 		expect(account.providers).toEqual(['github']);
 	});
 
+	// #2256: the sign-in page and the settings panel both gate the passkey
+	// door on this, so "the server did not say" has to mean off — the button
+	// it draws otherwise answers with the API's 404 on the door ADR-0029 made
+	// the primary one.
+	it('carries whether passkeys work on this server', async () => {
+		answers.set('/api/auth/providers', {
+			ok: true,
+			data: { providers: ['github'], passkeysAvailable: true },
+		});
+		await account.load();
+		expect(account.passkeysAvailable).toBe(true);
+
+		answers.set('/api/auth/providers', {
+			ok: true,
+			data: { providers: ['github'], passkeysAvailable: false },
+		});
+		await account.load();
+		expect(account.passkeysAvailable).toBe(false);
+
+		answers.set('/api/auth/providers', {
+			ok: true,
+			data: { providers: ['github'] },
+		});
+		await account.load();
+		expect(account.passkeysAvailable).toBe(false);
+	});
+
 	// Clicking around puts several loads in flight at once; the slow one used
 	// to be able to answer last and overwrite a fresher truth.
 	it('lets the newest load win, whatever order they answer in', async () => {

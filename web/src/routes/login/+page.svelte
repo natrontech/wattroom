@@ -26,8 +26,13 @@
 
 	// A discoverable passkey needs no identifier: the browser resolves the
 	// account and shows the rider which one it is (#782, ADR-0029). Hidden
-	// where the browser cannot do it, rather than failing on click.
-	const canPasskey = passkeys.supported();
+	// where the browser cannot do it, rather than failing on click — and
+	// hidden the same way where THIS SERVER cannot (#2256): a
+	// WATTROOM_BASE_URL with no hostname leaves the passkey routes unmounted,
+	// and the button then answered with the API's 404 on the primary door.
+	const canPasskey = $derived(
+		passkeys.supported() && account.passkeysAvailable,
+	);
 	let passkeyBusy = $state(false);
 	let passkeyError = $state('');
 

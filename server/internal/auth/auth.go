@@ -176,7 +176,18 @@ func (s *Service) handleProviders(w http.ResponseWriter, _ *http.Request) {
 	// Whether a new account will meet the address gate (ADR-0029): said on
 	// the sign-in page, before the gate is the first screen after it
 	// (audit 2026-09-09).
-	httpx.WriteJSON(w, http.StatusOK, map[string]any{"providers": ids, "mailAvailable": s.mailer != nil})
+	//
+	// And whether passkeys work here at all (#2256). newWebAuthn refuses a
+	// WATTROOM_BASE_URL it cannot derive a relying party from — `localhost:8080`
+	// with no scheme is the realistic one — and the server boots anyway with
+	// the passkey routes unmounted. Without this the client gates on
+	// passkeys.supported(), which is about the BROWSER, and the primary door
+	// ADR-0029 chose fails on click with the API's 404.
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"providers":         ids,
+		"mailAvailable":     s.mailer != nil,
+		"passkeysAvailable": s.wa != nil,
+	})
 }
 
 // devNames is what ?as= accepts: a display name, letters and spaces, short.

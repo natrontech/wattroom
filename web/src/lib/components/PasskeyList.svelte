@@ -8,9 +8,15 @@
 	// .claude/rules/ux.md asks that nothing live only in a menu.
 	import Banner from './Banner.svelte';
 	import Skeleton from './Skeleton.svelte';
+	import { account } from '$lib/account.svelte';
 	import * as passkeys from '$lib/passkeys';
 
-	const canPasskey = passkeys.supported();
+	// Two different preconditions, and the rider can act on one of them
+	// (#2256). The browser is theirs to change; whether this server derived a
+	// relying party from WATTROOM_BASE_URL is the operator's, and a server
+	// that did not leaves every route below unmounted — Add answered 404.
+	const browserCan = passkeys.supported();
+	const canPasskey = $derived(browserCan && account.passkeysAvailable);
 
 	let keys = $state<passkeys.Passkey[]>([]);
 	let loaded = $state(false);
@@ -27,7 +33,15 @@
 		loadError = res.error;
 		loaded = true;
 	}
-	if (canPasskey) void refresh();
+	// A plain `let`, not $state: the guard is not rendered, and a $state
+	// written from an effect re-arms the effect (#2163).
+	let asked = false;
+	$effect(() => {
+		if (canPasskey && !asked) {
+			asked = true;
+			void refresh();
+		}
+	});
 
 	async function add() {
 		busy = true;
@@ -75,10 +89,16 @@
 <div>
 	<span class="eyebrow">passkeys</span>
 
-	{#if !canPasskey}
+	{#if !browserCan}
 		<p class="text-muted mt-2 text-[11px]">
 			This browser cannot use passkeys. Open WattRoom in a recent Chrome, Safari
 			or Firefox to add one.
+		</p>
+	{:else if !canPasskey}
+		<p class="text-muted mt-2 text-[11px]">
+			This server has passkeys turned off — whoever runs it needs to set
+			WATTROOM_BASE_URL to the address WattRoom is served from. Your other
+			sign-ins still work.
 		</p>
 	{:else}
 		{#if error}
