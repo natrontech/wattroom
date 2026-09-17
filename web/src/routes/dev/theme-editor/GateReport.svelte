@@ -5,7 +5,7 @@
 	suite and read a stack trace.
 -->
 <script lang="ts">
-	import { gateChecks } from '$lib/gate';
+	import { gateChecks, type GateCheck } from '$lib/gate';
 	import { THEMES } from '$lib/themes';
 	import type { Theme } from '$lib/palette';
 
@@ -23,6 +23,18 @@
 		return Number.isInteger(n) ? String(n) : n.toFixed(3).replace(/0+$/, '');
 	}
 </script>
+
+<!-- The reported number, spelled once: it rides beside the WCAG figure in the
+     failing, waived and full lists alike, and the warned list below shows it
+     on its own because there is no ratio there to sit beside. -->
+{#snippet lc(c: GateCheck)}
+	{#if c.lc !== undefined}
+		<span
+			class="num {c.warning ? 'text-z5' : 'text-muted-dim'}"
+			title="APCA Lc — reported, not gated">Lc {fmt(c.lc)}</span
+		>
+	{/if}
+{/snippet}
 
 <div>
 	<span class="eyebrow">
@@ -51,12 +63,7 @@
 					<span class="num">
 						{fmt(c.value)}{c.unit} / {fmt(c.floor)}{c.unit}
 					</span>
-					{#if c.lc !== undefined}
-						<span
-							class="num {c.warning ? 'text-z5' : 'text-muted-dim'}"
-							title="APCA Lc — reported, not gated">Lc {fmt(c.lc)}</span
-						>
-					{/if}
+					{@render lc(c)}
 					<span class="text-danger shrink-0 font-mono text-[10px]">fail</span>
 				</li>
 			{/each}
@@ -74,12 +81,7 @@
 						<span class="num">
 							{fmt(c.value)}{c.unit} / {fmt(c.floor)}{c.unit}
 						</span>
-						{#if c.lc !== undefined}
-							<span
-								class="num {c.warning ? 'text-z5' : 'text-muted-dim'}"
-								title="APCA Lc — reported, not gated">Lc {fmt(c.lc)}</span
-							>
-						{/if}
+						{@render lc(c)}
 						<span class="text-z5 shrink-0 font-mono text-[10px]">waived</span>
 					</div>
 					<p class="text-muted-dim mt-0.5 pr-16 text-[11px] leading-snug">
@@ -118,12 +120,7 @@
 					<span class="text-muted num">
 						{fmt(c.value)}{c.unit} / {fmt(c.floor)}{c.unit}
 					</span>
-					{#if c.lc !== undefined}
-						<span
-							class="num {c.warning ? 'text-z5' : 'text-muted-dim'}"
-							title="APCA Lc — reported, not gated">Lc {fmt(c.lc)}</span
-						>
-					{/if}
+					{@render lc(c)}
 					<span
 						class="shrink-0 font-mono text-[10px] {c.passes
 							? 'text-z4'
