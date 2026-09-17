@@ -25,6 +25,7 @@
 		withdrawRequest,
 	} from '$lib/friends/actions';
 	import { friends, type Friend } from '$lib/friends/friends.svelte';
+	import { copyText } from '$lib/copy';
 	import { UNREAD_DOT } from '$lib/messages/unread-marks';
 	import { personMenu } from '$lib/person-menu';
 	import { toasts } from '$lib/toast.svelte';
@@ -33,8 +34,7 @@
 	// refreshes it off the presence ping and announces what arrives in it,
 	// whether or not this panel is on screen.
 	const list = $derived(friends.list);
-	let actionError = $state<string | null>(null);
-	const error = $derived(actionError ?? friends.error);
+	const error = $derived(friends.error);
 	let codeInput = $state('');
 	let codeError = $state<string | null>(null);
 
@@ -55,13 +55,13 @@
 
 	// The acts themselves live beside the store (#2172): the rider page
 	// offers the same person the same answers, and a refusal reads the same
-	// wherever it was started from. Here it is a line on the panel; from a
-	// row's menu it is a toast, which is what a background action's result
-	// is (errors.md).
-	async function run(act: Promise<string | null>, toast = false) {
+	// wherever it was started from — a toast, which is what the result of a
+	// background action is (errors.md). It used to be a red line above the
+	// code box at the top of the page, nowhere near the row that refused,
+	// and it stayed there until the next act succeeded (#2182).
+	async function run(act: Promise<string | null>) {
 		const message = await act;
-		if (toast && message) toasts.push(message, { tone: 'error' });
-		actionError = toast ? null : message;
+		if (message) toasts.push(message, { tone: 'error' });
 	}
 
 	// Same person, same menu (person-menu.ts), plus the two actions this row
@@ -91,16 +91,16 @@
 		if (friend.status === 'pending_in')
 			return {
 				label: 'Dismiss the request',
-				onSelect: () => void run(dismissRequest(friend), true),
+				onSelect: () => void run(dismissRequest(friend)),
 			};
 		if (friend.status === 'pending_out')
 			return {
 				label: 'Withdraw the request',
-				onSelect: () => void run(withdrawRequest(friend), true),
+				onSelect: () => void run(withdrawRequest(friend)),
 			};
 		return {
 			label: 'Remove friend',
-			onSelect: () => void run(removeFriend(friend), true),
+			onSelect: () => void run(removeFriend(friend)),
 		};
 	}
 
@@ -153,10 +153,7 @@
 				     label and a code beside the icon, so it is a text button,
 				     not the kit's square one (#2170). -->
 				<button
-					onclick={() => {
-						void navigator.clipboard.writeText(friends.code);
-						toasts.push('Friend code copied.');
-					}}
+					onclick={() => void copyText(friends.code, 'Friend code copied.')}
 					class="text-muted hover:text-ink -my-1 flex items-center gap-2 py-1 text-xs"
 					title="copy your friend code"
 				>
@@ -237,11 +234,15 @@
 			ring="var(--color-surface-raised)"
 			size={30}
 		/>
-		<span class="min-w-0">
-			<span class="flex items-center gap-1.5 text-sm font-medium">
+		<span class="min-w-0 flex-1">
+			<span class="flex min-w-0 items-center gap-1.5 text-sm font-medium">
 				<!-- Their page (ADR-0024): shared rides, medals, the month —
 				     and, for a request, who is asking before you answer. -->
-				<a href="/u/{friend.id}" class="hover:underline">{friend.name}</a>
+				<!-- docs/SPEC.md allows 60 characters, and three controls hold
+				     the other end of the row: the name gives way (#2182). -->
+				<a href="/u/{friend.id}" class="truncate hover:underline"
+					>{friend.name}</a
+				>
 				<!-- Lifetime level is friend-visible identity (#253); watts are
 				     not (ADR-0012). -->
 				<span class="text-muted-dim text-[10px] font-normal"
@@ -249,7 +250,7 @@
 				>
 			</span>
 		</span>
-		<span class="text-muted min-w-0 truncate text-xs">
+		<span class="text-muted min-w-0 shrink truncate text-xs">
 			{#if friend.status === 'pending_out'}
 				asked — waiting on them
 			{:else if friend.roomName}
@@ -300,7 +301,8 @@
 		{/if}
 	</a>
 	{#if friend.room}
-		<a href="/r/{friend.room}" class="btn btn-primary btn-xs">Walk in</a>
+		<!-- btn-accent is what walking into a room wears everywhere else. -->
+		<a href="/r/{friend.room}" class="btn btn-accent btn-xs">Walk in</a>
 	{/if}
 	<button
 		onclick={() => void run(removeFriend(friend))}
