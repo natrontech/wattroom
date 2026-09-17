@@ -217,3 +217,91 @@ func TestAnAmendedRideIsJudgedOnTheWholeRide(t *testing.T) {
 		t.Errorf("an amendment with no ride judged something: %+v", keeper.judged)
 	}
 }
+
+// Strava keeps the ride as it stood at the close, and the rider is told
+// (#2281). A delivery that already succeeded is never re-opened —
+// StartRideExport's `where state <> 'delivered'` — and the upload API has no
+// update to re-post through, so the two copies diverge for good. The mark is
+// the whole notice: without it the ride page says "On Strava as activity N"
+// about an activity that is minutes shorter than the ride beside it, which
+// is a silent lie rather than a visible failure.
+//
+// A delivery still PENDING is the case the guard exists for: the upload that
+// follows carries the grown ride, so marking it would tell the rider their
+// Strava copy is short when it is about to be complete.
+func TestAnAmendedRideMarksADeliveredExportStale(t *testing.T) {
+	st := storetest.Open(t)
+	ctx := context.Background()
+	user, err := st.Queries.CreateUser(ctx, db.CreateUserParams{DisplayName: "stale-test", FtpWatts: 250, WeightKg: 75})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID) })
+	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: "stale-test-room", Name: "Stale", OwnerID: user.ID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID) })
+
+	saver := NewSaver(st, slog.New(slog.DiscardHandler))
+	rider := protocol.Rider{ID: store.UUIDString(user.ID), Name: "Stale", FtpWatts: 250, WeightKg: 75}
+	samples := func(n int) []protocol.RiderMetrics {
+		out := make([]protocol.RiderMetrics, n)
+		for i := range out {
+			out[i] = protocol.RiderMetrics{Watts: 200, Cadence: 90, Seq: i + 1}
+		}
+		return out
+	}
+	workoutJSON := `{"name":"W","steps":[{"type":"steady","seconds":600,"target":0.8}]}`
+	startedAt := time.Now().Add(-time.Hour).Truncate(time.Second)
+	if err := saver.save(ctx, room.Slug, "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
+		t.Fatal(err)
+	}
+	var rideID pgtype.UUID
+	if err := st.Pool.QueryRow(ctx, "select id from rides where user_id = $1", user.ID).Scan(&rideID); err != nil {
+		t.Fatal(err)
+	}
+	// The sweep opens the delivery; nothing has reached the destination yet.
+	if err := st.Queries.StartRideExport(ctx, db.StartRideExportParams{RideID: rideID, Destination: "strava"}); err != nil {
+		t.Fatal(err)
+	}
+	staleSince := func() pgtype.Timestamptz {
+		row, err := st.Queries.GetRideExport(ctx, db.GetRideExportParams{RideID: rideID, Destination: "strava"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return row.StaleSince
+	}
+
+	// Grown while the upload is still owed: the upload will carry all of it.
+	saver.AmendRide(ctx, room.Slug, "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(100)})
+	if staleSince().Valid {
+		t.Fatalf("a ride amended before its delivery was marked stale")
+	}
+
+	// It arrives. The number is this test's own invention: no payload from
+	// the destination is ever fixtured in this repository (AGENTS.md).
+	remoteID := int64(4242424242)
+	if err := st.Queries.FinishRideExport(ctx, db.FinishRideExportParams{
+		RideID: rideID, Destination: "strava", RemoteID: &remoteID,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if staleSince().Valid {
+		t.Fatalf("a delivery was stale the moment it landed")
+	}
+
+	// A replay of what is already saved grows nothing, so the copy out there
+	// is still the whole ride.
+	saver.AmendRide(ctx, room.Slug, "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(80)})
+	if staleSince().Valid {
+		t.Fatalf("a replay that grew nothing marked the delivery stale")
+	}
+
+	// And the tail that arrives late: the ride grows, the destination's copy
+	// does not, and the row remembers the moment they came apart.
+	saver.AmendRide(ctx, room.Slug, "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(130)})
+	if !staleSince().Valid {
+		t.Fatalf("the ride outgrew a delivered export and nothing recorded it")
+	}
+}

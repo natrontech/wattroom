@@ -524,6 +524,48 @@ func TestRideDetail(t *testing.T) {
 	}
 }
 
+// A delivery the ride outgrew says so on the ride page (#2281). AmendRide
+// rebuilds a ride from a longer record after the session closed (#1536), and
+// a delivery that already succeeded is never re-opened — so the destination
+// keeps the short ride and only this field lets the page admit it. Without
+// it the page reads "On Strava as activity N" beside a longer ride and
+// nothing is ever wrong on screen.
+func TestRideDetailSaysWhenTheRideOutgrewItsDelivery(t *testing.T) {
+	h := setup(t)
+	id := h.save(t, "alice", 120, 200)
+	// The number is this test's own invention: no payload from the
+	// destination is ever fixtured in this repository (AGENTS.md).
+	remoteID := int64(4242424242)
+	h.deliver(t, id, &remoteID, nil)
+
+	exportOf := func() map[string]any {
+		t.Helper()
+		status, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, "")
+		if status != http.StatusOK {
+			t.Fatalf("ride detail: %d %v", status, body)
+		}
+		export, _ := body["export"].(map[string]any)
+		if export == nil {
+			t.Fatalf("a delivered ride carries no delivery record: %v", body)
+		}
+		return export
+	}
+	if got, ok := exportOf()["staleSince"]; ok {
+		t.Fatalf("a delivery nothing outgrew is stale since %v", got)
+	}
+
+	rideID, err := store.ParseUUID(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.store.Queries.MarkRideExportStale(t.Context(), rideID); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := exportOf()["staleSince"].(string); !ok {
+		t.Fatalf("the ride outgrew its delivery and the page is not told: %v", exportOf())
+	}
+}
+
 func TestRideDetailNamesItsRoomAndMedals(t *testing.T) {
 	h := setup(t)
 	id := h.save(t, "alice", 120, 200)

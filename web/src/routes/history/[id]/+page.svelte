@@ -447,6 +447,21 @@
 								target="_blank"
 								rel="noreferrer noopener">activity {ride.export.remoteId}</a
 							>{/if}.
+						{#if ride.export.staleSince}
+							<!-- #2281: the ride grew after it was delivered, and the
+							     copy on Strava never catches up — StartRideExport will
+							     not re-open a delivered row, and re-posting is refused
+							     as a duplicate. Saying so is the whole fix; replacing
+							     the activity would mean deleting it, and its kudos and
+							     comments with it. -->
+							<span class="mt-2 block">
+								This ride grew after it was sent: a late reconnect added the
+								rest of it here, and Strava still has the shorter version.
+								WattRoom will not replace the activity — that would take its
+								kudos and comments with it — so download the FIT above and add
+								it to Strava yourself if you want the whole ride there.
+							</span>
+						{/if}
 					{:else if ride.export.state === 'pending'}
 						Waiting to reach Strava — it is retried on its own, nothing to do.
 					{:else}
