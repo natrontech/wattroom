@@ -40,28 +40,30 @@
 
 ## Roles & permissions
 
-| Capability                                                                            | Owner | Coach | Member                      | Spectator (phone) |
-| ------------------------------------------------------------------------------------- | ----- | ----- | --------------------------- | ----------------- |
-| Edit room (name, icon, listing, sound pack, reaction set, weekly board)               | ✓     | –     | –                           | –                 |
-| Assign/remove coach role                                                              | ✓     | –     | –                           | –                 |
-| Hand the room to a member — you stay on as a coach (#1227)                            | ✓     | –     | –                           | –                 |
-| Remove / ban / unban member (#223)                                                    | ✓     | –     | –                           | –                 |
-| Let a crew-mate into a private room, take the door back (ADR-0038, #1224, #1225)      | ✓     | –     | –                           | –                 |
-| Pick workout / mode, start countdown, pause/end session                               | ✓     | ✓     | –                           | –                 |
-| Arm sprint moments                                                                    | ✓     | ✓     | –                           | –                 |
-| Plan / move / cancel a session (#116)                                                 | ✓     | ✓     | –                           | –                 |
-| Say you are in for a planned session (#450)                                           | ✓     | ✓     | ✓                           | ✓                 |
-| Add to jukebox queue                                                                  | ✓     | ✓     | ✓                           | –                 |
-| Jukebox play/pause/skip/back/seek                                                     | ✓     | ✓     | ✓ (default — tune in alpha) | –                 |
-| Skip the rest of a queued playlist (#615)                                             | ✓     | ✓     | ✓                           | –                 |
-| Jukebox upvote / reorder / remove a queued track (#286)                               | ✓     | ✓     | ✓                           | –                 |
-| Create a room playlist, add a track to one, reorder its tracks (#627, #1428)          | ✓     | ✓     | ✓                           | –                 |
-| Rename / delete a room playlist, remove one of its tracks, set it active (#627, #695) | ✓     | ✓     | –                           | –                 |
-| Change room autoplay settings (#627, #695)                                            | ✓     | ✓     | –                           | –                 |
-| Manage own personal playlists (#627)                                                  | ✓     | ✓     | ✓                           | ✓                 |
-| Ride (metrics on dashboard)                                                           | ✓     | ✓     | ✓                           | –                 |
-| Voice/camera                                                                          | ✓     | ✓     | ✓                           | –                 |
-| Cheers                                                                                | ✓     | ✓     | ✓                           | ✓                 |
+| Capability                                                                            | Owner | Coach | Member                      | On a phone † |
+| ------------------------------------------------------------------------------------- | ----- | ----- | --------------------------- | ------------ |
+| Edit room (name, icon, listing, sound pack, reaction set, weekly board)               | ✓     | –     | –                           | ✓            |
+| Assign/remove coach role                                                              | ✓     | –     | –                           | ✓            |
+| Hand the room to a member — you stay on as a coach (#1227)                            | ✓     | –     | –                           | ✓            |
+| Remove / ban / unban member (#223)                                                    | ✓     | –     | –                           | ✓            |
+| Let a crew-mate into a private room, take the door back (ADR-0038, #1224, #1225)      | ✓     | –     | –                           | ✓            |
+| Pick workout / mode, start countdown, pause/end session                               | ✓     | ✓     | –                           | –            |
+| Arm sprint moments                                                                    | ✓     | ✓     | –                           | –            |
+| Plan / move / cancel a session (#116)                                                 | ✓     | ✓     | –                           | ✓            |
+| Say you are in for a planned session (#450)                                           | ✓     | ✓     | ✓                           | ✓            |
+| Add to jukebox queue                                                                  | ✓     | ✓     | ✓                           | ✓            |
+| Jukebox play/pause/skip/back/seek                                                     | ✓     | ✓     | ✓ (default — tune in alpha) | ✓            |
+| Skip the rest of a queued playlist (#615)                                             | ✓     | ✓     | ✓                           | ✓            |
+| Jukebox upvote / reorder / remove a queued track (#286)                               | ✓     | ✓     | ✓                           | ✓            |
+| Create a room playlist, add a track to one, reorder its tracks (#627, #1428)          | ✓     | ✓     | ✓                           | ✓            |
+| Rename / delete a room playlist, remove one of its tracks, set it active (#627, #695) | ✓     | ✓     | –                           | ✓            |
+| Change room autoplay settings (#627, #695)                                            | ✓     | ✓     | –                           | ✓            |
+| Manage own personal playlists (#627)                                                  | ✓     | ✓     | ✓                           | ✓            |
+| Ride (metrics on dashboard)                                                           | ✓     | ✓     | ✓                           | –            |
+| Voice/camera                                                                          | ✓     | ✓     | ✓                           | ✓            |
+| Cheers                                                                                | ✓     | ✓     | ✓                           | ✓            |
+
+† **The last column is a device, not a fifth role** (#1767, headed "Spectator (phone)" until then; `device.spectator` in the code is this column). It is the same rider holding a phone, and it reads _and on a phone?_ — a ✓ says the capability the first three columns gave them still works there. A **–** marks the only thing that can take one away: needing something a phone has not got — a **paired trainer** (Web Bluetooth is not on iOS Safari, [ADR-0004](decisions/0004-chrome-first-with-native-escape-hatch.md)), or the **riding screen a session is run from**, since picking the workout, starting the countdown and arming a sprint are the coach's cockpit and belong on the device they are pedalling at. Moderating and planning need neither, so an owner with nothing but a phone can ban a griefer and put next Tuesday on the calendar. This column read "–" on every row above _Say you are in_ until #1767; the code had never gated moderation, so it was the matrix that was wrong ([ADR-0020](decisions/0020-the-app-takes-discords-shape.md)'s 2026-09-05 amendment gates "the affordances that need something a phone does not have", and WATTROOM.md's device row gates "the affordances that would fail on it rather than the page").
 
 Ownership cap: a user **owns at most 3 rooms** (default — tune in alpha).
 
@@ -417,6 +419,16 @@ future trainer that reports none.
 - **Hammer** — best 5 s w/kg
 - **Lanterne Rouge** — last on the final sprint/podium metric but completed the session (their ride reaches the workout's final segment)
 - Ties: earlier joiner wins. Minimum 3 riders for medals (default — tune in alpha).
+
+## Planned sessions (#116)
+
+- **A room may plan two sessions that overlap, and nothing refuses one** (#1767). Planning is bounded three months out and by the room's 50-plan shelf, and that is the whole of it: two coaches taking the same evening, or a short spin offered against a long one, is a thing a room does, and a room that argued with its own calendar over it would be worse than one that shows both. There is no 409.
+- **Which of two overlapping plans leads is settled by which was planned first**, not by which read asked. The room's list, the rail's next-session line and both calendar feeds order by start time, then creation time, then id — a total order, so the plan labelled _next session in this room_ is the same plan on every read. Ordering by start time alone left that label on whichever row Postgres returned first, which could differ between two reads of an unchanged room.
+
+## Room chat
+
+- **The last 500 messages per room persist** ([ADR-0010](decisions/0010-room-first-positioning.md)'s 2026-08-31 amendment, #201), pruned on every write; an image outlives neither its message nor a 15-minute grace for an upload still awaiting its send.
+- **An author may edit their own line for as long as that line exists — there is no time window, by design** (#1767). The 500-message bound above _is_ the bound: a line lives until the room talks past it, and nothing else expires it. It stays open-ended for a second reason — room chat has **no delete**, so rewriting a line is the only redaction a rider has, and a 15-minute window would mean a rider who spots their own mistake late has no way back at all. A line carrying a picture may lose its words (the picture stays); a line without one may not be edited to nothing, because emptying it is deleting it by another name. Editing someone else's words is not a moderator power that exists. Every edited line says **edited**.
 
 ## Session recap retention (ADR-0034)
 
