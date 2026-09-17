@@ -67,7 +67,10 @@ where p.user_id = $1
 order by p.created_at;
 
 -- name: ExportUserRsvps :many
-select s.workout_name, s.starts_at, r.name as room_name, v.created_at
+-- The answer comes with it (#1011): a decline lives in this table too, and
+-- exporting one as "said yes" would be the export telling the rider
+-- something they never said.
+select s.workout_name, s.starts_at, r.name as room_name, v.created_at, v.going
 from session_rsvps v
 join scheduled_sessions s on s.id = v.session_id
 join rooms r on r.id = s.room_id

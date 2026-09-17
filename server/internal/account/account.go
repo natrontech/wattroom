@@ -467,8 +467,14 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		{"planned-sessions.json", func() (any, error) {
 			rows, err := s.store.Queries.ExportUserRsvps(r.Context(), user.ID)
 			return mapRows(rows, err, func(row db.ExportUserRsvpsRow) any {
+				// "answeredAt", not "saidYesAt": since #1011 an answer is in
+				// or out, and only the absence of one means nothing was said.
+				answer := "out"
+				if row.Going {
+					answer = "in"
+				}
 				return map[string]any{"room": row.RoomName, "workoutName": row.WorkoutName,
-					"startsAt": row.StartsAt.Time, "saidYesAt": row.CreatedAt.Time}
+					"startsAt": row.StartsAt.Time, "answer": answer, "answeredAt": row.CreatedAt.Time}
 			})
 		}},
 		{"rooms.json", func() (any, error) {

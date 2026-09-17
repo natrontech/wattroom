@@ -10,6 +10,7 @@
 	import RoomShell from '$lib/room/RoomShell.svelte';
 	import { doorDisclosure } from '$lib/room/door';
 	import type { Room, RoomLoadData } from '$lib/room/room-data';
+	import type { RsvpAnswer } from '$lib/room/rsvp';
 	import { toasts } from '$lib/toast.svelte';
 	import { formatWhen } from '$lib/format';
 
@@ -322,11 +323,23 @@
 					},
 				);
 			}}
-			onRsvp={(id: string, going: boolean) =>
+			onRsvp={(id: string, answer: RsvpAnswer | null) =>
 				act(
 					`/api/rooms/${room?.slug}/schedule/${id}/rsvp`,
-					{ method: going ? 'PUT' : 'DELETE' },
-					{ message: going ? "You're in." : "You're out." },
+					// The answer is a value, not a route (#1011): PUT writes
+					// it, DELETE takes it back, and being unanswered is the
+					// absence of one rather than a third thing to send.
+					answer
+						? { method: 'PUT', json: { going: answer === 'in' } }
+						: { method: 'DELETE' },
+					{
+						message:
+							answer === 'in'
+								? "You're in."
+								: answer === 'out'
+									? "You're out."
+									: 'Answer taken back.',
+					},
 				)}
 			icsToken={room.icsToken ?? ''}
 			onRotateIcs={() => act(`/api/rooms/${room?.slug}/calendar/rotate`)}

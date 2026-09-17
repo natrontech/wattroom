@@ -362,11 +362,23 @@ where m.room_id = $1 and m.role != 'banned' and m.notify and u.notify_planned
   -- Every current writer of email verifies first; the predicate makes the
   -- rule structural rather than an accident of write order (audit 2026-09-09).
   and u.email is not null and u.email_verified_at is not null and u.id <> $2
+  -- A rider who said they are not coming is not reminded about it (#1011).
+  -- ` + "`" + `session_id` + "`" + ` is NULL for the three mails a handler sends — a plan, a
+  -- move, a cancellation — and a NULL there matches no row, so the subquery
+  -- is empty and nobody is excluded. It is only the hour-before reminder
+  -- that names a session, and only a decline that it drops: an "in" and a
+  -- silence both still get the mail.
+  and not exists (
+      select 1 from session_rsvps v
+      where v.session_id = $3::uuid
+        and v.user_id = u.id and not v.going
+  )
 `
 
 type ListRoomNotifyTargetsParams struct {
-	RoomID pgtype.UUID
-	ID     pgtype.UUID
+	RoomID    pgtype.UUID
+	ID        pgtype.UUID
+	SessionID pgtype.UUID
 }
 
 type ListRoomNotifyTargetsRow struct {
@@ -376,7 +388,9 @@ type ListRoomNotifyTargetsRow struct {
 	Timezone   *string
 }
 
-// Members who asked for planned-session email — minus the planner, who knows.
+// Members who asked for planned-session email — minus the planner, who
+// knows, and minus anyone who has said they are not coming to the session
+// named (#1011).
 // The zone comes along because the time in the mail is formatted per rider
 // (#858), not once for the whole room.
 //
@@ -386,7 +400,7 @@ type ListRoomNotifyTargetsRow struct {
 // has turned planned-session mail off everywhere does not start getting it
 // again by joining somewhere.
 func (q *Queries) ListRoomNotifyTargets(ctx context.Context, arg ListRoomNotifyTargetsParams) ([]ListRoomNotifyTargetsRow, error) {
-	rows, err := q.db.Query(ctx, listRoomNotifyTargets, arg.RoomID, arg.ID)
+	rows, err := q.db.Query(ctx, listRoomNotifyTargets, arg.RoomID, arg.ID, arg.SessionID)
 	if err != nil {
 		return nil, err
 	}

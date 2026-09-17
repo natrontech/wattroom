@@ -626,9 +626,25 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		t.Fatalf("scheduled session: %v", err)
 	}
 	if err := h.store.Queries.SetRsvp(t.Context(), db.SetRsvpParams{
-		SessionID: planned.ID, UserID: h.id("alice"),
+		SessionID: planned.ID, UserID: h.id("alice"), Going: true,
 	}); err != nil {
 		t.Fatalf("rsvp: %v", err)
+	}
+	// And one she turned down (#1011): the same table holds both answers, so
+	// an export that called every row "said yes" would tell alice something
+	// she never said.
+	declined, err := h.store.Queries.CreateScheduledSession(t.Context(), db.CreateScheduledSessionParams{
+		RoomID: room, WorkoutName: "Hill Repeats", WorkoutJson: []byte(`{}`),
+		StartsAt:  pgtype.Timestamptz{Time: time.Now().Add(48 * time.Hour), Valid: true},
+		CreatedBy: h.id("alice"),
+	})
+	if err != nil {
+		t.Fatalf("scheduled session: %v", err)
+	}
+	if err := h.store.Queries.SetRsvp(t.Context(), db.SetRsvpParams{
+		SessionID: declined.ID, UserID: h.id("alice"), Going: false,
+	}); err != nil {
+		t.Fatalf("decline: %v", err)
 	}
 	if _, err := h.store.Queries.AddXpEvent(t.Context(), db.AddXpEventParams{
 		UserID: h.id("alice"), Source: "lounge", Amount: 5, Ref: "bucket-1",
@@ -701,6 +717,18 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("%s does not carry %q:\n%s", name, want, body)
 		}
+	}
+
+	// Both answers, in the one file that holds them (#1011): "said yes" was
+	// the only thing this file could say, and a decline is a row in the same
+	// table.
+	for _, want := range []string{`"answer": "in"`, `"answer": "out"`, `"answeredAt"`} {
+		if !strings.Contains(files["planned-sessions.json"], want) {
+			t.Errorf("planned-sessions.json does not carry %s:\n%s", want, files["planned-sessions.json"])
+		}
+	}
+	if strings.Contains(files["planned-sessions.json"], "saidYesAt") {
+		t.Errorf("the export still calls every answer a yes:\n%s", files["planned-sessions.json"])
 	}
 
 	// The line: someone else's room-chat line is their personal data, not the
