@@ -2,6 +2,7 @@ package hub
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -571,25 +572,53 @@ func TestASlowSocketMissesTicksAlone(t *testing.T) {
 	}
 }
 
+// ARCHITECTURE.md seam 2: "the hub coalesces all riders into one tick message
+// per room per second (n in, 1 out — never n²)". One marshal for the room,
+// handed to every socket (#670) — per-client marshalling put the same work N
+// times on the critical path between one slow socket and the next.
+//
+// This asserts the two sockets were handed THE SAME SLICE, not two slices
+// that compare equal (#2233). Equality cannot see the bug: json.Marshal is
+// deterministic, so a marshal moved back inside the loop produces identical
+// bytes and identical rosters, and the assertion that used to stand here —
+// the two decoded rosters being the same length — could not go red at all.
+// Which is why this one is in-process: the frame is the evidence, and over a
+// socket the frame is a copy by the time it arrives.
 func TestEveryRiderGetsTheSameTickBytes(t *testing.T) {
-	// The tick is identical for everyone in the room, so it is marshalled
-	// once (#670). Two riders, one payload: this is the test that would fail
-	// if somebody put the marshal back inside the loop and let the two drift.
-	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/together"
-	jan := dial(t, url, "jan:owner")
-	sven := dial(t, url, "sven:member")
+	rm := newRoom("together")
+	jan := &client{rider: protocol.Rider{ID: "jan", Name: "Jan", Role: "owner"}, out: make(chan []byte, clientQueue)}
+	sven := &client{rider: protocol.Rider{ID: "sven", Name: "Sven", Role: "member"}, out: make(chan []byte, clientQueue)}
+	rm.join(jan)
+	rm.join(sven)
+	go rm.run(slog.New(slog.DiscardHandler), time.Now, nil)
+	t.Cleanup(func() { close(rm.stop) })
 
-	janTick, svenTick := readTick(t, jan), readTick(t, sven)
-	if janTick.Roster == nil || svenTick.Roster == nil {
-		t.Fatal("a tick arrived without a roster")
+	take := func(who string, c *client) []byte {
+		t.Helper()
+		select {
+		case frame := <-c.out:
+			return frame
+		case <-time.After(3 * time.Second):
+			t.Fatalf("%s never got a tick", who)
+			return nil
+		}
 	}
-	if len(janTick.Roster) != len(svenTick.Roster) {
-		t.Errorf("the two riders saw different rosters: %d vs %d", len(janTick.Roster), len(svenTick.Roster))
+	janFrame, svenFrame := take("jan", jan), take("sven", sven)
+	if len(janFrame) == 0 || len(svenFrame) == 0 {
+		t.Fatal("a tick arrived empty")
+	}
+	// Same backing array = one marshal. No workout is picked, so neither
+	// socket is owed the full copy that #1710 sends on its own.
+	if &janFrame[0] != &svenFrame[0] {
+		t.Errorf("the two sockets were handed different frames — the tick is being marshalled per client, not per room")
+	}
+	// And it is a tick, so the frame being compared is the one that matters.
+	var msg protocol.ServerMessage
+	if err := json.Unmarshal(janFrame, &msg); err != nil || msg.Tick == nil {
+		t.Fatalf("the frame is not a tick: %v: %s", err, janFrame)
+	}
+	if msg.Tick.Roster == nil {
+		t.Error("a tick arrived without a roster")
 	}
 }
 
