@@ -71,8 +71,16 @@ that undoes it. The triggers it serves:
   mail is the only evidence it happened
 - **added 2026-09-10 (#1822)**: the account was recovered from its address —
   see the amendment at the end of this file
+- **added 2026-09-17 (#2258)**: the address was REMOVED from the account
+  (#1638) — a distinct trigger from replacing it, and the one this list was
+  missing. Removing the address removes the way back in when every credential
+  is gone, so it is the alarm that most needs to reach the address losing it
 
-Six call sites, one body, one place to read to answer "do we mail on this?".
+**Eight triggers: seven `s.alert` call sites in the auth package, plus the
+deletion receipt `notify.AccountDeleted` sends on the purge** — one body, one
+place to read to answer "do we mail on this?". The count is the ADR's whole
+value, so `TestEveryAlarmIsOnTheADRsList` fails when a call site is added
+without this list moving.
 Adding a seventh is a normal change; adding a second security template is an
 amendment to this ADR, because the moment there are two there are ten.
 

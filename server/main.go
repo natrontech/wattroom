@@ -195,6 +195,11 @@ func main() {
 			log.Error("refusing to start", "err", err)
 			os.Exit(1)
 		}
+		// The other unauthenticated door, checked the same way (#2258).
+		if err := auth.SyntheticTokenTooWeak(); err != nil {
+			log.Error("refusing to start", "err", err)
+			os.Exit(1)
+		}
 		// A rider's sign-in picture is copied onto this origin rather than
 		// fetched from Google, GitHub or Strava by every browser that draws
 		// their face (#2078) — through the same guarded outbound client the

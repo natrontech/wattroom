@@ -188,6 +188,30 @@ func localOrigin(baseURL string) bool {
 	return ip != nil && (ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast())
 }
 
+// minSyntheticToken is the shortest string that can be a secret rather than a
+// typo. WATTROOM_SYNTHETIC_TOKEN mounts an unauthenticated-by-default door on
+// a production server and its ONLY protection is the value's secrecy (#153),
+// and nothing checked its shape (#2258) — while both neighbouring credential
+// variables are checked loudly: WATTROOM_TOKEN_KEY must decode to 32 bytes or
+// the server refuses to start (ADR-0035), and the dev login refuses a public
+// base URL (#1603). Deliberately low: any real token clears it, and the bar
+// is "this cannot be guessed", not a password policy.
+const minSyntheticToken = 16
+
+// SyntheticTokenTooWeak is the boot check for that door: set and unguessable,
+// or unset and absent. Refused rather than warned about, for #1603's reason —
+// "a warning in a log nobody reads is how an unauthenticated door reaches
+// production".
+func SyntheticTokenTooWeak() error {
+	token := os.Getenv("WATTROOM_SYNTHETIC_TOKEN")
+	if token == "" || len(token) >= minSyntheticToken {
+		return nil
+	}
+	return fmt.Errorf(
+		"WATTROOM_SYNTHETIC_TOKEN is %d characters: the synthetic sign-in is an unauthenticated door whose only protection is this value, so it needs at least %d. Lengthen it, or unset it to close the door",
+		len(token), minSyntheticToken)
+}
+
 // DevLoginMisconfigured is the boot check (#1603, ADR-0035's posture): asking
 // for the dev login on a public origin is refused loudly rather than
 // warned about and honoured — a warning in a log nobody reads is how an

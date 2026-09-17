@@ -3,6 +3,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/mail"
@@ -10,6 +11,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/avatars"
@@ -100,7 +102,7 @@ func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), user))
+	s.writeMe(w, r, user)
 }
 
 func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
@@ -222,7 +224,7 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 	}
 	// The client replaces its whole `me` with this response — it has to be as
 	// complete as GET /api/me, or providers/AV/FTP-suggestion/XP vanish on save.
-	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))
+	s.writeMe(w, r, updated)
 }
 
 // handleSetAvatar takes the rider's own picture (#1353): the same trust
@@ -250,7 +252,7 @@ func (s *Service) handleSetAvatar(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "avatar save failed", err, "The picture could not be saved.", "user", store.UUIDString(user.ID))
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))
+	s.writeMe(w, r, updated)
 }
 
 // maxPaletteChoice bounds the stored palette choice: the client's own JSON
@@ -304,33 +306,61 @@ func (s *Service) handleUpdateAppearance(w http.ResponseWriter, r *http.Request)
 		httpx.Fail(w, s.log, "appearance update failed", err, "Your appearance could not be saved. Try again.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))
+	s.writeMe(w, r, updated)
+}
+
+// writeMe answers the account record, or says the read failed rather than
+// answering 200 with an account that is missing part of itself (#2258). Every
+// route that hands back /api/me's body goes through here.
+func (s *Service) writeMe(w http.ResponseWriter, r *http.Request, user db.User) {
+	response, err := s.fullMe(r.Context(), user)
+	if err != nil {
+		httpx.Fail(w, s.log, "account record read failed", err,
+			"Your account could not be loaded. Try again.", "user", store.UUIDString(user.ID))
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, response)
 }
 
 // fullMe is the complete GET/PATCH /api/me body: toMe plus the fields that
 // need extra queries or service config.
-func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
+//
+// Three of the four extra reads are decorations — a suggested FTP, a total,
+// an invite — and a failure leaves the field empty and says so in the log.
+// The fourth is not: Providers drives the profile's connect rows (#719), so
+// swallowing it answers 200 with the account rendered as holding NO sign-in
+// provider, which is a credential decision made on a lie. That one is an
+// error the caller reports (#2258); the client keeps what it was last told
+// rather than believing it (#850).
+func (s *Service) fullMe(ctx context.Context, user db.User) (meResponse, error) {
 	response := s.toMe(user)
 	response.AvEnabled = s.avEnabled
 	response.GifsEnabled = s.gifsEnabled
-	if best, err := s.store.Queries.Best20mIn90Days(ctx, user.ID); err == nil {
-		if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
-			response.SuggestedFtp = suggested
-			response.Best20m = int(best)
-		}
+	if best, err := s.store.Queries.Best20mIn90Days(ctx, user.ID); err != nil {
+		s.log.Warn("me: best 20m read failed", "err", err, "user", store.UUIDString(user.ID))
+	} else if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
+		response.SuggestedFtp = suggested
+		response.Best20m = int(best)
 	}
-	if providers, err := s.store.Queries.ListUserProviders(ctx, user.ID); err == nil {
-		response.Providers = providers
+	providers, err := s.store.Queries.ListUserProviders(ctx, user.ID)
+	if err != nil {
+		return meResponse{}, fmt.Errorf("auth: list providers: %w", err)
 	}
-	if xp, err := s.store.Queries.UserTotalXp(ctx, user.ID); err == nil {
+	response.Providers = providers
+	if xp, err := s.store.Queries.UserTotalXp(ctx, user.ID); err != nil {
+		s.log.Warn("me: total xp read failed", "err", err, "user", store.UUIDString(user.ID))
+	} else {
 		response.TotalXp = xp
 	}
 	// No row is no invite; any other failure keeps the field empty rather
-	// than failing the whole record for a decoration.
+	// than failing the whole record for a decoration — said in the log so it
+	// is not silent.
 	if code, err := s.store.Queries.PendingCrewInvite(ctx, user.ID); err == nil {
 		response.PendingInvite = code
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		s.log.Warn("me: pending invite read failed", "err", err, "user", store.UUIDString(user.ID))
 	}
-	return response
+	return response, nil
 }
 
 func (s *Service) toMe(u db.User) meResponse {

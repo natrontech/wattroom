@@ -1,0 +1,4 @@
+- On a self-hosted WattRoom exposed without a proxy in front, the sign-in and account-recovery limits no longer trust an `X-Forwarded-For` header the caller writes — a loop could give itself a fresh allowance on every request. Behind a reverse proxy nothing changes.
+- The passkey and personal-token caps hold under a burst: ten requests at once could previously all pass a cap of ten.
+- A server refuses to start with a `WATTROOM_SYNTHETIC_TOKEN` shorter than 16 characters, and `WATTROOM_EXTRA_ORIGINS` now only widens passkey sign-in to local addresses, as it was always documented to.
+- Your profile no longer renders as having no sign-in providers when that one query fails; it says the account could not be loaded instead.

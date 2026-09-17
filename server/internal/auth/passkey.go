@@ -16,6 +16,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -130,9 +131,23 @@ func newWebAuthn(baseURL string) (*webauthn.WebAuthn, error) {
 	}
 	origins := []string{parsed.Scheme + "://" + parsed.Host}
 	for _, extra := range strings.Split(os.Getenv("WATTROOM_EXTRA_ORIGINS"), ",") {
-		if extra = strings.TrimSpace(extra); extra != "" {
-			origins = append(origins, extra)
+		extra = strings.TrimSpace(extra)
+		if extra == "" {
+			continue
 		}
+		// An origin listed here can complete a WebAuthn ceremony for this
+		// relying party, and every entry used to be appended unchecked with a
+		// comment for a defence (#2258). The variable exists for the dev
+		// server's Vite port — localOrigin is the package's own test for that
+		// class of hatch, written for the dev login and not used here.
+		if !localOrigin(extra) {
+			// Loud, not silent: an operator who set this expects it to work,
+			// and a passkey that will not complete is the confusing symptom.
+			slog.Error("WATTROOM_EXTRA_ORIGINS entry ignored: passkey origins may only be added for a local address",
+				"origin", extra)
+			continue
+		}
+		origins = append(origins, extra)
 	}
 	return webauthn.New(&webauthn.Config{
 		RPID:          parsed.Hostname(),
@@ -243,12 +258,42 @@ func (s *Service) handlePasskeyRegisterFinish(w http.ResponseWriter, r *http.Req
 		httpx.Fail(w, s.log, "passkey encode failed", err, "That passkey could not be saved. Try again.")
 		return
 	}
-	row, err := s.store.Queries.CreatePasskey(r.Context(), db.CreatePasskeyParams{
+	// The cap, again and for real (#2258). The check at start is an early
+	// refusal across two HTTP requests, which no lock can span: ten ceremonies
+	// started together all counted the same nine and all finished. LockUser is
+	// what #824 used for the removal side, and its comment says why a guarded
+	// write alone does not close it under READ COMMITTED.
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "passkey save begin failed", err, "That passkey could not be saved. Try again.")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.LockUser(r.Context(), user.ID); err != nil {
+		httpx.Fail(w, s.log, "passkey save lock failed", err, "That passkey could not be saved. Try again.")
+		return
+	}
+	held, err := q.ListUserPasskeys(r.Context(), user.ID)
+	if err != nil {
+		httpx.Fail(w, s.log, "passkey count failed", err, "That passkey could not be saved. Try again.")
+		return
+	}
+	if len(held) >= maxPasskeys {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"Ten passkeys is the cap — remove one you no longer use first.")
+		return
+	}
+	row, err := q.CreatePasskey(r.Context(), db.CreatePasskeyParams{
 		CredentialID: credential.ID, UserID: user.ID, Credential: encoded,
 		Name: passkeyName(r.URL.Query().Get("name")),
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "passkey save failed", err, "That passkey could not be saved. Try again.")
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Fail(w, s.log, "passkey save commit failed", err, "That passkey could not be saved. Try again.")
 		return
 	}
 	s.alert(user, "A passkey was added to your account",
@@ -323,7 +368,7 @@ func (s *Service) handlePasskeyLoginFinish(w http.ResponseWriter, r *http.Reques
 		httpx.Fail(w, s.log, "session create failed", err, "That passkey worked, but the session could not be saved. Try again.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), pu.user))
+	s.writeMe(w, r, pu.user)
 }
 
 // beginCeremony hands the rider the cookie that carries their challenge, or

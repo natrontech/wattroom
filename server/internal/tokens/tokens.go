@@ -133,7 +133,21 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"A token name has to be 1-60 characters.", "name")
 		return
 	}
-	existing, err := s.store.Queries.ListUserTokens(r.Context(), user.ID)
+	// Count and insert under the user's row (#2258, the shape #824 fixed on
+	// the removal side): apart, ten concurrent requests all read nine and all
+	// proceeded. LockUser's comment has the READ COMMITTED reasoning.
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "token begin failed", err, "The token could not be created.")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.LockUser(r.Context(), user.ID); err != nil {
+		httpx.Fail(w, s.log, "token lock failed", err, "The token could not be created.")
+		return
+	}
+	existing, err := q.ListUserTokens(r.Context(), user.ID)
 	if err != nil {
 		httpx.Fail(w, s.log, "token list failed", err, "Tokens could not be loaded.")
 		return
@@ -152,11 +166,15 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	raw := "wrt_" + hex.EncodeToString(secret)
 	hash := sha256.Sum256([]byte(raw))
-	row, err := s.store.Queries.CreateToken(r.Context(), db.CreateTokenParams{
+	row, err := q.CreateToken(r.Context(), db.CreateTokenParams{
 		UserID: user.ID, Name: req.Name, TokenHash: hash[:],
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "token create failed", err, "The token could not be created.")
+		return
+	}
+	if err := tx.Commit(r.Context()); err != nil {
+		httpx.Fail(w, s.log, "token commit failed", err, "The token could not be created.")
 		return
 	}
 	httpx.WriteJSON(w, http.StatusCreated, tokenJSON{

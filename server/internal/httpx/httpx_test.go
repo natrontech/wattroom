@@ -75,6 +75,9 @@ func TestDecodeStrictRefusesFormEncodings(t *testing.T) {
 // caller did not write (#1824); a fresh first hop per request used to be a
 // fresh sign-in budget per request.
 func TestClientIPTakesTheProxysHop(t *testing.T) {
+	// Behind the deploy's proxy: the peer is on our own network, so the hop
+	// it appended is the caller and whatever the caller wrote in front of it
+	// is not.
 	cases := []struct{ xff, remote, want string }{
 		{"", "10.0.0.7:4242", "10.0.0.7"},
 		{"203.0.113.9", "10.0.0.1:1", "203.0.113.9"},
@@ -82,6 +85,7 @@ func TestClientIPTakesTheProxysHop(t *testing.T) {
 		{"spoofed, more spoof, 203.0.113.9", "10.0.0.1:1", "203.0.113.9"},
 		{"203.0.113.9, ", "10.0.0.1:1", "203.0.113.9"},
 		{" , ", "10.0.0.7:4242", "10.0.0.7"},
+		{"203.0.113.9", "127.0.0.1:1", "203.0.113.9"},
 	}
 	for _, c := range cases {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
@@ -92,6 +96,40 @@ func TestClientIPTakesTheProxysHop(t *testing.T) {
 		if got := ClientIP(req); got != c.want {
 			t.Errorf("xff %q remote %q: got %q, want %q", c.xff, c.remote, got, c.want)
 		}
+	}
+}
+
+// The other mode, and the one that had no test (#2258): a self-hosted binary
+// exposed directly. There is no proxy appending anything, so the whole header
+// is the caller's — and honouring it hands every unauthenticated ceiling a
+// fresh budget per request from one host, which is #1824 by another route.
+func TestClientIPIgnoresAHeaderNobodyStripped(t *testing.T) {
+	cases := []struct{ name, xff, remote, want string }{
+		{"a public peer writing its own hop", "10.9.9.9", "198.51.100.4:9000", "198.51.100.4"},
+		{"a public peer forging a chain", "1.1.1.1, 2.2.2.2", "198.51.100.4:9000", "198.51.100.4"},
+		{"a public peer with no header at all", "", "198.51.100.4:9000", "198.51.100.4"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+			req.RemoteAddr = c.remote
+			if c.xff != "" {
+				req.Header.Set("X-Forwarded-For", c.xff)
+			}
+			if got := ClientIP(req); got != c.want {
+				t.Errorf("got %q, want the socket's own peer %q", got, c.want)
+			}
+		})
+	}
+
+	// The escape for a proxy on another public host: the operator says so,
+	// and owns it.
+	t.Setenv("WATTROOM_TRUSTED_PROXY", "1")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.RemoteAddr = "198.51.100.4:9000"
+	req.Header.Set("X-Forwarded-For", "1.1.1.1, 203.0.113.9")
+	if got := ClientIP(req); got != "203.0.113.9" {
+		t.Errorf("with a trusted proxy declared: got %q, want the proxy's hop", got)
 	}
 }
 
