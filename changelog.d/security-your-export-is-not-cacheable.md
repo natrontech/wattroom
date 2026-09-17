@@ -1,0 +1,1 @@
+- Your data export and a downloaded .fit now tell every proxy between you and the server not to keep a copy. Without that, a 200 with no caching directive is one a cache may hold by default — and the export is the file with every ride's heart rate and your account's tokens in it.

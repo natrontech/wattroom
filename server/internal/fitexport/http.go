@@ -104,6 +104,9 @@ func Handler(users UserSource, log *slog.Logger) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/vnd.ant.fit")
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", name))
 		w.Header().Set("X-Content-Type-Options", "nosniff")
+		// A ride is the rider's (#2250): private, and not something a proxy
+		// in front of a self-hosted stack may keep.
+		w.Header().Set("Cache-Control", "private, no-store")
 		if _, err := w.Write(data); err != nil {
 			log.Warn("fit export: write failed", "err", err)
 		}
