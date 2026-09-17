@@ -13,10 +13,13 @@ vi.mock('$lib/notify.svelte', () => ({
 	away: () => document.hidden || !document.hasFocus(),
 }));
 
-import { announce } from './announce';
+import { announce, divertDmsWhileRiding } from './announce';
 import { toasts } from '$lib/toast.svelte';
 
-const arrival = (over: Partial<Parameters<typeof announce>[0]> = {}) => ({
+const arrival = (
+	over: Partial<Parameters<typeof announce>[0]> = {},
+): Parameters<typeof announce>[0] => ({
+	kind: 'chat',
 	tag: 'chat-velvet-hammer',
 	at: 1000,
 	title: 'Ruben · Velvet Hammer',
@@ -102,5 +105,75 @@ describe('announce', () => {
 	it('drops the colon when the line is an image', () => {
 		announce(arrival({ body: '', title: 'Kim' }));
 		expect(toasts.items[0].text).toBe('Kim');
+	});
+});
+
+// A DM mid-ride goes where the rider can find it later, not across the
+// numbers they are holding (#1743). Scoped by the arrival's KIND and never by
+// the phase alone: this one function also announces the session starting in
+// another room, which is the notification ADR-0042 calls the most valuable,
+// and a blanket "quiet while running" would take that with it.
+describe('a riding screen takes the DM', () => {
+	const dm = (over = {}) =>
+		arrival({
+			kind: 'dm',
+			tag: 'dm-ruben',
+			title: 'Ruben',
+			body: 'how is it going',
+			href: '/messages/dm/ruben',
+			...over,
+		});
+
+	it('hands a DM to the riding screen instead of toasting it', () => {
+		const taken: string[] = [];
+		const stop = divertDmsWhileRiding((a) => {
+			taken.push(a.title);
+			return true;
+		});
+		announce(dm());
+		// The cue still sounds: something arrived, and a rider on a bike
+		// learns that by ear.
+		expect(played).toEqual(['chat']);
+		expect(toasts.items).toEqual([]);
+		expect(taken).toEqual(['Ruben']);
+		stop();
+	});
+
+	it('leaves room chat, friends and a session starting alone', () => {
+		const taken: string[] = [];
+		const stop = divertDmsWhileRiding((a) => {
+			taken.push(a.tag);
+			return true;
+		});
+		announce(arrival({ kind: 'chat', tag: 'chat-velvet' }));
+		announce(arrival({ kind: 'friend', tag: 'friend-req-kim', at: 2000 }));
+		announce(arrival({ kind: 'session', tag: 'session-velvet', at: 3000 }));
+		expect(taken).toEqual([]);
+		expect(toasts.items).toHaveLength(3);
+		stop();
+	});
+
+	it('toasts again once the screen refuses it, or goes', () => {
+		// A ride that has ended: the screen is still mounted and hands it back.
+		const stop = divertDmsWhileRiding(() => false);
+		announce(dm());
+		expect(toasts.items).toHaveLength(1);
+		stop();
+		// And with no riding screen at all.
+		announce(dm({ tag: 'dm-kim', at: 2000, title: 'Kim' }));
+		expect(toasts.items).toHaveLength(2);
+	});
+
+	it('still hands a hidden window to the OS — the rider is not looking', () => {
+		hide(true);
+		const taken: string[] = [];
+		const stop = divertDmsWhileRiding((a) => {
+			taken.push(a.tag);
+			return true;
+		});
+		announce(dm());
+		expect(pushed).toHaveLength(1);
+		expect(taken).toEqual([]);
+		stop();
 	});
 });

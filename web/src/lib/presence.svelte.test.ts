@@ -5,7 +5,10 @@ import type { RailRoom } from '$lib/room/room-data';
 // The endpoint behind every ping. Counting calls IS the assertion: #912 is
 // about how many of these one conversation costs.
 let fetches = 0;
-let world: { rooms: RailRoom[]; maxOwned: number } = { rooms: [], maxOwned: 0 };
+let world: { rooms: RailRoom[]; maxOwned: number; error?: string } = {
+	rooms: [],
+	maxOwned: 0,
+};
 vi.mock('$lib/nav/rooms', () => ({
 	fetchRailRooms: async () => {
 		fetches += 1;
@@ -211,5 +214,53 @@ describe('the presence feed survives its socket (#1742)', () => {
 		document.dispatchEvent(new Event('visibilitychange'));
 		expect(fetches).toBe(1);
 		expect(socket).not.toBe(dead);
+	});
+});
+
+// The sidebar used to go stale in silence (#1743). A dead socket is not that
+// case — the tests above bound it — but a read that keeps failing with a list
+// already on screen is: `Sidebar.svelte` draws its error only over an EMPTY
+// list, so the rooms and the dots kept their last values with full confidence.
+describe('a feed that stopped answering says so', () => {
+	afterEach(() => {
+		presence.stop();
+		world = { rooms: [], maxOwned: 0 };
+	});
+
+	it('marks itself stale on the second failed read in a row, not the first', async () => {
+		const room: RailRoom = {
+			slug: 'velvet',
+			name: 'Velvet Hammer',
+			live: false,
+			members: 2,
+		};
+		world = { rooms: [room], maxOwned: 0 };
+		presence.start();
+		await vi.waitFor(() => expect(presence.loaded).toBe(true));
+		expect(presence.stale).toBe(false);
+
+		// One refusal is a blip the 60 s fallback poll already covers, and the
+		// list you had stays on screen.
+		world = { rooms: [], maxOwned: 0, error: 'The rooms could not be loaded.' };
+		let seen = fetches;
+		presence.reload();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen));
+		expect(presence.error).toBe('The rooms could not be loaded.');
+		expect(presence.rooms).toHaveLength(1);
+		expect(presence.stale).toBe(false);
+
+		// A second in a row is a feed that has stopped answering.
+		seen = fetches;
+		presence.reload();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen));
+		expect(presence.stale).toBe(true);
+
+		// And one good read clears it — the count is consecutive failures,
+		// never a tally of every blip since sign-in.
+		world = { rooms: [room], maxOwned: 0 };
+		seen = fetches;
+		presence.reload();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen));
+		expect(presence.stale).toBe(false);
 	});
 });

@@ -24,7 +24,9 @@
 	import type { RoomCrew } from '$lib/room/room-data';
 	import { crewPulse, quiet } from './crews';
 	import { goto } from '$app/navigation';
+	import { presence } from '$lib/presence.svelte';
 	import Check from '@lucide/svelte/icons/check';
+	import CloudOff from '@lucide/svelte/icons/cloud-off';
 	import ChevronsUpDown from '@lucide/svelte/icons/chevrons-up-down';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Link from '@lucide/svelte/icons/link';
@@ -160,6 +162,26 @@
 		>
 		{#if c.role === 'owner'}
 			<Shield size={12} class="text-muted-dim shrink-0" aria-label="yours" />
+		{/if}
+		<!-- What is under this header stopped updating (#1743). The room list,
+		     the presence dots and "32 min in" are frozen at whatever they last
+		     were, and with rooms already on screen nothing else in the column
+		     says so — the error line below only draws over an EMPTY list, so a
+		     rider with rooms read a confident, stale radar for as long as the
+		     feed stayed down. Two failed reads in a row, never one: the 60 s
+		     fallback poll covers a blip, and a mark that flickers on every blip
+		     is a mark people learn to ignore.
+		     Chrome, so muted ink and no glow (ADR-0005) — nothing here is live
+		     data, which is the whole point of it. Not a button: the header it
+		     sits in is one, the feed retries itself every 60 s and on the tab
+		     coming back, and the empty-list retry below is unchanged. -->
+		{#if presence.stale}
+			<span
+				class="text-muted-dim shrink-0"
+				title="Not updating — the last reads failed, so what is below may be out of date. Retrying."
+			>
+				<CloudOff size={12} aria-label="not updating — retrying" />
+			</span>
 		{/if}
 	{/snippet}
 	{#if crews.length > 1}

@@ -7,6 +7,7 @@ vi.mock('$lib/messages/announce', () => ({ announce: () => {} }));
 import {
 	declineEvent,
 	friendEvent,
+	friendPlace,
 	friends,
 	type Friend,
 } from './friends.svelte';
@@ -98,5 +99,38 @@ describe('friends.waiting', () => {
 		// Accepting one is what changes it — the next refresh carries the truth.
 		await seed(friend({ id: 'a', status: 'accepted' }), friend({ id: 'b' }));
 		expect(friends.waiting).toBe(1);
+	});
+});
+
+describe('friendPlace', () => {
+	// ADR-0012: the room's name only for a member of it, "riding elsewhere"
+	// otherwise — and riding is never inferred from being in a room (#2168).
+	const accepted = (over: Partial<Friend> = {}) =>
+		friend({ status: 'accepted', ...over });
+
+	it('names the room for a member, and says riding when they are', () => {
+		expect(
+			friendPlace(accepted({ inRoom: true, roomName: 'Velvet Hammer' })),
+		).toBe('in Velvet Hammer');
+		expect(
+			friendPlace(
+				accepted({ inRoom: true, roomName: 'Velvet Hammer', riding: true }),
+			),
+		).toBe('riding in Velvet Hammer');
+	});
+
+	it('keeps the boundary for a room the viewer is not in', () => {
+		expect(friendPlace(accepted({ inRoom: true }))).toBe('in a room');
+		expect(friendPlace(accepted({ inRoom: true, riding: true }))).toBe(
+			'riding elsewhere',
+		);
+	});
+
+	it('says online, and nothing about a request or someone offline', () => {
+		expect(friendPlace(accepted({ online: true }))).toBe('online');
+		expect(friendPlace(accepted())).toBe('');
+		expect(friendPlace(friend({ status: 'pending_in', online: true }))).toBe(
+			'',
+		);
 	});
 });

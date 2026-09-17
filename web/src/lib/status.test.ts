@@ -76,6 +76,24 @@ describe('statusOf', () => {
 		).toBe('riding');
 	});
 
+	it('carries riding across the room boundary (#1743)', () => {
+		// ADR-0012's third state, for a room the viewer is not a member of:
+		// the feed above has never heard of that room, so before the server
+		// carried the flag this said "online" about a friend on the pedals.
+		const elsewhere = [
+			{
+				id: 'u-anna',
+				name: 'Anna',
+				status: 'accepted' as const,
+				at: 0,
+				online: true,
+				inRoom: true,
+				riding: true,
+			},
+		];
+		expect(statusOf(rooms, 'u-anna', elsewhere)).toBe('riding');
+	});
+
 	it('does not answer for a namesake', () => {
 		// #649: two riders called Dave. The one standing in the room used to
 		// answer for the one who is not in it — an "online in MFW 5" badge and

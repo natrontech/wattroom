@@ -7,12 +7,12 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
@@ -35,9 +35,16 @@ func (f *fakePresence) WhereIs(ids []string) map[string]string {
 	return out
 }
 
-func (f *fakePresence) Presence(slug string) protocol.RoomPresence {
-	// Ids, not names (#1652): the rider page keys "riding" by id.
-	return protocol.RoomPresence{RidingIDs: f.riding[slug]}
+// Ids, not names (#1652): "riding" is keyed by id, and the fixture keeps the
+// hub's own shape — a room holds the ids pedalling in it.
+func (f *fakePresence) Riding(ids []string) map[string]bool {
+	out := map[string]bool{}
+	for _, id := range ids {
+		if slices.Contains(f.riding[f.where[id]], id) {
+			out[id] = true
+		}
+	}
+	return out
 }
 
 type harness struct {

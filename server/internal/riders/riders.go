@@ -17,7 +17,6 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
-	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -35,7 +34,11 @@ type UserSource interface {
 // nowhere — same two questions the friends list and the rail already ask.
 type PresenceSource interface {
 	WhereIs(userIDs []string) map[string]string
-	Presence(slug string) protocol.RoomPresence
+	// One question, one answer, everywhere it is asked (#1743): the friends
+	// panel needs exactly this and used to have no way to ask, while this
+	// page built the whole of a room's presence — voice fold, sort, session
+	// state — to read one boolean out of it.
+	Riding(userIDs []string) map[string]bool
 }
 
 type Service struct {
@@ -321,7 +324,7 @@ func (s *Service) presenceOf(rider db.User, inCommon []roomRef, trusted bool) pr
 		p.Room = &room
 		// By id (#649): display names are not unique, and two Dans in one
 		// room both showed the bars while one sat in the lounge (#1652).
-		p.Riding = slices.Contains(s.presence.Presence(slug).RidingIDs, id)
+		p.Riding = s.presence.Riding([]string{id})[id]
 	}
 	if trusted {
 		p.Online = online

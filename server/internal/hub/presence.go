@@ -131,3 +131,44 @@ func (h *Hub) WhereIs(userIDs []string) map[string]string {
 	}
 	return out
 }
+
+// Riding answers the third state ADR-0012's 2026-09-09 amendment names, which
+// WhereIs cannot: online, in a room, and RIDING. A rider standing in a room is
+// not a rider pedalling in it, and the friends panel had no way to tell them
+// apart — it reported "in a room" for both, while the room's own roster and a
+// rider's page had the fact all along.
+//
+// Only pedalling riders appear; an absent id is simply not riding. "Pedalling"
+// is `ridingLocked`'s window and nothing else (#1016) — the rider-facing word,
+// never the deploy guard's looser "a trainer is talking", which stays
+// `liveTrainersLocked`'s alone.
+//
+// Same shape and same lock order as WhereIs above — h.mu to copy the room
+// refs, unlock, then one room lock at a time — so the two are safe to call
+// back to back and neither can be the one that deadlocks.
+func (h *Hub) Riding(userIDs []string) map[string]bool {
+	wanted := make(map[string]struct{}, len(userIDs))
+	for _, id := range userIDs {
+		wanted[id] = struct{}{}
+	}
+	h.mu.Lock()
+	rooms := make([]*room, 0, len(h.rooms))
+	for _, rm := range h.rooms {
+		rooms = append(rooms, rm)
+	}
+	h.mu.Unlock()
+
+	now := h.now()
+	out := make(map[string]bool, len(userIDs))
+	for _, rm := range rooms {
+		rm.mu.Lock()
+		_, ids := rm.ridingLocked(now)
+		rm.mu.Unlock()
+		for _, id := range ids {
+			if _, ok := wanted[id]; ok {
+				out[id] = true
+			}
+		}
+	}
+	return out
+}
