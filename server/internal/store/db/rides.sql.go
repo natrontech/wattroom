@@ -1176,6 +1176,12 @@ select r.user_id,
        u.display_name,
        u.ftp_watts,
        u.weight_kg,
+       -- Where the pair came from (ADR-0048, #2243): a category computed from
+       -- two numbers nobody chose is two guesses divided by each other, and
+       -- this board is the one surface that publishes a ride-derived number
+       -- about one member to the rest of the room.
+       u.ftp_source,
+       u.weight_source,
        coalesce(sum(r.kj), 0)::bigint as kj,
        coalesce(sum(r.seconds), 0)::bigint as seconds
 from rides r
@@ -1189,17 +1195,19 @@ where r.room_id = $1
   -- same trap one level up, where the owner turns the board on and everybody
   -- already inside is enrolled by existence.
   and m.on_board
-group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg
+group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg, u.ftp_source, u.weight_source
 order by kj desc, u.display_name asc
 `
 
 type RoomWeekBoardRow struct {
-	UserID      pgtype.UUID
-	DisplayName string
-	FtpWatts    int16
-	WeightKg    int16
-	Kj          int64
-	Seconds     int64
+	UserID       pgtype.UUID
+	DisplayName  string
+	FtpWatts     int16
+	WeightKg     int16
+	FtpSource    *string
+	WeightSource *string
+	Kj           int64
+	Seconds      int64
 }
 
 // The room's ordered board (#995, ADR-0036) — opt-in, and THIS WEEK ONLY.
@@ -1222,6 +1230,8 @@ func (q *Queries) RoomWeekBoard(ctx context.Context, roomID pgtype.UUID) ([]Room
 			&i.DisplayName,
 			&i.FtpWatts,
 			&i.WeightKg,
+			&i.FtpSource,
+			&i.WeightSource,
 			&i.Kj,
 			&i.Seconds,
 		); err != nil {

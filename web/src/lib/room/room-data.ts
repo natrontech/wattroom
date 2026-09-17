@@ -88,7 +88,13 @@ export interface BoardRow {
 	displayName: string;
 	kj: number;
 	seconds: number;
-	category: string;
+	/**
+	 * Absent while both the FTP and the weight it brackets are still the
+	 * account's defaults (ADR-0048, #2243) — an unchosen number never reads
+	 * as a measured one, and this board is the surface that publishes it to
+	 * everyone else in the room. The row still ranks: kJ is ridden.
+	 */
+	category?: string;
 }
 
 /**

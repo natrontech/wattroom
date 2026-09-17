@@ -114,11 +114,13 @@
 							>{i + 1}</span
 						>
 						<span class="min-w-0 flex-1 truncate">{row.displayName}</span>
-						<span
-							class="border-muted/30 text-muted shrink-0 rounded border px-1.5 text-[10px]"
-							title="category — who you are comparable with"
-							>{row.category}</span
-						>
+						{#if row.category}
+							<span
+								class="border-muted/30 text-muted shrink-0 rounded border px-1.5 text-[10px]"
+								title="category — who you are comparable with"
+								>{row.category}</span
+							>
+						{/if}
 						<span class="shrink-0 font-mono text-xs tabular-nums"
 							>{row.kj.toLocaleString()}<span class="text-muted ml-0.5">kJ</span
 							></span

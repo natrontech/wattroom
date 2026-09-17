@@ -92,7 +92,11 @@ type boardRowJSON struct {
 	DisplayName string `json:"displayName"`
 	Kj          int64  `json:"kj"`
 	Seconds     int64  `json:"seconds"`
-	Category    string `json:"category"`
+	// Absent while both of the pair it is computed from are still the
+	// account's defaults (ADR-0048, #2243): an unchosen number never reads as
+	// a measured one, and two guesses divided by each other is a fiction with
+	// a decimal point. The row still ranks — kJ is ridden, not typed.
+	Category string `json:"category,omitempty"`
 }
 
 type memberJSON struct {
