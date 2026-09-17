@@ -19,6 +19,46 @@ join visible_rooms a on a.room_id = r.id and a.user_id = sqlc.arg(rider)
 join visible_rooms b on b.room_id = r.id and b.user_id = sqlc.arg(viewer)
 order by r.name;
 
+-- name: SharesRoomOrFriends :one
+-- ADR-0024's audience for a rider's page, as ONE question (#2298). A shared
+-- live room, an accepted friendship, a pending request from them — or the
+-- rider themselves.
+--
+-- Both routes that serve this audience ask THIS: riders.handleGet for the
+-- page, gamify.handleRider for the trophy case on it. They used to decide it
+-- separately — one composing ListRoomsInCommon with friendStatus in Go, the
+-- other calling this — and agreed only by coincidence. The failure was the
+-- quiet direction: a new room state that counts as shared, or a friendship
+-- state that should not, would have moved one and left the other answering
+-- for an audience the ADR never granted.
+select (
+    -- Your own page is yours, whatever rooms or friends you have. Stated
+    -- here rather than at each call site, which is what made this two rules.
+    @viewer::uuid = @rider::uuid
+    or exists (
+        -- `visible_rooms` is the boundary, not a hand-written membership join
+        -- (ADR-0038, third amendment). #1110 fixed this very query for missing
+        -- `role != 'banned'`; going through the view is what stops the next
+        -- one being missed, and it brings crew bans and grants along free.
+        select 1 from visible_rooms a
+        join visible_rooms b on a.room_id = b.room_id
+        where a.user_id = @viewer and b.user_id = @rider
+    )
+    or exists (
+        select 1 from friendships
+        where status = 'accepted'
+          and ((requester_id = @viewer and addressee_id = @rider)
+            or (requester_id = @rider and addressee_id = @viewer))
+    )
+    or exists (
+        -- ADR-0024: a pending request *from* them opens their page, "see who
+        -- before you accept", and the case is part of that page (#1654). A
+        -- pending ask *to* them is not a door.
+        select 1 from friendships
+        where status = 'pending' and requester_id = @rider and addressee_id = @viewer
+    )
+)::boolean;
+
 -- name: RiderTotals :one
 -- Lifetime: XP (level), energy (kJ) and the ride count. Sums only — no
 -- watts, no heart rate, nothing per ride.

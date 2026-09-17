@@ -228,3 +228,56 @@ func (q *Queries) RiderTotals(ctx context.Context, uid pgtype.UUID) (RiderTotals
 	err := row.Scan(&i.Rides, &i.TotalKj, &i.TotalXp)
 	return i, err
 }
+
+const sharesRoomOrFriends = `-- name: SharesRoomOrFriends :one
+select (
+    -- Your own page is yours, whatever rooms or friends you have. Stated
+    -- here rather than at each call site, which is what made this two rules.
+    $1::uuid = $2::uuid
+    or exists (
+        -- ` + "`" + `visible_rooms` + "`" + ` is the boundary, not a hand-written membership join
+        -- (ADR-0038, third amendment). #1110 fixed this very query for missing
+        -- ` + "`" + `role != 'banned'` + "`" + `; going through the view is what stops the next
+        -- one being missed, and it brings crew bans and grants along free.
+        select 1 from visible_rooms a
+        join visible_rooms b on a.room_id = b.room_id
+        where a.user_id = $1 and b.user_id = $2
+    )
+    or exists (
+        select 1 from friendships
+        where status = 'accepted'
+          and ((requester_id = $1 and addressee_id = $2)
+            or (requester_id = $2 and addressee_id = $1))
+    )
+    or exists (
+        -- ADR-0024: a pending request *from* them opens their page, "see who
+        -- before you accept", and the case is part of that page (#1654). A
+        -- pending ask *to* them is not a door.
+        select 1 from friendships
+        where status = 'pending' and requester_id = $2 and addressee_id = $1
+    )
+)::boolean
+`
+
+type SharesRoomOrFriendsParams struct {
+	Viewer pgtype.UUID
+	Rider  pgtype.UUID
+}
+
+// ADR-0024's audience for a rider's page, as ONE question (#2298). A shared
+// live room, an accepted friendship, a pending request from them — or the
+// rider themselves.
+//
+// Both routes that serve this audience ask THIS: riders.handleGet for the
+// page, gamify.handleRider for the trophy case on it. They used to decide it
+// separately — one composing ListRoomsInCommon with friendStatus in Go, the
+// other calling this — and agreed only by coincidence. The failure was the
+// quiet direction: a new room state that counts as shared, or a friendship
+// state that should not, would have moved one and left the other answering
+// for an audience the ADR never granted.
+func (q *Queries) SharesRoomOrFriends(ctx context.Context, arg SharesRoomOrFriendsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, sharesRoomOrFriends, arg.Viewer, arg.Rider)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}

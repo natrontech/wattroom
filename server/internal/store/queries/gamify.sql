@@ -51,30 +51,6 @@ limit 5000;
 -- name: UserMedalTally :many
 select kind, count(*)::bigint as n from medals where user_id = $1 group by kind;
 
--- name: SharesRoomOrFriends :one
--- Who may see another rider's trophy case: someone in one of your rooms, or
--- a friend. The same reach the members list and the friends panel have.
-select (
-    exists (
-        -- `visible_rooms` is the boundary, not a hand-written membership join
-        -- (ADR-0038, third amendment). #1110 fixed this very query for missing
-        -- `role != 'banned'`; going through the view is what stops the next
-        -- one being missed, and it brings crew bans and grants along free.
-        select 1 from visible_rooms a
-        join visible_rooms b on a.room_id = b.room_id
-        where a.user_id = @viewer and b.user_id = @rider
-    )
-    or exists (
-        select 1 from friendships
-        where status = 'accepted'
-          and ((requester_id = @viewer and addressee_id = @rider)
-            or (requester_id = @rider and addressee_id = @viewer))
-    )
-    or exists (
-        -- ADR-0024: a pending request *from* them opens their page, "see who
-        -- before you accept", and the case is part of that page (#1654). A
-        -- pending ask *to* them is not a door.
-        select 1 from friendships
-        where status = 'pending' and requester_id = @rider and addressee_id = @viewer
-    )
-)::boolean;
+-- SharesRoomOrFriends moved to riders.sql (#2298): it is ADR-0024's audience
+-- for a rider's whole page, not the trophy case's own rule, and it is asked
+-- by both routes that serve that audience.
