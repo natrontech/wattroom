@@ -17,6 +17,7 @@
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import FirstRun from '$lib/home/FirstRun.svelte';
 	import RecentRides from '$lib/home/RecentRides.svelte';
+	import type { ServerRide } from '$lib/ride/list';
 	import Modal from '$lib/components/Modal.svelte';
 	import { administersNone, crewsOf } from '$lib/nav/crews';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
@@ -34,20 +35,13 @@
 	// Home (#212): the between-rides overview — who is around, what is
 	// planned, your friends, your week. ADR-0020 folded /sessions in here and
 	// retired /rooms — the sidebar is the room list.
-	interface Ride {
-		id: string;
-		workoutName: string;
-		startedAt: string;
-		seconds: number;
-		kj: number;
-	}
 
 	void account.load();
 	// What's new (#345). Home is the between-rides surface, which is the only
 	// place this belongs — ux.md: never interrupt a rider mid-interval.
 	void changelog.load();
 
-	let rides = $state<Ride[] | null>(null);
+	let rides = $state<ServerRide[] | null>(null);
 	let ridesError = $state<string | null>(null);
 	// Either read failing is said here with a Retry (errors.md): the rides
 	// read used to fail silently into "0 rides this week", and a failed
@@ -76,7 +70,7 @@
 		void loadRides();
 	});
 	async function loadRides() {
-		const res = await api<{ rides: Ride[] }>('/api/rides');
+		const res = await api<{ rides: ServerRide[] }>('/api/rides');
 		if (res.ok) {
 			rides = res.data.rides;
 			ridesError = null;
@@ -504,7 +498,11 @@
 				</section>
 
 				<!-- The last few rides: what you did, one line each, the log a click away. -->
-				<RecentRides rides={recent} />
+				<RecentRides
+					rides={recent}
+					ondelete={(ride) =>
+						(rides = rides?.filter((r) => r.id !== ride.id) ?? null)}
+				/>
 
 				<!-- What's next: every room's plan, across every room you are in
 		     (ADR-0020 — /sessions retired into this). Planning itself happens in

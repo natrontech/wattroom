@@ -36,6 +36,7 @@
 		placesFor,
 	} from './pages';
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
+	import { roomMenu } from './room-menu';
 	import { roomNavState } from './room-state';
 	import {
 		accessMark,
@@ -45,11 +46,7 @@
 		sidebarGroups,
 	} from './crews';
 	import { readDmsFolded, rememberDmsFolded } from './folds';
-	import {
-		contextMenu,
-		MENU_HINT,
-		type MenuEntry,
-	} from '$lib/context-menu.svelte';
+	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import { personMenu } from '$lib/person-menu';
@@ -59,7 +56,6 @@
 	import type { RailRoom } from '$lib/room/room-data';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Headphones from '@lucide/svelte/icons/headphones';
-	import DoorOpen from '@lucide/svelte/icons/door-open';
 	import LogOut from '@lucide/svelte/icons/log-out';
 	import Plus from '@lucide/svelte/icons/plus';
 	import { device } from '$lib/device.svelte';
@@ -176,37 +172,7 @@
 		     Equal tints read as one slab and the selection disappears. -->
 	<li
 		class="rounded-md {here ? 'bg-ink/5' : browsing ? 'bg-ink/[0.03]' : ''}"
-		{@attach contextMenu(() => {
-			if (!open_) return [];
-			// A room open to the crew that you have not walked into yet (#1236)
-			// has no places of yours and no chat you may read: its one action
-			// is the door, and a menu that offered the rest would 403 on click
-			// (ux.md: never render a button that will fail).
-			if (!room.role)
-				return [
-					{
-						label: 'Walk in',
-						icon: DoorOpen,
-						onSelect: () => void goto(`/r/${room.slug}`),
-					},
-				];
-			const entries: MenuEntry[] = places.map((place) => ({
-				label: place.label,
-				icon: place.icon,
-				onSelect: () => void goto(`/r/${room.slug}${place.path}`),
-			}));
-			// A disconnect, not a leaving: membership stays and so does the
-			// row. It wore the danger token and the word the crew's real
-			// exit uses, and a rider pressing it found the room still there
-			// (audit 2026-09-09).
-			if (here && onLeave)
-				entries.push('separator', {
-					label: 'Disconnect',
-					icon: LogOut,
-					onSelect: onLeave,
-				});
-			return entries;
-		})}
+		{@attach contextMenu(() => roomMenu(room, { here, onLeave }))}
 	>
 		<svelte:element
 			this={open_ ? 'a' : 'div'}

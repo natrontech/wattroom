@@ -26,19 +26,10 @@
 	import { formatClock } from '$lib/format';
 	import { createHistoryStore, type RideRecord } from '$lib/history.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { setRideShared, shareAction } from '$lib/ride/share';
 	import ShareToggle from '$lib/ride/ShareToggle.svelte';
-	import {
-		contextMenu,
-		MENU_HINT,
-		type MenuEntry,
-		type MenuItem,
-	} from '$lib/context-menu.svelte';
-	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
+	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
+	import { rideRowMenu } from '$lib/ride/row-menu';
 	import { untrack } from 'svelte';
-	import Lock from '@lucide/svelte/icons/lock';
-	import Trash2 from '@lucide/svelte/icons/trash-2';
-	import Users from '@lucide/svelte/icons/users';
 	import type { PageData } from './$types';
 	import {
 		rideCursorOf,
@@ -122,34 +113,12 @@
 		takePage(res.data);
 	}
 
-	// One helper for the row, its menu and the ride page (#1691).
-	const setShared = setRideShared;
-
-	async function removeRide(ride: ServerRide) {
-		if (!(await deleteRideAfterConfirm(ride))) return;
+	// What the row's menu leaves to this page once a ride is gone.
+	function forget(ride: ServerRide) {
 		rides = rides?.filter((r) => r.id !== ride.id) ?? null;
 		// The charts count this ride — they have to be asked again.
 		void loadProgression();
 	}
-
-	// The row's verbs, as menu items too (#486). A device-only ride has no
-	// server to flip or delete, so its row offers nothing and keeps the
-	// browser's menu. Delete opens the confirm rather than acting: unlike
-	// sharing, it cannot be handed back by an undo toast (errors.md).
-	const rowMenu = (ride: ServerRide): MenuEntry[] => [
-		{
-			label: shareAction(ride.sharedWithFriends).label,
-			icon: ride.sharedWithFriends ? Lock : Users,
-			onSelect: () => void setShared(ride, !ride.sharedWithFriends),
-		} satisfies MenuItem,
-		'separator',
-		{
-			label: 'Delete ride',
-			icon: Trash2,
-			danger: true,
-			onSelect: () => void removeRide(ride),
-		} satisfies MenuItem,
-	];
 
 	// A chart's drilldown (the rides chart above, once /progression's) lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);
@@ -264,6 +233,8 @@
 <svelte:head><title>Rides · WattRoom</title></svelte:head>
 
 {#snippet rideRow(ride: RideRecord, badge?: string, server?: ServerRide)}
+	<!-- A device-only ride has no server to flip or delete, so its row offers
+	     nothing and keeps the browser's own menu. -->
 	<li
 		id="ride-{ride.id}"
 		title={server ? MENU_HINT : undefined}
@@ -271,7 +242,7 @@
 		ride.id
 			? 'ring-z2/70 ring-1'
 			: ''}"
-		{@attach contextMenu(() => (server ? rowMenu(server) : []))}
+		{@attach contextMenu(() => (server ? rideRowMenu(server, forget) : []))}
 	>
 		{#if server}
 			<!-- The whole row opens the ride (#503): a tap target the size of the
