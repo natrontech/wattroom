@@ -24,7 +24,10 @@ export async function deleteRideAfterConfirm(ride: {
 	if (!ok) return false;
 	const res = await deleteRide(ride.id);
 	if (!res.ok) {
-		toasts.push(res.error.message);
+		// The error tone, like every other refusal (#2181): it is also the
+		// only one that sounds the fault cue, and a rider who asked for a
+		// deletion that did not happen is exactly who needs telling.
+		toasts.push(res.error.message, { tone: 'error' });
 		return false;
 	}
 	toasts.push(`“${ride.workoutName}” is gone.`);

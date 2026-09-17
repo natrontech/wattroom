@@ -10,7 +10,26 @@
 	import { api } from '$lib/api';
 	import { providerName } from '$lib/auth/providers';
 
-	let { onUploadToggle }: { onUploadToggle: (on: boolean) => void } = $props();
+	let {
+		onUploadToggle,
+	}: {
+		/** Resolves to the refusal's message, or null when it landed (#2181). */
+		onUploadToggle: (on: boolean) => Promise<string | null>;
+	} = $props();
+
+	// A self-saving checkbox owns its own refusal: the box goes back, and the
+	// reason lands beside it rather than in the profile form's banner at the
+	// top of a page the rider is not looking at (errors.md).
+	let uploadError = $state('');
+	async function toggleUpload(box: HTMLInputElement) {
+		const on = box.checked;
+		uploadError = '';
+		const message = await onUploadToggle(on);
+		if (message) {
+			box.checked = !on;
+			uploadError = message;
+		}
+	}
 
 	// Capability gating: only providers this server actually has credentials
 	// for, so we never offer a button that 500s (.claude/rules/ux.md).
@@ -177,7 +196,7 @@
 			<input
 				type="checkbox"
 				checked={account.me?.stravaUpload ?? true}
-				onchange={(e) => onUploadToggle(e.currentTarget.checked)}
+				onchange={(e) => void toggleUpload(e.currentTarget)}
 				class="mt-0.5"
 			/>
 			<span class="text-xs">
@@ -186,6 +205,9 @@
 					Your rides, your Strava, as Virtual Rides. Upload only — nothing is
 					ever pulled back.
 				</span>
+				{#if uploadError}
+					<span class="text-danger mt-1 block text-[11px]">{uploadError}</span>
+				{/if}
 			</span>
 		</label>
 	{:else if account.providers.includes('strava')}
