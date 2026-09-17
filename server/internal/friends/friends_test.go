@@ -476,3 +476,51 @@ func TestDismissCanBeUndone(t *testing.T) {
 		t.Fatal("bob's ask did not come back as pending")
 	}
 }
+
+// The undo is the undo of a dismissal and nothing else (#2225). Unconditional,
+// the insert MADE a pending request — `status` defaults to 'pending' — so
+// restore-then-accept befriended a rider who was never asked, with neither the
+// friend code ADR-0012 makes the permission to ask nor a shared room.
+func TestRestoreWithoutADismissalIsRefused(t *testing.T) {
+	mux, st, users, _ := setup(t)
+	shareRoom(t, st, users, "forge-cave", "alice", "bob")
+	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
+
+	code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(bob.ID)+"/restore")
+	if code != http.StatusNotFound {
+		t.Fatalf("restore with nothing to undo: %d, want 404", code)
+	}
+	if got := friendsOf(t, mux, "alice"); len(got) != 0 {
+		t.Fatalf("alice has a standing she was never given: %v", got)
+	}
+	if got := friendsOf(t, mux, "bob"); len(got) != 0 {
+		t.Fatalf("bob was befriended without being asked: %v", got)
+	}
+	// And the second half of the two-call forgery has nothing to accept.
+	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(bob.ID)+"/accept"); code != http.StatusNotFound {
+		t.Fatalf("accept after the refused restore: %d, want 404", code)
+	}
+	if got := friendsOf(t, mux, "bob"); len(got) != 0 {
+		t.Fatalf("bob ended up a friend: %v", got)
+	}
+	_ = alice
+}
+
+// The undo toast is one button and a rider can press it twice; the second
+// press has nothing to write and is not an error.
+func TestRestoreTwiceIsNotAnError(t *testing.T) {
+	mux, st, users, _ := setup(t)
+	shareRoom(t, st, users, "twice-cave", "alice", "bob")
+	bob := users.ByToken["bob"]
+	if code := request(t, mux, "bob", users.ByToken["alice"].FriendCode); code != http.StatusOK {
+		t.Fatalf("bob asks alice: %d", code)
+	}
+	if code, _ := call(t, mux, "alice", http.MethodDelete, "/api/friends/"+store.UUIDString(bob.ID)); code != http.StatusOK {
+		t.Fatalf("dismiss: %d", code)
+	}
+	for i := range 2 {
+		if code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(bob.ID)+"/restore"); code != http.StatusOK {
+			t.Fatalf("restore %d: %d, want 200", i+1, code)
+		}
+	}
+}

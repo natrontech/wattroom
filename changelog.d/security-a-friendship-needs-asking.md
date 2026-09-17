@@ -1,0 +1,1 @@
+- Fixed: the undo behind a dismissed friend request could be called without one, which made a request rather than restoring it — two calls and a stranger was your friend, with access to your messages and your presence. The undo now works only where a dismissal happened.

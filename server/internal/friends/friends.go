@@ -323,16 +323,40 @@ func (s *Service) handleAccept(w http.ResponseWriter, r *http.Request) {
 // handleRestore undoes a dismissal (#1652): the pending ask from them is put
 // back as it was and the tombstone that told them goes. Only the addressee
 // can, which is the person who dismissed it.
+//
+// And only where there WAS one (#2225): the insert used to run unconditionally
+// and `status` defaults to 'pending', so it did not restore a request, it made
+// one — from anybody, to the caller. Accepting it needs nothing else, so two
+// calls befriended a rider who was never asked, without the code ADR-0012
+// makes the permission to ask. The tombstone is the record that this rider
+// dismissed that ask, so it is what the undo is allowed to read.
 func (s *Service) handleRestore(w http.ResponseWriter, r *http.Request) {
 	me, target, ok := s.pair(w, r)
 	if !ok {
 		return
 	}
-	if err := s.store.Queries.RestoreFriendRequest(r.Context(), db.RestoreFriendRequestParams{
+	n, err := s.store.Queries.RestoreFriendRequest(r.Context(), db.RestoreFriendRequestParams{
 		RequesterID: target, AddresseeID: me.ID,
-	}); err != nil {
+	})
+	if err != nil {
 		httpx.Fail(w, s.log, "restore friend request", err, "That could not be undone.", "user", store.UUIDString(me.ID))
 		return
+	}
+	if n == 0 {
+		// Nothing was written: either there is no dismissal to undo, or the
+		// pair is connected again already — a second press of one undo toast,
+		// which has nothing left to do and is not an error.
+		_, err := s.store.Queries.GetFriendship(r.Context(), db.GetFriendshipParams{
+			RequesterID: me.ID, AddresseeID: target,
+		})
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "No dismissed request from them.")
+			return
+		case err != nil:
+			httpx.Fail(w, s.log, "restore friend request", err, "That could not be undone.", "user", store.UUIDString(me.ID))
+			return
+		}
 	}
 	s.clearDeclines(r, me.ID, target)
 	s.presence.PresenceChanged()
