@@ -21,7 +21,8 @@
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import Stage from '$lib/room/Stage.svelte';
 	import TrainingPhone from '$lib/room/TrainingPhone.svelte';
-	import { device } from '$lib/device.svelte';
+	import { device, deviceWord } from '$lib/device.svelte';
+	import { trainerTargetsNote } from '$lib/room/sensor-status';
 	import { pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
@@ -29,6 +30,12 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 
 	const room = useRoom();
+	// Another of the rider's screens drives the trainer (#2075). This one
+	// keeps the link, the watts and Forget (ADR-0025, amended) and writes no
+	// control point, so the trim is disabled and the card gets a place to say
+	// why — it is otherwise hidden the moment a trainer is linked, which is
+	// exactly the state this is about.
+	const targetsNote = $derived(trainerTargetsNote(room.pairing, deviceWord()));
 	const total = $derived(room.shared?.totalSeconds ?? 0);
 	const elapsed = $derived(room.shared?.elapsed ?? 0);
 
@@ -73,7 +80,7 @@
 	<div class="flex h-full min-h-0 flex-col">
 		<header class="flex flex-wrap items-center gap-3 px-6 py-3">
 			<p class="eyebrow">game</p>
-			{#if !room.trainer}<RoomSensorOverview compact />{/if}
+			{#if !room.trainer || targetsNote}<RoomSensorOverview compact />{/if}
 			<div class="ml-auto"><SessionControls compact /></div>
 		</header>
 		<section class="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
@@ -155,7 +162,7 @@
 				title={room.shared?.workoutName ?? ''}
 			>
 				{#snippet aside()}
-					{#if !room.trainer}<RoomSensorOverview compact />{/if}
+					{#if !room.trainer || targetsNote}<RoomSensorOverview compact />{/if}
 				{/snippet}
 				{#snippet controls()}
 					<SessionControls compact />
@@ -240,7 +247,12 @@
 					bias={room.bias}
 					lthr={roomConnection.current?.profile.current.lthr}
 					small={focus === 'media'}
-					onBias={room.trainer ? (step) => room.nudgeBias(step) : undefined}
+					onBias={room.trainer && room.actuating
+						? (step) => room.nudgeBias(step)
+						: undefined}
+					biasHint={targetsNote
+						? `${targetsNote} — trim them there`
+						: undefined}
 				/>
 
 				<!-- The live half of the execution score (WATTROOM.md: "live on the

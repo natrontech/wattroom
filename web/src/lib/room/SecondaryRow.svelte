@@ -21,6 +21,7 @@
 		execution,
 		small = false,
 		onBias,
+		biasHint,
 	}: {
 		cadence: number;
 		hr: number;
@@ -38,6 +39,13 @@
 		small?: boolean;
 		/** Absent with no trainer paired: nothing to trim (ux.md gating). */
 		onBias?: (step: number) => void;
+		/**
+		 * Why the trim is off, when the reason is not the usual one (#2075) —
+		 * a screen that holds the trainer but does not drive it has one
+		 * paired, and "pair a trainer" would send the rider to look for a
+		 * problem that is not there.
+		 */
+		biasHint?: string;
 	} = $props();
 
 	// bpm appears only when something is actually reporting it: a permanent
@@ -48,6 +56,7 @@
 	// A dead control with no reason reads as a broken feature — riders report
 	// "bias does nothing" when what is missing is the trainer it trims (#565).
 	const NO_TRAINER = 'Pair a trainer — bias trims the target it holds';
+	const off = $derived(biasHint ?? NO_TRAINER);
 </script>
 
 <div class="flex items-center gap-6">
@@ -70,7 +79,7 @@
 			<button
 				onclick={() => onBias?.(-0.01)}
 				disabled={!onBias}
-				title={onBias ? 'Ease the target by one percent' : NO_TRAINER}
+				title={onBias ? 'Ease the target by one percent' : off}
 				class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg disabled:opacity-40"
 				aria-label="ease the target by one percent">−</button
 			>
@@ -84,7 +93,7 @@
 			<button
 				onclick={() => onBias?.(0.01)}
 				disabled={!onBias}
-				title={onBias ? 'Raise the target by one percent' : NO_TRAINER}
+				title={onBias ? 'Raise the target by one percent' : off}
 				class="border-muted/25 hover:border-muted/60 h-11 w-11 rounded-full border text-lg disabled:opacity-40"
 				aria-label="raise the target by one percent">+</button
 			>

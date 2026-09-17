@@ -21,6 +21,7 @@
 		hint?: string;
 		error?: string;
 		elsewhere?: string;
+		targetsNote?: string;
 	};
 
 	const CASES: Case[] = [
@@ -53,6 +54,17 @@
 			name: 'on another screen (#610)',
 			state: 'idle',
 			elsewhere: 'on your phone',
+		},
+		{
+			// Two screens of one rider, both with a GATT link to one trainer —
+			// reachable only through a claim lost to a reconnect, which is why
+			// it lives here (#2075). The link, the watts and Forget all stay;
+			// the targets are the one thing that moved.
+			name: 'driven from another screen (#2075)',
+			state: 'connected',
+			device: 'KICKR CORE 8F2A',
+			reading: '214 W · 88 rpm',
+			targetsNote: 'Targets come from your phone',
 		},
 	];
 
@@ -104,6 +116,7 @@
 	<div class="mt-2">
 		<SensorOverview
 			elsewhere={now.elsewhere ? { trainer: now.elsewhere } : {}}
+			targetsNote={now.targetsNote}
 			trainer={{
 				state: now.state,
 				device: now.device,
@@ -122,6 +135,7 @@
 		<SensorOverview
 			compact
 			elsewhere={now.elsewhere ? { trainer: now.elsewhere } : {}}
+			targetsNote={now.targetsNote}
 			trainer={{
 				state: now.state,
 				device: now.device,

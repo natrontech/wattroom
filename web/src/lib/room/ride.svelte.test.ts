@@ -649,6 +649,87 @@ describe('a trainer claim the hub refused (#1853)', () => {
 	});
 });
 
+describe('the bias trim on a screen that is not driving (#2075)', () => {
+	const settle = async () => {
+		await Promise.resolve();
+		flushSync();
+	};
+
+	function answer(socket: FakeSocket, pairing: unknown) {
+		socket.onmessage!({ data: JSON.stringify({ pairing }) });
+	}
+
+	/** Every `bias` this socket has put on the wire, in order. */
+	function biasesSentOn(socket: FakeSocket): number[] {
+		return socket.sent
+			.map((line) => JSON.parse(line) as { metrics?: RiderMetrics })
+			.flatMap((message) =>
+				message.metrics ? [message.metrics.bias ?? 1] : [],
+			);
+	}
+
+	// A trim that moves a number and changes no resistance is a control
+	// failing on click (ux.md), and a bias that scores the ride while the
+	// trainer holds someone else's target is the same lie one layer down.
+	it('trims nothing, renders nothing trimmed and sends no trim', async () => {
+		const { live, socket, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		answer(socket, { elsewhere: { trainer: 'phone' } });
+		await settle();
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+
+		ride.nudgeBias(0.05);
+		await settle();
+		expect(ride.bias).toBe(1);
+		expect(ride.target).toBe(200);
+		expect(trainer.commands).toEqual([]);
+
+		trainer.pedal(210, 88);
+		await settle();
+		expect(biasesSentOn(socket)).toEqual([1]);
+
+		dispose();
+		live.close();
+	});
+
+	it('keeps the rider’s own setting and hands it back with the grant', async () => {
+		// Held, not reset: a trim dialled in before a reconnect lost the claim
+		// is the rider's, and asking for it again is a second fault on top of
+		// the first.
+		const { live, socket, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		ride.nudgeBias(0.05);
+		await settle();
+		expect(ride.bias).toBe(1.05);
+		expect(trainer.commands).toEqual(['erg:200', 'erg:210']);
+
+		answer(socket, { elsewhere: { trainer: 'phone' } });
+		await settle();
+		expect(ride.bias).toBe(1);
+		expect(ride.target).toBe(200);
+
+		answer(socket, { held: ['trainer'] });
+		await settle();
+		expect(ride.bias).toBe(1.05);
+		expect(ride.target).toBe(210);
+		expect(trainer.commands).toEqual(['erg:200', 'erg:210', 'erg:210']);
+
+		dispose();
+		live.close();
+	});
+});
+
 describe("the trainer's silence, one number (#2161)", () => {
 	/** Svelte settles its effects on a microtask; flushSync alone does not. */
 	const settle = async () => {

@@ -173,6 +173,9 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 			return ride.bias;
 		},
 		nudgeBias: ride.nudgeBias,
+		get actuating() {
+			return ride.actuating;
+		},
 		get trainerName() {
 			return ride.trainer?.name ?? '';
 		},
