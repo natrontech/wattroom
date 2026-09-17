@@ -136,8 +136,10 @@ func (s *Service) handleRoom(w http.ResponseWriter, r *http.Request) {
 func (s *Service) serve(w http.ResponseWriter, title, sub string) {
 	buf, err := s.card(title, sub)
 	if err != nil {
-		s.log.Error("og render", "err", err)
-		http.Error(w, "render failed", http.StatusInternalServerError)
+		// errors.md's one shape, like the 429 this same handler answers with
+		// (#2253): http.Error wrote plain text, so one route had two error
+		// bodies and the log line carried no context keys.
+		httpx.Fail(w, s.log, "og render", err, "That preview could not be drawn.")
 		return
 	}
 	w.Header().Set("Content-Type", "image/png")
