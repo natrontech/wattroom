@@ -31,8 +31,9 @@ type CountRiderMedalsInCommonRow struct {
 	Count int64
 }
 
-// Medals the rider earned in rooms the viewer shares with them, by kind.
-// Rooms they have since left are not "rooms you share" any more.
+// Medals the rider earned in rooms both may enter (`visible_rooms`), by kind.
+// A room the rider has left, or is banned from at either level, is no longer
+// one they may enter, so its medals drop out.
 func (q *Queries) CountRiderMedalsInCommon(ctx context.Context, arg CountRiderMedalsInCommonParams) ([]CountRiderMedalsInCommonRow, error) {
 	rows, err := q.db.Query(ctx, countRiderMedalsInCommon, arg.Rider, arg.Viewer)
 	if err != nil {
@@ -82,8 +83,10 @@ type ListRoomsInCommonRow struct {
 // is exactly how #1109 and #1114 happened — four such joins, one of them
 // missing the guard. The view also carries what a hand-written join could not
 // have known about: crew visibility, private-room grants and the crew ban.
-// Rooms where both hold a live (non-banned) membership — the gate for the
-// whole page, and the scope of the medals shown on it.
+// Rooms both may enter (`visible_rooms`) — the gate for the whole page, and
+// the scope of the medals shown on it. Since ADR-0038's person-visibility
+// section this is wider than "both joined it" on purpose: a crew-visible
+// room neither has joined still puts two riders in common.
 func (q *Queries) ListRoomsInCommon(ctx context.Context, arg ListRoomsInCommonParams) ([]ListRoomsInCommonRow, error) {
 	rows, err := q.db.Query(ctx, listRoomsInCommon, arg.Rider, arg.Viewer)
 	if err != nil {
@@ -137,8 +140,9 @@ type ListSharedRidesRow struct {
 }
 
 // The rides the rider marked shared, newest first — friends only. The room
-// is named only when the viewer is a member of it (ADR-0012: friendship
-// never pierces the room boundary); otherwise the ride just "was in a room".
+// is named only when the viewer may enter it (`visible_rooms`, ADR-0038's
+// person-visibility section; ADR-0012: friendship never pierces the room
+// boundary); otherwise the ride just "was in a room".
 func (q *Queries) ListSharedRides(ctx context.Context, arg ListSharedRidesParams) ([]ListSharedRidesRow, error) {
 	rows, err := q.db.Query(ctx, listSharedRides, arg.Viewer, arg.Rider, arg.Max)
 	if err != nil {
