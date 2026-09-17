@@ -301,10 +301,13 @@ func main() {
 		// The trophy case (#467): XP off the bike and achievements. It hears
 		// about rides from both savers, about sprints, tracks and sessions
 		// from the hub, and about voice minutes from its own ticker.
-		// The cookie source, not readAuth (#1736): the case's rider route is
-		// keyed on someone else's id, and ADR-0017 says a token never touches
-		// another rider.
-		trophies := gamify.New(st, authService, log)
+		// Both sources, and which route asks which is the rule (#2257):
+		// the case's rider route is keyed on someone else's id and takes the
+		// cookie source, because ADR-0017 says a token never touches another
+		// rider (#1736); the rider's own case is one of the five routes that
+		// same amendment says a bearer DOES authenticate, so it takes
+		// readAuth.
+		trophies := gamify.New(st, authService, readAuth, log)
 		trophies.Register(mux)
 		saver.SetRideKeeper(trophies)
 		ridesService.SetRideKeeper(trophies)

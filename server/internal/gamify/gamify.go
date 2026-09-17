@@ -40,18 +40,29 @@ type UserSource interface {
 
 type Service struct {
 	store *store.Store
+	// The cookie source: every route keyed on somebody else's id asks this
+	// one, because ADR-0017 says a bearer never touches another rider (#1746,
+	// #1736).
 	users UserSource
-	log   *slog.Logger
-	now   func() time.Time
+	// The bearer-aware source, for the rider's own case alone — ADR-0017's
+	// amendment names GET /api/me/trophies among the five routes a personal
+	// token authenticates (#2257). #1736 repointed the whole service to fix
+	// the rider route and took this one with it, so the ADR promised a route
+	// that answered 401.
+	self UserSource
+	log  *slog.Logger
+	now  func() time.Time
 	// Every keeper hook enqueues here and returns; one worker does the
 	// database work, so a slow Postgres backs up this queue and never a
 	// room tick, a webhook, or a rider's save.
 	jobs chan func(context.Context)
 }
 
-func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
+// New takes both sources on purpose: which one a route asks IS the rule, and
+// a single source made it the wiring's business rather than the handler's.
+func New(st *store.Store, users, self UserSource, log *slog.Logger) *Service {
 	s := &Service{
-		store: st, users: users, log: log, now: time.Now,
+		store: st, users: users, self: self, log: log, now: time.Now,
 		jobs: make(chan func(context.Context), 256),
 	}
 	// Supervised (#651): a poison job is logged and skipped, the queue lives on.
