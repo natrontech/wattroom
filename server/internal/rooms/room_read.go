@@ -158,10 +158,14 @@ func (s *Service) board(ctx context.Context, roomID pgtype.UUID) []boardRowJSON 
 		// bracket reads off the FTP the room already publishes rather than
 		// querying rides this room cannot see.
 		best20m := int(math.Round(float64(row.FtpWatts) / 0.95))
+		category := ""
+		if chosen(row.FtpSource) || chosen(row.WeightSource) {
+			category = stats.Category(best20m, float64(row.WeightKg))
+		}
 		out = append(out, boardRowJSON{
 			Id: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
 			Kj: row.Kj, Seconds: row.Seconds,
-			Category: stats.Category(best20m, float64(row.WeightKg)),
+			Category: category,
 		})
 	}
 	return out
@@ -175,6 +179,14 @@ func (s *Service) board(ctx context.Context, roomID pgtype.UUID) []boardRowJSON 
 // card, the one thing that IS for the web — narrowed itself to listed rooms
 // for exactly that reason. The 401 comes before the slug lookup, so an
 // unlisted room's existence is not the answer either.
+// chosen reports whether somebody answered for this number. ADR-0048 withholds
+// w/kg — and with it the category it brackets — "until at least one of the
+// pair is the rider's own", so this is the whole of that test. A NULL column
+// is an account from before the provenance existed, which is not an answer.
+func chosen(source *string) bool {
+	return source != nil && *source != "" && *source != "default"
+}
+
 func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Sign in to open this room.")
 	if !ok {

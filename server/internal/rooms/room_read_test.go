@@ -299,6 +299,12 @@ func TestBoardIsOffUntilTheRoomTurnsItOn(t *testing.T) {
 	}
 	h.roomRide(t, "alice", room.ID, time.Now(), 3600)
 	h.roomRide(t, "bob", room.ID, time.Now(), 1800)
+	// Alice answered for her FTP, so the bracket below is hers rather than
+	// one computed from two numbers nobody chose (ADR-0048, #2243).
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"update users set ftp_source = 'manual' where id = $1", h.users.ByToken["alice"].ID); err != nil {
+		t.Fatalf("alice's answer: %v", err)
+	}
 
 	// Being in a room does not put you on a board (ADR-0036).
 	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
@@ -500,5 +506,58 @@ func TestTheDoorSaysTheRoomKeepsABoard(t *testing.T) {
 	_, shut := h.call(t, "bob", http.MethodGet, "/api/rooms/"+quiet, "")
 	if enabled, _ := shut["boardEnabled"].(bool); enabled {
 		t.Errorf("a room with no board tells its door otherwise: %v", shut)
+	}
+}
+
+// ADR-0048, quoted in docs/SPEC.md: "An unchosen number never reads as a
+// measured one. … w/kg is withheld until at least one of the pair is the
+// rider's own — two guesses divided by each other is a fiction with a decimal
+// point." The category is that w/kg bracketed, and the weekly board is the one
+// surface ADR-0036 singles out as publishing a ride-derived number about one
+// member to the rest of the room — so it is the worst place for the guess to
+// travel unlabelled, and it did (#2243): every account that had not answered
+// was published as a D.
+func TestTheBoardWithholdsACategoryNobodyChose(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Board Guess")
+	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
+		`{"name":"Board Guess","listed":false,"boardEnabled":true}`); status != http.StatusOK {
+		t.Fatalf("enable the board")
+	}
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.join(t, "bob", slug)
+	h.join(t, "carol", slug)
+	for _, who := range []string{"bob", "carol"} {
+		h.roomRide(t, who, room.ID, time.Now(), 1800)
+	}
+	// Carol answered for one of the pair; bob has never been asked.
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"update users set ftp_source = 'manual' where id = $1", h.users.ByToken["carol"].ID); err != nil {
+		t.Fatalf("carol's answer: %v", err)
+	}
+
+	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
+	rows, _ := body["board"].([]any)
+	if len(rows) != 2 {
+		t.Fatalf("board has %d rows, want bob and carol: %v", len(rows), body["board"])
+	}
+	byName := map[string]map[string]any{}
+	for _, row := range rows {
+		r, _ := row.(map[string]any)
+		name, _ := r["displayName"].(string)
+		byName[name] = r
+	}
+	if got, ok := byName["bob"]["category"]; ok {
+		t.Errorf("a rider who was never asked is published as %v", got)
+	}
+	if got := byName["carol"]["category"]; got == nil || got == "" {
+		t.Error("a rider who answered lost their category, which is not the rule")
+	}
+	// The row is still on the board and still ranked: kJ is ridden, not typed.
+	if byName["bob"]["kj"] == nil {
+		t.Error("withholding the category took the rider off the board")
 	}
 }
