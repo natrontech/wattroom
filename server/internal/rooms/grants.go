@@ -22,14 +22,16 @@ func (s *Service) registerGrants(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/rooms/{slug}/grants/{userID}", s.handleRevoke)
 }
 
-// handleGrant lets a crew-mate into a private room. Owner only, per the row
-// docs/SPEC.md's roles matrix gained in #2248 — the claim was made here first,
-// and the matrix had no such row. The target has to be in the crew — a grant
-// is the exception to "open to the crew", not a second invite path around the
-// crew's — and banned at neither level: a ban beats a grant in visible_rooms,
-// so granting a banned person would do nothing and look like it did.
+// handleGrant lets a crew-mate into a private room. The room's doorkeeper —
+// its own owner, or the crew's owner or an admin (#2294) — since naming one
+// person through the door is the narrower half of opening it to the whole
+// crew, which a crew admin has held since #1226. The target has to be in the
+// crew — a grant is the exception to "open to the crew", not a second invite
+// path around the crew's — and banned at neither level: a ban beats a grant
+// in visible_rooms, so granting a banned person would do nothing and look
+// like it did.
 func (s *Service) handleGrant(w http.ResponseWriter, r *http.Request) {
-	room, _, ok := s.requireRole(w, r, "owner")
+	room, _, ok := s.requireDoorkeeper(w, r)
 	if !ok {
 		return
 	}
@@ -82,11 +84,13 @@ func (s *Service) handleGrant(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// handleRevoke takes a door back before it was used. Revoking a member's
-// grant is a no-op by design: they are in by their membership now, and
-// removing them is the owner's remove, not this.
+// handleRevoke takes a door back before it was used, for whoever may hand one
+// out. Revoking a member's grant is a no-op by design: they are in by their
+// membership now, and removing them is the room owner's remove, not this —
+// which is why the doorkeeper holding this is not a way round the moderation
+// gate.
 func (s *Service) handleRevoke(w http.ResponseWriter, r *http.Request) {
-	room, _, ok := s.requireRole(w, r, "owner")
+	room, _, ok := s.requireDoorkeeper(w, r)
 	if !ok {
 		return
 	}
@@ -103,15 +107,19 @@ func (s *Service) handleRevoke(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// exceptions is the owner's view of a private room's door list: who has been
-// let in and has not walked in yet, and which crew-mates are outside. The
-// second list is narrowed to the people the owner can already see
-// (person-visibility follows the rooms they may enter, #1135) — a room owner
-// is not a super-reader of the crew. Soft-fails to empty like the other
-// owner-only reads: a door list that cannot be loaded is a section that does
-// not render, never a room that will not open.
-func (s *Service) exceptions(ctx context.Context, room db.Room, owner db.User, members []db.ListRoomMembersRow) (invited, outside []memberJSON) {
-	inRoom := map[pgtype.UUID]bool{owner.ID: true}
+// exceptions is the doorkeeper's view of a private room's door list: who has
+// been let in and has not walked in yet, and which crew-mates are outside.
+// Whoever may hand a door out reads it (#2294), so the three grant paths
+// agree about who uses them; it rides the room's own read, so a doorkeeper
+// who never joined the room still sees no roster and no door list. The second
+// list is narrowed to the people that viewer can already see — the crew-mates
+// they share an enterable room with (person-visibility follows the rooms they
+// may enter, #1135) — on the same rule for every viewer: a room's owner is not
+// a super-reader of the crew, and neither is a crew admin keeping its door.
+// Soft-fails to empty like the other privileged reads: a door list that cannot
+// be loaded is a section that does not render, never a room that will not open.
+func (s *Service) exceptions(ctx context.Context, room db.Room, viewer db.User, members []db.ListRoomMembersRow) (invited, outside []memberJSON) {
+	inRoom := map[pgtype.UUID]bool{viewer.ID: true}
 	for _, m := range members {
 		inRoom[m.ID] = true
 	}
@@ -129,7 +137,7 @@ func (s *Service) exceptions(ctx context.Context, room db.Room, owner db.User, m
 		})
 	}
 	people, err := s.store.Queries.ListCrewPeople(ctx, db.ListCrewPeopleParams{
-		CrewID: room.CrewID, Everyone: false, Viewer: owner.ID,
+		CrewID: room.CrewID, Everyone: false, Viewer: viewer.ID,
 	})
 	if err != nil {
 		s.log.Warn("list crew people failed", "err", err, "room", room.Slug)

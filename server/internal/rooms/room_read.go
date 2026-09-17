@@ -301,7 +301,17 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				CrewBanned: member.Role == "banned" && crewBanned[member.ID],
 			})
 		}
-		if m.Role == "owner" && room.CrewID.Valid && !room.CrewVisible {
+		// The caller's standing in the room's crew, asked once: the door
+		// list below is the doorkeeper's rather than the owner's (#2294),
+		// and the crew block further down hands the same role to the
+		// client. Soft-fails to "" like that block — an unanswered lookup
+		// is a section that does not render, never a room that will not
+		// open — which leaves the room's owner, who reads it either way.
+		crewRole := ""
+		if room.CrewID.Valid {
+			crewRole, _ = s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: room.CrewID, UserID: user.ID})
+		}
+		if room.CrewID.Valid && !room.CrewVisible && keepsTheDoor(crewRole, room.OwnerID, user.ID) {
 			response.Invited, response.CrewOutside = s.exceptions(r.Context(), room, user, members)
 		}
 		if weeks, err := s.store.Queries.ListRoomRideWeeks(r.Context(), room.ID); err == nil {
@@ -326,9 +336,8 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		// does not render, never a room that will not open.
 		if room.CrewID.Valid {
 			if crew, err := s.store.Queries.GetCrew(r.Context(), room.CrewID); err == nil {
-				role, _ := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: crew.ID, UserID: user.ID})
 				response.Crew = &roomCrewJSON{
-					Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role,
+					Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: crewRole,
 					ImageURL: crewImageURL(crew.ID, crew.HasImage), Code: codeOf(crew.Code),
 				}
 				// Whether deleting this room takes the crew with it

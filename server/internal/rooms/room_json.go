@@ -168,10 +168,11 @@ type roomJSON struct {
 	// The caller's own role; empty when they are not a member.
 	Role    string       `json:"role,omitempty"`
 	Members []memberJSON `json:"members,omitempty"`
-	// A private room's named exceptions (ADR-0038, #1224), owner only:
-	// crew-mates let in who have not walked in yet, and the crew-mates the
-	// owner can see who are outside — the people a grant is for. Absent for
-	// a room open to its crew, where everyone may already walk in.
+	// A private room's named exceptions (ADR-0038, #1224), for whoever may
+	// hand a door out (#2294): crew-mates let in who have not walked in yet,
+	// and the crew-mates they can see who are outside — the people a grant is
+	// for. Absent for a room open to its crew, where everyone may already
+	// walk in.
 	Invited     []memberJSON `json:"invited,omitempty"`
 	CrewOutside []memberJSON `json:"crewOutside,omitempty"`
 	// The caller's own preferences for this room (#1100); nil for a
