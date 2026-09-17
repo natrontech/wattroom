@@ -21,5 +21,11 @@
 -- outside the band simply never becomes a suggestion.
 alter table rides add column last20m_hr smallint;
 
+-- The backfill's queue. Without it the call that proves the queue is EMPTY —
+-- the one every boot makes forever after the pass finishes — has to seq-scan
+-- rides to find nothing. The index empties itself as the backfill runs.
+create index if not exists rides_missing_last20m_hr on rides (id) where last20m_hr is null;
+
 -- +goose Down
+drop index if exists rides_missing_last20m_hr;
 alter table rides drop column last20m_hr;

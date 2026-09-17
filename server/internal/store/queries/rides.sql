@@ -236,7 +236,7 @@ where user_id = $1 and started_at >= now() - interval '90 days';
 select coalesce(max(last20m_hr), 0)::int from rides
 where user_id = $1
   and room_id is null
-  and seconds >= 1800
+  and seconds >= 1800 -- stats.MinLTHRRideSeconds (docs/SPEC.md's 30 minutes)
   and last20m_hr > 0
   and started_at >= now() - interval '90 days';
 

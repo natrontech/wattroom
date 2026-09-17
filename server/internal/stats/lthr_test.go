@@ -18,20 +18,22 @@ import (
 // lthrFixture is one fresh rider. The test database is per-checkout, not
 // per-run and not per-package (#2083), so the room slug carries the moment it
 // was made and every assertion is scoped to this user's id.
-func lthrFixture(t *testing.T) (*store.Store, context.Context, db.User) {
+func lthrFixture(t *testing.T) (context.Context, *store.Store, db.User) {
 	t.Helper()
 	st := storetest.Open(t)
-	ctx := context.Background()
+	// t.Context, not Background: a query that hangs fails this test rather
+	// than the package's timeout.
+	ctx := t.Context()
 	user, err := st.Queries.CreateUser(ctx, db.CreateUserParams{DisplayName: "lthr-test", FtpWatts: 250, WeightKg: 75})
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID) })
-	return st, ctx, user
+	return ctx, st, user
 }
 
 // putRide stores one ride with an explicit last20m_hr, room and length.
-func putRide(t *testing.T, st *store.Store, ctx context.Context, userID pgtype.UUID,
+func putRide(t *testing.T, ctx context.Context, st *store.Store, userID pgtype.UUID,
 	roomID pgtype.UUID, name string, ago time.Duration, seconds int32, hr int16,
 ) pgtype.UUID {
 	t.Helper()
@@ -52,7 +54,7 @@ func putRide(t *testing.T, st *store.Store, ctx context.Context, userID pgtype.U
 // is silent if it breaks — a room ride or a 12-minute blast would just quietly
 // become the number the rider is asked to adopt as their threshold.
 func TestBestLast20mHRIn90DaysTakesOnlyQualifyingRides(t *testing.T) {
-	st, ctx, user := lthrFixture(t)
+	ctx, st, user := lthrFixture(t)
 	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{
 		Slug: fmt.Sprintf("lthr-test-room-%d", time.Now().UnixNano()), Name: "LTHR", OwnerID: user.ID,
 	})
@@ -63,12 +65,12 @@ func TestBestLast20mHRIn90DaysTakesOnlyQualifyingRides(t *testing.T) {
 
 	var solo pgtype.UUID // the zero UUID is invalid: a solo ride (BuildRideRow)
 	// The only ride that qualifies, and the lowest number of the lot.
-	putRide(t, st, ctx, user.ID, solo, "Field test", time.Hour, 1800, 164)
+	putRide(t, ctx, st, user.ID, solo, "Field test", time.Hour, MinLTHRRideSeconds, 164)
 	// Each of these carries a HIGHER number and must not be the answer.
-	putRide(t, st, ctx, user.ID, room.ID, "Room ride", 2*time.Hour, 3600, 190)
-	putRide(t, st, ctx, user.ID, solo, "Short and hard", 3*time.Hour, 1799, 188)
-	putRide(t, st, ctx, user.ID, solo, "Last spring", 91*24*time.Hour, 3600, 186)
-	putRide(t, st, ctx, user.ID, solo, "No strap", 4*time.Hour, 3600, 0)
+	putRide(t, ctx, st, user.ID, room.ID, "Room ride", 2*time.Hour, 3600, 190)
+	putRide(t, ctx, st, user.ID, solo, "Short and hard", 3*time.Hour, MinLTHRRideSeconds-1, 188)
+	putRide(t, ctx, st, user.ID, solo, "Last spring", 91*24*time.Hour, 3600, 186)
+	putRide(t, ctx, st, user.ID, solo, "No strap", 4*time.Hour, 3600, 0)
 
 	got, err := st.Queries.BestLast20mHRIn90Days(ctx, user.ID)
 	if err != nil {
@@ -82,7 +84,7 @@ func TestBestLast20mHRIn90DaysTakesOnlyQualifyingRides(t *testing.T) {
 // A rider with no qualifying ride gets 0, not an error and not somebody
 // else's number.
 func TestBestLast20mHRIn90DaysIsZeroWithoutAQualifyingRide(t *testing.T) {
-	st, ctx, user := lthrFixture(t)
+	ctx, st, user := lthrFixture(t)
 	got, err := st.Queries.BestLast20mHRIn90Days(ctx, user.ID)
 	if err != nil || got != 0 {
 		t.Fatalf("no rides: %d (%v), want 0", got, err)
@@ -92,8 +94,13 @@ func TestBestLast20mHRIn90DaysIsZeroWithoutAQualifyingRide(t *testing.T) {
 // The backfill fills EVERY row it reads, 0 included. A ride with no heart
 // rate left null would be re-listed on every boot, for the life of the row:
 // the loop would never report "done" and would read the same blobs forever.
+//
+// This runs the real sweep, which is global, against a database AGENTS.md is
+// explicit is per-checkout rather than per-run. Tolerable because the sweep
+// only ever writes a column no other test reads, and because every assertion
+// below is by this test's own ride ids — never by the sweep having finished.
 func TestBackfillLast20mHRLeavesNoRowInTheQueue(t *testing.T) {
-	st, ctx, user := lthrFixture(t)
+	ctx, st, user := lthrFixture(t)
 
 	hard := make([]protocol.RiderMetrics, 1800)
 	for i := range hard {
@@ -110,9 +117,9 @@ func TestBackfillLast20mHRLeavesNoRowInTheQueue(t *testing.T) {
 	}
 	blob := row.Samples
 
-	withHR := putRide(t, st, ctx, user.ID, pgtype.UUID{}, "With HR", time.Hour, 1800, 0)
-	noHR := putRide(t, st, ctx, user.ID, pgtype.UUID{}, "No HR", 2*time.Hour, 1800, 0)
-	junk := putRide(t, st, ctx, user.ID, pgtype.UUID{}, "Junk", 3*time.Hour, 1800, 0)
+	withHR := putRide(t, ctx, st, user.ID, pgtype.UUID{}, "With HR", time.Hour, 1800, 0)
+	noHR := putRide(t, ctx, st, user.ID, pgtype.UUID{}, "No HR", 2*time.Hour, 1800, 0)
+	junk := putRide(t, ctx, st, user.ID, pgtype.UUID{}, "Junk", 3*time.Hour, 1800, 0)
 	// Put all three back in the queue, and give one of them a real blob.
 	if _, err := st.Pool.Exec(ctx,
 		"update rides set last20m_hr = null, samples = $2 where id = $1", withHR, blob); err != nil {

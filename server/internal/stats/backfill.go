@@ -72,9 +72,9 @@ func normFromBlob(blob []byte) (int, bool) {
 
 // BackfillLast20mHR fills last20m_hr on rides saved before #1620, reading each
 // blob exactly once. Idempotent (null-guarded), so running it on every start is
-// free once done. Exits when no rows remain, an error repeats, or ctx ends.
-// ponytail: serial batches of 100, the same shape and the same reasoning as
-// BackfillNormWatts above.
+// free once done. Exits when no rows remain, on the first error, or when ctx
+// ends. ponytail: serial batches of 100, the same shape and the same reasoning
+// as BackfillNormWatts above.
 //
 // Every row the loop sees gets a number, 0 included — a ride under 20 minutes,
 // one ridden without a strap, or a blob that will not decode all have no
@@ -88,7 +88,12 @@ func BackfillLast20mHR(ctx context.Context, st *store.Store, log *slog.Logger) {
 	for {
 		rows, err := st.Queries.ListRidesMissingLast20mHR(ctx, 100)
 		if err != nil {
-			log.Error("last-20 HR backfill list failed", "err", err)
+			// A shutdown mid-pass is not an incident: the goroutine holds the
+			// server's ctx, so every restart that lands here would otherwise
+			// log context.canceled at ERROR.
+			if ctx.Err() == nil {
+				log.Error("last-20 HR backfill list failed", "err", err)
+			}
 			return
 		}
 		if len(rows) == 0 {
@@ -102,15 +107,20 @@ func BackfillLast20mHR(ctx context.Context, st *store.Store, log *slog.Logger) {
 			if samples, err := DecodeSamples(row.Samples); err == nil {
 				hr = Last20mHR(samples)
 			} else {
+				// The error says WHICH way the blob is broken — a truncated
+				// gzip and a JSON shape mismatch want different answers, and
+				// the row is stamped 0 and never revisited.
 				log.Warn("last-20 HR backfill: unreadable samples, stored none",
-					"ride", store.UUIDString(row.ID))
+					"err", err, "ride", store.UUIDString(row.ID))
 			}
 			stored := int16(min(hr, math.MaxInt16)) //nolint:gosec // clamped on the line
 			err := st.Queries.SetRideLast20mHR(ctx, db.SetRideLast20mHRParams{
 				ID: row.ID, Last20mHr: &stored,
 			})
 			if err != nil {
-				log.Error("last-20 HR backfill update failed", "err", err)
+				if ctx.Err() == nil {
+					log.Error("last-20 HR backfill update failed", "err", err)
+				}
 				return
 			}
 			filled++

@@ -194,8 +194,15 @@ const (
 // Seconds with no reading are not averaged: a strap that dropped for ten
 // seconds recorded nothing there, and counting those as 0 bpm would pull the
 // average down by a tenth of nothing the rider did. A ride shorter than the
-// window, or one with no reading in it at all, honestly has no number — 0,
-// the same posture PowerCurve takes on a window longer than the ride.
+// window, or one that read for less than half of it, honestly has no number
+// — 0, the same posture PowerCurve takes on a window longer than the ride.
+//
+// The half is SPEC's and it is not fussiness. Skipping absent seconds with no
+// floor under the count means one second of readings IS the average: a strap
+// that re-acquires in the last minute with a single spurious 180 stores 180,
+// clears every gate below, and asks the rider to adopt it as their threshold
+// for the next 90 days — silently, because nothing tells them how little of
+// the window it came from.
 func Last20mHR(samples []protocol.RiderMetrics) int {
 	if len(samples) < LTHRRideWindow {
 		return 0
@@ -207,7 +214,7 @@ func Last20mHR(samples []protocol.RiderMetrics) int {
 			beats++
 		}
 	}
-	if beats == 0 {
+	if beats*2 < LTHRRideWindow {
 		return 0
 	}
 	return int(math.Round(float64(sum) / float64(beats)))
@@ -223,6 +230,12 @@ func Last20mHR(samples []protocol.RiderMetrics) int {
 // Deliberately no power term. SPEC says so and says why: a rider riding the
 // protocol honestly need not be near their best 20-minute power, so a power
 // gate would skip the very test this exists to catch.
+//
+// The lower bound is defence in depth rather than a live guard: today the
+// column holds only 0 (caught by currentLthr's own check, since a rider with
+// no LTHR is not asked at all) or a real reading, and the profile refuses an
+// LTHR under MinLthrBpm. It costs a comparison and it is what a future that
+// lets the anchor go lower will want.
 func SuggestLTHR(last20mHR, currentLthr int) (int, bool) {
 	if currentLthr <= 0 || last20mHR < protocol.MinLthrBpm || last20mHR > protocol.MaxLthrBpm {
 		return 0, false

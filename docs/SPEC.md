@@ -249,7 +249,9 @@ colours the rider's **own** bpm readout, never anyone else's, never scored
     never applies itself. **The prompt therefore says out loud that it assumes the ride was
     all-out**; that sentence is what a power gate would otherwise have done.
   - Seconds in the window with no reading are not averaged — a dropped strap second is
-    absent, never a zero. A ride with no reading at all in its last 20 minutes has no number.
+    absent, never a zero — but **at least half the window has to carry a reading**, or the
+    ride has no number at all. Without that floor one second IS the average: a strap that
+    re-acquires in the last minute with a single spurious beat would offer it as a threshold.
   - A rider with **no LTHR set** is not prompted: there is nothing for the average to exceed.
     The ramp test above is where a first LTHR comes from.
 

@@ -196,13 +196,25 @@ func TestLast20mHR(t *testing.T) {
 	}
 
 	// A dropped strap second is absent, not 0 bpm: 600 s at 170 with 600 s of
-	// silence beside it still averages 170, not 85.
+	// silence beside it still averages 170, not 85 — and 600 s is exactly the
+	// half-window SPEC requires, so it still counts.
 	if got := Last20mHR(ride(beats(170, 600), beats(0, 600))); got != 170 {
 		t.Fatalf("dropouts must not be averaged in: %d, want 170", got)
 	}
 
+	// One second short of half the window, and the pathological case the floor
+	// exists for: a strap that woke up once. Skipping absent seconds with no
+	// floor makes that ONE reading the average, and the rider is asked to adopt
+	// a spurious 180 as their threshold for the next 90 days.
+	if got := Last20mHR(ride(beats(0, 601), beats(170, 599))); got != 0 {
+		t.Fatalf("under half the window: %d, want 0", got)
+	}
+	if got := Last20mHR(ride(beats(0, 1199), beats(180, 1))); got != 0 {
+		t.Fatalf("one stray beat became a threshold: %d, want 0", got)
+	}
+
 	// Shorter than the window, and no reading at all: honestly nothing.
-	if got := Last20mHR(beats(170, 1199)); got != 0 {
+	if got := Last20mHR(beats(170, LTHRRideWindow-1)); got != 0 {
 		t.Fatalf("under the window: %d, want 0", got)
 	}
 	if got := Last20mHR(flat(200, 1800)); got != 0 {
