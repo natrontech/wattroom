@@ -18,7 +18,7 @@ const maxCheers = 8
 // client draws them.
 var baseCheers = []string{"flame", "biceps-flexed", "party-popper", "skull", "rocket", "snowflake"}
 
-// CheerSet parses the stored space-joined palette; ” means the base set.
+// CheerSet parses the stored space-joined palette; "" means the base set.
 // Exported because the account export carries an owned room's palette as the
 // icons the room actually speaks (#2089), and "empty means the stock set" is a
 // rule that must not be written down twice.
