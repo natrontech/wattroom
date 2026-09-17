@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { SensorPairing } from '$lib/protocol';
-import { mayActuate, pairedElsewhere } from '$lib/room/sensor-status';
+import {
+	mayActuate,
+	pairedElsewhere,
+	trainerTargetsNote,
+} from '$lib/room/sensor-status';
 
 describe('pairedElsewhere', () => {
 	const held = (elsewhere: Record<string, string>): SensorPairing => ({
@@ -55,5 +59,40 @@ describe('mayActuate (#1853)', () => {
 		// socket is down, keep their resistance.
 		expect(mayActuate(undefined)).toBe(true);
 		expect(mayActuate({})).toBe(true);
+	});
+});
+
+describe('trainerTargetsNote (#2075)', () => {
+	// A screen that keeps its GATT link and writes no control point drew the
+	// ordinary live card: name, watts and Forget, and nothing at all about
+	// where the resistance was coming from.
+	it('names the screen the targets come from', () => {
+		expect(
+			trainerTargetsNote({ elsewhere: { trainer: 'phone' } }, 'desktop'),
+		).toBe('Targets come from your phone');
+	});
+
+	it('says "another tab" rather than naming the screen you are on', () => {
+		expect(
+			trainerTargetsNote({ elsewhere: { trainer: 'desktop' } }, 'desktop'),
+		).toBe('Targets come from another tab');
+	});
+
+	it('is silent on the screen that is driving', () => {
+		expect(
+			trainerTargetsNote({ held: ['trainer'] }, 'desktop'),
+		).toBeUndefined();
+		expect(trainerTargetsNote(undefined, 'desktop')).toBeUndefined();
+		expect(
+			trainerTargetsNote({ elsewhere: { 'heart-rate': 'phone' } }, 'desktop'),
+		).toBeUndefined();
+	});
+
+	it('is the same claim mayActuate refuses on', () => {
+		// Two answers to one question would drift: a card saying the targets
+		// are elsewhere while this screen still wrote them is the bug this
+		// came from, one layer up.
+		const pairing = { elsewhere: { trainer: 'phone' } };
+		expect(!!trainerTargetsNote(pairing, 'desktop')).toBe(!mayActuate(pairing));
 	});
 });

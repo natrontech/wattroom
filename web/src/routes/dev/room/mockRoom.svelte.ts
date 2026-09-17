@@ -618,6 +618,8 @@ export function createRoom() {
 				Math.max(0.8, Math.round((bias + step) * 100) / 100),
 			);
 		},
+		// The mock room always drives: nothing here arbitrates a claim (#2075).
+		actuating: true,
 		get bias() {
 			return bias;
 		},

@@ -1,0 +1,1 @@
+- A screen that keeps its link to your trainer but no longer drives it now says so — the card reads "Targets come from your phone", and the bias trim is disabled there instead of moving a number that changes no resistance.

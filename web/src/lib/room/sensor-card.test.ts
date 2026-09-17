@@ -85,6 +85,37 @@ describe('cardView', () => {
 		expect(view.instead).toBe('Needs Chrome or Edge');
 	});
 
+	it('says where the targets come from without leaving the live shape (#2075)', () => {
+		// ADR-0025, amended: a screen without the grant keeps the link, the
+		// samples and Forget. What it must not keep is the silence — the
+		// `elsewhere` branch below is unreachable once a card is live, so this
+		// state could say nothing at all.
+		const view = cardView({
+			state: 'connected',
+			supported: true,
+			elsewhere: 'on your phone',
+			targetsNote: 'Targets come from your phone',
+		});
+		expect(view.shape).toBe('live');
+		expect(view.note).toBe('Targets come from your phone');
+		// Not a fault: the ride is fine, another screen is driving (errors.md).
+		expect(view.tone).toBe('muted');
+		expect(view.button).toMatchObject({ variant: 'forget' });
+	});
+
+	it('lets a real fault outrank where the targets come from (#2075)', () => {
+		// A trainer that is silent AND driven from elsewhere is still silent,
+		// and "turn the cranks" is the line a rider can act on.
+		const view = cardView({
+			state: 'connected',
+			supported: true,
+			hint: 'no watts yet — turn the cranks',
+			targetsNote: 'Targets come from your phone',
+		});
+		expect(view.note).toBe('no watts yet — turn the cranks');
+		expect(view.tone).toBe('danger');
+	});
+
 	it('shows this screen its own trainer even when another screen claims it', () => {
 		// The claim is stale or the hub moved it back: watts arriving here beat
 		// a phrase about somewhere else.

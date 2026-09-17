@@ -32,13 +32,32 @@ export function cardView(args: {
 	elsewhere?: string;
 	/** Set while the trainer is paired but not reporting (#520). */
 	hint?: string;
+	/**
+	 * The line naming the screen that writes the trainer's control point,
+	 * when it is not this one (#2075) — `trainerTargetsNote`. Trainer-only:
+	 * the three read-only sensors have no targets to come from anywhere, and
+	 * a claim on one of those means something else entirely.
+	 */
+	targetsNote?: string;
 }): CardView {
 	// Live beats held: a card showing watts is this screen's, whatever another
 	// screen also claims.
+	//
+	// It is still this screen's card when another screen drives (ADR-0025,
+	// amended): the link, the watts and Forget all stay. Only the targets are
+	// somewhere else, and that is the one thing the card used to leave out —
+	// the `elsewhere` branch below is unreachable from here, so a
+	// refused-but-connected trainer could say nothing at all (#2075).
+	//
+	// A fault outranks the note. A trainer that is silent AND driven from
+	// elsewhere is still silent, and "no watts yet — turn the cranks" is the
+	// line a rider can act on; where the targets come from can wait.
 	if (args.state === 'connected')
 		return {
 			shape: 'live',
-			note: args.hint ?? '',
+			note: args.hint ?? args.targetsNote ?? '',
+			// Another screen driving is not a fault (errors.md): the ride is
+			// fine, and only a real hint earns the danger tone.
 			tone: args.hint ? 'danger' : 'muted',
 			button: { label: 'Forget', variant: 'forget' },
 		};

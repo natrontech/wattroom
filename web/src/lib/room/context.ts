@@ -61,6 +61,13 @@ export interface RoomContext {
 
 	readonly bias: number;
 	nudgeBias(step: number): void;
+	/**
+	 * Whether this screen writes the trainer's control point (#1853, #2075).
+	 * False while another of the rider's screens holds the claim: the link,
+	 * the samples and Forget all stay, the targets do not. What the bias trim
+	 * is gated on — a trainer being linked is a different question.
+	 */
+	readonly actuating: boolean;
 	readonly trainer: unknown;
 	/** What this tab is paired to, for a ⚑ report's context (#1631). '' = nothing. */
 	readonly trainerName: string;
