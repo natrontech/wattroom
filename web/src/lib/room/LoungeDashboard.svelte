@@ -6,10 +6,11 @@
 	// the tiles and the stage; this is the part that only exists between
 	// sessions.
 	import { account } from '$lib/account.svelte';
-	import { copyInviteLink } from '$lib/crew-flows';
+	import { shareInviteLink } from '$lib/crew-flows';
 	import { formatWhen } from '$lib/format';
 	import { useRoom } from '$lib/room/context';
 	import SessionControls from '$lib/room/SessionControls.svelte';
+	import { shareVerb } from '$lib/share';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Link from '@lucide/svelte/icons/link';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
@@ -161,13 +162,15 @@
 				><CalendarClock size={14} /> Plan a session</a
 			>
 		{/if}
-		<!-- The invite is the crew's (#1236): one click copies its link.
+		<!-- The invite is the crew's (#1236): one click gets its link out of
+		     the app — a share sheet on a phone, the clipboard at a desk (#973).
 		     Without the code — never for a member, but the row must not
 		     render a button that fails — the Members place says how. -->
 		{#if room.code}
 			<button
-				onclick={() => copyInviteLink(room.code)}
-				class="btn btn-secondary"><Link size={14} /> Copy invite link</button
+				onclick={() => shareInviteLink(room.code)}
+				class="btn btn-secondary"
+				><Link size={14} /> {shareVerb()} invite link</button
 			>
 		{:else}
 			<a href="/r/{room.slug}/members" class="btn btn-secondary"

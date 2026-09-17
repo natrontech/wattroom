@@ -1,7 +1,6 @@
 import { goto } from '$app/navigation';
 import { account } from '$lib/account.svelte';
 import { confirm } from '$lib/confirm.svelte';
-import { copyText, theLinkItself } from '$lib/copy';
 import {
 	inviteLink,
 	leaveCrew,
@@ -12,6 +11,7 @@ import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 import { presence } from '$lib/presence.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
 import type { RoomCrew } from '$lib/room/room-data';
+import { shareLink } from '$lib/share';
 import { toasts } from '$lib/toast.svelte';
 
 /**
@@ -163,12 +163,15 @@ export async function makeMainCrewFlow(
 }
 
 /**
- * The invite link onto the clipboard, from wherever it is offered — the crew
- * page, its settings, the crew row's menu (#1236, #1257) — with the one toast.
+ * The invite link out of the app, from wherever it is offered — the crew
+ * page, its settings, the crew row's menu, a room's Members place and its
+ * lounge (#1236, #1257) — one way, one toast.
+ *
+ * `shareLink` is the one way (#973): a share sheet where there is a finger to
+ * open it with, the clipboard everywhere else, and the link itself when the
+ * clipboard is refused. `shareVerb` is what the five buttons label themselves
+ * with, so none of them promises a copy and opens a sheet.
  */
-export async function copyInviteLink(code: string): Promise<void> {
-	const link = inviteLink(code);
-	// A clipboard the browser refused (no permission, no focus) is not a dead
-	// end: the link itself is the feedback (errors.md).
-	await copyText(link, 'Invite link copied.', theLinkItself(link));
+export async function shareInviteLink(code: string): Promise<void> {
+	await shareLink(inviteLink(code), 'Invite link copied.');
 }

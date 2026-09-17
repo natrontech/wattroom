@@ -14,14 +14,15 @@
 	import CrewRooms from './CrewRooms.svelte';
 	import { fetchCrew, type Crew } from '$lib/crew';
 	import {
-		copyInviteLink,
 		leaveCrewFlow,
 		MAIN_CREW_HINT,
 		MAIN_CREW_LABEL,
 		makeMainCrewFlow,
+		shareInviteLink,
 	} from '$lib/crew-flows';
 	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { presence } from '$lib/presence.svelte';
+	import { shareVerb } from '$lib/share';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Settings from '@lucide/svelte/icons/settings';
 	import Star from '@lucide/svelte/icons/star';
@@ -240,9 +241,9 @@
 					no codes of their own.
 				</span>
 				<button
-					onclick={() => crew?.code && copyInviteLink(crew.code)}
+					onclick={() => crew?.code && shareInviteLink(crew.code)}
 					class="btn btn-secondary btn-xs shrink-0 self-start sm:self-auto"
-					><Copy size={13} /> Copy invite link</button
+					><Copy size={13} /> {shareVerb()} invite link</button
 				>
 			</div>
 		{/if}
