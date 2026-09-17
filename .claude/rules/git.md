@@ -54,4 +54,18 @@ Work lives in issues on milestones (M0 onward); nobody (human or agent) works un
 
    Ask what a conclusion is **not**, as above, rather than listing the ways one can fail: `FAILURE` was the whole list until `CANCELLED` turned up, and the next one will not announce itself either.
 
+7. **Which checks gate a merge, and which only inform.** `main`'s ruleset (`bypass_actors: []`) requires exactly five contexts:
+
+   ```
+   server  web  vulncheck  docs  changelog
+   ```
+
+   Everything else that runs — `e2e`, the desktop smoke, `web-node-next` — is **advisory**: a red one is a real finding and a reviewer's job, but it blocks nothing. Don't describe an advisory check as a gate, and don't assume a green headline means the ride passed.
+
+   `changelog` is requirable because it **always reports**: the workflow carries no paths filter, so on a PR it exempts (a `no-changelog` label, a `release/` branch) it still reports `skipping`, and a ruleset counts that as reported (#1044, #1045).
+
+   `e2e` cannot be, as it stands, and this is the whole reason it is advisory rather than an oversight: `e2e.yml` filters on `paths: ['web/**', 'server/**', '.github/workflows/e2e.yml']`, so on a docs-only or ADR-only PR it never starts and therefore never reports. A required context that never reports leaves the PR pending forever — every docs PR unmergeable, and `make release` jammed, because a release PR touches only `CHANGELOG.md` and `changelog.d/`. Requiring it means first adding a skip-shim job outside the paths filter that reports the context, or paying the full ride on every docs PR. Neither is a ruleset toggle.
+
+   `web-node-next` is advisory by decision, not by accident (#2074): it graduates into the already-required `web` job when Node 26 becomes Active LTS, so a non-LTS Node can never stop the repo in the meantime.
+
 Labels — **area**: `ble` `rooms` `workouts` `game-modes` `jukebox` `infra` `docs` `design`. **Kind**: `bug` `enhancement` `security` `feedback` (a rider report from the in-app flag button — ADR-0006; the `pickup-feedback` skill works this queue). **State**: `blocked` (waiting on another issue — the body names which), `backlog` (parked — ask first), `needs-human-input` (a decision a contributor must make — **do not implement what the issue says**; it usually records one person's opening position and wants push-back). The bar is that the repository cannot answer it: canon answering it makes it a defect, a stale doc gets amended, and two plausible options is not the bar (AGENTS.md has the test). Ask while the maintainer is there; the issue is the fallback. **Process**: `no-changelog` (PR is invisible to riders — exempt from the CHANGELOG check), `good-first-issue`.
