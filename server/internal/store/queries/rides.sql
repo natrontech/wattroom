@@ -36,7 +36,11 @@ select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, ex
        e.state as export_state
 from rides
 left join ride_exports e on e.ride_id = rides.id and e.destination = sqlc.arg(destination)::text
-where user_id = $1 and workout_name = $2 and rides.id <> $3
+-- `except` is optional (#2249): omitted it arrives as NULL, and `id <> NULL`
+-- is NULL rather than true, so every row was filtered out and the route
+-- answered "no best ride" for every rider and every workout.
+where user_id = $1 and workout_name = $2
+  and (sqlc.narg(except_id)::uuid is null or rides.id <> sqlc.narg(except_id))
 order by avg_watts desc, started_at desc
 limit 1;
 

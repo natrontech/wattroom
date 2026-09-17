@@ -736,6 +736,13 @@ func TestBestRideOfWorkout(t *testing.T) {
 	if other, _ := body["ride"].(map[string]any); other["id"] != weak {
 		t.Fatalf("best except the best: %v, want the 180 W ride", body)
 	}
+	// Without `except` at all (#2249): the parameter is optional, and the
+	// query used to compare against NULL — `id <> NULL` is NULL, never true —
+	// so this answered "no best ride" for every rider and every workout.
+	_, body = call(t, h.mux, "alice", http.MethodGet, "/api/rides/best?workout=Openers", "")
+	if best, _ := body["ride"].(map[string]any); best["id"] != strong {
+		t.Fatalf("best of Openers with no except: %v, want the 260 W ride", body)
+	}
 	if _, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides/best?workout=Nothing", ""); body["ride"] != nil {
 		t.Fatalf("a workout never ridden: %v, want ride null", body)
 	}

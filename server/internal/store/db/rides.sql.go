@@ -71,8 +71,9 @@ const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
        e.state as export_state
 from rides
-left join ride_exports e on e.ride_id = rides.id and e.destination = $4::text
-where user_id = $1 and workout_name = $2 and rides.id <> $3
+left join ride_exports e on e.ride_id = rides.id and e.destination = $3::text
+where user_id = $1 and workout_name = $2
+  and ($4::uuid is null or rides.id <> $4)
 order by avg_watts desc, started_at desc
 limit 1
 `
@@ -80,8 +81,8 @@ limit 1
 type BestUserRideOfWorkoutParams struct {
 	UserID      pgtype.UUID
 	WorkoutName string
-	ID          pgtype.UUID
 	Destination string
+	ExceptID    pgtype.UUID
 }
 
 type BestUserRideOfWorkoutRow struct {
@@ -103,12 +104,15 @@ type BestUserRideOfWorkoutRow struct {
 // The ride page's "against your best" (#1687): the hardest ride of the same
 // workout across the whole history, not the first page of the list. Same
 // columns as ListUserRides so one JSON mapping serves both.
+// `except` is optional (#2249): omitted it arrives as NULL, and `id <> NULL`
+// is NULL rather than true, so every row was filtered out and the route
+// answered "no best ride" for every rider and every workout.
 func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfWorkoutParams) (BestUserRideOfWorkoutRow, error) {
 	row := q.db.QueryRow(ctx, bestUserRideOfWorkout,
 		arg.UserID,
 		arg.WorkoutName,
-		arg.ID,
 		arg.Destination,
+		arg.ExceptID,
 	)
 	var i BestUserRideOfWorkoutRow
 	err := row.Scan(
