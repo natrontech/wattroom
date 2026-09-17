@@ -186,11 +186,14 @@
 				e.currentTarget.value = '';
 			}}
 		/>
+		<!-- The kit's icon button, not a hand-typed one (#2170): these two sat
+		     at 24 px under ux.md's 24 px floor, and only the attach one dimmed
+		     when the box was locked, because each had typed its own skin. -->
 		<button
 			type="button"
 			onclick={() => filePicker?.click()}
 			disabled={!!lock}
-			class="text-muted hover:text-ink rounded p-1 disabled:opacity-40"
+			class="icon-btn text-muted hover:text-ink"
 			aria-label="attach an image"
 			title="attach an image (or paste one)"><ImageIcon size={16} /></button
 		>
@@ -202,7 +205,7 @@
 				onclick={() => (gifOpen = !gifOpen)}
 				disabled={!!lock}
 				data-gif-toggle
-				class="rounded p-1 {gifOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
+				class="icon-btn {gifOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
 				aria-label="send a GIF"
 				aria-expanded={gifOpen}
 				title="send a GIF"><ImagePlay size={16} /></button

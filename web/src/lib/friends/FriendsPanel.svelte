@@ -149,12 +149,15 @@
 		     it was the only control on the page and still last. -->
 		<div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3">
 			{#if friends.code}
+				<!-- Padded to clear the 24 px floor without moving the row: a
+				     label and a code beside the icon, so it is a text button,
+				     not the kit's square one (#2170). -->
 				<button
 					onclick={() => {
 						void navigator.clipboard.writeText(friends.code);
 						toasts.push('Friend code copied.');
 					}}
-					class="text-muted hover:text-ink flex items-center gap-2 text-xs"
+					class="text-muted hover:text-ink -my-1 flex items-center gap-2 py-1 text-xs"
 					title="copy your friend code"
 				>
 					your code
@@ -282,10 +285,12 @@
 {/snippet}
 
 {#snippet friendActions(friend: Friend)}
+	<!-- The kit's icon button (#2170): the one control that starts a DM from
+	     this page was a 15 px link, under ux.md's 24 px floor. -->
 	<a
 		href="/messages/dm/{friend.id}"
 		onclick={() => dm.show(friend.id, friend.name)}
-		class="text-muted hover:text-ink relative"
+		class="icon-btn icon-btn-sm text-muted hover:text-ink relative"
 		title="message {friend.name}"
 		aria-label="message {friend.name}"
 	>
