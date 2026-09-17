@@ -84,6 +84,15 @@ type room struct {
 	phaseSaid string
 	// Pings the lobby (#251) when the tick sees phase or the riding set change.
 	changed func()
+	// When the tick first found this room forgettable — empty, quiet and
+	// between sessions (forget.go). Zero the rest of the time, which is how
+	// the window restarts.
+	emptySince time.Time
+	// Asks the hub to forget this room, reporting whether it did (#2297).
+	// Called from the tick goroutine holding no lock, and the tick returns
+	// on a yes. Nil for a room built without a hub (tests), which then ticks
+	// for as long as anything runs it.
+	forget func() bool
 	// Asks autoplay to refill the deck after a command ran it dry (#676).
 	// Called outside the room lock; nil for a room nobody wired.
 	deckIdled func()

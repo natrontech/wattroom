@@ -129,7 +129,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.SetReadLimit(maxFrame)
-	rm := h.room(slug)
+	// Held from before the join until after the leave (#2297): the idle sweep
+	// must not forget a room in the window where this rider has its pointer
+	// and has not joined with it yet. Registered before the writer's defer, so
+	// it runs after rm.leave below.
+	rm := h.holdRoom(slug)
+	defer h.releaseRoom(slug)
 	c := &client{rider: rider, conn: conn, out: make(chan []byte, clientQueue)}
 	// This socket's own writer, so the room's tick never waits on it (#670).
 	writerDone := make(chan struct{})

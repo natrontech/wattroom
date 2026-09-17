@@ -91,11 +91,25 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			// 15 s grace was for (#984).
 			rm.sayDepartedLocked(now())
 			ended := rm.closeLocked(state, now(), saver != nil)
+			// Resolved here, after the close above: a session that has just
+			// crossed to done releases the room from this tick on, and one
+			// still running holds it however empty the room is (forget.go).
+			idleFor := rm.idleForLocked(state, now())
 			locked = false
 			rm.mu.Unlock()
 			rm.handOff(log, now, saver, ended)
+			// Nothing left to do, and nobody to do it for (#2297): the hub
+			// drops the room and this goroutine ends. Only the hub can say
+			// so — a socket may be arriving that this tick cannot see — and
+			// the next join builds a fresh room (ADR-0052's re-form path).
+			if idleFor >= roomIdleTTL && rm.forget != nil && rm.forget() {
+				logger(log).Info("room forgotten", "room", rm.slug, "idle", idleFor)
+				return
+			}
 			continue
 		}
+		// Somebody is here: the idle window starts over when they go.
+		rm.emptySince = time.Time{}
 		gameWinner := rm.advanceGameLocked(now())
 		// Drain a bounded slice per tick and CARRY the overflow — a burst
 		// above the per-tick cap used to vanish silently (#219).
