@@ -102,6 +102,7 @@ out, so the horizon hides nothing anyone planned.
 | Leave the crew (#1228) — the owner hands it on first; a room owner hands the room to one of its members or deletes it first (#1675) | –                                                     | ✓                  | ✓           |
 | See the crew's rooms listed, with their access state (#1149)                                                                        | ✓                                                     | ✓                  | ✓           |
 | Open a room to the crew or shut it, without entering it (#1226)                                                                     | ✓                                                     | ✓                  | –           |
+| Let one crew-mate into a private room of the crew, or take that door back, without entering it (#2294)                              | ✓                                                     | ✓                  | –           |
 | Enter a room open to the crew                                                                                                       | ✓ (if in the crew)                                    | ✓ (if in the crew) | ✓           |
 | Read a room's contents, rename it, ban from it                                                                                      | only as that room's member/owner — never by crew role |
 
@@ -113,7 +114,11 @@ out, so the horizon hides nothing anyone planned.
 - **Room roles are unchanged.** Coach, room ban and room unban stay the room
   owner's (matrix above). A crew ban implies exclusion from every room in the
   crew; a room ban implies nothing at the crew; **lifting one never lifts the
-  other**.
+  other**. Both of a room's doors — open to the crew, and one crew-mate let in
+  by name — are the crew owner's and its admins' as well as the room owner's
+  (ADR-0038 amended, #2294); a ban at either level shuts the door on whoever
+  keeps it. Neither door reads the room: the list of who has been let in rides
+  the room's own page, which is still its members'.
 - A new room is **open to its crew**; rooms that existed at the cutover stayed
   private with their members as the named exceptions. The owner moves a room
   either way in its settings, under _who can find this room_ (#1204) — the

@@ -621,3 +621,61 @@ turned every newcomer into a crew founder, including the one who was sent
 an invite. The join panel now leads for them and founding a crew is the
 second panel, still one click away. ADR-0010's "the room is the big button"
 predates crews; it stands for a rider who already administers one.
+
+## Amendment, 2026-09-17 (#2294): a crew admin keeps the narrow door as well as the wide one
+
+The Decision above says **"Crew admins manage room permissions"**, and #1226
+shipped exactly one: a crew admin opens a private room to the _whole crew_ or
+shuts it, without ever entering the room. The narrower act — naming **one**
+crew-mate through that same door, the grants of #1224/#1225 — stayed
+`requireRole(…, "owner")`. So the broader power was the crew admin's and the
+narrower one was not, which is the wrong way round however you read it.
+
+The 2026-09-08 invite amendment is the sentence that made this look deliberate:
+_"A private room admits its members and its named exceptions (the grants of
+#1225) — the **room-level** control that remains is who may enter a private
+channel."_ That sentence was drawing the line between the **crew's** invite and
+the **room's** access, against room codes; it was never deciding which of a
+room's two doors a crew admin may work. Read as the latter it contradicts
+"crew admins manage room permissions" three hundred lines above, and the
+2026-09-08 ban amendment already leans on that sentence as load-bearing.
+
+### Decision
+
+**A crew's owner and its admins may hand out and take back a room's named
+exceptions, exactly as its own owner may.** One rule behind both doors:
+`administers(crewRole) || room.OwnerID == user.ID`, stated once as
+`keepsTheDoor` and asked by the crew-visible switch and by grant, revoke and
+the door list alike. A ban at either level shuts the door on its keeper too —
+a crew admin the room's owner banned keeps nothing.
+
+The reasoning is that this was an inconsistency rather than a design. Opening
+a room to the whole crew admits every crew-mate including the one a grant
+names, so the power a crew admin already held strictly contains the one they
+did not. No exposure is created that the wide door did not already create;
+what changes is that the admin can now do the _smaller_ thing when the smaller
+thing is what they mean.
+
+**No notification to the room's owner.** It was offered as a third option and
+not chosen: a crew admin flipping a room open to the crew has never notified
+anyone either, and a permission model that announces one of its two doors and
+not the other is harder to hold in the head than one that announces neither.
+
+### What does not change
+
+The crew admin is still not a moderator. "They may not rename it, ban from
+it, delete it, or read its contents" stands word for word, and the door list
+is the test of it: `invited` and `crewOutside` ride the room's **own** read, so
+a doorkeeper who never joined the room sees no roster, no door list and no
+contents — they act on people by id, the way the crew-visible switch already
+does. **Room roles are unchanged**: coach, remove, room ban and room unban stay
+the room owner's, and revoking a grant is a no-op against a member, so this is
+not a back way into removing one.
+
+### Supersedes
+
+The words "the **room-level** control that remains" in the 2026-09-08 invite
+amendment, in that clause only — a private room's access is still not the
+crew's invite, which is the point that amendment was making. docs/SPEC.md's
+crew matrix gains the row; its room-roles row (#2248) is unchanged, since the
+room's own owner may still do this and its coach and members still may not.
