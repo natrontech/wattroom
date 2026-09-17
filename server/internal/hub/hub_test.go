@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"sync"
 	"testing"
 	"time"
 
@@ -575,4 +576,33 @@ func TestBackfillAfterTheCloseAmendsTheRide(t *testing.T) {
 		t.Fatal("a backfill before the close was handed to the saver")
 	case <-time.After(50 * time.Millisecond):
 	}
+}
+
+// The role write and the metrics read land on the same *client from two
+// goroutines: an HTTP handler promoting a rider (SetRole, under the room
+// lock) while that rider's screen sends samples (#2229). setMetrics used to
+// copy `c.rider` a line above the lock, so the copy that reached `rm.seen` —
+// and through it the saved ride and every podium — was read from a struct
+// being written. `make test` runs with -race, which is what fails this.
+func TestARoleWriteDoesNotRaceTheMetricsRead(t *testing.T) {
+	rm := newRoom("race")
+	c := sock("jan")
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for i := range 300 {
+			rm.setMetrics(c, protocol.RiderMetrics{Watts: 200, Seq: i})
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for range 300 {
+			// What Hub.SetRole does, in the goroutine it does it from.
+			rm.mu.Lock()
+			c.rider.Role = "coach"
+			rm.mu.Unlock()
+		}
+	}()
+	wg.Wait()
 }
