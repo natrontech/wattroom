@@ -238,18 +238,17 @@
 	// Below md the sidebar is a drawer (#391). It closes on navigation —
 	// leaving it open over the page you just asked for is the classic
 	// mobile-nav bug.
-	let drawer = $state(false);
-	// Mirrored for the room's shell (#1625): one Escape, one layer.
-	$effect(() => {
-		navDrawer.open = drawer;
-	});
+	// `navDrawer` holds it, and the room shell shares it (#1625): one Escape,
+	// one layer. It used to be a local $state mirrored INTO the store, one way
+	// — so anything outside this file that closed the drawer had it reopened by
+	// the next flush, which is why a menu item could not step it aside (#2153).
 	// Focus follows the drawer (ux.md): into its first row on open, back to
 	// the button that opened it on close, and Escape closes it.
 	let drawerBox = $state<HTMLElement | null>(null);
 	let hamburger = $state<HTMLElement | null>(null);
 	let drawerWasOpen = false;
 	$effect(() => {
-		const open = drawer;
+		const open = navDrawer.open;
 		if (open === drawerWasOpen) return;
 		drawerWasOpen = open;
 		if (open) {
@@ -264,7 +263,7 @@
 	});
 	$effect(() => {
 		page.url.pathname;
-		drawer = false;
+		navDrawer.open = false;
 	});
 
 	// Leaving while standing in the room: the page must leave too, or you
@@ -307,7 +306,7 @@
 
 <svelte:window
 	onkeydown={(e) => {
-		if (e.key === 'Escape' && drawer) drawer = false;
+		if (e.key === 'Escape' && navDrawer.open) navDrawer.open = false;
 	}}
 />
 
@@ -386,11 +385,11 @@
 		     capability gating hiding affordances that need a trainer instead of
 		     redirecting to a separate spectator view (ADR-0020 amendment,
 		     2026-09-05). -->
-		{#if drawer}
+		{#if navDrawer.open}
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 			<div
 				class="bg-paper/60 fixed inset-0 z-40 md:hidden"
-				onclick={() => (drawer = false)}
+				onclick={() => (navDrawer.open = false)}
 			></div>
 		{/if}
 		<!-- Off-screen is not gone (audit 2026-09-09): translated away, the
@@ -400,8 +399,8 @@
 		     until it is open. -->
 		<div
 			bind:this={drawerBox}
-			inert={device.narrow && !drawer}
-			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 {drawer
+			inert={device.narrow && !navDrawer.open}
+			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 {navDrawer.open
 				? 'translate-x-0 shadow-2xl'
 				: '-translate-x-full'}"
 			style={titleBar ? `top: ${titleBar}px` : ''}
@@ -418,13 +417,13 @@
 				live={roomConnection.current?.live.tick?.state.phase === 'running'}
 				onLeave={leaveRoom}
 				onMember={showMember}
-				onSheet={() => (drawer = false)}
+				onSheet={() => (navDrawer.open = false)}
 			/>
 		</div>
 		<!-- inert while the drawer is open (#1969): Tab past its last row used
 		     to walk under the backdrop. -->
 		<div
-			inert={device.narrow && drawer}
+			inert={device.narrow && navDrawer.open}
 			class="flex min-w-0 flex-1 flex-col overflow-hidden"
 		>
 			{#if !caved}
@@ -437,10 +436,10 @@
 				>
 					<button
 						bind:this={hamburger}
-						onclick={() => (drawer = true)}
+						onclick={() => (navDrawer.open = true)}
 						class="text-muted hover:text-ink -m-1 grid h-11 w-11 place-items-center rounded"
 						aria-label="open navigation"
-						aria-expanded={drawer}><Menu size={20} /></button
+						aria-expanded={navDrawer.open}><Menu size={20} /></button
 					>
 					<Logo
 						size={18}
@@ -492,7 +491,7 @@
 			     button bottom right. Below md only — every wider window still has
 			     the sidebar standing there (#412). -->
 			<button
-				onclick={() => (drawer = true)}
+				onclick={() => (navDrawer.open = true)}
 				class="bg-surface-raised ring-ink/15 fixed left-4 z-40 grid h-12 w-12
 				place-items-center rounded-full shadow-lg ring-1 md:hidden {overComposer
 					? 'bottom-20'

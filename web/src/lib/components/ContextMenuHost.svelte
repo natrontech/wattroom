@@ -8,6 +8,7 @@
 		placeMenu,
 		scrollClosesMenu,
 	} from '$lib/context-menu.svelte';
+	import { navDrawer } from '$lib/nav/drawer.svelte';
 
 	let box = $state<HTMLDivElement | null>(null);
 	// Where a fader has been dragged since the menu opened: `menu.items` is
@@ -131,6 +132,12 @@
 					onclick={() => {
 						const run = item.onSelect;
 						closeMenu();
+						// The drawer is the only thing a menu can be raised from that
+						// then covers what the action raises (#2153): a dialog portals
+						// to z-40, under the drawer's z-50, and the drawer does not
+						// move on its own. It steps aside for the action it was asked
+						// for, the way it does on navigation.
+						navDrawer.open = false;
 						run();
 					}}
 					class="flex w-full items-center gap-2.5 rounded px-3 py-2 text-left text-sm disabled:opacity-40 {item.danger
