@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { copyText, theLinkItself } from '$lib/copy';
 	// The room's Sessions place (ADR-0020). Was a card wedged under the rider
 	// tiles, visible only in the lounge; it has a URL now, and /sessions —
 	// the cross-room list — folded into Home (#388).
@@ -72,14 +73,7 @@
 	/** The place's address, for a chat or a calendar note. */
 	function copyLink() {
 		const link = `${location.origin}/r/${room.slug}/sessions`;
-		void navigator.clipboard.writeText(link).then(
-			() => toasts.push('Link copied.'),
-			() =>
-				toasts.push(`Could not copy — the link is ${link}`, {
-					tone: 'error',
-					seconds: 12,
-				}),
-		);
+		void copyText(link, 'Link copied.', theLinkItself(link));
 	}
 
 	// The row's right-click (ux.md, #1373): the buttons keep the primary

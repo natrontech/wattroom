@@ -1,6 +1,7 @@
 import { goto } from '$app/navigation';
 import { account } from '$lib/account.svelte';
 import { confirm } from '$lib/confirm.svelte';
+import { copyText, theLinkItself } from '$lib/copy';
 import {
 	inviteLink,
 	leaveCrew,
@@ -146,16 +147,7 @@ export async function makeMainCrewFlow(
  */
 export async function copyInviteLink(code: string): Promise<void> {
 	const link = inviteLink(code);
-	try {
-		await navigator.clipboard.writeText(link);
-	} catch {
-		// A clipboard the browser refused (no permission, no focus) is not a
-		// dead end: the link itself is the feedback (errors.md).
-		toasts.push(`Could not copy — the link is ${link}`, {
-			tone: 'error',
-			seconds: 12,
-		});
-		return;
-	}
-	toasts.push('Invite link copied.');
+	// A clipboard the browser refused (no permission, no focus) is not a dead
+	// end: the link itself is the feedback (errors.md).
+	await copyText(link, 'Invite link copied.', theLinkItself(link));
 }

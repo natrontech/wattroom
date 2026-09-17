@@ -25,6 +25,14 @@ test('a ramp ended early offers a test again that actually restarts', async ({
 	// The test is running: the step header and the way out.
 	const done = page.getByRole('button', { name: "I'm done" });
 	await expect(done).toBeVisible({ timeout: 15_000 });
+
+	// The ⚑ says what the tap does BEFORE it is pressed (#2180): the room's
+	// button carried that promise and the two solo ones did not, each having
+	// drawn the same button itself.
+	await expect(
+		page.getByRole('button', { name: 'Flag a problem' }),
+	).toHaveAttribute('title', /after the ride.*Only yours, nobody else/s);
+
 	await done.click();
 
 	// Ended in the warm-up: nothing to measure, and a real way to go again.

@@ -4,11 +4,8 @@
 	// editing the room never touches them. Split from the page (#1265).
 	import { api } from '$lib/api';
 	import { toasts } from '$lib/toast.svelte';
+	import type { RiderPrefs } from '$lib/room/room-data';
 
-	interface RiderPrefs {
-		notify: boolean;
-		onBoard: boolean;
-	}
 	let {
 		slug,
 		me,

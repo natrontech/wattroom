@@ -29,6 +29,18 @@ const (
 	MinLthrBpm  = 100
 	MaxLthrBpm  = 210
 
+	// A chat line, in CHARACTERS: the server counts runes because counting
+	// bytes cut non-Latin scripts off at half the advertised limit (#219),
+	// and the box that types it has to cap at the same number.
+	MaxMessageChars = 500
+
+	// The two codes a rider is handed, and the one thing that tells them
+	// apart at a glance (#1236): a friend's is eight characters, a crew's
+	// six. Both sides check the length to say WHICH door a pasted code is
+	// for, so both sides have to agree on it.
+	FriendCodeLen = 8
+	CrewCodeLen   = 6
+
 	// The tolerance band a second is scored in: within ±5 % of target, floor
 	// ±10 W (#2159). The floor is what keeps an easy block scoreable — at
 	// 60 W, 5 % is 3 W, which is inside a trainer's own error.

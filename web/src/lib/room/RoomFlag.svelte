@@ -13,7 +13,8 @@
 	 * A room ride is left by walking away, so the tap sends. That is what the
 	 * button says before it is pressed, and what the line under it says after.
 	 */
-	import Flag from '@lucide/svelte/icons/flag';
+	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import { FLAG_SAID } from '$lib/ride/flag';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
 	import { useRoom } from '$lib/room/context';
 
@@ -68,21 +69,14 @@
 	}
 </script>
 
-<button
-	onclick={() => void flag()}
-	disabled={sending}
-	title="Something wrong? One tap sends your last two minutes of ride data and logs to the developers. Only yours, nobody else's."
-	class="border-neon/40 text-neon hover:bg-neon/10 grid h-11 w-14 shrink-0 place-items-center rounded border disabled:opacity-40"
-	aria-label="Flag a problem"><Flag size={18} /></button
->
+<FlagButton onflag={() => void flag()} sends="now" disabled={sending} />
 
 {#if sent || error}
 	<p class="text-muted w-full text-xs {error ? 'text-danger' : ''}">
 		{#if error}
 			{error} Nothing was sent — tap again when you can.
 		{:else}
-			Flagged — your last two minutes went to the developers. Only yours, nobody
-			else's.
+			{FLAG_SAID.now}
 		{/if}
 	</p>
 {/if}

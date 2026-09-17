@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { copyText } from '$lib/copy';
 	// Read-only API tokens for a rider's own tools (ADR-0017).
 	//
 	// Its own file because it is its own thing: four pieces of state and three
@@ -77,17 +78,13 @@
 
 	// "Copy it now" with nothing to press was a long-press-and-drag on a phone
 	// against a 68-character string, and getting it wrong cost the token.
-	async function copy(text: string) {
-		try {
-			await navigator.clipboard.writeText(text);
-			toasts.push('Copied.');
-		} catch {
-			toasts.push('Could not copy — select the text and copy it yourself.', {
-				tone: 'error',
-				seconds: 8,
-			});
-		}
-	}
+	// Never the token itself in the fallback (ADR-0012's rule about secrets is
+	// the same one): where it is is the help, not what it is.
+	const copy = (text: string) =>
+		copyText(text, 'Copied.', {
+			message: 'Could not copy — select the text and copy it yourself.',
+			seconds: 8,
+		});
 	const mcpAdd = $derived(
 		fresh
 			? `claude mcp add --transport http wattroom ${location.origin}/mcp --header "Authorization: Bearer ${fresh}"`

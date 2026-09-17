@@ -10,8 +10,9 @@
 	import RampResult from './RampResult.svelte';
 	import { createRideFlags } from '$lib/ride/flags.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
+	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import TvOverlay from '$lib/room/TvOverlay.svelte';
-	import Flag from '@lucide/svelte/icons/flag';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
@@ -55,7 +56,7 @@
 	function flag() {
 		flags.recorder.flag();
 		flagNotice = true;
-		setTimeout(() => (flagNotice = false), 4000);
+		setTimeout(() => (flagNotice = false), FLAG_NOTICE_MS);
 	}
 	let error = $state<string | null>(null);
 	// The test is a ride (#1540): buffered like one and saved like one, so
@@ -501,22 +502,14 @@
 							}}
 							class="btn btn-secondary btn-lg">I'm done</button
 						>
-						<!-- The ⚑ (#52): one tap, no dialog, keep pedalling. -->
-						<button
-							onclick={flag}
-							class="border-neon/40 text-neon hover:bg-neon/10 grid h-11 w-14 place-items-center rounded border"
-							aria-label="Flag a problem"><Flag size={18} /></button
-						>
+						<FlagButton onflag={flag} sends="after" />
 					</div>
 				{/snippet}
 			</RideHeader>
 
 			{#if flagNotice}
 				<!-- Consent in plain words, at the moment of the tap, never blocking. -->
-				<p class="text-muted mt-2 text-xs">
-					Flagged — after the test this sends your last two minutes of ride data
-					and logs to the developers. Only yours, nobody else's.
-				</p>
+				<p class="text-muted mt-2 text-xs">{FLAG_SAID.after}</p>
 			{/if}
 
 			<!-- The guard states and the dropout, as /ride says them (#1799):

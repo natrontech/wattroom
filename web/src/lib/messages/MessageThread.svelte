@@ -44,6 +44,7 @@
 	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
 	import { eventText } from '$lib/room/timeline';
 	import { copyText } from '$lib/copy';
+	import { MaxMessageChars } from '$lib/protocol';
 	import { toasts } from '$lib/toast.svelte';
 
 	let {
@@ -376,7 +377,7 @@
 										<input
 											bind:value={editDraft}
 											autofocus
-											maxlength="500"
+											maxlength={MaxMessageChars}
 											onkeydown={(e) => {
 												if (e.key === 'Escape') cancelEdit();
 											}}

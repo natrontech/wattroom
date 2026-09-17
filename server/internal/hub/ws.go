@@ -221,7 +221,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		if msg.Chat != nil {
 			// Untrusted input: bounded text, 1/s per rider, sender is presence.
 			text := strings.TrimSpace(msg.Chat.Text)
-			if utf8.RuneCountInString(text) > 500 {
+			if utf8.RuneCountInString(text) > protocol.MaxMessageChars {
 				// The client caps at 500 CHARACTERS — counting bytes here cut
 				// non-Latin scripts off at half the advertised limit and then
 				// dropped the line silently (audit #219).
