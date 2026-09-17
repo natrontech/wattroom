@@ -1,0 +1,1 @@
+- When a database read for your own account hiccups, the profile no longer quietly renders as though you have no connected sign-in providers with nothing recorded anywhere; the failure is logged and the page shows what it could load.

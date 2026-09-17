@@ -3,6 +3,11 @@ insert into api_tokens (user_id, name, token_hash)
 values ($1, $2, $3)
 returning id, created_at;
 
+-- name: CountUserTokens :one
+-- The ceiling's count, read under LockUser in the same transaction as the
+-- insert (#2258): list-then-insert let concurrent requests all see nine.
+select count(*) from api_tokens where user_id = $1;
+
 -- name: ListUserTokens :many
 select id, name, created_at, last_used_at
 from api_tokens where user_id = $1

@@ -10,7 +10,11 @@
 	# line is for everyone self-hosting from this file.
 	encode zstd gzip
 
-	# WS upgrade and everything else to the one binary.
+	# WS upgrade and everything else to the one binary. Caddy appends the peer
+	# it saw to X-Forwarded-For, which is why the compose file sets
+	# WATTROOM_TRUSTED_PROXY=1: the server reads that header only where a
+	# deploy says something in front writes it, and keys every per-address
+	# ceiling on the last hop (#1824, #2258).
 	reverse_proxy wattroom:8080
 
 	# /metrics is not served on 8080 at all since #1738 — it has its own

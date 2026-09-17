@@ -1052,6 +1052,30 @@ func TestDevLoginIsLocalOnly(t *testing.T) {
 	}
 }
 
+// The synthetic door is unauthenticated by default and guarded by nothing but
+// this value's secrecy, so the operator's string is checked at boot the way
+// WATTROOM_TOKEN_KEY's is (ADR-0035) rather than warned about (#2258).
+func TestSyntheticTokenIsCheckedAtBoot(t *testing.T) {
+	for _, tc := range []struct {
+		name, token string
+		refused     bool
+	}{
+		{"unset — the door is not mounted at all", "", false},
+		{"a short one is an open door with a doorbell", "hunter2", true},
+		{"one character under the floor", strings.Repeat("a", minSyntheticToken-1), true},
+		{"a pasted value with a trailing newline never matches the header", strings.Repeat("a", minSyntheticToken) + "\n", true},
+		{"32 characters", strings.Repeat("a", minSyntheticToken), false},
+		{"openssl rand -hex 32", strings.Repeat("0f", 32), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("WATTROOM_SYNTHETIC_TOKEN", tc.token)
+			if err := SyntheticTokenMisconfigured(); (err != nil) != tc.refused {
+				t.Errorf("err = %v, want refused=%v", err, tc.refused)
+			}
+		})
+	}
+}
+
 // Sign out everywhere keeps the session that asked and ends the rest (#1607).
 func TestLogoutEverywhereKeepsThisSession(t *testing.T) {
 	s := testService(t)
@@ -1088,6 +1112,11 @@ func TestPasskeyLoginIsThrottledPerAddress(t *testing.T) {
 	if s.wa == nil {
 		t.Skip("no relying party on this base URL")
 	}
+	// The second half of this test is about what happens behind a proxy, so
+	// it declares one (#2258): with none declared the header is caller-written
+	// and ClientIP does not read it at all.
+	httpx.TrustProxyHeader(true)
+	t.Cleanup(func() { httpx.TrustProxyHeader(false) })
 	start := func(ip string) int {
 		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/auth/passkey/login/start", nil)
 		req.RemoteAddr = ip + ":4242"

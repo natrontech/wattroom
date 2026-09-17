@@ -1,0 +1,1 @@
+- The ten-passkey and ten-token caps are now counted and applied in one step, so ten browser tabs asking at once can no longer put eleven on an account.

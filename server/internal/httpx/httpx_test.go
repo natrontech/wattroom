@@ -71,10 +71,11 @@ func TestDecodeStrictRefusesFormEncodings(t *testing.T) {
 	}
 }
 
-// The proxy appends the peer it saw, so the LAST hop is the only one the
-// caller did not write (#1824); a fresh first hop per request used to be a
-// fresh sign-in budget per request.
+// Behind a declared proxy the LAST hop is the only one the caller did not
+// write (#1824); a fresh first hop per request used to be a fresh sign-in
+// budget per request.
 func TestClientIPTakesTheProxysHop(t *testing.T) {
+	trustProxyForTest(t, true)
 	cases := []struct{ xff, remote, want string }{
 		{"", "10.0.0.7:4242", "10.0.0.7"},
 		{"203.0.113.9", "10.0.0.1:1", "203.0.113.9"},
@@ -84,15 +85,46 @@ func TestClientIPTakesTheProxysHop(t *testing.T) {
 		{" , ", "10.0.0.7:4242", "10.0.0.7"},
 	}
 	for _, c := range cases {
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
-		req.RemoteAddr = c.remote
-		if c.xff != "" {
-			req.Header.Set("X-Forwarded-For", c.xff)
-		}
-		if got := ClientIP(req); got != c.want {
+		if got := ClientIP(clientIPRequest(t, c.xff, c.remote)); got != c.want {
 			t.Errorf("xff %q remote %q: got %q, want %q", c.xff, c.remote, got, c.want)
 		}
 	}
+}
+
+// With no proxy declared — the bare binary, and the default — the header is
+// caller-written and reading it hands out a budget per header value (#2258).
+// Same table, and every answer is the socket's peer.
+func TestClientIPIgnoresTheHeaderWithNoProxyDeclared(t *testing.T) {
+	trustProxyForTest(t, false)
+	for _, c := range []struct{ xff, remote, want string }{
+		{"", "10.0.0.7:4242", "10.0.0.7"},
+		{"203.0.113.9", "10.0.0.1:1", "10.0.0.1"},
+		{"1.2.3.4, 203.0.113.9", "10.0.0.1:1", "10.0.0.1"},
+		// A budget is spent per returned key: two callers writing different
+		// headers from one host must come back as one key, not two.
+		{"9.9.9.9", "10.0.0.1:2", "10.0.0.1"},
+	} {
+		if got := ClientIP(clientIPRequest(t, c.xff, c.remote)); got != c.want {
+			t.Errorf("xff %q remote %q: got %q, want %q", c.xff, c.remote, got, c.want)
+		}
+	}
+}
+
+func trustProxyForTest(t *testing.T, trust bool) {
+	t.Helper()
+	was := trustProxy.Load()
+	TrustProxyHeader(trust)
+	t.Cleanup(func() { TrustProxyHeader(was) })
+}
+
+func clientIPRequest(t *testing.T, xff, remote string) *http.Request {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+	req.RemoteAddr = remote
+	if xff != "" {
+		req.Header.Set("X-Forwarded-For", xff)
+	}
+	return req
 }
 
 func TestReadImageUploadAcceptsTheFourRenderedTypes(t *testing.T) {

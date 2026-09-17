@@ -67,14 +67,20 @@ that undoes it. The triggers it serves:
 - a provider was connected, or disconnected
 - the recovery address was replaced — **sent to the old address**, which is the
   gap that motivates this class more than any other
+- the recovery address was **removed** — sent to the address being removed, and
+  it says what is lost: with no address there is no way back into the account
+  if every passkey and provider goes, and no further alarms either (#1638)
 - the account was deleted, as a receipt; the purge is irreversible and the
   mail is the only evidence it happened
 - **added 2026-09-10 (#1822)**: the account was recovered from its address —
   see the amendment at the end of this file
 
-Six call sites, one body, one place to read to answer "do we mail on this?".
-Adding a seventh is a normal change; adding a second security template is an
+Eight call sites, one body, one place to read to answer "do we mail on this?".
+Adding a ninth is a normal change; adding a second security template is an
 amendment to this ADR, because the moment there are two there are ten.
+`TestTheAlarmTriggerListMatchesTheCallSites` counts the call sites against
+this paragraph, so a trigger added without the list is a red test rather than
+a document that quietly stops being the one place to read.
 
 **Ride mail keeps exactly one switch — the `notify_planned` boolean that
 already exists.** Planned, moved, cancelled and a start-time reminder all ride
