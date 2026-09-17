@@ -54,6 +54,13 @@ func TestBothRoutesServeOneAudience(t *testing.T) {
 		{"a room-mate", "alice", "bob", http.StatusOK},
 		{"a friend", "alice", "dan", http.StatusOK},
 		{"the rider themselves", "alice", "alice", http.StatusOK},
+		// cara is in no room and holds no friendship, so the query's self
+		// clause is the only thing that opens this. The case above does not
+		// cover it: alice is in a room, and the shared-room leg matches a
+		// rider against themselves. Deleting the clause as redundant left
+		// every other case green while a brand-new rider lost their own page
+		// — and split the two routes, since gamify short-circuits self in Go.
+		{"themselves, with no room and no friend", "cara", "cara", http.StatusOK},
 		{"someone who asked to be friends", "cara", "dan", http.StatusOK},
 		{"someone they asked", "dan", "cara", http.StatusNotFound},
 	} {
