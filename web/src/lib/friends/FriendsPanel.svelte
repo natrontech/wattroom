@@ -24,7 +24,11 @@
 		removeFriend,
 		withdrawRequest,
 	} from '$lib/friends/actions';
-	import { friends, type Friend } from '$lib/friends/friends.svelte';
+	import {
+		friendPlace,
+		friends,
+		type Friend,
+	} from '$lib/friends/friends.svelte';
 	import { copyText } from '$lib/copy';
 	import { FriendCodeLen } from '$lib/protocol';
 	import { UNREAD_DOT } from '$lib/messages/unread-marks';
@@ -254,12 +258,10 @@
 		<span class="text-muted min-w-0 shrink truncate text-xs">
 			{#if friend.status === 'pending_out'}
 				asked — waiting on them
-			{:else if friend.roomName}
-				in {friend.roomName}
-			{:else if friend.inRoom}
-				in a room
-			{:else if friend.online}
-				online
+			{:else}
+				<!-- One sentence, one place (ADR-0012, #1743): the room's name
+				     for a member, "riding elsewhere" for everyone else. -->
+				{friendPlace(friend)}
 			{/if}
 		</span>
 		<span class="ml-auto flex shrink-0 items-center gap-3">

@@ -9,7 +9,7 @@
 	import { api } from '$lib/api';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
-	import { friends } from '$lib/friends/friends.svelte';
+	import { friendPlace, friends } from '$lib/friends/friends.svelte';
 	import { revealRooms } from '$lib/rooms/reveal';
 	import { othersIn, statusOf } from '$lib/status';
 	import { page } from '$app/state';
@@ -471,7 +471,7 @@
 											? `/r/${friend.room}`
 											: `/messages/dm/${friend.id}`}
 										class="panel hover:border-muted/40 flex items-center gap-2 px-2.5 py-1.5 text-xs"
-										title={friend.roomName ? `in ${friend.roomName}` : 'online'}
+										title={friendPlace(friend)}
 									>
 										<!-- The badge Avatar draws, from the one vocabulary
 										     (#807, $lib/status) — not a mark of this row's

@@ -33,6 +33,10 @@ type UserSource interface {
 // other side now rather than on their next fallback poll (#876).
 type PresenceSource interface {
 	WhereIs(userIDs []string) map[string]string
+	// Who is pedalling right now, of the ids asked about (ADR-0012's third
+	// state). Standing in a room is not riding in it, and WhereIs cannot
+	// tell them apart.
+	Riding(userIDs []string) map[string]bool
 	PresenceChanged()
 }
 
@@ -80,8 +84,16 @@ type friendJSON struct {
 	// Presence — accepted friends only (ADR-0012). Online means "app open"
 	// (the lobby socket, #251 — Slack's green dot), InRoom that they are in
 	// some room, and the room is named ONLY when the viewer is a member of it.
+	//
+	// Riding is the third state the ADR's 2026-09-09 amendment names and the
+	// panel used to be blind to (#1743): pedalling inside the hub's window,
+	// not merely standing in a room. It says nothing about WHAT they are
+	// pushing — watts never leave the room — and it is named without naming
+	// the room, which is what makes "riding elsewhere" sayable for a room the
+	// viewer is not a member of.
 	Online   bool   `json:"online,omitempty"`
 	InRoom   bool   `json:"inRoom,omitempty"`
+	Riding   bool   `json:"riding,omitempty"`
 	Room     string `json:"room,omitempty"` // slug
 	RoomName string `json:"roomName,omitempty"`
 }
@@ -114,6 +126,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	where := s.presence.WhereIs(accepted)
+	riding := s.presence.Riding(accepted)
 
 	// Hoisted out of the per-friend loop (#687): collect every distinct room
 	// slug an online friend is in, resolve them all in one query, then check
@@ -170,6 +183,10 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 			slug, online := where[entry.ID]
 			entry.Online = online
 			entry.InRoom = slug != ""
+			// Gated on being in a room, not merely on the riding map: the two
+			// answers are taken back to back, so a friend who left between
+			// them reads as gone rather than as pedalling nowhere.
+			entry.Riding = slug != "" && riding[entry.ID]
 			if slug != "" {
 				// The room is named only for its own members — the boundary holds.
 				if room, ok := roomsBySlug[slug]; ok {

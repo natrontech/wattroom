@@ -54,6 +54,11 @@ export function statusOf(
 		(f) => f.id === riderId && f.status === 'accepted',
 	);
 	if (!friend) return null;
+	// A friend riding in a room the viewer cannot see (#1743): the feed above
+	// only knows rooms the viewer is in, so this used to flatten the third
+	// state ADR-0012 names back onto "online" — the same rider read as
+	// pedalling to their room-mates and as idle to their friends.
+	if (friend.riding) return 'riding';
 	return friend.online ? 'online' : 'offline';
 }
 
