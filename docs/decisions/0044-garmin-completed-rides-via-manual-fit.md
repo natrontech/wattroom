@@ -1,6 +1,10 @@
 # 0044 — Export completed rides to Garmin through manual FIT import first
 
-- Status: accepted (scope approved by Dave in #801; Garmin import validation pending)
+- Status: accepted (scope approved by Dave in #801; Garmin import validation pending).
+  **Diverged 2026-09-17 (#2330, #806)**: the approval stands as history, but #801 closed
+  as not planned on 2026-09-10 and #806, which had consolidated it, closed on 2026-09-17,
+  so this line pointed at no live home. The validation is still pending and now lives on
+  [#2330](https://github.com/natrontech/wattroom/issues/2330).
 - Date: 2026-09-08
 
 ## Context
@@ -65,7 +69,12 @@ uploading a file.
 - Downloading again is possible; Garmin's duplicate behavior is unverified.
   WattRoom has no Garmin connection to disconnect, and deleting a WattRoom ride
   does not remove a copy imported into Garmin. The rider manages that copy there.
-- #801 stays open for manual validation and the automatic-upload access gate.
+- ~~#801 stays open for~~ manual validation and the automatic-upload access gate.
   Timing follow-up [#1140](https://github.com/natrontech/wattroom/issues/1140)
   must preserve actual recording semantics across save,
   recovery and both export paths; it is not solved by fabricating timer events.
+  **Diverged 2026-09-17 (#2330, #806)**: #801 closed as not planned on 2026-09-10 with the
+  four sibling destinations, and #806, the index that had consolidated all five, closed on
+  2026-09-17. Neither gate moved — both now live on
+  [#2330](https://github.com/natrontech/wattroom/issues/2330), the manual Garmin import a
+  person with a Garmin account has to run.
