@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web changelog protocol migration sqlc seed build test lint check ci release print-golangci-version desktop desktop-smoke desktop-release
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed build test lint check ci release print-golangci-version desktop desktop-smoke desktop-release
 
 DEV_ENV := scripts/dev-env.sh
 
@@ -41,7 +41,7 @@ dev-server: ## run Go server with hot reload (installs air on first use)
 	@$(DEV_ENV) banner server
 	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_ADDR=":$$WATTROOM_DEV_SERVER_PORT" WATTROOM_METRICS_ADDR=":$$WATTROOM_DEV_METRICS_PORT" WATTROOM_BASE_URL="http://localhost:$$WATTROOM_DEV_SERVER_PORT" WATTROOM_DB="$$WATTROOM_DEV_DSN" WATTROOM_DEV_LOGIN=1 WATTROOM_LIVEKIT_URL="ws://localhost:7880" WATTROOM_LIVEKIT_KEY="devkey" WATTROOM_LIVEKIT_SECRET="secret" go run github.com/air-verse/air@latest
 
-dev-web: changelog ## run Vite dev server
+dev-web: changelog web-deps ## run Vite dev server
 	@$(DEV_ENV) banner web
 	@eval "$$($(DEV_ENV) print)"; cd web && PORT="$$WATTROOM_DEV_WEB_PORT" WATTROOM_API="http://localhost:$$WATTROOM_DEV_SERVER_PORT" pnpm dev
 
@@ -54,6 +54,16 @@ changelog: ## stage CHANGELOG.md as a static asset (#345)
 	@# Silent: `make dev-web` depends on it, and the port/database banner has
 	@# to be the first line an agent sees (#552).
 	@cp CHANGELOG.md web/static/changelog.md
+
+web-deps:
+	@# A worktree created a minute ago has no node_modules, and AGENTS.md
+	@# starts every task in one. `pnpm run test` there fails as
+	@# `sh: vitest: command not found` — a red make on a green Go suite,
+	@# with the cause in a pnpm WARN underneath rather than in the error
+	@# (#2356). The guard is the one the desktop targets use below: an installed
+	@# checkout pays nothing, and a changed lockfile still fails loudly on
+	@# its own terms rather than being silently reinstalled.
+	@cd web && [ -d node_modules ] || pnpm install --frozen-lockfile
 
 web: changelog ## build frontend and embed it into the server
 	cd web && pnpm install --frozen-lockfile && pnpm build
@@ -90,7 +100,7 @@ desktop-smoke: ## the shell's Playwright _electron smoke (no server needed)
 build: web ## single binary with embedded frontend
 	cd server && go build -o ../bin/wattroom-server .
 
-test:
+test: web-deps
 	@# Tests get their own database — a suite that deletes users must never
 	@# point at the dev data (it did once; the seed world paid for it) — and
 	@# their own PER CHECKOUT, because one `wattroom_test` for every worktree
@@ -112,7 +122,7 @@ test:
 	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_REQUIRE_DB=1 WATTROOM_TEST_DB="$${WATTROOM_TEST_DB:-$$WATTROOM_DEV_TEST_DSN}" go test -race -shuffle=on -timeout=5m ./...
 	cd web && pnpm run test
 
-lint:
+lint: web-deps
 	@# Per-checkout lint cache. Agents run `make lint` from worktrees under
 	@# .claude/worktrees/, and a shared ~/.cache/golangci-lint served their
 	@# cached results back here — reporting a finding against a file path in
