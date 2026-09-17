@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // Phase 2 of #1095 (#1103): the audio endpoint's reach is "may enter a room
@@ -22,7 +23,7 @@ import (
 func (h *harness) crewOf(t *testing.T, owner string) db.Crew {
 	t.Helper()
 	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
-		Name: owner, OwnerID: h.users.ByToken[owner].ID,
+		Name: owner, OwnerID: h.users.ByToken[owner].ID, Code: testx.CrewCode(),
 	})
 	if err != nil {
 		t.Fatalf("crew: %v", err)

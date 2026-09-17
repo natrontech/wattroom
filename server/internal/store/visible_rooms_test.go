@@ -10,6 +10,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // The `visible_rooms` view is the single expression every gate and visibility
@@ -116,7 +117,7 @@ func setupCrew(t *testing.T) *crewFixture {
 	f.bob = f.user(t, "bob")
 	f.carol = f.user(t, "carol")
 
-	crew, err := f.st.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "Velvet", OwnerID: f.alice})
+	crew, err := f.st.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "Velvet", OwnerID: f.alice, Code: testx.CrewCode()})
 	if err != nil {
 		t.Fatalf("create crew: %v", err)
 	}
@@ -125,7 +126,7 @@ func setupCrew(t *testing.T) *crewFixture {
 		_, _ = f.st.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID)
 	})
 
-	other, err := f.st.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "Other", OwnerID: f.carol})
+	other, err := f.st.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "Other", OwnerID: f.carol, Code: testx.CrewCode()})
 	if err != nil {
 		t.Fatalf("create other crew: %v", err)
 	}

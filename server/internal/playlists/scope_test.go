@@ -6,6 +6,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 func (h *harness) drawIDs(t *testing.T, slug string) map[string]int {
@@ -135,7 +136,7 @@ func TestACrewBannedMembersShelfLeavesAutoplay(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("membership: %v", err)
 	}
-	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "alice", OwnerID: room.OwnerID})
+	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "alice", OwnerID: room.OwnerID, Code: testx.CrewCode()})
 	if err != nil {
 		t.Fatalf("crew: %v", err)
 	}

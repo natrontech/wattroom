@@ -478,7 +478,7 @@ func TestDeleteTakesTheRidersOwnAudioOffDiskAndLeavesSharedContent(t *testing.T)
 
 func TestDeleteHandsTheCrewOnBeforeTheRowGoes(t *testing.T) {
 	h := setup(t)
-	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "alice", OwnerID: h.id("alice")})
+	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "alice", OwnerID: h.id("alice"), Code: testx.CrewCode()})
 	if err != nil {
 		t.Fatalf("crew: %v", err)
 	}
@@ -513,7 +513,7 @@ func TestDeleteHandsTheCrewOnBeforeTheRowGoes(t *testing.T) {
 	}
 
 	// And a crew holding only the departing rider's rooms simply goes.
-	lone, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "carol", OwnerID: h.id("carol")})
+	lone, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "carol", OwnerID: h.id("carol"), Code: testx.CrewCode()})
 	if err != nil {
 		t.Fatalf("crew: %v", err)
 	}
