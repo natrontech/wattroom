@@ -98,7 +98,8 @@
 		Read-only tokens for your own tools — a personal coach AI can read your
 		progression and rides over the API or MCP (<code
 			class="font-mono text-[11px]">{location.origin}/mcp</code
-		>). Your data only, never anyone else's.
+		>). A token reads your own rides and no other rider's. Whatever you connect
+		it to receives them under that provider's terms, not ours.
 	</p>
 	{#if fresh}
 		<div class="border-muted/30 mt-4 rounded-lg border border-dashed p-4">
