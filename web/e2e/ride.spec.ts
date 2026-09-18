@@ -11,7 +11,7 @@ import { signInTo } from './signin';
  * purpose: compressing the clock would stop testing the thing that broke before.
  */
 test('a simulated ride produces a .fit file', async ({ page }) => {
-	// ?w= resolves the hidden two-minute CI fixture. The simulator needs no URL
+	// ?w= resolves the hidden one-minute CI fixture. The simulator needs no URL
 	// escape any more (#1000): signInTo goes through the dev sign-in door, and
 	// a server that OFFERS that door is what the one gate admits — which is
 	// true of this production build and false of production.
