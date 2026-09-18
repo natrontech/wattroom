@@ -82,4 +82,16 @@ describe('room stacking (#483)', () => {
 		expect(imageViewer).toBeGreaterThan(chatSheet);
 		expect(imageViewer).toBeGreaterThan(seatedPlayer);
 	});
+	it('opens the soundboard over the seated player (#2379)', () => {
+		// The board is opened and closed by the rider — a surface they pulled
+		// open, like the sheet, never chrome — and its default spot is the
+		// top-left of the column the lounge seats the video in. Under the
+		// player it had no grip to reach: nothing to press, nothing to drag.
+		const soundboard = layer(
+			'lib/board/Soundboard.svelte',
+			/covered \? 'z-30' : 'z-\[(\d+)\]'/,
+		);
+		expect(soundboard).toBeGreaterThan(seatedPlayer);
+		expect(soundboard).toBeLessThan(chatSheet);
+	});
 });
