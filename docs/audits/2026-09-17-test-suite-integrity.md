@@ -119,7 +119,43 @@ The part that stops the next audit re-deriving it.
 - **`storetest`'s skip/fail contract is correct as of #2352**, and `WATTROOM_REQUIRE_DB` is a
   canary test rather than a guard inside `Open` — which reads like an omission and is not.
 
-## Decisions — for a maintainer, not for an agent
+## Decisions — answered 2026-09-18
+
+Both were put to the maintainer rather than filed, per the skill's step 8. Both answers are
+recorded here so the next auditor does not re-open them.
+
+**1. "Vitest for frontend logic" stands. The cheap partial was investigated and is not being
+built — because one half of it is already done better, and the other half is not viable.**
+
+The two #2163 defects turn out to have different shapes:
+
+- *`json` vs a raw `body`* is **already structurally prevented**, and not by a test.
+  `web/src/lib/api.ts:36-37` types the option as `body?: Exclude<BodyInit, string>`, so a string
+  body is a compile error. Verified by reintroducing the defect verbatim into
+  `RoomMyPrefs.svelte`: `svelte-check` fails with *"Type 'string' is not assignable to type
+  'ReadableStream<any> | Blob | …'"*, inside the **required** `web` job. A source-scan guard
+  here would be strictly worse than the type that already exists.
+- *A `$state` written inside a fill `$effect`* has no viable static detector. Measured against
+  `web/src`: a blanket "writes `$state` inside an `$effect`" flags **51 files / 65 hits**, most
+  of them legitimate (tickers, fetch-then-fill). Narrowed to "the same effect both reads and
+  writes the same `$state`", still **15 files / 20 hits** — and the list includes
+  `RoomMyPrefs.svelte` itself, whose current code is the *fixed* version. A guard whose
+  allowlist must excuse the file the rule was written for is noise, and `source-scan.test-helper.ts`'s
+  own `stale()` exists because dead allowlist entries rot.
+
+  What actually detects this is running the component and catching `effect_update_depth_exceeded`
+  — i.e. the component-rendering option that was declined. The honest state is: this defect class
+  is caught by review and by e2e, and by nothing else. Left as a known, measured gap rather than
+  papered over with a guard that would have to allowlist its own motivating example.
+
+**2. Annotate the record; leave the gate alone.** #2374 / PR #2376 — WATTROOM.md's testing row
+carried three claims that had all drifted (one flow → 40 spec files; a two-minute ride → a
+one-minute fixture; "every PR" → path-filtered and advisory), now struck through and annotated
+in the file's own `**Diverged**` form. Making `e2e` able to block a merge stays open on purpose:
+it needs the skip-shim job `.claude/rules/git.md` describes, and the ruleset belongs to the
+operator.
+
+## The decisions as originally put
 
 1. **Does "Vitest for frontend logic" still hold?** WATTROOM.md locks it, and the suite obeys it
    exactly. The evidence that the boundary now costs something is #2163: two defects in one
