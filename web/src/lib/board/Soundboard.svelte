@@ -220,13 +220,19 @@
 {#if boardPanel.open}
 	<!-- The trim face needs room for a waveform with two handles in it; the
 	     other two are a 364 px column. `motion-reduce` takes the width without
-	     the slide. -->
+	     the slide.
+	     Above the seated player, below the drawers (#2379): the board is a
+	     surface the rider pulled open, which the stacking rule (#483,
+	     stacking.test.ts) puts over the player — never our chrome, which stays
+	     under it. Its default spot is the top-left of the column the lounge
+	     seats the video in, and at the popped-out stage's layer it opened
+	     under the player with no grip left to reach. -->
 	<div
 		data-pane={PANE}
 		class="bg-surface ring-ink/15 fixed top-32 left-4 rounded-lg p-1.5 shadow-2xl ring-1 transition-[width] duration-200 motion-reduce:transition-none md:left-72 {face ===
 		'trim'
 			? 'w-[min(600px,calc(100vw-2rem))]'
-			: 'w-[364px]'} {covered ? 'z-30' : 'z-[55]'}"
+			: 'w-[364px]'} {covered ? 'z-30' : 'z-[57]'}"
 	>
 		<div
 			{@attach dragPane}
