@@ -6,14 +6,32 @@
 	//
 	// One log, not a copy: RoomThread reads the room connection while you are
 	// standing in the room and polls the backlog only from outside (#468).
+	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
+	import {
+		announce,
+		announcement,
+		clearAnnouncement,
+	} from '$lib/announce/announce.svelte';
 	import RoomThread from '$lib/messages/RoomThread.svelte';
 	import { useRoom } from '$lib/room/context';
 
 	const room = useRoom();
 	const isOwner = $derived(room.myRole === 'owner');
+	const coaches = $derived(isOwner || room.myRole === 'coach');
 </script>
 
 <div class="flex h-full min-h-0 flex-col">
+	<!-- Above the log, not in it (#2408): the marked line is already down
+	     there somewhere, and scrolling to find out what a coach said is the
+	     thing the mark exists to spare everyone. -->
+	<div class="px-5 pt-4">
+		<AnnouncementStrip
+			announcement={announcement.current}
+			canClear={coaches}
+			onclear={clearAnnouncement}
+			onrestore={(put) => announce(put.text, put.from, put.at)}
+		/>
+	</div>
 	<!-- The room's own reminders ride this thread (#359): the hub cannot
 	     send them, so the client derives them from the same upcoming list
 	     the plan card renders. -->

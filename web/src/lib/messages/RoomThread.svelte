@@ -27,6 +27,7 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { addYouTubeUrl } from '$lib/room/jukebox-add';
 	import type { RoomEvent } from '$lib/protocol';
+	import { announce } from '$lib/announce/announce.svelte';
 	import { roomTimeline } from '$lib/room/timeline';
 	import { remindersFor } from '$lib/room/reminders';
 	import { serverNow } from '$lib/room/server-clock';
@@ -139,6 +140,13 @@
 	// lines used to show "Nothing said here yet" for the whole round trip,
 	// and a failed backlog left that up with no Retry.
 	const backlog = $derived(conn ? conn.backlog() : null);
+	// Marking is the coach's and the owner's (docs/SPEC.md's roles matrix).
+	// The lobby carries the role, which is what the room's own door reads.
+	const coaches = $derived(
+		['owner', 'coach'].includes(
+			presence.rooms.find((r) => r.slug === slug)?.role ?? '',
+		),
+	);
 	const source: ThreadSource = $derived({
 		timeline,
 		loading: conn
@@ -157,6 +165,10 @@
 		cheers,
 		retry: () => (conn ? conn.reloadBacklog() : outside?.retry()),
 		ban: conn ? ban : undefined,
+		// The coach's mark (#2408), gated the way `ban` is: only from inside
+		// the room, and only for whoever may run it. Everyone else's menu
+		// simply has no such item rather than one that would be refused.
+		announce: conn && coaches ? announce : undefined,
 		// One endpoint from both sides of the room: standing inside, the
 		// socket has no edit command — the hub relays what the PATCH did, so
 		// the log this component is already showing updates itself.

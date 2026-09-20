@@ -7,6 +7,7 @@
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Copy from '@lucide/svelte/icons/copy';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
+	import Megaphone from '@lucide/svelte/icons/megaphone';
 	import Music from '@lucide/svelte/icons/music';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
@@ -231,6 +232,18 @@
 				label: 'React',
 				icon: SmilePlus,
 				onSelect: () => (reactingTo = reactingTo === id ? null : id),
+			});
+		}
+		// The coach's mark (#2408). Here rather than in a composer of its own:
+		// the sentence is already written, and a second box to type it into
+		// would duplicate the log, the read tracking and the retention.
+		if (source.announce && message.text) {
+			const { text, from, at } = message;
+			items.push({
+				label: 'Announce this',
+				icon: Megaphone,
+				onSelect: () =>
+					source.announce?.(text, from, new Date(at).toISOString()),
 			});
 		}
 		const link = onQueue && message.text ? firstLink(message.text) : undefined;
