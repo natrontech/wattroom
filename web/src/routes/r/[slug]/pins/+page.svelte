@@ -12,9 +12,6 @@
 	import { useRoom } from '$lib/room/context';
 
 	const room = useRoom();
-	// Stands in for the crew-admin check the real one will make: a room role
-	// is what this surface has until pins have an API.
-	const canEdit = $derived(room.myRole === 'owner' || room.myRole === 'coach');
 	// The room context carries the crew's code, not its name (#1236), and the
 	// lobby already knows it — the door reads it the same way.
 	const crewName = $derived(
@@ -25,7 +22,6 @@
 <div class="page">
 	<PinBoard
 		pins={pins.items}
-		{canEdit}
 		{crewName}
 		onsave={savePin}
 		onremove={(pin) => removePin(pin.id)}

@@ -20,14 +20,11 @@
 
 	let {
 		pins,
-		canEdit = false,
 		crewName = '',
 		onsave,
 		onremove,
 	}: {
 		pins: Pin[];
-		/** Crew admins pin; everyone else reads and copies. */
-		canEdit?: boolean;
 		/** Named in the subline, so the scope of an edit is on the page. */
 		crewName?: string;
 		/** A new pin has no id yet. */
@@ -61,9 +58,16 @@ Whitelist is on — ask Nina.`;
 		toasts.push(`Unpinned ${pin.title}.`, { undo: () => onsave?.(pin) });
 	}
 
-	/** Only an editor has a menu: every row is already tappable to copy. */
+	/**
+	 * Everyone in the crew pins, edits and unpins — there is no reader-only
+	 * board, so there is no permission to pass in (#2405).
+	 *
+	 * ponytail: nobody owns a pin, so nothing checks who wrote one. It is a
+	 * shared board and undo covers the mistakes; per-pin authorship is
+	 * machinery for a problem a crew of friends does not have. Add it when a
+	 * crew is big enough to have strangers in it.
+	 */
 	function entries(pin: Pin): MenuEntry[] {
-		if (!canEdit) return [];
 		return [
 			{ label: 'Edit', icon: Pencil, onSelect: () => (draft = { ...pin }) },
 			'separator',
@@ -101,7 +105,7 @@ Whitelist is on — ask Nina.`;
 	     board is empty, this one once it is not. -->
 	<div class="mb-1 flex items-center gap-3">
 		<h2 class="font-display text-xl font-bold">Pins</h2>
-		{#if canEdit && pins.length > 0}
+		{#if pins.length > 0}
 			<button
 				onclick={() => (draft = { title: '', body: '' })}
 				class="btn btn-primary btn-xs ml-auto"
@@ -118,23 +122,21 @@ Whitelist is on — ask Nina.`;
 	</p>
 
 	{#if pins.length === 0}
-		{#if canEdit}
-			<!-- Teaches, never apologizes (ux.md): what the thing is, and the
-			     one button that makes the first one. A member with no pins to
-			     read gets no board at all — there is nothing to teach them
-			     about a thing only an admin can make. -->
-			<EmptyState>
-				{#snippet icon()}<PinIcon size={20} />{/snippet}
-				What the crew keeps needing: a game server and its password, the Discord link,
-				the door code.
-				{#snippet cta()}
-					<button
-						onclick={() => (draft = { title: '', body: '' })}
-						class="btn btn-secondary btn-lg">Pin something</button
-					>
-				{/snippet}
-			</EmptyState>
-		{/if}
+		<!-- Teaches, never apologizes (ux.md): what the thing is, and the one
+		     button that makes the first one. Everyone standing here can make
+		     it, so there is no version of this that has to apologise for a
+		     button it is not allowed to draw. -->
+		<EmptyState>
+			{#snippet icon()}<PinIcon size={20} />{/snippet}
+			What the crew keeps needing: a game server and its password, the Discord link,
+			the door code.
+			{#snippet cta()}
+				<button
+					onclick={() => (draft = { title: '', body: '' })}
+					class="btn btn-secondary btn-lg">Pin something</button
+				>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<!-- Fills the column it is in, not the viewport. `sm:grid-cols-2
 		     lg:grid-cols-3` read right on a page and was wrong in a room,
@@ -151,7 +153,7 @@ Whitelist is on — ask Nina.`;
 			{#each pins as pin (pin.id)}
 				<li
 					class="panel panel-flush overflow-hidden"
-					title={canEdit ? MENU_HINT : undefined}
+					title={MENU_HINT}
 					{@attach contextMenu(() => entries(pin))}
 				>
 					<p class="eyebrow px-4 pt-3 pb-2">{pin.title}</p>
@@ -234,7 +236,9 @@ Whitelist is on — ask Nina.`;
 		</p>
 		<!-- No mask and no reveal-on-click: every member reads a pin anyway, so
 		     hiding it is theatre that costs a tap. Say it plainly instead. -->
-		<p class="text-muted mt-2 text-xs">Everyone in the crew can read a pin.</p>
+		<p class="text-muted mt-2 text-xs">
+			Everyone in the crew can read a pin, and change one.
+		</p>
 		<div class="mt-5 flex flex-row-reverse flex-wrap justify-end gap-2">
 			<button onclick={() => (draft = null)} class="btn btn-secondary btn-lg"
 				>Cancel</button

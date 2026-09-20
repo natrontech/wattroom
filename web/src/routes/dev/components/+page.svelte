@@ -127,31 +127,22 @@
 		the same one the real place reads, so editing here moves that board too.
 	</p>
 
-	<p class="text-muted-dim mt-6 text-[11px]">a crew admin</p>
+	<p class="text-muted-dim mt-6 text-[11px]">
+		the board, as anyone in the crew
+	</p>
 	<div class="mt-2">
 		<PinBoard
 			pins={pins.items}
-			canEdit
 			crewName="Natron"
 			onsave={savePin}
 			onremove={(pin) => removePin(pin.id)}
 		/>
 	</div>
 
-	<p class="text-muted-dim mt-8 text-[11px]">
-		a member of the crew — reads and copies, pins nothing
-	</p>
-	<div class="mt-2">
-		<PinBoard pins={pins.items} crewName="Natron" />
-	</div>
-
-	<p class="text-muted-dim mt-8 text-[11px]">
-		nothing pinned yet, as an admin — a member sees no board at all
-	</p>
+	<p class="text-muted-dim mt-8 text-[11px]">nothing pinned yet</p>
 	<div class="mt-2">
 		<PinBoard
 			pins={empty}
-			canEdit
 			crewName="Natron"
 			onsave={saveEmpty}
 			onremove={(pin) => (empty = empty.filter((p) => p.id !== pin.id))}
