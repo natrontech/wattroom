@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"slices"
 	"strconv"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-
 	"github.com/jackc/pgx/v5/pgtype"
 	_ "github.com/jackc/pgx/v5/stdlib" // database/sql driver, for goose's own API below
 	"github.com/pressly/goose/v3"
@@ -241,21 +241,41 @@ func TestOpenAppliesAMigrationThatArrivedLate(t *testing.T) {
 // (#2083).
 func freshDatabase(t *testing.T, purpose string) string {
 	t.Helper()
-	base := storetest.DSN()
-	server := strings.TrimRight(base[:strings.LastIndex(base, "/")], "/")
-	admin, err := pgx.Connect(t.Context(), server+"/postgres")
+	// Three answers, not one (#2368). A dsn that will not parse is a mistake
+	// rather than an absent database (#2352); a server nothing answers on is
+	// the laptop without `make infra`, and skips; a server that answers and
+	// then refuses is a failure. pgx.Connect folded the parse into the reach
+	// and skipped on both, taking the two tests above out of the run without
+	// reddening it — and the string-slicing this replaces reached the parse
+	// by panicking on a bare database name. Parsing first is what separates
+	// them: ConnectConfig is then the only step that can mean "absent", the
+	// way the Ping does it in cutover_test.go's scratchDB.
+	const notADSN = "WATTROOM_TEST_DB is not a dsn (it takes a connection string, not a database name — #2352): %v"
+	u, err := url.Parse(storetest.DSN())
+	if err != nil {
+		t.Fatalf(notADSN, err)
+	}
+	adminDSN := *u
+	adminDSN.Path = "/postgres"
+	cfg, err := pgx.ParseConfig(adminDSN.String())
+	if err != nil {
+		t.Fatalf(notADSN, err)
+	}
+	admin, err := pgx.ConnectConfig(t.Context(), cfg)
 	if err != nil {
 		t.Skipf("no database available: %v", err)
 	}
 	t.Cleanup(func() { _ = admin.Close(context.Background()) })
 	name := fmt.Sprintf("wattroom_test_%s_%d", purpose, time.Now().UnixNano())
 	if _, err := admin.Exec(t.Context(), "create database "+name); err != nil {
-		t.Fatalf("create database: %v", err)
+		t.Fatalf("the server answered and then refused to create %s, which is not the absence a skip is for: %v", name, err)
 	}
 	t.Cleanup(func() {
 		_, _ = admin.Exec(context.Background(), "drop database if exists "+name+" with (force)")
 	})
-	return server + "/" + name
+	fresh := *u
+	fresh.Path = "/" + name
+	return fresh.String()
 }
 
 // migrationVersions lists this branch's migration versions, ascending.

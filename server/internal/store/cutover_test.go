@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
@@ -53,6 +54,14 @@ func scratchDB(t *testing.T) string {
 
 	admin := *u
 	admin.Path = "/postgres"
+	// Parse before opening. database/sql hands back a connector without
+	// asking pgx whether the dsn means anything, so the complaint arrives at
+	// the Ping below and reads as an absent database — a bare name in
+	// WATTROOM_TEST_DB skipped this suite exactly the way #2352 described
+	// and #2368 found again in store_test.go's freshDatabase.
+	if _, err := pgx.ParseConfig(admin.String()); err != nil {
+		t.Fatalf("WATTROOM_TEST_DB is not a dsn, which is a mistake rather than an absent database (#2352): %v", err)
+	}
 	sqldb, err := sql.Open("pgx", admin.String())
 	if err != nil {
 		t.Fatalf("open: %v", err)
