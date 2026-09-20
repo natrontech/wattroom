@@ -1,8 +1,13 @@
 package unfurl
 
 import (
+	"errors"
+	"io"
 	"net"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"sync/atomic"
 	"testing"
 )
 
@@ -169,5 +174,82 @@ func TestSafeDialRefusesANameThatResolvesInward(t *testing.T) {
 	if err == nil {
 		_ = conn.Close()
 		t.Fatal("dialled a literal loopback address")
+	}
+}
+
+// loopbackFetcher is the real policy with the dialer taken out: httptest
+// listens on 127.0.0.1, which safeDial refuses by design (the test above
+// keeps that). What these two exercise is the other half of the policy —
+// the redirect closure in newClient — so the client keeps its CheckRedirect
+// and gets an ordinary transport underneath it.
+func loopbackFetcher(t *testing.T, ports map[string]bool) *Fetcher {
+	t.Helper()
+	f := NewFetcher(nil)
+	f.ports = ports
+	f.client.Transport = &http.Transport{DisableKeepAlives: true}
+	return f
+}
+
+func portOf(t *testing.T, raw string) string {
+	t.Helper()
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatalf("test bug: %q is not a url: %v", raw, err)
+	}
+	return u.Port()
+}
+
+func TestARedirectToANonWebPortIsRefused(t *testing.T) {
+	// The port scanner webPorts exists to stop, one hop later: a host that
+	// passes the first check and then 302s at somebody's SSH daemon.
+	scanned := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		_, _ = io.WriteString(w, "<title>a port that is not the web</title>")
+	}))
+	defer scanned.Close()
+	entry := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, scanned.URL+"/", http.StatusFound)
+	}))
+	defer entry.Close()
+
+	// Only the first server's port is on the web. The second's is the port
+	// the policy has to refuse, and it is reachable only by redirect.
+	f := loopbackFetcher(t, map[string]bool{portOf(t, entry.URL): true})
+	resp, err := f.get(t.Context(), entry.URL+"/page")
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	if !errors.Is(err, errBadPort) {
+		t.Fatalf("get followed a redirect to %s: err = %v, want %v", scanned.URL, err, errBadPort)
+	}
+}
+
+func TestARedirectChainStopsAtTheHopCeiling(t *testing.T) {
+	// The ceiling is five hops — spelled out rather than read off
+	// maxRedirects, because a test that compares the constant to itself
+	// passes at any value the constant takes. The chain is finite for the
+	// same reason: a ceiling that has stopped working must fail this test
+	// rather than hang it.
+	const ceiling, chain = 5, 20
+	var served atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if served.Add(1) > chain {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		http.Redirect(w, r, "/hop", http.StatusFound)
+	}))
+	defer srv.Close()
+
+	f := loopbackFetcher(t, nil) // any port: the ceiling is what is under test
+	resp, err := f.get(t.Context(), srv.URL+"/hop")
+	if resp != nil {
+		_ = resp.Body.Close()
+	}
+	if !errors.Is(err, errTooManyHop) {
+		t.Fatalf("get = %v, want %v after %d hops", err, errTooManyHop, served.Load())
+	}
+	if got := int(served.Load()); got != ceiling {
+		t.Fatalf("followed %d hops, want %d", got, ceiling)
 	}
 }
