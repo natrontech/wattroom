@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.123] - 2026-09-20
+
+### Fixed
+
+- The 2026.09.122 notes said a room's **Pins** row appears only once the crew has pinned something. It is always there — the row is how the first pin gets made. (The published release notes for 2026.09.122 have been corrected; the entry in this file's history is left as it was collated.)
+- A pin can be edited from the card itself. Editing was only reachable by right-clicking, which nothing on the card suggested.
+
 ## [2026.09.122] - 2026-09-20
 
 ### Added
@@ -2560,7 +2567,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.122...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.123...HEAD
+[2026.09.123]: https://github.com/natrontech/wattroom/compare/2026.09.122...2026.09.123
 [2026.09.122]: https://github.com/natrontech/wattroom/compare/2026.09.121...2026.09.122
 [2026.09.121]: https://github.com/natrontech/wattroom/compare/2026.09.120...2026.09.121
 [2026.09.120]: https://github.com/natrontech/wattroom/compare/2026.09.119...2026.09.120
