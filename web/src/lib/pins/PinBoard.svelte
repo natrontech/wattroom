@@ -206,7 +206,21 @@ Whitelist is on — ask Nina.`;
 					title={MENU_HINT}
 					{@attach contextMenu(() => entries(pin))}
 				>
-					<p class="eyebrow px-4 pt-3 pb-2">{pin.title}</p>
+					<!-- The title row carries Edit (#2411). It used to live only on
+					     the context menu, and ux.md says in as many words that
+					     nothing may: the menu is a shortcut, never the sole way.
+					     A card whose rows copy on click gave a rider no reason to
+					     think right-click held anything, and the maintainer hit
+					     exactly that within minutes of the release. -->
+					<div class="flex items-start gap-2 px-4 pt-3 pb-2">
+						<p class="eyebrow min-w-0 flex-1 truncate">{pin.title}</p>
+						<button
+							onclick={() => open(pin)}
+							class="text-muted hover:text-ink icon-btn -mt-1 -mr-2 shrink-0"
+							aria-label="Edit {pin.title}"
+							title="Edit"><Pencil size={14} /></button
+						>
+					</div>
 					{#each parsePin(pin.body) as line, i (i)}
 						{#if line.kind === 'text'}
 							<p class="text-muted px-4 pt-1 pb-3 text-xs">{line.text}</p>
