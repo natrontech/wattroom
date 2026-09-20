@@ -78,9 +78,14 @@ describe('SimulatedTrainer', () => {
 		vi.advanceTimersByTime(2000);
 		const before = samples.length;
 		t.simulateDropout(3000);
-		vi.advanceTimersByTime(3000);
+		// Strictly inside the dropout, and strictly past it. Landing on the
+		// instant it ends makes the assertion depend on which of two timers due
+		// at the same virtual millisecond runs first — the interval that emits a
+		// sample, or the timeout that ends the dropout. vitest 5 reversed that
+		// tie-break, and the trainer's behaviour did not change (#2346).
+		vi.advanceTimersByTime(2500);
 		expect(samples.length).toBe(before); // silence during dropout
-		vi.advanceTimersByTime(2000);
+		vi.advanceTimersByTime(2500);
 		expect(samples.length).toBeGreaterThan(before); // recovered
 		expect(statuses).toEqual([
 			'connecting',
