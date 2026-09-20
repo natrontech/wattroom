@@ -140,29 +140,27 @@ Whitelist is on — ask Nina.`;
 {/snippet}
 
 <section>
-	<!-- The place's own head, drawn the way Sessions draws its: the room's
-	     name is the sidebar's job (ADR-0020), so this says which place you are
-	     standing in. One button to pin with — the empty state's while the
-	     board is empty, this one once it is not. -->
-	<div class="mb-1 flex items-center gap-3">
-		<h2 class="font-display text-xl font-bold">Pins</h2>
+	<!-- A SECTION of the Board now (#2413), not the whole place: the page
+	     above owns the title, so this is an eyebrow rather than a second
+	     heading of the same size. One button to pin with — the empty state's
+	     while there is nothing, this one once there is. -->
+	<div class="mb-2 flex items-center gap-3">
+		<h2 class="eyebrow">pins</h2>
+		<!-- Said beside the label, because editing one changes it in every
+		     room of the crew and the rider has to know that before they do. -->
+		{#if crewName}
+			<span class="text-muted-dim truncate text-[11px]">all of {crewName}</span>
+		{/if}
 		{#if pins.length > 0}
 			<button
 				onclick={() => open()}
 				disabled={full}
 				title={full ? `This board is full at ${MaxCrewPins} pins.` : undefined}
-				class="btn btn-primary btn-xs ml-auto"
+				class="btn btn-secondary btn-xs ml-auto"
 				><PinIcon size={13} /> Pin something</button
 			>
 		{/if}
 	</div>
-	<!-- Says the scope, because editing here changes them everywhere: the crew
-	     owns pins, and its other rooms show the same board. -->
-	<p class="text-muted mb-5 text-xs">
-		What the crew keeps needing. The same board in every room{crewName
-			? ` of ${crewName}`
-			: ''}.
-	</p>
 
 	{#if pins.length === 0}
 		<!-- Teaches, never apologizes (ux.md): what the thing is, and the one

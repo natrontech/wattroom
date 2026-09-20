@@ -65,6 +65,25 @@ column is the tiles, the sprint and the stage, and next Thursday pushing them
 down is the opposite of what a rider on a bike needs. It is waiting when the
 session ends. In Chat it is always above the log.
 
+## Amended 2026-09-20 (#2413): it draws on the Board too, which is first
+
+This ADR said an announcement "gets no page and no place", and the reasoning
+was that a page is pull. That reasoning assumed a place somewhere down the
+room's list, where a notice is filed rather than announced.
+
+The Board is the **first** row of the room, above the Lounge. A rider entering
+the room passes it, which is the property the strip was protecting. So the
+notice draws there as the board's first item, and **the Lounge keeps its strip
+as well** — the board is where the notice lives and is taken down, the strip is
+the same notice appearing where a rider already is when a coach puts one up
+mid-session.
+
+What has not changed is the part worth keeping: there is still no announcement
+composer, it is still a marked chat message, and it still arrives rather than
+waiting to be fetched. "No page" was the wrong way to say that. The right way
+is that **an announcement must not depend on a rider choosing to go and look**,
+and a first row plus a strip on the room's own front page both satisfy it.
+
 ## Consequences
 
 - One nullable column and one clause in `PruneChat`. No new table, no new

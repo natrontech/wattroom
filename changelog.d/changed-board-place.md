@@ -1,0 +1,1 @@
+- The room's **Pins** place is now **Board**, and it sits at the top of the room's list, above the Lounge. It holds the room's announcement as well as the crew's pins — what the room and its crew wrote down, in the first place a rider passes. The old `/pins` link still works.

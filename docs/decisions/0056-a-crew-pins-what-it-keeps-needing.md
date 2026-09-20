@@ -90,6 +90,24 @@ two hundred is a wiki. A crew that needs more than this needs a document, and
 this feature is deliberately not one: no rich text, no attachments, no
 comments, no threads, no history.
 
+## Amended 2026-09-20 (#2413): the place is the Board, and pins are a section
+
+`/r/[slug]/pins` became `/r/[slug]/board`, first in the room's place list. The
+place holds the room's announcement as well as the crew's pins, so it is named
+for what it is rather than for one of the things on it; the old path redirects,
+because it shipped in 2026.09.122.
+
+Pins are unchanged — same table, same endpoints, same crew scope, same "anyone
+in the crew writes". They are now a **section** of the board rather than the
+whole of it, with the page above owning the title.
+
+Sections, deliberately, not a union table. A workout somebody posted or a ride
+worth showing is a different thing with a different owner and different
+permissions, and composing them on the page costs nothing that a generic
+`board_items` row would not cost twice — the shape of the next card type is not
+known yet, and a table built before it is known is a guess everything later has
+to live with.
+
 ## Consequences
 
 - One new table, `crew_pins`, cascading from its crew and `SET NULL` on its
