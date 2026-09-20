@@ -54,6 +54,26 @@ export const FriendCodeLen = 8;
  */
 export const CrewCodeLen = 6;
 /**
+ * What the rider says about a finished ride (#2328, docs/SPEC.md "How a
+ * ride felt"): the Borg CR10 session rating, and the sentence beside it.
+ * 0 is CR10's "rest" and no saved ride is one, so the floor is 1. The
+ * picker draws exactly this many buttons and the server refuses anything
+ * else, which is only true while both read the same pair.
+ */
+export const MinRPE = 1;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxRPE = 10;
+/**
+ * A ride note, in CHARACTERS — runes, MaxMessageChars' rule. Its own
+ * constant rather than a second name for that one: the two happen to
+ * agree on 500 today, and a chat line's limit moving is no reason for a
+ * note's to follow.
+ */
+export const MaxRideNoteChars = 500;
+/**
  * The tolerance band a second is scored in: within ±5 % of target, floor
  * ±10 W (#2159). The floor is what keeps an easy block scoreable — at
  * 60 W, 5 % is 3 W, which is inside a trainer's own error.

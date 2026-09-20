@@ -487,7 +487,7 @@ func (q *Queries) ForgetRemoteActivityIds(ctx context.Context, arg ForgetRemoteA
 }
 
 const getRide = `-- name: GetRide :one
-select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr,
+select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note,
        coalesce(rm.slug, '')::text as room_slug,
        coalesce(rm.name, '')::text as room_name
 from rides r
@@ -520,6 +520,8 @@ type GetRideRow struct {
 	ExecutionScored bool
 	FtpAfterWatts   *int16
 	Last20mHr       *int16
+	Rpe             *int16
+	Note            *string
 	RoomSlug        string
 	RoomName        string
 }
@@ -551,6 +553,8 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.ExecutionScored,
 		&i.FtpAfterWatts,
 		&i.Last20mHr,
+		&i.Rpe,
+		&i.Note,
 		&i.RoomSlug,
 		&i.RoomName,
 	)
@@ -1116,7 +1120,7 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 const listUserRidesFull = `-- name: ListUserRidesFull :many
 select id, workout_name, started_at, seconds, avg_watts, kj, execution,
        execution_scored, norm_watts, ftp_watts, ftp_after_watts, xp, curve,
-       room_id, shared_at
+       room_id, shared_at, rpe, note
 from rides where user_id = $1 order by started_at
 `
 
@@ -1136,6 +1140,8 @@ type ListUserRidesFullRow struct {
 	Curve           []byte
 	RoomID          pgtype.UUID
 	SharedAt        pgtype.Timestamptz
+	Rpe             *int16
+	Note            *string
 }
 
 // Export-all (#35): every ride the rider has, summary columns only. The
@@ -1146,6 +1152,11 @@ type ListUserRidesFullRow struct {
 // ftp_after_watts comes too (#2089): the ride page shows the number a ramp
 // test produced (ADR-0049) and the export did not, so the one ride that
 // changed the rider's FTP exported as if it had not.
+//
+// rpe and note come too (#2328, ADR-0053): they are the only two things on a
+// ride the RIDER wrote, which makes them the least skippable part of a copy
+// of their data. ADR-0055 keeps them off every read that is not the owner's;
+// this is the owner's.
 func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]ListUserRidesFullRow, error) {
 	rows, err := q.db.Query(ctx, listUserRidesFull, userID)
 	if err != nil {
@@ -1171,6 +1182,8 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 			&i.Curve,
 			&i.RoomID,
 			&i.SharedAt,
+			&i.Rpe,
+			&i.Note,
 		); err != nil {
 			return nil, err
 		}
@@ -1345,6 +1358,39 @@ func (q *Queries) RoomWeekBoard(ctx context.Context, roomID pgtype.UUID) ([]Room
 		return nil, err
 	}
 	return items, nil
+}
+
+const setRideFeel = `-- name: SetRideFeel :execrows
+update rides set rpe = $1::smallint, note = $2::text
+where id = $3 and user_id = $4
+`
+
+type SetRideFeelParams struct {
+	Rpe    *int16
+	Note   *string
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// What the rider says about a ride, as opposed to what the trainer recorded
+// (#2328): the Borg CR10 rating and the sentence, written together because
+// they are one thing a rider fills in once. NULL clears either — an empty
+// note is no note, and un-rating a ride is a thing riders do.
+//
+// Owner-only by the where clause, so someone else's ride reads as absent
+// rather than as forbidden — SetRideShared's rule, and here it is also the
+// only thing standing between a note and a stranger (ADR-0055).
+func (q *Queries) SetRideFeel(ctx context.Context, arg SetRideFeelParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setRideFeel,
+		arg.Rpe,
+		arg.Note,
+		arg.ID,
+		arg.UserID,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const setRideFtpAfter = `-- name: SetRideFtpAfter :execrows

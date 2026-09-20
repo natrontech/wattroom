@@ -204,6 +204,8 @@ type Ride struct {
 	ExecutionScored bool
 	FtpAfterWatts   *int16
 	Last20mHr       *int16
+	Rpe             *int16
+	Note            *string
 }
 
 type RideExport struct {

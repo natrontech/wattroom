@@ -316,6 +316,12 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			"inARoom":           ride.RoomID.Valid,
 			"sharedWithFriends": ride.SharedAt.Valid,
 			"curve":             json.RawMessage(ride.Curve),
+			// What the rider said about the ride (#2328, ADR-0053): the only
+			// two fields here they wrote themselves, and the two ADR-0055
+			// keeps off every read that is not this one. null on the rides
+			// nobody rated, which is most of them.
+			"rpe":  ride.Rpe,
+			"note": ride.Note,
 		})
 	}
 	if !writeJSON("rides.json", summaries) {
