@@ -17,6 +17,31 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.121] - 2026-09-20
+
+### Changed
+
+- Cards and panels are drawn at one of four densities across the whole app,
+  instead of whatever each screen had picked — the same component had been
+  given eighteen different paddings, which is most of why the interface read
+  as unfinished without anything in particular looking wrong. Expect notices,
+  history cards and settings sections to sit a few pixels differently; nothing
+  moved except the spacing, and surfaces read from the saddle kept their room.
+
+### Fixed
+
+- A long word with nowhere to break — a database column, a hash, a pasted
+  link — no longer pushes the page sideways on a phone. It now wraps where it
+  runs out of room: in chat, in direct messages, and on What's new, where the
+  last release's own notes were doing it.
+- Monokai's quiet text is quiet again. The theme's `muted` colour had been
+  pinned to a near-white yellow-green that read as emphasis wherever it was
+  used — notes, labels, timestamps — at nearly the contrast of body text. It
+  now sits at the same lightness every other theme's quiet text does, keeping
+  the yellow-green Monokai was built with. Monokai's deliberately recessed
+  panels are unchanged, and no other theme moves.
+- Fixed the release image failing to build, which left 2026.09.120 tagged with no image behind it. Installs inside the image were missing the dependency version floors the lockfile pins, including a security floor.
+
 ## [2026.09.120] - 2026-09-20
 
 ### Added
@@ -2528,7 +2553,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.120...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.121...HEAD
+[2026.09.121]: https://github.com/natrontech/wattroom/compare/2026.09.120...2026.09.121
 [2026.09.120]: https://github.com/natrontech/wattroom/compare/2026.09.119...2026.09.120
 [2026.09.119]: https://github.com/natrontech/wattroom/compare/2026.09.118...2026.09.119
 [2026.09.118]: https://github.com/natrontech/wattroom/compare/2026.09.117...2026.09.118
