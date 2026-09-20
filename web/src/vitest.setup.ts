@@ -9,22 +9,17 @@ globalThis.fetch = async () => {
 	throw new TypeError('Failed to fetch');
 };
 
-// Node 26 ships the Web Storage globals, and its `localStorage` is inert: the
-// getter warns and evaluates to undefined unless the process was started with
-// --localstorage-file. vitest's happy-dom environment copies a window property
-// onto the global only when the platform has not defined one already, and
-// `localStorage` is not among the names it copies regardless — so on Node 26
-// the inert global wins, and a happy-dom test reading storage gets undefined
-// while CI's Node 24, which has no such global, stays green (#2058). Install
-// happy-dom's own Storage so the suite behaves the same on every Node.
-// `sessionStorage` needs no repair: Node's works, and each file gets its own
-// worker, so it still starts empty. Node-environment tests are left alone —
-// `localStorage` stays undefined there, which is the branch the guards in
-// profile.svelte.ts and palette.svelte.ts are written against.
-if (typeof document !== 'undefined') {
-	Object.defineProperty(globalThis, 'localStorage', {
-		value: new Storage(),
-		configurable: true,
-		writable: true,
-	});
-}
+// Storage needs no repair here any more (#2346). vitest 4's happy-dom
+// environment copied a window property onto the global only when the platform
+// had not already defined one, so Node 26's inert `localStorage` — a getter
+// that warns and evaluates to undefined without --localstorage-file — won, and
+// a happy-dom test reading storage got undefined while CI's Node 24, which has
+// no such global, stayed green (#2058). vitest 5 installs every global as an
+// accessor pair bound to the window regardless, so `globalThis.localStorage`
+// *is* `window.localStorage` on both Nodes and the shim that stood here would
+// now replace that live accessor with a detached Storage of its own.
+//
+// src/vitest.setup.test.ts is what keeps this honest: it asserts the round trip
+// through three storage-backed modules, so a Node or a vitest that breaks the
+// global again fails there by name instead of silently handing the suite
+// defaults.
