@@ -1,0 +1,1 @@
+- A pin can be edited from the card itself. Editing was only reachable by right-clicking, which nothing on the card suggested.

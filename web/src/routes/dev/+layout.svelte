@@ -23,6 +23,7 @@
 		{ href: '/dev/spectator', label: 'Spectator' },
 		{ href: '/dev/summary', label: 'Summary' },
 		{ href: '/dev/medal', label: 'Medals' },
+		{ href: '/dev/board', label: 'Board' },
 	];
 </script>
 
