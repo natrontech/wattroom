@@ -116,13 +116,15 @@
 
 	<h2 class="eyebrow mt-12">Pins — under review (#2405)</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
-		A pin is a label and a value, and that is the whole model. The crew owns
-		them, and it is a place inside the room — <code>/r/[slug]/pins</code>, whose
-		sidebar row appears only once there is something on the board. Tap copies —
-		a value starting <code>http</code> opens instead — and right-click carries the
-		rest, so nothing lives only in a menu. Not wired to a server: the store is in
-		memory, and it is the same one the real place reads, so editing here moves that
-		board too.
+		A pin is a title and a block of lines — one thing worth pinning is rarely
+		one string, and a server is its address AND its password AND who to ask
+		about the whitelist. A line written as <code>Label: value</code> gets its
+		own copy button; everything else stays prose. The editor is one textarea,
+		not a field repeater. The crew owns the board, and it is a place inside the
+		room —
+		<code>/r/[slug]/pins</code>, whose sidebar row appears only once there is
+		something on it. Not wired to a server: the store is in memory, and it is
+		the same one the real place reads, so editing here moves that board too.
 	</p>
 
 	<p class="text-muted-dim mt-6 text-[11px]">a crew admin</p>
