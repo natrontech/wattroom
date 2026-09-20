@@ -311,9 +311,14 @@ update rides set norm_watts = $2 where id = $1;
 -- ftp_after_watts comes too (#2089): the ride page shows the number a ramp
 -- test produced (ADR-0049) and the export did not, so the one ride that
 -- changed the rider's FTP exported as if it had not.
+--
+-- rpe and note come too (#2328, ADR-0053): they are the only two things on a
+-- ride the RIDER wrote, which makes them the least skippable part of a copy
+-- of their data. ADR-0055 keeps them off every read that is not the owner's;
+-- this is the owner's.
 select id, workout_name, started_at, seconds, avg_watts, kj, execution,
        execution_scored, norm_watts, ftp_watts, ftp_after_watts, xp, curve,
-       room_id, shared_at
+       room_id, shared_at, rpe, note
 from rides where user_id = $1 order by started_at;
 
 -- name: GetRideSamples :one
@@ -341,6 +346,18 @@ select user_total_xp($1)::bigint;
 -- forbidden. Last write wins: re-testing the same ride is not a thing, and a
 -- retried stamp must land on the row it already wrote.
 update rides set ftp_after_watts = sqlc.arg(ftp_after_watts)::smallint
+where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
+
+-- name: SetRideFeel :execrows
+-- What the rider says about a ride, as opposed to what the trainer recorded
+-- (#2328): the Borg CR10 rating and the sentence, written together because
+-- they are one thing a rider fills in once. NULL clears either — an empty
+-- note is no note, and un-rating a ride is a thing riders do.
+--
+-- Owner-only by the where clause, so someone else's ride reads as absent
+-- rather than as forbidden — SetRideShared's rule, and here it is also the
+-- only thing standing between a note and a stranger (ADR-0055).
+update rides set rpe = sqlc.narg(rpe)::smallint, note = sqlc.narg(note)::text
 where id = sqlc.arg(id) and user_id = sqlc.arg(user_id);
 
 -- name: SetRideShared :execrows

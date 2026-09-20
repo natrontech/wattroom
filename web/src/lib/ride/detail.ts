@@ -4,6 +4,7 @@
  * sends, and the two calls the detail page and the list row share.
  */
 import { api, type ApiResult } from '$lib/api';
+import type { RideFeel } from './feel';
 import type { RideSample } from './stats';
 
 export interface RideMedal {
@@ -43,6 +44,12 @@ export interface RideDetail {
 	samples: RideTraceSample[];
 	/** Where the ride was sent, if anywhere — absent when nobody tried (#799). */
 	export?: RideExport;
+	/**
+	 * What the rider said about the ride (#2328) — both halves null until
+	 * they do. This is the only read that carries them: ADR-0055 keeps the
+	 * note off every surface but the owner's own and the account export.
+	 */
+	feel: RideFeel;
 }
 
 /** One destination's delivery, as the server durably remembers it. */

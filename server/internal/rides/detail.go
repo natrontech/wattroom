@@ -174,6 +174,10 @@ type rideDetailJSON struct {
 	// Where this ride was sent, and whether it arrived. Absent when the ride
 	// was never eligible — no Strava on the account, or auto-upload off.
 	Export *exportJSON `json:"export,omitempty"`
+	// What the rider said about it (#2328), both halves nullable. This read
+	// is owner-scoped and bearer-refused above, which is the whole of
+	// ADR-0055's enforcement — no other projection of a ride selects them.
+	Feel feelJSON `json:"feel"`
 }
 
 // exportJSON is one delivery's durable state (#799): a rider who turned
@@ -237,6 +241,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		Medals:            make([]medalJSON, 0, len(medalRows)),
 		SharedWithFriends: row.SharedAt.Valid,
 		Samples:           []sampleJSON{},
+		Feel:              feelJSON{RPE: row.Rpe, Note: row.Note},
 	}
 	var curve stats.Curve
 	if json.Unmarshal(row.Curve, &curve) == nil && curve.Best5s > 0 {

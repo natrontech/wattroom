@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -384,5 +385,39 @@ func TestRiderMonthSurvivesAZoneNamePostgresRefuses(t *testing.T) {
 				t.Fatalf("month: %v", month)
 			}
 		})
+	}
+}
+
+// ADR-0055: a shared ride shows a friend what the trainer recorded, never
+// what the rider wrote about it. The projection this page reads names its
+// columns, so the guard is that nobody adds them to it — which is exactly
+// the change this test would fail on.
+func TestAFriendsPageNeverCarriesTheRidersOwnWords(t *testing.T) {
+	h := setup(t)
+	h.befriend(t, "alice", "dan")
+	ride := h.ride(t, "dan", pgtype.UUID{}, 300, true)
+	const written = "legs were dead, third day on"
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"update rides set rpe = 9, note = $1 where id = $2", written, ride); err != nil {
+		t.Fatalf("write feel: %v", err)
+	}
+
+	status, body := h.get(t, "alice", "/api/riders/"+h.id("dan"))
+	if status != http.StatusOK {
+		t.Fatalf("friend's page: %d", status)
+	}
+	if shared, _ := body["sharedRides"].([]any); len(shared) != 1 {
+		t.Fatalf("the ride is shared and should be listed: %v", body["sharedRides"])
+	}
+	raw, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	// The whole page, not just the ride: an RPE folded into a summary or a
+	// note used as a subtitle would leak it just as thoroughly.
+	for _, leak := range []string{written, `"rpe"`, `"note"`} {
+		if strings.Contains(string(raw), leak) {
+			t.Fatalf("a friend's page carries %s: %s", leak, raw)
+		}
 	}
 }

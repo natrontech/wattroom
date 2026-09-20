@@ -25,6 +25,7 @@
 	import Award from '@lucide/svelte/icons/award';
 	import Download from '@lucide/svelte/icons/download';
 	import ImageDown from '@lucide/svelte/icons/image-down';
+	import RideFeel from '$lib/ride/RideFeel.svelte';
 	import ShareToggle from '$lib/ride/ShareToggle.svelte';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 
@@ -426,6 +427,11 @@
 				</ul>
 			</section>
 		{/if}
+
+		<!-- What the rider says about it (#2328). Below the numbers because it
+		     answers them; above "where it went", which is bookkeeping. Private
+		     whatever the share toggle above says — ADR-0055. -->
+		<RideFeel id={ride.id} feel={ride.feel} />
 
 		{#if ride.export}
 			<!-- #799: a rider who turned auto-upload on has had no way to know

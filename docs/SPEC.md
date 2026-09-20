@@ -403,6 +403,41 @@ Suggestion → workout focus: **recover** = Recovery · **restart** = Recovery, 
 **endurance** = Endurance · **intensity** = Sweet spot, Threshold, VO₂ max. The badge
 marks matching workouts in the picker; every workout stays rideable.
 
+## How a ride felt (#2328)
+
+Two rides with identical average watts can feel nothing alike, and the trainer
+records neither difference. A finished ride may therefore carry two optional
+things the rider says about it: one number and one sentence. Both are entered
+after the ride, never during it — this is the one moment `.claude/rules/ux.md`'s
+no-typing rule does not apply, because the rider is off the bike.
+
+- **RPE is the Borg CR10 session scale, integers 1–10**, one number for the
+  whole ride — the category-ratio scale published by Borg, in the session-RPE
+  form Foster (2001) put it to. Published anchors, used verbatim: **1** very easy · **2** easy · **3** moderate · **4** somewhat hard ·
+  **5** hard · **7** very hard · **10** maximal. **6, 8 and 9 carry no word** —
+  that is the scale's own design, steps between the anchors either side of them,
+  and inventing labels for them would not be the CR10 any more.
+- **0 is not offered.** CR10's zero is "rest"; a saved ride is at least a minute
+  of pedalling, so the lowest a ride can be is 1.
+- **The note is free text, 1–500 characters** — the same bound a chat message
+  has, and for the same reason: it is a sentence, not a journal entry. An empty
+  note is no note, and clearing it removes it.
+- **Both are optional, both are erasable, and neither is ever asked for twice.**
+  Nothing in the app is gated on them, no streak counts them, and a ride without
+  them is not incomplete.
+- **Neither feeds the load model.** Load is computed from power
+  ([ADR-0016](decisions/0016-training-load-model.md)) and RPE does not move it.
+  Letting it would be its own decision, with its own ADR.
+- **Where they travel: nowhere the rider did not put them**
+  ([ADR-0055](decisions/0055-a-shared-ride-carries-numbers-not-words.md)).
+  Sharing a ride with friends shares the numbers the trainer recorded; the note
+  and the RPE stay on the rider's own account. They are in the account export,
+  because they are the rider's own words about their own ride.
+
+There is no separate "feeling" control. The number says how hard and the
+sentence says why — a third picker between them would be a setting that most
+riders would leave alone, which the 95 % rule makes a default instead.
+
 ## Ride guards
 
 Numbers moved here from code after being ridden (#46). The cadence path was validated on a

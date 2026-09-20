@@ -1357,3 +1357,44 @@ func TestExportCarriesTheRidersOwnUploads(t *testing.T) {
 		}
 	}
 }
+
+// ADR-0053 claims Art. 15's scope, and the two fields a rider typed
+// themselves are the least skippable part of that (#2328). ADR-0055 keeps
+// them off every read that is not the owner's; this is the owner's.
+func TestExportCarriesWhatTheRiderSaidAboutARide(t *testing.T) {
+	h := setup(t)
+	ride := h.createRide(t, "alice", pgtype.UUID{}, "Openers", []byte("blob"))
+	const note = "legs were dead, third day on"
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"update rides set rpe = 8, note = $1 where id = $2", note, ride); err != nil {
+		t.Fatalf("write feel: %v", err)
+	}
+	// A second ride the rider said nothing about: the fields are there and
+	// null, rather than silently absent on the rides that are the majority.
+	h.createRide(t, "alice", pgtype.UUID{}, "Recovery", []byte("blob"))
+
+	var rides []map[string]any
+	if err := json.Unmarshal([]byte(h.exportFiles(t, "alice")["rides.json"]), &rides); err != nil {
+		t.Fatalf("rides.json: %v", err)
+	}
+	if len(rides) != 2 {
+		t.Fatalf("rides.json: %v", rides)
+	}
+	var rated, unrated map[string]any
+	for _, r := range rides {
+		if r["workoutName"] == "Openers" {
+			rated = r
+		} else {
+			unrated = r
+		}
+	}
+	if rated["rpe"] != float64(8) || rated["note"] != note {
+		t.Errorf("the export dropped what the rider wrote: %v", rated)
+	}
+	if _, ok := unrated["rpe"]; !ok {
+		t.Errorf("an unrated ride still carries the field: %v", unrated)
+	}
+	if unrated["rpe"] != nil || unrated["note"] != nil {
+		t.Errorf("an unrated ride invented a rating: %v", unrated)
+	}
+}

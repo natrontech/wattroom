@@ -35,6 +35,11 @@ func TestSchemaChecksMatchTheProtocolBounds(t *testing.T) {
 		// The FTP a ramp test produced on its own ride (#1572) carries the
 		// same bound in a second table, and its handler reads the same pair.
 		{"rides", "ftp_after_watts", protocol.MinFtpWatts, protocol.MaxFtpWatts},
+		// The Borg CR10 rating a rider puts on a finished ride (#2328). Its
+		// CHECK is the same trap one table over: widening the scale in
+		// `protocol` moves the picker and the handler and leaves the column
+		// refusing the new number as a 500.
+		{"rides", "rpe", protocol.MinRPE, protocol.MaxRPE},
 	} {
 		t.Run(want.table+"."+want.column, func(t *testing.T) {
 			var def string

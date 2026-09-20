@@ -90,6 +90,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/rides/{id}/export/retry", s.handleRetryExport)
 	mux.HandleFunc("PATCH /api/rides/{id}", s.handleShare)
 	mux.HandleFunc("PUT /api/rides/{id}/ftp-after", s.handleFtpAfter)
+	// What the rider says about the ride, next to what the trainer said (#2328).
+	mux.HandleFunc("PUT /api/rides/{id}/feel", s.handleFeel)
 	mux.HandleFunc("DELETE /api/rides/{id}", s.handleDelete)
 }
 
