@@ -46,7 +46,12 @@
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 	import DevicePicker from '$lib/ble/DevicePicker.svelte';
 	import { devicePicker } from '$lib/ble/device-picker.svelte';
-	import { onShellHandoff, shellTitleBar } from '$lib/desktop';
+	import {
+		onShellHandoff,
+		onShellNavigate,
+		setShellRoom,
+		shellTitleBar,
+	} from '$lib/desktop';
 	import { notify } from '$lib/notify.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -187,6 +192,29 @@
 		(
 			globalThis as { wattroom?: { hud?: (on: boolean) => void } }
 		).wattroom?.hud?.(riding);
+	});
+
+	// The shell's tray (#1313): the room it can take the rider back to, and
+	// the menu item coming back as a path. The CONNECTION, not the page —
+	// it holds across the room's own screens, so the way back is still
+	// offered from its settings or its calendar, and goes away with the
+	// connection rather than with the URL. The HUD speaks for no room.
+	$effect(() => {
+		if (page.url.pathname === '/hud') return;
+		const conn = roomConnection.current;
+		setShellRoom(
+			conn
+				? {
+						path: `/r/${conn.slug}`,
+						name:
+							presence.rooms.find((room) => room.slug === conn.slug)?.name ??
+							conn.slug,
+					}
+				: null,
+		);
+	});
+	$effect(() => {
+		onShellNavigate((to) => void goto(to));
 	});
 
 	// Presence is pushed, not polled (#251): the lobby socket pings, the store

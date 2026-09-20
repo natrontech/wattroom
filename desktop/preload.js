@@ -65,4 +65,15 @@ contextBridge.exposeInMainWorld('wattroom', {
 	pickDevice: (deviceId) => ipcRenderer.send('wattroom:ble-pick', deviceId),
 	onNotification: (cb) =>
 		ipcRenderer.on('wattroom:notification', (_event, payload) => cb(payload)),
+	// The tray (#1313). `setRoom` is the app telling the shell which room it
+	// is connected to, so the menu can offer to open it; `onNavigate` is that
+	// menu item coming back, as a path for the app to route to rather than a
+	// navigation that would reload the ride out from under the rider.
+	setRoom: (room) => ipcRenderer.send('wattroom:room', room),
+	onNavigate: (cb) => ipcRenderer.on('wattroom:go', (_event, to) => cb(to)),
+	// Launch at login (#1313). `supported` is false where this build cannot
+	// touch the login items at all, and the setting hides rather than
+	// offering a switch that fails on click.
+	launchAtLogin: () => ipcRenderer.invoke('wattroom:login-item'),
+	setLaunchAtLogin: (on) => ipcRenderer.invoke('wattroom:login-item-set', on),
 });

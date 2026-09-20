@@ -99,6 +99,102 @@ export function onShellHandoff(cb: (token: string) => void): void {
 	});
 }
 
+/** What the shell is running on, or null in a browser. */
+export function shellPlatform(): string | null {
+	const shell = (globalThis as { wattroom?: { platform?: unknown } }).wattroom;
+	return typeof shell?.platform === 'string' ? shell.platform : null;
+}
+
+/** Where the tray icon lives, in the words that platform uses for it. */
+export function trayName(platform: string | null): string {
+	if (platform === 'darwin') return 'the menu bar';
+	if (platform === 'win32') return 'the notification area';
+	return 'the system tray';
+}
+
+// ── The tray, and launch at login (#1313) ────────────────────────────────
+
+/**
+ * Whether this build can put WattRoom in the login items, and whether it
+ * is there. `supported` is false in a browser, in a shell older than this,
+ * and in a dev build on macOS — where the API would register Electron
+ * itself. `error` carries the one sentence a refused change leaves behind.
+ */
+export interface LoginItem {
+	supported: boolean;
+	enabled: boolean;
+	error: string | null;
+}
+
+type LoginBridge = {
+	launchAtLogin?: () => Promise<unknown>;
+	setLaunchAtLogin?: (on: boolean) => Promise<unknown>;
+};
+
+/** The shell's answer, or null for anything that is not one. */
+function asLoginItem(value: unknown): LoginItem | null {
+	const v = value as Partial<LoginItem> | null;
+	if (typeof v?.supported !== 'boolean') return null;
+	return {
+		supported: v.supported,
+		enabled: v.enabled === true,
+		error: typeof v.error === 'string' ? v.error : null,
+	};
+}
+
+async function askShell(
+	call: (bridge: LoginBridge) => Promise<unknown> | undefined,
+): Promise<LoginItem | null> {
+	const bridge = (globalThis as { wattroom?: LoginBridge }).wattroom;
+	if (!bridge) return null;
+	try {
+		return asLoginItem(await call(bridge));
+	} catch {
+		// A bridge that throws is a shell we cannot ask; the setting hides
+		// rather than showing a switch with nothing behind it.
+		return null;
+	}
+}
+
+/** Null in a browser and in a shell that has no login-item bridge. */
+export function launchAtLogin(): Promise<LoginItem | null> {
+	return askShell((b) => b.launchAtLogin?.());
+}
+
+/** The rider's answer, and what came back — including a refusal to act on. */
+export function setLaunchAtLogin(on: boolean): Promise<LoginItem | null> {
+	return askShell((b) => b.setLaunchAtLogin?.(on));
+}
+
+/**
+ * The room the app is connected to, told to the shell so its tray can offer
+ * to open it. Null when there is none, and a no-op in a browser.
+ */
+export function setShellRoom(room: { path: string; name: string } | null) {
+	(
+		globalThis as {
+			wattroom?: {
+				setRoom?: (r: { path: string; name: string } | null) => void;
+			};
+		}
+	).wattroom?.setRoom?.(room);
+}
+
+/**
+ * The tray asking for a path. It arrives over IPC rather than as a
+ * navigation, so the app routes to it and a ride keeps its socket.
+ */
+export function onShellNavigate(cb: (to: string) => void): void {
+	(
+		globalThis as {
+			wattroom?: { onNavigate?: (cb: (to: string) => void) => void };
+		}
+	).wattroom?.onNavigate?.((to) => {
+		if (typeof to === 'string' && to.startsWith('/') && !to.startsWith('//'))
+			cb(to);
+	});
+}
+
 /**
  * The height of the strip the app draws where the shell hid the OS title bar
  * (#1188), or 0 in a browser and in a shell old enough to keep its own bar.

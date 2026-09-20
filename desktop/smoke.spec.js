@@ -30,7 +30,7 @@ const os = require('node:os');
  */
 const DEAD_URL = 'http://localhost:45999/';
 
-async function launch(url, userData = null) {
+async function launch(url, userData = null, extraArgs = []) {
 	// Its own userData directory, which is what the single-instance lock is
 	// keyed on. Without this the lock is shared by every checkout on the
 	// machine, so `make desktop` running in one worktree makes a smoke run in
@@ -38,12 +38,43 @@ async function launch(url, userData = null) {
 	// databases, and this repo runs worktrees in parallel by design. A test
 	// that relaunches passes the same directory back in (#1948).
 	userData ??= fs.mkdtempSync(path.join(os.tmpdir(), 'wattroom-smoke-'));
+	// And its own XDG config root, because launch-at-login on Linux is a file
+	// in ~/.config/autostart (#1313). A test that wrote the real one would add
+	// WattRoom to the login items of whoever ran it.
+	const config = path.join(userData, 'config');
 	const app = await electron.launch({
-		args: [path.join(__dirname, 'main.js'), `--user-data-dir=${userData}`],
-		env: { ...process.env, WATTROOM_URL: url },
+		args: [
+			path.join(__dirname, 'main.js'),
+			`--user-data-dir=${userData}`,
+			...extraArgs,
+		],
+		env: { ...process.env, WATTROOM_URL: url, XDG_CONFIG_HOME: config },
 	});
 	app.userData = userData;
+	app.autostartFile = path.join(config, 'autostart', 'wattroom.desktop');
 	return app;
+}
+
+/** The tray's menu as it stands, by label — its click handlers stay in main. */
+function trayLabels(app) {
+	return app.evaluate(() =>
+		process.mainModule
+			.require('./tray')
+			.menuTemplate()
+			.map((item) => (item.type === 'separator' ? '---' : item.label)),
+	);
+}
+
+/** Press a tray item by label, in the main process, as a rider would. */
+function clickTray(app, label, checked = undefined) {
+	return app.evaluate((_electron, [wanted, box]) => {
+		const item = process.mainModule
+			.require('./tray')
+			.menuTemplate()
+			.find((i) => i.label === wanted);
+		if (!item) throw new Error(`no tray item "${wanted}"`);
+		item.click({ checked: box });
+	}, [label, checked]);
 }
 
 test('the window comes back where it was, unless that is off every display', async () => {
@@ -120,14 +151,18 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		'hud',
 		'installUpdate',
 		'keepAwake',
+		'launchAtLogin',
 		'notify',
 		'onBleScan',
 		'onHandoff',
+		'onNavigate',
 		'onNotification',
 		'onUpdate',
 		'pickDevice',
 		'platform',
 		'retry',
+		'setLaunchAtLogin',
+		'setRoom',
 		'titleBar',
 		'updateFailed',
 		'version',
@@ -503,6 +538,153 @@ test('the native fallback still pairs a web app too old to draw the picker', asy
 		'KICKR CORE 1234',
 		'Cancel',
 	]);
+
+	await app.close();
+});
+
+/**
+ * The tray (#1313). Its menu is the whole interface on Linux — AppIndicator
+ * has no click event — so what is in it, and whether pressing an item does
+ * anything, is what there is to assert. The icon itself is not readable from
+ * here; a hardware session per OS is what says it looks right in a menu bar.
+ */
+test('the tray offers the window, the room the app is in, and quit', async () => {
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+
+	// No room yet: the item is absent rather than dead, because pressing it
+	// would open a window on the app's home and look like nothing happened.
+	expect(await trayLabels(app)).toEqual([
+		'Open WattRoom',
+		'---',
+		'Launch at login',
+		'---',
+		'Quit WattRoom',
+	]);
+
+	// The app reports the room it is connected to.
+	await win.evaluate(() =>
+		window.wattroom.setRoom({ path: '/r/tuesday', name: 'Tuesday Night' }),
+	);
+	await expect.poll(() => trayLabels(app)).toContain('Open Tuesday Night');
+
+	// Pressing it hands the page a path (a navigation would reload the SPA and
+	// drop a ride's socket), and nothing navigates.
+	await app.evaluate(({ BrowserWindow }) => {
+		globalThis.__nav = [];
+		BrowserWindow.getAllWindows()[0].webContents.on(
+			'did-start-navigation',
+			(e) => {
+				if (e.isMainFrame) globalThis.__nav.push(e.url);
+			},
+		);
+	});
+	await win.evaluate(() => {
+		window.__go = [];
+		window.wattroom.onNavigate((to) => window.__go.push(to));
+	});
+	await clickTray(app, 'Open Tuesday Night');
+	await expect
+		.poll(() => win.evaluate(() => window.__go))
+		.toEqual(['/r/tuesday']);
+	expect(await app.evaluate(() => globalThis.__nav)).toEqual([]);
+
+	// Remote content chooses the words, never where the app goes: a path off
+	// our own root is refused, and the item goes away with it.
+	await win.evaluate(() =>
+		window.wattroom.setRoom({ path: 'https://evil/', name: 'Elsewhere' }),
+	);
+	await expect.poll(() => trayLabels(app)).not.toContain('Open Elsewhere');
+
+	await app.close();
+});
+
+test('launch at login writes the autostart file, and takes it away again', async () => {
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+
+	// Nothing on install (ux.md's 95 % rule: nobody expects a cycling app in
+	// their login items, so it is off until a rider asks).
+	expect(fs.existsSync(app.autostartFile)).toBe(false);
+	expect(await win.evaluate(() => window.wattroom.launchAtLogin())).toEqual({
+		supported: true,
+		enabled: false,
+	});
+
+	expect(
+		await win.evaluate(() => window.wattroom.setLaunchAtLogin(true)),
+	).toEqual({ supported: true, enabled: true, error: null });
+
+	const entry = fs.readFileSync(app.autostartFile, 'utf8');
+	expect(entry).toContain('[Desktop Entry]');
+	expect(entry).toContain('Name=WattRoom');
+	// The login launch opens no window: without the flag the rider gets the
+	// app in their face at every boot, which is what makes people turn this
+	// back off.
+	expect(entry).toMatch(/^Exec=.* --hidden$/m);
+	// An unpackaged run has to name the app directory too, or the login item
+	// starts a bare Electron.
+	expect(entry).toContain(__dirname);
+
+	// And the tray's own switch is showing what Settings just did.
+	expect(
+		await app.evaluate(
+			() =>
+				process.mainModule
+					.require('./tray')
+					.menuTemplate()
+					.find((i) => i.label === 'Launch at login').checked,
+		),
+	).toBe(true);
+
+	// Reversible from inside the app, which is the whole bar for a setting
+	// that reaches out of it.
+	await clickTray(app, 'Launch at login', false);
+	await expect.poll(() => fs.existsSync(app.autostartFile)).toBe(false);
+	expect(await win.evaluate(() => window.wattroom.launchAtLogin())).toEqual({
+		supported: true,
+		enabled: false,
+	});
+
+	await app.close();
+});
+
+test('a login launch opens no window, and closing one later goes back to the tray', async () => {
+	const app = await launch(DEAD_URL, null, ['--hidden']);
+	let gone = false;
+	app.on('close', () => (gone = true));
+	// Nothing on screen: the shell is in the tray waiting to be asked.
+	await new Promise((r) => setTimeout(r, 2000));
+	expect(
+		await app.evaluate(
+			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+		),
+	).toBe(0);
+
+	// The tray is the way in.
+	await clickTray(app, 'Open WattRoom');
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+
+	// Closing it must not quit: the rider asked WattRoom to be running when
+	// they sign in, and quit is a menu item, not a window control. On Linux
+	// and Windows, without the latch, this IS the quit.
+	await app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].close(),
+	);
+	// Waited out rather than polled: a poll passes on the first answer the
+	// still-exiting process manages to give, which is how this test read green
+	// against a shell that was on its way out.
+	await new Promise((r) => setTimeout(r, 2000));
+	expect(gone, 'the shell quit with its window').toBe(false);
+	expect(
+		await app.evaluate(
+			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
+		),
+	).toBe(0);
+	expect(await trayLabels(app)).toContain('Open WattRoom');
 
 	await app.close();
 });

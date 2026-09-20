@@ -24,6 +24,8 @@ const {
 } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+const loginItem = require('./login-item');
+const tray = require('./tray');
 
 // Where the shell points. The default is production; a dev build overrides it
 // to a worktree's own Vite port (`make dev-env` prints it).
@@ -133,6 +135,65 @@ function isOurs(url) {
 	}
 }
 
+/**
+ * Whether the login item started this run (#1313, login-item.js).
+ *
+ * Latched for the life of the process, because it decides two things: that
+ * no window opens at launch, and that closing one afterwards returns the
+ * shell to the tray instead of quitting something the rider asked to be
+ * running.
+ */
+let startedHidden = false;
+
+/**
+ * The rider's window, never the HUD.
+ *
+ * `getAllWindows()` has no order, so `[0]` was the HUD as often as not once
+ * one was open — which would have pointed a wattroom:// hand-off, a second
+ * instance and now the tray at a 320×132 frameless panel.
+ */
+function mainWindow() {
+	return (
+		BrowserWindow.getAllWindows().find(
+			(w) => !w.isDestroyed() && w !== hudWindow,
+		) ?? null
+	);
+}
+
+/** Bring a window to the rider: un-minimised, on screen, in front. */
+function focusWindow(win) {
+	if (!win || win.isDestroyed()) return;
+	if (win.isMinimized()) win.restore();
+	win.show();
+	win.focus();
+}
+
+/**
+ * The tray's "Open WattRoom", and the way back from a login launch — which
+ * starts with no window at all, so there is nothing to focus.
+ */
+function openWindow() {
+	const win = mainWindow();
+	if (win) focusWindow(win);
+	else createWindow();
+}
+
+/**
+ * The tray's "Open <room>". Sent to the page rather than loaded: a
+ * navigation would reload the SPA, which mid-ride means dropping the socket
+ * and the trainer. A shell with no window opens on the app's home instead —
+ * nothing reported a room, because nothing was running to report one.
+ */
+function openPath(to) {
+	const win = mainWindow();
+	if (!win) {
+		createWindow();
+		return;
+	}
+	focusWindow(win);
+	win.webContents.send('wattroom:go', to);
+}
+
 // Where the window was (#1948): size, position and whether it was maximized,
 // kept in userData and restored only when the saved rect still lands on a
 // display that is here — a monitor that went with the rider's desk keeps
@@ -228,7 +289,13 @@ function createWindow() {
 	// jukebox's player would put a HUD over video, which YouTube's terms forbid.
 	win.on('focus', () => hudWindow?.hide());
 	win.on('blur', () => hudWindow?.showInactive());
-	win.on('closed', () => setHud(false));
+	win.on('closed', () => {
+		setHud(false);
+		// Nothing is connected to a room any more, so the tray must stop
+		// offering to open one (it would open a window on the app's home and
+		// look like the item did nothing).
+		tray.setRoom(null);
+	});
 	installHandlers(win);
 	load(win);
 	// Once: the adapter stays up for the life of the process.
@@ -612,7 +679,7 @@ function setHud(on) {
 		return;
 	}
 	if (hudWindow) return;
-	const main = BrowserWindow.getAllWindows()[0];
+	const main = mainWindow();
 	if (!main) return;
 	hudWindow = new BrowserWindow({
 		...HUD_SIZE,
@@ -703,11 +770,7 @@ ipcMain.on('wattroom:notify', (event, n) => {
 	});
 	const win = BrowserWindow.fromWebContents(event.sender);
 	note.on('click', () => {
-		if (win && !win.isDestroyed()) {
-			if (win.isMinimized()) win.restore();
-			win.show();
-			win.focus();
-		}
+		focusWindow(win);
 		if (!event.sender.isDestroyed())
 			event.sender.send('wattroom:notification', payload);
 	});
@@ -723,6 +786,31 @@ ipcMain.on('wattroom:notify', (event, n) => {
 			});
 	});
 	note.show();
+});
+
+// The tray's "Open <room>" (#1313). The app says which room it is connected
+// to, and the shell only ever puts the name in a menu item and sends the
+// path back. Clipped and checked like a notification's, and for the same
+// reason: remote content chooses the words, never where the app goes.
+ipcMain.on('wattroom:room', (event, r) => {
+	// The HUD runs the app's layout too (#1938), and it speaks for no room.
+	const win = BrowserWindow.fromWebContents(event.sender);
+	if (!win || win.isDestroyed() || win === hudWindow) return;
+	const to = r && typeof r === 'object' ? ownPath(r.path) : '';
+	tray.setRoom(to ? { path: to, name: clip(r.name, 60) || to } : null);
+});
+
+// Launch at login (#1313). The shell owns the OS side; Settings and the tray
+// are the two places that ask for it, and both get the same answer — whether
+// this build can do it at all, whether it is on, and one sentence when a
+// change did not take.
+ipcMain.handle('wattroom:login-item', () => loginItem.state());
+ipcMain.handle('wattroom:login-item-set', (_event, on) => {
+	const error = loginItem.setEnabled(on === true);
+	// The tray carries the same switch, and a tick it did not draw itself is
+	// still its tick.
+	tray.refresh();
+	return { ...loginItem.state(), error };
 });
 
 // wattroom:// — the way back into the app from the system browser (#1188).
@@ -765,10 +853,9 @@ function openDeepLink(link) {
 		);
 		return;
 	}
-	const [win] = BrowserWindow.getAllWindows();
-	if (!win || win.isDestroyed()) return;
-	if (win.isMinimized()) win.restore();
-	win.focus();
+	const win = mainWindow();
+	if (!win) return;
+	focusWindow(win);
 	win.webContents.send('wattroom:handoff', token);
 }
 
@@ -798,10 +885,10 @@ if (!app.requestSingleInstanceLock()) {
 			openDeepLink(link);
 			return;
 		}
-		const [win] = BrowserWindow.getAllWindows();
-		if (!win) return;
-		if (win.isMinimized()) win.restore();
-		win.focus();
+		// A login launch has no window to raise, so this makes one — without
+		// it, clicking the installed app while the shell sat in the tray did
+		// nothing at all.
+		openWindow();
 	});
 
 	app.whenReady().then(() => {
@@ -819,7 +906,14 @@ if (!app.requestSingleInstanceLock()) {
 					])
 				: null,
 		);
-		const win = createWindow();
+		// Launched by the login item, the shell opens no window: it comes up
+		// in the tray and waits to be asked (login-item.js). Every other
+		// launch is unchanged.
+		startedHidden = loginItem.startedByLoginItem();
+		if (!startedHidden) createWindow();
+		// After whenReady, and before anything can want it: with no window
+		// this is the only WattRoom on screen.
+		tray.install({ open: openWindow, go: openPath });
 		watchForUpdates();
 		// A cold start from a link is dropped (#1941): no sign-in was started
 		// from this run, and the rider starts the sign-in again.
@@ -831,7 +925,11 @@ if (!app.requestSingleInstanceLock()) {
 	});
 
 	app.on('window-all-closed', () => {
-		if (process.platform !== 'darwin') app.quit();
+		// Closing the window still quits, everywhere but macOS — unless the
+		// login item started this run. A rider who asked WattRoom to be
+		// running when they sign in did not ask it to stop the first time
+		// they close a window, and the tray is where they say when to (#1313).
+		if (process.platform !== 'darwin' && !startedHidden) app.quit();
 	});
 }
 
