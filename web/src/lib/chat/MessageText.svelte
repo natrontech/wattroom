@@ -40,18 +40,24 @@
 			.join(' ');
 </script>
 
-{#if gif}<ChatImage
-		src={gif}
-		alt="GIF"
-		{menu}
-	/>{:else}{#each parts as part, i (i)}{#if part.href}<a
-				href={part.href}
-				target={part.external ? '_blank' : null}
-				rel={part.external ? 'noopener noreferrer' : null}
-				class="text-neon decoration-neon/40 hover:decoration-neon break-all underline"
-				>{part.text}</a
-			>{:else if part.code}<code
-				class="bg-surface-raised text-ink/90 rounded px-1 py-0.5 font-mono text-[0.95em]"
-				>{part.text}</code
-			>{:else}<span class={marks(part)}>{part.text}</span
-			>{/if}{/each}{#if preview}<LinkPreview {parts} {onQueue} />{/if}{/if}
+<!-- Rider text — and a changelog line, which is the same component (#2400) —
+     carries tokens with no break opportunity: a hash, a column name, a URL
+     with no punctuation. `wrap-anywhere` lets one break rather than widen the
+     row, and unlike `break-word` it also shrinks the run's min-content width,
+     so a flex or grid parent can be narrower than the token. It lives here,
+     not on the call sites: MessageThread wraps its own bubble and so was
+     safe, /whats-new did not and pushed `page-body` 22px past a 375px phone
+     on the release that shipped `wattroom_identities_plaintext_refresh_tokens`. -->
+{#if gif}<ChatImage src={gif} alt="GIF" {menu} />{:else}<span
+		class="wrap-anywhere"
+		>{#each parts as part, i (i)}{#if part.href}<a
+					href={part.href}
+					target={part.external ? '_blank' : null}
+					rel={part.external ? 'noopener noreferrer' : null}
+					class="text-neon decoration-neon/40 hover:decoration-neon break-all underline"
+					>{part.text}</a
+				>{:else if part.code}<code
+					class="bg-surface-raised text-ink/90 rounded px-1 py-0.5 font-mono text-[0.95em]"
+					>{part.text}</code
+				>{:else}<span class={marks(part)}>{part.text}</span>{/if}{/each}</span
+	>{#if preview}<LinkPreview {parts} {onQueue} />{/if}{/if}
