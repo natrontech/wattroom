@@ -23,7 +23,7 @@ Before adding any setting/toggle: would 95% of riders pick the same value? Then 
 
 The standard is **375 × 812**, and it applies to every surface outside a room. WATTROOM.md makes a phone a spectator *in a room*; it says nothing about `/history`, `/settings`, `/workouts` or `/u/me`, and a rider checking last night's ride on the sofa is a supported use.
 
-- **The page body scrolls down, never sideways.** Wide content — a chart, a table, a long row — wraps itself in its own `overflow-x: auto`. `e2e/phone-width.spec.ts` asserts this on `[data-testid=page-body]` for every route.
+- **The page body scrolls down, never sideways.** Wide content — a chart, a table, a long row — wraps itself in its own `overflow-x: auto`. `e2e/phone-width.spec.ts` asserts this on `[data-testid=page-body]` for every route. Which routes those are lives in `e2e/routes.ts`, and that is where a new one is recorded — measured, or excluded with its reason; a route in neither fails `e2e/routes.test.ts` (#2386).
 - **Never put a pixel width on an SVG you also measure.** `width={W}` beside `bind:clientWidth` props open the very container it measures, so the chart latches at its widest and never comes back down — a 600px initial `$state` stayed 600 on a 375px phone. Use `width="100%"` with the `viewBox`, and keep any floor below the narrowest real column (#1008).
 - **Do not assert `documentElement.scrollWidth <= clientWidth`.** The shell's `overflow-hidden` columns absorb it: a chart 307px too wide left the document at exactly 375 and the check green. Measure the page body.
 - **Stacking order is a decision.** Source order puts sidebars first; on a phone the primary work comes first. The workout editor must not stack library-first.
