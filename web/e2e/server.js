@@ -18,6 +18,7 @@ const dist = new URL('../build/', import.meta.url).pathname;
 
 ensureDatabase();
 
+/** @type {Record<string, string>} */
 const types = {
 	'.html': 'text/html',
 	'.js': 'text/javascript',
@@ -64,17 +65,22 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 }
 
 const web = createServer((req, res) => {
-	if (req.url.startsWith('/api/')) {
+	// req.url is typed optional (it is unset only on a client-side request);
+	// falling back to '/' keeps the SPA branch rather than throwing.
+	const url = req.url ?? '/';
+	if (url.startsWith('/api/')) {
 		const upstreamReq = httpRequest(
 			{
 				host: '127.0.0.1',
 				port: API_PORT,
-				path: req.url,
+				path: url,
 				method: req.method,
 				headers: req.headers,
 			},
 			(upstream) => {
-				res.writeHead(upstream.statusCode, upstream.headers);
+				// An upstream with no status line is the same failure the error
+				// handler below reports.
+				res.writeHead(upstream.statusCode ?? 502, upstream.headers);
 				upstream.pipe(res);
 			},
 		);
@@ -85,9 +91,10 @@ const web = createServer((req, res) => {
 		return;
 	}
 
-	const requested = normalize(
-		decodeURIComponent(req.url.split('?')[0]),
-	).replace(/^(\.\.[/\\])+/, '');
+	const requested = normalize(decodeURIComponent(url.split('?')[0])).replace(
+		/^(\.\.[/\\])+/,
+		'',
+	);
 	let file = join(dist, requested);
 	if (!existsSync(file) || statSync(file).isDirectory())
 		file = join(dist, 'index.html');

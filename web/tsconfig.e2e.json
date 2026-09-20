@@ -1,0 +1,15 @@
+{
+	// web/e2e/ was type-checked by nothing: the generated .svelte-kit/tsconfig.json
+	// includes src, test and tests, never e2e, so a spec could stop compiling with
+	// every required context green (#2359).
+	//
+	// The harness's .js files are in too. env.js was already being checked as an
+	// import of the specs; server.js is only ever spawned, so nothing reached it.
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		// These run in node under Playwright, not in the browser, so they need
+		// `process` and `node:*`. The generated config never names them.
+		"types": ["node"]
+	},
+	"include": ["e2e/**/*.ts", "e2e/**/*.js"]
+}

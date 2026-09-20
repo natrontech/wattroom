@@ -34,7 +34,10 @@ const script = fileURLToPath(
 // a target named "".
 const external = process.env.PLAYWRIGHT_BASE_URL || undefined;
 
+/** @type {Record<string, string> | undefined} */
 let cache;
+
+/** @returns {Record<string, string>} */
 function devEnv() {
 	if (cache) return cache;
 	cache = {};
@@ -51,6 +54,7 @@ function devEnv() {
 // random free port quite happily, and then Playwright's readiness probe waits
 // two minutes on the port it was told about and reports a server that never
 // started.
+/** @param {string} name */
 function port(name) {
 	const raw = devEnv()[name];
 	const value = Number(raw);
