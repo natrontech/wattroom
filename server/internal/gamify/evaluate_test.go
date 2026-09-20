@@ -44,7 +44,7 @@ func TestRideAchievements(t *testing.T) {
 func TestClockCounts(t *testing.T) {
 	zurich, err := time.LoadLocation("Europe/Zurich")
 	if err != nil {
-		t.Skip("no tzdata")
+		t.Fatal(err)
 	}
 	at := func(h, m int) pgtype.Timestamptz {
 		return pgtype.Timestamptz{Time: time.Date(2026, 9, 1, h, m, 0, 0, zurich), Valid: true}
