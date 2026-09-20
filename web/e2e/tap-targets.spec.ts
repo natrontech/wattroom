@@ -1,4 +1,3 @@
-import type { Locator } from '@playwright/test';
 import { expect, test } from './room';
 
 /**
