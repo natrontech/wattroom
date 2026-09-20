@@ -11,44 +11,63 @@ import (
 // A rider who drops at t=2 and returns at t=36 with a buffer of the whole
 // silence kept pedalling (docs/SPEC.md): the backfill vouches for them and
 // the below-band clock the lapsed grace started is forgiven (#1576).
+//
+// docs/SPEC.md states the rule for elimination modes, not for one of them,
+// and both implement it — so both are ridden here. Backyard charges the
+// silence as the elimination itself, Floor is Lava as a life (#2371).
 func TestBackfillVouchesForTheGrace(t *testing.T) {
-	for _, vouch := range []bool{false, true} {
-		t.Run(map[bool]string{false: "no backfill", true: "backfill of the silence"}[vouch], func(t *testing.T) {
-			game := newGameMode("backyard-ramp", gat(0))
-			roster := backyardRoster()
-			a, b := 160, 240 // 80 % of each FTP: on the line
-			game.advance(gat(1), map[string]int{"a": a, "b": b}, roster)
-			game.advance(gat(2), map[string]int{"a": a, "b": b}, roster)
-			// a's Wi-Fi drops at t=2; b rides on. The grace lapses at t=32
-			// and the below-band clock starts counting a's silence.
-			for s := 3; s <= 36; s++ {
-				game.advance(gat(s), map[string]int{"b": b}, roster)
-			}
-			// t=36: the socket is back and replays 34 s of pedalling. The
-			// trainer takes a few more seconds to resume its stream.
-			if vouch {
-				p, ok := game.(pedalled)
-				if !ok {
-					t.Fatal("the sampled backyard cannot be vouched to")
+	for _, mode := range []string{"backyard-ramp", "floor-is-lava"} {
+		for _, vouch := range []bool{false, true} {
+			name := map[bool]string{false: "no backfill", true: "backfill of the silence"}[vouch]
+			t.Run(mode+"/"+name, func(t *testing.T) {
+				game := newGameMode(mode, gat(0))
+				roster := backyardRoster()
+				a, b := 160, 240 // 80 % of each FTP: on the line
+				if mode == "floor-is-lava" {
+					low := zoneBounds[game.state(gat(0)).CalledZone][0]
+					a, b = int(low*200)+5, int(low*300)+5 // just inside the called floor
 				}
-				p.keptPedalling("a", 34, gat(36))
-			}
-			for s := 37; s <= 44; s++ {
-				game.advance(gat(s), map[string]int{"b": b}, roster)
-			}
-			// Without the vouch, ten silent seconds past the lapsed grace
-			// eliminated a at t=42; with it, the grace holds until t=66.
-			out := game.state(gat(44)).Riders["a"].Eliminated
-			if out == vouch {
-				t.Fatalf("eliminated=%v with vouch=%v", out, vouch)
-			}
-			for s := 45; s <= 60; s++ {
-				game.advance(gat(s), map[string]int{"a": a, "b": b}, roster)
-			}
-			if vouch && game.state(gat(60)).Riders["a"].Eliminated {
-				t.Fatal("eliminated after riding back on the line")
-			}
-		})
+				// What the silence costs, in the currency the mode charges.
+				penalized := func(sec int) bool {
+					rider := game.state(gat(sec)).Riders["a"]
+					if mode == "floor-is-lava" {
+						return rider.Lives < lavaLives
+					}
+					return rider.Eliminated
+				}
+				game.advance(gat(1), map[string]int{"a": a, "b": b}, roster)
+				game.advance(gat(2), map[string]int{"a": a, "b": b}, roster)
+				// a's Wi-Fi drops at t=2; b rides on. The grace lapses at t=32
+				// and the below-band clock starts counting a's silence.
+				for s := 3; s <= 36; s++ {
+					game.advance(gat(s), map[string]int{"b": b}, roster)
+				}
+				// t=36: the socket is back and replays 34 s of pedalling. The
+				// trainer takes a few more seconds to resume its stream.
+				if vouch {
+					p, ok := game.(pedalled)
+					if !ok {
+						t.Fatalf("the sampled %s cannot be vouched to", mode)
+					}
+					p.keptPedalling("a", 34, gat(36))
+				}
+				for s := 37; s <= 44; s++ {
+					game.advance(gat(s), map[string]int{"b": b}, roster)
+				}
+				// Without the vouch the silence past the lapsed grace has been
+				// charged by t=44 — backyard eliminated a at t=42, lava took a
+				// life at t=38. With it, the grace holds until t=66.
+				if out := penalized(44); out == vouch {
+					t.Fatalf("penalized=%v with vouch=%v", out, vouch)
+				}
+				for s := 45; s <= 60; s++ {
+					game.advance(gat(s), map[string]int{"a": a, "b": b}, roster)
+				}
+				if vouch && penalized(60) {
+					t.Fatal("penalized after riding back on the line")
+				}
+			})
+		}
 	}
 	t.Run("a buffer shorter than the silence proves nothing", func(t *testing.T) {
 		g := newGraceTracker()
@@ -92,6 +111,17 @@ func TestLeavingRiderIsWithdrawn(t *testing.T) {
 		r.buildPodium()
 		if r.podium[0].RiderID != "b" || r.podium[1].RiderID != "a" {
 			t.Fatalf("podium %+v", r.podium)
+		}
+	})
+	t.Run("the points-race podium ranks who is still here first", func(t *testing.T) {
+		// The same rule, written a second time in mode_points.go (#2371).
+		p := newPointsRace(gat(0), rand.New(rand.NewSource(1))) //nolint:gosec // a test seed
+		p.joined = map[string]bool{"a": true, "b": true}
+		p.points = map[string]float64{"a": 9, "b": 8}
+		p.withdraw("a")
+		p.buildPodium(backyardRoster())
+		if len(p.podium) != 2 || p.podium[0].RiderID != "b" || p.podium[1].RiderID != "a" {
+			t.Fatalf("podium %+v", p.podium)
 		}
 	})
 	t.Run("the room's sprint scores the present", func(t *testing.T) {
