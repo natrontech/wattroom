@@ -2,8 +2,6 @@ package store_test
 
 import (
 	"context"
-	"fmt"
-	"sync/atomic"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -22,8 +20,6 @@ import (
 //
 // Every case below is a SILENT failure if it breaks: the view returns a row
 // too many (a privacy leak) or one too few (a lockout). Neither errors.
-
-var roomSeq atomic.Int64
 
 type crewFixture struct {
 	st                           *store.Store
@@ -55,15 +51,14 @@ func (f *crewFixture) user(t *testing.T, name string) pgtype.UUID {
 	return u.ID
 }
 
-// rooms.code is unique across the WHOLE test database, which every package
-// shares. The "VR" prefix keeps these clear of the other harnesses' codes —
-// playlists derives its own from the owner's initial (alice -> "A00001"), and
-// an earlier version of this helper generated exactly that and collided.
+// rooms.slug is unique across the WHOLE test database, which every package
+// in one `go test ./...` shares and which the next run reuses, so testx.Slug
+// mints the suffix: a counter that restarts at 1 hands the next run the same
+// "open-1" the last one left behind.
 func (f *crewFixture) room(t *testing.T, slug string, owner pgtype.UUID, crew pgtype.UUID, crewVisible bool) pgtype.UUID {
 	t.Helper()
-	n := roomSeq.Add(1) % 10000
 	r, err := f.st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug:        fmt.Sprintf("%s-%d", slug, n),
+		Slug:        testx.Slug(slug),
 		Name:        slug,
 		OwnerID:     owner,
 		CrewID:      crew,

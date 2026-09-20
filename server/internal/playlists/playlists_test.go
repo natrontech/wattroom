@@ -40,12 +40,11 @@ func (f *fakeLive) QueuePlaylist(slug, riderID, addedBy string, tracks []protoco
 }
 
 type harness struct {
-	mux     *http.ServeMux
-	store   *store.Store
-	svc     *Service
-	live    *fakeLive
-	users   map[string]db.User
-	roomSeq int
+	mux   *http.ServeMux
+	store *store.Store
+	svc   *Service
+	live  *fakeLive
+	users map[string]db.User
 }
 
 func setup(t *testing.T) *harness {
@@ -95,8 +94,7 @@ func (h *harness) call(t *testing.T, user, method, path, body string) (int, map[
 func (h *harness) room(t *testing.T, owner string) (slug string) {
 	t.Helper()
 	ownerUser := h.users[owner]
-	h.roomSeq++
-	slug = fmt.Sprintf("test-room-%s-%s-%d", strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-")), owner, h.roomSeq)
+	slug = testx.Slug("test-room-" + owner)
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
 		Slug: slug, Name: "Test Room", OwnerID: ownerUser.ID,
 	})

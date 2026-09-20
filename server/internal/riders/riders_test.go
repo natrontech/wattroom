@@ -79,11 +79,14 @@ func setup(t *testing.T) *harness {
 
 func (h *harness) id(name string) string { return store.UUIDString(h.users.ByToken[name].ID) }
 
-// room puts the named users into one room owned by the first.
+// room puts the named users into one room owned by the first. slug is the
+// label a reader recognises; rooms.slug is unique across the whole shared
+// test database, so the row's own slug is testx's and a caller that needs it
+// reads it off the returned room.
 func (h *harness) room(t *testing.T, slug string, names ...string) db.Room {
 	t.Helper()
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: slug, Name: slug, OwnerID: h.users.ByToken[names[0]].ID,
+		Slug: testx.Slug(slug), Name: slug, OwnerID: h.users.ByToken[names[0]].ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
@@ -244,7 +247,7 @@ func TestRoomMateSeesWhatTheRoomSees(t *testing.T) {
 	if len(rooms) != 1 {
 		t.Fatalf("rooms in common: %v", rooms)
 	}
-	if room, _ := rooms[0].(map[string]any); room["slug"] != "pain-cave" {
+	if room, _ := rooms[0].(map[string]any); room["slug"] != cave.Slug {
 		t.Fatalf("rooms in common: %v", rooms)
 	}
 	if body["canAdd"] != true || body["sharedRides"] != nil || body["month"] != nil {
@@ -252,16 +255,16 @@ func TestRoomMateSeesWhatTheRoomSees(t *testing.T) {
 	}
 
 	// Presence: in the shared room, riding → named and moving.
-	h.presence.where[h.id("bob")] = "pain-cave"
-	h.presence.riding["pain-cave"] = []string{h.id("bob")}
+	h.presence.where[h.id("bob")] = cave.Slug
+	h.presence.riding[cave.Slug] = []string{h.id("bob")}
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("bob"))
 	p, _ := body["presence"].(map[string]any)
 	room, _ := p["room"].(map[string]any)
-	if room["slug"] != "pain-cave" || p["riding"] != true || p["online"] != true {
+	if room["slug"] != cave.Slug || p["riding"] != true || p["online"] != true {
 		t.Fatalf("presence in a shared room: %v", p)
 	}
 	// In a room alice is not in: a room-mate learns nothing at all.
-	h.presence.where[h.id("bob")] = "secret-lair"
+	h.presence.where[h.id("bob")] = lair.Slug
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("bob"))
 	p, _ = body["presence"].(map[string]any)
 	if p["online"] != false || p["inRoom"] != false || p["room"] != nil {
@@ -298,7 +301,7 @@ func TestFriendSeesSharedRidesAndTheMonth(t *testing.T) {
 	}
 
 	// A friend in a room you are not in: online and in a room, unnamed.
-	h.presence.where[h.id("dan")] = "secret-lair"
+	h.presence.where[h.id("dan")] = lair.Slug
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("dan"))
 	p, _ := body["presence"].(map[string]any)
 	if p["online"] != true || p["inRoom"] != true || p["room"] != nil {

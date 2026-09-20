@@ -13,6 +13,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // A backfill after the close grows the saved ride (#1536): more seconds,
@@ -27,7 +28,7 @@ func TestAmendRideGrowsASavedRideOnlyForward(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID) })
-	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: "amend-test-room", Name: "Amend", OwnerID: user.ID})
+	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: testx.Slug("amend-test-room"), Name: "Amend", OwnerID: user.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +96,7 @@ func TestAnAmendedRideDoesNotPayItsOwnStreak(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID) })
-	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: "streak-test-room", Name: "Streak", OwnerID: user.ID})
+	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: testx.Slug("streak-test-room"), Name: "Streak", OwnerID: user.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +170,7 @@ func TestAnAmendedRideIsJudgedOnTheWholeRide(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID) })
-	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: "rejudge-test-room", Name: "Rejudge", OwnerID: user.ID})
+	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: testx.Slug("rejudge-test-room"), Name: "Rejudge", OwnerID: user.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +238,7 @@ func TestAnAmendedRideMarksADeliveredExportStale(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID) })
-	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: "stale-test-room", Name: "Stale", OwnerID: user.ID})
+	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{Slug: testx.Slug("stale-test-room"), Name: "Stale", OwnerID: user.ID})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -83,7 +83,7 @@ func readAt(t *testing.T, mux *http.ServeMux, user, slug string) float64 {
 }
 
 func TestPostChatFromOutside(t *testing.T) {
-	svc, mux, users, _ := setup(t)
+	svc, mux, users, room := setup(t)
 	live := &fakeLive{}
 	svc.SetLive(live)
 	alice := users.ByToken["alice"]
@@ -97,13 +97,13 @@ func TestPostChatFromOutside(t *testing.T) {
 		body string
 		want int
 	}{
-		{"signed out", "", "chat-cave", `{"text":"hi"}`, http.StatusUnauthorized},
-		{"non-member", "cara", "chat-cave", `{"text":"hi"}`, http.StatusForbidden},
+		{"signed out", "", room.Slug, `{"text":"hi"}`, http.StatusUnauthorized},
+		{"non-member", "cara", room.Slug, `{"text":"hi"}`, http.StatusForbidden},
 		{"unknown room", "alice", "no-such-room", `{"text":"hi"}`, http.StatusNotFound},
-		{"nothing to say", "alice", "chat-cave", `{"text":"   "}`, http.StatusBadRequest},
-		{"too long", "alice", "chat-cave", `{"text":"` + strings.Repeat("ü", 501) + `"}`, http.StatusBadRequest},
-		{"junk image", "alice", "chat-cave", `{"text":"look","imageId":"nope"}`, http.StatusBadRequest},
-		{"unknown field", "alice", "chat-cave", `{"text":"hi","from":"spoof"}`, http.StatusBadRequest},
+		{"nothing to say", "alice", room.Slug, `{"text":"   "}`, http.StatusBadRequest},
+		{"too long", "alice", room.Slug, `{"text":"` + strings.Repeat("ü", 501) + `"}`, http.StatusBadRequest},
+		{"junk image", "alice", room.Slug, `{"text":"look","imageId":"nope"}`, http.StatusBadRequest},
+		{"unknown field", "alice", room.Slug, `{"text":"hi","from":"spoof"}`, http.StatusBadRequest},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -118,7 +118,7 @@ func TestPostChatFromOutside(t *testing.T) {
 
 	// Happy: the line is persisted, answered with its id, and handed to the
 	// room with that same id on it — reactions work at once.
-	code, body := post(t, mux, "alice", "/api/rooms/chat-cave/chat", `{"text":"  queue this one  "}`)
+	code, body := post(t, mux, "alice", "/api/rooms/"+room.Slug+"/chat", `{"text":"  queue this one  "}`)
 	if code != http.StatusOK {
 		t.Fatalf("post: %d %v", code, body)
 	}
@@ -129,25 +129,25 @@ func TestPostChatFromOutside(t *testing.T) {
 	if len(live.lines) != 1 || live.lines[0].ID != id || live.lines[0].Text != "queue this one" || live.lines[0].FromID != store.UUIDString(alice.ID) {
 		t.Fatalf("room got: %+v", live.lines)
 	}
-	_, messages := backlog(t, mux, "bob", "chat-cave")
+	_, messages := backlog(t, mux, "bob", room.Slug)
 	if len(messages) != 1 || messages[0]["id"] != id {
 		t.Fatalf("backlog: %v", messages)
 	}
 	// Saying something is reading up to it: alice's stamp is set, bob's is not.
-	if readAt(t, mux, "alice", "chat-cave") == 0 {
+	if readAt(t, mux, "alice", room.Slug) == 0 {
 		t.Fatal("poster's read stamp not set")
 	}
-	if readAt(t, mux, "bob", "chat-cave") != 0 {
+	if readAt(t, mux, "bob", room.Slug) != 0 {
 		t.Fatal("a reader who never opened the room has a read stamp")
 	}
 }
 
 func TestReactFromOutside(t *testing.T) {
-	svc, mux, users, _ := setup(t)
+	svc, mux, users, room := setup(t)
 	live := &fakeLive{}
 	svc.SetLive(live)
 	bob := users.ByToken["bob"]
-	id, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(bob.ID), "in", "")
+	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(bob.ID), "in", "")
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -165,7 +165,7 @@ func TestReactFromOutside(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if code, body := post(t, mux, c.user, "/api/rooms/chat-cave/chat/reactions", c.body); code != c.want {
+			if code, body := post(t, mux, c.user, "/api/rooms/"+room.Slug+"/chat/reactions", c.body); code != c.want {
 				t.Fatalf("%d %v, want %d", code, body, c.want)
 			}
 		})
@@ -176,11 +176,11 @@ func TestReactFromOutside(t *testing.T) {
 
 	// On, then off: the total and the direction come back, and the room
 	// hears both.
-	code, body := post(t, mux, "alice", "/api/rooms/chat-cave/chat/reactions", `{"messageId":"`+id+`","emoji":"flame"}`)
+	code, body := post(t, mux, "alice", "/api/rooms/"+room.Slug+"/chat/reactions", `{"messageId":"`+id+`","emoji":"flame"}`)
 	if code != http.StatusOK || body["count"] != float64(1) || body["added"] != true {
 		t.Fatalf("toggle on: %d %v", code, body)
 	}
-	code, body = post(t, mux, "alice", "/api/rooms/chat-cave/chat/reactions", `{"messageId":"`+id+`","emoji":"flame"}`)
+	code, body = post(t, mux, "alice", "/api/rooms/"+room.Slug+"/chat/reactions", `{"messageId":"`+id+`","emoji":"flame"}`)
 	if code != http.StatusOK || body["count"] != float64(0) || body["added"] != false {
 		t.Fatalf("toggle off: %d %v", code, body)
 	}
@@ -193,7 +193,7 @@ func TestMarkReadFromOutside(t *testing.T) {
 	svc, mux, users, room := setup(t)
 	alice := users.ByToken["alice"]
 	bob := users.ByToken["bob"]
-	if _, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "warm-up at 7?", ""); !ok {
+	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "warm-up at 7?", ""); !ok {
 		t.Fatal("save failed")
 	}
 
@@ -203,8 +203,8 @@ func TestMarkReadFromOutside(t *testing.T) {
 		slug string
 		want int
 	}{
-		{"signed out", "", "chat-cave", http.StatusUnauthorized},
-		{"non-member", "cara", "chat-cave", http.StatusForbidden},
+		{"signed out", "", room.Slug, http.StatusUnauthorized},
+		{"non-member", "cara", room.Slug, http.StatusForbidden},
 		{"unknown room", "bob", "no-such-room", http.StatusNotFound},
 	} {
 		t.Run(c.name, func(t *testing.T) {
@@ -222,13 +222,13 @@ func TestMarkReadFromOutside(t *testing.T) {
 		}
 		return n
 	}
-	if unread() != 1 || readAt(t, mux, "bob", "chat-cave") != 0 {
-		t.Fatalf("before: unread %d readAt %v", unread(), readAt(t, mux, "bob", "chat-cave"))
+	if unread() != 1 || readAt(t, mux, "bob", room.Slug) != 0 {
+		t.Fatalf("before: unread %d readAt %v", unread(), readAt(t, mux, "bob", room.Slug))
 	}
-	if code, body := post(t, mux, "bob", "/api/rooms/chat-cave/read", ""); code != http.StatusNoContent {
+	if code, body := post(t, mux, "bob", "/api/rooms/"+room.Slug+"/read", ""); code != http.StatusNoContent {
 		t.Fatalf("read: %d %v", code, body)
 	}
-	if unread() != 0 || readAt(t, mux, "bob", "chat-cave") == 0 {
-		t.Fatalf("after: unread %d readAt %v", unread(), readAt(t, mux, "bob", "chat-cave"))
+	if unread() != 0 || readAt(t, mux, "bob", room.Slug) == 0 {
+		t.Fatalf("after: unread %d readAt %v", unread(), readAt(t, mux, "bob", room.Slug))
 	}
 }
