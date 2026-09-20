@@ -8,8 +8,7 @@
 	// Nothing here composes one. The coach marks a line in chat — the menu
 	// item lives on the message, where the sentence already is.
 	import { formatWhen } from '$lib/format';
-	import { toasts } from '$lib/toast.svelte';
-	import type { Announcement } from './announce.svelte';
+	import type { Announcement } from '$lib/room/room-data';
 	import Megaphone from '@lucide/svelte/icons/megaphone';
 	import X from '@lucide/svelte/icons/x';
 
@@ -17,26 +16,18 @@
 		announcement,
 		canClear = false,
 		onclear,
-		onrestore,
 	}: {
 		announcement: Announcement | null;
 		/** The coach's and the owner's, per docs/SPEC.md's roles matrix. */
 		canClear?: boolean;
+		/**
+		 * Take it down. Undo, not a confirm (errors.md): the message is still
+		 * in chat and can be marked again, and #1493's ask is for what cannot
+		 * be undone. The undo toast is the caller's, because re-marking is a
+		 * request rather than a local reversal.
+		 */
 		onclear?: () => void;
-		onrestore?: (put: Announcement) => void;
 	} = $props();
-
-	function clear() {
-		// Undo, not a confirm (errors.md): taking it down is re-doable — the
-		// message is still in chat and can be marked again — and #1493's ask
-		// is for what cannot be undone. Nothing is destroyed here; the notice
-		// simply stops showing.
-		const was = announcement;
-		onclear?.();
-		toasts.push('Announcement taken down.', {
-			undo: was ? () => onrestore?.(was) : undefined,
-		});
-	}
 </script>
 
 {#if announcement}
@@ -54,7 +45,7 @@
 		</div>
 		{#if canClear}
 			<button
-				onclick={clear}
+				onclick={() => onclear?.()}
 				class="text-muted hover:text-ink icon-btn shrink-0"
 				aria-label="Take the announcement down"
 				title="Take the announcement down"><X size={16} /></button

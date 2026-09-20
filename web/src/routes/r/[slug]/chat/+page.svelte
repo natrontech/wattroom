@@ -7,11 +7,6 @@
 	// One log, not a copy: RoomThread reads the room connection while you are
 	// standing in the room and polls the backlog only from outside (#468).
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
-	import {
-		announce,
-		announcement,
-		clearAnnouncement,
-	} from '$lib/announce/announce.svelte';
 	import RoomThread from '$lib/messages/RoomThread.svelte';
 	import { useRoom } from '$lib/room/context';
 
@@ -26,10 +21,9 @@
 	     thing the mark exists to spare everyone. -->
 	<div class="px-5 pt-4">
 		<AnnouncementStrip
-			announcement={announcement.current}
+			announcement={room.announcement}
 			canClear={coaches}
-			onclear={clearAnnouncement}
-			onrestore={(put) => announce(put.text, put.from, put.at)}
+			onclear={() => room.clearAnnouncement()}
 		/>
 	</div>
 	<!-- The room's own reminders ride this thread (#359): the hub cannot

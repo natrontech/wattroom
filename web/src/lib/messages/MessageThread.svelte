@@ -237,13 +237,12 @@
 		// The coach's mark (#2408). Here rather than in a composer of its own:
 		// the sentence is already written, and a second box to type it into
 		// would duplicate the log, the read tracking and the retention.
-		if (source.announce && message.text) {
-			const { text, from, at } = message;
+		if (source.announce && message.id && message.text) {
+			const id = message.id;
 			items.push({
 				label: 'Announce this',
 				icon: Megaphone,
-				onSelect: () =>
-					source.announce?.(text, from, new Date(at).toISOString()),
+				onSelect: () => source.announce?.(id),
 			});
 		}
 		const link = onQueue && message.text ? firstLink(message.text) : undefined;

@@ -159,6 +159,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/rooms/{slug}/members/{userID}", s.handleRemoveMember)
 	s.registerCrews(mux)
 	s.registerPins(mux)
+	s.registerAnnouncement(mux)
 	s.registerGrants(mux)
 	mux.HandleFunc("POST /api/rooms/{slug}/transfer", s.handleTransferRoom)
 }

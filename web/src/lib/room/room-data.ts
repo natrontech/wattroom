@@ -43,6 +43,17 @@ export interface Together {
  * amendment said one release, the insert that makes a room did not name the
  * column, and #1301 carries the corrected sequence.
  */
+/** One line a coach marked, as every surface that draws it reads it. */
+export interface Announcement {
+	/** The marked message, so the strip can point back at the line. */
+	messageId: string;
+	text: string;
+	/** The message's author, not whoever marked it. */
+	from: string;
+	/** ISO — the message's own timestamp, not the marking's. */
+	at: string;
+}
+
 export interface RoomCrew {
 	id: string;
 	name: string;
@@ -157,6 +168,12 @@ export interface Room {
 		createdBy: string;
 	}[];
 	icsToken?: string;
+	/**
+	 * The coach's standing notice (ADR-0057, #2408): the chat line a coach
+	 * marked, drawn at the top of the Lounge and of Chat until it is taken
+	 * down or another is marked. Absent when nothing is up.
+	 */
+	announcement?: Announcement;
 }
 
 export type RoomLoadData = { room: Room | null; roomError: string | null };

@@ -247,6 +247,7 @@ type Room struct {
 	BoardEnabled       bool
 	CrewID             pgtype.UUID
 	CrewVisible        bool
+	AnnouncementID     pgtype.UUID
 }
 
 type RoomGrant struct {

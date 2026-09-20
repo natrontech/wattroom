@@ -1,7 +1,7 @@
 import { getContext, setContext } from 'svelte';
 import type { Segment } from '$lib/workout/types';
 import type { Block, RoomRider } from '$lib/room/view';
-import type { BoardRow, Together } from '$lib/room/room-data';
+import type { Announcement, BoardRow, Together } from '$lib/room/room-data';
 import type {
 	GameState,
 	RoomEvent,
@@ -118,6 +118,14 @@ export interface RoomContext {
 	readonly recapsState: 'loading' | 'ready' | 'failed';
 	retryRecaps(): void;
 	readonly icsToken: string;
+	/**
+	 * The coach's standing notice (ADR-0057), or null. It rides the room read
+	 * rather than a fetch of its own, so it arrives with the room and follows
+	 * a lobby ping like the plan and the roster do.
+	 */
+	readonly announcement: Announcement | null;
+	/** Take it down. The coach's and the owner's; nothing else offers it. */
+	clearAnnouncement(): void;
 	readonly streakWeeks: number;
 	readonly monthKj: number;
 	readonly together: Together | null;

@@ -11,11 +11,6 @@
 	import { pickStage, pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
-	import {
-		announce,
-		announcement,
-		clearAnnouncement,
-	} from '$lib/announce/announce.svelte';
 	import LoungeDashboard from '$lib/room/LoungeDashboard.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
@@ -240,10 +235,9 @@
 	     session ends. -->
 	{#if room.phase === 'lounge'}
 		<AnnouncementStrip
-			announcement={announcement.current}
+			announcement={room.announcement}
 			canClear={coaches}
-			onclear={clearAnnouncement}
-			onrestore={(put) => announce(put.text, put.from, put.at)}
+			onclear={() => room.clearAnnouncement()}
 		/>
 	{/if}
 	<!-- No page header: the sidebar says which room this is and the people

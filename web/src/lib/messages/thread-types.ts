@@ -47,5 +47,5 @@ export interface ThreadSource {
 	 * a coach types the sentence into the box the room already has, and marks
 	 * it from here.
 	 */
-	announce?: (text: string, from: string, at: string) => void;
+	announce?: (messageId: string) => void;
 }
