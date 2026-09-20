@@ -51,6 +51,19 @@ export function worstLc(theme: Theme, token: TokenName): number {
 }
 
 /**
+ * Loudest contrast this token scores against the theme's own two surfaces —
+ * `worst`'s mirror, for the checks that are a ceiling rather than a floor. A
+ * floor asks about the harder of the two backgrounds; a ceiling has to ask
+ * about the easier one, because a token that shouts on either surface shouts.
+ */
+export function loudest(theme: Theme, token: TokenName): number {
+	return Math.max(
+		contrast(theme.tokens[token], theme.tokens.surface),
+		contrast(theme.tokens[token], theme.tokens['surface-raised']),
+	);
+}
+
+/**
  * APCA's absolute floor for a non-text element to be discernible at all.
  * Reported as a warning and nothing more (#621): `zoneFloor` scales to the
  * family's own reference, so a zone can clear its floor while sitting under
@@ -84,6 +97,25 @@ export function zoneFloor(token: TokenName, ref: Theme): number {
 }
 
 /**
+ * `muted` has a ceiling as well as the 4.5:1 floor every text token has, and
+ * it is held to the reference identity like the zone floors are rather than to
+ * a number someone picked. A token named *muted* that outshouts the reference's
+ * own quiet text is not quiet, whatever it passes: Monokai shipped one at
+ * 16.5:1 against 5.4–6.7 everywhere else, because pinning the whole colour to
+ * say "yellow-green" took the family's lightness anchor with it (issue 2397).
+ *
+ * The margin is wide on purpose. Every theme that keeps the family's anchor
+ * lands within 1% of its reference — the spread this has to allow is not
+ * between palettes but between *surfaces*, since a theme whose surfaces sit
+ * lighter or darker than the family's own moves the same anchor by a few
+ * tenths. A quarter above the reference covers that and still leaves a
+ * near-ink muted nowhere to hide.
+ */
+export function mutedCeiling(ref: Theme): number {
+	return loudest(ref, 'muted') * 1.25;
+}
+
+/**
  * Adjacent-zone separation is held to the reference pair at the same
  * position, not to a number someone picked. Outrun's own Z6→Z7 gap is the
  * tightest in the ramp; a floor invented above it would fail the design
@@ -101,6 +133,12 @@ export interface GateCheck {
 	id: string;
 	label: string;
 	value: number;
+	/**
+	 * The limit `value` is held to — a floor for every check but
+	 * `muted-ceiling`, where the value has to stay *under* it. `passes` carries
+	 * the comparison either way, so nothing has to infer it from the two
+	 * numbers.
+	 */
 	floor: number;
 	passes: boolean;
 	unit: string;
@@ -138,19 +176,34 @@ function check(
 
 /**
  * A named, on-record departure from the gate — a decision, not code nobody
- * looked at. Add an entry here only after checking the failure is the kind
- * that genuinely can't be resolved by moving a colour (#620): the surface
- * pair itself is the point of the theme, and the shared white-family zone
- * ramp can't separate against it without erasing that. #621 asked whether the
- * gate should change rather than the palette and answered no: APCA ranks the
- * same zones 15–25% below the reference, so the formula was not what rejected
- * them. The list stays the escape hatch; there is no better one.
+ * looked at, and the only place a departure survives a measurement pass: a
+ * comment beside the hexes does not, which is how Monokai's inverted surfaces
+ * came back as a defect report twice (#2397). Add an entry here only after
+ * checking the failure is the kind that genuinely can't be resolved by moving
+ * a colour (#620): the surface pair itself is the point of the theme, and the
+ * shared white-family zone ramp can't separate against it without erasing
+ * that. #621 asked whether the gate should change rather than the palette and
+ * answered no: APCA ranks the same zones 15–25% below the reference, so the
+ * formula was not what rejected them. The list stays the escape hatch; there
+ * is no better one.
  */
 export const EXCEPTIONS: {
 	themeId: string;
 	checkId: string;
 	reason: string;
 }[] = [
+	{
+		themeId: 'monokai',
+		checkId: 'surface-layering',
+		reason:
+			'raised is the darker of the two by choice — Monokai recesses its panels rather than lifting them, which is the editor it is named after. An agent swapped the pair in issue 612 for exactly the reason this check exists, and the maintainer reverted it: the inversion is the theme. Recorded here because a comment beside the hexes was not somewhere a measurement pass looks, and it re-flagged this twice (issue 2397).',
+	},
+	{
+		themeId: 'monokai-day',
+		checkId: 'surface-layering',
+		reason:
+			'the same inversion as the cave half above — the identity recesses its panels in both families, so its desk half is not a second, separate slip.',
+	},
 	{
 		themeId: 'monokai-day',
 		checkId: 'z3',
@@ -311,6 +364,43 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 				floor,
 				passes,
 				' L',
+			),
+		);
+	}
+	{
+		// Layering has a direction, and both families lift the same way: a
+		// raised surface is nearer white than the page behind it. Direction
+		// only — how *far* apart the two sit is a system-wide question (every
+		// theme lands at 1.03–1.60 in lightness ratio, issue 613) and not one a
+		// per-theme gate can answer. What this catches is a pair the wrong way
+		// round, which is not a weaker seam but the opposite cue.
+		const surface = hexToOklch(theme.tokens.surface).l;
+		const raised = hexToOklch(theme.tokens['surface-raised']).l;
+		const value = raised - surface;
+		checks.push(
+			check(
+				'surface-layering',
+				'raised sits above surface',
+				value,
+				0,
+				value > 0,
+				' L',
+			),
+		);
+	}
+	{
+		// No Lc beside this one: `check`'s APCA report reads as "is this
+		// discernible at all", which is a question about a floor. A ceiling
+		// that is cleared by being quieter has no use for it.
+		const value = loudest(theme, 'muted');
+		const ceiling = mutedCeiling(ref);
+		checks.push(
+			check(
+				'muted-ceiling',
+				'muted stays muted',
+				value,
+				ceiling,
+				value <= ceiling,
 			),
 		);
 	}

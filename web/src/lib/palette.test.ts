@@ -223,10 +223,15 @@ describe('the APCA report', () => {
 	});
 
 	it('leaves the checks that are not contrast without one', () => {
-		// Chroma, hue and perceptual distance are not a foreground on a
-		// background, so an Lc there would be a number with no meaning.
+		// Chroma, hue, lightness and perceptual distance are not a foreground on
+		// a background, so an Lc there would be a number with no meaning — and
+		// nor is a ceiling, whose whole job is to be cleared from below.
 		for (const c of gateChecks(themeById('outrun')!, THEMES)) {
-			if (/-chroma$|-delta$|hue|lightness|deuteranopia|protanopia/.test(c.id))
+			if (
+				/-chroma$|-delta$|hue|lightness|layering|ceiling|deuteranopia|protanopia/.test(
+					c.id,
+				)
+			)
 				expect(c.lc, `${c.id}`).toBeUndefined();
 		}
 	});
@@ -244,10 +249,12 @@ describe('the APCA report', () => {
 	 * The guard that matters. Turning the reported warning into a failure is a
 	 * one-word edit in `check()`, and the thing it would break is not this
 	 * file's own assertions but the catalogue: Outrun's own dark Z1 would stop
-	 * shipping. So the set of failures is pinned to the six on-record
-	 * exceptions and nothing else.
+	 * shipping. So the set of failures is pinned to the on-record exceptions
+	 * and nothing else — which is also what holds every check in gateChecks()
+	 * over every theme, including the ones this file has no assertion of its
+	 * own for.
 	 */
-	it('leaves the catalogue failing exactly the six recorded exceptions', () => {
+	it('leaves the catalogue failing exactly the recorded exceptions', () => {
 		const failures = THEMES.flatMap((theme) =>
 			gateChecks(theme, THEMES)
 				.filter((c) => !c.passes)
