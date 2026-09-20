@@ -147,6 +147,11 @@
 				<a href="/workouts/edit" class="hover:text-ink text-xs underline"
 					>Build a workout</a
 				>
+				<!-- Both doors sit behind the same ceiling: an import lands on
+				     this shelf exactly as a built workout does (#2327). -->
+				<a href="/workouts/import" class="hover:text-ink text-xs underline"
+					>Import a file</a
+				>
 			{/if}
 		</div>
 		{#if custom.error}
@@ -168,11 +173,15 @@
 		{:else if custom.all.length === 0}
 			<div class="mt-2">
 				<EmptyState>
-					Nothing yet. Build one from scratch, or open any workout below and
-					save a copy — it lands on your account and follows you to any device.
+					Nothing yet. Build one from scratch, import the plan you were given as
+					a .zwo or .erg, or open any workout below and save a copy — it lands
+					on your account and follows you to any device.
 					{#snippet cta()}
 						<a href="/workouts/edit" class="btn btn-primary btn-xs"
 							>Build a workout</a
+						>
+						<a href="/workouts/import" class="btn btn-ghost btn-xs ml-2"
+							>Import a file</a
 						>
 					{/snippet}
 				</EmptyState>
