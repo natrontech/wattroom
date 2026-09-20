@@ -8,10 +8,10 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && svelte-check --tsconfig ./tsconfig.e2e.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-		"format": "prettier --write src",
-		"format:check": "prettier --check src",
+		"format": "prettier --write src e2e",
+		"format:check": "prettier --check src e2e",
 		"test": "vitest run",
 		"test:e2e": "playwright test"
 	},
