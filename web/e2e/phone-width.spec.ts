@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { MEASURED, MEASURED_BY_ID, MEASURED_SIGNED_OUT } from './routes.js';
 import { signInAs } from './signin';
 
 /**
@@ -16,31 +17,12 @@ import { signInAs } from './signin';
  */
 const PHONE = { width: 375, height: 812 };
 
-/** Every route a rider reaches without a room. The room has its own spec. */
-const ROUTES = [
-	'/home',
-	'/workouts',
-	'/workouts/edit',
-	'/music',
-	'/history',
-	'/ride',
-	'/friends',
-	'/messages',
-	'/ramp',
-	'/settings/profile',
-	'/settings/equipment',
-	'/settings/voice',
-	'/settings/appearance',
-	'/settings/notifications',
-	'/settings/data',
-	'/whats-new',
-	'/rooms/directory',
-	'/download',
-	'/legal',
-	'/legal/licenses',
-	'/terms',
-	'/privacy',
-];
+/**
+ * Which routes are measured, and why the rest are not, lives in `./routes.js`
+ * beside the reconciliation that fails when the route tree grows past it
+ * (#2386). The lists are still written by hand — that part is a decision — but
+ * a route in neither of them no longer slips through unmeasured and unnoticed.
+ */
 
 test.use({ viewport: PHONE });
 
@@ -280,15 +262,24 @@ test('no page outside a room scrolls sideways on a phone', async ({
 				).conversations?.[0]?.peerId ?? '',
 		};
 	});
-	const routes = [
-		...ROUTES,
-		...(byId.me ? [`/u/${byId.me}`] : []),
-		...(byId.ride ? [`/history/${byId.ride}`] : []),
-		...(byId.room ? [`/messages/r/${byId.room}`] : []),
-		...(byId.peer ? [`/messages/dm/${byId.peer}`] : []),
-		...(crewId ? [`/crew/${crewId}`, `/crew/${crewId}/settings`] : []),
-		...(crewCode ? [`/c/${crewCode}`] : []),
-	];
+	// Keyed by the pattern routes.ts lists, so the two cannot drift apart: a
+	// by-id route filled in here and not listed there — or listed and never
+	// filled in — fails the assertion below rather than going unmeasured. The
+	// ids themselves are asserted non-empty just after, before the first goto.
+	const byPattern: Record<string, string> = {
+		'/u/[id]': `/u/${byId.me}`,
+		'/history/[id]': `/history/${byId.ride}`,
+		'/messages/r/[slug]': `/messages/r/${byId.room}`,
+		'/messages/dm/[peer]': `/messages/dm/${byId.peer}`,
+		'/crew/[id]': `/crew/${crewId}`,
+		'/crew/[id]/settings': `/crew/${crewId}/settings`,
+		'/c/[code]': `/c/${crewCode}`,
+	};
+	expect(
+		Object.keys(byPattern).sort(),
+		'the by-id routes measured here are the ones routes.ts lists',
+	).toEqual([...MEASURED_BY_ID].sort());
+	const routes = [...MEASURED, ...Object.values(byPattern)];
 	// The id-reached pages are the point of the seeding above: a run where
 	// none of them resolved would pass while asserting nothing about them.
 	expect(byId, 'the seeded ride, the room and your own page resolve').toEqual(
@@ -343,7 +334,7 @@ test('no page outside a room scrolls sideways on a phone', async ({
  */
 test('the landing, the gate and recovery fit a phone', async ({ page }) => {
 	const wide: string[] = [];
-	for (const route of ['/', '/login', '/login/recover']) {
+	for (const route of MEASURED_SIGNED_OUT) {
 		await page.goto(route);
 		const excessOf = () =>
 			page.evaluate(
