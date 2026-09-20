@@ -1,0 +1,1 @@
+- Fixed the release image failing to build, which left 2026.09.120 tagged with no image behind it. Installs inside the image were missing the dependency version floors the lockfile pins, including a security floor.
