@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isLink, parsePin } from './pins.svelte';
+import { isLink, parsePin } from './pins';
 
 /**
  * The parser is the whole of the "more than a key and a value" decision

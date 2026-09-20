@@ -115,13 +115,13 @@ describe('activePlace', () => {
 
 describe('placesFor', () => {
 	it('offers a wide screen every place', () => {
-		expect(placesFor(false, true)).toEqual(roomPlaces);
+		expect(placesFor(false)).toEqual(roomPlaces);
 	});
 
 	// A phone gets the room, not a trimmed second app: the only place it is
 	// not offered is the owner-only settings form (#412).
 	it('drops only Settings below md', () => {
-		const narrow = placesFor(true, true).map((p) => p.path);
+		const narrow = placesFor(true).map((p) => p.path);
 		expect(narrow).toEqual([
 			'',
 			'/chat',
@@ -133,24 +133,17 @@ describe('placesFor', () => {
 		expect(narrow).not.toContain('/settings');
 	});
 
-	// Pins is the other conditional row, gated on the crew having any rather
-	// than on the device (#2405): most crews pin nothing, and a row that is
-	// always there and always empty is the "lists everything, lists nothing"
-	// this module's own note warns about.
-	it('hides Pins until the crew has one', () => {
-		expect(placesFor(false).map((p) => p.path)).not.toContain('/pins');
-		expect(placesFor(true).map((p) => p.path)).not.toContain('/pins');
-		expect(placesFor(false, true).map((p) => p.path)).toContain('/pins');
-	});
-
-	// A phone is exactly where the board is read — a rider on the sofa
-	// checking the server address — so the narrow list keeps it.
-	it('offers Pins on a phone', () => {
-		expect(placesFor(true, true).map((p) => p.path)).toContain('/pins');
+	// Pins is offered whether or not the crew has any (#2405). It was gated
+	// on having one, and that made the first pin unmakeable: pinning happens
+	// on the page the row is the only way to. A phone gets it too — a rider
+	// on the sofa checking the server address is the case.
+	it('offers Pins on an empty board, and on a phone', () => {
+		expect(placesFor(false).map((p) => p.path)).toContain('/pins');
+		expect(placesFor(true).map((p) => p.path)).toContain('/pins');
 	});
 
 	it('offers a place the drawer can actually resolve', () => {
-		for (const place of placesFor(true, true))
+		for (const place of placesFor(true))
 			expect(
 				activePlace(`/r/velvet-hammer${place.path}`, 'velvet-hammer'),
 			).toBe(place.path);

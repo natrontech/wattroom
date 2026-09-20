@@ -1,22 +1,32 @@
 /**
- * Pins (#2405): a crew keeps a handful of facts that nothing else holds — the
- * game server and its address and its password, the Discord link, the door
- * code — and chat cannot, because `PruneChat` caps a room at 500 lines.
+ * Pins (ADR-0056, #2405): a crew keeps a handful of facts that nothing else
+ * holds — the game server and its address and its password, the Discord link,
+ * the door code — and chat cannot, because the room's log is capped at 500
+ * lines and anything posted there is on a timer.
  *
  * A pin is a **title and a block of lines**, not a key and a value. One thing
- * worth pinning is rarely one string: a server is an address AND a password
- * AND who to ask about the whitelist, and splitting that across three cards
- * loses which server they belong to.
+ * worth pinning is rarely one string, and splitting a server across three
+ * cards loses which server they belong to.
  *
- * The crew owns them and the room is where they are read, so every room of a
- * crew shows the same board.
+ * The crew owns the board and the room is where it is read, so every room of
+ * a crew shows the same one. Everyone in the crew writes it; nothing asks who
+ * wrote a pin.
  */
+import { api } from '$lib/api';
+import { MaxCrewPins } from '$lib/protocol';
+
 export interface Pin {
 	id: string;
 	title: string;
-	/** Free text. `parsePin` decides which lines are copyable. */
 	body: string;
+	/** Who wrote it. Absent once that account is gone — the pin outlives it. */
+	createdBy?: string;
+	createdAt?: string;
+	updatedAt?: string;
 }
+
+/** What a pin is written as: everything but the server's own columns. */
+export type PinDraft = Pick<Pin, 'title' | 'body'>;
 
 /**
  * A value that is a link opens on click; everything else copies. One branch
@@ -68,50 +78,18 @@ export function parsePin(body: string): PinLine[] {
 	return lines;
 }
 
-/**
- * ponytail: the mock's stand-in for the API. One in-memory list for the whole
- * app, so the sidebar's gate and the place cannot disagree about whether this
- * crew has pins. The real one reads them off the room payload and writes them
- * over the socket; only this file changes.
- */
-export const pins = $state<{ items: Pin[] }>({
-	items: [
-		{
-			id: 'mc',
-			title: 'Minecraft',
-			body: [
-				'Address: mc.natron.io:25565',
-				'Password: kilojoule-hammer-42',
-				'Version: 1.21.4',
-				'',
-				'Whitelist is on — ask Nina to add you.',
-			].join('\n'),
-		},
-		{
-			id: 'dc',
-			title: 'Discord',
-			body: 'https://discord.gg/wattroom\n\nVoice for the games; the ride stays in here.',
-		},
-		{
-			id: 'gym',
-			title: 'The garage',
-			body: 'Door code: 4417\n\nLast one out shuts the roller door.',
-		},
-	],
-});
+/** The board is full — the count the server enforces, read from protocol. */
+export const boardFull = (pins: Pin[]) => pins.length >= MaxCrewPins;
 
-let seq = 0;
+const base = (crewId: string) => `/api/crews/${crewId}/pins`;
 
-/** Write a pin, new or edited. An edit keeps its place in the list. */
-export function savePin(pin: Pin | Omit<Pin, 'id'>): void {
-	const id = 'id' in pin ? pin.id : `pin-${++seq}`;
-	const at = pins.items.findIndex((p) => p.id === id);
-	// ponytail: an undone unpin lands at the end rather than where it was.
-	// The real one carries a sort key and restores the position with it.
-	if (at >= 0) pins.items[at] = { ...pin, id };
-	else pins.items.push({ ...pin, id });
-}
+export const fetchPins = (crewId: string) => api<Pin[]>(base(crewId));
 
-export function removePin(id: string): void {
-	pins.items = pins.items.filter((p) => p.id !== id);
-}
+export const createPin = (crewId: string, draft: PinDraft) =>
+	api<Pin>(base(crewId), { method: 'POST', json: draft });
+
+export const updatePin = (crewId: string, id: string, draft: PinDraft) =>
+	api<Pin>(`${base(crewId)}/${id}`, { method: 'PATCH', json: draft });
+
+export const deletePin = (crewId: string, id: string) =>
+	api<void>(`${base(crewId)}/${id}`, { method: 'DELETE' });

@@ -19,7 +19,7 @@
 	import UpdateRow from '$lib/nav/UpdateRow.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import PinBoard from '$lib/pins/PinBoard.svelte';
-	import { pins, removePin, savePin, type Pin } from '$lib/pins/pins.svelte';
+	import type { Pin, PinDraft } from '$lib/pins/pins';
 	import Copy from '@lucide/svelte/icons/copy';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import type { MockRider } from '../room/mockRoom.svelte';
@@ -48,21 +48,47 @@
 		{ riderId: 'demo', name: 'You', wkg: 10.8, watts: 796 },
 	];
 
-	// Pins, live and shared with the real place at /r/[slug]/pins (#2405) —
-	// the same store, so editing here moves the room's board and the sidebar
-	// row that is gated on it. Not frozen like the riders below: the question
-	// this mock answers is whether managing them feels right.
-	//
-	// The empty board is its own list, because the point of that rendering is
-	// the state the shared one is not in.
+	// Pins (ADR-0056). The real board is a room's place and talks to the
+	// server; these two are local lists, because a gallery should not write
+	// to a crew — and because the empty state is a state the real board is
+	// only in once.
+	let board = $state<Pin[]>([
+		{
+			id: 'mc',
+			title: 'Minecraft',
+			body: 'Address: mc.natron.io:25565\nPassword: kilojoule-hammer-42\n\nWhitelist is on — ask Nina to add you.',
+		},
+		{
+			id: 'dc',
+			title: 'Discord',
+			body: 'https://discord.gg/wattroom\n\nVoice for the games; the ride stays in here.',
+		},
+		{ id: 'gym', title: 'The garage', body: 'Door code: 4417' },
+	]);
 	let empty = $state<Pin[]>([]);
 	let seq = 0;
-	function saveEmpty(pin: Pin | Omit<Pin, 'id'>) {
-		const id = 'id' in pin ? pin.id : `empty-${++seq}`;
-		const at = empty.findIndex((p) => p.id === id);
-		if (at >= 0) empty[at] = { ...pin, id };
-		else empty.push({ ...pin, id });
-	}
+	const writer = (into: () => Pin[], put: (next: Pin[]) => void) => ({
+		async save(draft: PinDraft, id?: string) {
+			const list = into();
+			const at = id ? list.findIndex((p) => p.id === id) : -1;
+			if (at >= 0) list[at] = { ...list[at], ...draft };
+			else list.push({ id: `pin-${++seq}`, ...draft });
+			put(list);
+			return null;
+		},
+		async remove(pin: Pin) {
+			put(into().filter((p) => p.id !== pin.id));
+			return null;
+		},
+	});
+	const boardWriter = writer(
+		() => board,
+		(next) => (board = next),
+	);
+	const emptyWriter = writer(
+		() => empty,
+		(next) => (empty = next),
+	);
 
 	// Frozen sample riders: a gallery should not move while you read it.
 	function rider(over: Partial<MockRider> = {}): MockRider {
@@ -124,7 +150,7 @@
 		room —
 		<code>/r/[slug]/pins</code>, whose sidebar row appears only once there is
 		something on it. Not wired to a server: the store is in memory, and it is
-		the same one the real place reads, so editing here moves that board too.
+		these two are local lists — a gallery should not write to a crew.
 	</p>
 
 	<p class="text-muted-dim mt-6 text-[11px]">
@@ -132,10 +158,10 @@
 	</p>
 	<div class="mt-2">
 		<PinBoard
-			pins={pins.items}
+			pins={board}
 			crewName="Natron"
-			onsave={savePin}
-			onremove={(pin) => removePin(pin.id)}
+			onsave={boardWriter.save}
+			onremove={boardWriter.remove}
 		/>
 	</div>
 
@@ -144,8 +170,8 @@
 		<PinBoard
 			pins={empty}
 			crewName="Natron"
-			onsave={saveEmpty}
-			onremove={(pin) => (empty = empty.filter((p) => p.id !== pin.id))}
+			onsave={emptyWriter.save}
+			onremove={emptyWriter.remove}
 		/>
 	</div>
 

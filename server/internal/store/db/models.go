@@ -78,6 +78,16 @@ type Crew struct {
 	FoundedBy  pgtype.UUID
 }
 
+type CrewPin struct {
+	ID        pgtype.UUID
+	CrewID    pgtype.UUID
+	Title     string
+	Body      string
+	CreatedBy pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type CrewRole struct {
 	CrewID   pgtype.UUID
 	UserID   pgtype.UUID

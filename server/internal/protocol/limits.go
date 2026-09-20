@@ -55,6 +55,20 @@ const (
 	// note's to follow.
 	MaxRideNoteChars = 500
 
+	// A crew's pin board (ADR-0056, docs/SPEC.md "Pins"). Both sides read
+	// these: the editor caps its boxes at the first two, the server refuses
+	// anything longer, and the count is what the "Pin something" button
+	// disables itself on rather than letting a rider write a pin the POST
+	// will then refuse.
+	//
+	// The two lengths are in CHARACTERS — runes, MaxMessageChars' rule.
+	MaxPinTitleChars = 40
+	MaxPinBodyChars  = 1000
+	// Twenty is a board; two hundred is a wiki. The ceiling is what keeps a
+	// pin worth reading — a crew that needs more of them needs a document,
+	// and this feature is deliberately not one.
+	MaxCrewPins = 20
+
 	// The tolerance band a second is scored in: within ±5 % of target, floor
 	// ±10 W (#2159). The floor is what keeps an easy block scoreable — at
 	// 60 W, 5 % is 3 W, which is inside a trainer's own error.

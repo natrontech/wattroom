@@ -1,7 +1,7 @@
 <script lang="ts">
-	// The board itself (#2405): the grid of pins, the menu and the editor.
-	// What a pin IS, and which of its lines are copyable, lives in
-	// `pins.svelte.ts` — the sidebar's gate reads that too.
+	// The board itself (ADR-0056, #2405): the grid of pins, the menu and the
+	// editor. What a pin IS, and which of its lines are copyable, lives in
+	// `pins.ts`; loading and saving belong to the place that draws this.
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import {
@@ -10,7 +10,13 @@
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import { copyText, theLinkItself } from '$lib/copy';
-	import { isLink, parsePin, type Pin } from './pins.svelte';
+	import Banner from '$lib/components/Banner.svelte';
+	import { boardFull, isLink, parsePin, type Pin, type PinDraft } from './pins';
+	import {
+		MaxCrewPins,
+		MaxPinBodyChars,
+		MaxPinTitleChars,
+	} from '$lib/protocol';
 	import { toasts } from '$lib/toast.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
@@ -27,14 +33,32 @@
 		pins: Pin[];
 		/** Named in the subline, so the scope of an edit is on the page. */
 		crewName?: string;
-		/** A new pin has no id yet. */
-		onsave?: (pin: Pin | Omit<Pin, 'id'>) => void;
-		onremove?: (pin: Pin) => void;
+		/**
+		 * Write a pin — new when `id` is absent. Resolves to the refusal, or
+		 * null once it is saved: the editor stays open on a refusal with the
+		 * words still in it, the way a refused chat edit does.
+		 */
+		onsave?: (draft: PinDraft, id?: string) => Promise<string | null>;
+		/** Take one off. Resolves to the refusal, or null once it is gone. */
+		onremove?: (pin: Pin) => Promise<string | null>;
 	} = $props();
 
 	/** The pin being written, or null when the editor is shut. */
 	let draft = $state<{ id?: string; title: string; body: string } | null>(null);
+	let saving = $state(false);
+	let saveError = $state<string | null>(null);
 	const ready = $derived(!!draft?.title.trim() && !!draft?.body.trim());
+	/**
+	 * The board's ceiling, checked here as well as by the server. Never render
+	 * a button that will fail (ux.md): a rider who wrote a pin into a full
+	 * board and lost it to a 409 was told too late.
+	 */
+	const full = $derived(boardFull(pins));
+
+	function open(pin?: Pin) {
+		saveError = null;
+		draft = pin ? { ...pin } : { title: '', body: '' };
+	}
 
 	const PLACEHOLDER = `Address: mc.natron.io:25565
 Password: kilojoule-hammer-42
@@ -49,13 +73,22 @@ Whitelist is on — ask Nina.`;
 		);
 	}
 
-	function unpin(pin: Pin) {
+	async function unpin(pin: Pin) {
 		// Undo over confirm (errors.md): a pin is a title and some text, and
 		// putting it back is exact, so nothing is lost by doing it and
 		// offering the way back rather than a dialog in front of every
 		// tidy-up.
-		onremove?.(pin);
-		toasts.push(`Unpinned ${pin.title}.`, { undo: () => onsave?.(pin) });
+		const refused = await onremove?.(pin);
+		if (refused) {
+			toasts.push(refused, { tone: 'error' });
+			return;
+		}
+		// The undo re-pins rather than restoring the row: the id is the
+		// server's and is gone with it, so the pin comes back at the end of
+		// the board. Said plainly here rather than pretending otherwise.
+		toasts.push(`Unpinned ${pin.title}.`, {
+			undo: () => void onsave?.({ title: pin.title, body: pin.body }),
+		});
 	}
 
 	/**
@@ -69,7 +102,7 @@ Whitelist is on — ask Nina.`;
 	 */
 	function entries(pin: Pin): MenuEntry[] {
 		return [
-			{ label: 'Edit', icon: Pencil, onSelect: () => (draft = { ...pin }) },
+			{ label: 'Edit', icon: Pencil, onSelect: () => open(pin) },
 			'separator',
 			{
 				label: 'Unpin',
@@ -80,14 +113,22 @@ Whitelist is on — ask Nina.`;
 		];
 	}
 
-	function save() {
-		if (!draft || !ready) return;
+	async function save() {
+		if (!draft || !ready || saving) return;
 		const { id, title, body } = draft;
-		onsave?.({
-			...(id ? { id } : {}),
-			title: title.trim(),
-			body: body.trim(),
-		} as Pin);
+		saving = true;
+		const refused = await onsave?.(
+			{ title: title.trim(), body: body.trim() },
+			id,
+		);
+		saving = false;
+		if (refused) {
+			// The words stay in the box, like a refused send (#865): a rider
+			// who typed a door code does not retype it because the network
+			// blinked.
+			saveError = refused;
+			return;
+		}
 		draft = null;
 	}
 </script>
@@ -107,7 +148,9 @@ Whitelist is on — ask Nina.`;
 		<h2 class="font-display text-xl font-bold">Pins</h2>
 		{#if pins.length > 0}
 			<button
-				onclick={() => (draft = { title: '', body: '' })}
+				onclick={() => open()}
+				disabled={full}
+				title={full ? `This board is full at ${MaxCrewPins} pins.` : undefined}
 				class="btn btn-primary btn-xs ml-auto"
 				><PinIcon size={13} /> Pin something</button
 			>
@@ -138,6 +181,13 @@ Whitelist is on — ask Nina.`;
 			{/snippet}
 		</EmptyState>
 	{:else}
+		{#if full}
+			<!-- Said where the button is, not only on its hover: the disabled
+			     control tells a mouse what is wrong and nobody else (ux.md). -->
+			<p class="text-muted mb-3 text-xs">
+				This board is full at {MaxCrewPins} pins. Unpin one to make room.
+			</p>
+		{/if}
 		<!-- Fills the column it is in, not the viewport. `sm:grid-cols-2
 		     lg:grid-cols-3` read right on a page and was wrong in a room,
 		     whose content column is a good deal narrower than the window: a
@@ -213,7 +263,7 @@ Whitelist is on — ask Nina.`;
 			<span class="eyebrow">title</span>
 			<input
 				bind:value={draft.title}
-				maxlength="40"
+				maxlength={MaxPinTitleChars}
 				placeholder="Minecraft"
 				class="input mt-1 w-full"
 			/>
@@ -222,7 +272,7 @@ Whitelist is on — ask Nina.`;
 			<span class="eyebrow">what to know</span>
 			<textarea
 				bind:value={draft.body}
-				maxlength="1000"
+				maxlength={MaxPinBodyChars}
 				rows="6"
 				placeholder={PLACEHOLDER}
 				class="input mt-1 w-full resize-y font-mono text-xs"></textarea>
@@ -239,12 +289,19 @@ Whitelist is on — ask Nina.`;
 		<p class="text-muted mt-2 text-xs">
 			Everyone in the crew can read a pin, and change one.
 		</p>
+		{#if saveError}
+			<!-- A submit failure is a banner atop its form (errors.md), not a
+			     toast that outlives the dialog it belongs to. -->
+			<div class="mt-4"><Banner tone="error">{saveError}</Banner></div>
+		{/if}
 		<div class="mt-5 flex flex-row-reverse flex-wrap justify-end gap-2">
 			<button onclick={() => (draft = null)} class="btn btn-secondary btn-lg"
 				>Cancel</button
 			>
-			<button onclick={save} disabled={!ready} class="btn btn-primary btn-lg"
-				>{draft.id ? 'Save' : 'Pin it'}</button
+			<button
+				onclick={save}
+				disabled={!ready || saving}
+				class="btn btn-primary btn-lg">{draft.id ? 'Save' : 'Pin it'}</button
 			>
 		</div>
 	</Modal>
