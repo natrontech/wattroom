@@ -90,10 +90,20 @@ function refresh() {
 /**
  * @param handlers `open` brings the rider's window back (creating one if the
  * login item started the shell without), `go` takes it to a path.
+ * @returns whether there is a tray. False on a Linux desktop with no status
+ * notifier to put one in, where `new Tray` throws — and the shell must not
+ * die at launch over an icon, nor come up windowless with nowhere to be
+ * clicked from. main.js opens a window instead.
  */
 function install(handlers) {
 	actions = handlers;
-	tray = new Tray(trayImage());
+	try {
+		tray = new Tray(trayImage());
+	} catch (err) {
+		console.warn('no system tray here:', err?.message ?? err);
+		tray = null;
+		return false;
+	}
 	tray.setToolTip('WattRoom');
 	// Windows is the only platform where a left click can mean "open the
 	// window": on macOS a click opens the menu, and Linux's AppIndicator has
@@ -101,6 +111,7 @@ function install(handlers) {
 	// why every item has to be in it.
 	tray.on('click', () => actions.open());
 	refresh();
+	return true;
 }
 
 /** The room the app is connected to, or null when it is connected to none. */

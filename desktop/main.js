@@ -910,10 +910,14 @@ if (!app.requestSingleInstanceLock()) {
 		// in the tray and waits to be asked (login-item.js). Every other
 		// launch is unchanged.
 		startedHidden = loginItem.startedByLoginItem();
+		// Before anything can want it: with no window, this is the only
+		// WattRoom on screen. Where there is nowhere to put one — a Linux
+		// desktop with no status notifier — a hidden launch would be a
+		// process with no surface at all, so it takes the window instead and
+		// the quit rule below goes back to the ordinary one with it.
+		if (!tray.install({ open: openWindow, go: openPath }))
+			startedHidden = false;
 		if (!startedHidden) createWindow();
-		// After whenReady, and before anything can want it: with no window
-		// this is the only WattRoom on screen.
-		tray.install({ open: openWindow, go: openPath });
 		watchForUpdates();
 		// A cold start from a link is dropped (#1941): no sign-in was started
 		// from this run, and the rider starts the sign-in again.
