@@ -77,7 +77,7 @@
 	] as const;
 </script>
 
-<section class="panel mt-3 p-6">
+<section class="panel panel-xl mt-3">
 	<h2 class="font-display font-bold">Autoplay</h2>
 	<p class="text-muted mt-1.5 text-xs">
 		Plays something whenever the deck is idle: when someone joins, and again

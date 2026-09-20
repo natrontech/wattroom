@@ -227,7 +227,7 @@
 	     it is reached from the shelf. -->
 	<h2 class="eyebrow mt-8">measure</h2>
 	<ul class="mt-3">
-		<li class="panel flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+		<li class="panel panel-lg flex flex-wrap items-center gap-x-4 gap-y-2">
 			<Gauge size={16} class="text-muted shrink-0" />
 			<div class="min-w-0 flex-1">
 				<p class="font-display truncate text-base font-bold">Ramp test</p>

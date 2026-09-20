@@ -29,7 +29,7 @@
 	}
 </script>
 
-<section class="panel mt-3 p-6">
+<section class="panel panel-xl mt-3">
 	<h2 class="font-display font-bold">Reactions</h2>
 	<p class="text-muted mt-1.5 text-xs">
 		The room's reaction vocabulary — cheers mid-ride, reactions on chat. Up to {MAX_CHEERS};

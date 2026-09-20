@@ -316,7 +316,7 @@
 			</div>
 		{/if}
 
-		<section class="panel mt-5 p-6">
+		<section class="panel panel-xl mt-5">
 			<label class="block">
 				<span class="eyebrow">room name</span>
 				<input
@@ -343,7 +343,7 @@
 			</div>
 		</section>
 
-		<section class="panel mt-3 p-6">
+		<section class="panel panel-xl mt-3">
 			<h2 class="font-display font-bold">Sound pack</h2>
 			<div class="mt-3 grid gap-2">
 				{#each packs as option (option.id)}
@@ -385,7 +385,7 @@
 		     being in a room must not put a rider on a board. The copy says what
 		     appears and to whom BEFORE it appears — a joiner should be able to
 		     see what this room shares without joining it first. -->
-		<section class="panel mt-3 p-6">
+		<section class="panel panel-xl mt-3">
 			<h2 class="font-display font-bold">Weekly board</h2>
 			<p class="text-muted mt-1.5 text-xs">
 				Off by default. Turned on, the Lounge lists everyone's kJ for the

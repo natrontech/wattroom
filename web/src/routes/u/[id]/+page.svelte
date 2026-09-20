@@ -243,7 +243,7 @@
 			{/snippet}
 		</Banner>
 	{:else if !rider}
-		<div class="panel flex items-center gap-5 p-6">
+		<div class="panel panel-xl flex items-center gap-5">
 			<Skeleton class="h-[72px] w-[72px] rounded-full" />
 			<div class="flex-1">
 				<Skeleton class="h-6 w-56" />
@@ -255,7 +255,7 @@
 			<Skeleton class="h-20" rows={4} />
 		</div>
 	{:else}
-		<header class="panel flex flex-wrap items-center gap-5 p-6">
+		<header class="panel panel-xl flex flex-wrap items-center gap-5">
 			<Avatar
 				name={rider.displayName}
 				avatarUrl={rider.avatarUrl}
@@ -362,7 +362,7 @@
 			<div class="min-w-0 space-y-8">
 				<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 					{#each stats as s (s.label)}
-						<div class="panel px-4 py-3">
+						<div class="panel">
 							<p class="eyebrow">{s.label}</p>
 							<p class="font-display text-2xl font-bold tabular-nums">
 								{s.value}{#if s.unit}<span class="text-muted ml-1 text-sm"
@@ -413,7 +413,7 @@
 						{:else}
 							<ul class="mt-3 space-y-2">
 								{#each rider.sharedRides as ride (ride.id)}
-									<li class="panel px-5 py-4">
+									<li class="panel panel-lg">
 										<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 											<span class="font-display font-bold"
 												>{ride.workoutName}</span

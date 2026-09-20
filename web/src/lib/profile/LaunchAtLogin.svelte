@@ -44,7 +44,7 @@
 </script>
 
 {#if item?.supported}
-	<section class="panel mt-8 p-6">
+	<section class="panel panel-xl mt-8">
 		<h2 class="font-display font-bold">This computer</h2>
 		<label class="text-muted mt-3 flex items-start gap-2 text-sm">
 			<input

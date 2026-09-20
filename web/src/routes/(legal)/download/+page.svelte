@@ -81,7 +81,7 @@
 </p>
 
 {#if shell}
-	<p class="panel mt-6 px-4 py-3 text-sm">
+	<p class="panel mt-6 text-sm">
 		You are on the desktop app <span class="font-mono">{shell}</span>
 		{#if newer && release && shellSelfUpdates()}
 			<!-- The shell fetches it itself (#1303); the restart is on Home. -->

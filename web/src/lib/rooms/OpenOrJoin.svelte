@@ -158,7 +158,7 @@
 					? joinFirst
 						? 'border-ink/5 border-t pt-4'
 						: ''
-					: 'panel p-5'}
+					: 'panel panel-lg'}
 			>
 				<h3 class="font-display font-bold">
 					{#if joinFirst}
@@ -228,7 +228,7 @@
 					? joinFirst
 						? ''
 						: 'border-ink/5 border-t pt-4'
-					: 'panel p-5'}
+					: 'panel panel-lg'}
 			>
 				<h3 class="font-display font-bold">
 					{compact && !joinFirst

@@ -227,7 +227,7 @@
 	{/if}
 
 	<div class="mt-6 grid gap-6 md:grid-cols-2">
-		<section class="panel p-4">
+		<section class="panel">
 			<p class="eyebrow mb-3">mid-game</p>
 			<GamePanel
 				game={shown.running}
@@ -237,7 +237,7 @@
 				me="demo"
 			/>
 		</section>
-		<section class="panel p-4">
+		<section class="panel">
 			<p class="eyebrow mb-3">done</p>
 			<GamePanel
 				game={shown.done}

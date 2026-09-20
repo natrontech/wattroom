@@ -37,7 +37,7 @@
 {#if release && news}
 	<!-- Its own top margin: on Home it stands in the notice slot (#1333),
 	     where every notice renders an element of its own or nothing. -->
-	<section class="panel mt-6 px-5 py-4">
+	<section class="panel panel-lg mt-6">
 		<div class="flex flex-wrap items-baseline gap-x-3">
 			<p class="eyebrow">what's new</p>
 			<p class="font-display text-sm font-bold">{release.version}</p>

@@ -36,7 +36,7 @@
 	     duplicates and the medals count to the members page, which is
 	     where a medal's owner is legible anyway. -->
 	<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-		<div class="panel px-4 py-3">
+		<div class="panel">
 			<p class="eyebrow">together</p>
 			<p class="font-display text-2xl font-bold tabular-nums">
 				{Math.round((room.together?.seconds ?? 0) / 3600).toLocaleString()}<span
@@ -45,7 +45,7 @@
 			</p>
 			<p class="text-muted text-[11px]">ridden together</p>
 		</div>
-		<div class="panel px-4 py-3">
+		<div class="panel">
 			<p class="eyebrow">this room's streak</p>
 			<p class="font-display text-2xl font-bold tabular-nums">
 				{room.streakWeeks}<span class="text-muted ml-1 text-sm"
@@ -54,7 +54,7 @@
 			</p>
 			<p class="text-muted text-[11px]">a session every week</p>
 		</div>
-		<div class="panel px-4 py-3">
+		<div class="panel">
 			<p class="eyebrow">this month</p>
 			<p class="font-display text-2xl font-bold tabular-nums">
 				{room.together?.sessionsThisMonth ?? 0}<span
@@ -68,7 +68,7 @@
 				{monthOnMonth} · {Math.round(room.monthKj).toLocaleString()} kJ
 			</p>
 		</div>
-		<div class="panel px-4 py-3">
+		<div class="panel">
 			<p class="eyebrow">showed up</p>
 			{#if room.together?.attended.length}
 				<div class="mt-1.5 flex flex-wrap items-center gap-1">
@@ -98,7 +98,7 @@
 		     because someone turned it on. Category sits beside each name
 		     because it says who is comparable — the useful half of a rank
 		     without the ordering doing the talking. -->
-		<div class="panel mt-3 px-4 py-3">
+		<div class="panel mt-3">
 			<div class="flex items-baseline justify-between gap-3">
 				<p class="eyebrow">this week</p>
 				<p class="text-muted text-[11px]">resets Monday</p>
@@ -142,7 +142,7 @@
 			{@const next = room.upcoming[0]}
 			<a
 				href="/r/{room.slug}/sessions"
-				class="panel hover:border-muted/40 flex min-w-0 flex-1 items-center gap-3 px-4 py-2.5"
+				class="panel hover:border-muted/40 flex min-w-0 flex-1 items-center gap-3"
 			>
 				<CalendarClock size={15} class="text-muted shrink-0" />
 				<span class="min-w-0">

@@ -56,7 +56,7 @@
 			</EmptyState>
 		</div>
 	{:else}
-		<ul class="panel divide-ink/5 mt-3 divide-y">
+		<ul class="panel panel-flush divide-ink/5 mt-3 divide-y">
 			{#each RIDER_COUNTS as row (row.key)}
 				{@const badge = row.achievement
 					? byKey.get(row.achievement)

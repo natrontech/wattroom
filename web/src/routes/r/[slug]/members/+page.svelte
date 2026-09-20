@@ -178,7 +178,7 @@
 		{/each}
 	</div>
 
-	<ul class="divide-ink/5 panel divide-y">
+	<ul class="divide-ink/5 panel panel-flush divide-y">
 		{#each ordered as member (member.id)}
 			{@const medals = member.medals ?? 0}
 			{@const badges = badgesOf(member)}
@@ -322,7 +322,7 @@
 			can walk in — they still join themselves. Open the room to the whole crew
 			in Settings instead if that is what you mean.
 		</p>
-		<ul class="divide-ink/5 panel mt-2 divide-y">
+		<ul class="divide-ink/5 panel panel-flush mt-2 divide-y">
 			{#each room.invited as person (person.id)}
 				<li class="flex min-h-11 items-center gap-3 px-4 py-2">
 					<Avatar
@@ -372,7 +372,7 @@
 		     answer stands here too (#1236): there is one invite, the crew's,
 		     and this is where the room used to show its own code. -->
 		<h3 class="eyebrow mt-8">invite</h3>
-		<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
+		<div class="panel mt-2 flex flex-wrap items-center gap-3">
 			<p class="text-muted min-w-0 flex-1 text-xs">
 				{#if room.crewVisible}
 					Everyone in the crew can walk in. To bring someone new, invite them to
@@ -392,7 +392,7 @@
 
 	{#if room.medals.length > 0}
 		<h3 class="eyebrow mt-8">medal history</h3>
-		<ul class="divide-ink/5 panel mt-2 divide-y">
+		<ul class="divide-ink/5 panel panel-flush mt-2 divide-y">
 			<!-- Unkeyed on purpose: a read-only snapshot of at most twelve rows
 			     with no per-row state. `awardedAt` is a date, and one session
 			     hands out four medals, so day+rider collided the moment anyone

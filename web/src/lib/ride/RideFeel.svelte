@@ -66,7 +66,7 @@
 	}
 </script>
 
-<section class="panel mt-3 px-6 py-5">
+<section class="panel panel-xl mt-3">
 	<h2 class="eyebrow">how it felt</h2>
 	<p class="text-muted mt-0.5 mb-4 flex max-w-2xl items-start gap-1.5 text-xs">
 		<Lock size={13} class="mt-px shrink-0" />

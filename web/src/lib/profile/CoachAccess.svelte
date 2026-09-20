@@ -92,7 +92,7 @@
 	);
 </script>
 
-<section class="panel mt-8 p-6">
+<section class="panel panel-xl mt-8">
 	<h2 class="font-display font-bold">Coach access</h2>
 	<p class="text-muted mt-1 text-xs">
 		Read-only tokens for your own tools — a personal coach AI can read your

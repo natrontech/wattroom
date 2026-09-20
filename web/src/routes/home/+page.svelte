@@ -326,7 +326,7 @@
 	<!-- You, in numbers — the band the mock's "your week" grew into: FTP,
 	     level, w/kg and the week, one glance. Nothing here needs a click. -->
 	<section class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-		<div class="panel px-4 py-3">
+		<div class="panel">
 			<p class="eyebrow">ftp</p>
 			<p class="font-display text-2xl font-bold tabular-nums">
 				{account.me?.ftpWatts ?? '–'}<span class="text-muted ml-1 text-sm"
@@ -345,7 +345,7 @@
 		     case (#467). -->
 		<a
 			href="/u/me"
-			class="panel hover:border-muted/40 block px-4 py-3"
+			class="panel hover:border-muted/40 block"
 			title="Your rider page: medals, achievements, where your XP comes from"
 		>
 			<p class="eyebrow">level · trophies</p>
@@ -355,7 +355,7 @@
 				{toNext.toLocaleString()} XP to {level + 1}
 			</p>
 		</a>
-		<div class="panel px-4 py-3">
+		<div class="panel">
 			<p class="eyebrow">this week</p>
 			{#if rides === null}
 				<!-- Not "0 rides" while the list is in flight (#1666). -->
@@ -372,7 +372,7 @@
 				</p>
 			{/if}
 		</div>
-		<div class="panel px-4 py-3">
+		<div class="panel">
 			<p class="eyebrow">form</p>
 			{#if rides === null}
 				<Skeleton class="mt-1 h-7 w-16" />
@@ -412,7 +412,7 @@
 							{#each busy as room (room.slug)}
 								<a
 									href="/r/{room.slug}"
-									class="panel hover:border-muted/40 flex items-center gap-4 px-5 py-4 transition-colors"
+									class="panel panel-lg hover:border-muted/40 flex items-center gap-4 transition-colors"
 								>
 									{#if room.live}
 										<RidingBars size={12} />

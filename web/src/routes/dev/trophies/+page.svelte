@@ -170,7 +170,7 @@
 
 	<section class="mt-6 grid grid-cols-3 gap-3 sm:max-w-md">
 		{#each Object.entries(medals) as [tier, n] (tier)}
-			<div class="panel px-4 py-3">
+			<div class="panel">
 				<p class="eyebrow flex items-center gap-1">
 					<Award size={11} />
 					{tier}
@@ -224,7 +224,7 @@
 	<div class="mt-8 grid gap-8 xl:grid-cols-2">
 		<section>
 			<h2 class="eyebrow">Where XP comes from</h2>
-			<div class="table-wrap panel mt-3 overflow-x-auto">
+			<div class="table-wrap panel panel-flush mt-3 overflow-x-auto">
 				<table class="w-full text-sm">
 					<thead>
 						<tr class="eyebrow text-left">
@@ -255,7 +255,7 @@
 
 		<section>
 			<h2 class="eyebrow">A room event</h2>
-			<div class="panel mt-3 p-5">
+			<div class="panel panel-lg mt-3">
 				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 					<h3 class="font-display text-lg font-bold">{event.name}</h3>
 					<span class="text-muted flex items-center gap-1 text-xs"

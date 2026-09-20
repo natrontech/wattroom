@@ -228,7 +228,7 @@
 			<!-- Stacked on a phone: the sentence between the code and the
 			     button squeezed into a six-line column at 375px. -->
 			<div
-				class="panel mt-2 flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center"
+				class="panel mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
 			>
 				<span class="min-w-0">
 					<span class="eyebrow">crew code</span>
@@ -253,7 +253,7 @@
 		     The owner sees it disabled with the route out (docs/SPEC.md's
 		     matrix: hand the crew on first) rather than nothing at all. -->
 		<h2 class="eyebrow mt-8">leave</h2>
-		<div class="panel mt-2 flex flex-wrap items-center gap-3 px-4 py-3">
+		<div class="panel mt-2 flex flex-wrap items-center gap-3">
 			<p class="text-muted min-w-0 flex-1 text-xs">
 				{#if owner}
 					You own {crew.name} — hand it to someone in the people list first, then

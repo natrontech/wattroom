@@ -323,7 +323,7 @@
 			</details>
 		{/if}
 
-		<section class="panel mt-6 px-6 py-5">
+		<section class="panel panel-xl mt-6">
 			<h2 class="eyebrow">how it went</h2>
 			<p class="text-muted mt-0.5 mb-4 max-w-2xl text-xs">
 				Your power second by second, against the dashed line at your FTP of
@@ -349,7 +349,7 @@
 
 		<section class="mt-3 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
 			{#each stats as stat (stat.label)}
-				<div class="panel p-5">
+				<div class="panel panel-lg">
 					<div
 						class="font-display text-2xl leading-none font-bold tabular-nums"
 					>
@@ -365,7 +365,7 @@
 			     save and in the export, and never shown until now. -->
 			<section class="mt-3 grid gap-3 sm:grid-cols-4">
 				{#each curveCells as [label, watts] (label)}
-					<div class="panel p-5">
+					<div class="panel panel-lg">
 						<div
 							class="font-display text-2xl leading-none font-bold tabular-nums"
 						>
@@ -398,7 +398,7 @@
 		</div>
 
 		{#if zones.some((seconds) => seconds > 0)}
-			<section class="panel mt-3 px-6 py-5">
+			<section class="panel panel-xl mt-3">
 				<h2 class="eyebrow">time in zone</h2>
 				<p class="text-muted mt-0.5 mb-4 max-w-2xl text-xs">
 					Where the {formatDuration(ride.seconds)} actually went.
@@ -412,7 +412,7 @@
 				<h2 class="eyebrow">what it won</h2>
 				<ul class="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
 					{#each ride.medals as medal (medal.kind)}
-						<li class="panel flex items-center gap-2.5 px-4 py-3">
+						<li class="panel flex items-center gap-2.5">
 							<Award size={18} class="text-neon shrink-0" />
 							<span class="min-w-0">
 								<span class="block truncate text-xs font-medium"
@@ -439,7 +439,7 @@
 			     the page can simply say. -->
 			<section class="mt-3">
 				<h2 class="eyebrow">where it went</h2>
-				<p class="panel text-muted mt-3 px-4 py-3 text-xs">
+				<p class="panel text-muted mt-3 text-xs">
 					{#if ride.export.state === 'delivered'}
 						<!-- {' '}: Svelte trims a block's leading whitespace, so the
 						     newline before "as" vanished and the sentence read "On

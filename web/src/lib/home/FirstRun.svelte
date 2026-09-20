@@ -104,7 +104,7 @@
 </script>
 
 {#if steps.length > 0 && left > 0}
-	<section class="panel mt-6 px-5 py-4">
+	<section class="panel panel-lg mt-6">
 		<p class="eyebrow">getting set up · {left} of {steps.length} to go</p>
 		<ul class="divide-ink/5 mt-2 divide-y">
 			{#each steps as step (step.label)}

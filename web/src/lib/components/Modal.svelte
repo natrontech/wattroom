@@ -60,7 +60,7 @@
 	     their own cap and the rest had none, so a sheet taller than a landscape
 	     phone was clipped at both ends with no way to scroll it. -->
 	<div
-		class="panel max-h-[calc(100dvh-2rem)] w-full overflow-y-auto p-5 {cls}"
+		class="panel panel-lg max-h-[calc(100dvh-2rem)] w-full overflow-y-auto {cls}"
 		role="dialog"
 		aria-modal="true"
 		aria-label={label}

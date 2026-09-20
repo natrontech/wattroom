@@ -125,7 +125,7 @@
 		</EmptyState>
 	</div>
 {:else}
-	<ul class="divide-ink/5 panel mt-2 divide-y">
+	<ul class="divide-ink/5 panel panel-flush mt-2 divide-y">
 		{#each crew.rooms as room (room.id)}
 			{@const mark = accessMark(room.access)}
 			{@const open = reachable(room.access) && !!room.slug}

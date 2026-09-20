@@ -359,7 +359,7 @@
 			: ''}"
 	>
 		{#each uploading as name (name)}
-			<div class="panel text-muted mb-2 px-4 py-3 text-sm">
+			<div class="panel text-muted mb-2 text-sm">
 				Uploading {name}…
 			</div>
 		{/each}

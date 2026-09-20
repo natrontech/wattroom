@@ -193,7 +193,7 @@
 			>
 		</header>
 
-		<section class="panel mt-5 p-6">
+		<section class="panel panel-xl mt-5">
 			<label class="block">
 				<span class="eyebrow">crew name</span>
 				<input
@@ -266,7 +266,7 @@
 		<!-- The invite's one home is the crew's page (ADR-0020); re-keying it
 		     is a setting, and the one destructive one here — a confirm, since
 		     there is no undo for a link already shared (errors.md). -->
-		<section class="panel mt-5 p-6">
+		<section class="panel panel-xl mt-5">
 			<span class="eyebrow">invite</span>
 			<p class="text-muted mt-1 text-sm">
 				The crew's code is its only door, and anyone in the crew may share it.

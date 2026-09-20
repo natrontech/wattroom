@@ -38,7 +38,7 @@
 </script>
 
 <li
-	class="panel hover:border-muted/40 flex flex-col overflow-hidden transition-colors"
+	class="panel panel-flush hover:border-muted/40 flex flex-col overflow-hidden transition-colors"
 	title={MENU_HINT}
 	{@attach contextMenu(menu)}
 >

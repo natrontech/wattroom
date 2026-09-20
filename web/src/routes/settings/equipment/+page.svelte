@@ -156,7 +156,7 @@
 	<!-- docs/SPEC.md's word for the thing being configured: a sprint moment is
 	     "coach- or workout-armed 15 s all-out window; trainer flips ERG→slope".
 	     Which is why it is filed with the trainer. -->
-	<section class="panel mt-8 p-6">
+	<section class="panel panel-xl mt-8">
 		<h2 class="font-display font-bold">Sprint moments</h2>
 		<p class="text-muted mt-1 text-xs">
 			What your trainer does when a sprint is armed.
@@ -206,7 +206,7 @@
 		{/if}
 	</section>
 
-	<section class="panel mt-8 p-6">
+	<section class="panel panel-xl mt-8">
 		<h2 class="font-display font-bold">Measurement</h2>
 		<a
 			href="/ramp"

@@ -33,7 +33,7 @@
 			<h2 class="eyebrow">Recent rides</h2>
 			<a href="/history" class="btn-link ml-auto text-xs">All rides →</a>
 		</div>
-		<ul class="panel divide-ink/5 mt-3 divide-y">
+		<ul class="panel panel-flush divide-ink/5 mt-3 divide-y">
 			<!-- The same ride carries Share and Delete on /history (#2171): the
 			     row has a menu wherever it is drawn, and nothing lives only in
 			     a menu — the list page keeps both as controls. -->

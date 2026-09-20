@@ -50,7 +50,7 @@
 	{:else}
 		<div class="mt-8 space-y-8">
 			{#each changelog.releases as release (release.version)}
-				<section class="panel px-5 py-4">
+				<section class="panel panel-lg">
 					<div class="flex flex-wrap items-baseline gap-x-3">
 						<h2 class="font-display text-lg font-bold">{release.version}</h2>
 						<span class="eyebrow">{release.date}</span>

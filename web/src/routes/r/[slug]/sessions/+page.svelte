@@ -217,7 +217,7 @@
 	{#if room.upcoming.length === 0}
 		<!-- ux.md: empty states teach, never apologise — and never tell a
 		     member to do the coach's job. -->
-		<div class="panel px-4 py-8">
+		<div class="panel">
 			<EmptyState cta={manages ? plan : undefined}>
 				{#if manages}
 					Sessions are how a room agrees on a time. Plan one and it shows up
@@ -364,7 +364,7 @@
 		     people who are not in the room. Your own link — every room at
 		     once — is on Home, under What's next; this row says so rather
 		     than offering a second subscription per room (#1374). -->
-		<div class="panel mt-4 flex flex-wrap items-center gap-3 px-4 py-3">
+		<div class="panel mt-4 flex flex-wrap items-center gap-3">
 			<CalendarClock size={16} class="text-muted shrink-0" />
 			<p class="text-muted min-w-0 flex-1 text-xs">
 				This room's schedule as a calendar link, for people who are not in it.
