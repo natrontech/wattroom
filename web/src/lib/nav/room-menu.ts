@@ -4,6 +4,7 @@ import { device } from '$lib/device.svelte';
 import type { RailRoom } from '$lib/room/room-data';
 import { reachable } from './crews';
 import { placesFor } from './pages';
+import { pins } from '$lib/pins/pins.svelte';
 import DoorOpen from '@lucide/svelte/icons/door-open';
 import LogOut from '@lucide/svelte/icons/log-out';
 
@@ -34,7 +35,10 @@ export function roomMenu(
 				onSelect: () => void goto(`/r/${room.slug}`),
 			},
 		];
-	const entries: MenuEntry[] = placesFor(device.narrow).map((place) => ({
+	const entries: MenuEntry[] = placesFor(
+		device.narrow,
+		pins.items.length > 0,
+	).map((place) => ({
 		label: place.label,
 		icon: place.icon,
 		onSelect: () => void goto(`/r/${room.slug}${place.path}`),

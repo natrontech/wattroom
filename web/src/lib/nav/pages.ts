@@ -4,6 +4,7 @@ import ChartColumn from '@lucide/svelte/icons/chart-column';
 import History from '@lucide/svelte/icons/history';
 import House from '@lucide/svelte/icons/house';
 import Music from '@lucide/svelte/icons/music';
+import Pin from '@lucide/svelte/icons/pin';
 import MessageSquare from '@lucide/svelte/icons/message-square';
 import MessagesSquare from '@lucide/svelte/icons/messages-square';
 import Settings from '@lucide/svelte/icons/settings';
@@ -91,6 +92,12 @@ export const roomPlaces = [
 		icon: CalendarClock,
 		hint: "what's planned here",
 	},
+	{
+		path: '/pins',
+		label: 'Pins',
+		icon: Pin,
+		hint: 'what the crew keeps needing',
+	},
 	{ path: '/members', label: 'Members', icon: Users, hint: 'roles and medals' },
 	{
 		path: '/settings',
@@ -106,9 +113,19 @@ export const roomPlaces = [
  * renames a room from a bike, and a drawer that lists everything lists
  * nothing. It stays a URL and still renders, so a bookmark works and the page
  * says it is laid out for a wider screen; it simply is not offered here.
+ *
+ * Pins is the other conditional row, and on a different axis: not the device
+ * but whether the crew has any (#2405). Most crews will pin nothing ever, and
+ * the note above — a sidebar that lists everything lists nothing — is what
+ * keeps a permanently empty row from being spent on them. It is capability
+ * gating (`ux.md`), the same rule that hides an affordance whose precondition
+ * is absent; the URL still renders, so a link into it works.
  */
-export function placesFor(narrow: boolean) {
-	return narrow ? roomPlaces.filter((p) => p.path !== '/settings') : roomPlaces;
+export function placesFor(narrow: boolean, hasPins = false) {
+	return roomPlaces.filter(
+		(p) =>
+			!(narrow && p.path === '/settings') && !(p.path === '/pins' && !hasPins),
+	);
 }
 
 /** Which destination a path lights up. */

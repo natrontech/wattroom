@@ -1,30 +1,6 @@
-<script module lang="ts">
-	/**
-	 * A pin is a label and a value (#2405). That is the whole data model, and
-	 * the bound is the feature: no rich text, no attachments, no comments, no
-	 * threads. A crew keeps a handful of facts that nothing else holds — the
-	 * game server and its password, the Discord link, the door code — and chat
-	 * cannot, because `PruneChat` caps a room at 500 lines.
-	 *
-	 * The crew owns pins; a room draws its crew's, read-only, with `from`.
-	 * One editor surface, so nobody hunts for which of five rooms a pin is on.
-	 */
-	export interface Pin {
-		id: string;
-		label: string;
-		value: string;
-	}
-
-	/**
-	 * A value that is a link opens on click; everything else copies. One
-	 * branch instead of a `kind` column the pinner would have to set — and
-	 * getting it wrong costs a wrong icon, never a wrong action, because the
-	 * menu carries both.
-	 */
-	export const isLink = (value: string) => /^https?:\/\//i.test(value.trim());
-</script>
-
 <script lang="ts">
+	// The board itself (#2405): the grid, the menu and the editor. What a pin
+	// IS lives in `pins.svelte.ts`, which the sidebar's gate reads too.
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import {
@@ -33,6 +9,7 @@
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import { copyText, theLinkItself } from '$lib/copy';
+	import { isLink, type Pin } from './pins.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 	import ExternalLink from '@lucide/svelte/icons/external-link';
@@ -43,15 +20,15 @@
 	let {
 		pins,
 		canEdit = false,
-		from,
+		crewName = '',
 		onsave,
 		onremove,
 	}: {
 		pins: Pin[];
-		/** Crew admins pin; everyone reads. A room draws it false either way. */
+		/** Crew admins pin; everyone else reads and copies. */
 		canEdit?: boolean;
-		/** Set when these are someone else's pins seen from a room. */
-		from?: { name: string; href: string };
+		/** Named in the subline, so the scope of an edit is on the page. */
+		crewName?: string;
 		/** A new pin has no id yet. */
 		onsave?: (pin: Pin | Omit<Pin, 'id'>) => void;
 		onremove?: (pin: Pin) => void;
@@ -124,25 +101,26 @@
 {/snippet}
 
 <section>
-	<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-		<h2 class="eyebrow">pins</h2>
-		{#if from}
-			<!-- Read-only in a room: name whose they are, and let the name be
-			     the way to where they are changed, rather than drawing an edit
-			     button this surface cannot honour (ux.md). -->
-			<a href={from.href} class="btn-link text-xs">from {from.name}</a>
-		{/if}
-		<span class="flex-1"></span>
-		<!-- Nothing pinned yet: the empty state's CTA is the button, and a
-		     second one up here said the same word twice. -->
+	<!-- The place's own head, drawn the way Sessions draws its (#2405): the
+	     room's name is the sidebar's job (ADR-0020), so this says which place
+	     you are standing in. One button to pin with — the empty state's while
+	     the board is empty, this one once it is not. -->
+	<div class="mb-1 flex items-center gap-3">
+		<h2 class="font-display text-xl font-bold">Pins</h2>
 		{#if canEdit && pins.length > 0}
 			<button
 				onclick={() => (draft = { label: '', value: '' })}
-				class="btn btn-secondary btn-xs shrink-0"
+				class="btn btn-primary btn-xs ml-auto"
 				><PinIcon size={13} /> Pin something</button
 			>
 		{/if}
 	</div>
+	<!-- Says the scope, because editing here changes them everywhere: the
+	     crew owns pins, and its other rooms show the same board. -->
+	<p class="text-muted mb-5 text-xs">
+		What the crew keeps needing. The same board in every room of {crewName ||
+			'the crew'}.
+	</p>
 
 	{#if pins.length === 0}
 		{#if canEdit}
@@ -165,10 +143,17 @@
 			</div>
 		{/if}
 	{:else}
-		<!-- Three across on a desk, one on a phone. The whole card is the
-		     target — two lines at py-3 clears the 44 px riding bar (ux.md),
-		     and there is no small icon to hit. -->
-		<ul class="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+		<!-- Fills to the column it is in, not to the viewport. `sm:grid-cols-2
+		     lg:grid-cols-3` looked right on a page and was wrong in a room,
+		     where the content column is a good deal narrower than the window:
+		     a Tailwind breakpoint asks the viewport, so three cards were
+		     promised space the room never had and a Discord link broke mid
+		     token. auto-fill asks the container, which is the thing that
+		     actually decides.
+
+		     The whole card is the target — two lines at py-3 clears the 44 px
+		     riding bar (ux.md), and there is no small icon to hit. -->
+		<ul class="mt-2 grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-2">
 			{#each pins as pin (pin.id)}
 				<li
 					class="panel panel-flush"

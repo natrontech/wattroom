@@ -49,6 +49,7 @@
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
+	import { pins } from '$lib/pins/pins.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
@@ -86,7 +87,7 @@
 	// Below md the drawer IS the room's index, and Settings is not offered
 	// there (#412 — an owner-only form nobody fills in from a bike). One
 	// answer, used by the list and by the room's context menu alike.
-	const places = $derived(placesFor(device.narrow));
+	const places = $derived(placesFor(device.narrow, pins.items.length > 0));
 	const place = $derived(activeSlug ? activePlace(pathname, activeSlug) : '');
 
 	// The crew is a mode the sidebar is in (ADR-0020 amended, #1147): one

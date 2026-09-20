@@ -18,7 +18,8 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import UpdateRow from '$lib/nav/UpdateRow.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
-	import PinBoard, { type Pin } from '$lib/pins/PinBoard.svelte';
+	import PinBoard from '$lib/pins/PinBoard.svelte';
+	import { pins, removePin, savePin, type Pin } from '$lib/pins/pins.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import type { MockRider } from '../room/mockRoom.svelte';
@@ -47,23 +48,20 @@
 		{ riderId: 'demo', name: 'You', wkg: 10.8, watts: 796 },
 	];
 
-	// Pins, live so the menu, the editor and the undo can be tried (#2405).
-	// Not frozen like the riders below: the whole question this mock answers
-	// is whether managing them feels right.
-	let pins = $state<Pin[]>([
-		{ id: 'mc', label: 'Minecraft', value: 'mc.natron.io:25565' },
-		{ id: 'pw', label: 'Server password', value: 'kilojoule-hammer-42' },
-		{ id: 'dc', label: 'Discord', value: 'https://discord.gg/wattroom' },
-	]);
-	let fresh = $state<Pin[]>([]);
+	// Pins, live and shared with the real place at /r/[slug]/pins (#2405) —
+	// the same store, so editing here moves the room's board and the sidebar
+	// row that is gated on it. Not frozen like the riders below: the question
+	// this mock answers is whether managing them feels right.
+	//
+	// The empty board is its own list, because the point of that rendering is
+	// the state the shared one is not in.
+	let empty = $state<Pin[]>([]);
 	let seq = 0;
-	// ponytail: an undone unpin lands at the end rather than where it was —
-	// the mock's job is the shape, and the real one gets a sort key anyway.
-	function savePin(into: Pin[], pin: Pin | Omit<Pin, 'id'>) {
-		const id = 'id' in pin ? pin.id : `pin-${++seq}`;
-		const at = into.findIndex((p) => p.id === id);
-		if (at >= 0) into[at] = { ...pin, id };
-		else into.push({ ...pin, id });
+	function saveEmpty(pin: Pin | Omit<Pin, 'id'>) {
+		const id = 'id' in pin ? pin.id : `empty-${++seq}`;
+		const at = empty.findIndex((p) => p.id === id);
+		if (at >= 0) empty[at] = { ...pin, id };
+		else empty.push({ ...pin, id });
 	}
 
 	// Frozen sample riders: a gallery should not move while you read it.
@@ -119,43 +117,42 @@
 	<h2 class="eyebrow mt-12">Pins — under review (#2405)</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		A pin is a label and a value, and that is the whole model. The crew owns
-		them; a room draws its crew's. Tap copies — a value starting
-		<code>http</code> opens instead — and right-click carries the rest, so nothing
-		lives only in a menu. Not wired to a server: add, edit, unpin and undo all work
-		here against local state.
+		them, and it is a place inside the room — <code>/r/[slug]/pins</code>, whose
+		sidebar row appears only once there is something on the board. Tap copies —
+		a value starting <code>http</code> opens instead — and right-click carries the
+		rest, so nothing lives only in a menu. Not wired to a server: the store is in
+		memory, and it is the same one the real place reads, so editing here moves that
+		board too.
 	</p>
 
 	<p class="text-muted-dim mt-6 text-[11px]">a crew admin</p>
 	<div class="mt-2">
 		<PinBoard
-			{pins}
+			pins={pins.items}
 			canEdit
-			onsave={(pin) => savePin(pins, pin)}
-			onremove={(pin) => (pins = pins.filter((p) => p.id !== pin.id))}
+			crewName="Natron"
+			onsave={savePin}
+			onremove={(pin) => removePin(pin.id)}
 		/>
 	</div>
 
 	<p class="text-muted-dim mt-8 text-[11px]">
 		a member of the crew — reads and copies, pins nothing
 	</p>
-	<div class="mt-2"><PinBoard {pins} /></div>
-
-	<p class="text-muted-dim mt-8 text-[11px]">
-		inside a room — its crew's pins, changed on the crew's page
-	</p>
 	<div class="mt-2">
-		<PinBoard {pins} from={{ name: 'Natron', href: '/dev/components' }} />
+		<PinBoard pins={pins.items} crewName="Natron" />
 	</div>
 
 	<p class="text-muted-dim mt-8 text-[11px]">
-		nothing pinned yet, as an admin — a member sees no section at all
+		nothing pinned yet, as an admin — a member sees no board at all
 	</p>
 	<div class="mt-2">
 		<PinBoard
-			pins={fresh}
+			pins={empty}
 			canEdit
-			onsave={(pin) => savePin(fresh, pin)}
-			onremove={(pin) => (fresh = fresh.filter((p) => p.id !== pin.id))}
+			crewName="Natron"
+			onsave={saveEmpty}
+			onremove={(pin) => (empty = empty.filter((p) => p.id !== pin.id))}
 		/>
 	</div>
 
