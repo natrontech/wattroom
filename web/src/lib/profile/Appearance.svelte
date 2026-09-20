@@ -17,7 +17,7 @@
 </script>
 
 <!-- Full theme (#331, ADR-0005 amended): every colour moves together. -->
-<section class="panel mt-8 p-6">
+<section class="panel panel-xl mt-8">
 	<h2 class="font-display font-bold">Appearance</h2>
 	<div class="mt-4">
 		<PalettePicker />

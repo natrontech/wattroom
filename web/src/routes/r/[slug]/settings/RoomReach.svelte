@@ -39,7 +39,7 @@
 		     as two checkboxes, and it says what each step actually does —
 		     including the half riders assume and should not: being findable
 		     is not being readable. -->
-<section class="panel mt-3 p-6">
+<section class="panel panel-xl mt-3">
 	<h2 class="font-display font-bold">Who can find this room</h2>
 	<p class="text-muted mt-1.5 text-xs">
 		Finding is not joining and it is not reading. Whichever you pick, the chat,

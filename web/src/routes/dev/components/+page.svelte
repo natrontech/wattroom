@@ -264,7 +264,7 @@
 				<span class="btn btn-primary">Pick a workout</span>
 			{/snippet}
 		</EmptyState>
-		<div class="panel flex items-center gap-4 p-4">
+		<div class="panel flex items-center gap-4">
 			<ProgressBar pct={64} class="flex-1" />
 			<ProgressBar pct={140} fill="bg-z4" class="flex-1" />
 			<span class="text-muted text-[10px]">140% clamps to full</span>

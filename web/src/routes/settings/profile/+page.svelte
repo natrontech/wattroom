@@ -201,7 +201,7 @@
      every ride scales from. The other sections are routes beside this one. -->
 <div>
 	{#if !account.loaded}
-		<div class="panel mt-8 p-6">
+		<div class="panel panel-xl mt-8">
 			<Skeleton class="h-4 w-40" />
 			<Skeleton class="mt-3 h-9" rows={3} />
 		</div>
@@ -210,7 +210,7 @@
 	{#if account.loaded}
 		{#if account.me}
 			<!-- Who you are here (#253): avatar, level, the road to the next. -->
-			<section class="panel mt-8 p-6">
+			<section class="panel panel-xl mt-8">
 				<div class="flex items-center gap-6">
 					<Avatar
 						name={account.me.displayName}
@@ -283,7 +283,7 @@
 				<span class="text-danger mt-1 block text-xs">{saveError.message}</span>
 			{/if}
 		{/snippet}
-		<section class="panel mt-3 p-6">
+		<section class="panel panel-xl mt-3">
 			<div class="grid gap-4 sm:grid-cols-2">
 				<label class="block">
 					<span class="eyebrow">display name</span>

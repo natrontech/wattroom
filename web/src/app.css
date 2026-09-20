@@ -249,9 +249,35 @@ body {
 	@apply px-3 py-1.5 text-xs;
 }
 
-/* Raised card. Padding and margin at the call site. */
+/*
+ * Raised card, in four densities (#613). Padding used to be the call site's
+ * problem, and one component ended up drawn at eighteen distinct combinations
+ * — which is what "the spacing varies panel to panel" turned out to mean when
+ * it was counted. The default below is the largest of those clusters, so a
+ * panel that says nothing about padding is already the app's common density;
+ * the two roomier clusters have names; and a panel that is only a frame says
+ * so. Margin, width and layout stay at the call site.
+ *
+ * Same invariant as btn-xs/btn-lg above: the variants beat the base purely by
+ * emitting later in the utilities layer, and so does a one-off `p-*` at a call
+ * site. panel-density.test.ts holds that order, so a Tailwind upgrade that
+ * reshuffles it fails there rather than on a screen.
+ */
 @utility panel {
-	@apply border-muted/15 bg-surface-raised rounded-lg border;
+	@apply border-muted/15 bg-surface-raised rounded-lg border px-4 py-3;
+}
+/* A card with a heading and a paragraph — a notice, a settings section. */
+@utility panel-lg {
+	@apply p-5;
+}
+/* A section that owns a column of the page: history's cards, a room's stats. */
+@utility panel-xl {
+	@apply p-6;
+}
+/* Frame only: a divided list, a table, a scroller — the rows inside reach the
+ * border themselves, and a default padding would draw a gutter around them. */
+@utility panel-flush {
+	@apply p-0;
 }
 /* The signed-out shell (#2178): the email gate, the sign-in card, recovery,
  * and the landing's own panel. A softer corner than `panel` and no background

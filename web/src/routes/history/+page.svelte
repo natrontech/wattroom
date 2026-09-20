@@ -369,7 +369,7 @@
 		</div>
 
 		<div class="mt-3 grid gap-3 xl:grid-cols-2">
-			<div class="panel px-6 py-5">
+			<div class="panel panel-xl">
 				<h2 class="text-ink text-sm font-semibold">Best power by duration</h2>
 				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
 				<span class="text-muted-dim ml-2 text-[11px]"
@@ -415,7 +415,7 @@
 					/>
 				</div>
 			{/if}
-			<div class="panel px-6 py-5">
+			<div class="panel panel-xl">
 				<h2 class="text-ink text-sm font-semibold">FTP over the last year</h2>
 				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->
 				<span class="text-muted-dim ml-2 text-[11px]"
@@ -433,7 +433,7 @@
 			</div>
 			{#if progression.load && progression.load.series.length > 1}
 				{@const load = progression.load}
-				<div class="panel px-6 py-5 xl:col-span-2">
+				<div class="panel panel-xl xl:col-span-2">
 					<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 						<h2 class="text-ink text-sm font-semibold">Training load</h2>
 						<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->

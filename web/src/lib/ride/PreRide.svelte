@@ -71,7 +71,7 @@
 	<p class="text-muted mt-4 text-xs">{summary}</p>
 
 	<!-- What the session looks like — the one thing to see before Start. -->
-	<div class="panel mt-4 overflow-hidden">
+	<div class="panel panel-flush mt-4 overflow-hidden">
 		<IntervalGraph
 			segments={flatten(workout)}
 			total={durationSeconds(workout)}

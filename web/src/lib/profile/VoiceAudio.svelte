@@ -42,7 +42,7 @@
 	}
 </script>
 
-<section class="panel mt-8 p-6">
+<section class="panel panel-xl mt-8">
 	<h2 class="font-display font-bold">Voice &amp; audio</h2>
 	{#if !account.me?.avEnabled}
 		<!-- Capability gating (ux.md): no LiveKit, no voice, so no controls

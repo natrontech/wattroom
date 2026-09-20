@@ -315,7 +315,7 @@
 		</div>
 	{/if}
 
-	<div class="panel mt-4 overflow-hidden">
+	<div class="panel panel-flush mt-4 overflow-hidden">
 		<IntervalGraph
 			{segments}
 			{total}
@@ -389,7 +389,7 @@
 
 {#snippet inspector()}
 	{#if current}
-		<div class="panel mt-3 space-y-4 p-4">
+		<div class="panel mt-3 space-y-4">
 			{#if current.type !== 'repeat'}
 				<label class="block">
 					<span class="eyebrow">duration</span>

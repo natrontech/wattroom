@@ -100,7 +100,7 @@
 	role="dialog"
 	aria-label="Pick a GIF"
 	tabindex="-1"
-	class="panel absolute right-0 bottom-full left-0 z-20 mb-2 flex max-h-80 flex-col shadow-lg"
+	class="panel panel-flush absolute right-0 bottom-full left-0 z-20 mb-2 flex max-h-80 flex-col shadow-lg"
 >
 	<div class="border-ink/5 flex items-center gap-2 border-b px-3 py-2">
 		<Search size={14} class="text-muted shrink-0" />

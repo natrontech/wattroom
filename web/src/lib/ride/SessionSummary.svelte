@@ -122,7 +122,7 @@
 	<section class="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 		{#each [{ icon: Clock, label: 'duration', value: formatClock(seconds) }, { icon: Flame, label: 'work', value: `${kj} kJ` }, { icon: Target, label: 'execution', value: execution === undefined ? '—' : `${Math.round(execution * 100)}%` }, { icon: Activity, label: 'normalised', value: `${np} W` }] as stat (stat.label)}
 			{@const Mark = stat.icon}
-			<div class="panel p-5">
+			<div class="panel panel-lg">
 				<Mark size={18} class="text-neon" aria-hidden="true" />
 				<div
 					class="font-display mt-3 text-3xl leading-none font-bold tabular-nums"
@@ -138,7 +138,7 @@
 
 	<div class="mt-3 grid gap-3 {medal ? 'lg:grid-cols-[1fr_400px]' : ''}">
 		<div class="grid gap-3">
-			<section class="panel p-5">
+			<section class="panel panel-lg">
 				<h2 class="eyebrow flex items-center gap-1.5">
 					<Gauge size={13} class="text-neon" aria-hidden="true" /> time in zone
 				</h2>
@@ -152,7 +152,7 @@
 			</section>
 
 			{#if trace}
-				<section class="panel p-5">
+				<section class="panel panel-lg">
 					<h2 class="eyebrow flex items-center gap-1.5">
 						<Activity size={13} class="text-neon" aria-hidden="true" /> how it went
 					</h2>
@@ -208,7 +208,7 @@
 				</section>
 			{/if}
 
-			<section class="panel p-5">
+			<section class="panel panel-lg">
 				<h2 class="eyebrow flex items-center gap-1.5">
 					<Zap size={13} class="text-neon" aria-hidden="true" /> power curve
 				</h2>
@@ -236,7 +236,7 @@
 			{#if together.length > 1}
 				<!-- The moment the session ends is when who was there matters
 				     (#1559): the card used to report one person's numbers. -->
-				<section class="panel p-5">
+				<section class="panel panel-lg">
 					<h2 class="eyebrow flex items-center gap-1.5">
 						<Users size={13} class="text-neon" aria-hidden="true" /> who rode
 					</h2>
@@ -259,7 +259,7 @@
 				</section>
 			{/if}
 
-			<section class="panel p-5">
+			<section class="panel panel-lg">
 				<div class="flex items-baseline gap-3">
 					<h2 class="eyebrow flex items-center gap-1.5">
 						<Trophy size={13} class="text-neon" aria-hidden="true" /> progress

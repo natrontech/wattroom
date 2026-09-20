@@ -37,7 +37,7 @@
 			Riding pays best by a wide margin; the rest rewards being around. Being in
 			voice is what counts — the server cannot hear who talks.
 		</p>
-		<div class="panel mt-3 overflow-x-auto">
+		<div class="panel panel-flush mt-3 overflow-x-auto">
 			<table class="w-full text-sm">
 				<thead>
 					<tr class="eyebrow text-left">

@@ -153,7 +153,7 @@
 </script>
 
 <h2 class="eyebrow mt-8">people</h2>
-<ul class="divide-ink/5 panel mt-2 divide-y">
+<ul class="divide-ink/5 panel panel-flush mt-2 divide-y">
 	{#each crew.people as person (person.id)}
 		<li
 			class="flex min-h-11 items-center gap-3 px-4 py-2.5"
@@ -236,7 +236,7 @@
 		Lifting a crew ban restores nothing a room's owner decided — a room that
 		banned them stays shut (ADR-0038).
 	</p>
-	<ul class="divide-ink/5 panel mt-2 divide-y">
+	<ul class="divide-ink/5 panel panel-flush mt-2 divide-y">
 		{#each crew.banned as person (person.id)}
 			<!-- The same links and menu as a person's row (#1934): an admin
 			     checks whom they banned before lifting it. -->

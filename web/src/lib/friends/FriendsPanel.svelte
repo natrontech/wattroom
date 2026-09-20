@@ -197,14 +197,14 @@
 				     (#1017), and that is the thing a rider arrives here to
 				     use — it is not a list of people to read past. -->
 				<div class="eyebrow mt-3 px-1 pb-1">wants to be friends</div>
-				<div class="panel">
+				<div class="panel panel-flush">
 					{#each incoming as friend (friend.id)}
 						{@render friendRow(friend, incomingActions)}
 					{/each}
 				</div>
 				<div class="eyebrow mt-4 px-1 pb-1">your friends</div>
 			{/if}
-			<div class="panel mt-3">
+			<div class="panel panel-flush mt-3">
 				{#each accepted as friend (friend.id)}
 					{@render friendRow(friend, friendActions)}
 				{/each}

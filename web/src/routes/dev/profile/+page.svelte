@@ -71,7 +71,7 @@
 <main class="page">
 	<p class="eyebrow">mock · social profiles (#449)</p>
 
-	<header class="panel mt-2 flex flex-wrap items-center gap-5 p-6">
+	<header class="panel panel-xl mt-2 flex flex-wrap items-center gap-5">
 		<Avatar name={rider.name} xp={rider.xp} size={72} />
 		<div class="min-w-0 flex-1">
 			<h1 class="font-display text-2xl font-bold">{rider.name}</h1>
@@ -113,7 +113,7 @@
 		<div class="min-w-0 space-y-8">
 			<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 				{#each stats as s (s.label)}
-					<div class="panel px-4 py-3">
+					<div class="panel">
 						<p class="eyebrow">{s.label}</p>
 						<p class="font-display text-2xl font-bold tabular-nums">
 							{s.value}{#if s.unit}<span class="text-muted ml-1 text-sm"
@@ -134,7 +134,7 @@
 				</div>
 				<ul class="mt-3 space-y-2">
 					{#each feed as ride (ride.title + ride.when)}
-						<li class="panel px-5 py-4">
+						<li class="panel panel-lg">
 							<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 								<span class="font-display font-bold">{ride.title}</span>
 								<span class="text-muted text-xs">{ride.room} · {ride.when}</span

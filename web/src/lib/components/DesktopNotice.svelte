@@ -91,7 +91,7 @@
 </script>
 
 {#if update}
-	<section class="panel mt-6 flex flex-wrap items-center gap-3 px-5 py-4">
+	<section class="panel panel-lg mt-6 flex flex-wrap items-center gap-3">
 		<div class="min-w-48 flex-1">
 			<p class="eyebrow">desktop app</p>
 			<p class="mt-1 text-sm">
@@ -105,7 +105,7 @@
 		<button class="btn-link text-xs" onclick={skip}>Not now</button>
 	</section>
 {:else if installer && desk}
-	<section class="panel mt-6 px-5 py-4">
+	<section class="panel panel-lg mt-6">
 		<div class="flex flex-wrap items-start gap-x-6 gap-y-3">
 			<div class="min-w-56 flex-1">
 				<p class="eyebrow">desktop app</p>

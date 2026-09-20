@@ -243,7 +243,7 @@
 	<!-- Chrome components: the kit utilities from app.css. These ARE the
 	     definitions — never retype the class strings at a call site. -->
 	<h2 class="eyebrow mt-12">Chrome</h2>
-	<div class="panel mt-4 flex flex-wrap items-center gap-3 p-6">
+	<div class="panel panel-xl mt-4 flex flex-wrap items-center gap-3">
 		<button class="btn btn-primary">Primary</button>
 		<button class="btn btn-secondary">Secondary</button>
 		<button class="btn btn-ghost">Ghost</button>
@@ -268,5 +268,45 @@
 		<code class="text-ink/80">page</code> — defined once in app.css. Icons are
 		Lucide (<code class="text-ink/80">@lucide/svelte</code>), not unicode
 		glyphs.
+	</p>
+
+	<!-- Panel density (#613). One component was drawn at eighteen distinct
+	     padding combinations before these four had names; this row is where
+	     the difference between them is visible at a glance. -->
+	<h2 class="eyebrow mt-12">Panel density</h2>
+	<div class="mt-4 grid gap-3 sm:grid-cols-2">
+		<div class="panel">
+			<code class="text-ink/80 text-xs">panel</code>
+			<p class="text-muted mt-1 text-xs">
+				The default. A row, a notice strip, a card that holds one line.
+			</p>
+		</div>
+		<div class="panel panel-lg">
+			<code class="text-ink/80 text-xs">panel panel-lg</code>
+			<p class="text-muted mt-1 text-xs">
+				A card with a heading and a paragraph in it.
+			</p>
+		</div>
+		<div class="panel panel-xl">
+			<code class="text-ink/80 text-xs">panel panel-xl</code>
+			<p class="text-muted mt-1 text-xs">
+				A section that owns a column of the page.
+			</p>
+		</div>
+		<div class="panel panel-flush">
+			<div class="border-ink/5 border-b px-4 py-3">
+				<code class="text-ink/80 text-xs">panel panel-flush</code>
+			</div>
+			<p class="text-muted px-4 py-3 text-xs">
+				Frame only — the rows inside reach the border themselves.
+			</p>
+		</div>
+	</div>
+	<p class="text-muted mt-3 max-w-2xl text-xs">
+		The default is the density most of the app was already drawn at, so a panel
+		that says nothing about padding is right more often than not. Say a variant
+		when it is not — and if none of the four fits, the reason goes in
+		<code class="text-ink/80">panel-density.test.ts</code>, which is what keeps
+		the count at four.
 	</p>
 </main>

@@ -73,7 +73,7 @@
 			</EmptyState>
 		</div>
 	{:else}
-		<div class="panel mt-3 overflow-x-auto">
+		<div class="panel panel-flush mt-3 overflow-x-auto">
 			<table class="w-full text-sm">
 				<thead>
 					<tr class="eyebrow text-left">

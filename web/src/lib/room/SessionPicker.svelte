@@ -266,7 +266,7 @@
 				{#if picked}
 					<p class="font-display font-bold">{picked.workout.name}</p>
 					<p class="text-muted mt-1 text-xs">{picked.summary ?? ''}</p>
-					<div class="panel mt-3 overflow-hidden">
+					<div class="panel panel-flush mt-3 overflow-hidden">
 						<IntervalGraph {segments} {total} elapsed={0} {ftp} trace={[]} />
 					</div>
 

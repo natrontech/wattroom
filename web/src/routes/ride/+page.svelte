@@ -595,7 +595,7 @@
 				execution={session.scored ? session.execution : undefined}
 			>
 				{#snippet actions()}
-					<div class="panel px-5 py-4">
+					<div class="panel panel-lg">
 						<div class="flex flex-wrap items-center gap-2">
 							<!-- The end links forward (#1331): the ride's own page first,
 							     the export and the next workout after it. -->

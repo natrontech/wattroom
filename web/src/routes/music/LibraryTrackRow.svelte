@@ -55,7 +55,7 @@
 </script>
 
 <li
-	class="panel px-4 py-3"
+	class="panel"
 	title={menu().length ? MENU_HINT : undefined}
 	{@attach contextMenu(menu)}
 >

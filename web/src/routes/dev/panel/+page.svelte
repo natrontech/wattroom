@@ -399,7 +399,7 @@
 			order of how loud they are.
 		</p>
 		<div class="grid gap-4 md:grid-cols-3">
-			<div class="panel space-y-2 p-4">
+			<div class="panel space-y-2">
 				<div class="eyebrow">1 — the room's place, in the sidebar</div>
 				<div class="bg-surface space-y-1 rounded p-2 text-sm">
 					<div class="text-muted flex items-center gap-2 px-2 py-1">
@@ -423,7 +423,7 @@
 					already draws for a room you are not in.
 				</p>
 			</div>
-			<div class="panel space-y-2 p-4">
+			<div class="panel space-y-2">
 				<div class="eyebrow">2 — a line in the column</div>
 				<div class="bg-surface rounded p-2">
 					<div class="text-muted flex items-center gap-1.5 px-1 py-1 text-xs">
@@ -445,7 +445,7 @@
 					only place it makes sense when the log is elsewhere.
 				</p>
 			</div>
-			<div class="panel space-y-2 p-4">
+			<div class="panel space-y-2">
 				<div class="eyebrow">3 — a toast, for a mention only</div>
 				<div class="bg-surface rounded p-2">
 					<div
@@ -467,7 +467,7 @@
 		</div>
 	</section>
 
-	<section class="panel max-w-3xl space-y-3 p-5">
+	<section class="panel panel-lg max-w-3xl space-y-3">
 		<h2 class="font-display text-lg">What I would build</h2>
 		<p class="text-sm">
 			<span class="text-neon font-medium">C now, A next.</span> C is the smallest

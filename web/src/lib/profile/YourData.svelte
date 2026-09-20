@@ -51,7 +51,7 @@
 	}
 </script>
 
-<section class="panel mt-3 p-6">
+<section class="panel panel-xl mt-3">
 	<h2 class="font-display font-bold">Your data</h2>
 	<ul class="text-muted mt-3 space-y-1.5 text-xs">
 		<li>Rides are private by default — sharing is per ride, and opt-in.</li>

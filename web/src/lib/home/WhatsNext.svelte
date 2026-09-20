@@ -86,7 +86,7 @@
 
 	{#if sessions === null}
 		{#if !error}
-			<div class="panel mt-3">
+			<div class="panel panel-flush mt-3">
 				{#each { length: 2 } as _, i (i)}
 					<div class="border-ink/5 border-b px-4 py-3 last:border-b-0">
 						<Skeleton class="h-4 w-44" />
@@ -96,7 +96,7 @@
 			</div>
 		{/if}
 	{:else if shown.length}
-		<ul class="panel mt-3" data-testid="whats-next">
+		<ul class="panel panel-flush mt-3" data-testid="whats-next">
 			{#each shown as session (session.id)}
 				<li>
 					<!-- The row a rider reads from the sofa: what, then when and
@@ -156,7 +156,7 @@
 	{#if hasRooms}
 		<a
 			href="/settings/data"
-			class="panel hover:bg-surface mt-3 flex flex-wrap items-center gap-3 px-4 py-3 transition-colors"
+			class="panel hover:bg-surface mt-3 flex flex-wrap items-center gap-3 transition-colors"
 		>
 			<CalendarClock size={15} class="text-muted shrink-0" />
 			<span class="text-muted min-w-0 flex-1 text-xs">

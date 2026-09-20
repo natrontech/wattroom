@@ -78,7 +78,7 @@
 
 {#if picked.length}
 	<div
-		class="panel mt-3 flex flex-wrap items-center gap-2 px-4 py-2 text-sm"
+		class="panel mt-3 flex flex-wrap items-center gap-2 text-sm"
 		role="region"
 		aria-label="picked tracks"
 	>

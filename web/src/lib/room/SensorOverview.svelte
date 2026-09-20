@@ -124,7 +124,7 @@
 		targetsNote: args.targetsNote,
 	})}
 	<div
-		class="panel flex min-w-0 flex-col items-center gap-2 px-4 py-5 text-center"
+		class="panel panel-lg flex min-w-0 flex-col items-center gap-2 text-center"
 	>
 		<args.icon
 			size={28}
