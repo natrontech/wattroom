@@ -268,7 +268,9 @@ since the first build: **on Windows and Linux, closing the window quits the
 app — unless the login item started that run.** A rider who asked WattRoom to
 be running when they sign in did not ask it to stop the first time they close
 a window, and quit is then a tray item rather than a window control. A launch
-the rider started themselves is untouched.
+the rider started themselves is untouched, and so is a desktop with no status
+notifier to put an icon in — `new Tray` throws there, and rather than die at
+launch over an icon the shell opens its window and keeps the ordinary rule.
 
 Two places refuse rather than pretend. An unpackaged build on macOS reports
 the setting unsupported and the control hides, because the API would register
