@@ -299,6 +299,18 @@ test('no page outside a room scrolls sideways on a phone', async ({
 			peer: expect.stringMatching(/.+/),
 		}),
 	);
+	// The crew's three routes hang off two locals the guard above cannot see,
+	// so they needed their own (#2360): let `/api/rooms` stop carrying `crew`
+	// or `/api/crews/:id` stop carrying `code` and the crew page, its settings
+	// and its door leave the measured list in silence. The code is checked by
+	// shape rather than emptiness, the same `/^[A-Z0-9]{6}$/` room.ts asserts.
+	expect(
+		{ crewId: crewId ?? '', crewCode },
+		'the crew, its settings and its door resolve',
+	).toEqual({
+		crewId: expect.stringMatching(/.+/),
+		crewCode: expect.stringMatching(/^[A-Z0-9]{6}$/),
+	});
 
 	await seedAPlannedSession(page, byId.room);
 
