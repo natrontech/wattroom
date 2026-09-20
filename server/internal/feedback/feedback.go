@@ -334,7 +334,7 @@ var (
 	routeSegments = fieldSet(`
 		account appearance brand c chat components crew data dev directory
 		dm download edit editor equipment friends hardware history home
-		hud legal licenses login medal members messages modes music
+		hud import legal licenses login medal members messages modes music
 		notifications pairing panel privacy profile progression r ramp
 		recover ride room rooms sessions settings sound spectator
 		styleguide summary terms theme-editor themes training trophies u

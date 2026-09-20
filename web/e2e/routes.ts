@@ -23,6 +23,7 @@ export const MEASURED: readonly string[] = [
 	'/home',
 	'/workouts',
 	'/workouts/edit',
+	'/workouts/import',
 	'/music',
 	'/history',
 	'/ride',
