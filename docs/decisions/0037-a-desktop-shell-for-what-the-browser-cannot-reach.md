@@ -217,13 +217,13 @@ So the question moves to the one surface that exists on every platform — the
 share notice (#563), which is already persistent, already on every page, and
 already the thing that says what the room can see.
 
-- **Off is instant, and it closes the tap.** The track is unpublished *and*
+- **Off is instant, and it closes the tap.** The track is unpublished _and_
   stopped, so the machine stops being tapped rather than being tapped quietly.
   A rider pressing it means "not this", and must not wait on a picker.
 - **On re-runs the share, picker and all.** `getDisplayMedia` has no
   audio-only form; a capture that did not take the sound cannot grow one.
 - **The answer is remembered per device, and it defaults to on.** Every picker
-  that *does* ask — Chrome's "share tab audio", the shell's Windows checkbox —
+  that _does_ ask — Chrome's "share tab audio", the shell's Windows checkbox —
   has the rider's answer already, and defaulting to off would silently
   overrule the box they ticked. What was wrong was never that the sound went;
   it was that it went every time with no way to say no.
@@ -234,7 +234,56 @@ This ADR justified the shell with two things the browser cannot do — ANT+ and 
 
 macOS system audio is built, and amended in above (2026-09-09, #1699): the machine's sound is offered, not assumed. **ANT+ is unbuilt and was untracked** — no `ant` match exists anywhere in `desktop/` or `web/src/lib/ble/`, and no issue carried it until #2056.
 
-The reversal condition in Consequences needs *both* capabilities to fail, so it has not fired and this decision is not reversed. But the ADR reads as though it stands on two legs when it stands on one — plus the things the shell grew afterwards, which no browser tab could host either: the floating HUD ([ADR-0041](0041-the-hud-mirrors-the-riding-screen.md)), notifications that answer back ([ADR-0042](0042-notifications-answer-back.md)), deep links, and self-update (#1303).
+The reversal condition in Consequences needs _both_ capabilities to fail, so it has not fired and this decision is not reversed. But the ADR reads as though it stands on two legs when it stands on one — plus the things the shell grew afterwards, which no browser tab could host either: the floating HUD ([ADR-0041](0041-the-hud-mirrors-the-riding-screen.md)), notifications that answer back ([ADR-0042](0042-notifications-answer-back.md)), deep links, and self-update (#1303).
 
 **This decision now rests on macOS system audio, the HUD, notifications, deep links and self-update.** ANT+ is backlogged as #2056 — built when a rider brings an ANT+-only trainer, not before. Every trainer in the alpha speaks FTMS over BLE ([ADR-0007](0007-alpha-hardware-is-all-ftms.md)), so nothing is waiting on it. If macOS system audio is ever lost as well, the reversal condition fires on its own terms and the shell should be argued again from scratch.
 
+## Amendment, 2026-09-20 (#1313): the tray, and a launch that opens no window
+
+The last box of #296's app-ness list, parked twice as speculative and
+unparked when self-update and the HUD had between them made "WattRoom is
+running and you cannot see it" an ordinary state. Two things, and the second
+is why the first is not decoration.
+
+**The shell has a tray icon, always.** Not a setting: a menu-bar or
+notification-area presence is what every desktop app of this shape has, and
+the 95 % rule makes that a default. It carries #296's three items — the
+window, the room the app is connected to if there is one, quit — and the
+launch-at-login switch, because the setting that can put the shell here has
+to be reachable from here. It is not that switch's only home; Settings →
+Notifications has the same one with the sentence that explains it, and
+`ux.md` forbids anything living only in a menu.
+
+**Launch at login is off until a rider asks, and a login launch opens no
+window.** `app.setLoginItemSettings` covers macOS and Windows; Linux is a
+`~/.config/autostart/wattroom.desktop` written by hand
+([RESEARCH §15.4](../RESEARCH.md)). A cycling app that puts a window in front
+of somebody at every boot is one they turn back off, so the login item passes
+`--hidden` and the shell comes up in the tray alone — on macOS, where
+`setLoginItemSettings`' `args` is Windows-only and `openAsHidden` is dead
+above macOS 13, `wasOpenedAtLogin` answers the same question.
+
+That has one consequence worth naming, because it changes a rule that held
+since the first build: **on Windows and Linux, closing the window quits the
+app — unless the login item started that run.** A rider who asked WattRoom to
+be running when they sign in did not ask it to stop the first time they close
+a window, and quit is then a tray item rather than a window control. A launch
+the rider started themselves is untouched, and so is a desktop with no status
+notifier to put an icon in — `new Tray` throws there, and rather than die at
+launch over an icon the shell opens its window and keeps the ordinary rule.
+
+Two places refuse rather than pretend. An unpackaged build on macOS reports
+the setting unsupported and the control hides, because the API would register
+the prebuilt Electron bundle — #1944's trap in a different call, and worse,
+since what it registers is not WattRoom and cannot be un-registered from
+inside WattRoom. And every change is read back before it is reported as done:
+macOS 13's `SMAppService` can register nothing and say nothing, and a switch
+sitting on with nothing behind it is the failure this feature would be
+remembered for.
+
+**What this does not do.** It is not a reason the shell exists — the
+reversal condition in Consequences still turns on macOS system audio alone
+(2026-09-10, #1949) — and it holds no product code: the app says which room
+it is in, the shell puts the name in a menu item and hands the path back over
+IPC. Navigating would reload the SPA, which mid-ride means dropping the
+socket and the trainer.

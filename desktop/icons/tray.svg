@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <title>WattRoom</title>
+  <!--
+    The tray mark (#1313). build/icon.svg's five bars WITHOUT the tile and
+    without the glow: a menu-bar slot is 16–22px tall and already has a
+    background, so the tile would be a coloured square with the bars lost
+    inside it. The favicon's 64-unit grid, lifted 3 units so the bars sit
+    centred in a square slot.
+
+    Two rasters come out of this one geometry, because a tray icon is two
+    different things:
+
+      rsvg-convert -w 32 -h 32 tray.svg > tray.png        # Windows, Linux
+      rsvg-convert -w 64 -h 64 tray.svg > tray@2x.png
+
+    and, for macOS, the same bars in solid black with alpha — a TEMPLATE
+    image, which the system tints for a light or dark menu bar and for
+    selection. Colour there is wrong on both:
+
+      trayTemplate.png     16×16, fill #000
+      trayTemplate@2x.png  32×32, fill #000
+  -->
+  <defs>
+    <linearGradient id="bars" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff3d8b"/>
+      <stop offset="100%" stop-color="#8b2bff"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#bars)">
+    <rect x="2" y="9" width="8" height="46" rx="4"/>
+    <rect x="15" y="35" width="8" height="20" rx="4"/>
+    <rect x="28" y="21" width="8" height="34" rx="4"/>
+    <rect x="41" y="35" width="8" height="20" rx="4"/>
+    <rect x="54" y="9" width="8" height="46" rx="4"/>
+  </g>
+</svg>

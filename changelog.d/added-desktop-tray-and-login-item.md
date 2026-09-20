@@ -1,0 +1,1 @@
+- Desktop app: a tray icon in the menu bar or notification area, with the window, the room you are connected to and _Quit_ a click away — and, in Settings → Notifications, a switch to start WattRoom when you sign in to your computer. It comes up in the tray with no window, it is off until you turn it on, and the same two places turn it back off.

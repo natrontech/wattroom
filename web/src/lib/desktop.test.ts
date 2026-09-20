@@ -6,8 +6,13 @@ import {
 	formatBytes,
 	installerOS,
 	isNewer,
+	launchAtLogin,
+	onShellNavigate,
 	parseRelease,
+	setLaunchAtLogin,
+	setShellRoom,
 	shellUpdate,
+	trayName,
 } from './desktop';
 
 // The shape GitHub's releases/latest returns for what desktop-release.yml
@@ -198,5 +203,106 @@ describe('shellUpdate', () => {
 			...bridge,
 		};
 		expect(shellUpdate()?.installUpdate).toBe(bridge.installUpdate);
+	});
+});
+
+describe('launch at login, seen from the app (#1313)', () => {
+	afterEach(() => {
+		delete (globalThis as { wattroom?: unknown }).wattroom;
+	});
+
+	it('is null in a browser and in a shell that has no such bridge', async () => {
+		await expect(launchAtLogin()).resolves.toBeNull();
+		await expect(setLaunchAtLogin(true)).resolves.toBeNull();
+		(globalThis as { wattroom?: unknown }).wattroom = { version: '2026.9.9' };
+		await expect(launchAtLogin()).resolves.toBeNull();
+		await expect(setLaunchAtLogin(true)).resolves.toBeNull();
+	});
+
+	it('takes the shell at its word, and nothing that is not one', async () => {
+		const answer = { supported: true, enabled: true, error: null };
+		const setLogin = vi.fn().mockResolvedValue(answer);
+		(globalThis as { wattroom?: unknown }).wattroom = {
+			launchAtLogin: vi.fn().mockResolvedValue(answer),
+			setLaunchAtLogin: setLogin,
+		};
+		await expect(launchAtLogin()).resolves.toEqual(answer);
+		await expect(setLaunchAtLogin(true)).resolves.toEqual(answer);
+		expect(setLogin).toHaveBeenCalledWith(true);
+
+		// A shell that answers with something else must hide the setting, not
+		// draw a switch whose state is a guess.
+		(globalThis as { wattroom?: unknown }).wattroom = {
+			launchAtLogin: vi.fn().mockResolvedValue({ enabled: true }),
+		};
+		await expect(launchAtLogin()).resolves.toBeNull();
+	});
+
+	it('carries the refusal back rather than swallowing it', async () => {
+		(globalThis as { wattroom?: unknown }).wattroom = {
+			setLaunchAtLogin: vi.fn().mockResolvedValue({
+				supported: true,
+				enabled: false,
+				error: 'Your system did not add WattRoom to your login items.',
+			}),
+		};
+		// errors.md: the rider pressed something and is watching for a result.
+		// Losing this leaves a switch that silently springs back.
+		await expect(setLaunchAtLogin(true)).resolves.toMatchObject({
+			enabled: false,
+			error: expect.stringContaining('did not add WattRoom'),
+		});
+	});
+
+	it('survives a bridge that throws', async () => {
+		(globalThis as { wattroom?: unknown }).wattroom = {
+			launchAtLogin: vi.fn().mockRejectedValue(new Error('no IPC')),
+		};
+		await expect(launchAtLogin()).resolves.toBeNull();
+	});
+
+	it('names the tray the way each platform does', () => {
+		expect(trayName('darwin')).toBe('the menu bar');
+		expect(trayName('win32')).toBe('the notification area');
+		expect(trayName('linux')).toBe('the system tray');
+		expect(trayName(null)).toBe('the system tray');
+	});
+});
+
+describe('the tray’s room and its way back (#1313)', () => {
+	afterEach(() => {
+		delete (globalThis as { wattroom?: unknown }).wattroom;
+	});
+
+	it('does nothing at all in a browser', () => {
+		expect(() => setShellRoom({ path: '/r/x', name: 'X' })).not.toThrow();
+		expect(() => onShellNavigate(() => {})).not.toThrow();
+	});
+
+	it('tells the shell which room, and null when none', () => {
+		const setRoom = vi.fn();
+		(globalThis as { wattroom?: unknown }).wattroom = { setRoom };
+		setShellRoom({ path: '/r/tuesday', name: 'Tuesday Night' });
+		setShellRoom(null);
+		expect(setRoom.mock.calls).toEqual([
+			[{ path: '/r/tuesday', name: 'Tuesday Night' }],
+			[null],
+		]);
+	});
+
+	it('routes only to a path on our own root', () => {
+		let handler: (to: unknown) => void = () => {};
+		(globalThis as { wattroom?: unknown }).wattroom = {
+			onNavigate: (cb: (to: unknown) => void) => (handler = cb),
+		};
+		const went: string[] = [];
+		onShellNavigate((to) => went.push(to));
+		// The shell checks this too; a second pair of eyes on the one thing
+		// that turns a menu item into an open redirect.
+		handler('https://evil.example/');
+		handler('//evil.example/');
+		handler(42);
+		handler('/r/tuesday');
+		expect(went).toEqual(['/r/tuesday']);
 	});
 });
