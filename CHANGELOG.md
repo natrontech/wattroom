@@ -17,6 +17,55 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.120] - 2026-09-20
+
+### Added
+
+- Desktop app: a tray icon in the menu bar or notification area, with the window, the room you are connected to and _Quit_ a click away — and, in Settings → Notifications, a switch to start WattRoom when you sign in to your computer. It comes up in the tray with no window, it is off until you turn it on, and the same two places turn it back off.
+- The server now says how many stored Strava refresh tokens are still
+  unencrypted: `wattroom_identities_plaintext_refresh_tokens` on the metrics
+  listener, plus a log line whenever the number changes. Zero means
+  `WATTROOM_TOKEN_KEY` is set and every stored credential is sealed; anything
+  higher means credentials are sitting in the clear in your database dumps,
+  and `deploy/alerts.yml` now carries a rule that tells you so.
+- A finished ride can now carry how it felt: a 1–10 rating on the Borg CR10
+  scale and a sentence to yourself, both optional, both on the ride's own
+  page. The note is private and stays private — sharing a ride with friends
+  shares its numbers and never your words — and both travel with your account
+  export.
+- Import a training plan you already have: `/workouts` now takes a Zwift `.zwo` or an `.erg` course file and turns it into a WattRoom workout on your shelf. The preview shows the converted workout before anything is saved, together with a plain list of whatever the file asked for that WattRoom cannot ride — a free-ride block, a mid-ride text prompt, a single cadence where WattRoom shows a range — so nothing is lost without being named. Pulling a planned workout from intervals.icu is still to come.
+
+### Changed
+
+- Handing out an invite link or a session link from a phone now opens the
+  phone's own share sheet, so the link goes straight into WhatsApp, Signal or
+  a message instead of onto the clipboard for you to paste. The buttons say
+  "Share" where that happens. On a desk nothing changes — the link is copied,
+  the buttons still say "Copy", and a clipboard the browser refuses still
+  hands you the link to read.
+
+### Fixed
+
+- Voice and video work on a phone. The room comes out of the loudspeaker
+  instead of the earpiece: a phone joins voice listening now, and the mic
+  button is what opens and closes the capture that was holding the earpiece
+  route open. The input no longer lags or chops mid-word, the camera has a
+  front/back flip beside it, and the Sound panel — with every other dialog
+  opened from the nav drawer — comes up over the drawer instead of underneath
+  it.
+- `wattroom_room_riding` is back on `/metrics`. It has been missing since
+  2026.09.118, when the endpoint moved to a registry of its own and this one
+  gauge kept publishing to the old one — so a deploy guard asking "is anyone
+  pedalling" got no answer and, on wattroom.ch, held each release back for its
+  full timeout. Self-hosters: `deploy/` now points the Prometheus job at
+  `wattroom:9091` rather than the app port, which is what `deploy/alerts.yml`
+  needs to fire at all, and documents `WATTROOM_METRICS_ADDR` and its `:9091`
+  default.
+- The soundboard now opens in front of the video the room is watching instead
+  of behind it. It used to land under the seated YouTube player, grip and all,
+  so on the lounge it could neither be pressed nor dragged out while a video
+  played.
+
 ## [2026.09.119] - 2026-09-17
 
 ### Added
@@ -2479,7 +2528,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.119...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.120...HEAD
+[2026.09.120]: https://github.com/natrontech/wattroom/compare/2026.09.119...2026.09.120
 [2026.09.119]: https://github.com/natrontech/wattroom/compare/2026.09.118...2026.09.119
 [2026.09.118]: https://github.com/natrontech/wattroom/compare/2026.09.117...2026.09.118
 [2026.09.117]: https://github.com/natrontech/wattroom/compare/2026.09.116...2026.09.117
