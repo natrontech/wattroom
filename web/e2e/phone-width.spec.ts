@@ -18,6 +18,20 @@ import { signInAs } from './signin';
 const PHONE = { width: 375, height: 812 };
 
 /**
+ * A token with no break opportunity — a hash, a column name, a pasted URL —
+ * rendered by MessageText, which draws room chat, DMs and /whats-new (#2400).
+ *
+ * Deliberately far longer than the 44-character identifier that shipped in
+ * 2026.09.120 and pushed `page-body` 22px past a phone. The app loads no
+ * webfonts, so a monospace run is whatever metric the machine resolves and
+ * 44 characters is a different number of pixels on a runner than on a laptop
+ * — the sweep below went green on CI while the page overflowed locally. At
+ * this length no font makes it fit, so what is measured here cannot pass by
+ * luck.
+ */
+const LONG_TOKEN = `wattroom_identities_${'0123456789abcdef'.repeat(6)}`;
+
+/**
  * Which routes are measured, and why the rest are not, lives in `./routes.js`
  * beside the reconciliation that fails when the route tree grows past it
  * (#2386). The lists are still written by hand — that part is a decision — but
@@ -101,6 +115,36 @@ async function seedATaggedTrack(page: Page): Promise<void> {
 		return patch.ok ? true : `patch ${patch.status}`;
 	});
 	if (ok !== true) throw new Error(`could not seed a tagged track: ${ok}`);
+}
+
+/**
+ * And a room's thread is empty until somebody says something, so
+ * /messages/r/[slug] was measured against a blank column. The line is a
+ * pasted token in a code span and bare (#2400) — the shape that widened
+ * /whats-new, on the surface a rider actually pastes into.
+ *
+ * Posted once: this rider's room is stable across runs (signin.ts), and a
+ * line per run would grow the thread forever.
+ */
+async function seedALongToken(page: Page, slug: string): Promise<void> {
+	const ok = await page.evaluate(
+		async ([slug, token]) => {
+			const thread = (await (
+				await fetch(`/api/rooms/${slug}/chat`)
+			).json()) as {
+				messages?: { text?: string }[];
+			};
+			if (thread.messages?.some((m) => m.text?.includes(token))) return true;
+			const res = await fetch(`/api/rooms/${slug}/chat`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ text: `\`${token}\` and bare ${token}` }),
+			});
+			return res.ok;
+		},
+		[slug, LONG_TOKEN] as const,
+	);
+	if (!ok) throw new Error('could not paste a long token into the room thread');
 }
 
 /**
@@ -229,16 +273,22 @@ test('no page outside a room scrolls sideways on a phone', async ({
 	}, myId);
 	// 404 is an accept for a friendship that is already accepted.
 	expect(accepted, 'the peer accepting').toMatch(/^(2\d\d|404|409)/);
-	const sent = await page.evaluate(async (id) => {
-		const res = await fetch(`/api/dms/${id}`, {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({
-				text: 'a line wide enough to wrap on a phone, which it must',
-			}),
-		});
-		return `${res.status} ${await res.text()}`;
-	}, peerId);
+	// The line carries LONG_TOKEN twice, in a code span and bare: a rider pastes
+	// a hash into a DM, and the thread must break it rather than widen the page
+	// (#2400). A friendly sentence measured nothing a paragraph does not.
+	const sent = await page.evaluate(
+		async ([id, token]) => {
+			const res = await fetch(`/api/dms/${id}`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({
+					text: `a line wide enough to wrap on a phone, which it must, plus \`${token}\` and bare ${token}`,
+				}),
+			});
+			return `${res.status} ${await res.text()}`;
+		},
+		[peerId, LONG_TOKEN] as const,
+	);
 	expect(sent, 'the first line').toMatch(/^2\d\d/);
 	await peerContext.close();
 
@@ -304,6 +354,7 @@ test('no page outside a room scrolls sideways on a phone', async ({
 	});
 
 	await seedAPlannedSession(page, byId.room);
+	await seedALongToken(page, byId.room);
 
 	const wide: string[] = [];
 	for (const route of routes) {
@@ -398,4 +449,45 @@ test('the rider page and the workouts search keep their width on a phone', async
 		Math.round(box.width),
 		`the search box is ${Math.round(box.width)}px wide`,
 	).toBeGreaterThan(300);
+});
+
+/**
+ * The changelog is rider-supplied text by another route: /whats-new renders
+ * CHANGELOG.md through MessageText, the same component that draws chat
+ * (#2400). 2026.09.120 shipped `wattroom_identities_plaintext_refresh_tokens`
+ * — 44 characters, no break opportunity — and pushed page-body to 397 on a
+ * 375px phone, with the sweep above green on CI the whole time.
+ *
+ * The changelog is intercepted rather than read: what today's file happens to
+ * contain is not a guard, and LONG_TOKEN is wide enough that no font metric
+ * makes it fit (see its comment). Bare and in a code span, because the run
+ * that breaks has to be the whole of the message, not the backticks.
+ */
+test('a long token in the changelog does not widen the page', async ({
+	page,
+}) => {
+	await page.route('**/changelog.md', (route) =>
+		route.fulfill({
+			status: 200,
+			contentType: 'text/markdown',
+			body: `# Changelog
+
+## [Unreleased]
+
+## [2026.09.120] - 2026-09-20
+
+### Fixed
+
+- The server now counts \`${LONG_TOKEN}\`, and bare ${LONG_TOKEN} in prose.
+`,
+		}),
+	);
+
+	await signInAs(page, 'Phone Width', '/whats-new');
+	const body = page.getByTestId('page-body');
+	await expect(body).toBeVisible();
+	await expect(page.getByText('2026.09.120')).toBeVisible();
+
+	const excess = await body.evaluate((el) => el.scrollWidth - el.clientWidth);
+	expect(excess, `/whats-new overflows by ${excess}px`).toBe(0);
 });
