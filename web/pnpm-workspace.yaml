@@ -1,2 +1,10 @@
 onlyBuiltDependencies:
   - esbuild
+
+# Security floors, not preferences: cookie < 0.7.0 is CVE-2024-47764 and
+# reaches us through @sveltejs/kit. They live here rather than in
+# package.json's `pnpm` field because pnpm 12 no longer reads that field —
+# an override left there is dropped silently, with a green build (#2394).
+overrides:
+  postcss: '>=8.5.23'
+  cookie: ^0.7.2

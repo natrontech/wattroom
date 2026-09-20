@@ -11,7 +11,10 @@ Welcome — this project is built to be contributed to. Read this once and you s
 
 ## Dev setup
 
-Requirements: Go 1.26+, Node 22+, pnpm, Docker.
+Requirements: Go 1.26+, Node 22+, pnpm, Docker. The pnpm version is pinned
+in `web/package.json` and `desktop/package.json` (`packageManager`); pnpm 10
+and newer, and corepack, install that version for you, so there is nothing to
+match by hand.
 
 ```sh
 git clone https://github.com/natrontech/wattroom && cd wattroom

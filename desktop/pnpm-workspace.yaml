@@ -1,0 +1,6 @@
+# electron-winstaller builds Squirrel.Windows installers, which we do not ship
+# — the `win` target is nsis. Its install script has never run here; pnpm 10
+# ignored it with a warning and pnpm 12 refuses to install until the answer is
+# written down (ERR_PNPM_IGNORED_BUILDS). This records the answer we already had.
+allowBuilds:
+  electron-winstaller: false

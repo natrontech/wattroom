@@ -41,11 +41,5 @@
 	"dependencies": {
 		"@lucide/svelte": "^1.47.0",
 		"livekit-client": "^2.22.3"
-	},
-	"pnpm": {
-		"overrides": {
-			"postcss": ">=8.5.23",
-			"cookie": "^0.7.2"
-		}
 	}
 }
