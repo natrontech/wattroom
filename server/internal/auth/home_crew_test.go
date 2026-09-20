@@ -10,6 +10,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 func putHomeCrew(t *testing.T, s *Service, cookie *http.Cookie, body string) *httptest.ResponseRecorder {
@@ -40,9 +41,12 @@ func getMe(t *testing.T, s *Service, cookie *http.Cookie) map[string]any {
 }
 
 // crewOwnedBy founds a crew for the test, cleaned up before its owner is.
-func crewOwnedBy(t *testing.T, s *Service, owner db.User, code string) db.Crew {
+// The code is testx's rather than the caller's, and the returned row carries
+// it for the one test that needs the value.
+func crewOwnedBy(t *testing.T, s *Service, owner db.User) db.Crew {
 	t.Helper()
-	crew, err := s.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "Crew " + code, OwnerID: owner.ID, Code: &code})
+	code := testx.CrewCode()
+	crew, err := s.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "Crew " + *code, OwnerID: owner.ID, Code: code})
 	if err != nil {
 		t.Fatalf("create crew: %v", err)
 	}
@@ -56,7 +60,7 @@ func TestSetHomeCrew(t *testing.T) {
 	s := testService(t)
 	user := testUser(t, s)
 	cookie := signedIn(t, s, user)
-	mine := crewOwnedBy(t, s, user, "HOMEC1")
+	mine := crewOwnedBy(t, s, user)
 
 	body := `{"crewId":"` + store.UUIDString(mine.ID) + `"}`
 	if w := putHomeCrew(t, s, cookie, body); w.Code != http.StatusOK {
@@ -78,7 +82,7 @@ func TestSetHomeCrewRefusesACrewYouAreNotIn(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = s.store.Pool.Exec(context.Background(), "delete from users where id = $1", other.ID)
 	})
-	theirs := crewOwnedBy(t, s, other, "HOMEC2")
+	theirs := crewOwnedBy(t, s, other)
 
 	if w := putHomeCrew(t, s, cookie, `{"crewId":"`+store.UUIDString(theirs.ID)+`"}`); w.Code != http.StatusNotFound {
 		t.Fatalf("not in it = %d, want 404: %s", w.Code, w.Body.String())
@@ -106,12 +110,12 @@ func TestMeCarriesThePendingInvite(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = s.store.Pool.Exec(context.Background(), "delete from users where id = $1", other.ID)
 	})
-	theirs := crewOwnedBy(t, s, other, "HOMEC3")
+	theirs := crewOwnedBy(t, s, other)
 
 	if _, has := getMe(t, s, cookie)["pendingInvite"]; has {
 		t.Fatal("an invite before any door")
 	}
-	code := "HOMEC3"
+	code := *theirs.Code
 	if err := s.store.Queries.SetPendingCrewCode(t.Context(), db.SetPendingCrewCodeParams{ID: user.ID, PendingCrewCode: &code}); err != nil {
 		t.Fatal(err)
 	}

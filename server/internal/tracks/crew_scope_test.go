@@ -38,12 +38,11 @@ func (h *harness) crewOf(t *testing.T, owner string) db.Crew {
 // private, with the owner's membership — and nobody else's.
 func (h *harness) crewRoom(t *testing.T, owner string, crew db.Crew, open bool, n int) db.Room {
 	t.Helper()
-	slug := strings.ToLower(strings.ReplaceAll(t.Name(), "/", "-"))
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		// A prefix nothing else in the suite uses: rooms.code is unique
-		// across the whole test database, which every package in the run
-		// shares and which the next run reuses.
-		Slug: fmt.Sprintf("crew-scope-%d-%s", n, slug),
+		// rooms.slug is unique across the whole test database, which every
+		// package in the run shares and which the next run reuses — so the
+		// value is testx's, not t.Name()'s, which the next run repeats.
+		Slug: testx.Slug(fmt.Sprintf("crew-scope-%d", n)),
 		Name: "Crew Scope", OwnerID: h.users.ByToken[owner].ID,
 	})
 	if err != nil {

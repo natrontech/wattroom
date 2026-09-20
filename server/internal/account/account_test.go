@@ -129,7 +129,7 @@ func gzipped(t *testing.T, raw string) []byte {
 func (h *harness) createRoom(t *testing.T, owner string) pgtype.UUID {
 	t.Helper()
 	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: "account-test-" + owner, Name: "Account Test", OwnerID: h.id(owner),
+		Slug: testx.Slug("account-test-" + owner), Name: "Account Test", OwnerID: h.id(owner),
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
@@ -1023,9 +1023,8 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	}
 
 	// A crew she owns, and one she is merely in.
-	code := "ALICECREW"
 	owned, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
-		Name: "Alice's Crew", OwnerID: h.id("alice"), Code: &code,
+		Name: "Alice's Crew", OwnerID: h.id("alice"), Code: testx.CrewCode(),
 	})
 	if err != nil {
 		t.Fatalf("crew: %v", err)
@@ -1033,9 +1032,8 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", owned.ID)
 	})
-	bobsCode := "BOBSCREW1"
 	joined, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
-		Name: "Bob's Crew", OwnerID: h.id("bob"), Code: &bobsCode,
+		Name: "Bob's Crew", OwnerID: h.id("bob"), Code: testx.CrewCode(),
 	})
 	if err != nil {
 		t.Fatalf("crew bob: %v", err)

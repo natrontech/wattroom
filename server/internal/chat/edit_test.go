@@ -10,11 +10,11 @@ import (
 )
 
 func TestEditChatMessage(t *testing.T) {
-	svc, mux, users, _ := setup(t)
+	svc, mux, users, room := setup(t)
 	live := &fakeLive{}
 	svc.SetLive(live)
 	alice := users.ByToken["alice"]
-	id, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "warmup at 6", "")
+	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "warmup at 6", "")
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -39,7 +39,7 @@ func TestEditChatMessage(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if code, body := patch(t, mux, c.user, "/api/rooms/chat-cave/chat/"+c.path, c.body); code != c.want {
+			if code, body := patch(t, mux, c.user, "/api/rooms/"+room.Slug+"/chat/"+c.path, c.body); code != c.want {
 				t.Fatalf("%d %v, want %d", code, body, c.want)
 			}
 		})
@@ -54,7 +54,7 @@ func TestEditChatMessage(t *testing.T) {
 
 	// Happy: the new text comes back stamped, the room is told, and the
 	// backlog reads the way the sender left it.
-	code, body := patch(t, mux, "alice", "/api/rooms/chat-cave/chat/"+id, `{"text":"  warmup at 7  "}`)
+	code, body := patch(t, mux, "alice", "/api/rooms/"+room.Slug+"/chat/"+id, `{"text":"  warmup at 7  "}`)
 	if code != http.StatusOK {
 		t.Fatalf("edit: %d %v", code, body)
 	}
@@ -68,7 +68,7 @@ func TestEditChatMessage(t *testing.T) {
 	if len(live.edits) != 1 || live.edits[0].MessageID != id || live.edits[0].Text != "warmup at 7" {
 		t.Fatalf("room got: %+v", live.edits)
 	}
-	_, messages := backlog(t, mux, "bob", "chat-cave")
+	_, messages := backlog(t, mux, "bob", room.Slug)
 	if len(messages) != 1 || messages[0]["text"] != "warmup at 7" {
 		t.Fatalf("backlog: %v", messages)
 	}
@@ -87,16 +87,16 @@ func TestEditKeepsAnImageWhenTheWordsGo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id, ok := svc.SaveChat(t.Context(), "chat-cave", store.UUIDString(alice.ID), "look at this", store.UUIDString(img))
+	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "look at this", store.UUIDString(img))
 	if !ok {
 		t.Fatal("save failed")
 	}
 
 	// A caption can be taken back; the picture is not the caption.
-	if code, body := patch(t, mux, "alice", "/api/rooms/chat-cave/chat/"+id, `{"text":""}`); code != http.StatusOK {
+	if code, body := patch(t, mux, "alice", "/api/rooms/"+room.Slug+"/chat/"+id, `{"text":""}`); code != http.StatusOK {
 		t.Fatalf("clear caption: %d %v", code, body)
 	}
-	_, messages := backlog(t, mux, "alice", "chat-cave")
+	_, messages := backlog(t, mux, "alice", room.Slug)
 	if len(messages) != 1 || messages[0]["text"] != "" {
 		t.Fatalf("caption not cleared: %v", messages)
 	}

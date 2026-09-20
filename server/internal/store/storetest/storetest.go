@@ -5,11 +5,16 @@ package storetest
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+
 	"github.com/natrontech/wattroom/server/internal/store"
+	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 // mainTreeDSN is the fallback: the main working tree's test database, which is
@@ -50,5 +55,47 @@ func Open(t testing.TB) *store.Store {
 		t.Fatalf("the test database is unusable, and this is not the absence a skip is for: either WATTROOM_TEST_DB is not a dsn (it takes a connection string, not a database name — #2352), or the database answered and refused a migration it will not take, which is not the same as one it merely has not seen (#1481): %v", err)
 	}
 	t.Cleanup(st.Close)
-	return st
+	return &store.Store{Pool: st.Pool, Queries: db.New(explainDuplicates{st.Pool})}
+}
+
+// leftovers is what a duplicate key on a fixture almost always means here,
+// and the recovery nothing else names. The test database is shared by every
+// package in one `go test ./...` and reused by the next run, and nothing
+// sweeps it — so a run that never reached its cleanups (Ctrl-C on a `make
+// test` that runs with -timeout=5m) leaves its rows behind, and a fixture
+// minting a constant fails on every future run in this checkout.
+const leftovers = "a row from an earlier run is still in this checkout's test " +
+	"database, which nothing sweeps: either give the fixture a value this run " +
+	"owns (testx.CrewCode, testx.Slug) or clear the database with `make " +
+	"dev-db-drop` from this worktree"
+
+// explainDuplicates says the above on a 23505 and is transparent otherwise —
+// the wrapped error still answers errors.As, so production code that retries
+// a unique violation behaves in a test exactly as it does in the server.
+type explainDuplicates struct{ db.DBTX }
+
+func (e explainDuplicates) Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error) {
+	tag, err := e.DBTX.Exec(ctx, sql, args...)
+	return tag, explain(err)
+}
+
+func (e explainDuplicates) Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error) {
+	rows, err := e.DBTX.Query(ctx, sql, args...)
+	return rows, explain(err)
+}
+
+func (e explainDuplicates) QueryRow(ctx context.Context, sql string, args ...any) pgx.Row {
+	return explainRow{e.DBTX.QueryRow(ctx, sql, args...)}
+}
+
+type explainRow struct{ pgx.Row }
+
+func (r explainRow) Scan(dest ...any) error { return explain(r.Row.Scan(dest...)) }
+
+func explain(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		return fmt.Errorf("%w — %s", err, leftovers)
+	}
+	return err
 }

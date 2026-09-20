@@ -2,10 +2,10 @@ package store_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // The contract half of ADR-0038's fourth amendment (#1301) is a constraint on
@@ -47,13 +47,12 @@ func TestRoomCreationNamesItsCrewInTheInsert(t *testing.T) {
 	}
 
 	q := f.st.Queries.WithTx(tx)
-	n := roomSeq.Add(1) % 10000
 
 	// A room the way the app makes one. This is the assertion: if the crew
 	// arrives after the insert rather than in it, the constraint refuses the
 	// insert and this is the release that cannot create rooms.
 	if _, err := q.CreateRoom(ctx, db.CreateRoomParams{
-		Slug: fmt.Sprintf("crew-in-insert-%d", n), Name: "Crew in insert",
+		Slug: testx.Slug("crew-in-insert"), Name: "Crew in insert",
 		OwnerID: f.alice, CrewID: f.crew, CrewVisible: true,
 	}); err != nil {
 		t.Fatalf("a room created the way the app creates one was refused by "+
@@ -64,7 +63,7 @@ func TestRoomCreationNamesItsCrewInTheInsert(t *testing.T) {
 	// And the shadow is doing work: a call that names no crew must be
 	// refused, or the check above passes for the wrong reason.
 	if _, err := q.CreateRoom(ctx, db.CreateRoomParams{
-		Slug: fmt.Sprintf("crewless-%d", n), Name: "Crewless", OwnerID: f.alice,
+		Slug: testx.Slug("crewless"), Name: "Crewless", OwnerID: f.alice,
 	}); err == nil {
 		t.Fatal("a crew-less room was accepted — the shadow table carries no " +
 			"constraint, so the case above proves nothing")

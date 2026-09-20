@@ -70,12 +70,15 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users, *fakePrese
 	return mux, st, users, presence
 }
 
-// shareRoom puts the named users into one room owned by the first.
+// shareRoom puts the named users into one room owned by the first. slug
+// names the room a reader recognises; rooms.slug is unique across the whole
+// shared test database, so the row's own slug is testx's and a test that
+// needs it reads it off the returned room.
 func shareRoom(t *testing.T, st *store.Store, users *testx.Users, slug string, names ...string) db.Room {
 	t.Helper()
 	owner := users.ByToken[names[0]]
 	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: slug, Name: slug, OwnerID: owner.ID,
+		Slug: testx.Slug(slug), Name: slug, OwnerID: owner.ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)
@@ -155,7 +158,7 @@ func friendsOf(t *testing.T, mux *http.ServeMux, user string) []map[string]any {
 
 func TestFriendLifecycle(t *testing.T) {
 	mux, st, users, presence := setup(t)
-	shareRoom(t, st, users, "friends-cave", "alice", "bob")
+	cave := shareRoom(t, st, users, "friends-cave", "alice", "bob")
 	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
 
 	// No auth → 401; unknown code → 404; empty code → 400; own code → 400.
@@ -221,16 +224,16 @@ func TestFriendLifecycle(t *testing.T) {
 	}
 
 	// Presence: bob is in the shared room — alice sees online AND the name.
-	presence.where[store.UUIDString(bob.ID)] = "friends-cave"
+	presence.where[store.UUIDString(bob.ID)] = cave.Slug
 	entry := friendsOf(t, mux, "alice")[0]
-	if entry["status"] != "accepted" || entry["online"] != true || entry["room"] != "friends-cave" {
+	if entry["status"] != "accepted" || entry["online"] != true || entry["room"] != cave.Slug {
 		t.Fatalf("presence entry: %+v", entry)
 	}
 
 	// In a room alice is NOT a member of: online yes, in a room yes, room
 	// name withheld — the boundary holds.
-	presence.where[store.UUIDString(bob.ID)] = "friends-lair"
-	shareRoom(t, st, users, "friends-lair", "bob")
+	lair := shareRoom(t, st, users, "friends-lair", "bob")
+	presence.where[store.UUIDString(bob.ID)] = lair.Slug
 	entry = friendsOf(t, mux, "alice")[0]
 	if entry["online"] != true || entry["inRoom"] != true || entry["room"] != nil {
 		t.Fatalf("boundary pierced: %+v", entry)
@@ -334,8 +337,8 @@ func TestADismissalTellsTheRequester(t *testing.T) {
 // output is still correct once there is more than one row to resolve.
 func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 	mux, st, users, presence := setup(t)
-	shareRoom(t, st, users, "friends-cave", "alice", "bob")
-	shareRoom(t, st, users, "friends-lair", "cara")
+	cave := shareRoom(t, st, users, "friends-cave", "alice", "bob")
+	lair := shareRoom(t, st, users, "friends-lair", "cara")
 
 	if code := request(t, mux, "alice", users.ByToken["bob"].FriendCode); code != http.StatusOK {
 		t.Fatalf("request bob: %d", code)
@@ -350,8 +353,8 @@ func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 		t.Fatalf("cara accept: %d", code)
 	}
 
-	presence.where[store.UUIDString(users.ByToken["bob"].ID)] = "friends-cave"  // alice is a member
-	presence.where[store.UUIDString(users.ByToken["cara"].ID)] = "friends-lair" // alice is not
+	presence.where[store.UUIDString(users.ByToken["bob"].ID)] = cave.Slug  // alice is a member
+	presence.where[store.UUIDString(users.ByToken["cara"].ID)] = lair.Slug // alice is not
 
 	byName := map[string]map[string]any{}
 	for _, entry := range friendsOf(t, mux, "alice") {
@@ -360,7 +363,7 @@ func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 	}
 
 	bobEntry := byName["bob"]
-	if bobEntry["online"] != true || bobEntry["room"] != "friends-cave" || bobEntry["roomName"] != "friends-cave" {
+	if bobEntry["online"] != true || bobEntry["room"] != cave.Slug || bobEntry["roomName"] != "friends-cave" {
 		t.Fatalf("bob entry (shared room): %+v", bobEntry)
 	}
 	caraEntry := byName["cara"]
@@ -375,8 +378,8 @@ func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 // to build "riding elsewhere" out of for a room it may not name.
 func TestFriendsPanelReportsRiding(t *testing.T) {
 	mux, st, users, presence := setup(t)
-	shareRoom(t, st, users, "riding-cave", "alice", "bob")
-	shareRoom(t, st, users, "riding-lair", "cara")
+	ridingCave := shareRoom(t, st, users, "riding-cave", "alice", "bob")
+	ridingLair := shareRoom(t, st, users, "riding-lair", "cara")
 	befriend(t, mux, users, "alice", "bob")
 	befriend(t, mux, users, "alice", "cara")
 	id := func(name string) string { return store.UUIDString(users.ByToken[name].ID) }
@@ -384,9 +387,9 @@ func TestFriendsPanelReportsRiding(t *testing.T) {
 	// bob shares the room with alice and is pedalling; cara is pedalling in a
 	// room alice is not a member of; the viewer may learn the fact, never the
 	// room. Both are the same one hub answer, filtered by membership.
-	presence.where[id("bob")] = "riding-cave"
+	presence.where[id("bob")] = ridingCave.Slug
 	presence.riding[id("bob")] = true
-	presence.where[id("cara")] = "riding-lair"
+	presence.where[id("cara")] = ridingLair.Slug
 	presence.riding[id("cara")] = true
 
 	byName := map[string]map[string]any{}

@@ -14,6 +14,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // Both sweeps fail SILENTLY: nothing errors, rows simply stay. So each test
@@ -51,8 +52,8 @@ func TestSweepDeletesExpiredSessionsAndKeepsLiveOnes(t *testing.T) {
 	st := open(t)
 	u := user(t, st)
 
-	dead := []byte("housekeeping-expired-session-hash")
-	live := []byte("housekeeping-live-session-hash")
+	dead := []byte(testx.Slug("housekeeping-expired-session-hash"))
+	live := []byte(testx.Slug("housekeeping-live-session-hash"))
 	for _, s := range []struct {
 		hash    []byte
 		expires time.Time
@@ -91,7 +92,7 @@ func TestSweepPrunesRecapsPastRetentionWithoutAWrite(t *testing.T) {
 	st := open(t)
 	u := user(t, st)
 	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: "housekeeping-recaps", Name: "Housekeeping", OwnerID: u.ID,
+		Slug: testx.Slug("housekeeping-recaps"), Name: "Housekeeping", OwnerID: u.ID,
 	})
 	if err != nil {
 		t.Fatalf("create room: %v", err)

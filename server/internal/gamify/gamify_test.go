@@ -3,10 +3,7 @@ package gamify
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,6 +11,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // setup opens the test database (skipping without one) and returns a
@@ -84,17 +82,12 @@ func earned(t *testing.T, s *Service, user db.User) map[string]bool {
 	return out
 }
 
-// roomSeq keeps the 6-char code and the slug unique across the package —
-// both are unique columns and the rooms outlive nothing but their test.
-var roomSeq atomic.Int32
-
 // shareRoom puts the riders in a fresh room (the first one owns it) and
 // returns its id, so a test can ban one of them afterwards.
 func shareRoom(t *testing.T, s *Service, members ...db.User) pgtype.UUID {
 	t.Helper()
-	n := roomSeq.Add(1)
 	room, err := s.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug:    fmt.Sprintf("trophy-room-%d", n),
+		Slug:    testx.Slug("trophy-room"),
 		Name:    "Trophy Room",
 		OwnerID: members[0].ID,
 	})

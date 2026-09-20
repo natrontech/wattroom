@@ -22,6 +22,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 func testService(t *testing.T) *Service {
@@ -119,12 +120,12 @@ func TestExpiredSessionsAreSwept(t *testing.T) {
 	user := testUser(t, s)
 
 	expired := db.CreateSessionParams{
-		TokenHash: hash("expired-token"),
+		TokenHash: hash(testx.Slug("expired-token")),
 		UserID:    user.ID,
 		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
 	}
 	live := db.CreateSessionParams{
-		TokenHash: hash("live-token"),
+		TokenHash: hash(testx.Slug("live-token")),
 		UserID:    user.ID,
 		ExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(sessionTTL), Valid: true},
 	}

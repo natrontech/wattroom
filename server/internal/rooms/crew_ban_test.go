@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // A crew ban reaches every room in the crew (ADR-0038, third amendment). Each
@@ -41,9 +42,8 @@ func (h *harness) putInCrew(t *testing.T, slug, name string) pgtype.UUID {
 	if err != nil {
 		t.Fatalf("room: %v", err)
 	}
-	code := randomCode(6)
 	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
-		Name: name, OwnerID: room.OwnerID, Code: &code,
+		Name: name, OwnerID: room.OwnerID, Code: testx.CrewCode(),
 	})
 	if err != nil {
 		t.Fatalf("create crew: %v", err)
