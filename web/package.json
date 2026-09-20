@@ -37,15 +37,9 @@
 		"vite": "^8.3.0",
 		"vitest": "^5.0.1"
 	},
-	"packageManager": "pnpm@10.32.1",
+	"packageManager": "pnpm@12.5.1",
 	"dependencies": {
 		"@lucide/svelte": "^1.47.0",
 		"livekit-client": "^2.22.3"
-	},
-	"pnpm": {
-		"overrides": {
-			"postcss": ">=8.5.23",
-			"cookie": "^0.7.2"
-		}
 	}
 }

@@ -6,7 +6,7 @@
   "description": "The WattRoom desktop shell — a window around the deployed web app.",
   "license": "AGPL-3.0-only",
   "main": "main.js",
-  "packageManager": "pnpm@10.32.1",
+  "packageManager": "pnpm@12.5.1",
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder"
