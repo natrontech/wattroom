@@ -47,6 +47,8 @@
 			wattHue: spec?.wattHue ?? 0,
 			neonHue: spec?.neonHue ?? 0,
 			surfaceHue: spec?.surfaceHue ?? 0,
+			useMutedHue: spec?.mutedHue !== undefined,
+			mutedHue: spec?.mutedHue ?? spec?.surfaceHue ?? 0,
 			useWattLc: spec?.wattLc !== undefined,
 			wattL: spec?.wattLc?.l ?? 0.7,
 			wattC: spec?.wattLc?.c ?? 0.2,
@@ -85,6 +87,7 @@
 			wattHue: state.wattHue,
 			neonHue: state.neonHue,
 			surfaceHue: state.surfaceHue,
+			mutedHue: state.useMutedHue ? state.mutedHue : undefined,
 			wattLc: state.useWattLc ? { l: state.wattL, c: state.wattC } : undefined,
 			exact: state.overrides,
 		});
@@ -94,6 +97,9 @@
 	const whiteTheme = $derived(themeFrom(white, 'white'));
 
 	function exportCode(state: EditorState, family: ThemeSpec['family']): string {
+		const mutedHue = state.useMutedHue
+			? `\n\t\tmutedHue: ${Math.round(state.mutedHue)},`
+			: '';
 		const lc = state.useWattLc
 			? `\n\t\twattLc: { l: ${state.wattL.toFixed(2)}, c: ${state.wattC.toFixed(3)} },`
 			: '';
@@ -111,7 +117,7 @@
 		family: '${family}',
 		wattHue: ${Math.round(state.wattHue)},
 		neonHue: ${Math.round(state.neonHue)},
-		surfaceHue: ${Math.round(state.surfaceHue)},${lc}${exact}
+		surfaceHue: ${Math.round(state.surfaceHue)},${mutedHue}${lc}${exact}
 	},`;
 	}
 

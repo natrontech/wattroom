@@ -80,6 +80,19 @@ export interface ThemeSpec {
 	/** Surfaces, muted text and ink. */
 	surfaceHue: number;
 	/**
+	 * Quiet text, when it does not follow the surfaces. Defaults to
+	 * `surfaceHue`, which is what nine of the ten catalogue themes want.
+	 *
+	 * Monokai's muted is yellow-green over violet-gray surfaces, and the only
+	 * way to say that used to be pinning the whole colour through `exact` —
+	 * which took the family's lightness and chroma with it and left the token
+	 * at 16.5:1, near-ink, where every other theme sits at 5.4–6.7 (issue
+	 * 2397). Hue is the free variable in this file; lightness and chroma are
+	 * the family's, and a theme wanting a coloured muted says so here rather
+	 * than by escaping the anchor.
+	 */
+	mutedHue?: number;
+	/**
 	 * Lightness/chroma escape hatch for the watt token. Yellow and green cannot
 	 * reach the family's default chroma at its default lightness, so a theme
 	 * built on them says so explicitly rather than silently gamut-clipping to
@@ -172,10 +185,11 @@ export const CONTRAST = { text: 4.5, accent: 3 } as const;
  *
  * The step is the OKLCH lightness `muted-dim` moves toward the surface before
  * `fitContrast` pulls it back to the text floor. It is deliberately larger
- * than most themes have room for: `muted` already sits near 4.5:1, so in
- * practice the fit is what places the step, and `muted-dim` lands as dim as
- * AA allows. A theme with headroom (Monokai's near-white muted) keeps the
- * full step instead of being dragged down to the floor.
+ * than any theme has room for: `muted` already sits near 4.5:1, so in practice
+ * the fit is what places the step and `muted-dim` lands as dim as AA allows.
+ * The one theme that used to keep the full step did so on a near-ink `muted`
+ * that was itself the defect (issue 2397); nothing has that headroom now, and
+ * a theme that did would be failing `muted-ceiling` in gate.ts.
  */
 const MUTED_DIM_STEP = 0.08;
 
@@ -217,7 +231,7 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 	const tokens: Tokens = {
 		surface: at(f.surface, spec.surfaceHue),
 		'surface-raised': at(f.raised, spec.surfaceHue),
-		muted: at(f.muted, spec.surfaceHue),
+		muted: at(f.muted, spec.mutedHue ?? spec.surfaceHue),
 		'muted-dim': '',
 		watt: at(spec.wattLc ? { ...spec.wattLc, h: 0 } : f.watt, spec.wattHue),
 		neon: at(f.neon, spec.neonHue),

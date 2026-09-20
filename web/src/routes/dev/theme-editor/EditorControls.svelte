@@ -1,8 +1,9 @@
 <!--
-	One family's controls (#402). Three hues plus an optional watt lightness/
-	chroma escape hatch are what deriveTheme() takes as input — and every token
-	it produces except the zone ramp (shared across themes by design, ADR-0023
-	§4) can be painted over directly. A picker shows the resolved value whether
+	One family's controls (#402). Three hues plus two optional escape hatches —
+	a hue of its own for quiet text, and a lightness/chroma pair for watt — are
+	what deriveTheme() takes as input, and every token it produces except the
+	zone ramp (shared across themes by design, ADR-0023 §4) can be painted over
+	directly. A picker shows the resolved value whether
 	it came from a hue or an override, so there is one number on screen, not two
 	disagreeing ones.
 -->
@@ -39,6 +40,9 @@
 		wattHue: number;
 		neonHue: number;
 		surfaceHue: number;
+		/** Off means quiet text follows the surfaces, as nine of the ten do. */
+		useMutedHue: boolean;
+		mutedHue: number;
 		useWattLc: boolean;
 		wattL: number;
 		wattC: number;
@@ -94,6 +98,29 @@
 				</label>
 			{/each}
 		</div>
+
+		<label class="mt-3 flex items-center gap-2 text-xs">
+			<input type="checkbox" bind:checked={state.useMutedHue} />
+			<span class="text-muted">
+				give quiet text its own hue — it follows the surfaces otherwise, and
+				keeps the family's lightness either way
+			</span>
+		</label>
+
+		{#if state.useMutedHue}
+			<label class="mt-2 block">
+				<span class="text-muted text-xs">
+					muted hue · {Math.round(state.mutedHue)}°
+				</span>
+				<input
+					type="range"
+					min="0"
+					max="359"
+					class="mt-1 w-full"
+					bind:value={state.mutedHue}
+				/>
+			</label>
+		{/if}
 
 		<label class="mt-3 flex items-center gap-2 text-xs">
 			<input type="checkbox" bind:checked={state.useWattLc} />

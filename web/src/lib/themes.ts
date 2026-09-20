@@ -89,19 +89,27 @@ const SPECS: ThemeSpec[] = [
 		wattHue: 200,
 		neonHue: 276,
 		surfaceHue: 270,
+		// The yellow-green Monokai was built with. It used to be pinned whole as
+		// `#edff9c`, which put quiet text at 16.5:1 — near-ink, and the loudest
+		// thing on the panel after the watt number (#2397). The hue was the
+		// choice; the lightness came along for the ride. `mutedHue` says the
+		// one without the other.
+		mutedHue: 117,
 		exact: {
 			// Raised is deliberately the darker of the two here — Monokai's own
-			// choice, not the "raised = lighter" convention every other theme
-			// follows; kept exactly as picked. Surface came in lighter (#333333)
-			// than either the family's own ceiling or the shared Z1-Z7 ramp can
-			// clear against — the ramp is the binding one: with raised held fixed,
-			// #1f1f1f is the darkest surface the recovery/endurance zones can
-			// still be told apart against (contrast, ΔE, and both simulated
-			// colour-vision deficiencies), which also happens to satisfy the
-			// brightness ceiling, so no gate exemption was needed after all.
+			// recessed-panel look, not the "raised = lighter" convention every
+			// other theme follows; kept exactly as picked, and on record against
+			// `surface-layering` in gate.ts's EXCEPTIONS so a measurement pass
+			// reads the decision instead of re-finding it (#2397). Surface came in
+			// lighter (#333333) than either the family's own ceiling or the shared
+			// Z1-Z7 ramp can clear against — the ramp is the binding one: with
+			// raised held fixed, #1f1f1f is the darkest surface the recovery/
+			// endurance zones can still be told apart against (contrast, ΔE, and
+			// both simulated colour-vision deficiencies), which also happens to
+			// satisfy the brightness ceiling, so no gate exemption was needed
+			// there.
 			surface: '#1f1f1f',
 			'surface-raised': '#171717',
-			muted: '#edff9c',
 			watt: '#ff00dd',
 			neon: '#66bcff',
 			ink: '#ffffff',
@@ -177,12 +185,14 @@ const SPECS: ThemeSpec[] = [
 		surfaceHue: 270,
 		exact: {
 			surface: '#f8efe7',
-			// Kept as picked. This fails six of the shared gate's zone checks —
-			// the ramp can't fully separate against a surface/raised pair this
-			// close in lightness — waived on record in gate.ts's EXCEPTIONS rather
-			// than quietly moved. #621 asked whether the gate itself should change
-			// instead and decided no: APCA rejects this ramp in the same zones, so
-			// the exceptions stand and APCA is reported beside WCAG, not swapped in.
+			// Kept as picked, and darker than the surface like the cave half's —
+			// the identity recesses its panels in both families. That and six of
+			// the shared gate's zone checks are waived on record in gate.ts's
+			// EXCEPTIONS rather than quietly moved: the ramp can't fully separate
+			// against a surface/raised pair this close in lightness. #621 asked
+			// whether the gate itself should change instead and decided no: APCA
+			// rejects this ramp in the same zones, so the exceptions stand and
+			// APCA is reported beside WCAG, not swapped in.
 			'surface-raised': '#e0dad9',
 			muted: '#504e56',
 			watt: '#ce4770',
