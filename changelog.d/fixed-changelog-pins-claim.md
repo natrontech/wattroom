@@ -1,1 +1,0 @@
-- The 2026.09.122 notes said a room's **Pins** row appears only once the crew has pinned something. It is always there — the row is how the first pin gets made. (The published release notes for 2026.09.122 have been corrected; the entry in this file's history is left as it was collated.)
