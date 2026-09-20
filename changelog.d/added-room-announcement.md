@@ -1,1 +1,0 @@
-- **Announcements**: a coach can mark any line in a room's chat as the room's announcement, and it stands at the top of the Lounge and of Chat until they take it down or mark another. No new box to type into — the sentence is the chat message, and it keeps its author and time. The marked line is kept even once the rest of the log has scrolled past the 500-message limit.

@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.122] - 2026-09-20
+
+### Added
+
+- **Pins**: a crew can pin the things it keeps needing — a game server and its password, the Discord link, the door code — and read them in any of its rooms under the new **Pins** place. A pin is a title and a block of lines, and a line written `Label: value` gets its own copy button. Everyone in the crew can pin, edit and unpin; the row appears in the sidebar once there is something on the board. Everyone in the crew can read a pin, so nothing secret belongs on one.
+- **Announcements**: a coach can mark any line in a room's chat as the room's announcement, and it stands at the top of the Lounge and of Chat until they take it down or mark another. No new box to type into — the sentence is the chat message, and it keeps its author and time. The marked line is kept even once the rest of the log has scrolled past the 500-message limit.
+
 ## [2026.09.121] - 2026-09-20
 
 ### Changed
@@ -2553,7 +2560,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.121...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.122...HEAD
+[2026.09.122]: https://github.com/natrontech/wattroom/compare/2026.09.121...2026.09.122
 [2026.09.121]: https://github.com/natrontech/wattroom/compare/2026.09.120...2026.09.121
 [2026.09.120]: https://github.com/natrontech/wattroom/compare/2026.09.119...2026.09.120
 [2026.09.119]: https://github.com/natrontech/wattroom/compare/2026.09.118...2026.09.119
