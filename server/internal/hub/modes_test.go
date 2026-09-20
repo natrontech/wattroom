@@ -4,8 +4,6 @@ import (
 	"math/rand"
 	"testing"
 	"time"
-
-	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
 func fixedRng() *rand.Rand { return rand.New(rand.NewSource(42)) } //nolint:gosec // test determinism
@@ -198,11 +196,25 @@ func TestRelayRotatesAndAccumulates(t *testing.T) {
 	}
 }
 
+// Construction is not coverage (#2371): a registry test that only built each
+// mode left Points Race's state() unrun while three tests named the mode. So
+// every mode takes a tick here and must report its own name back, with a
+// rider entry for each rider that pedalled.
 func TestFullRegistry(t *testing.T) {
 	for _, mode := range []string{"backyard-ramp", "collective-ramp", "floor-is-lava", "watt-golf", "sprint-roulette", "points-race", "team-relay"} {
-		if newGameMode(mode, gat(0)) == nil {
-			t.Fatalf("registry missing %s", mode)
-		}
+		t.Run(mode, func(t *testing.T) {
+			game := newGameMode(mode, gat(0))
+			if game == nil {
+				t.Fatalf("registry missing %s", mode)
+			}
+			game.advance(gat(1), map[string]int{"a": 160, "b": 240}, backyardRoster())
+			state := game.state(gat(1))
+			if state.Mode != mode {
+				t.Fatalf("state reports mode %q", state.Mode)
+			}
+			if len(state.Riders) != 2 {
+				t.Fatalf("riders %+v, want one per rider that pedalled", state.Riders)
+			}
+		})
 	}
-	var _ protocol.GameState // keep the import honest
 }
