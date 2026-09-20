@@ -122,8 +122,24 @@ describe('placesFor', () => {
 	// not offered is the owner-only settings form (#412).
 	it('drops only Settings below md', () => {
 		const narrow = placesFor(true).map((p) => p.path);
-		expect(narrow).toEqual(['', '/chat', '/training', '/sessions', '/members']);
+		expect(narrow).toEqual([
+			'',
+			'/chat',
+			'/training',
+			'/sessions',
+			'/pins',
+			'/members',
+		]);
 		expect(narrow).not.toContain('/settings');
+	});
+
+	// Pins is offered whether or not the crew has any (#2405). It was gated
+	// on having one, and that made the first pin unmakeable: pinning happens
+	// on the page the row is the only way to. A phone gets it too — a rider
+	// on the sofa checking the server address is the case.
+	it('offers Pins on an empty board, and on a phone', () => {
+		expect(placesFor(false).map((p) => p.path)).toContain('/pins');
+		expect(placesFor(true).map((p) => p.path)).toContain('/pins');
 	});
 
 	it('offers a place the drawer can actually resolve', () => {

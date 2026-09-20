@@ -4,6 +4,7 @@ import ChartColumn from '@lucide/svelte/icons/chart-column';
 import History from '@lucide/svelte/icons/history';
 import House from '@lucide/svelte/icons/house';
 import Music from '@lucide/svelte/icons/music';
+import Pin from '@lucide/svelte/icons/pin';
 import MessageSquare from '@lucide/svelte/icons/message-square';
 import MessagesSquare from '@lucide/svelte/icons/messages-square';
 import Settings from '@lucide/svelte/icons/settings';
@@ -91,6 +92,12 @@ export const roomPlaces = [
 		icon: CalendarClock,
 		hint: "what's planned here",
 	},
+	{
+		path: '/pins',
+		label: 'Pins',
+		icon: Pin,
+		hint: 'what the crew keeps needing',
+	},
 	{ path: '/members', label: 'Members', icon: Users, hint: 'roles and medals' },
 	{
 		path: '/settings',
@@ -106,6 +113,14 @@ export const roomPlaces = [
  * renames a room from a bike, and a drawer that lists everything lists
  * nothing. It stays a URL and still renders, so a bookmark works and the page
  * says it is laid out for a wider screen; it simply is not offered here.
+ *
+ * Pins is NOT conditional, though it was built that way first (#2405): the
+ * row hid until the crew had pinned something, and pinning happens on the
+ * page the row is the way to, so a crew with an empty board could never make
+ * its first pin. `ux.md`'s capability gating is for an absent precondition —
+ * no trainer paired, LiveKit down — and an empty board is not one of those.
+ * It is an empty state, and ux.md has a rule for those too: they teach, and
+ * carry the CTA that makes the first one.
  */
 export function placesFor(narrow: boolean) {
 	return narrow ? roomPlaces.filter((p) => p.path !== '/settings') : roomPlaces;

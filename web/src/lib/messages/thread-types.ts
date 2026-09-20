@@ -38,4 +38,14 @@ export interface ThreadSource {
 	 * DM and for everyone else — the menu then offers no such item.
 	 */
 	ban?: (id: string, name: string) => void;
+	/**
+	 * Mark a line as the room's announcement (#2408), when the viewer is a
+	 * coach or the owner and the thread is a room's. Capability-gated like
+	 * the rest: a DM, and every other rider, get no such item.
+	 *
+	 * This is the whole reason an announcement has no composer of its own —
+	 * a coach types the sentence into the box the room already has, and marks
+	 * it from here.
+	 */
+	announce?: (messageId: string) => void;
 }

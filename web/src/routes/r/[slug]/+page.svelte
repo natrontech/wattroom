@@ -10,6 +10,7 @@
 	import Stage from '$lib/room/Stage.svelte';
 	import { pickStage, pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
+	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import LoungeDashboard from '$lib/room/LoungeDashboard.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
@@ -32,6 +33,8 @@
 	const room = useRoom();
 	const av = $derived(roomConnection.current?.av);
 	const isOwner = $derived(room.myRole === 'owner');
+	/** Taking the announcement down is the coach's and the owner's (#2408). */
+	const coaches = $derived(isOwner || room.myRole === 'coach');
 
 	// The tile's right-click (#465): focus is the click, the rest is what
 	// every person in WattRoom offers — their page, the DM, the friend ask,
@@ -225,6 +228,18 @@
      phone the moment anything was on stage. The bottom clears the drawer
      and people buttons floating in the corners (#1627). -->
 <div class="page flex h-full flex-col pb-20 xl:pb-8">
+	<!-- The coach's standing notice, above everything (#2408), and only while
+	     the room is idle: mid-session the Lounge is tiles, the sprint and the
+	     stage, and a notice about next Thursday pushing them down is the
+	     opposite of what a rider on a bike needs. It is waiting when the
+	     session ends. -->
+	{#if room.phase === 'lounge'}
+		<AnnouncementStrip
+			announcement={room.announcement}
+			canClear={coaches}
+			onclear={() => room.clearAnnouncement()}
+		/>
+	{/if}
 	<!-- No page header: the sidebar says which room this is and the people
 	     column says who is in it. What is left is what the lounge can DO. -->
 	<div class="mb-4 flex flex-wrap items-center gap-2">

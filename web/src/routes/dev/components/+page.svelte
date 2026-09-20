@@ -18,6 +18,8 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import UpdateRow from '$lib/nav/UpdateRow.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
+	import PinBoard from '$lib/pins/PinBoard.svelte';
+	import type { Pin, PinDraft } from '$lib/pins/pins';
 	import Copy from '@lucide/svelte/icons/copy';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import type { MockRider } from '../room/mockRoom.svelte';
@@ -45,6 +47,48 @@
 		{ riderId: 'sara', name: 'Sara', wkg: 12.6, watts: 830 },
 		{ riderId: 'demo', name: 'You', wkg: 10.8, watts: 796 },
 	];
+
+	// Pins (ADR-0056). The real board is a room's place and talks to the
+	// server; these two are local lists, because a gallery should not write
+	// to a crew — and because the empty state is a state the real board is
+	// only in once.
+	let board = $state<Pin[]>([
+		{
+			id: 'mc',
+			title: 'Minecraft',
+			body: 'Address: mc.natron.io:25565\nPassword: kilojoule-hammer-42\n\nWhitelist is on — ask Nina to add you.',
+		},
+		{
+			id: 'dc',
+			title: 'Discord',
+			body: 'https://discord.gg/wattroom\n\nVoice for the games; the ride stays in here.',
+		},
+		{ id: 'gym', title: 'The garage', body: 'Door code: 4417' },
+	]);
+	let empty = $state<Pin[]>([]);
+	let seq = 0;
+	const writer = (into: () => Pin[], put: (next: Pin[]) => void) => ({
+		async save(draft: PinDraft, id?: string) {
+			const list = into();
+			const at = id ? list.findIndex((p) => p.id === id) : -1;
+			if (at >= 0) list[at] = { ...list[at], ...draft };
+			else list.push({ id: `pin-${++seq}`, ...draft });
+			put(list);
+			return null;
+		},
+		async remove(pin: Pin) {
+			put(into().filter((p) => p.id !== pin.id));
+			return null;
+		},
+	});
+	const boardWriter = writer(
+		() => board,
+		(next) => (board = next),
+	);
+	const emptyWriter = writer(
+		() => empty,
+		(next) => (empty = next),
+	);
 
 	// Frozen sample riders: a gallery should not move while you read it.
 	function rider(over: Partial<MockRider> = {}): MockRider {
@@ -95,6 +139,41 @@
 		in
 		<a href="/dev/styleguide" class="underline">Styleguide</a>.
 	</p>
+
+	<h2 class="eyebrow mt-12">Pins — under review (#2405)</h2>
+	<p class="text-muted mt-2 max-w-2xl text-xs">
+		A pin is a title and a block of lines — one thing worth pinning is rarely
+		one string, and a server is its address AND its password AND who to ask
+		about the whitelist. A line written as <code>Label: value</code> gets its
+		own copy button; everything else stays prose. The editor is one textarea,
+		not a field repeater. The crew owns the board, and it is a place inside the
+		room —
+		<code>/r/[slug]/pins</code>, whose sidebar row appears only once there is
+		something on it. Not wired to a server: the store is in memory, and it is
+		these two are local lists — a gallery should not write to a crew.
+	</p>
+
+	<p class="text-muted-dim mt-6 text-[11px]">
+		the board, as anyone in the crew
+	</p>
+	<div class="mt-2">
+		<PinBoard
+			pins={board}
+			crewName="Natron"
+			onsave={boardWriter.save}
+			onremove={boardWriter.remove}
+		/>
+	</div>
+
+	<p class="text-muted-dim mt-8 text-[11px]">nothing pinned yet</p>
+	<div class="mt-2">
+		<PinBoard
+			pins={empty}
+			crewName="Natron"
+			onsave={emptyWriter.save}
+			onremove={emptyWriter.remove}
+		/>
+	</div>
 
 	<h2 class="eyebrow mt-12">Buttons</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">

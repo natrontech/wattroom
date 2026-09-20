@@ -15,6 +15,7 @@
 	import Users from '@lucide/svelte/icons/users';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { toasts } from '$lib/toast.svelte';
 	import { people, type Face } from '$lib/people.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
@@ -139,6 +140,24 @@
 	// lines used to show "Nothing said here yet" for the whole round trip,
 	// and a failed backlog left that up with no Retry.
 	const backlog = $derived(conn ? conn.backlog() : null);
+	async function mark(messageId: string) {
+		const res = await api(`/api/rooms/${slug}/announcement`, {
+			method: 'PUT',
+			json: { messageId },
+		});
+		toasts.push(
+			res.ok ? 'Announcement is up.' : res.error.message,
+			res.ok ? undefined : { tone: 'error' },
+		);
+	}
+
+	// Marking is the coach's and the owner's (docs/SPEC.md's roles matrix).
+	// The lobby carries the role, which is what the room's own door reads.
+	const coaches = $derived(
+		['owner', 'coach'].includes(
+			presence.rooms.find((r) => r.slug === slug)?.role ?? '',
+		),
+	);
 	const source: ThreadSource = $derived({
 		timeline,
 		loading: conn
@@ -157,6 +176,14 @@
 		cheers,
 		retry: () => (conn ? conn.reloadBacklog() : outside?.retry()),
 		ban: conn ? ban : undefined,
+		// The coach's mark (ADR-0057, #2408), gated the way `ban` is: only from
+		// inside the room, and only for whoever may run it. Everyone else's
+		// menu simply has no such item rather than one that would be refused.
+		//
+		// PUT, because a room has one announcement and marking is writing that
+		// one thing. The strip updates when the room read comes back on the
+		// lobby ping the server raises — the same path a planned session takes.
+		announce: conn && coaches ? mark : undefined,
 		// One endpoint from both sides of the room: standing inside, the
 		// socket has no edit command — the hub relays what the PATCH did, so
 		// the log this component is already showing updates itself.

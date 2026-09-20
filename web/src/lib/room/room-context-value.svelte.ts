@@ -68,6 +68,8 @@ export interface RoomShellProps {
 	onRole: (userId: string, role: string) => void | Promise<boolean>;
 	onRemove: (userId: string) => void;
 	upcoming?: RoomContext['upcoming'];
+	announcement?: RoomContext['announcement'];
+	onClearAnnouncement?: () => void;
 	/** Resolves false when the server refused — the picker stays open (#1766). */
 	onSchedule: (
 		name: string,
@@ -208,6 +210,10 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get upcoming() {
 			return props.upcoming ?? [];
 		},
+		get announcement() {
+			return props.announcement ?? null;
+		},
+		clearAnnouncement: () => props.onClearAnnouncement?.(),
 		get recaps() {
 			return live.recaps;
 		},

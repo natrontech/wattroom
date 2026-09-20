@@ -335,7 +335,7 @@ var (
 		account appearance brand c chat components crew data dev directory
 		dm download edit editor equipment friends hardware history home
 		hud import legal licenses login medal members messages modes music
-		notifications pairing panel privacy profile progression r ramp
+		notifications pairing panel pins privacy profile progression r ramp
 		recover ride room rooms sessions settings sound spectator
 		styleguide summary terms theme-editor themes training trophies u
 		voice watch whats-new workouts

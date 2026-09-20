@@ -41,8 +41,16 @@ delete from chat_images i
 
 -- name: PruneChat :exec
 -- The 500-message bound (ADR-0010 amended) — run on write, the log never grows.
+--
+-- The room's announcement is kept whatever its age (ADR-0057, #2408). A coach
+-- marks a line precisely because it must outlast the evening, and the cap is
+-- the reason it cannot simply be left in chat: without this clause a busy
+-- week would silently take the notice down, which is the one thing the mark
+-- promises will not happen. It is at most one row per room.
 delete from chat_messages cm
-where cm.room_id = $1 and cm.id not in (
+where cm.room_id = $1
+  and cm.id is distinct from (select announcement_id from rooms where id = $1)
+  and cm.id not in (
     select keep.id from (
         select id from chat_messages
         where room_id = $1
@@ -138,3 +146,28 @@ select read_at from room_reads where room_id = $1 and user_id = $2;
 -- refuses a foreign id the same way it refuses a fault, so the handler asks
 -- first and answers a 400 the client can act on.
 select exists(select 1 from chat_images where id = $1 and room_id = $2)::boolean;
+
+-- name: SetRoomAnnouncement :execrows
+-- Mark a line as the room's announcement (ADR-0057, #2408). The message must
+-- be THIS room's: a coach in room A marking room B's line would put a
+-- sentence they cannot see on a board they do not run, and the `where exists`
+-- is what refuses it — 0 rows is the 404, not a fault.
+update rooms r set announcement_id = @message_id
+where r.id = @room_id
+  and exists (
+      select 1 from chat_messages m
+       where m.id = @message_id and m.room_id = @room_id
+  );
+
+-- name: ClearRoomAnnouncement :exec
+update rooms set announcement_id = null where id = $1;
+
+-- name: GetRoomAnnouncement :one
+-- The marked line as the strip draws it: what it says, who wrote it, and
+-- when. The author is the MESSAGE's, not whoever marked it — a coach putting
+-- somebody else's sentence up is quoting them, and the strip says so.
+select m.id, m.text, u.display_name as from_name, m.created_at
+from rooms r
+join chat_messages m on m.id = r.announcement_id
+join users u on u.id = m.user_id
+where r.id = $1;

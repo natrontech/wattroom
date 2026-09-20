@@ -59,6 +59,15 @@ func (q *Queries) ChatImageInRoom(ctx context.Context, arg ChatImageInRoomParams
 	return column_1, err
 }
 
+const clearRoomAnnouncement = `-- name: ClearRoomAnnouncement :exec
+update rooms set announcement_id = null where id = $1
+`
+
+func (q *Queries) ClearRoomAnnouncement(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearRoomAnnouncement, id)
+	return err
+}
+
 const countChatReaction = `-- name: CountChatReaction :one
 select count(*) from chat_reactions where message_id = $1 and emoji = $2
 `
@@ -175,6 +184,36 @@ func (q *Queries) GetChatMessage(ctx context.Context, arg GetChatMessageParams) 
 	row := q.db.QueryRow(ctx, getChatMessage, arg.ID, arg.RoomID)
 	var i GetChatMessageRow
 	err := row.Scan(&i.UserID, &i.Text, &i.ImageID)
+	return i, err
+}
+
+const getRoomAnnouncement = `-- name: GetRoomAnnouncement :one
+select m.id, m.text, u.display_name as from_name, m.created_at
+from rooms r
+join chat_messages m on m.id = r.announcement_id
+join users u on u.id = m.user_id
+where r.id = $1
+`
+
+type GetRoomAnnouncementRow struct {
+	ID        pgtype.UUID
+	Text      string
+	FromName  string
+	CreatedAt pgtype.Timestamptz
+}
+
+// The marked line as the strip draws it: what it says, who wrote it, and
+// when. The author is the MESSAGE's, not whoever marked it — a coach putting
+// somebody else's sentence up is quoting them, and the strip says so.
+func (q *Queries) GetRoomAnnouncement(ctx context.Context, id pgtype.UUID) (GetRoomAnnouncementRow, error) {
+	row := q.db.QueryRow(ctx, getRoomAnnouncement, id)
+	var i GetRoomAnnouncementRow
+	err := row.Scan(
+		&i.ID,
+		&i.Text,
+		&i.FromName,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
@@ -322,7 +361,9 @@ func (q *Queries) MarkRoomRead(ctx context.Context, arg MarkRoomReadParams) erro
 
 const pruneChat = `-- name: PruneChat :exec
 delete from chat_messages cm
-where cm.room_id = $1 and cm.id not in (
+where cm.room_id = $1
+  and cm.id is distinct from (select announcement_id from rooms where id = $1)
+  and cm.id not in (
     select keep.id from (
         select id from chat_messages
         where room_id = $1
@@ -333,6 +374,12 @@ where cm.room_id = $1 and cm.id not in (
 `
 
 // The 500-message bound (ADR-0010 amended) — run on write, the log never grows.
+//
+// The room's announcement is kept whatever its age (ADR-0057, #2408). A coach
+// marks a line precisely because it must outlast the evening, and the cap is
+// the reason it cannot simply be left in chat: without this clause a busy
+// week would silently take the notice down, which is the one thing the mark
+// promises will not happen. It is at most one row per room.
 func (q *Queries) PruneChat(ctx context.Context, roomID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, pruneChat, roomID)
 	return err
@@ -455,4 +502,30 @@ func (q *Queries) SaveChatMessage(ctx context.Context, arg SaveChatMessageParams
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const setRoomAnnouncement = `-- name: SetRoomAnnouncement :execrows
+update rooms r set announcement_id = $1
+where r.id = $2
+  and exists (
+      select 1 from chat_messages m
+       where m.id = $1 and m.room_id = $2
+  )
+`
+
+type SetRoomAnnouncementParams struct {
+	MessageID pgtype.UUID
+	RoomID    pgtype.UUID
+}
+
+// Mark a line as the room's announcement (ADR-0057, #2408). The message must
+// be THIS room's: a coach in room A marking room B's line would put a
+// sentence they cannot see on a board they do not run, and the `where exists`
+// is what refuses it — 0 rows is the 404, not a fault.
+func (q *Queries) SetRoomAnnouncement(ctx context.Context, arg SetRoomAnnouncementParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setRoomAnnouncement, arg.MessageID, arg.RoomID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

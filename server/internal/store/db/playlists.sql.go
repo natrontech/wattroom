@@ -324,7 +324,7 @@ update rooms r set autoplay_enabled = $2, autoplay_order = $3, autoplay_playlist
 where r.id = $1
   and ($4::uuid is null
        or exists (select 1 from playlists p where p.id = $4 and p.room_id = r.id))
-returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, board_enabled, crew_id, crew_visible
+returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, board_enabled, crew_id, crew_visible, announcement_id
 `
 
 type SetAutoplayParams struct {
@@ -368,6 +368,7 @@ func (q *Queries) SetAutoplay(ctx context.Context, arg SetAutoplayParams) (Room,
 		&i.BoardEnabled,
 		&i.CrewID,
 		&i.CrewVisible,
+		&i.AnnouncementID,
 	)
 	return i, err
 }

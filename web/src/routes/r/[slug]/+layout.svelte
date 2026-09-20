@@ -342,6 +342,31 @@
 					},
 				)}
 			icsToken={room.icsToken ?? ''}
+			announcement={room.announcement ?? null}
+			onClearAnnouncement={() => {
+				// Read the marked line BEFORE the DELETE, not inside the undo:
+				// `act` re-fetches the room on success, so by the time anyone
+				// presses Undo `room.announcement` is already null and the
+				// undo sent nothing at all.
+				const was = room?.announcement;
+				const slug = room?.slug;
+				// Undo re-marks the same line, which is exactly what the mark
+				// did the first time — the message is still in chat.
+				void act(
+					`/api/rooms/${slug}/announcement`,
+					{ method: 'DELETE' },
+					{
+						message: 'Announcement taken down.',
+						undo: was
+							? () =>
+									void act(`/api/rooms/${slug}/announcement`, {
+										method: 'PUT',
+										json: { messageId: was.messageId },
+									})
+							: undefined,
+					},
+				);
+			}}
 			onRotateIcs={() => act(`/api/rooms/${room?.slug}/calendar/rotate`)}
 			adminBusy={busy}
 			onRole={(userId: string, nextRole: string) =>

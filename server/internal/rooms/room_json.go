@@ -229,6 +229,11 @@ type roomJSON struct {
 	// This week's board, present only when the room has enabled it. Resets on
 	// Monday with the streak's week — a bad week is never permanent.
 	Board []boardRowJSON `json:"board,omitempty"`
+	// The coach's standing notice (ADR-0057, #2408), when one is up: the line
+	// a coach marked, drawn at the top of the Lounge and of Chat. Members
+	// only, like every other live signal — it rides the room read rather
+	// than a fetch of its own, so it arrives with the room.
+	Announcement *announcementJSON `json:"announcement,omitempty"`
 	// Planned rides (#116): the full upcoming list for members, and just the
 	// next one for the list view — the nav shows where the action will be.
 	Upcoming    []scheduledJSON `json:"upcoming,omitempty"`
