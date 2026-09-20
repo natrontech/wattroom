@@ -5,7 +5,13 @@
 FROM --platform=$BUILDPLATFORM node:24-alpine AS web
 RUN corepack enable
 WORKDIR /src/web
-COPY web/package.json web/pnpm-lock.yaml ./
+# pnpm-workspace.yaml is part of the install's input, not a convenience:
+# pnpm 12 stopped reading package.json's `pnpm` field, so `overrides` — the
+# security floors from #131 — live here now. Without it the image installs
+# without them while the lockfile records them, and --frozen-lockfile refuses
+# (ERR_PNPM_LOCKFILE_CONFIG_MISMATCH). It also carries onlyBuiltDependencies,
+# which pnpm 12 makes fatal rather than a warning (#2402).
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
 # Served at /changelog.md so the app can show what this build changed (#345).
