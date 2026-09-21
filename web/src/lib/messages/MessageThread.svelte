@@ -214,6 +214,15 @@
 
 	function messageMenu(message: ThreadMessage): MenuEntry[] {
 		const items: MenuEntry[] = [];
+		// Nothing is left to do to a deleted line (#2418) — no edit, no copy,
+		// no react, and no second delete. The person behind it still has a
+		// menu, which is the one thing the row still is.
+		if (message.deletedAt)
+			return message.fromId
+				? personMenu(message.fromId, goto, {
+						you: message.fromId === account.me?.id,
+					})
+				: [];
 		// The person first (#1765, #666): profile, message, friend — and the
 		// owner's ban, on the surface where you actually meet the griefer.
 		const fromId = message.fromId;
@@ -445,7 +454,16 @@
 											? 'border-neon/60 bg-neon/5 -ml-2 rounded border-l-2 py-0.5 pl-2'
 											: ''}"
 									>
-										{#if message.text}
+										{#if message.deletedAt}
+											<!-- A tombstone, DMs only (#2418): the row stays so
+											     the other side is told at all, and there is
+											     nothing left of the message but the fact that
+											     something was here. Italic and muted, so it does
+											     not read as somebody's words. -->
+											<span class="text-muted text-sm italic"
+												>Message deleted</span
+											>
+										{:else if message.text}
 											<MessageText
 												text={message.text}
 												{onQueue}

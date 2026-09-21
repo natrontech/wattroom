@@ -67,6 +67,10 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 		At      int64  `json:"at"`
 		// When the sender last rewrote it (#865); absent for a line as sent.
 		EditedAt int64 `json:"editedAt,omitempty"`
+		// When the sender took it back (#2418). The row survives so the other
+		// side is told at all — a poll merges by id and can never say "gone" —
+		// and the words and the picture left with the delete.
+		DeletedAt int64 `json:"deletedAt,omitempty"`
 	}
 	out := make([]messageJSON, 0, len(rows))
 	for _, row := range rows {
@@ -74,6 +78,7 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 			ID: store.UUIDString(row.ID), Mine: row.SenderID == me.ID,
 			Text: row.Text, ImageID: store.UUIDString(row.ImageID),
 			At: row.CreatedAt.Time.UnixMilli(), EditedAt: store.Millis(row.EditedAt),
+			DeletedAt: store.Millis(row.DeletedAt),
 		})
 	}
 	// Edits ride separately from the incremental fetch for the same reason
@@ -91,8 +96,23 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 		id := store.UUIDString(row.ID)
 		edits[id] = protocol.ChatEdit{MessageID: id, Text: row.Text, EditedAt: store.Millis(row.EditedAt)}
 	}
+	// Tombstones ride separately for the same reason edits do (#2418):
+	// deleting does not move created_at, so a reader looking at the line
+	// would never be told by the messages page alone.
+	deletedRows, err := s.store.Queries.ListDmDeleted(r.Context(), db.ListDmDeletedParams{
+		Column1: me.ID, Column2: peer,
+	})
+	if err != nil {
+		httpx.Fail(w, s.log, "list dm deleted", err, "Messages could not be loaded.")
+		return
+	}
+	deleted := make([]string, 0, len(deletedRows))
+	for _, id := range deletedRows {
+		deleted = append(deleted, store.UUIDString(id))
+	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"messages": out, "reactions": counts, "myReacts": mine, "edits": edits,
+		"deleted": deleted,
 	})
 }
 

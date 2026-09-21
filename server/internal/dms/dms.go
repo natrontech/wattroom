@@ -78,6 +78,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/dms/{id}", s.handleSend)
 	mux.HandleFunc("POST /api/dms/{id}/reactions", s.handleReact)
 	mux.HandleFunc("PATCH /api/dms/{id}/messages/{messageId}", s.handleEdit)
+	mux.HandleFunc("DELETE /api/dms/{id}/messages/{messageId}", s.handleDelete)
 	// Four segments, so neither collides with the thread routes above.
 	mux.HandleFunc("POST /api/dms/{id}/images", s.handleImageUpload)
 	mux.HandleFunc("GET /api/dms/images/{id}", s.handleImage)
@@ -154,6 +155,58 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 // chat's handleEdit, with the same two rules: sender only, text only. Like a
 // reaction here, there is no live wire to announce it on; the peer picks the
 // new text up on their next poll.
+// handleDelete takes back a line the caller sent (#2418). Sender only —
+// there is no owner of a conversation, and deleting the other person's words
+// from their own thread is not a power a DM has.
+//
+// It leaves a tombstone where a room line vanishes (#2417). Two reasons: a
+// DM is polled, so "gone" cannot be expressed by absence from an
+// `after`-narrowed page; and a message silently disappearing from a
+// two-person thread reads as "did I imagine that?" — every messenger that
+// has faced it tombstones a DM and vanishes a channel line.
+func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
+	me, peer, ok := s.peer(w, r)
+	if !ok || s.overLine(w, me.ID) {
+		return
+	}
+	mid, err := store.ParseUUID(r.PathValue("messageId"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")
+		return
+	}
+	msg, err := s.store.Queries.GetDmMessage(r.Context(), db.GetDmMessageParams{
+		ID: mid, Column2: me.ID, Column3: peer,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")
+		return
+	}
+	if err != nil {
+		httpx.Fail(w, s.log, "dm message lookup", err, "The message could not be read. Try again.", "user", store.UUIDString(me.ID))
+		return
+	}
+	if msg.SenderID != me.ID {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "You can only delete your own messages.")
+		return
+	}
+	deleted, err := s.store.Queries.DeleteDmMessage(r.Context(), db.DeleteDmMessageParams{
+		ID: mid, SenderID: me.ID, Column3: peer,
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Already a tombstone: the statement guards on deleted_at, so a
+		// second delete stamps nothing rather than moving the time.
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this conversation.")
+		return
+	}
+	if err != nil {
+		httpx.Fail(w, s.log, "dm delete", err, "The message could not be deleted. Try again.", "user", store.UUIDString(me.ID))
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"messageId": store.UUIDString(mid), "deletedAt": store.Millis(deleted),
+	})
+}
+
 func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 	me, peer, ok := s.peer(w, r)
 	if !ok || s.overLine(w, me.ID) {

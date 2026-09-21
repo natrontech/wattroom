@@ -20,6 +20,12 @@ export type TimelineMessage = {
 	at: number;
 	/** When the author last rewrote it (#865); absent for a line as sent. */
 	editedAt?: number;
+	/**
+	 * When the sender took it back (#2418) — a DM only. A room's line is
+	 * gone from the log entirely (#2417), so nothing there ever sets this;
+	 * a DM leaves the row so the other side can be told at all.
+	 */
+	deletedAt?: number;
 };
 
 export type TimelineEntry =

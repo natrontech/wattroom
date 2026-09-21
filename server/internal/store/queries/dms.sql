@@ -72,7 +72,7 @@ where least(dm.sender_id, dm.recipient_id) = least($1::uuid, $2::uuid)
 -- rendering, the shape ListRoomChat has (#1813). It used to take the oldest
 -- 200 of a pair's 500, so a long thread opened weeks back and a rider's own
 -- send fell past the page. The id breaks a same-millisecond tie.
-select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at
+select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at, m.deleted_at
 from (
     select * from dm_messages
     where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
@@ -175,3 +175,31 @@ join friendships f
 where m.sender_id = $1 or m.recipient_id = $1
 order by peer.id, m.created_at desc
 limit 1000; -- an engineering bound (#1416): peers are friends, and friends are few
+
+-- name: DeleteDmMessage :one
+-- A tombstone, not a removal (#2418): the row stays so the poll can carry
+-- "this is gone" to the other side, and everything that WAS the message
+-- leaves with the same statement — the words, and the picture, whose blob
+-- PruneDmImages then sweeps like any other unreferenced one.
+--
+-- Sender only, pair-scoped, and idempotent on a line already deleted: the
+-- `deleted_at is null` guard means a second delete returns no row, which the
+-- handler answers 404 rather than stamping a new time on a tombstone.
+--
+-- No friendship re-check, for the reason EditDmMessage records: unfriending
+-- ends the conversation, it does not freeze what you already said.
+update dm_messages
+set text = '', image_id = null, deleted_at = now()
+where id = $1 and sender_id = $2 and deleted_at is null
+  and least(sender_id, recipient_id) = least($2::uuid, $3::uuid)
+  and greatest(sender_id, recipient_id) = greatest($2::uuid, $3::uuid)
+returning deleted_at;
+
+-- name: ListDmDeleted :many
+-- Which of the pair's lines are tombstones, for the same reason ListDmEdits
+-- exists: deleting does not move created_at, so `after` can never bring the
+-- news back with the messages. Ids only — there is nothing else left.
+select id from dm_messages
+where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
+  and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
+  and deleted_at is not null;

@@ -30,6 +30,7 @@ interface DmLine {
 	imageId?: string;
 	at: number;
 	editedAt?: number;
+	deletedAt?: number;
 }
 
 export function createDmThread(peerId: string, peerName: () => string) {
@@ -55,6 +56,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			imageId: m.imageId,
 			at: m.at,
 			editedAt: m.editedAt,
+			deletedAt: m.deletedAt,
 		};
 	}
 
@@ -64,6 +66,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			reactions?: Record<string, Record<string, number>>;
 			myReacts?: Record<string, string[]>;
 			edits?: Record<string, ChatEdit>;
+			deleted?: string[];
 		}>(`/api/dms/${peerId}${after ? `?after=${after}` : ''}`);
 		if (closed) return;
 		loading = false;
@@ -101,6 +104,19 @@ export function createDmThread(peerId: string, peerName: () => string) {
 					: m;
 			});
 		}
+		// Tombstones cover the WHOLE pair, like the edits above and for the
+		// same reason (#2418): deleting leaves created_at alone, so `after`
+		// can never bring the news back with the messages. A line the reader
+		// is looking at goes to "Message deleted" on the next poll.
+		const deleted = res.data.deleted;
+		if (deleted?.length) {
+			const gone = new Set(deleted);
+			raw = raw.map((m) =>
+				gone.has(m.id) && !m.deletedAt
+					? { ...m, text: '', imageId: undefined, deletedAt: m.at }
+					: m,
+			);
+		}
 		if (raw.length > 0 && (fresh.length > 0 || !after)) {
 			// "Seen" only when you could actually have seen it — a thread left
 			// open in a hidden tab must keep the badge (audit #219).
@@ -111,7 +127,27 @@ export function createDmThread(peerId: string, peerName: () => string) {
 		}
 	}
 
+	/**
+	 * Take back a line this rider sent (#2418). Sender only — there is no
+	 * owner of a conversation. The poll carries the tombstone to the other
+	 * side; this reload is what makes it appear here without waiting for the
+	 * interval.
+	 */
+	async function remove(id: string): Promise<string | null> {
+		const res = await api(`/api/dms/${peerId}/messages/${id}`, {
+			method: 'DELETE',
+		});
+		if (!res.ok) return res.error.message;
+		raw = raw.map((m) =>
+			m.id === id ? { ...m, text: '', imageId: undefined, deletedAt: m.at } : m,
+		);
+		return null;
+	}
+
 	return {
+		remove,
+		canRemove: (message: { id?: string; fromId?: string }) =>
+			message.fromId === account.me?.id,
 		get timeline() {
 			return roomTimeline(raw.map(toTimelineMessage), []);
 		},
