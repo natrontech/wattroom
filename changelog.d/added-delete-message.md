@@ -1,1 +1,0 @@
-- **Messages can be deleted.** Any line you sent, from its right-click menu — it goes from the room for everyone, and editing it to something else is no longer the only repair. A room's owner can delete anyone's, which is the half of moderation a ban was missing: it severed a griefer and left their words up. Deleting the line a coach announced takes the announcement down with it.
