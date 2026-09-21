@@ -136,6 +136,13 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		} else {
 			rm.edits = nil
 		}
+		deletesNow := rm.deletes
+		if len(deletesNow) > 64 {
+			deletesNow = rm.deletes[:64]
+			rm.deletes = append([]protocol.ChatDelete(nil), rm.deletes[64:]...)
+		} else {
+			rm.deletes = nil
+		}
 		idsNow := rm.chatIDs
 		rm.chatIDs = nil
 		// Resolved before the drain so a transition's own line rides the tick
@@ -164,6 +171,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			Chat:          chatNow,
 			ChatReactions: reactsNow,
 			ChatEdits:     editsNow,
+			ChatDeletes:   deletesNow,
 			ChatIDs:       idsNow,
 			Events:        eventsNow,
 			Sprint:        sprintNow,

@@ -11,6 +11,7 @@
 	import Music from '@lucide/svelte/icons/music';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
+	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import { type Snippet } from 'svelte';
@@ -44,6 +45,7 @@
 	import type { ThreadMessage, ThreadSource } from '$lib/messages/thread-types';
 	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
 	import { eventText } from '$lib/room/timeline';
+	import { confirm } from '$lib/confirm.svelte';
 	import { copyText } from '$lib/copy';
 	import { MaxMessageChars } from '$lib/protocol';
 	import { toasts } from '$lib/toast.svelte';
@@ -160,6 +162,20 @@
 		}
 		cancelEdit();
 	}
+	async function removeLine(id: string, mine: boolean, from: string) {
+		const yes = await confirm({
+			title: mine ? 'Delete your message?' : `Delete ${from}'s message?`,
+			body: mine
+				? 'It goes from the room for everyone, and it cannot be brought back.'
+				: `It goes from the room for everyone, including ${from}, and it cannot be brought back.`,
+			action: 'Delete',
+			cancel: 'Keep it',
+		});
+		if (!yes) return;
+		const refused = await source.remove?.(id);
+		if (refused) toasts.push(refused, { tone: 'error' });
+	}
+
 	async function react(id: string, cheer: string) {
 		reactingTo = null;
 		const refused = await source.react?.(id, cheer);
@@ -243,6 +259,19 @@
 				label: 'Announce this',
 				icon: Megaphone,
 				onSelect: () => source.announce?.(id),
+			});
+		}
+		// Destructive, so last and after a separator (ux.md). It asks before
+		// it acts: a hard delete cannot be undone, which is errors.md's own
+		// test for when a confirm beats an undo toast (#1493).
+		if (source.remove && message.id && source.canRemove?.(message)) {
+			const id = message.id;
+			const mine = message.fromId === account.me?.id;
+			items.push('separator', {
+				label: 'Delete',
+				icon: Trash2,
+				danger: true,
+				onSelect: () => void removeLine(id, mine, message.from),
 			});
 		}
 		const link = onQueue && message.text ? firstLink(message.text) : undefined;

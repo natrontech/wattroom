@@ -781,4 +781,57 @@ describe('room live chat edits (#865)', () => {
 		expect(live.chatLog).toHaveLength(1);
 		expect(live.chatLog[0].text).toBe('here');
 	});
+
+	// Deleting a line (#2417). The line leaves everyone's log the way an edit
+	// lands on it — a tick, not a second message saying something went.
+	it('takes a deleted line out of the log, with its reactions', () => {
+		const live = createRoomLive('deletes');
+		const socket = FakeSocket.last!;
+		socket.open();
+		tick(socket, {
+			chat: [
+				{ id: 'm1', from: 'kim', fromId: 'u1', text: 'oops', at: 1 },
+				{ id: 'm2', from: 'ada', fromId: 'u2', text: 'stays', at: 2 },
+			],
+			// `by` is this client's own rider, so the reaction cue does not
+			// fire: the cue is for somebody ELSE reacting, and jsdom has no
+			// AudioContext. This test is about the counts going with the line.
+			chatReactions: [
+				{ messageId: 'm1', emoji: '🔥', count: 2, added: true, by: 'u1' },
+			],
+		});
+		expect(live.chatLog).toHaveLength(2);
+		expect(live.chatReactions.m1).toBeDefined();
+
+		tick(socket, { chatDeletes: [{ messageId: 'm1' }] });
+		expect(live.chatLog.map((line) => line.id)).toEqual(['m2']);
+		// Counts for a line that is gone would draw an emoji row under
+		// nothing.
+		expect(live.chatReactions.m1).toBeUndefined();
+	});
+
+	it('leaves an id-less line alone when something else is deleted', () => {
+		const live = createRoomLive('deletes-idless');
+		const socket = FakeSocket.last!;
+		socket.open();
+		tick(socket, {
+			chat: [
+				{ id: 'm1', from: 'kim', fromId: 'u1', text: 'saved', at: 1 },
+				{ from: 'ada', fromId: 'u2', text: 'not saved yet', at: 2 },
+			],
+		});
+		tick(socket, { chatDeletes: [{ messageId: 'm1' }] });
+		expect(live.chatLog.map((line) => line.text)).toEqual(['not saved yet']);
+	});
+
+	it('ignores a delete for a line this client never had', () => {
+		const live = createRoomLive('deletes-unknown');
+		const socket = FakeSocket.last!;
+		socket.open();
+		tick(socket, {
+			chat: [{ id: 'm1', from: 'kim', fromId: 'u1', text: 'here', at: 1 }],
+		});
+		tick(socket, { chatDeletes: [{ messageId: 'gone' }] });
+		expect(live.chatLog).toHaveLength(1);
+	});
 });

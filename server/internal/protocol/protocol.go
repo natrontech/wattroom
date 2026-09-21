@@ -206,6 +206,18 @@ type ChatEdit struct {
 	EditedAt  int64  `json:"editedAt"`
 }
 
+// ChatDelete is one already-delivered line taken out of the log (#2417).
+// It reaches the room the way an edit does — the line already in everyone's
+// log goes, rather than a second message arriving to say it went.
+//
+// The id is the whole of it. There is no tombstone: this chat has no replies
+// for a "deleted message" row to hold the place of, the log is bounded and
+// pruned anyway, and a row that exists to say nothing is still a row somebody
+// has to read past.
+type ChatDelete struct {
+	MessageID string `json:"messageId"`
+}
+
 // ChatID attaches the persisted identity to a line broadcast on an earlier
 // tick (#219): the save runs off the read loop, so the id follows the line.
 // FromID+At name the line — the 1/s per-rider chat limit makes the pair unique.
@@ -639,6 +651,8 @@ type ServerTick struct {
 	ChatReactions []ChatReactionCount `json:"chatReactions,omitempty"`
 	// Lines rewritten this second (#865), drained like the reactions above.
 	ChatEdits []ChatEdit `json:"chatEdits,omitempty"`
+	// ...and lines taken out of it (#2417), drained the same way.
+	ChatDeletes []ChatDelete `json:"chatDeletes,omitempty"`
 	// Persisted ids for lines already broadcast (#219) — the async save's
 	// follow-up, unlocking reactions on them.
 	ChatIDs []ChatID `json:"chatIds,omitempty"`

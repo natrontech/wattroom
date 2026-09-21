@@ -19,6 +19,7 @@ type fakeLive struct {
 	lines   []protocol.ChatLine
 	changes []protocol.ChatReactionCount
 	edits   []protocol.ChatEdit
+	deletes []protocol.ChatDelete
 }
 
 func (f *fakeLive) PostChat(_ string, line protocol.ChatLine) {
@@ -31,6 +32,12 @@ func (f *fakeLive) PostReaction(_ string, change protocol.ChatReactionCount) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.changes = append(f.changes, change)
+}
+
+func (f *fakeLive) PostChatDelete(_ string, gone protocol.ChatDelete) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.deletes = append(f.deletes, gone)
 }
 
 func (f *fakeLive) PostChatEdit(_ string, edit protocol.ChatEdit) {

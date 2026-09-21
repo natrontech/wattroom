@@ -140,6 +140,24 @@
 	// lines used to show "Nothing said here yet" for the whole round trip,
 	// and a failed backlog left that up with no Retry.
 	const backlog = $derived(conn ? conn.backlog() : null);
+	/**
+	 * One endpoint from both sides of the room, like the edit above: the hub
+	 * carries the removal to whoever is connected, and a reader outside sees
+	 * it gone from the backlog on their next poll.
+	 */
+	async function removeLine(id: string) {
+		const res = await api(`/api/rooms/${slug}/chat/${id}`, {
+			method: 'DELETE',
+		});
+		if (res.ok) {
+			// Outside the room there is no tick to carry it, so the thread
+			// this component is showing has to drop the line itself.
+			if (!conn) outside?.retry();
+			return null;
+		}
+		return res.error.message;
+	}
+
 	async function mark(messageId: string) {
 		const res = await api(`/api/rooms/${slug}/announcement`, {
 			method: 'PUT',
@@ -153,6 +171,9 @@
 
 	// Marking is the coach's and the owner's (docs/SPEC.md's roles matrix).
 	// The lobby carries the role, which is what the room's own door reads.
+	const owner = $derived(
+		presence.rooms.find((r) => r.slug === slug)?.role === 'owner',
+	);
 	const coaches = $derived(
 		['owner', 'coach'].includes(
 			presence.rooms.find((r) => r.slug === slug)?.role ?? '',
@@ -184,6 +205,12 @@
 		// one thing. The strip updates when the room read comes back on the
 		// lobby ping the server raises — the same path a planned session takes.
 		announce: conn && coaches ? mark : undefined,
+		// Deleting a line (#2417): your own always, anyone's if you own the
+		// room. A coach may not — the roles matrix gives moderation to the
+		// owner, and a coach runs sessions rather than the room.
+		remove: removeLine,
+		canRemove: (message) =>
+			!!message.fromId && (message.fromId === account.me?.id || owner),
 		// One endpoint from both sides of the room: standing inside, the
 		// socket has no edit command — the hub relays what the PATCH did, so
 		// the log this component is already showing updates itself.

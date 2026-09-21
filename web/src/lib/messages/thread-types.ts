@@ -39,6 +39,17 @@ export interface ThreadSource {
 	 */
 	ban?: (id: string, name: string) => void;
 	/**
+	 * Take a line out of the log for good (#2417). Capability-gated like the
+	 * rest, and per MESSAGE rather than per thread: the author's own always,
+	 * anyone's for a room's owner, nobody else's. A surface that omits it
+	 * offers no Delete rather than one that is refused.
+	 *
+	 * Resolves to the refusal, or null once the line is gone.
+	 */
+	remove?: (id: string) => Promise<string | null>;
+	/** Whether `remove` would be allowed for this line — the menu asks first. */
+	canRemove?: (message: { id?: string; fromId?: string }) => boolean;
+	/**
 	 * Mark a line as the room's announcement (#2408), when the viewer is a
 	 * coach or the owner and the thread is a room's. Capability-gated like
 	 * the rest: a DM, and every other rider, get no such item.
