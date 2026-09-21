@@ -194,8 +194,10 @@ describe('a room you are not standing in', () => {
 		await vi.waitFor(() => expect(sounds).toEqual(['chat']));
 	});
 
-	// Opening a room reads it and then nothing does, so `unread` climbs back
-	// above zero while you stand there (#2421). Standing in it is the test,
+	// The room's own layout re-reads the room off every ping, which marks it
+	// read, so `unread` is usually back to zero before this list carries it —
+	// usually, because the two answer the same ping and either can be first
+	// (#2421). Standing in it is the test that does not depend on the race,
 	// the way the session loop already tests it: the in-room path has the
 	// line, and in the Chat place it is on the screen being read.
 	it('stays quiet about the room you are standing in', async () => {

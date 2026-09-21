@@ -96,11 +96,13 @@ async function refresh() {
 		});
 	}
 	// A room you are NOT standing in reaches you the way a DM does (#568).
-	// Its unread count is not the whole trigger it was taken for: opening a
-	// room reads it, and then nothing does, so lines arriving while you
-	// stand there push the count back above zero (#2421). Standing in it is
-	// the test, exactly as the session loop above tests it — the in-room
-	// path has those lines, Chat place open or not.
+	// Its unread count was the whole trigger, and it holds only by a race it
+	// happens to win: the room's layout re-reads GET /api/rooms/{slug} off
+	// this same ping and that marks the room read, so the count is back to
+	// zero before the next list carries it. Standing in it is the test that
+	// does not depend on which of the two answers first (#2421) — the same
+	// one the session loop above makes, and the in-room path has those lines
+	// either way, Chat place open or not.
 	//
 	// The tag is the room's own, shared with the in-room path — whichever
 	// path sees a line first announces it, and never both. That holds only
