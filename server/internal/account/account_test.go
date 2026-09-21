@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -21,6 +20,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/natrontech/wattroom/server/internal/testx"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -591,6 +592,7 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		t.Helper()
 		if _, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
 			RoomID: room, UserID: h.id(user), Text: text,
+			CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		}); err != nil {
 			t.Fatalf("chat %s: %v", user, err)
 		}
@@ -983,6 +985,7 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	// Her own room line, edited, and a reaction of hers on bob's.
 	mine, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
 		RoomID: room, UserID: h.id("alice"), Text: "first draft",
+		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
 		t.Fatalf("chat: %v", err)
@@ -994,6 +997,7 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	}
 	his, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
 		RoomID: room, UserID: h.id("bob"), Text: "bobs own line",
+		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
 		t.Fatalf("chat bob: %v", err)

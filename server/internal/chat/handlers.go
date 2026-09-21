@@ -210,14 +210,17 @@ func (s *Service) handlePost(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	id, saved := s.SaveChat(r.Context(), room.Slug, store.UUIDString(me.ID), text, req.ImageID)
+	// Stamped before the save, and the save is told (#2421): the row and
+	// the line the room hears must carry the same millisecond.
+	at := time.Now().UnixMilli()
+	id, saved := s.SaveChat(r.Context(), room.Slug, store.UUIDString(me.ID), text, req.ImageID, at)
 	if !saved {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The message could not be sent. Try again.")
 		return
 	}
 	line := protocol.ChatLine{
 		ID: id, From: me.DisplayName, FromID: store.UUIDString(me.ID),
-		Text: text, ImageID: req.ImageID, At: time.Now().UnixMilli(),
+		Text: text, ImageID: req.ImageID, At: at,
 	}
 	if s.live != nil {
 		s.live.PostChat(room.Slug, line)

@@ -501,29 +501,37 @@ func (q *Queries) SaveChatImage(ctx context.Context, arg SaveChatImageParams) (p
 }
 
 const saveChatMessage = `-- name: SaveChatMessage :one
-insert into chat_messages (room_id, user_id, text, image_id)
-select $1, $2, $3, $4
+insert into chat_messages (room_id, user_id, text, image_id, created_at)
+select $1, $2, $3, $4, $5
 where $4::uuid is null
    or exists (select 1 from chat_images where id = $4 and room_id = $1)
 returning id
 `
 
 type SaveChatMessageParams struct {
-	RoomID  pgtype.UUID
-	UserID  pgtype.UUID
-	Text    string
-	ImageID pgtype.UUID
+	RoomID    pgtype.UUID
+	UserID    pgtype.UUID
+	Text      string
+	ImageID   pgtype.UUID
+	CreatedAt pgtype.Timestamptz
 }
 
 // An attached image must belong to THIS room. Serving already scopes by room,
 // so a foreign id could never be viewed — but referencing one would pin its
 // bytes past the sweep, which is how a client escapes the storage bound.
+//
+// created_at is the caller's, not the column's default (#2421): the hub
+// stamps a line the instant it broadcasts it and saves on a worker after,
+// so a row that timed itself timed a different moment — and the two numbers
+// named the same line to the two paths that announce it, which is how one
+// message made two sounds.
 func (q *Queries) SaveChatMessage(ctx context.Context, arg SaveChatMessageParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, saveChatMessage,
 		arg.RoomID,
 		arg.UserID,
 		arg.Text,
 		arg.ImageID,
+		arg.CreatedAt,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)

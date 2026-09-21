@@ -78,6 +78,7 @@ func TestUnreadBadgeSurvivesANamesake(t *testing.T) {
 	}
 	if _, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
 		RoomID: room.ID, UserID: h.users.ByToken["bob"].ID, Text: "anyone riding tonight?",
+		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	}); err != nil {
 		t.Fatalf("save chat: %v", err)
 	}

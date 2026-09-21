@@ -2,8 +2,14 @@
 -- An attached image must belong to THIS room. Serving already scopes by room,
 -- so a foreign id could never be viewed — but referencing one would pin its
 -- bytes past the sweep, which is how a client escapes the storage bound.
-insert into chat_messages (room_id, user_id, text, image_id)
-select $1, $2, $3, $4
+--
+-- created_at is the caller's, not the column's default (#2421): the hub
+-- stamps a line the instant it broadcasts it and saves on a worker after,
+-- so a row that timed itself timed a different moment — and the two numbers
+-- named the same line to the two paths that announce it, which is how one
+-- message made two sounds.
+insert into chat_messages (room_id, user_id, text, image_id, created_at)
+select $1, $2, $3, $4, $5
 where $4::uuid is null
    or exists (select 1 from chat_images where id = $4 and room_id = $1)
 returning id;
