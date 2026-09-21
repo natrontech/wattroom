@@ -1,0 +1,1 @@
+- A room's chat line makes one sound, not two, and a message you are looking at in the room you are standing in makes none. Unread lines waiting from last time no longer blip when somebody joins an unrelated room.
