@@ -15,13 +15,26 @@ vi.mock('$lib/nav/rooms', () => ({
 		return world;
 	},
 }));
-const announced: { tag: string; reading: boolean }[] = [];
-vi.mock('$lib/messages/announce', () => ({
-	announce: (a: { tag: string; reading: boolean }) => announced.push(a),
+// The REAL announce runs here, dedup and all — only its three exits are
+// stubbed. #2421 was a dedup that did not hold, and a recorder standing in
+// for announce() cannot see that: it records the call, not the decision. The
+// cue is also the half of it a rider complained about.
+const sounds: string[] = [];
+const notified: { tag: string }[] = [];
+const toasted: { text: string; href?: string }[] = [];
+vi.mock('$lib/sound/cues', () => ({ play: (id: string) => sounds.push(id) }));
+vi.mock('$lib/toast.svelte', () => ({
+	toasts: {
+		push: (text: string, opts?: { href?: string }) =>
+			toasted.push({ text, href: opts?.href }),
+	},
 }));
 vi.mock('$lib/notify.svelte', () => ({
 	// The real rule (ADR-0042): hidden, or not the front window.
 	away: () => document.hidden || !document.hasFocus(),
+	notify: {
+		push: (_t: string, _b: string, tag: string) => notified.push({ tag }),
+	},
 }));
 
 // A hand-driven lobby socket, so the test can deliver pings the way the hub
@@ -112,8 +125,12 @@ describe('a room you are not standing in', () => {
 	afterEach(() => {
 		presence.stop();
 		world = { rooms: [], maxOwned: 0 };
-		announced.length = 0;
+		sounds.length = 0;
+		notified.length = 0;
+		toasted.length = 0;
 		document.hasFocus = () => true;
+		// The dedup is real localStorage, shared by every test in this file.
+		localStorage.clear();
 	});
 
 	it('announces its chat into an open thread while the window is not in front', async () => {
@@ -135,8 +152,88 @@ describe('a room you are not standing in', () => {
 			maxOwned: 0,
 		};
 		ping();
-		await vi.waitFor(() => expect(announced).toHaveLength(1));
-		expect(announced[0]).toMatchObject({ tag: 'chat-velvet', reading: false });
+		await vi.waitFor(() => expect(notified).toHaveLength(1));
+		expect(notified[0]).toMatchObject({ tag: 'chat-velvet' });
+		expect(sounds).toEqual(['chat']);
+	});
+
+	// The first list is the state of the world, and it has to CLAIM the lines
+	// it is right not to announce (#2421). Left unclaimed, they were
+	// announced by whatever refreshed next — and every presence change
+	// refreshes, so a rider joining an unrelated room released yesterday's
+	// unread line with a cue and a toast.
+	it('claims what the first list does not announce, so a later ping cannot', async () => {
+		history.pushState({}, '', '/home');
+		world = {
+			rooms: [
+				{
+					slug: 'velvet',
+					name: 'Velvet Hammer',
+					live: false,
+					members: 2,
+					unread: 3,
+					lastChat: { from: 'Ruben', text: 'said this yesterday', at: 5 },
+				},
+			],
+			maxOwned: 0,
+		};
+		presence.start();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(0));
+		expect(sounds).toHaveLength(0);
+
+		// Somebody joins an unrelated room: a ping, an unchanged world.
+		const seen = fetches;
+		ping();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen));
+		expect(sounds).toHaveLength(0);
+
+		// A NEW line in the same room still sounds — the claim is of one
+		// millisecond, not of the room.
+		world.rooms[0].lastChat = { from: 'Ruben', text: 'on my way', at: 6 };
+		ping();
+		await vi.waitFor(() => expect(sounds).toEqual(['chat']));
+	});
+
+	// The room's own layout re-reads the room off every ping, which marks it
+	// read, so `unread` is usually back to zero before this list carries it —
+	// usually, because the two answer the same ping and either can be first
+	// (#2421). Standing in it is the test that does not depend on the race,
+	// the way the session loop already tests it: the in-room path has the
+	// line, and in the Chat place it is on the screen being read.
+	it('stays quiet about the room you are standing in', async () => {
+		presence.start();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(0));
+		history.pushState({}, '', '/r/velvet/chat');
+		world = {
+			rooms: [
+				{
+					slug: 'velvet',
+					name: 'Velvet Hammer',
+					live: false,
+					members: 2,
+					unread: 1,
+					lastChat: { from: 'Ruben', text: 'on my way', at: 7 },
+				},
+			],
+			maxOwned: 0,
+		};
+		ping();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(1));
+		expect(sounds).toHaveLength(0);
+
+		// Training, mid-ride: still the in-room path's line, not this one's.
+		history.pushState({}, '', '/r/velvet/training');
+		world.rooms[0].lastChat = { from: 'Ruben', text: 'two to go', at: 8 };
+		ping();
+		await vi.waitFor(() => expect(fetches).toBeGreaterThan(2));
+		expect(sounds).toHaveLength(0);
+
+		// Away from it, the same line reaches you as a DM would.
+		history.pushState({}, '', '/workouts');
+		world.rooms[0].lastChat = { from: 'Ruben', text: 'last one', at: 9 };
+		ping();
+		await vi.waitFor(() => expect(sounds).toEqual(['chat']));
+		expect(toasted[0].href).toBe('/messages/r/velvet');
 	});
 
 	// A session starting there is the one event nobody wants to miss
@@ -158,16 +255,17 @@ describe('a room you are not standing in', () => {
 		await vi.waitFor(() => expect(fetches).toBeGreaterThan(1));
 		world = { rooms: [velvet(true)], maxOwned: 0 };
 		ping();
-		await vi.waitFor(() => expect(announced).toHaveLength(1));
-		expect(announced[0]).toMatchObject({ tag: 'session-velvet' });
+		await vi.waitFor(() => expect(toasted).toHaveLength(1));
+		expect(toasted[0].href).toBe('/r/velvet/training');
 		// Still live on the next list: old news.
 		const seen = fetches;
 		ping();
 		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen));
-		expect(announced).toHaveLength(1);
+		expect(toasted).toHaveLength(1);
 
 		// Standing in the room, the in-room path announces; this one is quiet.
-		announced.length = 0;
+		toasted.length = 0;
+		sounds.length = 0;
 		world = { rooms: [velvet(false)], maxOwned: 0 };
 		ping();
 		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen + 1));
@@ -175,7 +273,8 @@ describe('a room you are not standing in', () => {
 		world = { rooms: [velvet(true)], maxOwned: 0 };
 		ping();
 		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen + 2));
-		expect(announced).toHaveLength(0);
+		expect(toasted).toHaveLength(0);
+		expect(sounds).toHaveLength(0);
 	});
 });
 

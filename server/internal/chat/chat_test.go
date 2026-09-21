@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/natrontech/wattroom/server/internal/testx"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/natrontech/wattroom/server/internal/budget"
@@ -121,11 +122,11 @@ func TestChatRoundTrip(t *testing.T) {
 	}
 
 	// Save two lines; the backlog returns them oldest-first with authors.
-	id1, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "warm-up at 7?", "")
+	id1, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "warm-up at 7?", "", time.Now().UnixMilli())
 	if !ok || id1 == "" {
 		t.Fatal("save 1 failed")
 	}
-	id2, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(bob.ID), "in", "")
+	id2, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(bob.ID), "in", "", time.Now().UnixMilli())
 	if !ok || id2 == "" {
 		t.Fatal("save 2 failed")
 	}
@@ -182,7 +183,7 @@ func TestReactionRefusedAcrossRooms(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = svc.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", other.ID)
 	})
-	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "here", "")
+	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "here", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -279,7 +280,7 @@ func TestChatImages(t *testing.T) {
 	}
 
 	// A line carrying the id surfaces it in the backlog.
-	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "", imgID); !ok {
+	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "", imgID, time.Now().UnixMilli()); !ok {
 		t.Fatal("save with image failed")
 	}
 	_, messages := backlog(t, mux, "alice", room.Slug)
@@ -295,7 +296,7 @@ func TestPruneChatImagesSweepsOnlyUnreferenced(t *testing.T) {
 
 	_, sent := postImage(t, mux, "alice", room.Slug, tinyPNG)
 	_, orphan := postImage(t, mux, "alice", room.Slug, tinyPNG)
-	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "", sent); !ok {
+	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "", sent, time.Now().UnixMilli()); !ok {
 		t.Fatal("save failed")
 	}
 	// Age both past the 15-minute grace; only the never-sent one may go.
@@ -337,7 +338,7 @@ func TestChatImageFromAnotherRoomIsRefused(t *testing.T) {
 	}
 	// Referencing it from chat-cave must not persist: serving is room-scoped
 	// anyway, but the reference alone would pin the bytes past the sweep.
-	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "look", theirs); ok {
+	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "look", theirs, time.Now().UnixMilli()); ok {
 		t.Fatal("cross-room image reference accepted")
 	}
 	// Over HTTP the refusal is the rider's to act on (#1987): a 400 naming
@@ -379,5 +380,32 @@ func TestChatWritesAreBoundedPerAccount(t *testing.T) {
 	}
 	if code, _ := postImage(t, mux, "alice", room.Slug, tinyPNG); code != http.StatusTooManyRequests {
 		t.Fatalf("the second upload in an hour: %d", code)
+	}
+}
+
+// One line, one millisecond (#2421). The room socket announces a line by the
+// `At` it broadcast; the rail announces the same line by the row's
+// created_at, and the dedup that stops both of them speaking keys off that
+// number. While the column timed itself the two disagreed — on the socket
+// path always, because the save runs on a worker after the broadcast — and
+// one message made two sounds.
+func TestChatLineKeepsItsOwnTimestamp(t *testing.T) {
+	svc, mux, users, room := setup(t)
+	alice := users.ByToken["alice"]
+
+	at := time.Now().Add(-90 * time.Second).UnixMilli()
+	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "back in ten", "", at); !ok {
+		t.Fatal("save failed")
+	}
+	code, messages := backlog(t, mux, "alice", room.Slug)
+	if code != http.StatusOK || len(messages) != 1 {
+		t.Fatalf("backlog: %d %v", code, messages)
+	}
+	ms, ok := messages[0]["at"].(float64)
+	if !ok {
+		t.Fatalf("no at on the line: %v", messages[0])
+	}
+	if got := int64(ms); got != at {
+		t.Errorf("at = %d, want %d — the row timed itself instead of the line", got, at)
 	}
 }

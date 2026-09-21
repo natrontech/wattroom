@@ -40,7 +40,7 @@ type SessionSaver interface {
 // here, where it is consumed; the chat service implements it. Nil means "no
 // database" — chat stays ephemeral, lines carry no id, reactions no-op.
 type ChatKeeper interface {
-	SaveChat(ctx context.Context, slug, userID, text, imageID string) (id string, ok bool)
+	SaveChat(ctx context.Context, slug, userID, text, imageID string, at int64) (id string, ok bool)
 	ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (count int, added bool, ok bool)
 }
 
@@ -244,7 +244,7 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 // ever lets one loud room starve the rest.
 func (h *Hub) saveWorker() {
 	for job := range h.saves {
-		if id, ok := h.chat.SaveChat(context.Background(), job.slug, job.riderID, job.text, job.imageID); ok {
+		if id, ok := h.chat.SaveChat(context.Background(), job.slug, job.riderID, job.text, job.imageID, job.at); ok {
 			job.rm.chatIDAssigned(protocol.ChatID{FromID: job.riderID, At: job.at, ID: id})
 		}
 	}

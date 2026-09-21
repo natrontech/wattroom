@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -45,6 +46,7 @@ func (h *harness) say(t *testing.T, roomID pgtype.UUID, who, text string) string
 	t.Helper()
 	id, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
 		RoomID: roomID, UserID: h.users.ByToken[who].ID, Text: text,
+		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
 		t.Fatalf("%s saying %q: %v", who, text, err)

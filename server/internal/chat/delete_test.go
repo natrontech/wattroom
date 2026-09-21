@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -34,7 +35,7 @@ func TestDeleteChatMessage(t *testing.T) {
 	alice := users.ByToken["alice"] // the room's owner
 	bob := users.ByToken["bob"]
 
-	mine, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(bob.ID), "oops, my password is hunter2", "")
+	mine, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(bob.ID), "oops, my password is hunter2", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -98,7 +99,7 @@ func TestDeleteChatMessagePermissions(t *testing.T) {
 	bob := users.ByToken["bob"]
 	alice := users.ByToken["alice"] // owns the room
 
-	bobs, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(bob.ID), "bringing cake", "")
+	bobs, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(bob.ID), "bringing cake", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -110,7 +111,7 @@ func TestDeleteChatMessagePermissions(t *testing.T) {
 
 	// A plain member may not touch someone else's line. 403, not 404: bob can
 	// see the room and the line, so the honest answer is that it is not his.
-	alices, _ := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "see you at seven", "")
+	alices, _ := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "see you at seven", "", time.Now().UnixMilli())
 	if code, body := del(t, mux, "bob", "/api/rooms/"+room.Slug+"/chat/"+alices); code != http.StatusForbidden {
 		t.Fatalf("bob deleting alice's: %d %v, want 403", code, body)
 	}
@@ -136,7 +137,7 @@ func TestDeletingTheAnnouncedLineTakesTheNoticeDown(t *testing.T) {
 	svc, mux, users, room := setup(t)
 	svc.SetLive(&fakeLive{})
 	alice := users.ByToken["alice"]
-	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "no session Thursday", "")
+	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "no session Thursday", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}

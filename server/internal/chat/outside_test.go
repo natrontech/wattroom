@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -154,7 +155,7 @@ func TestReactFromOutside(t *testing.T) {
 	live := &fakeLive{}
 	svc.SetLive(live)
 	bob := users.ByToken["bob"]
-	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(bob.ID), "in", "")
+	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(bob.ID), "in", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -200,7 +201,7 @@ func TestMarkReadFromOutside(t *testing.T) {
 	svc, mux, users, room := setup(t)
 	alice := users.ByToken["alice"]
 	bob := users.ByToken["bob"]
-	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "warm-up at 7?", ""); !ok {
+	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "warm-up at 7?", "", time.Now().UnixMilli()); !ok {
 		t.Fatal("save failed")
 	}
 

@@ -119,7 +119,13 @@ func (s *Service) Register(mux *http.ServeMux) {
 // SaveChat implements hub.ChatKeeper: persist, prune, hand back the identity
 // the tick line carries so reactions have something to attach to. imageID is
 // optional (#279) — a blob the sender uploaded first; junk parses to NULL.
-func (s *Service) SaveChat(ctx context.Context, slug, userID, text, imageID string) (string, bool) {
+//
+// at is the line's own millisecond, the one the wire already carries, and it
+// is written rather than defaulted (#2421): the row and the broadcast have
+// to agree about when a line happened, because the rail reads one and the
+// room socket the other, and the pair is what names the line to the dedup
+// that stops both of them announcing it.
+func (s *Service) SaveChat(ctx context.Context, slug, userID, text, imageID string, at int64) (string, bool) {
 	// Runs on the hub's save worker (#219), so a stalled database backs up
 	// that queue — nobody's read loop. The budget just bounds the queue lag.
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -131,6 +137,7 @@ func (s *Service) SaveChat(ctx context.Context, slug, userID, text, imageID stri
 	img, _ := store.ParseUUID(imageID) // zero value = NULL — image-less line
 	id, err := s.store.Queries.SaveChatMessage(ctx, db.SaveChatMessageParams{
 		RoomID: room.ID, UserID: uid, Text: text, ImageID: img,
+		CreatedAt: pgtype.Timestamptz{Time: time.UnixMilli(at), Valid: true},
 	})
 	if err != nil {
 		s.log.Warn("save chat", "err", err, "room", slug)

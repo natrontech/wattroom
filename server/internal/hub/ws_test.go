@@ -303,7 +303,7 @@ func TestMixedCaseSlugSharesRoom(t *testing.T) {
 // async save's follow-up ChatID reaches the tick (#219).
 type fakeChat struct{}
 
-func (fakeChat) SaveChat(context.Context, string, string, string, string) (string, bool) {
+func (fakeChat) SaveChat(context.Context, string, string, string, string, int64) (string, bool) {
 	return "msg-1", true
 }
 

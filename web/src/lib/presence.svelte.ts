@@ -1,4 +1,5 @@
 import { announce } from '$lib/messages/announce';
+import { shouldAnnounce } from '$lib/notify-once';
 import { fetchRailRooms } from '$lib/nav/rooms';
 import { away } from '$lib/notify.svelte';
 import type { RailRoom } from '$lib/room/room-data';
@@ -58,22 +59,28 @@ async function refresh() {
 		maxOwned = list.maxOwned;
 	}
 	version += 1;
-	// Which rooms were live on the last list, for the flip below. Taken
-	// before the first-list return so a room already live at sign-in is
-	// old news rather than an announcement.
+	// Which rooms were live on the last list, for the flip below. Recorded
+	// on every list, the first one included, so a room already live at
+	// sign-in is old news rather than an announcement.
 	const before = wasLive;
 	wasLive = new Set(rooms.filter((room) => room.live).map((room) => room.slug));
-	if (!announced) {
-		announced = true;
-		return;
-	}
+	// The first answer is the state of the world, not a burst of arrivals —
+	// but it still has to CLAIM what it is not announcing (#2421). A line
+	// left unclaimed was announced by the next refresh, and a refresh is
+	// what every presence change causes: a rider joining an unrelated room
+	// released yesterday's unread line with a cue and a toast, which read
+	// as the join itself making a sound.
+	const first = !announced;
+	announced = true;
 	// A session starting in a room you are NOT standing in (#1910): ADR-0042
 	// names it, and it used to reach only the riders already holding that
 	// room's socket. Announced the way chat is — toast in front, OS
 	// notification behind — and left to the in-room path once you are there.
 	const here = location.pathname;
 	for (const room of rooms) {
-		if (!room.live || before.has(room.slug) || !room.slug) continue;
+		// A session already running on the first list is old news; `before`
+		// was taken above, so the next list judges the flip properly.
+		if (first || !room.live || before.has(room.slug) || !room.slug) continue;
 		if (here === `/r/${room.slug}` || here.startsWith(`/r/${room.slug}/`))
 			continue;
 		announce({
@@ -89,13 +96,29 @@ async function refresh() {
 		});
 	}
 	// A room you are NOT standing in reaches you the way a DM does (#568).
-	// Its unread count is the whole trigger: standing in a room reads it
-	// (#468), so a count above zero already means you are somewhere else.
+	// Its unread count was the whole trigger, and it holds only by a race it
+	// happens to win: the room's layout re-reads GET /api/rooms/{slug} off
+	// this same ping and that marks the room read, so the count is back to
+	// zero before the next list carries it. Standing in it is the test that
+	// does not depend on which of the two answers first (#2421) — the same
+	// one the session loop above makes, and the in-room path has those lines
+	// either way, Chat place open or not.
+	//
 	// The tag is the room's own, shared with the in-room path — whichever
-	// path sees a line first announces it, and never both.
+	// path sees a line first announces it, and never both. That holds only
+	// because the wire line and this list now carry the same millisecond:
+	// two spellings of one line's time defeated the dedup and made one
+	// message sound twice.
 	for (const room of rooms) {
 		const last = room.lastChat;
 		if (!last?.at || !room.unread) continue;
+		if (here === `/r/${room.slug}` || here.startsWith(`/r/${room.slug}/`))
+			continue;
+		// Claimed, not announced: see `first` above.
+		if (first) {
+			shouldAnnounce(`chat-${room.slug}`, last.at);
+			continue;
+		}
 		announce({
 			kind: 'chat',
 			tag: `chat-${room.slug}`,
