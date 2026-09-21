@@ -1,10 +1,22 @@
 <script lang="ts">
-	// The room's Pins place (ADR-0056, #2405). The crew owns the board and
-	// every room of it shows the same one, so this place is where it is read
-	// AND written — a rider wanting the server address is standing in a room,
-	// not on the crew's page.
+	// The room's Board (#2413): the first place in the room, above the Lounge.
+	// What the room and its crew wrote down — the coach's standing notice, and
+	// the crew's pins.
 	//
-	// This owns the four states (errors.md); PinBoard owns the board.
+	// The order is the argument. A notice on a page a rider must go and open
+	// is filed rather than announced, which is why ADR-0057 kept it off one;
+	// on the FIRST row of the room it is the door they come through. The
+	// Lounge keeps its strip all the same, for the rider already inside when
+	// a coach puts one up.
+	//
+	// Sections, not a union: the notice and the pins are different things
+	// with different owners and different permissions, and the page composes
+	// them. What arrives next — a workout somebody posted, a ride worth
+	// showing — is another section, not a row in a table that had to be
+	// generic before anybody knew what went in it.
+	//
+	// This owns the four states (errors.md); PinBoard owns the pins.
+	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import PinBoard from '$lib/pins/PinBoard.svelte';
@@ -84,6 +96,20 @@
 </script>
 
 <div class="page">
+	<h2 class="font-display mb-1 text-xl font-bold">Board</h2>
+	<p class="text-muted mb-5 text-xs">
+		What this room and {crew?.name ?? 'its crew'} wrote down.
+	</p>
+
+	<!-- The notice first, and above the pins: it is the thing with a clock on
+	     it. Taking it down is the coach's, and the strip draws nothing at all
+	     when there is none — no empty slot holding the place. -->
+	<AnnouncementStrip
+		announcement={room.announcement}
+		canClear={room.myRole === 'owner' || room.myRole === 'coach'}
+		onclear={() => room.clearAnnouncement()}
+	/>
+
 	{#if error}
 		<h2 class="font-display mb-3 text-xl font-bold">Pins</h2>
 		<Banner tone="error">

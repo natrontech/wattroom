@@ -124,6 +124,29 @@
 		(#2413). Nothing here is wired. The three differ on one question, and it is not
 		where the cards go.
 	</p>
+	<div
+		class="border-neon/40 bg-neon/5 mt-5 max-w-2xl rounded-lg border px-4 py-3"
+	>
+		<p class="eyebrow">decided: A, with the row at the top</p>
+		<p class="text-muted mt-2 text-xs">
+			One board, and its row sits <strong class="text-ink"
+				>above the Lounge</strong
+			>
+			— which answers the objection filed against A below. That objection assumed
+			a row somewhere down the list, where a notice is filed; on the first row a rider
+			entering the room passes it. Shipped as
+			<code>/r/[slug]/board</code>, holding the announcement and the pins. The
+			Lounge keeps its strip for whoever is already inside.
+		</p>
+		<p class="text-muted mt-2 text-xs">
+			The three pictures stay because the costs under them are still real, and
+			because the next card types — a posted workout, a ride worth showing —
+			meet the same question. Posts are not built: what a post can do that a
+			chat message cannot is answered by the card's SHAPE, and each shape is its
+			own decision.
+		</p>
+	</div>
+
 	<div class="panel panel-lg mt-5 max-w-2xl">
 		<p class="eyebrow">the question underneath</p>
 		<p class="text-muted mt-2 text-xs">
@@ -283,7 +306,7 @@
 	</p>
 
 	<div class="panel panel-lg mt-10 max-w-2xl">
-		<p class="eyebrow">what I would pick, and why</p>
+		<p class="eyebrow">what I argued at the time (A won, and was right to)</p>
 		<p class="text-muted mt-2 text-xs">
 			<strong class="text-ink">B</strong>, and only if a post is a real thing.
 			It keeps the announcement arriving and gives the crew one page for what it

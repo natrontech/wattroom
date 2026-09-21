@@ -123,23 +123,32 @@ describe('placesFor', () => {
 	it('drops only Settings below md', () => {
 		const narrow = placesFor(true).map((p) => p.path);
 		expect(narrow).toEqual([
+			'/board',
 			'',
 			'/chat',
 			'/training',
 			'/sessions',
-			'/pins',
 			'/members',
 		]);
 		expect(narrow).not.toContain('/settings');
 	});
 
-	// Pins is offered whether or not the crew has any (#2405). It was gated
-	// on having one, and that made the first pin unmakeable: pinning happens
-	// on the page the row is the only way to. A phone gets it too — a rider
-	// on the sofa checking the server address is the case.
-	it('offers Pins on an empty board, and on a phone', () => {
-		expect(placesFor(false).map((p) => p.path)).toContain('/pins');
-		expect(placesFor(true).map((p) => p.path)).toContain('/pins');
+	// The Board is offered whether or not anything is on it (#2405). Pins
+	// were gated on the crew having one, and that made the first pin
+	// unmakeable: pinning happens on the page the row is the only way to. A
+	// phone gets it too — a rider on the sofa checking the server address is
+	// the case.
+	it('offers the Board when it is empty, and on a phone', () => {
+		expect(placesFor(false).map((p) => p.path)).toContain('/board');
+		expect(placesFor(true).map((p) => p.path)).toContain('/board');
+	});
+
+	// The order is the feature (#2413): a notice on the fifth row is filed,
+	// and one on the first is the door a rider comes through. Asserted here
+	// because nothing else would notice the row drifting down the list.
+	it('puts the Board first, above the Lounge', () => {
+		expect(placesFor(false)[0].path).toBe('/board');
+		expect(placesFor(true)[0].path).toBe('/board');
 	});
 
 	it('offers a place the drawer can actually resolve', () => {

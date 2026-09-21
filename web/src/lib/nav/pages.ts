@@ -69,6 +69,18 @@ export const pages: {
 /** The room you are standing in opens into these. */
 export const roomPlaces = [
 	{
+		// First, above the Lounge (#2413). The board holds what the room and
+		// its crew wrote down — the coach's standing notice and the crew's
+		// pins — and its position IS the feature: a notice on the fifth row
+		// is filed, and one on the first is the door a rider comes through.
+		// It is what makes a page acceptable for something that has to be
+		// seen, which ADR-0057 said a page could not be.
+		path: '/board',
+		label: 'Board',
+		icon: Pin,
+		hint: 'the notice and what the crew pinned',
+	},
+	{
 		path: '',
 		label: 'Lounge',
 		icon: MessagesSquare,
@@ -92,12 +104,6 @@ export const roomPlaces = [
 		icon: CalendarClock,
 		hint: "what's planned here",
 	},
-	{
-		path: '/pins',
-		label: 'Pins',
-		icon: Pin,
-		hint: 'what the crew keeps needing',
-	},
 	{ path: '/members', label: 'Members', icon: Users, hint: 'roles and medals' },
 	{
 		path: '/settings',
@@ -114,13 +120,13 @@ export const roomPlaces = [
  * nothing. It stays a URL and still renders, so a bookmark works and the page
  * says it is laid out for a wider screen; it simply is not offered here.
  *
- * Pins is NOT conditional, though it was built that way first (#2405): the
- * row hid until the crew had pinned something, and pinning happens on the
- * page the row is the way to, so a crew with an empty board could never make
- * its first pin. `ux.md`'s capability gating is for an absent precondition —
- * no trainer paired, LiveKit down — and an empty board is not one of those.
- * It is an empty state, and ux.md has a rule for those too: they teach, and
- * carry the CTA that makes the first one.
+ * The Board is NOT conditional, though pins were built that way first
+ * (#2405): the row hid until the crew had pinned something, and pinning
+ * happens on the page the row is the way to, so a crew with an empty board
+ * could never make its first pin. `ux.md`'s capability gating is for an
+ * absent precondition — no trainer paired, LiveKit down — and an empty board
+ * is not one of those. It is an empty state, and ux.md has a rule for those
+ * too: they teach, and carry the CTA that makes the first one.
  */
 export function placesFor(narrow: boolean) {
 	return narrow ? roomPlaces.filter((p) => p.path !== '/settings') : roomPlaces;
