@@ -1,1 +1,0 @@
-- A room's chat line makes one sound, not two, and signing in with unread messages waiting no longer blips for each of them a moment later.

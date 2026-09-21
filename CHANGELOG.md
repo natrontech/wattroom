@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.126] - 2026-09-21
+
+### Fixed
+
+- A room's chat line makes one sound, not two, and signing in with unread messages waiting no longer blips for each of them a moment later.
+
 ## [2026.09.125] - 2026-09-21
 
 ### Added
@@ -2580,7 +2586,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.125...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.126...HEAD
+[2026.09.126]: https://github.com/natrontech/wattroom/compare/2026.09.125...2026.09.126
 [2026.09.125]: https://github.com/natrontech/wattroom/compare/2026.09.124...2026.09.125
 [2026.09.124]: https://github.com/natrontech/wattroom/compare/2026.09.123...2026.09.124
 [2026.09.123]: https://github.com/natrontech/wattroom/compare/2026.09.122...2026.09.123
