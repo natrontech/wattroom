@@ -17,6 +17,12 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.124] - 2026-09-21
+
+### Changed
+
+- The room's **Pins** place is now **Board**, and it sits at the top of the room's list, above the Lounge. It holds the room's announcement as well as the crew's pins — what the room and its crew wrote down, in the first place a rider passes. The old `/pins` link still works.
+
 ## [2026.09.123] - 2026-09-20
 
 ### Fixed
@@ -2567,7 +2573,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.123...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.124...HEAD
+[2026.09.124]: https://github.com/natrontech/wattroom/compare/2026.09.123...2026.09.124
 [2026.09.123]: https://github.com/natrontech/wattroom/compare/2026.09.122...2026.09.123
 [2026.09.122]: https://github.com/natrontech/wattroom/compare/2026.09.121...2026.09.122
 [2026.09.121]: https://github.com/natrontech/wattroom/compare/2026.09.120...2026.09.121
