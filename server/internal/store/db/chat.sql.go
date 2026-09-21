@@ -108,6 +108,32 @@ func (q *Queries) CountRoomUnread(ctx context.Context, arg CountRoomUnreadParams
 	return count, err
 }
 
+const deleteChatMessage = `-- name: DeleteChatMessage :execrows
+delete from chat_messages where id = $1 and room_id = $2
+`
+
+type DeleteChatMessageParams struct {
+	ID     pgtype.UUID
+	RoomID pgtype.UUID
+}
+
+// Take a line out of the log for good (#2417). Room-scoped like the edit; WHO
+// may is settled in the handler, which needs to tell "no such line" from "not
+// yours" and cannot from a row count.
+//
+// Everything hanging off the line goes with it: its reactions cascade, its
+// picture is left unreferenced and swept by PruneChatImages on the usual
+// 15-minute grace, and a room whose announcement pointed at it has the
+// pointer set to null by the FK — the notice comes down with the sentence,
+// which is the only honest answer when the sentence is gone.
+func (q *Queries) DeleteChatMessage(ctx context.Context, arg DeleteChatMessageParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteChatMessage, arg.ID, arg.RoomID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const editChatMessage = `-- name: EditChatMessage :one
 update chat_messages
 set text = $3, edited_at = now()

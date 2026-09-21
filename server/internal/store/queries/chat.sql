@@ -171,3 +171,15 @@ from rooms r
 join chat_messages m on m.id = r.announcement_id
 join users u on u.id = m.user_id
 where r.id = $1;
+
+-- name: DeleteChatMessage :execrows
+-- Take a line out of the log for good (#2417). Room-scoped like the edit; WHO
+-- may is settled in the handler, which needs to tell "no such line" from "not
+-- yours" and cannot from a row count.
+--
+-- Everything hanging off the line goes with it: its reactions cascade, its
+-- picture is left unreferenced and swept by PruneChatImages on the usual
+-- 15-minute grace, and a room whose announcement pointed at it has the
+-- pointer set to null by the FK — the notice comes down with the sentence,
+-- which is the only honest answer when the sentence is gone.
+delete from chat_messages where id = $1 and room_id = $2;

@@ -152,6 +152,11 @@
 		send: async (text, image) => (await thread?.send(text, image)) ?? null,
 		react: async (id, cheer) => (await thread?.react(id, cheer)) ?? null,
 		edit: async (id, text) => (await thread?.edit(id, text)) ?? null,
+		// Taking a line back (#2418): the sender's own only — a conversation
+		// has no owner, and deleting the other person's words out of their
+		// own thread is not a power a DM has.
+		remove: async (id) => (await thread?.remove(id)) ?? null,
+		canRemove: (message) => thread?.canRemove(message) ?? false,
 	});
 </script>
 

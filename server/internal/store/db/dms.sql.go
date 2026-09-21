@@ -65,6 +65,41 @@ func (q *Queries) CountDmReaction(ctx context.Context, arg CountDmReactionParams
 	return count, err
 }
 
+const deleteDmMessage = `-- name: DeleteDmMessage :one
+
+update dm_messages
+set text = '', image_id = null, deleted_at = now()
+where id = $1 and sender_id = $2 and deleted_at is null
+  and least(sender_id, recipient_id) = least($2::uuid, $3::uuid)
+  and greatest(sender_id, recipient_id) = greatest($2::uuid, $3::uuid)
+returning deleted_at
+`
+
+type DeleteDmMessageParams struct {
+	ID       pgtype.UUID
+	SenderID pgtype.UUID
+	Column3  pgtype.UUID
+}
+
+// an engineering bound (#1416): peers are friends, and friends are few
+// A tombstone, not a removal (#2418): the row stays so the poll can carry
+// "this is gone" to the other side, and everything that WAS the message
+// leaves with the same statement — the words, and the picture, whose blob
+// PruneDmImages then sweeps like any other unreferenced one.
+//
+// Sender only, pair-scoped, and idempotent on a line already deleted: the
+// `deleted_at is null` guard means a second delete returns no row, which the
+// handler answers 404 rather than stamping a new time on a tombstone.
+//
+// No friendship re-check, for the reason EditDmMessage records: unfriending
+// ends the conversation, it does not freeze what you already said.
+func (q *Queries) DeleteDmMessage(ctx context.Context, arg DeleteDmMessageParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, deleteDmMessage, arg.ID, arg.SenderID, arg.Column3)
+	var deleted_at pgtype.Timestamptz
+	err := row.Scan(&deleted_at)
+	return deleted_at, err
+}
+
 const editDmMessage = `-- name: EditDmMessage :one
 update dm_messages
 set text = $4, edited_at = now()
@@ -149,6 +184,41 @@ func (q *Queries) GetDmMessage(ctx context.Context, arg GetDmMessageParams) (Get
 	var i GetDmMessageRow
 	err := row.Scan(&i.SenderID, &i.Text, &i.ImageID)
 	return i, err
+}
+
+const listDmDeleted = `-- name: ListDmDeleted :many
+select id from dm_messages
+where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
+  and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
+  and deleted_at is not null
+`
+
+type ListDmDeletedParams struct {
+	Column1 pgtype.UUID
+	Column2 pgtype.UUID
+}
+
+// Which of the pair's lines are tombstones, for the same reason ListDmEdits
+// exists: deleting does not move created_at, so `after` can never bring the
+// news back with the messages. Ids only — there is nothing else left.
+func (q *Queries) ListDmDeleted(ctx context.Context, arg ListDmDeletedParams) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listDmDeleted, arg.Column1, arg.Column2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listDmEdits = `-- name: ListDmEdits :many
@@ -310,9 +380,9 @@ func (q *Queries) ListDmReactions(ctx context.Context, arg ListDmReactionsParams
 }
 
 const listDms = `-- name: ListDms :many
-select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at
+select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at, m.deleted_at
 from (
-    select id, sender_id, recipient_id, text, created_at, image_id, edited_at from dm_messages
+    select id, sender_id, recipient_id, text, created_at, image_id, edited_at, deleted_at from dm_messages
     where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
       and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
       and created_at > $3
@@ -335,6 +405,7 @@ type ListDmsRow struct {
 	ImageID   pgtype.UUID
 	CreatedAt pgtype.Timestamptz
 	EditedAt  pgtype.Timestamptz
+	DeletedAt pgtype.Timestamptz
 }
 
 // One pair's thread: the NEWEST 200 after `after`, oldest-first for
@@ -357,6 +428,7 @@ func (q *Queries) ListDms(ctx context.Context, arg ListDmsParams) ([]ListDmsRow,
 			&i.ImageID,
 			&i.CreatedAt,
 			&i.EditedAt,
+			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}

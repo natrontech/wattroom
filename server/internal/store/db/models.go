@@ -113,6 +113,7 @@ type DmMessage struct {
 	CreatedAt   pgtype.Timestamptz
 	ImageID     pgtype.UUID
 	EditedAt    pgtype.Timestamptz
+	DeletedAt   pgtype.Timestamptz
 }
 
 type DmReaction struct {

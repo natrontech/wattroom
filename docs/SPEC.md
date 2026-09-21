@@ -48,6 +48,7 @@
 | Edit room (name, icon, listing, sound pack, reaction set, weekly board)               | ✓     | –     | –                           | ✓            |
 | Assign/remove coach role                                                              | ✓     | –     | –                           | ✓            |
 | Hand the room to a member — you stay on as a coach (#1227)                            | ✓     | –     | –                           | ✓            |
+| Delete any message in the room ([#2417](https://github.com/natrontech/wattroom/issues/2417)) — anyone may delete **their own** | ✓     | –     | –                           | ✓            |
 | Remove / ban / unban member (#223)                                                    | ✓     | –     | –                           | ✓            |
 | Let a crew-mate into a private room, take the door back (ADR-0038, #1224, #1225)      | ✓     | –     | –                           | ✓            |
 | Pin, edit and unpin on the crew's board ([ADR-0056](decisions/0056-a-crew-pins-what-it-keeps-needing.md))    | ✓     | ✓     | ✓                           | ✓            |

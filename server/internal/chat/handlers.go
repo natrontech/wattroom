@@ -299,6 +299,68 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, change)
 }
 
+// handleDelete takes a line out of the log for good (#2417). The author
+// always may — words you regret are the whole case, and until now the only
+// repair was an edit, which leaves a line that visibly used to say something
+// else. The room's OWNER may delete anyone's: a ban already severs a griefer
+// and their words stayed up, which is half a moderation tool.
+//
+// A coach may not, deliberately. The roles matrix gives moderation to the
+// owner (docs/SPEC.md), and a coach runs sessions rather than the room.
+//
+// It vanishes rather than leaving a tombstone. This chat has no replies for
+// a "deleted message" row to hold the place of, the log is bounded and
+// pruned anyway, and a row that exists to say nothing is one more thing to
+// read past.
+func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
+	room, me, ok := s.member(w, r)
+	if !ok || s.overLine(w, me.ID) {
+		return
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this room.")
+		return
+	}
+	// Read first, like the edit: a row count alone cannot tell "no such line"
+	// from "not yours", and those are different answers to the rider.
+	msg, err := s.store.Queries.GetChatMessage(r.Context(), db.GetChatMessageParams{ID: id, RoomID: room.ID})
+	if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
+			httpx.Fail(w, s.log, "get chat message", err, "The message could not be deleted. Try again.", "room", room.Slug)
+			return
+		}
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this room.")
+		return
+	}
+	if msg.UserID != me.ID && room.OwnerID != me.ID {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden",
+			"You can only delete your own messages.")
+		return
+	}
+	rows, err := s.store.Queries.DeleteChatMessage(r.Context(), db.DeleteChatMessageParams{ID: id, RoomID: room.ID})
+	if err != nil {
+		httpx.Fail(w, s.log, "delete chat message", err, "The message could not be deleted. Try again.", "room", room.Slug)
+		return
+	}
+	if rows == 0 {
+		// Pruned, or gone from under the read above — either way it is no
+		// longer a line in this room, and saying so beats a silent 204.
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No such message in this room.")
+		return
+	}
+	// Logged as a fact, never with the words: a deleted line must not survive
+	// in the log of the thing that deleted it.
+	if msg.UserID != me.ID {
+		s.log.Info("chat line deleted by the room owner",
+			"room", room.Slug, "by", store.UUIDString(me.ID), "author", store.UUIDString(msg.UserID))
+	}
+	if s.live != nil {
+		s.live.PostChatDelete(room.Slug, protocol.ChatDelete{MessageID: store.UUIDString(id)})
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // handleReact toggles the caller's reaction over HTTP (#468) — the socket's
 // ChatReact for a member reading from outside. The changed total reaches
 // the room the same way a socket toggle does.

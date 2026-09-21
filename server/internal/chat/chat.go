@@ -45,6 +45,7 @@ type Live interface {
 	PostChat(slug string, line protocol.ChatLine)
 	PostReaction(slug string, change protocol.ChatReactionCount)
 	PostChatEdit(slug string, edit protocol.ChatEdit)
+	PostChatDelete(slug string, gone protocol.ChatDelete)
 }
 
 // The HTTP door's ceilings (#1982), the DM door's numbers: the socket path
@@ -108,6 +109,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rooms/{slug}/chat", s.handleBacklog)
 	mux.HandleFunc("POST /api/rooms/{slug}/chat", s.handlePost)
 	mux.HandleFunc("PATCH /api/rooms/{slug}/chat/{id}", s.handleEdit)
+	mux.HandleFunc("DELETE /api/rooms/{slug}/chat/{id}", s.handleDelete)
 	mux.HandleFunc("POST /api/rooms/{slug}/chat/reactions", s.handleReact)
 	mux.HandleFunc("POST /api/rooms/{slug}/read", s.handleRead)
 	mux.HandleFunc("POST /api/rooms/{slug}/chat/images", s.handleImageUpload)

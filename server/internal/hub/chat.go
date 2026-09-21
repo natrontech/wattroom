@@ -38,6 +38,15 @@ func (h *Hub) PostChatEdit(slug string, edit protocol.ChatEdit) {
 	}
 }
 
+// PostChatDelete is PostChatEdit for a line that is gone (#2417). Same
+// reasoning: only riders holding the room open need telling, because anyone
+// arriving later reads a backlog the line is no longer in.
+func (h *Hub) PostChatDelete(slug string, gone protocol.ChatDelete) {
+	if rm := h.occupied(slug); rm != nil {
+		rm.chatDeleted(gone)
+	}
+}
+
 func (rm *room) chatLine(line protocol.ChatLine) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
@@ -71,5 +80,13 @@ func (rm *room) chatEdited(edit protocol.ChatEdit) {
 	defer rm.mu.Unlock()
 	if len(rm.edits) < 256 {
 		rm.edits = append(rm.edits, edit)
+	}
+}
+
+func (rm *room) chatDeleted(gone protocol.ChatDelete) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	if len(rm.deletes) < 256 {
+		rm.deletes = append(rm.deletes, gone)
 	}
 }

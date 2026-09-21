@@ -37,6 +37,7 @@ type room struct {
 	chat     []protocol.ChatLine          // this second's lines, drained each tick (#146)
 	reacts   []protocol.ChatReactionCount // this second's changed reaction totals (#201)
 	edits    []protocol.ChatEdit          // this second's rewritten lines (#865)
+	deletes  []protocol.ChatDelete        // ...and the ones taken out (#2417)
 	chatIDs  []protocol.ChatID            // ids the async save assigned (#219)
 	events   eventLog                     // what the room did, drained each tick (#321)
 	session  *session

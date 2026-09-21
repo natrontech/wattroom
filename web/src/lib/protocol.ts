@@ -349,6 +349,18 @@ export interface ChatEdit {
   editedAt: number /* int64 */;
 }
 /**
+ * ChatDelete is one already-delivered line taken out of the log (#2417).
+ * It reaches the room the way an edit does — the line already in everyone's
+ * log goes, rather than a second message arriving to say it went.
+ * The id is the whole of it. There is no tombstone: this chat has no replies
+ * for a "deleted message" row to hold the place of, the log is bounded and
+ * pruned anyway, and a row that exists to say nothing is still a row somebody
+ * has to read past.
+ */
+export interface ChatDelete {
+  messageId: string;
+}
+/**
  * ChatID attaches the persisted identity to a line broadcast on an earlier
  * tick (#219): the save runs off the read loop, so the id follows the line.
  * FromID+At name the line — the 1/s per-rider chat limit makes the pair unique.
@@ -873,6 +885,10 @@ export interface ServerTick {
    * Lines rewritten this second (#865), drained like the reactions above.
    */
   chatEdits?: ChatEdit[];
+  /**
+   * ...and lines taken out of it (#2417), drained the same way.
+   */
+  chatDeletes?: ChatDelete[];
   /**
    * Persisted ids for lines already broadcast (#219) — the async save's
    * follow-up, unlocking reactions on them.

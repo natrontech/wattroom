@@ -119,6 +119,22 @@ export function createChatLog() {
 			// Whatever found no line yet waits for its id (#1231).
 			for (const [id, edit] of byId) pendingEdits[id] = edit;
 		}
+		if (tick.chatDeletes?.length) {
+			// A deleted line goes out of the log, and its reactions with it —
+			// leaving the counts behind would put an emoji row under nothing.
+			//
+			// Applied AFTER the edits above and after the ids have landed, so
+			// a line deleted in the same second it was posted is matched by
+			// the id it just received rather than missed for having none yet.
+			const gone = new Set(tick.chatDeletes.map((d) => d.messageId));
+			chatLog = chatLog.filter((line) => !line.id || !gone.has(line.id));
+			const counts = { ...chatReactions };
+			for (const id of gone) delete counts[id];
+			chatReactions = counts;
+			// Nothing waits for a line that is gone: an edit held for an id
+			// that has just been deleted would land on nothing forever.
+			for (const id of gone) delete pendingEdits[id];
+		}
 		if (tick.chatReactions?.length) {
 			const next = { ...chatReactions };
 			const pressed = { ...myReacts };
