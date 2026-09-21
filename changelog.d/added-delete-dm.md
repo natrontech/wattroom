@@ -1,1 +1,0 @@
-- **A direct message can be taken back.** Your own line, from its right-click menu. Unlike a room's chat it leaves a "Message deleted" marker rather than vanishing: a conversation has two people in it, and a message quietly disappearing from one reads as if you imagined it. The words and any picture are gone either way.

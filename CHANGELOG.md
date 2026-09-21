@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.125] - 2026-09-21
+
+### Added
+
+- **A direct message can be taken back.** Your own line, from its right-click menu. Unlike a room's chat it leaves a "Message deleted" marker rather than vanishing: a conversation has two people in it, and a message quietly disappearing from one reads as if you imagined it. The words and any picture are gone either way.
+- **Messages can be deleted.** Any line you sent, from its right-click menu — it goes from the room for everyone, and editing it to something else is no longer the only repair. A room's owner can delete anyone's, which is the half of moderation a ban was missing: it severed a griefer and left their words up. Deleting the line a coach announced takes the announcement down with it.
+
 ## [2026.09.124] - 2026-09-21
 
 ### Changed
@@ -2573,7 +2580,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.124...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.125...HEAD
+[2026.09.125]: https://github.com/natrontech/wattroom/compare/2026.09.124...2026.09.125
 [2026.09.124]: https://github.com/natrontech/wattroom/compare/2026.09.123...2026.09.124
 [2026.09.123]: https://github.com/natrontech/wattroom/compare/2026.09.122...2026.09.123
 [2026.09.122]: https://github.com/natrontech/wattroom/compare/2026.09.121...2026.09.122
