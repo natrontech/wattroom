@@ -15,6 +15,7 @@
 	import { noteNewAccount } from '$lib/auth/new-account';
 	import { landing, takeNext } from '$lib/auth/next';
 	import { presence } from '$lib/presence.svelte';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
 	// Side-effect imports: both apply their stored choice to :root the moment
 	// they load, so they belong to the shell rather than to whichever screen
 	// happens to render their control. The palette reached only /profile and
@@ -223,7 +224,10 @@
 	$effect(() => {
 		if (!framed) return;
 		presence.start();
-		return () => presence.stop();
+		return () => {
+			presence.stop();
+			crewLive.reset();
+		};
 	});
 
 	// The room you are IN is tick-fresh: names change the second someone joins,
