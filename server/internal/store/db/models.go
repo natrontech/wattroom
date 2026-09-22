@@ -40,14 +40,15 @@ type BoardClip struct {
 }
 
 type Channel struct {
-	ID        pgtype.UUID
-	CrewID    pgtype.UUID
-	Kind      string
-	Name      string
-	Position  int32
-	Private   bool
-	SoundPack string
-	CreatedAt pgtype.Timestamptz
+	ID             pgtype.UUID
+	CrewID         pgtype.UUID
+	Kind           string
+	Name           string
+	Position       int32
+	Private        bool
+	SoundPack      string
+	CreatedAt      pgtype.Timestamptz
+	AnnouncementID pgtype.UUID
 }
 
 type ChannelMember struct {
@@ -57,6 +58,12 @@ type ChannelMember struct {
 	AddedAt   pgtype.Timestamptz
 }
 
+type ChannelRead struct {
+	ChannelID pgtype.UUID
+	UserID    pgtype.UUID
+	ReadAt    pgtype.Timestamptz
+}
+
 type ChatImage struct {
 	ID        pgtype.UUID
 	RoomID    pgtype.UUID
@@ -64,6 +71,7 @@ type ChatImage struct {
 	Mime      string
 	Bytes     []byte
 	CreatedAt pgtype.Timestamptz
+	ChannelID pgtype.UUID
 }
 
 type ChatMessage struct {
@@ -74,6 +82,7 @@ type ChatMessage struct {
 	CreatedAt pgtype.Timestamptz
 	ImageID   pgtype.UUID
 	EditedAt  pgtype.Timestamptz
+	ChannelID pgtype.UUID
 }
 
 type ChatReaction struct {
