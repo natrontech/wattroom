@@ -11,6 +11,8 @@ export interface OpenedRoom {
 	slug: string;
 	/** The crew it was opened in. */
 	crew: string;
+	/** The voice channel it became (#2436) — where #2449's page is. */
+	voice: string;
 	/** The six characters the join form takes — the CREW's code (#1236). */
 	code: string;
 	name: string;
@@ -157,7 +159,22 @@ export const test = base.extend<{
 					`room ${slug}'s crew came back without a code`,
 				).toMatch(/^[A-Z0-9]{6}$/);
 				crews.push(crew.id);
-				return { slug, crew: crew.id, code: crew.code, name };
+				// Every room becomes a text and a voice channel of its name
+				// (ADR-0058); the voice one is the page the channel specs ride.
+				const voice = await page.evaluate(
+					async ({ crewId, roomName }) => {
+						const list = await fetch(`/api/crews/${crewId}/channels`).then(
+							(res) => res.json(),
+						);
+						const found = (
+							list.channels as { id: string; kind: string; name: string }[]
+						).find((c) => c.kind === 'voice' && c.name === roomName);
+						return found?.id ?? '';
+					},
+					{ crewId: crew.id, roomName: name },
+				);
+				expect(voice, `room "${name}" has no voice channel`).not.toBe('');
+				return { slug, crew: crew.id, voice, code: crew.code, name };
 			},
 			adopt(page, slug) {
 				opened.push({ page, slug });
@@ -220,3 +237,7 @@ export async function textChannelOf(
 }
 
 export { expect };
+
+/** Where a room's voice channel is (#2449). */
+export const voicePath = (room: OpenedRoom) =>
+	`/crew/${room.crew}/v/${room.voice}`;

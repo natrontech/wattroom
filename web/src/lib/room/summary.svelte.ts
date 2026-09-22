@@ -92,6 +92,9 @@ export function createSummary(deps: {
 		// The pipeline commits within a tick or two of the close.
 		setTimeout(() => {
 			findMyRide(0);
+			// The medal read is the room's (#1411); a voice channel's medals
+			// arrive with its session (#2438).
+			if (!deps.slug()) return;
 			void api<{
 				medals?: { kind: string; riderId?: string; awardedAtMs?: number }[];
 			}>(`/api/rooms/${deps.slug()}`).then((res) => {

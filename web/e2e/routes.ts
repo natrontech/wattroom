@@ -81,6 +81,8 @@ export const NOT_MEASURED: Readonly<Record<string, string>> = {
 		'Mock screens for design iteration: dev/+layout.ts 404s them outside a dev build.',
 	'/r/[slug]/*':
 		'The room, which is mobile-room.spec.ts’s subject at the same 375×812.',
+	'/crew/[id]/v/*':
+		'A voice channel is the room’s live shell on another address (#2449) — mobile-room.spec.ts’s subject until the room goes (#2460).',
 	'/hud':
 		'Numbers only, deliberately outside the page frame: hud.spec.ts asserts it has no page-body.',
 	'/settings':

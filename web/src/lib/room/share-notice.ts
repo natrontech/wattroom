@@ -17,14 +17,11 @@ export interface ShareNotice {
 
 export function shareNotice(
 	sharing: boolean,
-	room: { slug: string; name?: string } | null,
+	/** The place the screen goes to: its page, and its name (#2449). */
+	room: { home: string; name: string } | null,
 	pathname: string,
 ): ShareNotice | null {
 	if (!sharing || !room) return null;
-	const inside =
-		pathname === `/r/${room.slug}` || pathname.startsWith(`/r/${room.slug}/`);
-	return {
-		room: room.name || room.slug,
-		href: inside ? null : `/r/${room.slug}`,
-	};
+	const inside = pathname === room.home || pathname.startsWith(`${room.home}/`);
+	return { room: room.name, href: inside ? null : room.home };
 }

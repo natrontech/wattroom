@@ -338,12 +338,13 @@ var (
 		notifications pairing panel pins privacy profile progression r ramp
 		recover ride room rooms sessions settings sound spectator
 		styleguide summary terms theme-editor themes training trophies u
-		voice watch whats-new workouts
+		v voice watch whats-new workouts
 	`)
 	// Keyed by the prefix as already redacted, so a parameter under another
-	// one has a name: /crew/[id]/c/[channel] is `/crew/…/c` (#2448).
+	// one has a name: /crew/[id]/c/[channel] is `/crew/…/c` (#2448), and a
+	// voice channel's /crew/[id]/v/[channel] is `/crew/…/v` (#2449).
 	paramUnder = fieldSet(`
-		/c /crew /crew/…/c /dm /history /messages/dm /messages/r /r /u
+		/c /crew /crew/…/c /crew/…/v /dm /history /messages/dm /messages/r /r /u
 	`)
 )
 

@@ -46,7 +46,8 @@ const VOICE_STUCK =
 	'Voice did not connect in time — try again, and tap or click anywhere first if the browser is waiting for you.';
 
 export interface SessionHost {
-	slug: string;
+	/** Where this place's voice token is asked for (#2449). */
+	avToken: string;
 	av: AvState;
 	conn: AvConn;
 	devices: DeviceChoices;
@@ -73,7 +74,7 @@ export type Session = ReturnType<typeof createSession>;
 
 export function createSession(host: SessionHost) {
 	const {
-		slug,
+		avToken,
 		av,
 		conn,
 		devices,
@@ -142,9 +143,7 @@ export function createSession(host: SessionHost) {
 	}
 
 	async function joinAttempt(wantMic: boolean, stale: () => boolean) {
-		const res = await api<{ url: string; token: string }>(
-			`/api/rooms/${slug}/av-token`,
-		);
+		const res = await api<{ url: string; token: string }>(avToken);
 		if (stale()) return;
 		if (!res.ok) {
 			av.status = 'failed';

@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test, voicePath } from './room';
 
 /**
  * A rider's connection, and whose address it is (#2131).
@@ -43,6 +43,9 @@ test('a rider sees everyone in the room, and their own address alone', async ({
 
 	const b = await riders(B);
 	await rooms.enter(b, room);
+	// Both in the room's voice channel (#2449): its tiles are the roster.
+	await a.goto(voicePath(room));
+	await b.goto(voicePath(room));
 
 	// The menu's entries are built when it OPENS, off the roster the last tick
 	// carried — so a right-click before the first tick offers no Connection at

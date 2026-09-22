@@ -1,4 +1,5 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
+import type { RoomPresence } from '$lib/protocol';
 
 export type ChannelKind = 'text' | 'voice';
 export type AutoplayOrder = 'ordered' | 'shuffled' | 'smart';
@@ -34,6 +35,8 @@ export interface CrewChannel {
 	autoplay?: ChannelAutoplay;
 	/** A private channel's named members; owner and admins enter by role. */
 	members?: ChannelMember[];
+	/** A voice channel's: who is in it right now (#2436). */
+	presence?: RoomPresence;
 }
 
 /** Absent fields keep their value; `playlistId: ''` chooses none. */
@@ -55,6 +58,10 @@ export function fetchCrewChannels(
 /** Where a text channel is read. */
 export const textChannelPath = (crewId: string, channelId: string) =>
 	`/crew/${crewId}/c/${channelId}`;
+
+/** Where a voice channel is (#2449). */
+export const voiceChannelPath = (crewId: string, channelId: string) =>
+	`/crew/${crewId}/v/${channelId}`;
 
 export function createChannel(
 	crewId: string,

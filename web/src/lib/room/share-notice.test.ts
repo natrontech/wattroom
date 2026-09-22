@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { shareNotice } from './share-notice';
 
-const room = { slug: 'sweet-spot', name: 'Sweet Spot' };
+const room = { home: '/r/sweet-spot', name: 'Sweet Spot' };
 
 describe('shareNotice (#563)', () => {
 	it('shows nothing until the screen is actually live', () => {
@@ -23,10 +23,11 @@ describe('shareNotice (#563)', () => {
 
 	it('names the room the screen is going to', () => {
 		expect(shareNotice(true, room, '/r/sweet-spot')?.room).toBe('Sweet Spot');
-		// Before presence has named it, the slug still beats "a room".
-		expect(shareNotice(true, { slug: 'sweet-spot' }, '/home')?.room).toBe(
-			'sweet-spot',
-		);
+		// A voice channel is a place like a room was (#2449): named, and its
+		// page is the way back.
+		const voice = { home: '/crew/c1/v/v1', name: 'Tuesday Spin' };
+		expect(shareNotice(true, voice, '/crew/c1/v/v1')?.href).toBe(null);
+		expect(shareNotice(true, voice, '/music')?.href).toBe('/crew/c1/v/v1');
 	});
 
 	// Walking out of the room does not stop the share, so the notice has to
