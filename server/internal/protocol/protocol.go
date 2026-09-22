@@ -188,9 +188,9 @@ type ChatLine struct {
 	// client's own-message suppression must not mute a namesake.
 	FromID string `json:"fromId,omitempty"`
 	Text   string `json:"text"`
-	// A pasted image (#279): id of a room-scoped blob the client uploaded via
-	// POST /api/rooms/{slug}/chat/images before sending; rendered from the
-	// matching GET. A line may be image-only (empty text).
+	// A pasted image (#279): id of a channel-scoped blob the client uploaded
+	// via POST /api/channels/{id}/chat/images before sending; rendered from
+	// the matching GET. A line may be image-only (empty text).
 	ImageID string `json:"imageId,omitempty"`
 	At      int64  `json:"at"` // server millis, for ordering only
 	// When the author last rewrote this line (#865); 0 for a line as sent.
@@ -653,12 +653,12 @@ type ServerTick struct {
 	Riders map[string]RiderMetrics `json:"riders"`
 }
 
-// RoomPresence is the hub's live answer for one room (#251): the rooms list,
-// the rail, and the /rooms page all render this shape. It rides GET /api/rooms
-// rather than the room WS, but it is shared vocabulary like Rider — one
-// canonical home, generated for the client like everything here.
+// RoomPresence is the hub's live answer for one voice channel (#251, #2436):
+// the sidebar renders this shape. It rides the channel list rather than the
+// channel's WS, but it is shared vocabulary like Rider — one canonical home,
+// generated for the client like everything here.
 type RoomPresence struct {
-	// Riders connected to the room WS, counted as people, not sockets.
+	// Riders connected to the channel WS, counted as people, not sockets.
 	Connected int    `json:"connected,omitempty"`
 	Phase     string `json:"phase,omitempty"`
 	// Display names — members-only server-side, room-scoped like all live data.

@@ -14,7 +14,7 @@ import (
 // smartShuffleBatch is how many pool tracks one smart-autoplay refill queues
 // (docs/SPEC.md). Small on purpose: the deck re-triggers autoplay every time
 // it runs dry (#676), so a short batch re-weights against a fresher history
-// instead of committing the room to an hour chosen an hour ago.
+// instead of committing the channel to an hour chosen an hour ago.
 const smartShuffleBatch = 10
 
 // TrackEnded implements hub.TrackHistory (#269): one pool track the deck

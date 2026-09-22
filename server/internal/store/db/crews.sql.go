@@ -11,46 +11,12 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const canEnterRoom = `-- name: CanEnterRoom :one
-select exists (
-    select 1 from visible_rooms where user_id = $1 and room_id = $2
-)::boolean
-`
-
-type CanEnterRoomParams struct {
-	UserID pgtype.UUID
-	RoomID pgtype.UUID
-}
-
-func (q *Queries) CanEnterRoom(ctx context.Context, arg CanEnterRoomParams) (bool, error) {
-	row := q.db.QueryRow(ctx, canEnterRoom, arg.UserID, arg.RoomID)
-	var column_1 bool
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const clearCrewImage = `-- name: ClearCrewImage :exec
 update crews set image_mime = null, image = null, image_set_at = null where id = $1
 `
 
 func (q *Queries) ClearCrewImage(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, clearCrewImage, id)
-	return err
-}
-
-const clearCrewRole = `-- name: ClearCrewRole :exec
-delete from crew_roles where crew_id = $1 and user_id = $2
-`
-
-type ClearCrewRoleParams struct {
-	CrewID pgtype.UUID
-	UserID pgtype.UUID
-}
-
-// The new owner's row goes (crews.owner_id is their role now); nothing else
-// clears a row — a member's row IS their membership (#1236).
-func (q *Queries) ClearCrewRole(ctx context.Context, arg ClearCrewRoleParams) error {
-	_, err := q.db.Exec(ctx, clearCrewRole, arg.CrewID, arg.UserID)
 	return err
 }
 
@@ -78,25 +44,6 @@ select count(*) from crews where founded_by = $1 and owner_id = $1
 // owns: deleting one or handing it on frees the slot.
 func (q *Queries) CountFoundedCrews(ctx context.Context, foundedBy pgtype.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, countFoundedCrews, foundedBy)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const countRoomsOwnedInCrew = `-- name: CountRoomsOwnedInCrew :one
-select count(*) from rooms where crew_id = $1 and owner_id = $2
-`
-
-type CountRoomsOwnedInCrewParams struct {
-	CrewID  pgtype.UUID
-	OwnerID pgtype.UUID
-}
-
-// A room never leaves its crew, so its owner cannot be banned from it (#1212):
-// the ban would orphan the room, and the successor of last resort could then
-// hand the crew to someone it banned.
-func (q *Queries) CountRoomsOwnedInCrew(ctx context.Context, arg CountRoomsOwnedInCrewParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countRoomsOwnedInCrew, arg.CrewID, arg.OwnerID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -141,34 +88,6 @@ func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, e
 	return i, err
 }
 
-const crewGoesWithRoom = `-- name: CrewGoesWithRoom :one
-select (
-    not exists (select 1 from rooms r
-                where r.crew_id = $1 and r.id <> $2)
-    and not exists (select 1 from channels ch where ch.crew_id = $1)
-    and not exists (select 1 from crew_roles cr
-                    where cr.crew_id = $1 and cr.role in ('member', 'admin')
-                      and cr.user_id <> (select c.owner_id from crews c where c.id = $1))
-)::boolean
-`
-
-type CrewGoesWithRoomParams struct {
-	CrewID pgtype.UUID
-	RoomID pgtype.UUID
-}
-
-// Whether deleting THIS room deletes its crew, so the confirm can say so
-// before the button rather than the crew disappearing afterwards (#1935).
-// The same predicate as DeleteCrewIfEmpty with the room still there: change
-// one and change the other, or the confirm promises what the delete will not
-// do.
-func (q *Queries) CrewGoesWithRoom(ctx context.Context, arg CrewGoesWithRoomParams) (bool, error) {
-	row := q.db.QueryRow(ctx, crewGoesWithRoom, arg.CrewID, arg.RoomID)
-	var column_1 bool
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
 const crewRoleOf = `-- name: CrewRoleOf :one
 select case
     when c.owner_id = $1 then 'owner'
@@ -202,44 +121,15 @@ func (q *Queries) DeleteCrew(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
-const deleteCrewIfEmpty = `-- name: DeleteCrewIfEmpty :execrows
-delete from crews where crews.id = $1
-  and not exists (select 1 from rooms r where r.crew_id = $1)
-  and not exists (select 1 from channels ch where ch.crew_id = $1)
-  and not exists (select 1 from crew_roles cr
-                  where cr.crew_id = $1 and cr.role in ('member', 'admin')
-                    and cr.user_id <> crews.owner_id)
+const deleteCrewRooms = `-- name: DeleteCrewRooms :exec
+delete from rooms where crew_id = $1
 `
 
-// A crew with nothing left in it goes (#1935), which is ADR-0038's second
-// amendment said as a statement: "a crew whose rooms are all gone has no
-// members and nothing to own; it is deleted rather than left ownerless".
-// Until now only the account purge ever deleted one, so an owner whose last
-// room went kept a crew they could not leave, hand on or delete.
-//
-// One statement, not a read the caller acts on: the predicate is tested at
-// the moment of the delete, so a room created into the crew a millisecond
-// earlier keeps it. `rooms.crew_id` is ON DELETE RESTRICT as well, which
-// turns any future disagreement between this predicate and the constraint
-// into a loud failure rather than an orphaned room (ADR-0038's fourth
-// amendment; #1301 sets `crew_id` not null).
-//
-// A `banned` row does not save a crew. It is not somebody who is IN the crew
-// — CountCrewMembers counts these same two roles — and a ban outliving every
-// room would be the whole bug again for any owner who ever banned anyone.
-//
-// A crew with a channel is never empty (#2493, ADR-0058): its channels and
-// their history are what it holds now, and M9's SPEC deletes a crew only on
-// succession with nobody left. That is every crew since the channels
-// migration, so this sweep now reaches only a crew whose channels were all
-// deleted — and it goes with the rooms package (#2446). The owner's own row
-// is their switches (SetCrewPrefs), not somebody else in the crew.
-func (q *Queries) DeleteCrewIfEmpty(ctx context.Context, crewID pgtype.UUID) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteCrewIfEmpty, crewID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
+// The room rows a crew still carries, on the way to deleting it (#2446):
+// rooms.crew_id is ON DELETE RESTRICT, and nothing reads them any more.
+func (q *Queries) DeleteCrewRooms(ctx context.Context, crewID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteCrewRooms, crewID)
+	return err
 }
 
 const deleteRoomsOwnedBy = `-- name: DeleteRoomsOwnedBy :exec
@@ -253,31 +143,6 @@ delete from rooms where owner_id = $1
 func (q *Queries) DeleteRoomsOwnedBy(ctx context.Context, ownerID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteRoomsOwnedBy, ownerID)
 	return err
-}
-
-const firstRoomOwnerInCrew = `-- name: FirstRoomOwnerInCrew :one
-select rooms.owner_id from rooms
-where rooms.crew_id = $1 and rooms.owner_id <> $2
-  -- SPEC: never anyone the crew banned (#1675). Rows like that predate the
-  -- #1212 guard; makeOwner would have cleared the ban on the way in.
-  and not exists (select 1 from crew_roles cr
-                   where cr.crew_id = rooms.crew_id and cr.user_id = rooms.owner_id and cr.role = 'banned')
-order by created_at limit 1
-`
-
-type FirstRoomOwnerInCrewParams struct {
-	CrewID  pgtype.UUID
-	OwnerID pgtype.UUID
-}
-
-// The successor of last resort: PickCrewSuccessor can come back empty while
-// rooms remain (their owners crew-banned, say), and the rule must always name
-// somebody while there is a room to own. A room always has an owner.
-func (q *Queries) FirstRoomOwnerInCrew(ctx context.Context, arg FirstRoomOwnerInCrewParams) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, firstRoomOwnerInCrew, arg.CrewID, arg.OwnerID)
-	var owner_id pgtype.UUID
-	err := row.Scan(&owner_id)
-	return owner_id, err
 }
 
 const foundCrew = `-- name: FoundCrew :one
@@ -428,36 +293,6 @@ func (q *Queries) GetCrewImage(ctx context.Context, id pgtype.UUID) (GetCrewImag
 	return i, err
 }
 
-const getCrewOwnedBy = `-- name: GetCrewOwnedBy :one
-select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by, board_enabled, cheers, listed, ics_token from crews where owner_id = $1 order by (founded_by = $1) desc, created_at limit 1
-`
-
-// The crew a room is created into when the caller names none (#1201): the
-// one the rider founded, made with their first room and named after them —
-// else the oldest they own (#1928: a handed-over crew used to win by age).
-func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew, error) {
-	row := q.db.QueryRow(ctx, getCrewOwnedBy, ownerID)
-	var i Crew
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Icon,
-		&i.OwnerID,
-		&i.CreatedAt,
-		&i.Code,
-		&i.ImageMime,
-		&i.Image,
-		&i.ImageSetAt,
-		&i.RenamedAt,
-		&i.FoundedBy,
-		&i.BoardEnabled,
-		&i.Cheers,
-		&i.Listed,
-		&i.IcsToken,
-	)
-	return i, err
-}
-
 const getCrewPrefs = `-- name: GetCrewPrefs :one
 select coalesce(bool_or(notify), true)::boolean as notify,
        coalesce(bool_or(on_board), false)::boolean as on_board
@@ -484,43 +319,6 @@ func (q *Queries) GetCrewPrefs(ctx context.Context, arg GetCrewPrefsParams) (Get
 	return i, err
 }
 
-const getRoomInCrew = `-- name: GetRoomInCrew :one
-select id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, board_enabled, crew_id, crew_visible, announcement_id from rooms where id = $1 and crew_id = $2
-`
-
-type GetRoomInCrewParams struct {
-	ID     pgtype.UUID
-	CrewID pgtype.UUID
-}
-
-// A room addressed by id inside its crew (#1226): the crew page holds no slug
-// for a room the caller may not enter (#1205), and the one thing a crew admin
-// may do to such a room is set who may.
-func (q *Queries) GetRoomInCrew(ctx context.Context, arg GetRoomInCrewParams) (Room, error) {
-	row := q.db.QueryRow(ctx, getRoomInCrew, arg.ID, arg.CrewID)
-	var i Room
-	err := row.Scan(
-		&i.ID,
-		&i.Slug,
-		&i.Name,
-		&i.OwnerID,
-		&i.Listed,
-		&i.CreatedAt,
-		&i.SoundPack,
-		&i.Icon,
-		&i.Cheers,
-		&i.IcsToken,
-		&i.AutoplayEnabled,
-		&i.AutoplayOrder,
-		&i.AutoplayPlaylistID,
-		&i.BoardEnabled,
-		&i.CrewID,
-		&i.CrewVisible,
-		&i.AnnouncementID,
-	)
-	return i, err
-}
-
 const grantRoomAccess = `-- name: GrantRoomAccess :exec
 insert into room_grants (room_id, user_id) values ($1, $2)
 on conflict (room_id, user_id) do nothing
@@ -536,39 +334,6 @@ type GrantRoomAccessParams struct {
 func (q *Queries) GrantRoomAccess(ctx context.Context, arg GrantRoomAccessParams) error {
 	_, err := q.db.Exec(ctx, grantRoomAccess, arg.RoomID, arg.UserID)
 	return err
-}
-
-const isBannedFromRoom = `-- name: IsBannedFromRoom :one
-select (
-    exists (
-        select 1 from memberships m
-        where m.room_id = $1 and m.user_id = $2
-          and m.role = 'banned'
-    )
-    or exists (
-        select 1 from crew_roles cr
-        join rooms r on r.crew_id = cr.crew_id
-        where r.id = $1 and cr.user_id = $2
-          and cr.role = 'banned'
-    )
-)::boolean
-`
-
-type IsBannedFromRoomParams struct {
-	RoomID pgtype.UUID
-	UserID pgtype.UUID
-}
-
-// BOTH levels in one answer (ADR-0038, third amendment). A room ban lives on
-// the membership row; a crew ban lives on crew_roles and reaches every room in
-// the crew. Every door asks this one question rather than each remembering
-// there are two — which is the whole lesson of #1109 and #1114, where four
-// separate joins each wrote the single-level guard by hand and one omitted it.
-func (q *Queries) IsBannedFromRoom(ctx context.Context, arg IsBannedFromRoomParams) (bool, error) {
-	row := q.db.QueryRow(ctx, isBannedFromRoom, arg.RoomID, arg.UserID)
-	var column_1 bool
-	err := row.Scan(&column_1)
-	return column_1, err
 }
 
 const joinCrew = `-- name: JoinCrew :exec
@@ -696,73 +461,34 @@ func (q *Queries) ListCrewBanned(ctx context.Context, crewID pgtype.UUID) ([]Lis
 	return items, nil
 }
 
-const listCrewBans = `-- name: ListCrewBans :many
-select user_id from crew_roles where crew_id = $1 and role = 'banned'
-`
-
-func (q *Queries) ListCrewBans(ctx context.Context, crewID pgtype.UUID) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listCrewBans, crewID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []pgtype.UUID
-	for rows.Next() {
-		var user_id pgtype.UUID
-		if err := rows.Scan(&user_id); err != nil {
-			return nil, err
-		}
-		items = append(items, user_id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listCrewPeople = `-- name: ListCrewPeople :many
 with people as (
-    select c.owner_id as user_id, c.created_at as since from crews c where c.id = $2
+    select c.owner_id as user_id, c.created_at as since from crews c where c.id = $3
     union all
     select cr.user_id, coalesce(cr.joined_at, cr.set_at) from crew_roles cr
-    where cr.crew_id = $2 and cr.role in ('member', 'admin')
+    where cr.crew_id = $3 and cr.role in ('member', 'admin')
       -- A stray member row for the owner (a listed-room join wrote one, #1671)
       -- must not list them twice: the page keys its list by id.
-      and cr.user_id <> (select owner_id from crews where id = $2)
-),
-rows as (
-    select u.id, u.display_name, u.avatar_url, p.since::timestamptz as since,
-           (u.id = $3
-            or exists (select 1 from memberships m
-                       join rooms r on r.id = m.room_id
-                       join visible_rooms v on v.room_id = r.id and v.user_id = $3
-                       where r.crew_id = $2 and m.user_id = u.id and m.role <> 'banned')
-           )::boolean as shares_room,
-           (u.id = (select owner_id from crews where id = $2))::boolean as is_owner,
-           (select count(*) from memberships m join rooms r on r.id = m.room_id
-             where r.crew_id = $2 and m.user_id = u.id and m.role <> 'banned')::bigint as rooms_in,
-           exists (select 1 from memberships m join rooms r on r.id = m.room_id
-                    where r.crew_id = $2 and m.user_id = u.id and m.role = 'owner')::boolean as owns_one
-    from people p
-    join users u on u.id = p.user_id
+      and cr.user_id <> (select o.owner_id from crews o where o.id = $3)
 )
-select id, display_name, avatar_url, since,
-       -- WHICH of the crew's rooms a person is in is a fact about the rooms,
-       -- so it keeps the room test rather than the roster's (#1255): the
-       -- owner is named to everyone in the crew, and how much of the crew
-       -- they are in is not part of naming them.
-       (case when $1::boolean or shares_room then rooms_in else 0 end)::bigint as room_count,
-       (case when $1::boolean or shares_room then owns_one else false end)::boolean as owns_room
-from rows
-where $1::boolean or shares_room or is_owner
+select u.id, u.display_name, u.avatar_url, p.since::timestamptz as since
+from people p
+join users u on u.id = p.user_id
+where $1::boolean
+   or u.id = $2
+   or u.id = (select o.owner_id from crews o where o.id = $3)
+   or exists (select 1 from channels c
+              join visible_channels mine on mine.channel_id = c.id and mine.user_id = $2
+              join visible_channels theirs on theirs.channel_id = c.id and theirs.user_id = u.id
+              where c.crew_id = $3)
 order by since
 limit 1000
 `
 
 type ListCrewPeopleParams struct {
 	Everyone bool
-	CrewID   pgtype.UUID
 	Viewer   pgtype.UUID
+	CrewID   pgtype.UUID
 }
 
 type ListCrewPeopleRow struct {
@@ -770,31 +496,22 @@ type ListCrewPeopleRow struct {
 	DisplayName string
 	AvatarUrl   *string
 	Since       pgtype.Timestamptz
-	RoomCount   int64
-	OwnsRoom    bool
 }
 
-// The crew's people (#1236: the owner plus every member and admin row), each
-// with how many of the crew's rooms hold them and whether they own one there.
+// The crew's people (#1236: the owner plus every member and admin row).
 //
-// Person-visibility follows the rooms the VIEWER may enter (#1135): a plain
-// member sees the crew-mates they share an enterable room with (and
-// themselves); the owner and admins act on people by id, so for them
-// `everyone` is true and the list is the whole crew.
+// Person-visibility follows the channels the VIEWER may enter (#1135, as
+// ADR-0058 and #2465 re-keyed it from rooms): a plain member sees the
+// crew-mates they share an enterable channel with (and themselves); the
+// owner and admins act on people by id, so for them `everyone` is true and
+// the list is the whole crew.
 //
-// The crew's OWNER is named to everyone in it, whatever rooms they share
-// (#1255). Not a widening of the rule above: an owner is not a person in the
-// crew the way a member is — they are whose crew it is, the crew carries their
-// name until somebody renames it, and every hand-over, every "you own a room
-// here" refusal and the Leave that says "hand it to someone first" is about
-// them. A roster that cannot name them reads as broken, and it made the
-// header's own count disagree with the list under it.
-// Everything about a person, and the one test that decides what of it the
-// viewer may have. Written once, in a CTE, because it settles BOTH who is
-// listed and what a listed row says — two copies would drift the moment one
-// of them was tightened.
+// The crew's OWNER is named to everyone in it, whatever channels they share
+// (#1255): an owner is whose crew it is, and every hand-over and the Leave
+// that says "hand it to someone first" is about them. A roster that cannot
+// name them reads as broken.
 func (q *Queries) ListCrewPeople(ctx context.Context, arg ListCrewPeopleParams) ([]ListCrewPeopleRow, error) {
-	rows, err := q.db.Query(ctx, listCrewPeople, arg.Everyone, arg.CrewID, arg.Viewer)
+	rows, err := q.db.Query(ctx, listCrewPeople, arg.Everyone, arg.Viewer, arg.CrewID)
 	if err != nil {
 		return nil, err
 	}
@@ -807,8 +524,6 @@ func (q *Queries) ListCrewPeople(ctx context.Context, arg ListCrewPeopleParams) 
 			&i.DisplayName,
 			&i.AvatarUrl,
 			&i.Since,
-			&i.RoomCount,
-			&i.OwnsRoom,
 		); err != nil {
 			return nil, err
 		}
@@ -852,112 +567,6 @@ func (q *Queries) ListCrewRoles(ctx context.Context, crewID pgtype.UUID) ([]Crew
 	return items, nil
 }
 
-const listCrewRoomSlugs = `-- name: ListCrewRoomSlugs :many
-select slug from rooms where crew_id = $1
-`
-
-func (q *Queries) ListCrewRoomSlugs(ctx context.Context, crewID pgtype.UUID) ([]string, error) {
-	rows, err := q.db.Query(ctx, listCrewRoomSlugs, crewID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var slug string
-		if err := rows.Scan(&slug); err != nil {
-			return nil, err
-		}
-		items = append(items, slug)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listCrewRoomsFor = `-- name: ListCrewRoomsFor :many
-
-with mine as (
-    select cr.crew_id from crew_roles cr where cr.user_id = $1 and cr.role in ('member', 'admin')
-    union
-    select c.id from crews c where c.owner_id = $1
-)
-select r.id, r.slug, r.name, r.icon, r.crew_visible, r.crew_id,
-       c.name as crew_name, c.icon as crew_icon, c.owner_id as crew_owner_id,
-       (c.image_set_at is not null)::boolean as crew_has_image,
-       coalesce(c.code, '')::text as crew_code,
-       exists (select 1 from visible_rooms v
-               where v.room_id = r.id and v.user_id = $1)::boolean as enterable,
-       (c.owner_id = $1 or exists (select 1 from crew_roles cr
-               where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin'))::boolean as administers
-from rooms r
-join crews c on c.id = r.crew_id
-where r.crew_id in (select crew_id from mine)
-  and not exists (select 1 from memberships m where m.room_id = r.id and m.user_id = $1)
-  and not exists (select 1 from crew_roles cr
-                  where cr.crew_id = r.crew_id and cr.user_id = $1 and cr.role = 'banned')
-order by r.created_at
-limit 1000
-`
-
-type ListCrewRoomsForRow struct {
-	ID           pgtype.UUID
-	Slug         string
-	Name         string
-	Icon         string
-	CrewVisible  bool
-	CrewID       pgtype.UUID
-	CrewName     string
-	CrewIcon     string
-	CrewOwnerID  pgtype.UUID
-	CrewHasImage bool
-	CrewCode     string
-	Enterable    bool
-	Administers  bool
-}
-
-// an engineering bound (#1416): a rider is in a handful of crews
-// The crew's rooms you hold NO membership in, for the sidebar (#1149): a
-// crew's list carries rooms you cannot enter and rooms you administer
-// without reading, and a row has to say which without being opened.
-// `enterable` is asked of visible_rooms and nowhere else (ADR-0038, third
-// amendment). A room ban keeps you off this list entirely — a banned
-// membership row is still a row — and so does a crew ban.
-func (q *Queries) ListCrewRoomsFor(ctx context.Context, userID pgtype.UUID) ([]ListCrewRoomsForRow, error) {
-	rows, err := q.db.Query(ctx, listCrewRoomsFor, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListCrewRoomsForRow
-	for rows.Next() {
-		var i ListCrewRoomsForRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Slug,
-			&i.Name,
-			&i.Icon,
-			&i.CrewVisible,
-			&i.CrewID,
-			&i.CrewName,
-			&i.CrewIcon,
-			&i.CrewOwnerID,
-			&i.CrewHasImage,
-			&i.CrewCode,
-			&i.Enterable,
-			&i.Administers,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listCrewsFor = `-- name: ListCrewsFor :many
 select c.id, c.name, c.icon,
        (c.image_set_at is not null)::boolean as has_image,
@@ -966,20 +575,7 @@ select c.id, c.name, c.icon,
        (c.owner_id = $1)::boolean as owned,
        (c.founded_by = $1)::boolean as founded,
        exists (select 1 from crew_roles cr
-               where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin')::boolean as admin,
-       -- Leaving this crew deletes it (#2079): it has no rooms and nobody in
-       -- it but you and its owner, so your Leave is the sweep. DeleteCrewIfEmpty's
-       -- predicate with your own row still there, the way CrewGoesWithRoom is
-       -- it with the room still there — change one and change the other, or
-       -- the confirm promises what the leave will not do. False for the owner,
-       -- who cannot leave at all.
-       (c.owner_id <> $1
-        and not exists (select 1 from rooms r where r.crew_id = c.id)
-        and not exists (select 1 from channels ch where ch.crew_id = c.id)
-        and not exists (select 1 from crew_roles cr
-                        where cr.crew_id = c.id and cr.user_id <> $1
-                          and cr.user_id <> c.owner_id
-                          and cr.role in ('member', 'admin')))::boolean as last_out
+               where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin')::boolean as admin
 from crews c
 where c.owner_id = $1
    or exists (select 1 from crew_roles cr
@@ -998,13 +594,9 @@ type ListCrewsForRow struct {
 	Owned    bool
 	Founded  bool
 	Admin    bool
-	LastOut  bool
 }
 
-// Every crew you are in, rooms or none (#1476). The client used to derive
-// its crews from the room list, and a crew whose last room was deleted
-// vanished from the sidebar — its code, its people and its Leave with it,
-// while the server still held everyone's standing in it.
+// Every crew you are in (#1476), for the sidebar.
 func (q *Queries) ListCrewsFor(ctx context.Context, userID pgtype.UUID) ([]ListCrewsForRow, error) {
 	rows, err := q.db.Query(ctx, listCrewsFor, userID)
 	if err != nil {
@@ -1024,7 +616,6 @@ func (q *Queries) ListCrewsFor(ctx context.Context, userID pgtype.UUID) ([]ListC
 			&i.Owned,
 			&i.Founded,
 			&i.Admin,
-			&i.LastOut,
 		); err != nil {
 			return nil, err
 		}
@@ -1128,66 +719,13 @@ func (q *Queries) ListListedCrews(ctx context.Context, arg ListListedCrewsParams
 	return items, nil
 }
 
-const listRoomGrantees = `-- name: ListRoomGrantees :many
-select u.id, u.display_name, u.avatar_url, g.granted_at
-from room_grants g
-join users u on u.id = g.user_id
-where g.room_id = $1
-  and not exists (select 1 from memberships m where m.room_id = g.room_id and m.user_id = g.user_id)
-order by g.granted_at
-`
-
-type ListRoomGranteesRow struct {
-	ID          pgtype.UUID
-	DisplayName string
-	AvatarUrl   *string
-	GrantedAt   pgtype.Timestamptz
-}
-
-// People let into a private room who have not walked in yet. A grant is moot
-// once they join — membership admits — so joined people drop off this list.
-func (q *Queries) ListRoomGrantees(ctx context.Context, roomID pgtype.UUID) ([]ListRoomGranteesRow, error) {
-	rows, err := q.db.Query(ctx, listRoomGrantees, roomID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListRoomGranteesRow
-	for rows.Next() {
-		var i ListRoomGranteesRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.DisplayName,
-			&i.AvatarUrl,
-			&i.GrantedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const lockCrew = `-- name: LockCrew :exec
 select 1 from crews where id = $1 for update
 `
 
-// The crew's write lock, held for the length of a transaction (#2079).
-// LockRoom's parent: what serialises the two paths that can find a crew empty
-// and delete it — the last member leaving, and the last room being deleted.
-// Without it two members leaving at once each read the OTHER's row as still
-// there (every statement takes its own snapshot under READ COMMITTED), both
-// sweeps decline, and the crew is left with an owner who can neither leave it,
-// hand it on nor delete it — the whole bug, reached by a narrower door.
-//
-// Lock order in this app is USERS BEFORE CREWS BEFORE ROOMS. A room delete
-// ends at its crew, so it takes this FIRST and then the room; the reverse
-// order against a leave holding the crew and reaching for the same membership
-// rows is a deadlock, which Postgres resolves by killing one of them with a
-// 500.
+// The crew's write lock, held for the length of a transaction (#2079): what
+// serialises two plans racing for the crew's last slot under the planned
+// session ceiling. Lock order in this app is USERS BEFORE CREWS.
 func (q *Queries) LockCrew(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, lockCrew, id)
 	return err
@@ -1207,7 +745,7 @@ type PickCrewSuccessorParams struct {
 	Departing pgtype.UUID
 }
 
-// an engineering bound (#1416): three rooms per owner, crew-sized crews
+// an engineering bound (#1416): a rider is in a handful of crews
 // docs/SPEC.md's succession rule: the longest-standing admin, else the
 // longest-standing member (#1236: the rows, not the rooms); never the
 // departing owner, never anyone the crew banned. No row means nobody is left
@@ -1234,20 +772,6 @@ type PlaceRoomInCrewParams struct {
 // insert (CreateRoom, #1301), which a constraint on the column needs it to.
 func (q *Queries) PlaceRoomInCrew(ctx context.Context, arg PlaceRoomInCrewParams) error {
 	_, err := q.db.Exec(ctx, placeRoomInCrew, arg.ID, arg.CrewID, arg.CrewVisible)
-	return err
-}
-
-const revokeRoomAccess = `-- name: RevokeRoomAccess :exec
-delete from room_grants where room_id = $1 and user_id = $2
-`
-
-type RevokeRoomAccessParams struct {
-	RoomID pgtype.UUID
-	UserID pgtype.UUID
-}
-
-func (q *Queries) RevokeRoomAccess(ctx context.Context, arg RevokeRoomAccessParams) error {
-	_, err := q.db.Exec(ctx, revokeRoomAccess, arg.RoomID, arg.UserID)
 	return err
 }
 
@@ -1383,42 +907,6 @@ func (q *Queries) SetCrewRole(ctx context.Context, arg SetCrewRoleParams) error 
 	return err
 }
 
-const setRoomCrewVisible = `-- name: SetRoomCrewVisible :exec
-update rooms set crew_visible = $2, listed = (listed and $2) where id = $1
-`
-
-type SetRoomCrewVisibleParams struct {
-	ID          pgtype.UUID
-	CrewVisible bool
-}
-
-// The one permission a crew admin holds over a room they never joined
-// (ADR-0038: "crew admins manage room permissions"). Nothing else on the row.
-// A room shut to its crew leaves the directory with it (#1671): listed and
-// crew_visible were independent columns, and the join admitted a stranger
-// through the listing after the crew page had made the room private.
-func (q *Queries) SetRoomCrewVisible(ctx context.Context, arg SetRoomCrewVisibleParams) error {
-	_, err := q.db.Exec(ctx, setRoomCrewVisible, arg.ID, arg.CrewVisible)
-	return err
-}
-
-const setRoomCrewVisibleAndListed = `-- name: SetRoomCrewVisibleAndListed :exec
-update rooms set crew_visible = $2, listed = ($3 and $2) where id = $1
-`
-
-type SetRoomCrewVisibleAndListedParams struct {
-	ID          pgtype.UUID
-	CrewVisible bool
-	Listed      bool
-}
-
-// The undo of a shut (#1929): the toggle above dropped the listing with the
-// crew door, and reopening alone could never bring it back.
-func (q *Queries) SetRoomCrewVisibleAndListed(ctx context.Context, arg SetRoomCrewVisibleAndListedParams) error {
-	_, err := q.db.Exec(ctx, setRoomCrewVisibleAndListed, arg.ID, arg.CrewVisible, arg.Listed)
-	return err
-}
-
 const settleNewOwnerRow = `-- name: SettleNewOwnerRow :exec
 update crew_roles set role = 'member', set_at = now() where crew_id = $1 and user_id = $2
 `
@@ -1452,9 +940,9 @@ type TransferCrewParams struct {
 // intended behaviour, not a bug to work around.
 //
 // Always through makeOwner in Go, never alone: the new owner's crew_roles row
-// has to go with it (#1212). Owner beats every role in CrewRoleOf, but
-// visible_rooms and IsBannedFromRoom read the row without asking who owns
-// the crew, so a banned row left on an owner locks them out of their rooms.
+// has to go with it (#1212). Owner beats every role in CrewRoleOf, but a
+// query that reads crew_roles alone does not ask who owns the crew, so a
+// banned row left on an owner reads as a ban there.
 func (q *Queries) TransferCrew(ctx context.Context, arg TransferCrewParams) error {
 	_, err := q.db.Exec(ctx, transferCrew, arg.ID, arg.OwnerID)
 	return err

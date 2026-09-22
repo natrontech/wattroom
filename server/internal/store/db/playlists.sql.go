@@ -336,50 +336,6 @@ func (q *Queries) RenamePlaylist(ctx context.Context, arg RenamePlaylistParams) 
 	return i, err
 }
 
-const setChannelAutoplay = `-- name: SetChannelAutoplay :one
-update channels c set autoplay_enabled = $2, autoplay_order = $3, autoplay_playlist_id = $4
-where c.id = $1 and c.kind = 'voice'
-  and ($4::uuid is null
-       or exists (select 1 from playlists p where p.id = $4 and p.crew_id = c.crew_id))
-returning id, crew_id, kind, name, position, private, sound_pack, created_at, announcement_id, autoplay_enabled, autoplay_order, autoplay_playlist_id
-`
-
-type SetChannelAutoplayParams struct {
-	ID                 pgtype.UUID
-	AutoplayEnabled    bool
-	AutoplayOrder      string
-	AutoplayPlaylistID pgtype.UUID
-}
-
-// A voice channel's autoplay, the whole setting in one statement (#2248,
-// #2439): the switch, the order and the active playlist, which must be one
-// of the channel's CREW's playlists — the exists() refuses anything else in
-// the same round trip, so no row comes back and nothing was written.
-func (q *Queries) SetChannelAutoplay(ctx context.Context, arg SetChannelAutoplayParams) (Channel, error) {
-	row := q.db.QueryRow(ctx, setChannelAutoplay,
-		arg.ID,
-		arg.AutoplayEnabled,
-		arg.AutoplayOrder,
-		arg.AutoplayPlaylistID,
-	)
-	var i Channel
-	err := row.Scan(
-		&i.ID,
-		&i.CrewID,
-		&i.Kind,
-		&i.Name,
-		&i.Position,
-		&i.Private,
-		&i.SoundPack,
-		&i.CreatedAt,
-		&i.AnnouncementID,
-		&i.AutoplayEnabled,
-		&i.AutoplayOrder,
-		&i.AutoplayPlaylistID,
-	)
-	return i, err
-}
-
 const setPlaylistTrackPosition = `-- name: SetPlaylistTrackPosition :exec
 update playlist_tracks set position = $3 where id = $1 and playlist_id = $2
 `

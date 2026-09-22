@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/natrontech/wattroom/server/internal/testx"
 	"io"
 	"log/slog"
 	"net/http"
@@ -16,23 +15,23 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/protocol"
-	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
-// fakeLive captures what would have reached a room's live queue, so the
-// queue endpoint is testable without a real hub.
+// fakeLive captures what would have reached a voice channel's live deck, so
+// the queue endpoints are testable without a real hub.
 type fakeLive struct {
-	slug, riderID, addedBy string
-	tracks                 []protocol.JukeboxCommand
-	reply                  int
-	ok                     bool
+	channel, riderID, addedBy string
+	tracks                    []protocol.JukeboxCommand
+	reply                     int
+	ok                        bool
 }
 
-func (f *fakeLive) QueuePlaylist(slug, riderID, addedBy string, tracks []protocol.JukeboxCommand) (int, bool) {
-	f.slug, f.riderID, f.addedBy, f.tracks = slug, riderID, addedBy, tracks
+func (f *fakeLive) QueuePlaylist(channel, riderID, addedBy string, tracks []protocol.JukeboxCommand) (int, bool) {
+	f.channel, f.riderID, f.addedBy, f.tracks = channel, riderID, addedBy, tracks
 	if !f.ok {
 		return 0, false
 	}
@@ -67,11 +66,15 @@ func setup(t *testing.T) *harness {
 	}
 
 	log := slog.New(slog.DiscardHandler)
-	svc := New(st, users, rooms.New(st, users, log), channels.New(st, users, log), log)
+	gate := channels.New(st, users, log)
+	svc := New(st, users, gate, log)
 	live := &fakeLive{ok: true}
 	svc.SetLive(live)
 	mux := http.NewServeMux()
 	svc.Register(mux)
+	// The channel's own routes beside these, as main.go mounts them: a voice
+	// channel's autoplay is set by its PATCH (#2434) and read by Autoplay here.
+	gate.Register(mux)
 	return &harness{mux: mux, store: st, svc: svc, live: live, users: users.ByToken}
 }
 
@@ -92,90 +95,83 @@ func (h *harness) call(t *testing.T, user, method, path, body string) (int, map[
 	return w.Code, decoded
 }
 
-// room inserts a room directly (bypassing rooms.Service, which this package
-// does not depend on) with owner as a member.
-func (h *harness) room(t *testing.T, owner string) (slug string) {
+// crewFixture is a crew as ADR-0058's migration left every room: its owner's,
+// with one text and one voice channel, both private — so a member reaches
+// them only once named in (join).
+type crewFixture struct {
+	id, textID, voiceID pgtype.UUID
+}
+
+// voice is the voice channel as the hub names it — what it hands autoplay,
+// the history and the live bridge.
+func (c crewFixture) voice() string { return store.UUIDString(c.voiceID) }
+
+// crew founds a crew owned by owner, straight through the store.
+func (h *harness) crew(t *testing.T, owner string) crewFixture {
 	t.Helper()
-	ownerUser := h.users[owner]
-	slug = testx.Slug("test-room-" + owner)
-	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: slug, Name: "Test Room", OwnerID: ownerUser.ID,
+	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
+		Name: "Test Crew", OwnerID: h.users[owner].ID, Code: testx.CrewCode(),
 	})
 	if err != nil {
-		t.Fatalf("create room: %v", err)
+		t.Fatalf("create crew: %v", err)
 	}
-	if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-		RoomID: room.ID, UserID: ownerUser.ID, Role: "owner",
-	}); err != nil {
-		t.Fatalf("membership: %v", err)
-	}
+	// Registered after setup's users, so it runs before them: crews.owner_id
+	// is RESTRICT. The channels, the shelf and the play log cascade with it.
 	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where slug = $1", slug)
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID)
 	})
-	// Its channels from the start, as every room made since #2436 has them.
-	testx.VoiceChannel(t, h.store, room)
-	return slug
-}
-
-// voice is the voice channel the room became (#2436) — what the hub hands
-// autoplay, the history and the live bridge.
-func (h *harness) voice(t *testing.T, slug string) string {
-	t.Helper()
-	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("lookup room: %v", err)
+	return crewFixture{
+		id:      crew.ID,
+		textID:  h.channel(t, crew.ID, "text", true),
+		voiceID: h.channel(t, crew.ID, "voice", true),
 	}
-	return testx.VoiceChannel(t, h.store, room)
 }
 
-// voiceID is voice as the id the store takes.
-func (h *harness) voiceID(t *testing.T, slug string) pgtype.UUID {
+// channel adds one channel of kind to crew.
+func (h *harness) channel(t *testing.T, crew pgtype.UUID, kind string, private bool) pgtype.UUID {
 	t.Helper()
-	id, err := store.ParseUUID(h.voice(t, slug))
-	if err != nil {
-		t.Fatalf("voice channel id: %v", err)
+	var limit int32 = protocol.MaxCrewVoiceChannels
+	if kind == "text" {
+		limit = protocol.MaxCrewTextChannels
 	}
-	return id
+	c, err := h.store.Queries.CreateChannel(t.Context(), db.CreateChannelParams{
+		CrewID: crew, Kind: kind, Name: kind, Private: private, MaxChannels: limit,
+	})
+	if err != nil {
+		t.Fatalf("create %s channel: %v", kind, err)
+	}
+	return c.ID
 }
 
-// join puts user in the room as ADR-0058's migration would carry them over:
-// the room membership the room-scoped doors still read, a crew role, and —
-// the fixture's room being private — a name in both of its channels. A room
-// ban is a crew ban since #2442, and names them into nothing.
-func (h *harness) join(t *testing.T, slug, user, role string) {
+// join puts user in the crew as role — member, admin or banned — and names
+// anyone the crew has not banned into both of its private channels, as the
+// migration carried a room's members over. A ban names them into nothing.
+func (h *harness) join(t *testing.T, c crewFixture, user, role string) {
 	t.Helper()
 	u := h.users[user]
-	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("lookup room: %v", err)
-	}
-	if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-		RoomID: room.ID, UserID: u.ID, Role: role,
-	}); err != nil {
-		t.Fatalf("membership: %v", err)
-	}
-	crewRole := "member"
-	if role == "banned" {
-		crewRole = "banned"
-	}
-	h.voice(t, slug) // the room's crew and channels exist from here on
-	room, err = h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("lookup room: %v", err)
-	}
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: room.CrewID, UserID: u.ID, Role: crewRole,
+		CrewID: c.id, UserID: u.ID, Role: role,
 	}); err != nil {
 		t.Fatalf("crew role: %v", err)
 	}
 	if role == "banned" {
 		return
 	}
-	if _, err := h.store.Pool.Exec(t.Context(),
-		`insert into channel_members (channel_id, user_id)
-		 select c, $2 from room_channels rc, unnest(array[rc.text_channel_id, rc.voice_channel_id]) c
-		 where rc.room_id = $1 on conflict do nothing`, room.ID, u.ID); err != nil {
-		t.Fatalf("name into the room's channels: %v", err)
+	for _, channel := range []pgtype.UUID{c.textID, c.voiceID} {
+		if err := h.store.Queries.NameChannelMember(t.Context(), db.NameChannelMemberParams{
+			ChannelID: channel, UserID: u.ID,
+		}); err != nil {
+			t.Fatalf("name into a channel: %v", err)
+		}
+	}
+}
+
+// autoplay sets the voice channel's autoplay through the channel's own PATCH
+// (#2434) as alice, who owns every crew a test sets it on.
+func (h *harness) autoplay(t *testing.T, c crewFixture, settings string) {
+	t.Helper()
+	if status, body := h.call(t, "alice", http.MethodPatch, "/api/channels/"+c.voice(), `{"autoplay":`+settings+`}`); status != http.StatusOK {
+		t.Fatalf("set autoplay %s: %d %v", settings, status, body)
 	}
 }
 
@@ -261,174 +257,33 @@ func mustPlaylistOf(n int) string {
 	return fmt.Sprintf(`{"playlistId":"PLxxxxxxxxxxxxxxxxxxxxx","playlistTitle":"Big","tracks":[%s]}`, strings.Join(tracks, ","))
 }
 
-func TestRoomPlaylistMembershipAndActive(t *testing.T) {
+// A rider's own playlist queues into any voice channel they may enter (#627,
+// #2439): the shelf is theirs, the deck is the channel's.
+func TestQueueAPersonalPlaylistIntoAChannel(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	h.join(t, slug, "bob", "member")
+	c := h.crew(t, "alice")
+	h.join(t, c, "bob", "member")
 
-	// A stranger (not even a member) cannot list or create.
-	if status, _ := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug+"/playlists", ""); status != http.StatusOK {
-		t.Fatalf("member list: %d", status)
-	}
-
-	status, body := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Warmup"}`)
-	if status != http.StatusCreated {
-		t.Fatalf("member create: %d %v", status, body)
-	}
-	id, _ := body["id"].(string)
-
-	// Autoplay: activating a playlist that is not this room's own fails.
-	elsewhere := h.room(t, "alice")
-	_, other := h.call(t, "alice", http.MethodPost, "/api/rooms/"+elsewhere+"/playlists", `{"name":"Elsewhere"}`)
-	otherID, _ := other["id"].(string)
-	status, body = h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay",
-		fmt.Sprintf(`{"enabled":true,"order":"ordered","activePlaylistId":%q}`, otherID))
-	if status != http.StatusBadRequest || body["field"] != "activePlaylistId" {
-		t.Fatalf("cross-room activate: %d %v", status, body)
-	}
-
-	// Activating the room's own playlist works, and the list reflects it.
-	status, body = h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay",
-		fmt.Sprintf(`{"enabled":true,"order":"shuffled","activePlaylistId":%q}`, id))
-	if status != http.StatusOK || body["activePlaylistId"] != id {
-		t.Fatalf("activate: %d %v", status, body)
-	}
-	_, body = h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug+"/playlists", "")
-	list, _ := body["playlists"].([]any)
-	found := false
-	for _, item := range list {
-		row, _ := item.(map[string]any)
-		if row["id"] == id {
-			found = row["active"] == true
-		}
-	}
-	if !found {
-		t.Fatalf("active flag not set: %v", body)
-	}
-
-	// Bad order is refused.
-	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay", `{"enabled":false,"order":"random"}`); status != http.StatusBadRequest {
-		t.Fatalf("bad order: %d", status)
-	}
-}
-
-// A refused autoplay save changes nothing (#2248). The switch, the order and
-// the active playlist were three writes, and the one that validates ownership
-// ran last: a coach who picked another room's list turned autoplay off, and
-// was told the playlist was wrong.
-func TestARefusedAutoplaySaveChangesNothing(t *testing.T) {
-	h := setup(t)
-	slug := h.room(t, "alice")
-	_, created := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Warmup"}`)
-	id, _ := created["id"].(string)
-	elsewhere := h.room(t, "alice")
-	_, other := h.call(t, "alice", http.MethodPost, "/api/rooms/"+elsewhere+"/playlists", `{"name":"Elsewhere"}`)
-	otherID, _ := other["id"].(string)
-
-	if status, body := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay",
-		fmt.Sprintf(`{"enabled":true,"order":"shuffled","activePlaylistId":%q}`, id)); status != http.StatusOK {
-		t.Fatalf("activate: %d %v", status, body)
-	}
-	if status, body := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay",
-		fmt.Sprintf(`{"enabled":false,"order":"ordered","activePlaylistId":%q}`, otherID)); status != http.StatusBadRequest {
-		t.Fatalf("cross-room activate: %d %v, want 400", status, body)
-	}
-	status, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug+"/autoplay", "")
-	if status != http.StatusOK {
-		t.Fatalf("read back: %d %v", status, body)
-	}
-	if body["enabled"] != true || body["order"] != "shuffled" || body["activePlaylistId"] != id {
-		t.Fatalf("the refusal changed the room: %v", body)
-	}
-}
-
-func TestQueuePlaylistCrossesRoomAndPersonal(t *testing.T) {
-	h := setup(t)
-	slug := h.room(t, "alice")
-	h.join(t, slug, "bob", "member")
-
-	// Bob's own personal playlist, queued into a room he is a member of.
 	_, personal := h.call(t, "bob", http.MethodPost, "/api/playlists", `{"name":"Bob's mix"}`)
 	pid, _ := personal["id"].(string)
 	h.call(t, "bob", http.MethodPost, "/api/playlists/"+pid+"/tracks", videoTrack)
 
-	status, body := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+pid+"/queue", "")
+	status, body := h.call(t, "bob", http.MethodPost, "/api/channels/"+c.voice()+"/playlists/"+pid+"/queue", "")
 	if status != http.StatusOK || body["queued"] != float64(1) {
-		t.Fatalf("queue personal into room: %d %v", status, body)
+		t.Fatalf("queue personal into the channel: %d %v", status, body)
 	}
-	if h.live.slug != h.voice(t, slug) || h.live.riderID == "" || len(h.live.tracks) != 1 {
+	if h.live.channel != c.voice() || h.live.riderID == "" || len(h.live.tracks) != 1 {
 		t.Fatalf("live bridge did not see the queue: %+v", h.live)
 	}
 
-	// A stranger to both the playlist and the room gets a 404, not a peek.
-	strangerRoom := h.room(t, "alice")
-	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+strangerRoom+"/playlists/"+pid+"/queue", ""); status != http.StatusForbidden {
-		t.Fatalf("non-member queue: %d", status)
+	// Somebody else's own playlist is not on this shelf, even for the crew's
+	// owner — a 404, not a peek.
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/channels/"+c.voice()+"/playlists/"+pid+"/queue", ""); status != http.StatusNotFound {
+		t.Fatalf("queue another rider's playlist: %d, want 404", status)
 	}
-}
-
-// TestMemberCannotTearDownRoomPlaylists is #695: joining from a link makes
-// you a member, and a member can queue, vote and skip but not rename or
-// delete a saved room playlist, drop a track from one, or change autoplay —
-// those stay owner/coach only, same gate schedule.go's requireControl uses.
-func TestMemberCannotTearDownRoomPlaylists(t *testing.T) {
-	h := setup(t)
-	slug := h.room(t, "alice")
-	h.join(t, slug, "bob", "member")
-	h.join(t, slug, "carol", "coach")
-
-	_, created := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Warmup"}`)
-	id, _ := created["id"].(string)
-	h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+id+"/tracks", videoTrack)
-
-	// A plain member is refused every destructive verb.
-	if status, _ := h.call(t, "bob", http.MethodPut, "/api/rooms/"+slug+"/playlists/"+id, `{"name":"Renamed"}`); status != http.StatusForbidden {
-		t.Fatalf("member rename: %d", status)
-	}
-	if status, _ := h.call(t, "bob", http.MethodPatch, "/api/rooms/"+slug+"/autoplay", `{"enabled":true,"order":"ordered"}`); status != http.StatusForbidden {
-		t.Fatalf("member autoplay: %d", status)
-	}
-	if status, _ := h.call(t, "bob", http.MethodDelete, "/api/rooms/"+slug+"/playlists/"+id, ""); status != http.StatusForbidden {
-		t.Fatalf("member delete playlist: %d", status)
-	}
-
-	// A member can still create their own room playlist and queue/add to it —
-	// the recommendation the issue's maintainer picked leaves that alone.
-	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Bob's set"}`); status != http.StatusCreated {
-		t.Fatalf("member create: %d", status)
-	}
-
-	// Coach and owner both pass the tightened gate.
-	if status, _ := h.call(t, "carol", http.MethodPut, "/api/rooms/"+slug+"/playlists/"+id, `{"name":"Renamed"}`); status != http.StatusOK {
-		t.Fatalf("coach rename: %d", status)
-	}
-	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay", `{"enabled":true,"order":"ordered"}`); status != http.StatusOK {
-		t.Fatalf("owner autoplay: %d", status)
-	}
-	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug+"/playlists/"+id, ""); status != http.StatusNoContent {
-		t.Fatalf("owner delete playlist: %d", status)
-	}
-}
-
-// TestMemberCannotDeleteRoomTrack pins the same gate on the room-playlist
-// track-deletion endpoint specifically, since it lives in tracks.go.
-func TestMemberCannotDeleteRoomTrack(t *testing.T) {
-	h := setup(t)
-	slug := h.room(t, "alice")
-	h.join(t, slug, "bob", "member")
-
-	_, created := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Warmup"}`)
-	id, _ := created["id"].(string)
-	_, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+id+"/tracks", videoTrack)
-	trackID, _ := body["id"].(string)
-	if trackID == "" {
-		t.Fatalf("no track id in %v", body)
-	}
-
-	if status, _ := h.call(t, "bob", http.MethodDelete, "/api/rooms/"+slug+"/playlists/"+id+"/tracks/"+trackID, ""); status != http.StatusForbidden {
-		t.Fatalf("member delete track: %d", status)
-	}
-	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug+"/playlists/"+id+"/tracks/"+trackID, ""); status != http.StatusNoContent {
-		t.Fatalf("owner delete track: %d", status)
+	// A channel of a crew he is not in is not there for him, his playlist or not.
+	stranger := h.crew(t, "alice")
+	if status, _ := h.call(t, "bob", http.MethodPost, "/api/channels/"+stranger.voice()+"/playlists/"+pid+"/queue", ""); status != http.StatusNotFound {
+		t.Fatalf("queue into a stranger crew's channel: %d, want 404", status)
 	}
 }

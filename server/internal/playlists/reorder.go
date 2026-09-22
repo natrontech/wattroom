@@ -79,12 +79,6 @@ func (s *Service) moveTrack(w http.ResponseWriter, r *http.Request, sc scope) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Service) handleMoveRoomTrack(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomScope(w, r); ok {
-		s.moveTrack(w, r, sc)
-	}
-}
-
 func (s *Service) handleMoveCrewTrack(w http.ResponseWriter, r *http.Request) {
 	if sc, ok := s.crewScope(w, r, false); ok {
 		s.moveTrack(w, r, sc)

@@ -129,3 +129,12 @@ voice_channels as (
 )
 insert into room_channels (room_id, text_channel_id, voice_channel_id)
 select room_id, text_channel_id, voice_channel_id from src;
+
+-- name: MovedRoom :one
+-- Where an old room link lands now (#2446, #2458): the crew the room became
+-- part of and the two channels it became. Only while room_channels is there
+-- (#2433 drops it one release after M9).
+select r.crew_id, rc.text_channel_id, rc.voice_channel_id
+from rooms r
+join room_channels rc on rc.room_id = r.id
+where r.slug = $1;

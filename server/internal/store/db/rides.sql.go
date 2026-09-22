@@ -200,41 +200,6 @@ func (q *Queries) CountCrewMedalsByRider(ctx context.Context, crewID pgtype.UUID
 	return items, nil
 }
 
-const countRoomMedalsByRider = `-- name: CountRoomMedalsByRider :many
-select user_id, count(*)::int as medals
-from medals
-where room_id = $1
-group by user_id
-`
-
-type CountRoomMedalsByRiderRow struct {
-	UserID pgtype.UUID
-	Medals int32
-}
-
-// Every medal this room ever awarded, per rider — the roster's count. The
-// recent list above is capped and carries names; a count matched on those
-// decayed as the room rode and merged two riders with one name (#1371).
-func (q *Queries) CountRoomMedalsByRider(ctx context.Context, roomID pgtype.UUID) ([]CountRoomMedalsByRiderRow, error) {
-	rows, err := q.db.Query(ctx, countRoomMedalsByRider, roomID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []CountRoomMedalsByRiderRow
-	for rows.Next() {
-		var i CountRoomMedalsByRiderRow
-		if err := rows.Scan(&i.UserID, &i.Medals); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const createMedal = `-- name: CreateMedal :exec
 insert into medals (room_id, user_id, ride_id, kind, crew_id)
 values ($1, $2, $3, $4, $5)
@@ -1042,55 +1007,6 @@ func (q *Queries) ListRidesMissingNorm(ctx context.Context, limit int32) ([]List
 	return items, nil
 }
 
-const listRoomMedals = `-- name: ListRoomMedals :many
-select m.kind, m.awarded_at, m.user_id, u.display_name
-from medals m
-join users u on u.id = m.user_id
-where m.room_id = $1
-order by m.awarded_at desc
-limit $2
-`
-
-type ListRoomMedalsParams struct {
-	RoomID pgtype.UUID
-	Limit  int32
-}
-
-type ListRoomMedalsRow struct {
-	Kind        string
-	AwardedAt   pgtype.Timestamptz
-	UserID      pgtype.UUID
-	DisplayName string
-}
-
-// The rider's id and the moment travel with it (#1411): the client matched
-// its own medal by display name and a UTC date, which found nothing after
-// local midnight and could name the wrong rider.
-func (q *Queries) ListRoomMedals(ctx context.Context, arg ListRoomMedalsParams) ([]ListRoomMedalsRow, error) {
-	rows, err := q.db.Query(ctx, listRoomMedals, arg.RoomID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListRoomMedalsRow
-	for rows.Next() {
-		var i ListRoomMedalsRow
-		if err := rows.Scan(
-			&i.Kind,
-			&i.AwardedAt,
-			&i.UserID,
-			&i.DisplayName,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listRoomRideWeeks = `-- name: ListRoomRideWeeks :many
 select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
 from rides where room_id = $1
@@ -1116,50 +1032,6 @@ func (q *Queries) ListRoomRideWeeks(ctx context.Context, roomID pgtype.UUID) ([]
 			return nil, err
 		}
 		items = append(items, week)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listRoomSessionDays = `-- name: ListRoomSessionDays :many
-select started_at::date as day,
-       bool_or(user_id = $1) as attended
-from rides
-where room_id = $2
-group by day
-order by day desc
-limit 12
-`
-
-type ListRoomSessionDaysParams struct {
-	ViewerID pgtype.UUID
-	RoomID   pgtype.UUID
-}
-
-type ListRoomSessionDaysRow struct {
-	Day      pgtype.Date
-	Attended bool
-}
-
-// The room's last sessions, newest first, and whether the caller was in each
-// (#995). A day rather than a ride: one evening the crew rode together is one
-// dot, however many of them were there. Describes the caller's own turnout and
-// nobody else's — RESEARCH.md §14.8 forbids grading attendance.
-func (q *Queries) ListRoomSessionDays(ctx context.Context, arg ListRoomSessionDaysParams) ([]ListRoomSessionDaysRow, error) {
-	rows, err := q.db.Query(ctx, listRoomSessionDays, arg.ViewerID, arg.RoomID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListRoomSessionDaysRow
-	for rows.Next() {
-		var i ListRoomSessionDaysRow
-		if err := rows.Scan(&i.Day, &i.Attended); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -1513,123 +1385,6 @@ func (q *Queries) RequeueRideExport(ctx context.Context, arg RequeueRideExportPa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const roomCrewTotals = `-- name: RoomCrewTotals :one
-select coalesce(sum(seconds), 0)::bigint as seconds,
-       count(distinct started_at::date) filter (
-         where started_at >= date_trunc('month', now())
-       )::bigint as sessions_this_month,
-       count(distinct started_at::date) filter (
-         where started_at >= date_trunc('month', now()) - interval '1 month'
-           and started_at < date_trunc('month', now())
-       )::bigint as sessions_last_month
-from rides
-where room_id = $1
-`
-
-type RoomCrewTotalsRow struct {
-	Seconds           int64
-	SessionsThisMonth int64
-	SessionsLastMonth int64
-}
-
-// What the crew did together (#995, RESEARCH.md §14.7). Cooperative by
-// construction: every figure is a sum or a count over the whole room, so
-// nobody is ranked inside any of it. Sessions are counted as distinct days
-// rather than rides, because six riders in one session is one session.
-func (q *Queries) RoomCrewTotals(ctx context.Context, roomID pgtype.UUID) (RoomCrewTotalsRow, error) {
-	row := q.db.QueryRow(ctx, roomCrewTotals, roomID)
-	var i RoomCrewTotalsRow
-	err := row.Scan(&i.Seconds, &i.SessionsThisMonth, &i.SessionsLastMonth)
-	return i, err
-}
-
-const roomMonthKj = `-- name: RoomMonthKj :one
-select coalesce(sum(kj), 0)::bigint from rides
-where room_id = $1 and started_at >= date_trunc('month', now())
-`
-
-// The collective challenge number: this month's kJ, together.
-func (q *Queries) RoomMonthKj(ctx context.Context, roomID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, roomMonthKj, roomID)
-	var column_1 int64
-	err := row.Scan(&column_1)
-	return column_1, err
-}
-
-const roomWeekBoard = `-- name: RoomWeekBoard :many
-select r.user_id,
-       u.display_name,
-       u.ftp_watts,
-       u.weight_kg,
-       -- Where the pair came from (ADR-0048, #2243): a category computed from
-       -- two numbers nobody chose is two guesses divided by each other, and
-       -- this board is the one surface that publishes a ride-derived number
-       -- about one member to the rest of the room.
-       u.ftp_source,
-       u.weight_source,
-       coalesce(sum(r.kj), 0)::bigint as kj,
-       coalesce(sum(r.seconds), 0)::bigint as seconds
-from rides r
-join users u on u.id = r.user_id
-join memberships m on m.room_id = r.room_id and m.user_id = r.user_id
-where r.room_id = $1
-  and r.started_at >= (date_trunc('week', now() at time zone 'UTC') at time zone 'UTC')
-  and m.role <> 'banned'
-  -- A rider's own opt-out (#1100, amending ADR-0036). The room-level switch
-  -- answers "joining a room must not put you on a board"; this answers the
-  -- same trap one level up, where the owner turns the board on and everybody
-  -- already inside is enrolled by existence.
-  and m.on_board
-group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg, u.ftp_source, u.weight_source
-order by kj desc, u.display_name asc
-`
-
-type RoomWeekBoardRow struct {
-	UserID       pgtype.UUID
-	DisplayName  string
-	FtpWatts     int16
-	WeightKg     int16
-	FtpSource    *string
-	WeightSource *string
-	Kj           int64
-	Seconds      int64
-}
-
-// The room's ordered board (#995, ADR-0036) — opt-in, and THIS WEEK ONLY.
-// The week is the streak's week (Monday-start, date_trunc('week')), so a bad
-// week is never permanent: RESEARCH.md §14.3 names the stable ordering a
-// standing crew cannot re-randomise as the failure mode every cited product
-// avoids by resetting. Members only; the handler proves the room, this proves
-// the rider is still in it.
-func (q *Queries) RoomWeekBoard(ctx context.Context, roomID pgtype.UUID) ([]RoomWeekBoardRow, error) {
-	rows, err := q.db.Query(ctx, roomWeekBoard, roomID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []RoomWeekBoardRow
-	for rows.Next() {
-		var i RoomWeekBoardRow
-		if err := rows.Scan(
-			&i.UserID,
-			&i.DisplayName,
-			&i.FtpWatts,
-			&i.WeightKg,
-			&i.FtpSource,
-			&i.WeightSource,
-			&i.Kj,
-			&i.Seconds,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const setRideFeel = `-- name: SetRideFeel :execrows

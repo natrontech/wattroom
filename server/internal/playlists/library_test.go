@@ -50,11 +50,11 @@ func TestPlaylistHoldsALibraryTrack(t *testing.T) {
 		t.Fatalf("library row after retitle: %v", second)
 	}
 
-	// Queued into a room, the entry replays as the library add the Music page
-	// sends, in saved order.
-	slug := h.room(t, "alice")
+	// Queued into a voice channel, the entry replays as the library add the
+	// Music page sends, in saved order.
+	voice := h.crew(t, "alice").voice()
 	h.live.tracks = nil
-	if status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+id+"/queue", ""); status != http.StatusOK {
+	if status, body := h.call(t, "alice", http.MethodPost, "/api/channels/"+voice+"/playlists/"+id+"/queue", ""); status != http.StatusOK {
 		t.Fatalf("queue: %d %v", status, body)
 	}
 	if len(h.live.tracks) != 2 || h.live.tracks[0].VideoID != "dQw4w9WgXcQ" || h.live.tracks[1].TrackID != track || h.live.tracks[1].VideoID != "" {

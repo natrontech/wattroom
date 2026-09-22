@@ -18,23 +18,6 @@ returning id;
 insert into chat_images (room_id, user_id, mime, bytes)
 values ($1, $2, $3, $4) returning id;
 
--- name: GetChatImage :one
--- Room-scoped like reactions: the room is the privacy boundary, an id from
--- another room's chat must 404 here.
-select mime, bytes from chat_images
-where id = $1 and room_id = $2;
-
--- name: PruneChatImages :exec
--- Swept alongside PruneChat: an image outlives neither its message (dropped
--- off the 500-line log) nor a 15-minute grace for uploads still awaiting
--- their send.
-delete from chat_images i
-where i.room_id = $1
-  and i.created_at < now() - interval '15 minutes'
-  and not exists (
-      select 1 from chat_messages m where m.image_id = i.id
-  );
-
 -- name: PruneOrphanChatImages :execrows
 -- The same grace as above, on the clock rather than on a write (audit
 -- 2026-09-09; the #1153 rule): an upload abandoned in a room that then went
@@ -45,47 +28,6 @@ delete from chat_images i
                      and not exists (select 1 from chat_messages m where m.image_id = x.id)
                    limit 10000);
 
--- name: PruneChat :exec
--- The 500-message bound (ADR-0010 amended) — run on write, the log never grows.
---
--- The room's announcement is kept whatever its age (ADR-0057, #2408). A coach
--- marks a line precisely because it must outlast the evening, and the cap is
--- the reason it cannot simply be left in chat: without this clause a busy
--- week would silently take the notice down, which is the one thing the mark
--- promises will not happen. It is at most one row per room.
-delete from chat_messages cm
-where cm.room_id = $1
-  and cm.id is distinct from (select announcement_id from rooms where id = $1)
-  and cm.id not in (
-    select keep.id from (
-        select id from chat_messages
-        where room_id = $1
-        order by created_at desc
-        limit 500
-    ) keep
-);
-
--- name: ListRoomChat :many
--- Newest $2, oldest-first for rendering; a deleted author's rows are gone
--- (cascade), so the join never dangles. The id breaks a same-millisecond
--- tie, so two polls of the same log agree on the order (#468).
-select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at, m.edited_at
-from (
-    select * from chat_messages
-    where room_id = $1
-    order by created_at desc, id desc
-    limit $2
-) m
-join users u on u.id = m.user_id
-order by m.created_at, m.id;
-
--- name: GetChatMessage :one
--- The line as it stands, room-scoped, so the edit handler can tell "not in
--- this room" (404) from "not yours" (403) instead of collapsing both into one
--- refusal (errors.md).
-select user_id, text, image_id from chat_messages
-where id = $1 and room_id = $2;
-
 -- name: EditChatMessage :one
 -- Only the author, and only the text (#865). The room scope is repeated here
 -- rather than trusted from the read above: two statements, and nothing says
@@ -95,16 +37,6 @@ set text = $3, edited_at = now()
 where id = $1 and room_id = $2 and user_id = $4
 returning edited_at;
 
--- name: ListChatReactions :many
--- Counts per message+emoji for the backlog, plus whether the viewer is in.
-select r.message_id, r.emoji,
-       count(*) as total,
-       bool_or(r.user_id = $2) as mine
-from chat_reactions r
-join chat_messages m on m.id = r.message_id
-where m.room_id = $1
-group by r.message_id, r.emoji;
-
 -- name: AddChatReaction :execrows
 -- Toggle half 1: no-op when already reacted (the conflict), so the caller
 -- knows to remove instead.
@@ -113,79 +45,5 @@ select $1, $2, $3
 where exists (select 1 from chat_messages where id = $1 and room_id = $4)
 on conflict do nothing;
 
--- name: RemoveChatReaction :execrows
--- Room-scoped like the insert — a socket in room A must not toggle
--- reactions on room B's messages (audit #219).
-delete from chat_reactions r
-using chat_messages m
-where r.message_id = $1 and r.user_id = $2 and r.emoji = $3
-  and m.id = r.message_id and m.room_id = $4;
-
 -- name: CountChatReaction :one
 select count(*) from chat_reactions where message_id = $1 and emoji = $2;
-
--- name: MarkRoomRead :exec
--- Opening a room is reading it. Upsert so the first visit works the same as
--- the hundredth.
-insert into room_reads (room_id, user_id, read_at)
-values ($1, $2, now())
-on conflict (room_id, user_id) do update set read_at = now();
-
--- name: CountRoomUnread :one
--- Lines from other people since you last opened the room. A rider who has
--- never opened it sees the whole bounded log, which is the honest answer:
--- everything in there is new to them.
-select count(*)
-from chat_messages m
-left join room_reads r on r.room_id = m.room_id and r.user_id = $2
-where m.room_id = $1
-  and m.user_id != $2
-  and (r.read_at is null or m.created_at > r.read_at);
-
--- name: GetRoomReadAt :one
--- Where the "N new" divider goes when a room's chat is read from outside
--- the room (#468). No row = never opened: everything is new.
-select read_at from room_reads where room_id = $1 and user_id = $2;
-
--- name: ChatImageInRoom :one
--- The picture a line points at must be this room's (#1987): the insert
--- refuses a foreign id the same way it refuses a fault, so the handler asks
--- first and answers a 400 the client can act on.
-select exists(select 1 from chat_images where id = $1 and room_id = $2)::boolean;
-
--- name: SetRoomAnnouncement :execrows
--- Mark a line as the room's announcement (ADR-0057, #2408). The message must
--- be THIS room's: a coach in room A marking room B's line would put a
--- sentence they cannot see on a board they do not run, and the `where exists`
--- is what refuses it — 0 rows is the 404, not a fault.
-update rooms r set announcement_id = @message_id
-where r.id = @room_id
-  and exists (
-      select 1 from chat_messages m
-       where m.id = @message_id and m.room_id = @room_id
-  );
-
--- name: ClearRoomAnnouncement :exec
-update rooms set announcement_id = null where id = $1;
-
--- name: GetRoomAnnouncement :one
--- The marked line as the strip draws it: what it says, who wrote it, and
--- when. The author is the MESSAGE's, not whoever marked it — a coach putting
--- somebody else's sentence up is quoting them, and the strip says so.
-select m.id, m.text, u.display_name as from_name, m.created_at
-from rooms r
-join chat_messages m on m.id = r.announcement_id
-join users u on u.id = m.user_id
-where r.id = $1;
-
--- name: DeleteChatMessage :execrows
--- Take a line out of the log for good (#2417). Room-scoped like the edit; WHO
--- may is settled in the handler, which needs to tell "no such line" from "not
--- yours" and cannot from a row count.
---
--- Everything hanging off the line goes with it: its reactions cascade, its
--- picture is left unreferenced and swept by PruneChatImages on the usual
--- 15-minute grace, and a room whose announcement pointed at it has the
--- pointer set to null by the FK — the notice comes down with the sentence,
--- which is the only honest answer when the sentence is gone.
-delete from chat_messages where id = $1 and room_id = $2;

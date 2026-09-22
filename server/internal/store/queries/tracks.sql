@@ -33,9 +33,8 @@ select * from tracks where id = $1 and uploaded_by = $2;
 -- list, search, facets, edit and delete all stay on GetTrack, uploader-only.
 -- A caller still needs the track's uuid, which only the deck hands out.
 --
--- "Shares a room" is asked of visible_channels since ADR-0058 (#2465), as it
--- was of visible_rooms since ADR-0038 (#1103): the pair may both ENTER one
--- channel — the same rule person-visibility follows. A crew ban ends it, and
+-- "Shares a channel" is asked of visible_channels (ADR-0058, #2465): the pair
+-- may both ENTER one channel — the same rule person-visibility follows. A crew ban ends it, and
 -- so does a private channel neither is named into.
 select t.* from tracks t
 where t.id = sqlc.arg(id)

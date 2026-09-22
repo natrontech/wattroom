@@ -23,27 +23,10 @@ import (
 
 // The crew's shelf and a voice channel's deck (ADR-0058, #2439).
 
-// crewOf is the crew the fixture room is in, with its channels made.
-func (h *harness) crewOf(t *testing.T, slug string) pgtype.UUID {
-	t.Helper()
-	h.voice(t, slug)
-	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("room: %v", err)
-	}
-	return room.CrewID
-}
-
 // secondVoice is another open voice channel of the same crew.
 func (h *harness) secondVoice(t *testing.T, crew pgtype.UUID) string {
 	t.Helper()
-	var id pgtype.UUID
-	if err := h.store.Pool.QueryRow(t.Context(),
-		`insert into channels (crew_id, kind, name, position, private) values ($1, 'voice', 'Second', 1, false) returning id`,
-		crew).Scan(&id); err != nil {
-		t.Fatalf("second voice channel: %v", err)
-	}
-	return store.UUIDString(id)
+	return store.UUIDString(h.channel(t, crew, "voice", false))
 }
 
 // crewPlaylist saves a crew playlist holding two videos, as who.
@@ -70,8 +53,7 @@ func (h *harness) crewPlaylist(t *testing.T, crew pgtype.UUID, who string) strin
 // admins rename, delete and drop a track. Outsiders see no shelf at all.
 func TestCrewPlaylistsFollowTheRolesMatrix(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	crew := h.crewOf(t, slug)
+	crew := h.crew(t, "alice").id
 	if err := h.store.Queries.JoinCrew(t.Context(), db.JoinCrewParams{CrewID: crew, UserID: h.users["bob"].ID}); err != nil {
 		t.Fatalf("join: %v", err)
 	}
@@ -103,11 +85,42 @@ func TestCrewPlaylistsFollowTheRolesMatrix(t *testing.T) {
 	if status, _ := h.call(t, "bob", http.MethodPost, base, `{"name":""}`); status != http.StatusBadRequest {
 		t.Errorf("an empty name: %d, want 400", status)
 	}
-	// The room's page reads the same shelf until the room goes (#2446).
-	_, list := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug+"/playlists", "")
-	rows, _ := list["playlists"].([]any)
-	if len(rows) != 1 {
-		t.Errorf("the room's list shows %d playlists, want the crew's one", len(rows))
+}
+
+// #695's line, on the crew's shelf: a member puts on it, but what takes from
+// it — renaming, deleting, dropping a track — is the owner's and the admins'
+// (docs/SPEC.md), since it tears down what every member relies on.
+func TestTheOwnerAndAdminsTakeFromTheCrewShelf(t *testing.T) {
+	h := setup(t)
+	c := h.crew(t, "alice")
+	h.join(t, c, "bob", "member")
+	h.join(t, c, "carol", "admin")
+	base := "/api/crews/" + store.UUIDString(c.id) + "/playlists/" + h.crewPlaylist(t, c.id, "alice")
+	_, detail := h.call(t, "alice", http.MethodGet, base, "")
+	rows, _ := detail["tracks"].([]any)
+	var tracks []string
+	for _, row := range rows {
+		fields, _ := row.(map[string]any)
+		id, _ := fields["id"].(string)
+		tracks = append(tracks, id)
+	}
+	if len(tracks) != 2 {
+		t.Fatalf("the fixture playlist holds %v, want two tracks", detail)
+	}
+
+	for _, step := range []struct {
+		what, who, method, path, body string
+		want                          int
+	}{
+		{"a member dropping a track", "bob", http.MethodDelete, base + "/tracks/" + tracks[0], "", http.StatusForbidden},
+		{"an admin renaming it", "carol", http.MethodPut, base, `{"name":"Renamed"}`, http.StatusOK},
+		{"an admin dropping a track", "carol", http.MethodDelete, base + "/tracks/" + tracks[0], "", http.StatusNoContent},
+		{"the owner dropping a track", "alice", http.MethodDelete, base + "/tracks/" + tracks[1], "", http.StatusNoContent},
+		{"the owner deleting it", "alice", http.MethodDelete, base, "", http.StatusNoContent},
+	} {
+		if status, body := h.call(t, step.who, step.method, step.path, step.body); status != step.want {
+			t.Fatalf("%s: %d %v, want %d", step.what, status, body, step.want)
+		}
 	}
 }
 
@@ -178,11 +191,10 @@ func deckOf(t *testing.T, conn *websocket.Conn) protocol.JukeboxState {
 // lands on the first deck nor doubles it.
 func TestOnePlaylistQueuedIntoTwoChannelsPlaysInEach(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	crew := h.crewOf(t, slug)
-	first := h.voice(t, slug)
-	second := h.secondVoice(t, crew)
-	playlist := h.crewPlaylist(t, crew, "alice")
+	c := h.crew(t, "alice")
+	first := c.voice()
+	second := h.secondVoice(t, c.id)
+	playlist := h.crewPlaylist(t, c.id, "alice")
 
 	live := hub.New(slog.New(slog.DiscardHandler), channelAccess{}, nil)
 	h.svc.SetLive(live)
@@ -214,9 +226,9 @@ func TestOnePlaylistQueuedIntoTwoChannelsPlaysInEach(t *testing.T) {
 // a fact about the crew's other channels.
 func TestJustPlayedIsPerChannel(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	first := h.voice(t, slug)
-	second := h.secondVoice(t, h.crewOf(t, slug))
+	c := h.crew(t, "alice")
+	first := c.voice()
+	second := h.secondVoice(t, c.id)
 
 	h.svc.TrackEnded(t.Context(), first, hub.Play{VideoID: "dQw4w9WgXcQ", Title: "Never Gonna Give You Up"})
 	if got := h.svc.Recent(t.Context(), first, 5); len(got) != 1 {
@@ -231,17 +243,10 @@ func TestJustPlayedIsPerChannel(t *testing.T) {
 // outsider may not enter, and another crew's playlist is not on this shelf.
 func TestTheChannelQueueDoor(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	crew := h.crewOf(t, slug)
-	voice := h.voice(t, slug)
-	playlist := h.crewPlaylist(t, crew, "alice")
-	var text string
-	if err := h.store.Pool.QueryRow(t.Context(),
-		`select text_channel_id::text from room_channels rc join rooms r on r.id = rc.room_id where r.slug = $1`, slug).Scan(&text); err != nil {
-		t.Fatalf("text channel: %v", err)
-	}
-	other := h.room(t, "bob")
-	foreign := h.crewPlaylist(t, h.crewOf(t, other), "bob")
+	c := h.crew(t, "alice")
+	voice, text := c.voice(), store.UUIDString(c.textID)
+	playlist := h.crewPlaylist(t, c.id, "alice")
+	foreign := h.crewPlaylist(t, h.crew(t, "bob").id, "bob")
 
 	for _, c := range []struct {
 		who, path string
@@ -263,23 +268,37 @@ func TestTheChannelQueueDoor(t *testing.T) {
 	}
 }
 
-// The room's autoplay settings write its voice channel's (#2439), which is
-// what the worker reads — a room page and a channel page cannot disagree.
-func TestTheRoomsAutoplayIsItsVoiceChannels(t *testing.T) {
+// A voice channel's autoplay is set on the channel (#2434) and read here, by
+// the hub's AutoplaySource — so the channel's page and the deck cannot
+// disagree. And a refused save changes nothing (#2248): the switch, the order
+// and the playlist were once three writes, and a playlist that was not the
+// crew's was refused after the first two had committed, turning autoplay off.
+func TestAChannelsAutoplayIsWhatItsDeckPlays(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	playlist := h.crewPlaylist(t, h.crewOf(t, slug), "alice")
-	voice := h.voice(t, slug)
+	c := h.crew(t, "alice")
+	playlist := h.crewPlaylist(t, c.id, "alice")
+	foreign := h.crewPlaylist(t, h.crew(t, "alice").id, "alice")
 
-	if _, ok := h.svc.Autoplay(t.Context(), voice, hub.SessionMood{}); ok {
+	if _, ok := h.svc.Autoplay(t.Context(), c.voice(), hub.SessionMood{}); ok {
 		t.Fatal("autoplay played before anyone turned it on")
 	}
-	body := fmt.Sprintf(`{"enabled":true,"order":"ordered","activePlaylistId":%q}`, playlist)
-	if status, got := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay", body); status != http.StatusOK {
-		t.Fatalf("room autoplay: %d %v", status, got)
-	}
-	tracks, ok := h.svc.Autoplay(t.Context(), voice, hub.SessionMood{})
+	h.autoplay(t, c, fmt.Sprintf(`{"enabled":true,"order":"ordered","playlistId":%q}`, playlist))
+	tracks, ok := h.svc.Autoplay(t.Context(), c.voice(), hub.SessionMood{})
 	if !ok || len(tracks) != 2 || tracks[0].VideoID != "dQw4w9WgXcQ" {
 		t.Errorf("the channel's autoplay = %v %+v, want the crew playlist in order", ok, tracks)
+	}
+
+	status, body := h.call(t, "alice", http.MethodPatch, "/api/channels/"+c.voice(),
+		fmt.Sprintf(`{"autoplay":{"enabled":false,"order":"shuffled","playlistId":%q}}`, foreign))
+	if status != http.StatusBadRequest || body["field"] != "autoplay.playlistId" {
+		t.Fatalf("another crew's playlist: %d %v, want a 400 on autoplay.playlistId", status, body)
+	}
+	ch, err := h.store.Queries.GetChannel(t.Context(), c.voiceID)
+	if err != nil {
+		t.Fatalf("read back: %v", err)
+	}
+	if !ch.AutoplayEnabled || ch.AutoplayOrder != "ordered" || store.UUIDString(ch.AutoplayPlaylistID) != playlist {
+		t.Fatalf("the refusal changed the channel: enabled %v, order %q, playlist %s",
+			ch.AutoplayEnabled, ch.AutoplayOrder, store.UUIDString(ch.AutoplayPlaylistID))
 	}
 }

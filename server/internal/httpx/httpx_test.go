@@ -29,7 +29,7 @@ const (
 // and returns what it decided plus the recorded response.
 func readUpload(t *testing.T, declared string, body []byte) (data []byte, mime string, ok bool, rec *httptest.ResponseRecorder) {
 	t.Helper()
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/rooms/x/images", bytes.NewReader(body))
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/channels/x/chat/images", bytes.NewReader(body))
 	if declared != "" {
 		req.Header.Set("Content-Type", declared)
 	}

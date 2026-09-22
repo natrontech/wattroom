@@ -16,17 +16,17 @@ func aliceID(id pgtype.UUID) string { return store.UUIDString(id) }
 // showed, and who queued each — nobody for autoplay.
 func TestRecentPlaysBothKinds(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
+	voice := h.crew(t, "alice").voice()
 	track := h.track(t, "alice", "Sandstorm")
 	alice := h.users["alice"].ID
 	ctx := t.Context()
 
-	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{VideoID: "dQw4w9WgXcQ", Title: "Never Gonna Give You Up", QueuedBy: aliceID(alice), Skipped: false})
-	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{TrackID: track, Skipped: true})
+	h.svc.TrackEnded(ctx, voice, hub.Play{VideoID: "dQw4w9WgXcQ", Title: "Never Gonna Give You Up", QueuedBy: aliceID(alice), Skipped: false})
+	h.svc.TrackEnded(ctx, voice, hub.Play{TrackID: track, Skipped: true})
 	// Junk never lands: not a video id, not a track id.
-	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{VideoID: "nope", Title: "x"})
+	h.svc.TrackEnded(ctx, voice, hub.Play{VideoID: "nope", Title: "x"})
 
-	got := h.svc.Recent(ctx, h.voice(t, slug), 5)
+	got := h.svc.Recent(ctx, voice, 5)
 	if len(got) != 2 {
 		t.Fatalf("recent = %+v, want the video and the track", got)
 	}
@@ -37,8 +37,8 @@ func TestRecentPlaysBothKinds(t *testing.T) {
 		t.Fatalf("the video, queued by alice: %+v", got[1])
 	}
 
-	// Another room remembers nothing of this one (privacy is architecture).
-	if other := h.svc.Recent(ctx, h.voice(t, h.room(t, "alice")), 5); len(other) != 0 {
-		t.Fatalf("another room's recent = %+v, want none", other)
+	// Another crew remembers nothing of this one (privacy is architecture).
+	if other := h.svc.Recent(ctx, h.crew(t, "alice").voice(), 5); len(other) != 0 {
+		t.Fatalf("another crew's recent = %+v, want none", other)
 	}
 }

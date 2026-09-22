@@ -30,10 +30,10 @@ func (h *harness) trackLike(t *testing.T, uploader, title, artist string, tags .
 	return id
 }
 
-func (h *harness) affinityWeights(t *testing.T, slug string) map[string]float64 {
+func (h *harness) affinityWeights(t *testing.T, c crewFixture) map[string]float64 {
 	t.Helper()
 	rows, err := h.store.Queries.SmartShuffleTracks(t.Context(), db.SmartShuffleTracksParams{
-		ChannelID: h.voiceID(t, slug), Lim: 1000,
+		ChannelID: c.voiceID, Lim: 1000,
 		AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 	})
 	if err != nil {
@@ -46,35 +46,35 @@ func (h *harness) affinityWeights(t *testing.T, slug string) map[string]float64 
 	return out
 }
 
-// Auto-DJ (#271): what the room finishes pulls its neighbours up. Every one
-// of these fails silently — the draw is random, so a boost that never lands
-// and a boost that lands on everything look identical from outside.
-func TestAffinityFollowsWhatTheRoomFinishes(t *testing.T) {
+// Auto-DJ (#271): what the channel finishes pulls its neighbours up. Every
+// one of these fails silently — the draw is random, so a boost that never
+// lands and a boost that lands on everything look identical from outside.
+func TestAffinityFollowsWhatTheChannelFinishes(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
+	c := h.crew(t, "alice")
 
 	played := h.trackLike(t, "alice", "The One We Liked", "Justice", "french-house")
 	sameArtist := h.trackLike(t, "alice", "Also Justice", "Justice", "electro")
 	sameTag := h.trackLike(t, "alice", "Someone Else", "Cassius", "french-house")
 	unrelated := h.trackLike(t, "alice", "Nothing In Common", "Sepultura", "thrash")
 	noArtist := h.trackLike(t, "alice", "Untitled", "")
-	// A second track nobody named, and the room finishes THIS one. Untagged
+	// A second track nobody named, and the channel finishes THIS one. Untagged
 	// uploads are ordinary — the ID3 fallback leaves the artist empty — so
 	// without the filter on `liked.artists` one anonymous track finishing
 	// would lift every other anonymous track in the pool, which is not a
 	// taste, it is a missing field.
 	otherNoArtist := h.trackLike(t, "alice", "Also Untitled", "")
 
-	// Nothing finished yet: the room has no taste and everything weighs 1.
-	for id, w := range h.affinityWeights(t, slug) {
+	// Nothing finished yet: the channel has no taste and everything weighs 1.
+	for id, w := range h.affinityWeights(t, c) {
 		if math.Abs(w-1.0) > 0.01 {
-			t.Fatalf("a room with no history already had a preference: %s weighs %v", id, w)
+			t.Fatalf("a channel with no history already had a preference: %s weighs %v", id, w)
 		}
 	}
 
-	h.svc.TrackEnded(t.Context(), h.voice(t, slug), hub.Play{TrackID: played, QueuedBy: "", Skipped: false})
-	h.svc.TrackEnded(t.Context(), h.voice(t, slug), hub.Play{TrackID: otherNoArtist, QueuedBy: "", Skipped: false})
-	got := h.affinityWeights(t, slug)
+	h.svc.TrackEnded(t.Context(), c.voice(), hub.Play{TrackID: played, QueuedBy: "", Skipped: false})
+	h.svc.TrackEnded(t.Context(), c.voice(), hub.Play{TrackID: otherNoArtist, QueuedBy: "", Skipped: false})
+	got := h.affinityWeights(t, c)
 
 	for _, tc := range []struct {
 		name, id string
@@ -100,38 +100,39 @@ func TestAffinityFollowsWhatTheRoomFinishes(t *testing.T) {
 }
 
 // Privacy is architecture (WATTROOM.md), and taste is the most personal thing
-// the pool holds. What one crew is into must not reach another room.
-func TestAffinityIsRoomScoped(t *testing.T) {
+// the pool holds. What one crew is into must not reach another.
+func TestAffinityIsChannelScoped(t *testing.T) {
 	h := setup(t)
-	// Both alice's, for the same reason as TestSmartShuffleHistoryIsRoomScoped:
-	// #1095 scopes the draw to the room's members' uploads, so a room bob owns
-	// would see nothing here and prove nothing about history isolation.
-	theirs := h.room(t, "alice")
-	ours := h.room(t, "alice")
+	// Both alice's, for the same reason as TestSmartShuffleHistoryIsChannelScoped:
+	// #1095 scopes the draw to the uploads of riders who may enter the
+	// channel, so a crew bob owns would see nothing here and prove nothing
+	// about history isolation.
+	theirs := h.crew(t, "alice")
+	ours := h.crew(t, "alice")
 
 	played := h.trackLike(t, "alice", "Their Favourite", "Justice", "french-house")
 	sibling := h.trackLike(t, "alice", "Its Sibling", "Justice", "electro")
-	h.svc.TrackEnded(t.Context(), h.voice(t, theirs), hub.Play{TrackID: played, QueuedBy: "", Skipped: false})
+	h.svc.TrackEnded(t.Context(), theirs.voice(), hub.Play{TrackID: played, QueuedBy: "", Skipped: false})
 
 	if w := h.affinityWeights(t, theirs)[sibling]; math.Abs(w-artistBoost) > 0.01 {
-		t.Errorf("the room that finished it: sibling weighs %v, want %v", w, artistBoost)
+		t.Errorf("the channel that finished it: sibling weighs %v, want %v", w, artistBoost)
 	}
 	if w := h.affinityWeights(t, ours)[sibling]; math.Abs(w-1.0) > 0.01 {
-		t.Errorf("another room inherited their taste: sibling weighs %v, want 1", w)
+		t.Errorf("another crew's channel inherited their taste: sibling weighs %v, want 1", w)
 	}
 }
 
-// A skip is not a completion. Boosting an artist because the room threw one
-// of their tracks off the deck is the exact inverse of the feature.
+// A skip is not a completion. Boosting an artist because the channel threw
+// one of their tracks off the deck is the exact inverse of the feature.
 func TestASkipBuildsNoAffinity(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
+	c := h.crew(t, "alice")
 
 	skipped := h.trackLike(t, "alice", "Rejected", "Justice", "french-house")
 	sibling := h.trackLike(t, "alice", "Its Sibling", "Justice", "electro")
-	h.svc.TrackEnded(t.Context(), h.voice(t, slug), hub.Play{TrackID: skipped, QueuedBy: "", Skipped: true})
+	h.svc.TrackEnded(t.Context(), c.voice(), hub.Play{TrackID: skipped, QueuedBy: "", Skipped: true})
 
-	got := h.affinityWeights(t, slug)
+	got := h.affinityWeights(t, c)
 	if w := got[sibling]; math.Abs(w-1.0) > 0.01 {
 		t.Errorf("a skip boosted the artist: sibling weighs %v, want 1", w)
 	}

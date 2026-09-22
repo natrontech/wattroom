@@ -13,17 +13,6 @@ import (
 // entry cap (hub.maxQueue) — anything past it could never land anyway.
 const maxQueuedAtOnce = 50
 
-// handleQueueTracks puts several of the caller's library tracks on the
-// room's voice channel's deck in one go (#1433) — the room's twin of
-// handleQueueTracksIntoChannel, until the room goes (#2446).
-func (s *Service) handleQueueTracks(w http.ResponseWriter, r *http.Request) {
-	room, user, ok := s.members.RequireMember(w, r, "Join the room to use its jukebox.")
-	if !ok {
-		return
-	}
-	s.queueTracks(w, r, s.store.VoiceChannelOf(r.Context(), room.ID), user)
-}
-
 // handleQueueTracksIntoChannel is the Music page's multi-select onto a voice
 // channel's deck (#1433, #2439), for anyone who may enter it.
 func (s *Service) handleQueueTracksIntoChannel(w http.ResponseWriter, r *http.Request) {

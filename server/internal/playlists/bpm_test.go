@@ -53,8 +53,7 @@ func TestTargetCadence(t *testing.T) {
 // biases every idle room's music if it is wrong.
 func TestBpmBoostsTheCadenceAndItsDouble(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	voice := h.voiceID(t, slug)
+	voice := h.crew(t, "alice").voiceID
 
 	onBeat := h.trackBpm(t, "alice", "Ninety", 90)
 	doubled := h.trackBpm(t, "alice", "One Eighty", 180)

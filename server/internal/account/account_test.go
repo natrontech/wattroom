@@ -25,7 +25,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/natrontech/wattroom/server/internal/rooms"
+	"github.com/natrontech/wattroom/server/internal/crews"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
@@ -64,7 +64,7 @@ func setup(t *testing.T) *harness {
 
 	mux := http.NewServeMux()
 	svc := New(st, users, slog.New(slog.DiscardHandler))
-	svc.SetCrews(rooms.New(st, users, slog.New(slog.DiscardHandler)))
+	svc.SetCrews(crews.New(st, users, slog.New(slog.DiscardHandler)))
 	svc.Register(mux)
 	return &harness{mux: mux, store: st, svc: svc, users: users}
 }
@@ -493,8 +493,10 @@ func TestDeleteHandsTheCrewOnBeforeTheRowGoes(t *testing.T) {
 			t.Fatalf("place: %v", err)
 		}
 	}
-	if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{RoomID: theirs, UserID: h.id("bob"), Role: "owner"}); err != nil {
-		t.Fatalf("bob's membership: %v", err)
+	// The crew passes to its people, not to whoever owns a room row in it
+	// (#2446): bob inherits because he is a member.
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: h.id("bob"), Role: "member"}); err != nil {
+		t.Fatalf("bob's crew row: %v", err)
 	}
 
 	if rec := h.call(t, "alice", http.MethodDelete, "/api/me"); rec.Code != http.StatusNoContent {
@@ -505,7 +507,7 @@ func TestDeleteHandsTheCrewOnBeforeTheRowGoes(t *testing.T) {
 	}
 	after, err := h.store.Queries.GetCrew(t.Context(), crew.ID)
 	if err != nil {
-		t.Fatalf("the crew went with its owner although bob's room stood in it: %v", err)
+		t.Fatalf("the crew went with its owner although bob stood in it: %v", err)
 	}
 	if after.OwnerID != h.id("bob") {
 		t.Errorf("the crew passed to %s, want bob", store.UUIDString(after.OwnerID))
@@ -515,14 +517,17 @@ func TestDeleteHandsTheCrewOnBeforeTheRowGoes(t *testing.T) {
 		t.Errorf("bob's room should survive alice's purge: %d %v", rooms, err)
 	}
 
-	// And a crew holding only the departing rider's rooms simply goes.
+	// And a crew with nobody left in it goes — room rows and all, even one
+	// whose owner never joined the crew (rooms.crew_id is ON DELETE RESTRICT).
 	lone, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "carol", OwnerID: h.id("carol"), Code: testx.CrewCode()})
 	if err != nil {
 		t.Fatalf("crew: %v", err)
 	}
-	room := h.createRoom(t, "carol")
-	if err := h.store.Queries.PlaceRoomInCrew(t.Context(), db.PlaceRoomInCrewParams{ID: room, CrewID: lone.ID, CrewVisible: true}); err != nil {
-		t.Fatalf("place: %v", err)
+	for _, owner := range []string{"carol", "bob"} {
+		room := h.createRoom(t, owner)
+		if err := h.store.Queries.PlaceRoomInCrew(t.Context(), db.PlaceRoomInCrewParams{ID: room, CrewID: lone.ID, CrewVisible: true}); err != nil {
+			t.Fatalf("place: %v", err)
+		}
 	}
 	if rec := h.call(t, "carol", http.MethodDelete, "/api/me"); rec.Code != http.StatusNoContent {
 		t.Fatalf("delete carol: %d %s", rec.Code, rec.Body.String())

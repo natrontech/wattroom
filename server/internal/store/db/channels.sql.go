@@ -285,6 +285,29 @@ func (q *Queries) ListCrewChannels(ctx context.Context, crewID pgtype.UUID) ([]C
 	return items, nil
 }
 
+const movedRoom = `-- name: MovedRoom :one
+select r.crew_id, rc.text_channel_id, rc.voice_channel_id
+from rooms r
+join room_channels rc on rc.room_id = r.id
+where r.slug = $1
+`
+
+type MovedRoomRow struct {
+	CrewID         pgtype.UUID
+	TextChannelID  pgtype.UUID
+	VoiceChannelID pgtype.UUID
+}
+
+// Where an old room link lands now (#2446, #2458): the crew the room became
+// part of and the two channels it became. Only while room_channels is there
+// (#2433 drops it one release after M9).
+func (q *Queries) MovedRoom(ctx context.Context, slug string) (MovedRoomRow, error) {
+	row := q.db.QueryRow(ctx, movedRoom, slug)
+	var i MovedRoomRow
+	err := row.Scan(&i.CrewID, &i.TextChannelID, &i.VoiceChannelID)
+	return i, err
+}
+
 const nameChannelMember = `-- name: NameChannelMember :exec
 insert into channel_members (channel_id, user_id, added_by) values ($1, $2, $3)
 on conflict (channel_id, user_id) do nothing
