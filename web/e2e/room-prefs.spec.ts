@@ -25,13 +25,24 @@ test('a crew preference saves, and a refused one does not undo what did', async 
 
 	const a = await riders(A);
 	const room = await rooms.open(a, `Room Prefs ${Date.now() % 100000}`);
+	// A known start: a crew can outlive the room that made it (the rider
+	// may still hold a switch row in it), so the last run's answers could
+	// otherwise be the first thing this one reads.
+	const reset = await a.evaluate(
+		(id) =>
+			fetch(`/api/crews/${id}/me`, {
+				method: 'PATCH',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ notify: true, onBoard: false }),
+			}).then((res) => res.status),
+		room.crew,
+	);
+	expect(reset, 'could not reset the rider’s own switches').toBe(200);
 	await a.goto(`/crew/${room.crew}/members`);
 
 	const notify = a.getByRole('checkbox', { name: /Notify me about this crew/ });
 	const board = a.getByRole('checkbox', { name: /Include me on the weekly/ });
 	await expect(notify).toBeChecked();
-	// Off until the rider says yes: nobody is on a crew's board they never
-	// agreed to (GetCrewPrefs, the narrow side).
 	await expect(board).not.toBeChecked();
 
 	// It saves — asserted against the server, not the switch.
