@@ -123,8 +123,9 @@ func (s *Service) handleRememberCrewDoor(w http.ResponseWriter, r *http.Request)
 
 // handleJoinCrew is the one way in (ADR-0038 amended, #1236). Joining stores
 // a member row and nothing else: metrics stay visible only to people who
-// actually enter a voice channel, and a new member has entered none yet. A ban is a
-// row too and wins the conflict, so a banned rider is refused, not readmitted.
+// actually enter a voice channel, and a new member has entered none yet. A
+// ban is a row too and wins the conflict, so a banned rider is refused, not
+// readmitted.
 func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Sign in to join a crew.")
 	if !ok {
