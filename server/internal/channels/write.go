@@ -42,6 +42,25 @@ func cleanName(raw string) (string, bool) {
 	return name, true
 }
 
+// firstName is what a crew's first channels are called (#2480): a text and a
+// voice channel of one name, the pair every room became (ADR-0058).
+const firstName = "Lounge"
+
+// OpenFirst gives a crew being founded its first text and voice channel, in
+// the founding's transaction — a crew with nowhere to talk or ride is one its
+// founder lands in and cannot use.
+func OpenFirst(ctx context.Context, q *db.Queries, crewID pgtype.UUID) error {
+	for _, kind := range []string{kindText, kindVoice} {
+		limit, _ := capOf(kind)
+		if _, err := q.CreateChannel(ctx, db.CreateChannelParams{
+			CrewID: crewID, Kind: kind, Name: firstName, MaxChannels: limit,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 var nameRule = fmt.Sprintf("A channel name has to be 1–%d characters on one line.", protocol.MaxChannelNameChars)
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {

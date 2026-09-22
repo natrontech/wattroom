@@ -89,6 +89,7 @@ type crewJSON struct {
 }
 
 func (s *Service) registerCrews(mux *http.ServeMux) {
+	mux.HandleFunc("POST /api/crews", s.handleFoundCrew)
 	mux.HandleFunc("GET /api/crews/{id}", s.handleGetCrew)
 	// The literal outranks the wildcard above in Go's mux.
 	mux.HandleFunc("GET /api/crews/directory", s.handleCrewDirectory)

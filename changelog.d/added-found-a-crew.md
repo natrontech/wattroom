@@ -1,0 +1,1 @@
+- **Start a crew from Home.** A rider with no invite names a crew and lands in it, with a text channel and a voice channel called Lounge already there. A rider founds at most three crews; handing one on frees the slot.
