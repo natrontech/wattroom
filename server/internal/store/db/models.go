@@ -40,15 +40,18 @@ type BoardClip struct {
 }
 
 type Channel struct {
-	ID             pgtype.UUID
-	CrewID         pgtype.UUID
-	Kind           string
-	Name           string
-	Position       int32
-	Private        bool
-	SoundPack      string
-	CreatedAt      pgtype.Timestamptz
-	AnnouncementID pgtype.UUID
+	ID                 pgtype.UUID
+	CrewID             pgtype.UUID
+	Kind               string
+	Name               string
+	Position           int32
+	Private            bool
+	SoundPack          string
+	CreatedAt          pgtype.Timestamptz
+	AnnouncementID     pgtype.UUID
+	AutoplayEnabled    bool
+	AutoplayOrder      string
+	AutoplayPlaylistID pgtype.UUID
 }
 
 type ChannelMember struct {
@@ -207,6 +210,7 @@ type Playlist struct {
 	Name      string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+	CrewID    pgtype.UUID
 }
 
 type PlaylistTrack struct {
@@ -348,14 +352,15 @@ type Track struct {
 }
 
 type TrackPlay struct {
-	ID       pgtype.UUID
-	TrackID  pgtype.UUID
-	RoomID   pgtype.UUID
-	QueuedBy pgtype.UUID
-	Skipped  bool
-	At       pgtype.Timestamptz
-	VideoID  string
-	Title    string
+	ID        pgtype.UUID
+	TrackID   pgtype.UUID
+	RoomID    pgtype.UUID
+	QueuedBy  pgtype.UUID
+	Skipped   bool
+	At        pgtype.Timestamptz
+	VideoID   string
+	Title     string
+	ChannelID pgtype.UUID
 }
 
 type User struct {
