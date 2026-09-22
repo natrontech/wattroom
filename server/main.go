@@ -171,8 +171,8 @@ func main() {
 	// metrics, which is a worse half-hour than a sentence.
 	mux.HandleFunc("GET /metrics", metricsMoved)
 	mux.HandleFunc("GET /api/version", versionHandler())
-	// What a link preview may say about a room: listed rooms only (#1734).
-	var roomIdentity og.LookupRoom
+	// What a shared /c/{code} link may say about a crew (#2445).
+	var crewCard og.LookupCrew
 	if st != nil {
 		// The key that seals stored third-party credentials (#697). Absent is
 		// allowed and warns; present-but-unusable is fatal, because an
@@ -240,7 +240,7 @@ func main() {
 		}
 		roomsService := rooms.New(st, authService, log)
 		roomsService.Register(mux)
-		roomIdentity = roomsService.PublicIdentity
+		crewCard = roomsService.CrewCard
 		// A purge hands the rider's crews on before the row goes (ADR-0038).
 		accountService.SetCrews(roomsService)
 		// Session-planned email mounts only with WATTROOM_RESEND_KEY set —
@@ -406,10 +406,7 @@ func main() {
 		}
 	}
 	// Link previews: crawlers don't run JS, so og meta + images come from Go (#240).
-	// Listed rooms only (#1734): an unlisted slug gets the site card, the
-	// way an unknown one does.
-	lookup := roomIdentity
-	social := og.New(baseURL, lookup, log)
+	social := og.New(baseURL, crewCard, log)
 	social.Register(mux)
 	// Under every API route: an unknown or unmounted path answers the API's
 	// own 404, never the SPA shell with a 200 the client then parses as data

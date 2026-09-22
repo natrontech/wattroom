@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"image"
+	"image/color"
 	"image/png"
 	"log/slog"
 	"net/http"
@@ -15,29 +17,46 @@ import (
 )
 
 func testService() *Service {
-	lookup := func(_ context.Context, slug string) (string, string, bool) {
-		if slug == "tuesday-crew" {
-			return `Tuesday <Crew> & "friends"`, "🚴", true
+	lookup := func(_ context.Context, code string) (string, []byte, bool) {
+		if code == "TUESDAY" {
+			return `Tuesday <Crew> & "friends"`, nil, true
 		}
-		return "", "", false
+		return "", nil, false
 	}
 	return New("https://wattroom.ch/", lookup, slog.New(slog.DiscardHandler))
+}
+
+// solidPNG is a crew picture: one flat colour, wide, so a squashed draw and
+// a cropped one land differently.
+func solidPNG(t *testing.T, c color.NRGBA) []byte {
+	t.Helper()
+	img := image.NewNRGBA(image.Rect(0, 0, 400, 200))
+	for y := range 200 {
+		for x := range 400 {
+			img.SetNRGBA(x, y, c)
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
 }
 
 func TestRender(t *testing.T) {
 	s := testService()
 	cases := []struct{ name, title, sub string }{
 		{"default", defaultTitle, siteDesc},
-		{"room", "Tuesday Crew", roomSub},
-		{"emoji-only title falls back", "🚴🔥", roomSub},
-		{"long title truncates", strings.Repeat("Zurich Winter Base Camp ", 6), roomSub},
-		{"widest glyphs", strings.Repeat("W", 40), roomSub},
-		{"unbroken word", strings.Repeat("Hammerzeit", 12), roomSub},
+		{"room", "Tuesday Crew", crewSub},
+		{"emoji-only title falls back", "🚴🔥", crewSub},
+		{"long title truncates", strings.Repeat("Zurich Winter Base Camp ", 6), crewSub},
+		{"widest glyphs", strings.Repeat("W", 40), crewSub},
+		{"unbroken word", strings.Repeat("Hammerzeit", 12), crewSub},
 		{"long subtitle", "Tuesday Crew", strings.Repeat("ride together ", 12)},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			buf, err := s.Render(tc.title, tc.sub)
+			buf, err := s.Render(tc.title, tc.sub, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -79,6 +98,47 @@ func TestRender(t *testing.T) {
 	}
 }
 
+// A crew's picture lands in its square, top right, rounded, and a picture
+// that does not decode costs the card nothing (#2445).
+func TestRenderCrewPicture(t *testing.T) {
+	s := testService()
+	buf, err := s.Render("Tuesday Crew", crewSub, solidPNG(t, watt))
+	if err != nil {
+		t.Fatal(err)
+	}
+	img, err := png.Decode(bytes.NewReader(buf))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mid := image.Pt(imgW-margin-picSize/2, 72+picSize/2)
+	if r, g, b, _ := img.At(mid.X, mid.Y).RGBA(); r>>8 != uint32(watt.R) || g>>8 != uint32(watt.G) || b>>8 != uint32(watt.B) {
+		t.Fatalf("picture centre = %v, want the picture's colour", img.At(mid.X, mid.Y))
+	}
+	// The corner is rounded away, so the surface shows through.
+	wr, wg, wb, _ := surface.RGBA()
+	if r, g, b, _ := img.At(imgW-margin-picSize+1, 73).RGBA(); r != wr || g != wg || b != wb {
+		t.Errorf("picture corner = %v, want it rounded off", img.At(imgW-margin-picSize+1, 73))
+	}
+	if _, err := s.Render("Tuesday Crew", crewSub, []byte("not an image")); err != nil {
+		t.Fatalf("an undecodable picture failed the card: %v", err)
+	}
+}
+
+// A picture that declares a canvas past the ceiling is refused on its header,
+// before a pixel is allocated: the upload caps the bytes, not the canvas.
+func TestDecodePictureRefusesAHugeCanvas(t *testing.T) {
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, image.NewGray(image.Rect(0, 0, 5000, 5000))); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := decodePicture(buf.Bytes()); ok {
+		t.Fatalf("a %d-byte picture declaring 5000×5000 was decoded", buf.Len())
+	}
+	if _, ok := decodePicture(solidPNG(t, watt)); !ok {
+		t.Fatal("an ordinary picture was refused")
+	}
+}
+
 func TestDropUnglyphed(t *testing.T) {
 	s := testService()
 	if got := s.dropUnglyphed("🚴 Tuesday Crew 🔥"); got != "Tuesday Crew" {
@@ -91,12 +151,12 @@ func TestDropUnglyphed(t *testing.T) {
 
 func TestMeta(t *testing.T) {
 	s := testService()
-	t.Run("room path uses public identity, escaped", func(t *testing.T) {
-		meta := string(s.Meta(httptest.NewRequestWithContext(t.Context(), "GET", "/r/Tuesday-Crew", nil)))
+	t.Run("crew door names the crew, escaped", func(t *testing.T) {
+		meta := string(s.Meta(httptest.NewRequestWithContext(t.Context(), "GET", "/c/TUESDAY", nil)))
 		for _, want := range []string{
-			"🚴 Tuesday &lt;Crew&gt; &amp; &#34;friends&#34; — WattRoom",
-			`content="https://wattroom.ch/og/r/tuesday-crew.png"`,
-			"invited to ride. Join the room on WattRoom.",
+			"<title>Tuesday &lt;Crew&gt; &amp; &#34;friends&#34; — WattRoom</title>",
+			`content="https://wattroom.ch/og/c/TUESDAY.png"`,
+			"invited to ride. Join the crew on WattRoom.",
 			"summary_large_image",
 		} {
 			if !strings.Contains(meta, want) {
@@ -104,33 +164,11 @@ func TestMeta(t *testing.T) {
 			}
 		}
 		if strings.Contains(meta, "<Crew>") {
-			t.Fatal("unescaped room name in meta")
+			t.Fatal("unescaped crew name in meta")
 		}
 	})
-	t.Run("room subpath still resolves", func(t *testing.T) {
-		meta := string(s.Meta(httptest.NewRequestWithContext(t.Context(), "GET", "/r/tuesday-crew/watch", nil)))
-		if !strings.Contains(meta, "tuesday-crew.png") {
-			t.Fatalf("subpath got default card:\n%s", meta)
-		}
-	})
-	t.Run("only an emoji icon reaches the title", func(t *testing.T) {
-		icons := map[string]string{"keyed": "flame", "emoji": "🔥", "none": ""}
-		svc := New("https://wattroom.ch", func(_ context.Context, slug string) (string, string, bool) {
-			icon, ok := icons[slug]
-			return "Sunday Ride", icon, ok
-		}, slog.New(slog.DiscardHandler))
-		for slug, want := range map[string]string{
-			"keyed": "<title>Sunday Ride — WattRoom</title>", // not "flame Sunday Ride" (#973)
-			"emoji": "<title>🔥 Sunday Ride — WattRoom</title>",
-			"none":  "<title>Sunday Ride — WattRoom</title>",
-		} {
-			meta := string(svc.Meta(httptest.NewRequestWithContext(t.Context(), "GET", "/r/"+slug, nil)))
-			if !strings.Contains(meta, want) {
-				t.Errorf("%s icon: meta missing %q:\n%s", slug, want, meta)
-			}
-		}
-	})
-	for _, path := range []string{"/", "/rooms", "/r/unknown-room"} {
+	// A room link is not a door any more: it gets the site's card.
+	for _, path := range []string{"/", "/rooms", "/c/UNKNOWN", "/r/tuesday-crew"} {
 		t.Run("default card for "+path, func(t *testing.T) {
 			meta := string(s.Meta(httptest.NewRequestWithContext(t.Context(), "GET", path, nil)))
 			if !strings.Contains(meta, "og/default.png") || !strings.Contains(meta, siteDesc) {
@@ -150,7 +188,7 @@ func TestCrawlerHead(t *testing.T) {
 		return string(s.Meta(httptest.NewRequestWithContext(t.Context(), "GET", path, nil)))
 	}
 	t.Run("icons and canonical, on every path", func(t *testing.T) {
-		for _, path := range []string{"/", "/rooms", "/r/tuesday-crew"} {
+		for _, path := range []string{"/", "/rooms", "/c/TUESDAY"} {
 			for _, want := range []string{
 				// A format Google accepts (not SVG) at a URL that survives a
 				// deploy (not a hashed asset name).
@@ -194,7 +232,7 @@ func TestInject(t *testing.T) {
 func TestHandlers(t *testing.T) {
 	mux := http.NewServeMux()
 	testService().Register(mux)
-	for _, path := range []string{"/og/default.png", "/og/r/tuesday-crew.png", "/og/r/unknown.png"} {
+	for _, path := range []string{"/og/default.png", "/og/c/TUESDAY.png", "/og/c/UNKNOWN.png"} {
 		t.Run(path, func(t *testing.T) {
 			rec := httptest.NewRecorder()
 			mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", path, nil))
@@ -209,16 +247,16 @@ func TestHandlers(t *testing.T) {
 }
 
 // A card is rendered once per title and sub, and an address gets the
-// sign-in ceiling of room cards a minute (#1739).
-func TestRoomCardsAreCachedAndBudgeted(t *testing.T) {
+// sign-in ceiling of crew cards a minute (#1739).
+func TestCrewCardsAreCachedAndBudgeted(t *testing.T) {
 	svc := testService()
 	mux := http.NewServeMux()
 	svc.Register(mux)
 	for range 2 {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/og/r/tuesday-crew.png", nil))
+		mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/og/c/TUESDAY.png", nil))
 		if rec.Code != http.StatusOK {
-			t.Fatalf("known slug: %d", rec.Code)
+			t.Fatalf("known code: %d", rec.Code)
 		}
 	}
 	if n := svc.renders.Load(); n != 1 {
@@ -226,13 +264,13 @@ func TestRoomCardsAreCachedAndBudgeted(t *testing.T) {
 	}
 	for i := 2; i < cardsPerWindow; i++ {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", fmt.Sprintf("/og/r/slug-%d.png", i), nil))
+		mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", fmt.Sprintf("/og/c/CODE%d.png", i), nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("card %d: %d", i, rec.Code)
 		}
 	}
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/og/r/one-more.png", nil))
+	mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/og/c/ONEMORE.png", nil))
 	if rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("past the ceiling: %d, want 429", rec.Code)
 	}

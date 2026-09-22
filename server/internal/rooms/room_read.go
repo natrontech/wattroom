@@ -185,9 +185,9 @@ func boardRowOf(row db.CrewWeekBoardRow) boardRowJSON {
 // they are inside it. Signed in — ADR-0009 puts everything behind the door,
 // and "public" means every signed-in rider, not the web (ADR-0039). The
 // unsigned caller used to get {slug, name, listed, icon} with a 200 for any
-// room, listed or not (#2241), while PublicIdentity beside it — the share
-// card, the one thing that IS for the web — narrowed itself to listed rooms
-// for exactly that reason. The 401 comes before the slug lookup, so an
+// room, listed or not (#2241), while the room's share card — the one thing
+// that WAS for the web — narrowed itself to listed rooms for exactly that
+// reason. The 401 comes before the slug lookup, so an
 // unlisted room's existence is not the answer either.
 // chosen reports whether somebody answered for this number. ADR-0048 withholds
 // w/kg — and with it the category it brackets — "until at least one of the
@@ -425,16 +425,4 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		response.BoardEnabled = room.BoardEnabled
 	}
 	httpx.WriteJSON(w, http.StatusOK, response)
-}
-
-// PublicIdentity is what a link preview may say about a room (#1734): its
-// name and icon when the owner listed it, nothing otherwise. ADR-0039:
-// "public" means every signed-in rider, not the web — and the share card
-// answers crawlers and strangers with no session at all.
-func (s *Service) PublicIdentity(ctx context.Context, slug string) (name, icon string, ok bool) {
-	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
-	if err != nil || !room.Listed {
-		return "", "", false
-	}
-	return room.Name, room.Icon, true
 }

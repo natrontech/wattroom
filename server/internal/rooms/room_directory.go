@@ -11,15 +11,6 @@ import (
 // The public room directory (ADR-0039) and a rider's own settings for a room.
 // Split from rooms.go (#1265).
 
-// directoryPageSize is one screenful. A list rather than a search (ux.md's
-// 95% rule applies to a search box too), and paged rather than unbounded so
-// the route cannot become a way to enumerate the instance in one request.
-const directoryPageSize = 50
-
-// maxDirectoryOffset keeps ?offset= inside int32 (audit 2026-09-09): past
-// it, the narrowing wrapped negative and Postgres refused the read.
-const maxDirectoryOffset = 1_000_000
-
 // directoryEntryJSON is one room in the public directory (#1118, ADR-0039):
 // what it is called, what it looks like, and where its door is. The absence
 // of a member count and of any activity signal is the decision, not an

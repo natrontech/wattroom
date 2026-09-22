@@ -10,11 +10,12 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"github.com/natrontech/wattroom/server/internal/budget"
-	"github.com/natrontech/wattroom/server/internal/httpx"
+	"hash/crc32"
 	"html"
 	"image"
 	"image/color"
+	_ "image/gif" // a crew picture is PNG, JPEG, WebP or GIF (httpx.ReadImageUpload)
+	_ "image/jpeg"
 	"image/png"
 	"log/slog"
 	"math"
@@ -25,12 +26,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/budget"
+	"github.com/natrontech/wattroom/server/internal/httpx"
 	"golang.org/x/image/draw"
 	"golang.org/x/image/font"
 	"golang.org/x/image/font/opentype"
 	"golang.org/x/image/font/sfnt"
 	"golang.org/x/image/math/fixed"
+	_ "golang.org/x/image/webp"
 )
 
 //go:embed ChakraPetch-Bold.ttf
@@ -42,8 +45,8 @@ const (
 
 	siteName     = "WattRoom"
 	defaultTitle = "Train together, not alone."
-	roomDesc     = "You're invited to ride. Join the room on WattRoom."
-	roomSub      = "Ride together on WattRoom"
+	crewDesc     = "You're invited to ride. Join the crew on WattRoom."
+	crewSub      = "Ride together on WattRoom"
 
 	// siteDesc is the card's subtitle, drawn into a 1200×630 PNG at 24–34px —
 	// so it stays one line. metaDesc is the search snippet, where Google
@@ -73,12 +76,12 @@ var (
 	neon    = color.NRGBA{0x8b, 0x2b, 0xff, 0xff}
 )
 
-// LookupRoom resolves a slug to a room's public identity — exactly the fields
-// an unauthenticated GET /api/rooms/{slug} returns. Nil when the DB is absent.
-type LookupRoom func(ctx context.Context, slug string) (name, icon string, ok bool)
+// LookupCrew resolves an invite code to what the crew's door tells anyone
+// holding it — its name and picture (#2445). Nil when the DB is absent.
+type LookupCrew func(ctx context.Context, code string) (name string, image []byte, ok bool)
 
 // cardsPerWindow is the sign-in ceiling, per address (#1739): every distinct
-// slug was a fresh 1200×630 rasterisation with no session and no ration.
+// code was a fresh 1200×630 rasterisation with no session and no ration.
 const (
 	cardsPerWindow = 30
 	cardWindow     = time.Minute
@@ -89,7 +92,7 @@ const (
 
 type Service struct {
 	baseURL string
-	lookup  LookupRoom
+	lookup  LookupCrew
 	doors   *budget.Budget[string]
 	mu      sync.Mutex
 	cards   map[string][]byte
@@ -99,7 +102,7 @@ type Service struct {
 	log     *slog.Logger
 }
 
-func New(baseURL string, lookup LookupRoom, log *slog.Logger) *Service {
+func New(baseURL string, lookup LookupCrew, log *slog.Logger) *Service {
 	fnt, err := embeddedFace()
 	if err != nil {
 		panic("og: embedded font: " + err.Error()) // build-time asset, not user input
@@ -110,31 +113,32 @@ func New(baseURL string, lookup LookupRoom, log *slog.Logger) *Service {
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /og/default.png", func(w http.ResponseWriter, _ *http.Request) {
-		s.serve(w, defaultTitle, siteDesc)
+		s.serve(w, defaultTitle, siteDesc, nil)
 	})
-	mux.HandleFunc("GET /og/r/{slug}", s.handleRoom)
+	mux.HandleFunc("GET /og/c/{code}", s.handleCrew)
 }
 
-func (s *Service) handleRoom(w http.ResponseWriter, r *http.Request) {
+func (s *Service) handleCrew(w http.ResponseWriter, r *http.Request) {
 	if s.doors != nil && !s.doors.Spend(httpx.ClientIP(r)) {
 		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
 			"Too many previews from this address — give it a minute.")
 		return
 	}
 	title, sub := defaultTitle, siteDesc
-	slug := strings.ToLower(strings.TrimSuffix(r.PathValue("slug"), ".png"))
+	var pic []byte
+	code := strings.TrimSuffix(r.PathValue("code"), ".png")
 	if s.lookup != nil {
-		if name, _, ok := s.lookup(r.Context(), slug); ok {
-			title, sub = name, roomSub
+		if name, image, ok := s.lookup(r.Context(), code); ok {
+			title, sub, pic = name, crewSub, image
 		}
 	}
-	// Unknown slug still gets the default card: no broken previews, and no
-	// oracle beyond what GET /api/rooms/{slug} already answers.
-	s.serve(w, title, sub)
+	// An unknown code still gets the default card: no broken previews, and no
+	// oracle beyond what GET /api/crew-doors/{code} already answers.
+	s.serve(w, title, sub, pic)
 }
 
-func (s *Service) serve(w http.ResponseWriter, title, sub string) {
-	buf, err := s.card(title, sub)
+func (s *Service) serve(w http.ResponseWriter, title, sub string, pic []byte) {
+	buf, err := s.card(title, sub, pic)
 	if err != nil {
 		// errors.md's one shape, like the 429 this same handler answers with
 		// (#2253): http.Error wrote plain text, so one route had two error
@@ -147,17 +151,18 @@ func (s *Service) serve(w http.ResponseWriter, title, sub string) {
 	_, _ = w.Write(buf)
 }
 
-// card is the rendered PNG for one title and sub, rendered once (#1739): the
-// same card used to be rasterised per request, and every distinct slug was
-// a distinct URL, so the HTTP cache bought nothing against a loop.
-func (s *Service) card(title, sub string) ([]byte, error) {
-	key := title + "\x00" + sub
+// card is the rendered PNG for one title, sub and picture, rendered once
+// (#1739): the same card used to be rasterised per request, and every
+// distinct code was a distinct URL, so the HTTP cache bought nothing against
+// a loop. The picture's checksum is in the key, so a new logo is a new card.
+func (s *Service) card(title, sub string, pic []byte) ([]byte, error) {
+	key := fmt.Sprintf("%s\x00%s\x00%08x", title, sub, crc32.ChecksumIEEE(pic))
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if buf, hit := s.cards[key]; hit {
 		return buf, nil
 	}
-	buf, err := s.Render(title, sub)
+	buf, err := s.Render(title, sub, pic)
 	if err != nil {
 		return nil, err
 	}
@@ -169,24 +174,19 @@ func (s *Service) card(title, sub string) ([]byte, error) {
 	return buf, nil
 }
 
-// Meta builds the <title> + social meta block for a SPA route. Room paths get
-// the room's public identity; everything else gets the site card.
+// Meta builds the <title> + social meta block for a SPA route. A crew's door,
+// /c/{code}, gets the crew's name and card; everything else gets the site's.
 func (s *Service) Meta(r *http.Request) []byte {
 	title := siteName + " — train together, not alone"
 	desc, img := metaDesc, s.baseURL+"/og/default.png"
-	if rest, ok := strings.CutPrefix(r.URL.Path, "/r/"); ok && s.lookup != nil {
-		slug, _, _ := strings.Cut(rest, "/")
-		slug = strings.ToLower(slug)
-		if name, icon, found := s.lookup(r.Context(), slug); found {
-			// A room icon has been a lucide key since #459 — "flame Sunday
-			// Ride" is not a title. Only the emoji a pre-#459 room still
-			// stores is a glyph a crawler can render.
-			if !protocol.IsEmoji(icon) {
-				icon = ""
-			}
-			title = strings.TrimSpace(icon+" "+name) + " — " + siteName
-			desc = roomDesc
-			img = s.baseURL + "/og/r/" + url.PathEscape(slug) + ".png"
+	if rest, ok := strings.CutPrefix(r.URL.Path, "/c/"); ok && s.lookup != nil {
+		code, _, _ := strings.Cut(rest, "/")
+		// The name alone: a crew icon is a lucide key, and "flame Sunday
+		// Ride" is not a title (#973).
+		if name, _, found := s.lookup(r.Context(), code); found {
+			title = name + " — " + siteName
+			desc = crewDesc
+			img = s.baseURL + "/og/c/" + url.PathEscape(code) + ".png"
 		}
 	}
 	var b bytes.Buffer
@@ -258,10 +258,26 @@ func (s *Service) Inject(index []byte, r *http.Request) []byte {
 	return bytes.Replace(index, []byte("</head>"), append(s.Meta(r), []byte("</head>")...), 1)
 }
 
-// Render draws the 1200×630 card: logo + wordmark, title, accent, subtitle.
-func (s *Service) Render(title, sub string) ([]byte, error) {
+// picSize is the crew picture's square, top right, clear of the title.
+const picSize = 240
+
+// Render draws the 1200×630 card: logo + wordmark, title, accent, subtitle —
+// and, when pic decodes, the crew's picture as a rounded square top right.
+// A picture that does not decode is left out rather than failing the card.
+func (s *Service) Render(title, sub string, pic []byte) ([]byte, error) {
 	img := image.NewNRGBA(image.Rect(0, 0, imgW, imgH))
 	draw.Draw(img, img.Bounds(), image.NewUniform(surface), image.Point{}, draw.Src)
+	if src, ok := decodePicture(pic); ok {
+		box := image.Rect(imgW-margin-picSize, 72, imgW-margin, 72+picSize)
+		square := image.NewNRGBA(image.Rect(0, 0, picSize, picSize))
+		// The centred square of the picture, so a wide logo is cropped rather
+		// than squashed — what object-fit: cover does for it in the app.
+		b := src.Bounds()
+		side := min(b.Dx(), b.Dy())
+		crop := image.Rect(0, 0, side, side).Add(b.Min).Add(image.Pt((b.Dx()-side)/2, (b.Dy()-side)/2))
+		draw.CatmullRom.Scale(square, square.Bounds(), src, crop, draw.Src, nil)
+		draw.DrawMask(img, box, square, image.Point{}, roundMask(box, 28), image.Point{}, draw.Over)
+	}
 
 	drawLogo(img, margin, 72, 72)
 	wordFace, err := s.face(45)
@@ -290,6 +306,25 @@ func (s *Service) Render(title, sub string) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// maxPicturePixels bounds what a picture may decode to. The bytes are capped
+// at upload, but a small PNG can declare a huge canvas, and this decode runs
+// for any caller holding a code — signed in or not.
+const maxPicturePixels = 4096 * 4096
+
+// decodePicture decodes a stored crew picture, refusing one whose declared
+// size is past the ceiling before any pixel is allocated.
+func decodePicture(pic []byte) (image.Image, bool) {
+	if len(pic) == 0 {
+		return nil, false
+	}
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(pic))
+	if err != nil || cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width*cfg.Height > maxPicturePixels {
+		return nil, false
+	}
+	src, _, err := image.Decode(bytes.NewReader(pic))
+	return src, err == nil
 }
 
 func (s *Service) face(size float64) (font.Face, error) {
