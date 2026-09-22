@@ -581,14 +581,14 @@
 
 	<!-- The video, wherever the people column is not (#427): below xl the room
 	     has no column, and off the room pages there is none at all. -->
-	{#if connectedSlug}
+	{#if roomConnection.current}
 		<JukeboxRail />
 	{/if}
 
 	<!-- Who is in the room with you, while you are looking elsewhere (#446).
 	     Above you, like Discord's voice panel; off the Lounge, which already
 	     shows everyone in tiles. -->
-	{#if connectedSlug}
+	{#if roomConnection.current}
 		<RoomStrip {pathname} />
 	{/if}
 
