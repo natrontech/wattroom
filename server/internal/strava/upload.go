@@ -114,9 +114,16 @@ func (s *Service) post(ctx context.Context, token string, ride db.GetRideForUplo
 	if _, err := part.Write(fit); err != nil {
 		return 0, err
 	}
+	// Room name is the rider's own ride metadata; other riders never appear
+	// here (privacy: metrics are room-scoped, WATTROOM.md).
+	desc := "Ridden on WattRoom — https://wattroom.ch"
+	if ride.RoomName != nil {
+		desc = "Ridden in " + *ride.RoomName + " on WattRoom — https://wattroom.ch"
+	}
 	fields := map[string]string{
 		"data_type":   "fit",
 		"name":        ride.WorkoutName,
+		"description": desc,
 		"external_id": "wattroom-" + store.UUIDString(ride.ID),
 	}
 	for k, v := range fields {

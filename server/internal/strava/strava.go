@@ -1,7 +1,7 @@
 // Package strava is the auto-upload worker (#34): a finished ride, encoded
 // as the .fit the export already produces, posted to the rider's OWN Strava.
 // Upload-only is locked (WATTROOM.md) — nothing is ever pulled back or shown
-// to anyone else. Single-athlete mode until the Standard Tier request.
+// to anyone else. Approved by Strava 2026-09: 999 athletes, 600 req/15 min.
 package strava
 
 import (
