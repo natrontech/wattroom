@@ -1,6 +1,6 @@
 # 0036 — What a room shows about its members: sums, your own turnout, and no default ladder
 
-- Status: accepted
+- Status: accepted, amended 2026-09-22 by [ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): what a **crew** shows about its members
 - Date: 2026-09-08
 - Extends: [0024](0024-social-profiles.md) and [0013](0013-room-identity-and-moderation.md)
 - Sits beside: [0034](0034-a-session-leaves-one-recap.md), which settled the same
@@ -178,3 +178,34 @@ proves necessary, it is an amendment with a migration, not a rewrite.
 > `RoomWeekBoard` filtering on it. The reasoning above is kept rather than
 > rewritten — being right about the *sequence* is why the column exists now
 > and did not exist then.
+
+## Amendment, 2026-09-22 (#2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md)): what a crew shows about its members
+
+The room dissolves into the crew, and this decision moves up whole. Every rule
+above holds with _crew_ for _room_:
+
+- **Sums over the whole crew, plus the caller's own turnout**, and nothing that
+  orders its members by default. The streak is the crew's — a crew that rode
+  in two voice channels in one week has one streak — and sessions still count
+  distinct days, so splitting an evening across two channels flatters a crew no
+  more than its size could.
+- **The board is off until the crew turns it on** — its owner or an admin,
+  per docs/SPEC.md's matrix (#2426) — weekly, bracketed by Category, never the
+  front page.
+- **The disclosure is at the crew's door**, `/c/[code]`, which is where the
+  #1651 amendment's reasoning now points: the door a rider walks through is the
+  crew's, so that is where they must learn a board exists.
+- **The per-rider switch lives on the crew membership** (`on_board`, #2432).
+
+[ADR-0038](0038-the-crew-is-the-layer-above-rooms.md) kept the board
+room-scoped because a crew board would put a rider beside people from rooms
+they had never entered — enrolment by existence at a larger radius. With no
+rooms left, the crew **is** the set a rider was let into, which is the unit
+that reasoning asked for. The migration keeps the trap shut on the way across:
+**a rider is on the crew's board afterwards only if they were on a board
+before** — `on_board` set in a room whose board was on. Everyone else starts
+off it and can switch themselves on.
+
+The known gap above — the opt-out does not survive leaving — moves with the
+column: leaving the crew takes the row, and the answer still needs somewhere to
+keep a preference past the membership that holds it.

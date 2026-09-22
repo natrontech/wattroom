@@ -1,6 +1,7 @@
 # ADR-0010: Room-first — WattRoom replaces the voice app, not just the trainer app
 
-Date: 2026-08-30 · Status: accepted (#150)
+Date: 2026-08-30 · Status: accepted (#150), amended 2026-09-22 by
+[ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): the place you idle in is a voice channel
 
 ## Context
 
@@ -102,3 +103,19 @@ gate figures; this file records why. WATTROOM.md still reads "always-on" —
 ADR-0001 locks that document and #656 is deciding how a founding line
 records a divergence, so the pitch changes there in whatever form #656
 concludes. Until then this amendment is the canonical statement.
+
+## Amendment — the place you idle in is a voice channel (2026-09-22, #2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md))
+
+The room dissolves into the crew. What this ADR called _the room_ — the place
+you idle in, with voice as its default state — is a crew's **voice channel**;
+the crew's conversation is its **text channels**. The decisions carry over with
+the noun changed, and none of them loosens:
+
+1. Voice is what a voice channel is for, and entering one still connects
+   nothing — the #681 amendment above stands word for word, with _voice
+   channel_ for _room_.
+2. The sidebar is still the crew's radar: who is in which voice channel, what
+   session is running where, and unread per text channel (#2444).
+3. The bounded log of the #201 amendment is per **text channel**, at
+   docs/SPEC.md's bound; a voice channel has no text of its own.
+4. Unchanged.

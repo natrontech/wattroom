@@ -1,6 +1,6 @@
 # ADR-0021: The calendar feed is addressed to the rider, not the room
 
-- Status: accepted, amended twice on 2026-09-17 (#1693, #1767)
+- Status: accepted, amended twice on 2026-09-17 (#1693, #1767); amended 2026-09-22 by [ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): the crew feed replaces the room feed
 - Date: 2026-08-31
 
 ## Context
@@ -16,6 +16,8 @@ The unit riders actually think in is "my sessions". That crosses rooms, which is
 Riders get their own feed token (`users.ics_token`) and their own URL, `/api/calendar/{token}.ics`, listing planned sessions in every room they are a member of. Membership is resolved **on read**, so joining or leaving a room changes the feed without re-subscribing. This is the feed the UI offers first.
 
 Room feeds stay exactly as they are. They address a different subject — a club's schedule, shareable with people who are not members — and existing subscriptions must not break.
+
+> **Diverged 2026-09-22 (#2425, #2441, ADR-0058)** — rooms are gone, so the room feed goes with them and its URL answers 404; a subscribed calendar goes quiet and has to subscribe again, to the crew's feed. The amendment at the end says why the room's address is not pointed at the crew's schedule instead.
 
 Planned sessions are the only thing either feed carries. Metrics, ride history, and room membership lists are not calendar data and never enter a feed.
 
@@ -94,3 +96,21 @@ would cost, and there is no next field today. A room feed is still worth
 rotating if it leaks — it says when this room rides, which is not nothing —
 and the Advanced expander on the room's own Sessions place is still where
 that happens.
+
+## Amendment, 2026-09-22 (#2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md)): the crew feed replaces the room feed
+
+The room dissolves into the crew, and its schedule with it: a plan is the
+crew's and names the voice channel it will run in. So the second feed this ADR
+kept — _a club's schedule, shareable with people who are not members_ — is the
+**crew's**, on `crews.ics_token` (#2441), with the rotate, the confirm and the
+bounds the room feed had. The rider feed is unchanged in shape and unions the
+crews the rider is in, resolved on read as before.
+
+**Existing room subscriptions break, and that is the decision rather than an
+oversight.** Keeping them alive would mean answering a room's address with its
+crew's schedule, and that widens what a link already sitting in somebody's
+calendar discloses: plans in every channel of the crew, handed to a holder who
+was given one room's. A feed that goes quiet is recoverable by subscribing
+once more; a feed that quietly says more is not recoverable at all. The crew's
+settings page says so once, and the release notes say so before anybody
+upgrades.

@@ -1,6 +1,7 @@
 # ADR-0020: The app takes Discord's shape — one frame, one sidebar, no switchable layouts
 
-Date: 2026-09-01 · Status: accepted (#181)
+Date: 2026-09-01 · Status: accepted (#181), amended 2026-09-22 by
+[ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): a crew opens into its channels; "You" is the switcher's first entry
 
 ## Context
 
@@ -673,6 +674,28 @@ never as _this control left the panel_. Rule 4 of the map amendment is not the
 counter-argument: one home per object is about **addresses** — a page and the
 door to it — while a fader drawn both on its object and in the panel that shows
 what you have changed is this rule working as intended.
+
+## Amendment — a crew opens into its channels, and "You" is the first entry (2026-09-22, #2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md))
+
+The room dissolves into the crew, so the room opening into its places — the
+second level of the tree the map amendment drew — is gone. A crew opens into
+**its pages** (Home, Schedule, Workouts, Board, Members, and Settings for its
+admins), then **its text channels**, then **its voice channels** (#2447). The
+places move to where they belong: the Lounge to the voice channel, Chat to the
+text channel, Training and Watch to the session, Sessions, Members, Settings
+and the Board to the crew.
+
+**"You" is the first entry of the crew switcher.** The rider's own Home,
+Workouts, Rides, Music, Friends and Messages are the mode with no crew, which
+finishes the 2026-09-08 amendment's _the crew is a mode, not a level_ rather
+than adding a level.
+
+What holds, unchanged: one column, one lit row, one home per object, names
+instead of an icon rail, right-click on every object, and voice as a state you
+carry — the voice channel you are in follows you while you read a text channel,
+exactly as the room you were in followed you between its places. Rule 3 of the
+map (_the room's home holds its action_) reads: the voice channel's page holds
+**Start a ride** while it idles and **Join the ride** while a session runs.
 
 ## Consequences
 

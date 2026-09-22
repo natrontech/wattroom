@@ -1,7 +1,8 @@
 # ADR-0013: Room identity is an emoji; a ban is a membership role
 
 Date: 2026-08-31 · Status: accepted (#223, amended 2026-09-05: icon and
-reaction palette are lucide keys, not emoji — #447)
+reaction palette are lucide keys, not emoji — #447; amended 2026-09-22 by
+[ADR-0058](0058-the-room-dissolves-into-the-crew.md), #2425: identity and the ban are the crew's)
 
 ## Context
 
@@ -67,3 +68,18 @@ emoji do not.
 - docs/SPEC.md's icon and reaction sections describe the lucide vocabulary
   that ships today; the Decision section above stays as the historical
   record of why a single glyph was chosen at all.
+
+## Amendment — identity and the ban are the crew's (2026-09-22, #2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md))
+
+The room dissolves into the crew, and both halves of this decision move up
+with it.
+
+- **Identity.** The mark and the reaction palette are the **crew's**. Channels
+  are named, not marked, so a room's icon does not survive the migration; the
+  lucide amendment above applies to the crew's mark and palette unchanged.
+- **The ban** is a **crew** role — `crew_roles.role = 'banned'` — and it keeps
+  the seat occupied exactly as the membership row did, so every way back in
+  still meets it structurally. There is no room ban any more: a crew ban
+  severs every channel at once, through the one gate every door asks. At the
+  migration a room ban becomes a crew ban, because the narrow side is the only
+  one that cannot let a banned rider back into the room that banned them.

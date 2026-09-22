@@ -1,6 +1,6 @@
 # ADR-0056: A crew pins what it keeps needing
 
-- Status: accepted
+- Status: accepted, amended 2026-09-22 by [ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): the Board is the crew's page
 - Date: 2026-09-20
 - Extends: [ADR-0038](0038-the-crew-is-the-layer-above-rooms.md) — the crew is what owns things several rooms share
 - Extends: [ADR-0020](0020-the-app-takes-discords-shape.md) — what earns a place inside a room
@@ -125,3 +125,17 @@ to live with.
 - An announcement is deliberately **not** this (#2408): a page is pull and an
   announcement is push, so it stays a marked chat message with a strip of its
   own rather than a second kind of pin.
+
+## Amended 2026-09-22 (#2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md)): the Board is the crew's page
+
+The room dissolves into the crew, and _"read and written in a room all the
+same"_ loses its room. The Board is the **crew's** page, `/crew/[id]/board`,
+one row in the crew's sidebar rather than a place repeated inside every room
+(#2455). The reasoning that put it in the room still decides where it goes: a
+rider looks a pin up where they already are, and what a rider is inside now is
+the crew.
+
+Unchanged: the table, the endpoints, the bound, the plain-text rule, the row
+that is always there, and _everyone in the crew writes_. The page's other
+section, the announcement, is [0057](0057-an-announcement-is-a-chat-message-marked.md)'s,
+amended the same day.
