@@ -1,16 +1,23 @@
 <script lang="ts">
-	// The rider's own settings for a room (#1100), theirs alone: notify and
-	// the weekly board. Saves through the rider's own endpoint, so an owner
-	// editing the room never touches them. Split from the page (#1265).
+	// The rider's own settings for a crew (#1100, #2453) — or, until the room
+	// goes (#2460), a room — theirs alone: notify and the weekly board. Saves
+	// through the rider's own endpoint, so an owner editing the place never
+	// touches them. `path` is that endpoint; `noun` is what the words call it.
 	import { api } from '$lib/api';
 	import { toasts } from '$lib/toast.svelte';
 	import type { RiderPrefs } from '$lib/room/room-data';
 
 	let {
-		slug,
+		path,
+		noun,
 		me,
 		boardEnabled = false,
-	}: { slug: string; me?: RiderPrefs; boardEnabled?: boolean } = $props();
+	}: {
+		path: string;
+		noun: 'crew' | 'room';
+		me?: RiderPrefs;
+		boardEnabled?: boolean;
+	} = $props();
 
 	let notify = $state(true);
 	let onBoard = $state(true);
@@ -46,7 +53,7 @@
 		// is what a cross-site form can post without a preflight. So this
 		// endpoint answered 400 to every press and NEITHER switch has ever
 		// saved from this screen.
-		const res = await api<RiderPrefs>(`/api/rooms/${slug}/me`, {
+		const res = await api<RiderPrefs>(path, {
 			method: 'PATCH',
 			json: { notify, onBoard, ...next },
 		});
@@ -72,7 +79,7 @@
 		     same trap standing for everyone already inside when the owner
 		     turns it on (ADR-0036, amended). -->
 <section class="border-muted/15 mt-4 rounded-lg border p-6">
-	<h2 class="font-display font-bold">Your settings for this room</h2>
+	<h2 class="font-display font-bold">Your settings for this {noun}</h2>
 	<p class="text-muted mt-1.5 text-xs">
 		Yours alone — nobody else sees them, and the owner cannot change them.
 	</p>
@@ -86,10 +93,10 @@
 			disabled={saving}
 		/>
 		<span class="min-w-0">
-			<span class="block text-sm font-medium">Notify me about this room</span>
+			<span class="block text-sm font-medium">Notify me about this {noun}</span>
 			<span class="text-muted block text-xs">
-				Planned sessions here reach you by email. Turning off every room's mail
-				at once is on <a href="/settings/notifications" class="btn-link"
+				Planned sessions here reach you by email. Turning off all of it at once
+				is on <a href="/settings/notifications" class="btn-link"
 					>Notifications</a
 				>.
 			</span>
@@ -110,8 +117,8 @@
 			</span>
 			<span class="text-muted block text-xs">
 				{boardEnabled
-					? "Off keeps your kJ off the room's board. It changes nothing else."
-					: "This room's board is off, so nothing is ranked here yet — this is what happens if the owner turns it on."}
+					? `Off keeps your kJ off the ${noun}'s board. It changes nothing else.`
+					: `This ${noun}'s board is off, so nothing is ranked here yet — this is what happens if it is turned on.`}
 			</span>
 		</span>
 	</label>

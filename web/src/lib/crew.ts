@@ -1,5 +1,12 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
-import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
+import type { SessionRecap } from '$lib/protocol';
+import type {
+	BoardRow,
+	RiderPrefs,
+	RoomAccess,
+	RoomCrew,
+	Together,
+} from '$lib/room/room-data';
 
 /**
  * The crew's own surface (ADR-0038): identity, its rooms with what you may
@@ -20,6 +27,8 @@ export interface CrewPerson {
 	rooms?: number;
 	/** Owns a room in the crew, so cannot be banned from it (#1212). */
 	ownsRoom?: boolean;
+	/** Medals the crew's sessions awarded them — on the Members read only (#2442). */
+	medals?: number;
 }
 
 export interface CrewRoom {
@@ -198,4 +207,39 @@ export function setCrewImage(
 
 export function clearCrewImage(id: string): Promise<ApiResult<void>> {
 	return api<void>(`/api/crews/${id}/image`, { method: 'DELETE' });
+}
+
+/**
+ * What the crew shows about its members (#2442, ADR-0036 as amended by
+ * ADR-0058): the roster with medals, the bans for its owner and admins, your
+ * own switches, the crew streak, its sessions against its own last month, and
+ * the weekly board while the crew keeps one.
+ */
+export interface CrewMembers {
+	members: CrewPerson[];
+	banned?: CrewPerson[];
+	me: RiderPrefs;
+	/** UTC weeks with a session in any voice channel; pays nothing. */
+	streakWeeks: number;
+	together?: Together;
+	boardEnabled: boolean;
+	board?: BoardRow[];
+}
+
+export function fetchCrewMembers(
+	id: string,
+	fetcher: typeof fetch = fetch,
+): Promise<ApiResult<CrewMembers>> {
+	return loadApi<CrewMembers>(fetcher, `/api/crews/${id}/members`);
+}
+
+/** Sessions of the last 90 days in channels you may enter (docs/SPEC.md). */
+export function fetchCrewRecaps(
+	id: string,
+	fetcher: typeof fetch = fetch,
+): Promise<ApiResult<{ recaps: SessionRecap[] }>> {
+	return loadApi<{ recaps: SessionRecap[] }>(
+		fetcher,
+		`/api/crews/${id}/recaps`,
+	);
 }

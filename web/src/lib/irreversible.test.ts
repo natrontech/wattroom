@@ -84,7 +84,7 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(/,
 	},
 	{
-		file: 'routes/crew/[id]/CrewPeople.svelte',
+		file: 'routes/crew/[id]/members/CrewPeople.svelte',
 		action: 'ban someone from the crew',
 		asks: /confirm\(/,
 	},
@@ -93,7 +93,7 @@ const GUARDED: Guarded[] = [
 		// answer `Cancel`, with no danger token and the action first in the
 		// DOM. The ask lives in the flow now, so this row watches the call
 		// site keep going through it.
-		file: 'routes/crew/[id]/CrewPeople.svelte',
+		file: 'routes/crew/[id]/members/CrewPeople.svelte',
 		action: 'hand the crew on — only the new owner can hand it back',
 		asks: /handOverCrewFlow\(/,
 	},

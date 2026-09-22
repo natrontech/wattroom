@@ -10,7 +10,6 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import CrewPeople from './CrewPeople.svelte';
 	import CrewRooms from './CrewRooms.svelte';
 	import { fetchCrew, type Crew } from '$lib/crew';
 	import {
@@ -25,6 +24,7 @@
 	import { shareVerb } from '$lib/share';
 	import Copy from '@lucide/svelte/icons/copy';
 	import Settings from '@lucide/svelte/icons/settings';
+	import Users from '@lucide/svelte/icons/users';
 	import Star from '@lucide/svelte/icons/star';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
@@ -219,7 +219,11 @@
 		{/if}
 
 		<CrewRooms {crew} {administers} onchange={() => void load(id)} />
-		<CrewPeople {crew} onchange={() => void load(id)} />
+		<!-- The people, their roles, the board and the crew's sessions have one
+		     home since #2453: the Members page. -->
+		<a href="/crew/{crew.id}/members" class="btn btn-secondary mt-8"
+			><Users size={14} /> Members{#if crew.members}&nbsp;· {crew.members}{/if}</a
+		>
 
 		<!-- After the rooms and the people (#1931): a newcomer used to read a
 		     code before the room they came for. Still the invite's one home. -->
@@ -256,7 +260,8 @@
 		<div class="panel mt-2 flex flex-wrap items-center gap-3">
 			<p class="text-muted min-w-0 flex-1 text-xs">
 				{#if owner}
-					You own {crew.name} — hand it to someone in the people list first, then
+					You own {crew.name} — hand it to someone on
+					<a href="/crew/{crew.id}/members" class="underline">Members</a> first, then
 					leave.
 				{:else if ownsRoomHere}
 					You own {ownedHere.length === 1
