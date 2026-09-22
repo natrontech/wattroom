@@ -32,12 +32,8 @@ func (h *harness) trackLike(t *testing.T, uploader, title, artist string, tags .
 
 func (h *harness) affinityWeights(t *testing.T, slug string) map[string]float64 {
 	t.Helper()
-	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("room: %v", err)
-	}
 	rows, err := h.store.Queries.SmartShuffleTracks(t.Context(), db.SmartShuffleTracksParams{
-		RoomID: room.ID, Lim: 1000,
+		ChannelID: h.voiceID(t, slug), Lim: 1000,
 		AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 	})
 	if err != nil {

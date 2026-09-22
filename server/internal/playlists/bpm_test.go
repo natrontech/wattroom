@@ -54,10 +54,7 @@ func TestTargetCadence(t *testing.T) {
 func TestBpmBoostsTheCadenceAndItsDouble(t *testing.T) {
 	h := setup(t)
 	slug := h.room(t, "alice")
-	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("room: %v", err)
-	}
+	voice := h.voiceID(t, slug)
 
 	onBeat := h.trackBpm(t, "alice", "Ninety", 90)
 	doubled := h.trackBpm(t, "alice", "One Eighty", 180)
@@ -73,7 +70,7 @@ func TestBpmBoostsTheCadenceAndItsDouble(t *testing.T) {
 	weights := func(rpm float64) map[string]float64 {
 		t.Helper()
 		rows, err := h.store.Queries.SmartShuffleTracks(t.Context(), db.SmartShuffleTracksParams{
-			RoomID: room.ID, Lim: 1000,
+			ChannelID: voice, Lim: 1000,
 			TargetRpm: rpm, BpmTolerance: bpmTolerance, BpmBoost: bpmBoost,
 			AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 		})

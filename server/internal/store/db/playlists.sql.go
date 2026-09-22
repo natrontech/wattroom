@@ -12,19 +12,27 @@ import (
 )
 
 const createPlaylist = `-- name: CreatePlaylist :one
-insert into playlists (room_id, user_id, name)
-values ($1, $2, $3)
+insert into playlists (room_id, user_id, crew_id, name)
+values ($1, $2, $3, $4)
 returning id, room_id, user_id, name, created_at, updated_at, crew_id
 `
 
 type CreatePlaylistParams struct {
 	RoomID pgtype.UUID
 	UserID pgtype.UUID
+	CrewID pgtype.UUID
 	Name   string
 }
 
+// A rider's, or a crew's (ADR-0058, #2439). A room's shelf carries its crew
+// as well until the room goes (#2446), so the crew's list shows it too.
 func (q *Queries) CreatePlaylist(ctx context.Context, arg CreatePlaylistParams) (Playlist, error) {
-	row := q.db.QueryRow(ctx, createPlaylist, arg.RoomID, arg.UserID, arg.Name)
+	row := q.db.QueryRow(ctx, createPlaylist,
+		arg.RoomID,
+		arg.UserID,
+		arg.CrewID,
+		arg.Name,
+	)
 	var i Playlist
 	err := row.Scan(
 		&i.ID,
@@ -133,6 +141,55 @@ func (q *Queries) InsertPlaylistTrack(ctx context.Context, arg InsertPlaylistTra
 	return i, err
 }
 
+const listCrewPlaylists = `-- name: ListCrewPlaylists :many
+select p.id, p.room_id, p.user_id, p.name, p.created_at, p.updated_at, p.crew_id, count(t.id) as track_count
+from playlists p left join playlist_tracks t on t.playlist_id = p.id
+where p.crew_id = $1
+group by p.id order by p.created_at
+`
+
+type ListCrewPlaylistsRow struct {
+	ID         pgtype.UUID
+	RoomID     pgtype.UUID
+	UserID     pgtype.UUID
+	Name       string
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+	CrewID     pgtype.UUID
+	TrackCount int64
+}
+
+// The crew's shelf (ADR-0058): every playlist the crew keeps, whichever room
+// it was saved in before the rooms went.
+func (q *Queries) ListCrewPlaylists(ctx context.Context, crewID pgtype.UUID) ([]ListCrewPlaylistsRow, error) {
+	rows, err := q.db.Query(ctx, listCrewPlaylists, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCrewPlaylistsRow
+	for rows.Next() {
+		var i ListCrewPlaylistsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RoomID,
+			&i.UserID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CrewID,
+			&i.TrackCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlaylistTracks = `-- name: ListPlaylistTracks :many
 select pt.id, pt.playlist_id, pt.position, pt.video_id, pt.title, pt.start_sec, pt.yt_playlist_id, pt.yt_playlist_title, pt.tracks, pt.track_id, coalesce(t.title, '')::text as track_title, coalesce(t.artist, '')::text as track_artist,
     coalesce(t.bpm, 0)::int as track_bpm,
@@ -186,53 +243,6 @@ func (q *Queries) ListPlaylistTracks(ctx context.Context, playlistID pgtype.UUID
 			&i.TrackArtist,
 			&i.TrackBpm,
 			&i.TrackDurationMs,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listRoomPlaylists = `-- name: ListRoomPlaylists :many
-select p.id, p.room_id, p.user_id, p.name, p.created_at, p.updated_at, p.crew_id, count(t.id) as track_count
-from playlists p left join playlist_tracks t on t.playlist_id = p.id
-where p.room_id = $1
-group by p.id order by p.created_at
-`
-
-type ListRoomPlaylistsRow struct {
-	ID         pgtype.UUID
-	RoomID     pgtype.UUID
-	UserID     pgtype.UUID
-	Name       string
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
-	CrewID     pgtype.UUID
-	TrackCount int64
-}
-
-func (q *Queries) ListRoomPlaylists(ctx context.Context, roomID pgtype.UUID) ([]ListRoomPlaylistsRow, error) {
-	rows, err := q.db.Query(ctx, listRoomPlaylists, roomID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListRoomPlaylistsRow
-	for rows.Next() {
-		var i ListRoomPlaylistsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.RoomID,
-			&i.UserID,
-			&i.Name,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.CrewID,
-			&i.TrackCount,
 		); err != nil {
 			return nil, err
 		}
@@ -326,56 +336,46 @@ func (q *Queries) RenamePlaylist(ctx context.Context, arg RenamePlaylistParams) 
 	return i, err
 }
 
-const setAutoplay = `-- name: SetAutoplay :one
-update rooms r set autoplay_enabled = $2, autoplay_order = $3, autoplay_playlist_id = $4
-where r.id = $1
+const setChannelAutoplay = `-- name: SetChannelAutoplay :one
+update channels c set autoplay_enabled = $2, autoplay_order = $3, autoplay_playlist_id = $4
+where c.id = $1 and c.kind = 'voice'
   and ($4::uuid is null
-       or exists (select 1 from playlists p where p.id = $4 and p.room_id = r.id))
-returning id, slug, name, owner_id, listed, created_at, sound_pack, icon, cheers, ics_token, autoplay_enabled, autoplay_order, autoplay_playlist_id, board_enabled, crew_id, crew_visible, announcement_id
+       or exists (select 1 from playlists p where p.id = $4 and p.crew_id = c.crew_id))
+returning id, crew_id, kind, name, position, private, sound_pack, created_at, announcement_id, autoplay_enabled, autoplay_order, autoplay_playlist_id
 `
 
-type SetAutoplayParams struct {
+type SetChannelAutoplayParams struct {
 	ID                 pgtype.UUID
 	AutoplayEnabled    bool
 	AutoplayOrder      string
 	AutoplayPlaylistID pgtype.UUID
 }
 
-// The whole setting in one statement (#2248): the switch, the order and the
-// active playlist were three writes, so a failure between them left autoplay
-// on with the list the coach had just cleared, and a playlist that turned out
-// not to be this room's was refused after the other two had committed.
-// The exists() check enforces "active must be one of this room's own
-// playlists" in the same round trip — same shape as UpdateWorkout's ownership
-// WHERE clause — so no row comes back when it is not, and the caller has
-// written nothing. autoplay_fixed_video_id/_title stopped being written in
-// #1422 and were dropped one release later (#1430, ADR-0019 expand/contract).
-func (q *Queries) SetAutoplay(ctx context.Context, arg SetAutoplayParams) (Room, error) {
-	row := q.db.QueryRow(ctx, setAutoplay,
+// A voice channel's autoplay, the whole setting in one statement (#2248,
+// #2439): the switch, the order and the active playlist, which must be one
+// of the channel's CREW's playlists — the exists() refuses anything else in
+// the same round trip, so no row comes back and nothing was written.
+func (q *Queries) SetChannelAutoplay(ctx context.Context, arg SetChannelAutoplayParams) (Channel, error) {
+	row := q.db.QueryRow(ctx, setChannelAutoplay,
 		arg.ID,
 		arg.AutoplayEnabled,
 		arg.AutoplayOrder,
 		arg.AutoplayPlaylistID,
 	)
-	var i Room
+	var i Channel
 	err := row.Scan(
 		&i.ID,
-		&i.Slug,
+		&i.CrewID,
+		&i.Kind,
 		&i.Name,
-		&i.OwnerID,
-		&i.Listed,
-		&i.CreatedAt,
+		&i.Position,
+		&i.Private,
 		&i.SoundPack,
-		&i.Icon,
-		&i.Cheers,
-		&i.IcsToken,
+		&i.CreatedAt,
+		&i.AnnouncementID,
 		&i.AutoplayEnabled,
 		&i.AutoplayOrder,
 		&i.AutoplayPlaylistID,
-		&i.BoardEnabled,
-		&i.CrewID,
-		&i.CrewVisible,
-		&i.AnnouncementID,
 	)
 	return i, err
 }

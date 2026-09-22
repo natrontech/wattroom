@@ -1,14 +1,16 @@
 -- name: RecordTrackPlay :exec
--- One thing a room did with a track (#269, #1432): a library track by id or
--- a video by its YouTube id and title. Called from outside the room lock,
--- after the deck has already moved on — nothing waits on it.
-insert into track_plays (track_id, room_id, queued_by, skipped, video_id, title)
+-- One thing a voice channel's deck did with a track (#269, #1432, #2439): a
+-- library track by id or a video by its YouTube id and title. Called from
+-- outside the hub's lock, after the deck has already moved on — nothing
+-- waits on it.
+insert into track_plays (track_id, channel_id, queued_by, skipped, video_id, title)
 values ($1, $2, $3, $4, $5, $6);
 
--- name: RecentRoomPlays :many
--- The room's "just played" as the database remembers it (#1432), newest
--- first, both kinds. A library row reads the track's current title and
--- artist; a deleted file took its rows with it.
+-- name: RecentChannelPlays :many
+-- A voice channel's "just played" as the database remembers it (#1432),
+-- newest first, both kinds — the channel's own, since each deck is its own
+-- (ADR-0058). A library row reads the track's current title and artist; a
+-- deleted file took its rows with it.
 select p.track_id, p.video_id, p.title, p.skipped,
     coalesce(t.title, '')::text as track_title,
     coalesce(t.artist, '')::text as track_artist,
@@ -18,7 +20,7 @@ select p.track_id, p.video_id, p.title, p.skipped,
 from track_plays p
 left join tracks t on t.id = p.track_id
 left join users u on u.id = p.queued_by
-where p.room_id = $1 and (p.track_id is not null or p.video_id <> '')
+where p.channel_id = $1 and (p.track_id is not null or p.video_id <> '')
 order by p.at desc
 limit $2;
 
@@ -35,35 +37,37 @@ limit $2;
 -- Weight is `recency × skip × bpm × affinity`, every number from docs/SPEC.md:
 --   recency:  0.05 the instant a track ends, rising linearly to 1 over 4 h.
 --             The floor is why it is a penalty and not a ban.
---   skip:     divided by one more than the times this room skipped it, so
+--   skip:     divided by one more than the times this channel skipped it, so
 --             one skip halves a track's chances and three quarter them.
 --   bpm:      a BOOST (#270) for a track whose tempo fits the cadence the
---             room is turning, at that cadence or at double it — the same
+--             channel is turning, at that cadence or at double it — the same
 --             beat, felt one pedal stroke at a time instead of two.
---   affinity: a BOOST (#271) for a track that resembles what this room has
+--   affinity: a BOOST (#271) for a track that resembles what this channel has
 --             lately played THROUGH — same artist, or a tag in common. Same
 --             artist is the strong signal and earns more: tags are
 --             free-form with no taxonomy (ADR-0015), so a broad one says
---             much less than a name does. A track the room just finished is
+--             much less than a name does. A track the channel just finished is
 --             excluded from its own affinity: "more like that", not "that
 --             again", which is what the recency penalty already answers.
 --
 -- Every one of them is a boost or a penalty on a base of 1, so each is
 -- individually switch-off-able by its own inputs: no session means no BPM
 -- preference, an empty history means no affinity and no penalties, and a
--- room with none of it draws uniformly at random. That is the pre-#269
+-- channel with none of it draws uniformly at random. That is the pre-#269
 -- behaviour, reached by the arithmetic rather than by a branch.
 --
--- History is this room's only (privacy is architecture, WATTROOM.md): what
--- one room finishes is not a fact about the pool, and must not reach another.
+-- History is this voice channel's only (privacy is architecture,
+-- WATTROOM.md; ADR-0058): what one channel finishes is not a fact about the
+-- pool, and must not reach another.
 --
--- And the POOL it draws from is this room's members' (#1095). Autoplay is the
--- one path that reaches for a track nobody asked for by name, so an unscoped
--- draw here would put a stranger's upload on the deck without ever appearing
--- on a page or in a search — past every check the issue's own list names.
--- Members rather than the acting rider: a room's shelf is what its people
--- brought, which is already what the room permits (any member may queue their
--- own track for everyone). Phase 2 replaces this join with the crew.
+-- And the POOL it draws from is the libraries of the riders who may enter
+-- this channel (#1095, #2439). Autoplay is the one path that reaches for a
+-- track nobody asked for by name, so an unscoped draw here would put a
+-- stranger's upload on the deck without ever appearing on a page or in a
+-- search. Who may enter is `channels.mayEnter`'s rule, restated here because
+-- it filters rows: the crew's owner, its admins, and — unless the channel is
+-- private and they are not named into it — its members; never a banned one.
+-- It is the same set ADR-0045's audio door lets hear an uploader's track.
 -- `weight` is returned so a headless autoplay log can say WHY a track came
 -- up; the ordering is random and unexplainable after the fact otherwise.
 with history as (
@@ -71,17 +75,17 @@ with history as (
         max(p.at) filter (where not p.skipped) as last_played,
         count(*) filter (where p.skipped) as skips
     from track_plays p
-    where p.room_id = sqlc.arg(room_id)
+    where p.channel_id = sqlc.arg(channel_id)
     group by p.track_id
 ),
--- The last few tracks this room let finish. Bounded, and by COUNT rather
--- than by time: a room's taste is the last things it enjoyed, and a room
+-- The last few tracks this channel let finish. Bounded, and by COUNT rather
+-- than by time: a channel's taste is the last things it enjoyed, and one
 -- that rode yesterday should not come back to a blank slate.
 recent as (
     select p.track_id, t.artist, t.tags
     from track_plays p
     join tracks t on t.id = p.track_id
-    where p.room_id = sqlc.arg(room_id) and not p.skipped
+    where p.channel_id = sqlc.arg(channel_id) and not p.skipped
     order by p.at desc
     limit sqlc.arg(affinity_window)
 ),
@@ -94,13 +98,12 @@ liked as (
 )
 select t.id, t.title, t.artist, coalesce(t.bpm, 0)::int as bpm, t.duration_ms, w.weight
 from tracks t
--- The shelves of the room's own MEMBERS, confirmed on purpose in #1103 over
--- the crew: crew membership follows room membership, so a crew-wide draw
--- would put a shelf into the rotation of rooms its owner never entered.
--- Members who may still enter, through visible_rooms — a crew-banned member
--- keeps their row but not their say in what the room plays (ADR-0038).
-join memberships m on m.user_id = t.uploaded_by and m.room_id = sqlc.arg(room_id)
-join visible_rooms v on v.room_id = m.room_id and v.user_id = m.user_id
+-- The shelves of the riders who may enter the channel (see the head of this
+-- query). A crew-banned rider keeps a crew_roles row and loses their say in
+-- what the channel plays; a member taken out of a private channel loses it
+-- there and keeps it in the crew's open ones.
+join channels ch on ch.id = sqlc.arg(channel_id)
+join crews c on c.id = ch.crew_id
 left join history h on h.track_id = t.id
 cross join liked l
 cross join lateral (
@@ -121,9 +124,9 @@ cross join lateral (
         else 1.0
       end
     * case
-        -- A track the room just finished matches its OWN artist, and lifting
+        -- A track the channel just finished matches its OWN artist, and lifting
         -- it here would partly undo the recency penalty that exists to stop
-        -- the room hearing it again. Affinity means "more like that one",
+        -- the channel hearing it again. Affinity means "more like that one",
         -- never "that one again" — so the recency factor keeps this case.
         when t.id = any(l.ids) then 1.0
         -- A name is a name; a tag is a hint. Checked in that order so a
@@ -142,7 +145,16 @@ cross join lateral (
 -- when no list is active or the list holds no library track, and the draw
 -- is then the members' whole libraries as before. coalesce, because a nil
 -- slice arrives as NULL and NULL = 0 is not true.
-where coalesce(cardinality(sqlc.arg(within)::uuid[]), 0) = 0
-   or t.id = any(sqlc.arg(within)::uuid[])
+where (t.uploaded_by = c.owner_id
+       or exists (
+           select 1 from crew_roles cr
+           where cr.crew_id = ch.crew_id and cr.user_id = t.uploaded_by
+             and (cr.role = 'admin'
+                  or (cr.role = 'member'
+                      and (not ch.private
+                           or exists (select 1 from channel_members cm
+                                      where cm.channel_id = ch.id and cm.user_id = t.uploaded_by))))))
+  and (coalesce(cardinality(sqlc.arg(within)::uuid[]), 0) = 0
+       or t.id = any(sqlc.arg(within)::uuid[]))
 order by random() ^ (1.0 / w.weight) desc
 limit sqlc.arg(lim);

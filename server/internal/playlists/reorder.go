@@ -85,6 +85,12 @@ func (s *Service) handleMoveRoomTrack(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Service) handleMoveCrewTrack(w http.ResponseWriter, r *http.Request) {
+	if sc, ok := s.crewScope(w, r, false); ok {
+		s.moveTrack(w, r, sc)
+	}
+}
+
 func (s *Service) handleMovePersonalTrack(w http.ResponseWriter, r *http.Request) {
 	if sc, ok := s.personalScope(w, r); ok {
 		s.moveTrack(w, r, sc)

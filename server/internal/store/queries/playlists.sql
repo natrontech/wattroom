@@ -1,12 +1,16 @@
 -- name: CreatePlaylist :one
-insert into playlists (room_id, user_id, name)
-values ($1, $2, $3)
+-- A rider's, or a crew's (ADR-0058, #2439). A room's shelf carries its crew
+-- as well until the room goes (#2446), so the crew's list shows it too.
+insert into playlists (room_id, user_id, crew_id, name)
+values ($1, $2, $3, $4)
 returning *;
 
--- name: ListRoomPlaylists :many
+-- name: ListCrewPlaylists :many
+-- The crew's shelf (ADR-0058): every playlist the crew keeps, whichever room
+-- it was saved in before the rooms went.
 select p.*, count(t.id) as track_count
 from playlists p left join playlist_tracks t on t.playlist_id = p.id
-where p.room_id = $1
+where p.crew_id = $1
 group by p.id order by p.created_at;
 
 -- name: ListUserPlaylists :many
@@ -56,18 +60,13 @@ update playlist_tracks set position = position + 1000000 where playlist_id = $1;
 -- name: SetPlaylistTrackPosition :exec
 update playlist_tracks set position = $3 where id = $1 and playlist_id = $2;
 
--- name: SetAutoplay :one
--- The whole setting in one statement (#2248): the switch, the order and the
--- active playlist were three writes, so a failure between them left autoplay
--- on with the list the coach had just cleared, and a playlist that turned out
--- not to be this room's was refused after the other two had committed.
--- The exists() check enforces "active must be one of this room's own
--- playlists" in the same round trip — same shape as UpdateWorkout's ownership
--- WHERE clause — so no row comes back when it is not, and the caller has
--- written nothing. autoplay_fixed_video_id/_title stopped being written in
--- #1422 and were dropped one release later (#1430, ADR-0019 expand/contract).
-update rooms r set autoplay_enabled = $2, autoplay_order = $3, autoplay_playlist_id = $4
-where r.id = $1
+-- name: SetChannelAutoplay :one
+-- A voice channel's autoplay, the whole setting in one statement (#2248,
+-- #2439): the switch, the order and the active playlist, which must be one
+-- of the channel's CREW's playlists — the exists() refuses anything else in
+-- the same round trip, so no row comes back and nothing was written.
+update channels c set autoplay_enabled = $2, autoplay_order = $3, autoplay_playlist_id = $4
+where c.id = $1 and c.kind = 'voice'
   and ($4::uuid is null
-       or exists (select 1 from playlists p where p.id = $4 and p.room_id = r.id))
+       or exists (select 1 from playlists p where p.id = $4 and p.crew_id = c.crew_id))
 returning *;

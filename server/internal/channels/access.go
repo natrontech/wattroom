@@ -140,3 +140,19 @@ func Administers(crewRole string) bool { return administers(crewRole) }
 func (s *Service) RequireCrew(w http.ResponseWriter, r *http.Request) (pgtype.UUID, db.User, string, bool) {
 	return s.crewFor(w, r)
 }
+
+// RequireVoice is RequireText's twin for a voice channel's deck (#2439): the
+// channel's gate, plus the channel being a voice one — a text channel has no
+// jukebox — so a text channel's queue is a 404 like a channel that is not
+// there.
+func (s *Service) RequireVoice(w http.ResponseWriter, r *http.Request) (db.Channel, db.User, string, bool) {
+	channel, user, role, ok := s.channelFor(w, r)
+	if !ok {
+		return db.Channel{}, db.User{}, "", false
+	}
+	if channel.Kind != kindVoice {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "A text channel has no jukebox — its crew's voice channels do.")
+		return db.Channel{}, db.User{}, "", false
+	}
+	return channel, user, role, true
+}
