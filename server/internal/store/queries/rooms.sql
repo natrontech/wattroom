@@ -274,34 +274,6 @@ returning *;
 -- name: GetScheduledSessionStart :one
 select starts_at from scheduled_sessions where id = $1 and room_id = $2;
 
--- name: ListRoomCalendar :many
--- The iCal feed (#245): unlike the in-room list, it keeps a month of history.
--- Bounded at both ends now (#1414) — the whole result is rendered into one
--- in-memory ICS string per request, on a URL whose only credential is a
--- bearer token, so row growth was a memory spike anybody holding the link
--- could ask for. Neither bound can erase a plan somebody made: planning is
--- capped three months out (plannableAt), well inside the year, and the row
--- limit is far above the room's own 50-session ceiling. The window is the
--- caller's, like ListUserCalendar's, so both feeds read their numbers from
--- the same Go constants rather than from an interval literal in here.
---
--- No planner's name, unlike ListUserCalendar (ADR-0021 amended, #1767): a
--- room's ics_token goes to every non-banned member, rotates only for the
--- owner, and the feed is meant to be shared with people who are not in the
--- room — so a member can hand it to anyone. The name is not selected rather
--- than selected and dropped in Go: what this feed must not say, it does not
--- read.
-select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at
-from scheduled_sessions s
-where s.room_id = $1
-  and s.starts_at > sqlc.arg(starts_from) and s.starts_at < sqlc.arg(starts_until)
-order by s.starts_at, s.created_at, s.id
-limit sqlc.arg(row_limit);
-
--- name: RotateRoomIcsToken :one
-update rooms set ics_token = replace(gen_random_uuid()::text, '-', '')
-where id = $1 returning ics_token;
-
 -- name: CountOwnedRooms :one
 select count(*) from rooms where owner_id = $1;
 
@@ -310,26 +282,6 @@ select count(*) from rooms where owner_id = $1;
 -- rewritten in the same transaction: the owner column and the 'owner'
 -- role are two answers to one question and must not disagree.
 update rooms set owner_id = $2 where id = $1;
-
--- name: ListUserCalendar :many
--- Every room the rider is in, one list (#325). `from` is the only difference
--- between the two callers: the iCal feed keeps a month of history, Home's
--- "What's next" starts at the same 30-minute grace the in-room list uses.
--- `until` and the row limit are the same for both (#1414) — the rider feed is
--- the wider of the two memory spikes, since membership is uncapped and every
--- room's 50 plans land in one ICS string.
-select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
-       u.display_name as created_by, r.name as room_name, r.slug as room_slug
-from scheduled_sessions s
-join rooms r on r.id = s.room_id
-join memberships m on m.room_id = s.room_id and m.user_id = $1 and m.role <> 'banned'
-join users u on u.id = s.created_by
-where s.starts_at > sqlc.arg(starts_from) and s.starts_at < sqlc.arg(starts_until)
-  -- A crew ban leaves the membership row and lives in visible_rooms alone
-  -- (#1904): the rail asks it, and so does the calendar.
-  and exists (select 1 from visible_rooms v where v.room_id = s.room_id and v.user_id = $1)
-order by s.starts_at, s.created_at, s.id
-limit sqlc.arg(row_limit);
 
 -- name: SetRsvp :exec
 -- Room events (#450). One row per rider per session, and the row is an

@@ -1,6 +1,6 @@
 <script lang="ts">
-	// Your own calendar link (ADR-0021): every session in every room you are
-	// in, one subscription for good — joining or leaving a room changes the
+	// Your own calendar link (ADR-0021): every session in every crew you are
+	// in (#2441), one subscription for good — joining or leaving one changes the
 	// feed, not the link. The ADR made this the feed the UI offers first, and
 	// then nothing offered it: the Sessions place had the room's, so a rider
 	// in four rooms subscribed four times (#1374).
@@ -62,8 +62,9 @@
 			{error}
 			<button onclick={() => void load()} class="btn-link ml-1">Retry</button>
 		{:else}
-			Every session in every room you are in lands in your calendar app —
-			subscribe once, "from URL". Join or leave a room and the calendar follows.
+			Every session planned in every crew you ride with lands in your calendar
+			app — subscribe once, "from URL". Join or leave a crew and the calendar
+			follows.
 		{/if}
 	</p>
 	<div class="mt-4 flex flex-wrap items-center gap-3">

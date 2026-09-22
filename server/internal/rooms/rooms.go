@@ -157,8 +157,6 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/rooms/{slug}/schedule/{id}/rsvp", s.handleRsvp)
 	mux.HandleFunc("DELETE /api/rooms/{slug}/schedule/{id}/rsvp", s.handleRsvp)
 	mux.HandleFunc("POST /api/rooms/{slug}/schedule/{id}/started", s.handleSessionStarted)
-	mux.HandleFunc("GET /api/rooms/{slug}/calendar/{token}", s.handleCalendar)
-	mux.HandleFunc("POST /api/rooms/{slug}/calendar/rotate", s.handleRotateIcs)
 	mux.HandleFunc("GET /api/schedule", s.handleMySchedule)
 	mux.HandleFunc("GET /api/calendar/{token}", s.handleUserCalendar)
 	mux.HandleFunc("POST /api/calendar/rotate", s.handleRotateUserIcs)
