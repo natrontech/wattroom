@@ -7,12 +7,13 @@ package rides
 import (
 	"encoding/json"
 	"errors"
-	"github.com/jackc/pgx/v5"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -135,6 +136,10 @@ type rideJSON struct {
 	Xp              int  `json:"xp"`
 	// True for rides ridden in a room — the list marks them.
 	Room bool `json:"room,omitempty"`
+	// The crew it was ridden with and the voice channel it was ridden in
+	// (#2443); nil for a solo ride.
+	Crew    *placeJSON `json:"crew,omitempty"`
+	Channel *placeJSON `json:"channel,omitempty"`
 	// The per-ride opt-in (WATTROOM.md privacy, ADR-0024): friends see this
 	// ride on the rider's page. Off by default, flipped by PATCH.
 	SharedWithFriends bool `json:"sharedWithFriends"`
@@ -142,6 +147,20 @@ type rideJSON struct {
 	// ride has one (#1553), so the list can mark a failed upload; empty for a
 	// ride that was never sent. The detail carries the whole record.
 	ExportState string `json:"exportState,omitempty"`
+}
+
+// placeJSON names where a ride happened — a crew, or a channel of one.
+type placeJSON struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// placeOf is nil for a ride that was not ridden there.
+func placeOf(id pgtype.UUID, name string) *placeJSON {
+	if !id.Valid {
+		return nil
+	}
+	return &placeJSON{ID: store.UUIDString(id), Name: name}
 }
 
 // listPage is one page of the rides list (#1549): the list used to be one
@@ -192,6 +211,7 @@ func rideJSONOf(row db.ListUserRidesRow) rideJSON {
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 		Room: row.RoomID.Valid, SharedWithFriends: row.SharedAt.Valid,
+		Crew: placeOf(row.CrewID, row.CrewName), Channel: placeOf(row.ChannelID, row.ChannelName),
 	}
 	if row.ExportState != nil {
 		out.ExportState = *row.ExportState

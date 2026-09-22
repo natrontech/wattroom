@@ -358,7 +358,7 @@ func (rm *room) handOff(log *slog.Logger, now func() time.Time, saver SessionSav
 		// when its bounded retry policy returns — minutes at worst — and
 		// the hub counts it so a shutdown waits for it.
 		rm.detach(log, "session save "+rm.channel, func() {
-			saver.SaveSession(context.Background(), rm.channel,
+			saver.SaveSession(context.Background(), rm.channel, end.meta.ID,
 				end.meta.WorkoutName, end.meta.WorkoutJSON, end.startedAt, end.records)
 		})
 	}

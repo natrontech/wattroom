@@ -165,6 +165,10 @@ type rideDetailJSON struct {
 	Curve *stats.Curve `json:"curve,omitempty"`
 	// The room it was ridden in; nil for a solo ride.
 	Room *roomJSON `json:"room"`
+	// The crew it was ridden with and the voice channel it was ridden in
+	// (#2443); nil for a solo ride.
+	Crew    *placeJSON `json:"crew,omitempty"`
+	Channel *placeJSON `json:"channel,omitempty"`
 	// Medals this ride won, SPEC kinds — empty for a solo or unmedalled ride.
 	Medals []medalJSON `json:"medals"`
 	// The per-second series, watts always, hr/cadence when the ride carried
@@ -250,6 +254,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	if row.RoomID.Valid {
 		out.Room = &roomJSON{Slug: row.RoomSlug, Name: row.RoomName}
 	}
+	out.Crew, out.Channel = placeOf(row.CrewID, row.CrewName), placeOf(row.ChannelID, row.ChannelName)
 	for _, medal := range medalRows {
 		out.Medals = append(out.Medals, medalJSON{
 			Kind: medal.Kind, RoomName: medal.RoomName,

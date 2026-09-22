@@ -45,7 +45,7 @@ func TestAmendRideGrowsASavedRideOnlyForward(t *testing.T) {
 	}
 	workoutJSON := `{"name":"W","steps":[{"type":"steady","seconds":600,"target":0.8}]}`
 	startedAt := time.Now().Add(-time.Hour).Truncate(time.Second)
-	if err := saver.save(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
+	if err := saver.save(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
 		t.Fatal(err)
 	}
 	read := func() (seconds int32, kj int32, xp int32) {
@@ -61,18 +61,18 @@ func TestAmendRideGrowsASavedRideOnlyForward(t *testing.T) {
 	}
 
 	// The tail arrives: the row grows with it.
-	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(130)})
+	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(130)})
 	grown, grownKj, grownXp := read()
 	if grown != 130 || grownKj <= kj || grownXp <= xp {
 		t.Fatalf("after the tail: %d s, %d kJ, %d xp (was %d s, %d kJ, %d xp)", grown, grownKj, grownXp, seconds, kj, xp)
 	}
 	// A replay of less than what is saved changes nothing.
-	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(100)})
+	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(100)})
 	if again, _, _ := read(); again != 130 {
 		t.Fatalf("a shorter record shrank the ride to %d s", again)
 	}
 	// And a rider with no ride at that start has nothing to grow.
-	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt.Add(time.Minute), hub.RiderRecord{Rider: rider, Samples: samples(200)})
+	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt.Add(time.Minute), hub.RiderRecord{Rider: rider, Samples: samples(200)})
 	var rides int
 	if err := st.Pool.QueryRow(ctx, "select count(*) from rides where user_id = $1", user.ID).Scan(&rides); err != nil || rides != 1 {
 		t.Fatalf("rides after an amendment with no ride: %d %v", rides, err)
@@ -124,7 +124,7 @@ func TestAnAmendedRideDoesNotPayItsOwnStreak(t *testing.T) {
 
 	// The rider's first ride of the week: the save pays no streak bonus,
 	// because the week only counts once it has already been ridden.
-	if err := saver.save(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
+	if err := saver.save(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
 		t.Fatal(err)
 	}
 	saved := xpOf()
@@ -132,7 +132,7 @@ func TestAnAmendedRideDoesNotPayItsOwnStreak(t *testing.T) {
 	// The tail arrives. The ride is longer, so it is worth more — but not by
 	// a streak week it did not have. StreakBonus(1) is 25, which is the
 	// difference this used to grow by on top of the seconds.
-	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(140)})
+	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(140)})
 	amended := xpOf()
 	if amended <= saved {
 		t.Fatalf("the amended ride is worth %d, was %d — it grew, so it should be worth more", amended, saved)
@@ -142,7 +142,7 @@ func TestAnAmendedRideDoesNotPayItsOwnStreak(t *testing.T) {
 	if _, err := st.Pool.Exec(ctx, "delete from rides where user_id = $1", user.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := saver.save(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(140)}}); err != nil {
+	if err := saver.save(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(140)}}); err != nil {
 		t.Fatal(err)
 	}
 	if whole := xpOf(); amended != whole {
@@ -191,14 +191,14 @@ func TestAnAmendedRideIsJudgedOnTheWholeRide(t *testing.T) {
 	}
 	workoutJSON := `{"name":"W","steps":[{"type":"steady","seconds":600,"target":0.8}]}`
 	startedAt := time.Now().Add(-time.Hour).Truncate(time.Second)
-	if err := saver.save(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
+	if err := saver.save(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
 		t.Fatal(err)
 	}
 	if len(keeper.judged) != 1 || keeper.judged[0].AboveFtpSec != 70 {
 		t.Fatalf("the close judged %+v, want one ride of 70 s above FTP", keeper.judged)
 	}
 
-	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(130)})
+	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(130)})
 	if len(keeper.judged) != 2 {
 		t.Fatalf("the grown ride was judged %d times, want a second look", len(keeper.judged))
 	}
@@ -208,12 +208,12 @@ func TestAnAmendedRideIsJudgedOnTheWholeRide(t *testing.T) {
 
 	// A replay that grows nothing is not a second judging: the trophy case
 	// is idempotent, but asking it about a ride that did not change is noise.
-	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(100)})
+	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(100)})
 	if len(keeper.judged) != 2 {
 		t.Errorf("a shorter replay asked the trophy case again: %+v", keeper.judged)
 	}
 	// And so is an amendment with no ride to grow.
-	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt.Add(time.Minute), hub.RiderRecord{Rider: rider, Samples: samples(200)})
+	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt.Add(time.Minute), hub.RiderRecord{Rider: rider, Samples: samples(200)})
 	if len(keeper.judged) != 2 {
 		t.Errorf("an amendment with no ride judged something: %+v", keeper.judged)
 	}
@@ -255,7 +255,7 @@ func TestAnAmendedRideMarksADeliveredExportStale(t *testing.T) {
 	}
 	workoutJSON := `{"name":"W","steps":[{"type":"steady","seconds":600,"target":0.8}]}`
 	startedAt := time.Now().Add(-time.Hour).Truncate(time.Second)
-	if err := saver.save(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
+	if err := saver.save(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, []hub.RiderRecord{{Rider: rider, Samples: samples(70)}}); err != nil {
 		t.Fatal(err)
 	}
 	var rideID pgtype.UUID
@@ -275,7 +275,7 @@ func TestAnAmendedRideMarksADeliveredExportStale(t *testing.T) {
 	}
 
 	// Grown while the upload is still owed: the upload will carry all of it.
-	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(100)})
+	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(100)})
 	if staleSince().Valid {
 		t.Fatalf("a ride amended before its delivery was marked stale")
 	}
@@ -294,14 +294,14 @@ func TestAnAmendedRideMarksADeliveredExportStale(t *testing.T) {
 
 	// A replay of what is already saved grows nothing, so the copy out there
 	// is still the whole ride.
-	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(80)})
+	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(80)})
 	if staleSince().Valid {
 		t.Fatalf("a replay that grew nothing marked the delivery stale")
 	}
 
 	// And the tail that arrives late: the ride grows, the destination's copy
 	// does not, and the row remembers the moment they came apart.
-	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(130)})
+	saver.AmendRide(ctx, testx.VoiceChannel(t, st, room), "", "W", workoutJSON, startedAt, hub.RiderRecord{Rider: rider, Samples: samples(130)})
 	if !staleSince().Valid {
 		t.Fatalf("the ride outgrew a delivered export and nothing recorded it")
 	}
