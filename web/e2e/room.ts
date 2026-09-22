@@ -16,6 +16,8 @@ export interface OpenedRoom {
 
 export interface RoomOwner {
 	open(page: Page, name: string): Promise<OpenedRoom>;
+	/** Hand the fixture a room the test opened through a door of its own. */
+	adopt(page: Page, slug: string): void;
 	/** The way in for a second rider: the crew by its code, then the room. */
 	enter(page: Page, room: OpenedRoom): Promise<void>;
 }
@@ -115,30 +117,29 @@ export const test = base.extend<{
 		const opened: { page: Page; slug: string }[] = [];
 		await use({
 			async open(page, name) {
-				// The shipped door (ADR-0020, #1861): the `+` beside "rooms" in the
-				// sidebar opens the sheet. The retired /rooms stub used to be the
-				// way in, so the door riders actually take had no test. Below md
-				// the sidebar is a drawer — open it first, and the sheet closes it.
-				const plus = page.getByRole('button', {
-					name: 'open a room or join a crew with a code',
-				});
-				const menu = page.getByRole('button', { name: 'open navigation' });
-				// The shell draws once /api/me answers: wait for whichever of the
-				// two is this width's way in. Below md the closed drawer is in the
-				// DOM, translated off-screen — "visible" to Playwright and
-				// unclickable — so the hamburger, not the +, decides the width.
-				await expect(plus.or(menu).first()).toBeVisible({ timeout: 15_000 });
-				if (await menu.isVisible()) await menu.click();
-				await plus.click();
-				const sheet = page.getByRole('dialog', { name: 'Open a room' });
-				await sheet.locator('#open-room-name-sheet').fill(name);
-				await sheet.getByRole('button', { name: 'Open a room' }).click();
+				// Through the API, into the rider's own crew: a rider with no
+				// crew is offered "Start a crew" now (#2480), not a room, and the
+				// doors themselves have their own spec (rooms.spec.ts).
+				const created = await page.evaluate(async (roomName) => {
+					const res = await fetch('/api/rooms', {
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({ name: roomName }),
+					});
+					return { status: res.status, body: await res.json() };
+				}, name);
+				expect(
+					created.status,
+					`opening "${name}" was refused: ${JSON.stringify(created.body)} — the owner is probably at the three-room cap (#594)`,
+				).toBe(201);
+				const slug: string = created.body.slug;
+				// The fixture owns it from here, landing or not.
+				opened.push({ page, slug });
+				await page.goto(`/r/${slug}`);
 				await expect(
 					page.getByRole('heading', { name }),
-					`opening "${name}" never landed in the room — the owner is probably at the three-room cap (#594)`,
+					`opening "${name}" never landed in the room`,
 				).toBeVisible({ timeout: 15_000 });
-				const slug = page.url().split('/r/')[1].split(/[/?#]/)[0];
-				opened.push({ page, slug });
 				const crew = await page.evaluate(async (roomSlug) => {
 					const room = await fetch(`/api/rooms/${roomSlug}`).then((res) =>
 						res.json(),
@@ -155,6 +156,9 @@ export const test = base.extend<{
 				).toMatch(/^[A-Z0-9]{6}$/);
 				crews.push(crew.id);
 				return { slug, code: crew.code, name };
+			},
+			adopt(page, slug) {
+				opened.push({ page, slug });
 			},
 			async enter(page, room) {
 				// Plain /home, for the reason `riders` gives above.

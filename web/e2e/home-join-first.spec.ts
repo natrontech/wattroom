@@ -8,8 +8,9 @@ import { expect, test } from './room';
  * the sheet's order — and keyed it on "has this rider anywhere to open a
  * room". That is true of the stranger who arrived off the signed-out landing
  * as well as of the invited rider it was written for, so the front door's one
- * CTA ("Open your first room") handed every organic arrival a code box.
- * ADR-0038's 2026-09-17 amendment keys it on the invite instead.
+ * CTA (then "Open your first room", now "Start your crew" — #2480) handed
+ * every organic arrival a code box. ADR-0038's 2026-09-17 amendment keys it
+ * on the invite instead.
  */
 
 /** This spec's own riders — nobody else's (#2133). */
@@ -17,7 +18,7 @@ const A = 'Join Gate Host';
 const B = 'Join Gate Invited';
 const C = 'Join Gate Stranger';
 
-test('the invited rider leads with joining, and the stranger gets the room the landing promised', async ({
+test('the invited rider leads with joining, and the stranger gets the crew the landing promised', async ({
 	riders,
 	rooms,
 }) => {
@@ -55,17 +56,17 @@ test('the invited rider leads with joining, and the stranger gets the room the l
 	// regression fails saying which word it found instead of timing out on a
 	// disabled form button five minutes later.
 	const opening = c
-		.getByRole('button', { name: /^(Join a crew|Open a room)$/ })
+		.getByRole('button', { name: /^(Join a crew|Start a crew)$/ })
 		.first();
 	await expect(opening).toBeVisible({ timeout: 15_000 });
-	await expect(opening).toHaveAccessibleName('Open a room');
+	await expect(opening).toHaveAccessibleName('Start a crew');
 	await opening.click();
-	await expect(c.getByRole('dialog', { name: 'Open a room' })).toBeVisible();
+	await expect(c.getByRole('dialog', { name: 'Start a crew' })).toBeVisible();
 
 	// And the owner, who administers a crew, is offered the same thing
 	// (ADR-0010).
 	await a.goto('/home');
 	await expect(
-		a.getByRole('button', { name: 'Open a room', exact: true }).first(),
+		a.getByRole('button', { name: 'Start a crew', exact: true }).first(),
 	).toBeVisible({ timeout: 15_000 });
 });

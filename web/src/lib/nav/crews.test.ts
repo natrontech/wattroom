@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-	creationCrew,
 	crewPulse,
 	crewsOf,
 	currentCrew,
 	administersNone,
+	foundedCount,
 	leadsWithJoining,
 	openableCrews,
 	quiet,
@@ -117,7 +117,7 @@ describe('crewPulse', () => {
 	});
 });
 
-describe('creationCrew', () => {
+describe('who may make what', () => {
 	const admined = { id: 'c3', name: 'Tuesday', role: 'admin' as const };
 	const crews = [natron, sunday, admined];
 
@@ -136,7 +136,7 @@ describe('creationCrew', () => {
 		expect(administersNone([admined])).toBe(false);
 		expect(administersNone(crews)).toBe(false);
 	});
-	// The landing's one CTA is "Open your first room" (routes/+page.svelte),
+	// The landing's one CTA is "Start your crew" (routes/+page.svelte),
 	// and #2144 keyed the sheet's order on administering nothing — so every
 	// stranger who took the front door at its word met a code box (#2184).
 	it('leads with joining only for a rider carrying an invite', () => {
@@ -153,30 +153,12 @@ describe('creationCrew', () => {
 		expect(leadsWithJoining([natron], 'AB23CD')).toBe(false);
 		expect(leadsWithJoining(crews, 'AB23CD')).toBe(false);
 	});
-	it('lands in the crew on screen when you may open rooms there', () => {
-		expect(creationCrew(openableCrews(crews), 'c3')?.id).toBe('c3');
-	});
-	it('falls back to your own crew when the one on screen is not yours to open in', () => {
-		expect(creationCrew(openableCrews(crews), 'c2')?.id).toBe('c1');
-	});
-	it('lands in the crew you founded before one that was handed to you (#1928)', () => {
-		const handed = { id: 'c8', name: 'Handed on', role: 'owner' as const };
-		const founded = {
-			id: 'c9',
-			name: 'Mine',
-			role: 'owner' as const,
-			founded: true,
-		};
-		expect(creationCrew(openableCrews([handed, founded]), undefined)?.id).toBe(
-			'c9',
-		);
-	});
-	it('is null before the room list has landed', () => {
-		expect(creationCrew([], 'c1')).toBeNull();
-	});
-	it('lands in the crew whose page asked, before it has any rooms (audit 2026-09-09)', () => {
-		const empty = { id: 'c9', name: 'Brand new', role: 'owner' as const };
-		expect(creationCrew(openableCrews(crews), undefined, empty)?.id).toBe('c9');
-		expect(creationCrew(openableCrews(crews), 'c3')?.id).toBe('c3');
+	// Silent if it breaks: "Start a crew" would disable a slot early or
+	// offer a POST the server refuses. Seen red in the PR.
+	it('counts toward the founding cap only what you founded and still own', () => {
+		const founded = { ...natron, founded: true };
+		const handedOn = { ...sunday, founded: true };
+		const handedToYou = { id: 'c8', name: 'Handed', role: 'owner' as const };
+		expect(foundedCount([founded, handedOn, handedToYou, admined])).toBe(1);
 	});
 });

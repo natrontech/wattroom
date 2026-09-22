@@ -151,9 +151,10 @@
 			null
 		);
 	});
-	// "Open a room" opens the same sheet the sidebar's + does (#1199, #1333)
-	// — on Home's own body, because the drawer the sidebar lives in below md
-	// is translated off-screen and takes a dialog inside it along.
+	// "Start a crew" opens the same sheet the sidebar's + does outside a crew
+	// the rider keeps (#1199, #1333, #2480) — on Home's own body, because the
+	// drawer the sidebar lives in below md is translated off-screen and takes
+	// a dialog inside it along.
 	let opening = $state(false);
 	// Planning happens in a room's own Sessions place; the first room you can
 	// run one in is where the button goes. None yet: open one first.
@@ -287,13 +288,13 @@
 			>
 		{:else}
 			<!-- Carrying an invite, the big button is joining the crew that sent
-			     it (#2144, #2184); everyone else gets the room the signed-out
+			     it (#2144, #2184); everyone else gets the crew the signed-out
 			     landing promised, and joining is one step down the same sheet. -->
 			<button
 				onclick={() => (opening = true)}
 				class="btn {rooms?.length ? 'btn-secondary' : 'btn-primary btn-lg'}"
 				><Plus size={15} />
-				{joinFirst ? 'Join a crew' : 'Open a room'}</button
+				{joinFirst ? 'Join a crew' : 'Start a crew'}</button
 			>
 		{/if}
 	</div>
@@ -519,11 +520,11 @@
 	<!-- Named for what the rider pressed (#2176): a crewless rider pressed
 	     "Join a crew" and the dialog announced itself as "Open a room". -->
 	<Modal
-		label={joinFirst ? 'Join a crew' : 'Open a room'}
+		label={joinFirst ? 'Join a crew' : 'Start a crew'}
 		onclose={() => (opening = false)}
 		class="max-w-sm"
 	>
-		<OpenOrJoin compact crewId={ownCrew?.id} />
+		<OpenOrJoin compact />
 	</Modal>
 {/if}
 

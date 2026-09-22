@@ -161,9 +161,7 @@ test('a dialog opened by a button in the phone drawer comes up over it', async (
 	await hamburger.click();
 	await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
 
-	await a
-		.getByRole('button', { name: 'open a room or join a crew with a code' })
-		.click();
+	await a.getByRole('button', { name: 'open a room' }).click();
 
 	await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
 	const dialog = a.getByRole('dialog');

@@ -191,9 +191,10 @@ export function administersNone(crews: readonly RoomCrew[]): boolean {
  *
  * The invite is the key, not administering nothing: `pendingInvite` is the
  * one signal that somebody sent this rider to a door. A stranger who arrived
- * off the signed-out landing carries none, and that landing's single CTA is
- * "Open your first room" — so keying on "administers nothing" made the front
- * door promise a room and Home hand back a code box.
+ * off the signed-out landing carries none, and that landing's single CTA
+ * promises their own crew ("Start your crew", #2480) — so keying on
+ * "administers nothing" made the front door promise one thing and Home hand
+ * back a code box.
  *
  * `administersNone` still guards it, because the invite is read once with the
  * account: a rider who founds a crew in this session carries the stale code
@@ -207,27 +208,10 @@ export function leadsWithJoining(
 }
 
 /**
- * Where a new room lands: the crew on screen when you may open rooms there,
- * else your own, else whichever you administer. Null while the room list has
- * not landed — the server then defaults to your own crew.
+ * How many crews count against docs/SPEC.md's founding cap: the ones you
+ * founded and still own. Handing one on frees its slot; a crew handed to you
+ * never takes one.
  */
-export function creationCrew(
-	openable: readonly RoomCrew[],
-	preferred: string | undefined,
-	explicit?: RoomCrew,
-): RoomCrew | null {
-	// A crew's own page asking for a room "here" is not a hint (audit
-	// 2026-09-09): with no rooms yet the crew is in no list, and the
-	// fallback opened the room in another crew — for good, a room never
-	// moves. The server still refuses a crew you may not open rooms in.
-	if (explicit) return openable.find((c) => c.id === explicit.id) ?? explicit;
-	// The crew you founded before any other you own (#1928): a crew handed
-	// to you must not become where your rooms land.
-	return (
-		openable.find((c) => c.id === preferred) ??
-		openable.find((c) => c.founded) ??
-		openable.find((c) => c.role === 'owner') ??
-		openable[0] ??
-		null
-	);
+export function foundedCount(crews: readonly RoomCrew[]): number {
+	return crews.filter((c) => c.founded && c.role === 'owner').length;
 }

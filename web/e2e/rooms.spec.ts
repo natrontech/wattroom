@@ -2,24 +2,51 @@ import { expect, test } from './room';
 import { signInAs } from './signin';
 
 /**
- * The golden onboarding path (#122): a fresh account creates its first room
- * through the UI. This exact flow shipped hard-broken once — the create form
- * only rendered when the room list was non-empty, so the empty state's CTAs
- * focused inputs that did not exist.
+ * The golden onboarding path (#122, #2480): a fresh account starts its crew
+ * on Home, lands in it with a text and a voice channel, and opens a room
+ * there from the crew's own page. This exact flow shipped hard-broken once —
+ * the create form only rendered when the room list was non-empty, so the
+ * empty state's CTAs focused inputs that did not exist.
  */
-test('a fresh user creates their first room through the UI', async ({
+test('a fresh user starts their first crew through the UI', async ({
 	page,
 	rooms,
 }) => {
 	await signInAs(page, 'Smoke Crew Owner', '/home');
 
-	// This rider owns nothing when the run starts — the fixture takes its room
-	// back every time — so the empty list is what gets exercised, which is the
-	// state the bug lived in. Before #594 that depended on whatever rooms the
-	// shared dev account happened to hold. Opening through `rooms` asserts
-	// creation landed inside the room, already a member, and hands the room's
-	// lifetime to the fixture.
-	await rooms.open(page, `Smoke Test Crew ${Date.now() % 100000}`);
+	const name = `Smoke Test Crew ${Date.now() % 100000}`;
+	await page.locator('#start-crew-name').fill(name);
+	await page
+		.locator('#rooms')
+		.getByRole('button', { name: 'Start a crew', exact: true })
+		.click();
+	await page.waitForURL(/\/crew\/[0-9a-f-]+$/, { timeout: 15_000 });
+	const crewId = page.url().split('/crew/')[1];
+	await expect(page.getByRole('heading', { name })).toBeVisible();
+
+	const channels = await page.evaluate(
+		(id) =>
+			fetch(`/api/crews/${id}/channels`)
+				.then((res) => res.json())
+				.then((body: { channels: { kind: string; name: string }[] }) =>
+					body.channels.map((c) => `${c.kind}:${c.name}`),
+				),
+		crewId,
+	);
+	expect(channels).toEqual(['text:Lounge', 'voice:Lounge']);
+
+	// Somewhere to ride until the voice channel has a page of its own: the
+	// crew's first room, from its own page. The room's teardown takes the
+	// crew with it — nobody else is in it (#1935).
+	await page.getByRole('button', { name: 'Open a room here' }).first().click();
+	const sheet = page.getByRole('dialog', { name: 'Open a room' });
+	await sheet.locator('#open-room-name-sheet').fill(name);
+	await sheet.getByRole('button', { name: 'Open a room' }).click();
+	await page.waitForURL(/\/r\//, { timeout: 15_000 });
+	rooms.adopt(page, page.url().split('/r/')[1].split(/[/?#]/)[0]);
+	await expect(page.getByRole('heading', { name })).toBeVisible({
+		timeout: 15_000,
+	});
 });
 
 /**
@@ -29,5 +56,5 @@ test('a fresh user creates their first room through the UI', async ({
 test('the retired /rooms link lands on the door', async ({ page }) => {
 	await signInAs(page, 'Smoke Crew Owner', '/rooms');
 	await expect(page).toHaveURL(/\/home#rooms$/);
-	await expect(page.locator('#open-room-name')).toBeVisible();
+	await expect(page.locator('#start-crew-name')).toBeVisible();
 });
