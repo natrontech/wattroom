@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test, voicePath } from './room';
 
 /**
  * Away says which kind of away (#706, the split button).
@@ -32,11 +32,12 @@ test('a rider picks a state, and the room is told which', async ({
 	const b = await riders(B);
 	await b.setViewportSize({ width: 1440, height: 900 });
 	await rooms.enter(b, room);
-	await a.goto(`/r/${room.slug}`);
-	// B waits in the room's Chat place, where the timeline is drawn, BEFORE A
-	// presses anything: presence lines are ephemeral (ADR-0022) and a reload
-	// shows none of them, so a rider who arrives afterwards sees nothing.
-	await b.goto(`/r/${room.slug}/chat`);
+	await a.goto(voicePath(room));
+	// B waits in the voice channel, whose page draws its events beside the
+	// deck (ADR-0022 as amended by ADR-0058), BEFORE A presses anything:
+	// they are ephemeral and a reload shows none of them, so a rider who
+	// arrives afterwards sees nothing.
+	await b.goto(voicePath(room));
 
 	// The face before anything is chosen: one tap always means the plain
 	// thing, which is the whole reason the arrow exists.

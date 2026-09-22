@@ -1,3 +1,4 @@
+import { roomAddress } from '$lib/room/address';
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -87,7 +88,7 @@ describe('room live workout definition', () => {
 	// it by hash on every other; the store fills it back in from the last one
 	// heard, so the room's parsed workout never blinks.
 	it('fills the workout back in from the last tick that carried it', () => {
-		const live = createRoomLive('lean');
+		const live = createRoomLive(roomAddress('lean'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		const say = (state: Record<string, unknown>) =>
@@ -114,7 +115,7 @@ describe('room live send while reconnecting', () => {
 	});
 
 	it('queues commands until the socket opens, then flushes them in order', () => {
-		const live = createRoomLive('flush');
+		const live = createRoomLive(roomAddress('flush'));
 		const socket = FakeSocket.last!;
 		live.cheer('one');
 		live.cheer('two');
@@ -125,7 +126,7 @@ describe('room live send while reconnecting', () => {
 	});
 
 	it('holds no more than the bound while the wire is down', () => {
-		const live = createRoomLive('full');
+		const live = createRoomLive(roomAddress('full'));
 		const socket = FakeSocket.last!;
 		for (let i = 0; i < QUEUE + 1; i++) live.cheer(`c${i}`);
 		socket.open();
@@ -140,7 +141,7 @@ describe('room live send while reconnecting', () => {
 	});
 
 	it('drops metrics without queueing — stale watts help nobody', () => {
-		const live = createRoomLive('metrics');
+		const live = createRoomLive(roomAddress('metrics'));
 		const socket = FakeSocket.last!;
 		live.sendMetrics({ watts: 200, cadence: 90 });
 		socket.open();
@@ -148,7 +149,7 @@ describe('room live send while reconnecting', () => {
 	});
 
 	it('keeps jukebox refusals separate for the add surface', () => {
-		const live = createRoomLive('jukebox-refusal');
+		const live = createRoomLive(roomAddress('jukebox-refusal'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		socket.onmessage?.({
@@ -171,7 +172,7 @@ describe('room live ride buffer', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(1_000_000);
 		buffered.rows.length = 0;
-		const live = createRoomLive('buffer');
+		const live = createRoomLive(roomAddress('buffer'));
 		FakeSocket.last!.open();
 		running(FakeSocket.last!);
 		await vi.advanceTimersByTimeAsync(0);
@@ -188,7 +189,7 @@ describe('room live ride buffer', () => {
 	it('replays from the last seq the hub said it received, not the last one stamped (#1467)', async () => {
 		vi.useFakeTimers();
 		buffered.since.length = 0;
-		const live = createRoomLive('floor');
+		const live = createRoomLive(roomAddress('floor'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		running(socket);
@@ -240,7 +241,7 @@ describe('room live ride buffer follows the session (#1541)', () => {
 		});
 
 	it('opens no buffer in the lounge, one per session, ended when it closes', async () => {
-		const live = createRoomLive('follow');
+		const live = createRoomLive(roomAddress('follow'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		phase(socket, 'idle');
@@ -277,7 +278,7 @@ describe('room live ride buffer follows the session (#1541)', () => {
 	// ride with no crash safety at all used to look exactly like one with it.
 	it('says so when nothing is writing the ride down (#1466 finding 4)', async () => {
 		buffered.crashSafe = false;
-		const live = createRoomLive('nostore');
+		const live = createRoomLive(roomAddress('nostore'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		expect(live.noCrashSafety).toBe(false);
@@ -301,7 +302,7 @@ describe('room live ride buffer follows the session (#1541)', () => {
 	});
 
 	it('keeps the buffer unfinished when the hub never heard a minute of it (#1536)', async () => {
-		const live = createRoomLive('tail');
+		const live = createRoomLive(roomAddress('tail'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		running(socket, 5, 'Openers');
@@ -334,7 +335,7 @@ describe('room live ride buffer follows the session (#1541)', () => {
 	// to save — so the empty tail used to stamp the last copy finished
 	// (#1466, ADR-0052).
 	it('keeps the ride, and says so, when the server comes back without the session (#1466)', async () => {
-		const live = createRoomLive('restart');
+		const live = createRoomLive(roomAddress('restart'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		running(socket, 5, 'Openers');
@@ -365,7 +366,7 @@ describe('room live ride buffer follows the session (#1541)', () => {
 	// keeps it and a new pick replaces it. The hub saved that ride; saying
 	// the server lost it would be a lie.
 	it('does not blame the server for an idle room that still names its workout', async () => {
-		const live = createRoomLive('reconnected');
+		const live = createRoomLive(roomAddress('reconnected'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		running(socket, 5, 'Openers');
@@ -394,7 +395,7 @@ describe('room live ride buffer follows the session (#1541)', () => {
 	// The same restart, to someone watching from a phone: nothing of theirs
 	// was recording, so there is nothing to recover and nothing to say.
 	it('says nothing about a lost session to a rider who buffered nothing', async () => {
-		const live = createRoomLive('spectator');
+		const live = createRoomLive(roomAddress('spectator'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		running(socket, 5, 'Openers');
@@ -407,7 +408,7 @@ describe('room live ride buffer follows the session (#1541)', () => {
 	});
 
 	it('opens one on a reload mid-session too', async () => {
-		createRoomLive('reload');
+		createRoomLive(roomAddress('reload'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		running(socket, 600, 'Openers');
@@ -432,7 +433,7 @@ describe('room live lost (#1500)', () => {
 	}
 
 	it('turns to lost once the backoff has settled, and only then', async () => {
-		const live = createRoomLive('lost');
+		const live = createRoomLive(roomAddress('lost'));
 		await vi.advanceTimersByTimeAsync(0);
 		FakeSocket.last!.open();
 		expect(live.lost).toBe(false);
@@ -451,7 +452,7 @@ describe('room live lost (#1500)', () => {
 	});
 
 	it('spends 1, 2, 4, 8 s before settling at 10 s, as the spec says', async () => {
-		createRoomLive('backoff');
+		createRoomLive(roomAddress('backoff'));
 		await vi.advanceTimersByTimeAsync(0);
 		FakeSocket.last!.open();
 		const dials: number[] = [];
@@ -470,7 +471,7 @@ describe('room live lost (#1500)', () => {
 	});
 
 	it('retry() dials now instead of waiting out the backoff', async () => {
-		const live = createRoomLive('retry');
+		const live = createRoomLive(roomAddress('retry'));
 		await vi.advanceTimersByTimeAsync(0);
 		FakeSocket.last!.open();
 		for (let i = 0; i < SETTLED_ATTEMPTS; i++) await drop();
@@ -507,7 +508,7 @@ describe('room live silence and offline (#2135, #2121)', () => {
 	// kept it OPEN with nothing arriving, the hub dropped the rider, and the
 	// tab said live until a refresh.
 	it('drops a socket that stays open but stops hearing ticks', async () => {
-		const live = createRoomLive('silent');
+		const live = createRoomLive(roomAddress('silent'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		tick(socket);
@@ -529,7 +530,7 @@ describe('room live silence and offline (#2135, #2121)', () => {
 	});
 
 	it('keeps a socket that goes on hearing ticks', async () => {
-		const live = createRoomLive('ticking');
+		const live = createRoomLive(roomAddress('ticking'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		for (let second = 0; second < 30; second++) {
@@ -542,7 +543,7 @@ describe('room live silence and offline (#2135, #2121)', () => {
 	});
 
 	it('says offline when the device is, and dials the moment it is back', async () => {
-		const live = createRoomLive('offline');
+		const live = createRoomLive(roomAddress('offline'));
 		const socket = FakeSocket.last!;
 		socket.open();
 		online = false;

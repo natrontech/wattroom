@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { roomAddress } from '$lib/room/address';
 	import Banner from '$lib/components/Banner.svelte';
 	import ListOrdered from '@lucide/svelte/icons/list-ordered';
 	import Shuffle from '@lucide/svelte/icons/shuffle';
@@ -31,7 +32,7 @@
 	});
 
 	async function load() {
-		const res = await getAutoplay(slug);
+		const res = await getAutoplay(roomAddress(slug).autoplay!);
 		if (res.ok) {
 			autoplay = res.data ?? null;
 			error = null;
@@ -45,7 +46,7 @@
 		if (!autoplay) return;
 		const merged = { ...autoplay, ...next };
 		saving = true;
-		const res = await updateAutoplay(slug, merged);
+		const res = await updateAutoplay(roomAddress(slug).autoplay!, merged);
 		saving = false;
 		if (!res.ok) {
 			toasts.push(res.error.message, { tone: 'error' });

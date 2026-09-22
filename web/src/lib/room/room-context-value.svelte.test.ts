@@ -1,3 +1,4 @@
+import { roomAddress } from '$lib/room/address';
 import { describe, expect, it } from 'vitest';
 import {
 	roomContextValue,
@@ -55,6 +56,7 @@ function shellProps(): RoomShellProps {
 	const props = $state({
 		children: (() => {}) as unknown as RoomShellProps['children'],
 		slug: 'mfw-5',
+		address: roomAddress('mfw-5'),
 		role: 'member',
 		roomName: 'MFW 5',
 		members: [],

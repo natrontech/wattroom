@@ -27,15 +27,16 @@
 	let { pathname }: { pathname: string } = $props();
 
 	const conn = $derived(roomConnection.current);
-	const onLounge = $derived(!!conn && pathname === `/r/${conn.slug}`);
+	const onLounge = $derived(!!conn && pathname === conn.address.home);
 	// The heading names the room it means (#1017). "with you" alone was the
 	// clearest job in the sidebar with the weakest label: three sections list
 	// people, and this is the only one that means "right now, where you are
 	// standing". The slug is the fallback a room always has.
 	const roomName = $derived(
 		conn
-			? (presence.rooms.find((room) => room.slug === conn.slug)?.name ??
-					conn.slug)
+			? (conn.slug &&
+					presence.rooms.find((room) => room.slug === conn.slug)?.name) ||
+					conn.address.name
 			: '',
 	);
 	const others = $derived(
@@ -86,7 +87,7 @@
 				     job (#702) — a shortcut, never the only way, because the
 				     people column offers the same page on click. -->
 				<a
-					href="/r/{conn.slug}"
+					href={conn.address.home}
 					title="{rider.name} · back to the Lounge"
 					{@attach contextMenu(() =>
 						personMenu(rider.id, goto, {

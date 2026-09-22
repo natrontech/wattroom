@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PlaceAddress } from '$lib/room/address';
 	import { toasts } from '$lib/toast.svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Skeleton from '$lib/components/Skeleton.svelte';
@@ -17,11 +18,14 @@
 	// room setting and lives on the room's Settings page (#1422); this panel
 	// says what it is set to and keeps the one-tap "Set as active" on a row.
 	let {
-		slug,
+		address,
 		roomStore,
 		mineStore,
 	}: {
-		slug: string;
+		/** Where the panel is open (#2449): a room, or a voice channel whose
+		 *  shelf is its crew's and whose autoplay is set in the crew's
+		 *  settings rather than here. */
+		address: PlaceAddress;
 		/** Made by the column (#1427), which also saves rows into them. */
 		roomStore: ReturnType<typeof createPlaylistStore>;
 		mineStore: ReturnType<typeof createPlaylistStore>;
@@ -59,16 +63,16 @@
 	// whole setting the way the Settings page does.
 	let autoplay = $state<AutoplaySettings | null>(null);
 	$effect(() => {
-		if (slug) void loadAutoplay();
+		if (address.autoplay) void loadAutoplay(address.autoplay);
 	});
-	async function loadAutoplay() {
-		const res = await getAutoplay(slug);
+	async function loadAutoplay(path: string) {
+		const res = await getAutoplay(path);
 		autoplay = res.ok ? (res.data ?? null) : null;
 	}
 	async function setActive(id: string) {
-		if (!autoplay) return;
+		if (!autoplay || !address.autoplay) return;
 		const next = { ...autoplay, activePlaylistId: id };
-		const res = await updateAutoplay(slug, next);
+		const res = await updateAutoplay(address.autoplay, next);
 		if (!res.ok) {
 			// A toast, not the create form's error line (#2179): this refusal
 			// used to appear under the "new playlist" box, a panel away from
@@ -101,7 +105,7 @@
 			aria-selected={tab === 'room'}
 			onclick={() => (tab = 'room')}
 			class="btn btn-xs {tab === 'room' ? 'btn-secondary' : 'text-muted'}"
-			>Room</button
+			>{address.channel ? 'Crew' : 'Room'}</button
 		>
 		<button
 			role="tab"
@@ -117,7 +121,7 @@
 		     (#1422). The link is only drawn for who may follow it to a form. -->
 		<p class="text-muted mt-2 text-[10px]">
 			{status}{#if canManage}
-				· <a href="/r/{slug}/settings" class="underline">settings</a>{/if}
+				· <a href="{address.home}/settings" class="underline">settings</a>{/if}
 		</p>
 	{/if}
 
@@ -134,7 +138,7 @@
 		{:else if store.all.length === 0}
 			<p class="text-muted text-[11px] leading-relaxed">
 				{tab === 'room'
-					? 'No room playlists yet — the first one below is a click away.'
+					? `No ${address.channel ? 'crew' : 'room'} playlists yet — the first one below is a click away.`
 					: "No personal playlists yet — yours to build, queueable in any room you're in."}
 			</p>
 		{:else}
@@ -143,10 +147,10 @@
 					<JukeboxPlaylistRow
 						{playlist}
 						{store}
-						{slug}
+						{address}
 						roomScoped={tab === 'room'}
 						canManage={tab !== 'room' || canManage}
-						onSetActive={tab === 'room'
+						onSetActive={tab === 'room' && address.autoplay
 							? () => void setActive(playlist.id)
 							: undefined}
 					/>

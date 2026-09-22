@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PlaceAddress } from '$lib/room/address';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
@@ -11,11 +12,11 @@
 	// search-or-paste field; Queue appears when a room is open.
 	let {
 		store,
-		slug,
+		address,
 	}: {
 		store: ReturnType<typeof createPlaylistStore>;
 		/** The room the rider is standing in, if any — what Queue points at. */
-		slug?: string;
+		address?: PlaceAddress | null;
 	} = $props();
 
 	let newName = $state('');
@@ -65,7 +66,7 @@
 					<JukeboxPlaylistRow
 						{playlist}
 						{store}
-						{slug}
+						{address}
 						roomScoped={false}
 						canManage={true}
 					/>

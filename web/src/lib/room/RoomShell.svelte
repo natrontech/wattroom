@@ -48,7 +48,7 @@
 	// #173: the connection outlives this page — you stay in the room while
 	// you browse. Leaving is the rail's explicit button, never unmount.
 	// svelte-ignore state_referenced_locally
-	const connection = roomConnection.join(props.slug);
+	const connection = roomConnection.join(props.address);
 	const live = connection.live;
 
 	// The connection owns the log and what you have not seen of it (#568) —
@@ -86,7 +86,8 @@
 		const back = shouldRejoinVoice({
 			notes: readNotes(),
 			tab: tabId(),
-			slug: props.slug,
+			// The note is keyed by the place (#2449); a room's key is its slug.
+			slug: props.address.key,
 			avEnabled: !!account.me?.avEnabled,
 			now: Date.now(),
 		});
@@ -516,7 +517,9 @@
 		{riders}
 		members={props.members}
 		{missed}
-		onOpenChat={() => void goto(`/r/${props.slug}/chat`)}
+		onOpenChat={props.address.chat
+			? () => void goto(`${props.address.home}/chat`)
+			: undefined}
 		onCheer={(emoji) => live.cheer(emoji)}
 		onPoke={(id) => live.poke(id)}
 		onBan={myRole === 'owner' ? ban : undefined}
@@ -527,7 +530,7 @@
 				jukebox={live.tick?.jukebox}
 				send={live.jukebox}
 				refusal={live.jukeboxRefusal}
-				slug={props.slug}
+				address={props.address}
 				targetRpm={live.tick?.state?.targetRpm ?? 0}
 			/>
 		{/snippet}

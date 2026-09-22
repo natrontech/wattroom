@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test, voicePath } from './room';
 
 /**
  * Two riders in one room (#418), which is the only way to see the group
@@ -72,10 +72,10 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 	// B gets in the way a guest does: the crew's six characters, then the room.
 	await rooms.enter(b, room);
 
-	// Both on the trainer, both on the Training place — the surface every
-	// assertion below reads.
+	// Both on the trainer, both on the voice channel's Training place (#2449)
+	// — the surface every assertion below reads.
 	for (const rider of [a, b]) {
-		await rider.goto(`/r/${room.slug}/training`);
+		await rider.goto(`${voicePath(room)}/training`);
 		await rider
 			.getByRole('button', { name: 'Ride simulated' })
 			.click({ timeout: 15_000 });
