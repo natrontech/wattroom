@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	activeHref,
 	activePlace,
+	crewOfPath,
+	crewPlaces,
 	dmsCurrent,
 	pages,
 	placesFor,
@@ -156,5 +158,23 @@ describe('placesFor', () => {
 			expect(
 				activePlace(`/r/velvet-hammer${place.path}`, 'velvet-hammer'),
 			).toBe(place.path);
+	});
+});
+
+describe('a crew in the sidebar (#2447)', () => {
+	it('lists its Home, Members and — for its admins on a desk — Settings', () => {
+		const labels = (admin: boolean, narrow: boolean) =>
+			crewPlaces('c1', admin, narrow).map((p) => p.label);
+		expect(labels(true, false)).toEqual(['Home', 'Members', 'Settings']);
+		expect(labels(false, false)).toEqual(['Home', 'Members']);
+		// The 95% rule: nobody renames a crew from a bike.
+		expect(labels(true, true)).toEqual(['Home', 'Members']);
+	});
+
+	it('knows which crew a path stands in', () => {
+		expect(crewOfPath('/crew/c1')).toBe('c1');
+		expect(crewOfPath('/crew/c1/v/v1/training')).toBe('c1');
+		expect(crewOfPath('/crews/directory')).toBeUndefined();
+		expect(crewOfPath('/home')).toBeUndefined();
 	});
 });

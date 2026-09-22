@@ -67,6 +67,35 @@ export const pages: {
 	{ href: '/friends', label: 'Friends', icon: Users },
 ];
 
+/**
+ * A crew's own pages (ADR-0058, #2447): what the sidebar lists under a
+ * chosen crew, above its channels. Only the pages that exist are listed — a
+ * row is a promise the page is there. Settings is the admins', and not a
+ * phone's (the 95% rule, as a room's was).
+ */
+export function crewPlaces(
+	crewId: string,
+	admin: boolean,
+	narrow: boolean,
+): { href: string; label: string; icon: Icon; exact?: boolean }[] {
+	const base = `/crew/${crewId}`;
+	return [
+		{ href: base, label: 'Home', icon: House, exact: true },
+		{ href: `${base}/members`, label: 'Members', icon: Users },
+		...(admin && !narrow
+			? [{ href: `${base}/settings`, label: 'Settings', icon: Settings }]
+			: []),
+	];
+}
+
+/**
+ * Which crew a path is inside, if any — the sidebar is in that crew while
+ * you stand in it, whatever was chosen last (ADR-0020 rule 1).
+ */
+export function crewOfPath(pathname: string): string | undefined {
+	return /^\/crew\/([^/]+)/.exec(pathname)?.[1];
+}
+
 /** The room you are standing in opens into these. */
 export const roomPlaces = [
 	{

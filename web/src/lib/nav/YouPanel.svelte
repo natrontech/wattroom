@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { leaveRoom } from '$lib/room/leave';
 	// The AV chain is a store, so this reads it rather than being handed
 	// fifteen values through a Sidebar that uses none of them (#1047). Same
 	// pattern as RoomSensorOverview and lib/profile/VoiceAudio.
@@ -332,6 +333,18 @@
 					><ChevronDown size={13} /></button
 				>
 			{/if}
+			<!-- The way out of where you are (#2447): the room's row carried it,
+			     and a channel row is a link, not a connection — so it lives
+			     with the other things you say about yourself while connected,
+			     Discord's disconnect in its voice panel. Quiet on purpose:
+			     leaving is re-doable, so it neither confirms nor shouts. -->
+			<button
+				onclick={leaveRoom}
+				class="btn btn-secondary ml-1 min-h-11 px-2"
+				title="leave — disconnect from where you are"
+				aria-label="leave — disconnect from where you are"
+				><LogOut size={14} /></button
+			>
 		</div>
 	{/if}
 	{#if showAv && voiceStatus !== 'off' && playbackBlocked}
