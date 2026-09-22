@@ -124,6 +124,21 @@ func TestRenderCrewPicture(t *testing.T) {
 	}
 }
 
+// A picture that declares a canvas past the ceiling is refused on its header,
+// before a pixel is allocated: the upload caps the bytes, not the canvas.
+func TestDecodePictureRefusesAHugeCanvas(t *testing.T) {
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, image.NewGray(image.Rect(0, 0, 5000, 5000))); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := decodePicture(buf.Bytes()); ok {
+		t.Fatalf("a %d-byte picture declaring 5000×5000 was decoded", buf.Len())
+	}
+	if _, ok := decodePicture(solidPNG(t, watt)); !ok {
+		t.Fatal("an ordinary picture was refused")
+	}
+}
+
 func TestDropUnglyphed(t *testing.T) {
 	s := testService()
 	if got := s.dropUnglyphed("🚴 Tuesday Crew 🔥"); got != "Tuesday Crew" {

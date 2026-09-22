@@ -267,7 +267,7 @@ const picSize = 240
 func (s *Service) Render(title, sub string, pic []byte) ([]byte, error) {
 	img := image.NewNRGBA(image.Rect(0, 0, imgW, imgH))
 	draw.Draw(img, img.Bounds(), image.NewUniform(surface), image.Point{}, draw.Src)
-	if src, _, err := image.Decode(bytes.NewReader(pic)); len(pic) > 0 && err == nil {
+	if src, ok := decodePicture(pic); ok {
 		box := image.Rect(imgW-margin-picSize, 72, imgW-margin, 72+picSize)
 		square := image.NewNRGBA(image.Rect(0, 0, picSize, picSize))
 		// The centred square of the picture, so a wide logo is cropped rather
@@ -306,6 +306,25 @@ func (s *Service) Render(title, sub string, pic []byte) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// maxPicturePixels bounds what a picture may decode to. The bytes are capped
+// at upload, but a small PNG can declare a huge canvas, and this decode runs
+// for any caller holding a code — signed in or not.
+const maxPicturePixels = 4096 * 4096
+
+// decodePicture decodes a stored crew picture, refusing one whose declared
+// size is past the ceiling before any pixel is allocated.
+func decodePicture(pic []byte) (image.Image, bool) {
+	if len(pic) == 0 {
+		return nil, false
+	}
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(pic))
+	if err != nil || cfg.Width <= 0 || cfg.Height <= 0 || cfg.Width*cfg.Height > maxPicturePixels {
+		return nil, false
+	}
+	src, _, err := image.Decode(bytes.NewReader(pic))
+	return src, err == nil
 }
 
 func (s *Service) face(size float64) (font.Face, error) {
