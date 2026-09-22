@@ -98,6 +98,7 @@ func shareRoom(t *testing.T, st *store.Store, users *testx.Users, slug string, n
 			t.Fatalf("membership %s: %v", name, err)
 		}
 	}
+	storetest.ChannelsFor(t, st, room.ID)
 	return room
 }
 

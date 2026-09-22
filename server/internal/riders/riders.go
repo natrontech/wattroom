@@ -85,7 +85,7 @@ func (s *Service) handleAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 	// Asked before the picture is looked up: the refusal must not depend on
 	// whether the row exists, or the 404 tells the caller which 404 it is.
-	mayLook, err := s.store.Queries.SharesRoomOrFriends(r.Context(), db.SharesRoomOrFriendsParams{
+	mayLook, err := s.store.Queries.SharesChannelOrFriends(r.Context(), db.SharesChannelOrFriendsParams{
 		Viewer: me.ID, Rider: id,
 	})
 	if err != nil {
@@ -198,7 +198,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	// coincidence and would have drifted the moment either rule moved.
 	// "pending_out is not a door" lives in the query now: a code grants "may
 	// ask", not "may look".
-	mayLook, err := s.store.Queries.SharesRoomOrFriends(ctx, db.SharesRoomOrFriendsParams{
+	mayLook, err := s.store.Queries.SharesChannelOrFriends(ctx, db.SharesChannelOrFriendsParams{
 		Viewer: me.ID, Rider: id,
 	})
 	if err != nil {

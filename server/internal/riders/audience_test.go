@@ -15,7 +15,7 @@ import (
 // accepted friendship, or a pending request from that rider — plus the rider
 // themselves. Three endpoints serve it, and each used to decide it for itself:
 // riders.handleGet composed ListRoomsInCommon with friendStatus in Go,
-// gamify.handleRider called the SharesRoomOrFriends SQL (#2298), and
+// gamify.handleRider called the SharesChannelOrFriends SQL (#2298), and
 // riders.handleAvatar asked nothing at all and answered everyone (#2239).
 //
 // They agreed by coincidence. This is the test that would have caught them

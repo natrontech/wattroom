@@ -740,6 +740,7 @@ func (h *harness) sharedRoom(t *testing.T, a, b string) db.Room {
 			t.Fatalf("membership %s: %v", who, err)
 		}
 	}
+	storetest.ChannelsFor(t, h.store, room.ID)
 	return room
 }
 
@@ -762,6 +763,7 @@ func TestABannedRiderCannotPlayTheRoomsTracks(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("ban: %v", err)
 	}
+	storetest.ChannelsFor(t, h.store, room.ID) // a room ban is a crew ban since M9
 
 	if w := h.do(t, "bob", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusNotFound {
 		t.Errorf("a banned rider still played the room's track: %d, want 404", w.Code)
