@@ -601,6 +601,10 @@ export interface ClientMessage {
 export interface Rider {
   id: string;
   name: string;
+  /**
+   * The rider's crew role, as a voice channel reads it: "owner", "admin"
+   * or "member" (#2438). Coach is not a role — it is the session's.
+   */
   role: string;
   ftpWatts: number /* int */;
   /**

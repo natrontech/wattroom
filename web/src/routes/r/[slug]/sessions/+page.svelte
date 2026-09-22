@@ -42,7 +42,7 @@
 	// and Members and Settings have never gated moderation either. So the role
 	// alone says who plans, moves and cancels here: a room's owner holding
 	// only a phone used to read "Your coach plans them here".
-	const manages = $derived(room.canControl);
+	const manages = $derived(room.canManage);
 	// The gate stays on the one control that IS the cockpit. Starting hands
 	// every rider in the room a workout and a countdown, from the screen the
 	// coach is riding on — the same gate SessionControls wears, and the same
