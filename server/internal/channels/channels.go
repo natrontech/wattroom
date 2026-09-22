@@ -84,6 +84,7 @@ func (s *Service) changed() {
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/crews/live", s.handleCrewsLive)
 	mux.HandleFunc("GET /api/crews/{id}/channels", s.handleList)
 	mux.HandleFunc("GET /api/crews/{id}/live", s.handleLive)
 	mux.HandleFunc("POST /api/crews/{id}/channels", s.handleCreate)
