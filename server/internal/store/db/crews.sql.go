@@ -306,7 +306,7 @@ func (q *Queries) FoundCrew(ctx context.Context, arg FoundCrewParams) (Crew, err
 }
 
 const getCrew = `-- name: GetCrew :one
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled, listed from crews where id = $1
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled, listed, ics_token from crews where id = $1
 `
 
 type GetCrewRow struct {
@@ -320,6 +320,7 @@ type GetCrewRow struct {
 	Named        bool
 	BoardEnabled bool
 	Listed       bool
+	IcsToken     string
 }
 
 // Everything but the image bytes (#1237): GetCrewImage serves those.
@@ -337,6 +338,7 @@ func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (GetCrewRow, erro
 		&i.Named,
 		&i.BoardEnabled,
 		&i.Listed,
+		&i.IcsToken,
 	)
 	return i, err
 }

@@ -86,6 +86,9 @@ type crewJSON struct {
 	// Admins and the owner only: whether the crew is in the directory — the
 	// state of the switch only they can throw.
 	Listed bool `json:"listed,omitempty"`
+	// The crew's calendar feed (#2441, ADR-0021): every member gets it, as
+	// every member of a room did — the feed is for sharing.
+	IcsToken string `json:"icsToken,omitempty"`
 }
 
 func (s *Service) registerCrews(mux *http.ServeMux) {
@@ -253,6 +256,7 @@ func asRow(c db.Crew) db.GetCrewRow {
 	return db.GetCrewRow{
 		ID: c.ID, Name: c.Name, Icon: c.Icon, OwnerID: c.OwnerID, CreatedAt: c.CreatedAt,
 		Code: c.Code, HasImage: c.ImageSetAt.Valid, BoardEnabled: c.BoardEnabled, Listed: c.Listed,
+		IcsToken: c.IcsToken,
 	}
 }
 
@@ -267,7 +271,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		OwnerID:  store.UUIDString(crew.OwnerID),
 		Named:    crew.Named,
 		Rooms:    []crewRoomJSON{}, People: []crewPersonJSON{},
-		Listed: administers(role) && crew.Listed,
+		Listed: administers(role) && crew.Listed, IcsToken: crew.IcsToken,
 	}
 	// The rooms, with what the CALLER may do in each — the same four states
 	// the sidebar draws, from the same two queries.

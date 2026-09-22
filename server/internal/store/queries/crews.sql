@@ -54,7 +54,7 @@ where crew_id = $1 and role in ('member', 'admin')
 
 -- name: GetCrew :one
 -- Everything but the image bytes (#1237): GetCrewImage serves those.
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled, listed from crews where id = $1;
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled, listed, ics_token from crews where id = $1;
 
 -- name: SetCrewRole :exec
 -- Admin, member or banned. The owner is crews.owner_id and cannot be expressed here,
