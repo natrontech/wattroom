@@ -331,7 +331,7 @@
 		take <code>--color-neon</code>: an unread mark is chrome, and ADR-0005 gives
 		the glow to live data alone. Real:
 		<code>lib/messages/RoomThread.svelte</code> over
-		<code>lib/messages/outside.svelte.ts</code>.
+		<code>lib/messages/chat-thread.svelte.ts</code>.
 	</p>
 	<div class="mt-4 grid gap-3 md:grid-cols-2">
 		<div class="border-muted/15 bg-surface rounded-lg border p-4">

@@ -340,8 +340,10 @@ var (
 		styleguide summary terms theme-editor themes training trophies u
 		voice watch whats-new workouts
 	`)
+	// Keyed by the prefix as already redacted, so a parameter under another
+	// one has a name: /crew/[id]/c/[channel] is `/crew/…/c` (#2448).
 	paramUnder = fieldSet(`
-		/c /crew /dm /history /messages/dm /messages/r /r /u
+		/c /crew /crew/…/c /dm /history /messages/dm /messages/r /r /u
 	`)
 )
 
@@ -370,7 +372,7 @@ func publicRoute(route string) string {
 		if seg == "" {
 			continue
 		}
-		if paramUnder[strings.Join(segs[:i], "/")] || !routeSegments[seg] {
+		if paramUnder[strings.Join(out[:i], "/")] || !routeSegments[seg] {
 			out[i] = "…"
 		}
 	}

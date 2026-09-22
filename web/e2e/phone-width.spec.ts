@@ -226,6 +226,15 @@ test('no page outside a room scrolls sideways on a phone', async ({
 				crewId,
 			)
 		: '';
+	// A text channel of that crew (#2448): every room became one.
+	const textChannel = crewId
+		? await page.evaluate(async (id) => {
+				const body = (await (
+					await fetch(`/api/crews/${id}/channels`)
+				).json()) as { channels?: { id: string; kind: string }[] };
+				return body.channels?.find((c) => c.kind === 'text')?.id ?? '';
+			}, crewId)
+		: '';
 	// The pages reached by an id rather than listed: your own rider page,
 	// the ride seeded above, and the room's thread read from outside — the
 	// three that carry the widest things a rider sees without a room.
@@ -324,6 +333,7 @@ test('no page outside a room scrolls sideways on a phone', async ({
 		'/crew/[id]': `/crew/${crewId}`,
 		'/crew/[id]/members': `/crew/${crewId}/members`,
 		'/crew/[id]/settings': `/crew/${crewId}/settings`,
+		'/crew/[id]/c/[channel]': `/crew/${crewId}/c/${textChannel}`,
 		'/c/[code]': `/c/${crewCode}`,
 	};
 	expect(
@@ -341,17 +351,18 @@ test('no page outside a room scrolls sideways on a phone', async ({
 			peer: expect.stringMatching(/.+/),
 		}),
 	);
-	// The crew's three routes hang off two locals the guard above cannot see,
+	// The crew's routes hang off locals the guard above cannot see,
 	// so they needed their own (#2360): let `/api/rooms` stop carrying `crew`
 	// or `/api/crews/:id` stop carrying `code` and the crew page, its settings
 	// and its door leave the measured list in silence. The code is checked by
 	// shape rather than emptiness, the same `/^[A-Z0-9]{6}$/` room.ts asserts.
 	expect(
-		{ crewId: crewId ?? '', crewCode },
+		{ crewId: crewId ?? '', crewCode, textChannel },
 		'the crew, its settings and its door resolve',
 	).toEqual({
 		crewId: expect.stringMatching(/.+/),
 		crewCode: expect.stringMatching(/^[A-Z0-9]{6}$/),
+		textChannel: expect.stringMatching(/.+/),
 	});
 
 	await seedAPlannedSession(page, byId.room);

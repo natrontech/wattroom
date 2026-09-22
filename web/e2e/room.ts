@@ -9,6 +9,8 @@ import { signInAs } from './signin';
 /** A room the test opened: where it lives, and how somebody else gets in. */
 export interface OpenedRoom {
 	slug: string;
+	/** The crew it was opened in. */
+	crew: string;
 	/** The six characters the join form takes — the CREW's code (#1236). */
 	code: string;
 	name: string;
@@ -155,7 +157,7 @@ export const test = base.extend<{
 					`room ${slug}'s crew came back without a code`,
 				).toMatch(/^[A-Z0-9]{6}$/);
 				crews.push(crew.id);
-				return { slug, code: crew.code, name };
+				return { slug, crew: crew.id, code: crew.code, name };
 			},
 			adopt(page, slug) {
 				opened.push({ page, slug });
@@ -189,5 +191,32 @@ export const test = base.extend<{
 		}
 	},
 });
+
+/**
+ * Where the room's text channel is read (#2448): every room became a text
+ * and a voice channel of its own name (ADR-0058), and a room made since gets
+ * them when it is made. Found by name in the crew's list, which holds only
+ * what the caller may enter — so it is also proof the caller may.
+ */
+export async function textChannelOf(
+	page: Page,
+	room: OpenedRoom,
+): Promise<string> {
+	const id = await page.evaluate(
+		async ({ crew, name }) => {
+			const res = await fetch(`/api/crews/${crew}/channels`);
+			const body = (await res.json()) as {
+				channels?: { id: string; kind: string; name: string }[];
+			};
+			return (
+				body.channels?.find((c) => c.kind === 'text' && c.name === name)?.id ??
+				''
+			);
+		},
+		{ crew: room.crew, name: room.name },
+	);
+	expect(id, `room "${room.name}" has no text channel to read`).not.toBe('');
+	return `/crew/${room.crew}/c/${id}`;
+}
 
 export { expect };
