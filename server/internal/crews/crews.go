@@ -65,6 +65,7 @@ type crewJSON struct {
 }
 
 func (s *Service) registerCrews(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/crews", s.handleMyCrews)
 	mux.HandleFunc("POST /api/crews", s.handleFoundCrew)
 	mux.HandleFunc("GET /api/crews/{id}", s.handleGetCrew)
 	// The literal outranks the wildcard above in Go's mux.
@@ -88,6 +89,35 @@ func (s *Service) registerCrews(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/crews/{id}/me", s.handleSetCrewPrefs)
 	mux.HandleFunc("GET /api/crews/{id}/recaps", s.handleCrewRecaps)
 	s.registerCrewSchedule(mux)
+}
+
+// handleMyCrews is every crew the caller is in (#1476), for the switcher and
+// Home. It rode on GET /api/rooms until the rooms went (#2446).
+func (s *Service) handleMyCrews(w http.ResponseWriter, r *http.Request) {
+	user, ok := s.users.RequireUser(w, r, "Not signed in.")
+	if !ok {
+		return
+	}
+	rows, err := s.store.Queries.ListCrewsFor(r.Context(), user.ID)
+	if err != nil {
+		httpx.Fail(w, s.log, "list crews failed", err, "Your crews could not be loaded. Try again.", "user", store.UUIDString(user.ID))
+		return
+	}
+	out := make([]crewRefJSON, 0, len(rows))
+	for _, c := range rows {
+		role := "member"
+		if c.Owned {
+			role = "owner"
+		} else if c.Admin {
+			role = "admin"
+		}
+		out = append(out, crewRefJSON{
+			Id: store.UUIDString(c.ID), Name: c.Name, Icon: c.Icon,
+			ImageURL: crewImageURL(c.ID, c.HasImage), Code: c.Code,
+			Role: role, Named: c.Named, Founded: c.Founded,
+		})
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"crews": out})
 }
 
 // crewByID loads the crew at {id} and refuses unless the caller is in it,

@@ -1,7 +1,7 @@
 <script lang="ts">
 	// The crew's Home (ADR-0038, ADR-0058; #1150, #1151, #2451): its name,
-	// then what is live, what is next and who is around (CrewNow), then its
-	// rooms until they go (#2460), the invite and the way out. The live half
+	// then what is live, what is next and who is around (CrewNow), then the
+	// invite and the way out. The live half
 	// is read from the crew's voice channels; the crew itself holds nothing
 	// live.
 	import { page } from '$app/state';
@@ -10,7 +10,6 @@
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import CrewNow from './CrewNow.svelte';
-	import CrewRooms from './CrewRooms.svelte';
 	import { fetchCrew, type Crew } from '$lib/crew';
 	import {
 		leaveCrewFlow,
@@ -94,23 +93,11 @@
 	// The crew's size, not the length of the list you may see (#1135).
 	const members = $derived(crew?.members ?? crew?.people.length ?? 0);
 
-	// Leaving the crew (#1228, #1236): one call takes the membership and every
-	// room of the crew you were in. Refused up front when you own a room here:
-	// a room never leaves its crew, so neither can its owner — hand it on
-	// first (#1227). A confirm, not an undo: rejoining by the code brings back
-	// the membership and nothing else (crew-flows.ts).
-	const myRooms = $derived(
-		presence.rooms.filter((r) => r.crew?.id === crew?.id && !!r.role),
-	);
-	const ownedHere = $derived(myRooms.filter((r) => r.role === 'owner'));
-	// The crew's own roster already says whether you own a room here, so the
-	// button is right before presence lands rather than a 409 on click.
-	const ownsRoomHere = $derived(
-		ownedHere.length > 0 ||
-			!!crew?.people.find((p) => p.id === account.me?.id)?.ownsRoom,
-	);
+	// Leaving the crew (#1228, #1236): one call takes the membership and the
+	// private channels you were named into. A confirm, not an undo: rejoining
+	// by the code brings back the membership and nothing else (crew-flows.ts).
 	async function leaveCrew() {
-		if (!crew || owner || ownsRoomHere) return;
+		if (!crew || owner) return;
 		busy = true;
 		await leaveCrewFlow(crew);
 		busy = false;
@@ -162,8 +149,7 @@
 					{crew.name}
 				</h1>
 				<p class="text-muted text-sm">
-					{crew.rooms.length === 1 ? '1 room' : `${crew.rooms.length} rooms`}
-					· {members === 1 ? '1 person' : `${members} people`}
+					{members === 1 ? '1 person' : `${members} people`}
 					{#if owner}
 						· yours
 					{:else if crew.role === 'admin'}
@@ -219,15 +205,14 @@
 		{/if}
 
 		<CrewNow {crew} />
-		<CrewRooms {crew} {administers} onchange={() => void load(id)} />
 		<!-- The people, their roles, the board and the crew's sessions have one
 		     home since #2453: the Members page. -->
 		<a href="/crew/{crew.id}/members" class="btn btn-secondary mt-8"
 			><Users size={14} /> Members{#if crew.members}&nbsp;· {crew.members}{/if}</a
 		>
 
-		<!-- After the rooms and the people (#1931): a newcomer used to read a
-		     code before the room they came for. Still the invite's one home. -->
+		<!-- After the people (#1931): a newcomer used to read a code before the
+		     place they came for. Still the invite's one home. -->
 		{#if crew.code}
 			<h2 class="eyebrow mt-8">invite</h2>
 			<!-- Stacked on a phone: the sentence between the code and the
@@ -242,8 +227,7 @@
 					>
 				</span>
 				<span class="text-muted min-w-0 flex-1 text-xs">
-					Anyone with it joins {crew.name} and walks into its open rooms. Rooms have
-					no codes of their own.
+					Anyone with it joins {crew.name} and walks into its open channels.
 				</span>
 				<button
 					onclick={() => crew?.code && shareInviteLink(crew.code)}
@@ -264,29 +248,13 @@
 					You own {crew.name} — hand it to someone on
 					<a href="/crew/{crew.id}/members" class="underline">Members</a> first, then
 					leave.
-				{:else if ownsRoomHere}
-					You own {ownedHere.length === 1
-						? ownedHere[0].name
-						: ownedHere.length
-							? `${ownedHere.length} rooms`
-							: 'a room'} here, and a room never leaves its crew — hand {ownedHere.length ===
-					1
-						? 'it'
-						: 'them'} to someone in {ownedHere.length === 1
-						? 'the room'
-						: 'them'}, or delete {ownedHere.length === 1 ? 'it' : 'them'} in the room's
-					settings, then leave.
-				{:else if myRooms.length}
-					Leaving takes you out of {crew.name} and the {myRooms.length === 1
-						? 'room'
-						: `${myRooms.length} rooms`} of it you are in. The code gets you back.
 				{:else}
 					Leaving takes you out of {crew.name}. The code gets you back.
 				{/if}
 			</p>
 			<button
 				onclick={leaveCrew}
-				disabled={busy || owner || ownsRoomHere}
+				disabled={busy || owner}
 				class="btn btn-danger btn-xs shrink-0">Leave the crew</button
 			>
 		</div>
