@@ -49,6 +49,12 @@ type scheduledJSON struct {
 	// Read rather than derived from Going: that list is the room's public
 	// half and would only ever answer half the question.
 	YourAnswer string `json:"yourAnswer,omitempty"`
+	// The crew's plans (#2440): the voice channel it names, absent while it
+	// names none, and whether the caller planned it — a member moves and
+	// cancels their own, so the page offers exactly those.
+	ChannelID   string `json:"channelId,omitempty"`
+	ChannelName string `json:"channelName,omitempty"`
+	Mine        bool   `json:"mine,omitempty"`
 }
 
 type goingJSON struct {
@@ -80,20 +86,28 @@ type plannedJSON struct {
 	Minutes     int    `json:"minutes"`
 	StartsAt    string `json:"startsAt"` // RFC 3339
 	CreatedBy   string `json:"createdBy"`
-	RoomSlug    string `json:"roomSlug"`
-	RoomName    string `json:"roomName"`
+	// The crew it is on and the voice channel it names (#2440) — the
+	// channel absent while it names none.
+	CrewID      string `json:"crewId"`
+	CrewName    string `json:"crewName"`
+	ChannelID   string `json:"channelId,omitempty"`
+	ChannelName string `json:"channelName,omitempty"`
+	// A plan a room made, for a page that still links rooms; empty for a
+	// crew's own plan. Goes with the rooms (#2446).
+	RoomSlug string `json:"roomSlug,omitempty"`
+	RoomName string `json:"roomName,omitempty"`
 }
 
-// handleMySchedule is the cross-room planning surface (#325): everything you
-// can ride, plus the feed token that subscribes to exactly this list. Home's
-// "What's next" is what renders it (ADR-0020, ADR-0021 amended) — one row per
-// planned session, which is what the calendar feed beside it has always said.
+// handleMySchedule is the cross-crew planning surface (#325, #2440):
+// everything you can ride in every crew you are in, plus the feed token.
+// Home's "What's next" is what renders it (ADR-0020, ADR-0021 amended) — one
+// row per planned session.
 func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
 		return
 	}
-	rows, err := s.store.Queries.ListUserCalendar(r.Context(), db.ListUserCalendarParams{
+	rows, err := s.store.Queries.ListUserCrewPlans(r.Context(), db.ListUserCrewPlansParams{
 		// The same 30-minute grace the in-room list keeps: a session stays
 		// startable a little past its time. The far edge and the row bound are
 		// the feeds' (#1414) — Home builds the same list in memory, and
@@ -109,12 +123,17 @@ func (s *Service) handleMySchedule(w http.ResponseWriter, r *http.Request) {
 	s.warnIfTruncated(len(rows), "home", "user", store.UUIDString(user.ID))
 	sessions := make([]plannedJSON, 0, len(rows))
 	for _, row := range rows {
-		sessions = append(sessions, plannedJSON{
+		entry := plannedJSON{
 			ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
 			Minutes:  workoutMinutes(string(row.WorkoutJson)),
 			StartsAt: row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
+			CrewID: store.UUIDString(row.CrewID), CrewName: row.CrewName,
 			RoomSlug: row.RoomSlug, RoomName: row.RoomName,
-		})
+		}
+		if row.ChannelID.Valid {
+			entry.ChannelID, entry.ChannelName = store.UUIDString(row.ChannelID), row.ChannelName
+		}
+		sessions = append(sessions, entry)
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"sessions": sessions, "icsToken": user.IcsToken,
@@ -147,20 +166,9 @@ func (s *Service) handleRsvp(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
 		return
 	}
-	going := true
-	if r.Method != http.MethodDelete {
-		var req struct {
-			Going *bool `json:"going"`
-		}
-		// A pointer and an absent body are the same thing here — both mean
-		// the caller did not say, and the answer they did not say is "in".
-		if err := httpx.DecodeStrict(r, &req); err != nil && !errors.Is(err, io.EOF) {
-			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
-			return
-		}
-		if req.Going != nil {
-			going = *req.Going
-		}
+	going, ok := rsvpAnswer(w, r)
+	if !ok {
+		return
 	}
 	if _, err := s.store.Queries.SessionInRoom(r.Context(), db.SessionInRoomParams{
 		ID: id, RoomID: room.ID,
@@ -184,6 +192,24 @@ func (s *Service) handleRsvp(w http.ResponseWriter, r *http.Request) {
 	// everyone else sees the list when they next open the place. Wire it to
 	// the hub the day a room watches an RSVP land.
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// rsvpAnswer reads the answer an RSVP carries: `{"going": false}` declines,
+// and an absent body or field is "in" — the spelling the app used before
+// declines existed, so a tab loaded before a deploy keeps working. A DELETE
+// carries none; the caller reads it as taking the answer back.
+func rsvpAnswer(w http.ResponseWriter, r *http.Request) (going, ok bool) {
+	if r.Method == http.MethodDelete {
+		return true, true
+	}
+	var req struct {
+		Going *bool `json:"going"`
+	}
+	if err := httpx.DecodeStrict(r, &req); err != nil && !errors.Is(err, io.EOF) {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return false, false
+	}
+	return req.Going == nil || *req.Going, true
 }
 
 // requireControl is RequireModerator for the pair the matrix hands the
@@ -245,29 +271,8 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
 		return
 	}
-	req.WorkoutName = strings.TrimSpace(req.WorkoutName)
-	if req.WorkoutName == "" || utf8.RuneCountInString(req.WorkoutName) > 80 || hasControl(req.WorkoutName) {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A workout name has to be 1-80 characters on one line.", "workoutName")
-		return
-	}
-	if segments, err := workout.Parse(req.WorkoutJSON); err != nil || len(segments) == 0 {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"That is not a workout the engine can ride.", "workoutJson")
-		return
-	}
-	// The editor's bounds too (audit 2026-09-09); the message names the step.
-	if err := workout.Validate(req.WorkoutJSON); err != nil {
-		message, ok := workout.RefusalMessage(err)
-		if !ok {
-			message = "That is not a workout the engine can ride."
-		}
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", message, "workoutJson")
-		return
-	}
-	if !plannableAt(req.StartsAt) {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A session is planned between now and three months out.", "startsAt")
+	var valid bool
+	if req.WorkoutName, valid = checkPlan(w, req.WorkoutName, req.WorkoutJSON, req.StartsAt); !valid {
 		return
 	}
 	// docs/SPEC.md's per-room ceiling. Counted with the room's row locked, in
@@ -323,7 +328,7 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.notifier != nil {
-		s.notifier.SessionPlanned(room, req.WorkoutName, req.StartsAt, user.ID)
+		s.notifier.SessionPlanned(room.CrewID, row.ChannelID, req.WorkoutName, req.StartsAt, user.ID)
 	}
 	s.announce(r.Context(), room, "planned", user.DisplayName, req.WorkoutName, req.StartsAt)
 	httpx.WriteJSON(w, http.StatusCreated, scheduledJSON{
@@ -331,6 +336,37 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 		WorkoutJSON: string(row.WorkoutJson),
 		StartsAt:    row.StartsAt.Time.Format(time.RFC3339), CreatedBy: user.DisplayName,
 	})
+}
+
+// checkPlan is a plan's boundary check — the room's and the crew's (#2440):
+// the name trimmed on the way through, or the field error written and false.
+func checkPlan(w http.ResponseWriter, name, workoutJSON string, startsAt time.Time) (string, bool) {
+	name = strings.TrimSpace(name)
+	if name == "" || utf8.RuneCountInString(name) > 80 || hasControl(name) {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"A workout name has to be 1-80 characters on one line.", "workoutName")
+		return "", false
+	}
+	if segments, err := workout.Parse(workoutJSON); err != nil || len(segments) == 0 {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"That is not a workout the engine can ride.", "workoutJson")
+		return "", false
+	}
+	// The editor's bounds too (audit 2026-09-09); the message names the step.
+	if err := workout.Validate(workoutJSON); err != nil {
+		message, ok := workout.RefusalMessage(err)
+		if !ok {
+			message = "That is not a workout the engine can ride."
+		}
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", message, "workoutJson")
+		return "", false
+	}
+	if !plannableAt(startsAt) {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"A session is planned between now and three months out.", "startsAt")
+		return "", false
+	}
+	return name, true
 }
 
 // plannableAt bounds both planning and moving a session.
@@ -395,7 +431,7 @@ func (s *Service) handleReschedule(w http.ResponseWriter, r *http.Request) {
 			s.log.Warn("clearing declines after a move failed", "err", err, "room", room.Slug, "session", store.UUIDString(id))
 		}
 		if s.notifier != nil {
-			s.notifier.SessionRescheduled(room, row.WorkoutName, req.StartsAt, user.ID)
+			s.notifier.SessionRescheduled(row.CrewID, row.ChannelID, row.WorkoutName, req.StartsAt, user.ID)
 		}
 		s.announce(r.Context(), room, "moved", user.DisplayName, row.WorkoutName, req.StartsAt)
 	}
@@ -412,6 +448,7 @@ func (s *Service) handleUnschedule(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That planned session does not exist.")
 		return
 	}
+	channel, _ := store.ParseUUID(s.store.VoiceChannelOf(r.Context(), room.ID))
 	row, err := s.store.Queries.DeleteScheduledSession(r.Context(), db.DeleteScheduledSessionParams{
 		ID: id, RoomID: room.ID,
 	})
@@ -426,7 +463,7 @@ func (s *Service) handleUnschedule(w http.ResponseWriter, r *http.Request) {
 	// A session that has already been and gone is not news, and telling
 	// somebody that the ride they missed is now cancelled is noise (#839).
 	if s.notifier != nil && row.StartsAt.Time.After(time.Now()) {
-		s.notifier.SessionCancelled(room, row.WorkoutName, row.StartsAt.Time, user.ID)
+		s.notifier.SessionCancelled(room.CrewID, channel, row.WorkoutName, row.StartsAt.Time, user.ID)
 	}
 	s.announce(r.Context(), room, "cancelled", user.DisplayName, row.WorkoutName, time.Time{})
 	w.WriteHeader(http.StatusNoContent)

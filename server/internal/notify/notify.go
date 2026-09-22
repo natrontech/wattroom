@@ -37,12 +37,14 @@ type Service struct {
 	key       string
 	apiURL    string
 	httpc     *http.Client
-	// How much session mail one room may cause an hour (#1639): a coach
+	// How much session mail one crew may cause an hour (#1639): a coach
 	// rescheduling in a loop mailed every member each time, unbounded.
+	// ponytail: the room's number, now per crew (#2440); a crew plans more
+	// than one room did, so raise it if a busy crew's mail starts to stall.
 	sessions *budget.Budget[pgtype.UUID]
 }
 
-// The ceiling on handler-triggered session mail per room. The clock's own
+// The ceiling on handler-triggered session mail per crew. The clock's own
 // reminder is not counted: it is once per session by construction.
 const (
 	sessionMailsPerWindow = 10
@@ -104,17 +106,19 @@ const (
 	sessionReminder
 )
 
-// sessionNote is what one session mail is about: which room, which workout,
-// when, who caused it, and which of the four changes it is.
+// sessionNote is what one session mail is about: which crew and channel,
+// which workout, when, who caused it, and which of the four changes it is.
 //
 // A struct rather than a seventh positional parameter (#1011). The session
 // id joined the list for the reminder alone, and it would have sat next to
 // the actor's id — two pgtype.UUIDs in a row, at two call sites, with the
 // wrong order compiling and mailing the wrong people.
 type sessionNote struct {
-	room     db.Room
-	workout  string
-	startsAt time.Time
+	// The crew the plan is on, and the voice channel it names — invalid
+	// while it names none (#2440).
+	crew, channel pgtype.UUID
+	workout       string
+	startsAt      time.Time
 	// Who caused it, and therefore already knows: they are not mailed. The
 	// reminder is caused by the clock, so it passes noActor, which excludes
 	// nobody.
@@ -131,47 +135,48 @@ type sessionNote struct {
 // SessionPlanned emails every opted-in member except the planner. Fire and
 // forget: the handler must not wait on a mail provider. The goroutine exits
 // when the member list is sent or the one-minute context runs out.
-func (s *Service) SessionPlanned(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID) {
-	s.sessionAsync(room, workoutName, startsAt, planner, sessionPlanned)
+func (s *Service) SessionPlanned(crew, channel pgtype.UUID, workoutName string, startsAt time.Time, planner pgtype.UUID) {
+	s.sessionAsync(crew, channel, workoutName, startsAt, planner, sessionPlanned)
 }
 
 // SessionRescheduled is SessionPlanned for a plan that moved (#258): same
 // audience, subject and body say so.
-func (s *Service) SessionRescheduled(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID) {
-	s.sessionAsync(room, workoutName, startsAt, planner, sessionMoved)
+func (s *Service) SessionRescheduled(crew, channel pgtype.UUID, workoutName string, startsAt time.Time, planner pgtype.UUID) {
+	s.sessionAsync(crew, channel, workoutName, startsAt, planner, sessionMoved)
 }
 
-// SessionCancelled is the mail the other two owed the room (#839): riders told
+// SessionCancelled is the mail the other two owed the crew (#839): riders told
 // to turn up at seven were never told the plan was gone. startsAt is when the
 // session would have been.
-func (s *Service) SessionCancelled(room db.Room, workoutName string, startsAt time.Time, actor pgtype.UUID) {
-	s.sessionAsync(room, workoutName, startsAt, actor, sessionCancelled)
+func (s *Service) SessionCancelled(crew, channel pgtype.UUID, workoutName string, startsAt time.Time, actor pgtype.UUID) {
+	s.sessionAsync(crew, channel, workoutName, startsAt, actor, sessionCancelled)
 }
 
-func (s *Service) sessionAsync(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID, change sessionChange) {
-	if !s.allowSessionMail(room) {
+func (s *Service) sessionAsync(crew, channel pgtype.UUID, workoutName string, startsAt time.Time, planner pgtype.UUID, change sessionChange) {
+	if !s.allowSessionMail(crew) {
 		return
 	}
 	// Guarded (#651): a mail-provider panic must not cost a ride. The outer
 	// ceiling is generous because every target has its own below (#1641).
-	safego.Go(s.log, "session mail "+room.Slug, func() {
+	safego.Go(s.log, "session mail "+store.UUIDString(crew), func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
 		s.sessionMail(ctx, sessionNote{
-			room: room, workout: workoutName, startsAt: startsAt,
+			crew: crew, channel: channel, workout: workoutName, startsAt: startsAt,
 			actor: planner, change: change,
 		})
 	})
 }
 
-// allowSessionMail is the per-room ceiling (#1639): past it a plan, a move or
-// a cancellation still lands in the room and on the timeline, and simply
-// mails nobody until the window turns — logged, never a failed request.
-func (s *Service) allowSessionMail(room db.Room) bool {
-	if s.sessions == nil || s.sessions.Spend(room.ID) {
+// allowSessionMail is the per-crew ceiling (#1639): past it a plan, a move or
+// a cancellation still lands on the crew's schedule and the channel's
+// timeline, and simply mails nobody until the window turns — logged, never a
+// failed request.
+func (s *Service) allowSessionMail(crew pgtype.UUID) bool {
+	if s.sessions == nil || s.sessions.Spend(crew) {
 		return true
 	}
-	s.log.Warn("session mail ceiling reached", "room", room.Slug)
+	s.log.Warn("session mail ceiling reached", "crew", store.UUIDString(crew))
 	return false
 }
 
@@ -203,28 +208,42 @@ func oneLine(text string) string {
 }
 
 func (s *Service) sessionMail(ctx context.Context, note sessionNote) {
-	// The note holds the subject matter; the words below are the mail's own,
-	// and they read it under the names they have always used.
-	room, startsAt, change := note.room, note.startsAt, note.change
-	room.Name = oneLine(room.Name)
+	startsAt, change := note.startsAt, note.change
+	crewID := store.UUIDString(note.crew)
+	where, err := s.store.Queries.GetPlanPlace(ctx, db.GetPlanPlaceParams{CrewID: note.crew, ChannelID: note.channel})
+	if err != nil {
+		s.log.Error("session mail place lookup failed", "err", err, "crew", crewID)
+		return
+	}
+	// What the mail calls the place (#2440): "Thursday Crew · Pain Cave", or
+	// the crew alone for a plan that names no channel yet. The link goes
+	// where the rider would ride it — the channel, or the crew's calendar.
+	place := oneLine(where.CrewName)
+	link := s.baseURL + "/crew/" + crewID + "/schedule"
+	action := "Open the crew's schedule"
+	if note.channel.Valid && where.ChannelName != "" {
+		place += " · " + oneLine(where.ChannelName)
+		link = s.baseURL + "/crew/" + crewID + "/v/" + store.UUIDString(note.channel)
+		action = "Open the channel"
+	}
 	workoutName := oneLine(note.workout)
-	targets, err := s.store.Queries.ListRoomNotifyTargets(ctx, db.ListRoomNotifyTargetsParams{
-		RoomID: room.ID, ID: note.actor, SessionID: note.session,
+	targets, err := s.store.Queries.ListCrewNotifyTargets(ctx, db.ListCrewNotifyTargetsParams{
+		CrewID: note.crew, ChannelID: note.channel, Actor: note.actor, SessionID: note.session,
 	})
 	if err != nil {
-		s.log.Error("notify targets query failed", "err", err, "room", room.Slug)
+		s.log.Error("notify targets query failed", "err", err, "crew", crewID)
 		return
 	}
 	// Everything below that names a time is now per rider (#858), so it waits
-	// for the loop: only the words that are the same for the whole room are
+	// for the loop: only the words that are the same for the whole crew are
 	// settled here.
 	prefix := ""
 	verb := "has a planned session"
 	// The heading stands on its own, so it cannot end on the dangling "to"
 	// that the sentence in the text part needs.
-	heading := room.Name + " has a planned session"
+	heading := place + " has a planned session"
 	// Where the last line of the text part points. A cancellation has nothing
-	// to ride, but the room is still where anything else planned lives.
+	// to ride, but the crew is still where anything else planned lives.
 	closing := "Ride it here"
 	switch change {
 	case sessionPlanned:
@@ -234,26 +253,26 @@ func (s *Service) sessionMail(ctx context.Context, note sessionNote) {
 		// forty minutes ahead, or one moved inside the hour, is claimed the
 		// same minute, and "in an hour" was a lie four minutes before a start.
 		verb = "rides " + inWords(time.Until(startsAt))
-		heading = room.Name + " " + verb
+		heading = place + " " + verb
 	case sessionMoved:
 		prefix = "Moved: "
 		verb = "moved a planned session to"
-		heading = room.Name + " moved a planned session"
+		heading = place + " moved a planned session"
 	case sessionCancelled:
 		prefix = "Cancelled: "
 		verb = "cancelled a planned session"
-		heading = room.Name + " cancelled a planned session"
+		heading = place + " cancelled a planned session"
 		closing = "Anything else planned is here"
 	}
 	for _, t := range targets {
 		// The rider's own clock, or the server's when no browser of theirs has
 		// reported one yet.
 		when := localTime(startsAt, t.Timezone)
-		subject := fmt.Sprintf("%s%s rides %s — %s", prefix, room.Name, workoutName, when)
+		subject := fmt.Sprintf("%s%s rides %s — %s", prefix, place, workoutName, when)
 		detail := when
 		if change == sessionReminder {
 			gap := inWords(time.Until(startsAt))
-			subject = fmt.Sprintf("%s rides %s %s", room.Name, workoutName, gap)
+			subject = fmt.Sprintf("%s rides %s %s", place, workoutName, gap)
 			detail = gap
 		}
 		unsub := fmt.Sprintf("%s/api/notify/unsubscribe?u=%s&t=%s",
@@ -263,14 +282,14 @@ func (s *Service) sessionMail(ctx context.Context, note sessionNote) {
     %s
     %s
 
-%s: %s/r/%s
+%s: %s
 
 You get this because session emails are switched on in your WattRoom
 settings. Turn them off: %s`,
-			room.Name, verb, workoutName, detail, closing, s.baseURL, room.Slug, unsub)
+			place, verb, workoutName, detail, closing, link, unsub)
 		m := mail{
 			To: *t.Email, Subject: subject, Heading: heading,
-			Action: "Open the room", URL: s.baseURL + "/r/" + room.Slug,
+			Action: action, URL: link,
 			Text: text, Unsub: unsub,
 		}
 		switch change {
@@ -294,7 +313,7 @@ settings. Turn them off: %s`,
 		err := s.send(one, m)
 		cancel()
 		if err != nil {
-			s.log.Warn("session email failed", "err", err, "room", room.Slug)
+			s.log.Warn("session email failed", "err", err, "crew", crewID)
 		}
 	}
 }

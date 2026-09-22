@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/jobmetrics"
+	"github.com/natrontech/wattroom/server/internal/store"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -81,18 +82,19 @@ func (s *Service) remindDue(ctx context.Context) {
 			defer func() { <-slots }()
 			one, cancel := context.WithTimeout(ctx, reminderBudget)
 			defer cancel()
-			room, err := s.store.Queries.GetRoomByID(one, session.RoomID)
-			if err != nil {
-				s.log.Error("reminder room lookup failed", "err", err, "session", session.ID)
+			// Every plan carries its crew since #2440 — a room's plans too.
+			if !session.CrewID.Valid {
+				s.log.Error("reminder for a plan with no crew", "session", store.UUIDString(session.ID))
 				return
 			}
-			s.log.Info("session reminder", "room", room.Slug, "workout", session.WorkoutName)
+			s.log.Info("session reminder", "crew", store.UUIDString(session.CrewID), "workout", session.WorkoutName)
 			// The only mail that names its session (#1011): a rider who has
 			// said they are not coming is not reminded to come. Before this
 			// the audience was every opted-in member and a decline had no
 			// off switch short of muting the whole room.
 			s.sessionMail(one, sessionNote{
-				room: room, workout: session.WorkoutName, startsAt: session.StartsAt.Time,
+				crew: session.CrewID, channel: session.ChannelID,
+				workout: session.WorkoutName, startsAt: session.StartsAt.Time,
 				actor: noActor, session: session.ID, change: sessionReminder,
 			})
 		})

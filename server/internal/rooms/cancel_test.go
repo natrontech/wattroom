@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 // fakeNotifier records what scheduling asked the mailer to send.
@@ -17,11 +15,29 @@ type fakeNotifier struct {
 	mu        sync.Mutex
 	cancelled []string
 	moved     []string
+	// What each plan mail named: the crew and the channel (#2440).
+	planned []plannedMail
 }
 
-func (f *fakeNotifier) SessionPlanned(db.Room, string, time.Time, pgtype.UUID) {}
+type plannedMail struct {
+	crew, channel pgtype.UUID
+	workout       string
+}
 
-func (f *fakeNotifier) SessionRescheduled(_ db.Room, workoutName string, _ time.Time, _ pgtype.UUID) {
+func (f *fakeNotifier) SessionPlanned(crew, channel pgtype.UUID, workoutName string, _ time.Time, _ pgtype.UUID) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.planned = append(f.planned, plannedMail{crew: crew, channel: channel, workout: workoutName})
+}
+
+func (f *fakeNotifier) plans(t *testing.T) []plannedMail {
+	t.Helper()
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]plannedMail(nil), f.planned...)
+}
+
+func (f *fakeNotifier) SessionRescheduled(_, _ pgtype.UUID, workoutName string, _ time.Time, _ pgtype.UUID) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.moved = append(f.moved, workoutName)
@@ -34,7 +50,7 @@ func (f *fakeNotifier) movedTo(t *testing.T) []string {
 	return append([]string(nil), f.moved...)
 }
 
-func (f *fakeNotifier) SessionCancelled(_ db.Room, workoutName string, _ time.Time, _ pgtype.UUID) {
+func (f *fakeNotifier) SessionCancelled(_, _ pgtype.UUID, workoutName string, _ time.Time, _ pgtype.UUID) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.cancelled = append(f.cancelled, workoutName)

@@ -17,9 +17,9 @@ import (
 func plan(t *testing.T, h *harness, name string, startsIn time.Duration) {
 	t.Helper()
 	if _, err := h.store.Pool.Exec(t.Context(),
-		`insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)
-		 values ($1, $2, '{}'::jsonb, now() + $3::interval, $4)`,
-		h.room.ID, name, fmt.Sprintf("%d seconds", int(startsIn.Seconds())), h.planner.ID); err != nil {
+		`insert into scheduled_sessions (crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
+		 values ($1, $2, $3, '{}'::jsonb, now() + $4::interval, $5)`,
+		h.crew.ID, h.channel.ID, name, fmt.Sprintf("%d seconds", int(startsIn.Seconds())), h.planner.ID); err != nil {
 		t.Fatalf("plan %s: %v", name, err)
 	}
 }
@@ -51,6 +51,10 @@ func TestRemindDueMailsTheHourAheadOnce(t *testing.T) {
 	if !strings.Contains(mine[0], "Openers") || !strings.Contains(mine[0], "in 30 minutes") {
 		t.Fatalf("subject %q is not the reminder", mine[0])
 	}
+	// It names where (#2440): the crew, and the channel the plan names.
+	if !strings.HasPrefix(mine[0], "Thursday Crew · Pain Cave rides Openers") {
+		t.Fatalf("the reminder does not name the crew and channel: %q", mine[0])
+	}
 
 	// The claim is the update, so a second tick finds nothing left to send —
 	// this is what a restart mid-send or a doubled ticker must not break.
@@ -75,11 +79,11 @@ func TestAMovedSessionIsRemindedAgain(t *testing.T) {
 
 	var id pgtype.UUID
 	if err := h.store.Pool.QueryRow(t.Context(),
-		`select id from scheduled_sessions where room_id = $1 and workout_name = 'Movers'`, h.room.ID).Scan(&id); err != nil {
+		`select id from scheduled_sessions where crew_id = $1 and workout_name = 'Movers'`, h.crew.ID).Scan(&id); err != nil {
 		t.Fatalf("find the session: %v", err)
 	}
-	if _, err := h.store.Queries.RescheduleSession(t.Context(), db.RescheduleSessionParams{
-		ID: id, RoomID: h.room.ID,
+	if _, err := h.store.Queries.MoveCrewPlan(t.Context(), db.MoveCrewPlanParams{
+		ID: id, CrewID: h.crew.ID,
 		StartsAt: pgtype.Timestamptz{Time: time.Now().Add(50 * time.Minute), Valid: true},
 	}); err != nil {
 		t.Fatalf("move: %v", err)
@@ -110,7 +114,7 @@ func TestAStartedPlanIsNotReminded(t *testing.T) {
 
 	plan(t, h, "Started Early", 30*time.Minute)
 	if _, err := h.store.Pool.Exec(t.Context(),
-		`update scheduled_sessions set started_at = now() where room_id = $1 and workout_name = 'Started Early'`, h.room.ID); err != nil {
+		`update scheduled_sessions set started_at = now() where crew_id = $1 and workout_name = 'Started Early'`, h.crew.ID); err != nil {
 		t.Fatalf("mark started: %v", err)
 	}
 	s.remindDue(t.Context())
@@ -131,7 +135,7 @@ func TestReminderNamesNoClockTime(t *testing.T) {
 
 	starts := time.Now().Add(time.Hour)
 	s.sessionMail(t.Context(), sessionNote{
-		room: h.room, workout: "Sweet Spot 2×20", startsAt: starts,
+		crew: h.crew.ID, channel: h.channel.ID, workout: "Sweet Spot 2×20", startsAt: starts,
 		actor: noActor, change: sessionReminder,
 	})
 
@@ -167,7 +171,7 @@ func TestReminderMailsEveryOptedInMember(t *testing.T) {
 	}
 
 	s.sessionMail(t.Context(), sessionNote{
-		room: h.room, workout: "Openers", startsAt: time.Now().Add(time.Hour),
+		crew: h.crew.ID, channel: h.channel.ID, workout: "Openers", startsAt: time.Now().Add(time.Hour),
 		actor: noActor, change: sessionReminder,
 	})
 
@@ -182,8 +186,8 @@ func sessionID(t *testing.T, h *harness, name string) pgtype.UUID {
 	t.Helper()
 	var id pgtype.UUID
 	if err := h.store.Pool.QueryRow(t.Context(),
-		`select id from scheduled_sessions where room_id = $1 and workout_name = $2`,
-		h.room.ID, name).Scan(&id); err != nil {
+		`select id from scheduled_sessions where crew_id = $1 and workout_name = $2`,
+		h.crew.ID, name).Scan(&id); err != nil {
 		t.Fatalf("find %s: %v", name, err)
 	}
 	return id
