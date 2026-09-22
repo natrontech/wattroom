@@ -39,6 +39,24 @@ type BoardClip struct {
 	Key        *string
 }
 
+type Channel struct {
+	ID        pgtype.UUID
+	CrewID    pgtype.UUID
+	Kind      string
+	Name      string
+	Position  int32
+	Private   bool
+	SoundPack string
+	CreatedAt pgtype.Timestamptz
+}
+
+type ChannelMember struct {
+	ChannelID pgtype.UUID
+	UserID    pgtype.UUID
+	AddedBy   pgtype.UUID
+	AddedAt   pgtype.Timestamptz
+}
+
 type ChatImage struct {
 	ID        pgtype.UUID
 	RoomID    pgtype.UUID
@@ -249,6 +267,12 @@ type Room struct {
 	CrewID             pgtype.UUID
 	CrewVisible        bool
 	AnnouncementID     pgtype.UUID
+}
+
+type RoomChannel struct {
+	RoomID         pgtype.UUID
+	TextChannelID  pgtype.UUID
+	VoiceChannelID pgtype.UUID
 }
 
 type RoomGrant struct {
