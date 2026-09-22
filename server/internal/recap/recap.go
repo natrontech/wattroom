@@ -111,25 +111,32 @@ func (s *Service) List(ctx context.Context, roomID, viewer pgtype.UUID, limit in
 	}
 	out := make([]protocol.SessionRecap, 0, len(rows))
 	for _, row := range rows {
-		rec := protocol.SessionRecap{
-			ID:        store.UUIDString(row.ID),
-			Workout:   row.Workout,
-			StartedAt: row.StartedAt.Time.UnixMilli(),
-			EndedAt:   row.EndedAt.Time.UnixMilli(),
+		if rec, ok := Decode(s.log, db.ListCrewRecapsRow(row)); ok {
+			out = append(out, rec)
 		}
-		if row.MyRideID.Valid {
-			rec.RideID = store.UUIDString(row.MyRideID)
-		}
-		// A row whose riders will not parse is a row we cannot draw. Skip it
-		// rather than failing the whole backlog: the conversation matters
-		// more than one card (errors.md — never a blank pane).
-		if err := json.Unmarshal(row.Riders, &rec.Riders); err != nil {
-			s.log.Warn("recap riders decode", "err", err, "recap", rec.ID)
-			continue
-		}
-		out = append(out, rec)
 	}
 	return out, nil
+}
+
+// Decode turns a stored recap into the card, for the room's backlog and the
+// crew's list (#2442) alike. A row whose riders will not parse is a row we
+// cannot draw: it is skipped rather than failing the whole backlog — the
+// conversation matters more than one card (errors.md — never a blank pane).
+func Decode(log *slog.Logger, row db.ListCrewRecapsRow) (protocol.SessionRecap, bool) {
+	rec := protocol.SessionRecap{
+		ID:        store.UUIDString(row.ID),
+		Workout:   row.Workout,
+		StartedAt: row.StartedAt.Time.UnixMilli(),
+		EndedAt:   row.EndedAt.Time.UnixMilli(),
+	}
+	if row.MyRideID.Valid {
+		rec.RideID = store.UUIDString(row.MyRideID)
+	}
+	if err := json.Unmarshal(row.Riders, &rec.Riders); err != nil {
+		log.Warn("recap riders decode", "err", err, "recap", rec.ID)
+		return rec, false
+	}
+	return rec, true
 }
 
 func stamp(millis int64) pgtype.Timestamptz {

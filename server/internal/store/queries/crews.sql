@@ -10,7 +10,7 @@ insert into crews (name, owner_id, code, founded_by) values ($1, $2, $3, $2) ret
 -- name: GetCrewByCode :one
 -- The crew's door (#1236). A code is a secret: the caller learns the crew it
 -- names and nothing about codes that do not exist.
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named from crews where code = $1;
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled from crews where code = $1;
 
 -- name: JoinCrew :exec
 -- Stored membership (ADR-0038 amended, #1236). A banned or admin row wins the
@@ -43,13 +43,50 @@ where crew_id = $1 and role in ('member', 'admin')
 
 -- name: GetCrew :one
 -- Everything but the image bytes (#1237): GetCrewImage serves those.
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named from crews where id = $1;
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled from crews where id = $1;
 
 -- name: SetCrewRole :exec
 -- Admin, member or banned. The owner is crews.owner_id and cannot be expressed here,
 -- which is what makes them un-removable (ADR-0038, second amendment).
 insert into crew_roles (crew_id, user_id, role) values ($1, $2, $3)
 on conflict (crew_id, user_id) do update set role = excluded.role, set_at = now();
+
+-- name: SetCrewBoard :exec
+-- The weekly board's switch (ADR-0036 as amended by ADR-0058): off until the
+-- crew's owner or an admin turns it on, and the door says which it is.
+update crews set board_enabled = $2 where id = $1;
+
+-- name: GetCrewPrefs :one
+-- The caller's own switches on their crew membership (#2432). No row is an
+-- owner who never set one: the global opt-in still decides their mail, and
+-- nobody is on a board they never said yes to — the narrow side.
+select coalesce(bool_or(notify), true)::boolean as notify,
+       coalesce(bool_or(on_board), false)::boolean as on_board
+from crew_roles where crew_id = $1 and user_id = $2 and role <> 'banned';
+
+-- name: SetCrewPrefs :one
+-- Keyed on (crew, caller), so setting someone else's switches is not a shape
+-- this can take. The insert is the owner's first answer — owner beats the row
+-- in CrewRoleOf, so a member row on them changes nothing but these two
+-- switches — and a ban is never overwritten.
+insert into crew_roles (crew_id, user_id, role, notify, on_board) values ($1, $2, 'member', $3, $4)
+on conflict (crew_id, user_id) do update set notify = excluded.notify, on_board = excluded.on_board
+where crew_roles.role <> 'banned'
+returning notify, on_board;
+
+-- name: LeaveCrewChannels :exec
+-- The named admissions to the crew's private channels go with the membership,
+-- as a room grant did (#1672): left behind, lifting a ban or rejoining by the
+-- code handed back channels nobody had named them into again.
+delete from channel_members cm using channels c
+where c.id = cm.channel_id and c.crew_id = $1 and cm.user_id = $2;
+
+-- name: SettleNewOwnerRow :exec
+-- The new owner's row stays, as a plain member (#2432): it carries their
+-- notify and on_board, and deleting it put a rider who had left the board back
+-- on it at the default. Owner beats the row everywhere it is read, and a
+-- banned or admin word on it would only mislead the next reader.
+update crew_roles set role = 'member', set_at = now() where crew_id = $1 and user_id = $2;
 
 -- name: ClearCrewRole :exec
 -- The new owner's row goes (crews.owner_id is their role now); nothing else

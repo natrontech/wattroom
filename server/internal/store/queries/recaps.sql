@@ -43,6 +43,40 @@ from (
 ) r
 order by r.ended_at;
 
+-- name: ListCrewRecaps :many
+-- The crew's recaps (#2442), oldest first like ListRoomRecaps, and only those
+-- of sessions in a channel the caller may enter (docs/SPEC.md, Session recap
+-- retention): presence is never a way into a private channel. The handler has
+-- already proved the caller is a current, unbanned member, so an open channel
+-- admits them; a private one admits the crew's owner and admins (`admin`) and
+-- whoever is named into it — `channels.mayEnter`'s rule, restated here only
+-- because it filters rows; change one, change both. A recap with no channel
+-- names nobody's way in and
+-- is shown to nobody but those two — the narrow side. The 90 days are stated
+-- here as well as pruned, so a sweep that is running late does not widen it.
+select r.id, r.workout, r.started_at, r.ended_at, r.riders,
+       (select ride.id from rides ride
+         where ride.user_id = sqlc.arg(viewer)
+           and ride.crew_id = r.crew_id
+           and ride.channel_id is not distinct from r.channel_id
+           and ride.started_at >= r.started_at - interval '1 minute'
+           and ride.started_at <= r.ended_at
+         order by ride.started_at
+         limit 1) as my_ride_id
+from (
+    select s.* from session_recaps s
+    left join channels ch on ch.id = s.channel_id
+    where s.crew_id = sqlc.arg(crew_id)
+      and s.ended_at >= now() - make_interval(days => sqlc.arg(days)::int)
+      and (sqlc.arg(admin)::boolean
+           or (ch.id is not null and not ch.private)
+           or exists (select 1 from channel_members cm
+                      where cm.channel_id = s.channel_id and cm.user_id = sqlc.arg(viewer)))
+    order by s.ended_at desc
+    limit sqlc.arg(max_rows)
+) r
+order by r.ended_at;
+
 -- The 90-day bound (docs/SPEC.md). A room is a crew, not an attendance
 -- register: this is what stops the table answering "where was this person in
 -- March".

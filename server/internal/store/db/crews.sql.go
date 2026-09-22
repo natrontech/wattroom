@@ -257,18 +257,19 @@ func (q *Queries) FirstRoomOwnerInCrew(ctx context.Context, arg FirstRoomOwnerIn
 }
 
 const getCrew = `-- name: GetCrew :one
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named from crews where id = $1
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled from crews where id = $1
 `
 
 type GetCrewRow struct {
-	ID        pgtype.UUID
-	Name      string
-	Icon      string
-	OwnerID   pgtype.UUID
-	CreatedAt pgtype.Timestamptz
-	Code      *string
-	HasImage  bool
-	Named     bool
+	ID           pgtype.UUID
+	Name         string
+	Icon         string
+	OwnerID      pgtype.UUID
+	CreatedAt    pgtype.Timestamptz
+	Code         *string
+	HasImage     bool
+	Named        bool
+	BoardEnabled bool
 }
 
 // Everything but the image bytes (#1237): GetCrewImage serves those.
@@ -284,23 +285,25 @@ func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (GetCrewRow, erro
 		&i.Code,
 		&i.HasImage,
 		&i.Named,
+		&i.BoardEnabled,
 	)
 	return i, err
 }
 
 const getCrewByCode = `-- name: GetCrewByCode :one
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named from crews where code = $1
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled from crews where code = $1
 `
 
 type GetCrewByCodeRow struct {
-	ID        pgtype.UUID
-	Name      string
-	Icon      string
-	OwnerID   pgtype.UUID
-	CreatedAt pgtype.Timestamptz
-	Code      *string
-	HasImage  bool
-	Named     bool
+	ID           pgtype.UUID
+	Name         string
+	Icon         string
+	OwnerID      pgtype.UUID
+	CreatedAt    pgtype.Timestamptz
+	Code         *string
+	HasImage     bool
+	Named        bool
+	BoardEnabled bool
 }
 
 // The crew's door (#1236). A code is a secret: the caller learns the crew it
@@ -317,6 +320,7 @@ func (q *Queries) GetCrewByCode(ctx context.Context, code *string) (GetCrewByCod
 		&i.Code,
 		&i.HasImage,
 		&i.Named,
+		&i.BoardEnabled,
 	)
 	return i, err
 }
@@ -367,6 +371,32 @@ func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew
 		&i.Listed,
 		&i.IcsToken,
 	)
+	return i, err
+}
+
+const getCrewPrefs = `-- name: GetCrewPrefs :one
+select coalesce(bool_or(notify), true)::boolean as notify,
+       coalesce(bool_or(on_board), false)::boolean as on_board
+from crew_roles where crew_id = $1 and user_id = $2 and role <> 'banned'
+`
+
+type GetCrewPrefsParams struct {
+	CrewID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+type GetCrewPrefsRow struct {
+	Notify  bool
+	OnBoard bool
+}
+
+// The caller's own switches on their crew membership (#2432). No row is an
+// owner who never set one: the global opt-in still decides their mail, and
+// nobody is on a board they never said yes to — the narrow side.
+func (q *Queries) GetCrewPrefs(ctx context.Context, arg GetCrewPrefsParams) (GetCrewPrefsRow, error) {
+	row := q.db.QueryRow(ctx, getCrewPrefs, arg.CrewID, arg.UserID)
+	var i GetCrewPrefsRow
+	err := row.Scan(&i.Notify, &i.OnBoard)
 	return i, err
 }
 
@@ -471,6 +501,24 @@ type JoinCrewParams struct {
 // conflict: joining never lifts a ban and never demotes an admin.
 func (q *Queries) JoinCrew(ctx context.Context, arg JoinCrewParams) error {
 	_, err := q.db.Exec(ctx, joinCrew, arg.CrewID, arg.UserID)
+	return err
+}
+
+const leaveCrewChannels = `-- name: LeaveCrewChannels :exec
+delete from channel_members cm using channels c
+where c.id = cm.channel_id and c.crew_id = $1 and cm.user_id = $2
+`
+
+type LeaveCrewChannelsParams struct {
+	CrewID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// The named admissions to the crew's private channels go with the membership,
+// as a room grant did (#1672): left behind, lifting a ban or rejoining by the
+// code handed back channels nobody had named them into again.
+func (q *Queries) LeaveCrewChannels(ctx context.Context, arg LeaveCrewChannelsParams) error {
+	_, err := q.db.Exec(ctx, leaveCrewChannels, arg.CrewID, arg.UserID)
 	return err
 }
 
@@ -1065,6 +1113,22 @@ func (q *Queries) RevokeRoomAccess(ctx context.Context, arg RevokeRoomAccessPara
 	return err
 }
 
+const setCrewBoard = `-- name: SetCrewBoard :exec
+update crews set board_enabled = $2 where id = $1
+`
+
+type SetCrewBoardParams struct {
+	ID           pgtype.UUID
+	BoardEnabled bool
+}
+
+// The weekly board's switch (ADR-0036 as amended by ADR-0058): off until the
+// crew's owner or an admin turns it on, and the door says which it is.
+func (q *Queries) SetCrewBoard(ctx context.Context, arg SetCrewBoardParams) error {
+	_, err := q.db.Exec(ctx, setCrewBoard, arg.ID, arg.BoardEnabled)
+	return err
+}
+
 const setCrewCode = `-- name: SetCrewCode :exec
 update crews set code = $2 where id = $1
 `
@@ -1094,6 +1158,41 @@ type SetCrewImageParams struct {
 func (q *Queries) SetCrewImage(ctx context.Context, arg SetCrewImageParams) error {
 	_, err := q.db.Exec(ctx, setCrewImage, arg.ID, arg.ImageMime, arg.Image)
 	return err
+}
+
+const setCrewPrefs = `-- name: SetCrewPrefs :one
+insert into crew_roles (crew_id, user_id, role, notify, on_board) values ($1, $2, 'member', $3, $4)
+on conflict (crew_id, user_id) do update set notify = excluded.notify, on_board = excluded.on_board
+where crew_roles.role <> 'banned'
+returning notify, on_board
+`
+
+type SetCrewPrefsParams struct {
+	CrewID  pgtype.UUID
+	UserID  pgtype.UUID
+	Notify  bool
+	OnBoard bool
+}
+
+type SetCrewPrefsRow struct {
+	Notify  bool
+	OnBoard bool
+}
+
+// Keyed on (crew, caller), so setting someone else's switches is not a shape
+// this can take. The insert is the owner's first answer — owner beats the row
+// in CrewRoleOf, so a member row on them changes nothing but these two
+// switches — and a ban is never overwritten.
+func (q *Queries) SetCrewPrefs(ctx context.Context, arg SetCrewPrefsParams) (SetCrewPrefsRow, error) {
+	row := q.db.QueryRow(ctx, setCrewPrefs,
+		arg.CrewID,
+		arg.UserID,
+		arg.Notify,
+		arg.OnBoard,
+	)
+	var i SetCrewPrefsRow
+	err := row.Scan(&i.Notify, &i.OnBoard)
+	return i, err
 }
 
 const setCrewRole = `-- name: SetCrewRole :exec
@@ -1147,6 +1246,24 @@ type SetRoomCrewVisibleAndListedParams struct {
 // crew door, and reopening alone could never bring it back.
 func (q *Queries) SetRoomCrewVisibleAndListed(ctx context.Context, arg SetRoomCrewVisibleAndListedParams) error {
 	_, err := q.db.Exec(ctx, setRoomCrewVisibleAndListed, arg.ID, arg.CrewVisible, arg.Listed)
+	return err
+}
+
+const settleNewOwnerRow = `-- name: SettleNewOwnerRow :exec
+update crew_roles set role = 'member', set_at = now() where crew_id = $1 and user_id = $2
+`
+
+type SettleNewOwnerRowParams struct {
+	CrewID pgtype.UUID
+	UserID pgtype.UUID
+}
+
+// The new owner's row stays, as a plain member (#2432): it carries their
+// notify and on_board, and deleting it put a rider who had left the board back
+// on it at the default. Owner beats the row everywhere it is read, and a
+// banned or admin word on it would only mislead the next reader.
+func (q *Queries) SettleNewOwnerRow(ctx context.Context, arg SettleNewOwnerRowParams) error {
+	_, err := q.db.Exec(ctx, settleNewOwnerRow, arg.CrewID, arg.UserID)
 	return err
 }
 

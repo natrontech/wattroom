@@ -70,14 +70,16 @@ func (s *Service) deleteCrewIfEmpty(ctx context.Context, q *db.Queries, crew pgt
 
 // makeOwner is the only way a crew changes hands. Owner beats every role, so
 // the new owner's crew_roles row — an admin grant at best, a stale ban at
-// worst — goes with the transfer (#1212): visible_rooms and IsBannedFromRoom
-// read that table without asking who owns the crew, and a banned row on an
-// owner locks them out of every room they own.
+// worst — is settled to a plain member (#1212): visible_rooms and
+// IsBannedFromRoom read that table without asking who owns the crew, and a
+// banned row on an owner locks them out of every room they own. Settled, not
+// deleted (#2442): the row carries their notify and on_board, and a new owner
+// who had left the board came back on it at the default.
 func makeOwner(ctx context.Context, q *db.Queries, crew, next pgtype.UUID) error {
 	if err := q.TransferCrew(ctx, db.TransferCrewParams{ID: crew, OwnerID: next}); err != nil {
 		return err
 	}
-	return q.ClearCrewRole(ctx, db.ClearCrewRoleParams{CrewID: crew, UserID: next})
+	return q.SettleNewOwnerRow(ctx, db.SettleNewOwnerRowParams{CrewID: crew, UserID: next})
 }
 
 // ReleaseCrews is the purge's obligation (ADR-0038, second amendment):

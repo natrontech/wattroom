@@ -159,21 +159,26 @@ func (s *Service) board(ctx context.Context, roomID pgtype.UUID) []boardRowJSON 
 	}
 	out := make([]boardRowJSON, 0, len(rows))
 	for _, row := range rows {
-		// SPEC defines FTP as 0.95 x the 90-day best 20-minute power, so the
-		// bracket reads off the FTP the room already publishes rather than
-		// querying rides this room cannot see.
-		best20m := int(math.Round(float64(row.FtpWatts) / 0.95))
-		category := ""
-		if chosen(row.FtpSource) || chosen(row.WeightSource) {
-			category = stats.Category(best20m, float64(row.WeightKg))
-		}
-		out = append(out, boardRowJSON{
-			Id: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
-			Kj: row.Kj, Seconds: row.Seconds,
-			Category: category,
-		})
+		out = append(out, boardRowOf(db.CrewWeekBoardRow(row)))
 	}
 	return out
+}
+
+// boardRowOf is one rider's line on a weekly board, the room's or the crew's.
+func boardRowOf(row db.CrewWeekBoardRow) boardRowJSON {
+	// SPEC defines FTP as 0.95 x the 90-day best 20-minute power, so the
+	// bracket reads off the FTP the board already publishes rather than
+	// querying rides this board cannot see.
+	best20m := int(math.Round(float64(row.FtpWatts) / 0.95))
+	category := ""
+	if chosen(row.FtpSource) || chosen(row.WeightSource) {
+		category = stats.Category(best20m, float64(row.WeightKg))
+	}
+	return boardRowJSON{
+		Id: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
+		Kj: row.Kj, Seconds: row.Seconds,
+		Category: category,
+	}
 }
 
 // handleGet is the room's own read: what a rider sees at /r/{slug} before

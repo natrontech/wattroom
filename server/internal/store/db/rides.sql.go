@@ -155,6 +155,39 @@ func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfW
 	return i, err
 }
 
+const countCrewMedalsByRider = `-- name: CountCrewMedalsByRider :many
+select user_id, count(*)::int as medals
+from medals
+where crew_id = $1
+group by user_id
+`
+
+type CountCrewMedalsByRiderRow struct {
+	UserID pgtype.UUID
+	Medals int32
+}
+
+// Every medal the crew's sessions awarded, per rider — the roster's count.
+func (q *Queries) CountCrewMedalsByRider(ctx context.Context, crewID pgtype.UUID) ([]CountCrewMedalsByRiderRow, error) {
+	rows, err := q.db.Query(ctx, countCrewMedalsByRider, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountCrewMedalsByRiderRow
+	for rows.Next() {
+		var i CountCrewMedalsByRiderRow
+		if err := rows.Scan(&i.UserID, &i.Medals); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countRoomMedalsByRider = `-- name: CountRoomMedalsByRider :many
 select user_id, count(*)::int as medals
 from medals
@@ -261,6 +294,100 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 	var id pgtype.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const crewTotals = `-- name: CrewTotals :one
+select coalesce(sum(seconds), 0)::bigint as seconds,
+       count(distinct started_at::date) filter (
+         where started_at >= date_trunc('month', now())
+       )::bigint as sessions_this_month,
+       count(distinct started_at::date) filter (
+         where started_at >= date_trunc('month', now()) - interval '1 month'
+           and started_at < date_trunc('month', now())
+       )::bigint as sessions_last_month
+from rides
+where crew_id = $1
+`
+
+type CrewTotalsRow struct {
+	Seconds           int64
+	SessionsThisMonth int64
+	SessionsLastMonth int64
+}
+
+// RoomCrewTotals at the crew (#2442): sums and counts over the whole crew,
+// sessions as distinct days so an evening split across two voice channels
+// counts once (docs/SPEC.md, Consistency).
+func (q *Queries) CrewTotals(ctx context.Context, crewID pgtype.UUID) (CrewTotalsRow, error) {
+	row := q.db.QueryRow(ctx, crewTotals, crewID)
+	var i CrewTotalsRow
+	err := row.Scan(&i.Seconds, &i.SessionsThisMonth, &i.SessionsLastMonth)
+	return i, err
+}
+
+const crewWeekBoard = `-- name: CrewWeekBoard :many
+select r.user_id,
+       u.display_name,
+       u.ftp_watts,
+       u.weight_kg,
+       u.ftp_source,
+       u.weight_source,
+       coalesce(sum(r.kj), 0)::bigint as kj,
+       coalesce(sum(r.seconds), 0)::bigint as seconds
+from rides r
+join users u on u.id = r.user_id
+join crew_roles cr on cr.crew_id = r.crew_id and cr.user_id = r.user_id
+where r.crew_id = $1
+  and r.started_at >= (date_trunc('week', now() at time zone 'UTC') at time zone 'UTC')
+  and cr.role in ('member', 'admin')
+  and cr.on_board
+group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg, u.ftp_source, u.weight_source
+order by kj desc, u.display_name asc
+`
+
+type CrewWeekBoardRow struct {
+	UserID       pgtype.UUID
+	DisplayName  string
+	FtpWatts     int16
+	WeightKg     int16
+	FtpSource    *string
+	WeightSource *string
+	Kj           int64
+	Seconds      int64
+}
+
+// The crew's weekly board (ADR-0036 as amended by ADR-0058): kJ and time in
+// the crew's sessions this week, members only, each on it by their own
+// `on_board`. The handler asks only when the crew has turned it on. The
+// owner is on it by the same row as anyone: one who never answered has none,
+// and is off.
+func (q *Queries) CrewWeekBoard(ctx context.Context, crewID pgtype.UUID) ([]CrewWeekBoardRow, error) {
+	rows, err := q.db.Query(ctx, crewWeekBoard, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CrewWeekBoardRow
+	for rows.Next() {
+		var i CrewWeekBoardRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.DisplayName,
+			&i.FtpWatts,
+			&i.WeightKg,
+			&i.FtpSource,
+			&i.WeightSource,
+			&i.Kj,
+			&i.Seconds,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const curveBests = `-- name: CurveBests :one
@@ -651,6 +778,81 @@ func (q *Queries) GetRideSamples(ctx context.Context, arg GetRideSamplesParams) 
 	var samples []byte
 	err := row.Scan(&samples)
 	return samples, err
+}
+
+const listCrewRideWeeks = `-- name: ListCrewRideWeeks :many
+select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
+from rides where crew_id = $1
+order by week desc
+limit 60
+`
+
+// The CREW streak (docs/SPEC.md, ADR-0058): weeks in which the crew held a
+// session in any of its voice channels, so two channels in one week are one
+// week. UTC for the room streak's reason — a crew has no zone of its own.
+// Read off rides rather than session_recaps: a recap is pruned at 90 days,
+// which would cap every streak at thirteen weeks, and a ride carries its crew
+// only when it was ridden in one of the crew's sessions (#2431).
+func (q *Queries) ListCrewRideWeeks(ctx context.Context, crewID pgtype.UUID) ([]pgtype.Date, error) {
+	rows, err := q.db.Query(ctx, listCrewRideWeeks, crewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.Date
+	for rows.Next() {
+		var week pgtype.Date
+		if err := rows.Scan(&week); err != nil {
+			return nil, err
+		}
+		items = append(items, week)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCrewSessionDays = `-- name: ListCrewSessionDays :many
+select started_at::date as day,
+       bool_or(user_id = $1) as attended
+from rides
+where crew_id = $2
+group by day
+order by day desc
+limit 12
+`
+
+type ListCrewSessionDaysParams struct {
+	ViewerID pgtype.UUID
+	CrewID   pgtype.UUID
+}
+
+type ListCrewSessionDaysRow struct {
+	Day      pgtype.Date
+	Attended bool
+}
+
+// The crew's last session days and whether the caller rode on each — their
+// own turnout and nobody else's (ADR-0036).
+func (q *Queries) ListCrewSessionDays(ctx context.Context, arg ListCrewSessionDaysParams) ([]ListCrewSessionDaysRow, error) {
+	rows, err := q.db.Query(ctx, listCrewSessionDays, arg.ViewerID, arg.CrewID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCrewSessionDaysRow
+	for rows.Next() {
+		var i ListCrewSessionDaysRow
+		if err := rows.Scan(&i.Day, &i.Attended); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listRideExportsDue = `-- name: ListRideExportsDue :many
