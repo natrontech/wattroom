@@ -6,9 +6,7 @@ import {
 	load as loadProfile,
 	type ProfilePageData,
 } from './settings/profile/+page';
-import { load as loadRoom } from './r/[slug]/+layout';
 import { load as loadRider, type RiderPageData } from './u/[id]/+page';
-import type { RoomLoadData } from '$lib/room/room-data';
 
 function fetchMap(
 	responses: Record<string, unknown>,
@@ -140,18 +138,6 @@ describe('route page loads', () => {
 		expect(calls).toEqual(['/api/me']);
 		expect(data.rider).toBeNull();
 		expect(data.riderError).toBe('Not now.');
-	});
-
-	it('starts the room request before the page mounts', async () => {
-		const room = { slug: 'mfw', name: 'Midnight Fast Wheels' };
-		const { fetch, calls } = fetchMap({ '/api/rooms/mfw': room });
-		const data = (await loadRoom({
-			fetch,
-			params: { slug: 'mfw' },
-		} as never)) as RoomLoadData;
-
-		expect(calls).toEqual(['/api/rooms/mfw']);
-		expect(data.room).toEqual(room);
 	});
 
 	it('starts rider and trophy requests together', async () => {

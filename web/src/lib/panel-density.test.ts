@@ -33,10 +33,8 @@ const ALLOWLIST: Allowlist = {
 		'the ramp test is read from the saddle at arm’s length (ux.md), so its instruction cards keep p-8; the one with a control at the bottom also clears the phone’s browser chrome',
 	'routes/ramp/RampResult.svelte':
 		'the ramp result, read from the saddle — p-8 for the same reason',
-	'routes/r/[slug]/+layout.svelte':
-		'the room door: a single centred card on an otherwise empty page, where py-10 is what keeps it from reading as a dropped fragment',
 	'routes/c/[code]/+page.svelte':
-		'the invite door — the same lone card as the room door',
+		'the invite door: a single centred card on an otherwise empty page, where py-10 is what keeps it from reading as a dropped fragment',
 };
 
 const PANEL = String.raw`(?<![-\w])panel(?![-\w])`;

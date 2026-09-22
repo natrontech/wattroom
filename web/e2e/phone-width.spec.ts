@@ -118,52 +118,53 @@ async function seedATaggedTrack(page: Page): Promise<void> {
 }
 
 /**
- * And a room's thread is empty until somebody says something, so
- * /messages/r/[slug] was measured against a blank column. The line is a
- * pasted token in a code span and bare (#2400) — the shape that widened
- * /whats-new, on the surface a rider actually pastes into.
+ * And a text channel is empty until somebody says something, so it would be
+ * measured against a blank column. The line is a pasted token in a code span
+ * and bare (#2400) — the shape that widened /whats-new, on the surface a
+ * rider actually pastes into.
  *
- * Posted once: this rider's room is stable across runs (signin.ts), and a
- * line per run would grow the thread forever.
+ * Posted once: this rider's crew is stable across runs (signin.ts), and a
+ * line per run would grow the channel forever.
  */
-async function seedALongToken(page: Page, slug: string): Promise<void> {
+async function seedALongToken(page: Page, channel: string): Promise<void> {
 	const ok = await page.evaluate(
-		async ([slug, token]) => {
+		async ([channel, token]) => {
 			const thread = (await (
-				await fetch(`/api/rooms/${slug}/chat`)
+				await fetch(`/api/channels/${channel}/chat`)
 			).json()) as {
 				messages?: { text?: string }[];
 			};
 			if (thread.messages?.some((m) => m.text?.includes(token))) return true;
-			const res = await fetch(`/api/rooms/${slug}/chat`, {
+			const res = await fetch(`/api/channels/${channel}/chat`, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ text: `\`${token}\` and bare ${token}` }),
 			});
 			return res.ok;
 		},
-		[slug, LONG_TOKEN] as const,
+		[channel, LONG_TOKEN] as const,
 	);
-	if (!ok) throw new Error('could not paste a long token into the room thread');
+	if (!ok)
+		throw new Error('could not paste a long token into the text channel');
 }
 
 /**
  * And Home's "What's next" is empty until something is planned, so /home used
  * to be measured with that section rendering one line of prose (#1693). Each
- * row is a workout name, a date, a room name and a planner on a 375px column —
+ * row is a workout name, a date, a crew name and a planner on a 375px column —
  * the widest thing on the page once it has content.
  *
- * Idempotent: this rider and its room are stable across runs (signin.ts), and
- * a plan a run leaves behind would walk the room into docs/SPEC.md's 50-session
- * ceiling after fifty of them.
+ * Idempotent: this rider and its crew are stable across runs (signin.ts), and
+ * a plan a run leaves behind would walk the crew into docs/SPEC.md's session
+ * ceiling eventually.
  */
-async function seedAPlannedSession(page: Page, slug: string): Promise<void> {
-	const ok = await page.evaluate(async (slug) => {
+async function seedAPlannedSession(page: Page, crew: string): Promise<void> {
+	const ok = await page.evaluate(async (crew) => {
 		const mine = (await (await fetch('/api/schedule')).json()) as {
 			sessions?: unknown[];
 		};
 		if (mine.sessions?.length) return true;
-		const res = await fetch(`/api/rooms/${slug}/schedule`, {
+		const res = await fetch(`/api/crews/${crew}/schedule`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({
@@ -176,7 +177,7 @@ async function seedAPlannedSession(page: Page, slug: string): Promise<void> {
 			}),
 		});
 		return res.ok;
-	}, slug);
+	}, crew);
 	if (!ok) throw new Error("could not plan a session for Home's What's next");
 }
 
@@ -190,20 +191,20 @@ test('no page outside a room scrolls sideways on a phone', async ({
 	await seedATaggedTrack(page);
 
 	// The crew's page (#1150, #1151) is reached by id, so it is found rather
-	// than listed: every rider owns one crew from their first room.
+	// than listed: the rider starts one crew (#2480) and keeps it.
 	const crewId = await page.evaluate(async () => {
 		const read = async () => {
-			const res = await fetch('/api/rooms');
+			const res = await fetch('/api/crews');
 			const body = (await res.json()) as {
-				rooms: { crew?: { id: string } }[];
+				crews?: { id: string; role?: string }[];
 			};
-			return body.rooms.find((r) => r.crew)?.crew?.id ?? null;
+			return body.crews?.find((c) => c.role === 'owner')?.id ?? null;
 		};
-		// This rider is reused across runs (signin.ts), so the room it opens
+		// This rider is reused across runs (signin.ts), so the crew it starts
 		// on the first run is found on every later one — never a second.
 		const found = await read();
 		if (found) return found;
-		await fetch('/api/rooms', {
+		await fetch('/api/crews', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify({ name: 'Phone Width Crew' }),
@@ -226,7 +227,7 @@ test('no page outside a room scrolls sideways on a phone', async ({
 				crewId,
 			)
 		: '';
-	// A text channel of that crew (#2448): every room became one.
+	// A text channel of that crew (#2448): a crew opens with one.
 	const textChannel = crewId
 		? await page.evaluate(async (id) => {
 				const body = (await (
@@ -235,9 +236,9 @@ test('no page outside a room scrolls sideways on a phone', async ({
 				return body.channels?.find((c) => c.kind === 'text')?.id ?? '';
 			}, crewId)
 		: '';
-	// The pages reached by an id rather than listed: your own rider page,
-	// the ride seeded above, and the room's thread read from outside — the
-	// three that carry the widest things a rider sees without a room.
+	// The pages reached by an id rather than listed: your own rider page and
+	// the ride seeded above — the two that carry the widest things a rider
+	// sees outside a crew.
 	// A friend and one line between you (#1819): the DM thread is the message
 	// surface a rider most opens on a sofa, and nothing measured it. A second
 	// rider in their own context accepts, so the thread is a real one.
@@ -306,13 +307,9 @@ test('no page outside a room scrolls sideways on a phone', async ({
 		const rides = (await (await fetch('/api/rides')).json()) as {
 			rides?: { id: string }[];
 		};
-		const rooms = (await (await fetch('/api/rooms')).json()) as {
-			rooms: { slug?: string }[];
-		};
 		return {
 			me: me.id ?? '',
 			ride: rides.rides?.[0]?.id ?? '',
-			room: rooms.rooms.find((r) => r.slug)?.slug ?? '',
 			peer:
 				(
 					(await (await fetch('/api/dms')).json()) as {
@@ -328,7 +325,6 @@ test('no page outside a room scrolls sideways on a phone', async ({
 	const byPattern: Record<string, string> = {
 		'/u/[id]': `/u/${byId.me}`,
 		'/history/[id]': `/history/${byId.ride}`,
-		'/messages/r/[slug]': `/messages/r/${byId.room}`,
 		'/messages/dm/[peer]': `/messages/dm/${byId.peer}`,
 		'/crew/[id]': `/crew/${crewId}`,
 		'/crew/[id]/members': `/crew/${crewId}/members`,
@@ -346,16 +342,15 @@ test('no page outside a room scrolls sideways on a phone', async ({
 	const routes = [...MEASURED, ...Object.values(byPattern)];
 	// The id-reached pages are the point of the seeding above: a run where
 	// none of them resolved would pass while asserting nothing about them.
-	expect(byId, 'the seeded ride, the room and your own page resolve').toEqual(
+	expect(byId, 'the seeded ride and your own page resolve').toEqual(
 		expect.objectContaining({
 			me: expect.stringMatching(/.+/),
 			ride: expect.stringMatching(/.+/),
-			room: expect.stringMatching(/.+/),
 			peer: expect.stringMatching(/.+/),
 		}),
 	);
 	// The crew's routes hang off locals the guard above cannot see,
-	// so they needed their own (#2360): let `/api/rooms` stop carrying `crew`
+	// so they needed their own (#2360): let `/api/crews` stop listing the crew
 	// or `/api/crews/:id` stop carrying `code` and the crew page, its settings
 	// and its door leave the measured list in silence. The code is checked by
 	// shape rather than emptiness, the same `/^[A-Z0-9]{6}$/` room.ts asserts.
@@ -368,8 +363,8 @@ test('no page outside a room scrolls sideways on a phone', async ({
 		textChannel: expect.stringMatching(/.+/),
 	});
 
-	await seedAPlannedSession(page, byId.room);
-	await seedALongToken(page, byId.room);
+	await seedAPlannedSession(page, crewId ?? '');
+	await seedALongToken(page, textChannel);
 
 	const wide: string[] = [];
 	for (const route of routes) {
