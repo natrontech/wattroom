@@ -64,6 +64,8 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 		Icon *string `json:"icon"` // nil keeps, "" clears
 		// The weekly board (ADR-0036 as amended by ADR-0058). Nil keeps.
 		BoardEnabled *bool `json:"boardEnabled"`
+		// In the public directory (ADR-0039 as amended by ADR-0058). Nil keeps.
+		Listed *bool `json:"listed"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -94,6 +96,9 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 	updated, err := q.UpdateCrew(r.Context(), db.UpdateCrewParams{ID: crew.ID, Name: req.Name, Icon: icon})
 	if err == nil && req.BoardEnabled != nil {
 		err = q.SetCrewBoard(r.Context(), db.SetCrewBoardParams{ID: crew.ID, BoardEnabled: *req.BoardEnabled})
+	}
+	if err == nil && req.Listed != nil {
+		err = q.SetCrewListed(r.Context(), db.SetCrewListedParams{ID: crew.ID, Listed: *req.Listed})
 	}
 	if err == nil {
 		err = tx.Commit(r.Context())

@@ -43,7 +43,7 @@ where crew_id = $1 and role in ('member', 'admin')
 
 -- name: GetCrew :one
 -- Everything but the image bytes (#1237): GetCrewImage serves those.
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled from crews where id = $1;
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled, listed from crews where id = $1;
 
 -- name: SetCrewRole :exec
 -- Admin, member or banned. The owner is crews.owner_id and cannot be expressed here,
@@ -55,6 +55,11 @@ on conflict (crew_id, user_id) do update set role = excluded.role, set_at = now(
 -- The weekly board's switch (ADR-0036 as amended by ADR-0058): off until the
 -- crew's owner or an admin turns it on, and the door says which it is.
 update crews set board_enabled = $2 where id = $1;
+
+-- name: SetCrewListed :exec
+-- In the public directory (ADR-0039 as amended by ADR-0058, #2445): off until
+-- the crew's owner or an admin lists it.
+update crews set listed = $2 where id = $1;
 
 -- name: GetCrewPrefs :one
 -- The caller's own switches on their crew membership (#2432). No row is an
@@ -439,3 +444,22 @@ update rooms set crew_visible = $2, listed = (listed and $2) where id = $1;
 -- The undo of a shut (#1929): the toggle above dropped the listing with the
 -- crew door, and reopening alone could never bring it back.
 update rooms set crew_visible = $2, listed = ($3 and $2) where id = $1;
+
+-- name: ListListedCrews :many
+-- The opt-in public directory (ADR-0039 as amended by ADR-0058, #2445): every
+-- crew whose admins chose to be findable, and NOTHING ELSE ABOUT THEM — a
+-- name, a mark and a link. The link is the code, because the door is the only
+-- way in and a listing opens it (#2245); the image is the mark the door
+-- already shows whoever holds that code. No member count, no activity, no
+-- owner: ListListedRooms' reasoning, word for word, and adding a column here
+-- is still a decision.
+select name, icon, code, (image_set_at is not null)::boolean as has_image
+from crews
+where listed and code is not null
+order by name asc, code asc
+limit sqlc.arg(lim) offset sqlc.arg(off);
+
+-- name: GetCrewCardByCode :one
+-- What a shared /c/{code} link unfurls to (#2445): the door's own answer —
+-- name and picture — for whoever holds the code, crawler included.
+select name, image from crews where code = $1;

@@ -257,7 +257,7 @@ func (q *Queries) FirstRoomOwnerInCrew(ctx context.Context, arg FirstRoomOwnerIn
 }
 
 const getCrew = `-- name: GetCrew :one
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled from crews where id = $1
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled, listed from crews where id = $1
 `
 
 type GetCrewRow struct {
@@ -270,6 +270,7 @@ type GetCrewRow struct {
 	HasImage     bool
 	Named        bool
 	BoardEnabled bool
+	Listed       bool
 }
 
 // Everything but the image bytes (#1237): GetCrewImage serves those.
@@ -286,6 +287,7 @@ func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (GetCrewRow, erro
 		&i.HasImage,
 		&i.Named,
 		&i.BoardEnabled,
+		&i.Listed,
 	)
 	return i, err
 }
@@ -322,6 +324,24 @@ func (q *Queries) GetCrewByCode(ctx context.Context, code *string) (GetCrewByCod
 		&i.Named,
 		&i.BoardEnabled,
 	)
+	return i, err
+}
+
+const getCrewCardByCode = `-- name: GetCrewCardByCode :one
+select name, image from crews where code = $1
+`
+
+type GetCrewCardByCodeRow struct {
+	Name  string
+	Image []byte
+}
+
+// What a shared /c/{code} link unfurls to (#2445): the door's own answer —
+// name and picture — for whoever holds the code, crawler included.
+func (q *Queries) GetCrewCardByCode(ctx context.Context, code *string) (GetCrewCardByCodeRow, error) {
+	row := q.db.QueryRow(ctx, getCrewCardByCode, code)
+	var i GetCrewCardByCodeRow
+	err := row.Scan(&i.Name, &i.Image)
 	return i, err
 }
 
@@ -990,6 +1010,58 @@ func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]
 	return items, nil
 }
 
+const listListedCrews = `-- name: ListListedCrews :many
+select name, icon, code, (image_set_at is not null)::boolean as has_image
+from crews
+where listed and code is not null
+order by name asc, code asc
+limit $2 offset $1
+`
+
+type ListListedCrewsParams struct {
+	Off int32
+	Lim int32
+}
+
+type ListListedCrewsRow struct {
+	Name     string
+	Icon     string
+	Code     *string
+	HasImage bool
+}
+
+// The opt-in public directory (ADR-0039 as amended by ADR-0058, #2445): every
+// crew whose admins chose to be findable, and NOTHING ELSE ABOUT THEM — a
+// name, a mark and a link. The link is the code, because the door is the only
+// way in and a listing opens it (#2245); the image is the mark the door
+// already shows whoever holds that code. No member count, no activity, no
+// owner: ListListedRooms' reasoning, word for word, and adding a column here
+// is still a decision.
+func (q *Queries) ListListedCrews(ctx context.Context, arg ListListedCrewsParams) ([]ListListedCrewsRow, error) {
+	rows, err := q.db.Query(ctx, listListedCrews, arg.Off, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListListedCrewsRow
+	for rows.Next() {
+		var i ListListedCrewsRow
+		if err := rows.Scan(
+			&i.Name,
+			&i.Icon,
+			&i.Code,
+			&i.HasImage,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoomGrantees = `-- name: ListRoomGrantees :many
 select u.id, u.display_name, u.avatar_url, g.granted_at
 from room_grants g
@@ -1157,6 +1229,22 @@ type SetCrewImageParams struct {
 
 func (q *Queries) SetCrewImage(ctx context.Context, arg SetCrewImageParams) error {
 	_, err := q.db.Exec(ctx, setCrewImage, arg.ID, arg.ImageMime, arg.Image)
+	return err
+}
+
+const setCrewListed = `-- name: SetCrewListed :exec
+update crews set listed = $2 where id = $1
+`
+
+type SetCrewListedParams struct {
+	ID     pgtype.UUID
+	Listed bool
+}
+
+// In the public directory (ADR-0039 as amended by ADR-0058, #2445): off until
+// the crew's owner or an admin lists it.
+func (q *Queries) SetCrewListed(ctx context.Context, arg SetCrewListedParams) error {
+	_, err := q.db.Exec(ctx, setCrewListed, arg.ID, arg.Listed)
 	return err
 }
 

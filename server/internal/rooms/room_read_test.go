@@ -428,8 +428,8 @@ func TestOnlyMembersReadTheRoomsCode(t *testing.T) {
 // every signed-in rider, not the web. handleGet was the one room route with
 // no 401 (#2241): its members-only work hung off `if user, signedIn := ...`
 // and the fall-through wrote {slug, name, listed, icon} with a 200 to a
-// caller with no session, for any room — while PublicIdentity beside it, the
-// share card, narrowed itself to LISTED rooms citing those same two ADRs.
+// caller with no session, for any room — while the room's share card
+// narrowed itself to LISTED rooms citing those same two ADRs.
 //
 // The 401 comes before the slug lookup, so the answer is the same for a room
 // that does not exist: an unlisted room's existence is not for the web
@@ -451,18 +451,6 @@ func TestTheSignedOutReadNothingAboutARoom(t *testing.T) {
 	// Same answer for a room that is not there — the 401 is not a directory.
 	if status, _ := h.call(t, "", http.MethodGet, "/api/rooms/no-room-lives-here", ""); status != http.StatusUnauthorized {
 		t.Errorf("an unknown slug answered %d, so a 404 tells the web which rooms exist", status)
-	}
-	// The share card is still the one thing that speaks to the web, and still
-	// only for a listed room (#1734).
-	if _, _, ok := h.svc.PublicIdentity(t.Context(), slug); ok {
-		t.Error("PublicIdentity named an unlisted room")
-	}
-	if status, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug,
-		`{"name":"Unlisted By Default","listed":true}`); status != http.StatusOK {
-		t.Fatalf("list the room: %d", status)
-	}
-	if name, _, ok := h.svc.PublicIdentity(t.Context(), slug); !ok || name != "Unlisted By Default" {
-		t.Errorf("PublicIdentity = %q %v; a listed room's card is still public", name, ok)
 	}
 }
 

@@ -83,10 +83,15 @@ type crewJSON struct {
 	// Admins and the owner only — a ban list is a moderation surface, not
 	// roster gossip, the same rule the room's Members place applies.
 	Banned []crewPersonJSON `json:"banned,omitempty"`
+	// Admins and the owner only: whether the crew is in the directory — the
+	// state of the switch only they can throw.
+	Listed bool `json:"listed,omitempty"`
 }
 
 func (s *Service) registerCrews(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/crews/{id}", s.handleGetCrew)
+	// The literal outranks the wildcard above in Go's mux.
+	mux.HandleFunc("GET /api/crews/directory", s.handleCrewDirectory)
 	// The door lives under its own prefix: "/api/crews/by-code/{code}" and
 	// "/api/crews/{id}/image" are both four segments, and Go's mux refuses a
 	// pair where "by-code/image" would match either.
@@ -245,7 +250,7 @@ func codeOf(code *string) string {
 func asRow(c db.Crew) db.GetCrewRow {
 	return db.GetCrewRow{
 		ID: c.ID, Name: c.Name, Icon: c.Icon, OwnerID: c.OwnerID, CreatedAt: c.CreatedAt,
-		Code: c.Code, HasImage: c.ImageSetAt.Valid, BoardEnabled: c.BoardEnabled,
+		Code: c.Code, HasImage: c.ImageSetAt.Valid, BoardEnabled: c.BoardEnabled, Listed: c.Listed,
 	}
 }
 
@@ -260,6 +265,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		OwnerID:  store.UUIDString(crew.OwnerID),
 		Named:    crew.Named,
 		Rooms:    []crewRoomJSON{}, People: []crewPersonJSON{},
+		Listed:   administers(role) && crew.Listed,
 	}
 	// The rooms, with what the CALLER may do in each — the same four states
 	// the sidebar draws, from the same two queries.
