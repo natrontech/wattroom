@@ -194,7 +194,16 @@
 				{/each}
 			</ul>
 
-			{#if presence.loaded && crews.length === 0}
+			<!-- A failed read is not an empty one (#2173): both leave no crews,
+			     and only one of them is a rider to teach. -->
+			{#if presence.error && crews.length === 0}
+				<p class="text-muted px-2 pt-3 text-xs">
+					{presence.error}
+					<button onclick={() => presence.reload()} class="btn-link"
+						>Retry</button
+					>
+				</p>
+			{:else if presence.loaded && crews.length === 0}
 				<!-- In no crew at all (#2144): the way in is joining one, and
 				     starting a crew of your own is the option, not the ask. -->
 				<p class="text-muted px-2 pt-3 text-xs">
@@ -202,13 +211,6 @@
 					<button onclick={() => (opening = true)} class="btn-link"
 						>join one with its code</button
 					>, or start one of your own.
-				</p>
-			{:else if presence.error && crews.length === 0}
-				<p class="text-muted px-2 pt-3 text-xs">
-					{presence.error}
-					<button onclick={() => presence.reload()} class="btn-link"
-						>Retry</button
-					>
 				</p>
 			{/if}
 		{/if}
