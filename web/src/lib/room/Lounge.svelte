@@ -12,6 +12,7 @@
 	import { pickStage, pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
 	import { ridePath } from '$lib/room/address';
+	import { liveSessionId } from '$lib/room/session-phase';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import LoungeDashboard from '$lib/room/LoungeDashboard.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
@@ -412,7 +413,7 @@
 				<a
 					href={ridePath(
 						room.address,
-						roomConnection.current?.live.tick?.state.id,
+						liveSessionId(roomConnection.current?.live.tick?.state),
 					)}
 					class="btn btn-accent btn-lg"
 					><Radio size={15} />

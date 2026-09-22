@@ -94,12 +94,16 @@ export function channelAddress(
 	};
 }
 
+/** A running session's own page (#2450), in the crew it runs in. */
+export const sessionPath = (crew: string, sessionId: string) =>
+	`/crew/${crew}/s/${sessionId}`;
+
 /**
  * Where the ride is (#2450): a voice channel's running session at its own
  * address, else the place's Training.
  */
 export function ridePath(address: PlaceAddress, sessionId?: string): string {
 	return address.channel && sessionId
-		? `/crew/${address.crew}/s/${sessionId}`
+		? sessionPath(address.crew, sessionId)
 		: address.training;
 }

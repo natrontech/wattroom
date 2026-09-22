@@ -5,13 +5,17 @@
 	// own URL, the one to share.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { sessionPath } from '$lib/room/address';
 	import { roomConnection } from '$lib/room/connection.svelte';
+	import { liveSessionId } from '$lib/room/session-phase';
 	import Training from '$lib/room/Training.svelte';
 
-	const session = $derived(roomConnection.current?.live.tick?.state.id);
+	const session = $derived(
+		liveSessionId(roomConnection.current?.live.tick?.state),
+	);
 	$effect(() => {
 		if (session && page.params.id)
-			void goto(`/crew/${page.params.id}/s/${session}`, {
+			void goto(sessionPath(page.params.id, session), {
 				replaceState: true,
 				keepFocus: true,
 				noScroll: true,

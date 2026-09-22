@@ -30,6 +30,8 @@
 	import WhatsNewNotice from '$lib/components/WhatsNewNotice.svelte';
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import { sessionPath } from '$lib/room/address';
 
 	// Home (#212): the between-rides overview — who is around, what is
 	// planned, your friends, your week. ADR-0020 folded /sessions in here and
@@ -174,23 +176,43 @@
 		const h = new Date().getHours();
 		return h < 12 ? 'Morning' : h < 18 ? 'Afternoon' : 'Evening';
 	});
-	// One sentence and one button: the room that is riding, else the room
+	const minutesIn = (sec: number) => {
+		const min = Math.round(sec / 60);
+		return min < 1
+			? 'just starting'
+			: `${min} minute${min === 1 ? '' : 's'} in`;
+	};
+	// A session running in one of your crews' voice channels (#2450): the
+	// sidebar's read, which is live on every page.
+	const running = $derived(
+		crewLive.crews
+			.flatMap((crew) => crew.channels.map((channel) => ({ crew, channel })))
+			.find(({ channel }) => channel.session),
+	);
+	// One sentence and one button: the session that is riding, else the room
 	// with people in it, else nothing — a hero with nowhere to go is noise.
 	const headline = $derived.by(() => {
+		const session = running?.channel.session;
+		if (running && session)
+			return {
+				// A ride is joined where the numbers are (#1332): the session's
+				// own page, which joins no voice by itself.
+				href: sessionPath(running.crew.id, session.id),
+				text: `${running.channel.name} is riding right now — ${minutesIn(session.elapsed)}.`,
+				cta: 'Join the ride',
+			};
 		const live = busy.find((r) => r.live && r.session);
 		if (live && live.session) {
-			const min = Math.round(live.session.elapsedSec / 60);
 			return {
-				// A ride is joined on Training, where the numbers are (#1332).
-				slug: `${live.slug}/training`,
-				text: `${live.name} is riding right now — ${min < 1 ? 'just starting' : `${min} minute${min === 1 ? '' : 's'} in`}.`,
+				href: `/r/${live.slug}/training`,
+				text: `${live.name} is riding right now — ${minutesIn(live.session.elapsedSec)}.`,
 				cta: 'Join the ride',
 			};
 		}
 		const around = busy[0];
 		if (around)
 			return {
-				slug: around.slug,
+				href: `/r/${around.slug}`,
 				text: `${(around.riders ?? []).join(', ')} ${(around.riders ?? []).length === 1 ? 'is' : 'are'} in ${around.name}.`,
 				cta: 'Walk in',
 			};
@@ -243,7 +265,7 @@
 	     always there. -->
 	<div class="mt-4 flex flex-wrap items-center gap-2">
 		{#if headline}
-			<a href="/r/{headline.slug}" class="btn btn-accent btn-lg"
+			<a href={headline.href} class="btn btn-accent btn-lg"
 				><Radio size={15} /> {headline.cta}</a
 			>
 		{/if}

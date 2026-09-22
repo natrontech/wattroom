@@ -2,6 +2,7 @@ import { api } from '$lib/api';
 import type { Medal } from '$lib/components/MedalCard.svelte';
 import { MEDAL_META } from '$lib/medals';
 import type { createRecording } from '$lib/room/recording.svelte';
+import { isLivePhase } from '$lib/room/session-phase';
 
 /** A session is worth a summary once it has a minute of your riding in it. */
 export const SUMMARY_MIN_SAMPLES = 60;
@@ -66,8 +67,7 @@ export function createSummary(deps: {
 	let riding = false;
 	$effect(() => {
 		const phase = deps.phase();
-		const now =
-			phase === 'countdown' || phase === 'running' || phase === 'paused';
+		const now = isLivePhase(phase);
 		if (now && !riding) deps.recording.reset();
 		riding = now;
 		if (phase === 'running') {
