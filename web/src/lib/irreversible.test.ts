@@ -43,6 +43,11 @@ const GUARDED: Guarded[] = [
 		asks: /confirmCalendarReset\('room'\)/,
 	},
 	{
+		file: 'routes/crew/[id]/schedule/+page.svelte',
+		action: "reset the crew's calendar link (#2452)",
+		asks: /confirmCalendarReset\('crew'\)/,
+	},
+	{
 		file: 'lib/components/PasskeyList.svelte',
 		action: 'remove a passkey — the authenticator cannot re-mint it',
 		asks: /passkeys\.confirmRemoval\(/,
@@ -168,6 +173,7 @@ const PRIMITIVES: { call: RegExp; callers: string[]; guard: string }[] = [
 		callers: [
 			'lib/profile/CalendarFeed.svelte',
 			'routes/r/[slug]/+layout.svelte', // wiring; the ask is on Sessions
+			'lib/crew-schedule.ts', // the definition; the ask is on Schedule
 		],
 		guard: 'confirmCalendarReset in lib/calendar-link.ts',
 	},

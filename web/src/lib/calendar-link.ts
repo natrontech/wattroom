@@ -14,25 +14,25 @@
 import { confirm } from '$lib/confirm.svelte';
 import { copyText, theLinkItself } from '$lib/copy';
 
-/** Whose calendar: the rider's own feed, or one room's schedule. */
-export type CalendarScope = 'yours' | 'room';
+/** Whose calendar: the rider's own feed, a crew's schedule (#2452), or one
+ *  room's — the room's goes with the room pages (#2460). */
+export type CalendarScope = 'yours' | 'crew' | 'room';
+
+const whoseLink: Record<CalendarScope, string> = {
+	yours: 'your',
+	crew: "this crew's",
+	room: "this room's",
+};
 
 /** What a reset breaks, and the way back — said before the button. */
 export function resetBody(scope: CalendarScope): string {
-	const whose =
-		scope === 'yours'
-			? 'Every calendar subscribed to your old link stops updating'
-			: "Every calendar subscribed to this room's old link stops updating";
-	return `${whose} — including anyone you shared it with, who is not told. Each one has to subscribe again with the new link. The old link cannot be brought back.`;
+	return `Every calendar subscribed to ${whoseLink[scope]} old link stops updating — including anyone you shared it with, who is not told. Each one has to subscribe again with the new link. The old link cannot be brought back.`;
 }
 
 /** The ask. Resolves to whether the rider wants the link reset. */
 export function confirmCalendarReset(scope: CalendarScope): Promise<boolean> {
 	return confirm({
-		title:
-			scope === 'yours'
-				? 'Reset your calendar link?'
-				: "Reset this room's calendar link?",
+		title: `Reset ${whoseLink[scope]} calendar link?`,
 		body: resetBody(scope),
 		action: 'Reset the link',
 		cancel: 'Keep it',

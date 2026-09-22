@@ -70,6 +70,8 @@ export interface Crew {
 	boardEnabled?: boolean;
 	/** The reaction palette its voice channels speak — icon keys. */
 	cheers?: string[];
+	/** The crew's calendar feed token (#2441): every member's, for sharing. */
+	icsToken?: string;
 }
 
 export function fetchCrew(

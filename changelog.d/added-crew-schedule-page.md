@@ -1,0 +1,1 @@
+- Each crew has a Schedule page. Plan a session in one of the crew's voice channels, say whether you're in, move or cancel your own plans, start one when it's due, and copy the crew's calendar link.
