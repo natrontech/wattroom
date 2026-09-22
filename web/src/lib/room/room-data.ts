@@ -67,8 +67,9 @@ export interface RoomCrew {
 	 * second amendment); it earns a small mark, not a louder row.
 	 */
 	role?: 'owner' | 'admin' | 'member';
-	/** Minted for you with your first room (#1928) — "your own crew", even
-	 * once you own another after a hand-over. */
+	/** Founded by you — started by name (#2480) or minted with your first
+	 * room (#1928): "your own crew", even once you own another after a
+	 * hand-over. */
 	founded?: boolean;
 	/**
 	 * A person has named it (#1151). Until then it carries the owner's name

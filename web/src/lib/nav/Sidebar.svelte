@@ -49,6 +49,7 @@
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
+	import OpenRoom from '$lib/rooms/OpenRoom.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
@@ -105,6 +106,9 @@
 	// one outlives every page, and it stood over the room it had just
 	// opened, trapping focus (found by e2e/room.ts taking the door, #1861).
 	let opening = $state(false);
+	// Beside the rooms of a crew you keep, the + opens a room there; anywhere
+	// else it is the way into a crew — starting one or joining one (#2480).
+	const opensRoom = $derived(crew?.role === 'owner' || crew?.role === 'admin');
 	$effect(() => {
 		pathname;
 		opening = false;
@@ -430,8 +434,8 @@
 			<button
 				onclick={() => (opening = true)}
 				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
-				title="open a room or join a crew with a code"
-				aria-label="open a room or join a crew with a code"
+				title={opensRoom ? 'open a room' : 'start or join a crew'}
+				aria-label={opensRoom ? 'open a room' : 'start or join a crew'}
 				><Plus size={16} /></button
 			>
 		</div>
@@ -467,11 +471,11 @@
 							admin opens the first one.
 						{:else}
 							<!-- In no crew at all (#2144): the way in is joining one, and
-						     opening a room of your own is the option, not the ask. -->
+						     starting a crew of your own is the option, not the ask. -->
 							Not in a crew yet —
 							<button onclick={() => (opening = true)} class="btn-link"
 								>join one with its code</button
-							>, or open a room of your own.
+							>, or start one of your own.
 						{/if}
 					</li>
 				{/each}
@@ -605,9 +609,15 @@
 </nav>
 
 {#if opening}
-	<Modal label="Open a room" onclose={() => (opening = false)} class="max-w-sm">
-		<!-- The crew on screen (#1201): the room lands there when you may open
-		     rooms in it, else in your own — the form says which. -->
-		<OpenOrJoin compact crewId={crew?.id} />
+	<Modal
+		label={opensRoom ? 'Open a room' : 'Start or join a crew'}
+		onclose={() => (opening = false)}
+		class="max-w-sm"
+	>
+		{#if opensRoom && crew}
+			<OpenRoom {crew} />
+		{:else}
+			<OpenOrJoin compact />
+		{/if}
 	</Modal>
 {/if}

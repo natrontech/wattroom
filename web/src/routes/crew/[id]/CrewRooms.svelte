@@ -5,7 +5,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import RoomIcon from '$lib/components/RoomIcon.svelte';
-	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
+	import OpenRoom from '$lib/rooms/OpenRoom.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -28,7 +28,6 @@
 
 	// Opening a room in THIS crew (#1201), for the people who may.
 	let opening = $state(false);
-
 	// A room row's menu (#1226): crew owner and admins open a room to the crew
 	// or shut it — "crew admins manage room permissions" (ADR-0038), and the
 	// one thing the `admin` access state is for. The primary click stays the
@@ -89,10 +88,7 @@
 
 {#if opening}
 	<Modal label="Open a room" onclose={() => (opening = false)} class="max-w-sm">
-		<OpenOrJoin
-			compact
-			crew={{ id: crew.id, name: crew.name, icon: crew.icon, role: crew.role }}
-		/>
+		<OpenRoom {crew} />
 	</Modal>
 {/if}
 

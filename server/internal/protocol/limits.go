@@ -69,6 +69,14 @@ const (
 	// and this feature is deliberately not one.
 	MaxCrewPins = 20
 
+	// A crew's name (docs/SPEC.md "Names"), in CHARACTERS — MaxMessageChars'
+	// rule.
+	MaxCrewNameChars = 60
+	// How many crews a rider founds (docs/SPEC.md "Caps", default — tune in
+	// alpha), counted over the crews they founded and still own. "Start a
+	// crew" disables at it rather than offering a POST that is refused.
+	MaxFoundedCrews = 3
+
 	// A channel's name (ADR-0058, docs/SPEC.md "Names"), in CHARACTERS —
 	// MaxMessageChars' rule — and the bound the channels table's CHECK holds.
 	MaxChannelNameChars = 60

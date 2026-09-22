@@ -7,6 +7,17 @@
 -- hand-over, when a rider may own more than one.
 insert into crews (name, owner_id, code, founded_by) values ($1, $2, $3, $2) returning *;
 
+-- name: FoundCrew :one
+-- A crew a rider starts by name (#2480). The name is a person's from the
+-- first moment, so the day-one naming step (#1151) never opens for it.
+insert into crews (name, owner_id, code, founded_by, renamed_at)
+values ($1, $2, $3, $2, now()) returning *;
+
+-- name: CountFoundedCrews :one
+-- docs/SPEC.md's founding cap counts the crews a rider founded AND still
+-- owns: deleting one or handing it on frees the slot.
+select count(*) from crews where founded_by = $1 and owner_id = $1;
+
 -- name: GetCrewByCode :one
 -- The crew's door (#1236). A code is a secret: the caller learns the crew it
 -- names and nothing about codes that do not exist.

@@ -154,11 +154,9 @@
 			</p>
 			<!-- The promise Home keeps (#2184, ADR-0038 amended 2026-09-17): a
 			     stranger arrives with no invite, so Home's big button says
-			     "Open a room" too. Joining a crew leads only for a rider who
-			     was sent to a door. -->
-			<a href="/login" class="btn btn-primary btn-lg mt-6"
-				>Open your first room</a
-			>
+			     "Start a crew" too (#2480). Joining a crew leads only for a
+			     rider who was sent to a door. -->
+			<a href="/login" class="btn btn-primary btn-lg mt-6">Start your crew</a>
 			<a href="/download" class="btn-link mt-3 text-xs"
 				>or get the desktop app</a
 			>

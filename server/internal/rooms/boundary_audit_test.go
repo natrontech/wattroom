@@ -26,6 +26,7 @@ func TestTheCrewSurfaceRefusesTheSignedOut(t *testing.T) {
 	for _, route := range []struct{ method, path, body string }{
 		{http.MethodGet, "/api/crews/" + id, ""},
 		{http.MethodPost, "/api/crew-doors/" + code + "/remember", ""},
+		{http.MethodPost, "/api/crews", `{"name":"x"}`},
 		{http.MethodPost, "/api/crews/join", `{"code":"ABCDEF"}`},
 		{http.MethodPost, "/api/crews/" + id + "/leave", ""},
 		{http.MethodPatch, "/api/crews/" + id, `{"name":"x"}`},

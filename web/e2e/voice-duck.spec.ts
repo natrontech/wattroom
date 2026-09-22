@@ -91,14 +91,18 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 
 	await signInAs(a, A, '/home#rooms');
 	const name = `Voice Duck ${Date.now() % 100000}`;
-	await a.locator('#open-room-name').fill(name);
-	// Scoped to the form whose field this test just filled: Home says
-	// "Open a room" on the sheet-opener too, and the sidebar's + carries it
-	// inside an aria-label, so an unscoped name matches three buttons.
-	await a
-		.locator('#rooms')
-		.getByRole('button', { name: 'Open a room' })
-		.click();
+	// Through the API into A's own crew: the room is the stage here, not the
+	// door (rooms.spec.ts walks that).
+	const created = await a.evaluate(async (roomName) => {
+		const res = await fetch('/api/rooms', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ name: roomName }),
+		});
+		return { status: res.status, body: await res.json() };
+	}, name);
+	expect(created.status, `opening "${name}" was refused`).toBe(201);
+	await a.goto(`/r/${created.body.slug}`);
 	await expect(
 		a.getByRole('heading', { name }),
 		`opening "${name}" never landed ${A} in the room`,

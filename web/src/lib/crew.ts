@@ -205,6 +205,14 @@ export function joinCrew(code: string): Promise<ApiResult<RoomCrew>> {
 	return api<RoomCrew>('/api/crews/join', { method: 'POST', json: { code } });
 }
 
+/**
+ * A crew of your own (#2480): you own it, and it opens with a text and a voice
+ * channel. Refused past docs/SPEC.md's founding cap.
+ */
+export function foundCrew(name: string): Promise<ApiResult<RoomCrew>> {
+	return api<RoomCrew>('/api/crews', { method: 'POST', json: { name } });
+}
+
 /** A new invite (#1930): the old code and every link carrying it stop working. */
 export function rotateCrewCode(
 	id: string,

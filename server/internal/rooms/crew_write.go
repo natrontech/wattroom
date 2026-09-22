@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"net/http"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -72,10 +71,9 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
 		return
 	}
-	req.Name = strings.TrimSpace(req.Name)
-	if req.Name == "" || utf8.RuneCountInString(req.Name) > 60 {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A crew name has to be 1-60 characters.", "name")
+	name, ok := cleanCrewName(req.Name)
+	if !ok {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", crewNameRule, "name")
 		return
 	}
 	icon := crew.Icon
@@ -94,7 +92,7 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
 	q := s.store.Queries.WithTx(tx)
-	updated, err := q.UpdateCrew(r.Context(), db.UpdateCrewParams{ID: crew.ID, Name: req.Name, Icon: icon})
+	updated, err := q.UpdateCrew(r.Context(), db.UpdateCrewParams{ID: crew.ID, Name: name, Icon: icon})
 	if err == nil && req.BoardEnabled != nil {
 		err = q.SetCrewBoard(r.Context(), db.SetCrewBoardParams{ID: crew.ID, BoardEnabled: *req.BoardEnabled})
 	}

@@ -70,6 +70,19 @@ func (q *Queries) CountCrewMembers(ctx context.Context, crewID pgtype.UUID) (int
 	return column_1, err
 }
 
+const countFoundedCrews = `-- name: CountFoundedCrews :one
+select count(*) from crews where founded_by = $1 and owner_id = $1
+`
+
+// docs/SPEC.md's founding cap counts the crews a rider founded AND still
+// owns: deleting one or handing it on frees the slot.
+func (q *Queries) CountFoundedCrews(ctx context.Context, foundedBy pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countFoundedCrews, foundedBy)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countRoomsOwnedInCrew = `-- name: CountRoomsOwnedInCrew :one
 select count(*) from rooms where crew_id = $1 and owner_id = $2
 `
@@ -254,6 +267,42 @@ func (q *Queries) FirstRoomOwnerInCrew(ctx context.Context, arg FirstRoomOwnerIn
 	var owner_id pgtype.UUID
 	err := row.Scan(&owner_id)
 	return owner_id, err
+}
+
+const foundCrew = `-- name: FoundCrew :one
+insert into crews (name, owner_id, code, founded_by, renamed_at)
+values ($1, $2, $3, $2, now()) returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by, board_enabled, cheers, listed, ics_token
+`
+
+type FoundCrewParams struct {
+	Name    string
+	OwnerID pgtype.UUID
+	Code    *string
+}
+
+// A crew a rider starts by name (#2480). The name is a person's from the
+// first moment, so the day-one naming step (#1151) never opens for it.
+func (q *Queries) FoundCrew(ctx context.Context, arg FoundCrewParams) (Crew, error) {
+	row := q.db.QueryRow(ctx, foundCrew, arg.Name, arg.OwnerID, arg.Code)
+	var i Crew
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Icon,
+		&i.OwnerID,
+		&i.CreatedAt,
+		&i.Code,
+		&i.ImageMime,
+		&i.Image,
+		&i.ImageSetAt,
+		&i.RenamedAt,
+		&i.FoundedBy,
+		&i.BoardEnabled,
+		&i.Cheers,
+		&i.Listed,
+		&i.IcsToken,
+	)
+	return i, err
 }
 
 const getCrew = `-- name: GetCrew :one
