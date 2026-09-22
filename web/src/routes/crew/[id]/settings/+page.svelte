@@ -44,6 +44,29 @@
 		crew?.role === 'owner' || crew?.role === 'admin',
 	);
 
+	// Calendars subscribed to a room's link went quiet when rooms became
+	// channels (#2441): nothing tells a subscriber, so the people who share
+	// the crew's link are told once, here (#2457). Per viewer, and an empty
+	// or refused storage just shows it again — the worst case is one more read.
+	const CALENDAR_MOVED = 'wattroom.calendarMoved.v1';
+	let calendarNoticeSeen = $state(
+		(() => {
+			try {
+				return localStorage.getItem(CALENDAR_MOVED) === '1';
+			} catch {
+				return false;
+			}
+		})(),
+	);
+	function dismissCalendarNotice() {
+		calendarNoticeSeen = true;
+		try {
+			localStorage.setItem(CALENDAR_MOVED, '1');
+		} catch {
+			// Private window or blocked storage: it is only a notice.
+		}
+	}
+
 	async function reload() {
 		if (!crew) return;
 		const res = await fetchCrew(crew.id);
@@ -358,6 +381,24 @@
 			{busy}
 			onchange={() => void saveSettings({ cheers })}
 		/>
+
+		{#if !calendarNoticeSeen}
+			<div class="mt-5">
+				<Banner tone="warn">
+					Calendars subscribed to a room's link stopped updating when rooms
+					became channels. The crew's own calendar link is on its <a
+						href="/crew/{crew.id}/schedule"
+						class="underline">Schedule</a
+					>
+					— share that one instead.
+					{#snippet action()}
+						<button onclick={dismissCalendarNotice} class="btn-link text-xs"
+							>Got it</button
+						>
+					{/snippet}
+				</Banner>
+			</div>
+		{/if}
 
 		<!-- The invite's one home is the crew's page (ADR-0020); re-keying it
 		     is a setting, and the one destructive one here — a confirm, since
