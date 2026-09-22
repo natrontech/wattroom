@@ -11,6 +11,7 @@
 	import Stage from '$lib/room/Stage.svelte';
 	import { pickStage, pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
+	import { ridePath } from '$lib/room/address';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import LoungeDashboard from '$lib/room/LoungeDashboard.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
@@ -403,11 +404,19 @@
 		     into the ride for a member arriving mid-session. -->
 		<div class="mt-4 flex flex-wrap items-center gap-2">
 			<SessionControls />
-			{#if !room.canControl && !device.spectator}
+			{#if !device.spectator}
 				<!-- Not to a phone (#1627): it cannot ride, and Training would
-				     answer "bring a laptop". -->
-				<a href={room.address.training} class="btn btn-accent btn-lg"
-					><Radio size={15} /> Join the ride</a
+				     answer "bring a laptop". The coach needs the way in too: a
+				     voice channel has no Training row in the sidebar, and the
+				     session's page is where the ride is (#2450). -->
+				<a
+					href={ridePath(
+						room.address,
+						roomConnection.current?.live.tick?.state.id,
+					)}
+					class="btn btn-accent btn-lg"
+					><Radio size={15} />
+					{room.canControl ? 'Go to the ride' : 'Join the ride'}</a
 				>
 			{/if}
 		</div>
