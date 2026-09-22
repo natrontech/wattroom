@@ -333,6 +333,7 @@ test('no page outside a room scrolls sideways on a phone', async ({
 		'/crew/[id]': `/crew/${crewId}`,
 		'/crew/[id]/members': `/crew/${crewId}/members`,
 		'/crew/[id]/settings': `/crew/${crewId}/settings`,
+		'/crew/[id]/schedule': `/crew/${crewId}/schedule`,
 		'/crew/[id]/c/[channel]': `/crew/${crewId}/c/${textChannel}`,
 		'/crew/[id]/board': `/crew/${crewId}/board`,
 		'/crew/[id]/workouts': `/crew/${crewId}/workouts`,

@@ -1,4 +1,3 @@
-import { api, loadApi, type ApiResult } from '$lib/api';
 import type { SessionRecap } from '$lib/protocol';
 
 /**
@@ -7,38 +6,8 @@ import type { SessionRecap } from '$lib/protocol';
  * its own. A crew shelf of saved workouts is a follow-up if anyone asks.
  */
 
-/** One plan on the crew's schedule, as GET /api/crews/{id}/schedule lists it. */
-export interface CrewPlan {
-	id: string;
-	workoutName: string;
-	workoutJson: string;
-	startsAt: string;
-	channelId?: string;
-	channelName?: string;
-}
-
-export function fetchCrewSchedule(
-	crewId: string,
-	fetcher: typeof fetch = fetch,
-): Promise<ApiResult<{ sessions: CrewPlan[] }>> {
-	return loadApi(fetcher, `/api/crews/${crewId}/schedule`);
-}
-
-/** Put a workout on the crew's schedule, in one of its voice channels. */
-export function planCrewSession(
-	crewId: string,
-	plan: {
-		workoutName: string;
-		workoutJson: string;
-		startsAt: string;
-		channelId: string;
-	},
-) {
-	return api<CrewPlan>(`/api/crews/${crewId}/schedule`, {
-		method: 'POST',
-		json: plan,
-	});
-}
+// The schedule reads and the plan it writes are $lib/crew-schedule's (#2452):
+// one module for the crew's calendar, whichever page is planning.
 
 /** A workout the crew rode together: how often, and when it last did. */
 export interface RiddenWorkout {

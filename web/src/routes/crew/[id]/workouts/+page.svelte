@@ -6,11 +6,8 @@
 	import { invalidateAll } from '$app/navigation';
 	import Banner from '$lib/components/Banner.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
-	import {
-		planCrewSession,
-		riddenTogether,
-		workoutByName,
-	} from '$lib/crew-workouts';
+	import { planCrewSession } from '$lib/crew-schedule';
+	import { riddenTogether, workoutByName } from '$lib/crew-workouts';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
 	import { toasts } from '$lib/toast.svelte';

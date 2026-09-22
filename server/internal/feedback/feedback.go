@@ -336,7 +336,7 @@ var (
 		dm download edit editor equipment friends hardware history home
 		hud import legal licenses login medal members messages modes music
 		notifications pairing panel pins privacy profile progression r ramp
-		recover ride room rooms sessions settings sound spectator
+		recover ride room rooms schedule sessions settings sound spectator
 		styleguide summary terms theme-editor themes training trophies u
 		v voice watch whats-new workouts
 	`)

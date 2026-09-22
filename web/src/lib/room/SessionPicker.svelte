@@ -333,7 +333,7 @@
 								>
 							</div>
 							<p class="text-muted mt-2 text-xs">
-								The room hears about it, and it lands in every subscribed
+								The crew hears about it, and it lands in every subscribed
 								calendar.
 							</p>
 							{#if onStart}

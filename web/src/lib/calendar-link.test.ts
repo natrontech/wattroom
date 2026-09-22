@@ -26,7 +26,7 @@ describe('resetBody', () => {
 	// things a rider cannot find out any other way — that someone else's
 	// calendar breaks, that nobody tells them, and that the old link is gone.
 	it('names the breakage, who is not told, and the way back', () => {
-		for (const scope of ['yours', 'room'] as const) {
+		for (const scope of ['yours', 'crew', 'room'] as const) {
 			const body = resetBody(scope);
 			expect(body).toMatch(/stops updating/);
 			expect(body).toMatch(/not told/);
@@ -38,6 +38,7 @@ describe('resetBody', () => {
 	it('says whose calendar it is', () => {
 		expect(resetBody('yours')).toMatch(/your old link/);
 		expect(resetBody('room')).toMatch(/this room's old link/);
+		expect(resetBody('crew')).toMatch(/this crew's old link/);
 	});
 });
 
