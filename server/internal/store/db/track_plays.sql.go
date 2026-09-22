@@ -11,7 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const recentRoomPlays = `-- name: RecentRoomPlays :many
+const recentChannelPlays = `-- name: RecentChannelPlays :many
 select p.track_id, p.video_id, p.title, p.skipped,
     coalesce(t.title, '')::text as track_title,
     coalesce(t.artist, '')::text as track_artist,
@@ -21,17 +21,17 @@ select p.track_id, p.video_id, p.title, p.skipped,
 from track_plays p
 left join tracks t on t.id = p.track_id
 left join users u on u.id = p.queued_by
-where p.room_id = $1 and (p.track_id is not null or p.video_id <> '')
+where p.channel_id = $1 and (p.track_id is not null or p.video_id <> '')
 order by p.at desc
 limit $2
 `
 
-type RecentRoomPlaysParams struct {
-	RoomID pgtype.UUID
-	Limit  int32
+type RecentChannelPlaysParams struct {
+	ChannelID pgtype.UUID
+	Limit     int32
 }
 
-type RecentRoomPlaysRow struct {
+type RecentChannelPlaysRow struct {
 	TrackID         pgtype.UUID
 	VideoID         string
 	Title           string
@@ -43,18 +43,19 @@ type RecentRoomPlaysRow struct {
 	QueuedByName    string
 }
 
-// The room's "just played" as the database remembers it (#1432), newest
-// first, both kinds. A library row reads the track's current title and
-// artist; a deleted file took its rows with it.
-func (q *Queries) RecentRoomPlays(ctx context.Context, arg RecentRoomPlaysParams) ([]RecentRoomPlaysRow, error) {
-	rows, err := q.db.Query(ctx, recentRoomPlays, arg.RoomID, arg.Limit)
+// A voice channel's "just played" as the database remembers it (#1432),
+// newest first, both kinds — the channel's own, since each deck is its own
+// (ADR-0058). A library row reads the track's current title and artist; a
+// deleted file took its rows with it.
+func (q *Queries) RecentChannelPlays(ctx context.Context, arg RecentChannelPlaysParams) ([]RecentChannelPlaysRow, error) {
+	rows, err := q.db.Query(ctx, recentChannelPlays, arg.ChannelID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []RecentRoomPlaysRow
+	var items []RecentChannelPlaysRow
 	for rows.Next() {
-		var i RecentRoomPlaysRow
+		var i RecentChannelPlaysRow
 		if err := rows.Scan(
 			&i.TrackID,
 			&i.VideoID,
@@ -77,26 +78,27 @@ func (q *Queries) RecentRoomPlays(ctx context.Context, arg RecentRoomPlaysParams
 }
 
 const recordTrackPlay = `-- name: RecordTrackPlay :exec
-insert into track_plays (track_id, room_id, queued_by, skipped, video_id, title)
+insert into track_plays (track_id, channel_id, queued_by, skipped, video_id, title)
 values ($1, $2, $3, $4, $5, $6)
 `
 
 type RecordTrackPlayParams struct {
-	TrackID  pgtype.UUID
-	RoomID   pgtype.UUID
-	QueuedBy pgtype.UUID
-	Skipped  bool
-	VideoID  string
-	Title    string
+	TrackID   pgtype.UUID
+	ChannelID pgtype.UUID
+	QueuedBy  pgtype.UUID
+	Skipped   bool
+	VideoID   string
+	Title     string
 }
 
-// One thing a room did with a track (#269, #1432): a library track by id or
-// a video by its YouTube id and title. Called from outside the room lock,
-// after the deck has already moved on — nothing waits on it.
+// One thing a voice channel's deck did with a track (#269, #1432, #2439): a
+// library track by id or a video by its YouTube id and title. Called from
+// outside the hub's lock, after the deck has already moved on — nothing
+// waits on it.
 func (q *Queries) RecordTrackPlay(ctx context.Context, arg RecordTrackPlayParams) error {
 	_, err := q.db.Exec(ctx, recordTrackPlay,
 		arg.TrackID,
-		arg.RoomID,
+		arg.ChannelID,
 		arg.QueuedBy,
 		arg.Skipped,
 		arg.VideoID,
@@ -111,14 +113,14 @@ with history as (
         max(p.at) filter (where not p.skipped) as last_played,
         count(*) filter (where p.skipped) as skips
     from track_plays p
-    where p.room_id = $1
+    where p.channel_id = $1
     group by p.track_id
 ),
 recent as (
     select p.track_id, t.artist, t.tags
     from track_plays p
     join tracks t on t.id = p.track_id
-    where p.room_id = $1 and not p.skipped
+    where p.channel_id = $1 and not p.skipped
     order by p.at desc
     limit $9
 ),
@@ -131,8 +133,7 @@ liked as (
 )
 select t.id, t.title, t.artist, coalesce(t.bpm, 0)::int as bpm, t.duration_ms, w.weight
 from tracks t
-join memberships m on m.user_id = t.uploaded_by and m.room_id = $1
-join visible_rooms v on v.room_id = m.room_id and v.user_id = m.user_id
+join visible_channels v on v.channel_id = $1 and v.user_id = t.uploaded_by
 left join history h on h.track_id = t.id
 cross join liked l
 cross join lateral (
@@ -153,9 +154,9 @@ cross join lateral (
         else 1.0
       end
     * case
-        -- A track the room just finished matches its OWN artist, and lifting
+        -- A track the channel just finished matches its OWN artist, and lifting
         -- it here would partly undo the recency penalty that exists to stop
-        -- the room hearing it again. Affinity means "more like that one",
+        -- the channel hearing it again. Affinity means "more like that one",
         -- never "that one again" — so the recency factor keeps this case.
         when t.id = any(l.ids) then 1.0
         -- A name is a name; a tag is a hint. Checked in that order so a
@@ -176,7 +177,7 @@ limit $8
 `
 
 type SmartShuffleTracksParams struct {
-	RoomID         pgtype.UUID
+	ChannelID      pgtype.UUID
 	TargetRpm      float64
 	BpmTolerance   float64
 	BpmBoost       float64
@@ -209,45 +210,45 @@ type SmartShuffleTracksRow struct {
 //
 //	recency:  0.05 the instant a track ends, rising linearly to 1 over 4 h.
 //	          The floor is why it is a penalty and not a ban.
-//	skip:     divided by one more than the times this room skipped it, so
+//	skip:     divided by one more than the times this channel skipped it, so
 //	          one skip halves a track's chances and three quarter them.
 //	bpm:      a BOOST (#270) for a track whose tempo fits the cadence the
-//	          room is turning, at that cadence or at double it — the same
+//	          channel is turning, at that cadence or at double it — the same
 //	          beat, felt one pedal stroke at a time instead of two.
-//	affinity: a BOOST (#271) for a track that resembles what this room has
+//	affinity: a BOOST (#271) for a track that resembles what this channel has
 //	          lately played THROUGH — same artist, or a tag in common. Same
 //	          artist is the strong signal and earns more: tags are
 //	          free-form with no taxonomy (ADR-0015), so a broad one says
-//	          much less than a name does. A track the room just finished is
+//	          much less than a name does. A track the channel just finished is
 //	          excluded from its own affinity: "more like that", not "that
 //	          again", which is what the recency penalty already answers.
 //
 // Every one of them is a boost or a penalty on a base of 1, so each is
 // individually switch-off-able by its own inputs: no session means no BPM
 // preference, an empty history means no affinity and no penalties, and a
-// room with none of it draws uniformly at random. That is the pre-#269
+// channel with none of it draws uniformly at random. That is the pre-#269
 // behaviour, reached by the arithmetic rather than by a branch.
 //
-// History is this room's only (privacy is architecture, WATTROOM.md): what
-// one room finishes is not a fact about the pool, and must not reach another.
+// History is this voice channel's only (privacy is architecture,
+// WATTROOM.md; ADR-0058): what one channel finishes is not a fact about the
+// pool, and must not reach another.
 //
-// And the POOL it draws from is this room's members' (#1095). Autoplay is the
-// one path that reaches for a track nobody asked for by name, so an unscoped
-// draw here would put a stranger's upload on the deck without ever appearing
-// on a page or in a search — past every check the issue's own list names.
-// Members rather than the acting rider: a room's shelf is what its people
-// brought, which is already what the room permits (any member may queue their
-// own track for everyone). Phase 2 replaces this join with the crew.
+// And the POOL it draws from is the libraries of the riders who may enter
+// this channel (#1095, #2439). Autoplay is the one path that reaches for a
+// track nobody asked for by name, so an unscoped draw here would put a
+// stranger's upload on the deck without ever appearing on a page or in a
+// search. Who may enter is `visible_channels` (#2465), `channels.mayEnter`
+// as a relation: the crew's owner, its admins, and — unless the channel is
+// private and they are not named into it — its members; never a banned one.
 // `weight` is returned so a headless autoplay log can say WHY a track came
 // up; the ordering is random and unexplainable after the fact otherwise.
-// The last few tracks this room let finish. Bounded, and by COUNT rather
-// than by time: a room's taste is the last things it enjoyed, and a room
+// The last few tracks this channel let finish. Bounded, and by COUNT rather
+// than by time: a channel's taste is the last things it enjoyed, and one
 // that rode yesterday should not come back to a blank slate.
-// The shelves of the room's own MEMBERS, confirmed on purpose in #1103 over
-// the crew: crew membership follows room membership, so a crew-wide draw
-// would put a shelf into the rotation of rooms its owner never entered.
-// Members who may still enter, through visible_rooms — a crew-banned member
-// keeps their row but not their say in what the room plays (ADR-0038).
+// The shelves of the riders who may enter the channel (see the head of this
+// query). A crew-banned rider keeps a crew_roles row and loses their say in
+// what the channel plays; a member taken out of a private channel loses it
+// there and keeps it in the crew's open ones.
 // Smart is an ORDER, not a source (#1429): with an active playlist that holds
 // library tracks, the draw is over those and nothing else; `within` is empty
 // when no list is active or the list holds no library track, and the draw
@@ -255,7 +256,7 @@ type SmartShuffleTracksRow struct {
 // slice arrives as NULL and NULL = 0 is not true.
 func (q *Queries) SmartShuffleTracks(ctx context.Context, arg SmartShuffleTracksParams) ([]SmartShuffleTracksRow, error) {
 	rows, err := q.db.Query(ctx, smartShuffleTracks,
-		arg.RoomID,
+		arg.ChannelID,
 		arg.TargetRpm,
 		arg.BpmTolerance,
 		arg.BpmBoost,

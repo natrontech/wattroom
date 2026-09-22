@@ -44,15 +44,11 @@ func (h *harness) track(t *testing.T, uploader, title string) string {
 
 func (h *harness) weights(t *testing.T, slug string) map[string]float64 {
 	t.Helper()
-	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("room: %v", err)
-	}
 	rows, err := h.store.Queries.SmartShuffleTracks(t.Context(), db.SmartShuffleTracksParams{
 		// The pool is the whole database's: ask for more than it can
 		// plausibly hold, so a neighbouring suite's tracks cannot push ours
 		// out of range.
-		RoomID: room.ID, Lim: 1000, Within: nil,
+		ChannelID: h.voiceID(t, slug), Lim: 1000, Within: nil,
 		AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 	})
 	if err != nil {

@@ -325,7 +325,7 @@ func main() {
 		h.SetRecapKeeper(recapService)
 		recapService.SetLive(h)
 		chatService.SetRecaps(recapService)
-		playlistsService := playlists.New(st, authService, roomsService, log)
+		playlistsService := playlists.New(st, authService, roomsService, channelsService, log)
 		playlistsService.Register(mux)
 		h.SetPlaylistSource(playlistsService)
 		h.SetTrackHistory(playlistsService) // #269, what smart shuffle weights by

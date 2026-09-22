@@ -12,6 +12,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -64,7 +67,7 @@ func setup(t *testing.T) *harness {
 	}
 
 	log := slog.New(slog.DiscardHandler)
-	svc := New(st, users, rooms.New(st, users, log), log)
+	svc := New(st, users, rooms.New(st, users, log), channels.New(st, users, log), log)
 	live := &fakeLive{ok: true}
 	svc.SetLive(live)
 	mux := http.NewServeMux()
@@ -125,6 +128,20 @@ func (h *harness) voice(t *testing.T, slug string) string {
 	return testx.VoiceChannel(t, h.store, room)
 }
 
+// voiceID is voice as the id the store takes.
+func (h *harness) voiceID(t *testing.T, slug string) pgtype.UUID {
+	t.Helper()
+	id, err := store.ParseUUID(h.voice(t, slug))
+	if err != nil {
+		t.Fatalf("voice channel id: %v", err)
+	}
+	return id
+}
+
+// join puts user in the room as ADR-0058's migration would carry them over:
+// the room membership the room-scoped doors still read, a crew role, and —
+// the fixture's room being private — a name in both of its channels. A room
+// ban is a crew ban since #2442, and names them into nothing.
 func (h *harness) join(t *testing.T, slug, user, role string) {
 	t.Helper()
 	u := h.users[user]
@@ -136,6 +153,29 @@ func (h *harness) join(t *testing.T, slug, user, role string) {
 		RoomID: room.ID, UserID: u.ID, Role: role,
 	}); err != nil {
 		t.Fatalf("membership: %v", err)
+	}
+	crewRole := "member"
+	if role == "banned" {
+		crewRole = "banned"
+	}
+	h.voice(t, slug) // the room's crew and channels exist from here on
+	room, err = h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("lookup room: %v", err)
+	}
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: room.CrewID, UserID: u.ID, Role: crewRole,
+	}); err != nil {
+		t.Fatalf("crew role: %v", err)
+	}
+	if role == "banned" {
+		return
+	}
+	if _, err := h.store.Pool.Exec(t.Context(),
+		`insert into channel_members (channel_id, user_id)
+		 select c, $2 from room_channels rc, unnest(array[rc.text_channel_id, rc.voice_channel_id]) c
+		 where rc.room_id = $1 on conflict do nothing`, room.ID, u.ID); err != nil {
+		t.Fatalf("name into the room's channels: %v", err)
 	}
 }
 

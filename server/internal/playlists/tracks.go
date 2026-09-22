@@ -180,6 +180,12 @@ func (s *Service) handleGetRoomPlaylist(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func (s *Service) handleGetCrewPlaylist(w http.ResponseWriter, r *http.Request) {
+	if sc, ok := s.crewScope(w, r, false); ok {
+		s.getPlaylistDetail(w, r, sc)
+	}
+}
+
 func (s *Service) handleGetPersonalPlaylist(w http.ResponseWriter, r *http.Request) {
 	if sc, ok := s.personalScope(w, r); ok {
 		s.getPlaylistDetail(w, r, sc)
@@ -265,6 +271,12 @@ func (s *Service) handleAddRoomTrack(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (s *Service) handleAddCrewTrack(w http.ResponseWriter, r *http.Request) {
+	if sc, ok := s.crewScope(w, r, false); ok {
+		s.addTrack(w, r, sc)
+	}
+}
+
 func (s *Service) handleAddPersonalTrack(w http.ResponseWriter, r *http.Request) {
 	if sc, ok := s.personalScope(w, r); ok {
 		s.addTrack(w, r, sc)
@@ -277,39 +289,53 @@ func (s *Service) handleDeleteRoomTrack(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func (s *Service) handleDeleteCrewTrack(w http.ResponseWriter, r *http.Request) {
+	if sc, ok := s.crewScope(w, r, true); ok {
+		s.deleteTrack(w, r, sc)
+	}
+}
+
 func (s *Service) handleDeletePersonalTrack(w http.ResponseWriter, r *http.Request) {
 	if sc, ok := s.personalScope(w, r); ok {
 		s.deleteTrack(w, r, sc)
 	}
 }
 
-// queueScope is who may push onto a room's live queue over HTTP: a signed-in
-// member of the room named by {slug} who is banned at neither level. Shared
-// by "queue this playlist" and "queue these tracks" (#1433).
-//
-// The gate itself is the rooms package's (#2242): it asks both ban levels
-// (ADR-0038) and, unlike the copy that stood here, tells a database failure
-// apart from a refusal instead of answering "Join the room" to a member who
-// is already in it.
-func (s *Service) queueScope(w http.ResponseWriter, r *http.Request) (db.Room, db.User, bool) {
-	return s.members.RequireMember(w, r, "Join the room to use its jukebox.")
-}
-
-// handleQueuePlaylist appends a playlist's tracks onto the room's live queue
-// (#627) — the playlist may be this room's own, or the caller's personal
-// shelf; either is fine, unlike edit/delete which stay scope-exclusive.
+// handleQueuePlaylist appends a playlist's tracks onto the room's voice
+// channel's deck (#627) — the room's twin of handleQueuePlaylistIntoChannel,
+// until the room goes (#2446). Its gate is the rooms package's (#2242).
 func (s *Service) handleQueuePlaylist(w http.ResponseWriter, r *http.Request) {
-	room, user, ok := s.queueScope(w, r)
+	room, user, ok := s.members.RequireMember(w, r, "Join the room to use its jukebox.")
 	if !ok {
 		return
 	}
-	id, err := store.ParseUUID(r.PathValue("id"))
+	s.queuePlaylist(w, r, room.CrewID, s.store.VoiceChannelOf(r.Context(), room.ID), user)
+}
+
+// handleQueuePlaylistIntoChannel appends a playlist's tracks onto a voice
+// channel's deck (#627, #2439), for anyone who may enter it. The playlist
+// may be the channel's crew's or the caller's own; one playlist queued into
+// two channels plays in each on its own, because each channel is its own
+// deck (ADR-0058).
+func (s *Service) handleQueuePlaylistIntoChannel(w http.ResponseWriter, r *http.Request) {
+	channel, user, _, ok := s.channels.RequireVoice(w, r)
+	if !ok {
+		return
+	}
+	s.queuePlaylist(w, r, channel.CrewID, store.UUIDString(channel.ID), user)
+}
+
+// queuePlaylist is the shared half: find {playlist} on the crew's shelf or
+// the caller's own — either is fine here, unlike edit and delete, which stay
+// scope-exclusive — and hand its tracks to the hub's deck for channel.
+func (s *Service) queuePlaylist(w http.ResponseWriter, r *http.Request, crew pgtype.UUID, channel string, user db.User) {
+	id, err := store.ParseUUID(r.PathValue("playlist"))
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That playlist does not exist.")
 		return
 	}
 	p, err := s.store.Queries.GetPlaylist(r.Context(), id)
-	owns := err == nil && ((p.RoomID.Valid && p.RoomID == room.ID) || (p.UserID.Valid && p.UserID == user.ID))
+	owns := err == nil && ((p.CrewID.Valid && p.CrewID == crew) || (p.UserID.Valid && p.UserID == user.ID))
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !owns) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That playlist does not exist.")
 		return
@@ -323,14 +349,21 @@ func (s *Service) handleQueuePlaylist(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "list playlist tracks failed", err, "That playlist could not be queued. Try again.")
 		return
 	}
-	if s.live == nil {
-		httpx.WriteError(w, http.StatusConflict, "conflict", "Open the room to queue into its jukebox.")
-		return
-	}
-	added, live := s.live.QueuePlaylist(s.store.VoiceChannelOf(r.Context(), room.ID), store.UUIDString(user.ID), user.DisplayName, commandsFromTracks(rows))
-	if !live {
-		httpx.WriteError(w, http.StatusConflict, "conflict", "Open the room to queue into its jukebox.")
+	added, ok := s.queueOnto(w, channel, user, commandsFromTracks(rows))
+	if !ok {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"queued": added})
+}
+
+// queueOnto hands commands to the hub's deck for channel. A channel nobody
+// has opened has no deck, and the refusal says what to do about it.
+func (s *Service) queueOnto(w http.ResponseWriter, channel string, user db.User, cmds []protocol.JukeboxCommand) (int, bool) {
+	if s.live != nil && channel != "" {
+		if added, live := s.live.QueuePlaylist(channel, store.UUIDString(user.ID), user.DisplayName, cmds); live {
+			return added, true
+		}
+	}
+	httpx.WriteError(w, http.StatusConflict, "conflict", "Open the voice channel to queue into its jukebox.")
+	return 0, false
 }
