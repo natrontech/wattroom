@@ -37,7 +37,7 @@ func TestTheCrewSurfaceRefusesTheSignedOut(t *testing.T) {
 		{http.MethodDelete, "/api/crews/" + id + "/image", ""},
 		{http.MethodPost, "/api/rooms/" + slug + "/grants", `{"userId":"x"}`},
 		{http.MethodDelete, "/api/rooms/" + slug + "/grants/x", ""},
-		{http.MethodPost, "/api/rooms/" + slug + "/calendar/rotate", ""},
+		{http.MethodPost, "/api/crews/" + id + "/calendar/rotate", ""},
 		{http.MethodPost, "/api/calendar/rotate", ""},
 	} {
 		if status, _ := h.call(t, "", route.method, route.path, route.body); status != http.StatusUnauthorized {

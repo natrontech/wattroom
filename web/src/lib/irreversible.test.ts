@@ -126,8 +126,8 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(/,
 	},
 	{
-		file: 'routes/r/[slug]/settings/+page.svelte',
-		action: 'delete the room for every member',
+		file: 'routes/crew/[id]/settings/ChannelRow.svelte',
+		action: 'delete a channel — its chat, or its play log and recaps',
 		asks: /confirm\(/,
 	},
 	{

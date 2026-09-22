@@ -1,3 +1,4 @@
+import { roomAddress } from '$lib/room/address';
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync, tick } from 'svelte';
@@ -118,15 +119,15 @@ describe('roomConnection', () => {
 	});
 
 	it('keeps one ride and one recording across repeated joins', () => {
-		const first = roomConnection.join('lounge');
-		const again = roomConnection.join('lounge');
+		const first = roomConnection.join(roomAddress('lounge'));
+		const again = roomConnection.join(roomAddress('lounge'));
 		expect(again).toBe(first);
 		expect(again.ride).toBe(first.ride);
 		expect(again.recording).toBe(first.recording);
 	});
 
 	it('puts you back in the music when you leave (#1898)', async () => {
-		roomConnection.join('lounge');
+		roomConnection.join(roomAddress('lounge'));
 		listening.stepOut('stop', null);
 		expect(listening.out).toBe(true);
 		roomConnection.leave();
@@ -134,7 +135,7 @@ describe('roomConnection', () => {
 	});
 
 	it('releases the trainer when you leave, not when a page unmounts', async () => {
-		const connection = roomConnection.join('lounge');
+		const connection = roomConnection.join(roomAddress('lounge'));
 		const trainer = new FakeTrainer();
 		await connection.ride.ride(trainer);
 		expect(connection.ride.trainer).toBe(trainer);
@@ -145,7 +146,9 @@ describe('roomConnection', () => {
 		expect(trainer.targets.at(-1)).toBe(0);
 
 		// A fresh join is a fresh ride — a different room is a different session.
-		expect(roomConnection.join('lounge').ride).not.toBe(connection.ride);
+		expect(roomConnection.join(roomAddress('lounge')).ride).not.toBe(
+			connection.ride,
+		);
 	});
 
 	// #850, a rider report: they clicked through Home and settings, dropped out
@@ -154,7 +157,7 @@ describe('roomConnection', () => {
 	// room takes the socket, the voice channel and the trainer with it.
 	it('says so out loud when the room ends under the rider', () => {
 		played.length = 0;
-		roomConnection.join('lounge');
+		roomConnection.join(roomAddress('lounge'));
 
 		roomConnection.leave('signedOut');
 
@@ -168,7 +171,7 @@ describe('roomConnection', () => {
 	it('goes quietly when the rider is the one leaving', () => {
 		played.length = 0;
 		const before = toasts.items.length;
-		roomConnection.join('lounge');
+		roomConnection.join(roomAddress('lounge'));
 
 		roomConnection.leave();
 
@@ -178,7 +181,7 @@ describe('roomConnection', () => {
 
 	it('takes a trainer handed over live without connecting it again', async () => {
 		// #1851: the solo slot's trainer walks into the room as it is.
-		const connection = roomConnection.join('lounge');
+		const connection = roomConnection.join(roomAddress('lounge'));
 		const trainer = new FakeTrainer();
 		trainer.status = 'connected';
 		await connection.ride.ride(trainer);
@@ -190,7 +193,7 @@ describe('roomConnection', () => {
 		// #1852: judged off the tick, losing the socket froze the check.
 		vi.useFakeTimers();
 		try {
-			const connection = roomConnection.join('lounge');
+			const connection = roomConnection.join(roomAddress('lounge'));
 			await connection.ride.ride(new FakeTrainer());
 			flushSync();
 			expect(connection.ride.fault).toBeNull();
@@ -216,7 +219,7 @@ describe('roomConnection', () => {
 		// The claim is what stops a second screen pairing the same trainer and
 		// feeding a second stream of watts into one ride record (#610).
 		fakeLive.claims = [];
-		const connection = roomConnection.join('lounge');
+		const connection = roomConnection.join(roomAddress('lounge'));
 		await connection.ride.ride(new FakeTrainer());
 		await tick();
 		expect(fakeLive.claims.at(-1)?.held).toContain('trainer');
@@ -232,7 +235,7 @@ describe('roomConnection', () => {
 	// #906: an away rider stays in the roster, so the membership cues never
 	// fire and a room can empty to one in silence.
 	it('sounds the pair when a rider steps out and comes back', async () => {
-		roomConnection.join('lounge');
+		roomConnection.join(roomAddress('lounge'));
 		fakeTick = { state: idle, roster: [{ id: 'bob', name: 'Bob' }] };
 		await tick();
 		played.length = 0;
@@ -256,7 +259,7 @@ describe('roomConnection', () => {
 	// left open while the rider is in another app must announce like any
 	// other (#1440) — it used to count as read in front of them.
 	it('announces chat into an open panel while the window is not in front', async () => {
-		const conn = roomConnection.join('lounge');
+		const conn = roomConnection.join(roomAddress('lounge'));
 		conn.readingChat(true);
 		document.hasFocus = () => false;
 		await tick();
@@ -280,7 +283,7 @@ describe('roomConnection', () => {
 	// Arriving is the join cue's own event — a rider walking in is not a
 	// rider coming back, and must not sound twice.
 	it('does not hear an arrival as a return', async () => {
-		roomConnection.join('lounge');
+		roomConnection.join(roomAddress('lounge'));
 		fakeTick = { state: idle, roster: [{ id: 'bob', name: 'Bob' }] };
 		await tick();
 		played.length = 0;
@@ -310,7 +313,7 @@ describe('the connection keeps deriving the session after a page dies', () => {
 	it('still follows the tick once the opening scope is disposed', () => {
 		let connection!: ReturnType<typeof roomConnection.join>;
 		const dispose = $effect.root(() => {
-			connection = roomConnection.join('lounge');
+			connection = roomConnection.join(roomAddress('lounge'));
 		});
 		dispose();
 

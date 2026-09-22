@@ -1,4 +1,5 @@
 import { api } from '$lib/api';
+import type { PlaceAddress } from '$lib/room/address';
 import type { JukeboxCommand, JukeboxEntry, JukeboxTrack } from '$lib/protocol';
 import { readLink } from '$lib/room/jukebox-add';
 import { resolvePlaylist, titleFor } from '$lib/room/youtube-playlist';
@@ -50,7 +51,7 @@ export interface AutoplaySettings {
 	/**
 	 * `ordered`/`shuffled` walk the room's active playlist; `smart` (#269)
 	 * ignores it and draws from the library, weighted by what this room has
-	 * been playing and skipping. Set on the room's Settings page (#1422).
+	 * been playing and skipping. Set in the crew's Settings (#1422, #2454).
 	 */
 	order: 'ordered' | 'shuffled' | 'smart';
 	activePlaylistId?: string;
@@ -197,19 +198,20 @@ export function commandFromSavedTrack(track: SavedTrack): JukeboxCommand {
 	});
 }
 
-/** Appends a saved playlist's tracks onto the room's live queue. */
-export function queueSavedPlaylist(slug: string, id: string) {
-	return api<{ queued: number }>(`/api/rooms/${slug}/playlists/${id}/queue`, {
+/** Appends a saved playlist's tracks onto the deck `address` stands at. */
+export function queueSavedPlaylist(address: PlaceAddress, id: string) {
+	return api<{ queued: number }>(address.queuePlaylist(id), {
 		method: 'POST',
 	});
 }
 
-export function getAutoplay(slug: string) {
-	return api<AutoplaySettings>(`/api/rooms/${slug}/autoplay`);
+/** A room's autoplay (#1422); `path` is its address's `autoplay`. */
+export function getAutoplay(path: string) {
+	return api<AutoplaySettings>(path);
 }
 
-export function updateAutoplay(slug: string, settings: AutoplaySettings) {
-	return api<AutoplaySettings>(`/api/rooms/${slug}/autoplay`, {
+export function updateAutoplay(path: string, settings: AutoplaySettings) {
+	return api<AutoplaySettings>(path, {
 		method: 'PATCH',
 		json: settings,
 	});

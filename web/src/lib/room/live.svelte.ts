@@ -8,6 +8,7 @@ import type {
 	ServerMessage,
 	ServerTick,
 } from '$lib/protocol';
+import type { PlaceAddress } from '$lib/room/address';
 import { account } from '$lib/account.svelte';
 import { deviceWord } from '$lib/device.svelte';
 import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
@@ -41,7 +42,7 @@ export const SILENCE_MS = 5_000;
  */
 export const SETTLED_ATTEMPTS = 5;
 
-export function createRoomLive(slug: string) {
+export function createRoomLive(address: PlaceAddress) {
 	let status = $state<LiveStatus>('connecting');
 	// The room's chat — the log and its reactions — is a module of its own,
 	// fed by the backlog over HTTP (#2437): chat does not ride the tick.
@@ -181,7 +182,7 @@ export function createRoomLive(slug: string) {
 		bufferedSecond = -1;
 		bufferedRows = 0;
 		void openRideBuffer({
-			rideId: `room-${slug}-${startedAt}`,
+			rideId: `room-${address.key}-${startedAt}`,
 			startedAt,
 			workoutName: openedName,
 		}).then((opened) => {
@@ -271,7 +272,7 @@ export function createRoomLive(slug: string) {
 		// is a second presence the server counts and leave() can't reach.
 		if (closed || (socket && socket.readyState <= WebSocket.OPEN)) return;
 		const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
-		socket = new WebSocket(`${scheme}://${location.host}/ws/rooms/${slug}`);
+		socket = new WebSocket(`${scheme}://${location.host}${address.ws}`);
 		socket.onopen = () => {
 			if (closed) {
 				socket?.close();

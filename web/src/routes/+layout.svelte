@@ -199,18 +199,20 @@
 	// it holds across the room's own screens, so the way back is still
 	// offered from its settings or its calendar, and goes away with the
 	// connection rather than with the URL. The HUD speaks for no room.
+	// A room's name as the rail says it now (a rename lands); a voice
+	// channel's as its address carried it in (#2449).
+	function placeLabel(conn: { slug: string; address: { name: string } }) {
+		return (
+			(conn.slug &&
+				presence.rooms.find((room) => room.slug === conn.slug)?.name) ||
+			conn.address.name
+		);
+	}
 	$effect(() => {
 		if (page.url.pathname === '/hud') return;
 		const conn = roomConnection.current;
 		setShellRoom(
-			conn
-				? {
-						path: `/r/${conn.slug}`,
-						name:
-							presence.rooms.find((room) => room.slug === conn.slug)?.name ??
-							conn.slug,
-					}
-				: null,
+			conn ? { path: conn.address.home, name: placeLabel(conn) } : null,
 		);
 	});
 	$effect(() => {
@@ -246,10 +248,7 @@
 	const sharingRoom = $derived.by(() => {
 		const conn = roomConnection.current;
 		if (!conn) return null;
-		return {
-			slug: conn.slug,
-			name: presence.rooms.find((room) => room.slug === conn.slug)?.name,
-		};
+		return { home: conn.address.home, name: placeLabel(conn) };
 	});
 
 	// The chat's composer owns the bottom edge, so the drawer button steps up

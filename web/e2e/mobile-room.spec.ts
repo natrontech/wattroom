@@ -86,14 +86,7 @@ test('no place in a room scrolls sideways on a phone', async ({
 	expect(planned, 'could not plan a session for the Sessions row').toBe(true);
 
 	const wide: string[] = [];
-	for (const place of [
-		'',
-		'/chat',
-		'/training',
-		'/sessions',
-		'/members',
-		'/settings',
-	]) {
+	for (const place of ['', '/chat', '/training', '/sessions', '/members']) {
 		await page.goto(`/r/${slug}${place}`);
 		const body = page.getByTestId('place-body');
 		await expect(body).toBeVisible();

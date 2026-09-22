@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PlaceAddress } from '$lib/room/address';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Select from '$lib/components/Select.svelte';
 	import { queueTracks, type Track } from '$lib/music/pool';
@@ -12,7 +13,7 @@
 
 	let {
 		picked,
-		slug = null,
+		address = null,
 		roomName = '',
 		mine,
 		roomLists = null,
@@ -20,7 +21,7 @@
 	}: {
 		picked: Track[];
 		/** The room the rider is standing in, or null: no room, nothing to queue into. */
-		slug?: string | null;
+		address?: PlaceAddress | null;
 		roomName?: string;
 		mine: PlaylistStore;
 		roomLists?: PlaylistStore | null;
@@ -32,10 +33,10 @@
 	let saveTarget = $state('');
 
 	async function queueSelected() {
-		if (!slug || !picked.length) return;
+		if (!address || !picked.length) return;
 		bulkBusy = true;
 		const res = await queueTracks(
-			slug,
+			address,
 			picked.map((t) => t.id),
 		);
 		bulkBusy = false;
@@ -83,7 +84,7 @@
 		aria-label="picked tracks"
 	>
 		<span class="font-display tabular-nums">{picked.length} picked</span>
-		{#if slug}
+		{#if address}
 			<button
 				onclick={() => void queueSelected()}
 				disabled={bulkBusy}

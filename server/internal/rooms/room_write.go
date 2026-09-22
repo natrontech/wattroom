@@ -233,27 +233,11 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 	cheers := room.Cheers
 	if req.Cheers != nil {
-		if len(*req.Cheers) > maxCheers {
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				fmt.Sprintf("A room speaks at most %d reactions.", maxCheers), "cheers")
+		var refusal string
+		if cheers, refusal = cleanCheers(*req.Cheers); refusal != "" {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", refusal, "cheers")
 			return
 		}
-		deduped := make([]string, 0, len(*req.Cheers))
-		seen := map[string]struct{}{}
-		for _, cheer := range *req.Cheers {
-			// Same compat rule as the icon: keys now, emoji from before #447 too.
-			if !protocol.IsIconOrEmoji(cheer) {
-				httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-					"Reactions are icons from the set.", "cheers")
-				return
-			}
-			if _, dup := seen[cheer]; dup {
-				continue
-			}
-			seen[cheer] = struct{}{}
-			deduped = append(deduped, cheer)
-		}
-		cheers = strings.Join(deduped, " ") // "" = back to the base set
 	}
 	listed := room.Listed
 	if req.Listed != nil {

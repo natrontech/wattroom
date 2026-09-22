@@ -21,17 +21,18 @@ import (
 // so the URL carries a secret token — the same "private address" pattern
 // Google Calendar uses; the holder rotates it when it leaks.
 //
-// Two feeds, two subjects. The room feed is a room's schedule, shareable with
-// people who aren't members. The rider feed is every room you ride in, and is
-// the one the UI offers first: four rooms used to mean four subscriptions.
+// Two feeds, two subjects (ADR-0021 as amended by ADR-0058, #2441). The crew
+// feed is a crew's schedule, shareable with people who aren't in it. The
+// rider feed is every crew you ride with, and is the one the UI offers first.
+// The room feed they replace answers 404: its subscribers' calendars go quiet.
 
 // The feeds' bounds, docs/SPEC.md (#1414). Both feeds render their whole
 // result into one in-memory string per request, behind nothing but a bearer
 // token in the URL, so "uncapped" made row growth into a memory spike anybody
 // with the link could ask for. calendarHorizon is generous against
-// plannableAt's three months, and maxCalendarEvents against the 50-session
-// ceiling — twenty rooms' worth of full schedules — so a rider reaching
-// either bound has hit something no product surface can produce.
+// plannableAt's three months, and maxCalendarEvents against the 100-plan
+// shelf — ten crews' worth of full schedules — so a rider reaching either
+// bound has hit something no product surface can produce.
 const (
 	calendarHistory   = 30 * 24 * time.Hour
 	calendarHorizon   = 365 * 24 * time.Hour
@@ -64,64 +65,84 @@ type icsEvent struct {
 	length time.Duration
 	// planner is the rider feed's alone and empty everywhere else —
 	// description says why.
-	planner  string
-	summary  string
-	roomName string
-	roomSlug string
+	planner string
+	summary string
+	// Where it runs, as a calendar shows it — "Thursday Crew · Pain Cave" —
+	// and the path that opens it: the voice channel, or the crew's schedule.
+	place string
+	path  string
+}
+
+// eventPlace is a plan's LOCATION and URL path: the crew and the voice
+// channel it names, or the crew's schedule while it names none.
+func eventPlace(crewID pgtype.UUID, crewName string, channelID pgtype.UUID, channelName string) (place, path string) {
+	crew := store.UUIDString(crewID)
+	if channelID.Valid && channelName != "" {
+		return crewName + " · " + channelName, "/crew/" + crew + "/v/" + store.UUIDString(channelID)
+	}
+	return crewName, "/crew/" + crew + "/schedule"
 }
 
 // description is the line a subscriber reads under the event, and the one
 // place the two feeds say different things (ADR-0021's 2026-09-17 amendment,
 // #1767).
 //
-// A room's ics_token is handed to every non-banned member, rotates only for
-// the owner, and the feed exists to be shared with people who are not in the
-// room — so one member forwarding the link hands whatever it says to whoever
-// they like. Who planned a session is the only thing in it that names a
-// person, so the room feed does not carry it. The rider feed does: that token
-// is one rider's own, they rotate it themselves, and it lists only rooms they
-// are a member of, where ADR-0036 already gives them the name.
+// A crew's ics_token is handed to every member, and the feed exists to be
+// shared with people who are not in the crew — so one member forwarding the
+// link hands whatever it says to whoever they like. Who planned a session is
+// the only thing in it that names a person, so the crew feed does not carry
+// it. The rider feed does: that token is one rider's own, they rotate it
+// themselves, and it lists only crews they are in, where ADR-0036 already
+// gives them the name.
 func (e icsEvent) description() string {
 	if e.planner == "" {
-		return "In " + e.roomName + "."
+		return "In " + e.place + "."
 	}
-	return "Planned by " + e.planner + " in " + e.roomName + "."
+	return "Planned by " + e.planner + " in " + e.place + "."
 }
 
-func (s *Service) handleCalendar(w http.ResponseWriter, r *http.Request) {
-	room, ok := s.roomBySlug(w, r)
-	if !ok {
-		return
-	}
-	token := icsPathToken(r)
-	if subtle.ConstantTimeCompare([]byte(token), []byte(room.IcsToken)) != 1 {
+// handleCrewCalendar is the crew's feed (#2441): no session, just the token
+// in the URL, compared in constant time. A wrong token and a crew that is not
+// there read the same.
+func (s *Service) handleCrewCalendar(w http.ResponseWriter, r *http.Request) {
+	refuse := func() {
 		httpx.WriteError(w, http.StatusNotFound, "not_found",
-			"That calendar link is not valid — ask in the room for the current one.")
+			"That calendar link is not valid — ask in the crew for the current one.")
+	}
+	id, err := store.ParseUUID(r.PathValue("id"))
+	if err != nil {
+		refuse()
 		return
 	}
-	rows, err := s.store.Queries.ListRoomCalendar(r.Context(), db.ListRoomCalendarParams{
-		RoomID:      room.ID,
+	crew, err := s.store.Queries.GetCrewCalendar(r.Context(), id)
+	if err != nil || subtle.ConstantTimeCompare([]byte(icsPathToken(r)), []byte(crew.IcsToken)) != 1 {
+		refuse()
+		return
+	}
+	rows, err := s.store.Queries.ListCrewCalendar(r.Context(), db.ListCrewCalendarParams{
+		CrewID:      crew.ID,
 		StartsFrom:  pgTime(time.Now().Add(-calendarHistory)),
 		StartsUntil: calendarUntil(), RowLimit: maxCalendarEvents,
 	})
 	if err != nil {
-		httpx.Fail(w, s.log, "calendar feed failed", err, "The calendar could not be loaded. Try again.", "room", room.Slug)
+		httpx.Fail(w, s.log, "crew calendar feed failed", err, "The calendar could not be loaded. Try again.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	events := make([]icsEvent, 0, len(rows))
 	for _, row := range rows {
+		place, path := eventPlace(crew.ID, crew.Name, row.ChannelID, row.ChannelName)
 		events = append(events, icsEvent{
 			id: store.UUIDString(row.ID), stamp: row.CreatedAt.Time, start: row.StartsAt.Time,
 			length: workoutLength(string(row.WorkoutJson)), summary: row.WorkoutName,
-			roomName: room.Name, roomSlug: room.Slug,
+			place: place, path: path,
 		})
 	}
-	s.warnIfTruncated(len(rows), "room", "room", room.Slug)
-	writeICS(w, room.Name+" · WattRoom", r.Host, events)
+	s.warnIfTruncated(len(rows), "crew", "crew", store.UUIDString(crew.ID))
+	writeICS(w, crew.Name+" · WattRoom", r.Host, events)
 }
 
 // handleUserCalendar is the rider-addressed feed (#325): one subscription
-// that follows your membership list instead of a single room.
+// that follows the crews you ride with (#2441).
 func (s *Service) handleUserCalendar(w http.ResponseWriter, r *http.Request) {
 	user, err := s.store.Queries.GetUserByIcsToken(r.Context(), icsPathToken(r))
 	if err != nil {
@@ -140,26 +161,32 @@ func (s *Service) handleUserCalendar(w http.ResponseWriter, r *http.Request) {
 	}
 	events := make([]icsEvent, 0, len(rows))
 	for _, row := range rows {
+		place, path := eventPlace(row.CrewID, row.CrewName, row.ChannelID, row.ChannelName)
 		events = append(events, icsEvent{
 			id: store.UUIDString(row.ID), stamp: row.CreatedAt.Time, start: row.StartsAt.Time,
 			length: workoutLength(string(row.WorkoutJson)), summary: row.WorkoutName,
-			planner: row.CreatedBy, roomName: row.RoomName, roomSlug: row.RoomSlug,
+			planner: row.CreatedBy, place: place, path: path,
 		})
 	}
 	s.warnIfTruncated(len(rows), "rider", "user", store.UUIDString(user.ID))
 	writeICS(w, "WattRoom sessions", r.Host, events)
 }
 
-// handleRotateIcs is the leak escape hatch: owner-only, old feed URLs die on
-// the spot, every subscriber re-adds the new one.
-func (s *Service) handleRotateIcs(w http.ResponseWriter, r *http.Request) {
-	room, _, ok := s.requireRole(w, r, "owner")
+// handleRotateCrewIcs is the leak escape hatch (#2441): the crew's owner or
+// an admin, and the old feed URL dies on the spot — every subscriber re-adds
+// the new one. The confirm that says so is the page's (errors.md).
+func (s *Service) handleRotateCrewIcs(w http.ResponseWriter, r *http.Request) {
+	crew, _, role, ok := s.crewByID(w, r)
 	if !ok {
 		return
 	}
-	token, err := s.store.Queries.RotateRoomIcsToken(r.Context(), room.ID)
+	if !administers(role) {
+		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner or an admin can reset its calendar link.")
+		return
+	}
+	token, err := s.store.Queries.RotateCrewIcsToken(r.Context(), crew.ID)
 	if err != nil {
-		httpx.Fail(w, s.log, "ics rotate failed", err, "The calendar link could not be reset. Try again.", "room", room.Slug)
+		httpx.Fail(w, s.log, "crew ics rotate failed", err, "The calendar link could not be reset. Try again.", "crew", store.UUIDString(crew.ID))
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"icsToken": token})
@@ -203,10 +230,10 @@ func buildICS(calName, host string, events []icsEvent) string {
 	for _, e := range events {
 		fmt.Fprintf(&b, "BEGIN:VEVENT\r\nUID:%s@wattroom\r\nDTSTAMP:%s\r\n"+
 			"DTSTART:%s\r\nDTEND:%s\r\nSUMMARY:%s\r\nDESCRIPTION:%s\r\n"+
-			"LOCATION:%s\r\nURL:https://%s/r/%s\r\nEND:VEVENT\r\n",
+			"LOCATION:%s\r\nURL:https://%s%s\r\nEND:VEVENT\r\n",
 			e.id, icsTime(e.stamp), icsTime(e.start), icsTime(e.start.Add(e.length)),
 			icsEscape(e.summary), icsEscape(e.description()),
-			icsEscape(e.roomName), icsEscape(host), e.roomSlug)
+			icsEscape(e.place), icsEscape(host), e.path)
 	}
 	b.WriteString("END:VCALENDAR\r\n")
 	return b.String()

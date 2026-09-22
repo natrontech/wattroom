@@ -108,16 +108,30 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 		`opening "${name}" never landed ${A} in the room`,
 	).toBeVisible({ timeout: 20_000 });
 	const slug = a.url().split('/r/')[1].split(/[/?#]/)[0];
-	// The code is the crew's (#1236); the room is entered through it.
-	const code = await a.evaluate(async (roomSlug) => {
-		const room = await fetch(`/api/rooms/${roomSlug}`).then((res) =>
-			res.json(),
-		);
-		const crew = await fetch(`/api/crews/${room.crew.id}`).then((res) =>
-			res.json(),
-		);
-		return String(crew.code ?? '');
-	}, slug);
+	// The code is the crew's (#1236); the room is entered through it, and
+	// the voice is its voice channel's (#2449), found by the room's name.
+	const { code, voice } = await a.evaluate(
+		async ({ roomSlug, roomName }) => {
+			const room = await fetch(`/api/rooms/${roomSlug}`).then((res) =>
+				res.json(),
+			);
+			const crew = await fetch(`/api/crews/${room.crew.id}`).then((res) =>
+				res.json(),
+			);
+			const list = await fetch(`/api/crews/${room.crew.id}/channels`).then(
+				(res) => res.json(),
+			);
+			const channel = (
+				list.channels as { id: string; kind: string; name: string }[]
+			).find((c) => c.kind === 'voice' && c.name === roomName);
+			return {
+				code: String(crew.code ?? ''),
+				voice: channel ? `/crew/${room.crew.id}/v/${channel.id}` : '',
+			};
+		},
+		{ roomSlug: slug, roomName: name },
+	);
+	expect(voice, `room ${slug} has no voice channel`).not.toBe('');
 	expect(code, `room ${slug}'s crew came back without a code`).toMatch(
 		/^[A-Z0-9]{6}$/,
 	);
@@ -137,8 +151,8 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 		// ?voice=1 auto-joins once on mount (RoomShell.svelte) — it only does
 		// anything once avEnabled is true, which is why e2e/server.js now
 		// carries WATTROOM_LIVEKIT_*.
-		await a.goto(`/r/${slug}?voice=1`);
-		await b.goto(`/r/${slug}?voice=1`);
+		await a.goto(`${voice}?voice=1`);
+		await b.goto(`${voice}?voice=1`);
 		await expect(
 			a.getByRole('button', { name: 'microphone', pressed: true }),
 			`${A} never finished joining voice with an open mic`,

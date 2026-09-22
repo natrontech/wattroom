@@ -23,8 +23,10 @@
 	<TogetherTiles
 		together={room.together}
 		streakWeeks={room.streakWeeks}
-		streakLabel="this room's streak"
-		monthKj={room.monthKj}
+		streakLabel={room.address.channel
+			? "this crew's streak"
+			: "this room's streak"}
+		monthKj={room.address.channel ? undefined : room.monthKj}
 	/>
 	{#if room.board.length}
 		<WeekBoard rows={room.board} />
@@ -36,10 +38,10 @@
 		     drawn once; a rider joins one that is running — on Training,
 		     where the numbers are. -->
 		<SessionControls />
-		{#if room.upcoming[0]}
+		{#if room.upcoming[0] && room.address.schedule}
 			{@const next = room.upcoming[0]}
 			<a
-				href="/r/{room.slug}/sessions"
+				href={room.address.schedule}
 				class="panel hover:border-muted/40 flex min-w-0 flex-1 items-center gap-3"
 			>
 				<CalendarClock size={15} class="text-muted shrink-0" />
@@ -53,10 +55,10 @@
 					>
 				</span>
 			</a>
-		{:else if room.canControl}
+		{:else if room.canControl && room.address.schedule}
 			<!-- Planning has one home, Sessions (#1332): this points there
 			     instead of opening the picker a second time. -->
-			<a href="/r/{room.slug}/sessions" class="btn btn-secondary"
+			<a href={room.address.schedule} class="btn btn-secondary"
 				><CalendarClock size={14} /> Plan a session</a
 			>
 		{/if}
@@ -71,7 +73,7 @@
 				><Link size={14} /> {shareVerb()} invite link</button
 			>
 		{:else}
-			<a href="/r/{room.slug}/members" class="btn btn-secondary"
+			<a href={room.address.members} class="btn btn-secondary"
 				><UserPlus size={14} /> Invite</a
 			>
 		{/if}

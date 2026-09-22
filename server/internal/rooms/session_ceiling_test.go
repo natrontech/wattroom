@@ -162,35 +162,29 @@ func TestThePlannedSessionCeilingHoldsUnderParallelPlans(t *testing.T) {
 // nothing the product offers can plan past three months anyway.
 func TestTheCalendarFeedsStopAtTheHorizon(t *testing.T) {
 	h := setup(t)
-	slug, _ := h.createRoom(t, "alice", "Horizon")
-	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("room: %v", err)
-	}
+	crew, _ := h.crewWithChannel(t)
 	alice := h.users.ByToken["alice"]
 	for name, at := range map[string]time.Time{
 		"Inside":  time.Now().Add(60 * 24 * time.Hour),
 		"Outside": time.Now().Add(calendarHorizon + 24*time.Hour),
 	} {
-		if _, err := h.store.Queries.CreateScheduledSession(t.Context(), db.CreateScheduledSessionParams{
-			RoomID: room.ID, WorkoutName: name, WorkoutJson: []byte(ceilingWorkout),
+		if _, err := h.store.Queries.CreateCrewPlan(t.Context(), db.CreateCrewPlanParams{
+			CrewID: crew.ID, WorkoutName: name, WorkoutJson: []byte(ceilingWorkout),
 			StartsAt: pgTime(at), CreatedBy: alice.ID,
 		}); err != nil {
 			t.Fatalf("seed %s: %v", name, err)
 		}
 	}
 
-	_, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
-	token, _ := body["icsToken"].(string)
-	status, ics, _ := h.rawGet(t, "/api/rooms/"+slug+"/calendar/"+token+".ics")
+	status, ics, _ := h.rawGet(t, "/api/crews/"+store.UUIDString(crew.ID)+"/calendar/"+crew.IcsToken+".ics")
 	if status != http.StatusOK {
-		t.Fatalf("room feed: %d", status)
+		t.Fatalf("crew feed: %d", status)
 	}
 	if !strings.Contains(ics, "SUMMARY:Inside") {
-		t.Error("the room feed dropped a plan inside the horizon")
+		t.Error("the crew feed dropped a plan inside the horizon")
 	}
 	if strings.Contains(ics, "SUMMARY:Outside") {
-		t.Error("the room feed rendered a plan past the horizon")
+		t.Error("the crew feed rendered a plan past the horizon")
 	}
 
 	// The rider feed reads the same window through a different query.
@@ -199,7 +193,7 @@ func TestTheCalendarFeedsStopAtTheHorizon(t *testing.T) {
 		t.Fatalf("rider feed: %d", status)
 	}
 	if !strings.Contains(ics, "SUMMARY:Inside") || strings.Contains(ics, "SUMMARY:Outside") {
-		t.Error("the rider feed disagrees with the room feed about the horizon")
+		t.Error("the rider feed disagrees with the crew feed about the horizon")
 	}
 }
 
@@ -210,18 +204,15 @@ func TestTheCalendarQueriesTakeARowBound(t *testing.T) {
 	h := setup(t)
 	slug, _ := h.createRoom(t, "alice", "Bounded")
 	seedPlans(t, h, slug, 5)
-	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("room: %v", err)
-	}
+	crew := h.crewOf(t, slug)
 	alice := h.users.ByToken["alice"]
 	from, until := pgTime(time.Now().Add(-calendarHistory)), calendarUntil()
 
-	rows, err := h.store.Queries.ListRoomCalendar(t.Context(), db.ListRoomCalendarParams{
-		RoomID: room.ID, StartsFrom: from, StartsUntil: until, RowLimit: 2,
+	rows, err := h.store.Queries.ListCrewCalendar(t.Context(), db.ListCrewCalendarParams{
+		CrewID: crew.ID, StartsFrom: from, StartsUntil: until, RowLimit: 2,
 	})
 	if err != nil || len(rows) != 2 {
-		t.Fatalf("room calendar: %d rows, %v", len(rows), err)
+		t.Fatalf("crew calendar: %d rows, %v", len(rows), err)
 	}
 	userRows, err := h.store.Queries.ListUserCalendar(t.Context(), db.ListUserCalendarParams{
 		UserID: alice.ID, StartsFrom: from, StartsUntil: until, RowLimit: 2,

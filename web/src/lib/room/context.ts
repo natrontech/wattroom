@@ -1,3 +1,4 @@
+import type { PlaceAddress } from '$lib/room/address';
 import { getContext, setContext } from 'svelte';
 import type { Segment } from '$lib/workout/types';
 import type { Block, RoomRider } from '$lib/room/view';
@@ -33,6 +34,8 @@ export interface RoomStageSource extends StageSource {
  */
 export interface RoomContext {
 	readonly slug: string;
+	/** Where the shell stands, and every path that follows (#2449). */
+	readonly address: PlaceAddress;
 	readonly roomName: string;
 	readonly icon: string;
 	/** The crew's join code (#1236); '' for a non-member. */

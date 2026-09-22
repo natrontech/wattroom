@@ -163,10 +163,11 @@
 	// (#173), so browsing the shelf does not leave the room. Queuing anywhere
 	// else would need a room picker, and a rider in one room wants that one.
 	const room = $derived(roomConnection.current);
-	// The rail knows the name; the connection holds only the slug.
+	// The rail knows a room's name; the address knows a channel's.
 	const roomName = $derived(
 		room
-			? (presence.rooms.find((r) => r.slug === room.slug)?.name ?? room.slug)
+			? (presence.rooms.find((r) => r.slug && r.slug === room.slug)?.name ??
+					room.address.name)
 			: '',
 	);
 
@@ -174,7 +175,7 @@
 	// when they are standing in one. One line per list in the menu.
 	const mine = createPlaylistStore('/api/playlists');
 	const roomLists = $derived(
-		room ? createPlaylistStore(`/api/rooms/${room.slug}/playlists`) : null,
+		room ? createPlaylistStore(room.address.playlists) : null,
 	);
 	function saveTo(
 		track: Track,
@@ -290,7 +291,7 @@
 		</label>
 	</header>
 
-	<LibraryPlaylists store={mine} slug={room?.slug} />
+	<LibraryPlaylists store={mine} address={room?.address} />
 
 	<label class="relative mt-4 block">
 		<Search
@@ -308,7 +309,7 @@
 
 	<LibraryPicked
 		{picked}
-		slug={room?.slug}
+		address={room?.address}
 		{roomName}
 		{mine}
 		{roomLists}

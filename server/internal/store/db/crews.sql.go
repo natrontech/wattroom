@@ -306,7 +306,7 @@ func (q *Queries) FoundCrew(ctx context.Context, arg FoundCrewParams) (Crew, err
 }
 
 const getCrew = `-- name: GetCrew :one
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled, listed from crews where id = $1
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled, listed, cheers, ics_token from crews where id = $1
 `
 
 type GetCrewRow struct {
@@ -320,6 +320,8 @@ type GetCrewRow struct {
 	Named        bool
 	BoardEnabled bool
 	Listed       bool
+	Cheers       string
+	IcsToken     string
 }
 
 // Everything but the image bytes (#1237): GetCrewImage serves those.
@@ -337,6 +339,8 @@ func (q *Queries) GetCrew(ctx context.Context, id pgtype.UUID) (GetCrewRow, erro
 		&i.Named,
 		&i.BoardEnabled,
 		&i.Listed,
+		&i.Cheers,
+		&i.IcsToken,
 	)
 	return i, err
 }
@@ -1247,6 +1251,22 @@ type SetCrewBoardParams struct {
 // crew's owner or an admin turns it on, and the door says which it is.
 func (q *Queries) SetCrewBoard(ctx context.Context, arg SetCrewBoardParams) error {
 	_, err := q.db.Exec(ctx, setCrewBoard, arg.ID, arg.BoardEnabled)
+	return err
+}
+
+const setCrewCheers = `-- name: SetCrewCheers :exec
+update crews set cheers = $2 where id = $1
+`
+
+type SetCrewCheersParams struct {
+	ID     pgtype.UUID
+	Cheers string
+}
+
+// The crew's reaction palette (ADR-0058: the room's, moved up), stored
+// space-joined; ” is the base set.
+func (q *Queries) SetCrewCheers(ctx context.Context, arg SetCrewCheersParams) error {
+	_, err := q.db.Exec(ctx, setCrewCheers, arg.ID, arg.Cheers)
 	return err
 }
 

@@ -1,3 +1,4 @@
+import type { PlaceAddress } from '$lib/room/address';
 import type { RsvpAnswer } from '$lib/room/rsvp';
 import type { RoomContext, RoomStageSource } from '$lib/room/context';
 import type { roomConnection } from '$lib/room/connection.svelte';
@@ -41,7 +42,10 @@ export interface AdminMedal {
 export interface RoomShellProps {
 	/** The place standing in the content column. */
 	children: import('svelte').Snippet;
+	/** The room's slug; '' in a voice channel (#2449). */
 	slug: string;
+	/** Where the shell stands, and every path that follows (#2449). */
+	address: PlaceAddress;
 	role: string;
 	roomName: string;
 	/** Owner-set identity mark (#223) — an icon key (#447). */
@@ -128,6 +132,9 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 	return {
 		get slug() {
 			return props.slug;
+		},
+		get address() {
+			return props.address;
 		},
 		get roomName() {
 			return props.roomName;

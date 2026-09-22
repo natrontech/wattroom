@@ -98,6 +98,24 @@ func (q *Queries) DeleteCrewPlan(ctx context.Context, arg DeleteCrewPlanParams) 
 	return i, err
 }
 
+const getCrewCalendar = `-- name: GetCrewCalendar :one
+select id, name, ics_token from crews where id = $1
+`
+
+type GetCrewCalendarRow struct {
+	ID       pgtype.UUID
+	Name     string
+	IcsToken string
+}
+
+// What the crew's feed checks its token against, and names itself for.
+func (q *Queries) GetCrewCalendar(ctx context.Context, id pgtype.UUID) (GetCrewCalendarRow, error) {
+	row := q.db.QueryRow(ctx, getCrewCalendar, id)
+	var i GetCrewCalendarRow
+	err := row.Scan(&i.ID, &i.Name, &i.IcsToken)
+	return i, err
+}
+
 const getCrewPlan = `-- name: GetCrewPlan :one
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_by, s.channel_id, s.started_at
 from scheduled_sessions s
@@ -187,6 +205,78 @@ func (q *Queries) GetPlanPlace(ctx context.Context, arg GetPlanPlaceParams) (Get
 	var i GetPlanPlaceRow
 	err := row.Scan(&i.CrewName, &i.ChannelName)
 	return i, err
+}
+
+const listCrewCalendar = `-- name: ListCrewCalendar :many
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
+       s.channel_id, coalesce(ch.name, '')::text as channel_name
+from scheduled_sessions s
+left join channels ch on ch.id = s.channel_id
+where s.crew_id = $1
+  and s.starts_at > $2 and s.starts_at < $3
+  and (ch.id is null or not ch.private)
+order by s.starts_at, s.created_at, s.id
+limit $4
+`
+
+type ListCrewCalendarParams struct {
+	CrewID      pgtype.UUID
+	StartsFrom  pgtype.Timestamptz
+	StartsUntil pgtype.Timestamptz
+	RowLimit    int32
+}
+
+type ListCrewCalendarRow struct {
+	ID          pgtype.UUID
+	WorkoutName string
+	WorkoutJson []byte
+	StartsAt    pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	ChannelID   pgtype.UUID
+	ChannelName string
+}
+
+// The crew's iCal feed (#2441, ADR-0021 as amended by ADR-0058). It keeps a
+// month of history and is bounded at both ends (#1414): the whole result is
+// one in-memory ICS string behind a bearer token in a URL. The window and the
+// row limit are the caller's, the same Go constants as the rider feed's.
+//
+// What it does not say is not selected (#1767): no planner's name, because
+// the token goes to every member and the feed is meant to be shared with
+// people outside the crew. And no plan in a private channel: that channel's
+// plans are its people's (#2440), and a link a member can forward to anyone
+// must not carry them.
+func (q *Queries) ListCrewCalendar(ctx context.Context, arg ListCrewCalendarParams) ([]ListCrewCalendarRow, error) {
+	rows, err := q.db.Query(ctx, listCrewCalendar,
+		arg.CrewID,
+		arg.StartsFrom,
+		arg.StartsUntil,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCrewCalendarRow
+	for rows.Next() {
+		var i ListCrewCalendarRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkoutName,
+			&i.WorkoutJson,
+			&i.StartsAt,
+			&i.CreatedAt,
+			&i.ChannelID,
+			&i.ChannelName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCrewNotifyTargets = `-- name: ListCrewNotifyTargets :many
@@ -385,6 +475,84 @@ func (q *Queries) ListCrewUpcoming(ctx context.Context, arg ListCrewUpcomingPara
 	return items, nil
 }
 
+const listUserCalendar = `-- name: ListUserCalendar :many
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
+       u.display_name as created_by, s.crew_id, cw.name as crew_name,
+       s.channel_id, coalesce(ch.name, '')::text as channel_name
+from scheduled_sessions s
+join crews cw on cw.id = s.crew_id
+join users u on u.id = s.created_by
+left join channels ch on ch.id = s.channel_id
+where s.starts_at > $1 and s.starts_at < $2
+  and (cw.owner_id = $3
+       or exists (select 1 from crew_roles cr
+                  where cr.crew_id = s.crew_id and cr.user_id = $3 and cr.role in ('member', 'admin')))
+  and (s.channel_id is null
+       or exists (select 1 from visible_channels v where v.channel_id = s.channel_id and v.user_id = $3))
+order by s.starts_at, s.created_at, s.id
+limit $4
+`
+
+type ListUserCalendarParams struct {
+	StartsFrom  pgtype.Timestamptz
+	StartsUntil pgtype.Timestamptz
+	UserID      pgtype.UUID
+	RowLimit    int32
+}
+
+type ListUserCalendarRow struct {
+	ID          pgtype.UUID
+	WorkoutName string
+	WorkoutJson []byte
+	StartsAt    pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+	CreatedBy   string
+	CrewID      pgtype.UUID
+	CrewName    string
+	ChannelID   pgtype.UUID
+	ChannelName string
+}
+
+// The rider's own feed (#325, ADR-0021): every crew they are in, the channels
+// they may enter, a month of history — one subscription that follows their
+// crews. The planner's name comes along, because the token is this rider's
+// own and only lists crews that already show them the name.
+func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarParams) ([]ListUserCalendarRow, error) {
+	rows, err := q.db.Query(ctx, listUserCalendar,
+		arg.StartsFrom,
+		arg.StartsUntil,
+		arg.UserID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserCalendarRow
+	for rows.Next() {
+		var i ListUserCalendarRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkoutName,
+			&i.WorkoutJson,
+			&i.StartsAt,
+			&i.CreatedAt,
+			&i.CreatedBy,
+			&i.CrewID,
+			&i.CrewName,
+			&i.ChannelID,
+			&i.ChannelName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUserCrewPlans = `-- name: ListUserCrewPlans :many
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
        u.display_name as created_by, s.crew_id, cw.name as crew_name,
@@ -502,6 +670,20 @@ func (q *Queries) MoveCrewPlan(ctx context.Context, arg MoveCrewPlanParams) (Sch
 		&i.ChannelID,
 	)
 	return i, err
+}
+
+const rotateCrewIcsToken = `-- name: RotateCrewIcsToken :one
+update crews set ics_token = replace(gen_random_uuid()::text, '-', '')
+where id = $1 returning ics_token
+`
+
+// The leak escape hatch: the old link, and every calendar subscribed to it,
+// stops the moment this commits.
+func (q *Queries) RotateCrewIcsToken(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, rotateCrewIcsToken, id)
+	var ics_token string
+	err := row.Scan(&ics_token)
+	return ics_token, err
 }
 
 const startCrewPlan = `-- name: StartCrewPlan :execrows

@@ -4,15 +4,12 @@
 	// there, the way in) and a DM's (where they are) stay with the caller —
 	// what differs surface to surface is what a line IS and what you can do
 	// to it, not how the log scrolls or the box sends.
-	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Copy from '@lucide/svelte/icons/copy';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Megaphone from '@lucide/svelte/icons/megaphone';
-	import Music from '@lucide/svelte/icons/music';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
-	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import { type Snippet } from 'svelte';
 	import {} from '$app/navigation';
@@ -44,7 +41,7 @@
 	import { mentionsMe } from '$lib/messages/mention';
 	import type { ThreadMessage, ThreadSource } from '$lib/messages/thread-types';
 	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
-	import { eventText } from '$lib/room/timeline';
+	import EventLine from '$lib/room/EventLine.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import { copyText } from '$lib/copy';
 	import { MaxMessageChars } from '$lib/protocol';
@@ -332,22 +329,7 @@
 						     stand on the Sessions place without it. -->
 						<div class="ml-9"><SessionRecapCard recap={entry.recap} /></div>
 					{:else if entry.kind === 'event'}
-						<!-- An event, not a message: no avatar, no reactions, nothing to
-						     copy. The room talking about itself stays quieter than the
-						     people in it. -->
-						{@const Mark =
-							entry.event.kind === 'session'
-								? CalendarClock
-								: entry.event.kind === 'screen'
-									? ScreenShare
-									: Music}
-						<p
-							class="text-muted-dim flex items-baseline gap-1.5 pl-9 text-[11px] italic"
-						>
-							<Mark size={11} class="shrink-0 translate-y-0.5 opacity-70" />
-							<span class="min-w-0 wrap-anywhere">{eventText(entry.event)}</span
-							>
-						</p>
+						<EventLine event={entry.event} class="pl-9" />
 					{:else}
 						{@const message = entry.message}
 						{@const prev = timeline[i - 1]}

@@ -8,6 +8,7 @@
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import RoomShell from '$lib/room/RoomShell.svelte';
+	import { roomAddress } from '$lib/room/address';
 	import { doorDisclosure } from '$lib/room/door';
 	import type { Room, RoomLoadData } from '$lib/room/room-data';
 	import type { RsvpAnswer } from '$lib/room/rsvp';
@@ -244,6 +245,7 @@
 		<h1 class="sr-only">{room.name}</h1>
 		<RoomShell
 			slug={room.slug}
+			address={roomAddress(room.slug, room.name)}
 			role={room.role ?? 'member'}
 			roomName={room.name}
 			icon={room.icon ?? ''}

@@ -239,7 +239,6 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		}
 		response.SoundPack = room.SoundPack
 		response.Cheers = CheerSet(room.Cheers)
-		response.IcsToken = room.IcsToken
 		response.Announcement = s.announcementOf(r, room)
 		rows, err := s.store.Queries.ListRoomUpcoming(r.Context(), room.ID)
 		if err != nil {
