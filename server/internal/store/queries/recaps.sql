@@ -49,7 +49,9 @@ order by r.ended_at;
 -- retention): presence is never a way into a private channel. The handler has
 -- already proved the caller is a current, unbanned member, so an open channel
 -- admits them; a private one admits the crew's owner and admins (`admin`) and
--- whoever is named into it. A recap with no channel names nobody's way in and
+-- whoever is named into it — `channels.mayEnter`'s rule, restated here only
+-- because it filters rows; change one, change both. A recap with no channel
+-- names nobody's way in and
 -- is shown to nobody but those two — the narrow side. The 90 days are stated
 -- here as well as pruned, so a sweep that is running late does not widen it.
 select r.id, r.workout, r.started_at, r.ended_at, r.riders,
