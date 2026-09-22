@@ -1,0 +1,1 @@
+- A session starting in one of your crews, and a new line in one of its text channels, now say which crew and channel they're in. Tapping one opens the session or the channel instead of the old room, and on the desktop app you can reply to a channel's line straight from the notification.

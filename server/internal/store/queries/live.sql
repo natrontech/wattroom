@@ -31,3 +31,15 @@ where s.crew_id = sqlc.arg(crew_id)
                   where v.channel_id = s.channel_id and v.user_id = sqlc.arg(viewer)))
 order by s.starts_at, s.created_at, s.id
 limit 1;
+
+-- name: LastLineByChannel :many
+-- The last thing said in each text channel (#2457), whoever said it: what a
+-- crew read announces when the channel has lines the rider has not read,
+-- the way a room's lastChat did (#568). Only asked for channels with unread,
+-- so a quiet crew costs nothing.
+select distinct on (m.channel_id)
+       m.channel_id, m.user_id, u.display_name, m.text, m.image_id, m.created_at
+from chat_messages m
+join users u on u.id = m.user_id
+where m.channel_id = any(sqlc.arg(channel_ids)::uuid[])
+order by m.channel_id, m.created_at desc;
