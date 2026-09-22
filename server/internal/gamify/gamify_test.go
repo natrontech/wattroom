@@ -108,6 +108,7 @@ func shareRoom(t *testing.T, s *Service, members ...db.User) pgtype.UUID {
 			t.Fatalf("membership: %v", err)
 		}
 	}
+	storetest.ChannelsFor(t, s.store, room.ID)
 	return room.ID
 }
 
@@ -118,6 +119,7 @@ func ban(t *testing.T, s *Service, room pgtype.UUID, user db.User) {
 	}); err != nil {
 		t.Fatalf("ban: %v", err)
 	}
+	storetest.ChannelsFor(t, s.store, room)
 }
 
 func befriend(t *testing.T, s *Service, a, b db.User) {

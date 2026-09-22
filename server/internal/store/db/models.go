@@ -415,6 +415,11 @@ type UserAvatar struct {
 	SetAt  pgtype.Timestamptz
 }
 
+type VisibleChannel struct {
+	ChannelID pgtype.UUID
+	UserID    pgtype.UUID
+}
+
 type VisibleRoom struct {
 	RoomID pgtype.UUID
 	UserID pgtype.UUID

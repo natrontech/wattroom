@@ -155,8 +155,8 @@ func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
 	// The query answers for the rider themselves too (#2298); this skips a
 	// round trip for the commonest case rather than stating a second rule.
 	if rider != viewer.ID {
-		shares, err := s.store.Queries.SharesRoomOrFriends(r.Context(),
-			db.SharesRoomOrFriendsParams{Viewer: viewer.ID, Rider: rider})
+		shares, err := s.store.Queries.SharesChannelOrFriends(r.Context(),
+			db.SharesChannelOrFriendsParams{Viewer: viewer.ID, Rider: rider})
 		if err != nil {
 			httpx.Fail(w, s.log, "trophies visibility check failed", err, "The trophy case could not be loaded.")
 			return

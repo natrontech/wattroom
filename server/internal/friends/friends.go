@@ -255,14 +255,15 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That would be you.")
 			return
 		}
-		// The room is the formation gate here (ADR-0012's original rule): no
-		// room in common, no request — and no confirmation that the id exists.
-		shared, err := s.store.Queries.ListRoomsInCommon(r.Context(), db.ListRoomsInCommonParams{Rider: id, Viewer: me.ID})
+		// A shared channel is the formation gate here (ADR-0012's original
+		// rule, ADR-0058's boundary): none in common, no request — and no
+		// confirmation that the id exists.
+		shared, err := s.store.Queries.SharesChannel(r.Context(), db.SharesChannelParams{Rider: id, Viewer: me.ID})
 		if err != nil {
-			httpx.Fail(w, s.log, "rooms in common lookup", err, "The request could not be sent. Try again.", "user", store.UUIDString(me.ID))
+			httpx.Fail(w, s.log, "channels in common lookup", err, "The request could not be sent. Try again.", "user", store.UUIDString(me.ID))
 			return
 		}
-		if len(shared) == 0 {
+		if !shared {
 			httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider there that you share a room with — ask them for their code instead.")
 			return
 		}

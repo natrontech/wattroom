@@ -106,6 +106,7 @@ func (h *harness) room(t *testing.T, slug string, names ...string) db.Room {
 			t.Fatalf("membership %s: %v", name, err)
 		}
 	}
+	storetest.ChannelsFor(t, h.store, room.ID)
 	return room
 }
 

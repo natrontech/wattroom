@@ -33,20 +33,16 @@ select * from tracks where id = $1 and uploaded_by = $2;
 -- list, search, facets, edit and delete all stay on GetTrack, uploader-only.
 -- A caller still needs the track's uuid, which only the deck hands out.
 --
--- "Shares a room" is asked of visible_rooms since ADR-0038 (#1103, Phase 2 of
--- #1095): the pair may both ENTER one room, which is the crew scope the ADR
--- intends — a room open to its crew counts for everyone in the crew — and is
--- the same rule person-visibility follows (#1135). It also retires the
--- hand-written `role != 'banned'` this query carried: a crew ban leaves the
--- membership row in place, so that guard let a crew-banned rider keep
--- fetching a crew-mate's bytes. Widening only, per the issue: nobody who
--- could hear a track before loses it, except the banned.
+-- "Shares a room" is asked of visible_channels since ADR-0058 (#2465), as it
+-- was of visible_rooms since ADR-0038 (#1103): the pair may both ENTER one
+-- channel — the same rule person-visibility follows. A crew ban ends it, and
+-- so does a private channel neither is named into.
 select t.* from tracks t
 where t.id = sqlc.arg(id)
   and (t.uploaded_by = sqlc.arg(user_id)
        or exists (
-           select 1 from visible_rooms mine
-           join visible_rooms theirs on theirs.room_id = mine.room_id
+           select 1 from visible_channels mine
+           join visible_channels theirs on theirs.channel_id = mine.channel_id
            where mine.user_id = sqlc.arg(user_id)
              and theirs.user_id = t.uploaded_by
        ));

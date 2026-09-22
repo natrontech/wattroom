@@ -53,7 +53,7 @@
 	);
 	let rider = $state<Rider | null>(untrack(() => data.rider));
 	// The badges behind the level (#701, ADR-0027). Same audience as the
-	// page — the endpoint's own gate is SharesRoomOrFriends — so a failure
+	// page — the endpoint's own gate is SharesChannelOrFriends — so a failure
 	// here is a rider with nothing to show, never a reason to fail the page.
 	let trophies = $state<Trophies | null>(untrack(() => data.trophies));
 	// Except on your own page, where the case IS the page below the header:

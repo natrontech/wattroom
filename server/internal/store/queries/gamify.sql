@@ -51,6 +51,6 @@ limit 5000;
 -- name: UserMedalTally :many
 select kind, count(*)::bigint as n from medals where user_id = $1 group by kind;
 
--- SharesRoomOrFriends moved to riders.sql (#2298): it is ADR-0024's audience
+-- SharesChannelOrFriends moved to riders.sql (#2298): it is ADR-0024's audience
 -- for a rider's whole page, not the trophy case's own rule, and it is asked
 -- by both routes that serve that audience.
