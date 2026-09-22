@@ -9,43 +9,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
-	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
-// fakeLive stands in for the hub: it remembers what chat handed it.
+// fakeLive stands in for the hub: chat's only live effect is the lobby ping
+// (#2437), after which whoever shows the room re-reads its backlog.
 type fakeLive struct {
-	mu      sync.Mutex
-	lines   []protocol.ChatLine
-	changes []protocol.ChatReactionCount
-	edits   []protocol.ChatEdit
-	deletes []protocol.ChatDelete
+	mu    sync.Mutex
+	pings int
 }
 
-func (f *fakeLive) PostChat(_ string, line protocol.ChatLine) {
+func (f *fakeLive) PresenceChanged() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.lines = append(f.lines, line)
-}
-
-func (f *fakeLive) PostReaction(_ string, change protocol.ChatReactionCount) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.changes = append(f.changes, change)
-}
-
-func (f *fakeLive) PostChatDelete(_ string, gone protocol.ChatDelete) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.deletes = append(f.deletes, gone)
-}
-
-func (f *fakeLive) PostChatEdit(_ string, edit protocol.ChatEdit) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.edits = append(f.edits, edit)
+	f.pings++
 }
 
 // patch runs one JSON PATCH as a user ("" = signed out) and decodes the answer.
@@ -121,12 +99,12 @@ func TestPostChatFromOutside(t *testing.T) {
 			}
 		})
 	}
-	if len(live.lines) != 0 {
-		t.Fatalf("a refused post reached the room: %v", live.lines)
+	if live.pings != 0 {
+		t.Fatalf("a refused post pinged the lobby %d times", live.pings)
 	}
 
-	// Happy: the line is persisted, answered with its id, and handed to the
-	// room with that same id on it — reactions work at once.
+	// Happy: the line is persisted, answered with its id — reactions work at
+	// once — and the lobby is pinged so the room re-reads it.
 	code, body := post(t, mux, "alice", "/api/rooms/"+room.Slug+"/chat", `{"text":"  queue this one  "}`)
 	if code != http.StatusOK {
 		t.Fatalf("post: %d %v", code, body)
@@ -135,8 +113,8 @@ func TestPostChatFromOutside(t *testing.T) {
 	if id == "" || body["from"] != "alice" || body["fromId"] != store.UUIDString(alice.ID) || body["text"] != "queue this one" {
 		t.Fatalf("posted line: %v", body)
 	}
-	if len(live.lines) != 1 || live.lines[0].ID != id || live.lines[0].Text != "queue this one" || live.lines[0].FromID != store.UUIDString(alice.ID) {
-		t.Fatalf("room got: %+v", live.lines)
+	if live.pings != 1 {
+		t.Fatalf("the post pinged the lobby %d times, want 1", live.pings)
 	}
 	_, messages := backlog(t, mux, "bob", room.Slug)
 	if len(messages) != 1 || messages[0]["id"] != id {
@@ -156,7 +134,7 @@ func TestReactFromOutside(t *testing.T) {
 	live := &fakeLive{}
 	svc.SetLive(live)
 	bob := users.ByToken["bob"]
-	id, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(bob.ID), "in", "", time.Now().UnixMilli())
+	id, ok := svc.saveChat(t.Context(), room.ID, room.Slug, store.UUIDString(bob.ID), "in", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -183,7 +161,7 @@ func TestReactFromOutside(t *testing.T) {
 		t.Fatalf("unknown room: %d", code)
 	}
 
-	// On, then off: the total and the direction come back, and the room
+	// On, then off: the total and the direction come back, and the lobby
 	// hears both.
 	code, body := post(t, mux, "alice", "/api/rooms/"+room.Slug+"/chat/reactions", `{"messageId":"`+id+`","emoji":"flame"}`)
 	if code != http.StatusOK || body["count"] != float64(1) || body["added"] != true {
@@ -193,8 +171,8 @@ func TestReactFromOutside(t *testing.T) {
 	if code != http.StatusOK || body["count"] != float64(0) || body["added"] != false {
 		t.Fatalf("toggle off: %d %v", code, body)
 	}
-	if len(live.changes) != 2 || !live.changes[0].Added || live.changes[1].Added || live.changes[0].MessageID != id {
-		t.Fatalf("room got: %+v", live.changes)
+	if live.pings != 2 {
+		t.Fatalf("two toggles pinged the lobby %d times, want 2", live.pings)
 	}
 }
 
@@ -202,7 +180,7 @@ func TestMarkReadFromOutside(t *testing.T) {
 	svc, mux, users, room := setup(t)
 	alice := users.ByToken["alice"]
 	bob := users.ByToken["bob"]
-	if _, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "warm-up at 7?", "", time.Now().UnixMilli()); !ok {
+	if _, ok := svc.saveChat(t.Context(), room.ID, room.Slug, store.UUIDString(alice.ID), "warm-up at 7?", "", time.Now().UnixMilli()); !ok {
 		t.Fatal("save failed")
 	}
 

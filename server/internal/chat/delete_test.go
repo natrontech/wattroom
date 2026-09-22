@@ -9,7 +9,6 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
-	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // del runs one DELETE as a user ("" = signed out).
@@ -36,7 +35,7 @@ func TestDeleteChatMessage(t *testing.T) {
 	alice := users.ByToken["alice"] // the room's owner
 	bob := users.ByToken["bob"]
 
-	mine, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(bob.ID), "oops, my password is hunter2", "", time.Now().UnixMilli())
+	mine, ok := svc.saveChat(t.Context(), room.ID, room.Slug, store.UUIDString(bob.ID), "oops, my password is hunter2", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -65,17 +64,17 @@ func TestDeleteChatMessage(t *testing.T) {
 	if code, _ := del(t, mux, "bob", "/api/rooms/no-such-room/chat/"+mine); code != http.StatusNotFound {
 		t.Fatalf("unknown room: %d", code)
 	}
-	if len(live.deletes) != 0 {
-		t.Fatalf("a refused delete reached the room: %v", live.deletes)
+	if live.pings != 0 {
+		t.Fatalf("a refused delete pinged the lobby %d times", live.pings)
 	}
 
-	// The author's own: gone from the log, and the room is told so the line
-	// leaves the screen of everyone holding it open.
+	// The author's own: gone from the log, and the lobby is pinged so the line
+	// leaves the screen of everyone showing the room.
 	if code, body := del(t, mux, "bob", "/api/rooms/"+room.Slug+"/chat/"+mine); code != http.StatusNoContent {
 		t.Fatalf("bob deleting his own: %d %v", code, body)
 	}
-	if len(live.deletes) != 1 || live.deletes[0].MessageID != mine {
-		t.Fatalf("room got: %+v", live.deletes)
+	if live.pings != 1 {
+		t.Fatalf("the delete pinged the lobby %d times, want 1", live.pings)
 	}
 	if _, messages := backlog(t, mux, "alice", room.Slug); len(messages) != 0 {
 		t.Fatalf("backlog still holds it: %v", messages)
@@ -85,8 +84,8 @@ func TestDeleteChatMessage(t *testing.T) {
 	if code, _ := del(t, mux, "bob", "/api/rooms/"+room.Slug+"/chat/"+mine); code != http.StatusNotFound {
 		t.Fatalf("second delete should 404")
 	}
-	if len(live.deletes) != 1 {
-		t.Fatalf("a no-op delete reached the room: %v", live.deletes)
+	if live.pings != 1 {
+		t.Fatalf("a no-op delete pinged the lobby: %d pings", live.pings)
 	}
 }
 
@@ -100,7 +99,7 @@ func TestDeleteChatMessagePermissions(t *testing.T) {
 	bob := users.ByToken["bob"]
 	alice := users.ByToken["alice"] // owns the room
 
-	bobs, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(bob.ID), "bringing cake", "", time.Now().UnixMilli())
+	bobs, ok := svc.saveChat(t.Context(), room.ID, room.Slug, store.UUIDString(bob.ID), "bringing cake", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -112,7 +111,7 @@ func TestDeleteChatMessagePermissions(t *testing.T) {
 
 	// A plain member may not touch someone else's line. 403, not 404: bob can
 	// see the room and the line, so the honest answer is that it is not his.
-	alices, _ := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "see you at seven", "", time.Now().UnixMilli())
+	alices, _ := svc.saveChat(t.Context(), room.ID, room.Slug, store.UUIDString(alice.ID), "see you at seven", "", time.Now().UnixMilli())
 	if code, body := del(t, mux, "bob", "/api/rooms/"+room.Slug+"/chat/"+alices); code != http.StatusForbidden {
 		t.Fatalf("bob deleting alice's: %d %v, want 403", code, body)
 	}
@@ -138,7 +137,7 @@ func TestDeletingTheAnnouncedLineTakesTheNoticeDown(t *testing.T) {
 	svc, mux, users, room := setup(t)
 	svc.SetLive(&fakeLive{})
 	alice := users.ByToken["alice"]
-	id, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "no session Thursday", "", time.Now().UnixMilli())
+	id, ok := svc.saveChat(t.Context(), room.ID, room.Slug, store.UUIDString(alice.ID), "no session Thursday", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}

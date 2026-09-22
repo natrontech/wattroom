@@ -313,9 +313,7 @@ func main() {
 		// A text channel's chat (#2435), behind the channel's own gate; the
 		// lobby ping names the channel whose log moved.
 		chatService.RegisterChannels(mux, channelsService, h)
-		h.SetChatKeeper(chatService)
-		// And back: a line posted over HTTP from outside the room (#468)
-		// reaches the riders inside it on their next tick.
+		// Every room chat write pings the lobby; the room re-reads (#2437).
 		chatService.SetLive(h)
 		// The deletions no write can trigger (#1153, #1163). Sessions and
 		// recaps are both bounded by TIME, which nothing but a clock enforces.

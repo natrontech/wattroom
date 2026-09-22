@@ -37,14 +37,6 @@ type SessionSaver interface {
 	AmendRide(ctx context.Context, channel, workoutName, workoutJSON string, startedAt time.Time, rider RiderRecord)
 }
 
-// ChatKeeper persists chat and reactions (ADR-0010 amended, #201). Defined
-// here, where it is consumed; the chat service implements it. Nil means "no
-// database" — chat stays ephemeral, lines carry no id, reactions no-op.
-type ChatKeeper interface {
-	SaveChat(ctx context.Context, channel, userID, text, imageID string, at int64) (id string, ok bool)
-	ToggleReaction(ctx context.Context, channel, messageID, userID, emoji string) (count int, added bool, ok bool)
-}
-
 // AutoplaySource answers what a room's autoplay should draw from (#627),
 // read once per trigger — a rider joining an idle deck, or the deck running
 // dry (#676) — and always outside the room's lock (server/AGENTS.md: DB I/O
@@ -158,7 +150,6 @@ type Hub struct {
 	// channel → identity → who; fed by LiveKit webhooks (#149) and reconciled
 	// against LiveKit's own participant list (#234).
 	voice map[string]map[string]voiceEntry
-	chat  ChatKeeper
 	xp    XpKeeper
 	// What makes a finished session durable (ADR-0034). Nil = no database,
 	// and a session leaves nothing.
@@ -176,8 +167,6 @@ type Hub struct {
 	// goroutine pair and a walk of the lobby under h.mu on join and leave,
 	// and one account could open any number.
 	sockets map[string]int
-	// Chat persistence queue (#219): read loops enqueue, one worker saves.
-	saves chan chatSave
 	// Autoplay source and its trigger queue (#627): a join or a deck running
 	// dry enqueues, one worker reads the room's active playlist and seeds
 	// the deck.
@@ -196,26 +185,11 @@ type autoplayJob struct {
 	seed bool
 }
 
-// chatSave is one line awaiting persistence — enough to save it and to
-// address the follow-up ChatID back to its room.
-type chatSave struct {
-	rm      *room
-	channel string
-	riderID string
-	text    string
-	imageID string
-	at      int64
-}
-
-// SetChatKeeper wires persistence in after construction, like SetPresence's
-// mirror on the rooms side — nil stays valid (ephemeral chat).
-func (h *Hub) SetChatKeeper(k ChatKeeper) { h.chat = k }
-
 // SetXpKeeper wires the trophy case in (#467) — before the first room
 // opens, since rooms capture it at creation. Nil stays valid.
 func (h *Hub) SetXpKeeper(k XpKeeper) { h.xp = k }
 
-// SetPlaylistSource wires autoplay's read side in (#627), like SetChatKeeper.
+// SetPlaylistSource wires autoplay's read side in (#627), like SetXpKeeper.
 // Nil stays valid — autoplay just never fires.
 func (h *Hub) SetPlaylistSource(k AutoplaySource) { h.playlists = k }
 
@@ -228,33 +202,21 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 		keepalive: keepalive{every: socketKeepalive, pong: socketPingTimeout},
 		rooms:     make(map[string]*room), voice: make(map[string]map[string]voiceEntry),
 		lobby: make(map[*lobbyClient]string), sockets: make(map[string]int),
-		holds: make(map[string]int),
-		saves: make(chan chatSave, 256), autoplays: make(chan autoplayJob, 64)}
+		holds:     make(map[string]int),
+		autoplays: make(chan autoplayJob, 64)}
 	// Supervised (#651): a poison job costs one log line and is skipped, not
-	// the rest of the process's chat history or autoplay.
-	safego.Supervise(log, h.now, "hub chat saver", nil, h.saveWorker)
+	// the rest of the process's autoplay.
 	safego.Supervise(log, h.now, "hub autoplay worker", nil, h.autoplayWorker)
 	h.registerRidingMetric()
 	return h
 }
 
-// saveWorker drains the chat-persistence queue (#219): a stalled database
-// backs up this queue, never a sender's read loop or any tick. Exits when
-// the process does — the hub has no shutdown, it lives as long as the server.
-// ponytail: one worker for the whole hub; per-room workers if a slow save
-// ever lets one loud room starve the rest.
-func (h *Hub) saveWorker() {
-	for job := range h.saves {
-		if id, ok := h.chat.SaveChat(context.Background(), job.channel, job.riderID, job.text, job.imageID, job.at); ok {
-			job.rm.chatIDAssigned(protocol.ChatID{FromID: job.riderID, At: job.at, ID: id})
-		}
-	}
-}
-
 // autoplayWorker drains the autoplay-trigger queue (#627): a stalled
 // database backs up this queue, never a joining rider's upgrade or any tick.
-// Exits when the process does, like saveWorker.
-// ponytail: one worker for the whole hub, same call as chat's.
+// Exits when the process does — the hub has no shutdown, it lives as long as
+// the server.
+// ponytail: one worker for the whole hub; per-channel workers if a slow read
+// ever lets one loud channel starve the rest.
 func (h *Hub) autoplayWorker() {
 	for job := range h.autoplays {
 		if job.seed {
@@ -424,7 +386,7 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 
 // QueuePlaylist appends a saved playlist's tracks onto a room's live queue
 // (#627) — a rider pressed "queue" from the playlists panel, which is a plain
-// HTTP call like PostChat, not a WS command. Returns false when nobody is
+// plain HTTP call, not a WS command. Returns false when nobody is
 // connected to seed a deck for; the caller (who is presumably looking at
 // this room's jukebox right now) should not normally see that. addedCount is
 // how many tracks actually landed, for the response — the queue's own caps

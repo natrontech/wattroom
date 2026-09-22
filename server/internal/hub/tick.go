@@ -113,38 +113,6 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// Somebody is here: the idle window starts over when they go.
 		rm.emptySince = time.Time{}
 		gameWinner := rm.advanceGameLocked(now())
-		// Drain a bounded slice per tick and CARRY the overflow — a burst
-		// above the per-tick cap used to vanish silently (#219).
-		chatNow := rm.chat
-		if len(chatNow) > 32 {
-			chatNow = rm.chat[:32]
-			rm.chat = append([]protocol.ChatLine(nil), rm.chat[32:]...)
-		} else {
-			rm.chat = nil
-		}
-		reactsNow := rm.reacts
-		if len(reactsNow) > 64 {
-			reactsNow = rm.reacts[:64]
-			rm.reacts = append([]protocol.ChatReactionCount(nil), rm.reacts[64:]...)
-		} else {
-			rm.reacts = nil
-		}
-		editsNow := rm.edits
-		if len(editsNow) > 64 {
-			editsNow = rm.edits[:64]
-			rm.edits = append([]protocol.ChatEdit(nil), rm.edits[64:]...)
-		} else {
-			rm.edits = nil
-		}
-		deletesNow := rm.deletes
-		if len(deletesNow) > 64 {
-			deletesNow = rm.deletes[:64]
-			rm.deletes = append([]protocol.ChatDelete(nil), rm.deletes[64:]...)
-		} else {
-			rm.deletes = nil
-		}
-		idsNow := rm.chatIDs
-		rm.chatIDs = nil
 		// Resolved before the drain so a transition's own line rides the tick
 		// that carries the transition, not the one after it.
 		state := rm.session.state(now())
@@ -168,11 +136,6 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			Jukebox:       rm.music.snapshot(),
 			Cheers:        rm.cheers,
 			Board:         rm.board,
-			Chat:          chatNow,
-			ChatReactions: reactsNow,
-			ChatEdits:     editsNow,
-			ChatDeletes:   deletesNow,
-			ChatIDs:       idsNow,
 			Events:        eventsNow,
 			Sprint:        sprintNow,
 			Game:          rm.lastGame,
@@ -264,18 +227,15 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			}
 		}
 		ridingKey := strings.Join(riding, "\n")
-		spoke := len(tick.Chat) > 0
 		// Claim answers ride out with this tick but not IN it (#610): a
 		// rider's device inventory is theirs, and the tick goes to the room.
 		pairing := rm.drainPairingLocked()
 		pokes := rm.drainPokesLocked()
 		locked = false
 		rm.mu.Unlock()
-		// Someone spoke: every sidebar's unread count for this room just went
-		// stale, and a rider who is NOT standing in the room announces the
-		// line off that count (#568). Without this it waited for the lobby's
-		// 60 s fallback poll.
-		if rm.changed != nil && (tick.State.Phase != lastPhase || ridingKey != lastRiding || spoke) {
+		// Chat pings the lobby from its own HTTP write (#2437); the tick
+		// pings for what only it sees change.
+		if rm.changed != nil && (tick.State.Phase != lastPhase || ridingKey != lastRiding) {
 			lastPhase, lastRiding = tick.State.Phase, ridingKey
 			rm.changed()
 		}

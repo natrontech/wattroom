@@ -141,18 +141,17 @@
 	// and a failed backlog left that up with no Retry.
 	const backlog = $derived(conn ? conn.backlog() : null);
 	/**
-	 * One endpoint from both sides of the room, like the edit above: the hub
-	 * carries the removal to whoever is connected, and a reader outside sees
-	 * it gone from the backlog on their next poll.
+	 * One endpoint from both sides of the room, like the edit below: whoever
+	 * shows the room re-reads its log off the lobby ping; this thread does
+	 * not wait for it.
 	 */
 	async function removeLine(id: string) {
 		const res = await api(`/api/rooms/${slug}/chat/${id}`, {
 			method: 'DELETE',
 		});
 		if (res.ok) {
-			// Outside the room there is no tick to carry it, so the thread
-			// this component is showing has to drop the line itself.
-			if (!conn) outside?.retry();
+			if (conn) conn.reloadBacklog();
+			else outside?.retry();
 			return null;
 		}
 		return res.error.message;
@@ -211,24 +210,22 @@
 		remove: removeLine,
 		canRemove: (message) =>
 			!!message.fromId && (message.fromId === account.me?.id || owner),
-		// One endpoint from both sides of the room: standing inside, the
-		// socket has no edit command — the hub relays what the PATCH did, so
-		// the log this component is already showing updates itself.
+		// One endpoint from both sides of the room: standing inside, the PATCH
+		// pings the lobby and the room's log re-reads itself (#2437).
 		async edit(id, text) {
 			if (conn) {
 				const res = await api(`/api/rooms/${slug}/chat/${id}`, {
 					method: 'PATCH',
 					json: { text },
 				});
-				return res.ok ? null : res.error.message;
+				if (!res.ok) return res.error.message;
+				conn.reloadBacklog();
+				return null;
 			}
 			return (await outside?.edit(id, text)) ?? null;
 		},
 		async react(id, cheer) {
-			if (conn) {
-				conn.live.react(id, cheer);
-				return null;
-			}
+			if (conn) return conn.react(id, cheer);
 			return (await outside?.react(id, cheer)) ?? null;
 		},
 		async send(text, image) {
@@ -239,11 +236,8 @@
 					if (up.ok) imageId = up.data.id;
 					else return up.error.message;
 				}
-				// A reconnect queue that is already full refuses the line (#650);
-				// the words come back to the box like any other refusal.
-				if (!conn.live.chat(text, imageId))
-					return "Still reconnecting — that one didn't go. Try again in a moment.";
-				return null;
+				// Over HTTP (#2437): a refusal comes back to the box with its words.
+				return conn.sendChat(text, imageId);
 			}
 			return (await outside?.send(text, image)) ?? null;
 		},

@@ -208,7 +208,7 @@ func (s *Service) handlePost(w http.ResponseWriter, r *http.Request) {
 		Text: text, ImageID: req.ImageID, At: at,
 	}
 	if s.live != nil {
-		s.live.PostChat(s.store.VoiceChannelOf(r.Context(), room.ID), line)
+		s.live.PresenceChanged()
 	}
 	// Saying something is reading up to it.
 	s.markRead(r.Context(), room, me)
@@ -282,7 +282,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 		MessageID: store.UUIDString(id), Text: text, EditedAt: store.Millis(edited),
 	}
 	if s.live != nil {
-		s.live.PostChatEdit(s.store.VoiceChannelOf(r.Context(), room.ID), change)
+		s.live.PresenceChanged()
 	}
 	httpx.WriteJSON(w, http.StatusOK, change)
 }
@@ -344,7 +344,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 			"room", room.Slug, "by", store.UUIDString(me.ID), "author", store.UUIDString(msg.UserID))
 	}
 	if s.live != nil {
-		s.live.PostChatDelete(s.store.VoiceChannelOf(r.Context(), room.ID), protocol.ChatDelete{MessageID: store.UUIDString(id)})
+		s.live.PresenceChanged()
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -381,7 +381,7 @@ func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 		By: store.UUIDString(me.ID), Added: added,
 	}
 	if s.live != nil {
-		s.live.PostReaction(s.store.VoiceChannelOf(r.Context(), room.ID), change)
+		s.live.PresenceChanged()
 	}
 	httpx.WriteJSON(w, http.StatusOK, change)
 }

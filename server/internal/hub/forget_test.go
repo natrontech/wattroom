@@ -48,7 +48,6 @@ func forgetHub(t *testing.T) (*Hub, *lines) {
 		for _, rm := range rooms {
 			close(rm.stop)
 		}
-		close(h.saves)
 		close(h.autoplays)
 	})
 	return h, out
