@@ -456,7 +456,7 @@
 								opens the first one, and it shows up here.
 							{:else}
 								Nobody's around yet — join a crew with its invite link or code,
-								or start one of your own by opening a room.
+								or start one of your own.
 							{/if}
 						</p>
 					{/if}
