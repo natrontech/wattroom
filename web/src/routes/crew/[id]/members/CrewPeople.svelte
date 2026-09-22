@@ -2,7 +2,8 @@
 	import { formatMonth } from '$lib/format';
 	// The crew's people and its bans (#1150, #1208, #1212): roles from a
 	// person's menu, the hand-over behind a confirm, and the unban that names
-	// what it does not reach. Split from the page (#1234); the page reloads on
+	// what it does not reach. Split from the page (#1234), and the crew's
+	// Members page since #2453, with each person's medals; the page reloads on
 	// `onchange`.
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
@@ -18,6 +19,7 @@
 	import { handOverCrewFlow } from '$lib/crew-flows';
 	import { personMenu } from '$lib/person-menu';
 	import { toasts } from '$lib/toast.svelte';
+	import Award from '@lucide/svelte/icons/award';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Ellipsis from '@lucide/svelte/icons/ellipsis';
 	import Shield from '@lucide/svelte/icons/shield';
@@ -189,6 +191,17 @@
 					· since {formatMonth(person.since)}
 				</span>
 			</span>
+			{#if person.medals}
+				<!-- The crew's sessions awarded them, lifetime (#1371, #2442). -->
+				<span
+					class="text-muted flex shrink-0 items-center gap-1 text-xs tabular-nums"
+				>
+					<Award size={13} class="text-neon" />
+					{person.medals}
+					<span class="sr-only">{person.medals === 1 ? 'medal' : 'medals'}</span
+					>
+				</span>
+			{/if}
 			{#if canAct(person)}
 				<button
 					onclick={() => toggleRole(person)}

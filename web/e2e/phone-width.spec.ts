@@ -322,6 +322,7 @@ test('no page outside a room scrolls sideways on a phone', async ({
 		'/messages/r/[slug]': `/messages/r/${byId.room}`,
 		'/messages/dm/[peer]': `/messages/dm/${byId.peer}`,
 		'/crew/[id]': `/crew/${crewId}`,
+		'/crew/[id]/members': `/crew/${crewId}/members`,
 		'/crew/[id]/settings': `/crew/${crewId}/settings`,
 		'/c/[code]': `/c/${crewCode}`,
 	};

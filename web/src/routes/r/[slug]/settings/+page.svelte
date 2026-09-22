@@ -15,7 +15,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { keyFor } from '$lib/icons';
-	import RoomMyPrefs from './RoomMyPrefs.svelte';
+	import RiderPrefs from '$lib/components/RiderPrefs.svelte';
 	import RoomReach from './RoomReach.svelte';
 	import RoomReactions from './RoomReactions.svelte';
 	import RoomAutoplay from './RoomAutoplay.svelte';
@@ -276,8 +276,9 @@
 		     them and read-only for everyone else. -->
 		<RoomAutoplay slug={room.slug} canManage={room.role === 'coach'} />
 
-		<RoomMyPrefs
-			slug={room.slug}
+		<RiderPrefs
+			path="/api/rooms/{room.slug}/me"
+			noun="room"
 			me={room.me}
 			boardEnabled={room.boardEnabled}
 		/>
@@ -427,8 +428,9 @@
 
 		<!-- An owner is a rider too: they are on their own room's board, and
 		     get their own room's mail. Same block as the member view. -->
-		<RoomMyPrefs
-			slug={room.slug}
+		<RiderPrefs
+			path="/api/rooms/{room.slug}/me"
+			noun="room"
 			me={room.me}
 			boardEnabled={room.boardEnabled}
 		/>

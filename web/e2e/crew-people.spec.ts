@@ -35,7 +35,7 @@ test("the crew's people rows offer the owner's actions without a right-click", a
 				.then((r) => String(r.crew?.id ?? '')),
 		room.slug,
 	);
-	await a.goto(`/crew/${crewId}`);
+	await a.goto(`/crew/${crewId}/members`);
 
 	const row = a
 		.getByTestId('page-body')
