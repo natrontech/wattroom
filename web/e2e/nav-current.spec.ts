@@ -6,7 +6,7 @@ import { signInAs } from './signin';
  * (ADR-0020, rule 1 — a page with no lit row is a bug, not a page).
  *
  * A column that lights NOTHING is a silent failure: nothing throws, nothing
- * logs, the page renders, and only a rider notices. `/rooms/directory` and
+ * logs, the page renders, and only a rider notices. The directory and
  * `/messages` both shipped that way (#1863) with unit tests green either
  * side of them, because the decision is one function and the wiring is one
  * attribute. This walks the real DOM instead, and counts.
@@ -38,7 +38,7 @@ test('every destination the sidebar parents lights exactly one row', async ({
 		{ path: '/workouts', label: row('Workouts') },
 		// The directory is the other half of Home's open/join card, so Home
 		// stays lit under it — the way Workouts stays lit under a ride.
-		{ path: '/rooms/directory', label: row('Home') },
+		{ path: '/crews/directory', label: row('Home') },
 		// No thread row belongs to the messages index, so the section heading
 		// is the row that answers for it.
 		{ path: '/messages', label: row('direct messages') },

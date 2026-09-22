@@ -47,11 +47,12 @@ export const pages: {
 		icon: House,
 		// `/rooms` was retired INTO Home's "your rooms" section — the open/join
 		// card, reached as `/home#rooms` — and the directory is that section's
-		// other half, the "No code? Find a room" line inside it (#1118). Neither
-		// is a destination of its own, and ADR-0020 rule 1 wants the row above
-		// them lit all the same: the column went dark on `/rooms/directory` and
-		// on the `/rooms` stub still receiving live navigation (#1863).
-		covers: ['/rooms'],
+		// other half, the "No code? Find a crew" line inside it (#1118, #2456).
+		// Neither is a destination of its own, and ADR-0020 rule 1 wants the
+		// row above them lit all the same: the column went dark on the
+		// directory and on the `/rooms` stub still receiving live navigation
+		// (#1863).
+		covers: ['/rooms', '/crews'],
 	},
 	{
 		href: '/workouts',

@@ -7,10 +7,9 @@
 	import Logo from '$lib/brand/Logo.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
-	import { fetchCrew, joinCrew, rememberCrewDoor } from '$lib/crew';
+	import { crewDoorDisclosure, joinCrew, rememberCrewDoor } from '$lib/crew';
 	import { presence } from '$lib/presence.svelte';
 	import type { PageData } from './$types';
-	import { reachable } from '$lib/nav/crews';
 
 	let { data }: { data: PageData } = $props();
 	let busy = $state(false);
@@ -39,16 +38,13 @@
 			return;
 		}
 		presence.reload();
-		// A one-room crew lands you in the room you came for (#1931), not on
-		// a roster with a code above it; anything else, the crew page.
-		const crew = await fetchCrew(res.data.id);
-		const doors = crew.ok
-			? crew.data.rooms.filter((room) => room.slug && reachable(room.access))
-			: [];
-		await goto(
-			doors.length === 1 ? `/r/${doors[0].slug}` : `/crew/${res.data.id}`,
-		);
+		// The crew is what you joined, so its Home is where you land (#2456,
+		// ADR-0058): its channels are one click from there, and a crew no
+		// longer has a single room to shortcut to (#1931 is superseded).
+		await goto(`/crew/${res.data.id}`);
 	}
+
+	const disclosure = $derived(crewDoorDisclosure(data.crew ?? {}));
 </script>
 
 <svelte:head>
@@ -103,6 +99,11 @@
 				<p class="text-muted mt-2 text-sm">
 					You have been invited to ride with this crew.
 				</p>
+				{#if disclosure.board}
+					<!-- Above the button, not under it: the board is what joining
+					     publishes, and ADR-0036 wants it read before (#2456). -->
+					<p class="text-muted mt-3 text-xs">{disclosure.board}</p>
+				{/if}
 				<button
 					onclick={join}
 					disabled={busy}
@@ -116,11 +117,8 @@
 					</div>
 				{/if}
 				<!-- Privacy is architecture (WATTROOM.md): say what joining shows
-				     before the button. Joining a crew shows nobody anything yet. -->
-				<p class="text-muted-dim mt-4 text-[11px]">
-					Joining shows nobody your numbers. Your watts are visible to a room
-					while you ride in it, and nowhere else.
-				</p>
+				     beside the button. -->
+				<p class="text-muted-dim mt-4 text-[11px]">{disclosure.privacy}</p>
 			{/if}
 		{:else if data.errorCode && data.errorCode !== 'not_found'}
 			<div class="mt-6 text-left">

@@ -149,6 +149,35 @@ export interface CrewDoor {
 	/** A signed-in stranger holding the code: the invite is theirs to keep,
 	 *  and `rememberCrewDoor` is what keeps it (#2144, #2248). */
 	invited?: boolean;
+	/** The crew keeps a weekly board (ADR-0036 as amended by ADR-0058). */
+	boardEnabled?: boolean;
+}
+
+/**
+ * What the crew's door says before the join (#2456). ADR-0036 wants a board
+ * "turned on ... visibly", before anyone is inside: joining is the moment
+ * that publishes a rider's week to the crew, and a ride is private by
+ * default. The copy lives here, not in the markup, because it is a privacy
+ * disclosure an ADR requires — the reasoning `$lib/room/door.ts` gave the
+ * room's door, which this replaces.
+ *
+ * No door-time choice (ux.md, the 95% rule): the opt-out is the crew's
+ * `on_board` switch on the other side, so the line names it.
+ */
+export function crewDoorDisclosure(door: { boardEnabled?: boolean }): {
+	board?: string;
+	privacy: string;
+} {
+	const watts =
+		'Your watts are visible to the session you ride in, while you ride, and nowhere else.';
+	return door.boardEnabled
+		? {
+				board:
+					"This crew keeps a weekly board: your kJ and time are ranked beside everyone else's in your category, and it starts fresh every Monday. You can take yourself off it once you are in.",
+				privacy: watts,
+			}
+		: // "Shows nobody your numbers" is true only of a crew with no board.
+			{ privacy: `Joining shows nobody your numbers. ${watts}` };
 }
 
 export function crewDoor(
