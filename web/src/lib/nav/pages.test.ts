@@ -6,7 +6,6 @@ import {
 	crewPlaces,
 	dmsCurrent,
 	pages,
-	placesFor,
 	roomPlaces,
 } from './pages';
 
@@ -115,16 +114,12 @@ describe('activePlace', () => {
 	});
 });
 
-describe('placesFor', () => {
-	it('offers a wide screen every place', () => {
-		expect(placesFor(false)).toEqual(roomPlaces);
-	});
-
-	// A phone gets the room, not a trimmed second app: the only place it is
-	// not offered is the owner-only settings form (#412).
-	it('drops only Settings below md', () => {
-		const narrow = placesFor(true).map((p) => p.path);
-		expect(narrow).toEqual([
+describe('roomPlaces', () => {
+	// The room's Settings place went with the room's settings (#2454): the
+	// crew's Settings keep its channels now, so every screen gets the same
+	// list and a phone is offered nothing less.
+	it('offers the room its places and no settings form', () => {
+		expect(roomPlaces.map((p) => p.path)).toEqual([
 			'/board',
 			'',
 			'/chat',
@@ -132,32 +127,13 @@ describe('placesFor', () => {
 			'/sessions',
 			'/members',
 		]);
-		expect(narrow).not.toContain('/settings');
-	});
-
-	// The Board is offered whether or not anything is on it (#2405). Pins
-	// were gated on the crew having one, and that made the first pin
-	// unmakeable: pinning happens on the page the row is the only way to. A
-	// phone gets it too — a rider on the sofa checking the server address is
-	// the case.
-	it('offers the Board when it is empty, and on a phone', () => {
-		expect(placesFor(false).map((p) => p.path)).toContain('/board');
-		expect(placesFor(true).map((p) => p.path)).toContain('/board');
 	});
 
 	// The order is the feature (#2413): a notice on the fifth row is filed,
 	// and one on the first is the door a rider comes through. Asserted here
 	// because nothing else would notice the row drifting down the list.
 	it('puts the Board first, above the Lounge', () => {
-		expect(placesFor(false)[0].path).toBe('/board');
-		expect(placesFor(true)[0].path).toBe('/board');
-	});
-
-	it('offers a place the drawer can actually resolve', () => {
-		for (const place of placesFor(true))
-			expect(
-				activePlace(`/r/velvet-hammer${place.path}`, 'velvet-hammer'),
-			).toBe(place.path);
+		expect(roomPlaces[0].path).toBe('/board');
 	});
 });
 

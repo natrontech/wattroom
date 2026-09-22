@@ -69,6 +69,10 @@ const (
 	// and this feature is deliberately not one.
 	MaxCrewPins = 20
 
+	// A crew's reaction palette (#223, docs/SPEC.md): the picker stops at it
+	// and the server refuses past it.
+	MaxCheers = 8
+
 	// A crew's name (docs/SPEC.md "Names"), in CHARACTERS — MaxMessageChars'
 	// rule.
 	MaxCrewNameChars = 60

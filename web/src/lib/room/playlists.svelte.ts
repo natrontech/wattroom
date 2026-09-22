@@ -50,7 +50,7 @@ export interface AutoplaySettings {
 	/**
 	 * `ordered`/`shuffled` walk the room's active playlist; `smart` (#269)
 	 * ignores it and draws from the library, weighted by what this room has
-	 * been playing and skipping. Set on the room's Settings page (#1422).
+	 * been playing and skipping. Set in the crew's Settings (#1422, #2454).
 	 */
 	order: 'ordered' | 'shuffled' | 'smart';
 	activePlaylistId?: string;

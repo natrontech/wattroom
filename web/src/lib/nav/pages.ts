@@ -105,6 +105,11 @@ export const roomPlaces = [
 		// is filed, and one on the first is the door a rider comes through.
 		// It is what makes a page acceptable for something that has to be
 		// seen, which ADR-0057 said a page could not be.
+		//
+		// Offered whether or not anything is on it (#2405): pinning happens on
+		// the page this row is the way to, so a row that waited for a pin made
+		// the first pin unmakeable. An empty board is an empty state, and
+		// ux.md says those teach.
 		path: '/board',
 		label: 'Board',
 		icon: Pin,
@@ -135,32 +140,7 @@ export const roomPlaces = [
 		hint: "what's planned here",
 	},
 	{ path: '/members', label: 'Members', icon: Users, hint: 'roles and medals' },
-	{
-		path: '/settings',
-		label: 'Settings',
-		icon: Settings,
-		hint: 'name, sounds, reactions',
-	},
 ];
-
-/**
- * The places a viewport is offered. Settings is the one place a phone is not:
- * it is a set-up-once, owner-only form — the 95% rule (`ux.md`) says nobody
- * renames a room from a bike, and a drawer that lists everything lists
- * nothing. It stays a URL and still renders, so a bookmark works and the page
- * says it is laid out for a wider screen; it simply is not offered here.
- *
- * The Board is NOT conditional, though pins were built that way first
- * (#2405): the row hid until the crew had pinned something, and pinning
- * happens on the page the row is the way to, so a crew with an empty board
- * could never make its first pin. `ux.md`'s capability gating is for an
- * absent precondition — no trainer paired, LiveKit down — and an empty board
- * is not one of those. It is an empty state, and ux.md has a rule for those
- * too: they teach, and carry the CTA that makes the first one.
- */
-export function placesFor(narrow: boolean) {
-	return narrow ? roomPlaces.filter((p) => p.path !== '/settings') : roomPlaces;
-}
 
 /** Which destination a path lights up. */
 export function activeHref(pathname: string): string | undefined {
