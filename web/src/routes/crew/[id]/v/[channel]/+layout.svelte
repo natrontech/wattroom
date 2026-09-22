@@ -139,6 +139,10 @@
 	<!-- Keyed by the channel: a different channel is a different place, and
 	     the shell joins the one it was mounted for. -->
 	{#key channel.id}
+		<!-- The places carry no visible title — the sidebar names the channel
+		     you are standing in (ADR-0020) — so the page's heading is for
+		     assistive tech: which channel this is. -->
+		<h1 class="sr-only">{channel.name}</h1>
 		<RoomShell
 			slug=""
 			address={channelAddress(crew.id, channel.id, channel.name)}
