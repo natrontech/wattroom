@@ -104,10 +104,11 @@ func TestSweepPrunesRecapsPastRetentionWithoutAWrite(t *testing.T) {
 	stale := time.Now().Add(-(recap.RetentionDays + 1) * 24 * time.Hour)
 	fresh := time.Now().Add(-24 * time.Hour)
 	for _, at := range []time.Time{stale, fresh} {
-		if _, err := st.Queries.SaveSessionRecap(t.Context(), db.SaveSessionRecapParams{
-			RoomID: room.ID, Workout: "Sweet Spot", StartedAt: stamp(at), EndedAt: stamp(at),
-			Riders: []byte(`[]`),
-		}); err != nil {
+		// A room-era row, straight to the table (SaveSessionRecap keys by the
+		// session since #2438): the sweep is what is under test.
+		if _, err := st.Pool.Exec(t.Context(),
+			"insert into session_recaps (room_id, workout, started_at, ended_at, riders) values ($1, $2, $3, $4, '[]')",
+			room.ID, "Sweet Spot", stamp(at), stamp(at)); err != nil {
 			t.Fatalf("save recap: %v", err)
 		}
 	}

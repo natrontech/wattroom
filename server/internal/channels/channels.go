@@ -30,6 +30,8 @@ type Live interface {
 	PresenceChanged()
 	// Who is in a voice channel right now.
 	Presence(channel string) protocol.RoomPresence
+	// The session running in a voice channel, if one is (#2438).
+	LiveSession(channel string) (protocol.LiveSession, bool)
 	// Taking somebody out of a private channel severs them there too.
 	Kick(channel, userID string)
 	// A deleted voice channel's live state dies with it (#618).
@@ -83,6 +85,7 @@ func (s *Service) changed() {
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/crews/{id}/channels", s.handleList)
+	mux.HandleFunc("GET /api/crews/{id}/live", s.handleLive)
 	mux.HandleFunc("POST /api/crews/{id}/channels", s.handleCreate)
 	mux.HandleFunc("PATCH /api/channels/{id}", s.handleUpdate)
 	mux.HandleFunc("DELETE /api/channels/{id}", s.handleDelete)
@@ -146,19 +149,10 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := s.store.Queries.ListCrewChannels(r.Context(), crewID)
+	rows, err := s.enterable(r.Context(), crewID, user.ID, role)
 	if err != nil {
 		httpx.Fail(w, s.log, "list channels failed", err, "The channels could not be loaded.", "crew", store.UUIDString(crewID))
 		return
-	}
-	named, err := s.store.Queries.NamedChannelsFor(r.Context(), db.NamedChannelsForParams{CrewID: crewID, UserID: user.ID})
-	if err != nil {
-		httpx.Fail(w, s.log, "list named channels failed", err, "The channels could not be loaded.", "crew", store.UUIDString(crewID))
-		return
-	}
-	isNamed := map[string]bool{}
-	for _, id := range named {
-		isNamed[store.UUIDString(id)] = true
 	}
 	memberRows, err := s.store.Queries.ListChannelMembers(r.Context(), crewID)
 	if err != nil {
@@ -175,9 +169,6 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	out := []channelJSON{}
 	for _, c := range rows {
 		id := store.UUIDString(c.ID)
-		if !mayEnter(role, c.Private, isNamed[id]) {
-			continue
-		}
 		entry := toJSON(c, members[id])
 		if c.Kind == kindVoice && s.live != nil {
 			presence := s.live.Presence(id)

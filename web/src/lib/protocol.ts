@@ -249,7 +249,7 @@ export interface GameState {
  * pick workout, start countdown, pause/end). The server enforces the role.
  */
 export interface Control {
-  action: string; // "pick" | "start" | "pause" | "resume" | "end"
+  action: string; // "pick" | "start" | "pause" | "resume" | "end" | "handoff" | "game" | "game-end" | "sprint"
   /**
    * Workout definition, opaque to the server: the docs/SPEC.md JSON as a
    * string. The server owns the clock, the clients own the targets.
@@ -265,6 +265,11 @@ export interface Control {
    * For action "game": which mode to start.
    */
   gameMode?: string;
+  /**
+   * For action "handoff": the rider id the session's coach hands it to
+   * (#2438) — someone in the voice channel.
+   */
+  rider?: string;
 }
 /**
  * Backfill is a reconnect's replay: samples the client buffered while the
@@ -574,6 +579,10 @@ export interface ClientMessage {
 export interface Rider {
   id: string;
   name: string;
+  /**
+   * The rider's crew role, as a voice channel reads it: "owner", "admin"
+   * or "member" (#2438). Coach is not a role — it is the session's.
+   */
   role: string;
   ftpWatts: number /* int */;
   /**
@@ -677,6 +686,19 @@ export interface OwnConnection {
  */
 export interface SessionState {
   phase: string; // "idle" | "countdown" | "running" | "paused" | "done"
+  /**
+   * The session's id while one is open in this voice channel (#2438):
+   * from the pick that opened it until the next one replaces it. Empty
+   * while nobody has opened one.
+   */
+  id?: string;
+  /**
+   * Who is coaching it, by rider id and by name (#2438): whoever opened
+   * it, until they hand it off. The one rider whose controls the server
+   * takes, besides the crew's owner and admins ending it.
+   */
+  coach?: string;
+  coachName?: string;
   /**
    * Seconds into the workout timeline. Advances only while running.
    */
@@ -948,6 +970,25 @@ export interface RoomPresence {
    */
   workoutName?: string;
   elapsedSec?: number /* int */;
+}
+/**
+ * LiveSession is one session running in a crew's voice channel (#2438), as
+ * GET /api/crews/{id}/live answers it — only for channels the caller may
+ * enter, like every other live read.
+ */
+export interface LiveSession {
+  id: string;
+  channel: string;
+  workout: string;
+  phase: string; // "countdown" | "running" | "paused"
+  elapsed: number /* int */;
+  coach: string;
+  coachName: string;
+  /**
+   * Who is in the channel, by name and by id in the same order.
+   */
+  riders: string[];
+  riderIds: string[];
 }
 /**
  * Error tells a client why its connection or command was refused.

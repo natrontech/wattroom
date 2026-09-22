@@ -149,7 +149,21 @@ func TestWebSocketRoom(t *testing.T) {
 		t.Fatalf("phase: %q", tick.State.Phase)
 	}
 
-	// A member's control is refused with an error message, not silently eaten.
+	// The coach opens the session with a pick (#2438)...
+	if err := wsjson.Write(t.Context(), coach, protocol.ClientMessage{Control: &protocol.Control{
+		Action: "pick", WorkoutName: "Openers", WorkoutJSON: wsWorkout, TotalSeconds: 120,
+	}}); err != nil {
+		t.Fatalf("coach pick: %v", err)
+	}
+	// Two sockets race: the member's start must land after the pick did.
+	deadline = time.Now().Add(5 * time.Second)
+	for tick = readTick(t, member); tick.State.Coach != "jan"; tick = readTick(t, member) {
+		if time.Now().After(deadline) {
+			t.Fatal("the pick never reached the tick")
+		}
+	}
+	// ...and a member's start on it is refused with an error message, not
+	// silently eaten: one session per channel, and it is the coach's.
 	if err := wsjson.Write(t.Context(), member, protocol.ClientMessage{
 		Control: &protocol.Control{Action: "start"},
 	}); err != nil {
@@ -166,18 +180,13 @@ func TestWebSocketRoom(t *testing.T) {
 			break
 		}
 	}
-	if refused.Error.Code != "forbidden" {
+	if refused.Error.Code != "conflict" || !strings.Contains(refused.Error.Message, "jan") {
 		t.Fatalf("member control: %+v", refused.Error)
 	}
 
-	// The coach picks and starts; the tick's shared state moves to countdown.
-	for _, control := range []protocol.Control{
-		{Action: "pick", WorkoutName: "Openers", WorkoutJSON: wsWorkout, TotalSeconds: 120},
-		{Action: "start"},
-	} {
-		if err := wsjson.Write(t.Context(), coach, protocol.ClientMessage{Control: &control}); err != nil {
-			t.Fatalf("coach control: %v", err)
-		}
+	// The coach starts; the tick's shared state moves to countdown.
+	if err := wsjson.Write(t.Context(), coach, protocol.ClientMessage{Control: &protocol.Control{Action: "start"}}); err != nil {
+		t.Fatalf("coach control: %v", err)
 	}
 	deadline = time.Now().Add(5 * time.Second)
 	for {

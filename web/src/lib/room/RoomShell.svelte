@@ -110,7 +110,13 @@
 		live.tick?.roster.find((rider) => rider.id === account.me?.id)?.role ??
 			props.role,
 	);
-	const canControl = $derived(myRole === 'owner' || myRole === 'coach');
+	// The session's coach drives it (#2438): whoever opened it, until they
+	// hand it off. With none open, anyone here may open one with a pick.
+	const coach = $derived(live.tick?.state.coach);
+	const canControl = $derived(coach ? coach === account.me?.id : true);
+	// Managing the room's playlists and calendar stays a role's, not the
+	// session's: the tick carries the crew's words, the room's door its own.
+	const canManage = $derived(['owner', 'admin', 'coach'].includes(myRole));
 
 	// Banning is reversible (Unban sets the role right back), so it gets an
 	// undo toast rather than a confirm dialog (errors.md) — same pattern as
@@ -191,7 +197,7 @@
 		fallback: () => ({
 			ftp: profile.current.ftp,
 			kg: profile.current.kg,
-			coach: canControl,
+			coach: coach === account.me?.id,
 		}),
 		running: () => running,
 		shared: () => shared,
@@ -324,6 +330,7 @@
 			segments: () => segments,
 			phase: () => phase,
 			canControl: () => canControl,
+			canManage: () => canManage,
 			myRole: () => myRole,
 			stageSources: () => stageSources,
 			onStage: () => onStage,

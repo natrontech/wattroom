@@ -4,11 +4,19 @@
 -- at all while WATTROOM.md's metrics rules stay untouched.
 
 -- name: SaveSessionRecap :one
--- Idempotent on (room, started_at): the keeper retries (audit 2026-09-09),
--- and the second write of the same session updates rather than duplicates.
-insert into session_recaps (room_id, workout, started_at, ended_at, riders)
-values ($1, $2, $3, $4, $5)
-on conflict (room_id, started_at) do update
+-- The session's recap (#2438), keyed by the session: the keeper retries
+-- (audit 2026-09-09), and the second write of the same session updates
+-- rather than duplicates. The crew and the channel come from the channel it
+-- ran in; room_id is still written for a channel a room became, so the
+-- previous release's room backlog reads it (ADR-0019), and is NULL for one
+-- made in the channels API.
+insert into session_recaps (room_id, crew_id, channel_id, session_id, workout, started_at, ended_at, riders)
+select (select rc.room_id from room_channels rc where rc.voice_channel_id = ch.id),
+       ch.crew_id, ch.id, sqlc.arg(session_id)::uuid,
+       sqlc.arg(workout), sqlc.arg(started_at), sqlc.arg(ended_at), sqlc.arg(riders)
+from channels ch
+where ch.id = sqlc.arg(channel_id)
+on conflict (session_id) where session_id is not null do update
     set workout = excluded.workout, ended_at = excluded.ended_at, riders = excluded.riders
 returning id, created_at;
 

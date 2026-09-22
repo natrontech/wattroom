@@ -9,6 +9,8 @@ import (
 	"maps"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
@@ -258,14 +260,32 @@ func (rm *room) armIfRunning(now time.Time) bool {
 	return true
 }
 
-func (rm *room) control(c protocol.Control, riderID string, now time.Time) bool {
+// control runs one control message for rider (#2438, docs/SPEC.md's roles
+// matrix): anyone who may enter the channel opens a session with a pick when
+// none is open, and is its coach; the coach drives it and may hand it off;
+// the crew's owner and admins may end it, which is the one lever they hold
+// over a session somebody else is coaching. Returns errors.md's code and a
+// message, or two empty strings when it ran.
+//
+// Checked and applied under one lock, so two riders picking at the same
+// moment cannot both open the channel's one session.
+func (rm *room) control(c protocol.Control, rider protocol.Rider, now time.Time) (code, message string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
+	if code, message := rm.refusalLocked(c.Action, rider); code != "" {
+		return code, message
+	}
+	if c.Action == "handoff" {
+		return rm.handOffLocked(rider.ID, c.Rider)
+	}
+	if c.Action == "pick" && !rm.session.open() {
+		rm.session.begin(uuid.NewString(), rider.ID, rider.Name)
+	}
 	// The session answers first: a start the phase refuses — a stale coach
 	// tab, two coaches racing the countdown — used to wipe the running
 	// ride's record and roster before hearing no (audit 2026-09-09).
 	if !rm.session.apply(c, now) {
-		return false
+		return "invalid_request", "That does not work right now — the session is in another phase."
 	}
 	// A new start is a new ride: the record must not blend two sessions.
 	if c.Action == "start" {
@@ -278,7 +298,57 @@ func (rm *room) control(c protocol.Control, riderID string, now time.Time) bool 
 		// leak into it (ADR-0034).
 		rm.present = make(map[string]*span)
 		rm.presentSince = time.Time{}
-		rm.startedBy = riderID
+		rm.startedBy = rider.ID
 	}
-	return true
+	return "", ""
+}
+
+// refusalLocked is who may do what to the channel's session (#2438). Caller
+// holds rm.mu.
+func (rm *room) refusalLocked(action string, rider protocol.Rider) (code, message string) {
+	s := rm.session
+	coaching := s.coachName
+	if coaching == "" {
+		coaching = "Someone"
+	}
+	switch action {
+	case "pick", "start":
+		// One session per voice channel: the refusal names who has it, so
+		// the rider knows whom to ask rather than only that they cannot.
+		if s.open() && s.coach != rider.ID {
+			return "conflict", coaching + " is coaching a session in this channel — one runs here at a time."
+		}
+		// The close snapshots the session on the tick after it ends; a pick
+		// in between would replace it before its rides were handed over.
+		if action == "pick" && s.phase == "done" && !rm.saved {
+			return "conflict", "The last session is still being saved — try again in a second."
+		}
+	case "end":
+		if s.open() && s.coach != rider.ID && !rider.Administers() {
+			return "forbidden", "Only the session's coach, or the crew's owner or an admin, can end it."
+		}
+	default: // pause, resume, handoff, and the game and sprint buttons
+		if s.open() && s.coach != rider.ID {
+			return "forbidden", coaching + " is coaching this session — only the coach can do that."
+		}
+		// ponytail: a game or a sprint with no session open is anyone's, as
+		// a game never opened a session; tie games to a session if a second
+		// rider ending someone's game becomes a complaint.
+		if !s.open() && (action == "pause" || action == "resume" || action == "handoff") {
+			return "invalid_request", "No session is running in this channel."
+		}
+	}
+	return "", ""
+}
+
+// handOffLocked gives the session to someone in the channel (#2438): a light,
+// live action, never a crew-role change. Caller holds rm.mu and has checked
+// that from is the coach.
+func (rm *room) handOffLocked(from, to string) (code, message string) {
+	name := rm.nameOfLocked(to)
+	if to == from || name == "" {
+		return "invalid_request", "Hand the session to someone in the channel."
+	}
+	rm.session.coach, rm.session.coachName = to, name
+	return "", ""
 }

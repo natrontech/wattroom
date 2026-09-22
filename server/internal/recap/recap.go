@@ -11,7 +11,6 @@ package recap
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -52,29 +51,36 @@ func New(st *store.Store, log *slog.Logger) *Service {
 func (s *Service) SetLive(l Live) { s.live = l }
 
 // SaveRecap implements hub.RecapKeeper: write the row, hand it back to the
-// room with the id the store gave it. Called on its own goroutine from the
-// tick, so this owns its budget and never blocks a room.
-func (s *Service) SaveRecap(channel string, rec protocol.SessionRecap) {
+// channel with the id the store gave it. Called on its own goroutine from the
+// tick, so this owns its budget and never blocks a channel.
+func (s *Service) SaveRecap(channel, session string, rec protocol.SessionRecap) {
 	riders, err := json.Marshal(rec.Riders)
 	if err != nil {
 		s.log.Error("recap riders encode", "err", err, "channel", channel)
 		return
 	}
+	channelID, err := store.ParseUUID(channel)
+	if err != nil {
+		s.log.Error("recap channel id", "err", err, "channel", channel)
+		return
+	}
+	sessionID, err := store.ParseUUID(session)
+	if err != nil {
+		s.log.Error("recap session id", "err", err, "channel", channel, "session", session)
+		return
+	}
 	// Retried like the ride save (#235): a database blip at session close
-	// used to lose the card for good — the room was already marked saved,
+	// used to lose the card for good — the channel was already marked saved,
 	// and ADR-0034 promises one recap per session (audit 2026-09-09). The
-	// write is an upsert on (room, started_at), so a retry after a lost
-	// answer lands on the row it already made.
+	// write is an upsert on the session's id (#2438), so a retry after a
+	// lost answer lands on the row it already made.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	var id pgtype.UUID
 	err = retry.Do(ctx, s.log, "session recap "+channel, 5, time.Second, 5*time.Second, func(ctx context.Context) error {
-		room, err := s.store.RoomOfVoiceChannel(ctx, channel)
-		if err != nil {
-			return fmt.Errorf("room lookup: %w", err)
-		}
 		row, err := s.store.Queries.SaveSessionRecap(ctx, db.SaveSessionRecapParams{
-			RoomID:    room.ID,
+			ChannelID: channelID,
+			SessionID: sessionID,
 			Workout:   rec.Workout,
 			StartedAt: stamp(rec.StartedAt),
 			EndedAt:   stamp(rec.EndedAt),
@@ -87,7 +93,7 @@ func (s *Service) SaveRecap(channel string, rec protocol.SessionRecap) {
 		return nil
 	})
 	if err != nil {
-		s.log.Error("save recap failed, recap lost", "err", err, "channel", channel)
+		s.log.Error("save recap failed, recap lost", "err", err, "channel", channel, "session", session)
 		return
 	}
 	rec.ID = store.UUIDString(id)
