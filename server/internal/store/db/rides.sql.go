@@ -487,7 +487,7 @@ func (q *Queries) ForgetRemoteActivityIds(ctx context.Context, arg ForgetRemoteA
 }
 
 const getRide = `-- name: GetRide :one
-select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note,
+select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note, r.crew_id, r.channel_id, r.session_id,
        coalesce(rm.slug, '')::text as room_slug,
        coalesce(rm.name, '')::text as room_name
 from rides r
@@ -522,6 +522,9 @@ type GetRideRow struct {
 	Last20mHr       *int16
 	Rpe             *int16
 	Note            *string
+	CrewID          pgtype.UUID
+	ChannelID       pgtype.UUID
+	SessionID       pgtype.UUID
 	RoomSlug        string
 	RoomName        string
 }
@@ -555,6 +558,9 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.Last20mHr,
 		&i.Rpe,
 		&i.Note,
+		&i.CrewID,
+		&i.ChannelID,
+		&i.SessionID,
 		&i.RoomSlug,
 		&i.RoomName,
 	)

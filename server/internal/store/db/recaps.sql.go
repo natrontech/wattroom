@@ -77,7 +77,7 @@ select r.id, r.workout, r.started_at, r.ended_at, r.riders,
          order by ride.started_at
          limit 1) as my_ride_id
 from (
-    select id, room_id, workout, started_at, ended_at, riders, created_at from session_recaps
+    select id, room_id, workout, started_at, ended_at, riders, created_at, crew_id, channel_id, session_id from session_recaps
     where room_id = $1
     order by ended_at desc
     limit $2
