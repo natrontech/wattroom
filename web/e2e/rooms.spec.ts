@@ -12,6 +12,15 @@ test('a fresh user starts their first crew through the UI', async ({
 	page,
 	rooms,
 }) => {
+	// Fresh for real: the crew a run founds is never swept — a crew with
+	// channels is not empty (#2493) — so the last run's rider, and the crew
+	// only they were in, go first. Deleting the account is SPEC's one way a
+	// crew ends, and it keeps a failed run from counting against the cap.
+	await signInAs(page, 'Smoke Crew Owner', '/home');
+	const purged = await page.evaluate(() =>
+		fetch('/api/me', { method: 'DELETE' }).then((res) => res.status),
+	);
+	expect(purged, 'could not start from a fresh rider').toBeLessThan(300);
 	await signInAs(page, 'Smoke Crew Owner', '/home');
 
 	const name = `Smoke Test Crew ${Date.now() % 100000}`;
@@ -35,9 +44,7 @@ test('a fresh user starts their first crew through the UI', async ({
 	);
 	expect(channels).toEqual(['text:Lounge', 'voice:Lounge']);
 
-	// Somewhere to ride until the voice channel has a page of its own: the
-	// crew's first room, from its own page. The room's teardown takes the
-	// crew with it — nobody else is in it (#1935).
+	// A room, from the crew's own page — the fixture takes it back.
 	await page.getByRole('button', { name: 'Open a room here' }).first().click();
 	const sheet = page.getByRole('dialog', { name: 'Open a room' });
 	await sheet.locator('#open-room-name-sheet').fill(name);

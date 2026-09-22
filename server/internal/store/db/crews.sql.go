@@ -145,8 +145,10 @@ const crewGoesWithRoom = `-- name: CrewGoesWithRoom :one
 select (
     not exists (select 1 from rooms r
                 where r.crew_id = $1 and r.id <> $2)
+    and not exists (select 1 from channels ch where ch.crew_id = $1)
     and not exists (select 1 from crew_roles cr
-                    where cr.crew_id = $1 and cr.role in ('member', 'admin'))
+                    where cr.crew_id = $1 and cr.role in ('member', 'admin')
+                      and cr.user_id <> (select c.owner_id from crews c where c.id = $1))
 )::boolean
 `
 
@@ -203,8 +205,10 @@ func (q *Queries) DeleteCrew(ctx context.Context, id pgtype.UUID) error {
 const deleteCrewIfEmpty = `-- name: DeleteCrewIfEmpty :execrows
 delete from crews where crews.id = $1
   and not exists (select 1 from rooms r where r.crew_id = $1)
+  and not exists (select 1 from channels ch where ch.crew_id = $1)
   and not exists (select 1 from crew_roles cr
-                  where cr.crew_id = $1 and cr.role in ('member', 'admin'))
+                  where cr.crew_id = $1 and cr.role in ('member', 'admin')
+                    and cr.user_id <> crews.owner_id)
 `
 
 // A crew with nothing left in it goes (#1935), which is ADR-0038's second
@@ -223,6 +227,13 @@ delete from crews where crews.id = $1
 // A `banned` row does not save a crew. It is not somebody who is IN the crew
 // — CountCrewMembers counts these same two roles — and a ban outliving every
 // room would be the whole bug again for any owner who ever banned anyone.
+//
+// A crew with a channel is never empty (#2493, ADR-0058): its channels and
+// their history are what it holds now, and M9's SPEC deletes a crew only on
+// succession with nobody left. That is every crew since the channels
+// migration, so this sweep now reaches only a crew whose channels were all
+// deleted — and it goes with the rooms package (#2446). The owner's own row
+// is their switches (SetCrewPrefs), not somebody else in the crew.
 func (q *Queries) DeleteCrewIfEmpty(ctx context.Context, crewID pgtype.UUID) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteCrewIfEmpty, crewID)
 	if err != nil {
@@ -964,8 +975,10 @@ select c.id, c.name, c.icon,
        -- who cannot leave at all.
        (c.owner_id <> $1
         and not exists (select 1 from rooms r where r.crew_id = c.id)
+        and not exists (select 1 from channels ch where ch.crew_id = c.id)
         and not exists (select 1 from crew_roles cr
                         where cr.crew_id = c.id and cr.user_id <> $1
+                          and cr.user_id <> c.owner_id
                           and cr.role in ('member', 'admin')))::boolean as last_out
 from crews c
 where c.owner_id = $1

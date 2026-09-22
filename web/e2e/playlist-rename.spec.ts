@@ -25,6 +25,22 @@ test('only a rider who may rename a room playlist can open its name', async ({
 
 	const a = await riders(A);
 	const room = await rooms.open(a, `Playlist Gate ${Date.now() % 100000}`);
+	// The crew outlives the run (a crew with channels is never swept, #2493),
+	// and so does its shelf: the last run's playlist goes first, or the row
+	// below is two rows.
+	await a.evaluate(
+		async ([crewId, name]) => {
+			const body = await fetch(`/api/crews/${crewId}/playlists`).then((res) =>
+				res.json(),
+			);
+			for (const list of body.playlists as { id: string; name: string }[])
+				if (list.name === name)
+					await fetch(`/api/crews/${crewId}/playlists/${list.id}`, {
+						method: 'DELETE',
+					});
+		},
+		[room.crew, PLAYLIST],
+	);
 	const made = await a.evaluate(
 		async ([crewId, name]) => {
 			const res = await fetch(`/api/crews/${crewId}/playlists`, {

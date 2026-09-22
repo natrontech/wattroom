@@ -65,6 +65,26 @@ func (h *harness) banFromCrew(t *testing.T, crew db.GetCrewRow, who string) {
 	}
 }
 
+// stripChannels takes a crew back to before it had channels — since ADR-0058
+// the only kind of crew the empty sweep still reaches (#2493), because a
+// channel is something left in it.
+func (h *harness) stripChannels(t *testing.T, crew db.GetCrewRow) {
+	t.Helper()
+	if _, err := h.store.Pool.Exec(t.Context(), "delete from channels where crew_id = $1", crew.ID); err != nil {
+		t.Fatalf("strip the crew's channels: %v", err)
+	}
+}
+
+// ownSwitches is the crew owner setting their own notify and board switches,
+// which writes them a row of their own (SetCrewPrefs).
+func (h *harness) ownSwitches(t *testing.T, who string, crew db.GetCrewRow) {
+	t.Helper()
+	path := "/api/crews/" + store.UUIDString(crew.ID) + "/me"
+	if status, body := h.call(t, who, http.MethodPatch, path, `{"notify":false,"onBoard":false}`); status != http.StatusOK {
+		t.Fatalf("%s setting their own switches: %d %v", who, status, body)
+	}
+}
+
 var crewEndStates = []struct {
 	name string
 	// Everything in the crew besides the room the test then deletes.
@@ -115,6 +135,15 @@ var crewEndStates = []struct {
 		goes: true,
 	},
 	{
+		// #2493: the owner's switches are a row on them, not somebody else in
+		// the crew, and they kept the crew standing.
+		name: "the owner's own switches are the only row",
+		setup: func(t *testing.T, h *harness, slug, code string, crew db.GetCrewRow) {
+			h.ownSwitches(t, "alice", crew)
+		},
+		goes: true,
+	},
+	{
 		name: "another room of the crew is still there",
 		setup: func(t *testing.T, h *harness, slug, code string, crew db.GetCrewRow) {
 			h.createRoom(t, "alice", "Crew Second Room")
@@ -143,6 +172,7 @@ func TestACrewGoesWithItsLastRoomWhenNothingIsLeftInIt(t *testing.T) {
 			if tc.setup != nil {
 				tc.setup(t, h, slug, code, crew)
 			}
+			h.stripChannels(t, crew)
 
 			// What the confirm is told, before the button is drawn.
 			if told, _ := h.goesWithRoom(t, "alice", slug); told != tc.goes {
@@ -221,5 +251,45 @@ func TestDeletingARoomRefusesEveryoneButItsOwner(t *testing.T) {
 	}
 	if status, body := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug, ""); status != http.StatusNoContent {
 		t.Fatalf("the owner deleting it: %d %v", status, body)
+	}
+}
+
+// A crew with a channel is never swept (#2493, ADR-0058): its channels and
+// their history are what it holds now. Before this, a crew started with
+// "Start a crew" (#2480) went — channels, chat and all — the moment its only
+// other member left, or its owner deleted the one room opened in it.
+func TestACrewWithChannelsOutlivesItsLastRoomAndItsLastMember(t *testing.T) {
+	h := setup(t)
+	id := h.found(t, "alice", "Kept Crew")
+	crewID, err := store.ParseUUID(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	crew := db.GetCrewRow{ID: crewID}
+
+	status, body := h.call(t, "alice", http.MethodPost, "/api/rooms", `{"name":"Kept Room","crewId":"`+id+`"}`)
+	if status != http.StatusCreated {
+		t.Fatalf("open a room in the crew: %d %v", status, body)
+	}
+	slug, _ := body["slug"].(string)
+	if told, _ := h.goesWithRoom(t, "alice", slug); told {
+		t.Error("the delete confirm says the crew goes with the room")
+	}
+	h.deleteRoom(t, "alice", slug)
+	if h.crewGone(t, crew) {
+		t.Fatal("the crew went with the last room opened in it")
+	}
+
+	_, read := h.call(t, "alice", http.MethodGet, "/api/crews/"+id, "")
+	code, _ := read["code"].(string)
+	h.joinCrew(t, "bob", code)
+	if told, listed := h.lastOut(t, "bob", crew); told || !listed {
+		t.Errorf("bob's crew.lastOut = %v (listed %v): his leave does not end the crew", told, listed)
+	}
+	if status, body := h.call(t, "bob", http.MethodPost, "/api/crews/"+id+"/leave", ""); status != http.StatusNoContent {
+		t.Fatalf("bob leaving: %d %v", status, body)
+	}
+	if h.crewGone(t, crew) {
+		t.Fatal("the crew went with its only other member")
 	}
 }
