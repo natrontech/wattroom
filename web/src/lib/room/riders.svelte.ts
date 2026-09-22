@@ -95,7 +95,9 @@ export function createRiders(deps: RiderDeps) {
 				ftp: rider.ftpWatts,
 				kg: rider.weightKg,
 				you,
-				coach: rider.role !== 'member',
+				// The session's coach, not a crew role (#2438): being the crew's
+				// owner or an admin does not make anyone coach.
+				coach: rider.id === tick.state.coach,
 				cameraOn: !!deps.av.videoOf[rider.id],
 				sharing: deps.av.stageSources.some(
 					(source) => source.kind === 'screen' && source.id === rider.id,

@@ -97,9 +97,6 @@ func (c *client) ping() int {
 // allowlisted: which reactions a room speaks is its owner's palette (#223),
 // enforced client-side. The wire only guarantees a reaction can't smuggle chat.
 
-// canControl is the SPEC roles matrix row "pick workout / start / pause / end".
-func canControl(role string) bool { return role == "owner" || role == "coach" }
-
 // HandleWS upgrades the connection and pumps messages until the client leaves.
 // Membership is the price of entry: metrics are room-scoped (privacy is
 // architecture), so an unauthorized socket never reaches a room at all.
@@ -334,10 +331,11 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			h.log.Debug("backfill received", "channel", channel, "rider", rider.ID, "samples", len(samples))
 		}
 		if msg.Control != nil {
-			// The role on THIS socket, not the copy captured when it opened:
-			// a promotion mid-session has to land without a reconnect.
-			if !canControl(rm.roleOf(c)) {
-				h.writeError(c, "forbidden", "Only the owner or a coach controls the session.")
+			// The rider on THIS socket, not the copy captured when it opened:
+			// a crew role change mid-session has to land without a reconnect.
+			rider := rm.riderOf(c)
+			if code, refusal := rm.refusal(msg.Control.Action, rider); code != "" {
+				h.writeError(c, code, refusal)
 				continue
 			}
 			if msg.Control.Action == "game" {
@@ -353,7 +351,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if msg.Control.Action == "sprint" {
-				// Arm sprint moments: owner/coach (matrix), only mid-session.
+				// Arm sprint moments: the coach's (matrix), only mid-session.
 				if rm.armIfRunning(h.now()) {
 					continue
 				}
@@ -366,8 +364,8 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 			}
-			if !rm.control(*msg.Control, rider.ID, h.now()) {
-				h.writeError(c, "invalid_request", "That does not work right now — the session is in another phase.")
+			if code, refusal := rm.control(*msg.Control, rider, h.now()); code != "" {
+				h.writeError(c, code, refusal)
 			}
 		}
 	}

@@ -409,8 +409,8 @@ func (rm *room) handOff(log *slog.Logger, now func() time.Time, saver SessionSav
 	// On its own goroutine because this one reaches the database: the keeper
 	// writes the row and posts it back for the next tick to carry (ADR-0034).
 	if end.recap != nil {
-		channel := rm.channel
-		rm.detach(log, "session recap "+channel, func() { end.recaps.SaveRecap(channel, *end.recap) })
+		channel, session := rm.channel, end.meta.ID
+		rm.detach(log, "session recap "+channel, func() { end.recaps.SaveRecap(channel, session, *end.recap) })
 	}
 }
 
@@ -518,7 +518,7 @@ func (rm *room) scoreSprintLocked(now time.Time) (*protocol.SprintState, string)
 // closedLocked is the session as the XpKeeper hears it (#467): everyone who
 // rode, everyone who was in voice, and who pressed start. Caller holds rm.mu.
 func (rm *room) closedLocked(state protocol.SessionState, now time.Time) *SessionClosed {
-	ev := &SessionClosed{Channel: rm.channel, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
+	ev := &SessionClosed{Channel: rm.channel, SessionID: state.ID, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
 	for _, id := range rm.seenOrder {
 		ev.Riders = append(ev.Riders, SessionRider{
 			ID: id, Rode: rm.record.count(id) >= MinRideSamples,

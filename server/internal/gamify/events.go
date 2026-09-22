@@ -65,7 +65,13 @@ func (s *Service) sessionClosed(ctx context.Context, ev hub.SessionClosed) {
 			rode++
 		}
 	}
-	ref := ev.Channel + "@" + millis(ev.At)
+	// Keyed by the session (#2438): one ledger row per rider per session,
+	// whatever channel it ran in. The channel-and-instant key stands for a
+	// session with no id, which only a hub built without one hands over.
+	ref := ev.SessionID
+	if ref == "" {
+		ref = ev.Channel + "@" + millis(ev.At)
+	}
 	if rode >= groupSessionRiders && ev.Seconds >= groupSessionMinSec {
 		for _, r := range ev.Riders {
 			if r.VoiceSeconds*2 >= ev.Seconds {

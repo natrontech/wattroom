@@ -110,7 +110,10 @@
 		live.tick?.roster.find((rider) => rider.id === account.me?.id)?.role ??
 			props.role,
 	);
-	const canControl = $derived(myRole === 'owner' || myRole === 'coach');
+	// The session's coach drives it (#2438): whoever opened it, until they
+	// hand it off. With none open, anyone here may open one with a pick.
+	const coach = $derived(live.tick?.state.coach);
+	const canControl = $derived(coach ? coach === account.me?.id : true);
 
 	// Banning is reversible (Unban sets the role right back), so it gets an
 	// undo toast rather than a confirm dialog (errors.md) — same pattern as

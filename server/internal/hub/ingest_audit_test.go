@@ -37,10 +37,10 @@ func TestValidMetricsBounds(t *testing.T) {
 func TestARefusedStartKeepsTheRecord(t *testing.T) {
 	rm := newRoom("test")
 	t0 := time.Unix(1000, 0)
-	if !rm.control(protocol.Control{Action: "pick", WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"steady","seconds":600,"target":0.8}]}`, TotalSeconds: 600}, "jan", t0) {
+	if !ran(rm.control(protocol.Control{Action: "pick", WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"steady","seconds":600,"target":0.8}]}`, TotalSeconds: 600}, as("jan"), t0)) {
 		t.Fatal("pick refused")
 	}
-	if !rm.control(protocol.Control{Action: "start"}, "jan", t0) {
+	if !ran(rm.control(protocol.Control{Action: "start"}, as("jan"), t0)) {
 		t.Fatal("start refused")
 	}
 	// The tick is what moves the countdown on; stand in for it.
@@ -50,7 +50,7 @@ func TestARefusedStartKeepsTheRecord(t *testing.T) {
 	if record := rm.record.byRider["jan"]; record == nil || len(record.samples) != 1 {
 		t.Fatalf("recorded %v before the second start, want 1 sample", record)
 	}
-	if rm.control(protocol.Control{Action: "start"}, "jan", t0.Add(31*time.Second)) {
+	if ran(rm.control(protocol.Control{Action: "start"}, as("jan"), t0.Add(31*time.Second))) {
 		t.Fatal("a second start while running was accepted")
 	}
 	if got := len(rm.record.byRider["jan"].samples); got != 1 {

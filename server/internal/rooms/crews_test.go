@@ -165,7 +165,8 @@ func TestACrewRoleReachesOpenSockets(t *testing.T) {
 		fmt.Sprintf(`{"userId":%q,"role":"admin"}`, bob)); status != http.StatusNoContent {
 		t.Fatalf("promote: %d", status)
 	}
-	want := []string{h.voiceOf(t, first) + "/" + bob + "/coach", h.voiceOf(t, second) + "/" + bob + "/coach"}
+	// The crew's word for it (#2438): coach is the session's, not a role.
+	want := []string{h.voiceOf(t, first) + "/" + bob + "/admin", h.voiceOf(t, second) + "/" + bob + "/admin"}
 	slices.Sort(roles.roles)
 	slices.Sort(want)
 	if !slices.Equal(roles.roles, want) {

@@ -203,7 +203,7 @@ type recapCatcher struct {
 	rows []protocol.SessionRecap
 }
 
-func (c *recapCatcher) SaveRecap(_ string, rec protocol.SessionRecap) {
+func (c *recapCatcher) SaveRecap(_, _ string, rec protocol.SessionRecap) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.rows = append(c.rows, rec)
@@ -235,7 +235,7 @@ func tickingRoom(t *testing.T, riders ...string) (rm *room, saved *recapCatcher,
 // coach drives the session the way a coach's socket does.
 func coach(t *testing.T, rm *room, c protocol.Control) {
 	t.Helper()
-	if !rm.control(c, "jan", time.Now()) {
+	if !ran(rm.control(c, as("jan"), time.Now())) {
 		t.Fatalf("the session refused %q", c.Action)
 	}
 }

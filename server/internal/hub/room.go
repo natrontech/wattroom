@@ -237,12 +237,19 @@ func newRoom(channel string) *room {
 	}
 }
 
-// roleOf reads a client's current role under the room lock — SetRole can
-// change it while that client's read loop is blocked on the next message.
-func (rm *room) roleOf(c *client) string {
+// riderOf reads a client's rider under the room lock — SetRole can change
+// its role while that client's read loop is blocked on the next message.
+func (rm *room) riderOf(c *client) protocol.Rider {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	return c.rider.Role
+	return c.rider
+}
+
+// refusal is refusalLocked for a caller that does not hold the lock.
+func (rm *room) refusal(action string, rider protocol.Rider) (code, message string) {
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	return rm.refusalLocked(action, rider)
 }
 
 func (rm *room) join(c *client) {

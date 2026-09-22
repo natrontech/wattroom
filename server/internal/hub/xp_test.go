@@ -86,10 +86,10 @@ func TestSessionClosedNamesRidersAndListeners(t *testing.T) {
 	rm := newRoom("velvet")
 	rm.xp = &fakeXp{}
 	t0 := time.Unix(1000, 0)
-	if !rm.control(protocol.Control{Action: "pick", WorkoutName: "w", WorkoutJSON: "{}", TotalSeconds: 60}, "coach", t0) {
+	if !ran(rm.control(protocol.Control{Action: "pick", WorkoutName: "w", WorkoutJSON: "{}", TotalSeconds: 60}, as("coach"), t0)) {
 		t.Fatal("pick refused")
 	}
-	if !rm.control(protocol.Control{Action: "start"}, "coach", t0) {
+	if !ran(rm.control(protocol.Control{Action: "start"}, as("coach"), t0)) {
 		t.Fatal("start refused")
 	}
 	rm.setVoice(map[string]struct{}{"coach": {}, "kim": {}})
@@ -122,9 +122,11 @@ func TestSessionClosedNamesRidersAndListeners(t *testing.T) {
 	}
 
 	// A new start is a new session: the voice clock starts over.
-	rm.control(protocol.Control{Action: "end"}, "coach", t0.Add(time.Minute))
-	rm.control(protocol.Control{Action: "pick", WorkoutName: "w", WorkoutJSON: "{}", TotalSeconds: 60}, "kim", t0.Add(2*time.Minute))
-	rm.control(protocol.Control{Action: "start"}, "kim", t0.Add(2*time.Minute))
+	rm.control(protocol.Control{Action: "end"}, as("coach"), t0.Add(time.Minute))
+	// The tick's close, which a new pick waits for (#2438).
+	rm.closeLocked(rm.session.state(t0.Add(time.Minute)), t0.Add(time.Minute), false)
+	rm.control(protocol.Control{Action: "pick", WorkoutName: "w", WorkoutJSON: "{}", TotalSeconds: 60}, as("kim"), t0.Add(2*time.Minute))
+	rm.control(protocol.Control{Action: "start"}, as("kim"), t0.Add(2*time.Minute))
 	ev = rm.closedLocked(protocol.SessionState{Phase: "done"}, t0.Add(3*time.Minute))
 	if ev.StartedBy != "kim" || len(ev.Riders) != 0 {
 		t.Fatalf("restart carried the old session: %+v", ev)

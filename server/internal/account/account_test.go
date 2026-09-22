@@ -192,9 +192,11 @@ func (h *harness) createRecap(t *testing.T, room pgtype.UUID, riders ...string) 
 	}
 	started := pgtype.Timestamptz{Time: startedAt, Valid: true}
 	ended := pgtype.Timestamptz{Time: endedAt, Valid: true}
-	if _, err := h.store.Queries.SaveSessionRecap(t.Context(), db.SaveSessionRecapParams{
-		RoomID: room, Workout: "Openers", StartedAt: started, EndedAt: ended, Riders: blob,
-	}); err != nil {
+	// A room-era row, straight to the table: SaveSessionRecap keys by the
+	// session since #2438, and what this reads back is the room's backlog.
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"insert into session_recaps (room_id, workout, started_at, ended_at, riders) values ($1, $2, $3, $4, $5)",
+		room, "Openers", started, ended, blob); err != nil {
 		t.Fatalf("save recap: %v", err)
 	}
 }

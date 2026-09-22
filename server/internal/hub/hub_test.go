@@ -72,17 +72,6 @@ func TestLeaveRemovesMetrics(t *testing.T) {
 	}
 }
 
-func TestControlNeedsRole(t *testing.T) {
-	// The role check lives in HandleWS; what the room guarantees is that a
-	// control only lands through control(), which the handler role-gates. This
-	// pins the helper the gate depends on.
-	for role, want := range map[string]bool{"owner": true, "coach": true, "member": false, "": false} {
-		if got := canControl(role); got != want {
-			t.Errorf("canControl(%q) = %v", role, got)
-		}
-	}
-}
-
 func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	// The crash-safety property (#19): live samples and a reconnect's replay
 	// arrive through different doors but land in one record, deduped by seq —
@@ -123,9 +112,9 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 
 	// A new session is a new ride — a start the running session refuses
 	// resets nothing (audit 2026-09-09), so end it and pick again first.
-	rm.control(protocol.Control{Action: "end"}, "jan", time.Unix(100, 0))
+	rm.control(protocol.Control{Action: "end"}, as("jan"), time.Unix(100, 0))
 	rm.session.pick("Openers", "{}", 600)
-	if !rm.control(protocol.Control{Action: "start"}, "jan", time.Unix(101, 0)) {
+	if !ran(rm.control(protocol.Control{Action: "start"}, as("jan"), time.Unix(101, 0))) {
 		t.Fatal("the restart was refused")
 	}
 	if got := rm.record.count("jan"); got != 0 {
