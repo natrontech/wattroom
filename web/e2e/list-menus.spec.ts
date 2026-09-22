@@ -114,11 +114,24 @@ test("a conversation's row offers the person's menu, and a ride's its verbs", as
 		.locator('li')
 		.filter({ has: a.locator('a[href="/history/list-menus-ride"]') });
 	await expect(ride).toBeVisible({ timeout: 15_000 });
-	// Let the scroll to the row finish first: a menu closes on a scroll that
-	// moves what it is anchored to (#500), and the scroll Playwright does to
-	// reach a row this far down a phone's Home is exactly that.
+	// Let the row stop moving first: a menu closes on a scroll that moves
+	// what it is anchored to (#500) — Playwright's own scroll to a row this far
+	// down a phone's Home, or a section above it landing late. A fixed wait
+	// guessed at both and lost under load (#2504): "Share with friends" was
+	// found, then the menu closed before "Delete ride" was.
 	await ride.scrollIntoViewIfNeeded();
-	await a.waitForTimeout(400);
+	let last = '';
+	await expect
+		.poll(
+			async () => {
+				const box = JSON.stringify(await ride.boundingBox());
+				const still = box === last;
+				last = box;
+				return still;
+			},
+			{ intervals: [250], message: 'the ride row never stopped moving' },
+		)
+		.toBe(true);
 	await ride.click({ button: 'right' });
 	await expect(
 		a.getByRole('menuitem', { name: 'Share with friends' }),
