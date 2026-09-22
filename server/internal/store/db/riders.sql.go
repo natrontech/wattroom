@@ -300,8 +300,8 @@ type SharesChannelOrFriendsParams struct {
 }
 
 // ADR-0024's audience for a rider's page, as ONE question (#2298). A channel
-// both may enter (ADR-0058), an accepted friendship, a pending request from them — or the
-// rider themselves.
+// both may enter (ADR-0058), an accepted friendship, a pending request from
+// them — or the rider themselves.
 //
 // Both routes that serve this audience ask THIS: riders.handleGet for the
 // page, gamify.handleRider for the trophy case on it. They used to decide it
