@@ -312,7 +312,7 @@ func (q *Queries) ListChatReactions(ctx context.Context, arg ListChatReactionsPa
 const listRoomChat = `-- name: ListRoomChat :many
 select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at, m.edited_at
 from (
-    select id, room_id, user_id, text, created_at, image_id, edited_at from chat_messages
+    select id, room_id, user_id, text, created_at, image_id, edited_at, channel_id from chat_messages
     where room_id = $1
     order by created_at desc, id desc
     limit $2
