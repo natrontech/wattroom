@@ -51,7 +51,7 @@ func (s *Service) handleMine(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if s.presence != nil {
-			entry.RoomPresence = s.presence.Presence(room.Slug)
+			entry.RoomPresence = s.presence.Presence(store.UUIDString(room.VoiceChannelID))
 		}
 		// Standing in a room is reading it: a badge on the room you are looking
 		// at is noise, and handleGet has already stamped it read. By id, not

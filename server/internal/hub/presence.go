@@ -10,11 +10,11 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
-// occupied is the room at slug if anyone is connected to it — never creating
+// occupied is the room at channel if anyone is connected to it — never creating
 // one, unlike room(): an HTTP post must not start a ticker for nobody.
-func (h *Hub) occupied(slug string) *room {
+func (h *Hub) occupied(channel string) *room {
 	h.mu.Lock()
-	rm, ok := h.rooms[slug]
+	rm, ok := h.rooms[channel]
 	h.mu.Unlock()
 	if !ok {
 		return nil
@@ -27,15 +27,15 @@ func (h *Hub) occupied(slug string) *room {
 	return rm
 }
 
-func (h *Hub) Presence(slug string) protocol.RoomPresence {
+func (h *Hub) Presence(channel string) protocol.RoomPresence {
 	h.mu.Lock()
-	rm, ok := h.rooms[slug]
+	rm, ok := h.rooms[channel]
 	p := protocol.RoomPresence{Phase: "idle", Voice: make([]string, 0, 4)}
 	// Fold by rider, not by connection: two tabs are one person on the radar,
 	// and a camera live in either of them is that person on camera (#293).
-	names := make(map[string]string, len(h.voice[slug]))
-	cameras := make(map[string]bool, len(h.voice[slug]))
-	for _, entry := range h.voice[slug] {
+	names := make(map[string]string, len(h.voice[channel]))
+	cameras := make(map[string]bool, len(h.voice[channel]))
+	for _, entry := range h.voice[channel] {
 		names[entry.rider] = entry.name
 		cameras[entry.rider] = cameras[entry.rider] || entry.camera
 	}
@@ -110,8 +110,8 @@ func (h *Hub) WhereIs(userIDs []string) map[string]string {
 	out := make(map[string]string, len(userIDs))
 	h.mu.Lock()
 	rooms := make(map[string]*room, len(h.rooms))
-	for slug, rm := range h.rooms {
-		rooms[slug] = rm
+	for channel, rm := range h.rooms {
+		rooms[channel] = rm
 	}
 	for _, id := range h.lobby {
 		if _, ok := wanted[id]; ok {
@@ -120,11 +120,11 @@ func (h *Hub) WhereIs(userIDs []string) map[string]string {
 	}
 	h.mu.Unlock()
 
-	for slug, rm := range rooms {
+	for channel, rm := range rooms {
 		rm.mu.Lock()
 		for c := range rm.clients {
 			if _, ok := wanted[c.rider.ID]; ok {
-				out[c.rider.ID] = slug
+				out[c.rider.ID] = channel
 			}
 		}
 		rm.mu.Unlock()

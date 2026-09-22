@@ -23,11 +23,11 @@ import (
 )
 
 // Access is the same authorization the hub consumes — one membership door for
-// metrics and AV alike. The LiveKit room is named after the canonical slug it
+// metrics and AV alike. The LiveKit room is named after the canonical channel it
 // returns, so the voice radar and the hub's room agree on the name whatever
 // casing the link carried (#639).
 type Access interface {
-	Authorize(r *http.Request, slug string) (rider protocol.Rider, canonical string, err error)
+	Authorize(r *http.Request, channel string) (rider protocol.Rider, canonical string, err error)
 }
 
 // ErrNoSession is what Authorize returns (wrapped or bare) for a request with
@@ -85,11 +85,11 @@ func New(cfg Config, access Access, log *slog.Logger) *Service {
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/rooms/{slug}/av-token", s.handleToken)
+	mux.HandleFunc("GET /api/channels/{id}/av-token", s.HandleToken)
 }
 
-func (s *Service) handleToken(w http.ResponseWriter, r *http.Request) {
-	rider, slug, err := s.access.Authorize(r, r.PathValue("slug"))
+func (s *Service) HandleToken(w http.ResponseWriter, r *http.Request) {
+	rider, channel, err := s.access.Authorize(r, r.PathValue("id"))
 	if err != nil {
 		// errors.md: 401 says "sign in again", 403 says "not yours" — one
 		// collapsed 403 left the rider guessing which (#642).
@@ -100,15 +100,15 @@ func (s *Service) handleToken(w http.ResponseWriter, r *http.Request) {
 		}
 		if errors.Is(err, ErrNotMember) {
 			httpx.WriteError(w, http.StatusForbidden, "forbidden",
-				"Voice and camera are for the room's members — you are not one any more.")
+				"Voice and camera are for the people this channel admits — you are not one any more.")
 			return
 		}
-		httpx.Fail(w, s.log, "av token authorize", err, "The call could not be set up. Try again.", "room", r.PathValue("slug"))
+		httpx.Fail(w, s.log, "av token authorize", err, "The call could not be set up. Try again.", "channel", r.PathValue("id"))
 		return
 	}
-	token, err := s.mint(slug, rider)
+	token, err := s.mint(channel, rider)
 	if err != nil {
-		httpx.Fail(w, s.log, "av token mint failed", err, "The call could not be set up. Try again.", "room", slug)
+		httpx.Fail(w, s.log, "av token mint failed", err, "The call could not be set up. Try again.", "channel", channel)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{
@@ -138,7 +138,7 @@ type claims struct {
 // mint builds the LiveKit JWT by hand: HS256 over two base64url JSON blobs is
 // ~30 lines of stdlib, against the livekit/protocol module's whole tree
 // (stdlib-first is the locked rule; the claim shape is pinned by test).
-func (s *Service) mint(slug string, rider protocol.Rider) (string, error) {
+func (s *Service) mint(channel string, rider protocol.Rider) (string, error) {
 	now := s.now()
 	// Per connection, not per rider (#293) — two tabs must be two participants.
 	identity, err := newIdentity(rider.ID)
@@ -155,7 +155,7 @@ func (s *Service) mint(slug string, rider protocol.Rider) (string, error) {
 		// not up to six hours later.
 		Exp: now.Add(joinTokenTTL).Unix(),
 		Video: videoGrant{
-			Room: slug, RoomJoin: true, CanPublish: true, CanSubscribe: true,
+			Room: channel, RoomJoin: true, CanPublish: true, CanSubscribe: true,
 		},
 	})
 }
@@ -186,11 +186,11 @@ func (s *Service) sign(payload claims) (string, error) {
 // roomAPI posts one twirp RoomService call with a fresh room-admin token —
 // the hand-rolled shape under Eject and the voice reconciler (stdlib-first:
 // one POST against pulling in the LiveKit server SDK). Callers close the body.
-func (s *Service) roomAPI(ctx context.Context, method, slug string, payload any) (*http.Response, error) {
+func (s *Service) roomAPI(ctx context.Context, method, channel string, payload any) (*http.Response, error) {
 	now := s.now()
 	token, err := s.sign(claims{
 		Iss: s.cfg.Key, Sub: s.cfg.Key, Nbf: now.Unix(), Exp: now.Add(time.Minute).Unix(),
-		Video: videoGrant{Room: slug, RoomAdmin: true},
+		Video: videoGrant{Room: channel, RoomAdmin: true},
 	})
 	if err != nil {
 		return nil, err
@@ -228,7 +228,7 @@ const ejectBudget = 5 * time.Second
 // (#293), and a ban that removed only one of them would leave the banned
 // rider on camera from the other. Ask LiveKit who is actually in the room
 // and remove every connection that is theirs.
-func (s *Service) Eject(slug, userID string) {
+func (s *Service) Eject(channel, userID string) {
 	// Detached from the request context on purpose: a kick must complete even
 	// if the banning owner's request is canceled. It does run inside the ban
 	// handler though, and it is now a list plus one call per connection — so
@@ -237,34 +237,34 @@ func (s *Service) Eject(slug, userID string) {
 	// this misses, Authorize refuses at their next token.
 	ctx, cancel := context.WithTimeout(context.Background(), ejectBudget)
 	defer cancel()
-	present, ok := s.listParticipants(ctx, slug)
+	present, ok := s.listParticipants(ctx, channel)
 	if !ok {
 		// LiveKit would not say. The bare rider id is still the identity of
 		// any pre-#293 connection, so try it rather than doing nothing.
-		s.removeParticipant(ctx, slug, userID, userID)
+		s.removeParticipant(ctx, channel, userID, userID)
 		return
 	}
 	for identity := range present {
 		if RiderID(identity) == userID {
-			s.removeParticipant(ctx, slug, identity, userID)
+			s.removeParticipant(ctx, channel, identity, userID)
 		}
 	}
 }
 
-func (s *Service) removeParticipant(ctx context.Context, slug, identity, userID string) {
-	resp, err := s.roomAPI(ctx, "RemoveParticipant", slug,
-		map[string]string{"room": slug, "identity": identity})
+func (s *Service) removeParticipant(ctx context.Context, channel, identity, userID string) {
+	resp, err := s.roomAPI(ctx, "RemoveParticipant", channel,
+		map[string]string{"room": channel, "identity": identity})
 	if err != nil {
-		s.log.Warn("eject call failed", "err", err, "room", slug, "rider", userID)
+		s.log.Warn("eject call failed", "err", err, "channel", channel, "rider", userID)
 		return
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		// 404 = not in the call right now — that is the goal state, not an error.
 		if resp.StatusCode != http.StatusNotFound {
-			s.log.Warn("eject refused", "status", resp.StatusCode, "room", slug, "rider", userID)
+			s.log.Warn("eject refused", "status", resp.StatusCode, "channel", channel, "rider", userID)
 		}
 		return
 	}
-	s.log.Info("rider ejected from voice", "room", slug, "rider", userID, "identity", identity)
+	s.log.Info("rider ejected from voice", "channel", channel, "rider", userID, "identity", identity)
 }

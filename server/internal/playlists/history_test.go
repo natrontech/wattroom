@@ -78,10 +78,10 @@ func TestSmartShuffleWeighsRecencyAndSkips(t *testing.T) {
 	longAgo := h.track(t, "alice", "Played this morning")
 
 	ctx := t.Context()
-	h.svc.TrackEnded(ctx, slug, hub.Play{TrackID: skipped, QueuedBy: store.UUIDString(h.users["alice"].ID), Skipped: true})
-	h.svc.TrackEnded(ctx, slug, hub.Play{TrackID: skipped, QueuedBy: "", Skipped: true})
-	h.svc.TrackEnded(ctx, slug, hub.Play{TrackID: justPlayed, QueuedBy: "", Skipped: false})
-	h.svc.TrackEnded(ctx, slug, hub.Play{TrackID: longAgo, QueuedBy: "", Skipped: false})
+	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{TrackID: skipped, QueuedBy: store.UUIDString(h.users["alice"].ID), Skipped: true})
+	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{TrackID: skipped, QueuedBy: "", Skipped: true})
+	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{TrackID: justPlayed, QueuedBy: "", Skipped: false})
+	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{TrackID: longAgo, QueuedBy: "", Skipped: false})
 	// Age that last one past the 4 h recency window without waiting for it.
 	if _, err := h.store.Pool.Exec(ctx,
 		"update track_plays set at = now() - interval '5 hours' where track_id = $1", longAgo,
@@ -119,7 +119,7 @@ func TestSmartShuffleHistoryIsRoomScoped(t *testing.T) {
 	track := h.track(t, "alice", "Divisive")
 
 	for range 3 {
-		h.svc.TrackEnded(t.Context(), loud, hub.Play{TrackID: track, QueuedBy: "", Skipped: true})
+		h.svc.TrackEnded(t.Context(), h.voice(t, loud), hub.Play{TrackID: track, QueuedBy: "", Skipped: true})
 	}
 
 	if got := h.weights(t, loud)[track]; math.Abs(got-0.25) > 0.01 {
@@ -142,7 +142,7 @@ func TestSmartAutoplayQueuesPoolTracks(t *testing.T) {
 		t.Fatalf("set smart: %d %v", code, body)
 	}
 
-	tracks, ok := h.svc.Autoplay(t.Context(), slug, hub.SessionMood{})
+	tracks, ok := h.svc.Autoplay(t.Context(), h.voice(t, slug), hub.SessionMood{})
 	if !ok || len(tracks) == 0 {
 		t.Fatalf("smart autoplay found nothing: ok=%v tracks=%+v", ok, tracks)
 	}
@@ -209,7 +209,7 @@ func TestSmartAutoplayFollowsTheActivePlaylist(t *testing.T) {
 	}
 
 	for range 5 {
-		tracks, ok := h.svc.Autoplay(t.Context(), slug, hub.SessionMood{})
+		tracks, ok := h.svc.Autoplay(t.Context(), h.voice(t, slug), hub.SessionMood{})
 		if !ok || len(tracks) != 1 || tracks[0].TrackID != listed || tracks[0].VideoID != "" {
 			t.Fatalf("smart over a list drew %+v, want only the list's library track", tracks)
 		}
@@ -219,7 +219,7 @@ func TestSmartAutoplayFollowsTheActivePlaylist(t *testing.T) {
 	if code, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay", `{"enabled":true,"order":"smart"}`); code != 200 {
 		t.Fatalf("clear the list: %d", code)
 	}
-	tracks, ok := h.svc.Autoplay(t.Context(), slug, hub.SessionMood{})
+	tracks, ok := h.svc.Autoplay(t.Context(), h.voice(t, slug), hub.SessionMood{})
 	seen := map[string]bool{}
 	for _, cmd := range tracks {
 		seen[cmd.TrackID] = true

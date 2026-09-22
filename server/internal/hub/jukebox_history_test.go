@@ -171,10 +171,10 @@ func TestANewRoomSeedsJustPlayedFromTheLog(t *testing.T) {
 	}}
 	h.SetTrackHistory(log)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/rooms/seeded-room", "jan:owner")
+	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/seeded-room", "jan:owner")
 
 	deck := tickUntil(t, conn, "the seeded history", func(d protocol.JukeboxState) bool { return len(d.History) == 2 })
 	if deck.History[0].VideoID != "dQw4w9WgXcQ" || deck.History[0].AddedBy != "kim" || deck.History[0].ID == "" {

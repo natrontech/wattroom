@@ -34,7 +34,7 @@ const RetentionDays = 90
 // appears when the session ends rather than on their next join. Optional —
 // without it the recap is simply read from the backlog.
 type Live interface {
-	PostRecap(slug string, recap protocol.SessionRecap)
+	PostRecap(channel string, recap protocol.SessionRecap)
 }
 
 type Service struct {
@@ -54,10 +54,10 @@ func (s *Service) SetLive(l Live) { s.live = l }
 // SaveRecap implements hub.RecapKeeper: write the row, hand it back to the
 // room with the id the store gave it. Called on its own goroutine from the
 // tick, so this owns its budget and never blocks a room.
-func (s *Service) SaveRecap(slug string, rec protocol.SessionRecap) {
+func (s *Service) SaveRecap(channel string, rec protocol.SessionRecap) {
 	riders, err := json.Marshal(rec.Riders)
 	if err != nil {
-		s.log.Error("recap riders encode", "err", err, "room", slug)
+		s.log.Error("recap riders encode", "err", err, "channel", channel)
 		return
 	}
 	// Retried like the ride save (#235): a database blip at session close
@@ -68,8 +68,8 @@ func (s *Service) SaveRecap(slug string, rec protocol.SessionRecap) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 	var id pgtype.UUID
-	err = retry.Do(ctx, s.log, "session recap "+slug, 5, time.Second, 5*time.Second, func(ctx context.Context) error {
-		room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
+	err = retry.Do(ctx, s.log, "session recap "+channel, 5, time.Second, 5*time.Second, func(ctx context.Context) error {
+		room, err := s.store.RoomOfVoiceChannel(ctx, channel)
 		if err != nil {
 			return fmt.Errorf("room lookup: %w", err)
 		}
@@ -87,12 +87,12 @@ func (s *Service) SaveRecap(slug string, rec protocol.SessionRecap) {
 		return nil
 	})
 	if err != nil {
-		s.log.Error("save recap failed, recap lost", "err", err, "room", slug)
+		s.log.Error("save recap failed, recap lost", "err", err, "channel", channel)
 		return
 	}
 	rec.ID = store.UUIDString(id)
 	if s.live != nil {
-		s.live.PostRecap(slug, rec)
+		s.live.PostRecap(channel, rec)
 	}
 }
 

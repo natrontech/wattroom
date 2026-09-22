@@ -105,7 +105,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			// so — a socket may be arriving that this tick cannot see — and
 			// the next join builds a fresh room (ADR-0052's re-form path).
 			if idleFor >= roomIdleTTL && rm.forget != nil && rm.forget() {
-				logger(log).Info("room forgotten", "room", rm.slug, "idle", idleFor)
+				logger(log).Info("room forgotten", "channel", rm.channel, "idle", idleFor)
 				return
 			}
 			continue
@@ -284,10 +284,10 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 
 		rm.handOff(log, now, saver, ended)
 		if sprintWinner != "" && rm.xp != nil {
-			rm.xp.SprintWon(rm.slug, sprintWinner, now())
+			rm.xp.SprintWon(rm.channel, sprintWinner, now())
 		}
 		if gameWinner != "" && rm.xp != nil {
-			rm.xp.GameWon(rm.slug, gameWinner, rm.gameMode, now())
+			rm.xp.GameWon(rm.channel, gameWinner, rm.gameMode, now())
 		}
 
 		metricTicks.Inc()
@@ -305,7 +305,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		payload, err := json.Marshal(protocol.ServerMessage{Tick: &lean})
 		if err != nil {
 			// Half a tick is worse than none: skip the broadcast and say so.
-			logger(log).Error("tick could not be marshalled", "room", rm.slug, "err", err)
+			logger(log).Error("tick could not be marshalled", "channel", rm.channel, "err", err)
 			payload = nil
 		}
 		var full []byte
@@ -316,7 +316,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 				if c.workoutSent != tick.State.WorkoutHash {
 					if full == nil && fullErr == nil {
 						if full, fullErr = json.Marshal(protocol.ServerMessage{Tick: &tick}); fullErr != nil {
-							logger(log).Error("full tick could not be marshalled", "room", rm.slug, "err", fullErr)
+							logger(log).Error("full tick could not be marshalled", "channel", rm.channel, "err", fullErr)
 						}
 					}
 					if full != nil {
@@ -397,8 +397,8 @@ func (rm *room) handOff(log *slog.Logger, now func() time.Time, saver SessionSav
 		// The saver owns timeouts and retries (#235); the goroutine exits
 		// when its bounded retry policy returns — minutes at worst — and
 		// the hub counts it so a shutdown waits for it.
-		rm.detach(log, "session save "+rm.slug, func() {
-			saver.SaveSession(context.Background(), rm.slug,
+		rm.detach(log, "session save "+rm.channel, func() {
+			saver.SaveSession(context.Background(), rm.channel,
 				end.meta.WorkoutName, end.meta.WorkoutJSON, end.startedAt, end.records)
 		})
 	}
@@ -409,8 +409,8 @@ func (rm *room) handOff(log *slog.Logger, now func() time.Time, saver SessionSav
 	// On its own goroutine because this one reaches the database: the keeper
 	// writes the row and posts it back for the next tick to carry (ADR-0034).
 	if end.recap != nil {
-		slug := rm.slug
-		rm.detach(log, "session recap "+slug, func() { end.recaps.SaveRecap(slug, *end.recap) })
+		channel := rm.channel
+		rm.detach(log, "session recap "+channel, func() { end.recaps.SaveRecap(channel, *end.recap) })
 	}
 }
 
@@ -518,7 +518,7 @@ func (rm *room) scoreSprintLocked(now time.Time) (*protocol.SprintState, string)
 // closedLocked is the session as the XpKeeper hears it (#467): everyone who
 // rode, everyone who was in voice, and who pressed start. Caller holds rm.mu.
 func (rm *room) closedLocked(state protocol.SessionState, now time.Time) *SessionClosed {
-	ev := &SessionClosed{Slug: rm.slug, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
+	ev := &SessionClosed{Channel: rm.channel, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
 	for _, id := range rm.seenOrder {
 		ev.Riders = append(ev.Riders, SessionRider{
 			ID: id, Rode: rm.record.count(id) >= MinRideSamples,

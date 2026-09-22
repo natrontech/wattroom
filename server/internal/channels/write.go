@@ -263,6 +263,9 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "delete channel failed", err, "The channel could not be deleted.", "channel", store.UUIDString(channel.ID))
 		return
 	}
+	if channel.Kind == kindVoice && s.live != nil {
+		s.live.CloseRoom(store.UUIDString(channel.ID))
+	}
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }

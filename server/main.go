@@ -299,14 +299,15 @@ func main() {
 		if uploader != nil {
 			saver.SetUploader(uploader)
 		}
-		h := hub.New(log, roomsService, saver)
-		hubForDrain = h
-		roomsService.SetPresence(h)
 		// A crew's text and voice channels (ADR-0058). The rooms service
-		// above stays until the web has moved onto them (#2446).
+		// above stays until the web has moved onto them (#2446). Its door is
+		// the hub's: live state keys by voice channel (#2436).
 		channelsService := channels.New(st, authService, log)
 		channelsService.Register(mux)
-		channelsService.SetPinger(h)
+		h := hub.New(log, channelsService, saver)
+		hubForDrain = h
+		roomsService.SetPresence(h)
+		channelsService.SetLive(h)
 		chatService := chat.New(st, roomsService, log)
 		chatService.Register(mux)
 		// A text channel's chat (#2435), behind the channel's own gate; the
@@ -346,8 +347,10 @@ func main() {
 		ridesService.SetRideKeeper(trophies)
 		h.SetXpKeeper(trophies)
 		trophies.AccrueVoice(ctx, h)
-		friends.New(st, authService, h, log).Register(mux)
-		riders.New(st, authService, h, log).Register(mux)
+		// Both still link to rooms; the hub names voice channels (#2436).
+		roomWhere := rooms.RoomWhere{Live: h, Store: st}
+		friends.New(st, authService, roomWhere, log).Register(mux)
+		riders.New(st, authService, roomWhere, log).Register(mux)
 		// The soundboard's durable half (#877, ADR-0033): clips are personal,
 		// so the hub is what says whether a listener can hear one.
 		board.New(st, authService, h, log).Register(mux)
@@ -365,7 +368,8 @@ func main() {
 		// Link previews (#866, ADR-0031): signed-in riders only, and every
 		// outbound fetch goes through the package's own SSRF guard.
 		unfurl.New(authService, log).Register(mux)
-		mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+		mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+		mux.HandleFunc("GET /ws/rooms/{slug}", roomsService.ByRoomSlug(h.HandleWS))
 		// The lobby socket (#251): held by every signed-in client — online for
 		// friends, and the push channel that keeps the rail live.
 		h.SetLobbyAuth(func(r *http.Request) (string, bool) {
@@ -395,14 +399,16 @@ func main() {
 		// AV mounts only when LiveKit is configured — no call button that 503s.
 		if cfg, ok := av.FromEnv(); ok {
 			authService.SetAvEnabled(true)
-			avService := av.New(cfg, roomsService, log)
+			avService := av.New(cfg, channelsService, log)
 			avService.Register(mux)
+			mux.HandleFunc("GET /api/rooms/{slug}/av-token", roomsService.ByRoomSlug(avService.HandleToken))
 			avService.SetVoiceSink(h)
 			avService.RegisterWebhook(mux)
 			// Webhooks alone leak ghosts when LiveKit hard-crashes (#234).
 			avService.StartReconciler(ctx)
 			// Bans and removals eject from voice too, not just the metrics WS.
 			roomsService.SetVoiceEjector(avService)
+			channelsService.SetVoiceEjector(avService)
 		}
 	}
 	// Link previews: crawlers don't run JS, so og meta + images come from Go (#240).

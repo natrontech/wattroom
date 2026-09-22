@@ -40,23 +40,23 @@ func (s *Service) reconcile(ctx context.Context) {
 	if s.voice == nil {
 		return
 	}
-	for _, slug := range s.voice.VoiceRooms() {
+	for _, channel := range s.voice.VoiceRooms() {
 		since := s.now()
-		present, ok := s.listParticipants(ctx, slug)
+		present, ok := s.listParticipants(ctx, channel)
 		if !ok {
 			continue // LiveKit unreachable — a blip must not wipe the radar
 		}
-		s.voice.VoiceSync(slug, present, since)
+		s.voice.VoiceSync(channel, present, since)
 	}
 }
 
 // listParticipants asks LiveKit who is in the room right now. A 404 is an
 // answer — the room doesn't exist, nobody is in it. Anything else unhealthy
 // means "don't know": the caller keeps current state.
-func (s *Service) listParticipants(ctx context.Context, slug string) (map[string]string, bool) {
-	resp, err := s.roomAPI(ctx, "ListParticipants", slug, map[string]string{"room": slug})
+func (s *Service) listParticipants(ctx context.Context, channel string) (map[string]string, bool) {
+	resp, err := s.roomAPI(ctx, "ListParticipants", channel, map[string]string{"room": channel})
 	if err != nil {
-		s.log.Warn("voice reconcile call failed", "err", err, "room", slug)
+		s.log.Warn("voice reconcile call failed", "err", err, "channel", channel)
 		return nil, false
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -64,7 +64,7 @@ func (s *Service) listParticipants(ctx context.Context, slug string) (map[string
 		return map[string]string{}, true
 	}
 	if resp.StatusCode != http.StatusOK {
-		s.log.Warn("voice reconcile refused", "status", resp.StatusCode, "room", slug)
+		s.log.Warn("voice reconcile refused", "status", resp.StatusCode, "channel", channel)
 		return nil, false
 	}
 	var out struct {
@@ -74,7 +74,7 @@ func (s *Service) listParticipants(ctx context.Context, slug string) (map[string
 		} `json:"participants"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&out); err != nil {
-		s.log.Warn("voice reconcile decode failed", "err", err, "room", slug)
+		s.log.Warn("voice reconcile decode failed", "err", err, "channel", channel)
 		return nil, false
 	}
 	present := make(map[string]string, len(out.Participants))

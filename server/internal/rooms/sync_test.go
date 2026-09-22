@@ -82,10 +82,11 @@ func TestDeleteClosesTheLiveRoom(t *testing.T) {
 	presence := &countingPresence{}
 	h.svc.SetPresence(presence)
 	slug, _ := h.createRoom(t, "alice", "Doomed Room")
+	voice := h.voiceOf(t, slug)
 	if status, _ := h.call(t, "alice", http.MethodDelete, "/api/rooms/"+slug, ""); status != http.StatusNoContent {
 		t.Fatalf("delete: %d", status)
 	}
-	if len(presence.closed) != 1 || presence.closed[0] != slug {
-		t.Fatalf("hub never told to forget %q: %v", slug, presence.closed)
+	if len(presence.closed) != 1 || presence.closed[0] != voice {
+		t.Fatalf("hub never told to forget %q's voice channel %q: %v", slug, voice, presence.closed)
 	}
 }

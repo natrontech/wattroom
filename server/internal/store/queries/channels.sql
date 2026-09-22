@@ -80,3 +80,52 @@ delete from channel_members where channel_id = $1 and user_id = $2;
 -- A voice channel's autoplay plays one of ITS crew's playlists, never a
 -- rider's own or another crew's.
 select exists (select 1 from playlists where id = $1 and crew_id = $2);
+
+-- The rooms bridge (#2436): the hub keys by voice channel, and what still
+-- speaks in rooms — the rooms package, and the keepers that write room_id —
+-- crosses here until its own M9 issue re-keys it. Every one of these goes
+-- with `room_channels` (#2433).
+
+-- name: VoiceChannelOfRoom :one
+select voice_channel_id from room_channels where room_id = $1;
+
+-- name: RoomOfVoiceChannel :one
+select r.* from rooms r
+join room_channels rc on rc.room_id = r.id
+where rc.voice_channel_id = $1;
+
+-- name: RoomSlugsOfVoiceChannels :many
+select rc.voice_channel_id, r.slug from room_channels rc
+join rooms r on r.id = rc.room_id
+where rc.voice_channel_id = any(@ids::uuid[]);
+
+-- name: AdoptRoomChannels :exec
+-- A room made after 20260922185319 gets the text and voice channel that
+-- migration gave every room before it — the same statement, narrowed to one
+-- room. Without them the hub, which keys by voice channel, has nowhere to
+-- put it.
+with src as (
+    select
+        r.id              as room_id,
+        gen_random_uuid() as text_channel_id,
+        gen_random_uuid() as voice_channel_id,
+        r.crew_id,
+        left(coalesce(nullif(btrim(r.name), ''), 'general'), 60) as name,
+        not r.crew_visible as private,
+        r.sound_pack,
+        r.created_at,
+        coalesce((select max(c.position) + 1 from channels c where c.crew_id = r.crew_id), 0)::integer as position
+    from rooms r
+    where r.id = @room_id and r.crew_id is not null
+      and not exists (select 1 from room_channels rc where rc.room_id = r.id)
+),
+text_channels as (
+    insert into channels (id, crew_id, kind, name, position, private, sound_pack, created_at)
+    select text_channel_id, crew_id, 'text', name, position, private, 'base', created_at from src
+),
+voice_channels as (
+    insert into channels (id, crew_id, kind, name, position, private, sound_pack, created_at)
+    select voice_channel_id, crew_id, 'voice', name, position, private, sound_pack, created_at from src
+)
+insert into room_channels (room_id, text_channel_id, voice_channel_id)
+select room_id, text_channel_id, voice_channel_id from src;

@@ -8,6 +8,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 func TestEditChatMessage(t *testing.T) {
@@ -15,7 +16,7 @@ func TestEditChatMessage(t *testing.T) {
 	live := &fakeLive{}
 	svc.SetLive(live)
 	alice := users.ByToken["alice"]
-	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "warmup at 6", "", time.Now().UnixMilli())
+	id, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "warmup at 6", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -88,7 +89,7 @@ func TestEditKeepsAnImageWhenTheWordsGo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "look at this", store.UUIDString(img), time.Now().UnixMilli())
+	id, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "look at this", store.UUIDString(img), time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}

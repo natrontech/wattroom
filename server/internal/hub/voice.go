@@ -29,41 +29,41 @@ type voiceEntry struct {
 // webhooks — who is in the voice channel, before you enter the room. Keyed
 // by identity so a double event cannot duplicate a name; the map is
 // hub-owned like every other piece of live state.
-func (h *Hub) VoiceJoined(slug, identity, name string) {
+func (h *Hub) VoiceJoined(channel, identity, name string) {
 	h.mu.Lock()
-	if h.voice[slug] == nil {
-		h.voice[slug] = make(map[string]voiceEntry, 4)
+	if h.voice[channel] == nil {
+		h.voice[channel] = make(map[string]voiceEntry, 4)
 	}
 	// Merge, don't overwrite: a camera flag set by an early track_published
 	// must survive the participant_joined that follows it.
-	entry := h.voice[slug][identity]
+	entry := h.voice[channel][identity]
 	entry.rider = av.RiderID(identity)
 	entry.name = name
 	if entry.joinedAt.IsZero() {
 		entry.joinedAt = h.now()
 	}
-	h.voice[slug][identity] = entry
-	after := h.voiceChangedLocked(slug)
+	h.voice[channel][identity] = entry
+	after := h.voiceChangedLocked(channel)
 	h.mu.Unlock()
 	after()
 }
 
-func (h *Hub) VoiceLeft(slug, identity string) {
+func (h *Hub) VoiceLeft(channel, identity string) {
 	h.mu.Lock()
-	delete(h.voice[slug], identity)
-	if len(h.voice[slug]) == 0 {
-		delete(h.voice, slug)
+	delete(h.voice[channel], identity)
+	if len(h.voice[channel]) == 0 {
+		delete(h.voice, channel)
 	}
-	after := h.voiceChangedLocked(slug)
+	after := h.voiceChangedLocked(channel)
 	h.mu.Unlock()
 	after()
 }
 
 // voiceRidersLocked folds a room's voice entries to rider ids — two tabs are
 // one rider. The caller holds h.mu.
-func (h *Hub) voiceRidersLocked(slug string) map[string]struct{} {
-	riders := make(map[string]struct{}, len(h.voice[slug]))
-	for _, entry := range h.voice[slug] {
+func (h *Hub) voiceRidersLocked(channel string) map[string]struct{} {
+	riders := make(map[string]struct{}, len(h.voice[channel]))
+	for _, entry := range h.voice[channel] {
 		riders[entry.rider] = struct{}{}
 	}
 	return riders
@@ -72,13 +72,13 @@ func (h *Hub) voiceRidersLocked(slug string) map[string]struct{} {
 // voiceChangedLocked pings the lobby and hands back what to do once h.mu is
 // released: tell the live room who is in voice now (#467). The room lock is
 // never taken under the hub lock — same discipline as Presence.
-func (h *Hub) voiceChangedLocked(slug string) func() {
+func (h *Hub) voiceChangedLocked(channel string) func() {
 	h.pingLobbyLocked()
-	rm, live := h.rooms[slug]
+	rm, live := h.rooms[channel]
 	if !live {
 		return func() {}
 	}
-	riders := h.voiceRidersLocked(slug)
+	riders := h.voiceRidersLocked(channel)
 	return func() { rm.setVoice(riders) }
 }
 
@@ -104,9 +104,9 @@ func (h *Hub) VoiceRiderIDs() []string {
 // VoiceCamera flips one participant's camera flag (#251) — track_published /
 // track_unpublished. Upserts: the track event can beat the join webhook, and
 // a live camera implies presence in the voice room anyway.
-func (h *Hub) VoiceCamera(slug, identity, name string, on bool) {
+func (h *Hub) VoiceCamera(channel, identity, name string, on bool) {
 	h.mu.Lock()
-	entry, ok := h.voice[slug][identity]
+	entry, ok := h.voice[channel][identity]
 	if !ok && !on {
 		h.mu.Unlock()
 		return
@@ -115,20 +115,20 @@ func (h *Hub) VoiceCamera(slug, identity, name string, on bool) {
 		entry = voiceEntry{rider: av.RiderID(identity), name: name, joinedAt: h.now()}
 	}
 	entry.camera = on
-	if h.voice[slug] == nil {
-		h.voice[slug] = make(map[string]voiceEntry, 4)
+	if h.voice[channel] == nil {
+		h.voice[channel] = make(map[string]voiceEntry, 4)
 	}
-	h.voice[slug][identity] = entry
-	after := h.voiceChangedLocked(slug)
+	h.voice[channel][identity] = entry
+	after := h.voiceChangedLocked(channel)
 	h.mu.Unlock()
 	after()
 }
 
 // VoiceRoomClosed clears a whole room's voice state (room_finished).
-func (h *Hub) VoiceRoomClosed(slug string) {
+func (h *Hub) VoiceRoomClosed(channel string) {
 	h.mu.Lock()
-	delete(h.voice, slug)
-	after := h.voiceChangedLocked(slug)
+	delete(h.voice, channel)
+	after := h.voiceChangedLocked(channel)
 	h.mu.Unlock()
 	after()
 }
@@ -138,43 +138,43 @@ func (h *Hub) VoiceRoomClosed(slug string) {
 func (h *Hub) VoiceRooms() []string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	slugs := make([]string, 0, len(h.voice))
-	for slug := range h.voice {
-		slugs = append(slugs, slug)
+	channels := make([]string, 0, len(h.voice))
+	for channel := range h.voice {
+		channels = append(channels, channel)
 	}
-	return slugs
+	return channels
 }
 
 // VoiceSync applies LiveKit's actual participant list (#234): a hard-crashed
 // LiveKit never sends participant_left, so identities it no longer knows are
 // pruned — unless they joined after the snapshot at `since` was requested —
 // and anyone a lost webhook missed is added.
-func (h *Hub) VoiceSync(slug string, present map[string]string, since time.Time) {
+func (h *Hub) VoiceSync(channel string, present map[string]string, since time.Time) {
 	h.mu.Lock()
 	after := func() {}
 	defer func() { h.mu.Unlock(); after() }()
 	changed := false
-	for identity, entry := range h.voice[slug] {
+	for identity, entry := range h.voice[channel] {
 		if _, ok := present[identity]; !ok && entry.joinedAt.Before(since) {
-			delete(h.voice[slug], identity)
+			delete(h.voice[channel], identity)
 			changed = true
 		}
 	}
 	for identity, name := range present {
-		if _, ok := h.voice[slug][identity]; ok {
+		if _, ok := h.voice[channel][identity]; ok {
 			continue
 		}
-		if h.voice[slug] == nil {
-			h.voice[slug] = make(map[string]voiceEntry, len(present))
+		if h.voice[channel] == nil {
+			h.voice[channel] = make(map[string]voiceEntry, len(present))
 		}
-		h.voice[slug][identity] = voiceEntry{rider: av.RiderID(identity), name: name, joinedAt: h.now()}
+		h.voice[channel][identity] = voiceEntry{rider: av.RiderID(identity), name: name, joinedAt: h.now()}
 		changed = true
 	}
-	if len(h.voice[slug]) == 0 {
-		delete(h.voice, slug)
+	if len(h.voice[channel]) == 0 {
+		delete(h.voice, channel)
 	}
 	if changed {
-		after = h.voiceChangedLocked(slug)
+		after = h.voiceChangedLocked(channel)
 	}
 }
 

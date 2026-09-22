@@ -28,7 +28,7 @@ func TestQueueTracksAtOnce(t *testing.T) {
 	if len(h.live.tracks) != 2 || h.live.tracks[0].TrackID != one || h.live.tracks[1].TrackID != two || h.live.tracks[0].Title != "One" {
 		t.Fatalf("what reached the bridge: %+v", h.live.tracks)
 	}
-	if h.live.slug != slug || h.live.addedBy != "alice" {
+	if h.live.slug != h.voice(t, slug) || h.live.addedBy != "alice" {
 		t.Fatalf("bridge addressed %q as %q", h.live.slug, h.live.addedBy)
 	}
 

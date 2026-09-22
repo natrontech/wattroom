@@ -57,10 +57,10 @@ func awayServer(t *testing.T) (*Hub, string) {
 	t.Helper()
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	return h, "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	return h, "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 }
 
 // The whole point of #706: the room can see that someone stepped out, and see

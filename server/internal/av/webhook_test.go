@@ -26,37 +26,37 @@ type fakeSink struct {
 	synced       map[string]map[string]string
 }
 
-func (f *fakeSink) VoiceJoined(slug, identity, name string) {
+func (f *fakeSink) VoiceJoined(channel, identity, name string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.joined[slug] = append(f.joined[slug], identity+"/"+name)
+	f.joined[channel] = append(f.joined[channel], identity+"/"+name)
 }
-func (f *fakeSink) VoiceLeft(slug, identity string) {
+func (f *fakeSink) VoiceLeft(channel, identity string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.left[slug] = append(f.left[slug], identity)
+	f.left[channel] = append(f.left[channel], identity)
 }
-func (f *fakeSink) VoiceCamera(slug, identity, _ string, on bool) {
+func (f *fakeSink) VoiceCamera(channel, identity, _ string, on bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.cameras == nil {
 		f.cameras = map[string][]string{}
 	}
-	f.cameras[slug] = append(f.cameras[slug], identity+"/"+map[bool]string{true: "on", false: "off"}[on])
+	f.cameras[channel] = append(f.cameras[channel], identity+"/"+map[bool]string{true: "on", false: "off"}[on])
 }
-func (f *fakeSink) VoiceRoomClosed(slug string) {
+func (f *fakeSink) VoiceRoomClosed(channel string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.closed = append(f.closed, slug)
+	f.closed = append(f.closed, channel)
 }
 func (f *fakeSink) VoiceRooms() []string { return f.rooms }
-func (f *fakeSink) VoiceSync(slug string, present map[string]string, _ time.Time) {
+func (f *fakeSink) VoiceSync(channel string, present map[string]string, _ time.Time) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.synced == nil {
 		f.synced = map[string]map[string]string{}
 	}
-	f.synced[slug] = present
+	f.synced[channel] = present
 }
 
 func signWebhook(t *testing.T, secret string, iss string, body []byte) string {

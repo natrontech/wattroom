@@ -15,8 +15,8 @@ import (
 type room struct {
 	// The room's clock. time.Now in production; the tests move it so a
 	// sample's timeline second is theirs to choose (#791).
-	now  func() time.Time
-	slug string
+	now     func() time.Time
+	channel string
 	// Closed when the room is deleted (#618) — the tick goroutine is the
 	// only reader, and it returns rather than ticking for a room nobody
 	// can reach any more.
@@ -214,10 +214,10 @@ func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bo
 	return true
 }
 
-func newRoom(slug string) *room {
+func newRoom(channel string) *room {
 	return &room{
 		now:           time.Now,
-		slug:          slug,
+		channel:       channel,
 		stop:          make(chan struct{}),
 		clients:       make(map[*client]struct{}),
 		metrics:       make(map[string]protocol.RiderMetrics),

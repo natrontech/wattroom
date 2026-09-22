@@ -17,10 +17,10 @@ import (
 func TestPostChatReachesConnectedRiders(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	// Nobody has ever opened this room: the post must not conjure one.
 	h.PostChat("nowhere", protocol.ChatLine{From: "kim", Text: "hello?"})

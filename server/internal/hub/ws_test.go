@@ -22,10 +22,10 @@ import (
 
 // fakeAccess admits riders by an X-Rider header: "name:role", refusing others —
 // standing in for rooms.Service so this tests the hub, not the database. Like
-// the real thing it hands back the canonical (lowercase) slug, not the path.
+// the real thing it hands back the canonical (lowercase) channel, not the path.
 type fakeAccess struct{}
 
-func (fakeAccess) Authorize(r *http.Request, slug string) (protocol.Rider, string, error) {
+func (fakeAccess) Authorize(r *http.Request, channel string) (protocol.Rider, string, error) {
 	v := r.Header.Get("X-Rider")
 	if v == "" {
 		return protocol.Rider{}, "", av.ErrNotMember
@@ -34,7 +34,7 @@ func (fakeAccess) Authorize(r *http.Request, slug string) (protocol.Rider, strin
 		return protocol.Rider{}, "", errors.New("membership lookup: connection refused")
 	}
 	name, role, _ := strings.Cut(v, ":")
-	return protocol.Rider{ID: name, Name: name, Role: role, FtpWatts: 250}, strings.ToLower(slug), nil
+	return protocol.Rider{ID: name, Name: name, Role: role, FtpWatts: 250}, strings.ToLower(channel), nil
 }
 
 func dial(t *testing.T, url, rider string) *websocket.Conn {
@@ -97,10 +97,10 @@ func readTick(t *testing.T, conn *websocket.Conn) protocol.ServerTick {
 func TestWebSocketRoom(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	// The privacy property: no membership, no socket.
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
@@ -194,10 +194,10 @@ func TestWebSocketRoom(t *testing.T) {
 func TestJukeboxRefusalReachesOnlyTheRiderWhoAddedIt(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	sender := dial(t, url, "jan:member")
 	other := dial(t, url, "ada:member")
@@ -247,10 +247,10 @@ func TestRosterDeduplicatesRiders(t *testing.T) {
 	// deduped (found live, then pinned here).
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/dupes"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/dupes"
 
 	first := dial(t, url, "jan:owner")
 	dial(t, url, "jan:owner") // same rider, second device
@@ -268,17 +268,17 @@ func TestRosterDeduplicatesRiders(t *testing.T) {
 }
 
 // A link typed with different capitalisation is the same room (#639). The
-// live room is keyed on the canonical slug Authorize returns, not on the
+// live room is keyed on the canonical channel Authorize returns, not on the
 // request path — otherwise `Velvet` and `velvet` fork two rooms with two
 // rosters, and a kick or a close addressed to the canonical one leaves the
 // other running forever.
-func TestMixedCaseSlugSharesRoom(t *testing.T) {
+func TestMixedCaseChannelIDSharesRoom(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	base := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/"
+	base := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/"
 
 	lower := dial(t, base+"velvet", "jan:owner")
 	dial(t, base+"VeLvEt", "sven:member")
@@ -317,10 +317,10 @@ func TestChatIDFollowsTheLine(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	h.SetChatKeeper(fakeChat{})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/durable"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/durable"
 
 	a := dial(t, url, "jan:owner")
 	readTick(t, a)
@@ -357,10 +357,10 @@ func TestChatRidesTheTick(t *testing.T) {
 	// #146, ADR-0010: ephemeral, room-scoped, drained per tick like cheers.
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/chatty"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/chatty"
 
 	a := dial(t, url, "jan:owner")
 	b := dial(t, url, "sven:member")
@@ -399,10 +399,10 @@ func TestJukeboxActionsRideTheTick(t *testing.T) {
 	// happened in the room, and it reaches the others the same way chat does.
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/loud"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/loud"
 
 	a := dial(t, url, "jan:owner")
 	b := dial(t, url, "sven:member")
@@ -448,10 +448,10 @@ func TestSetRoleReachesOpenSockets(t *testing.T) {
 	// refused and every roster still called them a member (rider report).
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/promote"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/promote"
 
 	owner := dial(t, url, "jan:owner")
 	member := dial(t, url, "sven:member")
@@ -495,10 +495,10 @@ func TestSetRoleReachesOpenSockets(t *testing.T) {
 func TestVoiceRidesTheTickBeforeYouJoin(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/quiet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/quiet"
 
 	conn := dial(t, url, "jan:owner")
 	readTick(t, conn)
@@ -628,10 +628,10 @@ func TestEveryRiderGetsTheSameTickBytes(t *testing.T) {
 func TestTheWorkoutRidesOnlyTheTickThatChangesIt(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/lean"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/lean"
 
 	coach := dial(t, url, "jan:owner")
 	if tick := readTick(t, coach); tick.State.WorkoutHash != "" || tick.State.WorkoutJSON != "" {
@@ -678,10 +678,10 @@ const wsWorkout = `{"steps":[{"type":"steady","seconds":120,"target":0.8}]}`
 func TestAThrottledJukeboxCommandAnswers(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	rider := dial(t, url, "jan:member")
 	// Two inside the throttle's 300 ms: the first is answered on its own

@@ -1,6 +1,7 @@
 package rooms
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -196,11 +197,11 @@ func (s *Service) requireControl(w http.ResponseWriter, r *http.Request) (db.Roo
 // show (#570) — the line says it happened, the ping is what makes the list
 // agree. Silent without a hub: planning still works, the room just hears
 // about it when someone reloads.
-func (s *Service) announce(room db.Room, verb, actor, workout string, startsAt time.Time) {
+func (s *Service) announce(ctx context.Context, room db.Room, verb, actor, workout string, startsAt time.Time) {
 	if s.presence == nil {
 		return
 	}
-	s.presence.SessionAnnounce(room.Slug, verb, actor, workout, startsAt)
+	s.presence.SessionAnnounce(s.store.VoiceChannelOf(ctx, room.ID), verb, actor, workout, startsAt)
 	s.presence.PresenceChanged()
 }
 
@@ -324,7 +325,7 @@ func (s *Service) handleSchedule(w http.ResponseWriter, r *http.Request) {
 	if s.notifier != nil {
 		s.notifier.SessionPlanned(room, req.WorkoutName, req.StartsAt, user.ID)
 	}
-	s.announce(room, "planned", user.DisplayName, req.WorkoutName, req.StartsAt)
+	s.announce(r.Context(), room, "planned", user.DisplayName, req.WorkoutName, req.StartsAt)
 	httpx.WriteJSON(w, http.StatusCreated, scheduledJSON{
 		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName,
 		WorkoutJSON: string(row.WorkoutJson),
@@ -396,7 +397,7 @@ func (s *Service) handleReschedule(w http.ResponseWriter, r *http.Request) {
 		if s.notifier != nil {
 			s.notifier.SessionRescheduled(room, row.WorkoutName, req.StartsAt, user.ID)
 		}
-		s.announce(room, "moved", user.DisplayName, row.WorkoutName, req.StartsAt)
+		s.announce(r.Context(), room, "moved", user.DisplayName, row.WorkoutName, req.StartsAt)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -427,7 +428,7 @@ func (s *Service) handleUnschedule(w http.ResponseWriter, r *http.Request) {
 	if s.notifier != nil && row.StartsAt.Time.After(time.Now()) {
 		s.notifier.SessionCancelled(room, row.WorkoutName, row.StartsAt.Time, user.ID)
 	}
-	s.announce(room, "cancelled", user.DisplayName, row.WorkoutName, time.Time{})
+	s.announce(r.Context(), room, "cancelled", user.DisplayName, row.WorkoutName, time.Time{})
 	w.WriteHeader(http.StatusNoContent)
 }
 

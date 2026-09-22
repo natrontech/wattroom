@@ -198,7 +198,7 @@ func (s *Service) handlePost(w http.ResponseWriter, r *http.Request) {
 	// Stamped before the save, and the save is told (#2421): the row and
 	// the line the room hears must carry the same millisecond.
 	at := time.Now().UnixMilli()
-	id, saved := s.SaveChat(r.Context(), room.Slug, store.UUIDString(me.ID), text, req.ImageID, at)
+	id, saved := s.saveChat(r.Context(), room.ID, room.Slug, store.UUIDString(me.ID), text, req.ImageID, at)
 	if !saved {
 		httpx.WriteError(w, http.StatusInternalServerError, "internal_error", "The message could not be sent. Try again.")
 		return
@@ -208,7 +208,7 @@ func (s *Service) handlePost(w http.ResponseWriter, r *http.Request) {
 		Text: text, ImageID: req.ImageID, At: at,
 	}
 	if s.live != nil {
-		s.live.PostChat(room.Slug, line)
+		s.live.PostChat(s.store.VoiceChannelOf(r.Context(), room.ID), line)
 	}
 	// Saying something is reading up to it.
 	s.markRead(r.Context(), room, me)
@@ -282,7 +282,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 		MessageID: store.UUIDString(id), Text: text, EditedAt: store.Millis(edited),
 	}
 	if s.live != nil {
-		s.live.PostChatEdit(room.Slug, change)
+		s.live.PostChatEdit(s.store.VoiceChannelOf(r.Context(), room.ID), change)
 	}
 	httpx.WriteJSON(w, http.StatusOK, change)
 }
@@ -344,7 +344,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 			"room", room.Slug, "by", store.UUIDString(me.ID), "author", store.UUIDString(msg.UserID))
 	}
 	if s.live != nil {
-		s.live.PostChatDelete(room.Slug, protocol.ChatDelete{MessageID: store.UUIDString(id)})
+		s.live.PostChatDelete(s.store.VoiceChannelOf(r.Context(), room.ID), protocol.ChatDelete{MessageID: store.UUIDString(id)})
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -369,7 +369,7 @@ func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That is not a reaction this room speaks.", "emoji")
 		return
 	}
-	count, added, ok := s.ToggleReaction(r.Context(), room.Slug, req.MessageID, store.UUIDString(me.ID), req.Emoji)
+	count, added, ok := s.toggleReaction(r.Context(), room.ID, room.Slug, req.MessageID, store.UUIDString(me.ID), req.Emoji)
 	if !ok {
 		// The insert and the delete both scope by room: a message that is
 		// not in this room's log does not exist here.
@@ -381,7 +381,7 @@ func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 		By: store.UUIDString(me.ID), Added: added,
 	}
 	if s.live != nil {
-		s.live.PostReaction(room.Slug, change)
+		s.live.PostReaction(s.store.VoiceChannelOf(r.Context(), room.ID), change)
 	}
 	httpx.WriteJSON(w, http.StatusOK, change)
 }

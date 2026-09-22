@@ -390,18 +390,18 @@ func TestRidingCountSumsRooms(t *testing.T) {
 	now := time.Now()
 	h.now = func() time.Time { return now }
 
-	for _, slug := range []string{"a", "b"} {
-		rm := newRoom(slug)
-		rm.seen[slug] = protocol.Rider{ID: slug, Name: slug}
-		rm.lastMetric[slug] = now
-		h.rooms[slug] = rm
+	for _, channel := range []string{"a", "b"} {
+		rm := newRoom(channel)
+		rm.seen[channel] = protocol.Rider{ID: channel, Name: channel}
+		rm.lastMetric[channel] = now
+		h.rooms[channel] = rm
 	}
 	if got := h.ridingCount(); got != 2 {
 		t.Fatalf("ridingCount = %v, want 2 across two rooms", got)
 	}
 }
 
-// Deleting a room frees its slug, so the next room of the same name takes it —
+// Deleting a room frees its channel, so the next room of the same name takes it —
 // and used to open holding the deleted room's jukebox queue, because nothing
 // ever removed the room from the hub (#618). The durable row and the live
 // state have to go together.
@@ -424,7 +424,7 @@ func TestCloseRoomForgetsLiveState(t *testing.T) {
 		t.Fatalf("deleted room still in the hub: room=%v voice=%v", stillThere, voiceThere)
 	}
 
-	// A new room on the freed slug is a new room, not the old one.
+	// A new room on the freed channel is a new room, not the old one.
 	fresh := h.room("reverify")
 	if fresh == rm {
 		t.Fatal("the recreated room is the deleted room")

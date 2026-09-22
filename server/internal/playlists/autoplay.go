@@ -107,15 +107,15 @@ func validAutoplayOrder(order string) bool {
 // room's history, weighted since #270 toward the cadence `mood` says the
 // room is turning right now. Smart with no active playlist, or one holding
 // no library track, draws from the members' whole libraries instead.
-func (s *Service) Autoplay(ctx context.Context, slug string, mood hub.SessionMood) (tracks []protocol.JukeboxCommand, ok bool) {
-	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
+func (s *Service) Autoplay(ctx context.Context, channel string, mood hub.SessionMood) (tracks []protocol.JukeboxCommand, ok bool) {
+	room, err := s.store.RoomOfVoiceChannel(ctx, channel)
 	if err != nil || !room.AutoplayEnabled {
 		return nil, false
 	}
 	var rows []db.ListPlaylistTracksRow
 	if room.AutoplayPlaylistID.Valid {
 		if rows, err = s.store.Queries.ListPlaylistTracks(ctx, room.AutoplayPlaylistID); err != nil {
-			s.log.Error("autoplay: list playlist tracks failed", "room", slug, "err", err)
+			s.log.Error("autoplay: list playlist tracks failed", "channel", channel, "err", err)
 			return nil, false
 		}
 	}
@@ -127,7 +127,7 @@ func (s *Service) Autoplay(ctx context.Context, slug string, mood hub.SessionMoo
 				only = append(only, row.TrackID)
 			}
 		}
-		tracks = s.smartShuffle(ctx, room.ID, slug, mood, only)
+		tracks = s.smartShuffle(ctx, room.ID, channel, mood, only)
 	case "shuffled":
 		tracks = commandsFromTracks(rows)
 		// A party-playlist shuffle, not a security control — crypto/rand
