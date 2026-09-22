@@ -64,10 +64,9 @@ limit $2;
 -- this channel (#1095, #2439). Autoplay is the one path that reaches for a
 -- track nobody asked for by name, so an unscoped draw here would put a
 -- stranger's upload on the deck without ever appearing on a page or in a
--- search. Who may enter is `channels.mayEnter`'s rule, restated here because
--- it filters rows: the crew's owner, its admins, and — unless the channel is
+-- search. Who may enter is `visible_channels` (#2465), `channels.mayEnter`
+-- as a relation: the crew's owner, its admins, and — unless the channel is
 -- private and they are not named into it — its members; never a banned one.
--- It is the same set ADR-0045's audio door lets hear an uploader's track.
 -- `weight` is returned so a headless autoplay log can say WHY a track came
 -- up; the ordering is random and unexplainable after the fact otherwise.
 with history as (
@@ -102,8 +101,7 @@ from tracks t
 -- query). A crew-banned rider keeps a crew_roles row and loses their say in
 -- what the channel plays; a member taken out of a private channel loses it
 -- there and keeps it in the crew's open ones.
-join channels ch on ch.id = sqlc.arg(channel_id)
-join crews c on c.id = ch.crew_id
+join visible_channels v on v.channel_id = sqlc.arg(channel_id) and v.user_id = t.uploaded_by
 left join history h on h.track_id = t.id
 cross join liked l
 cross join lateral (
@@ -145,16 +143,7 @@ cross join lateral (
 -- when no list is active or the list holds no library track, and the draw
 -- is then the members' whole libraries as before. coalesce, because a nil
 -- slice arrives as NULL and NULL = 0 is not true.
-where (t.uploaded_by = c.owner_id
-       or exists (
-           select 1 from crew_roles cr
-           where cr.crew_id = ch.crew_id and cr.user_id = t.uploaded_by
-             and (cr.role = 'admin'
-                  or (cr.role = 'member'
-                      and (not ch.private
-                           or exists (select 1 from channel_members cm
-                                      where cm.channel_id = ch.id and cm.user_id = t.uploaded_by))))))
-  and (coalesce(cardinality(sqlc.arg(within)::uuid[]), 0) = 0
-       or t.id = any(sqlc.arg(within)::uuid[]))
+where coalesce(cardinality(sqlc.arg(within)::uuid[]), 0) = 0
+   or t.id = any(sqlc.arg(within)::uuid[])
 order by random() ^ (1.0 / w.weight) desc
 limit sqlc.arg(lim);
