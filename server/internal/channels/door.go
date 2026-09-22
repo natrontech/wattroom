@@ -19,9 +19,9 @@ import (
 // one as it refuses a channel that is not there: av.ErrNotMember, which both
 // consumers already read as "not yours".
 //
-// The rider's Role is the hub's vocabulary, not the crew's: the crew's owner
-// is the channel's owner and its admins coach, until #2438 makes the coach
-// whoever started the session.
+// The rider's Role is the crew's (#2438): coach is not a role but whoever is
+// running the channel's session, so the hub reads the role only to let the
+// crew's owner and admins end one.
 func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string, error) {
 	user, ok := s.users.User(r)
 	if !ok {
@@ -73,14 +73,14 @@ func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string,
 	}, store.UUIDString(ch.ID), nil
 }
 
-// LiveRole maps a crew role onto the words the hub's controls read — the
-// door's answer, and what a crew role change re-roles open sockets to.
+// LiveRole is the crew role as a voice channel carries it — the door's
+// answer, and what a crew role change re-roles open sockets to. The crew's
+// own words (#2438); anything else, a ban included, is a member here, since
+// a banned rider never reaches the door.
 func LiveRole(crewRole string) string {
 	switch crewRole {
-	case "owner":
-		return "owner"
-	case "admin":
-		return "coach"
+	case "owner", "admin":
+		return crewRole
 	default:
 		return "member"
 	}

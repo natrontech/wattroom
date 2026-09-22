@@ -104,6 +104,8 @@ type XpKeeper interface {
 // was in voice for how long, and who pressed start.
 type SessionClosed struct {
 	Channel string
+	// The session's id (#2438): what the ledger keys the session's XP by.
+	SessionID string
 	// Rider id of whoever pressed start; empty when the room came back from
 	// a restart with the session already running.
 	StartedBy string

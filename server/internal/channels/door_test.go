@@ -40,7 +40,7 @@ func TestAuthorizeIsTheGate(t *testing.T) {
 		err           error
 	}{
 		{"alice", open, "owner", nil},
-		{"dave", private, "coach", nil},
+		{"dave", private, "admin", nil},
 		{"bob", open, "member", nil},
 		{"bob", private, "", av.ErrNotMember},
 		{"erin", open, "", av.ErrNotMember},
@@ -74,6 +74,14 @@ type fakeLive struct {
 	kicked  []string
 	closed  []string
 	present map[string]protocol.RoomPresence
+	running map[string]protocol.LiveSession
+}
+
+func (f *fakeLive) LiveSession(channel string) (protocol.LiveSession, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	live, ok := f.running[channel]
+	return live, ok
 }
 
 func (f *fakeLive) PresenceChanged() {}

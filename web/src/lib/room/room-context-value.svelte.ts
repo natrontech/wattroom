@@ -105,6 +105,7 @@ export interface ContextDeps {
 	segments: () => Segment[];
 	phase: () => 'lounge' | 'countdown' | 'live';
 	canControl: () => boolean;
+	canManage: () => boolean;
 	myRole: () => string;
 	stageSources: () => RoomStageSource[];
 	onStage: () => RoomStageSource | null;
@@ -167,6 +168,9 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		},
 		get canControl() {
 			return deps.canControl();
+		},
+		get canManage() {
+			return deps.canManage();
 		},
 		get myRole() {
 			return deps.myRole();

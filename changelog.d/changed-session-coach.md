@@ -1,0 +1,1 @@
+- A session now belongs to whoever starts it: any rider in a voice channel can open one and coach it, then hand it to someone else in the channel. Only one session runs per voice channel, and a second start says who is already coaching. The crew's owner and admins can end a session someone else left running.

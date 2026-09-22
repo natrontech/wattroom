@@ -1,10 +1,9 @@
 <script lang="ts">
 	// A room's chat as a thread (#468) — readable and writable whether or
 	// not you are in the room. Inside, it is the room connection's own log,
-	// tick-fresh, with the room's events between the lines. Outside, it is
-	// the backlog polled like a DM, and a post goes over HTTP; the hub hands
-	// it to whoever is in there. Being in the room adds voice, the ride and
-	// the jukebox — not the words.
+	// with the room's events between the lines. Outside, it is the backlog
+	// read over HTTP and read again on the lobby ping. Being in the room
+	// adds voice, the ride and the jukebox — not the words.
 	//
 	// The body (timeline, states, composer) is MessageThread.svelte, shared
 	// with a DM's (#672); this wrapper supplies what only a room has: events
@@ -22,7 +21,10 @@
 	import { uploadImage } from '$lib/chat/upload';
 	import { STOCK_CHEERS } from '$lib/icons';
 	import MessageThread from '$lib/messages/MessageThread.svelte';
-	import { createOutsideThread } from '$lib/messages/outside.svelte';
+	import {
+		createChatThread,
+		type ChatThread,
+	} from '$lib/messages/chat-thread.svelte';
 	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { presence } from '$lib/presence.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
@@ -31,6 +33,7 @@
 	import { roomTimeline } from '$lib/room/timeline';
 	import { remindersFor } from '$lib/room/reminders';
 	import { serverNow } from '$lib/room/server-clock';
+	import { untrack } from 'svelte';
 
 	let {
 		slug,
@@ -59,7 +62,7 @@
 		roomConnection.current?.slug === slug ? roomConnection.current : null,
 	);
 
-	let outside = $state<ReturnType<typeof createOutsideThread> | null>(null);
+	let outside = $state<ChatThread | null>(null);
 	// The room's members, once per room: read from outside there is no room
 	// layout to have fetched them and a chat line carries no face (#807);
 	// inside and out they are who `@` completes to (#1766) — an offline
@@ -102,13 +105,21 @@
 			outside = null;
 			return;
 		}
-		const thread = createOutsideThread(slug);
+		const thread = createChatThread(`/api/rooms/${slug}`);
 		thread.start();
 		outside = thread;
 		return () => {
 			thread.close();
 			outside = null;
 		};
+	});
+	// Every chat write pings the lobby (#2437); read the backlog again on it.
+	let heard = untrack(() => presence.version);
+	$effect(() => {
+		const version = presence.version;
+		if (version === heard) return;
+		heard = version;
+		untrack(() => outside?.reload());
 	});
 
 	const messages = $derived(

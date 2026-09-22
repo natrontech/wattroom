@@ -37,6 +37,7 @@ function deps(props: RoomShellProps) {
 		segments: () => [],
 		phase: () => 'lounge' as const,
 		canControl: () => false,
+		canManage: () => false,
 		myRole: () => 'member',
 		stageSources: () => [],
 		onStage: () => null,

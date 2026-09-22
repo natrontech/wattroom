@@ -1,22 +1,23 @@
-import { expect, test } from './room';
+import { expect, test, textChannelOf } from './room';
 import { signInAs } from './signin';
 
 /**
- * Room chat scrolls back (#291). This is a layout bug no unit test can reach:
+ * A text channel's chat scrolls back (#291; a room's until #2448). This is a
+ * layout bug no unit test can reach:
  * the log used to bottom-pin with `justify-end`, which parks content against
  * the bottom edge and lets the overflow spill past the START edge — where no
  * browser will scroll. Everything but the newest few lines was simply gone.
  *
  * So it needs a real browser with a real overflowing log: enough messages to
  * outgrow it, then proof that the oldest one is reachable and that reading
- * back is not undone by the next arrival. The log moved out of the people
- * column into the room's Chat place (#504); `stickToBottom` is the same, and
- * this follows it there.
+ * back is not undone by the next arrival. The log moved into the room's Chat
+ * place (#504) and then into the text channel (#2448); `stickToBottom` is the
+ * same, and this follows it there.
  */
 
 const LINES = 12;
 
-/** The hub drops a second line within the same second (hub.go, 1/s per rider). */
+/** A beat between lines, so each lands in its own read of the backlog. */
 const RATE_LIMIT_MS = 1100;
 
 /**
@@ -26,7 +27,7 @@ const RATE_LIMIT_MS = 1100;
  */
 const say = (i: number) => `line ${i} ${'wattage '.repeat(58)}`.trim();
 
-test('the room chat scrolls back to its oldest line', async ({
+test('a text channel scrolls back to its oldest line', async ({
 	page,
 	rooms,
 }) => {
@@ -36,9 +37,9 @@ test('the room chat scrolls back to its oldest line', async ({
 	await signInAs(page, 'Chat Scrollback', '/home');
 
 	const name = `Chat Scrollback ${Date.now() % 100000}`;
-	const { slug } = await rooms.open(page, name);
+	const room = await rooms.open(page, name);
 
-	await page.goto(`/r/${slug}/chat`);
+	await page.goto(await textChannelOf(page, room));
 	const log = page.getByTestId('thread-log');
 	// Read live and polled, never sampled once: messages land in a burst — a
 	// whole history at reload — so the newest line paints while
@@ -88,4 +89,61 @@ test('the room chat scrolls back to its oldest line', async ({
 	await expect.poll(fromBottom).toBe(0);
 	await log.evaluate((node) => (node.scrollTop = 0));
 	await expect(page.getByText(say(1), { exact: true })).toBeInViewport();
+});
+
+/**
+ * Two text channels of one crew are two scrollbacks (#2448): a line said in
+ * one never shows in the other, and hopping between them is navigation, not
+ * a join — the thread swaps, and the composer is the new channel's.
+ */
+test('two channels of one crew do not cross', async ({ page, rooms }) => {
+	await signInAs(page, 'Channel Hop', '/home');
+	const name = `Channel Hop ${Date.now() % 100000}`;
+	const room = await rooms.open(page, name);
+	const first = await textChannelOf(page, room);
+	const second = await page.evaluate(async (crew) => {
+		const res = await fetch(`/api/crews/${crew}/channels`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ kind: 'text', name: 'second' }),
+		});
+		const body = (await res.json()) as { id?: string };
+		// The channel goes with the test; the room's own go with its crew.
+		return body.id ?? '';
+	}, room.crew);
+	expect(second, 'a second text channel in the crew').not.toBe('');
+	const secondPath = `/crew/${room.crew}/c/${second}`;
+
+	const other = await page.context().newPage();
+	try {
+		await page.goto(first);
+		await other.goto(secondPath);
+		const inFirst = page.getByPlaceholder(`Message ${name}…`);
+		const inSecond = other.getByPlaceholder('Message second…');
+
+		await inFirst.fill('only in the first');
+		await inFirst.press('Enter');
+		await inSecond.fill('only in the second');
+		await inSecond.press('Enter');
+
+		// Each tab shows its own line — which is what makes the absence of
+		// the other's meaningful: both threads are live and reading.
+		await expect(page.getByText('only in the first')).toBeVisible();
+		await expect(other.getByText('only in the second')).toBeVisible();
+		await page.waitForTimeout(1500);
+		await expect(page.getByText('only in the second')).toHaveCount(0);
+		await expect(other.getByText('only in the first')).toHaveCount(0);
+
+		// Hop: the first tab goes to the second channel.
+		await page.goto(secondPath);
+		await expect(page.getByPlaceholder('Message second…')).toBeFocused();
+		await expect(page.getByText('only in the second')).toBeVisible();
+		await expect(page.getByText('only in the first')).toHaveCount(0);
+	} finally {
+		await other.close();
+		await page.evaluate(
+			(id) => fetch(`/api/channels/${id}`, { method: 'DELETE' }),
+			second,
+		);
+	}
 });

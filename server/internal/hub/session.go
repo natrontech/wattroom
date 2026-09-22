@@ -17,8 +17,18 @@ const countdownSeconds = 10
 // clock so the lifecycle is table-testable without a socket.
 //
 // Not goroutine-safe on its own — the owning room's mutex guards it.
+//
+// It is also the session's identity (#2438, ADR-0058): an id and a coach
+// from the pick that opens one until the next pick after it closes. An empty
+// id is "no session in this voice channel".
+// ponytail: the run's record, sprint, game and recap state stay on the room,
+// reset at start as before; they move here if a channel ever has to hold
+// two runs at once, which one-session-per-channel rules out.
 type session struct {
-	phase        string
+	id string
+	// Rider id and name of the coach: whoever opened it, until a hand-off.
+	coach, coachName string
+	phase            string
 	workoutName  string
 	workoutJSON  string
 	workoutHash  string
@@ -38,6 +48,29 @@ type session struct {
 
 func newSession() *session {
 	return &session{phase: "idle"}
+}
+
+// open reports whether a session is open in the channel: picked, counting
+// down, running or paused. A done one has closed, and the next pick opens
+// a new one in its place.
+func (s *session) open() bool { return s.id != "" && s.phase != "done" }
+
+// begin makes a new session with its coach, replacing a closed one. The
+// timeline keeps its run count, so a sprint latched against the old run
+// lets go (#2016).
+func (s *session) begin(id, coach, coachName string) {
+	*s = session{id: id, coach: coach, coachName: coachName, phase: "idle", run: s.run}
+}
+
+// drop closes a session that never started (#2438): an admin clearing a
+// pick somebody left behind, which would otherwise hold the channel shut.
+// Nothing ran, so nothing is saved.
+func (s *session) drop() bool {
+	if s.id == "" || s.phase != "idle" {
+		return false
+	}
+	*s = session{phase: "idle", run: s.run}
+	return true
 }
 
 // pick loads a workout while idle or done; picking replaces, never mid-session.
@@ -113,6 +146,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 		if remaining > 0 {
 			return protocol.SessionState{
 				Phase: "countdown", CountdownRemaining: remaining,
+				ID: s.id, Coach: s.coach, CoachName: s.coachName,
 				WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
 			}
 		}
@@ -142,6 +176,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 
 	return protocol.SessionState{
 		Phase: s.phase, Elapsed: elapsed,
+		ID: s.id, Coach: s.coach, CoachName: s.coachName,
 		WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
 	}
 }
@@ -170,7 +205,7 @@ func (s *session) apply(c protocol.Control, now time.Time) bool {
 	case "resume":
 		return s.resume(now)
 	case "end":
-		return s.end(now)
+		return s.end(now) || s.drop()
 	default:
 		return false
 	}

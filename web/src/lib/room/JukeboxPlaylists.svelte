@@ -36,7 +36,7 @@
 	// stay theirs. Gated here so nothing renders that the server would refuse
 	// on click (#824).
 	const room = useRoom();
-	const canManage = $derived(room.canControl);
+	const canManage = $derived(room.canManage);
 
 	let tab = $state<'room' | 'mine'>('room');
 	const store = $derived(tab === 'room' ? roomStore : mineStore);

@@ -57,7 +57,11 @@ export interface RoomContext {
 		| undefined;
 	/** Coarse phase the places branch on: lounge, countdown or live. */
 	readonly phase: 'lounge' | 'countdown' | 'live';
+	/** The session's controls: the coach's, or anyone's while none is open (#2438). */
 	readonly canControl: boolean;
+	/** The room's own things — its playlists, its calendar: the owner's and
+	 *  the crew's admins' (a coach's, on a room-era role), whoever is coaching. */
+	readonly canManage: boolean;
 	readonly myRole: string;
 	/** A sprint window or a game owns the focus while it runs (ADR-0020). */
 	readonly sprint: SprintState | undefined;

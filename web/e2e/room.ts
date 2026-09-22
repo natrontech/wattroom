@@ -209,6 +209,33 @@ export const test = base.extend<{
 	},
 });
 
+/**
+ * Where the room's text channel is read (#2448): every room became a text
+ * and a voice channel of its own name (ADR-0058), and a room made since gets
+ * them when it is made. Found by name in the crew's list, which holds only
+ * what the caller may enter — so it is also proof the caller may.
+ */
+export async function textChannelOf(
+	page: Page,
+	room: OpenedRoom,
+): Promise<string> {
+	const id = await page.evaluate(
+		async ({ crew, name }) => {
+			const res = await fetch(`/api/crews/${crew}/channels`);
+			const body = (await res.json()) as {
+				channels?: { id: string; kind: string; name: string }[];
+			};
+			return (
+				body.channels?.find((c) => c.kind === 'text' && c.name === name)?.id ??
+				''
+			);
+		},
+		{ crew: room.crew, name: room.name },
+	);
+	expect(id, `room "${room.name}" has no text channel to read`).not.toBe('');
+	return `/crew/${room.crew}/c/${id}`;
+}
+
 export { expect };
 
 /** Where a room's voice channel is (#2449). */

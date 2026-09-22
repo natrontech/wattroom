@@ -4,6 +4,8 @@
 package hub
 
 import (
+	"cmp"
+	"maps"
 	"slices"
 	"sort"
 
@@ -82,6 +84,44 @@ func (h *Hub) Presence(channel string) protocol.RoomPresence {
 		p.ElapsedSec = state.Elapsed
 	}
 	return p
+}
+
+// LiveSession is the session running in a voice channel right now (#2438):
+// false while none is counting down, running or paused. The riders are who
+// stands in the channel, by name and id — the channel's own live data, which
+// the caller answers only to someone who may enter it.
+func (h *Hub) LiveSession(channel string) (protocol.LiveSession, bool) {
+	// Not occupied(): a session runs on in a channel whose riders all
+	// dropped for a moment, and it is still live.
+	h.mu.Lock()
+	rm, ok := h.rooms[channel]
+	h.mu.Unlock()
+	if !ok {
+		return protocol.LiveSession{}, false
+	}
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	state := rm.session.state(h.now())
+	if !rm.session.open() || state.Phase == "idle" {
+		return protocol.LiveSession{}, false
+	}
+	live := protocol.LiveSession{
+		ID: state.ID, Channel: channel, Workout: state.WorkoutName, Phase: state.Phase, Elapsed: state.Elapsed,
+		Coach: state.Coach, CoachName: state.CoachName, Riders: []string{}, RiderIDs: []string{},
+	}
+	// By rider, not by socket: two tabs are one person.
+	present := map[string]protocol.Rider{}
+	for c := range rm.clients {
+		present[c.rider.ID] = c.rider
+	}
+	riders := slices.SortedFunc(maps.Values(present), func(a, b protocol.Rider) int {
+		return cmp.Or(cmp.Compare(a.Name, b.Name), cmp.Compare(a.ID, b.ID))
+	})
+	for _, rider := range riders {
+		live.Riders = append(live.Riders, rider.Name)
+		live.RiderIDs = append(live.RiderIDs, rider.ID)
+	}
+	return live, true
 }
 
 // OnlineCount is WhereIs without the who: how many distinct riders hold a

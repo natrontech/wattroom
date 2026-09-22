@@ -16,7 +16,8 @@ import (
 // exactly as before ADR-0034. Called from a goroutine, outside every lock:
 // the implementation owns its own timeouts.
 type RecapKeeper interface {
-	SaveRecap(channel string, recap protocol.SessionRecap)
+	// session is the closed session's id (#2438), the row's one key.
+	SaveRecap(channel, session string, recap protocol.SessionRecap)
 }
 
 // SetRecapKeeper wires the store that makes a session durable.

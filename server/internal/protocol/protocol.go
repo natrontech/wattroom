@@ -110,7 +110,7 @@ type GameState struct {
 // Control is a coach/owner command over the shared session (SPEC roles matrix:
 // pick workout, start countdown, pause/end). The server enforces the role.
 type Control struct {
-	Action string `json:"action"` // "pick" | "start" | "pause" | "resume" | "end"
+	Action string `json:"action"` // "pick" | "start" | "pause" | "resume" | "end" | "handoff" | "game" | "game-end" | "sprint"
 	// Workout definition, opaque to the server: the docs/SPEC.md JSON as a
 	// string. The server owns the clock, the clients own the targets.
 	WorkoutName string `json:"workoutName,omitempty"`
@@ -120,6 +120,9 @@ type Control struct {
 	TotalSeconds int `json:"totalSeconds,omitempty"`
 	// For action "game": which mode to start.
 	GameMode string `json:"gameMode,omitempty"`
+	// For action "handoff": the rider id the session's coach hands it to
+	// (#2438) — someone in the voice channel.
+	Rider string `json:"rider,omitempty"`
 }
 
 // Backfill is a reconnect's replay: samples the client buffered while the
@@ -383,8 +386,10 @@ type ClientMessage struct {
 // needs to render them. FTP crosses the wire so every screen can show %FTP —
 // room-scoped by design, the same visibility WATTROOM.md grants live watts.
 type Rider struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// The rider's crew role, as a voice channel reads it: "owner", "admin"
+	// or "member" (#2438). Coach is not a role — it is the session's.
 	Role     string `json:"role"`
 	FtpWatts int    `json:"ftpWatts"`
 	// For w/kg on room screens — room-scoped like FTP, and for the same reason:
@@ -472,6 +477,15 @@ type OwnConnection struct {
 // pick), so a 64 KiB definition does not ride every second at 1–4 Hz (#1710).
 type SessionState struct {
 	Phase string `json:"phase"` // "idle" | "countdown" | "running" | "paused" | "done"
+	// The session's id while one is open in this voice channel (#2438):
+	// from the pick that opened it until the next one replaces it. Empty
+	// while nobody has opened one.
+	ID string `json:"id,omitempty"`
+	// Who is coaching it, by rider id and by name (#2438): whoever opened
+	// it, until they hand it off. The one rider whose controls the server
+	// takes, besides the crew's owner and admins ending it.
+	Coach     string `json:"coach,omitempty"`
+	CoachName string `json:"coachName,omitempty"`
 	// Seconds into the workout timeline. Advances only while running.
 	Elapsed int `json:"elapsed"`
 	// Seconds until the timeline starts, while in countdown.
@@ -667,6 +681,26 @@ type RoomPresence struct {
 	WorkoutName string `json:"workoutName,omitempty"`
 	ElapsedSec  int    `json:"elapsedSec,omitempty"`
 }
+
+// LiveSession is one session running in a crew's voice channel (#2438), as
+// GET /api/crews/{id}/live answers it — only for channels the caller may
+// enter, like every other live read.
+type LiveSession struct {
+	ID        string `json:"id"`
+	Channel   string `json:"channel"`
+	Workout   string `json:"workout"`
+	Phase     string `json:"phase"` // "countdown" | "running" | "paused"
+	Elapsed   int    `json:"elapsed"`
+	Coach     string `json:"coach"`
+	CoachName string `json:"coachName"`
+	// Who is in the channel, by name and by id in the same order.
+	Riders   []string `json:"riders"`
+	RiderIDs []string `json:"riderIds"`
+}
+
+// Administers reports whether the rider runs the crew: its owner or an
+// admin, who may end a session somebody else is coaching (#2438).
+func (r Rider) Administers() bool { return r.Role == "owner" || r.Role == "admin" }
 
 // Error tells a client why its connection or command was refused.
 type Error struct {
