@@ -59,12 +59,9 @@ export function voiceChannelData(
 
 /**
  * A crew role in the live shell's words — channels.LiveRole's mapping, so
- * the page's controls agree with what the hub will accept: the crew's owner
- * is the channel's owner and its admins coach, until #2438 makes the coach
- * whoever started the session.
+ * the page agrees with the roster the hub sends: the crew's own words, since
+ * coach is the session's and not a role (#2438).
  */
 export function liveRoleOf(crewRole: string): string {
-	if (crewRole === 'owner') return 'owner';
-	if (crewRole === 'admin') return 'coach';
-	return 'member';
+	return crewRole === 'owner' || crewRole === 'admin' ? crewRole : 'member';
 }

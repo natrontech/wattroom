@@ -60,10 +60,10 @@ describe('a voice channel page’s data (#2449)', () => {
 });
 
 describe('liveRoleOf', () => {
-	// channels.LiveRole's mapping: the page's controls agree with the hub's.
-	it('makes the owner the owner, an admin a coach, anyone else a member', () => {
+	// channels.LiveRole's mapping: the page agrees with the hub's roster.
+	it('keeps the owner and admins, and makes anyone else a member', () => {
 		expect(liveRoleOf('owner')).toBe('owner');
-		expect(liveRoleOf('admin')).toBe('coach');
+		expect(liveRoleOf('admin')).toBe('admin');
 		expect(liveRoleOf('member')).toBe('member');
 		expect(liveRoleOf('banned')).toBe('member');
 	});
