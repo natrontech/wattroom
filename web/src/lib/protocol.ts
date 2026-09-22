@@ -321,9 +321,9 @@ export interface JukeboxCommand {
   anchorMs?: number /* int64 */;
 }
 /**
- * ChatLine is one ephemeral room message (#146, ADR-0010): room-scoped,
- * never persisted — it rides the tick like cheers and dies with the page.
- * Warm-up and phone talk; mid-effort stays the cheers' job.
+ * ChatLine is one chat message as the HTTP chat answers it (ADR-0010
+ * amended, #201; off the tick since #2437). Warm-up and phone talk;
+ * mid-effort stays the cheers' job.
  */
 export interface ChatLine {
   /**
@@ -353,10 +353,9 @@ export interface ChatLine {
   editedAt?: number /* int64 */;
 }
 /**
- * ChatEdit is one already-delivered line rewritten by its author (#865).
- * The room hears it the way it hears a reaction total: the new text lands
- * on the line already in everyone's log, rather than arriving as a second
- * message that would push the conversation along.
+ * ChatEdit is one line rewritten by its author (#865): the new text lands
+ * on the line already in the log, rather than arriving as a second message
+ * that would push the conversation along.
  */
 export interface ChatEdit {
   messageId: string;
@@ -364,39 +363,9 @@ export interface ChatEdit {
   editedAt: number /* int64 */;
 }
 /**
- * ChatDelete is one already-delivered line taken out of the log (#2417).
- * It reaches the room the way an edit does — the line already in everyone's
- * log goes, rather than a second message arriving to say it went.
- * The id is the whole of it. There is no tombstone: this chat has no replies
- * for a "deleted message" row to hold the place of, the log is bounded and
- * pruned anyway, and a row that exists to say nothing is still a row somebody
- * has to read past.
- */
-export interface ChatDelete {
-  messageId: string;
-}
-/**
- * ChatID attaches the persisted identity to a line broadcast on an earlier
- * tick (#219): the save runs off the read loop, so the id follows the line.
- * FromID+At name the line — the 1/s per-rider chat limit makes the pair unique.
- */
-export interface ChatID {
-  fromId: string;
-  at: number /* int64 */;
-  id: string;
-}
-/**
- * ChatReact toggles one rider's emoji on one message (#201) — the cheer
- * vocabulary, attached instead of thrown.
- */
-export interface ChatReact {
-  messageId: string;
-  emoji: string;
-}
-/**
- * ChatReactionCount is a changed total, broadcast on the tick — plus who
- * changed it and which way (#219): the actor's own tabs reconcile their
- * "did I react" highlight from the server instead of trusting the click.
+ * ChatReactionCount is a changed total, as the toggle answers it — plus who
+ * changed it and which way (#219), so the actor reconciles their "did I
+ * react" highlight from the server instead of trusting the click.
  */
 export interface ChatReactionCount {
   messageId: string;
@@ -575,8 +544,6 @@ export interface DeviceKind {
  * ClientMessage is the envelope for everything a client sends.
  */
 export interface ClientMessage {
-  chat?: ChatLine;
-  chatReact?: ChatReact;
   cheer?: Cheer;
   board?: Board;
   metrics?: RiderMetrics;
@@ -891,28 +858,10 @@ export interface ServerTick {
    */
   board?: Board[];
   /**
-   * This second's chat lines, drained the same way. No backlog on join —
-   * ephemeral means ephemeral.
-   */
-  chat?: ChatLine[];
-  chatReactions?: ChatReactionCount[];
-  /**
-   * Lines rewritten this second (#865), drained like the reactions above.
-   */
-  chatEdits?: ChatEdit[];
-  /**
-   * ...and lines taken out of it (#2417), drained the same way.
-   */
-  chatDeletes?: ChatDelete[];
-  /**
-   * Persisted ids for lines already broadcast (#219) — the async save's
-   * follow-up, unlocking reactions on them.
-   */
-  chatIds?: ChatID[];
-  /**
+   * No chat (#2437, ADR-0058): a voice channel carries none, and a room's
+   * chat is read over HTTP and re-read on the lobby ping.
    * The recap of the session that just ended (ADR-0034), on the tick where
-   * the row lands — the async write's follow-up, the same shape ChatIDs
-   * already uses. Everyone else gets it from the backlog on their next
+   * the row lands — the async write's follow-up. Everyone else gets it from the backlog on their next
    * join, because unlike everything above it, this one is durable.
    */
   recap?: SessionRecap;

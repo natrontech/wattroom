@@ -8,7 +8,6 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
-	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 func TestEditChatMessage(t *testing.T) {
@@ -16,7 +15,7 @@ func TestEditChatMessage(t *testing.T) {
 	live := &fakeLive{}
 	svc.SetLive(live)
 	alice := users.ByToken["alice"]
-	id, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "warmup at 6", "", time.Now().UnixMilli())
+	id, ok := svc.saveChat(t.Context(), room.ID, room.Slug, store.UUIDString(alice.ID), "warmup at 6", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}
@@ -50,8 +49,8 @@ func TestEditChatMessage(t *testing.T) {
 	if code, _ := patch(t, mux, "alice", "/api/rooms/no-such-room/chat/"+id, `{"text":"fixed"}`); code != http.StatusNotFound {
 		t.Fatalf("unknown room: %d", code)
 	}
-	if len(live.edits) != 0 {
-		t.Fatalf("a refused edit reached the room: %v", live.edits)
+	if live.pings != 0 {
+		t.Fatalf("a refused edit pinged the lobby %d times", live.pings)
 	}
 
 	// Happy: the new text comes back stamped, the room is told, and the
@@ -67,8 +66,8 @@ func TestEditChatMessage(t *testing.T) {
 	if stamp <= 0 {
 		t.Fatalf("no edit stamp: %v", body)
 	}
-	if len(live.edits) != 1 || live.edits[0].MessageID != id || live.edits[0].Text != "warmup at 7" {
-		t.Fatalf("room got: %+v", live.edits)
+	if live.pings != 1 {
+		t.Fatalf("the edit pinged the lobby %d times, want 1", live.pings)
 	}
 	_, messages := backlog(t, mux, "bob", room.Slug)
 	if len(messages) != 1 || messages[0]["text"] != "warmup at 7" {
@@ -89,7 +88,7 @@ func TestEditKeepsAnImageWhenTheWordsGo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "look at this", store.UUIDString(img), time.Now().UnixMilli())
+	id, ok := svc.saveChat(t.Context(), room.ID, room.Slug, store.UUIDString(alice.ID), "look at this", store.UUIDString(img), time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}

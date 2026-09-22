@@ -43,8 +43,8 @@ export const SETTLED_ATTEMPTS = 5;
 
 export function createRoomLive(slug: string) {
 	let status = $state<LiveStatus>('connecting');
-	// The room's chat — the log, its ids, its edits, its reactions — is a
-	// module of its own; the socket hands it every tick.
+	// The room's chat — the log and its reactions — is a module of its own,
+	// fed by the backlog over HTTP (#2437): chat does not ride the tick.
 	const chat = createChatLog();
 	let tick = $state<ServerTick | null>(null);
 	// The last workout definition heard, by hash (#1710): the server sends
@@ -361,7 +361,6 @@ export function createRoomLive(slug: string) {
 					if (!recaps.some((r) => r.id === written.id))
 						recaps = [...recaps, written];
 				}
-				chat.onTick(msg.tick);
 				if (msg.tick.events?.length) mergeEvents(msg.tick.events);
 			}
 			// A refused command is feedback, not a fault — it stays up long
@@ -388,29 +387,27 @@ export function createRoomLive(slug: string) {
 	window.addEventListener('offline', wentOffline);
 	window.addEventListener('online', cameOnline);
 
-	// Words typed during a reconnect wait here and flush on reopen — a chat
-	// line must never silently vanish (audit #219). Metrics are continuous
-	// and never queued; stale watts help nobody.
+	// Commands sent during a reconnect wait here and flush on reopen (audit
+	// #219). Metrics are continuous and never queued; stale watts help nobody.
 	let pending: ClientMessage[] = [];
-	// A long reconnect under a talkative rider fills this; past it, send()
-	// refuses rather than drops, so the caller can hand the words back (#650).
+	// Bounded: a long reconnect under a busy rider must not grow it forever.
+	// Chat, the one command whose refusal a rider needed to hear (#650), goes
+	// over HTTP now (#2437) and answers for itself.
 	const PENDING_LIMIT = 16;
 	// This socket's view of its rider being away (#706), kept so a reconnect
 	// can re-declare it. Not $state: nothing renders from here — the roster
 	// on the tick is what every screen draws, this rider's tile included.
 	let away = false;
-	/** True once the message is on the wire or waiting for it; false when the
-	 * queue is full and the words are still the caller's to keep. Metrics are
-	 * never queued and never refused: the next sample supersedes a lost one. */
-	function send(message: ClientMessage): boolean {
+	/** On the wire, or waiting for it; past the bound, dropped. Metrics are
+	 * never queued: the next sample supersedes a lost one. */
+	function send(message: ClientMessage) {
 		if (socket?.readyState === WebSocket.OPEN) {
 			socket.send(JSON.stringify(message));
-			return true;
+			return;
 		}
-		if (message.metrics) return true;
-		if (pending.length >= PENDING_LIMIT) return false;
+		if (message.metrics) return;
+		if (pending.length >= PENDING_LIMIT) return;
 		pending.push(message);
-		return true;
 	}
 
 	return {
@@ -564,19 +561,13 @@ export function createRoomLive(slug: string) {
 		get myReacts() {
 			return chat.myReacts;
 		},
-		/** The join-time backlog (#201) — replaces the log, seeds reactions. */
+		/** One read of the backlog (#2437) — replaces the log and the counts. */
 		seedChat(messages: BacklogMessage[]) {
 			chat.seed(messages);
 		},
-		/** False when a reconnect queue too full to take the line refused it —
-		 * the caller still holds the words and must say so. */
-		chat(text: string, imageId?: string): boolean {
-			return send({ chat: { from: '', text, imageId, at: 0 } });
-		},
-		/** Toggle my emoji on a message — optimistic; the tick corrects counts. */
-		react(messageId: string, emoji: string) {
+		/** My own reaction, drawn before the answer comes back. */
+		toggleMyReact(messageId: string, emoji: string) {
 			chat.toggleMine(messageId, emoji);
-			send({ chatReact: { messageId, emoji } });
 		},
 		/** One jukebox command. The wire shape IS the argument (#286) — six
 		 * positional optionals were a bug waiting to be passed in the wrong

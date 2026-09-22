@@ -37,15 +37,13 @@ type Recaps interface {
 	List(ctx context.Context, roomID, viewer pgtype.UUID, limit int) ([]protocol.SessionRecap, error)
 }
 
-// Live is what chat borrows from the hub (#468): a line or a reaction posted
-// over HTTP by a member who is not in the room still has to reach the riders
-// who are, on the next tick, as if it had come over their socket. Optional:
-// without it the post is remembered and read on the next join.
+// Live is what chat borrows from the hub: the lobby ping. Chat left the tick
+// (#2437), so every write — a line, an edit, a deletion, a reaction — pings,
+// and whoever is showing the room re-reads its backlog; a sidebar's unread
+// count moves on the same ping (#568). Optional: without it the change is
+// read on the next fetch.
 type Live interface {
-	PostChat(channel string, line protocol.ChatLine)
-	PostReaction(channel string, change protocol.ChatReactionCount)
-	PostChatEdit(channel string, edit protocol.ChatEdit)
-	PostChatDelete(channel string, gone protocol.ChatDelete)
+	PresenceChanged()
 }
 
 // The HTTP door's ceilings (#1982), the DM door's numbers: the socket path
@@ -119,31 +117,10 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/rooms/{slug}/chat/images/{id}", s.handleImage)
 }
 
-// SaveChat implements hub.ChatKeeper: persist, prune, hand back the identity
-// the tick line carries so reactions have something to attach to. imageID is
-// optional (#279) — a blob the sender uploaded first; junk parses to NULL.
-//
-// at is the line's own millisecond, the one the wire already carries, and it
-// is written rather than defaulted (#2421): the row and the broadcast have
-// to agree about when a line happened, because the rail reads one and the
-// room socket the other, and the pair is what names the line to the dedup
-// that stops both of them announcing it.
-//
-// The hub names the voice channel (#2436); the line lands in the room that
-// channel came from until #2435 moves chat onto text channels.
-func (s *Service) SaveChat(ctx context.Context, channel, userID, text, imageID string, at int64) (string, bool) {
-	// Runs on the hub's save worker (#219), so a stalled database backs up
-	// that queue — nobody's read loop. The budget just bounds the queue lag.
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	room, err := s.store.RoomOfVoiceChannel(ctx, channel)
-	if err != nil {
-		return "", false
-	}
-	return s.saveChat(ctx, room.ID, room.Slug, userID, text, imageID, at)
-}
-
-// saveChat is SaveChat for a room already in hand — the HTTP post's.
+// saveChat persists one line and prunes, handing back the id reactions
+// attach to. imageID is optional (#279) — a blob the sender uploaded first;
+// junk parses to NULL. at is the line's own millisecond, written rather than
+// defaulted (#2421): the row and the response name the same moment.
 func (s *Service) saveChat(ctx context.Context, roomID pgtype.UUID, where, userID, text, imageID string, at int64) (string, bool) {
 	uid, err := store.ParseUUID(userID)
 	if err != nil {
@@ -185,19 +162,8 @@ func (s *Service) pruneSampled(roomID pgtype.UUID, where string) {
 	})
 }
 
-// ToggleReaction implements hub.ChatKeeper: add if absent, remove if present,
-// return the new total. The insert refuses messages outside this room.
-func (s *Service) ToggleReaction(ctx context.Context, channel, messageID, userID, emoji string) (int, bool, bool) {
-	ctx, cancel := context.WithTimeout(ctx, 750*time.Millisecond)
-	defer cancel()
-	room, err := s.store.RoomOfVoiceChannel(ctx, channel)
-	if err != nil {
-		return 0, false, false
-	}
-	return s.toggleReaction(ctx, room.ID, room.Slug, messageID, userID, emoji)
-}
-
-// toggleReaction is ToggleReaction for a room already in hand.
+// toggleReaction adds the emoji if absent, removes it if present, and
+// returns the new total. The insert refuses messages outside this room.
 func (s *Service) toggleReaction(ctx context.Context, roomID pgtype.UUID, where, messageID, userID, emoji string) (int, bool, bool) {
 	uid, err := store.ParseUUID(userID)
 	if err != nil {

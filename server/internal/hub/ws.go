@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -222,60 +221,6 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// admits one sample per second anyway.
 			if m := *msg.Metrics; validMetrics(m) && rm.allow("metrics", rider.ID, h.now(), metricsMinGap) {
 				rm.setMetrics(c, m)
-			}
-		}
-		if msg.Chat != nil {
-			// Untrusted input: bounded text, 1/s per rider, sender is presence.
-			text := strings.TrimSpace(msg.Chat.Text)
-			if utf8.RuneCountInString(text) > protocol.MaxMessageChars {
-				// The client caps at 500 CHARACTERS — counting bytes here cut
-				// non-Latin scripts off at half the advertised limit and then
-				// dropped the line silently (audit #219).
-				h.writeError(c, "validation_error",
-					fmt.Sprintf("That message is too long — %d characters is the cap.", protocol.MaxMessageChars))
-				continue
-			}
-			// Untrusted like the text: an image id is a 36-char UUID the room's
-			// serve endpoint scopes anyway — anything else is dropped, not the
-			// line's problem (#279).
-			imageID := msg.Chat.ImageID
-			if len(imageID) != 36 {
-				imageID = ""
-			}
-			if (text != "" || imageID != "") && rm.allow("chat", rider.ID, h.now(), time.Second) {
-				line := protocol.ChatLine{From: rider.Name, FromID: rider.ID, Text: text, ImageID: imageID, At: h.now().UnixMilli()}
-				// The save runs on the hub's worker, never in this read loop
-				// (#219): the line broadcasts now, id-less; its persisted id
-				// follows on a later tick as a ChatID.
-				if h.chat != nil {
-					select {
-					case h.saves <- chatSave{rm: rm, channel: channel, riderID: rider.ID, text: text, imageID: imageID, at: line.At}:
-					default:
-						// Full queue: the line stays ephemeral — blocking the
-						// sender's reads would be the worse failure.
-						h.log.Warn("chat save queue full, line not persisted", "channel", channel, "rider", rider.ID)
-					}
-				}
-				rm.chatLine(line)
-			} else if text != "" || imageID != "" {
-				// A deliberate act with a visible result answers when it is
-				// refused: this one dropped the line in silence and the
-				// composer had already cleared it (#1762). Two fast lines on
-				// a phone keyboard is the normal case. Cheer, react and board
-				// stay quiet below because they are fire-and-forget taps and
-				// the rider has lost nothing — the jukebox is not, and says so
-				// (#2232).
-				h.writeError(c, "rate_limited", "One line a second — say that again in a moment.")
-			}
-		}
-		if msg.ChatReact != nil && h.chat != nil {
-			if protocol.IsIconOrEmoji(msg.ChatReact.Emoji) && rm.allow("react", rider.ID, h.now(), 300*time.Millisecond) {
-				if count, added, ok := h.chat.ToggleReaction(ctx, channel, msg.ChatReact.MessageID, rider.ID, msg.ChatReact.Emoji); ok {
-					rm.reactionChanged(protocol.ChatReactionCount{
-						MessageID: msg.ChatReact.MessageID, Emoji: msg.ChatReact.Emoji,
-						Count: count, By: rider.ID, Added: added,
-					})
-				}
 			}
 		}
 		if msg.Board != nil {

@@ -173,9 +173,9 @@ type JukeboxCommand struct {
 	// sends it.
 }
 
-// ChatLine is one ephemeral room message (#146, ADR-0010): room-scoped,
-// never persisted — it rides the tick like cheers and dies with the page.
-// Warm-up and phone talk; mid-effort stays the cheers' job.
+// ChatLine is one chat message as the HTTP chat answers it (ADR-0010
+// amended, #201; off the tick since #2437). Warm-up and phone talk;
+// mid-effort stays the cheers' job.
 type ChatLine struct {
 	// Persisted identity (ADR-0010 amended, #201) — what reactions attach to.
 	// Empty when the server runs without a database.
@@ -196,47 +196,18 @@ type ChatLine struct {
 	EditedAt int64 `json:"editedAt,omitempty"`
 }
 
-// ChatEdit is one already-delivered line rewritten by its author (#865).
-// The room hears it the way it hears a reaction total: the new text lands
-// on the line already in everyone's log, rather than arriving as a second
-// message that would push the conversation along.
+// ChatEdit is one line rewritten by its author (#865): the new text lands
+// on the line already in the log, rather than arriving as a second message
+// that would push the conversation along.
 type ChatEdit struct {
 	MessageID string `json:"messageId"`
 	Text      string `json:"text"`
 	EditedAt  int64  `json:"editedAt"`
 }
 
-// ChatDelete is one already-delivered line taken out of the log (#2417).
-// It reaches the room the way an edit does — the line already in everyone's
-// log goes, rather than a second message arriving to say it went.
-//
-// The id is the whole of it. There is no tombstone: this chat has no replies
-// for a "deleted message" row to hold the place of, the log is bounded and
-// pruned anyway, and a row that exists to say nothing is still a row somebody
-// has to read past.
-type ChatDelete struct {
-	MessageID string `json:"messageId"`
-}
-
-// ChatID attaches the persisted identity to a line broadcast on an earlier
-// tick (#219): the save runs off the read loop, so the id follows the line.
-// FromID+At name the line — the 1/s per-rider chat limit makes the pair unique.
-type ChatID struct {
-	FromID string `json:"fromId"`
-	At     int64  `json:"at"`
-	ID     string `json:"id"`
-}
-
-// ChatReact toggles one rider's emoji on one message (#201) — the cheer
-// vocabulary, attached instead of thrown.
-type ChatReact struct {
-	MessageID string `json:"messageId"`
-	Emoji     string `json:"emoji"`
-}
-
-// ChatReactionCount is a changed total, broadcast on the tick — plus who
-// changed it and which way (#219): the actor's own tabs reconcile their
-// "did I react" highlight from the server instead of trusting the click.
+// ChatReactionCount is a changed total, as the toggle answers it — plus who
+// changed it and which way (#219), so the actor reconciles their "did I
+// react" highlight from the server instead of trusting the click.
 type ChatReactionCount struct {
 	MessageID string `json:"messageId"`
 	Emoji     string `json:"emoji"`
@@ -396,18 +367,16 @@ type DeviceKind struct {
 
 // ClientMessage is the envelope for everything a client sends.
 type ClientMessage struct {
-	Chat      *ChatLine       `json:"chat,omitempty"`
-	ChatReact *ChatReact      `json:"chatReact,omitempty"`
-	Cheer     *Cheer          `json:"cheer,omitempty"`
-	Board     *Board          `json:"board,omitempty"`
-	Metrics   *RiderMetrics   `json:"metrics,omitempty"`
-	Control   *Control        `json:"control,omitempty"`
-	Backfill  *Backfill       `json:"backfill,omitempty"`
-	Jukebox   *JukeboxCommand `json:"jukebox,omitempty"`
-	Sensors   *SensorClaim    `json:"sensors,omitempty"`
-	Poke      *Poke           `json:"poke,omitempty"`
-	Away      *AwayState      `json:"away,omitempty"`
-	Device    *DeviceKind     `json:"device,omitempty"`
+	Cheer    *Cheer          `json:"cheer,omitempty"`
+	Board    *Board          `json:"board,omitempty"`
+	Metrics  *RiderMetrics   `json:"metrics,omitempty"`
+	Control  *Control        `json:"control,omitempty"`
+	Backfill *Backfill       `json:"backfill,omitempty"`
+	Jukebox  *JukeboxCommand `json:"jukebox,omitempty"`
+	Sensors  *SensorClaim    `json:"sensors,omitempty"`
+	Poke     *Poke           `json:"poke,omitempty"`
+	Away     *AwayState      `json:"away,omitempty"`
+	Device   *DeviceKind     `json:"device,omitempty"`
 }
 
 // Rider is presence: who is in the room right now, with what the dashboard
@@ -645,20 +614,11 @@ type ServerTick struct {
 	// This second's soundboard fires, drained the same way. The clip itself
 	// is fetched over HTTP — only the trigger rides the tick (ADR-0033).
 	Board []Board `json:"board,omitempty"`
-	// This second's chat lines, drained the same way. No backlog on join —
-	// ephemeral means ephemeral.
-	Chat          []ChatLine          `json:"chat,omitempty"`
-	ChatReactions []ChatReactionCount `json:"chatReactions,omitempty"`
-	// Lines rewritten this second (#865), drained like the reactions above.
-	ChatEdits []ChatEdit `json:"chatEdits,omitempty"`
-	// ...and lines taken out of it (#2417), drained the same way.
-	ChatDeletes []ChatDelete `json:"chatDeletes,omitempty"`
-	// Persisted ids for lines already broadcast (#219) — the async save's
-	// follow-up, unlocking reactions on them.
-	ChatIDs []ChatID `json:"chatIds,omitempty"`
+	// No chat (#2437, ADR-0058): a voice channel carries none, and a room's
+	// chat is read over HTTP and re-read on the lobby ping.
+	//
 	// The recap of the session that just ended (ADR-0034), on the tick where
-	// the row lands — the async write's follow-up, the same shape ChatIDs
-	// already uses. Everyone else gets it from the backlog on their next
+	// the row lands — the async write's follow-up. Everyone else gets it from the backlog on their next
 	// join, because unlike everything above it, this one is durable.
 	Recap *SessionRecap `json:"recap,omitempty"`
 	// What the room did this second (#321) — jukebox actions the chat pane

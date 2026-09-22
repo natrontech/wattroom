@@ -66,6 +66,11 @@ type Connection = {
 	/** The backlog's state (#1538): the finished sessions come from it. */
 	backlog: () => BacklogState;
 	reloadBacklog: () => void;
+	/** Say something (#2437): over HTTP — chat does not ride the socket. The
+	 * refusal's message, or null once the line is in the room. */
+	sendChat: (text: string, imageId?: string) => Promise<string | null>;
+	/** Toggle my reaction — drawn at once, corrected by the answer. */
+	react: (messageId: string, emoji: string) => Promise<string | null>;
 	/** The shared session and its workout, parsed once per connection. */
 	shared: () => SessionState | undefined;
 	segments: () => Segment[];
@@ -78,19 +83,26 @@ let current = $state<Connection | null>(null);
 export type BacklogState = 'loading' | 'ready' | 'failed';
 
 /**
- * The chat backlog (#201). Live chat works without it, but since ADR-0034
- * (#1331) it is also the only source of the room's finished sessions, so
- * its state is a fact the Sessions place shows rather than a silent gap
- * (#1538).
+ * The chat backlog (#201) — since #2437 the room's chat itself, read again on
+ * every lobby ping; and since ADR-0034 (#1331) the only source of the room's
+ * finished sessions, so its state is a fact the Sessions place shows rather
+ * than a silent gap (#1538).
  */
 function createBacklog(slug: string, live: ReturnType<typeof createRoomLive>) {
 	let state = $state<BacklogState>('loading');
+	// Reads overlap on a busy lobby; only the newest may land, or an older
+	// answer would put back a line that has since been deleted.
+	let issued = 0;
 	function load() {
-		state = 'loading';
+		// A re-read of a log already on screen is quiet: "loading" is for a
+		// room with nothing to show yet.
+		if (state !== 'ready') state = 'loading';
+		const mine = ++issued;
 		void api<{
 			messages?: Parameters<typeof live.seedChat>[0];
 			recaps?: Parameters<typeof live.seedRecaps>[0];
 		}>(`/api/rooms/${slug}/chat`).then((res) => {
+			if (mine !== issued) return;
 			if (!res.ok) {
 				state = 'failed';
 				return;
@@ -132,9 +144,35 @@ function connect(slug: string): Connection {
 	}
 	const live = createRoomLive(slug);
 	const av = createRoomAv(slug);
-	// The chat backlog (#201): loaded once per join — the log follows the
-	// connection, not the page, like everything else here.
+	// The chat backlog (#201): loaded on join and again on every lobby ping
+	// (#2437) — the log follows the connection, not the page.
 	const backlog = createBacklog(slug, live);
+
+	async function sendChat(text: string, imageId?: string) {
+		const res = await api(`/api/rooms/${slug}/chat`, {
+			method: 'POST',
+			json: { text, imageId },
+		});
+		if (!res.ok) return res.error.message;
+		// The lobby ping would bring it too, a beat later; the sender should
+		// not have to wait to see their own words land.
+		backlog.reload();
+		return null;
+	}
+
+	async function react(messageId: string, emoji: string) {
+		live.toggleMyReact(messageId, emoji);
+		const res = await api(`/api/rooms/${slug}/chat/reactions`, {
+			method: 'POST',
+			json: { messageId, emoji },
+		});
+		if (!res.ok) {
+			live.toggleMyReact(messageId, emoji);
+			return res.error.message;
+		}
+		backlog.reload();
+		return null;
+	}
 	// Presence announces itself (#148) from HERE, not the page — someone
 	// arriving is audible even while you are off browsing workouts; hidden
 	// tabs get the browser notification instead (#202).
@@ -420,7 +458,7 @@ function connect(slug: string): Connection {
 					reading: chatOpen && !away(),
 					reply: {
 						placeholder: `Reply in ${where}`,
-						send: (text) => live.chat(text),
+						send: (text) => sendChat(text),
 					},
 				});
 			}
@@ -476,9 +514,18 @@ function connect(slug: string): Connection {
 			return () => setDucking(false);
 		});
 
-		// A reconnect leaves a chat gap the tick stream never backfills —
-		// re-fetch the log when the socket comes back; the id-merge in
-		// seedChat makes this idempotent (audit #219).
+		// Chat left the tick (#2437): every chat write pings the lobby, and the
+		// room re-reads its log off that ping.
+		let heard = untrack(() => presence.version);
+		$effect(() => {
+			const version = presence.version;
+			if (version === heard) return;
+			heard = version;
+			untrack(() => backlog.reload());
+		});
+
+		// A reconnect may have missed a ping — re-read when the socket comes
+		// back (audit #219).
 		let wasReconnecting = false;
 		$effect(() => {
 			const status = live.status;
@@ -582,6 +629,8 @@ function connect(slug: string): Connection {
 		readingChat,
 		backlog: () => backlog.state,
 		reloadBacklog: () => backlog.reload(),
+		sendChat,
+		react,
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,
