@@ -15,7 +15,7 @@ func TestPublicRouteRedactsEveryNameCarryingShape(t *testing.T) {
 	// to join.
 	for route, want := range map[string]string{
 		"/ride":               "/ride",
-		"/rooms/directory":    "/rooms/directory",
+		"/crews/directory":    "/crews/directory",
 		"/settings/profile":   "/settings/profile",
 		"/r/mfw-5":            "/r/…",
 		"/r/mfw-5/sessions":   "/r/…/sessions",
