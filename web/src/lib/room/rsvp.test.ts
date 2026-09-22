@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rsvpSummary } from './rsvp';
+import { rsvpSummary, tallyOf, whoIsInOf } from './rsvp';
 
 describe('rsvpSummary', () => {
 	it('names the three states as counts', () => {
@@ -52,5 +52,25 @@ describe('rsvpSummary', () => {
 		expect(
 			line.replace(/\d+ (in|out|unanswered)/g, '').replace(/ · /g, ''),
 		).toBe('');
+	});
+});
+
+describe('tallyOf and whoIsInOf', () => {
+	const rider = (n: number) => ({ id: `r${n}`, displayName: `Rider ${n}` });
+
+	it('counts what a plan carries, and nothing it does not', () => {
+		expect(tallyOf({})).toEqual({ in: 0, out: 0, unanswered: 0 });
+		expect(
+			tallyOf({ going: [rider(1), rider(2)], out: 1, unanswered: 3 }),
+		).toEqual({ in: 2, out: 1, unanswered: 3 });
+	});
+
+	// Silent if it breaks: a crew of twenty would print twenty names across a
+	// phone row. Seen red in the PR.
+	it('names four and counts the rest', () => {
+		expect(whoIsInOf({ going: [rider(1), rider(2)] })).toBe('Rider 1, Rider 2');
+		expect(whoIsInOf({ going: [1, 2, 3, 4, 5, 6].map(rider) })).toBe(
+			'Rider 1, Rider 2, Rider 3, Rider 4 +2 more',
+		);
 	});
 });
