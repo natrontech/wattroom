@@ -42,3 +42,31 @@ export function rsvpSummary(tally: RsvpTally, whoIsIn = ''): string {
 	if (tally.unanswered > 0) parts.push(`${tally.unanswered} unanswered`);
 	return parts.join(' · ');
 }
+
+/** A plan's answers as every schedule sends them — a room's and a crew's. */
+export interface PlanAnswers {
+	/** Who said they are in, first to say so first. */
+	going?: { id: string; displayName: string }[];
+	out?: number;
+	unanswered?: number;
+	/** Your own answer; absent while you have not given one. */
+	yourAnswer?: RsvpAnswer;
+}
+
+export function tallyOf(plan: PlanAnswers): RsvpTally {
+	return {
+		in: plan.going?.length ?? 0,
+		out: plan.out ?? 0,
+		unanswered: plan.unanswered ?? 0,
+	};
+}
+
+/** The riders who are in, as a row has width for. */
+export function whoIsInOf(plan: PlanAnswers): string {
+	const names = plan.going ?? [];
+	const shown = names
+		.slice(0, 4)
+		.map((who) => who.displayName)
+		.join(', ');
+	return names.length > 4 ? `${shown} +${names.length - 4} more` : shown;
+}

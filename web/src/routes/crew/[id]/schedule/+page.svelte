@@ -45,7 +45,12 @@
 	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import SessionPicker from '$lib/room/SessionPicker.svelte';
-	import { rsvpSummary, type RsvpAnswer } from '$lib/room/rsvp';
+	import {
+		rsvpSummary,
+		tallyOf,
+		whoIsInOf,
+		type RsvpAnswer,
+	} from '$lib/room/rsvp';
 	import { parseSharedSegments } from '$lib/room/workout';
 	import { serverNow } from '$lib/room/server-clock';
 	import { toasts } from '$lib/toast.svelte';
@@ -134,14 +139,6 @@
 
 	const going = (entry: CrewPlan) => entry.going ?? [];
 	const answer = (entry: CrewPlan) => entry.yourAnswer ?? null;
-	const whoIsIn = (entry: CrewPlan) => {
-		const names = going(entry);
-		const shown = names
-			.slice(0, 4)
-			.map((who) => who.displayName)
-			.join(', ');
-		return names.length > 4 ? `${shown} +${names.length - 4} more` : shown;
-	};
 	/** Your own answer again takes it back; the other one changes your mind.
 	 *  Neither asks: a second tap undoes it (errors.md). */
 	async function choose(entry: CrewPlan, pressed: RsvpAnswer) {
@@ -374,14 +371,7 @@
 								>
 							{/each}
 							<span class="text-muted text-xs"
-								>{rsvpSummary(
-									{
-										in: going(entry).length,
-										out: entry.out ?? 0,
-										unanswered: entry.unanswered ?? 0,
-									},
-									whoIsIn(entry),
-								)}</span
+								>{rsvpSummary(tallyOf(entry), whoIsInOf(entry))}</span
 							>
 						</div>
 						{#if movingId === entry.id}

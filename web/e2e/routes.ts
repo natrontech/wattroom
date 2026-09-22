@@ -69,6 +69,8 @@ export const MEASURED_BY_ID: readonly string[] = [
 	'/crew/[id]/settings',
 	'/crew/[id]/schedule',
 	'/crew/[id]/c/[channel]',
+	'/crew/[id]/board',
+	'/crew/[id]/workouts',
 	'/c/[code]',
 ];
 

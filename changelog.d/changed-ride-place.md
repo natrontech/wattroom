@@ -1,0 +1,1 @@
+- Your ride history says where each group ride happened, e.g. "with Thursday Crew in Pain Cave", and the ride page links to that crew.

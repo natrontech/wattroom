@@ -1,6 +1,6 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
-import type { RsvpAnswer } from '$lib/room/rsvp';
 import type { CrewRole } from '$lib/crew';
+import type { PlanAnswers, RsvpAnswer } from '$lib/room/rsvp';
 
 /**
  * The crew's schedule (#2440, #2452): one calendar for the crew, a plan naming
@@ -8,25 +8,25 @@ import type { CrewRole } from '$lib/crew';
  * any member plans and answers; the owner and admins move and cancel any
  * plan, a member their own; any member who may enter the channel starts one.
  */
-export interface CrewPlan {
+
+/**
+ * One of the crew's planned sessions (#2440) as you may see it: a plan in a
+ * private channel that does not name you is not in the list.
+ */
+export interface CrewPlan extends PlanAnswers {
 	id: string;
 	workoutName: string;
 	workoutJson: string;
 	startsAt: string;
 	createdBy: string;
-	/** Who said they are in, first to say so first (#450). */
-	going?: { id: string; displayName: string }[];
-	/** A count, never names (#1011). */
-	out?: number;
-	unanswered?: number;
-	yourAnswer?: RsvpAnswer;
-	/** The voice channel it names; absent while it names none. */
+	/** The voice channel it will run in; absent while it names none. */
 	channelId?: string;
 	channelName?: string;
-	/** You planned it — a member moves and cancels their own. */
+	/** You planned it, so you may move or cancel it. */
 	mine?: boolean;
 }
 
+/** The crew's calendar, soonest first. */
 export function fetchCrewSchedule(
 	crewId: string,
 	fetcher: typeof fetch = fetch,
@@ -64,7 +64,7 @@ export function cancelCrewPlan(
 	return api(`/api/crews/${crewId}/schedule/${planId}`, { method: 'DELETE' });
 }
 
-/** Your answer; null takes it back — the third state is no answer. */
+/** In, out, or `null` to take your answer back (docs/SPEC.md: no maybe). */
 export function answerCrewPlan(
 	crewId: string,
 	planId: string,
@@ -72,8 +72,8 @@ export function answerCrewPlan(
 ): Promise<ApiResult<void>> {
 	const path = `/api/crews/${crewId}/schedule/${planId}/rsvp`;
 	return answer === null
-		? api(path, { method: 'DELETE' })
-		: api(path, { method: 'PUT', json: { going: answer === 'in' } });
+		? api<void>(path, { method: 'DELETE' })
+		: api<void>(path, { method: 'PUT', json: { going: answer === 'in' } });
 }
 
 /** Opens the plan's session in its channel with you as coach (#2440). A plan

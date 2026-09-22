@@ -1,15 +1,15 @@
 <script lang="ts">
-	// The crew's own page (ADR-0038; #1150, #1151): its name, its rooms with
-	// what you may do in each, its people with their crew roles, and — for
-	// the owner and admins — the people it banned. The rooms and the people
-	// are components of their own (#1234); this page is the header, the
-	// invite and the way out. Nothing live: the crew carries no voice, deck,
-	// session or metrics.
+	// The crew's Home (ADR-0038, ADR-0058; #1150, #1151, #2451): its name,
+	// then what is live, what is next and who is around (CrewNow), then its
+	// rooms until they go (#2460), the invite and the way out. The live half
+	// is read from the crew's voice channels; the crew itself holds nothing
+	// live.
 	import { page } from '$app/state';
 	import { account } from '$lib/account.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import CrewNow from './CrewNow.svelte';
 	import CrewRooms from './CrewRooms.svelte';
 	import { fetchCrew, type Crew } from '$lib/crew';
 	import {
@@ -218,6 +218,7 @@
 			</p>
 		{/if}
 
+		<CrewNow {crew} />
 		<CrewRooms {crew} {administers} onchange={() => void load(id)} />
 		<!-- The people, their roles, the board and the crew's sessions have one
 		     home since #2453: the Members page. -->
