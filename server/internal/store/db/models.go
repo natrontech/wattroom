@@ -95,17 +95,21 @@ type ChatReaction struct {
 }
 
 type Crew struct {
-	ID         pgtype.UUID
-	Name       string
-	Icon       string
-	OwnerID    pgtype.UUID
-	CreatedAt  pgtype.Timestamptz
-	Code       *string
-	ImageMime  *string
-	Image      []byte
-	ImageSetAt pgtype.Timestamptz
-	RenamedAt  pgtype.Timestamptz
-	FoundedBy  pgtype.UUID
+	ID           pgtype.UUID
+	Name         string
+	Icon         string
+	OwnerID      pgtype.UUID
+	CreatedAt    pgtype.Timestamptz
+	Code         *string
+	ImageMime    *string
+	Image        []byte
+	ImageSetAt   pgtype.Timestamptz
+	RenamedAt    pgtype.Timestamptz
+	FoundedBy    pgtype.UUID
+	BoardEnabled bool
+	Cheers       string
+	Listed       bool
+	IcsToken     string
 }
 
 type CrewPin struct {
@@ -124,6 +128,8 @@ type CrewRole struct {
 	Role     string
 	SetAt    pgtype.Timestamptz
 	JoinedAt pgtype.Timestamptz
+	Notify   bool
+	OnBoard  bool
 }
 
 type DmImage struct {
