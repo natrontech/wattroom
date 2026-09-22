@@ -33,7 +33,7 @@
 		activePlace,
 		dmsCurrent,
 		pages,
-		placesFor,
+		roomPlaces,
 	} from './pages';
 	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
 	import { roomMenu } from './room-menu';
@@ -87,7 +87,6 @@
 	// Below md the drawer IS the room's index, and Settings is not offered
 	// there (#412 — an owner-only form nobody fills in from a bike). One
 	// answer, used by the list and by the room's context menu alike.
-	const places = $derived(placesFor(device.narrow));
 	const place = $derived(activeSlug ? activePlace(pathname, activeSlug) : '');
 
 	// The crew is a mode the sidebar is in (ADR-0020 amended, #1147): one
@@ -306,7 +305,7 @@
 				     second column, and it costs one indent instead of one
 				     column (ADR-0020). -->
 			<ul class="mt-0.5 mr-2 mb-1 ml-4 space-y-0.5 pb-1.5">
-				{#each places as entry (entry.path)}
+				{#each roomPlaces as entry (entry.path)}
 					{@const on = room.slug === activeSlug && place === entry.path}
 					<li>
 						<a

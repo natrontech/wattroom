@@ -1,9 +1,10 @@
 import { expect, test } from './room';
 
 /**
- * A rider's own settings for a room (#1100): they save, and a refused save
- * says so and puts back what the server actually holds — including a change
- * that saved a moment earlier (#2163).
+ * A rider's own settings for their crew (#1100, #2453 — a room's until the
+ * room dissolved into the crew): they save, and a refused save says so and
+ * puts back what the server actually holds — including a change that saved a
+ * moment earlier (#2163).
  *
  * The first half is not ceremony. The PATCH went out with a raw string body,
  * so fetch stamped it text/plain and httpx.DecodeStrict refused it as a form
@@ -13,7 +14,7 @@ import { expect, test } from './room';
 /** This spec's own rider — nobody else's (#2133). */
 const A = 'Room Prefs Rider';
 
-test('a room preference saves, and a refused one does not undo what did', async ({
+test('a crew preference saves, and a refused one does not undo what did', async ({
 	riders,
 	rooms,
 }) => {
@@ -24,23 +25,25 @@ test('a room preference saves, and a refused one does not undo what did', async 
 
 	const a = await riders(A);
 	const room = await rooms.open(a, `Room Prefs ${Date.now() % 100000}`);
-	await a.goto(`/r/${room.slug}/settings`);
+	await a.goto(`/crew/${room.crew}/members`);
 
-	const notify = a.getByRole('checkbox', { name: /Notify me about this room/ });
+	const notify = a.getByRole('checkbox', { name: /Notify me about this crew/ });
 	const board = a.getByRole('checkbox', { name: /Include me on the weekly/ });
 	await expect(notify).toBeChecked();
-	await expect(board).toBeChecked();
+	// Off until the rider says yes: nobody is on a crew's board they never
+	// agreed to (GetCrewPrefs, the narrow side).
+	await expect(board).not.toBeChecked();
 
 	// It saves — asserted against the server, not the switch.
 	await notify.uncheck();
 	await expect
 		.poll(() =>
 			a.evaluate(
-				(slug) =>
-					fetch(`/api/rooms/${slug}`)
+				(id) =>
+					fetch(`/api/crews/${id}/members`)
 						.then((res) => res.json())
 						.then((r) => r.me?.notify),
-				room.slug,
+				room.crew,
 			),
 		)
 		.toBe(false);
@@ -49,7 +52,7 @@ test('a room preference saves, and a refused one does not undo what did', async 
 	// the change above. It used to reset both switches to the snapshot the
 	// page was loaded with, so a saved "off" read as "on".
 	await a.route(
-		(url) => url.pathname === `/api/rooms/${room.slug}/me`,
+		(url) => url.pathname === `/api/crews/${room.crew}/me`,
 		(route) =>
 			route.fulfill({
 				status: 500,
@@ -60,10 +63,10 @@ test('a room preference saves, and a refused one does not undo what did', async 
 				}),
 			}),
 	);
-	// `click`, not `uncheck`: uncheck asserts the box ENDS unchecked, and the
+	// `click`, not `check`: check asserts the box ENDS checked, and the
 	// whole point is that a refused save puts it back.
 	await board.click();
 	await expect(a.getByText('Could not save that.')).toBeVisible();
-	await expect(board, 'the refused switch went back').toBeChecked();
+	await expect(board, 'the refused switch went back').not.toBeChecked();
 	await expect(notify, 'the saved switch stayed saved').not.toBeChecked();
 });
