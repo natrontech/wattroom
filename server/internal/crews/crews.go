@@ -92,7 +92,7 @@ func (s *Service) registerCrews(mux *http.ServeMux) {
 }
 
 // handleMyCrews is every crew the caller is in (#1476), for the switcher and
-// Home. It rode on GET /api/rooms until the rooms went (#2446).
+// Home. It rode on the room list until the rooms went (#2446).
 func (s *Service) handleMyCrews(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
 	if !ok {
