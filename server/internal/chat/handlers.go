@@ -105,29 +105,14 @@ func (s *Service) handleBacklog(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "list reactions", err, "The chat could not be loaded.", "room", room.Slug)
 		return
 	}
-	counts := map[string]map[string]int{}
-	mine := map[string][]string{}
-	for _, row := range reactions {
-		id := store.UUIDString(row.MessageID)
-		if counts[id] == nil {
-			counts[id] = map[string]int{}
-		}
-		counts[id][row.Emoji] = int(row.Total)
-		if row.Mine {
-			mine[id] = append(mine[id], row.Emoji)
-		}
+	shared := make([]db.ListChannelReactionsRow, len(reactions))
+	for i, row := range reactions {
+		shared[i] = db.ListChannelReactionsRow(row)
 	}
+	counts, mine := tally(shared)
 	out := make([]messageJSON, 0, len(rows))
 	for _, row := range rows {
-		id := store.UUIDString(row.ID)
-		out = append(out, messageJSON{
-			ID: id, From: row.DisplayName, FromID: store.UUIDString(row.UserID),
-			Text:      row.Text,
-			ImageID:   store.UUIDString(row.ImageID), // "" when the line has none
-			At:        row.CreatedAt.Time.UnixMilli(),
-			EditedAt:  store.Millis(row.EditedAt),
-			Reactions: counts[id], Mine: mine[id],
-		})
+		out = append(out, messageOf(db.ListChannelChatRow(row), counts, mine))
 	}
 	// When the viewer last opened this room (#468): read from outside, the
 	// client draws its "N new" divider above the first line past it. Zero

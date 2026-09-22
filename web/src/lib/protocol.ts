@@ -1038,3 +1038,13 @@ export interface ServerMessage {
    */
   connection?: OwnConnection;
 }
+/**
+ * LobbyPing is what the lobby socket says (#251): re-fetch. Channel names the
+ * one text channel whose log changed (#2435, the first step of #2324), so a
+ * client refetches only the channel it is looking at; absent, or when several
+ * changes coalesced into one ping, everything is to be re-fetched. An id and
+ * nothing else — the lines stay behind the channel's own gate.
+ */
+export interface LobbyPing {
+  channel?: string;
+}

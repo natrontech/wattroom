@@ -309,6 +309,9 @@ func main() {
 		channelsService.SetPinger(h)
 		chatService := chat.New(st, roomsService, log)
 		chatService.Register(mux)
+		// A text channel's chat (#2435), behind the channel's own gate; the
+		// lobby ping names the channel whose log moved.
+		chatService.RegisterChannels(mux, channelsService, h)
 		h.SetChatKeeper(chatService)
 		// And back: a line posted over HTTP from outside the room (#468)
 		// reaches the riders inside it on their next tick.

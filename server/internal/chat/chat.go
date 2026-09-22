@@ -62,6 +62,9 @@ type Service struct {
 	log     *slog.Logger
 	live    Live
 	recaps  Recaps
+	// A text channel's gate and its fan-out (#2435), set by RegisterChannels.
+	channels Channels
+	lobby    Lobby
 	// Per account: posts, edits and reactions share one; uploads have their own.
 	lines   *budget.Budget[pgtype.UUID]
 	uploads *budget.Budget[pgtype.UUID]
