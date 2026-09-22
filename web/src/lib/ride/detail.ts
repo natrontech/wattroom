@@ -1,3 +1,4 @@
+import type { RidePlace } from './list';
 /**
  * One past ride, opened (#503). The Rides list is summaries; this is the
  * single blob read ADR-0016 keeps the samples for — the shape the server
@@ -39,6 +40,9 @@ export interface RideDetail {
 	curve?: { best5s: number; best1m: number; best5m: number; best20m: number };
 	/** The room it was ridden in, or null for a solo ride. */
 	room: { slug: string; name: string } | null;
+	/** Where it was ridden (#2443); absent for a solo ride. */
+	crew?: RidePlace;
+	channel?: RidePlace;
 	medals: RideMedal[];
 	/** Empty when the stored blob could not be read — the numbers still hold. */
 	samples: RideTraceSample[];

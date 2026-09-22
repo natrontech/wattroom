@@ -1,8 +1,32 @@
 import type { RideRecord } from '$lib/history.svelte';
 
+/** Where a ride was ridden (#2443): a crew, and the voice channel in it. */
+export interface RidePlace {
+	id: string;
+	name: string;
+}
+
+/**
+ * How a ride says where it was ridden (#2457): "with Thursday Crew in Pain
+ * Cave", the crew alone for a ride whose channel is gone, and "solo" for a
+ * ride that was not in a session at all. One sentence for the list and the
+ * ride page, so a ride never reads as two places on two screens.
+ */
+export function ridePlace(ride: {
+	crew?: RidePlace | null;
+	channel?: RidePlace | null;
+}): string {
+	if (!ride.crew) return 'solo';
+	return ride.channel
+		? `with ${ride.crew.name} in ${ride.channel.name}`
+		: `with ${ride.crew.name}`;
+}
+
 export interface ServerRide extends RideRecord {
 	xp: number;
 	room?: boolean;
+	crew?: RidePlace;
+	channel?: RidePlace;
 	/** The per-ride opt-in (ADR-0024): friends see it on your page. */
 	sharedWithFriends: boolean;
 	/** The Strava delivery, when the ride had one (#1553). */
