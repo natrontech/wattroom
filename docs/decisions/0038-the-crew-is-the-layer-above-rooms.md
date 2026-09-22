@@ -1,6 +1,6 @@
 # 0038 — The crew is the layer above rooms, and permissions inherit into it
 
-- Status: accepted
+- Status: accepted; superseded in part 2026-09-22 by [ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): the room dissolves into the crew
 - Date: 2026-09-08
 
 ## Context
@@ -36,8 +36,8 @@ while doing different things, each in its own room.
 |                      |                                                                                    |
 | -------------------- | ---------------------------------------------------------------------------------- |
 | a crew carries       | name, icon, membership, its rooms, ~~a crew-wide chat~~ **Diverged 2026-09-10 (#1334)**: rooms are the conversation; the crew carries no chat |
-| a crew never carries | voice, jukebox deck, session, game state, metrics                                  |
-| a room stays         | one activity: one session, one deck, one game, one conversation, one privacy scope |
+| a crew never carries | ~~voice, jukebox deck, session, game state, metrics~~ **Diverged 2026-09-22 (#2425, ADR-0058)**: the crew carries them through its voice channels — a voice channel holds the call and one deck, a session in it holds the game and the metrics; the crew itself still holds nothing live |
+| a room stays         | ~~one activity: one session, one deck, one game, one conversation, one privacy scope~~ **Diverged 2026-09-22 (#2425, ADR-0058)**: there are no rooms; a text channel is one conversation, a voice channel one call and one deck, a session one timeline |
 
 The second row is the whole design. Everything a room owns stays owned by the
 room, so all five constraints above — plus medals and the room streak — are
@@ -184,6 +184,8 @@ re-derives this list rather than trusting it.
   answered below.
 
 ### The weekly board stays room-scoped
+
+> **Diverged 2026-09-22 (#2425, ADR-0058)** — the board is the crew's. The argument below was right about the radius it had: a crew board would have put a rider beside people from rooms they never entered. With no rooms, the crew is the set a rider was let into, the door carries the disclosure, and the migration puts nobody on the crew's board who was not on a board before. [ADR-0036](0036-what-a-room-shows-about-its-members.md)'s 2026-09-22 amendment has the rest.
 
 ADR-0036 asks this ADR to say whether the board's scope becomes the crew. **It
 does not**, and ADR-0036's own reasoning is why: it puts the board off by
@@ -898,3 +900,42 @@ The last sentence of the 2026-09-16 (#2144) amendment above, _"it stands for a
 rider who already administers one"_, is narrowed rather than reversed: ADR-0010
 stands for every rider without an invite, including one who administers
 nothing. Annotated in place. No schema, no API and no ADR-0010 text changes.
+
+## Amendment, 2026-09-22 (#2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md)): the room dissolves into the crew
+
+This ADR put the crew above the room and left the room whole. Every amendment
+since moved something up to the crew without moving the room down, until most
+of what the crew was for existed twice. ADR-0058 finishes the move: the crew is
+the only object with an identity, and a room becomes one **text channel** and
+one **voice channel** of the same name, with its gate.
+
+**Superseded:**
+
+- **The table's second and third rows** (marked above). The crew carries
+  voice, decks and sessions through its voice channels. It still holds nothing
+  live itself, and that half of the row's reasoning stands.
+- **The weekly board stays room-scoped** (marked above) — it is the crew's.
+- **Coach stays a room-level assignment.** Its own reason — _a light, live
+  action, never a crew-role change_ — carried to its end: the coach is whoever
+  started the session or was handed it. Any member may start one.
+- **Bans at two levels** (the #1106 amendment). One ban, at the crew; a room
+  ban becomes a crew ban at the migration, because the narrow side is the only
+  one that cannot readmit a banned rider.
+- **Per-room overrides** become a channel's gate: open to the crew, or private
+  to its owner, admins and named members. Channels have no owner; the crew's
+  owner and admins keep them. A crew admin enters a private channel without
+  being named — the step #2294 gave them is gone, the set of people who can
+  reach the channel is not; ADR-0058 says what that costs.
+- **Person-visibility follows the rooms a person may enter** becomes **the
+  channels two people may both enter** — the same set on migration day, since
+  every channel inherits its room's gate.
+- **The crew carries no chat** (the #1334 amendment) becomes: the crew's
+  conversation is its text channels.
+- **The listed room as the crew's second door** (#2245): the crew itself is
+  listed ([0039](0039-the-public-room-directory.md) as amended).
+
+**Stands:** the crew as the unit of membership; objects that never move
+between crews (a channel, like a room, belongs to one for good); the door and
+the invite that follows the account (#1236, #2144); the owner and what happens
+when they go (#1106); and the principle behind the privacy inversion — the
+default lives in the schema, not in whoever writes the INSERT.

@@ -1,6 +1,6 @@
 # 0045 — A saved playlist is a saved queue
 
-- Status: accepted
+- Status: accepted, amended 2026-09-22 by [ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): room-owned reads crew-owned
 - Date: 2026-09-09
 - Extends: [ADR-0026](0026-a-playlist-is-one-queue-entry.md) (a pasted YouTube playlist is one queue entry) and [ADR-0028](0028-room-and-personal-playlists.md) (room and personal playlists, autoplay)
 - Amends: [ADR-0015](0015-self-hosted-music-pool.md)'s "when a playlist can hold a pool track" paragraph — it can now, and the scope rule is written here
@@ -86,3 +86,16 @@ saved kind.
   protocol changes — the live queue already held all three shapes.
 - Revisit only if a fourth kind of entry appears that a `JukeboxEntry` cannot
   express; then the queue changes first and the playlist follows it.
+
+## Amendment, 2026-09-22 (#2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md)): room-owned reads crew-owned
+
+The room dissolves into the crew. The object this ADR decided is unchanged — a
+saved playlist is a saved queue, one kind, a video or a pasted playlist or a
+library track per entry — and so is its scope rule. Two nouns move:
+
+- _Room-owned or rider-owned_ reads **crew-owned or rider-owned**
+  ([0028](0028-room-and-personal-playlists.md) as amended the same day).
+- The audio door still asks, per fetch, the question it asked with the room
+  taken out: whether this rider may enter a **channel** with the uploader. On
+  migration day that is the same set of people, because every channel inherits
+  its room's gate. A playlist is still not a way around who may hear a shelf.

@@ -1,6 +1,6 @@
 # 0028 — Save playlists for rooms and riders; autoplay only an idle deck
 
-- Status: accepted
+- Status: accepted, amended 2026-09-22 by [ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): playlists are the crew's, autoplay is the voice channel's
 - Date: 2026-09-05
 - Extends: [ADR-0026](0026-a-playlist-is-one-queue-entry.md), which decides a
   pasted YouTube playlist is one transient queue entry
@@ -80,3 +80,20 @@ The three meanings stay distinct:
   future library playlist; one generic type would erase behaviour that matters.
 - Implementing ADR-0015's library playlists needs an explicit boundary with
   these saved lists rather than reusing their ownership or autoplay rules.
+
+## Amendment, 2026-09-22 (#2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md)): playlists are the crew's, autoplay is the voice channel's
+
+The room dissolves into the crew, and a room's two jukebox halves go to
+different owners.
+
+- **A saved playlist is the crew's or a rider's.** Room playlists become crew
+  playlists (#2430, #2439): a crew that used to keep one copy of its music per
+  room keeps one. Personal playlists are untouched.
+- **Autoplay belongs to the voice channel**, because the deck does: one deck
+  per voice channel. Each voice channel names its own active playlist from the
+  crew's, with its own order, and _autoplay fills silence; it never
+  interrupts_ holds per channel. One playlist queued into two channels plays in
+  each independently, and the recently-played backlog is per channel.
+
+Who may create, rename, delete and edit a crew playlist is docs/SPEC.md's
+matrix, re-keyed by #2426; the #695 note above records how the room rows read.

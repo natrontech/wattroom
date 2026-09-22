@@ -1,6 +1,6 @@
 # 0039 — The public room directory shows a door, not a window
 
-- Status: accepted
+- Status: accepted, amended 2026-09-22 by [ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): the directory lists crews
 - Date: 2026-09-08
 - Answers: [#1118](https://github.com/natrontech/wattroom/issues/1118), split
   out of [#1099](https://github.com/natrontech/wattroom/issues/1099)
@@ -160,3 +160,20 @@ listed publicly is always open to its crew, and shutting it to the crew drops
 the listing in the same statement. The half of the old bullet that still holds
 is the other direction — a room never becomes listed by gaining members or a
 crew — and that is what `TestListedIsNotCrewVisibility` asserts, unchanged.
+
+## Amendment, 2026-09-22 (#2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md)): the directory lists crews
+
+The room dissolves into the crew, so there is no room left to list. The
+directory lists **crews** (`crews.listed`, a crew admin's switch, #2445), and
+`/crews/directory` replaces `/rooms/directory`. The #2245 amendment already
+made a listed room a door into its crew; listing the crew itself says that
+without the detour.
+
+The entry rule stands word for word: **a name, a mark and a link. Nothing
+else.** No member count, no activity, no owner, no "busy now", no code. The
+asymmetry argument is unchanged and is why the entry did not grow in the move:
+widening what a stranger sees is still a decision anyone can take deliberately
+later, and narrowing it is still a promise broken. Listing opens the door into
+the crew and nothing past it — the channels, their chat, the roster and every
+number stay behind the door, for members. The link unfurls with the crew's
+name and mark (#2445), which is the same disclosure the entry already makes.

@@ -1,6 +1,6 @@
 # ADR-0022: Room events ride the tick and are never persisted
 
-- Status: accepted
+- Status: accepted, amended 2026-09-22 by [ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): events ride the voice channel's tick
 - Date: 2026-08-31
 - Amends: [ADR-0010](0010-room-first-positioning.md)'s chat rule as amended by #201 — chat lines persist, room events do not
 
@@ -28,3 +28,19 @@ A rider's burst of adds coalesces into one growing line ("Kim queued 8 tracks") 
 - Muting the lines per rider is a client-side filter on a separate stream, not a query change (not built yet).
 - Vote outcomes (#269/#271) and any other "the room did something" line extend the same type; an unknown verb renders nothing, so an old tab degrades quietly rather than printing junk.
 - Revisit if riders start asking for a set list after the ride — that is a ride artifact belonging to the ride record, not a chat backlog.
+
+## Amendment, 2026-09-22 (#2425, [ADR-0058](0058-the-room-dissolves-into-the-crew.md)): events ride the voice channel's tick
+
+The room dissolves into the crew. The events this ADR describes are about the
+deck and the call — who queued, who skipped, what the room voted — and those
+belong to a **voice channel** now, so the events ride **that channel's** tick
+and are drawn on that channel's page, beside the deck they are about. Still a
+distinct wire type, still drained each second, still never persisted and never
+seeded on join.
+
+What changes is the surface. This ADR merged them into the chat pane's
+timeline, and a voice channel has no chat: text lives in the crew's **text
+channels**, which carry no tick at all (chat leaves it, #2437) and hold only
+what riders said. An event never enters a text channel's scrollback — which is
+this ADR's own first consequence, _chat history stays what riders said_, kept
+more strictly than before.
