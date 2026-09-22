@@ -1,12 +1,10 @@
 import { prepareRoomAv } from '$lib/room/connection.svelte';
-import { loadVoiceChannel } from '$lib/room/voice-channel';
+import { loadSessionPage } from '$lib/room/voice-channel';
 import type { LayoutLoad } from './$types';
 
 export const load: LayoutLoad = async ({ fetch, params }) => {
-	// The AV chunk arrives with the page (#1514), as the room's does; the
-	// shell's join() needs it loaded.
 	const [data] = await Promise.all([
-		loadVoiceChannel(params.id, params.channel, fetch),
+		loadSessionPage(params.id, params.session, fetch),
 		prepareRoomAv(),
 	]);
 	return data;

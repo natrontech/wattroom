@@ -284,3 +284,64 @@ test('a phone plans a session and still does not start one', async ({
 		menu.getByText('start it from the screen you ride on'),
 	).toBeVisible();
 });
+
+/**
+ * A session at its own address, on a phone (#2450): the coach opens one from
+ * the voice channel's ride place on a desk, the page moves to the session's
+ * URL, and a phone that follows the link — /watch included — lands in the
+ * running session as a spectator, the page body no wider than the phone.
+ * And an address whose session is over says so instead of a blank.
+ */
+test('a phone follows a session link and watches it run', async ({
+	riders,
+	rooms,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	const coach = await riders('Session Coach');
+	await coach.setViewportSize({ width: 1440, height: 900 });
+	const name = `Session Link ${Date.now() % 100000}`;
+	const room = await rooms.open(coach, name);
+	await coach.goto(`${voicePath(room)}/training`);
+	await coach
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await coach.getByRole('button', { name: 'Start a session' }).click();
+	await coach
+		.getByRole('textbox', { name: 'find a workout' })
+		.fill('Recovery Spin');
+	await coach
+		.getByRole('button', { name: /Recovery Spin/ })
+		.first()
+		.click();
+	await coach.getByRole('button', { name: 'Start Recovery Spin' }).click();
+	// The ride has its own address the moment it opens.
+	await coach.waitForURL(new RegExp(`/crew/${room.crew}/s/[^/]+$`), {
+		timeout: 15_000,
+	});
+	const session = new URL(coach.url()).pathname;
+
+	const phone = await riders('Session Phone');
+	await phone.setViewportSize({ width: 375, height: 812 });
+	await rooms.enter(phone, room);
+	await phone.goto(`${session}/watch`);
+	await phone.waitForURL(new RegExp(`${session}$`), { timeout: 15_000 });
+	await expect(phone.getByText('Recovery Spin').first()).toBeVisible({
+		timeout: 15_000,
+	});
+	const body = phone.getByTestId('page-body');
+	const width = await body.evaluate((el) => ({
+		scroll: el.scrollWidth,
+		client: el.clientWidth,
+	}));
+	expect(width.scroll, 'the session page scrolls sideways on a phone').toBe(
+		width.client,
+	);
+
+	await phone.goto(`/crew/${room.crew}/s/not-a-session`);
+	await expect(
+		phone.getByRole('heading', { name: 'This session has ended' }),
+	).toBeVisible();
+});

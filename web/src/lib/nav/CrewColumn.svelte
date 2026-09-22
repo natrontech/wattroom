@@ -18,6 +18,7 @@
 	import { device } from '$lib/device.svelte';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
 	import type { RoomCrew } from '$lib/room/room-data';
+	import { sessionPath } from '$lib/room/address';
 	import { toasts } from '$lib/toast.svelte';
 	import Hash from '@lucide/svelte/icons/hash';
 	import Headphones from '@lucide/svelte/icons/headphones';
@@ -221,14 +222,23 @@
 			<li>
 				{@render row(c)}
 				{#if c.session}
+					{@const href = sessionPath(crew.id, c.session.id)}
+					{@const on = lit(href)}
 					<!-- What is running, how far in, how many (ADR-0020's radar):
-					     the bars carry the watt, the words stay chrome (#1965). -->
-					<p
-						class="text-ink/85 flex items-center gap-1.5 truncate px-2 pb-1 pl-8 text-[10px]"
+					     the bars carry the watt, the words stay chrome (#1965).
+					     And the way in from anywhere in the crew (#2450): the
+					     session's own page, which joins no voice by itself. -->
+					<a
+						{href}
+						aria-current={on ? 'page' : undefined}
+						title="join the ride"
+						class="flex min-h-11 items-center gap-1.5 truncate rounded px-2 pb-1 pl-8 text-[10px] md:min-h-0 {on
+							? 'bg-ink/10 text-ink'
+							: 'text-ink/85 hover:bg-ink/5 hover:text-ink'}"
 					>
 						<span class="text-watt"><RidingBars size={9} /></span>
 						{sessionLine(c.session)}
-					</p>
+					</a>
 				{/if}
 				{#if people.shown.length}
 					<!-- Who is in there, without going in (#438): one line of names,

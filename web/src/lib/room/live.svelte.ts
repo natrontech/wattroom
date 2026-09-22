@@ -14,6 +14,7 @@ import { deviceWord } from '$lib/device.svelte';
 import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { createChatLog, type BacklogMessage } from '$lib/room/chat-log.svelte';
 import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
+import { isLivePhase } from '$lib/room/session-phase';
 
 /**
  * The live side of one room (#18): a WebSocket to the hub, the latest tick,
@@ -147,8 +148,7 @@ export function createRoomLive(address: PlaceAddress) {
 	let noCrashSafety = $state(false);
 	function followSession(t: ServerTick) {
 		const phase = t.state?.phase;
-		const now =
-			phase === 'countdown' || phase === 'running' || phase === 'paused';
+		const now = isLivePhase(phase);
 		if (now === riding) return;
 		riding = now;
 		if (!now) {

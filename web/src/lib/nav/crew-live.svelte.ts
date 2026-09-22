@@ -1,4 +1,4 @@
-import { api } from '$lib/api';
+import { fetchCrewsLive, type LiveCrew } from '$lib/crews-live';
 import type { LiveSession } from '$lib/protocol';
 
 /**
@@ -6,41 +6,9 @@ import type { LiveSession } from '$lib/protocol';
  * #2447): per crew, the channels they may enter — who is in each voice
  * channel and what is running there, how much is unread in each text
  * channel — and the next plan. One read, again on every lobby ping, the way
- * the rest of the column re-reads.
+ * the rest of the column re-reads. The shapes are `$lib/crews-live`'s.
  */
-export interface LiveOccupant {
-	id: string;
-	name: string;
-	voice?: boolean;
-	camera?: boolean;
-	riding?: boolean;
-	away?: boolean;
-}
-
-export interface LiveChannel {
-	id: string;
-	kind: 'text' | 'voice';
-	name: string;
-	private?: boolean;
-	occupants?: LiveOccupant[];
-	session?: LiveSession;
-	unread?: number;
-}
-
-export interface LiveCrew {
-	id: string;
-	name: string;
-	icon?: string;
-	role: 'owner' | 'admin' | 'member';
-	channels: LiveChannel[];
-	next?: {
-		id: string;
-		workoutName: string;
-		startsAt: string;
-		channelId?: string;
-		channelName?: string;
-	};
-}
+export type { LiveChannel, LiveCrew, LiveOccupant } from '$lib/crews-live';
 
 let crews = $state<LiveCrew[]>([]);
 let loaded = $state(false);
@@ -50,7 +18,7 @@ let issued = 0;
 
 async function load() {
 	const mine = ++issued;
-	const res = await api<{ crews: LiveCrew[] }>('/api/crews/live');
+	const res = await fetchCrewsLive();
 	if (mine !== issued) return;
 	if (!res.ok) {
 		// A failed re-read keeps what is on screen; only a first read that
