@@ -33,6 +33,7 @@ describe('announcePoke', () => {
 			{ to: 'sven', fromId: 'jan', from: 'Jan', at: 1000 },
 			'velvet',
 			'Velvet Hammer',
+			'/r/velvet',
 		);
 		expect(played).toEqual(['poke']);
 		expect(pushed).toEqual([
@@ -46,14 +47,14 @@ describe('announcePoke', () => {
 
 	it('announces the same server event only once across tabs', () => {
 		const poke = { to: 'sven', fromId: 'jan', from: 'Jan', at: 1000 };
-		announcePoke(poke, 'velvet', 'Velvet Hammer');
-		announcePoke(poke, 'velvet', 'Velvet Hammer');
+		announcePoke(poke, 'velvet', 'Velvet Hammer', '/r/velvet');
+		announcePoke(poke, 'velvet', 'Velvet Hammer', '/r/velvet');
 		expect(played).toEqual(['poke']);
 		expect(pushed).toHaveLength(1);
 	});
 
 	it('ignores an incomplete event', () => {
-		announcePoke({ from: 'forged' }, 'velvet', 'Velvet Hammer');
+		announcePoke({ from: 'forged' }, 'velvet', 'Velvet Hammer', '/r/velvet');
 		expect(played).toEqual([]);
 		expect(pushed).toEqual([]);
 	});

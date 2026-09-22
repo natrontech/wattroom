@@ -151,3 +151,55 @@ where coalesce(own.notify, true) and u.notify_planned
       where v.session_id = sqlc.narg('session_id')::uuid
         and v.user_id = u.id and not v.going
   );
+
+-- name: ListCrewCalendar :many
+-- The crew's iCal feed (#2441, ADR-0021 as amended by ADR-0058). It keeps a
+-- month of history and is bounded at both ends (#1414): the whole result is
+-- one in-memory ICS string behind a bearer token in a URL. The window and the
+-- row limit are the caller's, the same Go constants as the rider feed's.
+--
+-- What it does not say is not selected (#1767): no planner's name, because
+-- the token goes to every member and the feed is meant to be shared with
+-- people outside the crew. And no plan in a private channel: that channel's
+-- plans are its people's (#2440), and a link a member can forward to anyone
+-- must not carry them.
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
+       s.channel_id, coalesce(ch.name, '')::text as channel_name
+from scheduled_sessions s
+left join channels ch on ch.id = s.channel_id
+where s.crew_id = sqlc.arg(crew_id)
+  and s.starts_at > sqlc.arg(starts_from) and s.starts_at < sqlc.arg(starts_until)
+  and (ch.id is null or not ch.private)
+order by s.starts_at, s.created_at, s.id
+limit sqlc.arg(row_limit);
+
+-- name: ListUserCalendar :many
+-- The rider's own feed (#325, ADR-0021): every crew they are in, the channels
+-- they may enter, a month of history — one subscription that follows their
+-- crews. The planner's name comes along, because the token is this rider's
+-- own and only lists crews that already show them the name.
+select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
+       u.display_name as created_by, s.crew_id, cw.name as crew_name,
+       s.channel_id, coalesce(ch.name, '')::text as channel_name
+from scheduled_sessions s
+join crews cw on cw.id = s.crew_id
+join users u on u.id = s.created_by
+left join channels ch on ch.id = s.channel_id
+where s.starts_at > sqlc.arg(starts_from) and s.starts_at < sqlc.arg(starts_until)
+  and (cw.owner_id = sqlc.arg(user_id)
+       or exists (select 1 from crew_roles cr
+                  where cr.crew_id = s.crew_id and cr.user_id = sqlc.arg(user_id) and cr.role in ('member', 'admin')))
+  and (s.channel_id is null
+       or exists (select 1 from visible_channels v where v.channel_id = s.channel_id and v.user_id = sqlc.arg(user_id)))
+order by s.starts_at, s.created_at, s.id
+limit sqlc.arg(row_limit);
+
+-- name: GetCrewCalendar :one
+-- What the crew's feed checks its token against, and names itself for.
+select id, name, ics_token from crews where id = $1;
+
+-- name: RotateCrewIcsToken :one
+-- The leak escape hatch: the old link, and every calendar subscribed to it,
+-- stops the moment this commits.
+update crews set ics_token = replace(gen_random_uuid()::text, '-', '')
+where id = $1 returning ics_token;

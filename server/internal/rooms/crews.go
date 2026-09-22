@@ -90,6 +90,9 @@ type crewJSON struct {
 	BoardEnabled bool `json:"boardEnabled,omitempty"`
 	// The reaction palette every voice channel of the crew speaks.
 	Cheers []string `json:"cheers"`
+	// The crew's calendar feed (#2441, ADR-0021): every member gets it, as
+	// every member of a room did — the feed is for sharing.
+	IcsToken string `json:"icsToken,omitempty"`
 }
 
 func (s *Service) registerCrews(mux *http.ServeMux) {
@@ -257,7 +260,8 @@ func asRow(c db.Crew) db.GetCrewRow {
 	return db.GetCrewRow{
 		ID: c.ID, Name: c.Name, Icon: c.Icon, OwnerID: c.OwnerID, CreatedAt: c.CreatedAt,
 		Code: c.Code, HasImage: c.ImageSetAt.Valid, BoardEnabled: c.BoardEnabled, Listed: c.Listed,
-		Cheers: c.Cheers,
+		Cheers:   c.Cheers,
+		IcsToken: c.IcsToken,
 	}
 }
 
@@ -275,6 +279,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		Listed:       administers(role) && crew.Listed,
 		BoardEnabled: crew.BoardEnabled,
 		Cheers:       CheerSet(crew.Cheers),
+		IcsToken:     crew.IcsToken,
 	}
 	// The rooms, with what the CALLER may do in each — the same four states
 	// the sidebar draws, from the same two queries.

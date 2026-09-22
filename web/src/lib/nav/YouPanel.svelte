@@ -40,7 +40,8 @@
 	const av = $derived(conn?.av);
 	// A room open at all is what the panel's connected shape keys on — the
 	// same condition the layout used to branch on before it stopped needing to.
-	const connectedSlug = $derived(conn?.slug ?? '');
+	// Connected anywhere — a room, or a voice channel whose slug is '' (#2449).
+	const connected = $derived(!!conn);
 	// Both halves, and the connection half is the one that is easy to lose:
 	// the server has to offer voice at all (#219, an account fact), AND there
 	// has to be a room to join. The layout used to supply the second by only
@@ -102,7 +103,7 @@
 	// The dot on your own avatar: away is yours to set, riding is the room's
 	// to report (#1016).
 	const myStatus = $derived(
-		connectedSlug
+		connected
 			? statusOfRider({
 					away,
 					riding: conn?.live.tick?.roster.find(
@@ -298,7 +299,7 @@
 			{/if}
 		</div>
 	{/if}
-	{#if connectedSlug}
+	{#if connected}
 		<!-- Away used to sit in the Lounge header, where it read as a room
 		     control and was off-screen from every other place (#807). It is
 		     the same kind of statement the mic is, so it lives where the mic

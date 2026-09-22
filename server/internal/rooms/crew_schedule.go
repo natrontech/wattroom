@@ -35,6 +35,8 @@ func (s *Service) registerCrewSchedule(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/crews/{id}/schedule/{plan}/rsvp", s.handleCrewRsvp)
 	mux.HandleFunc("DELETE /api/crews/{id}/schedule/{plan}/rsvp", s.handleCrewRsvp)
 	mux.HandleFunc("POST /api/crews/{id}/schedule/{plan}/started", s.handleCrewStarted)
+	mux.HandleFunc("GET /api/crews/{id}/calendar/{token}", s.handleCrewCalendar)
+	mux.HandleFunc("POST /api/crews/{id}/calendar/rotate", s.handleRotateCrewIcs)
 }
 
 // tallyAnswers splits the RSVPs the way every schedule shows them (#1011): an

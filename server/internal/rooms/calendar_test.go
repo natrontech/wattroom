@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
@@ -21,31 +22,36 @@ func (h *harness) rawGet(t *testing.T, path string) (int, string, http.Header) {
 	return w.Code, w.Body.String(), w.Result().Header
 }
 
-func TestCalendarFeed(t *testing.T) {
+// The crew's feed (#2441, ADR-0021 as amended by ADR-0058): every member
+// holds its token, it needs no session, it speaks iCal, and only the crew's
+// owner or an admin resets it. A plan in a private channel is not in it —
+// the link is for sharing, and that channel's plans are its people's.
+func TestCrewCalendarFeed(t *testing.T) {
 	h := setup(t)
-	slug, code := h.createRoom(t, "alice", "Feed Riders")
-	h.enter(t, "bob", code, slug)
-
-	workout := `{\"name\":\"Openers, v2\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	crew, channel := h.crewWithChannel(t)
+	coaches := h.channel(t, crew, "voice", "Coaches", true)
 	starts := time.Now().UTC().Add(48 * time.Hour).Truncate(time.Second)
-	plan := fmt.Sprintf(`{"workoutName":"Openers, v2","workoutJson":"%s","startsAt":%q}`,
-		workout, starts.Format(time.RFC3339))
-	if status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule", plan); status != http.StatusCreated {
-		t.Fatalf("schedule: %d %v", status, body)
+	workout := `{\"name\":\"Openers, v2\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	for name, where := range map[string]string{"Openers, v2": store.UUIDString(channel), "Secret": store.UUIDString(coaches)} {
+		plan := fmt.Sprintf(`{"workoutName":%q,"workoutJson":"%s","startsAt":%q,"channelId":%q}`,
+			name, workout, starts.Format(time.RFC3339), where)
+		if status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), plan); status != http.StatusCreated {
+			t.Fatalf("plan %s: %d %v", name, status, body)
+		}
 	}
+	crewPath := "/api/crews/" + store.UUIDString(crew.ID)
 
-	// Members see the token on the room; outsiders don't.
-	status, body := h.call(t, "bob", http.MethodGet, "/api/rooms/"+slug, "")
+	// Members see the token on the crew; outsiders see no crew at all.
+	_, body := h.call(t, "bob", http.MethodGet, crewPath, "")
 	token, _ := body["icsToken"].(string)
-	if status != http.StatusOK || len(token) != 32 {
-		t.Fatalf("member token: %d %q", status, token)
+	if len(token) != 32 {
+		t.Fatalf("member token: %q", token)
 	}
-	if _, body := h.call(t, "carol", http.MethodGet, "/api/rooms/"+slug, ""); body["icsToken"] != nil {
-		t.Fatalf("outsider sees token: %v", body["icsToken"])
+	if status, body := h.call(t, "carol", http.MethodGet, crewPath, ""); status != http.StatusNotFound || body["icsToken"] != nil {
+		t.Fatalf("outsider: %d %v", status, body)
 	}
 
-	// The feed needs no auth — just the token — and speaks iCal.
-	status, ics, header := h.rawGet(t, "/api/rooms/"+slug+"/calendar/"+token+".ics")
+	status, ics, header := h.rawGet(t, crewPath+"/calendar/"+token+".ics")
 	if status != http.StatusOK {
 		t.Fatalf("feed: %d %s", status, ics)
 	}
@@ -60,6 +66,8 @@ func TestCalendarFeed(t *testing.T) {
 		"SUMMARY:Openers\\, v2", // TEXT escaping
 		"DTSTART:" + starts.Format("20060102T150405Z"),
 		"DTEND:" + starts.Add(10*time.Minute).Format("20060102T150405Z"),
+		"LOCATION:" + crew.Name + " · Pain Cave",
+		"/crew/" + store.UUIDString(crew.ID) + "/v/" + store.UUIDString(channel),
 	} {
 		if !strings.Contains(ics, want) {
 			t.Fatalf("feed missing %q in:\n%s", want, ics)
@@ -68,79 +76,89 @@ func TestCalendarFeed(t *testing.T) {
 	if !strings.Contains(ics, "\r\n") {
 		t.Fatal("feed lines are not CRLF")
 	}
+	if strings.Contains(ics, "Secret") || strings.Contains(ics, "Coaches") {
+		t.Fatalf("a private channel's plan is in the crew's shareable feed:\n%s", ics)
+	}
 
-	// A wrong token 404s without confirming anything.
-	if status, _, _ := h.rawGet(t, "/api/rooms/"+slug+"/calendar/nope.ics"); status != http.StatusNotFound {
+	// A wrong token, and the right token on the wrong crew, 404 alike.
+	if status, _, _ := h.rawGet(t, crewPath+"/calendar/nope.ics"); status != http.StatusNotFound {
 		t.Fatalf("wrong token: %d", status)
 	}
+	if status, _, _ := h.rawGet(t, "/api/crews/00000000-0000-0000-0000-000000000000/calendar/"+token+".ics"); status != http.StatusNotFound {
+		t.Fatalf("another crew's path: %d", status)
+	}
 
-	// Rotation is owner-only, kills the old link, arms the new one.
-	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/calendar/rotate", ""); status != http.StatusForbidden {
+	// Resetting is the owner's and the admins', kills the old link, arms the new.
+	if status, _ := h.call(t, "bob", http.MethodPost, crewPath+"/calendar/rotate", ""); status != http.StatusForbidden {
 		t.Fatalf("member rotate: %d", status)
 	}
-	status, body = h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/calendar/rotate", "")
+	status, body = h.call(t, "alice", http.MethodPost, crewPath+"/calendar/rotate", "")
 	fresh, _ := body["icsToken"].(string)
 	if status != http.StatusOK || len(fresh) != 32 || fresh == token {
 		t.Fatalf("rotate: %d %v", status, body)
 	}
-	if status, _, _ := h.rawGet(t, "/api/rooms/"+slug+"/calendar/"+token+".ics"); status != http.StatusNotFound {
+	if status, _, _ := h.rawGet(t, crewPath+"/calendar/"+token+".ics"); status != http.StatusNotFound {
 		t.Fatalf("old token alive: %d", status)
 	}
-	if status, _, _ := h.rawGet(t, "/api/rooms/"+slug+"/calendar/"+fresh+".ics"); status != http.StatusOK {
+	if status, _, _ := h.rawGet(t, crewPath+"/calendar/"+fresh+".ics"); status != http.StatusOK {
 		t.Fatalf("new token dead: %d", status)
 	}
 }
 
-// The rider feed (#325) is the room feed's answer to "I ride in four rooms":
-// one token, every membership, and it follows the list as it changes.
+// The room feed is gone (#2441): a subscribed calendar goes quiet rather than
+// reading a schedule the room no longer keeps.
+func TestTheRoomFeedIsGone(t *testing.T) {
+	h := setup(t)
+	slug, _ := h.createRoom(t, "alice", "Old Feed")
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("room: %v", err)
+	}
+	if status, _, _ := h.rawGet(t, "/api/rooms/"+slug+"/calendar/"+room.IcsToken+".ics"); status != http.StatusNotFound {
+		t.Fatalf("the room feed still answers: %d", status)
+	}
+	if _, body := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, ""); body["icsToken"] != nil {
+		t.Errorf("the room still hands out a feed token: %v", body["icsToken"])
+	}
+}
+
+// The rider feed (#325) is one token for every crew a rider is in (#2441),
+// and it follows the list as it changes.
 func TestRiderCalendarFeed(t *testing.T) {
 	h := setup(t)
-	slug, code := h.createRoom(t, "alice", "Feed Riders")
-	h.enter(t, "bob", code, slug)
-
-	workout := `{\"name\":\"Openers, v2\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	crew, channel := h.crewWithChannel(t)
 	starts := time.Now().UTC().Add(48 * time.Hour).Truncate(time.Second)
-	plan := fmt.Sprintf(`{"workoutName":"Openers, v2","workoutJson":"%s","startsAt":%q}`,
-		workout, starts.Format(time.RFC3339))
-	if status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule", plan); status != http.StatusCreated {
-		t.Fatalf("schedule: %d %v", status, body)
+	workout := `{\"name\":\"Openers, v2\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	plan := fmt.Sprintf(`{"workoutName":"Openers, v2","workoutJson":"%s","startsAt":%q,"channelId":%q}`,
+		workout, starts.Format(time.RFC3339), store.UUIDString(channel))
+	if status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), plan); status != http.StatusCreated {
+		t.Fatalf("plan: %d %v", status, body)
 	}
 
-	// A member sees the session with its room and its length attached — the
-	// row Home draws (#1693).
+	// A member sees the session with its crew, channel and length — the row
+	// Home draws (#1693).
 	status, body := h.call(t, "bob", http.MethodGet, "/api/schedule", "")
 	sessions, _ := body["sessions"].([]any)
 	if status != http.StatusOK || len(sessions) != 1 {
 		t.Fatalf("bob schedule: %d %v", status, body)
 	}
 	row, _ := sessions[0].(map[string]any)
-	if row["roomSlug"] != slug || row["roomName"] != "Feed Riders" || row["minutes"] != float64(10) {
+	if row["crewName"] != crew.Name || row["channelName"] != "Pain Cave" || row["minutes"] != float64(10) {
 		t.Fatalf("bob row: %v", row)
 	}
 	token, _ := body["icsToken"].(string)
 	if len(token) != 32 {
 		t.Fatalf("bob token: %q", token)
 	}
-	_, body = h.call(t, "alice", http.MethodGet, "/api/schedule", "")
-	mine, _ := body["sessions"].([]any)
-	if len(mine) != 1 {
-		t.Fatalf("alice schedule: %v", body["sessions"])
-	}
-
-	// Someone with no membership gets an empty list, not everyone's plans.
+	// Someone in no crew of alice's gets an empty list, not everyone's plans.
 	_, body = h.call(t, "carol", http.MethodGet, "/api/schedule", "")
 	if theirs, _ := body["sessions"].([]any); len(theirs) != 0 {
 		t.Fatalf("carol sees plans: %v", theirs)
 	}
 
-	// The feed needs no auth — just the token — and names the room per event,
-	// which is the whole point of a cross-room calendar.
 	status, ics, header := h.rawGet(t, "/api/calendar/"+token+".ics")
 	if status != http.StatusOK {
 		t.Fatalf("feed: %d %s", status, ics)
-	}
-	if ct := header.Get("Content-Type"); !strings.HasPrefix(ct, "text/calendar") {
-		t.Fatalf("content type: %q", ct)
 	}
 	if cc := header.Get("Cache-Control"); cc != "private, no-store" {
 		t.Fatalf("a bearer feed must not be cacheable (#1688): Cache-Control %q", cc)
@@ -148,7 +166,7 @@ func TestRiderCalendarFeed(t *testing.T) {
 	for _, want := range []string{
 		"X-WR-CALNAME:WattRoom sessions",
 		"SUMMARY:Openers\\, v2",
-		"LOCATION:Feed Riders",
+		"LOCATION:" + crew.Name + " · Pain Cave",
 		"DTSTART:" + starts.Format("20060102T150405Z"),
 		"DTEND:" + starts.Add(10*time.Minute).Format("20060102T150405Z"),
 	} {
@@ -169,18 +187,14 @@ func TestRiderCalendarFeed(t *testing.T) {
 	if status, _, _ := h.rawGet(t, "/api/calendar/"+token+".ics"); status != http.StatusNotFound {
 		t.Fatalf("old token alive: %d", status)
 	}
-	if status, _, _ := h.rawGet(t, "/api/calendar/"+fresh+".ics"); status != http.StatusOK {
-		t.Fatalf("new token dead: %d", status)
-	}
 
-	// Leaving the room takes its sessions out of the feed — membership is the
-	// subscription, so it is checked on read, not at subscribe time.
-	if status, _ := h.call(t, "bob", http.MethodDelete,
-		"/api/rooms/"+slug+"/members/"+h.userID(t, "bob"), ""); status != http.StatusNoContent {
-		t.Fatalf("bob leave: %d", status)
+	// Leaving the crew takes its sessions out of the feed — membership is the
+	// subscription, checked on read, not at subscribe time.
+	if status, body := h.call(t, "bob", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/leave", ""); status != http.StatusNoContent && status != http.StatusOK {
+		t.Fatalf("bob leaves: %d %v", status, body)
 	}
 	if _, ics, _ := h.rawGet(t, "/api/calendar/"+fresh+".ics"); strings.Contains(ics, "BEGIN:VEVENT") {
-		t.Fatalf("left room still in feed:\n%s", ics)
+		t.Fatalf("a crew left is still in the feed:\n%s", ics)
 	}
 }
 
@@ -316,56 +330,50 @@ func TestHomeListsEveryPlanAndNoRsvp(t *testing.T) {
 	}
 }
 
-// The room feed is handed to every non-banned member, rotates only for the
-// owner, and exists to be forwarded to people who are not in the room — so it
-// names nobody (ADR-0021 amended, #1767). The rider's own feed, one token held
-// by one rider, still says who planned what.
-func TestTheRoomFeedDoesNotNameThePlanner(t *testing.T) {
+// The crew feed is handed to every member and exists to be forwarded to
+// people who are not in the crew — so it names nobody (ADR-0021 amended,
+// #1767). The rider's own feed, one token held by one rider, still says who
+// planned what.
+func TestTheCrewFeedDoesNotNameThePlanner(t *testing.T) {
 	h := setup(t)
-	slug, code := h.createRoom(t, "alice", "Quiet Feed")
-	h.enter(t, "bob", code, slug)
-
-	workout := `{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":600,\"target\":0.75}]}`
+	crew, channel := h.crewWithChannel(t)
+	crewPath := "/api/crews/" + store.UUIDString(crew.ID)
+	// A crew named for its founder would put the planner's name in every
+	// event on its own; this test is about who planned.
+	if status, body := h.call(t, "alice", http.MethodPatch, crewPath, `{"name":"Quiet Feed"}`); status != http.StatusOK {
+		t.Fatalf("rename: %d %v", status, body)
+	}
 	starts := time.Now().UTC().Add(48 * time.Hour).Truncate(time.Second)
-	plan := fmt.Sprintf(`{"workoutName":"Openers","workoutJson":"%s","startsAt":%q}`, workout, starts.Format(time.RFC3339))
-	if status, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/schedule", plan); status != http.StatusCreated {
-		t.Fatalf("schedule: %d %v", status, body)
+	if status, body := h.call(t, "bob", http.MethodPost, schedulePath(crew), crewPlanBody(starts, store.UUIDString(channel))); status != http.StatusCreated {
+		t.Fatalf("plan: %d %v", status, body)
 	}
-
-	// Whatever display name the harness gave the planner, the room feed must
-	// not carry it — asked of the room read, so the test cannot pass by
-	// looking for a name nobody has.
-	_, room := h.call(t, "alice", http.MethodGet, "/api/rooms/"+slug, "")
-	upcoming, _ := room["upcoming"].([]any)
-	if len(upcoming) != 1 {
-		t.Fatalf("upcoming: %v — test proves nothing", room["upcoming"])
+	var planner string
+	for _, entry := range h.crewSchedule(t, "alice", crew) {
+		planner, _ = entry["createdBy"].(string)
 	}
-	first, _ := upcoming[0].(map[string]any)
-	planner, _ := first["createdBy"].(string)
 	if planner == "" {
-		t.Fatalf("no planner on the plan: %v", first)
+		t.Fatal("no planner on the plan — test proves nothing")
 	}
-	token, _ := room["icsToken"].(string)
-
-	status, ics, _ := h.rawGet(t, "/api/rooms/"+slug+"/calendar/"+token+".ics")
+	_, body := h.call(t, "alice", http.MethodGet, crewPath, "")
+	token, _ := body["icsToken"].(string)
+	status, ics, _ := h.rawGet(t, crewPath+"/calendar/"+token+".ics")
 	if status != http.StatusOK {
-		t.Fatalf("room feed: %d %s", status, ics)
+		t.Fatalf("crew feed: %d %s", status, ics)
 	}
 	if strings.Contains(ics, planner) {
-		t.Fatalf("the room feed names its planner %q — a link every member can forward:\n%s", planner, ics)
+		t.Fatalf("the crew feed names its planner %q — a link every member can forward:\n%s", planner, ics)
 	}
-	if !strings.Contains(ics, "DESCRIPTION:In Quiet Feed.") {
-		t.Fatalf("room feed description:\n%s", ics)
+	if !strings.Contains(ics, "DESCRIPTION:In Quiet Feed · Pain Cave.") {
+		t.Fatalf("crew feed description:\n%s", ics)
 	}
 
-	// The same session, in the feed addressed to the rider: still named.
 	_, mine := h.call(t, "alice", http.MethodGet, "/api/schedule", "")
 	riderToken, _ := mine["icsToken"].(string)
 	status, riderICS, _ := h.rawGet(t, "/api/calendar/"+riderToken+".ics")
 	if status != http.StatusOK {
 		t.Fatalf("rider feed: %d %s", status, riderICS)
 	}
-	if !strings.Contains(riderICS, "DESCRIPTION:Planned by "+planner+" in Quiet Feed.") {
+	if !strings.Contains(riderICS, "DESCRIPTION:Planned by "+planner+" in Quiet Feed · Pain Cave.") {
 		t.Fatalf("the rider's own feed lost its planner:\n%s", riderICS)
 	}
 }

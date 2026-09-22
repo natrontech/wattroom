@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PlaceAddress } from '$lib/room/address';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -29,7 +30,7 @@
 	let {
 		playlist,
 		store,
-		slug,
+		address,
 		roomScoped,
 		canManage,
 		onSetActive,
@@ -39,7 +40,7 @@
 		/** The room to queue into — the one the panel is open in. Absent on
 		 *  the Music page with no room open (#1460): nothing to queue into,
 		 *  so the verb is not drawn. */
-		slug?: string;
+		address?: PlaceAddress | null;
 		/** Room playlists only: offers "Set active" in the menu. */
 		roomScoped: boolean;
 		/** Rename, delete and remove-a-track: the coach's and the owner's on a
@@ -211,9 +212,9 @@
 	}
 
 	async function queue() {
-		if (!slug) return;
+		if (!address) return;
 		busy = true;
-		const res = await queueSavedPlaylist(slug, playlist.id);
+		const res = await queueSavedPlaylist(address, playlist.id);
 		busy = false;
 		if (!res.ok) {
 			error = res.error.message;
@@ -227,10 +228,10 @@
 	}
 
 	function menu(): MenuEntry[] {
-		const entries: MenuEntry[] = slug
+		const entries: MenuEntry[] = address
 			? [
 					{
-						label: 'Queue into this room',
+						label: `Queue into ${address.name}`,
 						icon: ListMusic,
 						onSelect: () => void queue(),
 					},
@@ -303,12 +304,12 @@
 				{#if playlist.active}<span class="text-neon">· active</span>{/if}
 			</p>
 		</div>
-		{#if slug}
+		{#if address}
 			<button
 				onclick={queue}
 				disabled={busy || !playlist.trackCount}
 				class="btn btn-secondary btn-xs shrink-0 disabled:opacity-40"
-				aria-label="queue this playlist into the room">Queue</button
+				aria-label="queue this playlist into {address.name}">Queue</button
 			>
 		{/if}
 	</div>

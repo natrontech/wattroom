@@ -192,8 +192,6 @@ type roomJSON struct {
 	SoundPack string `json:"soundPack,omitempty"`
 	// The room's reaction palette (#223) — members only, like the sound pack.
 	Cheers []string `json:"cheers,omitempty"`
-	// Secret calendar-feed token (#245) — members only, like the code.
-	IcsToken string `json:"icsToken,omitempty"`
 	// The caller's own role; empty when they are not a member.
 	Role    string       `json:"role,omitempty"`
 	Members []memberJSON `json:"members,omitempty"`

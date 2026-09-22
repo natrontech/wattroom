@@ -1,4 +1,5 @@
 import { deviceChoices } from '$lib/room/av-devices.svelte';
+import type { PlaceAddress } from '$lib/room/address';
 import { createStage } from '$lib/room/av-stage.svelte';
 import { createRiderOutput } from '$lib/room/av-output';
 import { createSpeaking } from '$lib/room/speaking';
@@ -54,7 +55,7 @@ export { JOIN_TIMEOUT_MS } from '$lib/room/av-session';
  * interface turned out to cost the parts rather than the closure — the shape
  * `ClaimHost` and `MicChainHost` were already using.
  */
-export function createRoomAv(slug: string) {
+export function createRoomAv(address: PlaceAddress) {
 	// One named place for what the UI watches, one for what the connection
 	// keeps to itself (#892) — av-state.svelte.ts says why they are two.
 	const av = createAvState();
@@ -98,7 +99,9 @@ export function createRoomAv(slug: string) {
 	const seats = createSeats();
 	// A refresh kills the page and the LiveKit room with it. The note this tab
 	// leaves behind is what lets the next page walk back in (#480).
-	const note = createNoteKeeper(slug, () => av.micOn);
+	// Keyed by the place: a room's key is its slug, so every note a room
+	// left before #2449 still finds its way back.
+	const note = createNoteKeeper(address.key, () => av.micOn);
 
 	const mic = createMic({ av, conn, devices, talk, setVoice, failedMedia });
 	const publish = createPublish({
@@ -131,7 +134,7 @@ export function createRoomAv(slug: string) {
 		output,
 	});
 	const session = createSession({
-		slug,
+		avToken: address.avToken,
 		av,
 		conn,
 		devices,

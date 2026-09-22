@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test, voicePath } from './room';
 
 /**
  * Away says which kind of away (#706, the split button).
@@ -32,11 +32,12 @@ test('a rider picks a state, and the room is told which', async ({
 	const b = await riders(B);
 	await b.setViewportSize({ width: 1440, height: 900 });
 	await rooms.enter(b, room);
-	await a.goto(`/r/${room.slug}`);
-	// B waits in the room's Chat place, where the timeline is drawn, BEFORE A
-	// presses anything: presence lines are ephemeral (ADR-0022) and a reload
-	// shows none of them, so a rider who arrives afterwards sees nothing.
-	await b.goto(`/r/${room.slug}/chat`);
+	await a.goto(voicePath(room));
+	// B waits in the voice channel, whose page draws its events beside the
+	// deck (ADR-0022 as amended by ADR-0058), BEFORE A presses anything:
+	// they are ephemeral and a reload shows none of them, so a rider who
+	// arrives afterwards sees nothing.
+	await b.goto(voicePath(room));
 
 	// The face before anything is chosen: one tap always means the plain
 	// thing, which is the whole reason the arrow exists.
@@ -62,12 +63,18 @@ test('a rider picks a state, and the room is told which', async ({
 	await expect(b.getByText(`${A} is refuelling`)).toBeVisible({
 		timeout: 15_000,
 	});
-	// And A wears that state's mark in B's room, not the plain cup.
-	const mark = b.getByRole('img', { name: 'Refuelling' });
+	// And A wears that state's mark in B's channel, not the plain cup — on
+	// A's own tile. The voice channel's page draws A twice (the tile and the
+	// people column), where the Chat place this used to watch drew once.
+	const mark = b
+		.getByTestId('rider-tile')
+		.filter({ hasText: A })
+		.getByRole('img', { name: 'Refuelling' });
 	await expect(mark).toBeVisible();
 
 	await a.getByRole('button', { name: "I'm back" }).click();
 	await expect(b.getByText(`${A} is back`)).toBeVisible({ timeout: 15_000 });
-	await expect(mark).toHaveCount(0);
+	// Gone everywhere B could see it, not just from the tile.
+	await expect(b.getByRole('img', { name: 'Refuelling' })).toHaveCount(0);
 	await expect(face).toBeVisible();
 });

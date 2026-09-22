@@ -7,6 +7,7 @@
  * the shape and the two things worth stating once — how a track is labelled
  * when its tags are thin, and what "MP3 only" means before a byte is sent.
  */
+import type { PlaceAddress } from '$lib/room/address';
 import { api } from '$lib/api';
 
 export interface Track {
@@ -84,8 +85,8 @@ export function saveTrack(
  * One call through the playlist bridge, not one socket command per track:
  * the hub throttles a rider's commands and would drop most of a burst.
  */
-export function queueTracks(slug: string, trackIds: string[]) {
-	return api<{ queued: number; skipped: number }>(`/api/rooms/${slug}/queue`, {
+export function queueTracks(address: PlaceAddress, trackIds: string[]) {
+	return api<{ queued: number; skipped: number }>(address.queueTracks, {
 		method: 'POST',
 		json: { trackIds },
 	});

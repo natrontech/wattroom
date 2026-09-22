@@ -1,0 +1,1 @@
+- Calendar feeds now follow crews. Each crew has its own feed link, and your own feed covers every crew you are in. The old per-room calendar links stop updating; subscribe to your crew's link instead. A crew's owner or admins can reset its link.

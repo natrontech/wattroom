@@ -28,6 +28,19 @@ import { untrack } from 'svelte';
 import type { SessionState } from '$lib/protocol';
 import type { Segment, Workout } from '$lib/workout/types';
 import { listening } from '$lib/room/listening.svelte';
+import type { PlaceAddress } from '$lib/room/address';
+
+const NO_CHAT = 'A voice channel keeps no chat — its crew’s text channels do.';
+
+/** What a notification calls the place: the rail's name for a room, once
+ *  it has one (#1741), else the address's own. */
+function placeName(address: PlaceAddress): string {
+	return (
+		(address.slug &&
+			presence.rooms.find((room) => room.slug === address.slug)?.name) ||
+		address.name
+	);
+}
 
 /**
  * The room you are IN (#173, ADR-0010's logical end): joining is a STATE,
@@ -40,7 +53,10 @@ import { listening } from '$lib/room/listening.svelte';
  * in two lounges.
  */
 type Connection = {
+	/** The room's slug; '' in a voice channel, so it matches no room. */
 	slug: string;
+	/** Where the connection stands, and every path that follows (#2449). */
+	address: PlaceAddress;
 	live: ReturnType<typeof createRoomLive>;
 	av: RoomAv;
 	/**
@@ -88,20 +104,26 @@ export type BacklogState = 'loading' | 'ready' | 'failed';
  * finished sessions, so its state is a fact the Sessions place shows rather
  * than a silent gap (#1538).
  */
-function createBacklog(slug: string, live: ReturnType<typeof createRoomLive>) {
-	let state = $state<BacklogState>('loading');
+function createBacklog(
+	chat: string | undefined,
+	live: ReturnType<typeof createRoomLive>,
+) {
+	// A voice channel keeps no chat (ADR-0058, decision 4): nothing to read,
+	// and nothing missing.
+	let state = $state<BacklogState>(chat ? 'loading' : 'ready');
 	// Reads overlap on a busy lobby; only the newest may land, or an older
 	// answer would put back a line that has since been deleted.
 	let issued = 0;
 	function load() {
 		// A re-read of a log already on screen is quiet: "loading" is for a
 		// room with nothing to show yet.
+		if (!chat) return;
 		if (state !== 'ready') state = 'loading';
 		const mine = ++issued;
 		void api<{
 			messages?: Parameters<typeof live.seedChat>[0];
 			recaps?: Parameters<typeof live.seedRecaps>[0];
-		}>(`/api/rooms/${slug}/chat`).then((res) => {
+		}>(chat).then((res) => {
 			if (mine !== issued) return;
 			if (!res.ok) {
 				state = 'failed';
@@ -130,26 +152,28 @@ function createBacklog(slug: string, live: ReturnType<typeof createRoomLive>) {
 // mounts, so join() stays synchronous for everything that reads the
 // connection the moment it exists.
 type RoomAv = ReturnType<typeof import('$lib/room/av.svelte').createRoomAv>;
-let createRoomAv: ((slug: string) => RoomAv) | null = null;
+let createRoomAv: ((address: PlaceAddress) => RoomAv) | null = null;
 export async function prepareRoomAv(): Promise<void> {
 	if (createRoomAv) return;
 	({ createRoomAv } = await import('$lib/room/av.svelte'));
 }
 
-function connect(slug: string): Connection {
+function connect(address: PlaceAddress): Connection {
+	const { slug } = address;
 	if (!createRoomAv) {
 		throw new Error(
 			'the room AV is not loaded — the room layout prepares it before the shell joins',
 		);
 	}
-	const live = createRoomLive(slug);
-	const av = createRoomAv(slug);
+	const live = createRoomLive(address);
+	const av = createRoomAv(address);
 	// The chat backlog (#201): loaded on join and again on every lobby ping
 	// (#2437) — the log follows the connection, not the page.
-	const backlog = createBacklog(slug, live);
+	const backlog = createBacklog(address.chat, live);
 
 	async function sendChat(text: string, imageId?: string) {
-		const res = await api(`/api/rooms/${slug}/chat`, {
+		if (!address.chat) return NO_CHAT;
+		const res = await api(address.chat, {
 			method: 'POST',
 			json: { text, imageId },
 		});
@@ -161,8 +185,9 @@ function connect(slug: string): Connection {
 	}
 
 	async function react(messageId: string, emoji: string) {
+		if (!address.chat) return NO_CHAT;
 		live.toggleMyReact(messageId, emoji);
-		const res = await api(`/api/rooms/${slug}/chat/reactions`, {
+		const res = await api(`${address.chat}/reactions`, {
 			method: 'POST',
 			json: { messageId, emoji },
 		});
@@ -178,8 +203,7 @@ function connect(slug: string): Connection {
 	// tabs get the browser notification instead (#202).
 	// The room's name for a notification's title (#1741); the slug stands in
 	// until the rail feed has named it.
-	const roomName = () =>
-		presence.rooms.find((r) => r.slug === slug)?.name ?? slug;
+	const roomName = () => placeName(address);
 	let known: Set<string> | null = null;
 	// Blip only for lines newer than the connection itself — the backlog can
 	// never replay, and the log's length cap can never freeze the notifier
@@ -327,13 +351,13 @@ function connect(slug: string): Connection {
 			const at = live.tick?.at ?? Date.now();
 			if (arrived.length > 0) {
 				// Once per tag across tabs, and the room's name, not its slug.
-				if (!shouldAnnounce(`join-${slug}-${at}`, at)) return;
+				if (!shouldAnnounce(`join-${address.key}-${at}`, at)) return;
 				play('join');
 				notify.push(
 					roomName(),
 					`${arrived.map((rider) => rider.name).join(', ')} joined the room`,
-					`join-${slug}`,
-					{ href: `/r/${slug}` },
+					`join-${address.key}`,
+					{ href: address.home },
 				);
 			} else if ([...before].some((id) => !ids.has(id))) {
 				play('leave');
@@ -438,8 +462,7 @@ function connect(slug: string): Connection {
 			const fresh = live.chatLog.filter((line) => line.at > lastChatAt);
 			if (fresh.length === 0) return;
 			lastChatAt = fresh[fresh.length - 1].at;
-			const where =
-				presence.rooms.find((room) => room.slug === slug)?.name ?? slug;
+			const where = placeName(address);
 			for (const line of fresh) {
 				// Ids beat display names — a namesake must not be muted (#219).
 				const mine = line.fromId
@@ -450,11 +473,11 @@ function connect(slug: string): Connection {
 				// sees the line first announces it, and never both (#568).
 				announce({
 					kind: 'chat',
-					tag: `chat-${slug}`,
+					tag: `chat-${address.key}`,
 					at: line.at,
 					title: `${line.from} · ${where}`,
 					body: line.text || (line.imageId ? 'sent an image' : ''),
-					href: `/r/${slug}/chat`,
+					href: `${address.home}/chat`,
 					reading: chatOpen && !away(),
 					reply: {
 						placeholder: `Reply in ${where}`,
@@ -492,9 +515,7 @@ function connect(slug: string): Connection {
 		// hidden-tab gate authoritative.
 		$effect(() => {
 			const poke = live.lastPoke;
-			const where =
-				presence.rooms.find((room) => room.slug === slug)?.name ?? slug;
-			announcePoke(poke, slug, where);
+			announcePoke(poke, address.key, placeName(address), address.home);
 		});
 
 		// Room audio follows the connection, not the page (#216): the gate
@@ -574,7 +595,7 @@ function connect(slug: string): Connection {
 			if (drops > seenDrops) {
 				seenDrops = drops;
 				setTimeout(() => {
-					if (roomConnection.current?.slug === slug)
+					if (roomConnection.current?.address.key === address.key)
 						void av.join({ mic: av.micBeforeDrop });
 				}, 2_000);
 			}
@@ -593,18 +614,19 @@ function connect(slug: string): Connection {
 				before !== 'paused'
 			) {
 				const at = live.tick?.at ?? Date.now();
-				if (shouldAnnounce(`session-${slug}-${at}`, at))
+				if (shouldAnnounce(`session-${address.key}-${at}`, at))
 					notify.push(
 						roomName(),
 						'The session is starting — saddle up',
-						`session-${slug}`,
-						{ href: `/r/${slug}/training` },
+						`session-${address.key}`,
+						{ href: address.training },
 					);
 			}
 		});
 	});
 	return {
 		slug,
+		address,
 		live,
 		av,
 		/**
@@ -642,11 +664,11 @@ export const roomConnection = {
 	get current() {
 		return current;
 	},
-	/** Idempotent per slug; switching rooms leaves the old one first. */
-	join(slug: string) {
-		if (current?.slug === slug) return current;
+	/** Idempotent per place; switching places leaves the old one first. */
+	join(address: PlaceAddress) {
+		if (current?.address.key === address.key) return current;
 		this.leave();
-		current = connect(slug);
+		current = connect(address);
 		return current;
 	},
 	/**
@@ -660,8 +682,8 @@ export const roomConnection = {
 	 */
 	leave(reason: 'rider' | 'signedOut' = 'rider') {
 		if (!current) return;
-		const { slug } = current;
-		const name = presence.rooms.find((room) => room.slug === slug)?.name;
+		const { address } = current;
+		const name = placeName(address);
 		// Before dispose: stop() closes the ride buffer and releases the
 		// trainer, and both need the reactive scope the root is about to end.
 		current.ride.stop();
@@ -677,8 +699,8 @@ export const roomConnection = {
 		// The leave cue, not the fault buzz: the sound already means "someone
 		// is out of the room", and an error-toned toast would sound its own.
 		play('leave');
-		toasts.push(`Your session ended — you left ${name ?? slug}.`, {
-			href: `/r/${slug}`,
+		toasts.push(`Your session ended — you left ${name}.`, {
+			href: address.home,
 			seconds: 12,
 		});
 	},

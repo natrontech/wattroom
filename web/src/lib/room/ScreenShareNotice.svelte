@@ -29,7 +29,7 @@
 		sharing: boolean;
 		/** Whether the room can HEAR the machine too (#1124). */
 		sharingAudio?: boolean;
-		room: { slug: string; name?: string } | null;
+		room: { home: string; name: string } | null;
 		pathname: string;
 		onStop: () => void;
 		/**
