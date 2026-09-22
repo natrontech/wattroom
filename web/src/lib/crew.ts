@@ -64,6 +64,12 @@ export interface Crew {
 	people: CrewPerson[];
 	/** Owner and admins only — a ban list is a moderation surface. */
 	banned?: CrewPerson[];
+	/** Owner and admins only: in the public directory (ADR-0039 amended). */
+	listed?: boolean;
+	/** The crew keeps a weekly board (ADR-0036 as amended by ADR-0058). */
+	boardEnabled?: boolean;
+	/** The reaction palette its voice channels speak — icon keys. */
+	cheers?: string[];
 }
 
 export function fetchCrew(
@@ -73,16 +79,22 @@ export function fetchCrew(
 	return loadApi<Crew>(fetcher, `/api/crews/${id}`);
 }
 
-/** The rename the day-one screen exists for (#1151); owner or admin. */
-export function renameCrew(
+/**
+ * Crew Settings' one write, owner or admin: the name the day-one screen
+ * exists for (#1151) rides every call, and each other field is left as it is
+ * when absent. `cheers: []` is the base set.
+ */
+export function updateCrew(
 	id: string,
-	name: string,
-	icon?: string,
+	patch: {
+		name: string;
+		icon?: string;
+		boardEnabled?: boolean;
+		listed?: boolean;
+		cheers?: string[];
+	},
 ): Promise<ApiResult<RoomCrew>> {
-	return api<RoomCrew>(`/api/crews/${id}`, {
-		method: 'PATCH',
-		json: icon === undefined ? { name } : { name, icon },
-	});
+	return api<RoomCrew>(`/api/crews/${id}`, { method: 'PATCH', json: patch });
 }
 
 /**

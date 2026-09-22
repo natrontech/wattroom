@@ -1,9 +1,10 @@
 <script lang="ts">
-	// The room's reaction vocabulary (#223, #447): up to eight from the
-	// curated set, the first four the mid-ride buttons. Split from the
-	// settings page (#1265); the page owns the list and saves on `onchange`.
+	// The crew's reaction vocabulary (#223, #447; the room's, moved up by
+	// ADR-0058): up to MaxCheers from the curated set, the first four the
+	// mid-ride buttons. The page owns the list and saves on `onchange`.
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { CHEER_ICONS } from '$lib/icons';
+	import { MaxCheers } from '$lib/protocol';
 
 	let {
 		cheers = $bindable(),
@@ -11,11 +12,10 @@
 		onchange,
 	}: { cheers: string[]; busy?: boolean; onchange: () => void } = $props();
 
-	// The palette caps at 8 (docs/SPEC.md); [] tells the server "base set".
-	const MAX_CHEERS = 8;
-	const full = $derived(cheers.length >= MAX_CHEERS);
-	// The curated set — plus whatever an older room still holds that is not
-	// in it, so it can be taken out. Nothing new can be added outside the set.
+	// [] tells the server "base set".
+	const full = $derived(cheers.length >= MaxCheers);
+	// The curated set — plus whatever an older palette still holds that is
+	// not in it, so it can be taken out. Nothing new can be added outside the set.
 	const palette = $derived([
 		...Object.keys(CHEER_ICONS),
 		...cheers.filter((c) => !(c in CHEER_ICONS)),
@@ -29,10 +29,10 @@
 	}
 </script>
 
-<section class="panel panel-xl mt-3">
+<section class="panel panel-xl mt-5">
 	<h2 class="font-display font-bold">Reactions</h2>
 	<p class="text-muted mt-1.5 text-xs">
-		The room's reaction vocabulary — cheers mid-ride, reactions on chat. Up to {MAX_CHEERS};
+		The crew's reaction vocabulary — cheers mid-ride, reactions on chat. Up to {MaxCheers};
 		the first four are the mid-ride buttons.
 	</p>
 	<div class="mt-3 flex flex-wrap items-center gap-1.5">
@@ -52,7 +52,7 @@
 			>
 		{/each}
 		<span class="text-muted ml-1 text-xs tabular-nums"
-			>{cheers.length} of {MAX_CHEERS}</span
+			>{cheers.length} of {MaxCheers}</span
 		>
 	</div>
 	<button
