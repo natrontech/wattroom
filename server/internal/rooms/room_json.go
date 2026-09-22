@@ -11,9 +11,6 @@ import (
 // handlers write, and the two vocabularies (cheers, crew role words) they
 // share. Split from rooms.go (#1265).
 
-// maxCheers caps the owner-curated reaction palette (#223).
-const maxCheers = 8
-
 // baseCheers is the stock reaction set (WATTROOM.md feel layer) — what a
 // room speaks until its owner curates their own. Icon keys since #447; the
 // client draws them.
@@ -34,8 +31,8 @@ func CheerSet(stored string) []string {
 // and space-joined, "" for an empty pick (back to the base set). A non-empty
 // refusal is the message to answer with.
 func cleanCheers(picked []string) (stored, refusal string) {
-	if len(picked) > maxCheers {
-		return "", fmt.Sprintf("Pick at most %d reactions.", maxCheers)
+	if len(picked) > protocol.MaxCheers {
+		return "", fmt.Sprintf("Pick at most %d reactions.", protocol.MaxCheers)
 	}
 	deduped := make([]string, 0, len(picked))
 	seen := map[string]struct{}{}

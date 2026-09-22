@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 )
 
@@ -26,9 +27,11 @@ func TestCrewSettingsSaveThePaletteAndTheBoard(t *testing.T) {
 		return body
 	}
 	cheers := func(body map[string]any) string {
+		list, _ := body["cheers"].([]any)
 		var words []string
-		for _, c := range body["cheers"].([]any) {
-			words = append(words, c.(string))
+		for _, c := range list {
+			word, _ := c.(string)
+			words = append(words, word)
 		}
 		return strings.Join(words, " ")
 	}
@@ -45,7 +48,7 @@ func TestCrewSettingsSaveThePaletteAndTheBoard(t *testing.T) {
 		{"a member may not", "bob", `{"name":"Palette Crew","cheers":["flame"]}`, http.StatusForbidden, ""},
 		{"not an icon", "alice", `{"name":"Palette Crew","cheers":["<b>"]}`, http.StatusBadRequest, ""},
 		{"too many", "alice", fmt.Sprintf(`{"name":"Palette Crew","cheers":[%s]}`,
-			strings.TrimSuffix(strings.Repeat(`"flame",`, maxCheers+1), ",")), http.StatusBadRequest, ""},
+			strings.TrimSuffix(strings.Repeat(`"flame",`, protocol.MaxCheers+1), ",")), http.StatusBadRequest, ""},
 		{"a pick, deduplicated", "alice", `{"name":"Palette Crew","cheers":["rocket","flame","rocket"]}`, http.StatusOK, "rocket flame"},
 		{"a rename keeps it", "alice", `{"name":"Palette Crew Two"}`, http.StatusOK, "rocket flame"},
 		{"empty is the base set", "alice", `{"name":"Palette Crew","cheers":[]}`, http.StatusOK, strings.Join(baseCheers, " ")},
