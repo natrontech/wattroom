@@ -91,7 +91,7 @@ func (q *Queries) CountRoomsOwnedInCrew(ctx context.Context, arg CountRoomsOwned
 
 const createCrew = `-- name: CreateCrew :one
 
-insert into crews (name, owner_id, code, founded_by) values ($1, $2, $3, $2) returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by
+insert into crews (name, owner_id, code, founded_by) values ($1, $2, $3, $2) returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by, board_enabled, cheers, listed, ics_token
 `
 
 type CreateCrewParams struct {
@@ -120,6 +120,10 @@ func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, e
 		&i.ImageSetAt,
 		&i.RenamedAt,
 		&i.FoundedBy,
+		&i.BoardEnabled,
+		&i.Cheers,
+		&i.Listed,
+		&i.IcsToken,
 	)
 	return i, err
 }
@@ -337,7 +341,7 @@ func (q *Queries) GetCrewImage(ctx context.Context, id pgtype.UUID) (GetCrewImag
 }
 
 const getCrewOwnedBy = `-- name: GetCrewOwnedBy :one
-select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by from crews where owner_id = $1 order by (founded_by = $1) desc, created_at limit 1
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by, board_enabled, cheers, listed, ics_token from crews where owner_id = $1 order by (founded_by = $1) desc, created_at limit 1
 `
 
 // The crew a room is created into when the caller names none (#1201): the
@@ -358,6 +362,10 @@ func (q *Queries) GetCrewOwnedBy(ctx context.Context, ownerID pgtype.UUID) (Crew
 		&i.ImageSetAt,
 		&i.RenamedAt,
 		&i.FoundedBy,
+		&i.BoardEnabled,
+		&i.Cheers,
+		&i.Listed,
+		&i.IcsToken,
 	)
 	return i, err
 }
@@ -681,7 +689,7 @@ func (q *Queries) ListCrewPeople(ctx context.Context, arg ListCrewPeopleParams) 
 }
 
 const listCrewRoles = `-- name: ListCrewRoles :many
-select crew_id, user_id, role, set_at, joined_at from crew_roles where crew_id = $1
+select crew_id, user_id, role, set_at, joined_at, notify, on_board from crew_roles where crew_id = $1
 `
 
 func (q *Queries) ListCrewRoles(ctx context.Context, crewID pgtype.UUID) ([]CrewRole, error) {
@@ -699,6 +707,8 @@ func (q *Queries) ListCrewRoles(ctx context.Context, crewID pgtype.UUID) ([]Crew
 			&i.Role,
 			&i.SetAt,
 			&i.JoinedAt,
+			&i.Notify,
+			&i.OnBoard,
 		); err != nil {
 			return nil, err
 		}
@@ -893,7 +903,7 @@ func (q *Queries) ListCrewsFor(ctx context.Context, userID pgtype.UUID) ([]ListC
 }
 
 const listCrewsOwnedBy = `-- name: ListCrewsOwnedBy :many
-select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by from crews where owner_id = $1 order by created_at
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by, board_enabled, cheers, listed, ics_token from crews where owner_id = $1 order by created_at
 `
 
 func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]Crew, error) {
@@ -917,6 +927,10 @@ func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]
 			&i.ImageSetAt,
 			&i.RenamedAt,
 			&i.FoundedBy,
+			&i.BoardEnabled,
+			&i.Cheers,
+			&i.Listed,
+			&i.IcsToken,
 		); err != nil {
 			return nil, err
 		}
@@ -1162,7 +1176,7 @@ func (q *Queries) TransferCrew(ctx context.Context, arg TransferCrewParams) erro
 const updateCrew = `-- name: UpdateCrew :one
 update crews set name = $2, icon = $3,
        renamed_at = case when name <> $2 then now() else renamed_at end
-where id = $1 returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by
+where id = $1 returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by, board_enabled, cheers, listed, ics_token
 `
 
 type UpdateCrewParams struct {
@@ -1188,6 +1202,10 @@ func (q *Queries) UpdateCrew(ctx context.Context, arg UpdateCrewParams) (Crew, e
 		&i.ImageSetAt,
 		&i.RenamedAt,
 		&i.FoundedBy,
+		&i.BoardEnabled,
+		&i.Cheers,
+		&i.Listed,
+		&i.IcsToken,
 	)
 	return i, err
 }
