@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test, textChannelOf } from './room';
 
 /**
  * Editing a sent line (#865), in a real browser and across two real sessions.
@@ -7,8 +7,9 @@ import { expect, test } from './room';
  * that rewrites a line in the log, the DM poll that carries an edit `after`
  * can never bring back. What none of them can reach is the thing the feature
  * actually promises — that the words change on somebody ELSE's screen, and
- * that they can see they changed. That path runs through the hub's tick, and
- * the only way to watch it is with a second rider holding the room open.
+ * that they can see they changed. That path runs through the lobby ping and
+ * a re-read of the channel (#2448), and the only way to watch it is with a
+ * second rider holding the channel open.
  */
 
 /** This spec's own two riders — nobody else's (#2133). */
@@ -34,8 +35,9 @@ test('a rider fixes their line and the room sees the new words', async ({
 	const b = await riders(B);
 	await rooms.enter(b, room);
 
-	// Both standing in the room's chat, so both are on the tick.
-	for (const rider of [a, b]) await rider.goto(`/r/${room.slug}/chat`);
+	// Both reading the room's text channel, so both hear its lobby pings.
+	const channel = await textChannelOf(a, room);
+	for (const rider of [a, b]) await rider.goto(channel);
 
 	const draft = a.getByPlaceholder(`Message ${name}…`);
 	await expect(draft).toBeVisible();
@@ -67,16 +69,16 @@ test('a rider fixes their line and the room sees the new words', async ({
 	await expect(a.getByText(FIXED, { exact: true })).toBeVisible();
 
 	// The point of the whole feature: it changed for the other rider too,
-	// through the tick, and it says so.
+	// on the next read, and it says so.
 	await expect(b.getByText(FIXED, { exact: true })).toBeVisible({
 		timeout: 15_000,
 	});
 	await expect(b.getByText(SENT, { exact: true })).toHaveCount(0);
 	await expect(b.getByText('edited', { exact: true })).toBeVisible();
 
-	// Reloading reads the backlog rather than the tick — the mark has to
-	// survive the trip through the database, or a rider who arrives later
-	// reads a line that was quietly rewritten.
+	// Reloading reads the backlog afresh — the mark has to survive the trip
+	// through the database, or a rider who arrives later reads a line that
+	// was quietly rewritten.
 	await b.reload();
 	await expect(b.getByText(FIXED, { exact: true })).toBeVisible({
 		timeout: 15_000,

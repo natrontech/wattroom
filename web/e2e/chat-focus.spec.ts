@@ -1,11 +1,11 @@
-import { expect, test } from './room';
+import { expect, test, textChannelOf } from './room';
 import { signInAs } from './signin';
 
-test('opening room chat focuses its composer', async ({ page, rooms }) => {
+test('opening a text channel focuses its composer', async ({ page, rooms }) => {
 	await signInAs(page, 'Chat Focus', '/home');
 	const name = `Chat Focus ${Date.now() % 100000}`;
-	const { slug } = await rooms.open(page, name);
-	await page.goto(`/r/${slug}/chat`);
+	const room = await rooms.open(page, name);
+	await page.goto(await textChannelOf(page, room));
 	await expect(page.getByPlaceholder(`Message ${name}…`)).toBeFocused();
 	await page.keyboard.type('ready to write');
 	await expect(page.getByPlaceholder(`Message ${name}…`)).toHaveValue(

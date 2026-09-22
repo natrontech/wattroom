@@ -8,7 +8,7 @@ import { roomTimeline, type TimelineMessage } from '$lib/room/timeline';
 
 /**
  * A DM thread's data (#672, reactions in #777) — the same reactive-store
- * shape as a room's backlog read from outside (outside.svelte.ts): polled,
+ * shape as a channel's thread (chat-thread.svelte.ts), but polled,
  * not a live wire, with a post going over HTTP and a merge-by-id on every
  * page so the millisecond-truncated `after` boundary can't duplicate a
  * line. "read" stays purely the reader's own business (ADR-0012 amended) —
@@ -42,7 +42,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 	// not creep down the list while you are reading it.
 	let readAt = $state<number | null>(dm.seenAt(peerId));
 	let reactions = $state<Record<string, Record<string, number>>>({});
-	// "id:cheer" → I pressed it, same key shape outside.svelte.ts uses.
+	// "id:cheer" → I pressed it, same key shape chat-thread.svelte.ts uses.
 	let myReacts = $state<Record<string, boolean>>({});
 	let timer: ReturnType<typeof setInterval> | null = null;
 	let closed = false;
