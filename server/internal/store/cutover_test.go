@@ -101,31 +101,49 @@ func scratchDB(t *testing.T) string {
 	return scratch.String()
 }
 
-// TestTheCutoverKeepsWhatWasAlreadyThere writes a room the way the release
-// before the crew wrote one, migrates over it, and checks the four things
-// #1106 says riders cannot be told about if they break.
-func TestTheCutoverKeepsWhatWasAlreadyThere(t *testing.T) {
-	dsn := scratchDB(t)
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		t.Fatalf("scratch pool: %v", err)
-	}
-	defer pool.Close()
-
+// migrateScratchTo brings a scratch database up to (and including) version:
+// the world as a release before some migration left it.
+func migrateScratchTo(ctx context.Context, t *testing.T, pool *pgxpool.Pool, version int64) {
+	t.Helper()
 	goose.SetBaseFS(migrations)
 	if err := goose.SetDialect("postgres"); err != nil {
 		t.Fatalf("goose dialect: %v", err)
 	}
 	sqldb := stdlib.OpenDBFromPool(pool)
 	defer func() { _ = sqldb.Close() }()
+	if err := goose.UpToContext(ctx, sqldb, "migrations", version); err != nil {
+		t.Fatalf("migrate to %d: %v", version, err)
+	}
+}
+
+// migrateScratchUp runs the rest, over whatever the test wrote in between.
+func migrateScratchUp(ctx context.Context, pool *pgxpool.Pool) error {
+	sqldb := stdlib.OpenDBFromPool(pool)
+	defer func() { _ = sqldb.Close() }()
+	return goose.UpContext(ctx, sqldb, "migrations")
+}
+
+// scratchPool opens a pool on a scratch database of the test's own.
+func scratchPool(ctx context.Context, t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	pool, err := pgxpool.New(ctx, scratchDB(t))
+	if err != nil {
+		t.Fatalf("scratch pool: %v", err)
+	}
+	t.Cleanup(pool.Close)
+	return pool
+}
+
+// TestTheCutoverKeepsWhatWasAlreadyThere writes a room the way the release
+// before the crew wrote one, migrates over it, and checks the four things
+// #1106 says riders cannot be told about if they break.
+func TestTheCutoverKeepsWhatWasAlreadyThere(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	pool := scratchPool(ctx, t)
 
 	// The world as it shipped, one version short of the crew.
-	if err := goose.UpToContext(ctx, sqldb, "migrations", crewMigrationVersion-1); err != nil {
-		t.Fatalf("migrate to the pre-crew release: %v", err)
-	}
+	migrateScratchTo(ctx, t, pool, crewMigrationVersion-1)
 
 	var ownerID, memberID, bannedID, roomID, icsToken string
 	row := pool.QueryRow(ctx, `insert into users (display_name) values ('Owner') returning id`)
@@ -157,7 +175,7 @@ func TestTheCutoverKeepsWhatWasAlreadyThere(t *testing.T) {
 	}
 
 	// ... and now the release that adds the crew.
-	if err := goose.UpContext(ctx, sqldb, "migrations"); err != nil {
+	if err := migrateScratchUp(ctx, pool); err != nil {
 		t.Fatalf("migrate over the existing world: %v", err)
 	}
 
