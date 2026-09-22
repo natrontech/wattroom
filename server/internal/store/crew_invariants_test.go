@@ -1,161 +1,231 @@
 package store_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
-// The invariants #1106 says the cutover must not break, over the FOUR
-// person-visibility queries that now go through `visible_rooms`. Table-driven
-// over the query list on purpose: a spot check on one of them is what let
-// #1109 and #1114 sit in the other three.
+// The boundary every person-visibility query goes through: `visible_channels`
+// (ADR-0058, #2465), successor of the `visible_rooms` invariants #1106 set.
+// Table-driven over the query list on purpose: a spot check on one of them is
+// what let #1109 and #1114 sit in the other three.
 //
-// Not in this table, and deliberately: `RoomWeekBoard` lists a room's actual
-// members rather than everyone who may see it, and `ExportUserRooms` returns
-// the caller's own rows and has no viewer to widen. #1106's body groups all
-// four as one kind; they are not.
+// Every case is a SILENT failure if it breaks — a row too many is a privacy
+// leak, a row too few a lockout, and neither errors.
+//
+// Not in this table: `CountRiderMedalsInCommon` needs a ride to hang a medal
+// on, and gamify's trophy-case tests hold it to the same boundary.
 
-// visibilityQueries is every query that answers "may this viewer see this
-// rider". Each returns whether anything came back for the pair.
+// chanFixture: alice owns crew Velvet with an open channel and a private one;
+// bob is a member of it, carol owns a crew of her own.
+type chanFixture struct {
+	st                *store.Store
+	alice, bob, carol pgtype.UUID
+	crew              pgtype.UUID
+	open, private     pgtype.UUID
+}
+
+func (f *chanFixture) user(t *testing.T, name string) pgtype.UUID {
+	t.Helper()
+	u, err := f.st.Queries.CreateUser(t.Context(), db.CreateUserParams{DisplayName: name, FtpWatts: 200, WeightKg: 75})
+	if err != nil {
+		t.Fatalf("create user %s: %v", name, err)
+	}
+	t.Cleanup(func() { _, _ = f.st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID) })
+	return u.ID
+}
+
+func (f *chanFixture) newCrew(t *testing.T, name string, owner pgtype.UUID) pgtype.UUID {
+	t.Helper()
+	c, err := f.st.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: name, OwnerID: owner, Code: testx.CrewCode()})
+	if err != nil {
+		t.Fatalf("create crew: %v", err)
+	}
+	t.Cleanup(func() { _, _ = f.st.Pool.Exec(context.Background(), "delete from crews where id = $1", c.ID) })
+	return c.ID
+}
+
+func (f *chanFixture) channel(t *testing.T, crew pgtype.UUID, name string, private bool) pgtype.UUID {
+	t.Helper()
+	var id pgtype.UUID
+	if err := f.st.Pool.QueryRow(t.Context(),
+		"insert into channels (crew_id, kind, name, position, private) values ($1, 'voice', $2, 0, $3) returning id",
+		crew, name, private).Scan(&id); err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	return id
+}
+
+func (f *chanFixture) role(t *testing.T, user pgtype.UUID, role string) {
+	t.Helper()
+	if err := f.st.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{CrewID: f.crew, UserID: user, Role: role}); err != nil {
+		t.Fatalf("crew role: %v", err)
+	}
+}
+
+func (f *chanFixture) name(t *testing.T, channel, user pgtype.UUID) {
+	t.Helper()
+	if _, err := f.st.Pool.Exec(t.Context(),
+		"insert into channel_members (channel_id, user_id) values ($1, $2)", channel, user); err != nil {
+		t.Fatalf("name into channel: %v", err)
+	}
+}
+
+func setupChannels(t *testing.T) *chanFixture {
+	t.Helper()
+	f := &chanFixture{st: open(t)}
+	f.alice, f.bob, f.carol = f.user(t, "alice"), f.user(t, "bob"), f.user(t, "carol")
+	f.crew = f.newCrew(t, "Velvet", f.alice)
+	f.open = f.channel(t, f.crew, "open", false)
+	f.private = f.channel(t, f.crew, "priv", true)
+	f.channel(t, f.newCrew(t, "Other", f.carol), "else", false)
+	f.role(t, f.bob, "member")
+	return f
+}
+
+// A track the rider uploaded, so TrackPlayableBy has something to refuse.
+func (f *chanFixture) track(t *testing.T, owner pgtype.UUID) pgtype.UUID {
+	t.Helper()
+	tr, err := f.st.Queries.CreateTrack(t.Context(), db.CreateTrackParams{
+		Sha256: testx.Slug("sha"), UploadedBy: owner, Title: "t", DurationMs: 1000, SizeBytes: 1, Tags: []string{},
+	})
+	if err != nil {
+		t.Fatalf("create track: %v", err)
+	}
+	return tr.ID
+}
+
 var visibilityQueries = []struct {
 	name string
-	run  func(t *testing.T, f *crewFixture, viewer, rider pgtype.UUID) bool
+	run  func(t *testing.T, f *chanFixture, viewer, rider pgtype.UUID) bool
 }{
-	{"ListRoomsInCommon", func(t *testing.T, f *crewFixture, viewer, rider pgtype.UUID) bool {
-		rows, err := f.st.Queries.ListRoomsInCommon(t.Context(), db.ListRoomsInCommonParams{Viewer: viewer, Rider: rider})
+	{"SharesChannelOrFriends", func(t *testing.T, f *chanFixture, viewer, rider pgtype.UUID) bool {
+		ok, err := f.st.Queries.SharesChannelOrFriends(t.Context(), db.SharesChannelOrFriendsParams{Viewer: viewer, Rider: rider})
 		if err != nil {
-			t.Fatalf("ListRoomsInCommon: %v", err)
-		}
-		return len(rows) > 0
-	}},
-	{"SharesRoomOrFriends", func(t *testing.T, f *crewFixture, viewer, rider pgtype.UUID) bool {
-		ok, err := f.st.Queries.SharesRoomOrFriends(t.Context(), db.SharesRoomOrFriendsParams{Viewer: viewer, Rider: rider})
-		if err != nil {
-			t.Fatalf("SharesRoomOrFriends: %v", err)
+			t.Fatalf("SharesChannelOrFriends: %v", err)
 		}
 		return ok
 	}},
-	{"CountRiderMedalsInCommon", func(t *testing.T, f *crewFixture, viewer, rider pgtype.UUID) bool {
-		// Returns rows only when a medal exists; the point under test is that
-		// it does not error and honours the same boundary, so an empty result
-		// on a medal-less fixture is the expected shape either way.
-		_, err := f.st.Queries.CountRiderMedalsInCommon(t.Context(), db.CountRiderMedalsInCommonParams{Viewer: viewer, Rider: rider})
+	{"SharesChannel", func(t *testing.T, f *chanFixture, viewer, rider pgtype.UUID) bool {
+		ok, err := f.st.Queries.SharesChannel(t.Context(), db.SharesChannelParams{Viewer: viewer, Rider: rider})
 		if err != nil {
-			t.Fatalf("CountRiderMedalsInCommon: %v", err)
+			t.Fatalf("SharesChannel: %v", err)
 		}
-		return true
+		return ok
+	}},
+	{"TrackPlayableBy", func(t *testing.T, f *chanFixture, viewer, rider pgtype.UUID) bool {
+		_, err := f.st.Queries.TrackPlayableBy(t.Context(), db.TrackPlayableByParams{ID: f.track(t, rider), UserID: viewer})
+		return err == nil
 	}},
 }
 
-// Nobody sees across a crew boundary. carol is in her own crew; bob is in
-// alice's. Neither may see the other, through any of the queries.
+func (f *chanFixture) sees(t *testing.T, viewer, rider pgtype.UUID) map[string]bool {
+	t.Helper()
+	out := map[string]bool{}
+	for _, q := range visibilityQueries {
+		out[q.name] = q.run(t, f, viewer, rider)
+	}
+	return out
+}
+
+func expectAll(t *testing.T, got map[string]bool, want bool, why string) {
+	t.Helper()
+	for name, ok := range got {
+		if ok != want {
+			t.Errorf("%s: %s (got %v)", name, why, ok)
+		}
+	}
+}
+
+// The gate itself, case by case: `mayEnter` in channels/access.go.
+func TestVisibleChannels(t *testing.T) {
+	f := setupChannels(t)
+	admin, named, banned := f.user(t, "admin"), f.user(t, "named"), f.user(t, "banned")
+	f.role(t, admin, "admin")
+	f.role(t, named, "member")
+	f.name(t, f.private, named)
+	f.role(t, banned, "banned")
+	f.name(t, f.private, banned) // a stale naming must not outrank the ban
+
+	for _, tc := range []struct {
+		name          string
+		user, channel pgtype.UUID
+		want          bool
+	}{
+		{"the owner enters the private channel", f.alice, f.private, true},
+		{"an admin enters the private channel", admin, f.private, true},
+		{"a member enters the open channel", f.bob, f.open, true},
+		{"a member not named does NOT enter the private channel", f.bob, f.private, false},
+		{"a named member enters the private channel", named, f.private, true},
+		{"a banned rider enters no open channel", banned, f.open, false},
+		{"a banned rider enters no channel they were named into", banned, f.private, false},
+		{"nobody crosses the crew boundary", f.carol, f.open, false},
+	} {
+		var got bool
+		if err := f.st.Pool.QueryRow(t.Context(),
+			"select exists (select 1 from visible_channels where channel_id = $1 and user_id = $2)",
+			tc.channel, tc.user).Scan(&got); err != nil {
+			t.Fatalf("visible_channels: %v", err)
+		}
+		if got != tc.want {
+			t.Errorf("%s: got %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
 func TestNoVisibilityAcrossTheCrewBoundary(t *testing.T) {
-	f := setupCrew(t)
-	for _, q := range visibilityQueries {
-		if q.name == "CountRiderMedalsInCommon" {
-			continue // no medals in this fixture; covered by the no-error path above
-		}
-		if q.run(t, f, f.carol, f.bob) {
-			t.Errorf("%s: carol sees bob across the crew boundary", q.name)
-		}
-		if q.run(t, f, f.bob, f.carol) {
-			t.Errorf("%s: bob sees carol across the crew boundary", q.name)
-		}
-	}
+	f := setupChannels(t)
+	expectAll(t, f.sees(t, f.carol, f.bob), false, "carol sees bob across the crew boundary")
+	expectAll(t, f.sees(t, f.bob, f.carol), false, "bob sees carol across the crew boundary")
 }
 
-// Sharing a room is what grants it, and it must still grant it — the failure
-// mode of tightening a visibility join is a silent lockout, not an error.
-func TestSharingARoomStillGrantsVisibility(t *testing.T) {
-	f := setupCrew(t)
-	for _, q := range visibilityQueries {
-		if !q.run(t, f, f.bob, f.alice) {
-			t.Errorf("%s: bob and alice share the open room and cannot see each other", q.name)
-		}
-	}
+func TestSharingAChannelGrantsVisibility(t *testing.T) {
+	f := setupChannels(t)
+	expectAll(t, f.sees(t, f.bob, f.alice), true, "bob and alice share the open channel and cannot see each other")
 }
 
-// A crew ban is the level a room ban cannot express, and it must reach these
-// joins too — which it does only because they go through the view.
 func TestACrewBanEndsVisibility(t *testing.T) {
-	f := setupCrew(t)
-	if !visibilityQueries[0].run(t, f, f.bob, f.alice) {
-		t.Fatal("bob could not see alice before the ban — test proves nothing")
-	}
-	if err := f.st.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: f.crew, UserID: f.bob, Role: "banned",
-	}); err != nil {
-		t.Fatalf("crew ban: %v", err)
-	}
-	for _, q := range visibilityQueries {
-		if q.name == "CountRiderMedalsInCommon" {
-			continue
-		}
-		if q.run(t, f, f.bob, f.alice) {
-			t.Errorf("%s: a crew-banned rider still sees the people they were banned from", q.name)
-		}
-		if q.run(t, f, f.alice, f.bob) {
-			t.Errorf("%s: the room still sees a crew-banned rider", q.name)
-		}
-	}
+	f := setupChannels(t)
+	f.role(t, f.bob, "banned")
+	expectAll(t, f.sees(t, f.bob, f.alice), false, "a crew-banned rider still sees the crew")
+	expectAll(t, f.sees(t, f.alice, f.bob), false, "the crew still sees a crew-banned rider")
 }
 
-// A room ban already did this before the crew existed. It must still, and this
-// is the case a careless rewrite through the view would drop.
-func TestARoomBanStillEndsVisibility(t *testing.T) {
-	f := setupCrew(t)
-	if !visibilityQueries[0].run(t, f, f.bob, f.alice) {
-		t.Fatal("bob could not see alice before the ban — test proves nothing")
-	}
-	f.setRole(t, f.openRoom, f.bob, "banned")
-	for _, q := range visibilityQueries {
-		if q.name == "CountRiderMedalsInCommon" {
-			continue
-		}
-		if q.run(t, f, f.bob, f.alice) {
-			t.Errorf("%s: a room-banned rider still sees the room's people", q.name)
-		}
-	}
-}
-
-// The widening ADR-0038 intends, and its limit. Being PERMITTED into the same
-// room is what grants visibility — not joining it, and not merely sharing a
-// crew. This test asserted the wrong thing first and the code was right: dave
-// joining the PRIVATE room makes him a crew member, and the open room is
-// crew-visible, so he can see it and therefore shares it with bob. That is the
-// widening, reached without dave joining the open room at all.
-func TestCrewVisibilityGrantsThroughARoomNobodyJoined(t *testing.T) {
-	f := setupCrew(t)
+// The case `visible_rooms` could not answer after M9 (#2465): nobody writes
+// room memberships any more, so a rider who joins the crew now has no room.
+// dave joins by the crew's door alone and must still see bob, and hear him.
+func TestJoiningTheCrewAfterTheMigrationGrantsVisibility(t *testing.T) {
+	f := setupChannels(t)
 	dave := f.user(t, "dave")
-	f.join(t, f.private, dave, "member")
-
-	if !visibilityQueries[0].run(t, f, f.bob, dave) {
-		t.Error("crew visibility did not widen: dave and bob both may enter the open room")
-	}
+	f.role(t, dave, "member")
+	expectAll(t, f.sees(t, dave, f.bob), true, "a rider who joined the crew does not see a crew-mate in its open channel")
 }
 
-// The limit: take the crew visibility away and the widening goes with it.
-// dave and bob then share no room either may enter — dave is in the private
-// room, bob in the closed one — even though they are in the same crew.
-// This is ADR-0038's "joining a crew does not by itself expose everyone".
-func TestACrewAloneGrantsNothingWithoutASharedRoom(t *testing.T) {
-	f := setupCrew(t)
+// The limit: a crew whose channels are all private exposes nobody who is
+// named into none of them — ADR-0038's "joining a crew does not by itself
+// expose everyone", carried by ADR-0058. Un-naming is the room ban's successor.
+func TestACrewAloneGrantsNothingWithoutASharedChannel(t *testing.T) {
+	f := setupChannels(t)
 	dave := f.user(t, "dave")
-	f.join(t, f.private, dave, "member")
+	f.role(t, dave, "member")
+	f.name(t, f.private, dave)
+	if _, err := f.st.Pool.Exec(t.Context(), "update channels set private = true where id = $1", f.open); err != nil {
+		t.Fatalf("close the channel: %v", err)
+	}
+	f.name(t, f.open, f.bob)
+	expectAll(t, f.sees(t, f.bob, dave), false, "crew membership alone exposed two riders who share no channel")
 
+	f.name(t, f.private, f.bob)
+	expectAll(t, f.sees(t, f.bob, dave), true, "named into the same private channel and still invisible")
 	if _, err := f.st.Pool.Exec(t.Context(),
-		"update rooms set crew_visible = false where id = $1", f.openRoom); err != nil {
-		t.Fatalf("close the room: %v", err)
+		"delete from channel_members where channel_id = $1 and user_id = $2", f.private, f.bob); err != nil {
+		t.Fatalf("un-name: %v", err)
 	}
-	for _, q := range visibilityQueries {
-		if q.name == "CountRiderMedalsInCommon" {
-			continue
-		}
-		if q.run(t, f, f.bob, dave) {
-			t.Errorf("%s: crew membership alone exposed two riders who share no room", q.name)
-		}
-	}
+	expectAll(t, f.sees(t, f.bob, dave), false, "un-named from the only shared channel and still visible")
 }

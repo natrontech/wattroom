@@ -1,28 +1,33 @@
--- A rider's page (ADR-0024): what rooms already see, plus what the rider
--- chose to share. Every query here takes the viewer as well as the rider,
--- because the room boundary decides what comes back.
+-- A rider's page (ADR-0024): what crew-mates already see, plus what the
+-- rider chose to share. Every query here takes the viewer as well as the
+-- rider, because the channel boundary decides what comes back.
 --
--- That boundary is `visible_rooms` and nothing here re-derives it (ADR-0038,
--- third amendment). The joins used to spell `role != 'banned'` by hand, which
--- is exactly how #1109 and #1114 happened — four such joins, one of them
--- missing the guard. The view also carries what a hand-written join could not
--- have known about: crew visibility, private-room grants and the crew ban.
+-- That boundary is `visible_channels` and nothing here re-derives it (ADR-0058,
+-- carrying ADR-0038's third amendment). The joins used to spell `role !=
+-- 'banned'` by hand, which is exactly how #1109 and #1114 happened. The view
+-- carries what a hand-written join would have to know: the crew ban, the
+-- private gate and who is named into it.
 
 -- name: ListRoomsInCommon :many
--- Rooms both may enter (`visible_rooms`) — the gate for the whole page, and
--- the scope of the medals shown on it. Since ADR-0038's person-visibility
--- section this is wider than "both joined it" on purpose: a crew-visible
--- room neither has joined still puts two riders in common.
+-- The rooms whose channels both may enter (`visible_channels`) — what the
+-- page lists, not its gate (SharesChannelOrFriends is that). Still rooms,
+-- because the page still links to `/r/{slug}`; #2457 names the crew and the
+-- channel instead, and a crew made after M9 has no rooms to list here.
 select r.id, r.slug, r.name
 from rooms r
-join visible_rooms a on a.room_id = r.id and a.user_id = sqlc.arg(rider)
-join visible_rooms b on b.room_id = r.id and b.user_id = sqlc.arg(viewer)
+join room_channels rc on rc.room_id = r.id
+where exists (
+    select 1 from visible_channels a
+    join visible_channels b on b.channel_id = a.channel_id
+    where a.channel_id in (rc.text_channel_id, rc.voice_channel_id)
+      and a.user_id = sqlc.arg(rider) and b.user_id = sqlc.arg(viewer)
+)
 order by r.name;
 
--- name: SharesRoomOrFriends :one
--- ADR-0024's audience for a rider's page, as ONE question (#2298). A shared
--- live room, an accepted friendship, a pending request from them — or the
--- rider themselves.
+-- name: SharesChannelOrFriends :one
+-- ADR-0024's audience for a rider's page, as ONE question (#2298). A channel
+-- both may enter (ADR-0058), an accepted friendship, a pending request from
+-- them — or the rider themselves.
 --
 -- Both routes that serve this audience ask THIS: riders.handleGet for the
 -- page, gamify.handleRider for the trophy case on it. They used to decide it
@@ -36,12 +41,12 @@ select (
     -- here rather than at each call site, which is what made this two rules.
     @viewer::uuid = @rider::uuid
     or exists (
-        -- `visible_rooms` is the boundary, not a hand-written membership join
-        -- (ADR-0038, third amendment). #1110 fixed this very query for missing
-        -- `role != 'banned'`; going through the view is what stops the next
-        -- one being missed, and it brings crew bans and grants along free.
-        select 1 from visible_rooms a
-        join visible_rooms b on a.room_id = b.room_id
+        -- `visible_channels` is the boundary, not a hand-written membership
+        -- join (ADR-0058). #1110 fixed this very query for missing `role !=
+        -- 'banned'`; going through the view is what stops the next one being
+        -- missed, and it brings crew bans and private gates along free.
+        select 1 from visible_channels a
+        join visible_channels b on a.channel_id = b.channel_id
         where a.user_id = @viewer and b.user_id = @rider
     )
     or exists (
@@ -57,6 +62,16 @@ select (
         select 1 from friendships
         where status = 'pending' and requester_id = @rider and addressee_id = @viewer
     )
+)::boolean;
+
+-- name: SharesChannel :one
+-- Whether two riders may both enter some channel (`visible_channels`): the
+-- friend-request formation gate by id (ADR-0012), which friendship itself
+-- must not open.
+select exists (
+    select 1 from visible_channels a
+    join visible_channels b on a.channel_id = b.channel_id
+    where a.user_id = @viewer and b.user_id = @rider
 )::boolean;
 
 -- name: RiderTotals :one
@@ -82,29 +97,36 @@ where user_id = sqlc.arg(user_id)
   and started_at >= (date_trunc('month', now() at time zone sqlc.arg(tz)::text) at time zone sqlc.arg(tz)::text);
 
 -- name: CountRiderMedalsInCommon :many
--- Medals the rider earned in rooms both may enter (`visible_rooms`), by kind.
--- A room the rider has left, or is banned from at either level, is no longer
--- one they may enter, so its medals drop out.
+-- Medals the rider earned in crews where both may enter a channel
+-- (`visible_channels`), by kind — a medal belongs to the crew (#2431). A crew
+-- the rider has left or been banned from drops out with its medals.
+-- ponytail: the room fallback covers medals written before #2443 sets crew_id.
 select m.kind, count(*)::bigint as count
 from medals m
-join visible_rooms a on a.room_id = m.room_id and a.user_id = sqlc.arg(rider)
-join visible_rooms b on b.room_id = m.room_id and b.user_id = sqlc.arg(viewer)
 where m.user_id = sqlc.arg(rider)
+  and exists (
+      select 1 from channels c
+      join visible_channels a on a.channel_id = c.id and a.user_id = sqlc.arg(rider)
+      join visible_channels b on b.channel_id = c.id and b.user_id = sqlc.arg(viewer)
+      where c.crew_id = coalesce(m.crew_id, (select r.crew_id from rooms r where r.id = m.room_id))
+  )
 group by m.kind
 order by m.kind;
 
 -- name: ListSharedRides :many
--- The rides the rider marked shared, newest first — friends only. The room
--- is named only when the viewer may enter it (`visible_rooms`, ADR-0038's
--- person-visibility section; ADR-0012: friendship never pierces the room
--- boundary); otherwise the ride just "was in a room".
+-- The rides the rider marked shared, newest first — friends only. The
+-- channel is named only when the viewer may enter it (`visible_channels`,
+-- ADR-0058; ADR-0012: friendship never pierces the boundary); otherwise the
+-- ride just "was in a room". The column names are the page's until #2457.
+-- ponytail: the room fallback covers rides written before #2443 sets channel_id.
 select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution, r.execution_scored,
-       (r.room_id is not null)::boolean as in_room,
-       coalesce(case when v.user_id is not null then rm.name end, '')::text as room_name,
+       (r.room_id is not null or r.channel_id is not null)::boolean as in_room,
+       coalesce(case when v.user_id is not null then ch.name end, '')::text as room_name,
        coalesce((select string_agg(m.kind, ' ' order by m.kind) from medals m where m.ride_id = r.id), '')::text as medal_kinds
 from rides r
-left join rooms rm on rm.id = r.room_id
-left join visible_rooms v on v.room_id = r.room_id and v.user_id = sqlc.arg(viewer)
+left join channels ch on ch.id = coalesce(
+    r.channel_id, (select rc.voice_channel_id from room_channels rc where rc.room_id = r.room_id))
+left join visible_channels v on v.channel_id = ch.id and v.user_id = sqlc.arg(viewer)
 where r.user_id = sqlc.arg(rider) and r.shared_at is not null
 order by r.started_at desc
 limit sqlc.arg(max);

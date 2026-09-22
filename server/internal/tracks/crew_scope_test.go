@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/store/storetest"
 	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
@@ -61,6 +62,7 @@ func (h *harness) crewRoom(t *testing.T, owner string, crew db.Crew, open bool, 
 	}); err != nil {
 		t.Fatalf("owner membership: %v", err)
 	}
+	storetest.ChannelsFor(t, h.store, room.ID)
 	return room
 }
 
@@ -71,6 +73,7 @@ func (h *harness) member(t *testing.T, room db.Room, who string) {
 	}); err != nil {
 		t.Fatalf("membership %s: %v", who, err)
 	}
+	storetest.ChannelsFor(t, h.store, room.ID)
 }
 
 func (h *harness) audio(t *testing.T, who, id string) int {
