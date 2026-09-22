@@ -541,6 +541,10 @@
 		{/if}
 	</div>
 {:else}
+	<!-- Unframed pages toast too (#2406): /login, a signed-in /, /hud and the
+	     /dev mocks. First in the tab order here, as it is second — after the
+	     skip link — in the frame (#1961). layout-hosts.test.ts holds both. -->
+	<Toasts />
 	{@render children()}
 {/if}
 
