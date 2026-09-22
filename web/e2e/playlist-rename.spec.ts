@@ -1,8 +1,8 @@
 import { expect, test } from './room';
 
 /**
- * Renaming a room playlist is the coach's and the owner's (docs/SPEC.md's
- * roles matrix), and the row's name was a button for everyone (#2162): a
+ * Renaming a crew playlist is the crew's owner's and admins' (docs/SPEC.md's
+ * roles matrix, #2439), and the row's name was a button for everyone (#2162): a
  * member could open the box, type, blur, and read the server's refusal under
  * the row. ux.md: never render a control that fails on click.
  *
@@ -26,17 +26,17 @@ test('only a rider who may rename a room playlist can open its name', async ({
 	const a = await riders(A);
 	const room = await rooms.open(a, `Playlist Gate ${Date.now() % 100000}`);
 	const made = await a.evaluate(
-		async ([slug, name]) => {
-			const res = await fetch(`/api/rooms/${slug}/playlists`, {
+		async ([crewId, name]) => {
+			const res = await fetch(`/api/crews/${crewId}/playlists`, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ name }),
 			});
 			return res.status;
 		},
-		[room.slug, PLAYLIST],
+		[room.crew, PLAYLIST],
 	);
-	expect(made, 'the owner could not create a room playlist').toBe(201);
+	expect(made, 'the owner could not create a crew playlist').toBe(201);
 
 	const b = await riders(B);
 	await rooms.enter(b, room);

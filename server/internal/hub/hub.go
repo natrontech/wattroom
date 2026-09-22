@@ -29,12 +29,13 @@ type RiderRecord struct {
 // simply stay in memory, as before. The implementation owns timeouts and
 // retries and may block for minutes — the hub calls it from a goroutine.
 type SessionSaver interface {
-	SaveSession(ctx context.Context, channel, workoutName, workoutJSON string, startedAt time.Time, riders []RiderRecord)
+	// session is the closed session's id (#2438); rides name it (#2443).
+	SaveSession(ctx context.Context, channel, session, workoutName, workoutJSON string, startedAt time.Time, riders []RiderRecord)
 	// AmendRide hands over one rider's record again, longer than at the
 	// close (#1536): a socket that dropped before the end and replayed its
 	// buffer after it. The saver grows the saved ride from it, or does
 	// nothing if there was no ride to grow.
-	AmendRide(ctx context.Context, channel, workoutName, workoutJSON string, startedAt time.Time, rider RiderRecord)
+	AmendRide(ctx context.Context, channel, session, workoutName, workoutJSON string, startedAt time.Time, rider RiderRecord)
 }
 
 // AutoplaySource answers what a room's autoplay should draw from (#627),
@@ -384,6 +385,25 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.events.add(sessionLine(verb, actor, workout, startsAt, at), at)
+}
+
+// OpenSession opens a planned session in a voice channel for rider (#2440):
+// the pick a plan's start stands for, made over HTTP. The channel's
+// one-session rule answers exactly as it does on the socket — conflict,
+// naming the coach (#2438) — and a session the rider already coaches there
+// counts as opened, so a client that picked on the socket first is not
+// refused its own. The channel's room is made if nobody is in it yet: the
+// coach is on their way, and a pick nobody comes to ride is released by the
+// idle sweep like any other (#2297).
+func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (code, message string) {
+	rm := h.room(channel)
+	rm.mu.Lock()
+	mine := rm.session.open() && rm.session.coach == rider.ID
+	rm.mu.Unlock()
+	if mine {
+		return "", ""
+	}
+	return rm.control(protocol.Control{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON}, rider, h.now())
 }
 
 // QueuePlaylist appends a saved playlist's tracks onto a room's live queue

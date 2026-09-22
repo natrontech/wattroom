@@ -23,12 +23,14 @@ where id in (
     order by starts_at
     limit 100
 )
-returning id, room_id, workout_name, starts_at
+returning id, room_id, crew_id, channel_id, workout_name, starts_at
 `
 
 type ClaimSessionsToRemindRow struct {
 	ID          pgtype.UUID
 	RoomID      pgtype.UUID
+	CrewID      pgtype.UUID
+	ChannelID   pgtype.UUID
 	WorkoutName string
 	StartsAt    pgtype.Timestamptz
 }
@@ -59,6 +61,8 @@ func (q *Queries) ClaimSessionsToRemind(ctx context.Context) ([]ClaimSessionsToR
 		if err := rows.Scan(
 			&i.ID,
 			&i.RoomID,
+			&i.CrewID,
+			&i.ChannelID,
 			&i.WorkoutName,
 			&i.StartsAt,
 		); err != nil {
@@ -208,25 +212,31 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 }
 
 const createScheduledSession = `-- name: CreateScheduledSession :one
-insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)
-values ($1, $2, $3, $4, $5) returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id
+insert into scheduled_sessions (room_id, crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
+select r.id, r.crew_id, (select rc.voice_channel_id from room_channels rc where rc.room_id = r.id),
+       $1, $2, $3, $4
+from rooms r where r.id = $5
+returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id
 `
 
 type CreateScheduledSessionParams struct {
-	RoomID      pgtype.UUID
 	WorkoutName string
 	WorkoutJson []byte
 	StartsAt    pgtype.Timestamptz
 	CreatedBy   pgtype.UUID
+	RoomID      pgtype.UUID
 }
 
+// A room's plan is its crew's too (#2440): the crew and the room's voice
+// channel are filled here, so the crew's schedule shows it and its mail and
+// reminder name the crew. Goes with the room routes (#2446).
 func (q *Queries) CreateScheduledSession(ctx context.Context, arg CreateScheduledSessionParams) (ScheduledSession, error) {
 	row := q.db.QueryRow(ctx, createScheduledSession,
-		arg.RoomID,
 		arg.WorkoutName,
 		arg.WorkoutJson,
 		arg.StartsAt,
 		arg.CreatedBy,
+		arg.RoomID,
 	)
 	var i ScheduledSession
 	err := row.Scan(

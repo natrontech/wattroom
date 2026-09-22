@@ -5,11 +5,13 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/hub"
@@ -65,13 +67,13 @@ type savedRide struct {
 // same threshold the client's crash recovery uses.
 func (s *Saver) save(
 	ctx context.Context,
-	channel, workoutName, workoutJSON string,
+	channel, session, workoutName, workoutJSON string,
 	startedAt time.Time,
 	riders []hub.RiderRecord,
 ) error {
-	room, err := s.store.RoomOfVoiceChannel(ctx, channel)
+	at, err := s.placeOf(ctx, channel, session)
 	if err != nil {
-		return fmt.Errorf("stats: room %q: %w", channel, err)
+		return err
 	}
 
 	tx, err := s.store.Pool.Begin(ctx)
@@ -91,12 +93,13 @@ func (s *Saver) save(
 		if len(rider.Samples) < hub.MinRideSamples {
 			continue
 		}
-		row, err := s.rideRow(room.ID, workoutName, workoutJSON, startedAt, rider)
+		row, err := s.rideRow(at.room, workoutName, workoutJSON, startedAt, rider)
 		if err != nil {
 			// One rider's junk must not eat the whole room's rides.
 			s.log.Warn("ride skipped", "err", err, "rider", rider.Rider.ID)
 			continue
 		}
+		row.CrewID, row.ChannelID, row.SessionID = at.crew, at.channel, at.session
 		row.Xp += StreakXP(ctx, q, row.UserID, startedAt)
 		// A retry after a commit whose answer was lost must not insert the
 		// rider's ride — or their medals — twice (audit 2026-09-09).
@@ -139,11 +142,13 @@ func (s *Saver) save(
 	// medals or without its rides — never half.
 	for kind, userID := range Medals(results) {
 		uid, err := store.ParseUUID(userID)
-		if err != nil || alreadySaved[userID] {
+		// A medal is a crew's, or a room's: a session in a channel deleted
+		// before it closed belongs to neither, and the rides are saved alone.
+		if err != nil || alreadySaved[userID] || (!at.room.Valid && !at.crew.Valid) {
 			continue
 		}
 		err = q.CreateMedal(ctx, db.CreateMedalParams{
-			RoomID: room.ID, UserID: uid, RideID: rideIDs[userID], Kind: kind,
+			RoomID: at.room, CrewID: at.crew, UserID: uid, RideID: rideIDs[userID], Kind: kind,
 		})
 		if err != nil {
 			return fmt.Errorf("stats: medal: %w", err)
@@ -162,8 +167,42 @@ func (s *Saver) save(
 			s.keeper.RideSaved(ride.userID, ride.facts)
 		}
 	}
-	s.log.Info("session saved", "room", channel, "rides", saved)
+	s.log.Info("session saved", "channel", channel, "rides", saved)
 	return nil
+}
+
+// place is where a session's rides were ridden (#2443): its crew, its voice
+// channel and the session itself — and the room, while the channel still has
+// one behind it, for the release that reads room_id (ADR-0019).
+type place struct{ room, crew, channel, session pgtype.UUID }
+
+// placeOf resolves the channel the hub names. A channel that is gone — deleted
+// while the session ran — is nowhere, and its rides are saved all the same: a
+// ride is the rider's, and nobody ever loses one (WATTROOM.md).
+func (s *Saver) placeOf(ctx context.Context, channel, session string) (place, error) {
+	var at place
+	id, err := store.ParseUUID(channel)
+	if err != nil {
+		return at, nil
+	}
+	ch, err := s.store.Queries.GetChannel(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return at, nil
+	}
+	if err != nil {
+		return at, fmt.Errorf("stats: channel %q: %w", channel, err)
+	}
+	at.crew, at.channel = ch.CrewID, ch.ID
+	room, err := s.store.Queries.RoomOfVoiceChannel(ctx, ch.ID)
+	switch {
+	case err == nil:
+		at.room = room.ID
+	case !errors.Is(err, pgx.ErrNoRows):
+		return at, fmt.Errorf("stats: room of %q: %w", channel, err)
+	}
+	// Empty for a session that came back from a restart without one.
+	at.session, _ = store.ParseUUID(session)
+	return at, nil
 }
 
 func (s *Saver) rideRow(
@@ -316,12 +355,12 @@ const (
 // so the retry policy lives here and the tick loop never learns.
 func (s *Saver) SaveSession(
 	ctx context.Context,
-	channel, workoutName, workoutJSON string,
+	channel, session, workoutName, workoutJSON string,
 	startedAt time.Time,
 	riders []hub.RiderRecord,
 ) {
 	err := retrySave(ctx, s.log, channel, func(ctx context.Context) error {
-		return s.save(ctx, channel, workoutName, workoutJSON, startedAt, riders)
+		return s.save(ctx, channel, session, workoutName, workoutJSON, startedAt, riders)
 	})
 	if err != nil {
 		s.log.Error("session save failed, rides lost", "err", err, "channel", channel)
@@ -335,9 +374,12 @@ func (s *Saver) SaveSession(
 // rides.xp live), and the medals stay as awarded: they were announced in
 // the room. A rider with no ride to grow (under a minute at the close) is
 // the client's to offer back as a .fit.
+//
+// The ride it grows already names its crew, channel and session; the
+// amendment moves only its numbers.
 func (s *Saver) AmendRide(
 	ctx context.Context,
-	channel, workoutName, workoutJSON string,
+	channel, _, workoutName, workoutJSON string,
 	startedAt time.Time,
 	rider hub.RiderRecord,
 ) {
@@ -352,11 +394,7 @@ func (s *Saver) AmendRide(
 	var judged *savedRide
 	err := retrySave(ctx, s.log, channel, func(ctx context.Context) error {
 		judged = nil
-		room, err := s.store.RoomOfVoiceChannel(ctx, channel)
-		if err != nil {
-			return fmt.Errorf("stats: room %q: %w", channel, err)
-		}
-		row, err := s.rideRow(room.ID, workoutName, workoutJSON, startedAt, rider)
+		row, err := s.rideRow(pgtype.UUID{}, workoutName, workoutJSON, startedAt, rider)
 		if err != nil {
 			s.log.Warn("ride amendment skipped", "err", err, "rider", rider.Rider.ID)
 			return nil

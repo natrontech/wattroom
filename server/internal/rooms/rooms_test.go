@@ -136,6 +136,10 @@ func (f fakePresence) PresenceChanged() {}
 
 func (f fakePresence) CloseRoom(string) {}
 
+func (f fakePresence) OpenSession(string, protocol.Rider, string, string) (string, string) {
+	return "", ""
+}
+
 // roomRide writes one summary row into a room, back-dated, so the crew tiles
 // have sessions to count. Distinct days are what a session is (#995).
 func (h *harness) roomRide(t *testing.T, user string, room pgtype.UUID, at time.Time, seconds int32) {

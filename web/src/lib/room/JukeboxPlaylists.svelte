@@ -5,6 +5,7 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
 	import { useRoom } from '$lib/room/context';
+	import { presence } from '$lib/presence.svelte';
 	import {
 		type createPlaylistStore,
 		getAutoplay,
@@ -15,8 +16,9 @@
 	// The saved playlists above the live queue (#627): room playlists (any
 	// member edits, one markable active) and personal playlists (a rider's
 	// own, queueable into whichever room they're in). Autoplay itself is a
-	// room setting and lives on the room's Settings page (#1422); this panel
-	// says what it is set to and keeps the one-tap "Set as active" on a row.
+	// voice channel's setting and lives on the crew's Settings page (#1422,
+	// #2454); this panel says what it is set to and keeps the one-tap "Set as
+	// active" on a row.
 	let {
 		address,
 		roomStore,
@@ -37,6 +39,16 @@
 	// on click (#824).
 	const room = useRoom();
 	const canManage = $derived(room.canManage);
+	// The crew's Settings are its owner's and admins' — the link is drawn
+	// only for who may follow it to a form.
+	const settingsCrew = $derived.by(() => {
+		// A room's crew by its slug; a voice channel's by the crew its page
+		// is under (#2449).
+		const crew = address.slug
+			? presence.rooms.find((r) => r.slug === address.slug)?.crew
+			: presence.crews.find((c) => address.home.startsWith(`/crew/${c.id}/`));
+		return crew?.role === 'owner' || crew?.role === 'admin' ? crew : null;
+	});
 
 	let tab = $state<'room' | 'mine'>('room');
 	const store = $derived(tab === 'room' ? roomStore : mineStore);
@@ -117,11 +129,13 @@
 	</div>
 
 	{#if tab === 'room' && status}
-		<!-- One line, not the controls: autoplay is set on the Settings page
-		     (#1422). The link is only drawn for who may follow it to a form. -->
+		<!-- One line, not the controls: autoplay is set in the crew's Settings
+		     (#1422, #2454). -->
 		<p class="text-muted mt-2 text-[10px]">
-			{status}{#if canManage}
-				· <a href="{address.home}/settings" class="underline">settings</a>{/if}
+			{status}{#if settingsCrew}
+				· <a href="/crew/{settingsCrew.id}/settings" class="underline"
+					>settings</a
+				>{/if}
 		</p>
 	{/if}
 

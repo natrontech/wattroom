@@ -525,7 +525,7 @@ type amendingSaver struct {
 	amended chan RiderRecord
 }
 
-func (a *amendingSaver) AmendRide(_ context.Context, _, _, _ string, _ time.Time, rider RiderRecord) {
+func (a *amendingSaver) AmendRide(_ context.Context, _, _, _, _ string, _ time.Time, rider RiderRecord) {
 	a.amended <- rider
 }
 

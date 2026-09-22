@@ -94,6 +94,11 @@ export const MaxPinBodyChars = 1000;
  */
 export const MaxCrewPins = 20;
 /**
+ * A crew's reaction palette (#223, docs/SPEC.md): the picker stops at it
+ * and the server refuses past it.
+ */
+export const MaxCheers = 8;
+/**
  * A crew's name (docs/SPEC.md "Names"), in CHARACTERS — MaxMessageChars'
  * rule.
  */

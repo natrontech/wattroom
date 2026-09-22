@@ -1,0 +1,1 @@
+- **Crew Settings keep the channels.** A crew's owner and admins add, rename, reorder, make private and delete its text and voice channels there, name members into a private one, and set each voice channel's sounds and autoplay. The weekly board, the directory listing and the reaction palette are crew switches on the same page, and a room's own settings page is gone.

@@ -29,6 +29,9 @@ func (p *countingPresence) PresenceChanged() {
 	defer p.mu.Unlock()
 	p.pings++
 }
+func (p *countingPresence) OpenSession(string, protocol.Rider, string, string) (string, string) {
+	return "", ""
+}
 func (p *countingPresence) CloseRoom(slug string) {
 	p.mu.Lock()
 	defer p.mu.Unlock()

@@ -268,26 +268,15 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		// Every answer, for every plan at once (#450) — one query, not one
 		// per session. The two halves part here: an "in" is named, an "out"
 		// is a number (#1011).
-		going := map[string][]goingJSON{}
-		out := map[string]int{}
-		yourAnswer := map[string]string{}
-		if answers, err := s.store.Queries.ListRoomRsvps(r.Context(), room.ID); err == nil {
-			for _, row := range answers {
-				id := store.UUIDString(row.SessionID)
-				if row.UserID == user.ID {
-					yourAnswer[id] = rsvpWord(row.Going)
-				}
-				if !row.Going {
-					out[id]++
-					continue
-				}
-				going[id] = append(going[id], goingJSON{
-					ID: store.UUIDString(row.UserID), DisplayName: row.DisplayName,
-				})
+		var answers []db.ListCrewRsvpsRow
+		if rows, err := s.store.Queries.ListRoomRsvps(r.Context(), room.ID); err == nil {
+			for _, row := range rows {
+				answers = append(answers, db.ListCrewRsvpsRow(row))
 			}
 		} else {
 			s.log.Warn("list rsvps failed", "err", err, "room", room.Slug)
 		}
+		going, out, yourAnswer := tallyAnswers(user.ID, answers)
 		for _, row := range rows {
 			id := store.UUIDString(row.ID)
 			response.Upcoming = append(response.Upcoming, scheduledJSON{

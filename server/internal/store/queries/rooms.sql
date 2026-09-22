@@ -169,8 +169,14 @@ update memberships set role = $3 where room_id = $1 and user_id = $2;
 delete from memberships where room_id = $1 and user_id = $2 and role != 'banned';
 
 -- name: CreateScheduledSession :one
-insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)
-values ($1, $2, $3, $4, $5) returning *;
+-- A room's plan is its crew's too (#2440): the crew and the room's voice
+-- channel are filled here, so the crew's schedule shows it and its mail and
+-- reminder name the crew. Goes with the room routes (#2446).
+insert into scheduled_sessions (room_id, crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
+select r.id, r.crew_id, (select rc.voice_channel_id from room_channels rc where rc.room_id = r.id),
+       sqlc.arg(workout_name), sqlc.arg(workout_json), sqlc.arg(starts_at), sqlc.arg(created_by)
+from rooms r where r.id = sqlc.arg(room_id)
+returning *;
 
 -- name: LockRoom :exec
 -- The room's write lock, held for the length of a transaction. LockUser's
@@ -251,7 +257,7 @@ where id in (
     order by starts_at
     limit 100
 )
-returning id, room_id, workout_name, starts_at;
+returning id, room_id, crew_id, channel_id, workout_name, starts_at;
 
 -- name: RescheduleSession :one
 -- A moved session is reminded again for its new time: the claim above is

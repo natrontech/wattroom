@@ -51,6 +51,10 @@ type Presence interface {
 	PresenceChanged()
 	// A deleted room's live state has to die with it (#618).
 	CloseRoom(channel string)
+	// A planned session's start opens it in its voice channel (#2440), and
+	// answers the channel's one-session rule: a code and a message, or two
+	// empty strings when it opened.
+	OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (code, message string)
 }
 
 // VoiceEjector is the LiveKit arm of a kick — satisfied by *av.Service.
@@ -61,10 +65,13 @@ type VoiceEjector interface {
 
 // Notifier is what scheduling needs from notify (#117) — defined here, where
 // it is consumed. Optional: without it planning a session emails nobody.
+//
+// A plan is the crew's (#2440): the mail names the crew and the voice channel
+// the plan names, which is invalid while it names none.
 type Notifier interface {
-	SessionPlanned(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID)
-	SessionRescheduled(room db.Room, workoutName string, startsAt time.Time, planner pgtype.UUID)
-	SessionCancelled(room db.Room, workoutName string, startsAt time.Time, actor pgtype.UUID)
+	SessionPlanned(crew, channel pgtype.UUID, workoutName string, startsAt time.Time, planner pgtype.UUID)
+	SessionRescheduled(crew, channel pgtype.UUID, workoutName string, startsAt time.Time, planner pgtype.UUID)
+	SessionCancelled(crew, channel pgtype.UUID, workoutName string, startsAt time.Time, actor pgtype.UUID)
 }
 
 type Service struct {

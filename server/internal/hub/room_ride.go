@@ -104,7 +104,7 @@ func (rm *room) backfill(c *client, samples []protocol.RiderMetrics, log *slog.L
 			whole := RiderRecord{Rider: rider, Samples: append([]protocol.RiderMetrics(nil), record.samples...)}
 			meta, start := rm.savedMeta, rm.savedStart
 			rm.detach(log, "ride amend "+rm.channel, func() {
-				saver.AmendRide(context.Background(), rm.channel, meta.WorkoutName, meta.WorkoutJSON, start, whole)
+				saver.AmendRide(context.Background(), rm.channel, meta.ID, meta.WorkoutName, meta.WorkoutJSON, start, whole)
 			})
 		}
 	}
