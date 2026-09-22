@@ -311,9 +311,12 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			// The number a ramp test produced (ADR-0049, #2089): the ride
 			// page shows it and the export did not, so the one ride that
 			// moved the rider's FTP read like any other.
-			"ftpAfterWatts":     ride.FtpAfterWatts,
-			"xp":                ride.Xp,
-			"inARoom":           ride.RoomID.Valid,
+			"ftpAfterWatts": ride.FtpAfterWatts,
+			"xp":            ride.Xp,
+			"inARoom":       ride.RoomID.Valid,
+			// Where it was ridden (#2443): null for a solo ride.
+			"crew":              ride.CrewName,
+			"channel":           ride.ChannelName,
 			"sharedWithFriends": ride.SharedAt.Valid,
 			"curve":             json.RawMessage(ride.Curve),
 			// What the rider said about the ride (#2328, ADR-0053): the only
@@ -823,7 +826,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			// and never exported until #1550.
 			rows, err := s.store.Queries.ExportUserMedals(r.Context(), user.ID)
 			return mapRows(rows, err, func(row db.ExportUserMedalsRow) any {
-				return map[string]any{"medal": row.Kind, "room": row.RoomName,
+				return map[string]any{"medal": row.Kind, "room": row.RoomName, "crew": row.CrewName,
 					"rideStartedAt": row.RideStartedAt.Time, "awardedAt": row.AwardedAt.Time}
 			})
 		}},

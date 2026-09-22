@@ -98,11 +98,14 @@ select amount, source, ref, at from xp_events where user_id = $1 order by at;
 select key, earned_at from achievements where user_id = $1 order by earned_at;
 
 -- name: ExportUserMedals :many
--- The rider's own medals (#1550): the room that awarded them, and the ride
--- named by its start so a row lines up with rides.json.
-select m.kind, m.awarded_at, rm.name as room_name, r.started_at as ride_started_at
+-- The rider's own medals (#1550): the room or the crew that awarded them
+-- (#2443 — a medal won in a channel no room became has only the crew), and
+-- the ride named by its start so a row lines up with rides.json.
+select m.kind, m.awarded_at, rm.name as room_name, c.name as crew_name,
+       r.started_at as ride_started_at
 from medals m
-join rooms rm on rm.id = m.room_id
+left join rooms rm on rm.id = m.room_id
+left join crews c on c.id = m.crew_id
 join rides r on r.id = m.ride_id
 where m.user_id = $1
 order by m.awarded_at;
