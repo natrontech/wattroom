@@ -234,10 +234,19 @@ delete from crews where id = $1;
 -- A `banned` row does not save a crew. It is not somebody who is IN the crew
 -- — CountCrewMembers counts these same two roles — and a ban outliving every
 -- room would be the whole bug again for any owner who ever banned anyone.
+--
+-- A crew with a channel is never empty (#2493, ADR-0058): its channels and
+-- their history are what it holds now, and M9's SPEC deletes a crew only on
+-- succession with nobody left. That is every crew since the channels
+-- migration, so this sweep now reaches only a crew whose channels were all
+-- deleted — and it goes with the rooms package (#2446). The owner's own row
+-- is their switches (SetCrewPrefs), not somebody else in the crew.
 delete from crews where crews.id = sqlc.arg(crew_id)
   and not exists (select 1 from rooms r where r.crew_id = sqlc.arg(crew_id))
+  and not exists (select 1 from channels ch where ch.crew_id = sqlc.arg(crew_id))
   and not exists (select 1 from crew_roles cr
-                  where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin'));
+                  where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin')
+                    and cr.user_id <> crews.owner_id);
 
 -- name: LockCrew :exec
 -- The crew's write lock, held for the length of a transaction (#2079).
@@ -264,8 +273,10 @@ select 1 from crews where id = $1 for update;
 select (
     not exists (select 1 from rooms r
                 where r.crew_id = sqlc.arg(crew_id) and r.id <> sqlc.arg(room_id))
+    and not exists (select 1 from channels ch where ch.crew_id = sqlc.arg(crew_id))
     and not exists (select 1 from crew_roles cr
-                    where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin'))
+                    where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin')
+                      and cr.user_id <> (select c.owner_id from crews c where c.id = sqlc.arg(crew_id)))
 )::boolean;
 
 -- name: DeleteRoomsOwnedBy :exec
@@ -380,8 +391,10 @@ select c.id, c.name, c.icon,
        -- who cannot leave at all.
        (c.owner_id <> sqlc.arg(user_id)
         and not exists (select 1 from rooms r where r.crew_id = c.id)
+        and not exists (select 1 from channels ch where ch.crew_id = c.id)
         and not exists (select 1 from crew_roles cr
                         where cr.crew_id = c.id and cr.user_id <> sqlc.arg(user_id)
+                          and cr.user_id <> c.owner_id
                           and cr.role in ('member', 'admin')))::boolean as last_out
 from crews c
 where c.owner_id = sqlc.arg(user_id)

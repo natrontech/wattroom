@@ -43,8 +43,10 @@ func (s *Service) releaseCrew(ctx context.Context, q *db.Queries, crew db.Crew) 
 	return nil
 }
 
-// deleteCrewIfEmpty removes a crew that has nothing left in it — no rooms, and
-// nobody but its owner (#1935). ADR-0038's second amendment already says such
+// deleteCrewIfEmpty removes a crew that has nothing left in it — no rooms, no
+// channels, and nobody but its owner (#1935, #2493). A channel is something
+// left: since ADR-0058 it is what a crew holds, so a crew started with
+// "Start a crew" is never swept by a member leaving. ADR-0038's second amendment already says such
 // a crew "is deleted rather than left ownerless", but until now only the
 // account purge ever did it: an owner whose last room went kept a crew they
 // could not leave (they own it), could not hand on (nobody to hand it to) and

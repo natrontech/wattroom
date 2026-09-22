@@ -302,9 +302,9 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "room delete failed", err, "The room could not be deleted. Try again.", "room", room.Slug)
 		return
 	}
-	// A crew with rooms or people left in it is still a crew (#1236, #1476):
-	// its members stay, and its owner opens the next room in it. One with
-	// neither goes with this room (#1935) — its owner could otherwise neither
+	// A crew with rooms, channels or people left in it is still a crew (#1236,
+	// #1476, #2493): its members stay, and its owner opens the next room in
+	// it. One with none of them goes with this room (#1935) — its owner could otherwise neither
 	// leave it, hand it on nor delete it. The confirm said so before the
 	// button: crew.goesWithRoom on the room read is this same predicate.
 	crewGone := false

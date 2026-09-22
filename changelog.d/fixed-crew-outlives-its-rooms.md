@@ -1,0 +1,1 @@
+- **A crew no longer vanishes when its last other member leaves.** A crew started with "Start a crew" was deleted — channels, chat and all — the moment its only other member left, or when its owner deleted the one room opened in it. A crew with channels now stays until its owner's account goes.

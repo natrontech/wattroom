@@ -105,6 +105,15 @@ var crewLeaveStates = []struct {
 		goes: true,
 	},
 	{
+		// #2493: the owner's own switches do not count as somebody left.
+		name: "no rooms left, and the owner set their own switches",
+		setup: func(t *testing.T, h *harness, slug, code string, crew db.GetCrewRow) {
+			h.ownSwitches(t, "alice", crew)
+			h.deleteRoom(t, "alice", slug)
+		},
+		goes: true,
+	},
+	{
 		// THE case the client cannot tell from the one above: bob is in none
 		// of the crew's rooms, so his confirm counts zero rooms either way —
 		// and here the crew stays and its code really does get him back in.
@@ -131,6 +140,7 @@ func TestACrewGoesWithItsLastMemberWhenNoRoomIsLeft(t *testing.T) {
 			if tc.setup != nil {
 				tc.setup(t, h, slug, code, crew)
 			}
+			h.stripChannels(t, crew)
 
 			// What the confirm is told, before the button is drawn.
 			told, listed := h.lastOut(t, "bob", crew)
@@ -168,6 +178,8 @@ func TestBanningTheLastMemberDoesNotEndTheCrew(t *testing.T) {
 	crew := h.crewOf(t, slug)
 	h.joinCrew(t, "bob", code)
 	h.deleteRoom(t, "alice", slug)
+	// Without channels: a crew that has one is never swept at all (#2493).
+	h.stripChannels(t, crew)
 
 	h.banFromCrew(t, crew, "bob")
 	if h.crewGone(t, crew) {

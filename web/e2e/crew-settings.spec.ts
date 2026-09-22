@@ -35,6 +35,16 @@ test('the owner keeps the crew channels from its settings', async ({
 	const named = async (name: string) =>
 		(await channels()).find((c) => c.name === name);
 
+	// The crew outlives the run (a crew with channels is never swept,
+	// #2493), so the last run's fillers go first or the cap is already met.
+	await a.evaluate(async (id) => {
+		const body = await fetch(`/api/crews/${id}/channels`).then((res) =>
+			res.json(),
+		);
+		for (const channel of body.channels as { id: string; name: string }[])
+			if (/^(Filler \d+|Sprints|Sprint Talk)$/.test(channel.name))
+				await fetch(`/api/channels/${channel.id}`, { method: 'DELETE' });
+	}, room.crew);
 	await a.goto(`/crew/${room.crew}/settings`);
 	await a
 		.getByRole('textbox', { name: 'new text channel name' })
