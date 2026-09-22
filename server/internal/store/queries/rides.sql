@@ -1,10 +1,14 @@
 -- name: CreateRide :one
+-- A session's ride names its crew, the voice channel and the session (#2443);
+-- room_id is still written while the channel has a room behind it, for the
+-- release that reads it (ADR-0019). A solo ride leaves all four null.
 insert into rides (
     user_id, room_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
-    ftp_watts, samples, curve, xp, norm_watts, last20m_hr
+    ftp_watts, samples, curve, xp, norm_watts, last20m_hr,
+    crew_id, channel_id, session_id
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 returning id;
 
 -- name: ListUserRides :many
@@ -19,9 +23,13 @@ returning id;
 -- second went unread — including ones the client had not been given yet. The
 -- row comparison is exact, which is the same shape ListUserWorkouts uses.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
-       e.state as export_state
+       e.state as export_state,
+       rides.crew_id, coalesce(c.name, '')::text as crew_name,
+       rides.channel_id, coalesce(ch.name, '')::text as channel_name
 from rides
 left join ride_exports e on e.ride_id = rides.id and e.destination = sqlc.arg(destination)::text
+left join crews c on c.id = rides.crew_id
+left join channels ch on ch.id = rides.channel_id
 where user_id = $1
   and (sqlc.narg('before')::timestamptz is null
        or (started_at, rides.id) < (sqlc.narg('before')::timestamptz, sqlc.narg('before_id')::uuid))
@@ -33,9 +41,13 @@ limit $2;
 -- workout across the whole history, not the first page of the list. Same
 -- columns as ListUserRides so one JSON mapping serves both.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
-       e.state as export_state
+       e.state as export_state,
+       rides.crew_id, coalesce(c.name, '')::text as crew_name,
+       rides.channel_id, coalesce(ch.name, '')::text as channel_name
 from rides
 left join ride_exports e on e.ride_id = rides.id and e.destination = sqlc.arg(destination)::text
+left join crews c on c.id = rides.crew_id
+left join channels ch on ch.id = rides.channel_id
 -- `except` is optional (#2249): omitted it arrives as NULL, and `id <> NULL`
 -- is NULL rather than true, so every row was filtered out and the route
 -- answered "no best ride" for every rider and every workout.
@@ -51,9 +63,13 @@ limit 1;
 -- the detail page names it — empty strings for a solo ride.
 select r.*,
        coalesce(rm.slug, '')::text as room_slug,
-       coalesce(rm.name, '')::text as room_name
+       coalesce(rm.name, '')::text as room_name,
+       coalesce(c.name, '')::text as crew_name,
+       coalesce(ch.name, '')::text as channel_name
 from rides r
 left join rooms rm on rm.id = r.room_id
+left join crews c on c.id = r.crew_id
+left join channels ch on ch.id = r.channel_id
 where r.id = $1 and r.user_id = $2;
 
 -- name: FindRideAt :one
@@ -87,17 +103,18 @@ insert into xp_events (user_id, source, amount, ref)
 select gone.rider, 'ride_deleted', gone.xp, gone.ride_id::text from gone;
 
 -- name: ListRideMedals :many
--- What one ride won. A medal is always a room's, so the room names itself
--- here rather than being looked up a second time.
-select m.kind, m.awarded_at, rm.name as room_name
+-- What one ride won, and where: the room while the medal has one, else its
+-- crew (#2443) — a session in a channel no room became has no room at all.
+select m.kind, m.awarded_at, coalesce(rm.name, c.name, '')::text as room_name
 from medals m
-join rooms rm on rm.id = m.room_id
+left join rooms rm on rm.id = m.room_id
+left join crews c on c.id = m.crew_id
 where m.ride_id = $1
 order by m.kind;
 
 -- name: CreateMedal :exec
-insert into medals (room_id, user_id, ride_id, kind)
-values ($1, $2, $3, $4);
+insert into medals (room_id, user_id, ride_id, kind, crew_id)
+values ($1, $2, $3, $4, $5);
 
 -- name: ListRoomMedals :many
 -- The rider's id and the moment travel with it (#1411): the client matched
@@ -385,10 +402,17 @@ update rides set norm_watts = $2 where id = $1;
 -- ride the RIDER wrote, which makes them the least skippable part of a copy
 -- of their data. ADR-0055 keeps them off every read that is not the owner's;
 -- this is the owner's.
-select id, workout_name, started_at, seconds, avg_watts, kj, execution,
-       execution_scored, norm_watts, ftp_watts, ftp_after_watts, xp, curve,
-       room_id, shared_at, rpe, note
-from rides where user_id = $1 order by started_at;
+--
+-- The crew and the channel come by name (#2443): this is a file the rider
+-- reads, and an id is not where they rode.
+select r.id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution,
+       r.execution_scored, r.norm_watts, r.ftp_watts, r.ftp_after_watts, r.xp, r.curve,
+       r.room_id, r.shared_at, r.rpe, r.note,
+       c.name as crew_name, ch.name as channel_name
+from rides r
+left join crews c on c.id = r.crew_id
+left join channels ch on ch.id = r.channel_id
+where r.user_id = $1 order by r.started_at;
 
 -- name: GetRideSamples :one
 -- One ride's blob, owner-scoped. The export streams these into the zip one
@@ -400,12 +424,12 @@ delete from users where id = $1;
 
 -- name: GetRideForUpload :one
 -- The uploader's one read: the ride plus the owner's consent flag and the
--- room name for the activity description (null for solo rides).
+-- crew for the activity description (null for solo rides, #2443).
 select r.id, r.user_id, r.workout_name, r.started_at, r.samples, u.strava_upload,
-       rm.name as room_name
+       r.crew_id, c.name as crew_name
 from rides r
 join users u on u.id = r.user_id
-left join rooms rm on rm.id = r.room_id
+left join crews c on c.id = r.crew_id
 where r.id = $1;
 
 -- name: UserTotalXp :one

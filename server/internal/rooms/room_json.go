@@ -1,6 +1,7 @@
 package rooms
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -9,9 +10,6 @@ import (
 // What a room says about itself on the wire: every payload shape the rooms
 // handlers write, and the two vocabularies (cheers, crew role words) they
 // share. Split from rooms.go (#1265).
-
-// maxCheers caps the owner-curated reaction palette (#223).
-const maxCheers = 8
 
 // baseCheers is the stock reaction set (WATTROOM.md feel layer) — what a
 // room speaks until its owner curates their own. Icon keys since #447; the
@@ -27,6 +25,29 @@ func CheerSet(stored string) []string {
 		return baseCheers
 	}
 	return strings.Fields(stored)
+}
+
+// cleanCheers validates a curated palette and returns it stored: deduplicated
+// and space-joined, "" for an empty pick (back to the base set). A non-empty
+// refusal is the message to answer with.
+func cleanCheers(picked []string) (stored, refusal string) {
+	if len(picked) > protocol.MaxCheers {
+		return "", fmt.Sprintf("Pick at most %d reactions.", protocol.MaxCheers)
+	}
+	deduped := make([]string, 0, len(picked))
+	seen := map[string]struct{}{}
+	for _, cheer := range picked {
+		// Same compat rule as the icon: keys now, emoji from before #447 too.
+		if !protocol.IsIconOrEmoji(cheer) {
+			return "", "Reactions are icons from the set."
+		}
+		if _, dup := seen[cheer]; dup {
+			continue
+		}
+		seen[cheer] = struct{}{}
+		deduped = append(deduped, cheer)
+	}
+	return strings.Join(deduped, " "), ""
 }
 
 // What a room shows about the riding its members did together (#995,

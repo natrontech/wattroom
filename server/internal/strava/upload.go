@@ -114,16 +114,10 @@ func (s *Service) post(ctx context.Context, token string, ride db.GetRideForUplo
 	if _, err := part.Write(fit); err != nil {
 		return 0, err
 	}
-	// Room name is the rider's own ride metadata; other riders never appear
-	// here (privacy: metrics are room-scoped, WATTROOM.md).
-	desc := "Ridden on WattRoom — https://wattroom.ch"
-	if ride.RoomName != nil {
-		desc = "Ridden in " + *ride.RoomName + " on WattRoom — https://wattroom.ch"
-	}
 	fields := map[string]string{
 		"data_type":   "fit",
 		"name":        ride.WorkoutName,
-		"description": desc,
+		"description": activityDescription(ride),
 		"external_id": "wattroom-" + store.UUIDString(ride.ID),
 	}
 	for k, v := range fields {
@@ -252,4 +246,15 @@ func exportFailure(err error) string {
 	default:
 		return "Strava could not be reached. It will be retried; you can also retry now."
 	}
+}
+
+// activityDescription is what the Strava activity says about where it was
+// ridden: the crew and a link to it (#2443), or the link alone for a solo
+// ride. The crew is the rider's own ride metadata; other riders never appear
+// here (privacy: metrics are session-scoped, WATTROOM.md).
+func activityDescription(ride db.GetRideForUploadRow) string {
+	if ride.CrewName == nil || !ride.CrewID.Valid {
+		return "Ridden on WattRoom — https://wattroom.ch"
+	}
+	return "Ridden with " + *ride.CrewName + " on WattRoom — https://wattroom.ch/crew/" + store.UUIDString(ride.CrewID)
 }

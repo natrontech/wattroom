@@ -681,9 +681,11 @@ func (q *Queries) ExportUserIdentities(ctx context.Context, userID pgtype.UUID) 
 }
 
 const exportUserMedals = `-- name: ExportUserMedals :many
-select m.kind, m.awarded_at, rm.name as room_name, r.started_at as ride_started_at
+select m.kind, m.awarded_at, rm.name as room_name, c.name as crew_name,
+       r.started_at as ride_started_at
 from medals m
-join rooms rm on rm.id = m.room_id
+left join rooms rm on rm.id = m.room_id
+left join crews c on c.id = m.crew_id
 join rides r on r.id = m.ride_id
 where m.user_id = $1
 order by m.awarded_at
@@ -692,12 +694,14 @@ order by m.awarded_at
 type ExportUserMedalsRow struct {
 	Kind          string
 	AwardedAt     pgtype.Timestamptz
-	RoomName      string
+	RoomName      *string
+	CrewName      *string
 	RideStartedAt pgtype.Timestamptz
 }
 
-// The rider's own medals (#1550): the room that awarded them, and the ride
-// named by its start so a row lines up with rides.json.
+// The rider's own medals (#1550): the room or the crew that awarded them
+// (#2443 — a medal won in a channel no room became has only the crew), and
+// the ride named by its start so a row lines up with rides.json.
 func (q *Queries) ExportUserMedals(ctx context.Context, userID pgtype.UUID) ([]ExportUserMedalsRow, error) {
 	rows, err := q.db.Query(ctx, exportUserMedals, userID)
 	if err != nil {
@@ -711,6 +715,7 @@ func (q *Queries) ExportUserMedals(ctx context.Context, userID pgtype.UUID) ([]E
 			&i.Kind,
 			&i.AwardedAt,
 			&i.RoomName,
+			&i.CrewName,
 			&i.RideStartedAt,
 		); err != nil {
 			return nil, err
