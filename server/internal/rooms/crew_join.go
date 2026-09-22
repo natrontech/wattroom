@@ -38,9 +38,14 @@ func (s *Service) handleCrewDoor(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "No crew has that code. Check it with whoever shared it.")
 		return
 	}
+	// Whether the crew keeps a weekly board (ADR-0036 as amended by
+	// ADR-0058): the one crew surface that publishes a number from one
+	// member's rides, so the door says so before anyone walks in (#1651).
+	// Only the fact — the rows stay behind the membership.
 	out := map[string]any{
 		"name": crew.Name, "icon": crew.Icon,
-		"imageUrl": crewDoorImageURL(code, crew.HasImage),
+		"imageUrl":     crewDoorImageURL(code, crew.HasImage),
+		"boardEnabled": crew.BoardEnabled,
 	}
 	// Someone already in the crew who follows its own link again gets the
 	// way in rather than a Join that would do nothing: the id and the
@@ -242,6 +247,9 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 		// The confirm promised it: "a private room needs a fresh invitation
 		// from its owner" — the grant used to outlive the membership (#1672).
 		err = q.LeaveCrewGrants(r.Context(), db.LeaveCrewGrantsParams{CrewID: crew.ID, UserID: user.ID})
+	}
+	if err == nil {
+		err = q.LeaveCrewChannels(r.Context(), db.LeaveCrewChannelsParams{CrewID: crew.ID, UserID: user.ID})
 	}
 	if err == nil {
 		err = q.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})

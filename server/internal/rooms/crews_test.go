@@ -341,8 +341,10 @@ func TestTheOwnerHandsTheCrewOn(t *testing.T) {
 	}
 	roles, _ := h.store.Queries.ListCrewRoles(t.Context(), crew.ID)
 	for _, row := range roles {
-		if row.UserID == h.users.ByToken["bob"].ID {
-			t.Errorf("the new owner still holds a %s row", row.Role)
+		// Kept as a plain member (#2442): the row carries their switches,
+		// and owner beats it everywhere it is read.
+		if row.UserID == h.users.ByToken["bob"].ID && row.Role != "member" {
+			t.Errorf("the new owner holds a %s row, want member", row.Role)
 		}
 		if row.UserID == h.users.ByToken["alice"].ID && row.Role != "admin" {
 			t.Errorf("the old owner is %s, want admin", row.Role)
@@ -382,8 +384,9 @@ func TestARoomOwnerCannotBeBannedFromTheCrew(t *testing.T) {
 			t.Errorf("the people list does not say bob owns a room here: %v", p)
 		}
 	}
-	// Succession clears the successor's row too: bob, an admin, inherits
-	// when alice leaves for good (the purge path), and inherits clean.
+	// Succession settles the successor's row too: bob, an admin, inherits
+	// when alice leaves for good (the purge path), and inherits clean — a
+	// plain member row carrying his switches (#2442), no admin word on it.
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
 		CrewID: crew.ID, UserID: h.users.ByToken["bob"].ID, Role: "admin",
 	}); err != nil {
@@ -392,8 +395,14 @@ func TestARoomOwnerCannotBeBannedFromTheCrew(t *testing.T) {
 	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["alice"].ID); err != nil {
 		t.Fatalf("release: %v", err)
 	}
-	if roles, _ := h.store.Queries.ListCrewRoles(t.Context(), crew.ID); len(roles) != 0 {
-		t.Errorf("the successor inherited with a role row still on them: %v", roles)
+	roles, err := h.store.Queries.ListCrewRoles(t.Context(), crew.ID)
+	if err != nil {
+		t.Fatalf("crew roles: %v", err)
+	}
+	for _, row := range roles {
+		if row.UserID == h.users.ByToken["bob"].ID && row.Role != "member" {
+			t.Errorf("the successor inherited with a %s row still on them", row.Role)
+		}
 	}
 }
 

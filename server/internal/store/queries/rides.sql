@@ -221,6 +221,75 @@ where r.room_id = $1
 group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg, u.ftp_source, u.weight_source
 order by kj desc, u.display_name asc;
 
+-- name: ListCrewRideWeeks :many
+-- The CREW streak (docs/SPEC.md, ADR-0058): weeks in which the crew held a
+-- session in any of its voice channels, so two channels in one week are one
+-- week. UTC for the room streak's reason — a crew has no zone of its own.
+-- Read off rides rather than session_recaps: a recap is pruned at 90 days,
+-- which would cap every streak at thirteen weeks, and a ride carries its crew
+-- only when it was ridden in one of the crew's sessions (#2431).
+select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
+from rides where crew_id = $1
+order by week desc
+limit 60;
+
+-- name: CrewTotals :one
+-- RoomCrewTotals at the crew (#2442): sums and counts over the whole crew,
+-- sessions as distinct days so an evening split across two voice channels
+-- counts once (docs/SPEC.md, Consistency).
+select coalesce(sum(seconds), 0)::bigint as seconds,
+       count(distinct started_at::date) filter (
+         where started_at >= date_trunc('month', now())
+       )::bigint as sessions_this_month,
+       count(distinct started_at::date) filter (
+         where started_at >= date_trunc('month', now()) - interval '1 month'
+           and started_at < date_trunc('month', now())
+       )::bigint as sessions_last_month
+from rides
+where crew_id = $1;
+
+-- name: ListCrewSessionDays :many
+-- The crew's last session days and whether the caller rode on each — their
+-- own turnout and nobody else's (ADR-0036).
+select started_at::date as day,
+       bool_or(user_id = sqlc.arg(viewer_id)) as attended
+from rides
+where crew_id = sqlc.arg(crew_id)
+group by day
+order by day desc
+limit 12;
+
+-- name: CrewWeekBoard :many
+-- The crew's weekly board (ADR-0036 as amended by ADR-0058): kJ and time in
+-- the crew's sessions this week, members only, each on it by their own
+-- `on_board`. The handler asks only when the crew has turned it on. The
+-- owner is on it by the same row as anyone: one who never answered has none,
+-- and is off.
+select r.user_id,
+       u.display_name,
+       u.ftp_watts,
+       u.weight_kg,
+       u.ftp_source,
+       u.weight_source,
+       coalesce(sum(r.kj), 0)::bigint as kj,
+       coalesce(sum(r.seconds), 0)::bigint as seconds
+from rides r
+join users u on u.id = r.user_id
+join crew_roles cr on cr.crew_id = r.crew_id and cr.user_id = r.user_id
+where r.crew_id = $1
+  and r.started_at >= (date_trunc('week', now() at time zone 'UTC') at time zone 'UTC')
+  and cr.role in ('member', 'admin')
+  and cr.on_board
+group by r.user_id, u.display_name, u.ftp_watts, u.weight_kg, u.ftp_source, u.weight_source
+order by kj desc, u.display_name asc;
+
+-- name: CountCrewMedalsByRider :many
+-- Every medal the crew's sessions awarded, per rider — the roster's count.
+select user_id, count(*)::int as medals
+from medals
+where crew_id = $1
+group by user_id;
+
 -- name: Best20mIn90Days :one
 -- The FTP auto-detect input (docs/SPEC.md): rolling 90-day best 20-minute power.
 select coalesce(max((curve->>'best20m')::int), 0)::int from rides

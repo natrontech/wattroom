@@ -16,9 +16,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-// handleUpdateCrew: the rename the day-one screen exists for (#1151), and
-// the icon. Owner or admin — "crew admins manage" is the ADR's line, and a
-// name is the crew's, not a room's.
 // handleRotateCrewCode mints a new invite (#1930). The code is the crew's
 // only door and every member may share it, so a leak used to be permanent;
 // now the owner or an admin re-keys, and the old link knocks on a closed
@@ -50,6 +47,9 @@ func (s *Service) handleRotateCrewCode(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"code": code})
 }
 
+// handleUpdateCrew: the rename the day-one screen exists for (#1151), the
+// icon, and the weekly board's switch (#2442). Owner or admin — "crew admins
+// manage" is the ADR's line, and a name is the crew's, not a room's.
 func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 	crew, _, role, ok := s.crewByID(w, r)
 	if !ok {
@@ -62,6 +62,8 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name string  `json:"name"`
 		Icon *string `json:"icon"` // nil keeps, "" clears
+		// The weekly board (ADR-0036 as amended by ADR-0058). Nil keeps.
+		BoardEnabled *bool `json:"boardEnabled"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -82,7 +84,20 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	updated, err := s.store.Queries.UpdateCrew(r.Context(), db.UpdateCrewParams{ID: crew.ID, Name: req.Name, Icon: icon})
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "crew update begin failed", err, "The crew could not be saved.", "crew", store.UUIDString(crew.ID))
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	updated, err := q.UpdateCrew(r.Context(), db.UpdateCrewParams{ID: crew.ID, Name: req.Name, Icon: icon})
+	if err == nil && req.BoardEnabled != nil {
+		err = q.SetCrewBoard(r.Context(), db.SetCrewBoardParams{ID: crew.ID, BoardEnabled: *req.BoardEnabled})
+	}
+	if err == nil {
+		err = tx.Commit(r.Context())
+	}
 	if err != nil {
 		httpx.Fail(w, s.log, "crew update failed", err, "The crew could not be saved.", "crew", store.UUIDString(crew.ID))
 		return
@@ -198,6 +213,11 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := s.store.Queries.LeaveCrewGrants(r.Context(), db.LeaveCrewGrantsParams{CrewID: crew.ID, UserID: target}); err != nil {
 			s.log.Error("crew ban grant sweep failed", "err", err, "crew", store.UUIDString(crew.ID))
+		}
+		// The one ban now (ADR-0058): lifting it must not hand back the
+		// private channels they were named into.
+		if err := s.store.Queries.LeaveCrewChannels(r.Context(), db.LeaveCrewChannelsParams{CrewID: crew.ID, UserID: target}); err != nil {
+			s.log.Error("crew ban channel sweep failed", "err", err, "crew", store.UUIDString(crew.ID))
 		}
 		slugs, err := s.store.Queries.ListCrewRoomSlugs(r.Context(), crew.ID)
 		if err != nil {

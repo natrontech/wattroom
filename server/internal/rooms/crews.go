@@ -42,6 +42,9 @@ type crewPersonJSON struct {
 	// Owns a room in the crew, so cannot be banned from it (#1212) — the menu
 	// withholds the ban rather than offering one that fails.
 	OwnsRoom bool `json:"ownsRoom,omitempty"`
+	// Medals the crew's sessions awarded them, lifetime — on the Members
+	// page's roster only (#2442), counted by id like the room's (#1371).
+	Medals int `json:"medals,omitempty"`
 }
 
 type crewRoomJSON struct {
@@ -100,6 +103,9 @@ func (s *Service) registerCrews(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/crews/{id}/image", s.handleClearCrewImage)
 	mux.HandleFunc("GET /api/crews/{id}/image", s.handleCrewImage)
 	mux.HandleFunc("GET /api/crew-doors/{code}/image", s.handleCrewDoorImage)
+	mux.HandleFunc("GET /api/crews/{id}/members", s.handleCrewMembers)
+	mux.HandleFunc("PATCH /api/crews/{id}/me", s.handleSetCrewPrefs)
+	mux.HandleFunc("GET /api/crews/{id}/recaps", s.handleCrewRecaps)
 }
 
 // crewFor is the crew a room is created into: the one the rider owns, made
@@ -165,6 +171,60 @@ func (s *Service) crewByID(w http.ResponseWriter, r *http.Request) (db.GetCrewRo
 	return crew, user, role, true
 }
 
+// crewPeople is the crew's roster as the caller may read it — the crew page
+// and its Members page (#2442) draw the same list — and, for its owner and
+// admins, the ban list beside it.
+func (s *Service) crewPeople(ctx context.Context, crew db.GetCrewRow, user db.User, role string) ([]crewPersonJSON, []crewPersonJSON, error) {
+	roles, err := s.store.Queries.ListCrewRoles(ctx, crew.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	admin := map[string]bool{}
+	for _, row := range roles {
+		if row.Role == "admin" {
+			admin[store.UUIDString(row.UserID)] = true
+		}
+	}
+	rows, err := s.store.Queries.ListCrewPeople(ctx, db.ListCrewPeopleParams{
+		CrewID: crew.ID, Everyone: administers(role), Viewer: user.ID,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	people := make([]crewPersonJSON, 0, len(rows))
+	for _, p := range rows {
+		id := store.UUIDString(p.ID)
+		personRole := "member"
+		switch {
+		case p.ID == crew.OwnerID:
+			personRole = "owner"
+		case admin[id]:
+			personRole = "admin"
+		}
+		people = append(people, crewPersonJSON{
+			ID: id, DisplayName: p.DisplayName, AvatarURL: p.AvatarUrl,
+			Role: personRole, Since: p.Since.Time.Format("2006-01-02"), Rooms: p.RoomCount,
+			OwnsRoom: p.OwnsRoom,
+		})
+	}
+	if !administers(role) {
+		return people, nil, nil
+	}
+	bannedRows, err := s.store.Queries.ListCrewBanned(ctx, crew.ID)
+	if err != nil {
+		return nil, nil, err
+	}
+	var banned []crewPersonJSON
+	for _, p := range bannedRows {
+		banned = append(banned, crewPersonJSON{
+			ID: store.UUIDString(p.ID), DisplayName: p.DisplayName,
+			AvatarURL: p.AvatarUrl,
+			Role:      "banned", Since: p.SetAt.Time.Format("2006-01-02"),
+		})
+	}
+	return people, banned, nil
+}
+
 func administers(role string) bool { return role == "owner" || role == "admin" }
 
 // codeOf: crews.code is still nullable in the column type, but crews_code_present
@@ -185,7 +245,7 @@ func codeOf(code *string) string {
 func asRow(c db.Crew) db.GetCrewRow {
 	return db.GetCrewRow{
 		ID: c.ID, Name: c.Name, Icon: c.Icon, OwnerID: c.OwnerID, CreatedAt: c.CreatedAt,
-		Code: c.Code, HasImage: c.ImageSetAt.Valid,
+		Code: c.Code, HasImage: c.ImageSetAt.Valid, BoardEnabled: c.BoardEnabled,
 	}
 }
 
@@ -229,58 +289,17 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}
-	roles, err := s.store.Queries.ListCrewRoles(r.Context(), crew.ID)
-	if err != nil {
-		httpx.Fail(w, s.log, "list crew roles failed", err, "The crew could not be loaded.")
-		return
-	}
-	admin := map[string]bool{}
-	for _, row := range roles {
-		if row.Role == "admin" {
-			admin[store.UUIDString(row.UserID)] = true
-		}
-	}
-	people, err := s.store.Queries.ListCrewPeople(r.Context(), db.ListCrewPeopleParams{
-		CrewID: crew.ID, Everyone: administers(role), Viewer: user.ID,
-	})
+	people, banned, err := s.crewPeople(r.Context(), crew, user, role)
 	if err != nil {
 		httpx.Fail(w, s.log, "list crew people failed", err, "The crew could not be loaded.")
 		return
 	}
+	out.People, out.Banned = people, banned
 	out.Members = int64(len(people))
 	if members, err := s.store.Queries.CountCrewMembers(r.Context(), crew.ID); err == nil {
 		out.Members = int64(members)
 	} else {
 		s.log.Warn("crew member count failed", "err", err, "crew", store.UUIDString(crew.ID))
-	}
-	for _, p := range people {
-		id := store.UUIDString(p.ID)
-		personRole := "member"
-		switch {
-		case p.ID == crew.OwnerID:
-			personRole = "owner"
-		case admin[id]:
-			personRole = "admin"
-		}
-		out.People = append(out.People, crewPersonJSON{
-			ID: id, DisplayName: p.DisplayName, AvatarURL: p.AvatarUrl,
-			Role: personRole, Since: p.Since.Time.Format("2006-01-02"), Rooms: p.RoomCount,
-			OwnsRoom: p.OwnsRoom,
-		})
-	}
-	if administers(role) {
-		banned, err := s.store.Queries.ListCrewBanned(r.Context(), crew.ID)
-		if err != nil {
-			httpx.Fail(w, s.log, "list crew bans failed", err, "The crew could not be loaded.")
-			return
-		}
-		for _, p := range banned {
-			out.Banned = append(out.Banned, crewPersonJSON{
-				ID: store.UUIDString(p.ID), DisplayName: p.DisplayName,
-				AvatarURL: p.AvatarUrl,
-				Role:      "banned", Since: p.SetAt.Time.Format("2006-01-02"),
-			})
-		}
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
 }

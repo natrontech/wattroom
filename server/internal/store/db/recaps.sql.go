@@ -67,6 +67,89 @@ func (q *Queries) ExportUserRecaps(ctx context.Context, dollar_1 string) ([]Expo
 	return items, nil
 }
 
+const listCrewRecaps = `-- name: ListCrewRecaps :many
+select r.id, r.workout, r.started_at, r.ended_at, r.riders,
+       (select ride.id from rides ride
+         where ride.user_id = $1
+           and ride.crew_id = r.crew_id
+           and ride.channel_id is not distinct from r.channel_id
+           and ride.started_at >= r.started_at - interval '1 minute'
+           and ride.started_at <= r.ended_at
+         order by ride.started_at
+         limit 1) as my_ride_id
+from (
+    select s.id, s.room_id, s.workout, s.started_at, s.ended_at, s.riders, s.created_at, s.crew_id, s.channel_id, s.session_id from session_recaps s
+    left join channels ch on ch.id = s.channel_id
+    where s.crew_id = $2
+      and s.ended_at >= now() - make_interval(days => $3::int)
+      and ($4::boolean
+           or (ch.id is not null and not ch.private)
+           or exists (select 1 from channel_members cm
+                      where cm.channel_id = s.channel_id and cm.user_id = $1))
+    order by s.ended_at desc
+    limit $5
+) r
+order by r.ended_at
+`
+
+type ListCrewRecapsParams struct {
+	Viewer  pgtype.UUID
+	CrewID  pgtype.UUID
+	Days    int32
+	Admin   bool
+	MaxRows int32
+}
+
+type ListCrewRecapsRow struct {
+	ID        pgtype.UUID
+	Workout   string
+	StartedAt pgtype.Timestamptz
+	EndedAt   pgtype.Timestamptz
+	Riders    []byte
+	MyRideID  pgtype.UUID
+}
+
+// The crew's recaps (#2442), oldest first like ListRoomRecaps, and only those
+// of sessions in a channel the caller may enter (docs/SPEC.md, Session recap
+// retention): presence is never a way into a private channel. The handler has
+// already proved the caller is a current, unbanned member, so an open channel
+// admits them; a private one admits the crew's owner and admins (`admin`) and
+// whoever is named into it. A recap with no channel names nobody's way in and
+// is shown to nobody but those two — the narrow side. The 90 days are stated
+// here as well as pruned, so a sweep that is running late does not widen it.
+func (q *Queries) ListCrewRecaps(ctx context.Context, arg ListCrewRecapsParams) ([]ListCrewRecapsRow, error) {
+	rows, err := q.db.Query(ctx, listCrewRecaps,
+		arg.Viewer,
+		arg.CrewID,
+		arg.Days,
+		arg.Admin,
+		arg.MaxRows,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCrewRecapsRow
+	for rows.Next() {
+		var i ListCrewRecapsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Workout,
+			&i.StartedAt,
+			&i.EndedAt,
+			&i.Riders,
+			&i.MyRideID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoomRecaps = `-- name: ListRoomRecaps :many
 select r.id, r.workout, r.started_at, r.ended_at, r.riders,
        (select ride.id from rides ride
