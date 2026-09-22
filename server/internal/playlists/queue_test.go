@@ -10,7 +10,8 @@ import (
 // junk are counted as skipped rather than refusing the lot.
 func TestQueueTracksAtOnce(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
+	c := h.crew(t, "alice")
+	queue := "/api/channels/" + c.voice() + "/queue"
 	one := h.track(t, "alice", "One")
 	two := h.track(t, "alice", "Two")
 	bobs := h.track(t, "bob", "Bob's")
@@ -20,7 +21,7 @@ func TestQueueTracksAtOnce(t *testing.T) {
 	tempo := h.trackBpm(t, "alice", "Tempo", 128)
 
 	h.live.tracks = nil
-	code, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/queue",
+	code, body := h.call(t, "alice", http.MethodPost, queue,
 		`{"trackIds":["`+one+`","`+bobs+`","not-a-uuid","`+two+`"]}`)
 	if code != http.StatusOK || body["queued"] != 2.0 || body["skipped"] != 2.0 {
 		t.Fatalf("queue: %d %v", code, body)
@@ -28,12 +29,12 @@ func TestQueueTracksAtOnce(t *testing.T) {
 	if len(h.live.tracks) != 2 || h.live.tracks[0].TrackID != one || h.live.tracks[1].TrackID != two || h.live.tracks[0].Title != "One" {
 		t.Fatalf("what reached the bridge: %+v", h.live.tracks)
 	}
-	if h.live.slug != h.voice(t, slug) || h.live.addedBy != "alice" {
-		t.Fatalf("bridge addressed %q as %q", h.live.slug, h.live.addedBy)
+	if h.live.channel != c.voice() || h.live.addedBy != "alice" {
+		t.Fatalf("bridge addressed %q as %q", h.live.channel, h.live.addedBy)
 	}
 
 	h.live.tracks = nil
-	if code, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/queue",
+	if code, _ := h.call(t, "alice", http.MethodPost, queue,
 		`{"trackIds":["`+tempo+`"]}`); code != http.StatusOK {
 		t.Fatalf("queue the tempo track: %d", code)
 	}
@@ -41,17 +42,17 @@ func TestQueueTracksAtOnce(t *testing.T) {
 		t.Fatalf("bpm reaching the bridge: %+v", h.live.tracks)
 	}
 
-	if code, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/queue", `{"trackIds":[]}`); code != http.StatusBadRequest {
+	if code, _ := h.call(t, "alice", http.MethodPost, queue, `{"trackIds":[]}`); code != http.StatusBadRequest {
 		t.Fatalf("empty pick: %d", code)
 	}
-	if code, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/queue", `{"trackIds":["`+bobs+`"]}`); code != http.StatusForbidden {
-		t.Fatalf("not a member: %d", code)
+	if code, _ := h.call(t, "bob", http.MethodPost, queue, `{"trackIds":["`+bobs+`"]}`); code != http.StatusNotFound {
+		t.Fatalf("not in the crew: %d, want 404", code)
 	}
-	if code, _ := h.call(t, "", http.MethodPost, "/api/rooms/"+slug+"/queue", `{"trackIds":["`+one+`"]}`); code != http.StatusUnauthorized {
+	if code, _ := h.call(t, "", http.MethodPost, queue, `{"trackIds":["`+one+`"]}`); code != http.StatusUnauthorized {
 		t.Fatalf("anonymous: %d", code)
 	}
 	h.live.ok = false
-	if code, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/queue", `{"trackIds":["`+one+`"]}`); code != http.StatusConflict {
-		t.Fatalf("room not live: %d", code)
+	if code, _ := h.call(t, "alice", http.MethodPost, queue, `{"trackIds":["`+one+`"]}`); code != http.StatusConflict {
+		t.Fatalf("channel not live: %d", code)
 	}
 }

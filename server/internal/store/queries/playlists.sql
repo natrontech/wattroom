@@ -60,13 +60,3 @@ update playlist_tracks set position = position + 1000000 where playlist_id = $1;
 -- name: SetPlaylistTrackPosition :exec
 update playlist_tracks set position = $3 where id = $1 and playlist_id = $2;
 
--- name: SetChannelAutoplay :one
--- A voice channel's autoplay, the whole setting in one statement (#2248,
--- #2439): the switch, the order and the active playlist, which must be one
--- of the channel's CREW's playlists — the exists() refuses anything else in
--- the same round trip, so no row comes back and nothing was written.
-update channels c set autoplay_enabled = $2, autoplay_order = $3, autoplay_playlist_id = $4
-where c.id = $1 and c.kind = 'voice'
-  and ($4::uuid is null
-       or exists (select 1 from playlists p where p.id = $4 and p.crew_id = c.crew_id))
-returning *;

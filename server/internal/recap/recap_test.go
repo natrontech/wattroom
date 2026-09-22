@@ -23,10 +23,11 @@ var (
 )
 
 type world struct {
-	st    *store.Store
-	svc   *Service
-	room  db.Room
-	users map[string]db.User
+	st      *store.Store
+	svc     *Service
+	crew    db.Crew
+	channel db.Channel
+	users   map[string]db.User
 }
 
 func setup(t *testing.T) *world {
@@ -45,19 +46,23 @@ func setup(t *testing.T) *world {
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
 	}
-	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		// Unique per run: one `go test ./...` shares a database across
-		// packages, and a fixed slug collides with whoever ran first (#2083).
-		Slug: "recap-cave-" + time.Now().Format("150405.000000"),
-		Name: "Recap Cave", OwnerID: w.users["alice"].ID,
+	crew, err := st.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
+		Name: "Recap Crew", OwnerID: w.users["alice"].ID, Code: testx.CrewCode(),
 	})
 	if err != nil {
-		t.Fatalf("create room: %v", err)
+		t.Fatalf("create crew: %v", err)
 	}
-	w.room = room
+	w.crew = crew
 	t.Cleanup(func() {
-		_, _ = st.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
+		_, _ = st.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID)
 	})
+	channel, err := st.Queries.CreateChannel(t.Context(), db.CreateChannelParams{
+		CrewID: crew.ID, Kind: "voice", Name: "Pain Cave", MaxChannels: 10,
+	})
+	if err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	w.channel = channel
 	return w
 }
 
@@ -71,11 +76,11 @@ func (w *world) recapRow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Straight to the row: the room's backlog is what these tests read, and
-	// the save itself is TestSaveRecapKeysTheSession's.
+	// Straight to the row: the crew's list is what these tests read, and the
+	// save itself is TestSaveRecapKeysTheSession's.
 	if _, err := w.st.Pool.Exec(t.Context(),
-		"insert into session_recaps (room_id, workout, started_at, ended_at, riders) values ($1, $2, $3, $4, $5)",
-		w.room.ID, "Sweet Spot 2x20", sessionStart, sessionEnd, riders); err != nil {
+		"insert into session_recaps (crew_id, channel_id, workout, started_at, ended_at, riders) values ($1, $2, $3, $4, $5, $6)",
+		w.crew.ID, w.channel.ID, "Sweet Spot 2x20", sessionStart, sessionEnd, riders); err != nil {
 		t.Fatalf("save recap: %v", err)
 	}
 }
@@ -85,21 +90,7 @@ func (w *world) recapRow(t *testing.T) {
 // lands on the row it already made rather than a second card.
 func TestSaveRecapKeysTheSession(t *testing.T) {
 	w := setup(t)
-	crew, err := w.st.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
-		Name: "Recap Crew", OwnerID: w.users["alice"].ID, Code: testx.CrewCode(),
-	})
-	if err != nil {
-		t.Fatalf("create crew: %v", err)
-	}
-	t.Cleanup(func() {
-		_, _ = w.st.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID)
-	})
-	channel, err := w.st.Queries.CreateChannel(t.Context(), db.CreateChannelParams{
-		CrewID: crew.ID, Kind: "voice", Name: "Pain Cave", MaxChannels: 10,
-	})
-	if err != nil {
-		t.Fatalf("create channel: %v", err)
-	}
+	crew, channel := w.crew, w.channel
 	session := "8f7c1a2e-9b1d-4c5e-8a6f-0d3b2c1e4f5a"
 	rec := protocol.SessionRecap{
 		Workout: "Openers", StartedAt: sessionStart.UnixMilli(), EndedAt: sessionEnd.UnixMilli(),
@@ -127,11 +118,11 @@ func TestSaveRecapKeysTheSession(t *testing.T) {
 	}
 }
 
-// ride saves one room ride for a rider, started at `at`.
+// ride saves one ride in the crew's voice channel for a rider, started at `at`.
 func (w *world) ride(t *testing.T, who string, at time.Time) string {
 	t.Helper()
 	id, err := w.st.Queries.CreateRide(t.Context(), db.CreateRideParams{
-		UserID: w.users[who].ID, RoomID: w.room.ID, WorkoutName: "Sweet Spot 2x20",
+		UserID: w.users[who].ID, CrewID: w.crew.ID, ChannelID: w.channel.ID, WorkoutName: "Sweet Spot 2x20",
 		StartedAt: pgtype.Timestamptz{Time: at, Valid: true},
 		Seconds:   3600, AvgWatts: 180, Kj: 640, Execution: 0.9, ExecutionScored: true,
 		FtpWatts: 200, Samples: []byte{}, Curve: []byte(`{}`), Xp: 640,
@@ -144,14 +135,20 @@ func (w *world) ride(t *testing.T, who string, at time.Time) string {
 
 func (w *world) list(t *testing.T, viewer string) protocol.SessionRecap {
 	t.Helper()
-	rows, err := w.svc.List(t.Context(), w.room.ID, w.users[viewer].ID, 50)
+	rows, err := w.st.Queries.ListCrewRecaps(t.Context(), db.ListCrewRecapsParams{
+		CrewID: w.crew.ID, Viewer: w.users[viewer].ID, Days: RetentionDays, MaxRows: 50,
+	})
 	if err != nil {
 		t.Fatalf("list as %s: %v", viewer, err)
 	}
 	if len(rows) != 1 {
 		t.Fatalf("list as %s returned %d recaps, want 1", viewer, len(rows))
 	}
-	return rows[0]
+	rec, ok := Decode(slog.New(slog.DiscardHandler), rows[0])
+	if !ok {
+		t.Fatalf("list as %s: the recap would not decode", viewer)
+	}
+	return rec
 }
 
 // The card's one per-viewer field (#1560). Everything else on a recap reads
@@ -172,7 +169,7 @@ func TestRecapCarriesTheViewersOwnRide(t *testing.T) {
 	}
 }
 
-// The coach with no trainer, and the member reading the backlog who was never
+// The coach with no trainer, and the member reading the list who was never
 // there: no ride, no link, and emphatically not the ride of whoever did ride.
 func TestRecapWithoutARideCarriesNoLink(t *testing.T) {
 	w := setup(t)
@@ -184,7 +181,7 @@ func TestRecapWithoutARideCarriesNoLink(t *testing.T) {
 	}
 }
 
-// The window is the session's own, not "a ride in this room": last week's
+// The window is the session's own, not "a ride in this channel": last week's
 // ride must not turn up on this week's card.
 func TestRecapIgnoresRidesOutsideTheSession(t *testing.T) {
 	w := setup(t)

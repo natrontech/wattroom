@@ -28,21 +28,15 @@
 		crewId: string;
 		crewName: string;
 		channelName?: string;
-		roomSlug?: string;
-		roomName?: string;
 	}
 
-	// Where a row goes until crew Home replaces this list (#2451): the room a
-	// room-era plan came from, else the crew it is on.
+	// Where a row goes until crew Home replaces this list (#2451): the crew
+	// it is on.
 	const placeOf = (session: Planned) =>
-		session.roomName ||
-		(session.channelName
+		session.channelName
 			? `${session.crewName} · ${session.channelName}`
-			: session.crewName);
-	const hrefOf = (session: Planned) =>
-		session.roomSlug
-			? `/r/${session.roomSlug}/sessions`
-			: `/crew/${session.crewId}`;
+			: session.crewName;
+	const hrefOf = (session: Planned) => `/crew/${session.crewId}`;
 
 	let {
 		planSlug,

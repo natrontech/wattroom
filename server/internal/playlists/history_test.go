@@ -42,13 +42,13 @@ func (h *harness) track(t *testing.T, uploader, title string) string {
 	return store.UUIDString(row.ID)
 }
 
-func (h *harness) weights(t *testing.T, slug string) map[string]float64 {
+func (h *harness) weights(t *testing.T, c crewFixture) map[string]float64 {
 	t.Helper()
 	rows, err := h.store.Queries.SmartShuffleTracks(t.Context(), db.SmartShuffleTracksParams{
 		// The pool is the whole database's: ask for more than it can
 		// plausibly hold, so a neighbouring suite's tracks cannot push ours
 		// out of range.
-		ChannelID: h.voiceID(t, slug), Lim: 1000, Within: nil,
+		ChannelID: c.voiceID, Lim: 1000, Within: nil,
 		AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 	})
 	if err != nil {
@@ -63,10 +63,11 @@ func (h *harness) weights(t *testing.T, slug string) map[string]float64 {
 
 // The weighting is what smart shuffle IS (#269, docs/SPEC.md). The draw
 // itself is random and cannot be asserted; the weight it draws on can, and a
-// wrong one is invisible — the room just quietly keeps playing what it skips.
+// wrong one is invisible — the channel just quietly keeps playing what it
+// skips.
 func TestSmartShuffleWeighsRecencyAndSkips(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
+	c := h.crew(t, "alice")
 
 	fresh := h.track(t, "alice", "Never played")
 	skipped := h.track(t, "alice", "Skipped twice")
@@ -74,10 +75,10 @@ func TestSmartShuffleWeighsRecencyAndSkips(t *testing.T) {
 	longAgo := h.track(t, "alice", "Played this morning")
 
 	ctx := t.Context()
-	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{TrackID: skipped, QueuedBy: store.UUIDString(h.users["alice"].ID), Skipped: true})
-	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{TrackID: skipped, QueuedBy: "", Skipped: true})
-	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{TrackID: justPlayed, QueuedBy: "", Skipped: false})
-	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{TrackID: longAgo, QueuedBy: "", Skipped: false})
+	h.svc.TrackEnded(ctx, c.voice(), hub.Play{TrackID: skipped, QueuedBy: store.UUIDString(h.users["alice"].ID), Skipped: true})
+	h.svc.TrackEnded(ctx, c.voice(), hub.Play{TrackID: skipped, QueuedBy: "", Skipped: true})
+	h.svc.TrackEnded(ctx, c.voice(), hub.Play{TrackID: justPlayed, QueuedBy: "", Skipped: false})
+	h.svc.TrackEnded(ctx, c.voice(), hub.Play{TrackID: longAgo, QueuedBy: "", Skipped: false})
 	// Age that last one past the 4 h recency window without waiting for it.
 	if _, err := h.store.Pool.Exec(ctx,
 		"update track_plays set at = now() - interval '5 hours' where track_id = $1", longAgo,
@@ -85,7 +86,7 @@ func TestSmartShuffleWeighsRecencyAndSkips(t *testing.T) {
 		t.Fatalf("age the play: %v", err)
 	}
 
-	got := h.weights(t, slug)
+	got := h.weights(t, c)
 	for _, tc := range []struct {
 		name, id string
 		want     float64
@@ -102,27 +103,27 @@ func TestSmartShuffleWeighsRecencyAndSkips(t *testing.T) {
 	}
 }
 
-// Privacy is architecture (WATTROOM.md): one room's taste is not a fact about
-// the pool. A global count would be the easy mistake here and would show up
-// only as another room mysteriously avoiding a song.
-func TestSmartShuffleHistoryIsRoomScoped(t *testing.T) {
+// Privacy is architecture (WATTROOM.md): one channel's taste is not a fact
+// about the pool. A global count would be the easy mistake here and would
+// show up only as another channel mysteriously avoiding a song.
+func TestSmartShuffleHistoryIsChannelScoped(t *testing.T) {
 	h := setup(t)
-	// Both rooms are alice's: since #1095 a room's smart draw only reaches
-	// tracks its own MEMBERS uploaded, so a room bob owns would not see this
-	// track at all and the test would pass for the wrong reason.
-	loud := h.room(t, "alice")
-	quiet := h.room(t, "alice")
+	// Both crews are alice's: since #1095 a smart draw only reaches tracks
+	// uploaded by riders who may enter the channel, so a crew bob owns would
+	// not see this track at all and the test would pass for the wrong reason.
+	loud := h.crew(t, "alice")
+	quiet := h.crew(t, "alice")
 	track := h.track(t, "alice", "Divisive")
 
 	for range 3 {
-		h.svc.TrackEnded(t.Context(), h.voice(t, loud), hub.Play{TrackID: track, QueuedBy: "", Skipped: true})
+		h.svc.TrackEnded(t.Context(), loud.voice(), hub.Play{TrackID: track, QueuedBy: "", Skipped: true})
 	}
 
 	if got := h.weights(t, loud)[track]; math.Abs(got-0.25) > 0.01 {
-		t.Errorf("the room that skipped it: weight = %v, want 0.25", got)
+		t.Errorf("the channel that skipped it: weight = %v, want 0.25", got)
 	}
 	if got := h.weights(t, quiet)[track]; math.Abs(got-1.0) > 0.01 {
-		t.Errorf("a room that never heard it: weight = %v, want 1", got)
+		t.Errorf("a channel that never heard it: weight = %v, want 1", got)
 	}
 }
 
@@ -130,15 +131,12 @@ func TestSmartShuffleHistoryIsRoomScoped(t *testing.T) {
 // — the setting picks a source as well as an order.
 func TestSmartAutoplayQueuesPoolTracks(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
+	c := h.crew(t, "alice")
 	track := h.track(t, "alice", "Sandstorm")
 
-	if code, body := h.call(t, "alice", "PATCH", "/api/rooms/"+slug+"/autoplay",
-		`{"enabled":true,"order":"smart"}`); code != 200 {
-		t.Fatalf("set smart: %d %v", code, body)
-	}
+	h.autoplay(t, c, `{"enabled":true,"order":"smart"}`)
 
-	tracks, ok := h.svc.Autoplay(t.Context(), h.voice(t, slug), hub.SessionMood{})
+	tracks, ok := h.svc.Autoplay(t.Context(), c.voice(), hub.SessionMood{})
 	if !ok || len(tracks) == 0 {
 		t.Fatalf("smart autoplay found nothing: ok=%v tracks=%+v", ok, tracks)
 	}
@@ -160,21 +158,23 @@ func TestSmartAutoplayQueuesPoolTracks(t *testing.T) {
 	}
 	if !found && len(tracks) < smartShuffleBatch {
 		// Only a full batch is allowed to have crowded it out.
-		t.Errorf("the room's own track missed a batch of %d: %+v", len(tracks), tracks)
+		t.Errorf("the channel's own track missed a batch of %d: %+v", len(tracks), tracks)
 	}
 }
 
+// The channel's PATCH accepts exactly the orders Autoplay walks: one it took
+// that Autoplay does not know would fall through to "ordered" in silence.
 func TestAutoplayOrderRejectsAnythingElse(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
+	voice := "/api/channels/" + h.crew(t, "alice").voice()
 	for _, order := range []string{"ordered", "shuffled", "smart"} {
-		if code, body := h.call(t, "alice", "PATCH", "/api/rooms/"+slug+"/autoplay",
-			`{"enabled":true,"order":"`+order+`"}`); code != 200 {
+		if code, body := h.call(t, "alice", http.MethodPatch, voice,
+			`{"autoplay":{"enabled":true,"order":"`+order+`"}}`); code != http.StatusOK {
 			t.Errorf("%s refused: %d %v", order, code, body)
 		}
 	}
-	if code, _ := h.call(t, "alice", "PATCH", "/api/rooms/"+slug+"/autoplay",
-		`{"enabled":true,"order":"clever"}`); code != 400 {
+	if code, _ := h.call(t, "alice", http.MethodPatch, voice,
+		`{"autoplay":{"enabled":true,"order":"clever"}}`); code != http.StatusBadRequest {
 		t.Errorf("junk order accepted: %d", code)
 	}
 }
@@ -184,38 +184,35 @@ func TestAutoplayOrderRejectsAnythingElse(t *testing.T) {
 // with no list, it is the members' whole libraries.
 func TestSmartAutoplayFollowsTheActivePlaylist(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
+	c := h.crew(t, "alice")
+	base := "/api/crews/" + store.UUIDString(c.id) + "/playlists"
 	listed := h.track(t, "alice", "On the list")
 	loose := h.track(t, "alice", "Not on the list")
 
-	_, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists", `{"name":"Smart list"}`)
+	_, body := h.call(t, "alice", http.MethodPost, base, `{"name":"Smart list"}`)
 	playlistID, _ := body["id"].(string)
-	if code, body := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+playlistID+"/tracks",
+	if code, body := h.call(t, "alice", http.MethodPost, base+"/"+playlistID+"/tracks",
 		`{"action":"add","trackId":"`+listed+`"}`); code != http.StatusCreated {
 		t.Fatalf("add library track: %d %v", code, body)
 	}
 	// A video in the same list is Ordered's and Shuffled's business, never
 	// Smart's — it has no history to weigh.
-	if code, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/playlists/"+playlistID+"/tracks", videoTrack); code != http.StatusCreated {
+	if code, _ := h.call(t, "alice", http.MethodPost, base+"/"+playlistID+"/tracks", videoTrack); code != http.StatusCreated {
 		t.Fatalf("add video: %d", code)
 	}
-	if code, body := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay",
-		`{"enabled":true,"order":"smart","activePlaylistId":"`+playlistID+`"}`); code != 200 {
-		t.Fatalf("set smart with a list: %d %v", code, body)
-	}
+	h.autoplay(t, c, `{"enabled":true,"order":"smart","playlistId":"`+playlistID+`"}`)
 
 	for range 5 {
-		tracks, ok := h.svc.Autoplay(t.Context(), h.voice(t, slug), hub.SessionMood{})
+		tracks, ok := h.svc.Autoplay(t.Context(), c.voice(), hub.SessionMood{})
 		if !ok || len(tracks) != 1 || tracks[0].TrackID != listed || tracks[0].VideoID != "" {
 			t.Fatalf("smart over a list drew %+v, want only the list's library track", tracks)
 		}
 	}
 
-	// No active list: the whole library is back, the loose track with it.
-	if code, _ := h.call(t, "alice", http.MethodPatch, "/api/rooms/"+slug+"/autoplay", `{"enabled":true,"order":"smart"}`); code != 200 {
-		t.Fatalf("clear the list: %d", code)
-	}
-	tracks, ok := h.svc.Autoplay(t.Context(), h.voice(t, slug), hub.SessionMood{})
+	// No active list: the whole library is back, the loose track with it. The
+	// channel's PATCH keeps what it is not sent, so clearing is an empty id.
+	h.autoplay(t, c, `{"playlistId":""}`)
+	tracks, ok := h.svc.Autoplay(t.Context(), c.voice(), hub.SessionMood{})
 	seen := map[string]bool{}
 	for _, cmd := range tracks {
 		seen[cmd.TrackID] = true

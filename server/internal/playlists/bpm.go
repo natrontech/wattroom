@@ -8,7 +8,7 @@ import "github.com/natrontech/wattroom/server/internal/hub"
 // a default to tune in alpha.
 //
 // The lever is cadence, not tempo directly: a track matches when its BPM sits
-// near the rpm the room is turning, or near double it — which is the same
+// near the rpm the channel is turning, or near double it — which is the same
 // beat, felt one pedal stroke at a time instead of two.
 const (
 	// How far from the target a track's BPM may sit and still count as a
@@ -23,13 +23,13 @@ const (
 )
 
 // Auto-DJ (#271, ADR-0015 smart selection step 4): a track that resembles
-// what this room has lately played THROUGH gets a lift. The whole of it is
+// what this channel has lately played THROUGH gets a lift. The whole of it is
 // one more factor in the same scoring pass — no model, no embeddings, which
 // is the ceiling ADR-0015 set for this box.
 const (
-	// How many of the room's recent completions define its current taste.
+	// How many of the channel's recent completions define its current taste.
 	// By count rather than by time: a crew's taste is the last things it
-	// enjoyed, and a room that rode yesterday should not come back to a
+	// enjoyed, and a channel that rode yesterday should not come back to a
 	// blank slate. Twenty is an evening.
 	affinityWindow = 20
 	// Same artist as something recently finished. The strong signal — a

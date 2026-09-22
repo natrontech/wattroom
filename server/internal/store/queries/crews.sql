@@ -109,11 +109,6 @@ where c.id = cm.channel_id and c.crew_id = $1 and cm.user_id = $2;
 -- banned or admin word on it would only mislead the next reader.
 update crew_roles set role = 'member', set_at = now() where crew_id = $1 and user_id = $2;
 
--- name: ClearCrewRole :exec
--- The new owner's row goes (crews.owner_id is their role now); nothing else
--- clears a row — a member's row IS their membership (#1236).
-delete from crew_roles where crew_id = $1 and user_id = $2;
-
 -- name: TransferCrew :exec
 -- Ownership transfers, deliberately and on account deletion (ADR-0038, second
 -- amendment). crews.owner_id is ON DELETE RESTRICT, so the purge path MUST run
@@ -121,66 +116,16 @@ delete from crew_roles where crew_id = $1 and user_id = $2;
 -- intended behaviour, not a bug to work around.
 --
 -- Always through makeOwner in Go, never alone: the new owner's crew_roles row
--- has to go with it (#1212). Owner beats every role in CrewRoleOf, but
--- visible_rooms and IsBannedFromRoom read the row without asking who owns
--- the crew, so a banned row left on an owner locks them out of their rooms.
+-- has to go with it (#1212). Owner beats every role in CrewRoleOf, but a
+-- query that reads crew_roles alone does not ask who owns the crew, so a
+-- banned row left on an owner reads as a ban there.
 update crews set owner_id = $2 where id = $1;
-
--- name: CountRoomsOwnedInCrew :one
--- A room never leaves its crew, so its owner cannot be banned from it (#1212):
--- the ban would orphan the room, and the successor of last resort could then
--- hand the crew to someone it banned.
-select count(*) from rooms where crew_id = $1 and owner_id = $2;
 
 -- name: GrantRoomAccess :exec
 -- The named exception into a private room (ADR-0038, #1224): a door, not a
 -- membership — the person still walks in themselves.
 insert into room_grants (room_id, user_id) values ($1, $2)
 on conflict (room_id, user_id) do nothing;
-
--- name: RevokeRoomAccess :exec
-delete from room_grants where room_id = $1 and user_id = $2;
-
--- name: ListRoomGrantees :many
--- People let into a private room who have not walked in yet. A grant is moot
--- once they join — membership admits — so joined people drop off this list.
-select u.id, u.display_name, u.avatar_url, g.granted_at
-from room_grants g
-join users u on u.id = g.user_id
-where g.room_id = $1
-  and not exists (select 1 from memberships m where m.room_id = g.room_id and m.user_id = g.user_id)
-order by g.granted_at;
-
--- name: CanEnterRoom :one
-select exists (
-    select 1 from visible_rooms where user_id = $1 and room_id = $2
-)::boolean;
-
--- name: IsBannedFromRoom :one
--- BOTH levels in one answer (ADR-0038, third amendment). A room ban lives on
--- the membership row; a crew ban lives on crew_roles and reaches every room in
--- the crew. Every door asks this one question rather than each remembering
--- there are two — which is the whole lesson of #1109 and #1114, where four
--- separate joins each wrote the single-level guard by hand and one omitted it.
-select (
-    exists (
-        select 1 from memberships m
-        where m.room_id = sqlc.arg(room_id) and m.user_id = sqlc.arg(user_id)
-          and m.role = 'banned'
-    )
-    or exists (
-        select 1 from crew_roles cr
-        join rooms r on r.crew_id = cr.crew_id
-        where r.id = sqlc.arg(room_id) and cr.user_id = sqlc.arg(user_id)
-          and cr.role = 'banned'
-    )
-)::boolean;
-
--- name: GetCrewOwnedBy :one
--- The crew a room is created into when the caller names none (#1201): the
--- one the rider founded, made with their first room and named after them —
--- else the oldest they own (#1928: a handed-over crew used to win by age).
-select * from crews where owner_id = $1 order by (founded_by = $1) desc, created_at limit 1;
 
 -- name: PlaceRoomInCrew :exec
 -- Crewless rooms are forbidden in code from the cutover (ADR-0038). This
@@ -217,67 +162,16 @@ select * from crews where owner_id = $1 order by created_at;
 -- name: DeleteCrew :exec
 delete from crews where id = $1;
 
--- name: DeleteCrewIfEmpty :execrows
--- A crew with nothing left in it goes (#1935), which is ADR-0038's second
--- amendment said as a statement: "a crew whose rooms are all gone has no
--- members and nothing to own; it is deleted rather than left ownerless".
--- Until now only the account purge ever deleted one, so an owner whose last
--- room went kept a crew they could not leave, hand on or delete.
---
--- One statement, not a read the caller acts on: the predicate is tested at
--- the moment of the delete, so a room created into the crew a millisecond
--- earlier keeps it. `rooms.crew_id` is ON DELETE RESTRICT as well, which
--- turns any future disagreement between this predicate and the constraint
--- into a loud failure rather than an orphaned room (ADR-0038's fourth
--- amendment; #1301 sets `crew_id` not null).
---
--- A `banned` row does not save a crew. It is not somebody who is IN the crew
--- — CountCrewMembers counts these same two roles — and a ban outliving every
--- room would be the whole bug again for any owner who ever banned anyone.
---
--- A crew with a channel is never empty (#2493, ADR-0058): its channels and
--- their history are what it holds now, and M9's SPEC deletes a crew only on
--- succession with nobody left. That is every crew since the channels
--- migration, so this sweep now reaches only a crew whose channels were all
--- deleted — and it goes with the rooms package (#2446). The owner's own row
--- is their switches (SetCrewPrefs), not somebody else in the crew.
-delete from crews where crews.id = sqlc.arg(crew_id)
-  and not exists (select 1 from rooms r where r.crew_id = sqlc.arg(crew_id))
-  and not exists (select 1 from channels ch where ch.crew_id = sqlc.arg(crew_id))
-  and not exists (select 1 from crew_roles cr
-                  where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin')
-                    and cr.user_id <> crews.owner_id);
+-- name: DeleteCrewRooms :exec
+-- The room rows a crew still carries, on the way to deleting it (#2446):
+-- rooms.crew_id is ON DELETE RESTRICT, and nothing reads them any more.
+delete from rooms where crew_id = $1;
 
 -- name: LockCrew :exec
--- The crew's write lock, held for the length of a transaction (#2079).
--- LockRoom's parent: what serialises the two paths that can find a crew empty
--- and delete it — the last member leaving, and the last room being deleted.
--- Without it two members leaving at once each read the OTHER's row as still
--- there (every statement takes its own snapshot under READ COMMITTED), both
--- sweeps decline, and the crew is left with an owner who can neither leave it,
--- hand it on nor delete it — the whole bug, reached by a narrower door.
---
--- Lock order in this app is USERS BEFORE CREWS BEFORE ROOMS. A room delete
--- ends at its crew, so it takes this FIRST and then the room; the reverse
--- order against a leave holding the crew and reaching for the same membership
--- rows is a deadlock, which Postgres resolves by killing one of them with a
--- 500.
+-- The crew's write lock, held for the length of a transaction (#2079): what
+-- serialises two plans racing for the crew's last slot under the planned
+-- session ceiling. Lock order in this app is USERS BEFORE CREWS.
 select 1 from crews where id = $1 for update;
-
--- name: CrewGoesWithRoom :one
--- Whether deleting THIS room deletes its crew, so the confirm can say so
--- before the button rather than the crew disappearing afterwards (#1935).
--- The same predicate as DeleteCrewIfEmpty with the room still there: change
--- one and change the other, or the confirm promises what the delete will not
--- do.
-select (
-    not exists (select 1 from rooms r
-                where r.crew_id = sqlc.arg(crew_id) and r.id <> sqlc.arg(room_id))
-    and not exists (select 1 from channels ch where ch.crew_id = sqlc.arg(crew_id))
-    and not exists (select 1 from crew_roles cr
-                    where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin')
-                      and cr.user_id <> (select c.owner_id from crews c where c.id = sqlc.arg(crew_id)))
-)::boolean;
 
 -- name: DeleteRoomsOwnedBy :exec
 -- The purge's first step, done explicitly rather than left to the cascade so
@@ -285,9 +179,6 @@ select (
 -- amendment): a crew holding only the departing owner's rooms has nothing
 -- left to own, one holding other people's rooms transfers.
 delete from rooms where owner_id = $1;
-
--- name: ListCrewRoomSlugs :many
-select slug from rooms where crew_id = $1;
 
 -- name: CrewRoleOf :one
 -- One word for what a person is to a crew. Owner beats everything (they
@@ -304,21 +195,18 @@ from crews c where c.id = sqlc.arg(crew_id);
 select * from crew_roles where crew_id = $1;
 
 -- name: ListCrewPeople :many
--- The crew's people (#1236: the owner plus every member and admin row), each
--- with how many of the crew's rooms hold them and whether they own one there.
+-- The crew's people (#1236: the owner plus every member and admin row).
 --
--- Person-visibility follows the rooms the VIEWER may enter (#1135): a plain
--- member sees the crew-mates they share an enterable room with (and
--- themselves); the owner and admins act on people by id, so for them
--- `everyone` is true and the list is the whole crew.
+-- Person-visibility follows the channels the VIEWER may enter (#1135, as
+-- ADR-0058 and #2465 re-keyed it from rooms): a plain member sees the
+-- crew-mates they share an enterable channel with (and themselves); the
+-- owner and admins act on people by id, so for them `everyone` is true and
+-- the list is the whole crew.
 --
--- The crew's OWNER is named to everyone in it, whatever rooms they share
--- (#1255). Not a widening of the rule above: an owner is not a person in the
--- crew the way a member is — they are whose crew it is, the crew carries their
--- name until somebody renames it, and every hand-over, every "you own a room
--- here" refusal and the Leave that says "hand it to someone first" is about
--- them. A roster that cannot name them reads as broken, and it made the
--- header's own count disagree with the list under it.
+-- The crew's OWNER is named to everyone in it, whatever channels they share
+-- (#1255): an owner is whose crew it is, and every hand-over and the Leave
+-- that says "hand it to someone first" is about them. A roster that cannot
+-- name them reads as broken.
 with people as (
     select c.owner_id as user_id, c.created_at as since from crews c where c.id = sqlc.arg(crew_id)
     union all
@@ -326,37 +214,18 @@ with people as (
     where cr.crew_id = sqlc.arg(crew_id) and cr.role in ('member', 'admin')
       -- A stray member row for the owner (a listed-room join wrote one, #1671)
       -- must not list them twice: the page keys its list by id.
-      and cr.user_id <> (select owner_id from crews where id = sqlc.arg(crew_id))
-),
--- Everything about a person, and the one test that decides what of it the
--- viewer may have. Written once, in a CTE, because it settles BOTH who is
--- listed and what a listed row says — two copies would drift the moment one
--- of them was tightened.
-rows as (
-    select u.id, u.display_name, u.avatar_url, p.since::timestamptz as since,
-           (u.id = sqlc.arg(viewer)
-            or exists (select 1 from memberships m
-                       join rooms r on r.id = m.room_id
-                       join visible_rooms v on v.room_id = r.id and v.user_id = sqlc.arg(viewer)
-                       where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role <> 'banned')
-           )::boolean as shares_room,
-           (u.id = (select owner_id from crews where id = sqlc.arg(crew_id)))::boolean as is_owner,
-           (select count(*) from memberships m join rooms r on r.id = m.room_id
-             where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role <> 'banned')::bigint as rooms_in,
-           exists (select 1 from memberships m join rooms r on r.id = m.room_id
-                    where r.crew_id = sqlc.arg(crew_id) and m.user_id = u.id and m.role = 'owner')::boolean as owns_one
-    from people p
-    join users u on u.id = p.user_id
+      and cr.user_id <> (select o.owner_id from crews o where o.id = sqlc.arg(crew_id))
 )
-select id, display_name, avatar_url, since,
-       -- WHICH of the crew's rooms a person is in is a fact about the rooms,
-       -- so it keeps the room test rather than the roster's (#1255): the
-       -- owner is named to everyone in the crew, and how much of the crew
-       -- they are in is not part of naming them.
-       (case when sqlc.arg(everyone)::boolean or shares_room then rooms_in else 0 end)::bigint as room_count,
-       (case when sqlc.arg(everyone)::boolean or shares_room then owns_one else false end)::boolean as owns_room
-from rows
-where sqlc.arg(everyone)::boolean or shares_room or is_owner
+select u.id, u.display_name, u.avatar_url, p.since::timestamptz as since
+from people p
+join users u on u.id = p.user_id
+where sqlc.arg(everyone)::boolean
+   or u.id = sqlc.arg(viewer)
+   or u.id = (select o.owner_id from crews o where o.id = sqlc.arg(crew_id))
+   or exists (select 1 from channels c
+              join visible_channels mine on mine.channel_id = c.id and mine.user_id = sqlc.arg(viewer)
+              join visible_channels theirs on theirs.channel_id = c.id and theirs.user_id = u.id
+              where c.crew_id = sqlc.arg(crew_id))
 order by since
 limit 1000; -- an engineering bound (#1416): a crew is a training circle, not a forum
 
@@ -367,14 +236,8 @@ join users u on u.id = cr.user_id
 where cr.crew_id = $1 and cr.role = 'banned'
 order by cr.set_at;
 
--- name: ListCrewBans :many
-select user_id from crew_roles where crew_id = $1 and role = 'banned';
-
 -- name: ListCrewsFor :many
--- Every crew you are in, rooms or none (#1476). The client used to derive
--- its crews from the room list, and a crew whose last room was deleted
--- vanished from the sidebar — its code, its people and its Leave with it,
--- while the server still held everyone's standing in it.
+-- Every crew you are in (#1476), for the sidebar.
 select c.id, c.name, c.icon,
        (c.image_set_at is not null)::boolean as has_image,
        coalesce(c.code, '')::text as code,
@@ -382,55 +245,13 @@ select c.id, c.name, c.icon,
        (c.owner_id = sqlc.arg(user_id))::boolean as owned,
        (c.founded_by = sqlc.arg(user_id))::boolean as founded,
        exists (select 1 from crew_roles cr
-               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin')::boolean as admin,
-       -- Leaving this crew deletes it (#2079): it has no rooms and nobody in
-       -- it but you and its owner, so your Leave is the sweep. DeleteCrewIfEmpty's
-       -- predicate with your own row still there, the way CrewGoesWithRoom is
-       -- it with the room still there — change one and change the other, or
-       -- the confirm promises what the leave will not do. False for the owner,
-       -- who cannot leave at all.
-       (c.owner_id <> sqlc.arg(user_id)
-        and not exists (select 1 from rooms r where r.crew_id = c.id)
-        and not exists (select 1 from channels ch where ch.crew_id = c.id)
-        and not exists (select 1 from crew_roles cr
-                        where cr.crew_id = c.id and cr.user_id <> sqlc.arg(user_id)
-                          and cr.user_id <> c.owner_id
-                          and cr.role in ('member', 'admin')))::boolean as last_out
+               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin')::boolean as admin
 from crews c
 where c.owner_id = sqlc.arg(user_id)
    or exists (select 1 from crew_roles cr
               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role in ('member', 'admin'))
 order by c.created_at
 limit 100; -- an engineering bound (#1416): a rider is in a handful of crews
-
--- name: ListCrewRoomsFor :many
--- The crew's rooms you hold NO membership in, for the sidebar (#1149): a
--- crew's list carries rooms you cannot enter and rooms you administer
--- without reading, and a row has to say which without being opened.
--- `enterable` is asked of visible_rooms and nowhere else (ADR-0038, third
--- amendment). A room ban keeps you off this list entirely — a banned
--- membership row is still a row — and so does a crew ban.
-with mine as (
-    select cr.crew_id from crew_roles cr where cr.user_id = sqlc.arg(user_id) and cr.role in ('member', 'admin')
-    union
-    select c.id from crews c where c.owner_id = sqlc.arg(user_id)
-)
-select r.id, r.slug, r.name, r.icon, r.crew_visible, r.crew_id,
-       c.name as crew_name, c.icon as crew_icon, c.owner_id as crew_owner_id,
-       (c.image_set_at is not null)::boolean as crew_has_image,
-       coalesce(c.code, '')::text as crew_code,
-       exists (select 1 from visible_rooms v
-               where v.room_id = r.id and v.user_id = sqlc.arg(user_id))::boolean as enterable,
-       (c.owner_id = sqlc.arg(user_id) or exists (select 1 from crew_roles cr
-               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin'))::boolean as administers
-from rooms r
-join crews c on c.id = r.crew_id
-where r.crew_id in (select crew_id from mine)
-  and not exists (select 1 from memberships m where m.room_id = r.id and m.user_id = sqlc.arg(user_id))
-  and not exists (select 1 from crew_roles cr
-                  where cr.crew_id = r.crew_id and cr.user_id = sqlc.arg(user_id) and cr.role = 'banned')
-order by r.created_at
-limit 1000; -- an engineering bound (#1416): three rooms per owner, crew-sized crews
 
 -- name: PickCrewSuccessor :one
 -- docs/SPEC.md's succession rule: the longest-standing admin, else the
@@ -442,37 +263,6 @@ from crew_roles cr
 where cr.crew_id = sqlc.arg(crew_id) and cr.user_id <> sqlc.arg(departing) and cr.role in ('admin', 'member')
 order by (cr.role = 'admin') desc, coalesce(cr.joined_at, cr.set_at)
 limit 1;
-
--- name: FirstRoomOwnerInCrew :one
--- The successor of last resort: PickCrewSuccessor can come back empty while
--- rooms remain (their owners crew-banned, say), and the rule must always name
--- somebody while there is a room to own. A room always has an owner.
-select rooms.owner_id from rooms
-where rooms.crew_id = $1 and rooms.owner_id <> $2
-  -- SPEC: never anyone the crew banned (#1675). Rows like that predate the
-  -- #1212 guard; makeOwner would have cleared the ban on the way in.
-  and not exists (select 1 from crew_roles cr
-                   where cr.crew_id = rooms.crew_id and cr.user_id = rooms.owner_id and cr.role = 'banned')
-order by created_at limit 1;
-
--- name: GetRoomInCrew :one
--- A room addressed by id inside its crew (#1226): the crew page holds no slug
--- for a room the caller may not enter (#1205), and the one thing a crew admin
--- may do to such a room is set who may.
-select * from rooms where id = $1 and crew_id = $2;
-
--- name: SetRoomCrewVisible :exec
--- The one permission a crew admin holds over a room they never joined
--- (ADR-0038: "crew admins manage room permissions"). Nothing else on the row.
--- A room shut to its crew leaves the directory with it (#1671): listed and
--- crew_visible were independent columns, and the join admitted a stranger
--- through the listing after the crew page had made the room private.
-update rooms set crew_visible = $2, listed = (listed and $2) where id = $1;
-
--- name: SetRoomCrewVisibleAndListed :exec
--- The undo of a shut (#1929): the toggle above dropped the listing with the
--- crew door, and reopening alone could never bring it back.
-update rooms set crew_visible = $2, listed = ($3 and $2) where id = $1;
 
 -- name: ListListedCrews :many
 -- The opt-in public directory (ADR-0039 as amended by ADR-0058, #2445): every

@@ -23,8 +23,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/crews"
 	"github.com/natrontech/wattroom/server/internal/httpx"
-	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -651,9 +651,9 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 					"boardEnabled": row.BoardEnabled, "soundPack": row.SoundPack,
 					"icon": row.Icon,
 					// The icons the room actually speaks, not the stored
-					// string: empty means the stock set, and rooms.CheerSet
+					// string: empty means the stock set, and crews.CheerSet
 					// is the one place that rule is written.
-					"cheers":          rooms.CheerSet(row.Cheers),
+					"cheers":          crews.CheerSet(row.Cheers),
 					"autoplayEnabled": row.AutoplayEnabled,
 					"autoplayOrder":   row.AutoplayOrder,
 					"calendarToken":   row.IcsToken}

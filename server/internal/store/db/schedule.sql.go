@@ -556,13 +556,11 @@ func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarPara
 const listUserCrewPlans = `-- name: ListUserCrewPlans :many
 select s.id, s.workout_name, s.workout_json, s.starts_at, s.created_at,
        u.display_name as created_by, s.crew_id, cw.name as crew_name,
-       s.channel_id, coalesce(ch.name, '')::text as channel_name,
-       coalesce(r.slug, '')::text as room_slug, coalesce(r.name, '')::text as room_name
+       s.channel_id, coalesce(ch.name, '')::text as channel_name
 from scheduled_sessions s
 join crews cw on cw.id = s.crew_id
 join users u on u.id = s.created_by
 left join channels ch on ch.id = s.channel_id
-left join rooms r on r.id = s.room_id
 where s.starts_at > $1 and s.starts_at < $2
   and s.started_at is null
   and (cw.owner_id = $3
@@ -592,13 +590,10 @@ type ListUserCrewPlansRow struct {
 	CrewName    string
 	ChannelID   pgtype.UUID
 	ChannelName string
-	RoomSlug    string
-	RoomName    string
 }
 
 // Home's "What's next" (#325, #2440): every crew the rider is in, one list,
-// with the channels they may enter. The room columns stay for a plan a room
-// made, so a page that still links rooms keeps its link (#2446 drops them).
+// with the channels they may enter.
 func (q *Queries) ListUserCrewPlans(ctx context.Context, arg ListUserCrewPlansParams) ([]ListUserCrewPlansRow, error) {
 	rows, err := q.db.Query(ctx, listUserCrewPlans,
 		arg.StartsFrom,
@@ -624,8 +619,6 @@ func (q *Queries) ListUserCrewPlans(ctx context.Context, arg ListUserCrewPlansPa
 			&i.CrewName,
 			&i.ChannelID,
 			&i.ChannelName,
-			&i.RoomSlug,
-			&i.RoomName,
 		); err != nil {
 			return nil, err
 		}

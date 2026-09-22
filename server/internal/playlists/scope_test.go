@@ -7,10 +7,10 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-func (h *harness) drawIDs(t *testing.T, slug string) map[string]int {
+func (h *harness) drawIDs(t *testing.T, c crewFixture) map[string]int {
 	t.Helper()
 	rows, err := h.store.Queries.SmartShuffleTracks(t.Context(), db.SmartShuffleTracksParams{
-		ChannelID: h.voiceID(t, slug), Lim: 1000,
+		ChannelID: c.voiceID, Lim: 1000,
 		AffinityWindow: affinityWindow, ArtistBoost: artistBoost, TagBoost: tagBoost,
 	})
 	if err != nil {
@@ -32,11 +32,11 @@ func (h *harness) drawIDs(t *testing.T, slug string) map[string]int {
 // riders who may enter the voice channel (ADR-0058).
 func TestSmartShuffleOnlyDrawsFromWhoMayEnterTheChannel(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice") // alice owns the crew; nobody else is in it
+	c := h.crew(t, "alice") // alice owns the crew; nobody else is in it
 	mine := h.track(t, "alice", "On The Shelf")
 	strangers := h.track(t, "bob", "Not For This Channel")
 
-	drawn := h.drawIDs(t, slug)
+	drawn := h.drawIDs(t, c)
 	if drawn[strangers] > 0 {
 		t.Error("autoplay drew a track nobody who may enter this channel uploaded")
 	}
@@ -50,39 +50,34 @@ func TestSmartShuffleOnlyDrawsFromWhoMayEnterTheChannel(t *testing.T) {
 // of them may queue their own track for everyone).
 func TestEnteringTheChannelBringsYourShelfToItsAutoplay(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
+	c := h.crew(t, "alice")
 	theirs := h.track(t, "bob", "Bob's Song")
 
-	if h.drawIDs(t, slug)[theirs] > 0 {
+	if h.drawIDs(t, c)[theirs] > 0 {
 		t.Fatal("an outsider's track was already reachable")
 	}
-	h.join(t, slug, "bob", "member")
-	if h.drawIDs(t, slug)[theirs] == 0 {
+	h.join(t, c, "bob", "member")
+	if h.drawIDs(t, c)[theirs] == 0 {
 		t.Error("bob came in and his shelf did not follow")
 	}
 }
 
-// An open channel's pool is the whole crew's (ADR-0058): a member who never
-// stood in the room it came from may still enter, so their shelf is in.
+// An open channel's pool is the whole crew's (ADR-0058): a member nobody
+// named into it may still enter, so their shelf is in.
 func TestAnOpenChannelDrawsFromTheWholeCrew(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	voice := h.voiceID(t, slug)
-	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("room: %v", err)
-	}
-	if err := h.store.Queries.JoinCrew(t.Context(), db.JoinCrewParams{CrewID: room.CrewID, UserID: h.users["bob"].ID}); err != nil {
+	c := h.crew(t, "alice")
+	if err := h.store.Queries.JoinCrew(t.Context(), db.JoinCrewParams{CrewID: c.id, UserID: h.users["bob"].ID}); err != nil {
 		t.Fatalf("join crew: %v", err)
 	}
 	theirs := h.track(t, "bob", "Crew Song")
-	if h.drawIDs(t, slug)[theirs] > 0 {
+	if h.drawIDs(t, c)[theirs] > 0 {
 		t.Fatal("a member not named into the private channel was drawn from")
 	}
-	if _, err := h.store.Pool.Exec(t.Context(), `update channels set private = false where id = $1`, voice); err != nil {
+	if _, err := h.store.Pool.Exec(t.Context(), `update channels set private = false where id = $1`, c.voiceID); err != nil {
 		t.Fatalf("open the channel: %v", err)
 	}
-	if h.drawIDs(t, slug)[theirs] == 0 {
+	if h.drawIDs(t, c)[theirs] == 0 {
 		t.Error("the channel is open to the crew and a member's shelf is still out")
 	}
 }
@@ -92,12 +87,12 @@ func TestAnOpenChannelDrawsFromTheWholeCrew(t *testing.T) {
 // twice in a single refill.
 func TestOneSongOnTwoShelvesIsDrawnOncePerShelf(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	h.join(t, slug, "bob", "member")
+	c := h.crew(t, "alice")
+	h.join(t, c, "bob", "member")
 	hers := h.track(t, "alice", "Both Have It")
 	his := h.track(t, "bob", "Both Have It")
 
-	drawn := h.drawIDs(t, slug)
+	drawn := h.drawIDs(t, c)
 	for _, id := range []string{hers, his} {
 		if drawn[id] != 1 {
 			t.Errorf("track %s drawn %d times, want 1", id[:8], drawn[id])
@@ -111,21 +106,21 @@ func TestOneSongOnTwoShelvesIsDrawnOncePerShelf(t *testing.T) {
 // the room-level exclusion's successor is the private channel's name list.
 func TestTakingARiderOutOfAPrivateChannelTakesTheirShelf(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	h.join(t, slug, "bob", "member")
+	c := h.crew(t, "alice")
+	h.join(t, c, "bob", "member")
 	mine := h.track(t, "alice", "Still Here")
 	theirs := h.track(t, "bob", "Played Anyway")
 
-	if h.drawIDs(t, slug)[theirs] == 0 {
+	if h.drawIDs(t, c)[theirs] == 0 {
 		t.Fatal("bob's shelf was unreachable before — test proves nothing")
 	}
 	if err := h.store.Queries.UnnameChannelMember(t.Context(), db.UnnameChannelMemberParams{
-		ChannelID: h.voiceID(t, slug), UserID: h.users["bob"].ID,
+		ChannelID: c.voiceID, UserID: h.users["bob"].ID,
 	}); err != nil {
 		t.Fatalf("take bob out: %v", err)
 	}
 
-	drawn := h.drawIDs(t, slug)
+	drawn := h.drawIDs(t, c)
 	if drawn[theirs] > 0 {
 		t.Error("autoplay still draws from the shelf of a rider taken out of the channel")
 	}
@@ -139,25 +134,21 @@ func TestTakingARiderOutOfAPrivateChannelTakesTheirShelf(t *testing.T) {
 // random, so a track that should be gone looks like one that should be there.
 func TestACrewBannedMembersShelfLeavesAutoplay(t *testing.T) {
 	h := setup(t)
-	slug := h.room(t, "alice")
-	h.join(t, slug, "bob", "member")
-	if _, err := h.store.Pool.Exec(t.Context(), `update channels set private = false where id = $1`, h.voiceID(t, slug)); err != nil {
+	c := h.crew(t, "alice")
+	h.join(t, c, "bob", "member")
+	if _, err := h.store.Pool.Exec(t.Context(), `update channels set private = false where id = $1`, c.voiceID); err != nil {
 		t.Fatalf("open the channel: %v", err)
 	}
 	theirs := h.track(t, "bob", "Bob's Song")
-	if h.drawIDs(t, slug)[theirs] == 0 {
+	if h.drawIDs(t, c)[theirs] == 0 {
 		t.Fatal("a member's track was not reachable before the ban — test proves nothing")
 	}
-	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
-	if err != nil {
-		t.Fatalf("room: %v", err)
-	}
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: room.CrewID, UserID: h.users["bob"].ID, Role: "banned",
+		CrewID: c.id, UserID: h.users["bob"].ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("crew ban: %v", err)
 	}
-	if h.drawIDs(t, slug)[theirs] > 0 {
+	if h.drawIDs(t, c)[theirs] > 0 {
 		t.Error("autoplay still draws from the shelf of a member the crew banned")
 	}
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/board"
 	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/chat"
+	"github.com/natrontech/wattroom/server/internal/crews"
 	"github.com/natrontech/wattroom/server/internal/customworkouts"
 	"github.com/natrontech/wattroom/server/internal/dms"
 	"github.com/natrontech/wattroom/server/internal/feedback"
@@ -48,7 +49,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/recap"
 	"github.com/natrontech/wattroom/server/internal/riders"
 	"github.com/natrontech/wattroom/server/internal/rides"
-	"github.com/natrontech/wattroom/server/internal/rooms"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/stats"
@@ -238,16 +238,16 @@ func main() {
 			// its durable record rather than lost with the goroutine (#799).
 			uploader.Sweep(ctx)
 		}
-		roomsService := rooms.New(st, authService, log)
-		roomsService.Register(mux)
-		crewCard = roomsService.CrewCard
+		crewsService := crews.New(st, authService, log)
+		crewsService.Register(mux)
+		crewCard = crewsService.CrewCard
 		// A purge hands the rider's crews on before the row goes (ADR-0038).
-		accountService.SetCrews(roomsService)
+		accountService.SetCrews(crewsService)
 		// Session-planned email mounts only with WATTROOM_RESEND_KEY set —
 		// without it the profile hides the whole notifications section.
 		if notifier := notify.New(st, log, baseURL); notifier != nil {
 			notifier.Register(mux)
-			roomsService.SetNotifier(notifier)
+			crewsService.SetNotifier(notifier)
 			authService.SetMailer(notifier)
 			// The security alarm (#840): account events reach the rider's
 			// verified address whether or not they opted into anything.
@@ -299,22 +299,18 @@ func main() {
 		if uploader != nil {
 			saver.SetUploader(uploader)
 		}
-		// A crew's text and voice channels (ADR-0058). The rooms service
-		// above stays until the web has moved onto them (#2446). Its door is
-		// the hub's: live state keys by voice channel (#2436).
+		// A crew's text and voice channels (ADR-0058). Its door is the hub's:
+		// live state keys by voice channel (#2436).
 		channelsService := channels.New(st, authService, log)
 		channelsService.Register(mux)
 		h := hub.New(log, channelsService, saver)
 		hubForDrain = h
-		roomsService.SetPresence(h)
+		crewsService.SetPresence(h)
 		channelsService.SetLive(h)
-		chatService := chat.New(st, roomsService, log)
-		chatService.Register(mux)
 		// A text channel's chat (#2435), behind the channel's own gate; the
 		// lobby ping names the channel whose log moved.
+		chatService := chat.New(st, log)
 		chatService.RegisterChannels(mux, channelsService, h)
-		// Every room chat write pings the lobby; the room re-reads (#2437).
-		chatService.SetLive(h)
 		// The deletions no write can trigger (#1153, #1163). Sessions and
 		// recaps are both bounded by TIME, which nothing but a clock enforces.
 		housekeeping.Run(ctx, st, log)
@@ -324,8 +320,7 @@ func main() {
 		recapService := recap.New(st, log)
 		h.SetRecapKeeper(recapService)
 		recapService.SetLive(h)
-		chatService.SetRecaps(recapService)
-		playlistsService := playlists.New(st, authService, roomsService, channelsService, log)
+		playlistsService := playlists.New(st, authService, channelsService, log)
 		playlistsService.Register(mux)
 		h.SetPlaylistSource(playlistsService)
 		h.SetTrackHistory(playlistsService) // #269, what smart shuffle weights by
@@ -346,7 +341,7 @@ func main() {
 		h.SetXpKeeper(trophies)
 		trophies.AccrueVoice(ctx, h)
 		// Both still link to rooms; the hub names voice channels (#2436).
-		roomWhere := rooms.RoomWhere{Live: h, Store: st}
+		roomWhere := channels.RoomWhere{Live: h, Store: st}
 		friends.New(st, authService, roomWhere, log).Register(mux)
 		riders.New(st, authService, roomWhere, log).Register(mux)
 		// The soundboard's durable half (#877, ADR-0033): clips are personal,
@@ -367,7 +362,6 @@ func main() {
 		// outbound fetch goes through the package's own SSRF guard.
 		unfurl.New(authService, log).Register(mux)
 		mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
-		mux.HandleFunc("GET /ws/rooms/{slug}", roomsService.ByRoomSlug(h.HandleWS))
 		// The lobby socket (#251): held by every signed-in client — online for
 		// friends, and the push channel that keeps the rail live.
 		h.SetLobbyAuth(func(r *http.Request) (string, bool) {
@@ -399,13 +393,12 @@ func main() {
 			authService.SetAvEnabled(true)
 			avService := av.New(cfg, channelsService, log)
 			avService.Register(mux)
-			mux.HandleFunc("GET /api/rooms/{slug}/av-token", roomsService.ByRoomSlug(avService.HandleToken))
 			avService.SetVoiceSink(h)
 			avService.RegisterWebhook(mux)
 			// Webhooks alone leak ghosts when LiveKit hard-crashes (#234).
 			avService.StartReconciler(ctx)
 			// Bans and removals eject from voice too, not just the metrics WS.
-			roomsService.SetVoiceEjector(avService)
+			crewsService.SetVoiceEjector(avService)
 			channelsService.SetVoiceEjector(avService)
 		}
 	}

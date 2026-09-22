@@ -23,20 +23,10 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-// UserSource resolves the signed-in user — same shape rooms/customworkouts
-// consume. Personal playlists need nothing more.
+// UserSource resolves the signed-in user — the same shape customworkouts
+// consumes. Personal playlists need nothing more.
 type UserSource interface {
 	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
-}
-
-// Members is the room-scoped gate (#638), satisfied by *rooms.Service — the
-// same one chat stands behind, so a ban refuses the shelf like everything else.
-// RequireModerator is the tighter gate (#695) behind the genuinely
-// destructive verbs — delete/rename a saved playlist, delete a track, change
-// autoplay — that a member who only joined from a link should not reach.
-type Members interface {
-	RequireMember(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool)
-	RequireModerator(w http.ResponseWriter, r *http.Request, refusal string) (db.Room, db.User, bool)
 }
 
 // Channels is the crew's gate and a voice channel's (ADR-0058), satisfied by
@@ -47,10 +37,10 @@ type Channels interface {
 	RequireVoice(w http.ResponseWriter, r *http.Request) (db.Channel, db.User, string, bool)
 }
 
-// Live pushes a saved playlist's tracks onto a room's live queue (#627) —
-// mirrors chat.Live for the same reason: this arrives over HTTP, and the
-// deck it lands on is the hub's problem. Nil means no live room reachable;
-// the playlist itself is unaffected either way.
+// Live pushes a saved playlist's tracks onto a voice channel's live deck
+// (#627) — mirrors chat.Live for the same reason: this arrives over HTTP, and
+// the deck it lands on is the hub's problem. Nil means no live deck
+// reachable; the playlist itself is unaffected either way.
 type Live interface {
 	QueuePlaylist(channel, riderID, addedBy string, tracks []protocol.JukeboxCommand) (addedCount int, ok bool)
 }
@@ -58,37 +48,23 @@ type Live interface {
 type Service struct {
 	store    *store.Store
 	users    UserSource
-	members  Members
 	channels Channels
 	live     Live
 	log      *slog.Logger
 }
 
-func New(st *store.Store, users UserSource, members Members, channels Channels, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, members: members, channels: channels, log: log}
+func New(st *store.Store, users UserSource, channels Channels, log *slog.Logger) *Service {
+	return &Service{store: st, users: users, channels: channels, log: log}
 }
 
-// SetLive wires the queue-into-room bridge in after construction, like
-// chat's SetLive. Nil stays valid — "queue" just fails as "no room" would.
+// SetLive wires the queue-onto-a-deck bridge in after construction, like
+// chat's SetLive. Nil stays valid — "queue" just fails as an unopened voice
+// channel would.
 func (s *Service) SetLive(l Live) { s.live = l }
 
 func (s *Service) Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/rooms/{slug}/playlists", s.handleListRoomPlaylists)
-	mux.HandleFunc("POST /api/rooms/{slug}/playlists", s.handleCreateRoomPlaylist)
-	mux.HandleFunc("GET /api/rooms/{slug}/playlists/{playlist}", s.handleGetRoomPlaylist)
-	mux.HandleFunc("PUT /api/rooms/{slug}/playlists/{playlist}", s.handleRenameRoomPlaylist)
-	mux.HandleFunc("DELETE /api/rooms/{slug}/playlists/{playlist}", s.handleDeleteRoomPlaylist)
-	mux.HandleFunc("POST /api/rooms/{slug}/playlists/{playlist}/tracks", s.handleAddRoomTrack)
-	mux.HandleFunc("DELETE /api/rooms/{slug}/playlists/{playlist}/tracks/{trackID}", s.handleDeleteRoomTrack)
-	mux.HandleFunc("PUT /api/rooms/{slug}/playlists/{playlist}/tracks/{trackID}/position", s.handleMoveRoomTrack)
-	mux.HandleFunc("POST /api/rooms/{slug}/playlists/{playlist}/queue", s.handleQueuePlaylist)
-	mux.HandleFunc("POST /api/rooms/{slug}/queue", s.handleQueueTracks)
-	mux.HandleFunc("GET /api/rooms/{slug}/autoplay", s.handleGetAutoplay)
-	mux.HandleFunc("PATCH /api/rooms/{slug}/autoplay", s.handleUpdateAutoplay)
-
-	// The crew's shelf and a voice channel's deck (ADR-0058, #2439); the
-	// /api/rooms twins above read the same shelf until the room goes (#2446).
-	// A voice channel's autoplay settings are the channel's own PATCH (#2434).
+	// The crew's shelf and a voice channel's deck (ADR-0058, #2439). A voice
+	// channel's autoplay settings are the channel's own PATCH (#2434).
 	mux.HandleFunc("GET /api/crews/{id}/playlists", s.handleListCrewPlaylists)
 	mux.HandleFunc("POST /api/crews/{id}/playlists", s.handleCreateCrewPlaylist)
 	mux.HandleFunc("GET /api/crews/{id}/playlists/{playlist}", s.handleGetCrewPlaylist)
@@ -119,35 +95,6 @@ type scope struct {
 	// asCrew is false for the personal shelf, where crew stays the zero
 	// value and every check goes through user instead.
 	asCrew bool
-	// The voice channel whose autoplay marks one playlist active, for the
-	// room's list — which has one channel. The crew's list has several and
-	// leaves it zero: each channel says its own (#2434).
-	voice pgtype.UUID
-}
-
-// roomScope resolves the signed-in member of the room named by {slug} to its
-// crew's shelf (#2439): the room's playlists moved to the crew, and until the
-// room goes (#2446) its pages read the same shelf the crew's do. Any member,
-// not just owner/coach, per docs/SPEC.md's jukebox-controls-are-member-level
-// row.
-func (s *Service) roomScope(w http.ResponseWriter, r *http.Request) (scope, bool) {
-	room, user, ok := s.members.RequireMember(w, r, "Join the room to manage its playlists.")
-	if !ok {
-		return scope{}, false
-	}
-	return s.roomsCrew(w, r, room, user)
-}
-
-// roomsCrew is the room's crew shelf and its voice channel. Every room has
-// had a crew since ADR-0038 and a voice channel since #2428; one without is
-// a room the migration refused, and there is no shelf to show.
-func (s *Service) roomsCrew(w http.ResponseWriter, r *http.Request, room db.Room, user db.User) (scope, bool) {
-	if !room.CrewID.Valid {
-		httpx.WriteError(w, http.StatusNotFound, "not_found", "That room has no crew to keep playlists for.")
-		return scope{}, false
-	}
-	voice, _ := store.ParseUUID(s.store.VoiceChannelOf(r.Context(), room.ID))
-	return scope{crew: room.CrewID, user: user, asCrew: true, voice: voice}, true
 }
 
 // crewScope resolves the crew at {id} for a signed-in, unbanned member (a 404
@@ -164,18 +111,6 @@ func (s *Service) crewScope(w http.ResponseWriter, r *http.Request, admin bool) 
 		return scope{}, false
 	}
 	return scope{crew: crew, user: user, asCrew: true}, true
-}
-
-// roomModeratorScope is roomScope behind the tighter gate (#695): renaming or
-// deleting a saved room playlist, dropping a track from one, and changing
-// autoplay all tear down state every member relies on, not just the caller's
-// own — a member who only joined from a link should not reach them.
-func (s *Service) roomModeratorScope(w http.ResponseWriter, r *http.Request) (scope, bool) {
-	room, user, ok := s.members.RequireModerator(w, r, "Only the room's coach or owner can do that.")
-	if !ok {
-		return scope{}, false
-	}
-	return s.roomsCrew(w, r, room, user)
 }
 
 func (s *Service) personalScope(w http.ResponseWriter, r *http.Request) (scope, bool) {
@@ -205,7 +140,7 @@ func (sc scope) owns(p db.Playlist) bool {
 }
 
 // ownedPlaylist fetches {id} and checks it against sc.owns — a mismatch is a
-// 404, same as absent: no probing which ids exist in a room you're not in.
+// 404, same as absent: no probing which ids exist in a crew you're not in.
 func (s *Service) ownedPlaylist(w http.ResponseWriter, r *http.Request, sc scope) (db.Playlist, bool) {
 	id, err := store.ParseUUID(r.PathValue("playlist"))
 	if err != nil {
@@ -228,41 +163,25 @@ type playlistJSON struct {
 	ID         string `json:"id"`
 	Name       string `json:"name"`
 	TrackCount int64  `json:"trackCount"`
-	Active     bool   `json:"active,omitempty"`
 	UpdatedAt  int64  `json:"updatedAt"`
 }
 
-func (s *Service) handleListRoomPlaylists(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomScope(w, r); ok {
-		s.listCrewPlaylists(w, r, sc)
-	}
-}
-
+// handleListCrewPlaylists is the crew's shelf. Which one a voice channel's
+// autoplay plays is that channel's to say (#2434), not the shelf's.
 func (s *Service) handleListCrewPlaylists(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.crewScope(w, r, false); ok {
-		s.listCrewPlaylists(w, r, sc)
+	sc, ok := s.crewScope(w, r, false)
+	if !ok {
+		return
 	}
-}
-
-// listCrewPlaylists is the crew's shelf; `active` is set only when the scope
-// names one voice channel (the room's list), whose autoplay marks it.
-func (s *Service) listCrewPlaylists(w http.ResponseWriter, r *http.Request, sc scope) {
 	rows, err := s.store.Queries.ListCrewPlaylists(r.Context(), sc.crew)
 	if err != nil {
 		httpx.Fail(w, s.log, "list crew playlists failed", err, "The playlists could not be loaded.")
 		return
 	}
-	var active pgtype.UUID
-	if sc.voice.Valid {
-		if ch, err := s.store.Queries.GetChannel(r.Context(), sc.voice); err == nil {
-			active = ch.AutoplayPlaylistID
-		}
-	}
 	out := make([]playlistJSON, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, playlistJSON{
 			ID: store.UUIDString(row.ID), Name: row.Name, TrackCount: row.TrackCount,
-			Active:    active.Valid && active == row.ID,
 			UpdatedAt: row.UpdatedAt.Time.UnixMilli(),
 		})
 	}
@@ -323,12 +242,6 @@ func (s *Service) createPlaylist(w http.ResponseWriter, r *http.Request, sc scop
 	})
 }
 
-func (s *Service) handleCreateRoomPlaylist(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomScope(w, r); ok {
-		s.createPlaylist(w, r, sc)
-	}
-}
-
 func (s *Service) handleCreateCrewPlaylist(w http.ResponseWriter, r *http.Request) {
 	if sc, ok := s.crewScope(w, r, false); ok {
 		s.createPlaylist(w, r, sc)
@@ -366,12 +279,6 @@ func (s *Service) renamePlaylist(w http.ResponseWriter, r *http.Request, sc scop
 	})
 }
 
-func (s *Service) handleRenameRoomPlaylist(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomModeratorScope(w, r); ok {
-		s.renamePlaylist(w, r, sc)
-	}
-}
-
 func (s *Service) handleRenameCrewPlaylist(w http.ResponseWriter, r *http.Request) {
 	if sc, ok := s.crewScope(w, r, true); ok {
 		s.renamePlaylist(w, r, sc)
@@ -394,12 +301,6 @@ func (s *Service) deletePlaylist(w http.ResponseWriter, r *http.Request, sc scop
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (s *Service) handleDeleteRoomPlaylist(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomModeratorScope(w, r); ok {
-		s.deletePlaylist(w, r, sc)
-	}
 }
 
 func (s *Service) handleDeleteCrewPlaylist(w http.ResponseWriter, r *http.Request) {

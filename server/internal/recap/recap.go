@@ -102,32 +102,10 @@ func (s *Service) SaveRecap(channel, session string, rec protocol.SessionRecap) 
 	}
 }
 
-// List is a room's recaps for the chat backlog, oldest-first — the caller has
-// already proven membership, which is the only gate this data has.
-//
-// viewer is whose own ride each card points at (#1560). It narrows nothing
-// else: every member sees the same presence intervals, and the ride id is the
-// one per-viewer field on the card.
-func (s *Service) List(ctx context.Context, roomID, viewer pgtype.UUID, limit int) ([]protocol.SessionRecap, error) {
-	rows, err := s.store.Queries.ListRoomRecaps(ctx, db.ListRoomRecapsParams{
-		RoomID: roomID, Limit: int32(limit), UserID: viewer, //nolint:gosec // bounded by the caller
-	})
-	if err != nil {
-		return nil, err
-	}
-	out := make([]protocol.SessionRecap, 0, len(rows))
-	for _, row := range rows {
-		if rec, ok := Decode(s.log, db.ListCrewRecapsRow(row)); ok {
-			out = append(out, rec)
-		}
-	}
-	return out, nil
-}
-
-// Decode turns a stored recap into the card, for the room's backlog and the
-// crew's list (#2442) alike. A row whose riders will not parse is a row we
-// cannot draw: it is skipped rather than failing the whole backlog — the
-// conversation matters more than one card (errors.md — never a blank pane).
+// Decode turns a stored recap into the card for the crew's list (#2442). A
+// row whose riders will not parse is a row we cannot draw: it is skipped
+// rather than failing the whole list — the rest matter more than one card
+// (errors.md — never a blank pane).
 func Decode(log *slog.Logger, row db.ListCrewRecapsRow) (protocol.SessionRecap, bool) {
 	rec := protocol.SessionRecap{
 		ID:        store.UUIDString(row.ID),

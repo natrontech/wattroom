@@ -51,12 +51,13 @@ type channelWorld struct {
 	open, private, voice string
 }
 
-// channelSetup: alice owns a crew bob and cara are members of.
+// channelSetup: alice owns a crew bob and cara are members of; dave is in
+// none of it.
 func channelSetup(t *testing.T) channelWorld {
 	t.Helper()
 	st := storetest.Open(t)
 	users := &testx.Users{ByToken: map[string]db.User{}}
-	for _, name := range []string{"alice", "bob", "cara"} {
+	for _, name := range []string{"alice", "bob", "cara", "dave"} {
 		u, err := st.Queries.CreateUser(t.Context(), db.CreateUserParams{DisplayName: name, FtpWatts: 200, WeightKg: 75})
 		if err != nil {
 			t.Fatalf("create %s: %v", name, err)
@@ -93,7 +94,7 @@ func channelSetup(t *testing.T) channelWorld {
 		t.Fatalf("name bob: %v", err)
 	}
 	log := slog.New(slog.DiscardHandler)
-	w.svc = New(st, nil, log)
+	w.svc = New(st, log)
 	w.mux = http.NewServeMux()
 	w.svc.RegisterChannels(w.mux, channels.New(st, users, log), w.lobby)
 	return w
@@ -112,19 +113,82 @@ func (w channelWorld) chat(t *testing.T, who, channel string) (int, map[string]a
 	return rec.Code, body
 }
 
-func (w channelWorld) lines(t *testing.T, who, channel string) []string {
+// messages is the channel's backlog as the client decodes it.
+func (w channelWorld) messages(t *testing.T, who, channel string) []map[string]any {
 	t.Helper()
 	status, body := w.chat(t, who, channel)
 	if status != http.StatusOK {
 		t.Fatalf("%s reading %s: %d %v", who, channel, status, body)
 	}
-	var out []string
+	var out []map[string]any
 	msgs, _ := body["messages"].([]any)
 	for _, m := range msgs {
 		line, _ := m.(map[string]any)
+		out = append(out, line)
+	}
+	return out
+}
+
+func (w channelWorld) lines(t *testing.T, who, channel string) []string {
+	t.Helper()
+	var out []string
+	for _, line := range w.messages(t, who, channel) {
 		out = append(out, fmt.Sprint(line["text"]))
 	}
 	return out
+}
+
+// readAt is where the viewer's "N new" divider goes; zero when they never read.
+func (w channelWorld) readAt(t *testing.T, who, channel string) float64 {
+	t.Helper()
+	_, body := w.chat(t, who, channel)
+	stamp, _ := body["readAt"].(float64)
+	return stamp
+}
+
+// pings is how many times the lobby has been told a channel moved.
+func (w channelWorld) pings() int { return len(w.lobby.heard()) }
+
+// setRole makes a crew member an admin, a member again, or banned.
+func (w channelWorld) setRole(t *testing.T, who, role string) {
+	t.Helper()
+	if err := w.svc.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: w.crew, UserID: w.users.ByToken[who].ID, Role: role,
+	}); err != nil {
+		t.Fatalf("%s as %s: %v", who, role, err)
+	}
+}
+
+// post runs one JSON POST as a user ("" = signed out) and decodes the answer.
+func post(t *testing.T, mux *http.ServeMux, user, path, body string) (int, map[string]any) {
+	t.Helper()
+	return send(t, mux, http.MethodPost, user, path, body)
+}
+
+// patch runs one JSON PATCH as a user ("" = signed out) and decodes the answer.
+func patch(t *testing.T, mux *http.ServeMux, user, path, body string) (int, map[string]any) {
+	t.Helper()
+	return send(t, mux, http.MethodPatch, user, path, body)
+}
+
+// del runs one DELETE as a user ("" = signed out).
+func del(t *testing.T, mux *http.ServeMux, user, path string) (int, map[string]any) {
+	t.Helper()
+	return send(t, mux, http.MethodDelete, user, path, "")
+}
+
+func send(t *testing.T, mux *http.ServeMux, method, user, path, body string) (int, map[string]any) {
+	t.Helper()
+	req := httptest.NewRequestWithContext(t.Context(), method, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	if user != "" {
+		req.Header.Set("X-Test-User", user)
+	}
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	var decoded map[string]any
+	_ = json.NewDecoder(w.Body).Decode(&decoded)
+	return w.Code, decoded
 }
 
 func (w channelWorld) say(t *testing.T, who, channel, text string) string {
@@ -180,6 +244,28 @@ func TestChannelChatStandsBehindTheChannelGate(t *testing.T) {
 	}
 	if status, _ := post(t, w.mux, "bob", "/api/channels/"+w.open+"/chat", `{"text":""}`); status != http.StatusBadRequest {
 		t.Errorf("an empty line: %d, want 400", status)
+	}
+}
+
+// A crew's ban stops at its chat too (#638): the banned rider keeps a row in
+// crew_roles, but neither the backlog, a post nor an upload is theirs — and a
+// 404 like any channel they may not enter, not a 403 that confirms it.
+func TestBannedRiderRefusedAtChannelChat(t *testing.T) {
+	w := channelSetup(t)
+	w.say(t, "bob", w.open, "before")
+	w.setRole(t, "bob", "banned")
+	if status, body := w.chat(t, "bob", w.open); status != http.StatusNotFound {
+		t.Errorf("banned rider read the backlog: %d %v", status, body)
+	}
+	if status, _ := post(t, w.mux, "bob", "/api/channels/"+w.open+"/chat", `{"text":"still here"}`); status != http.StatusNotFound {
+		t.Errorf("banned rider posted: %d", status)
+	}
+	if status, _ := w.upload(t, "bob", w.open, tinyPNG); status != http.StatusNotFound {
+		t.Errorf("banned rider uploaded an image: %d", status)
+	}
+	// Nothing leaked into the channel: the crew still sees one line.
+	if got := w.lines(t, "alice", w.open); len(got) != 1 {
+		t.Errorf("backlog after the refused post: %v", got)
 	}
 }
 

@@ -174,12 +174,6 @@ func (s *Service) getPlaylistDetail(w http.ResponseWriter, r *http.Request, sc s
 	})
 }
 
-func (s *Service) handleGetRoomPlaylist(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomScope(w, r); ok {
-		s.getPlaylistDetail(w, r, sc)
-	}
-}
-
 func (s *Service) handleGetCrewPlaylist(w http.ResponseWriter, r *http.Request) {
 	if sc, ok := s.crewScope(w, r, false); ok {
 		s.getPlaylistDetail(w, r, sc)
@@ -265,12 +259,6 @@ func (s *Service) deleteTrack(w http.ResponseWriter, r *http.Request, sc scope) 
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Service) handleAddRoomTrack(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomScope(w, r); ok {
-		s.addTrack(w, r, sc)
-	}
-}
-
 func (s *Service) handleAddCrewTrack(w http.ResponseWriter, r *http.Request) {
 	if sc, ok := s.crewScope(w, r, false); ok {
 		s.addTrack(w, r, sc)
@@ -280,12 +268,6 @@ func (s *Service) handleAddCrewTrack(w http.ResponseWriter, r *http.Request) {
 func (s *Service) handleAddPersonalTrack(w http.ResponseWriter, r *http.Request) {
 	if sc, ok := s.personalScope(w, r); ok {
 		s.addTrack(w, r, sc)
-	}
-}
-
-func (s *Service) handleDeleteRoomTrack(w http.ResponseWriter, r *http.Request) {
-	if sc, ok := s.roomModeratorScope(w, r); ok {
-		s.deleteTrack(w, r, sc)
 	}
 }
 
@@ -299,17 +281,6 @@ func (s *Service) handleDeletePersonalTrack(w http.ResponseWriter, r *http.Reque
 	if sc, ok := s.personalScope(w, r); ok {
 		s.deleteTrack(w, r, sc)
 	}
-}
-
-// handleQueuePlaylist appends a playlist's tracks onto the room's voice
-// channel's deck (#627) — the room's twin of handleQueuePlaylistIntoChannel,
-// until the room goes (#2446). Its gate is the rooms package's (#2242).
-func (s *Service) handleQueuePlaylist(w http.ResponseWriter, r *http.Request) {
-	room, user, ok := s.members.RequireMember(w, r, "Join the room to use its jukebox.")
-	if !ok {
-		return
-	}
-	s.queuePlaylist(w, r, room.CrewID, s.store.VoiceChannelOf(r.Context(), room.ID), user)
 }
 
 // handleQueuePlaylistIntoChannel appends a playlist's tracks onto a voice

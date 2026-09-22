@@ -3,9 +3,6 @@
 // announcement a channel keeps. HTTP only — there is no socket in a text
 // channel — and the fan-out is the lobby ping naming the channel, so a client
 // looking at it re-fetches that log and nothing else.
-//
-// The room's twin of every handler here is in handlers.go and goes with the
-// room (#2446); what the two share is factored below them rather than copied.
 package chat
 
 import (
@@ -186,8 +183,10 @@ func (s *Service) handleChannelPost(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// pruneChannelSampled is pruneSampled's bound for a channel: 500 lines, and
-// the images nothing points at, one write in sixteen and off the request.
+// pruneChannelSampled bounds a channel: 500 lines, and the images nothing
+// points at, one write in sixteen and off the request — every save used to
+// pay a delete-with-subquery that stalled the sender (audit #219). The prune
+// outlives the request on purpose, bounded by its own timeout.
 func (s *Service) pruneChannelSampled(channelID pgtype.UUID) {
 	if time.Now().UnixNano()%16 != 0 {
 		return
@@ -527,7 +526,7 @@ func (s *Service) handleCrewAnnouncement(w http.ResponseWriter, r *http.Request)
 }
 
 // tally folds the reaction rows into emoji → count per line, and which of
-// them the viewer pressed — the room's backlog and a channel's alike.
+// them the viewer pressed.
 func tally(rows []db.ListChannelReactionsRow) (map[string]map[string]int, map[string][]string) {
 	counts := map[string]map[string]int{}
 	mine := map[string][]string{}

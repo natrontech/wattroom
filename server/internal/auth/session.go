@@ -198,9 +198,8 @@ func (s *Service) SameOrigin(r *http.Request) bool {
 }
 
 // isMutatingMethod is RequireUser's CSRF gate: GET/HEAD/OPTIONS never carry
-// side effects here (the one pre-existing exception, GET /api/rooms/{slug}
-// marking the room read, is tracked separately — #678), so only these verbs
-// need the Origin check on top of the SameSite=Lax cookie. A read that writes
+// side effects here, so only these verbs need the Origin check on top of the
+// SameSite=Lax cookie. A read that writes
 // is a read asking for that check to be skipped: the crew door's "remember
 // this invite" was one, and became a POST of its own (#2248).
 func isMutatingMethod(method string) bool {
