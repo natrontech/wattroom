@@ -334,6 +334,8 @@ test('no page outside a room scrolls sideways on a phone', async ({
 		'/crew/[id]/members': `/crew/${crewId}/members`,
 		'/crew/[id]/settings': `/crew/${crewId}/settings`,
 		'/crew/[id]/c/[channel]': `/crew/${crewId}/c/${textChannel}`,
+		'/crew/[id]/board': `/crew/${crewId}/board`,
+		'/crew/[id]/workouts': `/crew/${crewId}/workouts`,
 		'/c/[code]': `/c/${crewCode}`,
 	};
 	expect(
