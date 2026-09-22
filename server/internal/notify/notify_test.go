@@ -19,11 +19,15 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 type harness struct {
-	store   *store.Store
-	room    db.Room
+	store *store.Store
+	// Thursday Crew, founded by the planner, with the voice channel its
+	// sessions name (#2440).
+	crew    db.Crew
+	channel db.Channel
 	planner db.User // coach who plans — never emailed
 	optIn   db.User // email + notify_planned on
 	optOut  db.User // email set, notify_planned off
@@ -66,29 +70,31 @@ func setup(t *testing.T) *harness {
 		}
 	}
 
-	// Unique per run for the same reason as the address: `rooms.slug` is
-	// globally unique and the test database outlives the run (#2083). Every
-	// assertion below reads the slug back off the room rather than repeating
-	// it.
-	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug:    fmt.Sprintf("notify-test-%d", time.Now().UnixNano()),
-		Name:    "Velvet Hammer",
-		OwnerID: h.planner.ID,
+	crew, err := st.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
+		Name: "Thursday Crew", OwnerID: h.planner.ID, Code: testx.CrewCode(),
 	})
 	if err != nil {
-		t.Fatalf("create room: %v", err)
+		t.Fatalf("create crew: %v", err)
 	}
-	h.room = room
-	for _, m := range []struct {
-		u    db.User
-		role string
-	}{{h.planner, "owner"}, {h.optIn, "member"}, {h.optOut, "member"}} {
-		if err := st.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room.ID, UserID: m.u.ID, Role: m.role,
+	h.crew = crew
+	// Before the users: crews.owner_id is ON DELETE RESTRICT (ADR-0038).
+	t.Cleanup(func() {
+		_, _ = st.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID)
+	})
+	for _, u := range []db.User{h.optIn, h.optOut} {
+		if err := st.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+			CrewID: crew.ID, UserID: u.ID, Role: "member",
 		}); err != nil {
-			t.Fatalf("membership: %v", err)
+			t.Fatalf("crew role: %v", err)
 		}
 	}
+	channel, err := st.Queries.CreateChannel(t.Context(), db.CreateChannelParams{
+		CrewID: crew.ID, Kind: "voice", Name: "Pain Cave", MaxChannels: 10,
+	})
+	if err != nil {
+		t.Fatalf("create channel: %v", err)
+	}
+	h.channel = channel
 	return h
 }
 
@@ -149,7 +155,7 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
 	s.sessionMail(t.Context(), sessionNote{
-		room: h.room, workout: "Sweet Spot 2×20", startsAt: starts,
+		crew: h.crew.ID, channel: h.channel.ID, workout: "Sweet Spot 2×20", startsAt: starts,
 		actor: h.planner.ID, change: sessionPlanned,
 	})
 
@@ -162,22 +168,23 @@ func TestSessionPlannedMailsOptedInMembersOnly(t *testing.T) {
 		t.Fatalf("mailed %s, want the opted-in member", to)
 	}
 	subject := fmt.Sprint(p["subject"])
-	if !strings.Contains(subject, "Velvet Hammer") || !strings.Contains(subject, "Sweet Spot 2×20") {
-		t.Fatalf("subject %q misses room or workout", subject)
+	if !strings.Contains(subject, "Thursday Crew · Pain Cave") || !strings.Contains(subject, "Sweet Spot 2×20") {
+		t.Fatalf("subject %q misses the crew and channel, or the workout", subject)
 	}
+	link := "https://wattroom.example/crew/" + store.UUIDString(h.crew.ID) + "/v/" + store.UUIDString(h.channel.ID)
 	text := fmt.Sprint(p["text"])
-	if !strings.Contains(text, "https://wattroom.example/r/"+h.room.Slug) {
-		t.Fatalf("body misses the room link: %q", text)
+	if !strings.Contains(text, link) {
+		t.Fatalf("body misses the channel link: %q", text)
 	}
 	if !strings.Contains(text, "/api/notify/unsubscribe?u="+store.UUIDString(h.optIn.ID)) {
 		t.Fatalf("body misses the unsubscribe link: %q", text)
 	}
 
-	// Both parts go out together (#838), and the HTML one carries the room
-	// link on its button and the workout as the line that glows.
+	// Both parts go out together (#838), and the HTML one carries the
+	// channel's link on its button and the workout as the line that glows.
 	html := fmt.Sprint(p["html"])
 	for _, want := range []string{
-		"https://wattroom.example/r/" + h.room.Slug,
+		link,
 		"Sweet Spot 2×20",
 		"#ff3d8b",
 		"/api/notify/unsubscribe?u=" + store.UUIDString(h.optIn.ID),
@@ -202,62 +209,7 @@ func TestSessionMailSkipsABannedMember(t *testing.T) {
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
 	s.sessionMail(t.Context(), sessionNote{
-		room: h.room, workout: "Sweet Spot 2\u00d720", startsAt: starts,
-		actor: h.planner.ID, change: sessionPlanned,
-	})
-	if len(fake.payloads) != 1 {
-		t.Fatalf("sent %d before the ban, want 1 — test proves nothing", len(fake.payloads))
-	}
-
-	if _, err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
-		RoomID: h.room.ID, UserID: h.optIn.ID, Role: "banned",
-	}); err != nil {
-		t.Fatalf("ban: %v", err)
-	}
-
-	fake.payloads = nil
-	s.sessionMail(t.Context(), sessionNote{
-		room: h.room, workout: "Sweet Spot 2\u00d720", startsAt: starts,
-		actor: h.planner.ID, change: sessionPlanned,
-	})
-	if len(fake.payloads) != 0 {
-		t.Errorf("mailed a banned member: %v", fake.payloads[0]["to"])
-	}
-}
-
-// The crew's ban, not the room's (#1904): the membership row stays as it
-// was and only visible_rooms knows, so the targets query has to ask it.
-func TestSessionMailSkipsACrewBannedMember(t *testing.T) {
-	h := setup(t)
-	fake := &fakeResend{}
-	srv := httptest.NewServer(fake.handler())
-	defer srv.Close()
-	s := service(h, srv.URL)
-	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
-
-	// Unique per run, like the address and the slug: `crews_code` is a unique
-	// index over the whole database (#2083). Derived from the planner's id
-	// rather than from a clock, so two runs starting in the same instant still
-	// differ.
-	code := "CB" + strings.ToUpper(store.UUIDString(h.planner.ID)[:6])
-	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
-		Name: "Crew", OwnerID: h.planner.ID, Code: &code,
-	})
-	if err != nil {
-		t.Fatalf("crew: %v", err)
-	}
-	// LIFO with the harness's room cleanup: the room lets go of the crew
-	// first, or the crew's delete is refused and the room's slug is left
-	// behind for the next test to trip on.
-	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(context.Background(), "update rooms set crew_id = null where id = $1", h.room.ID)
-		_, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID)
-	})
-	if _, err := h.store.Pool.Exec(t.Context(), "update rooms set crew_id = $2 where id = $1", h.room.ID, crew.ID); err != nil {
-		t.Fatalf("place room in crew: %v", err)
-	}
-	s.sessionMail(t.Context(), sessionNote{
-		room: h.room, workout: "Sweet Spot", startsAt: starts,
+		crew: h.crew.ID, channel: h.channel.ID, workout: "Sweet Spot 2\u00d720", startsAt: starts,
 		actor: h.planner.ID, change: sessionPlanned,
 	})
 	if len(fake.payloads) != 1 {
@@ -265,17 +217,51 @@ func TestSessionMailSkipsACrewBannedMember(t *testing.T) {
 	}
 
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.optIn.ID, Role: "banned",
+		CrewID: h.crew.ID, UserID: h.optIn.ID, Role: "banned",
 	}); err != nil {
-		t.Fatalf("crew ban: %v", err)
+		t.Fatalf("ban: %v", err)
 	}
+
 	fake.payloads = nil
 	s.sessionMail(t.Context(), sessionNote{
-		room: h.room, workout: "Sweet Spot", startsAt: starts,
+		crew: h.crew.ID, channel: h.channel.ID, workout: "Sweet Spot 2\u00d720", startsAt: starts,
 		actor: h.planner.ID, change: sessionPlanned,
 	})
 	if len(fake.payloads) != 0 {
-		t.Errorf("mailed a crew-banned member: %v", fake.payloads[0]["to"])
+		t.Errorf("mailed a banned member: %v", fake.payloads[0]["to"])
+	}
+}
+
+// A plan in a private channel mails only who may enter it (#2440): the
+// channel's existence is part of what its gate keeps, and a mail is the one
+// place this reaches outside the app.
+func TestSessionMailInAPrivateChannelReachesItsPeopleOnly(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	s := service(h, srv.URL)
+	starts := time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local)
+	if _, err := h.store.Pool.Exec(t.Context(), "update channels set private = true where id = $1", h.channel.ID); err != nil {
+		t.Fatalf("make private: %v", err)
+	}
+	mail := func() int {
+		fake.payloads = nil
+		s.sessionMail(t.Context(), sessionNote{
+			crew: h.crew.ID, channel: h.channel.ID, workout: "Sweet Spot", startsAt: starts,
+			actor: h.planner.ID, change: sessionPlanned,
+		})
+		return len(fake.payloads)
+	}
+	if n := mail(); n != 0 {
+		t.Fatalf("a private channel's plan mailed %d members it does not admit", n)
+	}
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"insert into channel_members (channel_id, user_id) values ($1, $2)", h.channel.ID, h.optIn.ID); err != nil {
+		t.Fatalf("name into channel: %v", err)
+	}
+	if n := mail(); n != 1 {
+		t.Fatalf("named into the channel, the member got %d mails, want 1", n)
 	}
 }
 
@@ -288,7 +274,7 @@ func TestSessionRescheduledSaysMoved(t *testing.T) {
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 2, 18, 30, 0, 0, time.Local)
 	s.sessionMail(t.Context(), sessionNote{
-		room: h.room, workout: "Sweet Spot 2×20", startsAt: starts,
+		crew: h.crew.ID, channel: h.channel.ID, workout: "Sweet Spot 2×20", startsAt: starts,
 		actor: h.planner.ID, change: sessionMoved,
 	})
 
@@ -316,7 +302,7 @@ func TestSessionCancelledSaysItIsNotHappening(t *testing.T) {
 	s := service(h, srv.URL)
 	starts := time.Date(2026, 9, 3, 19, 0, 0, 0, time.Local)
 	s.sessionMail(t.Context(), sessionNote{
-		room: h.room, workout: "Sweet Spot 2×20", startsAt: starts,
+		crew: h.crew.ID, channel: h.channel.ID, workout: "Sweet Spot 2×20", startsAt: starts,
 		actor: h.planner.ID, change: sessionCancelled,
 	})
 
@@ -371,7 +357,7 @@ func TestSessionMailUsesEachRidersZone(t *testing.T) {
 	// 17:00 UTC: 19:00 in Zurich, 13:00 in New York.
 	starts := time.Date(2026, 9, 8, 17, 0, 0, 0, time.UTC)
 	s.sessionMail(t.Context(), sessionNote{
-		room: h.room, workout: "Sweet Spot 2×20", startsAt: starts,
+		crew: h.crew.ID, channel: h.channel.ID, workout: "Sweet Spot 2×20", startsAt: starts,
 		actor: h.planner.ID, change: sessionPlanned,
 	})
 
@@ -417,7 +403,7 @@ func TestUnsubscribe(t *testing.T) {
 	// Wrong token flips nothing.
 	bad := httptest.NewRecorder()
 	mux.ServeHTTP(bad, httptest.NewRequestWithContext(t.Context(), "POST",
-		"/api/notify/unsubscribe?u="+store.UUIDString(h.optIn.ID)+"&t="+store.UUIDString(h.room.ID), nil))
+		"/api/notify/unsubscribe?u="+store.UUIDString(h.optIn.ID)+"&t="+store.UUIDString(h.crew.ID), nil))
 	if bad.Code != 404 {
 		t.Fatalf("wrong token = %d, want 404", bad.Code)
 	}
@@ -587,10 +573,12 @@ func TestSessionMailCollapsesControlCharacters(t *testing.T) {
 	srv := httptest.NewServer(fake.handler())
 	defer srv.Close()
 	s := service(h, srv.URL)
-	room := h.room
-	room.Name = "Velvet\r\nBcc: victim@example.test\nHammer"
+	if _, err := h.store.Pool.Exec(t.Context(), "update crews set name = $2 where id = $1",
+		h.crew.ID, "Velvet\r\nBcc: victim@example.test\nHammer"); err != nil {
+		t.Fatalf("rename: %v", err)
+	}
 	s.sessionMail(t.Context(), sessionNote{
-		room: room, workout: "Openers\x00", startsAt: time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local),
+		crew: h.crew.ID, channel: h.channel.ID, workout: "Openers\x00", startsAt: time.Date(2026, 9, 1, 19, 0, 0, 0, time.Local),
 		actor: h.planner.ID, change: sessionPlanned,
 	})
 	if len(fake.payloads) != 1 {
@@ -608,24 +596,22 @@ func TestSessionMailCollapsesControlCharacters(t *testing.T) {
 	}
 }
 
-// The per-room ceiling (#1639): a coach rescheduling in a loop mailed every
+// The per-crew ceiling (#1639): a coach rescheduling in a loop mailed every
 // member each time.
-func TestSessionMailCeilingPerRoom(t *testing.T) {
+func TestSessionMailCeilingPerCrew(t *testing.T) {
 	h := setup(t)
 	s := service(h, "http://127.0.0.1:1")
 	s.sessions = budget.New[pgtype.UUID](2, time.Hour)
 	for i := 0; i < 2; i++ {
-		if !s.allowSessionMail(h.room) {
+		if !s.allowSessionMail(h.crew.ID) {
 			t.Fatalf("mail %d should be allowed", i)
 		}
 	}
-	if s.allowSessionMail(h.room) {
+	if s.allowSessionMail(h.crew.ID) {
 		t.Fatal("the third is over the ceiling")
 	}
-	other := h.room
-	other.ID = pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
-	if !s.allowSessionMail(other) {
-		t.Fatal("another room has its own window")
+	if !s.allowSessionMail(pgtype.UUID{Bytes: [16]byte{9}, Valid: true}) {
+		t.Fatal("another crew has its own window")
 	}
 }
 

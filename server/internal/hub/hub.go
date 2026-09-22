@@ -386,6 +386,25 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 	rm.events.add(sessionLine(verb, actor, workout, startsAt, at), at)
 }
 
+// OpenSession opens a planned session in a voice channel for rider (#2440):
+// the pick a plan's start stands for, made over HTTP. The channel's
+// one-session rule answers exactly as it does on the socket — conflict,
+// naming the coach (#2438) — and a session the rider already coaches there
+// counts as opened, so a client that picked on the socket first is not
+// refused its own. The channel's room is made if nobody is in it yet: the
+// coach is on their way, and a pick nobody comes to ride is released by the
+// idle sweep like any other (#2297).
+func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (code, message string) {
+	rm := h.room(channel)
+	rm.mu.Lock()
+	mine := rm.session.open() && rm.session.coach == rider.ID
+	rm.mu.Unlock()
+	if mine {
+		return "", ""
+	}
+	return rm.control(protocol.Control{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON}, rider, h.now())
+}
+
 // QueuePlaylist appends a saved playlist's tracks onto a room's live queue
 // (#627) — a rider pressed "queue" from the playlists panel, which is a plain
 // plain HTTP call, not a WS command. Returns false when nobody is

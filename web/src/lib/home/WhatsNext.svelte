@@ -17,16 +17,32 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 
-	/** One row of GET /api/schedule — a plan, and which room's it is. */
+	/** One row of GET /api/schedule — a plan, and which crew's it is (#2440):
+	 *  the voice channel when it names one, and the room when a room made it. */
 	interface Planned {
 		id: string;
 		workoutName: string;
 		minutes: number;
 		startsAt: string;
 		createdBy: string;
-		roomSlug: string;
-		roomName: string;
+		crewId: string;
+		crewName: string;
+		channelName?: string;
+		roomSlug?: string;
+		roomName?: string;
 	}
+
+	// Where a row goes until crew Home replaces this list (#2451): the room a
+	// room-era plan came from, else the crew it is on.
+	const placeOf = (session: Planned) =>
+		session.roomName ||
+		(session.channelName
+			? `${session.crewName} · ${session.channelName}`
+			: session.crewName);
+	const hrefOf = (session: Planned) =>
+		session.roomSlug
+			? `/r/${session.roomSlug}/sessions`
+			: `/crew/${session.crewId}`;
 
 	let {
 		planSlug,
@@ -107,14 +123,14 @@
 					     room name wraps down the page instead of across it
 					     (ux.md's phone standard). -->
 					<a
-						href="/r/{session.roomSlug}/sessions"
+						href={hrefOf(session)}
 						class="border-ink/5 hover:bg-surface flex items-center gap-3 border-b px-4 py-3 transition-colors"
 					>
 						<CalendarClock size={15} class="text-muted shrink-0" />
 						<div class="min-w-0">
 							<p class="truncate text-sm font-medium">{session.workoutName}</p>
 							<p class="text-muted mt-0.5 text-xs">
-								{formatWhen(session.startsAt, true)} · {session.roomName}
+								{formatWhen(session.startsAt, true)} · {placeOf(session)}
 							</p>
 							<p class="text-muted-dim text-[11px]">
 								{session.minutes} min · planned by {session.createdBy}

@@ -112,6 +112,7 @@ func (s *Service) registerCrews(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/crews/{id}/members", s.handleCrewMembers)
 	mux.HandleFunc("PATCH /api/crews/{id}/me", s.handleSetCrewPrefs)
 	mux.HandleFunc("GET /api/crews/{id}/recaps", s.handleCrewRecaps)
+	s.registerCrewSchedule(mux)
 }
 
 // crewFor is the crew a room is created into: the one the rider owns, made
@@ -266,7 +267,7 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		OwnerID:  store.UUIDString(crew.OwnerID),
 		Named:    crew.Named,
 		Rooms:    []crewRoomJSON{}, People: []crewPersonJSON{},
-		Listed:   administers(role) && crew.Listed,
+		Listed: administers(role) && crew.Listed,
 	}
 	// The rooms, with what the CALLER may do in each — the same four states
 	// the sidebar draws, from the same two queries.

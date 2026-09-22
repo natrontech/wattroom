@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 // rawGet fetches without auth and returns the body verbatim — the feed
@@ -199,7 +201,13 @@ func TestACrewBanTakesTheRoomOutOfTheCalendar(t *testing.T) {
 		t.Fatalf("bob before the ban: %v — test proves nothing", body["sessions"])
 	}
 
-	h.crewBan(t, slug, "bob")
+	// The plan is its crew's (#2440): the ban that takes it away is from
+	// that crew, the one the room's plan was made in.
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: h.crewOf(t, slug).ID, UserID: h.users.ByToken["bob"].ID, Role: "banned",
+	}); err != nil {
+		t.Fatalf("crew ban: %v", err)
+	}
 
 	status, body := h.call(t, "bob", http.MethodGet, "/api/schedule", "")
 	after, _ := body["sessions"].([]any)
