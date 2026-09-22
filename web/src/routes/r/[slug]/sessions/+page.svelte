@@ -21,7 +21,12 @@
 	import { formatWhen } from '$lib/format';
 	import { toasts } from '$lib/toast.svelte';
 	import { useRoom } from '$lib/room/context';
-	import { rsvpSummary, type RsvpAnswer } from '$lib/room/rsvp';
+	import {
+		rsvpSummary,
+		tallyOf,
+		whoIsInOf,
+		type RsvpAnswer,
+	} from '$lib/room/rsvp';
 	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import CircleX from '@lucide/svelte/icons/circle-x';
@@ -82,20 +87,6 @@
 	const answer = (entry: Plan) => entry.yourAnswer ?? null;
 	/** The three states as counts. Who is in is named below; who is out is a
 	 *  number and stays one. */
-	const tally = (entry: Plan) => ({
-		in: going(entry).length,
-		out: entry.out ?? 0,
-		unanswered: entry.unanswered ?? 0,
-	});
-	/** The riders who are in, as the row has width for. */
-	const whoIsIn = (entry: Plan) => {
-		const names = going(entry);
-		const shown = names
-			.slice(0, 4)
-			.map((who) => who.displayName)
-			.join(', ');
-		return names.length > 4 ? `${shown} +${names.length - 4} more` : shown;
-	};
 	/** Pressing your own answer again takes it back; pressing the other one
 	 *  changes your mind. Neither asks: there is nothing to undo that a
 	 *  second tap does not (errors.md). */
@@ -326,7 +317,7 @@
 						     small enough that a list of who said no would read as
 						     an accusation. -->
 						<span class="text-muted text-xs"
-							>{rsvpSummary(tally(entry), whoIsIn(entry))}</span
+							>{rsvpSummary(tallyOf(entry), whoIsInOf(entry))}</span
 						>
 					</div>
 					{#if manages && movingId === entry.id}
