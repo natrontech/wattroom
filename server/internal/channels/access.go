@@ -114,3 +114,29 @@ func requireAdmin(w http.ResponseWriter, role string) bool {
 	httpx.WriteError(w, http.StatusForbidden, "forbidden", "Only the crew's owner and admins manage its channels.")
 	return false
 }
+
+// RequireText is the one gate chat stands behind (#2435): channelFor, plus
+// the channel being a text one — a voice channel has no text of its own
+// (ADR-0058, decision 4), so its chat is a 404 like a channel that is not
+// there. The role comes back for the moderation a crew admin holds.
+func (s *Service) RequireText(w http.ResponseWriter, r *http.Request) (db.Channel, db.User, string, bool) {
+	channel, user, role, ok := s.channelFor(w, r)
+	if !ok {
+		return db.Channel{}, db.User{}, "", false
+	}
+	if channel.Kind != kindText {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "A voice channel keeps no chat — its crew's text channels do.")
+		return db.Channel{}, db.User{}, "", false
+	}
+	return channel, user, role, true
+}
+
+// Administers reports whether a crew role keeps the crew's channels — and so
+// moderates their chat and marks their announcements (ADR-0058).
+func Administers(crewRole string) bool { return administers(crewRole) }
+
+// RequireCrew is crewFor for another package's crew-scoped read (#2435): a
+// signed-in, unbanned member, or a 404.
+func (s *Service) RequireCrew(w http.ResponseWriter, r *http.Request) (pgtype.UUID, db.User, string, bool) {
+	return s.crewFor(w, r)
+}

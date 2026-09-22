@@ -10,10 +10,13 @@ package hub
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"sync"
 
 	"github.com/coder/websocket"
 
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/safego"
 )
 
@@ -21,6 +24,36 @@ type lobbyClient struct {
 	conn *websocket.Conn
 	// Size 1: a burst of changes coalesces into one ping per client.
 	ping chan struct{}
+	// What the queued ping says: the one channel it is about, or "" for
+	// everything. Two different reasons coalesce into "", which re-fetches
+	// more than needed and never less.
+	mu      sync.Mutex
+	queued  bool
+	channel string
+}
+
+// queue asks for a ping about channel ("" is everything).
+func (c *lobbyClient) queue(channel string) {
+	c.mu.Lock()
+	if c.queued && c.channel != channel {
+		channel = ""
+	}
+	c.queued, c.channel = true, channel
+	c.mu.Unlock()
+	select {
+	case c.ping <- struct{}{}:
+	default: // a ping is already queued — one is enough
+	}
+}
+
+// take is the ping the writer sends, and clears what was queued.
+func (c *lobbyClient) take() []byte {
+	c.mu.Lock()
+	channel := c.channel
+	c.queued, c.channel = false, ""
+	c.mu.Unlock()
+	msg, _ := json.Marshal(protocol.LobbyPing{Channel: channel})
+	return msg
 }
 
 // SetLobbyAuth wires session resolution in after construction — the hub must
@@ -84,7 +117,7 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 				}
 			case <-c.ping:
 				ctx, cancel := context.WithTimeout(r.Context(), writeTimeout)
-				err := conn.Write(ctx, websocket.MessageText, []byte("{}"))
+				err := conn.Write(ctx, websocket.MessageText, c.take())
 				cancel()
 				if err != nil {
 					_ = conn.CloseNow()
@@ -114,9 +147,18 @@ func (h *Hub) PresenceChanged() {
 
 func (h *Hub) pingLobbyLocked() {
 	for c := range h.lobby {
-		select {
-		case c.ping <- struct{}{}:
-		default: // a ping is already queued — one is enough
-		}
+		c.queue("")
+	}
+}
+
+// ChannelChanged pings every lobby client about one text channel's log
+// (#2435): a client looking at it re-fetches that channel and nothing else.
+// ponytail: every client hears it, crew or not — the id is opaque and the
+// log is behind its gate; route by crew when the lobby learns crews (#2324).
+func (h *Hub) ChannelChanged(channelID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for c := range h.lobby {
+		c.queue(channelID)
 	}
 }
