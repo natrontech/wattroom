@@ -137,7 +137,20 @@ func occupy(t *testing.T, srv *httptest.Server, channel string) *websocket.Conn 
 		t.Fatalf("occupy %s: %v", channel, err)
 	}
 	t.Cleanup(func() { _ = conn.CloseNow() })
-	return conn
+	// The handshake finishing is not the hub holding the socket: the join
+	// runs after the upgrade, and the socket's own Connection frame is sent
+	// before it. A tick reaches only the sockets the channel's room holds, so
+	// the first one is the proof — a POST sent before it can find the channel
+	// empty and draw the 409 the test asserts elsewhere (#2490).
+	for {
+		var msg protocol.ServerMessage
+		if err := wsjson.Read(ctx, conn, &msg); err != nil {
+			t.Fatalf("occupy %s: no tick: %v", channel, err)
+		}
+		if msg.Tick != nil {
+			return conn
+		}
+	}
 }
 
 // deckOf reads ticks until the channel's deck is playing, and returns it.
