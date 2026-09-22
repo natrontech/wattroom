@@ -290,9 +290,13 @@
 			>
 		{/if}
 		<span class="text-muted text-xs"
-			>{new Date(ride.startedAt).toLocaleDateString()}{#if server?.crew}
-				· {ridePlace(server)}{/if}</span
+			>{new Date(ride.startedAt).toLocaleDateString()}</span
 		>
+		<!-- Where it was ridden (#2457): its own item, so the row's gap spaces
+		     it and a narrow row wraps it whole. -->
+		{#if server?.crew}
+			<span class="text-muted text-xs">{ridePlace(server)}</span>
+		{/if}
 		<span class="text-muted ml-auto font-mono text-xs tabular-nums"
 			>{formatClock(ride.seconds)}</span
 		>
