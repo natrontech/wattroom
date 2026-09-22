@@ -26,7 +26,6 @@
 	import { roomConnection } from '$lib/room/connection.svelte';
 	// Leaving while standing in the room: shared with the rail's button, the
 	// mobile chip (#251) and the messages list's row menu (#2171).
-	import { leaveRoom } from '$lib/room/leave';
 	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
@@ -260,13 +259,6 @@
 			activePlace(page.url.pathname, page.params?.slug ?? '') === '/chat',
 	);
 
-	// The room whose pages you are on opens in the sidebar — only under /r/:
-	// a room's thread on /messages carries the same slug param and is
-	// deliberately not standing in the room (#468).
-	const roomSlug = $derived(
-		page.url.pathname.startsWith('/r/') ? (page.params?.slug ?? '') : '',
-	);
-
 	// Below md the sidebar is a drawer (#391). It closes on navigation —
 	// leaving it open over the page you just asked for is the classic
 	// mobile-nav bug.
@@ -440,16 +432,11 @@
 			style={titleBar ? `top: ${titleBar}px` : ''}
 		>
 			<!-- One call, connected or not (#1047). The AV row inside reads the
-			     chain itself now, and what is left answers with optional
-			     chaining: no connection means no connectedSlug, so no room is
-			     "here" and `onLeave` is never reachable. -->
+			     chain itself now. -->
 			<Sidebar
 				pathname={page.url.pathname}
 				rooms={shownRooms}
-				activeSlug={roomSlug}
-				connectedSlug={roomConnection.current?.slug ?? ''}
 				live={roomConnection.current?.live.tick?.state.phase === 'running'}
-				onLeave={leaveRoom}
 			/>
 		</div>
 		<!-- inert while the drawer is open (#1969): Tab past its last row used

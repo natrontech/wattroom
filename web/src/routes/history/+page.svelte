@@ -38,6 +38,7 @@
 		type RideCursor,
 		type RidesPage,
 		type ServerRide,
+		ridePlace,
 	} from '$lib/ride/list';
 
 	let { data }: { data: PageData } = $props();
@@ -256,7 +257,7 @@
 
 <svelte:head><title>Rides · WattRoom</title></svelte:head>
 
-{#snippet rideRow(ride: RideRecord, badge?: string, server?: ServerRide)}
+{#snippet rideRow(ride: RideRecord, server?: ServerRide)}
 	<!-- A device-only ride has no server to flip or delete, so its row offers
 	     nothing and keeps the browser's own menu. -->
 	<li
@@ -280,9 +281,6 @@
 			</a>
 		{/if}
 		<span class="font-display font-bold">{ride.workoutName}</span>
-		{#if badge}
-			<span class="eyebrow">{badge}</span>
-		{/if}
 		{#if server?.exportState === 'failed'}
 			<!-- The one delivery state worth a mark on the row (#1553): the ride
 			     page says why and has the retry. Pending and delivered are the
@@ -294,6 +292,11 @@
 		<span class="text-muted text-xs"
 			>{new Date(ride.startedAt).toLocaleDateString()}</span
 		>
+		<!-- Where it was ridden (#2457): its own item, so the row's gap spaces
+		     it and a narrow row wraps it whole. -->
+		{#if server?.crew}
+			<span class="text-muted text-xs">{ridePlace(server)}</span>
+		{/if}
 		<span class="text-muted ml-auto font-mono text-xs tabular-nums"
 			>{formatClock(ride.seconds)}</span
 		>
@@ -519,7 +522,7 @@
 		{/if}
 		<ul class="mt-8 grid gap-2 xl:grid-cols-2">
 			{#each rides as ride (ride.id)}
-				{@render rideRow(ride, ride.room ? 'room' : undefined, ride)}
+				{@render rideRow(ride, ride)}
 			{/each}
 		</ul>
 		{#if more}

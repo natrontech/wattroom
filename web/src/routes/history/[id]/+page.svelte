@@ -238,12 +238,14 @@
 					{new Date(ride.startedAt).toLocaleString()} · {formatDuration(
 						ride.seconds,
 					)}
-					{#if ride.room}
-						· in <a
-							href="/r/{ride.room.slug}"
+					<!-- Where it was ridden (#2457): the crew is the link, the
+					     channel is the words. -->
+					{#if ride.crew}
+						· with <a
+							href="/crew/{ride.crew.id}"
 							class="hover:text-ink underline underline-offset-2"
-							>{ride.room.name}</a
-						>
+							>{ride.crew.name}</a
+						>{#if ride.channel}&nbsp;in {ride.channel.name}{/if}
 					{:else}
 						· solo
 					{/if}

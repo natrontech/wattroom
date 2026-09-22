@@ -1,5 +1,6 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
 import type { RoomPresence } from '$lib/protocol';
+import type { Announcement } from '$lib/room/room-data';
 
 export type ChannelKind = 'text' | 'voice';
 export type AutoplayOrder = 'ordered' | 'shuffled' | 'smart';
@@ -97,4 +98,21 @@ export function setNamedInChannel(
 	return api<void>(`/api/channels/${id}/members/${userId}`, {
 		method: named ? 'PUT' : 'DELETE',
 	});
+}
+
+/** A text channel's marked line, as the crew's Board leads with it. */
+export interface CrewAnnouncement extends Announcement {
+	channelId: string;
+	channelName: string;
+}
+
+/**
+ * The newest announcement across the crew's text channels the caller may
+ * enter (ADR-0058) — undefined when none is up, the Board's normal state.
+ */
+export function fetchCrewAnnouncement(
+	crewId: string,
+	fetcher: typeof fetch = fetch,
+): Promise<ApiResult<CrewAnnouncement | undefined>> {
+	return loadApi(fetcher, `/api/crews/${crewId}/announcement`);
 }

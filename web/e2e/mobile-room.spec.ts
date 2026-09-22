@@ -19,17 +19,19 @@ test.beforeEach(async ({ page }) => {
 /**
  * A phone runs the room shell, not the retired spectator redirect (#412).
  * Keep one small-viewport walk here: the desktop suite cannot notice a drawer
- * that never opens or a Chat place that becomes unreachable below `md`.
+ * that never opens or a text channel that becomes unreachable below `md` —
+ * the voice channel's own chat is the lounge's, so the full-width one is its
+ * text twin in the crew's column (#2447).
  */
-test('a phone opens a room lounge and reaches its chat place', async ({
+test('a phone opens a voice channel and reaches its text channel', async ({
 	page,
 	rooms,
 }) => {
 	await signInAs(page, 'Mobile Room', '/home');
 	const name = `Mobile Room ${Date.now() % 100000}`;
-	const { slug } = await rooms.open(page, name);
+	const room = await rooms.open(page, name);
+	await page.goto(voicePath(room));
 
-	await expect(page).toHaveURL(new RegExp(`/r/${slug}$`));
 	await expect(page.getByRole('heading', { name })).toBeVisible();
 	// A spectator, even as the room's owner: nothing that needs a trainer
 	// or starts a session is offered (#412, #1624).
@@ -41,11 +43,14 @@ test('a phone opens a room lounge and reaches its chat place', async ({
 	);
 
 	await page.getByRole('button', { name: 'open navigation' }).click();
-	const chat = page.locator(`a[href="/r/${slug}/chat"]`).first();
-	await expect(chat).toBeVisible();
-	await chat.click();
+	// Every room became a text and a voice channel of its name (ADR-0058).
+	const text = page
+		.locator(`a[href^="/crew/${room.crew}/c/"]`)
+		.filter({ hasText: name });
+	await expect(text).toBeVisible();
+	await text.click();
 
-	await expect(page).toHaveURL(new RegExp(`/r/${slug}/chat$`));
+	await expect(page).toHaveURL(new RegExp(`/crew/${room.crew}/c/[^/]+$`));
 	await expect(page.getByTestId('thread-log')).toBeVisible();
 });
 

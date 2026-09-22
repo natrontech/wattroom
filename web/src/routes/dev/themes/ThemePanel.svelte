@@ -91,12 +91,7 @@
 				<div
 					class="border-edge h-[26rem] shrink-0 overflow-hidden rounded-lg border"
 				>
-					<Sidebar
-						pathname="/r/sunday-long-ride"
-						{rooms}
-						activeSlug="sunday-long-ride"
-						live
-					/>
+					<Sidebar pathname="/r/sunday-long-ride" {rooms} live />
 				</div>
 				<div
 					class="grid min-w-0 flex-1 gap-2 self-start {narrow
