@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -66,13 +65,13 @@ type savedRide struct {
 // same threshold the client's crash recovery uses.
 func (s *Saver) save(
 	ctx context.Context,
-	roomSlug, workoutName, workoutJSON string,
+	channel, workoutName, workoutJSON string,
 	startedAt time.Time,
 	riders []hub.RiderRecord,
 ) error {
-	room, err := s.store.Queries.GetRoomBySlug(ctx, strings.ToLower(roomSlug))
+	room, err := s.store.RoomOfVoiceChannel(ctx, channel)
 	if err != nil {
-		return fmt.Errorf("stats: room %q: %w", roomSlug, err)
+		return fmt.Errorf("stats: room %q: %w", channel, err)
 	}
 
 	tx, err := s.store.Pool.Begin(ctx)
@@ -163,7 +162,7 @@ func (s *Saver) save(
 			s.keeper.RideSaved(ride.userID, ride.facts)
 		}
 	}
-	s.log.Info("session saved", "room", roomSlug, "rides", saved)
+	s.log.Info("session saved", "room", channel, "rides", saved)
 	return nil
 }
 
@@ -317,15 +316,15 @@ const (
 // so the retry policy lives here and the tick loop never learns.
 func (s *Saver) SaveSession(
 	ctx context.Context,
-	slug, workoutName, workoutJSON string,
+	channel, workoutName, workoutJSON string,
 	startedAt time.Time,
 	riders []hub.RiderRecord,
 ) {
-	err := retrySave(ctx, s.log, slug, func(ctx context.Context) error {
-		return s.save(ctx, slug, workoutName, workoutJSON, startedAt, riders)
+	err := retrySave(ctx, s.log, channel, func(ctx context.Context) error {
+		return s.save(ctx, channel, workoutName, workoutJSON, startedAt, riders)
 	})
 	if err != nil {
-		s.log.Error("session save failed, rides lost", "err", err, "room", slug)
+		s.log.Error("session save failed, rides lost", "err", err, "channel", channel)
 	}
 }
 
@@ -338,7 +337,7 @@ func (s *Saver) SaveSession(
 // the client's to offer back as a .fit.
 func (s *Saver) AmendRide(
 	ctx context.Context,
-	slug, workoutName, workoutJSON string,
+	channel, workoutName, workoutJSON string,
 	startedAt time.Time,
 	rider hub.RiderRecord,
 ) {
@@ -351,11 +350,11 @@ func (s *Saver) AmendRide(
 	// the closure, and the amendment it would re-run is a no-op the second
 	// time round, so a failure in there would judge twice or lose the mark.
 	var judged *savedRide
-	err := retrySave(ctx, s.log, slug, func(ctx context.Context) error {
+	err := retrySave(ctx, s.log, channel, func(ctx context.Context) error {
 		judged = nil
-		room, err := s.store.Queries.GetRoomBySlug(ctx, strings.ToLower(slug))
+		room, err := s.store.RoomOfVoiceChannel(ctx, channel)
 		if err != nil {
-			return fmt.Errorf("stats: room %q: %w", slug, err)
+			return fmt.Errorf("stats: room %q: %w", channel, err)
 		}
 		row, err := s.rideRow(room.ID, workoutName, workoutJSON, startedAt, rider)
 		if err != nil {
@@ -365,7 +364,7 @@ func (s *Saver) AmendRide(
 		q := s.store.Queries
 		existing, err := q.FindRideAt(ctx, db.FindRideAtParams{UserID: row.UserID, StartedAt: row.StartedAt})
 		if err != nil {
-			s.log.Info("no ride to amend", "room", slug, "rider", rider.Rider.ID)
+			s.log.Info("no ride to amend", "channel", channel, "rider", rider.Rider.ID)
 			return nil
 		}
 		// The ride is already in the table, so the streak is read without it.
@@ -379,7 +378,7 @@ func (s *Saver) AmendRide(
 			return fmt.Errorf("stats: amend ride: %w", err)
 		}
 		if grown > 0 {
-			s.log.Info("ride amended", "room", slug, "ride", store.UUIDString(existing), "samples", len(rider.Samples))
+			s.log.Info("ride amended", "channel", channel, "ride", store.UUIDString(existing), "samples", len(rider.Samples))
 			watts := make([]int, len(rider.Samples))
 			for i, sample := range rider.Samples {
 				watts[i] = sample.Watts
@@ -392,7 +391,7 @@ func (s *Saver) AmendRide(
 		return nil
 	})
 	if err != nil {
-		s.log.Error("ride amendment failed, tail lost", "err", err, "room", slug)
+		s.log.Error("ride amendment failed, tail lost", "err", err, "channel", channel)
 		return
 	}
 	if judged == nil {

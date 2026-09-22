@@ -58,7 +58,7 @@ limit 1000;
 -- this, so it was 1+4N round trips multiplied by the whole fleet. The unread
 -- predicate is CountRoomUnread's, unchanged — the rail and a single room must
 -- not be able to disagree about what "new" means.
-select r.*, m.role,
+select r.*, m.role, rc.voice_channel_id,
        (select count(*) from memberships mm
          where mm.room_id = r.id and mm.role != 'banned')::bigint as member_count,
        (select count(*)
@@ -102,6 +102,8 @@ select r.*, m.role,
 from memberships m
 join rooms r on r.id = m.room_id
 left join crews c on c.id = r.crew_id
+-- The hub keys by voice channel (#2436): presence per room is asked of it.
+left join room_channels rc on rc.room_id = r.id
 -- NextRoomSession's row, per room. Same 30-minute grace: a plan stays visible
 -- a little past its time, and the read is the cleanup. Same tiebreak as
 -- ListRoomUpcoming (#1767) — this `limit 1` and that list's first row are the

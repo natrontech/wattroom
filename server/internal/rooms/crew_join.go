@@ -238,10 +238,11 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusConflict, "conflict", "You own a room in this crew, and a room never leaves its crew — hand it to a member first.")
 		return
 	}
-	// The rooms to sever the rider from, read under the same lock: the set
-	// cannot change until this commits, and it is gone from the table by then
-	// if the crew goes too.
-	slugs, _ := q.ListCrewRoomSlugs(r.Context(), crew.ID)
+	// The voice channels to sever the rider from, read under the same lock:
+	// the set cannot change until this commits, and it is gone from the table
+	// by then if the crew goes too. Every channel, not every room: one made
+	// in the channels API has no room behind it (#2436).
+	voice, _ := q.ListChannelIDsOfKind(r.Context(), db.ListChannelIDsOfKindParams{CrewID: crew.ID, Kind: "voice"})
 	err = q.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
 	if err == nil {
 		// The confirm promised it: "a private room needs a fresh invitation
@@ -273,8 +274,8 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	// Durable rows gone; the sockets are the hub's and close after the commit
 	// — a rollback cannot reopen one.
-	for _, slug := range slugs {
-		s.evict(slug, store.UUIDString(user.ID))
+	for _, id := range voice {
+		s.evict(store.UUIDString(id), store.UUIDString(user.ID))
 	}
 	s.log.Info("crew left", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID), "crewGone", crewGone)
 	s.changed()

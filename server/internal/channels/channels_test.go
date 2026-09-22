@@ -21,6 +21,7 @@ import (
 // One crew: alice owns it, dave is an admin, bob a member, erin is banned
 // from it and carol is in none of it.
 type harness struct {
+	svc   *Service
 	mux   *http.ServeMux
 	store *store.Store
 	users *testx.Users
@@ -55,8 +56,9 @@ func setup(t *testing.T) *harness {
 		}
 	}
 	mux := http.NewServeMux()
-	New(st, users, slog.New(slog.DiscardHandler)).Register(mux)
-	return &harness{mux: mux, store: st, users: users, crew: store.UUIDString(crew.ID)}
+	svc := New(st, users, slog.New(slog.DiscardHandler))
+	svc.Register(mux)
+	return &harness{svc: svc, mux: mux, store: st, users: users, crew: store.UUIDString(crew.ID)}
 }
 
 func (h *harness) call(t *testing.T, user, method, path, body string) (int, map[string]any) {

@@ -11,6 +11,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const adoptRoomChannels = `-- name: AdoptRoomChannels :exec
+with src as (
+    select
+        r.id              as room_id,
+        gen_random_uuid() as text_channel_id,
+        gen_random_uuid() as voice_channel_id,
+        r.crew_id,
+        left(coalesce(nullif(btrim(r.name), ''), 'general'), 60) as name,
+        not r.crew_visible as private,
+        r.sound_pack,
+        r.created_at,
+        coalesce((select max(c.position) + 1 from channels c where c.crew_id = r.crew_id), 0)::integer as position
+    from rooms r
+    where r.id = $1 and r.crew_id is not null
+      and not exists (select 1 from room_channels rc where rc.room_id = r.id)
+),
+text_channels as (
+    insert into channels (id, crew_id, kind, name, position, private, sound_pack, created_at)
+    select text_channel_id, crew_id, 'text', name, position, private, 'base', created_at from src
+),
+voice_channels as (
+    insert into channels (id, crew_id, kind, name, position, private, sound_pack, created_at)
+    select voice_channel_id, crew_id, 'voice', name, position, private, sound_pack, created_at from src
+)
+insert into room_channels (room_id, text_channel_id, voice_channel_id)
+select room_id, text_channel_id, voice_channel_id from src
+`
+
+// A room made after 20260922185319 gets the text and voice channel that
+// migration gave every room before it — the same statement, narrowed to one
+// room. Without them the hub, which keys by voice channel, has nowhere to
+// put it.
+func (q *Queries) AdoptRoomChannels(ctx context.Context, roomID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, adoptRoomChannels, roomID)
+	return err
+}
+
 const createChannel = `-- name: CreateChannel :one
 insert into channels (crew_id, kind, name, position, private)
 select $1, $2, $3,
@@ -297,6 +334,68 @@ func (q *Queries) NamedChannelsFor(ctx context.Context, arg NamedChannelsForPara
 	return items, nil
 }
 
+const roomOfVoiceChannel = `-- name: RoomOfVoiceChannel :one
+select r.id, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, r.autoplay_enabled, r.autoplay_order, r.autoplay_playlist_id, r.board_enabled, r.crew_id, r.crew_visible, r.announcement_id from rooms r
+join room_channels rc on rc.room_id = r.id
+where rc.voice_channel_id = $1
+`
+
+func (q *Queries) RoomOfVoiceChannel(ctx context.Context, voiceChannelID pgtype.UUID) (Room, error) {
+	row := q.db.QueryRow(ctx, roomOfVoiceChannel, voiceChannelID)
+	var i Room
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.OwnerID,
+		&i.Listed,
+		&i.CreatedAt,
+		&i.SoundPack,
+		&i.Icon,
+		&i.Cheers,
+		&i.IcsToken,
+		&i.AutoplayEnabled,
+		&i.AutoplayOrder,
+		&i.AutoplayPlaylistID,
+		&i.BoardEnabled,
+		&i.CrewID,
+		&i.CrewVisible,
+		&i.AnnouncementID,
+	)
+	return i, err
+}
+
+const roomSlugsOfVoiceChannels = `-- name: RoomSlugsOfVoiceChannels :many
+select rc.voice_channel_id, r.slug from room_channels rc
+join rooms r on r.id = rc.room_id
+where rc.voice_channel_id = any($1::uuid[])
+`
+
+type RoomSlugsOfVoiceChannelsRow struct {
+	VoiceChannelID pgtype.UUID
+	Slug           string
+}
+
+func (q *Queries) RoomSlugsOfVoiceChannels(ctx context.Context, ids []pgtype.UUID) ([]RoomSlugsOfVoiceChannelsRow, error) {
+	rows, err := q.db.Query(ctx, roomSlugsOfVoiceChannels, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RoomSlugsOfVoiceChannelsRow
+	for rows.Next() {
+		var i RoomSlugsOfVoiceChannelsRow
+		if err := rows.Scan(&i.VoiceChannelID, &i.Slug); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setChannelPosition = `-- name: SetChannelPosition :exec
 update channels set position = $2 where id = $1
 `
@@ -372,4 +471,20 @@ func (q *Queries) UpdateChannel(ctx context.Context, arg UpdateChannelParams) (C
 		&i.AutoplayPlaylistID,
 	)
 	return i, err
+}
+
+const voiceChannelOfRoom = `-- name: VoiceChannelOfRoom :one
+
+select voice_channel_id from room_channels where room_id = $1
+`
+
+// The rooms bridge (#2436): the hub keys by voice channel, and what still
+// speaks in rooms — the rooms package, and the keepers that write room_id —
+// crosses here until its own M9 issue re-keys it. Every one of these goes
+// with `room_channels` (#2433).
+func (q *Queries) VoiceChannelOfRoom(ctx context.Context, roomID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, voiceChannelOfRoom, roomID)
+	var voice_channel_id pgtype.UUID
+	err := row.Scan(&voice_channel_id)
+	return voice_channel_id, err
 }

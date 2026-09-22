@@ -104,7 +104,7 @@ func TestSessionClosedNamesRidersAndListeners(t *testing.T) {
 	rm.backfill(&client{rider: protocol.Rider{ID: "lena", Name: "Lena"}}, samples[:5], nil, nil)
 
 	ev := rm.closedLocked(protocol.SessionState{Phase: "done", Elapsed: 60}, t0.Add(time.Minute))
-	if ev.StartedBy != "coach" || ev.Seconds != 60 || ev.Slug != "velvet" {
+	if ev.StartedBy != "coach" || ev.Seconds != 60 || ev.Channel != "velvet" {
 		t.Fatalf("event = %+v", ev)
 	}
 	want := map[string]SessionRider{

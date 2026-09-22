@@ -52,10 +52,10 @@ func TestAutoplaySeedsAnIdleDeckOnJoin(t *testing.T) {
 		ok: true,
 	})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/autoplay-room"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/autoplay-room"
 
 	first := dial(t, url, "jan:owner")
 	var tick protocol.ServerTick
@@ -87,10 +87,10 @@ func TestAutoplaySilentWhenSourceHasNothing(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	h.SetPlaylistSource(fakeAutoplaySource{ok: false})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/quiet-room"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/quiet-room"
 
 	conn := dial(t, url, "jan:owner")
 	tick := readTick(t, conn)
@@ -102,10 +102,10 @@ func TestAutoplaySilentWhenSourceHasNothing(t *testing.T) {
 func TestQueuePlaylistReachesAnOccupiedRoom(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/bridge-room"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/bridge-room"
 
 	// Nobody connected yet: the bridge reports no live room to seed.
 	if _, ok := h.QueuePlaylist("bridge-room", "jan", "Jan", []protocol.JukeboxCommand{
@@ -174,10 +174,10 @@ func TestAutoplayLoopsThePlaylistWhenTheDeckRunsDry(t *testing.T) {
 		ok:     true,
 	})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/rooms/loop-room", "jan:owner")
+	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/loop-room", "jan:owner")
 
 	playing := func(videoID string) func(protocol.JukeboxState) bool {
 		return func(deck protocol.JukeboxState) bool {
@@ -205,10 +205,10 @@ func TestAutoplayOffLeavesADryDeckIdle(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	h.SetPlaylistSource(fakeAutoplaySource{ok: false})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/rooms/one-shot-room", "jan:owner")
+	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/one-shot-room", "jan:owner")
 	readTick(t, conn)
 
 	if err := wsjson.Write(t.Context(), conn, protocol.ClientMessage{

@@ -109,7 +109,20 @@ func (h *harness) room(t *testing.T, owner string) (slug string) {
 	t.Cleanup(func() {
 		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where slug = $1", slug)
 	})
+	// Its channels from the start, as every room made since #2436 has them.
+	testx.VoiceChannel(t, h.store, room)
 	return slug
+}
+
+// voice is the voice channel the room became (#2436) — what the hub hands
+// autoplay, the history and the live bridge.
+func (h *harness) voice(t *testing.T, slug string) string {
+	t.Helper()
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("lookup room: %v", err)
+	}
+	return testx.VoiceChannel(t, h.store, room)
 }
 
 func (h *harness) join(t *testing.T, slug, user, role string) {
@@ -303,7 +316,7 @@ func TestQueuePlaylistCrossesRoomAndPersonal(t *testing.T) {
 	if status != http.StatusOK || body["queued"] != float64(1) {
 		t.Fatalf("queue personal into room: %d %v", status, body)
 	}
-	if h.live.slug != slug || h.live.riderID == "" || len(h.live.tracks) != 1 {
+	if h.live.slug != h.voice(t, slug) || h.live.riderID == "" || len(h.live.tracks) != 1 {
 		t.Fatalf("live bridge did not see the queue: %+v", h.live)
 	}
 

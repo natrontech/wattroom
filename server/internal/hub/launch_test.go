@@ -36,10 +36,10 @@ func TestRoomLoopSurvivesAPanic(t *testing.T) {
 	h.launchRoom(rm)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/rooms/flaky", "jan:owner")
+	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/flaky", "jan:owner")
 
 	// The first tick with a rider present panics before it is written; the
 	// relaunched loop's tick is the one that arrives.
@@ -79,10 +79,10 @@ func TestRoomLoopReleasesTheLockAfterAPanic(t *testing.T) {
 	h.launchRoom(rm)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/rooms/wedged", "jan:owner")
+	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/wedged", "jan:owner")
 
 	tick := readTick(t, conn)
 	if !mode.fired.Load() {
@@ -123,10 +123,10 @@ func TestRoomIsClosedWhenItsLoopGivesUp(t *testing.T) {
 	h.launchRoom(rm)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/rooms/doomed", "jan:owner")
+	conn := dial(t, "ws"+strings.TrimPrefix(srv.URL, "http")+"/ws/channels/doomed", "jan:owner")
 
 	// One tick per relaunch, so the budget takes a few seconds of real time
 	// to spend — longer than `eventually`'s deadline.

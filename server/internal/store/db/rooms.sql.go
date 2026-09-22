@@ -894,7 +894,7 @@ func (q *Queries) ListUserCalendar(ctx context.Context, arg ListUserCalendarPara
 }
 
 const listUserRooms = `-- name: ListUserRooms :many
-select r.id, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, r.autoplay_enabled, r.autoplay_order, r.autoplay_playlist_id, r.board_enabled, r.crew_id, r.crew_visible, r.announcement_id, m.role,
+select r.id, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r.icon, r.cheers, r.ics_token, r.autoplay_enabled, r.autoplay_order, r.autoplay_playlist_id, r.board_enabled, r.crew_id, r.crew_visible, r.announcement_id, m.role, rc.voice_channel_id,
        (select count(*) from memberships mm
          where mm.room_id = r.id and mm.role != 'banned')::bigint as member_count,
        (select count(*)
@@ -938,6 +938,7 @@ select r.id, r.slug, r.name, r.owner_id, r.listed, r.created_at, r.sound_pack, r
 from memberships m
 join rooms r on r.id = m.room_id
 left join crews c on c.id = r.crew_id
+left join room_channels rc on rc.room_id = r.id
 left join lateral (
     select s.workout_name, s.starts_at
     from scheduled_sessions s
@@ -990,6 +991,7 @@ type ListUserRoomsRow struct {
 	CrewVisible        bool
 	AnnouncementID     pgtype.UUID
 	Role               string
+	VoiceChannelID     pgtype.UUID
 	MemberCount        int64
 	Unread             int64
 	NextWorkoutName    string
@@ -1014,6 +1016,7 @@ type ListUserRoomsRow struct {
 // this, so it was 1+4N round trips multiplied by the whole fleet. The unread
 // predicate is CountRoomUnread's, unchanged — the rail and a single room must
 // not be able to disagree about what "new" means.
+// The hub keys by voice channel (#2436): presence per room is asked of it.
 // NextRoomSession's row, per room. Same 30-minute grace: a plan stays visible
 // a little past its time, and the read is the cleanup. Same tiebreak as
 // ListRoomUpcoming (#1767) — this `limit 1` and that list's first row are the
@@ -1047,6 +1050,7 @@ func (q *Queries) ListUserRooms(ctx context.Context, userID pgtype.UUID) ([]List
 			&i.CrewVisible,
 			&i.AnnouncementID,
 			&i.Role,
+			&i.VoiceChannelID,
 			&i.MemberCount,
 			&i.Unread,
 			&i.NextWorkoutName,

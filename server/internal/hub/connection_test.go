@@ -73,10 +73,10 @@ func TestAnAddressReachesItsOwnSocketAndNoOther(t *testing.T) {
 	t.Cleanup(func() { httpx.TrustProxyHeader(false) })
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	const janIP, kimIP = "203.0.113.7", "198.51.100.4"
 	jan := dialFrom(t, url, "jan:owner", janIP)
@@ -128,7 +128,7 @@ func TestAnAddressReachesItsOwnSocketAndNoOther(t *testing.T) {
 // from a coder/websocket client's read loop.
 func TestARidersPingReachesTheRoster(t *testing.T) {
 	_, base := keepaliveHub(t)
-	url := base + "/ws/rooms/velvet"
+	url := base + "/ws/channels/velvet"
 	jan := dial(t, url, "jan:owner")
 	go func() {
 		for {
@@ -166,10 +166,10 @@ func TestARidersPingReachesTheRoster(t *testing.T) {
 func TestARidersRosterEntryIsOneScreen(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	dial(t, url, "jan:owner")
 	dial(t, url, "jan:owner")
@@ -224,10 +224,10 @@ func TestARidersRosterEntryIsOneScreen(t *testing.T) {
 func TestAnUnmeasuredSocketStillNamesItsDevice(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	jan := dial(t, url, "jan:owner")
 	watcher := dial(t, url, "kim:member")
@@ -272,10 +272,10 @@ func TestAnUnmeasuredSocketStillNamesItsDevice(t *testing.T) {
 func TestADeviceWordOutsideTheSetIsNotStored(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	jan := dial(t, url, "jan:owner")
 	eventually(t, "jan joined", func() bool {

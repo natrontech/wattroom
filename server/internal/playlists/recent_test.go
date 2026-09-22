@@ -21,12 +21,12 @@ func TestRecentPlaysBothKinds(t *testing.T) {
 	alice := h.users["alice"].ID
 	ctx := t.Context()
 
-	h.svc.TrackEnded(ctx, slug, hub.Play{VideoID: "dQw4w9WgXcQ", Title: "Never Gonna Give You Up", QueuedBy: aliceID(alice), Skipped: false})
-	h.svc.TrackEnded(ctx, slug, hub.Play{TrackID: track, Skipped: true})
+	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{VideoID: "dQw4w9WgXcQ", Title: "Never Gonna Give You Up", QueuedBy: aliceID(alice), Skipped: false})
+	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{TrackID: track, Skipped: true})
 	// Junk never lands: not a video id, not a track id.
-	h.svc.TrackEnded(ctx, slug, hub.Play{VideoID: "nope", Title: "x"})
+	h.svc.TrackEnded(ctx, h.voice(t, slug), hub.Play{VideoID: "nope", Title: "x"})
 
-	got := h.svc.Recent(ctx, slug, 5)
+	got := h.svc.Recent(ctx, h.voice(t, slug), 5)
 	if len(got) != 2 {
 		t.Fatalf("recent = %+v, want the video and the track", got)
 	}
@@ -38,7 +38,7 @@ func TestRecentPlaysBothKinds(t *testing.T) {
 	}
 
 	// Another room remembers nothing of this one (privacy is architecture).
-	if other := h.svc.Recent(ctx, h.room(t, "alice"), 5); len(other) != 0 {
+	if other := h.svc.Recent(ctx, h.voice(t, h.room(t, "alice")), 5); len(other) != 0 {
 		t.Fatalf("another room's recent = %+v, want none", other)
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -224,14 +225,25 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		if err := s.store.Queries.LeaveCrewChannels(r.Context(), db.LeaveCrewChannelsParams{CrewID: crew.ID, UserID: target}); err != nil {
 			s.log.Error("crew ban channel sweep failed", "err", err, "crew", store.UUIDString(crew.ID))
 		}
-		slugs, err := s.store.Queries.ListCrewRoomSlugs(r.Context(), crew.ID)
+		voice, err := s.store.Queries.ListChannelIDsOfKind(r.Context(), db.ListChannelIDsOfKindParams{CrewID: crew.ID, Kind: "voice"})
 		if err != nil {
-			s.log.Error("crew rooms lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
+			s.log.Error("crew voice channels lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
 		}
-		for _, slug := range slugs {
-			s.evict(slug, store.UUIDString(target))
+		for _, id := range voice {
+			s.evict(store.UUIDString(id), store.UUIDString(target))
 		}
-		s.log.Info("crew ban", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(target), "rooms", len(slugs))
+		s.log.Info("crew ban", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(target), "channels", len(voice))
+	} else if s.presence != nil {
+		// The door read the crew role once, at connect (#2436): a promotion
+		// has to reach the sockets already open, or the new admin stays
+		// refused until they reconnect (#278).
+		voice, err := s.store.Queries.ListChannelIDsOfKind(r.Context(), db.ListChannelIDsOfKindParams{CrewID: crew.ID, Kind: "voice"})
+		if err != nil {
+			s.log.Error("crew voice channels lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
+		}
+		for _, id := range voice {
+			s.presence.SetRole(store.UUIDString(id), store.UUIDString(target), channels.LiveRole(req.Role))
+		}
 	}
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)

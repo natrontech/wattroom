@@ -54,14 +54,14 @@ func forgetHub(t *testing.T) (*Hub, *lines) {
 	return h, out
 }
 
-// live is the hub's room at slug, or nil once it has been forgotten.
-func live(h *Hub, slug string) *room {
+// live is the hub's room at channel, or nil once it has been forgotten.
+func live(h *Hub, channel string) *room {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return h.rooms[slug]
+	return h.rooms[channel]
 }
 
-// A slug anyone had ever joined kept its tick goroutine, jukebox queue, chat
+// A channel anyone had ever joined kept its tick goroutine, jukebox queue, chat
 // buffer, timeline and roster for the life of the process: nothing but
 // deleting the durable room ever dropped one (#2297).
 func TestAnEmptyRoomIsForgottenOnceItHasBeenIdleLongEnough(t *testing.T) {
@@ -108,7 +108,7 @@ func TestARoomWithALiveSocketIsNotForgotten(t *testing.T) {
 	})
 }
 
-// Voice is keyed by slug and outlives the sockets (#149), so a room with
+// Voice is keyed by channel and outlives the sockets (#149), so a room with
 // voice participants and no sockets is not empty — somebody is in it talking.
 // And when they hang up, the window starts from there rather than from
 // whenever the last tab closed.

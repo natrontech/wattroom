@@ -1,6 +1,7 @@
-// Package hub owns all live room state in memory: one goroutine per room,
-// clients join/leave over WebSocket, and rider metrics are coalesced into one
-// tick message per room per second (see WATTROOM.md §3). Everything here dies
+// Package hub owns all live voice-channel state in memory (ADR-0058): one
+// goroutine per channel (a `room` in here until #2438 splits it), clients
+// join/leave over WebSocket, and rider metrics are coalesced into one tick
+// message per channel per second (see WATTROOM.md §3). Everything here dies
 // with the process — durable data is the store's problem.
 package hub
 
@@ -28,20 +29,20 @@ type RiderRecord struct {
 // simply stay in memory, as before. The implementation owns timeouts and
 // retries and may block for minutes — the hub calls it from a goroutine.
 type SessionSaver interface {
-	SaveSession(ctx context.Context, slug, workoutName, workoutJSON string, startedAt time.Time, riders []RiderRecord)
+	SaveSession(ctx context.Context, channel, workoutName, workoutJSON string, startedAt time.Time, riders []RiderRecord)
 	// AmendRide hands over one rider's record again, longer than at the
 	// close (#1536): a socket that dropped before the end and replayed its
 	// buffer after it. The saver grows the saved ride from it, or does
 	// nothing if there was no ride to grow.
-	AmendRide(ctx context.Context, slug, workoutName, workoutJSON string, startedAt time.Time, rider RiderRecord)
+	AmendRide(ctx context.Context, channel, workoutName, workoutJSON string, startedAt time.Time, rider RiderRecord)
 }
 
 // ChatKeeper persists chat and reactions (ADR-0010 amended, #201). Defined
 // here, where it is consumed; the chat service implements it. Nil means "no
 // database" — chat stays ephemeral, lines carry no id, reactions no-op.
 type ChatKeeper interface {
-	SaveChat(ctx context.Context, slug, userID, text, imageID string, at int64) (id string, ok bool)
-	ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (count int, added bool, ok bool)
+	SaveChat(ctx context.Context, channel, userID, text, imageID string, at int64) (id string, ok bool)
+	ToggleReaction(ctx context.Context, channel, messageID, userID, emoji string) (count int, added bool, ok bool)
 }
 
 // AutoplaySource answers what a room's autoplay should draw from (#627),
@@ -55,7 +56,7 @@ type ChatKeeper interface {
 // read (#270); the zero value means no preference, and every source is free
 // to ignore it.
 type AutoplaySource interface {
-	Autoplay(ctx context.Context, slug string, mood SessionMood) (tracks []protocol.JukeboxCommand, ok bool)
+	Autoplay(ctx context.Context, channel string, mood SessionMood) (tracks []protocol.JukeboxCommand, ok bool)
 }
 
 // TrackHistory hears what a room did with a pool track (#269, ADR-0015):
@@ -69,12 +70,12 @@ type AutoplaySource interface {
 // may block briefly on its own write, and should, or the track that just
 // ended is not yet in the history the refill weights against.
 type TrackHistory interface {
-	TrackEnded(ctx context.Context, slug string, play Play)
+	TrackEnded(ctx context.Context, channel string, play Play)
 	// Recent is the room's "just played" as the log remembers it (#1432),
 	// newest first, at most n — what a room the hub has just created shows
 	// until it plays something of its own. Called from the autoplay worker,
 	// outside every lock.
-	Recent(ctx context.Context, slug string, n int) []protocol.JukeboxEntry
+	Recent(ctx context.Context, channel string, n int) []protocol.JukeboxEntry
 }
 
 // Play is one thing a deck finished with (#269, #1432): a library track by
@@ -99,18 +100,18 @@ const MinRideSamples = 60
 // at once — the keeper queues its own I/O. Nil means no gamification.
 type XpKeeper interface {
 	// The podium's first place, once per scored sprint moment.
-	SprintWon(slug, riderID string, at time.Time)
+	SprintWon(channel, riderID string, at time.Time)
 	// The podium's first place, once per finished game (#1575).
-	GameWon(slug, riderID, mode string, at time.Time)
+	GameWon(channel, riderID, mode string, at time.Time)
 	// A queued track reached its natural end; ref is unique to that play.
-	TrackPlayed(slug, riderID, ref string, at time.Time)
+	TrackPlayed(channel, riderID, ref string, at time.Time)
 	SessionClosed(ev SessionClosed)
 }
 
 // SessionClosed is one closed session as the keeper sees it: who rode, who
 // was in voice for how long, and who pressed start.
 type SessionClosed struct {
-	Slug string
+	Channel string
 	// Rider id of whoever pressed start; empty when the room came back from
 	// a restart with the session already running.
 	StartedBy string
@@ -130,14 +131,14 @@ type SessionRider struct {
 }
 
 // Access is what the hub needs from the durable side: who is this request,
-// are they in this room, and what is the room actually called. Defined here,
-// where it is consumed; implemented by rooms.Service. The hub itself never
-// touches the database — membership is checked once at connect, not per
-// message. The returned slug is the room's canonical one: the request path is
-// matched case-insensitively, and live state is keyed on the canonical slug so
-// every casing of a link lands in the same room (#639).
+// may they enter this voice channel, and what is its id actually spelled.
+// Defined here, where it is consumed; implemented by channels.Service through
+// its one gate, mayEnter (ADR-0058). The hub itself never touches the
+// database — the gate is asked once at connect, not per message. The returned
+// id is the canonical one: live state is keyed on it, so every casing of a
+// link lands in the same room (#639).
 type Access interface {
-	Authorize(r *http.Request, slug string) (rider protocol.Rider, canonical string, err error)
+	Authorize(r *http.Request, channel string) (rider protocol.Rider, canonical string, err error)
 }
 
 type Hub struct {
@@ -154,7 +155,7 @@ type Hub struct {
 	// not from the process — Drain waits on them before the server exits
 	// (audit 2026-09-09).
 	handoffs sync.WaitGroup
-	// slug → identity → who; fed by LiveKit webhooks (#149) and reconciled
+	// channel → identity → who; fed by LiveKit webhooks (#149) and reconciled
 	// against LiveKit's own participant list (#234).
 	voice map[string]map[string]voiceEntry
 	chat  ChatKeeper
@@ -166,7 +167,7 @@ type Hub struct {
 	// it IS being online, and every presence change pings it. See lobby.go.
 	lobby     map[*lobbyClient]string
 	lobbyAuth func(*http.Request) (userID string, ok bool)
-	// Rooms a socket is arriving at or standing in, by slug (#2297): the
+	// Rooms a socket is arriving at or standing in, by channel (#2297): the
 	// claim the idle sweep refuses to forget a room under. Held from before
 	// HandleWS is handed the room until after its client has left it, so a
 	// room with no clients and no holds has none coming either.
@@ -188,8 +189,8 @@ type Hub struct {
 // autoplayJob is one idle deck worth checking — enough to read the room's
 // autoplay plan and hand it back to the room that asked.
 type autoplayJob struct {
-	rm   *room
-	slug string
+	rm      *room
+	channel string
 	// A room the hub just created (#1432): read its "just played" from the
 	// log instead of an autoplay plan.
 	seed bool
@@ -199,7 +200,7 @@ type autoplayJob struct {
 // address the follow-up ChatID back to its room.
 type chatSave struct {
 	rm      *room
-	slug    string
+	channel string
 	riderID string
 	text    string
 	imageID string
@@ -244,7 +245,7 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 // ever lets one loud room starve the rest.
 func (h *Hub) saveWorker() {
 	for job := range h.saves {
-		if id, ok := h.chat.SaveChat(context.Background(), job.slug, job.riderID, job.text, job.imageID, job.at); ok {
+		if id, ok := h.chat.SaveChat(context.Background(), job.channel, job.riderID, job.text, job.imageID, job.at); ok {
 			job.rm.chatIDAssigned(protocol.ChatID{FromID: job.riderID, At: job.at, ID: id})
 		}
 	}
@@ -259,7 +260,7 @@ func (h *Hub) autoplayWorker() {
 		if job.seed {
 			if h.history != nil {
 				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-				entries := h.history.Recent(ctx, job.slug, maxHistory)
+				entries := h.history.Recent(ctx, job.channel, maxHistory)
 				cancel()
 				job.rm.mu.Lock()
 				job.rm.music.seedHistory(entries)
@@ -270,7 +271,7 @@ func (h *Hub) autoplayWorker() {
 		// Read the mood at the moment of the REFILL, not when the job was
 		// queued: the worker can lag a busy hub, and a block that has since
 		// ended is not what the room is riding.
-		tracks, ok := h.playlists.Autoplay(context.Background(), job.slug, job.rm.mood(h.now()))
+		tracks, ok := h.playlists.Autoplay(context.Background(), job.channel, job.rm.mood(h.now()))
 		job.rm.applyAutoplay(tracks, ok, h.now())
 	}
 }
@@ -281,13 +282,13 @@ func (h *Hub) autoplayWorker() {
 // goroutine. The timeout bounds a rider's WS read loop; a history line lost
 // to a slow database costs one nudge in a weighting, so it is logged and
 // dropped rather than retried.
-func (h *Hub) recordTrackEvent(slug string, ev trackEvent) {
+func (h *Hub) recordTrackEvent(channel string, ev trackEvent) {
 	if h.history == nil {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	h.history.TrackEnded(ctx, slug, Play{
+	h.history.TrackEnded(ctx, channel, Play{
 		TrackID: ev.trackID, VideoID: ev.videoID, Title: ev.title,
 		QueuedBy: ev.queuedBy, Skipped: ev.skipped,
 	})
@@ -301,7 +302,7 @@ func (h *Hub) recordTrackEvent(slug string, ev trackEvent) {
 // room's playlist. Nothing here re-fires itself: a loop needs a real "ended"
 // from a client each pass, and a source with nothing to play — autoplay off,
 // an empty playlist — leaves the deck idle and the queue quiet.
-func (h *Hub) triggerAutoplay(rm *room, slug string) {
+func (h *Hub) triggerAutoplay(rm *room, channel string) {
 	if h.playlists == nil {
 		return
 	}
@@ -312,21 +313,21 @@ func (h *Hub) triggerAutoplay(rm *room, slug string) {
 		return
 	}
 	select {
-	case h.autoplays <- autoplayJob{rm: rm, slug: slug}:
+	case h.autoplays <- autoplayJob{rm: rm, channel: channel}:
 	default:
 		// Full queue: the room just stays idle until the next join, which
 		// will try again — better than a joining rider's upgrade or read
 		// loop blocking.
-		h.log.Warn("autoplay queue full, skipping", "room", slug)
+		h.log.Warn("autoplay queue full, skipping", "channel", channel)
 	}
 }
 
-// Kick severs every socket a rider holds in slug — the live arm of a ban or
+// Kick severs every socket a rider holds in channel — the live arm of a ban or
 // removal (#223), which must eject, not drift. Lock, copy, unlock, then
 // close: CloseNow unblocks the read loop, whose defer runs the leave.
-func (h *Hub) Kick(slug, userID string) {
+func (h *Hub) Kick(channel, userID string) {
 	h.mu.Lock()
-	rm := h.rooms[slug]
+	rm := h.rooms[channel]
 	h.mu.Unlock()
 	if rm == nil {
 		return
@@ -343,27 +344,24 @@ func (h *Hub) Kick(slug, userID string) {
 		_ = conn.CloseNow()
 	}
 	if len(conns) > 0 {
-		h.log.Info("rider kicked", "room", slug, "rider", userID, "sockets", len(conns))
+		h.log.Info("rider kicked", "channel", channel, "rider", userID, "sockets", len(conns))
 	}
 }
 
-// CloseRoom forgets everything live about a room, for a room that has been
-// deleted (#618). Deleting the durable row freed the slug, and the hub went on
-// holding the room's jukebox queue, chat buffer, session and roster — so the
-// next room created under the same name opened carrying the dead room's state.
-// Its members need not be the old room's members, which makes the inheritance
-// a privacy-shaped surprise as well as a bug.
+// CloseRoom forgets everything live about a voice channel that has been
+// deleted (#618): left behind, its jukebox queue, chat buffer, session and
+// roster outlive the channel, and nobody should inherit a dead channel's state.
 //
-// Sever the sockets, stop the ticker, drop both maps keyed by the slug. A room
-// re-created later starts from newRoom, and only HandleWS can bring one back —
-// which authorizes against the database first, so a deleted slug cannot.
-func (h *Hub) CloseRoom(slug string) {
+// Sever the sockets, stop the ticker, drop both maps keyed by the channel. Only
+// HandleWS can bring one back — which authorizes against the database first,
+// so a deleted channel cannot.
+func (h *Hub) CloseRoom(channel string) {
 	h.mu.Lock()
-	rm := h.rooms[slug]
-	delete(h.rooms, slug)
-	// Voice is keyed by the same slug and outlives the sockets (#149); left
+	rm := h.rooms[channel]
+	delete(h.rooms, channel)
+	// Voice is keyed by the same channel and outlives the sockets (#149); left
 	// behind, it seeds the next room's roster from voiceRidersLocked.
-	delete(h.voice, slug)
+	delete(h.voice, channel)
 	h.mu.Unlock()
 	if rm == nil {
 		return
@@ -374,22 +372,22 @@ func (h *Hub) CloseRoom(slug string) {
 		conns = append(conns, c.conn)
 	}
 	// Safe exactly once: the map delete above happened under h.mu, so a
-	// second CloseRoom for this slug reads a nil room and returns.
+	// second CloseRoom for this channel reads a nil room and returns.
 	close(rm.stop)
 	rm.mu.Unlock()
 	for _, conn := range conns {
 		_ = conn.CloseNow()
 	}
-	h.log.Info("room closed", "room", slug, "sockets", len(conns))
+	h.log.Info("room closed", "channel", channel, "sockets", len(conns))
 }
 
 // SetRole re-roles a rider's live sockets in place (#278 rider report): the
 // rider struct is captured when the socket opens, so a promotion to coach
 // reached neither the control check nor anyone's roster until the promoted
 // rider happened to reconnect.
-func (h *Hub) SetRole(slug, userID, role string) {
+func (h *Hub) SetRole(channel, userID, role string) {
 	h.mu.Lock()
-	rm := h.rooms[slug]
+	rm := h.rooms[channel]
 	h.mu.Unlock()
 	if rm == nil {
 		return
@@ -411,9 +409,9 @@ func (h *Hub) SetRole(slug, userID, role string) {
 // Planning is an HTTP call, but the people standing in the room are the ones
 // it is about. Only a room that already exists gets the line: spinning one up
 // for a line nobody is there to read would leak a ticker per planned session.
-func (h *Hub) SessionAnnounce(slug, verb, actor, workout string, startsAt time.Time) {
+func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt time.Time) {
 	h.mu.Lock()
-	rm, live := h.rooms[slug]
+	rm, live := h.rooms[channel]
 	h.mu.Unlock()
 	if !live {
 		return
@@ -431,8 +429,8 @@ func (h *Hub) SessionAnnounce(slug, verb, actor, workout string, startsAt time.T
 // this room's jukebox right now) should not normally see that. addedCount is
 // how many tracks actually landed, for the response — the queue's own caps
 // (jukebox.go's maxQueue/maxQueuedTracks) can stop it short.
-func (h *Hub) QueuePlaylist(slug, riderID, addedBy string, tracks []protocol.JukeboxCommand) (addedCount int, ok bool) {
-	rm := h.occupied(slug)
+func (h *Hub) QueuePlaylist(channel, riderID, addedBy string, tracks []protocol.JukeboxCommand) (addedCount int, ok bool) {
+	rm := h.occupied(channel)
 	if rm == nil {
 		return 0, false
 	}
@@ -446,12 +444,12 @@ func (h *Hub) QueuePlaylist(slug, riderID, addedBy string, tracks []protocol.Juk
 	return addedCount, true
 }
 
-func (h *Hub) room(slug string) *room {
+func (h *Hub) room(channel string) *room {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	rm, ok := h.rooms[slug]
+	rm, ok := h.rooms[channel]
 	if !ok {
-		rm = newRoom(slug)
+		rm = newRoom(channel)
 		// One clock for the room and the hub that owns it. newRoom defaults to
 		// time.Now, which is identical in production and divergent the moment
 		// either is injected: join/leave/setAway/setMetrics/fire stamp on the
@@ -462,22 +460,22 @@ func (h *Hub) room(slug string) *room {
 		rm.now = h.now
 		rm.pending = &h.handoffs
 		rm.changed = h.PresenceChanged
-		rm.deckIdled = func() { h.triggerAutoplay(rm, slug) }
-		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(slug, ev) }
+		rm.deckIdled = func() { h.triggerAutoplay(rm, channel) }
+		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(channel, ev) }
 		rm.forget = func() bool { return h.forgetRoom(rm) }
 		rm.xp = h.xp
 		rm.recaps = h.recaps
 		// Voice can be live before the first socket opens the room — seed
 		// it, unlocked: nobody else can hold this room yet.
-		rm.voiceNow = h.voiceRidersLocked(slug)
-		h.rooms[slug] = rm
+		rm.voiceNow = h.voiceRidersLocked(channel)
+		h.rooms[channel] = rm
 		h.launchRoom(rm)
 		// Its "just played" from the log (#1432), on the worker: a DB read
 		// never happens under a lock, and a full queue simply leaves the
 		// history empty until the room plays something.
 		if h.history != nil {
 			select {
-			case h.autoplays <- autoplayJob{rm: rm, slug: slug, seed: true}:
+			case h.autoplays <- autoplayJob{rm: rm, channel: channel, seed: true}:
 			default:
 			}
 		}
@@ -514,9 +512,9 @@ func (h *Hub) Drain(timeout time.Duration) bool {
 // a timer that will never move again (#751). Close it instead — the clients
 // reconnect, and the join builds a fresh room with a live loop.
 func (h *Hub) launchRoom(rm *room) {
-	safego.SuperviseThen(h.log, h.now, "room "+rm.slug, rm.stop,
+	safego.SuperviseThen(h.log, h.now, "room "+rm.channel, rm.stop,
 		func() { rm.run(h.log, h.now, h.saver) },
-		func() { h.CloseRoom(rm.slug) })
+		func() { h.CloseRoom(rm.channel) })
 }
 
 // maxSocketsPerRider is generous — a phone, a laptop, a TV and a few tabs —

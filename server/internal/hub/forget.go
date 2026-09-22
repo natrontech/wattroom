@@ -14,8 +14,8 @@ import (
 // docs/SPEC.md, "A room nobody is in is forgotten after 2 h", which also says
 // what is lost when it fires. The number is the product's, not this file's.
 //
-// Until #2297, `h.rooms[slug]` was deleted only by CloseRoom, and CloseRoom
-// fires only when the durable room row is deleted (#618): every slug anyone
+// Until #2297, `h.rooms[channel]` was deleted only by CloseRoom, and CloseRoom
+// fires only when the durable room row is deleted (#618): every channel anyone
 // had WS-joined since process start kept a tick goroutine, a jukebox queue, a
 // chat buffer, an event log, a session, a roster and per-rider sample
 // accumulators until the process was replaced.
@@ -25,7 +25,7 @@ const roomIdleTTL = 2 * time.Hour
 // it is not — which is also what restarts the window. Called from the tick's
 // empty branch, so "no sockets" is the caller's half; what this adds is:
 //
-//   - Nobody in the voice channel. h.voice is keyed by slug, fed by LiveKit's
+//   - Nobody in the voice channel. h.voice is keyed by channel, fed by LiveKit's
 //     webhooks independently of the sockets and outliving them (#149), so a
 //     room with voice participants and no sockets is not empty — somebody is
 //     in it talking. rm.voiceNow is the hub's own map mirrored into the room;
@@ -57,7 +57,7 @@ func (rm *room) idleForLocked(state protocol.SessionState, now time.Time) time.D
 }
 
 // holdRoom is HandleWS's way in: room()'s lookup-or-create, plus a claim that
-// keeps the sweep off this slug while the socket is arriving. Taken BEFORE the
+// keeps the sweep off this channel while the socket is arriving. Taken BEFORE the
 // lookup and released only after the client has left, so the claim strictly
 // encloses the socket's membership of the room.
 //
@@ -66,19 +66,19 @@ func (rm *room) idleForLocked(state protocol.SessionState, now time.Time) time.D
 // there leaves that rider in a room with no clock and no entry in the hub —
 // sockets open, timer never moving, which is exactly the failure #751 closed
 // from the other end.
-func (h *Hub) holdRoom(slug string) *room {
+func (h *Hub) holdRoom(channel string) *room {
 	h.mu.Lock()
-	h.holds[slug]++
+	h.holds[channel]++
 	h.mu.Unlock()
-	return h.room(slug)
+	return h.room(channel)
 }
 
 // releaseRoom drops one claim, deleting the key on the last — the map is
 // bounded by rooms being joined right now, not by rooms ever joined.
-func (h *Hub) releaseRoom(slug string) {
+func (h *Hub) releaseRoom(channel string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	releaseCount(h.holds, slug)
+	releaseCount(h.holds, channel)
 }
 
 // forgetRoom drops a room the hub has nothing left to do for, reporting
@@ -89,16 +89,16 @@ func (h *Hub) releaseRoom(slug string) {
 // The room leaves h.rooms under the same lock room() takes, so nobody can be
 // handed it afterwards — only HandleWS brings a room back, through holdRoom.
 // It refuses on every claim the tick cannot see for itself: a socket arriving,
-// a voice participant that turned up since the tick's copy, and a slug that
+// a voice participant that turned up since the tick's copy, and a channel that
 // has stopped being this room at all (a CloseRoom, then a re-create). Its stop
 // channel stays open on purpose — the tick is about to return on its own, and
-// a later CloseRoom of the slug must reach whatever room holds it then.
+// a later CloseRoom of the channel must reach whatever room holds it then.
 func (h *Hub) forgetRoom(rm *room) bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.rooms[rm.slug] != rm || h.holds[rm.slug] > 0 || len(h.voice[rm.slug]) > 0 {
+	if h.rooms[rm.channel] != rm || h.holds[rm.channel] > 0 || len(h.voice[rm.channel]) > 0 {
 		return false
 	}
-	delete(h.rooms, rm.slug)
+	delete(h.rooms, rm.channel)
 	return true
 }

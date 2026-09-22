@@ -45,7 +45,7 @@ var (
 // sample goes stale.
 //
 // No label for the room: an aggregate says whether anyone is riding without
-// putting room slugs in a metrics endpoint. Metrics are room-scoped by
+// putting channel ids in a metrics endpoint. Metrics are room-scoped by
 // architecture and a GaugeVec would quietly widen that.
 func (h *Hub) registerRidingMetric() {
 	// Into metrics.Registry, the one the handler serves: since #1738 nothing

@@ -156,7 +156,7 @@ func TestSessionClosedPaysVoiceAndCoach(t *testing.T) {
 	t.Cleanup(func() { _, _ = s.store.Pool.Exec(context.Background(), "delete from users where id = $1", coach.ID) })
 
 	ev := hub.SessionClosed{
-		Slug: "velvet", StartedBy: store.UUIDString(coach.ID), Seconds: 1800, At: time.Now(),
+		Channel: "velvet", StartedBy: store.UUIDString(coach.ID), Seconds: 1800, At: time.Now(),
 		Riders: []hub.SessionRider{
 			{ID: store.UUIDString(alice.ID), Rode: true, VoiceSeconds: 1000},
 			{ID: store.UUIDString(bob.ID), Rode: true, VoiceSeconds: 600},

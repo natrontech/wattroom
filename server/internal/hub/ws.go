@@ -104,12 +104,12 @@ func canControl(role string) bool { return role == "owner" || role == "coach" }
 // Membership is the price of entry: metrics are room-scoped (privacy is
 // architecture), so an unauthorized socket never reaches a room at all.
 func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
-	rider, slug, err := h.access.Authorize(r, r.PathValue("slug"))
+	rider, channel, err := h.access.Authorize(r, r.PathValue("id"))
 	if err != nil {
 		if !errors.Is(err, av.ErrNoSession) && !errors.Is(err, av.ErrNotMember) {
 			// The database did not answer (#1984): logged, and a 503 the
 			// client retries — not a refusal it would believe.
-			h.log.Error("room door", "room", r.PathValue("slug"), "err", err)
+			h.log.Error("room door", "channel", r.PathValue("id"), "err", err)
 			http.Error(w, "the room could not be checked", http.StatusServiceUnavailable)
 			return
 		}
@@ -133,13 +133,13 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	// must not forget a room in the window where this rider has its pointer
 	// and has not joined with it yet. Registered before the writer's defer, so
 	// it runs after rm.leave below.
-	rm := h.holdRoom(slug)
-	defer h.releaseRoom(slug)
+	rm := h.holdRoom(channel)
+	defer h.releaseRoom(channel)
 	c := &client{rider: rider, conn: conn, out: make(chan []byte, clientQueue)}
 	// This socket's own writer, so the room's tick never waits on it (#670).
 	writerDone := make(chan struct{})
 	defer close(writerDone)
-	safego.Go(h.log, "room writer "+slug, func() { c.writeLoop(writerDone, h.keepalive) })
+	safego.Go(h.log, "room writer "+channel, func() { c.writeLoop(writerDone, h.keepalive) })
 	// This socket's own address, to this socket alone (#2131). Addressed like
 	// a pairing answer and for a stronger reason: it is NOT on protocol.Rider
 	// and must never be, because the roster is broadcast to the whole room on
@@ -152,16 +152,16 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	})
 	rm.join(c)
 	h.PresenceChanged()
-	h.log.Info("rider joined", "room", slug, "rider", rider.ID)
+	h.log.Info("rider joined", "channel", channel, "rider", rider.ID)
 	// Autoplay (#627): a rider joining an idle deck may be the room coming
 	// back to life. The check is async — never block this rider's upgrade on
 	// a database read.
-	h.triggerAutoplay(rm, slug)
+	h.triggerAutoplay(rm, channel)
 	defer func() {
 		rm.leave(c)
 		_ = conn.CloseNow()
 		h.PresenceChanged()
-		h.log.Info("rider left", "room", slug, "rider", rider.ID)
+		h.log.Info("rider left", "channel", channel, "rider", rider.ID)
 	}()
 
 	ctx := r.Context()
@@ -249,11 +249,11 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				// follows on a later tick as a ChatID.
 				if h.chat != nil {
 					select {
-					case h.saves <- chatSave{rm: rm, slug: slug, riderID: rider.ID, text: text, imageID: imageID, at: line.At}:
+					case h.saves <- chatSave{rm: rm, channel: channel, riderID: rider.ID, text: text, imageID: imageID, at: line.At}:
 					default:
 						// Full queue: the line stays ephemeral — blocking the
 						// sender's reads would be the worse failure.
-						h.log.Warn("chat save queue full, line not persisted", "room", slug, "rider", rider.ID)
+						h.log.Warn("chat save queue full, line not persisted", "channel", channel, "rider", rider.ID)
 					}
 				}
 				rm.chatLine(line)
@@ -270,7 +270,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		}
 		if msg.ChatReact != nil && h.chat != nil {
 			if protocol.IsIconOrEmoji(msg.ChatReact.Emoji) && rm.allow("react", rider.ID, h.now(), 300*time.Millisecond) {
-				if count, added, ok := h.chat.ToggleReaction(ctx, slug, msg.ChatReact.MessageID, rider.ID, msg.ChatReact.Emoji); ok {
+				if count, added, ok := h.chat.ToggleReaction(ctx, channel, msg.ChatReact.MessageID, rider.ID, msg.ChatReact.Emoji); ok {
 					rm.reactionChanged(protocol.ChatReactionCount{
 						MessageID: msg.ChatReact.MessageID, Emoji: msg.ChatReact.Emoji,
 						Count: count, By: rider.ID, Added: added,
@@ -304,7 +304,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				if played, _, refusal := rm.jukeboxWithRefusal(*msg.Jukebox, rider.ID, rider.Name, h.now()); refusal != "" {
 					h.writeError(c, jukeboxCode(refusal.code()), refusal.message())
 				} else if played != nil && h.xp != nil {
-					h.xp.TrackPlayed(slug, played.riderID, played.ref, h.now())
+					h.xp.TrackPlayed(channel, played.riderID, played.ref, h.now())
 				}
 			} else {
 				// Skip, pause, queue: deliberate taps a rider watches for a
@@ -321,7 +321,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// every other client input.
 			samples := msg.Backfill.Samples
 			if len(samples) > maxBackfillBatch {
-				h.log.Warn("backfill truncated", "room", slug, "rider", rider.ID, "samples", len(samples), "kept", maxBackfillBatch)
+				h.log.Warn("backfill truncated", "channel", channel, "rider", rider.ID, "samples", len(samples), "kept", maxBackfillBatch)
 				samples = samples[:maxBackfillBatch]
 			}
 			// One batch a second: it runs 600 validations under the room's
@@ -331,7 +331,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			rm.backfill(c, samples, h.log, h.saver)
-			h.log.Debug("backfill received", "room", slug, "rider", rider.ID, "samples", len(samples))
+			h.log.Debug("backfill received", "channel", channel, "rider", rider.ID, "samples", len(samples))
 		}
 		if msg.Control != nil {
 			// The role on THIS socket, not the copy captured when it opened:

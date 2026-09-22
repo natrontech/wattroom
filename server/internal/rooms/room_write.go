@@ -122,6 +122,12 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "owner membership failed", err, "The room could not be created. Try again.", "room", room.Slug)
 		return
 	}
+	// Its text and voice channel (#2436): the hub keys by voice channel, and
+	// a room without one could not be entered.
+	if err := q.AdoptRoomChannels(r.Context(), room.ID); err != nil {
+		httpx.Fail(w, s.log, "room channels failed", err, "The room could not be created. Try again.", "room", room.Slug)
+		return
+	}
 	if err := tx.Commit(r.Context()); err != nil {
 		httpx.Fail(w, s.log, "room create commit failed", err, "The room could not be created. Try again.", "room", room.Slug)
 		return
@@ -297,6 +303,8 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = tx.Rollback(r.Context()) }()
 	q := s.store.Queries.WithTx(tx)
+	// Read before the delete takes its room_channels row with it (#2436).
+	voice := s.store.VoiceChannelOf(r.Context(), room.ID)
 	// The crew before the room (#2079, LockCrew): this transaction ends at the
 	// crew either way, and a leave holding the crew while it takes the same
 	// memberships this delete cascades is the other half of the deadlock.
@@ -329,7 +337,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	// Durable row gone; the hub still holds everything live about it (#618).
 	if s.presence != nil {
-		s.presence.CloseRoom(room.Slug)
+		s.presence.CloseRoom(voice)
 	}
 	s.log.Info("room deleted", "room", room.Slug, "crewGone", crewGone)
 	s.changed()

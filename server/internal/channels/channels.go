@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -17,35 +18,66 @@ import (
 // consumed, and satisfied by *auth.Service.
 type UserSource interface {
 	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
+	User(r *http.Request) (db.User, bool)
 }
 
-// Pinger is the lobby ping (#570): a channel changes because somebody else
-// changed it, and the ping is how every other client hears and re-fetches.
-// Satisfied by the hub. Optional: without it nobody hears until they reload.
-type Pinger interface {
+// Live is what channels asks of the hub, which keys by voice channel (#2436).
+// Satisfied by *hub.Hub. Optional: without it nobody hears a change until
+// they reload, and a voice row lists nobody in it.
+type Live interface {
+	// The lobby ping (#570): a channel changes because somebody else changed
+	// it, and the ping is how every other client hears and re-fetches.
 	PresenceChanged()
+	// Who is in a voice channel right now.
+	Presence(channel string) protocol.RoomPresence
+	// Taking somebody out of a private channel severs them there too.
+	Kick(channel, userID string)
+	// A deleted voice channel's live state dies with it (#618).
+	CloseRoom(channel string)
+}
+
+// VoiceEjector is LiveKit's half of a kick — satisfied by *av.Service, and
+// absent without AV.
+type VoiceEjector interface {
+	Eject(channel, userID string)
 }
 
 type Service struct {
 	store *store.Store
 	users UserSource
 	log   *slog.Logger
-	lobby Pinger
+	live  Live
+	voice VoiceEjector
 }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 	return &Service{store: st, users: users, log: log}
 }
 
-// SetPinger wires the hub in after construction.
-func (s *Service) SetPinger(p Pinger) { s.lobby = p }
+// SetLive wires the hub in after construction — the hub needs this service
+// first, as its door.
+func (s *Service) SetLive(l Live) { s.live = l }
+
+// SetVoiceEjector wires LiveKit ejection in when AV is configured.
+func (s *Service) SetVoiceEjector(v VoiceEjector) { s.voice = v }
+
+// evict severs somebody's live presence in one voice channel: the socket and
+// the call.
+func (s *Service) evict(channel, userID string) {
+	if s.live != nil {
+		s.live.Kick(channel, userID)
+	}
+	if s.voice != nil {
+		s.voice.Eject(channel, userID)
+	}
+}
 
 // changed pings every lobby socket; the ping carries no data.
 // ponytail: one ping for every crew, not just this crew's members — the lobby
 // has no per-crew routing yet (#2444), and a channel edit is a rare event.
 func (s *Service) changed() {
-	if s.lobby != nil {
-		s.lobby.PresenceChanged()
+	if s.live != nil {
+		s.live.PresenceChanged()
 	}
 }
 
@@ -83,6 +115,8 @@ type channelJSON struct {
 	// A private channel's named members. The crew's owner and admins enter
 	// by role and are not listed.
 	Members []memberJSON `json:"members,omitempty"`
+	// A voice channel's: who is in it right now (#2436).
+	Presence *protocol.RoomPresence `json:"presence,omitempty"`
 }
 
 func toJSON(c db.Channel, members []memberJSON) channelJSON {
@@ -141,9 +175,15 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	out := []channelJSON{}
 	for _, c := range rows {
 		id := store.UUIDString(c.ID)
-		if mayEnter(role, c.Private, isNamed[id]) {
-			out = append(out, toJSON(c, members[id]))
+		if !mayEnter(role, c.Private, isNamed[id]) {
+			continue
 		}
+		entry := toJSON(c, members[id])
+		if c.Kind == kindVoice && s.live != nil {
+			presence := s.live.Presence(id)
+			entry.Presence = &presence
+		}
+		out = append(out, entry)
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"channels": out})
 }

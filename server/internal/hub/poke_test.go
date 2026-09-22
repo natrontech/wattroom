@@ -84,10 +84,10 @@ func readPoke(t *testing.T, conn *websocket.Conn) protocol.Poke {
 func TestPokeUsesAuthenticatedSender(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	sender := dial(t, url, "jan:member")
 	target := dial(t, url, "sven:member")
@@ -111,10 +111,10 @@ func TestPokeUsesAuthenticatedSender(t *testing.T) {
 func TestPokeOnCooldownTellsTheSender(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	sender := dial(t, url, "jan:member")
 	dial(t, url, "sven:member")

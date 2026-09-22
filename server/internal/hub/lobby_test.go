@@ -30,7 +30,7 @@ func TestLobbyPresence(t *testing.T) {
 		return name, true
 	})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -54,8 +54,8 @@ func TestLobbyPresence(t *testing.T) {
 	// client just after the handshake it returned from, so this waits for that
 	// rather than assuming it has already happened (#307).
 	eventually(t, "jan reads lobby-online", func() bool {
-		slug, online := h.WhereIs([]string{"jan"})["jan"]
-		return online && slug == ""
+		channel, online := h.WhereIs([]string{"jan"})["jan"]
+		return online && channel == ""
 	})
 	if _, online := h.WhereIs([]string{"sven"})["sven"]; online {
 		t.Fatalf("sven reads online without any socket")
@@ -63,7 +63,7 @@ func TestLobbyPresence(t *testing.T) {
 
 	// A room join elsewhere pings the lobby — the client's cue to re-fetch.
 	// Two messages guaranteed: jan's own coming-online, then sven's join.
-	dial(t, base+"/ws/rooms/velvet", "sven:member")
+	dial(t, base+"/ws/channels/velvet", "sven:member")
 	for range 2 {
 		readCtx, readCancel := context.WithTimeout(t.Context(), 5*time.Second)
 		_, _, err := lobby.Read(readCtx)
@@ -77,8 +77,8 @@ func TestLobbyPresence(t *testing.T) {
 	if where["sven"] != "velvet" {
 		t.Fatalf("sven's room: %q", where["sven"])
 	}
-	if slug, online := where["jan"]; !online || slug != "" {
-		t.Fatalf("jan after sven joined: %q %v", slug, online)
+	if channel, online := where["jan"]; !online || channel != "" {
+		t.Fatalf("jan after sven joined: %q %v", channel, online)
 	}
 
 	// Closing the socket is going offline — no timeout window to wait out.
@@ -134,7 +134,7 @@ func TestChatPingsTheLobby(t *testing.T) {
 		return name, name != ""
 	})
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
@@ -142,7 +142,7 @@ func TestChatPingsTheLobby(t *testing.T) {
 
 	// Jan is in the lobby and nowhere else; sven is in the room talking.
 	lobby := dial(t, base+"/ws/presence", "jan:member")
-	sven := dial(t, base+"/ws/rooms/velvet", "sven:member")
+	sven := dial(t, base+"/ws/channels/velvet", "sven:member")
 	readTick(t, sven)
 
 	// Pings coalesce into a one-deep channel, so counting the ones the

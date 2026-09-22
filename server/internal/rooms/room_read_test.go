@@ -5,10 +5,7 @@ package rooms
 
 import (
 	"fmt"
-	"log/slog"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -17,53 +14,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
-
-// The roster carries the level (#690): the room's faces wear the same ring the
-// sidebar, the member list and DM heads already showed, and the strip's tiles
-// have no other source for it. Authorize is where a socket's rider is built.
-func TestAuthorizeCarriesTheRidersLevel(t *testing.T) {
-	h := setup(t)
-	slug, _ := h.createRoom(t, "alice", "Ring Room")
-	if _, err := h.store.Queries.AddXpEvent(t.Context(), db.AddXpEventParams{
-		UserID: h.users.ByToken["alice"].ID,
-		Source: "lounge",
-		Amount: 240,
-		Ref:    "roster-test",
-		At:     pgtype.Timestamptz{Time: time.Now(), Valid: true},
-	}); err != nil {
-		t.Fatalf("xp event: %v", err)
-	}
-
-	svc := New(h.store, h.users, slog.New(slog.DiscardHandler))
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/ws/rooms/"+slug, nil)
-	req.Header.Set("X-Test-User", "alice")
-	rider, _, err := svc.Authorize(req, slug)
-	if err != nil {
-		t.Fatalf("authorize: %v", err)
-	}
-	if rider.TotalXp != 240 {
-		t.Fatalf("rider.TotalXp = %d, want 240 — the roster cannot ring without it", rider.TotalXp)
-	}
-}
-
-// Authorize hands back the room's canonical slug, whatever casing the link
-// carried (#639): the hub and the AV token key live state on that, so a
-// mixed-case link cannot fork a second live room.
-func TestAuthorizeReturnsTheCanonicalSlug(t *testing.T) {
-	h := setup(t)
-	slug, _ := h.createRoom(t, "alice", "Velvet Crew")
-	svc := New(h.store, h.users, slog.New(slog.DiscardHandler))
-	shouted := strings.ToUpper(slug)
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/ws/rooms/"+shouted, nil)
-	req.Header.Set("X-Test-User", "alice")
-	_, canonical, err := svc.Authorize(req, shouted)
-	if err != nil {
-		t.Fatalf("authorize %q: %v", shouted, err)
-	}
-	if canonical != slug {
-		t.Fatalf("canonical slug = %q, want %q", canonical, slug)
-	}
-}
 
 func TestUnreadBadgeSurvivesANamesake(t *testing.T) {
 	// #649: standing in a room is reading it, so the badge is suppressed for

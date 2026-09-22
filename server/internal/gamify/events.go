@@ -26,25 +26,25 @@ const (
 
 // SprintWon implements hub.XpKeeper: the win pays nothing itself and counts
 // toward Sprint Snob.
-func (s *Service) SprintWon(slug, riderID string, at time.Time) {
+func (s *Service) SprintWon(channel, riderID string, at time.Time) {
 	s.enqueue("sprint", func(ctx context.Context) {
-		s.record(ctx, riderID, sourceSprintWin, 0, slug+"@"+millis(at), at)
+		s.record(ctx, riderID, sourceSprintWin, 0, channel+"@"+millis(at), at)
 	})
 }
 
 // GameWon implements hub.XpKeeper (#1575): counted like a sprint win, paid
 // nothing until docs/SPEC.md names a number; ref keys one game.
-func (s *Service) GameWon(slug, riderID, mode string, at time.Time) {
+func (s *Service) GameWon(channel, riderID, mode string, at time.Time) {
 	s.enqueue("game", func(ctx context.Context) {
-		s.record(ctx, riderID, sourceGameWin, 0, slug+"@"+mode+"@"+millis(at), at)
+		s.record(ctx, riderID, sourceGameWin, 0, channel+"@"+mode+"@"+millis(at), at)
 	})
 }
 
 // TrackPlayed implements hub.XpKeeper: a track the room let play to the end
 // counts toward DJ for whoever queued it.
-func (s *Service) TrackPlayed(slug, riderID, ref string, at time.Time) {
+func (s *Service) TrackPlayed(channel, riderID, ref string, at time.Time) {
 	s.enqueue("track", func(ctx context.Context) {
-		s.record(ctx, riderID, sourceDjTrack, 0, slug+"/"+ref, at)
+		s.record(ctx, riderID, sourceDjTrack, 0, channel+"/"+ref, at)
 	})
 }
 
@@ -65,7 +65,7 @@ func (s *Service) sessionClosed(ctx context.Context, ev hub.SessionClosed) {
 			rode++
 		}
 	}
-	ref := ev.Slug + "@" + millis(ev.At)
+	ref := ev.Channel + "@" + millis(ev.At)
 	if rode >= groupSessionRiders && ev.Seconds >= groupSessionMinSec {
 		for _, r := range ev.Riders {
 			if r.VoiceSeconds*2 >= ev.Seconds {

@@ -17,10 +17,10 @@ import (
 func TestSocketsPerRiderAreCapped(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/crowded"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/crowded"
 
 	conns := make([]*websocket.Conn, 0, maxSocketsPerRider)
 	for i := 0; i < maxSocketsPerRider; i++ {

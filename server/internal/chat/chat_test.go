@@ -122,11 +122,11 @@ func TestChatRoundTrip(t *testing.T) {
 	}
 
 	// Save two lines; the backlog returns them oldest-first with authors.
-	id1, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "warm-up at 7?", "", time.Now().UnixMilli())
+	id1, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "warm-up at 7?", "", time.Now().UnixMilli())
 	if !ok || id1 == "" {
 		t.Fatal("save 1 failed")
 	}
-	id2, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(bob.ID), "in", "", time.Now().UnixMilli())
+	id2, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(bob.ID), "in", "", time.Now().UnixMilli())
 	if !ok || id2 == "" {
 		t.Fatal("save 2 failed")
 	}
@@ -144,16 +144,16 @@ func TestChatRoundTrip(t *testing.T) {
 
 	// Reactions toggle: on → 1, mirrored on → 2, off → 1; junk id refused.
 	// The added flag reports which way it went (#219).
-	if n, added, ok := svc.ToggleReaction(t.Context(), room.Slug, id1, store.UUIDString(bob.ID), "🔥"); !ok || n != 1 || !added {
+	if n, added, ok := svc.ToggleReaction(t.Context(), testx.VoiceChannel(t, svc.store, room), id1, store.UUIDString(bob.ID), "🔥"); !ok || n != 1 || !added {
 		t.Fatalf("first toggle: %d %v %v", n, added, ok)
 	}
-	if n, added, ok := svc.ToggleReaction(t.Context(), room.Slug, id1, store.UUIDString(alice.ID), "🔥"); !ok || n != 2 || !added {
+	if n, added, ok := svc.ToggleReaction(t.Context(), testx.VoiceChannel(t, svc.store, room), id1, store.UUIDString(alice.ID), "🔥"); !ok || n != 2 || !added {
 		t.Fatalf("second rider: %d %v %v", n, added, ok)
 	}
-	if n, added, ok := svc.ToggleReaction(t.Context(), room.Slug, id1, store.UUIDString(bob.ID), "🔥"); !ok || n != 1 || added {
+	if n, added, ok := svc.ToggleReaction(t.Context(), testx.VoiceChannel(t, svc.store, room), id1, store.UUIDString(bob.ID), "🔥"); !ok || n != 1 || added {
 		t.Fatalf("toggle off: %d %v %v", n, added, ok)
 	}
-	if _, _, ok := svc.ToggleReaction(t.Context(), room.Slug, "not-a-uuid", store.UUIDString(bob.ID), "🔥"); ok {
+	if _, _, ok := svc.ToggleReaction(t.Context(), testx.VoiceChannel(t, svc.store, room), "not-a-uuid", store.UUIDString(bob.ID), "🔥"); ok {
 		t.Fatal("junk message id accepted")
 	}
 
@@ -183,13 +183,13 @@ func TestReactionRefusedAcrossRooms(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = svc.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", other.ID)
 	})
-	id, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "here", "", time.Now().UnixMilli())
+	id, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "here", "", time.Now().UnixMilli())
 	if !ok {
 		t.Fatal("save failed")
 	}
 	// Toggling it through the OTHER room's slug must refuse — the room is
 	// the privacy boundary even for a reaction.
-	if _, _, ok := svc.ToggleReaction(t.Context(), other.Slug, id, store.UUIDString(alice.ID), "🔥"); ok {
+	if _, _, ok := svc.ToggleReaction(t.Context(), testx.VoiceChannel(t, svc.store, other), id, store.UUIDString(alice.ID), "🔥"); ok {
 		t.Fatal("cross-room reaction accepted")
 	}
 }
@@ -280,7 +280,7 @@ func TestChatImages(t *testing.T) {
 	}
 
 	// A line carrying the id surfaces it in the backlog.
-	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "", imgID, time.Now().UnixMilli()); !ok {
+	if _, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "", imgID, time.Now().UnixMilli()); !ok {
 		t.Fatal("save with image failed")
 	}
 	_, messages := backlog(t, mux, "alice", room.Slug)
@@ -296,7 +296,7 @@ func TestPruneChatImagesSweepsOnlyUnreferenced(t *testing.T) {
 
 	_, sent := postImage(t, mux, "alice", room.Slug, tinyPNG)
 	_, orphan := postImage(t, mux, "alice", room.Slug, tinyPNG)
-	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "", sent, time.Now().UnixMilli()); !ok {
+	if _, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "", sent, time.Now().UnixMilli()); !ok {
 		t.Fatal("save failed")
 	}
 	// Age both past the 15-minute grace; only the never-sent one may go.
@@ -338,7 +338,7 @@ func TestChatImageFromAnotherRoomIsRefused(t *testing.T) {
 	}
 	// Referencing it from chat-cave must not persist: serving is room-scoped
 	// anyway, but the reference alone would pin the bytes past the sweep.
-	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "look", theirs, time.Now().UnixMilli()); ok {
+	if _, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "look", theirs, time.Now().UnixMilli()); ok {
 		t.Fatal("cross-room image reference accepted")
 	}
 	// Over HTTP the refusal is the rider's to act on (#1987): a 400 naming
@@ -394,7 +394,7 @@ func TestChatLineKeepsItsOwnTimestamp(t *testing.T) {
 	alice := users.ByToken["alice"]
 
 	at := time.Now().Add(-90 * time.Second).UnixMilli()
-	if _, ok := svc.SaveChat(t.Context(), room.Slug, store.UUIDString(alice.ID), "back in ten", "", at); !ok {
+	if _, ok := svc.SaveChat(t.Context(), testx.VoiceChannel(t, svc.store, room), store.UUIDString(alice.ID), "back in ten", "", at); !ok {
 		t.Fatal("save failed")
 	}
 	code, messages := backlog(t, mux, "alice", room.Slug)

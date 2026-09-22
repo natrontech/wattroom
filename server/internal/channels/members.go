@@ -66,6 +66,17 @@ func (s *Service) handleUnnameMember(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "unname channel member failed", err, "They could not be taken out.", "channel", store.UUIDString(channel.ID))
 		return
 	}
+	// Out of the channel is out of its call (#2436) — unless their crew role
+	// still admits them, which an admin's does.
+	if channel.Private && channel.Kind == kindVoice {
+		standing, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: channel.CrewID, UserID: target})
+		if err != nil {
+			s.log.Error("unnamed member's crew role lookup failed", "err", err, "channel", store.UUIDString(channel.ID))
+		}
+		if err != nil || !mayEnter(standing, true, false) {
+			s.evict(store.UUIDString(channel.ID), store.UUIDString(target))
+		}
+	}
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }

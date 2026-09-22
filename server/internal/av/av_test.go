@@ -20,8 +20,8 @@ import (
 
 type allowAll struct{}
 
-func (allowAll) Authorize(_ *http.Request, slug string) (protocol.Rider, string, error) {
-	return protocol.Rider{ID: "jan-id", Name: "Jan", Role: "owner"}, strings.ToLower(slug), nil
+func (allowAll) Authorize(_ *http.Request, channel string) (protocol.Rider, string, error) {
+	return protocol.Rider{ID: "jan-id", Name: "Jan", Role: "owner"}, strings.ToLower(channel), nil
 }
 
 type denyAll struct{}
@@ -58,10 +58,10 @@ func TestTokenRefusalSaysWhy(t *testing.T) {
 		{"database down", dbDown{}, http.StatusInternalServerError, "internal_error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/velvet/av-token", nil)
-			req.SetPathValue("slug", "velvet")
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/channels/velvet/av-token", nil)
+			req.SetPathValue("id", "velvet")
 			w := httptest.NewRecorder()
-			service(tc.access).handleToken(w, req)
+			service(tc.access).HandleToken(w, req)
 			if w.Code != tc.status {
 				t.Fatalf("status %d, want %d: %s", w.Code, tc.status, w.Body.String())
 			}
@@ -84,10 +84,10 @@ func service(access Access) *Service {
 
 func TestTokenShape(t *testing.T) {
 	// The claim shape is LiveKit's contract; hand-rolled, so pinned hard.
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/velvet/av-token", nil)
-	req.SetPathValue("slug", "velvet")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/channels/velvet/av-token", nil)
+	req.SetPathValue("id", "velvet")
 	w := httptest.NewRecorder()
-	service(allowAll{}).handleToken(w, req)
+	service(allowAll{}).HandleToken(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("token: %d %s", w.Code, w.Body.String())
 	}
@@ -139,10 +139,10 @@ func TestTokenShape(t *testing.T) {
 func TestTwoTabsGetTwoIdentities(t *testing.T) {
 	s := service(allowAll{})
 	identity := func() string {
-		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/velvet/av-token", nil)
-		req.SetPathValue("slug", "velvet")
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/channels/velvet/av-token", nil)
+		req.SetPathValue("id", "velvet")
 		w := httptest.NewRecorder()
-		s.handleToken(w, req)
+		s.HandleToken(w, req)
 		if w.Code != http.StatusOK {
 			t.Fatalf("token refused: %d", w.Code)
 		}
@@ -169,14 +169,14 @@ func TestTwoTabsGetTwoIdentities(t *testing.T) {
 	}
 }
 
-// The LiveKit room is named after the canonical slug (#639): a token minted
-// for `/api/rooms/VeLvEt/av-token` must put the rider in the same call as
+// The LiveKit room is named after the canonical channel id (#639): a token minted
+// for `/api/channels/VeLvEt/av-token` must put the rider in the same call as
 // everyone who typed the link in lowercase.
 func TestTokenNamesTheCanonicalRoom(t *testing.T) {
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/VeLvEt/av-token", nil)
-	req.SetPathValue("slug", "VeLvEt")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/channels/VeLvEt/av-token", nil)
+	req.SetPathValue("id", "VeLvEt")
 	w := httptest.NewRecorder()
-	service(allowAll{}).handleToken(w, req)
+	service(allowAll{}).HandleToken(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("token: %d %s", w.Code, w.Body.String())
 	}
@@ -198,10 +198,10 @@ func TestTokenNamesTheCanonicalRoom(t *testing.T) {
 }
 
 func TestNonMemberRefused(t *testing.T) {
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/rooms/velvet/av-token", nil)
-	req.SetPathValue("slug", "velvet")
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/channels/velvet/av-token", nil)
+	req.SetPathValue("id", "velvet")
 	w := httptest.NewRecorder()
-	service(denyAll{}).handleToken(w, req)
+	service(denyAll{}).HandleToken(w, req)
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("stranger got an AV token: %d", w.Code)
 	}

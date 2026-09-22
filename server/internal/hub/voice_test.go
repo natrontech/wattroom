@@ -89,3 +89,31 @@ func TestVoiceFoldsTabsPerRider(t *testing.T) {
 		t.Fatalf("voice after last tab closed = %v, want [Lena]", voice)
 	}
 }
+
+// Voice is keyed by voice channel (#2436): two channels of one crew are two
+// calls, and a join in one is nothing in the other — not on the radar, not in
+// the channel's live room, not a hold that keeps it from being forgotten.
+func TestAVoiceJoinStaysInItsChannel(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), nil, nil)
+	const a, b = "0b6c1f3e-0000-4000-8000-00000000000a", "0b6c1f3e-0000-4000-8000-00000000000b"
+	roomB := h.room(b)
+
+	h.VoiceJoined(a, "kim-id#aaa", "Kim")
+	h.VoiceCamera(a, "kim-id#aaa", "Kim", true)
+
+	if p := h.Presence(a); !slices.Equal(p.Voice, []string{"Kim"}) || !slices.Equal(p.Cameras, []string{"Kim"}) {
+		t.Fatalf("channel A: voice %v cameras %v, want Kim in both", p.Voice, p.Cameras)
+	}
+	if p := h.Presence(b); len(p.Voice) != 0 || len(p.Cameras) != 0 {
+		t.Fatalf("channel B hears a join in A: voice %v cameras %v", p.Voice, p.Cameras)
+	}
+	roomB.mu.Lock()
+	inB := len(roomB.voiceNow)
+	roomB.mu.Unlock()
+	if inB != 0 {
+		t.Fatalf("channel B's live room counts %d in voice, want 0", inB)
+	}
+	if got := h.VoiceRooms(); !slices.Equal(got, []string{a}) {
+		t.Fatalf("channels with anyone in voice = %v, want only A", got)
+	}
+}

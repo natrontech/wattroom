@@ -67,7 +67,7 @@ func (s *Service) handleQueueTracks(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusConflict, "conflict", "Open the room to queue into its jukebox.")
 		return
 	}
-	added, live := s.live.QueuePlaylist(room.Slug, store.UUIDString(user.ID), user.DisplayName, cmds)
+	added, live := s.live.QueuePlaylist(s.store.VoiceChannelOf(r.Context(), room.ID), store.UUIDString(user.ID), user.DisplayName, cmds)
 	if !live {
 		httpx.WriteError(w, http.StatusConflict, "conflict", "Open the room to queue into its jukebox.")
 		return

@@ -42,10 +42,10 @@ type Recaps interface {
 // who are, on the next tick, as if it had come over their socket. Optional:
 // without it the post is remembered and read on the next join.
 type Live interface {
-	PostChat(slug string, line protocol.ChatLine)
-	PostReaction(slug string, change protocol.ChatReactionCount)
-	PostChatEdit(slug string, edit protocol.ChatEdit)
-	PostChatDelete(slug string, gone protocol.ChatDelete)
+	PostChat(channel string, line protocol.ChatLine)
+	PostReaction(channel string, change protocol.ChatReactionCount)
+	PostChatEdit(channel string, edit protocol.ChatEdit)
+	PostChatDelete(channel string, gone protocol.ChatDelete)
 }
 
 // The HTTP door's ceilings (#1982), the DM door's numbers: the socket path
@@ -128,25 +128,37 @@ func (s *Service) Register(mux *http.ServeMux) {
 // to agree about when a line happened, because the rail reads one and the
 // room socket the other, and the pair is what names the line to the dedup
 // that stops both of them announcing it.
-func (s *Service) SaveChat(ctx context.Context, slug, userID, text, imageID string, at int64) (string, bool) {
+//
+// The hub names the voice channel (#2436); the line lands in the room that
+// channel came from until #2435 moves chat onto text channels.
+func (s *Service) SaveChat(ctx context.Context, channel, userID, text, imageID string, at int64) (string, bool) {
 	// Runs on the hub's save worker (#219), so a stalled database backs up
 	// that queue — nobody's read loop. The budget just bounds the queue lag.
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	room, uid, ok := s.resolve(ctx, slug, userID)
-	if !ok {
+	room, err := s.store.RoomOfVoiceChannel(ctx, channel)
+	if err != nil {
+		return "", false
+	}
+	return s.saveChat(ctx, room.ID, room.Slug, userID, text, imageID, at)
+}
+
+// saveChat is SaveChat for a room already in hand — the HTTP post's.
+func (s *Service) saveChat(ctx context.Context, roomID pgtype.UUID, where, userID, text, imageID string, at int64) (string, bool) {
+	uid, err := store.ParseUUID(userID)
+	if err != nil {
 		return "", false
 	}
 	img, _ := store.ParseUUID(imageID) // zero value = NULL — image-less line
 	id, err := s.store.Queries.SaveChatMessage(ctx, db.SaveChatMessageParams{
-		RoomID: room.ID, UserID: uid, Text: text, ImageID: img,
+		RoomID: roomID, UserID: uid, Text: text, ImageID: img,
 		CreatedAt: pgtype.Timestamptz{Time: time.UnixMilli(at), Valid: true},
 	})
 	if err != nil {
-		s.log.Warn("save chat", "err", err, "room", slug)
+		s.log.Warn("save chat", "err", err, "room", where)
 		return "", false
 	}
-	s.pruneSampled(room.ID, slug)
+	s.pruneSampled(roomID, where)
 	return store.UUIDString(id), true
 }
 
@@ -154,32 +166,41 @@ func (s *Service) SaveChat(ctx context.Context, slug, userID, text, imageID stri
 // every save used to pay a delete-with-subquery that stalled the sender's own
 // read loop (audit #219). Called from both writes that can grow a room —
 // a chat line and an image upload.
-func (s *Service) pruneSampled(roomID pgtype.UUID, slug string) {
+func (s *Service) pruneSampled(roomID pgtype.UUID, where string) {
 	if time.Now().UnixNano()%16 != 0 {
 		return
 	}
 	// The prune must outlive the request — deliberate detachment, bounded below.
-	safego.Go(s.log, "chat prune "+slug, func() {
+	safego.Go(s.log, "chat prune "+where, func() {
 		pctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		if err := s.store.Queries.PruneChat(pctx, roomID); err != nil {
-			s.log.Warn("prune chat", "err", err, "room", slug)
+			s.log.Warn("prune chat", "err", err, "room", where)
 		}
 		// Blobs ride the same bound (#279): unreferenced after the prune
 		// above (or never sent) → swept after a 15-minute grace.
 		if err := s.store.Queries.PruneChatImages(pctx, roomID); err != nil {
-			s.log.Warn("prune chat images", "err", err, "room", slug)
+			s.log.Warn("prune chat images", "err", err, "room", where)
 		}
 	})
 }
 
 // ToggleReaction implements hub.ChatKeeper: add if absent, remove if present,
 // return the new total. The insert refuses messages outside this room.
-func (s *Service) ToggleReaction(ctx context.Context, slug, messageID, userID, emoji string) (int, bool, bool) {
+func (s *Service) ToggleReaction(ctx context.Context, channel, messageID, userID, emoji string) (int, bool, bool) {
 	ctx, cancel := context.WithTimeout(ctx, 750*time.Millisecond)
 	defer cancel()
-	room, uid, ok := s.resolve(ctx, slug, userID)
-	if !ok {
+	room, err := s.store.RoomOfVoiceChannel(ctx, channel)
+	if err != nil {
+		return 0, false, false
+	}
+	return s.toggleReaction(ctx, room.ID, room.Slug, messageID, userID, emoji)
+}
+
+// toggleReaction is ToggleReaction for a room already in hand.
+func (s *Service) toggleReaction(ctx context.Context, roomID pgtype.UUID, where, messageID, userID, emoji string) (int, bool, bool) {
+	uid, err := store.ParseUUID(userID)
+	if err != nil {
 		return 0, false, false
 	}
 	mid, err := store.ParseUUID(messageID)
@@ -187,15 +208,15 @@ func (s *Service) ToggleReaction(ctx context.Context, slug, messageID, userID, e
 		return 0, false, false
 	}
 	added, err := s.store.Queries.AddChatReaction(ctx, db.AddChatReactionParams{
-		MessageID: mid, UserID: uid, Emoji: emoji, RoomID: room.ID,
+		MessageID: mid, UserID: uid, Emoji: emoji, RoomID: roomID,
 	})
 	if err != nil {
-		s.log.Warn("add reaction", "err", err, "room", slug)
+		s.log.Warn("add reaction", "err", err, "room", where)
 		return 0, false, false
 	}
 	if added == 0 {
 		removed, err := s.store.Queries.RemoveChatReaction(ctx, db.RemoveChatReactionParams{
-			MessageID: mid, UserID: uid, Emoji: emoji, RoomID: room.ID,
+			MessageID: mid, UserID: uid, Emoji: emoji, RoomID: roomID,
 		})
 		if err != nil || removed == 0 {
 			// Neither added nor removed: the message is not in this room.
@@ -209,18 +230,6 @@ func (s *Service) ToggleReaction(ctx context.Context, slug, messageID, userID, e
 		return 0, false, false
 	}
 	return int(count), added > 0, true
-}
-
-func (s *Service) resolve(ctx context.Context, slug, userID string) (db.Room, pgtype.UUID, bool) {
-	uid, err := store.ParseUUID(userID)
-	if err != nil {
-		return db.Room{}, pgtype.UUID{}, false
-	}
-	room, err := s.store.Queries.GetRoomBySlug(ctx, slug)
-	if err != nil {
-		return db.Room{}, pgtype.UUID{}, false
-	}
-	return room, uid, true
 }
 
 type messageJSON struct {

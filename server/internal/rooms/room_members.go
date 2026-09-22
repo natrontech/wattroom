@@ -147,10 +147,8 @@ func (s *Service) handleSetRole(w http.ResponseWriter, r *http.Request) {
 	// well-formed upper-case or braced id passed ParseUUID, wrote the row,
 	// and then never closed the socket.
 	if req.Role == "banned" {
-		s.evict(room.Slug, store.UUIDString(target))
+		s.evict(s.store.VoiceChannelOf(r.Context(), room.ID), store.UUIDString(target))
 		s.log.Info("member banned", "room", room.Slug, "rider", store.UUIDString(target))
-	} else if s.presence != nil {
-		s.presence.SetRole(room.Slug, store.UUIDString(target), req.Role)
 	}
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
@@ -212,7 +210,7 @@ func (s *Service) handleRemoveMember(w http.ResponseWriter, r *http.Request) {
 	}
 	// Leaving or being removed ends the live connection too — a socket whose
 	// membership is gone must not keep streaming until it happens to close.
-	s.evict(room.Slug, store.UUIDString(target))
+	s.evict(s.store.VoiceChannelOf(r.Context(), room.ID), store.UUIDString(target))
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -302,10 +300,6 @@ func (s *Service) handleTransferRoom(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		httpx.Fail(w, s.log, "room transfer failed", err, "The room could not be handed on.", "room", room.Slug)
 		return
-	}
-	if s.presence != nil {
-		s.presence.SetRole(room.Slug, store.UUIDString(target), "owner")
-		s.presence.SetRole(room.Slug, store.UUIDString(owner.ID), "coach")
 	}
 	s.log.Info("room handed on", "room", room.Slug, "from", store.UUIDString(owner.ID), "to", req.UserID)
 	s.changed()

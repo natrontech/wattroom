@@ -16,7 +16,7 @@ import (
 // exactly as before ADR-0034. Called from a goroutine, outside every lock:
 // the implementation owns its own timeouts.
 type RecapKeeper interface {
-	SaveRecap(slug string, recap protocol.SessionRecap)
+	SaveRecap(channel string, recap protocol.SessionRecap)
 }
 
 // SetRecapKeeper wires the store that makes a session durable.
@@ -26,8 +26,8 @@ func (h *Hub) SetRecapKeeper(k RecapKeeper) { h.recaps = k }
 // card appears the moment it is written rather than on their next join. A room
 // nobody holds open gets nothing — its riders read the backlog when they
 // arrive, which is where the row already is.
-func (h *Hub) PostRecap(slug string, recap protocol.SessionRecap) {
-	if rm := h.occupied(slug); rm != nil {
+func (h *Hub) PostRecap(channel string, recap protocol.SessionRecap) {
+	if rm := h.occupied(channel); rm != nil {
 		rm.recapWritten(recap)
 	}
 }

@@ -5,9 +5,7 @@ package rooms
 
 import (
 	"fmt"
-	"log/slog"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -101,11 +99,8 @@ func TestBanFlow(t *testing.T) {
 	if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusForbidden {
 		t.Errorf("banned rejoined after re-entering the crew: %d", status)
 	}
-	svc := New(h.store, h.users, slog.New(slog.DiscardHandler))
-	wsReq := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/ws/rooms/"+slug, nil)
-	wsReq.Header.Set("X-Test-User", "bob")
-	if _, _, err := svc.Authorize(wsReq, slug); err == nil {
-		t.Error("banned rider authorized for the room socket")
+	if h.throughTheSlugDoor(t, "bob", slug) != "" {
+		t.Error("banned rider handed on to the room's voice channel")
 	}
 	// Nor is "leaving" a way out (#637): the banned row is the ban, so the
 	// self-removal path refuses, the row stays, and the rejoin stays shut.
@@ -162,8 +157,8 @@ func TestBanFlow(t *testing.T) {
 	if status, _ := h.call(t, "alice", http.MethodPost, "/api/rooms/"+slug+"/role", unban); status != http.StatusNoContent {
 		t.Fatalf("unban: %d", status)
 	}
-	if _, _, err := svc.Authorize(wsReq, slug); err != nil {
-		t.Errorf("unbanned rider still refused: %v", err)
+	if h.throughTheSlugDoor(t, "bob", slug) == "" {
+		t.Error("unbanned rider still refused")
 	}
 }
 

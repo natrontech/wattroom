@@ -10,8 +10,8 @@ import "github.com/natrontech/wattroom/server/internal/protocol"
 // lock finds the room, the room lock queues it — never both at once. A room
 // nobody holds open gets nothing: its riders will read the backlog when
 // they arrive, and a line parked in an empty room's queue would land twice.
-func (h *Hub) PostChat(slug string, line protocol.ChatLine) {
-	if rm := h.occupied(slug); rm != nil {
+func (h *Hub) PostChat(channel string, line protocol.ChatLine) {
+	if rm := h.occupied(channel); rm != nil {
 		rm.chatLine(line)
 	}
 	// Everyone's unread count for this room just changed (#568). A room
@@ -22,8 +22,8 @@ func (h *Hub) PostChat(slug string, line protocol.ChatLine) {
 }
 
 // PostReaction is PostChat for a reaction toggled over HTTP (#468).
-func (h *Hub) PostReaction(slug string, change protocol.ChatReactionCount) {
-	if rm := h.occupied(slug); rm != nil {
+func (h *Hub) PostReaction(channel string, change protocol.ChatReactionCount) {
+	if rm := h.occupied(channel); rm != nil {
 		rm.reactionChanged(change)
 	}
 }
@@ -32,8 +32,8 @@ func (h *Hub) PostReaction(slug string, change protocol.ChatReactionCount) {
 // ever reaches riders who are holding the room open; anyone else reads the
 // edited text straight out of the backlog when they arrive, so an empty room
 // has nothing to be told.
-func (h *Hub) PostChatEdit(slug string, edit protocol.ChatEdit) {
-	if rm := h.occupied(slug); rm != nil {
+func (h *Hub) PostChatEdit(channel string, edit protocol.ChatEdit) {
+	if rm := h.occupied(channel); rm != nil {
 		rm.chatEdited(edit)
 	}
 }
@@ -41,8 +41,8 @@ func (h *Hub) PostChatEdit(slug string, edit protocol.ChatEdit) {
 // PostChatDelete is PostChatEdit for a line that is gone (#2417). Same
 // reasoning: only riders holding the room open need telling, because anyone
 // arriving later reads a backlog the line is no longer in.
-func (h *Hub) PostChatDelete(slug string, gone protocol.ChatDelete) {
-	if rm := h.occupied(slug); rm != nil {
+func (h *Hub) PostChatDelete(channel string, gone protocol.ChatDelete) {
+	if rm := h.occupied(channel); rm != nil {
 		rm.chatDeleted(gone)
 	}
 }

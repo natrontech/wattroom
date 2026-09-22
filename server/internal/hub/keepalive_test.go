@@ -24,7 +24,7 @@ var keepaliveCases = []struct {
 	},
 	{
 		name:    "room socket: in a room",
-		path:    "/ws/rooms/velvet",
+		path:    "/ws/channels/velvet",
 		present: func(h *Hub) bool { return h.WhereIs([]string{"jan"})["jan"] == "velvet" },
 	},
 }
@@ -43,7 +43,7 @@ func keepaliveHub(t *testing.T) (*Hub, string) {
 	})
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /ws/presence", h.HandleLobbyWS)
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return h, "ws" + strings.TrimPrefix(srv.URL, "http")

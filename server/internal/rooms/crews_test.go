@@ -18,6 +18,21 @@ import (
 )
 
 // crewOf returns the crew a room was created into.
+// voiceOf is the voice channel a room made through the API was given — what
+// the hub is addressed by (#2436).
+func (h *harness) voiceOf(t *testing.T, slug string) string {
+	t.Helper()
+	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
+	if err != nil {
+		t.Fatalf("room: %v", err)
+	}
+	channel := h.store.VoiceChannelOf(t.Context(), room.ID)
+	if channel == "" {
+		t.Fatalf("room %s has no voice channel", slug)
+	}
+	return channel
+}
+
 func (h *harness) crewOf(t *testing.T, slug string) db.GetCrewRow {
 	t.Helper()
 	room, err := h.store.Queries.GetRoomBySlug(t.Context(), slug)
@@ -122,7 +137,41 @@ type kickRecorder struct {
 	kicked []string
 }
 
-func (k *kickRecorder) Kick(slug, userID string) { k.kicked = append(k.kicked, slug) }
+func (k *kickRecorder) Kick(channel, userID string) { k.kicked = append(k.kicked, channel) }
+
+// roleRecorder remembers every re-role the hub was asked for.
+type roleRecorder struct {
+	fakePresence
+	roles []string
+}
+
+func (r *roleRecorder) SetRole(channel, userID, role string) {
+	r.roles = append(r.roles, channel+"/"+userID+"/"+role)
+}
+
+// The door reads the crew role once, at connect (#2436): a crew promotion
+// re-roles the sockets already open in every voice channel of the crew, in
+// the words the hub's controls read.
+func TestACrewRoleReachesOpenSockets(t *testing.T) {
+	h := setup(t)
+	roles := &roleRecorder{}
+	h.svc.SetPresence(roles)
+	first, _ := h.createRoom(t, "alice", "Role Room One")
+	second, _ := h.createRoom(t, "alice", "Role Room Two")
+	crew := h.crewOf(t, first)
+	h.join(t, "bob", first)
+	bob := store.UUIDString(h.users.ByToken["bob"].ID)
+	if status, _ := h.call(t, "alice", http.MethodPost, "/api/crews/"+store.UUIDString(crew.ID)+"/role",
+		fmt.Sprintf(`{"userId":%q,"role":"admin"}`, bob)); status != http.StatusNoContent {
+		t.Fatalf("promote: %d", status)
+	}
+	want := []string{h.voiceOf(t, first) + "/" + bob + "/coach", h.voiceOf(t, second) + "/" + bob + "/coach"}
+	slices.Sort(roles.roles)
+	slices.Sort(want)
+	if !slices.Equal(roles.roles, want) {
+		t.Errorf("re-roled %v, want %v", roles.roles, want)
+	}
+}
 
 func TestANewRoomIsMadeInsideItsOwnersCrewAndOpenToIt(t *testing.T) {
 	h := setup(t)
@@ -691,10 +740,10 @@ func TestLiftingOneBanLeavesTheOtherStanding(t *testing.T) {
 		t.Fatalf("crew ban: %d", status)
 	}
 	slices.Sort(kicks.kicked)
-	want := []string{first, second}
+	want := []string{h.voiceOf(t, first), h.voiceOf(t, second)}
 	slices.Sort(want)
 	if !slices.Equal(kicks.kicked, want) {
-		t.Errorf("a crew ban severed %v, want every room in the crew %v", kicks.kicked, want)
+		t.Errorf("a crew ban severed %v, want every voice channel in the crew %v", kicks.kicked, want)
 	}
 	for _, slug := range []string{first, second} {
 		if status, _ := h.call(t, "bob", http.MethodPost, "/api/rooms/"+slug+"/join", ""); status != http.StatusForbidden {
@@ -1062,7 +1111,7 @@ func TestLeavingTheCrew(t *testing.T) {
 		t.Fatalf("leave: %d", status)
 	}
 	slices.Sort(kicks.kicked)
-	want := []string{first, second}
+	want := []string{h.voiceOf(t, first), h.voiceOf(t, second)}
 	slices.Sort(want)
 	if !slices.Equal(kicks.kicked, want) {
 		t.Errorf("leaving severed %v, want %v", kicks.kicked, want)

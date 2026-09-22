@@ -17,9 +17,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"fmt"
-
-	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -36,28 +33,30 @@ type UserSource interface {
 // Presence is what rooms borrows from the hub — defined here, where it is
 // consumed. Optional: without it every room reads as quiet and a ban can't
 // sever a live socket.
+//
+// The hub keys by voice channel (#2436): every method takes the room's voice
+// channel id, which s.store.VoiceChannelOf resolves — "" for a room without
+// one, which the hub reads as a channel nobody is in.
 type Presence interface {
-	Presence(slug string) protocol.RoomPresence
-	Kick(slug, userID string)
-	// A role change has to reach the sockets that are already open, or the
-	// new coach stays refused until they reconnect.
-	SetRole(slug, userID, role string)
+	Presence(channel string) protocol.RoomPresence
+	Kick(channel, userID string)
+	// A crew role change has to reach the sockets that are already open, or
+	// a new admin stays refused until they reconnect.
+	SetRole(channel, userID, role string)
 	// The plan is something the room did (#359): planning over HTTP has to
 	// reach the timeline of the people standing in the room right now.
-	SessionAnnounce(slug, verb, actor, workout string, startsAt time.Time)
+	SessionAnnounce(channel, verb, actor, workout string, startsAt time.Time)
 	// A room changes because somebody else changed it (#570) — the lobby
 	// ping is how every other client hears, and re-fetches.
 	PresenceChanged()
-	// A deleted room's live state has to die with it (#618): the slug is
-	// freed by the delete, and the next room to take it would otherwise
-	// open holding the old room's queue, chat and session.
-	CloseRoom(slug string)
+	// A deleted room's live state has to die with it (#618).
+	CloseRoom(channel string)
 }
 
 // VoiceEjector is the LiveKit arm of a kick — satisfied by *av.Service.
 // Optional: without AV there is no voice to eject anyone from.
 type VoiceEjector interface {
-	Eject(slug, userID string)
+	Eject(channel, userID string)
 }
 
 // Notifier is what scheduling needs from notify (#117) — defined here, where
@@ -106,12 +105,15 @@ func (s *Service) SetVoiceEjector(v VoiceEjector) { s.voice = v }
 
 // evict severs the target's live presence — metrics socket and voice. A ban
 // or removal must eject, not drift until the rider happens to disconnect.
-func (s *Service) evict(slug, userID string) {
+func (s *Service) evict(channel, userID string) {
+	if channel == "" {
+		return
+	}
 	if s.presence != nil {
-		s.presence.Kick(slug, userID)
+		s.presence.Kick(channel, userID)
 	}
 	if s.voice != nil {
-		s.voice.Eject(slug, userID)
+		s.voice.Eject(channel, userID)
 	}
 }
 
@@ -306,56 +308,3 @@ func isUniqueViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
-
-// Authorize implements hub.Access (and av.Access): resolve the request's
-// session to a user, then require membership in the slug's room. Checked once
-// at connect — the hub never touches the database after that. It hands back the
-// room's canonical slug alongside the rider: the request slug is matched
-// case-insensitively, so callers key live state on the returned slug, never on
-// the string they passed in — otherwise `MyRoom` and `myroom` fork two live
-// rooms that Kick and CloseRoom cannot both reach (#639).
-func (s *Service) Authorize(r *http.Request, slug string) (protocol.Rider, string, error) {
-	user, ok := s.users.User(r)
-	if !ok {
-		return protocol.Rider{}, "", av.ErrNoSession
-	}
-	room, err := s.store.Queries.GetRoomBySlug(r.Context(), strings.ToLower(slug))
-	if errors.Is(err, pgx.ErrNoRows) {
-		// No such room reads the same as not yours: nothing to learn here.
-		return protocol.Rider{}, "", errNotMember
-	}
-	if err != nil {
-		return protocol.Rider{}, "", fmt.Errorf("rooms: authorize room: %w", err)
-	}
-	m, err := s.store.Queries.GetMembership(r.Context(), db.GetMembershipParams{
-		RoomID: room.ID, UserID: user.ID,
-	})
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		// The database did not answer (#1984): an error, not "not a member".
-		return protocol.Rider{}, "", fmt.Errorf("rooms: authorize membership: %w", err)
-	}
-	if err != nil || m.Role == "banned" || s.isBanned(r, room, user) {
-		return protocol.Rider{}, "", errNotMember
-	}
-	// The level rides along with the rest of the room-visible identity
-	// (#690). Authorize runs once per socket, not per tick, so the extra
-	// read costs a join; a rider whose XP cannot be read joins at zero
-	// rather than failing to join at all.
-	xp, err := s.store.Queries.UserTotalXp(r.Context(), user.ID)
-	if err != nil {
-		s.log.Warn("total xp unavailable for roster", "err", err, "room", room.Slug)
-		xp = 0
-	}
-	return protocol.Rider{
-		ID:       store.UUIDString(user.ID),
-		Name:     user.DisplayName,
-		Role:     m.Role,
-		FtpWatts: int(user.FtpWatts),
-		WeightKg: int(user.WeightKg),
-		TotalXp:  xp,
-	}, room.Slug, nil
-}
-
-// The consumers' sentinel (av.ErrNoSession's note): the socket door and the
-// token endpoint tell a refusal from a database that did not answer by it.
-var errNotMember = av.ErrNotMember

@@ -42,7 +42,7 @@ type Members interface {
 // deck it lands on is the hub's problem. Nil means no live room reachable;
 // the playlist itself is unaffected either way.
 type Live interface {
-	QueuePlaylist(slug, riderID, addedBy string, tracks []protocol.JukeboxCommand) (addedCount int, ok bool)
+	QueuePlaylist(channel, riderID, addedBy string, tracks []protocol.JukeboxCommand) (addedCount int, ok bool)
 }
 
 type Service struct {

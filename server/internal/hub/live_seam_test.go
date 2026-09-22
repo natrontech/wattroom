@@ -65,10 +65,10 @@ func TestPokeCooldownAnswersRateLimited(t *testing.T) {
 	// `conflict` told them their poke duplicated something.
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /ws/rooms/{slug}", h.HandleWS)
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
-	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/rooms/velvet"
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
 	jan := dial(t, url, "jan:member")
 	dial(t, url, "sven:member")
