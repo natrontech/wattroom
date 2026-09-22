@@ -27,6 +27,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/avatars"
 	"github.com/natrontech/wattroom/server/internal/board"
+	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/chat"
 	"github.com/natrontech/wattroom/server/internal/customworkouts"
 	"github.com/natrontech/wattroom/server/internal/dms"
@@ -301,6 +302,11 @@ func main() {
 		h := hub.New(log, roomsService, saver)
 		hubForDrain = h
 		roomsService.SetPresence(h)
+		// A crew's text and voice channels (ADR-0058). The rooms service
+		// above stays until the web has moved onto them (#2446).
+		channelsService := channels.New(st, authService, log)
+		channelsService.Register(mux)
+		channelsService.SetPinger(h)
 		chatService := chat.New(st, roomsService, log)
 		chatService.Register(mux)
 		h.SetChatKeeper(chatService)
