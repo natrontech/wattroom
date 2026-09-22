@@ -256,7 +256,7 @@
 	>
 {/snippet}
 
-<main class="page" data-testid="page-body">
+<main class="page">
 	{#if error && !crew}
 		<div class="mt-4">
 			<Banner tone="error">
