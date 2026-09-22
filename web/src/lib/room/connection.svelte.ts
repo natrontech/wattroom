@@ -28,7 +28,7 @@ import { untrack } from 'svelte';
 import type { SessionState } from '$lib/protocol';
 import type { Segment, Workout } from '$lib/workout/types';
 import { listening } from '$lib/room/listening.svelte';
-import type { PlaceAddress } from '$lib/room/address';
+import { ridePath, type PlaceAddress } from '$lib/room/address';
 
 const NO_CHAT = 'A voice channel keeps no chat — its crew’s text channels do.';
 
@@ -619,7 +619,7 @@ function connect(address: PlaceAddress): Connection {
 						roomName(),
 						'The session is starting — saddle up',
 						`session-${address.key}`,
-						{ href: address.training },
+						{ href: ridePath(address, live.tick?.state.id) },
 					);
 			}
 		});

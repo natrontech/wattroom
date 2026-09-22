@@ -17,6 +17,8 @@ export interface PlaceAddress {
 	slug: string;
 	/** A voice channel's id; '' on a room. */
 	channel: string;
+	/** A voice channel's crew; '' on a room. */
+	crew: string;
 	/** What notifications and the "you are in" strip call it. */
 	name: string;
 	/** The live socket. */
@@ -49,6 +51,7 @@ export function roomAddress(slug: string, name = slug): PlaceAddress {
 		key: slug,
 		slug,
 		channel: '',
+		crew: '',
 		name,
 		ws: `/ws/rooms/${slug}`,
 		avToken: `${api}/av-token`,
@@ -75,16 +78,32 @@ export function channelAddress(
 		key: `v:${channel}`,
 		slug: '',
 		channel,
+		crew,
 		name,
 		ws: `/ws/channels/${channel}`,
 		avToken: `${api}/av-token`,
 		home,
-		// The session's own address is #2450's; until it lands the ride is
-		// the channel's Training place.
+		// The channel's ride place while nothing runs — where a trainer is
+		// paired and a session opened; a running session has its own address
+		// (ridePath, #2450).
 		training: `${home}/training`,
 		playlists: `/api/crews/${crew}/playlists`,
 		queuePlaylist: (id) => `${api}/playlists/${id}/queue`,
 		queueTracks: `${api}/queue`,
 		members: `/crew/${crew}/members`,
 	};
+}
+
+/** A running session's own page (#2450), in the crew it runs in. */
+export const sessionPath = (crew: string, sessionId: string) =>
+	`/crew/${crew}/s/${sessionId}`;
+
+/**
+ * Where the ride is (#2450): a voice channel's running session at its own
+ * address, else the place's Training.
+ */
+export function ridePath(address: PlaceAddress, sessionId?: string): string {
+	return address.channel && sessionId
+		? sessionPath(address.crew, sessionId)
+		: address.training;
 }
