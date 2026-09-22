@@ -55,7 +55,12 @@ test('the owner keeps the crew channels from its settings', async ({
 	await expect.poll(() => named('Sprints')).toMatchObject({ kind: 'text' });
 
 	// Open the row; its name saves on change.
-	await a.getByText('Sprints', { exact: true }).click();
+	// The page's row, not the sidebar's: the sidebar lists the crew's
+	// channels too (#2447).
+	await a
+		.getByTestId('page-body')
+		.getByText('Sprints', { exact: true })
+		.click();
 	const row = a.locator('details[open]');
 	await row.getByRole('textbox').first().fill('Sprint Talk');
 	await row.getByRole('textbox').first().press('Tab');
