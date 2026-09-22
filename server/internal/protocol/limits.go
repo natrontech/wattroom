@@ -69,6 +69,16 @@ const (
 	// and this feature is deliberately not one.
 	MaxCrewPins = 20
 
+	// A channel's name (ADR-0058, docs/SPEC.md "Names"), in CHARACTERS —
+	// MaxMessageChars' rule — and the bound the channels table's CHECK holds.
+	MaxChannelNameChars = 60
+	// How many text channels a crew holds (docs/SPEC.md "Caps", default —
+	// tune in alpha). The settings page disables "New channel" at it rather
+	// than offering a create the POST will refuse.
+	MaxCrewTextChannels = 20
+	// How many voice channels a crew holds — MaxCrewTextChannels' rule.
+	MaxCrewVoiceChannels = 10
+
 	// The tolerance band a second is scored in: within ±5 % of target, floor
 	// ±10 W (#2159). The floor is what keeps an easy block scoreable — at
 	// 60 W, 5 % is 3 W, which is inside a trainer's own error.
