@@ -1,8 +1,9 @@
 <script lang="ts">
-	// ADR-0020's one sidebar: your places, your rooms with the one you are
-	// standing in opened into ITS places, your messages, and you pinned at the
-	// bottom. It replaces RoomRail, TopNav and MobileNav's destination list —
-	// a destination now has exactly one home.
+	// ADR-0020's one sidebar: a mode at the top — You, or one of your crews
+	// (ADR-0058, #2447) — then that mode's pages (your own, or the crew's
+	// pages and its text and voice channels), your messages, and you pinned
+	// at the bottom. It replaced RoomRail, TopNav and MobileNav's destination
+	// list — a destination has exactly one home.
 	//
 	// Names, not Discord's icon rail: icons exist because Discord has forty
 	// servers, and ADR-0010 makes this strip the crew's radar — what is live,
@@ -10,55 +11,35 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import YouPanel from '$lib/nav/YouPanel.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
-	import RidingBars from '$lib/components/RidingBars.svelte';
-	import RoomIcon from '$lib/components/RoomIcon.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import RoomStrip from './RoomStrip.svelte';
 	import CrewSwitcher from './CrewSwitcher.svelte';
+	import CrewColumn from './CrewColumn.svelte';
+	import { crewLive } from './crew-live.svelte';
 	import { chosenCrew } from './chosen-crew.svelte';
 	import JukeboxRail from '$lib/room/JukeboxRail.svelte';
 	import { keepSize } from '$lib/pane';
 	import { edgeDivider } from '$lib/divider';
 	import { friends } from '$lib/friends/friends.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
-	import { formatWhen } from '$lib/format';
 	import {
 		UNREAD_COUNT,
 		UNREAD_DOT,
 		unreadCount,
 	} from '$lib/messages/unread-marks';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import {
-		activeHref,
-		activePlace,
-		dmsCurrent,
-		pages,
-		roomPlaces,
-	} from './pages';
-	import { railPeople, railPeopleMenu, railSubline } from './rail-people';
-	import { roomMenu } from './room-menu';
-	import { roomNavState } from './room-state';
-	import {
-		accessMark,
-		crewsOf,
-		currentCrew,
-		reachable,
-		sidebarGroups,
-	} from './crews';
+	import { activeHref, crewOfPath, dmsCurrent, pages } from './pages';
+	import { crewsOf } from './crews';
 	import { readDmsFolded, rememberDmsFolded } from './folds';
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
-	import OpenRoom from '$lib/rooms/OpenRoom.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
 	import { goto } from '$app/navigation';
 	import type { RailRoom } from '$lib/room/room-data';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import Headphones from '@lucide/svelte/icons/headphones';
-	import LogOut from '@lucide/svelte/icons/log-out';
-	import Plus from '@lucide/svelte/icons/plus';
 	import { device } from '$lib/device.svelte';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import UpdateRow from './UpdateRow.svelte';
@@ -67,47 +48,40 @@
 	let {
 		pathname,
 		rooms = [],
-		activeSlug = '',
-		connectedSlug = '',
 		live = false,
-		onLeave,
 	}: {
 		pathname: string;
 		rooms?: RailRoom[];
-		activeSlug?: string;
-		connectedSlug?: string;
 		live?: boolean;
-		onLeave?: () => void;
 	} = $props();
 
 	// Your own badge, on the same rule as everyone else's (#824): the people
 	// column and the Members page show you riding; the rail said "online".
 
 	const destination = $derived(activeHref(pathname));
-	// Below md the drawer IS the room's index, and Settings is not offered
-	// there (#412 — an owner-only form nobody fills in from a bike). One
-	// answer, used by the list and by the room's context menu alike.
-	const place = $derived(activeSlug ? activePlace(pathname, activeSlug) : '');
-
-	// The crew is a mode the sidebar is in (ADR-0020 amended, #1147): one
-	// crew's rooms at a time, chosen here and remembered, with the room you
-	// are standing in pinned above the list when it belongs to another crew.
+	// The mode follows where you stand (ADR-0020 rule 1, #2447): inside a
+	// crew's pages the column is that crew; on one of your own pages it is
+	// You, so the page always has its row; anywhere else it is the crew you
+	// chose last. Choosing goes somewhere — the crew's Home, or yours —
+	// because a mode the page then overrode would be a pick that did nothing.
 	const crews = $derived(crewsOf(rooms, presence.crews));
-	const crew = $derived(
-		currentCrew(crews, chosenCrew.id, rooms, connectedSlug),
-	);
-	const groups = $derived(sidebarGroups(rooms, crew, connectedSlug));
+	const crew = $derived.by(() => {
+		const inCrew = crewOfPath(pathname);
+		if (inCrew) return crews.find((c) => c.id === inCrew) ?? null;
+		if (destination) return null;
+		return crews.find((c) => c.id === chosenCrew.id) ?? null;
+	});
 	function pick(id: string) {
 		chosenCrew.set(id);
+		void goto(id === 'you' ? '/home' : `/crew/${id}`);
 	}
-	// The + beside rooms opens the open/join forms in a sheet (#1199). The
-	// sheet closes when the room opens: Home's copy died with its page, this
-	// one outlives every page, and it stood over the room it had just
-	// opened, trapping focus (found by e2e/room.ts taking the door, #1861).
+	// What is happening in every crew, re-read on each lobby ping (#2444).
+	$effect(() => {
+		presence.version;
+		void crewLive.reload();
+	});
+	// In no crew, the way in is a sheet: join with a code, or start one (#2480).
 	let opening = $state(false);
-	// Beside the rooms of a crew you keep, the + opens a room there; anywhere
-	// else it is the way into a crew — starting one or joining one (#2480).
-	const opensRoom = $derived(crew?.role === 'owner' || crew?.role === 'admin');
 	$effect(() => {
 		pathname;
 		opening = false;
@@ -138,202 +112,6 @@
 	);
 </script>
 
-<!-- A crew's mark: its icon, or its initial in the same box. -->
-
-{#snippet roomRow(room: RailRoom)}
-	<!-- Connected and browsing-only are separate visual states. An active
-		     room still opens into its places in either state. -->
-	{@const reading = pathname === `/messages/r/${room.slug}`}
-	{@const state = roomNavState(room.slug, activeSlug, connectedSlug, reading)}
-	{@const here = state === 'connected'}
-	{@const browsing = state === 'browsing'}
-	<!-- Opened: the room whose pages you are on, AND the one you are
-			     standing in — reading a DM or Home while connected must not
-			     fold Training two clicks away (rider report, #416). -->
-	<!-- ...but a crew room you have not joined has no places of yours to
-	     open into: the page it shows is the door, not the room (#1149). -->
-	{@const open = (room.slug === activeSlug && !!room.role) || here}
-	{@const subline = railSubline(room, open)}
-	<!-- A room you cannot enter is not a link that fails (#1149, ux.md):
-		     the row stays, says why, and goes nowhere. The mark is chrome,
-		     not live data: muted, never watt, never a glow (ADR-0005). -->
-	{@const open_ = reachable(room.access)}
-	{@const mark = accessMark(room.access)}
-	<!-- Two levels of the same wash, never one: the open room is a
-		     faint ground, the row you're on a stronger fill on top of it.
-		     Equal tints read as one slab and the selection disappears. -->
-	<li
-		class="rounded-md {here ? 'bg-ink/5' : browsing ? 'bg-ink/[0.03]' : ''}"
-		{@attach contextMenu(() => roomMenu(room, { here, onLeave }))}
-	>
-		<svelte:element
-			this={open_ ? 'a' : 'div'}
-			href={open_
-				? room.session && !here
-					? `/r/${room.slug}/training`
-					: `/r/${room.slug}`
-				: undefined}
-			title={open_ ? undefined : mark?.label}
-			aria-current={here ? 'true' : browsing ? 'page' : undefined}
-			class="block rounded px-2 pt-1.5 {subline === 'people'
-				? 'pb-0'
-				: 'pb-1.5'} {here
-				? 'text-ink'
-				: browsing
-					? 'text-ink/90'
-					: open_
-						? 'text-muted hover:text-ink'
-						: 'text-muted-dim'}"
-		>
-			<span class="flex items-center gap-2">
-				<RoomIcon icon={room.icon} size={14} />
-				<span
-					class="truncate {here
-						? 'text-ink text-sm font-semibold'
-						: browsing
-							? 'text-ink/90 text-sm font-medium'
-							: room.unread
-								? 'text-ink/80 text-sm font-medium'
-								: open_
-									? 'text-muted text-sm'
-									: 'text-muted-dim text-sm'}">{room.name}</span
-				>
-				{#if mark}
-					<mark.icon
-						size={11}
-						class="text-muted-dim shrink-0"
-						aria-label={mark.label}
-					/>
-				{/if}
-				{#if here && onLeave}
-					<button
-						onclick={(e) => {
-							e.preventDefault();
-							onLeave();
-						}}
-						class="text-muted hover:text-ink -my-2 ml-auto grid h-11 w-11 shrink-0 place-items-center md:h-6 md:w-6"
-						title="disconnect from the room"
-						aria-label="disconnect from the room"><LogOut size={16} /></button
-					>
-				{:else if room.unread}
-					<!-- The strongest reason a chat app stays open in a
-					     background window — and the door to reading it without
-					     walking in (#1328, #484): the count opens the room's chat
-					     from outside, the way the icon above leaves the room, and
-					     stops the row's own click. Nothing unread, no door: then
-					     the way to a room's chat is walking in. -->
-					<button
-						onclick={(e) => {
-							e.preventDefault();
-							void goto(`/messages/r/${room.slug}`);
-						}}
-						class="-my-2 ml-auto grid h-11 min-w-11 shrink-0 place-items-center md:h-6 md:min-w-6"
-						title="{room.unread} new · read without walking in"
-						aria-label="{room.unread} new — read the chat without walking in"
-						><span class={UNREAD_COUNT}>{unreadCount(room.unread)}</span
-						></button
-					>
-				{:else if (room.connected ?? 0) > 0}
-					<span class="ml-auto flex shrink-0 items-center gap-1">
-						<span class="bg-z4 h-1.5 w-1.5 rounded-full"></span>
-						<span class="text-muted-dim num text-[10px]">{room.connected}</span>
-					</span>
-				{:else if room.members > 0}
-					<span class="text-muted-dim num ml-auto shrink-0 text-[10px]"
-						>{room.members}</span
-					>
-				{/if}
-			</span>
-			{#if subline === 'session' && room.session}
-				<!-- The late-join radar: what is on, and how far in — and the row
-				     it sits in lands on Training while it runs (#1332), where the
-				     numbers are, unless you are already standing in the room. -->
-				<span
-					class="text-ink/85 mt-0.5 flex items-center gap-1.5 truncate text-[10px]"
-				>
-					<!-- The bars carry the watt; 10 px of watt text was under 4.5:1 (#1965). -->
-					<span class="text-watt"><RidingBars size={9} /></span>
-					{room.session.workoutName} · {room.session.elapsedSec < 60
-						? 'starting'
-						: `${Math.round(room.session.elapsedSec / 60)} min in`}
-				</span>
-			{:else if subline === 'next' && room.next}
-				<span class="text-muted-dim mt-0.5 block truncate text-[10px]"
-					>next: {room.next.workoutName} · {formatWhen(
-						room.next.startsAt,
-					)}</span
-				>
-			{/if}
-		</svelte:element>
-
-		{#if subline === 'people'}
-			{@const people = railPeople(room.riders)}
-			<!-- Who is in there, without going in (#438): Discord lists the
-				     people under a voice channel. It sits OUTSIDE the room's
-				     link — a target of its own, the rail's full width, opening
-				     the roster where each of them has a row (#540). The names
-				     it printed are one right-click away, individually; three
-				     buttons inside a 10 px line would be precision targets on
-				     a bike (ux.md). -->
-			<a
-				href="/r/{room.slug}/members"
-				title="who is here · {MENU_HINT}"
-				class="text-muted-dim hover:bg-ink/5 hover:text-ink flex items-center gap-1 rounded px-2 pt-1 pb-1.5 text-[10px]"
-				{@attach contextMenu(() =>
-					railPeopleMenu(
-						room,
-						(href) => void goto(href),
-						() => goto(`/r/${room.slug}/members`),
-					),
-				)}
-			>
-				{#if room.voice?.length}<Headphones size={9} class="shrink-0" />{/if}
-				<span class="truncate">{people.label}</span>
-			</a>
-		{/if}
-
-		{#if open}
-			<!-- What was said while you were in another place (#568): the
-				     room's own unread cannot say it — standing in the room
-				     reads it — so this is the connection's answer, the same one
-				     the people column's bar shows. -->
-			{@const missed =
-				roomConnection.current?.slug === room.slug
-					? roomConnection.current.missed()
-					: null}
-			<!-- The room you are standing in opens. This is Discord's
-				     second column, and it costs one indent instead of one
-				     column (ADR-0020). -->
-			<ul class="mt-0.5 mr-2 mb-1 ml-4 space-y-0.5 pb-1.5">
-				{#each roomPlaces as entry (entry.path)}
-					{@const on = room.slug === activeSlug && place === entry.path}
-					<li>
-						<a
-							href="/r/{room.slug}{entry.path}"
-							aria-current={on ? 'page' : undefined}
-							class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-[13px] md:min-h-0 {on
-								? 'bg-ink/10 text-ink'
-								: 'text-muted hover:bg-ink/5 hover:text-ink'}"
-						>
-							<entry.icon size={14} class="shrink-0" />
-							<span class="truncate">{entry.label}</span>
-							{#if entry.path === '/training' && live}
-								<span class="ml-auto"><RidingBars size={10} /></span>
-							{:else if entry.path === '/chat' && missed}
-								<span
-									class="{UNREAD_COUNT} ml-auto"
-									title="{missed.count} said while you were elsewhere"
-									>{unreadCount(missed.count)}</span
-								>
-							{/if}
-						</a>
-					</li>
-				{/each}
-			</ul>
-		{/if}
-	</li>
-{/snippet}
-
 <!-- Resizable from its right edge, the way the room's panel is from its
      left (#427), and remembered per device (keepSize). Only on a desk: below
      md this column is a drawer, and the width dragged on a desk is pinned
@@ -357,8 +135,8 @@
 	     and riding is already on your avatar and on the Training row
 	     (#1016), so the mark had no job left here. Before the first room
 	     there is no crew to name, so the mark and the wordmark keep the row. -->
-	{#if crew}
-		<CrewSwitcher {crews} {crew} {rooms} {pathname} onpick={pick} />
+	{#if crews.length > 0}
+		<CrewSwitcher {crews} {crew} {rooms} onpick={pick} />
 	{:else}
 		<!-- The wordmark is day zero AND "not read yet" (#2173). Saying so is
 		     the difference between a rider with no crew and a rider whose
@@ -379,106 +157,62 @@
 		     and the only choice is whether the rider picks the moment. Nothing
 		     renders unless one is waiting. -->
 		<UpdateRow />
-		<ul class="space-y-0.5">
-			{#each pages as entry (entry.href)}
-				{@const on = destination === entry.href}
-				<!-- The one announceable thing with no home in the sidebar (#1010):
-				     a friend request announced itself once and then left no
-				     trace. It counted people waiting on you from a word in the
-				     messages eyebrow; now that Friends is a row, it counts them
-				     there (#1017). Visiting the page does not clear it —
-				     answering them does. -->
-				{@const waiting = entry.href === '/friends' ? friends.waiting : 0}
-				<li>
-					<a
-						href={entry.href}
-						aria-current={on ? 'page' : undefined}
-						title={waiting > 0
-							? `${waiting} waiting for you to answer`
-							: undefined}
-						class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
-							? 'bg-ink/10 text-ink'
-							: 'text-muted hover:bg-ink/5 hover:text-ink'}"
-					>
-						<entry.icon size={15} class="shrink-0" />
-						{entry.label}
-						{#if waiting > 0}
-							<span class="{UNREAD_COUNT} ml-auto">{unreadCount(waiting)}</span>
-						{/if}
-					</a>
-				</li>
-			{/each}
-		</ul>
-
-		{#if groups.pinned}
-			<!-- The room you are standing in, whichever crew is on screen: reading
-			     another crew must not fold Training two clicks away (#416). -->
-			<div class="eyebrow px-2 pt-3 pb-1">
-				you are in · {groups.pinned.crew?.name}
-			</div>
-			<ul class="border-ink/5 mb-1 space-y-0.5 border-b pb-2">
-				{@render roomRow(groups.pinned)}
-			</ul>
-		{/if}
-
-		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
-			<!-- Just "rooms": the header above already names the crew they
-			     belong to (#1327). -->
-			rooms
-			<!-- Everything /rooms carried beyond the list: open one, or join with
-			     a code (ADR-0020). -->
-			<!-- Opens the forms right here (#1199) — Discord's "+ Create
-			     Channel" in the server you are looking at, not a trip to the
-			     bottom of Home. -->
-			<button
-				onclick={() => (opening = true)}
-				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
-				title={opensRoom ? 'open a room' : 'start or join a crew'}
-				aria-label={opensRoom ? 'open a room' : 'start or join a crew'}
-				><Plus size={16} /></button
-			>
-		</div>
-		<!-- All four states, in the column that IS the app's navigation (#2173,
-		     errors.md). Until the first /api/rooms answers, `rooms` is [] —
-		     and an empty list drew the teaching line, so every cold load told
-		     the rider they were in no crew, and a first read that failed left
-		     somebody with ten rooms reading it until they guessed to reload.
-		     The same masquerade the 2026-09-09 audit fixed on Home. -->
-		{#if !presence.loaded}
-			<div class="space-y-1 px-2 py-1"><Skeleton rows={3} class="h-5" /></div>
-		{:else if presence.error && groups.rooms.length === 0}
-			<p class="text-muted px-2 py-1 text-xs">
-				{presence.error}
-				<button onclick={() => presence.reload()} class="btn-link">Retry</button
-				>
-			</p>
+		{#if crew}
+			<!-- A crew's pages, its text channels, its voice channels (#2447). -->
+			<CrewColumn {crew} {pathname} />
 		{:else}
 			<ul class="space-y-0.5">
-				{#each groups.rooms as room (room.slug)}
-					{@render roomRow(room)}
-				{:else}
-					<!-- A crew with no rooms is a crew (#1476): a heading over nothing
-				     taught nothing (ux.md, #1677). The + above is the way in. -->
-					<li class="text-muted px-2 py-1 text-xs">
-						{#if crew?.role === 'owner' || crew?.role === 'admin'}
-							No rooms yet. A room is a channel of the crew —
-							<button onclick={() => (opening = true)} class="btn-link"
-								>open one</button
-							>.
-						{:else if crew}
-							No rooms yet. A room is a channel of the crew; its owner or an
-							admin opens the first one.
-						{:else}
-							<!-- In no crew at all (#2144): the way in is joining one, and
-						     starting a crew of your own is the option, not the ask. -->
-							Not in a crew yet —
-							<button onclick={() => (opening = true)} class="btn-link"
-								>join one with its code</button
-							>, or start one of your own.
-						{/if}
+				{#each pages as entry (entry.href)}
+					{@const on = destination === entry.href}
+					<!-- The one announceable thing with no home in the sidebar (#1010):
+					     a friend request announced itself once and then left no
+					     trace. It counted people waiting on you from a word in the
+					     messages eyebrow; now that Friends is a row, it counts them
+					     there (#1017). Visiting the page does not clear it —
+					     answering them does. -->
+					{@const waiting = entry.href === '/friends' ? friends.waiting : 0}
+					<li>
+						<a
+							href={entry.href}
+							aria-current={on ? 'page' : undefined}
+							title={waiting > 0
+								? `${waiting} waiting for you to answer`
+								: undefined}
+							class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
+								? 'bg-ink/10 text-ink'
+								: 'text-muted hover:bg-ink/5 hover:text-ink'}"
+						>
+							<entry.icon size={15} class="shrink-0" />
+							{entry.label}
+							{#if waiting > 0}
+								<span class="{UNREAD_COUNT} ml-auto"
+									>{unreadCount(waiting)}</span
+								>
+							{/if}
+						</a>
 					</li>
 				{/each}
 			</ul>
+
+			<!-- A failed read is not an empty one (#2173): both leave no crews,
+			     and only one of them is a rider to teach. -->
+			{#if presence.error && crews.length === 0}
+				<p class="text-muted px-2 pt-3 text-xs">
+					{presence.error}
+					<button onclick={() => presence.reload()} class="btn-link"
+						>Retry</button
+					>
+				</p>
+			{:else if presence.loaded && crews.length === 0}
+				<!-- In no crew at all (#2144): the way in is joining one, and
+				     starting a crew of your own is the option, not the ask. -->
+				<p class="text-muted px-2 pt-3 text-xs">
+					Not in a crew yet —
+					<button onclick={() => (opening = true)} class="btn-link"
+						>join one with its code</button
+					>, or start one of your own.
+				</p>
+			{/if}
 		{/if}
 
 		<!-- Messages is a place (#468): every room's chat and every DM, one
@@ -609,14 +343,10 @@
 
 {#if opening}
 	<Modal
-		label={opensRoom ? 'Open a room' : 'Start or join a crew'}
+		label="Start or join a crew"
 		onclose={() => (opening = false)}
 		class="max-w-sm"
 	>
-		{#if opensRoom && crew}
-			<OpenRoom {crew} />
-		{:else}
-			<OpenOrJoin compact />
-		{/if}
+		<OpenOrJoin compact />
 	</Modal>
 {/if}

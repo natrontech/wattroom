@@ -1,8 +1,9 @@
-import { expect, test } from './room';
+import { expect, test, voicePath } from './room';
 import { signInAs } from './signin';
 
 /**
- * Every place a room opens into, walked in one go (#502, #567).
+ * Every place a crew opens into, walked in one go (#502, #567; #2447 moved
+ * the walk from a room's places to the crew's column).
  *
  * A throw during a place's render is invisible: SvelteKit has already moved
  * the URL, the previous place stays on screen, and nothing in CI notices.
@@ -12,7 +13,7 @@ import { signInAs } from './signin';
  * The places come from the sidebar rather than a list in this file, so a new
  * one is covered the day it is added.
  */
-test('every place in a room renders, and none of them throws', async ({
+test('every place in a crew renders, and none of them throws', async ({
 	page,
 	rooms,
 }) => {
@@ -20,18 +21,20 @@ test('every place in a room renders, and none of them throws', async ({
 	page.on('pageerror', (error) => errors.push(error.message.split('\n')[0]));
 
 	await signInAs(page, 'Places Walker', '/home');
-	const { slug } = await rooms.open(page, `Places Walk ${Date.now() % 100000}`);
+	const room = await rooms.open(page, `Places Walk ${Date.now() % 100000}`);
+	await page.goto(`/crew/${room.crew}`);
 
-	// The sidebar only lists the places once the room it opened is the open one,
-	// so reading it the instant `rooms.open` returns finds the room's own link
-	// and nothing else (#960). `/chat` is rendered by that list alone, so it is
-	// the one link whose arrival says the list is there; `evaluateAll` has no
+	// The column draws the crew's pages at once and its channels when
+	// /api/crews/live answers, so reading it the instant the page lands finds
+	// the pages and nothing else (#960). The voice channel's row is the one
+	// link whose arrival says the channels are there; `evaluateAll` has no
 	// auto-waiting of its own to hold the read back.
-	await expect(page.locator(`a[href="/r/${slug}/chat"]`)).toBeVisible();
+	const nav = page.locator('nav[aria-label="rooms and places"]');
+	await expect(nav.locator(`a[href="${voicePath(room)}"]`)).toBeVisible();
 
-	// Everything under the room, which is every place but the lounge — the
-	// lounge is where creation landed, and the walk is the places beyond it.
-	const links = page.locator(`a[href^="/r/${slug}/"]`);
+	// Everything under the crew, which is every place but its Home — Home is
+	// where the walk starts, and the walk is the places beyond it.
+	const links = nav.locator(`a[href^="/crew/${room.crew}/"]`);
 	const places = [
 		...new Set(
 			await links.evaluateAll((all) => all.map((a) => a.getAttribute('href')!)),

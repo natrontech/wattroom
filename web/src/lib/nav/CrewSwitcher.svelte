@@ -9,6 +9,10 @@
 	// nothing is inset.
 	// Under it, one line per crew you are NOT looking at with something on
 	// (#1148). The sidebar owns which crew is chosen and hands it in.
+	//
+	// "You" is the first entry (ADR-0058, decision 5; #2447): the rider's own
+	// Home, Workouts, Rides, Music and Friends are a mode like a crew is —
+	// the #1023 amendment's "the crew is a mode, not a level", finished.
 	import { account } from '$lib/account.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import RidingBars from '$lib/components/RidingBars.svelte';
@@ -23,7 +27,9 @@
 	import type { RailRoom } from '$lib/room/room-data';
 	import type { RoomCrew } from '$lib/room/room-data';
 	import { shareVerb } from '$lib/share';
-	import { crewPulse, quiet } from './crews';
+	import { quiet } from './crews';
+	import { crewLive, livePulse } from './crew-live.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import { goto } from '$app/navigation';
 	import { presence } from '$lib/presence.svelte';
 	import Check from '@lucide/svelte/icons/check';
@@ -41,24 +47,20 @@
 		crews,
 		crew,
 		rooms,
-		pathname,
 		onpick,
 	}: {
-		/** Every crew the room list mentions, once each. */
+		/** Every crew the rider is in, once each. */
 		crews: RoomCrew[];
-		/** The one on screen. */
-		crew: RoomCrew;
+		/** The one on screen; null is You. */
+		crew: RoomCrew | null;
 		rooms: RailRoom[];
-		/** Where the app is, so the row lights on the crew's own pages. */
-		pathname: string;
-		/** The rider chose another crew; the sidebar remembers it. */
+		/** The rider chose a crew, or 'you'. */
 		onpick: (id: string) => void;
 	} = $props();
 
-	// The crew row is the parent of /crew/[id] and its settings (ADR-0020,
-	// rule 1): lit while you are there, the way the destination rows are —
-	// the column used to go dark on both (audit 2026-09-09).
-	const onPage = $derived(pathname.startsWith(`/crew/${crew.id}`));
+	// Not lit itself (#2447): the crew's own rows under it — Home, Members,
+	// Settings, its channels — light for its pages, so the header lighting
+	// too would make two (ADR-0020 rule 1).
 
 	// What the header says under the name: how many rooms, and what you are
 	// to it. Owner is a word here because the shield alone is a small mark;
@@ -69,8 +71,8 @@
 	// ...and which one is the main crew (#2144): the one the sidebar opens
 	// in on every device.
 	function crewLine(c: RoomCrew): string {
-		const n = rooms.filter((r) => r.crew?.id === c.id).length;
-		const count = n === 1 ? '1 room' : `${n} rooms`;
+		const n = crewLive.crew(c.id)?.channels.length ?? 0;
+		const count = n === 1 ? '1 channel' : `${n} channels`;
 		return c.id === account.me?.homeCrewId ? `${count} · main` : count;
 	}
 	// The crew's menu (#1257, ux.md): everything about the crew that is a
@@ -82,9 +84,9 @@
 		);
 		const entries: MenuEntry[] = [
 			{
-				label: 'People and rooms',
+				label: 'Members',
 				icon: Users,
-				onSelect: () => void goto(`/crew/${c.id}`),
+				onSelect: () => void goto(`/crew/${c.id}/members`),
 			},
 		];
 		if (c.role === 'owner' || c.role === 'admin')
@@ -133,8 +135,13 @@
 	let header = $state<HTMLElement | null>(null);
 	$effect(() => {
 		if (!switching) return;
+		// A row's own menu is outside the header but is the list's: closing
+		// the list on its pointerdown unmounts the row, which takes the menu
+		// with it before the click lands (#2447).
 		const away = (e: PointerEvent) => {
-			if (!header?.contains(e.target as Node)) switching = false;
+			const target = e.target as Element;
+			if (header?.contains(target) || target.closest?.('[role="menu"]')) return;
+			switching = false;
 		};
 		const key = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') switching = false;
@@ -164,6 +171,31 @@
 		{#if c.role === 'owner'}
 			<Shield size={12} class="text-muted-dim shrink-0" aria-label="yours" />
 		{/if}
+	{/snippet}
+	{#snippet youRow()}
+		<Avatar
+			name={account.me?.displayName ?? 'You'}
+			avatarUrl={account.me?.avatarUrl}
+			size={24}
+		/>
+		<span
+			class="font-display min-w-0 flex-1 truncate text-[15px] leading-5 font-bold"
+			>You</span
+		>
+	{/snippet}
+	<!-- Always a switch while there is a crew to switch to: You is an entry
+	     too (#2447), so a rider in one crew still has two places to be. -->
+	<button
+		onclick={() => (switching = !switching)}
+		{@attach contextMenu(() => (crew ? crewEntries(crew) : []))}
+		class="hover:bg-ink/5 text-ink flex min-h-11 w-full items-center gap-2 rounded p-2 text-left md:min-h-0 {switching
+			? 'bg-ink/5'
+			: ''}"
+		title="switch crew"
+		aria-label="{crew ? `crew: ${crew.name}` : 'You'} — switch crew"
+		aria-expanded={switching}
+	>
+		{#if crew}{@render crewRow(crew)}{:else}{@render youRow()}{/if}
 		<!-- What is under this header stopped updating (#1743). The room list,
 		     the presence dots and "32 min in" are frozen at whatever they last
 		     were, and with rooms already on screen nothing else in the column
@@ -184,48 +216,36 @@
 				<CloudOff size={12} aria-label="not updating — retrying" />
 			</span>
 		{/if}
-	{/snippet}
-	{#if crews.length > 1}
-		<button
-			onclick={() => (switching = !switching)}
-			{@attach contextMenu(() => crewEntries(crew))}
-			class="hover:bg-ink/5 flex min-h-11 w-full items-center gap-2 rounded p-2 text-left md:min-h-0 {switching
-				? 'bg-ink/5 text-ink'
-				: onPage
-					? 'bg-ink/10 text-ink'
-					: 'text-ink'}"
-			aria-current={onPage ? 'page' : undefined}
-			title="switch crew"
-			aria-label="crew: {crew.name} — switch crew"
-			aria-expanded={switching}
-		>
-			{@render crewRow(crew)}
-			<ChevronsUpDown size={14} class="text-muted shrink-0" />
-		</button>
-	{:else}
-		<!-- One crew: nothing to switch, so the row is the crew's page
-		     (the 95% rule, ux.md) and spends no chevron on a choice that
-		     does not exist. -->
-		<a
-			href="/crew/{crew.id}"
-			{@attach contextMenu(() => crewEntries(crew))}
-			class="flex min-h-11 w-full items-center gap-2 rounded p-2 md:min-h-0 {onPage
-				? 'bg-ink/10 text-ink'
-				: 'hover:bg-ink/5 text-ink'}"
-			aria-current={onPage ? 'page' : undefined}
-			title="the crew — its people and rooms"
-		>
-			{@render crewRow(crew)}
-		</a>
-	{/if}
+		<ChevronsUpDown size={14} class="text-muted shrink-0" />
+	</button>
 	{#if switching}
-		{@const here = crew}
 		<!-- A list, not a menu: role="menu" promises arrow-key walking and
 		     Home/End, and a reader that hears the promise finds Tab instead
 		     (audit 2026-09-09). Plain buttons in a list say what they are. -->
 		<ul class="mt-0.5 space-y-0.5">
+			<li>
+				<button
+					onclick={() => {
+						onpick('you');
+						switching = false;
+					}}
+					class="flex min-h-11 w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm md:min-h-0 {crew
+						? 'text-muted hover:bg-ink/5 hover:text-ink'
+						: 'bg-ink/10 text-ink'}"
+					aria-current={crew ? undefined : 'true'}
+				>
+					<Avatar
+						name={account.me?.displayName ?? 'You'}
+						avatarUrl={account.me?.avatarUrl}
+						size={20}
+					/>
+					<span class="min-w-0 flex-1 truncate">You</span>
+					<span class="text-muted shrink-0 text-[11px]">your own pages</span>
+					{#if !crew}<Check size={13} class="text-muted shrink-0" />{/if}
+				</button>
+			</li>
 			{#each crews as c (c.id)}
-				{@const now = c.id === here.id}
+				{@const now = c.id === crew?.id}
 				<li>
 					<button
 						onclick={() => {
@@ -250,23 +270,11 @@
 					</button>
 				</li>
 			{/each}
-			<!-- The crew's own page: its people, its rooms, its name
-			     (#1150, #1151) — one more row, not a boxed footer. -->
-			<li>
-				<a
-					href="/crew/{here.id}"
-					onclick={() => (switching = false)}
-					class="text-muted hover:bg-ink/5 hover:text-ink flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0"
-				>
-					<Users size={15} class="shrink-0" />
-					<span class="truncate">People and rooms</span>
-				</a>
-			</li>
 		</ul>
 	{/if}
 </div>
 
-{#if crews.length > 1}
+{#if crews.length > 0}
 	<!-- What the crews you are NOT looking at are doing (#1148): one crew
 	     at a time hides three quarters of the radar, and this is the price
 	     option C pays back. One plain line per crew with something on —
@@ -275,8 +283,8 @@
 	     even its icon: when nothing is happening anywhere there is no row
 	     at all. Tapping a line switches to that crew. -->
 	{@const elsewhere = crews
-		.filter((c) => c.id !== crew.id)
-		.map((c) => ({ c, pulse: crewPulse(rooms, c.id) }))
+		.filter((c) => c.id !== crew?.id)
+		.map((c) => ({ c, pulse: livePulse(crewLive.crew(c.id)) }))
 		.filter((x) => !quiet(x.pulse))}
 	{#if elsewhere.length}
 		<ul class="border-ink/5 border-b py-1">

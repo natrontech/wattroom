@@ -29,9 +29,11 @@ test('an action picked in the phone drawer is not left under it', async ({
 	const a = await riders(RIDER);
 	await a.setViewportSize(PHONE);
 	// The first room founds the crew whose row carries the menu.
-	await rooms.open(a, `Drawer Menu ${Date.now() % 100000}`);
+	const mine = await rooms.open(a, `Drawer Menu ${Date.now() % 100000}`);
 
-	await a.goto('/home');
+	// On the crew's own page the column is that crew (#2447), and its header
+	// is the row that carries the crew's menu.
+	await a.goto(`/crew/${mine.crew}`);
 	const hamburger = a.getByRole('button', { name: 'open navigation' });
 	await hamburger.click();
 	await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
@@ -40,9 +42,9 @@ test('an action picked in the phone drawer is not left under it', async ({
 	// the same menu through the same handler. "Copy invite link" is the item
 	// that raises a toast either way — a clipboard the browser refuses says
 	// so in one, which is the point of that fallback.
-	await a
-		.locator('a[title="the crew — its people and rooms"]')
-		.click({ button: 'right' });
+	await a.getByRole('button', { name: /^crew: .* switch crew$/ }).click({
+		button: 'right',
+	});
 	await a.getByRole('menuitem', { name: 'Copy invite link' }).click();
 
 	// The drawer went, rather than staying over whatever the item raised —
@@ -95,11 +97,11 @@ test('an action picked in the phone drawer is not left under it', async ({
 
 	await a.goto('/home');
 	await hamburger.click();
-	// Two crews now, so the row is a switcher: its list is where the other
-	// crew's own menu lives.
+	// The switcher's list is where the other crew's own menu lives — on
+	// Home the column is You (#2447), with every crew one row below it.
 	await a.getByRole('button', { name: /switch crew/ }).click();
 	await a
-		.getByRole('button', { name: new RegExp(`crew: ${crew}`) })
+		.getByRole('button', { name: new RegExp(`${crew}\\s+\\d+ channels?`) })
 		.click({ button: 'right' });
 	await a.getByRole('menuitem', { name: 'Leave the crew' }).click();
 
@@ -133,7 +135,7 @@ test('an action picked in the phone drawer is not left under it', async ({
  * BUTTON in the drawer, with no menu in between. Every AV control a phone has
  * lives in the you-panel inside the drawer, and the Sound panel mounted
  * underneath it — invisible, with every tap meant for it landing on the
- * drawer. The `+` above the room list is the same shape and needs no voice
+ * drawer. The `+` beside a crew's channels is the same shape and needs no voice
  * session to reach, so it is what this rides.
  *
  * It used to be hand-wired: the `+` called an `onSheet` prop the layout
@@ -153,15 +155,16 @@ test('a dialog opened by a button in the phone drawer comes up over it', async (
 
 	const a = await riders(BUTTON_RIDER);
 	await a.setViewportSize(PHONE);
-	// The + sits in the header of a crew's room list, so there has to be one.
-	await rooms.open(a, `Drawer Button ${Date.now() % 100000}`);
+	// The + sits beside a crew's channels, for its owner (#2447), so there
+	// has to be a crew of theirs on screen.
+	const room = await rooms.open(a, `Drawer Button ${Date.now() % 100000}`);
 
-	await a.goto('/home');
+	await a.goto(`/crew/${room.crew}`);
 	const hamburger = a.getByRole('button', { name: 'open navigation' });
 	await hamburger.click();
 	await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
 
-	await a.getByRole('button', { name: 'open a room' }).click();
+	await a.getByRole('button', { name: 'new text channel' }).click();
 
 	await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
 	const dialog = a.getByRole('dialog');

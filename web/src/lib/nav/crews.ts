@@ -33,58 +33,6 @@ export function crewsOf(
 	return [...seen.values()];
 }
 
-/**
- * Which crew is on screen. The chosen one when it is still one of yours,
- * else the crew of the room you are standing in, else the first. A choice
- * that names a crew you have since left must not blank the sidebar.
- */
-export function currentCrew(
-	crews: readonly RoomCrew[],
-	chosen: string | null,
-	rooms: readonly RailRoom[],
-	connectedSlug: string,
-): RoomCrew | null {
-	if (chosen) {
-		const hit = crews.find((c) => c.id === chosen);
-		if (hit) return hit;
-	}
-	const standing = rooms.find((r) => r.slug === connectedSlug)?.crew;
-	if (standing) return crews.find((c) => c.id === standing.id) ?? null;
-	return crews[0] ?? null;
-}
-
-export interface SidebarGroups {
-	/**
-	 * The room you are connected to, when it belongs to a crew other than the
-	 * one on screen — pinned above the list under "you are in · <crew>".
-	 * Without it, switching crews mid-session drops the room you are
-	 * connected to out of the navigation and folds Training two clicks away
-	 * (rider report #416).
-	 */
-	pinned: RailRoom | null;
-	/** The current crew's rooms — plus any room with no crew, always. */
-	rooms: RailRoom[];
-}
-
-export function sidebarGroups(
-	rooms: readonly RailRoom[],
-	current: RoomCrew | null,
-	connectedSlug: string,
-): SidebarGroups {
-	// A crewless room belongs to no mode and is never hidden by one. The
-	// window ADR-0038's fourth amendment gave one release is still open
-	// (#1301): a NOT VALID check stops new ones without proving anything
-	// about the old, so this branch goes when the constraint is validated,
-	// not when it is added.
-	const shown = rooms.filter(
-		(r) => !r.crew || !current || r.crew.id === current.id,
-	);
-	const standing = rooms.find((r) => r.slug === connectedSlug);
-	const pinned =
-		standing && !shown.some((r) => r.slug === standing.slug) ? standing : null;
-	return { pinned, rooms: shown };
-}
-
 export function readChosenCrew(): string | null {
 	try {
 		return localStorage.getItem(CHOSEN);
@@ -129,31 +77,14 @@ export function reachable(access: RoomAccess | undefined): boolean {
 }
 
 /**
- * What a crew you are NOT looking at is doing, summed over its rooms
- * (#1148): riders with live watts, people in voice, lines unread. Only rooms
- * you are a member of carry presence, so a crew's pulse is the part of it
- * you could already see — never a signal from a room you never joined.
+ * What a crew you are NOT looking at is doing (#1148): riders with live
+ * watts, people in voice, lines unread — over the channels you may enter
+ * (crew-live.svelte.ts `livePulse`), never a signal from one you may not.
  */
 export interface CrewPulse {
 	riding: number;
 	voice: number;
 	unread: number;
-}
-
-export function crewPulse(
-	rooms: readonly RailRoom[],
-	crewId: string,
-): CrewPulse {
-	return rooms
-		.filter((r) => r.crew?.id === crewId)
-		.reduce(
-			(a, r) => ({
-				riding: a.riding + (r.riding?.length ?? 0),
-				voice: a.voice + (r.voice?.length ?? 0),
-				unread: a.unread + (r.unread ?? 0),
-			}),
-			{ riding: 0, voice: 0, unread: 0 },
-		);
 }
 
 /** A crew doing nothing says nothing: the icon alone, no zeroes. */

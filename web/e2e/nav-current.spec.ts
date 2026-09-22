@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { test as roomTest } from './room';
 import { signInAs } from './signin';
 
 /**
@@ -127,3 +128,54 @@ test('the sidebar says a failed read is a failed read, not "no crew"', async ({
 	await nav.getByRole('button', { name: 'Retry' }).click();
 	await expect(nav.getByText('Your rooms could not be read.')).toHaveCount(0);
 });
+
+/**
+ * The same rule inside a crew (#2447): its Home, its Members, a text channel
+ * and a voice channel each light exactly their own row — the crew's header
+ * lighting too would make two — and stepping back to your own Home lights
+ * Home under You.
+ */
+roomTest(
+	'a crew’s pages and channels each light exactly one row',
+	async ({ riders, rooms }) => {
+		roomTest.skip(
+			!!process.env.PLAYWRIGHT_BASE_URL,
+			'the ?as= dev provider only exists on a dev server',
+		);
+		const a = await riders('Nav Crew Reader');
+		const name = `Nav Channels ${Date.now() % 100000}`;
+		const room = await rooms.open(a, name);
+		// Every room became a text and a voice channel of its name (ADR-0058).
+		const ids = await a.evaluate(
+			async ({ crew, roomName }) => {
+				const list = await fetch(`/api/crews/${crew}/channels`).then((res) =>
+					res.json(),
+				);
+				const find = (kind: string) =>
+					(list.channels as { id: string; kind: string; name: string }[]).find(
+						(c) => c.kind === kind && c.name === roomName,
+					)?.id ?? '';
+				return { text: find('text'), voice: find('voice') };
+			},
+			{ crew: room.crew, roomName: name },
+		);
+		expect(ids.text, 'the room has no text channel').not.toBe('');
+		expect(ids.voice, 'the room has no voice channel').not.toBe('');
+
+		const nav = a.locator('nav[aria-label="rooms and places"]');
+		const current = nav.locator('[aria-current="page"]');
+		const row = (label: string) => new RegExp(`^\\s*${label}\\s*$`, 'i');
+		const walk: { path: string; label: RegExp }[] = [
+			{ path: `/crew/${room.crew}`, label: row('Home') },
+			{ path: `/crew/${room.crew}/members`, label: row('Members') },
+			{ path: `/crew/${room.crew}/c/${ids.text}`, label: row(name) },
+			{ path: `/crew/${room.crew}/v/${ids.voice}`, label: row(name) },
+			{ path: '/home', label: row('Home') },
+		];
+		for (const { path, label } of walk) {
+			await a.goto(path);
+			await expect(current).toHaveCount(1);
+			await expect(current).toHaveText(label);
+		}
+	},
+);
