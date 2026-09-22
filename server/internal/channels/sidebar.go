@@ -46,6 +46,9 @@ type liveChannelJSON struct {
 	Session *protocol.LiveSession `json:"session,omitempty"`
 	// A text channel's: lines from others since the rider last read it.
 	Unread int `json:"unread,omitempty"`
+	// A text channel's last line, while it has unread (#2457): what the
+	// crew read announces, and where its reply goes.
+	Last *lastLineJSON `json:"last,omitempty"`
 }
 
 // occupantJSON is presence and nothing more (ADR-0010's radar): a name and
@@ -57,6 +60,15 @@ type occupantJSON struct {
 	Camera bool   `json:"camera,omitempty"`
 	Riding bool   `json:"riding,omitempty"`
 	Away   bool   `json:"away,omitempty"`
+}
+
+type lastLineJSON struct {
+	From   string `json:"from"`
+	FromID string `json:"fromId"`
+	Text   string `json:"text"`
+	// The line was an image (#279) — it has no text to preview.
+	HasImage bool  `json:"hasImage,omitempty"`
+	At       int64 `json:"at"`
 }
 
 type livePlanJSON struct {
@@ -121,10 +133,15 @@ func (s *Service) liveCrew(ctx context.Context, crewID, userID pgtype.UUID, role
 			unread[row.ChannelID] = int(row.Unread)
 		}
 	}
+	last, err := s.lastLines(ctx, unread)
+	if err != nil {
+		return out, err
+	}
 	for _, c := range channels {
 		entry := liveChannelJSON{ID: store.UUIDString(c.ID), Kind: c.Kind, Name: c.Name, Private: c.Private}
 		if c.Kind == kindText {
 			entry.Unread = unread[c.ID]
+			entry.Last = last[c.ID]
 		} else if s.live != nil {
 			id := store.UUIDString(c.ID)
 			entry.Occupants = occupantsOf(s.live.Presence(id))
@@ -148,6 +165,29 @@ func (s *Service) liveCrew(ctx context.Context, crewID, userID pgtype.UUID, role
 	}
 	if !plan.ChannelID.Valid {
 		out.Next.ChannelID = ""
+	}
+	return out, nil
+}
+
+// lastLines is the last line of every channel with unread, by channel.
+func (s *Service) lastLines(ctx context.Context, unread map[pgtype.UUID]int) (map[pgtype.UUID]*lastLineJSON, error) {
+	out := map[pgtype.UUID]*lastLineJSON{}
+	ids := make([]pgtype.UUID, 0, len(unread))
+	for id := range unread {
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows, err := s.store.Queries.LastLineByChannel(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		out[row.ChannelID] = &lastLineJSON{
+			From: row.DisplayName, FromID: store.UUIDString(row.UserID), Text: row.Text,
+			HasImage: row.ImageID.Valid, At: row.CreatedAt.Time.UnixMilli(),
+		}
 	}
 	return out, nil
 }

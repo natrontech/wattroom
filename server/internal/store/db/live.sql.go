@@ -11,6 +11,55 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const lastLineByChannel = `-- name: LastLineByChannel :many
+select distinct on (m.channel_id)
+       m.channel_id, m.user_id, u.display_name, m.text, m.image_id, m.created_at
+from chat_messages m
+join users u on u.id = m.user_id
+where m.channel_id = any($1::uuid[])
+order by m.channel_id, m.created_at desc
+`
+
+type LastLineByChannelRow struct {
+	ChannelID   pgtype.UUID
+	UserID      pgtype.UUID
+	DisplayName string
+	Text        string
+	ImageID     pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
+// The last thing said in each text channel (#2457), whoever said it: what a
+// crew read announces when the channel has lines the rider has not read,
+// the way a room's lastChat did (#568). Only asked for channels with unread,
+// so a quiet crew costs nothing.
+func (q *Queries) LastLineByChannel(ctx context.Context, channelIds []pgtype.UUID) ([]LastLineByChannelRow, error) {
+	rows, err := q.db.Query(ctx, lastLineByChannel, channelIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LastLineByChannelRow
+	for rows.Next() {
+		var i LastLineByChannelRow
+		if err := rows.Scan(
+			&i.ChannelID,
+			&i.UserID,
+			&i.DisplayName,
+			&i.Text,
+			&i.ImageID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const nextCrewPlan = `-- name: NextCrewPlan :one
 select s.id, s.workout_name, s.starts_at, s.channel_id, coalesce(ch.name, '')::text as channel_name
 from scheduled_sessions s

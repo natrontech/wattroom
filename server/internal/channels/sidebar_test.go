@@ -134,3 +134,49 @@ func TestUnreadCountsPerTextChannel(t *testing.T) {
 		t.Errorf("after reading, bob's unread = %v, want none", got)
 	}
 }
+
+func TestAnUnreadChannelCarriesItsLastLine(t *testing.T) {
+	h := setup(t)
+	general := h.create(t, "text", "general", false)
+	h.create(t, "text", "quiet", false)
+	say := func(who, text string, ago time.Duration) {
+		t.Helper()
+		if _, err := h.store.Pool.Exec(t.Context(),
+			`insert into chat_messages (channel_id, user_id, text, created_at) values ($1, $2, $3, $4)`,
+			general, h.users.ByToken[who].ID, text, time.Now().Add(-ago)); err != nil {
+			t.Fatalf("say: %v", err)
+		}
+	}
+	say("alice", "tonight at seven", 2*time.Minute)
+	say("bob", "in", time.Minute)
+
+	lastOf := func(who string) map[string]map[string]any {
+		t.Helper()
+		out := map[string]map[string]any{}
+		for name, row := range channelsOf(h.liveCrew(t, who)) {
+			last, _ := row["last"].(map[string]any)
+			out[name] = last
+		}
+		return out
+	}
+	// The newest line, whoever said it — the client decides it is not news
+	// when it is the reader's own.
+	got := lastOf("alice")
+	bob := h.users.ByToken["bob"]
+	if got["general"]["text"] != "in" || got["general"]["fromId"] != store.UUIDString(bob.ID) ||
+		got["general"]["from"] != bob.DisplayName {
+		t.Errorf("alice's general.last = %v, want bob's %q", got["general"], "in")
+	}
+	if got["quiet"] != nil {
+		t.Errorf("a channel with nothing unread carried a last line: %v", got["quiet"])
+	}
+
+	if _, err := h.store.Pool.Exec(t.Context(),
+		`insert into channel_reads (channel_id, user_id, read_at) values ($1, $2, now())`,
+		general, h.users.ByToken["alice"].ID); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if got := lastOf("alice"); got["general"] != nil {
+		t.Errorf("after reading, alice's general.last = %v, want none", got["general"])
+	}
+}

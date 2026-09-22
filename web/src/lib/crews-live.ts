@@ -30,6 +30,19 @@ export interface LiveChannel {
 	session?: LiveSession;
 	/** A text channel's lines from others since you last read it. */
 	unread?: number;
+	/** A text channel's last line, while it has unread (#2457). */
+	last?: LiveLine;
+}
+
+/** The last thing said in a text channel, whoever said it. */
+export interface LiveLine {
+	from: string;
+	fromId: string;
+	text: string;
+	/** The line was an image — it has no text to preview. */
+	hasImage?: boolean;
+	/** Unix milliseconds: what makes announcing it twice impossible. */
+	at: number;
 }
 
 export interface LivePlan {

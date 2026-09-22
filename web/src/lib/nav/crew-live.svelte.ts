@@ -1,5 +1,11 @@
+import { account } from '$lib/account.svelte';
 import { fetchCrewsLive, type LiveCrew } from '$lib/crews-live';
+import { announce } from '$lib/messages/announce';
+import { shouldAnnounce } from '$lib/notify-once';
+import { away } from '$lib/notify.svelte';
 import type { LiveSession } from '$lib/protocol';
+import { roomConnection } from '$lib/room/connection.svelte';
+import { crewArrivals, runningSessions } from './crew-arrivals';
 
 /**
  * What is happening in the rider's crews, as the sidebar draws it (#2444,
@@ -15,6 +21,10 @@ let loaded = $state(false);
 let error = $state<string | null>(null);
 // Reads overlap on a busy lobby; only the newest may land.
 let issued = 0;
+// The first read is the state of the world, not a burst of arrivals: its
+// sessions are old news and its lines are claimed, not announced (#2421).
+let started = false;
+let seen = new Set<string>();
 
 async function load() {
 	const mine = ++issued;
@@ -30,6 +40,19 @@ async function load() {
 	crews = res.data.crews;
 	error = null;
 	loaded = true;
+	const arrivals = crewArrivals(crews, seen, {
+		here: location.pathname,
+		connected: roomConnection.current?.address.channel || undefined,
+		me: account.me?.id,
+		looking: !away(),
+	});
+	seen = runningSessions(crews);
+	const first = !started;
+	started = true;
+	for (const arrival of arrivals) {
+		if (!first) announce(arrival);
+		else if (arrival.kind === 'chat') shouldAnnounce(arrival.tag, arrival.at);
+	}
 }
 
 export const crewLive = {
@@ -46,6 +69,15 @@ export const crewLive = {
 		return crews.find((c) => c.id === id);
 	},
 	reload: load,
+	/** Signing out starts the world over: the next rider's first read is theirs. */
+	reset() {
+		issued += 1;
+		crews = [];
+		loaded = false;
+		error = null;
+		started = false;
+		seen = new Set();
+	},
 };
 
 /** What a crew you are not looking at is doing (#1148), for its one line. */
