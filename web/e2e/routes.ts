@@ -37,7 +37,7 @@ export const MEASURED: readonly string[] = [
 	'/settings/notifications',
 	'/settings/data',
 	'/whats-new',
-	'/rooms/directory',
+	'/crews/directory',
 	'/download',
 	'/legal',
 	'/legal/licenses',

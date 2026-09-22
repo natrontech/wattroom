@@ -284,8 +284,8 @@
 			     place of its own — nav/pages.ts retires anything that is the
 			     second half of a page here, and this is exactly that. -->
 				<p class="text-muted mt-3 text-xs">
-					No code? <a href="/rooms/directory" class="underline">Find a room</a> —
-					it lists the rooms crews chose to be found, and joining one joins its crew.
+					No code? <a href="/crews/directory" class="underline">Find a crew</a> —
+					it lists the crews that chose to be found.
 				</p>
 			</div>
 		{/snippet}

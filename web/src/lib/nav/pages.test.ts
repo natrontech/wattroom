@@ -24,10 +24,10 @@ describe('activeHref', () => {
 	// while you are there — and a page with no parent is a bug, not a page.
 	// `/rooms` was retired INTO Home's "your rooms" section (it redirects to
 	// /home#rooms) and the directory is that section's other half — the "No
-	// code? Find a room" line in the open/join card — so Home is that row.
+	// code? Find a crew" line in the open/join card — so Home is that row.
 	// Both used to leave the whole column dark (#1863).
-	it('keeps Home lit on the room directory and the retired /rooms stub', () => {
-		expect(activeHref('/rooms/directory')).toBe('/home');
+	it('keeps Home lit on the crew directory and the retired /rooms stub', () => {
+		expect(activeHref('/crews/directory')).toBe('/home');
 		expect(activeHref('/rooms')).toBe('/home');
 	});
 
@@ -90,7 +90,7 @@ describe('dmsCurrent', () => {
 
 	it('says nothing off the messages tree', () => {
 		expect(dmsCurrent('/home', false)).toBe(false);
-		expect(dmsCurrent('/rooms/directory', false)).toBe(false);
+		expect(dmsCurrent('/crews/directory', false)).toBe(false);
 	});
 });
 
