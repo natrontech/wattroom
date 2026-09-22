@@ -209,7 +209,7 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (Room, e
 
 const createScheduledSession = `-- name: CreateScheduledSession :one
 insert into scheduled_sessions (room_id, workout_name, workout_json, starts_at, created_by)
-values ($1, $2, $3, $4, $5) returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at
+values ($1, $2, $3, $4, $5) returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id
 `
 
 type CreateScheduledSessionParams struct {
@@ -239,6 +239,8 @@ func (q *Queries) CreateScheduledSession(ctx context.Context, arg CreateSchedule
 		&i.CreatedAt,
 		&i.RemindedAt,
 		&i.StartedAt,
+		&i.CrewID,
+		&i.ChannelID,
 	)
 	return i, err
 }
@@ -1113,7 +1115,7 @@ update scheduled_sessions
 set starts_at = $3,
     reminded_at = case when starts_at = $3 then reminded_at else null end
 where id = $1 and room_id = $2
-returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at
+returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id
 `
 
 type RescheduleSessionParams struct {
@@ -1140,6 +1142,8 @@ func (q *Queries) RescheduleSession(ctx context.Context, arg RescheduleSessionPa
 		&i.CreatedAt,
 		&i.RemindedAt,
 		&i.StartedAt,
+		&i.CrewID,
+		&i.ChannelID,
 	)
 	return i, err
 }

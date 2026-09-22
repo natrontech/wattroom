@@ -183,6 +183,7 @@ type Medal struct {
 	RideID    pgtype.UUID
 	Kind      string
 	AwardedAt pgtype.Timestamptz
+	CrewID    pgtype.UUID
 }
 
 type Membership struct {
@@ -248,6 +249,9 @@ type Ride struct {
 	Last20mHr       *int16
 	Rpe             *int16
 	Note            *string
+	CrewID          pgtype.UUID
+	ChannelID       pgtype.UUID
+	SessionID       pgtype.UUID
 }
 
 type RideExport struct {
@@ -310,6 +314,8 @@ type ScheduledSession struct {
 	CreatedAt   pgtype.Timestamptz
 	RemindedAt  pgtype.Timestamptz
 	StartedAt   pgtype.Timestamptz
+	CrewID      pgtype.UUID
+	ChannelID   pgtype.UUID
 }
 
 type Session struct {
@@ -327,6 +333,9 @@ type SessionRecap struct {
 	EndedAt   pgtype.Timestamptz
 	Riders    []byte
 	CreatedAt pgtype.Timestamptz
+	CrewID    pgtype.UUID
+	ChannelID pgtype.UUID
+	SessionID pgtype.UUID
 }
 
 type SessionRsvp struct {
