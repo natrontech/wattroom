@@ -38,11 +38,6 @@ const GUARDED: Guarded[] = [
 		asks: /confirmCalendarReset\('yours'\)/,
 	},
 	{
-		file: 'routes/r/[slug]/sessions/+page.svelte',
-		action: "reset the room's calendar link",
-		asks: /confirmCalendarReset\('room'\)/,
-	},
-	{
 		file: 'routes/crew/[id]/schedule/+page.svelte',
 		action: "reset the crew's calendar link (#2452)",
 		asks: /confirmCalendarReset\('crew'\)/,
@@ -126,11 +121,6 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(/,
 	},
 	{
-		file: 'routes/r/[slug]/members/+page.svelte',
-		action: 'remove a member, and hand the room to another owner',
-		asks: /confirm\(/,
-	},
-	{
 		file: 'routes/crew/[id]/settings/ChannelRow.svelte',
 		action: 'delete a channel — its chat, or its play log and recaps',
 		asks: /confirm\(/,
@@ -172,7 +162,6 @@ const PRIMITIVES: { call: RegExp; callers: string[]; guard: string }[] = [
 		call: /\/calendar\/rotate/,
 		callers: [
 			'lib/profile/CalendarFeed.svelte',
-			'routes/r/[slug]/+layout.svelte', // wiring; the ask is on Sessions
 			'lib/crew-schedule.ts', // the definition; the ask is on Schedule
 		],
 		guard: 'confirmCalendarReset in lib/calendar-link.ts',

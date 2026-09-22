@@ -62,7 +62,6 @@ export const MEASURED_SIGNED_OUT: readonly string[] = [
 export const MEASURED_BY_ID: readonly string[] = [
 	'/u/[id]',
 	'/history/[id]',
-	'/messages/r/[slug]',
 	'/messages/dm/[peer]',
 	'/crew/[id]',
 	'/crew/[id]/members',
@@ -83,7 +82,9 @@ export const NOT_MEASURED: Readonly<Record<string, string>> = {
 	'/dev/*':
 		'Mock screens for design iteration: dev/+layout.ts 404s them outside a dev build.',
 	'/r/[slug]/*':
-		'The room, which is mobile-room.spec.ts’s subject at the same 375×812.',
+		'Retired with the rooms (#2458): every old room path redirects to the crew or channel it became.',
+	'/messages/r/[slug]':
+		'A room’s thread is its text channel’s now (#2458); +page.ts redirects.',
 	'/crew/[id]/v/*':
 		'A voice channel is the room’s live shell on another address (#2449) — mobile-room.spec.ts’s subject until the room goes (#2460).',
 	'/crew/[id]/s/*':
@@ -94,7 +95,7 @@ export const NOT_MEASURED: Readonly<Record<string, string>> = {
 		'The settings tree, not a page: +page.ts redirects to /settings/profile.',
 	'/progression': 'Retired by ADR-0020; redirects to /history.',
 	'/sessions': 'Retired by ADR-0020; redirects to /home#sessions.',
-	'/rooms': 'Retired by ADR-0020; redirects to /home#rooms.',
+	'/rooms': 'Retired with the rooms (#2458); redirects to /crews/directory.',
 	'/dm/[peer]': 'Moved to /messages/dm/[peer] (#468); +page.ts redirects.',
 };
 
