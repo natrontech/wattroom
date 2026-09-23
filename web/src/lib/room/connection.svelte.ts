@@ -13,7 +13,7 @@ import { announcePoke } from '$lib/room/poke';
 import { comingsAndGoings } from '$lib/room/comings-and-goings';
 import { dmArrivalEvent } from '$lib/room/dm-line';
 import { screenShareChanges, screenShareEvent } from '$lib/room/screen-shares';
-import { parseSharedWorkout } from '$lib/room/workout';
+import { parseSharedWorkout } from '$lib/workout/shared';
 import { play } from '$lib/sound/cues';
 import { setDucking } from '$lib/sound/duck';
 import { shouldDuck } from '$lib/sound/ducking';

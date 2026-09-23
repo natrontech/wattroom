@@ -52,7 +52,7 @@
 		whoIsInOf,
 		type RsvpAnswer,
 	} from '$lib/room/rsvp';
-	import { parseSharedSegments } from '$lib/room/workout';
+	import { parseSharedSegments } from '$lib/workout/shared';
 	import { serverNow } from '$lib/server-clock';
 	import { shareLink } from '$lib/share';
 	import { toasts } from '$lib/toast.svelte';
