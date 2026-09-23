@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { navDrawer } from '$lib/nav/drawer.svelte';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import { elsewhereIn } from '$lib/channel/roster';
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
@@ -370,6 +372,10 @@
 		onCheer={(emoji) => live.cheer(emoji)}
 		onPoke={(id) => live.poke(id)}
 		{banOf}
+		elsewhere={elsewhereIn(
+			crewLive.crew(props.address.crew),
+			props.address.channel,
+		)}
 		cheers={props.cheers}
 	>
 		{#snippet player()}

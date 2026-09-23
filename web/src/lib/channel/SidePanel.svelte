@@ -17,7 +17,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { BOARD_MARK } from '$lib/channel/presence-marks';
-	import { rosterGroups } from '$lib/channel/roster';
+	import { rosterGroups, type Elsewhere } from '$lib/channel/roster';
 	import { statusOfRider } from '$lib/status';
 	import type { PanelMember, LiveRider } from '$lib/channel/types';
 
@@ -42,6 +42,7 @@
 		onCheer,
 		onPoke,
 		banOf,
+		elsewhere,
 		cheers = STOCK_CHEERS,
 	}: {
 		live: boolean;
@@ -57,9 +58,10 @@
 		player?: Snippet;
 		onCheer?: (emoji: string) => void;
 		onPoke?: (id: string) => void;
-		/** Owner only — absent for everyone else, so the entry never appears. */
 		/** The crew's ban for this person, where the viewer may (ChannelShell). */
 		banOf?: (id: string, name: string) => (() => void) | undefined;
+		/** The crew's members in its other voice channels (roster.ts). */
+		elsewhere?: ReadonlyMap<string, Elsewhere>;
 		/** The crew's one reaction vocabulary (#223), icon keys (#447). */
 		cheers?: string[];
 	} = $props();
@@ -68,7 +70,7 @@
 	// Discord's offline half of the member list: the channel is the same
 	// channel when nobody is in it, and a column that says "in the channel — 1"
 	// and stops there hides the six people you ride with (roster.ts).
-	const groups = $derived(rosterGroups(live, riders, members));
+	const groups = $derived(rosterGroups(live, riders, members, elsewhere));
 </script>
 
 {#snippet person(rider: LiveRider)}
@@ -161,7 +163,7 @@
 	</li>
 {/snippet}
 
-{#snippet absent(member: PanelMember)}
+{#snippet absent(member: PanelMember, where?: Elsewhere)}
 	<li
 		class="text-muted-dim flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
 		{@attach contextMenu(() =>
@@ -186,10 +188,15 @@
 				name={member.displayName}
 				avatarUrl={member.avatarUrl}
 				xp={member.totalXp}
-				status="offline"
+				status={where?.status ?? 'offline'}
 				size={22}
 			/>
 			<span class="min-w-0 flex-1 truncate">{member.displayName}</span>
+			{#if where}
+				<span class="text-muted-dim max-w-[45%] shrink-0 truncate"
+					>in {where.channel}</span
+				>
+			{/if}
 		</a>
 	</li>
 {/snippet}
@@ -212,11 +219,11 @@
 		aria-label="resize the panel"
 	></div>
 	<div class="flex h-full flex-col">
-		{#if riders.length > 0 || groups.offline.length > 0}
+		{#if riders.length > 0 || groups.elsewhere.length > 0 || groups.offline.length > 0}
 			<!-- Everyone the crew HAS, in the three groups roster.ts decides. The
 			     headings say which question the split answers, and the ones who
 			     are not connected sit last, greyed. -->
-			{@const { here, away, offline } = groups}
+			{@const { here, away, elsewhere: others, offline } = groups}
 			<div class="border-ink/5 min-h-0 flex-1 overflow-y-auto border-b">
 				{#if here.length > 0}
 					<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
@@ -243,6 +250,19 @@
 					</div>
 					<ul class="px-1">
 						{#each away as rider (rider.id)}{@render person(rider)}{/each}
+					</ul>
+				{/if}
+				{#if others.length > 0}
+					<!-- Online, just not here (#2536): a crew with two voice
+					     channels puts half its people in the other one. -->
+					<div class="eyebrow px-3 pt-3 pb-1">
+						in another channel — {others.length}
+					</div>
+					<ul class="px-1">
+						{#each others as member (member.id)}{@render absent(
+								member,
+								member,
+							)}{/each}
 					</ul>
 				{/if}
 				{#if offline.length > 0}
