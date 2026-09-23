@@ -152,7 +152,6 @@
 	// recording, the roster, and the reminders — each its own module, the
 	// shell wiring them to the connection. ─────────────────────────────────
 	const summary = createSummary({
-		slug: () => props.slug,
 		recording,
 		phase: () => shared?.phase,
 		startedAt: () =>
