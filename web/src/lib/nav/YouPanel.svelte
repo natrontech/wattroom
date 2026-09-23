@@ -15,7 +15,6 @@
 	} from '$lib/context-menu.svelte';
 	import { activeHref } from '$lib/nav/pages';
 	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
-	import { changelog } from '$lib/changelog.svelte';
 	import { friends } from '$lib/friends/friends.svelte';
 	import { UNREAD_DOT } from '$lib/messages/unread-marks';
 	import { youMenu } from '$lib/nav/you-menu';
@@ -102,21 +101,13 @@
 
 	const destination = $derived(activeHref(pathname));
 	// Your Home has news (#2586): WattRoom opens in your crew now, so the
-	// card that opens You says when there is something there — a friend
-	// waiting on your answer, a release you have not seen. Not on Home,
-	// which shows both itself.
-	void changelog.load();
+	// card that opens You says when a friend is waiting on your answer. A
+	// release you have not read is the update row's, just above (#2588). Not
+	// on Home, which lists the request itself.
 	const news = $derived(
-		pathname === '/home'
-			? ''
-			: [
-					friends.waiting > 0
-						? `${friends.waiting} waiting for you to answer`
-						: '',
-					changelog.unseen ? `new in ${changelog.unseen.version}` : '',
-				]
-					.filter(Boolean)
-					.join(' · '),
+		pathname !== '/home' && friends.waiting > 0
+			? `${friends.waiting} waiting for you to answer`
+			: '',
 	);
 	// The dot on your own avatar: away is yours to set, riding is the voice
 	// channel's to report (#1016).
