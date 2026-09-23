@@ -1,4 +1,4 @@
-import { roomAddress } from '$lib/room/address';
+import { channelAddress } from '$lib/room/address';
 import { describe, expect, it } from 'vitest';
 import {
 	roomContextValue,
@@ -53,7 +53,7 @@ function shellProps(): RoomShellProps {
 	// `$state` only initialises a declaration, so it cannot be returned inline.
 	const props = $state({
 		children: (() => {}) as unknown as RoomShellProps['children'],
-		address: roomAddress('mfw-5'),
+		address: channelAddress('c', 'mfw-5', 'MFW 5'),
 		role: 'member',
 		roomName: 'MFW 5',
 		members: [],

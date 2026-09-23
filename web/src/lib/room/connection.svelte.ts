@@ -38,7 +38,10 @@ import { onPlacePath, ridePath, type PlaceAddress } from '$lib/room/address';
  * in two lounges.
  */
 type Connection = {
-	/** The room's slug; '' in a voice channel, so it matches no room. */
+	/**
+	 * Always '': a voice channel matches no room. Kept only for the root
+	 * layout's room list, the one reader left, which goes with #2460.
+	 */
 	slug: string;
 	/** Where the connection stands, and every path that follows (#2449). */
 	address: PlaceAddress;
@@ -79,7 +82,6 @@ export async function prepareRoomAv(): Promise<void> {
 }
 
 function connect(address: PlaceAddress): Connection {
-	const { slug } = address;
 	if (!createRoomAv) {
 		throw new Error(
 			'the room AV is not loaded — the room layout prepares it before the shell joins',
@@ -436,7 +438,7 @@ function connect(address: PlaceAddress): Connection {
 		});
 	});
 	return {
-		slug,
+		slug: '',
 		address,
 		live,
 		av,
