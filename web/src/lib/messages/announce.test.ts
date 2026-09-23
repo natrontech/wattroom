@@ -13,7 +13,7 @@ vi.mock('$lib/notify.svelte', () => ({
 	away: () => document.hidden || !document.hasFocus(),
 }));
 
-import { announce, divertDmsWhileRiding } from './announce';
+import { announce, divertWhileRiding } from './announce';
 import { toasts } from '$lib/toast.svelte';
 
 const arrival = (
@@ -126,7 +126,7 @@ describe('a riding screen takes the DM', () => {
 
 	it('hands a DM to the riding screen instead of toasting it', () => {
 		const taken: string[] = [];
-		const stop = divertDmsWhileRiding((a) => {
+		const stop = divertWhileRiding((a) => {
 			taken.push(a.title);
 			return true;
 		});
@@ -139,23 +139,35 @@ describe('a riding screen takes the DM', () => {
 		stop();
 	});
 
-	it('leaves channel chat, friends and a session starting alone', () => {
+	it("hands a text channel's line to the riding screen too (#2531)", () => {
 		const taken: string[] = [];
-		const stop = divertDmsWhileRiding((a) => {
+		const stop = divertWhileRiding((a) => {
 			taken.push(a.tag);
 			return true;
 		});
 		announce(arrival({ kind: 'chat', tag: 'chat-velvet' }));
+		expect(played).toEqual(['chat']);
+		expect(taken).toEqual(['chat-velvet']);
+		expect(toasts.items).toEqual([]);
+		stop();
+	});
+
+	it('leaves friends and a session starting alone', () => {
+		const taken: string[] = [];
+		const stop = divertWhileRiding((a) => {
+			taken.push(a.tag);
+			return true;
+		});
 		announce(arrival({ kind: 'friend', tag: 'friend-req-kim', at: 2000 }));
 		announce(arrival({ kind: 'session', tag: 'session-velvet', at: 3000 }));
 		expect(taken).toEqual([]);
-		expect(toasts.items).toHaveLength(3);
+		expect(toasts.items).toHaveLength(2);
 		stop();
 	});
 
 	it('toasts again once the screen refuses it, or goes', () => {
 		// A ride that has ended: the screen is still mounted and hands it back.
-		const stop = divertDmsWhileRiding(() => false);
+		const stop = divertWhileRiding(() => false);
 		announce(dm());
 		expect(toasts.items).toHaveLength(1);
 		stop();
@@ -167,7 +179,7 @@ describe('a riding screen takes the DM', () => {
 	it('still hands a hidden window to the OS — the rider is not looking', () => {
 		hide(true);
 		const taken: string[] = [];
-		const stop = divertDmsWhileRiding((a) => {
+		const stop = divertWhileRiding((a) => {
 			taken.push(a.tag);
 			return true;
 		});
