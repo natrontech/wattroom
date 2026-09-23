@@ -4,14 +4,15 @@
 
 <h1 class="page-title">Privacy policy</h1>
 <p class="text-muted mt-1 text-sm">
-	Datenschutzerklärung · last updated 10 September 2026
+	Datenschutzerklärung · last updated 23 September 2026
 </p>
 
 <p class="text-muted mt-6 text-sm leading-relaxed">
-	Privacy on WattRoom is architecture, not a settings page: metrics stay inside
-	your room, audio and video are never recorded, and rides are private by
-	default. This page spells out what that means in GDPR and Swiss revDSG terms.
-	WattRoom is open source, so every claim here can be checked against the
+	Privacy on WattRoom is architecture, not a settings page: live metrics stay
+	inside the session you ride in, audio and video are never recorded, and rides
+	are private by default. This page spells out what that means in GDPR and Swiss
+	revDSG terms. WattRoom is open source, so every claim here can be checked
+	against the
 	<a
 		href="https://github.com/natrontech/wattroom"
 		class="hover:text-ink underline">code</a
@@ -62,37 +63,40 @@
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Heart rate is health data</strong>
-			and is treated accordingly: it is visible live, only inside your room, only
-			while you ride. It never appears in shared ride artifacts and is never scored.
-			You consent by pairing a heart-rate monitor; unpair it and the processing stops.
+			and is treated accordingly: it is visible live, only inside the session you
+			ride in, only while it runs. It never appears in shared ride artifacts and is
+			never scored. You consent by pairing a heart-rate monitor; unpair it and the
+			processing stops.
 		</li>
 		<li>
-			<strong class="text-ink font-medium">Chat.</strong> Room chat and direct messages
-			are rolling logs: only the most recent 500 messages per room or conversation
-			are kept, older ones are deleted automatically.
+			<strong class="text-ink font-medium">Chat.</strong> A crew's text channels and
+			direct messages are rolling logs: only the most recent 500 messages per text
+			channel or conversation are kept, older ones are deleted automatically.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Music you upload.</strong> If you add MP3s
 			to your library we store the file on our own disk and a row about it: the title,
 			artist, album, tags and BPM you typed or its tag carried, plus what the file
-			itself measures. Only you browse your library; a room hears what someone in
-			it puts on. Delete a track and both go, and deleting your account takes every
+			itself measures. Only you browse your library; a voice channel hears what someone
+			in it puts on. Delete a track and both go, and deleting your account takes every
 			file nobody else has uploaded too.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Soundboard clips.</strong> If you add short
 			sounds to your soundboard we store each file and a row about it: the name you
 			typed, the pad and key you put it on, and the trim you set. Only you see your
-			clips; a room hears what someone in it fires. Delete a clip and both go, and
-			deleting your account takes them all.
+			clips; a voice channel hears what someone in it fires. Delete a clip and both
+			go, and deleting your account takes them all.
 		</li>
 		<li>
-			<strong class="text-ink font-medium">Rooms and crews.</strong> A room you own
-			is a row: its name, icon, who may find it, whether it keeps a weekly board,
-			its jukebox settings and its calendar link. A crew you are in keeps your standing
-			in it — member, admin or banned — and when that was set. Your own choices per
-			room (whether it may mail you, whether you stand on its board) are yours and
-			nobody else's.
+			<strong class="text-ink font-medium">Crews and channels.</strong> A crew is
+			a row: its name, icon and picture, its join code, whether it is listed in the
+			directory, whether it keeps a weekly board, its reactions and its calendar link.
+			Its channels carry their names, whether they are private, and a voice channel's
+			sounds and jukebox settings. A crew you are in keeps your standing in it — member,
+			admin or banned — and when that was set, and a private channel that names you
+			records that it does. Your own choices per crew (whether it may mail you, whether
+			you stand on its board) are yours and nobody else's.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Coach access.</strong> If you mint a read-only
@@ -117,7 +121,8 @@
 	<p class="text-muted mt-2 text-sm leading-relaxed">
 		No analytics, no tracking pixels, no error-tracking services, no ads, no
 		selling or sharing of data, no public leaderboards. Your live metrics are
-		room-scoped: visible only to the people in your room, only while you ride.
+		session-scoped: visible only to the riders in your session and whoever is in
+		its voice channel, only while it runs.
 	</p>
 </section>
 
@@ -130,21 +135,23 @@
 	<ul class="text-muted mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed">
 		<li>
 			<strong class="text-ink font-medium">Friends</strong> — people whose request
-			you accepted — see on their home page whether you are online, whether you are
-			riding, and which room you are in, before they join anything. Unfriend them
-			and that stops.
+			you accepted — see on their home page whether you are online, in voice or riding,
+			and which voice channel you are in when it is one they may enter themselves,
+			before they join anything. Unfriend them and that stops.
 		</li>
 		<li>
-			<strong class="text-ink font-medium">People in your room</strong> see your display
-			name, avatar and level, your live power and cadence while you ride, and heart
-			rate if you paired a monitor — all of it only inside the room and only while
-			you are in it.
+			<strong class="text-ink font-medium">Your crew</strong> sees your display
+			name, avatar and level, and which of its voice channels you are in.
+			<strong class="text-ink font-medium">People in your session</strong> — riding
+			it with you, or in its voice channel — see your live power and cadence while
+			you ride, and heart rate if you paired a monitor, only inside the session and
+			only while it runs.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Your rider page</strong> is visible to
-			friends and to people who share a room with you: level, energy ridden, badges
-			earned in rooms you share, and where you are right now. Rides appear there only
-			if you shared them, one by one, and only to friends.
+			friends and to people who share a channel with you (one you may both enter):
+			level, energy ridden, badges earned in crews you share, and where you are right
+			now. Rides appear there only if you shared them, one by one, and only to friends.
 		</li>
 	</ul>
 </section>
@@ -188,11 +195,12 @@
 			it.
 		</li>
 		<li>
-			<strong class="text-ink font-medium">YouTube.</strong> The room jukebox plays
-			music through YouTube's embedded player in privacy-enhanced mode (youtube-nocookie.com).
-			The player is created when you enter a room; the player script and the lookups
-			that name a pasted link come from www.youtube.com, and a track's artwork from
-			i.ytimg.com. Google may process your IP address under its own privacy policy.
+			<strong class="text-ink font-medium">YouTube.</strong> A voice channel's jukebox
+			plays music through YouTube's embedded player in privacy-enhanced mode (youtube-nocookie.com).
+			The player is created when you enter a voice channel; the player script and
+			the lookups that name a pasted link come from www.youtube.com, and a track's
+			artwork from i.ytimg.com. Google may process your IP address under its own privacy
+			policy.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Resend, Inc. (USA).</strong> Delivers every
@@ -216,7 +224,7 @@
 		Legal bases
 	</h2>
 	<p class="text-muted mt-2 text-sm leading-relaxed">
-		Running your account, rooms and rides: performance of contract (Art. 6
+		Running your account, crews and rides: performance of contract (Art. 6
 		(1)(b) GDPR). Heart rate: your explicit consent (Art. 9 (2)(a) GDPR), given
 		by pairing a monitor and withdrawable by unpairing it. Security logging:
 		legitimate interest (Art. 6 (1)(f) GDPR). The Swiss revDSG applies
@@ -234,21 +242,21 @@
 		The two big ones are built in: your profile has
 		<strong class="text-ink font-medium">export everything</strong> — a zip of
 		your profile, every ride with its per-second samples, the messages you
-		wrote, your DM threads and the reactions you left, friends, the rooms you
-		are in and the rooms you own with their settings, who you let through a
-		private room's door, your crews and your standing in them, playlists,
-		workouts, sessions you said yes to <em>and</em> sessions you put on a
-		calendar, the library tracks you uploaded, your soundboard clips, your
-		coach-access tokens, where each ride was delivered, and your XP and
-		trophies, all as machine-readable JSON. It stops where other people begin:
-		someone else's chat line is theirs, not yours, and the only thing it says
-		about anyone else is the display name you already see in the app. The one
-		thing left out is the audio: a track's or a clip's row is in the zip and
-		names the file it belongs to, the file itself is not — you have what you
-		uploaded, and we do not hand out audio. The zip also carries live links —
-		your calendar feed, a crew's join code, a room's calendar link — so treat it
-		the way you would treat those: it is yours, not something to forward. There
-		is also
+		wrote, your DM threads and the reactions you left, friends, your crews —
+		your standing and your choices in each, and the ones you own with their
+		settings — the private channels that name you, the rooms you were in before
+		crews replaced them, playlists, workouts, sessions you said yes to
+		<em>and</em>
+		sessions you put on a calendar, the library tracks you uploaded, your soundboard
+		clips, your coach-access tokens, where each ride was delivered, and your XP and
+		trophies, all as machine-readable JSON. It stops where other people begin: someone
+		else's chat line is theirs, not yours, and the only thing it says about anyone
+		else is the display name you already see in the app. The one thing left out is
+		the audio: a track's or a clip's row is in the zip and names the file it belongs
+		to, the file itself is not — you have what you uploaded, and we do not hand out
+		audio. The zip also carries live links — your calendar feed, a crew's join code
+		and its calendar link — so treat it the way you would treat those: it is yours,
+		not something to forward. There is also
 		<strong class="text-ink font-medium">delete account</strong> (a full purge,
 		not a soft delete). Beyond that you have the usual GDPR rights — access,
 		rectification, erasure, restriction, portability, objection, withdrawal of

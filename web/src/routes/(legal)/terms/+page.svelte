@@ -4,7 +4,7 @@
 
 <h1 class="page-title">Terms of service</h1>
 <p class="text-muted mt-1 text-sm">
-	Nutzungsbedingungen · last updated 10 September 2026
+	Nutzungsbedingungen · last updated 23 September 2026
 </p>
 
 <p class="text-muted mt-6 text-sm leading-relaxed">
@@ -35,9 +35,9 @@
 		WattRoom is an alpha
 	</h2>
 	<p class="text-muted mt-2 text-sm leading-relaxed">
-		The service is early and runs on one server. Features change, rooms and
-		rides can break mid-session, and a release can go out on any day. Do not
-		rely on WattRoom as the only record of your training — download the
+		The service is early and runs on one server. Features change, sessions and
+		rides can break mid-ride, and a release can go out on any day. Do not rely
+		on WattRoom as the only record of your training — download the
 		<code class="text-ink">.fit</code> file for anything you care about keeping.
 	</p>
 </section>
@@ -55,7 +55,8 @@
 	</p>
 	<p class="text-muted mt-3 text-sm leading-relaxed">
 		You can delete your account at any time from settings, and it takes your
-		rides, rooms and messages with it.
+		rides and messages with it. A crew you own passes to its longest-standing
+		admin, else its longest-standing member, and ends if nobody is left.
 	</p>
 </section>
 
@@ -68,14 +69,14 @@
 	<ul class="text-muted mt-2 space-y-2 text-sm leading-relaxed">
 		<li>
 			Harass, threaten or abuse other riders — in chat, in voice, on camera, or
-			through a room or display name.
+			through a crew, channel or display name.
 		</li>
 		<li>
 			Post or link to anything unlawful, or anything you have no right to share.
 		</li>
 		<li>
 			Use someone else's account, or try to reach data belonging to riders
-			outside your room.
+			outside your crews.
 		</li>
 		<li>
 			Attack the service — scraping, load testing, or probing for weaknesses
@@ -95,13 +96,14 @@
 	<h2
 		class="font-display text-ink mt-8 text-sm font-semibold tracking-wide uppercase"
 	>
-		What you put in a room
+		What you put in a crew
 	</h2>
 	<p class="text-muted mt-2 text-sm leading-relaxed">
-		Your messages, clips, uploaded tracks, room names and ride data stay yours.
-		You give us only what running the service needs: showing your content to the
-		people in the room you put it in, for as long as you leave it there. We
-		claim nothing beyond that, and we do not use it to train anything.
+		Your messages, clips, uploaded tracks, crew and channel names and ride data
+		stay yours. You give us only what running the service needs: showing your
+		content to the people in the crew or channel you put it in, for as long as
+		you leave it there. We claim nothing beyond that, and we do not use it to
+		train anything.
 	</p>
 	<p class="text-muted mt-3 text-sm leading-relaxed">
 		Voice and camera are never recorded — see the
@@ -116,9 +118,8 @@
 		Moderation
 	</h2>
 	<p class="text-muted mt-2 text-sm leading-relaxed">
-		A room's owner and its moderators can remove messages, and can remove or ban
-		a rider from their room. That is theirs to decide, and we do not usually
-		overrule it.
+		A crew's owner and its admins can remove messages, and can ban a rider from
+		the crew. That is theirs to decide, and we do not usually overrule it.
 	</p>
 	<p class="text-muted mt-3 text-sm leading-relaxed">
 		We can suspend or close an account that breaks these terms, or that puts the
