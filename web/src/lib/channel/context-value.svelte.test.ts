@@ -45,7 +45,7 @@ function deps(props: ChannelShellProps) {
 		setFocus: noop,
 		openTv: noop,
 		openPicker: noop,
-		ban: noop,
+		banOf: () => undefined,
 	} as unknown as ContextDeps;
 }
 

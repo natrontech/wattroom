@@ -82,7 +82,7 @@
 				poke: {
 					onSelect: () => channel.poke(rider().id),
 				},
-				ban: isOwner ? () => channel.ban(rider().id, rider().name) : undefined,
+				ban: channel.banOf(rider().id, rider().name),
 			}),
 		];
 	}
