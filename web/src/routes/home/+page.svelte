@@ -12,7 +12,6 @@
 	import { revealRooms } from '$lib/rooms/reveal';
 	import { othersIn, statusOf } from '$lib/status';
 	import { page } from '$app/state';
-	import { roomConnection } from '$lib/room/connection.svelte';
 	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
 	import FirstRun from '$lib/home/FirstRun.svelte';
 	import RecentRides from '$lib/home/RecentRides.svelte';
@@ -158,19 +157,16 @@
 	// drawer the sidebar lives in below md is translated off-screen and takes
 	// a dialog inside it along.
 	let opening = $state(false);
-	// Planning happens in a room's own Sessions place; the first room you can
-	// run one in is where the button goes. None yet: open one first.
+	// Planning happens on a crew's Schedule (#2440), and every member plans:
+	// the crews you are in are where the button goes, the main one first
+	// (#2144). None yet: start or join one first (#2511).
 	const plannable = $derived.by(() => {
-		const mine = (rooms ?? []).filter(
-			(r) => r.role === 'owner' || r.role === 'coach',
-		);
-		// The room you are standing in comes first (#435).
-		const here = roomConnection.current?.slug;
-		return mine.sort((a, b) =>
-			a.slug === here ? -1 : b.slug === here ? 1 : 0,
+		const main = account.me?.homeCrewId;
+		return [...presence.crews].sort((a, b) =>
+			a.id === main ? -1 : b.id === main ? 1 : 0,
 		);
 	});
-	const firstRoom = $derived(plannable[0]);
+	const firstCrew = $derived(plannable[0]);
 
 	const greeting = $derived.by(() => {
 		const h = new Date().getHours();
@@ -269,43 +265,39 @@
 				><Radio size={15} /> {headline.cta}</a
 			>
 		{/if}
-		<!-- Before the first room, the room is the big button (ADR-0010,
+		<!-- Before the first crew, the crew is the big button (ADR-0010,
 		     ux.md's empty-state rule): the landing page promised one, and the
 		     largest button here used to send them to a workout list instead
 		     (audit 2026-09-09). -->
 		<a
 			href="/workouts"
-			class="btn btn-secondary {headline || !rooms?.length ? '' : 'btn-lg'}"
-			><ChartColumn size={15} /> Ride solo</a
+			class="btn btn-secondary {headline || !presence.crews.length
+				? ''
+				: 'btn-lg'}"><ChartColumn size={15} /> Ride solo</a
 		>
 		{#if plannable.length > 1}
-			<!-- More than one room to plan in: ask, never guess (#435). -->
+			<!-- More than one crew to plan in: ask, never guess (#435). -->
 			<details class="relative">
 				<summary
 					class="btn btn-secondary cursor-pointer list-none [&::-webkit-details-marker]:hidden"
 					><CalendarClock size={15} /> Plan a session</summary
 				>
 				<ul class="panel absolute top-full left-0 z-20 mt-1 min-w-56 py-1">
-					{#each plannable as room (room.slug)}
+					{#each plannable as crew (crew.id)}
 						<li>
 							<a
-								href="/r/{room.slug}/sessions"
+								href="/crew/{crew.id}/schedule"
 								class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
 							>
-								<RoomIcon icon={room.icon} size={14} />
-								<span class="truncate">{room.name}</span>
-								{#if room.slug === roomConnection.current?.slug}
-									<span class="text-muted ml-auto shrink-0 text-[10px]"
-										>you are here</span
-									>
-								{/if}
+								<RoomIcon icon={crew.icon} size={14} />
+								<span class="truncate">{crew.name}</span>
 							</a>
 						</li>
 					{/each}
 				</ul>
 			</details>
-		{:else if firstRoom}
-			<a href="/r/{firstRoom.slug}/sessions" class="btn btn-secondary"
+		{:else if firstCrew}
+			<a href="/crew/{firstCrew.id}/schedule" class="btn btn-secondary"
 				><CalendarClock size={15} /> Plan a session</a
 			>
 		{:else}
@@ -314,7 +306,9 @@
 			     landing promised, and joining is one step down the same sheet. -->
 			<button
 				onclick={() => (opening = true)}
-				class="btn {rooms?.length ? 'btn-secondary' : 'btn-primary btn-lg'}"
+				class="btn {presence.crews.length
+					? 'btn-secondary'
+					: 'btn-primary btn-lg'}"
 				><Plus size={15} />
 				{joinFirst ? 'Join a crew' : 'Start a crew'}</button
 			>
@@ -527,7 +521,7 @@
 				<!-- What's next: every planned session, across every room you are
 			     in (ADR-0020 — /sessions retired into this). Planning and saying
 			     you are in both happen in the room whose session it is. -->
-				<WhatsNext planSlug={firstRoom?.slug} hasRooms={rooms.length > 0} />
+				<WhatsNext planCrew={firstCrew?.id} />
 			</div>
 			<!-- Friends is its own place (ADR-0020); the heading that stayed here
 			     with nothing under it went with #1333. -->
