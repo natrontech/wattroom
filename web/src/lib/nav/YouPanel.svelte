@@ -26,6 +26,7 @@
 	import VolumeX from '@lucide/svelte/icons/volume-x';
 	import Mic from '@lucide/svelte/icons/mic';
 	import MicOff from '@lucide/svelte/icons/mic-off';
+	import PhoneOff from '@lucide/svelte/icons/phone-off';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import ScreenShareOff from '@lucide/svelte/icons/screen-share-off';
 	import Settings from '@lucide/svelte/icons/settings';
@@ -290,11 +291,14 @@
 						/>{/if}
 				</button>
 				<QuickAudio compact />
+				<!-- A hang-up, not the way out: it drew the same door as Leave
+				     below and did something else — you stay in the channel, and
+				     riding (#2560). -->
 				<button
 					onclick={() => onLeaveVoice?.()}
 					class="text-muted-dim hover:text-danger flex h-11 flex-1 items-center justify-center rounded"
-					title="leave voice"
-					aria-label="leave voice"><LogOut size={16} /></button
+					title="leave voice — stay in the channel"
+					aria-label="leave voice"><PhoneOff size={16} /></button
 				>
 			{/if}
 		</div>
@@ -338,13 +342,13 @@
 			     and a channel row is a link, not a connection — so it lives with the
 			     other things you say about yourself while connected, Discord's
 			     disconnect in its voice panel. Quiet on purpose: leaving is
-			     re-doable, so it neither confirms nor shouts. -->
+			     re-doable, so it neither confirms nor shouts. Labelled, because
+			     a bare door was not found (#2560). -->
 			<button
 				onclick={leaveChannel}
 				class="btn btn-secondary ml-1 min-h-11 px-2"
-				title="leave — disconnect from where you are"
-				aria-label="leave — disconnect from where you are"
-				><LogOut size={14} /></button
+				title="leave {conn?.address.name ?? 'the channel'}"
+				><LogOut size={13} /> Leave</button
 			>
 		</div>
 	{/if}
