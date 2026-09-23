@@ -37,7 +37,7 @@
 		{ name: 'Lena Roth', voice: false },
 	];
 	const inVoice = riders.filter((r) => r.voice);
-	const inRoom = riders.filter((r) => !r.voice);
+	const outOfVoice = riders.filter((r) => !r.voice);
 
 	const queue = [
 		{ title: 'Fred again.. — Delilah (pull me out of this)', by: 'David' },
@@ -201,7 +201,7 @@
 					</ul>
 					<div class="eyebrow px-3 pt-2 pb-1">in the room — 2</div>
 					<ul class="px-1 pb-2">
-						{#each inRoom as r, i (i)}{@render person(r)}{/each}
+						{#each outOfVoice as r, i (i)}{@render person(r)}{/each}
 					</ul>
 				</div>
 				<div class="border-ink/5 shrink-0 border-b">
@@ -243,7 +243,7 @@
 					</ul>
 					<div class="eyebrow px-3 pt-2 pb-1">in the room — 2</div>
 					<ul class="px-1 pb-2">
-						{#each inRoom as r, i (i)}{@render person(r)}{/each}
+						{#each outOfVoice as r, i (i)}{@render person(r)}{/each}
 					</ul>
 				</div>
 				<div class="shrink-0">
@@ -324,7 +324,7 @@
 						</ul>
 						<div class="eyebrow px-3 pt-2 pb-1">in the room — 2</div>
 						<ul class="px-1 pb-2">
-							{#each inRoom as r, i (i)}{@render person(r)}{/each}
+							{#each outOfVoice as r, i (i)}{@render person(r)}{/each}
 						</ul>
 					{:else if tab === 'music'}
 						{@render nowPlaying()}
