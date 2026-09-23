@@ -13,7 +13,7 @@
 	 * `TargetInfo` everywhere else, which is what makes one header possible.
 	 */
 	import { formatClock } from '$lib/format';
-	import { blockBands, type Block } from '$lib/room/view';
+	import { blockBands, type Block } from '$lib/workout/block';
 	import type { Snippet } from 'svelte';
 
 	let {

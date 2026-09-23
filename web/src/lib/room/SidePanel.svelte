@@ -19,7 +19,7 @@
 	import { BOARD_MARK } from '$lib/room/presence-marks';
 	import { rosterGroups } from '$lib/room/roster';
 	import { statusOfRider } from '$lib/status';
-	import type { RoomMember, RoomRider } from '$lib/room/view';
+	import type { RoomMember, RoomRider } from '$lib/channel/types';
 
 	// The room's people, in one column (ADR-0020). Discord's right column is
 	// WHO IS HERE; ours was chat alone, so the roster was legible only from

@@ -37,8 +37,8 @@ const SPEED = 8;
 const COUNTDOWN = 10;
 
 /** Room idles as a voice/jukebox lounge, then runs a shared timeline (docs/SPEC.md). */
-export type { Phase } from '$lib/room/room-data';
-import type { Phase } from '$lib/room/room-data';
+export type { Phase } from '$lib/channel/types';
+import type { Phase } from '$lib/channel/types';
 
 /**
  * A 15 s all-out window (WATTROOM.md). The trainer leaves ERG for slope mode, the
@@ -58,25 +58,26 @@ export interface SprintResult {
  * Ride-critical faults. .claude/rules/errors.md: these are persistent dashboard
  * status, never a toast — the rider is on a bike three metres from the screen.
  */
-export type { Fault } from '$lib/room/room-data';
-import type { Fault } from '$lib/room/room-data';
+export type { Fault } from '$lib/channel/types';
+import type { Fault } from '$lib/channel/types';
 
 export const ROOM_NAME = 'Thursday Sufferfest';
 
 // The real module's shapes, not a second copy of them (consolidation sweep
 // 2026-09-09): the gallery half-mocked what it also half-imported.
-export { TILE_METRICS, type Block, type TileMetric } from '$lib/room/view';
+export { TILE_METRICS, type TileMetric } from '$lib/channel/types';
+export type { Block } from '$lib/workout/block';
 // The band moved to the one place the app and the scorer share (#2159); the
 // gallery re-exports it from there so its callers keep one import.
 export { toleranceBand } from '$lib/workout/guards';
-import { type Block } from '$lib/room/view';
+import type { Block } from '$lib/workout/block';
 import { toleranceBand } from '$lib/workout/guards';
 
 /** Shared by the ride screen's notch bar and TV mode's delta — same data, two distances. */
 
-export type { RoomRider as MockRider } from '$lib/room/view';
-export { targetState } from '$lib/room/view';
-import type { RoomRider } from '$lib/room/view';
+export type { RoomRider as MockRider } from '$lib/channel/types';
+export { targetState } from '$lib/channel/types';
+import type { RoomRider } from '$lib/channel/types';
 
 // Legacy shape retained for reference only.
 

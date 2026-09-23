@@ -1,7 +1,8 @@
 import type { PlaceAddress } from '$lib/room/address';
 import { getContext, setContext } from 'svelte';
 import type { Segment } from '$lib/workout/types';
-import type { Block, RoomRider } from '$lib/room/view';
+import type { Block } from '$lib/workout/block';
+import type { RoomRider } from '$lib/channel/types';
 import type { Announcement, BoardRow, Together } from '$lib/room/room-data';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { StageSource } from '$lib/room/stage';

@@ -5,7 +5,8 @@
 	import { focusTrap } from '$lib/components/focus-trap';
 	import type { SprintState, GameState } from '$lib/protocol';
 	import { TV_SEAT, offerSeat } from '$lib/room/stage-slot.svelte';
-	import type { Block, RoomRider } from '$lib/room/view';
+	import type { Block } from '$lib/workout/block';
+	import type { RoomRider } from '$lib/channel/types';
 	import type { Segment } from '$lib/workout/types';
 	import type { Snippet } from 'svelte';
 

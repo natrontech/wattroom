@@ -21,8 +21,8 @@
 		VOICE_DOT,
 	} from '$lib/room/presence-marks';
 	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
-	import type { Phase } from '$lib/room/room-data';
-	import type { RoomMember, RoomRider, TileMetric } from '$lib/room/view';
+	import type { Phase } from '$lib/channel/types';
+	import type { RoomMember, RoomRider, TileMetric } from '$lib/channel/types';
 
 	let {
 		rider,
@@ -53,7 +53,7 @@
 		 * listener stops propagation, so a menu on a wrapper never fired (#824). */
 		menu?: () => MenuEntry[];
 		/** Their face, from the room's member list — the tick's roster
-		 * carries names and levels, never an avatar (view.ts). */
+		 * carries names and levels, never an avatar (channel/types.ts). */
 		face?: RoomMember;
 	} = $props();
 

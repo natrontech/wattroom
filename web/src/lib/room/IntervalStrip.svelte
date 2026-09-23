@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formatClock } from '$lib/format';
-	import type { Block } from '$lib/room/view';
-	import { blockBands } from '$lib/room/view';
+	import type { Block } from '$lib/workout/block';
+	import { blockBands } from '$lib/workout/block';
 
 	let {
 		block,

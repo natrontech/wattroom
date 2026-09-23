@@ -17,7 +17,7 @@
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
-	import type { RoomRider } from '$lib/room/view';
+	import type { RoomRider } from '$lib/channel/types';
 
 	let {
 		riders,

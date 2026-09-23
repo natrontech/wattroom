@@ -94,17 +94,3 @@ export interface RiderPrefs {
 	notify: boolean;
 	onBoard: boolean;
 }
-
-// The shapes the designed components share with the sidebar (moved from the
-// mockcompat barrel, consolidation sweep 2026-09-09: one import path each).
-/** Presence phases as the designed components speak them. */
-export type Phase = 'lounge' | 'countdown' | 'live';
-
-export interface Fault {
-	/** 'mic' is the capture dying under an open microphone (#640). */
-	kind: 'trainer' | 'room' | 'voice' | 'mic';
-	/** 'silent' and 'no-power' are trainer-only: connected, and delivering
-	 * nothing — or frames without watts (#520, #1849). 'offline' is room-only:
-	 * the device itself has no network, so the problem is on this end (#2121). */
-	state: 'reconnecting' | 'lost' | 'silent' | 'no-power' | 'offline';
-}

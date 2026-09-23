@@ -33,7 +33,7 @@
 	import TvOverlay from '$lib/room/TvOverlay.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
-	import { describeBlock } from '$lib/room/view';
+	import { describeBlock } from '$lib/workout/block';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { downloadRideCard } from '$lib/ride/card';
 

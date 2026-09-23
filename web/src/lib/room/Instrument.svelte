@@ -15,7 +15,7 @@
 		ZONE_TEXT,
 		zoneOf,
 	} from '$lib/components/zones';
-	import { targetState } from '$lib/room/view';
+	import { targetState } from '$lib/channel/types';
 
 	// Primitives, not a RoomRider: the solo ride and the ramp test have watts
 	// and a target without a roster to belong to, and coupling the instrument

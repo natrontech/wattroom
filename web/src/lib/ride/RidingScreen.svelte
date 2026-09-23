@@ -23,7 +23,7 @@
 	import RideHeader from '$lib/room/RideHeader.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
-	import type { Block } from '$lib/room/view';
+	import type { Block } from '$lib/workout/block';
 	import type { createRideSession } from '$lib/workout/session.svelte';
 	import type { Workout } from '$lib/workout/types';
 

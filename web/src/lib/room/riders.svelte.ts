@@ -1,5 +1,6 @@
 import { isSounding } from '$lib/sound/board.svelte';
-import { describeBlock, type Block, type RoomRider } from '$lib/room/view';
+import { describeBlock, type Block } from '$lib/workout/block';
+import type { RoomRider } from '$lib/channel/types';
 import { targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
 import type { ServerTick } from '$lib/protocol';

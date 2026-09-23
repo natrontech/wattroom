@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { formatClock } from '$lib/format';
-	import type { Fault } from '$lib/room/room-data';
+	import type { Fault } from '$lib/channel/types';
 
 	let {
 		fault,

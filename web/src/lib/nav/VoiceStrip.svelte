@@ -100,7 +100,7 @@
 							></div>
 						{/key}
 					{:else}
-						<!-- The tick's roster carries no face (view.ts) — the strip asks
+						<!-- The tick's roster carries no face (channel/types.ts) — the strip asks
 						     the face cache the same way the chat log does. -->
 						{@const face = people.face(rider.id)}
 						<div class="absolute inset-0 grid place-items-center pb-3">

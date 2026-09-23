@@ -1,4 +1,4 @@
-import type { RoomMember, RoomRider } from '$lib/room/view';
+import type { RoomMember, RoomRider } from '$lib/channel/types';
 
 /**
  * The people column's three groups. Mid-ride the useful split is riding /

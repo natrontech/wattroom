@@ -4,7 +4,7 @@
 	import CountdownScreen from '$lib/room/CountdownScreen.svelte';
 	import RideHeader from '$lib/room/RideHeader.svelte';
 	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
-	import { describeBlock } from '$lib/room/view';
+	import { describeBlock } from '$lib/workout/block';
 	import Banner from '$lib/components/Banner.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import RampResult from './RampResult.svelte';

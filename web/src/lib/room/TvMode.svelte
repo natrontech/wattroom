@@ -5,7 +5,7 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { ZONE_BG, ZONE_TEXT, fillPct, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
-	import type { RoomRider } from '$lib/room/view';
+	import type { RoomRider } from '$lib/channel/types';
 
 	let {
 		riders,
@@ -22,7 +22,7 @@
 		segments: import('$lib/workout/types').Segment[];
 		total: number;
 		elapsed: number;
-		block: import('$lib/room/view').Block | null;
+		block: import('$lib/workout/block').Block | null;
 		roomName?: string;
 		workoutName?: string;
 		/** A session is running — the HUD only exists then (#125). */

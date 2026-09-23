@@ -1,4 +1,4 @@
-import type { RoomRider } from '$lib/room/view';
+import type { RoomRider } from '$lib/channel/types';
 
 /**
  * Whose instrument the narrow Training surface shows (#412).

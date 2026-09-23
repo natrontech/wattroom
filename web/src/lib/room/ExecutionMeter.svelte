@@ -1,6 +1,6 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import { type RoomRider, targetState } from '$lib/room/view';
+	import { type RoomRider, targetState } from '$lib/channel/types';
 
 	let { riders }: { riders: RoomRider[] } = $props();
 

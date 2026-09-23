@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { SprintState } from '$lib/protocol';
-	import type { RoomRider } from '$lib/room/view';
+	import type { RoomRider } from '$lib/channel/types';
 	import { PLACES } from '$lib/room/podium';
 	import { serverNow } from '$lib/server-clock';
 	import { wkg } from '$lib/format';
