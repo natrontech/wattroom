@@ -282,7 +282,7 @@
 				</ul>
 				<p class="text-muted mt-2 text-[11px]">
 					Your own streak bonus and level land on your account with the ride —
-					your weeks, not this room's.
+					your weeks, not the crew's.
 				</p>
 			</section>
 		</div>
