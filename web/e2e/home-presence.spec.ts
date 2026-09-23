@@ -1,4 +1,4 @@
-import { expect, test } from './crew';
+import { expect, test, voicePath } from './crew';
 
 /**
  * Home's "Around right now" chip says where a friend is, in the app's one
@@ -24,15 +24,6 @@ test('a friend who is in a voice channel but not pedalling is not shown as ridin
 		!!process.env.PLAYWRIGHT_BASE_URL,
 		'the ?as= dev provider only exists on a dev server',
 	);
-	// The premise below does not hold: RoomWhere (the friends feed's
-	// presence adapter) names a voice channel only by the room it came from,
-	// so a friend in any channel made since the migration reads as merely
-	// online — and the chip's bug, which fired on `inRoom`, cannot fire.
-	test.fixme(
-		true,
-		'#2516: /api/friends never says inRoom (nor riding) for a friend in a voice channel no room became',
-	);
-
 	const a = await riders(A);
 	const b = await riders(B);
 	const opened = await channels.open(a, `Home Presence ${Date.now() % 100000}`);
@@ -115,9 +106,9 @@ test('a friend who is in a voice channel but not pedalling is not shown as ridin
 		)
 		.toBe(true);
 	// The premise the regression needs (#2168): the friends feed says B is
-	// somewhere — `inRoom`, the flag the old chip drew RidingBars for. A
-	// friend read as merely online passes everything below whatever the chip
-	// does with a friend who is somewhere.
+	// somewhere — `inVoice`, what the old chip's `inRoom` became (#2516), the
+	// flag it drew RidingBars for. A friend read as merely online passes
+	// everything below whatever the chip does with a friend who is somewhere.
 	await expect
 		.poll(
 			() =>
@@ -128,7 +119,7 @@ test('a friend who is in a voice channel but not pedalling is not shown as ridin
 							.then(
 								(f) =>
 									(f.friends ?? []).find((x: { id?: string }) => x.id === id)
-										?.inRoom === true,
+										?.inVoice === true,
 							),
 					bId,
 				),
@@ -146,6 +137,15 @@ test('a friend who is in a voice channel but not pedalling is not shown as ridin
 		.getByRole('listitem')
 		.filter({ hasText: B });
 	await expect(chip).toBeVisible({ timeout: 15_000 });
+	// B stands in a channel A may enter, so the chip names it — crew, then
+	// channel — and walks in there (#2516), not into a room and not into the
+	// DM it falls back to for a friend somewhere unnamed.
+	const link = chip.getByRole('link');
+	await expect(link).toHaveAttribute('href', voicePath(opened));
+	await expect(link).toHaveAttribute(
+		'title',
+		new RegExp(`^in .+ · ${opened.name}$`),
+	);
 	// The badge Avatar draws, with the word the rest of the app uses. The
 	// assertion that fails is the label: "riding now" is what RidingBars says.
 	await expect(chip.getByLabel('riding now')).toHaveCount(0);
