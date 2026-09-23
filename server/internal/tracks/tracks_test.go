@@ -18,6 +18,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/natrontech/wattroom/server/internal/audio/audiotest"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -681,92 +683,78 @@ func TestTagFacetsCountOnlyYourOwnShelf(t *testing.T) {
 }
 
 // The regression the uploader-only scope would have shipped (#1095). A pool
-// track on a room's deck is fetched from this endpoint by EVERY rider in the
-// room — `AudioDeck.svelte` — so scoping playback to the uploader leaves a
-// queued track playing for its owner and silent for everyone else, with no
-// error anywhere and no test to say so. Playing is what sharing a room
-// permits; browsing is not, and this asserts both halves.
-func TestARoomMateCanPlayYourTrackButNotBrowseYourShelf(t *testing.T) {
+// track on a channel's deck is fetched from this endpoint by EVERY rider in
+// the channel — `AudioDeck.svelte` — so scoping playback to the uploader
+// leaves a queued track playing for its owner and silent for everyone else,
+// with no error anywhere and no test to say so. Playing is what sharing a
+// channel permits; browsing is not, and this asserts both halves.
+func TestAChannelMateCanPlayYourTrackButNotBrowseYourShelf(t *testing.T) {
 	h := setup(t)
 	track := h.upload(t, "alice", song(22, 383), "Queued.mp3")
 	id, _ := track["id"].(string)
 
-	// Before they share a room, bob cannot even hear it.
+	// Before they share a channel, bob cannot even hear it.
 	if w := h.do(t, "bob", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusNotFound {
 		t.Errorf("a stranger played it: %d, want 404", w.Code)
 	}
 
-	h.sharedRoom(t, "alice", "bob")
+	h.sharedChannel(t, "alice", "bob")
 
-	// Now bob is in a room with alice, so the deck's track plays for him.
+	// Now bob is in a channel with alice, so the deck's track plays for him.
 	if w := h.do(t, "bob", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusOK {
-		t.Errorf("a room-mate could not play the deck's track: %d", w.Code)
+		t.Errorf("a channel-mate could not play the deck's track: %d", w.Code)
 	}
 	// But her shelf is still hers: not in his list, not his to edit or delete.
 	w := h.do(t, "bob", http.MethodGet, "/api/tracks", nil)
 	list, _ := decode(t, w)["tracks"].([]any)
 	for _, item := range list {
 		if row, _ := item.(map[string]any); row["id"] == id {
-			t.Error("sharing a room put her library on his shelf")
+			t.Error("sharing a channel put her library on his shelf")
 		}
 	}
 	edit := []byte(`{"title":"Mine now","artist":"","album":"","bpm":null,"tags":[]}`)
 	if w := h.do(t, "bob", http.MethodPatch, "/api/tracks/"+id, edit); w.Code != http.StatusNotFound {
-		t.Errorf("a room-mate edited her track: %d, want 404", w.Code)
+		t.Errorf("a channel-mate edited her track: %d, want 404", w.Code)
 	}
 	if w := h.do(t, "bob", http.MethodDelete, "/api/tracks/"+id, nil); w.Code != http.StatusNotFound {
-		t.Errorf("a room-mate deleted her track: %d, want 404", w.Code)
+		t.Errorf("a channel-mate deleted her track: %d, want 404", w.Code)
 	}
 }
 
-// sharedRoom puts two riders in one room, which is the trust boundary the
-// audio endpoint reads.
-func (h *harness) sharedRoom(t *testing.T, a, b string) db.Room {
+// sharedChannel puts two riders in one crew, owned by the first, and names
+// both into a private voice channel of it — a channel both may enter is the
+// trust boundary the audio endpoint reads.
+func (h *harness) sharedChannel(t *testing.T, a, b string) pgtype.UUID {
 	t.Helper()
-	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: testx.Slug("shared"),
-		Name: "Shared", OwnerID: h.users.ByToken[a].ID,
-	})
-	if err != nil {
-		t.Fatalf("create room: %v", err)
-	}
-	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
-	})
-	for _, who := range []string{a, b} {
-		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room.ID, UserID: h.users.ByToken[who].ID, Role: "member",
-		}); err != nil {
-			t.Fatalf("membership %s: %v", who, err)
-		}
-	}
-	storetest.ChannelsFor(t, h.store, room.ID)
-	return room
+	owner, member := h.users.ByToken[a].ID, h.users.ByToken[b].ID
+	crew := testx.Crew(t, h.store, "Shared", owner, member)
+	testx.Voice(t, h.store, crew, "Shared", true, owner, member)
+	return crew
 }
 
-// A ban keeps the membership row (ADR-0013), so the "shares a room" join
-// counts it unless it says otherwise — and this endpoint is the one that
-// hands over the bytes. #1110 fixed the same hole in the trophy case; this
-// is its sibling, found by the audit in #1113.
-func TestABannedRiderCannotPlayTheRoomsTracks(t *testing.T) {
+// A ban keeps the crew_roles row (ADR-0013), and a private channel keeps
+// naming the banned rider, so the "shares a channel" join counts both unless
+// it says otherwise — and this endpoint is the one that hands over the bytes.
+// #1110 fixed the same hole in the trophy case; this is its sibling, found by
+// the audit in #1113.
+func TestABannedRiderCannotPlayTheChannelsTracks(t *testing.T) {
 	h := setup(t)
 	track := h.upload(t, "alice", song(22, 383), "Queued.mp3")
 	id, _ := track["id"].(string)
-	room := h.sharedRoom(t, "alice", "bob")
+	crew := h.sharedChannel(t, "alice", "bob")
 
 	if w := h.do(t, "bob", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusOK {
 		t.Fatalf("bob could not play it before the ban (%d) — test proves nothing", w.Code)
 	}
 
-	if _, err := h.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
-		RoomID: room.ID, UserID: h.users.ByToken["bob"].ID, Role: "banned",
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew, UserID: h.users.ByToken["bob"].ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("ban: %v", err)
 	}
-	storetest.ChannelsFor(t, h.store, room.ID) // a room ban is a crew ban since M9
 
 	if w := h.do(t, "bob", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusNotFound {
-		t.Errorf("a banned rider still played the room's track: %d, want 404", w.Code)
+		t.Errorf("a banned rider still played the channel's track: %d, want 404", w.Code)
 	}
 	// The ban is one-way in the row but two-way in the join: alice is not
 	// banned anywhere, so her own track must still play for her.

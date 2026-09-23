@@ -69,28 +69,27 @@ func (h *harness) save(t *testing.T, user string, seconds, watts int) string {
 	return id
 }
 
-// roomRide turns a saved solo ride into a room session's ride with one medal
+// crewRide turns a saved solo ride into a crew session's ride with one medal
 // on it — what the POST endpoint cannot make, and what the detail page has to
-// name. The room's cleanup is alice's: rooms.owner_id cascades.
-func (h *harness) roomRide(t *testing.T, id, medal string) pgtype.UUID {
+// name.
+func (h *harness) crewRide(t *testing.T, id, medal string) pgtype.UUID {
 	t.Helper()
 	rideID, err := store.ParseUUID(id)
 	if err != nil {
 		t.Fatalf("ride id: %v", err)
 	}
 	alice := h.users.ByToken["alice"].ID
-	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: "ride-" + id[:8], Name: "Pain Cave", OwnerID: alice,
-	})
+	crew := testx.Crew(t, h.store, "Pain Cave", alice)
+	voice, err := store.ParseUUID(testx.Voice(t, h.store, crew, "Sprint Lane", false))
 	if err != nil {
-		t.Fatalf("create room: %v", err)
+		t.Fatalf("voice channel: %v", err)
 	}
 	if _, err := h.store.Pool.Exec(t.Context(),
-		"update rides set room_id = $1 where id = $2", room.ID, rideID); err != nil {
-		t.Fatalf("attach room: %v", err)
+		"update rides set crew_id = $1, channel_id = $2 where id = $3", crew, voice, rideID); err != nil {
+		t.Fatalf("attach crew: %v", err)
 	}
 	if err := h.store.Queries.CreateMedal(t.Context(), db.CreateMedalParams{
-		RoomID: room.ID, UserID: alice, RideID: rideID, Kind: medal,
+		CrewID: crew, UserID: alice, RideID: rideID, Kind: medal,
 	}); err != nil {
 		t.Fatalf("create medal: %v", err)
 	}
@@ -501,8 +500,8 @@ func TestRideDetail(t *testing.T) {
 	if body["normWatts"] != float64(200) || body["kj"] != float64(24) {
 		t.Fatalf("numbers: %v", body)
 	}
-	if body["room"] != nil {
-		t.Fatalf("solo ride claims a room: %v", body["room"])
+	if body["crew"] != nil || body["channel"] != nil {
+		t.Fatalf("solo ride claims a place: crew %v channel %v", body["crew"], body["channel"])
 	}
 	if medals, _ := body["medals"].([]any); len(medals) != 0 {
 		t.Fatalf("medals on a solo ride: %v", medals)
@@ -566,18 +565,18 @@ func TestRideDetailSaysWhenTheRideOutgrewItsDelivery(t *testing.T) {
 	}
 }
 
-func TestRideDetailNamesItsRoomAndMedals(t *testing.T) {
+func TestRideDetailNamesItsCrewAndMedals(t *testing.T) {
 	h := setup(t)
 	id := h.save(t, "alice", 120, 200)
-	h.roomRide(t, id, "diesel")
+	h.crewRide(t, id, "diesel")
 
 	status, body := call(t, h.mux, "alice", http.MethodGet, "/api/rides/"+id, "")
 	if status != http.StatusOK {
 		t.Fatalf("detail: %d %v", status, body)
 	}
-	room, _ := body["room"].(map[string]any)
-	if room["slug"] != "ride-"+id[:8] || room["name"] != "Pain Cave" {
-		t.Fatalf("room: %v", body["room"])
+	crew, _ := body["crew"].(map[string]any)
+	if crew["name"] != "Pain Cave" {
+		t.Fatalf("crew: %v", body["crew"])
 	}
 	medals, _ := body["medals"].([]any)
 	if len(medals) != 1 {
@@ -752,7 +751,7 @@ func TestDeletingARideKeepsItsXpAndLevel(t *testing.T) {
 func TestDeleteRideTakesItsMedals(t *testing.T) {
 	h := setup(t)
 	id := h.save(t, "alice", 120, 200)
-	rideID := h.roomRide(t, id, "hammer")
+	rideID := h.crewRide(t, id, "hammer")
 
 	if status, body := call(t, h.mux, "alice", http.MethodDelete, "/api/rides/"+id, ""); status != http.StatusNoContent {
 		t.Fatalf("delete: %d %v", status, body)

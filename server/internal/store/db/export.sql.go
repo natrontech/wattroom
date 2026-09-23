@@ -233,12 +233,10 @@ func (q *Queries) ExportUserChannelMembers(ctx context.Context, arg ExportUserCh
 const exportUserChat = `-- name: ExportUserChat :many
 
 select c.text, c.created_at, c.edited_at, c.image_id,
-       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug
+       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name
 from chat_messages c
 left join channels ch on ch.id = c.channel_id
 left join crews cw on cw.id = ch.crew_id
-left join rooms rm on rm.id = c.room_id
 where c.user_id = $1
 order by c.created_at
 `
@@ -250,8 +248,6 @@ type ExportUserChatRow struct {
 	ImageID     pgtype.UUID
 	CrewName    string
 	ChannelName string
-	RoomName    string
-	RoomSlug    string
 }
 
 // Export-all (#35, #696). One query per category the law says the export has
@@ -261,9 +257,9 @@ type ExportUserChatRow struct {
 // The rider's OWN chat lines. Other people's lines in the same channel are
 // their personal data, not the requester's, so they are not here.
 //
-// Placed by the text channel and its crew, the room only where one still
-// stands behind the line (#2554): a line written since M9 has no room, and an
-// inner join on `rooms` dropped every one of them from the archive.
+// Placed by the text channel and its crew (#2554, #2558): a line written
+// since M9 has no room, and an inner join on `rooms` once dropped every one of
+// them from the archive.
 //
 // The edit and the picture come too (#2089): messages.json has carried both
 // for DMs since #1819 and chat.json carried neither, so an edited line
@@ -285,8 +281,6 @@ func (q *Queries) ExportUserChat(ctx context.Context, userID pgtype.UUID) ([]Exp
 			&i.ImageID,
 			&i.CrewName,
 			&i.ChannelName,
-			&i.RoomName,
-			&i.RoomSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -301,12 +295,10 @@ func (q *Queries) ExportUserChat(ctx context.Context, userID pgtype.UUID) ([]Exp
 const exportUserChatImages = `-- name: ExportUserChatImages :many
 select i.id, i.mime, octet_length(i.bytes)::int as size_bytes, i.created_at,
        coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug,
        (m.id is not null)::boolean as still_on_a_line
 from chat_images i
 left join channels ch on ch.id = i.channel_id
 left join crews cw on cw.id = ch.crew_id
-left join rooms rm on rm.id = i.room_id
 left join chat_messages m on m.image_id = i.id
 where i.user_id = $1
 order by i.created_at desc
@@ -325,8 +317,6 @@ type ExportUserChatImagesRow struct {
 	CreatedAt    pgtype.Timestamptz
 	CrewName     string
 	ChannelName  string
-	RoomName     string
-	RoomSlug     string
 	StillOnALine bool
 }
 
@@ -359,8 +349,6 @@ func (q *Queries) ExportUserChatImages(ctx context.Context, arg ExportUserChatIm
 			&i.CreatedAt,
 			&i.CrewName,
 			&i.ChannelName,
-			&i.RoomName,
-			&i.RoomSlug,
 			&i.StillOnALine,
 		); err != nil {
 			return nil, err
@@ -378,14 +366,12 @@ const exportUserChatReactions = `-- name: ExportUserChatReactions :many
 select r.emoji,
        m.created_at                            as line_at,
        coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug,
        (m.user_id = $1)::boolean as on_my_own_line,
        (case when m.user_id = $1 then m.text else '' end)::text as line
 from chat_reactions r
 join chat_messages m on m.id = r.message_id
 left join channels ch on ch.id = m.channel_id
 left join crews cw on cw.id = ch.crew_id
-left join rooms rm on rm.id = m.room_id
 where r.user_id = $1
 order by m.created_at
 limit $2::int
@@ -401,8 +387,6 @@ type ExportUserChatReactionsRow struct {
 	LineAt      pgtype.Timestamptz
 	CrewName    string
 	ChannelName string
-	RoomName    string
-	RoomSlug    string
 	OnMyOwnLine bool
 	Line        string
 }
@@ -434,8 +418,6 @@ func (q *Queries) ExportUserChatReactions(ctx context.Context, arg ExportUserCha
 			&i.LineAt,
 			&i.CrewName,
 			&i.ChannelName,
-			&i.RoomName,
-			&i.RoomSlug,
 			&i.OnMyOwnLine,
 			&i.Line,
 		); err != nil {
@@ -780,10 +762,9 @@ func (q *Queries) ExportUserIdentities(ctx context.Context, userID pgtype.UUID) 
 }
 
 const exportUserMedals = `-- name: ExportUserMedals :many
-select m.kind, m.awarded_at, rm.name as room_name, c.name as crew_name,
+select m.kind, m.awarded_at, coalesce(c.name, '')::text as crew_name,
        r.started_at as ride_started_at
 from medals m
-left join rooms rm on rm.id = m.room_id
 left join crews c on c.id = m.crew_id
 join rides r on r.id = m.ride_id
 where m.user_id = $1
@@ -793,13 +774,11 @@ order by m.awarded_at
 type ExportUserMedalsRow struct {
 	Kind          string
 	AwardedAt     pgtype.Timestamptz
-	RoomName      *string
-	CrewName      *string
+	CrewName      string
 	RideStartedAt pgtype.Timestamptz
 }
 
-// The rider's own medals (#1550): the room or the crew that awarded them
-// (#2443 — a medal won in a channel no room became has only the crew), and
+// The rider's own medals (#1550): the crew that awarded them (#2443), and
 // the ride named by its start so a row lines up with rides.json.
 func (q *Queries) ExportUserMedals(ctx context.Context, userID pgtype.UUID) ([]ExportUserMedalsRow, error) {
 	rows, err := q.db.Query(ctx, exportUserMedals, userID)
@@ -813,80 +792,8 @@ func (q *Queries) ExportUserMedals(ctx context.Context, userID pgtype.UUID) ([]E
 		if err := rows.Scan(
 			&i.Kind,
 			&i.AwardedAt,
-			&i.RoomName,
 			&i.CrewName,
 			&i.RideStartedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const exportUserOwnedRooms = `-- name: ExportUserOwnedRooms :many
-select r.name, r.slug, r.created_at, r.listed, r.crew_visible, r.board_enabled,
-       r.sound_pack, r.icon, r.cheers, r.autoplay_enabled, r.autoplay_order,
-       r.ics_token, c.name as crew_name
-from rooms r
-left join crews c on c.id = r.crew_id
-where r.owner_id = $1
-order by r.created_at
-limit $2::int
-`
-
-type ExportUserOwnedRoomsParams struct {
-	UserID pgtype.UUID
-	Lim    int32
-}
-
-type ExportUserOwnedRoomsRow struct {
-	Name            string
-	Slug            string
-	CreatedAt       pgtype.Timestamptz
-	Listed          bool
-	CrewVisible     bool
-	BoardEnabled    bool
-	SoundPack       string
-	Icon            string
-	Cheers          string
-	AutoplayEnabled bool
-	AutoplayOrder   string
-	IcsToken        string
-	CrewName        *string
-}
-
-// The room rows the rider owns (#2089). rooms.json says they are a member;
-// this says what they configured, which is the whole of the room settings
-// screen — including the calendar token, a live link into the room's schedule
-// that no other file carries, and the sound pack, which is a room's setting
-// and not (as #2089 supposed) a column on users.
-func (q *Queries) ExportUserOwnedRooms(ctx context.Context, arg ExportUserOwnedRoomsParams) ([]ExportUserOwnedRoomsRow, error) {
-	rows, err := q.db.Query(ctx, exportUserOwnedRooms, arg.UserID, arg.Lim)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ExportUserOwnedRoomsRow
-	for rows.Next() {
-		var i ExportUserOwnedRoomsRow
-		if err := rows.Scan(
-			&i.Name,
-			&i.Slug,
-			&i.CreatedAt,
-			&i.Listed,
-			&i.CrewVisible,
-			&i.BoardEnabled,
-			&i.SoundPack,
-			&i.Icon,
-			&i.Cheers,
-			&i.AutoplayEnabled,
-			&i.AutoplayOrder,
-			&i.IcsToken,
-			&i.CrewName,
 		); err != nil {
 			return nil, err
 		}
@@ -1053,126 +960,13 @@ func (q *Queries) ExportUserRideDeliveries(ctx context.Context, arg ExportUserRi
 	return items, nil
 }
 
-const exportUserRoomDoors = `-- name: ExportUserRoomDoors :many
-select 'toMe'::text as direction, r.name as room_name, r.slug as room_slug,
-       ''::text as rider, g.granted_at
-from room_grants g
-join rooms r on r.id = g.room_id
-where g.user_id = $2
-union all
-select 'iOpened'::text, r.name, r.slug, u.display_name::text, g.granted_at
-from room_grants g
-join rooms r on r.id = g.room_id
-join users u on u.id = g.user_id
-where r.owner_id = $2 and g.user_id <> $2
-order by granted_at
-limit $1::int
-`
-
-type ExportUserRoomDoorsParams struct {
-	Lim    int32
-	UserID pgtype.UUID
-}
-
-type ExportUserRoomDoorsRow struct {
-	Direction string
-	RoomName  string
-	RoomSlug  string
-	Rider     string
-	GrantedAt pgtype.Timestamptz
-}
-
-// Named exceptions into a private room (#2089, ADR-0038 #1224): a door, not a
-// membership — the person still walks in themselves, and the grant is moot
-// once they do.
-//
-// Both directions, because both are the rider's: the doors opened FOR them,
-// and the doors THEY opened as a room's owner. The second names other people,
-// so it names them the way the owner's own door list does and by nothing
-// else — a display name, never an id or an address.
-func (q *Queries) ExportUserRoomDoors(ctx context.Context, arg ExportUserRoomDoorsParams) ([]ExportUserRoomDoorsRow, error) {
-	rows, err := q.db.Query(ctx, exportUserRoomDoors, arg.Lim, arg.UserID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ExportUserRoomDoorsRow
-	for rows.Next() {
-		var i ExportUserRoomDoorsRow
-		if err := rows.Scan(
-			&i.Direction,
-			&i.RoomName,
-			&i.RoomSlug,
-			&i.Rider,
-			&i.GrantedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const exportUserRooms = `-- name: ExportUserRooms :many
-select r.name, r.slug, m.role, m.joined_at, m.notify, m.on_board
-from memberships m
-join rooms r on r.id = m.room_id
-where m.user_id = $1
-order by m.joined_at
-`
-
-type ExportUserRoomsRow struct {
-	Name     string
-	Slug     string
-	Role     string
-	JoinedAt pgtype.Timestamptz
-	Notify   bool
-	OnBoard  bool
-}
-
-// The rooms the rider belongs to, and the two choices they made in each
-// (#2089): whether the room may mail them about a planned session, and
-// whether they appear on its weekly board. Both are set on the room's own
-// settings screen and neither was exported.
-func (q *Queries) ExportUserRooms(ctx context.Context, userID pgtype.UUID) ([]ExportUserRoomsRow, error) {
-	rows, err := q.db.Query(ctx, exportUserRooms, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ExportUserRoomsRow
-	for rows.Next() {
-		var i ExportUserRoomsRow
-		if err := rows.Scan(
-			&i.Name,
-			&i.Slug,
-			&i.Role,
-			&i.JoinedAt,
-			&i.Notify,
-			&i.OnBoard,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const exportUserRsvps = `-- name: ExportUserRsvps :many
 select s.workout_name, s.starts_at, v.created_at, v.going,
-       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug
+       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name
 from session_rsvps v
 join scheduled_sessions s on s.id = v.session_id
 left join channels ch on ch.id = s.channel_id
 left join crews cw on cw.id = s.crew_id
-left join rooms rm on rm.id = s.room_id
 where v.user_id = $1
 order by s.starts_at
 `
@@ -1184,8 +978,6 @@ type ExportUserRsvpsRow struct {
 	Going       bool
 	CrewName    string
 	ChannelName string
-	RoomName    string
-	RoomSlug    string
 }
 
 // The answer comes with it (#1011): a decline lives in this table too, and
@@ -1210,8 +1002,6 @@ func (q *Queries) ExportUserRsvps(ctx context.Context, userID pgtype.UUID) ([]Ex
 			&i.Going,
 			&i.CrewName,
 			&i.ChannelName,
-			&i.RoomName,
-			&i.RoomSlug,
 		); err != nil {
 			return nil, err
 		}
@@ -1225,12 +1015,10 @@ func (q *Queries) ExportUserRsvps(ctx context.Context, userID pgtype.UUID) ([]Ex
 
 const exportUserScheduledSessions = `-- name: ExportUserScheduledSessions :many
 select s.workout_name, s.workout_json, s.starts_at, s.created_at, s.started_at,
-       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug
+       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name
 from scheduled_sessions s
 left join channels ch on ch.id = s.channel_id
 left join crews cw on cw.id = s.crew_id
-left join rooms rm on rm.id = s.room_id
 where s.created_by = $1
 order by s.starts_at desc
 limit $2::int
@@ -1249,8 +1037,6 @@ type ExportUserScheduledSessionsRow struct {
 	StartedAt   pgtype.Timestamptz
 	CrewName    string
 	ChannelName string
-	RoomName    string
-	RoomSlug    string
 }
 
 // The sessions the rider PUT ON the calendar (#2089), which is not the same
@@ -1277,8 +1063,6 @@ func (q *Queries) ExportUserScheduledSessions(ctx context.Context, arg ExportUse
 			&i.StartedAt,
 			&i.CrewName,
 			&i.ChannelName,
-			&i.RoomName,
-			&i.RoomSlug,
 		); err != nil {
 			return nil, err
 		}

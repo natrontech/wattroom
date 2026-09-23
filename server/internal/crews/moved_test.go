@@ -1,19 +1,17 @@
 package crews
 
 import (
-	"context"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/store"
-	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 // An old /r/{slug} link lands where its room went (#2446, #2458): the crew,
-// and the text and voice channel the room became. The room row and its
-// mapping are written straight in the tables — nothing makes a room any more,
-// and the migration that mapped them is the fixture here.
+// and the text and voice channel the room became. The row is written straight
+// into moved_rooms (#2558) — nothing makes a room any more, and the migration
+// that filled that table is the fixture here.
 func TestAnOldRoomLinkNamesWhereTheRoomWent(t *testing.T) {
 	h := setup(t)
 	crew := h.newCrew(t, "alice", "Moved Crew")
@@ -21,20 +19,10 @@ func TestAnOldRoomLinkNamesWhereTheRoomWent(t *testing.T) {
 	voice := h.channel(t, crew, "voice", "Old Room", false)
 
 	slug := "old-room-" + strings.ToLower(randomCode(8))
-	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: slug, Name: "Old Room", OwnerID: h.users.ByToken["alice"].ID, CrewID: crew.ID,
-	})
-	if err != nil {
-		t.Fatalf("room: %v", err)
-	}
-	// Before the crews go: rooms.crew_id holds the crew in place.
-	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
-	})
 	if _, err := h.store.Pool.Exec(t.Context(),
-		"insert into room_channels (room_id, text_channel_id, voice_channel_id) values ($1, $2, $3)",
-		room.ID, text, voice); err != nil {
-		t.Fatalf("room channels: %v", err)
+		"insert into moved_rooms (slug, crew_id, text_channel_id, voice_channel_id) values ($1, $2, $3, $4)",
+		slug, crew.ID, text, voice); err != nil {
+		t.Fatalf("moved room: %v", err)
 	}
 
 	for _, tc := range []struct{ name, path string }{

@@ -13,8 +13,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/jackc/pgx/v5/pgtype"
-
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -32,6 +31,9 @@ func main() {
 	log.Info("seeded", "db", dsn)
 }
 
+// seedCode is the seeded crew's join code, and the mark of a seeded database.
+const seedCode = "VELVET"
+
 func run(ctx context.Context, dsn string) error {
 	st, err := store.Open(ctx, dsn)
 	if err != nil {
@@ -39,8 +41,9 @@ func run(ctx context.Context, dsn string) error {
 	}
 	defer st.Close()
 
-	// Idempotency the lazy way: one room with a fixed slug marks a seeded DB.
-	if _, err := st.Queries.GetRoomBySlug(ctx, "velvet-hammer"); err == nil {
+	// Idempotency the lazy way: one crew with a fixed code marks a seeded DB.
+	code := seedCode
+	if _, err := st.Queries.GetCrewByCode(ctx, &code); err == nil {
 		return nil
 	}
 
@@ -57,23 +60,25 @@ func run(ctx context.Context, dsn string) error {
 		return fmt.Errorf("user: %w", err)
 	}
 
-	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{
-		Slug: "velvet-hammer", Name: "Velvet Hammer", OwnerID: jan.ID,
+	// A crew with the Lounge a new crew opens with — a text channel and a
+	// voice channel (ADR-0058) — and Sven in it. No room: #2558.
+	crew, err := st.Queries.CreateCrew(ctx, db.CreateCrewParams{
+		Name: "Velvet Hammer", OwnerID: jan.ID, Code: &code,
 	})
 	if err != nil {
-		return fmt.Errorf("room: %w", err)
+		return fmt.Errorf("crew: %w", err)
 	}
-	members := []struct {
-		user pgtype.UUID
-		role string
-	}{{jan.ID, "owner"}, {sven.ID, "member"}}
-	for _, m := range members {
-		err := st.Queries.CreateMembership(ctx, db.CreateMembershipParams{
-			RoomID: room.ID, UserID: m.user, Role: m.role,
-		})
-		if err != nil {
-			return fmt.Errorf("membership: %w", err)
+	for _, kind := range []string{"text", "voice"} {
+		if _, err := st.Queries.CreateChannel(ctx, db.CreateChannelParams{
+			CrewID: crew.ID, Kind: kind, Name: "Lounge", MaxChannels: protocol.MaxCrewTextChannels,
+		}); err != nil {
+			return fmt.Errorf("%s channel: %w", kind, err)
 		}
+	}
+	if err := st.Queries.SetCrewRole(ctx, db.SetCrewRoleParams{
+		CrewID: crew.ID, UserID: sven.ID, Role: "member",
+	}); err != nil {
+		return fmt.Errorf("membership: %w", err)
 	}
 
 	// No library rows: the curated library ships in the web bundle

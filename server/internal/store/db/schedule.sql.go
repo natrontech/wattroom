@@ -11,6 +11,101 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const claimSessionsToRemind = `-- name: ClaimSessionsToRemind :many
+update scheduled_sessions
+set reminded_at = now()
+where id in (
+    select id from scheduled_sessions
+    where reminded_at is null
+      and started_at is null
+      and starts_at > now()
+      and starts_at <= now() + interval '1 hour'
+    order by starts_at
+    limit 100
+)
+returning id, crew_id, channel_id, workout_name, starts_at
+`
+
+type ClaimSessionsToRemindRow struct {
+	ID          pgtype.UUID
+	CrewID      pgtype.UUID
+	ChannelID   pgtype.UUID
+	WorkoutName string
+	StartsAt    pgtype.Timestamptz
+}
+
+// The claim IS the update (#841): a row leaves this query already marked, so a
+// tick that fires twice, a restart mid-send or a second instance cannot mail
+// the same session again. Callers do not mark anything afterwards, which is
+// the point — there is no window between reading and claiming to lose a
+// process in.
+//
+// A session whose start slipped past while the server was down falls outside
+// the window and is simply never reminded. That is deliberate: a burst of
+// "starts in an hour" for sessions that began three hours ago is worse than
+// silence.
+//
+// Bounded (audit 2026-09-09): the claim is final, so a batch the minute's
+// budget cannot mail is lost, not late. A hundred a tick against an hour's
+// window leaves fifty-nine more ticks for the rest.
+func (q *Queries) ClaimSessionsToRemind(ctx context.Context) ([]ClaimSessionsToRemindRow, error) {
+	rows, err := q.db.Query(ctx, claimSessionsToRemind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ClaimSessionsToRemindRow
+	for rows.Next() {
+		var i ClaimSessionsToRemindRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CrewID,
+			&i.ChannelID,
+			&i.WorkoutName,
+			&i.StartsAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const clearRsvp = `-- name: ClearRsvp :exec
+delete from session_rsvps where session_id = $1 and user_id = $2
+`
+
+type ClearRsvpParams struct {
+	SessionID pgtype.UUID
+	UserID    pgtype.UUID
+}
+
+// Taking the answer back — in or out, the row goes and the rider is
+// unanswered again.
+func (q *Queries) ClearRsvp(ctx context.Context, arg ClearRsvpParams) error {
+	_, err := q.db.Exec(ctx, clearRsvp, arg.SessionID, arg.UserID)
+	return err
+}
+
+const clearSessionDeclines = `-- name: ClearSessionDeclines :exec
+delete from session_rsvps where session_id = $1 and not going
+`
+
+// A moved session asks the people who said no again (#1011). Only the
+// declines: somebody who said they are in for a Tuesday has not said
+// anything about a Wednesday either, but the cost of guessing wrong is
+// asymmetric — dropping an "in" empties a line the room reads, while a
+// decline that survives a move silences a reminder for a session the rider
+// never turned down. Run on the same condition as the reminder's re-arm in
+// RescheduleSession: only when the time really changed.
+func (q *Queries) ClearSessionDeclines(ctx context.Context, sessionID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, clearSessionDeclines, sessionID)
+	return err
+}
+
 const countCrewUpcoming = `-- name: CountCrewUpcoming :one
 select count(*) from scheduled_sessions
 where crew_id = $1 and starts_at > now() - interval '30 minutes'
@@ -33,7 +128,7 @@ const createCrewPlan = `-- name: CreateCrewPlan :one
 insert into scheduled_sessions (crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
 values ($1, $2, $3, $4,
         $5, $6)
-returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id
+returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id
 `
 
 type CreateCrewPlanParams struct {
@@ -45,11 +140,24 @@ type CreateCrewPlanParams struct {
 	CreatedBy   pgtype.UUID
 }
 
+type CreateCrewPlanRow struct {
+	ID          pgtype.UUID
+	WorkoutName string
+	WorkoutJson []byte
+	StartsAt    pgtype.Timestamptz
+	CreatedBy   pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+	RemindedAt  pgtype.Timestamptz
+	StartedAt   pgtype.Timestamptz
+	CrewID      pgtype.UUID
+	ChannelID   pgtype.UUID
+}
+
 // The crew's schedule (#2440, ADR-0058): a plan belongs to the crew and names
 // the voice channel it will run in, or none yet. A plan naming a private
 // channel is that channel's to show — visible_channels is the gate, and a
 // channel's existence is part of what it keeps.
-func (q *Queries) CreateCrewPlan(ctx context.Context, arg CreateCrewPlanParams) (ScheduledSession, error) {
+func (q *Queries) CreateCrewPlan(ctx context.Context, arg CreateCrewPlanParams) (CreateCrewPlanRow, error) {
 	row := q.db.QueryRow(ctx, createCrewPlan,
 		arg.CrewID,
 		arg.ChannelID,
@@ -58,10 +166,9 @@ func (q *Queries) CreateCrewPlan(ctx context.Context, arg CreateCrewPlanParams) 
 		arg.StartsAt,
 		arg.CreatedBy,
 	)
-	var i ScheduledSession
+	var i CreateCrewPlanRow
 	err := row.Scan(
 		&i.ID,
-		&i.RoomID,
 		&i.WorkoutName,
 		&i.WorkoutJson,
 		&i.StartsAt,
@@ -635,7 +742,7 @@ update scheduled_sessions
 set starts_at = $1,
     reminded_at = case when starts_at = $1 then reminded_at else null end
 where id = $2 and crew_id = $3
-returning id, room_id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id
+returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id
 `
 
 type MoveCrewPlanParams struct {
@@ -644,14 +751,26 @@ type MoveCrewPlanParams struct {
 	CrewID   pgtype.UUID
 }
 
+type MoveCrewPlanRow struct {
+	ID          pgtype.UUID
+	WorkoutName string
+	WorkoutJson []byte
+	StartsAt    pgtype.Timestamptz
+	CreatedBy   pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+	RemindedAt  pgtype.Timestamptz
+	StartedAt   pgtype.Timestamptz
+	CrewID      pgtype.UUID
+	ChannelID   pgtype.UUID
+}
+
 // RescheduleSession's rule: a move re-arms the reminder, a same-time move
 // does not (#1639).
-func (q *Queries) MoveCrewPlan(ctx context.Context, arg MoveCrewPlanParams) (ScheduledSession, error) {
+func (q *Queries) MoveCrewPlan(ctx context.Context, arg MoveCrewPlanParams) (MoveCrewPlanRow, error) {
 	row := q.db.QueryRow(ctx, moveCrewPlan, arg.StartsAt, arg.ID, arg.CrewID)
-	var i ScheduledSession
+	var i MoveCrewPlanRow
 	err := row.Scan(
 		&i.ID,
-		&i.RoomID,
 		&i.WorkoutName,
 		&i.WorkoutJson,
 		&i.StartsAt,
@@ -677,6 +796,35 @@ func (q *Queries) RotateCrewIcsToken(ctx context.Context, id pgtype.UUID) (strin
 	var ics_token string
 	err := row.Scan(&ics_token)
 	return ics_token, err
+}
+
+const setRsvp = `-- name: SetRsvp :exec
+insert into session_rsvps (session_id, user_id, going) values ($1, $2, $3)
+on conflict (session_id, user_id) do update
+set going = excluded.going,
+    created_at = case when session_rsvps.going = excluded.going
+                      then session_rsvps.created_at else now() end
+`
+
+type SetRsvpParams struct {
+	SessionID pgtype.UUID
+	UserID    pgtype.UUID
+	Going     bool
+}
+
+// Planned sessions (#450). One row per rider per session, and the row is an
+// ANSWER (#1011): `going` says which of the two it is, and no row at all is
+// the third state — nobody has looked yet. Saying the same thing twice is
+// saying it once; changing your mind rewrites the row rather than needing a
+// delete first, so there is no moment where a rider has no answer on record.
+//
+// created_at moves only when the answer actually changed, because that is
+// what ListRoomRsvps orders the "who is in" line by: a rider who said no in
+// the morning and yes in the evening committed in the evening, and would
+// otherwise sort ahead of everyone who said yes at lunchtime.
+func (q *Queries) SetRsvp(ctx context.Context, arg SetRsvpParams) error {
+	_, err := q.db.Exec(ctx, setRsvp, arg.SessionID, arg.UserID, arg.Going)
+	return err
 }
 
 const startCrewPlan = `-- name: StartCrewPlan :execrows

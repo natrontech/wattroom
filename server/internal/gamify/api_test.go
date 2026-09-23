@@ -265,8 +265,8 @@ func TestCountsOfTheZeroXpSources(t *testing.T) {
 	}
 }
 
-// A ban keeps the membership row (ADR-0013), so the visibility check has to
-// exclude it explicitly or a banned rider keeps reading the room's trophy
+// A ban keeps the crew_roles row (ADR-0013), so the visibility check has to
+// exclude it explicitly or a banned rider keeps reading the crew's trophy
 // cases — and being read back — after the ban (#1109).
 func TestTrophyCaseVisibilityAfterBan(t *testing.T) {
 	s, _, alice, bob := setup(t)
@@ -275,16 +275,16 @@ func TestTrophyCaseVisibilityAfterBan(t *testing.T) {
 	aliceCase := "/api/riders/" + store.UUIDString(alice.ID) + "/trophies"
 	bobCase := "/api/riders/" + store.UUIDString(bob.ID) + "/trophies"
 
-	room := shareRoom(t, s, alice, bob)
+	crew := shareCrew(t, s, alice, bob)
 	if rec, _ := get(t, mux, aliceCase, "bob"); rec.Code != http.StatusOK {
-		t.Fatalf("room-mate reading the case: status %d, want 200", rec.Code)
+		t.Fatalf("crew-mate reading the case: status %d, want 200", rec.Code)
 	}
 
-	ban(t, s, room, bob)
+	ban(t, s, crew.id, bob)
 	if rec, _ := get(t, mux, aliceCase, "bob"); rec.Code != http.StatusNotFound {
 		t.Fatalf("banned rider reading the case: status %d, want 404", rec.Code)
 	}
-	// Both sides of the join: the room he was banned from is no longer his
+	// Both sides of the join: the crew he was banned from is no longer his
 	// either, so the members he left behind cannot read him through it.
 	if rec, _ := get(t, mux, bobCase, "alice"); rec.Code != http.StatusNotFound {
 		t.Fatalf("reading a banned rider's case: status %d, want 404", rec.Code)
@@ -317,21 +317,21 @@ func TestTrophyCaseOpensToAPendingAsk(t *testing.T) {
 	}
 }
 
-// A room-mate's tally is medals from rooms in common, not lifetime (#1649):
-// a lifetime count told a room-mate you ride in rooms they cannot see.
-func TestTrophyCaseMedalsAreScopedToRoomsInCommon(t *testing.T) {
+// A crew-mate's tally is medals from crews in common, not lifetime (#1649):
+// a lifetime count told a crew-mate you ride in crews they cannot see.
+func TestTrophyCaseMedalsAreScopedToCrewsInCommon(t *testing.T) {
 	s, _, alice, bob := setup(t)
 	mux := http.NewServeMux()
 	s.Register(mux)
-	shared := shareRoom(t, s, alice, bob)
-	private := shareRoom(t, s, alice)
+	shared := shareCrew(t, s, alice, bob)
+	private := shareCrew(t, s, alice)
 	medalIn(t, s, shared, alice, "diesel")
 	medalIn(t, s, private, alice, "diesel")
 	medalIn(t, s, private, alice, "hammer")
 
 	aliceCase := "/api/riders/" + store.UUIDString(alice.ID) + "/trophies"
 	if _, body := get(t, mux, aliceCase, "bob"); body.Medals.Diesel != 1 || body.Medals.Hammer != 0 {
-		t.Fatalf("room-mate sees %+v, want one diesel from the shared room", body.Medals)
+		t.Fatalf("crew-mate sees %+v, want one diesel from the shared crew", body.Medals)
 	}
 	if _, body := get(t, mux, "/api/me/trophies", "alice"); body.Medals.Diesel != 2 || body.Medals.Hammer != 1 {
 		t.Fatalf("own case %+v, want the lifetime tally", body.Medals)
@@ -345,11 +345,11 @@ func TestTrophyCaseMedalsAreScopedToRoomsInCommon(t *testing.T) {
 // that enforces it had no test at all, which is how the XP breakdown kept
 // handing the same integers back in another unit (#2236): lounge XP is one
 // per five-minute block, so `lounge × 5` is the minutes Lounge Lizard counts.
-func TestARoomMateSeesNoProgress(t *testing.T) {
+func TestACrewMateSeesNoProgress(t *testing.T) {
 	s, _, alice, bob := setup(t)
 	mux := http.NewServeMux()
 	s.Register(mux)
-	shareRoom(t, s, alice, bob)
+	shareCrew(t, s, alice, bob)
 	addRide(t, s, alice, time.Now().Add(-time.Hour), 3600, 720, 100)
 	s.LoungeBlock(t.Context(), store.UUIDString(alice.ID), time.Now())
 
@@ -361,11 +361,11 @@ func TestARoomMateSeesNoProgress(t *testing.T) {
 
 	_, seen := get(t, mux, aliceCase, "bob")
 	if seen.Counts != (countsJSON{}) {
-		t.Fatalf("a room-mate reads the counts: %+v", seen.Counts)
+		t.Fatalf("a crew-mate reads the counts: %+v", seen.Counts)
 	}
 	for _, a := range seen.Achievements {
 		if a.Progress != nil {
-			t.Fatalf("a room-mate reads progress on %s: %+v", a.Key, a.Progress)
+			t.Fatalf("a crew-mate reads progress on %s: %+v", a.Key, a.Progress)
 		}
 	}
 	// The lifetime total travels (ADR-0024); where it came from does not.
@@ -373,15 +373,15 @@ func TestARoomMateSeesNoProgress(t *testing.T) {
 		t.Fatalf("lifetime xp %d, want the rider's own %d", seen.Xp.Total, own.Xp.Total)
 	}
 	if seen.Xp != (xpJSON{Total: own.Xp.Total}) {
-		t.Fatalf("a room-mate reads the breakdown: %+v", seen.Xp)
+		t.Fatalf("a crew-mate reads the breakdown: %+v", seen.Xp)
 	}
 }
 
-// medalIn hangs a medal of one kind on a fresh ride in a room.
-func medalIn(t *testing.T, s *Service, room pgtype.UUID, user db.User, kind string) {
+// medalIn hangs a medal of one kind on a fresh ride with a crew.
+func medalIn(t *testing.T, s *Service, at crewAt, user db.User, kind string) {
 	t.Helper()
 	rideID, err := s.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
-		UserID: user.ID, RoomID: room, WorkoutName: "medal ride",
+		UserID: user.ID, CrewID: at.id, ChannelID: at.voice, WorkoutName: "medal ride",
 		StartedAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
 		Seconds:   3600, AvgWatts: 200, Kj: 720, Execution: 0.9, FtpWatts: user.FtpWatts,
 		Samples: []byte("x"), Curve: []byte("{}"), Xp: 0,
@@ -390,7 +390,7 @@ func medalIn(t *testing.T, s *Service, room pgtype.UUID, user db.User, kind stri
 		t.Fatalf("create ride: %v", err)
 	}
 	if err := s.store.Queries.CreateMedal(t.Context(), db.CreateMedalParams{
-		RoomID: room, UserID: user.ID, RideID: rideID, Kind: kind,
+		CrewID: at.id, UserID: user.ID, RideID: rideID, Kind: kind,
 	}); err != nil {
 		t.Fatalf("create medal: %v", err)
 	}

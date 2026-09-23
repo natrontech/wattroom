@@ -2,7 +2,6 @@ package stats
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -13,11 +12,12 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // lthrFixture is one fresh rider. The test database is per-checkout, not
-// per-run and not per-package (#2083), so the room slug carries the moment it
-// was made and every assertion is scoped to this user's id.
+// per-run and not per-package (#2083), so every assertion is scoped to this
+// user's id.
 func lthrFixture(t *testing.T) (context.Context, *store.Store, db.User) {
 	t.Helper()
 	st := storetest.Open(t)
@@ -32,13 +32,14 @@ func lthrFixture(t *testing.T) (context.Context, *store.Store, db.User) {
 	return ctx, st, user
 }
 
-// putRide stores one ride with an explicit last20m_hr, room and length.
+// putRide stores one ride with an explicit last20m_hr, place and length. The
+// zero place is a solo ride.
 func putRide(t *testing.T, ctx context.Context, st *store.Store, userID pgtype.UUID,
-	roomID pgtype.UUID, name string, ago time.Duration, seconds int32, hr int16,
+	at place, name string, ago time.Duration, seconds int32, hr int16,
 ) pgtype.UUID {
 	t.Helper()
 	id, err := st.Queries.CreateRide(ctx, db.CreateRideParams{
-		UserID: userID, RoomID: roomID, WorkoutName: name,
+		UserID: userID, CrewID: at.crew, ChannelID: at.channel, SessionID: at.session, WorkoutName: name,
 		StartedAt: pgtype.Timestamptz{Time: time.Now().Add(-ago), Valid: true},
 		Seconds:   seconds, AvgWatts: 200, Kj: 300, Execution: 0.9, FtpWatts: 250,
 		Samples: []byte("{}"), Curve: []byte(`{}`), Xp: 10, Last20mHr: &hr,
@@ -51,23 +52,21 @@ func putRide(t *testing.T, ctx context.Context, st *store.Store, userID pgtype.U
 
 // docs/SPEC.md's qualification, and nothing else: solo, at least 30 minutes,
 // a heart rate in the window, inside the rolling 90 days. Each exclusion here
-// is silent if it breaks — a room ride or a 12-minute blast would just quietly
+// is silent if it breaks — a crew ride or a 12-minute blast would just quietly
 // become the number the rider is asked to adopt as their threshold.
 func TestBestLast20mHRIn90DaysTakesOnlyQualifyingRides(t *testing.T) {
 	ctx, st, user := lthrFixture(t)
-	room, err := st.Queries.CreateRoom(ctx, db.CreateRoomParams{
-		Slug: fmt.Sprintf("lthr-test-room-%d", time.Now().UnixNano()), Name: "LTHR", OwnerID: user.ID,
-	})
+	crew := testx.Crew(t, st, "LTHR", user.ID)
+	voice, err := store.ParseUUID(testx.Voice(t, st, crew, "LTHR", false))
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID) })
 
-	var solo pgtype.UUID // the zero UUID is invalid: a solo ride (BuildRideRow)
+	var solo place // nowhere: a solo ride (BuildRideRow)
 	// The only ride that qualifies, and the lowest number of the lot.
 	putRide(t, ctx, st, user.ID, solo, "Field test", time.Hour, MinLTHRRideSeconds, 164)
 	// Each of these carries a HIGHER number and must not be the answer.
-	putRide(t, ctx, st, user.ID, room.ID, "Room ride", 2*time.Hour, 3600, 190)
+	putRide(t, ctx, st, user.ID, place{crew: crew, channel: voice}, "Crew ride", 2*time.Hour, 3600, 190)
 	putRide(t, ctx, st, user.ID, solo, "Short and hard", 3*time.Hour, MinLTHRRideSeconds-1, 188)
 	putRide(t, ctx, st, user.ID, solo, "Last spring", 91*24*time.Hour, 3600, 186)
 	putRide(t, ctx, st, user.ID, solo, "No strap", 4*time.Hour, 3600, 0)
@@ -110,16 +109,16 @@ func TestBackfillLast20mHRLeavesNoRowInTheQueue(t *testing.T) {
 		hard[i].HR = 168
 	}
 	// The last 20 minutes are 600 s at 150 and 600 s at 168 → 159.
-	row, err := BuildRideRow(user.ID, pgtype.UUID{}, "Backfilled", `{"name":"W","steps":[]}`,
+	row, err := BuildRideRow(user.ID, "Backfilled", `{"name":"W","steps":[]}`,
 		time.Now().Add(-time.Hour), 250, hard)
 	if err != nil {
 		t.Fatal(err)
 	}
 	blob := row.Samples
 
-	withHR := putRide(t, ctx, st, user.ID, pgtype.UUID{}, "With HR", time.Hour, 1800, 0)
-	noHR := putRide(t, ctx, st, user.ID, pgtype.UUID{}, "No HR", 2*time.Hour, 1800, 0)
-	junk := putRide(t, ctx, st, user.ID, pgtype.UUID{}, "Junk", 3*time.Hour, 1800, 0)
+	withHR := putRide(t, ctx, st, user.ID, place{}, "With HR", time.Hour, 1800, 0)
+	noHR := putRide(t, ctx, st, user.ID, place{}, "No HR", 2*time.Hour, 1800, 0)
+	junk := putRide(t, ctx, st, user.ID, place{}, "Junk", 3*time.Hour, 1800, 0)
 	// Put all three back in the queue, and give one of them a real blob.
 	if _, err := st.Pool.Exec(ctx,
 		"update rides set last20m_hr = null, samples = $2 where id = $1", withHR, blob); err != nil {
@@ -171,7 +170,7 @@ func TestBuildRideRowCarriesTheLast20mHR(t *testing.T) {
 	for i := 1200; i < 2400; i++ {
 		samples[i].HR = 170
 	}
-	row, err := BuildRideRow(pgtype.UUID{}, pgtype.UUID{}, "Test", `{"name":"W","steps":[]}`,
+	row, err := BuildRideRow(pgtype.UUID{}, "Test", `{"name":"W","steps":[]}`,
 		time.Now(), 250, samples)
 	if err != nil {
 		t.Fatal(err)

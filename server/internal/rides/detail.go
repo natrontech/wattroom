@@ -24,7 +24,9 @@ import (
 // numbers of one ride, plus what it won and where it was ridden.
 
 type medalJSON struct {
-	Kind      string `json:"kind"`
+	Kind string `json:"kind"`
+	// Where it was won — the crew's name since #2558. The key is the page's
+	// from before crews, kept so no client has to learn a new one.
 	RoomName  string `json:"roomName"`
 	AwardedAt string `json:"awardedAt"`
 }
@@ -138,12 +140,6 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// roomJSON names the room a ride happened in; nil for a solo ride.
-type roomJSON struct {
-	Slug string `json:"slug"`
-	Name string `json:"name"`
-}
-
 type rideDetailJSON struct {
 	ID          string  `json:"id"`
 	WorkoutName string  `json:"workoutName"`
@@ -163,8 +159,6 @@ type rideDetailJSON struct {
 	// The ride's own power curve (SPEC), computed at save; nil when the
 	// stored blob has none (#1691).
 	Curve *stats.Curve `json:"curve,omitempty"`
-	// The room it was ridden in; nil for a solo ride.
-	Room *roomJSON `json:"room"`
 	// The crew it was ridden with and the voice channel it was ridden in
 	// (#2443); nil for a solo ride.
 	Crew    *placeJSON `json:"crew,omitempty"`
@@ -251,13 +245,10 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	if json.Unmarshal(row.Curve, &curve) == nil && curve.Best5s > 0 {
 		out.Curve = &curve
 	}
-	if row.RoomID.Valid {
-		out.Room = &roomJSON{Slug: row.RoomSlug, Name: row.RoomName}
-	}
 	out.Crew, out.Channel = placeOf(row.CrewID, row.CrewName), placeOf(row.ChannelID, row.ChannelName)
 	for _, medal := range medalRows {
 		out.Medals = append(out.Medals, medalJSON{
-			Kind: medal.Kind, RoomName: medal.RoomName,
+			Kind: medal.Kind, RoomName: medal.CrewName,
 			AwardedAt: medal.AwardedAt.Time.Format(time.RFC3339),
 		})
 	}

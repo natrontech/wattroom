@@ -134,8 +134,8 @@ func TestInFlightGivesTheSlotToExactlyOneCaller(t *testing.T) {
 // the slot coming back on both the success and the failure path.
 func TestExportRefusesASecondExportWhileOneIsInFlight(t *testing.T) {
 	h := setup(t)
-	room := h.createRoom(t, "alice")
-	h.createRide(t, "alice", room, "Openers", gzipped(t, `[{"t":0,"w":200}]`))
+	place := h.createCrew(t, "alice")
+	h.createRide(t, "alice", place, "Openers", gzipped(t, `[{"t":0,"w":200}]`))
 
 	// Stand in for an export already running: the handler holds this slot for
 	// as long as it is building the zip, and a second tab arrives to find it
@@ -177,8 +177,8 @@ func TestExportRefusesASecondExportWhileOneIsInFlight(t *testing.T) {
 
 func TestExportHandsTheSlotBackWhenItSucceedsAndWhenItFails(t *testing.T) {
 	h := setup(t)
-	room := h.createRoom(t, "alice")
-	h.createRide(t, "alice", room, "Openers", gzipped(t, `[{"t":0,"w":200}]`))
+	place := h.createCrew(t, "alice")
+	h.createRide(t, "alice", place, "Openers", gzipped(t, `[{"t":0,"w":200}]`))
 	alice := h.id("alice")
 
 	// Success: two exports in a row both work, so the handler did not keep
@@ -221,8 +221,8 @@ func TestExportHandsTheSlotBackWhenItSucceedsAndWhenItFails(t *testing.T) {
 // the calendar feeds; this one was missed (#2250).
 func TestTheExportIsNotCacheable(t *testing.T) {
 	h := setup(t)
-	room := h.createRoom(t, "alice")
-	h.createRide(t, "alice", room, "Openers", gzipped(t, `[{"t":0,"w":200}]`))
+	place := h.createCrew(t, "alice")
+	h.createRide(t, "alice", place, "Openers", gzipped(t, `[{"t":0,"w":200}]`))
 
 	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
 	if rec.Code != http.StatusOK {

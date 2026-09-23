@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"io"
@@ -53,10 +54,8 @@ func setup(t *testing.T) *harness {
 		}
 		users.ByToken[name] = u
 		t.Cleanup(func() {
-			// Rooms and crews first: crews.owner_id is ON DELETE RESTRICT, so
-			// a user who made a room through the API owns a crew and cannot
-			// go until it does (ADR-0038).
-			_, _ = st.Pool.Exec(context.Background(), "delete from rooms where owner_id = $1", u.ID)
+			// Crews first: crews.owner_id is ON DELETE RESTRICT, so a user
+			// who owns a crew cannot go until it does (ADR-0038).
 			_, _ = st.Pool.Exec(context.Background(), "delete from crews where owner_id = $1", u.ID)
 			_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID)
 		})
@@ -127,24 +126,47 @@ func gzipped(t *testing.T, raw string) []byte {
 	return buf.Bytes()
 }
 
-func (h *harness) createRoom(t *testing.T, owner string) pgtype.UUID {
+// crewPlace is a crew and its two channels: the text one a line is written
+// in, the voice one a session is ridden in. The zero value is nowhere — a
+// solo ride.
+type crewPlace struct{ crew, text, voice pgtype.UUID }
+
+// createCrew founds a crew owned by owner with members in it, and gives it
+// one text and one voice channel.
+func (h *harness) createCrew(t *testing.T, owner string, members ...string) crewPlace {
 	t.Helper()
-	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: testx.Slug("account-test-" + owner), Name: "Account Test", OwnerID: h.id(owner),
-	})
-	if err != nil {
-		t.Fatalf("create room: %v", err)
+	ids := make([]pgtype.UUID, 0, len(members))
+	for _, member := range members {
+		ids = append(ids, h.id(member))
 	}
-	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
-	})
-	return room.ID
+	crew := testx.Crew(t, h.store, "Account Test "+owner, h.id(owner), ids...)
+	voice, err := store.ParseUUID(testx.Voice(t, h.store, crew, "Account Voice", false))
+	if err != nil {
+		t.Fatalf("voice channel: %v", err)
+	}
+	return crewPlace{crew: crew, text: testx.Text(t, h.store, crew, "Account Text"), voice: voice}
 }
 
-func (h *harness) createRide(t *testing.T, rider string, room pgtype.UUID, workout string, samples []byte) pgtype.UUID {
+// legacyRoom writes a room row the way the rooms era left one behind, owned
+// by owner and pointing at crew. Nothing reads them since #2558, but they
+// stand in every database until #2433 drops the table, so a test of what an
+// account or a crew leaves behind around them still needs one. They go with
+// their owner and with their crew, by the schema's cascades.
+func (h *harness) legacyRoom(t *testing.T, owner string, crew pgtype.UUID) pgtype.UUID {
+	t.Helper()
+	var id pgtype.UUID
+	if err := h.store.Pool.QueryRow(t.Context(),
+		"insert into rooms (slug, name, owner_id, crew_id, crew_visible) values ($1, 'Account Test', $2, $3, true) returning id",
+		testx.Slug("account-test-"+owner), h.id(owner), crew).Scan(&id); err != nil {
+		t.Fatalf("legacy room: %v", err)
+	}
+	return id
+}
+
+func (h *harness) createRide(t *testing.T, rider string, at crewPlace, workout string, samples []byte) pgtype.UUID {
 	t.Helper()
 	id, err := h.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
-		UserID: h.id(rider), RoomID: room, WorkoutName: workout,
+		UserID: h.id(rider), CrewID: at.crew, ChannelID: at.voice, WorkoutName: workout,
 		StartedAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
 		Seconds:   1800, AvgWatts: 210, Kj: 378, Execution: 0.95, FtpWatts: 200,
 		Samples: samples, Curve: []byte(`{"5":320}`), Xp: 378,
@@ -166,9 +188,10 @@ func (h *harness) createSession(t *testing.T, user string) {
 	}
 }
 
-// createRecap seeds one finished session naming every rider given, the way
-// the hub writes it (ADR-0034): presence and time, nothing else.
-func (h *harness) createRecap(t *testing.T, room pgtype.UUID, riders ...string) {
+// createRecap seeds one finished session in the crew's voice channel naming
+// every rider given, the way the hub writes it (ADR-0034): presence and time,
+// nothing else.
+func (h *harness) createRecap(t *testing.T, at crewPlace, riders ...string) {
 	t.Helper()
 	// Recent, deliberately. A fixture dated outside recap.RetentionDays is
 	// prey: internal/housekeeping's sweep is unscoped — as production needs it
@@ -190,13 +213,15 @@ func (h *harness) createRecap(t *testing.T, room pgtype.UUID, riders ...string) 
 	if err != nil {
 		t.Fatalf("recap riders: %v", err)
 	}
-	started := pgtype.Timestamptz{Time: startedAt, Valid: true}
-	ended := pgtype.Timestamptz{Time: endedAt, Valid: true}
-	// A room-era row, straight to the table: SaveSessionRecap keys by the
-	// session since #2438, and what this reads back is the room's backlog.
-	if _, err := h.store.Pool.Exec(t.Context(),
-		"insert into session_recaps (room_id, workout, started_at, ended_at, riders) values ($1, $2, $3, $4, $5)",
-		room, "Openers", started, ended, blob); err != nil {
+	// Keyed by the session (#2438), which is unique across the database this
+	// run shares with the next one: a fresh id, never a constant.
+	session := pgtype.UUID{Valid: true}
+	_, _ = rand.Read(session.Bytes[:])
+	if _, err := h.store.Queries.SaveSessionRecap(t.Context(), db.SaveSessionRecapParams{
+		SessionID: session, ChannelID: at.voice, Workout: "Openers", Riders: blob,
+		StartedAt: pgtype.Timestamptz{Time: startedAt, Valid: true},
+		EndedAt:   pgtype.Timestamptz{Time: endedAt, Valid: true},
+	}); err != nil {
 		t.Fatalf("save recap: %v", err)
 	}
 }
@@ -232,14 +257,15 @@ func (h *harness) count(t *testing.T, query string, user string) int {
 }
 
 // userRowQueries is every table the purge promises to empty for the rider —
-// the package doc's list (rides, sessions, identities, memberships, medals)
-// plus the social rows that carry their identity (friendships, DMs).
+// the package doc's list (rides, sessions, identities, memberships, medals;
+// a membership is a crew_roles row since M9) plus the social rows that carry
+// their identity (friendships, DMs).
 var userRowQueries = map[string]string{
 	"users":       "select count(*) from users where id = $1",
 	"rides":       "select count(*) from rides where user_id = $1",
 	"sessions":    "select count(*) from sessions where user_id = $1",
 	"identities":  "select count(*) from identities where user_id = $1",
-	"memberships": "select count(*) from memberships where user_id = $1",
+	"crew_roles":  "select count(*) from crew_roles where user_id = $1",
 	"medals":      "select count(*) from medals where user_id = $1",
 	"friendships": "select count(*) from friendships where requester_id = $1 or addressee_id = $1",
 	"dm_messages": "select count(*) from dm_messages where sender_id = $1 or recipient_id = $1",
@@ -267,10 +293,10 @@ func TestExportRequiresSignIn(t *testing.T) {
 
 func TestExportIsAZipOfTheRidersOwnData(t *testing.T) {
 	h := setup(t)
-	room := h.createRoom(t, "bob")
+	place := h.createCrew(t, "bob", "alice")
 	rawSamples := `[{"t":0,"w":200,"hr":140},{"t":1,"w":210,"hr":141}]`
-	h.createRide(t, "alice", room, "Openers", gzipped(t, rawSamples))
-	h.createRide(t, "bob", room, "Bob's Ride", gzipped(t, `[]`))
+	h.createRide(t, "alice", place, "Openers", gzipped(t, rawSamples))
+	h.createRide(t, "bob", place, "Bob's Ride", gzipped(t, `[]`))
 
 	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
 	if rec.Code != http.StatusOK {
@@ -349,26 +375,23 @@ func TestDeleteRequiresSignIn(t *testing.T) {
 
 func TestDeletePurgesEverythingOfTheRiderAndNothingOfAnyoneElse(t *testing.T) {
 	h := setup(t)
-	room := h.createRoom(t, "bob")
+	// Carol's crew, which alice and bob are both members of.
+	place := h.createCrew(t, "carol", "alice", "bob")
 	for _, name := range []string{"alice", "bob"} {
-		err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{RoomID: room, UserID: h.id(name), Role: "member"})
-		if err != nil {
-			t.Fatalf("membership %s: %v", name, err)
-		}
 		h.createSession(t, name)
-		err = h.store.Queries.CreateIdentity(t.Context(), db.CreateIdentityParams{
+		err := h.store.Queries.CreateIdentity(t.Context(), db.CreateIdentityParams{
 			Provider: "github", ProviderUserID: "acct-test-" + name, UserID: h.id(name),
 		})
 		if err != nil {
 			t.Fatalf("identity %s: %v", name, err)
 		}
-		ride := h.createRide(t, name, room, "Openers", gzipped(t, `[]`))
-		err = h.store.Queries.CreateMedal(t.Context(), db.CreateMedalParams{RoomID: room, UserID: h.id(name), RideID: ride, Kind: "hammer"})
+		ride := h.createRide(t, name, place, "Openers", gzipped(t, `[]`))
+		err = h.store.Queries.CreateMedal(t.Context(), db.CreateMedalParams{CrewID: place.crew, UserID: h.id(name), RideID: ride, Kind: "hammer"})
 		if err != nil {
 			t.Fatalf("medal %s: %v", name, err)
 		}
 	}
-	h.createRecap(t, room, "alice", "bob")
+	h.createRecap(t, place, "alice", "bob")
 	h.befriend(t, "alice", "bob")
 	h.befriend(t, "bob", "carol")
 	h.sendDm(t, "alice", "bob", "see you at 7")
@@ -407,7 +430,7 @@ func TestDeletePurgesEverythingOfTheRiderAndNothingOfAnyoneElse(t *testing.T) {
 	}
 
 	// Bob keeps everything that is his alone, plus his conversation with carol.
-	for _, table := range []string{"users", "rides", "sessions", "identities", "memberships", "medals"} {
+	for _, table := range []string{"users", "rides", "sessions", "identities", "crew_roles", "medals"} {
 		if n := h.count(t, userRowQueries[table], "bob"); n != 1 {
 			t.Errorf("%s: bob should keep 1 row, has %d", table, n)
 		}
@@ -418,19 +441,19 @@ func TestDeletePurgesEverythingOfTheRiderAndNothingOfAnyoneElse(t *testing.T) {
 	if n := h.count(t, userRowQueries["dm_messages"], "bob"); n != 1 {
 		t.Errorf("bob should keep his DM with carol only, has %d", n)
 	}
-	// The recap itself survives — it is the room's, and bob was there. What
+	// The recap itself survives — it is the crew's, and bob was there. What
 	// leaves with alice is her interval inside it, asserted on the row rather
 	// than through an endpoint.
 	if n := h.count(t, userRowQueries["session_recaps"], "bob"); n != 1 {
 		t.Errorf("bob should still be named in the session recap, is in %d", n)
 	}
 	var recaps int
-	if err := h.store.Pool.QueryRow(t.Context(), "select count(*) from session_recaps where room_id = $1", room).Scan(&recaps); err != nil || recaps != 1 {
+	if err := h.store.Pool.QueryRow(t.Context(), "select count(*) from session_recaps where crew_id = $1", place.crew).Scan(&recaps); err != nil || recaps != 1 {
 		t.Errorf("the recap row itself should survive alice's purge: %d %v", recaps, err)
 	}
-	var rooms int
-	if err := h.store.Pool.QueryRow(t.Context(), "select count(*) from rooms where id = $1", room).Scan(&rooms); err != nil || rooms != 1 {
-		t.Errorf("bob's room should survive alice's purge: %d %v", rooms, err)
+	var crews int
+	if err := h.store.Pool.QueryRow(t.Context(), "select count(*) from crews where id = $1", place.crew).Scan(&crews); err != nil || crews != 1 {
+		t.Errorf("carol's crew should survive alice's purge: %d %v", crews, err)
 	}
 }
 
@@ -486,13 +509,8 @@ func TestDeleteHandsTheCrewOnBeforeTheRowGoes(t *testing.T) {
 		t.Fatalf("crew: %v", err)
 	}
 	t.Cleanup(func() { _, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID) })
-	own := h.createRoom(t, "alice")
-	theirs := h.createRoom(t, "bob")
-	for _, room := range []pgtype.UUID{own, theirs} {
-		if err := h.store.Queries.PlaceRoomInCrew(t.Context(), db.PlaceRoomInCrewParams{ID: room, CrewID: crew.ID, CrewVisible: true}); err != nil {
-			t.Fatalf("place: %v", err)
-		}
-	}
+	h.legacyRoom(t, "alice", crew.ID)
+	theirs := h.legacyRoom(t, "bob", crew.ID)
 	// The crew passes to its people, not to whoever owns a room row in it
 	// (#2446): bob inherits because he is a member.
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: h.id("bob"), Role: "member"}); err != nil {
@@ -518,16 +536,14 @@ func TestDeleteHandsTheCrewOnBeforeTheRowGoes(t *testing.T) {
 	}
 
 	// And a crew with nobody left in it goes — room rows and all, even one
-	// whose owner never joined the crew (rooms.crew_id is ON DELETE RESTRICT).
+	// whose owner never joined the crew (rooms.crew_id cascades since #2558;
+	// it was ON DELETE RESTRICT).
 	lone, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "carol", OwnerID: h.id("carol"), Code: testx.CrewCode()})
 	if err != nil {
 		t.Fatalf("crew: %v", err)
 	}
 	for _, owner := range []string{"carol", "bob"} {
-		room := h.createRoom(t, owner)
-		if err := h.store.Queries.PlaceRoomInCrew(t.Context(), db.PlaceRoomInCrewParams{ID: room, CrewID: lone.ID, CrewVisible: true}); err != nil {
-			t.Fatalf("place: %v", err)
-		}
+		h.legacyRoom(t, owner, lone.ID)
 	}
 	if rec := h.call(t, "carol", http.MethodDelete, "/api/me"); rec.Code != http.StatusNoContent {
 		t.Fatalf("delete carol: %d %s", rec.Code, rec.Body.String())
@@ -543,12 +559,12 @@ func TestExportStreamsEveryRideWithoutHoldingThemAll(t *testing.T) {
 	// one at a time now — every ride still has to reach the zip, and still
 	// only the rider's own.
 	h := setup(t)
-	room := h.createRoom(t, "bob")
+	place := h.createCrew(t, "bob", "alice")
 	first := `[{"t":0,"w":180}]`
 	second := `[{"t":0,"w":250}]`
-	h.createRide(t, "alice", room, "Openers", gzipped(t, first))
-	h.createRide(t, "alice", room, "Threshold", gzipped(t, second))
-	h.createRide(t, "bob", room, "Bob's Ride", gzipped(t, `[{"t":0,"w":999}]`))
+	h.createRide(t, "alice", place, "Openers", gzipped(t, first))
+	h.createRide(t, "alice", place, "Threshold", gzipped(t, second))
+	h.createRide(t, "bob", place, "Bob's Ride", gzipped(t, `[{"t":0,"w":999}]`))
 
 	rec := h.call(t, "alice", http.MethodGet, "/api/me/export")
 	if rec.Code != http.StatusOK {
@@ -587,18 +603,11 @@ func TestExportStreamsEveryRideWithoutHoldingThemAll(t *testing.T) {
 // in the app, attributed by display name and nothing else.
 func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 	h := setup(t)
-	room := h.createRoom(t, "alice")
-	for _, name := range []string{"alice", "bob"} {
-		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room, UserID: h.id(name), Role: "member",
-		}); err != nil {
-			t.Fatalf("membership %s: %v", name, err)
-		}
-	}
+	place := h.createCrew(t, "alice", "bob")
 	mustChat := func(user, text string) {
 		t.Helper()
-		if _, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
-			RoomID: room, UserID: h.id(user), Text: text,
+		if _, err := h.store.Queries.SaveChannelMessage(t.Context(), db.SaveChannelMessageParams{
+			ChannelID: place.text, UserID: h.id(user), Text: text,
 			CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		}); err != nil {
 			t.Fatalf("chat %s: %v", user, err)
@@ -626,8 +635,8 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("workout: %v", err)
 	}
-	planned, err := h.store.Queries.CreateScheduledSession(t.Context(), db.CreateScheduledSessionParams{
-		RoomID: room, WorkoutName: "Sweet Spot", WorkoutJson: []byte(`{}`),
+	planned, err := h.store.Queries.CreateCrewPlan(t.Context(), db.CreateCrewPlanParams{
+		CrewID: place.crew, ChannelID: place.voice, WorkoutName: "Sweet Spot", WorkoutJson: []byte(`{}`),
 		StartsAt:  pgtype.Timestamptz{Time: time.Now().Add(24 * time.Hour), Valid: true},
 		CreatedBy: h.id("alice"),
 	})
@@ -642,8 +651,8 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 	// And one she turned down (#1011): the same table holds both answers, so
 	// an export that called every row "said yes" would tell alice something
 	// she never said.
-	declined, err := h.store.Queries.CreateScheduledSession(t.Context(), db.CreateScheduledSessionParams{
-		RoomID: room, WorkoutName: "Hill Repeats", WorkoutJson: []byte(`{}`),
+	declined, err := h.store.Queries.CreateCrewPlan(t.Context(), db.CreateCrewPlanParams{
+		CrewID: place.crew, ChannelID: place.voice, WorkoutName: "Hill Repeats", WorkoutJson: []byte(`{}`),
 		StartsAt:  pgtype.Timestamptz{Time: time.Now().Add(48 * time.Hour), Valid: true},
 		CreatedBy: h.id("alice"),
 	})
@@ -667,9 +676,9 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("achievement: %v", err)
 	}
-	medalRide := h.createRide(t, "alice", room, "Openers", gzipped(t, `[]`))
+	medalRide := h.createRide(t, "alice", place, "Openers", gzipped(t, `[]`))
 	if err := h.store.Queries.CreateMedal(t.Context(), db.CreateMedalParams{
-		RoomID: room, UserID: h.id("alice"), RideID: medalRide, Kind: "diesel",
+		CrewID: place.crew, UserID: h.id("alice"), RideID: medalRide, Kind: "diesel",
 	}); err != nil {
 		t.Fatalf("medal: %v", err)
 	}
@@ -704,7 +713,6 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		"dismissed-requests.json": "carol",
 		"playlists.json":          "Threshold bangers",
 		"planned-sessions.json":   "Sweet Spot",
-		"rooms.json":              "account-test-alice",
 		"workouts.json":           "My Openers",
 		"xp.json":                 "bucket-1",
 		"trophies.json":           "first-ride",
@@ -740,8 +748,8 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 		t.Errorf("the export still calls every answer a yes:\n%s", files["planned-sessions.json"])
 	}
 
-	// The line: someone else's room-chat line is their personal data, not the
-	// requester's, and it is not in here.
+	// The line: someone else's channel-chat line is their personal data, not
+	// the requester's, and it is not in here.
 	if strings.Contains(files["identities.json"], "acct-export-bob") {
 		t.Errorf("the export carries another rider's identity:\n%s", files["identities.json"])
 	}
@@ -973,14 +981,7 @@ func TestExportSaysWhenACategoryWasTooLongToCarryWhole(t *testing.T) {
 // TestExportCarriesEveryCategoryTheLawAsksFor already uses.
 func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	h := setup(t)
-	room := h.createRoom(t, "alice")
-	for _, name := range []string{"alice", "bob"} {
-		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room, UserID: h.id(name), Role: "member",
-		}); err != nil {
-			t.Fatalf("membership %s: %v", name, err)
-		}
-	}
+	place := h.createCrew(t, "alice", "bob")
 
 	// A coach token: the name and the two dates are hers, the hash never is.
 	if _, err := h.store.Queries.CreateToken(t.Context(), db.CreateTokenParams{
@@ -989,29 +990,29 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 		t.Fatalf("token: %v", err)
 	}
 
-	// Her own room line, edited, and a reaction of hers on bob's.
-	mine, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
-		RoomID: room, UserID: h.id("alice"), Text: "first draft",
+	// Her own channel line, edited, and a reaction of hers on bob's.
+	mine, err := h.store.Queries.SaveChannelMessage(t.Context(), db.SaveChannelMessageParams{
+		ChannelID: place.text, UserID: h.id("alice"), Text: "first draft",
 		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
 		t.Fatalf("chat: %v", err)
 	}
-	if _, err := h.store.Queries.EditChatMessage(t.Context(), db.EditChatMessageParams{
-		ID: mine, RoomID: room, UserID: h.id("alice"), Text: "second draft",
+	if _, err := h.store.Queries.EditChannelMessage(t.Context(), db.EditChannelMessageParams{
+		ID: mine, ChannelID: place.text, UserID: h.id("alice"), Text: "second draft",
 	}); err != nil {
 		t.Fatalf("edit: %v", err)
 	}
-	his, err := h.store.Queries.SaveChatMessage(t.Context(), db.SaveChatMessageParams{
-		RoomID: room, UserID: h.id("bob"), Text: "bobs own line",
+	his, err := h.store.Queries.SaveChannelMessage(t.Context(), db.SaveChannelMessageParams{
+		ChannelID: place.text, UserID: h.id("bob"), Text: "bobs own line",
 		CreatedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
 		t.Fatalf("chat bob: %v", err)
 	}
 	for id, emoji := range map[pgtype.UUID]string{his: "flame", mine: "skull"} {
-		n, err := h.store.Queries.AddChatReaction(t.Context(), db.AddChatReactionParams{
-			MessageID: id, UserID: h.id("alice"), Emoji: emoji, RoomID: room,
+		n, err := h.store.Queries.AddChannelReaction(t.Context(), db.AddChannelReactionParams{
+			MessageID: id, UserID: h.id("alice"), Emoji: emoji, ChannelID: place.text,
 		})
 		if err != nil || n != 1 {
 			t.Fatalf("chat reaction %s: %d %v", emoji, n, err)
@@ -1060,31 +1061,12 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 
 	// A session she put on the calendar and never said yes to: the whole
 	// point of the category, since planned-sessions.json is her RSVPs.
-	if _, err := h.store.Queries.CreateScheduledSession(t.Context(), db.CreateScheduledSessionParams{
-		RoomID: room, WorkoutName: "Coached Threshold", WorkoutJson: []byte(`{"steps":[]}`),
+	if _, err := h.store.Queries.CreateCrewPlan(t.Context(), db.CreateCrewPlanParams{
+		CrewID: place.crew, ChannelID: place.voice, WorkoutName: "Coached Threshold", WorkoutJson: []byte(`{"steps":[]}`),
 		StartsAt:  pgtype.Timestamptz{Time: time.Now().Add(48 * time.Hour), Valid: true},
 		CreatedBy: h.id("alice"),
 	}); err != nil {
 		t.Fatalf("scheduled session: %v", err)
-	}
-
-	// The room's own settings, and her two choices inside it.
-	if _, err := h.store.Queries.UpdateRoom(t.Context(), db.UpdateRoomParams{
-		ID: room, Name: "Account Test", Listed: true, SoundPack: "silent",
-		Icon: "bolt", Cheers: "skull rocket", BoardEnabled: true, CrewVisible: false,
-	}); err != nil {
-		t.Fatalf("update room: %v", err)
-	}
-	if _, err := h.store.Queries.SetMembershipPrefs(t.Context(), db.SetMembershipPrefsParams{
-		RoomID: room, UserID: h.id("alice"), Notify: false, OnBoard: false,
-	}); err != nil {
-		t.Fatalf("membership prefs: %v", err)
-	}
-	// A door she opened for carol into her own room.
-	if err := h.store.Queries.GrantRoomAccess(t.Context(), db.GrantRoomAccessParams{
-		RoomID: room, UserID: h.id("carol"),
-	}); err != nil {
-		t.Fatalf("grant: %v", err)
 	}
 
 	// Two soundboard clips: one untrimmed, which is what the upload stores
@@ -1114,7 +1096,7 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	// A ride, the FTP it set, and where it was delivered. The activity number
 	// and the error string here are ones this test made up: nothing Strava
 	// returned appears in this file (AGENTS.md, RESEARCH §13.5).
-	ride := h.createRide(t, "alice", room, "Ramp Test", gzipped(t, `[]`))
+	ride := h.createRide(t, "alice", place, "Ramp Test", gzipped(t, `[]`))
 	if _, err := h.store.Queries.SetRideFtpAfter(t.Context(), db.SetRideFtpAfterParams{
 		FtpAfterWatts: 243, ID: ride, UserID: h.id("alice"),
 	}); err != nil {
@@ -1141,8 +1123,6 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 		"reactions.json":            "flame",
 		"crews.json":                "Alice's Crew",
 		"sessions-i-scheduled.json": "Coached Threshold",
-		"rooms-i-own.json":          "\"soundPack\": \"silent\"",
-		"room-doors.json":           "carol",
 		"soundboard.json":           "Airhorn",
 		"ride-uploads.json":         "the upload was refused",
 	} {
@@ -1159,14 +1139,12 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	// The columns hiding inside files that already existed.
 	for name, wants := range map[string][]string{
 		// The five users columns that were on a screen and not in the zip.
-		// (#2089 counted six; sound_pack is a room's column, asserted in
-		// rooms-i-own.json above, and never was one of these.)
+		// (#2089 counted six; sound_pack was a room's column, and never was
+		// one of these.)
 		"profile.json": {"\"friendCode\"", "\"calendarToken\"", "\"unsubscribeToken\"",
 			"\"emailPending\"", "\"avatarUrl\""},
 		// An edited line said so nowhere.
 		"chat.json": {"second draft", "\"editedAt\""},
-		// Her per-room choices.
-		"rooms.json": {"\"notify\": false", "\"onBoard\": false"},
 		// The FTP the ramp set (ADR-0049).
 		"rides.json": {"\"ftpAfterWatts\": 243"},
 	} {
@@ -1178,8 +1156,8 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	}
 
 	// The line other people's data sits behind, held in the new categories
-	// too: a reaction of hers on bob's room line must not drag his text
-	// along, and the door she opened names carol and nothing more.
+	// too: a reaction of hers on bob's channel line must not drag his text
+	// along.
 	if strings.Contains(files["reactions.json"], "bobs own line") {
 		t.Errorf("a reaction carried another rider's chat line:\n%s", files["reactions.json"])
 	}
@@ -1188,9 +1166,6 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 		if !strings.Contains(files["reactions.json"], want) {
 			t.Errorf("reactions.json dropped a line she is entitled to (%q):\n%s", want, files["reactions.json"])
 		}
-	}
-	if strings.Contains(files["room-doors.json"], store.UUIDString(h.id("carol"))) {
-		t.Errorf("the door list carries another rider's account id:\n%s", files["room-doors.json"])
 	}
 	// Bob's crew is in there because she administers it; the crew she does
 	// not touch is not, and neither is his standing in hers.
@@ -1254,14 +1229,7 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 // alice's, and not one byte of them may be in her zip.
 func TestExportCarriesTheRidersOwnUploads(t *testing.T) {
 	h := setup(t)
-	room := h.createRoom(t, "alice")
-	for _, name := range []string{"alice", "bob"} {
-		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room, UserID: h.id(name), Role: "member",
-		}); err != nil {
-			t.Fatalf("membership %s: %v", name, err)
-		}
-	}
+	place := h.createCrew(t, "alice", "bob")
 	h.befriend(t, "alice", "bob")
 
 	// Distinct bodies, so "is this the right file" is answerable by content
@@ -1286,8 +1254,8 @@ func TestExportCarriesTheRidersOwnUploads(t *testing.T) {
 			t.Fatalf("clip %s: %v", name, err)
 		}
 		clipID[name] = clip.ID
-		shot, err := h.store.Queries.SaveChatImage(t.Context(), db.SaveChatImageParams{
-			RoomID: room, UserID: h.id(name), Mime: "image/png", Bytes: chatShots[name],
+		shot, err := h.store.Queries.SaveChannelImage(t.Context(), db.SaveChannelImageParams{
+			ChannelID: place.text, UserID: h.id(name), Mime: "image/png", Bytes: chatShots[name],
 		})
 		if err != nil {
 			t.Fatalf("chat image %s: %v", name, err)
@@ -1374,7 +1342,7 @@ func TestExportCarriesTheRidersOwnUploads(t *testing.T) {
 // them off every read that is not the owner's; this is the owner's.
 func TestExportCarriesWhatTheRiderSaidAboutARide(t *testing.T) {
 	h := setup(t)
-	ride := h.createRide(t, "alice", pgtype.UUID{}, "Openers", []byte("blob"))
+	ride := h.createRide(t, "alice", crewPlace{}, "Openers", []byte("blob"))
 	const note = "legs were dead, third day on"
 	if _, err := h.store.Pool.Exec(t.Context(),
 		"update rides set rpe = 8, note = $1 where id = $2", note, ride); err != nil {
@@ -1382,7 +1350,7 @@ func TestExportCarriesWhatTheRiderSaidAboutARide(t *testing.T) {
 	}
 	// A second ride the rider said nothing about: the fields are there and
 	// null, rather than silently absent on the rides that are the majority.
-	h.createRide(t, "alice", pgtype.UUID{}, "Recovery", []byte("blob"))
+	h.createRide(t, "alice", crewPlace{}, "Recovery", []byte("blob"))
 
 	var rides []map[string]any
 	if err := json.Unmarshal([]byte(h.exportFiles(t, "alice")["rides.json"]), &rides); err != nil {

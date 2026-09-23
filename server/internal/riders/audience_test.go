@@ -24,7 +24,7 @@ import (
 // alone.
 func TestBothRoutesServeOneAudience(t *testing.T) {
 	h := setup(t)
-	h.room(t, "one-audience-cave", "alice", "bob")
+	h.crew(t, "one-audience-cave", "alice", "bob")
 	h.befriend(t, "alice", "dan")
 	// Every rider carries a picture, so a 404 from the avatar route is the
 	// gate refusing and never "there is nothing stored".

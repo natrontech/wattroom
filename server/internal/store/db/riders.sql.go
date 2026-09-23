@@ -19,7 +19,7 @@ where m.user_id = $1
       select 1 from channels c
       join visible_channels a on a.channel_id = c.id and a.user_id = $1
       join visible_channels b on b.channel_id = c.id and b.user_id = $2
-      where c.crew_id = coalesce(m.crew_id, (select r.crew_id from rooms r where r.id = m.room_id))
+      where c.crew_id = m.crew_id
   )
 group by m.kind
 order by m.kind
@@ -37,8 +37,8 @@ type CountRiderMedalsInCommonRow struct {
 
 // Medals the rider earned in crews where both may enter a channel
 // (`visible_channels`), by kind — a medal belongs to the crew (#2431). A crew
-// the rider has left or been banned from drops out with its medals.
-// ponytail: the room fallback covers medals written before #2443 sets crew_id.
+// the rider has left or been banned from drops out with its medals. Every
+// room medal carries its crew since M9's backfill (#2431, #2558).
 func (q *Queries) CountRiderMedalsInCommon(ctx context.Context, arg CountRiderMedalsInCommonParams) ([]CountRiderMedalsInCommonRow, error) {
 	rows, err := q.db.Query(ctx, countRiderMedalsInCommon, arg.Rider, arg.Viewer)
 	if err != nil {
@@ -120,12 +120,11 @@ func (q *Queries) ListCrewsInCommon(ctx context.Context, arg ListCrewsInCommonPa
 
 const listSharedRides = `-- name: ListSharedRides :many
 select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution, r.execution_scored,
-       (r.room_id is not null or r.channel_id is not null)::boolean as in_room,
+       (r.crew_id is not null or r.channel_id is not null)::boolean as in_room,
        coalesce(case when v.user_id is not null then ch.name end, '')::text as room_name,
        coalesce((select string_agg(m.kind, ' ' order by m.kind) from medals m where m.ride_id = r.id), '')::text as medal_kinds
 from rides r
-left join channels ch on ch.id = coalesce(
-    r.channel_id, (select rc.voice_channel_id from room_channels rc where rc.room_id = r.room_id))
+left join channels ch on ch.id = r.channel_id
 left join visible_channels v on v.channel_id = ch.id and v.user_id = $1
 where r.user_id = $2 and r.shared_at is not null
 order by r.started_at desc
@@ -155,7 +154,8 @@ type ListSharedRidesRow struct {
 // channel is named only when the viewer may enter it (`visible_channels`,
 // ADR-0058; ADR-0012: friendship never pierces the boundary); otherwise the
 // ride just "was in a room". The column names are the page's until #2457.
-// ponytail: the room fallback covers rides written before #2443 sets channel_id.
+// A group ride is one with a crew or a channel on it (#2443, backfilled for
+// every room ride by M9) — never room_id, which #2433 drops (#2558).
 func (q *Queries) ListSharedRides(ctx context.Context, arg ListSharedRidesParams) ([]ListSharedRidesRow, error) {
 	rows, err := q.db.Query(ctx, listSharedRides, arg.Viewer, arg.Rider, arg.Max)
 	if err != nil {

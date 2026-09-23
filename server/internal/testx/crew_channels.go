@@ -49,3 +49,16 @@ func Voice(t testing.TB, st *store.Store, crew pgtype.UUID, name string, private
 	}
 	return store.UUIDString(channel.ID)
 }
+
+// Text makes a text channel in the crew and returns its id — Voice's twin,
+// for a test that needs somewhere to write (#2558: where a room's chat was).
+func Text(t testing.TB, st *store.Store, crew pgtype.UUID, name string) pgtype.UUID {
+	t.Helper()
+	channel, err := st.Queries.CreateChannel(context.Background(), db.CreateChannelParams{
+		CrewID: crew, Kind: "text", Name: name, MaxChannels: 100,
+	})
+	if err != nil {
+		t.Fatalf("fixture text channel: %v", err)
+	}
+	return channel.ID
+}

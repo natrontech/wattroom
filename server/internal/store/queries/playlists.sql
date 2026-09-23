@@ -1,29 +1,30 @@
 -- name: CreatePlaylist :one
--- A rider's, or a crew's (ADR-0058, #2439). A room's shelf carries its crew
--- as well until the room goes (#2446), so the crew's list shows it too.
-insert into playlists (room_id, user_id, crew_id, name)
-values ($1, $2, $3, $4)
-returning *;
+-- A rider's, or a crew's (ADR-0058, #2439). Never a room's (#2558): the
+-- columns are named, here and below, so none of them reads room_id and #2433
+-- can drop it under this release.
+insert into playlists (user_id, crew_id, name)
+values ($1, $2, $3)
+returning id, user_id, crew_id, name, created_at, updated_at;
 
 -- name: ListCrewPlaylists :many
 -- The crew's shelf (ADR-0058): every playlist the crew keeps, whichever room
 -- it was saved in before the rooms went.
-select p.*, count(t.id) as track_count
+select p.id, p.user_id, p.crew_id, p.name, p.created_at, p.updated_at, count(t.id) as track_count
 from playlists p left join playlist_tracks t on t.playlist_id = p.id
 where p.crew_id = $1
 group by p.id order by p.created_at;
 
 -- name: ListUserPlaylists :many
-select p.*, count(t.id) as track_count
+select p.id, p.user_id, p.crew_id, p.name, p.created_at, p.updated_at, count(t.id) as track_count
 from playlists p left join playlist_tracks t on t.playlist_id = p.id
 where p.user_id = $1
 group by p.id order by p.created_at;
 
 -- name: GetPlaylist :one
-select * from playlists where id = $1;
+select id, user_id, crew_id, name, created_at, updated_at from playlists where id = $1;
 
 -- name: RenamePlaylist :one
-update playlists set name = $2, updated_at = now() where id = $1 returning *;
+update playlists set name = $2, updated_at = now() where id = $1 returning id, user_id, crew_id, name, created_at, updated_at;
 
 -- name: DeletePlaylist :execrows
 delete from playlists where id = $1;

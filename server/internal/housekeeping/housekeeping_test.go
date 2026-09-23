@@ -91,31 +91,22 @@ func TestSweepDeletesExpiredSessionsAndKeepsLiveOnes(t *testing.T) {
 func TestSweepPrunesRecapsPastRetentionWithoutAWrite(t *testing.T) {
 	st := open(t)
 	u := user(t, st)
-	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: testx.Slug("housekeeping-recaps"), Name: "Housekeeping", OwnerID: u.ID,
-	})
-	if err != nil {
-		t.Fatalf("create room: %v", err)
-	}
-	t.Cleanup(func() {
-		_, _ = st.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
-	})
+	crew := testx.Crew(t, st, "Housekeeping", u.ID)
 
 	stale := time.Now().Add(-(recap.RetentionDays + 1) * 24 * time.Hour)
 	fresh := time.Now().Add(-24 * time.Hour)
 	for _, at := range []time.Time{stale, fresh} {
-		// A room-era row, straight to the table (SaveSessionRecap keys by the
-		// session since #2438): the sweep is what is under test.
+		// Straight to the table: the sweep is what is under test.
 		if _, err := st.Pool.Exec(t.Context(),
-			"insert into session_recaps (room_id, workout, started_at, ended_at, riders) values ($1, $2, $3, $4, '[]')",
-			room.ID, "Sweet Spot", stamp(at), stamp(at)); err != nil {
+			"insert into session_recaps (crew_id, workout, started_at, ended_at, riders) values ($1, $2, $3, $4, '[]')",
+			crew, "Sweet Spot", stamp(at), stamp(at)); err != nil {
 			t.Fatalf("save recap: %v", err)
 		}
 	}
 	left := func() int {
 		var n int
 		if err := st.Pool.QueryRow(t.Context(),
-			"select count(*) from session_recaps where room_id = $1", room.ID).Scan(&n); err != nil {
+			"select count(*) from session_recaps where crew_id = $1", crew).Scan(&n); err != nil {
 			t.Fatalf("count: %v", err)
 		}
 		return n

@@ -9,6 +9,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 	"github.com/natrontech/wattroom/server/internal/testx"
@@ -82,44 +83,32 @@ func earned(t *testing.T, s *Service, user db.User) map[string]bool {
 	return out
 }
 
-// shareRoom puts the riders in a fresh room (the first one owns it) and
-// returns its id, so a test can ban one of them afterwards.
-func shareRoom(t *testing.T, s *Service, members ...db.User) pgtype.UUID {
+// crewAt is a crew and the voice channel its rides are ridden in.
+type crewAt struct{ id, voice pgtype.UUID }
+
+// shareCrew puts the riders in a fresh crew (the first one owns it) with an
+// open voice channel, so a test can ban one of them afterwards.
+func shareCrew(t *testing.T, s *Service, members ...db.User) crewAt {
 	t.Helper()
-	room, err := s.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug:    testx.Slug("trophy-room"),
-		Name:    "Trophy Room",
-		OwnerID: members[0].ID,
-	})
+	rest := make([]pgtype.UUID, 0, len(members)-1)
+	for _, m := range members[1:] {
+		rest = append(rest, m.ID)
+	}
+	crew := testx.Crew(t, s.store, "Trophy Crew", members[0].ID, rest...)
+	voice, err := store.ParseUUID(testx.Voice(t, s.store, crew, "Trophy Room", false))
 	if err != nil {
-		t.Fatalf("create room: %v", err)
+		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		_, _ = s.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
-	})
-	for i, m := range members {
-		role := "member"
-		if i == 0 {
-			role = "owner"
-		}
-		if err := s.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room.ID, UserID: m.ID, Role: role,
-		}); err != nil {
-			t.Fatalf("membership: %v", err)
-		}
-	}
-	storetest.ChannelsFor(t, s.store, room.ID)
-	return room.ID
+	return crewAt{id: crew, voice: voice}
 }
 
-func ban(t *testing.T, s *Service, room pgtype.UUID, user db.User) {
+func ban(t *testing.T, s *Service, crew pgtype.UUID, user db.User) {
 	t.Helper()
-	if _, err := s.store.Queries.UpdateMembershipRole(t.Context(), db.UpdateMembershipRoleParams{
-		RoomID: room, UserID: user.ID, Role: "banned",
+	if err := s.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew, UserID: user.ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("ban: %v", err)
 	}
-	storetest.ChannelsFor(t, s.store, room)
 }
 
 func befriend(t *testing.T, s *Service, a, b db.User) {

@@ -12,8 +12,8 @@ import (
 // a 404 — never a broken byte stream.
 func TestAvatarServes(t *testing.T) {
 	h := setup(t)
-	// alice and bob share a room; dan is alice's friend and has no picture.
-	h.room(t, "pain-cave", "alice", "bob")
+	// alice and bob share a crew; dan is alice's friend and has no picture.
+	h.crew(t, "pain-cave", "alice", "bob")
 	h.befriend(t, "alice", "dan")
 	url := h.avatar(t, "alice")
 

@@ -29,22 +29,22 @@ func TestADuplicateFixtureSaysHowToRecover(t *testing.T) {
 		_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", owner.ID)
 	})
 
-	slug := testx.Slug("storetest-duplicate")
-	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: slug, Name: "Storetest", OwnerID: owner.ID,
+	code := testx.CrewCode()
+	crew, err := st.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
+		Name: "Storetest", OwnerID: owner.ID, Code: code,
 	})
 	if err != nil {
-		t.Fatalf("create room: %v", err)
+		t.Fatalf("create crew: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = st.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
+		_, _ = st.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID)
 	})
 
-	_, err = st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: slug, Name: "Storetest again", OwnerID: owner.ID,
+	_, err = st.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
+		Name: "Storetest again", OwnerID: owner.ID, Code: code,
 	})
 	if err == nil {
-		t.Fatal("the second room took the same slug — rooms_slug_key is gone")
+		t.Fatal("the second crew took the same code — the crews code key is gone")
 	}
 	if !strings.Contains(err.Error(), "make dev-db-drop") {
 		t.Errorf("a duplicate key does not name the recovery: %v", err)

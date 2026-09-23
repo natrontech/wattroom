@@ -212,16 +212,10 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	q := s.store.Queries.WithTx(tx)
 	// The voice channels to sever the rider from once this commits.
 	voice, _ := q.ListChannelIDsOfKind(r.Context(), db.ListChannelIDsOfKindParams{CrewID: crew.ID, Kind: "voice"})
-	// The room rows go too, though nothing reads them now: the previous
-	// release derives room access from them, and a rollback to it must not
-	// hand a leaver back what they left (ADR-0019). Goes with #2433.
-	err = q.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: user.ID})
-	if err == nil {
-		err = q.LeaveCrewGrants(r.Context(), db.LeaveCrewGrantsParams{CrewID: crew.ID, UserID: user.ID})
-	}
-	if err == nil {
-		err = q.LeaveCrewChannels(r.Context(), db.LeaveCrewChannelsParams{CrewID: crew.ID, UserID: user.ID})
-	}
+	// The room rows stay where they are (#2558): the release before this one
+	// derives access from crew roles and channels, not from them, and #2433
+	// drops them.
+	err = q.LeaveCrewChannels(r.Context(), db.LeaveCrewChannelsParams{CrewID: crew.ID, UserID: user.ID})
 	if err == nil {
 		err = q.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
 	}

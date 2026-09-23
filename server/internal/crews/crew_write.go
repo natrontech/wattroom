@@ -205,16 +205,6 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if req.Role == "banned" {
-		// The room rows go too, though nothing reads them now: the previous
-		// release derives room access from them, and a rollback to it must
-		// not hand the banned rider back their rooms (ADR-0019). Goes with
-		// #2433.
-		if err := s.store.Queries.LeaveCrewRooms(r.Context(), db.LeaveCrewRoomsParams{CrewID: crew.ID, UserID: target}); err != nil {
-			s.log.Error("crew ban room sweep failed", "err", err, "crew", store.UUIDString(crew.ID))
-		}
-		if err := s.store.Queries.LeaveCrewGrants(r.Context(), db.LeaveCrewGrantsParams{CrewID: crew.ID, UserID: target}); err != nil {
-			s.log.Error("crew ban grant sweep failed", "err", err, "crew", store.UUIDString(crew.ID))
-		}
 		// The one ban now (ADR-0058): lifting it must not hand back the
 		// private channels they were named into.
 		if err := s.store.Queries.LeaveCrewChannels(r.Context(), db.LeaveCrewChannelsParams{CrewID: crew.ID, UserID: target}); err != nil {

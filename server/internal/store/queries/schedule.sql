@@ -7,7 +7,7 @@
 insert into scheduled_sessions (crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
 values (sqlc.arg(crew_id), sqlc.narg(channel_id), sqlc.arg(workout_name), sqlc.arg(workout_json),
         sqlc.arg(starts_at), sqlc.arg(created_by))
-returning *;
+returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id;
 
 -- name: CountCrewUpcoming :one
 -- docs/SPEC.md's 100-plan shelf, counted the way ListCrewUpcoming lists: a
@@ -76,7 +76,7 @@ update scheduled_sessions
 set starts_at = sqlc.arg(starts_at),
     reminded_at = case when starts_at = sqlc.arg(starts_at) then reminded_at else null end
 where id = sqlc.arg(id) and crew_id = sqlc.arg(crew_id)
-returning *;
+returning id, workout_name, workout_json, starts_at, created_by, created_at, reminded_at, started_at, crew_id, channel_id;
 
 -- name: DeleteCrewPlan :one
 delete from scheduled_sessions where id = sqlc.arg(id) and crew_id = sqlc.arg(crew_id)
@@ -200,3 +200,63 @@ select id, name, ics_token from crews where id = $1;
 -- stops the moment this commits.
 update crews set ics_token = replace(gen_random_uuid()::text, '-', '')
 where id = $1 returning ics_token;
+
+-- name: ClaimSessionsToRemind :many
+-- The claim IS the update (#841): a row leaves this query already marked, so a
+-- tick that fires twice, a restart mid-send or a second instance cannot mail
+-- the same session again. Callers do not mark anything afterwards, which is
+-- the point — there is no window between reading and claiming to lose a
+-- process in.
+--
+-- A session whose start slipped past while the server was down falls outside
+-- the window and is simply never reminded. That is deliberate: a burst of
+-- "starts in an hour" for sessions that began three hours ago is worse than
+-- silence.
+--
+-- Bounded (audit 2026-09-09): the claim is final, so a batch the minute's
+-- budget cannot mail is lost, not late. A hundred a tick against an hour's
+-- window leaves fifty-nine more ticks for the rest.
+update scheduled_sessions
+set reminded_at = now()
+where id in (
+    select id from scheduled_sessions
+    where reminded_at is null
+      and started_at is null
+      and starts_at > now()
+      and starts_at <= now() + interval '1 hour'
+    order by starts_at
+    limit 100
+)
+returning id, crew_id, channel_id, workout_name, starts_at;
+
+-- name: SetRsvp :exec
+-- Planned sessions (#450). One row per rider per session, and the row is an
+-- ANSWER (#1011): `going` says which of the two it is, and no row at all is
+-- the third state — nobody has looked yet. Saying the same thing twice is
+-- saying it once; changing your mind rewrites the row rather than needing a
+-- delete first, so there is no moment where a rider has no answer on record.
+--
+-- created_at moves only when the answer actually changed, because that is
+-- what ListRoomRsvps orders the "who is in" line by: a rider who said no in
+-- the morning and yes in the evening committed in the evening, and would
+-- otherwise sort ahead of everyone who said yes at lunchtime.
+insert into session_rsvps (session_id, user_id, going) values ($1, $2, $3)
+on conflict (session_id, user_id) do update
+set going = excluded.going,
+    created_at = case when session_rsvps.going = excluded.going
+                      then session_rsvps.created_at else now() end;
+
+-- name: ClearRsvp :exec
+-- Taking the answer back — in or out, the row goes and the rider is
+-- unanswered again.
+delete from session_rsvps where session_id = $1 and user_id = $2;
+
+-- name: ClearSessionDeclines :exec
+-- A moved session asks the people who said no again (#1011). Only the
+-- declines: somebody who said they are in for a Tuesday has not said
+-- anything about a Wednesday either, but the cost of guessing wrong is
+-- asymmetric — dropping an "in" empties a line the room reads, while a
+-- decline that survives a move silences a reminder for a session the rider
+-- never turned down. Run on the same condition as the reminder's re-arm in
+-- RescheduleSession: only when the time really changed.
+delete from session_rsvps where session_id = $1 and not going;

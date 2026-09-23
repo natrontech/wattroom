@@ -134,7 +134,8 @@ type rideJSON struct {
 	ExecutionScored bool `json:"executionScored"`
 	Ftp             int  `json:"ftp"`
 	Xp              int  `json:"xp"`
-	// True for rides ridden in a room — the list marks them.
+	// True for rides ridden with a crew — the list marks them. The key is the
+	// list's from before crews (#2558).
 	Room bool `json:"room,omitempty"`
 	// The crew it was ridden with and the voice channel it was ridden in
 	// (#2443); nil for a solo ride.
@@ -210,7 +211,7 @@ func rideJSONOf(row db.ListUserRidesRow) rideJSON {
 		StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
-		Room: row.RoomID.Valid, SharedWithFriends: row.SharedAt.Valid,
+		Room: row.InSession, SharedWithFriends: row.SharedAt.Valid,
 		Crew: placeOf(row.CrewID, row.CrewName), Channel: placeOf(row.ChannelID, row.ChannelName),
 	}
 	if row.ExportState != nil {
@@ -367,7 +368,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	row, err := stats.BuildRideRow(user.ID, pgtype.UUID{}, req.WorkoutName,
+	row, err := stats.BuildRideRow(user.ID, req.WorkoutName,
 		req.WorkoutJSON, req.StartedAt, int(user.FtpWatts), samples)
 	if err != nil {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
