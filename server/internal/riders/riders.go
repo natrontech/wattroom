@@ -61,7 +61,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 // notVisible is one message for "no such rider" and "not yours to see": a 404
 // must not confirm that an id exists. Shared by the page and the face below,
 // so a refused caller cannot tell the two routes apart.
-const notVisible = "No rider there — a page shows only to people who share a room or a friendship with them."
+const notVisible = "No rider there — a page shows only to people who share a channel or a friendship with them."
 
 // handleAvatar serves a rider's uploaded picture (#1353) to the page's own
 // audience (ADR-0024, amended 2026-09-17 / #2239). It used to answer anyone

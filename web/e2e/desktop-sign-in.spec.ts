@@ -54,7 +54,7 @@ test('the shell half: /login?handoff=<token> redeems with the kept nonce and sig
 
 	await page.goto(`/login?handoff=${token}`);
 	// Redeemed: the shell is signed in and lands where a fresh sign-in lands.
-	await expect(page).toHaveURL(/\/(home|rooms)(#.*)?$/);
+	await expect(page).toHaveURL(/\/home(#.*)?$/);
 	const me = await page.evaluate(() =>
 		fetch('/api/me').then((r) => (r.ok ? r.json() : null)),
 	);
