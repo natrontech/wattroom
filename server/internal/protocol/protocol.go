@@ -24,15 +24,15 @@ type RiderMetrics struct {
 	// and skip and extend make it jump — so the array index stops being the
 	// workout second at the first pause, and every sample after it would be
 	// scored against the wrong block. Absent (0 on every sample) is a ride
-	// that sends none: a room ride, where the hub's clock IS the workout
+	// that sends none: a session ride, where the hub's clock IS the workout
 	// clock, or one recorded before this existed; those score by index.
 	Clock int `json:"clock,omitempty"`
 	// The rider's own guard had the trainer off the target this second
 	// (#1796): auto-pause, the resume countdown, the spiral release. The
 	// live meter on the client never scores such a second; the saved ride
-	// and the room's live score used to, against the full target — a spiral
-	// trip was ten pedalling seconds against no resistance, out of band by
-	// construction. Absent means scored.
+	// and the session's live score used to, against the full target — a
+	// spiral trip was ten pedalling seconds against no resistance, out of
+	// band by construction. Absent means scored.
 	Released bool `json:"released,omitempty"`
 }
 
@@ -219,17 +219,18 @@ type ChatReactionCount struct {
 	Added     bool   `json:"added"`
 }
 
-// ChannelEvent is something the ROOM did, next to what riders said (#321): the
-// jukebox changing under everyone is half of what happened here, and thirty
-// seconds later "who put this on?" has no other answer. Structured, not a
-// sentence — the client owns the wording, so the chat pane and the dock name
-// a track identically.
+// ChannelEvent is something that happened in a voice channel rather than
+// something a rider said (#321): the jukebox changing under everyone is half
+// of what happens there, and thirty seconds later "who put this on?" has no
+// other answer. Structured, not a sentence — the client owns the wording, so
+// the lounge and the dock name a track identically.
 //
 // Ephemeral by design (ADR-0019): it rides the tick like cheers and is never
 // written to the chat table. A month of "now playing" in the backlog is noise.
 type ChannelEvent struct {
-	// Room-unique and stable across re-broadcasts: a growing burst re-sends
-	// the SAME id with a higher Count, and clients replace the line in place.
+	// Unique within the voice channel, and stable across re-broadcasts: a
+	// growing burst re-sends the SAME id with a higher Count, and clients
+	// replace the line in place.
 	ID   string `json:"id"`
 	Kind string `json:"kind"` // "jukebox" | "session" | "presence"
 	// jukebox: "queued" | "removed" | "skipped" | "playing" | "restored"
@@ -254,12 +255,13 @@ type ChannelEvent struct {
 	// coalesced ("queued 8 tracks", "Ana and 2 others joined"). Eight lines
 	// would push the actual conversation off the screen. On "gameEnded" it
 	// is instead the round the game reached, which for a collective ramp is
-	// the score the room rode for.
+	// the score the whole session rode for.
 	Count int   `json:"count"`
 	At    int64 `json:"at"` // server millis, for ordering only
 }
 
-// Cheer is the room's reaction layer (#74) — and the spectator's one verb.
+// Cheer is a voice channel's reaction layer (#74) — and the spectator's one
+// verb.
 type Cheer struct {
 	Emoji string `json:"emoji"`
 	// Sender name, filled by the server: cheering is presence.
@@ -274,7 +276,7 @@ type Cheer struct {
 // The hub deliberately does not check that the clip exists or belongs to the
 // sender. Fetching is what authorizes (board.canHear), so a forged id costs a
 // 404 on every machine and nothing else — and the check it would take is a
-// database round trip on the room's tick path.
+// database round trip on the voice channel's tick path.
 //
 // An empty ClipID is the rider stopping their own voice (#1321). Every
 // listener already keys what is sounding by rider — SPEC's retrigger rule —
@@ -337,14 +339,14 @@ type AwayState struct {
 }
 
 // AwayReasons is the closed set behind the Away button's arrow. Closed and
-// not free text: the room draws this beside a rider's name, so a typed status
-// would be a second chat nobody can reply in — and a closed set is the only
-// kind the server can safely render to everyone (errors.md, the same
-// reasoning as DeviceKind below).
+// not free text: the voice channel draws this beside a rider's name, so a
+// typed status would be a second chat nobody can reply in — and a closed set
+// is the only kind the server can safely render to everyone (errors.md, the
+// same reasoning as DeviceKind below).
 //
-// The words are the room's vocabulary, not the client's: docs/SPEC.md's
-// glossary owns them, and a screen that invents a synonym disagrees with the
-// timeline line the server writes for the same state.
+// The words are shared vocabulary, not the client's: docs/SPEC.md's glossary
+// owns them, and a screen that invents a synonym disagrees with the channel
+// event the server writes for the same state.
 var AwayReasons = []string{"nature", "food", "shower"}
 
 // DeviceKind is what a socket says it is running on (#2131): one of
@@ -353,17 +355,17 @@ var AwayReasons = []string{"nature", "food", "shower"}
 //
 // Its own message rather than a field on SensorClaim, which already carries a
 // device word: that one is arbitration between a rider's OWN screens and is
-// addressed back to them alone, so it says nothing to the room and only
-// exists once a sensor has been paired — which a spectator on a phone never
-// does. This one is room-visible by design and arrives whether or not
-// anything is paired.
+// addressed back to them alone, so it says nothing to the voice channel and
+// only exists once a sensor has been paired — which a spectator on a phone
+// never does. This one is visible to the whole channel by design and arrives
+// whether or not anything is paired.
 //
 // Unlike the ping beside it on the roster, this is the client's word for
 // itself and nothing checks it. That is the right trade for a label this
 // coarse: a rider who lies about being on a phone misleads nobody about
 // anything, and the alternative is parsing a user agent, which is a
-// fingerprint. Kept to the three words below for the same reason — the room
-// learns roughly what screen someone is on, never which device it is.
+// fingerprint. Kept to the three words below for the same reason — the
+// channel learns roughly what screen someone is on, never which device it is.
 type DeviceKind struct {
 	Kind string `json:"kind"`
 }
@@ -382,9 +384,10 @@ type ClientMessage struct {
 	Device   *DeviceKind     `json:"device,omitempty"`
 }
 
-// Rider is presence: who is in the room right now, with what the dashboard
-// needs to render them. FTP crosses the wire so every screen can show %FTP —
-// room-scoped by design, the same visibility WATTROOM.md grants live watts.
+// Rider is presence: who is in the voice channel right now, with what the
+// dashboard needs to render them. FTP crosses the wire so every screen can
+// show %FTP — scoped to the channel by design, the same visibility
+// WATTROOM.md grants live watts.
 type Rider struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -392,31 +395,31 @@ type Rider struct {
 	// or "member" (#2438). Coach is not a role — it is the session's.
 	Role     string `json:"role"`
 	FtpWatts int    `json:"ftpWatts"`
-	// For w/kg on room screens — room-scoped like FTP, and for the same reason:
-	// every contest in docs/SPEC.md is scored on it.
+	// For w/kg on the channel's screens — scoped to it like FTP, and for the
+	// same reason: every contest in docs/SPEC.md is scored on it.
 	WeightKg int `json:"weightKg"`
 	// Lifetime XP, so the roster's faces wear the level ring the rest of the
-	// app already shows (#690). Room-visible identity, the same rule the
-	// member list has followed since #253 — rides stay private.
+	// app already shows (#690). Identity the channel may see, the same rule
+	// the member list has followed since #253 — rides stay private.
 	TotalXp int64 `json:"totalXp"`
 	// Stepped out (#706). Presence, not a metric: the rider said so with the
 	// Lounge's button, and every screen renders the mark instead of leaving
 	// an open mic over an empty trainer.
 	Away bool `json:"away,omitempty"`
-	// Which kind of away, from AwayReasons; empty for the plain one. Room
-	// scope only, deliberately: the presence rail and anyone outside the room
-	// keep the plain away dot they have always had, because a reason is a new
-	// detail about a person and a new detail does not get a wider audience
-	// than the old one had.
+	// Which kind of away, from AwayReasons; empty for the plain one. Voice
+	// channel scope only, deliberately: the presence rail and anyone outside
+	// the channel keep the plain away dot they have always had, because a
+	// reason is a new detail about a person and a new detail does not get a
+	// wider audience than the old one had.
 	AwayReason string `json:"awayReason,omitempty"`
-	// Pedalling right now (#1016) — watts inside the room's riding window, so
+	// Pedalling right now (#1016) — watts inside the hub's riding window, so
 	// a coast holds the mark and sitting down loses it. The server owns the
 	// word: every screen used to decide it from the current sample's watts,
 	// which flickered, and the friends page decided it from "a trainer is
 	// talking", which never went out at all.
 	Riding bool `json:"riding,omitempty"`
 	// What this rider's soundboard has playing right now, and how far into it
-	// the room already is (#1681). A fire is one tick and gone
+	// the channel already is (#1681). A fire is one tick and gone
 	// (ADR-0022/0033), so a rider who walked in halfway through a clip heard
 	// silence and saw nobody playing anything; this is the same press, still
 	// true a second later. The clip's real length is the listener's to know —
@@ -429,14 +432,14 @@ type Rider struct {
 	// it is safe to show one rider about another, which a self-reported number
 	// would not be. Absent until the first ping of theirs has been answered.
 	//
-	// Room-scoped like the watts and the FTP above it, and for the same
-	// reason: this is live data about someone in the room, visible inside the
-	// room while they are in it and nowhere else. It never reaches
-	// ChannelPresence, the friends panel or anything public — a ping is a weak
-	// location signal, and the room is where WATTROOM.md already grants that
-	// class of visibility.
+	// Scoped to the voice channel like the watts and the FTP above it, and
+	// for the same reason: this is live data about someone in the channel,
+	// visible inside it while they are there and nowhere else. It never
+	// reaches ChannelPresence, the friends panel or anything public — a ping
+	// is a weak location signal, and the voice channel is where WATTROOM.md
+	// already grants that class of visibility.
 	//
-	// One rider, several sockets: the room folds them to the LOWEST, which is
+	// One rider, several sockets: the hub folds them to the LOWEST, which is
 	// the rider's best screen. Their own breakdown per tab is the client's,
 	// off the device labels #610 already carries.
 	PingMs int `json:"pingMs,omitempty"`
@@ -449,7 +452,7 @@ type Rider struct {
 }
 
 // OwnConnection is what a socket is told about ITSELF, and about no other
-// socket in the room (#2131).
+// socket in the voice channel (#2131).
 //
 // Its own message rather than a field on Rider, deliberately: Rider is the
 // roster, the roster rides every tick to everybody, and a "fill this in only
@@ -496,10 +499,11 @@ type SessionState struct {
 	// definition it heard and fills it back in while the hash matches.
 	WorkoutHash  string `json:"workoutHash,omitempty"`
 	TotalSeconds int    `json:"totalSeconds,omitempty"`
-	// The rpm the current block asks the room to turn (#1431): the block's
-	// cadence band, else docs/SPEC.md's effort tiers. 0 while nothing runs
-	// or the block expresses no preference. What smart autoplay weighs
-	// against, said on the wire so a queue row can show which tracks fit.
+	// The rpm the current block asks the session's riders to turn (#1431):
+	// the block's cadence band, else docs/SPEC.md's effort tiers. 0 while
+	// nothing runs or the block expresses no preference. What smart autoplay
+	// weighs against, said on the wire so a queue row can show which tracks
+	// fit.
 	TargetRpm int `json:"targetRpm,omitempty"`
 }
 
@@ -512,7 +516,8 @@ type JukeboxTrack struct {
 }
 
 type JukeboxEntry struct {
-	// Room-unique, server-assigned: what remove/vote/move address (#286).
+	// Unique within the voice channel, server-assigned: what
+	// remove/vote/move address (#286).
 	ID string `json:"id"`
 	// What is on the deck RIGHT NOW. For a playlist entry (#615) this is
 	// Tracks[Index] and changes as the entry plays through — which is why
@@ -523,13 +528,13 @@ type JukeboxEntry struct {
 	// Where playback begins when this entry reaches the deck (?t= paste).
 	StartSec float64 `json:"startSec,omitempty"`
 	// Upvotes float an entry above lower-voted ones (#286). The voters are
-	// rider ids, not a count — room-scoped like every other live field, and
-	// the only way a client renders "you voted" from truth, not from its
-	// own click. The count is len(voters); nothing to keep in sync.
+	// rider ids, not a count — scoped to the channel like every other live
+	// field, and the only way a client renders "you voted" from truth, not
+	// from its own click. The count is len(voters); nothing to keep in sync.
 	Voters []string `json:"voters,omitempty"`
 	// Set when the entry is a whole YouTube playlist queued as one thing
 	// (#615) — a playlist takes ONE queue slot, so a paste cannot own the
-	// room's 50 and the vote order keeps meaning something.
+	// channel's 50 and the vote order keeps meaning something.
 	PlaylistID    string `json:"playlistId,omitempty"`
 	PlaylistTitle string `json:"playlistTitle,omitempty"`
 	// The playlist in order, resolved by the client that pasted it. Empty
@@ -565,23 +570,23 @@ type JukeboxEntry struct {
 // here is what made the jukebox "not synced" (#286). Clients estimate the
 // offset from ServerTick.At and translate.
 // The audio itself is local per rider — their iframe, their volume — and never
-// enters the voice path (SPEC room audio defaults).
+// enters the voice path (SPEC voice channel audio defaults).
 type JukeboxState struct {
 	Queue       []JukeboxEntry `json:"queue"`
 	Current     *JukeboxEntry  `json:"current,omitempty"`
 	Playing     bool           `json:"playing"`
 	PositionSec float64        `json:"positionSec"`
 	AnchorMs    int64          `json:"anchorMs"`
-	// What the room just played, newest first (#286) — the deck's short
+	// What the channel just played, newest first (#286) — the deck's short
 	// memory, so "put that on again" is one tap and nobody retypes a link.
 	History []JukeboxEntry `json:"history"`
 }
 
 // SessionRecapRider is one person a session saw, and when — the only two
 // things a recap may say about anybody (ADR-0034). No watts, no kJ, no
-// execution, no heart rate, no per-rider workout: everyone in the room
-// watched the roster, so the card writes down what they already saw, and
-// WATTROOM.md's metrics rules stay exactly where they are.
+// execution, no heart rate, no per-rider workout: everyone in the voice
+// channel watched the roster, so the card writes down what they already saw,
+// and WATTROOM.md's metrics rules stay exactly where they are.
 type SessionRecapRider struct {
 	// The rider's user id, so the client can key a row and an account purge
 	// can find the intervals it has to remove. A display name identifies
@@ -597,7 +602,7 @@ type SessionRecapRider struct {
 }
 
 // SessionRecap is what a finished session leaves behind (ADR-0034): the first
-// thing in this app that survives a reload of the room's timeline. Written
+// thing in this app that survives a reload of a session's timeline. Written
 // once when the session ends, rendered as one collapsed card the chat pane
 // merges in by timestamp — the artifact ADR-0022 said to build if riders ever
 // asked, rather than the persisted event stream it refused.
@@ -617,8 +622,8 @@ type SessionRecap struct {
 	RideID string `json:"rideId,omitempty"`
 }
 
-// ServerTick is the coalesced 1 Hz room broadcast: every rider's latest
-// sample, the roster, and the shared session state.
+// ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
+// latest sample, the roster, and the shared session state.
 type ServerTick struct {
 	At      int64        `json:"at"` // unix millis
 	State   SessionState `json:"state"`
@@ -628,15 +633,15 @@ type ServerTick struct {
 	// This second's soundboard fires, drained the same way. The clip itself
 	// is fetched over HTTP — only the trigger rides the tick (ADR-0033).
 	Board []Board `json:"board,omitempty"`
-	// No chat (#2437, ADR-0058): a voice channel carries none, and a room's
-	// chat is read over HTTP and re-read on the lobby ping.
+	// No chat (#2437, ADR-0058): a voice channel carries none, and a text
+	// channel's chat is read over HTTP and re-read on the lobby ping.
 	//
 	// The recap of the session that just ended (ADR-0034), on the tick where
 	// the row lands — the async write's follow-up. Everyone else gets it from the backlog on their next
 	// join, because unlike everything above it, this one is durable.
 	Recap *SessionRecap `json:"recap,omitempty"`
-	// What the room did this second (#321) — jukebox actions the chat pane
-	// interleaves with the talking. Ephemeral, like the cheers above.
+	// What happened in the channel this second (#321) — the lines the lounge
+	// draws beside the deck. Ephemeral, like the cheers above.
 	Events []ChannelEvent `json:"events,omitempty"`
 	// Sprint moment (#30): armed/live window and, after it closes, the podium.
 	Sprint *SprintState `json:"sprint,omitempty"`
@@ -661,9 +666,10 @@ type ChannelPresence struct {
 	// Riders connected to the channel WS, counted as people, not sockets.
 	Connected int    `json:"connected,omitempty"`
 	Phase     string `json:"phase,omitempty"`
-	// Display names — members-only server-side, room-scoped like all live data.
-	// For rendering only: display names are not unique, so anything asking
-	// "is this particular person in there?" reads RiderIDs instead (#649).
+	// Display names — members-only server-side, scoped to the channel like
+	// all live data. For rendering only: display names are not unique, so
+	// anything asking "is this particular person in there?" reads RiderIDs
+	// instead (#649).
 	Riders []string `json:"riders,omitempty"`
 	// The same riders by account id, in the same order as Riders.
 	RiderIDs []string `json:"riderIds,omitempty"`
@@ -674,7 +680,7 @@ type ChannelPresence struct {
 	Riding []string `json:"riding,omitempty"`
 	// The same riders by account id, in the same order as Riding.
 	RidingIDs []string `json:"ridingIds,omitempty"`
-	// Who said away (#1742), by account id: the sidebar's dot and the room's
+	// Who said away (#1742), by account id: the sidebar's dot and the rider's
 	// tile used to disagree — away on the tile, online two panels over.
 	AwayIDs []string `json:"awayIds,omitempty"`
 	// The late-join radar: what is on and how far in, while a session runs.
@@ -708,8 +714,9 @@ type Error struct {
 	// unauthorized, forbidden, not_found, conflict, rate_limited,
 	// internal_error — optionally prefixed with the surface the refusal
 	// belongs to ("jukebox_rate_limited"), so a client can land it beside
-	// the control the rider touched instead of in the room's own slot. The
-	// prefix routes; the part after it is always a code from the set.
+	// the control the rider touched instead of in the channel's own refusal
+	// slot. The prefix routes; the part after it is always a code from the
+	// set.
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
@@ -719,9 +726,9 @@ type Error struct {
 //
 // It goes ONLY to the sockets of the rider it describes, and deliberately not
 // on the tick: what a rider straps on is nobody else's business (privacy is
-// architecture, WATTROOM.md), and the tick stays one message per room per
-// second (ARCHITECTURE seam 2) for state that changes every second — this
-// changes only when somebody pairs or unpairs.
+// architecture, WATTROOM.md), and the tick stays one message per voice
+// channel per second (ARCHITECTURE seam 2) for state that changes every
+// second — this changes only when somebody pairs or unpairs.
 type SensorPairing struct {
 	// Kinds this socket holds, as GRANTED — the claim minus anything another
 	// of the rider's screens got to first.

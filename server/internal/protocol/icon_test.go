@@ -34,7 +34,7 @@ func TestIsIconOrEmoji(t *testing.T) {
 		ok bool
 	}{
 		{"flame", true},
-		{"🔥", true}, // rooms and clients from before #447
+		{"🔥", true}, // saved values and clients from before #447
 		{"gg!", false},
 		{"<script>", false},
 		{"", false},
