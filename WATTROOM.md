@@ -234,7 +234,7 @@ Ships with M0, because retrofitting it is how projects stay solo forever:
 
 ## 8. Repo metadata
 
-- **Description**: `Train together, not alone. Collaborative indoor cycling: structured workouts, FTMS trainer control, shared ~~rooms~~ with live metrics, voice, camera and a synced jukebox.` **Diverged 2026-09-23 (#2461, ADR-0058)**: "crews" where this says rooms.
+- **Description**: `Train together, not alone. Collaborative indoor cycling: structured workouts, FTMS trainer control, shared ~~rooms~~ with live metrics, voice, camera and a synced jukebox.` **Diverged 2026-09-23 (#2552, ADR-0058)**: the description reads `Train together, not alone. Collaborative indoor cycling: structured workouts, FTMS trainer control, crews with voice channels, live metrics, camera and a synced jukebox.`
 - **Topics**: `cycling`, `indoor-training`, `ftms`, `bluetooth`, `web-bluetooth`, `smart-trainer`, `webrtc`, `livekit`, `sveltekit`, `golang`, `jukebox`
 
 ## 9. Open questions (the ones that remain)

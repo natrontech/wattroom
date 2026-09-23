@@ -30,8 +30,8 @@ On Windows/WSL, `make infra` can fail with `Ports are not available … bind: An
 ## Repo layout
 
 ```
-server/                 Go: API, room hub, embedded SPA  (stdlib-first, no framework)
-  internal/hub/         goroutine-per-room live state
+server/                 Go: API, live hub, embedded SPA  (stdlib-first, no framework)
+  internal/hub/         goroutine-per-voice-channel live state
   internal/protocol/    WS message types — SOURCE OF TRUTH for the protocol
 web/                    SvelteKit SPA (Svelte 5 runes, Tailwind v4, adapter-static)
   src/lib/protocol.ts   GENERATED from Go — never edit by hand (make protocol)
@@ -45,7 +45,7 @@ docs/                   ARCHITECTURE, RESEARCH, decisions/ (ADRs)
 - **Web style**: Svelte 5 runes, TypeScript, Tailwind utility classes (no component library — this app is bespoke visualization). Two accents, distinct jobs ([ADR-0005](docs/decisions/0005-synthwave-visual-identity.md)): the magenta `--color-watt` is reserved for **live data** and is the only thing that glows; the violet `--color-neon` is structural chrome and never glows.
 - **Design decisions**: anything that changes architecture, protocol semantics, dependencies, or product behavior gets a short ADR in `docs/decisions/` (copy `0000-template.md`) in the same PR.
 - **Commits**: [conventional commits](https://www.conventionalcommits.org) (`feat:`, `fix:`, `docs:`, `chore:`…). Squash-merged PRs, so the PR title follows the same convention.
-- **Privacy is architecture**: live metrics never leave the room, AV is never recorded, rides are private by default. PRs that would loosen this are rejected regardless of feature value.
+- **Privacy is architecture**: live metrics never leave the session, AV is never recorded, rides are private by default. PRs that would loosen this are rejected regardless of feature value.
 - **Licensing**: this repo is AGPL-3.0. Auuki (also AGPL) may be *read* as an FTMS reference, but never copy its code — see the license note in WATTROOM.md.
 
 ## Testing

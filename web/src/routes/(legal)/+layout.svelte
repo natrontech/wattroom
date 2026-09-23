@@ -30,7 +30,7 @@
 {#if account.me}
 	<!-- Signed in, the app's own shell frames these pages (#1859): the
 	     sidebar stays, the page column is the shell's, and there is no
-	     second logo or "to the rooms" to find. -->
+	     second logo or "to the app" to find. -->
 	<main class="page">
 		<div class="max-w-2xl">
 			{@render children()}
@@ -56,7 +56,7 @@
 		>
 			<header class="flex items-center justify-between">
 				<a href="/" aria-label="WattRoom home"><Logo size={28} wordmark /></a>
-				<a href="/home" class="btn-link text-xs">to the rooms</a>
+				<a href="/home" class="btn-link text-xs">to the app</a>
 			</header>
 
 			<div class="mt-10">

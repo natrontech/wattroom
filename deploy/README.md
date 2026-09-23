@@ -47,8 +47,8 @@ rolls releases out with its own timer.
 If you are self-hosting, the three lines above are a complete deploy. Automate
 them wherever your other services are automated, and keep two properties:
 never restart into a ride (`wattroom_room_riding` on `wattroom:9091/metrics`
-tells you — it counts riders with a live sample, not everyone holding a room
-socket), and take a dump first, because migrations run at boot and are
+tells you — it counts riders with a live sample, not everyone holding a voice
+channel's socket), and take a dump first, because migrations run at boot and are
 forward-only.
 
 That gauge was absent from the endpoint in **2026.09.118** and **2026.09.119**

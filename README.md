@@ -19,7 +19,7 @@ built by [Natron](https://natron.io)
 
 ⭐ **Like the idea? [Star the repo](https://github.com/natrontech/wattroom/stargazers)** — it helps other pain-cave dwellers find it.
 
-<img src="docs/assets/room-live.png" alt="A live WattRoom session: six riders on a threshold block, each rider's watts, w/kg and execution score on one dashboard next to the interval timeline and the room's chat" width="100%" />
+<img src="docs/assets/room-live.png" alt="A live WattRoom session: six riders on a threshold block, each rider's watts, w/kg and execution score on one dashboard next to the interval timeline and the chat" width="100%" />
 
 <sub>Six riders, one timeline. Every target scales to the rider's own FTP, so the crew rides together whatever their numbers are.</sub>
 
@@ -28,17 +28,17 @@ built by [Natron](https://natron.io)
 ## Why
 
 Indoor training is boring alone. Zwift fixes that with a game world; WattRoom
-fixes it with **presence** — you hop into a room with your training buddies,
+fixes it with **presence** — you hop into your crew's voice channel with your training buddies,
 everyone rides the same workout scaled to their own FTP, you talk, you see each
 other, you share music. A group ride for pain caves.
 
 ## What's inside
 
-|                                                                                            |                                                                                          |
-| ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
-| 🚴 **Rooms** — live watts, HR and cadence on one dashboard, voice & camera one tap away    | 📈 **Structured workouts** — curated library + editor, precise ERG control over BLE FTMS |
-| 🎮 **Seven game modes** — sprint klaxons, eliminations, Watt Golf, Backyard Ramp, …        | 🎵 **Shared jukebox** — one synced YouTube soundtrack per room                           |
-| 🏅 **Rides that count** — every session saved, `.fit` export, Strava upload, XP & trophies | 🔒 **Private by default** — metrics room-scoped, AV never recorded                       |
+|                                                                                                                               |                                                                                          |
+| ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 🚴 **Crews** — text and voice channels, live watts, HR and cadence on one dashboard in a session, voice & camera one tap away | 📈 **Structured workouts** — curated library + editor, precise ERG control over BLE FTMS |
+| 🎮 **Seven game modes** — sprint klaxons, eliminations, Watt Golf, Backyard Ramp, …                                           | 🎵 **Shared jukebox** — one synced YouTube soundtrack per voice channel                  |
+| 🏅 **Rides that count** — every session saved, `.fit` export, Strava upload, XP & trophies                                    | 🔒 **Private by default** — metrics stay in the session, AV never recorded               |
 
 ## Screens
 
@@ -75,13 +75,13 @@ A smart trainer speaking **BLE FTMS** (pre-FTMS Wahoo units are backlog, #4), ta
 from the browser via Web Bluetooth — which is Chromium-only: **Chrome/Edge on
 desktop and Android**. No iOS training path (Safari won't implement Web
 Bluetooth — a [researched decision](docs/decisions/0004-chrome-first-with-native-escape-hatch.md),
-not an oversight); the room itself opens in any browser, with the
+not an oversight); a crew's channels open in any browser, with the
 affordances that need a trainer gated off rather than a separate read-only
 page.
 
 ## Stack
 
-Go server (in-memory room hub, one goroutine per room) · SvelteKit SPA ·
+Go server (in-memory live hub, one goroutine per voice channel) · SvelteKit SPA ·
 PostgreSQL · self-hosted LiveKit · single binary with embedded frontend,
 deployed as one compose stack on a single VM. Every product and architecture
 decision is recorded in [WATTROOM.md](WATTROOM.md) and
