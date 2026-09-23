@@ -6,7 +6,6 @@ import {
 	crewPlaces,
 	dmsCurrent,
 	pages,
-	yourPages,
 } from './pages';
 
 describe('activeHref', () => {
@@ -30,6 +29,9 @@ describe('activeHref', () => {
 	it('keeps Home lit on the crew directory and the retired /rooms stub', () => {
 		expect(activeHref('/crews/directory')).toBe('/home');
 		expect(activeHref('/rooms')).toBe('/home');
+		// Your rider page is Home's level tile opened; the name card that lit
+		// for it goes to You now (#2581).
+		expect(activeHref('/u/me')).toBe('/home');
 	});
 
 	// The sidebar draws the messages tree's own rows — a thread's row for
@@ -118,7 +120,7 @@ describe('a crew in the sidebar (#2447)', () => {
 	});
 });
 
-describe('which crew the column is in (#2570)', () => {
+describe('which crew the column is in (#2581)', () => {
 	const crews = [{ id: 'c1' }, { id: 'c2' }];
 
 	it('is the crew a path stands in, whatever was chosen', () => {
@@ -131,25 +133,19 @@ describe('which crew the column is in (#2570)', () => {
 		expect(columnCrew('/crews/directory', crews, 'c1')).toBeNull();
 	});
 
-	// The YOU section lists these in a crew's column, so they keep it: they
-	// used to switch to You and take the crew's channels away.
-	it('keeps the chosen crew on your other pages', () => {
+	// Only You lists them, so only You can light their row (#2581 took the
+	// YOU section back out of a crew's column).
+	it('is You on your other pages too', () => {
 		for (const path of ['/workouts', '/ride', '/history', '/music', '/friends'])
-			expect(columnCrew(path, crews, 'c1')?.id, path).toBe('c1');
+			expect(columnCrew(path, crews, 'c1'), path).toBeNull();
+	});
+
+	it('keeps the chosen crew anywhere else', () => {
 		expect(columnCrew('/settings/profile', crews, 'c1')?.id).toBe('c1');
 	});
 
 	it('is You when You was chosen', () => {
 		expect(columnCrew('/workouts', crews, 'you')).toBeNull();
 		expect(columnCrew('/workouts', crews, null)).toBeNull();
-	});
-
-	it('lists every destination but Home under YOU', () => {
-		expect(yourPages.map((p) => p.label)).toEqual([
-			'Workouts',
-			'Rides',
-			'Music',
-			'Friends',
-		]);
 	});
 });
