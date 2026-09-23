@@ -12,32 +12,41 @@ import (
 )
 
 const exportUserRecaps = `-- name: ExportUserRecaps :many
-select s.workout, s.started_at, s.ended_at, r.name as room_name, r.slug as room_slug,
+select s.workout, s.started_at, s.ended_at,
+       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
+       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug,
        (entry ->> 'from')::bigint as joined_at,
        (entry ->> 'to')::bigint as left_at,
        (entry ->> 'rode')::boolean as rode
 from session_recaps s
-join rooms r on r.id = s.room_id
+left join channels ch on ch.id = s.channel_id
+left join crews cw on cw.id = s.crew_id
+left join rooms rm on rm.id = s.room_id
 cross join lateral jsonb_array_elements(s.riders) entry
 where entry ->> 'id' = $1::text
 order by s.ended_at
 `
 
 type ExportUserRecapsRow struct {
-	Workout   string
-	StartedAt pgtype.Timestamptz
-	EndedAt   pgtype.Timestamptz
-	RoomName  string
-	RoomSlug  string
-	JoinedAt  int64
-	LeftAt    int64
-	Rode      bool
+	Workout     string
+	StartedAt   pgtype.Timestamptz
+	EndedAt     pgtype.Timestamptz
+	CrewName    string
+	ChannelName string
+	RoomName    string
+	RoomSlug    string
+	JoinedAt    int64
+	LeftAt      int64
+	Rode        bool
 }
 
 // Export-all (#696, GDPR Art. 15 / revFADP Art. 25): the sessions this rider
 // was present for, and their own interval in each. Other riders' intervals are
 // their personal data, not the requester's, so the row is narrowed to theirs —
 // the same rule ExportUserChat follows.
+//
+// Placed by the crew and the voice channel it ran in (#2554): a session in a
+// channel no room became has no room, and an inner join dropped it.
 func (q *Queries) ExportUserRecaps(ctx context.Context, dollar_1 string) ([]ExportUserRecapsRow, error) {
 	rows, err := q.db.Query(ctx, exportUserRecaps, dollar_1)
 	if err != nil {
@@ -51,6 +60,8 @@ func (q *Queries) ExportUserRecaps(ctx context.Context, dollar_1 string) ([]Expo
 			&i.Workout,
 			&i.StartedAt,
 			&i.EndedAt,
+			&i.CrewName,
+			&i.ChannelName,
 			&i.RoomName,
 			&i.RoomSlug,
 			&i.JoinedAt,

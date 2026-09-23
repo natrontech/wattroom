@@ -79,12 +79,19 @@ delete from session_recaps
 -- was present for, and their own interval in each. Other riders' intervals are
 -- their personal data, not the requester's, so the row is narrowed to theirs —
 -- the same rule ExportUserChat follows.
-select s.workout, s.started_at, s.ended_at, r.name as room_name, r.slug as room_slug,
+--
+-- Placed by the crew and the voice channel it ran in (#2554): a session in a
+-- channel no room became has no room, and an inner join dropped it.
+select s.workout, s.started_at, s.ended_at,
+       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
+       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug,
        (entry ->> 'from')::bigint as joined_at,
        (entry ->> 'to')::bigint as left_at,
        (entry ->> 'rode')::boolean as rode
 from session_recaps s
-join rooms r on r.id = s.room_id
+left join channels ch on ch.id = s.channel_id
+left join crews cw on cw.id = s.crew_id
+left join rooms rm on rm.id = s.room_id
 cross join lateral jsonb_array_elements(s.riders) entry
 where entry ->> 'id' = $1::text
 order by s.ended_at;
