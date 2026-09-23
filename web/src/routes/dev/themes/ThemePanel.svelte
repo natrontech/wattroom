@@ -165,7 +165,7 @@
 		<div>
 			<span class="eyebrow">medal card</span>
 			<div class="mt-2">
-				<MedalCard {medal} roomName="Thursday Sufferfest" />
+				<MedalCard {medal} placeName="Thursday Sufferfest" />
 			</div>
 		</div>
 

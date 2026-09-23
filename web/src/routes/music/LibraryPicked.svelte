@@ -14,7 +14,7 @@
 	let {
 		picked,
 		address = null,
-		roomName = '',
+		channelName = '',
 		mine,
 		roomLists = null,
 		onDone,
@@ -22,7 +22,7 @@
 		picked: Track[];
 		/** The room the rider is standing in, or null: no room, nothing to queue into. */
 		address?: PlaceAddress | null;
-		roomName?: string;
+		channelName?: string;
 		mine: PlaylistStore;
 		roomLists?: PlaylistStore | null;
 		/** Called once an action is through — the page drops the ticks. */
@@ -45,7 +45,7 @@
 			return;
 		}
 		toasts.push(
-			`Queued ${res.data.queued} track${res.data.queued === 1 ? '' : 's'} in ${roomName}.` +
+			`Queued ${res.data.queued} track${res.data.queued === 1 ? '' : 's'} in ${channelName}.` +
 				(res.data.skipped ? ` ${res.data.skipped} could not be queued.` : ''),
 		);
 		onDone();
@@ -89,7 +89,7 @@
 				onclick={() => void queueSelected()}
 				disabled={bulkBusy}
 				class="btn btn-secondary btn-xs"
-				><ListPlus size={13} /> Queue in {roomName}</button
+				><ListPlus size={13} /> Queue in {channelName}</button
 			>
 		{/if}
 		{#if (roomLists?.all.length ?? 0) + mine.all.length}
@@ -101,7 +101,7 @@
 						{ value: '', label: 'Save to…' },
 						...(roomLists?.all ?? []).map((p) => ({
 							value: p.id,
-							label: `${p.name} · ${roomName}`,
+							label: `${p.name} · ${channelName}`,
 						})),
 						...mine.all.map((p) => ({ value: p.id, label: p.name })),
 					]}

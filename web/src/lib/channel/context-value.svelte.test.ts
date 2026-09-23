@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	channelContextValue,
 	type ContextDeps,
-	type RoomShellProps,
+	type ChannelShellProps,
 } from '$lib/channel/context-value.svelte';
 
 /**
@@ -18,7 +18,7 @@ import {
  * needs testing: the rest is pass-through.
  */
 
-function deps(props: RoomShellProps) {
+function deps(props: ChannelShellProps) {
 	const noop = () => {};
 	return {
 		props,
@@ -49,18 +49,18 @@ function deps(props: RoomShellProps) {
 	} as unknown as ContextDeps;
 }
 
-function shellProps(): RoomShellProps {
+function shellProps(): ChannelShellProps {
 	// `$state` only initialises a declaration, so it cannot be returned inline.
 	const props = $state({
-		children: (() => {}) as unknown as RoomShellProps['children'],
+		children: (() => {}) as unknown as ChannelShellProps['children'],
 		address: channelAddress('c', 'mfw-5', 'MFW 5'),
 		role: 'member',
-		roomName: 'MFW 5',
+		name: 'MFW 5',
 		members: [],
 		streakWeeks: 0,
 		onRole: () => {},
 		onSchedule: () => {},
-	} as RoomShellProps);
+	} as ChannelShellProps);
 	return props;
 }
 
@@ -69,17 +69,17 @@ describe('channelContextValue (#686)', () => {
 		const props = shellProps();
 		const ctx = channelContextValue(deps(props));
 
-		expect(ctx.roomName).toBe('MFW 5');
+		expect(ctx.name).toBe('MFW 5');
 		expect(ctx.members).toEqual([]);
 		expect(ctx.streakWeeks).toBe(0);
 
 		// The page re-fetches: a channel renamed, a member arriving, the
 		// crew's streak growing. Every place reads these through the context.
-		props.roomName = 'Tuesday Crew';
+		props.name = 'Tuesday Crew';
 		props.members = [{ id: 'u1', displayName: 'Mara', role: 'member' }];
 		props.streakWeeks = 3;
 
-		expect(ctx.roomName).toBe('Tuesday Crew');
+		expect(ctx.name).toBe('Tuesday Crew');
 		expect(ctx.members).toHaveLength(1);
 		expect(ctx.streakWeeks).toBe(3);
 	});

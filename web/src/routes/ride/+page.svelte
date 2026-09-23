@@ -565,7 +565,7 @@
 			total={session.total}
 			elapsed={session.elapsed}
 			{block}
-			roomName={workout.name}
+			placeName={workout.name}
 			workoutName={block?.label ?? ''}
 			sprint={session.sprint}
 			live

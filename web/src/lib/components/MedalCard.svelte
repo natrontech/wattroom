@@ -16,7 +16,7 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
 
-	let { medal, roomName = 'WattRoom' }: { medal: Medal; roomName?: string } =
+	let { medal, placeName = 'WattRoom' }: { medal: Medal; placeName?: string } =
 		$props();
 
 	const uid = $props.id();
@@ -117,7 +117,7 @@
 		<p class="font-display mt-6 text-2xl font-bold">{medal.rider}</p>
 
 		<div class="mt-auto">
-			<p class="text-sm">{roomName}</p>
+			<p class="text-sm">{placeName}</p>
 			<p class="text-muted text-xs">Sweet Spot 2×20 · 25 Aug 2026</p>
 			<p class="text-muted mt-3 font-mono text-[11px] tabular-nums">
 				{medal.kj} kJ{#if medal.xp !== undefined}

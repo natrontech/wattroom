@@ -32,7 +32,7 @@
 		ftp,
 		execution,
 		medal,
-		roomName = 'WattRoom',
+		placeName = 'WattRoom',
 		riders,
 		actions,
 	}: {
@@ -43,7 +43,7 @@
 		/** Absent when nothing scorable was ridden: shown as a dash, no bonus (#1454). */
 		execution?: number;
 		medal?: Medal;
-		roomName?: string;
+		placeName?: string;
 		/**
 		 * Who rode it with you (#1559): the room's roster at the close. Absent
 		 * on a solo ride, and the card adapts rather than forking — solo and
@@ -291,7 +291,7 @@
 			<div>
 				<h2 class="eyebrow">your medal</h2>
 				<div class="mt-3">
-					<MedalCard {medal} {roomName} />
+					<MedalCard {medal} {placeName} />
 				</div>
 				{#if actions}
 					<div class="mt-3">{@render actions()}</div>

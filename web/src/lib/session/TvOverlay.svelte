@@ -25,7 +25,7 @@
 		total = 0,
 		elapsed = 0,
 		block,
-		roomName,
+		placeName,
 		code = '',
 		live = false,
 		workoutName = '',
@@ -40,7 +40,7 @@
 		total?: number;
 		elapsed?: number;
 		block: Block | null;
-		roomName: string;
+		placeName: string;
 		code?: string;
 		/** The session is running — TvMode draws live numbers rather than a lounge. */
 		live?: boolean;
@@ -118,7 +118,7 @@
 		{total}
 		{elapsed}
 		{block}
-		{roomName}
+		{placeName}
 		{code}
 		{live}
 		{workoutName}

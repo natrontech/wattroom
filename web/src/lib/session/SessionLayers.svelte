@@ -37,7 +37,7 @@
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import ChannelStatus from '$lib/channel/ChannelStatus.svelte';
 	import type { channelConnection } from '$lib/channel/connection.svelte';
-	import type { RoomShellProps } from '$lib/channel/context-value.svelte';
+	import type { ChannelShellProps } from '$lib/channel/context-value.svelte';
 	import type { createRiders } from '$lib/channel/riders.svelte';
 	import type { Phase } from '$lib/channel/types';
 	import SessionPicker from '$lib/session/SessionPicker.svelte';
@@ -56,7 +56,7 @@
 		shared,
 		segments,
 		phase,
-		roomName,
+		placeName,
 		code,
 		onSchedule,
 	}: {
@@ -66,9 +66,9 @@
 		shared: SessionState | undefined;
 		segments: Segment[];
 		phase: Phase;
-		roomName: string;
+		placeName: string;
 		code?: string;
-		onSchedule: RoomShellProps['onSchedule'];
+		onSchedule: ChannelShellProps['onSchedule'];
 	} = $props();
 
 	const live = $derived(connection.live);
@@ -131,7 +131,7 @@
 		total={shared?.totalSeconds ?? 0}
 		elapsed={shared?.elapsed ?? 0}
 		block={roster.block}
-		{roomName}
+		{placeName}
 		{code}
 		live={phase === 'live'}
 		workoutName={shared?.workoutName ?? ''}
@@ -192,12 +192,12 @@
 		onclose={() => summary.dismiss()}
 	>
 		<SessionSummary
-			subtitle="{roomName} · {shared.workoutName} · {new Date().toLocaleDateString()}"
+			subtitle="{placeName} · {shared.workoutName} · {new Date().toLocaleDateString()}"
 			samples={recording.samples}
 			ftp={you.ftp}
 			execution={you.execution}
 			medal={summary.medal}
-			{roomName}
+			{placeName}
 			{riders}
 		>
 			{#snippet actions()}

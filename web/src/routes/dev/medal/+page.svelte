@@ -13,7 +13,7 @@
 
 	<div class="mt-8 grid gap-6 sm:grid-cols-2">
 		{#each medals as medal (medal.name)}
-			<MedalCard {medal} roomName={ROOM_NAME} />
+			<MedalCard {medal} placeName={ROOM_NAME} />
 		{/each}
 	</div>
 </main>

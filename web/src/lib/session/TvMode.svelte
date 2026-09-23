@@ -13,7 +13,7 @@
 		total,
 		elapsed,
 		block,
-		roomName = '',
+		placeName = '',
 		workoutName = '',
 		live = true,
 		code = '',
@@ -23,7 +23,7 @@
 		total: number;
 		elapsed: number;
 		block: import('$lib/workout/block').Block | null;
-		roomName?: string;
+		placeName?: string;
 		workoutName?: string;
 		/** A session is running — the HUD only exists then (#125). */
 		live?: boolean;
@@ -48,7 +48,7 @@
 		     ADR-0005) — the TV shows who is here and how to join. -->
 		<div class="flex flex-1 flex-col items-center justify-center text-center">
 			<h1 class="font-display text-[6vh] leading-none font-bold">
-				{roomName}
+				{placeName}
 			</h1>
 			<p class="text-muted mt-[2vh] text-[2.4vh]">
 				{riders.length
@@ -72,7 +72,7 @@
 	{:else}
 		<header class="flex items-baseline gap-[2vw]">
 			<h1 class="font-display text-[3.4vh] leading-none font-bold">
-				{roomName}
+				{placeName}
 			</h1>
 			<span class="text-muted text-[2.2vh]">{workoutName}</span>
 			<span

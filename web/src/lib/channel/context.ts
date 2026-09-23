@@ -31,7 +31,7 @@ export interface ChannelStageSource extends StageSource {
 export interface ChannelContext {
 	/** Where the shell stands, and every path that follows (#2449). */
 	readonly address: PlaceAddress;
-	readonly roomName: string;
+	readonly name: string;
 	/** The crew's join code (#1236); '' for a non-member. */
 	readonly code: string;
 

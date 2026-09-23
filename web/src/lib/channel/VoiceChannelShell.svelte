@@ -139,7 +139,7 @@
 		<ChannelShell
 			address={channelAddress(crew.id, channel.id, channel.name)}
 			role={liveRoleOf(crew.role)}
-			roomName={channel.name}
+			name={channel.name}
 			code={crew.code ?? ''}
 			cheers={crew.cheers}
 			soundPack={channel.soundPack ?? 'base'}

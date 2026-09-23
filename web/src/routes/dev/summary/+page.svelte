@@ -188,7 +188,7 @@
 		<div>
 			<h2 class="eyebrow">your medal</h2>
 			<div class="mt-3">
-				<MedalCard {medal} roomName={ROOM_NAME} />
+				<MedalCard {medal} placeName={ROOM_NAME} />
 			</div>
 			<div class="border-muted/15 mt-3 rounded-lg border p-4">
 				<label class="flex items-start gap-3">

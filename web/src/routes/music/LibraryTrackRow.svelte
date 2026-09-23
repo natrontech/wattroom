@@ -21,7 +21,7 @@
 		editing = false,
 		picked = false,
 		owned = false,
-		roomName = null,
+		channelName = null,
 		menu,
 		onPick,
 		onPicked,
@@ -39,7 +39,7 @@
 		/** Whether it is the rider's own upload — the only kind they may change. */
 		owned?: boolean;
 		/** The room the rider is standing in, or null: no room, no queueing. */
-		roomName?: string | null;
+		channelName?: string | null;
 		/** This row's context menu, built by the page that owns the verbs. */
 		menu: () => MenuEntry[];
 		/** Stand at one of the shelf's labels. */
@@ -174,11 +174,11 @@
 			<!-- Capability gating again (ux.md): with no room open there
 					     is nowhere to queue, so the button is not drawn — the
 					     line under the list says why. -->
-			{#if roomName}
+			{#if channelName}
 				<button
 					onclick={onQueue}
 					aria-label="Queue {track.title}"
-					title="Queue in {roomName}"
+					title="Queue in {channelName}"
 					class="btn btn-secondary btn-xs shrink-0"
 					><ListPlus size={13} /></button
 				>

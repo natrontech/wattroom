@@ -7,7 +7,7 @@ import { play } from '$lib/sound/cues';
 export function announcePoke(
 	poke: Poke | null | undefined,
 	key: string,
-	roomName: string,
+	channelName: string,
 	href: string,
 ): void {
 	if (!poke?.fromId || !poke.from || !poke.at) return;
@@ -16,7 +16,7 @@ export function announcePoke(
 	// play() owns the receiver's cue fader; notify.push() owns both browser
 	// permission and the hidden-tab gate. A poke bypasses neither.
 	play('poke');
-	notify.push(poke.from, `Poked you in ${roomName}`, tag, {
+	notify.push(poke.from, `Poked you in ${channelName}`, tag, {
 		href,
 	});
 }

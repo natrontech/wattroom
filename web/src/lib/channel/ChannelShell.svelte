@@ -21,13 +21,13 @@
 	import { setChannelContext } from '$lib/channel/context';
 	import {
 		channelContextValue,
-		type RoomShellProps,
+		type ChannelShellProps,
 	} from '$lib/channel/context-value.svelte';
 	import { readNotes, shouldRejoinVoice, tabId } from '$lib/channel/rejoin';
 	import { stageSlot } from '$lib/channel/stage-slot.svelte';
 	import { modals } from '$lib/modals.svelte';
 
-	let props: RoomShellProps = $props();
+	let props: ChannelShellProps = $props();
 
 	// #173: the connection outlives this page — you stay in the room while
 	// you browse. Leaving is the rail's explicit button, never unmount.
@@ -294,7 +294,7 @@
 	{shared}
 	{segments}
 	{phase}
-	roomName={props.roomName}
+	placeName={props.name}
 	code={props.code}
 	onSchedule={props.onSchedule}
 />

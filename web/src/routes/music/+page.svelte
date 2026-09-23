@@ -162,7 +162,7 @@
 	// (#173), so browsing the shelf does not leave the room. Queuing anywhere
 	// else would need a room picker, and a rider in one room wants that one.
 	const room = $derived(channelConnection.current);
-	const roomName = $derived(room?.address.name ?? '');
+	const channelName = $derived(room?.address.name ?? '');
 
 	// Save to a playlist (#1427): the rider's own lists always, the room's
 	// when they are standing in one. One line per list in the menu.
@@ -224,7 +224,7 @@
 		const entries: MenuEntry[] = [];
 		if (room)
 			entries.push({
-				label: `Queue in ${roomName}`,
+				label: `Queue in ${channelName}`,
 				icon: ListPlus,
 				onSelect: () => queue(track),
 			});
@@ -232,7 +232,7 @@
 			...(roomLists?.all ?? []).map((p) => ({
 				store: roomLists!,
 				p,
-				hint: roomName,
+				hint: channelName,
 			})),
 			...mine.all.map((p) => ({ store: mine, p, hint: 'yours' })),
 		];
@@ -303,7 +303,7 @@
 	<LibraryPicked
 		{picked}
 		address={room?.address}
-		{roomName}
+		{channelName}
 		{mine}
 		{roomLists}
 		onDone={() => selected.clear()}
@@ -422,7 +422,7 @@
 						editing={editing === track.id}
 						picked={selected.has(track.id)}
 						owned={owned(track)}
-						roomName={room ? roomName : null}
+						channelName={room ? channelName : null}
 						menu={() => menu(track)}
 						onPick={pick}
 						onPicked={(on) =>

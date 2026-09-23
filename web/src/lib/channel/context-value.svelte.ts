@@ -32,13 +32,13 @@ export interface AdminMember {
 }
 
 /** ChannelShell's props. Named here because the context is built from them. */
-export interface RoomShellProps {
+export interface ChannelShellProps {
 	/** The place standing in the content column. */
 	children: import('svelte').Snippet;
 	/** Where the shell stands, and every path that follows (#2449). */
 	address: PlaceAddress;
 	role: string;
-	roomName: string;
+	name: string;
 	/** The room's reaction palette (#223); absent = SidePanel's base set. */
 	cheers?: string[];
 	/** The crew's join code (#1236), for the TV's idle screen. */
@@ -68,7 +68,7 @@ type Roster = ReturnType<typeof createRiders>;
  */
 export interface ContextDeps {
 	/** Whole and reactive — see the note on this module. */
-	props: RoomShellProps;
+	props: ChannelShellProps;
 	/** Owns live, av, ride and profile; the context reads all four through it. */
 	connection: Connection;
 	roster: Roster;
@@ -101,8 +101,8 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 		get address() {
 			return props.address;
 		},
-		get roomName() {
-			return props.roomName;
+		get name() {
+			return props.name;
 		},
 		get code() {
 			return props.code ?? '';
