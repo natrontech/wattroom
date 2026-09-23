@@ -27,7 +27,7 @@ interface RiderDeps {
 }
 
 /**
- * The room's riders as the view model the places render (#39's design, made
+ * The channel's riders as the view model the places render (#39's design, made
  * real): one rider shape fed by live ticks, plus you and the block you are
  * in. Lifted out of ChannelShell (code-quality.md's ceiling); behaviour
  * unchanged. Called during component init — the $derived inside needs the

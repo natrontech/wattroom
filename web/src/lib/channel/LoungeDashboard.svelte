@@ -1,5 +1,5 @@
 <script lang="ts">
-	// The room's dashboard, when nothing is running: what this room is
+	// The crew's dashboard, when nothing is running: what this crew is
 	// adding up to and the three things you do to it. It lives on the
 	// Lounge rather than a sixth place — Discord's server home IS its first
 	// channel. Its own component (size, code-quality.md): the Lounge page is
@@ -28,7 +28,7 @@
 	{/if}
 
 	<div class="mt-4 flex flex-wrap items-center gap-2">
-		<!-- The room's home holds its action (#1332, ADR-0020 amended): a
+		<!-- The channel's home holds its action (#1332, ADR-0020 amended): a
 		     coach starts the session here, with the controls Training has,
 		     drawn once; a rider joins one that is running — on Training,
 		     where the numbers are. -->

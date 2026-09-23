@@ -10,7 +10,7 @@ export interface StageSource {
 
 /**
  * Your pick if it is still live, else the jukebox video, else the newest
- * share, else nothing. The video leads: it is the thing the whole room is
+ * share, else nothing. The video leads: it is the thing everyone is
  * watching together, and it must never end up as a window pasted over the
  * cam grid (#316). Cameras never claim the stage on their own — the rider
  * tiles already show them, and a face jumping onto the big surface when a
@@ -48,7 +48,7 @@ export function sourceLabel(
  * Which picture the stage is showing: the source plus the generation of its
  * track. Zoom belongs to a picture, so this is what the stage resets to fit
  * on — another source, or the same sharer's screen back on a fresh track
- * (#523). Nothing else may reset it: the room rebuilds the source objects on
+ * (#523). Nothing else may reset it: the shell rebuilds the source objects on
  * every tick, and a reset keyed on those pulled a reading rider back to 1x
  * half a second after they zoomed in.
  */

@@ -12,7 +12,7 @@ describe('riderOf (#293)', () => {
 
 	it('treats a nonce-less identity as its own rider', () => {
 		// The server-to-server admin identity, and any pre-#293 connection
-		// still in the room after a deploy.
+		// still in the call after a deploy.
 		expect(riderOf(jan)).toBe(jan);
 	});
 });

@@ -5,7 +5,7 @@
  * Pressing Away is optimistic — local state first, message second — so the
  * tick ALREADY IN FLIGHT still carries the old value. Applying it ran the
  * come-back branch a fifth of a second later: the mix unmuted and the mic
- * re-opened itself, and the button read as doing nothing while the room went
+ * re-opened itself, and the button read as doing nothing while the call went
  * on hearing the rider.
  *
  * Pure, and its own module, because the effect that calls it lives inside a

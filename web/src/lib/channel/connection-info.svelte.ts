@@ -1,5 +1,5 @@
 /**
- * Whose connection the room is being asked about (#2131).
+ * Whose connection is being asked about (#2131).
  *
  * A module store and one host in the root layout, the shape `confirm` and the
  * context menu already use: the entry is on `personMenu`, so every surface

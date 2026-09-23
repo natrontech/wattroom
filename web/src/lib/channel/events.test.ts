@@ -132,7 +132,7 @@ describe('presence lines (#984)', () => {
  * server instead of printing junk. The cost is that a verb nobody wrote a case
  * for is indistinguishable from one this client is too old to know: nothing
  * fails, the line simply never appears. That is how `restored` was broadcast
- * to every room and thrown away by every client (#1068).
+ * to everyone and thrown away by every client (#1068).
  *
  * This list is the server's, kept beside `protocol.go`'s ChannelEvent comment.
  * Adding a verb there without a case here fails now, rather than going quiet.
@@ -193,9 +193,9 @@ describe('every verb the server sends renders', () => {
 	});
 
 	it('names a game that ended with nobody to name (#2235)', () => {
-		// A collective ramp ends on the room average falling off the line, so
+		// A collective ramp ends on the group's average falling off the line, so
 		// it builds no podium — and used to leave the timeline silent about a
-		// game the whole room had just ridden.
+		// game the whole group had just ridden.
 		expect(
 			eventText({
 				id: 'g2',
@@ -219,7 +219,7 @@ describe('every verb the server sends renders', () => {
 	});
 });
 
-// A DM that arrived while the rider was on the bike (#1743): the room's own
+// A DM that arrived while the rider was on the bike (#1743): the channel's own
 // wording for this client's own line, and the sender without the words.
 describe('a DM that arrived mid-ride', () => {
 	it('names the sender, and carries no field the words could ride in', () => {

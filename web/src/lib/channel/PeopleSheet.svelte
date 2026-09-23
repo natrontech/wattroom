@@ -4,7 +4,7 @@
 	import { focusTrap } from '$lib/components/focus-trap';
 	import { countModal } from '$lib/modals.svelte';
 
-	// The panel, summoned (#219, #504, #686). Below xl the room has no people
+	// The panel, summoned (#219, #504, #686). Below xl the channel has no people
 	// column, so the same panel arrives as a drawer instead — who is here and
 	// the deck.
 	//

@@ -3,11 +3,11 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * The room's stacking order (#483). The jukebox player is ONE fixed box that
- * flies to whatever seat the room offers, so its layer is not a component's
- * private business: it decides what the rider can still reach while a video
- * is on the stage. Below xl the side panel is a sheet, and a sheet drawn
- * UNDER the player left a laptop-width room with no transport, no people and
+ * The voice channel's stacking order (#483). The jukebox player is ONE fixed
+ * box that flies to whatever seat the page offers, so its layer is not a
+ * component's private business: it decides what the rider can still reach
+ * while a video is on the stage. Below xl the side panel is a sheet, and a sheet drawn
+ * UNDER the player left a laptop-width page with no transport, no people and
  * no chat — the video sat on all three.
  *
  * The rule, from the dock's own comment: RMF forbids OUR chrome over the
@@ -24,7 +24,7 @@ function layer(file: string, pattern: RegExp): number {
 	return Number(matches[0][1]);
 }
 
-describe('room stacking (#483)', () => {
+describe('channel stacking (#483)', () => {
 	const seatedPlayer = layer(
 		'lib/channel/JukeboxDock.svelte',
 		/\? 'z-\[(\d+)\]'/,
@@ -77,7 +77,7 @@ describe('room stacking (#483)', () => {
 	it('opens a clicked picture over the sheet that sent it', () => {
 		// The viewer is opened from a chat line (#510), and below xl that chat
 		// IS the sheet — a picture drawn under it would be invisible, with the
-		// room frozen behind a backdrop nobody can see to dismiss.
+		// page frozen behind a backdrop nobody can see to dismiss.
 		const imageViewer = layer(
 			'lib/chat/ImageViewer.svelte',
 			/cave bg-paper\/95 fixed inset-0 z-\[(\d+)\]/,

@@ -5,12 +5,12 @@ import type { ChannelEvent } from '$lib/protocol';
 
 /**
  * What a voice channel says happened in it (#321): the lines under the
- * lounge. Events are ephemeral (ADR-0019) and carry no reactions — they are
+ * lounge. Events are ephemeral (ADR-0022) and carry no reactions — they are
  * quieter than a message by design, Discord's join/leave shape.
  */
 
 /**
- * The room's own wording for one event. Vocabulary is docs/SPEC.md's glossary
+ * The channel's own wording for one event. Vocabulary is docs/SPEC.md's glossary
  * — a track is a track on every surface — and the title is the string the
  * dock shows, so both name the same thing. An unknown verb renders nothing:
  * a newer server may speak about things this client has never heard of.
@@ -89,9 +89,9 @@ export function eventText(event: ChannelEvent): string {
 		case 'won':
 			return `${event.actor} won ${gameMode(event.subject ?? '')?.label ?? subject}`;
 		// The same end with nobody to name (#2235): a collective ramp ends on
-		// the room's average, not on one rider outlasting the rest, and the
+		// the group's average, not on one rider outlasting the rest, and the
 		// coach's end is the only end Team Relay has. The count is the round
-		// it reached — for a collective ramp, the score the room rode for.
+		// it reached — for a collective ramp, the score the group rode for.
 		case 'gameEnded': {
 			const mode = gameMode(event.subject ?? '')?.label ?? subject;
 			return event.count > 1

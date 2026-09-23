@@ -52,13 +52,13 @@
 		 * the person (the lounge: focus, watch a screen, ban). The tile's own
 		 * listener stops propagation, so a menu on a wrapper never fired (#824). */
 		menu?: () => MenuEntry[];
-		/** Their face, from the room's member list — the tick's roster
+		/** Their face, from the crew's member list — the tick's roster
 		 * carries names and levels, never an avatar (channel/types.ts). */
 		face?: PanelMember;
 	} = $props();
 
 	// Whether this tile has live NUMBERS to draw — not whether the rider is
-	// riding. The presence badge below asks the room that (#1016); this asks
+	// riding. The presence badge below asks the server that (#1016); this asks
 	// whether there is a reading worth rendering in this second.
 	const live = $derived(phase === 'live' && rider.watts > 0);
 	const zone = $derived(zoneOf(rider.watts, rider.ftp));
