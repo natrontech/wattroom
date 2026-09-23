@@ -8,6 +8,8 @@
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { publishHud } from '$lib/hud/feed';
 	import { toasts } from '$lib/toast.svelte';
+	import { confirm } from '$lib/confirm.svelte';
+	import { banAsk } from '$lib/crew-flows';
 	import { pickStage, sourceLabel } from '$lib/channel/stage';
 	import { createRiders } from '$lib/channel/riders.svelte';
 	import { createSessionSounds } from '$lib/session/session-sounds.svelte';
@@ -96,22 +98,15 @@
 	// the session's: the tick carries the crew's word for it (#2438).
 	const canManage = $derived(myRole === 'owner' || myRole === 'admin');
 
-	// Banning is reversible (Unban sets the role right back), so it gets an
-	// undo toast rather than a confirm dialog (errors.md) — same pattern as
-	// the Members page and settings' ban list (#666).
-	function ban(userId: string, name: string) {
-		const previousRole =
-			(props.members ?? []).find((member) => member.id === userId)?.role ??
-			'member';
-		// Said once the server took it: a refused ban used to toast "Banned"
-		// beside the refusal, with an Undo that fired a second refused call
-		// (audit 2026-09-09).
-		void Promise.resolve(props.onRole(userId, 'banned')).then((ok) => {
-			if (ok === false) return;
-			toasts.push(`Banned ${name}.`, {
-				undo: () => void props.onRole(userId, previousRole),
-			});
-		});
+	// A confirm, not an undo (#1674, #2542): lifting a ban restores plain
+	// membership and not the private channels it took, so an Undo promised a
+	// restore it could not perform. The Members page's question, word for
+	// word. Said once the server took it: a refused ban used to toast
+	// "Banned" beside the refusal (audit 2026-09-09).
+	async function ban(userId: string, name: string) {
+		if (!(await confirm(banAsk(name)))) return;
+		const ok = await props.onRole(userId, 'banned');
+		if (ok !== false) toasts.push(`Banned ${name} from the crew.`);
 	}
 	// Who may ban whom is the Members page's rule (docs/SPEC.md): the crew's
 	// owner and admins, never on the owner. Your own row drops it in
