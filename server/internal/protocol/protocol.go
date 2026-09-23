@@ -225,7 +225,7 @@ type ChatReactionCount struct {
 // other answer. Structured, not a sentence — the client owns the wording, so
 // the lounge and the dock name a track identically.
 //
-// Ephemeral by design (ADR-0019): it rides the tick like cheers and is never
+// Ephemeral by design (ADR-0022): it rides the tick like cheers and is never
 // written to the chat table. A month of "now playing" in the backlog is noise.
 type ChannelEvent struct {
 	// Unique within the voice channel, and stable across re-broadcasts: a
