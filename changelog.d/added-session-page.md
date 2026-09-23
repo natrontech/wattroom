@@ -1,1 +1,0 @@
-- A running session has its own page in its crew, `/crew/…/s/…`: the coach lands there on Start, and Home, the sidebar, a notification or a shared link open it in one click — without joining voice. A phone watching it sees the crew's numbers only while it runs; afterwards the link says the session has ended and where its recap is.

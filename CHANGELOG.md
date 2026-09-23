@@ -17,6 +17,149 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.127] - 2026-09-23
+
+### Added
+
+- Every crew has a Board and a Workouts page. The Board leads with the crew's
+  newest announcement, says which channel it was marked in, and shows the
+  crew's pins. Workouts lists what the crew has planned and what it has ridden
+  together, and "Ride it again" puts a past workout back on the schedule in
+  one of the crew's voice channels.
+- **A crew's page is its Home.** It shows what is riding right now with a Join the ride button, who is in which voice channel, the next planned session with I'm in / I'm out right there, the latest session's recap and the crew's streak. A quiet crew says where to start the first ride.
+- Every crew has a Members page: its people with their roles and medals, the
+  crew's streak and sessions this month, the weekly board when the crew keeps
+  one, your own mail and board switches, and the sessions it rode in the last
+  90 days.
+- Each crew has a Schedule page. Plan a session in one of the crew's voice channels, say whether you're in, move or cancel your own plans, start one when it's due, and copy the crew's calendar link.
+- **Crew Settings keep the channels.** A crew's owner and admins add, rename, reorder, make private and delete its text and voice channels there, name members into a private one, and set each voice channel's sounds and autoplay. The weekly board, the directory listing and the reaction palette are crew switches on the same page, and a room's own settings page is gone.
+- **Start a crew from Home.** A rider with no invite names a crew and lands in it, with a text channel and a voice channel called Lounge already there. A rider founds at most three crews; handing one on frees the slot.
+- A running session has its own page in its crew, `/crew/…/s/…`: the coach lands there on Start, and Home, the sidebar, a notification or a shared link open it in one click — without joining voice. A phone watching it sees the crew's numbers only while it runs; afterwards the link says the session has ended and where its recap is.
+- Rides auto-uploaded to Strava now carry a description: the crew you rode
+  with and a link back to it on wattroom.ch. Solo rides get the link alone;
+  other riders never appear in it.
+- A crew's text channels have their own page. Read and write a channel's chat
+  (images, reactions, edits, deletions, mentions and the announcement
+  included) without joining anything, and move from one channel to the next
+  as plain navigation.
+- Every voice channel has its own page: the stage, everyone's tiles, the deck
+  and its crew's playlists, the crew's numbers, and what just happened there —
+  with voice one tap away and the ride on its Training place.
+
+### Changed
+
+- Calendar feeds now follow crews. Each crew has its own feed link, and your own feed covers every crew you are in. The old per-room calendar links stop updating; subscribe to your crew's link instead. A crew's owner or admins can reset its link.
+- The public directory lists crews rather than rooms, and a crew admin decides whether theirs is in it. A shared crew invite link now shows the crew's name and picture in its preview.
+- The directory now lists crews rather than rooms, at /crews/directory, and each entry opens the crew's invite. Joining a crew takes you to the crew's page, and the invite says beforehand when the crew keeps a weekly board.
+- A crew now has one schedule. Any member can plan a session, and a plan can name the voice channel it will run in. Starting a planned session opens it in that channel, or asks which channel if the plan named none. Session emails now name the crew and the channel, e.g. "Thursday Crew · Pain Cave".
+- The sidebar is a crew's now: its Home and Members, then its text channels
+  with what is unread, then its voice channels with who is in them and what
+  is running. "You" is the first entry in the crew switcher and holds your own
+  pages, and leaving a channel is the button beside Away.
+- Friends see where you are as a voice channel now, not a room. When they may
+  enter that channel too, Friends, Home, your conversation and your page name
+  the crew and the channel, and "Walk in" takes them there; otherwise they say
+  "in a voice channel" or "riding elsewhere", never which. A rider's page
+  lists the crews you share instead of the rooms.
+- Home's "Around right now" shows your crews' voice channels with somebody in
+  them — who is there, and whether a session is running — and "Walk in" takes
+  you into the channel. With nobody around it points you at a voice channel
+  of your own crew, or at starting or joining one.
+- Who may stand in a room's call is now decided by its crew: owners, admins and
+  members enter an open voice channel, a private one admits admins and the
+  members named into it, and a crew ban or a crew promotion reaches sockets
+  that are already open. Rooms made from now on get their text and voice
+  channel when they are created.
+- A session starting in one of your crews, and a new line in one of its text channels, now say which crew and channel they're in. Tapping one opens the session or the channel instead of the old room, and on the desktop app you can reply to a channel's line straight from the notification.
+- An old room link still works. It opens what the room became: the crew's
+  text channel for the room and its chat, the voice channel for its ride (or
+  the session riding in it right now), and the crew's schedule, members or
+  board for those places. A saved link to the room list opens the crew
+  directory, and a link to a room that never became anything lands on Home
+  and says so.
+- The privacy policy and terms now describe crews, channels and sessions.
+  Your live numbers are visible only inside the session you ride in, a crew's
+  owner and admins moderate it, and your data export lists your crews and the
+  private channels that name you.
+- Your ride history says where each group ride happened, e.g. "with Thursday Crew in Pain Cave", and the ride page links to that crew.
+- A ride ridden in a session now remembers the crew you rode with, the voice
+  channel you were in and the session itself, and your account export says
+  which. A session in a channel that was never a room now saves its rides
+  and medals like any other.
+- A room's chat is now read over the web rather than the ride's live
+  connection. Lines, edits, deletions and reactions still appear on everyone's
+  screen as they happen, and a message you send now says so straight away if
+  it could not be delivered, instead of waiting for a reconnect.
+- A session now belongs to whoever starts it: any rider in a voice channel can open one and coach it, then hand it to someone else in the channel. Only one session runs per voice channel, and a second start says who is already coaching. The crew's owner and admins can end a session someone else left running.
+- **Rooms are gone: a crew now has text channels, voice channels and
+  sessions.** Every room became a text channel and a voice channel of the same
+  name, in the same crew and behind the same gate — open to the crew, or
+  private to the people who were in it. The room's chat is in its text
+  channel. Its call, jukebox and autoplay are in its voice channel, where any
+  member starts a session and coaches it until they hand it off. Roles, bans,
+  playlists, the schedule, the streak, medals, recaps and the weekly board
+  belong to the crew. The move never widens what anyone can see or reach: a
+  room ban is now a ban from the whole crew (an admin lifts it in one click),
+  a room owner who was not a crew admin is now a member, and you are on the
+  crew's weekly board only if you were on a room's. Old room links and
+  bookmarks open what the room became. **Calendar links are the one thing that
+  does not follow**: a room's feed stops updating, so subscribe again with the
+  link on your crew's Schedule page. Your own feed keeps working and now
+  covers every crew you are in.
+- Banning someone from a rider's tile in a voice channel now asks first, the
+  same question as the Members page, instead of offering an Undo. Lifting a
+  ban cannot give back the private channels it took, so the Undo promised
+  something it could not do.
+- Who can open your rider page, send you a friend request by id, and hear a
+  track you put on the deck now follows the channels you share with them.
+  Someone who joins your crew sees you through its open channels, and a
+  private channel you are not named into opens nothing.
+
+### Removed
+
+- Rooms are gone from the server. Everything a room did — its chat, its
+  jukebox, its schedule, its roster and its live session — now belongs to the
+  crew and its text and voice channels, and the room addresses answer nothing.
+  An old room link is looked up once, to find the crew and the channels that
+  room became. Owning a room no longer keeps you in a crew: anyone can leave,
+  or be banned, whatever rooms they once opened.
+
+### Fixed
+
+- A crew's admins can ban from a rider's tile or row in a voice channel, as
+  they already could from the Members page. The ban is never offered on the
+  crew owner's tile.
+- Banned from a crew while in one of its voice channels, you are now offered
+  the way Home. The page used to offer "Back to the crew", which led to the
+  same dead end.
+- **A crew no longer vanishes when its last other member leaves.** A crew started with "Start a crew" was deleted — channels, chat and all — the moment its only other member left, or when its owner deleted the one room opened in it. A crew with channels now stays until its owner's account goes.
+- Your data export includes everything you wrote in a crew's text channels
+  again: your messages, the reactions you left, the pictures you posted, the
+  sessions you planned or answered on a crew's Schedule, and the sessions you
+  rode in its voice channels. Since the move to crews these were missing. It
+  now also lists your notification and weekly-board choices per crew, and the
+  private channels you were named into or named someone into.
+- Starting a planned session from the Schedule no longer shows you an "is
+  starting" notice about the session you just started.
+- A voice channel's people column no longer lists crew-mates who are in
+  another of the crew's voice channels as offline. It shows them under "in
+  another channel" with the channel's name. Offline now means connected
+  nowhere.
+- Start now on a planned session starts it. It used to load the workout and
+  mark the plan started while nothing ran, so the plan disappeared from the
+  Schedule unridden. Now the countdown begins in the plan's voice channel with
+  you coaching.
+- A crew's owner and admins can ban someone straight from their line in a
+  text channel, behind the same confirm as the Members page. The crew owner's
+  lines never offer a ban.
+- A line in one of your crew's text channels no longer pops up over a
+  session you are riding. It waits in the sidebar's unread count, the same
+  way a direct message does. A session starting elsewhere still announces
+  itself.
+- Taking the crew's announcement down from a voice channel works. The button
+  above the Lounge did nothing before, and it now shows for the crew's admins
+  as well as its owner. Undo puts the notice back.
+
 ## [2026.09.126] - 2026-09-21
 
 ### Fixed
@@ -2586,7 +2729,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.126...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.127...HEAD
+[2026.09.127]: https://github.com/natrontech/wattroom/compare/2026.09.126...2026.09.127
 [2026.09.126]: https://github.com/natrontech/wattroom/compare/2026.09.125...2026.09.126
 [2026.09.125]: https://github.com/natrontech/wattroom/compare/2026.09.124...2026.09.125
 [2026.09.124]: https://github.com/natrontech/wattroom/compare/2026.09.123...2026.09.124
