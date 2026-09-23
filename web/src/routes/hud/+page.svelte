@@ -8,7 +8,7 @@
 	// The HUD (#296, ADR-0041): the rider's own numbers in a window of their
 	// own — the shell floats it over whatever else is on screen while a ride
 	// runs and WattRoom is not in front. A mirror of the riding screen through
-	// the HUD feed; it reads no sensor and joins no room.
+	// the HUD feed; it reads no sensor and joins no channel.
 	let snapshot = $state<HudSnapshot | null>(null);
 	let now = $state(Date.now());
 	$effect(() => {
@@ -85,7 +85,7 @@
 			<p class="text-danger mt-1 text-xs" data-testid="hud-fault">
 				{snapshot.fault === 'trainer'
 					? 'Trainer signal lost — reconnecting'
-					: 'Room connection lost — reconnecting'}
+					: 'Channel connection lost — reconnecting'}
 			</p>
 		{/if}
 		<p class="text-muted mt-2 text-xs tabular-nums" data-testid="hud-remaining">

@@ -1,7 +1,8 @@
 <script lang="ts">
 	// Messages is a place (#468, ADR-0020) — and ADR-0020 allows ONE list.
-	// The app sidebar already names every room and every friend, so a second
-	// column beside it repeated the same names on the same screen (#484).
+	// The app sidebar already names every channel and every conversation, so
+	// a second column beside it repeated the same names on the same screen
+	// (#484).
 	// Above md the page is the thread alone and the sidebar is the list;
 	// below md the sidebar is a drawer, so the list column stands in for it.
 	import { page } from '$app/state';

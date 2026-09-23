@@ -10,8 +10,8 @@
 <main class="page">
 	<h1 class="page-title">Friends</h1>
 	<p class="text-muted mt-1 text-sm">
-		Trade codes to see when each other are around — online, in a room, riding.
-		Friends see that, never what you're pushing.
+		Trade codes to see when each other are around — online, in a voice channel,
+		riding. Friends see that, never what you're pushing.
 	</p>
 	<FriendsPanel />
 </main>

@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
  * reason — instead of one nobody notices.
  */
 
-/** Every route a rider reaches without a room, by a fixed path. */
+/** Every route a rider reaches by a fixed path, with no id in it. */
 export const MEASURED: readonly string[] = [
 	'/home',
 	'/workouts',

@@ -138,8 +138,8 @@ test('a friend who is in a voice channel but not pedalling is not shown as ridin
 		.filter({ hasText: B });
 	await expect(chip).toBeVisible({ timeout: 15_000 });
 	// B stands in a channel A may enter, so the chip names it — crew, then
-	// channel — and walks in there (#2516), not into a room and not into the
-	// DM it falls back to for a friend somewhere unnamed.
+	// channel — and walks in there (#2516), not into the DM it falls back to
+	// for a friend somewhere unnamed.
 	const link = chip.getByRole('link');
 	await expect(link).toHaveAttribute('href', voicePath(opened));
 	await expect(link).toHaveAttribute(

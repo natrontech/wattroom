@@ -4,9 +4,9 @@
 	// notice leads because it is the thing with a clock on it; it names the
 	// channel it was marked in, which is where the conversation around it is.
 	//
-	// Sections, not a union (the room Board's argument, #2413): the notice and
-	// the pins have different owners and permissions, and the page composes
-	// them. Owns the crew's four states (errors.md); CrewPins owns the pins'.
+	// Sections, not a union (#2413's argument): the notice and the pins have
+	// different owners and permissions, and the page composes them. Owns the
+	// crew's four states (errors.md); CrewPins owns the pins'.
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
 	import { api } from '$lib/api';

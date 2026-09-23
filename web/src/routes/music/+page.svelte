@@ -1,11 +1,12 @@
 <script lang="ts">
 	// The music library (#268, ADR-0015 amended): your own uploaded tracks,
-	// heard in every room you may enter — never shared with strangers. Browse
-	// it, search it, drop MP3s on it, fix whatever the tags got wrong. Riders
-	// read "library" everywhere (#1420); the code keeps calling it the pool.
+	// heard in every voice channel you may enter — never shared with
+	// strangers. Browse it, search it, drop MP3s on it, fix whatever the tags
+	// got wrong. Riders read "library" everywhere (#1420); the code keeps
+	// calling it the pool.
 	//
 	// The rider's own playlists live here too (#1460): the library's home is
-	// where a list of its tracks gets built, room or no room.
+	// where a list of its tracks gets built, channel or no channel.
 	import { confirm } from '$lib/confirm.svelte';
 	import type { MenuEntry } from '$lib/context-menu.svelte';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -158,14 +159,16 @@
 		void load(query, false); // the last track wearing a tag takes it with it
 	}
 
-	// The room the rider is standing in: the connection outlives navigation
-	// (#173), so browsing the shelf does not leave the room. Queuing anywhere
-	// else would need a room picker, and a rider in one room wants that one.
+	// The voice channel the rider is standing in: the connection outlives
+	// navigation (#173), so browsing the shelf does not leave it. Queuing
+	// anywhere else would need a channel picker, and a rider in one voice
+	// channel wants that one.
 	const connection = $derived(channelConnection.current);
 	const channelName = $derived(connection?.address.name ?? '');
 
-	// Save to a playlist (#1427): the rider's own lists always, the room's
-	// when they are standing in one. One line per list in the menu.
+	// Save to a playlist (#1427): the rider's own lists always, the crew's
+	// when they are standing in one of its voice channels. One line per list
+	// in the menu.
 	const mine = createPlaylistStore('/api/playlists');
 	const crewLists = $derived(
 		connection ? createPlaylistStore(connection.address.playlists) : null,
@@ -217,9 +220,9 @@
 	const picked = $derived(tracks.filter((t) => selected.has(t.id)));
 
 	// Every object with more than one action gets a menu (ux.md, #465): the
-	// buttons stay, the menu is the shortcut. Queue only when there is a room
-	// to queue into, edit and delete only on your own rows — the same gating
-	// the buttons have, so nothing in the menu can fail on click.
+	// buttons stay, the menu is the shortcut. Queue only when there is a voice
+	// channel to queue into, edit and delete only on your own rows — the same
+	// gating the buttons have, so nothing in the menu can fail on click.
 	function menu(track: Track): MenuEntry[] {
 		const entries: MenuEntry[] = [];
 		if (connection)
@@ -267,7 +270,8 @@
 	<header class="flex flex-wrap items-center gap-4">
 		<h1 class="page-title">Music</h1>
 		<p class="text-muted text-xs">
-			Your own library. Everything here plays in any room you are in. 2 GB.
+			Your own library. Everything here plays in any voice channel you are in. 2
+			GB.
 		</p>
 		<label class="btn btn-primary ml-auto cursor-pointer">
 			<Upload size={14} /> Add MP3s
@@ -395,8 +399,8 @@
 						class="text-muted-dim mb-2"
 					/>{/snippet}
 				<p class="text-sm">
-					This is your library. Everything here plays in any room's jukebox,
-					with no video tile in the way.
+					This is your library. Everything here plays in any voice channel's
+					jukebox, with no video tile in the way.
 				</p>
 				{#snippet cta()}
 					<label class="btn btn-primary cursor-pointer">
@@ -436,11 +440,11 @@
 				{/each}
 			</ul>
 			{#if !connection}
-				<!-- The page promises these play in a room; with none open there
-				     is nothing to queue into, so it says how rather than drawing
-				     a button that cannot work (ux.md). -->
+				<!-- The page promises these play in a voice channel; with none
+				     open there is nothing to queue into, so it says how rather
+				     than drawing a button that cannot work (ux.md). -->
 				<p class="text-muted mt-3 text-xs">
-					Open a room to queue any of these into its jukebox.
+					Open a voice channel to queue any of these into its jukebox.
 				</p>
 			{/if}
 		{/if}

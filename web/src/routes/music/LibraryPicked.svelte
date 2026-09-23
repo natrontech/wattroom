@@ -20,7 +20,7 @@
 		onDone,
 	}: {
 		picked: Track[];
-		/** The room the rider is standing in, or null: no room, nothing to queue into. */
+		/** The voice channel the rider is standing in, or null: none, nothing to queue into. */
 		address?: PlaceAddress | null;
 		channelName?: string;
 		mine: PlaylistStore;

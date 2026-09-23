@@ -158,7 +158,7 @@ test('a long name gives way instead of pushing the row off the phone', async ({
 		.last();
 	await expect(name).toBeVisible({ timeout: 15_000 });
 
-	// Truncated, rather than a row three controls wide with no room left.
+	// Truncated, rather than a row three controls wide with no space left.
 	const cut = await name.evaluate((el) => el.scrollWidth - el.clientWidth);
 	expect(cut, 'the name is not truncated at all').toBeGreaterThan(0);
 	const remove = a.getByRole('button', { name: 'Remove' });

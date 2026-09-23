@@ -2,7 +2,7 @@
 	// Settings has an address (#1330, ADR-0020 amended: places and settings).
 	// What a rider sets once lived in five homes reached through a 16 px gear;
 	// now it is one tree with a section per route, so every part of it can be
-	// linked to from wherever it is needed — the room's Sound panel, a
+	// linked to from wherever it is needed — the voice channel's Sound panel, a
 	// suggested FTP, the first-run card.
 	import { page } from '$app/state';
 	import type { LayoutData } from './$types';

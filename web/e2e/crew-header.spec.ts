@@ -38,7 +38,7 @@ test("a crew's name is not squeezed out of its own header on a phone", async ({
 	await channels.enter(a, theirs);
 
 	const crewId = mine.crew;
-	// A name long enough to need the room it is owed.
+	// A name long enough to need the space it is owed.
 	const named = await a.evaluate(
 		([id, name]) =>
 			fetch(`/api/crews/${id}`, {

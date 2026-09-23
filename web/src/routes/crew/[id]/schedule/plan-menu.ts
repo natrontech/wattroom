@@ -25,9 +25,9 @@ export interface PlanActions {
 }
 
 /**
- * A plan row's right-click (ux.md, #2514; the room Sessions page's, #1373).
- * The row's buttons keep the primary actions; this holds all of them plus
- * the link the row has no room for, and a greyed entry names why.
+ * A plan row's right-click (ux.md, #2514; first on the old Sessions page,
+ * #1373). The row's buttons keep the primary actions; this holds all of them
+ * plus the link the row has no space for, and a greyed entry names why.
  */
 export function planEntries(act: PlanActions): MenuEntry[] {
 	// Both answers, always both (#1011): a menu that offered only the one you

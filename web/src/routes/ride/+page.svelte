@@ -122,8 +122,9 @@
 
 	async function begin(trainer: Trainer) {
 		error = null;
-		// One trainer, one rider (#521): the room now holds its BLE connection
-		// for as long as you stand in it, so a solo ride has to take it back
+		// One trainer, one rider (#521): a voice channel now holds the
+		// trainer's BLE connection for as long as you stand in it, so a solo
+		// ride has to take it back
 		// rather than open a second control channel to the same hardware. A
 		// trainer paired in the grid and then left for a simulated ride is the
 		// same conflict on this page.
@@ -151,7 +152,7 @@
 				readings: () => sensors.readings,
 				// The rider's own sprint setup (#1529): a sprint block releases
 				// the trainer to this slope, the way an armed sprint does in a
-				// room. Read per sprint, so /settings lands mid-ride.
+				// session. Read per sprint, so /settings lands mid-ride.
 				sprint: () => ({
 					grade: profile.current.sprintGrade,
 					singleSpeed: profile.current.singleSpeed,
@@ -192,7 +193,7 @@
 		buffer = undefined;
 	}
 
-	// What the ride says out loud (#1792): the cues the room plays for its
+	// What the ride says out loud (#1792): the cues a session plays for its
 	// riders — block, auto-pause, the resume count, the spiral release, a
 	// trainer fault, a sprint, the end — from the session's own state.
 	createRideSounds({
@@ -207,7 +208,7 @@
 			session.state !== 'done'
 				? session.info.segmentIndex
 				: undefined,
-		// The 3-2-1 and the go, from the room's own implementation (#1800):
+		// The 3-2-1 and the go, from the session's own implementation (#1800):
 		// seconds left while counting in, 0 once the clock runs so the `go`
 		// lands, undefined when a cancelled count-in must stay silent.
 		countdown: () =>
@@ -354,8 +355,8 @@
 	);
 
 	/**
-	 * You, in the shape the TV renders (#1632). The room's TV takes a roster and
-	 * a solo ride is a roster of one — which is the whole convergence: one TV
+	 * You, in the shape the TV renders (#1632). A session's TV takes a roster
+	 * and a solo ride is a roster of one — which is the whole convergence: one TV
 	 * screen, the tiles simply absent when nobody else is riding.
 	 */
 	const tvRider = $derived({
@@ -372,7 +373,7 @@
 		watts: session?.sample?.watts ?? 0,
 		cadence: session?.sample?.cadence ?? 0,
 		hr: session?.sample?.heartRate ?? 0,
-		// The tile greys out when the trainer goes quiet, the way a room's
+		// The tile greys out when the trainer goes quiet, the way a session's
 		// does (#2156): a hard-coded false left the TV drawing a confident 0 W
 		// through a dropout.
 		stale: signalLost,
@@ -522,7 +523,7 @@
 	{:else if session.state === 'countdown'}
 		<!-- Sound AND visual (.claude/rules/ux.md): the cue alone reaches a
 		     rider who is climbing back onto the bike, not the one still walking
-		     to it. The room's own count-in screen (ADR-0046). -->
+		     to it. A session's own count-in screen (ADR-0046). -->
 		<CountdownScreen
 			remaining={session.countdownRemaining}
 			title={workout.name}
@@ -554,7 +555,7 @@
 	{/if}
 
 	{#if session && session.state !== 'done' && tv}
-		<!-- The room's TV, riding alone (#1632, ADR-0046): the same screen at
+		<!-- A session's TV, riding alone (#1632, ADR-0046): the same screen at
 		     3 m, with the roster column absent because there is nobody in it. -->
 		<!-- A snippet is a function, so the `session &&` above does not narrow
 		     inside it (#2156). -->
@@ -571,7 +572,7 @@
 			live
 			onExit={() => (tv = false)}
 		>
-			<!-- Ride-critical status on the TV, the way the room's TV has had
+			<!-- Ride-critical status on the TV, the way a session's TV has had
 			     it since #1665 (errors.md: persistent status, never a toast).
 			     Without it a trainer drop, auto-pause, the resume count, the
 			     spiral release and the no-crash-safety warning were all

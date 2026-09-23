@@ -20,7 +20,7 @@
 	// they load, so they belong to the shell rather than to whichever screen
 	// happens to render their control. The palette reached only /profile and
 	// /dev/components before this (#329); the scheme was correct only because
-	// RoomRail imports it and the shell renders RoomRail.
+	// the rail the shell drew back then happened to import it.
 	import '$lib/palette.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
@@ -126,17 +126,17 @@
 	);
 	const gated = $derived(account.loaded && !account.me && !publicPath);
 
-	// Signing out leaves the room. The connection holds the socket, the voice
-	// channel and — since #521 — the trainer, and a signed-out session must
-	// hold none of them: the room's pages are gone, so nothing else would.
+	// Signing out leaves the voice channel. The connection holds the socket,
+	// the call and — since #521 — the trainer, and a signed-out tab must hold
+	// none of them: the channel's pages are gone, so nothing else would.
 	$effect(() => {
 		if (account.loaded && !account.me) channelConnection.leave('signedOut');
 	});
 
-	// ONE rail, owned here, on every page — the room included (#191): navigating
-	// out of a room must not swap rail instances. Only login is its own frame:
-	// the spectator view used to be the other one, and a phone stands in the
-	// framed room itself now (#412).
+	// ONE sidebar, owned here, on every page — a voice channel's included
+	// (#191): navigating out of one must not swap sidebar instances. Only login
+	// is its own frame: the spectator view used to be the other one, and a
+	// phone stands in the framed voice channel itself now (#412).
 	// Public decides whether sign-in is required; framed decides whether the
 	// shell draws (#1859). The legal, privacy and download pages are public
 	// so a stranger can read them — but a signed-in rider who follows the
@@ -219,10 +219,11 @@
 	// Below md the sidebar is a drawer (#391). It closes on navigation —
 	// leaving it open over the page you just asked for is the classic
 	// mobile-nav bug.
-	// `navDrawer` holds it, and the room shell shares it (#1625): one Escape,
-	// one layer. It used to be a local $state mirrored INTO the store, one way
-	// — so anything outside this file that closed the drawer had it reopened by
-	// the next flush, which is why a menu item could not step it aside (#2153).
+	// `navDrawer` holds it, and the voice channel's shell shares it (#1625):
+	// one Escape, one layer. It used to be a local $state mirrored INTO the
+	// store, one way — so anything outside this file that closed the drawer
+	// had it reopened by the next flush, which is why a menu item could not
+	// step it aside (#2153).
 	// Focus follows the drawer (ux.md): into its first row on open, back to
 	// the button that opened it on close, and Escape closes it.
 	let drawerBox = $state<HTMLElement | null>(null);
@@ -268,7 +269,8 @@
 	});
 
 	// The OAuth round-trip lands on "/" — pick up the stashed deep link, and
-	// with no stash, a signed-in "/" is the rooms hub (#126). One effect owns
+	// with no stash, a signed-in "/" goes Home (#126), or to the door of the
+	// crew the rider was invited to (#2144). One effect owns
 	// both so the redirect can never race the deep link (it did, twice).
 	// Exactly once per page load: goto() is async, the effect can re-run
 	// before the URL changes, and a second run with the stash already consumed
@@ -352,12 +354,12 @@
 		style={titleBar ? `padding-top: ${titleBar}px` : ''}
 	>
 		<!-- The sidebar is the app's whole navigation (ADR-0020): destinations,
-		     rooms, the places inside the room you are standing in, messages and
-		     you. Owned here so navigating out of a room does not swap instances
-		     (#191). Below md it slides in as a drawer — same instance, same
-		     order: a small window gets the shape, not a different app (#391).
-		     A PHONE is a different question and already has its answer —
-		     the room reaches a phone directly (#412), with $lib/device.svelte's
+		     the crew and its channels, messages and you. Owned here so
+		     navigating out of a voice channel does not swap instances (#191).
+		     Below md it slides in as a drawer — same instance, same order: a
+		     small window gets the shape, not a different app (#391). A PHONE
+		     is a different question and already has its answer — a voice
+		     channel reaches a phone directly (#412), with $lib/device.svelte's
 		     capability gating hiding affordances that need a trainer instead of
 		     redirecting to a separate spectator view (ADR-0020 amendment,
 		     2026-09-05). -->
@@ -422,7 +424,7 @@
 			     one AV state that can leak a private tab (#563, errors.md). -->
 			{#if channelConnection.current}
 				{@const av = channelConnection.current.av}
-				<!-- Loaded once a room is joined (#1514), like the two docks
+				<!-- Loaded once a voice channel is joined (#1514), like the two docks
 				     below: it draws nothing before one, and its chunk has no
 				     business in the closure every route pays for. -->
 				{#await import('$lib/channel/ScreenShareNotice.svelte') then { default: ScreenShareNotice }}
@@ -456,7 +458,7 @@
 		</div>
 		{#if riding}
 			<!-- The ride took the top bar, so the way back to the drawer is where
-			     a thumb already is: bottom left, mirroring the room's people
+			     a thumb already is: bottom left, mirroring the voice channel's people
 			     button bottom right. Below md only — every wider window still has
 			     the sidebar standing there (#412). -->
 			<button
@@ -473,7 +475,7 @@
 		     Threads became places instead (ADR-0020) — /messages (#468). -->
 		{#if channelConnection.current}
 			<!-- Both derive everything from the connection and draw nothing
-			     without one, so they load with the room (#1514): the jukebox
+			     without one, so they load with the voice channel (#1514): the jukebox
 			     player, the YouTube API glue and the pool deck used to ride
 			     every route's eager closure — the signed-out landing page,
 			     /history, a phone spectator. -->
@@ -497,15 +499,17 @@
 {/if}
 
 <!-- App-wide, framed or not — a toast must be able to land anywhere, and a
-     picture opens over whatever chat sent it: a room's, a DM's, a thread's. -->
+     picture opens over whatever chat sent it: a text channel's, a DM's, a
+     thread's. -->
 <VerifyEmailGate />
 
 <ImageViewer />
 <ContextMenuHost />
 <ConfirmHost />
 <!-- One rider's connection, raised from `personMenu` on any surface (#2131).
-     Here rather than in the room shell: the sidebar and the friends panel
-     draw people too, and the room it reads is the one you are standing in. -->
+     Here rather than in the voice channel's shell: the sidebar and the
+     friends panel draw people too, and the channel it reads is the one you
+     are standing in. -->
 <ConnectionInfo />
 <DevicePicker
 	devices={devicePicker.devices}
