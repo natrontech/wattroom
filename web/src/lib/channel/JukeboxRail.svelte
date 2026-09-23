@@ -26,9 +26,9 @@
 	/**
 	 * The player's home on the rail (#427). The people column holds it while
 	 * that column is on screen; below xl there IS no people column, and off
-	 * the room pages there never was one — so the rail carries the video and
-	 * the transport, and the player stops being a window the rider has to
-	 * park somewhere.
+	 * a voice channel's page there never was one — so the rail carries the
+	 * video and the transport, and the player stops being a window the rider
+	 * has to park somewhere.
 	 *
 	 * RMF: ≥200×200 (the rail is 240 px wide, so the seat is squared off
 	 * rather than 16:9), visible while media plays, nothing drawn over it —
@@ -65,7 +65,7 @@
 	}
 	// Sitting out (#989). The rail is the whole jukebox below xl, so the
 	// durable verb lives here as a button; skip-for-me stays in the column's
-	// menu, where there is room to say what it does.
+	// menu, where there is space to say what it does.
 	function stopForMe() {
 		listening.stepOut(
 			'stop',
@@ -99,9 +99,7 @@
 					class="h-1.5 w-1.5 shrink-0 rounded-full {inSync
 						? 'bg-watt glow-stroke'
 						: 'bg-muted motion-safe:animate-pulse'}"
-					title={inSync
-						? 'in sync with the room'
-						: "catching up to the room's playhead"}
+					title={inSync ? 'in sync with everyone' : 'catching up with everyone'}
 				></span>
 				<span class="sr-only">{inSync ? 'in sync' : 'catching up'}</span>
 			{/if}
@@ -165,10 +163,10 @@
 			<button
 				onclick={() => transport('skip')}
 				class="icon-btn icon-btn-sm hover:text-ink"
-				aria-label="skip for the room"
-				title="skip for the room"><SkipForward size={13} /></button
+				aria-label="skip for everyone"
+				title="skip for everyone"><SkipForward size={13} /></button
 			>
-			<!-- Past the divider it is your ears only, never the room's. -->
+			<!-- Past the divider it is your ears only, never everyone's. -->
 			<span class="bg-ink/10 mx-1 h-4 w-px shrink-0"></span>
 			{#if listening.out}
 				<button
@@ -182,7 +180,7 @@
 					onclick={stopForMe}
 					class="icon-btn icon-btn-sm hover:text-ink"
 					aria-label="stop the music for you"
-					title="Stop for you — the room keeps playing"
+					title="Stop for you — it keeps playing for everyone else"
 					><HeadphoneOff size={13} /></button
 				>
 			{/if}

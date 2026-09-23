@@ -26,7 +26,7 @@ function refuseList(id: string): string | null {
 	if (/^RD/.test(id))
 		return 'That is a YouTube mix, which never ends — open the playlist itself, or queue just the video.';
 	if (id === 'LL' || id === 'WL')
-		return 'Liked videos and Watch Later are private to your account, so the room cannot load them. Make a public playlist instead.';
+		return 'Liked videos and Watch Later are private to your account, so the jukebox cannot load them. Make a public playlist instead.';
 	return null;
 }
 
@@ -162,7 +162,7 @@ async function queuePlaylist(
 
 /**
  * The no-questions path, for a link dropped in the chat (#146) where there is
- * no room to ask. A bare playlist link is unambiguous and goes in whole; a
+ * nowhere to ask. A bare playlist link is unambiguous and goes in whole; a
  * video that merely SITS in a playlist queues as the video, because that is
  * the thing the message was about. The add box asks instead.
  */

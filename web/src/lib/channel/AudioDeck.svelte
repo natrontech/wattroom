@@ -2,7 +2,7 @@
 	import { audioSrc } from '$lib/music/pool';
 	// A pool track on the deck (#267, ADR-0015): an <audio> element chasing the
 	// same anchor the YouTube player chases, so one queue plays from two
-	// sources without the room's clock knowing the difference.
+	// sources without the shared clock knowing the difference.
 	//
 	// Its own component rather than a branch inside JukeboxDock: that file is
 	// 576 lines of iframe lifecycle — buffering states, livestreams, blocked
@@ -35,8 +35,8 @@
 	let audio = $state<HTMLAudioElement | null>(null);
 	let loaded = $state('');
 	let loadedAnchor = 0;
-	// The room hears nothing from a rider sitting out, and neither does the
-	// rider: unload rather than pause, so nothing streams to an empty chair.
+	// A rider sitting out, or away, hears none of it: unload rather than
+	// pause, so nothing streams to an empty chair.
 	const silent = $derived(listening.out || mixer.muted);
 
 	// Volume rides the mixer's music fader and the same duck every other
@@ -93,7 +93,7 @@
 		const target = playheadAt(now, serverNow());
 		playerInfo.drift = el.currentTime - target;
 		// Only clients know how long a track is — the server holds an anchor,
-		// not a timeline. A deck left playing to a room where nobody can
+		// not a timeline. A deck left playing to a channel where nobody can
 		// actually hear it runs its playhead off the end forever, because
 		// `ended` fires on playback and playback never happened. Whoever
 		// notices says the track is over, exactly as the YouTube path does.
@@ -109,7 +109,7 @@
 		}
 		if (Math.abs(el.currentTime - target) > DRIFT_SEC) el.currentTime = target;
 		// Autoplay can be refused before the rider has clicked anything; the
-		// room's existing unblock path (#1062) is what recovers it, so this
+		// page's existing unblock path (#1062) is what recovers it, so this
 		// simply does not throw.
 		if (el.paused) void el.play().catch(() => {});
 	});
@@ -136,10 +136,10 @@
 
 	// A track the server no longer has — deleted from the pool while it was on
 	// the deck (#1132) — 404s, and the element fires `error` in place of
-	// `ended`: nothing would ever say the play was over, and the whole room
-	// sat on it. Same answer the dock gives an unplayable video: say so, and
-	// report the end — the anchor makes every rider's report but the first
-	// an echo.
+	// `ended`: nothing would ever say the play was over, and the whole
+	// channel sat on it. Same answer the dock gives an unplayable video: say
+	// so, and report the end — the anchor makes every rider's report but the
+	// first an echo.
 	async function failed() {
 		const title = deck?.current?.title ?? 'That track';
 		// Gone for everyone, or this browser's own trouble (#1896)? One HEAD
@@ -153,7 +153,7 @@
 			return;
 		}
 		toasts.push(
-			`“${title}” could not be played here — the room plays on; you are back in on the next track.`,
+			`“${title}” could not be played here — it plays on for everyone else; you are back in on the next track.`,
 		);
 		const now = deck;
 		if (now?.current)
