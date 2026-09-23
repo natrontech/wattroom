@@ -17,6 +17,24 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.130] - 2026-09-23
+
+### Changed
+
+- Inside a crew, the sidebar now lists its Schedule, Workouts and Board,
+  so a crew's plans are one click away. A YOU section below the channels
+  keeps your own Workouts, Rides, Music and Friends there too, and opening
+  one no longer takes the crew's channels off the sidebar.
+
+### Fixed
+
+- A voice channel shows just the call: the crew's totals, weekly board and
+  invite link live on the crew's Home. "Plan for later" sits beside "Start
+  a session" and puts the plan on the crew's schedule in that channel. Before,
+  planning from a voice channel always failed. The crew's Home always shows
+  what's next with a "Plan a session" button, and the planner asks which
+  voice channel along with the workout and time.
+
 ## [2026.09.129] - 2026-09-23
 
 ### Removed
@@ -2756,7 +2774,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.129...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.130...HEAD
+[2026.09.130]: https://github.com/natrontech/wattroom/compare/2026.09.129...2026.09.130
 [2026.09.129]: https://github.com/natrontech/wattroom/compare/2026.09.128...2026.09.129
 [2026.09.128]: https://github.com/natrontech/wattroom/compare/2026.09.127...2026.09.128
 [2026.09.127]: https://github.com/natrontech/wattroom/compare/2026.09.126...2026.09.127
