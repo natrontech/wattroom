@@ -249,7 +249,7 @@
 	{#if channel.phase === 'lounge'}
 		<AnnouncementStrip
 			announcement={channel.announcement}
-			canClear={isOwner}
+			canClear={isOwner || channel.myRole === 'admin'}
 			onclear={() => channel.clearAnnouncement()}
 		/>
 	{/if}

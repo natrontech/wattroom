@@ -9,8 +9,8 @@
 	// crew's four states (errors.md); CrewPins owns the pins'.
 	import { page } from '$app/state';
 	import { invalidateAll } from '$app/navigation';
-	import { api } from '$lib/api';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
+	import { takeDownAnnouncement } from '$lib/announce/take-down';
 	import {
 		fetchCrewAnnouncement,
 		textChannelPath,
@@ -19,7 +19,6 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewPins from '$lib/pins/CrewPins.svelte';
 	import { presence } from '$lib/presence.svelte';
-	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -50,29 +49,15 @@
 		untrack(() => void reread());
 	});
 
-	// Undo, not a confirm (errors.md): the line is still in its channel and
-	// can be marked again — which is what Undo does.
-	async function clear() {
-		const was = announcement;
-		if (!was) return;
-		const at = `/api/channels/${was.channelId}/announcement`;
-		const res = await api(at, { method: 'DELETE' });
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		announcement = null;
-		toasts.push('Announcement taken down.', {
-			undo: async () => {
-				const back = await api(at, {
-					method: 'PUT',
-					json: { messageId: was.messageId },
-				});
-				if (back.ok) await reread();
-				else toasts.push(back.error.message, { tone: 'error' });
-			},
-		});
-	}
+	// The re-read, not a local null: taking the newest down can surface the
+	// next one from another channel.
+	const clear = () =>
+		announcement &&
+		takeDownAnnouncement(
+			announcement.channelId,
+			announcement.messageId,
+			reread,
+		);
 </script>
 
 <svelte:head>

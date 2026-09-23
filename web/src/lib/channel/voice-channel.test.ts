@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ApiResult } from '$lib/api';
 import type { CrewChannel } from '$lib/channels';
 import type { Crew, CrewMembers } from '$lib/crew';
-import type { Announcement } from '$lib/channels';
+import type { CrewAnnouncement } from '$lib/channels';
 import { liveRoleOf, voiceChannelData } from './voice-channel';
 
 const crew = {
@@ -11,7 +11,7 @@ const crew = {
 } as ApiResult<Crew>;
 const members = { ok: true, data: {} } as ApiResult<CrewMembers>;
 const none = { ok: true, data: undefined } as ApiResult<
-	Announcement | undefined
+	CrewAnnouncement | undefined
 >;
 const listing = (...channels: Partial<CrewChannel>[]) =>
 	({ ok: true, data: { channels } }) as ApiResult<{ channels: CrewChannel[] }>;

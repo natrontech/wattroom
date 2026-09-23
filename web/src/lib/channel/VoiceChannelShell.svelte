@@ -8,6 +8,7 @@
 	import { untrack, type Snippet } from 'svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import { account } from '$lib/account.svelte';
+	import { takeDownAnnouncement } from '$lib/announce/take-down';
 	import { setCrewRole } from '$lib/crew';
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
@@ -93,6 +94,15 @@
 		void load(crewId, channelId);
 		return true;
 	}
+	// The strip shows the crew's newest (ADR-0058 on 0057); it is taken down
+	// in the text channel it was marked in.
+	const clearAnnouncement = () =>
+		view.announcement &&
+		takeDownAnnouncement(
+			view.announcement.channelId,
+			view.announcement.messageId,
+			() => load(crewId, channelId),
+		);
 	// Planning is the crew's schedule (#2440, #2452), not a channel's.
 	const noPlan = () => {
 		toasts.push('Plans live on the crew’s schedule.', { tone: 'error' });
@@ -149,6 +159,7 @@
 			board={view.members?.board ?? []}
 			onSchedule={noPlan}
 			announcement={view.announcement}
+			onClearAnnouncement={() => void clearAnnouncement()}
 			onRole={setRole}
 		>
 			{@render children()}
