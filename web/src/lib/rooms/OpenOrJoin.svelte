@@ -7,7 +7,6 @@
 	import { foundCrew, joinCrew } from '$lib/crew';
 	import {
 		administersNone,
-		crewsOf,
 		foundedCount,
 		leadsWithJoining,
 	} from '$lib/nav/crews';
@@ -32,7 +31,7 @@
 		compact?: boolean;
 	} = $props();
 
-	const crews = $derived(crewsOf(presence.rooms, presence.crews));
+	const crews = $derived(presence.crews);
 	// A rider carrying an invite is asked to join that crew before founding
 	// one (#2144, #2184): the code box leads and starting a crew is the second
 	// panel. Keyed on the invite rather than on administering nothing, because

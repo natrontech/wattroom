@@ -42,11 +42,7 @@
 	// The crew's Settings are its owner's and admins' — the link is drawn
 	// only for who may follow it to a form.
 	const settingsCrew = $derived.by(() => {
-		// A room's crew by its slug; a voice channel's by the crew its page
-		// is under (#2449).
-		const crew = address.slug
-			? presence.rooms.find((r) => r.slug === address.slug)?.crew
-			: presence.crews.find((c) => address.home.startsWith(`/crew/${c.id}/`));
+		const crew = presence.crews.find((c) => c.id === address.crew);
 		return crew?.role === 'owner' || crew?.role === 'admin' ? crew : null;
 	});
 

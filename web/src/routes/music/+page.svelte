@@ -29,7 +29,6 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { presence } from '$lib/presence.svelte';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import {
 		deleteTrack,
@@ -163,13 +162,7 @@
 	// (#173), so browsing the shelf does not leave the room. Queuing anywhere
 	// else would need a room picker, and a rider in one room wants that one.
 	const room = $derived(roomConnection.current);
-	// The rail knows a room's name; the address knows a channel's.
-	const roomName = $derived(
-		room
-			? (presence.rooms.find((r) => r.slug && r.slug === room.slug)?.name ??
-					room.address.name)
-			: '',
-	);
+	const roomName = $derived(room?.address.name ?? '');
 
 	// Save to a playlist (#1427): the rider's own lists always, the room's
 	// when they are standing in one. One line per list in the menu.

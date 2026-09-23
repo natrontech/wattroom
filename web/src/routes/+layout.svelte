@@ -194,25 +194,16 @@
 		).wattroom?.hud?.(riding);
 	});
 
-	// The shell's tray (#1313): the room it can take the rider back to, and
+	// The shell's tray (#1313): the place it can take the rider back to, and
 	// the menu item coming back as a path. The CONNECTION, not the page —
-	// it holds across the room's own screens, so the way back is still
-	// offered from its settings or its calendar, and goes away with the
-	// connection rather than with the URL. The HUD speaks for no room.
-	// A room's name as the rail says it now (a rename lands); a voice
-	// channel's as its address carried it in (#2449).
-	function placeLabel(conn: { slug: string; address: { name: string } }) {
-		return (
-			(conn.slug &&
-				presence.rooms.find((room) => room.slug === conn.slug)?.name) ||
-			conn.address.name
-		);
-	}
+	// it holds across the place's own screens, so the way back is still
+	// offered from anywhere else, and goes away with the connection rather
+	// than with the URL. The HUD speaks for no place.
 	$effect(() => {
 		if (page.url.pathname === '/hud') return;
 		const conn = roomConnection.current;
 		setShellRoom(
-			conn ? { path: conn.address.home, name: placeLabel(conn) } : null,
+			conn ? { path: conn.address.home, name: conn.address.name } : null,
 		);
 	});
 	$effect(() => {
@@ -251,7 +242,7 @@
 	const sharingRoom = $derived.by(() => {
 		const conn = roomConnection.current;
 		if (!conn) return null;
-		return { home: conn.address.home, name: placeLabel(conn) };
+		return { home: conn.address.home, name: conn.address.name };
 	});
 
 	// The chat's composer owns the bottom edge, so the drawer button steps up

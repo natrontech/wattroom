@@ -12,7 +12,6 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { account } from '$lib/account.svelte';
 	import { people } from '$lib/people.svelte';
-	import { presence } from '$lib/presence.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import {
 		AWAY_MARK,
@@ -28,17 +27,11 @@
 
 	const conn = $derived(roomConnection.current);
 	const onLounge = $derived(!!conn && pathname === conn.address.home);
-	// The heading names the room it means (#1017). "with you" alone was the
+	// The heading names the place it means (#1017). "with you" alone was the
 	// clearest job in the sidebar with the weakest label: three sections list
 	// people, and this is the only one that means "right now, where you are
-	// standing". The slug is the fallback a room always has.
-	const roomName = $derived(
-		conn
-			? (conn.slug &&
-					presence.rooms.find((room) => room.slug === conn.slug)?.name) ||
-					conn.address.name
-			: '',
-	);
+	// standing".
+	const roomName = $derived(conn?.address.name ?? '');
 	const others = $derived(
 		(conn?.live.tick?.roster ?? []).filter((r) => r.id !== account.me?.id),
 	);

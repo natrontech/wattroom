@@ -32,16 +32,6 @@ import { ridePath, type PlaceAddress } from '$lib/room/address';
 
 const NO_CHAT = 'A voice channel keeps no chat — its crew’s text channels do.';
 
-/** What a notification calls the place: the rail's name for a room, once
- *  it has one (#1741), else the address's own. */
-function placeName(address: PlaceAddress): string {
-	return (
-		(address.slug &&
-			presence.rooms.find((room) => room.slug === address.slug)?.name) ||
-		address.name
-	);
-}
-
 /**
  * The room you are IN (#173, ADR-0010's logical end): joining is a STATE,
  * not a page. The WS presence and the voice connection live here, above the
@@ -201,9 +191,6 @@ function connect(address: PlaceAddress): Connection {
 	// Presence announces itself (#148) from HERE, not the page — someone
 	// arriving is audible even while you are off browsing workouts; hidden
 	// tabs get the browser notification instead (#202).
-	// The room's name for a notification's title (#1741); the slug stands in
-	// until the rail feed has named it.
-	const roomName = () => placeName(address);
 	let known: Set<string> | null = null;
 	// Blip only for lines newer than the connection itself — the backlog can
 	// never replay, and the log's length cap can never freeze the notifier
@@ -354,7 +341,7 @@ function connect(address: PlaceAddress): Connection {
 				if (!shouldAnnounce(`join-${address.key}-${at}`, at)) return;
 				play('join');
 				notify.push(
-					roomName(),
+					address.name,
 					`${arrived.map((rider) => rider.name).join(', ')} joined the room`,
 					`join-${address.key}`,
 					{ href: address.home },
@@ -462,7 +449,7 @@ function connect(address: PlaceAddress): Connection {
 			const fresh = live.chatLog.filter((line) => line.at > lastChatAt);
 			if (fresh.length === 0) return;
 			lastChatAt = fresh[fresh.length - 1].at;
-			const where = placeName(address);
+			const where = address.name;
 			for (const line of fresh) {
 				// Ids beat display names — a namesake must not be muted (#219).
 				const mine = line.fromId
@@ -515,7 +502,7 @@ function connect(address: PlaceAddress): Connection {
 		// hidden-tab gate authoritative.
 		$effect(() => {
 			const poke = live.lastPoke;
-			announcePoke(poke, address.key, placeName(address), address.home);
+			announcePoke(poke, address.key, address.name, address.home);
 		});
 
 		// Room audio follows the connection, not the page (#216): the gate
@@ -616,7 +603,7 @@ function connect(address: PlaceAddress): Connection {
 				const at = live.tick?.at ?? Date.now();
 				if (shouldAnnounce(`session-${address.key}-${at}`, at))
 					notify.push(
-						roomName(),
+						address.name,
 						'The session is starting — saddle up',
 						`session-${address.key}`,
 						{ href: ridePath(address, live.tick?.state.id) },
@@ -683,7 +670,7 @@ export const roomConnection = {
 	leave(reason: 'rider' | 'signedOut' = 'rider') {
 		if (!current) return;
 		const { address } = current;
-		const name = placeName(address);
+		const name = address.name;
 		// Before dispose: stop() closes the ride buffer and releases the
 		// trainer, and both need the reactive scope the root is about to end.
 		current.ride.stop();
