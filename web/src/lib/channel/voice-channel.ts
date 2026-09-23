@@ -1,7 +1,7 @@
 import { loadApi, type ApiResult } from '$lib/api';
 import {
 	fetchCrewChannels,
-	type Announcement,
+	type CrewAnnouncement,
 	type CrewChannel,
 } from '$lib/channels';
 import {
@@ -22,7 +22,8 @@ export interface VoiceChannelData {
 	crew: Crew | null;
 	channel: CrewChannel | null;
 	members: CrewMembers | null;
-	announcement: Announcement | null;
+	/** Carries its text channel: that is where clearing it goes. */
+	announcement: CrewAnnouncement | null;
 	error: string | null;
 	/** not_found is "not yours to enter", and permanent (#1677). */
 	errorCode: string | null;
@@ -36,7 +37,7 @@ export function voiceChannelData(
 	crew: ApiResult<Crew>,
 	channels: ApiResult<{ channels: CrewChannel[] }>,
 	members: ApiResult<CrewMembers>,
-	announcement: ApiResult<Announcement | undefined>,
+	announcement: ApiResult<CrewAnnouncement | undefined>,
 ): VoiceChannelData {
 	const failed = !crew.ok ? crew : !channels.ok ? channels : null;
 	if (failed && !failed.ok)
@@ -84,7 +85,7 @@ export async function loadVoiceChannel(
 		fetchCrew(crewId, fetcher),
 		fetchCrewChannels(crewId, fetcher),
 		fetchCrewMembers(crewId, fetcher),
-		loadApi<Announcement | undefined>(
+		loadApi<CrewAnnouncement | undefined>(
 			fetcher,
 			`/api/crews/${crewId}/announcement`,
 		),

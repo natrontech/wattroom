@@ -14,6 +14,7 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
+	import { takeDownAnnouncement } from '$lib/announce/take-down';
 	import type { CrewChannel } from '$lib/channels';
 	import type { Crew } from '$lib/crew';
 	import { STOCK_CHEERS } from '$lib/icons';
@@ -74,20 +75,10 @@
 		if (res.ok) thread?.reload();
 	}
 
-	// Undo, not a confirm (errors.md): the line is still in the channel and
-	// can be marked again.
-	async function clear() {
-		const was = thread?.announcement;
-		const res = await api(`${base}/announcement`, { method: 'DELETE' });
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		thread?.reload();
-		toasts.push('Announcement taken down.', {
-			undo: was ? () => void mark(was.messageId) : undefined,
-		});
-	}
+	const clear = () =>
+		takeDownAnnouncement(channel.id, thread?.announcement?.messageId, () =>
+			thread?.reload(),
+		);
 
 	const source: ThreadSource = $derived({
 		timeline,
