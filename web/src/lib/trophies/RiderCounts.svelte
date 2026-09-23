@@ -52,7 +52,7 @@
 		<div class="mt-3">
 			<EmptyState>
 				Time in a lounge, sessions you ride with other people, sprints you win
-				and tracks the room plays to the end all land here.
+				and tracks the voice channel plays to the end all land here.
 			</EmptyState>
 		</div>
 	{:else}

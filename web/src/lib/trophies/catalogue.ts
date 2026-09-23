@@ -81,7 +81,7 @@ export const ACHIEVEMENTS: AchievementMeta[] = [
 	{
 		key: 'dj',
 		name: 'DJ',
-		how: 'Queue 50 tracks the room played to the end',
+		how: 'Queue 50 tracks the voice channel played to the end',
 		icon: Music,
 		xp: 250,
 	},

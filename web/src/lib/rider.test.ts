@@ -14,11 +14,11 @@ describe("a rider's page prose", () => {
 		);
 	});
 
-	it('names the room only when the server did (ADR-0012 boundary)', () => {
+	it('names the voice channel only when the server did (ADR-0012 boundary)', () => {
 		expect(ridePlace({ inRoom: true, roomName: 'Schwitzchaste' })).toBe(
 			'Schwitzchaste',
 		);
-		expect(ridePlace({ inRoom: true })).toBe('in a room');
+		expect(ridePlace({ inRoom: true })).toBe('in a session');
 		expect(ridePlace({ inRoom: false })).toBe('solo');
 	});
 

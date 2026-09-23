@@ -83,7 +83,7 @@ export function ridePlace(
 	ride: Pick<SharedRide, 'inRoom' | 'roomName'>,
 ): string {
 	if (ride.roomName) return ride.roomName;
-	return ride.inRoom ? 'in a room' : 'solo';
+	return ride.inRoom ? 'in a session' : 'solo';
 }
 
 export function medalTotal(medals: Record<string, number>): number {
