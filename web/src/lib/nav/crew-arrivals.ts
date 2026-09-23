@@ -45,7 +45,10 @@ export function crewArrivals(
 			const session = channel.session;
 			if (session && !seen.has(session.id)) {
 				const href = sessionPath(crew.id, session.id);
+				// A session the reader started is not news to them (#2550): Start
+				// now on the Schedule opens it before their page gets there.
 				const inIt =
+					session.coach === where.me ||
 					where.connected === channel.id ||
 					where.here.startsWith(`/crew/${crew.id}/v/${channel.id}`) ||
 					where.here.startsWith(href);
