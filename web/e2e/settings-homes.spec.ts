@@ -129,12 +129,8 @@ test('signing out is on the you-menu, where a rider reaches for it', async ({
 	await signInAs(page, 'Settings Homes', '/home');
 
 	// The you-panel at the foot of the sidebar is the object that is you on
-	// every screen, and right-click is what opens its menu (ux.md). Exactly
-	// this title: Home's own trophies card is also a link to /u/me, titled
-	// "Your rider page: medals, …".
-	await page
-		.getByTitle('your rider page', { exact: true })
-		.click({ button: 'right' });
+	// every screen, and right-click is what opens its menu (ux.md).
+	await page.getByTitle(/^you — your own Home/).click({ button: 'right' });
 	const out = page.getByRole('menuitem', { name: 'Sign out' });
 	await expect(out).toBeVisible();
 	await out.click();

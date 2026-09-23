@@ -1,9 +1,9 @@
 /**
- * Which sidebar sections a rider has folded shut (#1359, #2570), remembered
- * per device the way the chosen crew is. The DM key predates the second
- * section and keeps its spelling, so nobody's fold springs open.
+ * Which sidebar sections a rider has folded shut (#1359), remembered per
+ * device the way the chosen crew is. ponytail: one section folds (YOU came
+ * and went, #2570, #2581); a second is one more member here.
  */
-export type Fold = 'dms' | 'you';
+export type Fold = 'dms';
 
 const key = (fold: Fold) => `wattroom.${fold}-folded.v1`;
 
