@@ -1,1 +1,0 @@
-- **A crew's page is its Home.** It shows what is riding right now with a Join the ride button, who is in which voice channel, the next planned session with I'm in / I'm out right there, the latest session's recap and the crew's streak. A quiet crew says where to start the first ride.

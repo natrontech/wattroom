@@ -1,1 +1,0 @@
-- The directory now lists crews rather than rooms, at /crews/directory, and each entry opens the crew's invite. Joining a crew takes you to the crew's page, and the invite says beforehand when the crew keeps a weekly board.

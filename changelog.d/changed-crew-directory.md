@@ -1,1 +1,0 @@
-- The public directory lists crews rather than rooms, and a crew admin decides whether theirs is in it. A shared crew invite link now shows the crew's name and picture in its preview.

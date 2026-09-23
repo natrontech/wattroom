@@ -1,1 +1,0 @@
-- A crew now has one schedule. Any member can plan a session, and a plan can name the voice channel it will run in. Starting a planned session opens it in that channel, or asks which channel if the plan named none. Session emails now name the crew and the channel, e.g. "Thursday Crew · Pain Cave".
