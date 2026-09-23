@@ -48,6 +48,8 @@
 	import { device } from '$lib/device.svelte';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import UpdateRow from './UpdateRow.svelte';
+	import ReleaseSheet from './ReleaseSheet.svelte';
+	import { updates } from './updates.svelte';
 	import { shellVersion } from '$lib/desktop';
 
 	let {
@@ -82,6 +84,10 @@
 	$effect(() => {
 		presence.version;
 		void crewLive.reload();
+	});
+	// Updates and what's new (#2588): read once the sidebar is up.
+	$effect(() => {
+		untrack(() => updates.start());
 	});
 	// In no crew, the way in is a sheet: join with a code, or start one (#2480).
 	let opening = $state(false);
@@ -155,11 +161,6 @@
 		</a>
 	{/if}
 	<div class="min-h-0 flex-1 overflow-y-auto px-2 pt-3">
-		<!-- Above Home, because a downloaded update is the one thing here that
-		     expires: it is what the app will be running next time either way,
-		     and the only choice is whether the rider picks the moment. Nothing
-		     renders unless one is waiting. -->
-		<UpdateRow />
 		{#if crew}
 			<!-- A crew's pages, its text channels, its voice channels (#2447). -->
 			<CrewColumn {crew} {pathname} />
@@ -328,10 +329,23 @@
 		<VoiceStrip {pathname} />
 	{/if}
 
-	<!-- Discord's "download apps" corner (#1235): a quiet, permanent way to
-	     the desktop app, for a rider in a browser on a desk. Gone inside the
-	     shell, and on a phone, where the app is not for them. -->
-	{#if !shellVersion() && !device.coarse}
+	<!-- Updates and what's new, one row above you (#2588) — at the foot, so
+	     coming and going moves nothing above it. It takes the desktop link's
+	     place while it has something to say. -->
+	{#if updates.state}
+		<div class="border-ink/5 border-t px-2 py-2">
+			<UpdateRow
+				state={updates.state}
+				onopen={() => updates.openSheet()}
+				onreload={() => updates.reload()}
+				oninstall={() => updates.install()}
+				onskip={() => updates.skipManual()}
+			/>
+		</div>
+	{:else if !shellVersion() && !device.coarse}
+		<!-- Discord's "download apps" corner (#1235): a quiet, permanent way to
+		     the desktop app, for a rider in a browser on a desk. Gone inside the
+		     shell, and on a phone, where the app is not for them. -->
 		<a
 			href="/download"
 			class="text-muted hover:text-ink border-ink/5 flex items-center gap-2 border-t px-4 py-2.5 text-xs"
@@ -343,6 +357,10 @@
 
 	<YouPanel {pathname} />
 </nav>
+
+{#if updates.sheetOpen}
+	<ReleaseSheet onclose={() => updates.closeSheet()} />
+{/if}
 
 {#if opening}
 	<Modal
