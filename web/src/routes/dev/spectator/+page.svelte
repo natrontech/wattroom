@@ -1,6 +1,6 @@
 <script lang="ts">
 	import SpectatorView from './SpectatorView.svelte';
-	import { createMockChannel, type Phase } from '../room/mockChannel.svelte';
+	import { createMockChannel, type Phase } from '../channel/mockChannel.svelte';
 
 	const channel = createMockChannel();
 	$effect(() => {

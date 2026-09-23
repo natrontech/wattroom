@@ -10,7 +10,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createMockChannel, medals } from '../room/mockChannel.svelte';
+	import { createMockChannel, medals } from '../channel/mockChannel.svelte';
 	import { GALLERY_ROWS } from './gallery';
 	import ThemePanel from './ThemePanel.svelte';
 

@@ -8,7 +8,7 @@
 		workout,
 		ZONE_BG,
 		ZONE_NAMES,
-	} from '../room/mockChannel.svelte';
+	} from '../channel/mockChannel.svelte';
 
 	// Every number here is a docs/SPEC.md formula, not an invented one.
 	const ride = {

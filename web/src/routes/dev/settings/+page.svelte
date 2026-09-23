@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
-	import { CHANNEL_NAME } from '../room/mockChannel.svelte';
+	import { CHANNEL_NAME } from '../channel/mockChannel.svelte';
 
 	// docs/SPEC.md roles matrix: editing the room and assigning coach are owner-only.
 	let name = $state(CHANNEL_NAME);

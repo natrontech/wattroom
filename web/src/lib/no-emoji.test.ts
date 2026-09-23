@@ -14,7 +14,7 @@ const ALLOWLIST: Allowlist = {
 	'lib/icons.ts':
 		'the emoji-to-icon map: values rooms saved before #447, translated on read — data, not chrome',
 	'*.test.ts': 'fixtures, including the ones that prove the map above works',
-	'routes/dev/room/mockChannel.svelte.ts':
+	'routes/dev/channel/mockChannel.svelte.ts':
 		'mock chat: a rider typing an emoji into a message is content, like their words',
 };
 

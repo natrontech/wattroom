@@ -19,7 +19,7 @@
 	import { deriveTheme, type ThemeSpec } from '$lib/palette';
 	import { specById } from '$lib/themes';
 	import { toasts } from '$lib/toast.svelte';
-	import { createMockChannel, medals } from '../room/mockChannel.svelte';
+	import { createMockChannel, medals } from '../channel/mockChannel.svelte';
 	import ThemePanel from '../themes/ThemePanel.svelte';
 	import EditorControls, {
 		OVERRIDABLE_TOKENS,

@@ -13,7 +13,7 @@
 		CHANNEL_NAME,
 		workout,
 		zoneOf,
-	} from '../room/mockChannel.svelte';
+	} from '../channel/mockChannel.svelte';
 	import type { Segment } from '$lib/workout/types';
 
 	let {
