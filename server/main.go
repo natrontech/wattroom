@@ -340,10 +340,10 @@ func main() {
 		ridesService.SetRideKeeper(trophies)
 		h.SetXpKeeper(trophies)
 		trophies.AccrueVoice(ctx, h)
-		// Both still link to rooms; the hub names voice channels (#2436).
-		roomWhere := channels.RoomWhere{Live: h, Store: st}
-		friends.New(st, authService, roomWhere, log).Register(mux)
-		riders.New(st, authService, roomWhere, log).Register(mux)
+		// The hub says which voice channel; each names it only to a viewer
+		// who may enter it (channels.PlacesFor, #2516).
+		friends.New(st, authService, h, log).Register(mux)
+		riders.New(st, authService, h, log).Register(mux)
 		// The soundboard's durable half (#877, ADR-0033): clips are personal,
 		// so the hub is what says whether a listener can hear one.
 		board.New(st, authService, h, log).Register(mux)
