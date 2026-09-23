@@ -155,7 +155,7 @@ type ListSharedRidesRow struct {
 // ADR-0058; ADR-0012: friendship never pierces the boundary); otherwise the
 // ride just "was in a room". The column names are the page's until #2457.
 // A group ride is one with a crew or a channel on it (#2443, backfilled for
-// every room ride by M9) — never room_id, which #2433 drops (#2558).
+// every room ride by M9).
 func (q *Queries) ListSharedRides(ctx context.Context, arg ListSharedRidesParams) ([]ListSharedRidesRow, error) {
 	rows, err := q.db.Query(ctx, listSharedRides, arg.Viewer, arg.Rider, arg.Max)
 	if err != nil {

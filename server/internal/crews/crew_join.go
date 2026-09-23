@@ -212,9 +212,6 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	q := s.store.Queries.WithTx(tx)
 	// The voice channels to sever the rider from once this commits.
 	voice, _ := q.ListChannelIDsOfKind(r.Context(), db.ListChannelIDsOfKindParams{CrewID: crew.ID, Kind: "voice"})
-	// The room rows stay where they are (#2558): the release before this one
-	// derives access from crew roles and channels, not from them, and #2433
-	// drops them.
 	err = q.LeaveCrewChannels(r.Context(), db.LeaveCrewChannelsParams{CrewID: crew.ID, UserID: user.ID})
 	if err == nil {
 		err = q.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})

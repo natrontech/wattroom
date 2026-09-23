@@ -1,7 +1,6 @@
 -- name: CreateRide :one
 -- A session's ride names its crew, the voice channel and the session (#2443);
--- a solo ride leaves all three null. room_id is never written (#2558), so
--- #2433 can drop it.
+-- a solo ride leaves all three null.
 insert into rides (
     user_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,

@@ -101,10 +101,9 @@ func TestSaveRecapKeysTheSession(t *testing.T) {
 	}
 	var rows int
 	var crewID, channelID pgtype.UUID
-	var roomID *string
 	if err := w.st.Pool.QueryRow(t.Context(),
-		"select count(*) over (), crew_id, channel_id, room_id::text from session_recaps where session_id = $1",
-		session).Scan(&rows, &crewID, &channelID, &roomID); err != nil {
+		"select count(*) over (), crew_id, channel_id from session_recaps where session_id = $1",
+		session).Scan(&rows, &crewID, &channelID); err != nil {
 		t.Fatalf("read the recap: %v", err)
 	}
 	if rows != 1 {
@@ -112,9 +111,6 @@ func TestSaveRecapKeysTheSession(t *testing.T) {
 	}
 	if crewID != crew.ID || channelID != channel.ID {
 		t.Errorf("the recap is crew %v channel %v, want %v and %v", crewID, channelID, crew.ID, channel.ID)
-	}
-	if roomID != nil {
-		t.Errorf("a channel no room became wrote room %s", *roomID)
 	}
 }
 

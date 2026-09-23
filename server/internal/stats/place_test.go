@@ -42,24 +42,24 @@ func placeRiders(t *testing.T, st *store.Store) []hub.RiderRecord {
 
 // where reads what each of the riders' rides, and their medals, say about
 // where they were ridden.
-func where(t *testing.T, st *store.Store, riders []hub.RiderRecord) (rides, medals []struct{ room, crew, channel, session pgtype.UUID }) {
+func where(t *testing.T, st *store.Store, riders []hub.RiderRecord) (rides, medals []struct{ crew, channel, session pgtype.UUID }) {
 	t.Helper()
 	for _, r := range riders {
 		uid, _ := store.ParseUUID(r.Rider.ID)
-		var got struct{ room, crew, channel, session pgtype.UUID }
+		var got struct{ crew, channel, session pgtype.UUID }
 		if err := st.Pool.QueryRow(context.Background(),
-			"select room_id, crew_id, channel_id, session_id from rides where user_id = $1", uid,
-		).Scan(&got.room, &got.crew, &got.channel, &got.session); err != nil {
+			"select crew_id, channel_id, session_id from rides where user_id = $1", uid,
+		).Scan(&got.crew, &got.channel, &got.session); err != nil {
 			t.Fatalf("%s's ride: %v", r.Rider.Name, err)
 		}
 		rides = append(rides, got)
-		rows, err := st.Pool.Query(context.Background(), "select room_id, crew_id from medals where user_id = $1", uid)
+		rows, err := st.Pool.Query(context.Background(), "select crew_id from medals where user_id = $1", uid)
 		if err != nil {
 			t.Fatal(err)
 		}
 		for rows.Next() {
-			var m struct{ room, crew, channel, session pgtype.UUID }
-			if err := rows.Scan(&m.room, &m.crew); err != nil {
+			var m struct{ crew, channel, session pgtype.UUID }
+			if err := rows.Scan(&m.crew); err != nil {
 				t.Fatal(err)
 			}
 			medals = append(medals, m)
@@ -96,17 +96,17 @@ func TestASessionsRidesNameTheirCrewChannelAndSession(t *testing.T) {
 	}
 	rides, medals := where(t, st, riders)
 	for i, got := range rides {
-		if got.room.Valid || got.crew != crew.ID || got.channel != channel.ID || store.UUIDString(got.session) != session {
-			t.Errorf("%s's ride: room %v crew %v channel %v session %v — want no room, the crew, the channel and the session",
-				riders[i].Rider.Name, got.room.Valid, got.crew.Valid, got.channel.Valid, store.UUIDString(got.session))
+		if got.crew != crew.ID || got.channel != channel.ID || store.UUIDString(got.session) != session {
+			t.Errorf("%s's ride: crew %v channel %v session %v — want the crew, the channel and the session",
+				riders[i].Rider.Name, got.crew.Valid, got.channel.Valid, store.UUIDString(got.session))
 		}
 	}
 	if len(medals) == 0 {
 		t.Fatal("three riders earned no medals — the medal half of this test measured nothing")
 	}
 	for _, m := range medals {
-		if m.crew != crew.ID || m.room.Valid {
-			t.Errorf("a medal names crew %v room %v, want the crew and no room", m.crew.Valid, m.room.Valid)
+		if m.crew != crew.ID {
+			t.Errorf("a medal names crew %v, want the crew", m.crew.Valid)
 		}
 	}
 }

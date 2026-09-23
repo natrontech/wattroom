@@ -1,5 +1,5 @@
--- A text channel's chat (ADR-0058, #2435): the room's chat queries, keyed on
--- the channel. The room's twins in chat.sql go with the room (#2446, #2433).
+-- A text channel's chat (ADR-0058, #2435): what the room's chat queries were,
+-- keyed on the channel.
 -- Every statement is scoped by the channel, which is the privacy boundary now:
 -- an id from another channel's log is not a line here.
 

@@ -99,5 +99,5 @@ select exists (select 1 from playlists where id = $1 and crew_id = $2);
 -- name: MovedRoom :one
 -- Where an old room link lands now (#2446, #2458): the crew the room became
 -- part of and the two channels it became, from the table kept for exactly
--- this (#2558) — rooms and room_channels go in #2433.
+-- this (#2558): the rooms themselves are gone (#2433).
 select crew_id, text_channel_id, voice_channel_id from moved_rooms where slug = $1;

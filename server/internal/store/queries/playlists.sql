@@ -1,7 +1,5 @@
 -- name: CreatePlaylist :one
--- A rider's, or a crew's (ADR-0058, #2439). Never a room's (#2558): the
--- columns are named, here and below, so none of them reads room_id and #2433
--- can drop it under this release.
+-- A rider's, or a crew's (ADR-0058, #2439).
 insert into playlists (user_id, crew_id, name)
 values ($1, $2, $3)
 returning id, user_id, crew_id, name, created_at, updated_at;

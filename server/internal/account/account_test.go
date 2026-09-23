@@ -147,22 +147,6 @@ func (h *harness) createCrew(t *testing.T, owner string, members ...string) crew
 	return crewPlace{crew: crew, text: testx.Text(t, h.store, crew, "Account Text"), voice: voice}
 }
 
-// legacyRoom writes a room row the way the rooms era left one behind, owned
-// by owner and pointing at crew. Nothing reads them since #2558, but they
-// stand in every database until #2433 drops the table, so a test of what an
-// account or a crew leaves behind around them still needs one. They go with
-// their owner and with their crew, by the schema's cascades.
-func (h *harness) legacyRoom(t *testing.T, owner string, crew pgtype.UUID) pgtype.UUID {
-	t.Helper()
-	var id pgtype.UUID
-	if err := h.store.Pool.QueryRow(t.Context(),
-		"insert into rooms (slug, name, owner_id, crew_id, crew_visible) values ($1, 'Account Test', $2, $3, true) returning id",
-		testx.Slug("account-test-"+owner), h.id(owner), crew).Scan(&id); err != nil {
-		t.Fatalf("legacy room: %v", err)
-	}
-	return id
-}
-
 func (h *harness) createRide(t *testing.T, rider string, at crewPlace, workout string, samples []byte) pgtype.UUID {
 	t.Helper()
 	id, err := h.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
@@ -509,10 +493,8 @@ func TestDeleteHandsTheCrewOnBeforeTheRowGoes(t *testing.T) {
 		t.Fatalf("crew: %v", err)
 	}
 	t.Cleanup(func() { _, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID) })
-	h.legacyRoom(t, "alice", crew.ID)
-	theirs := h.legacyRoom(t, "bob", crew.ID)
-	// The crew passes to its people, not to whoever owns a room row in it
-	// (#2446): bob inherits because he is a member.
+	// The crew passes to its people (#2446): bob inherits because he is a
+	// member.
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{CrewID: crew.ID, UserID: h.id("bob"), Role: "member"}); err != nil {
 		t.Fatalf("bob's crew row: %v", err)
 	}
@@ -530,20 +512,11 @@ func TestDeleteHandsTheCrewOnBeforeTheRowGoes(t *testing.T) {
 	if after.OwnerID != h.id("bob") {
 		t.Errorf("the crew passed to %s, want bob", store.UUIDString(after.OwnerID))
 	}
-	var rooms int
-	if err := h.store.Pool.QueryRow(t.Context(), "select count(*) from rooms where id = $1", theirs).Scan(&rooms); err != nil || rooms != 1 {
-		t.Errorf("bob's room should survive alice's purge: %d %v", rooms, err)
-	}
 
-	// And a crew with nobody left in it goes — room rows and all, even one
-	// whose owner never joined the crew (rooms.crew_id cascades since #2558;
-	// it was ON DELETE RESTRICT).
+	// And a crew with nobody left in it goes with its owner.
 	lone, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "carol", OwnerID: h.id("carol"), Code: testx.CrewCode()})
 	if err != nil {
 		t.Fatalf("crew: %v", err)
-	}
-	for _, owner := range []string{"carol", "bob"} {
-		h.legacyRoom(t, owner, lone.ID)
 	}
 	if rec := h.call(t, "carol", http.MethodDelete, "/api/me"); rec.Code != http.StatusNoContent {
 		t.Fatalf("delete carol: %d %s", rec.Code, rec.Body.String())
