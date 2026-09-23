@@ -17,6 +17,23 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.133] - 2026-09-23
+
+### Added
+
+- Inside a crew you still hear about yourself. A dot on your name at the
+  bottom of the sidebar says a friend is waiting for your answer or a release
+  is new. The crew's Home shows your week in one line and which friends are
+  online outside the crew.
+
+### Changed
+
+- What's new and every update now live in one row at the bottom of the
+  sidebar, just above your name, wherever you are. Click it for a sheet with
+  the release. It also tells an open window when a newer WattRoom is out
+  (reload to get it), and the desktop app's own updates show up in the same
+  row instead of on your Home.
+
 ## [2026.09.132] - 2026-09-23
 
 ### Added
@@ -2797,7 +2814,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.132...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.133...HEAD
+[2026.09.133]: https://github.com/natrontech/wattroom/compare/2026.09.132...2026.09.133
 [2026.09.132]: https://github.com/natrontech/wattroom/compare/2026.09.131...2026.09.132
 [2026.09.131]: https://github.com/natrontech/wattroom/compare/2026.09.130...2026.09.131
 [2026.09.130]: https://github.com/natrontech/wattroom/compare/2026.09.129...2026.09.130
