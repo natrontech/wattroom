@@ -282,19 +282,14 @@
 		if (live.refusal) startAfterPick = null;
 	});
 
-	// ── Session setup (#115) and planned rides (#116) ─────────────────────────
-	// Composed, not owned: the shelf and its ranking, the calendar link, and
-	// starting something already planned (session-setup.svelte.ts).
-	const session = createSessionSetup({
-		slug: () => props.slug,
-		icsToken: () => props.icsToken ?? '',
-		control: (action, payload) => live.control(action, payload),
-	});
+	// ── Session setup (#115) ──────────────────────────────────────────────────
+	// Composed, not owned: the shelf and its ranking (session-setup.svelte.ts).
+	const session = createSessionSetup();
 
 	// ADR-0020: the shell keeps the state, the places render the surface.
 	// `props` goes in as the reactive object, not as its values: the context's
 	// getters read through it on access, which is what keeps a place live when
-	// the page re-fetches members or a planned session. The warning is about
+	// the page re-fetches members or the announcement. The warning is about
 	// capturing a value here, and this captures the reference — proved by
 	// room-context-value.test.ts rather than argued.
 	// svelte-ignore state_referenced_locally
@@ -318,8 +313,6 @@
 				session.open = true;
 			},
 			ban,
-			startScheduled: session.startScheduled,
-			copyIcsUrl: session.copyIcsUrl,
 		}),
 	);
 
@@ -378,7 +371,6 @@
 		onRetryShelf={() => void session.custom.retry()}
 		intent={session.intent}
 		ftp={profile.current.ftp}
-		busy={props.adminBusy}
 		gameRunning={!!live.tick?.game}
 		onPlan={async (name, json, at) => {
 			// Closed only once the server took it (#1766): a refused time used

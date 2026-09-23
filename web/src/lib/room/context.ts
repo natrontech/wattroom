@@ -4,7 +4,6 @@ import type { Segment } from '$lib/workout/types';
 import type { Block, RoomRider } from '$lib/room/view';
 import type { Announcement, BoardRow, Together } from '$lib/room/room-data';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
-import type { RsvpAnswer } from '$lib/room/rsvp';
 import type { StageSource } from '$lib/room/stage';
 
 /**
@@ -28,14 +27,11 @@ export interface RoomStageSource extends StageSource {
  * boundary.
  */
 export interface RoomContext {
-	readonly slug: string;
 	/** Where the shell stands, and every path that follows (#2449). */
 	readonly address: PlaceAddress;
 	readonly roomName: string;
-	readonly icon: string;
 	/** The crew's join code (#1236); '' for a non-member. */
 	readonly code: string;
-	readonly cheers: string[] | undefined;
 
 	readonly riders: RoomRider[];
 	readonly you: RoomRider;
@@ -98,23 +94,6 @@ export interface RoomContext {
 	/** Ask one connected rider's own screens for their attention. */
 	poke(id: string): void;
 
-	readonly upcoming: {
-		id: string;
-		workoutName: string;
-		workoutJson: string;
-		startsAt: string;
-		createdBy: string;
-		/** Who said they are in (#450), first to say so first. */
-		going?: { id: string; displayName: string }[];
-		/** How many said no, and how many have not answered (#1011). Counts,
-		 *  never names: who is out is a number the room reads, not a list it
-		 *  reads out. Absent is zero. */
-		out?: number;
-		unanswered?: number;
-		/** Your own answer — absent until you give one. */
-		yourAnswer?: RsvpAnswer;
-	}[];
-	readonly icsToken: string;
 	/**
 	 * The coach's standing notice (ADR-0057), or null. It rides the room read
 	 * rather than a fetch of its own, so it arrives with the room and follows
@@ -124,10 +103,8 @@ export interface RoomContext {
 	/** Take it down. The coach's and the owner's; nothing else offers it. */
 	clearAnnouncement(): void;
 	readonly streakWeeks: number;
-	readonly monthKj: number;
 	readonly together: Together | null;
 	readonly board: BoardRow[];
-	readonly adminBusy: boolean;
 	readonly members: {
 		id: string;
 		displayName: string;
@@ -144,43 +121,12 @@ export interface RoomContext {
 		/** A banned row the crew also bans (#1150). */
 		crewBanned?: boolean;
 	}[];
-	readonly medals: { kind: string; rider: string; awardedAt: string }[];
-	/** Open to its crew (ADR-0038). */
-	readonly crewVisible: boolean;
-	/**
-	 * A private room's named exceptions (#1224): crew-mates let in who have
-	 * not walked in yet, and the crew-mates outside. Sent only to whoever may
-	 * hand a door out — the room's owner, or the crew's owner or an admin
-	 * (#2294) — so both lists are empty for everyone else.
-	 */
-	readonly invited: RoomContext['members'];
-	readonly crewOutside: RoomContext['members'];
-	/** Let a crew-mate in, or take the door back before they used it. */
-	grant(userId: string): void;
-	revoke(userId: string): void;
-	/** Hand the room to a member (#1227); you stay on as a coach. */
-	transfer(userId: string): void;
-	reschedule(id: string, startsAt: string): void;
-	unschedule(id: string): void;
-	/** Answer for a planned session — in, out, or `null` to take the answer
-	 *  back and be unanswered again (#1011). */
-	rsvp(id: string, answer: RsvpAnswer | null): void;
-	/** Resolves to whether the server took it; a caller that toasts waits. */
-	rotateIcs(): void | Promise<boolean>;
-	setRole(userId: string, role: string): void | Promise<boolean>;
 	/**
 	 * Ban with an undo toast, so a griefer is met wherever they appear — the
 	 * tile, the roster row — rather than only where someone once wrote the
 	 * entry (#951).
 	 */
 	ban(userId: string, name: string): void;
-	removeMember(userId: string): void;
-	startScheduled(entry: {
-		id: string;
-		workoutJson: string;
-		workoutName: string;
-	}): void;
-	copyIcsUrl(): void;
 }
 
 const KEY = Symbol('wattroom.room');

@@ -1,5 +1,4 @@
 import type { PlaceAddress } from '$lib/room/address';
-import type { RsvpAnswer } from '$lib/room/rsvp';
 import type { RoomContext, RoomStageSource } from '$lib/room/context';
 import type { roomConnection } from '$lib/room/connection.svelte';
 import type { createRiders } from '$lib/room/riders.svelte';
@@ -13,7 +12,7 @@ import type { Segment } from '$lib/workout/types';
  * adapts.
  *
  * The move only pays for itself because of the shape below: **the props object
- * goes in whole**, not prop by prop. Twenty of these entries are pure
+ * goes in whole**, not prop by prop. Most of these entries are pure
  * pass-through, and re-plumbing each one through a `deps` argument would be
  * the same wall of names with an extra hop — the mistake #1049 made on
  * Sidebar and had to undo. One reactive reference carries all of them, and
@@ -32,46 +31,24 @@ export interface AdminMember {
 	crewBanned?: boolean;
 }
 
-export interface AdminMedal {
-	kind: string;
-	rider: string;
-	awardedAt: string;
-}
-
 /** RoomShell's props. Named here because the context is built from them. */
 export interface RoomShellProps {
 	/** The place standing in the content column. */
 	children: import('svelte').Snippet;
-	/** The room's slug; '' in a voice channel (#2449). */
-	slug: string;
 	/** Where the shell stands, and every path that follows (#2449). */
 	address: PlaceAddress;
 	role: string;
 	roomName: string;
-	/** Owner-set identity mark (#223) — an icon key (#447). */
-	icon?: string;
 	/** The room's reaction palette (#223); absent = SidePanel's base set. */
 	cheers?: string[];
 	/** The crew's join code (#1236), for the TV's idle screen. */
 	code?: string;
 	soundPack?: string;
 	members?: AdminMember[];
-	/** The private room's door list (#1224): let in, and outside. */
-	crewVisible?: boolean;
-	invited?: AdminMember[];
-	crewOutside?: AdminMember[];
-	onGrant: (userId: string) => void;
-	onRevoke: (userId: string) => void;
-	onTransfer: (userId: string) => void;
-	medals?: AdminMedal[];
 	streakWeeks?: number;
 	together?: Together | null;
 	board?: BoardRow[];
-	monthKj?: number;
-	adminBusy?: boolean;
 	onRole: (userId: string, role: string) => void | Promise<boolean>;
-	onRemove: (userId: string) => void;
-	upcoming?: RoomContext['upcoming'];
 	announcement?: RoomContext['announcement'];
 	onClearAnnouncement?: () => void;
 	/** Resolves false when the server refused — the picker stays open (#1766). */
@@ -80,12 +57,6 @@ export interface RoomShellProps {
 		json: string,
 		startsAt: string,
 	) => Promise<boolean> | boolean | void;
-	onReschedule: (id: string, startsAt: string) => void;
-	onUnschedule: (id: string) => void;
-	onRsvp: (id: string, answer: RsvpAnswer | null) => void;
-	/** Secret calendar-feed token (#245); '' hides the subscribe affordance. */
-	icsToken?: string;
-	onRotateIcs: () => void | Promise<boolean>;
 }
 
 type Connection = ReturnType<typeof roomConnection.join>;
@@ -118,8 +89,6 @@ export interface ContextDeps {
 
 	/** Actions the shell owns because they need more than the connection. */
 	ban: (userId: string, name: string) => void;
-	startScheduled: RoomContext['startScheduled'];
-	copyIcsUrl: RoomContext['copyIcsUrl'];
 }
 
 export function roomContextValue(deps: ContextDeps): RoomContext {
@@ -129,23 +98,14 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 	const ride = connection.ride;
 
 	return {
-		get slug() {
-			return props.slug;
-		},
 		get address() {
 			return props.address;
 		},
 		get roomName() {
 			return props.roomName;
 		},
-		get icon() {
-			return props.icon ?? '';
-		},
 		get code() {
 			return props.code ?? '';
-		},
-		get cheers() {
-			return props.cheers;
 		},
 		get riders() {
 			return roster.riders;
@@ -217,16 +177,10 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		},
 		setFocus: (id) => deps.setFocus(id),
 		poke: (id) => live.poke(id),
-		get upcoming() {
-			return props.upcoming ?? [];
-		},
 		get announcement() {
 			return props.announcement ?? null;
 		},
 		clearAnnouncement: () => props.onClearAnnouncement?.(),
-		get icsToken() {
-			return props.icsToken ?? '';
-		},
 		get together() {
 			return props.together ?? null;
 		},
@@ -236,38 +190,9 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		get streakWeeks() {
 			return props.streakWeeks ?? 0;
 		},
-		get monthKj() {
-			return props.monthKj ?? 0;
-		},
-		get adminBusy() {
-			return props.adminBusy ?? false;
-		},
 		get members() {
 			return props.members ?? [];
 		},
-		get crewVisible() {
-			return props.crewVisible ?? false;
-		},
-		get invited() {
-			return props.invited ?? [];
-		},
-		get crewOutside() {
-			return props.crewOutside ?? [];
-		},
-		grant: (userId) => props.onGrant(userId),
-		revoke: (userId) => props.onRevoke(userId),
-		transfer: (userId) => props.onTransfer(userId),
-		get medals() {
-			return props.medals ?? [];
-		},
-		reschedule: (id, at) => props.onReschedule(id, at),
-		unschedule: (id) => props.onUnschedule(id),
-		rsvp: (id, answer) => props.onRsvp(id, answer),
-		rotateIcs: () => props.onRotateIcs(),
-		setRole: (userId, next) => props.onRole(userId, next),
 		ban: (userId, name) => deps.ban(userId, name),
-		removeMember: (userId) => props.onRemove(userId),
-		startScheduled: deps.startScheduled,
-		copyIcsUrl: deps.copyIcsUrl,
 	};
 }
