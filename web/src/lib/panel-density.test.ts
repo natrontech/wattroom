@@ -24,9 +24,9 @@ const ALLOWLIST: Allowlist = {
 	'lib/messages/Composer.svelte':
 		'the emoji menu, taking ContextMenuHost’s inset for the same reason',
 	'routes/home/+page.svelte':
-		'the room switcher is a menu (py-1, inset as above); the friends-online row is pills at text-xs, which the card density would draw at twice their height',
+		'the crew picker is a menu (py-1, inset as above); the friends-online row is pills at text-xs, which the card density would draw at twice their height',
 	'routes/u/[id]/+page.svelte':
-		'medals and rooms-in-common are two-column pills at text-xs/text-sm — tighter than a card, deliberately',
+		'medals and crews-in-common are two-column pills at text-xs/text-sm — tighter than a card, deliberately',
 	'routes/dev/profile/+page.svelte':
 		'the gallery mock of /u/[id], drawn at that page’s sizes',
 	'routes/ramp/+page.svelte':
@@ -72,11 +72,11 @@ describe('one panel, four densities (#613)', () => {
 
 /**
  * The kit's size variants (`panel-lg`, `btn-xs`, `input-xs`) beat their base
- * purely by emitting later in the utilities layer — app.css says so and
- * nothing held it. A Tailwind upgrade that reorders the layer would not error:
- * every roomy panel would quietly redraw at the default density, which is the
- * kind of regression that ships. So compile the real stylesheet and read the
- * order out of it.
+ * purely by emitting later in the utilities layer — app.css says so and nothing
+ * held it. A Tailwind upgrade that reorders the layer would not error: every
+ * spacious panel would quietly redraw at the default density, which is the kind
+ * of regression that ships. So compile the real stylesheet and read the order
+ * out of it.
  */
 const require = createRequire(import.meta.url);
 const SRC = resolve(import.meta.dirname, '..');

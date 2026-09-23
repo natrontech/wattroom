@@ -78,8 +78,8 @@ export function updateCrew(
 }
 
 /**
- * admin | member | banned. `member` clears an admin grant or lifts a crew
- * ban — and lifts nothing a room's owner decided (#1150).
+ * admin | member | banned. `member` clears an admin grant or lifts the
+ * crew's ban (#1150).
  */
 export function setCrewRole(
 	id: string,
@@ -194,7 +194,10 @@ export function rotateCrewCode(
 	return api<{ code: string }>(`/api/crews/${id}/code`, { method: 'POST' });
 }
 
-/** Out of the crew and every one of its rooms, in one move (#1228, #1236). */
+/**
+ * Out of the crew and every private channel it named you into, in one move
+ * (#1228, #1236).
+ */
 export function leaveCrew(id: string): Promise<ApiResult<void>> {
 	return api<void>(`/api/crews/${id}/leave`, { method: 'POST' });
 }

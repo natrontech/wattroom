@@ -22,7 +22,7 @@ describe('railPeople', () => {
 		expect(railPeople(['Mara', 'Ines', 'Bo']).label).toBe('Mara, Ines, Bo');
 	});
 
-	it('handles a room the presence store has no names for', () => {
+	it('handles a voice channel the presence store has no names for', () => {
 		expect(railPeople(undefined)).toEqual({ shown: [], more: 0, label: '' });
 	});
 

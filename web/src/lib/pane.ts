@@ -46,7 +46,7 @@ export function keepSize(node: HTMLElement, key: string): () => void {
 	if (saved.h) node.style.height = `${saved.h}px`;
 	// Nothing is stored until the size differs from what the component (or the
 	// restore above) authored — otherwise today's default freezes into storage
-	// and tomorrow's never reaches anyone who once opened a room.
+	// and tomorrow's never reaches anyone who once opened a voice channel.
 	const authored = `${node.style.width}|${node.style.height}`;
 	// Published so fixed-position neighbours can get out of the way — the
 	// jukebox dock has to sit left of however wide the panel now is. Set here
@@ -167,8 +167,8 @@ export function dragPane(handle: HTMLElement): () => void {
 
 /**
  * The lines a pane clicks to: the viewport's edges and middle, and the gutter
- * left of the room's side panel — where the dock lives by default, and the
- * one edge a rider actually aims for.
+ * left of the voice channel's side panel — where the dock lives by default,
+ * and the one edge a rider actually aims for.
  */
 function guides(): Guides {
 	const panel = parseFloat(

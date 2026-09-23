@@ -28,9 +28,10 @@
 		/** Where they are ($lib/status.ts); null draws no badge at all. */
 		status?: PresenceStatus | null;
 		/**
-		 * Which away, from the room's tick ($lib/away). Room surfaces pass it;
-		 * the presence rail and everywhere outside a room leave it unset and
-		 * get the plain cup, which is the whole of what they showed before.
+		 * Which away, from the voice channel's tick ($lib/away). Its surfaces
+		 * pass it; the presence rail and everywhere outside a voice channel
+		 * leave it unset and get the plain cup, which is the whole of what
+		 * they showed before.
 		 */
 		awayReason?: string;
 		size?: number;
@@ -60,7 +61,7 @@
 	const inset = $derived(xp == null ? 0 : stroke + 2);
 	const chip = $derived(Math.max(14, Math.round(size * 0.26)));
 	const showChip = $derived(level !== null && size >= 28);
-	// A dot is a dot; a mark that holds a glyph needs room around it.
+	// A dot is a dot; a mark that holds a glyph needs space around it.
 	const mark = $derived(Math.max(10, Math.round(size * 0.34)));
 	const dot = $derived(Math.max(7, Math.round(size * 0.26)));
 	const STATUS_WORD: Record<PresenceStatus, string> = {
@@ -150,10 +151,10 @@
 		>
 	{/if}
 	{#if status === 'riding' || status === 'away'}
-		<!-- Riding is motion, never a dot (ADR-0020); away is the Lounge
-		     button's own glyph, quiet chrome like every other mark — and the
-		     glyph says WHICH away, so a room can tell a shower from a snack
-		     without reading the timeline. -->
+		<!-- Riding is motion, never a dot (ADR-0020); away is the Lounge button's
+		     own glyph, quiet chrome like every other mark — and the glyph says
+		     WHICH away, so a voice channel can tell a shower from a snack without
+		     reading the timeline. -->
 		<span
 			class="absolute -bottom-0.5 -left-0.5 grid place-items-center rounded-full"
 			style="width:{mark}px;height:{mark}px;background:{ring};box-shadow:0 0 0 2px {ring}"

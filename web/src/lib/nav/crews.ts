@@ -21,7 +21,7 @@ export function rememberChosenCrew(id: string): void {
 	try {
 		localStorage.setItem(CHOSEN, id);
 	} catch {
-		/* fine — the sidebar opens on the room you are in next time */
+		/* fine — a fresh load opens on the account's main crew instead */
 	}
 }
 
@@ -42,17 +42,16 @@ export function quiet(pulse: CrewPulse): boolean {
 }
 
 /**
- * The crews you may open a room in (#1201): the one you own and any you
- * administer — Discord's Manage Channels. A member of a crew opens rooms in
- * their own crew, not the one they are looking at.
+ * The crews you may make channels in (#1201, ADR-0058): the ones you own and
+ * any you administer — Discord's Manage Channels. A plain member makes none.
  */
 export function openableCrews(crews: readonly CrewRef[]): CrewRef[] {
 	return crews.filter((c) => c.role === 'owner' || c.role === 'admin');
 }
 
 /**
- * Whether the rider has nowhere to open a room — no crew of their own, and
- * none they administer (#2176).
+ * Whether the rider has no crew of their own and none they administer
+ * (#2176).
  *
  * The one question three surfaces were each answering differently: Home's
  * button read `!presence.crews.length` (false for a plain member of somebody
@@ -78,7 +77,7 @@ export function administersNone(crews: readonly CrewRef[]): boolean {
  *
  * `administersNone` still guards it, because the invite is read once with the
  * account: a rider who founds a crew in this session carries the stale code
- * until `/api/me` is read again, while the room list has already moved.
+ * until `/api/me` is read again, while the crew list has already moved.
  */
 export function leadsWithJoining(
 	crews: readonly CrewRef[],

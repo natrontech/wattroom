@@ -26,9 +26,9 @@ export interface Where {
 /**
  * What a crew read has to say (#2457): a session that was not running on the
  * last read, and a text channel with unread whose last line is someone
- * else's. The room list said both for rooms (#1910, #568); a room is its
- * crew's channels now, so the crew read says them — and a click lands on the
- * session or the channel, never on a room.
+ * else's. The room list used to say both for rooms (#1910, #568); what a
+ * room held is its crew's channels now, so the crew read says them — and a
+ * click lands on the session or the channel.
  *
  * A voice channel the rider is standing in, or holding the connection to,
  * announces its own session (connection.svelte.ts) under the same tag, so

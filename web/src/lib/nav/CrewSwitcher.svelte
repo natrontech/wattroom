@@ -188,9 +188,9 @@
 		<!-- What is under this header stopped updating (#1743, #2518): the crew
 		     list or the crews' live read, either one. The channel list,
 		     the presence dots and "32 min in" are frozen at whatever they last
-		     were, and with rooms already on screen nothing else in the column
+		     were, and with channels already on screen nothing else in the column
 		     says so — the error line below only draws over an EMPTY list, so a
-		     rider with rooms read a confident, stale radar for as long as the
+		     rider with channels read a confident, stale radar for as long as the
 		     feed stayed down. Two failed reads in a row, never one: the 60 s
 		     fallback poll covers a blip, and a mark that flickers on every blip
 		     is a mark people learn to ignore.

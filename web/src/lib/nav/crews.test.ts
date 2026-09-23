@@ -21,7 +21,7 @@ describe('who may make what', () => {
 	// they were offered "Open a room" and handed a sheet that led with joining
 	// one — and the dialog between them asked nothing and was always "Open a
 	// room".
-	it('says a rider has nowhere to open a room, membership alone not counting', () => {
+	it('says a rider administers no crew, membership alone not counting', () => {
 		expect(administersNone([])).toBe(true);
 		expect(administersNone([sunday])).toBe(true);
 		expect(administersNone([natron])).toBe(false);
@@ -39,9 +39,9 @@ describe('who may make what', () => {
 		expect(leadsWithJoining([], '')).toBe(false);
 		expect(leadsWithJoining([sunday], undefined)).toBe(false);
 	});
-	// The invite rides the account, read once; the room list moves first. A
+	// The invite rides the account, read once; the crew list moves first. A
 	// rider who founds a crew in-session still carries the stale code.
-	it('stops leading with joining once the rider has a crew to open rooms in', () => {
+	it('stops leading with joining once the rider has a crew of their own', () => {
 		expect(leadsWithJoining([natron], 'AB23CD')).toBe(false);
 		expect(leadsWithJoining(crews, 'AB23CD')).toBe(false);
 	});

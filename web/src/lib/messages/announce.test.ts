@@ -24,7 +24,7 @@ const arrival = (
 	at: 1000,
 	title: 'Ruben · Velvet Hammer',
 	body: 'queue this one',
-	href: '/r/velvet-hammer/chat',
+	href: '/crew/c1/c/t1',
 	reading: false,
 	...over,
 });
@@ -65,7 +65,7 @@ describe('announce', () => {
 		expect(toasts.items).toEqual([
 			expect.objectContaining({
 				text: 'Ruben · Velvet Hammer: queue this one',
-				href: '/r/velvet-hammer/chat',
+				href: '/crew/c1/c/t1',
 			}),
 		]);
 	});
@@ -79,11 +79,11 @@ describe('announce', () => {
 		expect(toasts.items).toEqual([]);
 	});
 
-	// The whole point of the shared tag: the in-room socket and the presence
-	// feed both see the same line, and it announces once.
+	// The whole point of the shared tag: two paths that both see the same line
+	// — each with its own way there — announce it once.
 	it('announces one line once, however many paths see it', () => {
 		announce(arrival());
-		announce(arrival({ href: '/messages/r/velvet-hammer' }));
+		announce(arrival({ href: '/crew/c1' }));
 		expect(played).toEqual(['chat']);
 		expect(toasts.items).toHaveLength(1);
 	});
@@ -108,11 +108,11 @@ describe('announce', () => {
 	});
 });
 
-// A DM mid-ride goes where the rider can find it later, not across the
-// numbers they are holding (#1743). Scoped by the arrival's KIND and never by
-// the phase alone: this one function also announces the session starting in
-// another room, which is the notification ADR-0042 calls the most valuable,
-// and a blanket "quiet while running" would take that with it.
+// A DM mid-ride goes where the rider can find it later, not across the numbers
+// they are holding (#1743). Scoped by the arrival's KIND and never by the phase
+// alone: this one function also announces a session starting in another voice
+// channel, which is the notification ADR-0042 calls the most valuable, and a
+// blanket "quiet while running" would take that with it.
 describe('a riding screen takes the DM', () => {
 	const dm = (over = {}) =>
 		arrival({
@@ -139,7 +139,7 @@ describe('a riding screen takes the DM', () => {
 		stop();
 	});
 
-	it('leaves room chat, friends and a session starting alone', () => {
+	it('leaves channel chat, friends and a session starting alone', () => {
 		const taken: string[] = [];
 		const stop = divertDmsWhileRiding((a) => {
 			taken.push(a.tag);

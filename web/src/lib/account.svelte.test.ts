@@ -8,9 +8,10 @@ import type { ApiResult } from '$lib/api';
  * every failed `GET /api/me` as "signed out", and the layout's sign-out effect
  * closes the socket, hangs up voice and releases the trainer.
  *
- * `load()` is not a startup call — Home, the room layout, the landing page and
- * the verify-email gate all make it, the last on every `visibilitychange` — so
- * one unlucky response out of a whole click-around took the room down.
+ * `load()` is not a startup call — Home, the voice channel's shell, the landing
+ * page and the verify-email gate all make it, the last on every
+ * `visibilitychange` — so one unlucky response out of a whole click-around took
+ * the whole connection down.
  */
 const answers = new Map<string, ApiResult<unknown>>();
 const calls: string[] = [];

@@ -44,9 +44,9 @@ describe('a chat thread over HTTP (#2448)', () => {
 
 	it('reads its paths under the base it was given', async () => {
 		calls.length = 0;
-		const thread = createChatThread('/api/rooms/velvet');
+		const thread = createChatThread('/api/channels/c2');
 		thread.start();
-		expect(calls[0].path).toBe('/api/rooms/velvet/chat');
+		expect(calls[0].path).toBe('/api/channels/c2/chat');
 		thread.close();
 	});
 

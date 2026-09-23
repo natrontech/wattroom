@@ -1,6 +1,6 @@
 /**
  * The line of names under a voice channel's row in the sidebar (#438, #2447):
- * who is in there, without going in. It prints what 224 px has room for and
+ * who is in there, without going in. It prints what fits in 224 px and
  * counts the rest — one 10 px line, not a strip of faces, because stacking
  * names Discord-style would quadruple every busy channel's height and cost the
  * column the glance it exists for (ADR-0010).

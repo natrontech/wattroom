@@ -1,8 +1,8 @@
 /**
- * DM conversation heads, polled GLOBALLY (audit #219): the blip, the
- * hidden-tab notification and the unread badges must work while you sit in
- * a room — which is where riders actually are — not only on the two pages
- * that happened to mount the friends panel. Started once from the layout.
+ * DM conversation heads, polled GLOBALLY (audit #219): the blip, the hidden-tab
+ * notification and the unread badges must work while you sit in a voice channel
+ * — which is where riders actually are — not only on the two pages that
+ * happened to mount the friends panel. Started once from the layout.
  */
 import { untrack } from 'svelte';
 import { api } from '$lib/api';

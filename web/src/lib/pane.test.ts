@@ -130,7 +130,7 @@ describe('keepSize (#280)', () => {
 		// The jukebox dock hides mid-track — a pool track has no picture
 		// (ADR-0015), a muted mix unloads the player — and the gutter reserved
 		// for it has to go with it. Published once and never withdrawn, the
-		// room keeps a band of nothing at the bottom of every place.
+		// voice channel keeps a band of nothing at the bottom of every place.
 		let tall = true;
 		const node = document.createElement('div');
 		Object.defineProperty(node, 'offsetWidth', { get: () => (tall ? 360 : 0) });
@@ -215,8 +215,8 @@ describe('a borrowed pane (#316)', () => {
  * its own height: the composer sat a third of the way up the pane.
  *
  * Read from the source because there is no way to render ChannelShell's padding
- * without a room, a connection and a track. The regression is a default
- * creeping back into the `var()`, and that is visible right here.
+ * without a voice channel, a connection and a track. The regression is a
+ * default creeping back into the `var()`, and that is visible right here.
  */
 describe('the jukebox gutter (#1702)', () => {
 	it('has no dock height to fall back on', () => {

@@ -13,10 +13,10 @@
 		{#if ask.body}
 			<p class="text-muted mt-2 text-sm">{ask.body}</p>
 		{/if}
-		<!-- Cancel first in the DOM, so the trap's initial focus lands on the
-		     safe answer: an Enter arriving as the dialog mounts used to end the
-		     session for the room (audit 2026-09-09). Reversed visually, so the
-		     action keeps the left. -->
+		<!-- Cancel first in the DOM, so the trap's initial focus lands on the safe
+		     answer: an Enter arriving as the dialog mounts used to end the session
+		     for everyone in it (audit 2026-09-09). Reversed visually, so the action
+		     keeps the left. -->
 		<div class="mt-5 flex flex-row-reverse flex-wrap justify-end gap-2">
 			<button
 				onclick={() => confirmation.settle(false)}

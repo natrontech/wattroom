@@ -2,7 +2,7 @@
 	// The trophy case (#467): a rider's own medals and their badges. Pure —
 	// hand it a Trophies payload and it draws. The own rider page's trophy case uses it (#1330);
 	// rider's page shows BadgeGrid alone, because these medal counts are
-	// lifetime and ADR-0024 lets that page show only the ones from rooms you
+	// lifetime and ADR-0024 lets that page show only the ones from crews you
 	// share (#701).
 	import Award from '@lucide/svelte/icons/award';
 	import { MEDAL_KINDS, MEDAL_META } from '$lib/medals';

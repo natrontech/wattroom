@@ -29,7 +29,7 @@ Preamble prose that is not part of any release.
 ### Added
 
 - The \`.fit\` export.
-- Rooms.
+- Crews.
 
 ### Security
 
@@ -208,9 +208,9 @@ describe('headline', () => {
 	it('keeps the first sentence', () => {
 		expect(
 			headline(
-				'Deleting a room now clears everything live about it. The slug it frees can be reused.',
+				'Deleting a channel now clears everything live about it. The name it frees can be reused.',
 			),
-		).toBe('Deleting a room now clears everything live about it.');
+		).toBe('Deleting a channel now clears everything live about it.');
 	});
 
 	// `.fit` and `deploy/` are why a period alone cannot end a sentence.
@@ -221,8 +221,8 @@ describe('headline', () => {
 	});
 
 	it('leaves a one-sentence entry whole', () => {
-		expect(headline('Rooms are a thing you can open now.')).toBe(
-			'Rooms are a thing you can open now.',
+		expect(headline('Crews are a thing you can open now.')).toBe(
+			'Crews are a thing you can open now.',
 		);
 	});
 
@@ -238,7 +238,7 @@ describe('highlights', () => {
 
 ### Added
 
-- The jukebox now keeps saved playlists for a room. Any member can edit them.
+- The jukebox now keeps saved playlists for a crew. Any member can edit them.
 - Two.
 
 ### Fixed
@@ -252,7 +252,7 @@ describe('highlights', () => {
 		expect(lines).toEqual([
 			{
 				heading: 'Added',
-				text: 'The jukebox now keeps saved playlists for a room.',
+				text: 'The jukebox now keeps saved playlists for a crew.',
 			},
 			{ heading: 'Added', text: 'Two.' },
 			{ heading: 'Fixed', text: 'Three.' },

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { iconFor } from '$lib/icons';
 
-	// The room's identity mark (#223), drawn from its stored key (#447).
-	// Nothing for a room without one — the name stands alone.
+	// A crew's identity mark (#223), drawn from its stored key (#447).
+	// Nothing for a crew without one — the name stands alone.
 	let {
 		icon,
 		size = 14,

@@ -167,8 +167,10 @@ export function setLaunchAtLogin(on: boolean): Promise<LoginItem | null> {
 }
 
 /**
- * The room the app is connected to, told to the shell so its tray can offer
- * to open it. Null when there is none, and a no-op in a browser.
+ * The voice channel the app is connected to, told to the shell so its tray
+ * can offer to open it. Null when there is none, and a no-op in a browser.
+ * The bridge still calls it `setRoom`: the shell is released on its own
+ * train, and an installed one knows no other name.
  */
 export function setShellPlace(place: { path: string; name: string } | null) {
 	(

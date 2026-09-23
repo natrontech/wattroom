@@ -15,9 +15,9 @@ describe('activeHref', () => {
 
 	// ADR-0020's rule 1: a page not in the column has a parent row in it, lit
 	// while you are there — and a page with no parent is a bug, not a page.
-	// `/rooms` was retired INTO Home's "your rooms" section (it redirects to
-	// /home#rooms) and the directory is that section's other half — the "No
-	// code? Find a crew" line in the open/join card — so Home is that row.
+	// `/rooms` is a stub that redirects to the crew directory (#2458), and the
+	// directory is Home's other half — the "No code? Find a crew" line in the
+	// open/join card — so Home is that row.
 	// Both used to leave the whole column dark (#1863).
 	it('keeps Home lit on the crew directory and the retired /rooms stub', () => {
 		expect(activeHref('/crews/directory')).toBe('/home');
@@ -25,8 +25,9 @@ describe('activeHref', () => {
 	});
 
 	// The sidebar draws the messages tree's own rows — a thread's row for
-	// /messages/dm/[peer], the room's own row for /messages/r/[slug] — so a
-	// destination covering /messages would light a SECOND row beside them.
+	// /messages/dm/[peer] — so a destination covering /messages would light a
+	// SECOND row beside them. `/messages/r/[slug]` only forwards an old room
+	// link to its text channel now (#2458), and lights nothing either.
 	// Exactly one row is current, which is why the heading carries the index.
 	it('leaves the messages tree to the rows the sidebar draws for it', () => {
 		expect(activeHref('/messages')).toBeUndefined();
@@ -35,8 +36,9 @@ describe('activeHref', () => {
 	});
 
 	it('has no entry for a path outside the three', () => {
-		// A room lights its own entry in the rooms list, not a destination —
-		// and /settings is the cog, which is a setting rather than a place.
+		// An old room link only forwards to its channel now (#2458), and a channel
+		// lights its own row, not a destination — and /settings is the cog, which
+		// is a setting rather than a place.
 		expect(activeHref('/r/velvet-hammer')).toBeUndefined();
 		expect(activeHref('/settings')).toBeUndefined();
 		expect(activeHref('/nowhere')).toBeUndefined();
@@ -74,9 +76,9 @@ describe('dmsCurrent', () => {
 		expect(dmsCurrent('/messages/dm/rider-1', false)).toBe(true);
 	});
 
-	// A room's chat is not under this heading — the room's own row above is
-	// its parent, and it is always drawn.
-	it('leaves a room chat to the room row above it', () => {
+	// An old room link to its chat is not under this heading: it forwards to
+	// a text channel (#2458), whose own row in the crew above is always drawn.
+	it('leaves an old room chat link to the text channel it forwards to', () => {
 		expect(dmsCurrent('/messages/r/velvet-hammer', false)).toBe(false);
 		expect(dmsCurrent('/messages/r/velvet-hammer', true)).toBe(false);
 	});

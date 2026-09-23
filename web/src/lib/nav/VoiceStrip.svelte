@@ -67,7 +67,7 @@
 		<div class="grid grid-cols-2 gap-1.5">
 			{#each shown as rider (rider.id)}
 				{@const video = av.videoOf[rider.id]}
-				<!-- The room's word, not this strip's reading of the current
+				<!-- The voice channel's word, not this strip's reading of the current
 				     sample (#1016): a coast holds the mark here too. -->
 				{@const riding = !!rider.riding}
 				<!-- A tile is the way back to the Lounge — and at the sidebar's

@@ -1,15 +1,15 @@
 /**
  * Pins (ADR-0056, #2405): a crew keeps a handful of facts that nothing else
  * holds — the game server and its address and its password, the Discord link,
- * the door code — and chat cannot, because the room's log is capped at 500
- * lines and anything posted there is on a timer.
+ * the door code — and chat cannot, because a text channel's log is capped at
+ * 500 lines and anything posted there is on a timer.
  *
  * A pin is a **title and a block of lines**, not a key and a value. One thing
  * worth pinning is rarely one string, and splitting a server across three
  * cards loses which server they belong to.
  *
- * The crew owns the board and the room is where it is read, so every room of
- * a crew shows the same one. Everyone in the crew writes it; nothing asks who
+ * The crew owns the board and its Board page is where it is read (#2413), so
+ * a crew has exactly one. Everyone in the crew writes it; nothing asks who
  * wrote a pin.
  */
 import { api } from '$lib/api';

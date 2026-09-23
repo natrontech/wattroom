@@ -10,11 +10,10 @@ import type {
 import type { Announcement } from '$lib/channels';
 
 /**
- * One chat read and written over HTTP — a text channel's (#2448), or a room's
- * read from outside it (#468) until the room goes (#2460). No socket: chat
- * left the tick (#2437), so the backlog is the whole truth and is read again
- * whenever the caller hears the lobby ping. `base` is the API the thread
- * lives under: `/api/channels/{id}` or `/api/rooms/{slug}`.
+ * One chat read and written over HTTP — a text channel's (#2448). No socket:
+ * chat left the tick (#2437), so the backlog is the whole truth and is read
+ * again whenever the caller hears the lobby ping. `base` is the API the
+ * thread lives under: `/api/channels/{id}`.
  */
 interface BacklogMessage extends ChatLine {
 	id: string;
@@ -68,7 +67,7 @@ export function createChatThread(base: string) {
 		);
 		reactions = counts;
 		myReacts = pressed;
-		// A room's finished sessions ride its backlog (ADR-0034); a text
+		// A room's finished sessions rode its backlog (ADR-0034); a text
 		// channel has none, and carries its marked line instead (#2435).
 		recaps = res.data.recaps ?? [];
 		announcement = res.data.announcement ?? null;

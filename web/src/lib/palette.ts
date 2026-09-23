@@ -7,8 +7,9 @@
  *
  * ADR-0005's restraint rule is unchanged and is expressed here: `watt` marks
  * live data and is the only token that glows, `neon` is chrome. The zone ramp
- * sweeps from neon to watt, so intensity climbs from the room's own hue to the
- * live-data hue — which is exactly what the shipped Outrun ramp already did.
+ * sweeps from neon to watt, so intensity climbs from the chrome's own hue to
+ * the live-data hue — which is exactly what the shipped Outrun ramp already
+ * did.
  *
  * Pure: the DOM lives in palette.svelte.ts, so every rule here is testable.
  */
@@ -184,12 +185,12 @@ export const CONTRAST = { text: 4.5, accent: 3 } as const;
  * not.
  *
  * The step is the OKLCH lightness `muted-dim` moves toward the surface before
- * `fitContrast` pulls it back to the text floor. It is deliberately larger
- * than any theme has room for: `muted` already sits near 4.5:1, so in practice
- * the fit is what places the step and `muted-dim` lands as dim as AA allows.
- * The one theme that used to keep the full step did so on a near-ink `muted`
- * that was itself the defect (issue 2397); nothing has that headroom now, and
- * a theme that did would be failing `muted-ceiling` in gate.ts.
+ * `fitContrast` pulls it back to the text floor. It is deliberately larger than
+ * any theme can spare: `muted` already sits near 4.5:1, so in practice the fit
+ * is what places the step and `muted-dim` lands as dim as AA allows. The one
+ * theme that used to keep the full step did so on a near-ink `muted` that was
+ * itself the defect (issue 2397); nothing has that headroom now, and a theme
+ * that did would be failing `muted-ceiling` in gate.ts.
  */
 const MUTED_DIM_STEP = 0.08;
 
@@ -280,8 +281,8 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		),
 	);
 	// The ramp is shared, not themed (ADR-0023 §4). It is still fitted against
-	// *this* theme's surfaces, because a blue-black room and a violet-black one
-	// are not the same background.
+	// *this* theme's surfaces, because a blue-black surface and a violet-black
+	// one are not the same background.
 	f.zones.forEach((zone, i) => {
 		const fitted = fitContrast(
 			zone,

@@ -101,9 +101,9 @@ export function closeMenu(): void {
 
 /**
  * Does this scroll invalidate the menu? Only one that moves the thing you
- * right-clicked. The room scrolls its own panes constantly — the chat sticks
- * to its newest line on every tick — and closing on ANY scroll shut the menu
- * about a second after it opened, wherever you had opened it (#500).
+ * right-clicked. A room used to scroll its own panes constantly — its chat
+ * stuck to the newest line on every tick — and closing on ANY scroll shut
+ * the menu about a second after it opened, wherever you had opened it (#500).
  */
 export function scrollClosesMenu(
 	target: EventTarget | null,

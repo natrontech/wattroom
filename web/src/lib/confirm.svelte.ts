@@ -9,8 +9,8 @@
  * callers falling through to a bare "Cancel" (#2008) — and a rider three
  * meters from the screen reads the shape of the pair, not the sentence. The
  * one exception is a question asked mid-effort, where the safe answer says
- * what the rider is doing instead of what they are keeping: /ride and the
- * room's "End the session" say "Keep riding", /ramp says "Keep going". If a
+ * what the rider is doing instead of what they are keeping: /ride and a
+ * session's "End the session" say "Keep riding", /ramp says "Keep going". If a
  * new spelling seems right, the action's title is what needs the rewrite.
  */
 export interface ConfirmRequest {

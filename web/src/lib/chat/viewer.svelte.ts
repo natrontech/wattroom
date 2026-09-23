@@ -1,7 +1,7 @@
 /**
  * The chat image viewer (#510): a picture in a message opens big on the page
  * it was sent on. It used to be an `<a target="_blank">`, and the browser then
- * hands the rider a bare `<img>` document with the room gone and the only way
+ * hands the rider a bare `<img>` document with the app gone and the only way
  * back in the tab bar — the one piece of chrome someone three meters from the
  * screen cannot hit (rider report).
  *

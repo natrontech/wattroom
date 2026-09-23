@@ -1,8 +1,8 @@
 /**
  * A library track's waveform (#1425): the file fetched once more — the
  * browser's cache has it from the deck — decoded off the audio thread, and
- * reduced to `buckets` peaks. Remembered per track for the session, so the
- * deck does not decode again when the room comes back to a song. Null when
+ * reduced to `buckets` peaks. Remembered per track for the session, so the deck
+ * does not decode again when the voice channel comes back to a song. Null when
  * the file cannot be read; the deck then keeps its placeholder shape.
  */
 import { audioSrc } from '$lib/music/pool';

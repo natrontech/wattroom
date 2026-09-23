@@ -61,8 +61,7 @@ function calendarDaysApart(from: Date, to: Date): number {
 
 /**
  * When someone joined, to the month: "Sept 2026". The rows that say "since"
- * (a crew's people, a room's members, the room settings header) all use it,
- * so they cannot drift apart.
+ * (a crew's people and its ban list) all use it, so they cannot drift apart.
  */
 export function formatMonth(iso: string): string {
 	return new Date(iso).toLocaleDateString(undefined, {

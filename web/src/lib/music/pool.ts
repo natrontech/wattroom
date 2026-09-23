@@ -1,7 +1,7 @@
 /**
  * The music pool, client side (#268, ADR-0015 as amended by #1095): a
  * rider browses and edits what they uploaded; playing is wider — a track
- * plays in any room its uploader may be seen in (`visible_rooms`).
+ * plays in any voice channel its uploader may enter (`visible_channels`).
  *
  * The fetch goes through `$lib/api` like everything else; what lives here is
  * the shape and the two things worth stating once — how a track is labelled
@@ -81,9 +81,9 @@ export function saveTrack(
 }
 
 /**
- * Several of your tracks onto a room's live queue in one request (#1433).
- * One call through the playlist bridge, not one socket command per track:
- * the hub throttles a rider's commands and would drop most of a burst.
+ * Several of your tracks onto a voice channel's live queue in one request
+ * (#1433). One call through the playlist bridge, not one socket command per
+ * track: the hub throttles a rider's commands and would drop most of a burst.
  */
 export function queueTracks(address: PlaceAddress, trackIds: string[]) {
 	return api<{ queued: number; skipped: number }>(address.queueTracks, {

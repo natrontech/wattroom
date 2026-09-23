@@ -96,10 +96,10 @@ function createAccountStore() {
 	let unreachable = $state(false);
 
 	/**
-	 * Which load is the current question. Home, the room layout, the landing
-	 * page and the verify-email gate all call `load()`, the last of them on
-	 * every `visibilitychange`, so a rider clicking around has several in
-	 * flight at once and a slow one used to be able to answer last (#850).
+	 * Which load is the current question. Home, the voice channel's shell, the
+	 * landing page and the verify-email gate all call `load()`, the last of
+	 * them on every `visibilitychange`, so a rider clicking around has several
+	 * in flight at once and a slow one used to be able to answer last (#850).
 	 */
 	let asked = 0;
 
@@ -124,7 +124,7 @@ function createAccountStore() {
 				// reached, or a 500 from a session lookup that hit a database
 				// blip, is a question that failed — not an answer about who this
 				// is — and nulling `me` on one signed the rider out and took the
-				// room, the voice channel and the trainer with it (#850).
+				// socket, the voice and the trainer with it (#850).
 				me = null;
 			}
 			// Any failure (404 = server running without a database) stays hidden;

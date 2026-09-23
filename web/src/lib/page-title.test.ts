@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { scanSource, stale, type Allowlist } from './source-scan.test-helper';
 
 /**
- * A page says its own name through `page-title`, and an OBJECT — a room, a
- * crew, a rider, a ride — through `page-title-sm` (#1697, #2006, #2178). The
+ * A page says its own name through `page-title`, and an OBJECT — a crew, a
+ * channel, a rider, a ride — through `page-title-sm` (#1697, #2006, #2178). The
  * utilities own the size, so an h1 that retypes one renders a step away from
  * every other page, which is how four sidebar rows ended up a size smaller
  * than Home before anyone noticed. Seven object titles used to live in the
