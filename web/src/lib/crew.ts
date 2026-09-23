@@ -3,16 +3,15 @@ import type { SessionRecap } from '$lib/protocol';
 import type {
 	BoardRow,
 	RiderPrefs,
-	RoomAccess,
 	RoomCrew,
 	Together,
 } from '$lib/room/room-data';
 
 /**
- * The crew's own surface (ADR-0038): identity, its rooms with what you may
- * do in each, its people with their crew roles, and — for the owner and
- * admins — its bans. Nothing live: a crew carries no voice, deck, session
- * or metrics, so there is nothing else to fetch.
+ * The crew's own surface (ADR-0038): identity, its people with their crew
+ * roles, and — for the owner and admins — its bans. Nothing live: a crew
+ * carries no voice, deck, session or metrics, so there is nothing else to
+ * fetch.
  */
 export type CrewRole = 'owner' | 'admin' | 'member';
 
@@ -21,25 +20,10 @@ export interface CrewPerson {
 	displayName: string;
 	avatarUrl?: string;
 	role: CrewRole | 'banned';
-	/** First joined any of the crew's rooms — or, on the ban list, banned on. */
+	/** Joined the crew — or, on the ban list, banned on. */
 	since: string;
-	/** How many of the crew's rooms hold them; absent on the ban list. */
-	rooms?: number;
-	/** Owns a room in the crew, so cannot be banned from it (#1212). */
-	ownsRoom?: boolean;
 	/** Medals the crew's sessions awarded them — on the Members read only (#2442). */
 	medals?: number;
-}
-
-export interface CrewRoom {
-	id: string;
-	/** Absent when you may not enter — the slug is the door (#1205). */
-	slug?: string;
-	name: string;
-	icon?: string;
-	access: RoomAccess;
-	/** In the public directory too (#1929). */
-	listed?: boolean;
 }
 
 export interface Crew {
@@ -55,7 +39,6 @@ export interface Crew {
 	/** A person has named it (#1151); false while it carries the owner's name. */
 	named?: boolean;
 	ownerId: string;
-	rooms: CrewRoom[];
 	/**
 	 * How many are in the crew — the door's number. `people` is the part of
 	 * them you may see (#1135), shorter for a plain member.
@@ -125,24 +108,6 @@ export function transferCrew(
 	return api<RoomCrew>(`/api/crews/${id}/transfer`, {
 		method: 'POST',
 		json: { userId },
-	});
-}
-
-/**
- * Open a room to the crew or shut it, by id (#1226) — the one permission a
- * crew admin holds over a room they never joined, and the row they hold
- * carries no slug (#1205).
- */
-export function setRoomAccess(
-	crewId: string,
-	roomId: string,
-	crewVisible: boolean,
-	/** With the door, the listing to restore (#1929) — the undo of a shut. */
-	listed?: boolean,
-): Promise<ApiResult<void>> {
-	return api<void>(`/api/crews/${crewId}/rooms/${roomId}/access`, {
-		method: 'PATCH',
-		json: listed === undefined ? { crewVisible } : { crewVisible, listed },
 	});
 }
 

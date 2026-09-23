@@ -55,18 +55,13 @@
 			? act(person, 'member', `${person.displayName} is a member now.`)
 			: act(person, 'admin', `${person.displayName} is a crew admin now.`);
 
-	// A crew ban takes every room membership in the crew with it (ADR-0038),
-	// and the undo toast that stood here put back the role and none of the
-	// rooms (#1674): a confirm that says what goes, the shape leaving has.
+	// A confirm, not an undo (#1674): the undo toast that stood here put back
+	// the role and nothing the ban took with it — the private channels they
+	// were named into stay gone (ADR-0058).
 	async function ban(person: CrewPerson) {
-		const rooms = person.rooms ?? 0;
-		const which = rooms === 1 ? 'the room' : `the ${rooms} rooms`;
 		const sure = await confirm({
 			title: `Ban ${person.displayName} from the crew?`,
-			body:
-				rooms > 0
-					? `They leave ${which} of the crew they are in, and any coach role there. Lifting the ban later lets them back into the crew, not into the rooms.`
-					: `They cannot come back through the crew's code until you lift the ban.`,
+			body: `They cannot come back through the crew's code until you lift the ban.`,
 			action: 'Ban',
 			cancel: 'Keep it',
 		});
@@ -127,15 +122,11 @@
 				icon: Crown,
 				onSelect: () => handOver(person),
 			});
-		// A room owner cannot be banned from the crew their room is in (#1212):
-		// the entry stays, says why, and does nothing — never a 409 on click.
 		entries.push({
 			label: 'Ban from the crew',
 			icon: ShieldBan,
 			onSelect: () => ban(person),
 			danger: true,
-			disabled: person.ownsRoom,
-			hint: person.ownsRoom ? 'owns a room here' : undefined,
 		});
 		return entries;
 	}
@@ -185,9 +176,6 @@
 				</span>
 				<span class="text-muted block text-[11px]">
 					{roleWord(person.role)}
-					{#if person.rooms}
-						· {person.rooms === 1 ? '1 room' : `${person.rooms} rooms`}
-					{/if}
 					· since {formatMonth(person.since)}
 				</span>
 			</span>

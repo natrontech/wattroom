@@ -6,13 +6,8 @@ const mocks = vi.hoisted(() => ({
 	transferCrew: vi.fn(),
 	goto: vi.fn(),
 	push: vi.fn(),
-	rooms: [] as {
-		slug: string;
-		role?: string;
-		access?: string;
-		crew?: { id: string };
-	}[],
-	crews: [] as { id: string; lastOut?: boolean }[],
+	leave: vi.fn(),
+	current: null as { address: { crew: string } } | null,
 }));
 vi.mock('$app/navigation', () => ({ goto: mocks.goto }));
 vi.mock('$lib/confirm.svelte', () => ({ confirm: mocks.confirm }));
@@ -22,69 +17,42 @@ vi.mock('$lib/crew', () => ({
 	joinCrew: vi.fn(),
 	inviteLink: (code: string) => `/c/${code}`,
 }));
-vi.mock('$lib/presence.svelte', () => ({
-	presence: {
-		get rooms() {
-			return mocks.rooms;
-		},
-		get crews() {
-			return mocks.crews;
-		},
-		reload() {},
-	},
-}));
+vi.mock('$lib/presence.svelte', () => ({ presence: { reload() {} } }));
 vi.mock('$lib/room/connection.svelte', () => ({
-	roomConnection: { current: null, leave() {} },
+	roomConnection: {
+		get current() {
+			return mocks.current;
+		},
+		leave: mocks.leave,
+	},
 }));
 vi.mock('$lib/toast.svelte', () => ({ toasts: { push: mocks.push } }));
 
 const { HAND_OVER_BODY, handOverCrewFlow, leaveBody, leaveCrewFlow } =
 	await import('./crew-flows');
 
-describe('leaveBody', () => {
-	it('names what goes', () => {
-		expect(leaveBody('Natron', 0, 0)).toBe(
-			'You leave Natron. Its code gets you back in.',
-		);
-		expect(leaveBody('Natron', 1, 0)).toMatch(
-			/^You leave Natron and the room of it you are in\./,
-		);
-		expect(leaveBody('Natron', 3, 1)).toMatch(
-			/the 3 rooms .* a private room needs a fresh invitation/,
-		);
-	});
-
-	// #2079: the promise above is a lie for the last one out of a room-less
-	// crew, because the crew — and its code — go with them. The room count
-	// cannot tell the two apart: zero rooms also means a crew whose rooms you
-	// never joined, where the code really does get you back in.
-	it('drops the promise of a way back when the crew goes with you', () => {
-		const ending = leaveBody('Natron', 0, 0, true);
-		expect(ending).toMatch(/the crew goes with you/);
-		expect(ending).toMatch(/no code brings it back/);
-		expect(ending).not.toMatch(/gets you back in/);
-		expect(leaveBody('Natron', 0, 0, false)).toBe(
-			'You leave Natron. Its code gets you back in.',
-		);
-	});
-});
-
 describe('leaveCrewFlow', () => {
 	beforeEach(() => {
 		mocks.confirm.mockReset();
 		mocks.leaveCrew.mockReset();
 		mocks.push.mockReset();
-		mocks.rooms = [
-			{ slug: 'a', role: 'member', access: 'private', crew: { id: 'c1' } },
-		];
-		mocks.crews = [{ id: 'c1' }];
+		mocks.leave.mockReset();
+		mocks.current = null;
 	});
 
 	it('asks first, and a declined confirm leaves nothing (audit 2026-09-09)', async () => {
 		mocks.confirm.mockResolvedValue(false);
 		expect(await leaveCrewFlow({ id: 'c1', name: 'Natron' })).toBe(false);
 		expect(mocks.leaveCrew).not.toHaveBeenCalled();
-		expect(mocks.confirm.mock.calls[0][0].body).toMatch(/private room/);
+		expect(mocks.confirm.mock.calls[0][0]).toEqual({
+			title: 'Leave Natron?',
+			body: leaveBody('Natron'),
+			action: 'Leave the crew',
+			cancel: 'Keep it',
+		});
+		expect(leaveBody('Natron')).toBe(
+			'You leave Natron. Its code gets you back in.',
+		);
 	});
 
 	it('leaves on yes, with a toast that promises no undo', async () => {
@@ -95,21 +63,17 @@ describe('leaveCrewFlow', () => {
 		expect(mocks.push).toHaveBeenCalledWith('You left Natron.');
 	});
 
-	// The server is the only one who knows (#2079), and it says so on the
-	// crews list — whichever surface offered the Leave. A flow that asked the
-	// ordinary question here would promise a code that no longer opens
-	// anything.
-	it('asks the ending question when the crews list says you are the last out', async () => {
-		mocks.crews = [{ id: 'c1', lastOut: true }];
-		mocks.rooms = [];
-		mocks.confirm.mockResolvedValue(false);
+	// The server severs the socket too, but this side must not keep riding a
+	// voice channel of a crew it just left — nor drop one of another crew.
+	it('drops the live connection only when it is in the crew left', async () => {
+		mocks.confirm.mockResolvedValue(true);
+		mocks.leaveCrew.mockResolvedValue({ ok: true, data: undefined });
+		mocks.current = { address: { crew: 'c2' } };
 		await leaveCrewFlow({ id: 'c1', name: 'Natron' });
-		expect(mocks.confirm.mock.calls[0][0]).toEqual({
-			title: 'Leave Natron and end it?',
-			body: leaveBody('Natron', 0, 0, true),
-			action: 'Leave and end it',
-			cancel: 'Keep it',
-		});
+		expect(mocks.leave).not.toHaveBeenCalled();
+		mocks.current = { address: { crew: 'c1' } };
+		await leaveCrewFlow({ id: 'c1', name: 'Natron' });
+		expect(mocks.leave).toHaveBeenCalledOnce();
 	});
 });
 

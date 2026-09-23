@@ -26,7 +26,7 @@ describe('resetBody', () => {
 	// things a rider cannot find out any other way — that someone else's
 	// calendar breaks, that nobody tells them, and that the old link is gone.
 	it('names the breakage, who is not told, and the way back', () => {
-		for (const scope of ['yours', 'crew', 'room'] as const) {
+		for (const scope of ['yours', 'crew'] as const) {
 			const body = resetBody(scope);
 			expect(body).toMatch(/stops updating/);
 			expect(body).toMatch(/not told/);
@@ -37,7 +37,6 @@ describe('resetBody', () => {
 
 	it('says whose calendar it is', () => {
 		expect(resetBody('yours')).toMatch(/your old link/);
-		expect(resetBody('room')).toMatch(/this room's old link/);
 		expect(resetBody('crew')).toMatch(/this crew's old link/);
 	});
 });
@@ -45,13 +44,13 @@ describe('resetBody', () => {
 describe('confirmCalendarReset', () => {
 	it('asks with the house pair, and passes the refusal on (#1493)', async () => {
 		mocks.confirm.mockResolvedValue(false);
-		expect(await confirmCalendarReset('room')).toBe(false);
+		expect(await confirmCalendarReset('crew')).toBe(false);
 		const ask = mocks.confirm.mock.calls[0][0];
-		expect(ask.title).toBe("Reset this room's calendar link?");
+		expect(ask.title).toBe("Reset this crew's calendar link?");
 		expect(ask.action).toBe('Reset the link');
 		// confirm.svelte.ts: the safe answer has one spelling.
 		expect(ask.cancel).toBe('Keep it');
-		expect(ask.body).toBe(resetBody('room'));
+		expect(ask.body).toBe(resetBody('crew'));
 	});
 
 	it('passes a yes on', async () => {
