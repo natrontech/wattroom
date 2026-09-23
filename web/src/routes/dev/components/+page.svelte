@@ -22,7 +22,7 @@
 	import type { Pin, PinDraft } from '$lib/pins/pins';
 	import Copy from '@lucide/svelte/icons/copy';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
-	import type { MockRider } from '../room/mockChannel.svelte';
+	import type { MockRider } from '../channel/mockChannel.svelte';
 
 	// A stand-in screenshot, deliberately bigger than any window: fit-to-window
 	// and full size are two different pictures, which is the whole point of the
@@ -48,7 +48,7 @@
 		{ riderId: 'demo', name: 'You', wkg: 10.8, watts: 796 },
 	];
 
-	// Pins (ADR-0056). The real board is a room's place and talks to the
+	// Pins (ADR-0056). The real board is the crew's page and talks to the
 	// server; these two are local lists, because a gallery should not write
 	// to a crew — and because the empty state is a state the real board is
 	// only in once.
@@ -146,11 +146,9 @@
 		one string, and a server is its address AND its password AND who to ask
 		about the whitelist. A line written as <code>Label: value</code> gets its
 		own copy button; everything else stays prose. The editor is one textarea,
-		not a field repeater. The crew owns the board, and it is a place inside the
-		room —
-		<code>/r/[slug]/pins</code>, whose sidebar row appears only once there is
-		something on it. Not wired to a server: the store is in memory, and it is
-		these two are local lists — a gallery should not write to a crew.
+		not a field repeater. The crew owns the board, and it is the crew's own page
+		— <code>/crew/[id]/board</code>. Not wired to a server: these two are local
+		lists — a gallery should not write to a crew.
 	</p>
 
 	<p class="text-muted-dim mt-6 text-[11px]">
@@ -247,9 +245,8 @@
 
 	<h2 class="eyebrow mt-12">Icon picker</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
-		The curated set as a radiogroup (#447): a room's mark and a crew's come from
-		the same set through the same control (#1209). Saves on pick — no form
-		around it.
+		The curated set as a radiogroup (#447): the crew's mark comes from it
+		(#1209) — channels are named, not marked. Saves on pick — no form around it.
 	</p>
 	<div class="mt-4">
 		<IconPicker value={galleryIcon} onpick={(key) => (galleryIcon = key)} />
@@ -367,10 +364,11 @@
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		A picture in a message is capped so it cannot push the conversation off
 		screen. Clicking it opens the app's own viewer (#510) — never a browser tab,
-		which takes the room with it. Click the picture again for full size, Escape
-		or the backdrop to come back. Right-click the thumbnail for the new tab and
-		the link, then whatever the message around it offers — the room panel passes
-		its own message menu down, so reacting to a picture still works.
+		which takes the rider out of the channel. Click the picture again for full
+		size, Escape or the backdrop to come back. Right-click the thumbnail for the
+		new tab and the link, then whatever the message around it offers — the
+		message thread passes its own message menu down, so reacting to a picture
+		still works.
 	</p>
 	<div class="mt-4">
 		<ChatImage
@@ -460,20 +458,22 @@
 			<p class="text-muted mt-4 text-[11px]">loading</p>
 		</div>
 		<div class="border-danger/40 bg-danger/10 rounded-lg border p-4">
-			<p class="text-sm">Couldn't load your rooms</p>
+			<p class="text-sm">Couldn't load the voice channels</p>
 			<button class="border-muted/30 mt-3 rounded border px-3 py-1.5 text-xs"
 				>Retry</button
 			>
 			<p class="text-muted mt-4 text-[11px]">error, with a way out</p>
 		</div>
 		<div class="border-muted/10 rounded-lg border border-dashed p-4">
-			<p class="text-sm">No rooms yet.</p>
-			<p class="text-muted mt-1 text-xs">Open one and your crew gets a ping.</p>
+			<p class="text-sm">No voice channels yet.</p>
+			<p class="text-muted mt-1 text-xs">
+				The + makes the first place to ride together.
+			</p>
 			<p class="text-muted mt-4 text-[11px]">empty, teaching</p>
 		</div>
 		<div class="border-muted/15 bg-surface-raised rounded-lg border p-4">
 			<p class="font-display font-bold">Thursday Sufferfest</p>
-			<p class="text-muted mt-1 text-xs">riding now · 6 in the room</p>
+			<p class="text-muted mt-1 text-xs">riding now · 6 in the channel</p>
 			<p class="text-muted mt-4 text-[11px]">content</p>
 		</div>
 	</div>
@@ -562,7 +562,7 @@
 		<button class="text-muted rounded px-4 py-2 text-sm">Ghost</button>
 		<input
 			class="border-muted/25 placeholder:text-muted-dim rounded border bg-transparent px-3 py-2 text-sm outline-none"
-			placeholder="Room name"
+			placeholder="Channel name"
 		/>
 		<a href="/dev/styleguide" class="text-sm underline">A link</a>
 	</div>

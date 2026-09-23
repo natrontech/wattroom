@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { medals, CHANNEL_NAME } from '../room/mockChannel.svelte';
+	import { medals, CHANNEL_NAME } from '../channel/mockChannel.svelte';
 	import MedalCard from '$lib/components/MedalCard.svelte';
 </script>
 

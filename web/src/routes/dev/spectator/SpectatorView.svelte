@@ -13,7 +13,7 @@
 		CHANNEL_NAME,
 		workout,
 		zoneOf,
-	} from '../room/mockChannel.svelte';
+	} from '../channel/mockChannel.svelte';
 	import type { Segment } from '$lib/workout/types';
 
 	let {
@@ -118,7 +118,7 @@
 			<p class="mt-5 text-sm">Nobody's riding yet.</p>
 			<p class="text-muted mt-2 text-xs leading-relaxed">
 				You'll see everyone's live power here the moment the coach starts the
-				session. Cheers still land in the room.
+				session. Cheers still land in the channel.
 			</p>
 		</div>
 	{/if}

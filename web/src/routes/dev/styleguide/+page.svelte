@@ -252,7 +252,7 @@
 		<button class="btn btn-primary btn-xs">Compact</button>
 		<button class="btn btn-secondary btn-lg">Big tap target</button>
 		<button class="btn btn-primary" disabled>Disabled</button>
-		<input class="input" placeholder="Room name" />
+		<input class="input" placeholder="Channel name" />
 		<span
 			class="border-muted/25 text-muted rounded-full border px-3 py-1 text-xs"
 			>coach</span

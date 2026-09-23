@@ -183,7 +183,7 @@
 			</section>
 
 			<section>
-				<h2 class="eyebrow">Rooms in common</h2>
+				<h2 class="eyebrow">Crews in common</h2>
 				<ul class="mt-3 space-y-1.5">
 					{#each shared as crew (crew)}
 						<li class="panel flex items-center gap-2 px-3 py-2 text-sm">
@@ -200,8 +200,8 @@
 				</h2>
 				<ul class="text-muted mt-2 space-y-1 text-[11px] leading-relaxed">
 					<li>
-						<strong class="text-ink">Everyone:</strong> name, level, medals from rooms
-						you share, which room they are in.
+						<strong class="text-ink">Everyone:</strong> name, level, medals from crews
+						you share, which voice channel they are in.
 					</li>
 					<li>
 						<strong class="text-ink">Friends:</strong> the rides they chose to share,
@@ -209,7 +209,7 @@
 					</li>
 					<li>
 						<strong class="text-ink">Never:</strong> live watts, heart rate, weight,
-						FTP — room-scoped, as today.
+						FTP — session-scoped, as today.
 					</li>
 				</ul>
 				<p class="text-muted-dim mt-2 flex items-center gap-1 text-[10px]">

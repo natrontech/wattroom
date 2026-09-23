@@ -36,13 +36,13 @@ const SPEED = 8;
 /** docs/SPEC.md: 10 s countdown before the shared timeline starts. */
 const COUNTDOWN = 10;
 
-/** Room idles as a voice/jukebox lounge, then runs a shared timeline (docs/SPEC.md). */
+/** A voice channel idles as a voice/jukebox lounge, then runs a session's timeline (docs/SPEC.md). */
 export type { Phase } from '$lib/channel/types';
 import type { Phase } from '$lib/channel/types';
 
 /**
  * A 15 s all-out window (WATTROOM.md). The trainer leaves ERG for slope mode, the
- * room bursts to 4 Hz, and a w/kg battle renders — the one sanctioned outlet for
+ * tick bursts to 4 Hz, and a w/kg battle renders — the one sanctioned outlet for
  * racing instinct inside a structured session.
  */
 export type SprintState = 'idle' | 'armed' | 'active' | 'podium';
@@ -281,8 +281,8 @@ function describeBlock(
 }
 
 /**
- * A room of simulated riders on one workout, across the phases a real room moves
- * through. Every tile is a real SimulatedTrainer holding a real ERG target.
+ * A voice channel of simulated riders on one workout, across the phases a real
+ * one moves through. Every tile is a real SimulatedTrainer holding a real ERG target.
  */
 export function createMockChannel() {
 	const segments: Segment[] = flatten(workout);
@@ -305,12 +305,12 @@ export function createMockChannel() {
 	let sessionPaused = $state(false);
 	/** Spiral guard: cadence collapsed under an ERG target, so the target is released. */
 	let spiralGuard = $state(false);
-	/** SPEC room audio: nudge when you arrive with music playing and your mic open. */
+	/** SPEC voice channel audio: nudge when you join voice with music playing and your mic open. */
 	let headphoneNudge = $state(false);
 	/** Spectator cheers land on the rider's dashboard (WATTROOM.md feel layer). */
 	let cheers = $state<{ id: number; emoji: string; from: string }[]>([]);
 	let cheerId = 0;
-	/** Buffered locally while the room link is down (#19 IndexedDB ride buffer). */
+	/** Buffered locally while the channel link is down (#19 IndexedDB ride buffer). */
 	let bufferedSeconds = $state(0);
 	let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
 	let block = $state<Block | null>(null);
@@ -363,7 +363,7 @@ export function createMockChannel() {
 					96 + SEEDS[i].hrOffset + (sample.watts / rider.ftp) * 78,
 				);
 				// Heart rate trails effort by ~30 s; stepping it with watts is what made a
-				// 15 s sprint read 195 bpm across the whole room.
+				// 15 s sprint read 195 bpm on every tile.
 				rider.hr =
 					sample.watts < 20
 						? 0
@@ -577,7 +577,7 @@ export function createMockChannel() {
 				Math.max(0.8, Math.round((bias + step) * 100) / 100),
 			);
 		},
-		// The mock room always drives: nothing here arbitrates a claim (#2075).
+		// The mock channel always drives: nothing here arbitrates a claim (#2075).
 		actuating: true,
 		get bias() {
 			return bias;

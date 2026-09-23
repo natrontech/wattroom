@@ -37,7 +37,7 @@
 
 	let tv = $state(false);
 	let stagePick = $state('screen:ada');
-	// Joining a real room waits on the WS handshake and LiveKit tracks; show that.
+	// Joining a real voice channel waits on the WS handshake and LiveKit tracks; show that.
 	let joining = $state(false);
 
 	// Cues follow state rather than clicks, which is the point: you are not watching.
@@ -198,7 +198,7 @@
 					<button
 						onclick={() => channel.breakChannel(false)}
 						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
-						>Drop room</button
+						>Drop channel</button
 					>
 				</div>
 				<button
@@ -237,8 +237,8 @@
 					class="border-muted/20 bg-surface-raised mb-3 flex items-center gap-3 rounded-lg border px-4 py-2.5"
 				>
 					<p class="text-xs">
-						Music is playing and your mic is open — headphones will stop the
-						room hearing it back.
+						Music is playing and your mic is open — headphones will stop
+						everyone in voice hearing it back.
 					</p>
 					<button
 						onclick={() => channel.dismissNudge()}

@@ -1,7 +1,8 @@
 <script lang="ts">
-	// MOCK (#504): four ways to arrange the room's right column, at true size.
-	// Today's column stacks roster + jukebox + chat in 320 px and each of the
-	// three fights the other two for height. Static data, no room state.
+	// MOCK (#504): four ways to arrange the voice channel's right column, at
+	// true size. The column #504 found stacked roster + jukebox + chat in
+	// 320 px, each of the three fighting the other two for height. Static data,
+	// no channel state.
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Bell from '@lucide/svelte/icons/bell';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -172,7 +173,7 @@
 
 <div class="page space-y-8 py-8">
 	<header class="space-y-2">
-		<h1 class="font-display text-2xl">The room's right column</h1>
+		<h1 class="font-display text-2xl">The voice channel's right column</h1>
 		<p class="text-muted max-w-2xl text-sm">
 			Members, the jukebox and the chat share 320 px and none of them has
 			enough. Four arrangements at true size — today's, then three ways out.
@@ -199,7 +200,7 @@
 					<ul class="px-1">
 						{#each inVoice as r, i (i)}{@render person(r)}{/each}
 					</ul>
-					<div class="eyebrow px-3 pt-2 pb-1">in the room — 2</div>
+					<div class="eyebrow px-3 pt-2 pb-1">in the channel — 2</div>
 					<ul class="px-1 pb-2">
 						{#each outOfVoice as r, i (i)}{@render person(r)}{/each}
 					</ul>
@@ -227,7 +228,7 @@
 		<div class="w-80 shrink-0 space-y-2">
 			{@render frame(
 				'A — chat is a place',
-				'The column is people + jukebox only. Chat moves to the room’s own place, next to Lounge and Training, and is the full-width view we already render at /messages. The column gets a one-line unread bar instead.',
+				'The column is people + jukebox only. Chat moves to a place of its own, next to Lounge and Training, and is the full-width view we already render at /messages. The column gets a one-line unread bar instead.',
 				true,
 			)}
 			<div
@@ -241,7 +242,7 @@
 					<ul class="px-1">
 						{#each inVoice as r, i (i)}{@render person(r)}{/each}
 					</ul>
-					<div class="eyebrow px-3 pt-2 pb-1">in the room — 2</div>
+					<div class="eyebrow px-3 pt-2 pb-1">in the channel — 2</div>
 					<ul class="px-1 pb-2">
 						{#each outOfVoice as r, i (i)}{@render person(r)}{/each}
 					</ul>
@@ -322,7 +323,7 @@
 						<ul class="px-1">
 							{#each inVoice as r, i (i)}{@render person(r)}{/each}
 						</ul>
-						<div class="eyebrow px-3 pt-2 pb-1">in the room — 2</div>
+						<div class="eyebrow px-3 pt-2 pb-1">in the channel — 2</div>
 						<ul class="px-1 pb-2">
 							{#each outOfVoice as r, i (i)}{@render person(r)}{/each}
 						</ul>
@@ -400,7 +401,7 @@
 		</p>
 		<div class="grid gap-4 md:grid-cols-3">
 			<div class="panel space-y-2">
-				<div class="eyebrow">1 — the room's place, in the sidebar</div>
+				<div class="eyebrow">1 — a place of its own, in the sidebar</div>
 				<div class="bg-surface space-y-1 rounded p-2 text-sm">
 					<div class="text-muted flex items-center gap-2 px-2 py-1">
 						<Headphones size={13} /> Lounge
@@ -419,8 +420,8 @@
 					</div>
 				</div>
 				<p class="text-muted text-xs">
-					Always on. The count is the room's unread, the same badge the sidebar
-					already draws for a room you are not in.
+					Always on. The count is the chat's unread, the same badge the sidebar
+					already draws for a text channel you are not in.
 				</p>
 			</div>
 			<div class="panel space-y-2">
@@ -476,13 +477,11 @@
 			px in the same column without moving anything or teaching anyone a new place.
 		</p>
 		<p class="text-sm">
-			A is the better end state and it is half-built already: the room's chat
-			renders full-width at <span class="font-mono text-xs"
-				>/messages/r/&lt;slug&gt;</span
-			>
-			today. Making it a room place is mostly routing plus the unread bar and the
-			sidebar badge. Do it once C proves how much of the column people actually want
-			back.
+			A is the better end state, and it is where the app went: chat is a text
+			channel now, a place of its own with the sidebar's unread badge. It was
+			half-built when this was drawn — the chat already rendered full-width at
+			<span class="font-mono text-xs">/messages/r/&lt;slug&gt;</span>, so making
+			it a place was mostly routing plus the unread bar and the sidebar badge.
 		</p>
 		<p class="text-sm">
 			B I would not build. The rail costs the roster its execution bars

@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
-	import { CHANNEL_NAME } from '../room/mockChannel.svelte';
+	import { CHANNEL_NAME } from '../channel/mockChannel.svelte';
 
-	// docs/SPEC.md roles matrix: editing the room and assigning coach are owner-only.
+	// Drawn when coach was a role the owner handed out. docs/SPEC.md's roles
+	// matrix now gives editing the crew to its owner and admins, and coach is
+	// whoever runs a session — the member list below still shows the old role.
 	let name = $state(CHANNEL_NAME);
 	let pack = $state('base');
 	let confirmDelete = $state(false);
@@ -21,7 +23,7 @@
 		{
 			id: 'base',
 			label: 'Base',
-			hint: 'The synthwave set. Ships with every room.',
+			hint: 'The synthwave set. Ships with every voice channel.',
 		},
 		{
 			id: 'silent',
@@ -32,14 +34,14 @@
 </script>
 
 <main class="mx-auto max-w-2xl px-6 py-10">
-	<h1 class="page-title">Room settings</h1>
+	<h1 class="page-title">Crew settings</h1>
 	<p class="text-muted mt-2 text-sm">
-		Owner only — coaches run sessions, owners shape the room.
+		The owner and admins shape the crew; coaches run its sessions.
 	</p>
 
 	<section class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-6">
 		<label class="block">
-			<span class="eyebrow">room name</span>
+			<span class="eyebrow">crew name</span>
 			<input
 				bind:value={name}
 				class="border-muted/25 mt-1 w-full rounded border bg-transparent px-3 py-2 text-sm"
@@ -100,9 +102,9 @@
 	</section>
 
 	<section class="border-muted/15 mt-3 rounded-lg border p-6">
-		<h2 class="font-display font-bold">Delete room</h2>
+		<h2 class="font-display font-bold">Delete crew</h2>
 		<p class="text-muted mt-1.5 text-xs">
-			Removes the room, its medal history and its streak for everyone in it.
+			Removes the crew, its medal history and its streak for everyone in it.
 			Rides already ridden stay in each rider's own history.
 		</p>
 		{#if confirmDelete}
@@ -111,7 +113,7 @@
 					Delete “{name}” for all 6 members? This can't be undone.
 				</p>
 				<div class="mt-3 flex gap-2">
-					<button class="btn btn-danger-solid">Delete room</button>
+					<button class="btn btn-danger-solid">Delete crew</button>
 					<button
 						onclick={() => (confirmDelete = false)}
 						class="border-muted/30 rounded border px-4 py-2 text-sm"
@@ -123,7 +125,7 @@
 			<button
 				onclick={() => (confirmDelete = true)}
 				class="border-danger/40 text-danger hover:bg-danger/10 mt-4 rounded border px-4 py-2 text-sm"
-				>Delete room</button
+				>Delete crew</button
 			>
 		{/if}
 	</section>

@@ -8,7 +8,7 @@
 		workout,
 		ZONE_BG,
 		ZONE_NAMES,
-	} from '../room/mockChannel.svelte';
+	} from '../channel/mockChannel.svelte';
 
 	// Every number here is a docs/SPEC.md formula, not an invented one.
 	const ride = {
@@ -173,7 +173,7 @@
 						>
 					</li>
 				</ul>
-				<!-- SPEC: category rises announce in the room; drops happen silently. -->
+				<!-- SPEC: category rises announce in the session; drops happen silently. -->
 				<div class="border-z4/40 bg-z4/10 mt-4 rounded border px-3 py-2">
 					<p class="text-z4 text-xs font-medium">
 						Category {ride.category.from} → {ride.category.to}
@@ -194,10 +194,10 @@
 				<label class="flex items-start gap-3">
 					<input type="checkbox" class="mt-0.5" />
 					<span>
-						<span class="block text-sm">Share this ride with the room</span>
+						<span class="block text-sm">Share this ride with your friends</span>
 						<span class="text-muted block text-xs">
-							Rides are private by default. Sharing puts your numbers and this
-							card on the room's history — it never shares your heart rate.
+							Rides are private by default. Sharing shows your friends your
+							numbers and this card — it never shares your heart rate.
 						</span>
 					</span>
 				</label>
