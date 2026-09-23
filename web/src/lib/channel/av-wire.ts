@@ -296,7 +296,7 @@ export function wireLiveKitRoom(
 		av.sharingAudio = false;
 		av.handedOff = false;
 		claims.current = null;
-		conn.room = null;
+		conn.liveKitRoom = null;
 		chain.close();
 		if (unexpected) {
 			// Stop restamping, but leave the note behind: a refresh during

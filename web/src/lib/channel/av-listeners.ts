@@ -52,12 +52,13 @@ export function createListeners(host: ListenerHost) {
 		chain.resume();
 		output.resume();
 		try {
-			await conn.room?.startAudio();
+			await conn.liveKitRoom?.startAudio();
 		} catch {
 			// Still no gesture the browser will accept: the strip stays up,
 			// which is the whole point of it being status rather than a toast.
 		}
-		if (conn.room) av.playbackBlocked = !conn.room.canPlaybackAudio;
+		if (conn.liveKitRoom)
+			av.playbackBlocked = !conn.liveKitRoom.canPlaybackAudio;
 	}
 
 	/**

@@ -14,7 +14,7 @@ import { createPublish, type PublishHost } from '$lib/channel/av-publish';
 
 type Settings = { facingMode?: string };
 
-function room(settings: Settings = {}) {
+function fakeHardware(settings: Settings = {}) {
 	const restarts: { facingMode?: string }[] = [];
 	let refuse: Error | null = null;
 	const videoTrack = {
@@ -42,7 +42,7 @@ function room(settings: Settings = {}) {
 		},
 		conn: {
 			liveKit: { Track: { Source: { Camera: 'camera' } } },
-			room: {
+			liveKitRoom: {
 				localParticipant: {
 					getTrackPublication: (source: string) =>
 						source === 'camera' && camera ? { videoTrack } : undefined,
@@ -56,7 +56,7 @@ function room(settings: Settings = {}) {
 }
 
 function publish(over: Partial<PublishHost> = {}) {
-	const hw = room();
+	const hw = fakeHardware();
 	const failedMedia = vi.fn();
 	const av = { camOn: true, sharing: false } as PublishHost['av'];
 	const api = createPublish({
@@ -100,7 +100,7 @@ describe('the camera flip (#2142)', () => {
 	// Where the browser does say, its word beats the note — a rider who
 	// picked the back lens in another tab is still facing that way.
 	it('believes the track over its own note', async () => {
-		const hw = room({ facingMode: 'environment' });
+		const hw = fakeHardware({ facingMode: 'environment' });
 		const api = createPublish({
 			av: { camOn: true } as PublishHost['av'],
 			conn: hw.conn as unknown as PublishHost['conn'],

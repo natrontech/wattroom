@@ -62,11 +62,11 @@ export function createPublish(host: PublishHost) {
 	 * tile draws a frame that never arrives.
 	 */
 	async function openCam() {
-		if (av.camOn || !conn.room) return;
+		if (av.camOn || !conn.liveKitRoom) return;
 		av.camOn = true;
 		try {
-			await conn.room.localParticipant.setCameraEnabled(true);
-			const track = conn.room.localParticipant.getTrackPublication(
+			await conn.liveKitRoom.localParticipant.setCameraEnabled(true);
+			const track = conn.liveKitRoom.localParticipant.getTrackPublication(
 				conn.liveKit!.Track.Source.Camera,
 			)?.videoTrack;
 			if (track) {
@@ -89,9 +89,9 @@ export function createPublish(host: PublishHost) {
 	 * page closes (rider report: the camera stopped working in Chrome).
 	 */
 	async function closeCam() {
-		if (!av.camOn || !conn.room) return;
+		if (!av.camOn || !conn.liveKitRoom) return;
 		av.camOn = false;
-		const track = conn.room.localParticipant.getTrackPublication(
+		const track = conn.liveKitRoom.localParticipant.getTrackPublication(
 			conn.liveKit!.Track.Source.Camera,
 		)?.videoTrack;
 		// The next capture is a fresh one, and a fresh one faces the rider on
@@ -100,7 +100,9 @@ export function createPublish(host: PublishHost) {
 		// after a reopen ask for the side the camera was already on: a tap
 		// that changes nothing.
 		facing = 'user';
-		await conn.room.localParticipant.setCameraEnabled(false).catch(() => {});
+		await conn.liveKitRoom.localParticipant
+			.setCameraEnabled(false)
+			.catch(() => {});
 		track?.mediaStreamTrack?.stop();
 		if (seats.drop('video', conn.me, conn.myIdentity)) stage.dropVideo(conn.me);
 	}
@@ -113,9 +115,9 @@ export function createPublish(host: PublishHost) {
 	 * matches nothing — so not exact.
 	 */
 	async function switchCam(id: string) {
-		if (!conn.room) return;
+		if (!conn.liveKitRoom) return;
 		try {
-			await conn.room.switchActiveDevice('videoinput', id, id !== '');
+			await conn.liveKitRoom.switchActiveDevice('videoinput', id, id !== '');
 		} catch (cause) {
 			// Another app holding it, an unplugged USB cam, a revoked
 			// permission: the mic path says why (#824), this one was silent
@@ -123,7 +125,7 @@ export function createPublish(host: PublishHost) {
 			failedMedia(cause, 'camera');
 			if (
 				av.camOn &&
-				!conn.room.localParticipant.getTrackPublication(
+				!conn.liveKitRoom.localParticipant.getTrackPublication(
 					conn.liveKit!.Track.Source.Camera,
 				)?.videoTrack
 			)
@@ -156,7 +158,7 @@ export function createPublish(host: PublishHost) {
 		return said === 'user' || said === 'environment' ? said : facing;
 	}
 	async function flipCam() {
-		const track = conn.room?.localParticipant.getTrackPublication(
+		const track = conn.liveKitRoom?.localParticipant.getTrackPublication(
 			conn.liveKit!.Track.Source.Camera,
 		)?.videoTrack;
 		if (!track) return;
@@ -176,7 +178,7 @@ export function createPublish(host: PublishHost) {
 	 * — and a tap that is open but silent is still a tap.
 	 */
 	async function startShare() {
-		if (!conn.room) return;
+		if (!conn.liveKitRoom) return;
 		av.sharing = true;
 		try {
 			// The browser's picker can be cancelled — trust the publication,
@@ -186,14 +188,14 @@ export function createPublish(host: PublishHost) {
 			// because noise suppression and AGC are tuned for a person
 			// talking and wreck anything else. LiveKit publishes it as its
 			// own ScreenShareAudio track; nothing here has to.
-			await conn.room.localParticipant.setScreenShareEnabled(true, {
+			await conn.liveKitRoom.localParticipant.setScreenShareEnabled(true, {
 				audio: av.shareSound && {
 					autoGainControl: false,
 					echoCancellation: false,
 					noiseSuppression: false,
 				},
 			});
-			const track = conn.room.localParticipant.getTrackPublication(
+			const track = conn.liveKitRoom.localParticipant.getTrackPublication(
 				conn.liveKit!.Track.Source.ScreenShare,
 			)?.videoTrack;
 			if (!track) {
@@ -210,7 +212,7 @@ export function createPublish(host: PublishHost) {
 			// loopback is refused, missing or dead on plenty of
 			// platforms, and telling a rider the room can hear them
 			// when it cannot is the worse half of getting this wrong.
-			av.sharingAudio = !!conn.room.localParticipant.getTrackPublication(
+			av.sharingAudio = !!conn.liveKitRoom.localParticipant.getTrackPublication(
 				conn.liveKit!.Track.Source.ScreenShareAudio,
 			);
 		} catch (cause) {
@@ -225,10 +227,10 @@ export function createPublish(host: PublishHost) {
 	 * One place, so the two cannot drift apart on what stopping means.
 	 */
 	async function stopShare() {
-		if (!conn.room) return;
+		if (!conn.liveKitRoom) return;
 		av.sharing = false;
 		av.sharingAudio = false;
-		await conn.room.localParticipant
+		await conn.liveKitRoom.localParticipant
 			.setScreenShareEnabled(false)
 			.catch(() => {});
 		if (seats.drop('screen', conn.me, conn.myIdentity))
@@ -248,20 +250,20 @@ export function createPublish(host: PublishHost) {
 		if (on === av.shareSound) return;
 		av.shareSound = on;
 		rememberShareSound(on);
-		if (!av.sharing || !conn.room || !conn.liveKit) return;
+		if (!av.sharing || !conn.liveKitRoom || !conn.liveKit) return;
 		if (on) {
 			await stopShare();
 			await startShare();
 			return;
 		}
-		const track = conn.room.localParticipant.getTrackPublication(
+		const track = conn.liveKitRoom.localParticipant.getTrackPublication(
 			conn.liveKit.Track.Source.ScreenShareAudio,
 		)?.audioTrack;
 		// `true` stops the underlying MediaStreamTrack: unpublishing alone
 		// leaves the machine tapped, which is the same shape of bug the camera
 		// had in closeCam above.
 		if (track)
-			await conn.room.localParticipant
+			await conn.liveKitRoom.localParticipant
 				.unpublishTrack(track, true)
 				.catch(() => {});
 		av.sharingAudio = false;
@@ -283,7 +285,7 @@ export function createPublish(host: PublishHost) {
 		output.applyGains();
 		// A rider can step away without joining voice. Keep the state so a
 		// later voice join stays listen-only; there is no capture to change yet.
-		if (!conn.room) return;
+		if (!conn.liveKitRoom) return;
 		if (av.away) {
 			conn.micBeforeAway = av.micOn;
 			conn.camBeforeAway = av.camOn;
@@ -333,7 +335,7 @@ export function createPublish(host: PublishHost) {
 			return av.sharing ? stopShare() : startShare();
 		},
 		async toggleCam() {
-			if (!conn.room) return;
+			if (!conn.liveKitRoom) return;
 			if (av.camOn) {
 				await closeCam();
 				return;

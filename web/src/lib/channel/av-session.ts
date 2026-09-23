@@ -115,7 +115,7 @@ export function createSession(host: SessionHost) {
 			av.status === 'reconnecting'
 		)
 			return;
-		void conn.room?.disconnect();
+		void conn.liveKitRoom?.disconnect();
 		av.status = 'connecting';
 		av.error = null;
 		// A fault from a previous call, or from a mic test that died, is not
@@ -133,7 +133,7 @@ export function createSession(host: SessionHost) {
 			if (stale()) return;
 			av.status = 'failed';
 			av.error = { message: VOICE_STUCK, signIn: false };
-			void conn.room?.disconnect();
+			void conn.liveKitRoom?.disconnect();
 		}, JOIN_TIMEOUT_MS);
 		try {
 			await joinAttempt(wantMic, stale);
@@ -164,7 +164,7 @@ export function createSession(host: SessionHost) {
 			// and this one was already missing autoGainControl (#671). Video
 			// IS LiveKit's own capture (setCameraEnabled), so its defaults
 			// stay.
-			conn.room = new client.Room({
+			conn.liveKitRoom = new client.Room({
 				// Both ship OFF, and neither was ever turned on (#669).
 				//
 				// adaptiveStream: without it every subscribed camera arrives at
@@ -184,30 +184,30 @@ export function createSession(host: SessionHost) {
 					? { videoCaptureDefaults: { deviceId: devices.camId } }
 					: {}),
 			});
-			wire(conn.room, client);
-			await conn.room.connect(res.data.url, res.data.token);
+			wire(conn.liveKitRoom, client);
+			await conn.liveKitRoom.connect(res.data.url, res.data.token);
 			if (stale()) {
 				// The deadline (or a leave) beat the handshake: do not walk into
 				// a room the rider was already told did not open.
-				void conn.room.disconnect();
+				void conn.liveKitRoom.disconnect();
 				return;
 			}
-			conn.myIdentity = conn.room.localParticipant.identity;
+			conn.myIdentity = conn.liveKitRoom.localParticipant.identity;
 			conn.me = riderOf(conn.myIdentity);
 			av.status = 'live';
 			claims.current = {
-				identity: conn.room.localParticipant.identity,
-				at: conn.room.localParticipant.joinedAt?.getTime() ?? Date.now(),
+				identity: conn.liveKitRoom.localParticipant.identity,
+				at: conn.liveKitRoom.localParticipant.joinedAt?.getTime() ?? Date.now(),
 			};
 			// A tab already in the room could, in principle, hold a newer claim
 			// than this one — check rather than assume newest-connected wins.
-			for (const p of conn.room.remoteParticipants.values())
+			for (const p of conn.liveKitRoom.remoteParticipants.values())
 				claims.consider(claimantOf(p));
 			// Post-permission the labels are real — the pickers can name devices.
 			void devices.refresh();
 			// Mic on by default (SPEC), off on a handheld (see join's note); a
 			// denied permission downgrades to listen-only rather than failing.
-			for (const p of conn.room.remoteParticipants.values()) {
+			for (const p of conn.liveKitRoom.remoteParticipants.values()) {
 				const pub = p.getTrackPublication(
 					conn.liveKit!.Track.Source.Microphone,
 				);
@@ -239,8 +239,8 @@ export function createSession(host: SessionHost) {
 		note.stop();
 		note.clear();
 		// Same for leaving: every local capture goes back to the machine.
-		if (conn.room && conn.liveKit) {
-			const local = conn.room.localParticipant;
+		if (conn.liveKitRoom && conn.liveKit) {
+			const local = conn.liveKitRoom.localParticipant;
 			const kinds: LiveKitTrack.Source[] = [
 				conn.liveKit.Track.Source.Camera,
 				conn.liveKit.Track.Source.ScreenShare,
@@ -249,8 +249,8 @@ export function createSession(host: SessionHost) {
 				local.getTrackPublication(kind)?.videoTrack?.mediaStreamTrack?.stop();
 		}
 		chain.close();
-		void conn.room?.disconnect();
-		conn.room = null;
+		void conn.liveKitRoom?.disconnect();
+		conn.liveKitRoom = null;
 		av.status = 'off';
 		av.error = null;
 		av.micOn = av.camOn = av.sharing = av.away = false;

@@ -143,7 +143,7 @@ export function createAvState(): AvState {
 export interface AvConn {
 	/** Loaded only when a rider actually starts AV, after the token lands. */
 	liveKit: LiveKitClient | null;
-	room: LiveKitRoom | null;
+	liveKitRoom: LiveKitRoom | null;
 	/** This connection's identity and the rider behind it (#293). */
 	myIdentity: string;
 	me: string;
@@ -161,7 +161,7 @@ export interface AvConn {
 export function createAvConn(): AvConn {
 	return {
 		liveKit: null,
-		room: null,
+		liveKitRoom: null,
 		myIdentity: '',
 		me: '',
 		micBeforeAway: false,

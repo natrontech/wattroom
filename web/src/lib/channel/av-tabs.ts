@@ -56,18 +56,18 @@ export function createTabs(host: TabsHost) {
 		identity: () => conn.myIdentity,
 		now: () => serverNow(),
 		participants: () =>
-			conn.room
+			conn.liveKitRoom
 				? [
-						conn.room.localParticipant,
-						...conn.room.remoteParticipants.values(),
+						conn.liveKitRoom.localParticipant,
+						...conn.liveKitRoom.remoteParticipants.values(),
 					].map(claimantOf)
 				: [],
 		others: () =>
-			conn.room
-				? [...conn.room.remoteParticipants.values()].map(claimantOf)
+			conn.liveKitRoom
+				? [...conn.liveKitRoom.remoteParticipants.values()].map(claimantOf)
 				: [],
 		announce: (at) => {
-			void conn.room?.localParticipant
+			void conn.liveKitRoom?.localParticipant
 				.publishData(
 					new TextEncoder().encode(JSON.stringify({ t: 'av-claim', at })),
 					{ reliable: true },
@@ -96,7 +96,7 @@ export function createTabs(host: TabsHost) {
 
 	/** Take the mic and camera back into this tab; the others stand down. */
 	async function takeOver({ reopenMic = true } = {}) {
-		if (!conn.room) return;
+		if (!conn.liveKitRoom) return;
 		claims.claim();
 		if (reopenMic && !av.micOn) {
 			await mic.tryOpen();
@@ -110,7 +110,7 @@ export function createTabs(host: TabsHost) {
 		claimantOf,
 		takeOver,
 		async toggleMic() {
-			if (!conn.room) return;
+			if (!conn.liveKitRoom) return;
 			if (chain.testing) chain.stopTest();
 			// Pressing the mic in a tab that stood down means "bring it here",
 			// not "publish a second one" — the rail says the mic lives in
@@ -137,7 +137,7 @@ export function createTabs(host: TabsHost) {
 			// The same guards the mic button has (#824): in a tab that stood
 			// down the mic lives elsewhere, and away means closed on purpose —
 			// reconnecting here would publish a second one.
-			if (!conn.room || av.handedOff || av.away) {
+			if (!conn.liveKitRoom || av.handedOff || av.away) {
 				chain.clearFault();
 				return;
 			}

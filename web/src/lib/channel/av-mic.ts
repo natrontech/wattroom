@@ -39,7 +39,7 @@ export function createMic(host: MicHost) {
 		devices,
 		publish: async (track) => {
 			const lk = conn.liveKit!;
-			await conn.room?.localParticipant.publishTrack(track, {
+			await conn.liveKitRoom?.localParticipant.publishTrack(track, {
 				source: lk.Track.Source.Microphone,
 				// Full-band Opus at 96 kbps, not the SDK's 48 (#1340): the room
 				// is asked to sound like a voice in the room, and a rider's
@@ -50,7 +50,8 @@ export function createMic(host: MicHost) {
 				dtx: false,
 			});
 		},
-		unpublish: (track) => conn.room?.localParticipant.unpublishTrack(track),
+		unpublish: (track) =>
+			conn.liveKitRoom?.localParticipant.unpublishTrack(track),
 		live: () => av.micOn,
 		heard: (level) => {
 			if (talk.level(conn.myIdentity, level, performance.now()))
@@ -61,7 +62,7 @@ export function createMic(host: MicHost) {
 		},
 		captureLost: () => {
 			av.micOn = false;
-			if (conn.room) setVoice(conn.me, 'muted');
+			if (conn.liveKitRoom) setVoice(conn.me, 'muted');
 		},
 		// A finger is the whole test: a machine held in the hand routes the
 		// room to its earpiece for as long as the page holds a capture, so the
