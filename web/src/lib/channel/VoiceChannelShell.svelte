@@ -107,7 +107,11 @@
 	// A plan made here goes on the crew's schedule, set to run in this
 	// channel (#2452, #2572). It used to be refused with a toast, so the
 	// picker's "Plan it for later" was a button that always failed.
-	async function plan(workoutName: string, workoutJson: string, startsAt: string) {
+	async function plan(
+		workoutName: string,
+		workoutJson: string,
+		startsAt: string,
+	) {
 		const res = await planCrewSession(crewId, {
 			workoutName,
 			workoutJson,

@@ -125,8 +125,8 @@
 {#if quiet && firstVoice}
 	<div class="mt-8">
 		<EmptyState>
-			Nothing is running. Start the first ride in {firstVoice.name} — everyone
-			in the crew can walk in.
+			Nothing is running. Start the first ride in {firstVoice.name} — everyone in
+			the crew can walk in.
 			{#snippet cta()}
 				<a
 					href={voiceChannelPath(crew.id, firstVoice.id)}
