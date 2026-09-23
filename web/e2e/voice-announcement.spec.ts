@@ -1,4 +1,4 @@
-import { expect, test } from './crew';
+import { expect, test, textPath } from './crew';
 
 /**
  * A voice channel's Lounge strip carries the crew's newest announcement
@@ -79,4 +79,45 @@ test("a voice channel's Lounge takes the crew's announcement down, and Undo puts
 	expect(promoted).toBeLessThan(300);
 	await other.reload();
 	await expect(takeDown).toBeVisible();
+});
+
+/** The same take-down, from the other two places that draw the notice. */
+test('the text channel and the Board take the announcement down too', async ({
+	riders,
+	channels,
+}) => {
+	const page = await riders('Board Announcer');
+	const opened = await channels.open(page, `Takedown ${Date.now() % 100000}`);
+	const mark = (text: string) =>
+		page.evaluate(
+			async ({ id, text }) => {
+				const line = await fetch(`/api/channels/${id}/chat`, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ text }),
+				}).then((res) => res.json());
+				return fetch(`/api/channels/${id}/announcement`, {
+					method: 'PUT',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ messageId: line.id }),
+				}).then((res) => res.status);
+			},
+			{ id: opened.text, text },
+		);
+	const takeDown = page.getByRole('button', {
+		name: 'Take the announcement down',
+	});
+
+	expect(await mark('Saturday long ride')).toBe(200);
+	await page.goto(textPath(opened));
+	await takeDown.click();
+	await expect(page.getByText('Announcement taken down.')).toBeVisible();
+	await expect(takeDown).toHaveCount(0);
+
+	expect(await mark('Sunday rest day')).toBe(200);
+	await page.goto(`/crew/${opened.crew}/board`);
+	await expect(page.getByText('Sunday rest day').first()).toBeVisible();
+	await takeDown.click();
+	await expect(takeDown).toHaveCount(0);
+	await expect(page.getByText('Sunday rest day')).toHaveCount(0);
 });
