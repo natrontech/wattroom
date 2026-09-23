@@ -1,4 +1,5 @@
 import { fetchRailRooms } from '$lib/nav/rooms';
+import { STALE_AFTER } from '$lib/stale';
 import type { RailRoom } from '$lib/room/room-data';
 import type { RoomCrew } from '$lib/room/room-data';
 
@@ -22,9 +23,6 @@ let error = $state<string | null>(null);
 // rooms, the dots and "32 min in" keep their last values with full confidence
 // for as long as it lasts (#1743).
 let failures = $state(0);
-// Gated on the SECOND failure: the 60 s poll already covers a one-off, and a
-// mark that flickers on every blip teaches people to ignore it.
-const STALE_AFTER = 2;
 let version = $state(0);
 let socket: WebSocket | null = null;
 let fallback: ReturnType<typeof setInterval> | null = null;

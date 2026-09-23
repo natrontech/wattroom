@@ -196,7 +196,8 @@
 		aria-expanded={switching}
 	>
 		{#if crew}{@render crewRow(crew)}{:else}{@render youRow()}{/if}
-		<!-- What is under this header stopped updating (#1743). The room list,
+		<!-- What is under this header stopped updating (#1743, #2518): the crew
+		     list or the crews' live read, either one. The channel list,
 		     the presence dots and "32 min in" are frozen at whatever they last
 		     were, and with rooms already on screen nothing else in the column
 		     says so — the error line below only draws over an EMPTY list, so a
@@ -208,7 +209,7 @@
 		     data, which is the whole point of it. Not a button: the header it
 		     sits in is one, the feed retries itself every 60 s and on the tab
 		     coming back, and the empty-list retry below is unchanged. -->
-		{#if presence.stale}
+		{#if presence.stale || crewLive.stale}
 			<span
 				class="text-muted-dim shrink-0"
 				title="Not updating — the last reads failed, so what is below may be out of date. Retrying."

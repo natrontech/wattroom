@@ -1,3 +1,4 @@
+import type { LiveCrew, LiveOccupant } from '$lib/crews-live';
 import type { Friend } from '$lib/friends/friends.svelte';
 import type { RailRoom } from '$lib/room/room-data';
 
@@ -16,48 +17,49 @@ import type { RailRoom } from '$lib/room/room-data';
 export type PresenceStatus = 'riding' | 'online' | 'away' | 'offline';
 
 /**
- * The room the presence feed has them in, if any — by account id, which is
- * what the feed now carries alongside the names it renders (#649). Display
- * names are not unique, and two riders called Dave used to answer for each
- * other here: a DM header said your friend was riding in a room their
- * namesake was standing in, with a Join button under it.
+ * Them in a voice channel of one of your crews, by account id (#649: display
+ * names are not unique) — as the crews' live read has them (#2444, #2517),
+ * which holds only the channels you may enter.
  */
-export function roomOf(
-	rooms: readonly RailRoom[],
+export function occupantOf(
+	crews: readonly LiveCrew[],
 	riderId: string,
-): RailRoom | undefined {
+): LiveOccupant | undefined {
 	if (!riderId) return undefined;
-	return rooms.find((room) => room.riderIds?.includes(riderId));
+	for (const crew of crews)
+		for (const channel of crew.channels)
+			for (const occupant of channel.occupants ?? [])
+				if (occupant.id === riderId) return occupant;
+	return undefined;
 }
 
 /**
- * What the feed knows about them, then what the friends list knows (#1434):
- * a friend with the app open is online (ADR-0012 amendment) whether or not
- * they stand in a room you can see, and a friend without it is offline — the
- * same two states the friends panel shows. `null` means neither has anything
- * to say — no badge at all, rather than a confident "offline" about a
- * stranger who is simply not in a room you can see.
+ * What the live read knows about them, then what the friends list knows
+ * (#1434): a friend with the app open is online (ADR-0012 amendment) whether
+ * or not they stand in a channel you can see, and a friend without it is
+ * offline — the same two states the friends panel shows. `null` means neither
+ * has anything to say — no badge at all, rather than a confident "offline"
+ * about a stranger who is simply not in a channel you can see.
  */
 export function statusOf(
-	rooms: readonly RailRoom[],
+	crews: readonly LiveCrew[],
 	riderId: string,
 	friends: readonly Friend[] | null = null,
 ): PresenceStatus | null {
-	const room = roomOf(rooms, riderId);
-	if (room) {
-		// Away is what the rider said (#706); the rail feed carries it since
-		// #1742, so this agrees with the room's own tile.
-		if (room.awayIds?.includes(riderId)) return 'away';
-		return room.ridingIds?.includes(riderId) ? 'riding' : 'online';
+	const occupant = occupantOf(crews, riderId);
+	if (occupant) {
+		// Away is what the rider said (#706), and agrees with their tile.
+		if (occupant.away) return 'away';
+		return occupant.riding ? 'riding' : 'online';
 	}
 	const friend = friends?.find(
 		(f) => f.id === riderId && f.status === 'accepted',
 	);
 	if (!friend) return null;
-	// A friend riding in a room the viewer cannot see (#1743): the feed above
-	// only knows rooms the viewer is in, so this used to flatten the third
-	// state ADR-0012 names back onto "online" — the same rider read as
-	// pedalling to their room-mates and as idle to their friends.
+	// A friend riding in a channel the viewer cannot see (#1743): the read
+	// above only knows channels the viewer may enter, so this used to flatten
+	// the third state ADR-0012 names back onto "online" — the same rider read
+	// as pedalling to their crew-mates and as idle to their friends.
 	if (friend.riding) return 'riding';
 	return friend.online ? 'online' : 'offline';
 }

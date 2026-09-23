@@ -501,7 +501,7 @@
 											name={friend.name}
 											avatarUrl={friend.avatarUrl}
 											xp={friend.totalXp}
-											status={statusOf(presence.rooms, friend.id, friends.list)}
+											status={statusOf(crewLive.crews, friend.id, friends.list)}
 											size={20}
 										/>
 										<span class="font-medium">{friend.name}</span>
