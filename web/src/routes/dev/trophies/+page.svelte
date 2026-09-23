@@ -146,7 +146,7 @@
 	];
 	const event = {
 		name: 'Thursday Sufferfest',
-		room: 'Thursday Sufferfest',
+		channel: 'Thursday Sufferfest',
 		when: 'Thursday 19:30 · weekly',
 		workout: 'VO₂ 5×3',
 		going: ['Jan', 'David', 'Sven', 'Mike', 'Nina'],
@@ -263,7 +263,7 @@
 					>
 				</div>
 				<p class="text-muted mt-1 text-sm">
-					{event.workout} in {event.room} · every week, same slot, same crew.
+					{event.workout} in {event.channel} · every week, same slot, same crew.
 				</p>
 				<div class="mt-3 flex flex-wrap items-center gap-2">
 					<button class="btn btn-primary btn-xs">I'm in</button>
