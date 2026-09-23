@@ -79,7 +79,7 @@ test.describe('the download page', () => {
 	});
 });
 
-test('inside the shell, home says when a newer build is out — once', async ({
+test('inside the shell, the update row says when a newer build is out — once', async ({
 	page,
 }) => {
 	await page.route(FEED, (route) => route.fulfill({ json: RELEASE }));
@@ -91,28 +91,26 @@ test('inside the shell, home says when a newer build is out — once', async ({
 	});
 	await signInAs(page, 'Desktop Update', '/home');
 
-	const notice = page.getByText(/WattRoom 0\.2\.0 is out — you are on 0\.1\.0/);
-	await expect(notice).toBeVisible();
-	await expect(
-		page.getByRole('link', { name: 'Get the update' }),
-	).toHaveAttribute('href', '/download');
+	// The sidebar's foot (#2588), wherever you are — it was a panel on Home.
+	const nav = page.locator('nav[aria-label="crews and channels"]');
+	const row = nav.getByRole('link', { name: /Get app 0\.2\.0/ });
+	await expect(row).toBeVisible();
+	await expect(row).toHaveAttribute('href', '/download');
 
-	await page.getByRole('button', { name: 'Not now' }).click();
-	await expect(notice).toHaveCount(0);
+	await nav.getByRole('button', { name: 'not now' }).click();
+	await expect(row).toHaveCount(0);
 
 	// Dismissed is remembered: the same version does not come back on reload.
 	await page.reload();
 	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-	await expect(notice).toHaveCount(0);
+	await expect(row).toHaveCount(0);
 });
 
-test('in a browser, home never mentions the desktop build', async ({
-	page,
-}) => {
+test('in a browser, nothing mentions a desktop update', async ({ page }) => {
 	await page.route(FEED, (route) => route.fulfill({ json: RELEASE }));
 	await signInAs(page, 'Desktop Browser', '/home');
 	await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-	await expect(page.getByText(/is out — you are on/)).toHaveCount(0);
+	await expect(page.getByText(/Get app 0\.2\.0/)).toHaveCount(0);
 });
 
 test('in a browser on a desk, home offers the app once — for this machine', async ({

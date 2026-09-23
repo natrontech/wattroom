@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { countModal, modals } from '$lib/modals.svelte';
 	import { focusTrap } from './focus-trap';
+	import { fly } from 'svelte/transition';
 	import type { Snippet } from 'svelte';
 
 	// The one modal (#230). Call sites keep their {#if} — mounting IS opening.
@@ -20,6 +21,7 @@
 		label,
 		onclose,
 		class: cls = 'max-w-md',
+		placement = 'center',
 		children,
 	}: {
 		/** aria-label for the dialog. */
@@ -27,6 +29,8 @@
 		onclose: () => void;
 		/** Width/extra classes for the dialog box. */
 		class?: string;
+		/** `right`: a full-height sheet from the right edge (#2588). */
+		placement?: 'center' | 'right';
 		children: Snippet;
 	} = $props();
 
@@ -53,14 +57,19 @@
 		return off;
 	}}
 	{@attach portal}
-	class="bg-paper/50 fixed inset-0 z-40 flex items-center justify-center p-4"
+	class="bg-paper/50 fixed inset-0 z-40 flex {placement === 'right'
+		? 'justify-end'
+		: 'items-center justify-center p-4'}"
 	onclick={(event) => event.target === event.currentTarget && onclose()}
 >
 	<!-- The dialog never grows past the window (#2178): two call sites spelled
 	     their own cap and the rest had none, so a sheet taller than a landscape
 	     phone was clipped at both ends with no way to scroll it. -->
 	<div
-		class="panel panel-lg max-h-[calc(100dvh-2rem)] w-full overflow-y-auto {cls}"
+		class={placement === 'right'
+			? `bg-surface border-ink/10 h-dvh w-full overflow-y-auto border-l shadow-2xl ${cls}`
+			: `panel panel-lg max-h-[calc(100dvh-2rem)] w-full overflow-y-auto ${cls}`}
+		in:fly={placement === 'right' ? { x: 48, duration: 180 } : { duration: 0 }}
 		role="dialog"
 		aria-modal="true"
 		aria-label={label}

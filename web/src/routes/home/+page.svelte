@@ -24,8 +24,6 @@
 	import MarkIcon from '$lib/components/MarkIcon.svelte';
 	import { fetchProgression, type LoadSummary } from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
-	import { changelog } from '$lib/changelog.svelte';
-	import WhatsNewNotice from '$lib/components/WhatsNewNotice.svelte';
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
@@ -36,9 +34,6 @@
 	// the sidebar is the list of crews and their channels.
 
 	void account.load();
-	// What's new (#345). Home is the between-rides surface, which is the only
-	// place this belongs — ux.md: never interrupt a rider mid-interval.
-	void changelog.load();
 
 	let rides = $state<ServerRide[] | null>(null);
 	let ridesError = $state<string | null>(null);
@@ -281,17 +276,10 @@
 		</div>
 	{/if}
 
-	<!-- One notice at a time (#1333): the first with something to say shows,
-	     dismissing it reveals the next. The order is the importance — your new
-	     account, the desktop app's update or offer, then what's new — and the
-	     queueing is the stylesheet's: every notice renders its own element or
-	     nothing at all, so "first child" is "first that has something to say". -->
-	<div class="notices">
-		<DesktopNotice />
-		{#if changelog.unseen}
-			<WhatsNewNotice />
-		{/if}
-	</div>
+	<!-- The desktop app's offer, for a rider in a browser on a desk. What's
+	     new and every update moved to the sidebar's update row (#2588): Home
+	     is not where WattRoom opens any more (#2576). -->
+	<DesktopNotice />
 
 	<!-- You, in numbers — the band the mock's "your week" grew into: FTP,
 	     level, w/kg and the week, one glance. Nothing here needs a click. -->
@@ -416,9 +404,3 @@
 		<StartOrJoin compact />
 	</Modal>
 {/if}
-
-<style>
-	.notices > :global(:not(:first-child)) {
-		display: none;
-	}
-</style>

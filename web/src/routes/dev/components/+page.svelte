@@ -17,6 +17,7 @@
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import UpdateRow from '$lib/nav/UpdateRow.svelte';
+	import type { UpdateRowState } from '$lib/nav/update-row';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import PinBoard from '$lib/pins/PinBoard.svelte';
 	import type { Pin, PinDraft } from '$lib/pins/pins';
@@ -433,17 +434,22 @@
 
 	<h2 class="font-display mt-12 text-lg font-bold">The sidebar's update row</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
-		Only inside the desktop shell, and only while a release is downloaded and
-		waiting. Chrome, so it takes --color-neon and never glows — the sweep and
-		the arrow are what make it read as waiting (ADR-0005).
+		At the sidebar's foot, one state at a time, the most urgent first (#2588).
+		Chrome, so it takes --color-neon and never glows — the sweep and the icon
+		are what make it read as waiting (ADR-0005).
 	</p>
-	<div class="bg-surface border-ink/5 mt-4 w-60 rounded-lg border p-2">
-		<UpdateRow
-			bridge={{
-				onUpdate: (cb) => cb({ version: '2026.9.9' }),
-				installUpdate: () => {},
-			}}
-		/>
+	<div class="mt-4 flex flex-wrap gap-3">
+		{#each [{ kind: 'release', version: '2026.09.132', changes: 2 }, { kind: 'live', version: '2026.09.133' }, { kind: 'desktop', version: '2026.9.6' }, { kind: 'manual', version: '2026.9.6' }, { kind: 'installing' }] as UpdateRowState[] as state (state.kind)}
+			<div class="bg-surface border-ink/5 w-60 rounded-lg border p-2">
+				<UpdateRow
+					{state}
+					onopen={() => {}}
+					onreload={() => {}}
+					oninstall={() => {}}
+					onskip={() => {}}
+				/>
+			</div>
+		{/each}
 	</div>
 
 	<h2 class="eyebrow mt-12">Four page states</h2>
