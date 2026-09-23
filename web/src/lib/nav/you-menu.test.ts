@@ -6,8 +6,10 @@ import { mixer } from '$lib/sound/mixer.svelte';
 
 // The room decides whether a voice can dip anything (#904), and whether this
 // browser can move the voice to another output (#920).
-const room = vi.hoisted(() => ({ current: null as unknown }));
-vi.mock('$lib/channel/connection.svelte', () => ({ channelConnection: room }));
+const connection = vi.hoisted(() => ({ current: null as unknown }));
+vi.mock('$lib/channel/connection.svelte', () => ({
+	channelConnection: connection,
+}));
 
 // The cue engine is an AudioContext; the fader only has to reach it.
 const cues = vi.hoisted(() => ({ played: [] as string[] }));
@@ -58,7 +60,7 @@ describe('youMenu (#898)', () => {
 // reads: right is off (#904).
 describe('youMenu duck', () => {
 	it('offers no dip outside a room — there is no voice to dip under', () => {
-		room.current = null;
+		connection.current = null;
 		expect(
 			youMenu(() => {})
 				.filter(isSlider)
@@ -67,7 +69,7 @@ describe('youMenu duck', () => {
 	});
 
 	it('is the depth, off at the top, and never disagrees with the panel', () => {
-		room.current = { av: {} };
+		connection.current = { av: {} };
 		mixer.setDuck(0.7);
 		const duck = youMenu(() => {}).filter(isSlider)[1];
 		expect([duck.label, duck.value, duck.format(duck.value)]).toEqual([
@@ -79,7 +81,7 @@ describe('youMenu duck', () => {
 		duck.onInput(25);
 		expect(mixer.duck).toBeCloseTo(0.25);
 		mixer.setDuck(0.75);
-		room.current = null;
+		connection.current = null;
 	});
 });
 
@@ -98,15 +100,15 @@ describe('youMenu speakers', () => {
 		youMenu(() => {}).map((e) => e !== 'separator' && e.label);
 
 	it('offers no output list where the browser cannot switch sinks', () => {
-		room.current = av({ canPickOutput: false });
+		connection.current = av({ canPickOutput: false });
 		expect(labels()).not.toContain('LG Display');
-		room.current = av({ outs: [] });
+		connection.current = av({ outs: [] });
 		expect(labels()).not.toContain('System default');
 	});
 
 	it('marks where the voice comes out, and moves it', () => {
 		const setOut = vi.fn();
-		room.current = av({ setOut });
+		connection.current = av({ setOut });
 		const entries = youMenu(() => {}).filter(
 			(entry): entry is MenuItem =>
 				entry !== 'separator' && entry.kind !== 'slider',
@@ -120,7 +122,7 @@ describe('youMenu speakers', () => {
 		]);
 		entries.at(-2)!.onSelect();
 		expect(setOut).toHaveBeenCalledWith('hdmi');
-		room.current = null;
+		connection.current = null;
 	});
 });
 
@@ -132,7 +134,7 @@ describe('youMenu speakers', () => {
  */
 describe('youMenu sign out', () => {
 	it('offers the way out last, marked destructive', () => {
-		room.current = null;
+		connection.current = null;
 		const entries = youMenu(() => {});
 		// After a separator, and the tail of the menu (ux.md).
 		expect(entries.at(-2)).toBe('separator');

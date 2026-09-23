@@ -161,14 +161,14 @@
 	// The room the rider is standing in: the connection outlives navigation
 	// (#173), so browsing the shelf does not leave the room. Queuing anywhere
 	// else would need a room picker, and a rider in one room wants that one.
-	const room = $derived(channelConnection.current);
-	const channelName = $derived(room?.address.name ?? '');
+	const connection = $derived(channelConnection.current);
+	const channelName = $derived(connection?.address.name ?? '');
 
 	// Save to a playlist (#1427): the rider's own lists always, the room's
 	// when they are standing in one. One line per list in the menu.
 	const mine = createPlaylistStore('/api/playlists');
 	const crewLists = $derived(
-		room ? createPlaylistStore(room.address.playlists) : null,
+		connection ? createPlaylistStore(connection.address.playlists) : null,
 	);
 	function saveTo(
 		track: Track,
@@ -196,8 +196,8 @@
 		bpm?: number;
 		durationMs?: number;
 	}) {
-		if (!room) return;
-		room.live.jukebox({
+		if (!connection) return;
+		connection.live.jukebox({
 			action: 'add',
 			trackId: track.id,
 			title: track.title,
@@ -222,7 +222,7 @@
 	// the buttons have, so nothing in the menu can fail on click.
 	function menu(track: Track): MenuEntry[] {
 		const entries: MenuEntry[] = [];
-		if (room)
+		if (connection)
 			entries.push({
 				label: `Queue in ${channelName}`,
 				icon: ListPlus,
@@ -284,7 +284,7 @@
 		</label>
 	</header>
 
-	<LibraryPlaylists store={mine} address={room?.address} />
+	<LibraryPlaylists store={mine} address={connection?.address} />
 
 	<label class="relative mt-4 block">
 		<Search
@@ -302,7 +302,7 @@
 
 	<LibraryPicked
 		{picked}
-		address={room?.address}
+		address={connection?.address}
 		{channelName}
 		{mine}
 		{crewLists}
@@ -422,7 +422,7 @@
 						editing={editing === track.id}
 						picked={selected.has(track.id)}
 						owned={owned(track)}
-						channelName={room ? channelName : null}
+						channelName={connection ? channelName : null}
 						menu={() => menu(track)}
 						onPick={pick}
 						onPicked={(on) =>
@@ -435,7 +435,7 @@
 					/>
 				{/each}
 			</ul>
-			{#if !room}
+			{#if !connection}
 				<!-- The page promises these play in a room; with none open there
 				     is nothing to queue into, so it says how rather than drawing
 				     a button that cannot work (ux.md). -->

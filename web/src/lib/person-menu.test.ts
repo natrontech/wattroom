@@ -5,7 +5,7 @@ import { mixer } from '$lib/sound/mixer.svelte';
 
 // The surface says who is in voice (#874); the fader writes through the room's
 // av when there is one.
-const room = vi.hoisted(() => ({
+const connection = vi.hoisted(() => ({
 	current: null as null | {
 		av: {
 			voice: Record<string, 'live' | 'muted'>;
@@ -14,7 +14,9 @@ const room = vi.hoisted(() => ({
 		live?: { tick?: { roster?: { id: string }[] } };
 	},
 }));
-vi.mock('$lib/channel/connection.svelte', () => ({ channelConnection: room }));
+vi.mock('$lib/channel/connection.svelte', () => ({
+	channelConnection: connection,
+}));
 
 const opened = vi.hoisted(() => ({ id: null as string | null }));
 vi.mock('$lib/channel/connection-info.svelte', () => ({
@@ -141,7 +143,7 @@ describe('personMenu volume', () => {
 	});
 
 	it('sets the level itself when the room has no voice connection', () => {
-		room.current = null;
+		connection.current = null;
 		const [fader] = faders(
 			personMenu('u3', () => {}, { volume: { name: 'Ruben' } }),
 		);
@@ -153,7 +155,7 @@ describe('personMenu volume', () => {
 	});
 
 	it('reads the rider back at their stored level and writes through av', () => {
-		room.current = { av: { voice: { u1: 'live' }, setRiderGain } };
+		connection.current = { av: { voice: { u1: 'live' }, setRiderGain } };
 		mixer.setRiderGain('u1', 1.4, 'Ada');
 		const entries = personMenu('u1', () => {}, { volume: { name: 'Ada' } });
 		const [fader] = faders(entries);
@@ -182,7 +184,7 @@ describe('personMenu volume', () => {
 // can answer" the menu's job rather than each caller's.
 describe('personMenu connection (#2131)', () => {
 	beforeEach(() => {
-		room.current = null;
+		connection.current = null;
 		opened.id = null;
 	});
 
@@ -191,7 +193,7 @@ describe('personMenu connection (#2131)', () => {
 	});
 
 	it('is absent for someone who is not in the room you are standing in', () => {
-		room.current = {
+		connection.current = {
 			av: { voice: {}, setRiderGain: () => {} },
 			live: { tick: { roster: [{ id: 'someone-else' }] } },
 		};
@@ -199,7 +201,7 @@ describe('personMenu connection (#2131)', () => {
 	});
 
 	it('is offered for a rider on the roster, and opens their panel', () => {
-		room.current = {
+		connection.current = {
 			av: { voice: {}, setRiderGain: () => {} },
 			live: { tick: { roster: [{ id: 'u1' }] } },
 		};
@@ -214,7 +216,7 @@ describe('personMenu connection (#2131)', () => {
 	// The one entry that is NOT disabled on your own row: everything else on
 	// this menu is about another person, and your address is about you.
 	it('is offered on your own row, and is not disabled there', () => {
-		room.current = {
+		connection.current = {
 			av: { voice: {}, setRiderGain: () => {} },
 			live: { tick: { roster: [{ id: 'me' }] } },
 		};
@@ -228,7 +230,7 @@ describe('personMenu connection (#2131)', () => {
 	// A room joined but not yet ticking has no roster to ask, and reading
 	// through it must not throw the whole menu away.
 	it('survives a room that has no tick yet', () => {
-		room.current = { av: { voice: {}, setRiderGain: () => {} } };
+		connection.current = { av: { voice: {}, setRiderGain: () => {} } };
 		expect(() => personMenu('u1', () => {})).not.toThrow();
 		expect(labels(personMenu('u1', () => {}))).not.toContain('Connection');
 	});
