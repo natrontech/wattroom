@@ -30,7 +30,7 @@ test('a friend who is in a voice channel but not pedalling is not shown as ridin
 	// online — and the chip's bug, which fired on `inRoom`, cannot fire.
 	test.fixme(
 		true,
-		'/api/friends never says inRoom (nor riding) for a friend in a voice channel no room became — server/internal/channels/room_where.go',
+		'#2516: /api/friends never says inRoom (nor riding) for a friend in a voice channel no room became',
 	);
 
 	const a = await riders(A);

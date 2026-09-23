@@ -21,7 +21,10 @@ test('every place in a crew renders, and none of them throws', async ({
 	page.on('pageerror', (error) => errors.push(error.message.split('\n')[0]));
 
 	await signInAs(page, 'Places Walker', '/home');
-	const opened = await channels.open(page, `Places Walk ${Date.now() % 100000}`);
+	const opened = await channels.open(
+		page,
+		`Places Walk ${Date.now() % 100000}`,
+	);
 	await page.goto(`/crew/${opened.crew}`);
 
 	// The column draws the crew's pages at once and its channels when

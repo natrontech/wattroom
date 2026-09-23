@@ -39,7 +39,7 @@ test('the sidebar draws each rider’s state on their own face', async ({
 	// nothing reads the voice channels' occupants for it.
 	test.fixme(
 		true,
-		"the DM row's dot never reads the crews' live read: Sidebar.svelte passes presence.rooms, which lib/nav/rooms.ts always returns empty",
+		"#2517: the DM row's dot never reads the crews' live read, only the always-empty room list",
 	);
 
 	const a = await riders(A);

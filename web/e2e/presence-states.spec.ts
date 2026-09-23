@@ -115,7 +115,7 @@ const FEEDS = [
 		// /api/crews (presence.svelte.ts); a refused /api/crews/live sets
 		// `crewLive.error`, and CrewColumn draws that only over an EMPTY
 		// channel list — #1743's gap, one feed over.
-		bug: 'the crew header never marks a stalled /api/crews/live: CrewSwitcher.svelte keys the mark on presence.stale, which only counts /api/crews',
+		bug: '#2518: the crew header never marks a stalled /api/crews/live, only a stalled /api/crews',
 	},
 ];
 
