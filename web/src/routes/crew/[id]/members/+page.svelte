@@ -150,7 +150,6 @@
 
 		<RiderPrefs
 			path="/api/crews/{crew.id}/me"
-			noun="crew"
 			me={members.me}
 			boardEnabled={members.boardEnabled}
 		/>

@@ -9,16 +9,10 @@
 		together,
 		streakWeeks,
 		streakLabel,
-		monthKj,
 	}: {
 		together?: Together | null;
 		streakWeeks: number;
 		streakLabel: string;
-		/**
-		 * A month in kJ. Only a room's read carried one, and the crew's does
-		 * not, so nothing passes it now.
-		 */
-		monthKj?: number;
 	} = $props();
 
 	// Describe, never grade (RESEARCH.md §14.8): the crew against its own last
@@ -65,8 +59,7 @@
 			>
 		</p>
 		<p class="text-muted text-[11px]">
-			{monthOnMonth}{#if monthKj !== undefined}
-				· {Math.round(monthKj).toLocaleString()} kJ{/if}
+			{monthOnMonth}
 		</p>
 	</div>
 	<div class="panel">

@@ -9,7 +9,7 @@ vi.mock('$lib/api', () => ({
 	},
 }));
 
-const { isYouTube, oembedFor, unfurl } = await import('./unfurl');
+const { oembedFor, unfurl } = await import('./unfurl');
 
 const fetchMock = vi.fn();
 
@@ -42,16 +42,6 @@ describe('oembedFor (#866)', () => {
 		]) {
 			expect(oembedFor(url), url).toBeNull();
 		}
-	});
-});
-
-describe('isYouTube', () => {
-	it('recognises the hosts the jukebox can take', () => {
-		expect(isYouTube('youtube.com')).toBe(true);
-		expect(isYouTube('music.youtube.com')).toBe(true);
-		expect(isYouTube('youtu.be')).toBe(true);
-		expect(isYouTube('yourtube.com')).toBe(false);
-		expect(isYouTube('notyoutube.com.evil.test')).toBe(false);
 	});
 });
 

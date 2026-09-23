@@ -8,12 +8,10 @@
 	let {
 		text,
 		preview = true,
-		onQueue,
 		menu,
 	}: {
 		text: string;
 		preview?: boolean;
-		onQueue?: (url: string) => void;
 		/** The message's menu, handed to a GIF the way ChatImage wants it (#1817). */
 		menu?: () => MenuEntry[];
 	} = $props();
@@ -60,4 +58,4 @@
 					class="bg-surface-raised text-ink/90 rounded px-1 py-0.5 font-mono text-[0.95em]"
 					>{part.text}</code
 				>{:else}<span class={marks(part)}>{part.text}</span>{/if}{/each}</span
-	>{#if preview}<LinkPreview {parts} {onQueue} />{/if}{/if}
+	>{#if preview}<LinkPreview {parts} />{/if}{/if}

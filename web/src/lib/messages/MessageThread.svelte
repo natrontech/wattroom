@@ -5,7 +5,6 @@
 	// — what differs surface to surface is what a line IS and what you can do to
 	// it, not how the log scrolls or the box sends.
 	import Copy from '@lucide/svelte/icons/copy';
-	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Megaphone from '@lucide/svelte/icons/megaphone';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
@@ -22,7 +21,6 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import type {} from '$lib/chat/gifs';
-	import { parseInline } from '$lib/chat/inline';
 	import MessageText from '$lib/chat/MessageText.svelte';
 	import Composer from '$lib/messages/Composer.svelte';
 	import Reactions from '$lib/chat/Reactions.svelte';
@@ -48,11 +46,9 @@
 	let {
 		source,
 		imageSrc,
-		onQueue,
 		composerPlaceholder,
 		composerHint,
 		composerLock = null,
-		extraSendError = null,
 		editHint = 'Escape cancels · the channel sees the change',
 		lineGapMs = 1000,
 		mentionNames = [],
@@ -61,18 +57,10 @@
 		source: ThreadSource;
 		/** Builds a message's image URL — the channel and DM endpoints differ. */
 		imageSrc: (imageId: string) => string;
-		/**
-		 * Queuing a link is a jukebox command. Only a room's chat, which had a
-		 * deck of its own, ever passed it.
-		 */
-		onQueue?: (url: string) => void;
 		composerPlaceholder: string;
 		composerHint?: string;
 		/** Why nothing can be sent here, when nothing can — the box says so. */
 		composerLock?: string | null;
-		/** A persistent banner unrelated to the last send attempt, e.g. a
-		 *  socket reconnecting with its queue full. */
-		extraSendError?: string | null;
 		/**
 		 * Who sees an edit land — a channel, or the one person a DM has
 		 * (#1819).
@@ -182,13 +170,6 @@
 	// The shared copy (#2182): the await and the catch this one already had,
 	// now where every other copy in the app can reach them.
 
-	// The first external link in a line — the same one LinkPreview would
-	// unfurl. addYouTubeUrl already refuses anything that isn't a video or
-	// playlist, so offering the item costs nothing when the guess is wrong.
-	function firstLink(text: string): string | undefined {
-		return parseInline(text, location.origin).find((p) => p.external)?.text;
-	}
-
 	// Touch and long-press have no hover strip to reveal Copy and React, and a
 	// rider three metres from the screen cannot hit a 13px icon anyway (#663).
 	// Same actions, same handlers — the hover strip stays as the shortcut.
@@ -278,15 +259,6 @@
 				icon: Trash2,
 				danger: true,
 				onSelect: () => void removeLine(id, mine, message.from),
-			});
-		}
-		const link = onQueue && message.text ? firstLink(message.text) : undefined;
-		if (link) {
-			const url = link;
-			items.push({
-				label: 'Queue the link',
-				icon: ListPlus,
-				onSelect: () => onQueue?.(url),
 			});
 		}
 		return items;
@@ -437,7 +409,6 @@
 									{:else if message.text}
 										<MessageText
 											text={message.text}
-											{onQueue}
 											menu={() => messageMenu(message)}
 										/>
 									{/if}
@@ -530,5 +501,5 @@
 	placeholder={composerPlaceholder}
 	hint={composerHint}
 	lock={composerLock}
-	error={extraSendError ?? (timeline.length > 0 ? source.error : null)}
+	error={timeline.length > 0 ? source.error : null}
 />

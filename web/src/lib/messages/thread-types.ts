@@ -7,10 +7,10 @@ import type { TimelineEntry, TimelineMessage } from '$lib/messages/timeline';
 export type ThreadMessage = TimelineMessage;
 
 /**
- * The reactive surface MessageThread.svelte renders. Reactions and the link-
- * queue menu item are capability-gated (ux.md): omit `reactions`/`onReact`
- * or `onQueue` and that affordance simply does not render, rather than
- * failing on click — a DM has no reaction backend yet (#672 follow-up).
+ * The reactive surface MessageThread.svelte renders. Reactions are
+ * capability-gated (ux.md): omit `reactions`/`onReact` and the affordance
+ * simply does not render, rather than failing on click — a DM has no
+ * reaction backend yet (#672 follow-up).
  */
 export interface ThreadSource {
 	timeline: TimelineEntry[];

@@ -1,12 +1,7 @@
 import { api } from '$lib/api';
 import { uploadImage } from '$lib/chat/upload';
 import { presence } from '$lib/presence.svelte';
-import type {
-	ChatEdit,
-	ChatLine,
-	ChatReactionCount,
-	SessionRecap,
-} from '$lib/protocol';
+import type { ChatEdit, ChatLine, ChatReactionCount } from '$lib/protocol';
 import type { Announcement } from '$lib/channels';
 
 /**
@@ -23,7 +18,6 @@ interface BacklogMessage extends ChatLine {
 
 export function createChatThread(base: string) {
 	let messages = $state<ChatLine[]>([]);
-	let recaps = $state<SessionRecap[]>([]);
 	let announcement = $state<Announcement | null>(null);
 	let reactions = $state<Record<string, Record<string, number>>>({});
 	let myReacts = $state<Record<string, boolean>>({});
@@ -42,7 +36,6 @@ export function createChatThread(base: string) {
 		const res = await api<{
 			messages: BacklogMessage[];
 			readAt: number;
-			recaps?: SessionRecap[];
 			announcement?: Announcement;
 		}>(`${base}/chat`);
 		if (closed || mine !== issued) return;
@@ -67,9 +60,6 @@ export function createChatThread(base: string) {
 		);
 		reactions = counts;
 		myReacts = pressed;
-		// A room's finished sessions rode its backlog (ADR-0034); a text
-		// channel has none, and carries its marked line instead (#2435).
-		recaps = res.data.recaps ?? [];
 		announcement = res.data.announcement ?? null;
 		// Reading is what clears the badge — only when you could actually
 		// have read it: a thread left open in a hidden tab keeps its count.
@@ -88,9 +78,6 @@ export function createChatThread(base: string) {
 	};
 
 	return {
-		get recaps() {
-			return recaps;
-		},
 		get messages() {
 			return messages;
 		},
