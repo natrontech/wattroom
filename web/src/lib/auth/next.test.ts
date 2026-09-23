@@ -54,4 +54,18 @@ describe('landing', () => {
 		expect(landing(null)).toBe('/home');
 		expect(landing('')).toBe('/home');
 	});
+
+	// Since ADR-0058 Home is the You mode, so every start opened in You (#2576).
+	const crews = [{ id: 'c1' }, { id: 'c2' }];
+	it('opens in the crew the sidebar would choose', () => {
+		expect(landing(null, 'c2', crews)).toBe('/crew/c2');
+	});
+	it('is Home when that crew is gone, or You was chosen', () => {
+		expect(landing(null, 'left', crews)).toBe('/home');
+		expect(landing(null, 'you', crews)).toBe('/home');
+		expect(landing(null, null, crews)).toBe('/home');
+	});
+	it('still follows an invite first', () => {
+		expect(landing('AB23CD', 'c1', crews)).toBe('/c/AB23CD');
+	});
 });

@@ -42,12 +42,19 @@ export function rememberNext(path: string | null): void {
 
 /**
  * Where a signed-in landing on "/" goes with nothing stashed (#2144): the
- * crew's door the rider was sent to and has not joined, else Home. The stash
- * lives in one tab, and a new account's email confirmation opens another —
- * so the invite follows the account instead (`/api/me`'s `pendingInvite`).
+ * crew's door the rider was sent to and has not joined; else the crew the
+ * sidebar opens in (`chosen` — the main crew, else this device's last,
+ * #2576), while the rider is still in it; else Home. The stash lives in one
+ * tab, and a new account's email confirmation opens another — so the invite
+ * follows the account instead (`/api/me`'s `pendingInvite`).
  */
-export function landing(pendingInvite?: string | null): string {
-	return pendingInvite ? `/c/${pendingInvite}` : '/home';
+export function landing(
+	pendingInvite?: string | null,
+	chosen?: string | null,
+	crews: { id: string }[] = [],
+): string {
+	if (pendingInvite) return `/c/${pendingInvite}`;
+	return crews.some((c) => c.id === chosen) ? `/crew/${chosen}` : '/home';
 }
 
 export function takeNext(): string | null {
