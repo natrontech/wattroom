@@ -104,7 +104,7 @@
 			<ul class="text-muted mt-3 space-y-1.5 text-xs">
 				<li>Rides are private by default — sharing is per ride, and opt-in.</li>
 				<li>
-					Live power is visible only inside a room, only while you're riding it.
+					Live power is visible only inside a session, only while it runs.
 				</li>
 				<li>
 					Voice and camera are never recorded. They pass through and are gone.
@@ -133,10 +133,10 @@
 						This deletes everything, permanently.
 					</p>
 					<p class="text-muted mt-1.5 text-xs leading-relaxed">
-						Every ride, your power curve, your XP and level, and the rooms you
-						own. Rooms you own are deleted for everyone in them. There is no
-						undo and no backup we can restore from — that's the point of a full
-						purge.
+						Every ride, your power curve, your XP and level. A crew you own
+						passes to whoever has been in it longest, an admin first. There is
+						no undo and no backup we can restore from — that's the point of a
+						full purge.
 					</p>
 					<label class="mt-4 block">
 						<span class="text-muted text-[11px]">Type DELETE to confirm</span>

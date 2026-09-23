@@ -194,10 +194,10 @@
 				<label class="flex items-start gap-3">
 					<input type="checkbox" class="mt-0.5" />
 					<span>
-						<span class="block text-sm">Share this ride with the room</span>
+						<span class="block text-sm">Share this ride with your friends</span>
 						<span class="text-muted block text-xs">
-							Rides are private by default. Sharing puts your numbers and this
-							card on the room's history — it never shares your heart rate.
+							Rides are private by default. Sharing shows your friends your
+							numbers and this card — it never shares your heart rate.
 						</span>
 					</span>
 				</label>

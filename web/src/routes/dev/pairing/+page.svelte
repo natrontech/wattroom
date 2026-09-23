@@ -189,7 +189,7 @@
 			</p>
 			<p class="text-muted mt-1 text-xs">
 				WattRoom talks to your trainer straight from this browser — nothing is
-				installed, and your power never leaves the room you're riding in.
+				installed, and your power never leaves the session you're riding in.
 			</p>
 		</div>
 	</div>

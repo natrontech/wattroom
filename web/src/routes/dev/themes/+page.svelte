@@ -33,7 +33,7 @@
 		{
 			narrow: true,
 			label: 'Laptop',
-			hint: 'one panel at 520 px — the room with a people column beside it',
+			hint: 'one panel at 520 px — the voice channel with a people column beside it',
 		},
 	];
 
@@ -55,7 +55,7 @@
 			Left column is the <strong class="text-ink">cave</strong>: the dark half
 			of an identity, which is what a ride renders whatever the scheme says.
 			Right is the <strong class="text-ink">desk</strong> — the white half, for the
-			rooms list, the editor and the history under a light scheme. The numbers at
+			crew's pages, the editor and the history under a light scheme. The numbers at
 			the foot of each panel are the build contract's, so the page says both "legible"
 			and "any good".
 		</p>

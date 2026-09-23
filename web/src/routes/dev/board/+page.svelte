@@ -13,8 +13,8 @@
 	import PinIcon from '@lucide/svelte/icons/pin';
 	import Plus from '@lucide/svelte/icons/plus';
 
-	let scopeA = $state<'room' | 'crew'>('room');
-	let scopeB = $state<'room' | 'crew'>('crew');
+	let scopeA = $state<'channel' | 'crew'>('channel');
+	let scopeB = $state<'channel' | 'crew'>('crew');
 
 	const PINS = [
 		{
@@ -36,7 +36,7 @@
 			title: 'Tuesday intervals',
 			lines: [['Workout', '4 × 8 @ 105%']] as [string, string][],
 			note: 'We ride this one every Tuesday.',
-			scope: 'room' as const,
+			scope: 'channel' as const,
 		},
 	];
 </script>
@@ -83,13 +83,13 @@
 {/snippet}
 
 {#snippet scopeSwitch(
-	value: 'room' | 'crew',
-	set: (v: 'room' | 'crew') => void,
+	value: 'channel' | 'crew',
+	set: (v: 'channel' | 'crew') => void,
 )}
 	<div class="flex items-center gap-1">
 		<button
-			onclick={() => set('room')}
-			class="btn btn-xs {value === 'room' ? 'btn-primary' : 'btn-ghost'}"
+			onclick={() => set('channel')}
+			class="btn btn-xs {value === 'channel' ? 'btn-primary' : 'btn-ghost'}"
 			>Velvet Hammer</button
 		>
 		<button
@@ -120,9 +120,9 @@
 <main class="mx-auto max-w-5xl px-6 py-12">
 	<h1 class="page-title">Board — three arrangements</h1>
 	<p class="text-muted mt-2 max-w-2xl text-sm">
-		A board for a room <em>and</em> for a crew, holding pins, announcements and posts
-		(#2413). Nothing here is wired. The three differ on one question, and it is not
-		where the cards go.
+		A board for a channel <em>and</em> for a crew, holding pins, announcements and
+		posts (#2413). Nothing here is wired. The three differ on one question, and it
+		is not where the cards go.
 	</p>
 	<div
 		class="border-neon/40 bg-neon/5 mt-5 max-w-2xl rounded-lg border px-4 py-3"
@@ -134,9 +134,11 @@
 			>
 			— which answers the objection filed against A below. That objection assumed
 			a row somewhere down the list, where a notice is filed; on the first row a rider
-			entering the room passes it. Shipped as
-			<code>/r/[slug]/board</code>, holding the announcement and the pins. The
-			Lounge keeps its strip for whoever is already inside.
+			entering the crew passes it. Shipped as
+			<code>/r/[slug]/board</code> and, since ADR-0058, the crew's
+			<code>/crew/[id]/board</code>, holding the newest announcement and the
+			pins. A voice channel's page keeps the strip for whoever is already
+			inside.
 		</p>
 		<p class="text-muted mt-2 text-xs">
 			The three pictures stay because the costs under them are still real, and
@@ -155,9 +157,9 @@
 			is pushed: it has to reach someone who was not looking. A
 			<strong class="text-ink">post</strong>
 			is the one with no agreed meaning yet — if it is "a message that does not scroll
-			away", the room already has chat, and the honest version of that idea is a thread,
-			not a card. Each arrangement below answers it differently, and the third declines
-			to answer it at all.
+			away", the crew already has text channels, and the honest version of that idea
+			is a thread, not a card. Each arrangement below answers it differently, and
+			the third declines to answer it at all.
 		</p>
 	</div>
 
@@ -165,8 +167,8 @@
 	<h2 class="eyebrow mt-12">A · one Board, cards of three kinds</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		One place per scope. The announcement is the first card, pins follow, posts
-		below them. Scope is a switch at the top: this room, or the crew. Closest to
-		what a Discord forum channel feels like.
+		below them. Scope is a switch at the top: this channel, or the crew. Closest
+		to what a Discord forum channel feels like.
 	</p>
 	<div class="panel panel-lg mt-4 flex gap-5">
 		{@render sidebar(
@@ -181,11 +183,11 @@
 				>
 			</div>
 			<p class="text-muted mb-4 text-xs">
-				{scopeA === 'room'
-					? 'What this room keeps needing.'
-					: 'What Natron keeps needing — the same board in every room of it.'}
+				{scopeA === 'channel'
+					? 'What this channel keeps needing.'
+					: 'What Natron keeps needing — the same board in every channel of it.'}
 			</p>
-			{#if scopeA === 'room'}
+			{#if scopeA === 'channel'}
 				<div class="mb-3">{@render strip()}</div>
 			{/if}
 			<ul
@@ -221,12 +223,12 @@
 
 	<!-- ─────────────────────────────────────────────────────────────────── -->
 	<h2 class="eyebrow mt-12">
-		B · Board is the crew's; the room keeps its strip
+		B · Board is the crew's; the channel keeps its strip
 	</h2>
 	<p class="text-muted mt-2 max-w-2xl text-xs">
 		The board is a crew surface — pins and posts, reached from the crew and from
-		any of its rooms. The announcement stays what it is: a strip at the top of
-		the room, pushed, not filed. Two surfaces, each doing one job.
+		any of its channels. The announcement stays what it is: a strip at the top
+		of the channel, pushed, not filed. Two surfaces, each doing one job.
 	</p>
 	<div class="panel panel-lg mt-4 flex gap-5">
 		{@render sidebar(
@@ -243,7 +245,7 @@
 					>
 				</div>
 				<p class="text-muted mb-4 text-xs">
-					Pins and posts belong to the crew; every room of it opens the same
+					Pins and posts belong to the crew; every channel of it opens the same
 					one.
 				</p>
 				<ul
@@ -258,7 +260,7 @@
 	</div>
 	<p class="text-muted-dim mt-2 max-w-2xl text-[11px]">
 		<strong>Cost:</strong> two homes to learn. A rider asking "where do I write something
-		the room should see" has to know whether it is a notice or a note.
+		the crew should see" has to know whether it is a notice or a note.
 	</p>
 
 	<!-- ─────────────────────────────────────────────────────────────────── -->
@@ -321,7 +323,7 @@
 			<strong class="text-ink"
 				>what can a post do that a chat message cannot?</strong
 			> If the answer is "stay put", B. If it is "have a title and replies", C with
-			threads. If it is "be read by people not in the room", that is a third thing
+			threads. If it is "be read by people not in the crew", that is a third thing
 			neither picture draws.
 		</p>
 	</div>

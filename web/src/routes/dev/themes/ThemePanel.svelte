@@ -55,7 +55,7 @@
 	const CAVE =
 		'What a ride renders — the dark half of this identity, whatever the scheme says.';
 	const DESK =
-		'What the rooms list, the editor and the history look like under a light scheme.';
+		"What the crew's pages, the editor and the history look like under a light scheme.";
 </script>
 
 <section
@@ -111,7 +111,7 @@
 			<span class="eyebrow">the ramp, Z1 → Z7</span>
 			<p class="text-muted-dim mt-1 text-[11px] leading-snug">
 				Shared, not themed (ADR-0023 §4) — a zone reading is learned across the
-				room. Only its fitting against these surfaces moves, and the numbers
+				crew. Only its fitting against these surfaces moves, and the numbers
 				under each swatch are that fit.
 			</p>
 			<div class="mt-2 grid grid-cols-7 gap-px overflow-hidden rounded">

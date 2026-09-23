@@ -2,7 +2,7 @@
 	const screens = [
 		{
 			href: '/dev/panel',
-			label: 'The room panel',
+			label: 'The channel panel',
 			hint: 'Four ways to fit members, jukebox and chat in one column (#504)',
 		},
 		{
@@ -13,7 +13,7 @@
 		{
 			href: '/dev/trophies',
 			label: 'Trophy case',
-			hint: 'Achievements, XP sources, a room event (#450)',
+			hint: 'Achievements, XP sources, a crew event (#450)',
 		},
 		{
 			href: '/dev/chat',

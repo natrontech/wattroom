@@ -36,8 +36,8 @@
 	<p class="text-muted mt-2 max-w-2xl text-sm">
 		Synthesised with Web Audio rather than sampled — synthwave is oscillators,
 		filters and envelopes, so there is nothing to license, nothing to download,
-		and a per-room pack becomes a parameter set rather than an asset bundle.
-		Turn your volume up a little; these are mixed to sit under a voice.
+		and a voice channel's pack becomes a parameter set rather than an asset
+		bundle. Turn your volume up a little; these are mixed to sit under a voice.
 	</p>
 
 	<div
@@ -102,7 +102,7 @@
 			</li>
 			<li>
 				<span class="text-ink">Nothing loops.</span> Every cue is under a second.
-				A rider is in the room for an hour — anything repetitive becomes torture.
+				A rider is in a session for an hour — anything repetitive becomes torture.
 			</li>
 			<li>
 				<span class="text-ink">Reward is major, tension is minor.</span> The fanfare
