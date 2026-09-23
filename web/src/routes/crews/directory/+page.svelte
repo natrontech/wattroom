@@ -97,7 +97,7 @@
 					choose otherwise, which is the default and stays the default.
 				</p>
 				{#snippet cta()}
-					<a href="/home#rooms" class="btn btn-secondary"
+					<a href="/home#crews" class="btn btn-secondary"
 						>Join a crew with a code</a
 					>
 				{/snippet}

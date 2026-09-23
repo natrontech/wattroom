@@ -25,7 +25,7 @@ test('a fresh user starts their first crew through the UI', async ({
 	const name = `Smoke Test Crew ${Date.now() % 100000}`;
 	await page.locator('#start-crew-name').fill(name);
 	await page
-		.locator('#rooms')
+		.locator('#crews')
 		.getByRole('button', { name: 'Start a crew', exact: true })
 		.click();
 	await page.waitForURL(/\/crew\/[0-9a-f-]+$/, { timeout: 15_000 });

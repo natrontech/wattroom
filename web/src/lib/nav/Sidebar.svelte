@@ -33,7 +33,7 @@
 	import { readDmsFolded, rememberDmsFolded } from './folds';
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
+	import StartOrJoin from '$lib/home/StartOrJoin.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
@@ -347,6 +347,6 @@
 		onclose={() => (opening = false)}
 		class="max-w-sm"
 	>
-		<OpenOrJoin compact />
+		<StartOrJoin compact />
 	</Modal>
 {/if}

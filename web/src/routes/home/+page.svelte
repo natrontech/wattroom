@@ -10,10 +10,10 @@
 	import { presence } from '$lib/presence.svelte';
 	import { friendPlace, friends } from '$lib/friends/friends.svelte';
 	import { placePath } from '$lib/whereabouts';
-	import { revealRooms } from '$lib/rooms/reveal';
+	import { revealCrews } from '$lib/home/reveal';
 	import { othersIn, statusOf } from '$lib/status';
 	import { page } from '$app/state';
-	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
+	import StartOrJoin from '$lib/home/StartOrJoin.svelte';
 	import FirstRun from '$lib/home/FirstRun.svelte';
 	import RecentRides from '$lib/home/RecentRides.svelte';
 	import WhatsNext from '$lib/home/WhatsNext.svelte';
@@ -229,15 +229,15 @@
 		};
 	});
 
-	// A deep link to the forms — the old /rooms redirect, a shared
-	// /home#rooms — lands on them once the page is up (#1199).
+	// A deep link to the forms — the directory's empty state, a shared
+	// /home#crews — lands on them once the page is up (#1199).
 	$effect(() => {
 		// The forms render once the room list has landed; before that there
 		// is nothing to reveal. #sessions the same way (#1862): the old
 		// /sessions redirect landed on the top, because the section it named
 		// was behind the same fetch when the hash was applied.
 		if (rooms === null) return;
-		if (page.url.hash === '#rooms') queueMicrotask(revealRooms);
+		if (page.url.hash === '#crews') queueMicrotask(revealCrews);
 		else if (page.url.hash === '#sessions')
 			queueMicrotask(() =>
 				document.getElementById('sessions')?.scrollIntoView({ block: 'start' }),
@@ -527,7 +527,7 @@
 			<!-- Friends is its own place (ADR-0020); the heading that stayed here
 			     with nothing under it went with #1333. -->
 			<aside class="min-w-0 space-y-8">
-				<OpenOrJoin />
+				<StartOrJoin />
 			</aside>
 		</div>
 	{/if}
@@ -541,7 +541,7 @@
 		onclose={() => (opening = false)}
 		class="max-w-sm"
 	>
-		<OpenOrJoin compact />
+		<StartOrJoin compact />
 	</Modal>
 {/if}
 
