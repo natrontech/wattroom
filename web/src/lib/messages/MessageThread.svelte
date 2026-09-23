@@ -16,8 +16,8 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { people } from '$lib/people.svelte';
 	import { friends } from '$lib/friends/friends.svelte';
-	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
@@ -370,7 +370,7 @@
 											avatarUrl={face?.avatarUrl}
 											xp={face?.totalXp}
 											status={statusOf(
-												presence.rooms,
+												crewLive.crews,
 												message.fromId ?? '',
 												friends.list,
 											)}
