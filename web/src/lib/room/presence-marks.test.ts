@@ -5,7 +5,7 @@ import { tileFrame } from './presence-marks';
 
 const SRC = join(import.meta.dirname, '..', '..');
 /** Every surface that draws a person as a tile — the Lounge and the strip. */
-const TILES = ['lib/room/RiderTile.svelte', 'lib/nav/RoomStrip.svelte'];
+const TILES = ['lib/room/RiderTile.svelte', 'lib/nav/VoiceStrip.svelte'];
 /** Every surface that lists a person's activity marks in a row. */
 const ROSTERS = ['lib/room/SidePanel.svelte'];
 

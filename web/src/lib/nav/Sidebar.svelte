@@ -12,7 +12,7 @@
 	import YouPanel from '$lib/nav/YouPanel.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import RoomStrip from './RoomStrip.svelte';
+	import VoiceStrip from './VoiceStrip.svelte';
 	import CrewSwitcher from './CrewSwitcher.svelte';
 	import CrewColumn from './CrewColumn.svelte';
 	import { crewLive } from './crew-live.svelte';
@@ -322,7 +322,7 @@
 	     Above you, like Discord's voice panel; off the Lounge, which already
 	     shows everyone in tiles. -->
 	{#if roomConnection.current}
-		<RoomStrip {pathname} />
+		<VoiceStrip {pathname} />
 	{/if}
 
 	<!-- Discord's "download apps" corner (#1235): a quiet, permanent way to

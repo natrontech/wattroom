@@ -1,9 +1,9 @@
 <script lang="ts">
-	// Discord's voice-connected panel (#446): you are standing in a room but
+	// Discord's voice-connected panel (#446): you are in a voice channel but
 	// looking at something else — Training, Home, a message — and the people
-	// with you stay bottom-left, above you. The Lounge already shows everyone
-	// in tiles, so the strip stays off it; everywhere else this is the only
-	// place a face appears off-room, and it carries the whole crew.
+	// with you stay bottom-left, above you. The channel's own page already
+	// shows everyone in tiles, so the strip stays off it; everywhere else this
+	// is the only place their faces appear.
 	import { SvelteMap } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { contextMenu } from '$lib/context-menu.svelte';
@@ -20,7 +20,7 @@
 		tileFrame,
 		VOICE_DOT,
 	} from '$lib/room/presence-marks';
-	import { STRIP_MAX, orderBySpoke } from './room-strip';
+	import { STRIP_MAX, orderBySpoke } from './voice-strip';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 
 	let { pathname }: { pathname: string } = $props();
@@ -31,7 +31,7 @@
 	// clearest job in the sidebar with the weakest label: three sections list
 	// people, and this is the only one that means "right now, where you are
 	// standing".
-	const roomName = $derived(conn?.address.name ?? '');
+	const placeName = $derived(conn?.address.name ?? '');
 	const others = $derived(
 		(conn?.live.tick?.roster ?? []).filter((r) => r.id !== account.me?.id),
 	);
@@ -61,7 +61,7 @@
 	<div class="border-ink/5 border-t px-3 pt-2.5 pb-1.5">
 		<div class="eyebrow flex min-w-0 items-center gap-1.5 pb-1.5">
 			<span class="shrink-0">with you in</span>
-			<span class="text-ink min-w-0 truncate normal-case">{roomName}</span>
+			<span class="text-ink min-w-0 truncate normal-case">{placeName}</span>
 			<span class="num ml-auto shrink-0 tracking-normal">{others.length}</span>
 		</div>
 		<div class="grid grid-cols-2 gap-1.5">

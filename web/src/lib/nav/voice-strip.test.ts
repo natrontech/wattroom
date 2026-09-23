@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STRIP_MAX, orderBySpoke } from './room-strip';
+import { STRIP_MAX, orderBySpoke } from './voice-strip';
 
 const riders = [
 	{ id: 'c', name: 'Cleo' },
