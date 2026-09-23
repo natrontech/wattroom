@@ -63,12 +63,7 @@
 		{:else}
 			<ul class="flex flex-col gap-0.5">
 				{#each store.all as playlist (playlist.id)}
-					<JukeboxPlaylistRow
-						{playlist}
-						{store}
-						{address}
-						canManage={true}
-					/>
+					<JukeboxPlaylistRow {playlist} {store} {address} canManage={true} />
 				{/each}
 			</ul>
 		{/if}
