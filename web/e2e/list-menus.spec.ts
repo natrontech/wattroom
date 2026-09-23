@@ -98,6 +98,13 @@ test("a conversation's row offers the person's menu, and a ride's its verbs", as
 	);
 
 	const a = await riders(RIDER);
+	// The lobby held silent (#2532): its ping goes to every socket, so under
+	// a full run another spec's crew change re-reads Home's sections above
+	// the ride row while its menu is open, and the shift closes the menu
+	// between "Share with friends" and "Delete ride" (#500). Nothing here
+	// is about the lobby — the rows are stubbed — and nav-current and
+	// presence-states hold it the same way.
+	await a.routeWebSocket(/\/ws\/presence$/, () => {});
 	// The peer and the ride are the server's answers, stubbed: this is about
 	// the row's menu, and a real friendship and a real ride are two other
 	// specs' subjects (chat-focus.spec.ts, ride.spec.ts).
