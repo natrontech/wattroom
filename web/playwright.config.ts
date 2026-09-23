@@ -65,7 +65,7 @@ export default defineConfig({
 		{
 			name: 'chromium',
 			testIgnore: [
-				'mobile-room.spec.ts',
+				'mobile-channel.spec.ts',
 				'phone-width.spec.ts',
 				'voice-duck.spec.ts',
 			],
@@ -79,7 +79,7 @@ export default defineConfig({
 			// phone-width.spec.ts overrides the viewport to the 375×812 the
 			// standard is written at, and keeps this device's touch pointer.
 			name: 'phone',
-			testMatch: ['mobile-room.spec.ts', 'phone-width.spec.ts'],
+			testMatch: ['mobile-channel.spec.ts', 'phone-width.spec.ts'],
 			use: { ...devices['Pixel 5'], launchOptions: { args: [MUTE] } },
 		},
 		{
