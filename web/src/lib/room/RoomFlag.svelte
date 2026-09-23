@@ -50,11 +50,13 @@
 		if (sending) return;
 		sending = true;
 		error = null;
-		recorder.event('room', `${room.slug} · ${room.shared?.workoutName ?? ''}`);
+		// The workout, not the place: the buffer is published as it is, and the
+		// route below is the one field the server strips of who was where.
+		recorder.event('room', room.shared?.workoutName ?? '');
 		recorder.flag();
 		const report = recorder.flags[recorder.flags.length - 1];
 		const result = await recorder.submit(report, {
-			route: `/r/${room.slug}/training`,
+			route: room.address.training,
 			trainer: room.trainerName || 'none',
 		});
 		sending = false;

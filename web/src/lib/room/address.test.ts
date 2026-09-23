@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { channelAddress, roomAddress } from './address';
+import { channelAddress, onPlacePath, roomAddress } from './address';
 
 // One address per place (#2449): the shell reads its paths from here, so a
 // voice channel must never inherit a path only a room has.
@@ -36,5 +36,35 @@ describe('place addresses', () => {
 		// And it matches no room: every "am I in this room" check compares slugs.
 		expect(voice.slug).toBe('');
 		expect(voice.key).not.toBe(roomAddress('v1').key);
+	});
+});
+
+// The live place's own pages (#2460). Every check that asked
+// `startsWith('/r/')` went quietly false when the room pages went: the HUD,
+// the cave, the dock's corner, the rail's step aside and Leave's way out.
+describe('onPlacePath', () => {
+	const voice = channelAddress('c1', 'v1', 'Tuesday Spin');
+
+	it("is true on the channel's Lounge and Training", () => {
+		expect(onPlacePath('/crew/c1/v/v1', voice)).toBe(true);
+		expect(onPlacePath('/crew/c1/v/v1/training', voice)).toBe(true);
+	});
+
+	it('is true on the page of the session running in it', () => {
+		expect(onPlacePath('/crew/c1/s/s9', voice, 's9')).toBe(true);
+		expect(onPlacePath('/crew/c1/s/s9/watch', voice, 's9')).toBe(true);
+	});
+
+	it('is false everywhere else', () => {
+		// Another channel, one whose id merely starts the same, the crew.
+		expect(onPlacePath('/crew/c1/v/v2', voice)).toBe(false);
+		expect(onPlacePath('/crew/c1/v/v1x', voice)).toBe(false);
+		expect(onPlacePath('/crew/c1', voice)).toBe(false);
+		expect(onPlacePath('/crew/c1/c/v1', voice)).toBe(false);
+		expect(onPlacePath('/music', voice)).toBe(false);
+		// Another session, a session with none running here, another crew's.
+		expect(onPlacePath('/crew/c1/s/s8', voice, 's9')).toBe(false);
+		expect(onPlacePath('/crew/c1/s/s9', voice)).toBe(false);
+		expect(onPlacePath('/crew/c2/s/s9', voice, 's9')).toBe(false);
 	});
 });

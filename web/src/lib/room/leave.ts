@@ -3,17 +3,16 @@ import { page } from '$app/state';
 import { roomConnection } from './connection.svelte';
 
 /**
- * Leaving the room you are standing in, from wherever it is offered — the
- * sidebar's row and its menu, the mobile chip (#251), the messages list
- * (#2171). A disconnect, not a leaving: the membership stays and so does the
- * row.
+ * Leaving the place you are standing in — the you panel's way out (#2447). A
+ * disconnect, not a leaving: the membership stays and so does the row.
  *
- * The page has to leave too when it is the room's own, or you stare at a room
- * you are no longer in with no way back in (rider report). A surface that is
- * not the room's — the messages list, Home — stays exactly where it is.
+ * The page has to leave too when it is the place's own, or you stare at a
+ * place you are no longer in with no way back in (rider report). A surface
+ * that is not the place's — the messages list, Home — stays exactly where it
+ * is. Asked before the leave: after it there is no place to ask about.
  */
 export function leaveRoom(): void {
+	const standing = roomConnection.onPlacePath(page.url.pathname);
 	roomConnection.leave();
-	if (page.url.pathname.startsWith('/r/'))
-		void goto('/home', { replaceState: true });
+	if (standing) void goto('/home', { replaceState: true });
 }

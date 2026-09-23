@@ -28,7 +28,7 @@ import { untrack } from 'svelte';
 import type { SessionState } from '$lib/protocol';
 import type { Segment, Workout } from '$lib/workout/types';
 import { listening } from '$lib/room/listening.svelte';
-import { ridePath, type PlaceAddress } from '$lib/room/address';
+import { onPlacePath, ridePath, type PlaceAddress } from '$lib/room/address';
 
 const NO_CHAT = 'A voice channel keeps no chat — its crew’s text channels do.';
 
@@ -650,6 +650,16 @@ function connect(address: PlaceAddress): Connection {
 export const roomConnection = {
 	get current() {
 		return current;
+	},
+	/**
+	 * Whether `pathname` is one of the live place's own pages — its Lounge,
+	 * its Training, the session running in it (`onPlacePath`, #2460).
+	 */
+	onPlacePath(pathname: string): boolean {
+		return (
+			!!current &&
+			onPlacePath(pathname, current.address, current.live.tick?.state.id)
+		);
 	},
 	/** Idempotent per place; switching places leaves the old one first. */
 	join(address: PlaceAddress) {

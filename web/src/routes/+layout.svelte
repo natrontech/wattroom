@@ -25,8 +25,7 @@
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	// Leaving while standing in the room: shared with the rail's button, the
-	// mobile chip (#251) and the messages list's row menu (#2171).
+	import { isLivePhase } from '$lib/room/session-phase';
 	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
@@ -35,7 +34,6 @@
 	import { friends } from '$lib/friends/friends.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
-	import { activePlace } from '$lib/nav/pages';
 	import Menu from '@lucide/svelte/icons/menu';
 	import Toasts from '$lib/components/Toasts.svelte';
 	import NewAccountNotice from '$lib/components/NewAccountNotice.svelte';
@@ -155,18 +153,15 @@
 			!(dev && page.url.pathname.startsWith('/dev')),
 	);
 
-	// The ride is running, here or in a room — the cave below and, in the
-	// desktop shell, the floating HUD (ADR-0041): it opens when a ride starts
-	// and closes when it ends, and the shell shows it only while WattRoom is
-	// not the front window.
-	const riding = $derived.by(() => {
-		const phase = roomConnection.current?.live.tick?.state.phase;
-		return (
-			(page.url.pathname.startsWith('/r/') &&
-				(phase === 'countdown' || phase === 'running' || phase === 'paused')) ||
-			soloRide.active
-		);
-	});
+	// The ride is running, here or on the live place's pages — the cave below
+	// and, in the desktop shell, the floating HUD (ADR-0041): it opens when a
+	// ride starts and closes when it ends, and the shell shows it only while
+	// WattRoom is not the front window.
+	const riding = $derived(
+		(roomConnection.onPlacePath(page.url.pathname) &&
+			isLivePhase(roomConnection.current?.live.tick?.state.phase)) ||
+			soloRide.active,
+	);
 	// A solo ride has no timeline to write a DM into (#1743), so it takes the
 	// line and leaves it to the unread badge in the sidebar, which was already
 	// carrying it. Registered from here rather than from /ride and /ramp:
@@ -234,24 +229,6 @@
 				riders: roster.map((r) => r.name),
 			};
 		}),
-	);
-
-	// The room your screen is going to (#563). Named, because the notice has
-	// to say where — the connection outlives the room's pages, so a rider can
-	// be three screens away while their desktop is still on the stage.
-	const sharingRoom = $derived.by(() => {
-		const conn = roomConnection.current;
-		if (!conn) return null;
-		return { home: conn.address.home, name: conn.address.name };
-	});
-
-	// The chat's composer owns the bottom edge, so the drawer button steps up
-	// over it — the same lift the room's people button takes there. Both are
-	// thumb targets in the same corner strip and neither may land on the one
-	// input a phone rider is actually typing into.
-	const overComposer = $derived(
-		page.url.pathname.startsWith('/r/') &&
-			activePlace(page.url.pathname, page.params?.slug ?? '') === '/chat',
 	);
 
 	// Below md the sidebar is a drawer (#391). It closes on navigation —
@@ -385,15 +362,8 @@
 	     session starts, and come back up when it ends. A solo ride or ramp
 	     test is a ride too (ADR-0020), so the whole frame goes dark with it —
 	     not a dark instrument beside a daylight sidebar. -->
-	{@const ridePhase = roomConnection.current?.live.tick?.state.phase}
-	{@const caved =
-		(page.url.pathname.startsWith('/r/') &&
-			(ridePhase === 'countdown' ||
-				ridePhase === 'running' ||
-				ridePhase === 'paused')) ||
-		soloRide.active}
 	<div
-		class="flex h-dvh overflow-hidden {caved ? 'cave bg-surface' : ''}"
+		class="flex h-dvh overflow-hidden {riding ? 'cave bg-surface' : ''}"
 		style={titleBar ? `padding-top: ${titleBar}px` : ''}
 	>
 		<!-- The sidebar is the app's whole navigation (ADR-0020): destinations,
@@ -440,7 +410,7 @@
 			inert={device.narrow && navDrawer.open}
 			class="flex min-w-0 flex-1 flex-col overflow-hidden"
 		>
-			{#if !caved}
+			{#if !riding}
 				<!-- The only chrome the drawer needs. It goes with the lights: the
 				     ride owns the whole screen (#113) — below md the button
 				     reappears in the thumb zone instead (see the FAB below), or a
@@ -472,8 +442,8 @@
 				     business in the closure every route pays for. -->
 				{#await import('$lib/room/ScreenShareNotice.svelte') then { default: ScreenShareNotice }}
 					<ScreenShareNotice
-						room={sharingRoom}
-						pathname={page.url.pathname}
+						room={roomConnection.current.address}
+						inside={roomConnection.onPlacePath(page.url.pathname)}
 						sharing={av.sharing}
 						sharingAudio={av.sharingAudio}
 						onStop={() => void av.toggleShare()}
@@ -499,17 +469,15 @@
 				{@render children()}
 			</div>
 		</div>
-		{#if caved}
+		{#if riding}
 			<!-- The ride took the top bar, so the way back to the drawer is where
 			     a thumb already is: bottom left, mirroring the room's people
 			     button bottom right. Below md only — every wider window still has
 			     the sidebar standing there (#412). -->
 			<button
 				onclick={() => (navDrawer.open = true)}
-				class="bg-surface-raised ring-ink/15 fixed left-4 z-40 grid h-12 w-12
-				place-items-center rounded-full shadow-lg ring-1 md:hidden {overComposer
-					? 'bottom-20'
-					: 'bottom-4'}"
+				class="bg-surface-raised ring-ink/15 fixed bottom-4 left-4 z-40 grid h-12
+				w-12 place-items-center rounded-full shadow-lg ring-1 md:hidden"
 				aria-label="open navigation"
 			>
 				<Menu size={20} />

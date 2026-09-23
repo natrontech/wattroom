@@ -22,7 +22,7 @@
 		sharing,
 		sharingAudio = false,
 		room,
-		pathname,
+		inside,
 		onStop,
 		onSound,
 	}: {
@@ -30,7 +30,8 @@
 		/** Whether the room can HEAR the machine too (#1124). */
 		sharingAudio?: boolean;
 		room: { home: string; name: string } | null;
-		pathname: string;
+		/** Whether the rider is on the place's own pages — no way back to offer. */
+		inside: boolean;
 		onStop: () => void;
 		/**
 		 * Turn the machine's sound off, or back on (#1751). Here rather than
@@ -48,7 +49,7 @@
 			: "Send this machine's sound too…",
 	);
 
-	const notice = $derived(shareNotice(sharing, room, pathname));
+	const notice = $derived(shareNotice(sharing, room, inside));
 
 	// Stopping the share is the destructive one, so it sits last after a
 	// separator (ux.md) — it used to sit in the middle of the menu, one entry

@@ -9,9 +9,9 @@
  * with it. Nothing here may remember that a share ever happened.
  */
 export interface ShareNotice {
-	/** The room the screen is going to, named so it is not "somewhere". */
+	/** The place the screen is going to, named so it is not "somewhere". */
 	room: string;
-	/** The way back, when the rider has walked out of that room's pages. */
+	/** The way back, when the rider has walked out of that place's pages. */
 	href: string | null;
 }
 
@@ -19,9 +19,9 @@ export function shareNotice(
 	sharing: boolean,
 	/** The place the screen goes to: its page, and its name (#2449). */
 	room: { home: string; name: string } | null,
-	pathname: string,
+	/** Whether the rider is on one of its pages (`onPlacePath`). */
+	inside: boolean,
 ): ShareNotice | null {
 	if (!sharing || !room) return null;
-	const inside = pathname === room.home || pathname.startsWith(`${room.home}/`);
 	return { room: room.name, href: inside ? null : room.home };
 }

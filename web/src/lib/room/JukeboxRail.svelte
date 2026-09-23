@@ -52,10 +52,10 @@
 			? playheadAt(jukebox, nowMs, duration) / duration
 			: 0,
 	);
-	// The room's own pages carry the people column at xl, and that column
-	// outranks this seat — so the rail steps aside there rather than holding a
-	// second 200 px hole the player will never fly into.
-	const onRoomPage = $derived(page.url.pathname.startsWith('/r/'));
+	// The live place's own pages carry the people column at xl, and that
+	// column outranks this seat — so the rail steps aside there rather than
+	// holding a second 200 px hole the player will never fly into.
+	const onRoomPage = $derived(roomConnection.onPlacePath(page.url.pathname));
 
 	// Every button commands the ROOM — the deck is shared.
 	function transport(action: string) {
