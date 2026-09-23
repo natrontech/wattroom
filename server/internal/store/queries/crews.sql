@@ -33,17 +33,6 @@ on conflict (crew_id, user_id) do nothing;
 -- Leaving takes the member or admin row, never a ban.
 delete from crew_roles where crew_id = $1 and user_id = $2 and role <> 'banned';
 
--- name: LeaveCrewRooms :exec
--- ...and every room membership in the crew, in one statement.
-delete from memberships m using rooms r
-where r.id = m.room_id and r.crew_id = $1 and m.user_id = $2 and m.role <> 'banned';
-
--- name: LeaveCrewGrants :exec
--- ...and every named exception into the crew's private rooms (#1672): a
--- grant is a door into a room of the crew, not a key that outlives it.
-delete from room_grants g using rooms r
-where r.id = g.room_id and r.crew_id = $1 and g.user_id = $2;
-
 -- name: CountCrewMembers :one
 -- The owner, plus every member and admin — never the owner twice: a stray
 -- member row for the owner (#1671) is skipped here as ListCrewPeople skips
@@ -121,18 +110,6 @@ update crew_roles set role = 'member', set_at = now() where crew_id = $1 and use
 -- banned row left on an owner reads as a ban there.
 update crews set owner_id = $2 where id = $1;
 
--- name: GrantRoomAccess :exec
--- The named exception into a private room (ADR-0038, #1224): a door, not a
--- membership — the person still walks in themselves.
-insert into room_grants (room_id, user_id) values ($1, $2)
-on conflict (room_id, user_id) do nothing;
-
--- name: PlaceRoomInCrew :exec
--- Crewless rooms are forbidden in code from the cutover (ADR-0038). This
--- places a room that ALREADY EXISTS; creation carries its own crew in the
--- insert (CreateRoom, #1301), which a constraint on the column needs it to.
-update rooms set crew_id = $2, crew_visible = $3 where id = $1;
-
 -- name: UpdateCrew :one
 -- A changed name is a person naming the crew; an icon pick with the same name
 -- is not (audit 2026-09-09).
@@ -162,23 +139,11 @@ select * from crews where owner_id = $1 order by created_at;
 -- name: DeleteCrew :exec
 delete from crews where id = $1;
 
--- name: DeleteCrewRooms :exec
--- The room rows a crew still carries, on the way to deleting it (#2446):
--- rooms.crew_id is ON DELETE RESTRICT, and nothing reads them any more.
-delete from rooms where crew_id = $1;
-
 -- name: LockCrew :exec
 -- The crew's write lock, held for the length of a transaction (#2079): what
 -- serialises two plans racing for the crew's last slot under the planned
 -- session ceiling. Lock order in this app is USERS BEFORE CREWS.
 select 1 from crews where id = $1 for update;
-
--- name: DeleteRoomsOwnedBy :exec
--- The purge's first step, done explicitly rather than left to the cascade so
--- the crew's fate is decided by the rooms that REMAIN (ADR-0038, second
--- amendment): a crew holding only the departing owner's rooms has nothing
--- left to own, one holding other people's rooms transfers.
-delete from rooms where owner_id = $1;
 
 -- name: CrewRoleOf :one
 -- One word for what a person is to a crew. Owner beats everything (they

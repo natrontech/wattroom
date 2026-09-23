@@ -121,30 +121,6 @@ func (q *Queries) DeleteCrew(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
-const deleteCrewRooms = `-- name: DeleteCrewRooms :exec
-delete from rooms where crew_id = $1
-`
-
-// The room rows a crew still carries, on the way to deleting it (#2446):
-// rooms.crew_id is ON DELETE RESTRICT, and nothing reads them any more.
-func (q *Queries) DeleteCrewRooms(ctx context.Context, crewID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteCrewRooms, crewID)
-	return err
-}
-
-const deleteRoomsOwnedBy = `-- name: DeleteRoomsOwnedBy :exec
-delete from rooms where owner_id = $1
-`
-
-// The purge's first step, done explicitly rather than left to the cascade so
-// the crew's fate is decided by the rooms that REMAIN (ADR-0038, second
-// amendment): a crew holding only the departing owner's rooms has nothing
-// left to own, one holding other people's rooms transfers.
-func (q *Queries) DeleteRoomsOwnedBy(ctx context.Context, ownerID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteRoomsOwnedBy, ownerID)
-	return err
-}
-
 const foundCrew = `-- name: FoundCrew :one
 insert into crews (name, owner_id, code, founded_by, renamed_at)
 values ($1, $2, $3, $2, now()) returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at, renamed_at, founded_by, board_enabled, cheers, listed, ics_token
@@ -319,23 +295,6 @@ func (q *Queries) GetCrewPrefs(ctx context.Context, arg GetCrewPrefsParams) (Get
 	return i, err
 }
 
-const grantRoomAccess = `-- name: GrantRoomAccess :exec
-insert into room_grants (room_id, user_id) values ($1, $2)
-on conflict (room_id, user_id) do nothing
-`
-
-type GrantRoomAccessParams struct {
-	RoomID pgtype.UUID
-	UserID pgtype.UUID
-}
-
-// The named exception into a private room (ADR-0038, #1224): a door, not a
-// membership — the person still walks in themselves.
-func (q *Queries) GrantRoomAccess(ctx context.Context, arg GrantRoomAccessParams) error {
-	_, err := q.db.Exec(ctx, grantRoomAccess, arg.RoomID, arg.UserID)
-	return err
-}
-
 const joinCrew = `-- name: JoinCrew :exec
 insert into crew_roles (crew_id, user_id, role) values ($1, $2, 'member')
 on conflict (crew_id, user_id) do nothing
@@ -371,23 +330,6 @@ func (q *Queries) LeaveCrewChannels(ctx context.Context, arg LeaveCrewChannelsPa
 	return err
 }
 
-const leaveCrewGrants = `-- name: LeaveCrewGrants :exec
-delete from room_grants g using rooms r
-where r.id = g.room_id and r.crew_id = $1 and g.user_id = $2
-`
-
-type LeaveCrewGrantsParams struct {
-	CrewID pgtype.UUID
-	UserID pgtype.UUID
-}
-
-// ...and every named exception into the crew's private rooms (#1672): a
-// grant is a door into a room of the crew, not a key that outlives it.
-func (q *Queries) LeaveCrewGrants(ctx context.Context, arg LeaveCrewGrantsParams) error {
-	_, err := q.db.Exec(ctx, leaveCrewGrants, arg.CrewID, arg.UserID)
-	return err
-}
-
 const leaveCrewRole = `-- name: LeaveCrewRole :exec
 delete from crew_roles where crew_id = $1 and user_id = $2 and role <> 'banned'
 `
@@ -400,22 +342,6 @@ type LeaveCrewRoleParams struct {
 // Leaving takes the member or admin row, never a ban.
 func (q *Queries) LeaveCrewRole(ctx context.Context, arg LeaveCrewRoleParams) error {
 	_, err := q.db.Exec(ctx, leaveCrewRole, arg.CrewID, arg.UserID)
-	return err
-}
-
-const leaveCrewRooms = `-- name: LeaveCrewRooms :exec
-delete from memberships m using rooms r
-where r.id = m.room_id and r.crew_id = $1 and m.user_id = $2 and m.role <> 'banned'
-`
-
-type LeaveCrewRoomsParams struct {
-	CrewID pgtype.UUID
-	UserID pgtype.UUID
-}
-
-// ...and every room membership in the crew, in one statement.
-func (q *Queries) LeaveCrewRooms(ctx context.Context, arg LeaveCrewRoomsParams) error {
-	_, err := q.db.Exec(ctx, leaveCrewRooms, arg.CrewID, arg.UserID)
 	return err
 }
 
@@ -755,24 +681,6 @@ func (q *Queries) PickCrewSuccessor(ctx context.Context, arg PickCrewSuccessorPa
 	var user_id pgtype.UUID
 	err := row.Scan(&user_id)
 	return user_id, err
-}
-
-const placeRoomInCrew = `-- name: PlaceRoomInCrew :exec
-update rooms set crew_id = $2, crew_visible = $3 where id = $1
-`
-
-type PlaceRoomInCrewParams struct {
-	ID          pgtype.UUID
-	CrewID      pgtype.UUID
-	CrewVisible bool
-}
-
-// Crewless rooms are forbidden in code from the cutover (ADR-0038). This
-// places a room that ALREADY EXISTS; creation carries its own crew in the
-// insert (CreateRoom, #1301), which a constraint on the column needs it to.
-func (q *Queries) PlaceRoomInCrew(ctx context.Context, arg PlaceRoomInCrewParams) error {
-	_, err := q.db.Exec(ctx, placeRoomInCrew, arg.ID, arg.CrewID, arg.CrewVisible)
-	return err
 }
 
 const setCrewBoard = `-- name: SetCrewBoard :exec

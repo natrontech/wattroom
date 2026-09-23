@@ -1,7 +1,7 @@
 // Package account is export-all and delete (#35): the two ends of the locked
 // privacy promise. Export hands the rider everything as a zip; delete purges
 // the account and lets the schema's cascades take rides (sample blobs and the
-// heart rate inside them — ADR-0008), sessions, identities, memberships and
+// heart rate inside them — ADR-0008), sessions, identities, crew roles and
 // medals with it, structurally rather than by cleanup job.
 package account
 
@@ -23,7 +23,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/natrontech/wattroom/server/internal/crews"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -313,7 +312,6 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			// moved the rider's FTP read like any other.
 			"ftpAfterWatts": ride.FtpAfterWatts,
 			"xp":            ride.Xp,
-			"inARoom":       ride.RoomID.Valid,
 			// Where it was ridden (#2443): null for a solo ride.
 			"crew":              ride.CrewName,
 			"channel":           ride.ChannelName,
@@ -384,7 +382,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 				// an edited line exported as if it had always read that way
 				// and a picture-only line exported as an empty string.
 				line := place(map[string]any{"text": row.Text, "at": row.CreatedAt.Time},
-					row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug)
+					row.CrewName, row.ChannelName)
 				if row.ImageID.Valid {
 					line["imageId"] = store.UUIDString(row.ImageID)
 				}
@@ -421,7 +419,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 					"workout": row.Workout, "sessionStarted": row.StartedAt.Time,
 					"sessionEnded": row.EndedAt.Time,
 					"joined":       time.UnixMilli(row.JoinedAt), "left": time.UnixMilli(row.LeftAt),
-					"rode": row.Rode}, row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug)
+					"rode": row.Rode}, row.CrewName, row.ChannelName)
 			})
 		}},
 		{"friends.json", func() (any, error) {
@@ -484,18 +482,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 				}
 				return place(map[string]any{"workoutName": row.WorkoutName,
 					"startsAt": row.StartsAt.Time, "answer": answer, "answeredAt": row.CreatedAt.Time},
-					row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug)
-			})
-		}},
-		{"rooms.json", func() (any, error) {
-			rows, err := s.store.Queries.ExportUserRooms(r.Context(), user.ID)
-			return mapRows(rows, err, func(row db.ExportUserRoomsRow) any {
-				// The two choices the rider made in the room (#2089), both
-				// on its settings screen and neither exported: whether it
-				// may mail them, and whether they stand on its weekly board.
-				return map[string]any{"name": row.Name, "slug": row.Slug,
-					"role": row.Role, "joinedAt": row.JoinedAt.Time,
-					"notify": row.Notify, "onBoard": row.OnBoard}
+					row.CrewName, row.ChannelName)
 			})
 		}},
 		{"workouts.json", func() (any, error) {
@@ -576,9 +563,9 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			out := make([]any, 0, len(chat)+len(dms))
 			for _, row := range chat {
 				one := place(map[string]any{"on": "channel",
-					"place": placeName(row.ChannelName, row.RoomName), "emoji": row.Emoji,
+					"place": row.ChannelName, "emoji": row.Emoji,
 					"lineAt": row.LineAt.Time, "onMyOwnLine": row.OnMyOwnLine},
-					row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug)
+					row.CrewName, row.ChannelName)
 				if row.OnMyOwnLine {
 					one["line"] = row.Line
 				}
@@ -635,57 +622,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 					"workoutName": row.WorkoutName, "startsAt": row.StartsAt.Time,
 					"plannedAt": row.CreatedAt.Time, "startedAt": timeOrNil(row.StartedAt),
 					"workout": json.RawMessage(row.WorkoutJson)},
-					row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug)
-			})
-			return out, len(rows), err
-		}),
-		bounded("rooms-i-own.json", func() (any, int, error) {
-			// The room rows the rider owns (#2089). rooms.json says they are
-			// a member of it; this says what they configured, which is the
-			// whole of the room settings screen — and the calendar link off
-			// the room's sessions page, which no other file carries.
-			//
-			// This is also where the sound pack lives. #2089 filed it as a
-			// column on users; it is a room's setting and always was.
-			rows, err := s.store.Queries.ExportUserOwnedRooms(r.Context(), db.ExportUserOwnedRoomsParams{
-				UserID: user.ID, Lim: maxExportRows,
-			})
-			out, err := mapRows(rows, err, func(row db.ExportUserOwnedRoomsRow) any {
-				return map[string]any{"name": row.Name, "slug": row.Slug,
-					"crew": row.CrewName, "createdAt": row.CreatedAt.Time,
-					"listed": row.Listed, "crewVisible": row.CrewVisible,
-					"boardEnabled": row.BoardEnabled, "soundPack": row.SoundPack,
-					"icon": row.Icon,
-					// The icons the room actually speaks, not the stored
-					// string: empty means the stock set, and crews.CheerSet
-					// is the one place that rule is written.
-					"cheers":          crews.CheerSet(row.Cheers),
-					"autoplayEnabled": row.AutoplayEnabled,
-					"autoplayOrder":   row.AutoplayOrder,
-					"calendarToken":   row.IcsToken}
-			})
-			return out, len(rows), err
-		}),
-		bounded("room-doors.json", func() (any, int, error) {
-			// Named exceptions into a private room (#2089, ADR-0038 #1224): a
-			// door, not a membership — the person still walks in themselves,
-			// and the grant is moot once they do.
-			//
-			// Both directions, because both are the rider's: the doors opened
-			// FOR them, and the doors THEY opened as a room's owner. The
-			// second names other people, and it names them the way the
-			// owner's own door list does and by nothing else — a display
-			// name, never an id or an address.
-			rows, err := s.store.Queries.ExportUserRoomDoors(r.Context(), db.ExportUserRoomDoorsParams{
-				UserID: user.ID, Lim: maxExportRows,
-			})
-			out, err := mapRows(rows, err, func(row db.ExportUserRoomDoorsRow) any {
-				one := map[string]any{"direction": row.Direction, "room": row.RoomName,
-					"roomSlug": row.RoomSlug, "at": row.GrantedAt.Time}
-				if row.Rider != "" {
-					one["rider"] = row.Rider
-				}
-				return one
+					row.CrewName, row.ChannelName)
 			})
 			return out, len(rows), err
 		}),
@@ -830,10 +767,10 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			out := make([]any, 0, len(chat)+len(dms))
 			for _, row := range chat {
 				out = append(out, place(map[string]any{"on": "channel",
-					"place": placeName(row.ChannelName, row.RoomName), "image": store.UUIDString(row.ID),
+					"place": row.ChannelName, "image": store.UUIDString(row.ID),
 					"mime": row.Mime, "sizeBytes": row.SizeBytes,
 					"uploadedAt": row.CreatedAt.Time, "stillOnALine": row.StillOnALine},
-					row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug))
+					row.CrewName, row.ChannelName))
 			}
 			for _, row := range dms {
 				out = append(out, map[string]any{"on": "dm", "place": row.PeerName,
@@ -851,7 +788,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			// and never exported until #1550.
 			rows, err := s.store.Queries.ExportUserMedals(r.Context(), user.ID)
 			return mapRows(rows, err, func(row db.ExportUserMedalsRow) any {
-				return map[string]any{"medal": row.Kind, "room": row.RoomName, "crew": row.CrewName,
+				return map[string]any{"medal": row.Kind, "crew": row.CrewName,
 					"rideStartedAt": row.RideStartedAt.Time, "awardedAt": row.AwardedAt.Time}
 			})
 		}},
@@ -1012,10 +949,10 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// purge is the delete, in one transaction: the rider's own rooms first
-// (explicitly, so the crews they own are judged by the rooms that remain),
-// then every crew they own is handed on or removed, then the row — and the
-// schema's cascades take the rest as before.
+// purge is the delete, in one transaction: every crew the rider owns is
+// handed on or removed (docs/SPEC.md's succession), then the row — and the
+// schema's cascades take the rest as before. A room row they owned goes with
+// the row, and leaves the crew's channel rows standing (#2561, #2558).
 // Returns the content addresses of uploaded audio that only this rider's
 // rows pointed at (#1897), read before the rows go, for the caller to take
 // off disk once the commit holds.
@@ -1029,9 +966,6 @@ func (s *Service) purge(ctx context.Context, user pgtype.UUID) ([]string, error)
 	orphans, err := q.OrphanShasOfUser(ctx, user)
 	if err != nil {
 		return nil, fmt.Errorf("tracks: %w", err)
-	}
-	if err := q.DeleteRoomsOwnedBy(ctx, user); err != nil {
-		return nil, fmt.Errorf("rooms: %w", err)
 	}
 	if s.crews != nil {
 		if err := s.crews.ReleaseCrews(ctx, q, user); err != nil {
@@ -1067,30 +1001,16 @@ func imageExt(mime string) string {
 	return ".bin"
 }
 
-// place names where a row happened (#2554): its crew and its channel, and
-// the room only where one still stands behind the row — a line, plan or
-// session since M9 has none, and every row before it keeps its room until
-// #2433 drops the rooms.
-func place(row map[string]any, crew, channel, room, roomSlug string) map[string]any {
+// place names where a row happened (#2554): its crew and its channel —
+// never a room since #2558, whose tables #2433 drops.
+func place(row map[string]any, crew, channel string) map[string]any {
 	if crew != "" {
 		row["crew"] = crew
 	}
 	if channel != "" {
 		row["channel"] = channel
 	}
-	if room != "" {
-		row["room"], row["roomSlug"] = room, roomSlug
-	}
 	return row
-}
-
-// placeName is the one word a reaction or a picture is placed by: the text
-// channel, or the room for a row whose channel is gone.
-func placeName(channel, room string) string {
-	if channel != "" {
-		return channel
-	}
-	return room
 }
 
 func timeOrNil(t pgtype.Timestamptz) any {

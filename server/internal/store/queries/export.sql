@@ -7,21 +7,19 @@
 -- The rider's OWN chat lines. Other people's lines in the same channel are
 -- their personal data, not the requester's, so they are not here.
 --
--- Placed by the text channel and its crew, the room only where one still
--- stands behind the line (#2554): a line written since M9 has no room, and an
--- inner join on `rooms` dropped every one of them from the archive.
+-- Placed by the text channel and its crew (#2554, #2558): a line written
+-- since M9 has no room, and an inner join on `rooms` once dropped every one of
+-- them from the archive.
 --
 -- The edit and the picture come too (#2089): messages.json has carried both
 -- for DMs since #1819 and chat.json carried neither, so an edited line
 -- exported as if it had always read that way and a picture-only line exported
 -- as an empty string.
 select c.text, c.created_at, c.edited_at, c.image_id,
-       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug
+       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name
 from chat_messages c
 left join channels ch on ch.id = c.channel_id
 left join crews cw on cw.id = ch.crew_id
-left join rooms rm on rm.id = c.room_id
 where c.user_id = $1
 order by c.created_at;
 
@@ -81,26 +79,13 @@ order by p.created_at;
 -- Placed by the crew and the voice channel the plan names, if it names one
 -- (#2554): a plan made on a crew's Schedule has no room.
 select s.workout_name, s.starts_at, v.created_at, v.going,
-       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug
+       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name
 from session_rsvps v
 join scheduled_sessions s on s.id = v.session_id
 left join channels ch on ch.id = s.channel_id
 left join crews cw on cw.id = s.crew_id
-left join rooms rm on rm.id = s.room_id
 where v.user_id = $1
 order by s.starts_at;
-
--- name: ExportUserRooms :many
--- The rooms the rider belongs to, and the two choices they made in each
--- (#2089): whether the room may mail them about a planned session, and
--- whether they appear on its weekly board. Both are set on the room's own
--- settings screen and neither was exported.
-select r.name, r.slug, m.role, m.joined_at, m.notify, m.on_board
-from memberships m
-join rooms r on r.id = m.room_id
-where m.user_id = $1
-order by m.joined_at;
 
 -- name: ExportUserWorkouts :many
 select name, author, definition, created_at from workouts where owner_id = $1 order by created_at;
@@ -112,13 +97,11 @@ select amount, source, ref, at from xp_events where user_id = $1 order by at;
 select key, earned_at from achievements where user_id = $1 order by earned_at;
 
 -- name: ExportUserMedals :many
--- The rider's own medals (#1550): the room or the crew that awarded them
--- (#2443 — a medal won in a channel no room became has only the crew), and
+-- The rider's own medals (#1550): the crew that awarded them (#2443), and
 -- the ride named by its start so a row lines up with rides.json.
-select m.kind, m.awarded_at, rm.name as room_name, c.name as crew_name,
+select m.kind, m.awarded_at, coalesce(c.name, '')::text as crew_name,
        r.started_at as ride_started_at
 from medals m
-left join rooms rm on rm.id = m.room_id
 left join crews c on c.id = m.crew_id
 join rides r on r.id = m.ride_id
 where m.user_id = $1
@@ -201,14 +184,12 @@ limit sqlc.arg(lim)::int;
 select r.emoji,
        m.created_at                            as line_at,
        coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug,
        (m.user_id = sqlc.arg(user_id))::boolean as on_my_own_line,
        (case when m.user_id = sqlc.arg(user_id) then m.text else '' end)::text as line
 from chat_reactions r
 join chat_messages m on m.id = r.message_id
 left join channels ch on ch.id = m.channel_id
 left join crews cw on cw.id = ch.crew_id
-left join rooms rm on rm.id = m.room_id
 where r.user_id = sqlc.arg(user_id)
 order by m.created_at
 limit sqlc.arg(lim)::int;
@@ -273,52 +254,12 @@ limit sqlc.arg(lim)::int;
 --
 -- Placed like ExportUserRsvps (#2554).
 select s.workout_name, s.workout_json, s.starts_at, s.created_at, s.started_at,
-       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug
+       coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name
 from scheduled_sessions s
 left join channels ch on ch.id = s.channel_id
 left join crews cw on cw.id = s.crew_id
-left join rooms rm on rm.id = s.room_id
 where s.created_by = sqlc.arg(user_id)
 order by s.starts_at desc
-limit sqlc.arg(lim)::int;
-
--- name: ExportUserOwnedRooms :many
--- The room rows the rider owns (#2089). rooms.json says they are a member;
--- this says what they configured, which is the whole of the room settings
--- screen — including the calendar token, a live link into the room's schedule
--- that no other file carries, and the sound pack, which is a room's setting
--- and not (as #2089 supposed) a column on users.
-select r.name, r.slug, r.created_at, r.listed, r.crew_visible, r.board_enabled,
-       r.sound_pack, r.icon, r.cheers, r.autoplay_enabled, r.autoplay_order,
-       r.ics_token, c.name as crew_name
-from rooms r
-left join crews c on c.id = r.crew_id
-where r.owner_id = sqlc.arg(user_id)
-order by r.created_at
-limit sqlc.arg(lim)::int;
-
--- name: ExportUserRoomDoors :many
--- Named exceptions into a private room (#2089, ADR-0038 #1224): a door, not a
--- membership — the person still walks in themselves, and the grant is moot
--- once they do.
---
--- Both directions, because both are the rider's: the doors opened FOR them,
--- and the doors THEY opened as a room's owner. The second names other people,
--- so it names them the way the owner's own door list does and by nothing
--- else — a display name, never an id or an address.
-select 'toMe'::text as direction, r.name as room_name, r.slug as room_slug,
-       ''::text as rider, g.granted_at
-from room_grants g
-join rooms r on r.id = g.room_id
-where g.user_id = sqlc.arg(user_id)
-union all
-select 'iOpened'::text, r.name, r.slug, u.display_name::text, g.granted_at
-from room_grants g
-join rooms r on r.id = g.room_id
-join users u on u.id = g.user_id
-where r.owner_id = sqlc.arg(user_id) and g.user_id <> sqlc.arg(user_id)
-order by granted_at
 limit sqlc.arg(lim)::int;
 
 -- name: ExportUserChannelMembers :many
@@ -395,12 +336,10 @@ limit sqlc.arg(lim)::int;
 -- than taking the row with it.
 select i.id, i.mime, octet_length(i.bytes)::int as size_bytes, i.created_at,
        coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug,
        (m.id is not null)::boolean as still_on_a_line
 from chat_images i
 left join channels ch on ch.id = i.channel_id
 left join crews cw on cw.id = ch.crew_id
-left join rooms rm on rm.id = i.room_id
 left join chat_messages m on m.image_id = i.id
 where i.user_id = sqlc.arg(user_id)
 order by i.created_at desc

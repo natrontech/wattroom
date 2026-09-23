@@ -70,7 +70,7 @@ func (q *Queries) Best20mIn90Days(ctx context.Context, userID pgtype.UUID) (int3
 const bestLast20mHRIn90Days = `-- name: BestLast20mHRIn90Days :one
 select coalesce(max(last20m_hr), 0)::int from rides
 where user_id = $1
-  and room_id is null
+  and crew_id is null and channel_id is null and session_id is null
   and seconds >= 1800 -- stats.MinLTHRRideSeconds (docs/SPEC.md's 30 minutes)
   and last20m_hr > 0
   and started_at >= now() - interval '90 days'
@@ -78,7 +78,8 @@ where user_id = $1
 
 // The LTHR-from-a-ride input (docs/SPEC.md, #1620): the largest last-20-minute
 // average heart rate among the rider's qualifying rides in the rolling 90 days.
-// Qualifying is SPEC's, and nothing more — solo (no room), at least 30 minutes,
+// Qualifying is SPEC's, and nothing more — solo (no crew, no channel, no
+// session: #2558 reads those rather than room_id), at least 30 minutes,
 // and a heart rate in the window. There is deliberately NO power gate: a
 // genuine HR field test need not be near the rider's best 20-minute power.
 // last20m_hr > 0 is what excludes both "no strap" and "not yet backfilled".
@@ -90,7 +91,8 @@ func (q *Queries) BestLast20mHRIn90Days(ctx context.Context, userID pgtype.UUID)
 }
 
 const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
-select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
+select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
+       (rides.crew_id is not null or rides.channel_id is not null)::boolean as in_session, shared_at,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -122,7 +124,7 @@ type BestUserRideOfWorkoutRow struct {
 	ExecutionScored bool
 	FtpWatts        int16
 	Xp              int32
-	RoomID          pgtype.UUID
+	InSession       bool
 	SharedAt        pgtype.Timestamptz
 	ExportState     *string
 	CrewID          pgtype.UUID
@@ -156,7 +158,7 @@ func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfW
 		&i.ExecutionScored,
 		&i.FtpWatts,
 		&i.Xp,
-		&i.RoomID,
+		&i.InSession,
 		&i.SharedAt,
 		&i.ExportState,
 		&i.CrewID,
@@ -201,12 +203,11 @@ func (q *Queries) CountCrewMedalsByRider(ctx context.Context, crewID pgtype.UUID
 }
 
 const createMedal = `-- name: CreateMedal :exec
-insert into medals (room_id, user_id, ride_id, kind, crew_id)
-values ($1, $2, $3, $4, $5)
+insert into medals (user_id, ride_id, kind, crew_id)
+values ($1, $2, $3, $4)
 `
 
 type CreateMedalParams struct {
-	RoomID pgtype.UUID
 	UserID pgtype.UUID
 	RideID pgtype.UUID
 	Kind   string
@@ -215,7 +216,6 @@ type CreateMedalParams struct {
 
 func (q *Queries) CreateMedal(ctx context.Context, arg CreateMedalParams) error {
 	_, err := q.db.Exec(ctx, createMedal,
-		arg.RoomID,
 		arg.UserID,
 		arg.RideID,
 		arg.Kind,
@@ -226,18 +226,17 @@ func (q *Queries) CreateMedal(ctx context.Context, arg CreateMedalParams) error 
 
 const createRide = `-- name: CreateRide :one
 insert into rides (
-    user_id, room_id, workout_name, started_at,
+    user_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
     ftp_watts, samples, curve, xp, norm_watts, last20m_hr,
     crew_id, channel_id, session_id
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 returning id
 `
 
 type CreateRideParams struct {
 	UserID          pgtype.UUID
-	RoomID          pgtype.UUID
 	WorkoutName     string
 	StartedAt       pgtype.Timestamptz
 	Seconds         int32
@@ -257,12 +256,11 @@ type CreateRideParams struct {
 }
 
 // A session's ride names its crew, the voice channel and the session (#2443);
-// room_id is still written while the channel has a room behind it, for the
-// release that reads it (ADR-0019). A solo ride leaves all four null.
+// a solo ride leaves all three null. room_id is never written (#2558), so
+// #2433 can drop it.
 func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, createRide,
 		arg.UserID,
-		arg.RoomID,
 		arg.WorkoutName,
 		arg.StartedAt,
 		arg.Seconds,
@@ -603,13 +601,13 @@ func (q *Queries) ForgetRemoteActivityIds(ctx context.Context, arg ForgetRemoteA
 }
 
 const getRide = `-- name: GetRide :one
-select r.id, r.user_id, r.room_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp, r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note, r.crew_id, r.channel_id, r.session_id,
-       coalesce(rm.slug, '')::text as room_slug,
-       coalesce(rm.name, '')::text as room_name,
+select r.id, r.user_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj,
+       r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp,
+       r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note,
+       r.crew_id, r.channel_id, r.session_id,
        coalesce(c.name, '')::text as crew_name,
        coalesce(ch.name, '')::text as channel_name
 from rides r
-left join rooms rm on rm.id = r.room_id
 left join crews c on c.id = r.crew_id
 left join channels ch on ch.id = r.channel_id
 where r.id = $1 and r.user_id = $2
@@ -623,7 +621,6 @@ type GetRideParams struct {
 type GetRideRow struct {
 	ID              pgtype.UUID
 	UserID          pgtype.UUID
-	RoomID          pgtype.UUID
 	WorkoutName     string
 	StartedAt       pgtype.Timestamptz
 	Seconds         int32
@@ -645,23 +642,21 @@ type GetRideRow struct {
 	CrewID          pgtype.UUID
 	ChannelID       pgtype.UUID
 	SessionID       pgtype.UUID
-	RoomSlug        string
-	RoomName        string
 	CrewName        string
 	ChannelName     string
 }
 
 // The one per-ride blob read ADR-0016 allows: a rider opening a single ride
 // is exactly what the samples are kept for. Owner-scoped, so someone else's
-// ride reads as absent rather than as forbidden. The room comes along because
-// the detail page names it — empty strings for a solo ride.
+// ride reads as absent rather than as forbidden. The crew and the channel
+// come along because the detail page names them — empty for a solo ride. The
+// columns are named so none of them is room_id (#2558).
 func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, error) {
 	row := q.db.QueryRow(ctx, getRide, arg.ID, arg.UserID)
 	var i GetRideRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
-		&i.RoomID,
 		&i.WorkoutName,
 		&i.StartedAt,
 		&i.Seconds,
@@ -683,8 +678,6 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.CrewID,
 		&i.ChannelID,
 		&i.SessionID,
-		&i.RoomSlug,
-		&i.RoomName,
 		&i.CrewName,
 		&i.ChannelName,
 	)
@@ -903,9 +896,8 @@ func (q *Queries) ListRideExportsDue(ctx context.Context, arg ListRideExportsDue
 }
 
 const listRideMedals = `-- name: ListRideMedals :many
-select m.kind, m.awarded_at, coalesce(rm.name, c.name, '')::text as room_name
+select m.kind, m.awarded_at, coalesce(c.name, '')::text as crew_name
 from medals m
-left join rooms rm on rm.id = m.room_id
 left join crews c on c.id = m.crew_id
 where m.ride_id = $1
 order by m.kind
@@ -914,11 +906,10 @@ order by m.kind
 type ListRideMedalsRow struct {
 	Kind      string
 	AwardedAt pgtype.Timestamptz
-	RoomName  string
+	CrewName  string
 }
 
-// What one ride won, and where: the room while the medal has one, else its
-// crew (#2443) — a session in a channel no room became has no room at all.
+// What one ride won, and where: its crew (#2443, #2558).
 func (q *Queries) ListRideMedals(ctx context.Context, rideID pgtype.UUID) ([]ListRideMedalsRow, error) {
 	rows, err := q.db.Query(ctx, listRideMedals, rideID)
 	if err != nil {
@@ -928,7 +919,7 @@ func (q *Queries) ListRideMedals(ctx context.Context, rideID pgtype.UUID) ([]Lis
 	var items []ListRideMedalsRow
 	for rows.Next() {
 		var i ListRideMedalsRow
-		if err := rows.Scan(&i.Kind, &i.AwardedAt, &i.RoomName); err != nil {
+		if err := rows.Scan(&i.Kind, &i.AwardedAt, &i.CrewName); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1000,38 +991,6 @@ func (q *Queries) ListRidesMissingNorm(ctx context.Context, limit int32) ([]List
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listRoomRideWeeks = `-- name: ListRoomRideWeeks :many
-select distinct date_trunc('week', started_at at time zone 'UTC')::date as week
-from rides where room_id = $1
-order by week desc
-limit 60
-`
-
-// The ROOM streak — the one on screen, and the one that pays nothing.
-// Still UTC, and not by omission: a room's riders are in several zones and a
-// room has no zone of its own, so there is no rider's week to use here. The
-// rider streak moved to the rider's zone in #2063; which zone a room's week
-// belongs to is an open question in that issue.
-func (q *Queries) ListRoomRideWeeks(ctx context.Context, roomID pgtype.UUID) ([]pgtype.Date, error) {
-	rows, err := q.db.Query(ctx, listRoomRideWeeks, roomID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []pgtype.Date
-	for rows.Next() {
-		var week pgtype.Date
-		if err := rows.Scan(&week); err != nil {
-			return nil, err
-		}
-		items = append(items, week)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -1153,7 +1112,8 @@ func (q *Queries) ListUserRideWeeks(ctx context.Context, arg ListUserRideWeeksPa
 }
 
 const listUserRides = `-- name: ListUserRides :many
-select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp, room_id, shared_at,
+select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
+       (rides.crew_id is not null or rides.channel_id is not null)::boolean as in_session, shared_at,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -1187,7 +1147,7 @@ type ListUserRidesRow struct {
 	ExecutionScored bool
 	FtpWatts        int16
 	Xp              int32
-	RoomID          pgtype.UUID
+	InSession       bool
 	SharedAt        pgtype.Timestamptz
 	ExportState     *string
 	CrewID          pgtype.UUID
@@ -1232,7 +1192,7 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 			&i.ExecutionScored,
 			&i.FtpWatts,
 			&i.Xp,
-			&i.RoomID,
+			&i.InSession,
 			&i.SharedAt,
 			&i.ExportState,
 			&i.CrewID,
@@ -1253,7 +1213,7 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 const listUserRidesFull = `-- name: ListUserRidesFull :many
 select r.id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution,
        r.execution_scored, r.norm_watts, r.ftp_watts, r.ftp_after_watts, r.xp, r.curve,
-       r.room_id, r.shared_at, r.rpe, r.note,
+       r.shared_at, r.rpe, r.note,
        c.name as crew_name, ch.name as channel_name
 from rides r
 left join crews c on c.id = r.crew_id
@@ -1275,7 +1235,6 @@ type ListUserRidesFullRow struct {
 	FtpAfterWatts   *int16
 	Xp              int32
 	Curve           []byte
-	RoomID          pgtype.UUID
 	SharedAt        pgtype.Timestamptz
 	Rpe             *int16
 	Note            *string
@@ -1322,7 +1281,6 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 			&i.FtpAfterWatts,
 			&i.Xp,
 			&i.Curve,
-			&i.RoomID,
 			&i.SharedAt,
 			&i.Rpe,
 			&i.Note,

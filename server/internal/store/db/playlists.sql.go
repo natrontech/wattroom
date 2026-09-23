@@ -12,36 +12,39 @@ import (
 )
 
 const createPlaylist = `-- name: CreatePlaylist :one
-insert into playlists (room_id, user_id, crew_id, name)
-values ($1, $2, $3, $4)
-returning id, room_id, user_id, name, created_at, updated_at, crew_id
+insert into playlists (user_id, crew_id, name)
+values ($1, $2, $3)
+returning id, user_id, crew_id, name, created_at, updated_at
 `
 
 type CreatePlaylistParams struct {
-	RoomID pgtype.UUID
 	UserID pgtype.UUID
 	CrewID pgtype.UUID
 	Name   string
 }
 
-// A rider's, or a crew's (ADR-0058, #2439). A room's shelf carries its crew
-// as well until the room goes (#2446), so the crew's list shows it too.
-func (q *Queries) CreatePlaylist(ctx context.Context, arg CreatePlaylistParams) (Playlist, error) {
-	row := q.db.QueryRow(ctx, createPlaylist,
-		arg.RoomID,
-		arg.UserID,
-		arg.CrewID,
-		arg.Name,
-	)
-	var i Playlist
+type CreatePlaylistRow struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	CrewID    pgtype.UUID
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+// A rider's, or a crew's (ADR-0058, #2439). Never a room's (#2558): the
+// columns are named, here and below, so none of them reads room_id and #2433
+// can drop it under this release.
+func (q *Queries) CreatePlaylist(ctx context.Context, arg CreatePlaylistParams) (CreatePlaylistRow, error) {
+	row := q.db.QueryRow(ctx, createPlaylist, arg.UserID, arg.CrewID, arg.Name)
+	var i CreatePlaylistRow
 	err := row.Scan(
 		&i.ID,
-		&i.RoomID,
 		&i.UserID,
+		&i.CrewID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.CrewID,
 	)
 	return i, err
 }
@@ -76,20 +79,28 @@ func (q *Queries) DeletePlaylistTrack(ctx context.Context, arg DeletePlaylistTra
 }
 
 const getPlaylist = `-- name: GetPlaylist :one
-select id, room_id, user_id, name, created_at, updated_at, crew_id from playlists where id = $1
+select id, user_id, crew_id, name, created_at, updated_at from playlists where id = $1
 `
 
-func (q *Queries) GetPlaylist(ctx context.Context, id pgtype.UUID) (Playlist, error) {
+type GetPlaylistRow struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	CrewID    pgtype.UUID
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetPlaylist(ctx context.Context, id pgtype.UUID) (GetPlaylistRow, error) {
 	row := q.db.QueryRow(ctx, getPlaylist, id)
-	var i Playlist
+	var i GetPlaylistRow
 	err := row.Scan(
 		&i.ID,
-		&i.RoomID,
 		&i.UserID,
+		&i.CrewID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.CrewID,
 	)
 	return i, err
 }
@@ -142,7 +153,7 @@ func (q *Queries) InsertPlaylistTrack(ctx context.Context, arg InsertPlaylistTra
 }
 
 const listCrewPlaylists = `-- name: ListCrewPlaylists :many
-select p.id, p.room_id, p.user_id, p.name, p.created_at, p.updated_at, p.crew_id, count(t.id) as track_count
+select p.id, p.user_id, p.crew_id, p.name, p.created_at, p.updated_at, count(t.id) as track_count
 from playlists p left join playlist_tracks t on t.playlist_id = p.id
 where p.crew_id = $1
 group by p.id order by p.created_at
@@ -150,12 +161,11 @@ group by p.id order by p.created_at
 
 type ListCrewPlaylistsRow struct {
 	ID         pgtype.UUID
-	RoomID     pgtype.UUID
 	UserID     pgtype.UUID
+	CrewID     pgtype.UUID
 	Name       string
 	CreatedAt  pgtype.Timestamptz
 	UpdatedAt  pgtype.Timestamptz
-	CrewID     pgtype.UUID
 	TrackCount int64
 }
 
@@ -172,12 +182,11 @@ func (q *Queries) ListCrewPlaylists(ctx context.Context, crewID pgtype.UUID) ([]
 		var i ListCrewPlaylistsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.RoomID,
 			&i.UserID,
+			&i.CrewID,
 			&i.Name,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.CrewID,
 			&i.TrackCount,
 		); err != nil {
 			return nil, err
@@ -255,7 +264,7 @@ func (q *Queries) ListPlaylistTracks(ctx context.Context, playlistID pgtype.UUID
 }
 
 const listUserPlaylists = `-- name: ListUserPlaylists :many
-select p.id, p.room_id, p.user_id, p.name, p.created_at, p.updated_at, p.crew_id, count(t.id) as track_count
+select p.id, p.user_id, p.crew_id, p.name, p.created_at, p.updated_at, count(t.id) as track_count
 from playlists p left join playlist_tracks t on t.playlist_id = p.id
 where p.user_id = $1
 group by p.id order by p.created_at
@@ -263,12 +272,11 @@ group by p.id order by p.created_at
 
 type ListUserPlaylistsRow struct {
 	ID         pgtype.UUID
-	RoomID     pgtype.UUID
 	UserID     pgtype.UUID
+	CrewID     pgtype.UUID
 	Name       string
 	CreatedAt  pgtype.Timestamptz
 	UpdatedAt  pgtype.Timestamptz
-	CrewID     pgtype.UUID
 	TrackCount int64
 }
 
@@ -283,12 +291,11 @@ func (q *Queries) ListUserPlaylists(ctx context.Context, userID pgtype.UUID) ([]
 		var i ListUserPlaylistsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.RoomID,
 			&i.UserID,
+			&i.CrewID,
 			&i.Name,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.CrewID,
 			&i.TrackCount,
 		); err != nil {
 			return nil, err
@@ -313,7 +320,7 @@ func (q *Queries) NextTrackPosition(ctx context.Context, playlistID pgtype.UUID)
 }
 
 const renamePlaylist = `-- name: RenamePlaylist :one
-update playlists set name = $2, updated_at = now() where id = $1 returning id, room_id, user_id, name, created_at, updated_at, crew_id
+update playlists set name = $2, updated_at = now() where id = $1 returning id, user_id, crew_id, name, created_at, updated_at
 `
 
 type RenamePlaylistParams struct {
@@ -321,17 +328,25 @@ type RenamePlaylistParams struct {
 	Name string
 }
 
-func (q *Queries) RenamePlaylist(ctx context.Context, arg RenamePlaylistParams) (Playlist, error) {
+type RenamePlaylistRow struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	CrewID    pgtype.UUID
+	Name      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) RenamePlaylist(ctx context.Context, arg RenamePlaylistParams) (RenamePlaylistRow, error) {
 	row := q.db.QueryRow(ctx, renamePlaylist, arg.ID, arg.Name)
-	var i Playlist
+	var i RenamePlaylistRow
 	err := row.Scan(
 		&i.ID,
-		&i.RoomID,
 		&i.UserID,
+		&i.CrewID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.CrewID,
 	)
 	return i, err
 }

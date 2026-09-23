@@ -244,8 +244,8 @@
 		your profile, every ride with its per-second samples, the messages you
 		wrote, your DM threads and the reactions you left, friends, your crews —
 		your standing and your choices in each, and the ones you own with their
-		settings — the private channels that name you, the rooms you were in before
-		crews replaced them, playlists, workouts, sessions you said yes to
+		settings — the private channels that name you, playlists, workouts, sessions
+		you said yes to
 		<em>and</em>
 		sessions you put on a calendar, the library tracks you uploaded, your soundboard
 		clips, your coach-access tokens, where each ride was delivered, and your XP and

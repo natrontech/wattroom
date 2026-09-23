@@ -93,7 +93,7 @@ func (s *Saver) save(
 		if len(rider.Samples) < hub.MinRideSamples {
 			continue
 		}
-		row, err := s.rideRow(at.room, workoutName, workoutJSON, startedAt, rider)
+		row, err := s.rideRow(workoutName, workoutJSON, startedAt, rider)
 		if err != nil {
 			// One rider's junk must not eat the whole room's rides.
 			s.log.Warn("ride skipped", "err", err, "rider", rider.Rider.ID)
@@ -142,13 +142,13 @@ func (s *Saver) save(
 	// medals or without its rides — never half.
 	for kind, userID := range Medals(results) {
 		uid, err := store.ParseUUID(userID)
-		// A medal is a crew's, or a room's: a session in a channel deleted
-		// before it closed belongs to neither, and the rides are saved alone.
-		if err != nil || alreadySaved[userID] || (!at.room.Valid && !at.crew.Valid) {
+		// A medal is a crew's: a session in a channel deleted before it
+		// closed belongs to none, and the rides are saved alone.
+		if err != nil || alreadySaved[userID] || !at.crew.Valid {
 			continue
 		}
 		err = q.CreateMedal(ctx, db.CreateMedalParams{
-			RoomID: at.room, CrewID: at.crew, UserID: uid, RideID: rideIDs[userID], Kind: kind,
+			CrewID: at.crew, UserID: uid, RideID: rideIDs[userID], Kind: kind,
 		})
 		if err != nil {
 			return fmt.Errorf("stats: medal: %w", err)
@@ -172,9 +172,8 @@ func (s *Saver) save(
 }
 
 // place is where a session's rides were ridden (#2443): its crew, its voice
-// channel and the session itself — and the room, while the channel still has
-// one behind it, for the release that reads room_id (ADR-0019).
-type place struct{ room, crew, channel, session pgtype.UUID }
+// channel and the session itself. Never a room (#2558).
+type place struct{ crew, channel, session pgtype.UUID }
 
 // placeOf resolves the channel the hub names. A channel that is gone — deleted
 // while the session ran — is nowhere, and its rides are saved all the same: a
@@ -193,20 +192,12 @@ func (s *Saver) placeOf(ctx context.Context, channel, session string) (place, er
 		return at, fmt.Errorf("stats: channel %q: %w", channel, err)
 	}
 	at.crew, at.channel = ch.CrewID, ch.ID
-	room, err := s.store.Queries.RoomOfVoiceChannel(ctx, ch.ID)
-	switch {
-	case err == nil:
-		at.room = room.ID
-	case !errors.Is(err, pgx.ErrNoRows):
-		return at, fmt.Errorf("stats: room of %q: %w", channel, err)
-	}
 	// Empty for a session that came back from a restart without one.
 	at.session, _ = store.ParseUUID(session)
 	return at, nil
 }
 
 func (s *Saver) rideRow(
-	roomID pgtype.UUID,
 	workoutName, workoutJSON string,
 	startedAt time.Time,
 	rider hub.RiderRecord,
@@ -215,15 +206,15 @@ func (s *Saver) rideRow(
 	if err != nil {
 		return db.CreateRideParams{}, err
 	}
-	return BuildRideRow(userID, roomID, workoutName, workoutJSON, startedAt,
+	return BuildRideRow(userID, workoutName, workoutJSON, startedAt,
 		rider.Rider.FtpWatts, rider.Samples)
 }
 
 // BuildRideRow turns a finished sample series into the rides row — one
-// implementation for room sessions (the hub's saver) and solo rides (the
-// POST /api/rides endpoint). An invalid roomID stores NULL: a solo ride.
+// implementation for sessions (the hub's saver, which adds where it was
+// ridden) and solo rides (the POST /api/rides endpoint).
 func BuildRideRow(
-	userID, roomID pgtype.UUID,
+	userID pgtype.UUID,
 	workoutName, workoutJSON string,
 	startedAt time.Time,
 	ftpWatts int,
@@ -265,7 +256,6 @@ func BuildRideRow(
 	lastHR := int16(min(Last20mHR(samples), math.MaxInt16)) //nolint:gosec // clamped on the line
 	return db.CreateRideParams{
 		UserID:      userID,
-		RoomID:      roomID,
 		WorkoutName: workoutName,
 		StartedAt:   pgtype.Timestamptz{Time: startedAt, Valid: true},
 		Seconds:     int32(len(samples)),                        //nolint:gosec // bounded by maxAccumulated
@@ -394,7 +384,7 @@ func (s *Saver) AmendRide(
 	var judged *savedRide
 	err := retrySave(ctx, s.log, channel, func(ctx context.Context) error {
 		judged = nil
-		row, err := s.rideRow(pgtype.UUID{}, workoutName, workoutJSON, startedAt, rider)
+		row, err := s.rideRow(workoutName, workoutJSON, startedAt, rider)
 		if err != nil {
 			s.log.Warn("ride amendment skipped", "err", err, "rider", rider.Rider.ID)
 			return nil

@@ -18,15 +18,12 @@ import (
 // (ADR-0038, second amendment). Split from crews.go (#1234).
 
 // releaseCrew hands the crew on or removes it, never leaving it ownerless:
-// docs/SPEC.md's successor, and with nobody left the crew goes. Any room rows
-// it still carries go first — rooms.crew_id is ON DELETE RESTRICT, and
-// nothing reads them since #2446.
+// docs/SPEC.md's successor, and with nobody left the crew goes — and the
+// room rows still pointing at it with it (rooms.crew_id cascades since
+// #2558).
 func (s *Service) releaseCrew(ctx context.Context, q *db.Queries, crew db.Crew) error {
 	next, err := q.PickCrewSuccessor(ctx, db.PickCrewSuccessorParams{CrewID: crew.ID, Departing: crew.OwnerID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		if err := q.DeleteCrewRooms(ctx, crew.ID); err != nil {
-			return err
-		}
 		if err := q.DeleteCrew(ctx, crew.ID); err != nil {
 			return err
 		}

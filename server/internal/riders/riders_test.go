@@ -81,51 +81,37 @@ func setup(t *testing.T) *harness {
 
 func (h *harness) id(name string) string { return store.UUIDString(h.users.ByToken[name].ID) }
 
-// room puts the named users into one room owned by the first. slug is the
-// label a reader recognises; rooms.slug is unique across the whole shared
-// test database, so the row's own slug is testx's and a caller that needs it
-// reads it off the returned room.
-func (h *harness) room(t *testing.T, slug string, names ...string) db.Room {
-	t.Helper()
-	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: testx.Slug(slug), Name: slug, OwnerID: h.users.ByToken[names[0]].ID,
-	})
-	if err != nil {
-		t.Fatalf("create room: %v", err)
-	}
-	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
-	})
-	for i, name := range names {
-		role := "member"
-		if i == 0 {
-			role = "owner"
-		}
-		if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room.ID, UserID: h.users.ByToken[name].ID, Role: role,
-		}); err != nil {
-			t.Fatalf("membership %s: %v", name, err)
-		}
-	}
-	storetest.ChannelsFor(t, h.store, room.ID)
-	return room
+// crewFixture is a crew some riders share and the voice channel it rides in.
+// The zero value is nowhere: a solo ride.
+type crewFixture struct {
+	id    pgtype.UUID
+	voice string
 }
 
-// voice is the voice channel a fixture room became — the id the hub keys by.
-func (h *harness) voice(t *testing.T, room db.Room) string {
+// crew puts the named users into one crew owned by the first, with a voice
+// channel of the crew's name.
+func (h *harness) crew(t *testing.T, name string, names ...string) crewFixture {
 	t.Helper()
-	channel := h.store.VoiceChannelOf(t.Context(), room.ID)
-	if channel == "" {
-		t.Fatalf("room %s has no voice channel", room.Name)
+	members := make([]pgtype.UUID, 0, len(names)-1)
+	for _, member := range names[1:] {
+		members = append(members, h.users.ByToken[member].ID)
 	}
-	return channel
+	crew := testx.Crew(t, h.store, name, h.users.ByToken[names[0]].ID, members...)
+	return crewFixture{id: crew, voice: testx.Voice(t, h.store, crew, name, false)}
 }
 
-// ride writes one summary row; shared marks it for friends; room may be zero.
-func (h *harness) ride(t *testing.T, name string, room pgtype.UUID, kj int32, shared bool) pgtype.UUID {
+// ride writes one summary row; shared marks it for friends; at may be zero.
+func (h *harness) ride(t *testing.T, name string, at crewFixture, kj int32, shared bool) pgtype.UUID {
 	t.Helper()
+	var channel pgtype.UUID
+	if at.voice != "" {
+		var err error
+		if channel, err = store.ParseUUID(at.voice); err != nil {
+			t.Fatal(err)
+		}
+	}
 	id, err := h.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
-		UserID: h.users.ByToken[name].ID, RoomID: room, WorkoutName: "Openers",
+		UserID: h.users.ByToken[name].ID, CrewID: at.id, ChannelID: channel, WorkoutName: "Openers",
 		StartedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		Seconds:   1800, AvgWatts: 200, Kj: kj, Execution: 0.9, FtpWatts: 200,
 		Samples: []byte("bytes"), Xp: kj,
@@ -188,7 +174,7 @@ func (h *harness) get(t *testing.T, viewer, path string) (int, map[string]any) {
 
 func TestRiderPageGate(t *testing.T) {
 	h := setup(t)
-	h.room(t, "pain-cave", "alice", "bob")
+	h.crew(t, "pain-cave", "alice", "bob")
 	h.befriend(t, "alice", "dan")
 	// dan asked cara; nothing came of it yet.
 	if err := h.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
@@ -206,7 +192,7 @@ func TestRiderPageGate(t *testing.T) {
 	}{
 		{"signed out", "", "bob", http.StatusUnauthorized, ""},
 		{"stranger", "cara", "bob", http.StatusNotFound, ""},
-		{"room-mate", "alice", "bob", http.StatusOK, "none"},
+		{"crew-mate", "alice", "bob", http.StatusOK, "none"},
 		{"friend", "alice", "dan", http.StatusOK, "accepted"},
 		{"self", "alice", "alice", http.StatusOK, "self"},
 		{"they asked me", "cara", "dan", http.StatusOK, "pending_in"},
@@ -231,19 +217,19 @@ func TestRiderPageGate(t *testing.T) {
 	}
 }
 
-func TestRoomMateSeesWhatTheRoomSees(t *testing.T) {
+func TestCrewMateSeesWhatTheCrewSees(t *testing.T) {
 	h := setup(t)
-	cave := h.room(t, "pain-cave", "alice", "bob")
-	lair := h.room(t, "secret-lair", "bob", "cara")
+	cave := h.crew(t, "pain-cave", "alice", "bob")
+	lair := h.crew(t, "secret-lair", "bob", "cara")
 	bob := h.users.ByToken["bob"].ID
-	// Two rides, one medal in each room; only the shared room's medal counts.
-	inCave := h.ride(t, "bob", cave.ID, 500, true)
-	inLair := h.ride(t, "bob", lair.ID, 300, false)
+	// Two rides, one medal in each crew; only the shared crew's medal counts.
+	inCave := h.ride(t, "bob", cave, 500, true)
+	inLair := h.ride(t, "bob", lair, 300, false)
 	for _, m := range []struct {
-		room, ride pgtype.UUID
+		crew, ride pgtype.UUID
 		kind       string
-	}{{cave.ID, inCave, "hammer"}, {lair.ID, inLair, "diesel"}} {
-		if err := h.store.Queries.CreateMedal(t.Context(), db.CreateMedalParams{RoomID: m.room, UserID: bob, RideID: m.ride, Kind: m.kind}); err != nil {
+	}{{cave.id, inCave, "hammer"}, {lair.id, inLair, "diesel"}} {
+		if err := h.store.Queries.CreateMedal(t.Context(), db.CreateMedalParams{CrewID: m.crew, UserID: bob, RideID: m.ride, Kind: m.kind}); err != nil {
 			t.Fatalf("medal: %v", err)
 		}
 	}
@@ -254,32 +240,31 @@ func TestRoomMateSeesWhatTheRoomSees(t *testing.T) {
 	}
 	medals, _ := body["medals"].(map[string]any)
 	if medals["hammer"] != float64(1) || medals["diesel"] != nil {
-		t.Fatalf("medals leak past the shared room: %v", medals)
+		t.Fatalf("medals leak past the shared crew: %v", medals)
 	}
-	// The room's crew, which is what both of them are in now.
+	// The one crew both of them are in.
 	crews, _ := body["crewsInCommon"].([]any)
 	if len(crews) != 1 {
 		t.Fatalf("crews in common: %v", crews)
 	}
-	if crew, _ := crews[0].(map[string]any); crew["name"] != "pain-cave" || crew["id"] != store.UUIDString(h.crewOf(t, cave)) {
+	if crew, _ := crews[0].(map[string]any); crew["name"] != "pain-cave" || crew["id"] != store.UUIDString(cave.id) {
 		t.Fatalf("crews in common: %v", crews)
 	}
 	if body["canAdd"] != true || body["sharedRides"] != nil || body["month"] != nil {
-		t.Fatalf("a room-mate is not a friend: %v", body)
+		t.Fatalf("a crew-mate is not a friend: %v", body)
 	}
 
 	// Presence: in the channel they share, riding → named and moving.
-	caveVoice := h.voice(t, cave)
-	h.presence.where[h.id("bob")] = caveVoice
-	h.presence.riding[caveVoice] = []string{h.id("bob")}
+	h.presence.where[h.id("bob")] = cave.voice
+	h.presence.riding[cave.voice] = []string{h.id("bob")}
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("bob"))
 	p, _ := body["presence"].(map[string]any)
 	channel, _ := p["channel"].(map[string]any)
-	if channel["channelId"] != caveVoice || channel["channelName"] != "pain-cave" || p["riding"] != true || p["online"] != true || p["inVoice"] != true {
+	if channel["channelId"] != cave.voice || channel["channelName"] != "pain-cave" || p["riding"] != true || p["online"] != true || p["inVoice"] != true {
 		t.Fatalf("presence in a shared channel: %v", p)
 	}
 	// In a channel alice may not enter: a crew-mate learns nothing at all.
-	h.presence.where[h.id("bob")] = h.voice(t, lair)
+	h.presence.where[h.id("bob")] = lair.voice
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("bob"))
 	p, _ = body["presence"].(map[string]any)
 	if p["online"] != false || p["inVoice"] != false || p["channel"] != nil {
@@ -289,10 +274,10 @@ func TestRoomMateSeesWhatTheRoomSees(t *testing.T) {
 
 func TestFriendSeesSharedRidesAndTheMonth(t *testing.T) {
 	h := setup(t)
-	lair := h.room(t, "secret-lair", "dan", "cara")
+	lair := h.crew(t, "secret-lair", "dan", "cara")
 	h.befriend(t, "alice", "dan")
-	h.ride(t, "dan", lair.ID, 400, true)
-	h.ride(t, "dan", pgtype.UUID{}, 250, false)
+	h.ride(t, "dan", lair, 400, true)
+	h.ride(t, "dan", crewFixture{}, 250, false)
 
 	_, body := h.get(t, "alice", "/api/riders/"+h.id("dan"))
 	if body["canAdd"] != false {
@@ -306,7 +291,7 @@ func TestFriendSeesSharedRidesAndTheMonth(t *testing.T) {
 		t.Fatalf("shared rides: %v", body["sharedRides"])
 	}
 	ride, _ := shared[0].(map[string]any)
-	// The ride was in a room alice is not a member of: "in a room", unnamed.
+	// The ride was in a channel alice may not enter: "in a room", unnamed.
 	if ride["kj"] != float64(400) || ride["inRoom"] != true || ride["roomName"] != nil {
 		t.Fatalf("shared ride: %v", ride)
 	}
@@ -316,7 +301,7 @@ func TestFriendSeesSharedRidesAndTheMonth(t *testing.T) {
 	}
 
 	// A friend in a channel you may not enter: online and in voice, unnamed.
-	h.presence.where[h.id("dan")] = h.voice(t, lair)
+	h.presence.where[h.id("dan")] = lair.voice
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("dan"))
 	p, _ := body["presence"].(map[string]any)
 	if p["online"] != true || p["inVoice"] != true || p["channel"] != nil {
@@ -329,16 +314,6 @@ func TestFriendSeesSharedRidesAndTheMonth(t *testing.T) {
 	if p["online"] != true || p["inVoice"] != false {
 		t.Fatalf("lobby presence: %v", p)
 	}
-}
-
-// crewOf is the crew a fixture room was put in.
-func (h *harness) crewOf(t *testing.T, room db.Room) pgtype.UUID {
-	t.Helper()
-	row, err := h.store.Queries.GetRoomByID(t.Context(), room.ID)
-	if err != nil {
-		t.Fatalf("fixture room: %v", err)
-	}
-	return row.CrewID
 }
 
 // Where a rider is, on their page, in a crew founded since M9 (#2516): the
@@ -446,7 +421,7 @@ func TestThePageNamesOnlyAChannelTheViewerMayEnter(t *testing.T) {
 
 func TestSelfSeesOwnPage(t *testing.T) {
 	h := setup(t)
-	h.ride(t, "alice", pgtype.UUID{}, 100, true)
+	h.ride(t, "alice", crewFixture{}, 100, true)
 	_, body := h.get(t, "alice", "/api/riders/"+h.id("alice"))
 	if body["friend"] != "self" || body["canAdd"] != false {
 		t.Fatalf("self: %v", body)
@@ -462,8 +437,8 @@ func TestSelfSeesOwnPage(t *testing.T) {
 // One rider, two numbers, and the profile was the one that looked wrong (#690).
 func TestProfileXpCountsTheLedgerNotJustRides(t *testing.T) {
 	h := setup(t)
-	room := h.room(t, "ledger", "alice", "bob")
-	h.ride(t, "bob", room.ID, 400, false)
+	ledger := h.crew(t, "ledger", "alice", "bob")
+	h.ride(t, "bob", ledger, 400, false)
 	if _, err := h.store.Queries.AddXpEvent(t.Context(), db.AddXpEventParams{
 		UserID: h.users.ByToken["bob"].ID,
 		Source: "lounge",
@@ -493,7 +468,7 @@ func TestProfileXpCountsTheLedgerNotJustRides(t *testing.T) {
 func TestRiderMonthSurvivesAZoneNamePostgresRefuses(t *testing.T) {
 	h := setup(t)
 	h.befriend(t, "alice", "dan")
-	h.ride(t, "dan", pgtype.UUID{}, 250, false)
+	h.ride(t, "dan", crewFixture{}, 250, false)
 
 	for _, tz := range []string{"Local", "Europe/Zurich"} {
 		t.Run(tz, func(t *testing.T) {
@@ -522,7 +497,7 @@ func TestRiderMonthSurvivesAZoneNamePostgresRefuses(t *testing.T) {
 func TestAFriendsPageNeverCarriesTheRidersOwnWords(t *testing.T) {
 	h := setup(t)
 	h.befriend(t, "alice", "dan")
-	ride := h.ride(t, "dan", pgtype.UUID{}, 300, true)
+	ride := h.ride(t, "dan", crewFixture{}, 300, true)
 	const written = "legs were dead, third day on"
 	if _, err := h.store.Pool.Exec(t.Context(),
 		"update rides set rpe = 9, note = $1 where id = $2", written, ride); err != nil {

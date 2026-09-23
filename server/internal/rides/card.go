@@ -60,8 +60,11 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 		Kj: int(row.Kj), Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored,
 	}
-	if row.RoomID.Valid {
-		card.RoomName = row.RoomName
+	// Where it was ridden, for the card's "in …": the voice channel, else
+	// the crew (#2558) — never a room.
+	card.RoomName = row.ChannelName
+	if card.RoomName == "" {
+		card.RoomName = row.CrewName
 	}
 	var curve stats.Curve
 	if json.Unmarshal(row.Curve, &curve) == nil {

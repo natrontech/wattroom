@@ -14,14 +14,12 @@ import (
 const exportUserRecaps = `-- name: ExportUserRecaps :many
 select s.workout, s.started_at, s.ended_at,
        coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug,
        (entry ->> 'from')::bigint as joined_at,
        (entry ->> 'to')::bigint as left_at,
        (entry ->> 'rode')::boolean as rode
 from session_recaps s
 left join channels ch on ch.id = s.channel_id
 left join crews cw on cw.id = s.crew_id
-left join rooms rm on rm.id = s.room_id
 cross join lateral jsonb_array_elements(s.riders) entry
 where entry ->> 'id' = $1::text
 order by s.ended_at
@@ -33,8 +31,6 @@ type ExportUserRecapsRow struct {
 	EndedAt     pgtype.Timestamptz
 	CrewName    string
 	ChannelName string
-	RoomName    string
-	RoomSlug    string
 	JoinedAt    int64
 	LeftAt      int64
 	Rode        bool
@@ -45,8 +41,7 @@ type ExportUserRecapsRow struct {
 // their personal data, not the requester's, so the row is narrowed to theirs —
 // the same rule ExportUserChat follows.
 //
-// Placed by the crew and the voice channel it ran in (#2554): a session in a
-// channel no room became has no room, and an inner join dropped it.
+// Placed by the crew and the voice channel it ran in (#2554, #2558).
 func (q *Queries) ExportUserRecaps(ctx context.Context, dollar_1 string) ([]ExportUserRecapsRow, error) {
 	rows, err := q.db.Query(ctx, exportUserRecaps, dollar_1)
 	if err != nil {
@@ -62,8 +57,6 @@ func (q *Queries) ExportUserRecaps(ctx context.Context, dollar_1 string) ([]Expo
 			&i.EndedAt,
 			&i.CrewName,
 			&i.ChannelName,
-			&i.RoomName,
-			&i.RoomSlug,
 			&i.JoinedAt,
 			&i.LeftAt,
 			&i.Rode,
@@ -89,7 +82,8 @@ select r.id, r.workout, r.started_at, r.ended_at, r.riders,
          order by ride.started_at
          limit 1) as my_ride_id
 from (
-    select s.id, s.room_id, s.workout, s.started_at, s.ended_at, s.riders, s.created_at, s.crew_id, s.channel_id, s.session_id from session_recaps s
+    select s.id, s.crew_id, s.channel_id, s.workout, s.started_at, s.ended_at, s.riders
+    from session_recaps s
     left join channels ch on ch.id = s.channel_id
     where s.crew_id = $2
       and s.ended_at >= now() - make_interval(days => $3::int)
@@ -194,9 +188,8 @@ func (q *Queries) PruneSessionRecaps(ctx context.Context, dollar_1 int32) (int64
 
 const saveSessionRecap = `-- name: SaveSessionRecap :one
 
-insert into session_recaps (room_id, crew_id, channel_id, session_id, workout, started_at, ended_at, riders)
-select (select rc.room_id from room_channels rc where rc.voice_channel_id = ch.id),
-       ch.crew_id, ch.id, $1::uuid,
+insert into session_recaps (crew_id, channel_id, session_id, workout, started_at, ended_at, riders)
+select ch.crew_id, ch.id, $1::uuid,
        $2, $3, $4, $5
 from channels ch
 where ch.id = $6
@@ -226,9 +219,7 @@ type SaveSessionRecapRow struct {
 // The session's recap (#2438), keyed by the session: the keeper retries
 // (audit 2026-09-09), and the second write of the same session updates
 // rather than duplicates. The crew and the channel come from the channel it
-// ran in; room_id is still written for a channel a room became, so the
-// previous release's room backlog reads it (ADR-0019), and is NULL for one
-// made in the channels API.
+// ran in; room_id is never written (#2558), so #2433 can drop it.
 func (q *Queries) SaveSessionRecap(ctx context.Context, arg SaveSessionRecapParams) (SaveSessionRecapRow, error) {
 	row := q.db.QueryRow(ctx, saveSessionRecap,
 		arg.SessionID,

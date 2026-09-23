@@ -201,6 +201,13 @@ type Membership struct {
 	OnBoard  bool
 }
 
+type MovedRoom struct {
+	Slug           string
+	CrewID         pgtype.UUID
+	TextChannelID  pgtype.UUID
+	VoiceChannelID pgtype.UUID
+}
+
 type Passkey struct {
 	CredentialID []byte
 	UserID       pgtype.UUID

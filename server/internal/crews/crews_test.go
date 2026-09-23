@@ -101,19 +101,18 @@ func (h *harness) namedInto(t *testing.T, channel pgtype.UUID, who string) bool 
 }
 
 // roomIn puts a room owned by who into the crew, straight in the table — the
-// rows every crew made before ADR-0058 still carries until #2433. The room
-// goes first at cleanup: its crew cannot while it points there.
+// rows every crew made before ADR-0058 still carries until #2433, and which
+// no query writes since #2558.
 func (h *harness) roomIn(t *testing.T, crew db.GetCrewRow, who string) {
 	t.Helper()
-	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: testx.Slug("last-resort"), Name: "Last Resort", OwnerID: h.users.ByToken[who].ID,
-		CrewID: crew.ID, CrewVisible: true,
-	})
-	if err != nil {
+	var room pgtype.UUID
+	if err := h.store.Pool.QueryRow(t.Context(),
+		"insert into rooms (slug, name, owner_id, crew_id, crew_visible) values ($1, 'Last Resort', $2, $3, true) returning id",
+		testx.Slug("last-resort"), h.users.ByToken[who].ID, crew.ID).Scan(&room); err != nil {
 		t.Fatalf("room: %v", err)
 	}
 	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
+		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room)
 	})
 }
 
@@ -712,7 +711,8 @@ func TestTheCrewDoorHasACeiling(t *testing.T) {
 // SPEC's succession rule: never anyone the crew banned (#1675). The room
 // owners used to be the successor of last resort; a banned one owning a room
 // row inherits nothing now, and the crew goes with its leftover rooms rather
-// than failing the purge on rooms.crew_id's RESTRICT (#2446).
+// than failing the purge on them (#2446) — rooms.crew_id cascades since #2558,
+// and no code deletes a room row any more.
 func TestACrewWithNobodyLeftGoesWithItsRoomRows(t *testing.T) {
 	h := setup(t)
 	crew := h.newCrew(t, "alice", "Crew Succession")

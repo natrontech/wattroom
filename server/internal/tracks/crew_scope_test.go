@@ -1,79 +1,40 @@
 package tracks
 
 import (
-	"context"
-	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/natrontech/wattroom/server/internal/store/db"
-	"github.com/natrontech/wattroom/server/internal/store/storetest"
 	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
-// Phase 2 of #1095 (#1103): the audio endpoint's reach is "may enter a room
-// the uploader may enter", asked of visible_rooms. That is the crew scope
-// ADR-0038 intends — a room open to its crew counts for the whole crew — and
-// it is what closes the door #1126 did not know about: a crew ban leaves
-// the membership row in place, so the old "shares a room" join kept handing
-// a crew-banned rider the bytes.
+// Phase 2 of #1095 (#1103): the audio endpoint's reach is "may enter a
+// channel the uploader may enter", asked of visible_channels (ADR-0058). That
+// is the crew scope — an open channel admits the whole crew — and it is what
+// closes the door #1126 did not know about: a crew ban left the room's
+// membership row in place, so the old "shares a room" join kept handing a
+// crew-banned rider the bytes.
 
-// crewOf makes owner a crew and returns it; the migration does this for
-// every existing owner, tests make theirs.
-func (h *harness) crewOf(t *testing.T, owner string) db.Crew {
+// crewOf makes owner a crew with an open voice channel and returns it —
+// nobody else in it yet.
+func (h *harness) crewOf(t *testing.T, owner string) pgtype.UUID {
 	t.Helper()
-	crew, err := h.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{
-		Name: owner, OwnerID: h.users.ByToken[owner].ID, Code: testx.CrewCode(),
-	})
-	if err != nil {
-		t.Fatalf("crew: %v", err)
-	}
-	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(context.Background(), "delete from crews where id = $1", crew.ID)
-	})
+	crew := testx.Crew(t, h.store, owner, h.users.ByToken[owner].ID)
+	testx.Voice(t, h.store, crew, "Crew Scope", false)
 	return crew
 }
 
-// crewRoom makes a room owned by owner inside crew, open to the crew or
-// private, with the owner's membership — and nobody else's.
-func (h *harness) crewRoom(t *testing.T, owner string, crew db.Crew, open bool, n int) db.Room {
+// member puts who into crew as a plain member, named into no channel.
+func (h *harness) member(t *testing.T, crew pgtype.UUID, who string) {
 	t.Helper()
-	room, err := h.store.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		// rooms.slug is unique across the whole test database, which every
-		// package in the run shares and which the next run reuses — so the
-		// value is testx's, not t.Name()'s, which the next run repeats.
-		Slug: testx.Slug(fmt.Sprintf("crew-scope-%d", n)),
-		Name: "Crew Scope", OwnerID: h.users.ByToken[owner].ID,
-	})
-	if err != nil {
-		t.Fatalf("create room: %v", err)
-	}
-	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
-	})
-	if err := h.store.Queries.PlaceRoomInCrew(t.Context(), db.PlaceRoomInCrewParams{
-		ID: room.ID, CrewID: crew.ID, CrewVisible: open,
+	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
+		CrewID: crew, UserID: h.users.ByToken[who].ID, Role: "member",
 	}); err != nil {
-		t.Fatalf("place: %v", err)
+		t.Fatalf("member %s: %v", who, err)
 	}
-	if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-		RoomID: room.ID, UserID: h.users.ByToken[owner].ID, Role: "owner",
-	}); err != nil {
-		t.Fatalf("owner membership: %v", err)
-	}
-	storetest.ChannelsFor(t, h.store, room.ID)
-	return room
-}
-
-func (h *harness) member(t *testing.T, room db.Room, who string) {
-	t.Helper()
-	if err := h.store.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-		RoomID: room.ID, UserID: h.users.ByToken[who].ID, Role: "member",
-	}); err != nil {
-		t.Fatalf("membership %s: %v", who, err)
-	}
-	storetest.ChannelsFor(t, h.store, room.ID)
 }
 
 func (h *harness) audio(t *testing.T, who, id string) int {
@@ -81,28 +42,27 @@ func (h *harness) audio(t *testing.T, who, id string) int {
 	return h.do(t, who, http.MethodGet, "/api/tracks/"+id+"/audio", nil).Code
 }
 
-// The widening: bob joined one of alice's rooms, and alice's OTHER room is
-// open to the crew. Bob may enter it and alice may enter it, so they share
-// a room in the sense that matters — and alice's track plays for him, even
-// though he never joined that room and the old join would have said no.
-func TestATrackReachesWhoeverMayEnterARoomItsUploaderMayEnter(t *testing.T) {
+// The widening: bob joined alice's crew and is named into none of its
+// channels. Its open channel admits him and admits alice, so they share a
+// channel in the sense that matters — and alice's track plays for him, even
+// though nobody put him in that channel by name. Her private channel, which
+// does not admit him, is not what does it.
+func TestATrackReachesWhoeverMayEnterAChannelItsUploaderMayEnter(t *testing.T) {
 	h := setup(t)
 	track := h.upload(t, "alice", song(41, 383), "Crew.mp3")
 	id, _ := track["id"].(string)
 	crew := h.crewOf(t, "alice")
-	private := h.crewRoom(t, "alice", crew, false, 1)
-	open := h.crewRoom(t, "alice", crew, true, 2)
+	testx.Voice(t, h.store, crew, "Back Room", true)
 
 	if code := h.audio(t, "bob", id); code != http.StatusNotFound {
 		t.Fatalf("a stranger could play it (%d) — test proves nothing", code)
 	}
-	// Bob is in the crew now through the private room; the open room is
-	// enterable for him, and alice is in it.
-	h.member(t, private, "bob")
+	// Bob is in the crew now; the open channel is enterable for him, and
+	// alice may enter it.
+	h.member(t, crew, "bob")
 	if code := h.audio(t, "bob", id); code != http.StatusOK {
-		t.Errorf("a crew-mate who may enter a room alice may enter cannot play her track: %d", code)
+		t.Errorf("a crew-mate who may enter a channel alice may enter cannot play her track: %d", code)
 	}
-	_ = open
 	// Browsing is not widened: her shelf stays hers — not listed, not
 	// editable, not deletable by a crew-mate who may hear it.
 	if w := h.do(t, "bob", http.MethodPatch, "/api/tracks/"+id, []byte(`{"title":"Mine now"}`)); w.Code != http.StatusNotFound {
@@ -116,22 +76,21 @@ func TestATrackReachesWhoeverMayEnterARoomItsUploaderMayEnter(t *testing.T) {
 	}
 }
 
-// The door #1126 did not list. A crew ban keeps the membership row; the old
-// join read the row and kept playing. Silent if it regresses — the bytes go
-// out, nothing errors — so this was seen red against the old query.
+// The door #1126 did not list. A crew ban kept the room's membership row; the
+// old join read the row and kept playing. Silent if it regresses — the bytes
+// go out, nothing errors — so this was seen red against the old query.
 func TestACrewBannedRiderCannotPlayACrewMatesTrack(t *testing.T) {
 	h := setup(t)
 	track := h.upload(t, "alice", song(42, 383), "Banned.mp3")
 	id, _ := track["id"].(string)
 	crew := h.crewOf(t, "alice")
-	room := h.crewRoom(t, "alice", crew, true, 3)
-	h.member(t, room, "bob")
+	h.member(t, crew, "bob")
 	if code := h.audio(t, "bob", id); code != http.StatusOK {
 		t.Fatalf("bob could not play it before the ban (%d) — test proves nothing", code)
 	}
 
 	if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{
-		CrewID: crew.ID, UserID: h.users.ByToken["bob"].ID, Role: "banned",
+		CrewID: crew, UserID: h.users.ByToken["bob"].ID, Role: "banned",
 	}); err != nil {
 		t.Fatalf("crew ban: %v", err)
 	}
@@ -144,16 +103,14 @@ func TestACrewBannedRiderCannotPlayACrewMatesTrack(t *testing.T) {
 }
 
 // Another crew's track is not there: not to read, not to hear. Queueing it
-// into a room is the same door — the hub takes any track id on "add" and
+// into a channel is the same door — the hub takes any track id on "add" and
 // every rider's deck then asks this endpoint, which is where it 404s.
 func TestAnotherCrewsTrackIsNotThere(t *testing.T) {
 	h := setup(t)
 	track := h.upload(t, "alice", song(43, 383), "Elsewhere.mp3")
 	id, _ := track["id"].(string)
-	theirs := h.crewOf(t, "alice")
-	h.crewRoom(t, "alice", theirs, true, 4)
-	mine := h.crewOf(t, "bob")
-	h.crewRoom(t, "bob", mine, true, 5)
+	h.crewOf(t, "alice")
+	h.crewOf(t, "bob")
 
 	if w := h.do(t, "bob", http.MethodPatch, "/api/tracks/"+id, []byte(`{"title":"Mine now"}`)); w.Code != http.StatusNotFound {
 		t.Errorf("edit: %d, want 404", w.Code)

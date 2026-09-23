@@ -6,10 +6,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/natrontech/wattroom/server/internal/store"
-	"github.com/natrontech/wattroom/server/internal/store/db"
-	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 // A crew owner deleting their account takes their old rooms with them — and
@@ -21,32 +17,11 @@ import (
 func TestPurgingARoomOwnerKeepsTheCrewsChannelRows(t *testing.T) {
 	h := setup(t)
 	ctx := t.Context()
-	roomID := h.createRoom(t, "alice")
-	room, err := h.store.Queries.GetRoomByID(ctx, roomID)
-	if err != nil {
-		t.Fatalf("room: %v", err)
-	}
-	voice := testx.VoiceChannel(t, h.store, room)
-	room, err = h.store.Queries.GetRoomByID(ctx, roomID)
-	if err != nil {
-		t.Fatalf("room again: %v", err)
-	}
-	crew := room.CrewID
-	var text pgtype.UUID
-	if err := h.store.Pool.QueryRow(ctx,
-		"select text_channel_id from room_channels where room_id = $1", roomID).Scan(&text); err != nil {
-		t.Fatalf("text channel: %v", err)
-	}
-	voiceID, err := store.ParseUUID(voice)
-	if err != nil {
-		t.Fatalf("voice channel: %v", err)
-	}
-	// Bob stays in the crew, so it passes to him rather than ending.
-	if err := h.store.Queries.SetCrewRole(ctx, db.SetCrewRoleParams{
-		CrewID: crew, UserID: h.id("bob"), Role: "member",
-	}); err != nil {
-		t.Fatalf("membership: %v", err)
-	}
+	// Alice's crew, and her room in it. Bob stays in the crew, so it passes to
+	// him rather than ending.
+	place := h.createCrew(t, "alice", "bob")
+	crew, text := place.crew, place.text
+	roomID := h.legacyRoom(t, "alice", crew)
 
 	// The rows as the M9 backfill left them: the room still on them, and the
 	// channel and crew beside it.
@@ -58,12 +33,13 @@ func TestPurgingARoomOwnerKeepsTheCrewsChannelRows(t *testing.T) {
 	}
 	exec("line", `insert into chat_messages (room_id, channel_id, user_id, text, created_at)
 		values ($1, $2, $3, 'bobs history', now())`, roomID, text, h.id("bob"))
-	ride := h.createRide(t, "bob", roomID, "Openers", gzipped(t, `[]`))
+	ride := h.createRide(t, "bob", place, "Openers", gzipped(t, `[]`))
+	exec("ride", `update rides set room_id = $1 where id = $2`, roomID, ride)
 	exec("medal", `insert into medals (room_id, crew_id, user_id, ride_id, kind)
 		values ($1, $2, $3, $4, 'diesel')`, roomID, crew, h.id("bob"), ride)
 	exec("plan", `insert into scheduled_sessions (room_id, crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
 		values ($1, $2, $3, 'Crew Thursday', '{}', $4, $5)`,
-		roomID, crew, voiceID, pgtype.Timestamptz{Time: time.Now().Add(48 * time.Hour), Valid: true}, h.id("bob"))
+		roomID, crew, place.voice, pgtype.Timestamptz{Time: time.Now().Add(48 * time.Hour), Valid: true}, h.id("bob"))
 	exec("playlist", `insert into playlists (room_id, crew_id, name) values ($1, $2, 'Crew Mix')`, roomID, crew)
 
 	if w := h.call(t, "alice", http.MethodDelete, "/api/me"); w.Code >= 300 {

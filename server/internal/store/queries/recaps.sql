@@ -7,12 +7,9 @@
 -- The session's recap (#2438), keyed by the session: the keeper retries
 -- (audit 2026-09-09), and the second write of the same session updates
 -- rather than duplicates. The crew and the channel come from the channel it
--- ran in; room_id is still written for a channel a room became, so the
--- previous release's room backlog reads it (ADR-0019), and is NULL for one
--- made in the channels API.
-insert into session_recaps (room_id, crew_id, channel_id, session_id, workout, started_at, ended_at, riders)
-select (select rc.room_id from room_channels rc where rc.voice_channel_id = ch.id),
-       ch.crew_id, ch.id, sqlc.arg(session_id)::uuid,
+-- ran in; room_id is never written (#2558), so #2433 can drop it.
+insert into session_recaps (crew_id, channel_id, session_id, workout, started_at, ended_at, riders)
+select ch.crew_id, ch.id, sqlc.arg(session_id)::uuid,
        sqlc.arg(workout), sqlc.arg(started_at), sqlc.arg(ended_at), sqlc.arg(riders)
 from channels ch
 where ch.id = sqlc.arg(channel_id)
@@ -41,7 +38,8 @@ select r.id, r.workout, r.started_at, r.ended_at, r.riders,
          order by ride.started_at
          limit 1) as my_ride_id
 from (
-    select s.* from session_recaps s
+    select s.id, s.crew_id, s.channel_id, s.workout, s.started_at, s.ended_at, s.riders
+    from session_recaps s
     left join channels ch on ch.id = s.channel_id
     where s.crew_id = sqlc.arg(crew_id)
       and s.ended_at >= now() - make_interval(days => sqlc.arg(days)::int)
@@ -80,18 +78,15 @@ delete from session_recaps
 -- their personal data, not the requester's, so the row is narrowed to theirs —
 -- the same rule ExportUserChat follows.
 --
--- Placed by the crew and the voice channel it ran in (#2554): a session in a
--- channel no room became has no room, and an inner join dropped it.
+-- Placed by the crew and the voice channel it ran in (#2554, #2558).
 select s.workout, s.started_at, s.ended_at,
        coalesce(cw.name, '')::text as crew_name, coalesce(ch.name, '')::text as channel_name,
-       coalesce(rm.name, '')::text as room_name, coalesce(rm.slug, '')::text as room_slug,
        (entry ->> 'from')::bigint as joined_at,
        (entry ->> 'to')::bigint as left_at,
        (entry ->> 'rode')::boolean as rode
 from session_recaps s
 left join channels ch on ch.id = s.channel_id
 left join crews cw on cw.id = s.crew_id
-left join rooms rm on rm.id = s.room_id
 cross join lateral jsonb_array_elements(s.riders) entry
 where entry ->> 'id' = $1::text
 order by s.ended_at;

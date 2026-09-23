@@ -132,7 +132,7 @@ func (sc scope) ownerParams(name string) db.CreatePlaylistParams {
 
 // owns reports whether p belongs to this scope — the ownership check every
 // mutation runs before touching a playlist by id.
-func (sc scope) owns(p db.Playlist) bool {
+func (sc scope) owns(p db.GetPlaylistRow) bool {
 	if sc.asCrew {
 		return p.CrewID.Valid && p.CrewID == sc.crew
 	}
@@ -141,20 +141,20 @@ func (sc scope) owns(p db.Playlist) bool {
 
 // ownedPlaylist fetches {id} and checks it against sc.owns — a mismatch is a
 // 404, same as absent: no probing which ids exist in a crew you're not in.
-func (s *Service) ownedPlaylist(w http.ResponseWriter, r *http.Request, sc scope) (db.Playlist, bool) {
+func (s *Service) ownedPlaylist(w http.ResponseWriter, r *http.Request, sc scope) (db.GetPlaylistRow, bool) {
 	id, err := store.ParseUUID(r.PathValue("playlist"))
 	if err != nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That playlist does not exist.")
-		return db.Playlist{}, false
+		return db.GetPlaylistRow{}, false
 	}
 	p, err := s.store.Queries.GetPlaylist(r.Context(), id)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !sc.owns(p)) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That playlist does not exist.")
-		return db.Playlist{}, false
+		return db.GetPlaylistRow{}, false
 	}
 	if err != nil {
 		httpx.Fail(w, s.log, "playlist lookup failed", err, "The playlist could not be loaded.")
-		return db.Playlist{}, false
+		return db.GetPlaylistRow{}, false
 	}
 	return p, true
 }

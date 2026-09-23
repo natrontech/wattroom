@@ -11,35 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addChatReaction = `-- name: AddChatReaction :execrows
-insert into chat_reactions (message_id, user_id, emoji)
-select $1, $2, $3
-where exists (select 1 from chat_messages where id = $1 and room_id = $4)
-on conflict do nothing
-`
-
-type AddChatReactionParams struct {
-	MessageID pgtype.UUID
-	UserID    pgtype.UUID
-	Emoji     string
-	RoomID    pgtype.UUID
-}
-
-// Toggle half 1: no-op when already reacted (the conflict), so the caller
-// knows to remove instead.
-func (q *Queries) AddChatReaction(ctx context.Context, arg AddChatReactionParams) (int64, error) {
-	result, err := q.db.Exec(ctx, addChatReaction,
-		arg.MessageID,
-		arg.UserID,
-		arg.Emoji,
-		arg.RoomID,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const countChatReaction = `-- name: CountChatReaction :one
 select count(*) from chat_reactions where message_id = $1 and emoji = $2
 `
@@ -56,35 +27,6 @@ func (q *Queries) CountChatReaction(ctx context.Context, arg CountChatReactionPa
 	return count, err
 }
 
-const editChatMessage = `-- name: EditChatMessage :one
-update chat_messages
-set text = $3, edited_at = now()
-where id = $1 and room_id = $2 and user_id = $4
-returning edited_at
-`
-
-type EditChatMessageParams struct {
-	ID     pgtype.UUID
-	RoomID pgtype.UUID
-	Text   string
-	UserID pgtype.UUID
-}
-
-// Only the author, and only the text (#865). The room scope is repeated here
-// rather than trusted from the read above: two statements, and nothing says
-// the row is still in this room by the time the second one runs.
-func (q *Queries) EditChatMessage(ctx context.Context, arg EditChatMessageParams) (pgtype.Timestamptz, error) {
-	row := q.db.QueryRow(ctx, editChatMessage,
-		arg.ID,
-		arg.RoomID,
-		arg.Text,
-		arg.UserID,
-	)
-	var edited_at pgtype.Timestamptz
-	err := row.Scan(&edited_at)
-	return edited_at, err
-}
-
 const pruneOrphanChatImages = `-- name: PruneOrphanChatImages :execrows
 delete from chat_images i
  where i.ctid in (select ctid from chat_images x
@@ -93,75 +35,13 @@ delete from chat_images i
                    limit 10000)
 `
 
-// The same grace as above, on the clock rather than on a write (audit
-// 2026-09-09; the #1153 rule): an upload abandoned in a room that then went
-// quiet was never swept, and its blob sat in Postgres for good.
+// A picture uploaded and never sent, swept on the clock rather than on a
+// write (audit 2026-09-09; the #1153 rule): an upload abandoned in a channel
+// that then went quiet was never swept, and its blob sat in Postgres for good.
 func (q *Queries) PruneOrphanChatImages(ctx context.Context) (int64, error) {
 	result, err := q.db.Exec(ctx, pruneOrphanChatImages)
 	if err != nil {
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const saveChatImage = `-- name: SaveChatImage :one
-insert into chat_images (room_id, user_id, mime, bytes)
-values ($1, $2, $3, $4) returning id
-`
-
-type SaveChatImageParams struct {
-	RoomID pgtype.UUID
-	UserID pgtype.UUID
-	Mime   string
-	Bytes  []byte
-}
-
-func (q *Queries) SaveChatImage(ctx context.Context, arg SaveChatImageParams) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, saveChatImage,
-		arg.RoomID,
-		arg.UserID,
-		arg.Mime,
-		arg.Bytes,
-	)
-	var id pgtype.UUID
-	err := row.Scan(&id)
-	return id, err
-}
-
-const saveChatMessage = `-- name: SaveChatMessage :one
-insert into chat_messages (room_id, user_id, text, image_id, created_at)
-select $1, $2, $3, $4, $5
-where $4::uuid is null
-   or exists (select 1 from chat_images where id = $4 and room_id = $1)
-returning id
-`
-
-type SaveChatMessageParams struct {
-	RoomID    pgtype.UUID
-	UserID    pgtype.UUID
-	Text      string
-	ImageID   pgtype.UUID
-	CreatedAt pgtype.Timestamptz
-}
-
-// An attached image must belong to THIS room. Serving already scopes by room,
-// so a foreign id could never be viewed — but referencing one would pin its
-// bytes past the sweep, which is how a client escapes the storage bound.
-//
-// created_at is the caller's, not the column's default (#2421): the hub
-// stamps a line the instant it broadcasts it and saves on a worker after,
-// so a row that timed itself timed a different moment — and the two numbers
-// named the same line to the two paths that announce it, which is how one
-// message made two sounds.
-func (q *Queries) SaveChatMessage(ctx context.Context, arg SaveChatMessageParams) (pgtype.UUID, error) {
-	row := q.db.QueryRow(ctx, saveChatMessage,
-		arg.RoomID,
-		arg.UserID,
-		arg.Text,
-		arg.ImageID,
-		arg.CreatedAt,
-	)
-	var id pgtype.UUID
-	err := row.Scan(&id)
-	return id, err
 }
