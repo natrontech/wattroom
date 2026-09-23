@@ -17,6 +17,13 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.131] - 2026-09-23
+
+### Fixed
+
+- Starting WattRoom opens the crew you were in again, or your main crew if
+  you've set one, instead of always opening on your own Home.
+
 ## [2026.09.130] - 2026-09-23
 
 ### Changed
@@ -2774,7 +2781,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.130...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.131...HEAD
+[2026.09.131]: https://github.com/natrontech/wattroom/compare/2026.09.130...2026.09.131
 [2026.09.130]: https://github.com/natrontech/wattroom/compare/2026.09.129...2026.09.130
 [2026.09.129]: https://github.com/natrontech/wattroom/compare/2026.09.128...2026.09.129
 [2026.09.128]: https://github.com/natrontech/wattroom/compare/2026.09.127...2026.09.128
