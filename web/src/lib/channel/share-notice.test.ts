@@ -22,7 +22,7 @@ describe('shareNotice (#563)', () => {
 	});
 
 	it('names the place the screen is going to', () => {
-		expect(shareNotice(true, place, true)?.room).toBe('Tuesday Spin');
+		expect(shareNotice(true, place, true)?.name).toBe('Tuesday Spin');
 	});
 
 	// Walking out of the place does not stop the share, so the notice has to

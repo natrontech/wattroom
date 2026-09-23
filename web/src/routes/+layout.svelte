@@ -427,7 +427,7 @@
 				     business in the closure every route pays for. -->
 				{#await import('$lib/channel/ScreenShareNotice.svelte') then { default: ScreenShareNotice }}
 					<ScreenShareNotice
-						room={channelConnection.current.address}
+						place={channelConnection.current.address}
 						inside={channelConnection.onPlacePath(page.url.pathname)}
 						sharing={av.sharing}
 						sharingAudio={av.sharingAudio}

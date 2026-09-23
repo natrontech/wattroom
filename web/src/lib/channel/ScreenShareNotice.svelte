@@ -21,7 +21,7 @@
 	let {
 		sharing,
 		sharingAudio = false,
-		room,
+		place,
 		inside,
 		onStop,
 		onSound,
@@ -29,7 +29,7 @@
 		sharing: boolean;
 		/** Whether the room can HEAR the machine too (#1124). */
 		sharingAudio?: boolean;
-		room: { home: string; name: string } | null;
+		place: { home: string; name: string } | null;
 		/** Whether the rider is on the place's own pages — no way back to offer. */
 		inside: boolean;
 		onStop: () => void;
@@ -49,7 +49,7 @@
 			: "Send this machine's sound too…",
 	);
 
-	const notice = $derived(shareNotice(sharing, room, inside));
+	const notice = $derived(shareNotice(sharing, place, inside));
 
 	// Stopping the share is the destructive one, so it sits last after a
 	// separator (ux.md) — it used to sit in the middle of the menu, one entry
@@ -64,7 +64,7 @@
 			});
 		if (notice?.href)
 			entries.push({
-				label: `Back to ${notice.room}`,
+				label: `Back to ${notice.name}`,
 				icon: MonitorUp,
 				onSelect: () => void goto(notice.href as string),
 			});
@@ -100,9 +100,9 @@
 			>
 			<span class="text-muted">
 				{#if notice.href}
-					with <a href={notice.href} class="underline">{notice.room}</a>
+					with <a href={notice.href} class="underline">{notice.name}</a>
 				{:else}
-					with everyone in {notice.room}
+					with everyone in {notice.name}
 				{/if}
 			</span>
 		</p>
