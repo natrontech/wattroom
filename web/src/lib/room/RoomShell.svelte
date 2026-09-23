@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { navDrawer } from '$lib/nav/drawer.svelte';
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
@@ -28,7 +27,6 @@
 		roomContextValue,
 		type RoomShellProps,
 	} from '$lib/room/room-context-value.svelte';
-	import { activePlace } from '$lib/nav/pages';
 	import { createSummary } from '$lib/room/summary.svelte';
 	import { readNotes, shouldRejoinVoice, tabId } from '$lib/room/rejoin';
 	import { stageSlot } from '$lib/room/stage-slot.svelte';
@@ -36,29 +34,11 @@
 
 	let props: RoomShellProps = $props();
 
-	// The log lives on the Chat place now (#504, mock A), so the column shows
-	// what was said while you were elsewhere. The room's own unread cannot say
-	// it — standing in the room counts as reading it (#468) — so "seen" is
-	// the Chat place being open, and everything before you joined is history.
-	const chatPlace = $derived(
-		activePlace(page.url.pathname, props.slug) === '/chat',
-	);
-
 	// #173: the connection outlives this page — you stay in the room while
 	// you browse. Leaving is the rail's explicit button, never unmount.
 	// svelte-ignore state_referenced_locally
 	const connection = roomConnection.join(props.address);
 	const live = connection.live;
-
-	// The connection owns the log and what you have not seen of it (#568) —
-	// this only reports where the router is standing, which is the one thing
-	// a store above the router cannot know. Leaving the room's pages hands
-	// the answer back: the sidebar's Chat place marks it from here on.
-	$effect(() => {
-		connection.readingChat(chatPlace);
-		return () => connection.readingChat(false);
-	});
-	const missed = $derived(connection.missed());
 	const av = connection.av;
 	// Owned by the connection, not by this component (#521): the trainer and
 	// what it has recorded outlive every navigation inside the room, and the
@@ -85,8 +65,8 @@
 		const back = shouldRejoinVoice({
 			notes: readNotes(),
 			tab: tabId(),
-			// The note is keyed by the place (#2449); a room's key is its slug.
-			slug: props.address.key,
+			// The note is keyed by the place (#2449).
+			key: props.address.key,
 			avEnabled: !!account.me?.avEnabled,
 			now: Date.now(),
 		});
@@ -163,8 +143,8 @@
 	// The roster with live numbers on it, plus you and the block you are in —
 	// one module, fed by ticks (riders.svelte.ts).
 	// The HUD feed (ADR-0041, #1665): published from the room, not the
-	// Training place, so the floating window follows the ride to Chat or the
-	// Lounge, and says what RoomStatus would.
+	// Training place, so the floating window follows the ride to the Lounge,
+	// and says what RoomStatus would.
 	$effect(() => {
 		const phase = live.tick?.state.phase;
 		if (phase !== 'countdown' && phase !== 'running' && phase !== 'paused')
@@ -302,19 +282,14 @@
 		if (live.refusal) startAfterPick = null;
 	});
 
-	// ── Session setup (#115) and planned rides (#116) ─────────────────────────
-	// Composed, not owned: the shelf and its ranking, the calendar link, and
-	// starting something already planned (session-setup.svelte.ts).
-	const session = createSessionSetup({
-		slug: () => props.slug,
-		icsToken: () => props.icsToken ?? '',
-		control: (action, payload) => live.control(action, payload),
-	});
+	// ── Session setup (#115) ──────────────────────────────────────────────────
+	// Composed, not owned: the shelf and its ranking (session-setup.svelte.ts).
+	const session = createSessionSetup();
 
 	// ADR-0020: the shell keeps the state, the places render the surface.
 	// `props` goes in as the reactive object, not as its values: the context's
 	// getters read through it on access, which is what keeps a place live when
-	// the page re-fetches members or a planned session. The warning is about
+	// the page re-fetches members or the announcement. The warning is about
 	// capturing a value here, and this captures the reference — proved by
 	// room-context-value.test.ts rather than argued.
 	// svelte-ignore state_referenced_locally
@@ -338,8 +313,6 @@
 				session.open = true;
 			},
 			ban,
-			startScheduled: session.startScheduled,
-			copyIcsUrl: session.copyIcsUrl,
 		}),
 	);
 
@@ -398,7 +371,6 @@
 		onRetryShelf={() => void session.custom.retry()}
 		intent={session.intent}
 		ftp={profile.current.ftp}
-		busy={props.adminBusy}
 		gameRunning={!!live.tick?.game}
 		onPlan={async (name, json, at) => {
 			// Closed only once the server took it (#1766): a refused time used
@@ -512,17 +484,13 @@
 	</div>
 </div>
 
-<PeopleSheet bind:open={peopleSheet} {panel} missed={!!missed} {chatPlace} />
+<PeopleSheet bind:open={peopleSheet} {panel} />
 
 {#snippet panel()}
 	<SidePanel
 		live={phase === 'live'}
 		{riders}
 		members={props.members}
-		{missed}
-		onOpenChat={props.address.chat
-			? () => void goto(`${props.address.home}/chat`)
-			: undefined}
 		onCheer={(emoji) => live.cheer(emoji)}
 		onPoke={(id) => live.poke(id)}
 		onBan={myRole === 'owner' ? ban : undefined}

@@ -99,8 +99,7 @@ export function createRoomAv(address: PlaceAddress) {
 	const seats = createSeats();
 	// A refresh kills the page and the LiveKit room with it. The note this tab
 	// leaves behind is what lets the next page walk back in (#480).
-	// Keyed by the place: a room's key is its slug, so every note a room
-	// left before #2449 still finds its way back.
+	// Keyed by the place (#2449): its address key.
 	const note = createNoteKeeper(address.key, () => av.micOn);
 
 	const mic = createMic({ av, conn, devices, talk, setVoice, failedMedia });

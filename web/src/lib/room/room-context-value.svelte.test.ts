@@ -1,4 +1,4 @@
-import { roomAddress } from '$lib/room/address';
+import { channelAddress } from '$lib/room/address';
 import { describe, expect, it } from 'vitest';
 import {
 	roomContextValue,
@@ -46,8 +46,6 @@ function deps(props: RoomShellProps) {
 		openTv: noop,
 		openPicker: noop,
 		ban: noop,
-		startScheduled: noop,
-		copyIcsUrl: noop,
 	} as unknown as ContextDeps;
 }
 
@@ -55,24 +53,14 @@ function shellProps(): RoomShellProps {
 	// `$state` only initialises a declaration, so it cannot be returned inline.
 	const props = $state({
 		children: (() => {}) as unknown as RoomShellProps['children'],
-		slug: 'mfw-5',
-		address: roomAddress('mfw-5'),
+		address: channelAddress('c', 'mfw-5', 'MFW 5'),
 		role: 'member',
 		roomName: 'MFW 5',
 		members: [],
-		upcoming: [],
-		adminBusy: false,
+		streakWeeks: 0,
 		onRole: () => {},
-		onRemove: () => {},
-		onGrant: () => {},
-		onRevoke: () => {},
-		onTransfer: () => {},
 		onSchedule: () => {},
-		onReschedule: () => {},
-		onUnschedule: () => {},
-		onRsvp: () => {},
-		onRotateIcs: () => {},
-	});
+	} as RoomShellProps);
 	return props;
 }
 
@@ -83,31 +71,33 @@ describe('roomContextValue (#686)', () => {
 
 		expect(ctx.roomName).toBe('MFW 5');
 		expect(ctx.members).toEqual([]);
-		expect(ctx.adminBusy).toBe(false);
+		expect(ctx.streakWeeks).toBe(0);
 
-		// The page re-fetches: a room renamed in settings, a member arriving,
-		// an admin action starting. Every place reads these through the context.
+		// The page re-fetches: a channel renamed, a member arriving, the
+		// crew's streak growing. Every place reads these through the context.
 		props.roomName = 'Tuesday Crew';
 		props.members = [{ id: 'u1', displayName: 'Mara', role: 'member' }];
-		props.adminBusy = true;
+		props.streakWeeks = 3;
 
 		expect(ctx.roomName).toBe('Tuesday Crew');
 		expect(ctx.members).toHaveLength(1);
-		expect(ctx.adminBusy).toBe(true);
+		expect(ctx.streakWeeks).toBe(3);
 	});
 
 	it('keeps the defaults the destructured props used to apply', () => {
 		// `props.x` does not carry a destructuring default, so the context
-		// applies them instead — otherwise a room with no icon would hand a
+		// applies them instead — otherwise a crew with no code would hand a
 		// place `undefined` where it had always had ''.
-		const ctx = roomContextValue(deps(shellProps()));
-		expect(ctx.icon).toBe('');
+		const props = shellProps();
+		props.streakWeeks = undefined;
+		props.members = undefined;
+		const ctx = roomContextValue(deps(props));
 		expect(ctx.code).toBe('');
-		expect(ctx.icsToken).toBe('');
 		expect(ctx.together).toBeNull();
 		expect(ctx.streakWeeks).toBe(0);
-		expect(ctx.monthKj).toBe(0);
-		expect(ctx.medals).toEqual([]);
+		expect(ctx.board).toEqual([]);
+		expect(ctx.members).toEqual([]);
+		expect(ctx.announcement).toBeNull();
 	});
 
 	it('routes a callback back to the prop that is current when it fires', () => {
@@ -115,18 +105,14 @@ describe('roomContextValue (#686)', () => {
 		const ctx = roomContextValue(deps(props));
 		const calls: string[] = [];
 
-		props.onRole = (userId, role) => {
-			calls.push(`first:${userId}:${role}`);
-		};
-		ctx.setRole('u1', 'coach');
+		props.onClearAnnouncement = () => calls.push('first');
+		ctx.clearAnnouncement();
 
 		// The page can hand down a new handler; the context must not be holding
 		// the one it was built with.
-		props.onRole = (userId, role) => {
-			calls.push(`second:${userId}:${role}`);
-		};
-		ctx.setRole('u2', 'member');
+		props.onClearAnnouncement = () => calls.push('second');
+		ctx.clearAnnouncement();
 
-		expect(calls).toEqual(['first:u1:coach', 'second:u2:member']);
+		expect(calls).toEqual(['first', 'second']);
 	});
 });

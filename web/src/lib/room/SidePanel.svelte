@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Drum from '@lucide/svelte/icons/drum';
 	import Headphones from '@lucide/svelte/icons/headphones';
@@ -15,7 +14,6 @@
 	import { goto } from '$app/navigation';
 	import { keepSize } from '$lib/pane';
 	import { edgeDivider } from '$lib/divider';
-	import type { Missed } from '$lib/room/unread';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { BOARD_MARK } from '$lib/room/presence-marks';
@@ -23,9 +21,9 @@
 	import { statusOfRider } from '$lib/status';
 	import type { RoomMember, RoomRider } from '$lib/room/view';
 
-	// The room's people and the room's talk, in one column (ADR-0020). Discord's
-	// right column is WHO IS HERE; ours was chat alone, so the roster was
-	// legible only from tiles that vanish behind the stage.
+	// The room's people, in one column (ADR-0020). Discord's right column is
+	// WHO IS HERE; ours was chat alone, so the roster was legible only from
+	// tiles that vanish behind the stage.
 	//
 	// Stacked rather than tabbed: the roster has to be there without being
 	// asked for — that is the whole "this room is populated" read — and giving
@@ -34,16 +32,13 @@
 	//
 	// Plus one slot: the jukebox playlist owns the whole queue surface (#286).
 	//
-	// The log itself left for the Chat place (#504, mock A): three surfaces
-	// were sharing this height and none of them had enough. What stays behind
-	// is one line saying what you missed.
+	// No chat: a voice channel has none (ADR-0058, decision 4) — its crew's
+	// text channels are pages of their own.
 	let {
 		live,
 		riders = [],
 		members = [],
 		player,
-		missed = null,
-		onOpenChat,
 		onCheer,
 		onPoke,
 		onBan,
@@ -60,9 +55,6 @@
 		members?: RoomMember[];
 		/** The jukebox playlist renders into the panel's top slot. */
 		player?: Snippet;
-		/** What was said while you were elsewhere; null when nothing was. */
-		missed?: Missed | null;
-		onOpenChat?: () => void;
 		onCheer?: (emoji: string) => void;
 		onPoke?: (id: string) => void;
 		/** Owner only — absent for everyone else, so the entry never appears. */
@@ -274,28 +266,10 @@
 			</div>
 		{/if}
 
-		{#if missed}
-			<!-- What the chat left behind (#504, mock A): one line of what was
-			     said while you were elsewhere, and the way to the rest of it.
-			     Quiet — the count is chrome, and chrome does not glow. -->
-			<button
-				onclick={onOpenChat}
-				class="border-ink/5 bg-surface-raised hover:bg-surface-raised/70 flex shrink-0 items-center gap-2 border-t px-3 py-3 text-left"
-			>
-				<span class="bg-neon h-2 w-2 shrink-0 rounded-full"></span>
-				<span class="min-w-0 flex-1 truncate text-xs"
-					><span class="text-muted">{missed.from}:</span>
-					{missed.preview}</span
-				>
-				<span class="text-muted shrink-0 text-[10px]">{missed.count} new</span>
-				<ChevronRight size={13} class="text-muted shrink-0" />
-			</button>
-		{/if}
 		<div class="border-ink/5 border-t p-3">
 			<!-- The room's reactions, and under them the soundboard: both are
 			     a thing you throw into the room, and neither is typing —
-			     which lives on the Chat place now and mid-ride was never on
-			     the table anyway (ux.md). -->
+			     which mid-ride was never on the table anyway (ux.md). -->
 			<div class="flex gap-1.5">
 				{#each cheers.slice(0, 4) as cheer (cheer)}
 					<button

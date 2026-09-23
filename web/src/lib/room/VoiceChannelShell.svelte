@@ -98,7 +98,6 @@
 		toasts.push('Plans live on the crew’s schedule.', { tone: 'error' });
 		return false;
 	};
-	const noop = () => {};
 </script>
 
 <svelte:head
@@ -138,32 +137,19 @@
 		     assistive tech: which channel this is. -->
 		<h1 class="sr-only">{channel.name}</h1>
 		<RoomShell
-			slug=""
 			address={channelAddress(crew.id, channel.id, channel.name)}
 			role={liveRoleOf(crew.role)}
 			roomName={channel.name}
-			icon={crew.icon ?? ''}
 			code={crew.code ?? ''}
 			cheers={crew.cheers}
 			soundPack={channel.soundPack ?? 'base'}
 			{members}
-			crewVisible={!channel.private}
-			onGrant={noop}
-			onRevoke={noop}
-			onTransfer={noop}
 			streakWeeks={view.members?.streakWeeks ?? 0}
 			together={view.members?.together ?? null}
 			board={view.members?.board ?? []}
-			upcoming={[]}
 			onSchedule={noPlan}
-			onReschedule={noop}
-			onUnschedule={noop}
-			onRsvp={noop}
-			icsToken=""
-			onRotateIcs={noop}
 			announcement={view.announcement}
 			onRole={setRole}
-			onRemove={noop}
 		>
 			{@render children()}
 		</RoomShell>

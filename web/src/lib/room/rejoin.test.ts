@@ -8,12 +8,12 @@ const other = 'tab-b';
 /** Everything true, so each test can spoil exactly one thing. */
 function ask(over: Partial<Parameters<typeof shouldRejoinVoice>[0]> = {}) {
 	const notes: VoiceNotes = {
-		[mine]: { slug: 'mfw', at: NOW - 5_000, mic: true },
+		[mine]: { key: 'v:mfw', at: NOW - 5_000, mic: true },
 	};
 	return shouldRejoinVoice({
 		notes,
 		tab: mine,
-		slug: 'mfw',
+		key: 'v:mfw',
 		avEnabled: true,
 		now: NOW,
 		...over,
@@ -28,7 +28,7 @@ describe('shouldRejoinVoice (#480)', () => {
 	it('comes back muted for a rider who was muted', () => {
 		// The one thing this must never do is open a mic on someone's behalf.
 		expect(
-			ask({ notes: { [mine]: { slug: 'mfw', at: NOW - 5_000, mic: false } } }),
+			ask({ notes: { [mine]: { key: 'v:mfw', at: NOW - 5_000, mic: false } } }),
 		).toEqual({ mic: false });
 	});
 
@@ -37,7 +37,7 @@ describe('shouldRejoinVoice (#480)', () => {
 		expect(
 			ask({
 				notes: {
-					[mine]: { slug: 'mfw', at: NOW - REJOIN_WINDOW_MS - 1, mic: true },
+					[mine]: { key: 'v:mfw', at: NOW - REJOIN_WINDOW_MS - 1, mic: true },
 				},
 			}),
 		).toBe(null);
@@ -47,7 +47,7 @@ describe('shouldRejoinVoice (#480)', () => {
 		expect(
 			ask({
 				notes: {
-					[mine]: { slug: 'mfw', at: NOW - REJOIN_WINDOW_MS, mic: true },
+					[mine]: { key: 'v:mfw', at: NOW - REJOIN_WINDOW_MS, mic: true },
 				},
 			}),
 		).toEqual({ mic: true });
@@ -55,7 +55,7 @@ describe('shouldRejoinVoice (#480)', () => {
 
 	it('stays out in a different room', () => {
 		// Opening someone else's room fresh is not a refresh of yours.
-		expect(ask({ slug: 'thursday-threshold' })).toBe(null);
+		expect(ask({ key: 'v:thursday-threshold' })).toBe(null);
 	});
 
 	it('stays out after an explicit leave', () => {
@@ -71,8 +71,8 @@ describe('shouldRejoinVoice (#480)', () => {
 		expect(
 			ask({
 				notes: {
-					[mine]: { slug: 'mfw', at: NOW - 5_000, mic: true },
-					[other]: { slug: 'mfw', at: NOW - 1_000, mic: true },
+					[mine]: { key: 'v:mfw', at: NOW - 5_000, mic: true },
+					[other]: { key: 'v:mfw', at: NOW - 1_000, mic: true },
 				},
 			}),
 		).toBe(null);
@@ -83,8 +83,8 @@ describe('shouldRejoinVoice (#480)', () => {
 		expect(
 			ask({
 				notes: {
-					[mine]: { slug: 'mfw', at: NOW - 5_000, mic: true },
-					[other]: { slug: 'sunday-spin', at: NOW - 1_000, mic: true },
+					[mine]: { key: 'v:mfw', at: NOW - 5_000, mic: true },
+					[other]: { key: 'v:sunday-spin', at: NOW - 1_000, mic: true },
 				},
 			}),
 		).toBe(null);
@@ -94,8 +94,8 @@ describe('shouldRejoinVoice (#480)', () => {
 		expect(
 			ask({
 				notes: {
-					[mine]: { slug: 'mfw', at: NOW - 5_000, mic: true },
-					[other]: { slug: 'mfw', at: NOW - 1_000, mic: false },
+					[mine]: { key: 'v:mfw', at: NOW - 5_000, mic: true },
+					[other]: { key: 'v:mfw', at: NOW - 1_000, mic: false },
 				},
 			}),
 		).toEqual({ mic: true });
@@ -105,9 +105,9 @@ describe('shouldRejoinVoice (#480)', () => {
 		expect(
 			ask({
 				notes: {
-					[mine]: { slug: 'mfw', at: NOW - 5_000, mic: true },
+					[mine]: { key: 'v:mfw', at: NOW - 5_000, mic: true },
 					[other]: {
-						slug: 'mfw',
+						key: 'v:mfw',
 						at: NOW - REJOIN_WINDOW_MS - 1,
 						mic: true,
 					},
@@ -127,13 +127,21 @@ describe('shouldRejoinVoice (#480)', () => {
 		).toBe(null);
 		expect(
 			ask({
-				notes: { [mine]: { slug: 'mfw' } as unknown as VoiceNotes[string] },
+				notes: { [mine]: { key: 'v:mfw' } as unknown as VoiceNotes[string] },
+			}),
+		).toBe(null);
+		// A note from before it was keyed by the place (#2460).
+		expect(
+			ask({
+				notes: {
+					[mine]: { slug: 'v:mfw', at: NOW - 5_000, mic: true },
+				} as unknown as VoiceNotes,
 			}),
 		).toBe(null);
 		expect(
 			ask({
 				notes: {
-					[mine]: { slug: 'mfw', at: NOW - 5_000, mic: true },
+					[mine]: { key: 'v:mfw', at: NOW - 5_000, mic: true },
 					[other]: 7 as unknown as VoiceNotes[string],
 				},
 			}),
@@ -143,7 +151,7 @@ describe('shouldRejoinVoice (#480)', () => {
 	it('does not read a stamp from the future as a refresh', () => {
 		// The clock moved under us; that is not evidence of anything.
 		expect(
-			ask({ notes: { [mine]: { slug: 'mfw', at: NOW + 5_000, mic: true } } }),
+			ask({ notes: { [mine]: { key: 'v:mfw', at: NOW + 5_000, mic: true } } }),
 		).toBe(null);
 	});
 });

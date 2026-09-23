@@ -12,7 +12,6 @@ import type { PlaceAddress } from '$lib/room/address';
 import { account } from '$lib/account.svelte';
 import { deviceWord } from '$lib/device.svelte';
 import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
-import { createChatLog, type BacklogMessage } from '$lib/room/chat-log.svelte';
 import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
 import { isLivePhase } from '$lib/room/session-phase';
 
@@ -45,18 +44,11 @@ export const SETTLED_ATTEMPTS = 5;
 
 export function createRoomLive(address: PlaceAddress) {
 	let status = $state<LiveStatus>('connecting');
-	// The room's chat — the log and its reactions — is a module of its own,
-	// fed by the backlog over HTTP (#2437): chat does not ride the tick.
-	const chat = createChatLog();
 	let tick = $state<ServerTick | null>(null);
 	// The last workout definition heard, by hash (#1710): the server sends
 	// the JSON only on the tick that changes it and names it on every other.
 	let workoutHeard: { hash: string; json: string } | null = null;
-	// Finished sessions (ADR-0034). Unlike everything else here these are
-	// durable: the backlog seeds them and the tick adds the one written while
-	// this rider was standing in the room.
-	let recaps = $state<import('$lib/protocol').SessionRecap[]>([]);
-	// What the room did (#321), interleaved with the talking by the chat pane.
+	// What the room did (#321), for the Lounge's event lines.
 	// Ephemeral by design (ADR-0019): nothing seeds these on join, and a
 	// reload forgets them — "now playing" is worthless tomorrow.
 	let roomEvents = $state<RoomEvent[]>([]);
@@ -354,14 +346,6 @@ export function createRoomLive(address: PlaceAddress) {
 				const mine = me ? msg.tick.riders?.[me] : undefined;
 				if (mine) acked = mine.seq;
 				followSession(msg.tick);
-				if (msg.tick.recap) {
-					// The session that just ended left a card (ADR-0034), on
-					// the tick after its row landed. Riders who were not here
-					// read the same row from the backlog when they arrive.
-					const written = msg.tick.recap;
-					if (!recaps.some((r) => r.id === written.id))
-						recaps = [...recaps, written];
-				}
 				if (msg.tick.events?.length) mergeEvents(msg.tick.events);
 			}
 			// A refused command is feedback, not a fault — it stays up long
@@ -530,22 +514,6 @@ export function createRoomLive(address: PlaceAddress) {
 			away = next;
 			send({ away: { away: next, reason: next ? reason : '' } });
 		},
-		get recaps() {
-			return recaps;
-		},
-		/** The room's stored session cards, read with the chat backlog. */
-		seedRecaps(rows: import('$lib/protocol').SessionRecap[]) {
-			// Merged rather than replaced, and by id: a recap can arrive on
-			// the tick before this resolves, and a reconnect re-reads the
-			// same backlog (the same rule seedChat follows).
-			const have = new Set(recaps.map((r) => r.id));
-			recaps = [...recaps, ...rows.filter((r) => !have.has(r.id))].sort(
-				(a, b) => a.endedAt - b.endedAt,
-			);
-		},
-		get chatLog() {
-			return chat.log;
-		},
 		get roomEvents() {
 			return roomEvents;
 		},
@@ -555,20 +523,6 @@ export function createRoomLive(address: PlaceAddress) {
 		 */
 		pushEvent(event: RoomEvent) {
 			mergeEvents([event]);
-		},
-		get chatReactions() {
-			return chat.reactions;
-		},
-		get myReacts() {
-			return chat.myReacts;
-		},
-		/** One read of the backlog (#2437) — replaces the log and the counts. */
-		seedChat(messages: BacklogMessage[]) {
-			chat.seed(messages);
-		},
-		/** My own reaction, drawn before the answer comes back. */
-		toggleMyReact(messageId: string, emoji: string) {
-			chat.toggleMine(messageId, emoji);
 		},
 		/** One jukebox command. The wire shape IS the argument (#286) — six
 		 * positional optionals were a bug waiting to be passed in the wrong

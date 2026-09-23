@@ -107,16 +107,8 @@
 				{#if room.shared?.phase === 'done'}
 					<!-- Not "nothing is running yet" right under "it ended"
 					     (audit 2026-09-09): where it went, and what comes next. -->
-					{#if room.address.schedule}
-						Its recap is on
-						<a href={room.address.schedule} class="underline">Sessions</a>, with
-						whatever is planned next.
-					{:else}
-						Its recap is on the crew's <a
-							href={room.address.members}
-							class="underline">Members</a
-						> page.
-					{/if}
+					Its recap is on the crew's
+					<a href={room.address.members} class="underline">Members</a> page.
 				{:else if device.spectator}
 					<!-- A phone has no trainer to pair and no session to start, so
 					     the empty state teaches what it IS for rather than listing

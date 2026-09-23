@@ -1,4 +1,4 @@
-import { roomAddress } from '$lib/room/address';
+import { channelAddress } from '$lib/room/address';
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
@@ -106,7 +106,7 @@ describe('the seq stream (#522)', () => {
 	// numbers moved, the saved ride kept nothing. The seq belongs to the
 	// socket session, so nothing shorter-lived can restart it.
 	it('carries on across a rebuilt ride', async () => {
-		const live = createRoomLive(roomAddress('mfw'));
+		const live = createRoomLive(channelAddress('c', 'mfw', 'MFW'));
 		const socket = FakeSocket.last!;
 		const deps = {
 			live,
@@ -162,7 +162,7 @@ describe('a sprint the ticks stop under (#789)', () => {
 	});
 
 	function rider() {
-		const live = createRoomLive(roomAddress('mfw'));
+		const live = createRoomLive(channelAddress('c', 'mfw', 'MFW'));
 		const socket = FakeSocket.last!;
 		const deps = {
 			live,
@@ -242,7 +242,7 @@ describe('a sprint the ticks stop under (#789)', () => {
 
 /** A room mid-interval: the shared timeline is running and asks for 200 W. */
 function inASession() {
-	const live = createRoomLive(roomAddress('mfw'));
+	const live = createRoomLive(channelAddress('c', 'mfw', 'MFW'));
 	const socket = FakeSocket.last!;
 	const deps = {
 		live,
@@ -477,7 +477,7 @@ describe("a workout's own sprint block (#2014)", () => {
 	 * downstream recomputes.
 	 */
 	function riding() {
-		const live = createRoomLive(roomAddress('mfw'));
+		const live = createRoomLive(channelAddress('c', 'mfw', 'MFW'));
 		let elapsed = $state(0);
 		const deps = {
 			live,
@@ -744,7 +744,7 @@ describe("the trainer's silence, one number (#2161)", () => {
 
 	it('is the same three seconds the solo screens wait', async () => {
 		vi.useFakeTimers();
-		const live = createRoomLive(roomAddress('mfw'));
+		const live = createRoomLive(channelAddress('c', 'mfw', 'MFW'));
 		const deps = {
 			live,
 			profile: {

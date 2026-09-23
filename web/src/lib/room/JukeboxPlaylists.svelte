@@ -1,32 +1,22 @@
 <script lang="ts">
 	import type { PlaceAddress } from '$lib/room/address';
-	import { toasts } from '$lib/toast.svelte';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
 	import { useRoom } from '$lib/room/context';
-	import { presence } from '$lib/presence.svelte';
-	import {
-		type createPlaylistStore,
-		getAutoplay,
-		updateAutoplay,
-		type AutoplaySettings,
-	} from '$lib/room/playlists.svelte';
+	import type { createPlaylistStore } from '$lib/room/playlists.svelte';
 
 	// The saved playlists above the live queue (#627): room playlists (any
 	// member edits, one markable active) and personal playlists (a rider's
-	// own, queueable into whichever room they're in). Autoplay itself is a
-	// voice channel's setting and lives on the crew's Settings page (#1422,
-	// #2454); this panel says what it is set to and keeps the one-tap "Set as
-	// active" on a row.
+	// own, queueable into whichever room they're in). Autoplay is a voice
+	// channel's setting and lives on the crew's Settings page (#1422, #2454).
 	let {
 		address,
 		roomStore,
 		mineStore,
 	}: {
-		/** Where the panel is open (#2449): a room, or a voice channel whose
-		 *  shelf is its crew's and whose autoplay is set in the crew's
-		 *  settings rather than here. */
+		/** Where the panel is open (#2449): a voice channel, whose shelf is
+		 *  its crew's. */
 		address: PlaceAddress;
 		/** Made by the column (#1427), which also saves rows into them. */
 		roomStore: ReturnType<typeof createPlaylistStore>;
@@ -39,12 +29,6 @@
 	// on click (#824).
 	const room = useRoom();
 	const canManage = $derived(room.canManage);
-	// The crew's Settings are its owner's and admins' — the link is drawn
-	// only for who may follow it to a form.
-	const settingsCrew = $derived.by(() => {
-		const crew = presence.crews.find((c) => c.id === address.crew);
-		return crew?.role === 'owner' || crew?.role === 'admin' ? crew : null;
-	});
 
 	let tab = $state<'room' | 'mine'>('room');
 	const store = $derived(tab === 'room' ? roomStore : mineStore);
@@ -66,42 +50,6 @@
 		}
 		newName = '';
 	}
-
-	// Read for the status line and for "Set as active", which PATCHes the
-	// whole setting the way the Settings page does.
-	let autoplay = $state<AutoplaySettings | null>(null);
-	$effect(() => {
-		if (address.autoplay) void loadAutoplay(address.autoplay);
-	});
-	async function loadAutoplay(path: string) {
-		const res = await getAutoplay(path);
-		autoplay = res.ok ? (res.data ?? null) : null;
-	}
-	async function setActive(id: string) {
-		if (!autoplay || !address.autoplay) return;
-		const next = { ...autoplay, activePlaylistId: id };
-		const res = await updateAutoplay(address.autoplay, next);
-		if (!res.ok) {
-			// A toast, not the create form's error line (#2179): this refusal
-			// used to appear under the "new playlist" box, a panel away from
-			// the row that refused, and stayed there (errors.md).
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		autoplay = res.data ?? next;
-		await roomStore.refresh();
-	}
-
-	const activeName = $derived(roomStore.all.find((p) => p.active)?.name);
-	const status = $derived.by(() => {
-		if (!autoplay) return null;
-		if (!autoplay.enabled) return 'Autoplay off';
-		if (!activeName)
-			return autoplay.order === 'smart'
-				? 'Autoplay · smart, from the library'
-				: 'Autoplay · no active playlist';
-		return `Autoplay · ${activeName} · ${autoplay.order}`;
-	});
 </script>
 
 <details class="min-w-0">
@@ -113,7 +61,7 @@
 			aria-selected={tab === 'room'}
 			onclick={() => (tab = 'room')}
 			class="btn btn-xs {tab === 'room' ? 'btn-secondary' : 'text-muted'}"
-			>{address.channel ? 'Crew' : 'Room'}</button
+			>Crew</button
 		>
 		<button
 			role="tab"
@@ -123,17 +71,6 @@
 			>Mine</button
 		>
 	</div>
-
-	{#if tab === 'room' && status}
-		<!-- One line, not the controls: autoplay is set in the crew's Settings
-		     (#1422, #2454). -->
-		<p class="text-muted mt-2 text-[10px]">
-			{status}{#if settingsCrew}
-				· <a href="/crew/{settingsCrew.id}/settings" class="underline"
-					>settings</a
-				>{/if}
-		</p>
-	{/if}
 
 	<div class="mt-2 min-w-0">
 		{#if !store.loaded}
@@ -148,7 +85,7 @@
 		{:else if store.all.length === 0}
 			<p class="text-muted text-[11px] leading-relaxed">
 				{tab === 'room'
-					? `No ${address.channel ? 'crew' : 'room'} playlists yet — the first one below is a click away.`
+					? 'No crew playlists yet — the first one below is a click away.'
 					: "No personal playlists yet — yours to build, queueable in any room you're in."}
 			</p>
 		{:else}
@@ -160,9 +97,6 @@
 						{address}
 						roomScoped={tab === 'room'}
 						canManage={tab !== 'room' || canManage}
-						onSetActive={tab === 'room' && address.autoplay
-							? () => void setActive(playlist.id)
-							: undefined}
 					/>
 				{/each}
 			</ul>

@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	activeHref,
-	activePlace,
-	crewOfPath,
-	crewPlaces,
-	dmsCurrent,
-	pages,
-	roomPlaces,
-} from './pages';
+import { activeHref, crewOfPath, crewPlaces, dmsCurrent, pages } from './pages';
 
 describe('activeHref', () => {
 	it('lights up the destination a path belongs to', () => {
@@ -92,48 +84,6 @@ describe('dmsCurrent', () => {
 	it('says nothing off the messages tree', () => {
 		expect(dmsCurrent('/home', false)).toBe(false);
 		expect(dmsCurrent('/crews/directory', false)).toBe(false);
-	});
-});
-
-describe('activePlace', () => {
-	it('resolves the lounge from the room root', () => {
-		expect(activePlace('/r/velvet-hammer', 'velvet-hammer')).toBe('');
-	});
-
-	// The lounge's path is '', so a naive startsWith matches everything —
-	// longest match is what keeps /training off the lounge.
-	it('does not let the lounge swallow the other places', () => {
-		for (const place of roomPlaces.filter((p) => p.path))
-			expect(
-				activePlace(`/r/velvet-hammer${place.path}`, 'velvet-hammer'),
-			).toBe(place.path);
-	});
-
-	it('ignores a slug that looks like a place', () => {
-		expect(activePlace('/r/training', 'training')).toBe('');
-	});
-});
-
-describe('roomPlaces', () => {
-	// The room's Settings place went with the room's settings (#2454): the
-	// crew's Settings keep its channels now, so every screen gets the same
-	// list and a phone is offered nothing less.
-	it('offers the room its places and no settings form', () => {
-		expect(roomPlaces.map((p) => p.path)).toEqual([
-			'/board',
-			'',
-			'/chat',
-			'/training',
-			'/sessions',
-			'/members',
-		]);
-	});
-
-	// The order is the feature (#2413): a notice on the fifth row is filed,
-	// and one on the first is the door a rider comes through. Asserted here
-	// because nothing else would notice the row drifting down the list.
-	it('puts the Board first, above the Lounge', () => {
-		expect(roomPlaces[0].path).toBe('/board');
 	});
 });
 

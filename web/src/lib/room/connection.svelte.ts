@@ -1,9 +1,7 @@
 import { account } from '$lib/account.svelte';
-import { api } from '$lib/api';
-import { announce, divertDmsWhileRiding } from '$lib/messages/announce';
+import { divertDmsWhileRiding } from '$lib/messages/announce';
 import { shouldAnnounce } from '$lib/notify-once';
-import { away, notify } from '$lib/notify.svelte';
-import { presence } from '$lib/presence.svelte';
+import { notify } from '$lib/notify.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/room/ptt-keys';
 import { pullProfile } from '$lib/profile-sync.svelte';
@@ -11,7 +9,6 @@ import { createRoomLive } from '$lib/room/live.svelte';
 import { createRecording } from '$lib/room/recording.svelte';
 import { createRide } from '$lib/room/ride.svelte';
 import { sensorClaim } from '$lib/room/sensor-claim';
-import { missedSince, type Missed } from '$lib/room/unread';
 import { announcePoke } from '$lib/room/poke';
 import { comingsAndGoings } from '$lib/room/comings-and-goings';
 import { dmArrivalEvent } from '$lib/room/dm-line';
@@ -30,8 +27,6 @@ import type { Segment, Workout } from '$lib/workout/types';
 import { listening } from '$lib/room/listening.svelte';
 import { onPlacePath, ridePath, type PlaceAddress } from '$lib/room/address';
 
-const NO_CHAT = 'A voice channel keeps no chat — its crew’s text channels do.';
-
 /**
  * The room you are IN (#173, ADR-0010's logical end): joining is a STATE,
  * not a page. The WS presence and the voice connection live here, above the
@@ -43,7 +38,10 @@ const NO_CHAT = 'A voice channel keeps no chat — its crew’s text channels do
  * in two lounges.
  */
 type Connection = {
-	/** The room's slug; '' in a voice channel, so it matches no room. */
+	/**
+	 * Always '': a voice channel matches no room. Kept only for the root
+	 * layout's room list, the one reader left, which goes with #2460.
+	 */
 	slug: string;
 	/** Where the connection stands, and every path that follows (#2449). */
 	address: PlaceAddress;
@@ -61,22 +59,6 @@ type Connection = {
 	recording: ReturnType<typeof createRecording>;
 	/** The trainer, and the targets it holds. Lives here, not on a page (#521). */
 	ride: ReturnType<typeof createRide>;
-	/**
-	 * What was said while you were somewhere else (#504) — null while the
-	 * Chat place is open. It lives here, not on the room's shell: the log
-	 * does, and the sidebar marks the Chat place off the same answer (#568).
-	 */
-	missed: () => Missed | null;
-	/** The room's shell reports the Chat place; the router lives above this. */
-	readingChat: (open: boolean) => void;
-	/** The backlog's state (#1538): the finished sessions come from it. */
-	backlog: () => BacklogState;
-	reloadBacklog: () => void;
-	/** Say something (#2437): over HTTP — chat does not ride the socket. The
-	 * refusal's message, or null once the line is in the room. */
-	sendChat: (text: string, imageId?: string) => Promise<string | null>;
-	/** Toggle my reaction — drawn at once, corrected by the answer. */
-	react: (messageId: string, emoji: string) => Promise<string | null>;
 	/** The shared session and its workout, parsed once per connection. */
 	shared: () => SessionState | undefined;
 	segments: () => Segment[];
@@ -85,55 +67,6 @@ type Connection = {
 };
 
 let current = $state<Connection | null>(null);
-
-export type BacklogState = 'loading' | 'ready' | 'failed';
-
-/**
- * The chat backlog (#201) — since #2437 the room's chat itself, read again on
- * every lobby ping; and since ADR-0034 (#1331) the only source of the room's
- * finished sessions, so its state is a fact the Sessions place shows rather
- * than a silent gap (#1538).
- */
-function createBacklog(
-	chat: string | undefined,
-	live: ReturnType<typeof createRoomLive>,
-) {
-	// A voice channel keeps no chat (ADR-0058, decision 4): nothing to read,
-	// and nothing missing.
-	let state = $state<BacklogState>(chat ? 'loading' : 'ready');
-	// Reads overlap on a busy lobby; only the newest may land, or an older
-	// answer would put back a line that has since been deleted.
-	let issued = 0;
-	function load() {
-		// A re-read of a log already on screen is quiet: "loading" is for a
-		// room with nothing to show yet.
-		if (!chat) return;
-		if (state !== 'ready') state = 'loading';
-		const mine = ++issued;
-		void api<{
-			messages?: Parameters<typeof live.seedChat>[0];
-			recaps?: Parameters<typeof live.seedRecaps>[0];
-		}>(chat).then((res) => {
-			if (mine !== issued) return;
-			if (!res.ok) {
-				state = 'failed';
-				return;
-			}
-			if (res.data?.messages) live.seedChat(res.data.messages);
-			// The room's finished sessions ride the same response (ADR-0034):
-			// one question, one round trip, one membership gate.
-			if (res.data?.recaps) live.seedRecaps(res.data.recaps);
-			state = 'ready';
-		});
-	}
-	load();
-	return {
-		get state() {
-			return state;
-		},
-		reload: load,
-	};
-}
 
 // The AV half loads with the room, not with the shell (#1514): av.svelte.ts
 // and what it pulls — device choices, the mic chain, the stage — were the
@@ -149,7 +82,6 @@ export async function prepareRoomAv(): Promise<void> {
 }
 
 function connect(address: PlaceAddress): Connection {
-	const { slug } = address;
 	if (!createRoomAv) {
 		throw new Error(
 			'the room AV is not loaded — the room layout prepares it before the shell joins',
@@ -157,51 +89,11 @@ function connect(address: PlaceAddress): Connection {
 	}
 	const live = createRoomLive(address);
 	const av = createRoomAv(address);
-	// The chat backlog (#201): loaded on join and again on every lobby ping
-	// (#2437) — the log follows the connection, not the page.
-	const backlog = createBacklog(address.chat, live);
-
-	async function sendChat(text: string, imageId?: string) {
-		if (!address.chat) return NO_CHAT;
-		const res = await api(address.chat, {
-			method: 'POST',
-			json: { text, imageId },
-		});
-		if (!res.ok) return res.error.message;
-		// The lobby ping would bring it too, a beat later; the sender should
-		// not have to wait to see their own words land.
-		backlog.reload();
-		return null;
-	}
-
-	async function react(messageId: string, emoji: string) {
-		if (!address.chat) return NO_CHAT;
-		live.toggleMyReact(messageId, emoji);
-		const res = await api(`${address.chat}/reactions`, {
-			method: 'POST',
-			json: { messageId, emoji },
-		});
-		if (!res.ok) {
-			live.toggleMyReact(messageId, emoji);
-			return res.error.message;
-		}
-		backlog.reload();
-		return null;
-	}
 	// Presence announces itself (#148) from HERE, not the page — someone
 	// arriving is audible even while you are off browsing workouts; hidden
 	// tabs get the browser notification instead (#202).
 	let known: Set<string> | null = null;
-	// Blip only for lines newer than the connection itself — the backlog can
-	// never replay, and the log's length cap can never freeze the notifier
-	// the way index-tracking did (audit #219).
-	let lastChatAt = Date.now();
 	let lastPhase: string | null = null;
-	// Assigned in the root below: the Chat place being open is the one fact
-	// behind three answers — what you missed, whether the sidebar marks Chat,
-	// and whether an arriving line is worth announcing.
-	let missedOf!: () => Missed | null;
-	let readingChat!: (open: boolean) => void;
 	// Assigned inside the root below, which runs synchronously.
 	let profile!: ReturnType<typeof createProfileStore>;
 	let recording!: ReturnType<typeof createRecording>;
@@ -242,19 +134,6 @@ function connect(address: PlaceAddress): Connection {
 		$effect(() => {
 			if (account.me) pullProfile(profile);
 		});
-
-		// "Seen" is the Chat place having been open — standing in the room
-		// counts as reading it (#468), so the room's own unread cannot say it.
-		let chatOpen = $state(false);
-		let chatSeenAt = $state(Date.now());
-		$effect(() => {
-			if (chatOpen) chatSeenAt = live.chatLog.at(-1)?.at ?? Date.now();
-		});
-		const missed = $derived(
-			chatOpen ? null : missedSince(live.chatLog, chatSeenAt, account.me?.id),
-		);
-		missedOf = () => missed;
-		readingChat = (open: boolean) => (chatOpen = open);
 
 		const shared = $derived(live.tick?.state);
 		const parsed = $derived(parseSharedWorkout(shared?.workoutJson));
@@ -443,37 +322,6 @@ function connect(address: PlaceAddress): Connection {
 			}
 		});
 
-		// Chat lands audibly (#202), and visibly off the Chat place (#568) —
-		// never for your own lines.
-		$effect(() => {
-			const fresh = live.chatLog.filter((line) => line.at > lastChatAt);
-			if (fresh.length === 0) return;
-			lastChatAt = fresh[fresh.length - 1].at;
-			const where = address.name;
-			for (const line of fresh) {
-				// Ids beat display names — a namesake must not be muted (#219).
-				const mine = line.fromId
-					? line.fromId === account.me?.id
-					: line.from === account.me?.displayName;
-				if (mine) continue;
-				// The same tag the presence feed uses for this room: whichever
-				// sees the line first announces it, and never both (#568).
-				announce({
-					kind: 'chat',
-					tag: `chat-${address.key}`,
-					at: line.at,
-					title: `${line.from} · ${where}`,
-					body: line.text || (line.imageId ? 'sent an image' : ''),
-					href: `${address.home}/chat`,
-					reading: chatOpen && !away(),
-					reply: {
-						placeholder: `Reply in ${where}`,
-						send: (text) => sendChat(text),
-					},
-				});
-			}
-		});
-
 		// A DM arriving while this rider is mid-ride (#1743). The toast it
 		// replaces was the only thing on the Training screen that moved and
 		// was not data; the line lands in the room's timeline instead, where
@@ -520,28 +368,6 @@ function connect(address: PlaceAddress): Connection {
 			setDucking(shouldDuck(av.speaking, account.me?.id, mixer.duckSelf));
 			// Leaving mid-sentence must not park the mix ducked forever.
 			return () => setDucking(false);
-		});
-
-		// Chat left the tick (#2437): every chat write pings the lobby, and the
-		// room re-reads its log off that ping.
-		let heard = untrack(() => presence.version);
-		$effect(() => {
-			const version = presence.version;
-			if (version === heard) return;
-			heard = version;
-			untrack(() => backlog.reload());
-		});
-
-		// A reconnect may have missed a ping — re-read when the socket comes
-		// back (audit #219).
-		let wasReconnecting = false;
-		$effect(() => {
-			const status = live.status;
-			if (status === 'reconnecting') wasReconnecting = true;
-			else if (status === 'live' && wasReconnecting) {
-				wasReconnecting = false;
-				backlog.reload();
-			}
 		});
 
 		// PTT keys work on EVERY page while in voice — and a keyup lost to
@@ -612,7 +438,7 @@ function connect(address: PlaceAddress): Connection {
 		});
 	});
 	return {
-		slug,
+		slug: '',
 		address,
 		live,
 		av,
@@ -634,12 +460,6 @@ function connect(address: PlaceAddress): Connection {
 		profile,
 		recording,
 		ride,
-		missed: missedOf,
-		readingChat,
-		backlog: () => backlog.state,
-		reloadBacklog: () => backlog.reload(),
-		sendChat,
-		react,
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,
