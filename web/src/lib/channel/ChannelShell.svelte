@@ -141,7 +141,11 @@
 			),
 			label: shared?.workoutName || 'Room ride',
 			fault:
-				live.status !== 'live' ? 'room' : rideCtl.fault ? 'trainer' : undefined,
+				live.status !== 'live'
+					? 'channel'
+					: rideCtl.fault
+						? 'trainer'
+						: undefined,
 		});
 	});
 
@@ -209,7 +213,7 @@
 	// dropped must not announce that it came back.
 	const faultKind = $derived(
 		live.down
-			? 'room'
+			? 'channel'
 			: rideCtl.fault
 				? 'trainer'
 				: av.status === 'reconnecting' || av.status === 'failed'

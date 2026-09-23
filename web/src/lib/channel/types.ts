@@ -78,7 +78,7 @@ export type Phase = 'lounge' | 'countdown' | 'live';
 
 export interface Fault {
 	/** 'mic' is the capture dying under an open microphone (#640). */
-	kind: 'trainer' | 'room' | 'voice' | 'mic';
+	kind: 'trainer' | 'channel' | 'voice' | 'mic';
 	/** 'silent' and 'no-power' are trainer-only: connected, and delivering
 	 * nothing — or frames without watts (#520, #1849). 'offline' is room-only:
 	 * the device itself has no network, so the problem is on this end (#2121). */

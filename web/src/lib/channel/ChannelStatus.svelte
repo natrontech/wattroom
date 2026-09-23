@@ -57,7 +57,7 @@
 			     grows no button: dialling with no network would only fail. -->
 			<FaultBanner
 				fault={{
-					kind: 'room',
+					kind: 'channel',
 					state:
 						live.status === 'offline'
 							? 'offline'

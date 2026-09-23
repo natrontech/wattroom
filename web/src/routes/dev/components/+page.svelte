@@ -412,12 +412,12 @@
 			onRecover={() => {}}
 		/>
 		<FaultBanner
-			fault={{ kind: 'room', state: 'lost' }}
+			fault={{ kind: 'channel', state: 'lost' }}
 			bufferedSeconds={184}
 			onRecover={() => {}}
 		/>
 		<FaultBanner
-			fault={{ kind: 'room', state: 'offline' }}
+			fault={{ kind: 'channel', state: 'offline' }}
 			bufferedSeconds={42}
 			onRecover={() => {}}
 		/>

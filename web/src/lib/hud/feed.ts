@@ -19,7 +19,7 @@ export interface HudSnapshot {
 	 * signal is gone, or the room's socket is. A HUD that shows a confident
 	 * 0 for a dropped trainer is worse than none (errors.md).
 	 */
-	fault?: 'trainer' | 'room';
+	fault?: 'trainer' | 'channel';
 }
 
 const CHANNEL = 'wattroom.hud';

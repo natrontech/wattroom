@@ -403,7 +403,7 @@ export function createRoom() {
 				for (const trainer of trainers) void trainer.setTargetPower(0);
 				return;
 			}
-			if (fault?.kind === 'room') bufferedSeconds += SPEED;
+			if (fault?.kind === 'channel') bufferedSeconds += SPEED;
 			const next = elapsed + SPEED;
 			// Looping back to the warmup would smear stale samples across the graph.
 			if (next >= total) for (const rider of riders) rider.trace = [];
@@ -549,12 +549,12 @@ export function createRoom() {
 			}, 6000);
 		},
 		breakRoom(recovers: boolean) {
-			fault = { kind: 'room', state: 'reconnecting' };
+			fault = { kind: 'channel', state: 'reconnecting' };
 			bufferedSeconds = 0;
 			clearTimeout(recoveryTimer);
 			clearInterval(sprintTimer);
 			recoveryTimer = setTimeout(() => {
-				fault = recovers ? null : { kind: 'room', state: 'lost' };
+				fault = recovers ? null : { kind: 'channel', state: 'lost' };
 			}, 6000);
 		},
 		recover() {
