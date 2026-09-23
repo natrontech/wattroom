@@ -26,6 +26,7 @@
 	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
 	import { toLocalInput } from '$lib/components/when';
 	import { confirm } from '$lib/confirm.svelte';
+	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { fetchCrew, type Crew } from '$lib/crew';
 	import {
 		answerCrewPlan,
@@ -53,6 +54,7 @@
 	} from '$lib/room/rsvp';
 	import { parseSharedSegments } from '$lib/room/workout';
 	import { serverNow } from '$lib/room/server-clock';
+	import { shareLink } from '$lib/share';
 	import { toasts } from '$lib/toast.svelte';
 	import { segmentsDuration } from '$lib/workout/engine';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
@@ -62,6 +64,7 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
+	import { planEntries, startHint } from './plan-menu';
 
 	let { data }: { data: PageData } = $props();
 
@@ -207,6 +210,31 @@
 		void goto(voiceChannelPath(id, res.data.channelId));
 	}
 
+	/** The row's menu (#2514): every button it has, plus the link. */
+	const entriesOf = (entry: CrewPlan) =>
+		planEntries({
+			answer: answer(entry),
+			choose: (word) => void choose(entry, word),
+			share: () =>
+				void shareLink(
+					`${location.origin}/crew/${id}/schedule`,
+					'Link copied.',
+				),
+			rearranges: !!crew && mayRearrange(entry, crew.role),
+			move: () => {
+				movingId = entry.id;
+				moveAt = toLocalInput(new Date(entry.startsAt));
+			},
+			cancel: () => void cancel(entry),
+			startHint: startHint(entry, {
+				due: due(entry.startsAt),
+				spectator: device.spectator,
+				channelPicked: !!planChannel,
+			}),
+			start: () => void start(entry),
+			busy,
+		});
+
 	const administers = $derived(
 		crew?.role === 'owner' || crew?.role === 'admin',
 	);
@@ -303,7 +331,11 @@
 		{:else}
 			<ul class="space-y-2">
 				{#each plans as entry, i (entry.id)}
-					<li class="panel px-4 py-3 {i === 0 ? 'border-neon/40' : ''}">
+					<li
+						class="panel px-4 py-3 {i === 0 ? 'border-neon/40' : ''}"
+						title={MENU_HINT}
+						{@attach contextMenu(() => entriesOf(entry))}
+					>
 						<div class="flex flex-wrap items-center gap-x-4 gap-y-1">
 							<CalendarClock size={16} class="text-muted shrink-0" />
 							<div class="min-w-0 flex-1">

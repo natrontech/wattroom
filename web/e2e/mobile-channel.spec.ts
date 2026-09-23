@@ -326,15 +326,9 @@ test('Escape shuts the session picker on the crew’s Schedule', async ({
 /**
  * And the plan's menu says where Start went rather than hiding it (ux.md: a
  * missing precondition is a disabled control with a one-line hint, and every
- * object with more than one action gets a context menu).
- *
- * The room's Sessions place had that menu — I'm in, I'm out, Share link,
- * Start now, Move…, Cancel session — and the crew's Schedule (#2452) ported
- * the row without it: web/src/routes/crew/[id]/schedule/+page.svelte attaches
- * no `contextMenu` to a plan, so a right-click or a long-press on one opens
- * nothing. That is the app, not this test — fixme until #2514.
+ * object with more than one action gets a context menu) — back since #2514.
  */
-test.fixme('a phone’s plan menu says Start is on the screen you ride on', async ({
+test('a phone’s plan menu says Start is on the screen you ride on', async ({
 	page,
 	channels,
 	schedules,
