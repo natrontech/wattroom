@@ -14,7 +14,6 @@
 	import { ridePath } from '$lib/channel/address';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
-	import LoungeDashboard from '$lib/channel/LoungeDashboard.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import EventLine from '$lib/channel/EventLine.svelte';
 	import { eventText } from '$lib/channel/events';
@@ -24,6 +23,7 @@
 	import { device } from '$lib/device.svelte';
 	import { account } from '$lib/account.svelte';
 	import Radio from '@lucide/svelte/icons/radio';
+	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
@@ -434,10 +434,18 @@
 		</section>
 	{/if}
 	{#if channel.phase === 'lounge'}
-		<!-- The crew's dashboard, when nothing is running: what this crew is
-		     adding up to and the three things you do to it. It lives on the
-		     Lounge rather than a sixth place — Discord's server home IS its
-		     first channel. -->
-		<LoungeDashboard />
+		<!-- Between sessions, the channel's two actions (#2571, #2572): start
+		     one here, or plan one for later in this channel. The crew's totals,
+		     board and invite are its Home's — a voice channel shows the call.
+		     Planning is not a coach's control, and a phone plans too (#1767),
+		     so it sits outside SessionControls' gate. -->
+		<div class="mt-6 flex flex-wrap items-center gap-2">
+			<SessionControls />
+			<button
+				onclick={() => channel.openPicker('plan')}
+				class="btn btn-secondary btn-lg"
+				><CalendarClock size={15} /> Plan for later</button
+			>
+		</div>
 	{/if}
 </div>

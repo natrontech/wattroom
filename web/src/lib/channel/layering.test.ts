@@ -26,11 +26,7 @@ const CHANNEL_TO_SESSION: Record<string, { modules: string[]; why: string }> = {
 			'SessionControls.svelte',
 			'SprintMoment.svelte',
 		],
-		why: "the channel's page shows the session running in it",
-	},
-	'lib/channel/LoungeDashboard.svelte': {
-		modules: ['SessionControls.svelte'],
-		why: 'the idle dashboard is where a session is started',
+		why: "the channel's page shows the session running in it, and is where one is started",
 	},
 	'lib/channel/connection.svelte.ts': {
 		modules: ['ride.svelte', 'recording.svelte'],

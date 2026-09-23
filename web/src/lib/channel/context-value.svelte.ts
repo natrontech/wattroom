@@ -2,7 +2,6 @@ import type { PlaceAddress } from '$lib/channel/address';
 import type { ChannelContext, ChannelStageSource } from '$lib/channel/context';
 import type { channelConnection } from '$lib/channel/connection.svelte';
 import type { createRiders } from '$lib/channel/riders.svelte';
-import type { BoardRow, Together } from '$lib/crew-types';
 import type { Segment } from '$lib/workout/types';
 
 /**
@@ -45,9 +44,6 @@ export interface ChannelShellProps {
 	code?: string;
 	soundPack?: string;
 	members?: AdminMember[];
-	streakWeeks?: number;
-	together?: Together | null;
-	board?: BoardRow[];
 	onRole: (userId: string, role: string) => void | Promise<boolean>;
 	announcement?: ChannelContext['announcement'];
 	onClearAnnouncement?: () => void;
@@ -181,15 +177,6 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 			return props.announcement ?? null;
 		},
 		clearAnnouncement: () => props.onClearAnnouncement?.(),
-		get together() {
-			return props.together ?? null;
-		},
-		get board() {
-			return props.board ?? [];
-		},
-		get streakWeeks() {
-			return props.streakWeeks ?? 0;
-		},
 		get members() {
 			return props.members ?? [];
 		},

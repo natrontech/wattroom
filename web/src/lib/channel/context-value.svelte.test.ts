@@ -57,7 +57,7 @@ function shellProps(): ChannelShellProps {
 		role: 'member',
 		name: 'MFW 5',
 		members: [],
-		streakWeeks: 0,
+		code: 'VELVET',
 		onRole: () => {},
 		onSchedule: () => {},
 	} as ChannelShellProps);
@@ -71,17 +71,17 @@ describe('channelContextValue (#686)', () => {
 
 		expect(ctx.name).toBe('MFW 5');
 		expect(ctx.members).toEqual([]);
-		expect(ctx.streakWeeks).toBe(0);
+		expect(ctx.code).toBe('VELVET');
 
 		// The page re-fetches: a channel renamed, a member arriving, the
-		// crew's streak growing. Every place reads these through the context.
+		// crew's code rotated. Every place reads these through the context.
 		props.name = 'Tuesday Crew';
 		props.members = [{ id: 'u1', displayName: 'Mara', role: 'member' }];
-		props.streakWeeks = 3;
+		props.code = 'HAMMER';
 
 		expect(ctx.name).toBe('Tuesday Crew');
 		expect(ctx.members).toHaveLength(1);
-		expect(ctx.streakWeeks).toBe(3);
+		expect(ctx.code).toBe('HAMMER');
 	});
 
 	it('keeps the defaults the destructured props used to apply', () => {
@@ -89,13 +89,10 @@ describe('channelContextValue (#686)', () => {
 		// applies them instead — otherwise a crew with no code would hand a
 		// place `undefined` where it had always had ''.
 		const props = shellProps();
-		props.streakWeeks = undefined;
+		props.code = undefined;
 		props.members = undefined;
 		const ctx = channelContextValue(deps(props));
 		expect(ctx.code).toBe('');
-		expect(ctx.together).toBeNull();
-		expect(ctx.streakWeeks).toBe(0);
-		expect(ctx.board).toEqual([]);
 		expect(ctx.members).toEqual([]);
 		expect(ctx.announcement).toBeNull();
 	});

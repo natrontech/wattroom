@@ -13,7 +13,7 @@
 		suggestedFocuses,
 		type Suggestion,
 	} from '$lib/progression';
-	import { untrack } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 	import { countModal, modals } from '$lib/modals.svelte';
 	import { focusTrap } from '$lib/components/focus-trap';
 	import { GAME_MODES } from '$lib/session/modes';
@@ -33,6 +33,7 @@
 		onClose,
 		shelfError = null,
 		onRetryShelf,
+		where,
 	}: {
 		shelf: ShelfEntry[];
 		/** Why your own workouts are missing from the shelf, when they are. */
@@ -54,6 +55,10 @@
 		) => void | Promise<void>;
 		/** Absent hides the Games tab — games are a voice channel's, not a calendar's. */
 		onStartGame?: (id: string) => void;
+		/** Where a plan runs, beside when (#2572): the crew's Schedule offers
+		 *  its voice channels here. Absent in a voice channel, which plans
+		 *  into itself. */
+		where?: Snippet;
 		onClose: () => void;
 	} = $props();
 
@@ -336,6 +341,7 @@
 									<span class="eyebrow">when</span>
 									<div class="mt-1"><WhenPicker bind:value={planAt} /></div>
 								</div>
+								{@render where?.()}
 								<button
 									onclick={() =>
 										onPlan(

@@ -107,8 +107,10 @@
 		{ value: '', label: 'No channel yet' },
 	]);
 
-	// The picker, plan-only: a calendar starts nothing (#1767).
-	let picking = $state(false);
+	// The picker, plan-only: a calendar starts nothing (#1767). "Plan a
+	// session" on the crew's Home and on yours lands here with it open
+	// (#2572), so the plan is made where it will be listed.
+	let picking = $state(untrack(() => page.url.searchParams.has('plan')));
 	const custom = customWorkouts();
 	const shelf = $derived(buildShelf(custom.all));
 
@@ -302,21 +304,6 @@
 		</div>
 		<p class="text-muted mb-4 text-xs">What {crew.name} has planned.</p>
 
-		{#if voice.length > 0}
-			<!-- Where a new plan goes, said before the picker opens: most
-			     crews have one voice channel, and then this is only a line. -->
-			<div class="mb-4 flex flex-wrap items-center gap-2 text-xs">
-				<span class="text-muted">New plans run in</span>
-				<div class="w-48">
-					<Select
-						label="voice channel"
-						options={channelOptions}
-						bind:value={planChannel}
-					/>
-				</div>
-			</div>
-		{/if}
-
 		{#if plans.length === 0}
 			<div class="panel">
 				<EmptyState cta={firstPlan}>
@@ -483,5 +470,22 @@
 		{busy}
 		onPlan={plan}
 		onClose={() => (picking = false)}
-	/>
+	>
+		{#snippet where()}
+			<!-- Where it runs, chosen with what and when (#2572): it used to be a
+			     line on the page behind the picker, set before opening it. -->
+			{#if voice.length > 0}
+				<div class="w-48">
+					<span class="eyebrow">where</span>
+					<div class="mt-1">
+						<Select
+							label="voice channel"
+							options={channelOptions}
+							bind:value={planChannel}
+						/>
+					</div>
+				</div>
+			{/if}
+		{/snippet}
+	</SessionPicker>
 {/if}

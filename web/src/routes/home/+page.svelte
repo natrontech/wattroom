@@ -256,7 +256,7 @@
 					{#each plannable as crew (crew.id)}
 						<li>
 							<a
-								href="/crew/{crew.id}/schedule"
+								href="/crew/{crew.id}/schedule?plan"
 								class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
 							>
 								<MarkIcon icon={crew.icon} size={14} />
@@ -267,7 +267,7 @@
 				</ul>
 			</details>
 		{:else if firstCrew}
-			<a href="/crew/{firstCrew.id}/schedule" class="btn btn-secondary"
+			<a href="/crew/{firstCrew.id}/schedule?plan" class="btn btn-secondary"
 				><CalendarClock size={15} /> Plan a session</a
 			>
 		{:else}
