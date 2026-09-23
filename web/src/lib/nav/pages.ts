@@ -1,18 +1,13 @@
-import Activity from '@lucide/svelte/icons/activity';
-import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 import ChartColumn from '@lucide/svelte/icons/chart-column';
 import History from '@lucide/svelte/icons/history';
 import House from '@lucide/svelte/icons/house';
 import Music from '@lucide/svelte/icons/music';
-import Pin from '@lucide/svelte/icons/pin';
-import MessageSquare from '@lucide/svelte/icons/message-square';
-import MessagesSquare from '@lucide/svelte/icons/messages-square';
 import Settings from '@lucide/svelte/icons/settings';
 import Users from '@lucide/svelte/icons/users';
 import type { Icon } from '$lib/icons';
 
 /**
- * The app's destinations, and the places inside a room. Both live in the one
+ * The app's destinations, and a crew's own pages. Both live in the one
  * sidebar (ADR-0020) — there is no second navigation to keep in sync.
  *
  * Four, not nine. `/rooms` was a list the sidebar already is, `/sessions` the
@@ -96,52 +91,6 @@ export function crewOfPath(pathname: string): string | undefined {
 	return /^\/crew\/([^/]+)/.exec(pathname)?.[1];
 }
 
-/** The room you are standing in opens into these. */
-export const roomPlaces = [
-	{
-		// First, above the Lounge (#2413). The board holds what the room and
-		// its crew wrote down — the coach's standing notice and the crew's
-		// pins — and its position IS the feature: a notice on the fifth row
-		// is filed, and one on the first is the door a rider comes through.
-		// It is what makes a page acceptable for something that has to be
-		// seen, which ADR-0057 said a page could not be.
-		//
-		// Offered whether or not anything is on it (#2405): pinning happens on
-		// the page this row is the way to, so a row that waited for a pin made
-		// the first pin unmakeable. An empty board is an empty state, and
-		// ux.md says those teach.
-		path: '/board',
-		label: 'Board',
-		icon: Pin,
-		hint: 'the notice and what the crew pinned',
-	},
-	{
-		path: '',
-		label: 'Lounge',
-		icon: MessagesSquare,
-		hint: 'talk, tiles, the stage',
-	},
-	{
-		path: '/chat',
-		label: 'Chat',
-		icon: MessageSquare,
-		hint: 'the room talking, full width',
-	},
-	{
-		path: '/training',
-		label: 'Training',
-		icon: Activity,
-		hint: 'the session and your numbers',
-	},
-	{
-		path: '/sessions',
-		label: 'Sessions',
-		icon: CalendarClock,
-		hint: "what's planned here",
-	},
-	{ path: '/members', label: 'Members', icon: Users, hint: 'roles and medals' },
-];
-
 /** Which destination a path lights up. */
 export function activeHref(pathname: string): string | undefined {
 	return pages.find(
@@ -166,22 +115,9 @@ export function activeHref(pathname: string): string | undefined {
  * `threadOnScreen` is therefore the whole test, not the fold: it is the one
  * question that has the same answer in every reason the row is missing.
  * A row that IS on screen lights itself and the heading stays dark, so
- * exactly one thing is current either way. A room's chat is not under this
- * heading — the room's own row above carries `/messages/r/[slug]`.
+ * exactly one thing is current either way.
  */
 export function dmsCurrent(pathname: string, threadOnScreen: boolean): boolean {
 	if (pathname === '/messages') return true;
 	return pathname.startsWith('/messages/dm/') && !threadOnScreen;
-}
-
-/**
- * Which place inside `slug` a path is on. Longest match wins, so `/training`
- * does not resolve to the lounge's empty path.
- */
-export function activePlace(pathname: string, slug: string): string {
-	const rest = pathname.slice(`/r/${slug}`.length);
-	const hit = roomPlaces
-		.filter((p) => p.path && rest.startsWith(p.path))
-		.sort((a, b) => b.path.length - a.path.length)[0];
-	return hit?.path ?? '';
 }

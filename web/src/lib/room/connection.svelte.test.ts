@@ -12,16 +12,11 @@ vi.mock('$lib/sound/cues', async (importOriginal) => ({
 	...(await importOriginal<typeof import('$lib/sound/cues')>()),
 	play: (id: string) => played.push(id),
 }));
-vi.mock('$lib/notify.svelte', () => ({
-	notify: { push: () => {} },
-	// The real rule (ADR-0042): hidden, or not the front window.
-	away: () => document.hidden || !document.hasFocus(),
-}));
+vi.mock('$lib/notify.svelte', () => ({ notify: { push: () => {} } }));
 // A hand-driven socket: the tick is what the ride and the room both read,
 // and the test needs to move it. $state, so a derived that fails to track it
 // is caught rather than papered over by lazy first evaluation.
 let fakeTick = $state<unknown>(null);
-let fakeChat = $state<unknown[]>([]);
 const fakeLive = {
 	get tick() {
 		return fakeTick;
@@ -33,13 +28,8 @@ const fakeLive = {
 	finish() {},
 	close() {},
 	status: 'live',
-	get chatLog() {
-		return fakeChat;
-	},
 	roomEvents: [],
 	pushEvent() {},
-	chatReactions: {},
-	myReacts: {},
 	refusal: null,
 	// The connection claims this tab's sensors whenever the set changes
 	// (#610); recorded so a test can assert what the hub would be told.
@@ -48,9 +38,6 @@ const fakeLive = {
 	claimSensors(claim: { held: string[] }) {
 		this.claims.push(claim);
 	},
-	seedChat() {},
-	chat() {},
-	react() {},
 	jukebox() {},
 	control() {},
 	cheer() {},
@@ -114,8 +101,6 @@ describe('roomConnection', () => {
 		// The tick is module state: a roster left behind here is the next
 		// test's opening observation.
 		fakeTick = null;
-		fakeChat = [];
-		document.hasFocus = () => true;
 	});
 
 	it('keeps one ride and one recording across repeated joins', () => {
@@ -253,31 +238,6 @@ describe('roomConnection', () => {
 		};
 		await tick();
 		expect(played).toEqual(['leave', 'join']);
-	});
-
-	// ADR-0042: "not looking" is hidden OR not the front window. A chat panel
-	// left open while the rider is in another app must announce like any
-	// other (#1440) — it used to count as read in front of them.
-	it('announces chat into an open panel while the window is not in front', async () => {
-		const conn = roomConnection.join(roomAddress('lounge'));
-		conn.readingChat(true);
-		document.hasFocus = () => false;
-		await tick();
-		played.length = 0;
-
-		const at = Date.now() + 1000;
-		fakeChat = [{ from: 'Bob', fromId: 'bob', text: 'still there?', at }];
-		await tick();
-		expect(played).toEqual(['chat']);
-
-		// In front again: the open panel speaks for itself.
-		document.hasFocus = () => true;
-		fakeChat = [
-			...fakeChat,
-			{ from: 'Bob', fromId: 'bob', text: 'hello?', at: at + 1 },
-		];
-		await tick();
-		expect(played).toEqual(['chat']);
 	});
 
 	// Arriving is the join cue's own event — a rider walking in is not a

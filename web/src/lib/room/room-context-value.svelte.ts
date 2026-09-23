@@ -224,13 +224,6 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 			return props.announcement ?? null;
 		},
 		clearAnnouncement: () => props.onClearAnnouncement?.(),
-		get recaps() {
-			return live.recaps;
-		},
-		get recapsState() {
-			return connection.backlog();
-		},
-		retryRecaps: () => connection.reloadBacklog(),
 		get icsToken() {
 			return props.icsToken ?? '';
 		},

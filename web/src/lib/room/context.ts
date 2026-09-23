@@ -114,11 +114,6 @@ export interface RoomContext {
 		/** Your own answer — absent until you give one. */
 		yourAnswer?: RsvpAnswer;
 	}[];
-	/** What already happened here (ADR-0034): the recaps, oldest first. */
-	readonly recaps: import('$lib/protocol').SessionRecap[];
-	/** Whether the recaps have arrived (#1538) — errors.md's four states. */
-	readonly recapsState: 'loading' | 'ready' | 'failed';
-	retryRecaps(): void;
 	readonly icsToken: string;
 	/**
 	 * The coach's standing notice (ADR-0057), or null. It rides the room read
