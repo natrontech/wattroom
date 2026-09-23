@@ -17,23 +17,15 @@ import { signInAs } from './signin';
 test('Home lists every planned session, not one per channel', async ({
 	page,
 	channels,
+	schedules,
 }) => {
 	await signInAs(page, 'Whats Next', '/home');
 	const stamp = Date.now() % 100000;
 	const { crew, voice } = await channels.open(page, `Whats Next ${stamp}`);
 
-	// The crew outlives the run and its plans outlive the channel they named
-	// (a deleted channel leaves a plan unassigned), so the last run's go first
-	// — or the count below is theirs as well as this run's.
-	await page.evaluate(async (id) => {
-		const { sessions } = (await (
-			await fetch(`/api/crews/${id}/schedule`)
-		).json()) as { sessions: { id: string }[] };
-		for (const plan of sessions)
-			await fetch(`/api/crews/${id}/schedule/${plan.id}`, {
-				method: 'DELETE',
-			});
-	}, crew);
+	// The crew outlives the run, so the last run's plans go first — or the
+	// count below is theirs as well as this run's.
+	await schedules.own(page, crew);
 
 	// Planned back to front, so the assertion below also catches a list that
 	// renders in whatever order the rows arrived in.

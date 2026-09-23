@@ -1,54 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
-import { expect, test as crewTest, textPath, voicePath } from './crew';
+import { expect, test, textPath, voicePath } from './crew';
 import { signInAs } from './signin';
-
-/** Every plan on a crew's calendar, cancelled. */
-async function cancelEveryPlan(page: Page, crew: string): Promise<void> {
-	const refused = await page.evaluate(async (id) => {
-		const { sessions } = (await fetch(`/api/crews/${id}/schedule`).then((res) =>
-			res.json(),
-		)) as { sessions?: { id: string }[] };
-		const left: string[] = [];
-		for (const plan of sessions ?? []) {
-			const res = await fetch(`/api/crews/${id}/schedule/${plan.id}`, {
-				method: 'DELETE',
-			});
-			if (!res.ok) left.push(`${plan.id}: ${res.status}`);
-		}
-		return left;
-	}, crew);
-	expect(refused, 'plans the crew would not give back').toEqual([]);
-}
-
-/**
- * A plan outlives the test that made it: it is the crew's now (ADR-0058), and
- * the crew fixture keeps a rider's crew across runs — where a room used to
- * take its plans with it when the fixture deleted it. Left behind, a plan
- * spoils the next run's empty state and walks the crew towards docs/SPEC.md's
- * ceiling on planned sessions.
- *
- * So the calendar a test plans on is emptied twice: when the test takes it,
- * for a run a crash cut short, and at teardown, whatever the test did. The
- * crew is its rider's own, and every rider here belongs to one test, so
- * everything on its calendar is this test's to cancel.
- *
- * Depends on `channels` for ordering, as `channels` does on `riders`: it is
- * torn down first, while the contexts and the plans' channels still exist.
- */
-const test = crewTest.extend<{
-	schedules: { own(page: Page, crew: string): Promise<void> };
-}>({
-	schedules: async ({ channels: _channels }, use) => {
-		const owned: { page: Page; crew: string }[] = [];
-		await use({
-			async own(page, crew) {
-				owned.push({ page, crew });
-				await cancelEveryPlan(page, crew);
-			},
-		});
-		for (const { page, crew } of owned) await cancelEveryPlan(page, crew);
-	},
-});
 
 // The standard, not the project's Pixel 5 (#1624): 393 px hid a Lounge that
 // scrolled sideways at 375. And a spectator — the phone project ships a
@@ -354,7 +306,7 @@ test('a phone plans a session and still does not start one', async ({
  * handler at all: web/src/routes/crew/[id]/schedule/+page.svelte, where
  * `picking` only ever goes false from the picker's Close, its backdrop, or a
  * plan the server took. SessionPicker is not the kit's Modal, which answers
- * Escape itself. That is the app, not this test — fixme until it closes.
+ * Escape itself. That is the app, not this test — fixme until #2513.
  */
 test.fixme('Escape shuts the session picker on the crew’s Schedule', async ({
 	page,
@@ -384,7 +336,7 @@ test.fixme('Escape shuts the session picker on the crew’s Schedule', async ({
  * Start now, Move…, Cancel session — and the crew's Schedule (#2452) ported
  * the row without it: web/src/routes/crew/[id]/schedule/+page.svelte attaches
  * no `contextMenu` to a plan, so a right-click or a long-press on one opens
- * nothing. That is the app, not this test — fixme until the menu is back.
+ * nothing. That is the app, not this test — fixme until #2514.
  */
 test.fixme('a phone’s plan menu says Start is on the screen you ride on', async ({
 	page,

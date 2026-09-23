@@ -28,10 +28,29 @@ export interface ChannelOwner {
 	enter(page: Page, opened: OpenedChannels): Promise<void>;
 }
 
+/** Every plan on a crew's calendar, cancelled. */
+async function cancelEveryPlan(page: Page, crew: string): Promise<void> {
+	const refused = await page.evaluate(async (id) => {
+		const { sessions } = (await fetch(`/api/crews/${id}/schedule`).then((res) =>
+			res.json(),
+		)) as { sessions?: { id: string }[] };
+		const left: string[] = [];
+		for (const plan of sessions ?? []) {
+			const res = await fetch(`/api/crews/${id}/schedule/${plan.id}`, {
+				method: 'DELETE',
+			});
+			if (!res.ok) left.push(`${plan.id}: ${res.status}`);
+		}
+		return left;
+	}, crew);
+	expect(refused, 'plans the crew would not give back').toEqual([]);
+}
+
 /**
- * Three fixtures the crew specs share: a signed-in rider, channels whose
- * lifetime the FIXTURE owns rather than the happy path, and the crews those
- * channels live in — the list the two of them hand state back through.
+ * Four fixtures the crew specs share: a signed-in rider, channels whose
+ * lifetime the FIXTURE owns rather than the happy path, the crews those
+ * channels live in — the list the two of them hand state back through — and
+ * the plans on a crew's calendar (`schedules`).
  *
  * Deleting the channels in a `finally` only covers a failure inside the
  * block. An assertion that fails before it — or a timeout, or a crashed
@@ -56,6 +75,16 @@ export const test = base.extend<{
 	crews: string[];
 	riders: (as: string) => Promise<Page>;
 	channels: ChannelOwner;
+	/**
+	 * A plan outlives the test that made it: it is the crew's now (ADR-0058),
+	 * and `channels` keeps a rider's crew across runs — where a room used to
+	 * take its plans with it. Left behind, a plan spoils the next run's empty
+	 * state and walks the crew towards docs/SPEC.md's ceiling on planned
+	 * sessions. So a calendar a test plans on is emptied twice: when the test
+	 * takes it, for a run a crash cut short, and at teardown. Every rider here
+	 * belongs to one spec, so everything on its crew's calendar is the spec's.
+	 */
+	schedules: { own(page: Page, crew: string): Promise<void> };
 }>({
 	crews: async ({}, use) => {
 		await use([]);
@@ -205,6 +234,19 @@ export const test = base.extend<{
 				`channel ${id} survived the test — every leak counts against the crew's channel cap`,
 			).toBe(204);
 		}
+	},
+
+	// After `channels` in setup, so torn down before it: the contexts and the
+	// plans' channels still exist when the plans are cancelled.
+	schedules: async ({ channels: _channels }, use) => {
+		const owned: { page: Page; crew: string }[] = [];
+		await use({
+			async own(page, crew) {
+				owned.push({ page, crew });
+				await cancelEveryPlan(page, crew);
+			},
+		});
+		for (const { page, crew } of owned) await cancelEveryPlan(page, crew);
 	},
 });
 
