@@ -39,13 +39,11 @@
 	const hrefOf = (session: Planned) => `/crew/${session.crewId}`;
 
 	let {
-		planSlug,
-		hasRooms,
+		planCrew,
 	}: {
-		/** The first room this rider can plan in, for the empty state's CTA. */
-		planSlug?: string;
-		/** Whether to point at the calendar link — a feed of nothing is noise. */
-		hasRooms: boolean;
+		/** The crew this rider plans in first, for the empty state's CTA and
+		 *  the calendar link — absent in no crew, where a feed is of nothing. */
+		planCrew?: string;
 	} = $props();
 
 	let sessions = $state<Planned[] | null>(null);
@@ -147,30 +145,30 @@
 	{:else if !error}
 		<p class="text-muted mt-3 text-sm">
 			Nothing on the calendar.
-			{#if planSlug}
+			{#if planCrew}
 				<!-- The CTA that creates the first one (ux.md), not a word in italics (#1911). -->
-				<a href="/r/{planSlug}/sessions" class="btn-link">Plan one</a> — it shows
+				<a href="/crew/{planCrew}/schedule" class="btn-link">Plan one</a> — it shows
 				up here, and in everyone's calendar.
 			{:else}
-				Open a room's <em>Sessions</em> and plan one — it shows up here, and in everyone's
-				calendar.
+				Start or join a crew and plan one on its <em>Schedule</em> — it shows up here,
+				and in everyone's calendar.
 			{/if}
 		</p>
 	{/if}
 
 	<!-- The feed is offered under the list it mirrors (ADR-0021 amended, #1374)
-	     — once there is a room to plan in; a subscription to nothing is noise on
+	     — once there is a crew to plan in; a subscription to nothing is noise on
 	     the screen meant to teach. The link itself lives with the account's
 	     other bearer secrets now (#1860), so this is the way to it rather than a
 	     second copy of it. -->
-	{#if hasRooms}
+	{#if planCrew}
 		<a
 			href="/settings/data"
 			class="panel hover:bg-surface mt-3 flex flex-wrap items-center gap-3 transition-colors"
 		>
 			<CalendarClock size={15} class="text-muted shrink-0" />
 			<span class="text-muted min-w-0 flex-1 text-xs">
-				Put all of this in your calendar app — one subscription, every room you
+				Put all of this in your calendar app — one subscription, every crew you
 				are in.
 			</span>
 			<span class="btn-link shrink-0 text-xs">Get your calendar link</span>
