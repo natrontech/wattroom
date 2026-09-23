@@ -270,7 +270,8 @@
 	<header class="flex flex-wrap items-center gap-4">
 		<h1 class="page-title">Music</h1>
 		<p class="text-muted text-xs">
-			Your own library. Everything here plays in any room you are in. 2 GB.
+			Your own library. Everything here plays in any voice channel you are in. 2
+			GB.
 		</p>
 		<label class="btn btn-primary ml-auto cursor-pointer">
 			<Upload size={14} /> Add MP3s
@@ -398,8 +399,8 @@
 						class="text-muted-dim mb-2"
 					/>{/snippet}
 				<p class="text-sm">
-					This is your library. Everything here plays in any room's jukebox,
-					with no video tile in the way.
+					This is your library. Everything here plays in any voice channel's
+					jukebox, with no video tile in the way.
 				</p>
 				{#snippet cta()}
 					<label class="btn btn-primary cursor-pointer">
@@ -443,7 +444,7 @@
 				     open there is nothing to queue into, so it says how rather
 				     than drawing a button that cannot work (ux.md). -->
 				<p class="text-muted mt-3 text-xs">
-					Open a room to queue any of these into its jukebox.
+					Open a voice channel to queue any of these into its jukebox.
 				</p>
 			{/if}
 		{/if}

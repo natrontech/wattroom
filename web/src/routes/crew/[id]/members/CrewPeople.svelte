@@ -227,15 +227,15 @@
 {#if unseen > 0}
 	<p class="text-muted mt-2 text-xs">
 		And {unseen === 1 ? '1 more person' : `${unseen} more people`} you do not share
-		a room with. A crew's list is the crew-mates you have a room in common with.
+		a channel with. A crew's list is the crew-mates you have a channel in common with.
 	</p>
 {/if}
 
 {#if administers && crew.banned?.length}
 	<h2 class="eyebrow mt-8">banned from the crew</h2>
 	<p class="text-muted mt-1 text-xs">
-		Lifting a crew ban restores nothing a room's owner decided — a room that
-		banned them stays shut (ADR-0038).
+		Lifting a ban lets them back into the open channels — the private ones they
+		were named into stay shut (ADR-0058).
 	</p>
 	<ul class="divide-ink/5 panel panel-flush mt-2 divide-y">
 		{#each crew.banned as person (person.id)}
@@ -281,7 +281,7 @@
 						class="btn btn-ghost btn-xs">Unban from the crew</button
 					>
 					<span class="text-muted-dim text-[11px]"
-						>restores nothing a room's owner decided</span
+						>private channels stay shut</span
 					>
 				</span>
 			</li>

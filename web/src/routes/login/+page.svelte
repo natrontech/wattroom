@@ -190,7 +190,7 @@
 					Train together, not alone.
 				</h1>
 				<p class="text-muted mt-3 max-w-md text-base leading-relaxed">
-					A room, a coach, and everyone's watts on one screen. Your trainer does
+					A crew, a coach, and everyone's watts on one screen. Your trainer does
 					the rest.
 				</p>
 				<div class="mt-8 w-full max-w-xl"><LandingHero /></div>

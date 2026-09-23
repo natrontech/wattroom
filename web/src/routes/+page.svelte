@@ -53,7 +53,7 @@
 	}[] = [
 		{
 			label: 'Ride together',
-			sub: 'rooms with voice & camera',
+			sub: 'crews with voice & camera',
 			icon: Users,
 		},
 		{
@@ -68,7 +68,7 @@
 		},
 		{
 			label: 'Shared jukebox',
-			sub: 'one soundtrack for the room',
+			sub: 'one soundtrack per voice channel',
 			icon: Music,
 		},
 		{

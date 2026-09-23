@@ -85,7 +85,7 @@
 			<p class="text-danger mt-1 text-xs" data-testid="hud-fault">
 				{snapshot.fault === 'trainer'
 					? 'Trainer signal lost — reconnecting'
-					: 'Room connection lost — reconnecting'}
+					: 'Channel connection lost — reconnecting'}
 			</p>
 		{/if}
 		<p class="text-muted mt-2 text-xs tabular-nums" data-testid="hud-remaining">

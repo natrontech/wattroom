@@ -58,7 +58,7 @@
 		{:else if store.all.length === 0}
 			<p class="text-muted text-xs leading-relaxed">
 				No playlists yet. Name one below, then save tracks into it from their
-				menu — it follows you into any room you ride in.
+				menu — it follows you into any voice channel you ride in.
 			</p>
 		{:else}
 			<ul class="flex flex-col gap-0.5">
