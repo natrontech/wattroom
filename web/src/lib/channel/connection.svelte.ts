@@ -59,22 +59,22 @@ let current = $state<Connection | null>(null);
 // mounts, so join() stays synchronous for everything that reads the
 // connection the moment it exists.
 type ChannelAv = ReturnType<
-	typeof import('$lib/channel/av.svelte').createRoomAv
+	typeof import('$lib/channel/av.svelte').createChannelAv
 >;
-let createRoomAv: ((address: PlaceAddress) => ChannelAv) | null = null;
+let createChannelAv: ((address: PlaceAddress) => ChannelAv) | null = null;
 export async function prepareChannelAv(): Promise<void> {
-	if (createRoomAv) return;
-	({ createRoomAv } = await import('$lib/channel/av.svelte'));
+	if (createChannelAv) return;
+	({ createChannelAv } = await import('$lib/channel/av.svelte'));
 }
 
 function connect(address: PlaceAddress): Connection {
-	if (!createRoomAv) {
+	if (!createChannelAv) {
 		throw new Error(
 			'the room AV is not loaded — the room layout prepares it before the shell joins',
 		);
 	}
 	const live = createRoomLive(address);
-	const av = createRoomAv(address);
+	const av = createChannelAv(address);
 	// Assigned inside the root below, which runs synchronously.
 	let profile!: ReturnType<typeof createProfileStore>;
 	let recording!: ReturnType<typeof createRecording>;

@@ -10,8 +10,8 @@ import { createPublish } from '$lib/channel/av-publish';
 import { createTabs } from '$lib/channel/av-tabs';
 import { createListeners } from '$lib/channel/av-listeners';
 import { createSession } from '$lib/channel/av-session';
-import { wireRoom } from '$lib/channel/av-wire';
-import { roomAvApi } from '$lib/channel/av-api';
+import { wireLiveKitRoom } from '$lib/channel/av-wire';
+import { channelAvApi } from '$lib/channel/av-api';
 import { type MediaDevice, describeMediaError } from '$lib/channel/media-error';
 import { createNoteKeeper } from '$lib/channel/rejoin';
 import { riderOf } from '$lib/channel/tabs';
@@ -55,7 +55,7 @@ export { JOIN_TIMEOUT_MS } from '$lib/channel/av-session';
  * interface turned out to cost the parts rather than the closure — the shape
  * `ClaimHost` and `MicChainHost` were already using.
  */
-export function createRoomAv(address: PlaceAddress) {
+export function createChannelAv(address: PlaceAddress) {
 	// One named place for what the UI watches, one for what the connection
 	// keeps to itself (#892) — av-state.svelte.ts says why they are two.
 	const av = createAvState();
@@ -144,7 +144,7 @@ export function createRoomAv(address: PlaceAddress) {
 		listeners,
 		note,
 		wire: (r, client) =>
-			wireRoom(r, client, {
+			wireLiveKitRoom(r, client, {
 				av,
 				conn,
 				seats,
@@ -163,7 +163,7 @@ export function createRoomAv(address: PlaceAddress) {
 		setVoice,
 	});
 
-	return roomAvApi({
+	return channelAvApi({
 		av,
 		conn,
 		devices,

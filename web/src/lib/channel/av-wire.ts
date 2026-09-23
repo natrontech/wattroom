@@ -52,7 +52,7 @@ export interface WireHost {
 	stopNote(): void;
 }
 
-export function wireRoom(
+export function wireLiveKitRoom(
 	r: LiveKitRoom,
 	client: LiveKitClient,
 	host: WireHost,

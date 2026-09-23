@@ -1,6 +1,6 @@
 import { account } from '$lib/account.svelte';
 import { ridePath, type PlaceAddress } from '$lib/channel/address';
-import type { createRoomAv } from '$lib/channel/av.svelte';
+import type { createChannelAv } from '$lib/channel/av.svelte';
 import { comingsAndGoings } from '$lib/channel/comings-and-goings';
 import { dmArrivalEvent } from '$lib/channel/dm-line';
 import type { createRoomLive } from '$lib/channel/live.svelte';
@@ -32,7 +32,7 @@ export function connectionCues({
 }: {
 	address: PlaceAddress;
 	live: ReturnType<typeof createRoomLive>;
-	av: ReturnType<typeof createRoomAv>;
+	av: ReturnType<typeof createChannelAv>;
 }): void {
 	// Presence announces itself (#148) from HERE, not the page — someone
 	// arriving is audible even while you are off browsing workouts; hidden

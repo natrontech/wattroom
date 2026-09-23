@@ -40,7 +40,7 @@ export interface AvParts {
 	session: Session;
 }
 
-export function roomAvApi(parts: AvParts) {
+export function channelAvApi(parts: AvParts) {
 	const {
 		av,
 		conn,

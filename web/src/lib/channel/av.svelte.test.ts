@@ -30,11 +30,11 @@ vi.mock('$lib/api', () => ({
 	})),
 }));
 
-let roomOptions: Record<string, unknown> = {};
+let liveKitRoomOptions: Record<string, unknown> = {};
 
 vi.mock('livekit-client', () => {
 	let shared = false;
-	let joined: FakeRoom | null = null;
+	let joined: FakeLiveKitRoom | null = null;
 	const published: Uint8Array[] = [];
 	// The browser's autoplay verdict (#645): whether a room can play audio when
 	// it connects, whether asking fixes it, and how often it was asked.
@@ -59,7 +59,7 @@ vi.mock('livekit-client', () => {
 			return true;
 		}
 		constructor(options: Record<string, unknown> = {}) {
-			roomOptions = options;
+			liveKitRoomOptions = options;
 		}
 		canPlaybackAudio = canPlayback;
 		async startAudio() {
@@ -105,7 +105,7 @@ vi.mock('livekit-client', () => {
 		}
 		async connect() {
 			if (hang) await new Promise<never>(() => {});
-			joined = this as FakeRoom;
+			joined = this as FakeLiveKitRoom;
 		}
 		disconnect() {}
 	}
@@ -268,7 +268,7 @@ vi.mock('livekit-client', () => {
 	};
 });
 
-interface FakeRoom {
+interface FakeLiveKitRoom {
 	handlers: Map<string, (...args: unknown[]) => void>;
 	remoteParticipants: Map<string, unknown>;
 }
@@ -279,7 +279,7 @@ vi.mock('$lib/channel/mic-level', () => ({
 	createMicMeter: vi.fn(async () => ({ out: { connect() {} }, stop() {} })),
 }));
 
-const { createRoomAv, JOIN_TIMEOUT_MS } = await import('./av.svelte');
+const { createChannelAv, JOIN_TIMEOUT_MS } = await import('./av.svelte');
 const { createMicMeter } = vi.mocked(await import('$lib/channel/mic-level'));
 const { api } = await import('$lib/api');
 const {
@@ -459,7 +459,7 @@ function withMicHardware<T>(
 	});
 }
 
-describe('createRoomAv', () => {
+describe('createChannelAv', () => {
 	// #671: the mic is opened by captureMic() with MIC_CONSTRAINTS and
 	// published as an already-processed track — nothing here goes through
 	// LiveKit's own audio capture. The Room used to carry a second,
@@ -471,12 +471,12 @@ describe('createRoomAv', () => {
 	// into a hidden tab — while publishers uploaded simulcast layers nobody
 	// had subscribed to.
 	it('lets the room scale what it sends and what it asks for', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
-		expect(roomOptions).toMatchObject({
+		expect(liveKitRoomOptions).toMatchObject({
 			adaptiveStream: true,
 			dynacast: true,
 		});
@@ -484,12 +484,12 @@ describe('createRoomAv', () => {
 	});
 
 	it('leaves microphone capture to the one module that owns it', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
-		expect(roomOptions).not.toHaveProperty('audioCaptureDefaults');
+		expect(liveKitRoomOptions).not.toHaveProperty('audioCaptureDefaults');
 		dispose();
 	});
 
@@ -498,9 +498,9 @@ describe('createRoomAv', () => {
 	// moment you navigate away — which is how screenshares stopped reaching
 	// the stage after #284.
 	it('still sees a new share after its creating effect is destroyed', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		// The room page resolves the pick; av only has to keep offering it.
 		const onStage = () => pickStage(av.stageSources, av.stagePick);
@@ -519,9 +519,9 @@ describe('createRoomAv', () => {
 	// carrying voices, the jukebox and every cue.
 	it('takes the room off the speakers while the rider is away', async () => {
 		await withOutputGraph(async (gains) => {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 			remoteVoice('jan');
@@ -550,9 +550,9 @@ describe('createRoomAv', () => {
 	// unheard, the button went on offering to stop a share already over, and
 	// the sharer's stage sat on its last frame.
 	it('follows the browser when it ends a share behind our back', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		await av.toggleShare();
@@ -571,9 +571,9 @@ describe('createRoomAv', () => {
 	// went on claiming "camera on", and the tile drew an attached element with
 	// no frames in it where the mark belongs.
 	it('gives the seat back when a remote camera is switched off', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		const cam = remoteCamera('jan');
@@ -589,9 +589,9 @@ describe('createRoomAv', () => {
 	// The camera coming back must not need a rejoin — the subscription was
 	// never lost, only the picture.
 	it('takes the seat back when the camera comes on again', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		const cam = remoteCamera('jan');
@@ -608,9 +608,9 @@ describe('createRoomAv', () => {
 	// there to subscribe to, so the seat used to be claimed on the strength of
 	// a track that was never going to paint.
 	it('leaves the seat empty for a camera that is already off', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 
@@ -633,9 +633,9 @@ describe('createRoomAv', () => {
 	])('what the drop-rejoin is told about the mic', ({ what, mute }) => {
 		it(what, async () => {
 			await withMicHardware(async () => {
-				let av!: ReturnType<typeof createRoomAv>;
+				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
-					av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				});
 				await av.join();
 				expect(av.micOn).toBe(true);
@@ -667,9 +667,9 @@ describe('createRoomAv', () => {
 		// which is what riders reported rather than an error anyone could see.
 		it('joins listening, so the room comes out of the loudspeaker', async () => {
 			await withMicHardware(async (hw) => {
-				let av!: ReturnType<typeof createRoomAv>;
+				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
-					av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				});
 				await av.join();
 				expect(av.status).toBe('live');
@@ -684,9 +684,9 @@ describe('createRoomAv', () => {
 		// trip a phone's audio thread could not keep up with.
 		it('publishes the capture itself once the rider taps the mic', async () => {
 			await withMicHardware(async (hw) => {
-				let av!: ReturnType<typeof createRoomAv>;
+				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
-					av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				});
 				// Told explicitly, so this stands on the chain's wiring alone
 				// and not on the default the test above pins.
@@ -706,9 +706,9 @@ describe('createRoomAv', () => {
 		denied.name = 'NotAllowedError';
 		await withMicHardware(
 			async () => {
-				let av!: ReturnType<typeof createRoomAv>;
+				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
-					av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				});
 				await av.join();
 				expect(av.status).toBe('live');
@@ -735,9 +735,9 @@ describe('createRoomAv', () => {
 				message: 'Your session expired — sign in again to join voice.',
 			},
 		});
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		expect(av.status).toBe('failed');
@@ -749,9 +749,9 @@ describe('createRoomAv', () => {
 	});
 
 	it('rejoins listening only when the mic never opened', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		// No audio hardware here: the join downgrades to listen-only.
 		await av.join();
@@ -774,9 +774,9 @@ describe('createRoomAv', () => {
 			groupId: 'g1',
 		} as MediaDeviceInfo;
 		await withMicHardware(async () => {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			expect(av.mics).toEqual([]);
 
@@ -811,9 +811,9 @@ describe('createRoomAv', () => {
 				value: mediaDevices,
 			});
 			try {
-				let av!: ReturnType<typeof createRoomAv>;
+				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
-					av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				});
 				await expect(av.refreshDevices()).resolves.toBeUndefined();
 				expect(av.mics).toEqual([]);
@@ -832,9 +832,9 @@ describe('createRoomAv', () => {
 		vi.useFakeTimers();
 		hangConnect(true);
 		try {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			void av.join();
 			await vi.advanceTimersByTimeAsync(JOIN_TIMEOUT_MS - 1);
@@ -862,9 +862,9 @@ describe('createRoomAv', () => {
 		vi.useFakeTimers();
 		try {
 			vi.setSystemTime(1_000_000);
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 			await av.takeOver();
@@ -900,9 +900,9 @@ describe('createRoomAv', () => {
 			vi.setSystemTime(1_000_000);
 			// One tick from a server a minute ahead of this machine.
 			observeServerTime(1_060_000);
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 			await av.takeOver();
@@ -926,9 +926,9 @@ describe('createRoomAv', () => {
 	describe('a microphone that dies mid-ride', () => {
 		it('says so, goes muted, and comes back on Reconnect', async () => {
 			await withMicHardware(async (hw) => {
-				let av!: ReturnType<typeof createRoomAv>;
+				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
-					av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				});
 				await av.join();
 				expect(av.micOn).toBe(true);
@@ -952,9 +952,9 @@ describe('createRoomAv', () => {
 
 		it('is not a fault when the rider closed the mic themselves', async () => {
 			await withMicHardware(async (hw) => {
-				let av!: ReturnType<typeof createRoomAv>;
+				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
-					av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				});
 				await av.join();
 				await av.toggleMic();
@@ -970,9 +970,9 @@ describe('createRoomAv', () => {
 
 		it('ends a mic test the same way', async () => {
 			await withMicHardware(async (hw) => {
-				let av!: ReturnType<typeof createRoomAv>;
+				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
-					av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				});
 				await av.toggleMicTest();
 				expect(av.micTesting).toBe(true);
@@ -990,9 +990,9 @@ describe('createRoomAv', () => {
 
 		it('un-chooses a mic that is no longer plugged in', async () => {
 			await withMicHardware(async (hw) => {
-				let av!: ReturnType<typeof createRoomAv>;
+				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
-					av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+					av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				});
 				await av.setMic('usb-1');
 
@@ -1055,7 +1055,7 @@ describe('createRoomAv', () => {
 		it(what, () => {
 			const dispose = $effect.root(() => {
 				mixer.setMusic(music);
-				const av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				const av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				av.setGateThreshold(set);
 				av.setDeckPlaying(deck);
 
@@ -1072,7 +1072,7 @@ describe('createRoomAv', () => {
 
 	it('clamps a threshold to somewhere the meter can draw it', () => {
 		const dispose = $effect.root(() => {
-			const av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			const av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			av.setGateThreshold(0);
 			expect(av.gateThreshold).toBe(GATE_FLOOR);
 			av.setGateThreshold(1);
@@ -1093,9 +1093,9 @@ describe('a browser that blocks audio playback', () => {
 
 	it('says so from the moment it joins, with no event to announce it', async () => {
 		blockAudio();
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		// The rejoins that hit this (#480's refresh, #219's drop-rejoin) get no
@@ -1105,9 +1105,9 @@ describe('a browser that blocks audio playback', () => {
 	});
 
 	it('is quiet when the browser is happy', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		expect(av.playbackBlocked).toBe(false);
@@ -1115,9 +1115,9 @@ describe('a browser that blocks audio playback', () => {
 	});
 
 	it('follows the browser changing its mind', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		playbackChanged(false);
@@ -1129,9 +1129,9 @@ describe('a browser that blocks audio playback', () => {
 
 	it('asks the browser to start audio, and goes quiet when it does', async () => {
 		blockAudio();
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		await av.startPlayback();
@@ -1144,9 +1144,9 @@ describe('a browser that blocks audio playback', () => {
 	// did not take (errors.md).
 	it('stays up when the browser refuses anyway', async () => {
 		blockAudio(false);
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		await av.startPlayback();
@@ -1160,9 +1160,9 @@ describe('a browser that blocks audio playback', () => {
 	// the actual complaint.
 	it('lets any first click in the app unblock it', async () => {
 		blockAudio();
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		expect(av.playbackBlocked).toBe(true);
@@ -1199,9 +1199,9 @@ describe('a remote voice is heard once (#1339)', () => {
 	// apart, which is the phaser riders reported.
 	it("stays silent on its element through the browser's start-audio", async () => {
 		await withOutputGraph(async () => {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 			const { el } = remoteVoice('jan');
@@ -1219,9 +1219,9 @@ describe('a remote voice is heard once (#1339)', () => {
 	// with nothing holding its handle: the other way to hear a voice twice.
 	it('takes the first graph down when the same key is routed again', async () => {
 		await withOutputGraph(async (gains) => {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 			remoteVoice('jan');
@@ -1243,9 +1243,9 @@ describe('a remote voice is heard once (#1339)', () => {
 describe('a rider who shares their computer as well as their voice', () => {
 	it('keeps both on the bus, on their own faders', async () => {
 		await withOutputGraph(async (gains) => {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 
@@ -1268,9 +1268,9 @@ describe('a rider who shares their computer as well as their voice', () => {
 
 	it('takes only the share away when the share ends', async () => {
 		await withOutputGraph(async (gains) => {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 
@@ -1310,9 +1310,9 @@ describe("the machine's sound, which the sharer decides on", () => {
 	afterEach(() => vi.unstubAllGlobals());
 
 	it('drops the sound flag with a share the browser ended (#1881)', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		await av.toggleShare();
@@ -1324,9 +1324,9 @@ describe("the machine's sound, which the sharer decides on", () => {
 	});
 
 	it('takes the sound out of the room and remembers, without ending the share', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		await av.toggleShare();
@@ -1353,17 +1353,17 @@ describe("the machine's sound, which the sharer decides on", () => {
 	});
 
 	it('answers again on the next room, from what the rider said on this one', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		await av.setShareSound(false);
 		dispose();
 
-		let next!: ReturnType<typeof createRoomAv>;
+		let next!: ReturnType<typeof createChannelAv>;
 		const disposeNext = $effect.root(() => {
-			next = createRoomAv(channelAddress('c', 'other', 'Other'));
+			next = createChannelAv(channelAddress('c', 'other', 'Other'));
 		});
 		await next.join();
 		await next.toggleShare();
@@ -1373,9 +1373,9 @@ describe("the machine's sound, which the sharer decides on", () => {
 	});
 
 	it('re-runs the share to put the sound back, because a capture cannot grow one', async () => {
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		await av.setShareSound(false);
@@ -1400,9 +1400,9 @@ describe("the machine's sound, which the sharer decides on", () => {
 describe('a remote voice actually reaching av.speaking', () => {
 	it('rings the rider, not the connection key, once the meter reports level', async () => {
 		await withOutputGraph(async () => {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 
@@ -1437,9 +1437,9 @@ describe('the duck effect surviving av.speaking changing shape mid-conversation'
 	it('never lifts the duck while a voice is still going', async () => {
 		vi.useFakeTimers();
 		await withOutputGraph(async () => {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 				$effect(() => {
 					setDucking(shouldDuck(av.speaking, undefined, false));
 					return () => setDucking(false);
@@ -1472,9 +1472,9 @@ describe('the duck effect surviving av.speaking changing shape mid-conversation'
 	});
 	describe('the camera pick (#1876, #1880)', () => {
 		it('is told to the SDK while the camera is off, and never as an exact empty id', async () => {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 			expect(av.camOn).toBe(false);
@@ -1488,9 +1488,9 @@ describe('the duck effect surviving av.speaking changing shape mid-conversation'
 		});
 
 		it('says why when the switch is refused', async () => {
-			let av!: ReturnType<typeof createRoomAv>;
+			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
-				av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+				av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 			});
 			await av.join();
 			refuseSwitches(true);
@@ -1503,9 +1503,9 @@ describe('the duck effect surviving av.speaking changing shape mid-conversation'
 
 	it('leaving takes the blocked-playback and hand-off strips down (#1877)', async () => {
 		blockAudio();
-		let av!: ReturnType<typeof createRoomAv>;
+		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
-			av = createRoomAv(channelAddress('c', 'mfw', 'MFW'));
+			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
 		await av.join();
 		expect(av.playbackBlocked).toBe(true);
