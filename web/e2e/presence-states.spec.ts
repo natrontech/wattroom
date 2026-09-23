@@ -107,16 +107,10 @@ test('the friends panel says riding, and names the place only to a member', asyn
  * is the case #1743 is about.
  */
 const FEEDS = [
-	{ route: '**/api/crews', what: 'the crew list', bug: '' },
-	{
-		route: '**/api/crews/live',
-		what: 'what is live in the crew',
-		// The mark reads `presence.stale` alone, which counts failures of
-		// /api/crews (presence.svelte.ts); a refused /api/crews/live sets
-		// `crewLive.error`, and CrewColumn draws that only over an EMPTY
-		// channel list — #1743's gap, one feed over.
-		bug: '#2518: the crew header never marks a stalled /api/crews/live, only a stalled /api/crews',
-	},
+	{ route: '**/api/crews', what: 'the crew list' },
+	// Its error line draws only over an EMPTY channel list, so the header's
+	// mark is the one word a stalled live read gets (#2518).
+	{ route: '**/api/crews/live', what: 'what is live in the crew' },
 ];
 
 for (const feed of FEEDS) {
@@ -128,7 +122,6 @@ for (const feed of FEEDS) {
 			!!process.env.PLAYWRIGHT_BASE_URL,
 			'the ?as= dev provider only exists on a dev server',
 		);
-		test.fixme(!!feed.bug, feed.bug);
 
 		const a = await riders(A);
 		// A crew to hold the mark, and channels in it — with channels on
