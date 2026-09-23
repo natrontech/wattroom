@@ -11,7 +11,7 @@ import { channelConnection } from './connection.svelte';
  * that is not the place's — the messages list, Home — stays exactly where it
  * is. Asked before the leave: after it there is no place to ask about.
  */
-export function leaveRoom(): void {
+export function leaveChannel(): void {
 	const standing = channelConnection.onPlacePath(page.url.pathname);
 	channelConnection.leave();
 	if (standing) void goto('/home', { replaceState: true });

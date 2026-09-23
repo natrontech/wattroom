@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { leaveRoom } from '$lib/channel/leave';
+	import { leaveChannel } from '$lib/channel/leave';
 	// The AV chain is a store, so this reads it rather than being handed
 	// fifteen values through a Sidebar that uses none of them (#1047). Same
 	// pattern as TrainerOverview and lib/profile/VoiceAudio.
@@ -340,7 +340,7 @@
 			     Discord's disconnect in its voice panel. Quiet on purpose:
 			     leaving is re-doable, so it neither confirms nor shouts. -->
 			<button
-				onclick={leaveRoom}
+				onclick={leaveChannel}
 				class="btn btn-secondary ml-1 min-h-11 px-2"
 				title="leave — disconnect from where you are"
 				aria-label="leave — disconnect from where you are"
