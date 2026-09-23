@@ -20,7 +20,7 @@
 		ELIMINATION_MODES,
 	} from '$lib/session/modes';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { trainerForRoom } from '$lib/ride/solo-trainer.svelte';
+	import { trainerForChannel } from '$lib/ride/solo-trainer.svelte';
 
 	const connection = $derived(channelConnection.current);
 	const live = $derived(connection?.live);
@@ -132,7 +132,7 @@
 				bufferedSeconds={0}
 				onRecover={() => {
 					rideCtl.unpair();
-					void rideCtl.ride(trainerForRoom());
+					void rideCtl.ride(trainerForChannel());
 				}}
 			/>
 		</div>

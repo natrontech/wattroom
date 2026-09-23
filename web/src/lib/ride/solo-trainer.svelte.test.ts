@@ -13,7 +13,7 @@ vi.mock('$lib/channel/connection.svelte', () => ({
 	},
 }));
 
-const { createSoloTrainer, soloTrainer, trainerForRoom } =
+const { createSoloTrainer, soloTrainer, trainerForChannel } =
 	await import('./solo-trainer.svelte');
 const { FtmsTrainer } = await import('$lib/ble/ftms');
 
@@ -159,11 +159,11 @@ describe('the solo pre-ride trainer slot (#611)', () => {
 		// only opens a chooser when there is none.
 		const trainer = new FakeTrainer();
 		await soloTrainer().pair(trainer);
-		expect(trainerForRoom()).toBe(trainer);
+		expect(trainerForChannel()).toBe(trainer);
 		expect(trainer.connects).toBe(1);
 		expect(trainer.disconnects).toBe(0);
 		expect(soloTrainer().trainer).toBeNull();
-		expect(trainerForRoom()).toBeInstanceOf(FtmsTrainer);
+		expect(trainerForChannel()).toBeInstanceOf(FtmsTrainer);
 	});
 
 	it('is one trainer for the whole app, not one per screen', () => {

@@ -178,6 +178,6 @@ export function soloTrainer(): ReturnType<typeof createSoloTrainer> {
  * two GATT clients on one unit, and this slot's reattach loop running for
  * ever — while the slot's own `pair` already took the room's back (#521).
  */
-export function trainerForRoom(): Trainer {
+export function trainerForChannel(): Trainer {
 	return soloTrainer().handOff() ?? new FtmsTrainer();
 }

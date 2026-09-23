@@ -30,14 +30,14 @@
 	const solo = soloTrainer();
 	const profile = createProfileStore();
 	const ride = $derived(channelConnection.current?.ride);
-	const roomHolds = $derived(!!ride?.trainer);
+	const channelHolds = $derived(!!ride?.trainer);
 	// And what the rider's OTHER screens hold (#610) — answering only for this
 	// tab would be the same half-truth #565 fixed.
 	const elsewhere = $derived(
 		pairedElsewhereAll(channelConnection.current?.live.pairing, deviceWord()),
 	);
 
-	const roomTrainerState = $derived(
+	const channelTrainerState = $derived(
 		trainerState({
 			trainer: ride?.trainer ?? null,
 			fault: ride?.fault ?? null,
@@ -57,7 +57,7 @@
 	}
 
 	function forgetTrainer() {
-		if (roomHolds) ride?.unpair();
+		if (channelHolds) ride?.unpair();
 		else solo.forget();
 	}
 
@@ -97,13 +97,13 @@
 		<SensorOverview
 			{elsewhere}
 			trainer={{
-				state: roomHolds ? roomTrainerState : solo.state,
-				device: roomHolds ? ride?.trainer?.name : solo.trainer?.name,
+				state: channelHolds ? channelTrainerState : solo.state,
+				device: channelHolds ? ride?.trainer?.name : solo.trainer?.name,
 				// Live-ness is the honest confirmation: paired but silent is not
 				// working (#520), and this is the screen a rider checks it on.
-				reading: roomHolds ? ride?.reading : solo.reading,
-				hint: trainerHint(roomHolds ? ride?.fault : solo.fault),
-				error: roomHolds ? ride?.error : solo.error,
+				reading: channelHolds ? ride?.reading : solo.reading,
+				hint: trainerHint(channelHolds ? ride?.fault : solo.fault),
+				error: channelHolds ? ride?.error : solo.error,
 				onPair: () => void pairTrainer(),
 				onForget: forgetTrainer,
 				onSimulate: canSimulate() ? () => void pairSimulated() : undefined,
