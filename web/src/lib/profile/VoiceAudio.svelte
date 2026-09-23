@@ -2,7 +2,7 @@
 	// Devices, transmit mode and the mix, for the machine you are sitting at.
 	//
 	// Its own file because it is the one section that belongs to the AV chain
-	// rather than to the profile: it reads `roomConnection` directly and owns
+	// rather than to the profile: it reads `channelConnection` directly and owns
 	// the device refresh, and none of that is the page's business (#686).
 	import DevicePickers from '$lib/channel/DevicePickers.svelte';
 	import MixFaders from '$lib/channel/MixFaders.svelte';
@@ -10,14 +10,14 @@
 	import { account } from '$lib/account.svelte';
 	import { deviceChoices } from '$lib/channel/av-devices.svelte';
 	import { canPickOutput } from '$lib/channel/av-output';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { describeMediaError } from '$lib/channel/media-error';
 
 	// The AV chain only exists while you are in a room. The device picks do
 	// not (#1858): they are the one store the next join applies, so a rider
 	// with a USB mic beside the built-in one chooses before going live on
 	// the wrong one. The gate meter stays behind a live connection.
-	const av = $derived(roomConnection.current?.av);
+	const av = $derived(channelConnection.current?.av);
 	const choices = deviceChoices();
 	// The store only re-reads devices after a connect or a hot-plug; a rider
 	// choosing a mic here has usually done neither yet (#658).

@@ -36,7 +36,7 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import ChannelStatus from '$lib/channel/ChannelStatus.svelte';
-	import type { roomConnection } from '$lib/channel/connection.svelte';
+	import type { channelConnection } from '$lib/channel/connection.svelte';
 	import type { RoomShellProps } from '$lib/channel/context-value.svelte';
 	import type { createRiders } from '$lib/channel/riders.svelte';
 	import type { Phase } from '$lib/channel/types';
@@ -61,7 +61,7 @@
 		onSchedule,
 	}: {
 		layers: ReturnType<typeof createSessionLayers>;
-		connection: ReturnType<typeof roomConnection.join>;
+		connection: ReturnType<typeof channelConnection.join>;
 		roster: ReturnType<typeof createRiders>;
 		shared: SessionState | undefined;
 		segments: Segment[];

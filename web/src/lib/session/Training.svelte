@@ -27,7 +27,7 @@
 	import { useRoom } from '$lib/channel/context';
 	import { account } from '$lib/account.svelte';
 	import { serverNow } from '$lib/server-clock';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 
 	const room = useRoom();
 	// Another of the rider's screens drives the trainer (#2075). This one
@@ -86,7 +86,7 @@
 		<section class="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
 			<GamePanel
 				game={room.game}
-				roster={roomConnection.current?.live.tick?.roster ?? []}
+				roster={channelConnection.current?.live.tick?.roster ?? []}
 				canControl={room.canControl && !device.spectator}
 				end={() => room.control('game-end')}
 			/>
@@ -193,7 +193,7 @@
 			<section class="min-h-0 overflow-y-auto px-6">
 				<GamePanel
 					game={room.game}
-					roster={roomConnection.current?.live.tick?.roster ?? []}
+					roster={channelConnection.current?.live.tick?.roster ?? []}
 					canControl={room.canControl}
 					end={() => room.control('game-end')}
 					me={account.me?.id}
@@ -244,7 +244,7 @@
 					watts={room.you.watts}
 					kg={room.you.kg}
 					bias={room.bias}
-					lthr={roomConnection.current?.profile.current.lthr}
+					lthr={channelConnection.current?.profile.current.lthr}
 					small={focus === 'media'}
 					onBias={room.trainer && room.actuating
 						? (step) => room.nudgeBias(step)

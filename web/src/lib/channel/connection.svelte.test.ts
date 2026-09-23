@@ -56,12 +56,15 @@ vi.mock('livekit-client', () => ({
 	Track: { Source: new Proxy({}, { get: (_, key) => key }) },
 }));
 
-import { prepareRoomAv, roomConnection } from '$lib/channel/connection.svelte';
+import {
+	prepareChannelAv,
+	channelConnection,
+} from '$lib/channel/connection.svelte';
 import { listening } from '$lib/channel/listening.svelte';
 import { toasts } from '$lib/toast.svelte';
 
 // The room layout's load does this before the shell joins (#1514).
-await prepareRoomAv();
+await prepareChannelAv();
 
 class FakeTrainer implements Trainer {
 	name = 'Fake';
@@ -95,46 +98,50 @@ class FakeTrainer implements Trainer {
  * A per-page ride disconnected the trainer on the way to /workouts and reset
  * the metrics seq, which the server's ride record then dropped as duplicates.
  */
-describe('roomConnection', () => {
+describe('channelConnection', () => {
 	afterEach(() => {
-		roomConnection.leave();
+		channelConnection.leave();
 		// The tick is module state: a roster left behind here is the next
 		// test's opening observation.
 		fakeTick = null;
 	});
 
 	it('keeps one ride and one recording across repeated joins', () => {
-		const first = roomConnection.join(channelAddress('c', 'lounge', 'Lounge'));
-		const again = roomConnection.join(channelAddress('c', 'lounge', 'Lounge'));
+		const first = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		const again = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
 		expect(again).toBe(first);
 		expect(again.ride).toBe(first.ride);
 		expect(again.recording).toBe(first.recording);
 	});
 
 	it('puts you back in the music when you leave (#1898)', async () => {
-		roomConnection.join(channelAddress('c', 'lounge', 'Lounge'));
+		channelConnection.join(channelAddress('c', 'lounge', 'Lounge'));
 		listening.stepOut('stop', null);
 		expect(listening.out).toBe(true);
-		roomConnection.leave();
+		channelConnection.leave();
 		expect(listening.out).toBe(false);
 	});
 
 	it('releases the trainer when you leave, not when a page unmounts', async () => {
-		const connection = roomConnection.join(
+		const connection = channelConnection.join(
 			channelAddress('c', 'lounge', 'Lounge'),
 		);
 		const trainer = new FakeTrainer();
 		await connection.ride.ride(trainer);
 		expect(connection.ride.trainer).toBe(trainer);
 
-		roomConnection.leave();
+		channelConnection.leave();
 		expect(trainer.disconnected).toBe(true);
 		// Never left holding resistance on a trainer nobody is riding.
 		expect(trainer.targets.at(-1)).toBe(0);
 
 		// A fresh join is a fresh ride — a different room is a different session.
 		expect(
-			roomConnection.join(channelAddress('c', 'lounge', 'Lounge')).ride,
+			channelConnection.join(channelAddress('c', 'lounge', 'Lounge')).ride,
 		).not.toBe(connection.ride);
 	});
 
@@ -144,9 +151,9 @@ describe('roomConnection', () => {
 	// room takes the socket, the voice channel and the trainer with it.
 	it('says so out loud when the room ends under the rider', () => {
 		played.length = 0;
-		roomConnection.join(channelAddress('c', 'lounge', 'Lounge'));
+		channelConnection.join(channelAddress('c', 'lounge', 'Lounge'));
 
-		roomConnection.leave('signedOut');
+		channelConnection.leave('signedOut');
 
 		expect(played).toContain('leave');
 		expect(toasts.items.at(-1)?.text).toContain('Lounge');
@@ -158,9 +165,9 @@ describe('roomConnection', () => {
 	it('goes quietly when the rider is the one leaving', () => {
 		played.length = 0;
 		const before = toasts.items.length;
-		roomConnection.join(channelAddress('c', 'lounge', 'Lounge'));
+		channelConnection.join(channelAddress('c', 'lounge', 'Lounge'));
 
-		roomConnection.leave();
+		channelConnection.leave();
 
 		expect(played).not.toContain('leave');
 		expect(toasts.items).toHaveLength(before);
@@ -168,7 +175,7 @@ describe('roomConnection', () => {
 
 	it('takes a trainer handed over live without connecting it again', async () => {
 		// #1851: the solo slot's trainer walks into the room as it is.
-		const connection = roomConnection.join(
+		const connection = channelConnection.join(
 			channelAddress('c', 'lounge', 'Lounge'),
 		);
 		const trainer = new FakeTrainer();
@@ -182,7 +189,7 @@ describe('roomConnection', () => {
 		// #1852: judged off the tick, losing the socket froze the check.
 		vi.useFakeTimers();
 		try {
-			const connection = roomConnection.join(
+			const connection = channelConnection.join(
 				channelAddress('c', 'lounge', 'Lounge'),
 			);
 			await connection.ride.ride(new FakeTrainer());
@@ -210,7 +217,7 @@ describe('roomConnection', () => {
 		// The claim is what stops a second screen pairing the same trainer and
 		// feeding a second stream of watts into one ride record (#610).
 		fakeLive.claims = [];
-		const connection = roomConnection.join(
+		const connection = channelConnection.join(
 			channelAddress('c', 'lounge', 'Lounge'),
 		);
 		await connection.ride.ride(new FakeTrainer());
@@ -231,12 +238,14 @@ describe('roomConnection', () => {
  * page happened to open it.
  */
 describe('the connection keeps deriving the session after a page dies', () => {
-	afterEach(() => roomConnection.leave());
+	afterEach(() => channelConnection.leave());
 
 	it('still follows the tick once the opening scope is disposed', () => {
-		let connection!: ReturnType<typeof roomConnection.join>;
+		let connection!: ReturnType<typeof channelConnection.join>;
 		const dispose = $effect.root(() => {
-			connection = roomConnection.join(channelAddress('c', 'lounge', 'Lounge'));
+			connection = channelConnection.join(
+				channelAddress('c', 'lounge', 'Lounge'),
+			);
 		});
 		dispose();
 

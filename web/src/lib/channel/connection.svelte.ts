@@ -30,7 +30,7 @@ type Connection = {
 	/** Where the connection stands, and every path that follows (#2449). */
 	address: PlaceAddress;
 	live: ReturnType<typeof createRoomLive>;
-	av: RoomAv;
+	av: ChannelAv;
 	/**
 	 * You stepped out, or came back (#706). One home for the pair the state
 	 * needs (#807): the local AV and the hub message.
@@ -55,12 +55,14 @@ let current = $state<Connection | null>(null);
 // The AV half loads with the room, not with the shell (#1514): av.svelte.ts
 // and what it pulls — device choices, the mic chain, the stage — were the
 // biggest thing the root layout's closure carried for routes that never join
-// a room. The room layout's load awaits prepareRoomAv() before the shell
+// a room. The room layout's load awaits prepareChannelAv() before the shell
 // mounts, so join() stays synchronous for everything that reads the
 // connection the moment it exists.
-type RoomAv = ReturnType<typeof import('$lib/channel/av.svelte').createRoomAv>;
-let createRoomAv: ((address: PlaceAddress) => RoomAv) | null = null;
-export async function prepareRoomAv(): Promise<void> {
+type ChannelAv = ReturnType<
+	typeof import('$lib/channel/av.svelte').createRoomAv
+>;
+let createRoomAv: ((address: PlaceAddress) => ChannelAv) | null = null;
+export async function prepareChannelAv(): Promise<void> {
 	if (createRoomAv) return;
 	({ createRoomAv } = await import('$lib/channel/av.svelte'));
 }
@@ -218,7 +220,7 @@ function connect(address: PlaceAddress): Connection {
 			if (drops > seenDrops) {
 				seenDrops = drops;
 				setTimeout(() => {
-					if (roomConnection.current?.address.key === address.key)
+					if (channelConnection.current?.address.key === address.key)
 						void av.join({ mic: av.micBeforeDrop });
 				}, 2_000);
 			}
@@ -253,7 +255,7 @@ function connect(address: PlaceAddress): Connection {
 	};
 }
 
-export const roomConnection = {
+export const channelConnection = {
 	get current() {
 		return current;
 	},

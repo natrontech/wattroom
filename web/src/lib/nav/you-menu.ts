@@ -14,7 +14,7 @@ import Settings from '@lucide/svelte/icons/settings';
 import User from '@lucide/svelte/icons/user';
 import { account } from '$lib/account.svelte';
 import type { MenuEntry, MenuSlider } from '$lib/context-menu.svelte';
-import { roomConnection } from '$lib/channel/connection.svelte';
+import { channelConnection } from '$lib/channel/connection.svelte';
 import { deviceOptions } from '$lib/channel/device-options';
 import { play } from '$lib/sound/cues';
 import { mixer } from '$lib/sound/mixer.svelte';
@@ -45,7 +45,7 @@ const cueFader = (): MenuSlider => ({
  * control must not disagree about which way is louder.
  */
 function duckFader(): MenuSlider | undefined {
-	if (!roomConnection.current) return undefined;
+	if (!channelConnection.current) return undefined;
 	return {
 		kind: 'slider',
 		label: 'Duck under voice',
@@ -68,7 +68,7 @@ function duckFader(): MenuSlider | undefined {
  * an iframe and takes the system's output whatever this says.
  */
 function speakers(): MenuEntry[] {
-	const av = roomConnection.current?.av;
+	const av = channelConnection.current?.av;
 	if (!av?.canPickOutput) return [];
 	const options = deviceOptions(av.outs, 'Speakers');
 	// One entry is the system default alone: nothing to choose between.

@@ -18,7 +18,7 @@
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { trainerHint } from '$lib/session/sensor-status';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
@@ -92,7 +92,7 @@
 		// rather than open a second control channel to the same hardware. A
 		// trainer paired in the grid and then left for a simulated run is the
 		// same conflict on this page.
-		roomConnection.current?.ride.unpair();
+		channelConnection.current?.ride.unpair();
 		if (solo.trainer && solo.trainer !== trainer) solo.forget();
 		try {
 			const startedAt = Date.now();

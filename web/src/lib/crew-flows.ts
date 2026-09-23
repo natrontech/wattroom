@@ -9,7 +9,7 @@ import {
 } from '$lib/crew';
 import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 import { presence } from '$lib/presence.svelte';
-import { roomConnection } from '$lib/channel/connection.svelte';
+import { channelConnection } from '$lib/channel/connection.svelte';
 import type { CrewRef } from '$lib/crew-types';
 import { shareLink } from '$lib/share';
 import { toasts } from '$lib/toast.svelte';
@@ -28,7 +28,7 @@ import { toasts } from '$lib/toast.svelte';
 export async function leaveCrewFlow(
 	crew: Pick<CrewRef, 'id' | 'name'>,
 ): Promise<boolean> {
-	const standing = roomConnection.current?.address.crew === crew.id;
+	const standing = channelConnection.current?.address.crew === crew.id;
 	const sure = await confirm({
 		title: `Leave ${crew.name}?`,
 		body: leaveBody(crew.name),
@@ -41,7 +41,7 @@ export async function leaveCrewFlow(
 		toasts.push(res.error.message, { tone: 'error' });
 		return false;
 	}
-	if (standing) roomConnection.leave();
+	if (standing) channelConnection.leave();
 	presence.reload();
 	toasts.push(`You left ${crew.name}.`);
 	await goto('/home');

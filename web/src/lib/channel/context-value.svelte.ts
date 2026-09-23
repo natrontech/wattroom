@@ -1,6 +1,6 @@
 import type { PlaceAddress } from '$lib/channel/address';
 import type { RoomContext, RoomStageSource } from '$lib/channel/context';
-import type { roomConnection } from '$lib/channel/connection.svelte';
+import type { channelConnection } from '$lib/channel/connection.svelte';
 import type { createRiders } from '$lib/channel/riders.svelte';
 import type { BoardRow, Together } from '$lib/crew-types';
 import type { Segment } from '$lib/workout/types';
@@ -59,7 +59,7 @@ export interface RoomShellProps {
 	) => Promise<boolean> | boolean | void;
 }
 
-type Connection = ReturnType<typeof roomConnection.join>;
+type Connection = ReturnType<typeof channelConnection.join>;
 type Roster = ReturnType<typeof createRiders>;
 
 /**

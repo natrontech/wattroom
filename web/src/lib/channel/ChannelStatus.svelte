@@ -19,10 +19,10 @@
 		DISCONNECT_GRACE_SECONDS,
 		ELIMINATION_MODES,
 	} from '$lib/session/modes';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { trainerForRoom } from '$lib/ride/solo-trainer.svelte';
 
-	const connection = $derived(roomConnection.current);
+	const connection = $derived(channelConnection.current);
 	const live = $derived(connection?.live);
 	const av = $derived(connection?.av);
 	const rideCtl = $derived(connection?.ride);

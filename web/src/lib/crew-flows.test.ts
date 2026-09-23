@@ -19,7 +19,7 @@ vi.mock('$lib/crew', () => ({
 }));
 vi.mock('$lib/presence.svelte', () => ({ presence: { reload() {} } }));
 vi.mock('$lib/channel/connection.svelte', () => ({
-	roomConnection: {
+	channelConnection: {
 		get current() {
 			return mocks.current;
 		},

@@ -6,12 +6,12 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { sessionPath } from '$lib/channel/address';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import Training from '$lib/session/Training.svelte';
 
 	const session = $derived(
-		liveSessionId(roomConnection.current?.live.tick?.state),
+		liveSessionId(channelConnection.current?.live.tick?.state),
 	);
 	$effect(() => {
 		if (session && page.params.id)

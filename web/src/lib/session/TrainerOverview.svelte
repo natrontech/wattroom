@@ -13,7 +13,7 @@
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { trainerForRoom } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { useRoom } from '$lib/channel/context';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { deviceWord } from '$lib/device.svelte';
@@ -29,7 +29,7 @@
 	let { compact = false }: { compact?: boolean } = $props();
 
 	const room = useRoom();
-	const ride = $derived(roomConnection.current?.ride);
+	const ride = $derived(channelConnection.current?.ride);
 	// What the rider's OTHER screens hold (#610). Only a room knows this — the
 	// socket is what arbitrates — which is why it enters here rather than in
 	// the grid the solo pre-ride screens share.
@@ -43,7 +43,7 @@
 	// the room's shell can unmount while the chooser is open.
 	function pairSimulatedTrainer() {
 		const baseWatts =
-			(roomConnection.current?.profile.current.ftp ?? 200) * 0.75;
+			(channelConnection.current?.profile.current.ftp ?? 200) * 0.75;
 		return ride?.ride(new SimulatedTrainer({ baseWatts }));
 	}
 </script>

@@ -16,7 +16,7 @@
 	import { activeHref } from '$lib/nav/pages';
 	import { youMenu } from '$lib/nav/you-menu';
 	import { micMenu } from '$lib/channel/mic-menu';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { statusOfRider } from '$lib/status';
 	import { device } from '$lib/device.svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -36,7 +36,7 @@
 	// The route is the one thing the store cannot answer.
 	let { pathname }: { pathname: string } = $props();
 
-	const conn = $derived(roomConnection.current);
+	const conn = $derived(channelConnection.current);
 	const av = $derived(conn?.av);
 	// A room open at all is what the panel's connected shape keys on — the
 	// same condition the layout used to branch on before it stopped needing to.
@@ -243,7 +243,7 @@
 					aria-label="microphone"
 					aria-pressed={micOn}
 					{@attach contextMenu(() => {
-						const voice = roomConnection.current?.av;
+						const voice = channelConnection.current?.av;
 						return voice ? micMenu(voice, () => onMic?.()) : [];
 					})}
 				>

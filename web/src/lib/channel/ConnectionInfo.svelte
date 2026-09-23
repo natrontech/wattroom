@@ -11,10 +11,10 @@
 	import Modal from '$lib/components/Modal.svelte';
 	import { account } from '$lib/account.svelte';
 	import { connectionInfo } from '$lib/channel/connection-info.svelte';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 
 	const id = $derived(connectionInfo.riderId);
-	const connection = $derived(roomConnection.current);
+	const connection = $derived(channelConnection.current);
 	const rider = $derived(
 		connection?.live.tick?.roster.find((entry) => entry.id === id),
 	);

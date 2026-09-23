@@ -1,6 +1,6 @@
 import { goto } from '$app/navigation';
 import { page } from '$app/state';
-import { roomConnection } from './connection.svelte';
+import { channelConnection } from './connection.svelte';
 
 /**
  * Leaving the place you are standing in — the you panel's way out (#2447). A
@@ -12,7 +12,7 @@ import { roomConnection } from './connection.svelte';
  * is. Asked before the leave: after it there is no place to ask about.
  */
 export function leaveRoom(): void {
-	const standing = roomConnection.onPlacePath(page.url.pathname);
-	roomConnection.leave();
+	const standing = channelConnection.onPlacePath(page.url.pathname);
+	channelConnection.leave();
 	if (standing) void goto('/home', { replaceState: true });
 }

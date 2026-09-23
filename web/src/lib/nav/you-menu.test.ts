@@ -7,7 +7,7 @@ import { mixer } from '$lib/sound/mixer.svelte';
 // The room decides whether a voice can dip anything (#904), and whether this
 // browser can move the voice to another output (#920).
 const room = vi.hoisted(() => ({ current: null as unknown }));
-vi.mock('$lib/channel/connection.svelte', () => ({ roomConnection: room }));
+vi.mock('$lib/channel/connection.svelte', () => ({ channelConnection: room }));
 
 // The cue engine is an AudioContext; the fader only has to reach it.
 const cues = vi.hoisted(() => ({ played: [] as string[] }));

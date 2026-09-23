@@ -3,7 +3,7 @@
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { publishHud } from '$lib/hud/feed';
 	import { toasts } from '$lib/toast.svelte';
 	import { pickStage, sourceLabel } from '$lib/channel/stage';
@@ -32,7 +32,7 @@
 	// #173: the connection outlives this page — you stay in the room while
 	// you browse. Leaving is the rail's explicit button, never unmount.
 	// svelte-ignore state_referenced_locally
-	const connection = roomConnection.join(props.address);
+	const connection = channelConnection.join(props.address);
 	const live = connection.live;
 	const av = connection.av;
 	// Owned by the connection, not by this component (#521): the trainer and

@@ -1,4 +1,4 @@
-import { roomConnection } from '$lib/channel/connection.svelte';
+import { channelConnection } from '$lib/channel/connection.svelte';
 import { FtmsTrainer } from '$lib/ble/ftms';
 import { pairError } from '$lib/ble/pair-error';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
@@ -63,7 +63,7 @@ export function createSoloTrainer() {
 		pairing = true;
 		// One trainer, one rider (#521): a room you are standing in owns the
 		// same hardware, so take it back before opening a second channel.
-		roomConnection.current?.ride.unpair();
+		channelConnection.current?.ride.unpair();
 		unsubscribe.push(next.onStatus((s) => (status = s)));
 		try {
 			await next.connect();

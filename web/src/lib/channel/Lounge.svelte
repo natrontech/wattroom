@@ -24,7 +24,7 @@
 	import { device } from '$lib/device.svelte';
 	import { account } from '$lib/account.svelte';
 	import Radio from '@lucide/svelte/icons/radio';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { clampSize, dividerDrag } from '$lib/divider';
@@ -40,11 +40,11 @@
 	const EVENTS_SHOWN = 8;
 	// The newest few, and only those this client can put into words.
 	const events = $derived(
-		(roomConnection.current?.live.roomEvents ?? [])
+		(channelConnection.current?.live.roomEvents ?? [])
 			.filter((event) => eventText(event))
 			.slice(-EVENTS_SHOWN),
 	);
-	const av = $derived(roomConnection.current?.av);
+	const av = $derived(channelConnection.current?.av);
 	const isOwner = $derived(room.myRole === 'owner');
 	/** Taking the announcement down is the coach's and the owner's (#2408). */
 	const coaches = $derived(isOwner || room.myRole === 'coach');
@@ -391,7 +391,7 @@
 		<div class="mt-4">
 			<GamePanel
 				game={room.game}
-				roster={roomConnection.current?.live.tick?.roster ?? []}
+				roster={channelConnection.current?.live.tick?.roster ?? []}
 				canControl={room.canControl && !device.spectator}
 				end={() => room.control('game-end')}
 				me={account.me?.id}
@@ -413,7 +413,7 @@
 				<a
 					href={ridePath(
 						room.address,
-						liveSessionId(roomConnection.current?.live.tick?.state),
+						liveSessionId(channelConnection.current?.live.tick?.state),
 					)}
 					class="btn btn-accent btn-lg"
 					><Radio size={15} />

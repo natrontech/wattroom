@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { canSimulate } from '$lib/ble/can-simulate';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
@@ -127,7 +127,7 @@
 		// rather than open a second control channel to the same hardware. A
 		// trainer paired in the grid and then left for a simulated ride is the
 		// same conflict on this page.
-		roomConnection.current?.ride.unpair();
+		channelConnection.current?.ride.unpair();
 		if (solo.trainer && solo.trainer !== trainer) solo.forget();
 		try {
 			// Crash safety (#19): every recorded sample also lands in IndexedDB,

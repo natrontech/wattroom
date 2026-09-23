@@ -12,7 +12,7 @@
 	import TrackWave from '$lib/channel/TrackWave.svelte';
 	import { MUSIC_FADER } from '$lib/sound/fader';
 	import { mixer } from '$lib/sound/mixer.svelte';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import {
 		deckDuration,
 		IN_SYNC_SEC,
@@ -34,7 +34,7 @@
 	 * rather than 16:9), visible while media plays, nothing drawn over it —
 	 * the title sits above the seat and the transport below it.
 	 */
-	const conn = $derived(roomConnection.current);
+	const conn = $derived(channelConnection.current);
 	const jukebox = $derived(conn?.live.tick?.jukebox);
 	const current = $derived(jukebox?.current);
 	const inSync = $derived(Math.abs(playerInfo.drift) <= IN_SYNC_SEC);
@@ -55,7 +55,7 @@
 	// The live place's own pages carry the people column at xl, and that
 	// column outranks this seat — so the rail steps aside there rather than
 	// holding a second 200 px hole the player will never fly into.
-	const onRoomPage = $derived(roomConnection.onPlacePath(page.url.pathname));
+	const onRoomPage = $derived(channelConnection.onPlacePath(page.url.pathname));
 
 	// Every button commands the ROOM — the deck is shared.
 	function transport(action: string) {

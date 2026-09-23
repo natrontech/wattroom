@@ -12,7 +12,7 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { account } from '$lib/account.svelte';
 	import { people } from '$lib/people.svelte';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import {
 		AWAY_MARK,
 		MARK_SURFACE,
@@ -25,7 +25,7 @@
 
 	let { pathname }: { pathname: string } = $props();
 
-	const conn = $derived(roomConnection.current);
+	const conn = $derived(channelConnection.current);
 	const onLounge = $derived(!!conn && pathname === conn.address.home);
 	// The heading names the place it means (#1017). "with you" alone was the
 	// clearest job in the sidebar with the weakest label: three sections list

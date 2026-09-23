@@ -24,7 +24,7 @@
 	import '$lib/palette.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { isLivePhase } from '$lib/channel/tick-session';
 	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
@@ -130,7 +130,7 @@
 	// channel and — since #521 — the trainer, and a signed-out session must
 	// hold none of them: the room's pages are gone, so nothing else would.
 	$effect(() => {
-		if (account.loaded && !account.me) roomConnection.leave('signedOut');
+		if (account.loaded && !account.me) channelConnection.leave('signedOut');
 	});
 
 	// ONE rail, owned here, on every page — the room included (#191): navigating
@@ -158,8 +158,8 @@
 	// ride starts and closes when it ends, and the shell shows it only while
 	// WattRoom is not the front window.
 	const riding = $derived(
-		(roomConnection.onPlacePath(page.url.pathname) &&
-			isLivePhase(roomConnection.current?.live.tick?.state.phase)) ||
+		(channelConnection.onPlacePath(page.url.pathname) &&
+			isLivePhase(channelConnection.current?.live.tick?.state.phase)) ||
 			soloRide.active,
 	);
 	// A solo ride has no timeline to write a DM into (#1743), so it takes the
@@ -196,7 +196,7 @@
 	// than with the URL. The HUD speaks for no place.
 	$effect(() => {
 		if (page.url.pathname === '/hud') return;
-		const conn = roomConnection.current;
+		const conn = channelConnection.current;
 		setShellRoom(
 			conn ? { path: conn.address.home, name: conn.address.name } : null,
 		);
@@ -385,7 +385,7 @@
 			     chain itself now. -->
 			<Sidebar
 				pathname={page.url.pathname}
-				live={roomConnection.current?.live.tick?.state.phase === 'running'}
+				live={channelConnection.current?.live.tick?.state.phase === 'running'}
 			/>
 		</div>
 		<!-- inert while the drawer is open (#1969): Tab past its last row used
@@ -411,7 +411,8 @@
 					>
 					<Logo
 						size={18}
-						live={roomConnection.current?.live.tick?.state.phase === 'running'}
+						live={channelConnection.current?.live.tick?.state.phase ===
+							'running'}
 					/>
 					<span class="font-display truncate text-sm font-bold">WattRoom</span>
 				</div>
@@ -419,15 +420,15 @@
 			<!-- Persistent, above whatever page you are on and outside its
 			     scroll: your screen being live is ride-critical status, and the
 			     one AV state that can leak a private tab (#563, errors.md). -->
-			{#if roomConnection.current}
-				{@const av = roomConnection.current.av}
+			{#if channelConnection.current}
+				{@const av = channelConnection.current.av}
 				<!-- Loaded once a room is joined (#1514), like the two docks
 				     below: it draws nothing before one, and its chunk has no
 				     business in the closure every route pays for. -->
 				{#await import('$lib/channel/ScreenShareNotice.svelte') then { default: ScreenShareNotice }}
 					<ScreenShareNotice
-						room={roomConnection.current.address}
-						inside={roomConnection.onPlacePath(page.url.pathname)}
+						room={channelConnection.current.address}
+						inside={channelConnection.onPlacePath(page.url.pathname)}
 						sharing={av.sharing}
 						sharingAudio={av.sharingAudio}
 						onStop={() => void av.toggleShare()}
@@ -470,7 +471,7 @@
 		<!-- The jukebox dock lives on the frame (#216) and has to: RMF forbids
 		     auto-advance while the player is offscreen, so it cannot be a place.
 		     Threads became places instead (ADR-0020) — /messages (#468). -->
-		{#if roomConnection.current}
+		{#if channelConnection.current}
 			<!-- Both derive everything from the connection and draw nothing
 			     without one, so they load with the room (#1514): the jukebox
 			     player, the YouTube API glue and the pool deck used to ride

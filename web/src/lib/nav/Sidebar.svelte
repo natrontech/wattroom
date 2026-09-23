@@ -27,7 +27,7 @@
 		UNREAD_DOT,
 		unreadCount,
 	} from '$lib/messages/unread-marks';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { activeHref, crewOfPath, dmsCurrent, pages } from './pages';
 	import { readDmsFolded, rememberDmsFolded } from './folds';
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
@@ -310,14 +310,14 @@
 
 	<!-- The video, wherever the people column is not (#427): below xl the room
 	     has no column, and off the room pages there is none at all. -->
-	{#if roomConnection.current}
+	{#if channelConnection.current}
 		<JukeboxRail />
 	{/if}
 
 	<!-- Who is in the room with you, while you are looking elsewhere (#446).
 	     Above you, like Discord's voice panel; off the Lounge, which already
 	     shows everyone in tiles. -->
-	{#if roomConnection.current}
+	{#if channelConnection.current}
 		<VoiceStrip {pathname} />
 	{/if}
 

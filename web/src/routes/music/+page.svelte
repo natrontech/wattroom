@@ -28,7 +28,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import {
 		deleteTrack,
@@ -161,7 +161,7 @@
 	// The room the rider is standing in: the connection outlives navigation
 	// (#173), so browsing the shelf does not leave the room. Queuing anywhere
 	// else would need a room picker, and a rider in one room wants that one.
-	const room = $derived(roomConnection.current);
+	const room = $derived(channelConnection.current);
 	const roomName = $derived(room?.address.name ?? '');
 
 	// Save to a playlist (#1427): the rider's own lists always, the room's

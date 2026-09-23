@@ -5,7 +5,7 @@ import { soundPanel } from '$lib/channel/sound-panel.svelte';
 
 // Opening the panel asks the browser for devices on the way in (#658).
 vi.mock('$lib/channel/connection.svelte', () => ({
-	roomConnection: { current: { av: { refreshDevices: () => {} } } },
+	channelConnection: { current: { av: { refreshDevices: () => {} } } },
 }));
 
 // A phone is the pointer, not the width (#2142) — the one thing the gate

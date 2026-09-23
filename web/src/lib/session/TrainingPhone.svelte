@@ -29,7 +29,7 @@
 	import { account } from '$lib/account.svelte';
 	import { blockBands } from '$lib/workout/block';
 	import { serverNow } from '$lib/server-clock';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 
 	const room = useRoom();
 	const total = $derived(room.shared?.totalSeconds ?? 0);
@@ -134,7 +134,7 @@
 				     game's controls; a spectator never had them. -->
 				<GamePanel
 					game={room.game}
-					roster={roomConnection.current?.live.tick?.roster ?? []}
+					roster={channelConnection.current?.live.tick?.roster ?? []}
 					canControl={room.canControl && !device.spectator}
 					end={() => room.control('game-end')}
 					me={account.me?.id}
@@ -191,7 +191,7 @@
 							watts={followed.watts}
 							kg={followed.kg}
 							lthr={followed.you
-								? roomConnection.current?.profile.current.lthr
+								? channelConnection.current?.profile.current.lthr
 								: undefined}
 							small={focus === 'media'}
 						/>

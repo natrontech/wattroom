@@ -14,7 +14,7 @@ import { api } from '$lib/api';
 import type { Friend } from '$lib/friends/friends.svelte';
 import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
 import { connectionInfo } from '$lib/channel/connection-info.svelte';
-import { roomConnection } from '$lib/channel/connection.svelte';
+import { channelConnection } from '$lib/channel/connection.svelte';
 import { RIDER_FADER } from '$lib/sound/fader';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { toasts } from '$lib/toast.svelte';
@@ -52,7 +52,7 @@ function riderVolume(id: string, name: string): MenuSlider {
 		format: (percent) => `${percent}%`,
 		onInput: (percent) => {
 			const gain = percent / 100;
-			const av = roomConnection.current?.av;
+			const av = channelConnection.current?.av;
 			if (av) av.setRiderGain(id, gain, name);
 			else mixer.setRiderGain(id, gain, name);
 		},
@@ -136,7 +136,7 @@ export function personMenu(
 	// opens an empty panel is worse than no entry. It is offered on your OWN
 	// row too, unlike everything above it, because your own is the only row
 	// that carries an address.
-	if (roomConnection.current?.live?.tick?.roster?.some((r) => r.id === id))
+	if (channelConnection.current?.live?.tick?.roster?.some((r) => r.id === id))
 		items.push({
 			label: 'Connection',
 			icon: Activity,

@@ -12,7 +12,7 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { deviceWord } from '$lib/device.svelte';
 	import { pairedElsewhereAll, trainerState } from '$lib/session/sensor-status';
@@ -29,12 +29,12 @@
 	// hold it.
 	const solo = soloTrainer();
 	const profile = createProfileStore();
-	const ride = $derived(roomConnection.current?.ride);
+	const ride = $derived(channelConnection.current?.ride);
 	const roomHolds = $derived(!!ride?.trainer);
 	// And what the rider's OTHER screens hold (#610) — answering only for this
 	// tab would be the same half-truth #565 fixed.
 	const elsewhere = $derived(
-		pairedElsewhereAll(roomConnection.current?.live.pairing, deviceWord()),
+		pairedElsewhereAll(channelConnection.current?.live.pairing, deviceWord()),
 	);
 
 	const roomTrainerState = $derived(

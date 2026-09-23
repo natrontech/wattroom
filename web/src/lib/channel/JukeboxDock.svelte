@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { modals } from '$lib/modals.svelte';
 	import { page } from '$app/state';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { playheadAt } from '$lib/channel/playhead';
 	import { playerInfo } from '$lib/channel/jukebox-player.svelte';
 	import { backIn, listening, type Play } from '$lib/channel/listening.svelte';
@@ -43,7 +43,7 @@
 	// room's playhead is `jukebox-chase.ts` and arriving at a volume is
 	// `music-ramp.ts` — both outside the effect graph on purpose (#494).
 
-	const conn = $derived(roomConnection.current);
+	const conn = $derived(channelConnection.current);
 	const jukebox = $derived(conn?.live.tick?.jukebox);
 	let container = $state<HTMLDivElement | null>(null);
 	let shell = $state<HTMLDivElement | null>(null);
@@ -335,7 +335,7 @@
 			? ''
 			: 'ring-ink/15 shadow-2xl ring-1'} {showPlayer
 			? ''
-			: 'hidden'} {roomConnection.onPlacePath(page.url.pathname)
+			: 'hidden'} {channelConnection.onPlacePath(page.url.pathname)
 			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,320px)+1.25rem)] xl:bottom-4'
 			: 'right-4 bottom-4'}"
 		style="width: {CORNER.w}px; height: {CORNER.h}px; max-width: 96vw;

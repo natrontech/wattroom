@@ -18,7 +18,7 @@
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { onDuck } from '$lib/sound/duck';
 	import { playheadAt } from '$lib/channel/playhead';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { serverNow } from '$lib/server-clock';
 	import { listening } from '$lib/channel/listening.svelte';
 	import { deckDuration, playerInfo } from '$lib/channel/jukebox-player.svelte';
@@ -28,7 +28,7 @@
 	/** Past this, assign rather than let it ride. SPEC's in-sync bar is 0.6 s. */
 	const DRIFT_SEC = 0.6;
 
-	const conn = $derived(roomConnection.current);
+	const conn = $derived(channelConnection.current);
 	const deck = $derived(conn?.live.tick?.jukebox);
 	const track = $derived(deck?.current?.trackId ?? '');
 

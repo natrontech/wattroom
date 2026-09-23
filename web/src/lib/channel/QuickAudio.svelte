@@ -14,7 +14,7 @@
 	import DevicePickers from '$lib/channel/DevicePickers.svelte';
 	import GateTune from '$lib/channel/GateTune.svelte';
 	import MixFaders from '$lib/channel/MixFaders.svelte';
-	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { canHoldToTalk } from '$lib/channel/ptt-keys';
 	import { device } from '$lib/device.svelte';
 	import HandheldMicNote from '$lib/channel/HandheldMicNote.svelte';
@@ -24,7 +24,7 @@
 	// the mic and the camera it belongs with.
 	let { compact = false }: { compact?: boolean } = $props();
 
-	const av = $derived(roomConnection.current?.av);
+	const av = $derived(channelConnection.current?.av);
 	// The mic's menu opens this too (#914), so the flag lives outside.
 	const open = $derived(soundPanel.open);
 </script>

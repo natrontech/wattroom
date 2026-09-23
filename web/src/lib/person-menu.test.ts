@@ -14,7 +14,7 @@ const room = vi.hoisted(() => ({
 		live?: { tick?: { roster?: { id: string }[] } };
 	},
 }));
-vi.mock('$lib/channel/connection.svelte', () => ({ roomConnection: room }));
+vi.mock('$lib/channel/connection.svelte', () => ({ channelConnection: room }));
 
 const opened = vi.hoisted(() => ({ id: null as string | null }));
 vi.mock('$lib/channel/connection-info.svelte', () => ({

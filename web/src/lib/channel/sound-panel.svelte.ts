@@ -5,7 +5,7 @@
  * the meter. One `QuickAudio` is mounted at a time, so this still draws one
  * modal.
  */
-import { roomConnection } from '$lib/channel/connection.svelte';
+import { channelConnection } from '$lib/channel/connection.svelte';
 
 export const soundPanel = $state({ open: false });
 
@@ -16,5 +16,5 @@ export const soundPanel = $state({ open: false });
  */
 export function openSoundPanel(): void {
 	soundPanel.open = true;
-	void roomConnection.current?.av.refreshDevices();
+	void channelConnection.current?.av.refreshDevices();
 }
