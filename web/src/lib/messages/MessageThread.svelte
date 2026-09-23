@@ -202,17 +202,14 @@
 					})
 				: [];
 		// The person first (#1765, #666): profile, message, friend — and the
-		// owner's ban, on the surface where you actually meet the griefer.
+		// crew's ban, on the surface where you actually meet the griefer.
 		const fromId = message.fromId;
 		if (fromId) {
 			const you = fromId === account.me?.id;
 			items.push(
 				...personMenu(fromId, goto, {
 					you,
-					ban:
-						source.ban && !you
-							? () => source.ban?.(fromId, message.from)
-							: undefined,
+					ban: source.banOf?.(fromId, message.from),
 				}),
 				'separator',
 			);

@@ -31,11 +31,12 @@ export interface ThreadSource {
 	 */
 	edit?: (id: string, text: string) => Promise<string | null>;
 	/**
-	 * The ban, from the line itself (#1765, #666): chat is where you meet the
-	 * griefer. Only a room's thread ever passed it; a text channel and a DM
-	 * pass none, and the menu then offers no such item.
+	 * The crew's ban for a line's author, from the line itself (#1765, #2530):
+	 * chat is where you meet the griefer. Per PERSON, like canRemove is per
+	 * message — undefined where the reader may not ban them. A DM passes none,
+	 * and the menu then offers no such item.
 	 */
-	ban?: (id: string, name: string) => void;
+	banOf?: (id: string, name: string) => (() => void) | undefined;
 	/**
 	 * Take a line out of the log for good (#2417). Capability-gated like the
 	 * rest, and per MESSAGE rather than per thread: the author's own always,

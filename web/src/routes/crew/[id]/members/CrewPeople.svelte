@@ -7,7 +7,6 @@
 	// `onchange`.
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
-	import { confirm } from '$lib/confirm.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import {
 		contextMenu,
@@ -16,7 +15,7 @@
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import { setCrewRole, type Crew, type CrewPerson } from '$lib/crew';
-	import { handOverCrewFlow } from '$lib/crew-flows';
+	import { banFromCrewFlow, handOverCrewFlow } from '$lib/crew-flows';
 	import { personMenu } from '$lib/person-menu';
 	import { toasts } from '$lib/toast.svelte';
 	import Award from '@lucide/svelte/icons/award';
@@ -55,24 +54,9 @@
 			? act(person, 'member', `${person.displayName} is a member now.`)
 			: act(person, 'admin', `${person.displayName} is a crew admin now.`);
 
-	// A confirm, not an undo (#1674): the undo toast that stood here put back
-	// the role and nothing the ban took with it — the private channels they
-	// were named into stay gone (ADR-0058).
+	// A confirm, not an undo (#1674): banFromCrewFlow says why.
 	async function ban(person: CrewPerson) {
-		const sure = await confirm({
-			title: `Ban ${person.displayName} from the crew?`,
-			body: `They cannot come back through the crew's code until you lift the ban.`,
-			action: 'Ban',
-			cancel: 'Keep it',
-		});
-		if (!sure) return;
-		const res = await setCrewRole(crew.id, person.id, 'banned');
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		toasts.push(`Banned ${person.displayName} from the crew.`);
-		onchange();
+		if (await banFromCrewFlow(crew, person)) onchange();
 	}
 
 	const canAct = (person: CrewPerson) =>

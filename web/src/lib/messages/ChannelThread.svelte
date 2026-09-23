@@ -17,6 +17,7 @@
 	import { takeDownAnnouncement } from '$lib/announce/take-down';
 	import type { CrewChannel } from '$lib/channels';
 	import type { Crew } from '$lib/crew';
+	import { banFromCrewFlow } from '$lib/crew-flows';
 	import { STOCK_CHEERS } from '$lib/icons';
 	import MessageThread from '$lib/messages/MessageThread.svelte';
 	import {
@@ -36,6 +37,13 @@
 	// The crew's owner and admins keep its channels (docs/SPEC.md): they
 	// mark the announcement and take anyone's line down.
 	const administers = $derived(crew.role === 'owner' || crew.role === 'admin');
+
+	// The crew's ban from the line (#2530): the owner and admins, never on the
+	// owner's lines (docs/SPEC.md); your own drops it in personMenu.
+	const banOf = (id: string, displayName: string) =>
+		administers && crew.people.find((p) => p.id === id)?.role !== 'owner'
+			? () => void banFromCrewFlow(crew, { id, displayName })
+			: undefined;
 
 	let thread = $state<ChatThread | null>(null);
 	$effect(() => {
@@ -96,6 +104,7 @@
 		canRemove: (message) =>
 			!!message.fromId && (message.fromId === account.me?.id || administers),
 		announce: administers ? (id) => void mark(id) : undefined,
+		banOf,
 	});
 </script>
 
