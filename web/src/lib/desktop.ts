@@ -170,14 +170,14 @@ export function setLaunchAtLogin(on: boolean): Promise<LoginItem | null> {
  * The room the app is connected to, told to the shell so its tray can offer
  * to open it. Null when there is none, and a no-op in a browser.
  */
-export function setShellRoom(room: { path: string; name: string } | null) {
+export function setShellPlace(place: { path: string; name: string } | null) {
 	(
 		globalThis as {
 			wattroom?: {
 				setRoom?: (r: { path: string; name: string } | null) => void;
 			};
 		}
-	).wattroom?.setRoom?.(room);
+	).wattroom?.setRoom?.(place);
 }
 
 /**

@@ -47,7 +47,7 @@
 	import {
 		onShellHandoff,
 		onShellNavigate,
-		setShellRoom,
+		setShellPlace,
 		shellTitleBar,
 	} from '$lib/desktop';
 	import { notify } from '$lib/notify.svelte';
@@ -197,7 +197,7 @@
 	$effect(() => {
 		if (page.url.pathname === '/hud') return;
 		const conn = channelConnection.current;
-		setShellRoom(
+		setShellPlace(
 			conn ? { path: conn.address.home, name: conn.address.name } : null,
 		);
 	});

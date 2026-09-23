@@ -10,7 +10,7 @@ import {
 	onShellNavigate,
 	parseRelease,
 	setLaunchAtLogin,
-	setShellRoom,
+	setShellPlace,
 	shellUpdate,
 	trayName,
 } from './desktop';
@@ -275,15 +275,15 @@ describe('the tray’s room and its way back (#1313)', () => {
 	});
 
 	it('does nothing at all in a browser', () => {
-		expect(() => setShellRoom({ path: '/r/x', name: 'X' })).not.toThrow();
+		expect(() => setShellPlace({ path: '/r/x', name: 'X' })).not.toThrow();
 		expect(() => onShellNavigate(() => {})).not.toThrow();
 	});
 
 	it('tells the shell which room, and null when none', () => {
 		const setRoom = vi.fn();
 		(globalThis as { wattroom?: unknown }).wattroom = { setRoom };
-		setShellRoom({ path: '/r/tuesday', name: 'Tuesday Night' });
-		setShellRoom(null);
+		setShellPlace({ path: '/r/tuesday', name: 'Tuesday Night' });
+		setShellPlace(null);
 		expect(setRoom.mock.calls).toEqual([
 			[{ path: '/r/tuesday', name: 'Tuesday Night' }],
 			[null],
