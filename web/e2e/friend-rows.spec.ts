@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * One person, one row shape, and a page that can answer both ways (#2172).
@@ -29,7 +29,7 @@ const idOf = (page: import('@playwright/test').Page) =>
 
 test('a friend request is a row like any other, answerable from either side', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -38,18 +38,20 @@ test('a friend request is a row like any other, answerable from either side', as
 
 	const a = await riders(A);
 	const b = await riders(B);
-	// A room they share: a rider page is gated on a shared room or a
-	// friendship (friends.go), and the one being asked can see the asker
-	// while the asker cannot see them — which is the door this issue is
-	// about, so both sides need to be able to open it.
-	const room = await rooms.open(a, `Friend Rows ${Date.now() % 100000}`);
-	await rooms.enter(b, room);
+	// A channel they share: a rider page is gated on a channel both may
+	// enter or a friendship (SharesChannelOrFriends, ADR-0058), and the one
+	// being asked can see the asker while the asker cannot see them — which
+	// is the door this issue is about, so both sides need to be able to open
+	// it.
+	const opened = await channels.open(a, `Friend Rows ${Date.now() % 100000}`);
+	await channels.enter(b, opened);
 	const aId = await idOf(a);
 	const bId = await idOf(b);
 	await forget(a, bId);
 	await forget(b, aId);
 
-	// B asks A, by A's code: a request by id wants a shared room (friends.go).
+	// B asks A, by A's code: a request by id wants a shared channel
+	// (friends.go).
 	const code = await a.evaluate(() =>
 		fetch('/api/friends')
 			.then((res) => res.json())

@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * Which rider Home leads with joining (#2176, #2184): the one carrying an
@@ -20,7 +20,7 @@ const C = 'Join Gate Stranger';
 
 test('the invited rider leads with joining, and the stranger gets the crew the landing promised', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -28,13 +28,13 @@ test('the invited rider leads with joining, and the stranger gets the crew the l
 	);
 
 	const a = await riders(A);
-	const room = await rooms.open(a, `Join Gate ${Date.now() % 100000}`);
+	const { code } = await channels.open(a, `Join Gate ${Date.now() % 100000}`);
 
 	// B was sent to the crew's door and walked away without going through it:
 	// the invite is kept on the account (#2144), and it is the whole audience
 	// this order is for.
 	const b = await riders(B);
-	await b.goto(`/c/${room.code}`);
+	await b.goto(`/c/${code}`);
 	await b.waitForResponse(
 		(res) =>
 			res.url().includes('/remember') && res.request().method() === 'POST',

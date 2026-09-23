@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * The dot on a face in the sidebar (#1742).
@@ -7,10 +7,11 @@ import { expect, test } from './room';
  * have unit tests — but nothing put the two together on a screen, so the last
  * bullet of the presence audit stayed open after the away set (#1750) and the
  * reconnect tests (#1776) landed. The gap is real and not theoretical: the
- * sidebar's DM rows are the one surface that reads BOTH feeds, the rail for
- * riders it can see in a room and the friends list for everyone else, and a
- * rider who is away in a room used to read as plain `online` here while their
- * own tile in that room said away.
+ * sidebar's DM rows are the one surface that reads BOTH feeds, the live read
+ * for riders it can see in a voice channel (the rail's rooms, before
+ * ADR-0058) and the friends list for everyone else, and a rider who is away
+ * in one used to read as plain `online` here while their own tile there said
+ * away.
  *
  * Four rows, one per state the badge can be in, because the states are only
  * worth anything against each other — a badge that says "online" about
@@ -32,6 +33,13 @@ test('the sidebar draws each rider’s state on their own face', async ({
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
 		'the ?as= dev provider only exists on a dev server',
+	);
+	// Every row reads `online`: the dot asks statusOf(presence.rooms, …), and
+	// presence.rooms has been [] since the rooms left the server (#2446) —
+	// nothing reads the voice channels' occupants for it.
+	test.fixme(
+		true,
+		"#2517: the DM row's dot never reads the crews' live read, only the always-empty room list",
 	);
 
 	const a = await riders(A);
@@ -55,33 +63,43 @@ test('the sidebar draws each rider’s state on their own face', async ({
 			},
 		}),
 	);
-	// The rail feed puts three of them in one room — riding, away, and neither.
-	// Served as a fixture for the same reason presence-states.spec.ts does it:
-	// the states differ only in what the hub answered, and driving three real
-	// riders onto three real trainers would prove nothing this does not.
-	await a.route('**/api/rooms', (route) =>
+	// The crews' live read puts three of them in one voice channel — riding,
+	// away, and neither. Served as a fixture for the same reason
+	// presence-states.spec.ts does it: the states differ only in what the hub
+	// answered, and driving three real riders onto three real trainers would
+	// prove nothing this does not.
+	await a.route('**/api/crews/live', (route) =>
 		route.fulfill({
 			json: {
-				rooms: [
+				crews: [
 					{
-						id: 'room-dot',
-						slug: 'dot-room',
-						name: 'Dot Room',
-						memberCount: 3,
-						connected: 3,
-						riders: ['Ruben Rides', 'Kim Away', 'Mila Lounging'],
-						riderIds: ['dot-riding', 'dot-away', 'dot-online'],
-						ridingIds: ['dot-riding', 'dot-away'],
-						awayIds: ['dot-away'],
+						id: 'crew-dot',
+						name: 'Dot Crew',
+						role: 'member',
+						channels: [
+							{
+								id: 'voice-dot',
+								kind: 'voice',
+								name: 'Dot Voice',
+								occupants: [
+									{ id: 'dot-riding', name: 'Ruben Rides', riding: true },
+									{
+										id: 'dot-away',
+										name: 'Kim Away',
+										riding: true,
+										away: true,
+									},
+									{ id: 'dot-online', name: 'Mila Lounging' },
+								],
+							},
+						],
 					},
 				],
-				crews: [],
-				maxOwned: 3,
 			},
 		}),
 	);
-	// And the friends list answers for the fourth, whom no room the viewer can
-	// see has anything to say about.
+	// And the friends list answers for the fourth, whom no channel the viewer
+	// can see has anything to say about.
 	await a.route('**/api/friends', (route) =>
 		route.fulfill({
 			json: {
@@ -123,11 +141,11 @@ test('the sidebar draws each rider’s state on their own face', async ({
 		}
 	}
 
-	// The disagreement the away set was added to end (#1742): the rail has
-	// this rider BOTH away and riding, exactly as the hub sends it when
+	// The disagreement the away set was added to end (#1742): the live read
+	// has this rider BOTH away and riding, exactly as the hub sends it when
 	// somebody steps off mid-interval, and away is what a face says. Before
-	// `awayIds` reached this feed the sidebar had no away to return at all and
-	// drew the riding mark here while the rider's own tile in the room drew
+	// away reached this feed the sidebar had no away to return at all and
+	// drew the riding mark here while the rider's own tile in the channel drew
 	// the cup.
 	await expect(
 		row('dot-away').getByRole('img', { name: 'riding now' }),

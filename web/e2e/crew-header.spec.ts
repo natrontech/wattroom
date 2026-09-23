@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * The crew's own header, at 375 px, for the rider the main-crew control
@@ -21,7 +21,7 @@ const NAME = 'Thursday Crew';
 
 test("a crew's name is not squeezed out of its own header on a phone", async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -30,20 +30,14 @@ test("a crew's name is not squeezed out of its own header on a phone", async ({
 
 	const a = await riders(A);
 	await a.setViewportSize(PHONE);
-	const mine = await rooms.open(a, `Crew Header ${Date.now() % 100000}`);
+	const mine = await channels.open(a, `Crew Header ${Date.now() % 100000}`);
 
 	// A second crew, so the main-crew control has a choice to offer.
 	const b = await riders(B);
-	const theirs = await rooms.open(b, `Other Crew ${Date.now() % 100000}`);
-	await rooms.enter(a, theirs);
+	const theirs = await channels.open(b, `Other Crew ${Date.now() % 100000}`);
+	await channels.enter(a, theirs);
 
-	const crewId = await a.evaluate(
-		(slug) =>
-			fetch(`/api/rooms/${slug}`)
-				.then((res) => res.json())
-				.then((r) => String(r.crew?.id ?? '')),
-		mine.slug,
-	);
+	const crewId = mine.crew;
 	// A name long enough to need the room it is owed.
 	const named = await a.evaluate(
 		([id, name]) =>

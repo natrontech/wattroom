@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * What presence says on a real screen (#1743).
@@ -8,9 +8,10 @@ import { expect, test } from './room';
  * named three states since its 2026-09-09 amendment. The sidebar drew its
  * rooms, its presence dots and "32 min in" with full confidence long after the
  * feed behind them stopped answering, because the error line only ever
- * rendered over an EMPTY list. And a DM now consults whatever riding screen is
- * mounted before it toasts, which the third test holds to its default: nobody
- * riding, the toast exactly as it was.
+ * rendered over an EMPTY list — and a crew's channels, who is in them and
+ * what runs there are that radar since ADR-0058. And a DM now consults
+ * whatever riding screen is mounted before it toasts, which the third test
+ * holds to its default: nobody riding, the toast exactly as it was.
  *
  * All three are rendering and wiring, so none of them is settled by the unit
  * tests under the functions: the words, the mark and the toast have to reach a
@@ -20,7 +21,7 @@ import { expect, test } from './room';
 /** This spec's own rider — nobody else's (#2133). */
 const A = 'Presence States Host';
 
-test('the friends panel says riding, and names the room only to a member', async ({
+test('the friends panel says riding, and names the place only to a member', async ({
 	riders,
 }) => {
 	test.skip(
@@ -31,7 +32,9 @@ test('the friends panel says riding, and names the room only to a member', async
 	const a = await riders(A);
 	// Four friends, one per state the panel can be in. Served as a fixture:
 	// the states differ only in what the hub answered, and driving four real
-	// riders onto four real trainers would prove nothing this does not.
+	// riders onto four real trainers would prove nothing this does not. The
+	// wire still speaks of rooms (the RoomWhere adapter, #2436) and so does the
+	// panel; what it names is the place the friend stands in.
 	await a.route('**/api/friends', (route) =>
 		route.fulfill({
 			json: {
@@ -86,57 +89,81 @@ test('the friends panel says riding, and names the room only to a member', async
 			.last();
 
 	await expect(row('peer-shared')).toBeVisible({ timeout: 15_000 });
-	// A member of the room gets its name and the state in one line.
+	// A viewer who may enter the place gets its name and the state in one line.
 	await expect(row('peer-shared')).toContainText('riding in Velvet Hammer');
-	// A room the viewer is not in stays unnamed — ADR-0012's own words for it.
+	// A place the viewer may not enter stays unnamed — ADR-0012's own words.
 	await expect(row('peer-elsewhere')).toContainText('riding elsewhere');
 	await expect(row('peer-elsewhere')).not.toContainText('Velvet');
-	// Riding is never inferred from being in a room (#2168).
+	// Riding is never inferred from standing somewhere (#2168).
 	await expect(row('peer-lounging')).toContainText('in a room');
 	await expect(row('peer-idle')).toContainText('online');
 });
 
-test('the sidebar marks its crew header when the feed stops answering', async ({
-	riders,
-	rooms,
-}) => {
-	test.skip(
-		!!process.env.PLAYWRIGHT_BASE_URL,
-		'the ?as= dev provider only exists on a dev server',
-	);
+/**
+ * The column under the crew's header is drawn from two reads since ADR-0058:
+ * the crews themselves (presence.svelte.ts) and what is live in each of them —
+ * the channels, who is in which, what runs there and how far in (#2444). The
+ * room feed this test used to refuse carried both, so either one going quiet
+ * is the case #1743 is about.
+ */
+const FEEDS = [
+	{ route: '**/api/crews', what: 'the crew list', bug: '' },
+	{
+		route: '**/api/crews/live',
+		what: 'what is live in the crew',
+		// The mark reads `presence.stale` alone, which counts failures of
+		// /api/crews (presence.svelte.ts); a refused /api/crews/live sets
+		// `crewLive.error`, and CrewColumn draws that only over an EMPTY
+		// channel list — #1743's gap, one feed over.
+		bug: '#2518: the crew header never marks a stalled /api/crews/live, only a stalled /api/crews',
+	},
+];
 
-	const a = await riders(A);
-	// A crew to hold the mark, and a room in it — with rooms on screen the
-	// column's error line never draws, which is the whole gap.
-	await rooms.open(a, `Presence States ${Date.now() % 100000}`);
-	const mark = a.locator('[aria-label="not updating — retrying"]');
-	await expect(mark).toHaveCount(0);
+for (const feed of FEEDS) {
+	test(`the sidebar marks its crew header when ${feed.what} stops answering`, async ({
+		riders,
+		channels,
+	}) => {
+		test.skip(
+			!!process.env.PLAYWRIGHT_BASE_URL,
+			'the ?as= dev provider only exists on a dev server',
+		);
+		test.fixme(!!feed.bug, feed.bug);
 
-	// The read refuses from here on. The list already on screen stays.
-	await a.route('**/api/rooms', (route) =>
-		route.fulfill({
-			status: 503,
-			json: { error: 'rate_limited', message: 'The rooms are unavailable.' },
-		}),
-	);
-	// A tab coming back re-fetches (presence.svelte.ts) — the honest way to
-	// drive a read from a test, and the one a sleeping laptop takes.
-	const refetch = () =>
-		a.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+		const a = await riders(A);
+		// A crew to hold the mark, and channels in it — with channels on
+		// screen the column's error line never draws, which is the whole gap.
+		await channels.open(a, `Presence States ${Date.now() % 100000}`);
+		const mark = a.locator('[aria-label="not updating — retrying"]');
+		await expect(mark).toHaveCount(0);
 
-	// One failure is a blip the 60 s fallback poll already covers.
-	await refetch();
-	await expect(mark).toHaveCount(0);
+		// The read refuses from here on. The list already on screen stays.
+		await a.route(feed.route, (route) =>
+			route.fulfill({
+				status: 503,
+				json: { error: 'rate_limited', message: 'The crews are unavailable.' },
+			}),
+		);
+		// A tab coming back re-fetches both (presence.svelte.ts, and the
+		// sidebar's re-read on its version) — the honest way to drive a read
+		// from a test, and the one a sleeping laptop takes.
+		const refetch = () =>
+			a.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
 
-	// The second in a row is a feed that has stopped answering.
-	await refetch();
-	await expect(mark).toBeVisible({ timeout: 15_000 });
+		// One failure is a blip the 60 s fallback poll already covers.
+		await refetch();
+		await expect(mark).toHaveCount(0);
 
-	// And one good read takes it back off.
-	await a.unroute('**/api/rooms');
-	await refetch();
-	await expect(mark).toHaveCount(0, { timeout: 15_000 });
-});
+		// The second in a row is a feed that has stopped answering.
+		await refetch();
+		await expect(mark).toBeVisible({ timeout: 15_000 });
+
+		// And one good read takes it back off.
+		await a.unroute(feed.route);
+		await refetch();
+		await expect(mark).toHaveCount(0, { timeout: 15_000 });
+	});
+}
 
 test('a DM off a ride still toasts, exactly as it did', async ({ riders }) => {
 	test.skip(

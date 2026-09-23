@@ -86,9 +86,9 @@ export const NOT_MEASURED: Readonly<Record<string, string>> = {
 	'/messages/r/[slug]':
 		'A room’s thread is its text channel’s now (#2458); +page.ts redirects.',
 	'/crew/[id]/v/*':
-		'A voice channel is the room’s live shell on another address (#2449) — mobile-room.spec.ts’s subject until the room goes (#2460).',
+		'A voice channel is the live shell (#2449), whose places scroll inside its own place-body — mobile-channel.spec.ts measures them at 375.',
 	'/crew/[id]/s/*':
-		'A session is the voice channel’s live shell with the ride in front (#2450) — mobile-room.spec.ts’s subject until the room goes (#2460).',
+		'A session is the voice channel’s live shell with the ride in front (#2450) — mobile-channel.spec.ts follows one onto a phone and measures it.',
 	'/hud':
 		'Numbers only, deliberately outside the page frame: hud.spec.ts asserts it has no page-body.',
 	'/settings':

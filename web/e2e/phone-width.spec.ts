@@ -353,7 +353,7 @@ test('no page outside a room scrolls sideways on a phone', async ({
 	// so they needed their own (#2360): let `/api/crews` stop listing the crew
 	// or `/api/crews/:id` stop carrying `code` and the crew page, its settings
 	// and its door leave the measured list in silence. The code is checked by
-	// shape rather than emptiness, the same `/^[A-Z0-9]{6}$/` room.ts asserts.
+	// shape rather than emptiness, the same `/^[A-Z0-9]{6}$/` crew.ts asserts.
 	expect(
 		{ crewId: crewId ?? '', crewCode, textChannel },
 		'the crew, its settings and its door resolve',

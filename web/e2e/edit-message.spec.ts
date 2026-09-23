@@ -1,4 +1,4 @@
-import { expect, test, textChannelOf } from './room';
+import { expect, test, textPath } from './crew';
 
 /**
  * Editing a sent line (#865), in a real browser and across two real sessions.
@@ -19,9 +19,9 @@ const B = 'Edit Message Guest';
 const SENT = 'warmup at 6 sharp';
 const FIXED = 'warmup at 7 sharp';
 
-test('a rider fixes their line and the room sees the new words', async ({
+test('a rider fixes their line and the channel sees the new words', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -30,14 +30,13 @@ test('a rider fixes their line and the room sees the new words', async ({
 
 	const a = await riders(A);
 	const name = `Edit Message ${Date.now() % 100000}`;
-	const room = await rooms.open(a, name);
+	const opened = await channels.open(a, name);
 
 	const b = await riders(B);
-	await rooms.enter(b, room);
+	await channels.enter(b, opened);
 
-	// Both reading the room's text channel, so both hear its lobby pings.
-	const channel = await textChannelOf(a, room);
-	for (const rider of [a, b]) await rider.goto(channel);
+	// Both reading the text channel, so both hear its lobby pings.
+	for (const rider of [a, b]) await rider.goto(textPath(opened));
 
 	const draft = a.getByPlaceholder(`Message ${name}…`);
 	await expect(draft).toBeVisible();

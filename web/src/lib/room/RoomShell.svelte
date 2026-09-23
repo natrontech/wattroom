@@ -363,7 +363,9 @@
 		// …and a Modal of its own (the summary, #1969) answers first.
 		// The picker and the people sheet count themselves modal for the
 		// jukebox dock's sake — they are this shell's own layers, so only a
-		// count ABOVE them means something is stacked on top (#1974).
+		// count ABOVE them means something is stacked on top (#1974). The
+		// picker also answers Escape itself (#2513); whichever runs first
+		// closes it and the other finds nothing left to do.
 		const mine = (session.open ? 1 : 0) + (peopleSheet ? 1 : 0);
 		if (navDrawer.open || modals.open > mine) return;
 		if (tv) tv = false;

@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test, textPath } from './crew';
 
 /**
  * The kit's icon button, where a call site had typed its own (#2170).
@@ -23,7 +23,7 @@ async function box(
 
 test('the controls a rider taps on a browse surface clear the floor', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -68,9 +68,9 @@ test('the controls a rider taps on a browse surface clear the floor', async ({
 		`the code copy is ${copyBox.height}px tall`,
 	).toBeGreaterThanOrEqual(FLOOR);
 
-	// The composer's own two, in a real room's chat.
-	const room = await rooms.open(a, `Tap Targets ${Date.now() % 100000}`);
-	await a.goto(`/r/${room.slug}/chat`);
+	// The composer's own two, in a real text channel.
+	const opened = await channels.open(a, `Tap Targets ${Date.now() % 100000}`);
+	await a.goto(textPath(opened));
 	const attach = a.getByRole('button', { name: 'attach an image' });
 	await expect(attach).toBeVisible({ timeout: 15_000 });
 	const attachBox = await box(attach);

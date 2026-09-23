@@ -25,7 +25,7 @@ const external = isExternal();
  * Chromium only: Web Bluetooth exists nowhere else, and the app says so itself.
  */
 // Mute before you play (AGENTS.md), at the browser rather than at the app.
-// The zeroed mixer in e2e/room.ts covers the `riders` contexts; it cannot
+// The zeroed mixer in e2e/crew.ts covers the `riders` contexts; it cannot
 // cover a spec that takes Playwright's own `page`, which is most of them —
 // ride.spec.ts rides a real minute with the cue bus at its 0.7 default, and
 // chat-focus.spec.ts had to hand-copy the mixer write to stay quiet (#2358).
@@ -65,7 +65,7 @@ export default defineConfig({
 		{
 			name: 'chromium',
 			testIgnore: [
-				'mobile-room.spec.ts',
+				'mobile-channel.spec.ts',
 				'phone-width.spec.ts',
 				'voice-duck.spec.ts',
 			],
@@ -79,7 +79,7 @@ export default defineConfig({
 			// phone-width.spec.ts overrides the viewport to the 375×812 the
 			// standard is written at, and keeps this device's touch pointer.
 			name: 'phone',
-			testMatch: ['mobile-room.spec.ts', 'phone-width.spec.ts'],
+			testMatch: ['mobile-channel.spec.ts', 'phone-width.spec.ts'],
 			use: { ...devices['Pixel 5'], launchOptions: { args: [MUTE] } },
 		},
 		{
@@ -97,10 +97,11 @@ export default defineConfig({
 			// the getUserMedia prompt and letting audio start without a
 			// user-gesture wait. Scoped to its own project — every other spec
 			// launches muted (MUTE, above).
-			// No --mute-audio and no zeroed mixer (AGENTS.md's usual "mute
-			// before you play"): this spec's whole point is a real voice
-			// actually being heard, which AGENTS.md itself carves out —
-			// "Unless the audio is the thing under test". A real GitHub
+			// No --mute-audio (AGENTS.md's usual "mute before you play"), and
+			// the `riders` fixture's zeroed mixer carries no voice level: this
+			// spec's whole point is a real voice actually being heard, which
+			// AGENTS.md itself carves out — "Unless the audio is the thing
+			// under test". A real GitHub
 			// Actions runner has no speaker to reach either way; a developer
 			// running this locally hears one short tone, once, per run.
 			name: 'voice',

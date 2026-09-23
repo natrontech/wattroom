@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * The phone drawer and what it raises — from its menus (#2153) and from its
@@ -19,7 +19,7 @@ const PHONE = { width: 375, height: 812 };
 
 test('an action picked in the phone drawer is not left under it', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -28,8 +28,8 @@ test('an action picked in the phone drawer is not left under it', async ({
 
 	const a = await riders(RIDER);
 	await a.setViewportSize(PHONE);
-	// The first room founds the crew whose row carries the menu.
-	const mine = await rooms.open(a, `Drawer Menu ${Date.now() % 100000}`);
+	// Opening channels founds the rider's crew, whose row carries the menu.
+	const mine = await channels.open(a, `Drawer Menu ${Date.now() % 100000}`);
 
 	// On the crew's own page the column is that crew (#2447), and its header
 	// is the row that carries the crew's menu.
@@ -85,15 +85,16 @@ test('an action picked in the phone drawer is not left under it', async ({
 	// up with its body and its danger button behind it, while the focus trap
 	// held focus inside (#2153).
 	const b = await riders(OTHER);
-	const theirs = await rooms.open(b, `Drawer Other ${Date.now() % 100000}`);
-	await rooms.enter(a, theirs);
+	const theirs = await channels.open(b, `Drawer Other ${Date.now() % 100000}`);
+	await channels.enter(a, theirs);
 	const crew = await a.evaluate(
-		(slug) =>
-			fetch(`/api/rooms/${slug}`)
+		(id) =>
+			fetch(`/api/crews/${id}`)
 				.then((res) => res.json())
-				.then((r) => String(r.crew?.name ?? '')),
-		theirs.slug,
+				.then((c) => String(c.name ?? '')),
+		theirs.crew,
 	);
+	expect(crew, "the other crew's name").not.toBe('');
 
 	await a.goto('/home');
 	await hamburger.click();
@@ -146,7 +147,7 @@ test('an action picked in the phone drawer is not left under it', async ({
  */
 test('a dialog opened by a button in the phone drawer comes up over it', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -157,9 +158,9 @@ test('a dialog opened by a button in the phone drawer comes up over it', async (
 	await a.setViewportSize(PHONE);
 	// The + sits beside a crew's channels, for its owner (#2447), so there
 	// has to be a crew of theirs on screen.
-	const room = await rooms.open(a, `Drawer Button ${Date.now() % 100000}`);
+	const opened = await channels.open(a, `Drawer Button ${Date.now() % 100000}`);
 
-	await a.goto(`/crew/${room.crew}`);
+	await a.goto(`/crew/${opened.crew}`);
 	const hamburger = a.getByRole('button', { name: 'open navigation' });
 	await hamburger.click();
 	await expect(hamburger).toHaveAttribute('aria-expanded', 'true');

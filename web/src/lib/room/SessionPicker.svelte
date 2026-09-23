@@ -13,7 +13,8 @@
 		suggestedFocuses,
 		type Suggestion,
 	} from '$lib/progression';
-	import { countModal } from '$lib/modals.svelte';
+	import { untrack } from 'svelte';
+	import { countModal, modals } from '$lib/modals.svelte';
 	import { focusTrap } from '$lib/components/focus-trap';
 	import { GAME_MODES } from '$lib/room/modes';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
@@ -55,6 +56,11 @@
 		onStartGame?: (id: string) => void;
 		onClose: () => void;
 	} = $props();
+
+	/** Its place in the modal stack: Escape is its while it is the top
+	 *  (#2513), the kit Modal's rule — the crew's Schedule draws it with no
+	 *  shell around it to answer the key. */
+	let depth = $state(0);
 
 	let tab = $state<'workouts' | 'games'>('workouts');
 	// svelte-ignore state_referenced_locally
@@ -151,10 +157,20 @@
 	aria-label="Close session setup"
 	onclick={onClose}
 ></button>
+<svelte:window
+	onkeydown={(event) =>
+		event.key === 'Escape' && depth === modals.open && onClose()}
+/>
 <!-- A dialog like the kit's Modal and the TV overlay (#1593): named, modal,
      and focus stays inside until it closes. -->
 <div
-	{@attach countModal}
+	{@attach () => {
+		const off = countModal();
+		// untrack, as the Modal's: the count this just bumped is a fact of the
+		// mount, not a dependency to re-run on.
+		depth = untrack(() => modals.open);
+		return off;
+	}}
 	role="dialog"
 	aria-modal="true"
 	aria-label={title}

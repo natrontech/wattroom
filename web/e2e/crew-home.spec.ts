@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * The crew's Home (#2451, ADR-0058): quiet, it teaches — where to start the
@@ -11,7 +11,7 @@ const A = 'Crew Home Owner';
 
 test('crew Home teaches when quiet, and a plan is answered from it', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -19,14 +19,14 @@ test('crew Home teaches when quiet, and a plan is answered from it', async ({
 	);
 
 	const a = await riders(A);
-	const room = await rooms.open(a, `Crew Home ${Date.now() % 100000}`);
+	const { crew } = await channels.open(a, `Crew Home ${Date.now() % 100000}`);
 
-	await a.goto(`/crew/${room.crew}`);
+	await a.goto(`/crew/${crew}`);
 	const start = a.getByRole('link', { name: /^Go to / });
 	await expect(start).toBeVisible({ timeout: 15_000 });
 	await expect(start).toHaveAttribute(
 		'href',
-		new RegExp(`^/crew/${room.crew}/v/[0-9a-f-]+$`),
+		new RegExp(`^/crew/${crew}/v/[0-9a-f-]+$`),
 	);
 
 	const workoutName = `Home Plan ${Date.now() % 100000}`;
@@ -46,7 +46,7 @@ test('crew Home teaches when quiet, and a plan is answered from it', async ({
 			});
 			return res.status;
 		},
-		[room.crew, workoutName] as const,
+		[crew, workoutName] as const,
 	);
 	expect(planned, 'could not plan a session').toBe(201);
 
@@ -66,7 +66,7 @@ test('crew Home teaches when quiet, and a plan is answered from it', async ({
 							(body: { sessions: { yourAnswer?: string }[] }) =>
 								body.sessions[0]?.yourAnswer,
 						),
-				room.crew,
+				crew,
 			),
 		)
 		.toBe('in');
@@ -83,5 +83,5 @@ test('crew Home teaches when quiet, and a plan is answered from it', async ({
 		);
 		for (const plan of body.sessions as { id: string }[])
 			await fetch(`/api/crews/${id}/schedule/${plan.id}`, { method: 'DELETE' });
-	}, room.crew);
+	}, crew);
 });
