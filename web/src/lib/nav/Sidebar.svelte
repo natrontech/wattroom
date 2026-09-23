@@ -298,7 +298,7 @@
 								name={head.peerName}
 								avatarUrl={head.peerAvatarUrl}
 								xp={head.peerTotalXp}
-								status={statusOf(presence.rooms, head.peerId, friends.list)}
+								status={statusOf(crewLive.crews, head.peerId, friends.list)}
 								size={20}
 							/>
 							<span class="truncate">{head.peerName}</span>

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { RailRoom } from '$lib/room/room-data';
-import { othersIn, roomOf, statusOf, statusOfRider } from './status';
+import type { LiveCrew, LiveOccupant } from '$lib/crews-live';
+import {
+	occupantOf,
+	othersIn,
+	roomOf,
+	statusOf,
+	statusOfRider,
+} from './status';
 
 const room = (over: Partial<RailRoom> = {}): RailRoom => ({
 	name: 'MFW 5',
@@ -11,47 +18,73 @@ const room = (over: Partial<RailRoom> = {}): RailRoom => ({
 });
 
 describe('statusOf', () => {
-	const rooms = [
-		room({ slug: 'a', riders: ['Sven Gerber'], riderIds: ['u-sven'] }),
-		room({
-			slug: 'b',
-			riders: ['Jan Lauber', 'Mike Frei'],
-			riderIds: ['u-jan', 'u-mike'],
-			riding: ['Mike Frei'],
-			ridingIds: ['u-mike'],
-		}),
+	const voice = (
+		id: string,
+		occupants: LiveOccupant[],
+	): LiveCrew['channels'][number] => ({
+		id,
+		kind: 'voice',
+		name: id,
+		occupants,
+	});
+	const crews: LiveCrew[] = [
+		{
+			id: 'c1',
+			name: 'Tuesday Crew',
+			role: 'member',
+			channels: [
+				voice('lounge', [{ id: 'u-sven', name: 'Sven Gerber' }]),
+				voice('cave', [
+					{ id: 'u-jan', name: 'Jan Lauber' },
+					{ id: 'u-mike', name: 'Mike Frei', riding: true },
+				]),
+			],
+		},
 	];
 
-	it('says nothing about someone the feed cannot see', () => {
-		expect(statusOf(rooms, 'u-david')).toBe(null);
-		expect(statusOf(rooms, '')).toBe(null);
+	it('says nothing about someone the read cannot see', () => {
+		expect(statusOf(crews, 'u-david')).toBe(null);
+		expect(statusOf(crews, '')).toBe(null);
 	});
 
-	it('is online in a room and riding with watts', () => {
-		expect(statusOf(rooms, 'u-jan')).toBe('online');
-		expect(statusOf(rooms, 'u-mike')).toBe('riding');
+	it('is online in a voice channel and riding on the pedals (#2517)', () => {
+		expect(statusOf(crews, 'u-jan')).toBe('online');
+		expect(statusOf(crews, 'u-mike')).toBe('riding');
 	});
 
-	it('is away when the rider said so, whatever the watts (#1742)', () => {
-		const rooms = [
-			room({
-				slug: 'cave',
-				riderIds: ['u-mike'],
-				ridingIds: ['u-mike'],
-				awayIds: ['u-mike'],
-			}),
+	it('is away when the rider said so, whatever the pedals (#1742)', () => {
+		const away: LiveCrew[] = [
+			{
+				...crews[0],
+				channels: [
+					voice('cave', [
+						{ id: 'u-mike', name: 'Mike', riding: true, away: true },
+					]),
+				],
+			},
 		];
-		expect(statusOf(rooms, 'u-mike')).toBe('away');
+		expect(statusOf(away, 'u-mike')).toBe('away');
 	});
 
-	it('names the room they are in', () => {
-		expect(roomOf(rooms, 'u-sven')?.slug).toBe('a');
-		expect(roomOf(rooms, 'u-nobody')).toBe(undefined);
+	it('finds them in any crew and any voice channel', () => {
+		const two: LiveCrew[] = [
+			crews[0],
+			{
+				id: 'c2',
+				name: 'Other',
+				role: 'owner',
+				channels: [
+					voice('other', [{ id: 'u-zoe', name: 'Zoe', riding: true }]),
+				],
+			},
+		];
+		expect(occupantOf(two, 'u-zoe')?.name).toBe('Zoe');
+		expect(statusOf(two, 'u-zoe')).toBe('riding');
 	});
 
-	it('falls back to the friends list when the feed cannot see them', () => {
-		// #1434: a friend with the app open but not in a room you can see read
-		// as nothing in the DM list, while the friends panel said online.
+	it('falls back to the friends list when the read cannot see them', () => {
+		// #1434: a friend with the app open but not in a channel you can see
+		// read as nothing in the DM list, while the friends panel said online.
 		const friends = [
 			{
 				id: 'u-anna',
@@ -63,23 +96,23 @@ describe('statusOf', () => {
 			{ id: 'u-ben', name: 'Ben', status: 'accepted' as const, at: 0 },
 			{ id: 'u-cid', name: 'Cid', status: 'pending_in' as const, at: 0 },
 		];
-		expect(statusOf(rooms, 'u-anna', friends)).toBe('online');
-		expect(statusOf(rooms, 'u-ben', friends)).toBe('offline');
+		expect(statusOf(crews, 'u-anna', friends)).toBe('online');
+		expect(statusOf(crews, 'u-ben', friends)).toBe('offline');
 		// A pending request carries no presence (ADR-0012) — say nothing.
-		expect(statusOf(rooms, 'u-cid', friends)).toBe(null);
-		expect(statusOf(rooms, 'u-david', friends)).toBe(null);
-		// The feed wins where it has something: riding beats the list's online.
+		expect(statusOf(crews, 'u-cid', friends)).toBe(null);
+		expect(statusOf(crews, 'u-david', friends)).toBe(null);
+		// The live read wins where it has something: riding beats "online".
 		expect(
-			statusOf(rooms, 'u-mike', [
+			statusOf(crews, 'u-mike', [
 				{ id: 'u-mike', name: 'Mike', status: 'accepted', at: 0, online: true },
 			]),
 		).toBe('riding');
 	});
 
-	it('carries riding across the room boundary (#1743)', () => {
-		// ADR-0012's third state, for a room the viewer is not a member of:
-		// the feed above has never heard of that room, so before the server
-		// carried the flag this said "online" about a friend on the pedals.
+	it('carries riding across the channel boundary (#1743)', () => {
+		// ADR-0012's third state, for a channel the viewer may not enter: the
+		// live read has never heard of it, so without the friends list's flag
+		// this said "online" about a friend on the pedals.
 		const elsewhere = [
 			{
 				id: 'u-anna',
@@ -87,23 +120,31 @@ describe('statusOf', () => {
 				status: 'accepted' as const,
 				at: 0,
 				online: true,
-				inRoom: true,
 				riding: true,
 			},
 		];
-		expect(statusOf(rooms, 'u-anna', elsewhere)).toBe('riding');
+		expect(statusOf(crews, 'u-anna', elsewhere)).toBe('riding');
 	});
 
-	it('does not answer for a namesake', () => {
-		// #649: two riders called Dave. The one standing in the room used to
-		// answer for the one who is not in it — an "online in MFW 5" badge and
-		// a Join button pointing at the wrong person.
-		const daves = [
-			room({ slug: 'a', riders: ['Dave'], riderIds: ['u-dave-one'] }),
+	it('does not answer for a namesake (#649)', () => {
+		const daves: LiveCrew[] = [
+			{
+				...crews[0],
+				channels: [voice('a', [{ id: 'u-dave-one', name: 'Dave' }])],
+			},
 		];
 		expect(statusOf(daves, 'u-dave-one')).toBe('online');
 		expect(statusOf(daves, 'u-dave-two')).toBe(null);
-		expect(roomOf(daves, 'u-dave-two')).toBe(undefined);
+	});
+});
+
+describe('roomOf', () => {
+	it('names the room they are in', () => {
+		const rooms = [
+			room({ slug: 'a', riders: ['Sven Gerber'], riderIds: ['u-sven'] }),
+		];
+		expect(roomOf(rooms, 'u-sven')?.slug).toBe('a');
+		expect(roomOf(rooms, 'u-nobody')).toBe(undefined);
 	});
 });
 

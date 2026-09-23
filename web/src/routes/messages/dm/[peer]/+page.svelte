@@ -21,6 +21,7 @@
 	import { presence } from '$lib/presence.svelte';
 	import { fetchRider, type Rider } from '$lib/rider';
 	import { roomOf, statusOf } from '$lib/status';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import Radio from '@lucide/svelte/icons/radio';
 
@@ -105,7 +106,7 @@
 	});
 	// Where they are, if anywhere — the one thing the old drawer could never say.
 	const inRoom = $derived(roomOf(presence.rooms, peerId));
-	const status = $derived(statusOf(presence.rooms, peerId, friends.list));
+	const status = $derived(statusOf(crewLive.crews, peerId, friends.list));
 
 	let thread = $state<ReturnType<typeof createDmThread> | null>(null);
 	// Lines on screen: what tells an ended friendship from a stranger's.

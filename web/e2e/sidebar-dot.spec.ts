@@ -34,13 +34,6 @@ test('the sidebar draws each rider’s state on their own face', async ({
 		!!process.env.PLAYWRIGHT_BASE_URL,
 		'the ?as= dev provider only exists on a dev server',
 	);
-	// Every row reads `online`: the dot asks statusOf(presence.rooms, …), and
-	// presence.rooms has been [] since the rooms left the server (#2446) —
-	// nothing reads the voice channels' occupants for it.
-	test.fixme(
-		true,
-		"#2517: the DM row's dot never reads the crews' live read, only the always-empty room list",
-	);
 
 	const a = await riders(A);
 	// Desk width: below md the sidebar is a drawer and these rows are behind

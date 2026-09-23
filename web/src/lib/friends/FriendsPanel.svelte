@@ -7,8 +7,8 @@
 	import Radio from '@lucide/svelte/icons/radio';
 	import UserX from '@lucide/svelte/icons/user-x';
 	import { api } from '$lib/api';
-	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import {
@@ -235,7 +235,7 @@
 			name={friend.name}
 			avatarUrl={friend.avatarUrl}
 			xp={friend.totalXp}
-			status={statusOf(presence.rooms, friend.id, friends.list)}
+			status={statusOf(crewLive.crews, friend.id, friends.list)}
 			ring="var(--color-surface-raised)"
 			size={30}
 		/>

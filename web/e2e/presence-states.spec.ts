@@ -124,6 +124,13 @@ for (const feed of FEEDS) {
 		);
 
 		const a = await riders(A);
+		// The lobby socket held silent, so the test's own refetches are the
+		// only reads: the hub pings every signed-in rider on anyone's move
+		// (hub/lobby.go), and a neighbouring spec's ping re-reads the refused
+		// feed a second time — the mark after ONE refetch, which is the blip
+		// this test says must not mark. Routed before the navigation below,
+		// which is what reconnects it (nav-current.spec.ts does the same).
+		await a.routeWebSocket(/\/ws\/presence$/, () => {});
 		// A crew to hold the mark, and channels in it — with channels on
 		// screen the column's error line never draws, which is the whole gap.
 		await channels.open(a, `Presence States ${Date.now() % 100000}`);
