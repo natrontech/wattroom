@@ -1,17 +1,20 @@
-import { expect, test } from './room';
+import { expect, test, textPath } from './crew';
 
 /**
  * Every object with more than one action gets a context menu (ux.md), on
  * every surface it is drawn — the messages list is the sidebar below `md`
- * (#2171) and its rows had arrived without theirs.
+ * (#2171) and its rows had arrived without theirs. Its rows are
+ * conversations now: a crew's talk lives in its text channels (ADR-0058),
+ * which the crew's own column draws — the drawer, on a phone.
  */
 
-/** This spec's own rider — nobody else's (#2133). */
+/** This spec's own riders — nobody else's (#2133). */
 const RIDER = 'List Menus Rider';
+const OTHER = 'List Menus Other';
 
-test("the messages list's room row carries the sidebar's own menu", async ({
+test("a channel's row in the crew column carries the sidebar's own menu", async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -19,31 +22,71 @@ test("the messages list's room row carries the sidebar's own menu", async ({
 	);
 
 	const a = await riders(RIDER);
-	const room = await rooms.open(a, `List Menus ${Date.now() % 100000}`);
+	const opened = await channels.open(a, `List Menus ${Date.now() % 100000}`);
 
-	// The list column exists below md only: above it the sidebar IS the list
-	// (#484), and this is the surface that stands in for it.
+	// A line the owner has not read, so "Mark as read" has something to do:
+	// the menu offers it only on a text channel with unread.
+	const b = await riders(OTHER);
+	await channels.enter(b, opened);
+	const said = await b.evaluate(
+		(id) =>
+			fetch(`/api/channels/${id}/chat`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ text: 'unread for the owner' }),
+			}).then((res) => res.status),
+		opened.text,
+	);
+	expect(said, 'the member could not say a line in the channel').toBe(200);
+
+	// A member's menu opens the channel and manages nothing: the gate, the
+	// rename and the delete are the crew's owner's and admins' (ADR-0058),
+	// and a menu item the server would refuse is a control that fails on
+	// click (ux.md).
+	const bRow = b
+		.locator('nav[aria-label="rooms and places"]')
+		.locator(`a[href="${textPath(opened)}"]`);
+	await bRow.click({ button: 'right' });
+	await expect(b.getByRole('menuitem', { name: 'Open' })).toBeVisible();
+	await expect(
+		b.getByRole('menuitem', { name: 'Delete the channel' }),
+	).toHaveCount(0);
+	await expect(
+		b.getByRole('menuitem', { name: 'Make it private' }),
+	).toHaveCount(0);
+	await b.keyboard.press('Escape');
+
+	// The owner, on a phone: the column is the drawer, and #2171 was a list
+	// that stood in for the sidebar there and arrived without its menus. On
+	// the crew's Home, not the channel, which would read the line.
 	await a.setViewportSize({ width: 375, height: 812 });
-	await a.goto('/messages');
-	// The list, not the sidebar behind it: both draw a row per room, and the
-	// sidebar's has carried a menu since #465 — a check that finds either
-	// passes with this list's rows still bare.
+	await a.goto(`/crew/${opened.crew}`);
+	await a.getByRole('button', { name: 'open navigation' }).click();
 	const row = a
-		.getByTestId('thread-list')
-		.getByRole('listitem')
-		.filter({ hasText: room.name })
-		.first();
-	await expect(row).toBeVisible({ timeout: 15_000 });
+		.locator('nav[aria-label="rooms and places"]')
+		.locator(`a[href="${textPath(opened)}"]`);
+	// The unread count on the row, before the menu is read off it: the column
+	// learns of the line on a lobby ping, and a menu opened ahead of it would
+	// be missing "Mark as read" for a reason that is not the menu's.
+	await expect(row).toHaveText(new RegExp(`^\\s*${opened.name}\\s*1\\s*$`), {
+		timeout: 15_000,
+	});
 	await row.click({ button: 'right' });
 
-	// The room's places, the same builder the sidebar's rows use.
-	await expect(a.getByRole('menuitem', { name: 'Training' })).toBeVisible();
-	await expect(a.getByRole('menuitem', { name: 'Chat' })).toBeVisible();
-	// Not standing in the room, so there is nothing to disconnect from.
-	await expect(a.getByRole('menuitem', { name: 'Disconnect' })).toHaveCount(0);
-	// The place is where the row said it would be.
-	await a.getByRole('menuitem', { name: 'Training' }).click();
-	await expect(a).toHaveURL(new RegExp(`/r/${room.slug}/training$`));
+	// The column's own builder: open, read, then the admin's.
+	for (const item of [
+		'Open',
+		'Mark as read',
+		'Make it private',
+		'Rename in settings',
+		'Delete the channel',
+	])
+		await expect(a.getByRole('menuitem', { name: item })).toBeVisible();
+
+	// The channel is where the row said it would be.
+	await a.getByRole('menuitem', { name: 'Open' }).click();
+	await expect(a).toHaveURL(new RegExp(`${textPath(opened)}$`));
+	await expect(a.getByPlaceholder(`Message ${opened.name}…`)).toBeVisible();
 });
 
 test("a conversation's row offers the person's menu, and a ride's its verbs", async ({

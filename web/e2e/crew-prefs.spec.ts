@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * A rider's own settings for their crew (#1100, #2453 — a room's until the
@@ -12,11 +12,11 @@ import { expect, test } from './room';
  */
 
 /** This spec's own rider — nobody else's (#2133). */
-const A = 'Room Prefs Rider';
+const A = 'Crew Prefs Rider';
 
 test('a crew preference saves, and a refused one does not undo what did', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -24,10 +24,10 @@ test('a crew preference saves, and a refused one does not undo what did', async 
 	);
 
 	const a = await riders(A);
-	const room = await rooms.open(a, `Room Prefs ${Date.now() % 100000}`);
-	// A known start: a crew can outlive the room that made it (the rider
-	// may still hold a switch row in it), so the last run's answers could
-	// otherwise be the first thing this one reads.
+	const { crew } = await channels.open(a, `Crew Prefs ${Date.now() % 100000}`);
+	// A known start: the crew outlives the run (the rider still holds a
+	// switch row in it), so the last run's answers could otherwise be the
+	// first thing this one reads.
 	const reset = await a.evaluate(
 		(id) =>
 			fetch(`/api/crews/${id}/me`, {
@@ -35,10 +35,10 @@ test('a crew preference saves, and a refused one does not undo what did', async 
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify({ notify: true, onBoard: false }),
 			}).then((res) => res.status),
-		room.crew,
+		crew,
 	);
 	expect(reset, 'could not reset the rider’s own switches').toBe(200);
-	await a.goto(`/crew/${room.crew}/members`);
+	await a.goto(`/crew/${crew}/members`);
 
 	const notify = a.getByRole('checkbox', { name: /Notify me about this crew/ });
 	const board = a.getByRole('checkbox', { name: /Include me on the weekly/ });
@@ -54,7 +54,7 @@ test('a crew preference saves, and a refused one does not undo what did', async 
 					fetch(`/api/crews/${id}/members`)
 						.then((res) => res.json())
 						.then((r) => r.me?.notify),
-				room.crew,
+				crew,
 			),
 		)
 		.toBe(false);
@@ -63,7 +63,7 @@ test('a crew preference saves, and a refused one does not undo what did', async 
 	// the change above. It used to reset both switches to the snapshot the
 	// page was loaded with, so a saved "off" read as "on".
 	await a.route(
-		(url) => url.pathname === `/api/crews/${room.crew}/me`,
+		(url) => url.pathname === `/api/crews/${crew}/me`,
 		(route) =>
 			route.fulfill({
 				status: 500,

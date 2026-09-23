@@ -1,12 +1,12 @@
-import { expect, test, voicePath } from './room';
+import { expect, test, voicePath } from './crew';
 
 /**
- * Two riders in one room (#418), which is the only way to see the group
- * surfaces of the redesign at all: the crew strip, the roster's execution
- * bars and the sprint scoreboard render nothing worth checking with one
- * rider in the room, so every one of them was verified by hand until now —
- * and the crew-strip slab (#410) is exactly the class of bug a second rider
- * catches.
+ * Two riders in one session (#418; a voice channel's since ADR-0058), which
+ * is the only way to see the group surfaces of the redesign at all: the crew
+ * strip, the roster's execution bars and the sprint scoreboard render nothing
+ * worth checking with one rider in the session, so every one of them was
+ * verified by hand until now — and the crew-strip slab (#410) is exactly the
+ * class of bug a second rider catches.
  *
  * The second session is real, not simulated at the protocol level: a second
  * browser context, its own dev identity (#409), its own trainer, its own
@@ -35,9 +35,9 @@ const KLAXON_MS = 3_000;
 /** Slack over a live wait — the browser's timer drift, plus a 1 Hz tick. */
 const SETTLE_MS = 20_000;
 
-test('two riders share a room: crew strip, execution bars, sprint scoreboard', async ({
+test('two riders share a session: crew strip, execution bars, sprint scoreboard', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	// The dev provider is the whole premise, and a deployed target does not
 	// have one — the production synthetic signs in with a bearer instead.
@@ -48,11 +48,11 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 
 	const a = await riders(A);
 	const name = `Two Riders ${Date.now() % 100000}`;
-	const room = await rooms.open(a, name);
+	const opened = await channels.open(a, name);
 
 	const b = await riders(B);
 	// The hub reads FTP and weight from the account once, at websocket connect
-	// (rooms.Authorize) — so this has to happen before B joins.
+	// — so this has to happen before B joins.
 	const patched = await b.evaluate(
 		({ displayName, kg }) =>
 			fetch('/api/me', {
@@ -69,19 +69,22 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 	);
 	expect(patched, `could not set ${B}'s weight to ${B_KG} kg`).toBe(200);
 
-	// B gets in the way a guest does: the crew's six characters, then the room.
-	await rooms.enter(b, room);
+	// B gets in the way a guest does: the crew's six characters, then the
+	// voice channel.
+	await channels.enter(b, opened);
 
 	// Both on the trainer, both on the voice channel's Training place (#2449)
-	// — the surface every assertion below reads.
+	// — the surface every assertion below reads, and the one that moves to
+	// the session's own address when it starts (#2450).
 	for (const rider of [a, b]) {
-		await rider.goto(`${voicePath(room)}/training`);
+		await rider.goto(`${voicePath(opened)}/training`);
 		await rider
 			.getByRole('button', { name: 'Ride simulated' })
 			.click({ timeout: 15_000 });
 	}
 
-	// A is the owner, so A is the coach: A picks the workout and starts it.
+	// Any member starts a session and is its coach (ADR-0058): A picks the
+	// workout and starts it.
 	await a.getByRole('button', { name: 'Start a session' }).click();
 	await a
 		.getByRole('textbox', { name: 'find a workout' })
@@ -96,7 +99,7 @@ test('two riders share a room: crew strip, execution bars, sprint scoreboard', a
 	const tiles = a.getByTestId('crew-tile');
 	await expect(
 		tiles,
-		`A's crew strip should hold exactly one tile — ${B}, everyone in the room but A`,
+		`A's crew strip should hold exactly one tile — ${B}, everyone in the session but A`,
 	).toHaveCount(1, { timeout: COUNTDOWN_MS + SETTLE_MS });
 	await expect(
 		tiles.getByTestId('crew-name'),

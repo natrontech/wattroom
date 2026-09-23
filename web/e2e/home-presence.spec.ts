@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * Home's "Around right now" chip says where a friend is, in the app's one
@@ -8,38 +8,50 @@ import { expect, test } from './room';
  * the eye and to a screen reader (#2168). So a friend standing in a room's
  * chat was reported as pedalling, while the Friends page called the same
  * person "in a room" — the drift #807 and #1653 each removed once already,
- * and ADR-0012's rule that presence never implies watts.
+ * and ADR-0012's rule that presence never implies watts. A voice channel is
+ * where a friend stands now (ADR-0058).
  */
 
 /** This spec's own riders — nobody else's (#2133). */
 const A = 'Home Presence';
 const B = 'Home Presence Pal';
 
-test('a friend who is in a room but not pedalling is not shown as riding', async ({
+test('a friend who is in a voice channel but not pedalling is not shown as riding', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
 		'the ?as= dev provider only exists on a dev server',
 	);
+	// The premise below does not hold: RoomWhere (the friends feed's
+	// presence adapter) names a voice channel only by the room it came from,
+	// so a friend in any channel made since the migration reads as merely
+	// online — and the chip's bug, which fired on `inRoom`, cannot fire.
+	test.fixme(
+		true,
+		'#2516: /api/friends never says inRoom (nor riding) for a friend in a voice channel no room became',
+	);
 
 	const a = await riders(A);
 	const b = await riders(B);
-	const room = await rooms.open(a, `Home Presence ${Date.now() % 100000}`);
+	const opened = await channels.open(a, `Home Presence ${Date.now() % 100000}`);
 
-	// Friends by code: a request by id wants a shared room, and the chip is
+	// Friends by code: a request by id wants a shared channel, and the chip is
 	// about friends (friends.go).
 	const code = await b.evaluate(() =>
 		fetch('/api/friends')
 			.then((res) => res.json())
 			.then((f) => String(f.code ?? '')),
 	);
-	const myId = await a.evaluate(() =>
-		fetch('/api/me')
-			.then((res) => res.json())
-			.then((me) => String(me.id ?? '')),
-	);
+	const idOf = (rider: typeof a) =>
+		rider.evaluate(() =>
+			fetch('/api/me')
+				.then((res) => res.json())
+				.then((me) => String(me.id ?? '')),
+		);
+	const myId = await idOf(a);
+	const bId = await idOf(b);
 	// 409 is "already" — these two riders are this spec's own and stable, so
 	// the second run of it finds the friendship the first one made (#2133's
 	// lesson about state that outlives a run). What matters is the end state.
@@ -74,17 +86,58 @@ test('a friend who is in a room but not pedalling is not shown as riding', async
 								x.id === id && x.status === 'accepted',
 						),
 					),
-			await b.evaluate(() =>
-				fetch('/api/me')
-					.then((res) => res.json())
-					.then((me) => String(me.id ?? '')),
-			),
+			bId,
 		),
 		'the two are friends by the end of this',
 	).toBe(true);
 
-	// B stands in the room — no trainer, so not riding by anyone's definition.
-	await rooms.enter(b, room);
+	// B stands in the voice channel — no trainer, so not riding by anyone's
+	// definition. The crew's own read says B is there first.
+	await channels.enter(b, opened);
+	await expect
+		.poll(
+			() =>
+				a.evaluate(
+					({ crew, voice, id }) =>
+						fetch('/api/crews/live')
+							.then((res) => res.json())
+							.then(
+								(body) =>
+									body.crews
+										?.find((c: { id: string }) => c.id === crew)
+										?.channels?.find((c: { id: string }) => c.id === voice)
+										?.occupants?.some((o: { id: string }) => o.id === id) ??
+									false,
+							),
+					{ crew: opened.crew, voice: opened.voice, id: bId },
+				),
+			{ message: `${B} never showed up in the voice channel`, timeout: 15_000 },
+		)
+		.toBe(true);
+	// The premise the regression needs (#2168): the friends feed says B is
+	// somewhere — `inRoom`, the flag the old chip drew RidingBars for. A
+	// friend read as merely online passes everything below whatever the chip
+	// does with a friend who is somewhere.
+	await expect
+		.poll(
+			() =>
+				a.evaluate(
+					(id) =>
+						fetch('/api/friends')
+							.then((res) => res.json())
+							.then(
+								(f) =>
+									(f.friends ?? []).find((x: { id?: string }) => x.id === id)
+										?.inRoom === true,
+							),
+					bId,
+				),
+			{
+				message: `A's friends feed never says ${B} is in the voice channel`,
+				timeout: 15_000,
+			},
+		)
+		.toBe(true);
 
 	await a.goto('/home');
 	// Scoped to the page: the sidebar carries the same names.

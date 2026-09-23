@@ -1,4 +1,4 @@
-import { expect, test, voicePath } from './room';
+import { expect, test, voicePath } from './crew';
 import { signInAs } from './signin';
 
 /**
@@ -15,14 +15,17 @@ import { signInAs } from './signin';
  */
 test('every place in a crew renders, and none of them throws', async ({
 	page,
-	rooms,
+	channels,
 }) => {
 	const errors: string[] = [];
 	page.on('pageerror', (error) => errors.push(error.message.split('\n')[0]));
 
 	await signInAs(page, 'Places Walker', '/home');
-	const room = await rooms.open(page, `Places Walk ${Date.now() % 100000}`);
-	await page.goto(`/crew/${room.crew}`);
+	const opened = await channels.open(
+		page,
+		`Places Walk ${Date.now() % 100000}`,
+	);
+	await page.goto(`/crew/${opened.crew}`);
 
 	// The column draws the crew's pages at once and its channels when
 	// /api/crews/live answers, so reading it the instant the page lands finds
@@ -30,11 +33,11 @@ test('every place in a crew renders, and none of them throws', async ({
 	// link whose arrival says the channels are there; `evaluateAll` has no
 	// auto-waiting of its own to hold the read back.
 	const nav = page.locator('nav[aria-label="rooms and places"]');
-	await expect(nav.locator(`a[href="${voicePath(room)}"]`)).toBeVisible();
+	await expect(nav.locator(`a[href="${voicePath(opened)}"]`)).toBeVisible();
 
 	// Everything under the crew, which is every place but its Home — Home is
 	// where the walk starts, and the walk is the places beyond it.
-	const links = nav.locator(`a[href^="/crew/${room.crew}/"]`);
+	const links = nav.locator(`a[href^="/crew/${opened.crew}/"]`);
 	const places = [
 		...new Set(
 			await links.evaluateAll((all) => all.map((a) => a.getAttribute('href')!)),
@@ -58,17 +61,17 @@ test('every place in a crew renders, and none of them throws', async ({
 });
 
 /**
- * A face in the room's people column opens that rider (#702). Opening a rider
+ * A face in the voice channel's people column opens that rider (#702). Opening a rider
  * there was right-click only, which `.claude/rules/ux.md` forbids — the
  * primary action stays on click, and nothing lives ONLY in a menu. One rider
  * is enough: the column always lists you, so your own face is the target.
  */
 test('a face in the people column opens that rider’s page', async ({
 	page,
-	rooms,
+	channels,
 }) => {
 	await signInAs(page, 'Face Clicker', '/home');
-	await rooms.open(page, `Face Click ${Date.now() % 100000}`);
+	await channels.open(page, `Face Click ${Date.now() % 100000}`);
 
 	// The column lists the people, not the nav: a rider link inside a list row.
 	const face = page.locator('li a[href^="/u/"]').first();

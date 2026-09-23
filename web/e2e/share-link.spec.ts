@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 import { signInAs } from './signin';
 
 /**
@@ -40,20 +40,21 @@ const copied = () => (window as unknown as { __copied: string[] }).__copied;
 
 test('a desk copies the invite and says so, and never opens a sheet', async ({
 	page,
-	rooms,
+	channels,
 }) => {
 	await page.addInitScript(instrument);
 	await signInAs(page, 'Share Link Desk', '/home');
-	const room = await rooms.open(page, `Share Desk ${Date.now() % 100000}`);
+	const opened = await channels.open(page, `Share Desk ${Date.now() % 100000}`);
 
-	await page.goto(`/r/${room.slug}/members`);
+	// The crew's Home is the invite's one home (#1236, #2451).
+	await page.goto(`/crew/${opened.crew}`);
 	const button = page.getByRole('button', { name: 'Copy invite link' });
 	await expect(button).toBeVisible({ timeout: 15_000 });
 	await button.click();
 
 	await expect(page.getByText('Invite link copied.')).toBeVisible();
 	expect(await page.evaluate(copied)).toEqual([
-		`${new URL(page.url()).origin}/c/${room.code}`,
+		`${new URL(page.url()).origin}/c/${opened.code}`,
 	]);
 	// The API is there; a mouse must not reach it — the link is going into the
 	// window next to this one, not into another application.
@@ -74,19 +75,22 @@ test.describe('on a phone', () => {
 
 	test('the invite button says Share, and opens the sheet', async ({
 		page,
-		rooms,
+		channels,
 	}) => {
 		await page.addInitScript(instrument);
 		await signInAs(page, 'Share Link Phone', '/home');
-		const room = await rooms.open(page, `Share Phone ${Date.now() % 100000}`);
+		const opened = await channels.open(
+			page,
+			`Share Phone ${Date.now() % 100000}`,
+		);
 
-		await page.goto(`/r/${room.slug}/members`);
+		await page.goto(`/crew/${opened.crew}`);
 		const button = page.getByRole('button', { name: 'Share invite link' });
 		await expect(button).toBeVisible({ timeout: 15_000 });
 		await button.click();
 
 		expect(await page.evaluate(shared)).toEqual([
-			{ url: `${new URL(page.url()).origin}/c/${room.code}` },
+			{ url: `${new URL(page.url()).origin}/c/${opened.code}` },
 		]);
 		// The sheet is the feedback: no clipboard write behind it, and no toast
 		// over it claiming a copy that did not happen.
