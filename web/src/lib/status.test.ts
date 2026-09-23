@@ -87,7 +87,7 @@ describe('statusOf', () => {
 				status: 'accepted' as const,
 				at: 0,
 				online: true,
-				inRoom: true,
+				inVoice: true,
 				riding: true,
 			},
 		];

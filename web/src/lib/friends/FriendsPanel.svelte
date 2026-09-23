@@ -34,6 +34,7 @@
 	import { UNREAD_DOT } from '$lib/messages/unread-marks';
 	import { personMenu } from '$lib/person-menu';
 	import { toasts } from '$lib/toast.svelte';
+	import { placePath } from '$lib/whereabouts';
 
 	// The list, my code and its load error live in the store (#876): the app
 	// refreshes it off the presence ping and announces what arrives in it,
@@ -70,22 +71,24 @@
 	}
 
 	// Same person, same menu (person-menu.ts), plus the two actions this row
-	// alone offers: joining their room and the way out of whatever standing
-	// they are in (#663, #2172) — which is not always "Remove friend": a row
-	// that offered that for a request nobody had accepted named an act that
-	// does not exist. "Add friend" is left out by the menu itself now that it
-	// is told the standing — this row used to filter it out by label, and the
-	// sidebar's row, one column away, did not (#2169).
+	// alone offers: walking into their voice channel and the way out of
+	// whatever standing they are in (#663, #2172) — which is not always
+	// "Remove friend": a row that offered that for a request nobody had
+	// accepted named an act that does not exist. "Add friend" is left out by
+	// the menu itself now that it is told the standing — this row used to
+	// filter it out by label, and the sidebar's row, one column away, did not
+	// (#2169).
 	function friendMenu(friend: Friend): MenuEntry[] {
 		const entries: MenuEntry[] = personMenu(friend.id, goto, {
 			friendship: friend.status,
 		});
 		entries.push('separator');
-		if (friend.room)
+		const channel = friend.channel;
+		if (channel)
 			entries.push({
 				label: 'Walk in',
 				icon: Radio,
-				onSelect: () => goto(`/r/${friend.room}`),
+				onSelect: () => goto(placePath(channel)),
 			});
 		entries.push({ ...exit(friend), icon: UserX, danger: true });
 		return entries;
@@ -228,9 +231,10 @@
 		{@attach contextMenu(() => friendMenu(friend))}
 	>
 		<!-- Slack's green dot (#251), now the avatar's own (#807): online =
-		     app open (the lobby socket), with the room named only for shared
-		     members. statusOf answers `null` for anyone it cannot vouch for,
-		     so a request carries a face and no claim about where they are. -->
+		     app open (the lobby socket), with the voice channel named only to
+		     a viewer who may enter it. statusOf answers `null` for anyone it
+		     cannot vouch for, so a request carries a face and no claim about
+		     where they are. -->
 		<Avatar
 			name={friend.name}
 			avatarUrl={friend.avatarUrl}
@@ -259,8 +263,9 @@
 			{#if friend.status === 'pending_out'}
 				asked — waiting on them
 			{:else}
-				<!-- One sentence, one place (ADR-0012, #1743): the room's name
-				     for a member, "riding elsewhere" for everyone else. -->
+				<!-- One sentence, one place (ADR-0012, #1743, #2516): the crew
+				     and voice channel for a viewer who may enter it, "riding
+				     elsewhere" for everyone else. -->
 				{friendPlace(friend)}
 			{/if}
 		</span>
@@ -303,9 +308,10 @@
 			<span class="{UNREAD_DOT} absolute -top-0.5 -right-0.5"></span>
 		{/if}
 	</a>
-	{#if friend.room}
-		<!-- btn-accent is what walking into a room wears everywhere else. -->
-		<a href="/r/{friend.room}" class="btn btn-accent btn-xs">Walk in</a>
+	{#if friend.channel}
+		<!-- btn-accent is what walking in wears everywhere else. -->
+		<a href={placePath(friend.channel)} class="btn btn-accent btn-xs">Walk in</a
+		>
 	{/if}
 	<button
 		onclick={() => void run(removeFriend(friend))}

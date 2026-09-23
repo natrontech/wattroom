@@ -1,6 +1,6 @@
 <script lang="ts">
-	// A rider's page (ADR-0024): what rooms already see — level, energy,
-	// medals from rooms you share, where they are — plus, for friends, the
+	// A rider's page (ADR-0024): what crews already see — level, energy,
+	// medals from crews you share, where they are — plus, for friends, the
 	// rides they chose to share. Built from the /dev/profile mock (#457).
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
@@ -42,6 +42,7 @@
 	import Radio from '@lucide/svelte/icons/radio';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 	import Users from '@lucide/svelte/icons/users';
+	import { placePath, whereabouts } from '$lib/whereabouts';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -114,7 +115,8 @@
 		void load(who);
 	});
 	$effect(() => {
-		// Presence pings (#251) re-fetch: they walked into a room, or out.
+		// Presence pings (#251) re-fetch: they walked into a voice channel, or
+		// out.
 		// `rider` is read untracked: load() writes it, and tracking it made
 		// every response schedule the next fetch — a loop at network speed
 		// (#824).
@@ -122,6 +124,10 @@
 		const loaded = untrack(() => rider);
 		if (id && loaded) void load(id);
 	});
+
+	// Where they are, in the friends list's own sentence (#2516): the crew
+	// and voice channel only when you may enter it.
+	const place = $derived(rider ? whereabouts(rider.presence) : '');
 
 	// Add: one call, then the page re-reads itself. A refused request is a
 	// toast — the page is not a form.
@@ -178,7 +184,7 @@
 				hint: 'generated, all rides',
 			},
 		];
-		// Medals "in rooms you share" is a sentence about someone else; yours
+		// Medals "in crews you share" is a sentence about someone else; yours
 		// are the shelf below, by name, and the fourth tile is the badges.
 		if (rider.friend === 'self') {
 			if (trophies) {
@@ -195,9 +201,9 @@
 				label: 'medals',
 				value: String(medalTotal(rider.medals)),
 				hint:
-					rider.roomsInCommon.length > 0
-						? 'in rooms you share'
-						: 'in rooms you share — none yet',
+					rider.crewsInCommon.length > 0
+						? 'in crews you share'
+						: 'in crews you share — none yet',
 			});
 		}
 		if (rider.month) {
@@ -265,17 +271,9 @@
 			<div class="min-w-0 flex-1">
 				<h1 class="page-title-sm">{rider.displayName}</h1>
 				<p class="text-muted mt-0.5 flex flex-wrap items-center gap-2 text-sm">
-					{#if rider.presence.room}
-						{#if rider.presence.riding}
-							<RidingBars size={11} /> riding in {rider.presence.room.name}
-						{:else}
-							in {rider.presence.room.name}
-						{/if}
-						<span class="text-muted-dim">·</span>
-					{:else if rider.presence.inRoom}
-						in a room <span class="text-muted-dim">·</span>
-					{:else if rider.presence.online}
-						online <span class="text-muted-dim">·</span>
+					{#if place}
+						{#if rider.presence.riding}<RidingBars size={11} />{/if}
+						{place} <span class="text-muted-dim">·</span>
 					{/if}
 					riding here since {since}
 				</p>
@@ -342,12 +340,13 @@
 						class="btn btn-primary"><UserPlus size={15} /> Add friend</button
 					>
 				{/if}
-				{#if rider.presence.room && rider.friend !== 'self'}
+				{#if rider.presence.channel && rider.friend !== 'self'}
 					<!-- Your own page reached the app in #575; the way in on it
-					     offered the room you are already standing in. -->
-					<!-- Riding: the ride is joined on Training (#1332). -->
+					     offered the voice channel you are already standing in. -->
+					<!-- Riding: the ride is joined on Training (#1332), which
+					     moves on to the session's own page once one runs. -->
 					<a
-						href="/r/{rider.presence.room.slug}{rider.presence.riding
+						href="{placePath(rider.presence.channel)}{rider.presence.riding
 							? '/training'
 							: ''}"
 						class="btn btn-accent"
@@ -469,7 +468,7 @@
 			</div>
 
 			<aside class="min-w-0 space-y-8">
-				<!-- Theirs from the rooms you share (ADR-0024); yours are on the
+				<!-- Theirs from the crews you share (ADR-0024); yours are on the
 				     shelf, by name, so the same list twice is one too many. -->
 				{#if medalKinds.length > 0 && rider.friend !== 'self'}
 					<section>
@@ -493,23 +492,23 @@
 				{/if}
 
 				<section>
-					<h2 class="eyebrow">Rooms in common</h2>
-					{#if rider.roomsInCommon.length === 0}
+					<h2 class="eyebrow">Crews in common</h2>
+					{#if rider.crewsInCommon.length === 0}
 						<p class="text-muted mt-3 text-xs">
 							{rider.friend === 'self'
-								? 'Every room you are in.'
+								? 'Every crew you are in.'
 								: 'None — you know each other as friends.'}
 						</p>
 					{:else}
 						<ul class="mt-3 space-y-1.5">
-							{#each rider.roomsInCommon as room (room.slug)}
+							{#each rider.crewsInCommon as crew (crew.id)}
 								<li>
 									<a
-										href="/r/{room.slug}"
+										href="/crew/{crew.id}"
 										class="panel hover:border-muted/40 flex items-center gap-2 px-3 py-2 text-sm transition-colors"
 									>
 										<Users size={14} class="text-muted" />
-										{room.name}
+										{crew.name}
 									</a>
 								</li>
 							{/each}
@@ -524,8 +523,9 @@
 					</h2>
 					<ul class="text-muted mt-2 space-y-1 text-[11px] leading-relaxed">
 						<li>
-							<strong class="text-ink">Room-mates and friends:</strong> name, level,
-							energy, medals from rooms you share, which of those rooms they are in.
+							<strong class="text-ink">Crew-mates and friends:</strong> name, level,
+							energy, medals from crews you share, which voice channel they are in
+							— when you may enter it.
 						</li>
 						<li>
 							<strong class="text-ink">Friends:</strong> the rides they chose to share,
@@ -533,7 +533,7 @@
 						</li>
 						<li>
 							<strong class="text-ink">Never:</strong> live watts, heart rate, weight,
-							FTP — room-scoped, as always.
+							FTP — they stay inside the session, as always.
 						</li>
 					</ul>
 				</section>
