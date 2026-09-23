@@ -137,9 +137,10 @@ test('the sidebar says a failed read is a failed read, not "no crew"', async ({
 });
 
 /**
- * The same rule inside a crew (#2447): its Home, its Members, a text channel
- * and a voice channel each light exactly their own row — the crew's header
- * lighting too would make two — and stepping back to your own Home lights
+ * The same rule inside a crew (#2447, #2569): each of its pages, a text
+ * channel and a voice channel light exactly their own row — the crew's header
+ * lighting too would make two. Your Workouts lights its row under YOU with the
+ * crew's column still drawn (#2570), and stepping back to your own Home lights
  * Home under You.
  */
 crewTest(
@@ -158,15 +159,22 @@ crewTest(
 		const row = (label: string) => new RegExp(`^\\s*${label}\\s*$`, 'i');
 		const walk: { path: string; label: RegExp }[] = [
 			{ path: `/crew/${opened.crew}`, label: row('Home') },
+			{ path: `/crew/${opened.crew}/schedule`, label: row('Schedule') },
+			{ path: `/crew/${opened.crew}/workouts`, label: row('Workouts') },
+			{ path: `/crew/${opened.crew}/board`, label: row('Board') },
 			{ path: `/crew/${opened.crew}/members`, label: row('Members') },
 			{ path: textPath(opened), label: row(name) },
 			{ path: voicePath(opened), label: row(name) },
+			{ path: '/workouts', label: row('Workouts') },
 			{ path: '/home', label: row('Home') },
 		];
+		const voiceRow = nav.locator(`a[href="${voicePath(opened)}"]`);
 		for (const { path, label } of walk) {
 			await a.goto(path);
 			await expect(current).toHaveCount(1);
 			await expect(current).toHaveText(label);
+			// Your own pages keep the crew's column; only your Home is You.
+			await expect(voiceRow).toHaveCount(path === '/home' ? 0 : 1);
 		}
 	},
 );

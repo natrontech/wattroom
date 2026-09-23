@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { activeHref, crewOfPath, crewPlaces, dmsCurrent, pages } from './pages';
+import {
+	activeHref,
+	columnCrew,
+	crewOfPath,
+	crewPlaces,
+	dmsCurrent,
+	pages,
+	yourPages,
+} from './pages';
 
 describe('activeHref', () => {
 	it('lights up the destination a path belongs to', () => {
@@ -90,13 +98,16 @@ describe('dmsCurrent', () => {
 });
 
 describe('a crew in the sidebar (#2447)', () => {
-	it('lists its Home, Members and — for its admins on a desk — Settings', () => {
+	// ADR-0058's order (#2569): the pages were built and never listed, so a
+	// crew's plans were reachable only from your own Home.
+	it('lists its pages in the ADR’s order — Settings for admins on a desk', () => {
 		const labels = (admin: boolean, narrow: boolean) =>
 			crewPlaces('c1', admin, narrow).map((p) => p.label);
-		expect(labels(true, false)).toEqual(['Home', 'Members', 'Settings']);
-		expect(labels(false, false)).toEqual(['Home', 'Members']);
+		const everyone = ['Home', 'Schedule', 'Workouts', 'Board', 'Members'];
+		expect(labels(true, false)).toEqual([...everyone, 'Settings']);
+		expect(labels(false, false)).toEqual(everyone);
 		// The 95% rule: nobody renames a crew from a bike.
-		expect(labels(true, true)).toEqual(['Home', 'Members']);
+		expect(labels(true, true)).toEqual(everyone);
 	});
 
 	it('knows which crew a path stands in', () => {
@@ -104,5 +115,41 @@ describe('a crew in the sidebar (#2447)', () => {
 		expect(crewOfPath('/crew/c1/v/v1/training')).toBe('c1');
 		expect(crewOfPath('/crews/directory')).toBeUndefined();
 		expect(crewOfPath('/home')).toBeUndefined();
+	});
+});
+
+describe('which crew the column is in (#2570)', () => {
+	const crews = [{ id: 'c1' }, { id: 'c2' }];
+
+	it('is the crew a path stands in, whatever was chosen', () => {
+		expect(columnCrew('/crew/c2/schedule', crews, 'c1')?.id).toBe('c2');
+		expect(columnCrew('/crew/gone', crews, 'c1')).toBeNull();
+	});
+
+	it('is You on your own Home and what Home covers', () => {
+		expect(columnCrew('/home', crews, 'c1')).toBeNull();
+		expect(columnCrew('/crews/directory', crews, 'c1')).toBeNull();
+	});
+
+	// The YOU section lists these in a crew's column, so they keep it: they
+	// used to switch to You and take the crew's channels away.
+	it('keeps the chosen crew on your other pages', () => {
+		for (const path of ['/workouts', '/ride', '/history', '/music', '/friends'])
+			expect(columnCrew(path, crews, 'c1')?.id, path).toBe('c1');
+		expect(columnCrew('/settings/profile', crews, 'c1')?.id).toBe('c1');
+	});
+
+	it('is You when You was chosen', () => {
+		expect(columnCrew('/workouts', crews, 'you')).toBeNull();
+		expect(columnCrew('/workouts', crews, null)).toBeNull();
+	});
+
+	it('lists every destination but Home under YOU', () => {
+		expect(yourPages.map((p) => p.label)).toEqual([
+			'Workouts',
+			'Rides',
+			'Music',
+			'Friends',
+		]);
 	});
 });

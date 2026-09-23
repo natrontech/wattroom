@@ -17,7 +17,6 @@
 		type Crew,
 		type CrewMembers,
 	} from '$lib/crew';
-	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import type { SessionRecap } from '$lib/protocol';
 	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
@@ -75,9 +74,6 @@
 		if (version === seenVersion) return;
 		seenVersion = version;
 		if (id && untrack(() => crew)) void load(id);
-	});
-	$effect(() => {
-		if (crew) chosenCrew.set(crew.id);
 	});
 
 	// The people list reads the crew's shape; the Members read is the same

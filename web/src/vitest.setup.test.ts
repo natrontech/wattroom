@@ -11,7 +11,7 @@
  * arbitrary handful that look like product bugs.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { readDmsFolded, rememberDmsFolded } from './lib/nav/folds';
+import { readFolded, rememberFolded } from './lib/nav/folds';
 import { createProfileStore, DEFAULT_PROFILE } from './lib/profile.svelte';
 import { mixerStorage } from './lib/sound/mixer-storage';
 
@@ -72,9 +72,9 @@ describe('a storage-backed module reaches storage, not its default (#2346)', () 
 
 	// nav/folds.ts: a bare `localStorage.getItem` inside a swallowing `catch`.
 	it('reads a folded sidebar section back', () => {
-		expect(readDmsFolded()).toBe(false);
-		rememberDmsFolded(true);
-		expect(readDmsFolded()).toBe(true);
+		expect(readFolded('dms')).toBe(false);
+		rememberFolded('dms', true);
+		expect(readFolded('dms')).toBe(true);
 	});
 
 	// sound/mixer-storage.ts: `globalThis.localStorage?.getItem`.
@@ -91,20 +91,20 @@ describe('a storage-backed module reaches storage, not its default (#2346)', () 
 	 */
 	it('answers with defaults, silently, when the platform global is inert', () => {
 		expect(createProfileStore().update({ ftp: 313 })).toBeNull();
-		rememberDmsFolded(true);
+		rememberFolded('dms', true);
 		mixerStorage.write('{"music":0}');
 
 		withoutStorage(() => {
 			expect(typeof localStorage).toBe('undefined');
 			expect(createProfileStore().current.ftp).toBe(DEFAULT_PROFILE.ftp);
-			expect(readDmsFolded()).toBe(false);
+			expect(readFolded('dms')).toBe(false);
 			expect(mixerStorage.read()).toBeNull();
 		});
 
 		// And the storage was there all along, so the fallbacks above happened
 		// for want of the global rather than for want of a write.
 		expect(createProfileStore().current.ftp).toBe(313);
-		expect(readDmsFolded()).toBe(true);
+		expect(readFolded('dms')).toBe(true);
 		expect(mixerStorage.read()).toBe('{"music":0}');
 	});
 });

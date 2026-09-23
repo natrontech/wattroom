@@ -1,7 +1,9 @@
+import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 import ChartColumn from '@lucide/svelte/icons/chart-column';
 import History from '@lucide/svelte/icons/history';
 import House from '@lucide/svelte/icons/house';
 import Music from '@lucide/svelte/icons/music';
+import Pin from '@lucide/svelte/icons/pin';
 import Settings from '@lucide/svelte/icons/settings';
 import Users from '@lucide/svelte/icons/users';
 import type { Icon } from '$lib/icons';
@@ -63,10 +65,9 @@ export const pages: {
 ];
 
 /**
- * A crew's own pages (ADR-0058, #2447): what the sidebar lists under a
- * chosen crew, above its channels. Only the pages that exist are listed — a
- * row is a promise the page is there. Settings is the admins', and not a
- * phone's (the 95% rule, as a room's was).
+ * A crew's own pages (ADR-0058, #2447, #2569): what the sidebar lists under a
+ * chosen crew, above its channels, in the ADR's order. Settings is the
+ * admins', and not a phone's (the 95% rule, as a room's was).
  */
 export function crewPlaces(
 	crewId: string,
@@ -76,11 +77,38 @@ export function crewPlaces(
 	const base = `/crew/${crewId}`;
 	return [
 		{ href: base, label: 'Home', icon: House, exact: true },
+		{ href: `${base}/schedule`, label: 'Schedule', icon: CalendarClock },
+		{ href: `${base}/workouts`, label: 'Workouts', icon: ChartColumn },
+		{ href: `${base}/board`, label: 'Board', icon: Pin },
 		{ href: `${base}/members`, label: 'Members', icon: Users },
 		...(admin && !narrow
 			? [{ href: `${base}/settings`, label: 'Settings', icon: Settings }]
 			: []),
 	];
+}
+
+/**
+ * Your pages the YOU section lists in a crew's column (#2570): every
+ * destination but Home, which is the You mode's own.
+ */
+export const yourPages = pages.filter((p) => p.href !== '/home');
+
+/**
+ * Which crew the column is in (ADR-0020 rule 1, amended by #2570): inside a
+ * crew's pages, that crew; on your own Home, none — You; anywhere else the
+ * crew you chose last. Workouts, Rides, Music and Friends used to switch the
+ * column to You, which took the crew's channels off it; the YOU section lists
+ * them in a crew's column now, so they light their row there.
+ */
+export function columnCrew<T extends { id: string }>(
+	pathname: string,
+	crews: T[],
+	chosen: string | null,
+): T | null {
+	const inCrew = crewOfPath(pathname);
+	if (inCrew) return crews.find((c) => c.id === inCrew) ?? null;
+	if (activeHref(pathname) === '/home') return null;
+	return crews.find((c) => c.id === chosen) ?? null;
 }
 
 /**
