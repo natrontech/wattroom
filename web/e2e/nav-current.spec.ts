@@ -21,7 +21,7 @@ test('every destination the sidebar parents lights exactly one row', async ({
 }) => {
 	await signInAs(page, 'Nav Reader', '/home');
 
-	const nav = page.locator('nav[aria-label="rooms and places"]');
+	const nav = page.locator('nav[aria-label="crews and channels"]');
 	await expect(nav).toBeVisible();
 	const current = nav.locator('[aria-current]');
 
@@ -75,7 +75,7 @@ test('a conversation with no row of its own still lights one', async ({
 }) => {
 	await signInAs(page, 'Fold Reader', '/messages');
 
-	const nav = page.locator('nav[aria-label="rooms and places"]');
+	const nav = page.locator('nav[aria-label="crews and channels"]');
 	const heading = nav.getByRole('button', { name: /direct messages/i });
 	await expect(heading).toBeVisible();
 	await expect(heading).toHaveAttribute('aria-current', 'page');
@@ -126,7 +126,7 @@ test('the sidebar says a failed read is a failed read, not "no crew"', async ({
 	await page.routeWebSocket(/\/ws\/presence$/, () => {});
 	await signInAs(page, 'Nav Reader', '/home');
 
-	const nav = page.locator('nav[aria-label="rooms and places"]');
+	const nav = page.locator('nav[aria-label="crews and channels"]');
 	await expect(nav.getByText('Your crews could not be read.')).toBeVisible();
 	await expect(nav.getByText('Not in a crew yet')).toHaveCount(0);
 
@@ -153,7 +153,7 @@ crewTest(
 		const name = `Nav Channels ${Date.now() % 100000}`;
 		const opened = await channels.open(a, name);
 
-		const nav = a.locator('nav[aria-label="rooms and places"]');
+		const nav = a.locator('nav[aria-label="crews and channels"]');
 		const current = nav.locator('[aria-current="page"]');
 		const row = (label: string) => new RegExp(`^\\s*${label}\\s*$`, 'i');
 		const walk: { path: string; label: RegExp }[] = [

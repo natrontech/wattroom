@@ -32,7 +32,7 @@ test('every place in a crew renders, and none of them throws', async ({
 	// the pages and nothing else (#960). The voice channel's row is the one
 	// link whose arrival says the channels are there; `evaluateAll` has no
 	// auto-waiting of its own to hold the read back.
-	const nav = page.locator('nav[aria-label="rooms and places"]');
+	const nav = page.locator('nav[aria-label="crews and channels"]');
 	await expect(nav.locator(`a[href="${voicePath(opened)}"]`)).toBeVisible();
 
 	// Everything under the crew, which is every place but its Home — Home is

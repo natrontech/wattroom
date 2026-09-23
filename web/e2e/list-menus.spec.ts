@@ -44,7 +44,7 @@ test("a channel's row in the crew column carries the sidebar's own menu", async 
 	// and a menu item the server would refuse is a control that fails on
 	// click (ux.md).
 	const bRow = b
-		.locator('nav[aria-label="rooms and places"]')
+		.locator('nav[aria-label="crews and channels"]')
 		.locator(`a[href="${textPath(opened)}"]`);
 	await bRow.click({ button: 'right' });
 	await expect(b.getByRole('menuitem', { name: 'Open' })).toBeVisible();
@@ -63,7 +63,7 @@ test("a channel's row in the crew column carries the sidebar's own menu", async 
 	await a.goto(`/crew/${opened.crew}`);
 	await a.getByRole('button', { name: 'open navigation' }).click();
 	const row = a
-		.locator('nav[aria-label="rooms and places"]')
+		.locator('nav[aria-label="crews and channels"]')
 		.locator(`a[href="${textPath(opened)}"]`);
 	// The unread count on the row, before the menu is read off it: the column
 	// learns of the line on a lobby ping, and a menu opened ahead of it would

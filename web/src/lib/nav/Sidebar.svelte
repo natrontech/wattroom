@@ -114,7 +114,7 @@
      back to the default there — a 400 px drawer on a 375 px phone leaves no
      backdrop to tap. -->
 <nav
-	aria-label="rooms and places"
+	aria-label="crews and channels"
 	{@attach (node) => keepSize(node, 'sidebar')}
 	class="bg-surface border-ink/5 relative flex h-full w-60 shrink-0 flex-col border-r max-md:w-60! md:max-w-[40vw] md:min-w-56"
 >
