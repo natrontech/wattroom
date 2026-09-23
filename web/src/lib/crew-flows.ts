@@ -4,6 +4,7 @@ import { confirm } from '$lib/confirm.svelte';
 import {
 	inviteLink,
 	leaveCrew,
+	setCrewRole,
 	transferCrew,
 	type CrewPerson,
 } from '$lib/crew';
@@ -93,6 +94,35 @@ export const HAND_OVER_BODY =
 	'They become its owner — the one person you can no longer demote, remove ' +
 	'or ban — and you drop to admin, which keeps everything but handing the ' +
 	'crew on. You cannot take this back; only they can hand it back to you.';
+
+/**
+ * Banning someone from the crew (#1150), from wherever it is offered — the
+ * crew's people list and a text channel's line (#2530) — as one flow, so the
+ * ask cannot drift between them. Resolves to whether it happened.
+ *
+ * A confirm, not an undo (#1674): lifting the ban restores plain membership
+ * and nothing it took with it — the private channels they were named into
+ * stay gone (ADR-0058).
+ */
+export async function banFromCrewFlow(
+	crew: Pick<CrewRef, 'id'>,
+	person: Pick<CrewPerson, 'id' | 'displayName'>,
+): Promise<boolean> {
+	const sure = await confirm({
+		title: `Ban ${person.displayName} from the crew?`,
+		body: `They cannot come back through the crew's code until you lift the ban.`,
+		action: 'Ban',
+		cancel: 'Keep it',
+	});
+	if (!sure) return false;
+	const res = await setCrewRole(crew.id, person.id, 'banned');
+	if (!res.ok) {
+		toasts.push(res.error.message, { tone: 'error' });
+		return false;
+	}
+	toasts.push(`Banned ${person.displayName} from the crew.`);
+	return true;
+}
 
 /**
  * What the action is called, wherever it is offered (#2175): the crew page
