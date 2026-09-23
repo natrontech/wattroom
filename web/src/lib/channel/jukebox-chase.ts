@@ -17,7 +17,7 @@ import {
 import { mixer } from '$lib/sound/mixer.svelte';
 
 /**
- * Keeping ONE client's embed on the room's playhead (#286, docs/SPEC.md sync
+ * Keeping ONE client's embed on the shared playhead (#286, docs/SPEC.md sync
  * tolerances). `playhead.ts` decides what a drift is worth — a seek, a rate
  * nudge, or nothing; this drives the player through those decisions and owns
  * the state they need: what is loaded, against which anchor, whether it is a
@@ -39,13 +39,13 @@ const SETTLE_MS = 1_200;
 /** Autoplay refused: no gesture behind the tab, so nothing starts and the rider has nothing to press. */
 const REFUSED_MS = 2_000;
 
-/** What the room's chase needs from the client that hosts the player. */
+/** What the chase needs from the client that hosts the player. */
 export interface ChaseHost {
 	/** The embed, once it is built and ready; null before that and after teardown. */
 	player(): YTPlayer | null;
 	/**
 	 * The deck this tick, or null when there is nothing to chase — a
-	 * reconnect, or a room with no jukebox state yet.
+	 * reconnect, or a voice channel with no jukebox state yet.
 	 */
 	deck(): JukeboxState | null;
 	/**
@@ -55,7 +55,7 @@ export interface ChaseHost {
 	 * element is not rendered.
 	 */
 	hidden(): boolean;
-	/** The loaded play is over, as far as this client can tell — report it to the room. */
+	/** The loaded play is over, as far as this client can tell — report it to the server. */
 	ended(play: Play): void;
 	/** A video was just cued or loaded: per-video player settings need re-applying. */
 	loaded(): void;
@@ -109,8 +109,8 @@ export function createJukeboxChase(host: ChaseHost): JukeboxChase {
 		// A rate left at 1.25 by an older client (or the rider's own menu)
 		// outlives the video it was set on.
 		player.setPlaybackRate?.(1);
-		// cue, not load, while the room is paused: loadVideoById autoplays, so
-		// joining a paused room used to blast a second of audio at everyone.
+		// cue, not load, while the deck is paused: loadVideoById autoplays, so
+		// joining a paused deck used to blast a second of audio at everyone.
 		if (playing) {
 			player.loadVideoById?.(videoId, at);
 			wantedPlayAt = performance.now();
@@ -131,7 +131,7 @@ export function createJukeboxChase(host: ChaseHost): JukeboxChase {
 		const deck = host.deck();
 		if (!deck) {
 			// No ticks, nothing to chase: a nudge left running through a
-			// reconnect walks the player away from the room it will rejoin.
+			// reconnect walks the player away from the deck it will rejoin.
 			player.setPlaybackRate?.(1);
 			return;
 		}
@@ -140,7 +140,7 @@ export function createJukeboxChase(host: ChaseHost): JukeboxChase {
 			? { videoId: deck.current.videoId, anchorMs: deck.anchorMs }
 			: null;
 		// ── Sitting out (#989) ───────────────────────────────────────────────
-		// A second local reason to take this client out while the room plays
+		// A second local reason to take this client out while the deck plays
 		// on — the same shape as `hidden()` above, except the player UNLOADS
 		// rather than pausing: a rider who is not listening should not be
 		// streaming. Away (#875) routes through the same door, so coming back
@@ -158,8 +158,8 @@ export function createJukeboxChase(host: ChaseHost): JukeboxChase {
 
 		// A pool track belongs to AudioDeck (#267): it carries no video id, and
 		// loading "" makes the iframe raise an unplayable-video error, which
-		// the dock then answers by SKIPPING the entry. The room's own track
-		// would be skipped by the player that cannot play it.
+		// the dock then answers by SKIPPING the entry. Everyone's track would
+		// be skipped by the one player that cannot play it.
 		if (!deck.current || deck.current.trackId) {
 			if (loadedVideo) unload(player);
 			return;
@@ -177,7 +177,7 @@ export function createJukeboxChase(host: ChaseHost): JukeboxChase {
 			return;
 		}
 
-		// A livestream has no fixed timeline: the room's anchor walks off into
+		// A livestream has no fixed timeline: the deck's anchor walks off into
 		// the DVR window and the drift chase seeks on every tick, which is what
 		// made pasted live links unplayable. Ride the edge instead.
 		if (!streaming && player.getVideoData?.()?.isLive) {
@@ -188,7 +188,7 @@ export function createJukeboxChase(host: ChaseHost): JukeboxChase {
 		playerInfo.duration = streaming ? 0 : player.getDuration?.() || 0;
 
 		// Only clients know how long a track is — the server holds an anchor,
-		// not a timeline. A deck left playing to an empty room runs its
+		// not a timeline. A deck left playing to an empty channel runs its
 		// playhead off the end, and the next rider to arrive inherits a
 		// position no player can reach: it lands past the end, restarts, gets
 		// seeked past the end again, forever. Whoever notices says the track

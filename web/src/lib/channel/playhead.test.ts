@@ -24,7 +24,7 @@ describe('chase', () => {
 	});
 
 	it('never seeks a livestream, however far the anchor has walked', () => {
-		// The room anchor counts from the moment the stream was queued; the
+		// The deck's anchor counts from the moment the stream was queued; the
 		// player's clock is the stream's own. Chasing that seeks every tick.
 		expect(chase(30, 7200, true)).toEqual({ do: 'rate', rate: 1 });
 	});

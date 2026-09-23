@@ -58,7 +58,7 @@ describe('commandFromEntry (#1427)', () => {
 		});
 	});
 
-	it('saves a pasted set whole, from its first track, wherever the room was in it', () => {
+	it('saves a pasted set whole, from its first track, wherever the deck was in it', () => {
 		const tracks = [
 			{ videoId: 'a1b2c3d4e5f', title: 'one' },
 			{ videoId: 'f5e4d3c2b1a', title: 'two' },

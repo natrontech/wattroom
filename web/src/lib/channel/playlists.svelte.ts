@@ -5,9 +5,9 @@ import { readLink } from '$lib/channel/jukebox-add';
 import { resolvePlaylist, titleFor } from '$lib/channel/youtube-playlist';
 
 /**
- * Saved playlists (#627): room playlists (multiple per room, one markable
- * active for autoplay, editable by any member like every other jukebox
- * control) and personal playlists (a rider's own, usable in any room). A
+ * Saved playlists (#627): crew playlists (several per crew, each voice
+ * channel's autoplay naming one active) and personal playlists (a rider's
+ * own, usable in any voice channel). A
  * saved playlist is a saved queue (ADR-0045): its entries are what the live
  * queue holds. Distinct from a queued-whole YouTube playlist
  * (`$lib/channel/jukebox-add`'s `PastedLink['playlist']`) — that is one live
@@ -44,7 +44,7 @@ export interface SavedPlaylistDetail {
 	tracks: SavedTrack[];
 }
 
-/** Room and personal playlists are the same shape at two different bases. */
+/** Crew and personal playlists are the same shape at two different bases. */
 export function createPlaylistStore(base: string) {
 	let entries = $state<SavedPlaylist[]>([]);
 	let loaded = $state(false);
@@ -133,7 +133,7 @@ export function createPlaylistStore(base: string) {
 /** One store over one base — what a saving helper is handed (save-to-playlist.ts). */
 export type PlaylistStore = ReturnType<typeof createPlaylistStore>;
 
-/** Somewhere an entry can be saved to (#1427): one of the room's playlists
+/** Somewhere an entry can be saved to (#1427): one of the crew's playlists
  *  or one of the rider's own. */
 export interface SaveTarget {
 	id: string;
@@ -145,7 +145,7 @@ export interface SaveTarget {
  * A live queue entry as the add command that produced it (ADR-0045): a
  * saved playlist is a saved queue, so saving a row is sending its own add
  * to the playlist instead of the deck. A pasted set saves whole, from its
- * first track, however far the room had walked into it.
+ * first track, however far the deck had walked into it.
  */
 export function commandFromEntry(entry: JukeboxEntry): JukeboxCommand {
 	if (entry.trackId)
@@ -196,7 +196,7 @@ export function queueSavedPlaylist(address: PlaceAddress, id: string) {
  * Turn a pasted link into what POST .../tracks needs — the same parser the
  * live add box uses. An ambiguous "video inside a playlist" link saves just
  * the video, the same call `addYouTubeUrl` makes for a link dropped in chat:
- * there is no room here to ask either.
+ * there is nowhere here to ask either.
  */
 export async function commandFromLink(
 	input: string,

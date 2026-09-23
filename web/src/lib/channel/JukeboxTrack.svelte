@@ -40,7 +40,7 @@
 		onMove?: (by: number) => void;
 		onRemove?: () => void;
 		onRequeue?: () => void;
-		/** Where "Save to …" can put this entry (#1427): the room's playlists
+		/** Where "Save to …" can put this entry (#1427): the crew's playlists
 		 *  and the rider's own. Empty offers one disabled line saying so. */
 		saveTargets?: SaveTarget[];
 		onSave?: (target: SaveTarget) => void;
@@ -55,7 +55,7 @@
 
 	// A playlist is one row that happens to contain tracks (#615) — it votes,
 	// moves and is removed as one thing, which is what keeps a paste from
-	// owning the room's fifty slots. Its contents fold open on request.
+	// owning the queue's fifty slots. Its contents fold open on request.
 	const tracks = $derived(entry.tracks ?? []);
 	let open = $state(false);
 </script>
@@ -86,7 +86,7 @@
 			});
 		if (onSave) {
 			// One line per playlist rather than a submenu the kit does not
-			// have: a room keeps a handful, and a rider mid-ride reads names,
+			// have: a crew keeps a handful, and a rider mid-ride reads names,
 			// not chevrons.
 			if (entries.length) entries.push('separator');
 			if (saveTargets.length)

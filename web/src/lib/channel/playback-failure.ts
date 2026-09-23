@@ -2,9 +2,9 @@
  * Whose failure is it (#1896)? Every client reports the end of a play and
  * the hub takes the first, so a rider reporting "ended" on a failure that
  * was theirs alone — a dropped range request, a codec their browser lacks,
- * a player hiccup — skipped the track for the whole room, with a toast only
- * they saw. Only a failure nobody can get past ends the room's play; the
- * rest sits this rider out until the room moves on.
+ * a player hiccup — skipped the track for the whole channel, with a toast
+ * only they saw. Only a failure nobody can get past ends the deck's play;
+ * the rest sits this rider out until the deck moves on.
  */
 
 /** YouTube player error codes that mean no rider can play the video. */

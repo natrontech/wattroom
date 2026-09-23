@@ -7,7 +7,7 @@ import {
 import { toasts } from '$lib/toast.svelte';
 
 /**
- * Putting what the room is hearing onto a shelf (#1427, #1517). A saved
+ * Putting what everyone is hearing onto a shelf (#1427, #1517). A saved
  * playlist is a saved queue (ADR-0045), so the saving itself is one POST per
  * entry — what these add is the half a rider notices: being told what
  * happened, in one line, whether one row went or a whole queue did.
@@ -45,7 +45,7 @@ export function saveEntryTo(
 	);
 }
 
-/** What the room is hearing tonight, kept as a room playlist named for today. */
+/** What everyone is hearing tonight, kept as a crew playlist named for today. */
 function todaysName(): string {
 	const day = new Date().toLocaleDateString(undefined, {
 		day: 'numeric',

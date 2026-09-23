@@ -1,5 +1,5 @@
 /**
- * The room's shared playhead (#23): where the deck is right now, where a
+ * A voice channel's shared playhead (#23): where the deck is right now, where a
  * seek is allowed to land, and how the docked player converges on it.
  *
  * Tiered (docs/SPEC.md, revised #286). A real gap seeks — it costs a stutter,
@@ -10,7 +10,7 @@
  * getAvailablePlaybackRates() advertises. An embed that ignores the nudge
  * anyway loses nothing: its drift grows until the seek tier takes it.
  *
- * A livestream is the exception: it has no shared timeline, so the room's
+ * A livestream is the exception: it has no shared timeline, so the deck's
  * anchor walks off into the DVR window and a chasing client seeks on every
  * single tick. Live rides the edge instead.
  */
