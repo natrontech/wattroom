@@ -26,7 +26,7 @@
 	import { pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
 	import { account } from '$lib/account.svelte';
-	import { serverNow } from '$lib/room/server-clock';
+	import { serverNow } from '$lib/server-clock';
 	import { roomConnection } from '$lib/room/connection.svelte';
 
 	const room = useRoom();

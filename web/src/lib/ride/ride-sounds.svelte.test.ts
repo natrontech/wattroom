@@ -7,7 +7,7 @@ vi.mock('$lib/sound/cues', () => ({
 	play: (id: string) => void heard.cues.push(id),
 	playCountdownTick: (n: number) => void heard.cues.push(`tick:${n}`),
 }));
-vi.mock('$lib/room/server-clock', () => ({ serverNow: () => 0 }));
+vi.mock('$lib/server-clock', () => ({ serverNow: () => 0 }));
 
 import {
 	createRideSounds,

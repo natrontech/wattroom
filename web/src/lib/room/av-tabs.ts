@@ -3,7 +3,7 @@ import type { AvConn, AvState } from '$lib/room/av-state.svelte';
 import type { Mic } from '$lib/room/av-mic';
 import type { Publish } from '$lib/room/av-publish';
 import { createClaims } from '$lib/room/av-claim.svelte';
-import { serverNow } from '$lib/room/server-clock';
+import { serverNow } from '$lib/server-clock';
 
 /**
  * One rider, several tabs (#293), wired to this connection (#1698).

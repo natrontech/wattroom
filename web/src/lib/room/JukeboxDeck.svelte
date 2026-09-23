@@ -25,7 +25,7 @@
 	import { deckDuration, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { listening } from '$lib/room/listening.svelte';
 	import { clampSeek, playheadAt } from '$lib/room/playhead';
-	import { serverNow } from '$lib/room/server-clock';
+	import { serverNow } from '$lib/server-clock';
 	import {
 		COLUMN_SEAT,
 		offerSeat,

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GATE_CEIL, GATE_FLOOR } from './gate-scale';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { pickStage } from '$lib/room/stage';
-import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
+import { observeServerTime, resetServerClock } from '$lib/server-clock';
 import { ducking, resetDucking, setDucking } from '$lib/sound/duck';
 import { DUCK_HOLD_MS, shouldDuck } from '$lib/sound/ducking';
 

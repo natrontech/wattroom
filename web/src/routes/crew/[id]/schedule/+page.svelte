@@ -53,7 +53,7 @@
 		type RsvpAnswer,
 	} from '$lib/room/rsvp';
 	import { parseSharedSegments } from '$lib/room/workout';
-	import { serverNow } from '$lib/room/server-clock';
+	import { serverNow } from '$lib/server-clock';
 	import { shareLink } from '$lib/share';
 	import { toasts } from '$lib/toast.svelte';
 	import { segmentsDuration } from '$lib/workout/engine';

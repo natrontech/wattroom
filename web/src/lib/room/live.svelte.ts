@@ -12,7 +12,7 @@ import type { PlaceAddress } from '$lib/room/address';
 import { account } from '$lib/account.svelte';
 import { deviceWord } from '$lib/device.svelte';
 import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
-import { observeServerTime, resetServerClock } from '$lib/room/server-clock';
+import { observeServerTime, resetServerClock } from '$lib/server-clock';
 import { isLivePhase } from '$lib/room/session-phase';
 
 /**

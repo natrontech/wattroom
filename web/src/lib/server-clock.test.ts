@@ -111,7 +111,7 @@ describe('two clients, one playhead', () => {
 		const deck = { positionSec: 30, anchorMs: START, playing: true };
 		const now = START + 60_000;
 
-		const { playheadAt } = await import('./playhead');
+		const { playheadAt } = await import('$lib/room/playhead');
 		const onFast = playheadAt(deck, fast.serverNowAt(now));
 		const onSlow = playheadAt(deck, slow.serverNowAt(now));
 
@@ -147,7 +147,7 @@ describe('two clients, one playhead', () => {
 
 		const deck = { positionSec: 0, anchorMs: START, playing: true };
 		const now = START + 40_000;
-		const { playheadAt } = await import('./playhead');
+		const { playheadAt } = await import('$lib/room/playhead');
 		expect(
 			Math.abs(
 				playheadAt(deck, steady.serverNowAt(now)) -
@@ -200,7 +200,7 @@ describe('a backgrounded tab', () => {
 		vi.useFakeTimers();
 		vi.resetModules();
 		const clock = await import('./server-clock');
-		const { playheadAt } = await import('./playhead');
+		const { playheadAt } = await import('$lib/room/playhead');
 		// A laptop 4.2 s fast, reached by each tick 30 ms after it was sent.
 		const SKEW = 4_200;
 		const START = 1_700_000_000_000;

@@ -12,7 +12,7 @@ vi.mock('$lib/sound/cues', () => ({
 }));
 // The server's clock, held by the test.
 const clock = vi.hoisted(() => ({ now: 0 }));
-vi.mock('$lib/room/server-clock', () => ({ serverNow: () => clock.now }));
+vi.mock('$lib/server-clock', () => ({ serverNow: () => clock.now }));
 
 import { createRoomSounds, type SoundDeps } from './room-sounds.svelte';
 import type { GameState } from '$lib/protocol';

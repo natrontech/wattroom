@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { serverNow } from '$lib/room/server-clock';
+	import { serverNow } from '$lib/server-clock';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { account } from '$lib/account.svelte';
 	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';

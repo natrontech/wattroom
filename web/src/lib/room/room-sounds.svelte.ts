@@ -1,6 +1,6 @@
 import type { GameState } from '$lib/protocol';
 import { gameCues, golfMoment } from '$lib/room/game-cues';
-import { serverNow } from '$lib/room/server-clock';
+import { serverNow } from '$lib/server-clock';
 import { changes } from '$lib/sound/changes';
 import { play, playCountdownTick } from '$lib/sound/cues';
 import {

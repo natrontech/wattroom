@@ -19,7 +19,7 @@
 	import { onDuck } from '$lib/sound/duck';
 	import { playheadAt } from '$lib/room/playhead';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { serverNow } from '$lib/room/server-clock';
+	import { serverNow } from '$lib/server-clock';
 	import { listening } from '$lib/room/listening.svelte';
 	import { deckDuration, playerInfo } from '$lib/room/jukebox-player.svelte';
 	import { toasts } from '$lib/toast.svelte';

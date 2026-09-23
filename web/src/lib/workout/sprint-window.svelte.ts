@@ -1,5 +1,5 @@
 import type { SprintState } from '$lib/protocol';
-import { serverNow } from '$lib/room/server-clock';
+import { serverNow } from '$lib/server-clock';
 import type { Segment } from './types';
 
 /** How far ahead a sprint block is counted in on screen: docs/SPEC.md's klaxon lead. */

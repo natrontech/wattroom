@@ -7,7 +7,7 @@
 	import { backIn, listening, type Play } from '$lib/room/listening.svelte';
 	import { createJukeboxChase } from '$lib/room/jukebox-chase';
 	import { createMusicRamp } from '$lib/room/music-ramp';
-	import { resetServerClock, serverNow } from '$lib/room/server-clock';
+	import { resetServerClock, serverNow } from '$lib/server-clock';
 	import {
 		BUFFERING,
 		CUED,

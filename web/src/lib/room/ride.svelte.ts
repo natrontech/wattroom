@@ -1,7 +1,7 @@
 import { pairError } from '$lib/ble/pair-error';
 import { arbitrate } from '$lib/ble/arbitrate';
 import { createPersonalGuards, type GuardPhase } from '$lib/workout/guards';
-import { serverNow } from '$lib/room/server-clock';
+import { serverNow } from '$lib/server-clock';
 import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/room/wire';
@@ -220,7 +220,7 @@ export function createRide(deps: RideDeps) {
 		if (!sprint) return false;
 		// serverNow() is the server's clock carried on this machine's, so it
 		// keeps moving while the socket is down and stays skew-corrected when
-		// it comes back (room/server-clock). sprintClock is what makes this
+		// it comes back ($lib/server-clock). sprintClock is what makes this
 		// recompute without a tick.
 		const at = Math.max(sprintClock, serverNow());
 		return at >= sprint.startsAtMs && at < sprint.endsAtMs;

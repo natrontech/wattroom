@@ -2,7 +2,7 @@ import type { JukeboxState } from '$lib/protocol';
 import { playerInfo } from '$lib/room/jukebox-player.svelte';
 import { listening, playerAction, type Play } from '$lib/room/listening.svelte';
 import { chase, pausedChase, playheadAt } from '$lib/room/playhead';
-import { serverNow } from '$lib/room/server-clock';
+import { serverNow } from '$lib/server-clock';
 import {
 	BUFFERING,
 	PAUSED,

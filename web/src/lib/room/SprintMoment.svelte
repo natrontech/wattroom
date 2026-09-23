@@ -2,7 +2,7 @@
 	import type { SprintState } from '$lib/protocol';
 	import type { RoomRider } from '$lib/room/view';
 	import { PLACES } from '$lib/room/podium';
-	import { serverNow } from '$lib/room/server-clock';
+	import { serverNow } from '$lib/server-clock';
 	import { wkg } from '$lib/format';
 
 	// The sprint moment overlay (#30): klaxon countdown, the 15 s window, the
