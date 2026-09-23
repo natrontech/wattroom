@@ -42,7 +42,7 @@
 		if (!res.ok) {
 			// Only a first load fails loudly: this also runs on every lobby
 			// ping, and one hiccup must not replace the page you are reading
-			// with a sentence (the room layout draws the same line).
+			// with a sentence (the voice channel's shell draws the same line).
 			if (!crew) {
 				error = res.error.message;
 				errorCode = res.error.error;
@@ -181,8 +181,9 @@
 						{/if}
 					{/if}
 					{#if administers}
-						<!-- Name, picture, icon and the invite live in one place (#1237),
-					     the way a room's do; this page is the roster. -->
+						<!-- Name, picture, icon, channels and reactions live on
+					     Settings (#1237, #2454); this page is the roster and the
+					     invite. -->
 						<a
 							href="/crew/{crew.id}/settings"
 							class="btn btn-secondary btn-xs shrink-0"

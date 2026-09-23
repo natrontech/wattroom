@@ -134,12 +134,12 @@
 	const roleWord = (role: CrewPerson['role']) =>
 		role === 'owner' ? 'owner' : role === 'admin' ? 'admin' : 'member';
 
-	// The crew is bigger than this list when the viewer shares no room with
-	// some of it (ADR-0038: visibility follows the rooms you may enter). The
-	// header counts the crew, so without this line the page contradicts
-	// itself — "3 people" over a list of two, with nothing saying why (#1255).
-	// A number, never the names: who is in the private room is exactly what
-	// the rule withholds.
+	// The crew is bigger than this list when the viewer shares no channel with
+	// some of it (ADR-0058: visibility follows the channels two riders may
+	// both enter). The header counts the crew, so without this line the page
+	// contradicts itself — "3 people" over a list of two, with nothing saying
+	// why (#1255). A number, never the names: who is in the private channel
+	// is exactly what the rule withholds.
 	const unseen = $derived(
 		Math.max(0, (crew.members ?? 0) - crew.people.length),
 	);
@@ -197,8 +197,8 @@
 					class="btn btn-ghost btn-xs shrink-0">{roleLabel(person)}</button
 				>
 				<!-- The rest of the owner's paperwork — hand over, ban — has a
-				     visible way in, the way the room's Members place has had one
-				     since #1372: nothing lives only in a menu (ux.md). It was
+				     visible way in, the way the Members place has had one since
+				     #1372: nothing lives only in a menu (ux.md). It was
 				     right-click on a desk and a long-press on touch, with a
 				     tooltip no phone shows — while this same page tells the
 				     owner to "hand it to someone in the people list first"
@@ -264,8 +264,8 @@
 						>banned from the crew · {formatMonth(person.since)}</span
 					>
 				</span>
-				<!-- Two controls in two places, never one (#1150): this lifts
-						     the CREW ban and names what it does not reach. -->
+				<!-- This lifts the ban and names what it does not reach
+				     (#1150). -->
 				<!-- min-w-0, not shrink-0: a sixty-character crew name in the
 				     button pushed the page sideways at 375px (audit 2026-09-09);
 				     the row above already names the crew. -->

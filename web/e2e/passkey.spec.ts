@@ -39,7 +39,7 @@ test('a passkey registers, and signs the rider back in where they were going', a
 	await expect(row).toContainText('never used');
 
 	// Out, and back in with nothing but the key — landing where the link
-	// pointed, not on /rooms (#824).
+	// pointed, not on /home (#824).
 	await page.evaluate(() => fetch('/api/auth/logout', { method: 'POST' }));
 	await page.goto('/login?next=%2Fsettings%2Fprofile');
 	await page.getByRole('button', { name: 'Sign in with a passkey' }).click();

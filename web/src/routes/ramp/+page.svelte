@@ -87,8 +87,9 @@
 	async function begin(trainer: Trainer) {
 		error = null;
 		done = false;
-		// One trainer, one rider (#521): the room now holds its BLE connection
-		// for as long as you stand in it, so a solo ride has to take it back
+		// One trainer, one rider (#521): a voice channel now holds the
+		// trainer's BLE connection for as long as you stand in it, so a solo
+		// ride has to take it back
 		// rather than open a second control channel to the same hardware. A
 		// trainer paired in the grid and then left for a simulated run is the
 		// same conflict on this page.
@@ -205,7 +206,7 @@
 			session.state !== 'done'
 				? session.info.segmentIndex
 				: undefined,
-		// The count-in, said the way the room and /ride say theirs (#1800).
+		// The count-in, said the way a session and /ride say theirs (#1800).
 		countdown: () =>
 			session?.state === 'countdown'
 				? Math.max(1, session.countdownRemaining)
@@ -390,7 +391,7 @@
 			</p>
 		</div>
 
-		<!-- The same paired-devices grid the room's Training place draws
+		<!-- The same paired-devices grid a voice channel's Training place draws
 		     (#611), outside the panel because the cards are panels themselves.
 		     A ramp is the one test whose number you keep, so seeing the trainer
 		     report watts before it starts matters more here than anywhere. -->
@@ -453,8 +454,8 @@
 			</p>
 		{/if}
 	{:else if session.state === 'countdown'}
-		<!-- One count-in for the surface (ADR-0046, #1800): the same screen the
-		     room and /ride draw, so the test starts the way every ride does. -->
+		<!-- One count-in for the surface (ADR-0046, #1800): the same screen a
+		     session and /ride draw, so the test starts the way every ride does. -->
 		<div class="mt-8 min-h-[24rem]">
 			<CountdownScreen
 				remaining={session.countdownRemaining}
@@ -476,7 +477,7 @@
 		</div>
 	{:else if !done}
 		<!-- One riding surface (ADR-0046): the header, the instrument, your own
-		     numbers and the horizon, in the order the room and the solo ride use
+		     numbers and the horizon, in the order a session and the solo ride use
 		     them. The ramp's real differences are two words — it prescribes a
 		     STEP, and it counts steps rather than blocks. -->
 		<!-- The bottom padding is the floating navigation button's, as
@@ -590,7 +591,7 @@
 <svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
 
 {#if session && !done && session.state !== 'done' && tv}
-	<!-- The room's TV, on the ramp (#1799, ADR-0046): the same screen at 3 m. -->
+	<!-- A session's TV, on the ramp (#1799, ADR-0046): the same screen at 3 m. -->
 	<!-- A snippet is a function, so the `session &&` above does not narrow
 	     inside it (#2156). -->
 	{@const ride = session}

@@ -147,9 +147,9 @@ test('no place a voice channel leads to scrolls sideways on a phone', async ({
 			.catch(() => {});
 		const excess = await excessOf();
 		if (excess > 0) wide.push(`${place} overflows by ${excess}px`);
-		// One main per document, in the same sweep (#2164): the room shell
-		// draws the landmark, and Settings drew a second one inside it — two
-		// nested mains, which is invalid HTML and two "main" stops for a
+		// One main per document, in the same sweep (#2164): the voice
+		// channel's shell draws the landmark, and Settings, a place inside the
+		// shell back then, drew a second one inside it — two nested mains, which is invalid HTML and two "main" stops for a
 		// screen reader. The 2026-09-10 accessibility pass looked for a
 		// missing one and would not have seen this.
 		const mains = await page.locator('main').count();

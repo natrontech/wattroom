@@ -6,16 +6,16 @@
 	import type { createPlaylistStore } from '$lib/channel/playlists.svelte';
 
 	// The rider's personal playlists, on the library's own page (#1460). Until
-	// now they were only reachable inside a room's jukebox under "Mine", so a
-	// playlist of your own music needed a room open to build. Same rows as
-	// the panel: open to see, reorder and remove entries, add from the
-	// search-or-paste field; Queue appears when a room is open.
+	// then they were only reachable inside the jukebox panel under "Mine", so
+	// a playlist of your own music needed a jukebox open to build. Same rows
+	// as the panel: open to see, reorder and remove entries, add from the
+	// search-or-paste field; Queue appears when a voice channel is open.
 	let {
 		store,
 		address,
 	}: {
 		store: ReturnType<typeof createPlaylistStore>;
-		/** The room the rider is standing in, if any — what Queue points at. */
+		/** The voice channel the rider is standing in, if any — what Queue points at. */
 		address?: PlaceAddress | null;
 	} = $props();
 

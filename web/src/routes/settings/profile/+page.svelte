@@ -108,7 +108,7 @@
 		if (account.me) {
 			// An emptied field is not a tidy-up (#1828): it removes the only
 			// way back in and every account alarm, with no undo. The confirm
-			// delete-room and delete-account get, in the same words.
+			// deleting a channel and deleting the account get, in the same words.
 			const had = account.me.emailPending ?? account.me.email ?? '';
 			if (account.me.mailAvailable && had && email.trim() === '') {
 				const ok = await confirm({

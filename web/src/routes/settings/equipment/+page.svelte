@@ -21,12 +21,12 @@
 	import { RAMP_TAKES } from '$lib/workout/ramp';
 	import { trainerHint } from '$lib/session/sensor-status';
 
-	// A room holds its BLE connection for as long as you stand in one (#521),
-	// and this page could not see it (#565) — so when there IS a room, its
-	// trainer is the one to show. With no room, it is the app's one solo
-	// trainer (#1716), the same object /ride and /ramp read: `solo.pair` takes
-	// the hardware back from a room first, so the two owners can never both
-	// hold it.
+	// A voice channel holds the trainer's BLE connection for as long as you
+	// stand in it (#521), and this page could not see it (#565) — so when
+	// there IS a channel, its trainer is the one to show. With none, it is the
+	// app's one solo trainer (#1716), the same object /ride and /ramp read:
+	// `solo.pair` takes the hardware back from the channel first, so the two
+	// owners can never both hold it.
 	const solo = soloTrainer();
 	const profile = createProfileStore();
 	const ride = $derived(channelConnection.current?.ride);

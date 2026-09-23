@@ -437,9 +437,10 @@
 						(rides = rides?.filter((r) => r.id !== ride.id) ?? null)}
 				/>
 
-				<!-- What's next: every planned session, across every room you are
+				<!-- What's next: every planned session, across every crew you are
 			     in (ADR-0020 — /sessions retired into this). Planning and saying
-			     you are in both happen in the room whose session it is. -->
+			     you are in both happen on the Schedule of the crew whose session
+			     it is. -->
 				<WhatsNext planCrew={firstCrew?.id} />
 			</div>
 			<!-- Friends is its own place (ADR-0020); the heading that stayed here

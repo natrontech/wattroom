@@ -13,8 +13,8 @@
 	// MP3 tags are garbage and edit beats cleanup (ADR-0015).
 	//
 	// Every affordance is gated the way ux.md wants it: somebody else's track
-	// draws no edit or delete, and with no room open there is nothing to queue
-	// into, so no queue button. Nothing here can fail on click.
+	// draws no edit or delete, and with no voice channel open there is nothing
+	// to queue into, so no queue button. Nothing here can fail on click.
 
 	let {
 		track,
@@ -38,7 +38,7 @@
 		picked?: boolean;
 		/** Whether it is the rider's own upload — the only kind they may change. */
 		owned?: boolean;
-		/** The room the rider is standing in, or null: no room, no queueing. */
+		/** The voice channel the rider is standing in, or null: none, no queueing. */
 		channelName?: string | null;
 		/** This row's context menu, built by the page that owns the verbs. */
 		menu: () => MenuEntry[];
@@ -171,7 +171,7 @@
 			>
 			<!-- Capability gating (ux.md): somebody else's track shows no
 					     controls rather than buttons that would 403. -->
-			<!-- Capability gating again (ux.md): with no room open there
+			<!-- Capability gating again (ux.md): with no voice channel open there
 					     is nowhere to queue, so the button is not drawn — the
 					     line under the list says why. -->
 			{#if channelName}

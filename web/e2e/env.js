@@ -78,7 +78,7 @@ export const baseUrl = () => external ?? `http://localhost:${webPort()}`;
 export const isExternal = () => external !== undefined;
 
 // This checkout's dev database. The e2e run signs in through the login gate
-// and writes real rooms and rides, so it wants a database that is migrated and
+// and writes real crews and rides, so it wants a database that is migrated and
 // disposable — the same one `make dev-server` and the verify server use, never
 // the main tree's `wattroom` unless this IS the main tree. WATTROOM_DB set by
 // the caller wins: CI names its own service container.

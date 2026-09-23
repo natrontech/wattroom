@@ -32,20 +32,22 @@ export async function signInTo(page: Page, path: string): Promise<void> {
 /**
  * Sign in as a rider belonging to this spec alone, then land on `path`.
  *
- * docs/SPEC.md caps a rider at three owned rooms, and the cap counts per
- * owner. Playwright runs the specs in parallel, so four specs opening a room
- * as the one dev rider is four rooms against a cap of three: whichever loses
- * the race sees "Open a room" disabled and reads as the button doing nothing
- * (#594). Giving each spec its own owner removes the contention instead of
- * serialising the suite, which would cost more than the specs are worth.
+ * docs/SPEC.md caps how many crews a rider founds and how many channels a
+ * crew holds. Playwright runs the specs in parallel, so specs opening channels
+ * as the one dev rider all land in one crew and race for its caps: whichever
+ * loses is refused, and reads as the button doing nothing (#594, when the cap
+ * was three rooms). Giving each spec its own owner removes the contention
+ * instead of serialising the suite, which would cost more than the specs are
+ * worth.
  *
  * The name must be stable rather than random — a fresh identity per run would
- * grow a user table forever. One rider per spec, reused, owning one room at a
- * time that the `rooms` fixture takes back.
+ * grow a user table forever. One rider per spec, reused, founding one crew and
+ * keeping it; the channels it opens there, the `channels` fixture takes back.
  *
  * `?as=` is the dev provider's own door (#409) and exists only where
  * WATTROOM_DEV_LOGIN is set. A deployed target has the single synthetic
- * identity and no parallel room specs, so it falls back to the ordinary path.
+ * identity and no parallel channel specs, so it falls back to the ordinary
+ * path.
  */
 export async function signInAs(
 	page: Page,
