@@ -1,5 +1,5 @@
-import { expect, test, type BrowserContext } from '@playwright/test';
-import { signInAs } from './signin';
+import { expect, test, voicePath } from './crew';
+import type { BrowserContext } from '@playwright/test';
 
 /**
  * The seam nothing else covers (#1171, following a rider report and #1160 /
@@ -16,6 +16,11 @@ import { signInAs } from './signin';
  * devkey/secret `make dev-server` uses) and a real microphone signal, so this
  * runs in its own Playwright project (playwright.config.ts) with Chromium's
  * fake-media flags.
+ *
+ * The riders come from the crew fixture like every other spec's, so the
+ * channels go back and B leaves A's crew whatever happens here (#2133). Their
+ * zeroed mixer has no voice fader in it — music, cues, board and share — so
+ * the one sound under test is untouched by it.
  *
  * The signal itself is a SOUND, not a recording: `fakeMicrophone` below
  * overrides `getUserMedia` to hand back a live `OscillatorNode`'s output
@@ -63,8 +68,8 @@ async function fakeMicrophone(ctx: BrowserContext): Promise<void> {
 }
 
 test("a real remote voice lights the listener's speaking ring, and losing it clears the ring", async ({
-	browser,
-	baseURL,
+	riders,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -76,178 +81,106 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 	// loudly rather than burning the shared budget finding that out.
 	test.setTimeout(60_000);
 
-	const aCtx = await browser.newContext({
-		baseURL,
-		permissions: ['microphone'],
-	});
-	const bCtx = await browser.newContext({
-		baseURL,
-		permissions: ['microphone'],
-	});
-	await fakeMicrophone(aCtx);
-	await fakeMicrophone(bCtx);
-	const a = await aCtx.newPage();
-	const b = await bCtx.newPage();
-
-	await signInAs(a, A, '/home#rooms');
-	const name = `Voice Duck ${Date.now() % 100000}`;
-	// Through the API into A's own crew: the room is the stage here, not the
-	// door (rooms.spec.ts walks that).
-	const created = await a.evaluate(async (roomName) => {
-		const res = await fetch('/api/rooms', {
-			method: 'POST',
-			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ name: roomName }),
-		});
-		return { status: res.status, body: await res.json() };
-	}, name);
-	expect(created.status, `opening "${name}" was refused`).toBe(201);
-	await a.goto(`/r/${created.body.slug}`);
-	await expect(
-		a.getByRole('heading', { name }),
-		`opening "${name}" never landed ${A} in the room`,
-	).toBeVisible({ timeout: 20_000 });
-	const slug = a.url().split('/r/')[1].split(/[/?#]/)[0];
-	// The code is the crew's (#1236); the room is entered through it, and
-	// the voice is its voice channel's (#2449), found by the room's name.
-	const { code, voice } = await a.evaluate(
-		async ({ roomSlug, roomName }) => {
-			const room = await fetch(`/api/rooms/${roomSlug}`).then((res) =>
-				res.json(),
-			);
-			const crew = await fetch(`/api/crews/${room.crew.id}`).then((res) =>
-				res.json(),
-			);
-			const list = await fetch(`/api/crews/${room.crew.id}/channels`).then(
-				(res) => res.json(),
-			);
-			const channel = (
-				list.channels as { id: string; kind: string; name: string }[]
-			).find((c) => c.kind === 'voice' && c.name === roomName);
-			return {
-				code: String(crew.code ?? ''),
-				voice: channel ? `/crew/${room.crew.id}/v/${channel.id}` : '',
-			};
-		},
-		{ roomSlug: slug, roomName: name },
-	);
-	expect(voice, `room ${slug} has no voice channel`).not.toBe('');
-	expect(code, `room ${slug}'s crew came back without a code`).toMatch(
-		/^[A-Z0-9]{6}$/,
-	);
-
-	try {
-		await signInAs(b, B, '/home#rooms');
-		await b.locator('#join-code').fill(code);
-		await b.getByRole('button', { name: 'Join crew' }).click();
-		await b.waitForURL(/\/crew\//, { timeout: 20_000 });
-		await b.goto(`/r/${slug}`);
-		await b.getByRole('button', { name: 'Walk in' }).click();
-		await expect(
-			b.getByRole('heading', { name }),
-			`${B} never landed in "${name}" after joining with the code ${code}`,
-		).toBeVisible({ timeout: 20_000 });
-
-		// ?voice=1 auto-joins once on mount (RoomShell.svelte) — it only does
-		// anything once avEnabled is true, which is why e2e/server.js now
-		// carries WATTROOM_LIVEKIT_*.
-		await a.goto(`${voice}?voice=1`);
-		await b.goto(`${voice}?voice=1`);
-		await expect(
-			a.getByRole('button', { name: 'microphone', pressed: true }),
-			`${A} never finished joining voice with an open mic`,
-		).toBeVisible({ timeout: 20_000 });
-		await expect(
-			b.getByRole('button', { name: 'microphone', pressed: true }),
-			`${B} never finished joining voice with an open mic`,
-		).toBeVisible({ timeout: 20_000 });
-
-		// B's voice reaches A's screen as an <audio> element the SDK attaches
-		// once A's subscription lands — seconds after B's own join resolves
-		// on a slow runner (#1463). The gesture below unmutes only what is
-		// attached at that moment, and the listener is spent on it (`once`),
-		// so the element has to exist first or the assertion after it can
-		// never hold: CI read `muted: true, volume: 0` and waited in vain.
-		await expect
-			.poll(
-				() =>
-					a.evaluate(
-						() =>
-							[...document.querySelectorAll('audio')].filter(
-								(el) => el.srcObject instanceof MediaStream,
-							).length,
-					),
-				{
-					message: `${B}'s voice never reached ${A}'s screen as an attached element`,
-					timeout: 20_000,
-				},
-			)
-			.toBe(1);
-
-		// A fresh navigation does not carry the "user activation" a prior
-		// click left on the page it replaced, so remote playback can start
-		// blocked (#645): av.svelte.ts's onFirstGesture listens for exactly
-		// one event, `pointerdown` on `document`, and only that calls
-		// room.startAudio() — the one thing that actually plays the LiveKit
-		// audio elements a Web Audio tap reads from. A real click's own
-		// actionability wait (visible, stable, unobscured, hit-testable) can
-		// stall against a page mid-layout; dispatching the event directly,
-		// the way av.svelte.test.ts's own "any first click unblocks it" test
-		// already does, gets the one signal the app listens for with nothing
-		// to resolve against.
-		await a.evaluate(() => document.dispatchEvent(new Event('pointerdown')));
-		await b.evaluate(() => document.dispatchEvent(new Event('pointerdown')));
-
-		// That startAudio() also unmutes every remote audio element the SDK
-		// attached (#1339). The voice reaches the speakers through the app's
-		// bus, tapped off that element — so the element itself has to stay
-		// silent through the unmute, or the room hears every voice twice, a
-		// few milliseconds apart: the phaser riders reported.
-		await expect
-			.poll(
-				() =>
-					a.evaluate(() =>
-						[...document.querySelectorAll('audio')]
-							.filter((el) => el.srcObject instanceof MediaStream)
-							.map((el) => ({ muted: el.muted, volume: el.volume })),
-					),
-				{
-					message: `${B}'s voice element on ${A}'s screen is audible on its own after startAudio — the room hears the voice twice`,
-					timeout: 10_000,
-				},
-			)
-			.toEqual([{ muted: false, volume: 0 }]);
-
-		// B's fake microphone is already publishing a continuous tone. On A's
-		// screen, B's tile should light the speaking ring (presence-marks.ts's
-		// tileFrame) once that level reaches av.speaking through the real
-		// meter — the exact path #1160 was reported broken.
-		const bTile = a.getByTitle(`focus ${B}`).locator('div').first();
-		await expect(
-			bTile,
-			`${B}'s tile never got the speaking ring on ${A}'s screen — the real remote-voice meter never reported a level`,
-		).toHaveClass(/ring-z4/, { timeout: 20_000 });
-
-		// Muting takes the level away — the ring has to follow it down, not
-		// linger (#987: a rider who stops must not stay lit up forever).
-		await b.getByRole('button', { name: 'microphone', pressed: true }).click();
-		await expect(
-			bTile,
-			`${B}'s tile stayed ringed as speaking after muting`,
-		).not.toHaveClass(/ring-z4/, { timeout: 5_000 });
-	} finally {
-		const status = await a.evaluate(
-			(roomSlug) =>
-				fetch(`/api/rooms/${roomSlug}`, { method: 'DELETE' }).then(
-					(res) => res.status,
-				),
-			slug,
-		);
-		expect(
-			status,
-			`room ${slug} survived the test — every leak counts against the owner's three-room cap`,
-		).toBe(204);
-		await aCtx.close();
-		await bCtx.close();
+	const a = await riders(A);
+	const b = await riders(B);
+	// Granted and faked before either page asks: getUserMedia runs on the
+	// voice join below, a navigation after these, so the tone is what it gets.
+	for (const rider of [a, b]) {
+		await rider.context().grantPermissions(['microphone']);
+		await fakeMicrophone(rider.context());
 	}
+
+	// A's own crew: the voice channel is the stage here, not the door
+	// (crew-invite.spec.ts walks that).
+	const opened = await channels.open(a, `Voice Duck ${Date.now() % 100000}`);
+	await channels.enter(b, opened);
+	const voice = voicePath(opened);
+
+	// ?voice=1 auto-joins once on mount (RoomShell.svelte) — it only does
+	// anything once avEnabled is true, which is why e2e/server.js now
+	// carries WATTROOM_LIVEKIT_*.
+	await a.goto(`${voice}?voice=1`);
+	await b.goto(`${voice}?voice=1`);
+	await expect(
+		a.getByRole('button', { name: 'microphone', pressed: true }),
+		`${A} never finished joining voice with an open mic`,
+	).toBeVisible({ timeout: 20_000 });
+	await expect(
+		b.getByRole('button', { name: 'microphone', pressed: true }),
+		`${B} never finished joining voice with an open mic`,
+	).toBeVisible({ timeout: 20_000 });
+
+	// B's voice reaches A's screen as an <audio> element the SDK attaches
+	// once A's subscription lands — seconds after B's own join resolves
+	// on a slow runner (#1463). The gesture below unmutes only what is
+	// attached at that moment, and the listener is spent on it (`once`),
+	// so the element has to exist first or the assertion after it can
+	// never hold: CI read `muted: true, volume: 0` and waited in vain.
+	await expect
+		.poll(
+			() =>
+				a.evaluate(
+					() =>
+						[...document.querySelectorAll('audio')].filter(
+							(el) => el.srcObject instanceof MediaStream,
+						).length,
+				),
+			{
+				message: `${B}'s voice never reached ${A}'s screen as an attached element`,
+				timeout: 20_000,
+			},
+		)
+		.toBe(1);
+
+	// A fresh navigation does not carry the "user activation" a prior
+	// click left on the page it replaced, so remote playback can start
+	// blocked (#645): av.svelte.ts's onFirstGesture listens for exactly
+	// one event, `pointerdown` on `document`, and only that calls
+	// room.startAudio() — the one thing that actually plays the LiveKit
+	// audio elements a Web Audio tap reads from. A real click's own
+	// actionability wait (visible, stable, unobscured, hit-testable) can
+	// stall against a page mid-layout; dispatching the event directly,
+	// the way av.svelte.test.ts's own "any first click unblocks it" test
+	// already does, gets the one signal the app listens for with nothing
+	// to resolve against.
+	await a.evaluate(() => document.dispatchEvent(new Event('pointerdown')));
+	await b.evaluate(() => document.dispatchEvent(new Event('pointerdown')));
+
+	// That startAudio() also unmutes every remote audio element the SDK
+	// attached (#1339). The voice reaches the speakers through the app's
+	// bus, tapped off that element — so the element itself has to stay
+	// silent through the unmute, or the channel hears every voice twice, a
+	// few milliseconds apart: the phaser riders reported.
+	await expect
+		.poll(
+			() =>
+				a.evaluate(() =>
+					[...document.querySelectorAll('audio')]
+						.filter((el) => el.srcObject instanceof MediaStream)
+						.map((el) => ({ muted: el.muted, volume: el.volume })),
+				),
+			{
+				message: `${B}'s voice element on ${A}'s screen is audible on its own after startAudio — the channel hears the voice twice`,
+				timeout: 10_000,
+			},
+		)
+		.toEqual([{ muted: false, volume: 0 }]);
+
+	// B's fake microphone is already publishing a continuous tone. On A's
+	// screen, B's tile should light the speaking ring (presence-marks.ts's
+	// tileFrame) once that level reaches av.speaking through the real
+	// meter — the exact path #1160 was reported broken.
+	const bTile = a.getByTitle(`focus ${B}`).locator('div').first();
+	await expect(
+		bTile,
+		`${B}'s tile never got the speaking ring on ${A}'s screen — the real remote-voice meter never reported a level`,
+	).toHaveClass(/ring-z4/, { timeout: 20_000 });
+
+	// Muting takes the level away — the ring has to follow it down, not
+	// linger (#987: a rider who stops must not stay lit up forever).
+	await b.getByRole('button', { name: 'microphone', pressed: true }).click();
+	await expect(
+		bTile,
+		`${B}'s tile stayed ringed as speaking after muting`,
+	).not.toHaveClass(/ring-z4/, { timeout: 5_000 });
 });

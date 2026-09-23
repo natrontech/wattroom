@@ -1,4 +1,4 @@
-import { expect, test, voicePath } from './room';
+import { expect, test, voicePath } from './crew';
 
 /**
  * A rider's connection, and whose address it is (#2131).
@@ -27,9 +27,9 @@ const WIDE = { width: 1440, height: 900 };
 /** Slack over a live wait: a 1 Hz tick, and a ping measured every 5 s. */
 const SETTLE_MS = 20_000;
 
-test('a rider sees everyone in the room, and their own address alone', async ({
+test('a rider sees everyone in the voice channel, and their own address alone', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -39,17 +39,17 @@ test('a rider sees everyone in the room, and their own address alone', async ({
 	const a = await riders(A);
 	await a.setViewportSize(WIDE);
 	const name = `Connection ${Date.now() % 100000}`;
-	const room = await rooms.open(a, name);
+	const opened = await channels.open(a, name);
 
 	const b = await riders(B);
-	await rooms.enter(b, room);
-	// Both in the room's voice channel (#2449): its tiles are the roster.
-	await a.goto(voicePath(room));
-	await b.goto(voicePath(room));
+	await channels.enter(b, opened);
+	// Both in the voice channel (#2449): its tiles are the roster.
+	await a.goto(voicePath(opened));
+	await b.goto(voicePath(opened));
 
 	// The menu's entries are built when it OPENS, off the roster the last tick
 	// carried — so a right-click before the first tick offers no Connection at
-	// all. The lounge's tiles come from that same roster: once both riders have
+	// all. The Lounge's tiles come from that same roster: once both riders have
 	// one, the tick has landed. (Not a race the app loses — the entry appears
 	// within a second and stays — but one a test can.)
 	const tiles = a.getByTestId('rider-tile');
@@ -64,7 +64,7 @@ test('a rider sees everyone in the room, and their own address alone', async ({
 	const panel = a.getByRole('dialog');
 	await expect(panel).toBeVisible();
 	// The ping is the server's measurement of THEIR socket, so it arrives on
-	// the room's own schedule rather than instantly — poll for a number.
+	// the channel's own schedule rather than instantly — poll for a number.
 	await expect
 		.poll(
 			async () =>
