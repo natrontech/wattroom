@@ -7,7 +7,7 @@
 	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import VoiceChannelShell from '$lib/room/VoiceChannelShell.svelte';
-	import type { SessionPageData } from '$lib/room/voice-channel';
+	import type { SessionPageData } from '$lib/session/session-page';
 
 	let { children } = $props();
 
