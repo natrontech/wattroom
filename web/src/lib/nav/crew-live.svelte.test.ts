@@ -6,9 +6,12 @@ import type { LiveChannel, LiveCrew } from '$lib/crews-live';
 // honest: an assertion of silence is only worth something after the read.
 let reads = 0;
 let world: LiveCrew[] = [];
+let failing = false;
 vi.mock('$lib/crews-live', () => ({
 	fetchCrewsLive: async () => {
 		reads += 1;
+		if (failing)
+			return { ok: false, error: { error: 'internal_error', message: 'down' } };
 		return { ok: true, data: { crews: structuredClone(world) } };
 	},
 }));
@@ -189,5 +192,29 @@ describe('what the crew read announces', () => {
 			expect(toasted).toHaveLength(0);
 			expect(sounds).toHaveLength(0);
 		}
+	});
+});
+
+// A failed re-read keeps the last list on screen (#2518), so the header's
+// stale mark is the one thing that says it is old — on the second failure in
+// a row, never the first, and gone with the next good read.
+describe('the live read going stale', () => {
+	afterEach(() => {
+		failing = false;
+		crewLive.reset();
+	});
+
+	it('is stale after two failed reads in a row, and fresh after a good one', async () => {
+		world = crew(text());
+		await read();
+		failing = true;
+		await read();
+		expect(crewLive.stale).toBe(false);
+		await read();
+		expect(crewLive.stale).toBe(true);
+		expect(crewLive.crews).toHaveLength(1);
+		failing = false;
+		await read();
+		expect(crewLive.stale).toBe(false);
 	});
 });

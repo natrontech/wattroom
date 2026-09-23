@@ -103,25 +103,30 @@ describe('friends.waiting', () => {
 });
 
 describe('friendPlace', () => {
-	// ADR-0012: the room's name only for a member of it, "riding elsewhere"
-	// otherwise — and riding is never inferred from being in a room (#2168).
+	// ADR-0012 as ADR-0058 re-keyed it (#2516): the voice channel and its crew
+	// only when the server named them, "riding elsewhere" otherwise — and
+	// riding is never inferred from being in a channel (#2168).
 	const accepted = (over: Partial<Friend> = {}) =>
 		friend({ status: 'accepted', ...over });
+	const lounge = {
+		crewId: 'c1',
+		crewName: 'Velvet Hammer',
+		channelId: 'v1',
+		channelName: 'Lounge',
+	};
 
-	it('names the room for a member, and says riding when they are', () => {
+	it('names the crew and channel when it may, and says riding when they are', () => {
+		expect(friendPlace(accepted({ inVoice: true, channel: lounge }))).toBe(
+			'in Velvet Hammer · Lounge',
+		);
 		expect(
-			friendPlace(accepted({ inRoom: true, roomName: 'Velvet Hammer' })),
-		).toBe('in Velvet Hammer');
-		expect(
-			friendPlace(
-				accepted({ inRoom: true, roomName: 'Velvet Hammer', riding: true }),
-			),
-		).toBe('riding in Velvet Hammer');
+			friendPlace(accepted({ inVoice: true, channel: lounge, riding: true })),
+		).toBe('riding in Velvet Hammer · Lounge');
 	});
 
-	it('keeps the boundary for a room the viewer is not in', () => {
-		expect(friendPlace(accepted({ inRoom: true }))).toBe('in a room');
-		expect(friendPlace(accepted({ inRoom: true, riding: true }))).toBe(
+	it('keeps the gate for a channel the viewer may not enter', () => {
+		expect(friendPlace(accepted({ inVoice: true }))).toBe('in a voice channel');
+		expect(friendPlace(accepted({ inVoice: true, riding: true }))).toBe(
 			'riding elsewhere',
 		);
 	});

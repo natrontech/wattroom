@@ -3,13 +3,25 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { tick } from 'svelte';
 
 const served = vi.hoisted(() => ({
-	rides: [] as { id: string; startedAt: string; room: boolean; xp?: number }[],
+	rides: [] as {
+		id: string;
+		startedAt: string;
+		room?: boolean;
+		channel?: { id: string };
+		xp?: number;
+	}[],
+	medals: {} as Record<string, { kind: string }[]>,
 }));
 vi.mock('$lib/api', () => ({
 	api: async (path: string) =>
 		path === '/api/rides'
 			? { ok: true, data: { rides: served.rides } }
-			: { ok: true, data: { medals: [] } },
+			: {
+					ok: true,
+					data: {
+						medals: served.medals[path.replace('/api/rides/', '')] ?? [],
+					},
+				},
 }));
 
 const { createSummary, SUMMARY_MIN_SAMPLES } = await import('./summary.svelte');
@@ -22,7 +34,6 @@ async function setup(startedAt: () => number | undefined) {
 	let summary!: ReturnType<typeof createSummary>;
 	const off = $effect.root(() => {
 		summary = createSummary({
-			slug: () => 'crew',
 			recording,
 			phase: () => phase,
 			startedAt,
@@ -103,6 +114,61 @@ describe('the late joiner finds their ride (#1537)', () => {
 		await t.go('done');
 		await vi.advanceTimersByTimeAsync(3_000);
 		expect(t.summary.rideId).toBe('r1');
+		t.off();
+		vi.useRealTimers();
+	});
+});
+
+// A voice channel's session saves a crew ride — `room` unset, the channel
+// named (#2443) — and its medal hangs off that ride (#2522): the summary used
+// to look for a room ride and a room's medals, and found neither.
+describe('the summary finds a crew ride and its medal (#2522)', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		served.rides = [];
+		served.medals = {};
+	});
+
+	it('links the ride and shows the medal the session awarded on it', async () => {
+		const timelineStart = 2_000_000;
+		vi.setSystemTime(timelineStart + 60_000);
+		served.rides = [
+			{
+				id: 'r2',
+				startedAt: new Date(timelineStart).toISOString(),
+				channel: { id: 'lounge' },
+				xp: 55,
+			},
+		];
+		served.medals = { r2: [{ kind: 'metronome' }] };
+		const t = await setup(() => timelineStart);
+		await t.go('running');
+		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		await t.go('done');
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(t.summary.rideId).toBe('r2');
+		expect(t.summary.medal).toMatchObject({ value: '90', unit: '%', xp: 55 });
+		t.off();
+		vi.useRealTimers();
+	});
+
+	it('shows no medal for a ride that won none', async () => {
+		const timelineStart = 3_000_000;
+		vi.setSystemTime(timelineStart + 60_000);
+		served.rides = [
+			{
+				id: 'r3',
+				startedAt: new Date(timelineStart).toISOString(),
+				channel: { id: 'lounge' },
+			},
+		];
+		const t = await setup(() => timelineStart);
+		await t.go('running');
+		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		await t.go('done');
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(t.summary.rideId).toBe('r3');
+		expect(t.summary.medal).toBeUndefined();
 		t.off();
 		vi.useRealTimers();
 	});

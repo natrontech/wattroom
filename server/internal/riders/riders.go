@@ -1,21 +1,22 @@
-// Package riders is a rider's page (ADR-0024): what rooms already see —
-// name, level, energy, medals from rooms you share, where they are — plus,
+// Package riders is a rider's page (ADR-0024): what crew-mates already see —
+// name, level, energy, medals from crews you share, where they are — plus,
 // for friends, the rides the rider chose to share. Never live watts, heart
-// rate, weight or FTP; those stay room-scoped. Strangers get a 404: without
-// a shared room or a friendship there is no page — and, since #2239, no face
-// either. Both routes here answer to one audience.
+// rate, weight or FTP; those stay inside the session. Strangers get a 404:
+// without a shared channel or a friendship there is no page — and, since
+// #2239, no face either. Both routes here answer to one audience.
 package riders
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -29,9 +30,9 @@ type UserSource interface {
 	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
-// PresenceSource is what the page borrows from the hub: which room the rider
-// is connected to, and whether they are riding in it. Live state, persisted
-// nowhere — same two questions the friends list and the rail already ask.
+// PresenceSource is what the page borrows from the hub: which voice channel
+// the rider is in, and whether they are riding in it. Live state, persisted
+// nowhere — same two questions the friends list already asks.
 type PresenceSource interface {
 	WhereIs(userIDs []string) map[string]string
 	// One question, one answer, everywhere it is asked (#1743): the friends
@@ -108,20 +109,21 @@ func (s *Service) handleAvatar(w http.ResponseWriter, r *http.Request) {
 	httpx.ServeImage(w, r, img.Mime, img.Image, img.SetAt.Time)
 }
 
-type roomRef struct {
-	Slug string `json:"slug"`
+type crewRef struct {
+	ID   string `json:"id"`
 	Name string `json:"name"`
 }
 
 // presenceJSON follows the friends list (ADR-0012): online is the lobby
-// socket, inRoom that they are in some room, and the room is named only when
-// the viewer is a member of it. A room-mate who is not a friend sees only
-// the shared rooms — the same thing the roster already shows them.
+// socket, inVoice that they are in some voice channel, and the channel and
+// its crew are named only when the viewer may enter it (ADR-0058). A
+// crew-mate who is not a friend learns only about a channel they may enter
+// themselves — who is in it is what its own page already shows them.
 type presenceJSON struct {
-	Online bool     `json:"online"`
-	InRoom bool     `json:"inRoom"`
-	Riding bool     `json:"riding"`
-	Room   *roomRef `json:"room,omitempty"`
+	Online  bool            `json:"online"`
+	InVoice bool            `json:"inVoice"`
+	Riding  bool            `json:"riding"`
+	Channel *channels.Place `json:"channel,omitempty"`
 }
 
 type monthJSON struct {
@@ -142,7 +144,9 @@ type sharedRideJSON struct {
 	ExecutionScored bool `json:"executionScored"`
 	// docs/SPEC.md medal kinds won on this ride, if any.
 	Medals []string `json:"medals,omitempty"`
-	// Ridden in a room; named only when the viewer is a member of it.
+	// Ridden with a crew; the voice channel is named only when the viewer
+	// may enter it (ListSharedRides). The field names are the page's until
+	// #2457.
 	InRoom   bool   `json:"inRoom"`
 	RoomName string `json:"roomName,omitempty"`
 }
@@ -157,14 +161,14 @@ type riderJSON struct {
 	TotalXp int64 `json:"totalXp"`
 	TotalKj int64 `json:"totalKj"`
 	Rides   int64 `json:"rides"`
-	// docs/SPEC.md kind → count, scoped to rooms in common.
+	// docs/SPEC.md kind → count, scoped to the crews in common.
 	Medals        map[string]int64 `json:"medals"`
-	RoomsInCommon []roomRef        `json:"roomsInCommon"`
+	CrewsInCommon []crewRef        `json:"crewsInCommon"`
 	Presence      presenceJSON     `json:"presence"`
 	// self | none | pending_in | pending_out | accepted — the friends list's
 	// own vocabulary, so one page can offer Accept as well as Add.
 	Friend string `json:"friend"`
-	// The viewer may ask: they share a room and nothing is pending. The
+	// The viewer may ask: they share a channel and nothing is pending. The
 	// friend code itself never travels — see friends.handleRequest.
 	CanAdd bool `json:"canAdd"`
 	// Friends (and the rider) only; null otherwise.
@@ -209,11 +213,11 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", notVisible)
 		return
 	}
-	// The rooms themselves are the page's content and the medals' scope, not
+	// The crews themselves are the page's content and the medals' scope, not
 	// the gate.
-	rooms, err := s.store.Queries.ListRoomsInCommon(ctx, db.ListRoomsInCommonParams{Rider: id, Viewer: me.ID})
+	crews, err := s.store.Queries.ListCrewsInCommon(ctx, db.ListCrewsInCommonParams{Rider: id, Viewer: me.ID})
 	if err != nil {
-		s.fail(w, "rooms in common", err, me)
+		s.fail(w, "crews in common", err, me)
 		return
 	}
 	friend, err := s.friendStatus(r, me, rider)
@@ -236,9 +240,9 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	for _, row := range medalRows {
 		medals[row.Kind] = row.Count
 	}
-	inCommon := make([]roomRef, 0, len(rooms))
-	for _, room := range rooms {
-		inCommon = append(inCommon, roomRef{Slug: room.Slug, Name: room.Name})
+	inCommon := make([]crewRef, 0, len(crews))
+	for _, crew := range crews {
+		inCommon = append(inCommon, crewRef{ID: store.UUIDString(crew.ID), Name: crew.Name})
 	}
 
 	out := riderJSON{
@@ -246,11 +250,14 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		AvatarURL: rider.AvatarUrl,
 		Since:     rider.CreatedAt.Time.Format(time.RFC3339),
 		TotalXp:   totals.TotalXp, TotalKj: totals.TotalKj, Rides: totals.Rides,
-		Medals: medals, RoomsInCommon: inCommon,
+		Medals: medals, CrewsInCommon: inCommon,
 		Friend: friend, CanAdd: friend == "none",
 	}
 	trusted := friend == "self" || friend == "accepted"
-	out.Presence = s.presenceOf(rider, inCommon, trusted)
+	if out.Presence, err = s.presenceOf(ctx, me, rider, trusted); err != nil {
+		s.fail(w, "presence", err, me)
+		return
+	}
 
 	if trusted {
 		// The zone "this month" is counted in (#1653) is the rider's own —
@@ -308,32 +315,36 @@ func (s *Service) friendStatus(r *http.Request, me, rider db.User) (string, erro
 	}
 }
 
-// presenceOf answers "where are they" within the boundary: a friend (or the
-// rider) gets online/in-a-room like the friends list; a room-mate only learns
-// about rooms in common, which the roster shows them anyway.
-func (s *Service) presenceOf(rider db.User, inCommon []roomRef, trusted bool) presenceJSON {
+// presenceOf answers "where are they" within the gate: a friend (or the
+// rider) gets online/in-a-voice-channel like the friends list; a crew-mate
+// only learns about a channel they may enter themselves, whose page shows
+// them who is in it anyway.
+func (s *Service) presenceOf(ctx context.Context, me, rider db.User, trusted bool) (presenceJSON, error) {
 	var p presenceJSON
 	if s.presence == nil {
-		return p
+		return p, nil
 	}
 	id := store.UUIDString(rider.ID)
-	slug, online := s.presence.WhereIs([]string{id})[id]
-	shared := slices.IndexFunc(inCommon, func(room roomRef) bool { return room.Slug == slug })
-	if slug != "" && shared >= 0 {
-		room := inCommon[shared]
-		p.Room = &room
+	where := s.presence.WhereIs([]string{id})
+	channel, online := where[id]
+	places, err := channels.PlacesFor(ctx, s.store.Queries, me.ID, where)
+	if err != nil {
+		return p, err
+	}
+	if place, named := places[id]; named {
+		p.Channel = &place
 		// By id (#649): display names are not unique, and two Dans in one
 		// room both showed the bars while one sat in the lounge (#1652).
 		p.Riding = s.presence.Riding([]string{id})[id]
 	}
 	if trusted {
 		p.Online = online
-		p.InRoom = slug != ""
+		p.InVoice = channel != ""
 	} else {
-		p.Online = p.Room != nil
-		p.InRoom = p.Room != nil
+		p.Online = p.Channel != nil
+		p.InVoice = p.Channel != nil
 	}
-	return p
+	return p, nil
 }
 
 func (s *Service) fail(w http.ResponseWriter, what string, err error, me db.User) {

@@ -32,9 +32,9 @@ test('the friends panel says riding, and names the place only to a member', asyn
 	const a = await riders(A);
 	// Four friends, one per state the panel can be in. Served as a fixture:
 	// the states differ only in what the hub answered, and driving four real
-	// riders onto four real trainers would prove nothing this does not. The
-	// wire still speaks of rooms (the RoomWhere adapter, #2436) and so does the
-	// panel; what it names is the place the friend stands in.
+	// riders onto four real trainers would prove nothing this does not. What
+	// the panel names is the voice channel the friend stands in, with its
+	// crew, and only when the server did (#2516).
 	await a.route('**/api/friends', (route) =>
 		route.fulfill({
 			json: {
@@ -47,10 +47,14 @@ test('the friends panel says riding, and names the place only to a member', asyn
 						status: 'accepted',
 						at: 1,
 						online: true,
-						inRoom: true,
+						inVoice: true,
 						riding: true,
-						room: 'velvet-hammer',
-						roomName: 'Velvet Hammer',
+						channel: {
+							crewId: 'crew-velvet',
+							crewName: 'Velvet Hammer',
+							channelId: 'voice-lounge',
+							channelName: 'Lounge',
+						},
 					},
 					{
 						id: 'peer-elsewhere',
@@ -58,7 +62,7 @@ test('the friends panel says riding, and names the place only to a member', asyn
 						status: 'accepted',
 						at: 2,
 						online: true,
-						inRoom: true,
+						inVoice: true,
 						riding: true,
 					},
 					{
@@ -67,7 +71,7 @@ test('the friends panel says riding, and names the place only to a member', asyn
 						status: 'accepted',
 						at: 3,
 						online: true,
-						inRoom: true,
+						inVoice: true,
 					},
 					{
 						id: 'peer-idle',
@@ -89,13 +93,22 @@ test('the friends panel says riding, and names the place only to a member', asyn
 			.last();
 
 	await expect(row('peer-shared')).toBeVisible({ timeout: 15_000 });
-	// A viewer who may enter the place gets its name and the state in one line.
-	await expect(row('peer-shared')).toContainText('riding in Velvet Hammer');
+	// A viewer who may enter the place gets its name and the state in one
+	// line, and the way in goes to the voice channel.
+	await expect(row('peer-shared')).toContainText(
+		'riding in Velvet Hammer · Lounge',
+	);
+	await expect(
+		row('peer-shared').getByRole('link', { name: 'Walk in' }),
+	).toHaveAttribute('href', '/crew/crew-velvet/v/voice-lounge');
 	// A place the viewer may not enter stays unnamed — ADR-0012's own words.
 	await expect(row('peer-elsewhere')).toContainText('riding elsewhere');
 	await expect(row('peer-elsewhere')).not.toContainText('Velvet');
+	await expect(
+		row('peer-elsewhere').getByRole('link', { name: 'Walk in' }),
+	).toHaveCount(0);
 	// Riding is never inferred from standing somewhere (#2168).
-	await expect(row('peer-lounging')).toContainText('in a room');
+	await expect(row('peer-lounging')).toContainText('in a voice channel');
 	await expect(row('peer-idle')).toContainText('online');
 });
 
@@ -107,16 +120,10 @@ test('the friends panel says riding, and names the place only to a member', asyn
  * is the case #1743 is about.
  */
 const FEEDS = [
-	{ route: '**/api/crews', what: 'the crew list', bug: '' },
-	{
-		route: '**/api/crews/live',
-		what: 'what is live in the crew',
-		// The mark reads `presence.stale` alone, which counts failures of
-		// /api/crews (presence.svelte.ts); a refused /api/crews/live sets
-		// `crewLive.error`, and CrewColumn draws that only over an EMPTY
-		// channel list — #1743's gap, one feed over.
-		bug: '#2518: the crew header never marks a stalled /api/crews/live, only a stalled /api/crews',
-	},
+	{ route: '**/api/crews', what: 'the crew list' },
+	// Its error line draws only over an EMPTY channel list, so the header's
+	// mark is the one word a stalled live read gets (#2518).
+	{ route: '**/api/crews/live', what: 'what is live in the crew' },
 ];
 
 for (const feed of FEEDS) {
@@ -128,9 +135,15 @@ for (const feed of FEEDS) {
 			!!process.env.PLAYWRIGHT_BASE_URL,
 			'the ?as= dev provider only exists on a dev server',
 		);
-		test.fixme(!!feed.bug, feed.bug);
 
 		const a = await riders(A);
+		// The lobby socket held silent, so the test's own refetches are the
+		// only reads: the hub pings every signed-in rider on anyone's move
+		// (hub/lobby.go), and a neighbouring spec's ping re-reads the refused
+		// feed a second time — the mark after ONE refetch, which is the blip
+		// this test says must not mark. Routed before the navigation below,
+		// which is what reconnects it (nav-current.spec.ts does the same).
+		await a.routeWebSocket(/\/ws\/presence$/, () => {});
 		// A crew to hold the mark, and channels in it — with channels on
 		// screen the column's error line never draws, which is the whole gap.
 		await channels.open(a, `Presence States ${Date.now() % 100000}`);

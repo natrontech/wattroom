@@ -15,6 +15,7 @@
 	import { friends } from '$lib/friends/friends.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import Search from '@lucide/svelte/icons/search';
 
 	let { active = '' }: { active?: string } = $props();
@@ -104,7 +105,7 @@
 						name={t.name}
 						avatarUrl={t.head.peerAvatarUrl}
 						xp={t.head.peerTotalXp}
-						status={statusOf(presence.rooms, t.head.peerId, friends.list)}
+						status={statusOf(crewLive.crews, t.head.peerId, friends.list)}
 						size={32}
 					/>
 					<span class="min-w-0 flex-1">

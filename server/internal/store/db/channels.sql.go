@@ -388,37 +388,6 @@ func (q *Queries) RoomOfVoiceChannel(ctx context.Context, voiceChannelID pgtype.
 	return i, err
 }
 
-const roomSlugsOfVoiceChannels = `-- name: RoomSlugsOfVoiceChannels :many
-select rc.voice_channel_id, r.slug from room_channels rc
-join rooms r on r.id = rc.room_id
-where rc.voice_channel_id = any($1::uuid[])
-`
-
-type RoomSlugsOfVoiceChannelsRow struct {
-	VoiceChannelID pgtype.UUID
-	Slug           string
-}
-
-func (q *Queries) RoomSlugsOfVoiceChannels(ctx context.Context, ids []pgtype.UUID) ([]RoomSlugsOfVoiceChannelsRow, error) {
-	rows, err := q.db.Query(ctx, roomSlugsOfVoiceChannels, ids)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []RoomSlugsOfVoiceChannelsRow
-	for rows.Next() {
-		var i RoomSlugsOfVoiceChannelsRow
-		if err := rows.Scan(&i.VoiceChannelID, &i.Slug); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const setChannelPosition = `-- name: SetChannelPosition :exec
 update channels set position = $2 where id = $1
 `
@@ -510,4 +479,57 @@ func (q *Queries) VoiceChannelOfRoom(ctx context.Context, roomID pgtype.UUID) (p
 	var voice_channel_id pgtype.UUID
 	err := row.Scan(&voice_channel_id)
 	return voice_channel_id, err
+}
+
+const voiceChannelsVisibleTo = `-- name: VoiceChannelsVisibleTo :many
+select c.id as channel_id, c.name as channel_name, cw.id as crew_id, cw.name as crew_name
+from channels c
+join crews cw on cw.id = c.crew_id
+join visible_channels v on v.channel_id = c.id and v.user_id = $1
+where c.id = any($2::uuid[]) and c.kind = 'voice'
+`
+
+type VoiceChannelsVisibleToParams struct {
+	Viewer     pgtype.UUID
+	ChannelIds []pgtype.UUID
+}
+
+type VoiceChannelsVisibleToRow struct {
+	ChannelID   pgtype.UUID
+	ChannelName string
+	CrewID      pgtype.UUID
+	CrewName    string
+}
+
+// Which of these voice channels the viewer may enter, with the crew each
+// belongs to: where a friend is, as the friends panel and a rider's page may
+// say it (#2516). The hub names the channel; this names it only through
+// `visible_channels` — `mayEnter` as one relation, the rule the crew's live
+// read applies — so a channel the viewer may not enter is not in the answer
+// at all. Its name and its crew are part of what its gate keeps (ADR-0012:
+// friendship never pierces the boundary). One query for every channel asked
+// about, however many friends are online (#687).
+func (q *Queries) VoiceChannelsVisibleTo(ctx context.Context, arg VoiceChannelsVisibleToParams) ([]VoiceChannelsVisibleToRow, error) {
+	rows, err := q.db.Query(ctx, voiceChannelsVisibleTo, arg.Viewer, arg.ChannelIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []VoiceChannelsVisibleToRow
+	for rows.Next() {
+		var i VoiceChannelsVisibleToRow
+		if err := rows.Scan(
+			&i.ChannelID,
+			&i.ChannelName,
+			&i.CrewID,
+			&i.CrewName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

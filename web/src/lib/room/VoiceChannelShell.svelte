@@ -144,6 +144,7 @@
 			roomName={channel.name}
 			icon={crew.icon ?? ''}
 			code={crew.code ?? ''}
+			cheers={crew.cheers}
 			soundPack={channel.soundPack ?? 'base'}
 			{members}
 			crewVisible={!channel.private}

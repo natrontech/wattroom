@@ -1,5 +1,5 @@
 // Package friends is ADR-0012 made small: mutual friendship formed only
-// by exchanging friend codes, presence that never pierces the room boundary.
+// by exchanging friend codes, presence that never pierces a channel's gate.
 // The server stores who is friends with whom; "where they are" is answered
 // live from the hub and persisted nowhere.
 package friends
@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/jackc/pgx/v5"
 	"github.com/natrontech/wattroom/server/internal/budget"
+	"github.com/natrontech/wattroom/server/internal/channels"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -27,15 +28,15 @@ type UserSource interface {
 	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
-// PresenceSource answers "which room is this user connected to right now" —
+// PresenceSource answers "which voice channel is this user in right now" —
 // defined here where it is consumed, implemented by the hub. PresenceChanged
 // pings every lobby socket: a request, an acceptance or a removal reaches the
 // other side now rather than on their next fallback poll (#876).
 type PresenceSource interface {
 	WhereIs(userIDs []string) map[string]string
 	// Who is pedalling right now, of the ids asked about (ADR-0012's third
-	// state). Standing in a room is not riding in it, and WhereIs cannot
-	// tell them apart.
+	// state). Standing in a voice channel is not riding in it, and WhereIs
+	// cannot tell them apart.
 	Riding(userIDs []string) map[string]bool
 	PresenceChanged()
 }
@@ -82,20 +83,21 @@ type friendJSON struct {
 	// acceptance once per row, in one tab, off this (#876).
 	At int64 `json:"at"`
 	// Presence — accepted friends only (ADR-0012). Online means "app open"
-	// (the lobby socket, #251 — Slack's green dot), InRoom that they are in
-	// some room, and the room is named ONLY when the viewer is a member of it.
+	// (the lobby socket, #251 — Slack's green dot), InVoice that they are in
+	// some voice channel, and Channel — the channel and its crew — is there
+	// ONLY when the viewer may enter that channel (ADR-0058), the same shape
+	// a rider's page carries.
 	//
 	// Riding is the third state the ADR's 2026-09-09 amendment names and the
 	// panel used to be blind to (#1743): pedalling inside the hub's window,
-	// not merely standing in a room. It says nothing about WHAT they are
-	// pushing — watts never leave the room — and it is named without naming
-	// the room, which is what makes "riding elsewhere" sayable for a room the
-	// viewer is not a member of.
-	Online   bool   `json:"online,omitempty"`
-	InRoom   bool   `json:"inRoom,omitempty"`
-	Riding   bool   `json:"riding,omitempty"`
-	Room     string `json:"room,omitempty"` // slug
-	RoomName string `json:"roomName,omitempty"`
+	// not merely standing in a voice channel. It says nothing about WHAT they
+	// are pushing — watts never leave the session — and it is named without
+	// naming the channel, which is what makes "riding elsewhere" sayable for
+	// a channel the viewer may not enter.
+	Online  bool            `json:"online,omitempty"`
+	InVoice bool            `json:"inVoice,omitempty"`
+	Riding  bool            `json:"riding,omitempty"`
+	Channel *channels.Place `json:"channel,omitempty"`
 }
 
 // declineJSON is an ask that was dismissed, on its way to the one rider it
@@ -128,45 +130,12 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	where := s.presence.WhereIs(accepted)
 	riding := s.presence.Riding(accepted)
 
-	// Hoisted out of the per-friend loop (#687): collect every distinct room
-	// slug an online friend is in, resolve them all in one query, then check
-	// the viewer's membership in every one of those rooms in a second query.
-	// 1 + 2N queries becomes 3, regardless of how many friends are online.
-	slugSet := make(map[string]struct{}, len(where))
-	for _, slug := range where {
-		if slug != "" {
-			slugSet[slug] = struct{}{}
-		}
-	}
-	roomsBySlug := make(map[string]db.Room, len(slugSet))
-	memberOf := make(map[pgtype.UUID]struct{}, len(slugSet))
-	if len(slugSet) > 0 {
-		slugs := make([]string, 0, len(slugSet))
-		for slug := range slugSet {
-			slugs = append(slugs, slug)
-		}
-		roomList, err := s.store.Queries.GetRoomsBySlugs(r.Context(), slugs)
-		if err != nil {
-			httpx.Fail(w, s.log, "get rooms by slugs", err, "Your friends could not be loaded.", "user", store.UUIDString(me.ID))
-			return
-		}
-		roomIDs := make([]pgtype.UUID, 0, len(roomList))
-		for _, room := range roomList {
-			roomsBySlug[room.Slug] = room
-			roomIDs = append(roomIDs, room.ID)
-		}
-		if len(roomIDs) > 0 {
-			memberships, err := s.store.Queries.ListMembershipsForUser(r.Context(), db.ListMembershipsForUserParams{
-				UserID: me.ID, RoomIds: roomIDs,
-			})
-			if err != nil {
-				httpx.Fail(w, s.log, "list memberships for user", err, "Your friends could not be loaded.", "user", store.UUIDString(me.ID))
-				return
-			}
-			for _, m := range memberships {
-				memberOf[m.RoomID] = struct{}{}
-			}
-		}
+	// Hoisted out of the per-friend loop (#687): every channel an online
+	// friend is in, resolved against what the viewer may enter in one query.
+	places, err := channels.PlacesFor(r.Context(), s.store.Queries, me.ID, where)
+	if err != nil {
+		httpx.Fail(w, s.log, "friends' places", err, "Your friends could not be loaded.", "user", store.UUIDString(me.ID))
+		return
 	}
 
 	friends := make([]friendJSON, 0, len(rows))
@@ -179,22 +148,18 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case row.Status == "accepted":
 			entry.Status = "accepted"
-			// Present in the map = online (lobby socket); a value names the room.
-			slug, online := where[entry.ID]
+			// Present in the map = online (lobby socket); a value is the voice
+			// channel they are in.
+			channel, online := where[entry.ID]
 			entry.Online = online
-			entry.InRoom = slug != ""
-			// Gated on being in a room, not merely on the riding map: the two
-			// answers are taken back to back, so a friend who left between
+			entry.InVoice = channel != ""
+			// Gated on being in a channel, not merely on the riding map: the
+			// two answers are taken back to back, so a friend who left between
 			// them reads as gone rather than as pedalling nowhere.
-			entry.Riding = slug != "" && riding[entry.ID]
-			if slug != "" {
-				// The room is named only for its own members — the boundary holds.
-				if room, ok := roomsBySlug[slug]; ok {
-					if _, ok := memberOf[room.ID]; ok {
-						entry.Room = slug
-						entry.RoomName = room.Name
-					}
-				}
+			entry.Riding = channel != "" && riding[entry.ID]
+			// Named only for a viewer who may enter it — the gate holds.
+			if place, ok := places[entry.ID]; ok {
+				entry.Channel = &place
 			}
 		case row.RequesterID == me.ID:
 			entry.Status = "pending_out"

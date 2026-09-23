@@ -17,10 +17,11 @@
 	import MessageThread from '$lib/messages/MessageThread.svelte';
 	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { people } from '$lib/people.svelte';
-	import { friends } from '$lib/friends/friends.svelte';
-	import { presence } from '$lib/presence.svelte';
+	import { friendPlace, friends } from '$lib/friends/friends.svelte';
 	import { fetchRider, type Rider } from '$lib/rider';
-	import { roomOf, statusOf } from '$lib/status';
+	import { statusOf } from '$lib/status';
+	import { placePath } from '$lib/whereabouts';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import Radio from '@lucide/svelte/icons/radio';
 
@@ -103,9 +104,13 @@
 			]);
 		});
 	});
-	// Where they are, if anywhere — the one thing the old drawer could never say.
-	const inRoom = $derived(roomOf(presence.rooms, peerId));
-	const status = $derived(statusOf(presence.rooms, peerId, friends.list));
+	// Where they are, if anywhere — the one thing the old drawer could never
+	// say. Messages are between friends (dms.go), so the friends list is what
+	// answers it, within the gate: the voice channel only when you may enter
+	// it (#2516).
+	const peer = $derived(friends.list?.find((f) => f.id === peerId));
+	const where = $derived(peer ? friendPlace(peer) : '');
+	const status = $derived(statusOf(crewLive.crews, peerId, friends.list));
 
 	let thread = $state<ReturnType<typeof createDmThread> | null>(null);
 	// Lines on screen: what tells an ended friendship from a stranger's.
@@ -186,12 +191,13 @@
 			title="{peerName}'s page">{peerName}</a
 		>
 		<span class="text-muted block truncate text-[11px]">
-			{#if status === 'riding'}riding in {inRoom?.name}{:else if inRoom}in {inRoom.name}{:else}not
-				in a room{/if}
+			{where || 'not in a voice channel'}
 		</span>
 	</span>
-	{#if inRoom}
-		<a href="/r/{inRoom.slug}" class="btn btn-accent btn-xs ml-auto shrink-0"
+	{#if peer?.channel}
+		<a
+			href={placePath(peer.channel)}
+			class="btn btn-accent btn-xs ml-auto shrink-0"
 			><Radio size={13} /> Walk in</a
 		>
 	{/if}
