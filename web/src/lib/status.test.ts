@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RailRoom } from '$lib/room/room-data';
 import type { LiveCrew, LiveOccupant } from '$lib/crews-live';
-import {
-	occupantOf,
-	othersIn,
-	roomOf,
-	statusOf,
-	statusOfRider,
-} from './status';
+import { occupantOf, othersIn, statusOf, statusOfRider } from './status';
 
 const room = (over: Partial<RailRoom> = {}): RailRoom => ({
 	name: 'MFW 5',
@@ -120,6 +114,7 @@ describe('statusOf', () => {
 				status: 'accepted' as const,
 				at: 0,
 				online: true,
+				inVoice: true,
 				riding: true,
 			},
 		];
@@ -135,16 +130,6 @@ describe('statusOf', () => {
 		];
 		expect(statusOf(daves, 'u-dave-one')).toBe('online');
 		expect(statusOf(daves, 'u-dave-two')).toBe(null);
-	});
-});
-
-describe('roomOf', () => {
-	it('names the room they are in', () => {
-		const rooms = [
-			room({ slug: 'a', riders: ['Sven Gerber'], riderIds: ['u-sven'] }),
-		];
-		expect(roomOf(rooms, 'u-sven')?.slug).toBe('a');
-		expect(roomOf(rooms, 'u-nobody')).toBe(undefined);
 	});
 });
 

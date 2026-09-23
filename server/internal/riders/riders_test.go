@@ -19,8 +19,9 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-// fakePresence stands in for the hub: userID → room slug, plus who is riding
-// where, by display name — the hub's own vocabulary.
+// fakePresence stands in for the hub: userID → voice channel id ("" for
+// online in none), plus who is riding in which channel — the hub's own
+// shape.
 type fakePresence struct {
 	where  map[string]string
 	riding map[string][]string
@@ -29,15 +30,15 @@ type fakePresence struct {
 func (f *fakePresence) WhereIs(ids []string) map[string]string {
 	out := map[string]string{}
 	for _, id := range ids {
-		if slug, ok := f.where[id]; ok {
-			out[id] = slug
+		if channel, ok := f.where[id]; ok {
+			out[id] = channel
 		}
 	}
 	return out
 }
 
 // Ids, not names (#1652): "riding" is keyed by id, and the fixture keeps the
-// hub's own shape — a room holds the ids pedalling in it.
+// hub's own shape — a voice channel holds the ids pedalling in it.
 func (f *fakePresence) Riding(ids []string) map[string]bool {
 	out := map[string]bool{}
 	for _, id := range ids {
@@ -108,6 +109,16 @@ func (h *harness) room(t *testing.T, slug string, names ...string) db.Room {
 	}
 	storetest.ChannelsFor(t, h.store, room.ID)
 	return room
+}
+
+// voice is the voice channel a fixture room became — the id the hub keys by.
+func (h *harness) voice(t *testing.T, room db.Room) string {
+	t.Helper()
+	channel := h.store.VoiceChannelOf(t.Context(), room.ID)
+	if channel == "" {
+		t.Fatalf("room %s has no voice channel", room.Name)
+	}
+	return channel
 }
 
 // ride writes one summary row; shared marks it for friends; room may be zero.
@@ -245,32 +256,34 @@ func TestRoomMateSeesWhatTheRoomSees(t *testing.T) {
 	if medals["hammer"] != float64(1) || medals["diesel"] != nil {
 		t.Fatalf("medals leak past the shared room: %v", medals)
 	}
-	rooms, _ := body["roomsInCommon"].([]any)
-	if len(rooms) != 1 {
-		t.Fatalf("rooms in common: %v", rooms)
+	// The room's crew, which is what both of them are in now.
+	crews, _ := body["crewsInCommon"].([]any)
+	if len(crews) != 1 {
+		t.Fatalf("crews in common: %v", crews)
 	}
-	if room, _ := rooms[0].(map[string]any); room["slug"] != cave.Slug {
-		t.Fatalf("rooms in common: %v", rooms)
+	if crew, _ := crews[0].(map[string]any); crew["name"] != "pain-cave" || crew["id"] != store.UUIDString(h.crewOf(t, cave)) {
+		t.Fatalf("crews in common: %v", crews)
 	}
 	if body["canAdd"] != true || body["sharedRides"] != nil || body["month"] != nil {
 		t.Fatalf("a room-mate is not a friend: %v", body)
 	}
 
-	// Presence: in the shared room, riding → named and moving.
-	h.presence.where[h.id("bob")] = cave.Slug
-	h.presence.riding[cave.Slug] = []string{h.id("bob")}
+	// Presence: in the channel they share, riding → named and moving.
+	caveVoice := h.voice(t, cave)
+	h.presence.where[h.id("bob")] = caveVoice
+	h.presence.riding[caveVoice] = []string{h.id("bob")}
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("bob"))
 	p, _ := body["presence"].(map[string]any)
-	room, _ := p["room"].(map[string]any)
-	if room["slug"] != cave.Slug || p["riding"] != true || p["online"] != true {
-		t.Fatalf("presence in a shared room: %v", p)
+	channel, _ := p["channel"].(map[string]any)
+	if channel["channelId"] != caveVoice || channel["channelName"] != "pain-cave" || p["riding"] != true || p["online"] != true || p["inVoice"] != true {
+		t.Fatalf("presence in a shared channel: %v", p)
 	}
-	// In a room alice is not in: a room-mate learns nothing at all.
-	h.presence.where[h.id("bob")] = lair.Slug
+	// In a channel alice may not enter: a crew-mate learns nothing at all.
+	h.presence.where[h.id("bob")] = h.voice(t, lair)
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("bob"))
 	p, _ = body["presence"].(map[string]any)
-	if p["online"] != false || p["inRoom"] != false || p["room"] != nil {
-		t.Fatalf("boundary pierced for a room-mate: %v", p)
+	if p["online"] != false || p["inVoice"] != false || p["channel"] != nil {
+		t.Fatalf("boundary pierced for a crew-mate: %v", p)
 	}
 }
 
@@ -285,8 +298,8 @@ func TestFriendSeesSharedRidesAndTheMonth(t *testing.T) {
 	if body["canAdd"] != false {
 		t.Fatalf("friends are not re-added: %v", body)
 	}
-	if rooms, _ := body["roomsInCommon"].([]any); len(rooms) != 0 {
-		t.Fatalf("no rooms in common expected: %v", rooms)
+	if crews, _ := body["crewsInCommon"].([]any); len(crews) != 0 {
+		t.Fatalf("no crews in common expected: %v", crews)
 	}
 	shared, _ := body["sharedRides"].([]any)
 	if len(shared) != 1 {
@@ -302,20 +315,133 @@ func TestFriendSeesSharedRidesAndTheMonth(t *testing.T) {
 		t.Fatalf("month: %v", month)
 	}
 
-	// A friend in a room you are not in: online and in a room, unnamed.
-	h.presence.where[h.id("dan")] = lair.Slug
+	// A friend in a channel you may not enter: online and in voice, unnamed.
+	h.presence.where[h.id("dan")] = h.voice(t, lair)
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("dan"))
 	p, _ := body["presence"].(map[string]any)
-	if p["online"] != true || p["inRoom"] != true || p["room"] != nil {
+	if p["online"] != true || p["inVoice"] != true || p["channel"] != nil {
 		t.Fatalf("friend presence: %v", p)
 	}
 	// Lobby only: online, nowhere.
 	h.presence.where[h.id("dan")] = ""
 	_, body = h.get(t, "alice", "/api/riders/"+h.id("dan"))
 	p, _ = body["presence"].(map[string]any)
-	if p["online"] != true || p["inRoom"] != false {
+	if p["online"] != true || p["inVoice"] != false {
 		t.Fatalf("lobby presence: %v", p)
 	}
+}
+
+// crewOf is the crew a fixture room was put in.
+func (h *harness) crewOf(t *testing.T, room db.Room) pgtype.UUID {
+	t.Helper()
+	row, err := h.store.Queries.GetRoomByID(t.Context(), room.ID)
+	if err != nil {
+		t.Fatalf("fixture room: %v", err)
+	}
+	return row.CrewID
+}
+
+// Where a rider is, on their page, in a crew founded since M9 (#2516): the
+// hub names a voice channel, and the page names it — crew and channel —
+// only to a viewer that channel's gate admits (ADR-0058). A friend learns
+// that they are in voice somewhere else; a crew-mate who is not a friend
+// learns nothing about a channel they may not enter. The crews in common are
+// the ones where both may enter a channel: the owner's crew counts, a crew
+// that banned the viewer does not. Ordered: each step is the state the one
+// before left behind.
+func TestThePageNamesOnlyAChannelTheViewerMayEnter(t *testing.T) {
+	h := setup(t)
+	alice, bob, cara, dan := h.users.ByToken["alice"].ID, h.users.ByToken["bob"].ID, h.users.ByToken["cara"].ID, h.users.ByToken["dan"].ID
+	crew := testx.Crew(t, h.store, "Gate Crew", cara, alice, bob, dan)
+	openRoad := testx.Voice(t, h.store, crew, "Open Road", false)
+	backRoom := testx.Voice(t, h.store, crew, "Back Room", true, bob, dan)
+	h.befriend(t, "alice", "dan")
+
+	presenceOf := func(t *testing.T, rider string) map[string]any {
+		t.Helper()
+		code, body := h.get(t, "alice", "/api/riders/"+h.id(rider))
+		if code != http.StatusOK {
+			t.Fatalf("%s's page: %d %v", rider, code, body)
+		}
+		p, _ := body["presence"].(map[string]any)
+		return p
+	}
+	crewsOf := func(t *testing.T, rider string) []any {
+		t.Helper()
+		_, body := h.get(t, "alice", "/api/riders/"+h.id(rider))
+		crews, _ := body["crewsInCommon"].([]any)
+		return crews
+	}
+	put := func(rider, channel string, riding bool) {
+		h.presence.where[h.id(rider)] = channel
+		h.presence.riding[channel] = nil
+		if riding {
+			h.presence.riding[channel] = []string{h.id(rider)}
+		}
+	}
+	want := func(t *testing.T, p map[string]any, online, inVoice, riding bool, channel string) {
+		t.Helper()
+		place, _ := p["channel"].(map[string]any)
+		if p["online"] != online || p["inVoice"] != inVoice || p["riding"] != riding {
+			t.Fatalf("presence %v, want online %v inVoice %v riding %v", p, online, inVoice, riding)
+		}
+		if channel == "" {
+			if p["channel"] != nil {
+				t.Fatalf("the channel is named past its gate: %v", p)
+			}
+			return
+		}
+		if place["channelId"] != channel || place["crewId"] != store.UUIDString(crew) || place["crewName"] != "Gate Crew" {
+			t.Fatalf("presence %v, want channel %s of Gate Crew", p, channel)
+		}
+	}
+
+	t.Run("a friend in an open channel of the crew", func(t *testing.T) {
+		put("dan", openRoad, true)
+		p := presenceOf(t, "dan")
+		want(t, p, true, true, true, openRoad)
+		if place, _ := p["channel"].(map[string]any); place["channelName"] != "Open Road" {
+			t.Fatalf("the channel's name: %v", p)
+		}
+	})
+	t.Run("a friend in a private channel nobody named alice into", func(t *testing.T) {
+		put("dan", backRoom, true)
+		want(t, presenceOf(t, "dan"), true, true, false, "")
+	})
+	t.Run("a crew-mate in that private channel", func(t *testing.T) {
+		put("bob", backRoom, true)
+		want(t, presenceOf(t, "bob"), false, false, false, "")
+	})
+	t.Run("a crew-mate in the open channel", func(t *testing.T) {
+		put("bob", openRoad, false)
+		want(t, presenceOf(t, "bob"), true, true, false, openRoad)
+	})
+	t.Run("a friend offline", func(t *testing.T) {
+		delete(h.presence.where, h.id("dan"))
+		want(t, presenceOf(t, "dan"), false, false, false, "")
+	})
+	t.Run("the crew in common, and its owner's", func(t *testing.T) {
+		for _, rider := range []string{"bob", "cara"} {
+			crews := crewsOf(t, rider)
+			var only map[string]any
+			if len(crews) == 1 {
+				only, _ = crews[0].(map[string]any)
+			}
+			if only["name"] != "Gate Crew" {
+				t.Fatalf("%s's crews in common: %v", rider, crews)
+			}
+		}
+	})
+	t.Run("a friend in the open channel of a crew that banned alice", func(t *testing.T) {
+		if err := h.store.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{CrewID: crew, UserID: alice, Role: "banned"}); err != nil {
+			t.Fatalf("ban alice: %v", err)
+		}
+		put("dan", openRoad, true)
+		want(t, presenceOf(t, "dan"), true, true, false, "")
+		if crews := crewsOf(t, "dan"); len(crews) != 0 {
+			t.Fatalf("a crew that banned alice is still in common: %v", crews)
+		}
+	})
 }
 
 func TestSelfSeesOwnPage(t *testing.T) {

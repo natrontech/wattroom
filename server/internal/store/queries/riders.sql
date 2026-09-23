@@ -8,21 +8,23 @@
 -- carries what a hand-written join would have to know: the crew ban, the
 -- private gate and who is named into it.
 
--- name: ListRoomsInCommon :many
--- The rooms whose channels both may enter (`visible_channels`) — what the
--- page lists, not its gate (SharesChannelOrFriends is that). Still rooms,
--- because the page still links to `/r/{slug}`; #2457 names the crew and the
--- channel instead, and a crew made after M9 has no rooms to list here.
-select r.id, r.slug, r.name
-from rooms r
-join room_channels rc on rc.room_id = r.id
+-- name: ListCrewsInCommon :many
+-- The crews in which both may enter a channel (`visible_channels`) — what the
+-- page lists, not its gate (SharesChannelOrFriends is that), and the scope
+-- CountRiderMedalsInCommon counts medals in, so the list and the medals
+-- under it name the same crews. The view is crew membership with the owner in
+-- and a ban out; asking it rather than crew_roles keeps off this page a
+-- crew-mate the crew's own roster would not show you (ListCrewPeople, #1135) —
+-- two members named into different private channels and nothing else.
+select cw.id, cw.name
+from crews cw
 where exists (
-    select 1 from visible_channels a
-    join visible_channels b on b.channel_id = a.channel_id
-    where a.channel_id in (rc.text_channel_id, rc.voice_channel_id)
-      and a.user_id = sqlc.arg(rider) and b.user_id = sqlc.arg(viewer)
+    select 1 from channels c
+    join visible_channels a on a.channel_id = c.id and a.user_id = sqlc.arg(rider)
+    join visible_channels b on b.channel_id = c.id and b.user_id = sqlc.arg(viewer)
+    where c.crew_id = cw.id
 )
-order by r.name;
+order by cw.name, cw.id;
 
 -- name: SharesChannelOrFriends :one
 -- ADR-0024's audience for a rider's page, as ONE question (#2298). A channel

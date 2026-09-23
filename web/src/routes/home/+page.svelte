@@ -9,6 +9,7 @@
 	import { api } from '$lib/api';
 	import { presence } from '$lib/presence.svelte';
 	import { friendPlace, friends } from '$lib/friends/friends.svelte';
+	import { placePath } from '$lib/whereabouts';
 	import { revealRooms } from '$lib/rooms/reveal';
 	import { othersIn, statusOf } from '$lib/status';
 	import { page } from '$app/state';
@@ -122,7 +123,7 @@
 	// sends, so the row never rendered for anyone.
 	const friendsOnline = $derived(
 		(friends.list ?? []).filter(
-			(f) => f.status === 'accepted' && (f.online || f.inRoom),
+			(f) => f.status === 'accepted' && (f.online || f.inVoice),
 		),
 	);
 
@@ -481,8 +482,8 @@
 							{#each friendsOnline as friend (friend.id)}
 								<li>
 									<a
-										href={friend.room
-											? `/r/${friend.room}`
+										href={friend.channel
+											? placePath(friend.channel)
 											: `/messages/dm/${friend.id}`}
 										class="panel hover:border-muted/40 flex items-center gap-2 px-2.5 py-1.5 text-xs"
 										title={friendPlace(friend)}

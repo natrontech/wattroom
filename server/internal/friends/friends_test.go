@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/natrontech/wattroom/server/internal/testx"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,8 +18,9 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
 
-// fakePresence stands in for the hub: userID → room slug, who of them is
-// pedalling, plus a count of the lobby pings a mutation asked for (#876).
+// fakePresence stands in for the hub: userID → voice channel id ("" for
+// online in none), who of them is pedalling, plus a count of the lobby pings
+// a mutation asked for (#876).
 type fakePresence struct {
 	where  map[string]string
 	riding map[string]bool
@@ -40,8 +42,8 @@ func (f *fakePresence) Riding(ids []string) map[string]bool {
 func (f *fakePresence) WhereIs(ids []string) map[string]string {
 	out := map[string]string{}
 	for _, id := range ids {
-		if slug, ok := f.where[id]; ok {
-			out[id] = slug
+		if channel, ok := f.where[id]; ok {
+			out[id] = channel
 		}
 	}
 	return out
@@ -70,36 +72,18 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users, *fakePrese
 	return mux, st, users, presence
 }
 
-// shareRoom puts the named users into one room owned by the first. slug
-// names the room a reader recognises; rooms.slug is unique across the whole
-// shared test database, so the row's own slug is testx's and a test that
-// needs it reads it off the returned room.
-func shareRoom(t *testing.T, st *store.Store, users *testx.Users, slug string, names ...string) db.Room {
+// shareCrew founds a crew owned by the first of the named users, the rest
+// its members, with one open voice channel of the crew's name — the channel
+// they share, in a crew no room became. It returns the crew and that
+// channel's id, which is what the hub's WhereIs answers.
+func shareCrew(t *testing.T, st *store.Store, users *testx.Users, name string, names ...string) (pgtype.UUID, string) {
 	t.Helper()
-	owner := users.ByToken[names[0]]
-	room, err := st.Queries.CreateRoom(t.Context(), db.CreateRoomParams{
-		Slug: testx.Slug(slug), Name: slug, OwnerID: owner.ID,
-	})
-	if err != nil {
-		t.Fatalf("create room: %v", err)
+	members := make([]pgtype.UUID, 0, len(names)-1)
+	for _, member := range names[1:] {
+		members = append(members, users.ByToken[member].ID)
 	}
-	t.Cleanup(func() {
-		_, _ = st.Pool.Exec(context.Background(), "delete from rooms where id = $1", room.ID)
-	})
-	for i, name := range names {
-		role := "member"
-		if i == 0 {
-			role = "owner"
-		}
-		err := st.Queries.CreateMembership(t.Context(), db.CreateMembershipParams{
-			RoomID: room.ID, UserID: users.ByToken[name].ID, Role: role,
-		})
-		if err != nil {
-			t.Fatalf("membership %s: %v", name, err)
-		}
-	}
-	storetest.ChannelsFor(t, st, room.ID)
-	return room
+	crew := testx.Crew(t, st, name, users.ByToken[names[0]].ID, members...)
+	return crew, testx.Voice(t, st, crew, name, false)
 }
 
 func call(t *testing.T, mux *http.ServeMux, user, method, path string) (int, map[string]any) {
@@ -159,7 +143,7 @@ func friendsOf(t *testing.T, mux *http.ServeMux, user string) []map[string]any {
 
 func TestFriendLifecycle(t *testing.T) {
 	mux, st, users, presence := setup(t)
-	cave := shareRoom(t, st, users, "friends-cave", "alice", "bob")
+	cave, caveVoice := shareCrew(t, st, users, "friends-cave", "alice", "bob")
 	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
 
 	// No auth → 401; unknown code → 404; empty code → 400; own code → 400.
@@ -224,27 +208,31 @@ func TestFriendLifecycle(t *testing.T) {
 		t.Fatalf("accept pings: %d", presence.pings)
 	}
 
-	// Presence: bob is in the shared room — alice sees online AND the name.
-	presence.where[store.UUIDString(bob.ID)] = cave.Slug
+	// Presence: bob is in the channel they share — alice sees online AND
+	// where: the crew and the voice channel, by id and by name.
+	presence.where[store.UUIDString(bob.ID)] = caveVoice
 	entry := friendsOf(t, mux, "alice")[0]
-	if entry["status"] != "accepted" || entry["online"] != true || entry["room"] != cave.Slug {
+	place := placeOf(entry)
+	if entry["status"] != "accepted" || entry["online"] != true || entry["inVoice"] != true ||
+		place["crewId"] != store.UUIDString(cave) || place["channelId"] != caveVoice ||
+		place["crewName"] != "friends-cave" || place["channelName"] != "friends-cave" {
 		t.Fatalf("presence entry: %+v", entry)
 	}
 
-	// In a room alice is NOT a member of: online yes, in a room yes, room
-	// name withheld — the boundary holds.
-	lair := shareRoom(t, st, users, "friends-lair", "bob")
-	presence.where[store.UUIDString(bob.ID)] = lair.Slug
+	// In a channel of a crew alice is not in: online yes, in voice yes, the
+	// channel and its crew withheld — the gate holds.
+	_, lairVoice := shareCrew(t, st, users, "friends-lair", "bob")
+	presence.where[store.UUIDString(bob.ID)] = lairVoice
 	entry = friendsOf(t, mux, "alice")[0]
-	if entry["online"] != true || entry["inRoom"] != true || entry["room"] != nil {
+	if entry["online"] != true || entry["inVoice"] != true || entry["channel"] != nil {
 		t.Fatalf("boundary pierced: %+v", entry)
 	}
 
-	// Lobby-only (#251): present in the map with "" = app open, no room —
+	// Lobby-only (#251): present in the map with "" = app open, no channel —
 	// Slack's green dot without a location.
 	presence.where[store.UUIDString(bob.ID)] = ""
 	entry = friendsOf(t, mux, "alice")[0]
-	if entry["online"] != true || entry["inRoom"] != nil || entry["room"] != nil {
+	if entry["online"] != true || entry["inVoice"] != nil || entry["channel"] != nil {
 		t.Fatalf("lobby-only entry: %+v", entry)
 	}
 
@@ -331,15 +319,15 @@ func TestADismissalTellsTheRequester(t *testing.T) {
 	}
 }
 
-// TestFriendsPanelBatchesRoomLookups covers the #687 fix with more than one
-// online friend at once: one friend in a room alice belongs to, one in a
-// room she does not, and one merely lobby-online. The room/membership
-// lookups are batched behind the scenes — this asserts the per-friend
-// output is still correct once there is more than one row to resolve.
-func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
+// TestFriendsPanelBatchesPlaceLookups covers the #687 fix with more than one
+// online friend at once: one friend in a channel alice may enter, one in a
+// channel she may not. The lookup is one query behind the scenes — this
+// asserts the per-friend output is still correct once there is more than
+// one row to resolve.
+func TestFriendsPanelBatchesPlaceLookups(t *testing.T) {
 	mux, st, users, presence := setup(t)
-	cave := shareRoom(t, st, users, "friends-cave", "alice", "bob")
-	lair := shareRoom(t, st, users, "friends-lair", "cara")
+	_, cave := shareCrew(t, st, users, "friends-cave", "alice", "bob")
+	_, lair := shareCrew(t, st, users, "friends-lair", "cara")
 
 	if code := request(t, mux, "alice", users.ByToken["bob"].FriendCode); code != http.StatusOK {
 		t.Fatalf("request bob: %d", code)
@@ -354,8 +342,8 @@ func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 		t.Fatalf("cara accept: %d", code)
 	}
 
-	presence.where[store.UUIDString(users.ByToken["bob"].ID)] = cave.Slug  // alice is a member
-	presence.where[store.UUIDString(users.ByToken["cara"].ID)] = lair.Slug // alice is not
+	presence.where[store.UUIDString(users.ByToken["bob"].ID)] = cave  // alice may enter it
+	presence.where[store.UUIDString(users.ByToken["cara"].ID)] = lair // alice may not
 
 	byName := map[string]map[string]any{}
 	for _, entry := range friendsOf(t, mux, "alice") {
@@ -364,11 +352,11 @@ func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 	}
 
 	bobEntry := byName["bob"]
-	if bobEntry["online"] != true || bobEntry["room"] != cave.Slug || bobEntry["roomName"] != "friends-cave" {
-		t.Fatalf("bob entry (shared room): %+v", bobEntry)
+	if place := placeOf(bobEntry); bobEntry["online"] != true || place["channelId"] != cave || place["channelName"] != "friends-cave" {
+		t.Fatalf("bob entry (shared channel): %+v", bobEntry)
 	}
 	caraEntry := byName["cara"]
-	if caraEntry["online"] != true || caraEntry["inRoom"] != true || caraEntry["room"] != nil {
+	if caraEntry["online"] != true || caraEntry["inVoice"] != true || caraEntry["channel"] != nil {
 		t.Fatalf("cara entry (boundary should hold): %+v", caraEntry)
 	}
 }
@@ -376,21 +364,21 @@ func TestFriendsPanelBatchesRoomLookups(t *testing.T) {
 // The panel's third state (#1743, ADR-0012 amended 2026-09-09). It carried
 // online and in-a-room and nothing else, so a friend on the pedals read
 // exactly like a friend chatting in the lounge — and the client had nothing
-// to build "riding elsewhere" out of for a room it may not name.
+// to build "riding elsewhere" out of for a channel it may not name.
 func TestFriendsPanelReportsRiding(t *testing.T) {
 	mux, st, users, presence := setup(t)
-	ridingCave := shareRoom(t, st, users, "riding-cave", "alice", "bob")
-	ridingLair := shareRoom(t, st, users, "riding-lair", "cara")
+	_, ridingCave := shareCrew(t, st, users, "riding-cave", "alice", "bob")
+	_, ridingLair := shareCrew(t, st, users, "riding-lair", "cara")
 	befriend(t, mux, users, "alice", "bob")
 	befriend(t, mux, users, "alice", "cara")
 	id := func(name string) string { return store.UUIDString(users.ByToken[name].ID) }
 
-	// bob shares the room with alice and is pedalling; cara is pedalling in a
-	// room alice is not a member of; the viewer may learn the fact, never the
-	// room. Both are the same one hub answer, filtered by membership.
-	presence.where[id("bob")] = ridingCave.Slug
+	// bob shares the channel with alice and is pedalling; cara is pedalling
+	// in a channel alice may not enter; the viewer may learn the fact, never
+	// the place. Both are the same one hub answer, filtered by the gate.
+	presence.where[id("bob")] = ridingCave
 	presence.riding[id("bob")] = true
-	presence.where[id("cara")] = ridingLair.Slug
+	presence.where[id("cara")] = ridingLair
 	presence.riding[id("cara")] = true
 
 	byName := map[string]map[string]any{}
@@ -398,15 +386,15 @@ func TestFriendsPanelReportsRiding(t *testing.T) {
 		name, _ := entry["name"].(string)
 		byName[name] = entry
 	}
-	if got := byName["bob"]; got["riding"] != true || got["roomName"] != "riding-cave" {
-		t.Fatalf("bob riding in a shared room: %+v", got)
+	if got := byName["bob"]; got["riding"] != true || placeOf(got)["channelName"] != "riding-cave" {
+		t.Fatalf("bob riding in a shared channel: %+v", got)
 	}
-	if got := byName["cara"]; got["riding"] != true || got["room"] != nil || got["roomName"] != nil {
-		t.Fatalf("cara riding elsewhere — the room must stay unnamed: %+v", got)
+	if got := byName["cara"]; got["riding"] != true || got["channel"] != nil {
+		t.Fatalf("cara riding elsewhere — the channel must stay unnamed: %+v", got)
 	}
 
-	// Standing in the room is not riding in it, and the two must not collapse
-	// into each other: the whole reason the flag exists.
+	// Standing in the channel is not riding in it, and the two must not
+	// collapse into each other: the whole reason the flag exists.
 	presence.riding[id("bob")] = false
 	for _, entry := range friendsOf(t, mux, "alice") {
 		if entry["name"] == "bob" && entry["riding"] != nil {
@@ -414,14 +402,93 @@ func TestFriendsPanelReportsRiding(t *testing.T) {
 		}
 	}
 
-	// Online with no room at all: nothing to ride in, whatever the hub says.
+	// Online with no channel at all: nothing to ride in, whatever the hub
+	// says.
 	presence.where[id("bob")] = ""
 	presence.riding[id("bob")] = true
 	for _, entry := range friendsOf(t, mux, "alice") {
 		if entry["name"] == "bob" && entry["riding"] != nil {
-			t.Fatalf("bob riding in no room: %+v", entry)
+			t.Fatalf("bob riding in no channel: %+v", entry)
 		}
 	}
+}
+
+// Where a friend is, in a crew founded since M9 (#2516): the hub names a
+// voice channel and the panel names it — crew and channel — only to a viewer
+// that channel's gate admits (ADR-0058; ADR-0012: friendship never pierces
+// it). A channel no room became used to read as "online" and nothing more,
+// and one the viewer may not enter must still say riding without saying
+// where. Ordered: each step is the state the one before left behind.
+func TestAFriendsPlaceIsNamedOnlyThroughTheGate(t *testing.T) {
+	mux, st, users, presence := setup(t)
+	alice, bob, cara := users.ByToken["alice"].ID, users.ByToken["bob"].ID, users.ByToken["cara"].ID
+	crew := testx.Crew(t, st, "Gate Crew", cara, alice, bob)
+	openRoad := testx.Voice(t, st, crew, "Open Road", false)
+	backRoom := testx.Voice(t, st, crew, "Back Room", true, bob)
+	befriend(t, mux, users, "alice", "bob")
+	bobID := store.UUIDString(bob)
+
+	openRoadPlace := map[string]any{
+		"crewId": store.UUIDString(crew), "crewName": "Gate Crew",
+		"channelId": openRoad, "channelName": "Open Road",
+	}
+	steps := []struct {
+		name    string
+		arrange func()
+		want    map[string]any
+		place   map[string]any // nil: the channel must not be named at all
+	}{
+		{"riding in an open channel of a crew both are in", func() {
+			presence.where[bobID] = openRoad
+			presence.riding[bobID] = true
+		}, map[string]any{"online": true, "inVoice": true, "riding": true}, openRoadPlace},
+		{"riding in a private channel nobody named alice into", func() {
+			presence.where[bobID] = backRoom
+		}, map[string]any{"online": true, "inVoice": true, "riding": true}, nil},
+		{"standing in that private channel", func() {
+			presence.riding[bobID] = false
+		}, map[string]any{"online": true, "inVoice": true, "riding": nil}, nil},
+		{"offline", func() {
+			delete(presence.where, bobID)
+		}, map[string]any{"online": nil, "inVoice": nil, "riding": nil}, nil},
+		{"riding in the open channel of a crew that banned alice", func() {
+			if err := st.Queries.SetCrewRole(t.Context(), db.SetCrewRoleParams{CrewID: crew, UserID: alice, Role: "banned"}); err != nil {
+				t.Fatalf("ban alice: %v", err)
+			}
+			presence.where[bobID] = openRoad
+			presence.riding[bobID] = true
+		}, map[string]any{"online": true, "inVoice": true, "riding": true}, nil},
+	}
+	for _, step := range steps {
+		t.Run(step.name, func(t *testing.T) {
+			step.arrange()
+			entries := friendsOf(t, mux, "alice")
+			if len(entries) != 1 {
+				t.Fatalf("alice's friends: %+v", entries)
+			}
+			entry := entries[0]
+			for key, want := range step.want {
+				if got := entry[key]; got != want {
+					t.Errorf("%s = %v, want %v (entry %+v)", key, got, want, entry)
+				}
+			}
+			if step.place == nil {
+				if entry["channel"] != nil {
+					t.Errorf("the channel is named past its gate: %+v", entry)
+				}
+				return
+			}
+			if got := placeOf(entry); !maps.Equal(got, step.place) {
+				t.Errorf("channel = %v, want %v", got, step.place)
+			}
+		})
+	}
+}
+
+// placeOf is the channel an entry names, or nil.
+func placeOf(entry map[string]any) map[string]any {
+	place, _ := entry["channel"].(map[string]any)
+	return place
 }
 
 // befriend runs the two-step the panel needs before presence means anything.
@@ -468,9 +535,9 @@ func requestByID(t *testing.T, mux *http.ServeMux, user, id string) int {
 	return w.Code
 }
 
-func TestASharedRoomIsTheOtherDoor(t *testing.T) {
+func TestASharedChannelIsTheOtherDoor(t *testing.T) {
 	mux, st, users, _ := setup(t)
-	shareRoom(t, st, users, "friends-cave", "alice", "bob")
+	shareCrew(t, st, users, "friends-cave", "alice", "bob")
 	id := func(name string) string { return store.UUIDString(users.ByToken[name].ID) }
 
 	tests := []struct {
@@ -481,8 +548,8 @@ func TestASharedRoomIsTheOtherDoor(t *testing.T) {
 	}{
 		{"malformed id", "alice", "nope", http.StatusBadRequest},
 		{"yourself", "alice", id("alice"), http.StatusBadRequest},
-		{"no room in common", "alice", id("cara"), http.StatusNotFound},
-		{"room-mate", "alice", id("bob"), http.StatusOK},
+		{"no channel in common", "alice", id("cara"), http.StatusNotFound},
+		{"crew-mate", "alice", id("bob"), http.StatusOK},
 		{"already asked, mirrored", "bob", id("alice"), http.StatusConflict},
 	}
 	for _, tt := range tests {
@@ -501,7 +568,7 @@ func TestASharedRoomIsTheOtherDoor(t *testing.T) {
 // door has a ceiling (#1652).
 func TestFriendDoorsSignedOutAndTheCeiling(t *testing.T) {
 	mux, st, users, _ := setup(t)
-	shareRoom(t, st, users, "door-cave", "alice", "bob")
+	shareCrew(t, st, users, "door-cave", "alice", "bob")
 	bob := users.ByToken["bob"]
 	for _, tc := range []struct{ method, path string }{
 		{http.MethodPost, "/api/friends"},
@@ -527,7 +594,7 @@ func TestFriendDoorsSignedOutAndTheCeiling(t *testing.T) {
 // told them goes.
 func TestDismissCanBeUndone(t *testing.T) {
 	mux, st, users, _ := setup(t)
-	shareRoom(t, st, users, "undo-cave", "alice", "bob")
+	shareCrew(t, st, users, "undo-cave", "alice", "bob")
 	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
 	if code := request(t, mux, "bob", alice.FriendCode); code != http.StatusOK {
 		t.Fatalf("bob asks alice: %d", code)
@@ -561,7 +628,7 @@ func TestDismissCanBeUndone(t *testing.T) {
 // friend code ADR-0012 makes the permission to ask nor a shared room.
 func TestRestoreWithoutADismissalIsRefused(t *testing.T) {
 	mux, st, users, _ := setup(t)
-	shareRoom(t, st, users, "forge-cave", "alice", "bob")
+	shareCrew(t, st, users, "forge-cave", "alice", "bob")
 	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
 
 	code, _ := call(t, mux, "alice", http.MethodPost, "/api/friends/"+store.UUIDString(bob.ID)+"/restore")
@@ -588,7 +655,7 @@ func TestRestoreWithoutADismissalIsRefused(t *testing.T) {
 // press has nothing to write and is not an error.
 func TestRestoreTwiceIsNotAnError(t *testing.T) {
 	mux, st, users, _ := setup(t)
-	shareRoom(t, st, users, "twice-cave", "alice", "bob")
+	shareCrew(t, st, users, "twice-cave", "alice", "bob")
 	bob := users.ByToken["bob"]
 	if code := request(t, mux, "bob", users.ByToken["alice"].FriendCode); code != http.StatusOK {
 		t.Fatalf("bob asks alice: %d", code)

@@ -32,6 +32,21 @@ join users u on u.id = cm.user_id
 where c.crew_id = $1
 order by u.display_name, u.id;
 
+-- name: VoiceChannelsVisibleTo :many
+-- Which of these voice channels the viewer may enter, with the crew each
+-- belongs to: where a friend is, as the friends panel and a rider's page may
+-- say it (#2516). The hub names the channel; this names it only through
+-- `visible_channels` — `mayEnter` as one relation, the rule the crew's live
+-- read applies — so a channel the viewer may not enter is not in the answer
+-- at all. Its name and its crew are part of what its gate keeps (ADR-0012:
+-- friendship never pierces the boundary). One query for every channel asked
+-- about, however many friends are online (#687).
+select c.id as channel_id, c.name as channel_name, cw.id as crew_id, cw.name as crew_name
+from channels c
+join crews cw on cw.id = c.crew_id
+join visible_channels v on v.channel_id = c.id and v.user_id = sqlc.arg(viewer)
+where c.id = any(sqlc.arg(channel_ids)::uuid[]) and c.kind = 'voice';
+
 -- name: CreateChannel :one
 -- Bounded per crew and kind (protocol.MaxCrewTextChannels,
 -- MaxCrewVoiceChannels), and the bound is enforced HERE rather than by a
@@ -93,11 +108,6 @@ select voice_channel_id from room_channels where room_id = $1;
 select r.* from rooms r
 join room_channels rc on rc.room_id = r.id
 where rc.voice_channel_id = $1;
-
--- name: RoomSlugsOfVoiceChannels :many
-select rc.voice_channel_id, r.slug from room_channels rc
-join rooms r on r.id = rc.room_id
-where rc.voice_channel_id = any(@ids::uuid[]);
 
 -- name: AdoptRoomChannels :exec
 -- A room made after 20260922185319 gets the text and voice channel that

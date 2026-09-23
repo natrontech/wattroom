@@ -32,9 +32,9 @@ test('the friends panel says riding, and names the place only to a member', asyn
 	const a = await riders(A);
 	// Four friends, one per state the panel can be in. Served as a fixture:
 	// the states differ only in what the hub answered, and driving four real
-	// riders onto four real trainers would prove nothing this does not. The
-	// wire still speaks of rooms (the RoomWhere adapter, #2436) and so does the
-	// panel; what it names is the place the friend stands in.
+	// riders onto four real trainers would prove nothing this does not. What
+	// the panel names is the voice channel the friend stands in, with its
+	// crew, and only when the server did (#2516).
 	await a.route('**/api/friends', (route) =>
 		route.fulfill({
 			json: {
@@ -47,10 +47,14 @@ test('the friends panel says riding, and names the place only to a member', asyn
 						status: 'accepted',
 						at: 1,
 						online: true,
-						inRoom: true,
+						inVoice: true,
 						riding: true,
-						room: 'velvet-hammer',
-						roomName: 'Velvet Hammer',
+						channel: {
+							crewId: 'crew-velvet',
+							crewName: 'Velvet Hammer',
+							channelId: 'voice-lounge',
+							channelName: 'Lounge',
+						},
 					},
 					{
 						id: 'peer-elsewhere',
@@ -58,7 +62,7 @@ test('the friends panel says riding, and names the place only to a member', asyn
 						status: 'accepted',
 						at: 2,
 						online: true,
-						inRoom: true,
+						inVoice: true,
 						riding: true,
 					},
 					{
@@ -67,7 +71,7 @@ test('the friends panel says riding, and names the place only to a member', asyn
 						status: 'accepted',
 						at: 3,
 						online: true,
-						inRoom: true,
+						inVoice: true,
 					},
 					{
 						id: 'peer-idle',
@@ -89,13 +93,22 @@ test('the friends panel says riding, and names the place only to a member', asyn
 			.last();
 
 	await expect(row('peer-shared')).toBeVisible({ timeout: 15_000 });
-	// A viewer who may enter the place gets its name and the state in one line.
-	await expect(row('peer-shared')).toContainText('riding in Velvet Hammer');
+	// A viewer who may enter the place gets its name and the state in one
+	// line, and the way in goes to the voice channel.
+	await expect(row('peer-shared')).toContainText(
+		'riding in Velvet Hammer · Lounge',
+	);
+	await expect(
+		row('peer-shared').getByRole('link', { name: 'Walk in' }),
+	).toHaveAttribute('href', '/crew/crew-velvet/v/voice-lounge');
 	// A place the viewer may not enter stays unnamed — ADR-0012's own words.
 	await expect(row('peer-elsewhere')).toContainText('riding elsewhere');
 	await expect(row('peer-elsewhere')).not.toContainText('Velvet');
+	await expect(
+		row('peer-elsewhere').getByRole('link', { name: 'Walk in' }),
+	).toHaveCount(0);
 	// Riding is never inferred from standing somewhere (#2168).
-	await expect(row('peer-lounging')).toContainText('in a room');
+	await expect(row('peer-lounging')).toContainText('in a voice channel');
 	await expect(row('peer-idle')).toContainText('online');
 });
 

@@ -17,21 +17,6 @@ import type { RailRoom } from '$lib/room/room-data';
 export type PresenceStatus = 'riding' | 'online' | 'away' | 'offline';
 
 /**
- * The room the presence feed has them in, if any — by account id, which is
- * what the feed now carries alongside the names it renders (#649). Display
- * names are not unique, and two riders called Dave used to answer for each
- * other here: a DM header said your friend was riding in a room their
- * namesake was standing in, with a Join button under it.
- */
-export function roomOf(
-	rooms: readonly RailRoom[],
-	riderId: string,
-): RailRoom | undefined {
-	if (!riderId) return undefined;
-	return rooms.find((room) => room.riderIds?.includes(riderId));
-}
-
-/**
  * Them in a voice channel of one of your crews, by account id (#649: display
  * names are not unique) — as the crews' live read has them (#2444, #2517),
  * which holds only the channels you may enter.

@@ -1,13 +1,14 @@
 /**
  * A rider's page (ADR-0024): the `/api/riders/{id}` shape and the prose the
- * page makes of it. The numbers here are sums a room already shows —
+ * page makes of it. The numbers here are sums a crew already shows —
  * never live watts, heart rate, weight or FTP.
  */
 import { api, loadApi } from '$lib/api';
 import { formatDuration } from '$lib/format';
+import type { VoicePlace } from '$lib/whereabouts';
 
-export interface RoomRef {
-	slug: string;
+export interface CrewRef {
+	id: string;
 	name: string;
 }
 
@@ -23,7 +24,7 @@ export interface SharedRide {
 	/** docs/SPEC.md medal kinds won on this ride. */
 	medals?: string[];
 	inRoom: boolean;
-	/** Named only when you are a member of that room. */
+	/** The voice channel's name, only when you may enter it. */
 	roomName?: string;
 }
 
@@ -35,14 +36,20 @@ export interface Rider {
 	totalXp: number;
 	totalKj: number;
 	rides: number;
-	/** kind → count, scoped to rooms in common. */
+	/** kind → count, scoped to the crews in common. */
 	medals: Record<string, number>;
-	roomsInCommon: RoomRef[];
+	/** The crews where you may both enter a channel — the medals' scope. */
+	crewsInCommon: CrewRef[];
+	/**
+	 * `whereabouts` reads it. A friend (or you) hears online and in-voice as
+	 * the friends list does; a crew-mate hears only about a channel they may
+	 * enter themselves. The channel, and riding, only when you may enter it.
+	 */
 	presence: {
 		online: boolean;
-		inRoom: boolean;
+		inVoice: boolean;
 		riding: boolean;
-		room?: RoomRef;
+		channel?: VoicePlace;
 	};
 	friend: 'self' | 'none' | 'pending_in' | 'pending_out' | 'accepted';
 	canAdd: boolean;
