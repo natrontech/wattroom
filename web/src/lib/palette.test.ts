@@ -358,9 +358,9 @@ describe.each(each)('%s meets the contrast floors', (_name, theme: Theme) => {
 	);
 
 	it('shares the reference ramp — zones are a scale, not branding', () => {
-		// Zone colour is learned ("green is threshold") and is read across the
-		// room. Rotating it per theme would make a rider relearn the scale for
-		// a palette choice, and the sRGB gamut does not rotate evenly anyway
+		// Zone colour is learned ("green is threshold") and is read from three
+		// metres away. Rotating it per theme would make a rider relearn the scale
+		// for a palette choice, and the sRGB gamut does not rotate evenly anyway
 		// (ADR-0023 §4).
 		const ref = reference(theme.family, THEMES).tokens;
 		for (const token of ZONES) {

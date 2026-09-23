@@ -28,12 +28,13 @@ export interface CrewRef {
 }
 
 /**
- * What a room's members did together (#995, ADR-0036). Not ADR-0038's crew,
- * which is the layer ABOVE a room — this is one room's own totals, and it
- * gave the word up rather than mean two things (#1178).
+ * What a crew's members did together (#995, ADR-0036 as amended by
+ * ADR-0058). It is not called Crew because it began as one room's own
+ * totals, while ADR-0038's crew was the layer above, and it gave the word up
+ * rather than mean two things (#1178).
  *
  * Cooperative by construction:
- * sums over the whole room, plus the VIEWER's own turnout — no other rider's
+ * sums over the whole crew, plus the VIEWER's own turnout — no other rider's
  * ride-derived number is in here.
  */
 export interface Together {
@@ -45,7 +46,7 @@ export interface Together {
 }
 
 /**
- * One rider's week on a room's opt-in board (#995, ADR-0036). Category is a
+ * One rider's week on a crew's opt-in board (#995, ADR-0036). Category is a
  * bracket, not a rank — it says who is comparable, which is the useful half.
  */
 export interface BoardRow {
@@ -57,15 +58,16 @@ export interface BoardRow {
 	 * Absent while both the FTP and the weight it brackets are still the
 	 * account's defaults (ADR-0048, #2243) — an unchosen number never reads
 	 * as a measured one, and this board is the surface that publishes it to
-	 * everyone else in the room. The row still ranks: kJ is ridden.
+	 * everyone else in the crew. The row still ranks: kJ is ridden.
 	 */
 	category?: string;
 }
 
 /**
- * What YOU chose for this room, as its own object on the room (#1866): the
- * notifications and whether the soundboard reaches you. Declared here rather
- * than beside each of the two components that read it (#2180).
+ * What YOU chose for this crew, as its own object on your membership (#1866,
+ * ADR-0058): its notifications and whether the weekly board includes you.
+ * Declared here rather than beside each of the two components that read it
+ * (#2180).
  */
 export interface RiderPrefs {
 	notify: boolean;

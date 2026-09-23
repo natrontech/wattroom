@@ -1,8 +1,8 @@
 <script lang="ts">
-	// The picker (#878): a grid over the composer, in a room and in a DM
+	// The picker (#878): a grid over the composer, in a text channel and in a DM
 	// alike. It opens on what is trending so the common case — mid-ride, one
-	// hand, three seconds — costs no typing at all (ux.md); the search box is
-	// for when you know what you want.
+	// hand, three seconds — costs no typing at all (ux.md); the search box is for
+	// when you know what you want.
 	//
 	// Picking posts the GIF's URL as an ordinary message, which MessageText
 	// then renders as the GIF (#279). Nothing here knows how chat sends.
@@ -86,7 +86,7 @@
 
 	// Tiles are laid out in columns, so the skeleton is too — a grid of equal
 	// boxes would jump into a ragged one the moment results land. The columns
-	// are sized by WIDTH, not counted: the same picker opens in the room's
+	// are sized by WIDTH, not counted: the same picker opened in a room's
 	// narrow side panel and on the full-width chat page, and two columns of
 	// 420px there made one GIF the whole grid.
 	const SKELETON_HEIGHTS = [96, 132, 112, 84, 120, 100];

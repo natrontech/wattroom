@@ -108,9 +108,9 @@
 	);
 </script>
 
-<!-- Resizable from its right edge, the way the room's panel is from its
-     left (#427), and remembered per device (keepSize). Only on a desk: below
-     md this column is a drawer, and the width dragged on a desk is pinned
+<!-- Resizable from its right edge, the way a voice channel's side panel is from
+     its left (#427), and remembered per device (keepSize). Only on a desk:
+     below md this column is a drawer, and the width dragged on a desk is pinned
      back to the default there — a 400 px drawer on a 375 px phone leaves no
      backdrop to tap. -->
 <nav
@@ -129,8 +129,8 @@
 	     first row of the column names the place you are in, and the brand
 	     leaves it — the tab, the title bar and the sign-in page carry that,
 	     and riding is already on your avatar and on the Training row
-	     (#1016), so the mark had no job left here. Before the first room
-	     there is no crew to name, so the mark and the wordmark keep the row. -->
+	     (#1016), so the mark had no job left here. Before the first crew
+	     there is none to name, so the mark and the wordmark keep the row. -->
 	{#if crews.length > 0}
 		<CrewSwitcher {crews} {crew} onpick={pick} />
 	{:else}
@@ -211,14 +211,14 @@
 			{/if}
 		{/if}
 
-		<!-- Messages is a place (#468): every room's chat and every DM, one
-		     list, and on a desk the sidebar IS that list (#484). Rooms are
-		     already listed above, so they are not repeated here — their
-		     unread count is the way in for them. The heading names what is
-		     UNDER it rather than a place (#1017): these rows are threads with
-		     people, and a rider reading "messages" over a column of faces
-		     could not tell them from the friends list or from who is in the
-		     room with them. -->
+		<!-- Messages is a place (#468): every DM, one list, and on a desk the
+		     sidebar IS that list (#484). A crew's text channels are already
+		     listed above, so they are not repeated here — their unread marks
+		     are the way in for them. The heading names what is UNDER it rather
+		     than a place (#1017): these rows are threads with people, and a
+		     rider reading "messages" over a column of faces could not tell
+		     them from the friends list or from who is in the voice channel
+		     with them. -->
 		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
 			<!-- The heading folds the list (#1359): a chevron at the end of a
 			     section heading says fold, not go — the crew switcher above
@@ -308,15 +308,15 @@
 		{/if}
 	</div>
 
-	<!-- The video, wherever the people column is not (#427): below xl the room
-	     has no column, and off the room pages there is none at all. -->
+	<!-- The video, wherever the people column is not (#427): below xl a voice
+	     channel has no column, and off its pages there is none at all. -->
 	{#if channelConnection.current}
 		<JukeboxRail />
 	{/if}
 
-	<!-- Who is in the room with you, while you are looking elsewhere (#446).
-	     Above you, like Discord's voice panel; off the Lounge, which already
-	     shows everyone in tiles. -->
+	<!-- Who is in the voice channel with you, while you are looking elsewhere
+	     (#446). Above you, like Discord's voice panel; off the Lounge, which
+	     already shows everyone in tiles. -->
 	{#if channelConnection.current}
 		<VoiceStrip {pathname} />
 	{/if}

@@ -127,7 +127,7 @@ describe('lthr (ADR-0014)', () => {
 });
 
 describe('shareHr', () => {
-	it('defaults to sharing — visible-in-room is the product promise', () => {
+	it('defaults to sharing — visible-in-session is the product promise', () => {
 		expect(parseProfile({}).shareHr).toBe(true);
 	});
 

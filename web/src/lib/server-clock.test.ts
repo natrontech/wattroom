@@ -107,7 +107,7 @@ describe('two clients, one playhead', () => {
 			slow.receive(sent, i);
 		}
 
-		// The room is 30 s into a track, anchored a minute ago.
+		// The deck is 30 s into a track, anchored a minute ago.
 		const deck = { positionSec: 30, anchorMs: START, playing: true };
 		const now = START + 60_000;
 
@@ -218,7 +218,7 @@ describe('a backgrounded tab', () => {
 		const now = START + 60_000;
 		vi.setSystemTime(now + SKEW);
 		const deck = { positionSec: 30, anchorMs: START, playing: true };
-		// The room is 90 s into the track. On the wall clock it would read
+		// The deck is 90 s into the track. On the wall clock it would read
 		// 94.2 s — a hard seek, undone by the next tick (#644).
 		expect(playheadAt(deck, clock.serverNow())).toBeCloseTo(90, 1);
 		expect(playheadAt(deck, Date.now())).toBeCloseTo(94.2, 1);

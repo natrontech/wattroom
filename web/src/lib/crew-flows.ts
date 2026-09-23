@@ -54,10 +54,10 @@ export const leaveBody = (name: string): string =>
 
 /**
  * Handing the crew on (#1208, #2095), from wherever it is offered — the
- * crew's people list, and whatever offers it next — so the ask cannot drift
- * from the room hand-over it mirrors: one confirm naming what the actor
- * gives up, then the transfer, then presence reloads because the actor's own
- * role changed under them. Resolves to whether it happened.
+ * crew's people list, and whatever offers it next — as one flow, so the ask
+ * cannot drift between them: one confirm naming what the actor gives up,
+ * then the transfer, then presence reloads because the actor's own role
+ * changed under them. Resolves to whether it happened.
  *
  * A confirm, not an undo (errors.md): the cost is paid by another person the
  * moment it lands, and the actor has no way back — the new owner is the one
@@ -126,8 +126,8 @@ export async function makeMainCrewFlow(
 
 /**
  * The invite link out of the app, from wherever it is offered — the crew
- * page, its settings, the crew row's menu, a room's Members place and its
- * lounge (#1236, #1257) — one way, one toast.
+ * page, the crew row's menu and a voice channel's lounge (#1236, #1257) —
+ * one way, one toast.
  *
  * `shareLink` is the one way (#973): a share sheet where there is a finger to
  * open it with, the clipboard everywhere else, and the link itself when the

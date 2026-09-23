@@ -1,7 +1,7 @@
 /**
  * Whether the board is on screen, and which of its three faces it is showing.
- * Module state so it survives moving between a room's places, which remount
- * the shell.
+ * Module state so it survives moving between a voice channel's places, which
+ * remount the shell.
  *
  * The faces are one panel, not a stack of modals (#981). The library and the
  * trim editor used to be `<Modal>`s opened from the board, which made the

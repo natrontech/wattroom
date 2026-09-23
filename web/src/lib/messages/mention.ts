@@ -1,8 +1,8 @@
 /**
- * Does a line address me? There is no server-side mention yet (#468): a
- * mention is `@` plus your first name, or your whole display name, as people
- * actually type it in a room — "@Jan you in?". Case does not matter and a
- * longer name that merely starts with yours ("@Janine") is someone else's.
+ * Does a line address me? There is no server-side mention yet (#468): a mention
+ * is `@` plus your first name, or your whole display name, as people actually
+ * type it in a channel — "@Jan you in?". Case does not matter and a longer name
+ * that merely starts with yours ("@Janine") is someone else's.
  */
 export function mentionsMe(text: string, displayName: string | undefined) {
 	if (!displayName) return false;

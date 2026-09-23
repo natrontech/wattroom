@@ -47,8 +47,9 @@ export interface Profile {
 	sprintGrade: number;
 	singleSpeed: boolean;
 	/**
-	 * Whether live heart rate leaves this browser into a room (#62, ADR-0008).
-	 * Default true — visible-in-room is the product promise — but stopping it
+	 * Whether live heart rate leaves this browser into a session (#62,
+	 * ADR-0008). Default true — visible-in-session is the product promise —
+	 * but stopping it
 	 * is one action, and the rider's own .fit is unaffected either way.
 	 */
 	shareHr: boolean;

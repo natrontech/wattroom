@@ -9,10 +9,10 @@ import { account } from '$lib/account.svelte';
  * to be `dev` on /ramp, `dev || ?sim=1` on /ride (a URL any rider could type),
  * `dev || the dev door` in the room, and nothing at all on /settings/equipment.
  *
- * The room's rule wins because it is the strict one and it survives a
- * production BUILD, where `dev` is false: a server that offers the dev
- * sign-in door (WATTROOM_DEV_LOGIN) is a dev server, and production never
- * opens that door. That is what admits CI's e2e without an escape hatch.
+ * The dev door's rule wins because it is the strict one and it survives a
+ * production BUILD, where `dev` is false: a server that offers the dev sign-in
+ * door (WATTROOM_DEV_LOGIN) is a dev server, and production never opens that
+ * door. That is what admits CI's e2e without an escape hatch.
  *
  * The synthetic monitor is the one exception, and it is an identity rather
  * than a door: production offers no dev sign-in, but #153's pre-deploy ride

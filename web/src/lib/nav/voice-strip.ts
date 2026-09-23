@@ -1,4 +1,4 @@
-/** Tiles the strip has room for: two by two at the sidebar's width. */
+/** Tiles the strip fits: two by two at the sidebar's width. */
 export const STRIP_MAX = 4;
 
 /**

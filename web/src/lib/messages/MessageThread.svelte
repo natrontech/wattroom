@@ -1,9 +1,9 @@
 <script lang="ts">
-	// The thread body shared by every chat surface (#672): the timeline, the
-	// four states (errors.md), the composer. A room's own header (who's in
-	// there, the way in) and a DM's (where they are) stay with the caller —
-	// what differs surface to surface is what a line IS and what you can do
-	// to it, not how the log scrolls or the box sends.
+	// The thread body shared by every chat surface (#672): the timeline, the four
+	// states (errors.md), the composer. A text channel's own header (its name,
+	// the way back to the crew) and a DM's (where they are) stay with the caller
+	// — what differs surface to surface is what a line IS and what you can do to
+	// it, not how the log scrolls or the box sends.
 	import Copy from '@lucide/svelte/icons/copy';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Megaphone from '@lucide/svelte/icons/megaphone';
@@ -53,24 +53,30 @@
 		composerHint,
 		composerLock = null,
 		extraSendError = null,
-		editHint = 'Escape cancels · the room sees the change',
+		editHint = 'Escape cancels · the channel sees the change',
 		lineGapMs = 1000,
 		mentionNames = [],
 		emptyState,
 	}: {
 		source: ThreadSource;
-		/** Builds a message's image URL — the room and DM endpoints differ. */
+		/** Builds a message's image URL — the channel and DM endpoints differ. */
 		imageSrc: (imageId: string) => string;
-		/** Queuing a link is a jukebox command — room-only. */
+		/**
+		 * Queuing a link is a jukebox command. Only a room's chat, which had a
+		 * deck of its own, ever passed it.
+		 */
 		onQueue?: (url: string) => void;
 		composerPlaceholder: string;
 		composerHint?: string;
 		/** Why nothing can be sent here, when nothing can — the box says so. */
 		composerLock?: string | null;
 		/** A persistent banner unrelated to the last send attempt, e.g. a
-		 *  room reconnecting with its queue full. */
+		 *  socket reconnecting with its queue full. */
 		extraSendError?: string | null;
-		/** Who sees an edit land — a room, or the one person a DM has (#1819). */
+		/**
+		 * Who sees an edit land — a channel, or the one person a DM has
+		 * (#1819).
+		 */
 		editHint?: string;
 		/** The composer's own gap between lines: the hub's second, or none. */
 		lineGapMs?: number;
@@ -80,7 +86,7 @@
 	} = $props();
 
 	const timeline = $derived(source.timeline);
-	// Who `@` completes to: the caller's people first (the room's riders),
+	// Who `@` completes to: the caller's people first (the crew's people),
 	// then whoever has spoken here; never yourself.
 	const names = $derived.by(() => {
 		const seen = new Set<string>([account.me?.displayName ?? '']);
@@ -138,7 +144,7 @@
 	async function saveEdit(id: string, original: string) {
 		const text = editDraft.trim();
 		// Nothing changed is not an edit — closing is the honest answer, and
-		// it spares the room a tick saying a line became itself.
+		// it spares the channel an edit that changed nothing.
 		if (text === original.trim()) return cancelEdit();
 		if (!text) {
 			editError = 'An edited message still has to say something.';
@@ -157,8 +163,8 @@
 		const yes = await confirm({
 			title: mine ? 'Delete your message?' : `Delete ${from}'s message?`,
 			body: mine
-				? 'It goes from the room for everyone, and it cannot be brought back.'
-				: `It goes from the room for everyone, including ${from}, and it cannot be brought back.`,
+				? 'It goes for everyone, and it cannot be brought back.'
+				: `It goes for everyone, including ${from}, and it cannot be brought back.`,
 			action: 'Delete',
 			cancel: 'Keep it',
 		});
@@ -287,7 +293,7 @@
 	}
 </script>
 
-<!-- `mt-auto` on the list, not `justify-end` on the box (#291): spare room
+<!-- `mt-auto` on the list, not `justify-end` on the box (#291): spare space
      goes above the oldest line, so overflow spills off the END edge. -->
 <div
 	bind:this={log}
@@ -339,9 +345,9 @@
 					>
 						<span class="w-7 shrink-0">
 							{#if !grouped}
-								<!-- The person, not their initial (#807): the face the
-								     room's column shows, the level ring the profile
-								     shows, and where they are right now. -->
+								<!-- The person, not their initial (#807): the face a voice
+								     channel's column shows, the level ring the profile shows,
+								     and where they are right now. -->
 								{@const face = people.face(message.fromId)}
 								<!-- The face is the way to the person (#1765). -->
 								<svelte:element

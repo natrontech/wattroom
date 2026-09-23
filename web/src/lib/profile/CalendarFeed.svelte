@@ -7,7 +7,7 @@
 	//
 	// It sat on Home under "What's next" — the only account-level secret not
 	// under Your data, because the decision predates the settings tree (#1860).
-	// A bearer URL that says what you plan to ride and which rooms you are in
+	// A bearer URL that says what you plan to ride and which crews you are in
 	// belongs with the export and the API tokens; Home keeps the pointer, where
 	// a rider is already looking at the list this mirrors.
 	import { api } from '$lib/api';
@@ -78,7 +78,7 @@
 	     a room's did. The reset is folded, because needing it is rare. -->
 	<p class="text-muted-dim mt-3 text-[11px]">
 		The link carries a private key: anyone holding it sees what you plan to ride
-		and which rooms you are in.
+		and which crews you are in.
 	</p>
 	<details class="mt-1">
 		<summary class="text-muted hover:text-ink cursor-pointer text-[11px]"

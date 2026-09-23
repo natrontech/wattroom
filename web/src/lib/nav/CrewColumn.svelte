@@ -242,7 +242,7 @@
 				{/if}
 				{#if people.shown.length}
 					<!-- Who is in there, without going in (#438): one line of names,
-					     the way a room's row said it — not a strip of faces. -->
+					     the way a room's row used to say it — not a strip of faces. -->
 					<p
 						class="text-muted-dim flex items-center gap-1 truncate px-2 pb-1 pl-8 text-[10px]"
 					>

@@ -35,7 +35,7 @@ export function parseInline(text: string, origin: string): Part[] {
 		if (match.index > cut) parts.push({ text: text.slice(cut, match.index) });
 		cut = match.index + match[0].length;
 		if (g.url !== undefined) {
-			// Same-origin links stay in the SPA (room invites); the rest open away.
+			// Same-origin links stay in the SPA (crew invites); the rest open away.
 			const internal =
 				origin !== '' && (g.url === origin || g.url.startsWith(origin + '/'));
 			parts.push({

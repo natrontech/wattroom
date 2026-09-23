@@ -2,7 +2,7 @@
 	// The achievement half of the shelf, on its own so a rider's page can show
 	// badges without the medals beside them (#701): the trophy case counts
 	// medals for a lifetime, while ADR-0024 lets a rider's page show only the
-	// ones earned in rooms you share. Two different rules, so two components.
+	// ones earned in crews you share. Two different rules, so two components.
 	//
 	// `mine` is the ADR-0027 line. Your own case shows how far along you are
 	// and how many of the catalogue you hold; someone else's shows the badges

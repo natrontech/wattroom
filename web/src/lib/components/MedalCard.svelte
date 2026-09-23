@@ -8,7 +8,7 @@
 		value?: string;
 		unit?: string;
 		kj: number;
-		/** The ride's XP, once the room has saved it — absent until then (#1411). */
+		/** The ride's XP, once the ride is saved — absent until then (#1411). */
 		xp?: number;
 	}
 </script>

@@ -25,7 +25,10 @@ let samples: number[] = [];
  */
 let offset: number | null = null;
 
-/** Feed one tick's server timestamp. Called from the room socket, nowhere else. */
+/**
+ * Feed one tick's server timestamp. Called from the voice channel's socket,
+ * nowhere else.
+ */
 export function observeServerTime(at: number) {
 	if (!Number.isFinite(at) || at <= 0) return;
 	// A backgrounded tab has its delivery throttled and batched, so EVERY

@@ -18,7 +18,8 @@
 	//   out, here is the download. The shell polls nothing; this asks once per
 	//   page load, and a version waved away stays away. A shell that DOES
 	//   update itself is served by the sidebar's UpdateRow instead: home is a
-	//   page a rider in a room never opens, and the restart sat there unseen.
+	//   page a rider in a voice channel never opens, and the restart sat there
+	//   unseen.
 	// - in a browser on a Mac, Windows or Linux machine: the offer — what the
 	//   app buys, the installer for THIS machine, one Not-now that is
 	//   remembered for good. A phone gets nothing: the app is for a desk.
@@ -115,11 +116,11 @@
 				<!-- What a tab cannot do (ADR-0037), and the machine's sound only
 				     where Chromium has a loopback — macOS 15+ and Windows. -->
 				<p class="text-muted mt-1 text-sm leading-relaxed">
-					The same rooms in a window of their own: a heads-up display over
+					The same crews in a window of their own: a heads-up display over
 					whatever else is open, notifications that reach you behind another
 					window{installer.os === 'linux'
 						? ''
-						: ", and the room can hear your computer's own sound"}.
+						: ", and your crew can hear your computer's own sound"}.
 				</p>
 			</div>
 			<div class="flex flex-col items-start gap-2">

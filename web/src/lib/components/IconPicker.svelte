@@ -1,7 +1,7 @@
 <script lang="ts">
-	// The curated icon set as a radiogroup (#447): a room's mark and a crew's
-	// (#1209) come from the same set, drawn by the same control, so the two
-	// cannot drift. Chrome, not data — the neon ring is the structural accent.
+	// The curated icon set as a radiogroup (#447): a crew's mark (#1209), drawn
+	// by one control so it cannot drift from the set. Chrome, not data — the neon
+	// ring is the structural accent.
 	import { MARK_ICONS } from '$lib/icons';
 
 	let {

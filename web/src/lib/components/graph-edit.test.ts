@@ -187,7 +187,7 @@ describe('applying an edit', () => {
 });
 
 /**
- * The graph renders on the ride screens, the room, the history detail and the
+ * The graph renders on the ride screens, a session, the history detail and the
  * workouts list, where it has to stay read-only — the AC calls a regression
  * there the main risk in this change, so it is pinned rather than eyeballed.
  */

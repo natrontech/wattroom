@@ -13,8 +13,9 @@
 		onQueue,
 	}: {
 		parts: Part[];
-		/** Given in a room: a YouTube card grows a Queue button, so a link
-		 *  dropped in the chat is one tap from the jukebox. */
+		/** Given where the chat has a deck — only a room's ever did: a YouTube
+		 *  card grows a Queue button, so a link dropped in the chat is one tap
+		 *  from the jukebox. */
 		onQueue?: (url: string) => void;
 	} = $props();
 

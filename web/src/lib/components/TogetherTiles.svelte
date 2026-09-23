@@ -1,8 +1,8 @@
 <script lang="ts">
 	// What a group adds up to (#995, RESEARCH.md §14.4/§14.7): time ridden
 	// together, its streak, its sessions against its own last month, and the
-	// viewer's own turnout — the crew's Members page and, until the room goes
-	// (#2460), a room's Lounge. Sums and your own dots; nobody is ordered here.
+	// viewer's own turnout — the crew's Home and Members page, and a voice
+	// channel's Lounge. Sums and your own dots; nobody is ordered here.
 	import type { Together } from '$lib/crew-types';
 
 	let {
@@ -14,7 +14,10 @@
 		together?: Together | null;
 		streakWeeks: number;
 		streakLabel: string;
-		/** The room's month in kJ; the crew's read does not carry one. */
+		/**
+		 * A month in kJ. Only a room's read carried one, and the crew's does
+		 * not, so nothing passes it now.
+		 */
 		monthKj?: number;
 	} = $props();
 

@@ -128,7 +128,7 @@ export function actionsFor<T extends { version: string }>(
  */
 const SENTENCE_FLOOR = 30;
 
-/** The first sentence of an entry — the notice has room for one line each. */
+/** The first sentence of an entry — the notice fits one line each. */
 export function headline(item: string): string {
 	let code = false;
 	for (let i = 0; i < item.length; i++) {

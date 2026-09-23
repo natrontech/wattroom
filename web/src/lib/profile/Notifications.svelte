@@ -109,7 +109,7 @@
 				<span>
 					<!-- One switch, four mails (ADR-0030): say so, or a rider
 					     signs up for one and gets four. -->
-					Email me about sessions in my rooms — planned, moved, cancelled, and an
+					Email me about sessions in my crews — planned, moved, cancelled, and an
 					hour before
 					{#if pending}
 						<span class="text-muted block text-xs"

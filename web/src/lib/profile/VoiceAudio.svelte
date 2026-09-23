@@ -13,10 +13,10 @@
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { describeMediaError } from '$lib/channel/media-error';
 
-	// The AV chain only exists while you are in a room. The device picks do
-	// not (#1858): they are the one store the next join applies, so a rider
-	// with a USB mic beside the built-in one chooses before going live on
-	// the wrong one. The gate meter stays behind a live connection.
+	// The AV chain only exists while you are in a voice channel. The device picks
+	// do not (#1858): they are the one store the next join applies, so a rider
+	// with a USB mic beside the built-in one chooses before going live on the
+	// wrong one. The gate meter stays behind a live connection.
 	const av = $derived(channelConnection.current?.av);
 	const choices = deviceChoices();
 	// The store only re-reads devices after a connect or a hot-plug; a rider
@@ -100,15 +100,15 @@
 			{#if grant}
 				<p class="text-danger mt-2 text-xs">{grant}</p>
 			{/if}
-			<!-- The mix needs no room either: the cues ring for a DM and a
+			<!-- The mix needs no voice channel either: the cues ring for a DM and a
 				     friend request too, and the you-panel's cue fader (#898) must
 				     not be the only way to reach one (ux.md). -->
 			<div class="mt-5 max-w-sm">
 				<MixFaders />
 			</div>
 			<p class="text-muted mt-4 text-sm">
-				Open a room to set your gate — the meter needs a live mic to show you a
-				level.
+				Join a voice channel to set your gate — the meter needs a live mic to
+				show you a level.
 			</p>
 		{/if}
 	{/if}

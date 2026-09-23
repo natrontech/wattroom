@@ -269,7 +269,7 @@ describe('launch at login, seen from the app (#1313)', () => {
 	});
 });
 
-describe('the tray’s room and its way back (#1313)', () => {
+describe('the tray’s voice channel and its way back (#1313)', () => {
 	afterEach(() => {
 		delete (globalThis as { wattroom?: unknown }).wattroom;
 	});
@@ -279,13 +279,13 @@ describe('the tray’s room and its way back (#1313)', () => {
 		expect(() => onShellNavigate(() => {})).not.toThrow();
 	});
 
-	it('tells the shell which room, and null when none', () => {
+	it('tells the shell which voice channel, and null when none', () => {
 		const setRoom = vi.fn();
 		(globalThis as { wattroom?: unknown }).wattroom = { setRoom };
-		setShellPlace({ path: '/r/tuesday', name: 'Tuesday Night' });
+		setShellPlace({ path: '/crew/7/v/12', name: 'Tuesday Night' });
 		setShellPlace(null);
 		expect(setRoom.mock.calls).toEqual([
-			[{ path: '/r/tuesday', name: 'Tuesday Night' }],
+			[{ path: '/crew/7/v/12', name: 'Tuesday Night' }],
 			[null],
 		]);
 	});

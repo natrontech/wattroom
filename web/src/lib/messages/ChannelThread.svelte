@@ -6,8 +6,8 @@
 	// write raises (#2435).
 	//
 	// The body (timeline, states, composer, focus) is MessageThread.svelte,
-	// shared with a DM's and a room's; this supplies the channel's endpoints
-	// and what the viewer's crew role allows.
+	// shared with a DM's; this supplies the channel's endpoints and what the
+	// viewer's crew role allows.
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import Hash from '@lucide/svelte/icons/hash';
 	import Lock from '@lucide/svelte/icons/lock';

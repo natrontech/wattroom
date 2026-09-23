@@ -4,8 +4,8 @@ import { account } from '$lib/account.svelte';
 import { youMenu } from '$lib/nav/you-menu';
 import { mixer } from '$lib/sound/mixer.svelte';
 
-// The room decides whether a voice can dip anything (#904), and whether this
-// browser can move the voice to another output (#920).
+// The voice channel decides whether a voice can dip anything (#904), and
+// whether this browser can move the voice to another output (#920).
 const connection = vi.hoisted(() => ({ current: null as unknown }));
 vi.mock('$lib/channel/connection.svelte', () => ({
 	channelConnection: connection,
@@ -59,7 +59,7 @@ describe('youMenu (#898)', () => {
 // The dip belongs to the same mix, and reads the way the Sound panel's fader
 // reads: right is off (#904).
 describe('youMenu duck', () => {
-	it('offers no dip outside a room — there is no voice to dip under', () => {
+	it('offers no dip outside a voice channel — there is no voice to dip under', () => {
 		connection.current = null;
 		expect(
 			youMenu(() => {})

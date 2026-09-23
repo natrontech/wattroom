@@ -1,13 +1,13 @@
 <script lang="ts">
-	// Home's "What's next" (ADR-0020): every planned session in every room you
-	// are in, one row each. That cross-room list is the whole reason /sessions
+	// Home's "What's next" (ADR-0020): every planned session in every crew you
+	// are in, one row each. That cross-crew list is the whole reason /sessions
 	// folded in here — "the second half of what is happening" — and what
 	// landed drew the rail feed's `next` instead, one row per ROOM. A room
 	// with three plans this week showed one of them, while the same rider's
 	// calendar feed, built from the same query, showed all three (#1693).
 	//
 	// No RSVP here, on purpose (decided 2026-09-17). Saying you are in belongs
-	// with the planning, in the room whose session it is, which is the rest of
+	// with the planning, in the crew whose session it is, which is the rest of
 	// ADR-0020's line. So the server's row carries no `going` to draw from.
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
@@ -17,8 +17,8 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 
-	/** One row of GET /api/schedule — a plan, and which crew's it is (#2440):
-	 *  the voice channel when it names one, and the room when a room made it. */
+	/** One row of GET /api/schedule — a plan, which crew's it is (#2440),
+	 *  and the voice channel when it names one. */
 	interface Planned {
 		id: string;
 		workoutName: string;
@@ -48,7 +48,7 @@
 
 	let sessions = $state<Planned[] | null>(null);
 	let error = $state<string | null>(null);
-	/** Home is a glance. A rider in six rooms can have fifty plans ahead of
+	/** Home is a glance. A rider in six crews can have fifty plans ahead of
 	 *  them, and the rest is one press away rather than a page nobody scrolls
 	 *  past — the same call `recent` makes for rides above. */
 	const GLANCE = 8;
@@ -70,8 +70,8 @@
 		if (!account.me) return;
 		// The lobby ping (#570): planning, moving and cancelling each ping
 		// every socket, and those three are exactly what this list shows. The
-		// rail feed cannot stand in for it — it carries each room's next plan
-		// and nothing behind it, which is the bug this section is fixing.
+		// rail feed could not stand in for it — it carried each room's next
+		// plan and nothing behind it, which is the bug this section fixed.
 		presence.version;
 		void load();
 	});
@@ -108,11 +108,11 @@
 			{#each shown as session (session.id)}
 				<li>
 					<!-- The row a rider reads from the sofa: what, then when and
-					     whose room, then how long and who called it. The date is
-					     in it because this is the one list that spans rooms AND
+					     whose crew, then how long and who called it. The date is
+					     in it because this is the one list that spans crews AND
 					     weeks, where "Tue 19:00" cannot tell next week's from
 					     tomorrow's. Nothing is truncated but the name, so a long
-					     room name wraps down the page instead of across it
+					     crew name wraps down the page instead of across it
 					     (ux.md's phone standard). -->
 					<a
 						href={hrefOf(session)}

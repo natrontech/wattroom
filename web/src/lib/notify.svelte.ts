@@ -1,10 +1,10 @@
 /**
- * Notifications (#202, ADR-0042): room events reach a rider who is not
+ * Notifications (#202, ADR-0042): a crew's events reach a rider who is not
  * looking — chat, arrivals, a session starting, a poke.
  *
  * "Not looking" is the tab being hidden OR the window not being the front
  * one: Discord's rule, and the right one for a desktop app whose window sits
- * open behind a film. A focused, visible room speaks for itself.
+ * open behind a film. A focused, visible app speaks for itself.
  *
  * In a browser this is off until the rider flips the switch — browsers demand
  * the gesture for the permission anyway. In the desktop shell it is on unless
@@ -174,7 +174,7 @@ export const notify = {
 	},
 	/**
 	 * Whether to offer notifications in context (#1485) — where a rider first
-	 * sees a session planned in one of their rooms, the moment being told
+	 * sees a session planned in one of their crews, the moment being told
 	 * would matter. Only where the button can succeed: possible here, not
 	 * already on, not blocked by this browser (it will never ask again), and
 	 * not something the rider has switched off or waved away before. The

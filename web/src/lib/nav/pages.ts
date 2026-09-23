@@ -23,10 +23,10 @@ import type { Icon } from '$lib/icons';
  * somewhere.
  *
  * Music earns one on the same test (#268): the shelf is the rider's own
- * (ADR-0015, amended — it reaches the rooms they may enter) while every
- * jukebox is room-scoped, so a rider uploading to it or searching it is not
- * standing in a room — and a destination reachable only from inside one is
- * not reachable when you want it. It is not the "second half" of any page
+ * (ADR-0015, amended — it reaches the voice channels they may enter) while
+ * every jukebox is a voice channel's, so a rider uploading to it or searching
+ * it is not standing in one — and a destination reachable only from inside one
+ * is not reachable when you want it. It is not the "second half" of any page
  * here, which is what the retirements above all had in common.
  */
 export const pages: {
@@ -40,13 +40,13 @@ export const pages: {
 		href: '/home',
 		label: 'Home',
 		icon: House,
-		// `/rooms` was retired INTO Home's "your rooms" section — the open/join
-		// card, reached as `/home#rooms` — and the directory is that section's
-		// other half, the "No code? Find a crew" line inside it (#1118, #2456).
-		// Neither is a destination of its own, and ADR-0020 rule 1 wants the
-		// row above them lit all the same: the column went dark on the
-		// directory and on the `/rooms` stub still receiving live navigation
-		// (#1863).
+		// `/rooms` was retired twice — by ADR-0020 into Home, then with the rooms
+		// themselves (#2458) — and its stub sends a rider to the crew directory,
+		// which is Home's other half: the "No code? Find a crew" line in the
+		// open/join card (#1118, #2456). Neither is a destination of its own, and
+		// ADR-0020 rule 1 wants the row above them lit all the same: the column
+		// went dark on the directory and on the `/rooms` stub still receiving live
+		// navigation (#1863).
 		covers: ['/rooms', '/crews'],
 	},
 	{

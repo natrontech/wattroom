@@ -72,7 +72,8 @@ function refreshCoalesced() {
 }
 
 function connect() {
-	// Never dial while a socket is in flight or open (same rule as the room WS).
+	// Never dial while a socket is in flight or open (same rule as the voice
+	// channel's WS).
 	if (stopped || (socket && socket.readyState <= WebSocket.OPEN)) return;
 	const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
 	socket = new WebSocket(`${scheme}://${location.host}/ws/presence`);

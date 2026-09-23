@@ -28,10 +28,10 @@ import { type LucideIcon } from '@lucide/svelte';
 export type Icon = LucideIcon;
 
 /**
- * A room's icon and its reactions are drawn icons, stored as their lucide
+ * A crew's icon and its reactions are drawn icons, stored as their lucide
  * name (#447): the server keeps the key, the client draws it, so they look
  * the same on every device and in every theme. Two curated vocabularies —
- * the identity mark a room wears, and the palette it cheers with.
+ * the identity mark a crew wears, and the palette it cheers with.
  */
 export const MARK_ICONS: Record<string, Icon> = {
 	bike: Bike,
@@ -76,7 +76,7 @@ export const STOCK_CHEERS = [
 ];
 
 /**
- * Rooms made before #447 store emoji, and a client from before it still
+ * Rooms made before #447 stored emoji, and a client from before it still
  * throws them; each known one maps to its icon so nothing already saved goes
  * blank. Keyed without the U+FE0F presentation selector — `keyFor` strips it.
  */
@@ -106,8 +106,8 @@ export function keyFor(value: string): string {
 }
 
 /**
- * The component that draws `value` — an icon key or an emoji an older room
- * or client stored. Nothing for '', a placeholder for a value nobody knows.
+ * The component that draws `value` — an icon key or an emoji saved before
+ * #447. Nothing for '', a placeholder for a value nobody knows.
  */
 export function iconFor(value: string | undefined): Icon | null {
 	if (!value) return null;

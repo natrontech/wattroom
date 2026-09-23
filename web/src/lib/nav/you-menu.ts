@@ -1,11 +1,11 @@
 /**
  * You, as an object (#898, #904). The you-panel at the foot of the sidebar
  * already carries two destinations; this is where your mix joins them, on the
- * same rule as a rider's volume (#874): a control lives on the thing it
- * belongs to. Neither the cue level nor the duck depth has a surface of its
- * own — cues fire from the room, from chat, from a poke and from a toast, and
- * the dip touches music and cues alike — but both are *yours*, per device,
- * and this is the one object that is you on every screen.
+ * same rule as a rider's volume (#874): a control lives on the thing it belongs
+ * to. Neither the cue level nor the duck depth has a surface of its own — cues
+ * fire from a voice channel, from chat, from a poke and from a toast, and the
+ * dip touches music and cues alike — but both are *yours*, per device, and this
+ * is the one object that is you on every screen.
  */
 import Bell from '@lucide/svelte/icons/bell';
 import ChevronsDown from '@lucide/svelte/icons/chevrons-down';
@@ -38,8 +38,8 @@ const cueFader = (): MenuSlider => ({
 /**
  * How far music and cues dip while someone is speaking (#904). The same mix
  * as the cues, and the same object: it is not the jukebox's property — the
- * cues dip too — and it is not one rider's. Offered only in a room, because
- * outside one there is no voice to dip under.
+ * cues dip too — and it is not one rider's. Offered only in a voice channel,
+ * because outside one there is no voice to dip under.
  *
  * Right is off, exactly as the Sound panel's fader reads: two homes for one
  * control must not disagree about which way is louder.

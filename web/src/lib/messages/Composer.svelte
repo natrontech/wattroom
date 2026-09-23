@@ -86,11 +86,11 @@
 	const pending = createPendingImage((refusal) => (sendError = refusal));
 	let filePicker = $state<HTMLInputElement | null>(null);
 
-	// The room's hub takes one line a second per rider and says so (#1762);
-	// saying it here first keeps the draft and the picture in the box
-	// instead of round-tripping a refusal for words already cleared. The
-	// gap is the caller's (#1819): a DM has no such rule, and a GIF is a
-	// line like any other.
+	// A room's hub took one line a second per rider and said so (#1762);
+	// saying it here first kept the draft and the picture in the box instead
+	// of round-tripping a refusal for words already cleared. The gap is the
+	// caller's (#1819): a DM and a text channel have no such rule, and a GIF
+	// is a line like any other.
 	let lastSentAt = 0;
 	function tooSoon(): boolean {
 		if (Date.now() - lastSentAt >= lineGapMs) return false;

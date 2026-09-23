@@ -52,7 +52,7 @@ const SPECS: ThemeSpec[] = [
 		id: 'tron-ice',
 		identity: 'tron',
 		name: 'Tron Ice',
-		note: 'A blue-black room, cyan on the numbers. Colder for long sessions.',
+		note: 'Blue-black, cyan on the numbers. Colder for long sessions.',
 		family: 'dark',
 		wattHue: 200,
 		neonHue: 265,

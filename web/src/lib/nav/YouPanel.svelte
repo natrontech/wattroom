@@ -38,13 +38,13 @@
 
 	const conn = $derived(channelConnection.current);
 	const av = $derived(conn?.av);
-	// A room open at all is what the panel's connected shape keys on — the
-	// same condition the layout used to branch on before it stopped needing to.
-	// Connected anywhere — a room, or a voice channel whose slug is '' (#2449).
+	// A voice channel connected at all is what the panel's connected shape
+	// keys on — the same condition the layout used to branch on before it
+	// stopped needing to.
 	const connected = $derived(!!conn);
-	// Both halves, and the connection half is the one that is easy to lose:
-	// the server has to offer voice at all (#219, an account fact), AND there
-	// has to be a room to join. The layout used to supply the second by only
+	// Both halves, and the connection half is the one that is easy to lose: the
+	// server has to offer voice at all (#219, an account fact), AND there has to
+	// be a voice channel to join. The layout used to supply the second by only
 	// passing `showAv` from its connected branch — read the account alone here
 	// and "Join voice" renders with nothing to join, which is the dead control
 	// ux.md forbids.
@@ -60,16 +60,16 @@
 	const voiceError = $derived(av?.error ?? null);
 	/** You stepped out (#706) — a statement about YOU, so it lives here. */
 	const away = $derived(av?.away ?? false);
-	// Which away the room currently has for me — the server's word, so a
-	// state set on the phone shows on the desktop. The button's FACE is the
-	// plain cup whenever it offers "Away"; it wears the state's glyph only
-	// once it has become "I'm back", where it reports rather than promises.
+	// Which away the voice channel currently has for me — the server's word, so a
+	// state set on the phone shows on the desktop. The button's FACE is the plain
+	// cup whenever it offers "Away"; it wears the state's glyph only once it has
+	// become "I'm back", where it reports rather than promises.
 	const myAwayReason = $derived(
 		conn?.live.tick?.roster.find((rider) => rider.id === account.me?.id)
 			?.awayReason ?? '',
 	);
 	const awayFace = $derived(awayState(away ? myAwayReason : ''));
-	/** The browser muted this tab and the room went silent (#645). */
+	/** The browser muted this tab and the voice channel went silent (#645). */
 	const playbackBlocked = $derived(av?.playbackBlocked ?? false);
 
 	const onJoin = () => void av?.join();
@@ -80,8 +80,8 @@
 	const onLeaveVoice = () => av?.leave();
 	const onTakeOver = () => av?.takeOver();
 	// The CONNECTION's setAway, never av's: it mutes this device AND tells the
-	// room over the socket, and only the pair of them is "away". av.setAway
-	// alone would go quiet without anyone being told.
+	// voice channel over the socket, and only the pair of them is "away".
+	// av.setAway alone would go quiet without anyone being told.
 	const onAway = (next: boolean, reason = '') => conn?.setAway(next, reason);
 
 	// The arrow's menu: the named states, never plain Away — that one is the
@@ -100,8 +100,8 @@
 		pathname === '/u/me' ||
 			(!!account.me && pathname === `/u/${account.me.id}`),
 	);
-	// The dot on your own avatar: away is yours to set, riding is the room's
-	// to report (#1016).
+	// The dot on your own avatar: away is yours to set, riding is the voice
+	// channel's to report (#1016).
 	const myStatus = $derived(
 		connected
 			? statusOfRider({
@@ -115,11 +115,11 @@
 	const inVoice = $derived(voiceStatus === 'live');
 </script>
 
-<!-- You, pinned. The same shape whatever the CONNECTION state — the nav
-     above never jumps (rider report: the height flicker read as broken).
-     In a room the AV controls get a row of their own: six icons crowded in
-     beside a name left a 240 px column nothing to put the name in, and
-     these are tapped from a bike (ux.md). -->
+<!-- You, pinned. The same shape whatever the CONNECTION state — the nav above
+     never jumps (rider report: the height flicker read as broken). In a voice
+     channel the AV controls get a row of their own: six icons crowded in beside
+     a name left a 240 px column nothing to put the name in, and these are
+     tapped from a bike (ux.md). -->
 <div
 	class="border-ink/5 border-t px-3 py-2.5"
 	{@attach contextMenu(() => youMenu(goto))}
@@ -206,18 +206,18 @@
 				<QuickAudio compact />
 				{#if voiceStatus !== 'connecting' && voiceStatus !== 'reconnecting'}
 					<!-- The promise at the moment of the decision: AV is transit-only
-					     (WATTROOM.md) and the mic gates on speech (docs/SPEC.md). Said
-					     on the marketing page and in settings, never here — where a
-					     rider first opens a microphone into a room (audit 2026-09-09). -->
+					     (WATTROOM.md) and the mic gates on speech (docs/SPEC.md). Said on
+					     the marketing page and in settings, never here — where a rider
+					     first opens a microphone into a voice channel (audit
+					     2026-09-09). -->
 					<p class="text-muted-dim basis-full px-1 text-[10px]">
 						{#if device.coarse}
-							<!-- The gate would hold the capture open, and a phone
-							     plays the room through its earpiece for as long as
-							     anything is capturing (`mic-chain.svelte.ts`). So
-							     the mic button is the gate here, and the promise
-							     says what actually happens. -->
+							<!-- The gate would hold the capture open, and a phone plays the
+							     call through its earpiece for as long as anything is
+							     capturing (`mic-chain.svelte.ts`). So the mic button is the
+							     gate here, and the promise says what actually happens. -->
 							Never recorded. Tap the mic to talk — while it is open your phone plays
-							the room through the earpiece.
+							the call through the earpiece.
 						{:else}
 							Never recorded. Your mic opens when you speak.
 						{/if}
@@ -300,7 +300,7 @@
 		</div>
 	{/if}
 	{#if connected}
-		<!-- Away used to sit in the Lounge header, where it read as a room
+		<!-- Away used to sit in the Lounge header, where it read as a channel
 		     control and was off-screen from every other place (#807). It is
 		     the same kind of statement the mic is, so it lives where the mic
 		     does — a labelled row of its own, because a bare cup squeezed in
@@ -334,11 +334,11 @@
 					><ChevronDown size={13} /></button
 				>
 			{/if}
-			<!-- The way out of where you are (#2447): the room's row carried it,
-			     and a channel row is a link, not a connection — so it lives
-			     with the other things you say about yourself while connected,
-			     Discord's disconnect in its voice panel. Quiet on purpose:
-			     leaving is re-doable, so it neither confirms nor shouts. -->
+			<!-- The way out of where you are (#2447): a room's row used to carry it,
+			     and a channel row is a link, not a connection — so it lives with the
+			     other things you say about yourself while connected, Discord's
+			     disconnect in its voice panel. Quiet on purpose: leaving is
+			     re-doable, so it neither confirms nor shouts. -->
 			<button
 				onclick={leaveChannel}
 				class="btn btn-secondary ml-1 min-h-11 px-2"
@@ -349,10 +349,10 @@
 		</div>
 	{/if}
 	{#if showAv && voiceStatus !== 'off' && playbackBlocked}
-		<!-- The room is playing and this rider can hear none of it: the browser
-		     refused to start audio with no gesture behind it, and once the
-		     voices run through the bus there is nothing else making a sound
-		     (#645). One press fixes it for the session.
+		<!-- The voice channel is playing and this rider can hear none of it: the
+		     browser refused to start audio with no gesture behind it, and once the
+		     voices run through the bus there is nothing else making a sound (#645).
+		     One press fixes it for the session.
 
 		     Quiet chrome, the same shape the jukebox already uses for the same
 		     refusal — this is not an error the rider made, and magenta means
@@ -362,7 +362,7 @@
 			class="border-ink/10 text-muted mt-2 flex items-center gap-2 rounded border px-2 py-1.5 text-[11px]"
 		>
 			<VolumeX size={13} class="shrink-0" />
-			<span class="min-w-0 flex-1">You cannot hear the room.</span>
+			<span class="min-w-0 flex-1">You cannot hear the call.</span>
 			<button
 				onclick={() => void av?.startPlayback()}
 				class="btn btn-secondary btn-xs shrink-0">Let me hear</button
@@ -388,7 +388,7 @@
 		     read why a minute later, mid-interval (errors.md). -->
 		<div class="border-z5/40 mt-2 rounded border px-2 py-1.5">
 			<p class="text-muted text-[10px] leading-snug">
-				Your mic and camera moved to the room open in another tab.
+				Your mic and camera moved to the voice channel open in another tab.
 			</p>
 			<button
 				onclick={onTakeOver}
