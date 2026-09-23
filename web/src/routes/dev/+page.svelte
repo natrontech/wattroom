@@ -18,7 +18,7 @@
 		{
 			href: '/dev/chat',
 			label: 'Chat as a place',
-			hint: 'Rooms and DMs together, unread first, read a room from outside (#451)',
+			hint: 'Direct messages, unread first, and a total for what is waiting (#451)',
 		},
 		{
 			href: '/dev/themes',

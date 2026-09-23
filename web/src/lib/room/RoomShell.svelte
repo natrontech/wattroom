@@ -30,7 +30,6 @@
 	} from '$lib/room/room-context-value.svelte';
 	import { activePlace } from '$lib/nav/pages';
 	import { createSummary } from '$lib/room/summary.svelte';
-	import { remindersFor } from '$lib/room/reminders';
 	import { readNotes, shouldRejoinVoice, tabId } from '$lib/room/rejoin';
 	import { stageSlot } from '$lib/room/stage-slot.svelte';
 	import { modals } from '$lib/modals.svelte';
@@ -149,8 +148,8 @@
 	const segments = $derived(connection.segments());
 
 	// ── Composed, not owned (code-quality.md): the summary that reads the
-	// recording, the roster, and the reminders — each its own module, the
-	// shell wiring them to the connection. ─────────────────────────────────
+	// recording and the roster — each its own module, the shell wiring them
+	// to the connection. ─────────────────────────────────────────────────────
 	const summary = createSummary({
 		slug: () => props.slug,
 		recording,
@@ -161,9 +160,6 @@
 		myId: () => account.me?.id,
 		myExecution: () => you.execution,
 	});
-	const reminders = $derived(
-		remindersFor(props.upcoming ?? [], live.tick?.at ?? Date.now()),
-	);
 
 	// The roster with live numbers on it, plus you and the block you are in —
 	// one module, fed by ticks (riders.svelte.ts).
@@ -335,7 +331,6 @@
 			myRole: () => myRole,
 			stageSources: () => stageSources,
 			onStage: () => onStage,
-			reminders: () => reminders,
 			focusId: () => focusId,
 			setFocus: (id) => (focusId = id),
 			openTv: () => (tv = true),

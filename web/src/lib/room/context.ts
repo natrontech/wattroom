@@ -3,12 +3,7 @@ import { getContext, setContext } from 'svelte';
 import type { Segment } from '$lib/workout/types';
 import type { Block, RoomRider } from '$lib/room/view';
 import type { Announcement, BoardRow, Together } from '$lib/room/room-data';
-import type {
-	GameState,
-	RoomEvent,
-	SensorPairing,
-	SprintState,
-} from '$lib/protocol';
+import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { RsvpAnswer } from '$lib/room/rsvp';
 import type { StageSource } from '$lib/room/stage';
 
@@ -191,8 +186,6 @@ export interface RoomContext {
 		workoutName: string;
 	}): void;
 	copyIcsUrl(): void;
-
-	readonly reminders: RoomEvent[];
 }
 
 const KEY = Symbol('wattroom.room');

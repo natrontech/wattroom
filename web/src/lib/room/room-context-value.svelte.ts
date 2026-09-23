@@ -109,7 +109,6 @@ export interface ContextDeps {
 	myRole: () => string;
 	stageSources: () => RoomStageSource[];
 	onStage: () => RoomStageSource | null;
-	reminders: () => RoomContext['reminders'];
 
 	/** Shell-owned UI the places can ask for. */
 	focusId: () => string | null;
@@ -277,8 +276,5 @@ export function roomContextValue(deps: ContextDeps): RoomContext {
 		removeMember: (userId) => props.onRemove(userId),
 		startScheduled: deps.startScheduled,
 		copyIcsUrl: deps.copyIcsUrl,
-		get reminders() {
-			return deps.reminders();
-		},
 	};
 }

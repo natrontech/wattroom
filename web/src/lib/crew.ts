@@ -172,8 +172,8 @@ export interface CrewDoor {
  * "turned on ... visibly", before anyone is inside: joining is the moment
  * that publishes a rider's week to the crew, and a ride is private by
  * default. The copy lives here, not in the markup, because it is a privacy
- * disclosure an ADR requires — the reasoning `$lib/room/door.ts` gave the
- * room's door, which this replaces.
+ * disclosure an ADR requires — the reasoning the room's door gave, before
+ * this replaced it.
  *
  * No door-time choice (ux.md, the 95% rule): the opt-out is the crew's
  * `on_board` switch on the other side, so the line names it.

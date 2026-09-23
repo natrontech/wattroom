@@ -41,7 +41,6 @@ function deps(props: RoomShellProps) {
 		myRole: () => 'member',
 		stageSources: () => [],
 		onStage: () => null,
-		reminders: () => [],
 		focusId: () => null,
 		setFocus: noop,
 		openTv: noop,
