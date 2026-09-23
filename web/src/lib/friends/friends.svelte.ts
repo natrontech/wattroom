@@ -37,6 +37,23 @@ export function friendPlace(friend: Friend): string {
 	return whereabouts(friend);
 }
 
+/**
+ * Friends around right now — online, or in a voice channel (ADR-0012:
+ * presence, never watts). Given a crew, the ones outside it (#2586): its own
+ * voice channels already show who is in them on the crew Home.
+ */
+export function friendsAround(
+	list: readonly Friend[],
+	outsideCrew?: string,
+): Friend[] {
+	return list.filter(
+		(f) =>
+			f.status === 'accepted' &&
+			(f.online || f.inVoice) &&
+			(!outsideCrew || f.channel?.crewId !== outsideCrew),
+	);
+}
+
 /** An ask that was dismissed — a sentence for the rider who asked, nothing else. */
 export interface Decline {
 	id: string;
