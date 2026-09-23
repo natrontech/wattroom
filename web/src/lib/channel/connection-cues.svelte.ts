@@ -9,7 +9,7 @@ import {
 	screenShareChanges,
 	screenShareEvent,
 } from '$lib/channel/screen-shares';
-import { divertDmsWhileRiding } from '$lib/messages/announce';
+import { divertWhileRiding } from '$lib/messages/announce';
 import { shouldAnnounce } from '$lib/notify-once';
 import { notify } from '$lib/notify.svelte';
 import { play } from '$lib/sound/cues';
@@ -174,13 +174,16 @@ export function connectionCues({
 	// still walking back to the bike, and auto-pause is a rider reaching
 	// for a bottle mid-interval, not a rider who has finished.
 	$effect(() =>
-		divertDmsWhileRiding((arrival) => {
+		divertWhileRiding((arrival) => {
 			// Read outside the announcing caller's reactivity: the tick is a
 			// new object every second, and this must not become a dependency
 			// of whatever effect happened to be running when a DM landed.
 			const phase = untrack(() => live.tick?.state.phase);
 			if (phase !== 'running' && phase !== 'paused') return false;
-			live.pushEvent(dmArrivalEvent(arrival.title, arrival.at));
+			// A text channel's line waits in the sidebar's unread (#2531); only
+			// a DM, which has no row on this screen, is written into the timeline.
+			if (arrival.kind === 'dm')
+				live.pushEvent(dmArrivalEvent(arrival.title, arrival.at));
 			return true;
 		}),
 	);

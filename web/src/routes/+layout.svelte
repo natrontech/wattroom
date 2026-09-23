@@ -30,7 +30,7 @@
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
-	import { divertDmsWhileRiding } from '$lib/messages/announce';
+	import { divertWhileRiding } from '$lib/messages/announce';
 	import { friends } from '$lib/friends/friends.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
@@ -167,7 +167,7 @@
 	// carrying it. Registered from here rather than from /ride and /ramp:
 	// `soloRide` is the app-wide answer to "is a ride under way", and this
 	// layout already reads it for the cave and the HUD.
-	$effect(() => divertDmsWhileRiding(() => untrack(() => soloRide.active)));
+	$effect(() => divertWhileRiding(() => untrack(() => soloRide.active)));
 
 	// The shell's sign-in hand-off (#1941): the token arrives over IPC and the
 	// app decides — /login redeems it; a signed-in shell says so and stays put.

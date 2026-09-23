@@ -14,7 +14,7 @@ export type ArrivalKind = 'dm' | 'chat' | 'friend' | 'session';
 
 /** A message arriving, from wherever it arrived. */
 export interface Arrival {
-	/** Which of the four this is; only a DM moves off a riding screen. */
+	/** Which of the four this is; a DM and a text channel's line move off a riding screen. */
 	kind: ArrivalKind;
 	/** One key per stream — every path that can see this line passes the same one. */
 	tag: string;
@@ -34,9 +34,10 @@ export interface Arrival {
 
 /**
  * A screen the rider is on a bike in front of. While one is registered it gets
- * first refusal on a DM: a voice channel with a session running writes the line
- * into its own timeline, and a solo ride, which has no timeline, takes it and
- * leaves it to the unread badge that was already there. Returning false hands
+ * first refusal on a DM or a text channel's line: a voice channel with a
+ * session running writes a DM into its own timeline and leaves a channel's
+ * line to the sidebar's unread, and a solo ride, which has no timeline, leaves
+ * both to the unread badges that were already there. Returning false hands
  * it back — off a ride the toast is still the right answer.
  *
  * Registered by the screen rather than asked for by this module, because "is a
@@ -48,7 +49,7 @@ export type RidingScreen = (arrival: Arrival) => boolean;
 const ridingScreens = new Set<RidingScreen>();
 
 /** Register a riding screen; the returned function unregisters it. */
-export function divertDmsWhileRiding(screen: RidingScreen): () => void {
+export function divertWhileRiding(screen: RidingScreen): () => void {
 	ridingScreens.add(screen);
 	return () => {
 		ridingScreens.delete(screen);
@@ -79,14 +80,19 @@ export function announce(arrival: Arrival): void {
 			href: arrival.href,
 			reply: arrival.reply,
 		});
-	// Mid-ride, a DM is the only thing on the screen that moves and is not
-	// data (#1743): ux.md's "persistent status, never a toast" is about
-	// errors, and a DM is not one — but a toast over the numbers a rider is
-	// holding is still the wrong shape for it. The cue above already said
-	// something arrived; the badge and the voice channel's timeline say what.
-	// Only a DM: a room's chat was the room the rider was riding with, and a
-	// session starting elsewhere is ADR-0042's whole point.
-	else if (arrival.kind === 'dm' && divert(arrival)) return;
+	// Mid-ride, a message is the only thing on the screen that moves and is
+	// not data (#1743, #2531): ux.md's "persistent status, never a toast" is
+	// about errors, and a message is not one — but a toast over the numbers a
+	// rider is holding is still the wrong shape for it. The cue above already
+	// said something arrived; the unread badges say what. A text channel's
+	// line waits too: it is no longer the room the rider is riding in, but
+	// the crew talking elsewhere (ADR-0058). A session starting elsewhere is
+	// still toasted — that is ADR-0042's whole point.
+	else if (
+		(arrival.kind === 'dm' || arrival.kind === 'chat') &&
+		divert(arrival)
+	)
+		return;
 	else
 		toasts.push(
 			arrival.body ? `${arrival.title}: ${arrival.body}` : arrival.title,
