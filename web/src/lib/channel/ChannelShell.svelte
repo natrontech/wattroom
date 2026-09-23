@@ -3,8 +3,6 @@
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
-	import { device } from '$lib/device.svelte';
-	import { flatten } from '$lib/workout/engine';
 	import { roomConnection } from '$lib/channel/connection.svelte';
 	import { publishHud } from '$lib/hud/feed';
 	import { toasts } from '$lib/toast.svelte';
@@ -15,19 +13,16 @@
 	import Soundboard from '$lib/board/Soundboard.svelte';
 	import ChannelStatus from '$lib/channel/ChannelStatus.svelte';
 	import Jukebox from '$lib/channel/Jukebox.svelte';
-	import { createSessionSetup } from '$lib/session/session-setup.svelte';
-	import Modal from '$lib/components/Modal.svelte';
-	import SessionPicker from '$lib/session/SessionPicker.svelte';
 	import PeopleSheet from '$lib/channel/PeopleSheet.svelte';
 	import SidePanel from '$lib/channel/SidePanel.svelte';
-	import TvOverlay from '$lib/session/TvOverlay.svelte';
-	import SessionSummary from '$lib/ride/SessionSummary.svelte';
+	import SessionLayers, {
+		createSessionLayers,
+	} from '$lib/session/SessionLayers.svelte';
 	import { setRoomContext } from '$lib/channel/context';
 	import {
 		roomContextValue,
 		type RoomShellProps,
 	} from '$lib/channel/context-value.svelte';
-	import { createSummary } from '$lib/session/summary.svelte';
 	import { readNotes, shouldRejoinVoice, tabId } from '$lib/channel/rejoin';
 	import { stageSlot } from '$lib/channel/stage-slot.svelte';
 	import { modals } from '$lib/modals.svelte';
@@ -127,19 +122,6 @@
 	);
 	const segments = $derived(connection.segments());
 
-	// ── Composed, not owned (code-quality.md): the summary that reads the
-	// recording and the roster — each its own module, the shell wiring them
-	// to the connection. ─────────────────────────────────────────────────────
-	const summary = createSummary({
-		recording,
-		phase: () => shared?.phase,
-		startedAt: () =>
-			live.tick ? live.tick.at - live.tick.state.elapsed * 1000 : undefined,
-		myName: () => account.me?.displayName,
-		myId: () => account.me?.id,
-		myExecution: () => you.execution,
-	});
-
 	// The roster with live numbers on it, plus you and the block you are in —
 	// one module, fed by ticks (riders.svelte.ts).
 	// The HUD feed (ADR-0041, #1665): published from the room, not the
@@ -181,14 +163,11 @@
 		workout: () => connection.workout(),
 	});
 	const riders = $derived(roster.riders);
-	const you = $derived(roster.you);
-	const block = $derived(roster.block);
 
 	// ── One view, focus instead of layouts (#181 feedback) ───────────────────
 	// The Metrics/Video/Media tabs are gone: tiles always fuse camera and
 	// metrics, media lives in the panel/dock, and tapping a tile spotlights
 	// that rider. Ephemeral by design — a focus is a glance, not a preference.
-	let tv = $state(false);
 	let focusId = $state<string | null>(null);
 	// The stage's menu, named (#280): av knows the tracks, only this page
 	// knows whose they are.
@@ -251,40 +230,9 @@
 		me: () => account.me?.id,
 	});
 
-	// ── Coach controls ────────────────────────────────────────────────────────
-	function startWorkout(picked: import('$lib/workout/types').Workout) {
-		const flat = flatten(picked);
-		const total = flat.reduce(
-			(t, s) => Math.max(t, s.startSeconds + s.seconds),
-			0,
-		);
-		live.control('pick', {
-			name: picked.name,
-			json: JSON.stringify(picked),
-			totalSeconds: total,
-		});
-		// start follows the tick that shows the pick landed (#1764): sent
-		// blind, a refused pick's reason was overwritten by start's own
-		// refusal, and a refused pick after a good one started the old one.
-		startAfterPick = picked.name;
-		session.open = false;
-	}
-	let startAfterPick = $state<string | null>(null);
-	$effect(() => {
-		const state = live.tick?.state;
-		if (!startAfterPick || !state) return;
-		if (state.phase === 'idle' && state.workoutName === startAfterPick) {
-			startAfterPick = null;
-			live.control('start');
-		}
-	});
-	$effect(() => {
-		if (live.refusal) startAfterPick = null;
-	});
-
-	// ── Session setup (#115) ──────────────────────────────────────────────────
-	// Composed, not owned: the shelf and its ranking (session-setup.svelte.ts).
-	const session = createSessionSetup();
+	// TV mode and the picker are the session's layers (SessionLayers.svelte):
+	// the context opens them, Escape below closes them.
+	const layers = createSessionLayers();
 
 	// ADR-0020: the shell keeps the state, the places render the surface.
 	// `props` goes in as the reactive object, not as its values: the context's
@@ -307,11 +255,8 @@
 			onStage: () => onStage,
 			focusId: () => focusId,
 			setFocus: (id) => (focusId = id),
-			openTv: () => (tv = true),
-			openPicker: (intent = 'start') => {
-				session.intent = intent;
-				session.open = true;
-			},
+			openTv: () => (layers.tv = true),
+			openPicker: (intent) => layers.openPicker(intent),
 			ban,
 		}),
 	);
@@ -333,108 +278,26 @@
 		// count ABOVE them means something is stacked on top (#1974). The
 		// picker also answers Escape itself (#2513); whichever runs first
 		// closes it and the other finds nothing left to do.
-		const mine = (session.open ? 1 : 0) + (peopleSheet ? 1 : 0);
+		const mine = (layers.setup.open ? 1 : 0) + (peopleSheet ? 1 : 0);
 		if (navDrawer.open || modals.open > mine) return;
-		if (tv) tv = false;
-		else if (session.open) session.open = false;
+		if (layers.tv) layers.tv = false;
+		else if (layers.setup.open) layers.setup.open = false;
 		else if (peopleSheet) peopleSheet = false;
 		else focusId = null;
 	}}
 />
 
-{#if tv}
-	<TvOverlay
-		{riders}
-		{segments}
-		total={shared?.totalSeconds ?? 0}
-		elapsed={shared?.elapsed ?? 0}
-		{block}
-		roomName={props.roomName}
-		code={props.code}
-		live={phase === 'live'}
-		workoutName={shared?.workoutName ?? ''}
-		playing={!!live.tick?.jukebox?.current}
-		sprint={live.tick?.sprint ?? rideCtl.blockSprint}
-		game={live.tick?.game ?? null}
-		onExit={() => (tv = false)}
-	>
-		{#snippet status()}
-			<ChannelStatus />
-		{/snippet}
-	</TvOverlay>
-{/if}
-
-{#if session.open}
-	<SessionPicker
-		shelf={session.shelf}
-		shelfError={session.custom.error}
-		onRetryShelf={() => void session.custom.retry()}
-		intent={session.intent}
-		ftp={profile.current.ftp}
-		gameRunning={!!live.tick?.game}
-		onPlan={async (name, json, at) => {
-			// Closed only once the server took it (#1766): a refused time used
-			// to leave a toast and a closed picker — workout, room and time all
-			// to choose again. The refusal is the toast the room already shows.
-			if ((await props.onSchedule(name, json, at)) !== false)
-				session.open = false;
-		}}
-		onStart={device.spectator
-			? // A phone plans, and does not start (#1767). The Sessions place
-				// opens this picker on a spectator device now, and the picker
-				// already has the shape for one that only plans — an absent
-				// `onStart` — so the gate lands here rather than as a second
-				// branch inside it, taking the "Start it now instead" flip with
-				// it. Starting belongs to the screen the coach rides on, which
-				// is the gate SessionControls wears.
-				undefined
-			: (workout) => startWorkout(workout)}
-		onStartGame={device.spectator
-			? // A game IS a session, started the same way.
-				undefined
-			: (id) => {
-					live.control('game', undefined, id);
-					session.open = false;
-				}}
-		onClose={() => (session.open = false)}
-	/>
-{/if}
-
-{#if shared?.phase === 'done' && summary.ready && !summary.dismissed}
-	<!-- The summary has to call out (#359). It used to render at the bottom of
-	     the main column, so a session ended while you were looking at the stage
-	     and nothing said so — a modal is the room telling you it is over. -->
-	<Modal
-		label="Session summary"
-		class="max-w-5xl"
-		onclose={() => summary.dismiss()}
-	>
-		<SessionSummary
-			subtitle="{props.roomName} · {shared.workoutName} · {new Date().toLocaleDateString()}"
-			samples={recording.samples}
-			ftp={you.ftp}
-			execution={you.execution}
-			medal={summary.medal}
-			roomName={props.roomName}
-			{riders}
-		>
-			{#snippet actions()}
-				<div class="flex flex-wrap gap-2">
-					<!-- The end links forward (#1331): the ride the room saved for
-					     you, found by the session it belongs to once the save lands. -->
-					{#if summary.rideId}
-						<a href="/history/{summary.rideId}" class="btn btn-primary"
-							>See your ride</a
-						>
-					{/if}
-					<button onclick={() => summary.dismiss()} class="btn btn-secondary"
-						>Back to the Lounge</button
-					>
-				</div>
-			{/snippet}
-		</SessionSummary>
-	</Modal>
-{/if}
+<SessionLayers
+	{layers}
+	{connection}
+	{roster}
+	{shared}
+	{segments}
+	{phase}
+	roomName={props.roomName}
+	code={props.code}
+	onSchedule={props.onSchedule}
+/>
 
 <!-- The sidebar is the layout's (ADR-0020 — one instance across navigation);
      the room is content | people inside that frame. -->
