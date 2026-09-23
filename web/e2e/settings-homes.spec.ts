@@ -84,12 +84,9 @@ test('the calendar link is under Your data', async ({ page }) => {
 	await expect(page.getByText(/carries a private key/)).toBeVisible();
 });
 
-// fixme: Home never points at the link now. It offers it `hasRooms`, read off
-// the shell's room list (routes/home/+page.svelte, the <WhatsNext> line), and
-// that list is always empty since the rooms left the server
-// (lib/nav/rooms.ts) — so a rider in a crew, who can plan in it, is never
-// offered the feed. The room readers go with #2460; this comes back then.
-test.fixme('Home points at the calendar link', async ({ page }) => {
+// Home offers the link to a rider in a crew (#2511): it read the room list
+// once, which has been empty since the rooms left the server.
+test('Home points at the calendar link', async ({ page }) => {
 	await signInAs(page, 'Settings Homes', '/home');
 
 	// Home's offer renders only once there is a crew to plan a session in, so
