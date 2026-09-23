@@ -17,6 +17,23 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.128] - 2026-09-23
+
+### Removed
+
+- Your data export no longer includes `rooms.json`, `rooms-i-own.json` and
+  `room-doors.json`. Everything they held now lives on your crews and
+  channels, in `crews.json` and `channel-members.json`. Old room links still
+  open where the room went.
+
+### Fixed
+
+- A crew owner deleting their account no longer wipes the crew. Their old
+  rooms were removed with the account and took the crew's text channel
+  history, its plans, the recaps, the crew's playlists, and other riders'
+  medals with them. All of it now stays with the crew.
+- Leaving a voice channel takes you back to its crew instead of to You, and the way out is a labelled **Leave** button — the voice-only hang-up beside it now draws a phone, not the same door.
+
 ## [2026.09.127] - 2026-09-23
 
 ### Added
@@ -2729,7 +2746,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.127...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.128...HEAD
+[2026.09.128]: https://github.com/natrontech/wattroom/compare/2026.09.127...2026.09.128
 [2026.09.127]: https://github.com/natrontech/wattroom/compare/2026.09.126...2026.09.127
 [2026.09.126]: https://github.com/natrontech/wattroom/compare/2026.09.125...2026.09.126
 [2026.09.125]: https://github.com/natrontech/wattroom/compare/2026.09.124...2026.09.125
