@@ -3,8 +3,8 @@
  *
  * Two surfaces, one difference, and it is deliberate: a solo ride or a ramp
  * collects flags and sends them from the summary, where a rider off the bike
- * can type a note; a room ride is left by walking away, so the tap sends. The
- * words were written out three times and only the room's said any of this
+ * can type a note; a session is left by walking away, so the tap sends. The
+ * words were written out three times and only the session's said any of this
  * before the press (#2180) — consent belongs at the moment of the tap.
  */
 export const FLAG_ASKS = {

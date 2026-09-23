@@ -26,7 +26,7 @@ function quiet(over: Partial<RideSoundDeps> = {}): RideSoundDeps {
 	};
 }
 
-// The room's cues, heard by a rider alone (#1792): the shared effects are
+// The session's cues, heard by a rider alone (#1792): the shared effects are
 // covered through createSessionSounds; this is the solo composition's own —
 // the end, and the guard as the session's state names it.
 describe('createRideSounds', () => {
@@ -46,7 +46,7 @@ describe('createRideSounds', () => {
 		stop();
 	});
 
-	// The count-in, shared by the room's ten seconds and a solo ride's three
+	// The count-in, shared by a session's ten seconds and a solo ride's three
 	// (#1800): one 3-2-1 for the surface, and the `go` only when it actually
 	// handed over to a running clock.
 	it('counts the start in and says go once, at the handover', async () => {

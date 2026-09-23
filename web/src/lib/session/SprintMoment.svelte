@@ -16,7 +16,7 @@
 	}: {
 		sprint: SprintState;
 		myWatts: number;
-		/** The room, for the live standings — absent outside a room. */
+		/** The session's riders, for the live standings — absent riding alone. */
 		roster?: LiveRider[];
 	} = $props();
 
@@ -52,7 +52,7 @@
      appended under the dashboard — the quietest element on screen for the
      loudest fifteen seconds in the product, which WATTROOM.md calls the one
      place the UI is allowed to go loud. `roster` absent keeps the old compact
-     rendering for /dev/modes, which mounts it without a room. -->
+     rendering for /dev/modes, which mounts it without a session. -->
 {#if phase === 'klaxon'}
 	<!-- role=status (#1593): the klaxon and the podium are state changes a
 	     rider does not watch for; a screen reader hears them the way

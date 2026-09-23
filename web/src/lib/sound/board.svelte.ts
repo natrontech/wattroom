@@ -17,7 +17,7 @@ import type { Edit } from '$lib/board/clips.svelte';
 /**
  * A clip as a LISTENER knows it: the audio, its name, and the edit that says
  * what actually plays. All three come from the server, for everyone's clips
- * including your own — the room must hear one rider's airhorn the same way
+ * including your own — the channel must hear one rider's airhorn the same way
  * they do. Reading the trim out of your own library instead meant the firer
  * was the only person who heard their two-second cut; everyone else got the
  * whole uploaded minute, at raw level, called "a sound".
@@ -42,7 +42,7 @@ const sounding = new SvelteMap<
 >();
 
 /**
- * Reactive so a tile can wear the mark: who in this room is making a noise
+ * Reactive so a tile can wear the mark: who in this channel is making a noise
  * right now (#1681). It ends when the audio does, which is why it is this map
  * and not the server's word — the hub holds a fire for the ceiling, not for
  * the clip's real length.
@@ -65,7 +65,7 @@ const latest = new Map<string, { token: object; clipId: string }>();
 /**
  * What a clip is called, once it has been heard. Reactive, so the strip that
  * names it can be written before the fetch lands. Null while unknown — for
- * everyone's clips including your own, which is what stops the room reading
+ * everyone's clips including your own, which is what stops the channel reading
  * "a sound" for every clip but the one whose owner is looking at the strip.
  */
 export function nameOf(clipId: string): string | null {
@@ -130,16 +130,16 @@ export function prefetch(clipIds: string[]): void {
  * costs no second copy of the file.
  */
 export async function fire(clipId: string, riderId: string): Promise<void> {
-	// A fire from the room ends whatever the rider was auditioning: one rider
+	// A fire from the channel ends whatever the rider was auditioning: one rider
 	// is one voice, and the tick outranks a preview.
 	if (riderId === auditioning?.riderId) auditioning = null;
 	return play(clipId, riderId);
 }
 
 /**
- * Start a clip the room is already partway through (#1681): a rider who joins
+ * Start a clip the channel is already partway through (#1681): a rider who joins
  * mid-airhorn, whose tick says so on the roster rather than in this second's
- * fires. `sinceMs` is how much of it the room has already heard.
+ * fires. `sinceMs` is how much of it the channel has already heard.
  *
  * A no-op once this machine is already on that rider's clip, so it can be
  * called from every tick — the roster keeps saying so for as long as the hub
@@ -176,7 +176,7 @@ export async function preview(
 }
 
 /**
- * Stop everyone this machine is playing who is no longer in the room. Their
+ * Stop everyone this machine is playing who is no longer in the channel. Their
  * clip left with them: nothing else will ever stop it, because a stop is a
  * message from a socket that has gone.
  */
@@ -248,7 +248,7 @@ async function play(
 	const start = Math.max(0, applied.startMs / 1000);
 	const end = applied.endMs ? applied.endMs / 1000 : buffer.duration;
 	const kept = Math.max(0.01, Math.min(buffer.duration, end) - start);
-	// How much of it the room has already heard. A clip that finished before
+	// How much of it the channel has already heard. A clip that finished before
 	// this machine got the news is simply not played.
 	const into = Math.max(0, sinceMs / 1000);
 	if (into >= kept) return;
@@ -262,7 +262,7 @@ async function play(
 	const fadeIn = Math.min(applied.fadeInMs / 1000, kept / 2);
 	const fadeOut = Math.min(applied.fadeOutMs / 1000, kept / 2);
 	// ponytail: joining mid-clip skips the fade-in rather than entering it
-	// part-way. The room is already past the attack — a second ramp from
+	// part-way. The channel is already past the attack — a second ramp from
 	// silence would be a fade nobody else heard.
 	if (fadeIn > 0 && into === 0) {
 		gain.gain.setValueAtTime(0, now);
@@ -307,7 +307,7 @@ async function play(
 
 /**
  * Stop what one rider has sounding, or is about to: the retrigger rule, a
- * stop from the tick (#1321), and leaving a room.
+ * stop from the tick (#1321), and leaving a voice channel.
  */
 export function stop(riderId: string): void {
 	latest.set(riderId, { token: {}, clipId: '' });

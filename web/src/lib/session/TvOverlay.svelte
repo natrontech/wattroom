@@ -49,12 +49,12 @@
 		playing?: boolean;
 		/** The armed sprint, drawn over the numbers — the TV had none. */
 		sprint?: SprintState | null;
-		/** The running game (#1589): a room on the TV saw the HUD through it. */
+		/** The running game (#1589): a session on the TV sees the HUD through it. */
 		game?: GameState | null;
 		/**
 		 * Ride-critical status. A snippet, not `ChannelStatus` outright, because
 		 * this frame is the solo ride's TV too now (#1632) and ChannelStatus reads
-		 * a room context a solo ride has no business having.
+		 * a voice channel's context a solo ride has no business having.
 		 */
 		status?: Snippet;
 		onExit: () => void;

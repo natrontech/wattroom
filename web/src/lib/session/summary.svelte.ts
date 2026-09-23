@@ -27,7 +27,7 @@ export function createSummary(deps: {
 }) {
 	let dismissed = $state(false);
 	let medalBase = $state<Omit<Medal, 'xp'> | undefined>(undefined);
-	// The pipeline's XP for the ride the room saved (#1411): the card said
+	// The pipeline's XP for the ride the session saved (#1411): the card said
 	// "0 XP" to everyone. Shown once the ride is found, never as a placeholder.
 	let rideXp = $state<number | null>(null);
 	const medal = $derived<Medal | undefined>(
@@ -134,7 +134,7 @@ export function createSummary(deps: {
 		get dismissed() {
 			return dismissed;
 		},
-		/** The ride's own page, once the room has saved it. */
+		/** The ride's own page, once the session has saved it. */
 		get rideId() {
 			return rideId;
 		},

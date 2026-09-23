@@ -72,25 +72,26 @@ let cues = $state(0.7);
  */
 let board = $state(0.7);
 /**
- * Somebody else's computer, coming through the room (#1124, ADR-0037). Its
- * own channel because ADR-0011 says every audible source gets one — and 1 by
- * default, because a rider who started a share meant the room to hear it. It
- * ducks under voice like the jukebox; this is the ceiling that dip sits under.
+ * Somebody else's computer, coming through the voice channel (#1124,
+ * ADR-0037). Its own fader because ADR-0011 says every audible source gets
+ * one — and 1 by default, because a rider who started a share meant everyone
+ * to hear it. It ducks under voice like the jukebox; this is the ceiling
+ * that dip sits under.
  */
 let share = $state(1);
 let duck = $state(DUCK_DEFAULT);
 let duckSelf = $state(false);
 let riders = $state<Record<string, number>>({});
 /**
- * Stepped out (#706, #875): everything the room plays goes quiet on this
- * device — voices, music, cues — because a rider who is not there is not
+ * Stepped out (#706, #875): everything the voice channel plays goes quiet on
+ * this device — voices, music, cues — because a rider who is not there is not
  * there to turn it down. The faders keep their values, so coming back
  * restores the mix they set and never a default. Not persisted: away is
  * where the rider is, not how they like the mix.
  */
 let muted = $state(false);
 // Who a stored fader belongs to, so the profile mixer can name a rider who
-// is not in the room right now.
+// is not in the voice channel right now.
 let names = $state<Record<string, string>>({});
 const initial = load();
 music = initial.music;
@@ -175,7 +176,7 @@ export const mixer = {
 		persist();
 	},
 	/**
-	 * Whether your own voice ducks the room too (#867). Off: the music and the
+	 * Whether your own voice ducks the mix too (#867). Off: the music and the
 	 * cues dip for other riders only, which is what the app has always done —
 	 * hearing the mix drop every time you open your mouth is a taste, and a
 	 * coach talking over a set is the one who has it.

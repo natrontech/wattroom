@@ -18,7 +18,7 @@ vi.mock('$lib/ride/buffer', () => ({
 	}),
 }));
 
-/** A room socket, opened but never dialled. */
+/** A voice channel's socket, opened but never dialled. */
 class FakeSocket {
 	static readonly CONNECTING = 0;
 	static readonly OPEN = 1;
@@ -240,7 +240,7 @@ describe('a sprint the ticks stop under (#789)', () => {
 	});
 });
 
-/** A room mid-interval: the shared timeline is running and asks for 200 W. */
+/** A session mid-interval: the shared timeline is running and asks for 200 W. */
 function inASession() {
 	const live = createChannelLive(channelAddress('c', 'mfw', 'MFW'));
 	const socket = FakeSocket.last!;
@@ -317,7 +317,7 @@ describe('the personal guards in a group ride (#788)', () => {
 		vi.useRealTimers();
 	});
 
-	it('releases the target when the rider stops, leaving the room clock alone', async () => {
+	it('releases the target when the rider stops, leaving the session clock alone', async () => {
 		vi.useFakeTimers();
 		const { live, deps } = inASession();
 		let ride!: ReturnType<typeof createRide>;
@@ -334,7 +334,7 @@ describe('the personal guards in a group ride (#788)', () => {
 		expect(ride.guard).toBe('autopaused');
 		expect(ride.target).toBe(0);
 		expect(trainer.commands.at(-1)).toBe('erg:0');
-		// The room's own timeline is untouched: the shared session still says
+		// The session's own timeline is untouched: the shared clock still says
 		// running, and this rider's guard is nobody else's business.
 		expect(deps.shared().phase).toBe('running');
 
@@ -377,7 +377,7 @@ describe('the personal guards in a group ride (#788)', () => {
 
 	it('leaves a rider resting between sessions alone', async () => {
 		// Nothing is being asked of them, so there is nothing to release — and
-		// "Paused — you stopped pedalling" over a room with no session running
+		// "Paused — you stopped pedalling" over a channel with no session running
 		// is noise, not status.
 		vi.useFakeTimers();
 		const { live, deps } = inASession();
@@ -472,8 +472,8 @@ describe("a workout's own sprint block (#2014)", () => {
 	];
 
 	/**
-	 * A room ride whose shared clock the test moves. The clock is $state
-	 * because that is what the room's own is: a tick moves it and everything
+	 * A session ride whose shared clock the test moves. The clock is $state
+	 * because that is what the session's own is: a tick moves it and everything
 	 * downstream recomputes.
 	 */
 	function riding() {
@@ -503,7 +503,7 @@ describe("a workout's own sprint block (#2014)", () => {
 		};
 	}
 
-	// `targetAt` has no target for a sprint block, and the room folded that
+	// `targetAt` has no target for a sprint block, and a session folded that
 	// null into 0 — which in ERG is a freewheel, not a sprint. The rider
 	// pedalled against nothing for the whole block and reported exactly that.
 	it('flips to slope rather than writing ERG 0', async () => {
@@ -537,7 +537,7 @@ describe("a workout's own sprint block (#2014)", () => {
 		live.close();
 	});
 
-	it('counts the block in on the room screen', async () => {
+	it('counts the block in on the session screen', async () => {
 		const { live, deps, seek } = riding();
 		let ride!: ReturnType<typeof createRide>;
 		const dispose = $effect.root(() => {
@@ -775,7 +775,7 @@ describe("the trainer's silence, one number (#2161)", () => {
 		await settle();
 		expect(ride.fault, 'a gap shorter than the cap is not a fault').toBeNull();
 
-		// Past it: the room says so, where it used to wait ten seconds for the
+		// Past it: the session says so, where it used to wait ten seconds for the
 		// same rider's own trainer while /ride and /ramp waited three.
 		await vi.advanceTimersByTimeAsync(1_500);
 		await settle();

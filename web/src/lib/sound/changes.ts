@@ -4,8 +4,8 @@
  * Every cue that follows a value rather than an event needs the same two
  * guards, and two effects in ChannelShell had started to grow their own copy:
  * fire only when the value actually moved, and stay silent on the first
- * observation — a rider walking into a room that is already dropped has not
- * just had it drop, and the banner is there to say so.
+ * observation — a rider walking into a voice channel that has already
+ * dropped has not just had it drop, and the banner is there to say so.
  *
  * The first value must not be `undefined`: that is the sentinel for
  * "nothing seen yet".

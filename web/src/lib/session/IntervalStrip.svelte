@@ -13,7 +13,7 @@
 	}: {
 		block: Block | null;
 		bias: number;
-		/** Omitted in TV mode — nothing there is clickable from across the room. */
+		/** Omitted in TV mode — nothing there is clickable from three metres away. */
 		onBias?: (step: number) => void;
 		big?: boolean;
 		/** Your live rpm — colours the cadence band in or out (#66). */
@@ -28,7 +28,7 @@
 <!--
 	The number a rider actually watches during a structured workout is not elapsed —
 	it is how long is left in THIS block, and what lands next. Zwift and TrainerRoad
-	both put that front and centre; the first version of this room had neither.
+	both put that front and centre; the first version of the group ride had neither.
 -->
 {#if block}
 	<div

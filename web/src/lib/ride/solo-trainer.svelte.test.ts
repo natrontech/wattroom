@@ -3,7 +3,7 @@ import { flushSync } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 
-/** The room a solo screen has to take the trainer back from (#521). */
+/** The voice channel a solo screen has to take the trainer back from (#521). */
 const unpair = vi.fn();
 vi.mock('$lib/channel/connection.svelte', () => ({
 	channelConnection: {
@@ -95,7 +95,7 @@ describe('the solo pre-ride trainer slot (#611)', () => {
 		});
 	});
 
-	it('takes the trainer back from a room you are standing in', async () => {
+	it('takes the trainer back from a voice channel you are standing in', async () => {
 		await withSlot(async (slot) => {
 			await slot.pair(new FakeTrainer());
 			expect(unpair).toHaveBeenCalledTimes(1);
@@ -154,9 +154,9 @@ describe('the solo pre-ride trainer slot (#611)', () => {
 	// /settings/equipment and walking to /ride showed "Not connected" over a
 	// trainer that was still connected — and pairing again put two GATT
 	// clients on one machine.
-	it('walks into a room as it is, or the room gets a chooser', async () => {
-		// #1851: Pair in a room takes the trainer this slot holds, live, and
-		// only opens a chooser when there is none.
+	it('walks into a voice channel as it is, or the channel gets a chooser', async () => {
+		// #1851: Pair in a voice channel takes the trainer this slot holds,
+		// live, and only opens a chooser when there is none.
 		const trainer = new FakeTrainer();
 		await soloTrainer().pair(trainer);
 		expect(trainerForChannel()).toBe(trainer);

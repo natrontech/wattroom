@@ -18,7 +18,7 @@ import {
 } from '$lib/session/sensor-status';
 
 interface RideDeps {
-	/** The room socket: metrics go out on it, targets and ticks come off it. */
+	/** The voice channel's socket: metrics go out, targets and ticks come in. */
 	live: {
 		sendMetrics(payload: ReturnType<typeof wireMetrics>): void;
 		finish(): void;
@@ -71,7 +71,7 @@ export function createRide(deps: RideDeps) {
 
 	/**
 	 * What the trainer is actually doing (#520). "Paired" used to be the only
-	 * state the room could show, so a trainer that dropped, that reattached in
+	 * state a group ride could show, so a trainer that dropped, reattached in
 	 * a loop, or that delivered not one watt all read as working.
 	 *
 	 * Silence is judged against the wall clock; the tick is read purely to
@@ -88,7 +88,7 @@ export function createRide(deps: RideDeps) {
 		// Counted from the connect, not the first sample: a trainer that never
 		// sends one is the reported failure, and exempting it would hide it.
 		// docs/SPEC.md's one number (#2161): this is the rider's OWN trainer,
-		// the same question /ride and /ramp ask, and the room used to wait
+		// the same question /ride and /ramp ask, and a group ride used to wait
 		// ten seconds where they waited three.
 		return Date.now() - lastSampleAt > SIGNAL_LOST_MS
 			? quietFault(trainer)
@@ -130,14 +130,14 @@ export function createRide(deps: RideDeps) {
 	}
 
 	/**
-	 * What the room asks of this rider, before their own guards get a say —
+	 * What the session asks of this rider, before their own guards get a say —
 	 * and whether the block asking is the workout's own sprint.
 	 *
 	 * The sprint flag is not decoration: `targetAt` returns no target for a
 	 * sprint block, `?? 0` folds that into zero, and zero in ERG is a
 	 * freewheel — the rider pedalled against nothing for the whole block
-	 * (#2014). That is the room's half of #1529, which fixed the solo ride
-	 * on the assumption the room was already right. It was not: the room
+	 * (#2014). That is the session's half of #1529, which fixed the solo ride
+	 * on the assumption the session was already right. It was not: a session
 	 * flips to slope only for a sprint the SERVER armed, and nothing arms
 	 * one from the timeline.
 	 */
@@ -167,16 +167,16 @@ export function createRide(deps: RideDeps) {
 	/**
 	 * Auto-pause and the spiral release, the same machine the solo ride runs
 	 * (#788). A rider who stops, or who grinds to a halt at 40 rpm, gets their
-	 * target released in a room exactly as they would alone — and the room's
-	 * clock does not notice, because the guards mask this rider's target and
-	 * touch nothing shared.
+	 * target released in a session exactly as they would alone — and the
+	 * session's clock does not notice, because the guards mask this rider's
+	 * target and touch nothing shared.
 	 */
 	const guards = createPersonalGuards();
 	let guardsReleased = $state(false);
 	let guardPhase = $state<GuardPhase>('running');
 	let guardResumeIn = $state(0);
-	// The spiral release (docs/SPEC.md) fires in a room exactly as it does
-	// solo; solo had a banner and a cue for it and the room had nothing —
+	// The spiral release (docs/SPEC.md) fires in a session exactly as it does
+	// solo; solo had a banner and a cue for it and the session had nothing —
 	// the resistance vanished for ten seconds unexplained (audit 2026-09-09).
 	let spiralActive = $state(false);
 	function syncGuards() {
@@ -188,8 +188,8 @@ export function createRide(deps: RideDeps) {
 
 	const target = $derived(guardsReleased ? 0 : prescribed);
 
-	// The guards' countdowns run on a local second — the room's clock is the
-	// room's, and a rider's own recovery must not wait on it.
+	// The guards' countdowns run on a local second — the session's clock is
+	// everyone's, and a rider's own recovery must not wait on it.
 	$effect(() => {
 		if (!trainer) return;
 		const id = setInterval(() => {
@@ -226,9 +226,9 @@ export function createRide(deps: RideDeps) {
 		return at >= sprint.startsAtMs && at < sprint.endsAtMs;
 	});
 	/**
-	 * The workout's own sprint blocks (#2014), as a window the room's
+	 * The workout's own sprint blocks (#2014), as a window the session's
 	 * SprintMoment and klaxon already know how to draw — the same module the
-	 * solo ride runs (#1793). Anchored off the room's elapsed, so every rider
+	 * solo ride runs (#1793). Anchored off the session's elapsed, so every rider
 	 * counts the same block in at the same moment.
 	 */
 	const blockWindow = createSprintWindow(() => {
@@ -248,7 +248,7 @@ export function createRide(deps: RideDeps) {
 			over: !running,
 		};
 	});
-	// Re-anchored on the room's clock rather than a local interval: the window
+	// Re-anchored on the session's clock rather than a local interval: the window
 	// carries a deadline in server-ms, and reading it half a second after the
 	// tick that moved `elapsed` would count the block in half a second late.
 	$effect(() => {
@@ -337,12 +337,12 @@ export function createRide(deps: RideDeps) {
 						sample.at,
 					);
 					latest = { watts: metrics.watts, cadence: metrics.cadence };
-					// Only while the room is actually asking something of this
+					// Only while a session is actually asking something of this
 					// rider. With no target there is nothing to release, and a
-					// rider resting in a room between sessions is not "paused"
-					// — they are just in a room. Against the PRESCRIBED target,
-					// too: the one the trainer holds is zero exactly when a
-					// guard is already up.
+					// rider resting in a voice channel between sessions is not
+					// "paused" — they are just there. Against the PRESCRIBED
+					// target, too: the one the trainer holds is zero exactly when
+					// a guard is already up.
 					const second = Math.floor(sample.at / 1000);
 					const counted = second > guardSecond;
 					if (counted) guardSecond = second;
@@ -412,7 +412,7 @@ export function createRide(deps: RideDeps) {
 		get hrSource() {
 			return hrSource;
 		},
-		/** null while it is behaving; the room renders the rest (#520). */
+		/** null while it is behaving; the channel's places render the rest (#520). */
 		get fault() {
 			return fault;
 		},
@@ -437,7 +437,7 @@ export function createRide(deps: RideDeps) {
 		get target() {
 			return target;
 		},
-		/** The rider's own guard state — the room's clock is unaffected (#788). */
+		/** The rider's own guard state — the session's clock is unaffected (#788). */
 		get guard() {
 			return guardPhase;
 		},
@@ -449,7 +449,7 @@ export function createRide(deps: RideDeps) {
 			return spiralActive;
 		},
 		/**
-		 * The workout's own sprint block as a window (#2014). The room draws
+		 * The workout's own sprint block as a window (#2014). The session draws
 		 * and sounds it exactly as it does a coach's; the server's armed
 		 * sprint outranks it, since that is the one being scored.
 		 */

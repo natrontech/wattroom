@@ -30,7 +30,7 @@ describe('pairedElsewhere', () => {
 		).toBeUndefined();
 	});
 
-	it('is silent with no room connection at all', () => {
+	it('is silent with no voice channel connection at all', () => {
 		// The solo /ride and /ramp screens hold no socket and must keep their
 		// pair buttons.
 		expect(pairedElsewhere('trainer', undefined, 'desktop')).toBeUndefined();

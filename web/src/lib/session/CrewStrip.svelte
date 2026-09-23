@@ -1,8 +1,8 @@
 <script lang="ts">
 	// The crew under the focus slot (ADR-0020): a camera thumb and live watts,
-	// w/kg, rpm and bpm for everyone else in the room. A group-training surface
-	// that shows only your own numbers is a solo app with a chat window
-	// attached.
+	// w/kg, rpm and bpm for everyone else in the voice channel. A
+	// group-training surface that shows only your own numbers is a solo app
+	// with a chat window attached.
 	//
 	// Fixed-width thumbnails scrolling past the edge, never `flex-1` (#410): a
 	// tile that grows to fill turns one crewmate into a 16:9 slab and starves

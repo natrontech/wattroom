@@ -20,7 +20,7 @@
 		me,
 	}: {
 		game: GameState;
-		/** Names for ids — the tick's roster, or the room's riders (#1589). */
+		/** Names for ids — the tick's roster, or the channel's riders (#1589). */
 		roster: { id: string; name: string }[];
 		end: () => void;
 		canControl: boolean;
@@ -300,7 +300,7 @@
 			Sprint 5/3/2/1 · cleanest interval 3 · in-zone streak 1
 		</p>
 	{:else if game.mode === 'team-relay'}
-		<!-- Team Relay: one number the whole room owns. -->
+		<!-- Team Relay: one number the whole session owns. -->
 		<div class="mt-4 flex flex-wrap items-baseline gap-6">
 			<div>
 				<p class="eyebrow">on the front</p>

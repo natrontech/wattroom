@@ -4,9 +4,9 @@
 	/**
 	 * The trainer card's view-model, injected by whoever owns the trainer.
 	 *
-	 * Two owners, and they are not alike (#611): a room holds its connection
-	 * for as long as you stand in it (`TrainerOverview`), while the solo
-	 * one holds a trainer paired but not yet ridden
+	 * Two owners, and they are not alike (#611): a voice channel holds its
+	 * connection for as long as you stand in it (`TrainerOverview`), while
+	 * the solo one holds a trainer paired but not yet ridden
 	 * (`lib/ride/solo-trainer.svelte.ts`). Both live above the router, and so
 	 * do the three read-only sensors below the trainer — those are the same
 	 * singleton on every screen, so they stay wired inside this component.
@@ -60,7 +60,7 @@
 		 * it — "on your phone" (#610). A card with one shows that instead of
 		 * a pair button: the hub grants one screen per sensor and would
 		 * refuse a second. Empty on the solo pre-ride screens, which hold no
-		 * room socket and so have nothing to arbitrate.
+		 * voice channel socket and so have nothing to arbitrate.
 		 */
 		elsewhere?: Record<string, string>;
 		/**
@@ -68,7 +68,7 @@
 		 * writes its control point (#2075) — `trainerTargetsNote`. The same
 		 * claim `elsewhere.trainer` reports, said as the sentence a rider
 		 * reads, because "paired there" and "driven from there" are different
-		 * things to be told. Only a room knows it.
+		 * things to be told. Only a voice channel knows it.
 		 */
 		targetsNote?: string;
 		/** The trainer alone, as one row — a running session's header (#412). */
@@ -290,7 +290,7 @@
 			<p class="text-danger mt-2 text-xs">{trainer.error}</p>
 		{/if}
 		{#if trainer.onSimulate && !elsewhere.trainer}
-			<!-- Dev-only (#123): simulated watts in a live room would count for
+			<!-- Dev-only (#123): simulated watts in a live session would count for
 			     medals, XP and streaks — the fairness layer takes no fakes. Gone
 			     while another screen holds the trainer: the hub would take no
 			     samples from this one anyway (#610). -->

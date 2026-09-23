@@ -38,7 +38,7 @@ export interface RideDetail {
 	sharedWithFriends: boolean;
 	/** The ride's own power curve (SPEC), absent when none was stored. */
 	curve?: { best5s: number; best1m: number; best5m: number; best20m: number };
-	/** The room it was ridden in, or null for a solo ride. */
+	/** The room a ride from before channels (#2443) was ridden in; else null. */
 	room: { slug: string; name: string } | null;
 	/** Where it was ridden (#2443); absent for a solo ride. */
 	crew?: RidePlace;

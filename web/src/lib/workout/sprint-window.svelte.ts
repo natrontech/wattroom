@@ -18,7 +18,7 @@ export interface SprintClock {
 }
 
 /**
- * The sprint window as the room's SprintMoment reads it (#1793): the
+ * The sprint window as a session's SprintMoment reads it (#1793): the
  * sprint block under way, or the one starting within SPRINT_LEAD_SECONDS
  * so the screen counts it in, in the server clock's ms the moment reads.
  * Computed once per block rather than every tick, so "left" runs down

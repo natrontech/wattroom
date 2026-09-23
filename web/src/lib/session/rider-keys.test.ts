@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 /**
  * Display names are not unique (users.display_name carries no constraint),
  * and a keyed each over a rider's name throws `each_key_duplicate` the moment
- * two Daves share a room — in production builds too — tearing the surface
- * down mid-ride (audit 2026-09-09). TV mode and the execution meter were
- * keyed that way. Read from source, like stacking.test.ts: the key
+ * two Daves share a voice channel — in production builds too — tearing the
+ * surface down mid-ride (audit 2026-09-09). TV mode and the execution meter
+ * were keyed that way. Read from source, like stacking.test.ts: the key
  * expression is the thing, and no render exercises two riders with one name.
  */
 describe('rider each-blocks', () => {
@@ -19,9 +19,9 @@ describe('rider each-blocks', () => {
 		for (const file of readdirSync(root, { recursive: true })) {
 			const name = String(file);
 			if (!name.endsWith('.svelte')) continue;
-			// The dev galleries key static mocks by name — medals, rooms, glow
-			// samples — and two of them never share one; the rule is about
-			// riders in a real room.
+			// The dev galleries key static mocks by name — medals, trophies,
+			// glow samples — and two of them never share one; the rule is
+			// about riders in a real voice channel.
 			if (name.startsWith('routes/dev/')) continue;
 			const source = readFileSync(join(root, name), 'utf8');
 			for (const match of source.matchAll(

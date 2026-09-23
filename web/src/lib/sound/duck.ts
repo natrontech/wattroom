@@ -58,8 +58,8 @@ export function onDuck(listener: Listener): () => void {
 }
 
 /**
- * Is a voice going? One caller — the room connection, so that this follows
- * the connection rather than whichever page is mounted (#216).
+ * Is a voice going? One caller — the voice channel's connection, so that this
+ * follows the connection rather than whichever page is mounted (#216).
  *
  * Asking for a duck that is already on does nothing: re-triggering would
  * restart the attack ramp on every reading of a voice that has not stopped.

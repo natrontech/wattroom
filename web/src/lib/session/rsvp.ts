@@ -2,18 +2,18 @@
  * A planned session's answers (#1011).
  *
  * A rider still has two things to say — in, or out (docs/SPEC.md's glossary:
- * there is no maybe). The third state is the room not having heard from them,
+ * there is no maybe). The third state is the crew not having heard from them,
  * which is why it is stored as the absence of an answer and spelled `null`
  * here rather than as a word of its own.
  */
 export type RsvpAnswer = 'in' | 'out';
 
 export interface RsvpTally {
-	/** Named on screen — the room reads who is in. */
+	/** Named on screen — the crew reads who is in. */
 	in: number;
 	/** A NUMBER on screen, never a list: the count is what tells a planner
 	 *  whether to hold the session, and the names would only add pressure to
-	 *  a decision a rider already made. Rooms are small. */
+	 *  a decision a rider already made. Crews are small. */
 	out: number;
 	unanswered: number;
 }
@@ -28,7 +28,7 @@ export interface RsvpTally {
  * thing this line must never do.
  */
 export function rsvpSummary(tally: RsvpTally, whoIsIn = ''): string {
-	// Empty states teach rather than count (ux.md). A fresh plan in a room of
+	// Empty states teach rather than count (ux.md). A fresh plan in a crew of
 	// nine would otherwise open on "9 unanswered", which is a true sentence
 	// about nobody and says nothing about the buttons beside it.
 	if (tally.in === 0 && tally.out === 0) return 'nobody has answered yet';
@@ -43,7 +43,7 @@ export function rsvpSummary(tally: RsvpTally, whoIsIn = ''): string {
 	return parts.join(' · ');
 }
 
-/** A plan's answers as every schedule sends them — a room's and a crew's. */
+/** A plan's answers as the crew's schedule sends them. */
 export interface PlanAnswers {
 	/** Who said they are in, first to say so first. */
 	going?: { id: string; displayName: string }[];

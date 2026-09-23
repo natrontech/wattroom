@@ -2,7 +2,7 @@ import type { Metrics } from '$lib/ble/arbitrate';
 import type { RiderMetrics } from '$lib/protocol';
 
 /**
- * Build the sample that leaves this browser for the room, bar its seq — the
+ * Build the sample that leaves this browser for the session, bar its seq — the
  * socket session stamps that (#522), because the number is only meaningful
  * inside one stream and a fresh trainer pairing must not restart it.
  *
@@ -21,7 +21,7 @@ export function wireMetrics(
 		watts: Math.max(0, Math.round(metrics.watts)),
 		cadence: Math.max(0, Math.round(metrics.cadence)),
 		hr: shareHr ? Math.max(0, Math.round(metrics.heartRate ?? 0)) : 0,
-		// The trim on this rider's own targets, so the room scores the second
+		// The trim on this rider's own targets, so the hub scores the second
 		// against the plan they were actually on (#795). It rides every
 		// sample because bias moves mid-ride.
 		bias,

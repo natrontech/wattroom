@@ -143,7 +143,7 @@ describe('audition', () => {
 	});
 
 	// The tick outranks a preview: one rider is one voice, and a fire is the
-	// room's, not this machine's.
+	// channel's, not this machine's.
 	it('gives way to a fire from the same rider', async () => {
 		await preview('clip-a', ME);
 		await fire('clip-b', ME);
@@ -216,7 +216,7 @@ describe('stop', () => {
 		expect(started).toHaveLength(0);
 	});
 
-	it('leaving the room ends a play that is still loading too', async () => {
+	it('leaving the channel ends a play that is still loading too', async () => {
 		const pending = fire('clip-a', ME);
 		stopAll();
 		await pending;
@@ -236,7 +236,7 @@ describe('stop', () => {
 
 /**
  * The listener's half of a fire (#1681). A clip's trim, gain and fades used to
- * be read out of the firer's own library, which nobody else has — so the room
+ * be read out of the firer's own library, which nobody else has — so the channel
  * heard the whole uploaded source at raw level, and the rider who cut it was
  * the only person who heard the cut.
  */
@@ -272,7 +272,7 @@ describe('what a listener plays', () => {
 
 /**
  * Joining mid-clip (#1681). A fire is one tick and gone, so the roster carries
- * what each rider still has sounding and how far in the room already is.
+ * what each rider still has sounding and how far in the channel already is.
  */
 describe('catching up', () => {
 	it('starts what is left of a clip already running', async () => {
@@ -286,7 +286,7 @@ describe('catching up', () => {
 		expect(started).toEqual([{ start: 1, kept: 1.5 }]);
 	});
 
-	it('plays nothing for a clip the room has already finished', async () => {
+	it('plays nothing for a clip the channel has already finished', async () => {
 		served.set('clip-a', trim(0, 1000));
 		await catchUp('clip-a', 'rider-other', 2000);
 		expect(started).toHaveLength(0);
@@ -308,7 +308,7 @@ describe('catching up', () => {
 
 	// Nothing else would ever end it: a stop is a message from a socket that
 	// has gone.
-	it('stops a rider who left the room mid-clip', async () => {
+	it('stops a rider who left the channel mid-clip', async () => {
 		await fire('clip-a', 'rider-other');
 		await fire('clip-b', ME);
 		keepOnly([ME]);

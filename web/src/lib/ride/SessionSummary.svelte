@@ -45,9 +45,9 @@
 		medal?: Medal;
 		placeName?: string;
 		/**
-		 * Who rode it with you (#1559): the room's roster at the close. Absent
-		 * on a solo ride, and the card adapts rather than forking — solo and
-		 * room are one card (#1531).
+		 * Who rode it with you (#1559): the session's roster at the close.
+		 * Absent on a solo ride, and the card adapts rather than forking — solo
+		 * and session are one card (#1531).
 		 */
 		riders?: { id: string; name: string; execution?: number; you?: boolean }[];
 		actions?: Snippet;
