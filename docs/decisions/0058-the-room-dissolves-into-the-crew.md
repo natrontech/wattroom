@@ -400,3 +400,18 @@ session.
 **A phased move with rooms and channels side by side in production.** 0038's
 one-release argument, with more at stake: this time both permission models
 would be live at once.
+
+## Amendment — your pages in every column (2026-09-23, #2569, #2570)
+
+Decision 5 put Workouts, Rides, Music and Friends in the You mode only. In the
+running app this made them vanish the moment a rider stood in a crew, and the
+only way back was the switcher: _"I like it but I think it's not intuitive."_
+Now a crew's column ends with a folding **YOU** section, shaped like DIRECT
+MESSAGES, that lists them. The You mode keeps the personal Home and lists the
+same pages as its own. Opening one from a crew keeps that crew's column, so
+ADR-0020's rule 1 now reads: _in a crew's pages, that crew; on your Home, You;
+anywhere else, the crew you chose last._ Standing in a crew chooses it.
+
+The same review found the crew's Schedule, Workouts and Board built but never
+listed. The column now draws them in the order stated above (0020's
+amendment), and planning a session is reachable from the crew it belongs to.

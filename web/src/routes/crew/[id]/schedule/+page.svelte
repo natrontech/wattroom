@@ -43,7 +43,6 @@
 	} from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
 	import { formatWhen } from '$lib/format';
-	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import SessionPicker from '$lib/session/SessionPicker.svelte';
 	import {
@@ -99,9 +98,6 @@
 		if (version === seenVersion) return;
 		seenVersion = version;
 		if (untrack(() => crew)) void reload();
-	});
-	$effect(() => {
-		if (crew) chosenCrew.set(crew.id);
 	});
 
 	// Where a new plan goes: the crew's first voice channel, or none.

@@ -18,7 +18,6 @@
 		makeMainCrewFlow,
 		shareInviteLink,
 	} from '$lib/crew-flows';
-	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { shareVerb } from '$lib/share';
 	import Copy from '@lucide/svelte/icons/copy';
@@ -77,13 +76,6 @@
 		seenVersion = version;
 		const loaded = untrack(() => crew);
 		if (id && loaded) void load(id);
-	});
-
-	// The sidebar is in this crew while you are on its page (ADR-0020
-	// amended, rule 1): the header names where you are, not the crew you
-	// last picked.
-	$effect(() => {
-		if (crew) chosenCrew.set(crew.id);
 	});
 
 	const administers = $derived(

@@ -1,8 +1,8 @@
 <script lang="ts">
 	// ADR-0020's one sidebar: a mode at the top — You, or one of your crews
 	// (ADR-0058, #2447) — then that mode's pages (your own, or the crew's
-	// pages and its text and voice channels), your messages, and you pinned
-	// at the bottom. It replaced RoomRail, TopNav and MobileNav's destination
+	// pages and its text and voice channels, then YOU with yours, #2570),
+	// your messages, and you pinned at the bottom. It replaced RoomRail, TopNav and MobileNav's destination
 	// list — a destination has exactly one home.
 	//
 	// Names, not Discord's icon rail: icons exist because Discord has forty
@@ -28,8 +28,16 @@
 		unreadCount,
 	} from '$lib/messages/unread-marks';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { activeHref, crewOfPath, dmsCurrent, pages } from './pages';
-	import { readDmsFolded, rememberDmsFolded } from './folds';
+	import {
+		activeHref,
+		columnCrew,
+		crewOfPath,
+		dmsCurrent,
+		pages,
+		yourPages,
+	} from './pages';
+	import { readFolded, rememberFolded } from './folds';
+	import { untrack } from 'svelte';
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import StartOrJoin from '$lib/home/StartOrJoin.svelte';
@@ -55,17 +63,17 @@
 	// column and the Members page show you riding; the rail said "online".
 
 	const destination = $derived(activeHref(pathname));
-	// The mode follows where you stand (ADR-0020 rule 1, #2447): inside a
-	// crew's pages the column is that crew; on one of your own pages it is
-	// You, so the page always has its row; anywhere else it is the crew you
-	// chose last. Choosing goes somewhere — the crew's Home, or yours —
+	// The mode follows where you stand (ADR-0020 rule 1, #2447, #2570) — see
+	// `columnCrew`. Choosing goes somewhere — the crew's Home, or yours —
 	// because a mode the page then overrode would be a pick that did nothing.
 	const crews = $derived(presence.crews);
-	const crew = $derived.by(() => {
+	const crew = $derived(columnCrew(pathname, crews, chosenCrew.id));
+	// Standing in a crew chooses it, however you got there — a Walk in on
+	// Home, a notification — so stepping out to Workouts keeps its column.
+	$effect(() => {
 		const inCrew = crewOfPath(pathname);
-		if (inCrew) return crews.find((c) => c.id === inCrew) ?? null;
-		if (destination) return null;
-		return crews.find((c) => c.id === chosenCrew.id) ?? null;
+		if (inCrew && crews.some((c) => c.id === inCrew))
+			untrack(() => chosenCrew.set(inCrew));
 	});
 	function pick(id: string) {
 		chosenCrew.set(id);
@@ -85,14 +93,25 @@
 	// The direct-messages heading folds its list (#1359), remembered per
 	// device. Folded, the heading carries the unread dot itself: a message
 	// that arrived behind a fold is still announced (ux.md).
-	let dmsFolded = $state(readDmsFolded());
+	let dmsFolded = $state(readFolded('dms'));
 	const dmsUnread = $derived(
 		dmHeads.heads.some((head) => dmHeads.unread(head.peerId)),
 	);
 	function toggleDms() {
 		dmsFolded = !dmsFolded;
-		rememberDmsFolded(dmsFolded);
+		rememberFolded('dms', dmsFolded);
 	}
+	// YOU folds the same way (#2570), and answers for its rows the way the DM
+	// heading does when they are folded away: lit for the page, dotted for a
+	// friend waiting on you.
+	let youFolded = $state(readFolded('you'));
+	function toggleYou() {
+		youFolded = !youFolded;
+		rememberFolded('you', youFolded);
+	}
+	const youOn = $derived(
+		youFolded && yourPages.some((p) => p.href === destination),
+	);
 	// The heading is the lit row for the pages under it whose own row is not
 	// on screen to be lit (#1863) — see `dmsCurrent`. A shut fold draws no
 	// rows, and a thread reached by its link before the list lands, or one
@@ -107,6 +126,73 @@
 		),
 	);
 </script>
+
+{#snippet pageRow(entry: (typeof pages)[number])}
+	{@const on = destination === entry.href}
+	<!-- The one announceable thing with no home in the sidebar (#1010):
+	     a friend request announced itself once and then left no
+	     trace. It counted people waiting on you from a word in the
+	     messages eyebrow; now that Friends is a row, it counts them
+	     there (#1017). Visiting the page does not clear it —
+	     answering them does. -->
+	{@const waiting = entry.href === '/friends' ? friends.waiting : 0}
+	<li>
+		<a
+			href={entry.href}
+			aria-current={on ? 'page' : undefined}
+			title={waiting > 0 ? `${waiting} waiting for you to answer` : undefined}
+			class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
+				? 'bg-ink/10 text-ink'
+				: 'text-muted hover:bg-ink/5 hover:text-ink'}"
+		>
+			<entry.icon size={15} class="shrink-0" />
+			{entry.label}
+			{#if waiting > 0}
+				<span class="{UNREAD_COUNT} ml-auto">{unreadCount(waiting)}</span>
+			{/if}
+		</a>
+	</li>
+{/snippet}
+
+<!-- A section heading that folds its list (#1359): a chevron at the end of a
+     section heading says fold, not go — the crew switcher above taught that.
+     A button resets text-transform, so the eyebrow's uppercase is said again
+     here. Lit while you are on a page under it whose own row cannot say so
+     (#1863): the same fill and ink every current row in this column wears, so
+     "where am I" has one answer everywhere. Chrome, so `--color-ink` — never
+     watt, never a glow (ADR-0005). The padding against equal negative margins
+     does two jobs and moves the label by nothing: it puts the fill in the
+     destination rows' own box, and it takes the fold off a 15 px target, under
+     ux.md's 24 px floor (WCAG 2.2 SC 2.5.8), up to 27. Folded, it carries the
+     unread dot itself: something that arrived behind a fold is still
+     announced (ux.md). -->
+{#snippet foldHeading(
+	label: string,
+	folded: boolean,
+	toggle: () => void,
+	current: boolean,
+	dot: string | null,
+	what: string,
+)}
+	<div class="eyebrow flex items-center px-2 pt-4 pb-1">
+		<button
+			onclick={toggle}
+			aria-expanded={!folded}
+			aria-current={current ? 'page' : undefined}
+			class="-mx-2 -my-1.5 flex w-full items-center rounded px-2 py-1.5 text-left uppercase {current
+				? 'bg-ink/10 text-ink'
+				: 'hover:text-ink'}"
+			title={folded ? `show ${what}` : `hide ${what}`}
+			>{label}{#if folded && dot}<span class="{UNREAD_DOT} ml-2" title={dot}
+				></span>{/if}<ChevronRight
+				size={14}
+				class="-my-2 ml-auto shrink-0 transition-transform motion-reduce:transition-none {folded
+					? ''
+					: 'rotate-90'}"
+			/></button
+		>
+	</div>
+{/snippet}
 
 <!-- Resizable from its right edge, the way a voice channel's side panel is from
      its left (#427), and remembered per device (keepSize). Only on a desk:
@@ -156,37 +242,27 @@
 		{#if crew}
 			<!-- A crew's pages, its text channels, its voice channels (#2447). -->
 			<CrewColumn {crew} {pathname} />
+			<!-- Then yours (#2570): in the You mode they are the mode's own
+			     list, so they only need a section of their own in a crew's. -->
+			{@render foldHeading(
+				'you',
+				youFolded,
+				toggleYou,
+				youOn,
+				friends.waiting > 0 ? 'someone is waiting for you to answer' : null,
+				'your pages',
+			)}
+			{#if !youFolded}
+				<ul class="space-y-0.5 pb-2">
+					{#each yourPages as entry (entry.href)}
+						{@render pageRow(entry)}
+					{/each}
+				</ul>
+			{/if}
 		{:else}
 			<ul class="space-y-0.5">
 				{#each pages as entry (entry.href)}
-					{@const on = destination === entry.href}
-					<!-- The one announceable thing with no home in the sidebar (#1010):
-					     a friend request announced itself once and then left no
-					     trace. It counted people waiting on you from a word in the
-					     messages eyebrow; now that Friends is a row, it counts them
-					     there (#1017). Visiting the page does not clear it —
-					     answering them does. -->
-					{@const waiting = entry.href === '/friends' ? friends.waiting : 0}
-					<li>
-						<a
-							href={entry.href}
-							aria-current={on ? 'page' : undefined}
-							title={waiting > 0
-								? `${waiting} waiting for you to answer`
-								: undefined}
-							class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
-								? 'bg-ink/10 text-ink'
-								: 'text-muted hover:bg-ink/5 hover:text-ink'}"
-						>
-							<entry.icon size={15} class="shrink-0" />
-							{entry.label}
-							{#if waiting > 0}
-								<span class="{UNREAD_COUNT} ml-auto"
-									>{unreadCount(waiting)}</span
-								>
-							{/if}
-						</a>
-					</li>
+					{@render pageRow(entry)}
 				{/each}
 			</ul>
 
@@ -219,41 +295,14 @@
 		     rider reading "messages" over a column of faces could not tell
 		     them from the friends list or from who is in the voice channel
 		     with them. -->
-		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
-			<!-- The heading folds the list (#1359): a chevron at the end of a
-			     section heading says fold, not go — the crew switcher above
-			     taught that. A button resets text-transform, so the eyebrow's
-			     uppercase is said again here. /messages itself is reached below
-			     md, where the drawer's thread list stands in for this column. -->
-			<!-- Lit while you are on a page under it whose own row cannot say so
-			     (#1863): the same fill and ink every current row in this column
-			     wears, so "where am I" has one answer everywhere. Chrome, so
-			     `--color-ink` — never watt, never a glow (ADR-0005). The padding
-			     against equal negative margins does two jobs and moves the
-			     label by nothing: it puts the fill in the destination rows' own
-			     box, and it takes the fold off a 15 px target, under ux.md's
-			     24 px floor (WCAG 2.2 SC 2.5.8), up to 27. -->
-			<button
-				onclick={toggleDms}
-				aria-expanded={!dmsFolded}
-				aria-current={dmsOn ? 'page' : undefined}
-				class="-mx-2 -my-1.5 flex w-full items-center rounded px-2 py-1.5 text-left uppercase {dmsOn
-					? 'bg-ink/10 text-ink'
-					: 'hover:text-ink'}"
-				title={dmsFolded
-					? 'show your conversations'
-					: 'hide your conversations'}
-				>direct messages{#if dmsFolded && dmsUnread}<span
-						class="{UNREAD_DOT} ml-2"
-						title="someone wrote"
-					></span>{/if}<ChevronRight
-					size={14}
-					class="-my-2 ml-auto shrink-0 transition-transform motion-reduce:transition-none {dmsFolded
-						? ''
-						: 'rotate-90'}"
-				/></button
-			>
-		</div>
+		{@render foldHeading(
+			'direct messages',
+			dmsFolded,
+			toggleDms,
+			dmsOn,
+			dmsUnread ? 'someone wrote' : null,
+			'your conversations',
+		)}
 		{#if dmHeads.loaded && dmHeads.heads.length === 0 && !dmsFolded}
 			<!-- A heading over nothing taught nothing (#1819): the first thread
 			     starts on a friend's page. -->
