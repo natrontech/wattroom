@@ -1,4 +1,4 @@
-import type { RoomRider } from '$lib/channel/types';
+import type { LiveRider } from '$lib/channel/types';
 
 /**
  * Whose instrument the narrow Training surface shows (#412).
@@ -15,9 +15,9 @@ import type { RoomRider } from '$lib/channel/types';
  * than inventing a second "followed rider": one concept, one home.
  */
 export function followedRider(
-	riders: RoomRider[],
+	riders: LiveRider[],
 	focusId: string | null,
-): RoomRider | null {
+): LiveRider | null {
 	const tapped = riders.find((rider) => rider.id === focusId);
 	if (tapped) return tapped;
 	const you = riders.find((rider) => rider.you && rider.watts > 0);

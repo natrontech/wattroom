@@ -19,7 +19,7 @@
 	import { BOARD_MARK } from '$lib/channel/presence-marks';
 	import { rosterGroups } from '$lib/channel/roster';
 	import { statusOfRider } from '$lib/status';
-	import type { RoomMember, RoomRider } from '$lib/channel/types';
+	import type { RoomMember, LiveRider } from '$lib/channel/types';
 
 	// The room's people, in one column (ADR-0020). Discord's right column is
 	// WHO IS HERE; ours was chat alone, so the roster was legible only from
@@ -46,7 +46,7 @@
 	}: {
 		live: boolean;
 		/** Who is here (ADR-0020, #181 gap 3) — the roster owns the column. */
-		riders?: RoomRider[];
+		riders?: LiveRider[];
 		/**
 		 * Everyone in the room, connected or not. The tick's roster carries no
 		 * avatar and knows nothing of the members who are away, so the faces and
@@ -70,7 +70,7 @@
 	const groups = $derived(rosterGroups(live, riders, members));
 </script>
 
-{#snippet person(rider: RoomRider)}
+{#snippet person(rider: LiveRider)}
 	<!-- 44 px rows: a bike-side target for the row's own link and its menu. -->
 	<li
 		class="flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking

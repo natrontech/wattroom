@@ -75,9 +75,9 @@ import { toleranceBand } from '$lib/workout/guards';
 
 /** Shared by the ride screen's notch bar and TV mode's delta — same data, two distances. */
 
-export type { RoomRider as MockRider } from '$lib/channel/types';
+export type { LiveRider as MockRider } from '$lib/channel/types';
 export { targetState } from '$lib/channel/types';
-import type { RoomRider } from '$lib/channel/types';
+import type { LiveRider } from '$lib/channel/types';
 
 // Legacy shape retained for reference only.
 
@@ -316,7 +316,7 @@ export function createRoom() {
 	let block = $state<Block | null>(null);
 	let countdown = $state(COUNTDOWN);
 
-	const riders = $state<RoomRider[]>(
+	const riders = $state<LiveRider[]>(
 		SEEDS.map((s) => ({
 			id: s.id,
 			name: s.name,

@@ -22,7 +22,7 @@
 	} from '$lib/channel/presence-marks';
 	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
 	import type { Phase } from '$lib/channel/types';
-	import type { RoomMember, RoomRider, TileMetric } from '$lib/channel/types';
+	import type { RoomMember, LiveRider, TileMetric } from '$lib/channel/types';
 
 	let {
 		rider,
@@ -36,7 +36,7 @@
 		menu,
 		face,
 	}: {
-		rider: RoomRider;
+		rider: LiveRider;
 		phase: Phase;
 		stretch?: boolean;
 		/** Rider-chosen extras; watts is never optional. */

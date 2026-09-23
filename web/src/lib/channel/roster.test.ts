@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { rosterGroups } from './roster';
-import type { RoomMember, RoomRider } from '$lib/channel/types';
+import type { RoomMember, LiveRider } from '$lib/channel/types';
 
-const rider = (id: string, over: Partial<RoomRider> = {}): RoomRider =>
-	({ id, name: id, watts: 0, inVoice: false, ...over }) as RoomRider;
+const rider = (id: string, over: Partial<LiveRider> = {}): LiveRider =>
+	({ id, name: id, watts: 0, inVoice: false, ...over }) as LiveRider;
 const member = (id: string): RoomMember => ({ id, displayName: id });
 
 describe('rosterGroups', () => {

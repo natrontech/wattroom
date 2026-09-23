@@ -19,7 +19,7 @@
 	import { tokenDeclarations, type Theme } from '$lib/palette';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import RiderTile from '$lib/channel/RiderTile.svelte';
-	import type { RoomRider } from '$lib/channel/types';
+	import type { LiveRider } from '$lib/channel/types';
 	import type { Segment } from '$lib/workout/types';
 	import { APCA_MIN_LC } from '$lib/gate';
 	import { rampReadings, readings, ZONES, type Surface } from './gallery';
@@ -37,7 +37,7 @@
 		theme: Theme;
 		surface: Surface;
 		/** Live from the one shared mock room — every panel shows the same ride. */
-		riders: RoomRider[];
+		riders: LiveRider[];
 		segments: Segment[];
 		total: number;
 		elapsed: number;

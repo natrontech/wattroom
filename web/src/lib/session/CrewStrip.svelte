@@ -17,7 +17,7 @@
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
-	import type { RoomRider } from '$lib/channel/types';
+	import type { LiveRider } from '$lib/channel/types';
 
 	let {
 		riders,
@@ -25,7 +25,7 @@
 		onFollow,
 		pad = 'px-6',
 	}: {
-		riders: RoomRider[];
+		riders: LiveRider[];
 		/** Marked as the one the focus slot is showing — the phone's strip. */
 		followedId?: string | null;
 		/** Absent where the strip is presence only, as it is on the desktop. */
@@ -37,7 +37,7 @@
 	const channel = useChannel();
 </script>
 
-{#snippet tile(rider: RoomRider, followed: boolean)}
+{#snippet tile(rider: LiveRider, followed: boolean)}
 	{@const zone = zoneOf(rider.watts, rider.ftp)}
 	<div
 		class="bg-surface-raised relative aspect-video overflow-hidden rounded ring-1 {followed

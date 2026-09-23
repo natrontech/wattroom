@@ -5,7 +5,7 @@ import { toleranceBand } from '$lib/workout/guards';
  * designed components render, fed by live ticks instead of the mock generator.
  * The dev mock produces the same shape, which is what keeps /dev/room honest.
  */
-export interface RoomRider {
+export interface LiveRider {
 	id: string;
 	name: string;
 	ftp: number;
@@ -62,7 +62,7 @@ export const TILE_METRICS: { id: TileMetric; label: string }[] = [
 	{ id: 'wkg', label: 'w/kg' },
 ];
 
-export function targetState(rider: Pick<RoomRider, 'watts' | 'target'>) {
+export function targetState(rider: Pick<LiveRider, 'watts' | 'target'>) {
 	const has = rider.target > 0;
 	// One band, docs/SPEC.md's, shared with the scorer through the generated
 	// protocol (#2159). This file used to carry its own copy of the formula.

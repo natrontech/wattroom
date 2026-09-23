@@ -1,6 +1,6 @@
 import { isSounding } from '$lib/sound/board.svelte';
 import { describeBlock, type Block } from '$lib/workout/block';
-import type { RoomRider } from '$lib/channel/types';
+import type { LiveRider } from '$lib/channel/types';
 import { targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
 import type { ServerTick } from '$lib/protocol';
@@ -52,7 +52,7 @@ export function createRiders(deps: RiderDeps) {
 		return hue;
 	}
 
-	const riders = $derived.by((): RoomRider[] => {
+	const riders = $derived.by((): LiveRider[] => {
 		const tick = deps.live.tick;
 		if (!tick) return [];
 		const now = tick.at;
@@ -160,10 +160,10 @@ export function createRiders(deps: RiderDeps) {
 	);
 
 	return {
-		get riders(): RoomRider[] {
+		get riders(): LiveRider[] {
 			return riders;
 		},
-		get you(): RoomRider {
+		get you(): LiveRider {
 			return you;
 		},
 		get block(): Block | null {

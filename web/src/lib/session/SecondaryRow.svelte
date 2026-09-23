@@ -9,7 +9,7 @@
 	import Scale from '@lucide/svelte/icons/scale';
 	import Target from '@lucide/svelte/icons/target';
 
-	// Primitives, not a RoomRider: the solo ride and the ramp test have these
+	// Primitives, not a LiveRider: the solo ride and the ramp test have these
 	// numbers without a roster to belong to.
 	let {
 		cadence,

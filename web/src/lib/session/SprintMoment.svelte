@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { SprintState } from '$lib/protocol';
-	import type { RoomRider } from '$lib/channel/types';
+	import type { LiveRider } from '$lib/channel/types';
 	import { PLACES } from '$lib/session/podium';
 	import { serverNow } from '$lib/server-clock';
 	import { wkg } from '$lib/format';
@@ -17,7 +17,7 @@
 		sprint: SprintState;
 		myWatts: number;
 		/** The room, for the live standings — absent outside a room. */
-		roster?: RoomRider[];
+		roster?: LiveRider[];
 	} = $props();
 
 	// Ranked on w/kg, the fair ordering for mixed groups (docs/SPEC.md).

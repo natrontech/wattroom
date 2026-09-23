@@ -1,8 +1,8 @@
 <script lang="ts">
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import { type RoomRider, targetState } from '$lib/channel/types';
+	import { type LiveRider, targetState } from '$lib/channel/types';
 
-	let { riders }: { riders: RoomRider[] } = $props();
+	let { riders }: { riders: LiveRider[] } = $props();
 
 	/**
 	 * WATTROOM.md: the execution meter is the live version of the ride's score — the

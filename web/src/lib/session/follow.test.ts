@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { followedRider } from './follow';
-import type { RoomRider } from '$lib/channel/types';
+import type { LiveRider } from '$lib/channel/types';
 
-const rider = (id: string, over: Partial<RoomRider> = {}): RoomRider =>
-	({ id, name: id, watts: 0, ftp: 200, you: false, ...over }) as RoomRider;
+const rider = (id: string, over: Partial<LiveRider> = {}): LiveRider =>
+	({ id, name: id, watts: 0, ftp: 200, you: false, ...over }) as LiveRider;
 
 describe('followedRider', () => {
 	it('follows the rider you tapped', () => {

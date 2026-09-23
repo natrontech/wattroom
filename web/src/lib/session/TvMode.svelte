@@ -5,7 +5,7 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import { ZONE_BG, ZONE_TEXT, fillPct, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
-	import type { RoomRider } from '$lib/channel/types';
+	import type { LiveRider } from '$lib/channel/types';
 
 	let {
 		riders,
@@ -18,7 +18,7 @@
 		live = true,
 		code = '',
 	}: {
-		riders: RoomRider[];
+		riders: LiveRider[];
 		segments: import('$lib/workout/types').Segment[];
 		total: number;
 		elapsed: number;

@@ -2,7 +2,7 @@ import type { PlaceAddress } from '$lib/channel/address';
 import { getContext, setContext } from 'svelte';
 import type { Segment } from '$lib/workout/types';
 import type { Block } from '$lib/workout/block';
-import type { RoomRider } from '$lib/channel/types';
+import type { LiveRider } from '$lib/channel/types';
 import type { Announcement } from '$lib/channels';
 import type { BoardRow, Together } from '$lib/crew-types';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
@@ -35,8 +35,8 @@ export interface ChannelContext {
 	/** The crew's join code (#1236); '' for a non-member. */
 	readonly code: string;
 
-	readonly riders: RoomRider[];
-	readonly you: RoomRider;
+	readonly riders: LiveRider[];
+	readonly you: LiveRider;
 	readonly block: Block | null;
 	readonly segments: Segment[];
 	readonly shared:

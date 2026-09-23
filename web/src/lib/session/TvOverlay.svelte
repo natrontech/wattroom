@@ -6,7 +6,7 @@
 	import type { SprintState, GameState } from '$lib/protocol';
 	import { TV_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
 	import type { Block } from '$lib/workout/block';
-	import type { RoomRider } from '$lib/channel/types';
+	import type { LiveRider } from '$lib/channel/types';
 	import type { Segment } from '$lib/workout/types';
 	import type { Snippet } from 'svelte';
 
@@ -35,7 +35,7 @@
 		status,
 		onExit,
 	}: {
-		riders: RoomRider[];
+		riders: LiveRider[];
 		segments: Segment[];
 		total?: number;
 		elapsed?: number;
