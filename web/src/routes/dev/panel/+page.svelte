@@ -1,7 +1,8 @@
 <script lang="ts">
-	// MOCK (#504): four ways to arrange the room's right column, at true size.
-	// Today's column stacks roster + jukebox + chat in 320 px and each of the
-	// three fights the other two for height. Static data, no room state.
+	// MOCK (#504): four ways to arrange the voice channel's right column, at
+	// true size. The column #504 found stacked roster + jukebox + chat in
+	// 320 px, each of the three fighting the other two for height. Static data,
+	// no channel state.
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Bell from '@lucide/svelte/icons/bell';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';

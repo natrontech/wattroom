@@ -3,7 +3,7 @@
 	identities were never actually designed — solved for a contrast gate, never
 	looked at. This is where that design pass happens: the same deriveTheme()
 	pipeline, driven by controls instead of a code edit + reload, against the
-	same mock room the gallery uses.
+	same mock channel the gallery uses.
 
 	Two input layers, same as ThemeSpec itself: three hues derive every token,
 	and any token except the zone ramp (shared across themes by design,

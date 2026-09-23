@@ -1,6 +1,6 @@
 <script lang="ts">
-	// Three arrangements of "a board for a room and for a crew, holding pins,
-	// announcements and posts" (#2413), drawn side by side so the choice is
+	// Three arrangements of a board for a channel and for a crew, holding pins,
+	// announcements and posts (#2413), drawn side by side so the choice is
 	// made by looking rather than by argument. Mockups: nothing here is
 	// wired, and two of the three describe things that do not exist yet.
 	//

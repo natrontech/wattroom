@@ -36,13 +36,13 @@
 	}: {
 		theme: Theme;
 		surface: Surface;
-		/** Live from the one shared mock room — every panel shows the same ride. */
+		/** Live from the one shared mock channel — every panel shows the same ride. */
 		riders: LiveRider[];
 		segments: Segment[];
 		total: number;
 		elapsed: number;
 		medal: Medal;
-		/** Laptop width: the room is more often on one than on a desk monitor. */
+		/** Laptop width: a ride is more often on one than on a desk monitor. */
 		narrow?: boolean;
 	} = $props();
 
@@ -76,15 +76,16 @@
 	</p>
 
 	<div class="space-y-6 p-4">
-		<!-- 1. Chrome around live data: the rail the room lives in, next to the
-		     tile that carries the watts. ADR-0005's whole rule in one frame —
+		<!-- 1. Chrome around live data: the rail a session runs beside, next to
+		     the tile that carries the watts. ADR-0005's whole rule in one frame —
 		     neon structures the rail, watt burns on your own number. -->
 		<div>
 			<span class="eyebrow">the rail and a live tile</span>
 			<div class="mt-2 flex gap-3 overflow-x-auto">
-				<!-- Standing in one room while the other is riding: the open room
-				     carries neon's structural tint, the live one the watt radar
-				     line. Both accents doing their own job, in one frame. -->
+				<!-- Drawn when this rail listed rooms: standing in one while another
+				     rode, the open one carried neon's structural tint and the live
+				     one the watt radar line. The path below is still a room link,
+				     which lights no row now — the rail shows the crew chosen last. -->
 				<div
 					class="border-edge h-[26rem] shrink-0 overflow-hidden rounded-lg border"
 				>

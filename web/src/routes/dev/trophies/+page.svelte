@@ -1,6 +1,6 @@
 <script lang="ts">
 	// MOCK (#450): the trophy case, an achievement catalogue with the funny
-	// ones, XP sources, and a room event. Every number here is a PROPOSAL —
+	// ones, XP sources, and a crew event. Every number here is a PROPOSAL —
 	// docs/SPEC.md decides, never this file.
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Award from '@lucide/svelte/icons/award';

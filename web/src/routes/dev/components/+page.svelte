@@ -48,7 +48,7 @@
 		{ riderId: 'demo', name: 'You', wkg: 10.8, watts: 796 },
 	];
 
-	// Pins (ADR-0056). The real board is a room's place and talks to the
+	// Pins (ADR-0056). The real board is the crew's page and talks to the
 	// server; these two are local lists, because a gallery should not write
 	// to a crew — and because the empty state is a state the real board is
 	// only in once.

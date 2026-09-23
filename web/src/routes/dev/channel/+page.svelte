@@ -37,7 +37,7 @@
 
 	let tv = $state(false);
 	let stagePick = $state('screen:ada');
-	// Joining a real room waits on the WS handshake and LiveKit tracks; show that.
+	// Joining a real voice channel waits on the WS handshake and LiveKit tracks; show that.
 	let joining = $state(false);
 
 	// Cues follow state rather than clicks, which is the point: you are not watching.

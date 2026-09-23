@@ -4,7 +4,7 @@
 	legible, only a person can say "yes, that is Tron Ice". This page is where
 	that person looks.
 
-	One mock room drives every panel, so the eight themes are always showing
+	One mock channel drives every panel, so the eight themes are always showing
 	the same watts at the same second — a difference between two panels is a
 	difference between two palettes and nothing else.
 -->
@@ -22,7 +22,7 @@
 	});
 
 	/**
-	 * The room is more often on a laptop at arm's length than on a desk
+	 * A ride is more often on a laptop at arm's length than on a desk
 	 * monitor, and a palette that only survives at 1600 px has not survived.
 	 * A width, not a media query: the judging pass has to be able to flip
 	 * between the two without resizing the window it is taking notes in.

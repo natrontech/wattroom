@@ -173,7 +173,7 @@
 						>
 					</li>
 				</ul>
-				<!-- SPEC: category rises announce in the room; drops happen silently. -->
+				<!-- SPEC: category rises announce in the session; drops happen silently. -->
 				<div class="border-z4/40 bg-z4/10 mt-4 rounded border px-3 py-2">
 					<p class="text-z4 text-xs font-medium">
 						Category {ride.category.from} → {ride.category.to}

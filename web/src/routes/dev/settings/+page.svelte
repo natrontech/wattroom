@@ -2,7 +2,9 @@
 	import { play } from '$lib/sound/cues';
 	import { CHANNEL_NAME } from '../channel/mockChannel.svelte';
 
-	// docs/SPEC.md roles matrix: editing the room and assigning coach are owner-only.
+	// Drawn when coach was a role the owner handed out. docs/SPEC.md's roles
+	// matrix now gives editing the crew to its owner and admins, and coach is
+	// whoever runs a session — the member list below still shows the old role.
 	let name = $state(CHANNEL_NAME);
 	let pack = $state('base');
 	let confirmDelete = $state(false);
