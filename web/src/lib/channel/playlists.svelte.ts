@@ -138,7 +138,7 @@ export type PlaylistStore = ReturnType<typeof createPlaylistStore>;
 export interface SaveTarget {
 	id: string;
 	name: string;
-	kind: 'room' | 'mine';
+	kind: 'crew' | 'mine';
 }
 
 /**

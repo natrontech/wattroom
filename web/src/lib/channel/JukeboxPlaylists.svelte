@@ -12,14 +12,14 @@
 	// channel's setting and lives on the crew's Settings page (#1422, #2454).
 	let {
 		address,
-		roomStore,
+		crewStore,
 		mineStore,
 	}: {
 		/** Where the panel is open (#2449): a voice channel, whose shelf is
 		 *  its crew's. */
 		address: PlaceAddress;
 		/** Made by the column (#1427), which also saves rows into them. */
-		roomStore: ReturnType<typeof createPlaylistStore>;
+		crewStore: ReturnType<typeof createPlaylistStore>;
 		mineStore: ReturnType<typeof createPlaylistStore>;
 	} = $props();
 
@@ -30,8 +30,8 @@
 	const channel = useChannel();
 	const canManage = $derived(channel.canManage);
 
-	let tab = $state<'room' | 'mine'>('room');
-	const store = $derived(tab === 'room' ? roomStore : mineStore);
+	let tab = $state<'crew' | 'mine'>('crew');
+	const store = $derived(tab === 'crew' ? crewStore : mineStore);
 
 	let newName = $state('');
 	let creating = $state(false);
@@ -58,9 +58,9 @@
 	<div class="mt-2 flex gap-1.5" role="tablist">
 		<button
 			role="tab"
-			aria-selected={tab === 'room'}
-			onclick={() => (tab = 'room')}
-			class="btn btn-xs {tab === 'room' ? 'btn-secondary' : 'text-muted'}"
+			aria-selected={tab === 'crew'}
+			onclick={() => (tab = 'crew')}
+			class="btn btn-xs {tab === 'crew' ? 'btn-secondary' : 'text-muted'}"
 			>Crew</button
 		>
 		<button
@@ -84,7 +84,7 @@
 			</p>
 		{:else if store.all.length === 0}
 			<p class="text-muted text-[11px] leading-relaxed">
-				{tab === 'room'
+				{tab === 'crew'
 					? 'No crew playlists yet — the first one below is a click away.'
 					: "No personal playlists yet — yours to build, queueable in any room you're in."}
 			</p>
@@ -95,7 +95,7 @@
 						{playlist}
 						{store}
 						{address}
-						canManage={tab !== 'room' || canManage}
+						canManage={tab !== 'crew' || canManage}
 					/>
 				{/each}
 			</ul>
@@ -110,7 +110,7 @@
 		>
 			<input
 				bind:value={newName}
-				placeholder={tab === 'room'
+				placeholder={tab === 'crew'
 					? 'New room playlist…'
 					: 'New personal playlist…'}
 				class="input input-xs min-w-0 flex-1"

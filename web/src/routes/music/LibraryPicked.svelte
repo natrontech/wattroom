@@ -16,7 +16,7 @@
 		address = null,
 		channelName = '',
 		mine,
-		roomLists = null,
+		crewLists = null,
 		onDone,
 	}: {
 		picked: Track[];
@@ -24,7 +24,7 @@
 		address?: PlaceAddress | null;
 		channelName?: string;
 		mine: PlaylistStore;
-		roomLists?: PlaylistStore | null;
+		crewLists?: PlaylistStore | null;
 		/** Called once an action is through — the page drops the ticks. */
 		onDone: () => void;
 	} = $props();
@@ -53,7 +53,7 @@
 
 	async function saveSelected(targetId: string) {
 		const target = [
-			...(roomLists?.all ?? []).map((p) => ({ store: roomLists!, p })),
+			...(crewLists?.all ?? []).map((p) => ({ store: crewLists!, p })),
 			...mine.all.map((p) => ({ store: mine, p })),
 		].find(({ p }) => p.id === targetId);
 		if (!target || !picked.length) return;
@@ -92,14 +92,14 @@
 				><ListPlus size={13} /> Queue in {channelName}</button
 			>
 		{/if}
-		{#if (roomLists?.all.length ?? 0) + mine.all.length}
+		{#if (crewLists?.all.length ?? 0) + mine.all.length}
 			<div class="w-56">
 				<Select
 					label="save the picked tracks to"
 					value={saveTarget}
 					options={[
 						{ value: '', label: 'Save to…' },
-						...(roomLists?.all ?? []).map((p) => ({
+						...(crewLists?.all ?? []).map((p) => ({
 							value: p.id,
 							label: `${p.name} · ${channelName}`,
 						})),

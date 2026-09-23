@@ -167,7 +167,7 @@
 	// Save to a playlist (#1427): the rider's own lists always, the room's
 	// when they are standing in one. One line per list in the menu.
 	const mine = createPlaylistStore('/api/playlists');
-	const roomLists = $derived(
+	const crewLists = $derived(
 		room ? createPlaylistStore(room.address.playlists) : null,
 	);
 	function saveTo(
@@ -229,8 +229,8 @@
 				onSelect: () => queue(track),
 			});
 		const targets = [
-			...(roomLists?.all ?? []).map((p) => ({
-				store: roomLists!,
+			...(crewLists?.all ?? []).map((p) => ({
+				store: crewLists!,
 				p,
 				hint: channelName,
 			})),
@@ -305,7 +305,7 @@
 		address={room?.address}
 		{channelName}
 		{mine}
-		{roomLists}
+		{crewLists}
 		onDone={() => selected.clear()}
 	/>
 

@@ -72,13 +72,13 @@
 	// The stores live here, above both the rows that save into a list and
 	// the panel that shows the lists, so one fetch serves both. What a save
 	// then does, and says, is save-to-playlist.ts.
-	const roomStore = $derived.by(() => createPlaylistStore(address.playlists));
+	const crewStore = $derived.by(() => createPlaylistStore(address.playlists));
 	const mineStore = createPlaylistStore('/api/playlists');
 	const saveTargets = $derived<SaveTarget[]>([
-		...roomStore.all.map((p) => ({
+		...crewStore.all.map((p) => ({
 			id: p.id,
 			name: p.name,
-			kind: 'room' as const,
+			kind: 'crew' as const,
 		})),
 		...mineStore.all.map((p) => ({
 			id: p.id,
@@ -88,7 +88,7 @@
 	]);
 
 	const saveEntry = (entry: JukeboxEntry, target: SaveTarget) =>
-		saveEntryTo(target.kind === 'room' ? roomStore : mineStore, target, entry);
+		saveEntryTo(target.kind === 'crew' ? crewStore : mineStore, target, entry);
 
 	// The deck and everything behind it, as a new room playlist named for
 	// today.
@@ -97,7 +97,7 @@
 		const entries = [...(current ? [current] : []), ...queue];
 		if (!entries.length) return;
 		savingQueue = true;
-		await saveQueueAsPlaylist(roomStore, entries);
+		await saveQueueAsPlaylist(crewStore, entries);
 		savingQueue = false;
 	}
 
@@ -192,7 +192,7 @@
 
 	<!-- What is saved comes after what is live (#1423): the queue is what the
 	     room is about to hear; the playlists are where it can reach next. -->
-	<JukeboxPlaylists {address} {roomStore} {mineStore} />
+	<JukeboxPlaylists {address} {crewStore} {mineStore} />
 
 	{#if history.length}
 		<details class="min-w-0">
