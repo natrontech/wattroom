@@ -84,9 +84,22 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(/,
 	},
 	{
+		// #2530: the ask moved into the flow the text channel shares, so these
+		// rows watch each call site keep going through it, and the last one
+		// ties the flow to its own copy — crew-flows.ts holds three asks.
 		file: 'routes/crew/[id]/members/CrewPeople.svelte',
 		action: 'ban someone from the crew',
-		asks: /confirm\(/,
+		asks: /banFromCrewFlow\(/,
+	},
+	{
+		file: 'lib/messages/ChannelThread.svelte',
+		action: "ban a line's author from the crew",
+		asks: /banFromCrewFlow\(/,
+	},
+	{
+		file: 'lib/crew-flows.ts',
+		action: 'ban someone, from the flow both call sites share',
+		asks: /confirm\(\{\s*title: `Ban \$\{person\.displayName\} from the crew\?`/,
 	},
 	{
 		// #2095: it did ask, but through a bespoke `Modal` spelling the safe
