@@ -22,7 +22,7 @@
 	/**
 	 * The stage (#280): the one big surface, and the rider decides what is on
 	 * it. Many people can share at once, so the picker is the feature — plus
-	 * zoom, because a 1440p screenshare letterboxed into a room panel is
+	 * zoom, because a 1440p screenshare letterboxed into a side panel is
 	 * unreadable exactly when it matters (a chart, a route, a settings dialog).
 	 *
 	 * The frame is never resized from itself (#427). Either it fills the
@@ -89,7 +89,7 @@
 	// it until the first frame arrives.
 	//
 	// The guard is the point (#523). `trackKey` reaches us as a getter over a
-	// derived that the room rebuilds on every tick, so this effect re-runs
+	// derived that the shell rebuilds on every tick, so this effect re-runs
 	// about once a second — four times a second inside a sprint window — with
 	// the picture unchanged. Resetting on each of those runs zoomed a reading
 	// rider back out half a second after they zoomed in. Plain `let`: only the
@@ -174,7 +174,7 @@
 
 	/** Popped out (#280): the stage leaves the column and floats, Discord's
 	 * stream popout. Ephemeral like the source pick — a glance, not a setting.
-	 * Never for the jukebox: the room's video has one home per window width
+	 * Never for the jukebox: the jukebox's video has one home per window width
 	 * and a floating window is not one of them (#427). */
 	let popped = $state(false);
 	$effect(() => {
@@ -346,7 +346,7 @@
 		{/each}
 		<span class="text-muted-dim ml-auto text-[10px]"
 			>{seated
-				? 'the room is watching together'
+				? 'everyone is watching together'
 				: 'scroll to zoom · drag to pan'}{popped
 				? ' · drag the bar to move'
 				: ''}</span

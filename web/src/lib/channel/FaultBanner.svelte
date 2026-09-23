@@ -11,7 +11,7 @@
 		fault: Fault;
 		bufferedSeconds: number;
 		onRecover: () => void;
-		/** One more line the room knows and the fault does not (#1590). */
+		/** One more line the channel knows and the fault does not (#1590). */
 		note?: string;
 	} = $props();
 
@@ -51,7 +51,7 @@
 				? {
 						title: 'Voice dropped',
 						detail:
-							'Reconnecting the call — the room may not hear you right now. Your ride and metrics are unaffected.',
+							'Reconnecting the call — the others may not hear you right now. Your ride and metrics are unaffected.',
 					}
 				: {
 						title: "Voice didn't come back",
@@ -63,21 +63,21 @@
 			return {
 				title: 'Your microphone stopped',
 				detail:
-					'The browser lost the microphone — a headset unplugged, Bluetooth switching to its phone profile, or another app taking it. The room hears nothing from you; your ride is unaffected. Plug it back in and reconnect.',
+					'The browser lost the microphone — a headset unplugged, Bluetooth switching to its phone profile, or another app taking it. The call hears nothing from you; your ride is unaffected. Plug it back in and reconnect.',
 			};
 		}
 		if (fault.state === 'offline')
 			return {
 				title: 'Your connection dropped',
-				detail: `This device is offline, so the room can't hear from you. It rejoins by itself the moment your network is back — ${formatClock(bufferedSeconds)} of riding is stored here until then.`,
+				detail: `This device is offline, so the channel can't hear from you. It rejoins by itself the moment your network is back — ${formatClock(bufferedSeconds)} of riding is stored here until then.`,
 			};
 		return fault.state === 'reconnecting'
 			? {
-					title: 'Lost the room',
+					title: 'Lost the channel',
 					detail: `Reconnecting. ${formatClock(bufferedSeconds)} of riding is buffered on this device and will be sent when you're back.`,
 				}
 			: {
-					title: "Still can't reach the room",
+					title: "Still can't reach the channel",
 					detail: `Retrying every 10 seconds — or reconnect now if your network just came back. Your ride is safe: ${formatClock(bufferedSeconds)} is stored locally and uploads on reconnect. Voice and the shared timeline are offline.`,
 				};
 	});
@@ -94,7 +94,7 @@
 	never a transient toast. Recovery is automatic where it can be; the manual path
 	is one big button, because the rider is sweating three metres away.
 -->
-<!-- A lost trainer or room is an alert, not a status (#2179): "reconnecting"
+<!-- A lost trainer or channel is an alert, not a status (#2179): "reconnecting"
      is progress and waits its turn politely; "the trainer is gone, here is the
      button" is the one thing a rider on a bike needs read out now. Banner
      already splits the two by tone. -->

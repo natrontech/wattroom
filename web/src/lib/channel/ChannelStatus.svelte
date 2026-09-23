@@ -1,5 +1,5 @@
 <script lang="ts">
-	// Room-level status, ranked. It belongs to the shell rather than to a
+	// Channel-level status, ranked. It belongs to the shell rather than to a
 	// place — a dropped connection is true on every one of them, and
 	// errors.md wants it persistent rather than a toast a rider three metres
 	// from the screen will never see.
@@ -11,7 +11,7 @@
 	//
 	// Reads the connection rather than taking eight props: it is only ever
 	// rendered inside the shell, which has already joined, and this is the
-	// pattern the room's other components follow.
+	// pattern the channel's other components follow.
 	import Banner from '$lib/components/Banner.svelte';
 	import { device } from '$lib/device.svelte';
 	import FaultBanner from '$lib/channel/FaultBanner.svelte';
@@ -28,7 +28,7 @@
 	const rideCtl = $derived(connection?.ride);
 	const shared = $derived(connection?.shared());
 
-	// How long the buffer has been catching samples the room has not seen.
+	// How long the buffer has been catching samples the server has not seen.
 	// Its own state because nothing else needs it, and its own effect because
 	// the drop has to be stamped when it happens, not when it is rendered.
 	let droppedAt = $state<number | null>(null);
@@ -39,11 +39,11 @@
 </script>
 
 {#if connection && live && av && rideCtl}
-	<!-- Room-level status belongs to the shell, not to a place: a dropped
+	<!-- Channel-level status belongs to the shell, not to a place: a dropped
 	     connection is true on every one of them, and errors.md wants it
 	     persistent rather than a toast the rider will not see. -->
 	<!-- Reconnecting, not "not yet live": the first connect used to paint
-	     "Lost the room" on every entry, which trains riders to ignore the one
+	     the lost banner on every entry, which trains riders to ignore the one
 	     banner that must not be ignored (#1411). -->
 	{#if live.down}
 		{@const droppedFor = droppedAt
@@ -73,7 +73,7 @@
 			/>
 		</div>
 	{:else if rideCtl.guard !== 'running'}
-		<!-- The rider's own guard, in a room (#788): the group timeline runs
+		<!-- The rider's own guard, in a session (#788): the group timeline runs
 		     on without them, so nothing else on screen says why their
 		     target went to zero. Ranked above the trainer's own faults for
 		     the same reason auto-pause outranks everything solo — it is the
@@ -93,8 +93,8 @@
 					<p class="text-sm">
 						<span class="font-medium">Paused — you stopped pedalling.</span>
 						<span class="text-muted"
-							>Your targets are released; the room rides on. Start pedalling to
-							pick them back up.</span
+							>Your targets are released; the session rides on. Start pedalling
+							to pick them back up.</span
 						>
 					</p>
 				{/if}
@@ -102,7 +102,7 @@
 		</div>
 	{:else if rideCtl.spiralActive}
 		<!-- The spiral-of-death release (docs/SPEC.md), which solo explained
-		     and the room did not (audit 2026-09-09): the trainer just let go
+		     and a session did not (audit 2026-09-09): the trainer just let go
 		     mid-block, and without this line that is a dropout. -->
 		<div class="shrink-0 px-5 pt-4">
 			<div
@@ -121,7 +121,7 @@
 			</div>
 		</div>
 	{:else if rideCtl.fault}
-		<!-- The trainer's own state, which the room never showed (#520): the
+		<!-- The trainer's own state, which a session never showed (#520): the
 		     mock has simulated this banner since #39 and the product could
 		     not reach it, so "Unpair trainer" was the only thing a rider
 		     with no watts had to go on. Ranked above voice — a ride with no
@@ -158,7 +158,7 @@
 		</div>
 	{:else if av.status === 'live' && av.micFault}
 		<!-- The capture died under an open mic (#640): we publish our own
-		     WebAudio track, so LiveKit never notices and the room hears
+		     WebAudio track, so LiveKit never notices and the call hears
 		     silence with the icon still green. One big button back. -->
 		<div class="shrink-0 px-5 pt-4">
 			<FaultBanner
@@ -180,7 +180,7 @@
 			<Banner tone="error">
 				<p>
 					<span class="font-medium"
-						>The room came back without the session — the server restarted.</span
+						>The channel came back without the session — the server restarted.</span
 					>
 					<span class="text-muted"
 						>{live.lostSession.minutes} min of {live.lostSession.workoutName}
@@ -210,7 +210,7 @@
 					>
 					<span class="text-muted"
 						>Storage would not open — a private window, or site data switched
-						off. The room records and saves your ride as usual, but if the
+						off. The session records and saves your ride as usual, but if the
 						server restarts or this tab dies there will be nothing here to
 						recover.</span
 					>
@@ -254,7 +254,7 @@
 		     two taps deep behind the hamburger. -->
 		<div class="shrink-0 px-5 pt-4">
 			<Banner tone="warn">
-				You cannot hear the room — the browser is waiting for a tap.
+				You cannot hear the call — the browser is waiting for a tap.
 				{#snippet action()}
 					<button
 						onclick={() => void av.startPlayback()}

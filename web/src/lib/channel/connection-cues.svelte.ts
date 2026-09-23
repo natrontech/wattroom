@@ -58,12 +58,12 @@ export function connectionCues({
 		const arrived = roster.filter((rider) => !before.has(rider.id));
 		const at = live.tick?.at ?? Date.now();
 		if (arrived.length > 0) {
-			// Once per tag across tabs, and the room's name, not its slug.
+			// Once per tag across tabs, and the channel's name, not its slug.
 			if (!shouldAnnounce(`join-${address.key}-${at}`, at)) return;
 			play('join');
 			notify.push(
 				address.name,
-				`${arrived.map((rider) => rider.name).join(', ')} joined the room`,
+				`${arrived.map((rider) => rider.name).join(', ')} joined the channel`,
 				`join-${address.key}`,
 				{ href: address.home },
 			);
@@ -73,7 +73,7 @@ export function connectionCues({
 	});
 
 	// Stepping out is a door too (#906). An away rider stays in the
-	// roster, so the pair above never fires and a room of six can empty to
+	// roster, so the pair above never fires and a channel of six can empty to
 	// one in silence — the mark on their tile is on a screen nobody on a
 	// bike is reading (ux.md). The same two cues a fifth down: the same
 	// event, one layer in, and less final than actually leaving.
@@ -81,7 +81,7 @@ export function connectionCues({
 	// Your own press is deliberately not special-cased: it arrives here
 	// after `av.setAway` has already muted this device (#875), so going
 	// away is silent — you pressed the button — and coming back is the
-	// first thing you hear, which is the proof the room's sound is back.
+	// first thing you hear, which is the proof the sound is back.
 	let knownAway: Map<string, boolean> | null = null;
 	$effect(() => {
 		const roster = live.tick?.roster;
@@ -106,8 +106,8 @@ export function connectionCues({
 
 	// The voice channel says who arrived (#854). LiveKit chimes for
 	// nobody, so a rider joined the call and you found out when they
-	// spoke — or you did not. The room's own join/leave cannot stand in:
-	// entering the room and entering the call are often hours apart.
+	// spoke — or you did not. The channel's own join/leave cannot stand in:
+	// opening the channel and entering the call are often hours apart.
 	//
 	// `tick.voice` and not `av.voice`: a client learns the roster from
 	// LiveKit only once it has joined itself, so the local view of an
@@ -115,12 +115,12 @@ export function connectionCues({
 	// entered yet (protocol.go). The server's webhook answer is the only
 	// one true for a rider who has not pressed Join.
 	//
-	// Pitched up a fifth: the same event as arriving in the room, one
+	// Pitched up a fifth: the same event as arriving in the channel, one
 	// layer in, and siblings should sound like siblings.
 	let knownVoice: Set<string> | null = null;
 	$effect(() => {
 		const voice = live.tick?.voice;
-		// A dropped room stops the ticks, so the roster on the other side
+		// A dropped connection stops the ticks, so the roster on the other side
 		// of a reconnect is a fresh observation, not a change — without
 		// this, coming back announces the whole outage in one burst.
 		if (live.status !== 'live' || !voice) {
@@ -138,8 +138,8 @@ export function connectionCues({
 	// Someone else's screen appearing announces itself (#664): while the
 	// jukebox plays the stage stays on the music, so the share was one chip
 	// in a picker nobody on a bike is watching. A local timeline line and
-	// the join cue — something arrived in the room — through the mixer like
-	// every other cue. Only while voice is live: a drop empties the list,
+	// the join cue — something arrived in the channel — through the mixer
+	// like every other cue. Only while voice is live: a drop empties the list,
 	// and every share would otherwise read as ended.
 	let knownScreens = new Set<string>();
 	$effect(() => {
@@ -166,9 +166,9 @@ export function connectionCues({
 
 	// A DM arriving while this rider is mid-ride (#1743). The toast it
 	// replaces was the only thing on the Training screen that moved and
-	// was not data; the line lands in the room's timeline instead, where
+	// was not data; the line lands in the channel's timeline instead, where
 	// "what did I miss" is already answered — local-only and never sent
-	// (ADR-0022), so a private message reaches nobody else in the room.
+	// (ADR-0022), so a private message reaches nobody else in the channel.
 	//
 	// Running or paused, not merely countdown: the count-in is a rider
 	// still walking back to the bike, and auto-pause is a rider reaching
@@ -195,7 +195,7 @@ export function connectionCues({
 		announcePoke(poke, address.key, address.name, address.home);
 	});
 
-	// Room audio follows the connection, not the page (#216): the gate
+	// The channel's audio follows the connection, not the page (#216): the gate
 	// threshold doubles while the jukebox plays, and cues duck under a
 	// voice — wherever in the app you are standing.
 	$effect(() => {

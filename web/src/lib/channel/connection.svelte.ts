@@ -17,13 +17,13 @@ import { listening } from '$lib/channel/listening.svelte';
 import { onPlacePath, type PlaceAddress } from '$lib/channel/address';
 
 /**
- * The room you are IN (#173, ADR-0010's logical end): joining is a STATE,
- * not a page. The WS presence and the voice connection live here, above the
- * router — open /workouts, run a ramp test, ride solo, and you are still in
- * your room, exactly like idling in a Discord server. Leaving is an
- * explicit act, never a navigation side-effect.
+ * The voice channel you are IN (#173, ADR-0010's logical end): joining is a
+ * STATE, not a page. The WS presence and the voice connection live here,
+ * above the router — open /workouts, run a ramp test, ride solo, and you are
+ * still in your voice channel, exactly like idling in a Discord server.
+ * Leaving is an explicit act, never a navigation side-effect.
  *
- * One room at a time: joining another leaves the first — you cannot stand
+ * One channel at a time: joining another leaves the first — you cannot stand
  * in two lounges.
  */
 type Connection = {
@@ -52,12 +52,12 @@ type Connection = {
 
 let current = $state<Connection | null>(null);
 
-// The AV half loads with the room, not with the shell (#1514): av.svelte.ts
+// The AV half loads with the channel, not with the shell (#1514): av.svelte.ts
 // and what it pulls — device choices, the mic chain, the stage — were the
 // biggest thing the root layout's closure carried for routes that never join
-// a room. The room layout's load awaits prepareChannelAv() before the shell
-// mounts, so join() stays synchronous for everything that reads the
-// connection the moment it exists.
+// a channel. The voice channel's and the session's layouts await
+// prepareChannelAv() before the shell mounts, so join() stays synchronous
+// for everything that reads the connection the moment it exists.
 type ChannelAv = ReturnType<
 	typeof import('$lib/channel/av.svelte').createChannelAv
 >;
@@ -70,7 +70,7 @@ export async function prepareChannelAv(): Promise<void> {
 function connect(address: PlaceAddress): Connection {
 	if (!createChannelAv) {
 		throw new Error(
-			'the room AV is not loaded — the room layout prepares it before the shell joins',
+			'the channel AV is not loaded — the channel layout prepares it before the shell joins',
 		);
 	}
 	const live = createChannelLive(address);
@@ -98,20 +98,20 @@ function connect(address: PlaceAddress): Connection {
 
 	const dispose = $effect.root(() => {
 		// The trainer belongs to the connection, not to a page (#521). It is a
-		// property of standing in the room, exactly like the socket and the
-		// voice channel — and the room's shell unmounting on the way to
-		// /workouts used to disconnect it while you were still in the room.
+		// property of standing in the channel, exactly like the socket and the
+		// call — and the channel's shell unmounting on the way to /workouts
+		// used to disconnect it while you were still in the channel.
 		//
 		// It also gives the metrics stream one `seq` per session (#522): a
 		// per-mount counter restarted at 1, and the server's ride record
-		// dedupes by seq, so every sample after a return to the room was
+		// dedupes by seq, so every sample after a return to the channel was
 		// dropped as a duplicate. The tiles kept moving, which is why it read
 		// as half-working; the execution meter and the saved ride did not.
 		profile = createProfileStore();
 		recording = createRecording();
 		// The account is the truth for FTP and weight (ADR-0009). The root
 		// layout pulls on boot; a connection that outlives many pages has to
-		// pull too, or a ramp-measured FTP never reaches the room's targets.
+		// pull too, or a ramp-measured FTP never reaches the session's targets.
 		$effect(() => {
 			if (account.me) pullProfile(profile);
 		});
@@ -132,7 +132,7 @@ function connect(address: PlaceAddress): Connection {
 		});
 
 		// One sensor, one screen (#610). The claim belongs to the CONNECTION
-		// for the same reason the trainer does: it has to survive the room's
+		// for the same reason the trainer does: it has to survive the channel's
 		// shell unmounting on the way to another page, or a walk to /workouts
 		// would hand the rider's own trainer back to their phone.
 		$effect(() => {
@@ -150,7 +150,7 @@ function connect(address: PlaceAddress): Connection {
 		// already in flight still carries the OLD value. Applying it ran the
 		// come-back branch a fifth of a second after the rider pressed Away:
 		// the mix unmuted and the mic re-opened itself, so the button read as
-		// doing nothing while the room went on hearing them.
+		// doing nothing while the call went on hearing them.
 		//
 		// So a press records what it is waiting for, and the roster is ignored
 		// until it agrees — bounded, so a message the server never answers
@@ -234,7 +234,7 @@ function connect(address: PlaceAddress): Connection {
 		 * You stepped out, or came back (#706). Local AV moves at once; the hub
 		 * message makes the same state reach this rider's other screens and
 		 * everyone watching. One home for the pair (#807) — the button that
-		 * sends it now lives in the sidebar, which has no room context.
+		 * sends it now lives in the sidebar, which has no channel context.
 		 */
 		setAway(next: boolean, reason = '') {
 			// What we are waiting for the server to echo (#1128), so the tick
@@ -281,7 +281,7 @@ export const channelConnection = {
 	 * explicit act — they just pressed Leave, so it goes quietly. Anything
 	 * else happened TO them, and a rider three metres from the screen learns
 	 * about it by ear or not at all (ux.md): #850 is what one silent drop
-	 * cost, a session that expired mid-click taking the room with it and
+	 * cost, a session that expired mid-click taking the channel with it and
 	 * nobody noticing. There is no dashboard left to hold a persistent
 	 * status, so the toast carries the way back in.
 	 */
@@ -295,14 +295,14 @@ export const channelConnection = {
 		current.dispose();
 		current.live.close();
 		current.av.leave();
-		// Being out of the music is for this room, this sitting (#1898): the
-		// next room's dock must not open on "the room is listening" with the
-		// player unloaded.
+		// Being out of the music is for this channel, this sitting (#1898): the
+		// next channel's dock must not open on "everyone else is listening" with
+		// the player unloaded.
 		listening.rejoin();
 		current = null;
 		if (reason === 'rider') return;
 		// The leave cue, not the fault buzz: the sound already means "someone
-		// is out of the room", and an error-toned toast would sound its own.
+		// is out of the channel", and an error-toned toast would sound its own.
 		play('leave');
 		toasts.push(`Your session ended — you left ${name}.`, {
 			href: address.home,
