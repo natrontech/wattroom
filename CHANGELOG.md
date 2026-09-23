@@ -17,6 +17,22 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.132] - 2026-09-23
+
+### Added
+
+- A crew's Workouts page shows what the crew rode together over the last 90
+  days: sessions, workouts, hours together and how many you rode. Each
+  workout gets a card with its interval graph and who rode it, and opens to
+  its past sessions.
+
+### Changed
+
+- The YOU section in a crew's sidebar is gone again, so Workouts is no longer
+  listed twice. Your Workouts, Rides, Music and Friends are under You, and
+  clicking your name at the bottom of the sidebar takes you there from any
+  crew.
+
 ## [2026.09.131] - 2026-09-23
 
 ### Fixed
@@ -2781,7 +2797,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.131...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.132...HEAD
+[2026.09.132]: https://github.com/natrontech/wattroom/compare/2026.09.131...2026.09.132
 [2026.09.131]: https://github.com/natrontech/wattroom/compare/2026.09.130...2026.09.131
 [2026.09.130]: https://github.com/natrontech/wattroom/compare/2026.09.129...2026.09.130
 [2026.09.129]: https://github.com/natrontech/wattroom/compare/2026.09.128...2026.09.129
