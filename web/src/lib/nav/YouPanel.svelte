@@ -15,6 +15,9 @@
 	} from '$lib/context-menu.svelte';
 	import { activeHref } from '$lib/nav/pages';
 	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
+	import { changelog } from '$lib/changelog.svelte';
+	import { friends } from '$lib/friends/friends.svelte';
+	import { UNREAD_DOT } from '$lib/messages/unread-marks';
 	import { youMenu } from '$lib/nav/you-menu';
 	import { micMenu } from '$lib/channel/mic-menu';
 	import { channelConnection } from '$lib/channel/connection.svelte';
@@ -98,6 +101,23 @@
 		}));
 
 	const destination = $derived(activeHref(pathname));
+	// Your Home has news (#2586): WattRoom opens in your crew now, so the
+	// card that opens You says when there is something there — a friend
+	// waiting on your answer, a release you have not seen. Not on Home,
+	// which shows both itself.
+	void changelog.load();
+	const news = $derived(
+		pathname === '/home'
+			? ''
+			: [
+					friends.waiting > 0
+						? `${friends.waiting} waiting for you to answer`
+						: '',
+					changelog.unseen ? `new in ${changelog.unseen.version}` : '',
+				]
+					.filter(Boolean)
+					.join(' · '),
+	);
 	// The dot on your own avatar: away is yours to set, riding is the voice
 	// channel's to report (#1016).
 	const myStatus = $derived(
@@ -133,13 +153,23 @@
 			class="hover:bg-ink/5 mr-auto -ml-1 flex min-w-0 items-center gap-2 rounded py-0.5 pr-2 pl-1"
 			title="you — your own Home, workouts, rides and music"
 		>
-			<Avatar
-				name={account.me?.displayName ?? ''}
-				avatarUrl={account.me?.avatarUrl}
-				xp={account.me?.totalXp}
-				status={myStatus}
-				size={26}
-			/>
+			<span class="relative shrink-0">
+				<Avatar
+					name={account.me?.displayName ?? ''}
+					avatarUrl={account.me?.avatarUrl}
+					xp={account.me?.totalXp}
+					status={myStatus}
+					size={26}
+				/>
+				{#if news}
+					<span
+						class="{UNREAD_DOT} ring-surface absolute -top-0.5 -right-0.5 ring-2"
+						title={news}
+						data-testid="you-news"
+					></span>
+					<span class="sr-only">{news}</span>
+				{/if}
+			</span>
 			<span class="min-w-0">
 				<span class="block truncate text-xs font-medium"
 					>{account.me?.displayName ?? ''}</span

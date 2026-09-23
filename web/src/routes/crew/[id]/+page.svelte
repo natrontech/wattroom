@@ -10,6 +10,7 @@
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import CrewNow from './CrewNow.svelte';
+	import YourWeek from './YourWeek.svelte';
 	import { fetchCrew, type Crew } from '$lib/crew';
 	import {
 		leaveCrewFlow,
@@ -197,6 +198,7 @@
 			</p>
 		{/if}
 
+		<YourWeek />
 		<CrewNow {crew} />
 		<!-- The people, their roles, the board and the crew's sessions have one
 		     home since #2453: the Members page. -->

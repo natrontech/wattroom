@@ -6,10 +6,10 @@
 	import { account, unchosen } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { presence } from '$lib/presence.svelte';
-	import { friendPlace, friends } from '$lib/friends/friends.svelte';
-	import { placePath } from '$lib/whereabouts';
+	import { friends, friendsAround } from '$lib/friends/friends.svelte';
+	import FriendsAround from '$lib/friends/FriendsAround.svelte';
+	import { weekTotals } from '$lib/ride/week';
 	import { revealCrews } from '$lib/home/reveal';
-	import { statusOf } from '$lib/status';
 	import { page } from '$app/state';
 	import StartOrJoin from '$lib/home/StartOrJoin.svelte';
 	import AroundNow from '$lib/home/AroundNow.svelte';
@@ -21,7 +21,6 @@
 	import { leadsWithJoining } from '$lib/nav/crews';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
-	import Avatar from '$lib/components/Avatar.svelte';
 	import MarkIcon from '$lib/components/MarkIcon.svelte';
 	import { fetchProgression, type LoadSummary } from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
@@ -103,11 +102,7 @@
 	// The friends the app already keeps (#1740): this page used to fetch its
 	// own copy on every ping — and filter it on a status the server never
 	// sends, so the row never rendered for anyone.
-	const friendsOnline = $derived(
-		(friends.list ?? []).filter(
-			(f) => f.status === 'accepted' && (f.online || f.inVoice),
-		),
-	);
+	const friendsOnline = $derived(friendsAround(friends.list ?? []));
 
 	const recent = $derived((rides ?? []).slice(0, 3));
 	// Sent to a door and not through it: the one predicate the button's word,
@@ -179,19 +174,7 @@
 			};
 		return null;
 	});
-	const week = $derived.by(() => {
-		const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
-		const recent = (rides ?? []).filter(
-			(ride) => Date.parse(ride.startedAt) > cutoff,
-		);
-		return {
-			count: recent.length,
-			minutes: Math.round(
-				recent.reduce((sum, ride) => sum + ride.seconds, 0) / 60,
-			),
-			kj: Math.round(recent.reduce((sum, ride) => sum + ride.kj, 0)),
-		};
-	});
+	const week = $derived(weekTotals(rides ?? []));
 
 	// A deep link to the forms — the directory's empty state, a shared
 	// /home#crews — lands on them once the page is up (#1199).
@@ -384,37 +367,7 @@
 					<h2 class="eyebrow">Around right now</h2>
 					<AroundNow />
 					{#if friendsOnline.length > 0}
-						<ul class="mt-3 flex flex-wrap gap-2">
-							{#each friendsOnline as friend (friend.id)}
-								<li>
-									<a
-										href={friend.channel
-											? placePath(friend.channel)
-											: `/messages/dm/${friend.id}`}
-										class="panel hover:border-muted/40 flex items-center gap-2 px-2.5 py-1.5 text-xs"
-										title={friendPlace(friend)}
-									>
-										<!-- The badge Avatar draws, from the one vocabulary
-										     (#807, $lib/status) — not a mark of this row's
-										     own. Home drew RidingBars for anyone `inRoom`,
-										     and those bars say "riding now" to the eye and
-										     to a screen reader, so a friend chatting in a
-										     room was reported as pedalling while the
-										     Friends page called the same person "in a
-										     room". ADR-0012: presence never implies watts
-										     (#2168). -->
-										<Avatar
-											name={friend.name}
-											avatarUrl={friend.avatarUrl}
-											xp={friend.totalXp}
-											status={statusOf(crewLive.crews, friend.id, friends.list)}
-											size={20}
-										/>
-										<span class="font-medium">{friend.name}</span>
-									</a>
-								</li>
-							{/each}
-						</ul>
+						<div class="mt-3"><FriendsAround list={friendsOnline} /></div>
 					{/if}
 				</section>
 
