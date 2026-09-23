@@ -24,7 +24,7 @@
 		shareInviteLink,
 	} from '$lib/crew-flows';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
-	import type { RoomCrew } from '$lib/room/room-data';
+	import type { CrewRef } from '$lib/crew-types';
 	import { shareVerb } from '$lib/share';
 	import { quiet } from './crews';
 	import { crewLive, livePulse } from './crew-live.svelte';
@@ -48,9 +48,9 @@
 		onpick,
 	}: {
 		/** Every crew the rider is in, once each. */
-		crews: RoomCrew[];
+		crews: CrewRef[];
 		/** The one on screen; null is You. */
-		crew: RoomCrew | null;
+		crew: CrewRef | null;
 		/** The rider chose a crew, or 'you'. */
 		onpick: (id: string) => void;
 	} = $props();
@@ -67,7 +67,7 @@
 	// says the rest.
 	// ...and which one is the main crew (#2144): the one the sidebar opens
 	// in on every device.
-	function crewLine(c: RoomCrew): string {
+	function crewLine(c: CrewRef): string {
 		const n = crewLive.crew(c.id)?.channels.length ?? 0;
 		const count = n === 1 ? '1 channel' : `${n} channels`;
 		return c.id === account.me?.homeCrewId ? `${count} · main` : count;
@@ -75,7 +75,7 @@
 	// The crew's menu (#1257, ux.md): everything about the crew that is a
 	// page or two away, from the row that names it. The click stays the
 	// primary action; nothing here lives only in the menu.
-	function crewEntries(c: RoomCrew): MenuEntry[] {
+	function crewEntries(c: CrewRef): MenuEntry[] {
 		const entries: MenuEntry[] = [
 			{
 				label: 'Members',
@@ -151,7 +151,7 @@
      expands the crews in place, plain rows at the same indentation;
      nothing floats, nothing is rounded, nothing is inset. -->
 <div class="px-2 pt-2" bind:this={header}>
-	{#snippet crewRow(c: RoomCrew)}
+	{#snippet crewRow(c: CrewRef)}
 		<CrewMark name={c.name} icon={c.icon} imageUrl={c.imageUrl} size={24} />
 		<span
 			class="font-display min-w-0 flex-1 truncate text-[15px] leading-5 font-bold"

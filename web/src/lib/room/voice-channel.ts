@@ -7,7 +7,7 @@ import {
 	type CrewMembers,
 } from '$lib/crew';
 import type { LiveSession } from '$lib/protocol';
-import type { Announcement } from '$lib/room/room-data';
+import type { Announcement } from '$lib/channels';
 
 /**
  * What a voice channel's page needs (#2449): the channel, its crew, the

@@ -8,7 +8,7 @@
 	// Nothing here composes one. The coach marks a line in chat — the menu
 	// item lives on the message, where the sentence already is.
 	import { formatWhen } from '$lib/format';
-	import type { Announcement } from '$lib/room/room-data';
+	import type { Announcement } from '$lib/channels';
 	import Megaphone from '@lucide/svelte/icons/megaphone';
 	import X from '@lucide/svelte/icons/x';
 

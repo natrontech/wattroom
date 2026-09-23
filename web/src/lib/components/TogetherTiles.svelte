@@ -3,7 +3,7 @@
 	// together, its streak, its sessions against its own last month, and the
 	// viewer's own turnout — the crew's Members page and, until the room goes
 	// (#2460), a room's Lounge. Sums and your own dots; nobody is ordered here.
-	import type { Together } from '$lib/room/room-data';
+	import type { Together } from '$lib/crew-types';
 
 	let {
 		together,

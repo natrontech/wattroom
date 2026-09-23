@@ -25,7 +25,7 @@
 		whoIsInOf,
 		type RsvpAnswer,
 	} from '$lib/room/rsvp';
-	import type { Together } from '$lib/room/room-data';
+	import type { Together } from '$lib/crew-types';
 	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';
 

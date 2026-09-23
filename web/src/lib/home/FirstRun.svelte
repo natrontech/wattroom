@@ -11,7 +11,7 @@
 	import { account, unchosen } from '$lib/account.svelte';
 	import { fetchCrew } from '$lib/crew';
 	import FtpAsk from '$lib/home/FtpAsk.svelte';
-	import type { RoomCrew } from '$lib/room/room-data';
+	import type { CrewRef } from '$lib/crew-types';
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 
@@ -31,7 +31,7 @@
 		ridden,
 	}: {
 		/** The rider's own crew — null until the room list has landed. */
-		crew: RoomCrew | null;
+		crew: CrewRef | null;
 		/** Any ride on the account: the trainer was paired, or simulated. */
 		ridden: boolean;
 	} = $props();

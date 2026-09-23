@@ -17,7 +17,7 @@
 	} from '$lib/context-menu.svelte';
 	import { device } from '$lib/device.svelte';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
-	import type { RoomCrew } from '$lib/room/room-data';
+	import type { CrewRef } from '$lib/crew-types';
 	import { sessionPath } from '$lib/room/address';
 	import { toasts } from '$lib/toast.svelte';
 	import Hash from '@lucide/svelte/icons/hash';
@@ -35,7 +35,7 @@
 	import { crewPlaces } from './pages';
 	import { railPeople } from './rail-people';
 
-	let { crew, pathname }: { crew: RoomCrew; pathname: string } = $props();
+	let { crew, pathname }: { crew: CrewRef; pathname: string } = $props();
 
 	const admin = $derived(crew.role === 'owner' || crew.role === 'admin');
 	const places = $derived(crewPlaces(crew.id, admin, device.narrow));

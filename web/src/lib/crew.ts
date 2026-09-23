@@ -1,11 +1,6 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
 import type { SessionRecap } from '$lib/protocol';
-import type {
-	BoardRow,
-	RiderPrefs,
-	RoomCrew,
-	Together,
-} from '$lib/room/room-data';
+import type { BoardRow, CrewRef, RiderPrefs, Together } from '$lib/crew-types';
 
 /**
  * The crew's own surface (ADR-0038): identity, its people with their crew
@@ -78,8 +73,8 @@ export function updateCrew(
 		listed?: boolean;
 		cheers?: string[];
 	},
-): Promise<ApiResult<RoomCrew>> {
-	return api<RoomCrew>(`/api/crews/${id}`, { method: 'PATCH', json: patch });
+): Promise<ApiResult<CrewRef>> {
+	return api<CrewRef>(`/api/crews/${id}`, { method: 'PATCH', json: patch });
 }
 
 /**
@@ -104,8 +99,8 @@ export function setCrewRole(
 export function transferCrew(
 	id: string,
 	userId: string,
-): Promise<ApiResult<RoomCrew>> {
-	return api<RoomCrew>(`/api/crews/${id}/transfer`, {
+): Promise<ApiResult<CrewRef>> {
+	return api<CrewRef>(`/api/crews/${id}/transfer`, {
 		method: 'POST',
 		json: { userId },
 	});
@@ -180,16 +175,16 @@ export function rememberCrewDoor(code: string): Promise<ApiResult<void>> {
 }
 
 /** The one way in (ADR-0038 amended, #1236): the crew, by its code. */
-export function joinCrew(code: string): Promise<ApiResult<RoomCrew>> {
-	return api<RoomCrew>('/api/crews/join', { method: 'POST', json: { code } });
+export function joinCrew(code: string): Promise<ApiResult<CrewRef>> {
+	return api<CrewRef>('/api/crews/join', { method: 'POST', json: { code } });
 }
 
 /**
  * A crew of your own (#2480): you own it, and it opens with a text and a voice
  * channel. Refused past docs/SPEC.md's founding cap.
  */
-export function foundCrew(name: string): Promise<ApiResult<RoomCrew>> {
-	return api<RoomCrew>('/api/crews', { method: 'POST', json: { name } });
+export function foundCrew(name: string): Promise<ApiResult<CrewRef>> {
+	return api<CrewRef>('/api/crews', { method: 'POST', json: { name } });
 }
 
 /** A new invite (#1930): the old code and every link carrying it stop working. */

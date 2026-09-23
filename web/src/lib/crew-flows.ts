@@ -10,7 +10,7 @@ import {
 import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 import { presence } from '$lib/presence.svelte';
 import { roomConnection } from '$lib/room/connection.svelte';
-import type { RoomCrew } from '$lib/room/room-data';
+import type { CrewRef } from '$lib/crew-types';
 import { shareLink } from '$lib/share';
 import { toasts } from '$lib/toast.svelte';
 
@@ -26,7 +26,7 @@ import { toasts } from '$lib/toast.svelte';
  * promise a restore it cannot perform (audit 2026-09-09).
  */
 export async function leaveCrewFlow(
-	crew: Pick<RoomCrew, 'id' | 'name'>,
+	crew: Pick<CrewRef, 'id' | 'name'>,
 ): Promise<boolean> {
 	const standing = roomConnection.current?.address.crew === crew.id;
 	const sure = await confirm({
@@ -65,7 +65,7 @@ export const leaveBody = (name: string): string =>
  * hand it back.
  */
 export async function handOverCrewFlow(
-	crew: Pick<RoomCrew, 'id' | 'name'>,
+	crew: Pick<CrewRef, 'id' | 'name'>,
 	to: Pick<CrewPerson, 'id' | 'displayName'>,
 ): Promise<boolean> {
 	const sure = await confirm({
@@ -110,7 +110,7 @@ export const MAIN_CREW_HINT = 'the sidebar opens in this crew on every device';
  * here and now; every other device opens in it from its next load.
  */
 export async function makeMainCrewFlow(
-	crew: Pick<RoomCrew, 'id' | 'name'>,
+	crew: Pick<CrewRef, 'id' | 'name'>,
 ): Promise<boolean> {
 	const err = await account.setHomeCrew(crew.id);
 	if (err) {

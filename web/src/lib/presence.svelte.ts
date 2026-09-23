@@ -1,6 +1,6 @@
 import { api } from '$lib/api';
 import { STALE_AFTER } from '$lib/stale';
-import type { RoomCrew } from '$lib/room/room-data';
+import type { CrewRef } from '$lib/crew-types';
 
 /**
  * The one shared presence feed (#251), replacing three 10 s pollers: a lobby
@@ -9,7 +9,7 @@ import type { RoomCrew } from '$lib/room/room-data';
  * carries no data; a ping means "re-fetch what you show". Holding it is what
  * makes YOU read as online to your friends.
  */
-let crews = $state<RoomCrew[]>([]);
+let crews = $state<CrewRef[]>([]);
 // The last read's failure. A failed read used to become an empty list, and
 // Home told a rider with ten rooms to open their first (audit 2026-09-09);
 // now the list you had stays and the page can say what happened.
@@ -36,7 +36,7 @@ let pingWindow: ReturnType<typeof setTimeout> | null = null;
 let pingedDuringWindow = false;
 
 async function refresh() {
-	const res = await api<{ crews: RoomCrew[] }>('/api/crews');
+	const res = await api<{ crews: CrewRef[] }>('/api/crews');
 	if (res.ok) {
 		error = null;
 		failures = 0;

@@ -2,7 +2,7 @@ import type { PlaceAddress } from '$lib/room/address';
 import type { RoomContext, RoomStageSource } from '$lib/room/context';
 import type { roomConnection } from '$lib/room/connection.svelte';
 import type { createRiders } from '$lib/room/riders.svelte';
-import type { BoardRow, Together } from '$lib/room/room-data';
+import type { BoardRow, Together } from '$lib/crew-types';
 import type { Segment } from '$lib/workout/types';
 
 /**

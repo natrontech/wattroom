@@ -1,4 +1,4 @@
-import type { RoomCrew } from '$lib/room/room-data';
+import type { CrewRef } from '$lib/crew-types';
 
 /**
  * The crew is a mode the sidebar is in (ADR-0020, amended 2026-09-08; #1147):
@@ -46,7 +46,7 @@ export function quiet(pulse: CrewPulse): boolean {
  * administer — Discord's Manage Channels. A member of a crew opens rooms in
  * their own crew, not the one they are looking at.
  */
-export function openableCrews(crews: readonly RoomCrew[]): RoomCrew[] {
+export function openableCrews(crews: readonly CrewRef[]): CrewRef[] {
 	return crews.filter((c) => c.role === 'owner' || c.role === 'admin');
 }
 
@@ -61,7 +61,7 @@ export function openableCrews(crews: readonly RoomCrew[]): RoomCrew[] {
  * "Join a crew" and got a dialog announcing itself as "Open a room", and a
  * member pressed "Open a room" and got a sheet that led with joining one.
  */
-export function administersNone(crews: readonly RoomCrew[]): boolean {
+export function administersNone(crews: readonly CrewRef[]): boolean {
 	return openableCrews(crews).length === 0;
 }
 
@@ -81,7 +81,7 @@ export function administersNone(crews: readonly RoomCrew[]): boolean {
  * until `/api/me` is read again, while the room list has already moved.
  */
 export function leadsWithJoining(
-	crews: readonly RoomCrew[],
+	crews: readonly CrewRef[],
 	pendingInvite: string | null | undefined,
 ): boolean {
 	return !!pendingInvite && administersNone(crews);
@@ -92,6 +92,6 @@ export function leadsWithJoining(
  * founded and still own. Handing one on frees its slot; a crew handed to you
  * never takes one.
  */
-export function foundedCount(crews: readonly RoomCrew[]): number {
+export function foundedCount(crews: readonly CrewRef[]): number {
 	return crews.filter((c) => c.founded && c.role === 'owner').length;
 }

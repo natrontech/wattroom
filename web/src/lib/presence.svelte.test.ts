@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RoomCrew } from '$lib/room/room-data';
+import type { CrewRef } from '$lib/crew-types';
 
 // The endpoint behind every ping. Counting calls IS the assertion: #912 is
 // about how many of these one conversation costs.
 let fetches = 0;
 const read: string[] = [];
-let world: { crews: RoomCrew[]; error?: string } = { crews: [] };
+let world: { crews: CrewRef[]; error?: string } = { crews: [] };
 vi.mock('$lib/api', () => ({
 	api: async (path: string) => {
 		fetches += 1;
@@ -146,7 +146,7 @@ describe('a feed that stopped answering says so', () => {
 	});
 
 	it('reads the crew list', async () => {
-		const crew: RoomCrew = { id: 'c1', name: 'Velvet Hammer', role: 'owner' };
+		const crew: CrewRef = { id: 'c1', name: 'Velvet Hammer', role: 'owner' };
 		world = { crews: [crew] };
 		read.length = 0;
 		presence.start();
@@ -156,7 +156,7 @@ describe('a feed that stopped answering says so', () => {
 	});
 
 	it('marks itself stale on the second failed read in a row, not the first', async () => {
-		const crew: RoomCrew = { id: 'c1', name: 'Velvet Hammer', role: 'owner' };
+		const crew: CrewRef = { id: 'c1', name: 'Velvet Hammer', role: 'owner' };
 		world = { crews: [crew] };
 		presence.start();
 		await vi.waitFor(() => expect(presence.loaded).toBe(true));

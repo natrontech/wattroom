@@ -5,7 +5,7 @@
 	// touches them. `path` is that endpoint; `noun` is what the words call it.
 	import { api } from '$lib/api';
 	import { toasts } from '$lib/toast.svelte';
-	import type { RiderPrefs } from '$lib/room/room-data';
+	import type { RiderPrefs } from '$lib/crew-types';
 
 	let {
 		path,

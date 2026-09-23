@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ApiResult } from '$lib/api';
 import type { CrewChannel } from '$lib/channels';
 import type { Crew, CrewMembers } from '$lib/crew';
-import type { Announcement } from '$lib/room/room-data';
+import type { Announcement } from '$lib/channels';
 import { liveRoleOf, voiceChannelData } from './voice-channel';
 
 const crew = {

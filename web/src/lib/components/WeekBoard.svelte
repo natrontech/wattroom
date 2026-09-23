@@ -3,7 +3,7 @@
 	// turned it on. Shared by the crew's Members page and, until the room goes
 	// (#2460), a room's Lounge.
 	import { account } from '$lib/account.svelte';
-	import type { BoardRow } from '$lib/room/room-data';
+	import type { BoardRow } from '$lib/crew-types';
 
 	let { rows }: { rows: BoardRow[] } = $props();
 </script>

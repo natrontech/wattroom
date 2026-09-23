@@ -7,7 +7,7 @@ import type {
 	ChatReactionCount,
 	SessionRecap,
 } from '$lib/protocol';
-import type { Announcement } from '$lib/room/room-data';
+import type { Announcement } from '$lib/channels';
 
 /**
  * One chat read and written over HTTP — a text channel's (#2448), or a room's

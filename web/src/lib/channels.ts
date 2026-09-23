@@ -1,6 +1,5 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
 import type { RoomPresence } from '$lib/protocol';
-import type { Announcement } from '$lib/room/room-data';
 
 export type ChannelKind = 'text' | 'voice';
 export type AutoplayOrder = 'ordered' | 'shuffled' | 'smart';
@@ -98,6 +97,17 @@ export function setNamedInChannel(
 	return api<void>(`/api/channels/${id}/members/${userId}`, {
 		method: named ? 'PUT' : 'DELETE',
 	});
+}
+
+/** One line a coach marked, as every surface that draws it reads it. */
+export interface Announcement {
+	/** The marked message, so the strip can point back at the line. */
+	messageId: string;
+	text: string;
+	/** The message's author, not whoever marked it. */
+	from: string;
+	/** ISO — the message's own timestamp, not the marking's. */
+	at: string;
 }
 
 /** A text channel's marked line, as the crew's Board leads with it. */
