@@ -31,7 +31,7 @@ export interface SoundDeps extends RideSoundDeps {
 	me: () => string | undefined;
 }
 
-export function createRoomSounds(deps: SoundDeps) {
+export function createSessionSounds(deps: SoundDeps) {
 	// Pause and resume are the one phase change that tells the legs to do
 	// something different, and they were the silent one (#834). The block cue
 	// is exactly right for it: the target just changed.

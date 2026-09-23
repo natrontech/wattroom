@@ -14,7 +14,7 @@ vi.mock('$lib/sound/cues', () => ({
 const clock = vi.hoisted(() => ({ now: 0 }));
 vi.mock('$lib/server-clock', () => ({ serverNow: () => clock.now }));
 
-import { createRoomSounds, type SoundDeps } from './session-sounds.svelte';
+import { createSessionSounds, type SoundDeps } from './session-sounds.svelte';
 import type { GameState } from '$lib/protocol';
 
 /** A quiet room; a test overrides the one thing it listens for. */
@@ -35,7 +35,7 @@ function quiet(over: Partial<SoundDeps> = {}): SoundDeps {
 
 // The sprint and the rider's own guard announce themselves from the shell
 // (#1412), so a rider on any place hears them.
-describe('createRoomSounds', () => {
+describe('createSessionSounds', () => {
 	it('plays the klaxon, the gun and the fanfare for a sprint on any place', async () => {
 		heard.cues.length = 0;
 		clock.now = 10_000;
@@ -43,7 +43,7 @@ describe('createRoomSounds', () => {
 		vi.useFakeTimers();
 		let sprint = $state<{ startsAtMs: number; endsAtMs: number } | null>(null);
 		const stop = $effect.root(() => {
-			createRoomSounds(quiet({ sprint: () => sprint }));
+			createSessionSounds(quiet({ sprint: () => sprint }));
 		});
 		await tick();
 		expect(heard.cues).toEqual([]);
@@ -66,7 +66,7 @@ describe('createRoomSounds', () => {
 		heard.cues.length = 0;
 		let guard = $state<'running' | 'autopaused' | 'resuming'>('running');
 		const stop = $effect.root(() => {
-			createRoomSounds(quiet({ guard: () => guard }));
+			createSessionSounds(quiet({ guard: () => guard }));
 		});
 		await tick();
 		guard = 'autopaused';
@@ -85,7 +85,7 @@ describe('createRoomSounds', () => {
 		heard.cues.length = 0;
 		let block = $state<number | undefined>(undefined);
 		const stop = $effect.root(() => {
-			createRoomSounds(quiet({ block: () => block }));
+			createSessionSounds(quiet({ block: () => block }));
 		});
 		await tick();
 		block = 0;
@@ -104,7 +104,7 @@ describe('createRoomSounds', () => {
 		heard.cues.length = 0;
 		let spiral = $state(false);
 		const stop = $effect.root(() => {
-			createRoomSounds(quiet({ spiral: () => spiral }));
+			createSessionSounds(quiet({ spiral: () => spiral }));
 		});
 		await tick();
 		spiral = true;
@@ -119,7 +119,7 @@ describe('createRoomSounds', () => {
 		heard.cues.length = 0;
 		let phase = $state('running');
 		const stop = $effect.root(() => {
-			createRoomSounds(quiet({ phase: () => phase }));
+			createSessionSounds(quiet({ phase: () => phase }));
 		});
 		await tick();
 		phase = 'done';
@@ -140,7 +140,7 @@ describe('createRoomSounds', () => {
 			}) as unknown as GameState;
 		let game = $state<GameState | null>(relay(false));
 		const stop = $effect.root(() => {
-			createRoomSounds(quiet({ game: () => game }));
+			createSessionSounds(quiet({ game: () => game }));
 		});
 		await tick();
 		expect(heard.cues).toEqual([]);

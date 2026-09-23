@@ -9,7 +9,7 @@ import type { RideState } from '$lib/workout/session.svelte';
  * What a ride says out loud to the rider on it: a block change, their own
  * guard (auto-pause, the resume countdown), the spiral release, a trainer
  * fault and its recovery, a sprint window, the end. These lived in the room's
- * createRoomSounds (#834, #1412) and reached nobody riding alone (#1792): a
+ * createSessionSounds (#834, #1412) and reached nobody riding alone (#1792): a
  * solo rider was auto-paused, released, dropped and finished in silence, with
  * one block cue the page played by hand. ADR-0046's parity rule: a rider
  * alone hears what the same rider in a room hears. The room composes this
@@ -57,7 +57,7 @@ export function createRideSounds(deps: RideSoundDeps) {
 	// The start is the biggest state change in the product, so it is counted
 	// in out loud. The last count spoken, so a tick is said once — and -1 is
 	// "nothing yet", which is also what makes `go` fire exactly once on the
-	// way out. Lifted from createRoomSounds (#834) when a solo ride got its
+	// way out. Lifted from createSessionSounds (#834) when a solo ride got its
 	// own count-in (#1800); the room now feeds this instead of repeating it.
 	let heardCount = -1;
 	$effect(() => {

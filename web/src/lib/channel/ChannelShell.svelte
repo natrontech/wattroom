@@ -8,7 +8,7 @@
 	import { toasts } from '$lib/toast.svelte';
 	import { pickStage, sourceLabel } from '$lib/channel/stage';
 	import { createRiders } from '$lib/channel/riders.svelte';
-	import { createRoomSounds } from '$lib/session/session-sounds.svelte';
+	import { createSessionSounds } from '$lib/session/session-sounds.svelte';
 	import CheerLayer from '$lib/channel/CheerLayer.svelte';
 	import Soundboard from '$lib/board/Soundboard.svelte';
 	import ChannelStatus from '$lib/channel/ChannelStatus.svelte';
@@ -218,7 +218,7 @@
 						? 'mic'
 						: null,
 	);
-	createRoomSounds({
+	createSessionSounds({
 		phase: () => shared?.phase,
 		countdownRemaining: () => shared?.countdownRemaining,
 		fault: () => faultKind,

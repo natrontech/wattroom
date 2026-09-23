@@ -27,7 +27,7 @@ function quiet(over: Partial<RideSoundDeps> = {}): RideSoundDeps {
 }
 
 // The room's cues, heard by a rider alone (#1792): the shared effects are
-// covered through createRoomSounds; this is the solo composition's own —
+// covered through createSessionSounds; this is the solo composition's own —
 // the end, and the guard as the session's state names it.
 describe('createRideSounds', () => {
 	it('says the end of a ride once', async () => {
