@@ -98,8 +98,15 @@ const GUARDED: Guarded[] = [
 	},
 	{
 		file: 'lib/crew-flows.ts',
-		action: 'ban someone, from the flow both call sites share',
-		asks: /confirm\(\{\s*title: `Ban \$\{person\.displayName\} from the crew\?`/,
+		action: 'ban someone, from the flow the Members page and a line share',
+		asks: /confirm\(banAsk\(person\.displayName\)\)/,
+	},
+	{
+		// #2542: the tile goes through the host's onRole seam rather than the
+		// flow, so it asks the same question itself.
+		file: 'lib/channel/ChannelShell.svelte',
+		action: "ban someone from a voice channel's tile or row",
+		asks: /confirm\(banAsk\(name\)\)/,
 	},
 	{
 		// #2095: it did ask, but through a bespoke `Modal` spelling the safe

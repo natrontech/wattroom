@@ -96,6 +96,18 @@ export const HAND_OVER_BODY =
 	'crew on. You cannot take this back; only they can hand it back to you.';
 
 /**
+ * The one question a crew ban asks, wherever it is pressed — the Members
+ * page, a text channel's line, a voice channel's tile (#2542) — so the
+ * three cannot drift apart.
+ */
+export const banAsk = (name: string) => ({
+	title: `Ban ${name} from the crew?`,
+	body: `They cannot come back through the crew's code until you lift the ban.`,
+	action: 'Ban',
+	cancel: 'Keep it',
+});
+
+/**
  * Banning someone from the crew (#1150), from wherever it is offered — the
  * crew's people list and a text channel's line (#2530) — as one flow, so the
  * ask cannot drift between them. Resolves to whether it happened.
@@ -108,12 +120,7 @@ export async function banFromCrewFlow(
 	crew: Pick<CrewRef, 'id'>,
 	person: Pick<CrewPerson, 'id' | 'displayName'>,
 ): Promise<boolean> {
-	const sure = await confirm({
-		title: `Ban ${person.displayName} from the crew?`,
-		body: `They cannot come back through the crew's code until you lift the ban.`,
-		action: 'Ban',
-		cancel: 'Keep it',
-	});
+	const sure = await confirm(banAsk(person.displayName));
 	if (!sure) return false;
 	const res = await setCrewRole(crew.id, person.id, 'banned');
 	if (!res.ok) {

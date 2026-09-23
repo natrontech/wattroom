@@ -3,7 +3,8 @@ import { expect, test, voicePath } from './crew';
 /**
  * A crew admin bans from a rider's tile in a voice channel (#2529) — the
  * roles matrix gives admins the ban (docs/SPEC.md), and ux.md wants it met
- * where the griefer is. Never on the owner's tile.
+ * where the griefer is. Never on the owner's tile, and behind the crew's
+ * one ban question (#2542).
  */
 const A = 'Tile Ban Owner';
 const B = 'Tile Ban Admin';
@@ -62,7 +63,11 @@ test("a crew admin bans from a voice channel's tile, and never the owner", async
 	// A member's tile: the admin bans, and the crew says so.
 	await tiles.filter({ hasText: C }).first().click({ button: 'right' });
 	await ban.click();
-	await expect(b.getByText(`Banned ${C}.`)).toBeVisible();
+	// The Members page's question (#2542): no ban lands before it is answered.
+	const ask = b.getByRole('dialog');
+	await expect(ask).toContainText(`Ban ${C} from the crew?`);
+	await ask.getByRole('button', { name: 'Ban', exact: true }).click();
+	await expect(b.getByText(`Banned ${C} from the crew.`)).toBeVisible();
 	// Banned is out of the crew: it answers them as if it were not there.
 	const seen = await c.evaluate(
 		(crew) => fetch(`/api/crews/${crew}`).then((res) => res.status),
