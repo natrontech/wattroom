@@ -40,7 +40,7 @@ export const GAME_MODES: GameMode[] = [
 	{
 		id: 'collective-ramp',
 		label: 'Collective Ramp',
-		blurb: 'The same ramp, held by the room average — you survive together.',
+		blurb: 'The same ramp, held by the session average — you survive together.',
 		icon: Users,
 	},
 	{

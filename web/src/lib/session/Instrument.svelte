@@ -19,7 +19,7 @@
 
 	// Primitives, not a LiveRider: the solo ride and the ramp test have watts
 	// and a target without a roster to belong to, and coupling the instrument
-	// to the room's view model is what kept them on a separate design.
+	// to the voice channel's view model is what kept them on a separate design.
 	let {
 		watts,
 		target,

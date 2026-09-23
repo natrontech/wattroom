@@ -7,7 +7,7 @@
 	//
 	// Thumb-sized (ux.md): the one control you reach for at 160 bpm cannot be
 	// a 12 px label — which is exactly why End asks first. A stray thumb on a
-	// 44 px target ends the ride for the whole room, and there is no undo to
+	// 44 px target ends the session for everyone in it, and there is no undo to
 	// offer (errors.md's confirm exception), so it confirms the way the solo
 	// ride does. Cancelling a countdown loses nothing and does not ask.
 	import { confirm } from '$lib/confirm.svelte';

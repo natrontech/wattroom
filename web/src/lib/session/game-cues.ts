@@ -42,7 +42,7 @@ export function gameCues(
 	const mine = me ? now.riders?.[me] : undefined;
 	const wasMine = me ? before.riders?.[me] : undefined;
 
-	// The room's drama, for everyone: somebody is out. One cue however many
+	// The session's drama, for everyone: somebody is out. One cue however many
 	// went together — a backyard round can take four at once, and four
 	// identical stings is a pile-up, not an announcement.
 	const newlyOut = Object.entries(now.riders ?? {}).some(
@@ -73,7 +73,7 @@ export function gameCues(
 		cues.push({ id: 'block' });
 
 	// Sprint Roulette's klaxon (#1587): nothing sounded it — the shell's
-	// klaxon is keyed on the room's own sprint, which this mode never sets.
+	// klaxon is keyed on the session's own sprint, which this mode never sets.
 	// The window appears on the tick three seconds before it opens, so that
 	// tick IS the klaxon; the 3-2-1 and the gun follow once the start rides
 	// the wire (#1578).

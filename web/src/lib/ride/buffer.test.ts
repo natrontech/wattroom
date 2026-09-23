@@ -80,18 +80,18 @@ describe('ride buffer', () => {
 	});
 
 	it('drops a fragment past the newest five, unfinished or not', () => {
-		// A spectator's room join opens a buffer nothing is ever written to.
+		// A spectator joining a session opens a buffer nothing is ever written to.
 		const join = (id: number) => ({
 			rideId: String(id),
 			startedAt: id,
-			workoutName: 'room x',
+			workoutName: 'session x',
 			samples: 0,
 		});
 		expect(stale([1, 2, 3, 4, 5, 6].map(join))).toEqual(['1']);
 	});
 
-	it('does not let room joins walk an unsaved solo ride off the end (#794)', async () => {
-		// The failed save is the oldest ride; every room joined since opened
+	it('does not let session joins walk an unsaved solo ride off the end (#794)', async () => {
+		// The failed save is the oldest ride; every session joined since opened
 		// a buffer of its own and ended it cleanly.
 		await fill('1', 61, { saveable: true });
 		for (let i = 2; i <= 8; i++) await fill(String(i), 61, { end: true });
@@ -170,7 +170,7 @@ describe('a store that will not open', () => {
 	});
 
 	// Firefox's private window throws here rather than firing onerror.
-	// Unguarded that rejected the promise: the room's `.then` had no
+	// Unguarded that rejected the promise: the channel's `.then` had no
 	// catch and the solo page refused to start the ride at all.
 	it('says so when the open throws, rather than failing the ride', async () => {
 		const real = indexedDB.open.bind(indexedDB);

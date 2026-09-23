@@ -5,7 +5,7 @@ describe('changes', () => {
 	it('stays silent on the first value — arriving is not an event', () => {
 		const heard: string[] = [];
 		const watch = changes<string>((next) => heard.push(next));
-		watch('room');
+		watch('channel');
 		expect(heard).toEqual([]);
 	});
 

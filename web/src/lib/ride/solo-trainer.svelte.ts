@@ -10,7 +10,7 @@ import { quietFault, type TrainerFault } from '$lib/session/sensor-status';
  * (#611). One of these exists, held by `soloTrainer()` at the foot of this
  * file; the factory stays exported for the tests, which want a fresh one.
  *
- * A room holds its BLE connection for as long as you stand in it
+ * A voice channel holds its BLE connection for as long as you stand in it
  * (`session/ride.svelte.ts`, #521). The solo screens had no equivalent: one
  * "Pair trainer and start" button connected and started in the same click, so
  * there was no moment at which a trainer was paired and not yet riding — and
@@ -61,8 +61,9 @@ export function createSoloTrainer() {
 		error = null;
 		sample = null;
 		pairing = true;
-		// One trainer, one rider (#521): a room you are standing in owns the
-		// same hardware, so take it back before opening a second channel.
+		// One trainer, one rider (#521): a voice channel you are standing in
+		// owns the same hardware, so take it back before opening a second
+		// connection.
 		channelConnection.current?.ride.unpair();
 		unsubscribe.push(next.onStatus((s) => (status = s)));
 		try {
@@ -124,7 +125,7 @@ export function createSoloTrainer() {
 		get fault() {
 			return fault;
 		},
-		/** The chooser is open — the room's trainer answers this too (#1716). */
+		/** The chooser is open — the channel's trainer answers this too (#1716). */
 		get pairing() {
 			return pairing;
 		},
@@ -151,7 +152,7 @@ let held: ReturnType<typeof createSoloTrainer> | null = null;
 /**
  * The one solo trainer, held above the router (#1716).
  *
- * Same reason `sensors` is a module singleton and the room's trainer belongs
+ * Same reason `sensors` is a module singleton and the channel's trainer belongs
  * to the connection (#521): a Web Bluetooth grant is expensive and belongs to
  * the session, not to a screen. /settings/equipment, /ride and /ramp each
  * built their own slot, so pairing on one and walking to another showed "Not
@@ -172,11 +173,11 @@ export function soloTrainer(): ReturnType<typeof createSoloTrainer> {
 }
 
 /**
- * The trainer a room's Pair button takes (#1851): the one paired on
- * Settings › Equipment, handed over live, else a fresh chooser. Pairing in a
- * room used to open a second chooser over a trainer this slot still held —
- * two GATT clients on one unit, and this slot's reattach loop running for
- * ever — while the slot's own `pair` already took the room's back (#521).
+ * The trainer a voice channel's Pair button takes (#1851): the one paired on
+ * Settings › Equipment, handed over live, else a fresh chooser. Pairing there
+ * used to open a second chooser over a trainer this slot still held — two
+ * GATT clients on one unit, and this slot's reattach loop running for ever —
+ * while the slot's own `pair` already took the channel's back (#521).
  */
 export function trainerForChannel(): Trainer {
 	return soloTrainer().handOff() ?? new FtmsTrainer();

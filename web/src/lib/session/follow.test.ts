@@ -43,7 +43,7 @@ describe('followedRider', () => {
 		expect(followedRider([rider('a'), rider('b')], null)?.id).toBe('a');
 	});
 
-	it('has nobody to follow in an empty room', () => {
+	it('has nobody to follow in an empty voice channel', () => {
 		expect(followedRider([], null)).toBeNull();
 	});
 

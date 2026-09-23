@@ -4,8 +4,9 @@
  * Not a bare `setInterval` on the main thread: Chrome throttles timers in a hidden
  * tab to roughly once a minute (RESEARCH.md §tab throttling), so a rider who
  * switches tabs mid-ride has their clock, their ERG targets and auto-pause all
- * stop. Riders in a room are incidentally protected by the WebRTC connection;
- * solo riders are not, which is exactly the case the workout player serves.
+ * stop. Riders in a voice channel's call are incidentally protected by its
+ * WebRTC connection; solo riders are not, which is exactly the case the
+ * workout player serves.
  *
  * Two halves, and both are load-bearing:
  *

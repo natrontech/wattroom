@@ -17,7 +17,7 @@ export function parseSharedSegments(
 /** Workout and segments together — the block strip needs step types for labels. */
 type Parsed = { workout: Workout | null; segments: Segment[] };
 const EMPTY: Parsed = { workout: null, segments: [] };
-// The definition rides every tick (#1710) and the room's $derived re-ran
+// The definition rides every tick (#1710) and the channel's $derived re-ran
 // this — JSON.parse, validate, flatten over up to 200 segments — once a
 // second on every rider's machine. One definition, one parse.
 let last: { json: string; parsed: Parsed } | null = null;

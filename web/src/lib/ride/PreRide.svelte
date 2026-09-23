@@ -86,7 +86,7 @@
 		>Choose a different workout</a
 	>
 
-	<!-- The same paired-devices grid the room's Training place draws
+	<!-- The same paired-devices grid a voice channel's Training place draws
 	     (#611). Pairing lives here, so Start does one thing — and the
 	     trainer reports watts before the ride rather than after. -->
 	<div class="mt-6">

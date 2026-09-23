@@ -2,7 +2,7 @@
 	// "What are we doing tonight" (#115, redesigned on #181 feedback): workouts
 	// and games are explicit tabs — no guessing which one you're starting — and
 	// a workout answers the questions a coach actually has before committing the
-	// room to it: how long, which zones, any cadence/HR bands.
+	// session to it: how long, which zones, any cadence/HR bands.
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import { nextHourInput } from '$lib/components/when';
@@ -45,14 +45,14 @@
 		intent?: 'start' | 'plan';
 		busy?: boolean;
 		gameRunning?: boolean;
-		/** Absent when this picker only plans: no room to start anything in. */
+		/** Absent when this picker only plans: no voice channel to start it in. */
 		onStart?: (workout: Workout) => void;
 		onPlan: (
 			name: string,
 			json: string,
 			startsAtIso: string,
 		) => void | Promise<void>;
-		/** Absent hides the Games tab — games are a room's, not a calendar's. */
+		/** Absent hides the Games tab — games are a voice channel's, not a calendar's. */
 		onStartGame?: (id: string) => void;
 		onClose: () => void;
 	} = $props();
@@ -286,7 +286,7 @@
 						<IntervalGraph {segments} {total} elapsed={0} {ftp} trace={[]} />
 					</div>
 
-					<!-- How long, which zones, which bands — before you commit a room. -->
+					<!-- How long, which zones, which bands — before you commit a session. -->
 					<div
 						class="text-muted mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px]"
 					>

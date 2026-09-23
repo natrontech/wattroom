@@ -1,8 +1,8 @@
 /**
- * The SPEC ducking envelope (docs/SPEC.md "Room audio defaults", #24/#152),
- * owned here the way `fader.ts` owns every fader's travel: the jukebox and the
- * cue bus both dip under a voice, and a rider hears one duck, not two — so the
- * depth and the ballistics have one home (#675).
+ * The SPEC ducking envelope (docs/SPEC.md "Voice channel audio defaults",
+ * #24/#152), owned here the way `fader.ts` owns every fader's travel: the
+ * jukebox and the cue bus both dip under a voice, and a rider hears one duck,
+ * not two — so the depth and the ballistics have one home (#675).
  */
 
 /**
@@ -20,11 +20,11 @@ export const DUCK_ATTACK_MS = 150;
 /** Stay down this long after the voice stops, so a breath between sentences does not pump the mix. */
 export const DUCK_HOLD_MS = 600;
 
-/** Up: slow enough to read as the room settling, never a snap. */
+/** Up: slow enough to read as the channel settling, never a snap. */
 export const DUCK_RELEASE_MS = 400;
 
 /**
- * Whether the room should be ducking right now, from LiveKit's speaking map.
+ * Whether the mix should be ducking right now, from LiveKit's speaking map.
  * The music and the cue bus both ask this — one duck, one rule, the way the
  * depth and the ballistics above already have one home (#675).
  *

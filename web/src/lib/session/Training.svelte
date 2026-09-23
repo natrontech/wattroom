@@ -1,6 +1,6 @@
 <script lang="ts">
 	// The Training place — the 3 m surface (ADR-0020). Was a tab inside
-	// RoomLive, then the room's URL; since #2449 a voice channel's too.
+	// RoomLive, then a URL of the room's own; since #2449 a voice channel's.
 	//
 	// A FOCUS SLOT, not a fixed layout: sprint › game › shared screen › your
 	// instrument. A sprint takes the screen and gives it back, a game replaces
@@ -68,7 +68,7 @@
 	// Only people actually turning the pedals are ranked. The server scores
 	// nothing for a rider with no samples and returns 1 for them, which is
 	// right for "before the first hard block" and absurd on a leaderboard:
-	// a spectator sitting in the room reads 100% and beats everyone riding.
+	// a spectator sitting in the channel reads 100% and beats everyone riding.
 	// `riding` is the server's word (#1016) — a coast holds it — so a rider
 	// who freewheels for one sample no longer drops off the list and the
 	// ranking stops re-sorting under their eyes (#1411).
@@ -117,13 +117,13 @@
 					<!-- A phone has no trainer to pair and no session to start, so
 					     the empty state teaches what it IS for rather than listing
 					     controls that are correctly absent (ux.md). -->
-					Nothing is running yet. This is where the room's numbers appear the moment
+					Nothing is running yet. This is where everyone's numbers appear the moment
 					someone starts the session — follow any rider from the crew strip.
 				{:else if !channel.canControl}
 					<!-- A member cannot start anything (docs/SPEC.md roles), and
 					     SessionControls renders nothing for them — so the sentence
 					     must not name a button that is not there (audit 2026-09-09). -->
-					Nothing is running yet. This is where the room's numbers appear the moment
+					Nothing is running yet. This is where everyone's numbers appear the moment
 					the coach starts the session — pair your trainer below so you're ready.
 				{:else}
 					Nothing is running yet. Get your equipment paired below, then start

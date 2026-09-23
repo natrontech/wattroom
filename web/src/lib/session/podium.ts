@@ -6,7 +6,7 @@ import type { Icon } from '$lib/icons';
 /**
  * The three places, one home (#458): the sprint podium and a game's final
  * standing both read from here, so first place is the same mark wherever the
- * room sees it. Shape carries the rank at arm's length — the neon weight only
+ * session sees it. Shape carries the rank at arm's length — the neon weight only
  * reinforces it, and a place is chrome, so it never glows (ADR-0005).
  */
 export interface Place {

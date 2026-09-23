@@ -20,7 +20,7 @@ describe('rsvpSummary', () => {
 	});
 
 	it('teaches rather than counts while nobody has answered', () => {
-		// The case a plan actually opens in: a room of nine, nothing said. A
+		// The case a plan actually opens in: a crew of nine, nothing said. A
 		// bare "9 unanswered" is true and tells the planner nothing they can
 		// act on, and says nothing about the two buttons beside it.
 		expect(rsvpSummary({ in: 0, out: 0, unanswered: 9 })).toBe(

@@ -116,7 +116,7 @@
 				</div>
 			</section>
 
-			<!-- The room, one row per rider. No faces: at 3 m you read names and
+			<!-- Everyone else, one row per rider. No faces: at 3 m you read names and
 			     numbers. Absent riding alone (#1632): the same TV serves a solo
 			     ride, and an empty third of the screen is not a roster. -->
 			{#if others.length > 0}

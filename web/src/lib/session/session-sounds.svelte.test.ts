@@ -17,7 +17,7 @@ vi.mock('$lib/server-clock', () => ({ serverNow: () => clock.now }));
 import { createSessionSounds, type SoundDeps } from './session-sounds.svelte';
 import type { GameState } from '$lib/protocol';
 
-/** A quiet room; a test overrides the one thing it listens for. */
+/** A quiet session; a test overrides the one thing it listens for. */
 function quiet(over: Partial<SoundDeps> = {}): SoundDeps {
 	return {
 		phase: () => 'running',
@@ -79,8 +79,8 @@ describe('createSessionSounds', () => {
 		stop();
 	});
 
-	// The block cue in a room (audit 2026-09-09): solo had it, the room did
-	// not. A session starting or ending is not a block change.
+	// The block cue in a session (audit 2026-09-09): solo had it, the
+	// session did not. A session starting or ending is not a block change.
 	it('says a block change, and only a block change', async () => {
 		heard.cues.length = 0;
 		let block = $state<number | undefined>(undefined);

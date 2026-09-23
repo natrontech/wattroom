@@ -3,14 +3,15 @@
 	 * Slot 1 of the riding surface (ADR-0046): where you are in the work.
 	 *
 	 * Block *n* of *m* and its name, the seconds left in it, the bands it
-	 * prescribes, what is coming next, and the clock — for a room, a solo ride
-	 * and a ramp test alike. It was the room's header, inline in the Training
-	 * place; the other two screens showed a fraction of it and one of them
-	 * showed nothing at all about the next block.
+	 * prescribes, what is coming next, and the clock — for a session, a solo
+	 * ride and a ramp test alike. It was the session's header, inline in the
+	 * Training place; the other two screens showed a fraction of it and one of
+	 * them showed nothing at all about the next block.
 	 *
 	 * It owns no state and reads no context: `describeBlock()` builds the
-	 * `Block` from the hub's tick in a room and from the local session's
-	 * `TargetInfo` everywhere else, which is what makes one header possible.
+	 * `Block` from the hub's tick in a voice channel and from the local
+	 * session's `TargetInfo` everywhere else, which is what makes one header
+	 * possible.
 	 */
 	import { formatClock } from '$lib/format';
 	import { blockBands, type Block } from '$lib/workout/block';

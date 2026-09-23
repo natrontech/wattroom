@@ -17,7 +17,7 @@ import type { Segment, Workout } from './types';
  * this module.
  */
 // `toleranceBand` comes through here because every caller already imports it
-// from the session; it lives in guards.ts so the room's view can read it
+// from the session; it lives in guards.ts so the channel's view can read it
 // without importing a rune module (#2159).
 export { DEFAULTS, toleranceBand } from './guards';
 import { toleranceBand } from './guards';
@@ -28,10 +28,11 @@ export type RideState =
 /**
  * The count-in before the clock starts (#1800, docs/SPEC.md's session
  * lifecycle). A rider taps Start on the laptop beside the bike and needs a
- * moment to get back on it — the room has always given them one, and
- * ADR-0046's parity rule makes it the surface's, not the room's. Shorter than
- * the room's ten seconds because nobody else is being waited for; the same
- * three seconds SPEC gives the resume countdown, and the same 3-2-1 cues.
+ * moment to get back on it — a group session has always given them one,
+ * and ADR-0046's parity rule makes it the surface's, not the group's.
+ * Shorter than a group session's ten seconds because nobody else is being
+ * waited for; the same three seconds SPEC gives the resume countdown, and
+ * the same 3-2-1 cues.
  */
 export const COUNTDOWN_SECONDS = 3;
 
@@ -151,7 +152,7 @@ export function createRideSession({
 	let sample = $state<TrainerSample | null>(null);
 	/**
 	 * Auto-pause and the spiral release, shared with the group path so a rider
-	 * gets the same protection in a room as alone (#788). The mirrors below
+	 * gets the same protection in a session as alone (#788). The mirrors below
 	 * are what makes the machine's answers reactive here.
 	 */
 	const guards = createPersonalGuards();
@@ -201,7 +202,7 @@ export function createRideSession({
 	// duration, the power curve, the XP the server pays — reads this record
 	// as one entry per second. Wall clock, not the ride clock: the ride clock
 	// stops while auto-paused and the record must keep counting (the ramp's
-	// blown-detector reads it). The room's recorder and the hub's admit the
+	// blown-detector reads it). The session's recorder and the hub's admit the
 	// same way (#1411, #791); this was the third recorder (audit 2026-09-09).
 	let lastRecordedSecond = -1;
 
@@ -276,7 +277,7 @@ export function createRideSession({
 		// block's target lands when the clock does and not three seconds early.
 		if (state === 'countdown') return;
 		if (sprinting) {
-			// A sprint outranks the guards, for the reason the room gives
+			// A sprint outranks the guards, for the reason a group session gives
 			// (session/ride.svelte.ts): auto-pause is an INFERENCE that the rider
 			// left, a sprint is an announced effort they are about to answer.
 			if (sprintMode) return;
@@ -288,7 +289,7 @@ export function createRideSession({
 				void trainer.setTargetPower(ftp * 2);
 				return;
 			}
-			// Flat first, then the hill: the same two-step the room uses to get
+			// Flat first, then the hill: the same two-step a session uses to get
 			// an FTMS trainer out of ERG before the grade lands.
 			void trainer.setSimulation(0);
 			sprintStep = setTimeout(() => {
@@ -495,7 +496,7 @@ export function createRideSession({
 		void trainer.setTargetPower(0);
 		// Let go of the hardware (#1546): after the summary nothing owns
 		// this link, and the next pairing screen showed an unpaired grid
-		// over a connection that was still open — the room's unpair()
+		// over a connection that was still open — a session's unpair()
 		// does the same.
 		void trainer.disconnect();
 		state = 'done';

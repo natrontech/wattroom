@@ -11,8 +11,8 @@ import type { LiveRider } from '$lib/channel/types';
  * Hardest is %FTP, the same fair ordering every contest in docs/SPEC.md uses —
  * a 90 kg rider does not lead the strip by existing.
  *
- * It reuses the room's existing focus (the Lounge's tile spotlight) rather
- * than inventing a second "followed rider": one concept, one home.
+ * It reuses the voice channel's existing focus (the Lounge's tile spotlight)
+ * rather than inventing a second "followed rider": one concept, one home.
  */
 export function followedRider(
 	riders: LiveRider[],

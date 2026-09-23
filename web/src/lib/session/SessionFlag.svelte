@@ -1,16 +1,16 @@
 <script lang="ts">
 	/**
-	 * The ⚑ in a room (#1631, ADR-0046's parity rule): every rider can report
+	 * The ⚑ in a session (#1631, ADR-0046's parity rule): every rider can report
 	 * what just happened, not only a rider riding alone.
 	 *
-	 * The solo screen has carried this since #52 and the room never had it,
-	 * which is why every rider report in the repo so far describes a solo ride
+	 * The solo screen has carried this since #52 and the group ride never had
+	 * it, which is why every rider report in the repo so far describes a solo ride
 	 * — the surface with a hub clock, a roster and a shared timeline could not
 	 * be reported on at all.
 	 *
 	 * One difference from solo, and it is deliberate: solo collects flags and
 	 * sends them from the summary, where a rider off the bike can type a note.
-	 * A room ride is left by walking away, so the tap sends. That is what the
+	 * A session is left by walking away, so the tap sends. That is what the
 	 * button says before it is pressed, and what the line under it says after.
 	 */
 	import FlagButton from '$lib/ride/FlagButton.svelte';
@@ -21,7 +21,7 @@
 	const channel = useChannel();
 	const recorder = createFlightRecorder();
 
-	// The ring, fed by the room's own tick — the same four fields solo records,
+	// The ring, fed by the channel's own tick — the same four fields solo records,
 	// and heart rate deliberately not among them (ADR-0008: a report becomes a
 	// public issue).
 	//

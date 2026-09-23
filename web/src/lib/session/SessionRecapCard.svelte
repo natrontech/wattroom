@@ -1,8 +1,8 @@
 <script lang="ts">
 	// What a session left behind (ADR-0034): who was here, when they came, and
-	// how long they stayed. The only durable thing in the room's timeline, and
-	// so the only entry with a border — everything around it stays as quiet as
-	// it is now.
+	// how long they stayed. The only durable thing a session leaves the crew,
+	// and so the only entry with a border — everything around it stays as
+	// quiet as it is now.
 	//
 	// Chrome, not live data (ADR-0005): --color-neon draws the edge and the
 	// header and nothing here glows. The --color-watt pips mark riders who

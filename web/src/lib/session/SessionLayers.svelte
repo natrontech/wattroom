@@ -156,8 +156,8 @@
 		gameRunning={!!live.tick?.game}
 		onPlan={async (name, json, at) => {
 			// Closed only once the server took it (#1766): a refused time used
-			// to leave a toast and a closed picker — workout, room and time all
-			// to choose again. The refusal is the toast the room already shows.
+			// to leave a toast and a closed picker — the workout and the time
+			// to choose again. The refusal is the toast the channel already shows.
 			if ((await onSchedule(name, json, at)) !== false)
 				layers.setup.open = false;
 		}}
@@ -185,7 +185,7 @@
 {#if shared?.phase === 'done' && summary.ready && !summary.dismissed}
 	<!-- The summary has to call out (#359). It used to render at the bottom of
 	     the main column, so a session ended while you were looking at the stage
-	     and nothing said so — a modal is the room telling you it is over. -->
+	     and nothing said so — a modal is the session telling you it is over. -->
 	<Modal
 		label="Session summary"
 		class="max-w-5xl"
@@ -202,7 +202,7 @@
 		>
 			{#snippet actions()}
 				<div class="flex flex-wrap gap-2">
-					<!-- The end links forward (#1331): the ride the room saved for
+					<!-- The end links forward (#1331): the ride the session saved for
 					     you, found by the session it belongs to once the save lands. -->
 					{#if summary.rideId}
 						<a href="/history/{summary.rideId}" class="btn btn-primary"

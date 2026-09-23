@@ -20,7 +20,7 @@
 		me,
 	}: {
 		game: GameState;
-		/** Names for ids — the tick's roster, or the room's riders (#1589). */
+		/** Names for ids — the tick's roster, or the channel's riders (#1589). */
 		roster: { id: string; name: string }[];
 		end: () => void;
 		canControl: boolean;
@@ -110,7 +110,8 @@
 		>
 			<span class="font-medium">You're out this game.</span>
 			<span class="text-muted"
-				>Spin easy — you're still in the room, and the panel shows how it ends.</span
+				>Spin easy — you're still in the session, and the panel shows how it
+				ends.</span
 			>
 		</p>
 	{/if}
@@ -171,7 +172,9 @@
 					{Math.round((game.linePct ?? 0) * 100)}%
 				</div>
 				<p class="eyebrow mt-1.5">
-					{game.mode === 'collective-ramp' ? 'room average line' : 'this round'}
+					{game.mode === 'collective-ramp'
+						? 'session average line'
+						: 'this round'}
 				</p>
 			</div>
 			<div>
@@ -300,7 +303,7 @@
 			Sprint 5/3/2/1 · cleanest interval 3 · in-zone streak 1
 		</p>
 	{:else if game.mode === 'team-relay'}
-		<!-- Team Relay: one number the whole room owns. -->
+		<!-- Team Relay: one number the whole session owns. -->
 		<div class="mt-4 flex flex-wrap items-baseline gap-6">
 			<div>
 				<p class="eyebrow">on the front</p>
@@ -314,7 +317,7 @@
 				</p>
 			</div>
 			<div class="ml-auto text-right">
-				<p class="eyebrow">room distance</p>
+				<p class="eyebrow">session distance</p>
 				<p class="font-display mt-1 text-2xl font-bold tabular-nums">
 					{Math.round((game.teamDistance ?? 0) / 1000)} kJ
 				</p>

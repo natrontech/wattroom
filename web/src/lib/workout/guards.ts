@@ -2,8 +2,8 @@
  * The personal ride guards: auto-pause and the spiral release.
  *
  * Personal because they follow the rider and not the timeline. Solo, the two
- * are the same thing and the clock stops with the rider. In a group ride the
- * room's clock belongs to the room — so the guards mask THIS rider's target
+ * are the same thing and the clock stops with the rider. In a session the
+ * clock belongs to everyone in it — so the guards mask THIS rider's target
  * and nothing else, and the shared session runs on without them (#788).
  *
  * A plain machine, no runes: both callers already own the reactivity, and the
@@ -18,7 +18,7 @@ import * as protocol from '$lib/protocol';
  * that scores the ride and the app that draws "on target" cannot disagree
  * about what counts.
  *
- * Here rather than beside the session, and re-exported from there: the room's
+ * Here rather than beside the session, and re-exported from there: the channel's
  * view reads it too, and it is a plain function — nothing that pulls a rune
  * module into a module that has no state of its own (#2159).
  */
@@ -56,7 +56,7 @@ export const DEFAULTS = {
 	biasMax: 1.2,
 } as const;
 
-/** Where the rider is, personally — the room may be somewhere else entirely. */
+/** Where the rider is, personally — the session may be somewhere else entirely. */
 export type GuardPhase = 'running' | 'autopaused' | 'resuming';
 
 export interface GuardSample {
@@ -93,7 +93,7 @@ export function createPersonalGuards() {
 		 * Whether a second counts for the score: no guard up in any form —
 		 * not paused, not counting back in, not released. What the sample
 		 * carries as `released` on the wire and in the record (#1796), so the
-		 * saved ride and the room's meter leave out what the live meter did.
+		 * saved ride and the session's meter leave out what the live meter did.
 		 */
 		get scoring() {
 			return phase === 'running' && spiralSeconds === 0;

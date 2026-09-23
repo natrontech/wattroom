@@ -8,8 +8,8 @@ import { glideTo } from '$lib/sound/glide';
  *
  * Synthesised rather than sampled: synthwave *is* oscillators, filters and
  * envelopes, so there is nothing to license, nothing to download, and a
- * per-room pack becomes a parameter set rather than an asset bundle when that
- * fast-follow arrives.
+ * voice channel's sound pack (#2434) can be a parameter set rather than an
+ * asset bundle.
  *
  * This is the engine: one AudioContext, the master under the mixer's
  * volume and the duck, and `play`. What each cue sounds like is the

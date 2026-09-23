@@ -5,7 +5,7 @@ import type { Workout } from './types';
 /**
  * The shelf a session is picked from: what the rider wrote, then the curated
  * library. One shape, because every surface that plans a session renders the
- * same picker — the room's and /sessions' (#359).
+ * same picker — a voice channel's and the crew's Schedule (#359).
  */
 export interface ShelfEntry {
 	id: string;

@@ -35,7 +35,7 @@ describe('wireMetrics', () => {
 });
 
 describe('the trim that rides with every sample (#795)', () => {
-	it("carries the rider's bias, so the room scores the plan they were on", () => {
+	it("carries the rider's bias, so the hub scores the plan they were on", () => {
 		expect(wireMetrics(metrics, false, 0.8).bias).toBe(0.8);
 		// A caller that says nothing rides at 1 — the prescribed target.
 		expect(wireMetrics(metrics, false).bias).toBe(1);

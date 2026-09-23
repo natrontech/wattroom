@@ -2,9 +2,9 @@
  * The IndexedDB ride buffer (#19) — WATTROOM.md's crash-safety seam.
  *
  * Every recorded sample lands here as well as wherever else it goes (the solo
- * recording, the room WS). A browser crash at minute 55 then loses nothing:
- * the ride is on disk, recoverable as a .fit, and a room reconnect can replay
- * what the socket dropped.
+ * recording, the voice channel's socket). A browser crash at minute 55 then
+ * loses nothing: the ride is on disk, recoverable as a .fit, and a reconnect
+ * to the channel can replay what the socket dropped.
  *
  * Appends are fire-and-forget: a storage problem must never disturb a ride,
  * so every operation swallows failure and the buffer degrades to "no crash
@@ -61,7 +61,7 @@ function open(): Promise<IDBDatabase | null> {
 		if (typeof indexedDB === 'undefined') return resolve(null);
 		// `indexedDB.open` THROWS in a Firefox private window rather than
 		// firing onerror, and an unguarded throw here rejected the promise:
-		// the room's `.then` had no catch, and the solo page turned a missing
+		// the channel's `.then` had no catch, and the solo page turned a missing
 		// backup into a ride that would not start. A store that will not open
 		// is `null` however it refuses.
 		try {
@@ -189,7 +189,7 @@ function discard(db: IDBDatabase, rideId: string): Promise<unknown> {
  * Which rides a prune discards — the cap is the quota story. The newest
  * KEEP_RIDES stay. Past them a finished ride or a fragment goes, and a ride
  * the server never confirmed stays until there are KEEP_RIDES of those too:
- * every room join opens a buffer, and five of them used to walk a failed
+ * every session joined opens a buffer, and five of them used to walk a failed
  * solo save off the end (#794, audit 2026-09-09).
  */
 export function stale(rides: Array<RideMeta & { samples: number }>): string[] {

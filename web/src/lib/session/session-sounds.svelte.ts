@@ -9,7 +9,7 @@ import {
 } from '$lib/ride/ride-sounds.svelte';
 
 /**
- * What the room says out loud (#834, #686). Riders are on a bike three metres
+ * What the session says out loud (#834, #686). Riders are on a bike three metres
  * from the screen and are not watching it, so every state change that asks the
  * legs for something different announces itself.
  *
@@ -18,8 +18,8 @@ import {
  * file where the sheet, the seat offering, the stage and the panel all meet.
  *
  * Ducking and the music-aware gate threshold are NOT here: they belong to the
- * room connection (#216), because they have to work on every page rather than
- * only the one holding this component.
+ * voice channel's connection (#216), because they have to work on every page
+ * rather than only the one holding this component.
  */
 export interface SoundDeps extends RideSoundDeps {
 	/** The shared timeline's phase, and how much countdown is left. */
@@ -50,7 +50,7 @@ export function createSessionSounds(deps: SoundDeps) {
 	$effect(() => heardEnd(deps.phase() ?? 'idle'));
 
 	// The rider's own cues — block, guard, spiral, fault, the sprint and now
-	// the count-in — are the ride's, not the room's (#1792, #1800): a rider
+	// the count-in — are the ride's, not the session's (#1792, #1800): a rider
 	// alone hears them too. The shared countdown is fed in as seconds left,
 	// `0` once the timeline is running so the `go` lands, and undefined
 	// otherwise — a countdown the coach cancelled goes back to idle and must
