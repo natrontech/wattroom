@@ -92,7 +92,7 @@
 	const canControl = $derived(coach ? coach === account.me?.id : true);
 	// Managing the crew's playlists and calendar stays a crew role's, never
 	// the session's: the tick carries the crew's word for it (#2438).
-	const canManage = $derived(['owner', 'admin', 'coach'].includes(myRole));
+	const canManage = $derived(myRole === 'owner' || myRole === 'admin');
 
 	// Banning is reversible (Unban sets the role right back), so it gets an
 	// undo toast rather than a confirm dialog (errors.md) — same pattern as

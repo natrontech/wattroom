@@ -52,7 +52,7 @@
 		error = null;
 		// The workout, not the place: the buffer is published as it is, and the
 		// route below is the one field the server strips of who was where.
-		recorder.event('room', channel.shared?.workoutName ?? '');
+		recorder.event('session', channel.shared?.workoutName ?? '');
 		recorder.flag();
 		const report = recorder.flags[recorder.flags.length - 1];
 		const result = await recorder.submit(report, {

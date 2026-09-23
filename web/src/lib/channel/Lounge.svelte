@@ -46,8 +46,6 @@
 	);
 	const av = $derived(channelConnection.current?.av);
 	const isOwner = $derived(channel.myRole === 'owner');
-	/** Taking the announcement down is the coach's and the owner's (#2408). */
-	const coaches = $derived(isOwner || channel.myRole === 'coach');
 
 	// The tile's right-click (#465): focus is the click, the rest is what
 	// every person in WattRoom offers — their page, the DM, the friend ask,
@@ -251,7 +249,7 @@
 	{#if channel.phase === 'lounge'}
 		<AnnouncementStrip
 			announcement={channel.announcement}
-			canClear={coaches}
+			canClear={isOwner}
 			onclear={() => channel.clearAnnouncement()}
 		/>
 	{/if}

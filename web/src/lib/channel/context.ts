@@ -53,8 +53,7 @@ export interface ChannelContext {
 	/** The session's controls: the coach's, or anyone's while none is open (#2438). */
 	readonly canControl: boolean;
 	/** The crew's own things — its playlists, its calendar: its owner's and
-	 *  its admins' (and `coach`'s, a room-era role no roster carries any
-	 *  more), whoever is coaching. */
+	 *  its admins', whoever is coaching. */
 	readonly canManage: boolean;
 	readonly myRole: string;
 	/** A sprint window or a game owns the focus while it runs (ADR-0020). */
