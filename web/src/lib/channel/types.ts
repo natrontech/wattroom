@@ -48,7 +48,7 @@ export interface LiveRider {
  * the live truth and carries no faces; this is who the room HAS, which is also
  * the only way to know who is not here.
  */
-export interface RoomMember {
+export interface PanelMember {
 	id: string;
 	displayName: string;
 	avatarUrl?: string;

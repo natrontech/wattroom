@@ -19,7 +19,7 @@
 	import { BOARD_MARK } from '$lib/channel/presence-marks';
 	import { rosterGroups } from '$lib/channel/roster';
 	import { statusOfRider } from '$lib/status';
-	import type { RoomMember, LiveRider } from '$lib/channel/types';
+	import type { PanelMember, LiveRider } from '$lib/channel/types';
 
 	// The room's people, in one column (ADR-0020). Discord's right column is
 	// WHO IS HERE; ours was chat alone, so the roster was legible only from
@@ -52,7 +52,7 @@
 		 * avatar and knows nothing of the members who are away, so the faces and
 		 * the offline group both come from here.
 		 */
-		members?: RoomMember[];
+		members?: PanelMember[];
 		/** The jukebox playlist renders into the panel's top slot. */
 		player?: Snippet;
 		onCheer?: (emoji: string) => void;
@@ -160,7 +160,7 @@
 	</li>
 {/snippet}
 
-{#snippet absent(member: RoomMember)}
+{#snippet absent(member: PanelMember)}
 	<li
 		class="text-muted-dim flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
 		{@attach contextMenu(() =>

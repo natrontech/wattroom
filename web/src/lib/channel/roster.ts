@@ -1,4 +1,4 @@
-import type { RoomMember, LiveRider } from '$lib/channel/types';
+import type { PanelMember, LiveRider } from '$lib/channel/types';
 
 /**
  * The people column's three groups. Mid-ride the useful split is riding /
@@ -9,8 +9,8 @@ import type { RoomMember, LiveRider } from '$lib/channel/types';
 export function rosterGroups(
 	live: boolean,
 	riders: LiveRider[],
-	members: RoomMember[],
-): { here: LiveRider[]; away: LiveRider[]; offline: RoomMember[] } {
+	members: PanelMember[],
+): { here: LiveRider[]; away: LiveRider[]; offline: PanelMember[] } {
 	const here = live
 		? riders.filter((r) => r.watts > 0)
 		: riders.filter((r) => r.inVoice);

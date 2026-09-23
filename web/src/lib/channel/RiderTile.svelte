@@ -22,7 +22,7 @@
 	} from '$lib/channel/presence-marks';
 	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
 	import type { Phase } from '$lib/channel/types';
-	import type { RoomMember, LiveRider, TileMetric } from '$lib/channel/types';
+	import type { PanelMember, LiveRider, TileMetric } from '$lib/channel/types';
 
 	let {
 		rider,
@@ -54,7 +54,7 @@
 		menu?: () => MenuEntry[];
 		/** Their face, from the room's member list — the tick's roster
 		 * carries names and levels, never an avatar (channel/types.ts). */
-		face?: RoomMember;
+		face?: PanelMember;
 	} = $props();
 
 	// Whether this tile has live NUMBERS to draw — not whether the rider is
