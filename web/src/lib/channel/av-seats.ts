@@ -63,7 +63,7 @@ export function createSeats() {
 			pictures[kind].delete(rider);
 			return true;
 		},
-		/** A disconnect empties the room: every seat, and every element with it. */
+		/** A disconnect empties the call: every seat, and every element with it. */
 		clear() {
 			for (const el of audio.values()) el.remove();
 			audio.clear();

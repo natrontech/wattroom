@@ -182,7 +182,7 @@ describe('a disconnect', () => {
 		expect(seats.get('video', 'jan')).toBeUndefined();
 		expect(seats.get('screen', 'ada')).toBeUndefined();
 		expect(seats.audio.size).toBe(0);
-		// Left in the DOM they go on playing a room the rider has left.
+		// Left in the DOM they go on playing a call the rider has left.
 		expect(voice.isConnected).toBe(false);
 		expect(machine.isConnected).toBe(false);
 	});

@@ -5,7 +5,7 @@ import type {
 } from 'livekit-client';
 
 /**
- * The names the room's AV seams share (#892).
+ * The names the call's AV seams share (#892).
  *
  * Beside the store rather than inside it, so that every seam lifted out of
  * `av.svelte.ts` can say what it takes and returns without importing the
@@ -29,7 +29,7 @@ export type AvStatus =
  *
  * Our own spelling of the SDK's enum rather than the enum itself: the SDK
  * stops at `av-wire.ts` on the way in (see its head), and this crosses into
- * the room's vocabulary like everything else does.
+ * our own vocabulary like everything else does.
  */
 export type LinkQuality = 'excellent' | 'good' | 'poor' | 'lost' | 'unknown';
 

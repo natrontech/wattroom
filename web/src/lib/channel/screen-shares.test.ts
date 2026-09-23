@@ -25,7 +25,7 @@ describe('screenShareChanges (#664)', () => {
 });
 
 describe('screenShareEvent (#664)', () => {
-	it('builds a room-event line the timeline already knows how to word', () => {
+	it('builds a channel-event line the timeline already knows how to word', () => {
 		const started = screenShareEvent({ rider: 'kim', live: true }, 'Kim', 5000);
 		expect(started).toMatchObject({ kind: 'screen', actor: 'Kim', at: 5000 });
 		expect(eventText(started)).toBe('Kim started sharing a screen');

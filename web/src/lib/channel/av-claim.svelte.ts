@@ -2,8 +2,8 @@
  * Which tab holds the mic and camera (#293, #892).
  *
  * LiveKit gives each tab its own participant, so nothing evicts anything and
- * what is left is a product question: newest claim wins, so opening a room
- * moves the mic to the tab you are looking at.
+ * what is left is a product question: newest claim wins, so joining voice in
+ * a second tab moves the mic to the tab you are looking at.
  *
  * Split out of `av.svelte.ts`, which was one closure wide enough that a
  * cross-wired bug looked local. The pure half already lived in `tabs.ts`
@@ -48,7 +48,7 @@ export interface ClaimHost {
 	identity(): string;
 	/** Server millis — never the browser's clock (#646). */
 	now(): number;
-	/** Everyone in the room right now, this connection included. */
+	/** Everyone in the call right now, this connection included. */
 	participants(): ClaimParticipant[];
 	/** Everyone EXCEPT this connection. */
 	others(): ClaimParticipant[];
@@ -94,10 +94,10 @@ export function createClaims(host: ClaimHost) {
 	/**
 	 * Is any OTHER connection of this rider publishing an open mic?
 	 *
-	 * Muting here is unpublishing, and the room keys mic state by rider while
+	 * Muting here is unpublishing, and the channel keys mic state by rider while
 	 * the events that drive it are per connection — so a tab standing down
 	 * broadcasts an unpublish for a rider who is still live in the tab that
-	 * just took over, and everyone reads them as muted. Ask the room instead
+	 * just took over, and everyone reads them as muted. Ask the call instead
 	 * of trusting the event.
 	 */
 	function micLive(rider: string, except: string): boolean {
@@ -111,7 +111,7 @@ export function createClaims(host: ClaimHost) {
 		);
 	}
 
-	/** Is any other connection of this rider still in the room? */
+	/** Is any other connection of this rider still in the call? */
 	function stillHere(rider: string, except: string): boolean {
 		return host
 			.others()

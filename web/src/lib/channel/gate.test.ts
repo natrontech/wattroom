@@ -10,7 +10,7 @@ import {
 } from './gate';
 
 const OPEN_AT = 0.02; // SPEC's default threshold
-const UNDER = closeLevel(OPEN_AT) * 0.5; // room tone, well beneath the gate
+const UNDER = closeLevel(OPEN_AT) * 0.5; // the noise floor, well beneath the gate
 
 describe('gate dynamics (#514)', () => {
 	it('opens on the first level over the mark', () => {

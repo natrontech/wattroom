@@ -10,9 +10,10 @@ import { serverNow } from '$lib/server-clock';
  *
  * LiveKit gives each tab its own participant, so nothing evicts anything and
  * what is left is a product question — which tab holds the mic. Newest wins:
- * opening a room moves the mic to the tab you are looking at. The protocol is
- * `av-claim.svelte.ts`, which is deliberately SDK-free; this is the half that
- * reaches the connection, and it is where the SDK stops on the way out.
+ * joining voice in a second tab moves the mic to the tab you are looking at.
+ * The protocol is `av-claim.svelte.ts`, which is deliberately SDK-free; this
+ * is the half that reaches the connection, and it is where the SDK stops on
+ * the way out.
  *
  * The two mic buttons live here rather than with the mic itself because both
  * have to ask this question before they act: pressing the mic in a tab that

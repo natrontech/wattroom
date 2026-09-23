@@ -1,15 +1,15 @@
 /**
  * This machine's microphone (#892): capture → meter → gate → published track,
- * and everything that decides whether anything leaves the room.
+ * and everything that decides whether anything reaches the call.
  *
- * The mic path (#151, SPEC room audio): capture (browser DSP on) → gain →
- * published track. The gate drives the GAIN, never the track's mute — a muted
- * track broadcasts state, and a gate that flaps everyone's muted chip per pause
- * in speech is worse than no gate.
+ * The mic path (#151, SPEC voice channel audio): capture (browser DSP on) →
+ * gain → published track. The gate drives the GAIN, never the track's mute —
+ * a muted track broadcasts state, and a gate that flaps everyone's muted chip
+ * per pause in speech is worse than no gate.
  *
  * A HANDHELD takes none of that: it publishes the capture as it comes and the
  * mic button is the gate, because holding a capture open is what puts the
- * room on a phone's earpiece. `open()` has the why; docs/SPEC.md has it as a
+ * call on a phone's earpiece. `open()` has the why; docs/SPEC.md has it as a
  * product fact.
  *
  * Split out of `av.svelte.ts`, which was one closure wide enough that a
@@ -40,7 +40,7 @@ export interface MicChainHost {
 	unpublish(track: MediaStreamTrack): void;
 	/** Is this machine actually transmitting — is anyone on the other end? */
 	live(): boolean;
-	/** The level the room hears: 0 whenever nothing is getting through. */
+	/** The level the call hears: 0 whenever nothing is getting through. */
 	heard(level: number): void;
 	/** The meter has gone; nothing is left to report the rider falling quiet. */
 	silenced(): void;
@@ -81,7 +81,7 @@ export function createMicChain(host: MicChainHost) {
 	 * capture is watched on both paths regardless, so the rider is told the
 	 * same way whichever one they are on. Persistent until
 	 * the mic is open again: the rider three metres away has to be able to see
-	 * why the room stopped hearing them.
+	 * why the call stopped hearing them.
 	 */
 	let fault = $state(false);
 
@@ -128,7 +128,7 @@ export function createMicChain(host: MicChainHost) {
 		level = next;
 		runGate();
 		// Your own tile lights on the same measurement as everybody else's
-		// (#987). What the room hears is what the gate lets through, so a level
+		// (#987). What the call hears is what the gate lets through, so a level
 		// under your own threshold is not you speaking — and neither is a hot
 		// mic you have switched off.
 		host.heard(host.live() && gate.open ? next : 0);
@@ -136,7 +136,7 @@ export function createMicChain(host: MicChainHost) {
 
 	/**
 	 * capture → level → gate gain. The caller connects the gain to wherever the
-	 * audio is going: the room, or your own ears.
+	 * audio is going: the call, or your own ears.
 	 */
 	async function build() {
 		const raw = await capture();
@@ -157,7 +157,7 @@ export function createMicChain(host: MicChainHost) {
 		if (!chain?.gain || !chain.ctx) return;
 		transmitting = openNow;
 		// Up in 5 ms, down over 150 ms (SPEC): opening fast is what keeps the
-		// first syllable, and a close that fades is one the room forgives — it
+		// first syllable, and a close that fades is one the call forgives — it
 		// reads as a breath ending rather than a cut, and re-opening inside the
 		// fade is inaudible.
 		glideTo(
@@ -196,7 +196,7 @@ export function createMicChain(host: MicChainHost) {
 			//    capture is the only thing that hands the loudspeaker back.
 			//    A gate holds the capture open for as long as a rider is in
 			//    voice, so a phone sat in earpiece mode the whole time (rider
-			//    report: "no speaker like on phone", and the room sounding
+			//    report: "no speaker like on phone", and the call sounding
 			//    terrible with it). Here the mic button IS the capture.
 			//  - capture → worklet → MediaStreamDestination is a round trip a
 			//    phone does not always keep up with, and the same report had
@@ -242,7 +242,7 @@ export function createMicChain(host: MicChainHost) {
 		if (chain || testing) return;
 		const { ctx, raw, gain, meter } = await build();
 		host.devices.refresh(); // the grant just made the labels readable (#658)
-		gain.connect(ctx.destination); // your own ears, not the room
+		gain.connect(ctx.destination); // your own ears, not the call
 		const dest = ctx.createMediaStreamDestination();
 		chain = {
 			ctx,

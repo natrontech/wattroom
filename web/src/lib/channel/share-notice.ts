@@ -1,8 +1,8 @@
 /**
- * The one thing the room says out loud while your screen is live (#563).
+ * The one thing the app says out loud while your screen is live (#563).
  *
  * Screen share is the AV control that can leak something private — an inbox,
- * a calendar, another room's tab — and the browser's own share bar is often
+ * a calendar, a private chat — and the browser's own share bar is often
  * on a display the rider cannot see. So the notice is derived, never stored:
  * `sharing` is the single source of truth, and the browser ending the track
  * behind our back (av.svelte.ts, LocalTrackUnpublished) clears the notice

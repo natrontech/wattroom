@@ -7,7 +7,7 @@ import type {
 } from '$lib/channel/av-types';
 
 /**
- * One room's AV connection, in two named places (#892).
+ * One call's AV connection, in two named places (#892).
  *
  * This split is what let every other seam leave. The bindings below used to
  * be `let`s in one closure, and `$state` reactivity rides on assignment in
@@ -42,12 +42,12 @@ export interface AvState {
 	 * Whether the share is carrying this machine's SOUND as well as its
 	 * picture (#1124). Its own flag rather than an assumption from `sharing`:
 	 * loopback capture can be refused, unavailable, or silently dead, and a
-	 * rider must not be told the room can hear them when it cannot — nor left
+	 * rider must not be told the call can hear them when it cannot — nor left
 	 * unaware when it can.
 	 */
 	sharingAudio: boolean;
 	/**
-	 * Whether the rider WANTS the room to hear their machine (#1751), as
+	 * Whether the rider WANTS the call to hear their machine (#1751), as
 	 * opposed to `sharingAudio`, which is whether it does. Two facts, because
 	 * a platform can refuse: Linux Chromium has no loopback at all.
 	 *
@@ -84,7 +84,7 @@ export interface AvState {
 	/**
 	 * The browser refused to start audio without a gesture behind it (#645).
 	 * Persistent status, not a toast: the rider is on a bike three metres from
-	 * the screen, and the room has gone silent — it has to still be there when
+	 * the screen, and the call has gone silent — it has to still be there when
 	 * they look up (errors.md).
 	 */
 	playbackBlocked: boolean;

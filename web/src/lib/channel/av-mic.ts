@@ -11,7 +11,7 @@ import { createMicChain } from '$lib/channel/mic-chain.svelte';
  * `mic-chain.svelte.ts` owns the capture, the meter, the gate and the mic
  * test and knows nothing about LiveKit; this is the four functions it needs
  * to reach a connection, plus the controls that are about the device rather
- * than about the room.
+ * than about the call.
  *
  * Deliberately innocent of the claim protocol: `toggleMic` and the fault
  * banner's `reconnectMic` both have to ask which tab holds the mic first, so
@@ -41,8 +41,8 @@ export function createMic(host: MicHost) {
 			const lk = conn.liveKit!;
 			await conn.liveKitRoom?.localParticipant.publishTrack(track, {
 				source: lk.Track.Source.Microphone,
-				// Full-band Opus at 96 kbps, not the SDK's 48 (#1340): the room
-				// is asked to sound like a voice in the room, and a rider's
+				// Full-band Opus at 96 kbps, not the SDK's 48 (#1340): the call
+				// is asked to sound like someone beside you, and a rider's
 				// uplink has that to spare. No DTX: the gate already sends
 				// digital silence, and Opus's comfort-noise transitions over it
 				// are what the ear reads as "noise reduction".
@@ -65,7 +65,7 @@ export function createMic(host: MicHost) {
 			if (conn.liveKitRoom) setVoice(conn.me, 'muted');
 		},
 		// A finger is the whole test: a machine held in the hand routes the
-		// room to its earpiece for as long as the page holds a capture, so the
+		// call to its earpiece for as long as the page holds a capture, so the
 		// chain publishes what the browser gave it and closing the mic hands
 		// the loudspeaker back (`mic-chain.svelte.ts`).
 		handheld: () => device.coarse,
@@ -131,7 +131,7 @@ export function createMic(host: MicHost) {
 			chain.setPttHeld(held);
 		},
 		/**
-		 * The room's deck, as the tick reports it. Whether it raises this
+		 * The channel's deck, as the tick reports it. Whether it raises this
 		 * rider's gate is effectiveThreshold's call — their own music level
 		 * decides whether there is any bleed to gate out (#478).
 		 */

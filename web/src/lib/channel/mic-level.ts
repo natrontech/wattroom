@@ -36,7 +36,7 @@ const POST_MS = 20;
 /**
  * Per render quantum: RMS, the same envelope as the fallback, audio passed
  * through untouched. Untouched matters — this node sits in the transmit path,
- * so anything it does to the samples is what the room hears.
+ * so anything it does to the samples is what the call hears.
  */
 const WORKLET_SOURCE = `
 class MicLevel extends AudioWorkletProcessor {

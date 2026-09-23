@@ -21,7 +21,7 @@ function ask(over: Partial<Parameters<typeof shouldRejoinVoice>[0]> = {}) {
 }
 
 describe('shouldRejoinVoice (#480)', () => {
-	it('walks back into the room it was in, mic and all', () => {
+	it('walks back into the channel it was in, mic and all', () => {
 		expect(ask()).toEqual({ mic: true });
 	});
 
@@ -53,8 +53,8 @@ describe('shouldRejoinVoice (#480)', () => {
 		).toEqual({ mic: true });
 	});
 
-	it('stays out in a different room', () => {
-		// Opening someone else's room fresh is not a refresh of yours.
+	it('stays out in a different channel', () => {
+		// Opening another voice channel fresh is not a refresh of this one.
 		expect(ask({ key: 'v:thursday-threshold' })).toBe(null);
 	});
 
@@ -78,7 +78,7 @@ describe('shouldRejoinVoice (#480)', () => {
 		).toBe(null);
 	});
 
-	it('yields even when that tab is in another room', () => {
+	it('yields even when that tab is in another channel', () => {
 		// There is one microphone on the machine, and it is in use.
 		expect(
 			ask({

@@ -6,7 +6,7 @@ describe('mic capture constraints (#555)', () => {
 		// Not a preference: LiveKit reads the published track's level to decide
 		// who is speaking, the jukebox ducks from that, and every rider's
 		// stored gate threshold was set against an AGC'd signal. Switching this
-		// off once made the room inaudible and stopped the music dipping.
+		// off once made the call inaudible and stopped the music dipping.
 		expect(MIC_CONSTRAINTS.autoGainControl).toBe(true);
 	});
 

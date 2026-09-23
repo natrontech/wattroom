@@ -1,7 +1,7 @@
 /**
  * Whose Space bar it is while push-to-talk is on (audit 2026-09-09).
  *
- * The room's PTT listener sits on the window and used to yield Space only
+ * The call's PTT listener sits on the window and used to yield Space only
  * to text fields. A native button activates on Space at keyup, and
  * preventDefault on the keydown suppressed that: a keyboard rider who tabbed
  * to Mute or End the session and pressed Space got a hot mic and no click.

@@ -41,7 +41,7 @@ describe('who is talking', () => {
 
 	// The bug this exists for. The flag was a remembered broadcast, so it
 	// outlived its subject: a rider who left mid-sentence stayed ringed until
-	// the room ended.
+	// the call ended.
 	it('goes out the moment the connection does, mid-sentence', () => {
 		const talk = createSpeaking(riderOf);
 		talk.level('marco#1', LOUD, 0);
@@ -82,7 +82,7 @@ describe('who is talking', () => {
 		expect(talk.riders).toEqual({ ana: true });
 	});
 
-	it('empties on the way out of the room', () => {
+	it('empties on the way out of the call', () => {
 		const talk = createSpeaking(riderOf);
 		talk.level('marco#1', LOUD, 0);
 		talk.clear();

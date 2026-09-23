@@ -37,7 +37,7 @@ describe('gate scale', () => {
 		const mid = gatePct(GATE_DEFAULT);
 		expect(mid).toBeGreaterThan(40);
 		expect(mid).toBeLessThan(60);
-		// Room tone reads low, a firm speaking voice reads high — and neither
+		// The noise floor reads low, a firm speaking voice reads high — and neither
 		// is pinned to an end, so the gap between them is what you tune in.
 		expect(gatePct(0.003)).toBeLessThan(mid);
 		expect(gatePct(0.15)).toBeGreaterThan(mid);

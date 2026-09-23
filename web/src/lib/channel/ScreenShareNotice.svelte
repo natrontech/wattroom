@@ -1,5 +1,5 @@
 <script lang="ts">
-	// #563: while your screen is live, nothing in the room said so loudly
+	// #563: while your screen is live, nothing on the page said so loudly
 	// enough — the control kept its neutral styling and the browser's own
 	// share bar is usually on a display the rider cannot see. This is
 	// persistent status, not a toast (errors.md): it sits above the page the
@@ -27,7 +27,7 @@
 		onSound,
 	}: {
 		sharing: boolean;
-		/** Whether the room can HEAR the machine too (#1124). */
+		/** Whether the call can HEAR the machine too (#1124). */
 		sharingAudio?: boolean;
 		place: { home: string; name: string } | null;
 		/** Whether the rider is on the place's own pages — no way back to offer. */
@@ -53,7 +53,7 @@
 
 	// Stopping the share is the destructive one, so it sits last after a
 	// separator (ux.md) — it used to sit in the middle of the menu, one entry
-	// above "Back to the room".
+	// above the way back to the channel.
 	function menu(): MenuEntry[] {
 		const entries: MenuEntry[] = [];
 		if (onSound)
@@ -109,8 +109,8 @@
 		{#if onSound}
 			<!-- The sound is its own control, not a footnote on the picture: the
 			     rider who reported this could see what they were sharing and had
-			     no way to say the room should not HEAR it (#1751). Icon-only and
-			     44 px, because the row also carries the room's name at 375 px
+			     no way to say the call should not HEAR it (#1751). Icon-only and
+			     44 px, because the row also carries the channel's name at 375 px
 			     (ux.md). -->
 			<button
 				onclick={() => onSound(!sharingAudio)}

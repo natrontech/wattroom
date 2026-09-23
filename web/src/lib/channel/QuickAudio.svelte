@@ -1,9 +1,10 @@
 <script lang="ts">
-	// The mix and the gate, reachable from inside the room (#477). ADR-0020
+	// The mix and the gate, reachable without leaving the call (#477). ADR-0020
 	// sent these behind the cog as "set once at a desk"; riders reported the
 	// opposite — you only find out the mix is wrong when someone is talking
 	// over music you cannot hear them through, which is mid-interval, and the
-	// cog is a navigation out of the room onto a page that also holds FTP.
+	// cog is a navigation out of the voice channel onto a page that also
+	// holds FTP.
 	//
 	// A shortcut, never the only way (ux.md): /settings/voice keeps the full page,
 	// with push-to-talk's explanation and the rest. A modal

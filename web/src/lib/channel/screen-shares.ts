@@ -3,11 +3,11 @@ import type { ChannelEvent } from '$lib/protocol';
 import { comingsAndGoings, type Coming } from '$lib/channel/comings-and-goings';
 
 /**
- * Another rider's screen appearing is a state change the room has to hear
+ * Another rider's screen appearing is a state change the call has to hear
  * (#664): while the jukebox plays the stage rightly stays on the music, so
  * a new share was one more chip in a picker nobody on a bike is watching.
  * LiveKit is the only witness, so the line is this client's own — the
- * room-event shape ADR-0022 already renders, never sent, never persisted.
+ * channel-event shape ADR-0022 already renders, never sent, never persisted.
  *
  * The diff itself is `comingsAndGoings` (#854): the voice channel asks the
  * same question of a different set.

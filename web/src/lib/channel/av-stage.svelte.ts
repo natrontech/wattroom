@@ -20,15 +20,15 @@ export function createStage() {
 	let videoOf = $state<Record<string, number>>({});
 	/**
 	 * Every live screenshare (#280). #206's projector kept exactly one — a
-	 * second sharer silently stole the room's screen. LiveKit was always fine
-	 * with many; only the UI insisted on one, so keep them all in arrival
+	 * second sharer silently took the stage from the first. LiveKit was always
+	 * fine with many; only the UI insisted on one, so keep them all in arrival
 	 * order (last = newest) and let the viewer choose.
 	 */
 	let screens = $state<{ id: string; key: number }[]>([]);
 	let seq = 0;
 	/**
 	 * What YOU want on the stage: a `screen:`/`cam:` key, or null = newest
-	 * share. Yours alone — a stage pick is a glance, never room state.
+	 * share. Yours alone — a stage pick is a glance, never channel state.
 	 */
 	let pick = $state<string | null>(null);
 

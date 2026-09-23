@@ -51,8 +51,8 @@ describe('device choices', () => {
 		expect(second.outId).toBe('speakers');
 	});
 
-	it('is one store above the router, so a pick made with no room is the pick a join applies', () => {
-		// #1858: /settings/voice writes it, the room's mic chain reads it.
+	it('is one store above the router, so a pick made with no call is the pick a join applies', () => {
+		// #1858: /settings/voice writes it, the call's mic chain reads it.
 		deviceChoices().setMic('usb');
 		expect(deviceChoices().micId).toBe('usb');
 		expect(deviceChoices()).toBe(deviceChoices());

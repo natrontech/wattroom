@@ -13,9 +13,9 @@ const DEVICES_KEY = 'wattroom.devices.v1';
 export type DeviceChoices = ReturnType<typeof createDeviceChoices>;
 
 // One store above the router (#1858), the way `soloTrainer` is for pairing:
-// a mic picked on /settings/voice with no room open is the mic the next
-// join captures, and the room's chain and the settings page read the same
-// pick. `createDeviceChoices` stays exported for the tests.
+// a mic picked on /settings/voice with no call open is the mic the next
+// join captures, and the call's mic chain and the settings page read the
+// same pick. `createDeviceChoices` stays exported for the tests.
 let shared: DeviceChoices | undefined;
 export function deviceChoices(): DeviceChoices {
 	return (shared ??= createDeviceChoices());
@@ -51,7 +51,7 @@ export function createDeviceChoices() {
 	// whichever component happened to construct the store, and Svelte freezes
 	// it at its last value once that component unmounts (derived_inert). The
 	// connection outlives every page (#173), so it would freeze on the first
-	// navigation away from the room.
+	// navigation away from the voice channel.
 	const mics = () => list.filter((d) => d.kind === 'audioinput');
 
 	return {

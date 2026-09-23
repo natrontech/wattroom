@@ -75,7 +75,7 @@ export function createRiderOutput(
 
 	/**
 	 * A rider's voice as it should sound right now: their fader, or nothing
-	 * while you are away (#875) — the room does not play to an empty chair.
+	 * while you are away (#875) — the call does not play to an empty chair.
 	 */
 	function gainFor(key: string) {
 		if (mixer.muted) return 0;
@@ -193,8 +193,8 @@ export function createRiderOutput(
 							meters.set(identity, meter);
 						})
 						.catch(() => {
-							// No meter is a room whose rings never light, not a
-							// room with no sound in it. The voice is already
+							// No meter is a call whose rings never light, not a
+							// call with no sound in it. The voice is already
 							// connected above.
 						});
 				}

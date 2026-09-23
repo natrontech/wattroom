@@ -5,12 +5,12 @@
  * percentage bar and a raw amplitude slider.
  *
  * The axis is dBFS because that is the unit speech is spaced in: on a linear
- * amplitude axis every usable gate position — room tone up to a firm voice —
- * is crushed into the first tenth of the travel, and the other nine tenths
- * cover levels nobody ever speaks at.
+ * amplitude axis every usable gate position — the noise floor up to a firm
+ * voice — is crushed into the first tenth of the travel, and the other nine
+ * tenths cover levels nobody ever speaks at.
  */
 
-/** Meter floor: quieter than this is a silent room, not a quiet voice. */
+/** Meter floor: quieter than this is silence, not a quiet voice. */
 export const GATE_MIN_DB = -54;
 /** Meter ceiling: a gate this high only opens for a shout. */
 export const GATE_MAX_DB = -12;
@@ -40,7 +40,7 @@ export function gatePct(level: number): number {
 export const GATE_FLOOR = gateLevel(GATE_MIN_DB);
 export const GATE_CEIL = gateLevel(GATE_MAX_DB);
 
-/** SPEC room audio: the gate opens at analyser RMS >= 0.02. */
+/** SPEC voice channel audio: the gate opens at analyser RMS >= 0.02. */
 export const GATE_DEFAULT = 0.02;
 
 export function clampThreshold(level: number): number {

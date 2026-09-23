@@ -13,10 +13,10 @@ import { canPickOutput } from '$lib/channel/av-output';
 import { mountTrack } from '$lib/channel/mount-track';
 
 /**
- * What the room may ask of AV (#1698).
+ * What the voice channel may ask of AV (#1698).
  *
  * One flat surface over the parts `av.svelte.ts` assembles, because that is
- * what the room page wants: a rider does not think of the mic chain, the
+ * what its page wants: a rider does not think of the mic chain, the
  * claim protocol and the seat ledger as three things. Every reader is a
  * getter and never a copy — the sub-stores hold the `$state`, and a value
  * read here has to be the one they hold now.
@@ -81,7 +81,7 @@ export function channelAvApi(parts: AvParts) {
 		get sharing() {
 			return av.sharing;
 		},
-		/** Whether the room can hear this machine as well as see it (#1124). */
+		/** Whether the call can hear this machine as well as see it (#1124). */
 		get sharingAudio() {
 			return av.sharingAudio;
 		},
@@ -190,8 +190,8 @@ export function channelAvApi(parts: AvParts) {
 			output.applyGains();
 		},
 		/**
-		 * The same, for whatever machine is being shared into the room
-		 * (#1124). One fader for all of them: a rider is hearing one room, and
+		 * The same, for whatever machine is being shared into the call
+		 * (#1124). One fader for all of them: a rider is hearing one call, and
 		 * two people sharing at once is not the case to build a mixer for.
 		 */
 		setShareGain(v: number) {
@@ -208,7 +208,7 @@ export function channelAvApi(parts: AvParts) {
 		get stageSources() {
 			return stage.sources;
 		},
-		/** The rider's pick. The room page resolves it against the full list —
+		/** The rider's pick. The page resolves it against the full list —
 		 *  longer than ours, the jukebox video is on it too (#316). */
 		get stagePick() {
 			return stage.pick;

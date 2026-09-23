@@ -14,7 +14,7 @@ import type { MicChain } from '$lib/channel/mic-chain.svelte';
 import { riderOf, yieldsTo } from '$lib/channel/tabs';
 
 /**
- * Everything LiveKit tells us, translated onto the room (#1698).
+ * Everything LiveKit tells us, translated onto the voice channel (#1698).
  *
  * The fifth seam out of `av.svelte.ts`, and the one #892 declined to take:
  * "extracting `wire()` would mean declaring nearly this whole closure as an
@@ -28,7 +28,7 @@ import { riderOf, yieldsTo } from '$lib/channel/tabs';
  *
  * The SDK stops here, on the way in. Nothing downstream of this file knows
  * what a `TrackPublication` is: seats, the stage, the claim protocol and the
- * speaking meter are all told in the room's own vocabulary.
+ * speaking meter are all told in our own vocabulary.
  */
 export interface WireHost {
 	av: AvState;
@@ -156,7 +156,7 @@ export function wireLiveKitRoom(
 	// The browser's own "Stop sharing" bar ends the track behind our back:
 	// LiveKit unpublishes it for us (handleTrackEnded) and says so here. Without
 	// this the button still offers to stop a share that is already over, and
-	// the local stage sits on its last frame while the room sees nothing.
+	// the local stage sits on its last frame while the call sees nothing.
 	r.on(client.RoomEvent.LocalTrackUnpublished, (pub) => {
 		if (pub.source !== client.Track.Source.ScreenShare) return;
 		av.sharing = false;
@@ -199,7 +199,7 @@ export function wireLiveKitRoom(
 		// Belt and braces: TrackUnsubscribed normally arrives first and takes
 		// the meter with it, but a connection dropped hard may skip it.
 		if (talk.drop(p.identity)) av.speaking = { ...talk.riders };
-		// Their other tab may still be in the room — one closed tab does not
+		// Their other tab may still be in the call — one closed tab does not
 		// take a rider out of voice (#293).
 		if (!claims.stillHere(rider, p.identity)) setVoice(rider, null);
 		// The tab that took the mic is gone: this one may have it back, and
@@ -258,7 +258,7 @@ export function wireLiveKitRoom(
 	// keeps flowing while only the signal socket rebuilds.
 	// The browser refused to start audio with no gesture behind it (#645).
 	// LiveKit has an event for exactly this; nothing was listening, so the
-	// room simply went quiet with nothing to press.
+	// call simply went quiet with nothing to press.
 	r.on(client.RoomEvent.AudioPlaybackStatusChanged, () => {
 		av.playbackBlocked = !r.canPlaybackAudio;
 	});
@@ -281,10 +281,10 @@ export function wireLiveKitRoom(
 		seats.clear();
 		stage.clear();
 		av.voice = {};
-		// Nobody's link is being judged in a room we left; a tier kept here
+		// Nobody's link is being judged in a call we left; a tier kept here
 		// would sit on the roster claiming to be live (#2131).
 		av.quality = {};
-		// Nobody is talking to a room you are no longer in — a stale
+		// Nobody is talking to a call you are no longer in — a stale
 		// speaking flag parked music and cues at duck level forever, and
 		// camOn, sharing and micOn all lied about dead tracks (#219, #354).
 		talk.clear();
@@ -303,7 +303,7 @@ export function wireLiveKitRoom(
 			// the drop-rejoin window is still a refresh (#219, #480). Only
 			// on an unexpected drop — a clean disconnect is either leave(),
 			// which tears the note up itself, or join() clearing a stale
-			// room, whose late event must not stop the heartbeat that join
+			// connection, whose late event must not stop the heartbeat that join
 			// is about to start.
 			stopNote();
 			av.status = 'off';

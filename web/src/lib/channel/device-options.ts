@@ -5,7 +5,7 @@ export interface Device {
 }
 
 /**
- * One list of device options (#477): both the room's Sound panel and
+ * One list of device options (#477): both the Sound panel and
  * /settings/voice render them, and a second copy is how the
  * two drift on what an unnamed device is called.
  *
