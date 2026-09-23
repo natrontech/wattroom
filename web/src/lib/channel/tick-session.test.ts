@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { liveSessionId } from './session-phase';
+import { liveSessionId } from './tick-session';
 
 describe('liveSessionId', () => {
 	it.each([

@@ -25,7 +25,7 @@
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { isLivePhase } from '$lib/room/session-phase';
+	import { isLivePhase } from '$lib/channel/tick-session';
 	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';

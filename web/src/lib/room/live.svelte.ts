@@ -13,7 +13,7 @@ import { account } from '$lib/account.svelte';
 import { deviceWord } from '$lib/device.svelte';
 import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { observeServerTime, resetServerClock } from '$lib/server-clock';
-import { isLivePhase } from '$lib/room/session-phase';
+import { isLivePhase } from '$lib/channel/tick-session';
 
 /**
  * The live side of one room (#18): a WebSocket to the hub, the latest tick,

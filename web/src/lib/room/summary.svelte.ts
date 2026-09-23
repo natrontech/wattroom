@@ -2,7 +2,7 @@ import { api } from '$lib/api';
 import type { Medal } from '$lib/components/MedalCard.svelte';
 import { MEDAL_META } from '$lib/medals';
 import type { createRecording } from '$lib/room/recording.svelte';
-import { isLivePhase } from '$lib/room/session-phase';
+import { isLivePhase } from '$lib/channel/tick-session';
 
 /** A session is worth a summary once it has a minute of your riding in it. */
 export const SUMMARY_MIN_SAMPLES = 60;

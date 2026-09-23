@@ -7,7 +7,7 @@
 	import { page } from '$app/state';
 	import { sessionPath } from '$lib/room/address';
 	import { roomConnection } from '$lib/room/connection.svelte';
-	import { liveSessionId } from '$lib/room/session-phase';
+	import { liveSessionId } from '$lib/channel/tick-session';
 	import Training from '$lib/room/Training.svelte';
 
 	const session = $derived(

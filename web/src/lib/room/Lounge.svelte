@@ -12,7 +12,7 @@
 	import { pickStage, pictureKey } from '$lib/room/stage';
 	import { useRoom } from '$lib/room/context';
 	import { ridePath } from '$lib/room/address';
-	import { liveSessionId } from '$lib/room/session-phase';
+	import { liveSessionId } from '$lib/channel/tick-session';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import LoungeDashboard from '$lib/room/LoungeDashboard.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
