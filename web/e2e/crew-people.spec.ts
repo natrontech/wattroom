@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * Nothing lives only in a menu (ux.md). The crew's people list offered the
@@ -16,7 +16,7 @@ const B = 'Crew People Member';
 
 test("the crew's people rows offer the owner's actions without a right-click", async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -24,18 +24,11 @@ test("the crew's people rows offer the owner's actions without a right-click", a
 	);
 
 	const a = await riders(A);
-	const room = await rooms.open(a, `Crew People ${Date.now() % 100000}`);
+	const opened = await channels.open(a, `Crew People ${Date.now() % 100000}`);
 	const b = await riders(B);
-	await rooms.enter(b, room);
+	await channels.enter(b, opened);
 
-	const crewId = await a.evaluate(
-		(slug) =>
-			fetch(`/api/rooms/${slug}`)
-				.then((res) => res.json())
-				.then((r) => String(r.crew?.id ?? '')),
-		room.slug,
-	);
-	await a.goto(`/crew/${crewId}/members`);
+	await a.goto(`/crew/${opened.crew}/members`);
 
 	const row = a
 		.getByTestId('page-body')

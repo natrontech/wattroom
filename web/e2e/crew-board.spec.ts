@@ -1,4 +1,4 @@
-import { expect, test, textChannelOf } from './room';
+import { expect, test } from './crew';
 import { signInAs } from './signin';
 
 /**
@@ -9,25 +9,26 @@ import { signInAs } from './signin';
  */
 test('the crew Board teaches its first pin and leads with the announcement', async ({
 	page,
-	rooms,
+	channels,
 }) => {
 	await signInAs(page, 'Crew Board', '/home');
 	const name = `Crew Board ${Date.now() % 100000}`;
-	const room = await rooms.open(page, name);
+	const opened = await channels.open(page, name);
 
-	await page.goto(`/crew/${room.crew}/board`);
+	await page.goto(`/crew/${opened.crew}/board`);
 	await expect(
 		page.getByRole('heading', { name: 'Board', level: 1 }),
 	).toBeVisible();
 	// The rider is stable by name across runs (signin.ts), and so is the crew
-	// their room lands in: clear its pins so the empty state is the one drawn.
+	// their channels are opened in: clear its pins so the empty state is the
+	// one drawn.
 	await page.evaluate(async (crew) => {
 		const pins = (await (await fetch(`/api/crews/${crew}/pins`)).json()) as {
 			id: string;
 		}[];
 		for (const pin of pins)
 			await fetch(`/api/crews/${crew}/pins/${pin.id}`, { method: 'DELETE' });
-	}, room.crew);
+	}, opened.crew);
 	await page.reload();
 	const first = page
 		.getByRole('button', { name: 'Pin something', exact: true })
@@ -39,8 +40,7 @@ test('the crew Board teaches its first pin and leads with the announcement', asy
 	await page.getByRole('button', { name: 'Pin it', exact: true }).click();
 	await expect(page.getByText('Door code', { exact: true })).toBeVisible();
 
-	// An announcement marked in the room's text channel leads the Board.
-	const channel = (await textChannelOf(page, room)).split('/c/')[1];
+	// An announcement marked in the crew's text channel leads the Board.
 	const marked = await page.evaluate(async (id) => {
 		const line = await fetch(`/api/channels/${id}/chat`, {
 			method: 'POST',
@@ -53,17 +53,20 @@ test('the crew Board teaches its first pin and leads with the announcement', asy
 			body: JSON.stringify({ messageId: line.id }),
 		});
 		return res.status;
-	}, channel);
+	}, opened.text);
 	expect(marked).toBe(200);
 	await page.reload();
 	await expect(page.getByText('Thursday is intervals')).toBeVisible();
 	await expect(page.getByRole('link', { name: `#${name}` })).toBeVisible();
 });
 
-test('crew Workouts teaches what gathers there', async ({ page, rooms }) => {
+test('crew Workouts teaches what gathers there', async ({ page, channels }) => {
 	await signInAs(page, 'Crew Workouts', '/home');
-	const room = await rooms.open(page, `Crew Workouts ${Date.now() % 100000}`);
-	await page.goto(`/crew/${room.crew}/workouts`);
+	const { crew } = await channels.open(
+		page,
+		`Crew Workouts ${Date.now() % 100000}`,
+	);
+	await page.goto(`/crew/${crew}/workouts`);
 	await expect(
 		page.getByRole('heading', { name: 'Workouts', level: 1 }),
 	).toBeVisible();
@@ -78,7 +81,7 @@ test('crew Workouts teaches what gathers there', async ({ page, rooms }) => {
 			await fetch(`/api/crews/${crew}/schedule/${plan.id}`, {
 				method: 'DELETE',
 			});
-	}, room.crew);
+	}, crew);
 	await page.reload();
 	await expect(
 		page.getByRole('link', { name: 'Pick a workout to ride together' }),
