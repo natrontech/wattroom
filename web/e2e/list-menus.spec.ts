@@ -62,9 +62,13 @@ test("a channel's row in the crew column carries the sidebar's own menu", async 
 	await a.setViewportSize({ width: 375, height: 812 });
 	await a.goto(`/crew/${opened.crew}`);
 	await a.getByRole('button', { name: 'open navigation' }).click();
-	const row = a
-		.locator('nav[aria-label="crews and channels"]')
-		.locator(`a[href="${textPath(opened)}"]`);
+	const nav = a.locator('nav[aria-label="crews and channels"]');
+	// All the way in before the right-click (#2578): mid-slide the row is off
+	// screen, the click scrolls the drawer's list to reach it, and that scroll
+	// lands after the menu opens and shuts it — once the list is long enough
+	// to scroll at all, which the crew's pages and YOU made it (#2573).
+	await expect(nav).toBeInViewport({ ratio: 1 });
+	const row = nav.locator(`a[href="${textPath(opened)}"]`);
 	// The unread count on the row, before the menu is read off it: the column
 	// learns of the line on a lobby ping, and a menu opened ahead of it would
 	// be missing "Mark as read" for a reason that is not the menu's.
