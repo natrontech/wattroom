@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.129] - 2026-09-23
+
+### Removed
+
+- The database no longer holds the old room tables. Nothing changes for
+  riders, and old room links still open where the room went. This release's
+  migration can't be undone, though: roll back only to 2026.09.128 (the
+  release before, which no longer reads those tables), and keep the database
+  dump the deploy takes first.
+
 ## [2026.09.128] - 2026-09-23
 
 ### Removed
@@ -2746,7 +2756,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.128...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.129...HEAD
+[2026.09.129]: https://github.com/natrontech/wattroom/compare/2026.09.128...2026.09.129
 [2026.09.128]: https://github.com/natrontech/wattroom/compare/2026.09.127...2026.09.128
 [2026.09.127]: https://github.com/natrontech/wattroom/compare/2026.09.126...2026.09.127
 [2026.09.126]: https://github.com/natrontech/wattroom/compare/2026.09.125...2026.09.126
