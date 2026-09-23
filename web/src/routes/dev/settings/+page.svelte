@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
-	import { ROOM_NAME } from '../room/mockRoom.svelte';
+	import { CHANNEL_NAME } from '../room/mockChannel.svelte';
 
 	// docs/SPEC.md roles matrix: editing the room and assigning coach are owner-only.
-	let name = $state(ROOM_NAME);
+	let name = $state(CHANNEL_NAME);
 	let pack = $state('base');
 	let confirmDelete = $state(false);
 

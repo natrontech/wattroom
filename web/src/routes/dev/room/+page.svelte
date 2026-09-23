@@ -13,27 +13,27 @@
 	import Stage from '$lib/channel/Stage.svelte';
 	import TvMode from '$lib/session/TvMode.svelte';
 	import {
-		createRoom,
+		createMockChannel,
 		formatClock,
 		type MockRider,
-		ROOM_NAME,
+		CHANNEL_NAME,
 		type TileMetric,
 		workout,
 		ZONE_TEXT,
 		zoneOf,
 		type Phase,
-	} from './mockRoom.svelte';
+	} from './mockChannel.svelte';
 
-	const room = createRoom();
+	const channel = createMockChannel();
 	$effect(() => {
-		void room.start();
-		return room.stop;
+		void channel.start();
+		return channel.stop;
 	});
 
-	const you = $derived(room.riders.find((r) => r.you)!);
+	const you = $derived(channel.riders.find((r) => r.you)!);
 	const zone = $derived(zoneOf(you.watts, you.ftp));
-	const speaking = $derived(room.riders.find((r) => r.speaking));
-	const live = $derived(room.phase === 'live');
+	const speaking = $derived(channel.riders.find((r) => r.speaking));
+	const live = $derived(channel.phase === 'live');
 
 	let tv = $state(false);
 	let stagePick = $state('screen:ada');
@@ -44,36 +44,36 @@
 	// Plain object, not $state: this is only read inside the effect that writes it,
 	// and $state there makes the effect invalidate itself.
 	let heard: {
-		phase: typeof room.phase;
-		sprint: typeof room.sprint;
+		phase: typeof channel.phase;
+		sprint: typeof channel.sprint;
 		sprintLeft: number;
 		block?: number;
 	} = {
-		phase: room.phase,
-		sprint: room.sprint,
-		sprintLeft: room.sprintLeft,
-		block: room.block?.index,
+		phase: channel.phase,
+		sprint: channel.sprint,
+		sprintLeft: channel.sprintLeft,
+		block: channel.block?.index,
 	};
 	$effect(() => {
-		if (room.phase !== heard.phase) {
-			if (room.phase === 'countdown') playCountdown();
-			heard.phase = room.phase;
+		if (channel.phase !== heard.phase) {
+			if (channel.phase === 'countdown') playCountdown();
+			heard.phase = channel.phase;
 		}
-		if (room.sprint !== heard.sprint) {
-			if (room.sprint === 'armed') play('klaxon');
-			if (room.sprint === 'active') play('go');
-			if (room.sprint === 'podium') play('fanfare');
-			heard.sprint = room.sprint;
+		if (channel.sprint !== heard.sprint) {
+			if (channel.sprint === 'armed') play('klaxon');
+			if (channel.sprint === 'active') play('go');
+			if (channel.sprint === 'podium') play('fanfare');
+			heard.sprint = channel.sprint;
 		} else if (
-			room.sprint === 'armed' &&
-			room.sprintLeft !== heard.sprintLeft &&
-			room.sprintLeft > 0 &&
-			room.sprintLeft <= 2
+			channel.sprint === 'armed' &&
+			channel.sprintLeft !== heard.sprintLeft &&
+			channel.sprintLeft > 0 &&
+			channel.sprintLeft <= 2
 		) {
-			playCountdownTick(room.sprintLeft);
+			playCountdownTick(channel.sprintLeft);
 		}
-		heard.sprintLeft = room.sprintLeft;
-		const index = room.block?.index;
+		heard.sprintLeft = channel.sprintLeft;
+		const index = channel.block?.index;
 		if (
 			index !== undefined &&
 			heard.block !== undefined &&
@@ -87,8 +87,12 @@
 	// One view, focus instead of layouts (#181 feedback): the Metrics/Video/Media
 	// tabs are gone — tapping a tile spotlights that rider, tapping again lets go.
 	let focusId = $state<string | null>(null);
-	const focused = $derived(room.riders.find((rider) => rider.id === focusId));
-	const others = $derived(room.riders.filter((rider) => rider.id !== focusId));
+	const focused = $derived(
+		channel.riders.find((rider) => rider.id === focusId),
+	);
+	const others = $derived(
+		channel.riders.filter((rider) => rider.id !== focusId),
+	);
 
 	// All three, always (#181 feedback) — the tile filters zeros itself.
 	const tileMetrics: TileMetric[] = ['hr', 'cadence', 'wkg'];
@@ -115,11 +119,11 @@
 			>Exit TV mode</button
 		>
 		<TvMode
-			riders={room.riders}
-			segments={room.segments}
-			total={room.total}
-			elapsed={room.elapsed}
-			block={room.block}
+			riders={channel.riders}
+			segments={channel.segments}
+			total={channel.total}
+			elapsed={channel.elapsed}
+			block={channel.block}
 		/>
 	</div>
 {:else}
@@ -127,15 +131,15 @@
 		<main
 			class="relative flex min-w-0 flex-1 flex-col overflow-hidden px-5 py-4"
 		>
-			<CheerLayer cheers={room.cheers} />
+			<CheerLayer cheers={channel.cheers} />
 			<header class="flex flex-wrap items-center gap-x-5 gap-y-2 pb-4">
 				<div>
 					<h1 class="font-display text-lg leading-tight font-bold">
-						{ROOM_NAME}
+						{CHANNEL_NAME}
 					</h1>
 					<p class="text-muted text-xs">
-						{room.riders.length} riders ·
-						{#if room.phase === 'lounge'}
+						{channel.riders.length} riders ·
+						{#if channel.phase === 'lounge'}
 							{speaking ? `${speaking.name} is talking` : 'idle'}
 						{:else}
 							{workout.name}
@@ -147,8 +151,8 @@
 				<div class="border-muted/20 ml-auto flex gap-1 rounded border p-0.5">
 					{#each phases as option (option.id)}
 						<button
-							onclick={() => room.setPhase(option.id)}
-							class="rounded px-2.5 py-1 text-xs {room.phase === option.id
+							onclick={() => channel.setPhase(option.id)}
+							class="rounded px-2.5 py-1 text-xs {channel.phase === option.id
 								? 'bg-surface-raised text-ink'
 								: 'text-muted hover:text-ink'}">{option.label}</button
 						>
@@ -156,12 +160,12 @@
 				</div>
 				<div class="border-muted/20 flex gap-1 rounded border p-0.5">
 					<button
-						onclick={() => room.breakTrainer(true)}
+						onclick={() => channel.breakTrainer(true)}
 						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Drop trainer</button
 					>
 					<button
-						onclick={() => room.triggerSpiral()}
+						onclick={() => channel.triggerSpiral()}
 						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Spiral</button
 					>
@@ -169,14 +173,14 @@
 						>Late join</button
 					>
 					<button
-						onclick={() => room.nudgeHeadphones()}
+						onclick={() => channel.nudgeHeadphones()}
 						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Nudge</button
 					>
 					<button
 						onclick={() => (
 							play('cheer'),
-							room.cheer('flame', 'Ana (spectating)')
+							channel.cheer('flame', 'Ana (spectating)')
 						)}
 						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Cheer</button
@@ -187,12 +191,12 @@
 						>Joining</button
 					>
 					<button
-						onclick={() => room.armSprint()}
+						onclick={() => channel.armSprint()}
 						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Arm sprint</button
 					>
 					<button
-						onclick={() => room.breakRoom(false)}
+						onclick={() => channel.breakChannel(false)}
 						class="text-muted hover:text-ink rounded px-2 py-1 text-xs"
 						>Drop room</button
 					>
@@ -206,14 +210,14 @@
 				{#if live}
 					<div class="border-muted/20 flex gap-1 rounded border p-0.5">
 						<button
-							onclick={() => room.pauseSession()}
-							class="rounded px-2.5 py-1 text-xs {room.sessionPaused
+							onclick={() => channel.pauseSession()}
+							class="rounded px-2.5 py-1 text-xs {channel.sessionPaused
 								? 'bg-surface-raised text-ink'
 								: 'text-muted hover:text-ink'}"
-							>{room.sessionPaused ? 'Resume' : 'Pause'}</button
+							>{channel.sessionPaused ? 'Resume' : 'Pause'}</button
 						>
 						<button
-							onclick={() => room.endSession()}
+							onclick={() => channel.endSession()}
 							class="text-danger rounded px-2.5 py-1 text-xs">End</button
 						>
 					</div>
@@ -221,14 +225,14 @@
 						<div
 							class="font-display text-2xl leading-none font-bold tabular-nums"
 						>
-							{formatClock(room.elapsed)}
+							{formatClock(channel.elapsed)}
 						</div>
 						<div class="eyebrow">elapsed</div>
 					</div>
 				{/if}
 			</header>
 
-			{#if room.headphoneNudge}
+			{#if channel.headphoneNudge}
 				<div
 					class="border-muted/20 bg-surface-raised mb-3 flex items-center gap-3 rounded-lg border px-4 py-2.5"
 				>
@@ -237,14 +241,14 @@
 						room hearing it back.
 					</p>
 					<button
-						onclick={() => room.dismissNudge()}
+						onclick={() => channel.dismissNudge()}
 						class="text-muted hover:text-ink ml-auto shrink-0 text-xs"
 						>Got it</button
 					>
 				</div>
 			{/if}
 
-			{#if room.sessionPaused}
+			{#if channel.sessionPaused}
 				<div
 					class="border-z5/40 bg-z5/10 mb-3 flex items-center gap-3 rounded-lg border px-4 py-2.5"
 				>
@@ -259,7 +263,7 @@
 				</div>
 			{/if}
 
-			{#if room.spiralGuard}
+			{#if channel.spiralGuard}
 				<!-- Spiral guard has to announce itself, or it reads as the trainer breaking. -->
 				<div
 					class="border-neon/40 bg-surface-raised mb-3 flex items-center gap-3 rounded-lg border px-4 py-2.5"
@@ -274,12 +278,12 @@
 				</div>
 			{/if}
 
-			{#if room.fault}
+			{#if channel.fault}
 				<div class="mb-3">
 					<FaultBanner
-						fault={room.fault}
-						bufferedSeconds={room.bufferedSeconds}
-						onRecover={() => room.recover()}
+						fault={channel.fault}
+						bufferedSeconds={channel.bufferedSeconds}
+						onRecover={() => channel.recover()}
 					/>
 				</div>
 			{/if}
@@ -309,7 +313,7 @@
 			<!-- Rider tiles: camera and metrics fused, ONE grid (#181 feedback) —
 			     tap a tile to spotlight that rider, tap again to let go. -->
 			{#snippet tile(rider: MockRider)}
-				<RiderTile {rider} phase={room.phase} metrics={tileMetrics} />
+				<RiderTile {rider} phase={channel.phase} metrics={tileMetrics} />
 			{/snippet}
 			{#if joining}
 				<div class="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -342,7 +346,7 @@
 				{/if}
 			{:else}
 				<div class="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-					{#each room.riders as rider (rider.id)}
+					{#each channel.riders as rider (rider.id)}
 						<button
 							onclick={() => (focusId = rider.id)}
 							class="block text-left"
@@ -354,13 +358,13 @@
 				</div>
 			{/if}
 
-			{#if room.phase === 'countdown'}
+			{#if channel.phase === 'countdown'}
 				<div
 					class="border-neon/40 bg-surface-raised mt-3 flex items-center justify-center gap-4 rounded-lg border py-6"
 				>
 					<span
 						class="text-watt glow-text-strong font-display text-5xl leading-none font-bold tabular-nums"
-						>{room.countdown}</span
+						>{channel.countdown}</span
 					>
 					<div>
 						<p class="font-display font-bold">{workout.name}</p>
@@ -390,26 +394,26 @@
 					</div>
 				</div>
 
-				{#if room.sprint !== 'idle'}
+				{#if channel.sprint !== 'idle'}
 					<div class="mt-2">
 						<!-- The real component over the mock's clock (#1593): the
 						     second design that stood here drifted from it. -->
 						<SprintMoment
-							myWatts={room.riders.find((r) => r.you)?.watts ?? 0}
+							myWatts={channel.riders.find((r) => r.you)?.watts ?? 0}
 							sprint={{
 								startsAtMs:
-									room.sprint === 'armed'
-										? Date.now() + room.sprintLeft * 1000
+									channel.sprint === 'armed'
+										? Date.now() + channel.sprintLeft * 1000
 										: Date.now() - 1_000,
 								endsAtMs:
-									room.sprint === 'active'
-										? Date.now() + room.sprintLeft * 1000
-										: room.sprint === 'podium'
+									channel.sprint === 'active'
+										? Date.now() + channel.sprintLeft * 1000
+										: channel.sprint === 'podium'
 											? Date.now() - 1_000
-											: Date.now() + 15_000 + room.sprintLeft * 1000,
+											: Date.now() + 15_000 + channel.sprintLeft * 1000,
 								results:
-									room.sprint === 'podium'
-										? room.podium.map((p) => ({
+									channel.sprint === 'podium'
+										? channel.podium.map((p) => ({
 												riderId: p.name,
 												name: p.name,
 												wkg: p.wkg,
@@ -422,23 +426,23 @@
 				{:else}
 					<div class="mt-2">
 						<IntervalStrip
-							block={room.block}
-							bias={room.bias}
-							onBias={(step) => room.nudgeBias(step)}
+							block={channel.block}
+							bias={channel.bias}
+							onBias={(step) => channel.nudgeBias(step)}
 						/>
 					</div>
 				{/if}
 				<div class="mt-2 grid gap-2 lg:grid-cols-[1fr_260px]">
 					<div class="overflow-hidden rounded-lg">
 						<IntervalGraph
-							segments={room.segments}
-							total={room.total}
-							elapsed={room.elapsed}
+							segments={channel.segments}
+							total={channel.total}
+							elapsed={channel.elapsed}
 							ftp={you.ftp}
 							trace={you.trace}
 						/>
 					</div>
-					<ExecutionMeter riders={room.riders} />
+					<ExecutionMeter riders={channel.riders} />
 				</div>
 			{:else}
 				<div class="mt-3 flex flex-wrap items-center gap-3">

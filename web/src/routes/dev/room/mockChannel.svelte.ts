@@ -61,7 +61,7 @@ export interface SprintResult {
 export type { Fault } from '$lib/channel/types';
 import type { Fault } from '$lib/channel/types';
 
-export const ROOM_NAME = 'Thursday Sufferfest';
+export const CHANNEL_NAME = 'Thursday Sufferfest';
 
 // The real module's shapes, not a second copy of them (consolidation sweep
 // 2026-09-09): the gallery half-mocked what it also half-imported.
@@ -284,7 +284,7 @@ function describeBlock(
  * A room of simulated riders on one workout, across the phases a real room moves
  * through. Every tile is a real SimulatedTrainer holding a real ERG target.
  */
-export function createRoom() {
+export function createMockChannel() {
 	const segments: Segment[] = flatten(workout);
 	const total = segments.reduce(
 		(t, s) => Math.max(t, s.startSeconds + s.seconds),
@@ -548,7 +548,7 @@ export function createRoom() {
 				}
 			}, 6000);
 		},
-		breakRoom(recovers: boolean) {
+		breakChannel(recovers: boolean) {
 			fault = { kind: 'channel', state: 'reconnecting' };
 			bufferedSeconds = 0;
 			clearTimeout(recoveryTimer);

@@ -10,15 +10,15 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createRoom, medals } from '../room/mockRoom.svelte';
+	import { createMockChannel, medals } from '../room/mockChannel.svelte';
 	import { GALLERY_ROWS } from './gallery';
 	import ThemePanel from './ThemePanel.svelte';
 
-	const room = createRoom();
+	const channel = createMockChannel();
 	onMount(() => {
-		void room.start();
-		room.setPhase('live');
-		return room.stop;
+		void channel.start();
+		channel.setPhase('live');
+		return channel.stop;
 	});
 
 	/**
@@ -93,10 +93,10 @@
 						<ThemePanel
 							theme={panel.theme}
 							surface={panel.surface}
-							riders={room.riders}
-							segments={room.segments}
-							total={room.total}
-							elapsed={room.elapsed}
+							riders={channel.riders}
+							segments={channel.segments}
+							total={channel.total}
+							elapsed={channel.elapsed}
 							{medal}
 							{narrow}
 						/>

@@ -3,7 +3,7 @@
 	import { enumerateGatt, type GattDump } from '$lib/ble/enumerate';
 	import { hwlog } from '$lib/ble/hwlog';
 	import type { TrainerSample, TrainerStatus } from '$lib/ble/trainer';
-	import { formatClock } from '../room/mockRoom.svelte';
+	import { formatClock } from '../room/mockChannel.svelte';
 
 	/**
 	 * The M0 hardware session (#10) in one page: pair a real trainer, prove power and

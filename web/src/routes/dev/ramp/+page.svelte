@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { formatClock, ZONE_TEXT, zoneOf } from '../room/mockRoom.svelte';
+	import { formatClock, ZONE_TEXT, zoneOf } from '../room/mockChannel.svelte';
 
 	// docs/SPEC.md: start 100 W (default), +20 W/min, FTP = 75 % of best 1-min power.
 	const START = 100;

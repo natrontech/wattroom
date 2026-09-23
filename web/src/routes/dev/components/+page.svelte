@@ -22,7 +22,7 @@
 	import type { Pin, PinDraft } from '$lib/pins/pins';
 	import Copy from '@lucide/svelte/icons/copy';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
-	import type { MockRider } from '../room/mockRoom.svelte';
+	import type { MockRider } from '../room/mockChannel.svelte';
 
 	// A stand-in screenshot, deliberately bigger than any window: fit-to-window
 	// and full size are two different pictures, which is the whole point of the

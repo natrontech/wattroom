@@ -4,11 +4,11 @@
 	import MedalCard, { type Medal } from '$lib/components/MedalCard.svelte';
 	import {
 		formatClock,
-		ROOM_NAME,
+		CHANNEL_NAME,
 		workout,
 		ZONE_BG,
 		ZONE_NAMES,
-	} from '../room/mockRoom.svelte';
+	} from '../room/mockChannel.svelte';
 
 	// Every number here is a docs/SPEC.md formula, not an invented one.
 	const ride = {
@@ -57,7 +57,7 @@
 				Session complete
 			</h1>
 			<p class="text-muted text-xs">
-				{ROOM_NAME} · {workout.name} · 25 Aug 2026
+				{CHANNEL_NAME} · {workout.name} · 25 Aug 2026
 			</p>
 		</div>
 	</header>
@@ -188,7 +188,7 @@
 		<div>
 			<h2 class="eyebrow">your medal</h2>
 			<div class="mt-3">
-				<MedalCard {medal} placeName={ROOM_NAME} />
+				<MedalCard {medal} placeName={CHANNEL_NAME} />
 			</div>
 			<div class="border-muted/15 mt-3 rounded-lg border p-4">
 				<label class="flex items-start gap-3">
