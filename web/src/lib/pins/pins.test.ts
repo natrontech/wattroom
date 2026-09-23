@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isLink, parsePin } from './pins';
+import { bareLink, isLink, parsePin } from './pins';
 
 /**
  * The parser is the whole of the "more than a key and a value" decision
@@ -68,5 +68,17 @@ describe('isLink', () => {
 		expect(isLink('  http://example.org  ')).toBe(true);
 		expect(isLink('mc.natron.io:25565')).toBe(false);
 		expect(isLink('kilojoule-hammer-42')).toBe(false);
+	});
+});
+
+describe('bareLink', () => {
+	it('drops the scheme, www. and a trailing slash, and keeps the rest', () => {
+		expect(bareLink('https://www.komoot.com/tour/1?ref=x')).toBe(
+			'komoot.com/tour/1?ref=x',
+		);
+		expect(bareLink(' HTTP://discord.gg/wattroom/ ')).toBe(
+			'discord.gg/wattroom',
+		);
+		expect(bareLink('https://wwwhat.example/')).toBe('wwwhat.example');
 	});
 });
