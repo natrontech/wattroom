@@ -35,6 +35,17 @@ export type PinDraft = Pick<Pin, 'title' | 'body'>;
  */
 export const isLink = (value: string) => /^https?:\/\//i.test(value.trim());
 
+/**
+ * A link as a card shows it: no scheme, no `www.`, no trailing slash. The
+ * card has room for one line of it and the scheme is the part nobody reads;
+ * the anchor keeps the whole URL.
+ */
+export const bareLink = (url: string) =>
+	url
+		.trim()
+		.replace(/^https?:\/\/(www\.)?/i, '')
+		.replace(/\/$/, '');
+
 /** A line of a pin: a copyable field, or prose. */
 export type PinLine =
 	| { kind: 'field'; label: string; value: string }

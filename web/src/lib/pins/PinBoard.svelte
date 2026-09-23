@@ -11,7 +11,14 @@
 	} from '$lib/context-menu.svelte';
 	import { copyText, theLinkItself } from '$lib/copy';
 	import Banner from '$lib/components/Banner.svelte';
-	import { boardFull, isLink, parsePin, type Pin, type PinDraft } from './pins';
+	import {
+		bareLink,
+		boardFull,
+		isLink,
+		parsePin,
+		type Pin,
+		type PinDraft,
+	} from './pins';
 	import {
 		MaxCrewPins,
 		MaxPinBodyChars,
@@ -133,10 +140,18 @@ Whitelist is on — ask Nina.`;
 	}
 </script>
 
-{#snippet value(text: string)}
-	<!-- A server address is one long unbreakable token, which is exactly what
-	     overflowed a phone in #2400. It wraps rather than widening the page. -->
-	<span class="min-w-0 flex-1 font-mono text-sm break-all">{text}</span>
+{#snippet field(label: string, shown: string, full: string)}
+	<!-- Label over value, so the value has the card's whole width rather
+	     than what an 80px label column left it. One line, never wrapped: a
+	     password split at "batte/ry" reads as two things, and it overflowed a
+	     phone before that (#2400). The row copies or opens the whole value,
+	     and hovering it shows the rest. -->
+	<span class="min-w-0 flex-1" title={full}>
+		{#if label}
+			<span class="text-muted block truncate text-xs">{label}</span>
+		{/if}
+		<span class="block truncate font-mono text-sm">{shown}</span>
+	</span>
 {/snippet}
 
 <section>
@@ -210,18 +225,20 @@ Whitelist is on — ask Nina.`;
 					     A card whose rows copy on click gave a rider no reason to
 					     think right-click held anything, and the maintainer hit
 					     exactly that within minutes of the release. -->
-					<div class="flex items-start gap-2 px-4 pt-3 pb-2">
-						<p class="eyebrow min-w-0 flex-1 truncate">{pin.title}</p>
+					<div class="flex items-center gap-2 py-1.5 pr-1.5 pl-4">
+						<h3 class="font-display min-w-0 flex-1 truncate font-semibold">
+							{pin.title}
+						</h3>
 						<button
 							onclick={() => open(pin)}
-							class="text-muted hover:text-ink icon-btn -mt-1 -mr-2 shrink-0"
+							class="text-muted hover:text-ink icon-btn"
 							aria-label="Edit {pin.title}"
 							title="Edit"><Pencil size={14} /></button
 						>
 					</div>
 					{#each parsePin(pin.body) as line, i (i)}
 						{#if line.kind === 'text'}
-							<p class="text-muted px-4 pt-1 pb-3 text-xs">{line.text}</p>
+							<p class="text-muted px-4 py-2 text-xs">{line.text}</p>
 						{:else if isLink(line.value)}
 							<!-- The row is the target, not the icon beside it: a
 							     rider reaching for this is often on a bike. -->
@@ -229,32 +246,22 @@ Whitelist is on — ask Nina.`;
 								href={line.value}
 								target="_blank"
 								rel="noreferrer noopener"
-								class="hover:bg-ink/5 flex items-baseline gap-3 px-4 py-2"
+								class="hover:bg-ink/5 flex items-center gap-3 px-4 py-2"
 							>
-								{#if line.label}
-									<span class="text-muted w-20 shrink-0 truncate text-xs"
-										>{line.label}</span
-									>
-								{/if}
-								{@render value(line.value)}
-								<ExternalLink size={13} class="text-muted shrink-0" />
+								{@render field(line.label, bareLink(line.value), line.value)}
+								<ExternalLink size={14} class="text-muted shrink-0" />
 							</a>
 						{:else}
 							<button
 								onclick={() => copy(line.label, line.value)}
-								class="hover:bg-ink/5 flex w-full items-baseline gap-3 px-4 py-2 text-left"
+								class="hover:bg-ink/5 flex w-full items-center gap-3 px-4 py-2 text-left"
 							>
-								{#if line.label}
-									<span class="text-muted w-20 shrink-0 truncate text-xs"
-										>{line.label}</span
-									>
-								{/if}
-								{@render value(line.value)}
-								<Copy size={13} class="text-muted shrink-0" />
+								{@render field(line.label, line.value, line.value)}
+								<Copy size={14} class="text-muted shrink-0" />
 							</button>
 						{/if}
 					{/each}
-					<div class="pb-1"></div>
+					<div class="pb-2"></div>
 				</li>
 			{/each}
 		</ul>

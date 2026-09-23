@@ -1,0 +1,1 @@
+- Pins on a crew's Board are easier to read: each value sits on its own line under its label and never breaks mid-word, links show without the `https://www.`, and each pin's title is set as a heading instead of small capitals.
