@@ -120,10 +120,17 @@
 			<Banner tone="error">
 				{view.error}
 				{#snippet action()}
-					<a
-						href={crewId ? `/crew/${crewId}` : '/home'}
-						class="btn-link text-xs">Back to the crew</a
-					>
+					<!-- The crew itself answering not_found — banned, removed, left
+					     — is a way Home, as the text channel's page says it; only
+					     a channel gone from a crew that still loads leads back to
+					     the crew (#2537). -->
+					{#if crew}
+						<a href="/crew/{crewId}" class="btn-link text-xs"
+							>Back to the crew</a
+						>
+					{:else}
+						<a href="/home" class="btn-link text-xs">Home</a>
+					{/if}
 				{/snippet}
 			</Banner>
 		{:else}
