@@ -1,1 +1,0 @@
-- Leaving a voice channel takes you back to its crew instead of to You, and the way out is a labelled **Leave** button — the voice-only hang-up beside it now draws a phone, not the same door.
