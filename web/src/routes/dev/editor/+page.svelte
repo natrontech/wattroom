@@ -12,7 +12,7 @@
 		ZONE_BG,
 		ZONE_NAMES,
 		zoneOf,
-	} from '../room/mockRoom.svelte';
+	} from '../channel/mockChannel.svelte';
 	import { library } from './library';
 
 	const FTP = 265;

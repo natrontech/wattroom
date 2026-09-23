@@ -11,7 +11,7 @@ describe('shouldDuck (#867)', () => {
 		expect(shouldDuck(speaking, ME, true)).toBe(true);
 	});
 
-	it('ignores your own voice by default — the room does not dip under you', () => {
+	it('ignores your own voice by default — the mix does not dip under you', () => {
 		expect(shouldDuck({ [ME]: true }, ME, false)).toBe(false);
 	});
 
@@ -23,7 +23,7 @@ describe('shouldDuck (#867)', () => {
 		expect(shouldDuck({ [ME]: true, [THEM]: true }, ME, false)).toBe(true);
 	});
 
-	it('stays up in a silent room, and under a rider who stopped', () => {
+	it('stays up in a silent channel, and under a rider who stopped', () => {
 		expect(shouldDuck({}, ME, true)).toBe(false);
 		expect(shouldDuck({ [THEM]: false, [ME]: undefined }, ME, true)).toBe(
 			false,

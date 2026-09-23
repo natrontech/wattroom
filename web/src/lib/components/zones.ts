@@ -138,7 +138,7 @@ export function plannedZoneSeconds(segments: Segment[], ftp: number): number[] {
 
 /**
  * Where a wattage sits on the instrument's track. The full scale defaults
- * to FTP × CEILING — the room and the solo ride — and a ramp test passes
+ * to FTP × CEILING — a session and the solo ride — and a ramp test passes
  * its own top (#1565): scaled to a stale FTP, the one workout defined by
  * riding far above it pinned the bar at 1.5 × FTP for its last third.
  */

@@ -112,7 +112,7 @@
 		)} — {stepsDone}
 		steps. Every workout you ride from here scales to this number —
 		<a href="/workouts" class="underline">the library</a>
-		and <a href="/home" class="underline">what your rooms have planned</a> already
+		and <a href="/home" class="underline">what your crews have planned</a> already
 		do.
 	</p>
 	<p class="mt-3 text-sm">

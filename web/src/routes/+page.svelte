@@ -25,8 +25,8 @@
 
 	// The public page's live numbers: riders online right now, and the repo's
 	// stars. Both come from the server (one poll, no visitor calls GitHub); a
-	// failure or a zero just hides the line rather than advertising an empty
-	// room.
+	// failure or a zero just hides the line rather than advertising that
+	// nobody is here.
 	let live = $state<{ online: number; stars: number } | null>(null);
 	$effect(() => {
 		if (!account.loaded || account.me) return;
@@ -53,7 +53,7 @@
 	}[] = [
 		{
 			label: 'Ride together',
-			sub: 'rooms with voice & camera',
+			sub: 'crews with voice & camera',
 			icon: Users,
 		},
 		{
@@ -68,7 +68,7 @@
 		},
 		{
 			label: 'Shared jukebox',
-			sub: 'one soundtrack for the room',
+			sub: 'one soundtrack per voice channel',
 			icon: Music,
 		},
 		{

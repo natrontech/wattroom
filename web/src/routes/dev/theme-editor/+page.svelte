@@ -3,7 +3,7 @@
 	identities were never actually designed — solved for a contrast gate, never
 	looked at. This is where that design pass happens: the same deriveTheme()
 	pipeline, driven by controls instead of a code edit + reload, against the
-	same mock room the gallery uses.
+	same mock channel the gallery uses.
 
 	Two input layers, same as ThemeSpec itself: three hues derive every token,
 	and any token except the zone ramp (shared across themes by design,
@@ -19,7 +19,7 @@
 	import { deriveTheme, type ThemeSpec } from '$lib/palette';
 	import { specById } from '$lib/themes';
 	import { toasts } from '$lib/toast.svelte';
-	import { createRoom, medals, rooms } from '../room/mockRoom.svelte';
+	import { createMockChannel, medals } from '../channel/mockChannel.svelte';
 	import ThemePanel from '../themes/ThemePanel.svelte';
 	import EditorControls, {
 		OVERRIDABLE_TOKENS,
@@ -27,11 +27,11 @@
 	} from './EditorControls.svelte';
 	import GateReport from './GateReport.svelte';
 
-	const room = createRoom();
+	const channel = createMockChannel();
 	onMount(() => {
-		void room.start();
-		room.setPhase('live');
-		return room.stop;
+		void channel.start();
+		channel.setPhase('live');
+		return channel.stop;
 	});
 	const medal = medals[0];
 
@@ -164,11 +164,10 @@
 				<ThemePanel
 					theme={darkTheme}
 					surface="cave"
-					riders={room.riders}
-					segments={room.segments}
-					total={room.total}
-					elapsed={room.elapsed}
-					{rooms}
+					riders={channel.riders}
+					segments={channel.segments}
+					total={channel.total}
+					elapsed={channel.elapsed}
 					{medal}
 				/>
 			</div>
@@ -198,11 +197,10 @@
 				<ThemePanel
 					theme={whiteTheme}
 					surface="desk"
-					riders={room.riders}
-					segments={room.segments}
-					total={room.total}
-					elapsed={room.elapsed}
-					{rooms}
+					riders={channel.riders}
+					segments={channel.segments}
+					total={channel.total}
+					elapsed={channel.elapsed}
 					{medal}
 				/>
 			</div>

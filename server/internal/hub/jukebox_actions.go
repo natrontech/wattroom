@@ -12,7 +12,7 @@ import (
 )
 
 // onAdd is the "add" command.
-func (j *jukebox) onAdd(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onAdd(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	entry, ok, refusal := j.newEntry(cmd, addedBy)
 	if !ok {
 		return nil, false, refusal
@@ -25,7 +25,7 @@ func (j *jukebox) onAdd(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		// pressing play, and one action gets one line: the now-playing
 		// one, which names who queued it anyway.
 		j.play(entry, now)
-		return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true, ""
+		return []protocol.ChannelEvent{nowPlaying(*j.state.Current, now)}, true, ""
 	}
 	j.state.Queue = append(j.state.Queue, entry)
 	if isPlaylist(entry) {
@@ -33,13 +33,13 @@ func (j *jukebox) onAdd(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 		// its tracks — the burst rule #321 already applies to adds.
 		line := deckLine("queuedPlaylist", addedBy, entry.PlaylistTitle, now)
 		line.Count = len(entry.Tracks)
-		return []protocol.RoomEvent{line}, true, ""
+		return []protocol.ChannelEvent{line}, true, ""
 	}
-	return []protocol.RoomEvent{deckLine("queued", addedBy, entry.Title, now)}, true, ""
+	return []protocol.ChannelEvent{deckLine("queued", addedBy, entry.Title, now)}, true, ""
 }
 
 // onRemove is the "remove" command.
-func (j *jukebox) onRemove(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onRemove(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	i := j.indexOf(cmd.EntryID)
 	if i < 0 {
 		return nil, false, ""
@@ -52,11 +52,11 @@ func (j *jukebox) onRemove(cmd protocol.JukeboxCommand, riderID, addedBy string,
 		entry: removed, ownerID: owner, fromQueue: true, queueIndex: i,
 		expiresAt: now.Add(undoWindow),
 	}
-	return []protocol.RoomEvent{deckLine("removed", addedBy, removed.Title, now)}, true, ""
+	return []protocol.ChannelEvent{deckLine("removed", addedBy, removed.Title, now)}, true, ""
 }
 
 // onRestore is the "restore" command.
-func (j *jukebox) onRestore(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onRestore(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	// Puts back exactly what remove/skipPlaylist last dropped, within the
 	// grace window — the toast's undo button, and nothing else reaches
 	// this action. A stale or already-used pending is a no-op, not an
@@ -76,7 +76,7 @@ func (j *jukebox) onRestore(cmd protocol.JukeboxCommand, riderID, addedBy string
 		if p.ownerID != "" {
 			j.owners[p.entry.ID] = p.ownerID
 		}
-		return []protocol.RoomEvent{deckLine("restored", addedBy, p.entry.Title, now)}, true, ""
+		return []protocol.ChannelEvent{deckLine("restored", addedBy, p.entry.Title, now)}, true, ""
 	}
 	// A skipped playlist: give the deck back what it was doing, and put
 	// whatever took its place at the front of the queue rather than
@@ -97,11 +97,11 @@ func (j *jukebox) onRestore(cmd protocol.JukeboxCommand, riderID, addedBy string
 	if len(j.state.History) > 0 {
 		j.state.History = j.state.History[1:]
 	}
-	return []protocol.RoomEvent{deckLine("restored", addedBy, restored.PlaylistTitle, now)}, true, ""
+	return []protocol.ChannelEvent{deckLine("restored", addedBy, restored.PlaylistTitle, now)}, true, ""
 }
 
 // onVote is the "vote" command.
-func (j *jukebox) onVote(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onVote(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	// One vote per rider, toggled — and a vote that lands FLOATS the
 	// entry past every lower-voted one ahead of it, which is the whole
 	// point of upvoting a party queue.
@@ -132,7 +132,7 @@ func (j *jukebox) onVote(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 }
 
 // onMove is the "move" command.
-func (j *jukebox) onMove(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onMove(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	// Hand-reordering wins over vote order until the next vote — the
 	// queue slice IS the order, so there is nothing to re-sort.
 	from := j.indexOf(cmd.EntryID)
@@ -158,7 +158,7 @@ func (j *jukebox) onMove(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 }
 
 // onPlay is the "play" command.
-func (j *jukebox) onPlay(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onPlay(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	if j.state.Current == nil || j.state.Playing {
 		return nil, false, ""
 	}
@@ -168,7 +168,7 @@ func (j *jukebox) onPlay(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 }
 
 // onPause is the "pause" command.
-func (j *jukebox) onPause(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onPause(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	if j.state.Current == nil || !j.state.Playing {
 		return nil, false, ""
 	}
@@ -178,7 +178,7 @@ func (j *jukebox) onPause(cmd protocol.JukeboxCommand, riderID, addedBy string, 
 }
 
 // onSeek is the "seek" command.
-func (j *jukebox) onSeek(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onSeek(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	// Moving the anchor IS the whole feature (#114): clients converge
 	// through the same drift-chase play/pause already use. Works paused
 	// too — the playhead moves, the deck stays stopped.
@@ -191,7 +191,7 @@ func (j *jukebox) onSeek(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 }
 
 // onSkip is the "skip" command.
-func (j *jukebox) onSkip(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onSkip(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	if j.state.Current == nil {
 		return nil, false, ""
 	}
@@ -209,7 +209,7 @@ func (j *jukebox) onSkip(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 		delete(j.owners, skipped.ID)
 	}
 	j.advance(now)
-	events := []protocol.RoomEvent{deckLine("skipped", addedBy, skipped.Title, now)}
+	events := []protocol.ChannelEvent{deckLine("skipped", addedBy, skipped.Title, now)}
 	if j.state.Current != nil {
 		events = append(events, nowPlaying(*j.state.Current, now))
 	}
@@ -217,7 +217,7 @@ func (j *jukebox) onSkip(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 }
 
 // onBack is the "back" command.
-func (j *jukebox) onBack(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onBack(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	// The idiom every music player already taught: a little way in, back
 	// starts this track over; at its start it steps to the one before.
 	// Walking a playlist backwards BY HAND is fine — what never repeats
@@ -234,11 +234,11 @@ func (j *jukebox) onBack(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 		return nil, true, ""
 	}
 	j.play(withIndex(*j.state.Current, j.state.Current.Index-1), now)
-	return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true, ""
+	return []protocol.ChannelEvent{nowPlaying(*j.state.Current, now)}, true, ""
 }
 
 // onSkipPlaylist is the "skipPlaylist" command.
-func (j *jukebox) onSkipPlaylist(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onSkipPlaylist(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	// The escape hatch that makes a long playlist safe to queue: one tap
 	// drops the rest of it and moves the room on. Every member may —
 	// nobody should have to sit through another rider's two hours.
@@ -257,7 +257,7 @@ func (j *jukebox) onSkipPlaylist(cmd protocol.JukeboxCommand, riderID, addedBy s
 	j.advanceEntry(now)
 	line := deckLine("skippedPlaylist", addedBy, skipped.PlaylistTitle, now)
 	line.Count = len(skipped.Tracks) - skipped.Index - 1
-	events := []protocol.RoomEvent{line}
+	events := []protocol.ChannelEvent{line}
 	if j.state.Current != nil {
 		events = append(events, nowPlaying(*j.state.Current, now))
 	}
@@ -265,7 +265,7 @@ func (j *jukebox) onSkipPlaylist(cmd protocol.JukeboxCommand, riderID, addedBy s
 }
 
 // onEnded is the "ended" command.
-func (j *jukebox) onEnded(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) onEnded(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	// Every client reports the end; the (video, epoch) pair makes the
 	// first report advance and every echo a no-op — a video queued twice
 	// used to be eaten by its own echoes (audit #219).
@@ -298,5 +298,5 @@ func (j *jukebox) onEnded(cmd protocol.JukeboxCommand, riderID, addedBy string, 
 	if j.state.Current == nil {
 		return nil, true, "" // the queue ran dry; silence says that already
 	}
-	return []protocol.RoomEvent{nowPlaying(*j.state.Current, now)}, true, ""
+	return []protocol.ChannelEvent{nowPlaying(*j.state.Current, now)}, true, ""
 }

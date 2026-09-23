@@ -4,25 +4,25 @@
 	legible, only a person can say "yes, that is Tron Ice". This page is where
 	that person looks.
 
-	One mock room drives every panel, so the eight themes are always showing
+	One mock channel drives every panel, so the eight themes are always showing
 	the same watts at the same second — a difference between two panels is a
 	difference between two palettes and nothing else.
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createRoom, medals, rooms } from '../room/mockRoom.svelte';
+	import { createMockChannel, medals } from '../channel/mockChannel.svelte';
 	import { GALLERY_ROWS } from './gallery';
 	import ThemePanel from './ThemePanel.svelte';
 
-	const room = createRoom();
+	const channel = createMockChannel();
 	onMount(() => {
-		void room.start();
-		room.setPhase('live');
-		return room.stop;
+		void channel.start();
+		channel.setPhase('live');
+		return channel.stop;
 	});
 
 	/**
-	 * The room is more often on a laptop at arm's length than on a desk
+	 * A ride is more often on a laptop at arm's length than on a desk
 	 * monitor, and a palette that only survives at 1600 px has not survived.
 	 * A width, not a media query: the judging pass has to be able to flip
 	 * between the two without resizing the window it is taking notes in.
@@ -33,7 +33,7 @@
 		{
 			narrow: true,
 			label: 'Laptop',
-			hint: 'one panel at 520 px — the room with a people column beside it',
+			hint: 'one panel at 520 px — the voice channel with a people column beside it',
 		},
 	];
 
@@ -55,7 +55,7 @@
 			Left column is the <strong class="text-ink">cave</strong>: the dark half
 			of an identity, which is what a ride renders whatever the scheme says.
 			Right is the <strong class="text-ink">desk</strong> — the white half, for the
-			rooms list, the editor and the history under a light scheme. The numbers at
+			crew's pages, the editor and the history under a light scheme. The numbers at
 			the foot of each panel are the build contract's, so the page says both "legible"
 			and "any good".
 		</p>
@@ -93,11 +93,10 @@
 						<ThemePanel
 							theme={panel.theme}
 							surface={panel.surface}
-							riders={room.riders}
-							segments={room.segments}
-							total={room.total}
-							elapsed={room.elapsed}
-							{rooms}
+							riders={channel.riders}
+							segments={channel.segments}
+							total={channel.total}
+							elapsed={channel.elapsed}
 							{medal}
 							{narrow}
 						/>

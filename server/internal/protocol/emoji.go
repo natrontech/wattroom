@@ -4,7 +4,7 @@ import "unicode/utf8"
 
 // IsEmoji reports whether s is one emoji grapheme (a pictograph, possibly a
 // ZWJ sequence like 👨‍👩‍👧‍👦). It is the wire's guarantee that a cheer or chat
-// reaction can't smuggle text — which room emoji are welcome is the owner's
+// reaction can't smuggle text — which emoji are welcome is the crew's
 // palette (#223), enforced client-side.
 // ponytail: rune-range heuristic, not UTS-51 — keycaps (1️⃣) and ©™ are
 // refused; swap in a real segmenter if anyone ever misses them.

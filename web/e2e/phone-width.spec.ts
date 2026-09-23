@@ -3,7 +3,7 @@ import { MEASURED, MEASURED_BY_ID, MEASURED_SIGNED_OUT } from './routes.js';
 import { signInAs } from './signin';
 
 /**
- * Nothing outside a room may scroll sideways on a phone (#1008).
+ * Nothing outside a voice channel may scroll sideways on a phone (#1008).
  *
  * The obvious assertion — `documentElement.scrollWidth <= clientWidth` — is
  * useless in this app, and measurably so: the shell wraps the page in
@@ -19,7 +19,8 @@ const PHONE = { width: 375, height: 812 };
 
 /**
  * A token with no break opportunity — a hash, a column name, a pasted URL —
- * rendered by MessageText, which draws room chat, DMs and /whats-new (#2400).
+ * rendered by MessageText, which draws text-channel chat, DMs and /whats-new
+ * (#2400).
  *
  * Deliberately far longer than the 44-character identifier that shipped in
  * 2026.09.120 and pushed `page-body` 22px past a phone. The app loads no
@@ -181,7 +182,7 @@ async function seedAPlannedSession(page: Page, crew: string): Promise<void> {
 	if (!ok) throw new Error("could not plan a session for Home's What's next");
 }
 
-test('no page outside a room scrolls sideways on a phone', async ({
+test('no page outside a voice channel scrolls sideways on a phone', async ({
 	page,
 	browser,
 	baseURL,
@@ -255,7 +256,7 @@ test('no page outside a room scrolls sideways on a phone', async ({
 			((await (await fetch('/api/me')).json()) as { id?: string }).id ?? '',
 		),
 	);
-	// By the peer's friend code: a request by id needs a shared room, and
+	// By the peer's friend code: a request by id needs a shared channel, and
 	// these two have none — the code is how strangers become friends.
 	const peerCode = await peerPage.evaluate(async () =>
 		String(

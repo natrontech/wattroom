@@ -1,28 +1,18 @@
 <script lang="ts">
 	import type { Part } from './inline';
-	import { isYouTube, unfurl, type Card } from './unfurl';
-	import ListPlus from '@lucide/svelte/icons/list-plus';
+	import { unfurl, type Card } from './unfurl';
 
 	// Every link gets a card now (#866, ADR-0031) — YouTube and Spotify from
 	// their own oEmbed, everything else from the server, which is the only
 	// thing allowed to read a page that is not ours. `unfurl.ts` owns which
 	// is which; this draws the result.
 
-	let {
-		parts,
-		onQueue,
-	}: {
-		parts: Part[];
-		/** Given in a room: a YouTube card grows a Queue button, so a link
-		 *  dropped in the chat is one tap from the jukebox. */
-		onQueue?: (url: string) => void;
-	} = $props();
+	let { parts }: { parts: Part[] } = $props();
 
 	// The first external link in the message gets the card — messengers
 	// preview one link, not five.
 	const url = $derived(parts.find((p) => p.external)?.text);
 	let card = $state<Card | null>(null);
-	const queueable = $derived(!!onQueue && !!card && isYouTube(card.host));
 
 	$effect(() => {
 		if (!url) {
@@ -73,17 +63,5 @@
 				>
 			</span>
 		</a>
-		{#if queueable}
-			<!-- The whole reason a link lands in the chat during a ride. -->
-			<button
-				onclick={() => onQueue?.(url)}
-				class="border-ink/10 hover:border-neon/40 bg-surface-raised text-muted hover:text-ink flex shrink-0 flex-col items-center justify-center gap-0.5 rounded border px-2 text-[10px]"
-				title="add to the jukebox queue"
-				aria-label="add {card.title} to the jukebox queue"
-			>
-				<ListPlus size={14} />
-				queue
-			</button>
-		{/if}
 	</span>
 {/if}

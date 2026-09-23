@@ -1,43 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-	crewsOf,
 	administersNone,
 	foundedCount,
 	leadsWithJoining,
 	openableCrews,
 } from './crews';
-import type { RailRoom } from '$lib/room/room-data';
 
 const natron = { id: 'c1', name: 'Natron', role: 'owner' as const };
 const sunday = { id: 'c2', name: 'Sunday Long', role: 'member' as const };
-
-function room(slug: string, crew?: RailRoom['crew']): RailRoom {
-	return { slug, name: slug, live: false, members: 1, crew };
-}
-
-const rooms = [
-	room('thursday', natron),
-	room('lounge', natron),
-	room('sufferfest', sunday),
-	room('orphan'),
-];
-
-describe('crewsOf', () => {
-	it('lists each crew once, in the order the rooms mention them', () => {
-		expect(crewsOf(rooms).map((c) => c.name)).toEqual([
-			'Natron',
-			'Sunday Long',
-		]);
-	});
-	it('keeps a crew with no rooms, from the list the server sends (#1476)', () => {
-		const empty = { id: 'c7', name: 'Roomless', role: 'member' as const };
-		expect(crewsOf(rooms, [natron, empty]).map((c) => c.id)).toEqual([
-			'c1',
-			'c7',
-			'c2',
-		]);
-	});
-});
 
 describe('who may make what', () => {
 	const admined = { id: 'c3', name: 'Tuesday', role: 'admin' as const };
@@ -51,7 +21,7 @@ describe('who may make what', () => {
 	// they were offered "Open a room" and handed a sheet that led with joining
 	// one — and the dialog between them asked nothing and was always "Open a
 	// room".
-	it('says a rider has nowhere to open a room, membership alone not counting', () => {
+	it('says a rider administers no crew, membership alone not counting', () => {
 		expect(administersNone([])).toBe(true);
 		expect(administersNone([sunday])).toBe(true);
 		expect(administersNone([natron])).toBe(false);
@@ -69,9 +39,9 @@ describe('who may make what', () => {
 		expect(leadsWithJoining([], '')).toBe(false);
 		expect(leadsWithJoining([sunday], undefined)).toBe(false);
 	});
-	// The invite rides the account, read once; the room list moves first. A
+	// The invite rides the account, read once; the crew list moves first. A
 	// rider who founds a crew in-session still carries the stale code.
-	it('stops leading with joining once the rider has a crew to open rooms in', () => {
+	it('stops leading with joining once the rider has a crew of their own', () => {
 		expect(leadsWithJoining([natron], 'AB23CD')).toBe(false);
 		expect(leadsWithJoining(crews, 'AB23CD')).toBe(false);
 	});

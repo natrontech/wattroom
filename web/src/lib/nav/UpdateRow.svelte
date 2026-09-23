@@ -3,11 +3,11 @@
 	import { shellUpdate, type ShellUpdate } from '$lib/desktop';
 
 	// The shell's downloaded update, at the top of the sidebar (#1303 followed
-	// up). It used to be a panel on home, which is a page a rider in a room
-	// never sees — the update sat downloaded for days behind a destination.
-	// Here it is the first row of the one navigation, present until it is
-	// taken, and gone the rest of the time: nothing renders when no update is
-	// waiting, so the row can never be a dead ornament.
+	// up). It used to be a panel on home, which is a page a rider in a voice
+	// channel never sees — the update sat downloaded for days behind a
+	// destination. Here it is the first row of the one navigation, present until
+	// it is taken, and gone the rest of the time: nothing renders when no update
+	// is waiting, so the row can never be a dead ornament.
 	//
 	// Chrome, so --color-neon and no glow (ADR-0005): the movement is what
 	// makes it read as waiting, not brightness. The sweep is the same idea as

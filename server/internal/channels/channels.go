@@ -29,7 +29,7 @@ type Live interface {
 	// it, and the ping is how every other client hears and re-fetches.
 	PresenceChanged()
 	// Who is in a voice channel right now.
-	Presence(channel string) protocol.RoomPresence
+	Presence(channel string) protocol.ChannelPresence
 	// The session running in a voice channel, if one is (#2438).
 	LiveSession(channel string) (protocol.LiveSession, bool)
 	// Taking somebody out of a private channel severs them there too.
@@ -120,7 +120,7 @@ type channelJSON struct {
 	// by role and are not listed.
 	Members []memberJSON `json:"members,omitempty"`
 	// A voice channel's: who is in it right now (#2436).
-	Presence *protocol.RoomPresence `json:"presence,omitempty"`
+	Presence *protocol.ChannelPresence `json:"presence,omitempty"`
 }
 
 func toJSON(c db.Channel, members []memberJSON) channelJSON {

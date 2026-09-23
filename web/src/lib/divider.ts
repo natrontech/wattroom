@@ -74,7 +74,7 @@ const KEY_STEP = 16;
 /**
  * A divider on a column's own edge: the grip's parent is the pane, and its
  * CSS min/max width are the bounds. `sign` is -1 for a column right of its
- * grip (the room's panel), 1 for one left of it (the sidebar).
+ * grip (a voice channel's side panel), 1 for one left of it (the sidebar).
  *
  * The drag has a keyboard twin (WCAG 2.2 SC 2.5.7, #1523): the grip takes
  * focus, the arrows move the seam the way the pointer would, a step per

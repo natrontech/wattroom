@@ -426,8 +426,7 @@
 		{#if crew.role === 'owner'}
 			<!-- Both halves of this line used to be wrong (#1935): a crew with
 			     people in it passes to one of them rather than going with your
-			     account, and one with nobody and nothing in it is now deleted
-			     the moment its last room is. -->
+			     account, and one with nobody else in it goes with your account. -->
 			<p class="text-muted mt-1 text-xs">
 				A crew has no delete button. With people still in it, it passes to one
 				of them — hand it on yourself, or your account's deletion does.

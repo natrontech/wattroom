@@ -105,8 +105,8 @@ export function chordLabel(c: Chord): string {
  * The chords listed here are the ones the browser or the OS eats before the
  * page ever sees them, so binding one would leave the rider pressing a key
  * that silently does nothing. A refusal is checked against EVERY platform,
- * not the one in front of the rider: a chord set on the Mac in the living
- * room has to still work on the Windows machine in the garage.
+ * not the one in front of the rider: a chord set on the Mac upstairs has to
+ * still work on the Windows machine in the garage.
  *
  * Saying which chord and which platform is the whole point (errors.md) —
  * "that chord cannot be used" teaches nothing.

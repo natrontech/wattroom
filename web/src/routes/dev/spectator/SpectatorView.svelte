@@ -10,10 +10,10 @@
 		type Phase,
 		fillPct,
 		formatClock,
-		ROOM_NAME,
+		CHANNEL_NAME,
 		workout,
 		zoneOf,
-	} from '../room/mockRoom.svelte';
+	} from '../channel/mockChannel.svelte';
 	import type { Segment } from '$lib/workout/types';
 
 	let {
@@ -50,7 +50,7 @@
 	<header class="border-ink/5 flex items-center gap-2.5 border-b px-4 py-3">
 		<Logo size={22} {live} />
 		<div class="min-w-0">
-			<p class="truncate text-sm font-medium">{ROOM_NAME}</p>
+			<p class="truncate text-sm font-medium">{CHANNEL_NAME}</p>
 			<p class="text-muted truncate text-[11px]">
 				{live ? workout.name : 'in the lounge'}
 			</p>
@@ -118,7 +118,7 @@
 			<p class="mt-5 text-sm">Nobody's riding yet.</p>
 			<p class="text-muted mt-2 text-xs leading-relaxed">
 				You'll see everyone's live power here the moment the coach starts the
-				session. Cheers still land in the room.
+				session. Cheers still land in the channel.
 			</p>
 		</div>
 	{/if}

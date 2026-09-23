@@ -17,8 +17,8 @@
 	} from '$lib/context-menu.svelte';
 	import { device } from '$lib/device.svelte';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
-	import type { RoomCrew } from '$lib/room/room-data';
-	import { sessionPath } from '$lib/room/address';
+	import type { CrewRef } from '$lib/crew-types';
+	import { sessionPath } from '$lib/channel/address';
 	import { toasts } from '$lib/toast.svelte';
 	import Hash from '@lucide/svelte/icons/hash';
 	import Headphones from '@lucide/svelte/icons/headphones';
@@ -35,7 +35,7 @@
 	import { crewPlaces } from './pages';
 	import { railPeople } from './rail-people';
 
-	let { crew, pathname }: { crew: RoomCrew; pathname: string } = $props();
+	let { crew, pathname }: { crew: CrewRef; pathname: string } = $props();
 
 	const admin = $derived(crew.role === 'owner' || crew.role === 'admin');
 	const places = $derived(crewPlaces(crew.id, admin, device.narrow));
@@ -242,7 +242,7 @@
 				{/if}
 				{#if people.shown.length}
 					<!-- Who is in there, without going in (#438): one line of names,
-					     the way a room's row said it — not a strip of faces. -->
+					     the way a room's row used to say it — not a strip of faces. -->
 					<p
 						class="text-muted-dim flex items-center gap-1 truncate px-2 pb-1 pl-8 text-[10px]"
 					>

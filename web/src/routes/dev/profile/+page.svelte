@@ -24,7 +24,7 @@
 		toNext: 2_190,
 		pct: 78,
 		since: 'March 2026',
-		room: 'Schwitzchaste',
+		place: 'Schwitzchaste',
 		riding: true,
 		friend: false,
 	};
@@ -43,7 +43,7 @@
 	const feed = [
 		{
 			title: 'Sweet Spot 3×12',
-			room: 'Schwitzchaste',
+			place: 'Schwitzchaste',
 			when: '2 days ago',
 			line: '48 min · 612 kJ · 96% on target',
 			medal: 'silver',
@@ -51,14 +51,14 @@
 		},
 		{
 			title: 'Ramp test',
-			room: 'solo',
+			place: 'solo',
 			when: '6 days ago',
 			line: '21 min · new FTP',
 			zones: [4, 4, 4, 4, 3, 2, 1],
 		},
 		{
 			title: 'VO₂ 5×3',
-			room: 'Thursday Sufferfest',
+			place: 'Thursday Sufferfest',
 			when: 'Aug 28',
 			line: '49 min · 588 kJ · gold',
 			medal: 'gold',
@@ -77,9 +77,9 @@
 			<h1 class="font-display text-2xl font-bold">{rider.name}</h1>
 			<p class="text-muted mt-0.5 flex items-center gap-2 text-sm">
 				{#if rider.riding}
-					<RidingBars size={11} /> riding in {rider.room}
+					<RidingBars size={11} /> riding in {rider.place}
 				{:else}
-					in {rider.room}
+					in {rider.place}
 				{/if}
 				<span class="text-muted-dim">·</span> riding here since {rider.since}
 			</p>
@@ -137,7 +137,8 @@
 						<li class="panel panel-lg">
 							<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 								<span class="font-display font-bold">{ride.title}</span>
-								<span class="text-muted text-xs">{ride.room} · {ride.when}</span
+								<span class="text-muted text-xs"
+									>{ride.place} · {ride.when}</span
 								>
 								{#if ride.medal}
 									<span
@@ -182,12 +183,12 @@
 			</section>
 
 			<section>
-				<h2 class="eyebrow">Rooms in common</h2>
+				<h2 class="eyebrow">Crews in common</h2>
 				<ul class="mt-3 space-y-1.5">
-					{#each shared as room (room)}
+					{#each shared as crew (crew)}
 						<li class="panel flex items-center gap-2 px-3 py-2 text-sm">
 							<Users size={14} class="text-muted" />
-							{room}
+							{crew}
 						</li>
 					{/each}
 				</ul>
@@ -199,8 +200,8 @@
 				</h2>
 				<ul class="text-muted mt-2 space-y-1 text-[11px] leading-relaxed">
 					<li>
-						<strong class="text-ink">Everyone:</strong> name, level, medals from rooms
-						you share, which room they are in.
+						<strong class="text-ink">Everyone:</strong> name, level, medals from crews
+						you share, which voice channel they are in.
 					</li>
 					<li>
 						<strong class="text-ink">Friends:</strong> the rides they chose to share,
@@ -208,7 +209,7 @@
 					</li>
 					<li>
 						<strong class="text-ink">Never:</strong> live watts, heart rate, weight,
-						FTP — room-scoped, as today.
+						FTP — session-scoped, as today.
 					</li>
 				</ul>
 				<p class="text-muted-dim mt-2 flex items-center gap-1 text-[10px]">

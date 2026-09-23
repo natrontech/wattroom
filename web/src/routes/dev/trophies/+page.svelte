@@ -1,6 +1,6 @@
 <script lang="ts">
 	// MOCK (#450): the trophy case, an achievement catalogue with the funny
-	// ones, XP sources, and a room event. Every number here is a PROPOSAL —
+	// ones, XP sources, and a crew event. Every number here is a PROPOSAL —
 	// docs/SPEC.md decides, never this file.
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Award from '@lucide/svelte/icons/award';
@@ -80,7 +80,7 @@
 		{
 			icon: Rocket,
 			name: 'DJ',
-			how: 'Queue 50 tracks the room did not skip',
+			how: 'Queue 50 tracks the channel did not skip',
 			done: false,
 			pct: 72,
 		},
@@ -146,7 +146,7 @@
 	];
 	const event = {
 		name: 'Thursday Sufferfest',
-		room: 'Thursday Sufferfest',
+		channel: 'Thursday Sufferfest',
 		when: 'Thursday 19:30 · weekly',
 		workout: 'VO₂ 5×3',
 		going: ['Jan', 'David', 'Sven', 'Mike', 'Nina'],
@@ -164,7 +164,7 @@
 	<h1 class="page-title mt-2">Trophy case</h1>
 	<p class="text-muted mt-1 max-w-2xl text-sm">
 		Levels and medals exist. This adds achievements — riding ones and lounge
-		ones — XP for being around, and room events. Every number is a proposal for
+		ones — XP for being around, and crew events. Every number is a proposal for
 		docs/SPEC.md.
 	</p>
 
@@ -254,7 +254,7 @@
 		</section>
 
 		<section>
-			<h2 class="eyebrow">A room event</h2>
+			<h2 class="eyebrow">A crew event</h2>
 			<div class="panel panel-lg mt-3">
 				<div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
 					<h3 class="font-display text-lg font-bold">{event.name}</h3>
@@ -263,7 +263,7 @@
 					>
 				</div>
 				<p class="text-muted mt-1 text-sm">
-					{event.workout} in {event.room} · every week, same slot, same crew.
+					{event.workout} in {event.channel} · every week, same slot, same crew.
 				</p>
 				<div class="mt-3 flex flex-wrap items-center gap-2">
 					<button class="btn btn-primary btn-xs">I'm in</button>

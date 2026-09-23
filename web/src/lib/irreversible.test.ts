@@ -65,7 +65,7 @@ const GUARDED: Guarded[] = [
 	},
 	{
 		file: 'lib/crew-flows.ts',
-		action: 'leave a crew — with every room of it you were in',
+		action: 'leave a crew — with every private channel it named you into',
 		asks: /confirm\(/,
 	},
 	{
@@ -79,7 +79,7 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(/,
 	},
 	{
-		file: 'lib/room/SessionControls.svelte',
+		file: 'lib/session/SessionControls.svelte',
 		action: 'end the live session for everyone',
 		asks: /confirm\(/,
 	},

@@ -1,6 +1,5 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
-import type { RoomPresence } from '$lib/protocol';
-import type { Announcement } from '$lib/room/room-data';
+import type { ChannelPresence } from '$lib/protocol';
 
 export type ChannelKind = 'text' | 'voice';
 export type AutoplayOrder = 'ordered' | 'shuffled' | 'smart';
@@ -37,7 +36,7 @@ export interface CrewChannel {
 	/** A private channel's named members; owner and admins enter by role. */
 	members?: ChannelMember[];
 	/** A voice channel's: who is in it right now (#2436). */
-	presence?: RoomPresence;
+	presence?: ChannelPresence;
 }
 
 /** Absent fields keep their value; `playlistId: ''` chooses none. */
@@ -98,6 +97,17 @@ export function setNamedInChannel(
 	return api<void>(`/api/channels/${id}/members/${userId}`, {
 		method: named ? 'PUT' : 'DELETE',
 	});
+}
+
+/** One line a coach marked, as every surface that draws it reads it. */
+export interface Announcement {
+	/** The marked message, so the strip can point back at the line. */
+	messageId: string;
+	text: string;
+	/** The message's author, not whoever marked it. */
+	from: string;
+	/** ISO — the message's own timestamp, not the marking's. */
+	at: string;
 }
 
 /** A text channel's marked line, as the crew's Board leads with it. */

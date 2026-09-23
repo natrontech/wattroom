@@ -1,6 +1,6 @@
 /**
- * The trophy case's API shapes and copy (#467). One fetch for your own case
- * and for a rider's you share a room or a friendship with; docs/SPEC.md "XP
+ * The trophy case's API shapes and copy (#467). One fetch for your own case and
+ * for a rider's you share a channel or a friendship with; docs/SPEC.md "XP
  * sources" is the vocabulary — presence is "in voice", never "talking".
  */
 import { api, loadApi } from '$lib/api';
@@ -80,7 +80,7 @@ export function fetchTrophies(riderId?: string, fetcher?: typeof fetch) {
 export const XP_SOURCES: {
 	key: keyof Trophies['xp'];
 	source: string;
-	/** The same source as a label beside its number, where prose has no room. */
+	/** The same source as a label beside its number, where prose will not fit. */
 	short: string;
 	rule: string;
 }[] = [

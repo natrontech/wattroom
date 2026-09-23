@@ -1,5 +1,5 @@
 import type { SprintState } from '$lib/protocol';
-import { serverNow } from '$lib/room/server-clock';
+import { serverNow } from '$lib/server-clock';
 import type { Segment } from './types';
 
 /** How far ahead a sprint block is counted in on screen: docs/SPEC.md's klaxon lead. */
@@ -18,7 +18,7 @@ export interface SprintClock {
 }
 
 /**
- * The sprint window as the room's SprintMoment reads it (#1793): the
+ * The sprint window as a session's SprintMoment reads it (#1793): the
  * sprint block under way, or the one starting within SPRINT_LEAD_SECONDS
  * so the screen counts it in, in the server clock's ms the moment reads.
  * Computed once per block rather than every tick, so "left" runs down

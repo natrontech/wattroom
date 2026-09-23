@@ -9,21 +9,21 @@
 	 * the flag notice, which is four seconds of its own chrome and nothing
 	 * else's business.
 	 *
-	 * ADR-0046: the slots below are the room's Training place, in the same
-	 * order, minus the crew. Which block this is, how long is left, what is
-	 * coming next, rpm and bpm at a size that survives three metres — all of it
-	 * comes from the components the room draws, because a rider alone deserves
-	 * the screen a rider in a room gets.
+	 * ADR-0046: the slots below are a voice channel's Training place, in the
+	 * same order, minus the crew. Which block this is, how long is left, what
+	 * is coming next, rpm and bpm at a size that survives three metres — all of
+	 * it comes from the components a session draws, because a rider alone
+	 * deserves the screen a rider in a session gets.
 	 */
 	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import Instrument from '$lib/room/Instrument.svelte';
-	import RideHeader from '$lib/room/RideHeader.svelte';
-	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
-	import SprintMoment from '$lib/room/SprintMoment.svelte';
-	import type { Block } from '$lib/room/view';
+	import Instrument from '$lib/session/Instrument.svelte';
+	import RideHeader from '$lib/session/RideHeader.svelte';
+	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
+	import SprintMoment from '$lib/session/SprintMoment.svelte';
+	import type { Block } from '$lib/workout/block';
 	import type { createRideSession } from '$lib/workout/session.svelte';
 	import type { Workout } from '$lib/workout/types';
 
@@ -46,7 +46,7 @@
 		block: Block | null;
 		workout: Workout;
 		ftp: number;
-		/** For w/kg — the stat every rider in a room carries and this one did not. */
+		/** For w/kg — the stat every rider in a session carries and this one did not. */
 		kg: number;
 		/** Yours, for your own bpm's zone colour (ADR-0014). */
 		lthr?: number;
@@ -85,7 +85,7 @@
 	>
 		{#snippet controls()}
 			<!-- Rider controls: big targets, no precision needed (ux.md). The
-			     room's coach controls sit in this same slot; the bias trim is not
+			     session's coach controls sit in this same slot; the bias trim is not
 			     here, because it belongs with the numbers it trims. -->
 			<!-- Wraps rather than shrinking (#1634): at 375 px the cluster ran 39
 			     px past the viewport and the ⚑ — the last button — could not be
@@ -126,7 +126,7 @@
 	     header with a screen of nothing below it (#1531: "two thirds empty"). -->
 	<section class="grid min-h-0 flex-1 content-center">
 		{#if session.sprint}
-			<!-- A sprint block takes the focus, solo as in a room (#1793,
+			<!-- A sprint block takes the focus, solo as in a session (#1793,
 			     ADR-0046): the count-in, the window and your watts, where the
 			     instrument used to read "no target — spin easy" for fifteen
 			     seconds of all-out. No roster: nobody else is here. -->

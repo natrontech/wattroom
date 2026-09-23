@@ -1,15 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatThreadWhen, orderThreads, roomThread } from './threads';
+import { formatThreadWhen, orderThreads } from './threads';
 import type { DmHead } from '$lib/dm/heads.svelte';
-import type { RailRoom } from '$lib/room/room-data';
-
-const room = (over: Partial<RailRoom>): RailRoom => ({
-	name: 'Room',
-	slug: 'room',
-	live: false,
-	members: 3,
-	...over,
-});
 
 const head = (over: Partial<DmHead>): DmHead => ({
 	peerId: 'p',
@@ -21,62 +12,41 @@ const head = (over: Partial<DmHead>): DmHead => ({
 });
 
 describe('orderThreads', () => {
-	it('puts unread first, then the most recent, rooms and DMs alike', () => {
+	it('puts unread first, then the most recent, then the silent by name', () => {
 		const threads = orderThreads(
 			[
-				room({
-					name: 'Thursday',
-					slug: 'thursday',
-					lastChat: { from: 'Kim', text: 'now playing', at: 300 },
-				}),
-				room({
-					name: 'Schwitzchaste',
-					slug: 'schwitz',
-					unread: 3,
-					lastChat: { from: 'David', text: 'queue this one', at: 200 },
-				}),
-				room({ name: 'Quiet', slug: 'quiet' }),
-			],
-			[
+				head({ peerId: 'kim', peerName: 'Kim', at: 300 }),
 				head({ peerId: 'sven', peerName: 'Sven', at: 250 }),
 				head({ peerId: 'dave', peerName: 'David', at: 400, mine: true }),
+				head({ peerId: 'zoe', peerName: 'Zoe', at: 0 }),
+				head({ peerId: 'ari', peerName: 'Ari', at: 0 }),
 			],
 			(id) => id === 'sven',
 		);
 		expect(threads.map((t) => t.name)).toEqual([
 			'Sven',
-			'Schwitzchaste',
 			'David',
-			'Thursday',
-			'Quiet',
+			'Kim',
+			'Ari',
+			'Zoe',
+		]);
+		expect(threads.map((t) => t.unread)).toEqual([
+			true,
+			false,
+			false,
+			false,
+			false,
 		]);
 	});
 
 	it('previews who said the last thing, and images as images', () => {
-		expect(
-			roomThread(
-				room({ lastChat: { from: 'David', text: 'queue this one', at: 1 } }),
-			).preview,
-		).toBe('David: queue this one');
-		expect(
-			roomThread(
-				room({ lastChat: { from: 'Mike', text: '', hasImage: true, at: 1 } }),
-			).preview,
-		).toBe('Mike: sent an image');
-		expect(roomThread(room({})).preview).toBe('');
-		const [dm] = orderThreads(
-			[],
-			[head({ mine: true, text: 'lol' })],
-			() => false,
+		const preview = (over: Partial<DmHead>) =>
+			orderThreads([head(over)], () => false)[0].preview;
+		expect(preview({ mine: true, text: 'lol' })).toBe('you: lol');
+		expect(preview({})).toBe('Sven Gerber: ftp test next week?');
+		expect(preview({ text: '', hasImage: true })).toBe(
+			'Sven Gerber: sent an image',
 		);
-		expect(dm.preview).toBe('you: lol');
-	});
-
-	it('carries the room signal the list shows under the preview', () => {
-		const t = roomThread(
-			room({ connected: 3, voice: ['a', 'b'], riding: ['a'] }),
-		);
-		expect(t).toMatchObject({ here: 3, voice: 2, riding: true });
 	});
 });
 

@@ -1,6 +1,5 @@
 import type { LiveCrew, LiveOccupant } from '$lib/crews-live';
 import type { Friend } from '$lib/friends/friends.svelte';
-import type { RailRoom } from '$lib/room/room-data';
 
 /**
  * Where a person is, in one word (#807). Four surfaces had each invented
@@ -65,13 +64,14 @@ export function statusOf(
 }
 
 /**
- * A rider on the room's own tick, which knows more than the rail can: away is
- * a thing the rider SAID (#706), never inferred from an idle trainer.
+ * A rider on the voice channel's own tick, which knows more than the rail
+ * can: away is a thing the rider SAID (#706), never inferred from an idle
+ * trainer.
  *
  * `riding` comes from the server and means pedalled-inside-the-window
  * (#1016). It used to be read off the current sample's watts here, which put
  * a rider on and off the mark every time they coasted — and meant a different
- * thing again outside the room, where the same word covered anyone whose
+ * thing again outside the channel, where the same word covered anyone whose
  * trainer was merely switched on.
  */
 export function statusOfRider(rider: {
@@ -80,17 +80,4 @@ export function statusOfRider(rider: {
 }): PresenceStatus {
 	if (rider.away) return 'away';
 	return rider.riding ? 'riding' : 'online';
-}
-
-/**
- * Who is in the room besides you. Home's "Around right now" answers who
- * ELSE is here (#1502): the feed counts your own socket like anyone's, so a
- * room you stood in alone read as busy, with a "Join them" pointed at you.
- */
-export function othersIn(
-	room: Pick<RailRoom, 'riders' | 'riderIds'>,
-	meId: string,
-): string[] {
-	const ids = room.riderIds ?? [];
-	return (room.riders ?? []).filter((_, i) => ids[i] !== meId);
 }

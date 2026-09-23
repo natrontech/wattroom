@@ -8,8 +8,8 @@
 	/**
 	 * How a planned workout is drawn wherever nobody is riding it yet: its shape,
 	 * and the zones that name the colours in it. One picture for the shelf, for a
-	 * rider's own workouts and for the room's next session — a stacked bar said
-	 * how long each zone lasts, never what the workout looks like (#1525).
+	 * rider's own workouts and for a crew's next session — a stacked bar said how
+	 * long each zone lasts, never what the workout looks like (#1525).
 	 */
 	let {
 		segments,

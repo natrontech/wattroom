@@ -6,20 +6,20 @@
 	import { focusTrap } from '$lib/components/focus-trap';
 	import { closeImage, image, toggleActual } from './viewer.svelte';
 
-	// The picture a rider clicked, big, on the page they clicked it (#510).
-	// One host in the root layout, like Toasts and ContextMenuHost: every chat
-	// on every surface opens the same viewer, and a room's chat sheet can't
+	// The picture a rider clicked, big, on the page they clicked it (#510). One
+	// host in the root layout, like Toasts and ContextMenuHost: every chat on
+	// every surface opens the same viewer, and a voice channel's side sheet can't
 	// clip it. Escape, the backdrop and one big button all close it; z-[65]
-	// clears that sheet (see lib/room/stacking.test.ts).
+	// clears that sheet (see lib/channel/stacking.test.ts).
 	//
 	// `cave` on the backdrop: a picture wants a dark, neutral ground on every
 	// palette, the same reason the stage letterboxes video in black — and a
 	// root-mounted overlay is OUTSIDE the ride's cave, so a daylight palette
-	// would otherwise flash white over a room with the lights down.
+	// would otherwise flash white at a rider riding with the lights down.
 
 	// The window listener lives outside the {#if} — <svelte:window> cannot sit
 	// inside a block — so it asks for itself whether a picture is open, and
-	// leaves Escape to the room's own handlers when none is.
+	// leaves Escape to the page's own handlers when none is.
 	function onkeydown(event: KeyboardEvent) {
 		if (image.src && event.key === 'Escape') closeImage();
 	}

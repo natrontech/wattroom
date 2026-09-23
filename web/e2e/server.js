@@ -39,7 +39,7 @@ const go = spawn('go', ['run', '.'], {
 		// The login gate (ADR-0009) means even the e2e ride signs in — the dev
 		// provider against a real Postgres, same doors production uses. Which
 		// Postgres is env.js's decision: this checkout's own, so a run here
-		// cannot write the rooms another checkout is asserting about.
+		// cannot write the crews another checkout is asserting about.
 		WATTROOM_DB: DB_DSN,
 		WATTROOM_DEV_LOGIN: '1',
 		// The passkey relying party is derived from this (passkey.go): the
@@ -104,9 +104,10 @@ const web = createServer((req, res) => {
 	createReadStream(file).pipe(res);
 });
 
-// The room talks over /ws (live.svelte.ts), so the proxy has to carry the
-// upgrade too — an HTTP-only proxy leaves the SPA stuck on "Lost the room" and
-// every room flow untestable. Raw socket piping: the handshake is already a
+// A voice channel talks over /ws (live.svelte.ts), so the proxy has to carry
+// the upgrade too — an HTTP-only proxy leaves the SPA stuck on its
+// lost-connection banner and every channel flow untestable. Raw socket
+// piping: the handshake is already a
 // complete HTTP request, so it only has to be replayed upstream verbatim.
 web.on('upgrade', (req, socket, head) => {
 	const upstream = connect(API_PORT, '127.0.0.1', () => {

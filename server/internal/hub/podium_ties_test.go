@@ -76,7 +76,7 @@ func TestEveryModeIsSampled(t *testing.T) {
 		for elapsed := interval; elapsed <= 60*time.Second; elapsed += interval {
 			game.advance(gat(0).Add(elapsed), map[string]int{"a": 300}, roster)
 		}
-		if got := game.state(gat(61)).RoomDistance; got != 18_000 {
+		if got := game.state(gat(61)).TeamDistance; got != 18_000 {
 			t.Errorf("at %s ticks: distance %v, want 18000", interval, got)
 		}
 	}

@@ -5,8 +5,8 @@
 	 * (ADR-0005) and showed states the product lacks. Every parameter comes
 	 * from docs/SPEC.md's game-mode table; the server owns every rule.
 	 */
-	import GamePanel from '$lib/room/GamePanel.svelte';
-	import { GAME_MODES } from '$lib/room/modes';
+	import GamePanel from '$lib/session/GamePanel.svelte';
+	import { GAME_MODES } from '$lib/session/modes';
 	import type { GameState, SprintScore } from '$lib/protocol';
 
 	const roster = [
@@ -179,7 +179,7 @@
 						mode: 'team-relay',
 						phase: 'running',
 						roundEndsAtMs: now + 50_000,
-						roomDistance: 12.4,
+						teamDistance: 12.4,
 						riders: riders({
 							sara: { onFront: true, targetPct: 1.1 },
 							ruben: { targetPct: 0.55 },
@@ -190,7 +190,7 @@
 					done: {
 						mode: 'team-relay',
 						phase: 'done',
-						roomDistance: 31.2,
+						teamDistance: 31.2,
 						riders: riders({}),
 						podium: podium(['sara', 'ruben', 'demo', 'nina'], (i) => 4 - i),
 					},

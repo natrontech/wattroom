@@ -3,9 +3,9 @@ import type { MenuItem } from '$lib/context-menu.svelte';
 import { personMenu } from '$lib/person-menu';
 import { mixer } from '$lib/sound/mixer.svelte';
 
-// The surface says who is in voice (#874); the fader writes through the room's
-// av when there is one.
-const room = vi.hoisted(() => ({
+// The surface says who is in voice (#874); the fader writes through the voice
+// channel's av when there is one.
+const connection = vi.hoisted(() => ({
 	current: null as null | {
 		av: {
 			voice: Record<string, 'live' | 'muted'>;
@@ -14,10 +14,12 @@ const room = vi.hoisted(() => ({
 		live?: { tick?: { roster?: { id: string }[] } };
 	},
 }));
-vi.mock('$lib/room/connection.svelte', () => ({ roomConnection: room }));
+vi.mock('$lib/channel/connection.svelte', () => ({
+	channelConnection: connection,
+}));
 
 const opened = vi.hoisted(() => ({ id: null as string | null }));
-vi.mock('$lib/room/connection-info.svelte', () => ({
+vi.mock('$lib/channel/connection-info.svelte', () => ({
 	connectionInfo: {
 		open: (id: string) => {
 			opened.id = id;
@@ -69,11 +71,11 @@ describe('personMenu (#486)', () => {
 		expect(theirFriend.disabled).toBeFalsy();
 	});
 
-	it('offers a capability-gated room poke', () => {
+	it('offers a capability-gated poke', () => {
 		const poke = vi.fn();
 		const entries = items(
 			personMenu('u1', () => {}, {
-				poke: { onSelect: poke, disabled: true, hint: 'not in the room' },
+				poke: { onSelect: poke, disabled: true, hint: 'not in the channel' },
 			}),
 		);
 		expect(entries.map((item) => item.label)).toEqual([
@@ -84,7 +86,7 @@ describe('personMenu (#486)', () => {
 		]);
 		expect(entries[2]).toMatchObject({
 			disabled: true,
-			hint: 'not in the room',
+			hint: 'not in the channel',
 		});
 		entries[2].onSelect();
 		expect(poke).toHaveBeenCalledOnce();
@@ -100,14 +102,14 @@ describe('personMenu (#486)', () => {
 			'Message',
 			'Add friend',
 			'—',
-			'Ban from the room',
+			'Ban from the crew',
 		]);
 		expect(entries.at(-1)).toMatchObject({ danger: true });
 		items(entries).at(-1)!.onSelect();
 		expect(banned).toHaveBeenCalledOnce();
 		expect(
 			labels(personMenu('me', () => {}, { you: true, ban: banned })),
-		).not.toContain('Ban from the room');
+		).not.toContain('Ban from the crew');
 	});
 
 	// The menu never asks who is already a friend — the server's own refusal
@@ -140,8 +142,8 @@ describe('personMenu volume', () => {
 		).toEqual([]);
 	});
 
-	it('sets the level itself when the room has no voice connection', () => {
-		room.current = null;
+	it('sets the level itself when there is no voice connection', () => {
+		connection.current = null;
 		const [fader] = faders(
 			personMenu('u3', () => {}, { volume: { name: 'Ruben' } }),
 		);
@@ -153,7 +155,7 @@ describe('personMenu volume', () => {
 	});
 
 	it('reads the rider back at their stored level and writes through av', () => {
-		room.current = { av: { voice: { u1: 'live' }, setRiderGain } };
+		connection.current = { av: { voice: { u1: 'live' }, setRiderGain } };
 		mixer.setRiderGain('u1', 1.4, 'Ada');
 		const entries = personMenu('u1', () => {}, { volume: { name: 'Ada' } });
 		const [fader] = faders(entries);
@@ -164,7 +166,7 @@ describe('personMenu volume', () => {
 			'140%',
 			200,
 		]);
-		// Before the friendship, after the room's own verbs.
+		// Before the friendship, after the voice channel's own verbs.
 		expect(labels(entries)).toEqual([
 			'Rider page',
 			'Message',
@@ -178,20 +180,20 @@ describe('personMenu volume', () => {
 });
 
 // Their connection, as numbers (#2131). The entry is on `personMenu` so that
-// every surface drawing a person offers it, which makes "only where the room
-// can answer" the menu's job rather than each caller's.
+// every surface drawing a person offers it, which makes "only where the voice
+// channel can answer" the menu's job rather than each caller's.
 describe('personMenu connection (#2131)', () => {
 	beforeEach(() => {
-		room.current = null;
+		connection.current = null;
 		opened.id = null;
 	});
 
-	it('is absent off a room surface, where nothing could fill the panel', () => {
+	it('is absent off a voice channel, where nothing could fill the panel', () => {
 		expect(labels(personMenu('u1', () => {}))).not.toContain('Connection');
 	});
 
-	it('is absent for someone who is not in the room you are standing in', () => {
-		room.current = {
+	it('is absent for someone who is not in the voice channel you are in', () => {
+		connection.current = {
 			av: { voice: {}, setRiderGain: () => {} },
 			live: { tick: { roster: [{ id: 'someone-else' }] } },
 		};
@@ -199,7 +201,7 @@ describe('personMenu connection (#2131)', () => {
 	});
 
 	it('is offered for a rider on the roster, and opens their panel', () => {
-		room.current = {
+		connection.current = {
 			av: { voice: {}, setRiderGain: () => {} },
 			live: { tick: { roster: [{ id: 'u1' }] } },
 		};
@@ -214,7 +216,7 @@ describe('personMenu connection (#2131)', () => {
 	// The one entry that is NOT disabled on your own row: everything else on
 	// this menu is about another person, and your address is about you.
 	it('is offered on your own row, and is not disabled there', () => {
-		room.current = {
+		connection.current = {
 			av: { voice: {}, setRiderGain: () => {} },
 			live: { tick: { roster: [{ id: 'me' }] } },
 		};
@@ -225,10 +227,10 @@ describe('personMenu connection (#2131)', () => {
 		expect(mine?.disabled).toBeFalsy();
 	});
 
-	// A room joined but not yet ticking has no roster to ask, and reading
-	// through it must not throw the whole menu away.
-	it('survives a room that has no tick yet', () => {
-		room.current = { av: { voice: {}, setRiderGain: () => {} } };
+	// A voice channel joined but not yet ticking has no roster to ask, and
+	// reading through it must not throw the whole menu away.
+	it('survives a voice channel that has no tick yet', () => {
+		connection.current = { av: { voice: {}, setRiderGain: () => {} } };
 		expect(() => personMenu('u1', () => {})).not.toThrow();
 		expect(labels(personMenu('u1', () => {}))).not.toContain('Connection');
 	});
@@ -246,8 +248,8 @@ describe('personMenu connection (#2131)', () => {
 		expect(
 			labels(personMenu('u1', () => {}, { friendship: 'pending_in' })),
 		).not.toContain('Add friend');
-		// Not knowing is not "not a friend": a room's roster has no list, and
-		// the ask belongs there.
+		// Not knowing is not "not a friend": a voice channel's roster has no
+		// list, and the ask belongs there.
 		expect(labels(personMenu('u1', () => {}))).toContain('Add friend');
 	});
 

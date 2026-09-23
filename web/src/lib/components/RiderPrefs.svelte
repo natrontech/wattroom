@@ -1,20 +1,17 @@
 <script lang="ts">
-	// The rider's own settings for a crew (#1100, #2453) — or, until the room
-	// goes (#2460), a room — theirs alone: notify and the weekly board. Saves
-	// through the rider's own endpoint, so an owner editing the place never
-	// touches them. `path` is that endpoint; `noun` is what the words call it.
+	// The rider's own settings for a crew (#1100, #2453), theirs alone: notify
+	// and the weekly board. Saves through the rider's own endpoint, so an owner
+	// editing the crew never touches them. `path` is that endpoint.
 	import { api } from '$lib/api';
 	import { toasts } from '$lib/toast.svelte';
-	import type { RiderPrefs } from '$lib/room/room-data';
+	import type { RiderPrefs } from '$lib/crew-types';
 
 	let {
 		path,
-		noun,
 		me,
 		boardEnabled = false,
 	}: {
 		path: string;
-		noun: 'crew' | 'room';
 		me?: RiderPrefs;
 		boardEnabled?: boolean;
 	} = $props();
@@ -24,7 +21,7 @@
 	let saving = $state(false);
 	// What the server last confirmed — the parent's snapshot to start with,
 	// then every save that came back OK (#2163). The rollback below used to
-	// read `me`, which only a re-read of the whole room refreshes: turn Notify
+	// read `me`, which only a re-read of the whole crew refreshes: turn Notify
 	// off (it saves), then let the board switch fail, and BOTH went back to a
 	// snapshot taken before the first change. The promise under the rollback
 	// is that the switches never show a preference that did not save; reading
@@ -37,14 +34,14 @@
 	let held: RiderPrefs = { notify: true, onBoard: true };
 	$effect(() => {
 		// What the server holds is the truth, on mount and on every re-read of
-		// the room (a lobby ping).
+		// the crew (a lobby ping).
 		held = { notify: me?.notify ?? true, onBoard: me?.onBoard ?? true };
 		notify = held.notify;
 		onBoard = held.onBoard;
 	});
 
-	// Whole object on every change, like the room's own settings: there is no
-	// partial shape to get wrong, and the response is the truth we keep.
+	// Whole object on every change: there is no partial shape to get wrong,
+	// and the response is the truth we keep.
 	async function savePrefs(next: Partial<RiderPrefs>) {
 		saving = true;
 		// `json`, never a raw `body` (#2163): api() sets the content type only
@@ -74,12 +71,12 @@
 
 <!-- The rider's own settings (#1100). Between "the owner decides for
 		     everybody" and "a global app setting" there was nothing, and the
-		     weekly board is the case that shows why: a room-level switch
+		     weekly board is the case that shows why: a crew-level switch
 		     answers "joining must not put you on a board", and leaves the
 		     same trap standing for everyone already inside when the owner
 		     turns it on (ADR-0036, amended). -->
 <section class="border-muted/15 mt-4 rounded-lg border p-6">
-	<h2 class="font-display font-bold">Your settings for this {noun}</h2>
+	<h2 class="font-display font-bold">Your settings for this crew</h2>
 	<p class="text-muted mt-1.5 text-xs">
 		Yours alone — nobody else sees them, and the owner cannot change them.
 	</p>
@@ -93,7 +90,7 @@
 			disabled={saving}
 		/>
 		<span class="min-w-0">
-			<span class="block text-sm font-medium">Notify me about this {noun}</span>
+			<span class="block text-sm font-medium">Notify me about this crew</span>
 			<span class="text-muted block text-xs">
 				Planned sessions here reach you by email. Turning off all of it at once
 				is on <a href="/settings/notifications" class="btn-link"
@@ -117,8 +114,8 @@
 			</span>
 			<span class="text-muted block text-xs">
 				{boardEnabled
-					? `Off keeps your kJ off the ${noun}'s board. It changes nothing else.`
-					: `This ${noun}'s board is off, so nothing is ranked here yet — this is what happens if it is turned on.`}
+					? `Off keeps your kJ off the crew's board. It changes nothing else.`
+					: `This crew's board is off, so nothing is ranked here yet — this is what happens if it is turned on.`}
 			</span>
 		</span>
 	</label>

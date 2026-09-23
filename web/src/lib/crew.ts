@@ -1,18 +1,12 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
 import type { SessionRecap } from '$lib/protocol';
-import type {
-	BoardRow,
-	RiderPrefs,
-	RoomAccess,
-	RoomCrew,
-	Together,
-} from '$lib/room/room-data';
+import type { BoardRow, CrewRef, RiderPrefs, Together } from '$lib/crew-types';
 
 /**
- * The crew's own surface (ADR-0038): identity, its rooms with what you may
- * do in each, its people with their crew roles, and — for the owner and
- * admins — its bans. Nothing live: a crew carries no voice, deck, session
- * or metrics, so there is nothing else to fetch.
+ * The crew's own surface (ADR-0038): identity, its people with their crew
+ * roles, and — for the owner and admins — its bans. Nothing live: a crew
+ * carries no voice, deck, session or metrics, so there is nothing else to
+ * fetch.
  */
 export type CrewRole = 'owner' | 'admin' | 'member';
 
@@ -21,25 +15,10 @@ export interface CrewPerson {
 	displayName: string;
 	avatarUrl?: string;
 	role: CrewRole | 'banned';
-	/** First joined any of the crew's rooms — or, on the ban list, banned on. */
+	/** Joined the crew — or, on the ban list, banned on. */
 	since: string;
-	/** How many of the crew's rooms hold them; absent on the ban list. */
-	rooms?: number;
-	/** Owns a room in the crew, so cannot be banned from it (#1212). */
-	ownsRoom?: boolean;
 	/** Medals the crew's sessions awarded them — on the Members read only (#2442). */
 	medals?: number;
-}
-
-export interface CrewRoom {
-	id: string;
-	/** Absent when you may not enter — the slug is the door (#1205). */
-	slug?: string;
-	name: string;
-	icon?: string;
-	access: RoomAccess;
-	/** In the public directory too (#1929). */
-	listed?: boolean;
 }
 
 export interface Crew {
@@ -55,7 +34,6 @@ export interface Crew {
 	/** A person has named it (#1151); false while it carries the owner's name. */
 	named?: boolean;
 	ownerId: string;
-	rooms: CrewRoom[];
 	/**
 	 * How many are in the crew — the door's number. `people` is the part of
 	 * them you may see (#1135), shorter for a plain member.
@@ -95,13 +73,13 @@ export function updateCrew(
 		listed?: boolean;
 		cheers?: string[];
 	},
-): Promise<ApiResult<RoomCrew>> {
-	return api<RoomCrew>(`/api/crews/${id}`, { method: 'PATCH', json: patch });
+): Promise<ApiResult<CrewRef>> {
+	return api<CrewRef>(`/api/crews/${id}`, { method: 'PATCH', json: patch });
 }
 
 /**
- * admin | member | banned. `member` clears an admin grant or lifts a crew
- * ban — and lifts nothing a room's owner decided (#1150).
+ * admin | member | banned. `member` clears an admin grant or lifts the
+ * crew's ban (#1150).
  */
 export function setCrewRole(
 	id: string,
@@ -121,28 +99,10 @@ export function setCrewRole(
 export function transferCrew(
 	id: string,
 	userId: string,
-): Promise<ApiResult<RoomCrew>> {
-	return api<RoomCrew>(`/api/crews/${id}/transfer`, {
+): Promise<ApiResult<CrewRef>> {
+	return api<CrewRef>(`/api/crews/${id}/transfer`, {
 		method: 'POST',
 		json: { userId },
-	});
-}
-
-/**
- * Open a room to the crew or shut it, by id (#1226) — the one permission a
- * crew admin holds over a room they never joined, and the row they hold
- * carries no slug (#1205).
- */
-export function setRoomAccess(
-	crewId: string,
-	roomId: string,
-	crewVisible: boolean,
-	/** With the door, the listing to restore (#1929) — the undo of a shut. */
-	listed?: boolean,
-): Promise<ApiResult<void>> {
-	return api<void>(`/api/crews/${crewId}/rooms/${roomId}/access`, {
-		method: 'PATCH',
-		json: listed === undefined ? { crewVisible } : { crewVisible, listed },
 	});
 }
 
@@ -172,8 +132,8 @@ export interface CrewDoor {
  * "turned on ... visibly", before anyone is inside: joining is the moment
  * that publishes a rider's week to the crew, and a ride is private by
  * default. The copy lives here, not in the markup, because it is a privacy
- * disclosure an ADR requires — the reasoning `$lib/room/door.ts` gave the
- * room's door, which this replaces.
+ * disclosure an ADR requires — the reasoning the room's door gave, before
+ * this replaced it.
  *
  * No door-time choice (ux.md, the 95% rule): the opt-out is the crew's
  * `on_board` switch on the other side, so the line names it.
@@ -215,16 +175,16 @@ export function rememberCrewDoor(code: string): Promise<ApiResult<void>> {
 }
 
 /** The one way in (ADR-0038 amended, #1236): the crew, by its code. */
-export function joinCrew(code: string): Promise<ApiResult<RoomCrew>> {
-	return api<RoomCrew>('/api/crews/join', { method: 'POST', json: { code } });
+export function joinCrew(code: string): Promise<ApiResult<CrewRef>> {
+	return api<CrewRef>('/api/crews/join', { method: 'POST', json: { code } });
 }
 
 /**
  * A crew of your own (#2480): you own it, and it opens with a text and a voice
  * channel. Refused past docs/SPEC.md's founding cap.
  */
-export function foundCrew(name: string): Promise<ApiResult<RoomCrew>> {
-	return api<RoomCrew>('/api/crews', { method: 'POST', json: { name } });
+export function foundCrew(name: string): Promise<ApiResult<CrewRef>> {
+	return api<CrewRef>('/api/crews', { method: 'POST', json: { name } });
 }
 
 /** A new invite (#1930): the old code and every link carrying it stop working. */
@@ -234,7 +194,10 @@ export function rotateCrewCode(
 	return api<{ code: string }>(`/api/crews/${id}/code`, { method: 'POST' });
 }
 
-/** Out of the crew and every one of its rooms, in one move (#1228, #1236). */
+/**
+ * Out of the crew and every private channel it named you into, in one move
+ * (#1228, #1236).
+ */
 export function leaveCrew(id: string): Promise<ApiResult<void>> {
 	return api<void>(`/api/crews/${id}/leave`, { method: 'POST' });
 }

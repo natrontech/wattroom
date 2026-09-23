@@ -24,8 +24,7 @@
 		shareInviteLink,
 	} from '$lib/crew-flows';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
-	import type { RailRoom } from '$lib/room/room-data';
-	import type { RoomCrew } from '$lib/room/room-data';
+	import type { CrewRef } from '$lib/crew-types';
 	import { shareVerb } from '$lib/share';
 	import { quiet } from './crews';
 	import { crewLive, livePulse } from './crew-live.svelte';
@@ -46,14 +45,12 @@
 	let {
 		crews,
 		crew,
-		rooms,
 		onpick,
 	}: {
 		/** Every crew the rider is in, once each. */
-		crews: RoomCrew[];
+		crews: CrewRef[];
 		/** The one on screen; null is You. */
-		crew: RoomCrew | null;
-		rooms: RailRoom[];
+		crew: CrewRef | null;
 		/** The rider chose a crew, or 'you'. */
 		onpick: (id: string) => void;
 	} = $props();
@@ -62,7 +59,7 @@
 	// Settings, its channels — light for its pages, so the header lighting
 	// too would make two (ADR-0020 rule 1).
 
-	// What the header says under the name: how many rooms, and what you are
+	// What the header says under the name: how many channels, and what you are
 	// to it. Owner is a word here because the shield alone is a small mark;
 	// member says nothing, being in it at all is the default.
 	// The one number that tells two crews apart at a glance (#1238): the
@@ -70,7 +67,7 @@
 	// says the rest.
 	// ...and which one is the main crew (#2144): the one the sidebar opens
 	// in on every device.
-	function crewLine(c: RoomCrew): string {
+	function crewLine(c: CrewRef): string {
 		const n = crewLive.crew(c.id)?.channels.length ?? 0;
 		const count = n === 1 ? '1 channel' : `${n} channels`;
 		return c.id === account.me?.homeCrewId ? `${count} · main` : count;
@@ -78,10 +75,7 @@
 	// The crew's menu (#1257, ux.md): everything about the crew that is a
 	// page or two away, from the row that names it. The click stays the
 	// primary action; nothing here lives only in the menu.
-	function crewEntries(c: RoomCrew): MenuEntry[] {
-		const owned = rooms.filter(
-			(r) => r.crew?.id === c.id && r.role === 'owner',
-		);
+	function crewEntries(c: CrewRef): MenuEntry[] {
 		const entries: MenuEntry[] = [
 			{
 				label: 'Members',
@@ -117,13 +111,8 @@
 			label: 'Leave the crew',
 			icon: LogOut,
 			danger: true,
-			disabled: c.role === 'owner' || owned.length > 0,
-			hint:
-				c.role === 'owner'
-					? 'hand the crew on first'
-					: owned.length
-						? 'you own a room here'
-						: undefined,
+			disabled: c.role === 'owner',
+			hint: c.role === 'owner' ? 'hand the crew on first' : undefined,
 			onSelect: () => void leaveCrewFlow(c),
 		});
 		return entries;
@@ -162,7 +151,7 @@
      expands the crews in place, plain rows at the same indentation;
      nothing floats, nothing is rounded, nothing is inset. -->
 <div class="px-2 pt-2" bind:this={header}>
-	{#snippet crewRow(c: RoomCrew)}
+	{#snippet crewRow(c: CrewRef)}
 		<CrewMark name={c.name} icon={c.icon} imageUrl={c.imageUrl} size={24} />
 		<span
 			class="font-display min-w-0 flex-1 truncate text-[15px] leading-5 font-bold"
@@ -199,9 +188,9 @@
 		<!-- What is under this header stopped updating (#1743, #2518): the crew
 		     list or the crews' live read, either one. The channel list,
 		     the presence dots and "32 min in" are frozen at whatever they last
-		     were, and with rooms already on screen nothing else in the column
+		     were, and with channels already on screen nothing else in the column
 		     says so — the error line below only draws over an EMPTY list, so a
-		     rider with rooms read a confident, stale radar for as long as the
+		     rider with channels read a confident, stale radar for as long as the
 		     feed stayed down. Two failed reads in a row, never one: the 60 s
 		     fallback poll covers a blip, and a mark that flickers on every blip
 		     is a mark people learn to ignore.

@@ -45,11 +45,6 @@ export function oembedFor(url: string): string | null {
 	return null;
 }
 
-/** Whether a URL is one the jukebox could take — the card grows a Queue button. */
-export function isYouTube(host: string): boolean {
-	return /(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(host);
-}
-
 const cache = new Map<string, Promise<Card | null>>();
 
 /**

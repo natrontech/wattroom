@@ -103,7 +103,7 @@
 
 	async function withPasskey() {
 		// The same deep link the provider buttons keep (#824): a rider bounced
-		// off /r/tuesday lands back in the room, not on /home.
+		// off a voice channel's link lands back in it, not on /home.
 		rememberNext(nextAfterSignIn());
 		passkeyBusy = true;
 		passkeyError = '';
@@ -176,7 +176,7 @@
 	></div>
 
 	<!-- In the desktop shell this is the first screen, on a window built for a
-	     desk (#1188): the pitch and the live-room scene on the left, the one
+	     desk (#1188): the pitch and the live-session scene on the left, the one
 	     sign-in on the right. In a browser the card stands alone as before. -->
 	<div
 		class="relative w-full {shell
@@ -190,7 +190,7 @@
 					Train together, not alone.
 				</h1>
 				<p class="text-muted mt-3 max-w-md text-base leading-relaxed">
-					A room, a coach, and everyone's watts on one screen. Your trainer does
+					A crew, a coach, and everyone's watts on one screen. Your trainer does
 					the rest.
 				</p>
 				<div class="mt-8 w-full max-w-xl"><LandingHero /></div>

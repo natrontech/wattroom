@@ -45,12 +45,12 @@ func channelsOf(crew map[string]any) map[string]map[string]any {
 // a gate the page itself would refuse.
 func TestAPrivateChannelNobodyNamedYouIntoIsNotInYourSidebar(t *testing.T) {
 	h := setup(t)
-	live := &fakeLive{present: map[string]protocol.RoomPresence{}}
+	live := &fakeLive{present: map[string]protocol.ChannelPresence{}}
 	h.svc.SetLive(live)
 	open := h.create(t, "voice", "Open ride", false)
 	coaches := h.create(t, "voice", "Coaches", true)
-	live.present[coaches] = protocol.RoomPresence{Riders: []string{"dave"}, RiderIDs: []string{store.UUIDString(h.users.ByToken["dave"].ID)}}
-	live.present[open] = protocol.RoomPresence{Riders: []string{"alice"}, RiderIDs: []string{store.UUIDString(h.users.ByToken["alice"].ID)}, Voice: []string{"alice"}}
+	live.present[coaches] = protocol.ChannelPresence{Riders: []string{"dave"}, RiderIDs: []string{store.UUIDString(h.users.ByToken["dave"].ID)}}
+	live.present[open] = protocol.ChannelPresence{Riders: []string{"alice"}, RiderIDs: []string{store.UUIDString(h.users.ByToken["alice"].ID)}, Voice: []string{"alice"}}
 	if _, err := h.store.Pool.Exec(t.Context(),
 		`insert into scheduled_sessions (crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
 		 values ($1, $2, 'Coaches only', '{}', $3, $4)`,

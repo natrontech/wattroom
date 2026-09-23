@@ -5,7 +5,7 @@ import { shouldAnnounce } from '$lib/notify-once';
 import { away } from '$lib/notify.svelte';
 import { STALE_AFTER } from '$lib/stale';
 import type { LiveSession } from '$lib/protocol';
-import { roomConnection } from '$lib/room/connection.svelte';
+import { channelConnection } from '$lib/channel/connection.svelte';
 import { crewArrivals, runningSessions } from './crew-arrivals';
 
 /**
@@ -48,7 +48,7 @@ async function load() {
 	loaded = true;
 	const arrivals = crewArrivals(crews, seen, {
 		here: location.pathname,
-		connected: roomConnection.current?.address.channel || undefined,
+		connected: channelConnection.current?.address.channel || undefined,
 		me: account.me?.id,
 		looking: !away(),
 	});

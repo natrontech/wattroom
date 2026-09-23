@@ -1,8 +1,8 @@
 <script lang="ts">
-	// The curated icon set as a radiogroup (#447): a room's mark and a crew's
-	// (#1209) come from the same set, drawn by the same control, so the two
-	// cannot drift. Chrome, not data — the neon ring is the structural accent.
-	import { ROOM_ICONS } from '$lib/icons';
+	// The curated icon set as a radiogroup (#447): a crew's mark (#1209), drawn
+	// by one control so it cannot drift from the set. Chrome, not data — the neon
+	// ring is the structural accent.
+	import { MARK_ICONS } from '$lib/icons';
 
 	let {
 		value,
@@ -19,7 +19,7 @@
 	} = $props();
 
 	/** Whether the current value names an icon in the set, else "None" is the stop. */
-	const hasValue = $derived(value !== '' && value in ROOM_ICONS);
+	const hasValue = $derived(value !== '' && value in MARK_ICONS);
 	/** Arrow keys walk the radios; Home and End jump; the walked-to one is picked. */
 	function walk(event: KeyboardEvent) {
 		const group = event.currentTarget as HTMLElement | null;
@@ -68,7 +68,7 @@
 			? 'ring-neon bg-neon/15 ring-1'
 			: ''}">None</button
 	>
-	{#each Object.entries(ROOM_ICONS) as [key, Icon] (key)}
+	{#each Object.entries(MARK_ICONS) as [key, Icon] (key)}
 		<button
 			type="button"
 			role="radio"

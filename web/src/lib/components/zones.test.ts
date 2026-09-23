@@ -141,7 +141,7 @@ describe('plannedZoneSeconds', () => {
 describe('fillPct', () => {
 	it('scales to FTP × 1.5 by default, and to the scale it is given (#1565)', () => {
 		expect(fillPct(270, 180)).toBe(100);
-		expect(fillPct(400, 180)).toBe(100); // the room's instrument: pinned, by design
+		expect(fillPct(400, 180)).toBe(100); // a session's instrument: pinned, by design
 		expect(Math.round(fillPct(400, 180, 580))).toBe(69); // the ramp's: still moving
 		expect(fillPct(580, 180, 580)).toBe(100);
 	});

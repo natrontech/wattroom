@@ -53,12 +53,12 @@
 		/** This tick's fires, so the strip can say who pressed what. */
 		fires: Board[] | undefined;
 		/**
-		 * Who is in the room, carrying what each of them still has sounding
-		 * (#1681) — a fire is one tick, the clip it started is not.
+		 * Who is in the voice channel, carrying what each of them still has
+		 * sounding (#1681) — a fire is one tick, the clip it started is not.
 		 */
 		roster: Rider[] | undefined;
 		onFire: (clipId: string) => void;
-		/** End your own clip for the whole room (#1321). */
+		/** End your own clip for the whole voice channel (#1321). */
 		onStop: () => void;
 	} = $props();
 
@@ -67,16 +67,16 @@
 	let last = $state<{ from: string; clipId: string; at: number } | undefined>();
 	let seenTick: Board[] | undefined;
 
-	// This tick's fires and then the room's standing state, in one effect so
-	// the order is the file's rather than Svelte's: a fire and the roster
-	// entry it just created arrive together, and the catch-up below must see
-	// the fire's claim already staked or it restarts the clip a beat in.
+	// This tick's fires and then the voice channel's standing state, in one
+	// effect so the order is the file's rather than Svelte's: a fire and the
+	// roster entry it just created arrive together, and the catch-up below must
+	// see the fire's claim already staked or it restarts the clip a beat in.
 	$effect(() => {
 		const batch = fires;
 		const present = roster ?? [];
-		// Playing is not the panel's job to be open for: a rider who hid the
-		// board still hears the room — this component stays mounted and
-		// renders nothing while it is closed.
+		// Playing is not the panel's job to be open for: a rider who hid the board
+		// still hears the voice channel — this component stays mounted and renders
+		// nothing while it is closed.
 		if (batch && batch.length > 0 && batch !== seenTick) {
 			seenTick = batch;
 			let newest: Board | undefined;
@@ -88,7 +88,7 @@
 					continue;
 				}
 				// No edit passed: the clip's trim, gain and fades come from the
-				// server with its audio, so the room hears what its owner cut
+				// server with its audio, so the channel hears what its owner cut
 				// rather than the whole uploaded minute.
 				void playClip(shot.clipId, from);
 				newest = shot;
@@ -137,14 +137,15 @@
 		}
 		// Alt is the audition (#981): only you hear it, and nothing reaches
 		// the hub. The pad does not glow, because nothing live happened in
-		// the room.
+		// the voice channel.
 		if (alt) void preview(clip.id, me, clip);
 		else fireClip(clip);
 	}
 
 	/**
 	 * Fire by key or by tap — both land here, so both light the pad. The same
-	 * press while it still sounds is the stop (#1321): the room hears it end.
+	 * press while it still sounds is the stop (#1321): the voice channel hears
+	 * it end.
 	 */
 	let glow: ReturnType<typeof setTimeout> | undefined;
 	// The server drops a second fire inside a second (docs/SPEC.md) and says
@@ -206,8 +207,8 @@
 
 	$effect(() => {
 		void board.load();
-		// Leaving the room stops what it was playing: a 60 s clip must not
-		// follow the rider out of the room that fired it.
+		// Leaving the voice channel stops what it was playing: a 60 s clip must
+		// not follow the rider out of the channel that fired it.
 		return stopAll;
 	});
 
@@ -218,7 +219,7 @@
 <svelte:window onkeydown={keys} />
 
 {#if boardPanel.open}
-	<!-- The trim face needs room for a waveform with two handles in it; the
+	<!-- The trim face needs space for a waveform with two handles in it; the
 	     other two are a 364 px column. `motion-reduce` takes the width without
 	     the slide.
 	     Above the seated player, below the drawers (#2379): the board is a

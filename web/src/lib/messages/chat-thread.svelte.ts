@@ -1,20 +1,14 @@
 import { api } from '$lib/api';
 import { uploadImage } from '$lib/chat/upload';
 import { presence } from '$lib/presence.svelte';
-import type {
-	ChatEdit,
-	ChatLine,
-	ChatReactionCount,
-	SessionRecap,
-} from '$lib/protocol';
-import type { Announcement } from '$lib/room/room-data';
+import type { ChatEdit, ChatLine, ChatReactionCount } from '$lib/protocol';
+import type { Announcement } from '$lib/channels';
 
 /**
- * One chat read and written over HTTP — a text channel's (#2448), or a room's
- * read from outside it (#468) until the room goes (#2460). No socket: chat
- * left the tick (#2437), so the backlog is the whole truth and is read again
- * whenever the caller hears the lobby ping. `base` is the API the thread
- * lives under: `/api/channels/{id}` or `/api/rooms/{slug}`.
+ * One chat read and written over HTTP — a text channel's (#2448). No socket:
+ * chat left the tick (#2437), so the backlog is the whole truth and is read
+ * again whenever the caller hears the lobby ping. `base` is the API the
+ * thread lives under: `/api/channels/{id}`.
  */
 interface BacklogMessage extends ChatLine {
 	id: string;
@@ -24,7 +18,6 @@ interface BacklogMessage extends ChatLine {
 
 export function createChatThread(base: string) {
 	let messages = $state<ChatLine[]>([]);
-	let recaps = $state<SessionRecap[]>([]);
 	let announcement = $state<Announcement | null>(null);
 	let reactions = $state<Record<string, Record<string, number>>>({});
 	let myReacts = $state<Record<string, boolean>>({});
@@ -43,7 +36,6 @@ export function createChatThread(base: string) {
 		const res = await api<{
 			messages: BacklogMessage[];
 			readAt: number;
-			recaps?: SessionRecap[];
 			announcement?: Announcement;
 		}>(`${base}/chat`);
 		if (closed || mine !== issued) return;
@@ -68,9 +60,6 @@ export function createChatThread(base: string) {
 		);
 		reactions = counts;
 		myReacts = pressed;
-		// A room's finished sessions ride its backlog (ADR-0034); a text
-		// channel has none, and carries its marked line instead (#2435).
-		recaps = res.data.recaps ?? [];
 		announcement = res.data.announcement ?? null;
 		// Reading is what clears the badge — only when you could actually
 		// have read it: a thread left open in a hidden tab keeps its count.
@@ -89,9 +78,6 @@ export function createChatThread(base: string) {
 	};
 
 	return {
-		get recaps() {
-			return recaps;
-		},
 		get messages() {
 			return messages;
 		},

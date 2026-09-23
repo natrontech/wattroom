@@ -1,37 +1,13 @@
-import Eye from '@lucide/svelte/icons/eye';
-import Lock from '@lucide/svelte/icons/lock';
-import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
-import type { Icon } from '$lib/icons';
-import type { RailRoom } from '$lib/room/room-data';
-import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
+import type { CrewRef } from '$lib/crew-types';
 
 /**
  * The crew is a mode the sidebar is in (ADR-0020, amended 2026-09-08; #1147):
- * one crew's rooms at a time, and the column below keeps the two-deep shape
- * ADR-0020 sized for. Pure, so the one rule that must not regress — the room
- * you are standing in stays in the sidebar whichever crew is on screen — is
- * a function a test can break.
+ * one crew's channels at a time, and the column below keeps the two-deep
+ * shape ADR-0020 sized for. The rules about which crews a rider may do what
+ * in are pure, so each is a function a test can break.
  */
 
 const CHOSEN = 'wattroom.crew.v1';
-
-/**
- * Every crew you are in, once each: the ones the server lists in their own
- * right first (#1476 — a crew with no rooms is still a crew, and deriving
- * crews from rooms made it vanish with its last room), then any a room
- * mentions that the list somehow does not.
- */
-export function crewsOf(
-	rooms: readonly RailRoom[],
-	known: readonly RoomCrew[] = [],
-): RoomCrew[] {
-	const seen = new Map<string, RoomCrew>();
-	for (const crew of known) if (!seen.has(crew.id)) seen.set(crew.id, crew);
-	for (const room of rooms) {
-		if (room.crew && !seen.has(room.crew.id)) seen.set(room.crew.id, room.crew);
-	}
-	return [...seen.values()];
-}
 
 export function readChosenCrew(): string | null {
 	try {
@@ -45,35 +21,8 @@ export function rememberChosenCrew(id: string): void {
 	try {
 		localStorage.setItem(CHOSEN, id);
 	} catch {
-		/* fine — the sidebar opens on the room you are in next time */
+		/* fine — a fresh load opens on the account's main crew instead */
 	}
-}
-
-/**
- * The mark a room row draws for its access state (#1149), shared by the
- * sidebar and the crew page so the two cannot disagree. Open draws nothing.
- */
-export function accessMark(
-	access: RoomAccess | undefined,
-): { icon: Icon; label: string } | null {
-	switch (access) {
-		case 'private':
-			return { icon: Eye, label: 'private' };
-		case 'locked':
-			return { icon: Lock, label: 'private — you are not in this room' };
-		case 'admin':
-			return {
-				icon: SlidersHorizontal,
-				label: 'yours to administer, not to enter',
-			};
-		default:
-			return null;
-	}
-}
-
-/** A room you cannot enter is not a link (#1149, ux.md). */
-export function reachable(access: RoomAccess | undefined): boolean {
-	return access !== 'locked' && access !== 'admin';
 }
 
 /**
@@ -93,17 +42,16 @@ export function quiet(pulse: CrewPulse): boolean {
 }
 
 /**
- * The crews you may open a room in (#1201): the one you own and any you
- * administer — Discord's Manage Channels. A member of a crew opens rooms in
- * their own crew, not the one they are looking at.
+ * The crews you may make channels in (#1201, ADR-0058): the ones you own and
+ * any you administer — Discord's Manage Channels. A plain member makes none.
  */
-export function openableCrews(crews: readonly RoomCrew[]): RoomCrew[] {
+export function openableCrews(crews: readonly CrewRef[]): CrewRef[] {
 	return crews.filter((c) => c.role === 'owner' || c.role === 'admin');
 }
 
 /**
- * Whether the rider has nowhere to open a room — no crew of their own, and
- * none they administer (#2176).
+ * Whether the rider has no crew of their own and none they administer
+ * (#2176).
  *
  * The one question three surfaces were each answering differently: Home's
  * button read `!presence.crews.length` (false for a plain member of somebody
@@ -112,7 +60,7 @@ export function openableCrews(crews: readonly RoomCrew[]): RoomCrew[] {
  * "Join a crew" and got a dialog announcing itself as "Open a room", and a
  * member pressed "Open a room" and got a sheet that led with joining one.
  */
-export function administersNone(crews: readonly RoomCrew[]): boolean {
+export function administersNone(crews: readonly CrewRef[]): boolean {
 	return openableCrews(crews).length === 0;
 }
 
@@ -129,10 +77,10 @@ export function administersNone(crews: readonly RoomCrew[]): boolean {
  *
  * `administersNone` still guards it, because the invite is read once with the
  * account: a rider who founds a crew in this session carries the stale code
- * until `/api/me` is read again, while the room list has already moved.
+ * until `/api/me` is read again, while the crew list has already moved.
  */
 export function leadsWithJoining(
-	crews: readonly RoomCrew[],
+	crews: readonly CrewRef[],
 	pendingInvite: string | null | undefined,
 ): boolean {
 	return !!pendingInvite && administersNone(crews);
@@ -143,6 +91,6 @@ export function leadsWithJoining(
  * founded and still own. Handing one on frees its slot; a crew handed to you
  * never takes one.
  */
-export function foundedCount(crews: readonly RoomCrew[]): number {
+export function foundedCount(crews: readonly CrewRef[]): number {
 	return crews.filter((c) => c.founded && c.role === 'owner').length;
 }

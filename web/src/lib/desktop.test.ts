@@ -10,7 +10,7 @@ import {
 	onShellNavigate,
 	parseRelease,
 	setLaunchAtLogin,
-	setShellRoom,
+	setShellPlace,
 	shellUpdate,
 	trayName,
 } from './desktop';
@@ -269,23 +269,23 @@ describe('launch at login, seen from the app (#1313)', () => {
 	});
 });
 
-describe('the tray’s room and its way back (#1313)', () => {
+describe('the tray’s voice channel and its way back (#1313)', () => {
 	afterEach(() => {
 		delete (globalThis as { wattroom?: unknown }).wattroom;
 	});
 
 	it('does nothing at all in a browser', () => {
-		expect(() => setShellRoom({ path: '/r/x', name: 'X' })).not.toThrow();
+		expect(() => setShellPlace({ path: '/r/x', name: 'X' })).not.toThrow();
 		expect(() => onShellNavigate(() => {})).not.toThrow();
 	});
 
-	it('tells the shell which room, and null when none', () => {
+	it('tells the shell which voice channel, and null when none', () => {
 		const setRoom = vi.fn();
 		(globalThis as { wattroom?: unknown }).wattroom = { setRoom };
-		setShellRoom({ path: '/r/tuesday', name: 'Tuesday Night' });
-		setShellRoom(null);
+		setShellPlace({ path: '/crew/7/v/12', name: 'Tuesday Night' });
+		setShellPlace(null);
 		expect(setRoom.mock.calls).toEqual([
-			[{ path: '/r/tuesday', name: 'Tuesday Night' }],
+			[{ path: '/crew/7/v/12', name: 'Tuesday Night' }],
 			[null],
 		]);
 	});

@@ -1,6 +1,4 @@
 <script lang="ts">
-	import RidingBars from '$lib/components/RidingBars.svelte';
-	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import ChartColumn from '@lucide/svelte/icons/chart-column';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -10,20 +8,21 @@
 	import { presence } from '$lib/presence.svelte';
 	import { friendPlace, friends } from '$lib/friends/friends.svelte';
 	import { placePath } from '$lib/whereabouts';
-	import { revealRooms } from '$lib/rooms/reveal';
-	import { othersIn, statusOf } from '$lib/status';
+	import { revealCrews } from '$lib/home/reveal';
+	import { statusOf } from '$lib/status';
 	import { page } from '$app/state';
-	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
+	import StartOrJoin from '$lib/home/StartOrJoin.svelte';
+	import AroundNow from '$lib/home/AroundNow.svelte';
 	import FirstRun from '$lib/home/FirstRun.svelte';
 	import RecentRides from '$lib/home/RecentRides.svelte';
 	import WhatsNext from '$lib/home/WhatsNext.svelte';
 	import type { ServerRide } from '$lib/ride/list';
 	import Modal from '$lib/components/Modal.svelte';
-	import { crewsOf, leadsWithJoining } from '$lib/nav/crews';
+	import { leadsWithJoining } from '$lib/nav/crews';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import RoomIcon from '$lib/components/RoomIcon.svelte';
+	import MarkIcon from '$lib/components/MarkIcon.svelte';
 	import { fetchProgression, type LoadSummary } from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
 	import { changelog } from '$lib/changelog.svelte';
@@ -31,11 +30,11 @@
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { sessionPath } from '$lib/room/address';
+	import { sessionPath } from '$lib/channel/address';
 
 	// Home (#212): the between-rides overview — who is around, what is
-	// planned, your friends, your week. ADR-0020 folded /sessions in here and
-	// retired /rooms — the sidebar is the room list.
+	// planned, your friends, your week. ADR-0020 folded /sessions in here;
+	// the sidebar is the list of crews and their channels.
 
 	void account.load();
 	// What's new (#345). Home is the between-rides surface, which is the only
@@ -46,18 +45,16 @@
 	let ridesError = $state<string | null>(null);
 	// Either read failing is said here with a Retry (errors.md): the rides
 	// read used to fail silently into "0 rides this week", and a failed
-	// rooms read into "open your first room" (audit 2026-09-09).
+	// crew read into "start your first" (audit 2026-09-09).
 	const error = $derived(ridesError ?? presence.error);
 	let form = $state<LoadSummary | null>(null);
 
-	// The shell's presence store is this list, re-fetched on every lobby ping
-	// (#251). Home used to fetch it again, so each ping cost two identical
-	// requests; the rail feed carries everything this page reads. A first
-	// read that failed is not an empty list: the page waits with the banner.
-	const rooms = $derived(
-		presence.loaded && !(presence.error && presence.rooms.length === 0)
-			? presence.rooms
-			: null,
+	// The shell's presence store is the crew list, re-fetched on every lobby
+	// ping (#251). Home used to fetch it again, so each ping cost two
+	// identical requests. A first read that failed is not an empty list: the
+	// page waits with the banner.
+	const ready = $derived(
+		presence.loaded && !(presence.error && presence.crews.length === 0),
 	);
 	$effect(() => {
 		if (!account.loaded || !account.me) return;
@@ -81,16 +78,6 @@
 		if (presence.error) presence.reload();
 		if (ridesError) void loadRides();
 	}
-
-	// Rooms with somebody ELSE in them: the feed counts your own socket too,
-	// and a room you stood in alone used to read as busy, with a "Join them"
-	// pointed at you (#1502). `riders` is rewritten to the others so the card
-	// and the headline print the same list they decide by.
-	const busy = $derived(
-		(rooms ?? [])
-			.map((r) => ({ ...r, riders: othersIn(r, account.me?.id ?? '') }))
-			.filter((r) => r.riders.length > 0),
-	);
 
 	// ── You, in numbers ───────────────────────────────────────────────────────
 	// FTP and level are the two numbers riders check on the way in; the level
@@ -116,7 +103,7 @@
 			: null,
 	);
 
-	// Friends who are around right now — a room list answers "where", this
+	// Friends who are around right now — the channels above answer "where", this
 	// answers "who" (ADR-0012: presence, never watts).
 	// The friends the app already keeps (#1740): this page used to fetch its
 	// own copy on every ping — and filter it on a status the server never
@@ -134,18 +121,15 @@
 	// still out.
 	const joinFirst = $derived(
 		presence.loaded &&
-			leadsWithJoining(
-				crewsOf(rooms ?? [], presence.crews),
-				account.me?.pendingInvite,
-			),
+			leadsWithJoining(presence.crews, account.me?.pendingInvite),
 	);
 
 	// The rider's own crew, for the first-run card (#1333); null until the
-	// room list has landed, so the card never flashes for a rider who has
+	// crew list has landed, so the card never flashes for a rider who has
 	// no crew to set up.
 	const ownCrew = $derived.by(() => {
-		if (!rooms) return null;
-		const crews = crewsOf(rooms, presence.crews);
+		if (!ready) return null;
+		const crews = presence.crews;
 		// The one founded for you (#1928), before any you were handed.
 		return (
 			crews.find((c) => c.founded) ??
@@ -186,8 +170,8 @@
 			.flatMap((crew) => crew.channels.map((channel) => ({ crew, channel })))
 			.find(({ channel }) => channel.session),
 	);
-	// One sentence and one button: the session that is riding, else the room
-	// with people in it, else nothing — a hero with nowhere to go is noise.
+	// One sentence and one button: the session that is riding, else nothing
+	// — a hero with nowhere to go is noise.
 	const headline = $derived.by(() => {
 		const session = running?.channel.session;
 		if (running && session)
@@ -197,21 +181,6 @@
 				href: sessionPath(running.crew.id, session.id),
 				text: `${running.channel.name} is riding right now — ${minutesIn(session.elapsed)}.`,
 				cta: 'Join the ride',
-			};
-		const live = busy.find((r) => r.live && r.session);
-		if (live && live.session) {
-			return {
-				href: `/r/${live.slug}/training`,
-				text: `${live.name} is riding right now — ${minutesIn(live.session.elapsedSec)}.`,
-				cta: 'Join the ride',
-			};
-		}
-		const around = busy[0];
-		if (around)
-			return {
-				href: `/r/${around.slug}`,
-				text: `${(around.riders ?? []).join(', ')} ${(around.riders ?? []).length === 1 ? 'is' : 'are'} in ${around.name}.`,
-				cta: 'Walk in',
 			};
 		return null;
 	});
@@ -229,15 +198,15 @@
 		};
 	});
 
-	// A deep link to the forms — the old /rooms redirect, a shared
-	// /home#rooms — lands on them once the page is up (#1199).
+	// A deep link to the forms — the directory's empty state, a shared
+	// /home#crews — lands on them once the page is up (#1199).
 	$effect(() => {
-		// The forms render once the room list has landed; before that there
+		// The forms render once the crew list has landed; before that there
 		// is nothing to reveal. #sessions the same way (#1862): the old
 		// /sessions redirect landed on the top, because the section it named
 		// was behind the same fetch when the hash was applied.
-		if (rooms === null) return;
-		if (page.url.hash === '#rooms') queueMicrotask(revealRooms);
+		if (!ready) return;
+		if (page.url.hash === '#crews') queueMicrotask(revealCrews);
 		else if (page.url.hash === '#sessions')
 			queueMicrotask(() =>
 				document.getElementById('sessions')?.scrollIntoView({ block: 'start' }),
@@ -290,7 +259,7 @@
 								href="/crew/{crew.id}/schedule"
 								class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
 							>
-								<RoomIcon icon={crew.icon} size={14} />
+								<MarkIcon icon={crew.icon} size={14} />
 								<span class="truncate">{crew.name}</span>
 							</a>
 						</li>
@@ -407,7 +376,7 @@
 		</div>
 	</section>
 
-	{#if rooms === null}
+	{#if !ready}
 		<div class="mt-8 grid gap-3">
 			{#each { length: 2 } as _, i (i)}
 				<div class="border-muted/15 rounded-lg border px-5 py-4">
@@ -425,58 +394,7 @@
 				<!-- Around right now: the reason to open the app — people. -->
 				<section>
 					<h2 class="eyebrow">Around right now</h2>
-					{#if busy.length > 0}
-						<div class="mt-3 grid gap-3">
-							{#each busy as room (room.slug)}
-								<a
-									href="/r/{room.slug}"
-									class="panel panel-lg hover:border-muted/40 flex items-center gap-4 transition-colors"
-								>
-									{#if room.live}
-										<RidingBars size={12} />
-									{:else}
-										<span class="bg-z4 h-2.5 w-2.5 shrink-0 rounded-full"
-										></span>
-									{/if}
-									<div class="min-w-0">
-										<p class="font-display flex items-center gap-1.5 font-bold">
-											<RoomIcon icon={room.icon} size={16} />
-											<span class="truncate">{room.name}</span>
-										</p>
-										<p class="text-muted mt-0.5 text-xs">
-											{(room.riders ?? []).join(', ')}
-											{#if room.live}
-												· riding now{:else}
-												· in the lounge{/if}
-										</p>
-									</div>
-									<span
-										class="bg-ink text-paper ml-auto inline-flex shrink-0 items-center gap-1.5 rounded px-3 py-1.5 text-xs font-semibold"
-										>Walk in <ArrowRight size={13} /></span
-									>
-								</a>
-							{/each}
-						</div>
-					{:else}
-						<p class="text-muted mt-3 text-sm">
-							{#if rooms.length}
-								Nobody's around right now. The rooms you can walk into are quiet
-								— the first rider to walk in shows up here.
-							{:else if ownCrew}
-								Nobody's around yet — your crew has no rooms; open one and it
-								gets a place to appear.
-							{:else if presence.crews.length}
-								<!-- Invited into a crew with no rooms yet: opening one would
-								     make a crew of their own, not a room in this one
-								     (audit 2026-09-09). -->
-								Nobody's around yet — the crew has no rooms; its owner or an admin
-								opens the first one, and it shows up here.
-							{:else}
-								Nobody's around yet — join a crew with its invite link or code,
-								or start one of your own.
-							{/if}
-						</p>
-					{/if}
+					<AroundNow />
 					{#if friendsOnline.length > 0}
 						<ul class="mt-3 flex flex-wrap gap-2">
 							{#each friendsOnline as friend (friend.id)}
@@ -519,15 +437,16 @@
 						(rides = rides?.filter((r) => r.id !== ride.id) ?? null)}
 				/>
 
-				<!-- What's next: every planned session, across every room you are
+				<!-- What's next: every planned session, across every crew you are
 			     in (ADR-0020 — /sessions retired into this). Planning and saying
-			     you are in both happen in the room whose session it is. -->
+			     you are in both happen on the Schedule of the crew whose session
+			     it is. -->
 				<WhatsNext planCrew={firstCrew?.id} />
 			</div>
 			<!-- Friends is its own place (ADR-0020); the heading that stayed here
 			     with nothing under it went with #1333. -->
 			<aside class="min-w-0 space-y-8">
-				<OpenOrJoin />
+				<StartOrJoin />
 			</aside>
 		</div>
 	{/if}
@@ -541,7 +460,7 @@
 		onclose={() => (opening = false)}
 		class="max-w-sm"
 	>
-		<OpenOrJoin compact />
+		<StartOrJoin compact />
 	</Modal>
 {/if}
 

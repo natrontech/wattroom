@@ -198,7 +198,7 @@ func (s *Service) lastLines(ctx context.Context, unread map[pgtype.UUID]int) (ma
 // ponytail: the hub's order, not speaking-last — nothing server-side knows
 // who spoke last, which is LiveKit's client-side level; order by it when the
 // hub learns it.
-func occupantsOf(p protocol.RoomPresence) []occupantJSON {
+func occupantsOf(p protocol.ChannelPresence) []occupantJSON {
 	set := func(values []string) map[string]bool {
 		out := make(map[string]bool, len(values))
 		for _, v := range values {

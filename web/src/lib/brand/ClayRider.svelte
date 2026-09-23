@@ -13,7 +13,7 @@
 	const skin = 'hsl(28 55% 66%)';
 	const helmet = $derived(`hsl(${hue + 150} 70% 60%)`);
 	const frame = $derived(`hsl(${hue + 40} 28% 24%)`);
-	// The drawing's black (tyres, bar, hub, pupil): the room's surface pulled
+	// The drawing's black (tyres, bar, hub, pupil): the app's surface pulled
 	// almost to black, so it stays dark on both families — ink goes white in
 	// the cave, where the landing lives, and paper goes white in daylight.
 	const outline = 'color-mix(in oklab, var(--color-surface) 20%, black)';

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { PlaceAddress } from '$lib/room/address';
+	import type { PlaceAddress } from '$lib/channel/address';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Select from '$lib/components/Select.svelte';
 	import { queueTracks, type Track } from '$lib/music/pool';
-	import type { PlaylistStore } from '$lib/room/playlists.svelte';
+	import type { PlaylistStore } from '$lib/channel/playlists.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
 	// What the picked rows can do together (#1433). A checkbox per row, this
@@ -14,17 +14,17 @@
 	let {
 		picked,
 		address = null,
-		roomName = '',
+		channelName = '',
 		mine,
-		roomLists = null,
+		crewLists = null,
 		onDone,
 	}: {
 		picked: Track[];
-		/** The room the rider is standing in, or null: no room, nothing to queue into. */
+		/** The voice channel the rider is standing in, or null: none, nothing to queue into. */
 		address?: PlaceAddress | null;
-		roomName?: string;
+		channelName?: string;
 		mine: PlaylistStore;
-		roomLists?: PlaylistStore | null;
+		crewLists?: PlaylistStore | null;
 		/** Called once an action is through — the page drops the ticks. */
 		onDone: () => void;
 	} = $props();
@@ -45,7 +45,7 @@
 			return;
 		}
 		toasts.push(
-			`Queued ${res.data.queued} track${res.data.queued === 1 ? '' : 's'} in ${roomName}.` +
+			`Queued ${res.data.queued} track${res.data.queued === 1 ? '' : 's'} in ${channelName}.` +
 				(res.data.skipped ? ` ${res.data.skipped} could not be queued.` : ''),
 		);
 		onDone();
@@ -53,7 +53,7 @@
 
 	async function saveSelected(targetId: string) {
 		const target = [
-			...(roomLists?.all ?? []).map((p) => ({ store: roomLists!, p })),
+			...(crewLists?.all ?? []).map((p) => ({ store: crewLists!, p })),
 			...mine.all.map((p) => ({ store: mine, p })),
 		].find(({ p }) => p.id === targetId);
 		if (!target || !picked.length) return;
@@ -89,19 +89,19 @@
 				onclick={() => void queueSelected()}
 				disabled={bulkBusy}
 				class="btn btn-secondary btn-xs"
-				><ListPlus size={13} /> Queue in {roomName}</button
+				><ListPlus size={13} /> Queue in {channelName}</button
 			>
 		{/if}
-		{#if (roomLists?.all.length ?? 0) + mine.all.length}
+		{#if (crewLists?.all.length ?? 0) + mine.all.length}
 			<div class="w-56">
 				<Select
 					label="save the picked tracks to"
 					value={saveTarget}
 					options={[
 						{ value: '', label: 'Save to…' },
-						...(roomLists?.all ?? []).map((p) => ({
+						...(crewLists?.all ?? []).map((p) => ({
 							value: p.id,
-							label: `${p.name} · ${roomName}`,
+							label: `${p.name} · ${channelName}`,
 						})),
 						...mine.all.map((p) => ({ value: p.id, label: p.name })),
 					]}

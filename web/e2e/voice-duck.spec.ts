@@ -96,7 +96,7 @@ test("a real remote voice lights the listener's speaking ring, and losing it cle
 	await channels.enter(b, opened);
 	const voice = voicePath(opened);
 
-	// ?voice=1 auto-joins once on mount (RoomShell.svelte) — it only does
+	// ?voice=1 auto-joins once on mount (ChannelShell.svelte) — it only does
 	// anything once avEnabled is true, which is why e2e/server.js now
 	// carries WATTROOM_LIVEKIT_*.
 	await a.goto(`${voice}?voice=1`);

@@ -6,9 +6,9 @@ import { page } from '$app/state';
  * WATTROOM.md scopes phones as read-only spectators, and that is locked. What
  * was NOT locked is how the app says so: until #412 a narrow viewport was
  * bounced out of the room entirely, onto a read-only page the redesign never
- * touched. A phone gets the real room now, minus the affordances that would
- * fail on it (`ux.md`: hidden or disabled with a reason, never a button that
- * errors on click).
+ * touched. A phone gets the real voice channel and session now, minus the
+ * affordances that would fail on it (`ux.md`: hidden or disabled with a reason,
+ * never a button that errors on click).
  *
  * A narrow WINDOW and a phone are different questions (ADR-0020), so the
  * predicate below takes three signals and not one:
@@ -35,7 +35,7 @@ export interface DeviceEnv {
 }
 
 /**
- * Whether to draw the room without its trainer controls.
+ * Whether to draw the ride surfaces without their trainer controls.
  *
  * `?full=1` used to be the escape hatch out of the watch page's dead end. The
  * dead end is gone, so it keeps the meaning it always had — "give this device
@@ -108,9 +108,9 @@ export const device = {
  * Two consumers now, which is why it sits beside `device` rather than inside
  * either of them (code-quality.md: one canonical home). It labels a sensor
  * claim between a rider's own screens — "paired on your phone", #610 — and
- * since #2131 it is also what a socket tells the room it is running on, where
- * it IS visible to the other riders. The server keeps the two apart; the word
- * is the same either way.
+ * since #2131 it is also what a socket tells the voice channel it is running
+ * on, where it IS visible to the other riders. The server keeps the two apart;
+ * the word is the same either way.
  */
 export function deviceWord(): 'desktop' | 'phone' | 'tablet' {
 	if (!device.coarse) return 'desktop';

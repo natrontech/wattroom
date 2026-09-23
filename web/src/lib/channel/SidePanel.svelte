@@ -1,0 +1,287 @@
+<script lang="ts">
+	import type { Snippet } from 'svelte';
+	import Crown from '@lucide/svelte/icons/crown';
+	import Drum from '@lucide/svelte/icons/drum';
+	import Headphones from '@lucide/svelte/icons/headphones';
+	import Mic from '@lucide/svelte/icons/mic';
+	import MicOff from '@lucide/svelte/icons/mic-off';
+	import Video from '@lucide/svelte/icons/video';
+	import CheerIcon from '$lib/components/CheerIcon.svelte';
+	import BoardToggle from '$lib/board/BoardToggle.svelte';
+	import { STOCK_CHEERS } from '$lib/icons';
+	import { contextMenu } from '$lib/context-menu.svelte';
+	import { personMenu } from '$lib/person-menu';
+	import { goto } from '$app/navigation';
+	import { keepSize } from '$lib/pane';
+	import { edgeDivider } from '$lib/divider';
+	import Avatar from '$lib/components/Avatar.svelte';
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import { BOARD_MARK } from '$lib/channel/presence-marks';
+	import { rosterGroups } from '$lib/channel/roster';
+	import { statusOfRider } from '$lib/status';
+	import type { PanelMember, LiveRider } from '$lib/channel/types';
+
+	// The channel's people, in one column (ADR-0020). Discord's right column is
+	// WHO IS HERE; ours was chat alone, so the roster was legible only from
+	// tiles that vanish behind the stage.
+	//
+	// Stacked rather than tabbed: the roster has to be there without being
+	// asked for — that is the whole "this channel is populated" read — and
+	// giving members a column of their own took content to 530 px at 1280,
+	// which the tile grid does not survive.
+	//
+	// Plus one slot: the jukebox playlist owns the whole queue surface (#286).
+	//
+	// No chat: a voice channel has none (ADR-0058, decision 4) — its crew's
+	// text channels are pages of their own.
+	let {
+		live,
+		riders = [],
+		members = [],
+		player,
+		onCheer,
+		onPoke,
+		onBan,
+		cheers = STOCK_CHEERS,
+	}: {
+		live: boolean;
+		/** Who is here (ADR-0020, #181 gap 3) — the roster owns the column. */
+		riders?: LiveRider[];
+		/**
+		 * Everyone in the crew, connected or not. The tick's roster carries no
+		 * avatar and knows nothing of the members who are away, so the faces and
+		 * the offline group both come from here.
+		 */
+		members?: PanelMember[];
+		/** The jukebox playlist renders into the panel's top slot. */
+		player?: Snippet;
+		onCheer?: (emoji: string) => void;
+		onPoke?: (id: string) => void;
+		/** Owner only — absent for everyone else, so the entry never appears. */
+		onBan?: (id: string, name: string) => void;
+		/** The crew's one reaction vocabulary (#223), icon keys (#447). */
+		cheers?: string[];
+	} = $props();
+
+	const avatarOf = $derived(new Map(members.map((m) => [m.id, m])));
+	// Discord's offline half of the member list: the channel is the same
+	// channel when nobody is in it, and a column that says "in the channel — 1"
+	// and stops there hides the six people you ride with (roster.ts).
+	const groups = $derived(rosterGroups(live, riders, members));
+</script>
+
+{#snippet person(rider: LiveRider)}
+	<!-- 44 px rows: a bike-side target for the row's own link and its menu. -->
+	<li
+		class="flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs {rider.speaking
+			? 'text-ink'
+			: 'text-ink/70'}"
+		{@attach contextMenu(() =>
+			personMenu(rider.id, goto, {
+				// Your own row has a menu now (#2131): everything on it is
+				// disabled for you as it always was, but the connection entry
+				// is the one thing that is only ever about yourself.
+				you: rider.you,
+				volume: rider.inVoice && !rider.you ? { name: rider.name } : undefined,
+				poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
+				ban: onBan ? () => onBan(rider.id, rider.name) : undefined,
+			}),
+		)}
+	>
+		<!-- Opening a rider was right-click only here, while the members list,
+		     the friends list and DM heads all linked to the page (#702) —
+		     ux.md: the primary action stays on click, nothing lives ONLY in a
+		     menu. Their volume is in that menu now (#874), so the link is free
+		     to take the whole row. -->
+		<a
+			href="/u/{rider.id}"
+			class="-my-1 flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1"
+			title="{rider.name} — open their page"
+		>
+			<Avatar
+				name={rider.name}
+				avatarUrl={avatarOf.get(rider.id)?.avatarUrl}
+				xp={avatarOf.get(rider.id)?.totalXp}
+				status={statusOfRider(rider)}
+				awayReason={rider.awayReason}
+				size={22}
+			/>
+			<span class="min-w-0 flex-1">
+				<span class="flex items-center gap-1.5">
+					<span
+						class="min-w-0 flex-1 truncate {rider.speaking
+							? 'font-medium'
+							: ''}">{rider.name}</span
+					>
+					{#if rider.coach}<Crown size={11} class="text-muted shrink-0" />{/if}
+					{#if rider.cameraOn}<Video
+							size={11}
+							class="text-muted shrink-0"
+						/>{/if}
+					{#if rider.speaking}
+						<Mic size={11} class="text-z4 shrink-0 motion-safe:animate-pulse" />
+					{:else if rider.muted}
+						<MicOff size={11} class="text-muted-dim shrink-0" />
+					{/if}
+					{#if rider.sounding}
+						<!-- The tile's own drum (#1681): the roster is the other place
+						     a rider is drawn, so an airhorn has a face here too. -->
+						<Drum
+							size={11}
+							class={BOARD_MARK}
+							aria-label="playing a sound"
+							title="playing a sound"
+						/>
+					{/if}
+					{#if live && rider.watts > 0 && rider.execution !== undefined}
+						<span class="text-muted shrink-0 text-[10px] tabular-nums"
+							>{Math.round(rider.execution * 100)}%</span
+						>
+					{/if}
+				</span>
+				{#if live && rider.watts > 0 && rider.execution !== undefined}
+					<!-- Execution moved off the training surface (ADR-0020): how well
+				     everyone is holding target is roster data, and this is the
+				     roster. It also gives the column a job mid-ride, when nobody
+				     is typing. -->
+					<span class="mt-1 block">
+						<ProgressBar
+							pct={rider.execution * 100}
+							h="h-1"
+							fill={rider.you ? 'bg-watt' : 'bg-neon/70'}
+							title="{rider.name} is holding target {Math.round(
+								rider.execution * 100,
+							)}% of the time"
+						/>
+					</span>
+				{/if}
+			</span>
+		</a>
+	</li>
+{/snippet}
+
+{#snippet absent(member: PanelMember)}
+	<li
+		class="text-muted-dim flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
+		{@attach contextMenu(() =>
+			personMenu(member.id, goto, {
+				poke: onPoke
+					? {
+							onSelect: () => onPoke(member.id),
+							disabled: true,
+							hint: 'not in the channel',
+						}
+					: undefined,
+				ban: onBan ? () => onBan(member.id, member.displayName) : undefined,
+			}),
+		)}
+	>
+		<a
+			href="/u/{member.id}"
+			class="-my-1 flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1"
+			title="{member.displayName} — open their page"
+		>
+			<Avatar
+				name={member.displayName}
+				avatarUrl={member.avatarUrl}
+				xp={member.totalXp}
+				status="offline"
+				size={22}
+			/>
+			<span class="min-w-0 flex-1 truncate">{member.displayName}</span>
+		</a>
+	</li>
+{/snippet}
+
+<!-- Resizable (#280) from its left edge. The browser's own `resize` grip is a
+     corner of diagonal lines that belongs to no design; this is a 6 px strip
+     on the border that lights up on hover and drags. keepSize persists the
+     width it sets, the same way it did for the native grip. -->
+<aside
+	{@attach (node) => keepSize(node, 'side-panel')}
+	class="border-ink/5 relative h-full w-80 shrink-0 overflow-hidden border-l"
+	style="min-width: 240px; max-width: 40vw"
+>
+	<!-- The panel is right of its divider: pulling left makes it wider. -->
+	<div
+		{@attach (grip) => edgeDivider(grip, -1)}
+		class="hover:bg-neon/40 active:bg-neon/60 absolute inset-y-0 left-0 z-10 hidden w-1.5 cursor-col-resize touch-none transition-colors xl:block"
+		role="separator"
+		aria-orientation="vertical"
+		aria-label="resize the panel"
+	></div>
+	<div class="flex h-full flex-col">
+		{#if riders.length > 0 || groups.offline.length > 0}
+			<!-- Everyone the crew HAS, in the three groups roster.ts decides. The
+			     headings say which question the split answers, and the ones who
+			     are not connected sit last, greyed. -->
+			{@const { here, away, offline } = groups}
+			<div class="border-ink/5 min-h-0 flex-1 overflow-y-auto border-b">
+				{#if here.length > 0}
+					<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
+						{#if !live}<Headphones size={10} />{/if}
+						{live
+							? `holding target — ${here.length}`
+							: `in voice — ${here.length}`}
+						{#if live}
+							<!-- The bars below had only a hover title to say what they
+							     are (#1558) — the same word the summary and the ride
+							     page use, where a rider can read it. -->
+							<span class="ml-auto">execution</span>
+						{/if}
+					</div>
+					<ul class="px-1">
+						{#each here as rider (rider.id)}{@render person(rider)}{/each}
+					</ul>
+				{/if}
+				{#if away.length > 0}
+					<div class="eyebrow px-3 pt-3 pb-1">
+						{live
+							? `not pedalling — ${away.length}`
+							: `in the channel — ${away.length}`}
+					</div>
+					<ul class="px-1">
+						{#each away as rider (rider.id)}{@render person(rider)}{/each}
+					</ul>
+				{/if}
+				{#if offline.length > 0}
+					<div class="eyebrow px-3 pt-3 pb-1">offline — {offline.length}</div>
+					<ul class="px-1 pb-2">
+						{#each offline as member (member.id)}{@render absent(member)}{/each}
+					</ul>
+				{/if}
+			</div>
+		{/if}
+		{#if player}
+			<!-- The deck, capped: with a seated player plus queue and history it
+			     grew until the chat was a sliver (#461). Its own scroll past 45%.
+			     The cap is never tighter than the transport row — a deck shorter
+			     than its own controls scrolls the play button off the bottom,
+			     which is what the 160 px cap did whenever the stage held the
+			     video. -->
+			<div
+				class="border-ink/5 max-h-[45%] min-h-0 shrink-0 overflow-y-auto border-b p-4"
+			>
+				{@render player()}
+			</div>
+		{/if}
+
+		<div class="border-ink/5 border-t p-3">
+			<!-- The crew's reactions, and under them the soundboard: both are
+			     a thing you throw into the channel, and neither is typing —
+			     which mid-ride was never on the table anyway (ux.md). -->
+			<div class="flex gap-1.5">
+				{#each cheers.slice(0, 4) as cheer (cheer)}
+					<button
+						onclick={() => onCheer?.(cheer)}
+						aria-label={cheer}
+						title={cheer}
+						class="border-muted/20 hover:border-muted/50 flex min-h-11 flex-1 items-center justify-center rounded border"
+						><CheerIcon {cheer} size={18} /></button
+					>
+				{/each}
+			</div>
+			<BoardToggle />
+		</div>
+	</div>
+</aside>

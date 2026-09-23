@@ -4,11 +4,11 @@ import { play } from '$lib/sound/cues';
 import { toasts } from '$lib/toast.svelte';
 
 /**
- * What kind of thing arrived. Every path through here looks identical once
- * the line is built, which is exactly why the kind has to be carried: a rule
- * written as "while the phase is running" would silence a DM and, with it,
- * the session starting in another room — the notification ADR-0042 calls the
- * most valuable — because both are announced by this one function (#1743).
+ * What kind of thing arrived. Every path through here looks identical once the
+ * line is built, which is exactly why the kind has to be carried: a rule
+ * written as "while the phase is running" would silence a DM and, with it, a
+ * session starting in another voice channel — the notification ADR-0042 calls
+ * the most valuable — because both are announced by this one function (#1743).
  */
 export type ArrivalKind = 'dm' | 'chat' | 'friend' | 'session';
 
@@ -33,14 +33,14 @@ export interface Arrival {
 }
 
 /**
- * A screen the rider is on a bike in front of. While one is registered it
- * gets first refusal on a DM: the room writes the line into its own timeline,
- * and a solo ride, which has no timeline, takes it and leaves it to the
- * unread badge that was already there. Returning false hands it back — off a
- * ride the toast is still the right answer.
+ * A screen the rider is on a bike in front of. While one is registered it gets
+ * first refusal on a DM: a voice channel with a session running writes the line
+ * into its own timeline, and a solo ride, which has no timeline, takes it and
+ * leaves it to the unread badge that was already there. Returning false hands
+ * it back — off a ride the toast is still the right answer.
  *
- * Registered by the screen rather than asked for by this module, because
- * "is a ride under way" is the room connection's and the ride session's
+ * Registered by the screen rather than asked for by this module, because "is a
+ * ride under way" is the voice channel connection's and the solo ride's
  * business and neither belongs in the notification path.
  */
 export type RidingScreen = (arrival: Arrival) => boolean;
@@ -62,8 +62,8 @@ function divert(arrival: Arrival): boolean {
 }
 
 /**
- * A message announced once (#568). The room you are standing in, a room you
- * are not, a DM — all three come through here, so an arrival sounds and
+ * A message announced once (#568). A text channel's line, a session starting, a
+ * friend's ask, a DM — all of them come through here, so an arrival sounds and
  * looks the same wherever it came from, and two paths that both see the same
  * line cannot both announce it.
  */
@@ -83,9 +83,9 @@ export function announce(arrival: Arrival): void {
 	// data (#1743): ux.md's "persistent status, never a toast" is about
 	// errors, and a DM is not one — but a toast over the numbers a rider is
 	// holding is still the wrong shape for it. The cue above already said
-	// something arrived; the badge and the room's timeline say what. Only a
-	// DM: room chat is the room the rider is riding with, and a session
-	// starting elsewhere is ADR-0042's whole point.
+	// something arrived; the badge and the voice channel's timeline say what.
+	// Only a DM: a room's chat was the room the rider was riding with, and a
+	// session starting elsewhere is ADR-0042's whole point.
 	else if (arrival.kind === 'dm' && divert(arrival)) return;
 	else
 		toasts.push(

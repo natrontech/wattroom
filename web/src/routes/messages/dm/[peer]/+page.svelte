@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	// A conversation, as a place (ADR-0020) — now beside the rooms' threads
-	// (#468). The room connection survives navigation (#191), so reading a
-	// DM keeps you in the room and in voice.
+	// A conversation, as a place (ADR-0020, #468). The voice channel's
+	// connection survives navigation (#191), so reading a DM keeps you in the
+	// channel and in voice.
 	//
 	// The body (timeline, states, composer, reactions, the "N new" divider)
-	// is MessageThread.svelte, shared with a room's thread (#672); this page
+	// is MessageThread.svelte, shared with a text channel's (#672); this page
 	// only supplies what is DM-specific: the peer's header and the poll
 	// loop in createDmThread.
 	import { page } from '$app/state';
@@ -148,8 +148,8 @@
 		loading: thread?.loading ?? true,
 		error: thread?.error ?? null,
 		readAt: thread?.readAt ?? null,
-		// A DM has no room icon to draw a custom cheer palette from, so it
-		// speaks the same stock vocabulary a room falls back to (#777).
+		// A DM has no crew to draw a custom cheer palette from, so it speaks
+		// the same stock vocabulary a crew without its own falls back to (#777).
 		reactions: thread?.reactions ?? {},
 		myReacts: thread?.myReacts ?? {},
 		cheers: STOCK_CHEERS,

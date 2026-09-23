@@ -8,11 +8,11 @@ import Utensils from '@lucide/svelte/icons/utensils';
  * The states behind the Away button's arrow (#706, and the split button).
  *
  * One home for all four of a state's words: the key on the wire
- * (`protocol.AwayReasons` in Go — the two lists are the same set and the
- * server drops anything not in its own), the menu's label, the mark drawn on
- * the rider's tile, and the line the room timeline writes. Scattering them
- * is how a screen ends up calling "Refuelling" something the timeline calls
- * something else, which docs/SPEC.md's glossary rule exists to stop.
+ * (`protocol.AwayReasons` in Go — the two lists are the same set and the server
+ * drops anything not in its own), the menu's label, the mark drawn on the
+ * rider's tile, and the line the voice channel's timeline writes. Scattering
+ * them is how a screen ends up calling "Refuelling" something the timeline
+ * calls something else, which docs/SPEC.md's glossary rule exists to stop.
  *
  * Plain away keeps the empty key and the cup it has always had: the button's
  * face never changes, so one tap always means the same thing.
@@ -60,7 +60,7 @@ export const AWAY_CHOICES: Exclude<AwayReason, ''>[] = [
 /**
  * A reason off the wire, narrowed to one this build knows. A newer server's
  * word draws the plain cup rather than nothing: the rider is away either way,
- * and that is the part the room needs to see.
+ * and that is the part the voice channel needs to see.
  */
 export function awayState(reason: string | undefined): AwayState {
 	return AWAY_STATES[(reason ?? '') as AwayReason] ?? AWAY_STATES[''];

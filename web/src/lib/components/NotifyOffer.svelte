@@ -7,15 +7,15 @@
 	// they are on; this is what makes that assumption reachable.
 	//
 	// The offer rides along with the first session a rider sees planned in one
-	// of their rooms: the caller renders it there, this decides whether it can
+	// of their crews: the caller renders it there, this decides whether it can
 	// do anything at all (notify.offered — never over an already-on switch,
 	// never in a browser that has blocked them, never twice). No permission
 	// dialog until the rider presses the button; the 95% rule cuts against a
 	// prompt nobody asked for.
 	//
-	// Home's "What's next", not the room's Sessions place: the same rule that
-	// keeps DesktopNotice on home (ux.md — never mid-ride), and home is the
-	// one list that spans every room the rider is in.
+	// Home's "What's next", not a crew's schedule: the same rule that keeps
+	// DesktopNotice on home (ux.md — never mid-ride), and home is the one list
+	// that spans every crew the rider is in.
 	import { toasts } from '$lib/toast.svelte';
 	import { notify } from '$lib/notify.svelte';
 	import BellRing from '@lucide/svelte/icons/bell-ring';
@@ -52,7 +52,7 @@
 	>
 		<BellRing size={16} class="text-muted shrink-0" />
 		<p class="text-muted min-w-56 flex-1 text-sm leading-relaxed">
-			Get told when the room starts riding — a session starting, a message or
+			Get told when your crew starts riding — a session starting, a message or
 			someone walking in reaches you while WattRoom is behind another window.
 		</p>
 		<button class="btn btn-primary" onclick={() => void turnOn()}

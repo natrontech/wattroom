@@ -197,7 +197,7 @@ func TestCollectiveRampEndsOnTheTimeline(t *testing.T) {
 	if !done {
 		t.Fatal("the room never fell off the line")
 	}
-	var ended *protocol.RoomEvent
+	var ended *protocol.ChannelEvent
 	for i, ev := range events {
 		if ev.Verb == "gameEnded" {
 			ended = &events[i]

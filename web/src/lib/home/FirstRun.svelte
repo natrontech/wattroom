@@ -11,7 +11,7 @@
 	import { account, unchosen } from '$lib/account.svelte';
 	import { fetchCrew } from '$lib/crew';
 	import FtpAsk from '$lib/home/FtpAsk.svelte';
-	import type { RoomCrew } from '$lib/room/room-data';
+	import type { CrewRef } from '$lib/crew-types';
 	import Check from '@lucide/svelte/icons/check';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 
@@ -30,13 +30,13 @@
 		crew,
 		ridden,
 	}: {
-		/** The rider's own crew — null until the room list has landed. */
-		crew: RoomCrew | null;
+		/** The rider's own crew — null until the crew list has landed. */
+		crew: CrewRef | null;
 		/** Any ride on the account: the trainer was paired, or simulated. */
 		ridden: boolean;
 	} = $props();
 
-	// How many are in the crew is not on the room list; one read, once per
+	// How many are in the crew is not on the crew list; one read, once per
 	// crew, and the card stays quiet until it knows.
 	let people = $state<number | null>(null);
 	$effect(() => {
@@ -58,7 +58,7 @@
 	const first: Step = $derived({
 		done: ridden,
 		label: 'Take your first ride',
-		hint: 'pair your trainer, or ride simulated once to see the room work',
+		hint: 'pair your trainer, or ride simulated once to see it work',
 		href: '/settings/equipment',
 	});
 	// Above the trainer step, because it is above it in consequence (#1484):
@@ -94,7 +94,7 @@
 					{
 						done: invited,
 						label: 'Invite someone',
-						hint: 'the crew’s link gets them in — rooms have none of their own',
+						hint: 'the crew’s link gets them in — channels have none of their own',
 						href: `/crew/${crew.id}`,
 					},
 				]

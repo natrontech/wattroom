@@ -1,0 +1,268 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import Avatar from '$lib/components/Avatar.svelte';
+	import {
+		contextMenu,
+		MENU_HINT,
+		type MenuEntry,
+	} from '$lib/context-menu.svelte';
+	import { wkg } from '$lib/format';
+	import { personMenu } from '$lib/person-menu';
+	import MicOff from '@lucide/svelte/icons/mic-off';
+	import ScreenShare from '@lucide/svelte/icons/screen-share';
+	import Drum from '@lucide/svelte/icons/drum';
+	import {
+		AWAY_MARK,
+		BOARD_MARK,
+		MARK_SURFACE,
+		MUTED_MARK,
+		SHARE_MARK,
+		tileFrame,
+		VOICE_DOT,
+	} from '$lib/channel/presence-marks';
+	import { fillPct, ZONE_BG, zoneOf } from '$lib/components/zones';
+	import type { Phase } from '$lib/channel/types';
+	import type { PanelMember, LiveRider, TileMetric } from '$lib/channel/types';
+
+	let {
+		rider,
+		phase,
+		stretch = false,
+		// All three, always (#181 feedback) — the tile filters zeros itself.
+		metrics = ['hr', 'cadence', 'wkg'],
+		videoKey = 0,
+		videoAttach,
+		onPoke,
+		menu,
+		face,
+	}: {
+		rider: LiveRider;
+		phase: Phase;
+		stretch?: boolean;
+		/** Rider-chosen extras; watts is never optional. */
+		metrics?: TileMetric[];
+		/** Bumped when the rider's live video track changes (LiveKit). */
+		videoKey?: number;
+		/** Attaches the live track into the tile; the mock gradient stands in without it. */
+		videoAttach?: (node: HTMLElement) => void;
+		/** Ask for their attention. The tile IS the person (#807) — poking was
+		 * reachable only from the people column and the sidebar strip. */
+		onPoke?: (id: string) => void;
+		/** The whole right-click menu, when the surface has more to offer than
+		 * the person (the lounge: focus, watch a screen, ban). The tile's own
+		 * listener stops propagation, so a menu on a wrapper never fired (#824). */
+		menu?: () => MenuEntry[];
+		/** Their face, from the crew's member list — the tick's roster
+		 * carries names and levels, never an avatar (channel/types.ts). */
+		face?: PanelMember;
+	} = $props();
+
+	// Whether this tile has live NUMBERS to draw — not whether the rider is
+	// riding. The presence badge below asks the server that (#1016); this asks
+	// whether there is a reading worth rendering in this second.
+	const live = $derived(phase === 'live' && rider.watts > 0);
+	const zone = $derived(zoneOf(rider.watts, rider.ftp));
+	const fill = $derived(fillPct(rider.watts, rider.ftp));
+
+	// value drives the zero-filter; text keeps the decimal so the column stays aligned.
+	const extras = $derived(
+		metrics
+			.map((metric) =>
+				metric === 'hr'
+					? { key: metric, value: rider.hr, text: `${rider.hr}`, unit: 'bpm' }
+					: metric === 'cadence'
+						? {
+								key: metric,
+								value: rider.cadence,
+								text: `${rider.cadence}`,
+								unit: 'rpm',
+							}
+						: {
+								key: metric,
+								value: rider.watts,
+								text: wkg(rider.watts, rider.kg),
+								unit: 'w/kg',
+							},
+			)
+			.filter((extra) => extra.value > 0),
+	);
+</script>
+
+<div
+	class="bg-surface-raised @container relative overflow-hidden rounded-lg {stretch
+		? 'h-full'
+		: 'aspect-video'} transition-shadow duration-200 {tileFrame(
+		rider.speaking,
+		rider.away,
+	)}"
+	title={MENU_HINT}
+	data-testid="rider-tile"
+	{@attach contextMenu(() =>
+		menu
+			? menu()
+			: personMenu(rider.id, goto, {
+					you: rider.you,
+					volume:
+						rider.inVoice && !rider.you ? { name: rider.name } : undefined,
+					poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
+				}),
+	)}
+>
+	{#if rider.cameraOn && videoAttach}
+		{#key videoKey}
+			<div class="absolute inset-0" {@attach (node) => videoAttach(node)}></div>
+		{/key}
+	{:else if rider.cameraOn}
+		<!-- Stand-in for a LiveKit track: real feeds are brighter and busier than a flat fill. -->
+		<div
+			class="absolute inset-0"
+			style="background:
+				radial-gradient(120% 90% at 50% 15%, hsl({rider.hue} 45% 42%), transparent 70%),
+				linear-gradient(160deg, hsl({rider.hue} 40% 22%), hsl({rider.hue +
+				30} 35% 10%))"
+		></div>
+	{:else}
+		<!-- Camera off: the rider's hue keeps the seat warm (#181) — quieter than
+		     a feed so cam-on still reads at a glance — and the mark stands in
+		     for the person, moving when they ride. The hue is a wash over the
+		     raised surface on paper and the cave's own dark gradient below it
+		     (#505): a dark seat under a white scrim read as fog. -->
+		<div
+			class="absolute inset-0"
+			style="background: linear-gradient(160deg,
+				light-dark(color-mix(in oklab, hsl({rider.hue} 65% 55%) 16%, var(--color-surface-raised)), hsl({rider.hue} 30% 15%)),
+				light-dark(color-mix(in oklab, hsl({rider.hue +
+				30} 60% 50%) 8%, var(--color-surface-raised)), hsl({rider.hue +
+				30} 25% 7%)))"
+		></div>
+	{/if}
+
+	{#if rider.cameraOn}
+		<!-- Overlay scrim (#319): ink is white in the cave, and a bright camera
+		     feed swallowed the readouts whole. Over the frame only — the
+		     camera-off seat is a surface we chose, and readouts sit on it at
+		     full contrast rather than under a wash (#505). -->
+		<div
+			class="pointer-events-none absolute inset-0"
+			style="background: linear-gradient(to bottom,
+				color-mix(in oklab, var(--color-paper) 60%, transparent) 0%,
+				transparent 30%,
+				transparent 55%,
+				color-mix(in oklab, var(--color-paper) 70%, transparent) 100%)"
+		></div>
+	{/if}
+
+	<!-- Name and voice state, top-left; kept off the power bar's edge. -->
+	<div class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5">
+		<span class="text-ink truncate text-sm font-semibold">{rider.name}</span>
+		{#if rider.eliminated}
+			<!-- Knocked out of the running game (#1590): computed for every
+			     tile and drawn by none. -->
+			<span class="eyebrow text-muted shrink-0">out</span>
+		{/if}
+		{#if rider.coach}
+			<span class="{MARK_SURFACE} rounded-full px-1.5 py-0.5 text-[9px]"
+				>coach</span
+			>
+		{/if}
+		{#if rider.inVoice && !rider.muted}
+			<span class={VOICE_DOT} title="in voice" aria-label="in voice"></span>
+		{:else if rider.muted}
+			<MicOff size={12} class={MUTED_MARK} aria-label="muted" />
+		{/if}
+		{#if rider.sharing}
+			<!-- The share need not move the stage (#664), so the tile says it. -->
+			<ScreenShare
+				size={12}
+				class={SHARE_MARK}
+				aria-label="sharing a screen"
+				title="sharing a screen"
+			/>
+		{/if}
+		{#if rider.sounding}
+			<!-- The board's own drum (#1681), so an airhorn has a face on it. -->
+			<Drum
+				size={12}
+				class={BOARD_MARK}
+				aria-label="playing a sound"
+				title="playing a sound"
+			/>
+		{/if}
+	</div>
+
+	<!-- Power, top-right. Only your own tile glows. -->
+	{#if live}
+		<div
+			class="absolute top-2 right-2.5 text-right {rider.stale
+				? 'opacity-40'
+				: ''}"
+		>
+			<!-- No drop-shadow: on paper a shadow under near-black numerals is
+			     the blur the rider reported (#505); the scrim carries them. -->
+			<span
+				class="font-display text-2xl leading-none font-bold tabular-nums {rider.you
+					? 'text-watt glow-text'
+					: 'text-ink'}">{rider.watts}</span
+			>
+			<span class="text-ink/80 text-xs font-medium">W</span>
+		</div>
+	{/if}
+
+	<!-- The seat's centre is the person, not the brand: the same avatar the
+	     roster and the sidebar strip draw (#253), with its level ring — a
+	     WattRoom mark on every camera-off tile said nothing about who was in
+	     the chair. Over the camera it steps aside; the away word does not. -->
+	<div
+		class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5"
+	>
+		{#if !rider.cameraOn}
+			<Avatar
+				name={rider.name}
+				avatarUrl={face?.avatarUrl}
+				xp={face?.totalXp}
+				status={rider.away ? 'away' : rider.riding ? 'riding' : null}
+				awayReason={rider.awayReason}
+				size={44}
+				ring="var(--color-surface-raised)"
+			/>
+		{/if}
+		{#if rider.away}
+			<span class={AWAY_MARK}>away</span>
+		{/if}
+	</div>
+
+	{#if rider.stale}
+		<!-- A badge, not a curtain: a quiet trainer says nothing about their
+		     camera, and the dimmed watts above already read "last known". -->
+		<div class="absolute inset-x-0 bottom-2.5 flex justify-center">
+			<span
+				class="bg-surface/85 text-z5 rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
+				>no signal</span
+			>
+		</div>
+	{/if}
+
+	{#if live && extras.length && !rider.stale}
+		<div
+			class="text-ink absolute right-2.5 bottom-3 flex gap-3 font-mono text-xs font-medium tabular-nums"
+		>
+			{#each extras as extra (extra.key)}
+				<span class={extra.key === 'wkg' ? 'hidden @[10rem]:inline' : ''}
+					>{extra.text}<span class="text-ink/80"> {extra.unit}</span></span
+				>
+			{/each}
+		</div>
+	{/if}
+
+	<!-- The power bar is fused to the tile's bottom edge, not floating in a card.
+	     Its track is the edge colour: paper IS the tile in the white family, so
+	     a paper track left the empty bar with nowhere to sit (#505). -->
+	<div class="bg-edge absolute inset-x-0 bottom-0 h-1.5">
+		{#if live}
+			<div
+				class="h-full transition-[width] duration-500 ease-out {ZONE_BG[zone]}"
+				style="width: {fill}%"
+			></div>
+		{/if}
+	</div>
+</div>

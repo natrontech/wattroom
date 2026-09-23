@@ -9,7 +9,7 @@ import {
 } from '$lib/context-menu.svelte';
 
 describe('placeMenu', () => {
-	it('opens at the pointer when there is room', () => {
+	it('opens at the pointer when there is space', () => {
 		expect(placeMenu(100, 100, 200, 150, 1440, 900)).toEqual({
 			left: 100,
 			top: 100,

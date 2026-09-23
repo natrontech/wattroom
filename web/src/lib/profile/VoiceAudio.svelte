@@ -2,22 +2,22 @@
 	// Devices, transmit mode and the mix, for the machine you are sitting at.
 	//
 	// Its own file because it is the one section that belongs to the AV chain
-	// rather than to the profile: it reads `roomConnection` directly and owns
+	// rather than to the profile: it reads `channelConnection` directly and owns
 	// the device refresh, and none of that is the page's business (#686).
-	import DevicePickers from '$lib/room/DevicePickers.svelte';
-	import MixFaders from '$lib/room/MixFaders.svelte';
-	import VoiceSettings from '$lib/room/VoiceSettings.svelte';
+	import DevicePickers from '$lib/channel/DevicePickers.svelte';
+	import MixFaders from '$lib/channel/MixFaders.svelte';
+	import VoiceSettings from '$lib/channel/VoiceSettings.svelte';
 	import { account } from '$lib/account.svelte';
-	import { deviceChoices } from '$lib/room/av-devices.svelte';
-	import { canPickOutput } from '$lib/room/av-output';
-	import { roomConnection } from '$lib/room/connection.svelte';
-	import { describeMediaError } from '$lib/room/media-error';
+	import { deviceChoices } from '$lib/channel/av-devices.svelte';
+	import { canPickOutput } from '$lib/channel/av-output';
+	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { describeMediaError } from '$lib/channel/media-error';
 
-	// The AV chain only exists while you are in a room. The device picks do
-	// not (#1858): they are the one store the next join applies, so a rider
-	// with a USB mic beside the built-in one chooses before going live on
-	// the wrong one. The gate meter stays behind a live connection.
-	const av = $derived(roomConnection.current?.av);
+	// The AV chain only exists while you are in a voice channel. The device picks
+	// do not (#1858): they are the one store the next join applies, so a rider
+	// with a USB mic beside the built-in one chooses before going live on the
+	// wrong one. The gate meter stays behind a live connection.
+	const av = $derived(channelConnection.current?.av);
 	const choices = deviceChoices();
 	// The store only re-reads devices after a connect or a hot-plug; a rider
 	// choosing a mic here has usually done neither yet (#658).
@@ -100,15 +100,15 @@
 			{#if grant}
 				<p class="text-danger mt-2 text-xs">{grant}</p>
 			{/if}
-			<!-- The mix needs no room either: the cues ring for a DM and a
+			<!-- The mix needs no voice channel either: the cues ring for a DM and a
 				     friend request too, and the you-panel's cue fader (#898) must
 				     not be the only way to reach one (ux.md). -->
 			<div class="mt-5 max-w-sm">
 				<MixFaders />
 			</div>
 			<p class="text-muted mt-4 text-sm">
-				Open a room to set your gate — the meter needs a live mic to show you a
-				level.
+				Join a voice channel to set your gate — the meter needs a live mic to
+				show you a level.
 			</p>
 		{/if}
 	{/if}

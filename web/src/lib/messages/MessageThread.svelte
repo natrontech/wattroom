@@ -1,11 +1,10 @@
 <script lang="ts">
-	// The thread body shared by every chat surface (#672): the timeline, the
-	// four states (errors.md), the composer. A room's own header (who's in
-	// there, the way in) and a DM's (where they are) stay with the caller —
-	// what differs surface to surface is what a line IS and what you can do
-	// to it, not how the log scrolls or the box sends.
+	// The thread body shared by every chat surface (#672): the timeline, the four
+	// states (errors.md), the composer. A text channel's own header (its name,
+	// the way back to the crew) and a DM's (where they are) stay with the caller
+	// — what differs surface to surface is what a line IS and what you can do to
+	// it, not how the log scrolls or the box sends.
 	import Copy from '@lucide/svelte/icons/copy';
-	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Megaphone from '@lucide/svelte/icons/megaphone';
 	import Pencil from '@lucide/svelte/icons/pencil';
 	import RotateCw from '@lucide/svelte/icons/rotate-cw';
@@ -22,7 +21,6 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import type {} from '$lib/chat/gifs';
-	import { parseInline } from '$lib/chat/inline';
 	import MessageText from '$lib/chat/MessageText.svelte';
 	import Composer from '$lib/messages/Composer.svelte';
 	import Reactions from '$lib/chat/Reactions.svelte';
@@ -40,8 +38,6 @@
 	import { formatTime } from '$lib/format';
 	import { mentionsMe } from '$lib/messages/mention';
 	import type { ThreadMessage, ThreadSource } from '$lib/messages/thread-types';
-	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
-	import EventLine from '$lib/room/EventLine.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import { copyText } from '$lib/copy';
 	import { MaxMessageChars } from '$lib/protocol';
@@ -50,29 +46,25 @@
 	let {
 		source,
 		imageSrc,
-		onQueue,
 		composerPlaceholder,
 		composerHint,
 		composerLock = null,
-		extraSendError = null,
-		editHint = 'Escape cancels · the room sees the change',
+		editHint = 'Escape cancels · the channel sees the change',
 		lineGapMs = 1000,
 		mentionNames = [],
 		emptyState,
 	}: {
 		source: ThreadSource;
-		/** Builds a message's image URL — the room and DM endpoints differ. */
+		/** Builds a message's image URL — the channel and DM endpoints differ. */
 		imageSrc: (imageId: string) => string;
-		/** Queuing a link is a jukebox command — room-only. */
-		onQueue?: (url: string) => void;
 		composerPlaceholder: string;
 		composerHint?: string;
 		/** Why nothing can be sent here, when nothing can — the box says so. */
 		composerLock?: string | null;
-		/** A persistent banner unrelated to the last send attempt, e.g. a
-		 *  room reconnecting with its queue full. */
-		extraSendError?: string | null;
-		/** Who sees an edit land — a room, or the one person a DM has (#1819). */
+		/**
+		 * Who sees an edit land — a channel, or the one person a DM has
+		 * (#1819).
+		 */
 		editHint?: string;
 		/** The composer's own gap between lines: the hub's second, or none. */
 		lineGapMs?: number;
@@ -82,15 +74,13 @@
 	} = $props();
 
 	const timeline = $derived(source.timeline);
-	// Who `@` completes to: the caller's people first (the room's riders),
+	// Who `@` completes to: the caller's people first (the crew's people),
 	// then whoever has spoken here; never yourself.
 	const names = $derived.by(() => {
 		const seen = new Set<string>([account.me?.displayName ?? '']);
 		const out: string[] = [];
-		const spoke = timeline.flatMap((e) =>
-			e.kind === 'message'
-				? [people.face(e.message.fromId)?.name ?? e.message.from]
-				: [],
+		const spoke = timeline.map(
+			(e) => people.face(e.message.fromId)?.name ?? e.message.from,
 		);
 		for (const name of [...mentionNames, ...spoke]) {
 			if (!name || seen.has(name)) continue;
@@ -106,9 +96,7 @@
 	// notion doesn't apply) simply never draws one.
 	const isNew = (m: { fromId?: string; at: number }) =>
 		source.readAt !== null && m.fromId !== me && m.at > source.readAt;
-	const messages = $derived(
-		timeline.flatMap((e) => (e.kind === 'message' ? [e.message] : [])),
-	);
+	const messages = $derived(timeline.map((e) => e.message));
 	const newCount = $derived(messages.filter(isNew).length);
 	const firstNewId = $derived(messages.find(isNew)?.id);
 
@@ -144,7 +132,7 @@
 	async function saveEdit(id: string, original: string) {
 		const text = editDraft.trim();
 		// Nothing changed is not an edit — closing is the honest answer, and
-		// it spares the room a tick saying a line became itself.
+		// it spares the channel an edit that changed nothing.
 		if (text === original.trim()) return cancelEdit();
 		if (!text) {
 			editError = 'An edited message still has to say something.';
@@ -163,8 +151,8 @@
 		const yes = await confirm({
 			title: mine ? 'Delete your message?' : `Delete ${from}'s message?`,
 			body: mine
-				? 'It goes from the room for everyone, and it cannot be brought back.'
-				: `It goes from the room for everyone, including ${from}, and it cannot be brought back.`,
+				? 'It goes for everyone, and it cannot be brought back.'
+				: `It goes for everyone, including ${from}, and it cannot be brought back.`,
 			action: 'Delete',
 			cancel: 'Keep it',
 		});
@@ -181,13 +169,6 @@
 
 	// The shared copy (#2182): the await and the catch this one already had,
 	// now where every other copy in the app can reach them.
-
-	// The first external link in a line — the same one LinkPreview would
-	// unfurl. addYouTubeUrl already refuses anything that isn't a video or
-	// playlist, so offering the item costs nothing when the guess is wrong.
-	function firstLink(text: string): string | undefined {
-		return parseInline(text, location.origin).find((p) => p.external)?.text;
-	}
 
 	// Touch and long-press have no hover strip to reveal Copy and React, and a
 	// rider three metres from the screen cannot hit a 13px icon anyway (#663).
@@ -280,20 +261,11 @@
 				onSelect: () => void removeLine(id, mine, message.from),
 			});
 		}
-		const link = onQueue && message.text ? firstLink(message.text) : undefined;
-		if (link) {
-			const url = link;
-			items.push({
-				label: 'Queue the link',
-				icon: ListPlus,
-				onSelect: () => onQueue?.(url),
-			});
-		}
 		return items;
 	}
 </script>
 
-<!-- `mt-auto` on the list, not `justify-end` on the box (#291): spare room
+<!-- `mt-auto` on the list, not `justify-end` on the box (#291): spare space
      goes above the oldest line, so overflow spills off the END edge. -->
 <div
 	bind:this={log}
@@ -322,200 +294,185 @@
 				{@render emptyState()}
 			{:else}
 				{#each timeline as entry, i (entry.key)}
-					{#if entry.kind === 'recap'}
-						<!-- The one entry that survives a reload (ADR-0034), and so
-						     the only one with a border. -->
-						<!-- The avatar gutter is the timeline's, so the card can
-						     stand on the Sessions place without it. -->
-						<div class="ml-9"><SessionRecapCard recap={entry.recap} /></div>
-					{:else if entry.kind === 'event'}
-						<EventLine event={entry.event} class="pl-9" />
-					{:else}
-						{@const message = entry.message}
-						{@const prev = timeline[i - 1]}
-						{@const startsNew = !!message.id && message.id === firstNewId}
-						{@const grouped =
-							!startsNew &&
-							prev?.kind === 'message' &&
-							prev.message.from === message.from &&
-							message.at - prev.at < GROUP_GAP_MS}
-						{@const mention = mentionsMe(message.text, account.me?.displayName)}
-						{#if startsNew}
-							<div class="flex items-center gap-3 py-1" role="separator">
-								<span class="bg-neon/60 h-px flex-1"></span>
-								<span class="eyebrow">{newCount} new</span>
-								<span class="bg-neon/60 h-px flex-1"></span>
-							</div>
-						{/if}
-						<div
-							data-testid="thread-message"
-							class="group flex gap-2.5 {grouped ? '-mt-1' : ''}"
-							title={MENU_HINT}
-							{@attach contextMenu(() => messageMenu(message))}
-						>
-							<span class="w-7 shrink-0">
-								{#if !grouped}
-									<!-- The person, not their initial (#807): the face the
-									     room's column shows, the level ring the profile
-									     shows, and where they are right now. -->
-									{@const face = people.face(message.fromId)}
-									<!-- The face is the way to the person (#1765). -->
-									<svelte:element
-										this={message.fromId ? 'a' : 'span'}
-										href={message.fromId ? `/u/${message.fromId}` : undefined}
-										class="block rounded-full"
-									>
-										<Avatar
-											name={face?.name ?? message.from}
-											avatarUrl={face?.avatarUrl}
-											xp={face?.totalXp}
-											status={statusOf(
-												crewLive.crews,
-												message.fromId ?? '',
-												friends.list,
-											)}
-											size={28}
-										/>
-									</svelte:element>
-								{/if}
-							</span>
-							<span class="min-w-0 flex-1">
-								{#if !grouped}
-									<span class="flex items-baseline gap-2">
-										<span class="text-sm font-medium">{message.from}</span>
-										<span class="text-muted-dim num text-[10px]"
-											>{formatTime(message.at)}</span
-										>
-									</span>
-								{/if}
-								<!-- A line that names you gets the bar — there is no server
-								     mention yet, this is "@" plus your first name. -->
-								{#if message.id && editingId === message.id}
-									{@const id = message.id}
-									{@const original = message.text}
-									<!-- The line becomes its own box: no modal for a typo, and
-									     the message stays where it is on screen while you fix
-									     it. Escape gets you out, Enter saves. -->
-									<form
-										class="mt-0.5"
-										onsubmit={(e) => {
-											e.preventDefault();
-											void saveEdit(id, original);
-										}}
-									>
-										<!-- svelte-ignore a11y_autofocus -->
-										<input
-											bind:value={editDraft}
-											autofocus
-											maxlength={MaxMessageChars}
-											onkeydown={(e) => {
-												if (e.key === 'Escape') cancelEdit();
-											}}
-											class="input w-full text-sm"
-											aria-label="edit your message"
-										/>
-										{#if editError}
-											<p class="text-danger mt-1 text-[11px]">{editError}</p>
-										{/if}
-										<span class="mt-1 flex items-center gap-2">
-											<button
-												disabled={savingEdit}
-												class="btn btn-primary btn-xs">Save</button
-											>
-											<button
-												type="button"
-												onclick={cancelEdit}
-												class="btn btn-ghost btn-xs">Cancel</button
-											>
-											<span class="text-muted-dim text-[10px]">{editHint}</span>
-										</span>
-									</form>
-								{:else}
-									<span
-										class="text-ink/85 block text-sm wrap-anywhere {mention
-											? 'border-neon/60 bg-neon/5 -ml-2 rounded border-l-2 py-0.5 pl-2'
-											: ''}"
-									>
-										{#if message.deletedAt}
-											<!-- A tombstone, DMs only (#2418): the row stays so
-											     the other side is told at all, and there is
-											     nothing left of the message but the fact that
-											     something was here. Italic and muted, so it does
-											     not read as somebody's words. -->
-											<span class="text-muted text-sm italic"
-												>Message deleted</span
-											>
-										{:else if message.text}
-											<MessageText
-												text={message.text}
-												{onQueue}
-												menu={() => messageMenu(message)}
-											/>
-										{/if}
-										{#if message.editedAt}
-											<!-- Nobody is rewritten quietly (#865). Not a
-											     timestamp: WHEN it was fixed is nobody's
-											     business, THAT it was is everybody's. -->
-											<span
-												class="text-muted-dim ml-1 align-baseline text-[10px]"
-												title="edited {formatTime(message.editedAt)}"
-												>edited</span
-											>
-										{/if}
-										{#if message.imageId}
-											<!-- The picture's own menu swallows the row's right-click
-											     (#1817): hand the message's down, or a photo has no react,
-											     no copy and — on a phone, where the hover strip is hidden —
-											     no way in at all. -->
-											<ChatImage
-												src={imageSrc(message.imageId)}
-												alt="Sent by {message.from}"
-												menu={() => messageMenu(message)}
-											/>
-										{/if}
-									</span>
-								{/if}
-								{#if message.id && source.reactions}
-									{@const id = message.id}
-									<Reactions
-										{id}
-										counts={source.reactions[id]}
-										myReacts={source.myReacts}
-										cheers={source.cheers ?? []}
-										picking={reactingTo === id}
-										onReact={(cheer) => void react(id, cheer)}
-									/>
-								{/if}
-							</span>
-							<span
-								class="flex shrink-0 gap-1 self-start opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 pointer-coarse:hidden"
-							>
-								{#if canEdit(message) && editingId !== message.id}
-									<button
-										onclick={() => startEdit(message)}
-										class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
-										aria-label="edit message"><Pencil size={13} /></button
-									>
-								{/if}
-								{#if message.text}
-									<button
-										onclick={() =>
-											void copyText(message.text, 'Message copied.')}
-										class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
-										aria-label="copy message"><Copy size={13} /></button
-									>
-								{/if}
-								{#if message.id && source.react}
-									{@const id = message.id}
-									<button
-										onclick={() => (reactingTo = reactingTo === id ? null : id)}
-										class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
-										aria-label="react"><SmilePlus size={14} /></button
-									>
-								{/if}
-							</span>
+					{@const message = entry.message}
+					{@const prev = timeline[i - 1]}
+					{@const startsNew = !!message.id && message.id === firstNewId}
+					{@const grouped =
+						!startsNew &&
+						prev?.message.from === message.from &&
+						message.at - prev.at < GROUP_GAP_MS}
+					{@const mention = mentionsMe(message.text, account.me?.displayName)}
+					{#if startsNew}
+						<div class="flex items-center gap-3 py-1" role="separator">
+							<span class="bg-neon/60 h-px flex-1"></span>
+							<span class="eyebrow">{newCount} new</span>
+							<span class="bg-neon/60 h-px flex-1"></span>
 						</div>
 					{/if}
+					<div
+						data-testid="thread-message"
+						class="group flex gap-2.5 {grouped ? '-mt-1' : ''}"
+						title={MENU_HINT}
+						{@attach contextMenu(() => messageMenu(message))}
+					>
+						<span class="w-7 shrink-0">
+							{#if !grouped}
+								<!-- The person, not their initial (#807): the face a voice
+								     channel's column shows, the level ring the profile shows,
+								     and where they are right now. -->
+								{@const face = people.face(message.fromId)}
+								<!-- The face is the way to the person (#1765). -->
+								<svelte:element
+									this={message.fromId ? 'a' : 'span'}
+									href={message.fromId ? `/u/${message.fromId}` : undefined}
+									class="block rounded-full"
+								>
+									<Avatar
+										name={face?.name ?? message.from}
+										avatarUrl={face?.avatarUrl}
+										xp={face?.totalXp}
+										status={statusOf(
+											crewLive.crews,
+											message.fromId ?? '',
+											friends.list,
+										)}
+										size={28}
+									/>
+								</svelte:element>
+							{/if}
+						</span>
+						<span class="min-w-0 flex-1">
+							{#if !grouped}
+								<span class="flex items-baseline gap-2">
+									<span class="text-sm font-medium">{message.from}</span>
+									<span class="text-muted-dim num text-[10px]"
+										>{formatTime(message.at)}</span
+									>
+								</span>
+							{/if}
+							<!-- A line that names you gets the bar — there is no server
+							     mention yet, this is "@" plus your first name. -->
+							{#if message.id && editingId === message.id}
+								{@const id = message.id}
+								{@const original = message.text}
+								<!-- The line becomes its own box: no modal for a typo, and
+								     the message stays where it is on screen while you fix
+								     it. Escape gets you out, Enter saves. -->
+								<form
+									class="mt-0.5"
+									onsubmit={(e) => {
+										e.preventDefault();
+										void saveEdit(id, original);
+									}}
+								>
+									<!-- svelte-ignore a11y_autofocus -->
+									<input
+										bind:value={editDraft}
+										autofocus
+										maxlength={MaxMessageChars}
+										onkeydown={(e) => {
+											if (e.key === 'Escape') cancelEdit();
+										}}
+										class="input w-full text-sm"
+										aria-label="edit your message"
+									/>
+									{#if editError}
+										<p class="text-danger mt-1 text-[11px]">{editError}</p>
+									{/if}
+									<span class="mt-1 flex items-center gap-2">
+										<button disabled={savingEdit} class="btn btn-primary btn-xs"
+											>Save</button
+										>
+										<button
+											type="button"
+											onclick={cancelEdit}
+											class="btn btn-ghost btn-xs">Cancel</button
+										>
+										<span class="text-muted-dim text-[10px]">{editHint}</span>
+									</span>
+								</form>
+							{:else}
+								<span
+									class="text-ink/85 block text-sm wrap-anywhere {mention
+										? 'border-neon/60 bg-neon/5 -ml-2 rounded border-l-2 py-0.5 pl-2'
+										: ''}"
+								>
+									{#if message.deletedAt}
+										<!-- A tombstone, DMs only (#2418): the row stays so
+										     the other side is told at all, and there is
+										     nothing left of the message but the fact that
+										     something was here. Italic and muted, so it does
+										     not read as somebody's words. -->
+										<span class="text-muted text-sm italic"
+											>Message deleted</span
+										>
+									{:else if message.text}
+										<MessageText
+											text={message.text}
+											menu={() => messageMenu(message)}
+										/>
+									{/if}
+									{#if message.editedAt}
+										<!-- Nobody is rewritten quietly (#865). Not a
+										     timestamp: WHEN it was fixed is nobody's
+										     business, THAT it was is everybody's. -->
+										<span
+											class="text-muted-dim ml-1 align-baseline text-[10px]"
+											title="edited {formatTime(message.editedAt)}">edited</span
+										>
+									{/if}
+									{#if message.imageId}
+										<!-- The picture's own menu swallows the row's right-click
+										     (#1817): hand the message's down, or a photo has no react,
+										     no copy and — on a phone, where the hover strip is hidden —
+										     no way in at all. -->
+										<ChatImage
+											src={imageSrc(message.imageId)}
+											alt="Sent by {message.from}"
+											menu={() => messageMenu(message)}
+										/>
+									{/if}
+								</span>
+							{/if}
+							{#if message.id && source.reactions}
+								{@const id = message.id}
+								<Reactions
+									{id}
+									counts={source.reactions[id]}
+									myReacts={source.myReacts}
+									cheers={source.cheers ?? []}
+									picking={reactingTo === id}
+									onReact={(cheer) => void react(id, cheer)}
+								/>
+							{/if}
+						</span>
+						<span
+							class="flex shrink-0 gap-1 self-start opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 pointer-coarse:hidden"
+						>
+							{#if canEdit(message) && editingId !== message.id}
+								<button
+									onclick={() => startEdit(message)}
+									class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
+									aria-label="edit message"><Pencil size={13} /></button
+								>
+							{/if}
+							{#if message.text}
+								<button
+									onclick={() => void copyText(message.text, 'Message copied.')}
+									class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
+									aria-label="copy message"><Copy size={13} /></button
+								>
+							{/if}
+							{#if message.id && source.react}
+								{@const id = message.id}
+								<button
+									onclick={() => (reactingTo = reactingTo === id ? null : id)}
+									class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
+									aria-label="react"><SmilePlus size={14} /></button
+								>
+							{/if}
+						</span>
+					</div>
 				{/each}
 			{/if}
 		</div>
@@ -544,5 +501,5 @@
 	placeholder={composerPlaceholder}
 	hint={composerHint}
 	lock={composerLock}
-	error={extraSendError ?? (timeline.length > 0 ? source.error : null)}
+	error={timeline.length > 0 ? source.error : null}
 />

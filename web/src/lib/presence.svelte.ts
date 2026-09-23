@@ -1,7 +1,6 @@
-import { fetchRailRooms } from '$lib/nav/rooms';
+import { api } from '$lib/api';
 import { STALE_AFTER } from '$lib/stale';
-import type { RailRoom } from '$lib/room/room-data';
-import type { RoomCrew } from '$lib/room/room-data';
+import type { CrewRef } from '$lib/crew-types';
 
 /**
  * The one shared presence feed (#251), replacing three 10 s pollers: a lobby
@@ -10,9 +9,7 @@ import type { RoomCrew } from '$lib/room/room-data';
  * carries no data; a ping means "re-fetch what you show". Holding it is what
  * makes YOU read as online to your friends.
  */
-let rooms = $state<RailRoom[]>([]);
-let crews = $state<RoomCrew[]>([]);
-let maxOwned = $state(0);
+let crews = $state<CrewRef[]>([]);
 // The last read's failure. A failed read used to become an empty list, and
 // Home told a rider with ten rooms to open their first (audit 2026-09-09);
 // now the list you had stays and the page can say what happened.
@@ -20,7 +17,7 @@ let error = $state<string | null>(null);
 // How many reads in a row have failed. The socket dropping is not the frozen
 // case — the fallback poll below and the visibility re-fetch bound that — but
 // a read that keeps failing with a list already on screen is unbounded: the
-// rooms, the dots and "32 min in" keep their last values with full confidence
+// crews, the dots and "32 min in" keep their last values with full confidence
 // for as long as it lasts (#1743).
 let failures = $state(0);
 let version = $state(0);
@@ -39,15 +36,14 @@ let pingWindow: ReturnType<typeof setTimeout> | null = null;
 let pingedDuringWindow = false;
 
 async function refresh() {
-	const list = await fetchRailRooms();
-	error = list.error ?? null;
-	if (list.error) {
-		failures += 1;
-	} else {
+	const res = await api<{ crews: CrewRef[] }>('/api/crews');
+	if (res.ok) {
+		error = null;
 		failures = 0;
-		rooms = list.rooms;
-		crews = list.crews;
-		maxOwned = list.maxOwned;
+		crews = res.data.crews;
+	} else {
+		error = res.error.message;
+		failures += 1;
 	}
 	version += 1;
 	// Arrivals are the crew read's to announce (crew-arrivals.ts, #2457).
@@ -76,7 +72,8 @@ function refreshCoalesced() {
 }
 
 function connect() {
-	// Never dial while a socket is in flight or open (same rule as the room WS).
+	// Never dial while a socket is in flight or open (same rule as the voice
+	// channel's WS).
 	if (stopped || (socket && socket.readyState <= WebSocket.OPEN)) return;
 	const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
 	socket = new WebSocket(`${scheme}://${location.host}/ws/presence`);
@@ -103,17 +100,9 @@ function onVisible() {
 }
 
 export const presence = {
-	/** The rail's room list, live. */
-	get rooms() {
-		return rooms;
-	},
-	/** Every crew you are in, rooms or none (#1476). */
+	/** Every crew you are in (#1476), live. */
 	get crews() {
 		return crews;
-	},
-	/** docs/SPEC.md's owned-room cap, as the server enforces it; 0 until known. */
-	get maxOwned() {
-		return maxOwned;
 	},
 	/** False until the first answer lands — a skeleton, not an empty list. */
 	get loaded() {
@@ -125,7 +114,7 @@ export const presence = {
 	},
 	/**
 	 * What is on screen is older than it looks: two reads in a row have
-	 * failed, so the room list, the presence dots and "32 min in" are frozen
+	 * failed, so the crew list, the presence dots and "32 min in" are frozen
 	 * at whatever they last were. The sidebar marks its crew header with it —
 	 * the populated half of errors.md's four states, which only the empty half
 	 * used to have.
@@ -137,7 +126,7 @@ export const presence = {
 	get version() {
 		return version;
 	},
-	/** Re-fetch now — after leaving or joining a room, ahead of the next ping. */
+	/** Re-fetch now — after leaving or joining a crew, ahead of the next ping. */
 	reload() {
 		void refresh();
 	},
@@ -167,9 +156,7 @@ export const presence = {
 		pingedDuringWindow = false;
 		socket?.close();
 		socket = null;
-		rooms = [];
 		crews = [];
-		maxOwned = 0;
 		error = null;
 	},
 };

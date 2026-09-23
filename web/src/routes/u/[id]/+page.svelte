@@ -232,8 +232,8 @@
 		<EmptyState variant="page">
 			<p class="text-ink text-sm">This rider isn't here.</p>
 			<p class="mx-auto mt-2 max-w-sm text-xs leading-relaxed">
-				The link is old, or it is a rider you don't share a room or a friendship
-				with yet.
+				The link is old, or it is a rider you don't share a channel or a
+				friendship with yet.
 			</p>
 			{#snippet cta()}
 				<a href="/friends" class="btn btn-secondary">Open Friends</a>

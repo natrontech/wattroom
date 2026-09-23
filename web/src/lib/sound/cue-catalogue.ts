@@ -228,7 +228,7 @@ export const CUES: Record<CueId, Cue> = {
 	reaction: {
 		id: 'reaction',
 		label: 'Rider reaction',
-		hint: 'A flame or a skull from someone too gassed to talk. Softer than a cheer — it comes from inside the room.',
+		hint: 'A flame or a skull from someone too gassed to talk. Softer than a cheer — it comes from inside the session.',
 		voices: [
 			{
 				type: 'triangle',
@@ -256,7 +256,7 @@ export const CUES: Record<CueId, Cue> = {
 	join: {
 		id: 'join',
 		label: 'Rider joined',
-		hint: 'Someone arrived in the room. Two soft rising notes.',
+		hint: 'Someone arrived in the voice channel. Two soft rising notes.',
 		voices: [
 			{ type: 'triangle', freq: note(-5), at: 0, dur: 0.09, gain: 0.18 },
 			{ type: 'triangle', freq: note(2), at: 0.09, dur: 0.16, gain: 0.2 },
@@ -266,7 +266,7 @@ export const CUES: Record<CueId, Cue> = {
 	leave: {
 		id: 'leave',
 		label: 'Rider left',
-		hint: 'Someone left the room. The join pair, reversed and softer.',
+		hint: 'Someone left the voice channel. The join pair, reversed and softer.',
 		voices: [
 			{ type: 'triangle', freq: note(2), at: 0, dur: 0.09, gain: 0.16 },
 			{ type: 'triangle', freq: note(-5), at: 0.09, dur: 0.16, gain: 0.16 },
@@ -276,7 +276,7 @@ export const CUES: Record<CueId, Cue> = {
 	chat: {
 		id: 'chat',
 		label: 'Chat message',
-		hint: 'A line landed in the room chat. Quieter than a cheer — words wait.',
+		hint: 'A message landed — a text channel or a DM. Quieter than a cheer — words wait.',
 		voices: [
 			{
 				type: 'sine',
@@ -328,7 +328,7 @@ export const CUES: Record<CueId, Cue> = {
 	fault: {
 		id: 'fault',
 		label: 'Something broke',
-		hint: 'A trainer, the room, voice or the mic dropped — or an action failed. Two falling notes, urgent but not the klaxon.',
+		hint: 'A trainer, the connection, voice or the mic dropped — or an action failed. Two falling notes, urgent but not the klaxon.',
 		voices: [
 			{
 				type: 'triangle',

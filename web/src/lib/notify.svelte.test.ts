@@ -217,7 +217,7 @@ describe('in a browser', () => {
 });
 
 // The in-context offer (#1485): shown where a session is planned in one of
-// the rider's rooms, and only where pressing it could do anything.
+// the rider's crews, and only where pressing it could do anything.
 describe('the offer to turn them on', () => {
 	// lib.dom types Notification as always present; these cases are about the
 	// browsers where it is not, so the global goes through a loose record.

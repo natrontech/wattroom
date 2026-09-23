@@ -1,15 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { RailRoom } from '$lib/room/room-data';
 import type { LiveCrew, LiveOccupant } from '$lib/crews-live';
-import { occupantOf, othersIn, statusOf, statusOfRider } from './status';
-
-const room = (over: Partial<RailRoom> = {}): RailRoom => ({
-	name: 'MFW 5',
-	slug: 'mfw-5',
-	live: false,
-	members: 5,
-	...over,
-});
+import { occupantOf, statusOf, statusOfRider } from './status';
 
 describe('statusOf', () => {
 	const voice = (
@@ -139,24 +130,5 @@ describe('statusOfRider', () => {
 		expect(statusOfRider({ riding: true })).toBe('riding');
 		expect(statusOfRider({ riding: false })).toBe('online');
 		expect(statusOfRider({})).toBe('online');
-	});
-});
-
-describe('othersIn', () => {
-	it('leaves you out and keeps the others', () => {
-		const r = room({
-			riders: ['Jan Lauber', 'Mike Frei'],
-			riderIds: ['u-jan', 'u-mike'],
-		});
-		expect(othersIn(r, 'u-jan')).toEqual(['Mike Frei']);
-		expect(othersIn(r, 'u-mike')).toEqual(['Jan Lauber']);
-		expect(othersIn(r, 'u-x')).toEqual(['Jan Lauber', 'Mike Frei']);
-	});
-
-	it('is empty when you are the only one there', () => {
-		expect(
-			othersIn(room({ riders: ['Jan Lauber'], riderIds: ['u-jan'] }), 'u-jan'),
-		).toEqual([]);
-		expect(othersIn(room(), 'u-jan')).toEqual([]);
 	});
 });

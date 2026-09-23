@@ -9,8 +9,9 @@ describe('away states', () => {
 		expect(AWAY_CHOICES).toEqual(['nature', 'food', 'shower']);
 	});
 
-	// Every key the server may send has all four of its words here, or a room
-	// draws a blank mark and writes a blank line for a state it accepted.
+	// Every key the server may send has all four of its words here, or a voice
+	// channel draws a blank mark and writes a blank line for a state it
+	// accepted.
 	it('gives every state a label, an icon and a line', () => {
 		for (const key of ['', ...AWAY_CHOICES] as const) {
 			const state = AWAY_STATES[key];
@@ -21,7 +22,7 @@ describe('away states', () => {
 	});
 
 	// A newer server's word still means "away": the rider is out either way,
-	// and that is the part the room needs to see.
+	// and that is the part the voice channel needs to see.
 	it('falls back to the plain cup for a word it does not know', () => {
 		expect(awayState('sauna')).toBe(AWAY_STATES['']);
 		expect(awayState(undefined)).toBe(AWAY_STATES['']);
@@ -39,8 +40,8 @@ describe('away states', () => {
 		);
 	});
 
-	// An unknown verb draws no line rather than a wrong one — the room would
-	// rather be quiet than say something the server did not mean.
+	// An unknown verb draws no line rather than a wrong one — the voice channel
+	// would rather be quiet than say something the server did not mean.
 	it('writes nothing for a verb it does not know', () => {
 		expect(awayLineFor('away_sauna', 'Kim')).toBeUndefined();
 		expect(awayLineFor('queued', 'Kim')).toBeUndefined();

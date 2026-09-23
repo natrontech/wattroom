@@ -1,21 +1,21 @@
 <script lang="ts">
-	import type { PlaceAddress } from '$lib/room/address';
+	import type { PlaceAddress } from '$lib/channel/address';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
-	import type { createPlaylistStore } from '$lib/room/playlists.svelte';
+	import JukeboxPlaylistRow from '$lib/channel/JukeboxPlaylistRow.svelte';
+	import type { createPlaylistStore } from '$lib/channel/playlists.svelte';
 
 	// The rider's personal playlists, on the library's own page (#1460). Until
-	// now they were only reachable inside a room's jukebox under "Mine", so a
-	// playlist of your own music needed a room open to build. Same rows as
-	// the panel: open to see, reorder and remove entries, add from the
-	// search-or-paste field; Queue appears when a room is open.
+	// then they were only reachable inside the jukebox panel under "Mine", so
+	// a playlist of your own music needed a jukebox open to build. Same rows
+	// as the panel: open to see, reorder and remove entries, add from the
+	// search-or-paste field; Queue appears when a voice channel is open.
 	let {
 		store,
 		address,
 	}: {
 		store: ReturnType<typeof createPlaylistStore>;
-		/** The room the rider is standing in, if any — what Queue points at. */
+		/** The voice channel the rider is standing in, if any — what Queue points at. */
 		address?: PlaceAddress | null;
 	} = $props();
 
@@ -58,18 +58,12 @@
 		{:else if store.all.length === 0}
 			<p class="text-muted text-xs leading-relaxed">
 				No playlists yet. Name one below, then save tracks into it from their
-				menu — it follows you into any room you ride in.
+				menu — it follows you into any voice channel you ride in.
 			</p>
 		{:else}
 			<ul class="flex flex-col gap-0.5">
 				{#each store.all as playlist (playlist.id)}
-					<JukeboxPlaylistRow
-						{playlist}
-						{store}
-						{address}
-						roomScoped={false}
-						canManage={true}
-					/>
+					<JukeboxPlaylistRow {playlist} {store} {address} canManage={true} />
 				{/each}
 			</ul>
 		{/if}

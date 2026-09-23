@@ -45,15 +45,15 @@
 	import { formatWhen } from '$lib/format';
 	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { presence } from '$lib/presence.svelte';
-	import SessionPicker from '$lib/room/SessionPicker.svelte';
+	import SessionPicker from '$lib/session/SessionPicker.svelte';
 	import {
 		rsvpSummary,
 		tallyOf,
 		whoIsInOf,
 		type RsvpAnswer,
-	} from '$lib/room/rsvp';
-	import { parseSharedSegments } from '$lib/room/workout';
-	import { serverNow } from '$lib/room/server-clock';
+	} from '$lib/session/rsvp';
+	import { parseSharedSegments } from '$lib/workout/shared';
+	import { serverNow } from '$lib/server-clock';
 	import { shareLink } from '$lib/share';
 	import { toasts } from '$lib/toast.svelte';
 	import { segmentsDuration } from '$lib/workout/engine';

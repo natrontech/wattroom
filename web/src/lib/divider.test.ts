@@ -112,7 +112,7 @@ describe('edgeDivider', () => {
 		expect(node.getAttribute('aria-valuemax')).toBe('400');
 		const press = (key: string) =>
 			node.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
-		// The room's panel lies right of its grip: left grows it.
+		// A voice channel's side panel lies right of its grip: left grows it.
 		press('ArrowLeft');
 		expect(pane.style.width).toBe('316px');
 		expect(node.getAttribute('aria-valuenow')).toBe('316');

@@ -37,10 +37,6 @@ type crewJSON struct {
 	// The caller's own role: owner | admin | member.
 	Role    string `json:"role"`
 	OwnerID string `json:"ownerId"`
-	// ponytail: always empty — the crew has channels, not rooms (#2446). Kept
-	// so the old crew page reading `crew.rooms.length` does not throw before
-	// #2460 removes it; goes with that page.
-	Rooms []struct{} `json:"rooms"`
 	// How many are in the crew — the door's number. `people` below is the
 	// part of them the caller may see (#1135), which is shorter for a plain
 	// member; labelling that list as the crew's size said "2 people" to
@@ -229,10 +225,10 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	out := crewJSON{
 		ID: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: role, Code: codeOf(crew.Code),
-		ImageURL: crewImageURL(crew.ID, crew.HasImage),
-		OwnerID:  store.UUIDString(crew.OwnerID),
-		Named:    crew.Named,
-		Rooms:    []struct{}{}, People: []crewPersonJSON{},
+		ImageURL:     crewImageURL(crew.ID, crew.HasImage),
+		OwnerID:      store.UUIDString(crew.OwnerID),
+		Named:        crew.Named,
+		People:       []crewPersonJSON{},
 		Listed:       administers(role) && crew.Listed,
 		BoardEnabled: crew.BoardEnabled,
 		Cheers:       CheerSet(crew.Cheers),

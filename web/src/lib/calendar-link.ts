@@ -1,6 +1,6 @@
 /**
  * The calendar link, in the two places that offer one (ADR-0021): your own
- * feed on Home and a room's schedule on its Sessions place. Both copy it and
+ * feed in Settings and a crew's on its Schedule (#2452). Both copy it and
  * both can reset it, and they had a verbatim copy each of the clipboard
  * handler and of every string — so a fix to one silently left the other
  * saying something else.
@@ -14,14 +14,12 @@
 import { confirm } from '$lib/confirm.svelte';
 import { copyText, theLinkItself } from '$lib/copy';
 
-/** Whose calendar: the rider's own feed, a crew's schedule (#2452), or one
- *  room's — the room's goes with the room pages (#2460). */
-export type CalendarScope = 'yours' | 'crew' | 'room';
+/** Whose calendar: the rider's own feed, or a crew's schedule (#2452). */
+export type CalendarScope = 'yours' | 'crew';
 
 const whoseLink: Record<CalendarScope, string> = {
 	yours: 'your',
 	crew: "this crew's",
-	room: "this room's",
 };
 
 /** What a reset breaks, and the way back — said before the button. */

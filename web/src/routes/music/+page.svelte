@@ -1,11 +1,12 @@
 <script lang="ts">
 	// The music library (#268, ADR-0015 amended): your own uploaded tracks,
-	// heard in every room you may enter — never shared with strangers. Browse
-	// it, search it, drop MP3s on it, fix whatever the tags got wrong. Riders
-	// read "library" everywhere (#1420); the code keeps calling it the pool.
+	// heard in every voice channel you may enter — never shared with
+	// strangers. Browse it, search it, drop MP3s on it, fix whatever the tags
+	// got wrong. Riders read "library" everywhere (#1420); the code keeps
+	// calling it the pool.
 	//
 	// The rider's own playlists live here too (#1460): the library's home is
-	// where a list of its tracks gets built, room or no room.
+	// where a list of its tracks gets built, channel or no channel.
 	import { confirm } from '$lib/confirm.svelte';
 	import type { MenuEntry } from '$lib/context-menu.svelte';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -13,8 +14,8 @@
 	import {
 		createPlaylistStore,
 		type PlaylistStore,
-	} from '$lib/room/playlists.svelte';
-	import { saveToPlaylist } from '$lib/room/save-to-playlist';
+	} from '$lib/channel/playlists.svelte';
+	import { saveToPlaylist } from '$lib/channel/save-to-playlist';
 	import { SvelteSet } from 'svelte/reactivity';
 	import LibraryPicked from './LibraryPicked.svelte';
 	import LibraryPlaylists from './LibraryPlaylists.svelte';
@@ -28,8 +29,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { roomConnection } from '$lib/room/connection.svelte';
-	import { presence } from '$lib/presence.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import {
 		deleteTrack,
@@ -159,23 +159,19 @@
 		void load(query, false); // the last track wearing a tag takes it with it
 	}
 
-	// The room the rider is standing in: the connection outlives navigation
-	// (#173), so browsing the shelf does not leave the room. Queuing anywhere
-	// else would need a room picker, and a rider in one room wants that one.
-	const room = $derived(roomConnection.current);
-	// The rail knows a room's name; the address knows a channel's.
-	const roomName = $derived(
-		room
-			? (presence.rooms.find((r) => r.slug && r.slug === room.slug)?.name ??
-					room.address.name)
-			: '',
-	);
+	// The voice channel the rider is standing in: the connection outlives
+	// navigation (#173), so browsing the shelf does not leave it. Queuing
+	// anywhere else would need a channel picker, and a rider in one voice
+	// channel wants that one.
+	const connection = $derived(channelConnection.current);
+	const channelName = $derived(connection?.address.name ?? '');
 
-	// Save to a playlist (#1427): the rider's own lists always, the room's
-	// when they are standing in one. One line per list in the menu.
+	// Save to a playlist (#1427): the rider's own lists always, the crew's
+	// when they are standing in one of its voice channels. One line per list
+	// in the menu.
 	const mine = createPlaylistStore('/api/playlists');
-	const roomLists = $derived(
-		room ? createPlaylistStore(room.address.playlists) : null,
+	const crewLists = $derived(
+		connection ? createPlaylistStore(connection.address.playlists) : null,
 	);
 	function saveTo(
 		track: Track,
@@ -203,8 +199,8 @@
 		bpm?: number;
 		durationMs?: number;
 	}) {
-		if (!room) return;
-		room.live.jukebox({
+		if (!connection) return;
+		connection.live.jukebox({
 			action: 'add',
 			trackId: track.id,
 			title: track.title,
@@ -224,22 +220,22 @@
 	const picked = $derived(tracks.filter((t) => selected.has(t.id)));
 
 	// Every object with more than one action gets a menu (ux.md, #465): the
-	// buttons stay, the menu is the shortcut. Queue only when there is a room
-	// to queue into, edit and delete only on your own rows — the same gating
-	// the buttons have, so nothing in the menu can fail on click.
+	// buttons stay, the menu is the shortcut. Queue only when there is a voice
+	// channel to queue into, edit and delete only on your own rows — the same
+	// gating the buttons have, so nothing in the menu can fail on click.
 	function menu(track: Track): MenuEntry[] {
 		const entries: MenuEntry[] = [];
-		if (room)
+		if (connection)
 			entries.push({
-				label: `Queue in ${roomName}`,
+				label: `Queue in ${channelName}`,
 				icon: ListPlus,
 				onSelect: () => queue(track),
 			});
 		const targets = [
-			...(roomLists?.all ?? []).map((p) => ({
-				store: roomLists!,
+			...(crewLists?.all ?? []).map((p) => ({
+				store: crewLists!,
 				p,
-				hint: roomName,
+				hint: channelName,
 			})),
 			...mine.all.map((p) => ({ store: mine, p, hint: 'yours' })),
 		];
@@ -274,7 +270,8 @@
 	<header class="flex flex-wrap items-center gap-4">
 		<h1 class="page-title">Music</h1>
 		<p class="text-muted text-xs">
-			Your own library. Everything here plays in any room you are in. 2 GB.
+			Your own library. Everything here plays in any voice channel you are in. 2
+			GB.
 		</p>
 		<label class="btn btn-primary ml-auto cursor-pointer">
 			<Upload size={14} /> Add MP3s
@@ -291,7 +288,7 @@
 		</label>
 	</header>
 
-	<LibraryPlaylists store={mine} address={room?.address} />
+	<LibraryPlaylists store={mine} address={connection?.address} />
 
 	<label class="relative mt-4 block">
 		<Search
@@ -309,10 +306,10 @@
 
 	<LibraryPicked
 		{picked}
-		address={room?.address}
-		{roomName}
+		address={connection?.address}
+		{channelName}
 		{mine}
-		{roomLists}
+		{crewLists}
 		onDone={() => selected.clear()}
 	/>
 
@@ -402,8 +399,8 @@
 						class="text-muted-dim mb-2"
 					/>{/snippet}
 				<p class="text-sm">
-					This is your library. Everything here plays in any room's jukebox,
-					with no video tile in the way.
+					This is your library. Everything here plays in any voice channel's
+					jukebox, with no video tile in the way.
 				</p>
 				{#snippet cta()}
 					<label class="btn btn-primary cursor-pointer">
@@ -429,7 +426,7 @@
 						editing={editing === track.id}
 						picked={selected.has(track.id)}
 						owned={owned(track)}
-						roomName={room ? roomName : null}
+						channelName={connection ? channelName : null}
 						menu={() => menu(track)}
 						onPick={pick}
 						onPicked={(on) =>
@@ -442,12 +439,12 @@
 					/>
 				{/each}
 			</ul>
-			{#if !room}
-				<!-- The page promises these play in a room; with none open there
-				     is nothing to queue into, so it says how rather than drawing
-				     a button that cannot work (ux.md). -->
+			{#if !connection}
+				<!-- The page promises these play in a voice channel; with none
+				     open there is nothing to queue into, so it says how rather
+				     than drawing a button that cannot work (ux.md). -->
 				<p class="text-muted mt-3 text-xs">
-					Open a room to queue any of these into its jukebox.
+					Open a voice channel to queue any of these into its jukebox.
 				</p>
 			{/if}
 		{/if}

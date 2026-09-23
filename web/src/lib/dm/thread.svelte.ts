@@ -4,7 +4,7 @@ import { uploadImage } from '$lib/chat/upload';
 import { dm } from '$lib/dm/dm.svelte';
 import { dmHeads } from '$lib/dm/heads.svelte';
 import type { ChatEdit, ChatReactionCount } from '$lib/protocol';
-import { roomTimeline, type TimelineMessage } from '$lib/room/timeline';
+import { messageTimeline, type TimelineMessage } from '$lib/messages/timeline';
 
 /**
  * A DM thread's data (#672, reactions in #777) — the same reactive-store
@@ -149,7 +149,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 		canRemove: (message: { id?: string; fromId?: string }) =>
 			message.fromId === account.me?.id,
 		get timeline() {
-			return roomTimeline(raw.map(toTimelineMessage), []);
+			return messageTimeline(raw.map(toTimelineMessage));
 		},
 		get readAt() {
 			return readAt;

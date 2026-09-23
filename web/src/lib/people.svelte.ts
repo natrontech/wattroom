@@ -3,8 +3,8 @@
  * a face — so the same rider was a coloured initial in the log and a real
  * avatar with a level ring in the column right beside it.
  *
- * Nothing fetches for this. Everything that already loads people — the room's
- * members, the DM heads, the friends list, you — drops what it learned here,
+ * Nothing fetches for this. Everything that already loads people — the crew's
+ * people, the DM heads, the friends list, you — drops what it learned here,
  * and whoever needs a face asks. An id nobody has taught falls back to the
  * initial exactly as before, so no surface waits on it.
  */

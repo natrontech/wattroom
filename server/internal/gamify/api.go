@@ -149,7 +149,7 @@ func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
 	}
 	rider, err := store.ParseUUID(r.PathValue("id"))
 	if err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider by that id in your rooms or friends.")
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider by that id in your crews or friends.")
 		return
 	}
 	// The query answers for the rider themselves too (#2298); this skips a
@@ -162,7 +162,7 @@ func (s *Service) handleRider(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if !shares {
-			httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider by that id in your rooms or friends.")
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider by that id in your crews or friends.")
 			return
 		}
 	}

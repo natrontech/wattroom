@@ -73,7 +73,7 @@ export interface TargetOptions {
 
 /**
  * Target watts at second t for a rider with the given FTP. Pure — the player and
- * the room hub both call this; it must stay side-effect free.
+ * a session's ride both call this; it must stay side-effect free.
  */
 export function targetAt(
 	segments: Segment[],

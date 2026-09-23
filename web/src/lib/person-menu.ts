@@ -1,7 +1,7 @@
 /**
  * The three things every person in WattRoom already carries: their page, the
  * DM thread, and the ask to be friends. Built in one place so a friend in the
- * sidebar and a member of a room say the same words in the same order (#486).
+ * sidebar and a member of a crew say the same words in the same order (#486).
  */
 import Activity from '@lucide/svelte/icons/activity';
 import BellRing from '@lucide/svelte/icons/bell-ring';
@@ -13,14 +13,14 @@ import Volume2 from '@lucide/svelte/icons/volume-2';
 import { api } from '$lib/api';
 import type { Friend } from '$lib/friends/friends.svelte';
 import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
-import { connectionInfo } from '$lib/room/connection-info.svelte';
-import { roomConnection } from '$lib/room/connection.svelte';
+import { connectionInfo } from '$lib/channel/connection-info.svelte';
+import { channelConnection } from '$lib/channel/connection.svelte';
 import { RIDER_FADER } from '$lib/sound/fader';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { toasts } from '$lib/toast.svelte';
 
 /**
- * Asking by id is allowed across a shared room (ADR-0024), so the menu never
+ * Asking by id is allowed across a shared channel (ADR-0024), so the menu never
  * needs the friend code. It also never needs to know whether you are already
  * friends: the server answers that itself, in a sentence worth showing —
  * "There is already a request or friendship with them." One line either way
@@ -38,9 +38,9 @@ async function askToBeFriends(id: string): Promise<void> {
 /**
  * A rider's volume travels with the rider (#874), instead of living on the two
  * rows that used to render a speaker icon. The caller says when they are in
- * voice, because that is the room's answer and not the menu's — a fader that
- * changes nothing you can hear is noise. Written through `av` when there is
- * one, so the gain ramps while you drag.
+ * voice, because that is the voice channel's answer and not the menu's — a
+ * fader that changes nothing you can hear is noise. Written through `av` when
+ * there is one, so the gain ramps while you drag.
  */
 function riderVolume(id: string, name: string): MenuSlider {
 	return {
@@ -52,7 +52,7 @@ function riderVolume(id: string, name: string): MenuSlider {
 		format: (percent) => `${percent}%`,
 		onInput: (percent) => {
 			const gain = percent / 100;
-			const av = roomConnection.current?.av;
+			const av = channelConnection.current?.av;
 			if (av) av.setRiderGain(id, gain, name);
 			else mixer.setRiderGain(id, gain, name);
 		},
@@ -67,7 +67,10 @@ export function personMenu(
 		conversation?: boolean;
 		/** You: there is no DM to yourself, and no friending yourself. */
 		you?: boolean;
-		/** Present only on a room surface; disabled explains why it cannot land. */
+		/**
+		 * Present only on a voice channel's surfaces; disabled explains why it
+		 * cannot land.
+		 */
 		poke?: {
 			onSelect: () => void;
 			disabled?: boolean;
@@ -83,10 +86,10 @@ export function personMenu(
 		 * that could never work (errors.md, ux.md).
 		 *
 		 * Absent means "this surface does not know", not "not a friend": a
-		 * room's roster has no friends list, and the ask is right there.
+		 * voice channel's roster has no friends list, and the ask is right there.
 		 */
 		friendship?: Friend['status'];
-		/** The room's own moderation, passed only by an owner. */
+		/** The crew's ban, passed only by its owner. */
 		ban?: () => void;
 	} = {},
 ): MenuEntry[] {
@@ -122,21 +125,22 @@ export function personMenu(
 		: [riderPage, message];
 	if (friend) items.push(friend);
 	if (poke) items.splice(2, 0, poke);
-	// After the room's own verbs, before the friendship: the fader is what you
-	// came for mid-ride, but the list still reads person-first.
+	// After the voice channel's own verbs, before the friendship: the fader is
+	// what you came for mid-ride, but the list still reads person-first.
 	if (options.volume && !options.you)
 		items.splice(
 			friend ? items.length - 1 : items.length,
 			0,
 			riderVolume(id, options.volume.name),
 		);
-	// Their connection, as numbers (#2131) — offered only where the room has an
-	// answer, which is the room you are standing in and the people in it. Off
+	// Their connection, as numbers (#2131) — offered only where the voice
+	// channel has an answer, which is the channel you are connected to and the
+	// people in it. Off
 	// every other surface by the same rule the fader follows: an entry that
 	// opens an empty panel is worse than no entry. It is offered on your OWN
 	// row too, unlike everything above it, because your own is the only row
 	// that carries an address.
-	if (roomConnection.current?.live?.tick?.roster?.some((r) => r.id === id))
+	if (channelConnection.current?.live?.tick?.roster?.some((r) => r.id === id))
 		items.push({
 			label: 'Connection',
 			icon: Activity,
@@ -147,7 +151,7 @@ export function personMenu(
 	// two hundred pixels away (#951).
 	if (options.ban && !options.you)
 		items.push('separator', {
-			label: 'Ban from the room',
+			label: 'Ban from the crew',
 			icon: ShieldBan,
 			onSelect: options.ban,
 			danger: true,

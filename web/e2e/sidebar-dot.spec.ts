@@ -112,7 +112,7 @@ test('the sidebar draws each rider’s state on their own face', async ({
 
 	// The sidebar's own rows: Home draws its conversations too, from the same
 	// heads, so an unscoped href matches twice.
-	const sidebar = a.getByLabel('rooms and places');
+	const sidebar = a.getByLabel('crews and channels');
 	const row = (id: string) => sidebar.locator(`a[href="/messages/dm/${id}"]`);
 	await expect(row('dot-riding')).toBeVisible({ timeout: 20_000 });
 

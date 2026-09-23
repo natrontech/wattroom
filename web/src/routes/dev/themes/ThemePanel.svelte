@@ -17,11 +17,10 @@
 	import { plannedZoneSeconds } from '$lib/components/zones';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import { tokenDeclarations, type Theme } from '$lib/palette';
-	import Instrument from '$lib/room/Instrument.svelte';
-	import RiderTile from '$lib/room/RiderTile.svelte';
-	import type { RoomRider } from '$lib/room/view';
+	import Instrument from '$lib/session/Instrument.svelte';
+	import RiderTile from '$lib/channel/RiderTile.svelte';
+	import type { LiveRider } from '$lib/channel/types';
 	import type { Segment } from '$lib/workout/types';
-	import type { RailRoom } from '$lib/room/room-data';
 	import { APCA_MIN_LC } from '$lib/gate';
 	import { rampReadings, readings, ZONES, type Surface } from './gallery';
 
@@ -32,20 +31,18 @@
 		segments,
 		total,
 		elapsed,
-		rooms,
 		medal,
 		narrow = false,
 	}: {
 		theme: Theme;
 		surface: Surface;
-		/** Live from the one shared mock room — every panel shows the same ride. */
-		riders: RoomRider[];
+		/** Live from the one shared mock channel — every panel shows the same ride. */
+		riders: LiveRider[];
 		segments: Segment[];
 		total: number;
 		elapsed: number;
-		rooms: RailRoom[];
 		medal: Medal;
-		/** Laptop width: the room is more often on one than on a desk monitor. */
+		/** Laptop width: a ride is more often on one than on a desk monitor. */
 		narrow?: boolean;
 	} = $props();
 
@@ -58,7 +55,7 @@
 	const CAVE =
 		'What a ride renders — the dark half of this identity, whatever the scheme says.';
 	const DESK =
-		'What the rooms list, the editor and the history look like under a light scheme.';
+		"What the crew's pages, the editor and the history look like under a light scheme.";
 </script>
 
 <section
@@ -79,19 +76,20 @@
 	</p>
 
 	<div class="space-y-6 p-4">
-		<!-- 1. Chrome around live data: the rail the room lives in, next to the
-		     tile that carries the watts. ADR-0005's whole rule in one frame —
+		<!-- 1. Chrome around live data: the rail a session runs beside, next to
+		     the tile that carries the watts. ADR-0005's whole rule in one frame —
 		     neon structures the rail, watt burns on your own number. -->
 		<div>
 			<span class="eyebrow">the rail and a live tile</span>
 			<div class="mt-2 flex gap-3 overflow-x-auto">
-				<!-- Standing in one room while the other is riding: the open room
-				     carries neon's structural tint, the live one the watt radar
-				     line. Both accents doing their own job, in one frame. -->
+				<!-- Drawn when this rail listed rooms: standing in one while another
+				     rode, the open one carried neon's structural tint and the live
+				     one the watt radar line. The path below is still a room link,
+				     which lights no row now — the rail shows the crew chosen last. -->
 				<div
 					class="border-edge h-[26rem] shrink-0 overflow-hidden rounded-lg border"
 				>
-					<Sidebar pathname="/r/sunday-long-ride" {rooms} live />
+					<Sidebar pathname="/r/sunday-long-ride" live />
 				</div>
 				<div
 					class="grid min-w-0 flex-1 gap-2 self-start {narrow
@@ -113,7 +111,7 @@
 			<span class="eyebrow">the ramp, Z1 → Z7</span>
 			<p class="text-muted-dim mt-1 text-[11px] leading-snug">
 				Shared, not themed (ADR-0023 §4) — a zone reading is learned across the
-				room. Only its fitting against these surfaces moves, and the numbers
+				crew. Only its fitting against these surfaces moves, and the numbers
 				under each swatch are that fit.
 			</p>
 			<div class="mt-2 grid grid-cols-7 gap-px overflow-hidden rounded">
@@ -168,7 +166,7 @@
 		<div>
 			<span class="eyebrow">medal card</span>
 			<div class="mt-2">
-				<MedalCard {medal} roomName="Thursday Sufferfest" />
+				<MedalCard {medal} placeName="Thursday Sufferfest" />
 			</div>
 		</div>
 

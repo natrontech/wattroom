@@ -1,0 +1,65 @@
+<script lang="ts">
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import { type LiveRider, targetState } from '$lib/channel/types';
+
+	let { riders }: { riders: LiveRider[] } = $props();
+
+	/**
+	 * WATTROOM.md: the execution meter is the live version of the ride's score — the
+	 * contest is who rides their own workout cleanest, which works across any fitness
+	 * gap. Sorted, because a leaderboard nobody can win is not a leaderboard.
+	 */
+	const ranked = $derived(
+		[...riders]
+			.map((rider) => ({
+				// Keyed by id below: display names are not unique (audit
+				// 2026-09-09), and two riders sharing one threw in the keyed
+				// each and tore the meter down mid-ride.
+				id: rider.id,
+				name: rider.name,
+				you: rider.you,
+				// No score until something scorable was ridden (#1454): a dash,
+				// never a 100 % the saved ride will contradict.
+				pct:
+					rider.execution === undefined
+						? null
+						: Math.round(rider.execution * 100),
+				inBand: targetState(rider).inBand,
+			}))
+			.sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1)),
+	);
+</script>
+
+<div class="bg-surface-raised ring-ink/10 rounded-lg p-4 ring-1">
+	<p class="eyebrow">execution</p>
+	<ul class="mt-3 space-y-1.5">
+		{#each ranked as entry (entry.id)}
+			<li class="flex items-center gap-2.5" data-testid="execution-row">
+				<span
+					class="w-12 shrink-0 truncate text-[11px] {entry.you
+						? 'text-ink'
+						: 'text-muted'}">{entry.name}</span
+				>
+				<div class="flex-1" data-testid="execution-bar">
+					<ProgressBar
+						pct={entry.pct ?? 0}
+						track="bg-surface"
+						fill="{entry.you
+							? 'bg-watt'
+							: 'bg-neon/60'} transition-[width] duration-500"
+					/>
+				</div>
+				<!-- A dot for whether they are inside the band right now, not just cumulatively. -->
+				<span
+					class="h-1.5 w-1.5 shrink-0 rounded-full {entry.inBand
+						? 'bg-z4'
+						: 'bg-muted/30'}"
+					title={entry.inBand ? 'in band' : 'off target'}
+				></span>
+				<span class="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums"
+					>{entry.pct === null ? '—' : `${entry.pct}%`}</span
+				>
+			</li>
+		{/each}
+	</ul>
+</div>

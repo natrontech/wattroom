@@ -32,7 +32,7 @@
 		ftp,
 		execution,
 		medal,
-		roomName = 'WattRoom',
+		placeName = 'WattRoom',
 		riders,
 		actions,
 	}: {
@@ -43,11 +43,11 @@
 		/** Absent when nothing scorable was ridden: shown as a dash, no bonus (#1454). */
 		execution?: number;
 		medal?: Medal;
-		roomName?: string;
+		placeName?: string;
 		/**
-		 * Who rode it with you (#1559): the room's roster at the close. Absent
-		 * on a solo ride, and the card adapts rather than forking — solo and
-		 * room are one card (#1531).
+		 * Who rode it with you (#1559): the session's roster at the close.
+		 * Absent on a solo ride, and the card adapts rather than forking — solo
+		 * and session are one card (#1531).
 		 */
 		riders?: { id: string; name: string; execution?: number; you?: boolean }[];
 		actions?: Snippet;
@@ -282,7 +282,7 @@
 				</ul>
 				<p class="text-muted mt-2 text-[11px]">
 					Your own streak bonus and level land on your account with the ride —
-					your weeks, not this room's.
+					your weeks, not the crew's.
 				</p>
 			</section>
 		</div>
@@ -291,7 +291,7 @@
 			<div>
 				<h2 class="eyebrow">your medal</h2>
 				<div class="mt-3">
-					<MedalCard {medal} {roomName} />
+					<MedalCard {medal} {placeName} />
 				</div>
 				{#if actions}
 					<div class="mt-3">{@render actions()}</div>

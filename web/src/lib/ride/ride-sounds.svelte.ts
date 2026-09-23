@@ -1,5 +1,5 @@
 import type { SprintState } from '$lib/protocol';
-import { serverNow } from '$lib/room/server-clock';
+import { serverNow } from '$lib/server-clock';
 import { changes } from '$lib/sound/changes';
 import { play, playCountdownTick } from '$lib/sound/cues';
 import type { GuardPhase } from '$lib/workout/guards';
@@ -8,12 +8,13 @@ import type { RideState } from '$lib/workout/session.svelte';
 /**
  * What a ride says out loud to the rider on it: a block change, their own
  * guard (auto-pause, the resume countdown), the spiral release, a trainer
- * fault and its recovery, a sprint window, the end. These lived in the room's
- * createRoomSounds (#834, #1412) and reached nobody riding alone (#1792): a
- * solo rider was auto-paused, released, dropped and finished in silence, with
- * one block cue the page played by hand. ADR-0046's parity rule: a rider
- * alone hears what the same rider in a room hears. The room composes this
- * and adds what needs people — the coach's pause, the games.
+ * fault and its recovery, a sprint window, the end. These lived in the
+ * session's createSessionSounds (#834, #1412) and reached nobody riding alone
+ * (#1792): a solo rider was auto-paused, released, dropped and finished in
+ * silence, with one block cue the page played by hand. ADR-0046's parity
+ * rule: a rider alone hears what the same rider in a session hears. The
+ * session composes this and adds what needs people — the coach's pause, the
+ * games.
  */
 export interface RideSoundDeps {
 	/**
@@ -33,12 +34,12 @@ export interface RideSoundDeps {
 	 * The count-in into the start, in seconds left — `0` the moment it hands
 	 * over to the running clock, `undefined` when nothing is counting in
 	 * (including a count-in the coach cancelled, which must not say `go`).
-	 * Both the room's shared countdown and a solo ride's own (#1800) feed
+	 * Both a session's shared countdown and a solo ride's own (#1800) feed
 	 * this: one 3-2-1 for the surface, not one per screen.
 	 */
 	countdown?: () => number | undefined;
 	/**
-	 * The ride just ended by its own clock or the rider's button. The room
+	 * The ride just ended by its own clock or the rider's button. A session
 	 * says its end from the shared phase instead and leaves this out.
 	 */
 	ended?: () => boolean;
@@ -57,8 +58,8 @@ export function createRideSounds(deps: RideSoundDeps) {
 	// The start is the biggest state change in the product, so it is counted
 	// in out loud. The last count spoken, so a tick is said once — and -1 is
 	// "nothing yet", which is also what makes `go` fire exactly once on the
-	// way out. Lifted from createRoomSounds (#834) when a solo ride got its
-	// own count-in (#1800); the room now feeds this instead of repeating it.
+	// way out. Lifted from createSessionSounds (#834) when a solo ride got its
+	// own count-in (#1800); a session now feeds this instead of repeating it.
 	let heardCount = -1;
 	$effect(() => {
 		const left = deps.countdown?.();

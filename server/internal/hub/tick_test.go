@@ -87,7 +87,7 @@ func TestEmptyRoomStillClosesAndSavesTheSession(t *testing.T) {
 		// for the next visitor — not stamped the moment they walk in.
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
-		var ended *protocol.RoomEvent
+		var ended *protocol.ChannelEvent
 		for i := range rm.events.pending {
 			if rm.events.pending[i].Verb == "ended" {
 				ended = &rm.events.pending[i]

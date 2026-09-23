@@ -1,0 +1,327 @@
+<script lang="ts">
+	import { serverNow } from '$lib/server-clock';
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
+	import { account } from '$lib/account.svelte';
+	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';
+	import { formatClock } from '$lib/format';
+	import { createProfileStore } from '$lib/profile.svelte';
+	import { gameMode } from '$lib/session/modes';
+	import { PLACES } from '$lib/session/podium';
+	import Heart from '@lucide/svelte/icons/heart';
+	import type { GameState } from '$lib/protocol';
+
+	// One panel, seven heroes (#39's modes design): the server owns every rule;
+	// this renders each mode's one load-bearing state. Vocabulary is SPEC's.
+	let {
+		game,
+		roster,
+		end,
+		canControl,
+		me,
+	}: {
+		game: GameState;
+		/** Names for ids — the tick's roster, or the channel's riders (#1589). */
+		roster: { id: string; name: string }[];
+		end: () => void;
+		canControl: boolean;
+		/** The viewer's rider id: their own elimination is status (#1590). */
+		me?: string;
+	} = $props();
+
+	const profile = createProfileStore();
+	const mode = $derived(gameMode(game.mode));
+
+	// The server's clock, like the sprint (#1411): roundEndsAtMs is server
+	// time, and a laptop seconds off counted the round down wrong (#1588).
+	let now = $state(serverNow());
+	$effect(() => {
+		const id = setInterval(() => (now = serverNow()), 500);
+		return () => clearInterval(id);
+	});
+	const roundLeft = $derived(
+		game.roundEndsAtMs ? Math.max(0, (game.roundEndsAtMs - now) / 1000) : 0,
+	);
+
+	const name = (id: string) => roster.find((r) => r.id === id)?.name ?? 'rider';
+	const riderRows = $derived(Object.entries(game.riders ?? {}));
+	const standing = $derived(
+		[...riderRows].sort(([, a], [, b]) => (b.score ?? 0) - (a.score ?? 0)),
+	);
+	const alive = $derived(riderRows.filter(([, r]) => !r.eliminated));
+	const out = $derived(riderRows.filter(([, r]) => r.eliminated));
+	const front = $derived(riderRows.find(([, r]) => r.onFront));
+	const zoneBounds = [
+		'',
+		'≤ 55 %',
+		'56–75 %',
+		'76–90 %',
+		'91–105 %',
+		'106–120 %',
+		'121–150 %',
+		'> 150 %',
+	];
+	const myGolfTarget = $derived(
+		Math.round((game.linePct ?? 0) * profile.current.ftp),
+	);
+	const isRamp = $derived(
+		game.mode === 'backyard-ramp' || game.mode === 'collective-ramp',
+	);
+
+	// Visual only (audit 2026-09-09): the cues a mode owes the rider come
+	// from the shell's session-sounds, which every place hears — this panel is
+	// drawn on the Training place alone, and a rider on the Lounge heard
+	// nothing when Team Relay handed them the front.
+</script>
+
+<div
+	class="border-neon/40 bg-surface-raised rounded-lg border-2 p-5"
+	role="status"
+	aria-label="{mode?.label ?? game.mode}, {game.phase === 'done'
+		? 'finished'
+		: 'running'}"
+>
+	<div class="flex items-center gap-3">
+		<span class="font-display flex items-center gap-2 font-bold">
+			{#if mode}<mode.icon size={16} class="text-neon shrink-0" />{/if}
+			{mode?.label ?? game.mode}
+		</span>
+		{#if game.round && game.mode !== 'watt-golf'}
+			<span class="text-muted text-xs">round {game.round}</span>
+		{/if}
+		{#if game.roundEndsAtMs && game.phase === 'running' && game.mode !== 'sprint-roulette'}
+			<span class="text-muted font-mono text-xs tabular-nums"
+				>{formatClock(Math.round(roundLeft))}</span
+			>
+		{/if}
+		{#if canControl}
+			<button onclick={end} class="btn btn-secondary ml-auto min-h-11"
+				>End game</button
+			>
+		{/if}
+	</div>
+
+	{#if me && game.riders?.[me]?.eliminated && game.phase !== 'done'}
+		<!-- The moment the mode is about, addressed to the person it happened
+		     to (#1590): it was a comma in the smallest type on screen. Persistent
+		     status, never a toast (errors.md). -->
+		<p
+			role="status"
+			class="border-z5/40 bg-z5/10 mt-4 rounded-lg border px-4 py-3 text-sm"
+		>
+			<span class="font-medium">You're out this game.</span>
+			<span class="text-muted"
+				>Spin easy — you're still in the session, and the panel shows how it
+				ends.</span
+			>
+		</p>
+	{/if}
+
+	{#if game.phase === 'done' && game.podium}
+		<ol class="mt-4 grid gap-1.5">
+			{#each game.podium.slice(0, 6) as score, i (score.riderId)}
+				{@const place = PLACES[i]}
+				<li class="flex items-center gap-2 text-sm">
+					<span class="text-muted w-6 shrink-0 tabular-nums">
+						{#if place}
+							<place.icon
+								size={16}
+								class={place.tone}
+								aria-label={place.label}
+							/>
+						{:else}
+							{i + 1}.
+						{/if}
+					</span>
+					<span class="font-medium">{score.name}</span>
+					{#if game.mode === 'sprint-roulette'}
+						<span class="font-display ml-auto font-bold tabular-nums"
+							>{score.wkg.toFixed(1)} w/kg</span
+						>
+					{:else if game.mode === 'watt-golf'}
+						<span class="font-display ml-auto font-bold tabular-nums"
+							>{Math.round(score.wkg)} strokes</span
+						>
+					{:else if game.mode === 'points-race'}
+						<span class="font-display ml-auto font-bold tabular-nums"
+							>{Math.round(score.wkg)} pts</span
+						>
+					{:else if game.mode === 'backyard-ramp' || game.mode === 'collective-ramp'}
+						<!-- The ramp's score is rounds survived (SPEC); the placing
+						     score in wkg said nothing a rider could read (#1593). -->
+						<span class="font-display ml-auto font-bold tabular-nums"
+							>{score.rounds ?? 0} round{(score.rounds ?? 0) === 1
+								? ''
+								: 's'}</span
+						>
+					{:else if game.mode === 'floor-is-lava'}
+						{@const lives = game.riders?.[score.riderId]?.lives ?? 0}
+						<span class="font-display ml-auto font-bold tabular-nums"
+							>{lives} {lives === 1 ? 'life' : 'lives'}</span
+						>
+					{/if}
+				</li>
+			{/each}
+		</ol>
+	{:else if isRamp}
+		<!-- Elimination: who is still in, and what the line is now. -->
+		<div class="mt-4 flex flex-wrap items-baseline gap-6">
+			<div>
+				<div
+					class="font-display text-ink text-4xl leading-none font-bold tabular-nums"
+				>
+					{Math.round((game.linePct ?? 0) * 100)}%
+				</div>
+				<p class="eyebrow mt-1.5">
+					{game.mode === 'collective-ramp'
+						? 'session average line'
+						: 'this round'}
+				</p>
+			</div>
+			<div>
+				<div class="font-display text-2xl leading-none font-bold tabular-nums">
+					{alive.length}
+				</div>
+				<p class="eyebrow mt-1.5">still in</p>
+			</div>
+			{#if out.length > 0}
+				<p class="text-muted self-center text-xs">
+					out: {out.map(([id]) => name(id)).join(', ')} — spinning at 50 %
+				</p>
+			{/if}
+		</div>
+	{:else if game.mode === 'floor-is-lava'}
+		<div class="mt-4 flex flex-wrap items-baseline gap-4">
+			<span
+				class="font-display text-2xl font-bold {ZONE_TEXT[
+					game.calledZone ?? 2
+				]}">Z{game.calledZone} {ZONE_NAMES[game.calledZone ?? 2]}</span
+			>
+			<span class="text-muted text-xs"
+				>{zoneBounds[game.calledZone ?? 2]} FTP</span
+			>
+			<span class="text-muted ml-auto text-xs"
+				>zone changes when the clock runs out</span
+			>
+		</div>
+		<div class="mt-3 flex flex-wrap gap-2">
+			{#each riderRows as [id, rider] (id)}
+				{@const lives = Math.max(0, rider.lives ?? 0)}
+				<span
+					class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs {rider.eliminated
+						? 'border-danger/40 text-danger line-through'
+						: 'border-muted/20'}"
+				>
+					{name(id)}
+					<span
+						class="inline-flex items-center gap-0.5"
+						aria-label="{lives} {lives === 1 ? 'life' : 'lives'} left"
+					>
+						{#each { length: lives } as _, life (life)}
+							<Heart size={12} class="text-neon fill-current" />
+						{/each}
+					</span>
+				</span>
+			{/each}
+		</div>
+	{:else if game.mode === 'watt-golf'}
+		<!-- The whole mode is the absence of a meter. -->
+		<div class="mt-4 text-center">
+			<p class="eyebrow">
+				hole {game.round} of 9
+			</p>
+			<div
+				class="font-display mt-2 text-5xl leading-none font-bold tabular-nums"
+			>
+				{myGolfTarget} W
+			</div>
+			{#if game.meterHidden}
+				<div
+					class="border-muted/25 text-muted mt-3 inline-block rounded border border-dashed px-3 py-1.5 text-xs"
+				>
+					your power is hidden until the hole ends
+				</div>
+			{/if}
+			<p class="text-muted mt-4 font-mono text-xs tabular-nums">
+				strokes so far: {Math.round(
+					game.riders?.[account.me?.id ?? '']?.score ?? 0,
+				)}
+			</p>
+		</div>
+	{:else if game.mode === 'sprint-roulette'}
+		<div class="mt-4 text-center">
+			<p class="eyebrow">
+				{game.roundEndsAtMs && game.roundEndsAtMs > now
+					? 'sprint!'
+					: 'next sprint'}
+			</p>
+			<div class="font-display text-ink mt-2 text-6xl leading-none font-bold">
+				{#if game.roundEndsAtMs && game.roundEndsAtMs > now}
+					{Math.ceil((game.roundEndsAtMs - now) / 1000)}
+				{:else}
+					?
+				{/if}
+			</div>
+			<p class="text-muted mt-3 text-xs">
+				Somewhere in the next 3–8 minutes. The klaxon gives you 3 seconds.
+			</p>
+			<div class="mt-6 grid grid-cols-3 gap-3">
+				{#each standing.slice(0, 3) as [id, rider], i (id)}
+					<div class="bg-surface rounded p-3">
+						<p class="eyebrow">best {i + 1}</p>
+						<p class="font-display mt-1 font-bold">{name(id)}</p>
+						<p class="font-mono text-xs tabular-nums">
+							{(rider.score ?? 0).toFixed(1)} w/kg
+						</p>
+					</div>
+				{/each}
+			</div>
+		</div>
+	{:else if game.mode === 'points-race'}
+		<ul class="mt-4 space-y-2">
+			{#each standing as [id, rider], i (id)}
+				<li class="flex items-center gap-3">
+					<span class="text-muted w-5 font-mono text-xs tabular-nums"
+						>{i + 1}</span
+					>
+					<span class="w-20 truncate text-sm">{name(id)}</span>
+					<ProgressBar
+						pct={((rider.score ?? 0) /
+							Math.max(1, standing[0]?.[1].score ?? 1)) *
+							100}
+						h="h-2"
+						track="bg-surface"
+						fill={ZONE_BG[4]}
+						class="flex-1"
+					/>
+					<span class="font-display w-8 text-right font-bold tabular-nums"
+						>{Math.round(rider.score ?? 0)}</span
+					>
+				</li>
+			{/each}
+		</ul>
+		<p class="text-muted mt-4 text-[11px]">
+			Sprint 5/3/2/1 · cleanest interval 3 · in-zone streak 1
+		</p>
+	{:else if game.mode === 'team-relay'}
+		<!-- Team Relay: one number the whole session owns. -->
+		<div class="mt-4 flex flex-wrap items-baseline gap-6">
+			<div>
+				<p class="eyebrow">on the front</p>
+				<p class="font-display text-ink mt-1 text-2xl font-bold">
+					{front ? name(front[0]) : '—'}
+				</p>
+				<p class="text-muted mt-1 text-xs">
+					110 % FTP · rest sit at 55 % · rotates in {formatClock(
+						Math.round(roundLeft),
+					)}
+				</p>
+			</div>
+			<div class="ml-auto text-right">
+				<p class="eyebrow">session distance</p>
+				<p class="font-display mt-1 text-2xl font-bold tabular-nums">
+					{Math.round((game.teamDistance ?? 0) / 1000)} kJ
+				</p>
+			</div>
+		</div>
+	{/if}
+</div>

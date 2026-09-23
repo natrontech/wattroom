@@ -1,0 +1,73 @@
+<script lang="ts">
+	// The voice channel's trainer, said in the shape every paired-devices card
+	// speaks.
+	//
+	// Reads the channel's connection directly rather than through ChannelContext
+	// (like /settings/equipment does, #565): the context's `trainer` is typed `unknown` and
+	// carries none of #520's fault detail ("paired but silent"), which is
+	// exactly the state a rider getting set up most needs to see.
+	//
+	// Split out of SensorOverview when the solo pre-ride screens grew the same
+	// grid (#611). Both trainers are held above the router now (#521, #1716),
+	// but they are still two: a voice channel's belongs to standing in the
+	// channel, the solo one to a rider who has paired and not yet started.
+	import { canSimulate } from '$lib/ble/can-simulate';
+	import { trainerForChannel } from '$lib/ride/solo-trainer.svelte';
+	import { SimulatedTrainer } from '$lib/ble/simulated';
+	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { useChannel } from '$lib/channel/context';
+	import SensorOverview from '$lib/session/SensorOverview.svelte';
+	import { deviceWord } from '$lib/device.svelte';
+	import {
+		pairedElsewhereAll,
+		trainerState,
+		trainerTargetsNote,
+	} from '$lib/session/sensor-status';
+	import { trainerHint } from '$lib/session/sensor-status';
+
+	// The trainer alone as one row, for a running session's header (#1000) —
+	// what `TrainerButton` used to draw with its own vocabulary.
+	let { compact = false }: { compact?: boolean } = $props();
+
+	const channel = useChannel();
+	const ride = $derived(channelConnection.current?.ride);
+	// What the rider's OTHER screens hold (#610). Only a voice channel knows — the
+	// socket is what arbitrates — which is why it enters here rather than in
+	// the grid the solo pre-ride screens share.
+	const elsewhere = $derived(pairedElsewhereAll(channel.pairing, deviceWord()));
+	// Which screen writes the control point, when it is not this one (#2075).
+	// The claim is the channel's to arbitrate, so this is the only place that can
+	// say it — the solo grid renders the same card and never has an answer.
+	const targetsNote = $derived(
+		trainerTargetsNote(channel.pairing, deviceWord()),
+	);
+
+	// "Connecting…" is the ride store's answer, not this component's (#1716):
+	// the channel's shell can unmount while the chooser is open.
+	function pairSimulatedTrainer() {
+		const baseWatts =
+			(channelConnection.current?.profile.current.ftp ?? 200) * 0.75;
+		return ride?.ride(new SimulatedTrainer({ baseWatts }));
+	}
+</script>
+
+<SensorOverview
+	{compact}
+	{elsewhere}
+	{targetsNote}
+	trainer={{
+		state: trainerState({
+			trainer: ride?.trainer ?? null,
+			fault: ride?.fault ?? null,
+			error: ride?.error ?? null,
+			pairing: ride?.pairing ?? false,
+		}),
+		device: ride?.trainer?.name,
+		reading: `${channel.you.watts} W · ${channel.you.cadence} rpm`,
+		hint: trainerHint(ride?.fault),
+		error: ride?.error,
+		onPair: () => void ride?.ride(trainerForChannel()),
+		onForget: () => ride?.unpair(),
+		onSimulate: canSimulate() ? () => void pairSimulatedTrainer() : undefined,
+	}}
+/>

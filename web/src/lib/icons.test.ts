@@ -4,13 +4,13 @@ import {
 	EMOJI_TO_KEY,
 	iconFor,
 	keyFor,
-	ROOM_ICONS,
+	MARK_ICONS,
 	STOCK_CHEERS,
 } from './icons';
 
 describe('icon keys (#447)', () => {
 	it('resolves a key from either vocabulary', () => {
-		expect(iconFor('bike')).toBe(ROOM_ICONS.bike);
+		expect(iconFor('bike')).toBe(MARK_ICONS.bike);
 		expect(iconFor('biceps-flexed')).toBe(CHEER_ICONS['biceps-flexed']);
 	});
 
@@ -32,7 +32,7 @@ describe('icon keys (#447)', () => {
 
 	it('maps every translated emoji to a key that exists', () => {
 		for (const key of Object.values(EMOJI_TO_KEY)) {
-			expect(ROOM_ICONS[key] ?? CHEER_ICONS[key], key).toBeDefined();
+			expect(MARK_ICONS[key] ?? CHEER_ICONS[key], key).toBeDefined();
 		}
 	});
 

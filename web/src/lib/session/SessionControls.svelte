@@ -1,0 +1,118 @@
+<script lang="ts">
+	// The coach's mid-ride controls (roles matrix): sprint, pause, resume,
+	// end. RoomLive carried them in its header; the split into places lost
+	// them, which left a coach with no way to end a session. They render in
+	// the Lounge's action row and the Training header — the two places a
+	// coach stands during a session — from one definition.
+	//
+	// Thumb-sized (ux.md): the one control you reach for at 160 bpm cannot be
+	// a 12 px label — which is exactly why End asks first. A stray thumb on a
+	// 44 px target ends the session for everyone in it, and there is no undo to
+	// offer (errors.md's confirm exception), so it confirms the way the solo
+	// ride does. Cancelling a countdown loses nothing and does not ask.
+	import { confirm } from '$lib/confirm.svelte';
+	import { device } from '$lib/device.svelte';
+	import { useChannel } from '$lib/channel/context';
+	import Pause from '@lucide/svelte/icons/pause';
+	import Play from '@lucide/svelte/icons/play';
+	import Radio from '@lucide/svelte/icons/radio';
+	import Square from '@lucide/svelte/icons/square';
+	import Zap from '@lucide/svelte/icons/zap';
+	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
+
+	let { compact = false }: { compact?: boolean } = $props();
+
+	const channel = useChannel();
+	const phase = $derived(channel.shared?.phase);
+	const running = $derived(phase === 'running');
+	const paused = $derived(phase === 'paused');
+	const idle = $derived(!phase || phase === 'idle' || phase === 'done');
+
+	async function endSession() {
+		const n = channel.riders.length;
+		const ok = await confirm({
+			title: `End the session for ${n} rider${n === 1 ? '' : 's'}?`,
+			body: 'The ride stops for everyone and cannot be resumed.',
+			action: 'End the session',
+			cancel: 'Keep riding',
+		});
+		if (ok) channel.control('end');
+	}
+</script>
+
+<!-- A phone is a spectator, and the roles matrix gives a spectator none of
+     these (docs/SPEC.md): picking a workout, starting, pausing, arming a
+     sprint and ending all belong to the device the coach is riding on. Gated
+     with the pairing button, in one place each (#412). Every control here
+     is used while pedalling, so the non-compact row is 44 px too (#1592). -->
+{#if channel.canControl && !device.spectator}
+	{#if channel.game}
+		<!-- Ending a game must never depend on the game panel being drawn
+		     (#1586): Team Relay never ends itself, and this used to be the
+		     panel's button alone. -->
+		<button
+			onclick={() => channel.control('game-end')}
+			title="End game"
+			aria-label="end the game"
+			class="btn btn-secondary {compact ? 'h-11 w-11 p-0' : 'btn-lg'}"
+			><Gamepad2 size={compact ? 18 : 15} />{#if !compact}End game{/if}</button
+		>
+	{/if}
+	{#if idle}
+		<button
+			onclick={() => channel.openPicker()}
+			class="btn btn-accent {compact ? '' : 'btn-lg'}"
+			><Radio size={15} /> Start a session</button
+		>
+	{:else if phase === 'countdown'}
+		<button onclick={() => channel.control('end')} class="btn btn-danger btn-lg"
+			><Square size={13} /> Stop the countdown</button
+		>
+	{:else}
+		<div class="border-muted/20 flex gap-1 rounded border p-0.5">
+			{#if running}
+				<!-- Chrome, so the structural accent (ADR-0005: only live data
+				     wears --color-watt; there is no chrome exception). The watts
+				     the sprint produces are what glows. -->
+				<button
+					onclick={() => channel.control('sprint')}
+					disabled={!!channel.sprint}
+					title={channel.sprint ? 'A sprint is already running' : 'Sprint'}
+					aria-label="arm a sprint"
+					class="text-neon hover:bg-neon/10 flex items-center justify-center gap-1.5 rounded text-sm disabled:opacity-40 {compact
+						? 'h-11 w-11'
+						: 'min-h-11 px-4'}"
+					><Zap size={compact ? 18 : 14} />{#if !compact}Sprint{/if}</button
+				>
+				<button
+					onclick={() => channel.control('pause')}
+					title="Pause"
+					aria-label="pause the session"
+					class="text-muted hover:text-ink flex items-center justify-center gap-1.5 rounded text-sm {compact
+						? 'h-11 w-11'
+						: 'min-h-11 px-4'}"
+					><Pause size={compact ? 18 : 14} />{#if !compact}Pause{/if}</button
+				>
+			{:else if paused}
+				<button
+					onclick={() => channel.control('resume')}
+					title="Resume"
+					aria-label="resume the session"
+					class="hover:bg-surface-raised flex items-center justify-center gap-1.5 rounded text-sm {compact
+						? 'h-11 w-11'
+						: 'min-h-11 px-4'}"
+					><Play size={compact ? 18 : 14} />{#if !compact}Resume{/if}</button
+				>
+			{/if}
+			<button
+				onclick={endSession}
+				title="End"
+				aria-label="end the session"
+				class="text-danger hover:bg-danger/10 flex items-center justify-center gap-1.5 rounded text-sm {compact
+					? 'h-11 w-11'
+					: 'min-h-11 px-4'}"
+				><Square size={compact ? 16 : 13} />{#if !compact}End{/if}</button
+			>
+		</div>
+	{/if}
+{/if}

@@ -6,8 +6,8 @@
 	// write raises (#2435).
 	//
 	// The body (timeline, states, composer, focus) is MessageThread.svelte,
-	// shared with a DM's and a room's; this supplies the channel's endpoints
-	// and what the viewer's crew role allows.
+	// shared with a DM's; this supplies the channel's endpoints and what the
+	// viewer's crew role allows.
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import Hash from '@lucide/svelte/icons/hash';
 	import Lock from '@lucide/svelte/icons/lock';
@@ -25,7 +25,7 @@
 	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
-	import { roomTimeline } from '$lib/room/timeline';
+	import { messageTimeline } from '$lib/messages/timeline';
 	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';
 
@@ -60,9 +60,7 @@
 	});
 	const mentionNames = $derived(crew.people.map((p) => p.displayName));
 
-	const timeline = $derived(
-		roomTimeline(thread?.messages ?? [], [], account.me?.displayName),
-	);
+	const timeline = $derived(messageTimeline(thread?.messages ?? []));
 
 	async function mark(messageId: string) {
 		const res = await api(`${base}/announcement`, {

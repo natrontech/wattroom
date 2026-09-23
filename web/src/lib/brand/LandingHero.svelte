@@ -1,16 +1,16 @@
 <script lang="ts">
-	// The landing's signature (#111, ADR-0005 restraint rule): a live room in
+	// The landing's signature (#111, ADR-0005 restraint rule): a live session in
 	// miniature — three rider tiles over the session timeline, in the exact
-	// visual language of the real room, so the page demos the product instead
-	// of describing it. Pure SVG + CSS, no dependencies. Watts tick with one
-	// tiny interval; reduced motion gets the finished picture, steady numbers.
+	// visual language of the real Lounge, so the page demos the product instead
+	// of describing it. Pure SVG + CSS, no dependencies. Watts tick with one tiny
+	// interval; reduced motion gets the finished picture, steady numbers.
 
 	import ClayRider from '$lib/brand/ClayRider.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 
 	const uid = $props.id();
 
-	// Only "you" glow — same rule as the real room's tiles.
+	// Only "you" glow — same rule as the real Lounge's tiles.
 	const riders = [
 		{
 			name: 'Mara',

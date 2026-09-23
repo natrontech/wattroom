@@ -3,8 +3,8 @@ import { compressImage } from '$lib/chat/media';
 /**
  * A picture waiting on the send button (#279) — Discord's flow: Ctrl+V (or
  * pick a file), see the chip, hit Enter. One holder for every composer that
- * sends images: the room's side panel, a DM, a room thread read from
- * outside (#468). The composer owns the input; this owns the blob.
+ * sends images: a text channel and a DM. The composer owns the input; this
+ * owns the blob.
  */
 export function createPendingImage(onRefused: (message: string) => void) {
 	let current = $state<{ blob: Blob; preview: string } | null>(null);

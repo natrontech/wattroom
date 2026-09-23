@@ -146,8 +146,8 @@ Whitelist is on — ask Nina.`;
 	     while there is nothing, this one once there is. -->
 	<div class="mb-2 flex items-center gap-3">
 		<h2 class="eyebrow">pins</h2>
-		<!-- Said beside the label, because editing one changes it in every
-		     room of the crew and the rider has to know that before they do. -->
+		<!-- Said beside the label, because editing one changes it for everyone
+		     in the crew and the rider has to know that before they do. -->
 		{#if crewName}
 			<span class="text-muted-dim truncate text-[11px]">all of {crewName}</span>
 		{/if}

@@ -17,9 +17,9 @@ const ALLOWLIST: Allowlist = {
 	'routes/dev/':
 		'dev-only galleries: browser chrome and fake video frames, drawn in the colours the real thing has',
 	'lib/brand/icons.ts': "Google's mark — provider colours never follow a theme",
-	'lib/room/Stage.svelte':
+	'lib/channel/Stage.svelte':
 		'the letterbox behind video is black on every palette',
-	'lib/room/JukeboxDock.svelte':
+	'lib/channel/JukeboxDock.svelte':
 		'the YouTube tile and its failure scrim sit on black, like the player itself',
 	'lib/brand/LandingHero.svelte':
 		'the fake camera feeds: the meter track is a scrim over "video", dark like the real ones',

@@ -8,10 +8,10 @@
 	// the slot is injected, so every state is one click away and none of them
 	// can drift from what a rider sees.
 	import Logo from '$lib/brand/Logo.svelte';
-	import SensorOverview from '$lib/room/SensorOverview.svelte';
+	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import DevicePicker from '$lib/ble/DevicePicker.svelte';
 	import type { BleDevice } from '$lib/ble/device-picker.svelte';
-	import type { PairState } from '$lib/room/sensor-status';
+	import type { PairState } from '$lib/session/sensor-status';
 
 	type Case = {
 		name: string;
@@ -189,7 +189,7 @@
 			</p>
 			<p class="text-muted mt-1 text-xs">
 				WattRoom talks to your trainer straight from this browser — nothing is
-				installed, and your power never leaves the room you're riding in.
+				installed, and your power never leaves the session you're riding in.
 			</p>
 		</div>
 	</div>

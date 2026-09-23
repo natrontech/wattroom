@@ -1,0 +1,272 @@
+import { channelAddress } from '$lib/channel/address';
+// @vitest-environment happy-dom
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { flushSync, tick } from 'svelte';
+import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
+
+vi.mock('$lib/api', () => ({ api: async () => ({ ok: false }) }));
+// Spread the real module: the mixer imports more of it than the connection
+// does, and only the two calls that would make noise need silencing.
+const played: string[] = [];
+vi.mock('$lib/sound/cues', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/sound/cues')>()),
+	play: (id: string) => played.push(id),
+}));
+vi.mock('$lib/notify.svelte', () => ({ notify: { push: () => {} } }));
+// A hand-driven socket: the tick is what the ride and the channel both read,
+// and the test needs to move it. $state, so a derived that fails to track it
+// is caught rather than papered over by lazy first evaluation.
+let fakeTick = $state<unknown>(null);
+const fakeLive = {
+	get tick() {
+		return fakeTick;
+	},
+	sent: [] as { seq: number }[],
+	sendMetrics(m: { seq: number }) {
+		this.sent.push(m);
+	},
+	finish() {},
+	close() {},
+	status: 'live',
+	channelEvents: [],
+	pushEvent() {},
+	refusal: null,
+	// The connection claims this tab's sensors whenever the set changes
+	// (#610); recorded so a test can assert what the hub would be told.
+	claims: [] as { held: string[] }[],
+	pairing: {},
+	claimSensors(claim: { held: string[] }) {
+		this.claims.push(claim);
+	},
+	jukebox() {},
+	control() {},
+	cheer() {},
+};
+vi.mock('$lib/channel/live.svelte', () => ({
+	createChannelLive: () => fakeLive,
+}));
+vi.mock('livekit-client', () => ({
+	Room: class {
+		remoteParticipants = new Map();
+		on() {
+			return this;
+		}
+		async connect() {}
+		disconnect() {}
+	},
+	RoomEvent: new Proxy({}, { get: (_, key) => key }),
+	Track: { Source: new Proxy({}, { get: (_, key) => key }) },
+}));
+
+import {
+	prepareChannelAv,
+	channelConnection,
+} from '$lib/channel/connection.svelte';
+import { listening } from '$lib/channel/listening.svelte';
+import { toasts } from '$lib/toast.svelte';
+
+// The channel layouts' load does this before the shell joins (#1514).
+await prepareChannelAv();
+
+class FakeTrainer implements Trainer {
+	name = 'Fake';
+	status: TrainerStatus = 'disconnected';
+	mode = 'erg' as const;
+	targets: number[] = [];
+	disconnected = false;
+	connects = 0;
+	async connect() {
+		this.connects++;
+		this.status = 'connected';
+	}
+	async disconnect() {
+		this.disconnected = true;
+	}
+	async setTargetPower(watts: number) {
+		this.targets.push(watts);
+	}
+	async setSimulation() {}
+	onSample() {
+		return () => {};
+	}
+	onStatus() {
+		return () => {};
+	}
+}
+
+/**
+ * #521/#522: the trainer is a property of standing in the channel, so it hangs
+ * off the connection — not off whichever page happens to be rendering it.
+ * A per-page ride disconnected the trainer on the way to /workouts and reset
+ * the metrics seq, which the server's ride record then dropped as duplicates.
+ */
+describe('channelConnection', () => {
+	afterEach(() => {
+		channelConnection.leave();
+		// The tick is module state: a roster left behind here is the next
+		// test's opening observation.
+		fakeTick = null;
+	});
+
+	it('keeps one ride and one recording across repeated joins', () => {
+		const first = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		const again = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		expect(again).toBe(first);
+		expect(again.ride).toBe(first.ride);
+		expect(again.recording).toBe(first.recording);
+	});
+
+	it('puts you back in the music when you leave (#1898)', async () => {
+		channelConnection.join(channelAddress('c', 'lounge', 'Lounge'));
+		listening.stepOut('stop', null);
+		expect(listening.out).toBe(true);
+		channelConnection.leave();
+		expect(listening.out).toBe(false);
+	});
+
+	it('releases the trainer when you leave, not when a page unmounts', async () => {
+		const connection = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		const trainer = new FakeTrainer();
+		await connection.ride.ride(trainer);
+		expect(connection.ride.trainer).toBe(trainer);
+
+		channelConnection.leave();
+		expect(trainer.disconnected).toBe(true);
+		// Never left holding resistance on a trainer nobody is riding.
+		expect(trainer.targets.at(-1)).toBe(0);
+
+		// A fresh join is a fresh ride — another channel is another session.
+		expect(
+			channelConnection.join(channelAddress('c', 'lounge', 'Lounge')).ride,
+		).not.toBe(connection.ride);
+	});
+
+	// #850, a rider report: they clicked through Home and settings, dropped out
+	// of the channel, and heard nothing. A rider three metres from the screen
+	// learns about a state change by ear or not at all (ux.md), and losing the
+	// channel takes the socket, the call and the trainer with it.
+	it('says so out loud when the channel ends under the rider', () => {
+		played.length = 0;
+		channelConnection.join(channelAddress('c', 'lounge', 'Lounge'));
+
+		channelConnection.leave('signedOut');
+
+		expect(played).toContain('leave');
+		expect(toasts.items.at(-1)?.text).toContain('Lounge');
+		// The way back in, on the toast itself.
+		expect(toasts.items.at(-1)?.href).toBe('/crew/c/v/lounge');
+	});
+
+	// Their own Leave needs no announcement: they just pressed it.
+	it('goes quietly when the rider is the one leaving', () => {
+		played.length = 0;
+		const before = toasts.items.length;
+		channelConnection.join(channelAddress('c', 'lounge', 'Lounge'));
+
+		channelConnection.leave();
+
+		expect(played).not.toContain('leave');
+		expect(toasts.items).toHaveLength(before);
+	});
+
+	it('takes a trainer handed over live without connecting it again', async () => {
+		// #1851: the solo slot's trainer walks into the channel as it is.
+		const connection = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		const trainer = new FakeTrainer();
+		trainer.status = 'connected';
+		await connection.ride.ride(trainer);
+		expect(connection.ride.trainer).toBe(trainer);
+		expect(trainer.connects).toBe(0);
+	});
+
+	it('calls a paired trainer silent on the local second, without a server tick', async () => {
+		// #1852: judged off the tick, losing the socket froze the check.
+		vi.useFakeTimers();
+		try {
+			const connection = channelConnection.join(
+				channelAddress('c', 'lounge', 'Lounge'),
+			);
+			await connection.ride.ride(new FakeTrainer());
+			flushSync();
+			expect(connection.ride.fault).toBeNull();
+			vi.advanceTimersByTime(11_000);
+			flushSync();
+			expect(connection.ride.fault).toBe('silent');
+			// Frames without watts are the other quiet (#1849).
+			connection.ride.unpair();
+			const reporting = new FakeTrainer();
+			(reporting as { frames?: number }).frames = 3;
+			(reporting as { poweredFrames?: number }).poweredFrames = 0;
+			await connection.ride.ride(reporting);
+			flushSync();
+			vi.advanceTimersByTime(11_000);
+			flushSync();
+			expect(connection.ride.fault).toBe('no-power');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('claims the trainer for this tab, and releases it on unpair', async () => {
+		// The claim is what stops a second screen pairing the same trainer and
+		// feeding a second stream of watts into one ride record (#610).
+		fakeLive.claims = [];
+		const connection = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		await connection.ride.ride(new FakeTrainer());
+		await tick();
+		expect(fakeLive.claims.at(-1)?.held).toContain('trainer');
+
+		connection.ride.unpair();
+		await tick();
+		expect(fakeLive.claims.at(-1)?.held).not.toContain('trainer');
+	});
+});
+
+/**
+ * The same lesson av.svelte.test.ts records for screenshares (#173/#284), for
+ * the ride: a value derived in a page's scope freezes at its last reading the
+ * moment that page unmounts. The session and its workout drive the trainer's
+ * targets, so they belong to the connection's scope, not to whichever
+ * channel page happened to open it.
+ */
+describe('the connection keeps deriving the session after a page dies', () => {
+	afterEach(() => channelConnection.leave());
+
+	it('still follows the tick once the opening scope is disposed', () => {
+		let connection!: ReturnType<typeof channelConnection.join>;
+		const dispose = $effect.root(() => {
+			connection = channelConnection.join(
+				channelAddress('c', 'lounge', 'Lounge'),
+			);
+		});
+		dispose();
+
+		// Read before the change, so a derived that caches instead of tracking
+		// fails here rather than passing on its first lazy evaluation.
+		expect(connection.shared()).toBeUndefined();
+
+		fakeTick = {
+			state: {
+				phase: 'running',
+				elapsed: 12,
+				workoutJson: JSON.stringify({
+					name: 'Threshold',
+					steps: [{ type: 'steady', seconds: 300, target: 0.95 }],
+				}),
+			},
+		};
+		expect(connection.shared()?.phase).toBe('running');
+		expect(connection.segments()).toHaveLength(1);
+		expect(connection.workout()?.name).toBe('Threshold');
+	});
+});

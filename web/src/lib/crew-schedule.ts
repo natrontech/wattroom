@@ -1,6 +1,6 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
 import type { CrewRole } from '$lib/crew';
-import type { PlanAnswers, RsvpAnswer } from '$lib/room/rsvp';
+import type { PlanAnswers, RsvpAnswer } from '$lib/session/rsvp';
 
 /**
  * The crew's schedule (#2440, #2452): one calendar for the crew, a plan naming

@@ -12,12 +12,12 @@
 	import YouPanel from '$lib/nav/YouPanel.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import RoomStrip from './RoomStrip.svelte';
+	import VoiceStrip from './VoiceStrip.svelte';
 	import CrewSwitcher from './CrewSwitcher.svelte';
 	import CrewColumn from './CrewColumn.svelte';
 	import { crewLive } from './crew-live.svelte';
 	import { chosenCrew } from './chosen-crew.svelte';
-	import JukeboxRail from '$lib/room/JukeboxRail.svelte';
+	import JukeboxRail from '$lib/channel/JukeboxRail.svelte';
 	import { keepSize } from '$lib/pane';
 	import { edgeDivider } from '$lib/divider';
 	import { friends } from '$lib/friends/friends.svelte';
@@ -27,18 +27,16 @@
 		UNREAD_DOT,
 		unreadCount,
 	} from '$lib/messages/unread-marks';
-	import { roomConnection } from '$lib/room/connection.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { activeHref, crewOfPath, dmsCurrent, pages } from './pages';
-	import { crewsOf } from './crews';
 	import { readDmsFolded, rememberDmsFolded } from './folds';
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import OpenOrJoin from '$lib/rooms/OpenOrJoin.svelte';
+	import StartOrJoin from '$lib/home/StartOrJoin.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
 	import { goto } from '$app/navigation';
-	import type { RailRoom } from '$lib/room/room-data';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import { device } from '$lib/device.svelte';
 	import Monitor from '@lucide/svelte/icons/monitor';
@@ -47,11 +45,9 @@
 
 	let {
 		pathname,
-		rooms = [],
 		live = false,
 	}: {
 		pathname: string;
-		rooms?: RailRoom[];
 		live?: boolean;
 	} = $props();
 
@@ -64,7 +60,7 @@
 	// You, so the page always has its row; anywhere else it is the crew you
 	// chose last. Choosing goes somewhere — the crew's Home, or yours —
 	// because a mode the page then overrode would be a pick that did nothing.
-	const crews = $derived(crewsOf(rooms, presence.crews));
+	const crews = $derived(presence.crews);
 	const crew = $derived.by(() => {
 		const inCrew = crewOfPath(pathname);
 		if (inCrew) return crews.find((c) => c.id === inCrew) ?? null;
@@ -112,13 +108,13 @@
 	);
 </script>
 
-<!-- Resizable from its right edge, the way the room's panel is from its
-     left (#427), and remembered per device (keepSize). Only on a desk: below
-     md this column is a drawer, and the width dragged on a desk is pinned
+<!-- Resizable from its right edge, the way a voice channel's side panel is from
+     its left (#427), and remembered per device (keepSize). Only on a desk:
+     below md this column is a drawer, and the width dragged on a desk is pinned
      back to the default there — a 400 px drawer on a 375 px phone leaves no
      backdrop to tap. -->
 <nav
-	aria-label="rooms and places"
+	aria-label="crews and channels"
 	{@attach (node) => keepSize(node, 'sidebar')}
 	class="bg-surface border-ink/5 relative flex h-full w-60 shrink-0 flex-col border-r max-md:w-60! md:max-w-[40vw] md:min-w-56"
 >
@@ -133,10 +129,10 @@
 	     first row of the column names the place you are in, and the brand
 	     leaves it — the tab, the title bar and the sign-in page carry that,
 	     and riding is already on your avatar and on the Training row
-	     (#1016), so the mark had no job left here. Before the first room
-	     there is no crew to name, so the mark and the wordmark keep the row. -->
+	     (#1016), so the mark had no job left here. Before the first crew
+	     there is none to name, so the mark and the wordmark keep the row. -->
 	{#if crews.length > 0}
-		<CrewSwitcher {crews} {crew} {rooms} onpick={pick} />
+		<CrewSwitcher {crews} {crew} onpick={pick} />
 	{:else}
 		<!-- The wordmark is day zero AND "not read yet" (#2173). Saying so is
 		     the difference between a rider with no crew and a rider whose
@@ -215,14 +211,14 @@
 			{/if}
 		{/if}
 
-		<!-- Messages is a place (#468): every room's chat and every DM, one
-		     list, and on a desk the sidebar IS that list (#484). Rooms are
-		     already listed above, so they are not repeated here — their
-		     unread count is the way in for them. The heading names what is
-		     UNDER it rather than a place (#1017): these rows are threads with
-		     people, and a rider reading "messages" over a column of faces
-		     could not tell them from the friends list or from who is in the
-		     room with them. -->
+		<!-- Messages is a place (#468): every DM, one list, and on a desk the
+		     sidebar IS that list (#484). A crew's text channels are already
+		     listed above, so they are not repeated here — their unread marks
+		     are the way in for them. The heading names what is UNDER it rather
+		     than a place (#1017): these rows are threads with people, and a
+		     rider reading "messages" over a column of faces could not tell
+		     them from the friends list or from who is in the voice channel
+		     with them. -->
 		<div class="eyebrow flex items-center px-2 pt-4 pb-1">
 			<!-- The heading folds the list (#1359): a chevron at the end of a
 			     section heading says fold, not go — the crew switcher above
@@ -312,17 +308,17 @@
 		{/if}
 	</div>
 
-	<!-- The video, wherever the people column is not (#427): below xl the room
-	     has no column, and off the room pages there is none at all. -->
-	{#if roomConnection.current}
+	<!-- The video, wherever the people column is not (#427): below xl a voice
+	     channel has no column, and off its pages there is none at all. -->
+	{#if channelConnection.current}
 		<JukeboxRail />
 	{/if}
 
-	<!-- Who is in the room with you, while you are looking elsewhere (#446).
-	     Above you, like Discord's voice panel; off the Lounge, which already
-	     shows everyone in tiles. -->
-	{#if roomConnection.current}
-		<RoomStrip {pathname} />
+	<!-- Who is in the voice channel with you, while you are looking elsewhere
+	     (#446). Above you, like Discord's voice panel; off the Lounge, which
+	     already shows everyone in tiles. -->
+	{#if channelConnection.current}
+		<VoiceStrip {pathname} />
 	{/if}
 
 	<!-- Discord's "download apps" corner (#1235): a quiet, permanent way to
@@ -347,6 +343,6 @@
 		onclose={() => (opening = false)}
 		class="max-w-sm"
 	>
-		<OpenOrJoin compact />
+		<StartOrJoin compact />
 	</Modal>
 {/if}
