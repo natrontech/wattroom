@@ -29,7 +29,6 @@
 	} from '$lib/messages/unread-marks';
 	import { roomConnection } from '$lib/room/connection.svelte';
 	import { activeHref, crewOfPath, dmsCurrent, pages } from './pages';
-	import { crewsOf } from './crews';
 	import { readDmsFolded, rememberDmsFolded } from './folds';
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import Modal from '$lib/components/Modal.svelte';
@@ -38,7 +37,6 @@
 	import { presence } from '$lib/presence.svelte';
 	import { statusOf } from '$lib/status';
 	import { goto } from '$app/navigation';
-	import type { RailRoom } from '$lib/room/room-data';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import { device } from '$lib/device.svelte';
 	import Monitor from '@lucide/svelte/icons/monitor';
@@ -47,11 +45,9 @@
 
 	let {
 		pathname,
-		rooms = [],
 		live = false,
 	}: {
 		pathname: string;
-		rooms?: RailRoom[];
 		live?: boolean;
 	} = $props();
 
@@ -64,7 +60,7 @@
 	// You, so the page always has its row; anywhere else it is the crew you
 	// chose last. Choosing goes somewhere — the crew's Home, or yours —
 	// because a mode the page then overrode would be a pick that did nothing.
-	const crews = $derived(crewsOf(rooms, presence.crews));
+	const crews = $derived(presence.crews);
 	const crew = $derived.by(() => {
 		const inCrew = crewOfPath(pathname);
 		if (inCrew) return crews.find((c) => c.id === inCrew) ?? null;
@@ -136,7 +132,7 @@
 	     (#1016), so the mark had no job left here. Before the first room
 	     there is no crew to name, so the mark and the wordmark keep the row. -->
 	{#if crews.length > 0}
-		<CrewSwitcher {crews} {crew} {rooms} onpick={pick} />
+		<CrewSwitcher {crews} {crew} onpick={pick} />
 	{:else}
 		<!-- The wordmark is day zero AND "not read yet" (#2173). Saying so is
 		     the difference between a rider with no crew and a rider whose

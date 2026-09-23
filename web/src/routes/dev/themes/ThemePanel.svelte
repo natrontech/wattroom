@@ -21,7 +21,6 @@
 	import RiderTile from '$lib/room/RiderTile.svelte';
 	import type { RoomRider } from '$lib/room/view';
 	import type { Segment } from '$lib/workout/types';
-	import type { RailRoom } from '$lib/room/room-data';
 	import { APCA_MIN_LC } from '$lib/gate';
 	import { rampReadings, readings, ZONES, type Surface } from './gallery';
 
@@ -32,7 +31,6 @@
 		segments,
 		total,
 		elapsed,
-		rooms,
 		medal,
 		narrow = false,
 	}: {
@@ -43,7 +41,6 @@
 		segments: Segment[];
 		total: number;
 		elapsed: number;
-		rooms: RailRoom[];
 		medal: Medal;
 		/** Laptop width: the room is more often on one than on a desk monitor. */
 		narrow?: boolean;
@@ -91,7 +88,7 @@
 				<div
 					class="border-edge h-[26rem] shrink-0 overflow-hidden rounded-lg border"
 				>
-					<Sidebar pathname="/r/sunday-long-ride" {rooms} live />
+					<Sidebar pathname="/r/sunday-long-ride" live />
 				</div>
 				<div
 					class="grid min-w-0 flex-1 gap-2 self-start {narrow

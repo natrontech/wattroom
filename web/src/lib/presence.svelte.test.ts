@@ -1,18 +1,19 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RailRoom } from '$lib/room/room-data';
+import type { RoomCrew } from '$lib/room/room-data';
 
 // The endpoint behind every ping. Counting calls IS the assertion: #912 is
 // about how many of these one conversation costs.
 let fetches = 0;
-let world: { rooms: RailRoom[]; maxOwned: number; error?: string } = {
-	rooms: [],
-	maxOwned: 0,
-};
-vi.mock('$lib/nav/rooms', () => ({
-	fetchRailRooms: async () => {
+const read: string[] = [];
+let world: { crews: RoomCrew[]; error?: string } = { crews: [] };
+vi.mock('$lib/api', () => ({
+	api: async (path: string) => {
 		fetches += 1;
-		return world;
+		read.push(path);
+		return world.error
+			? { ok: false, error: { error: 'internal_error', message: world.error } }
+			: { ok: true, data: { crews: world.crews } };
 	},
 }));
 // A hand-driven lobby socket, so the test can deliver pings the way the hub
@@ -137,33 +138,38 @@ describe('the presence feed survives its socket (#1742)', () => {
 // The sidebar used to go stale in silence (#1743). A dead socket is not that
 // case — the tests above bound it — but a read that keeps failing with a list
 // already on screen is: `Sidebar.svelte` draws its error only over an EMPTY
-// list, so the rooms and the dots kept their last values with full confidence.
+// list, so the crews and the dots kept their last values with full confidence.
 describe('a feed that stopped answering says so', () => {
 	afterEach(() => {
 		presence.stop();
-		world = { rooms: [], maxOwned: 0 };
+		world = { crews: [] };
+	});
+
+	it('reads the crew list', async () => {
+		const crew: RoomCrew = { id: 'c1', name: 'Velvet Hammer', role: 'owner' };
+		world = { crews: [crew] };
+		read.length = 0;
+		presence.start();
+		await vi.waitFor(() => expect(presence.crews).toEqual([crew]));
+		expect(read[0]).toBe('/api/crews');
+		expect(presence.error).toBe(null);
 	});
 
 	it('marks itself stale on the second failed read in a row, not the first', async () => {
-		const room: RailRoom = {
-			slug: 'velvet',
-			name: 'Velvet Hammer',
-			live: false,
-			members: 2,
-		};
-		world = { rooms: [room], maxOwned: 0 };
+		const crew: RoomCrew = { id: 'c1', name: 'Velvet Hammer', role: 'owner' };
+		world = { crews: [crew] };
 		presence.start();
 		await vi.waitFor(() => expect(presence.loaded).toBe(true));
 		expect(presence.stale).toBe(false);
 
 		// One refusal is a blip the 60 s fallback poll already covers, and the
 		// list you had stays on screen.
-		world = { rooms: [], maxOwned: 0, error: 'The rooms could not be loaded.' };
+		world = { crews: [], error: 'The crews could not be loaded.' };
 		let seen = fetches;
 		presence.reload();
 		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen));
-		expect(presence.error).toBe('The rooms could not be loaded.');
-		expect(presence.rooms).toHaveLength(1);
+		expect(presence.error).toBe('The crews could not be loaded.');
+		expect(presence.crews).toHaveLength(1);
 		expect(presence.stale).toBe(false);
 
 		// A second in a row is a feed that has stopped answering.
@@ -174,7 +180,7 @@ describe('a feed that stopped answering says so', () => {
 
 		// And one good read clears it — the count is consecutive failures,
 		// never a tally of every blip since sign-in.
-		world = { rooms: [room], maxOwned: 0 };
+		world = { crews: [crew] };
 		seen = fetches;
 		presence.reload();
 		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen));

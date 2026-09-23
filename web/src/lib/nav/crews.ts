@@ -1,37 +1,13 @@
-import Eye from '@lucide/svelte/icons/eye';
-import Lock from '@lucide/svelte/icons/lock';
-import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
-import type { Icon } from '$lib/icons';
-import type { RailRoom } from '$lib/room/room-data';
-import type { RoomAccess, RoomCrew } from '$lib/room/room-data';
+import type { RoomCrew } from '$lib/room/room-data';
 
 /**
  * The crew is a mode the sidebar is in (ADR-0020, amended 2026-09-08; #1147):
- * one crew's rooms at a time, and the column below keeps the two-deep shape
- * ADR-0020 sized for. Pure, so the one rule that must not regress — the room
- * you are standing in stays in the sidebar whichever crew is on screen — is
- * a function a test can break.
+ * one crew's channels at a time, and the column below keeps the two-deep
+ * shape ADR-0020 sized for. The rules about which crews a rider may do what
+ * in are pure, so each is a function a test can break.
  */
 
 const CHOSEN = 'wattroom.crew.v1';
-
-/**
- * Every crew you are in, once each: the ones the server lists in their own
- * right first (#1476 — a crew with no rooms is still a crew, and deriving
- * crews from rooms made it vanish with its last room), then any a room
- * mentions that the list somehow does not.
- */
-export function crewsOf(
-	rooms: readonly RailRoom[],
-	known: readonly RoomCrew[] = [],
-): RoomCrew[] {
-	const seen = new Map<string, RoomCrew>();
-	for (const crew of known) if (!seen.has(crew.id)) seen.set(crew.id, crew);
-	for (const room of rooms) {
-		if (room.crew && !seen.has(room.crew.id)) seen.set(room.crew.id, room.crew);
-	}
-	return [...seen.values()];
-}
 
 export function readChosenCrew(): string | null {
 	try {
@@ -47,33 +23,6 @@ export function rememberChosenCrew(id: string): void {
 	} catch {
 		/* fine — the sidebar opens on the room you are in next time */
 	}
-}
-
-/**
- * The mark a room row draws for its access state (#1149), shared by the
- * sidebar and the crew page so the two cannot disagree. Open draws nothing.
- */
-export function accessMark(
-	access: RoomAccess | undefined,
-): { icon: Icon; label: string } | null {
-	switch (access) {
-		case 'private':
-			return { icon: Eye, label: 'private' };
-		case 'locked':
-			return { icon: Lock, label: 'private — you are not in this room' };
-		case 'admin':
-			return {
-				icon: SlidersHorizontal,
-				label: 'yours to administer, not to enter',
-			};
-		default:
-			return null;
-	}
-}
-
-/** A room you cannot enter is not a link (#1149, ux.md). */
-export function reachable(access: RoomAccess | undefined): boolean {
-	return access !== 'locked' && access !== 'admin';
 }
 
 /**

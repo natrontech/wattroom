@@ -24,7 +24,6 @@
 		shareInviteLink,
 	} from '$lib/crew-flows';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
-	import type { RailRoom } from '$lib/room/room-data';
 	import type { RoomCrew } from '$lib/room/room-data';
 	import { shareVerb } from '$lib/share';
 	import { quiet } from './crews';
@@ -46,14 +45,12 @@
 	let {
 		crews,
 		crew,
-		rooms,
 		onpick,
 	}: {
 		/** Every crew the rider is in, once each. */
 		crews: RoomCrew[];
 		/** The one on screen; null is You. */
 		crew: RoomCrew | null;
-		rooms: RailRoom[];
 		/** The rider chose a crew, or 'you'. */
 		onpick: (id: string) => void;
 	} = $props();
@@ -62,7 +59,7 @@
 	// Settings, its channels — light for its pages, so the header lighting
 	// too would make two (ADR-0020 rule 1).
 
-	// What the header says under the name: how many rooms, and what you are
+	// What the header says under the name: how many channels, and what you are
 	// to it. Owner is a word here because the shield alone is a small mark;
 	// member says nothing, being in it at all is the default.
 	// The one number that tells two crews apart at a glance (#1238): the
@@ -79,9 +76,6 @@
 	// page or two away, from the row that names it. The click stays the
 	// primary action; nothing here lives only in the menu.
 	function crewEntries(c: RoomCrew): MenuEntry[] {
-		const owned = rooms.filter(
-			(r) => r.crew?.id === c.id && r.role === 'owner',
-		);
 		const entries: MenuEntry[] = [
 			{
 				label: 'Members',
@@ -117,13 +111,8 @@
 			label: 'Leave the crew',
 			icon: LogOut,
 			danger: true,
-			disabled: c.role === 'owner' || owned.length > 0,
-			hint:
-				c.role === 'owner'
-					? 'hand the crew on first'
-					: owned.length
-						? 'you own a room here'
-						: undefined,
+			disabled: c.role === 'owner',
+			hint: c.role === 'owner' ? 'hand the crew on first' : undefined,
 			onSelect: () => void leaveCrewFlow(c),
 		});
 		return entries;

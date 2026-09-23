@@ -10,7 +10,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createRoom, medals, rooms } from '../room/mockRoom.svelte';
+	import { createRoom, medals } from '../room/mockRoom.svelte';
 	import { GALLERY_ROWS } from './gallery';
 	import ThemePanel from './ThemePanel.svelte';
 
@@ -97,7 +97,6 @@
 							segments={room.segments}
 							total={room.total}
 							elapsed={room.elapsed}
-							{rooms}
 							{medal}
 							{narrow}
 						/>

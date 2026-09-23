@@ -1,6 +1,5 @@
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import type { Medal } from '$lib/components/MedalCard.svelte';
-import type { RailRoom } from '$lib/room/room-data';
 import { flatten, targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
 // Zone vocabulary lives in lib now that a real screen needs it; re-exported so the
@@ -168,47 +167,6 @@ const SEEDS: RiderSeed[] = [
 		discipline: 1.0,
 		hrOffset: 0,
 		sprintFactor: 3.0,
-	},
-];
-
-/**
- * The crew's rooms as the rail reads them (#399): full RailRoom entries, so a
- * mock that needs the sidebar and one that needs the rooms list draw the same
- * four rooms rather than keeping two lists that drift.
- */
-export const rooms: RailRoom[] = [
-	{
-		name: 'Thursday Sufferfest',
-		slug: 'thursday-sufferfest',
-		icon: 'flame',
-		members: 6,
-		connected: 5,
-		live: true,
-		riders: ['Nina', 'Ruben', 'Milo', 'Sara'],
-		voice: ['Nina', 'Ruben'],
-		session: { workoutName: 'Sweet Spot 2×20', elapsedSec: 720 },
-	},
-	{
-		name: 'Sunday Long Ride',
-		slug: 'sunday-long-ride',
-		icon: 'mountain',
-		members: 2,
-		connected: 2,
-		live: false,
-		riders: ['Tobi', 'Sara'],
-		unread: 3,
-	},
-	{
-		name: 'Natron Lunch Crew',
-		slug: 'natron-lunch-crew',
-		members: 0,
-		live: false,
-	},
-	{
-		name: 'Winter Base Camp',
-		slug: 'winter-base-camp',
-		members: 4,
-		live: false,
 	},
 ];
 

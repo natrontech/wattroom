@@ -216,21 +216,6 @@
 		};
 	});
 
-	// The room you are IN is tick-fresh: names change the second someone joins,
-	// not on the next poll (#191 rider report).
-	const shownRooms = $derived(
-		presence.rooms.map((room) => {
-			const conn = roomConnection.current;
-			const roster = conn?.live.tick?.roster;
-			if (!conn || room.slug !== conn.slug || !roster) return room;
-			return {
-				...room,
-				connected: roster.length,
-				riders: roster.map((r) => r.name),
-			};
-		}),
-	);
-
 	// Below md the sidebar is a drawer (#391). It closes on navigation —
 	// leaving it open over the page you just asked for is the classic
 	// mobile-nav bug.
@@ -400,7 +385,6 @@
 			     chain itself now. -->
 			<Sidebar
 				pathname={page.url.pathname}
-				rooms={shownRooms}
 				live={roomConnection.current?.live.tick?.state.phase === 'running'}
 			/>
 		</div>

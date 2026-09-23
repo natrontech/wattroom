@@ -19,7 +19,7 @@
 	import { deriveTheme, type ThemeSpec } from '$lib/palette';
 	import { specById } from '$lib/themes';
 	import { toasts } from '$lib/toast.svelte';
-	import { createRoom, medals, rooms } from '../room/mockRoom.svelte';
+	import { createRoom, medals } from '../room/mockRoom.svelte';
 	import ThemePanel from '../themes/ThemePanel.svelte';
 	import EditorControls, {
 		OVERRIDABLE_TOKENS,
@@ -168,7 +168,6 @@
 					segments={room.segments}
 					total={room.total}
 					elapsed={room.elapsed}
-					{rooms}
 					{medal}
 				/>
 			</div>
@@ -202,7 +201,6 @@
 					segments={room.segments}
 					total={room.total}
 					elapsed={room.elapsed}
-					{rooms}
 					{medal}
 				/>
 			</div>
