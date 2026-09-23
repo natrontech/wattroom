@@ -23,19 +23,19 @@ const maxPendingEvents = 64
 // eventLog buffers this second's room events and coalesces a rider's queue
 // burst into one growing line. Not goroutine-safe — the room's mutex guards it.
 type eventLog struct {
-	pending []protocol.RoomEvent
+	pending []protocol.ChannelEvent
 	nextID  int
 	// The line a burst is still growing into, and when it last grew. Only
 	// the most recent line stays open: anything else happening in the room
 	// closes it, so a count never climbs above lines that came after it.
-	open   *protocol.RoomEvent
+	open   *protocol.ChannelEvent
 	openAt time.Time
 }
 
 // add records one event, growing the open burst instead when this is more of
 // the same. A grown line is re-sent under its original id — clients key on it
 // and replace the line in place rather than stacking a second one.
-func (el *eventLog) add(ev protocol.RoomEvent, now time.Time) {
+func (el *eventLog) add(ev protocol.ChannelEvent, now time.Time) {
 	if el.open != nil && el.open.Verb == ev.Verb &&
 		now.Sub(el.openAt) <= eventBurstWindow && coalesces(*el.open, ev) {
 		el.open.Count += ev.Count
@@ -63,7 +63,7 @@ func bursts(verb string) bool { return verb == "queued" || verb == "joined" }
 // the opposite — six people turning up when a planned session opens is exactly
 // the burst worth folding, and the line names the first of them ("Ana and 2
 // others joined") because six lines push the conversation off the screen.
-func coalesces(open, next protocol.RoomEvent) bool {
+func coalesces(open, next protocol.ChannelEvent) bool {
 	if next.Verb == "joined" {
 		return true
 	}
@@ -72,7 +72,7 @@ func coalesces(open, next protocol.RoomEvent) bool {
 
 // resend replaces the pending copy of a grown line, or queues it again when
 // the tick already carried it away.
-func (el *eventLog) resend(ev protocol.RoomEvent) {
+func (el *eventLog) resend(ev protocol.ChannelEvent) {
 	for i, pending := range el.pending {
 		if pending.ID == ev.ID {
 			el.pending[i] = ev
@@ -82,14 +82,14 @@ func (el *eventLog) resend(ev protocol.RoomEvent) {
 	el.append(ev)
 }
 
-func (el *eventLog) append(ev protocol.RoomEvent) {
+func (el *eventLog) append(ev protocol.ChannelEvent) {
 	if len(el.pending) < maxPendingEvents {
 		el.pending = append(el.pending, ev)
 	}
 }
 
 // drain hands this tick its events and empties the buffer.
-func (el *eventLog) drain() []protocol.RoomEvent {
+func (el *eventLog) drain() []protocol.ChannelEvent {
 	out := el.pending
 	el.pending = nil
 	return out
@@ -111,8 +111,8 @@ const presenceKind = "presence"
 const presenceGrace = 15 * time.Second
 
 // presenceLine is one rider arriving, leaving, stepping out or coming back.
-func presenceLine(verb, actor string, now time.Time) protocol.RoomEvent {
-	return protocol.RoomEvent{
+func presenceLine(verb, actor string, now time.Time) protocol.ChannelEvent {
+	return protocol.ChannelEvent{
 		Kind: presenceKind, Verb: verb, Actor: actor,
 		Count: 1, At: now.UnixMilli(),
 	}
@@ -131,8 +131,8 @@ const sessionKind = "session"
 // "ended", because the subject is a mode id the client labels (as "won" does)
 // and not a workout name it prints. `round` rides on Count: for a collective
 // ramp the rounds survived together IS the score (docs/SPEC.md).
-func gameEndedLine(mode string, round int, now time.Time) protocol.RoomEvent {
-	return protocol.RoomEvent{
+func gameEndedLine(mode string, round int, now time.Time) protocol.ChannelEvent {
+	return protocol.ChannelEvent{
 		Kind: sessionKind, Verb: "gameEnded", Subject: mode,
 		Count: max(round, 1), At: now.UnixMilli(),
 	}
@@ -140,8 +140,8 @@ func gameEndedLine(mode string, round int, now time.Time) protocol.RoomEvent {
 
 // sessionLine is one thing that happened to this room's plan or timeline.
 // `startsAt` is the zero time on the lines that are about right now.
-func sessionLine(verb, actor, workout string, startsAt, now time.Time) protocol.RoomEvent {
-	ev := protocol.RoomEvent{
+func sessionLine(verb, actor, workout string, startsAt, now time.Time) protocol.ChannelEvent {
+	ev := protocol.ChannelEvent{
 		Kind: sessionKind, Verb: verb, Actor: actor, Subject: workout,
 		Count: 1, At: now.UnixMilli(),
 	}

@@ -1,5 +1,5 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
-import type { RoomPresence } from '$lib/protocol';
+import type { ChannelPresence } from '$lib/protocol';
 
 export type ChannelKind = 'text' | 'voice';
 export type AutoplayOrder = 'ordered' | 'shuffled' | 'smart';
@@ -36,7 +36,7 @@ export interface CrewChannel {
 	/** A private channel's named members; owner and admins enter by role. */
 	members?: ChannelMember[];
 	/** A voice channel's: who is in it right now (#2436). */
-	presence?: RoomPresence;
+	presence?: ChannelPresence;
 }
 
 /** Absent fields keep their value; `playlistId: ''` chooses none. */

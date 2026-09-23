@@ -99,7 +99,7 @@ func (r *relay) state(now time.Time) protocol.GameState {
 	return protocol.GameState{
 		Mode: "team-relay", Phase: "running",
 		RoundEndsAtMs: r.rotateAt.UnixMilli(),
-		RoomDistance:  r.distance, Riders: riders,
+		TeamDistance:  r.distance, Riders: riders,
 	}
 }
 

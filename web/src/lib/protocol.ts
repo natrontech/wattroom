@@ -245,7 +245,7 @@ export interface GameState {
    */
   roundStartsAtMs?: number /* int64 */;
   meterHidden?: boolean;
-  roomDistance?: number /* float64 */;
+  teamDistance?: number /* float64 */;
   riders: { [key: string]: GameRider};
   podium?: SprintScore[];
 }
@@ -396,7 +396,7 @@ export interface ChatReactionCount {
   added: boolean;
 }
 /**
- * RoomEvent is something the ROOM did, next to what riders said (#321): the
+ * ChannelEvent is something the ROOM did, next to what riders said (#321): the
  * jukebox changing under everyone is half of what happened here, and thirty
  * seconds later "who put this on?" has no other answer. Structured, not a
  * sentence — the client owns the wording, so the chat pane and the dock name
@@ -404,7 +404,7 @@ export interface ChatReactionCount {
  * Ephemeral by design (ADR-0019): it rides the tick like cheers and is never
  * written to the chat table. A month of "now playing" in the backlog is noise.
  */
-export interface RoomEvent {
+export interface ChannelEvent {
   /**
    * Room-unique and stable across re-broadcasts: a growing burst re-sends
    * the SAME id with a higher Count, and clients replace the line in place.
@@ -642,7 +642,7 @@ export interface Rider {
    * Room-scoped like the watts and the FTP above it, and for the same
    * reason: this is live data about someone in the room, visible inside the
    * room while they are in it and nowhere else. It never reaches
-   * RoomPresence, the friends panel or anything public — a ping is a weak
+   * ChannelPresence, the friends panel or anything public — a ping is a weak
    * location signal, and the room is where WATTROOM.md already grants that
    * class of visibility.
    * One rider, several sockets: the room folds them to the LOWEST, which is
@@ -907,7 +907,7 @@ export interface ServerTick {
    * What the room did this second (#321) — jukebox actions the chat pane
    * interleaves with the talking. Ephemeral, like the cheers above.
    */
-  events?: RoomEvent[];
+  events?: ChannelEvent[];
   /**
    * Sprint moment (#30): armed/live window and, after it closes, the podium.
    */
@@ -931,12 +931,12 @@ export interface ServerTick {
   riders: { [key: string]: RiderMetrics};
 }
 /**
- * RoomPresence is the hub's live answer for one voice channel (#251, #2436):
+ * ChannelPresence is the hub's live answer for one voice channel (#251, #2436):
  * the sidebar renders this shape. It rides the channel list rather than the
  * channel's WS, but it is shared vocabulary like Rider — one canonical home,
  * generated for the client like everything here.
  */
-export interface RoomPresence {
+export interface ChannelPresence {
   /**
    * Riders connected to the channel WS, counted as people, not sockets.
    */

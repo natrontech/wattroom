@@ -316,7 +316,7 @@
 			<div class="ml-auto text-right">
 				<p class="eyebrow">room distance</p>
 				<p class="font-display mt-1 text-2xl font-bold tabular-nums">
-					{Math.round((game.roomDistance ?? 0) / 1000)} kJ
+					{Math.round((game.teamDistance ?? 0) / 1000)} kJ
 				</p>
 			</div>
 		</div>

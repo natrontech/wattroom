@@ -1,4 +1,4 @@
-import type { RoomEvent } from '$lib/protocol';
+import type { ChannelEvent } from '$lib/protocol';
 
 import { comingsAndGoings, type Coming } from '$lib/channel/comings-and-goings';
 
@@ -25,7 +25,7 @@ export function screenShareEvent(
 	change: ScreenShareChange,
 	name: string | undefined,
 	at: number,
-): RoomEvent {
+): ChannelEvent {
 	return {
 		id: `screen:${change.rider}:${at}:${change.live ? 'on' : 'off'}`,
 		kind: 'screen',

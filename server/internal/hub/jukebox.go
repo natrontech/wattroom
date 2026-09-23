@@ -44,8 +44,8 @@ func clampSec(v float64) float64 {
 const eventKind = "jukebox"
 
 // deckLine is one rider-attributed thing that happened to the queue.
-func deckLine(verb, actor, track string, now time.Time) protocol.RoomEvent {
-	return protocol.RoomEvent{
+func deckLine(verb, actor, track string, now time.Time) protocol.ChannelEvent {
+	return protocol.ChannelEvent{
 		Kind: eventKind, Verb: verb, Actor: actor, Track: track,
 		Count: 1, At: now.UnixMilli(),
 	}
@@ -55,8 +55,8 @@ func deckLine(verb, actor, track string, now time.Time) protocol.RoomEvent {
 // there: skipped into, ended into, or queued onto an empty deck. Nobody's
 // name is on it — the deck did this, and QueuedBy credits whoever put the
 // track there, however long ago.
-func nowPlaying(entry protocol.JukeboxEntry, now time.Time) protocol.RoomEvent {
-	return protocol.RoomEvent{
+func nowPlaying(entry protocol.JukeboxEntry, now time.Time) protocol.ChannelEvent {
+	return protocol.ChannelEvent{
 		Kind: eventKind, Verb: "playing", Track: entry.Title,
 		QueuedBy: entry.AddedBy, Count: 1, At: now.UnixMilli(),
 	}
@@ -168,7 +168,7 @@ func (j *jukebox) positionAt(now time.Time) float64 {
 // apply keeps the deck's existing test and internal-call shape for commands
 // whose rejection is intentionally quiet. The hub uses applyWithRefusal for
 // rider-visible add failures.
-func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool) {
+func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool) {
 	events, ok, _ := j.applyWithRefusal(cmd, riderID, addedBy, now)
 	return events, ok
 }
@@ -179,7 +179,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 // about it. Every member may do all of this (docs/SPEC.md matrix: jukebox
 // controls default to members). riderID identifies the voter; addedBy is the
 // display name entries carry.
-func (j *jukebox) applyWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.RoomEvent, bool, jukeboxRefusal) {
+func (j *jukebox) applyWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	switch cmd.Action {
 	case "add":
 		return j.onAdd(cmd, riderID, addedBy, now)

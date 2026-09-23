@@ -29,10 +29,10 @@ func (h *Hub) occupied(channel string) *room {
 	return rm
 }
 
-func (h *Hub) Presence(channel string) protocol.RoomPresence {
+func (h *Hub) Presence(channel string) protocol.ChannelPresence {
 	h.mu.Lock()
 	rm, ok := h.rooms[channel]
-	p := protocol.RoomPresence{Phase: "idle", Voice: make([]string, 0, 4)}
+	p := protocol.ChannelPresence{Phase: "idle", Voice: make([]string, 0, 4)}
 	// Fold by rider, not by connection: two tabs are one person on the radar,
 	// and a camera live in either of them is that person on camera (#293).
 	names := make(map[string]string, len(h.voice[channel]))

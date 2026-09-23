@@ -1,4 +1,4 @@
-import type { RoomEvent } from '$lib/protocol';
+import type { ChannelEvent } from '$lib/protocol';
 
 /**
  * A DM that arrived while the rider was on the bike (#1743), written into the
@@ -13,7 +13,7 @@ import type { RoomEvent } from '$lib/protocol';
  * riding screen is a screen a rider sets up to be readable from across a room,
  * and sometimes a television.
  */
-export function dmArrivalEvent(from: string, at: number): RoomEvent {
+export function dmArrivalEvent(from: string, at: number): ChannelEvent {
 	return {
 		// The moment is in the id: two messages from the same person are two
 		// lines, the way two chat lines are.

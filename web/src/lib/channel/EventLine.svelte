@@ -3,13 +3,13 @@
 	// talking about itself stays quieter than the people in it. The thread
 	// draws it between messages; a voice channel draws it beside its deck
 	// (ADR-0022 as amended by ADR-0058).
-	import type { RoomEvent } from '$lib/protocol';
+	import type { ChannelEvent } from '$lib/protocol';
 	import { eventText } from '$lib/channel/events';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Music from '@lucide/svelte/icons/music';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 
-	let { event, class: klass = '' }: { event: RoomEvent; class?: string } =
+	let { event, class: klass = '' }: { event: ChannelEvent; class?: string } =
 		$props();
 	const Mark = $derived(
 		event.kind === 'session'

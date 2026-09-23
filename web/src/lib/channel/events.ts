@@ -1,7 +1,7 @@
 import { awayLineFor } from '$lib/away';
 import { gameMode } from '$lib/session/modes';
 import { formatWhen } from '$lib/format';
-import type { RoomEvent } from '$lib/protocol';
+import type { ChannelEvent } from '$lib/protocol';
 
 /**
  * What a voice channel says happened in it (#321): the lines under the
@@ -15,7 +15,7 @@ import type { RoomEvent } from '$lib/protocol';
  * dock shows, so both name the same thing. An unknown verb renders nothing:
  * a newer server may speak about things this client has never heard of.
  */
-export function eventText(event: RoomEvent): string {
+export function eventText(event: ChannelEvent): string {
 	const track = event.track || 'a track';
 	const subject = event.subject || 'a session';
 	// One wording for a planned moment across the app: the chat line and the

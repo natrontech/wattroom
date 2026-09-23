@@ -73,7 +73,7 @@ type fakeLive struct {
 	mu      sync.Mutex
 	kicked  []string
 	closed  []string
-	present map[string]protocol.RoomPresence
+	present map[string]protocol.ChannelPresence
 	running map[string]protocol.LiveSession
 }
 
@@ -86,7 +86,7 @@ func (f *fakeLive) LiveSession(channel string) (protocol.LiveSession, bool) {
 
 func (f *fakeLive) PresenceChanged() {}
 
-func (f *fakeLive) Presence(channel string) protocol.RoomPresence {
+func (f *fakeLive) Presence(channel string) protocol.ChannelPresence {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.present[channel]
@@ -132,7 +132,7 @@ func TestVoiceRowsSayWhoIsIn(t *testing.T) {
 	h.svc.SetLive(live)
 	voice := h.create(t, "voice", "Pain Cave", false)
 	h.create(t, "text", "general", false)
-	live.present = map[string]protocol.RoomPresence{voice: {Connected: 1, Riders: []string{"alice"}, Voice: []string{"alice"}}}
+	live.present = map[string]protocol.ChannelPresence{voice: {Connected: 1, Riders: []string{"alice"}, Voice: []string{"alice"}}}
 
 	rows := h.listed(t, "bob")
 	presence, ok := rows["Pain Cave"]["presence"].(map[string]any)

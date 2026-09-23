@@ -119,8 +119,8 @@ func TestQuietActionsWriteNoLine(t *testing.T) {
 
 // How the room buffers those lines.
 
-func queued(actor string, at time.Time) protocol.RoomEvent {
-	return protocol.RoomEvent{Kind: "jukebox", Verb: "queued", Actor: actor, Track: "t", Count: 1, At: at.UnixMilli()}
+func queued(actor string, at time.Time) protocol.ChannelEvent {
+	return protocol.ChannelEvent{Kind: "jukebox", Verb: "queued", Actor: actor, Track: "t", Count: 1, At: at.UnixMilli()}
 }
 
 func TestBurstOfAddsIsOneLine(t *testing.T) {
@@ -173,7 +173,7 @@ func TestAnotherActorGetsTheirOwnLine(t *testing.T) {
 func TestSomethingElseHappeningClosesTheBurst(t *testing.T) {
 	var el eventLog
 	el.add(queued("kim", jat(0)), jat(0))
-	el.add(protocol.RoomEvent{Kind: "jukebox", Verb: "skipped", Actor: "kim", Track: "t", Count: 1, At: jat(1).UnixMilli()}, jat(1))
+	el.add(protocol.ChannelEvent{Kind: "jukebox", Verb: "skipped", Actor: "kim", Track: "t", Count: 1, At: jat(1).UnixMilli()}, jat(1))
 	el.add(queued("kim", jat(2)), jat(2))
 	out := el.drain()
 	if len(out) != 3 || out[0].ID == out[2].ID {
@@ -197,7 +197,7 @@ func TestPendingEventsAreBounded(t *testing.T) {
 	// Distinct verbs so nothing coalesces — a hostile client must not grow
 	// room memory through the timeline either.
 	for i := range maxPendingEvents * 3 {
-		el.add(protocol.RoomEvent{Kind: "jukebox", Verb: "skipped", Actor: "kim", Track: "t", Count: 1, At: jat(i).UnixMilli()}, jat(i))
+		el.add(protocol.ChannelEvent{Kind: "jukebox", Verb: "skipped", Actor: "kim", Track: "t", Count: 1, At: jat(i).UnixMilli()}, jat(i))
 	}
 	if got := len(el.drain()); got != maxPendingEvents {
 		t.Fatalf("pending events unbounded: %d", got)

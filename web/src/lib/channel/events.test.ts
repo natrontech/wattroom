@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { formatWhen } from '$lib/format';
-import type { RoomEvent } from '$lib/protocol';
+import type { ChannelEvent } from '$lib/protocol';
 import { dmArrivalEvent } from '$lib/channel/dm-line';
 import { eventText } from './events';
 
-const event = (over: Partial<RoomEvent> = {}): RoomEvent => ({
+const event = (over: Partial<ChannelEvent> = {}): ChannelEvent => ({
 	id: '1',
 	kind: 'jukebox',
 	verb: 'queued',
@@ -46,7 +46,7 @@ describe('eventText (#321)', () => {
 });
 
 describe('eventText, session lines (#359)', () => {
-	const plan = (over: Partial<RoomEvent> = {}) =>
+	const plan = (over: Partial<ChannelEvent> = {}) =>
 		event({
 			kind: 'session',
 			verb: 'planned',
@@ -102,7 +102,7 @@ describe('eventText, session lines (#359)', () => {
 });
 
 // Who came and went (#984, ADR-0022's join/leave shape).
-const presence = (over: Partial<RoomEvent> = {}): RoomEvent =>
+const presence = (over: Partial<ChannelEvent> = {}): ChannelEvent =>
 	event({ kind: 'presence', verb: 'joined', track: '', ...over });
 
 describe('presence lines (#984)', () => {
@@ -134,7 +134,7 @@ describe('presence lines (#984)', () => {
  * fails, the line simply never appears. That is how `restored` was broadcast
  * to every room and thrown away by every client (#1068).
  *
- * This list is the server's, kept beside `protocol.go`'s RoomEvent comment.
+ * This list is the server's, kept beside `protocol.go`'s ChannelEvent comment.
  * Adding a verb there without a case here fails now, rather than going quiet.
  */
 const SERVER_VERBS = [

@@ -102,7 +102,7 @@ type GameState struct {
 	// the client cannot derive the 3-2-1 from the end alone.
 	RoundStartsAtMs int64                `json:"roundStartsAtMs,omitempty"`
 	MeterHidden     bool                 `json:"meterHidden,omitempty"`
-	RoomDistance    float64              `json:"roomDistance,omitempty"`
+	TeamDistance    float64              `json:"teamDistance,omitempty"`
 	Riders          map[string]GameRider `json:"riders"`
 	Podium          []SprintScore        `json:"podium,omitempty"`
 }
@@ -219,7 +219,7 @@ type ChatReactionCount struct {
 	Added     bool   `json:"added"`
 }
 
-// RoomEvent is something the ROOM did, next to what riders said (#321): the
+// ChannelEvent is something the ROOM did, next to what riders said (#321): the
 // jukebox changing under everyone is half of what happened here, and thirty
 // seconds later "who put this on?" has no other answer. Structured, not a
 // sentence — the client owns the wording, so the chat pane and the dock name
@@ -227,7 +227,7 @@ type ChatReactionCount struct {
 //
 // Ephemeral by design (ADR-0019): it rides the tick like cheers and is never
 // written to the chat table. A month of "now playing" in the backlog is noise.
-type RoomEvent struct {
+type ChannelEvent struct {
 	// Room-unique and stable across re-broadcasts: a growing burst re-sends
 	// the SAME id with a higher Count, and clients replace the line in place.
 	ID   string `json:"id"`
@@ -432,7 +432,7 @@ type Rider struct {
 	// Room-scoped like the watts and the FTP above it, and for the same
 	// reason: this is live data about someone in the room, visible inside the
 	// room while they are in it and nowhere else. It never reaches
-	// RoomPresence, the friends panel or anything public — a ping is a weak
+	// ChannelPresence, the friends panel or anything public — a ping is a weak
 	// location signal, and the room is where WATTROOM.md already grants that
 	// class of visibility.
 	//
@@ -637,7 +637,7 @@ type ServerTick struct {
 	Recap *SessionRecap `json:"recap,omitempty"`
 	// What the room did this second (#321) — jukebox actions the chat pane
 	// interleaves with the talking. Ephemeral, like the cheers above.
-	Events []RoomEvent `json:"events,omitempty"`
+	Events []ChannelEvent `json:"events,omitempty"`
 	// Sprint moment (#30): armed/live window and, after it closes, the podium.
 	Sprint *SprintState `json:"sprint,omitempty"`
 	// Running game mode (#31/#32), replacing the workout timeline while on.
@@ -653,11 +653,11 @@ type ServerTick struct {
 	Riders map[string]RiderMetrics `json:"riders"`
 }
 
-// RoomPresence is the hub's live answer for one voice channel (#251, #2436):
+// ChannelPresence is the hub's live answer for one voice channel (#251, #2436):
 // the sidebar renders this shape. It rides the channel list rather than the
 // channel's WS, but it is shared vocabulary like Rider — one canonical home,
 // generated for the client like everything here.
-type RoomPresence struct {
+type ChannelPresence struct {
 	// Riders connected to the channel WS, counted as people, not sockets.
 	Connected int    `json:"connected,omitempty"`
 	Phase     string `json:"phase,omitempty"`

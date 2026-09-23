@@ -2,7 +2,7 @@ import type {
 	ClientMessage,
 	Poke,
 	RiderMetrics,
-	RoomEvent,
+	ChannelEvent,
 	SensorClaim,
 	SensorPairing,
 	ServerMessage,
@@ -51,8 +51,8 @@ export function createChannelLive(address: PlaceAddress) {
 	// What the room did (#321), for the Lounge's event lines.
 	// Ephemeral by design (ADR-0019): nothing seeds these on join, and a
 	// reload forgets them — "now playing" is worthless tomorrow.
-	let channelEvents = $state<RoomEvent[]>([]);
-	function mergeEvents(incoming: RoomEvent[]) {
+	let channelEvents = $state<ChannelEvent[]>([]);
+	function mergeEvents(incoming: ChannelEvent[]) {
 		const next = [...channelEvents];
 		for (const event of incoming) {
 			// A growing burst re-sends its own id ("queued 3 tracks"):
@@ -521,7 +521,7 @@ export function createChannelLive(address: PlaceAddress) {
 		 * A line this client made itself (#664: a screen share only LiveKit
 		 * saw). Same list, same cap, never sent — the hub knows nothing of it.
 		 */
-		pushEvent(event: RoomEvent) {
+		pushEvent(event: ChannelEvent) {
 			mergeEvents([event]);
 		},
 		/** One jukebox command. The wire shape IS the argument (#286) — six
