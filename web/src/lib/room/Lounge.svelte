@@ -17,7 +17,7 @@
 	import LoungeDashboard from '$lib/room/LoungeDashboard.svelte';
 	import SessionControls from '$lib/room/SessionControls.svelte';
 	import EventLine from '$lib/room/EventLine.svelte';
-	import { eventText } from '$lib/room/timeline';
+	import { eventText } from '$lib/channel/events';
 
 	import SprintMoment from '$lib/room/SprintMoment.svelte';
 	import GamePanel from '$lib/room/GamePanel.svelte';

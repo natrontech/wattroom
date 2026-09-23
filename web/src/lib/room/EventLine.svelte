@@ -4,7 +4,7 @@
 	// draws it between messages; a voice channel draws it beside its deck
 	// (ADR-0022 as amended by ADR-0058).
 	import type { RoomEvent } from '$lib/protocol';
-	import { eventText } from '$lib/room/timeline';
+	import { eventText } from '$lib/channel/events';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Music from '@lucide/svelte/icons/music';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';

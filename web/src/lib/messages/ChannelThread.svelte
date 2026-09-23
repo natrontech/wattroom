@@ -25,7 +25,7 @@
 	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
-	import { roomTimeline } from '$lib/room/timeline';
+	import { messageTimeline } from '$lib/messages/timeline';
 	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';
 
@@ -60,9 +60,7 @@
 	});
 	const mentionNames = $derived(crew.people.map((p) => p.displayName));
 
-	const timeline = $derived(
-		roomTimeline(thread?.messages ?? [], [], account.me?.displayName),
-	);
+	const timeline = $derived(messageTimeline(thread?.messages ?? []));
 
 	async function mark(messageId: string) {
 		const res = await api(`${base}/announcement`, {

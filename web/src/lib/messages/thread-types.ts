@@ -1,10 +1,8 @@
-import type { TimelineEntry, TimelineMessage } from '$lib/room/timeline';
+import type { TimelineEntry, TimelineMessage } from '$lib/messages/timeline';
 
 /**
  * What MessageThread.svelte needs of one line, whatever it came from — a
- * live room socket, the room's backlog read from outside, or a DM's poll.
- * Same shape `roomTimeline()` already merges room events onto; a DM just
- * feeds it an empty event list.
+ * text channel's socket or a DM's poll; `messageTimeline()` orders both.
  */
 export type ThreadMessage = TimelineMessage;
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { formatWhen } from '$lib/format';
 import type { RoomEvent } from '$lib/protocol';
-import { dmArrivalEvent } from './dm-line';
-import { eventText, roomTimeline, type TimelineMessage } from './timeline';
+import { dmArrivalEvent } from '$lib/room/dm-line';
+import { eventText } from './events';
 
 const event = (over: Partial<RoomEvent> = {}): RoomEvent => ({
 	id: '1',
@@ -11,13 +11,6 @@ const event = (over: Partial<RoomEvent> = {}): RoomEvent => ({
 	actor: 'Kim',
 	track: 'Midnight City',
 	count: 1,
-	at: 1000,
-	...over,
-});
-
-const message = (over: Partial<TimelineMessage> = {}): TimelineMessage => ({
-	from: 'Ada',
-	text: 'warming up',
 	at: 1000,
 	...over,
 });
@@ -108,36 +101,6 @@ describe('eventText, session lines (#359)', () => {
 	});
 });
 
-describe('roomTimeline (#321)', () => {
-	it('interleaves events with talking, oldest first', () => {
-		const entries = roomTimeline(
-			[message({ at: 1000 }), message({ at: 3000, text: 'nice one' })],
-			[event({ id: '7', at: 2000 })],
-		);
-		expect(entries.map((entry) => entry.at)).toEqual([1000, 2000, 3000]);
-		expect(entries[1].kind).toBe('event');
-		expect(entries[1].key).toBe('e:7');
-	});
-
-	it('keeps a line stable when its burst grows', () => {
-		// Same id, higher count: the pane replaces the line rather than
-		// stacking a second one under it.
-		const first = roomTimeline([], [event({ id: '7' })]);
-		const grown = roomTimeline([], [event({ id: '7', count: 3, track: '' })]);
-		expect(grown[0].key).toBe(first[0].key);
-		expect(grown[0].kind === 'event' && eventText(grown[0].event)).toBe(
-			'Kim queued 3 tracks',
-		);
-	});
-
-	it('drops events it cannot word and survives having none', () => {
-		expect(
-			roomTimeline([message()], [event({ verb: 'shrugged' })]),
-		).toHaveLength(1);
-		expect(roomTimeline([message()])).toHaveLength(1);
-	});
-});
-
 // Who came and went (#984, ADR-0022's join/leave shape).
 const presence = (over: Partial<RoomEvent> = {}): RoomEvent =>
 	event({ kind: 'presence', verb: 'joined', track: '', ...over });
@@ -155,33 +118,6 @@ describe('presence lines (#984)', () => {
 		expect(eventText(presence({ verb: 'back' }))).toBe('Kim is back');
 	});
 
-	// A rider is not told about themselves: they are looking at the room they
-	// just walked into, and they pressed the button that says they stepped out.
-	it('keeps a rider’s own presence lines off their own timeline', () => {
-		const lines = roomTimeline(
-			[],
-			[
-				presence({ id: 'a', actor: 'Kim' }),
-				presence({ id: 'b', actor: 'Ada', at: 2000 }),
-			],
-			'Kim',
-		);
-		expect(lines).toHaveLength(1);
-		expect(lines[0].kind === 'event' && lines[0].event.actor).toBe('Ada');
-	});
-
-	it('shows everybody their own view when nobody is named', () => {
-		expect(roomTimeline([], [presence(), presence({ id: '2' })])).toHaveLength(
-			2,
-		);
-	});
-
-	// Their own CHAT is still theirs — only presence is filtered.
-	it('never hides a rider’s own messages', () => {
-		const lines = roomTimeline([message({ from: 'Kim' })], [], 'Kim');
-		expect(lines).toHaveLength(1);
-	});
-
 	// A tab open since before this shipped renders nothing rather than junk.
 	it('renders nothing for a verb it has never heard of', () => {
 		expect(eventText(presence({ verb: 'teleported' }))).toBe('');
@@ -191,8 +127,8 @@ describe('presence lines (#984)', () => {
 /**
  * Every verb the SERVER can put on the wire has to render to something.
  *
- * `eventText` returns '' for a verb it does not know and `roomTimeline` drops
- * the entry — deliberately, so an old client degrades quietly against a newer
+ * `eventText` returns '' for a verb it does not know and the lounge drops
+ * the line — deliberately, so an old client degrades quietly against a newer
  * server instead of printing junk. The cost is that a verb nobody wrote a case
  * for is indistinguishable from one this client is too old to know: nothing
  * fails, the line simply never appears. That is how `restored` was broadcast
@@ -301,11 +237,9 @@ describe('a DM that arrived mid-ride', () => {
 		});
 	});
 
-	it('is one line per message, and lands in the timeline in order', () => {
+	it('is one line per message', () => {
 		const first = dmArrivalEvent('Ruben', 1000);
 		const second = dmArrivalEvent('Ruben', 2000);
 		expect(first.id).not.toBe(second.id);
-		const lines = roomTimeline([message({ at: 1500 })], [first, second], 'Ada');
-		expect(lines.map((l) => l.at)).toEqual([1000, 1500, 2000]);
 	});
 });

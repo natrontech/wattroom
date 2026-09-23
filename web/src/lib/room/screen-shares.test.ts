@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eventText } from './timeline';
+import { eventText } from '$lib/channel/events';
 import { screenShareChanges, screenShareEvent } from './screen-shares';
 
 describe('screenShareChanges (#664)', () => {

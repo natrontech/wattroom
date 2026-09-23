@@ -63,9 +63,7 @@ describe('createDmThread (#672)', () => {
 		await Promise.resolve();
 		await Promise.resolve();
 		expect(thread.loading).toBe(false);
-		const messages = thread.timeline.flatMap((e) =>
-			e.kind === 'message' ? [e.message] : [],
-		);
+		const messages = thread.timeline.map((e) => e.message);
 		expect(messages).toEqual([
 			{
 				id: 'a',
@@ -111,9 +109,7 @@ describe('createDmThread (#672)', () => {
 		await thread.retry();
 		await Promise.resolve();
 		await Promise.resolve();
-		const ids = thread.timeline.flatMap((e) =>
-			e.kind === 'message' ? [e.message.id] : [],
-		);
+		const ids = thread.timeline.map((e) => e.message.id);
 		// retry() reloads from 0, so this proves the merge-by-id path used in
 		// the poll timer (same `load` function) doesn't duplicate the boundary.
 		expect(new Set(ids).size).toBe(ids.length);
