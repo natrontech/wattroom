@@ -18,9 +18,9 @@
 	import SessionLayers, {
 		createSessionLayers,
 	} from '$lib/session/SessionLayers.svelte';
-	import { setRoomContext } from '$lib/channel/context';
+	import { setChannelContext } from '$lib/channel/context';
 	import {
-		roomContextValue,
+		channelContextValue,
 		type RoomShellProps,
 	} from '$lib/channel/context-value.svelte';
 	import { readNotes, shouldRejoinVoice, tabId } from '$lib/channel/rejoin';
@@ -241,8 +241,8 @@
 	// capturing a value here, and this captures the reference — proved by
 	// context-value.svelte.test.ts rather than argued.
 	// svelte-ignore state_referenced_locally
-	setRoomContext(
-		roomContextValue({
+	setChannelContext(
+		channelContextValue({
 			props,
 			connection,
 			roster,

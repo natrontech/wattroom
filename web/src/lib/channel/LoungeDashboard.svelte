@@ -6,7 +6,7 @@
 	// the tiles and the stage; this is the part that only exists between
 	// sessions.
 	import { shareInviteLink } from '$lib/crew-flows';
-	import { useRoom } from '$lib/channel/context';
+	import { useChannel } from '$lib/channel/context';
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import TogetherTiles from '$lib/components/TogetherTiles.svelte';
 	import WeekBoard from '$lib/components/WeekBoard.svelte';
@@ -14,17 +14,17 @@
 	import Link from '@lucide/svelte/icons/link';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
 
-	const room = useRoom();
+	const channel = useChannel();
 </script>
 
 <section class="mt-6">
 	<TogetherTiles
-		together={room.together}
-		streakWeeks={room.streakWeeks}
+		together={channel.together}
+		streakWeeks={channel.streakWeeks}
 		streakLabel="this crew's streak"
 	/>
-	{#if room.board.length}
-		<WeekBoard rows={room.board} />
+	{#if channel.board.length}
+		<WeekBoard rows={channel.board} />
 	{/if}
 
 	<div class="mt-4 flex flex-wrap items-center gap-2">
@@ -37,14 +37,14 @@
 		     the app — a share sheet on a phone, the clipboard at a desk (#973).
 		     Without the code — never for a member, but the row must not
 		     render a button that fails — the Members place says how. -->
-		{#if room.code}
+		{#if channel.code}
 			<button
-				onclick={() => shareInviteLink(room.code)}
+				onclick={() => shareInviteLink(channel.code)}
 				class="btn btn-secondary"
 				><Link size={14} /> {shareVerb()} invite link</button
 			>
 		{:else}
-			<a href={room.address.members} class="btn btn-secondary"
+			<a href={channel.address.members} class="btn btn-secondary"
 				><UserPlus size={14} /> Invite</a
 			>
 		{/if}

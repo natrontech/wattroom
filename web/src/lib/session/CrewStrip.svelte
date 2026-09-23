@@ -13,7 +13,7 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { wkg } from '$lib/format';
-	import { useRoom } from '$lib/channel/context';
+	import { useChannel } from '$lib/channel/context';
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
@@ -34,7 +34,7 @@
 		pad?: string;
 	} = $props();
 
-	const room = useRoom();
+	const channel = useChannel();
 </script>
 
 {#snippet tile(rider: RoomRider, followed: boolean)}
@@ -44,11 +44,11 @@
 			? 'ring-neon'
 			: 'ring-ink/10'}"
 	>
-		{#if room.videoOf(rider.id)}
-			{#key room.videoOf(rider.id)}
+		{#if channel.videoOf(rider.id)}
+			{#key channel.videoOf(rider.id)}
 				<div
 					class="absolute inset-0"
-					{@attach (node) => room.attachVideo(rider.id, node)}
+					{@attach (node) => channel.attachVideo(rider.id, node)}
 				></div>
 			{/key}
 		{:else}

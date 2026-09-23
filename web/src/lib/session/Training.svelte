@@ -24,25 +24,29 @@
 	import { device, deviceWord } from '$lib/device.svelte';
 	import { trainerTargetsNote } from '$lib/session/sensor-status';
 	import { pictureKey } from '$lib/channel/stage';
-	import { useRoom } from '$lib/channel/context';
+	import { useChannel } from '$lib/channel/context';
 	import { account } from '$lib/account.svelte';
 	import { serverNow } from '$lib/server-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 
-	const room = useRoom();
+	const channel = useChannel();
 	// Another of the rider's screens drives the trainer (#2075). This one
 	// keeps the link, the watts and Forget (ADR-0025, amended) and writes no
 	// control point, so the trim is disabled and the card gets a place to say
 	// why — it is otherwise hidden the moment a trainer is linked, which is
 	// exactly the state this is about.
-	const targetsNote = $derived(trainerTargetsNote(room.pairing, deviceWord()));
-	const total = $derived(room.shared?.totalSeconds ?? 0);
-	const elapsed = $derived(room.shared?.elapsed ?? 0);
+	const targetsNote = $derived(
+		trainerTargetsNote(channel.pairing, deviceWord()),
+	);
+	const total = $derived(channel.shared?.totalSeconds ?? 0);
+	const elapsed = $derived(channel.shared?.elapsed ?? 0);
 
 	// A shared SCREEN takes the focus; the jukebox never does — it has one
 	// player instance and it lives on the dock (RMF: no auto-advance offscreen).
 	const share = $derived(
-		room.onStage && room.onStage.key !== 'jukebox' ? room.onStage : null,
+		channel.onStage && channel.onStage.key !== 'jukebox'
+			? channel.onStage
+			: null,
 	);
 	// The podium keeps the focus for a few seconds after the window — the
 	// server holds the sprint on the board for 30 s, and the screen used to
@@ -51,15 +55,15 @@
 	const PODIUM_MS = 8_000;
 	let now = $state(serverNow());
 	$effect(() => {
-		if (!room.sprint) return;
+		if (!channel.sprint) return;
 		const id = setInterval(() => (now = serverNow()), 250);
 		return () => clearInterval(id);
 	});
 	const sprintFocus = $derived(
-		!!room.sprint && now < room.sprint.endsAtMs + PODIUM_MS,
+		!!channel.sprint && now < channel.sprint.endsAtMs + PODIUM_MS,
 	);
 	const focus = $derived(
-		sprintFocus ? 'sprint' : room.game ? 'game' : share ? 'media' : 'you',
+		sprintFocus ? 'sprint' : channel.game ? 'game' : share ? 'media' : 'you',
 	);
 	// Only people actually turning the pedals are ranked. The server scores
 	// nothing for a rider with no samples and returns 1 for them, which is
@@ -68,10 +72,10 @@
 	// `riding` is the server's word (#1016) — a coast holds it — so a rider
 	// who freewheels for one sample no longer drops off the list and the
 	// ranking stops re-sorting under their eyes (#1411).
-	const riding = $derived(room.riders.filter((r) => r.riding));
+	const riding = $derived(channel.riders.filter((r) => r.riding));
 </script>
 
-{#if room.phase === 'lounge' && room.game}
+{#if channel.phase === 'lounge' && channel.game}
 	<!-- A game with no workout session behind it (#1586): starting a game
 	     starts no timeline, so the phase stayed "lounge" and the panel below
 	     was unreachable — every mode was dead on screen while its cues
@@ -80,42 +84,42 @@
 	<div class="flex h-full min-h-0 flex-col">
 		<header class="flex flex-wrap items-center gap-3 px-6 py-3">
 			<p class="eyebrow">game</p>
-			{#if !room.trainer || targetsNote}<TrainerOverview compact />{/if}
+			{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
 			<div class="ml-auto"><SessionControls compact /></div>
 		</header>
 		<section class="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
 			<GamePanel
-				game={room.game}
+				game={channel.game}
 				roster={channelConnection.current?.live.tick?.roster ?? []}
-				canControl={room.canControl && !device.spectator}
-				end={() => room.control('game-end')}
+				canControl={channel.canControl && !device.spectator}
+				end={() => channel.control('game-end')}
 			/>
 		</section>
 	</div>
-{:else if room.phase === 'lounge'}
+{:else if channel.phase === 'lounge'}
 	<!-- Capability gating (ux.md): nothing to render until a session runs, so
 	     teach rather than show an empty instrument. -->
 	<div class="grid h-full place-items-center px-6">
 		<div class="w-full max-w-2xl text-center">
-			{#if room.shared?.phase === 'done'}
+			{#if channel.shared?.phase === 'done'}
 				<!-- The coach ended it, or the timeline ran out (audit
 				     2026-09-09): without this line the instrument vanishing
 				     into a pairing prompt read as a crash. -->
 				<p class="font-display text-lg font-bold">The session has ended.</p>
 			{/if}
 			<p class="text-muted mt-2 text-sm">
-				{#if room.shared?.phase === 'done'}
+				{#if channel.shared?.phase === 'done'}
 					<!-- Not "nothing is running yet" right under "it ended"
 					     (audit 2026-09-09): where it went, and what comes next. -->
 					Its recap is on the crew's
-					<a href={room.address.members} class="underline">Members</a> page.
+					<a href={channel.address.members} class="underline">Members</a> page.
 				{:else if device.spectator}
 					<!-- A phone has no trainer to pair and no session to start, so
 					     the empty state teaches what it IS for rather than listing
 					     controls that are correctly absent (ux.md). -->
 					Nothing is running yet. This is where the room's numbers appear the moment
 					someone starts the session — follow any rider from the crew strip.
-				{:else if !room.canControl}
+				{:else if !channel.canControl}
 					<!-- A member cannot start anything (docs/SPEC.md roles), and
 					     SessionControls renders nothing for them — so the sentence
 					     must not name a button that is not there (audit 2026-09-09). -->
@@ -134,13 +138,13 @@
 			</div>
 		</div>
 	</div>
-{:else if room.phase === 'countdown'}
+{:else if channel.phase === 'countdown'}
 	<!-- One count-in for the surface (ADR-0046, #1800): the same screen a solo
 	     ride draws, with a rider count instead of what is first up. -->
 	<CountdownScreen
-		remaining={room.shared?.countdownRemaining ?? 0}
-		title={room.shared?.workoutName ?? ''}
-		note="{room.riders.length} rider{room.riders.length === 1 ? '' : 's'}"
+		remaining={channel.shared?.countdownRemaining ?? 0}
+		title={channel.shared?.workoutName ?? ''}
+		note="{channel.riders.length} rider{channel.riders.length === 1 ? '' : 's'}"
 	>
 		{#snippet controls()}<SessionControls compact />{/snippet}
 	</CountdownScreen>
@@ -153,15 +157,15 @@
 	>
 		<div class="px-6 pt-5 pb-4">
 			<RideHeader
-				block={room.block}
+				block={channel.block}
 				{elapsed}
 				{total}
-				cadence={room.you.cadence}
-				hr={room.you.hr}
-				title={room.shared?.workoutName ?? ''}
+				cadence={channel.you.cadence}
+				hr={channel.you.hr}
+				title={channel.shared?.workoutName ?? ''}
 			>
 				{#snippet aside()}
-					{#if !room.trainer || targetsNote}<TrainerOverview compact />{/if}
+					{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
 				{/snippet}
 				{#snippet controls()}
 					<SessionControls compact />
@@ -172,7 +176,7 @@
 					     pressed while pedalling, which is what ux.md's 44 px is
 					     about. -->
 					<button
-						onclick={() => room.openTv()}
+						onclick={() => channel.openTv()}
 						class="btn btn-secondary btn-lg"
 						aria-label="TV mode"><MonitorUp size={15} /> TV</button
 					>
@@ -181,45 +185,45 @@
 			</RideHeader>
 		</div>
 
-		{#if focus === 'sprint' && room.sprint}
+		{#if focus === 'sprint' && channel.sprint}
 			<section class="min-h-0 px-6">
 				<SprintMoment
-					sprint={room.sprint}
-					myWatts={room.you.watts}
-					roster={room.riders}
+					sprint={channel.sprint}
+					myWatts={channel.you.watts}
+					roster={channel.riders}
 				/>
 			</section>
-		{:else if focus === 'game' && room.game}
+		{:else if focus === 'game' && channel.game}
 			<section class="min-h-0 overflow-y-auto px-6">
 				<GamePanel
-					game={room.game}
+					game={channel.game}
 					roster={channelConnection.current?.live.tick?.roster ?? []}
-					canControl={room.canControl}
-					end={() => room.control('game-end')}
+					canControl={channel.canControl}
+					end={() => channel.control('game-end')}
 					me={account.me?.id}
 				/>
 			</section>
 		{:else if focus === 'media' && share}
 			<section class="grid min-h-0 place-items-center px-6">
 				<Stage
-					sources={room.stageSources}
+					sources={channel.stageSources}
 					activeKey={share.key}
 					trackKey={pictureKey(share)}
-					onPick={(key) => room.pickStage(key)}
-					attach={(node) => room.attachStage(node, share.key)}
+					onPick={(key) => channel.pickStage(key)}
+					attach={(node) => channel.attachStage(node, share.key)}
 				/>
 			</section>
 		{:else}
 			<section class="grid min-h-0 content-center px-6">
 				<Instrument
-					watts={room.you.watts}
-					target={room.you.target}
-					ftp={room.you.ftp}
+					watts={channel.you.watts}
+					target={channel.you.target}
+					ftp={channel.you.ftp}
 				/>
 			</section>
 		{/if}
 
-		{#if focus === 'sprint' || (focus === 'game' && room.game?.meterHidden)}
+		{#if focus === 'sprint' || (focus === 'game' && channel.game?.meterHidden)}
 			<!-- The sprint carries its own numbers, and Watt Golf hides the
 			     meter on purpose; every other game showed the line and who was
 			     left and never the rider's own watts (audit 2026-09-09). -->
@@ -231,23 +235,23 @@
 					<!-- Under the player, never over it (RMF). -->
 					<div class="min-w-0 flex-1">
 						<Instrument
-							watts={room.you.watts}
-							target={room.you.target}
-							ftp={room.you.ftp}
+							watts={channel.you.watts}
+							target={channel.you.target}
+							ftp={channel.you.ftp}
 							compact
 						/>
 					</div>
 				{/if}
 				<SecondaryRow
-					cadence={room.you.cadence}
-					hr={room.you.hr}
-					watts={room.you.watts}
-					kg={room.you.kg}
-					bias={room.bias}
+					cadence={channel.you.cadence}
+					hr={channel.you.hr}
+					watts={channel.you.watts}
+					kg={channel.you.kg}
+					bias={channel.bias}
 					lthr={channelConnection.current?.profile.current.lthr}
 					small={focus === 'media'}
-					onBias={room.trainer && room.actuating
-						? (step) => room.nudgeBias(step)
+					onBias={channel.trainer && channel.actuating
+						? (step) => channel.nudgeBias(step)
 						: undefined}
 					biasHint={targetsNote
 						? `${targetsNote} — trim them there`
@@ -278,7 +282,7 @@
 				{#if focus !== 'game'}
 					<!-- A game's panel already lists everyone; a second list of the
 					     same people is what the sprint branch refuses too. -->
-					<CrewStrip riders={room.riders.filter((r) => !r.you)} />
+					<CrewStrip riders={channel.riders.filter((r) => !r.you)} />
 				{/if}
 
 				{#if focus !== 'media'}
@@ -287,11 +291,11 @@
 					     the focus — two grounds is one too many. -->
 					<div class="mt-3 h-28">
 						<IntervalGraph
-							segments={room.segments}
+							segments={channel.segments}
 							{total}
 							{elapsed}
-							ftp={room.you.ftp}
-							trace={room.you.trace}
+							ftp={channel.you.ftp}
+							trace={channel.you.trace}
 						/>
 					</div>
 				{/if}

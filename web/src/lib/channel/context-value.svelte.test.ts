@@ -1,7 +1,7 @@
 import { channelAddress } from '$lib/channel/address';
 import { describe, expect, it } from 'vitest';
 import {
-	roomContextValue,
+	channelContextValue,
 	type ContextDeps,
 	type RoomShellProps,
 } from '$lib/channel/context-value.svelte';
@@ -64,10 +64,10 @@ function shellProps(): RoomShellProps {
 	return props;
 }
 
-describe('roomContextValue (#686)', () => {
+describe('channelContextValue (#686)', () => {
 	it('reads through the props object rather than capturing it', () => {
 		const props = shellProps();
-		const ctx = roomContextValue(deps(props));
+		const ctx = channelContextValue(deps(props));
 
 		expect(ctx.roomName).toBe('MFW 5');
 		expect(ctx.members).toEqual([]);
@@ -91,7 +91,7 @@ describe('roomContextValue (#686)', () => {
 		const props = shellProps();
 		props.streakWeeks = undefined;
 		props.members = undefined;
-		const ctx = roomContextValue(deps(props));
+		const ctx = channelContextValue(deps(props));
 		expect(ctx.code).toBe('');
 		expect(ctx.together).toBeNull();
 		expect(ctx.streakWeeks).toBe(0);
@@ -102,7 +102,7 @@ describe('roomContextValue (#686)', () => {
 
 	it('routes a callback back to the prop that is current when it fires', () => {
 		const props = shellProps();
-		const ctx = roomContextValue(deps(props));
+		const ctx = channelContextValue(deps(props));
 		const calls: string[] = [];
 
 		props.onClearAnnouncement = () => calls.push('first');

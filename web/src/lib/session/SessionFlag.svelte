@@ -16,9 +16,9 @@
 	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import { FLAG_SAID } from '$lib/ride/flag';
 	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
-	import { useRoom } from '$lib/channel/context';
+	import { useChannel } from '$lib/channel/context';
 
-	const room = useRoom();
+	const channel = useChannel();
 	const recorder = createFlightRecorder();
 
 	// The ring, fed by the room's own tick — the same four fields solo records,
@@ -31,14 +31,14 @@
 	// reads its own state invalidates itself.
 	let recordedSecond = -1;
 	$effect(() => {
-		const second = room.shared?.elapsed ?? 0;
+		const second = channel.shared?.elapsed ?? 0;
 		if (second === recordedSecond) return;
 		recordedSecond = second;
 		recorder.tick({
-			watts: room.you.watts,
-			cadence: room.you.cadence,
-			target: room.you.target,
-			state: room.shared?.phase ?? room.phase,
+			watts: channel.you.watts,
+			cadence: channel.you.cadence,
+			target: channel.you.target,
+			state: channel.shared?.phase ?? channel.phase,
 		});
 	});
 
@@ -52,12 +52,12 @@
 		error = null;
 		// The workout, not the place: the buffer is published as it is, and the
 		// route below is the one field the server strips of who was where.
-		recorder.event('room', room.shared?.workoutName ?? '');
+		recorder.event('room', channel.shared?.workoutName ?? '');
 		recorder.flag();
 		const report = recorder.flags[recorder.flags.length - 1];
 		const result = await recorder.submit(report, {
-			route: room.address.training,
-			trainer: room.trainerName || 'none',
+			route: channel.address.training,
+			trainer: channel.trainerName || 'none',
 		});
 		sending = false;
 		if (result.ok) {

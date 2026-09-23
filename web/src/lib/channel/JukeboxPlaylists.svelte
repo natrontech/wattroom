@@ -3,7 +3,7 @@
 	import Plus from '@lucide/svelte/icons/plus';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import JukeboxPlaylistRow from '$lib/channel/JukeboxPlaylistRow.svelte';
-	import { useRoom } from '$lib/channel/context';
+	import { useChannel } from '$lib/channel/context';
 	import type { createPlaylistStore } from '$lib/channel/playlists.svelte';
 
 	// The saved playlists above the live queue (#627): room playlists (any
@@ -27,8 +27,8 @@
 	// owner's (SPEC roles matrix, #771); a member's own personal playlists
 	// stay theirs. Gated here so nothing renders that the server would refuse
 	// on click (#824).
-	const room = useRoom();
-	const canManage = $derived(room.canManage);
+	const channel = useChannel();
+	const canManage = $derived(channel.canManage);
 
 	let tab = $state<'room' | 'mine'>('room');
 	const store = $derived(tab === 'room' ? roomStore : mineStore);

@@ -12,7 +12,7 @@ import type { StageSource } from '$lib/channel/stage';
  * `StageSource` is the minimum `pickStage` needs; the room adds what the
  * picker draws — a generation, so a fresh track remounts, and a label.
  */
-export interface RoomStageSource extends StageSource {
+export interface ChannelStageSource extends StageSource {
 	gen: string;
 	label: string;
 	/** Whose camera or screen this is — absent for the jukebox (#506). */
@@ -28,7 +28,7 @@ export interface RoomStageSource extends StageSource {
  * Getters rather than values, so the places stay reactive across the context
  * boundary.
  */
-export interface RoomContext {
+export interface ChannelContext {
 	/** Where the shell stands, and every path that follows (#2449). */
 	readonly address: PlaceAddress;
 	readonly roomName: string;
@@ -84,8 +84,8 @@ export interface RoomContext {
 	openTv(): void;
 
 	/** Stage sources and the active one — the lounge's shared-screen surface. */
-	readonly stageSources: RoomStageSource[];
-	readonly onStage: RoomStageSource | null;
+	readonly stageSources: ChannelStageSource[];
+	readonly onStage: ChannelStageSource | null;
 	pickStage(key: string): void;
 	attachStage(node: HTMLElement, key: string): void;
 	attachVideo(id: string, node: HTMLElement): void;
@@ -133,12 +133,12 @@ export interface RoomContext {
 
 const KEY = Symbol('wattroom.room');
 
-export function setRoomContext(ctx: RoomContext): void {
+export function setChannelContext(ctx: ChannelContext): void {
 	setContext(KEY, ctx);
 }
 
-export function useRoom(): RoomContext {
-	const ctx = getContext<RoomContext | undefined>(KEY);
+export function useChannel(): ChannelContext {
+	const ctx = getContext<ChannelContext | undefined>(KEY);
 	if (!ctx)
 		throw new Error(
 			'a room place rendered outside /r/[slug] — no ChannelShell',

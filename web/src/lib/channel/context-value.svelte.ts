@@ -1,5 +1,5 @@
 import type { PlaceAddress } from '$lib/channel/address';
-import type { RoomContext, RoomStageSource } from '$lib/channel/context';
+import type { ChannelContext, ChannelStageSource } from '$lib/channel/context';
 import type { channelConnection } from '$lib/channel/connection.svelte';
 import type { createRiders } from '$lib/channel/riders.svelte';
 import type { BoardRow, Together } from '$lib/crew-types';
@@ -49,7 +49,7 @@ export interface RoomShellProps {
 	together?: Together | null;
 	board?: BoardRow[];
 	onRole: (userId: string, role: string) => void | Promise<boolean>;
-	announcement?: RoomContext['announcement'];
+	announcement?: ChannelContext['announcement'];
 	onClearAnnouncement?: () => void;
 	/** Resolves false when the server refused — the picker stays open (#1766). */
 	onSchedule: (
@@ -78,8 +78,8 @@ export interface ContextDeps {
 	canControl: () => boolean;
 	canManage: () => boolean;
 	myRole: () => string;
-	stageSources: () => RoomStageSource[];
-	onStage: () => RoomStageSource | null;
+	stageSources: () => ChannelStageSource[];
+	onStage: () => ChannelStageSource | null;
 
 	/** Shell-owned UI the places can ask for. */
 	focusId: () => string | null;
@@ -91,7 +91,7 @@ export interface ContextDeps {
 	ban: (userId: string, name: string) => void;
 }
 
-export function roomContextValue(deps: ContextDeps): RoomContext {
+export function channelContextValue(deps: ContextDeps): ChannelContext {
 	const { props, connection, roster } = deps;
 	const live = connection.live;
 	const av = connection.av;

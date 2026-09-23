@@ -10,7 +10,7 @@
 	import RiderTile from '$lib/channel/RiderTile.svelte';
 	import Stage from '$lib/channel/Stage.svelte';
 	import { pickStage, pictureKey } from '$lib/channel/stage';
-	import { useRoom } from '$lib/channel/context';
+	import { useChannel } from '$lib/channel/context';
 	import { ridePath } from '$lib/channel/address';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
@@ -36,7 +36,7 @@
 	import PanelRight from '@lucide/svelte/icons/panel-right';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 
-	const room = useRoom();
+	const channel = useChannel();
 	const EVENTS_SHOWN = 8;
 	// The newest few, and only those this client can put into words.
 	const events = $derived(
@@ -45,26 +45,28 @@
 			.slice(-EVENTS_SHOWN),
 	);
 	const av = $derived(channelConnection.current?.av);
-	const isOwner = $derived(room.myRole === 'owner');
+	const isOwner = $derived(channel.myRole === 'owner');
 	/** Taking the announcement down is the coach's and the owner's (#2408). */
-	const coaches = $derived(isOwner || room.myRole === 'coach');
+	const coaches = $derived(isOwner || channel.myRole === 'coach');
 
 	// The tile's right-click (#465): focus is the click, the rest is what
 	// every person in WattRoom offers — their page, the DM, the friend ask,
 	// and — for the owner — the ban a griefer needs met where they are, not
 	// three screens away in Settings (#666).
-	function tileEntries(rider: () => (typeof room.riders)[number]): MenuEntry[] {
+	function tileEntries(
+		rider: () => (typeof channel.riders)[number],
+	): MenuEntry[] {
 		return [
 			{
 				label:
-					rider().id === room.focusId ? 'Unfocus' : `Focus ${rider().name}`,
+					rider().id === channel.focusId ? 'Unfocus' : `Focus ${rider().name}`,
 				icon: Focus,
 				onSelect: () =>
-					room.setFocus(rider().id === room.focusId ? null : rider().id),
+					channel.setFocus(rider().id === channel.focusId ? null : rider().id),
 			},
 			// The glyph on the tile says they are sharing; this is the shortcut
 			// to the stage pick the chip under the stage already offers (#664).
-			...room.stageSources
+			...channel.stageSources
 				.filter(
 					(source) =>
 						source.kind === 'screen' &&
@@ -74,15 +76,15 @@
 				.map((source) => ({
 					label: `Watch ${rider().name}'s screen`,
 					icon: ScreenShare,
-					onSelect: () => room.pickStage(source.key),
+					onSelect: () => channel.pickStage(source.key),
 				})),
 			...personMenu(rider().id, goto, {
 				you: rider().you,
 				volume: rider().inVoice ? { name: rider().name } : undefined,
 				poke: {
-					onSelect: () => room.poke(rider().id),
+					onSelect: () => channel.poke(rider().id),
 				},
-				ban: isOwner ? () => room.ban(rider().id, rider().name) : undefined,
+				ban: isOwner ? () => channel.ban(rider().id, rider().name) : undefined,
 			}),
 		];
 	}
@@ -140,7 +142,7 @@
 		LAYOUTS.filter(
 			(option) =>
 				option.id !== 'sidebar' ||
-				room.stageSources.some((source) => source.kind === 'jukebox'),
+				channel.stageSources.some((source) => source.kind === 'jukebox'),
 		),
 	);
 
@@ -149,8 +151,8 @@
 	// with nothing shared the lounge is all crew.
 	const sources = $derived(
 		layout === 'sidebar'
-			? room.stageSources.filter((source) => source.kind !== 'jukebox')
-			: room.stageSources,
+			? channel.stageSources.filter((source) => source.kind !== 'jukebox')
+			: channel.stageSources,
 	);
 	const onStage = $derived(pickStage(sources, av?.stagePick ?? null));
 	/** Stage above, riders below — the shape both Stage and Sidebar draw. */
@@ -208,30 +210,30 @@
 	const staged = $derived(
 		onStage?.kind === 'cam' ? onStage.riderId : undefined,
 	);
-	const tiles = $derived(room.riders.filter((r) => r.id !== staged));
+	const tiles = $derived(channel.riders.filter((r) => r.id !== staged));
 	// Focus belongs to the Stage layout, where there IS a big slot to focus
 	// into. Side by side and the grid already show everyone at one size, so a
 	// focused rider there was a third size for no reason.
 	const focusable = $derived(!onStage || stacked);
 	const focused = $derived(
-		focusable ? tiles.find((r) => r.id === room.focusId) : undefined,
+		focusable ? tiles.find((r) => r.id === channel.focusId) : undefined,
 	);
 	const others = $derived(tiles.filter((r) => r.id !== focused?.id));
 	// The tick's roster carries no face, so the tile's avatar comes from the
 	// member list — the same lookup the people column does (SidePanel).
-	const faceOf = $derived(new Map(room.members.map((m) => [m.id, m])));
+	const faceOf = $derived(new Map(channel.members.map((m) => [m.id, m])));
 </script>
 
-{#snippet tile(rider: (typeof room.riders)[number])}
+{#snippet tile(rider: (typeof channel.riders)[number])}
 	<RiderTile
 		{rider}
-		phase={room.phase}
+		phase={channel.phase}
 		face={faceOf.get(rider.id)}
 		menu={() => tileEntries(() => rider)}
-		onPoke={(id) => room.poke(id)}
-		videoKey={room.videoOf(rider.id) ?? 0}
-		videoAttach={room.videoOf(rider.id)
-			? (node) => room.attachVideo(rider.id, node)
+		onPoke={(id) => channel.poke(id)}
+		videoKey={channel.videoOf(rider.id) ?? 0}
+		videoAttach={channel.videoOf(rider.id)
+			? (node) => channel.attachVideo(rider.id, node)
 			: undefined}
 	/>
 {/snippet}
@@ -246,11 +248,11 @@
 	     stage, and a notice about next Thursday pushing them down is the
 	     opposite of what a rider on a bike needs. It is waiting when the
 	     session ends. -->
-	{#if room.phase === 'lounge'}
+	{#if channel.phase === 'lounge'}
 		<AnnouncementStrip
-			announcement={room.announcement}
+			announcement={channel.announcement}
 			canClear={coaches}
-			onclear={() => room.clearAnnouncement()}
+			onclear={() => channel.clearAnnouncement()}
 		/>
 	{/if}
 	<!-- No page header: the sidebar says which room this is and the people
@@ -259,7 +261,7 @@
 		<!-- Away moved to the you-panel (#807): it is a statement about you,
 		     like the mic and the camera, and those are pinned bottom-left in
 		     every place rather than only in the Lounge's header. -->
-		{#if room.stageSources.length > 0}
+		{#if channel.stageSources.length > 0}
 			<div
 				class="border-muted/20 ml-auto flex gap-0.5 rounded border p-0.5"
 				role="group"
@@ -282,9 +284,10 @@
 			</div>
 		{/if}
 		<button
-			onclick={() => room.openTv()}
-			class="btn btn-ghost btn-xs {room.stageSources.length ? '' : 'ml-auto'}"
-			><MonitorUp size={13} /> TV</button
+			onclick={() => channel.openTv()}
+			class="btn btn-ghost btn-xs {channel.stageSources.length
+				? ''
+				: 'ml-auto'}"><MonitorUp size={13} /> TV</button
 		>
 	</div>
 
@@ -303,8 +306,8 @@
 						? clampSize(stageH, STAGE_H_MIN, tallest())
 						: undefined}
 					onFit={(max) => (stageFit = max)}
-					onPick={(key) => room.pickStage(key)}
-					attach={(node) => room.attachStage(node, onStage!.key)}
+					onPick={(key) => channel.pickStage(key)}
+					attach={(node) => channel.attachStage(node, onStage!.key)}
 				/>
 			</div>
 			{#if stacked}
@@ -337,7 +340,7 @@
 				>
 					<div>
 						<button
-							onclick={() => room.setFocus(null)}
+							onclick={() => channel.setFocus(null)}
 							class="block w-full text-left"
 							title="tap to unfocus">{@render tile(focused)}</button
 						>
@@ -349,7 +352,7 @@
 					<div class="grid grid-cols-3 gap-2 lg:grid-cols-1">
 						{#each others as rider (rider.id)}
 							<button
-								onclick={() => room.setFocus(rider.id)}
+								onclick={() => channel.setFocus(rider.id)}
 								class="block text-left"
 								title="focus {rider.name}">{@render tile(rider)}</button
 							>
@@ -365,7 +368,7 @@
 					{#each tiles as rider (rider.id)}
 						{#if focusable}
 							<button
-								onclick={() => room.setFocus(rider.id)}
+								onclick={() => channel.setFocus(rider.id)}
 								class="block text-left"
 								title="focus {rider.name}">{@render tile(rider)}</button
 							>
@@ -378,27 +381,27 @@
 		</div>
 	</div>
 
-	{#if room.sprint}
+	{#if channel.sprint}
 		<!-- The sprint's visual half on the Lounge (#1589): the cues reach
 		     every place from the shell, so a rider here heard a klaxon and a
 		     fanfare with nothing to look at. Compact — the Training place
 		     draws the roster. -->
 		<div class="mt-4">
-			<SprintMoment sprint={room.sprint} myWatts={room.you.watts} />
+			<SprintMoment sprint={channel.sprint} myWatts={channel.you.watts} />
 		</div>
 	{/if}
-	{#if room.game}
+	{#if channel.game}
 		<div class="mt-4">
 			<GamePanel
-				game={room.game}
+				game={channel.game}
 				roster={channelConnection.current?.live.tick?.roster ?? []}
-				canControl={room.canControl && !device.spectator}
-				end={() => room.control('game-end')}
+				canControl={channel.canControl && !device.spectator}
+				end={() => channel.control('game-end')}
 				me={account.me?.id}
 			/>
 		</div>
 	{/if}
-	{#if room.phase !== 'lounge'}
+	{#if channel.phase !== 'lounge'}
 		<!-- The session's controls in every phase (audit 2026-09-09): the
 		     dashboard below mounts only while nothing runs, and with it went
 		     Pause and End for a coach standing here mid-ride — and the way
@@ -412,17 +415,17 @@
 				     session's page is where the ride is (#2450). -->
 				<a
 					href={ridePath(
-						room.address,
+						channel.address,
 						liveSessionId(channelConnection.current?.live.tick?.state),
 					)}
 					class="btn btn-accent btn-lg"
 					><Radio size={15} />
-					{room.canControl ? 'Go to the ride' : 'Join the ride'}</a
+					{channel.canControl ? 'Go to the ride' : 'Join the ride'}</a
 				>
 			{/if}
 		</div>
 	{/if}
-	{#if room.address.channel && events.length}
+	{#if channel.address.channel && events.length}
 		<!-- A voice channel's events (ADR-0022 as amended by ADR-0058): it has
 		     no chat to draw them between, so they sit here, beside the deck
 		     they are about — the last few, newest last, never persisted. -->
@@ -432,7 +435,7 @@
 			{/each}
 		</section>
 	{/if}
-	{#if room.phase === 'lounge'}
+	{#if channel.phase === 'lounge'}
 		<!-- The room's dashboard, when nothing is running: what this room is
 		     adding up to and the three things you do to it. It lives on the
 		     Lounge rather than a sixth place — Discord's server home IS its
