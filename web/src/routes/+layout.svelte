@@ -15,6 +15,7 @@
 	import { noteNewAccount } from '$lib/auth/new-account';
 	import { landing, takeNext } from '$lib/auth/next';
 	import { presence } from '$lib/presence.svelte';
+	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	// Side-effect imports: both apply their stored choice to :root the moment
 	// they load, so they belong to the shell rather than to whichever screen
@@ -276,6 +277,7 @@
 	// before the URL changes, and a second run with the stash already consumed
 	// used to fire the fallback over the in-flight deep link.
 	let routed = false;
+	let askedCrews = false;
 	$effect(() => {
 		if (!account.me || routed) return;
 		const next = takeNext();
@@ -283,8 +285,23 @@
 			routed = true;
 			void goto(next, { replaceState: true });
 		} else if (page.url.pathname === '/') {
+			// Open in the crew the sidebar would (#2144, #2576) — which needs
+			// the crew list, and "/" is outside the frame that starts it. Read
+			// it once and wait: a crew since left lands Home, not on a page
+			// saying it is not there. A failed read lands Home too.
+			const chosen = chosenCrew.id;
+			const wantsCrew = !!chosen && chosen !== 'you';
+			if (wantsCrew && !presence.loaded && !presence.error) {
+				if (!askedCrews) {
+					askedCrews = true;
+					presence.reload();
+				}
+				return;
+			}
 			routed = true;
-			void goto(landing(account.me.pendingInvite), { replaceState: true });
+			void goto(landing(account.me.pendingInvite, chosen, presence.crews), {
+				replaceState: true,
+			});
 		}
 	});
 </script>
