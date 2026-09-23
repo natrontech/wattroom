@@ -124,11 +124,11 @@ export interface ChannelContext {
 		crewBanned?: boolean;
 	}[];
 	/**
-	 * Ban with an undo toast, so a griefer is met wherever they appear — the
-	 * tile, the roster row — rather than only where someone once wrote the
-	 * entry (#951).
+	 * The crew's ban for this person, with an undo toast — or undefined where
+	 * you may not ban them. One rule for the tile and the roster row, so a
+	 * griefer is met wherever they appear (#951, #2529).
 	 */
-	ban(userId: string, name: string): void;
+	banOf(userId: string, name: string): (() => void) | undefined;
 }
 
 const KEY = Symbol('wattroom.room');

@@ -89,7 +89,7 @@ export function personMenu(
 		 * voice channel's roster has no friends list, and the ask is right there.
 		 */
 		friendship?: Friend['status'];
-		/** The crew's ban, passed only by its owner. */
+		/** The crew's ban, passed only where the viewer may ban this person. */
 		ban?: () => void;
 	} = {},
 ): MenuEntry[] {

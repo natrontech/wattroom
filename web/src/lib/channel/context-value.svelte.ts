@@ -88,7 +88,7 @@ export interface ContextDeps {
 	openPicker: (intent?: 'start' | 'plan') => void;
 
 	/** Actions the shell owns because they need more than the connection. */
-	ban: (userId: string, name: string) => void;
+	banOf: (userId: string, name: string) => (() => void) | undefined;
 }
 
 export function channelContextValue(deps: ContextDeps): ChannelContext {
@@ -193,6 +193,6 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 		get members() {
 			return props.members ?? [];
 		},
-		ban: (userId, name) => deps.ban(userId, name),
+		banOf: (userId, name) => deps.banOf(userId, name),
 	};
 }

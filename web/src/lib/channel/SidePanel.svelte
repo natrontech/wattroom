@@ -41,7 +41,7 @@
 		player,
 		onCheer,
 		onPoke,
-		onBan,
+		banOf,
 		cheers = STOCK_CHEERS,
 	}: {
 		live: boolean;
@@ -58,7 +58,8 @@
 		onCheer?: (emoji: string) => void;
 		onPoke?: (id: string) => void;
 		/** Owner only — absent for everyone else, so the entry never appears. */
-		onBan?: (id: string, name: string) => void;
+		/** The crew's ban for this person, where the viewer may (ChannelShell). */
+		banOf?: (id: string, name: string) => (() => void) | undefined;
 		/** The crew's one reaction vocabulary (#223), icon keys (#447). */
 		cheers?: string[];
 	} = $props();
@@ -84,7 +85,7 @@
 				you: rider.you,
 				volume: rider.inVoice && !rider.you ? { name: rider.name } : undefined,
 				poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
-				ban: onBan ? () => onBan(rider.id, rider.name) : undefined,
+				ban: banOf?.(rider.id, rider.name),
 			}),
 		)}
 	>
@@ -172,7 +173,7 @@
 							hint: 'not in the channel',
 						}
 					: undefined,
-				ban: onBan ? () => onBan(member.id, member.displayName) : undefined,
+				ban: banOf?.(member.id, member.displayName),
 			}),
 		)}
 	>

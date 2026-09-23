@@ -111,6 +111,14 @@
 			});
 		});
 	}
+	// Who may ban whom is the Members page's rule (docs/SPEC.md): the crew's
+	// owner and admins, never on the owner. Your own row drops it in
+	// personMenu.
+	function banOf(userId: string, name: string) {
+		if (!canManage) return undefined;
+		const role = (props.members ?? []).find((m) => m.id === userId)?.role;
+		return role === 'owner' ? undefined : () => ban(userId, name);
+	}
 
 	const shared = $derived(connection.shared());
 	const running = $derived(shared?.phase === 'running');
@@ -262,7 +270,7 @@
 			setFocus: (id) => (focusId = id),
 			openTv: () => (layers.tv = true),
 			openPicker: (intent) => layers.openPicker(intent),
-			ban,
+			banOf,
 		}),
 	);
 
@@ -361,7 +369,7 @@
 		members={props.members}
 		onCheer={(emoji) => live.cheer(emoji)}
 		onPoke={(id) => live.poke(id)}
-		onBan={myRole === 'owner' ? ban : undefined}
+		{banOf}
 		cheers={props.cheers}
 	>
 		{#snippet player()}
