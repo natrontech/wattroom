@@ -38,11 +38,6 @@ import { onPlacePath, ridePath, type PlaceAddress } from '$lib/room/address';
  * in two lounges.
  */
 type Connection = {
-	/**
-	 * Always '': a voice channel matches no room. Kept only for the root
-	 * layout's room list, the one reader left, which goes with #2460.
-	 */
-	slug: string;
 	/** Where the connection stands, and every path that follows (#2449). */
 	address: PlaceAddress;
 	live: ReturnType<typeof createRoomLive>;
@@ -438,7 +433,6 @@ function connect(address: PlaceAddress): Connection {
 		});
 	});
 	return {
-		slug: '',
 		address,
 		live,
 		av,
