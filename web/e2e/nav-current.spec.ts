@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { test as roomTest } from './room';
+import { test as crewTest, textPath, voicePath } from './crew';
 import { signInAs } from './signin';
 
 /**
@@ -97,14 +97,15 @@ test('a conversation with no row of its own still lights one', async ({
 test('the sidebar says a failed read is a failed read, not "no crew"', async ({
 	page,
 }) => {
-	// A room list that cannot be read (#2173): `rooms` is [] before the first
-	// answer and [] when the read fails, and the sidebar drew the day-one
-	// teaching line for both — so a rider with ten rooms was told to join a
-	// crew, with nothing to press. errors.md wants all four states in the
-	// column that IS the app's navigation.
+	// A crew list that cannot be read (#2173): the list is [] before the
+	// first answer and [] when the read fails, and the sidebar drew the
+	// day-one teaching line for both — so a rider in ten crews was told to
+	// join one, with nothing to press. errors.md wants all four states in the
+	// column that IS the app's navigation. The list rode on /api/rooms until
+	// the rooms went (#2446); it is /api/crews now.
 	let fail = true;
 	await page.route(
-		(url) => url.pathname === '/api/rooms',
+		(url) => url.pathname === '/api/crews',
 		(route) =>
 			fail
 				? route.fulfill({
@@ -112,21 +113,27 @@ test('the sidebar says a failed read is a failed read, not "no crew"', async ({
 						contentType: 'application/json',
 						body: JSON.stringify({
 							error: 'internal_error',
-							message: 'Your rooms could not be read.',
+							message: 'Your crews could not be read.',
 						}),
 					})
 				: route.continue(),
 	);
+	// The lobby socket held silent: the hub pings every signed-in rider on
+	// any rider's move anywhere (hub/lobby.go), so a neighbouring spec's
+	// join prompts a re-read here — and one landing between `fail = false`
+	// and the click succeeds by itself and takes the Retry off the page
+	// before it is pressed, leaving the click to wait out the timeout.
+	await page.routeWebSocket(/\/ws\/presence$/, () => {});
 	await signInAs(page, 'Nav Reader', '/home');
 
 	const nav = page.locator('nav[aria-label="rooms and places"]');
-	await expect(nav.getByText('Your rooms could not be read.')).toBeVisible();
+	await expect(nav.getByText('Your crews could not be read.')).toBeVisible();
 	await expect(nav.getByText('Not in a crew yet')).toHaveCount(0);
 
 	// And the Retry is a retry: the read succeeds, the list arrives.
 	fail = false;
 	await nav.getByRole('button', { name: 'Retry' }).click();
-	await expect(nav.getByText('Your rooms could not be read.')).toHaveCount(0);
+	await expect(nav.getByText('Your crews could not be read.')).toHaveCount(0);
 });
 
 /**
@@ -135,41 +142,25 @@ test('the sidebar says a failed read is a failed read, not "no crew"', async ({
  * lighting too would make two — and stepping back to your own Home lights
  * Home under You.
  */
-roomTest(
+crewTest(
 	'a crew’s pages and channels each light exactly one row',
-	async ({ riders, rooms }) => {
-		roomTest.skip(
+	async ({ riders, channels }) => {
+		crewTest.skip(
 			!!process.env.PLAYWRIGHT_BASE_URL,
 			'the ?as= dev provider only exists on a dev server',
 		);
 		const a = await riders('Nav Crew Reader');
 		const name = `Nav Channels ${Date.now() % 100000}`;
-		const room = await rooms.open(a, name);
-		// Every room became a text and a voice channel of its name (ADR-0058).
-		const ids = await a.evaluate(
-			async ({ crew, roomName }) => {
-				const list = await fetch(`/api/crews/${crew}/channels`).then((res) =>
-					res.json(),
-				);
-				const find = (kind: string) =>
-					(list.channels as { id: string; kind: string; name: string }[]).find(
-						(c) => c.kind === kind && c.name === roomName,
-					)?.id ?? '';
-				return { text: find('text'), voice: find('voice') };
-			},
-			{ crew: room.crew, roomName: name },
-		);
-		expect(ids.text, 'the room has no text channel').not.toBe('');
-		expect(ids.voice, 'the room has no voice channel').not.toBe('');
+		const opened = await channels.open(a, name);
 
 		const nav = a.locator('nav[aria-label="rooms and places"]');
 		const current = nav.locator('[aria-current="page"]');
 		const row = (label: string) => new RegExp(`^\\s*${label}\\s*$`, 'i');
 		const walk: { path: string; label: RegExp }[] = [
-			{ path: `/crew/${room.crew}`, label: row('Home') },
-			{ path: `/crew/${room.crew}/members`, label: row('Members') },
-			{ path: `/crew/${room.crew}/c/${ids.text}`, label: row(name) },
-			{ path: `/crew/${room.crew}/v/${ids.voice}`, label: row(name) },
+			{ path: `/crew/${opened.crew}`, label: row('Home') },
+			{ path: `/crew/${opened.crew}/members`, label: row('Members') },
+			{ path: textPath(opened), label: row(name) },
+			{ path: voicePath(opened), label: row(name) },
 			{ path: '/home', label: row('Home') },
 		];
 		for (const { path, label } of walk) {
