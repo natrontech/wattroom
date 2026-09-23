@@ -39,7 +39,8 @@ async function cancelEveryPlan(page: Page, crew: string): Promise<void> {
 			const res = await fetch(`/api/crews/${id}/schedule/${plan.id}`, {
 				method: 'DELETE',
 			});
-			if (!res.ok) left.push(`${plan.id}: ${res.status}`);
+			// 404 is a plan already gone — given back, by a neighbour's run.
+			if (!res.ok && res.status !== 404) left.push(`${plan.id}: ${res.status}`);
 		}
 		return left;
 	}, crew);

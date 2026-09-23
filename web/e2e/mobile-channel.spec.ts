@@ -300,15 +300,11 @@ test('a phone plans a session and still does not start one', async ({
 
 /**
  * Escape shuts the session picker, as it shuts every other layer — the
- * topmost one only (#1625, #1969). The room's picker was closed by its shell
- * (web/src/lib/room/RoomShell.svelte's window keydown handler), and the crew's
- * Schedule (#2452) draws the same SessionPicker from its own page with no
- * handler at all: web/src/routes/crew/[id]/schedule/+page.svelte, where
- * `picking` only ever goes false from the picker's Close, its backdrop, or a
- * plan the server took. SessionPicker is not the kit's Modal, which answers
- * Escape itself. That is the app, not this test — fixme until #2513.
+ * topmost one only (#1625, #1969). The crew's Schedule (#2452) draws the
+ * picker with no shell around it to answer the key, so the picker answers it
+ * itself (#2513).
  */
-test.fixme('Escape shuts the session picker on the crew’s Schedule', async ({
+test('Escape shuts the session picker on the crew’s Schedule', async ({
 	page,
 	channels,
 	schedules,
