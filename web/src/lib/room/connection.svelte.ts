@@ -8,7 +8,7 @@ import { pullProfile } from '$lib/profile-sync.svelte';
 import { createRoomLive } from '$lib/room/live.svelte';
 import { createRecording } from '$lib/room/recording.svelte';
 import { createRide } from '$lib/room/ride.svelte';
-import { sensorClaim } from '$lib/room/sensor-claim';
+import { sensorClaim } from '$lib/channel/sensor-claim';
 import { announcePoke } from '$lib/room/poke';
 import { comingsAndGoings } from '$lib/room/comings-and-goings';
 import { dmArrivalEvent } from '$lib/room/dm-line';
