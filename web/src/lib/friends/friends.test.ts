@@ -9,6 +9,7 @@ import {
 	friendEvent,
 	friendPlace,
 	friends,
+	friendsAround,
 	type Friend,
 } from './friends.svelte';
 
@@ -137,5 +138,51 @@ describe('friendPlace', () => {
 		expect(friendPlace(friend({ status: 'pending_in', online: true }))).toBe(
 			'',
 		);
+	});
+});
+
+describe('friendsAround (#2586)', () => {
+	const place = (crewId: string) => ({
+		crewId,
+		crewName: 'Crew',
+		channelId: 'v1',
+		channelName: 'Lounge',
+	});
+	const list = [
+		friend({ id: 'off', status: 'accepted' }),
+		friend({ id: 'asking', online: true }),
+		friend({ id: 'online', status: 'accepted', online: true }),
+		friend({
+			id: 'here',
+			status: 'accepted',
+			inVoice: true,
+			channel: place('c1'),
+		}),
+		friend({
+			id: 'there',
+			status: 'accepted',
+			inVoice: true,
+			channel: place('c2'),
+		}),
+		friend({ id: 'gated', status: 'accepted', inVoice: true }),
+	];
+	const ids = (fs: Friend[]) => fs.map((f) => f.id);
+
+	it('is the accepted friends online or in voice', () => {
+		expect(ids(friendsAround(list))).toEqual([
+			'online',
+			'here',
+			'there',
+			'gated',
+		]);
+	});
+
+	// A crew's own voice channels already say who is in them on its Home.
+	it('leaves out the ones in this crew, and keeps a channel it may not name', () => {
+		expect(ids(friendsAround(list, 'c1'))).toEqual([
+			'online',
+			'there',
+			'gated',
+		]);
 	});
 });

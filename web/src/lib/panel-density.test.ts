@@ -24,7 +24,9 @@ const ALLOWLIST: Allowlist = {
 	'lib/messages/Composer.svelte':
 		'the emoji menu, taking ContextMenuHost’s inset for the same reason',
 	'routes/home/+page.svelte':
-		'the crew picker is a menu (py-1, inset as above); the friends-online row is pills at text-xs, which the card density would draw at twice their height',
+		'the crew picker is a menu (py-1, inset as above)',
+	'lib/friends/FriendsAround.svelte':
+		'the friends-around row is pills at text-xs, which the card density would draw at twice their height',
 	'routes/u/[id]/+page.svelte':
 		'medals and crews-in-common are two-column pills at text-xs/text-sm — tighter than a card, deliberately',
 	'routes/dev/profile/+page.svelte':

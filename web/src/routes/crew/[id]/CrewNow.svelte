@@ -28,6 +28,8 @@
 	import type { Together } from '$lib/crew-types';
 	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';
+	import { friends, friendsAround } from '$lib/friends/friends.svelte';
+	import FriendsAround from '$lib/friends/FriendsAround.svelte';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 
 	let { crew }: { crew: Crew } = $props();
@@ -78,6 +80,7 @@
 	const around = $derived(
 		(voice ?? []).filter((c) => !c.session && c.occupants?.length),
 	);
+	const elsewhere = $derived(friendsAround(friends.list ?? [], crew.id));
 	const firstVoice = $derived(voice?.[0]);
 	const quiet = $derived(
 		voice !== null &&
@@ -178,6 +181,14 @@
 			</li>
 		{/each}
 	</ul>
+{/if}
+
+{#if elsewhere.length > 0}
+	<!-- Your friends outside this crew (#2586): WattRoom opens here now,
+	     and Home's row of who is around was the only place they showed.
+	     The ones in this crew's voice channels are the list above. -->
+	<h2 class="eyebrow mt-8">friends around</h2>
+	<div class="mt-2"><FriendsAround list={elsewhere} /></div>
 {/if}
 
 <!-- Always drawn, with the way to plan one (#2572): a crew with nothing
