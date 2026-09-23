@@ -10,6 +10,7 @@
 	import { account } from '$lib/account.svelte';
 	import { takeDownAnnouncement } from '$lib/announce/take-down';
 	import { setCrewRole } from '$lib/crew';
+	import { planCrewSession } from '$lib/crew-schedule';
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { channelAddress } from '$lib/channel/address';
@@ -103,11 +104,25 @@
 			view.announcement.messageId,
 			() => load(crewId, channelId),
 		);
-	// Planning is the crew's schedule (#2440, #2452), not a channel's.
-	const noPlan = () => {
-		toasts.push('Plans live on the crew’s schedule.', { tone: 'error' });
-		return false;
-	};
+	// A plan made here goes on the crew's schedule, set to run in this
+	// channel (#2452, #2572). It used to be refused with a toast, so the
+	// picker's "Plan it for later" was a button that always failed.
+	async function plan(workoutName: string, workoutJson: string, startsAt: string) {
+		const res = await planCrewSession(crewId, {
+			workoutName,
+			workoutJson,
+			startsAt,
+			channelId,
+		});
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return false;
+		}
+		toasts.push('Planned — it is on the crew’s schedule.', {
+			href: `/crew/${crewId}/schedule`,
+		});
+		return true;
+	}
 </script>
 
 <svelte:head
@@ -161,10 +176,7 @@
 			cheers={crew.cheers}
 			soundPack={channel.soundPack ?? 'base'}
 			{members}
-			streakWeeks={view.members?.streakWeeks ?? 0}
-			together={view.members?.together ?? null}
-			board={view.members?.board ?? []}
-			onSchedule={noPlan}
+			onSchedule={plan}
 			announcement={view.announcement}
 			onClearAnnouncement={() => void clearAnnouncement()}
 			onRole={setRole}

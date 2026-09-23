@@ -4,7 +4,6 @@ import type { Segment } from '$lib/workout/types';
 import type { Block } from '$lib/workout/block';
 import type { LiveRider } from '$lib/channel/types';
 import type { Announcement } from '$lib/channels';
-import type { BoardRow, Together } from '$lib/crew-types';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { StageSource } from '$lib/channel/stage';
 
@@ -104,9 +103,6 @@ export interface ChannelContext {
 	readonly announcement: Announcement | null;
 	/** Take it down. The coach's and the owner's; nothing else offers it. */
 	clearAnnouncement(): void;
-	readonly streakWeeks: number;
-	readonly together: Together | null;
-	readonly board: BoardRow[];
 	readonly members: {
 		id: string;
 		displayName: string;

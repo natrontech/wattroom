@@ -28,6 +28,7 @@
 	import type { Together } from '$lib/crew-types';
 	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';
+	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 
 	let { crew }: { crew: Crew } = $props();
 
@@ -124,8 +125,8 @@
 {#if quiet && firstVoice}
 	<div class="mt-8">
 		<EmptyState>
-			Nothing is running and nothing is planned. Start the first ride in {firstVoice.name}
-			— everyone in the crew can walk in.
+			Nothing is running. Start the first ride in {firstVoice.name} — everyone
+			in the crew can walk in.
 			{#snippet cta()}
 				<a
 					href={voiceChannelPath(crew.id, firstVoice.id)}
@@ -179,8 +180,23 @@
 	</ul>
 {/if}
 
-{#if next}
-	<h2 class="eyebrow mt-8">next up</h2>
+<!-- Always drawn, with the way to plan one (#2572): a crew with nothing
+     planned showed no heading at all, and planning lived on a page the
+     sidebar did not list. The button opens the Schedule's picker. -->
+<div class="mt-8 flex items-center gap-3">
+	<h2 class="eyebrow">next up</h2>
+	<a
+		href="/crew/{crew.id}/schedule?plan"
+		class="btn btn-secondary btn-xs ml-auto"
+		><CalendarClock size={13} /> Plan a session</a
+	>
+</div>
+{#if !next}
+	<p class="text-muted mt-2 text-xs">
+		Nothing planned. A plan shows up here, on everyone's Home, and in their
+		calendar.
+	</p>
+{:else}
 	<div class="panel mt-2">
 		<p class="text-sm font-medium">{next.workoutName}</p>
 		<p class="text-muted mt-0.5 text-xs">
