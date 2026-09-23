@@ -7,7 +7,7 @@
 -- The session's recap (#2438), keyed by the session: the keeper retries
 -- (audit 2026-09-09), and the second write of the same session updates
 -- rather than duplicates. The crew and the channel come from the channel it
--- ran in; room_id is never written (#2558), so #2433 can drop it.
+-- ran in.
 insert into session_recaps (crew_id, channel_id, session_id, workout, started_at, ended_at, riders)
 select ch.crew_id, ch.id, sqlc.arg(session_id)::uuid,
        sqlc.arg(workout), sqlc.arg(started_at), sqlc.arg(ended_at), sqlc.arg(riders)

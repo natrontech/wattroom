@@ -116,11 +116,18 @@ func migrateScratchTo(ctx context.Context, t *testing.T, pool *pgxpool.Pool, ver
 	}
 }
 
-// migrateScratchUp runs the rest, over whatever the test wrote in between.
+// dropRoomsVersion is the contract (#2433) that drops the room tables. The
+// backfill tests migrate over rows they wrote the rooms era's way and then
+// read those rooms back, so they stop one short of it; the drop is tested on
+// its own (drop_rooms_test.go).
+const dropRoomsVersion int64 = 20260923101932
+
+// migrateScratchUp runs the rest up to the drop, over whatever the test wrote
+// in between.
 func migrateScratchUp(ctx context.Context, pool *pgxpool.Pool) error {
 	sqldb := stdlib.OpenDBFromPool(pool)
 	defer func() { _ = sqldb.Close() }()
-	return goose.UpContext(ctx, sqldb, "migrations")
+	return goose.UpToContext(ctx, sqldb, "migrations", dropRoomsVersion-1)
 }
 
 // scratchPool opens a pool on a scratch database of the test's own.

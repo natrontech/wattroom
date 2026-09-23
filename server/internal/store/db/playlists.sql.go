@@ -32,9 +32,7 @@ type CreatePlaylistRow struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
-// A rider's, or a crew's (ADR-0058, #2439). Never a room's (#2558): the
-// columns are named, here and below, so none of them reads room_id and #2433
-// can drop it under this release.
+// A rider's, or a crew's (ADR-0058, #2439).
 func (q *Queries) CreatePlaylist(ctx context.Context, arg CreatePlaylistParams) (CreatePlaylistRow, error) {
 	row := q.db.QueryRow(ctx, createPlaylist, arg.UserID, arg.CrewID, arg.Name)
 	var i CreatePlaylistRow

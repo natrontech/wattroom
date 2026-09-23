@@ -260,7 +260,7 @@ type MovedRoomRow struct {
 
 // Where an old room link lands now (#2446, #2458): the crew the room became
 // part of and the two channels it became, from the table kept for exactly
-// this (#2558) — rooms and room_channels go in #2433.
+// this (#2558): the rooms themselves are gone (#2433).
 func (q *Queries) MovedRoom(ctx context.Context, slug string) (MovedRoomRow, error) {
 	row := q.db.QueryRow(ctx, movedRoom, slug)
 	var i MovedRoomRow

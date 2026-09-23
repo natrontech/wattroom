@@ -1002,7 +1002,7 @@ func imageExt(mime string) string {
 }
 
 // place names where a row happened (#2554): its crew and its channel —
-// never a room since #2558, whose tables #2433 drops.
+// never a room (#2558, #2433).
 func place(row map[string]any, crew, channel string) map[string]any {
 	if crew != "" {
 		row["crew"] = crew

@@ -219,7 +219,7 @@ type SaveSessionRecapRow struct {
 // The session's recap (#2438), keyed by the session: the keeper retries
 // (audit 2026-09-09), and the second write of the same session updates
 // rather than duplicates. The crew and the channel come from the channel it
-// ran in; room_id is never written (#2558), so #2433 can drop it.
+// ran in.
 func (q *Queries) SaveSessionRecap(ctx context.Context, arg SaveSessionRecapParams) (SaveSessionRecapRow, error) {
 	row := q.db.QueryRow(ctx, saveSessionRecap,
 		arg.SessionID,

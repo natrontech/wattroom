@@ -256,8 +256,7 @@ type CreateRideParams struct {
 }
 
 // A session's ride names its crew, the voice channel and the session (#2443);
-// a solo ride leaves all three null. room_id is never written (#2558), so
-// #2433 can drop it.
+// a solo ride leaves all three null.
 func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, createRide,
 		arg.UserID,

@@ -18,10 +18,10 @@ import (
 // seedPlans writes n upcoming plans straight to the store, an hour apart and
 // naming no channel. The ceiling is what the handler is being asked about, so
 // filling the crew must not go through it.
-func (h *harness) seedPlans(t *testing.T, crew db.GetCrewRow, n int) []db.CreateCrewPlanRow {
+func (h *harness) seedPlans(t *testing.T, crew db.GetCrewRow, n int) []db.ScheduledSession {
 	t.Helper()
 	alice := h.users.ByToken["alice"]
-	out := make([]db.CreateCrewPlanRow, 0, n)
+	out := make([]db.ScheduledSession, 0, n)
 	for i := range n {
 		row, err := h.store.Queries.CreateCrewPlan(t.Context(), db.CreateCrewPlanParams{
 			CrewID: crew.ID, WorkoutName: fmt.Sprintf("Plan %d", i), WorkoutJson: []byte(planWorkout),

@@ -121,7 +121,7 @@ order by m.kind;
 -- ADR-0058; ADR-0012: friendship never pierces the boundary); otherwise the
 -- ride just "was in a room". The column names are the page's until #2457.
 -- A group ride is one with a crew or a channel on it (#2443, backfilled for
--- every room ride by M9) — never room_id, which #2433 drops (#2558).
+-- every room ride by M9).
 select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution, r.execution_scored,
        (r.crew_id is not null or r.channel_id is not null)::boolean as in_room,
        coalesce(case when v.user_id is not null then ch.name end, '')::text as room_name,

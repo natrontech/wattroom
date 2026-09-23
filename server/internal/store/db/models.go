@@ -69,7 +69,6 @@ type ChannelRead struct {
 
 type ChatImage struct {
 	ID        pgtype.UUID
-	RoomID    pgtype.UUID
 	UserID    pgtype.UUID
 	Mime      string
 	Bytes     []byte
@@ -79,7 +78,6 @@ type ChatImage struct {
 
 type ChatMessage struct {
 	ID        pgtype.UUID
-	RoomID    pgtype.UUID
 	UserID    pgtype.UUID
 	Text      string
 	CreatedAt pgtype.Timestamptz
@@ -184,21 +182,11 @@ type Identity struct {
 
 type Medal struct {
 	ID        pgtype.UUID
-	RoomID    pgtype.UUID
 	UserID    pgtype.UUID
 	RideID    pgtype.UUID
 	Kind      string
 	AwardedAt pgtype.Timestamptz
 	CrewID    pgtype.UUID
-}
-
-type Membership struct {
-	RoomID   pgtype.UUID
-	UserID   pgtype.UUID
-	Role     string
-	JoinedAt pgtype.Timestamptz
-	Notify   bool
-	OnBoard  bool
 }
 
 type MovedRoom struct {
@@ -219,7 +207,6 @@ type Passkey struct {
 
 type Playlist struct {
 	ID        pgtype.UUID
-	RoomID    pgtype.UUID
 	UserID    pgtype.UUID
 	Name      string
 	CreatedAt pgtype.Timestamptz
@@ -243,7 +230,6 @@ type PlaylistTrack struct {
 type Ride struct {
 	ID              pgtype.UUID
 	UserID          pgtype.UUID
-	RoomID          pgtype.UUID
 	WorkoutName     string
 	StartedAt       pgtype.Timestamptz
 	Seconds         int32
@@ -279,47 +265,8 @@ type RideExport struct {
 	StaleSince  pgtype.Timestamptz
 }
 
-type Room struct {
-	ID                 pgtype.UUID
-	Slug               string
-	Name               string
-	OwnerID            pgtype.UUID
-	Listed             bool
-	CreatedAt          pgtype.Timestamptz
-	SoundPack          string
-	Icon               string
-	Cheers             string
-	IcsToken           string
-	AutoplayEnabled    bool
-	AutoplayOrder      string
-	AutoplayPlaylistID pgtype.UUID
-	BoardEnabled       bool
-	CrewID             pgtype.UUID
-	CrewVisible        bool
-	AnnouncementID     pgtype.UUID
-}
-
-type RoomChannel struct {
-	RoomID         pgtype.UUID
-	TextChannelID  pgtype.UUID
-	VoiceChannelID pgtype.UUID
-}
-
-type RoomGrant struct {
-	RoomID    pgtype.UUID
-	UserID    pgtype.UUID
-	GrantedAt pgtype.Timestamptz
-}
-
-type RoomRead struct {
-	RoomID pgtype.UUID
-	UserID pgtype.UUID
-	ReadAt pgtype.Timestamptz
-}
-
 type ScheduledSession struct {
 	ID          pgtype.UUID
-	RoomID      pgtype.UUID
 	WorkoutName string
 	WorkoutJson []byte
 	StartsAt    pgtype.Timestamptz
@@ -340,7 +287,6 @@ type Session struct {
 
 type SessionRecap struct {
 	ID        pgtype.UUID
-	RoomID    pgtype.UUID
 	Workout   string
 	StartedAt pgtype.Timestamptz
 	EndedAt   pgtype.Timestamptz
@@ -376,7 +322,6 @@ type Track struct {
 type TrackPlay struct {
 	ID        pgtype.UUID
 	TrackID   pgtype.UUID
-	RoomID    pgtype.UUID
 	QueuedBy  pgtype.UUID
 	Skipped   bool
 	At        pgtype.Timestamptz
@@ -425,11 +370,6 @@ type UserAvatar struct {
 type VisibleChannel struct {
 	ChannelID pgtype.UUID
 	UserID    pgtype.UUID
-}
-
-type VisibleRoom struct {
-	RoomID pgtype.UUID
-	UserID pgtype.UUID
 }
 
 type Workout struct {

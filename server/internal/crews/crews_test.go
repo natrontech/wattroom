@@ -100,22 +100,6 @@ func (h *harness) namedInto(t *testing.T, channel pgtype.UUID, who string) bool 
 	return named
 }
 
-// roomIn puts a room owned by who into the crew, straight in the table — the
-// rows every crew made before ADR-0058 still carries until #2433, and which
-// no query writes since #2558.
-func (h *harness) roomIn(t *testing.T, crew db.GetCrewRow, who string) {
-	t.Helper()
-	var room pgtype.UUID
-	if err := h.store.Pool.QueryRow(t.Context(),
-		"insert into rooms (slug, name, owner_id, crew_id, crew_visible) values ($1, 'Last Resort', $2, $3, true) returning id",
-		testx.Slug("last-resort"), h.users.ByToken[who].ID, crew.ID).Scan(&room); err != nil {
-		t.Fatalf("room: %v", err)
-	}
-	t.Cleanup(func() {
-		_, _ = h.store.Pool.Exec(context.Background(), "delete from rooms where id = $1", room)
-	})
-}
-
 // roster is the crew page's people as who reads them, by display name, in
 // the page's own order.
 func (h *harness) roster(t *testing.T, who string, crew db.GetCrewRow) []string {
@@ -708,46 +692,19 @@ func TestTheCrewDoorHasACeiling(t *testing.T) {
 	}
 }
 
-// SPEC's succession rule: never anyone the crew banned (#1675). The room
-// owners used to be the successor of last resort; a banned one owning a room
-// row inherits nothing now, and the crew goes with its leftover rooms rather
-// than failing the purge on them (#2446) — rooms.crew_id cascades since #2558,
-// and no code deletes a room row any more.
-func TestACrewWithNobodyLeftGoesWithItsRoomRows(t *testing.T) {
+// SPEC's succession rule: never anyone the crew banned (#1675). With nobody
+// else left the crew goes rather than passing to the banned rider.
+func TestACrewWithNobodyButABannedRiderLeftGoes(t *testing.T) {
 	h := setup(t)
 	crew := h.newCrew(t, "alice", "Crew Succession")
 	h.join(t, "bob", crew)
-	h.roomIn(t, crew, "bob")
 	h.banFromCrew(t, crew, "bob")
 
 	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["alice"].ID); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); !errors.Is(err, pgx.ErrNoRows) {
-		t.Fatalf("a crew with nobody but a banned room owner left survived: %v", err)
-	}
-}
-
-// A room owner is an ordinary member now (#2446): the rooms API is gone, so
-// nothing could hand a room on or delete it, and the "a room never leaves its
-// crew" refusals trapped every former room owner in their crew.
-func TestARoomOwnerLeavesAndIsBannedLikeAnyone(t *testing.T) {
-	h := setup(t)
-	crew := h.newCrew(t, "alice", "Room Owners")
-	h.join(t, "bob", crew)
-	h.join(t, "carol", crew)
-	h.roomIn(t, crew, "bob")
-	h.roomIn(t, crew, "carol")
-
-	if status, body := h.call(t, "bob", http.MethodPost, crewPath(crew, "/leave"), ""); status != http.StatusNoContent {
-		t.Fatalf("a room owner leaving: %d %v", status, body)
-	}
-	if status, body := h.call(t, "alice", http.MethodPost, crewPath(crew, "/role"),
-		fmt.Sprintf(`{"userId":%q,"role":"banned"}`, h.userID(t, "carol"))); status != http.StatusNoContent {
-		t.Fatalf("banning a room owner: %d %v", status, body)
-	}
-	if got := h.crewRole(t, crew, h.users.ByToken["carol"].ID); got != "banned" {
-		t.Fatalf("carol's role %q, want banned", got)
+		t.Fatalf("a crew with nobody but a banned rider left survived: %v", err)
 	}
 }
 

@@ -140,24 +140,11 @@ type CreateCrewPlanParams struct {
 	CreatedBy   pgtype.UUID
 }
 
-type CreateCrewPlanRow struct {
-	ID          pgtype.UUID
-	WorkoutName string
-	WorkoutJson []byte
-	StartsAt    pgtype.Timestamptz
-	CreatedBy   pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
-	RemindedAt  pgtype.Timestamptz
-	StartedAt   pgtype.Timestamptz
-	CrewID      pgtype.UUID
-	ChannelID   pgtype.UUID
-}
-
 // The crew's schedule (#2440, ADR-0058): a plan belongs to the crew and names
 // the voice channel it will run in, or none yet. A plan naming a private
 // channel is that channel's to show — visible_channels is the gate, and a
 // channel's existence is part of what it keeps.
-func (q *Queries) CreateCrewPlan(ctx context.Context, arg CreateCrewPlanParams) (CreateCrewPlanRow, error) {
+func (q *Queries) CreateCrewPlan(ctx context.Context, arg CreateCrewPlanParams) (ScheduledSession, error) {
 	row := q.db.QueryRow(ctx, createCrewPlan,
 		arg.CrewID,
 		arg.ChannelID,
@@ -166,7 +153,7 @@ func (q *Queries) CreateCrewPlan(ctx context.Context, arg CreateCrewPlanParams) 
 		arg.StartsAt,
 		arg.CreatedBy,
 	)
-	var i CreateCrewPlanRow
+	var i ScheduledSession
 	err := row.Scan(
 		&i.ID,
 		&i.WorkoutName,
@@ -751,24 +738,11 @@ type MoveCrewPlanParams struct {
 	CrewID   pgtype.UUID
 }
 
-type MoveCrewPlanRow struct {
-	ID          pgtype.UUID
-	WorkoutName string
-	WorkoutJson []byte
-	StartsAt    pgtype.Timestamptz
-	CreatedBy   pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
-	RemindedAt  pgtype.Timestamptz
-	StartedAt   pgtype.Timestamptz
-	CrewID      pgtype.UUID
-	ChannelID   pgtype.UUID
-}
-
 // RescheduleSession's rule: a move re-arms the reminder, a same-time move
 // does not (#1639).
-func (q *Queries) MoveCrewPlan(ctx context.Context, arg MoveCrewPlanParams) (MoveCrewPlanRow, error) {
+func (q *Queries) MoveCrewPlan(ctx context.Context, arg MoveCrewPlanParams) (ScheduledSession, error) {
 	row := q.db.QueryRow(ctx, moveCrewPlan, arg.StartsAt, arg.ID, arg.CrewID)
-	var i MoveCrewPlanRow
+	var i ScheduledSession
 	err := row.Scan(
 		&i.ID,
 		&i.WorkoutName,
