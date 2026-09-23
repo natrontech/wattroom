@@ -3,7 +3,7 @@
  *
  * The page dies with the LiveKit room, so a reload starts at `status: 'off'`
  * and the rider goes silent without noticing. The fix is a per-device note
- * saying "this tab was in voice in <slug>, as of <ts>, mic open/shut", kept
+ * saying "this tab was in voice in <place>, as of <ts>, mic open/shut", kept
  * warm while the call is live and torn up the moment the rider hangs up.
  *
  * The decision is deliberately a pure function: joining LiveKit cannot be
@@ -13,7 +13,8 @@
 
 /** One tab's note. Keyed by tab id — a device runs several. */
 export interface VoiceNote {
-	slug: string;
+	/** The place's address key (`PlaceAddress.key`). */
+	key: string;
 	/** Last heartbeat, `Date.now()` — not the join, so a long ride still counts. */
 	at: number;
 	/** Was the mic open? A rider who was muted comes back muted. */
@@ -43,8 +44,8 @@ export interface RejoinInput {
 	notes: VoiceNotes | null | undefined;
 	/** This tab's id, stable across a reload and unique per tab. */
 	tab: string;
-	/** The room being opened. */
-	slug: string;
+	/** The key of the place being opened. */
+	key: string;
 	/** `account.me.avEnabled` — no AV, no rejoin. */
 	avEnabled: boolean;
 	now: number;
@@ -61,7 +62,7 @@ function isNote(value: unknown): value is VoiceNote {
 	if (typeof value !== 'object' || value === null) return false;
 	const note = value as Partial<VoiceNote>;
 	return (
-		typeof note.slug === 'string' &&
+		typeof note.key === 'string' &&
 		typeof note.at === 'number' &&
 		Number.isFinite(note.at) &&
 		typeof note.mic === 'boolean'
@@ -82,13 +83,13 @@ function isNote(value: unknown): value is VoiceNote {
  * there is one microphone on the machine, and it is in use.
  */
 export function shouldRejoinVoice(input: RejoinInput): Rejoin | null {
-	const { notes, tab, slug, avEnabled, now } = input;
+	const { notes, tab, key, avEnabled, now } = input;
 	if (!avEnabled) return null;
 	if (typeof notes !== 'object' || notes === null) return null;
 
 	const mine = notes[tab];
 	if (!isNote(mine)) return null;
-	if (mine.slug !== slug) return null;
+	if (mine.key !== key) return null;
 	if (!fresh(mine, now)) return null;
 
 	for (const [id, note] of Object.entries(notes)) {
@@ -168,12 +169,12 @@ export function clearNote(tab: string): void {
  * refresh during the drop-rejoin window is still a refresh — and only
  * `clear` tears it up, which is the rider hanging up.
  */
-export function createNoteKeeper(slug: string, micOpen: () => boolean) {
+export function createNoteKeeper(key: string, micOpen: () => boolean) {
 	const tab = tabId();
 	let beat: ReturnType<typeof setInterval> | null = null;
 
 	function stamp(): void {
-		writeNote(tab, { slug, at: Date.now(), mic: micOpen() });
+		writeNote(tab, { key, at: Date.now(), mic: micOpen() });
 	}
 
 	return {

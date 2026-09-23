@@ -65,8 +65,8 @@
 		const back = shouldRejoinVoice({
 			notes: readNotes(),
 			tab: tabId(),
-			// The note is keyed by the place (#2449); a room's key is its slug.
-			slug: props.address.key,
+			// The note is keyed by the place (#2449).
+			key: props.address.key,
 			avEnabled: !!account.me?.avEnabled,
 			now: Date.now(),
 		});
