@@ -7,7 +7,6 @@
 	import ListMusic from '@lucide/svelte/icons/list-music';
 	import Music from '@lucide/svelte/icons/music';
 	import Pencil from '@lucide/svelte/icons/pencil';
-	import Star from '@lucide/svelte/icons/star';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import X from '@lucide/svelte/icons/x';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
@@ -31,9 +30,7 @@
 		playlist,
 		store,
 		address,
-		roomScoped,
 		canManage,
-		onSetActive,
 	}: {
 		playlist: SavedPlaylist;
 		store: ReturnType<typeof createPlaylistStore>;
@@ -41,12 +38,9 @@
 		 *  the Music page with no room open (#1460): nothing to queue into,
 		 *  so the verb is not drawn. */
 		address?: PlaceAddress | null;
-		/** Room playlists only: offers "Set active" in the menu. */
-		roomScoped: boolean;
 		/** Rename, delete and remove-a-track: the coach's and the owner's on a
 		 * room playlist (#771), always yours on a personal one. */
 		canManage: boolean;
-		onSetActive?: () => void;
 	} = $props();
 
 	let open = $state(false);
@@ -243,12 +237,6 @@
 			icon: Pencil,
 			onSelect: () => (renaming = true),
 		});
-		if (roomScoped && !playlist.active && onSetActive)
-			entries.push({
-				label: 'Set as active',
-				icon: Star,
-				onSelect: onSetActive,
-			});
 		entries.push('separator', {
 			label: 'Delete',
 			icon: Trash2,
@@ -301,7 +289,6 @@
 			<p class="text-muted text-[10px]">
 				{playlist.trackCount}
 				{playlist.trackCount === 1 ? 'track' : 'tracks'}
-				{#if playlist.active}<span class="text-neon">· active</span>{/if}
 			</p>
 		</div>
 		{#if address}

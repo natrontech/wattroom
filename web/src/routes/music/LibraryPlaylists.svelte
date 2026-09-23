@@ -67,7 +67,6 @@
 						{playlist}
 						{store}
 						{address}
-						roomScoped={false}
 						canManage={true}
 					/>
 				{/each}

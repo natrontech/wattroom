@@ -95,7 +95,6 @@
 						{playlist}
 						{store}
 						{address}
-						roomScoped={tab === 'room'}
 						canManage={tab !== 'room' || canManage}
 					/>
 				{/each}

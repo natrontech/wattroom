@@ -18,8 +18,6 @@ export interface SavedPlaylist {
 	id: string;
 	name: string;
 	trackCount: number;
-	/** Room playlists only: is this the room's autoplay source. */
-	active?: boolean;
 	updatedAt: number;
 }
 
@@ -44,17 +42,6 @@ export interface SavedPlaylistDetail {
 	id: string;
 	name: string;
 	tracks: SavedTrack[];
-}
-
-export interface AutoplaySettings {
-	enabled: boolean;
-	/**
-	 * `ordered`/`shuffled` walk the room's active playlist; `smart` (#269)
-	 * ignores it and draws from the library, weighted by what this room has
-	 * been playing and skipping. Set in the crew's Settings (#1422, #2454).
-	 */
-	order: 'ordered' | 'shuffled' | 'smart';
-	activePlaylistId?: string;
 }
 
 /** Room and personal playlists are the same shape at two different bases. */
@@ -202,18 +189,6 @@ export function commandFromSavedTrack(track: SavedTrack): JukeboxCommand {
 export function queueSavedPlaylist(address: PlaceAddress, id: string) {
 	return api<{ queued: number }>(address.queuePlaylist(id), {
 		method: 'POST',
-	});
-}
-
-/** A room's autoplay (#1422); `path` is its address's `autoplay`. */
-export function getAutoplay(path: string) {
-	return api<AutoplaySettings>(path);
-}
-
-export function updateAutoplay(path: string, settings: AutoplaySettings) {
-	return api<AutoplaySettings>(path, {
-		method: 'PATCH',
-		json: settings,
 	});
 }
 
