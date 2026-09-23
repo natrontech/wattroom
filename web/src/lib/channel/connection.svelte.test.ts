@@ -28,7 +28,7 @@ const fakeLive = {
 	finish() {},
 	close() {},
 	status: 'live',
-	roomEvents: [],
+	channelEvents: [],
 	pushEvent() {},
 	refusal: null,
 	// The connection claims this tab's sensors whenever the set changes
@@ -42,7 +42,9 @@ const fakeLive = {
 	control() {},
 	cheer() {},
 };
-vi.mock('$lib/channel/live.svelte', () => ({ createRoomLive: () => fakeLive }));
+vi.mock('$lib/channel/live.svelte', () => ({
+	createChannelLive: () => fakeLive,
+}));
 vi.mock('livekit-client', () => ({
 	Room: class {
 		remoteParticipants = new Map();

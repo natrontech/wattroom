@@ -3,7 +3,7 @@ import { ridePath, type PlaceAddress } from '$lib/channel/address';
 import type { createChannelAv } from '$lib/channel/av.svelte';
 import { comingsAndGoings } from '$lib/channel/comings-and-goings';
 import { dmArrivalEvent } from '$lib/channel/dm-line';
-import type { createRoomLive } from '$lib/channel/live.svelte';
+import type { createChannelLive } from '$lib/channel/live.svelte';
 import { announcePoke } from '$lib/channel/poke';
 import {
 	screenShareChanges,
@@ -31,7 +31,7 @@ export function connectionCues({
 	av,
 }: {
 	address: PlaceAddress;
-	live: ReturnType<typeof createRoomLive>;
+	live: ReturnType<typeof createChannelLive>;
 	av: ReturnType<typeof createChannelAv>;
 }): void {
 	// Presence announces itself (#148) from HERE, not the page — someone

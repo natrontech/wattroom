@@ -42,7 +42,7 @@ export const SILENCE_MS = 5_000;
  */
 export const SETTLED_ATTEMPTS = 5;
 
-export function createRoomLive(address: PlaceAddress) {
+export function createChannelLive(address: PlaceAddress) {
 	let status = $state<LiveStatus>('connecting');
 	let tick = $state<ServerTick | null>(null);
 	// The last workout definition heard, by hash (#1710): the server sends
@@ -51,9 +51,9 @@ export function createRoomLive(address: PlaceAddress) {
 	// What the room did (#321), for the Lounge's event lines.
 	// Ephemeral by design (ADR-0019): nothing seeds these on join, and a
 	// reload forgets them — "now playing" is worthless tomorrow.
-	let roomEvents = $state<RoomEvent[]>([]);
+	let channelEvents = $state<RoomEvent[]>([]);
 	function mergeEvents(incoming: RoomEvent[]) {
-		const next = [...roomEvents];
+		const next = [...channelEvents];
 		for (const event of incoming) {
 			// A growing burst re-sends its own id ("queued 3 tracks"):
 			// replace the line in place, never stack a second one.
@@ -61,7 +61,7 @@ export function createRoomLive(address: PlaceAddress) {
 			if (at >= 0) next[at] = event;
 			else next.push(event);
 		}
-		roomEvents = next.slice(-100);
+		channelEvents = next.slice(-100);
 	}
 	let refusal = $state<string | null>(null);
 	let refusalAt = 0;
@@ -514,8 +514,8 @@ export function createRoomLive(address: PlaceAddress) {
 			away = next;
 			send({ away: { away: next, reason: next ? reason : '' } });
 		},
-		get roomEvents() {
-			return roomEvents;
+		get channelEvents() {
+			return channelEvents;
 		},
 		/**
 		 * A line this client made itself (#664: a screen share only LiveKit

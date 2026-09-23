@@ -2,7 +2,7 @@ import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { pullProfile } from '$lib/profile-sync.svelte';
-import { createRoomLive } from '$lib/channel/live.svelte';
+import { createChannelLive } from '$lib/channel/live.svelte';
 import { createRecording } from '$lib/session/recording.svelte';
 import { createRide } from '$lib/session/ride.svelte';
 import { sensorClaim } from '$lib/channel/sensor-claim';
@@ -29,7 +29,7 @@ import { onPlacePath, type PlaceAddress } from '$lib/channel/address';
 type Connection = {
 	/** Where the connection stands, and every path that follows (#2449). */
 	address: PlaceAddress;
-	live: ReturnType<typeof createRoomLive>;
+	live: ReturnType<typeof createChannelLive>;
 	av: ChannelAv;
 	/**
 	 * You stepped out, or came back (#706). One home for the pair the state
@@ -73,7 +73,7 @@ function connect(address: PlaceAddress): Connection {
 			'the room AV is not loaded — the room layout prepares it before the shell joins',
 		);
 	}
-	const live = createRoomLive(address);
+	const live = createChannelLive(address);
 	const av = createChannelAv(address);
 	// Assigned inside the root below, which runs synchronously.
 	let profile!: ReturnType<typeof createProfileStore>;

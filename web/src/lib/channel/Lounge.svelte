@@ -40,7 +40,7 @@
 	const EVENTS_SHOWN = 8;
 	// The newest few, and only those this client can put into words.
 	const events = $derived(
-		(channelConnection.current?.live.roomEvents ?? [])
+		(channelConnection.current?.live.channelEvents ?? [])
 			.filter((event) => eventText(event))
 			.slice(-EVENTS_SHOWN),
 	);
