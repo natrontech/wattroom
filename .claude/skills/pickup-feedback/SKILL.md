@@ -51,7 +51,7 @@ specific trainer's firmware quirk. Say which class you think it is and what woul
 ## 5. Fix, keeping the replay as the regression test
 
 Branch `fix/<slug>`, draft PR early with `Closes #<n>`. The replay from step 4 **is** the test —
-commit it as a fixture, with user and room identifiers stripped and the numeric series kept. The
+commit it as a fixture, with user, crew and channel identifiers stripped and the numeric series kept. The
 fix is done when that test goes from failing to passing, and it stays in the suite afterwards.
 
 Scope discipline is the whole point of one-issue-per-tick: anything else you notice becomes a new
