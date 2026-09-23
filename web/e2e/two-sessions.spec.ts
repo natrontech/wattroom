@@ -206,8 +206,10 @@ test('two voice channels run two sessions, each with its own numbers and its own
 			})
 			.fill(`https://www.youtube.com/watch?v=${id}`);
 		await page.keyboard.press('Enter');
+		// The visible copy: the jukebox rail holds the track too, and steps
+		// aside on the live channel's own pages (#2460), so its copy is hidden.
 		await expect(
-			page.getByText(id).first(),
+			page.getByText(id).filter({ visible: true }).first(),
 			`what was queued never reached the deck: ${id}`,
 		).toBeVisible({ timeout: SETTLE_MS });
 	};
@@ -234,8 +236,12 @@ test('two voice channels run two sessions, each with its own numbers and its own
 		`the deck in ${two.name} carried another channel's track`,
 	).toEqual([TRACK.two]);
 	// And each screen shows its own track and nothing of the other's.
-	await expect(a.getByText(TRACK.one).first()).toBeVisible();
+	await expect(
+		a.getByText(TRACK.one).filter({ visible: true }).first(),
+	).toBeVisible();
 	await expect(a.getByText(TRACK.two)).toHaveCount(0);
-	await expect(b.getByText(TRACK.two).first()).toBeVisible();
+	await expect(
+		b.getByText(TRACK.two).filter({ visible: true }).first(),
+	).toBeVisible();
 	await expect(b.getByText(TRACK.one)).toHaveCount(0);
 });
