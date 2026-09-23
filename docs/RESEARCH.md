@@ -4,6 +4,8 @@ Deep-research validation of the decisions in [WATTROOM.md](../WATTROOM.md), run 
 Three research passes: domain tech (107 agents, 25 claims adversarially verified 3–0), dev tooling & CI (105 agents, 24 claims verified 3–0), and a gap-fill pass (in flight — see §8).
 Confidence tiers: **verified** = survived 3-vote adversarial verification against primary sources; **extracted** = sourced claim from the research pass, not adversarially verified.
 
+> Every run here predates [ADR-0058](decisions/0058-the-room-dissolves-into-the-crew.md) (2026-09-22), which took the room apart, and describes the product as it was researched. Where a section says room, read the session for riding, the voice channel for a call or a deck, and the crew for membership, identity or a door.
+
 ---
 
 ## 1. Web Bluetooth + FTMS — decision holds

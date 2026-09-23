@@ -72,22 +72,23 @@ curl -s https://wattroom.ch/api/auth/providers
   1. `https://wattroom.ch/api/healthz` → `ok`
   2. `/` signed out → the landing page
   3. Sign in with each configured provider once (this is also the account
-     the first room will belong to)
-  4. Open a room, pair the Kickr, ride two minutes, End ride → the ride is
-     on /history
-  5. Phone on the crew's invite link (`/c/<code>`, from the crew's settings)
-     → joins the crew, then walks into the room from the crew's page: the
-     drawer carries its places, the crew strip everyone's watts. There is
-     no separate spectator view any more (#412); the old `/r/<slug>/watch`
-     URL redirects here.
+     that founds the first crew)
+  4. Start a crew — it opens with a text channel and a voice channel — walk
+     into the voice channel, pair the Kickr, start a session, ride two
+     minutes, End ride → the ride is on /history
+  5. Phone on the crew's invite link (`/c/<code>`, from the crew's page)
+     → joins the crew, then walks into the voice channel from the sidebar,
+     which carries the crew's channels; a running session shows everyone's
+     watts. There is no separate spectator view any more (#412); an old
+     `/r/<slug>/watch` link lands on the voice channel or its running
+     session (#2458).
 - Then invite the crew: the crew's code or link is the whole invite (#1236).
-  A new room is open to the crew; make it private in its settings if it is
-  for some of them only, and let the rest in one by one from the Members
-  place.
+  A new channel is open to the crew; make it private in the crew's Settings
+  if it is for some of them only, and name the rest into it one by one there.
 
 ## 4. First crew ride checklist
 
-- Schedule it in the room (the upcoming card) so everyone sees it.
+- Schedule it on the crew's Schedule page so everyone sees it.
 - TV mode on the biggest screen; the crew's code is on it when idle.
 - Every rider: Chrome/Edge on desktop, trainer on FTMS, FTP set in profile
   (the ramp test works day one).

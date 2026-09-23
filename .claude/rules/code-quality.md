@@ -3,7 +3,7 @@
 ## Before writing new code
 
 1. **Search first** — grep for an existing implementation before writing one.
-2. Every concept has one canonical home: WS wire types → `server/internal/protocol/` (never redeclare, TS side is generated); live room state → `server/internal/hub/`; trainer/BLE → behind the `Trainer` interface in `web/src/lib/ble/` (planned); frontend fetch through one shared client module once it exists — no scattered `fetch` boilerplate.
+2. Every concept has one canonical home: WS wire types → `server/internal/protocol/` (never redeclare, TS side is generated); live channel and session state → `server/internal/hub/`; trainer/BLE → behind the `Trainer` interface in `web/src/lib/ble/` (planned); frontend fetch through one shared client module once it exists — no scattered `fetch` boilerplate.
 3. A pattern appearing in 2+ places gets extracted in the same change.
 
 ## Self-documenting code
