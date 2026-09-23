@@ -22,7 +22,7 @@
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import RoomIcon from '$lib/components/RoomIcon.svelte';
+	import MarkIcon from '$lib/components/MarkIcon.svelte';
 	import { fetchProgression, type LoadSummary } from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
 	import { changelog } from '$lib/changelog.svelte';
@@ -259,7 +259,7 @@
 								href="/crew/{crew.id}/schedule"
 								class="hover:bg-surface flex items-center gap-2 px-3 py-2 text-sm"
 							>
-								<RoomIcon icon={crew.icon} size={14} />
+								<MarkIcon icon={crew.icon} size={14} />
 								<span class="truncate">{crew.name}</span>
 							</a>
 						</li>

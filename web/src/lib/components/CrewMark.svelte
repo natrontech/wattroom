@@ -2,7 +2,7 @@
 	// A crew's face, everywhere it is drawn (#1237): the picture when there
 	// is one, else the icon, else the initial — one component so the
 	// switcher, the crew page and the door cannot disagree. Chrome, not data.
-	import RoomIcon from '$lib/components/RoomIcon.svelte';
+	import MarkIcon from '$lib/components/MarkIcon.svelte';
 	import { iconFor } from '$lib/icons';
 
 	let {
@@ -31,7 +31,7 @@
 	{#if imageUrl}
 		<img src={imageUrl} alt="" class="h-full w-full object-cover" />
 	{:else if iconFor(icon)}
-		<RoomIcon {icon} size={Math.round(size * 0.55)} />
+		<MarkIcon {icon} size={Math.round(size * 0.55)} />
 	{:else}
 		<span
 			class="font-display font-bold"

@@ -33,7 +33,7 @@ export type Icon = LucideIcon;
  * the same on every device and in every theme. Two curated vocabularies —
  * the identity mark a room wears, and the palette it cheers with.
  */
-export const ROOM_ICONS: Record<string, Icon> = {
+export const MARK_ICONS: Record<string, Icon> = {
 	bike: Bike,
 	zap: Zap,
 	flame: Flame,
@@ -98,7 +98,7 @@ export const EMOJI_TO_KEY: Record<string, string> = {
 	'👍': 'thumbs-up',
 };
 
-const ALL_ICONS: Record<string, Icon> = { ...ROOM_ICONS, ...CHEER_ICONS };
+const ALL_ICONS: Record<string, Icon> = { ...MARK_ICONS, ...CHEER_ICONS };
 
 /** The icon key a stored value means: a key as-is, a known emoji translated. */
 export function keyFor(value: string): string {
