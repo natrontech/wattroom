@@ -67,7 +67,7 @@ make dev-web      # terminal 2: Vite dev server on :5174 (proxies /api + /ws)
 ```
 
 No smart trainer needed — the simulated trainer covers development, and
-`/dev/room` is a full mock room. See [CONTRIBUTING.md](CONTRIBUTING.md).
+`/dev/channel` is a full mock voice channel. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Hardware & browsers
 
