@@ -186,8 +186,9 @@
 		{#if ridden.length > 0}
 			<h2 class="eyebrow mb-2">Ridden together</h2>
 			<ul class="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-				<!-- One card per workout: grouped by name, so the name is unique here. -->
-				{#each ridden as workout (workout.name)}
+				<!-- Keyed by its newest session: a session belongs to one workout, so
+				     it is unique here, and a name is nobody's key (rider-keys.test). -->
+				{#each ridden as workout (workout.recaps[0].id)}
 					{@const json = workoutByName(workout.name, sources)}
 					<RiddenCard {workout} {json} {ftp}>
 						{#snippet actions()}
