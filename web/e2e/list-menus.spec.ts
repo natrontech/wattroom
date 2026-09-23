@@ -1,50 +1,15 @@
-import { expect, test } from './room';
+import { expect, test } from './crew';
 
 /**
  * Every object with more than one action gets a context menu (ux.md), on
  * every surface it is drawn — the messages list is the sidebar below `md`
- * (#2171) and its rows had arrived without theirs.
+ * (#2171) and its rows had arrived without theirs. Its rows are
+ * conversations now: a crew's talk lives in its text channels (ADR-0058),
+ * which only the crew's own column draws.
  */
 
 /** This spec's own rider — nobody else's (#2133). */
 const RIDER = 'List Menus Rider';
-
-test("the messages list's room row carries the sidebar's own menu", async ({
-	riders,
-	rooms,
-}) => {
-	test.skip(
-		!!process.env.PLAYWRIGHT_BASE_URL,
-		'the ?as= dev provider only exists on a dev server',
-	);
-
-	const a = await riders(RIDER);
-	const room = await rooms.open(a, `List Menus ${Date.now() % 100000}`);
-
-	// The list column exists below md only: above it the sidebar IS the list
-	// (#484), and this is the surface that stands in for it.
-	await a.setViewportSize({ width: 375, height: 812 });
-	await a.goto('/messages');
-	// The list, not the sidebar behind it: both draw a row per room, and the
-	// sidebar's has carried a menu since #465 — a check that finds either
-	// passes with this list's rows still bare.
-	const row = a
-		.getByTestId('thread-list')
-		.getByRole('listitem')
-		.filter({ hasText: room.name })
-		.first();
-	await expect(row).toBeVisible({ timeout: 15_000 });
-	await row.click({ button: 'right' });
-
-	// The room's places, the same builder the sidebar's rows use.
-	await expect(a.getByRole('menuitem', { name: 'Training' })).toBeVisible();
-	await expect(a.getByRole('menuitem', { name: 'Chat' })).toBeVisible();
-	// Not standing in the room, so there is nothing to disconnect from.
-	await expect(a.getByRole('menuitem', { name: 'Disconnect' })).toHaveCount(0);
-	// The place is where the row said it would be.
-	await a.getByRole('menuitem', { name: 'Training' }).click();
-	await expect(a).toHaveURL(new RegExp(`/r/${room.slug}/training$`));
-});
 
 test("a conversation's row offers the person's menu, and a ride's its verbs", async ({
 	riders,

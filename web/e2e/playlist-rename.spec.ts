@@ -1,4 +1,4 @@
-import { expect, test } from './room';
+import { expect, test, voicePath } from './crew';
 
 /**
  * Renaming a crew playlist is the crew's owner's and admins' (docs/SPEC.md's
@@ -12,11 +12,11 @@ import { expect, test } from './room';
 /** This spec's own riders — nobody else's (#2133). */
 const A = 'Playlist Owner';
 const B = 'Playlist Member';
-const PLAYLIST = 'Room Mix';
+const PLAYLIST = 'Crew Mix';
 
-test('only a rider who may rename a room playlist can open its name', async ({
+test('only a rider who may rename a crew playlist can open its name', async ({
 	riders,
-	rooms,
+	channels,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -24,7 +24,7 @@ test('only a rider who may rename a room playlist can open its name', async ({
 	);
 
 	const a = await riders(A);
-	const room = await rooms.open(a, `Playlist Gate ${Date.now() % 100000}`);
+	const opened = await channels.open(a, `Playlist Gate ${Date.now() % 100000}`);
 	// The crew outlives the run (a crew with channels is never swept, #2493),
 	// and so does its shelf: the last run's playlist goes first, or the row
 	// below is two rows.
@@ -39,7 +39,7 @@ test('only a rider who may rename a room playlist can open its name', async ({
 						method: 'DELETE',
 					});
 		},
-		[room.crew, PLAYLIST],
+		[opened.crew, PLAYLIST],
 	);
 	const made = await a.evaluate(
 		async ([crewId, name]) => {
@@ -50,20 +50,21 @@ test('only a rider who may rename a room playlist can open its name', async ({
 			});
 			return res.status;
 		},
-		[room.crew, PLAYLIST],
+		[opened.crew, PLAYLIST],
 	);
 	expect(made, 'the owner could not create a crew playlist').toBe(201);
 
 	const b = await riders(B);
-	await rooms.enter(b, room);
+	await channels.enter(b, opened);
 
-	// The Room tab of the jukebox, on both screens.
+	// The Crew tab of the voice channel's jukebox, on both screens: a voice
+	// channel's shelf is its crew's (#2449).
 	for (const rider of [a, b]) {
-		await rider.goto(`/r/${room.slug}`);
+		await rider.goto(voicePath(opened));
 		// The playlists are a <details> under the jukebox, closed by default.
 		await rider.getByText('playlists', { exact: true }).click();
-		// role="tab", not a button: the jukebox's Room/Mine pair.
-		await rider.getByRole('tab', { name: 'Room', exact: true }).click();
+		// role="tab", not a button: the jukebox's Crew/Mine pair.
+		await rider.getByRole('tab', { name: 'Crew', exact: true }).click();
 		await expect(rider.getByText(PLAYLIST)).toBeVisible({ timeout: 15_000 });
 	}
 

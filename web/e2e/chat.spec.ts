@@ -1,4 +1,4 @@
-import { expect, test, textChannelOf } from './room';
+import { expect, test, textPath } from './crew';
 import { signInAs } from './signin';
 
 /**
@@ -29,7 +29,7 @@ const say = (i: number) => `line ${i} ${'wattage '.repeat(58)}`.trim();
 
 test('a text channel scrolls back to its oldest line', async ({
 	page,
-	rooms,
+	channels,
 }) => {
 	// A desk-sized window: the log is the content column at any width, but the
 	// people column beside it only exists from `xl`.
@@ -37,9 +37,9 @@ test('a text channel scrolls back to its oldest line', async ({
 	await signInAs(page, 'Chat Scrollback', '/home');
 
 	const name = `Chat Scrollback ${Date.now() % 100000}`;
-	const room = await rooms.open(page, name);
+	const opened = await channels.open(page, name);
 
-	await page.goto(await textChannelOf(page, room));
+	await page.goto(textPath(opened));
 	const log = page.getByTestId('thread-log');
 	// Read live and polled, never sampled once: messages land in a burst — a
 	// whole history at reload — so the newest line paints while
@@ -96,11 +96,11 @@ test('a text channel scrolls back to its oldest line', async ({
  * one never shows in the other, and hopping between them is navigation, not
  * a join — the thread swaps, and the composer is the new channel's.
  */
-test('two channels of one crew do not cross', async ({ page, rooms }) => {
+test('two channels of one crew do not cross', async ({ page, channels }) => {
 	await signInAs(page, 'Channel Hop', '/home');
 	const name = `Channel Hop ${Date.now() % 100000}`;
-	const room = await rooms.open(page, name);
-	const first = await textChannelOf(page, room);
+	const opened = await channels.open(page, name);
+	const first = textPath(opened);
 	const second = await page.evaluate(async (crew) => {
 		const res = await fetch(`/api/crews/${crew}/channels`, {
 			method: 'POST',
@@ -108,11 +108,11 @@ test('two channels of one crew do not cross', async ({ page, rooms }) => {
 			body: JSON.stringify({ kind: 'text', name: 'second' }),
 		});
 		const body = (await res.json()) as { id?: string };
-		// The channel goes with the test; the room's own go with its crew.
+		// This one goes with the test; the fixture's own go at its teardown.
 		return body.id ?? '';
-	}, room.crew);
+	}, opened.crew);
 	expect(second, 'a second text channel in the crew').not.toBe('');
-	const secondPath = `/crew/${room.crew}/c/${second}`;
+	const secondPath = `/crew/${opened.crew}/c/${second}`;
 
 	const other = await page.context().newPage();
 	try {
