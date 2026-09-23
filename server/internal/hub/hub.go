@@ -387,23 +387,29 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 	rm.events.add(sessionLine(verb, actor, workout, startsAt, at), at)
 }
 
-// OpenSession opens a planned session in a voice channel for rider (#2440):
-// the pick a plan's start stands for, made over HTTP. The channel's
-// one-session rule answers exactly as it does on the socket — conflict,
-// naming the coach (#2438) — and a session the rider already coaches there
-// counts as opened, so a client that picked on the socket first is not
-// refused its own. The channel's room is made if nobody is in it yet: the
-// coach is on their way, and a pick nobody comes to ride is released by the
-// idle sweep like any other (#2297).
+// OpenSession starts a planned session in a voice channel for rider (#2440):
+// the pick a plan's start stands for, then the countdown — the pair the
+// pre-M9 client sent over the socket, and a pick alone left the plan spent
+// with nothing running (#2535). The channel's one-session rule answers
+// exactly as it does on the socket — conflict, naming the coach (#2438). A
+// session the rider already has under way there counts as started, so a
+// second press is not refused its own ride; their own pick left idle gives
+// way to the plan. The channel's room is made if nobody is in it yet: the
+// coach is on their way, and a countdown nobody comes to ride ends like any
+// other.
 func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (code, message string) {
 	rm := h.room(channel)
 	rm.mu.Lock()
-	mine := rm.session.open() && rm.session.coach == rider.ID
+	s := rm.session
+	underWay := s.open() && s.coach == rider.ID && s.phase != "idle"
 	rm.mu.Unlock()
-	if mine {
+	if underWay {
 		return "", ""
 	}
-	return rm.control(protocol.Control{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON}, rider, h.now())
+	if code, message := rm.control(protocol.Control{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON}, rider, h.now()); code != "" {
+		return code, message
+	}
+	return rm.control(protocol.Control{Action: "start"}, rider, h.now())
 }
 
 // QueuePlaylist appends a saved playlist's tracks onto a room's live queue
