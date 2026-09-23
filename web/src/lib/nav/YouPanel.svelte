@@ -14,6 +14,7 @@
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
 	import { activeHref } from '$lib/nav/pages';
+	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { youMenu } from '$lib/nav/you-menu';
 	import { micMenu } from '$lib/channel/mic-menu';
 	import { channelConnection } from '$lib/channel/connection.svelte';
@@ -97,10 +98,6 @@
 		}));
 
 	const destination = $derived(activeHref(pathname));
-	const onOwnPage = $derived(
-		pathname === '/u/me' ||
-			(!!account.me && pathname === `/u/${account.me.id}`),
-	);
 	// The dot on your own avatar: away is yours to set, riding is the voice
 	// channel's to report (#1016).
 	const myStatus = $derived(
@@ -126,17 +123,15 @@
 	{@attach contextMenu(() => youMenu(goto))}
 >
 	<div class="flex items-center gap-2" title={MENU_HINT}>
-		<!-- Your own rider page (#575), at its own address (#1330): /u/me
-		     needs no id, so the row is a link before the account has landed
-		     — and it lights there the way every other row lights on its
-		     page. -->
+		<!-- You, one click from any crew (#2581): the switcher's You, without
+		     opening the switcher — the YOU section that tried to be this
+		     listed Workouts twice. Your rider page is Home's level tile and
+		     this card's menu. Home's row is the lit one, so this never is. -->
 		<a
-			href="/u/me"
-			aria-current={onOwnPage ? 'page' : undefined}
-			class="mr-auto -ml-1 flex min-w-0 items-center gap-2 rounded py-0.5 pr-2 pl-1 {onOwnPage
-				? 'bg-ink/10'
-				: 'hover:bg-ink/5'}"
-			title="your rider page"
+			href="/home"
+			onclick={() => chosenCrew.set('you')}
+			class="hover:bg-ink/5 mr-auto -ml-1 flex min-w-0 items-center gap-2 rounded py-0.5 pr-2 pl-1"
+			title="you — your own Home, workouts, rides and music"
 		>
 			<Avatar
 				name={account.me?.displayName ?? ''}

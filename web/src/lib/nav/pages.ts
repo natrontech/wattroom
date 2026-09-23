@@ -49,7 +49,9 @@ export const pages: {
 		// ADR-0020 rule 1 wants the row above them lit all the same: the column
 		// went dark on the directory and on the `/rooms` stub still receiving live
 		// navigation (#1863).
-		covers: ['/rooms', '/crews'],
+		// Your rider page is Home's level tile opened (#467), and the name
+		// card that used to light for it goes to You now (#2581).
+		covers: ['/rooms', '/crews', '/u/me'],
 	},
 	{
 		href: '/workouts',
@@ -88,17 +90,10 @@ export function crewPlaces(
 }
 
 /**
- * Your pages the YOU section lists in a crew's column (#2570): every
- * destination but Home, which is the You mode's own.
- */
-export const yourPages = pages.filter((p) => p.href !== '/home');
-
-/**
- * Which crew the column is in (ADR-0020 rule 1, amended by #2570): inside a
- * crew's pages, that crew; on your own Home, none — You; anywhere else the
- * crew you chose last. Workouts, Rides, Music and Friends used to switch the
- * column to You, which took the crew's channels off it; the YOU section lists
- * them in a crew's column now, so they light their row there.
+ * Which crew the column is in (ADR-0020 rule 1): inside a crew's pages, that
+ * crew; on one of your own pages, none — You, whose list is where their row
+ * is (#2581 took YOU out of a crew's column again); anywhere else the crew
+ * you chose last.
  */
 export function columnCrew<T extends { id: string }>(
 	pathname: string,
@@ -107,7 +102,7 @@ export function columnCrew<T extends { id: string }>(
 ): T | null {
 	const inCrew = crewOfPath(pathname);
 	if (inCrew) return crews.find((c) => c.id === inCrew) ?? null;
-	if (activeHref(pathname) === '/home') return null;
+	if (activeHref(pathname)) return null;
 	return crews.find((c) => c.id === chosen) ?? null;
 }
 
