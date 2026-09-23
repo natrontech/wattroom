@@ -1,6 +1,6 @@
 # The marketing surface is the landing and the legal pages. Everything else
-# is a rider's — a room, a ride, a crew's invite, a rider page — and answers
-# a crawler with a login shell under a personal URL (#1734).
+# is a rider's — a crew, a channel, a ride, a crew's invite, a rider page —
+# and answers a crawler with a login shell under a personal URL (#1734).
 User-agent: *
 Disallow: /u/
 Disallow: /history/

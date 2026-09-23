@@ -42,7 +42,7 @@
 			title: 'macOS',
 			steps: [
 				'Open the .dmg and drag WattRoom into Applications. It is signed and notarized, so it opens without a warning.',
-				'macOS asks for Bluetooth the first time you pair a trainer, and for the microphone the first time you join voice. Allow both — without them the trainer stays invisible and the room cannot hear you.',
+				'macOS asks for Bluetooth the first time you pair a trainer, and for the microphone the first time you join voice. Allow both — without them the trainer stays invisible and the voice channel cannot hear you.',
 			],
 		},
 		{
@@ -76,8 +76,8 @@
 <p class="text-muted mt-2 max-w-prose text-sm leading-relaxed">
 	The same WattRoom, in a window of its own — with what a browser tab cannot do:
 	a heads-up display that floats over whatever else you have open, notifications
-	that reach you behind another window, and on macOS and Windows the room can
-	hear your computer's own sound.
+	that reach you behind another window, and on macOS and Windows the voice
+	channel can hear your computer's own sound.
 </p>
 
 {#if shell}
@@ -113,7 +113,7 @@
 		{#if os === 'phone'}
 			<p class="text-muted mt-2 text-sm leading-relaxed">
 				The desktop app is for a computer. On a phone, WattRoom is a spectator
-				in the browser — join a room and watch the ride.
+				in the browser — join your crew and watch the session.
 			</p>
 		{:else if yours.length === 0}
 			<p class="text-muted mt-2 text-sm leading-relaxed">
