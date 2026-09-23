@@ -54,7 +54,7 @@ describe('connectionCues', () => {
 	const idle = { phase: 'idle', elapsed: 0 };
 
 	// #906: an away rider stays in the roster, so the membership cues never
-	// fire and a room can empty to one in silence.
+	// fire and a channel can empty to one in silence.
 	it('sounds the pair when a rider steps out and comes back', async () => {
 		listen();
 		fakeTick = { state: idle, roster: [{ id: 'bob', name: 'Bob' }] };

@@ -1,5 +1,5 @@
 /**
- * Where the room wants the jukebox player, in viewport pixels (#316, #445).
+ * Where the channel wants the jukebox player, in viewport pixels (#316, #445).
  *
  * The player is ONE iframe living on the app frame so music survives
  * navigation (#216), and moving an iframe in the DOM reloads it — playback
@@ -9,7 +9,7 @@
  *
  * The player is never a window the rider drags around any more (#427). It
  * lives in the people column, drops to the nav rail on a window too narrow
- * for that column, and rises to the stage or TV mode when the room is
+ * for that column, and rises to the stage or TV mode when everyone is
  * watching together. Four surfaces offer, and the highest live offer wins;
  * the fixed corner is only what is left when a viewport offers nothing at
  * all, which is also how RMF's visible-while-playing rule holds.
@@ -43,7 +43,7 @@ export const stageSlot = $state<{
 	 * Svelte's effect graph: measure, write state, run the effect that moves
 	 * the player, which changes layout, which the next frame measures. Svelte
 	 * counts those as nested updates and stops the tree with
-	 * effect_update_depth_exceeded — after which the room silently stops
+	 * effect_update_depth_exceeded — after which the page silently stops
 	 * re-rendering and navigating a place does nothing. Geometry goes to the
 	 * dock through `onSeat` instead, a plain callback, outside reactivity.
 	 */

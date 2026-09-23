@@ -27,7 +27,7 @@ describe('presence marks (#505)', () => {
 		expect(tileFrame(true, true)).not.toMatch(/watt|glow|ring-z4/);
 	});
 
-	// #1681 shipped the drum on the tile alone, so the room could hear an
+	// #1681 shipped the drum on the tile alone, so everyone could hear an
 	// airhorn and the roster — the other place a rider is drawn — showed
 	// nobody playing one. A missing mark fails silently; this catches it.
 	it('marks a rider firing a clip wherever their activity is listed', () => {

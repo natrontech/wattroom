@@ -7,8 +7,8 @@ describe('the stage', () => {
 		const stage = createStage();
 		stage.addScreen('alice');
 		stage.addScreen('bob');
-		// #206's projector kept exactly one — a second sharer silently stole
-		// the room's screen.
+		// #206's projector kept exactly one — a second sharer silently took
+		// the stage from the first.
 		expect(stage.sources.map((s) => s.key)).toEqual([
 			'screen:alice',
 			'screen:bob',

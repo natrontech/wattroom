@@ -5,7 +5,7 @@ import type { RiderOutput } from '$lib/channel/av-output';
 
 /**
  * The machine's own events, not LiveKit's (#1698) — the three ways a browser
- * takes the room's sound away without anything going wrong.
+ * takes the call's sound away without anything going wrong.
  *
  * - A long-hidden tab gets its audio graphs suspended. Coming back must not
  *   need a rejoin (#214).
@@ -39,7 +39,7 @@ export function createListeners(host: ListenerHost) {
 	}
 
 	/**
-	 * Let the room be heard: resume the graph and tell LiveKit to start the
+	 * Let the call be heard: resume the graph and tell LiveKit to start the
 	 * elements (#645).
 	 *
 	 * Both halves are needed and neither is enough. `startAudio` plays the
@@ -65,7 +65,7 @@ export function createListeners(host: ListenerHost) {
 	 * Any click, anywhere, is a gesture the browser will accept — so most
 	 * riders never see the strip at all. `once` because the graph only needs
 	 * unblocking once, and a listener on every pointerdown for the life of a
-	 * room is not worth the one it catches.
+	 * call is not worth the one it catches.
 	 */
 	function onFirstGesture() {
 		void startPlayback();
@@ -95,7 +95,8 @@ export function createListeners(host: ListenerHost) {
 		listen,
 		/**
 		 * This av instance dies with the connection: the listeners go with
-		 * it, or six room-hops exhaust the browser's AudioContext budget
+		 * it, or six hops between voice channels exhaust the browser's
+		 * AudioContext budget
 		 * (audit #219).
 		 */
 		unlisten() {

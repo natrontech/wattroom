@@ -36,7 +36,7 @@ vi.mock('livekit-client', () => {
 	let shared = false;
 	let joined: FakeLiveKitRoom | null = null;
 	const published: Uint8Array[] = [];
-	// The browser's autoplay verdict (#645): whether a room can play audio when
+	// The browser's autoplay verdict (#645): whether a call can play audio when
 	// it connects, whether asking fixes it, and how often it was asked.
 	let canPlayback = true;
 	let audioStarts = true;
@@ -470,7 +470,7 @@ describe('createChannelAv', () => {
 	// publisher's full layer whatever it landed in — and video kept flowing
 	// into a hidden tab — while publishers uploaded simulcast layers nobody
 	// had subscribed to.
-	it('lets the room scale what it sends and what it asks for', async () => {
+	it('lets the call scale what it sends and what it asks for', async () => {
 		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
 			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
@@ -502,7 +502,7 @@ describe('createChannelAv', () => {
 		const dispose = $effect.root(() => {
 			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
 		});
-		// The room page resolves the pick; av only has to keep offering it.
+		// The channel's page resolves the pick; av only has to keep offering it.
 		const onStage = () => pickStage(av.stageSources, av.stagePick);
 		expect(onStage()).toBe(null);
 		await av.join();
@@ -514,10 +514,10 @@ describe('createChannelAv', () => {
 		expect(av.stageSources.map((s) => s.key)).toEqual(['screen:me']);
 	});
 
-	// #875: away closed the mic and the camera and left the room playing at
+	// #875: away closed the mic and the camera and left the call playing at
 	// full volume into an empty chair — the rider's own speakers still
 	// carrying voices, the jukebox and every cue.
-	it('takes the room off the speakers while the rider is away', async () => {
+	it('takes the call off the speakers while the rider is away', async () => {
 		await withOutputGraph(async (gains) => {
 			let av!: ReturnType<typeof createChannelAv>;
 			const dispose = $effect.root(() => {
@@ -537,7 +537,7 @@ describe('createChannelAv', () => {
 			await av.setAway(false);
 			expect(gains.map((g) => g.gain.value)).toEqual([1, 1]);
 
-			// The room is behind you: leaving hands the speakers back.
+			// The call is behind you: leaving hands the speakers back.
 			await av.setAway(true);
 			av.leave();
 			expect(mixer.muted).toBe(false);
@@ -652,7 +652,7 @@ describe('createChannelAv', () => {
 		});
 	});
 
-	// #2142, docs/SPEC.md: a rider report from a phone — the room came out of
+	// #2142, docs/SPEC.md: a rider report from a phone — the call came out of
 	// the earpiece, badly, and the mic lagged and chopped. All one cause:
 	// while a page holds an audio capture, iOS and Android route the whole
 	// page to the receiver, and the gate holds one open for as long as a
@@ -663,9 +663,9 @@ describe('createChannelAv', () => {
 		afterEach(() => (env.coarse = false));
 
 		// The silent one: a phone that joins with the mic open is in voice and
-		// working — the room hears it — and is on its earpiece the whole time,
+		// working — the call hears it — and is on its earpiece the whole time,
 		// which is what riders reported rather than an error anyone could see.
-		it('joins listening, so the room comes out of the loudspeaker', async () => {
+		it('joins listening, so the call comes out of the loudspeaker', async () => {
 			await withMicHardware(async (hw) => {
 				let av!: ReturnType<typeof createChannelAv>;
 				const dispose = $effect.root(() => {
@@ -858,7 +858,7 @@ describe('createChannelAv', () => {
 	// clock a minute behind made "use this tab instead" read older than the
 	// other tab's join, and that tab kept the mic — the rider heard themselves
 	// twice. The takeover has to sit on the server's clock too.
-	it('does not take the mic back while a full reconnect unwinds the room (#1878)', async () => {
+	it('does not take the mic back while a full reconnect unwinds the call (#1878)', async () => {
 		vi.useFakeTimers();
 		try {
 			vi.setSystemTime(1_000_000);
@@ -1084,7 +1084,7 @@ describe('createChannelAv', () => {
 
 /**
  * The browser refusing to start audio without a gesture (#645). Nothing was
- * listening for it: the room played, the rider heard nobody, and no click
+ * listening for it: the call played, the rider heard nobody, and no click
  * anywhere in the app brought it back — `visibilitychange` cannot, because a
  * tab reloaded in front of you was never hidden.
  */
@@ -1293,7 +1293,7 @@ describe('a rider who shares their computer as well as their voice', () => {
 // #1751, a rider report from the desktop app: the machine's sound went with
 // every share and there was no way to say no. The shell cannot fix it where
 // it happens — above macOS 15 the system picker takes the request, and takes
-// system audio without offering a checkbox — so the room is where the rider
+// system audio without offering a checkbox — so the app is where the rider
 // is asked.
 describe("the machine's sound, which the sharer decides on", () => {
 	// happy-dom hands vitest no localStorage global (the stub ftp-decline
@@ -1323,7 +1323,7 @@ describe("the machine's sound, which the sharer decides on", () => {
 		dispose();
 	});
 
-	it('takes the sound out of the room and remembers, without ending the share', async () => {
+	it('takes the sound out of the call and remembers, without ending the share', async () => {
 		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
 			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
@@ -1352,7 +1352,7 @@ describe("the machine's sound, which the sharer decides on", () => {
 		dispose();
 	});
 
-	it('answers again on the next room, from what the rider said on this one', async () => {
+	it('answers again on the next call, from what the rider said on this one', async () => {
 		let av!: ReturnType<typeof createChannelAv>;
 		const dispose = $effect.root(() => {
 			av = createChannelAv(channelAddress('c', 'mfw', 'MFW'));
@@ -1427,7 +1427,7 @@ describe('a remote voice actually reaching av.speaking', () => {
 // duck.ts was written to survive (#988's doc comment on `setDucking`), so a
 // second voice joining — which changes `av.speaking`'s object identity and
 // reruns the effect — must not let the cleanup's `setDucking(false)` outrace
-// the rerun's `setDucking(true)` and park the room unducked mid-conversation.
+// the rerun's `setDucking(true)` and park the music unducked mid-conversation.
 describe('the duck effect surviving av.speaking changing shape mid-conversation', () => {
 	afterEach(() => {
 		resetDucking();

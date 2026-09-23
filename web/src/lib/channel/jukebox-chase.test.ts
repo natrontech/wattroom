@@ -14,7 +14,7 @@ const ANCHOR = 1_700_000_000_000;
 
 /**
  * One clock for both readings the chase takes: `Date.now()` against the
- * room's anchor, and `performance.now()` for the settle windows. The latter
+ * deck's anchor, and `performance.now()` for the settle windows. The latter
  * starts well past zero, as it does in any real tab — the autoplay watchdog
  * reads a zero as "never asked".
  */
@@ -123,7 +123,7 @@ describe('the jukebox chase (#286)', () => {
 		expect(calls).toEqual(['rate 1']);
 	});
 
-	it("loads the deck's video at the room's playhead", () => {
+	it("loads the deck's video at the shared playhead", () => {
 		const chase = chaseOn();
 		chase.tick();
 		expect(calls).toEqual(['rate 1', 'load vid1@10']);
@@ -131,7 +131,7 @@ describe('the jukebox chase (#286)', () => {
 		expect(chase.playing).toEqual({ videoId: 'vid1', anchorMs: ANCHOR });
 	});
 
-	it('cues rather than loads while the room is paused, so nothing blasts', () => {
+	it('cues rather than loads while the deck is paused, so nothing blasts', () => {
 		host.deckNow = deck({ playing: false });
 		chaseOn().tick();
 		expect(calls).toEqual(['rate 1', 'cue vid1@10']);
@@ -166,7 +166,7 @@ describe('the jukebox chase (#286)', () => {
 		chase.tick();
 		player.state = PLAYING;
 		player.duration = 300;
-		// Past the settle, ten seconds behind the room: that earns a seek.
+		// Past the settle, ten seconds behind the deck: that earns a seek.
 		pass(2_000);
 		calls = [];
 		player.at = 0;
@@ -206,7 +206,7 @@ describe('the jukebox chase (#286)', () => {
 		expect(calls).toEqual(['seek 90']);
 	});
 
-	it('pauses a playing embed when the room stops', () => {
+	it('pauses a playing embed when the deck stops', () => {
 		const chase = chaseOn();
 		chase.tick();
 		player.state = BUFFERING;
@@ -216,7 +216,7 @@ describe('the jukebox chase (#286)', () => {
 		expect(calls).toEqual(['pause']);
 	});
 
-	it('says a track the room ran off the end of is over', () => {
+	it('says a track the deck ran off the end of is over', () => {
 		const chase = chaseOn();
 		chase.tick();
 		player.state = PLAYING;

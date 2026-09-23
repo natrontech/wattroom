@@ -3,8 +3,8 @@ import type { PanelMember, LiveRider } from '$lib/channel/types';
 /**
  * The people column's three groups. Mid-ride the useful split is riding /
  * not; in the lounge it is voice / not — and either way the members who are
- * not connected close the list, because a room is the same room when nobody
- * has arrived yet.
+ * not connected close the list, because a channel is the same channel when
+ * nobody has arrived yet.
  */
 export function rosterGroups(
 	live: boolean,

@@ -34,7 +34,7 @@ vi.mock('$lib/ride/buffer', () => ({
 }));
 vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'u1' } } }));
 
-/** A room socket that is dialled but never answers until the test says so. */
+/** A channel socket that is dialled but never answers until the test says so. */
 class FakeSocket {
 	static readonly CONNECTING = 0;
 	static readonly OPEN = 1;
@@ -79,14 +79,14 @@ function running(socket: FakeSocket, elapsed = 5, workoutName = 'Openers') {
 	});
 }
 
-describe('room live workout definition', () => {
+describe('channel live workout definition', () => {
 	beforeEach(() => {
 		FakeSocket.last = null;
 	});
 
 	// #1710: the server sends the JSON on the tick that changes it and names
 	// it by hash on every other; the store fills it back in from the last one
-	// heard, so the room's parsed workout never blinks.
+	// heard, so the session's parsed workout never blinks.
 	it('fills the workout back in from the last tick that carried it', () => {
 		const live = createChannelLive(channelAddress('c', 'lean', 'lean'));
 		const socket = FakeSocket.last!;
@@ -109,7 +109,7 @@ describe('room live workout definition', () => {
 	});
 });
 
-describe('room live send while reconnecting', () => {
+describe('channel live send while reconnecting', () => {
 	beforeEach(() => {
 		FakeSocket.last = null;
 	});
@@ -169,7 +169,7 @@ describe('room live send while reconnecting', () => {
 	});
 });
 
-describe('room live ride buffer', () => {
+describe('channel live ride buffer', () => {
 	it('buffers one row a second however fast the trainer notifies (audit 2026-09-09)', async () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(1_000_000);
@@ -219,7 +219,7 @@ describe('room live ride buffer', () => {
 	});
 });
 
-describe('room live ride buffer follows the session (#1541)', () => {
+describe('channel live ride buffer follows the session (#1541)', () => {
 	beforeEach(() => {
 		FakeSocket.last = null;
 		buffered.opened.length = 0;
@@ -311,7 +311,7 @@ describe('room live ride buffer follows the session (#1541)', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		for (let i = 0; i < 70; i++) live.sendMetrics({ watts: 200 });
 		// The hub acknowledged nothing past the tenth sample; the rest is the
-		// tail a dropped socket replayed into a room that had already saved.
+		// tail a dropped socket replayed into a session that had already saved.
 		buffered.tail = Array.from({ length: 60 }, () => ({ watts: 200 }));
 		phase(socket, 'done', 10);
 		await vi.advanceTimersByTimeAsync(0);
@@ -363,11 +363,11 @@ describe('room live ride buffer follows the session (#1541)', () => {
 		vi.useRealTimers();
 	});
 
-	// A socket that missed the closing tick comes back to an idle room too —
+	// A socket that missed the closing tick comes back to an idle channel too —
 	// but one that can still name its workout, because a session that closed
 	// keeps it and a new pick replaces it. The hub saved that ride; saying
 	// the server lost it would be a lie.
-	it('does not blame the server for an idle room that still names its workout', async () => {
+	it('does not blame the server for an idle channel that still names its workout', async () => {
 		const live = createChannelLive(
 			channelAddress('c', 'reconnected', 'reconnected'),
 		);
@@ -424,7 +424,7 @@ describe('room live ride buffer follows the session (#1541)', () => {
 	});
 });
 
-describe('room live lost (#1500)', () => {
+describe('channel live lost (#1500)', () => {
 	beforeEach(() => {
 		FakeSocket.last = null;
 		vi.useFakeTimers();
@@ -495,7 +495,7 @@ describe('room live lost (#1500)', () => {
 	});
 });
 
-describe('room live silence and offline (#2135, #2121)', () => {
+describe('channel live silence and offline (#2135, #2121)', () => {
 	let online = true;
 	beforeEach(() => {
 		FakeSocket.last = null;

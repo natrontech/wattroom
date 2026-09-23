@@ -8,7 +8,7 @@ import type { MediaDevice } from '$lib/channel/media-error';
 import { mixer } from '$lib/sound/mixer.svelte';
 
 /**
- * What this machine puts into the room, and what stepping out takes back down
+ * What this machine puts into the call, and what stepping out takes back down
  * (#1698).
  *
  * The camera and the screen are one concept and the mic is not: LiveKit owns
@@ -21,7 +21,7 @@ import { mixer } from '$lib/sound/mixer.svelte';
  *
  * Away lives here because it is these three held down together (#706): a
  * rider who stepped out is not talking, not on camera, and — since #1128 —
- * not showing the room their screen either.
+ * not showing the call their screen either.
  */
 export interface PublishHost {
 	av: AvState;
@@ -141,7 +141,7 @@ export function createPublish(host: PublishHost) {
 	 * both lenses are one "camera" there far more often than not — and a
 	 * rider on a bike does not read a list of device labels anyway (ux.md).
 	 * `facingMode` is the constraint the platform actually answers, and
-	 * `restartTrack` keeps the publication: the room sees the picture turn
+	 * `restartTrack` keeps the publication: the call sees the picture turn
 	 * round rather than go away and come back.
 	 *
 	 * Which way it faces is the track's own word where the browser gives one,
@@ -210,7 +210,7 @@ export function createPublish(host: PublishHost) {
 			// Whether the machine's sound went with the picture. Read
 			// from the publication rather than assumed from asking:
 			// loopback is refused, missing or dead on plenty of
-			// platforms, and telling a rider the room can hear them
+			// platforms, and telling a rider the call can hear them
 			// when it cannot is the worse half of getting this wrong.
 			av.sharingAudio = !!conn.liveKitRoom.localParticipant.getTrackPublication(
 				conn.liveKit!.Track.Source.ScreenShareAudio,
@@ -238,7 +238,7 @@ export function createPublish(host: PublishHost) {
 	}
 
 	/**
-	 * Whether the room hears this machine as well as seeing it (#1751), and
+	 * Whether the call hears this machine as well as seeing it (#1751), and
 	 * the answer is remembered — the report was that every share started loud.
 	 *
 	 * Off is instant and closes the tap: a rider who meant "not this" does not
@@ -299,7 +299,7 @@ export function createPublish(host: PublishHost) {
 			noteVoice();
 			await closeCam();
 			// And the screen goes with them (#1128). A rider who stepped out is
-			// not watching what their machine is showing the room, which is the
+			// not watching what their machine is showing the call, which is the
 			// same argument as the camera's — and one step worse, because a
 			// screen keeps disclosing after they walk off (#563).
 			//
@@ -307,7 +307,7 @@ export function createPublish(host: PublishHost) {
 			// those come back to what this tab had live, and a share is a thing
 			// the rider pointed at something. Re-publishing a window they left
 			// ten minutes ago, without them asking, is how a private tab
-			// reaches a room. Coming back offers the button, not the share.
+			// reaches a call. Coming back offers the button, not the share.
 			if (av.sharing) await stopShare();
 			return;
 		}

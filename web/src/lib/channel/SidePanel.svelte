@@ -21,14 +21,14 @@
 	import { statusOfRider } from '$lib/status';
 	import type { PanelMember, LiveRider } from '$lib/channel/types';
 
-	// The room's people, in one column (ADR-0020). Discord's right column is
+	// The channel's people, in one column (ADR-0020). Discord's right column is
 	// WHO IS HERE; ours was chat alone, so the roster was legible only from
 	// tiles that vanish behind the stage.
 	//
 	// Stacked rather than tabbed: the roster has to be there without being
-	// asked for — that is the whole "this room is populated" read — and giving
-	// members a column of their own took content to 530 px at 1280, which the
-	// tile grid does not survive.
+	// asked for — that is the whole "this channel is populated" read — and
+	// giving members a column of their own took content to 530 px at 1280,
+	// which the tile grid does not survive.
 	//
 	// Plus one slot: the jukebox playlist owns the whole queue surface (#286).
 	//
@@ -48,7 +48,7 @@
 		/** Who is here (ADR-0020, #181 gap 3) — the roster owns the column. */
 		riders?: LiveRider[];
 		/**
-		 * Everyone in the room, connected or not. The tick's roster carries no
+		 * Everyone in the crew, connected or not. The tick's roster carries no
 		 * avatar and knows nothing of the members who are away, so the faces and
 		 * the offline group both come from here.
 		 */
@@ -59,14 +59,14 @@
 		onPoke?: (id: string) => void;
 		/** Owner only — absent for everyone else, so the entry never appears. */
 		onBan?: (id: string, name: string) => void;
-		/** The room's one reaction vocabulary (#223), icon keys (#447). */
+		/** The crew's one reaction vocabulary (#223), icon keys (#447). */
 		cheers?: string[];
 	} = $props();
 
 	const avatarOf = $derived(new Map(members.map((m) => [m.id, m])));
-	// Discord's offline half of the member list: the room is the same room when
-	// nobody is in it, and a column that says "in the room — 1" and stops there
-	// hides the six people you ride with (roster.ts).
+	// Discord's offline half of the member list: the channel is the same
+	// channel when nobody is in it, and a column that says "in the channel — 1"
+	// and stops there hides the six people you ride with (roster.ts).
 	const groups = $derived(rosterGroups(live, riders, members));
 </script>
 
@@ -169,7 +169,7 @@
 					? {
 							onSelect: () => onPoke(member.id),
 							disabled: true,
-							hint: 'not in the room',
+							hint: 'not in the channel',
 						}
 					: undefined,
 				ban: onBan ? () => onBan(member.id, member.displayName) : undefined,
@@ -212,7 +212,7 @@
 	></div>
 	<div class="flex h-full flex-col">
 		{#if riders.length > 0 || groups.offline.length > 0}
-			<!-- Everyone the room HAS, in the three groups roster.ts decides. The
+			<!-- Everyone the crew HAS, in the three groups roster.ts decides. The
 			     headings say which question the split answers, and the ones who
 			     are not connected sit last, greyed. -->
 			{@const { here, away, offline } = groups}
@@ -238,7 +238,7 @@
 					<div class="eyebrow px-3 pt-3 pb-1">
 						{live
 							? `not pedalling — ${away.length}`
-							: `in the room — ${away.length}`}
+							: `in the channel — ${away.length}`}
 					</div>
 					<ul class="px-1">
 						{#each away as rider (rider.id)}{@render person(rider)}{/each}
@@ -267,8 +267,8 @@
 		{/if}
 
 		<div class="border-ink/5 border-t p-3">
-			<!-- The room's reactions, and under them the soundboard: both are
-			     a thing you throw into the room, and neither is typing —
+			<!-- The crew's reactions, and under them the soundboard: both are
+			     a thing you throw into the channel, and neither is typing —
 			     which mid-ride was never on the table anyway (ux.md). -->
 			<div class="flex gap-1.5">
 				{#each cheers.slice(0, 4) as cheer (cheer)}

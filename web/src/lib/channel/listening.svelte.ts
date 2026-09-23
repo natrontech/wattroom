@@ -1,9 +1,9 @@
 /**
- * Sitting out the room's music (#989). Two verbs, both a decision about this
- * client's own player: skip-for-me is over the moment the room's play
+ * Sitting out the channel's music (#989). Two verbs, both a decision about
+ * this client's own player: skip-for-me is over the moment the deck's play
  * changes, stop-for-me waits to be rejoined. Nothing reaches the server —
  * ADR-0018 already makes the jukebox a rider's own iframe at their own
- * volume, so stepping out of it is not the room's business and there is no
+ * volume, so stepping out of it is nobody else's business and there is no
  * roster of who is listening.
  *
  * Not persisted, like away (mixer.svelte.ts): being out is where a rider is
@@ -34,7 +34,7 @@ export const listening = {
 	get mode(): 'skip' | 'stop' | null {
 		return mode;
 	},
-	/** Out now. `on` is what the room is running, `durationSec` its length. */
+	/** Out now. `on` is what the deck is running, `durationSec` its length. */
 	stepOut(kind: 'skip' | 'stop', on: Play | null, durationSec = 0) {
 		mode = kind;
 		leftOn = on;
@@ -46,8 +46,8 @@ export const listening = {
 		leftDuration = 0;
 	},
 	/**
-	 * The room's current play, read on every chase tick. A skip ends as soon
-	 * as it differs from the one we left on — including the room stopping
+	 * The deck's current play, read on every chase tick. A skip ends as soon
+	 * as it differs from the one we left on — including the deck stopping
 	 * altogether. A stop ignores it and waits for Rejoin.
 	 */
 	sees(now: Play | null) {
@@ -55,7 +55,7 @@ export const listening = {
 		if (!samePlay(now, leftOn)) this.rejoin();
 	},
 	/**
-	 * How long the room's current play is, when this client is the one that
+	 * How long the deck's current play is, when this client is the one that
 	 * measured it. The next track is a length we never saw, and inventing it
 	 * is what the countdown must never do.
 	 */
@@ -65,7 +65,7 @@ export const listening = {
 };
 
 /**
- * Seconds until the room's next track, or null when nothing can be predicted
+ * Seconds until the deck's next track, or null when nothing can be predicted
  * — a livestream has no timeline at all, and a length we never measured is
  * not one to run a timer toward.
  */
@@ -76,7 +76,7 @@ export function backIn(durationSec: number, elapsedSec: number): number | null {
 /**
  * What the docked player should do this tick. Out never chases: with nothing
  * loaded there is no drift to measure, so no seek and no rate nudge may be
- * issued — the room's playhead is left entirely alone.
+ * issued — the shared playhead is left entirely alone.
  */
 export function playerAction(
 	out: boolean,

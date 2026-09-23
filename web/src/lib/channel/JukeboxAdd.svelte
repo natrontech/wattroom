@@ -20,7 +20,7 @@
 	// searches their library and each hit queues with a tap, Enter queues the
 	// top one; a pasted link queues a video or a whole playlist (#615) exactly
 	// as before. The library used to be reachable only from the Music page,
-	// a screen away from the room that wanted the song.
+	// a screen away from the voice channel that wanted the song.
 	// The same field saves into a playlist (#1426): `send` is then the
 	// playlist's add, and the note says "Saved" rather than "Queued".
 	let {

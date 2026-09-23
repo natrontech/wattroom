@@ -29,15 +29,16 @@
 
 	let props: ChannelShellProps = $props();
 
-	// #173: the connection outlives this page — you stay in the room while
+	// #173: the connection outlives this page — you stay in the channel while
 	// you browse. Leaving is the rail's explicit button, never unmount.
 	// svelte-ignore state_referenced_locally
 	const connection = channelConnection.join(props.address);
 	const live = connection.live;
 	const av = connection.av;
 	// Owned by the connection, not by this component (#521): the trainer and
-	// what it has recorded outlive every navigation inside the room, and the
-	// ride's metrics keep one seq stream for the whole session (#522).
+	// what it has recorded outlive every navigation while you are in the
+	// channel, and the ride's metrics keep one seq stream for the whole
+	// session (#522).
 	const profile = connection.profile;
 	const recording = connection.recording;
 	const rideCtl = connection.ride;
@@ -47,7 +48,7 @@
 		void av.join();
 
 	// A refresh puts you back in voice, and nothing else does (#480). The
-	// note this tab left behind says which room and how recently; rejoin.ts
+	// note this tab left behind says which channel and how recently; rejoin.ts
 	// decides, and the mic comes back exactly as the rider left it — the
 	// camera does not, because nothing here opens a capture device that was
 	// already shut. Waits for the account: a reload is precisely the cold
@@ -70,7 +71,7 @@
 
 	// Space is push-to-talk while that mode is on — never while typing.
 
-	// The room's pack governs the cue mixer while you are here ('silent' =
+	// The channel's pack governs the cue mixer while you are here ('silent' =
 	// visual cues only); leaving restores sound for the rest of the app.
 	$effect(() => {
 		if (props.soundPack === 'silent') {
@@ -79,7 +80,7 @@
 		}
 	});
 
-	// Roles change while you stand in the room: the tick's roster carries the
+	// Roles change while you stand in the channel: the tick's roster carries the
 	// new one, the page's fetched prop is frozen at open (rider report).
 	const myRole = $derived(
 		live.tick?.roster.find((rider) => rider.id === account.me?.id)?.role ??
@@ -89,8 +90,8 @@
 	// hand it off. With none open, anyone here may open one with a pick.
 	const coach = $derived(live.tick?.state.coach);
 	const canControl = $derived(coach ? coach === account.me?.id : true);
-	// Managing the room's playlists and calendar stays a role's, not the
-	// session's: the tick carries the crew's words, the room's door its own.
+	// Managing the crew's playlists and calendar stays a crew role's, never
+	// the session's: the tick carries the crew's word for it (#2438).
 	const canManage = $derived(['owner', 'admin', 'coach'].includes(myRole));
 
 	// Banning is reversible (Unban sets the role right back), so it gets an
@@ -124,7 +125,7 @@
 
 	// The roster with live numbers on it, plus you and the block you are in —
 	// one module, fed by ticks (riders.svelte.ts).
-	// The HUD feed (ADR-0041, #1665): published from the room, not the
+	// The HUD feed (ADR-0041, #1665): published from the channel, not the
 	// Training place, so the floating window follows the ride to the Lounge,
 	// and says what ChannelStatus would.
 	$effect(() => {
@@ -139,7 +140,7 @@
 				0,
 				(shared?.totalSeconds ?? 0) - (shared?.elapsed ?? 0),
 			),
-			label: shared?.workoutName || 'Room ride',
+			label: shared?.workoutName || 'Session ride',
 			fault:
 				live.status !== 'live'
 					? 'channel'
@@ -175,8 +176,8 @@
 	let focusId = $state<string | null>(null);
 	// The stage's menu, named (#280): av knows the tracks, only this page
 	// knows whose they are.
-	// The jukebox video is a stage source, and it leads (#316): what the room
-	// is watching together belongs in the room, never in a window pasted over
+	// The jukebox video is a stage source, and it leads (#316): what everyone
+	// is watching together belongs on the stage, never in a window pasted over
 	// the cam grid. A rider who wants a share instead picks it.
 	// A pool track is heard, not seen (#267): no picture, so no seat — offering
 	// one drew a black tile the dock never flew into (#1141).
@@ -209,8 +210,8 @@
 	// ranking, because only this component can see all four sources at once.
 	//
 	// `down` (reconnecting or offline) and not `!== 'live'`: the first connect
-	// of every room entry passes through `connecting`, and a room that has not
-	// dropped must not announce that it came back.
+	// of every channel entry passes through `connecting`, and a connection that
+	// has not dropped must not announce that it came back.
 	const faultKind = $derived(
 		live.down
 			? 'channel'
@@ -304,11 +305,11 @@
 />
 
 <!-- The sidebar is the layout's (ADR-0020 — one instance across navigation);
-     the room is content | people inside that frame. -->
+     the voice channel is content | people inside that frame. -->
 <div class="bg-surface text-ink flex h-full overflow-hidden">
 	<main class="relative flex min-w-0 flex-1 flex-col overflow-hidden">
 		<CheerLayer cheers={live.tick?.cheers} />
-		<!-- The board floats over the room and is dragged where the rider
+		<!-- The board floats over the channel and is dragged where the rider
 		     wants it (#877); it plays whether or not it is on screen. -->
 		<Soundboard
 			fires={live.tick?.board}

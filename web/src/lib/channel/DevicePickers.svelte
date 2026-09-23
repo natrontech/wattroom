@@ -1,6 +1,6 @@
 <script lang="ts">
 	// The three device selects (#1858): /settings/voice draws them with and
-	// without a room, and the room's Sound panel draws them too (#1883). One
+	// without a call, and the Sound panel draws them too (#1883). One
 	// component, so the two never disagree on what an unnamed device is called.
 	import Select from '$lib/components/Select.svelte';
 	import { deviceOptions } from '$lib/channel/device-options';
@@ -24,7 +24,7 @@
 		outId?: string;
 		canPickOutput?: boolean;
 		onDevice?: (kind: 'mic' | 'cam' | 'out', id: string) => void;
-		/** With no room there is no mic test or join to name the devices; this
+		/** With no call there is no mic test or join to name the devices; this
 		 * grants the mic once so the names show. */
 		onName?: () => void;
 	} = $props();

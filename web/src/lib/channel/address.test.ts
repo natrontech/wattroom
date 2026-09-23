@@ -18,7 +18,7 @@ describe('place addresses', () => {
 });
 
 // The live place's own pages (#2460). Every check that asked
-// `startsWith('/r/')` went quietly false when the room pages went: the HUD,
+// `startsWith('/r/')` went quietly false when the `/r/` pages went: the HUD,
 // the cave, the dock's corner, the rail's step aside and Leave's way out.
 describe('onPlacePath', () => {
 	const voice = channelAddress('c1', 'v1', 'Tuesday Spin');

@@ -9,7 +9,7 @@ import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { StageSource } from '$lib/channel/stage';
 
 /**
- * `StageSource` is the minimum `pickStage` needs; the room adds what the
+ * `StageSource` is the minimum `pickStage` needs; the channel adds what the
  * picker draws — a generation, so a fresh track remounts, and a label.
  */
 export interface ChannelStageSource extends StageSource {
@@ -20,7 +20,7 @@ export interface ChannelStageSource extends StageSource {
 }
 
 /**
- * What the room's places read (ADR-0020). `RoomLive` used to be one component
+ * What the channel's places read (ADR-0020). `RoomLive` used to be one component
  * holding a header, a tab strip, a stage, a grid and a session dashboard — 1171
  * lines, twice the ceiling. The state did not need splitting, only the surface:
  * `ChannelShell` still owns all of it and each place renders one part.
@@ -52,8 +52,9 @@ export interface ChannelContext {
 	readonly phase: 'lounge' | 'countdown' | 'live';
 	/** The session's controls: the coach's, or anyone's while none is open (#2438). */
 	readonly canControl: boolean;
-	/** The room's own things — its playlists, its calendar: the owner's and
-	 *  the crew's admins' (a coach's, on a room-era role), whoever is coaching. */
+	/** The crew's own things — its playlists, its calendar: its owner's and
+	 *  its admins' (and `coach`'s, a room-era role no roster carries any
+	 *  more), whoever is coaching. */
 	readonly canManage: boolean;
 	readonly myRole: string;
 	/** A sprint window or a game owns the focus while it runs (ADR-0020). */
@@ -97,9 +98,9 @@ export interface ChannelContext {
 	poke(id: string): void;
 
 	/**
-	 * The coach's standing notice (ADR-0057), or null. It rides the room read
-	 * rather than a fetch of its own, so it arrives with the room and follows
-	 * a lobby ping like the plan and the roster do.
+	 * The crew's newest announcement (ADR-0057), or null. It comes in the
+	 * voice channel's load rather than a fetch of its own, so it arrives with
+	 * the page and follows a lobby ping like the plan and the roster do.
 	 */
 	readonly announcement: Announcement | null;
 	/** Take it down. The coach's and the owner's; nothing else offers it. */
@@ -118,7 +119,7 @@ export interface ChannelContext {
 		joinedAt?: string;
 		/** Earned achievement keys (#703). Never progress — ADR-0027. */
 		badges?: string[];
-		/** Medals this room awarded them, lifetime (#1371). */
+		/** Medals this crew awarded them, lifetime (#1371). */
 		medals?: number;
 		/** A banned row the crew also bans (#1150). */
 		crewBanned?: boolean;
@@ -141,7 +142,7 @@ export function useChannel(): ChannelContext {
 	const ctx = getContext<ChannelContext | undefined>(KEY);
 	if (!ctx)
 		throw new Error(
-			'a room place rendered outside /r/[slug] — no ChannelShell',
+			'a channel place rendered outside a voice channel — no ChannelShell',
 		);
 	return ctx;
 }

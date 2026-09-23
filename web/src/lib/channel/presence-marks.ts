@@ -39,7 +39,7 @@ export const SHARE_MARK = MUTED_MARK;
  * the screen — a clip is something a rider is doing, not live data, so it
  * never reaches for `watt` and never glows (ADR-0005).
  *
- * The room could hear an airhorn and see nobody playing one: the only thing
+ * Everyone could hear an airhorn and see nobody playing one: the only thing
  * that said whose it was lived inside the board's own panel, which the rider
  * who has learnt the keys has closed.
  */

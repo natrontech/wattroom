@@ -11,7 +11,7 @@ const B: Play = { videoId: 'bbb', anchorMs: 9_000 };
 /** The same video queued again — a new play, not the one we walked out on. */
 const AGAIN: Play = { videoId: 'aaa', anchorMs: 7_000 };
 
-describe("sitting out the room's music (#989)", () => {
+describe("sitting out the channel's music (#989)", () => {
 	beforeEach(() => listening.rejoin());
 
 	it('leaves the chase alone while out, whatever the player holds', () => {
@@ -23,7 +23,7 @@ describe("sitting out the room's music (#989)", () => {
 		expect(playerAction(false, true)).toBe('chase');
 	});
 
-	it('rejoins a skip when the room moves on', () => {
+	it('rejoins a skip when the deck moves on', () => {
 		listening.stepOut('skip', A, 300);
 		listening.sees(A);
 		expect(listening.out).toBe(true);
@@ -32,13 +32,13 @@ describe("sitting out the room's music (#989)", () => {
 		expect(listening.out).toBe(false);
 	});
 
-	it('counts a repeat of the same video as the room moving on', () => {
+	it('counts a repeat of the same video as the deck moving on', () => {
 		listening.stepOut('skip', A, 300);
 		listening.sees(AGAIN);
 		expect(listening.out).toBe(false);
 	});
 
-	it('rejoins a skip when the room stops playing anything', () => {
+	it('rejoins a skip when the deck stops playing anything', () => {
 		listening.stepOut('skip', A, 300);
 		listening.sees(null);
 		expect(listening.out).toBe(false);

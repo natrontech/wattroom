@@ -10,9 +10,9 @@ import {
  * The one risk in lifting ADR-0020's contract out of ChannelShell (#686): the
  * props object crosses a function boundary, so if the context captured values
  * instead of reading through the reactive object, every place would freeze at
- * whatever the room was when it opened — and nothing would fail loudly. Svelte
- * warns about exactly this shape at the call site, which is why the suppression
- * there points at this file.
+ * whatever the channel was when it opened — and nothing would fail loudly.
+ * Svelte warns about exactly this shape at the call site, which is why the
+ * suppression there points at this file.
  *
  * These read the getters twice with a mutation in between. Nothing else here
  * needs testing: the rest is pass-through.
@@ -24,7 +24,7 @@ function deps(props: ChannelShellProps) {
 		props,
 		// The context reaches live/av/ride/profile through the connection; none
 		// of those are exercised here, and reaching them would mean standing up
-		// a room. What is under test is the props path.
+		// a channel. What is under test is the props path.
 		connection: {
 			live: { tick: undefined, pairing: undefined },
 			av: {},

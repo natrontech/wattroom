@@ -89,7 +89,7 @@ function playlistIds(playlistId: string): Promise<string[]> {
 					onReady: () => {
 						// CUE, never load: cueing readies the playlist without
 						// starting playback, so this player is a reader and
-						// never a second thing making noise in the room.
+						// never a second thing making noise.
 						player?.cuePlaylist?.({
 							listType: 'playlist',
 							list: playlistId,

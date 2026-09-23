@@ -97,7 +97,7 @@ beforeEach(() => {
 
 describe('a handheld', () => {
 	// The silent one: a phone that builds the graph anyway still works — the
-	// room hears it — and is still on the earpiece with a gate holding the
+	// call hears it — and is still on the earpiece with a gate holding the
 	// capture open, which is exactly what riders reported.
 	it('publishes the capture itself and builds no audio graph', async () => {
 		const deps = host({ handheld: () => true });
@@ -165,7 +165,7 @@ describe('the capture dying under an open mic (#640)', () => {
 	});
 });
 
-describe('what the room hears', () => {
+describe('what the call hears', () => {
 	it('is nothing while the gate is shut', async () => {
 		const deps = host();
 		const chain = createMicChain(deps);

@@ -4,7 +4,7 @@
 	// the gate is doing right now, because a closed gate looks identical to a
 	// dead mic.
 	//
-	// Rendered by both homes of the gate (#477): the room's quick panel and
+	// Rendered by both homes of the gate (#477): the Sound panel and
 	// /settings/voice.
 	import GateMeter from '$lib/channel/GateMeter.svelte';
 
@@ -48,10 +48,10 @@
 		Join voice — or test your mic — to see your level here.
 	{:else if voiceMode === 'ptt'}
 		{transmitting
-			? 'transmitting — the room hears you'
+			? 'transmitting — the call hears you'
 			: 'closed until you hold Space to talk'}
 	{:else if transmitting}
-		<span class="text-z4">gate open</span> — the room hears you
+		<span class="text-z4">gate open</span> — the call hears you
 	{:else}
 		gate closed — speak up, or drag the gate left
 	{/if}

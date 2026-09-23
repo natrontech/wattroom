@@ -56,7 +56,7 @@
 	// Removing is reversible for ~10s (#660, errors.md prefers undo over
 	// confirm): the server keeps what it just dropped, and `restore` puts it
 	// back exactly where it left off. The toast IS the confirmation — nobody
-	// has to answer a dialog before the room moves on.
+	// has to answer a dialog before the queue moves on.
 	function removeEntry(entry: {
 		id: string;
 		title: string;
@@ -90,7 +90,7 @@
 	const saveEntry = (entry: JukeboxEntry, target: SaveTarget) =>
 		saveEntryTo(target.kind === 'crew' ? crewStore : mineStore, target, entry);
 
-	// The deck and everything behind it, as a new room playlist named for
+	// The deck and everything behind it, as a new crew playlist named for
 	// today.
 	let savingQueue = $state(false);
 	async function saveQueue() {
@@ -112,7 +112,7 @@
 	<div class="flex min-w-0 items-center justify-between gap-2">
 		<span class="eyebrow">jukebox</span>
 		{#if current && jukebox?.playing && !playerInfo.live && !listening.out}
-			<!-- Proof the room is together, in the one place riders look for it.
+			<!-- Proof everyone is together, in the one place riders look for it.
 			     A rider who has stepped out is not with it and must not be told
 			     they are: the badge goes, and comes back when they rejoin. -->
 			<span
@@ -174,13 +174,13 @@
 							: `+${queue.length - QUEUE_PEEK} more`}</button
 					>
 				{/if}
-				<!-- The round trip ADR-0045 makes cheap: what the room is hearing
-				     tonight, kept as a room playlist to come back to. -->
+				<!-- The round trip ADR-0045 makes cheap: what everyone is hearing
+				     tonight, kept as a crew playlist to come back to. -->
 				<button
 					onclick={() => void saveQueue()}
 					disabled={savingQueue}
 					class="btn-link ml-auto"
-					title="the deck and everything behind it, as a new room playlist"
+					title="the deck and everything behind it, as a new crew playlist"
 					>Save as a playlist</button
 				>
 			</div>
@@ -191,7 +191,7 @@
 	{/if}
 
 	<!-- What is saved comes after what is live (#1423): the queue is what the
-	     room is about to hear; the playlists are where it can reach next. -->
+	     channel is about to hear; the playlists are where it can reach next. -->
 	<JukeboxPlaylists {address} {crewStore} {mineStore} />
 
 	{#if history.length}

@@ -16,9 +16,10 @@ import { observeServerTime, resetServerClock } from '$lib/server-clock';
 import { isLivePhase } from '$lib/channel/tick-session';
 
 /**
- * The live side of one room (#18): a WebSocket to the hub, the latest tick,
- * and reconnect that never needs a button. The server owns shared truth —
- * this store renders it and forwards commands, deciding nothing itself.
+ * The live side of one voice channel (#18): a WebSocket to the hub, the
+ * latest tick, and reconnect that never needs a button. The server owns
+ * shared truth — this store renders it and forwards commands, deciding
+ * nothing itself.
  */
 export type LiveStatus = 'connecting' | 'live' | 'reconnecting' | 'offline';
 
@@ -37,7 +38,7 @@ export const SILENCE_MS = 5_000;
  * Reconnects failed before the banner turns from "reconnecting" to "lost".
  * The backoff spends 1+2+4+8 s before it settles at its 10 s ceiling, the
  * same 15 s the roster waits before announcing the rider gone (docs/SPEC.md):
- * past it the room has said goodbye, and the rider gets the one big button
+ * past it the channel has said goodbye, and the rider gets the one big button
  * (#1500) while the automatic retry keeps running underneath.
  */
 export const SETTLED_ATTEMPTS = 5;
@@ -48,8 +49,8 @@ export function createChannelLive(address: PlaceAddress) {
 	// The last workout definition heard, by hash (#1710): the server sends
 	// the JSON only on the tick that changes it and names it on every other.
 	let workoutHeard: { hash: string; json: string } | null = null;
-	// What the room did (#321), for the Lounge's event lines.
-	// Ephemeral by design (ADR-0019): nothing seeds these on join, and a
+	// What happened in the channel (#321), for the Lounge's event lines.
+	// Ephemeral by design (ADR-0022): nothing seeds these on join, and a
 	// reload forgets them — "now playing" is worthless tomorrow.
 	let channelEvents = $state<ChannelEvent[]>([]);
 	function mergeEvents(incoming: ChannelEvent[]) {
@@ -76,7 +77,7 @@ export function createChannelLive(address: PlaceAddress) {
 	let lastPoke = $state<Poke | null>(null);
 	// This socket's own public address (#2131), addressed off the tick for a
 	// stronger reason than either of the two above: the tick goes to the whole
-	// room, and this is the one fact in the room a rider may see about
+	// channel, and this is the one fact in the channel a rider may see about
 	// themselves and about nobody else. It arrives once, on join. Null until
 	// then, and null again on a socket that never got one.
 	let ownIp = $state<string | null>(null);
@@ -125,7 +126,7 @@ export function createChannelLive(address: PlaceAddress) {
 	let bufferedRows = 0;
 	// The session the server came back without (#1466, ADR-0052). A session
 	// that ends leaves a `done` tick and a saved ride; a process that
-	// restarted leaves an idle room, because session.go only ever exits a
+	// restarted leaves an idle channel, because session.go only ever exits a
 	// riding phase through done. Persistent status, not a toast: the ride is
 	// the rider's to rescue and they are three metres from the screen
 	// (.claude/rules/errors.md).
@@ -145,7 +146,7 @@ export function createChannelLive(address: PlaceAddress) {
 		riding = now;
 		if (!now) {
 			// `done` is the hub saying it closed the session and handed the
-			// ride to the saver. Anything else is the room re-forming around
+			// ride to the saver. Anything else is the channel re-forming around
 			// a session nothing remembers, and the buffer is then the only
 			// copy: settling it would stamp that copy finished, because the
 			// fresh process acks the live stream it hears while holding
@@ -154,7 +155,7 @@ export function createChannelLive(address: PlaceAddress) {
 			else if (bufferedRows >= MIN_SAMPLES && !t.state?.workoutName)
 				// No workout at all is the fresh process: a session that
 				// closed keeps its workout named on every later tick, and a
-				// new pick names the next one, so an idle room that can name
+				// new pick names the next one, so an idle channel that can name
 				// nothing is one that remembers nothing. Only the banner
 				// hangs on this — the buffer is kept on the `done` test
 				// alone, which cannot be fooled by a coach who picks the
@@ -170,7 +171,7 @@ export function createChannelLive(address: PlaceAddress) {
 		lostSession = null;
 		const startedAt = t.at - (t.state.elapsed ?? 0) * 1000;
 		openedFor = startedAt;
-		openedName = t.state.workoutName || 'Room ride';
+		openedName = t.state.workoutName || 'Session ride';
 		bufferedSecond = -1;
 		bufferedRows = 0;
 		void openRideBuffer({
@@ -186,9 +187,9 @@ export function createChannelLive(address: PlaceAddress) {
 
 	// The close is the hub saying it saved what it heard — not that it heard
 	// everything (#1536). A socket down when the timeline ran out replays its
-	// tail into a room that has already saved, and nothing reads it again.
+	// tail into a session that has already saved, and nothing reads it again.
 	// So a tail the hub never acknowledged, a minute or more of it, keeps the
-	// buffer unfinished: /ride offers the .fit back. Export only — a room
+	// buffer unfinished: /ride offers the .fit back. Export only — a session
 	// buffer carries no workoutJson, so the card shows no Save that would
 	// mint a second ride beside the hub's.
 	function settle(opened: RideBuffer | null) {
@@ -228,8 +229,8 @@ export function createChannelLive(address: PlaceAddress) {
 		// Ride-critical errors are persistent status, never toasts
 		// (.claude/rules/errors.md) — and recovery is automatic. Offline says
 		// whose problem it is (#2121), but the backoff runs on either way:
-		// navigator.onLine can call a working network offline, and a room that
-		// believed it would never come back.
+		// navigator.onLine can call a working network offline, and a client
+		// that believed it would never come back.
 		status = navigator.onLine ? 'reconnecting' : 'offline';
 		if (reconnectTimer !== null) clearTimeout(reconnectTimer);
 		reconnectTimer = setTimeout(
@@ -317,7 +318,7 @@ export function createChannelLive(address: PlaceAddress) {
 			if (msg.poke) lastPoke = msg.poke;
 			if (msg.pairing) {
 				// Off the tick by design (#610) — it is addressed to this
-				// rider's sockets, not to the room.
+				// rider's sockets, not to the channel.
 				pairing = msg.pairing;
 			}
 			if (msg.connection) ownIp = msg.connection.ip;
@@ -399,8 +400,8 @@ export function createChannelLive(address: PlaceAddress) {
 		get status() {
 			return status;
 		},
-		/** Dropped out of the room for now, reconnecting or offline — never the
-		 * first connect of an entry, which must not read as a fault (#1411). */
+		/** Dropped out of the channel for now, reconnecting or offline — never
+		 * the first connect of an entry, which must not read as a fault (#1411). */
 		get down() {
 			return status === 'reconnecting' || status === 'offline';
 		},
@@ -422,7 +423,7 @@ export function createChannelLive(address: PlaceAddress) {
 		get lostSession() {
 			return lostSession;
 		},
-		/** This room ride is being recorded with no crash safety at all
+		/** This session ride is being recorded with no crash safety at all
 		 * (#1466) — the browser's storage would not open, so there is no
 		 * copy to recover from and nothing to replay a dropped socket with. */
 		get noCrashSafety() {
@@ -483,7 +484,7 @@ export function createChannelLive(address: PlaceAddress) {
 			}
 			send({ metrics });
 		},
-		/** The room ride ended on this screen: the buffer is not a crash to
+		/** The session ride ended on this screen: the buffer is not a crash to
 		 * recover, unless the hub never heard its tail (#1536). */
 		finish() {
 			settle(buffer);

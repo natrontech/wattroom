@@ -2,7 +2,7 @@
  * Mount a media track into a container, idempotently (#214).
  *
  * Svelte attachments re-run whenever their function identity changes — in a
- * room that is every tick, once a second. The old attach created a brand-new
+ * voice channel that is every tick, once a second. The old attach created a brand-new
  * <video> element per run and LiveKit kept a reference to every orphan:
  * visible flicker, then decoder exhaustion, then a dead tab. This mounts a
  * track exactly once per (container, track) pair; re-runs are no-ops.

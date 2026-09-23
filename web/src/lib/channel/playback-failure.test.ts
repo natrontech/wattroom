@@ -5,7 +5,7 @@ import {
 } from './playback-failure';
 
 describe('whose playback failure it is (#1896)', () => {
-	it("ends the room's play only for what nobody can play", () => {
+	it("ends the deck's play only for what nobody can play", () => {
 		for (const code of [2, 100, 101, 150])
 			expect(youtubeFailureIsGlobal(code)).toBe(true);
 		for (const code of [5, 0, 42])

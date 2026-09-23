@@ -2,7 +2,7 @@
  * One rider, several tabs (#293).
  *
  * LiveKit identities are `riderId#nonce` — one participant per connection, so
- * two tabs no longer evict each other. The room UI is keyed by rider, and the
+ * two tabs no longer evict each other. The channel UI is keyed by rider, and the
  * mic and camera belong to exactly one tab at a time: the newest claim wins.
  */
 
@@ -29,7 +29,8 @@ export interface Claim {
  * Does this tab step aside for that one? Only ever for another tab of the
  * same rider — a claim from someone else is none of our business.
  *
- * Newest wins, so opening a room moves the mic to the tab you are looking at.
+ * Newest wins, so joining voice in a second tab moves the mic to the tab you
+ * are looking at.
  * Two tabs claiming in the same millisecond would otherwise both stand down
  * and leave the rider silent, so identical stamps fall back to comparing
  * identities: an arbitrary order, but one both tabs compute the same way.
@@ -50,7 +51,7 @@ export interface Connection {
 /**
  * Is any connection of `rider` other than `except` holding an open mic?
  *
- * Muting in this app is unpublishing, and the room keys mic state by rider
+ * Muting in this app is unpublishing, and the channel keys mic state by rider
  * while LiveKit reports it per connection — so the tab that stands down
  * announces an unpublish for a rider who is still live in the tab that took
  * over. Without this check the rider reads "mic off" everywhere, including in

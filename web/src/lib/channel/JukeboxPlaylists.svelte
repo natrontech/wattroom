@@ -6,9 +6,10 @@
 	import { useChannel } from '$lib/channel/context';
 	import type { createPlaylistStore } from '$lib/channel/playlists.svelte';
 
-	// The saved playlists above the live queue (#627): room playlists (any
-	// member edits, one markable active) and personal playlists (a rider's
-	// own, queueable into whichever room they're in). Autoplay is a voice
+	// The saved playlists above the live queue (#627): crew playlists (any
+	// member adds and reorders, one markable active per voice channel) and
+	// personal playlists (a rider's own, queueable into whichever voice
+	// channel they're in). Autoplay is a voice
 	// channel's setting and lives on the crew's Settings page (#1422, #2454).
 	let {
 		address,
@@ -86,7 +87,7 @@
 			<p class="text-muted text-[11px] leading-relaxed">
 				{tab === 'crew'
 					? 'No crew playlists yet — the first one below is a click away.'
-					: "No personal playlists yet — yours to build, queueable in any room you're in."}
+					: "No personal playlists yet — yours to build, queueable in any voice channel you're in."}
 			</p>
 		{:else}
 			<ul class="flex flex-col gap-0.5">
@@ -111,7 +112,7 @@
 			<input
 				bind:value={newName}
 				placeholder={tab === 'crew'
-					? 'New room playlist…'
+					? 'New crew playlist…'
 					: 'New personal playlist…'}
 				class="input input-xs min-w-0 flex-1"
 				aria-label="new playlist name"

@@ -1,5 +1,5 @@
 <script lang="ts">
-	// A voice channel's live shell (#2449, ADR-0058): the room's shell on the
+	// A voice channel's live shell (#2449, ADR-0058): ChannelShell on the
 	// channel's address — the stage, the tiles, the deck, who is here and the
 	// ride. The voice channel's page renders it, and so does a session's
 	// (#2450), which runs in one. The crew keeps everything else: roles are

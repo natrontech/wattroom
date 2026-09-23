@@ -3,7 +3,8 @@ import { GATE_DEFAULT, clampThreshold } from '$lib/channel/gate-scale';
 
 /**
  * What the rider chose about their own mic gate, and the one number the gate
- * and its meter must agree on. SPEC room-audio defaults; persisted per device.
+ * and its meter must agree on. SPEC voice channel audio defaults; persisted
+ * per device.
  *
  * Split out of av.svelte.ts (#892) to sit beside gate.ts (the step function)
  * and gate-scale.ts (the axis): all three are the gate, and only this one

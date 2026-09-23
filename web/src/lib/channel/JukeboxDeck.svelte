@@ -37,7 +37,7 @@
 	import { toasts } from '$lib/toast.svelte';
 
 	// What is ON, and everything that moves it (#114, #1423): the picture the
-	// player flies onto, the words, the room's playhead, the transport, and the
+	// player flies onto, the words, the shared playhead, the transport, and the
 	// two decisions that are the rider's own — their volume and sitting out.
 	// The queue, the add box and the saved playlists are the section around
 	// this (Jukebox.svelte); the player itself is JukeboxDock.
@@ -68,7 +68,7 @@
 	const setTracks = $derived(current.tracks?.length ?? 0);
 	const setPosition = $derived((current.index ?? 0) + 1);
 
-	// ── The transport row (#114): the room's playhead, on server time. ───────
+	// ── The transport row (#114): the shared playhead, on server time. ───────
 	let nowMs = $state(serverNow());
 	$effect(() => {
 		// Dead-reckon locally between ticks (docs/SPEC.md) — a 1 Hz readout
@@ -77,7 +77,7 @@
 		return () => clearInterval(timer);
 	});
 	const duration = $derived(deckDuration(current));
-	/** A livestream has no timeline to scrub — the room rides the edge. */
+	/** A livestream has no timeline to scrub — the deck rides the edge. */
 	const streaming = $derived(playerInfo.live);
 	const elapsed = $derived(playheadAt(jukebox, nowMs, duration));
 	const progress = $derived(
@@ -91,7 +91,7 @@
 	// Skipping the rest of a playlist is reversible for ~10s (#660, errors.md
 	// prefers undo over confirm): the server keeps what it just dropped, and
 	// `restore` puts it back exactly where it left off. The toast IS the
-	// confirmation — nobody has to answer a dialog before the room moves on.
+	// confirmation — nobody has to answer a dialog before the deck moves on.
 	function skipPlaylist() {
 		const title = current.playlistTitle;
 		send({ action: 'skipPlaylist' });
@@ -101,7 +101,7 @@
 	}
 
 	// ── Sitting out (#989) ───────────────────────────────────────────────────
-	// Yours, not the room's: the deck's playhead is untouched and nothing is
+	// Yours, not everyone's: the deck's playhead is untouched and nothing is
 	// sent. `stepOut` is handed the play and the length THIS client measured,
 	// because the server holds an anchor and never a timeline.
 	function stepOut(kind: 'skip' | 'stop') {
@@ -231,7 +231,7 @@
 	<!-- The hint sits on the words, never over the player (RMF). -->
 	<div class="min-w-0" title={MENU_HINT}>
 		{#if setTracks}
-			<!-- Where the room is inside the set, before the track's own
+			<!-- Where the deck is inside the set, before the track's own
 			     name: the playlist is the thing that is on. -->
 			<div class="mb-1 min-w-0">
 				<p class="text-muted flex items-baseline gap-1.5 text-[11px]">
@@ -274,7 +274,7 @@
 					seekTo(((e.clientX - box.left) / box.width) * duration);
 				}}
 				class="block w-full cursor-pointer py-1.5"
-				aria-label="seek the room's playhead"
+				aria-label="seek the shared playhead"
 			>
 				<span class="bg-muted/20 block h-1.5 rounded-full">
 					<span
@@ -341,7 +341,7 @@
 		>
 		{#if setTracks}
 			<!-- The escape hatch that makes a long playlist safe to queue:
-			     drop the rest of it and move the room on. Only rendered
+			     drop the rest of it and move the deck on. Only rendered
 			     when there is a playlist to leave (ux.md). -->
 			<button
 				onclick={skipPlaylist}
@@ -353,7 +353,7 @@
 
 	<!-- The one fader everybody reaches for, where the music is (#874) —
 	     it used to be behind the Sound panel. Every button above it
-	     commands the room; this one is your ears only, and says so. -->
+	     commands everyone's deck; this one is your ears only, and says so. -->
 	<label class="flex min-w-0 items-center gap-2">
 		<Volume2 size={13} class="text-muted shrink-0" />
 		<input
@@ -383,13 +383,13 @@
 			<span class="text-muted min-w-0 flex-1 truncate"
 				>{listening.mode === 'skip'
 					? 'back on the next track'
-					: 'the room is listening'}</span
+					: 'everyone else is listening'}</span
 			>
 			<button
 				onclick={() => listening.rejoin()}
 				class="text-ink icon-btn"
 				aria-label="rejoin the music"
-				title="Rejoin — back in with the room, from wherever it has got to"
+				title="Rejoin — back in with everyone, from wherever it has got to"
 				><Headphones size={17} /></button
 			>
 		{:else}
@@ -405,7 +405,7 @@
 				onclick={() => stepOut('stop')}
 				class="text-muted hover:text-ink icon-btn"
 				aria-label="stop the music for me"
-				title="Stop for me — the room keeps playing"
+				title="Stop for me — it keeps playing for everyone else"
 				><HeadphoneOff size={17} /></button
 			>
 		{/if}

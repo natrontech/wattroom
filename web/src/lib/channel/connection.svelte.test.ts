@@ -13,7 +13,7 @@ vi.mock('$lib/sound/cues', async (importOriginal) => ({
 	play: (id: string) => played.push(id),
 }));
 vi.mock('$lib/notify.svelte', () => ({ notify: { push: () => {} } }));
-// A hand-driven socket: the tick is what the ride and the room both read,
+// A hand-driven socket: the tick is what the ride and the channel both read,
 // and the test needs to move it. $state, so a derived that fails to track it
 // is caught rather than papered over by lazy first evaluation.
 let fakeTick = $state<unknown>(null);
@@ -65,7 +65,7 @@ import {
 import { listening } from '$lib/channel/listening.svelte';
 import { toasts } from '$lib/toast.svelte';
 
-// The room layout's load does this before the shell joins (#1514).
+// The channel layouts' load does this before the shell joins (#1514).
 await prepareChannelAv();
 
 class FakeTrainer implements Trainer {
@@ -95,7 +95,7 @@ class FakeTrainer implements Trainer {
 }
 
 /**
- * #521/#522: the trainer is a property of standing in the room, so it hangs
+ * #521/#522: the trainer is a property of standing in the channel, so it hangs
  * off the connection — not off whichever page happens to be rendering it.
  * A per-page ride disconnected the trainer on the way to /workouts and reset
  * the metrics seq, which the server's ride record then dropped as duplicates.
@@ -141,17 +141,17 @@ describe('channelConnection', () => {
 		// Never left holding resistance on a trainer nobody is riding.
 		expect(trainer.targets.at(-1)).toBe(0);
 
-		// A fresh join is a fresh ride — a different room is a different session.
+		// A fresh join is a fresh ride — another channel is another session.
 		expect(
 			channelConnection.join(channelAddress('c', 'lounge', 'Lounge')).ride,
 		).not.toBe(connection.ride);
 	});
 
 	// #850, a rider report: they clicked through Home and settings, dropped out
-	// of the room, and heard nothing. A rider three metres from the screen
+	// of the channel, and heard nothing. A rider three metres from the screen
 	// learns about a state change by ear or not at all (ux.md), and losing the
-	// room takes the socket, the voice channel and the trainer with it.
-	it('says so out loud when the room ends under the rider', () => {
+	// channel takes the socket, the call and the trainer with it.
+	it('says so out loud when the channel ends under the rider', () => {
 		played.length = 0;
 		channelConnection.join(channelAddress('c', 'lounge', 'Lounge'));
 
@@ -176,7 +176,7 @@ describe('channelConnection', () => {
 	});
 
 	it('takes a trainer handed over live without connecting it again', async () => {
-		// #1851: the solo slot's trainer walks into the room as it is.
+		// #1851: the solo slot's trainer walks into the channel as it is.
 		const connection = channelConnection.join(
 			channelAddress('c', 'lounge', 'Lounge'),
 		);
@@ -236,8 +236,8 @@ describe('channelConnection', () => {
  * The same lesson av.svelte.test.ts records for screenshares (#173/#284), for
  * the ride: a value derived in a page's scope freezes at its last reading the
  * moment that page unmounts. The session and its workout drive the trainer's
- * targets, so they belong to the connection's scope, not to whichever room
- * page happened to open it.
+ * targets, so they belong to the connection's scope, not to whichever
+ * channel page happened to open it.
  */
 describe('the connection keeps deriving the session after a page dies', () => {
 	afterEach(() => channelConnection.leave());

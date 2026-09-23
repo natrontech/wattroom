@@ -73,8 +73,8 @@ export function ridePath(address: PlaceAddress, sessionId?: string): string {
  * Whether `pathname` is one of the live place's own pages (#2460): its
  * Lounge and Training, or the page of the session `sessionId` running in it,
  * which a voice channel addresses under its crew rather than under itself
- * (#2450). The checks that asked `startsWith('/r/')` went quietly false with
- * the room pages; they ask this.
+ * (#2450). The checks that asked `startsWith('/r/')` went quietly false when
+ * the `/r/` pages went; they ask this.
  */
 export function onPlacePath(
 	pathname: string,

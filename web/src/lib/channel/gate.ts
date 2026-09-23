@@ -4,7 +4,7 @@
  * tested; `gate-scale.ts` owns the axis these numbers live on.
  *
  * The gate is deliberately asymmetric. Opening late clips the first word of a
- * sentence; closing late sends a moment of fan and breathing to the room. On a
+ * sentence; closing late sends a moment of fan and breathing to the call. On a
  * bike the first is much worse than the second, so: open on the first sample
  * over the mark, close only well under it and only after a hang long enough to
  * ride through the gap between sentences.

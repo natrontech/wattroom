@@ -9,7 +9,7 @@ import { GATE_SHUT, gateStep, type GateState } from '$lib/channel/gate';
  * verdict has to come back before anything lights up (#988). And it is a
  * MEMORY: a rider who left or muted mid-sentence was never mentioned again,
  * so the flag outlived its subject and the tile stayed ringed for as long as
- * the room lasted.
+ * the call lasted.
  *
  * A reading cannot go stale. The audio is already in the browser on its way
  * to the speakers, so the level is taken there (`av-output.ts` puts the same
@@ -47,7 +47,7 @@ export interface Speaking {
 	level(identity: string, level: number, now: number): boolean;
 	/** That connection is gone: no reading can arrive, so nothing holds it lit. */
 	drop(identity: string): boolean;
-	/** Left the room entirely. */
+	/** Left the call entirely. */
 	clear(): void;
 	/** Who is talking, by rider — never by connection. */
 	readonly riders: Record<string, boolean>;

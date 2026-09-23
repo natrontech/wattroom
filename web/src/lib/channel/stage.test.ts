@@ -28,8 +28,8 @@ describe('pickStage (#280)', () => {
 		expect(pickStage([cam], null)).toBe(null);
 	});
 
-	// #316: the room's video leads — it is what everyone is watching together,
-	// and it must never be a window pasted over the cam grid.
+	// #316: the jukebox's video leads — it is what everyone is watching
+	// together, and it must never be a window pasted over the cam grid.
 	it('gives the jukebox the stage over a share', () => {
 		expect(pickStage([cam, jukebox], null)?.key).toBe('jukebox');
 		expect(pickStage([...screens, cam, jukebox], null)?.key).toBe('jukebox');
@@ -59,7 +59,7 @@ describe('sourceLabel (#563)', () => {
 });
 
 // #523: the rider zoomed into a chart and got pulled back out half a second
-// later, because the stage reset on the props themselves — and the room
+// later, because the stage reset on the props themselves — and the shell
 // rebuilds those on every tick. What the reset may key on is the picture.
 describe('pictureKey (#523)', () => {
 	it('is the same picture across a re-tick, a new one on a restart', () => {

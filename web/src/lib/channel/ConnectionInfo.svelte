@@ -101,7 +101,7 @@
 			{/if}
 		{:else}
 			<!-- They left while the panel was open; the roster is the truth. -->
-			<p class="text-muted text-sm">They have left the room.</p>
+			<p class="text-muted text-sm">They have left the channel.</p>
 		{/if}
 	</Modal>
 {/if}

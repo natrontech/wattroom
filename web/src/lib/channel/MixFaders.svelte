@@ -3,7 +3,7 @@
 	// both dip under a voice. Ducking happens on top of the music level — it
 	// never fights these faders.
 	//
-	// Rendered by both homes of the mix (#477): the room's quick panel and
+	// Rendered by both homes of the mix (#477): the Sound panel and
 	// /settings/voice. One set of faders, two surfaces.
 	import { mixer } from '$lib/sound/mixer.svelte';
 	import { play } from '$lib/sound/cues';
@@ -85,9 +85,9 @@
 		class="mt-0.5 w-full"
 	/>
 </label>
-<!-- Somebody else's computer, coming through the room (#1124, #1699). The
+<!-- Somebody else's computer, coming through the call (#1124, #1699). The
      mixer, the gain and the dip under voice all shipped with the share; the
-     fader did not, so the loudest thing in the room was the one channel a
+     fader did not, so the loudest thing in the call was the one source a
      rider could only turn down by asking the person sharing it. -->
 <label class="mt-2 block text-xs">
 	<span class="text-muted"

@@ -17,7 +17,7 @@ import type { NoteKeeper } from '$lib/channel/rejoin';
 import { riderOf } from '$lib/channel/tabs';
 
 /**
- * Getting into the room's call and back out of it (#21, #1698).
+ * Getting into the voice channel's call and back out of it (#21, #1698).
  *
  * The token comes from the server against the same membership check as the
  * metrics socket; AV is transit-only and never recorded (locked privacy
@@ -25,9 +25,9 @@ import { riderOf } from '$lib/channel/tabs';
  * it is up is `av-wire.ts`; this is the two ends.
  *
  * Leaving is not the mirror image of joining and must not be written as one.
- * A join is allowed to find a stale room and clear it; a leave has to hand
- * every capture back to the machine, tear up the note that would rejoin, and
- * put the mixer back where a room-less page expects it.
+ * A join is allowed to find a stale connection and clear it; a leave has to
+ * hand every capture back to the machine, tear up the note that would rejoin,
+ * and put the mixer back where a page with no call expects it.
  */
 
 const VOICE_UNREACHABLE =
@@ -60,7 +60,7 @@ export interface SessionHost {
 	listeners: Listeners;
 	/** The "I was in voice here" note this tab leaves behind (#480). */
 	note: NoteKeeper;
-	/** Attach the LiveKit event surface, before the room connects. */
+	/** Attach the LiveKit event surface, before the call connects. */
 	wire(r: LiveKitRoom, client: LiveKitClient): void;
 	/** A participant as the claim protocol sees it. */
 	claimantOf(p: ClaimantSource): Parameters<Claims['consider']>[0];
@@ -91,14 +91,14 @@ export function createSession(host: SessionHost) {
 	} = host;
 
 	/**
-	 * Join the room's call. `mic: false` arrives listening only. The rail's
+	 * Join the channel's call. `mic: false` arrives listening only. The rail's
 	 * button passes nothing and gets the SPEC default of a mic already open;
 	 * the two resumes — the #480 refresh and the #219 drop-rejoin — pass the
 	 * state the rider left in, so a rider who was muted stays muted (#641).
 	 *
 	 * A HANDHELD arrives listening instead (#2142), and that is not a second
 	 * opinion about SPEC's default: while the page holds an audio capture, iOS
-	 * and Android play the whole room out of the earpiece, and a rider who
+	 * and Android play the whole call out of the earpiece, and a rider who
 	 * joined to listen could not hear it. They land on the loudspeaker, and
 	 * the mic button is the way into voice — which is also the only way back
 	 * off the earpiece.
@@ -157,7 +157,7 @@ export function createSession(host: SessionHost) {
 		try {
 			const client = await import('livekit-client');
 			conn.liveKit = client;
-			// No audioCaptureDefaults: this room never opens the mic through
+			// No audioCaptureDefaults: this call never opens the mic through
 			// LiveKit. captureMic() does, with MIC_CONSTRAINTS (channel/capture),
 			// and publishes the processed track — so a second copy here could
 			// only ever be a second source of truth that never takes effect,
@@ -188,7 +188,7 @@ export function createSession(host: SessionHost) {
 			await conn.liveKitRoom.connect(res.data.url, res.data.token);
 			if (stale()) {
 				// The deadline (or a leave) beat the handshake: do not walk into
-				// a room the rider was already told did not open.
+				// a call the rider was already told did not open.
 				void conn.liveKitRoom.disconnect();
 				return;
 			}
@@ -199,7 +199,7 @@ export function createSession(host: SessionHost) {
 				identity: conn.liveKitRoom.localParticipant.identity,
 				at: conn.liveKitRoom.localParticipant.joinedAt?.getTime() ?? Date.now(),
 			};
-			// A tab already in the room could, in principle, hold a newer claim
+			// A tab already in the call could, in principle, hold a newer claim
 			// than this one — check rather than assume newest-connected wins.
 			for (const p of conn.liveKitRoom.remoteParticipants.values())
 				claims.consider(claimantOf(p));
@@ -258,15 +258,15 @@ export function createSession(host: SessionHost) {
 		// that is over (#1877); both offered a button that could do nothing.
 		av.handedOff = av.playbackBlocked = av.sharingAudio = false;
 		chain.clearFault();
-		// The room is behind you: its mute goes with it, or the next
-		// room — and every cue outside one — starts silent.
+		// The call is behind you: its mute goes with it, or the next
+		// call — and every cue outside one — starts silent.
 		mixer.setMuted(false);
 		av.voice = {};
 		talk.clear();
 		av.speaking = {};
 		// This av instance dies with the connection: audio graph and
-		// listeners go with it, or six room-hops exhaust the browser's
-		// AudioContext budget (audit #219).
+		// listeners go with it, or six hops between voice channels exhaust
+		// the browser's AudioContext budget (audit #219).
 		listeners.unlisten();
 		output.close();
 	}

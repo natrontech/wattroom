@@ -27,8 +27,8 @@
 	import { youtubeFailureIsGlobal } from '$lib/channel/playback-failure';
 
 	// THE jukebox player (#216): one iframe, docked on the app frame, alive
-	// as long as the room connection is — music follows you between pages the
-	// way voice does, every connected client reports 'ended', and ducking
+	// as long as the channel connection is — music follows you between pages
+	// the way voice does, every connected client reports 'ended', and ducking
 	// works wherever you are. YouTube RMF: ≥200×200, visible while media
 	// plays, nothing overlaid — a dock satisfies that on every page.
 	//
@@ -40,7 +40,7 @@
 	// wants the player on screen while it plays.
 	//
 	// What this component owns is the iframe and its chrome. Staying on the
-	// room's playhead is `jukebox-chase.ts` and arriving at a volume is
+	// shared playhead is `jukebox-chase.ts` and arriving at a volume is
 	// `music-ramp.ts` — both outside the effect graph on purpose (#494).
 
 	const conn = $derived(channelConnection.current);
@@ -72,7 +72,7 @@
 
 	// ── Seated (#316, #427) ───────────────────────────────────────────────────
 	// The iframe never moves — reparenting it reloads it, and playback, the
-	// player object and the room's `ended` reporting die with it. A surface
+	// player object and the deck's `ended` reporting die with it. A surface
 	// publishes the rect of the hole it left and the dock flies there: the
 	// transport belongs to that surface, and a seat with nothing over or
 	// beside the player is what keeps RMF satisfied.
@@ -208,10 +208,11 @@
 							reportEnded();
 							return;
 						}
-						// This browser's own trouble (#1896): the room plays on and
-						// this rider sits the track out, back in on the next one.
+						// This browser's own trouble (#1896): the deck plays on for
+						// everyone else and this rider sits the track out, back in on
+						// the next one.
 						toasts.push(
-							'That video could not be played here — the room plays on; you are back in on the next track.',
+							'That video could not be played here — it plays on for everyone else; you are back in on the next track.',
 						);
 						listening.stepOut('skip', play, playerInfo.duration);
 					},
@@ -262,7 +263,7 @@
 	// does — and only then. No reactive read, so this never re-runs.
 	$effect(() => () => ramp.stop());
 
-	// ── Chase the room's playhead (#286) ─────────────────────────────────────
+	// ── Chase the shared playhead (#286) ─────────────────────────────────────
 	// On its own 250 ms timer rather than on the 1 Hz tick: a stalled tick
 	// used to freeze the correction. What each tick decides is jukebox-chase.
 	$effect(() => {
@@ -350,7 +351,7 @@
 						class="text-muted absolute inset-0 grid place-items-center bg-black/80 p-4 text-center text-xs"
 					>
 						The player could not load — a blocker may be stopping YouTube. The
-						room's music continues for everyone else.
+						music continues for everyone else.
 					</div>
 				{/if}
 			</div>
@@ -360,7 +361,7 @@
 			<!-- Out (#989): the player is unloaded, so there is no stream and no
 		     video element — RMF's "visible while media plays" is not engaged
 		     because nothing plays for this rider. What is left names what the
-		     room is on, read from the tick, and the way back in. Chrome, so
+		     deck is on, read from the tick, and the way back in. Chrome, so
 		     no glow: magenta is live data (ADR-0005). -->
 			<div
 				class="text-muted flex min-h-0 flex-1 flex-col justify-center gap-2 p-3 text-xs"
@@ -375,7 +376,7 @@
 							? `back in ${formatClockLong(backInSec)}`
 							: listening.mode === 'skip'
 								? 'back on the next track'
-								: 'the room is listening'}</span
+								: 'everyone else is listening'}</span
 					>
 					<button
 						onclick={() => listening.rejoin()}

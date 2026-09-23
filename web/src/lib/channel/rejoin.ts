@@ -1,10 +1,11 @@
 /**
  * A refresh puts you back in voice — and nothing else does (#480).
  *
- * The page dies with the LiveKit room, so a reload starts at `status: 'off'`
- * and the rider goes silent without noticing. The fix is a per-device note
- * saying "this tab was in voice in <place>, as of <ts>, mic open/shut", kept
- * warm while the call is live and torn up the moment the rider hangs up.
+ * The page dies with the LiveKit connection, so a reload starts at
+ * `status: 'off'` and the rider goes silent without noticing. The fix is a
+ * per-device note saying "this tab was in voice in <place>, as of <ts>, mic
+ * open/shut", kept warm while the call is live and torn up the moment the
+ * rider hangs up.
  *
  * The decision is deliberately a pure function: joining LiveKit cannot be
  * exercised without LiveKit, but *whether* to join is the part that has to be
@@ -26,7 +27,8 @@ export type VoiceNotes = Record<string, VoiceNote>;
 
 /**
  * Older than this and it is not a refresh, it is coming back after lunch —
- * SPEC.md "Room audio defaults", recorded there by the ADR-0010 amendment.
+ * SPEC.md "Voice channel audio defaults", recorded there by the ADR-0010
+ * amendment.
  */
 export const REJOIN_WINDOW_MS = 60_000;
 
@@ -79,7 +81,7 @@ function isNote(value: unknown): value is VoiceNote {
  * The mic held by another tab is the one veto that is not about this tab at
  * all. Joining is what moves the mic between tabs (#293: newest wins), so an
  * automatic rejoin would silently steal the mic from the tab the rider is
- * actually talking into. It yields instead, whatever room that tab is in —
+ * actually talking into. It yields instead, whatever channel that tab is in —
  * there is one microphone on the machine, and it is in use.
  */
 export function shouldRejoinVoice(input: RejoinInput): Rejoin | null {
@@ -102,7 +104,7 @@ export function shouldRejoinVoice(input: RejoinInput): Rejoin | null {
 // ── The edges: storage in, storage out ──────────────────────────────────────
 // Same shape and versioning as `wattroom.voice.v1` / `wattroom.devices.v1`:
 // one JSON object under one versioned key, and every failure is silent
-// because none of this is worth breaking a room over.
+// because none of this is worth breaking a call over.
 
 const NOTES_KEY = 'wattroom.voice.rejoin.v1';
 /** Per TAB, not per device: sessionStorage survives F5 and dies with the tab. */

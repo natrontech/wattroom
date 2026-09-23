@@ -23,7 +23,7 @@ describe('readLink (#615)', () => {
 		});
 	});
 
-	it('keeps a pasted ?t= — the room starts at the good part', () => {
+	it('keeps a pasted ?t= — the deck starts at the good part', () => {
 		expect(readLink(`https://youtu.be/${VIDEO}?t=1m34s`)).toMatchObject({
 			startSec: 94,
 		});

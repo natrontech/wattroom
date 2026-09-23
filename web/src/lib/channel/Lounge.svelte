@@ -1,7 +1,7 @@
 <script lang="ts">
-	// The Lounge: the room's default place (ADR-0020), and since #2449 a
-	// voice channel's page — the same stage, tiles and deck on either
-	// address. Was a tab inside RoomLive, then the room's URL.
+	// The Lounge: what a voice channel's page and a session's page both show
+	// (#2449) — the same stage, tiles and deck on either address. It began as
+	// a tab inside RoomLive and was then the room's default place (ADR-0020).
 	//
 	// One fused grid — camera and metrics on the same tile (#181) — with the
 	// stage above it only when someone is actually sharing. Tapping a tile
@@ -90,7 +90,7 @@
 	}
 
 	// Quick layouts for watching together (#464, reworked #427): what deserves
-	// the room differs per rider — the picture for some, the cams for others,
+	// the screen differs per rider — the picture for some, the cams for others,
 	// and for a third the video belongs in the people column where it plays on
 	// every other page anyway. Three presets, one tap, remembered per device.
 	type Layout = 'stage' | 'split' | 'sidebar';
@@ -166,7 +166,7 @@
 				'grid items-start gap-3 lg:grid-cols-[minmax(20rem,1fr)_minmax(0,1fr)]',
 	);
 
-	// How tall the picture is, in the one layout where there is room to argue
+	// How tall the picture is, in the one layout where there is space to argue
 	// about it (#427). It is a divider between the stage and the crew, not a
 	// grip on the frame: the frame keeps the picture's own shape at whatever
 	// height this is, centred in the column.
@@ -204,7 +204,7 @@
 		});
 	}
 
-	// Whoever's camera is ON the stage is not also a tile (#506): the room
+	// Whoever's camera is ON the stage is not also a tile (#506): the page
 	// showed the same person twice, big and small, which reads as a bug the
 	// moment the tiles are a grid rather than a strip under the picture.
 	const staged = $derived(
@@ -239,12 +239,12 @@
 {/snippet}
 
 <!-- `page`, like every other place (#1623): px-8 left 311 px for a stage
-     floored at 320, and the room's default place scrolled sideways on a
+     floored at 320, and the Lounge scrolled sideways on a
      phone the moment anything was on stage. The bottom clears the drawer
      and people buttons floating in the corners (#1627). -->
 <div class="page flex h-full flex-col pb-20 xl:pb-8">
-	<!-- The coach's standing notice, above everything (#2408), and only while
-	     the room is idle: mid-session the Lounge is tiles, the sprint and the
+	<!-- The crew's announcement, above everything (#2408), and only while
+	     no session runs: mid-session the Lounge is tiles, the sprint and the
 	     stage, and a notice about next Thursday pushing them down is the
 	     opposite of what a rider on a bike needs. It is waiting when the
 	     session ends. -->
@@ -255,7 +255,7 @@
 			onclear={() => channel.clearAnnouncement()}
 		/>
 	{/if}
-	<!-- No page header: the sidebar says which room this is and the people
+	<!-- No page header: the sidebar says which channel this is and the people
 	     column says who is in it. What is left is what the lounge can DO. -->
 	<div class="mb-4 flex flex-wrap items-center gap-2">
 		<!-- Away moved to the you-panel (#807): it is a statement about you,
@@ -333,8 +333,8 @@
 		{/if}
 		<div class="min-w-0">
 			{#if focused}
-				<!-- Focus narrows what you are looking at; it does not empty the room,
-		     so everyone else stays beside them. -->
+				<!-- Focus narrows what you are looking at; it does not empty the
+				     grid, so everyone else stays beside them. -->
 				<div
 					class="grid min-h-0 shrink-0 gap-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]"
 				>
@@ -436,7 +436,7 @@
 		</section>
 	{/if}
 	{#if channel.phase === 'lounge'}
-		<!-- The room's dashboard, when nothing is running: what this room is
+		<!-- The crew's dashboard, when nothing is running: what this crew is
 		     adding up to and the three things you do to it. It lives on the
 		     Lounge rather than a sixth place — Discord's server home IS its
 		     first channel. -->

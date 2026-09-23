@@ -23,9 +23,9 @@
 	} from '$lib/channel/playlists.svelte';
 
 	// One saved playlist (#627): the row folds open onto its own tracks, add
-	// and delete live here. Adding is the room's own add box (#1426) — search
-	// your library or paste a link — pointed at the playlist instead of the
-	// deck. Reorder is #1428.
+	// and delete live here. Adding is the jukebox's own add box (#1426) —
+	// search your library or paste a link — pointed at the playlist instead of
+	// the deck. Reorder is #1428.
 	let {
 		playlist,
 		store,
@@ -34,12 +34,12 @@
 	}: {
 		playlist: SavedPlaylist;
 		store: ReturnType<typeof createPlaylistStore>;
-		/** The room to queue into — the one the panel is open in. Absent on
-		 *  the Music page with no room open (#1460): nothing to queue into,
-		 *  so the verb is not drawn. */
+		/** The voice channel to queue into — the one the panel is open in.
+		 *  Absent on the Music page with no channel open (#1460): nothing to
+		 *  queue into, so the verb is not drawn. */
 		address?: PlaceAddress | null;
-		/** Rename, delete and remove-a-track: the coach's and the owner's on a
-		 * room playlist (#771), always yours on a personal one. */
+		/** Rename, delete and remove-a-track: the crew's owner's and admins' on
+		 * a crew playlist (#771), always yours on a personal one. */
 		canManage: boolean;
 	} = $props();
 
@@ -179,7 +179,7 @@
 	}
 
 	/** Re-creates a deleted playlist and re-posts its tracks in order — a new
-	 * id, and no longer the room's active playlist: neither is a client's to
+	 * id, and no longer any channel's active playlist: neither is a client's to
 	 * restore. This row is unmounted by the time an undo runs (the list
 	 * refreshed without it), so failures speak through a toast, not `error`. */
 	async function recreate(name: string, saved: SavedTrack[]) {
@@ -217,7 +217,7 @@
 		toasts.push(
 			res.data?.queued
 				? `Queued ${res.data.queued} track${res.data.queued === 1 ? '' : 's'}.`
-				: 'Nothing new to queue — the room is already full up.',
+				: 'Nothing new to queue — the queue is already full up.',
 		);
 	}
 
@@ -280,7 +280,7 @@
 				<!-- Not a control for a rider who cannot rename it (#2162, ux.md:
 				     never render one that fails on click). The menu's Rename and
 				     the × are gated on `canManage` and this path was not, so a
-				     member on the Room tab could open the box, type, and read
+				     member on the crew tab could open the box, type, and read
 				     the server's refusal under the row. -->
 				<span class="block max-w-full truncate text-xs font-medium"
 					>{playlist.name}</span

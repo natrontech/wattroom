@@ -1,9 +1,9 @@
 import { toleranceBand } from '$lib/workout/guards';
 
 /**
- * The room screen's view model (#39's design, made real): one rider shape the
+ * The voice channel's view model (#39's design, made real): one rider shape the
  * designed components render, fed by live ticks instead of the mock generator.
- * The dev mock produces the same shape, which is what keeps /dev/room honest.
+ * The dev mock produces the same shape, which is what keeps /dev/channel honest.
  */
 export interface LiveRider {
 	id: string;
@@ -13,7 +13,7 @@ export interface LiveRider {
 	you: boolean;
 	coach: boolean;
 	cameraOn: boolean;
-	/** Their screen is live in the room (#664) — marked on the tile, since the stage need not move. */
+	/** Their screen is live in the call (#664) — marked on the tile, since the stage need not move. */
 	sharing?: boolean;
 	/** A soundboard clip of theirs is playing on THIS machine right now (#1681). */
 	sounding?: boolean;
@@ -23,10 +23,11 @@ export interface LiveRider {
 	speaking: boolean;
 	/** The rider explicitly stepped out; presence, never inferred from watts. */
 	away?: boolean;
-	/** Which away, from $lib/away's keys; '' or absent is the plain one. Room
-	 * surfaces only — outside a room the reason is not carried at all. */
+	/** Which away, from $lib/away's keys; '' or absent is the plain one.
+	 * Channel surfaces only — outside a channel the reason is not carried at
+	 * all. */
 	awayReason?: string;
-	/** Pedalling inside the room's window (#1016) — the server's word, not this
+	/** Pedalling inside the hub's window (#1016) — the server's word, not this
 	 * tile's reading of the current sample. A coast holds it. */
 	riding?: boolean;
 	/** camera-off fallback hue, so the grid isn't uniformly dark */
@@ -44,9 +45,9 @@ export interface LiveRider {
 }
 
 /**
- * A room's member as the room's own screens render them. The tick's roster is
- * the live truth and carries no faces; this is who the room HAS, which is also
- * the only way to know who is not here.
+ * A crew member as the channel's own screens render them. The tick's roster
+ * is the live truth and carries no faces; this is who the crew HAS, which is
+ * also the only way to know who is not here.
  */
 export interface PanelMember {
 	id: string;
@@ -80,7 +81,8 @@ export interface Fault {
 	/** 'mic' is the capture dying under an open microphone (#640). */
 	kind: 'trainer' | 'channel' | 'voice' | 'mic';
 	/** 'silent' and 'no-power' are trainer-only: connected, and delivering
-	 * nothing — or frames without watts (#520, #1849). 'offline' is room-only:
-	 * the device itself has no network, so the problem is on this end (#2121). */
+	 * nothing — or frames without watts (#520, #1849). 'offline' is
+	 * channel-only: the device itself has no network, so the problem is on
+	 * this end (#2121). */
 	state: 'reconnecting' | 'lost' | 'silent' | 'no-power' | 'offline';
 }

@@ -20,29 +20,29 @@ export type { AvError, AvStatus } from '$lib/channel/av-types';
 export { JOIN_TIMEOUT_MS } from '$lib/channel/av-session';
 
 /**
- * The room's call (#21): LiveKit voice + camera + screenshare, joined with a
- * token the server mints against the same membership check as the metrics
- * socket. AV is transit-only and never recorded (locked privacy decision) —
+ * The voice channel's call (#21): LiveKit voice + camera + screenshare,
+ * joined with a token the server mints against the same membership check as
+ * the metrics socket. AV is transit-only and never recorded (locked privacy decision) —
  * nothing here persists anything.
  *
  * Mic starts on with browser echoCancellation + autoGainControl and no noise
- * suppression (SPEC room audio defaults, ADR-0043); camera starts off. Track
- * ownership: LiveKit owns the media elements' streams, `av-seats.ts` owns the
- * attachment points keyed by rider id so the dashboard can put faces on the
- * tiles it already has.
+ * suppression (SPEC voice channel audio defaults, ADR-0043); camera starts
+ * off. Track ownership: LiveKit owns the media elements' streams,
+ * `av-seats.ts` owns the attachment points keyed by rider id so the dashboard
+ * can put faces on the tiles it already has.
  *
  * This file assembles the parts and hands them to each other; the behaviour
  * is all in them. Where to look:
  *
  * - `av-state.svelte.ts` — what the UI watches, and what the connection keeps
  * - `av-session.ts` — joining and leaving, and the bounded attempt (#1203)
- * - `av-wire.ts` — everything LiveKit tells us, translated onto the room
+ * - `av-wire.ts` — everything LiveKit tells us, translated onto the channel
  * - `av-mic.ts` — this tab's microphone, wired to this tab's connection
  * - `av-publish.ts` — the camera, the screen, and stepping away from both
  * - `av-tabs.ts` — which of the rider's tabs holds the mic (#293)
  * - `av-seats.ts` — who is in which seat, and which connection put them there
  * - `av-listeners.ts` — the machine's own events: suspension, autoplay, unplug
- * - `av-api.ts` — the flat surface the room page reads
+ * - `av-api.ts` — the flat surface the voice channel's page reads
  *
  * ON THE LENGTH, since the note that used to sit here said the opposite.
  * #892 took out four seams and then declined the fifth, on the grounds that
@@ -97,8 +97,8 @@ export function createChannelAv(address: PlaceAddress) {
 		},
 	);
 	const seats = createSeats();
-	// A refresh kills the page and the LiveKit room with it. The note this tab
-	// leaves behind is what lets the next page walk back in (#480).
+	// A refresh kills the page and the LiveKit connection with it. The note
+	// this tab leaves behind is what lets the next page walk back in (#480).
 	// Keyed by the place (#2449): its address key.
 	const note = createNoteKeeper(address.key, () => av.micOn);
 
