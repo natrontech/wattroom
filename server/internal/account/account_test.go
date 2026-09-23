@@ -1335,7 +1335,7 @@ func TestExportCarriesTheRidersOwnUploads(t *testing.T) {
 		// Her paste and her sent DM picture, each by the id chat.json and
 		// messages.json carry — the resolution that was missing — and the
 		// size that says what is not in the zip.
-		"images.json": {"\"on\": \"room\"", "\"on\": \"dm\"", "\"sizeBytes\"", "\"stillOnALine\"",
+		"images.json": {"\"on\": \"channel\"", "\"on\": \"dm\"", "\"sizeBytes\"", "\"stillOnALine\"",
 			store.UUIDString(shotID["alice"]), store.UUIDString(dmShotID["alice"])},
 		// Counted, so a clip that failed to read cannot go quietly.
 		"manifest.json": {"\"avatar\": true", "\"clips\"", "\"written\": 1", "\"complete\": true"},

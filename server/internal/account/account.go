@@ -383,8 +383,8 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 				// both for DMs since #1819 and chat.json carried neither, so
 				// an edited line exported as if it had always read that way
 				// and a picture-only line exported as an empty string.
-				line := map[string]any{"room": row.RoomName, "roomSlug": row.RoomSlug,
-					"text": row.Text, "at": row.CreatedAt.Time}
+				line := place(map[string]any{"text": row.Text, "at": row.CreatedAt.Time},
+					row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug)
 				if row.ImageID.Valid {
 					line["imageId"] = store.UUIDString(row.ImageID)
 				}
@@ -417,11 +417,11 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			// chat.json follows.
 			rows, err := s.store.Queries.ExportUserRecaps(r.Context(), store.UUIDString(user.ID))
 			return mapRows(rows, err, func(row db.ExportUserRecapsRow) any {
-				return map[string]any{"room": row.RoomName, "roomSlug": row.RoomSlug,
+				return place(map[string]any{
 					"workout": row.Workout, "sessionStarted": row.StartedAt.Time,
 					"sessionEnded": row.EndedAt.Time,
 					"joined":       time.UnixMilli(row.JoinedAt), "left": time.UnixMilli(row.LeftAt),
-					"rode": row.Rode}
+					"rode": row.Rode}, row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug)
 			})
 		}},
 		{"friends.json", func() (any, error) {
@@ -482,8 +482,9 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 				if row.Going {
 					answer = "in"
 				}
-				return map[string]any{"room": row.RoomName, "workoutName": row.WorkoutName,
-					"startsAt": row.StartsAt.Time, "answer": answer, "answeredAt": row.CreatedAt.Time}
+				return place(map[string]any{"workoutName": row.WorkoutName,
+					"startsAt": row.StartsAt.Time, "answer": answer, "answeredAt": row.CreatedAt.Time},
+					row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug)
 			})
 		}},
 		{"rooms.json", func() (any, error) {
@@ -574,9 +575,10 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			}
 			out := make([]any, 0, len(chat)+len(dms))
 			for _, row := range chat {
-				one := map[string]any{"on": "room", "place": row.RoomName,
-					"roomSlug": row.RoomSlug, "emoji": row.Emoji,
-					"lineAt": row.LineAt.Time, "onMyOwnLine": row.OnMyOwnLine}
+				one := place(map[string]any{"on": "channel",
+					"place": placeName(row.ChannelName, row.RoomName), "emoji": row.Emoji,
+					"lineAt": row.LineAt.Time, "onMyOwnLine": row.OnMyOwnLine},
+					row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug)
 				if row.OnMyOwnLine {
 					one["line"] = row.Line
 				}
@@ -611,7 +613,10 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 					"createdAt": row.CreatedAt.Time, "renamedAt": timeOrNil(row.RenamedAt),
 					// The crew's door. Every member reads it in the app, and
 					// it is live — rotating it is what stops an old link.
-					"joinCode": row.JoinCode}
+					"joinCode": row.JoinCode,
+					// Her two switches on the membership (#2432), which
+					// rooms.json carried per room until M9 moved them here.
+					"notify": row.Notify, "onBoard": row.OnBoard}
 			})
 			return out, len(rows), err
 		}),
@@ -626,10 +631,11 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 				UserID: user.ID, Lim: maxExportRows,
 			})
 			out, err := mapRows(rows, err, func(row db.ExportUserScheduledSessionsRow) any {
-				return map[string]any{"room": row.RoomName, "roomSlug": row.RoomSlug,
+				return place(map[string]any{
 					"workoutName": row.WorkoutName, "startsAt": row.StartsAt.Time,
 					"plannedAt": row.CreatedAt.Time, "startedAt": timeOrNil(row.StartedAt),
-					"workout": json.RawMessage(row.WorkoutJson)}
+					"workout": json.RawMessage(row.WorkoutJson)},
+					row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug)
 			})
 			return out, len(rows), err
 		}),
@@ -676,6 +682,24 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			out, err := mapRows(rows, err, func(row db.ExportUserRoomDoorsRow) any {
 				one := map[string]any{"direction": row.Direction, "room": row.RoomName,
 					"roomSlug": row.RoomSlug, "at": row.GrantedAt.Time}
+				if row.Rider != "" {
+					one["rider"] = row.Rider
+				}
+				return one
+			})
+			return out, len(rows), err
+		}),
+		bounded("channel-members.json", func() (any, int, error) {
+			// Being named into a private channel (ADR-0058, #2554), the
+			// successor of room-doors.json and both directions for its reason:
+			// the channels that name the rider, and the people they named
+			// into one — by display name, never an id or an address.
+			rows, err := s.store.Queries.ExportUserChannelMembers(r.Context(), db.ExportUserChannelMembersParams{
+				UserID: user.ID, Lim: maxExportRows,
+			})
+			out, err := mapRows(rows, err, func(row db.ExportUserChannelMembersRow) any {
+				one := map[string]any{"direction": row.Direction, "crew": row.CrewName,
+					"channel": row.ChannelName, "kind": row.Kind, "at": row.AddedAt.Time}
 				if row.Rider != "" {
 					one["rider"] = row.Rider
 				}
@@ -805,10 +829,11 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			}
 			out := make([]any, 0, len(chat)+len(dms))
 			for _, row := range chat {
-				out = append(out, map[string]any{"on": "room", "place": row.RoomName,
-					"roomSlug": row.RoomSlug, "image": store.UUIDString(row.ID),
+				out = append(out, place(map[string]any{"on": "channel",
+					"place": placeName(row.ChannelName, row.RoomName), "image": store.UUIDString(row.ID),
 					"mime": row.Mime, "sizeBytes": row.SizeBytes,
-					"uploadedAt": row.CreatedAt.Time, "stillOnALine": row.StillOnALine})
+					"uploadedAt": row.CreatedAt.Time, "stillOnALine": row.StillOnALine},
+					row.CrewName, row.ChannelName, row.RoomName, row.RoomSlug))
 			}
 			for _, row := range dms {
 				out = append(out, map[string]any{"on": "dm", "place": row.PeerName,
@@ -1040,6 +1065,32 @@ func imageExt(mime string) string {
 		return ".gif"
 	}
 	return ".bin"
+}
+
+// place names where a row happened (#2554): its crew and its channel, and
+// the room only where one still stands behind the row — a line, plan or
+// session since M9 has none, and every row before it keeps its room until
+// #2433 drops the rooms.
+func place(row map[string]any, crew, channel, room, roomSlug string) map[string]any {
+	if crew != "" {
+		row["crew"] = crew
+	}
+	if channel != "" {
+		row["channel"] = channel
+	}
+	if room != "" {
+		row["room"], row["roomSlug"] = room, roomSlug
+	}
+	return row
+}
+
+// placeName is the one word a reaction or a picture is placed by: the text
+// channel, or the room for a row whose channel is gone.
+func placeName(channel, room string) string {
+	if channel != "" {
+		return channel
+	}
+	return room
 }
 
 func timeOrNil(t pgtype.Timestamptz) any {
