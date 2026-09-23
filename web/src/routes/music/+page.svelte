@@ -13,8 +13,8 @@
 	import {
 		createPlaylistStore,
 		type PlaylistStore,
-	} from '$lib/room/playlists.svelte';
-	import { saveToPlaylist } from '$lib/room/save-to-playlist';
+	} from '$lib/channel/playlists.svelte';
+	import { saveToPlaylist } from '$lib/channel/save-to-playlist';
 	import { SvelteSet } from 'svelte/reactivity';
 	import LibraryPicked from './LibraryPicked.svelte';
 	import LibraryPlaylists from './LibraryPlaylists.svelte';
@@ -28,7 +28,7 @@
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import { roomConnection } from '$lib/room/connection.svelte';
+	import { roomConnection } from '$lib/channel/connection.svelte';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import {
 		deleteTrack,

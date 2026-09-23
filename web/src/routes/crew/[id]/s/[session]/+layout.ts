@@ -1,4 +1,4 @@
-import { prepareRoomAv } from '$lib/room/connection.svelte';
+import { prepareRoomAv } from '$lib/channel/connection.svelte';
 import { loadSessionPage } from '$lib/session/session-page';
 import type { LayoutLoad } from './$types';
 

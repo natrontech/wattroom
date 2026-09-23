@@ -9,12 +9,12 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import PalettePicker from '$lib/components/PalettePicker.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import SensorOverview from '$lib/room/SensorOverview.svelte';
-	import FaultBanner from '$lib/room/FaultBanner.svelte';
-	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
+	import SensorOverview from '$lib/session/SensorOverview.svelte';
+	import FaultBanner from '$lib/channel/FaultBanner.svelte';
+	import IntervalStrip from '$lib/session/IntervalStrip.svelte';
 	import PlayerTile from '../PlayerTile.svelte';
-	import RiderTile from '$lib/room/RiderTile.svelte';
-	import SprintMoment from '$lib/room/SprintMoment.svelte';
+	import RiderTile from '$lib/channel/RiderTile.svelte';
+	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import UpdateRow from '$lib/nav/UpdateRow.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';

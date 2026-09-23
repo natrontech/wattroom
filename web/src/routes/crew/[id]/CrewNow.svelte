@@ -18,13 +18,13 @@
 	import { formatClock, formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
 	import type { SessionRecap } from '$lib/protocol';
-	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
+	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
 	import {
 		rsvpSummary,
 		tallyOf,
 		whoIsInOf,
 		type RsvpAnswer,
-	} from '$lib/room/rsvp';
+	} from '$lib/session/rsvp';
 	import type { Together } from '$lib/crew-types';
 	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';

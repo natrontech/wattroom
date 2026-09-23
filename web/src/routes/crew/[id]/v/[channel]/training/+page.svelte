@@ -5,10 +5,10 @@
 	// own URL, the one to share.
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { sessionPath } from '$lib/room/address';
-	import { roomConnection } from '$lib/room/connection.svelte';
+	import { sessionPath } from '$lib/channel/address';
+	import { roomConnection } from '$lib/channel/connection.svelte';
 	import { liveSessionId } from '$lib/channel/tick-session';
-	import Training from '$lib/room/Training.svelte';
+	import Training from '$lib/session/Training.svelte';
 
 	const session = $derived(
 		liveSessionId(roomConnection.current?.live.tick?.state),

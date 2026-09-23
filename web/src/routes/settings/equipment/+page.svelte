@@ -12,14 +12,14 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import { roomConnection } from '$lib/room/connection.svelte';
-	import SensorOverview from '$lib/room/SensorOverview.svelte';
+	import { roomConnection } from '$lib/channel/connection.svelte';
+	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { deviceWord } from '$lib/device.svelte';
-	import { pairedElsewhereAll, trainerState } from '$lib/room/sensor-status';
+	import { pairedElsewhereAll, trainerState } from '$lib/session/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
 	import Gauge from '@lucide/svelte/icons/gauge';
 	import { RAMP_TAKES } from '$lib/workout/ramp';
-	import { trainerHint } from '$lib/room/sensor-status';
+	import { trainerHint } from '$lib/session/sensor-status';
 
 	// A room holds its BLE connection for as long as you stand in one (#521),
 	// and this page could not see it (#565) — so when there IS a room, its

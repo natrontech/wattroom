@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { formatWhen } from '$lib/format';
 import type { RoomEvent } from '$lib/protocol';
-import { dmArrivalEvent } from '$lib/room/dm-line';
+import { dmArrivalEvent } from '$lib/channel/dm-line';
 import { eventText } from './events';
 
 const event = (over: Partial<RoomEvent> = {}): RoomEvent => ({

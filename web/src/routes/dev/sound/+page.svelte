@@ -13,7 +13,7 @@
 	// Cue level is mixer-owned and persisted (wattroom.mixer.v1) — route
 	// through it so this page exercises the same path the app uses instead
 	// of a level nothing else can reach (#648). Mute and "someone is
-	// speaking" are scratch/live toggles, not mixer state — RoomShell and
+	// speaking" are scratch/live toggles, not mixer state — ChannelShell and
 	// connection.svelte.ts call these same cues.ts setters directly for the
 	// same reason.
 	$effect(() => mixer.setCues(volume));

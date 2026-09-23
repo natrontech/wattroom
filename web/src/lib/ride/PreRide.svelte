@@ -23,10 +23,10 @@
 	import { formatClock } from '$lib/format';
 	import RecoveredRides from '$lib/ride/RecoveredRides.svelte';
 	import type { createSoloTrainer } from '$lib/ride/solo-trainer.svelte';
-	import SensorOverview from '$lib/room/SensorOverview.svelte';
+	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { Workout } from '$lib/workout/types';
-	import { trainerHint } from '$lib/room/sensor-status';
+	import { trainerHint } from '$lib/session/sensor-status';
 
 	let {
 		workout,

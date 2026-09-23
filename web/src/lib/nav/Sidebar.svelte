@@ -17,7 +17,7 @@
 	import CrewColumn from './CrewColumn.svelte';
 	import { crewLive } from './crew-live.svelte';
 	import { chosenCrew } from './chosen-crew.svelte';
-	import JukeboxRail from '$lib/room/JukeboxRail.svelte';
+	import JukeboxRail from '$lib/channel/JukeboxRail.svelte';
 	import { keepSize } from '$lib/pane';
 	import { edgeDivider } from '$lib/divider';
 	import { friends } from '$lib/friends/friends.svelte';
@@ -27,7 +27,7 @@
 		UNREAD_DOT,
 		unreadCount,
 	} from '$lib/messages/unread-marks';
-	import { roomConnection } from '$lib/room/connection.svelte';
+	import { roomConnection } from '$lib/channel/connection.svelte';
 	import { activeHref, crewOfPath, dmsCurrent, pages } from './pages';
 	import { readDmsFolded, rememberDmsFolded } from './folds';
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';

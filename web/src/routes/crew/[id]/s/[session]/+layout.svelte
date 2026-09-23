@@ -6,7 +6,7 @@
 	// the channel and its session keeps you where you are.
 	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
-	import VoiceChannelShell from '$lib/room/VoiceChannelShell.svelte';
+	import VoiceChannelShell from '$lib/channel/VoiceChannelShell.svelte';
 	import type { SessionPageData } from '$lib/session/session-page';
 
 	let { children } = $props();

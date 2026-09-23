@@ -5,8 +5,8 @@
 	 * (ADR-0005) and showed states the product lacks. Every parameter comes
 	 * from docs/SPEC.md's game-mode table; the server owns every rule.
 	 */
-	import GamePanel from '$lib/room/GamePanel.svelte';
-	import { GAME_MODES } from '$lib/room/modes';
+	import GamePanel from '$lib/session/GamePanel.svelte';
+	import { GAME_MODES } from '$lib/session/modes';
 	import type { GameState, SprintScore } from '$lib/protocol';
 
 	const roster = [

@@ -19,10 +19,10 @@
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import Instrument from '$lib/room/Instrument.svelte';
-	import RideHeader from '$lib/room/RideHeader.svelte';
-	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
-	import SprintMoment from '$lib/room/SprintMoment.svelte';
+	import Instrument from '$lib/session/Instrument.svelte';
+	import RideHeader from '$lib/session/RideHeader.svelte';
+	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
+	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import type { Block } from '$lib/workout/block';
 	import type { createRideSession } from '$lib/workout/session.svelte';
 	import type { Workout } from '$lib/workout/types';

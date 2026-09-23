@@ -12,14 +12,14 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { account } from '$lib/account.svelte';
 	import { people } from '$lib/people.svelte';
-	import { roomConnection } from '$lib/room/connection.svelte';
+	import { roomConnection } from '$lib/channel/connection.svelte';
 	import {
 		AWAY_MARK,
 		MARK_SURFACE,
 		MUTED_MARK,
 		tileFrame,
 		VOICE_DOT,
-	} from '$lib/room/presence-marks';
+	} from '$lib/channel/presence-marks';
 	import { STRIP_MAX, orderBySpoke } from './voice-strip';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 

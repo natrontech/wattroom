@@ -1,0 +1,560 @@
+import type {
+	ClientMessage,
+	Poke,
+	RiderMetrics,
+	RoomEvent,
+	SensorClaim,
+	SensorPairing,
+	ServerMessage,
+	ServerTick,
+} from '$lib/protocol';
+import type { PlaceAddress } from '$lib/channel/address';
+import { account } from '$lib/account.svelte';
+import { deviceWord } from '$lib/device.svelte';
+import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { observeServerTime, resetServerClock } from '$lib/server-clock';
+import { isLivePhase } from '$lib/channel/tick-session';
+
+/**
+ * The live side of one room (#18): a WebSocket to the hub, the latest tick,
+ * and reconnect that never needs a button. The server owns shared truth —
+ * this store renders it and forwards commands, deciding nothing itself.
+ */
+export type LiveStatus = 'connecting' | 'live' | 'reconnecting' | 'offline';
+
+/**
+ * How long an open socket may hear nothing before it counts as dropped
+ * (#2135): five of the hub's 1 Hz ticks (docs/SPEC.md). A network path that
+ * dies under an open socket — wifi traded for ethernet, a NAT forgetting the
+ * flow — sends no close, so the browser keeps the socket OPEN for as long as
+ * TCP takes to give up. The hub pings every 5 s and lets an unanswering rider
+ * go, so without this the rider left everyone's roster while their own tab
+ * still said live, and voice carried on underneath on its own connection.
+ */
+export const SILENCE_MS = 5_000;
+
+/**
+ * Reconnects failed before the banner turns from "reconnecting" to "lost".
+ * The backoff spends 1+2+4+8 s before it settles at its 10 s ceiling, the
+ * same 15 s the roster waits before announcing the rider gone (docs/SPEC.md):
+ * past it the room has said goodbye, and the rider gets the one big button
+ * (#1500) while the automatic retry keeps running underneath.
+ */
+export const SETTLED_ATTEMPTS = 5;
+
+export function createRoomLive(address: PlaceAddress) {
+	let status = $state<LiveStatus>('connecting');
+	let tick = $state<ServerTick | null>(null);
+	// The last workout definition heard, by hash (#1710): the server sends
+	// the JSON only on the tick that changes it and names it on every other.
+	let workoutHeard: { hash: string; json: string } | null = null;
+	// What the room did (#321), for the Lounge's event lines.
+	// Ephemeral by design (ADR-0019): nothing seeds these on join, and a
+	// reload forgets them — "now playing" is worthless tomorrow.
+	let roomEvents = $state<RoomEvent[]>([]);
+	function mergeEvents(incoming: RoomEvent[]) {
+		const next = [...roomEvents];
+		for (const event of incoming) {
+			// A growing burst re-sends its own id ("queued 3 tracks"):
+			// replace the line in place, never stack a second one.
+			const at = next.findIndex((have) => have.id === event.id);
+			if (at >= 0) next[at] = event;
+			else next.push(event);
+		}
+		roomEvents = next.slice(-100);
+	}
+	let refusal = $state<string | null>(null);
+	let refusalAt = 0;
+	let jukeboxRefusal = $state<string | null>(null);
+	let jukeboxRefusalAt = 0;
+	// What the hub says this tab holds, and where the rider's other screens
+	// hold the rest (#610). Server truth: a tab learns here that its claim
+	// was refused, so nothing renders "paired" off its own click alone.
+	let pairing = $state<SensorPairing>({});
+	// Addressed off the tick like pairing: every update is one new request for
+	// this rider's attention, carrying the authenticated sender and server time.
+	let lastPoke = $state<Poke | null>(null);
+	// This socket's own public address (#2131), addressed off the tick for a
+	// stronger reason than either of the two above: the tick goes to the whole
+	// room, and this is the one fact in the room a rider may see about
+	// themselves and about nobody else. It arrives once, on join. Null until
+	// then, and null again on a socket that never got one.
+	let ownIp = $state<string | null>(null);
+	// The last claim sent, replayed on every reconnect — a fresh socket is a
+	// fresh claim as far as the hub is concerned, and a trainer that stays
+	// connected through a drop must not come back as somebody else's.
+	let claim: SensorClaim | null = null;
+	let socket: WebSocket | null = null;
+	let closed = false;
+	let attempts = $state(0);
+	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+	// Crash safety (#19): metrics buffer locally as well as streaming. When the
+	// socket comes back, everything since the drop replays as a backfill — the
+	// server dedupes by seq, so the overlap costs nothing.
+	let buffer: RideBuffer | null = null;
+	// The seq stream belongs HERE, beside the buffer that replays it and the
+	// gap marker the replay starts from (#522) — not to whoever happens to
+	// hold the trainer. One socket session, one stream: that is the unit the
+	// server's ride record dedupes against, and the client's counter must not
+	// be able to restart inside it.
+	let seq = 0;
+	// The last seq the hub said it received from this rider — every tick
+	// carries the latest metrics per rider, seq included. The replay starts
+	// there, not at the last one this tab stamped: on a silent drop the socket
+	// reports success for tens of seconds of samples it never delivered, and
+	// starting past them lost them for good (#1467). The overlap dedupes by
+	// seq on the server, so over-replaying costs nothing.
+	let acked = 0;
+	let gapSeq: number | null = null;
+	// One row a second (#791, audit 2026-09-09): the buffer is what a replay
+	// sends and what a recovered .fit reads as one row per second, and a
+	// trainer notifying at 2 Hz used to double both.
+	let bufferedSecond = -1;
+	// One buffer per SESSION, not per join (#1541): opened when the timeline
+	// starts and ended when it closes, so the tab closed after a ride the
+	// hub saved does not come back as "an unfinished ride" on /ride. Stamped
+	// with server truth — the workout's name and the start the tick implies
+	// — because that is what a recovered .fit is named and dated by.
+	let riding = false;
+	let openedFor = 0;
+	let openedName = '';
+	// How many seconds of this rider's own ride the buffer holds. The floor
+	// the recovery card uses is the floor for saying anything about it: a
+	// phone watching from the sofa buffers nothing and has nothing to lose.
+	let bufferedRows = 0;
+	// The session the server came back without (#1466, ADR-0052). A session
+	// that ends leaves a `done` tick and a saved ride; a process that
+	// restarted leaves an idle room, because session.go only ever exits a
+	// riding phase through done. Persistent status, not a toast: the ride is
+	// the rider's to rescue and they are three metres from the screen
+	// (.claude/rules/errors.md).
+	let lostSession = $state<{ workoutName: string; minutes: number } | null>(
+		null,
+	);
+	// The session is riding and nothing is being written down (#1466 finding
+	// 4). Distinct from lostSession above, which is a ride that WAS buffered
+	// and cannot be saved: this one has no buffer at all, so a restart or a
+	// browser crash leaves not even a .fit. Known at the open, so the rider
+	// hears it while they can still act on it (ADR-0052 rule 3).
+	let noCrashSafety = $state(false);
+	function followSession(t: ServerTick) {
+		const phase = t.state?.phase;
+		const now = isLivePhase(phase);
+		if (now === riding) return;
+		riding = now;
+		if (!now) {
+			// `done` is the hub saying it closed the session and handed the
+			// ride to the saver. Anything else is the room re-forming around
+			// a session nothing remembers, and the buffer is then the only
+			// copy: settling it would stamp that copy finished, because the
+			// fresh process acks the live stream it hears while holding
+			// nothing to save.
+			if (phase === 'done') settle(buffer);
+			else if (bufferedRows >= MIN_SAMPLES && !t.state?.workoutName)
+				// No workout at all is the fresh process: a session that
+				// closed keeps its workout named on every later tick, and a
+				// new pick names the next one, so an idle room that can name
+				// nothing is one that remembers nothing. Only the banner
+				// hangs on this — the buffer is kept on the `done` test
+				// alone, which cannot be fooled by a coach who picks the
+				// next workout before this tick arrives.
+				lostSession = {
+					workoutName: openedName,
+					minutes: Math.round(bufferedRows / 60),
+				};
+			buffer = null;
+			noCrashSafety = false;
+			return;
+		}
+		lostSession = null;
+		const startedAt = t.at - (t.state.elapsed ?? 0) * 1000;
+		openedFor = startedAt;
+		openedName = t.state.workoutName || 'Room ride';
+		bufferedSecond = -1;
+		bufferedRows = 0;
+		void openRideBuffer({
+			rideId: `room-${address.key}-${startedAt}`,
+			startedAt,
+			workoutName: openedName,
+		}).then((opened) => {
+			if (!riding || openedFor !== startedAt) return;
+			buffer = opened;
+			noCrashSafety = !opened.crashSafe;
+		});
+	}
+
+	// The close is the hub saying it saved what it heard — not that it heard
+	// everything (#1536). A socket down when the timeline ran out replays its
+	// tail into a room that has already saved, and nothing reads it again.
+	// So a tail the hub never acknowledged, a minute or more of it, keeps the
+	// buffer unfinished: /ride offers the .fit back. Export only — a room
+	// buffer carries no workoutJson, so the card shows no Save that would
+	// mint a second ride beside the hub's.
+	function settle(opened: RideBuffer | null) {
+		if (!opened) return;
+		void opened.since(acked).then((tail) => {
+			if (tail.length < MIN_SAMPLES) opened.end();
+		});
+	}
+
+	// Rearmed by everything the hub sends. Running out means the socket is
+	// dead, whatever its readyState says (SILENCE_MS).
+	let silenceTimer: ReturnType<typeof setTimeout> | null = null;
+	function heard() {
+		if (silenceTimer !== null) clearTimeout(silenceTimer);
+		silenceTimer = setTimeout(abandon, SILENCE_MS);
+	}
+
+	/** Give up on the current socket now. Its handlers go first: a close
+	 * handshake over a dead path waits as long as the silence did, and its
+	 * late onclose would start a second backoff beside this one. */
+	function abandon() {
+		const dead = socket;
+		if (!dead) return;
+		dead.onopen = null;
+		dead.onmessage = null;
+		dead.onclose = null;
+		dead.close();
+		onDrop();
+	}
+
+	function onDrop() {
+		if (silenceTimer !== null) clearTimeout(silenceTimer);
+		silenceTimer = null;
+		if (closed) return;
+		// Remember where the stream broke; the replay starts there.
+		if (gapSeq === null) gapSeq = acked;
+		// Ride-critical errors are persistent status, never toasts
+		// (.claude/rules/errors.md) — and recovery is automatic. Offline says
+		// whose problem it is (#2121), but the backoff runs on either way:
+		// navigator.onLine can call a working network offline, and a room that
+		// believed it would never come back.
+		status = navigator.onLine ? 'reconnecting' : 'offline';
+		if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+		reconnectTimer = setTimeout(
+			connect,
+			Math.min(1000 * 2 ** attempts, 10_000),
+		);
+		attempts += 1;
+	}
+
+	/** Dial now instead of waiting out the backoff. */
+	function dialNow() {
+		if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+		reconnectTimer = null;
+		connect();
+	}
+
+	// The device's own network (#2121). Losing it drops the socket at once
+	// instead of after the silence; getting it back dials at once instead of
+	// at the backoff's next turn, which may be ten seconds out.
+	function wentOffline() {
+		if (socket && socket.readyState <= WebSocket.OPEN) abandon();
+		else if (status === 'reconnecting') status = 'offline';
+	}
+	function cameOnline() {
+		if (status === 'live') return;
+		status = 'reconnecting';
+		dialNow();
+	}
+
+	function connect() {
+		// Never dial while a socket is already in flight or open — an extra dial
+		// is a second presence the server counts and leave() can't reach.
+		if (closed || (socket && socket.readyState <= WebSocket.OPEN)) return;
+		const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+		socket = new WebSocket(`${scheme}://${location.host}${address.ws}`);
+		socket.onopen = () => {
+			if (closed) {
+				socket?.close();
+				return;
+			}
+			// A fresh socket may have reached a restarted server; the old
+			// clock window would hold a stale offset for eight seconds.
+			resetServerClock();
+			status = 'live';
+			attempts = 0;
+			heard();
+			const queued = pending;
+			pending = [];
+			for (const message of queued) send(message);
+			// What screen this is (#2131). Resent on every reconnect for the
+			// reason the claim below is: a fresh socket is a fresh socket to
+			// the hub, and a rider whose phone reconnected would otherwise go
+			// blank on everyone's panel. The same coarse word the sensor claim
+			// uses — it just no longer waits for a trainer nobody on a phone
+			// has paired.
+			send({ device: { kind: deviceWord() } });
+			// Before the backfill: the replay below is metrics, and the hub
+			// only takes metrics from the screen holding the trainer.
+			if (claim) send({ sensors: claim });
+			// The hub drops away with the rider's last socket (#706), and a
+			// reconnect is a new socket. Re-declare it, or a rider who stepped
+			// out quietly comes back on everyone else's screen but their own.
+			if (away) send({ away: { away } });
+			if (gapSeq !== null) {
+				const since = gapSeq;
+				gapSeq = null;
+				void buffer?.since(since).then((samples) => {
+					if (samples.length > 0)
+						send({
+							backfill: {
+								samples: samples.map((sample) => ({
+									watts: sample.watts,
+									cadence: sample.cadence,
+									hr: sample.heartRate,
+									seq: sample.seq,
+								})),
+							},
+						});
+				});
+			}
+		};
+		socket.onmessage = (event) => {
+			heard();
+			const msg = JSON.parse(event.data) as ServerMessage;
+			if (msg.poke) lastPoke = msg.poke;
+			if (msg.pairing) {
+				// Off the tick by design (#610) — it is addressed to this
+				// rider's sockets, not to the room.
+				pairing = msg.pairing;
+			}
+			if (msg.connection) ownIp = msg.connection.ip;
+			if (msg.tick) {
+				// Before anything reads it: the tick's own timestamp is what
+				// keeps the jukebox playhead on server time (#286).
+				observeServerTime(msg.tick.at);
+				// Filled back in before anything reads it, so nothing
+				// downstream knows the definition stopped riding every tick.
+				const state = msg.tick.state;
+				if (state?.workoutJson) {
+					workoutHeard = {
+						hash: state.workoutHash ?? '',
+						json: state.workoutJson,
+					};
+				} else if (
+					state?.workoutHash &&
+					state.workoutHash === workoutHeard?.hash
+				) {
+					state.workoutJson = workoutHeard.json;
+				}
+				tick = msg.tick;
+				// The ack before the session follows it: the closing tick's
+				// own seq is what says whether the tail was heard (#1536).
+				const me = account.me?.id;
+				const mine = me ? msg.tick.riders?.[me] : undefined;
+				if (mine) acked = mine.seq;
+				followSession(msg.tick);
+				if (msg.tick.events?.length) mergeEvents(msg.tick.events);
+			}
+			// A refused command is feedback, not a fault — it stays up long
+			// enough to read (ticks arrive every second; clearing on each one
+			// made refusals subliminal — audit #219).
+			if (msg.error) {
+				if (msg.error.code.startsWith('jukebox_')) {
+					jukeboxRefusal = msg.error.message;
+					jukeboxRefusalAt = Date.now();
+				} else {
+					refusal = msg.error.message;
+					refusalAt = Date.now();
+				}
+			} else {
+				const now = Date.now();
+				if (refusal && now - refusalAt > 6_000) refusal = null;
+				if (jukeboxRefusal && now - jukeboxRefusalAt > 6_000)
+					jukeboxRefusal = null;
+			}
+		};
+		socket.onclose = onDrop;
+	}
+	connect();
+	window.addEventListener('offline', wentOffline);
+	window.addEventListener('online', cameOnline);
+
+	// Commands sent during a reconnect wait here and flush on reopen (audit
+	// #219). Metrics are continuous and never queued; stale watts help nobody.
+	let pending: ClientMessage[] = [];
+	// Bounded: a long reconnect under a busy rider must not grow it forever.
+	// Chat, the one command whose refusal a rider needed to hear (#650), goes
+	// over HTTP now (#2437) and answers for itself.
+	const PENDING_LIMIT = 16;
+	// This socket's view of its rider being away (#706), kept so a reconnect
+	// can re-declare it. Not $state: nothing renders from here — the roster
+	// on the tick is what every screen draws, this rider's tile included.
+	let away = false;
+	/** On the wire, or waiting for it; past the bound, dropped. Metrics are
+	 * never queued: the next sample supersedes a lost one. */
+	function send(message: ClientMessage) {
+		if (socket?.readyState === WebSocket.OPEN) {
+			socket.send(JSON.stringify(message));
+			return;
+		}
+		if (message.metrics) return;
+		if (pending.length >= PENDING_LIMIT) return;
+		pending.push(message);
+	}
+
+	return {
+		get status() {
+			return status;
+		},
+		/** Dropped out of the room for now, reconnecting or offline — never the
+		 * first connect of an entry, which must not read as a fault (#1411). */
+		get down() {
+			return status === 'reconnecting' || status === 'offline';
+		},
+		/** Reconnecting past the backoff's settling point: time for the button. */
+		get lost() {
+			return status === 'reconnecting' && attempts >= SETTLED_ATTEMPTS;
+		},
+		/** The one big button. */
+		retry: dialNow,
+		get tick() {
+			return tick;
+		},
+		get refusal() {
+			return refusal;
+		},
+		/** The ride the server came back without, for the shell's status
+		 * banner (#1466) — null unless a session vanished with a minute or
+		 * more of this rider's own samples buffered. */
+		get lostSession() {
+			return lostSession;
+		},
+		/** This room ride is being recorded with no crash safety at all
+		 * (#1466) — the browser's storage would not open, so there is no
+		 * copy to recover from and nothing to replay a dropped socket with. */
+		get noCrashSafety() {
+			return noCrashSafety;
+		},
+		get jukeboxRefusal() {
+			return jukeboxRefusal;
+		},
+		/** What this tab holds and what its rider's other screens hold (#610). */
+		get pairing() {
+			return pairing;
+		},
+		get lastPoke() {
+			return lastPoke;
+		},
+		/**
+		 * The address this socket reached the server from (#2131). Yours and
+		 * only ever yours — the server sends it to the socket it belongs to
+		 * and puts it nowhere near the roster.
+		 */
+		get ownIp() {
+			return ownIp;
+		},
+		/**
+		 * Tell the hub which sensors this tab has connected. Idempotent: the
+		 * whole set every time, so a release is just a shorter list, and the
+		 * same set twice sends nothing.
+		 */
+		claimSensors(next: SensorClaim) {
+			const same =
+				claim !== null &&
+				claim.tab === next.tab &&
+				claim.device === next.device &&
+				claim.held.length === next.held.length &&
+				claim.held.every((kind, i) => kind === next.held[i]);
+			claim = next;
+			if (!same) send({ sensors: next });
+		},
+		/** Stamps the sample with this session's next seq, then sends it. */
+		sendMetrics(sample: Omit<RiderMetrics, 'seq'>) {
+			const metrics: RiderMetrics = { ...sample, seq: ++seq };
+			const at = Date.now();
+			const second = Math.floor(at / 1000);
+			if (second > bufferedSecond) {
+				bufferedSecond = second;
+				if (buffer) {
+					// Counted where it is written, so the count is what the
+					// recovery card will actually find (#1466).
+					bufferedRows++;
+					buffer.append({
+						seq: metrics.seq,
+						watts: metrics.watts,
+						cadence: metrics.cadence ?? 0,
+						heartRate: metrics.hr ?? 0,
+						at,
+					});
+				}
+			}
+			send({ metrics });
+		},
+		/** The room ride ended on this screen: the buffer is not a crash to
+		 * recover, unless the hub never heard its tail (#1536). */
+		finish() {
+			settle(buffer);
+			buffer = null;
+		},
+		/** Fire a soundboard pad (#877): only the clip id crosses the wire —
+		 * the hub fills in who fired it, and every listener fetches the audio. */
+		fireClip(clipId: string) {
+			send({ board: { clipId } });
+		},
+		/** Stop your own clip (#1321): a fire with no clip, so every listener
+		 * ends your voice. */
+		stopClip() {
+			send({ board: { clipId: '' } });
+		},
+		cheer(emoji: string) {
+			send({ cheer: { emoji } });
+		},
+		poke(to: string) {
+			send({ poke: { to } });
+		},
+		/**
+		 * Step out, or come back (#706). The whole state, never a toggle: the
+		 * hub cannot then be left holding the opposite of what the rider sees
+		 * because one message went missing.
+		 */
+		setAway(next: boolean, reason = '') {
+			away = next;
+			send({ away: { away: next, reason: next ? reason : '' } });
+		},
+		get roomEvents() {
+			return roomEvents;
+		},
+		/**
+		 * A line this client made itself (#664: a screen share only LiveKit
+		 * saw). Same list, same cap, never sent — the hub knows nothing of it.
+		 */
+		pushEvent(event: RoomEvent) {
+			mergeEvents([event]);
+		},
+		/** One jukebox command. The wire shape IS the argument (#286) — six
+		 * positional optionals were a bug waiting to be passed in the wrong
+		 * order, and two of them already had been. */
+		jukebox(command: import('$lib/protocol').JukeboxCommand) {
+			// The dock's own end-of-track report is not the rider acting: it
+			// must not wipe a refusal they are still reading (#824).
+			if (command.action !== 'ended') jukeboxRefusal = null;
+			send({ jukebox: command });
+		},
+		control(
+			action: string,
+			workout?: { name: string; json: string; totalSeconds: number },
+			gameMode?: string,
+		) {
+			send({
+				control: {
+					action,
+					workoutName: workout?.name,
+					workoutJson: workout?.json,
+					totalSeconds: workout?.totalSeconds,
+					gameMode,
+				},
+			});
+		},
+		close() {
+			closed = true;
+			if (reconnectTimer !== null) clearTimeout(reconnectTimer);
+			if (silenceTimer !== null) clearTimeout(silenceTimer);
+			window.removeEventListener('offline', wentOffline);
+			window.removeEventListener('online', cameOnline);
+			socket?.close();
+		},
+	};
+}

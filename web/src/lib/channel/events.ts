@@ -1,5 +1,5 @@
 import { awayLineFor } from '$lib/away';
-import { gameMode } from '$lib/room/modes';
+import { gameMode } from '$lib/session/modes';
 import { formatWhen } from '$lib/format';
 import type { RoomEvent } from '$lib/protocol';
 
@@ -103,7 +103,7 @@ export function eventText(event: RoomEvent): string {
 		// list the lounge card renders.
 		case 'due':
 			return `${subject} starts at ${at}`;
-		// A DM that arrived while this rider was riding (#1743, $lib/room/dm-line)
+		// A DM that arrived while this rider was riding (#1743, $lib/channel/dm-line)
 		// — this client's own line too, and the sender without the words.
 		case 'messaged':
 			return `${event.actor} sent you a message`;

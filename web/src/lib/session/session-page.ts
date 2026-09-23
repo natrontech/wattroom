@@ -3,7 +3,7 @@ import type { LiveSession } from '$lib/protocol';
 import {
 	loadVoiceChannel,
 	type VoiceChannelData,
-} from '$lib/room/voice-channel';
+} from '$lib/channel/voice-channel';
 
 /**
  * A session's page (#2450): the session, and the voice channel it runs in,

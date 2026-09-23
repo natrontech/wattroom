@@ -1,6 +1,6 @@
 import { deviceWord } from '$lib/device.svelte';
 import type { SensorClaim } from '$lib/protocol';
-import { tabId } from '$lib/room/rejoin';
+import { tabId } from '$lib/channel/rejoin';
 import { SENSOR_KINDS, sensors } from '$lib/sensors.svelte';
 
 /**

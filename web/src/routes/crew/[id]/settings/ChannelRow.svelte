@@ -19,7 +19,7 @@
 	} from '$lib/context-menu.svelte';
 	import type { CrewPerson } from '$lib/crew';
 	import { MaxChannelNameChars } from '$lib/protocol';
-	import type { PlaylistStore } from '$lib/room/playlists.svelte';
+	import type { PlaylistStore } from '$lib/channel/playlists.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';

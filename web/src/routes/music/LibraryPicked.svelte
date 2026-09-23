@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { PlaceAddress } from '$lib/room/address';
+	import type { PlaceAddress } from '$lib/channel/address';
 	import ListPlus from '@lucide/svelte/icons/list-plus';
 	import Select from '$lib/components/Select.svelte';
 	import { queueTracks, type Track } from '$lib/music/pool';
-	import type { PlaylistStore } from '$lib/room/playlists.svelte';
+	import type { PlaylistStore } from '$lib/channel/playlists.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
 	// What the picked rows can do together (#1433). A checkbox per row, this

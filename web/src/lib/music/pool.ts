@@ -7,7 +7,7 @@
  * the shape and the two things worth stating once — how a track is labelled
  * when its tags are thin, and what "MP3 only" means before a byte is sent.
  */
-import type { PlaceAddress } from '$lib/room/address';
+import type { PlaceAddress } from '$lib/channel/address';
 import { api } from '$lib/api';
 
 export interface Track {

@@ -17,8 +17,8 @@
 	import { plannedZoneSeconds } from '$lib/components/zones';
 	import Sidebar from '$lib/nav/Sidebar.svelte';
 	import { tokenDeclarations, type Theme } from '$lib/palette';
-	import Instrument from '$lib/room/Instrument.svelte';
-	import RiderTile from '$lib/room/RiderTile.svelte';
+	import Instrument from '$lib/session/Instrument.svelte';
+	import RiderTile from '$lib/channel/RiderTile.svelte';
 	import type { RoomRider } from '$lib/channel/types';
 	import type { Segment } from '$lib/workout/types';
 	import { APCA_MIN_LC } from '$lib/gate';

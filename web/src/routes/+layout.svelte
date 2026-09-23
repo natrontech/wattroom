@@ -24,7 +24,7 @@
 	import '$lib/palette.svelte';
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
-	import { roomConnection } from '$lib/room/connection.svelte';
+	import { roomConnection } from '$lib/channel/connection.svelte';
 	import { isLivePhase } from '$lib/channel/tick-session';
 	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
@@ -40,7 +40,7 @@
 	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
-	import ConnectionInfo from '$lib/room/ConnectionInfo.svelte';
+	import ConnectionInfo from '$lib/channel/ConnectionInfo.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 	import DevicePicker from '$lib/ble/DevicePicker.svelte';
 	import { devicePicker } from '$lib/ble/device-picker.svelte';
@@ -424,7 +424,7 @@
 				<!-- Loaded once a room is joined (#1514), like the two docks
 				     below: it draws nothing before one, and its chunk has no
 				     business in the closure every route pays for. -->
-				{#await import('$lib/room/ScreenShareNotice.svelte') then { default: ScreenShareNotice }}
+				{#await import('$lib/channel/ScreenShareNotice.svelte') then { default: ScreenShareNotice }}
 					<ScreenShareNotice
 						room={roomConnection.current.address}
 						inside={roomConnection.onPlacePath(page.url.pathname)}
@@ -476,13 +476,13 @@
 			     player, the YouTube API glue and the pool deck used to ride
 			     every route's eager closure — the signed-out landing page,
 			     /history, a phone spectator. -->
-			{#await import('$lib/room/JukeboxDock.svelte') then { default: JukeboxDock }}
+			{#await import('$lib/channel/JukeboxDock.svelte') then { default: JukeboxDock }}
 				<JukeboxDock />
 			{/await}
 			<!-- The other half of one queue (#267): a pool track is heard here,
 			     beside the dock rather than inside it, because it needs none of
 			     the iframe's geometry. -->
-			{#await import('$lib/room/AudioDeck.svelte') then { default: AudioDeck }}
+			{#await import('$lib/channel/AudioDeck.svelte') then { default: AudioDeck }}
 				<AudioDeck />
 			{/await}
 		{/if}

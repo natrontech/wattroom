@@ -5,7 +5,7 @@ import { shouldAnnounce } from '$lib/notify-once';
 import { away } from '$lib/notify.svelte';
 import { STALE_AFTER } from '$lib/stale';
 import type { LiveSession } from '$lib/protocol';
-import { roomConnection } from '$lib/room/connection.svelte';
+import { roomConnection } from '$lib/channel/connection.svelte';
 import { crewArrivals, runningSessions } from './crew-arrivals';
 
 /**

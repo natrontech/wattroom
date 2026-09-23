@@ -1,17 +1,17 @@
 <script lang="ts">
 	import { play, playCountdown, playCountdownTick } from '$lib/sound/cues';
 	import CheerLayer from './CheerLayer.svelte';
-	import ExecutionMeter from '$lib/room/ExecutionMeter.svelte';
-	import FaultBanner from '$lib/room/FaultBanner.svelte';
+	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
+	import FaultBanner from '$lib/channel/FaultBanner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import IntervalStrip from '$lib/room/IntervalStrip.svelte';
+	import IntervalStrip from '$lib/session/IntervalStrip.svelte';
 	import PlayerTile from '../PlayerTile.svelte';
-	import RiderTile from '$lib/room/RiderTile.svelte';
+	import RiderTile from '$lib/channel/RiderTile.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import SprintMoment from '$lib/room/SprintMoment.svelte';
-	import SidePanel from '$lib/room/SidePanel.svelte';
-	import Stage from '$lib/room/Stage.svelte';
-	import TvMode from '$lib/room/TvMode.svelte';
+	import SprintMoment from '$lib/session/SprintMoment.svelte';
+	import SidePanel from '$lib/channel/SidePanel.svelte';
+	import Stage from '$lib/channel/Stage.svelte';
+	import TvMode from '$lib/session/TvMode.svelte';
 	import {
 		createRoom,
 		formatClock,

@@ -5,7 +5,7 @@ import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 
 /** The room a solo screen has to take the trainer back from (#521). */
 const unpair = vi.fn();
-vi.mock('$lib/room/connection.svelte', () => ({
+vi.mock('$lib/channel/connection.svelte', () => ({
 	roomConnection: {
 		get current() {
 			return { ride: { unpair } };

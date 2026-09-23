@@ -16,7 +16,7 @@
 		MaxCrewTextChannels,
 		MaxCrewVoiceChannels,
 	} from '$lib/protocol';
-	import { createPlaylistStore } from '$lib/room/playlists.svelte';
+	import { createPlaylistStore } from '$lib/channel/playlists.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import ChannelRow from './ChannelRow.svelte';
 

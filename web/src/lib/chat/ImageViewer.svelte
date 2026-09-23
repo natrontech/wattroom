@@ -10,7 +10,7 @@
 	// One host in the root layout, like Toasts and ContextMenuHost: every chat
 	// on every surface opens the same viewer, and a room's chat sheet can't
 	// clip it. Escape, the backdrop and one big button all close it; z-[65]
-	// clears that sheet (see lib/room/stacking.test.ts).
+	// clears that sheet (see lib/channel/stacking.test.ts).
 	//
 	// `cave` on the backdrop: a picture wants a dark, neutral ground on every
 	// palette, the same reason the stage letterboxes video in black — and a

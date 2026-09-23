@@ -17,7 +17,7 @@ vi.mock('$lib/crews-live', () => ({
 }));
 vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'me' } } }));
 let connected: string | undefined;
-vi.mock('$lib/room/connection.svelte', () => ({
+vi.mock('$lib/channel/connection.svelte', () => ({
 	roomConnection: {
 		get current() {
 			return connected ? { address: { channel: connected } } : null;

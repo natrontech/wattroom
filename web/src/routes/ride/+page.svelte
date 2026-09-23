@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { canSimulate } from '$lib/ble/can-simulate';
-	import { roomConnection } from '$lib/room/connection.svelte';
+	import { roomConnection } from '$lib/channel/connection.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
@@ -29,8 +29,8 @@
 	import { createRideFlags } from '$lib/ride/flags.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import PreRide from '$lib/ride/PreRide.svelte';
-	import CountdownScreen from '$lib/room/CountdownScreen.svelte';
-	import TvOverlay from '$lib/room/TvOverlay.svelte';
+	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
+	import TvOverlay from '$lib/session/TvOverlay.svelte';
 	import RidingScreen from '$lib/ride/RidingScreen.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import { describeBlock } from '$lib/workout/block';

@@ -20,7 +20,7 @@
 	import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import type { SessionRecap } from '$lib/protocol';
-	import SessionRecapCard from '$lib/room/SessionRecapCard.svelte';
+	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
 	import { untrack } from 'svelte';
 	import CrewPeople from './CrewPeople.svelte';
 	import type { PageData } from './$types';

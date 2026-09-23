@@ -30,7 +30,7 @@
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
-	import { sessionPath } from '$lib/room/address';
+	import { sessionPath } from '$lib/channel/address';
 
 	// Home (#212): the between-rides overview — who is around, what is
 	// planned, your friends, your week. ADR-0020 folded /sessions in here;

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import Instrument from '$lib/room/Instrument.svelte';
+	import Instrument from '$lib/session/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import CountdownScreen from '$lib/room/CountdownScreen.svelte';
-	import RideHeader from '$lib/room/RideHeader.svelte';
-	import SecondaryRow from '$lib/room/SecondaryRow.svelte';
+	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
+	import RideHeader from '$lib/session/RideHeader.svelte';
+	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
 	import { describeBlock } from '$lib/workout/block';
 	import Banner from '$lib/components/Banner.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
@@ -12,15 +12,15 @@
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
-	import TvOverlay from '$lib/room/TvOverlay.svelte';
+	import TvOverlay from '$lib/session/TvOverlay.svelte';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
-	import { roomConnection } from '$lib/room/connection.svelte';
-	import SensorOverview from '$lib/room/SensorOverview.svelte';
-	import { trainerHint } from '$lib/room/sensor-status';
+	import { roomConnection } from '$lib/channel/connection.svelte';
+	import SensorOverview from '$lib/session/SensorOverview.svelte';
+	import { trainerHint } from '$lib/session/sensor-status';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { device } from '$lib/device.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';

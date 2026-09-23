@@ -1,9 +1,9 @@
-import { roomConnection } from '$lib/room/connection.svelte';
+import { roomConnection } from '$lib/channel/connection.svelte';
 import { FtmsTrainer } from '$lib/ble/ftms';
 import { pairError } from '$lib/ble/pair-error';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
-import { type PairState, trainerState } from '$lib/room/sensor-status';
-import { quietFault, type TrainerFault } from '$lib/room/sensor-status';
+import { type PairState, trainerState } from '$lib/session/sensor-status';
+import { quietFault, type TrainerFault } from '$lib/session/sensor-status';
 
 /**
  * The trainer of the SOLO screens — /ride, /ramp and Settings › Equipment
@@ -11,7 +11,7 @@ import { quietFault, type TrainerFault } from '$lib/room/sensor-status';
  * file; the factory stays exported for the tests, which want a fresh one.
  *
  * A room holds its BLE connection for as long as you stand in it
- * (`room/ride.svelte.ts`, #521). The solo screens had no equivalent: one
+ * (`session/ride.svelte.ts`, #521). The solo screens had no equivalent: one
  * "Pair trainer and start" button connected and started in the same click, so
  * there was no moment at which a trainer was paired and not yet riding — and
  * so nothing for a paired-devices overview to show. This is that moment.

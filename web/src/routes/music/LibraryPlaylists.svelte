@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { PlaceAddress } from '$lib/room/address';
+	import type { PlaceAddress } from '$lib/channel/address';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import JukeboxPlaylistRow from '$lib/room/JukeboxPlaylistRow.svelte';
-	import type { createPlaylistStore } from '$lib/room/playlists.svelte';
+	import JukeboxPlaylistRow from '$lib/channel/JukeboxPlaylistRow.svelte';
+	import type { createPlaylistStore } from '$lib/channel/playlists.svelte';
 
 	// The rider's personal playlists, on the library's own page (#1460). Until
 	// now they were only reachable inside a room's jukebox under "Mine", so a

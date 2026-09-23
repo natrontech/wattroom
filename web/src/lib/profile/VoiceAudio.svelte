@@ -4,14 +4,14 @@
 	// Its own file because it is the one section that belongs to the AV chain
 	// rather than to the profile: it reads `roomConnection` directly and owns
 	// the device refresh, and none of that is the page's business (#686).
-	import DevicePickers from '$lib/room/DevicePickers.svelte';
-	import MixFaders from '$lib/room/MixFaders.svelte';
-	import VoiceSettings from '$lib/room/VoiceSettings.svelte';
+	import DevicePickers from '$lib/channel/DevicePickers.svelte';
+	import MixFaders from '$lib/channel/MixFaders.svelte';
+	import VoiceSettings from '$lib/channel/VoiceSettings.svelte';
 	import { account } from '$lib/account.svelte';
-	import { deviceChoices } from '$lib/room/av-devices.svelte';
-	import { canPickOutput } from '$lib/room/av-output';
-	import { roomConnection } from '$lib/room/connection.svelte';
-	import { describeMediaError } from '$lib/room/media-error';
+	import { deviceChoices } from '$lib/channel/av-devices.svelte';
+	import { canPickOutput } from '$lib/channel/av-output';
+	import { roomConnection } from '$lib/channel/connection.svelte';
+	import { describeMediaError } from '$lib/channel/media-error';
 
 	// The AV chain only exists while you are in a room. The device picks do
 	// not (#1858): they are the one store the next join applies, so a rider

@@ -14,8 +14,8 @@ import Settings from '@lucide/svelte/icons/settings';
 import User from '@lucide/svelte/icons/user';
 import { account } from '$lib/account.svelte';
 import type { MenuEntry, MenuSlider } from '$lib/context-menu.svelte';
-import { roomConnection } from '$lib/room/connection.svelte';
-import { deviceOptions } from '$lib/room/device-options';
+import { roomConnection } from '$lib/channel/connection.svelte';
+import { deviceOptions } from '$lib/channel/device-options';
 import { play } from '$lib/sound/cues';
 import { mixer } from '$lib/sound/mixer.svelte';
 

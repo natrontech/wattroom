@@ -18,7 +18,7 @@ vi.mock('$lib/crew', () => ({
 	inviteLink: (code: string) => `/c/${code}`,
 }));
 vi.mock('$lib/presence.svelte', () => ({ presence: { reload() {} } }));
-vi.mock('$lib/room/connection.svelte', () => ({
+vi.mock('$lib/channel/connection.svelte', () => ({
 	roomConnection: {
 		get current() {
 			return mocks.current;

@@ -214,18 +214,18 @@ describe('a borrowed pane (#316)', () => {
  * dock that was hidden, and the Chat place's `h-full` column paid it out of
  * its own height: the composer sat a third of the way up the pane.
  *
- * Read from the source because there is no way to render RoomShell's padding
+ * Read from the source because there is no way to render ChannelShell's padding
  * without a room, a connection and a track. The regression is a default
  * creeping back into the `var()`, and that is visible right here.
  */
 describe('the jukebox gutter (#1702)', () => {
 	it('has no dock height to fall back on', () => {
 		const shell = readFileSync(
-			join(import.meta.dirname, 'room', 'RoomShell.svelte'),
+			join(import.meta.dirname, 'channel', 'ChannelShell.svelte'),
 			'utf8',
 		);
 		const gutters = [...shell.matchAll(/var\(--pane-jukebox-dock-h([^)]*)\)/g)];
-		expect(gutters, 'the gutter moved out of RoomShell').toHaveLength(1);
+		expect(gutters, 'the gutter moved out of ChannelShell').toHaveLength(1);
 		expect(
 			gutters[0][1],
 			'no dock, no gutter — the variable is the signal',

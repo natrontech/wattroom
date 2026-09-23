@@ -18,7 +18,7 @@
 	import { device } from '$lib/device.svelte';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
 	import type { CrewRef } from '$lib/crew-types';
-	import { sessionPath } from '$lib/room/address';
+	import { sessionPath } from '$lib/channel/address';
 	import { toasts } from '$lib/toast.svelte';
 	import Hash from '@lucide/svelte/icons/hash';
 	import Headphones from '@lucide/svelte/icons/headphones';

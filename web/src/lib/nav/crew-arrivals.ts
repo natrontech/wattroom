@@ -1,7 +1,7 @@
 import { api } from '$lib/api';
 import type { LiveCrew } from '$lib/crews-live';
 import type { Arrival } from '$lib/messages/announce';
-import { sessionPath } from '$lib/room/address';
+import { sessionPath } from '$lib/channel/address';
 
 /** Every session running in the rider's crews, by id. */
 export function runningSessions(crews: LiveCrew[]): Set<string> {

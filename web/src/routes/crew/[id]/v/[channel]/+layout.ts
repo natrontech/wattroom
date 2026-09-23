@@ -1,5 +1,5 @@
-import { prepareRoomAv } from '$lib/room/connection.svelte';
-import { loadVoiceChannel } from '$lib/room/voice-channel';
+import { prepareRoomAv } from '$lib/channel/connection.svelte';
+import { loadVoiceChannel } from '$lib/channel/voice-channel';
 import type { LayoutLoad } from './$types';
 
 export const load: LayoutLoad = async ({ fetch, params }) => {

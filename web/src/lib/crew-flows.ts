@@ -9,7 +9,7 @@ import {
 } from '$lib/crew';
 import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 import { presence } from '$lib/presence.svelte';
-import { roomConnection } from '$lib/room/connection.svelte';
+import { roomConnection } from '$lib/channel/connection.svelte';
 import type { CrewRef } from '$lib/crew-types';
 import { shareLink } from '$lib/share';
 import { toasts } from '$lib/toast.svelte';

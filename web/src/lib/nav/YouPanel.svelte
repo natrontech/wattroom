@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { leaveRoom } from '$lib/room/leave';
+	import { leaveRoom } from '$lib/channel/leave';
 	// The AV chain is a store, so this reads it rather than being handed
 	// fifteen values through a Sidebar that uses none of them (#1047). Same
-	// pattern as RoomSensorOverview and lib/profile/VoiceAudio.
+	// pattern as TrainerOverview and lib/profile/VoiceAudio.
 	import { goto } from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
-	import QuickAudio from '$lib/room/QuickAudio.svelte';
+	import QuickAudio from '$lib/channel/QuickAudio.svelte';
 	import { account } from '$lib/account.svelte';
 	import {
 		contextMenu,
@@ -15,8 +15,8 @@
 	} from '$lib/context-menu.svelte';
 	import { activeHref } from '$lib/nav/pages';
 	import { youMenu } from '$lib/nav/you-menu';
-	import { micMenu } from '$lib/room/mic-menu';
-	import { roomConnection } from '$lib/room/connection.svelte';
+	import { micMenu } from '$lib/channel/mic-menu';
+	import { roomConnection } from '$lib/channel/connection.svelte';
 	import { statusOfRider } from '$lib/status';
 	import { device } from '$lib/device.svelte';
 	import ChevronDown from '@lucide/svelte/icons/chevron-down';

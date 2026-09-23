@@ -277,7 +277,7 @@ export function createRideSession({
 		if (state === 'countdown') return;
 		if (sprinting) {
 			// A sprint outranks the guards, for the reason the room gives
-			// (room/ride.svelte.ts): auto-pause is an INFERENCE that the rider
+			// (session/ride.svelte.ts): auto-pause is an INFERENCE that the rider
 			// left, a sprint is an announced effort they are about to answer.
 			if (sprintMode) return;
 			sprintMode = true;
@@ -373,7 +373,7 @@ export function createRideSession({
 			};
 			recording.push(recorded);
 			onRecord?.(recorded);
-			// Uncapped, for the reason room/recording.svelte.ts gives: the graph
+			// Uncapped, for the reason session/recording.svelte.ts gives: the graph
 			// is keyed on the workout clock, so dropping the oldest entries
 			// erased the start of the line rather than scrolling it (#2017).
 			trace.push({ t: clockSeconds, w: next.watts });

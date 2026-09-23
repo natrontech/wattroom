@@ -1,0 +1,149 @@
+import { api } from '$lib/api';
+import type { Medal } from '$lib/components/MedalCard.svelte';
+import { MEDAL_META } from '$lib/medals';
+import type { createRecording } from '$lib/session/recording.svelte';
+import { isLivePhase } from '$lib/channel/tick-session';
+
+/** A session is worth a summary once it has a minute of your riding in it. */
+export const SUMMARY_MIN_SAMPLES = 60;
+
+/**
+ * Session close (#39's summary design): my own samples this session become
+ * the summary, and my medal — if the session awarded one — comes back with
+ * the ride the pipeline saved for me, a moment after it commits (#2522).
+ */
+export function createSummary(deps: {
+	recording: ReturnType<typeof createRecording>;
+	phase: () => string | undefined;
+	/**
+	 * When the timeline started, by the server's clock (`tick.at − elapsed`)
+	 * — the same arithmetic the saver dates the ride with, so a late joiner's
+	 * ride is found too (#1537).
+	 */
+	startedAt: () => number | undefined;
+	myName: () => string | undefined;
+	myId: () => string | undefined;
+	myExecution: () => number | undefined;
+}) {
+	let dismissed = $state(false);
+	let medalBase = $state<Omit<Medal, 'xp'> | undefined>(undefined);
+	// The pipeline's XP for the ride the room saved (#1411): the card said
+	// "0 XP" to everyone. Shown once the ride is found, never as a placeholder.
+	let rideXp = $state<number | null>(null);
+	const medal = $derived<Medal | undefined>(
+		medalBase
+			? rideXp === null
+				? medalBase
+				: { ...medalBase, xp: rideXp }
+			: undefined,
+	);
+	let fetched = false;
+	// The ride the session saved for me (#1331): the saver writes it a moment
+	// after the close and nothing on the tick names it, so it is found as the
+	// newest crew ride on the account — asked once the pipeline has had its
+	// tick or two, and once more if it has not landed yet. A crew ride names
+	// its voice channel (#2443); `room` is only ever set on one from before.
+	let rideId = $state<string | null>(null);
+	let sessionStart = 0;
+	function findMyRide(attempt: number) {
+		void api<{
+			rides?: {
+				id: string;
+				startedAt: string;
+				room?: boolean;
+				channel?: { id: string };
+				xp?: number;
+			}[];
+		}>('/api/rides').then((res) => {
+			if (!res.ok) return;
+			const mine = (res.data.rides ?? []).find(
+				(r) =>
+					(r.channel || r.room) &&
+					Date.parse(r.startedAt) >= sessionStart - 60_000,
+			);
+			if (mine) {
+				rideId = mine.id;
+				rideXp = mine.xp ?? null;
+				void readMedal(mine.id);
+			} else if (attempt < 2) setTimeout(() => findMyRide(attempt + 1), 3000);
+		});
+	}
+
+	/** A medal hangs off the ride it was won on (medals.ride_id), so it is
+	 *  read from that ride — mine, by construction, and this session's. */
+	async function readMedal(id: string) {
+		const res = await api<{ medals?: { kind: string }[] }>(`/api/rides/${id}`);
+		const won = res.ok ? res.data.medals?.[0] : undefined;
+		if (!won) return;
+		const meta = MEDAL_META[won.kind];
+		const kjTotal = Math.round(
+			deps.recording.samples.reduce((sum, s) => sum + s.watts, 0) / 1000,
+		);
+		// The big number is the medal's own metric or nothing (#1412): only
+		// Metronome is an execution score; Diesel is variability, Hammer 5 s
+		// w/kg, and neither is known here.
+		const scored = won.kind === 'metronome';
+		medalBase = {
+			name: meta?.name ?? won.kind,
+			criterion: meta?.criterion ?? '',
+			rider: deps.myName() ?? 'You',
+			value: scored
+				? String(Math.round((deps.myExecution() ?? 0) * 100))
+				: undefined,
+			unit: scored ? '%' : undefined,
+			kj: kjTotal,
+		};
+	}
+
+	// The recording belongs to ONE session (#1535): it clears on the edge
+	// into a session on every client — the coach's Start used to be the only
+	// reset, so everyone else's second summary carried the first session too.
+	let riding = false;
+	$effect(() => {
+		const phase = deps.phase();
+		const now = isLivePhase(phase);
+		if (now && !riding) deps.recording.reset();
+		riding = now;
+		if (phase === 'running') {
+			dismissed = false;
+			fetched = false;
+			medalBase = undefined;
+			rideXp = null;
+			rideId = null;
+			sessionStart = deps.startedAt() ?? Date.now();
+		}
+		if (
+			phase !== 'done' ||
+			fetched ||
+			deps.recording.samples.length < SUMMARY_MIN_SAMPLES
+		)
+			return;
+		fetched = true;
+		// Server truth over the local clock at the close: the saver dates the
+		// ride now − elapsed, and a rider who joined ten minutes in would
+		// otherwise look for a ride that started after their own arrival.
+		sessionStart = deps.startedAt() ?? sessionStart;
+		// The pipeline commits within a tick or two of the close.
+		setTimeout(() => findMyRide(0), 2500);
+	});
+
+	return {
+		get medal() {
+			return medal;
+		},
+		get dismissed() {
+			return dismissed;
+		},
+		/** The ride's own page, once the room has saved it. */
+		get rideId() {
+			return rideId;
+		},
+		dismiss() {
+			dismissed = true;
+		},
+		/** Enough riding to be worth showing. */
+		get ready() {
+			return deps.recording.samples.length >= SUMMARY_MIN_SAMPLES;
+		},
+	};
+}
