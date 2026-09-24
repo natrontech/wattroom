@@ -247,7 +247,8 @@ func main() {
 		accountService.SetCrews(crewsService)
 		// Session-planned email mounts only with WATTROOM_RESEND_KEY set —
 		// without it the profile hides the whole notifications section.
-		if notifier := notify.New(st, log, baseURL); notifier != nil {
+		notifier := notify.New(st, log, baseURL)
+		if notifier != nil {
 			notifier.Register(mux)
 			crewsService.SetNotifier(notifier)
 			authService.SetMailer(notifier)
@@ -305,6 +306,9 @@ func main() {
 		// live state keys by voice channel (#2436).
 		channelsService := channels.New(st, authService, log)
 		channelsService.Register(mux)
+		if notifier != nil {
+			channelsService.SetNotifier(notifier)
+		}
 		h := hub.New(log, channelsService, saver)
 		hubForDrain = h
 		crewsService.SetPresence(h)

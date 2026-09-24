@@ -9,6 +9,7 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import Modal from '$lib/components/Modal.svelte';
+	import { deleteChannelWarning } from '$lib/channels';
 	import { confirm } from '$lib/confirm.svelte';
 	import {
 		contextMenu,
@@ -92,14 +93,11 @@
 		void crewLive.reload();
 	}
 	async function remove(c: LiveChannel) {
-		// Deleting takes the scrollback, or the deck's settings, with it and
-		// nothing brings them back (errors.md: the genuinely destructive asks).
+		// Nothing brings a deleted channel back (errors.md: the genuinely
+		// destructive asks).
 		const sure = await confirm({
 			title: `Delete ${c.kind === 'text' ? '#' : ''}${c.name}?`,
-			body:
-				c.kind === 'text'
-					? 'Every message in it goes too, and nothing brings them back.'
-					: 'Its music settings and its play history go too.',
+			body: deleteChannelWarning(c),
 			action: 'Delete the channel',
 			cancel: 'Keep it',
 		});
