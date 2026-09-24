@@ -34,9 +34,12 @@ test('the TV counts in, and steps aside for the summary', async ({
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
 	// Through the app, not a reload: the simulated trainer lives in the page.
+	// By its name as well as its address: the voice strip's tile of whoever is
+	// in the channel links there too (#454, #2710).
 	await rider
 		.locator(
 			`nav[aria-label="crews and channels"] a[href="${voicePath(opened)}"]`,
+			{ hasText: opened.name },
 		)
 		.click();
 	await rider.waitForURL(new RegExp(`${voicePath(opened)}$`));
@@ -64,6 +67,16 @@ test('the TV counts in, and steps aside for the summary', async ({
 		timeout: 15_000,
 	});
 	await expect(tv.getByText('No session yet')).toHaveCount(0);
+
+	// A summary is a joined rider's (#2678, ADR-0059): the TV counts a
+	// spectator in too, but only Join the ride makes the ride theirs. Off the
+	// TV, in, and the TV back up over the ride — before the coach's minute
+	// starts, so the rider has the minute a summary needs.
+	await tv.getByRole('button', { name: 'Exit TV mode (esc)' }).click();
+	await rider.getByRole('link', { name: 'Join the ride' }).click();
+	await rider.waitForURL(/\/s\/[^/]+$/);
+	await rider.getByRole('button', { name: 'TV mode' }).click();
+	await expect(tv).toBeVisible();
 
 	// A minute of riding, then the coach ends it: the TV makes way.
 	const end = coach.getByRole('button', { name: 'end the session' });
