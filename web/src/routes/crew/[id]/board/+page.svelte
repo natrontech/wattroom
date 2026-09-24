@@ -19,6 +19,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewPins from '$lib/pins/CrewPins.svelte';
 	import { presence } from '$lib/presence.svelte';
+	import MessageCircle from '@lucide/svelte/icons/message-circle';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -95,7 +96,8 @@
 				Marked in
 				<a
 					href={textChannelPath(data.crew.id, announcement.channelId)}
-					class="btn-link">{announcement.channelName}</a
+					class="btn-link inline-flex items-center gap-1 align-bottom"
+					><MessageCircle size={12} />{announcement.channelName}</a
 				>
 			</p>
 		{/if}
