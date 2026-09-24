@@ -18,6 +18,8 @@
 	import { keepSize } from '$lib/pane';
 	import { edgeDivider } from '$lib/divider';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import { people } from '$lib/people.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { BOARD_MARK } from '$lib/channel/presence-marks';
 	import { rosterGroups, type Elsewhere } from '$lib/channel/roster';
@@ -128,11 +130,11 @@
 			/>
 			<span class="min-w-0 flex-1">
 				<span class="flex items-center gap-1.5">
-					<span
-						class="min-w-0 flex-1 truncate {rider.speaking
-							? 'font-medium'
-							: ''}">{rider.name}</span
+					<span class="min-w-0 truncate {rider.speaking ? 'font-medium' : ''}"
+						>{rider.name}</span
 					>
+					<StatusMark line={people.face(rider.id)?.statusLine} size={12} />
+					<span class="flex-1"></span>
 					{#if rider.coach}<Crown size={11} class="text-muted shrink-0" />{/if}
 					{#if rider.cameraOn}<Video
 							size={11}
@@ -234,7 +236,10 @@
 				status={where?.status ?? 'offline'}
 				size={22}
 			/>
-			<span class="min-w-0 flex-1 truncate">{member.displayName}</span>
+			<span class="flex min-w-0 flex-1 items-center gap-1">
+				<span class="truncate">{member.displayName}</span>
+				<StatusMark line={people.face(member.id)?.statusLine} size={12} />
+			</span>
 			{#if where}
 				<span class="text-muted-dim max-w-[45%] shrink-0 truncate"
 					>in {where.channel}</span

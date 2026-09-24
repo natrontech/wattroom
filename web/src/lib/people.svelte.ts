@@ -8,13 +8,30 @@
  * and whoever needs a face asks. An id nobody has taught falls back to the
  * initial exactly as before, so no surface waits on it.
  */
+import type { StatusLine } from '$lib/protocol';
+
 export interface Face {
 	id: string;
 	/** Their display name — the initial a face without a picture falls back to. */
 	name?: string;
 	avatarUrl?: string;
 	totalXp?: number;
+	/**
+	 * Their status line (ADR-0060). `null` is "none"; `undefined` is "this
+	 * feed does not carry one" — the DM heads, a chat line — and keeps what a
+	 * feed that does carry it taught, rather than wiping it.
+	 */
+	statusLine?: StatusLine | null;
 }
+
+const sameLine = (a?: StatusLine | null, b?: StatusLine | null) =>
+	a === b ||
+	(!!a &&
+		!!b &&
+		a.emoji === b.emoji &&
+		a.emojiId === b.emojiId &&
+		a.text === b.text &&
+		a.expiresAt === b.expiresAt);
 
 const faces = $state<Record<string, Face>>({});
 
@@ -28,11 +45,14 @@ export const people = {
 		for (const person of list) {
 			if (!person?.id) continue;
 			const known = faces[person.id];
+			const statusLine =
+				person.statusLine === undefined ? known?.statusLine : person.statusLine;
 			if (
 				known &&
 				known.name === person.name &&
 				known.avatarUrl === person.avatarUrl &&
-				known.totalXp === person.totalXp
+				known.totalXp === person.totalXp &&
+				sameLine(known.statusLine, statusLine)
 			)
 				continue;
 			faces[person.id] = {
@@ -40,6 +60,7 @@ export const people = {
 				name: person.name,
 				avatarUrl: person.avatarUrl,
 				totalXp: person.totalXp,
+				statusLine,
 			};
 		}
 	},

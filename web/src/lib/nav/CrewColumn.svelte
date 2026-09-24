@@ -34,6 +34,8 @@
 	import NewChannel from './NewChannel.svelte';
 	import { crewPlaces } from './pages';
 	import { railPeople } from './rail-people';
+	import { people as faces } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 
 	let { crew, pathname }: { crew: CrewRef; pathname: string } = $props();
 
@@ -247,7 +249,20 @@
 						class="text-muted-dim flex items-center gap-1 truncate px-2 pb-1 pl-8 text-[10px]"
 					>
 						{#if inVoice}<Headphones size={9} class="shrink-0" />{/if}
-						<span class="truncate">{people.label}</span>
+						<!-- Each name with its status emoji (ADR-0060); the emoji's
+						     title holds the words, the line's the whole list. -->
+						<span
+							class="flex min-w-0 items-center truncate"
+							title={people.label}
+						>
+							{#each c.occupants?.slice(0, people.shown.length) ?? [] as o, i (o.id)}
+								<span class="truncate">{i > 0 ? ', ' : ''}{o.name}</span>
+								<StatusMark line={faces.face(o.id)?.statusLine} size={9} />
+							{/each}
+							{#if people.more > 0}<span class="shrink-0"
+									>&nbsp;+{people.more}</span
+								>{/if}
+						</span>
 					</p>
 				{/if}
 			</li>

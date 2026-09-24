@@ -77,6 +77,7 @@
 			displayName: p.displayName,
 			avatarUrl: p.avatarUrl,
 			role: liveRoleOf(p.role),
+			statusLine: p.statusLine,
 		})),
 	);
 	$effect(() => {

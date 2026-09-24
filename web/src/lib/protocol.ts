@@ -123,6 +123,11 @@ export const MinEmojiNameChars = 2;
  */
 export const MaxEmojiNameChars = 32;
 /**
+ * A rider's status line (ADR-0060, docs/SPEC.md "Personal status"), in
+ * CHARACTERS — MaxMessageChars' rule.
+ */
+export const MaxStatusChars = 100;
+/**
  * A crew's name (docs/SPEC.md "Names"), in CHARACTERS — MaxMessageChars'
  * rule.
  */
@@ -1118,4 +1123,30 @@ export interface ServerMessage {
  */
 export interface LobbyPing {
   channel?: string;
+}
+
+//////////
+// source: status.go
+
+/**
+ * StatusLine is a rider's own line (ADR-0060): what shows beside their name
+ * wherever their name shows. Absent is no status; one whose ExpiresAt has
+ * passed is never sent.
+ */
+export interface StatusLine {
+  /**
+   * A Unicode emoji, or a crew emoji's `:name:`.
+   */
+  emoji?: string;
+  /**
+   * The crew emoji's picture, at /api/emoji/{EmojiID}. Absent for a Unicode
+   * emoji, and for a crew emoji the crew has since deleted — that one shows
+   * its :name:.
+   */
+  emojiId?: string;
+  text?: string;
+  /**
+   * When it clears, RFC 3339; absent is "don't clear".
+   */
+  expiresAt?: string;
 }

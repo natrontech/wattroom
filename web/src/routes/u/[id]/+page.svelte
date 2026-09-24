@@ -5,6 +5,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { api } from '$lib/api';
+	import { account } from '$lib/account.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -20,6 +21,8 @@
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import { medalName } from '$lib/medals';
 	import { presence } from '$lib/presence.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import { statusEditor } from '$lib/status-line/editor.svelte';
 	import {
 		fetchRider,
 		medalTotal,
@@ -38,6 +41,7 @@
 	import Lock from '@lucide/svelte/icons/lock';
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 	import Pencil from '@lucide/svelte/icons/pencil';
+	import Smile from '@lucide/svelte/icons/smile';
 	import X from '@lucide/svelte/icons/x';
 	import Radio from '@lucide/svelte/icons/radio';
 	import UserPlus from '@lucide/svelte/icons/user-plus';
@@ -128,6 +132,11 @@
 	// Where they are, in the friends list's own sentence (#2516): the crew
 	// and voice channel only when you may enter it.
 	const place = $derived(rider ? whereabouts(rider.presence) : '');
+	// Their status line in full (ADR-0060). Your own is read from the account,
+	// which a save updates before any refetch.
+	const line = $derived(
+		rider?.friend === 'self' ? account.me?.statusLine : rider?.statusLine,
+	);
 
 	// Add: one call, then the page re-reads itself. A refused request is a
 	// toast — the page is not a form.
@@ -270,6 +279,11 @@
 			/>
 			<div class="min-w-0 flex-1">
 				<h1 class="page-title-sm">{rider.displayName}</h1>
+				{#if line}
+					<p class="mt-1 flex min-w-0 text-sm">
+						<StatusMark {line} size={16} text />
+					</p>
+				{/if}
 				<p class="text-muted mt-0.5 flex flex-wrap items-center gap-2 text-sm">
 					{#if place}
 						{#if rider.presence.riding}<RidingBars size={11} />{/if}
@@ -300,6 +314,10 @@
 					     Home's level tile was the only way in. -->
 					<a href="/settings/profile" class="btn btn-secondary"
 						><Pencil size={15} /> Edit profile</a
+					>
+					<button onclick={statusEditor.show} class="btn btn-secondary"
+						><Smile size={15} />
+						{account.me?.statusLine ? 'Edit status' : 'Set a status'}</button
 					>
 				{:else if rider.friend === 'accepted'}
 					<a

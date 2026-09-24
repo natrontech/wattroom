@@ -669,3 +669,34 @@ func TestRestoreTwiceIsNotAnError(t *testing.T) {
 		}
 	}
 }
+
+// A status line reaches a friend and not an ask (ADR-0060 beside ADR-0012):
+// accepting is the opt-in, for the words a rider wrote as for presence.
+func TestAStatusLineIsAnAcceptedFriends(t *testing.T) {
+	mux, st, users, _ := setup(t)
+	befriend(t, mux, users, "alice", "bob")
+	if code := request(t, mux, "cara", users.ByToken["alice"].FriendCode); code != http.StatusOK {
+		t.Fatalf("cara asks alice: %d", code)
+	}
+	text := "Recovery week"
+	if err := st.Queries.SetUserStatus(t.Context(), db.SetUserStatusParams{
+		ID: users.ByToken["alice"].ID, Text: &text,
+	}); err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	lineOf := func(viewer string) any {
+		for _, f := range friendsOf(t, mux, viewer) {
+			if f["name"] == "alice" {
+				return f["statusLine"]
+			}
+		}
+		t.Fatalf("%s does not list alice", viewer)
+		return nil
+	}
+	if line, _ := lineOf("bob").(map[string]any); line["text"] != text {
+		t.Fatalf("her friend reads %v, want %q", lineOf("bob"), text)
+	}
+	if line := lineOf("cara"); line != nil {
+		t.Fatalf("a pending ask read her status: %v", line)
+	}
+}

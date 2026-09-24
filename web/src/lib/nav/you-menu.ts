@@ -11,6 +11,7 @@ import Bell from '@lucide/svelte/icons/bell';
 import ChevronsDown from '@lucide/svelte/icons/chevrons-down';
 import LogOut from '@lucide/svelte/icons/log-out';
 import Settings from '@lucide/svelte/icons/settings';
+import Smile from '@lucide/svelte/icons/smile';
 import User from '@lucide/svelte/icons/user';
 import { account } from '$lib/account.svelte';
 import type { MenuEntry, MenuSlider } from '$lib/context-menu.svelte';
@@ -18,6 +19,7 @@ import { channelConnection } from '$lib/channel/connection.svelte';
 import { deviceOptions } from '$lib/channel/device-options';
 import { play } from '$lib/sound/cues';
 import { mixer } from '$lib/sound/mixer.svelte';
+import { statusEditor } from '$lib/status-line/editor.svelte';
 
 /** Percent, like every other fader in a menu; `mixer.cues` is a 0–1 gain. */
 const cueFader = (): MenuSlider => ({
@@ -86,6 +88,13 @@ function speakers(): MenuEntry[] {
 export function youMenu(go: (href: string) => void): MenuEntry[] {
 	const duck = duckFader();
 	return [
+		// Where Slack keeps it: first thing under your own face (ADR-0060).
+		// Your rider page offers it too — nothing lives only in a menu.
+		{
+			label: account.me?.statusLine ? 'Edit your status' : 'Set a status',
+			icon: Smile,
+			onSelect: statusEditor.show,
+		},
 		// /u/me (#1330): yours without knowing your id, so never greyed.
 		{ label: 'Your rider page', icon: User, onSelect: () => go('/u/me') },
 		{ label: 'Settings', icon: Settings, onSelect: () => go('/settings') },

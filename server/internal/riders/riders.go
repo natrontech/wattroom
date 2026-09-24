@@ -18,7 +18,9 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
+	"github.com/natrontech/wattroom/server/internal/status"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -168,6 +170,8 @@ type riderJSON struct {
 	// self | none | pending_in | pending_out | accepted — the friends list's
 	// own vocabulary, so one page can offer Accept as well as Add.
 	Friend string `json:"friend"`
+	// Their own line (ADR-0060), which goes where the name goes; null for none.
+	StatusLine *protocol.StatusLine `json:"statusLine"`
 	// The viewer may ask: they share a channel and nothing is pending. The
 	// friend code itself never travels — see friends.handleRequest.
 	CanAdd bool `json:"canAdd"`
@@ -252,6 +256,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		TotalXp:   totals.TotalXp, TotalKj: totals.TotalKj, Rides: totals.Rides,
 		Medals: medals, CrewsInCommon: inCommon,
 		Friend: friend, CanAdd: friend == "none",
+		StatusLine: status.OfUser(rider, time.Now()),
 	}
 	trusted := friend == "self" || friend == "accepted"
 	if out.Presence, err = s.presenceOf(ctx, me, rider, trusted); err != nil {

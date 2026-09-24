@@ -397,7 +397,9 @@ with people as (
       -- must not list them twice: the page keys its list by id.
       and cr.user_id <> (select o.owner_id from crews o where o.id = $3)
 )
-select u.id, u.display_name, u.avatar_url, p.since::timestamptz as since
+select u.id, u.display_name, u.avatar_url, p.since::timestamptz as since,
+    -- The status goes where the name goes (ADR-0060).
+    u.status_emoji, u.status_emoji_id, u.status_text, u.status_expires_at
 from people p
 join users u on u.id = p.user_id
 where $1::boolean
@@ -418,10 +420,14 @@ type ListCrewPeopleParams struct {
 }
 
 type ListCrewPeopleRow struct {
-	ID          pgtype.UUID
-	DisplayName string
-	AvatarUrl   *string
-	Since       pgtype.Timestamptz
+	ID              pgtype.UUID
+	DisplayName     string
+	AvatarUrl       *string
+	Since           pgtype.Timestamptz
+	StatusEmoji     *string
+	StatusEmojiID   pgtype.UUID
+	StatusText      *string
+	StatusExpiresAt pgtype.Timestamptz
 }
 
 // The crew's people (#1236: the owner plus every member and admin row).
@@ -450,6 +456,10 @@ func (q *Queries) ListCrewPeople(ctx context.Context, arg ListCrewPeopleParams) 
 			&i.DisplayName,
 			&i.AvatarUrl,
 			&i.Since,
+			&i.StatusEmoji,
+			&i.StatusEmojiID,
+			&i.StatusText,
+			&i.StatusExpiresAt,
 		); err != nil {
 			return nil, err
 		}

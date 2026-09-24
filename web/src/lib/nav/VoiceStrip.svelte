@@ -12,6 +12,7 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { account } from '$lib/account.svelte';
 	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import {
 		AWAY_MARK,
@@ -116,6 +117,7 @@
 						class="{MARK_SURFACE} absolute inset-x-0 bottom-0 flex items-center gap-1 px-1 py-px text-[9px]"
 					>
 						<span class="truncate">{rider.name}</span>
+						<StatusMark line={people.face(rider.id)?.statusLine} size={10} />
 						{#if av.voice[rider.id] === 'muted'}
 							<MicOff size={10} class={MUTED_MARK} />
 						{:else if av.voice[rider.id] === 'live'}
