@@ -9,6 +9,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
+	import RecoveredNotice from '$lib/ride/RecoveredNotice.svelte';
 	import CrewNow from './CrewNow.svelte';
 	import YourWeek from './YourWeek.svelte';
 	import { fetchCrew, type Crew } from '$lib/crew';
@@ -198,6 +199,8 @@
 			</p>
 		{/if}
 
+		<!-- WattRoom opens here (#2576), so a ride to rescue is said here (#2616). -->
+		<RecoveredNotice />
 		<YourWeek />
 		<CrewNow {crew} />
 		<!-- The people, their roles, the board and the crew's sessions have one

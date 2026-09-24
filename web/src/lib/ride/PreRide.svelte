@@ -62,6 +62,9 @@
 
 <!-- Pre-ride: pick your effort level and how you are getting power in. -->
 <div class="m-auto w-full max-w-2xl text-center">
+	<!-- First, not at the foot under FTP (#2616): a ride to rescue outranks
+	     the one about to start, and the column is taller than a laptop. -->
+	<RecoveredRides {onError} {onSaved} />
 	<Logo size={56} />
 	<h1 class="page-title-sm mt-6">{workout.name}</h1>
 	<p class="text-muted mt-2 text-sm">
@@ -170,6 +173,4 @@
 		class="text-muted hover:text-ink mt-2 inline-block text-xs underline"
 		>Measure it with a ramp test</a
 	>
-
-	<RecoveredRides {onError} {onSaved} />
 </div>

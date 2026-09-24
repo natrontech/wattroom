@@ -184,12 +184,12 @@
 					>
 					<span class="text-muted"
 						>{live.lostSession.minutes} min of {live.lostSession.workoutName}
-						never reached your account. This browser still has the ride: open the
-						ride screen to download it as a .fit file.</span
+						never reached your account. This browser still has the ride: Rides offers
+						it back, to save or download.</span
 					>
 				</p>
 				{#snippet action()}
-					<a href="/ride" class="btn btn-primary btn-lg">Recover the ride</a>
+					<a href="/history" class="btn btn-primary btn-lg">Recover the ride</a>
 				{/snippet}
 			</Banner>
 		</div>
