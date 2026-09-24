@@ -307,6 +307,7 @@ func main() {
 		h := hub.New(log, channelsService, saver)
 		hubForDrain = h
 		crewsService.SetPresence(h)
+		authService.SetLive(h)
 		channelsService.SetLive(h)
 		// A text channel's chat (#2435), behind the channel's own gate; the
 		// lobby ping names the channel whose log moved.
