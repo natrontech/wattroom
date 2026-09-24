@@ -276,7 +276,7 @@ export const CUES: Record<CueId, Cue> = {
 	chat: {
 		id: 'chat',
 		label: 'Chat message',
-		hint: 'A message landed — a chat or a DM. Quieter than a cheer — words wait.',
+		hint: 'A message landed — a chat channel or a DM. Quieter than a cheer — words wait.',
 		voices: [
 			{
 				type: 'sine',

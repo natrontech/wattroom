@@ -80,7 +80,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	limit, ok := capOf(req.Kind)
 	if !ok {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A channel is a chat or a voice channel.", "kind")
+			"A channel is a chat channel or a voice channel.", "kind")
 		return
 	}
 	name, ok := cleanName(req.Name)
@@ -94,7 +94,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	if errors.Is(err, pgx.ErrNoRows) {
 		plural := "voice channels"
 		if req.Kind == kindText {
-			plural = "chats" // a rider calls a text channel a chat (#2696)
+			plural = "chat channels" // a rider's word for a text channel (#2696)
 		}
 		httpx.WriteCeiling(w, fmt.Sprintf("A crew holds at most %d %s — delete one to make room.", limit, plural))
 		return

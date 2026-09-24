@@ -1,1 +1,1 @@
-- A crew's text channels are now called **chats** throughout the app — listed under *chat channels* in the sidebar and crew settings, beside *voice channels* — and carry a chat bubble instead of a `#`.
+- A crew's text channels are now **chat channels** throughout the app, beside its voice channels, and carry a chat bubble instead of a `#`.

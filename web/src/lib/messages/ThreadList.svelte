@@ -64,7 +64,8 @@
 	{:else if threads.length === 0}
 		<li class="px-1 pt-2">
 			<EmptyState>
-				Direct messages with your friends land here — a crew talks in its chats.
+				Direct messages with your friends land here — a crew talks in its chat
+				channels.
 				{#snippet cta()}
 					<a href="/friends" class="btn btn-primary btn-xs">Message a friend</a>
 				{/snippet}

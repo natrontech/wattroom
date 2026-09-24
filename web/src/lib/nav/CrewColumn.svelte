@@ -55,7 +55,7 @@
 			: pathname === href || pathname.startsWith(`${href}/`);
 
 	let creating = $state<'text' | 'voice' | null>(null);
-	// A rider calls a text channel a chat (#2696).
+	// A rider's text channel is a chat channel (#2696).
 	const newLabel = (kind: 'text' | 'voice') =>
 		kind === 'text' ? 'new chat' : 'new voice';
 	$effect(() => {
@@ -209,11 +209,11 @@
 		{#each texts as c (c.id)}
 			<li>{@render row(c)}</li>
 		{:else}
-			<!-- Empty states teach (ux.md): what a chat is, and who makes one. -->
+			<!-- Empty states teach (ux.md): what a chat channel is, and who makes one. -->
 			<li class="text-muted px-2 py-1 text-xs">
 				{admin
-					? 'No chats yet — the + makes the first place to write.'
-					: 'No chats yet. The crew’s owner or an admin makes them.'}
+					? 'No chat channels yet — the + makes the first place to write.'
+					: 'No chat channels yet. The crew’s owner or an admin makes them.'}
 			</li>
 		{/each}
 	</ul>
