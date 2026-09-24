@@ -303,6 +303,8 @@
 			// ride to recover either: offering it back would refuse it again
 			// on every reload. Its summary still lands on the device below.
 			if (failure.final) ended?.end();
+			// Not saved and no longer recorded: a ride to offer back (#2617).
+			else ended?.release();
 			// Otherwise the buffer keeps every sample and stays unfinished, so
 			// the ride is offered back below with a Save that retries this
 			// POST. The local summary is the second copy, not the only one.

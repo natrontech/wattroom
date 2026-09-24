@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const uploads: unknown[] = [];
+let offline = false;
 vi.mock('$lib/ride/save', () => ({
 	uploadRide: vi.fn(async (ride: unknown) => {
 		uploads.push(ride);
+		if (offline)
+			return { failure: { message: 'You are offline.', final: false } };
 		return { saved: { id: 'r1' } };
 	}),
 }));
@@ -14,6 +17,7 @@ vi.mock('$lib/ride/buffer', () => ({
 		crashSafe: true,
 		append() {},
 		end: () => void ended.push('end'),
+		release: () => void ended.push('release'),
 		since: async () => [],
 	})),
 }));
@@ -44,6 +48,7 @@ describe('recording a free ride', () => {
 	beforeEach(() => {
 		uploads.length = 0;
 		ended.length = 0;
+		offline = false;
 	});
 	const pedal = { watts: 150, cadence: 90, hr: 120 };
 
@@ -83,6 +88,20 @@ describe('recording a free ride', () => {
 		});
 		expect(free.armed).toBe(false);
 		expect(free.recording).toBe(false);
+	});
+
+	// Not saved and no longer recorded: the buffer lets go of it so the
+	// recovery card offers it back, and does not mark it finished (#2617).
+	it('lets go of a ride whose save failed, without ending it', async () => {
+		offline = true;
+		const free = createFreeRide({ ftp: () => 200 });
+		free.arm();
+		free.second(pedal);
+		await vi.waitFor(() => expect(free.recording).toBe(true));
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		for (let i = 1; i < 60; i++) free.second(pedal);
+		await free.end();
+		expect(ended).toEqual(['release']);
 	});
 
 	it('lets a ride under a minute go instead of saving it', async () => {

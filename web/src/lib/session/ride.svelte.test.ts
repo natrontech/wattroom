@@ -14,6 +14,7 @@ vi.mock('$lib/ride/buffer', () => ({
 		crashSafe: true,
 		append() {},
 		end() {},
+		release() {},
 		since: async () => [],
 	}),
 }));

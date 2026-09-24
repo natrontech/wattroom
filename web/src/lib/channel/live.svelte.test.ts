@@ -9,6 +9,8 @@ const buffered = vi.hoisted(() => ({
 	tail: [] as { watts: number }[],
 	opened: [] as { workoutName: string; startedAt: number }[],
 	ended: 0,
+	/** Let go without a save: offered back from here (#2617). */
+	released: 0,
 	// Whether the store opens at all — the test flips it to stand for a
 	// private window or blocked site data (#1466 finding 4).
 	crashSafe: true,
@@ -24,6 +26,9 @@ vi.mock('$lib/ride/buffer', () => ({
 			},
 			end() {
 				buffered.ended++;
+			},
+			release() {
+				buffered.released++;
 			},
 			since: async (seq: number) => {
 				buffered.since.push(seq);
@@ -226,6 +231,7 @@ describe('channel live ride buffer follows the session (#1541)', () => {
 		buffered.rows.length = 0;
 		buffered.tail.length = 0;
 		buffered.ended = 0;
+		buffered.released = 0;
 		buffered.crashSafe = true;
 		vi.useFakeTimers();
 		vi.setSystemTime(2_000_000);
@@ -317,6 +323,8 @@ describe('channel live ride buffer follows the session (#1541)', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		expect(buffered.since).toContain(10);
 		expect(buffered.ended).toBe(0);
+		// And no longer held as being recorded, or nothing offers it (#2617).
+		expect(buffered.released).toBe(1);
 
 		// Under a minute unheard is the last second of a clean close, not a
 		// lost ride: the buffer ends as before.
@@ -354,6 +362,7 @@ describe('channel live ride buffer follows the session (#1541)', () => {
 		phase(socket, 'idle', 70);
 		await vi.advanceTimersByTimeAsync(0);
 		expect(buffered.ended).toBe(0);
+		expect(buffered.released).toBe(1);
 		expect(live.lostSession).toEqual({ workoutName: 'Openers', minutes: 1 });
 		// The next session clears the status; /ride's recovery card still
 		// holds the ride.

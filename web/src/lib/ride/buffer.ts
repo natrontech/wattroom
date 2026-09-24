@@ -115,8 +115,45 @@ export interface RideBuffer {
 	 * ending on the first one is what used to drop a failed save (#794).
 	 */
 	end(): void;
+	/**
+	 * This tab stopped recording the ride without the server having it — a
+	 * failed save, a session left mid-ride (#2617). Until then the ride is
+	 * being recorded and is not offered back, in this tab or any other; from
+	 * then it is a ride to recover. end() does this too.
+	 */
+	release(): void;
 	/** Samples since (exclusive) a seq, for reconnect replay. */
 	since(seq: number): Promise<BufferedSample[]>;
+}
+
+/** The Web Lock a tab holds on a ride while it records it (#2617). */
+const RECORDING = 'wattroom-ride-';
+
+/**
+ * Holds a Web Lock until the returned function is called or the tab goes
+ * away — a tab that crashes or closes lets go by itself, which is the point.
+ * Without Web Locks nothing is held, and every ride reads as not being
+ * recorded, which is how the buffer behaved before them.
+ */
+function hold(name: string): () => void {
+	let release = () => {};
+	try {
+		const held = new Promise<void>((resolve) => (release = resolve));
+		void navigator.locks.request(name, () => held).catch(() => {});
+	} catch {
+		// No navigator, or no locks on it.
+	}
+	return release;
+}
+
+/** The rides some tab is recording right now. */
+async function recording(): Promise<Set<string>> {
+	try {
+		const { held = [] } = await navigator.locks.query();
+		return new Set(held.map((lock) => lock.name ?? ''));
+	} catch {
+		return new Set();
+	}
 }
 
 export async function openRideBuffer(meta: RideMeta): Promise<RideBuffer> {
@@ -125,6 +162,7 @@ export async function openRideBuffer(meta: RideMeta): Promise<RideBuffer> {
 		await tx(db, 'readwrite', (_, rides) => rides.put(meta));
 		await prune(db);
 	}
+	const release = db ? hold(RECORDING + meta.rideId) : () => {};
 	return {
 		crashSafe: db !== null,
 		append(sample) {
@@ -135,10 +173,13 @@ export async function openRideBuffer(meta: RideMeta): Promise<RideBuffer> {
 		},
 		end() {
 			if (!db) return;
+			// Let go once the mark is written, or another tab could find the
+			// ride neither held nor ended in between and offer it back.
 			void tx(db, 'readwrite', (_, rides) =>
 				rides.put({ ...meta, endedAt: Date.now() }),
-			);
+			).then(release);
 		},
+		release,
 		async since(seq) {
 			if (!db) return [];
 			const all = await readSamples(db, meta.rideId);
@@ -156,7 +197,7 @@ function readSamples(
 	).then((rows) => (rows ?? []) as BufferedSample[]);
 }
 
-/** Rides that never ended and have samples: the crashes worth offering back. */
+/** Rides that never ended, have samples and nobody is recording: the crashes worth offering back. */
 export async function unfinishedRides(): Promise<
 	Array<RideMeta & { samples: BufferedSample[] }>
 > {
@@ -164,9 +205,11 @@ export async function unfinishedRides(): Promise<
 	if (!db) return [];
 	const rides = ((await tx(db, 'readonly', (_, r) => r.getAll())) ??
 		[]) as RideMeta[];
+	const held = await recording();
 	const out: Array<RideMeta & { samples: BufferedSample[] }> = [];
 	for (const ride of rides) {
-		if (ride.endedAt) continue;
+		// Still being recorded, here or in another tab: not a crash (#2617).
+		if (ride.endedAt || held.has(RECORDING + ride.rideId)) continue;
 		const samples = await readSamples(db, ride.rideId);
 		if (samples.length >= MIN_SAMPLES) out.push({ ...ride, samples });
 	}

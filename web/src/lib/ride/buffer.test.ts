@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import {
 	discardRide,
@@ -17,10 +17,14 @@ const sample = (seq: number): BufferedSample => ({
 	at: seq * 1000,
 });
 
+/**
+ * A ride with `count` samples. Unless it is still `recording`, the tab that
+ * rode it is gone — a crash, a closed tab — and so is its lock (#2617).
+ */
 async function fill(
 	rideId: string,
 	count: number,
-	opts: { end?: boolean; saveable?: boolean } = {},
+	opts: { end?: boolean; saveable?: boolean; recording?: boolean } = {},
 ) {
 	const buffer = await openRideBuffer({
 		rideId,
@@ -30,13 +34,29 @@ async function fill(
 	});
 	for (let seq = 1; seq <= count; seq++) buffer.append(sample(seq));
 	if (opts.end) buffer.end();
+	else if (!opts.recording) held.delete(`wattroom-ride-${rideId}`);
 	return buffer;
 }
+
+// Web Locks by hand: which tab holds what is the test's to say, and Node's own
+// would keep every lock a test never released for the rest of the file.
+const held = new Set<string>();
 
 beforeEach(() => {
 	// A fresh database per test; fake-indexeddb is process-global.
 	indexedDB = new IDBFactory();
+	held.clear();
+	vi.stubGlobal('navigator', {
+		locks: {
+			request: (name: string, hold: () => Promise<void>) => {
+				held.add(name);
+				return hold().finally(() => held.delete(name));
+			},
+			query: async () => ({ held: [...held].map((name) => ({ name })) }),
+		},
+	});
 });
+afterEach(() => vi.unstubAllGlobals());
 
 describe('ride buffer', () => {
 	it('offers back a ride that never ended — the crash case', async () => {
@@ -182,5 +202,30 @@ describe('a store that will not open', () => {
 		} finally {
 			indexedDB.open = real;
 		}
+	});
+});
+
+// A ride still being recorded is not a crash (#2617). Another tab riding, or
+// this tab in a live session, holds the ride's lock; offering it back filed a
+// partial ride under Save and let Discard delete a live session's only local
+// copy. A tab that crashes or closes lets go of the lock by itself.
+describe('a ride still being recorded', () => {
+	it('is not offered back while it is being recorded', async () => {
+		await fill('1', 60, { recording: true });
+		expect(await unfinishedRides()).toEqual([]);
+	});
+
+	it('is offered back once the tab recording it is gone', async () => {
+		await fill('1', 60, { recording: true });
+		held.clear();
+		expect(await unfinishedRides()).toHaveLength(1);
+	});
+
+	it('is offered back once recording stops without a save', async () => {
+		const buffer = await fill('1', 60, { recording: true });
+		buffer.release();
+		await vi.waitFor(async () =>
+			expect(await unfinishedRides()).toHaveLength(1),
+		);
 	});
 });

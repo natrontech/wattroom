@@ -224,6 +224,8 @@
 	function restart() {
 		if (session && session.state !== 'done') session.stop();
 		session = null;
+		// Whatever it held is no longer being recorded (#2617).
+		buffer?.release();
 		buffer = null;
 		savedId = null;
 		rideStatus = null;
@@ -300,6 +302,8 @@
 			// Under a minute is refused for good; anything else stays in the
 			// buffer and is offered back with a Save (#794) — on Rides (#2616).
 			if (outcome.failure.final) ended?.end();
+			// Not saved and no longer recorded: a ride to offer back (#2617).
+			else ended?.release();
 			rideStatus = outcome.failure.final
 				? outcome.failure.message
 				: `${outcome.failure.message} The riding is kept on this device — Rides offers it back with a Save.`;
