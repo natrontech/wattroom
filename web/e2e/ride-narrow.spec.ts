@@ -74,3 +74,50 @@ test('TV mode carries the ride-critical status the page is showing', async ({
 		tv.getByText('not keeping its own copy of this ride'),
 	).toBeVisible();
 });
+
+/**
+ * Every cell the row can hold, at the narrowest Android that rides (#2620):
+ * rpm, bpm, w/kg, execution and the bias trim. The test above measures before
+ * heart rate or execution exist, so the row it saw was the short one. The
+ * strap is the dev one, paired where Settings offers it and carried to the
+ * ride by an in-app link — a reload would drop it.
+ */
+test('the numbers row fits 360px once heart rate and execution are on it', async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 360, height: 780 });
+	await signInTo(page, '/settings/equipment');
+	await page.getByRole('button', { name: 'Simulate a strap' }).click();
+	await page.evaluate(() => {
+		const link = document.createElement('a');
+		link.href = '/ride?w=smoke-test';
+		document.body.append(link);
+		link.click();
+	});
+	await page.waitForURL(/\/ride\?w=smoke-test$/);
+	await page.getByRole('button', { name: 'Ride simulated' }).click();
+	const trainerCard = page.getByText('Simulated Trainer').locator('..');
+	await expect(trainerCard.getByText(/\d+ W · \d+ rpm/)).toBeVisible({
+		timeout: 15_000,
+	});
+	await page.getByRole('button', { name: 'Start the ride' }).click();
+
+	const row = page.getByTestId('ride-numbers');
+	await expect(row.getByText('bpm', { exact: true })).toBeVisible({
+		timeout: 20_000,
+	});
+	// Execution counts from the first scored second: past the 30 s warm-up.
+	await expect(row.getByText('execution', { exact: true })).toBeVisible({
+		timeout: 45_000,
+	});
+
+	const body = page.getByTestId('page-body');
+	const excess = await body.evaluate((el) => el.scrollWidth - el.clientWidth);
+	expect(excess, 'the riding screen is wider than the window').toBe(0);
+	// The + is the control reached for mid-interval: on screen, whole.
+	const box = await page
+		.getByRole('button', { name: 'raise the target by one percent' })
+		.boundingBox();
+	expect(box, 'the + has a box').not.toBeNull();
+	expect(box!.x + box!.width, 'the + is on screen').toBeLessThanOrEqual(360);
+});
