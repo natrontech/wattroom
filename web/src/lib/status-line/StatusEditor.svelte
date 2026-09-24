@@ -3,6 +3,7 @@
 	// Set off the bike, so it is a form like any other, not a ride control.
 	// The words come first in the DOM so the dialog opens with the cursor in
 	// them (ux.md); the emoji button only draws first.
+	import { tick } from 'svelte';
 	import Smile from '@lucide/svelte/icons/smile';
 	import X from '@lucide/svelte/icons/x';
 	import { account } from '$lib/account.svelte';
@@ -52,6 +53,7 @@
 
 	let picking = $state(false);
 	let emojiButton = $state<HTMLButtonElement | null>(null);
+	let input = $state<HTMLInputElement | null>(null);
 	let saving = $state(false);
 	let error = $state<{ message: string; field?: string } | null>(null);
 
@@ -61,6 +63,8 @@
 	function pick(key: string) {
 		picking = false;
 		error = null;
+		// Back to the words once the picker has handed focus back.
+		void tick().then(() => input?.focus());
 		const name = customName(key);
 		if (name) {
 			const hit = crewId
@@ -128,7 +132,12 @@
 	{/if}
 {/snippet}
 
-<Modal label="Set a status" onclose={statusEditor.close}>
+<!-- Escape answers the picker first: both hear the key, and closing the
+     editor with it would throw the draft away. -->
+<Modal
+	label="Set a status"
+	onclose={() => (picking ? (picking = false) : statusEditor.close())}
+>
 	<h2 class="font-display text-lg leading-tight font-bold">Set a status</h2>
 	<p class="text-muted mt-1 text-sm">
 		Shown beside your name wherever your crews and friends see it.
@@ -140,6 +149,7 @@
 		<div>
 			<div class="flex items-center gap-2">
 				<input
+					bind:this={input}
 					bind:value={text}
 					maxlength={MaxStatusChars}
 					placeholder="What's your status?"
@@ -231,13 +241,14 @@
 			{/if}
 		</div>
 	</form>
+	<!-- Inside the modal, which moves itself to <body>: outside it the
+	     picker stacked under the modal's backdrop. -->
+	{#if picking && emojiButton}
+		<EmojiPicker
+			anchor={emojiButton}
+			{crewId}
+			onPick={pick}
+			onClose={() => (picking = false)}
+		/>
+	{/if}
 </Modal>
-
-{#if picking && emojiButton}
-	<EmojiPicker
-		anchor={emojiButton}
-		{crewId}
-		onPick={pick}
-		onClose={() => (picking = false)}
-	/>
-{/if}

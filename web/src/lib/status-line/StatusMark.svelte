@@ -29,7 +29,7 @@
 {#if shown}
 	<span
 		class="inline-flex min-w-0 items-center gap-1 align-middle"
-		title={[shown.emoji, shown.text].filter(Boolean).join(' ')}
+		title={shown.text || shown.emoji}
 		data-testid="status-line"
 	>
 		{#if shown.emojiId}

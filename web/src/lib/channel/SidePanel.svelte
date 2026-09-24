@@ -130,10 +130,8 @@
 			/>
 			<span class="min-w-0 flex-1">
 				<span class="flex items-center gap-1.5">
-					<span
-						class="min-w-0 truncate {rider.speaking
-							? 'font-medium'
-							: ''}">{rider.name}</span
+					<span class="min-w-0 truncate {rider.speaking ? 'font-medium' : ''}"
+						>{rider.name}</span
 					>
 					<StatusMark line={people.face(rider.id)?.statusLine} size={12} />
 					<span class="flex-1"></span>

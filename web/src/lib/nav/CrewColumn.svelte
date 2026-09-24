@@ -251,12 +251,17 @@
 						{#if inVoice}<Headphones size={9} class="shrink-0" />{/if}
 						<!-- Each name with its status emoji (ADR-0060); the emoji's
 						     title holds the words, the line's the whole list. -->
-						<span class="flex min-w-0 items-center truncate" title={people.label}>
+						<span
+							class="flex min-w-0 items-center truncate"
+							title={people.label}
+						>
 							{#each c.occupants?.slice(0, people.shown.length) ?? [] as o, i (o.id)}
 								<span class="truncate">{i > 0 ? ', ' : ''}{o.name}</span>
 								<StatusMark line={faces.face(o.id)?.statusLine} size={9} />
 							{/each}
-							{#if people.more > 0}<span class="shrink-0">&nbsp;+{people.more}</span>{/if}
+							{#if people.more > 0}<span class="shrink-0"
+									>&nbsp;+{people.more}</span
+								>{/if}
 						</span>
 					</p>
 				{/if}

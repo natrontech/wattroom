@@ -46,9 +46,7 @@ export const people = {
 			if (!person?.id) continue;
 			const known = faces[person.id];
 			const statusLine =
-				person.statusLine === undefined
-					? known?.statusLine
-					: person.statusLine;
+				person.statusLine === undefined ? known?.statusLine : person.statusLine;
 			if (
 				known &&
 				known.name === person.name &&
