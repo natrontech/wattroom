@@ -1,3 +1,5 @@
+import { isLivePhase } from '$lib/channel/tick-session';
+
 /**
  * What you rode this session, kept for the summary and the graph: the trace
  * for the line, every sample for the medal maths. Shared between the ride
@@ -22,6 +24,16 @@ export function createRecording() {
 	// minute — and a trainer notifying at 2 Hz used to double both. The
 	// server's record admits the same way (#791).
 	let lastSecond = -1;
+	// The recording belongs to ONE session (#1535): it clears on the edge into
+	// one, on every client. The edge is remembered here, beside what it clears
+	// and for exactly as long — a summary that remounted with every page
+	// crossed it again mid-ride and wiped the graph (#2654).
+	let live = false;
+	function reset() {
+		trace = [];
+		samples = [];
+		lastSecond = -1;
+	}
 	return {
 		get trace() {
 			return trace;
@@ -36,10 +48,11 @@ export function createRecording() {
 			trace.push({ t: elapsed, w: watts });
 			samples.push({ watts: Math.max(0, Math.round(watts)) });
 		},
-		reset() {
-			trace = [];
-			samples = [];
-			lastSecond = -1;
+		/** Fed every phase the session passes through; clears on the way in. */
+		follow(phase: string | undefined) {
+			const now = isLivePhase(phase);
+			if (now && !live) reset();
+			live = now;
 		},
 	};
 }

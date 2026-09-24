@@ -58,36 +58,28 @@ function ride(recording: ReturnType<typeof createRecording>, seconds: number) {
 	for (let s = 0; s < seconds; s++) recording.record(s, 200);
 }
 
-describe('the recording belongs to one session (#1535)', () => {
-	it('clears on the edge into a session, on every client', async () => {
-		const t = await setup(() => undefined);
-		await t.go('countdown');
-		await t.go('running');
-		ride(t.recording, 90);
-		await t.go('done');
-		// The summary of the first session keeps its samples while it shows.
-		expect(t.recording.samples).toHaveLength(90);
-		// The coach starts the main set: nobody pressed Start on this client.
-		await t.go('countdown');
-		expect(t.recording.samples).toEqual([]);
-		await t.go('running');
-		ride(t.recording, 30);
-		expect(t.recording.samples).toHaveLength(30);
-		t.off();
+// The recording lives on the connection and outlives every page; the summary
+// is mounted by the channel's shell, once per visit. Coming back to the ride
+// mid-session used to read as the edge into a session and wiped the graph's
+// power line and the summary's samples with it (#2654).
+it('a summary mounted mid-ride leaves the recording alone', async () => {
+	const recording = createRecording();
+	recording.follow('running');
+	ride(recording, 90);
+	const off = $effect.root(() => {
+		createSummary({
+			recording,
+			phase: () => 'running',
+			startedAt: () => undefined,
+			myName: () => 'Jan',
+			myId: () => 'u1',
+			myExecution: () => 0.9,
+		});
 	});
-
-	it('clears when a session starts without a countdown seen', async () => {
-		const t = await setup(() => undefined);
-		ride(t.recording, 10);
-		await t.go('running');
-		expect(t.recording.samples).toEqual([]);
-		// Pausing and resuming is the same session: nothing clears.
-		ride(t.recording, 5);
-		await t.go('paused');
-		await t.go('running');
-		expect(t.recording.samples).toHaveLength(5);
-		t.off();
-	});
+	await tick();
+	expect(recording.trace).toHaveLength(90);
+	expect(recording.samples).toHaveLength(90);
+	off();
 });
 
 describe('the late joiner finds their ride (#1537)', () => {

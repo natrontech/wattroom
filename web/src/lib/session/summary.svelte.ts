@@ -2,7 +2,6 @@ import { api } from '$lib/api';
 import type { Medal } from '$lib/components/MedalCard.svelte';
 import { MEDAL_META } from '$lib/medals';
 import type { createRecording } from '$lib/session/recording.svelte';
-import { isLivePhase } from '$lib/channel/tick-session';
 
 /** A session is worth a summary once it has a minute of your riding in it. */
 export const SUMMARY_MIN_SAMPLES = 60;
@@ -95,15 +94,8 @@ export function createSummary(deps: {
 		};
 	}
 
-	// The recording belongs to ONE session (#1535): it clears on the edge
-	// into a session on every client — the coach's Start used to be the only
-	// reset, so everyone else's second summary carried the first session too.
-	let riding = false;
 	$effect(() => {
 		const phase = deps.phase();
-		const now = isLivePhase(phase);
-		if (now && !riding) deps.recording.reset();
-		riding = now;
 		if (phase === 'running') {
 			dismissed = false;
 			fetched = false;

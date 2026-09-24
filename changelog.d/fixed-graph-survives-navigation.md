@@ -1,0 +1,1 @@
+- Leaving the ride for another page mid-session and coming back no longer wipes your power line from the workout graph, or the minutes ridden before it from the summary at the close.

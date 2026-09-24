@@ -121,6 +121,8 @@ function connect(address: PlaceAddress): Connection {
 		sharedOf = () => shared;
 		segmentsOf = () => parsed.segments;
 		workoutOf = () => parsed.workout;
+		// Here and not in a page: the recording outlives every page (#2654).
+		$effect(() => recording.follow(shared?.phase));
 
 		ride = createRide({
 			live,
