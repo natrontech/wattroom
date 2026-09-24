@@ -690,6 +690,9 @@ function setHud(on) {
 		maximizable: false,
 		fullscreenable: false,
 		skipTaskbar: true,
+		// A panel is how a window floats over another app's full-screen Space
+		// on macOS without the whole process becoming a UI element (#2660).
+		type: process.platform === 'darwin' ? 'panel' : undefined,
 		backgroundColor: '#0a0118',
 		show: false,
 		webPreferences: {
@@ -703,7 +706,14 @@ function setHud(on) {
 	});
 	// Above full-screen apps too, and on every desktop — that is the point.
 	hudWindow.setAlwaysOnTop(true, 'floating');
-	hudWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+	// Never the process transform (#2660): without skipTransformProcessType,
+	// visibleOnFullScreen is Electron calling app.dock.hide() — WattRoom lost
+	// its Dock icon, ⌘-Tab and menu bar for the rest of the run, and a rider
+	// whose main window went behind another app could not get back to it.
+	hudWindow.setVisibleOnAllWorkspaces(true, {
+		visibleOnFullScreen: true,
+		skipTransformProcessType: true,
+	});
 	// BOTTOM-LEFT of the display the app is on, a finger's width in (#1669).
 	//
 	// It used to sit top-right, which is exactly where TV mode seats the
@@ -923,9 +933,10 @@ if (!app.requestSingleInstanceLock()) {
 		// from this run, and the rider starts the sign-in again.
 		if (deepLinkIn(process.argv))
 			console.warn('wattroom:// link at launch ignored');
-		app.on('activate', () => {
-			if (BrowserWindow.getAllWindows().length === 0) createWindow();
-		});
+		// A Dock click brings the rider's window back, not merely a window
+		// (#2660): with the HUD up macOS counts a visible window and restores
+		// nothing, so a minimised main window stayed in the Dock mid-ride.
+		app.on('activate', openWindow);
 	});
 
 	app.on('window-all-closed', () => {

@@ -383,6 +383,12 @@ test('the HUD is a second window on our origin, opened and closed by the app', a
 		({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
 	);
 	expect(windows).toBe(2);
+	// The app stays an app while the HUD floats (#2660). Floating it over
+	// full-screen apps used to turn the whole process into a UI element: no
+	// Dock icon, no ⌘-Tab, no menu bar — and a main window behind anything
+	// else was then out of reach until the rider quit mid-ride.
+	if (process.platform === 'darwin')
+		expect(await app.evaluate(({ app }) => app.dock.isVisible())).toBe(true);
 	// /hud on the app's origin, in the same session.
 	expect(await app.evaluate(() => globalThis.__hudNav)).toEqual([
 		`${DEAD_URL.replace(/\/$/, '')}/hud`,
@@ -448,6 +454,18 @@ test('the HUD is a second window on our origin, opened and closed by the app', a
 			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
 		),
 	).toBe(2);
+
+	// A Dock click with the HUD up brings the rider's window back (#2660).
+	// macOS counts the HUD as a visible window and restores nothing itself.
+	const restored = await app.evaluate(async ({ app, BrowserWindow }, first) => {
+		const main = BrowserWindow.fromId(first);
+		main.minimize();
+		await new Promise((r) => setTimeout(r, 500));
+		app.emit('activate', {}, true);
+		await new Promise((r) => setTimeout(r, 500));
+		return !main.isMinimized();
+	}, mainId);
+	expect(restored).toBe(true);
 
 	await win.evaluate(() => window.wattroom.hud(false));
 	await new Promise((r) => setTimeout(r, 500));
