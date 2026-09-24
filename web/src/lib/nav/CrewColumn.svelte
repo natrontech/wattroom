@@ -218,7 +218,7 @@
 		{/each}
 	</ul>
 
-	{@render section('voice', 'voice')}
+	{@render section('voice channels', 'voice')}
 	<ul class="space-y-0.5">
 		{#each voices as c (c.id)}
 			{@const people = railPeople(c.occupants?.map((o) => o.name))}
