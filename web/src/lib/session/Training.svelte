@@ -25,6 +25,7 @@
 	import { trainerTargetsNote } from '$lib/session/sensor-status';
 	import { pictureKey } from '$lib/channel/stage';
 	import { useChannel } from '$lib/channel/context';
+	import { endGame } from '$lib/session/end-game';
 	import { account } from '$lib/account.svelte';
 	import { serverNow } from '$lib/server-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
@@ -92,7 +93,7 @@
 				game={channel.game}
 				roster={channelConnection.current?.live.tick?.roster ?? []}
 				canControl={channel.canControl && !device.spectator}
-				end={() => channel.control('game-end')}
+				end={() => void endGame(channel)}
 			/>
 		</section>
 	</div>
@@ -207,7 +208,7 @@
 					game={channel.game}
 					roster={channelConnection.current?.live.tick?.roster ?? []}
 					canControl={channel.canControl}
-					end={() => channel.control('game-end')}
+					end={() => void endGame(channel)}
 					me={account.me?.id}
 				/>
 			</section>

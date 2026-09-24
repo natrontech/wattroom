@@ -24,6 +24,7 @@ const CHANNEL_TO_SESSION: Record<string, { modules: string[]; why: string }> = {
 		modules: [
 			'GamePanel.svelte',
 			'PlanCard.svelte',
+			'end-game',
 			'SessionControls.svelte',
 			'SprintMoment.svelte',
 			'TrainerOverview.svelte',

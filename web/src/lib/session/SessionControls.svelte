@@ -15,6 +15,7 @@
 	import { device } from '$lib/device.svelte';
 	import { useChannel } from '$lib/channel/context';
 	import { controlsFor } from '$lib/session/controls';
+	import { endGame } from '$lib/session/end-game';
 	import Modal from '$lib/components/Modal.svelte';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Pause from '@lucide/svelte/icons/pause';
@@ -105,7 +106,7 @@
 		     (#1586): Team Relay never ends itself, and this used to be the
 		     panel's button alone. -->
 		<button
-			onclick={() => channel.control('game-end')}
+			onclick={() => void endGame(channel)}
 			title="End game"
 			aria-label="end the game"
 			class="btn btn-secondary {compact ? 'h-11 w-11 p-0' : 'btn-lg'}"
