@@ -7,6 +7,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import RidingBars from '$lib/components/RidingBars.svelte';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import { confirm } from '$lib/confirm.svelte';
@@ -24,7 +25,6 @@
 	import { askVoice } from '$lib/channel/voice-intent';
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import Headphones from '@lucide/svelte/icons/headphones';
 	import Lock from '@lucide/svelte/icons/lock';
 	import LockOpen from '@lucide/svelte/icons/lock-open';
 	import MessageCircle from '@lucide/svelte/icons/message-circle';
@@ -34,19 +34,13 @@
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import CheckCheck from '@lucide/svelte/icons/check-check';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
-	import Video from '@lucide/svelte/icons/video';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
-	import {
-		crewLive,
-		sessionLine,
-		type LiveChannel,
-		type LiveOccupant,
-	} from './crew-live.svelte';
+	import { crewLive, sessionLine, type LiveChannel } from './crew-live.svelte';
 	import NewChannel from './NewChannel.svelte';
 	import { crewPlaces } from './pages';
-	import { railPeople } from './rail-people';
 	import { people as faces } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import { createVoiceMover } from './voice-mover.svelte';
+	import VoiceOccupants from './VoiceOccupants.svelte';
 
 	let { crew, pathname }: { crew: CrewRef; pathname: string } = $props();
 
@@ -86,70 +80,8 @@
 	// time, so the column never grows by more than one list.
 	let unfolded = $state<string | null>(null);
 
-	// The crew's owner or an admin moves a rider between voice channels
-	// (#2730), Discord's drag: a name onto another channel's row. The name's
-	// menu does the same, for touch and the keyboard (ux.md). A rider who is
-	// pedalling stays put — the server refuses, and the row says so first.
-	let dragging = $state<{ rider: string; from: string } | null>(null);
-	let dropOn = $state<string | null>(null);
-	const RIDING_HINT = 'Riding — they can be moved once they stop pedalling';
-
-	async function move(rider: string, from: string, to: LiveChannel) {
-		const res = await api(`/api/channels/${to.id}/move`, {
-			method: 'POST',
-			json: { rider, from },
-		});
-		if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
-	}
-	function grab(c: LiveChannel, o: LiveOccupant) {
-		if (!admin || voices.length < 2) return {};
-		if (o.riding) return { title: RIDING_HINT };
-		return {
-			draggable: true,
-			title: `drag onto another voice channel to move ${o.name}`,
-			ondragstart: (e: DragEvent) => {
-				dragging = { rider: o.id, from: c.id };
-				e.dataTransfer?.setData('text/plain', o.name);
-				if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-			},
-			ondragend: () => (dragging = dropOn = null),
-		};
-	}
-	function drop(c: LiveChannel) {
-		const over = (e: DragEvent) => {
-			if (!dragging || dragging.from === c.id) return;
-			e.preventDefault();
-			if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-			dropOn = c.id;
-		};
-		return {
-			ondragenter: over,
-			ondragover: over,
-			ondragleave: (e: DragEvent) => {
-				const into = e.relatedTarget as Node | null;
-				if (!(e.currentTarget as Node).contains(into) && dropOn === c.id)
-					dropOn = null;
-			},
-			ondrop: (e: DragEvent) => {
-				e.preventDefault();
-				if (dragging && dragging.from !== c.id)
-					void move(dragging.rider, dragging.from, c);
-				dragging = dropOn = null;
-			},
-		};
-	}
-	function occupantMenu(c: LiveChannel, o: LiveOccupant): MenuEntry[] {
-		if (!admin) return [];
-		return voices
-			.filter((v) => v.id !== c.id)
-			.map((v) => ({
-				label: `Move to ${v.name}`,
-				icon: ArrowRight,
-				disabled: o.riding,
-				hint: o.riding ? 'riding' : undefined,
-				onSelect: () => void move(o.id, c.id, v),
-			}));
-	}
+	// Dragging a name onto another channel moves the rider (#2730, #2745).
+	const mover = createVoiceMover({ admin: () => admin, voices: () => voices });
 
 	let creating = $state<'text' | 'voice' | null>(null);
 	$effect(() => {
@@ -313,18 +245,23 @@
 	{@render section('voice channels', 'voice')}
 	<ul class="space-y-0.5">
 		{#each voices as c (c.id)}
-			{@const people = railPeople(c.occupants?.map((o) => o.name))}
-			{@const inVoice = c.occupants?.some((o) => o.voice)}
-			{@const open = unfolded === c.id && people.shown.length > 0}
+			{@const count = mover.occupants(c).length}
+			{@const open = unfolded === c.id}
+			<!-- A place a dragged name can land (#2745): while one is in the air,
+			     every other channel shows a quiet dashed edge, and the one under
+			     the pointer fills in. -->
 			<li
-				{...drop(c)}
-				class="rounded {dropOn === c.id
-					? 'bg-neon/15 ring-neon/60 ring-1'
-					: ''}"
+				{...mover.target(c)}
+				class="rounded outline-1 -outline-offset-1 transition-[background-color,outline-color] duration-150 motion-reduce:transition-none {mover.dropOn ===
+				c.id
+					? 'bg-neon/15 outline-neon/70 outline'
+					: mover.dragging && mover.dragging.from !== c.id
+						? 'outline-neon/35 outline outline-dashed'
+						: 'outline-transparent'}"
 			>
 				<div class="flex items-center">
 					{@render row(c)}
-					{#if people.shown.length}
+					{#if count}
 						<button
 							onclick={() => (unfolded = open ? null : c.id)}
 							aria-expanded={open}
@@ -359,61 +296,7 @@
 						{sessionLine(c.session)}
 					</a>
 				{/if}
-				{#if open}
-					<ul aria-label="Who is in {c.name}" class="pb-1">
-						{#each c.occupants ?? [] as o (o.id)}
-							<li
-								{...grab(c, o)}
-								{@attach contextMenu(() => occupantMenu(c, o))}
-								class="text-muted flex items-center gap-1.5 truncate px-2 py-0.5 pl-8 text-xs {admin
-									? 'cursor-grab'
-									: ''}"
-							>
-								<span class="min-w-0 flex-1 truncate">{o.name}</span>
-								{#if o.riding}<span class="text-watt shrink-0"
-										><RidingBars size={9} /></span
-									>{/if}
-								{#if o.camera}<Video
-										size={11}
-										class="shrink-0"
-										aria-label="camera on"
-									/>{/if}
-								{#if o.voice}<Headphones
-										size={11}
-										class="shrink-0"
-										aria-label="in voice"
-									/>{/if}
-							</li>
-						{/each}
-					</ul>
-				{:else if people.shown.length}
-					<!-- Who is in there, without going in (#438): one line of names,
-					     the way a room's row used to say it — not a strip of faces. -->
-					<p
-						class="text-muted-dim flex items-center gap-1 truncate px-2 pb-1 pl-8 text-[10px]"
-					>
-						{#if inVoice}<Headphones size={9} class="shrink-0" />{/if}
-						<!-- Each name with its status emoji (ADR-0060); the emoji's
-						     title holds the words, the line's the whole list. -->
-						<span
-							class="flex min-w-0 items-center truncate"
-							title={people.label}
-						>
-							{#each c.occupants?.slice(0, people.shown.length) ?? [] as o, i (o.id)}
-								{#if i > 0}<span class="shrink-0">,&nbsp;</span>{/if}
-								<span
-									{...grab(c, o)}
-									{@attach contextMenu(() => occupantMenu(c, o))}
-									class="truncate">{o.name}</span
-								>
-								<StatusMark line={faces.face(o.id)?.statusLine} size={9} />
-							{/each}
-							{#if people.more > 0}<span class="shrink-0"
-									>&nbsp;+{people.more}</span
-								>{/if}
-						</span>
-					</p>
-				{/if}
+				<VoiceOccupants channel={c} {open} {mover} />
 			</li>
 		{:else}
 			<li class="text-muted px-2 py-1 text-xs">
@@ -424,6 +307,26 @@
 		{/each}
 	</ul>
 {/if}
+
+<svelte:window
+	ondragover={mover.window.ondragover}
+	ondrop={mover.window.ondrop}
+	ondragend={mover.window.ondragend}
+/>
+
+<!-- The drag preview: the rider, not a snapshot of their row. Off screen and
+     aria-hidden; the browser photographs it at the start of each drag. -->
+<div
+	{@attach mover.ghostHere}
+	aria-hidden="true"
+	class="bg-surface-raised text-ink ring-neon/40 pointer-events-none fixed top-0 -left-[9999px] flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-xs font-medium shadow-lg ring-1"
+>
+	{#if mover.ghostOf}
+		{@const face = faces.face(mover.ghostOf.id)}
+		<Avatar name={mover.ghostOf.name} avatarUrl={face?.avatarUrl} size={20} />
+		{mover.ghostOf.name}
+	{/if}
+</div>
 
 {#if creating}
 	<Modal

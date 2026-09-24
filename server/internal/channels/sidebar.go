@@ -3,11 +3,13 @@ package channels
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/status"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -55,6 +57,8 @@ type occupantJSON struct {
 	Camera bool   `json:"camera,omitempty"`
 	Riding bool   `json:"riding,omitempty"`
 	Away   bool   `json:"away,omitempty"`
+	// Where the name goes, the status goes (ADR-0060, #2745). null is none.
+	StatusLine *protocol.StatusLine `json:"statusLine"`
 }
 
 type lastLineJSON struct {
@@ -137,7 +141,38 @@ func (s *Service) liveCrew(ctx context.Context, crewID, userID pgtype.UUID, role
 		}
 		out.Channels = append(out.Channels, entry)
 	}
-	return out, nil
+	return out, s.withStatus(ctx, out.Channels)
+}
+
+// withStatus fills in every occupant's status line, one read for the crew.
+func (s *Service) withStatus(ctx context.Context, channels []liveChannelJSON) error {
+	var ids []pgtype.UUID
+	for _, c := range channels {
+		for _, o := range c.Occupants {
+			if id, err := store.ParseUUID(o.ID); err == nil {
+				ids = append(ids, id)
+			}
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	rows, err := s.store.Queries.StatusLinesOf(ctx, ids)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	lines := make(map[string]*protocol.StatusLine, len(rows))
+	for _, row := range rows {
+		lines[store.UUIDString(row.ID)] = status.Of(row.StatusEmoji, row.StatusEmojiID, row.StatusText, row.StatusExpiresAt, now)
+	}
+	for i := range channels {
+		for j := range channels[i].Occupants {
+			o := &channels[i].Occupants[j]
+			o.StatusLine = lines[o.ID]
+		}
+	}
+	return nil
 }
 
 // lastLines is the last line of every channel with unread, by channel.
