@@ -61,6 +61,7 @@ One table, because there is one place roles live: the crew ([ADR-0058](decisions
 | Leave the crew (#1228) — the owner hands it on first | – | ✓ | ✓ | ✓ |
 | Create, rename, reorder, open / make private, delete a channel; set a voice channel's sound pack (#2434) | ✓ | ✓ | – | ✓ |
 | Name a member into a private channel, or take them out (#2434) | ✓ | ✓ | – | ✓ |
+| Move a rider from one voice channel to another — drag their name, or its menu (#2730). Never one who is pedalling, and only through a door they may walk through | ✓ | ✓ | – | ✓ |
 | Enter an open channel | ✓ | ✓ | ✓ | ✓ |
 | Enter a private channel | ✓ | ✓ | if named | ✓ |
 | Delete any message in a text channel ([#2417](https://github.com/natrontech/wattroom/issues/2417)) — anyone may delete **their own** | ✓ | ✓ | – | ✓ |

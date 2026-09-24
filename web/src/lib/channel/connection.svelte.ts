@@ -15,6 +15,7 @@ import { parseSharedWorkout } from '$lib/workout/shared';
 import { play } from '$lib/sound/cues';
 import { applyAway, noEcho, pressed } from '$lib/channel/away-echo';
 import { connectionCues } from '$lib/channel/connection-cues.svelte';
+import { followMoves } from '$lib/channel/follow-move.svelte';
 import { toasts } from '$lib/toast.svelte';
 import type { SessionState } from '$lib/protocol';
 import type { Segment, Workout } from '$lib/workout/types';
@@ -207,6 +208,7 @@ function connect(address: PlaceAddress): Connection {
 
 		// Everything the connection says out loud (connection-cues.svelte.ts).
 		connectionCues({ address, live, av });
+		followMoves({ address, live, av });
 
 		// PTT keys work on EVERY page while in voice — and a keyup lost to
 		// navigation or focus loss must never leave the mic hot (audit #219).
