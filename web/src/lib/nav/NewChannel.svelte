@@ -35,7 +35,7 @@
 </script>
 
 <h3 class="font-display font-bold">
-	{kind === 'text' ? 'New chat' : 'New voice channel'}<span
+	{kind === 'text' ? 'New chat' : 'New voice'}<span
 		class="text-muted font-normal">&nbsp;in {crew.name}</span
 	>
 </h3>

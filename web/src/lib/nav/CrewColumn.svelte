@@ -57,7 +57,7 @@
 	let creating = $state<'text' | 'voice' | null>(null);
 	// A rider calls a text channel a chat (#2696).
 	const newLabel = (kind: 'text' | 'voice') =>
-		kind === 'text' ? 'new chat' : 'new voice channel';
+		kind === 'text' ? 'new chat' : 'new voice';
 	$effect(() => {
 		pathname;
 		creating = null;
