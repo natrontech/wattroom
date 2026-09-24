@@ -1,0 +1,1 @@
+- A plan's name on your Home, on the crew's Home and on the crew's Workouts page now opens that plan's row on the crew's Schedule, scrolled into view and marked. Before, some of these went to the top of the Schedule and some weren't links at all.

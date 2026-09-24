@@ -76,6 +76,13 @@ test('crew Home teaches when quiet, and a plan is answered from it', async ({
 	);
 	await expect(a.getByText(`1 in — ${A}`)).toBeVisible();
 
+	// The plan's name leads to its own row on the Schedule, marked (#2608).
+	await a.getByRole('link', { name: workoutName }).click();
+	await a.waitForURL(new RegExp(`/crew/${crew}/schedule#plan-[0-9a-f-]+$`));
+	await expect(
+		a.getByRole('listitem').filter({ hasText: workoutName }),
+	).toHaveAttribute('aria-current', 'true');
+
 	// Cancelled so a second run starts from the same quiet crew.
 	await a.evaluate(async (id) => {
 		const body = await fetch(`/api/crews/${id}/schedule`).then((res) =>
