@@ -14,7 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -264,16 +263,15 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		target = user.ID
 	}
-	err := s.store.Queries.CreateFriendRequest(r.Context(), db.CreateFriendRequestParams{
+	n, err := s.store.Queries.CreateFriendRequest(r.Context(), db.CreateFriendRequestParams{
 		RequesterID: me.ID, AddresseeID: target,
 	})
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		httpx.WriteError(w, http.StatusConflict, "conflict", "There is already a request or friendship with them.")
-		return
-	}
 	if err != nil {
 		httpx.Fail(w, s.log, "create friend request", err, "The request could not be sent.", "user", store.UUIDString(me.ID))
+		return
+	}
+	if n == 0 {
+		httpx.WriteError(w, http.StatusConflict, "conflict", "There is already a request or friendship with them.")
 		return
 	}
 	s.clearDeclines(r, me.ID, target)

@@ -1,5 +1,9 @@
--- name: CreateFriendRequest :exec
-insert into friendships (requester_id, addressee_id) values ($1, $2);
+-- name: CreateFriendRequest :execrows
+-- 0 rows: the pair already has a request or a friendship, in either direction
+-- (the pkey and the pair index). The handler expects that refusal, so it is
+-- not left to Postgres to log as an ERROR (#2685).
+insert into friendships (requester_id, addressee_id) values ($1, $2)
+on conflict do nothing;
 
 -- name: GetFriendship :one
 -- Either direction — one row exists per pair (the pair index).

@@ -48,8 +48,9 @@ func (q *Queries) ClearFriendDeclines(ctx context.Context, arg ClearFriendDeclin
 	return err
 }
 
-const createFriendRequest = `-- name: CreateFriendRequest :exec
+const createFriendRequest = `-- name: CreateFriendRequest :execrows
 insert into friendships (requester_id, addressee_id) values ($1, $2)
+on conflict do nothing
 `
 
 type CreateFriendRequestParams struct {
@@ -57,9 +58,15 @@ type CreateFriendRequestParams struct {
 	AddresseeID pgtype.UUID
 }
 
-func (q *Queries) CreateFriendRequest(ctx context.Context, arg CreateFriendRequestParams) error {
-	_, err := q.db.Exec(ctx, createFriendRequest, arg.RequesterID, arg.AddresseeID)
-	return err
+// 0 rows: the pair already has a request or a friendship, in either direction
+// (the pkey and the pair index). The handler expects that refusal, so it is
+// not left to Postgres to log as an ERROR (#2685).
+func (q *Queries) CreateFriendRequest(ctx context.Context, arg CreateFriendRequestParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createFriendRequest, arg.RequesterID, arg.AddresseeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteFriendship = `-- name: DeleteFriendship :execrows
