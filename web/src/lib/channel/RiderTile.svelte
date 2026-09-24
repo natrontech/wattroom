@@ -88,8 +88,12 @@
 	);
 </script>
 
+<!-- A camera frame is the cave whatever the page's scheme (#2668): on paper
+     the scrim below mixed white, and the feed sat under a milky haze. -->
 <div
-	class="bg-surface-raised @container relative overflow-hidden rounded-lg {stretch
+	class="bg-surface-raised @container relative overflow-hidden rounded-lg {rider.cameraOn
+		? 'cave'
+		: ''} {stretch
 		? 'h-full'
 		: 'aspect-video'} transition-shadow duration-200 {tileFrame(
 		rider.speaking,
@@ -138,7 +142,7 @@
 	{/if}
 
 	{#if rider.cameraOn}
-		<!-- Overlay scrim (#319): ink is white in the cave, and a bright camera
+		<!-- Overlay scrim (#319): ink is white here, and a bright camera
 		     feed swallowed the readouts whole. Over the frame only — the
 		     camera-off seat is a surface we chose, and readouts sit on it at
 		     full contrast rather than under a wash (#505). -->
