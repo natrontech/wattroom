@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { followedRider } from './follow';
+import { crewOf, followedRider } from './follow';
 import type { LiveRider } from '$lib/channel/types';
 
 const rider = (id: string, over: Partial<LiveRider> = {}): LiveRider =>
@@ -50,5 +50,31 @@ describe('followedRider', () => {
 	it('ignores a focus on someone who left', () => {
 		const riders = [rider('a', { watts: 100 })];
 		expect(followedRider(riders, 'gone')?.id).toBe('a');
+	});
+});
+
+describe('crewOf', () => {
+	const ids = (riders: LiveRider[]) => riders.map((r) => r.id);
+
+	// #2655: the strip was the only camera on the Training place, and it left
+	// you out, so a rider never saw their own picture.
+	it('puts you first while your camera is on', () => {
+		const riders = [rider('a'), rider('me', { you: true, cameraOn: true })];
+		expect(ids(crewOf(riders, false))).toEqual(['me', 'a']);
+	});
+
+	it('leaves you out without a camera where the instrument is yours', () => {
+		const riders = [rider('a'), rider('me', { you: true, watts: 200 })];
+		expect(ids(crewOf(riders, false))).toEqual(['a']);
+	});
+
+	it('keeps you while you pedal on the phone', () => {
+		const riders = [rider('a'), rider('me', { you: true, watts: 200 })];
+		expect(ids(crewOf(riders, true))).toEqual(['me', 'a']);
+	});
+
+	it('leaves a spectator with no camera out on the phone', () => {
+		const riders = [rider('a'), rider('me', { you: true })];
+		expect(ids(crewOf(riders, true))).toEqual(['a']);
 	});
 });
