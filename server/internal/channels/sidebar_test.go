@@ -205,7 +205,8 @@ func TestVoiceOccupantsCarryTheirStatus(t *testing.T) {
 		if !present {
 			t.Fatalf("%v carries no statusLine key — a cleared status would never clear", row["name"])
 		}
-		got[row["name"].(string)] = line
+		name, _ := row["name"].(string)
+		got[name] = line
 	}
 	alice, _ := got["alice"].(map[string]any)
 	if alice["emoji"] != "🚴" || alice["text"] != "Base miles" {

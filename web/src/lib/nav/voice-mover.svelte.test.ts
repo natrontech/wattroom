@@ -80,7 +80,7 @@ describe('a move in the air', () => {
 		expect(names(m, 'lair')).toEqual([]);
 		expect(push).toHaveBeenCalledWith(
 			expect.stringContaining('Kim hasn’t arrived in Lair'),
-			{ tone: 'error' },
+			{ tone: 'error', seconds: 8 },
 		);
 	});
 

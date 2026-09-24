@@ -67,7 +67,9 @@ export function createVoiceMover(crew: {
 			if (!arrived(crew.voices(), flight))
 				toasts.push(
 					`${rider.name} hasn’t arrived in ${to.name}. Their app may be closed or asleep — ask them to click over.`,
-					{ tone: 'error' },
+					// Said ten seconds after the drop, when the admin may be looking
+					// elsewhere: it stays up twice as long as a toast usually does.
+					{ tone: 'error', seconds: 8 },
 				);
 		}, ARRIVAL_MS);
 	}
