@@ -16,6 +16,7 @@
 	import TvOverlay from '$lib/session/TvOverlay.svelte';
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
+	import { confirm } from '$lib/confirm.svelte';
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
@@ -336,6 +337,20 @@
 				ftpMarkStatus = `${message} Your FTP is saved — the chart picks it up on your next ride.`;
 		});
 	});
+	// A stray "I'm done" at step 8 ended the test and offered an under-read
+	// FTP behind a big Save (#2623). The ramp ends itself when the rider
+	// blows, so the button is for stopping early — and that asks first.
+	async function stopTest() {
+		const ok = await confirm({
+			title: 'Stop the ramp test here?',
+			body: 'The test cannot be resumed. Your result is worked out from what you have ridden so far.',
+			action: 'Stop the test',
+			cancel: 'Keep going',
+		});
+		if (!ok || done) return;
+		session?.stop();
+		done = true;
+	}
 	// One mis-tap on the rail at minute 14 must not lose the number: the same
 	// confirm /ride has, only while the test is alive.
 	guardLeaving(
@@ -530,12 +545,8 @@
 						<button onclick={() => (tv = true)} class="btn btn-secondary btn-lg"
 							>TV</button
 						>
-						<button
-							onclick={() => {
-								session?.stop();
-								done = true;
-							}}
-							class="btn btn-secondary btn-lg">I'm done</button
+						<button onclick={stopTest} class="btn btn-secondary btn-lg"
+							>I'm done</button
 						>
 						<FlagButton onflag={flag} sends="after" />
 					</div>

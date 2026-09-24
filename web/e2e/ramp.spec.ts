@@ -33,7 +33,18 @@ test('a ramp ended early offers a test again that actually restarts', async ({
 		page.getByRole('button', { name: 'Flag a problem' }),
 	).toHaveAttribute('title', /after the ride.*Only yours, nobody else/s);
 
+	// It asks first (#2623): a stray tap at step 8 read as the rider's limit.
 	await done.click();
+	const ask = page.getByRole('dialog');
+	await expect(ask).toContainText('Stop the ramp test here?');
+	await ask.getByRole('button', { name: 'Keep going' }).click();
+	await expect(ask).toHaveCount(0);
+	await expect(done).toBeVisible();
+	await done.click();
+	await page
+		.getByRole('dialog')
+		.getByRole('button', { name: 'Stop the test' })
+		.click();
 
 	// Ended in the warm-up: nothing to measure, and a real way to go again.
 	await expect(
@@ -72,6 +83,10 @@ test('a flag raised mid-test is sent when the rider leaves without pressing Send
 
 	await page.getByRole('button', { name: 'Flag a problem' }).click();
 	await done.click();
+	await page
+		.getByRole('dialog')
+		.getByRole('button', { name: 'Stop the test' })
+		.click();
 	await expect(
 		page.getByRole('heading', { name: 'Not enough to measure' }),
 	).toBeVisible();
