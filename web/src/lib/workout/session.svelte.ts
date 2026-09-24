@@ -216,9 +216,10 @@ export function createRideSession({
 	// intensity (target/FTP), warmup, cooldown and freeride excluded. It used
 	// to count samples equally and include every targeted second, so the same
 	// ride scored one number here and another one when the server saved it
-	// (#795).
-	let insideWeight = 0;
-	let scoredWeight = 0;
+	// (#795). State, because the numbers row reads it live (#2769): as plain
+	// variables the score froze at its first read and the cell never appeared.
+	let insideWeight = $state(0);
+	let scoredWeight = $state(0);
 	let ticker: Ticker | undefined;
 	let wakeLock: WakeLock | undefined;
 	let unsubscribe: (() => void) | undefined;
