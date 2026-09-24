@@ -2,7 +2,11 @@ package httpx
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -233,5 +237,38 @@ func TestReadImageUploadUpToCapsAtTheCallersLimit(t *testing.T) {
 	}
 	if e := decodeError(t, rec); e.Error != "validation_error" || e.Message != "Emoji are capped at 1 KB." {
 		t.Errorf("unexpected error %+v", e)
+	}
+}
+
+// A rider who navigates away cancels the request's context, and every read in
+// flight fails with context.Canceled. Nothing broke: logging it as an error
+// buried real failures among a walk's worth of navigations (#2538).
+func TestFailTreatsAnAbandonedRequestAsNoError(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		err       error
+		wantError bool
+	}{
+		{"client hung up", fmt.Errorf("list rides: %w", context.Canceled), false},
+		{"deadline passed", fmt.Errorf("list rides: %w", context.DeadlineExceeded), true},
+		{"real failure", errors.New("connection refused"), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var logs bytes.Buffer
+			log := slog.New(slog.NewJSONHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug}))
+			rec := httptest.NewRecorder()
+			Fail(rec, log, "list rides failed", tc.err, "Could not load your rides.")
+
+			if got := strings.Contains(logs.String(), `"level":"ERROR"`); got != tc.wantError {
+				t.Errorf("logged an ERROR = %v, want %v: %s", got, tc.wantError, logs.String())
+			}
+			if tc.wantError {
+				if rec.Code != http.StatusInternalServerError || decodeError(t, rec).Error != "internal_error" {
+					t.Errorf("got %d %q, want 500 internal_error", rec.Code, rec.Body.String())
+				}
+			} else if rec.Body.Len() != 0 {
+				t.Errorf("wrote %q to a client that already left", rec.Body.String())
+			}
+		})
 	}
 }

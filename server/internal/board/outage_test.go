@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 )
@@ -17,8 +18,9 @@ import (
 // httpx.Fail was skipped so nothing was logged either — the failure the
 // operator most needs to see was the one that left no trace.
 //
-// A cancelled request context is a database error that is not pgx.ErrNoRows,
-// which is exactly the distinction the handlers now make.
+// An expired request deadline is a database error that is not pgx.ErrNoRows,
+// which is exactly the distinction the handlers now make. (A cancelled one is
+// the rider leaving, which httpx.Fail keeps quiet — #2538.)
 func TestADatabaseFailureIsNotAMissingClip(t *testing.T) {
 	mux, _, _ := setup(t)
 	clip := upload(t, mux, "alice", "AIRHORN", tenSeconds())
@@ -34,8 +36,8 @@ func TestADatabaseFailureIsNotAMissingClip(t *testing.T) {
 		{"edit", http.MethodPut, "/api/board/clips/" + clip.ID + "/edit", []byte(`{"startMs":0,"endMs":0,"gainDb":0,"fadeInMs":0,"fadeOutMs":0}`)},
 	} {
 		t.Run(tc.what, func(t *testing.T) {
-			ctx, cancel := context.WithCancel(t.Context())
-			cancel()
+			ctx, cancel := context.WithDeadline(t.Context(), time.Now())
+			defer cancel()
 			req := httptest.NewRequestWithContext(ctx, tc.method, tc.path, bytes.NewReader(tc.body))
 			req.Header.Set("X-Test-User", "alice")
 			rec := httptest.NewRecorder()

@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -192,18 +193,18 @@ func TestExportHandsTheSlotBackWhenItSucceedsAndWhenItFails(t *testing.T) {
 		}
 	}
 
-	// Failure: the export dies after it has taken the slot — a cancelled
-	// request context fails the first query, which is the earliest thing that
+	// Failure: the export dies after it has taken the slot — an expired
+	// request deadline fails the first query, which is the earliest thing that
 	// can go wrong once the slot is held. This is the path that locks a rider
 	// out of their own data if the release is not deferred.
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now())
+	defer cancel()
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/api/me/export", nil)
 	req.Header.Set("X-Test-User", "alice")
 	failed := httptest.NewRecorder()
 	h.mux.ServeHTTP(failed, req)
 	if failed.Code != http.StatusInternalServerError {
-		t.Fatalf("cancelled export: %d %s, want 500 — the test needs a real failure to prove the release", failed.Code, failed.Body.String())
+		t.Fatalf("expired export: %d %s, want 500 — the test needs a real failure to prove the release", failed.Code, failed.Body.String())
 	}
 	if h.svc.exports.running(alice) {
 		t.Fatal("a failed export leaked the slot — the rider is locked out of their own data")
