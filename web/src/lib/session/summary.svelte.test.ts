@@ -28,8 +28,13 @@ const { createSummary, SUMMARY_MIN_SAMPLES } = await import('./summary.svelte');
 const { createRecording } = await import('./recording.svelte');
 
 /** A summary wired to a phase the test moves by hand. Effects flush on tick(). */
-async function setup(startedAt: () => number | undefined) {
+async function setup(
+	startedAt: () => number | undefined,
+	// Its own close unless a test shares one: dismissals outlive a mount.
+	sessionId: string = crypto.randomUUID(),
+) {
 	let phase = $state<string | undefined>('idle');
+	let workout = $state('Openers');
 	const recording = createRecording();
 	let summary!: ReturnType<typeof createSummary>;
 	const off = $effect.root(() => {
@@ -40,6 +45,10 @@ async function setup(startedAt: () => number | undefined) {
 			myName: () => 'Jan',
 			myId: () => 'u1',
 			myExecution: () => 0.9,
+			sessionId: () => sessionId,
+			workoutName: () => workout,
+			riders: () => [],
+			ftp: () => 250,
 		});
 	});
 	await tick();
@@ -48,6 +57,11 @@ async function setup(startedAt: () => number | undefined) {
 		summary,
 		async go(next: string) {
 			phase = next;
+			await tick();
+		},
+		async pick(name: string) {
+			workout = name;
+			phase = 'idle';
 			await tick();
 		},
 		off,
@@ -64,6 +78,7 @@ function ride(recording: ReturnType<typeof createRecording>, seconds: number) {
 // power line and the summary's samples with it (#2654).
 it('a summary mounted mid-ride leaves the recording alone', async () => {
 	const recording = createRecording();
+	const workout = 'Openers';
 	recording.follow('running');
 	ride(recording, 90);
 	const off = $effect.root(() => {
@@ -74,6 +89,10 @@ it('a summary mounted mid-ride leaves the recording alone', async () => {
 			myName: () => 'Jan',
 			myId: () => 'u1',
 			myExecution: () => 0.9,
+			sessionId: () => 's1',
+			workoutName: () => workout,
+			riders: () => [],
+			ftp: () => 250,
 		});
 	});
 	await tick();
@@ -164,4 +183,68 @@ describe('the summary finds a crew ride and its medal (#2522)', () => {
 		t.off();
 		vi.useRealTimers();
 	});
+});
+
+// The coach dismissing theirs and picking the next workout turned the phase
+// back to idle within a second, and every other rider's summary went with it
+// (#2603). The card is the close's, and stays until its rider is done.
+describe('the summary card outlives the next pick (#2603)', () => {
+	it('keeps the close through a pick, and lets go when the next one runs', async () => {
+		const t = await setup(() => undefined);
+		await t.go('running');
+		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		await t.go('done');
+		expect(t.summary.card?.workoutName).toBe('Openers');
+		expect(t.summary.card?.samples).toHaveLength(SUMMARY_MIN_SAMPLES);
+
+		await t.pick('Threshold');
+		expect(t.summary.card?.workoutName, 'the next pick closed it').toBe(
+			'Openers',
+		);
+		// The recording clears itself on the edge into the next session.
+		t.recording.follow('countdown');
+		await t.go('countdown');
+		expect(t.summary.card?.samples, 'the countdown emptied it').toHaveLength(
+			SUMMARY_MIN_SAMPLES,
+		);
+
+		await t.go('running');
+		expect(t.summary.card).toBeNull();
+		t.off();
+	});
+
+	it('is gone once dismissed, and never shown for under a minute', async () => {
+		const t = await setup(() => undefined);
+		await t.go('running');
+		ride(t.recording, SUMMARY_MIN_SAMPLES - 1);
+		await t.go('done');
+		expect(t.summary.card).toBeNull();
+
+		await t.go('running');
+		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		await t.go('done');
+		expect(t.summary.card).not.toBeNull();
+		t.summary.dismiss();
+		expect(t.summary.card).toBeNull();
+		t.off();
+	});
+});
+
+// The session's page hands off to its channel's at the close (#2600), and the
+// summary mounts again there. A rider who had already closed theirs saw it
+// come back (#2603).
+it('a dismissed close stays dismissed on the next mount', async () => {
+	const first = await setup(() => undefined, 'shared-close');
+	await first.go('running');
+	ride(first.recording, SUMMARY_MIN_SAMPLES);
+	await first.go('done');
+	first.summary.dismiss();
+	first.off();
+
+	const again = await setup(() => undefined, 'shared-close');
+	await again.go('running');
+	ride(again.recording, SUMMARY_MIN_SAMPLES);
+	await again.go('done');
+	expect(again.summary.card, 'the dismissed summary came back').toBeNull();
+	again.off();
 });

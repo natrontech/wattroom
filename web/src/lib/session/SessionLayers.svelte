@@ -81,7 +81,6 @@
 	} = $props();
 
 	const live = $derived(connection.live);
-	const recording = $derived(connection.recording);
 	// The picker asks for a trainer before Start while there is none (#2594).
 	const unpaired = $derived(
 		needsTrainer(connection.ride.trainer, live.pairing),
@@ -103,6 +102,10 @@
 		myName: () => account.me?.displayName,
 		myId: () => account.me?.id,
 		myExecution: () => you.execution,
+		sessionId: () => shared?.id,
+		workoutName: () => shared?.workoutName,
+		riders: () => riders,
+		ftp: () => you.ftp,
 	});
 
 	// ── Coach controls ────────────────────────────────────────────────────────
@@ -232,23 +235,26 @@
 
 {#snippet trainerCard()}<TrainerOverview compact />{/snippet}
 
-{#if shared?.phase === 'done' && summary.ready && !summary.dismissed}
+{#if summary.card}
+	{@const card = summary.card}
 	<!-- The summary has to call out (#359). It used to render at the bottom of
 	     the main column, so a session ended while you were looking at the stage
-	     and nothing said so — a modal is the session telling you it is over. -->
+	     and nothing said so — a modal is the session telling you it is over.
+	     It draws the close, not the live values (#2603): the coach's next pick
+	     turned the phase back to idle and took everyone's summary with it. -->
 	<Modal
 		label="Session summary"
 		class="max-w-5xl"
 		onclose={() => summary.dismiss()}
 	>
 		<SessionSummary
-			subtitle="{placeName} · {shared.workoutName} · {new Date().toLocaleDateString()}"
-			samples={recording.samples}
-			ftp={you.ftp}
-			execution={you.execution}
+			subtitle="{placeName} · {card.workoutName} · {new Date().toLocaleDateString()}"
+			samples={card.samples}
+			ftp={card.ftp}
+			execution={card.execution}
 			medal={summary.medal}
 			{placeName}
-			{riders}
+			riders={card.riders}
 		>
 			{#snippet actions()}
 				<div class="flex flex-wrap gap-2">
