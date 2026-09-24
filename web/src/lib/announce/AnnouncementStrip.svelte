@@ -7,6 +7,7 @@
 	//
 	// Nothing here composes one. The coach marks a line in chat — the menu
 	// item lives on the message, where the sentence already is.
+	import MessageText from '$lib/chat/MessageText.svelte';
 	import { formatWhen } from '$lib/format';
 	import type { Announcement } from '$lib/channels';
 	import Megaphone from '@lucide/svelte/icons/megaphone';
@@ -38,7 +39,11 @@
 	>
 		<Megaphone size={16} class="text-muted mt-0.5 shrink-0" />
 		<div class="min-w-0 flex-1">
-			<p class="text-sm">{announcement.text}</p>
+			<!-- The line as chat draws it: its marks, its links and the crew's
+			     own :emoji: (#2643), which plain text left as their names. -->
+			<p class="text-sm">
+				<MessageText text={announcement.text} preview={false} />
+			</p>
 			<p class="text-muted mt-1 text-xs">
 				{announcement.from} · {formatWhen(announcement.at)}
 			</p>

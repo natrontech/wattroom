@@ -40,12 +40,29 @@ test('the crew Board teaches its first pin and leads with the announcement', asy
 	await page.getByRole('button', { name: 'Pin it', exact: true }).click();
 	await expect(page.getByText('Door code', { exact: true })).toBeVisible();
 
-	// An announcement marked in the crew's text channel leads the Board.
+	// An announcement marked in the crew's text channel leads the Board, and
+	// draws the crew's own emoji as chat does. 409: an earlier run's crew
+	// already has it.
+	const uploaded = await page.evaluate(async (crew) => {
+		const png = Uint8Array.from(
+			atob(
+				'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+			),
+			(c) => c.charCodeAt(0),
+		);
+		const res = await fetch(`/api/crews/${crew}/emoji?name=board_dot`, {
+			method: 'POST',
+			headers: { 'content-type': 'image/png' },
+			body: png,
+		});
+		return res.status;
+	}, opened.crew);
+	expect([201, 409]).toContain(uploaded);
 	const marked = await page.evaluate(async (id) => {
 		const line = await fetch(`/api/channels/${id}/chat`, {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ text: 'Thursday is intervals' }),
+			body: JSON.stringify({ text: 'Thursday is intervals :board_dot:' }),
 		}).then((res) => res.json());
 		const res = await fetch(`/api/channels/${id}/announcement`, {
 			method: 'PUT',
@@ -57,6 +74,7 @@ test('the crew Board teaches its first pin and leads with the announcement', asy
 	expect(marked).toBe(200);
 	await page.reload();
 	await expect(page.getByText('Thursday is intervals')).toBeVisible();
+	await expect(page.getByRole('img', { name: ':board_dot:' })).toBeVisible();
 	await expect(page.getByRole('link', { name: `#${name}` })).toBeVisible();
 });
 
