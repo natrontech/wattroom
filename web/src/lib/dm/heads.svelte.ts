@@ -10,12 +10,15 @@ import { dm } from '$lib/dm/dm.svelte';
 import { announce } from '$lib/messages/announce';
 import { away } from '$lib/notify.svelte';
 import { people } from '$lib/people.svelte';
+import type { StatusLine } from '$lib/protocol';
 
 export interface DmHead {
 	peerId: string;
 	peerName: string;
 	peerAvatarUrl?: string;
 	peerTotalXp?: number;
+	/** Their status line (ADR-0060); null for none. */
+	peerStatusLine?: StatusLine | null;
 	text: string;
 	/** The latest line was an image (#285) — it has no text to preview. */
 	hasImage?: boolean;
@@ -59,6 +62,7 @@ async function poll() {
 			name: head.peerName,
 			avatarUrl: head.peerAvatarUrl,
 			totalXp: head.peerTotalXp,
+			statusLine: head.peerStatusLine,
 		})),
 	);
 	const next = { ...inbound };

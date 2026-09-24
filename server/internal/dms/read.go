@@ -11,6 +11,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/status"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -135,7 +136,10 @@ func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
 		// Peer avatar + lifetime XP (#253) for the thread rows.
 		PeerAvatarURL *string `json:"peerAvatarUrl,omitempty"`
 		PeerTotalXp   int64   `json:"peerTotalXp"`
-		Text          string  `json:"text"`
+		// Their status line (ADR-0060); null for none. Heads are accepted
+		// friends only, which is who sees a status (ADR-0012).
+		PeerStatusLine *protocol.StatusLine `json:"peerStatusLine"`
+		Text           string               `json:"text"`
 		// Whether the latest line was an image, so the list can preview it as
 		// something rather than as a blank (#285).
 		HasImage bool  `json:"hasImage,omitempty"`
@@ -143,12 +147,14 @@ func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
 		At       int64 `json:"at"`
 	}
 	out := make([]headJSON, 0, len(rows))
+	now := time.Now()
 	for _, row := range rows {
 		out = append(out, headJSON{
 			PeerID: store.UUIDString(row.PeerID), PeerName: row.DisplayName,
-			PeerAvatarURL: row.AvatarUrl,
-			PeerTotalXp:   row.TotalXp,
-			Text:          row.Text, HasImage: row.ImageID.Valid,
+			PeerAvatarURL:  row.AvatarUrl,
+			PeerTotalXp:    row.TotalXp,
+			PeerStatusLine: status.Of(row.StatusEmoji, row.StatusEmojiID, row.StatusText, row.StatusExpiresAt, now),
+			Text:           row.Text, HasImage: row.ImageID.Valid,
 			Mine: row.SenderID == me.ID,
 			At:   row.CreatedAt.Time.UnixMilli(),
 		})

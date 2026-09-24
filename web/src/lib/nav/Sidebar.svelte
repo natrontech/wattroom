@@ -48,6 +48,7 @@
 	import { device } from '$lib/device.svelte';
 	import Monitor from '@lucide/svelte/icons/monitor';
 	import UpdateRow from './UpdateRow.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import ReleaseSheet from './ReleaseSheet.svelte';
 	import { updates } from './updates.svelte';
 	import { shellVersion } from '$lib/desktop';
@@ -306,6 +307,7 @@
 								size={20}
 							/>
 							<span class="truncate">{head.peerName}</span>
+							<StatusMark line={head.peerStatusLine} size={12} />
 							{#if dmHeads.unread(head.peerId)}
 								<span class="{UNREAD_DOT} ml-auto"></span>
 							{/if}
