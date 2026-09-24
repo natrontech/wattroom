@@ -17,6 +17,22 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.135] - 2026-09-24
+
+### Fixed
+
+- Self-hosters: the background-job staleness alerts in `deploy/alerts.yml` can
+  fire now. They selected the app's `job` label, which a default Prometheus
+  scrape renames to `exported_job`, so a job that stopped running paged
+  nobody. They select on `exported_job` now. Keep `honor_labels` off in your
+  scrape config, or they go quiet again.
+- A video with a long Korean, Japanese or Chinese title now shows up in the
+  jukebox's "just played" list and counts toward smart shuffle, and it can be
+  saved to a playlist. Before, a long enough title in those scripts was cut
+  mid-character and the play or the save was dropped.
+- Following "See your ride" from your session summary now closes it. Before, coming back to the voice channel afterwards opened the summary again.
+- Your session summary now stays open until you close it. Before, it closed for everyone the moment the coach picked the next workout, taking the "See your ride" link with it. It still goes away once your next session is actually under way. Once you've closed it, it no longer pops back up when the page switches to the voice channel at the end of the session.
+
 ## [2026.09.134] - 2026-09-24
 
 ### Added
@@ -2851,7 +2867,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.134...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.135...HEAD
+[2026.09.135]: https://github.com/natrontech/wattroom/compare/2026.09.134...2026.09.135
 [2026.09.134]: https://github.com/natrontech/wattroom/compare/2026.09.133...2026.09.134
 [2026.09.133]: https://github.com/natrontech/wattroom/compare/2026.09.132...2026.09.133
 [2026.09.132]: https://github.com/natrontech/wattroom/compare/2026.09.131...2026.09.132

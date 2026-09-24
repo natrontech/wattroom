@@ -1,1 +1,0 @@
-- Following "See your ride" from your session summary now closes it. Before, coming back to the voice channel afterwards opened the summary again.
