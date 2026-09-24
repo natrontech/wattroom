@@ -29,6 +29,7 @@
 	import { quiet } from './crews';
 	import { crewLive, livePulse } from './crew-live.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { goto } from '$app/navigation';
 	import { presence } from '$lib/presence.svelte';
 	import Check from '@lucide/svelte/icons/check';
@@ -168,8 +169,9 @@
 			size={24}
 		/>
 		<span
-			class="font-display min-w-0 flex-1 truncate text-[15px] leading-5 font-bold"
-			>You</span
+			class="font-display flex min-w-0 flex-1 items-center gap-1.5 text-[15px] leading-5 font-bold"
+			><span class="truncate">You</span>
+			<StatusMark line={account.me?.statusLine} size={14} /></span
 		>
 	{/snippet}
 	<!-- Always a switch while there is a crew to switch to: You is an entry
@@ -229,7 +231,10 @@
 						avatarUrl={account.me?.avatarUrl}
 						size={20}
 					/>
-					<span class="min-w-0 flex-1 truncate">You</span>
+					<span class="flex min-w-0 flex-1 items-center gap-1.5"
+						><span class="truncate">You</span>
+						<StatusMark line={account.me?.statusLine} size={12} /></span
+					>
 					<span class="text-muted shrink-0 text-[11px]">your own pages</span>
 					{#if !crew}<Check size={13} class="text-muted shrink-0" />{/if}
 				</button>
