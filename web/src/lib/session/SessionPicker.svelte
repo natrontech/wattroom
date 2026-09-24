@@ -49,11 +49,13 @@
 		gameRunning?: boolean;
 		/** Absent when this picker only plans: no voice channel to start it in. */
 		onStart?: (workout: Workout) => void;
+		/** Resolves to the server's refusal, which the picker shows under the
+		 *  when field (#2613); resolves to nothing once the plan is made. */
 		onPlan: (
 			name: string,
 			json: string,
 			startsAtIso: string,
-		) => void | Promise<void>;
+		) => void | string | Promise<void | string>;
 		/** Absent hides the Games tab — games are a voice channel's, not a calendar's. */
 		onStartGame?: (id: string) => void;
 		/** Where a plan runs, beside when (#2572): the crew's Schedule offers
@@ -160,6 +162,18 @@
 	});
 
 	let planAt = $state(nextHourInput());
+	// A refused time is answered beside the field (errors.md), for as long as
+	// it is still the time chosen: picking another one is the rider's answer.
+	let refused = $state<{ at: string; message: string } | null>(null);
+	async function planIt(workout: Workout) {
+		const at = planAt;
+		const message = await onPlan(
+			workout.name,
+			JSON.stringify(workout),
+			new Date(at).toISOString(),
+		);
+		refused = message ? { at, message } : null;
+	}
 </script>
 
 <button
@@ -364,17 +378,17 @@
 								</div>
 								{@render where?.()}
 								<button
-									onclick={() =>
-										onPlan(
-											picked.workout.name,
-											JSON.stringify(picked.workout),
-											new Date(planAt).toISOString(),
-										)}
+									onclick={() => void planIt(picked.workout)}
 									disabled={busy || !planAt}
 									class="btn btn-primary btn-lg ml-auto shrink-0 disabled:opacity-40"
 									>Plan it</button
 								>
 							</div>
+							{#if refused && refused.at === planAt}
+								<p class="text-danger mt-2 text-xs" role="alert">
+									{refused.message}
+								</p>
+							{/if}
 							<p class="text-muted mt-2 text-xs">
 								The crew hears about it, and it lands in every subscribed
 								calendar.

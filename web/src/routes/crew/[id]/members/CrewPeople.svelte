@@ -8,6 +8,7 @@
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
 	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import {
 		contextMenu,
@@ -138,7 +139,11 @@
 			title={MENU_HINT}
 			{@attach contextMenu(() => personEntries(person))}
 		>
-			<a href="/u/{person.id}" class="shrink-0">
+			<a
+				href="/u/{person.id}"
+				class="shrink-0"
+				{@attach hoverCard(() => person.id)}
+			>
 				<Avatar
 					name={person.displayName}
 					avatarUrl={person.avatarUrl}
@@ -150,6 +155,7 @@
 				<span class="flex items-center gap-1.5">
 					<a
 						href="/u/{person.id}"
+						{@attach hoverCard(() => person.id)}
 						class="hover:text-ink truncate text-sm font-medium hover:underline"
 						>{person.displayName}</a
 					>
@@ -166,9 +172,10 @@
 				</span>
 			</span>
 			{#if person.medals}
-				<!-- The crew's sessions awarded them, lifetime (#1371, #2442). -->
+				<!-- The crew's sessions awarded them, lifetime (#1371, #2442).
+				     `relative` keeps the sr-only word from stretching the page (#2735). -->
 				<span
-					class="text-muted flex shrink-0 items-center gap-1 text-xs tabular-nums"
+					class="text-muted relative flex shrink-0 items-center gap-1 text-xs tabular-nums"
 				>
 					<Award size={13} class="text-neon" />
 					{person.medals}

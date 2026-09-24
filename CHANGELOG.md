@@ -17,6 +17,20 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.138] - 2026-09-24
+
+### Changed
+
+- A crew's text channels are now **chat channels** throughout the app, beside its voice channels, and carry a chat bubble instead of a `#` — in the sidebar, on their pages and on the toast and the OS notification a new line or a DM brings. A voice channel's announcement now links to the chat channel it was marked in, as the Board's does.
+- Your reactions are your own: pick up to eight icons or emoji in Settings → Profile, and they are your mid-ride cheer buttons and the first row of the chat's picker in every crew and DM. Crews no longer set a reaction set, and everyone starts on the stock six.
+
+### Fixed
+
+- Reading a text channel always clears its unread count. When the server's clock ran ahead of the database's, the newest line could stay counted as unread right after you read it.
+- The one-time offer to turn on notifications now also appears under the next session on your crew's Home and on the crew's Schedule. WattRoom opens in your crew, so a rider in a single crew might never reach Home's _What's next_, which used to be the only place it was offered.
+- Reading a conversation on one device now clears its unread mark on your others: a text channel's count goes at once, a direct message's dot within ten seconds. Direct messages used to remember what you read per browser; the first start after upgrading counts every existing conversation as read.
+- The voice strip shows your crewmates' statuses and keeps them current while you're on another page, and the tiles in a voice channel show them too.
+
 ## [2026.09.137] - 2026-09-24
 
 ### Added
@@ -2915,7 +2929,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.137...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.138...HEAD
+[2026.09.138]: https://github.com/natrontech/wattroom/compare/2026.09.137...2026.09.138
 [2026.09.137]: https://github.com/natrontech/wattroom/compare/2026.09.136...2026.09.137
 [2026.09.136]: https://github.com/natrontech/wattroom/compare/2026.09.135...2026.09.136
 [2026.09.135]: https://github.com/natrontech/wattroom/compare/2026.09.134...2026.09.135

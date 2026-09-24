@@ -1,5 +1,6 @@
 import type {
 	ClientMessage,
+	Moved,
 	Poke,
 	RiderMetrics,
 	ChannelEvent,
@@ -79,6 +80,8 @@ export function createChannelLive(address: PlaceAddress) {
 	// Addressed off the tick like pairing: every update is one new request for
 	// this rider's attention, carrying the authenticated sender and server time.
 	let lastPoke = $state<Poke | null>(null);
+	// The crew's owner or an admin moved this rider elsewhere (#2730).
+	let lastMove = $state<Moved | null>(null);
 	// This socket's own public address (#2131), addressed off the tick for a
 	// stronger reason than either of the two above: the tick goes to the whole
 	// channel, and this is the one fact in the channel a rider may see about
@@ -320,6 +323,7 @@ export function createChannelLive(address: PlaceAddress) {
 			heard();
 			const msg = JSON.parse(event.data) as ServerMessage;
 			if (msg.poke) lastPoke = msg.poke;
+			if (msg.moved) lastMove = msg.moved;
 			if (msg.pairing) {
 				// Off the tick by design (#610) — it is addressed to this
 				// rider's sockets, not to the channel.
@@ -447,6 +451,9 @@ export function createChannelLive(address: PlaceAddress) {
 		},
 		get lastPoke() {
 			return lastPoke;
+		},
+		get lastMove() {
+			return lastMove;
 		},
 		/**
 		 * The address this socket reached the server from (#2131). Yours and

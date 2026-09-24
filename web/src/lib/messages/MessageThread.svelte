@@ -13,6 +13,7 @@
 	import { type Snippet } from 'svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { people } from '$lib/people.svelte';
+	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
 	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { friends } from '$lib/friends/friends.svelte';
 	import { statusOf } from '$lib/status';
@@ -340,6 +341,7 @@
 									this={message.fromId ? 'a' : 'span'}
 									href={message.fromId ? `/u/${message.fromId}` : undefined}
 									class="block rounded-full"
+									{@attach hoverCard(() => message.fromId)}
 								>
 									<Avatar
 										name={face?.name ?? message.from}
@@ -358,7 +360,9 @@
 						<span class="min-w-0 flex-1">
 							{#if !grouped}
 								<span class="flex items-baseline gap-2">
-									<span class="min-w-0 truncate text-sm font-medium"
+									<span
+										class="min-w-0 truncate text-sm font-medium"
+										{@attach hoverCard(() => message.fromId)}
 										>{message.from}</span
 									>
 									<StatusMark

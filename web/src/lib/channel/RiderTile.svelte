@@ -8,6 +8,9 @@
 	} from '$lib/context-menu.svelte';
 	import { wkg } from '$lib/format';
 	import { personMenu } from '$lib/person-menu';
+	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 	import ScreenShare from '@lucide/svelte/icons/screen-share';
 	import Drum from '@lucide/svelte/icons/drum';
@@ -157,7 +160,12 @@
 
 	<!-- Name and voice state, top-left; kept off the power bar's edge. -->
 	<div class="absolute top-2 left-2.5 flex max-w-[62%] items-center gap-1.5">
-		<span class="text-ink truncate text-sm font-semibold">{rider.name}</span>
+		<span
+			class="text-ink truncate text-sm font-semibold"
+			{@attach hoverCard(() => rider.id)}>{rider.name}</span
+		>
+		<!-- Their status (ADR-0060): the emoji, the words on hover. -->
+		<StatusMark line={people.face(rider.id)?.statusLine} size={14} />
 		{#if rider.eliminated}
 			<!-- Knocked out of the running game (#1590): computed for every
 			     tile and drawn by none. -->

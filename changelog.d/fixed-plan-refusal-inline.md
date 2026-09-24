@@ -1,0 +1,1 @@
+- When the server refuses a time you chose for a planned session, or for moving one, the reason now shows right under the time field instead of in a toast over the picker. It goes away once you pick another time.

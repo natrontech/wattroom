@@ -341,6 +341,17 @@ type Poke struct {
 // button.
 const PokeCooldownSeconds = 10
 
+// Moved tells a rider's sockets in one voice channel that the crew's owner or
+// an admin moved them into another (#2730), Discord's drag. The client goes
+// there the way a sidebar click would, and the call comes along.
+type Moved struct {
+	// The voice channel they now belong in, and its name for the toast.
+	Channel string `json:"channel"`
+	Name    string `json:"name"`
+	// Who moved them.
+	By string `json:"by"`
+}
+
 // AwayState is a rider stepping out (#706) — the Lounge's button, never a
 // timer: being off the bike is not being away, and a coach watching the stage
 // is present and not pedalling.
@@ -770,6 +781,7 @@ type ServerMessage struct {
 	Error   *Error         `json:"error,omitempty"`
 	Pairing *SensorPairing `json:"pairing,omitempty"`
 	Poke    *Poke          `json:"poke,omitempty"`
+	Moved   *Moved         `json:"moved,omitempty"`
 	// This socket's own address, sent once on join and to nobody else (#2131).
 	Connection *OwnConnection `json:"connection,omitempty"`
 }

@@ -60,50 +60,6 @@ func (q *Queries) LastLineByChannel(ctx context.Context, channelIds []pgtype.UUI
 	return items, nil
 }
 
-const nextCrewPlan = `-- name: NextCrewPlan :one
-select s.id, s.workout_name, s.starts_at, s.channel_id, coalesce(ch.name, '')::text as channel_name
-from scheduled_sessions s
-left join channels ch on ch.id = s.channel_id
-where s.crew_id = $1
-  and s.starts_at > now() - interval '30 minutes'
-  and s.started_at is null
-  and (s.channel_id is null
-       or exists (select 1 from visible_channels v
-                  where v.channel_id = s.channel_id and v.user_id = $2))
-order by s.starts_at, s.created_at, s.id
-limit 1
-`
-
-type NextCrewPlanParams struct {
-	CrewID pgtype.UUID
-	Viewer pgtype.UUID
-}
-
-type NextCrewPlanRow struct {
-	ID          pgtype.UUID
-	WorkoutName string
-	StartsAt    pgtype.Timestamptz
-	ChannelID   pgtype.UUID
-	ChannelName string
-}
-
-// The crew's next plan the rider may see: one for the whole crew, or one in
-// a channel they may enter — a plan in a private channel is that channel's
-// to show. The grace, the started rule and the tiebreak are ListRoomUpcoming's
-// (#1767, #1905), so "next" names the same plan on every read.
-func (q *Queries) NextCrewPlan(ctx context.Context, arg NextCrewPlanParams) (NextCrewPlanRow, error) {
-	row := q.db.QueryRow(ctx, nextCrewPlan, arg.CrewID, arg.Viewer)
-	var i NextCrewPlanRow
-	err := row.Scan(
-		&i.ID,
-		&i.WorkoutName,
-		&i.StartsAt,
-		&i.ChannelID,
-		&i.ChannelName,
-	)
-	return i, err
-}
-
 const unreadByChannel = `-- name: UnreadByChannel :many
 
 select m.channel_id, count(*)::int as unread

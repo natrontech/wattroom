@@ -12,6 +12,9 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { account } from '$lib/account.svelte';
 	import { people } from '$lib/people.svelte';
+	import { presence } from '$lib/presence.svelte';
+	import { fetchCrew } from '$lib/crew';
+	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
 	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import {
@@ -36,6 +39,30 @@
 	const others = $derived(
 		(conn?.live.tick?.roster ?? []).filter((r) => r.id !== account.me?.id),
 	);
+
+	// The roster carries names and never a status line (ADR-0060); the crew's
+	// people do. Only the channel's own pages read them, and the strip is up
+	// exactly when you are off those pages — so it reads them itself while it
+	// shows, and again on every lobby ping, which is how a changed status
+	// arrives (#2732).
+	// A boolean, so the effect wakes when the strip comes or goes — not on
+	// every tick, which hands `others` a new array each second.
+	const showing = $derived(!!conn && !onLounge && others.length > 0);
+	$effect(() => {
+		const crew = conn?.address.crew;
+		void presence.version;
+		if (!crew || !showing) return;
+		void fetchCrew(crew).then((res) => {
+			if (!res.ok) return;
+			people.learn(
+				res.data.people.map((p) => ({
+					...p,
+					name: p.displayName,
+					statusLine: p.statusLine ?? null,
+				})),
+			);
+		});
+	});
 
 	// Who spoke last, first. Stamped on the rising edge only, so someone who
 	// has been talking for a minute does not keep leapfrogging the person who
@@ -82,6 +109,7 @@
 				     people column offers the same page on click. -->
 				<a
 					href={conn.address.home}
+					{@attach hoverCard(() => rider.id)}
 					title="{rider.name} · back to the Lounge"
 					{@attach contextMenu(() => personMenu(rider.id, goto))}
 					class="bg-surface-raised relative block aspect-[16/10] overflow-hidden rounded {tileFrame(

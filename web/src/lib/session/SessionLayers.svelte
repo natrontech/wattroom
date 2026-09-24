@@ -228,10 +228,11 @@
 			planning = true;
 			try {
 				// Closed only once the server took it (#1766): a refused time used
-				// to leave a toast and a closed picker — the workout and the time
-				// to choose again. The refusal is the toast the channel already shows.
-				if ((await onSchedule(name, json, at)) !== false)
-					layers.setup.open = false;
+				// to leave a closed picker — the workout and the time to choose
+				// again. The refusal goes back to the picker, under the field (#2613).
+				const refusal = await onSchedule(name, json, at);
+				if (refusal) return refusal;
+				layers.setup.open = false;
 			} finally {
 				planning = false;
 			}

@@ -1,1 +1,0 @@
-- Reading a text channel always clears its unread count. When the server's clock ran ahead of the database's, the newest line could stay counted as unread right after you read it.

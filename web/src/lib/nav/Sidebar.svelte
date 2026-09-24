@@ -6,8 +6,8 @@
 	// list — a destination has exactly one home.
 	//
 	// Names, not Discord's icon rail: icons exist because Discord has forty
-	// servers, and ADR-0010 makes this strip the crew's radar — what is live,
-	// who is in voice, what is planned. 48 px cannot say "Sweet Spot, 12 min in".
+	// servers, and ADR-0010 makes this strip the crew's radar — what is live
+	// and who is in voice. 48 px cannot say "Sweet Spot, 12 min in".
 	import Avatar from '$lib/components/Avatar.svelte';
 	import YouPanel from '$lib/nav/YouPanel.svelte';
 	import Logo from '$lib/brand/Logo.svelte';

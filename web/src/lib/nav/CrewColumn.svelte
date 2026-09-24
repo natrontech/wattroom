@@ -36,7 +36,12 @@
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import Video from '@lucide/svelte/icons/video';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
-	import { crewLive, sessionLine, type LiveChannel } from './crew-live.svelte';
+	import {
+		crewLive,
+		sessionLine,
+		type LiveChannel,
+		type LiveOccupant,
+	} from './crew-live.svelte';
 	import NewChannel from './NewChannel.svelte';
 	import { crewPlaces } from './pages';
 	import { railPeople } from './rail-people';
@@ -80,6 +85,71 @@
 	// Who is in a voice channel, spelled out (#2702): one channel open at a
 	// time, so the column never grows by more than one list.
 	let unfolded = $state<string | null>(null);
+
+	// The crew's owner or an admin moves a rider between voice channels
+	// (#2730), Discord's drag: a name onto another channel's row. The name's
+	// menu does the same, for touch and the keyboard (ux.md). A rider who is
+	// pedalling stays put — the server refuses, and the row says so first.
+	let dragging = $state<{ rider: string; from: string } | null>(null);
+	let dropOn = $state<string | null>(null);
+	const RIDING_HINT = 'Riding — they can be moved once they stop pedalling';
+
+	async function move(rider: string, from: string, to: LiveChannel) {
+		const res = await api(`/api/channels/${to.id}/move`, {
+			method: 'POST',
+			json: { rider, from },
+		});
+		if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
+	}
+	function grab(c: LiveChannel, o: LiveOccupant) {
+		if (!admin || voices.length < 2) return {};
+		if (o.riding) return { title: RIDING_HINT };
+		return {
+			draggable: true,
+			title: `drag onto another voice channel to move ${o.name}`,
+			ondragstart: (e: DragEvent) => {
+				dragging = { rider: o.id, from: c.id };
+				e.dataTransfer?.setData('text/plain', o.name);
+				if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+			},
+			ondragend: () => (dragging = dropOn = null),
+		};
+	}
+	function drop(c: LiveChannel) {
+		const over = (e: DragEvent) => {
+			if (!dragging || dragging.from === c.id) return;
+			e.preventDefault();
+			if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+			dropOn = c.id;
+		};
+		return {
+			ondragenter: over,
+			ondragover: over,
+			ondragleave: (e: DragEvent) => {
+				const into = e.relatedTarget as Node | null;
+				if (!(e.currentTarget as Node).contains(into) && dropOn === c.id)
+					dropOn = null;
+			},
+			ondrop: (e: DragEvent) => {
+				e.preventDefault();
+				if (dragging && dragging.from !== c.id)
+					void move(dragging.rider, dragging.from, c);
+				dragging = dropOn = null;
+			},
+		};
+	}
+	function occupantMenu(c: LiveChannel, o: LiveOccupant): MenuEntry[] {
+		if (!admin) return [];
+		return voices
+			.filter((v) => v.id !== c.id)
+			.map((v) => ({
+				label: `Move to ${v.name}`,
+				icon: ArrowRight,
+				disabled: o.riding,
+				hint: o.riding ? 'riding' : undefined,
+				onSelect: () => void move(o.id, c.id, v),
+			}));
+	}
 
 	let creating = $state<'text' | 'voice' | null>(null);
 	$effect(() => {
@@ -246,7 +316,12 @@
 			{@const people = railPeople(c.occupants?.map((o) => o.name))}
 			{@const inVoice = c.occupants?.some((o) => o.voice)}
 			{@const open = unfolded === c.id && people.shown.length > 0}
-			<li>
+			<li
+				{...drop(c)}
+				class="rounded {dropOn === c.id
+					? 'bg-neon/15 ring-neon/60 ring-1'
+					: ''}"
+			>
 				<div class="flex items-center">
 					{@render row(c)}
 					{#if people.shown.length}
@@ -288,7 +363,11 @@
 					<ul aria-label="Who is in {c.name}" class="pb-1">
 						{#each c.occupants ?? [] as o (o.id)}
 							<li
-								class="text-muted flex items-center gap-1.5 truncate px-2 py-0.5 pl-8 text-xs"
+								{...grab(c, o)}
+								{@attach contextMenu(() => occupantMenu(c, o))}
+								class="text-muted flex items-center gap-1.5 truncate px-2 py-0.5 pl-8 text-xs {admin
+									? 'cursor-grab'
+									: ''}"
 							>
 								<span class="min-w-0 flex-1 truncate">{o.name}</span>
 								{#if o.riding}<span class="text-watt shrink-0"
@@ -321,7 +400,12 @@
 							title={people.label}
 						>
 							{#each c.occupants?.slice(0, people.shown.length) ?? [] as o, i (o.id)}
-								<span class="truncate">{i > 0 ? ', ' : ''}{o.name}</span>
+								{#if i > 0}<span class="shrink-0">,&nbsp;</span>{/if}
+								<span
+									{...grab(c, o)}
+									{@attach contextMenu(() => occupantMenu(c, o))}
+									class="truncate">{o.name}</span
+								>
 								<StatusMark line={faces.face(o.id)?.statusLine} size={9} />
 							{/each}
 							{#if people.more > 0}<span class="shrink-0"

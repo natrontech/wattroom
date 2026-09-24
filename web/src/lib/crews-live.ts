@@ -45,21 +45,12 @@ export interface LiveLine {
 	at: number;
 }
 
-export interface LivePlan {
-	id: string;
-	workoutName: string;
-	startsAt: string;
-	channelId?: string;
-	channelName?: string;
-}
-
 export interface LiveCrew {
 	id: string;
 	name: string;
 	icon?: string;
 	role: CrewRole;
 	channels: LiveChannel[];
-	next?: LivePlan;
 }
 
 export function fetchCrewsLive(

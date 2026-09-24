@@ -1,1 +1,0 @@
-- The one-time offer to turn on notifications now also appears under the next session on your crew's Home and on the crew's Schedule. WattRoom opens in your crew, so a rider in a single crew might never reach Home's _What's next_, which used to be the only place it was offered.
