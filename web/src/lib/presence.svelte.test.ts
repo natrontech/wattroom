@@ -7,13 +7,19 @@ import type { CrewRef } from '$lib/crew-types';
 let fetches = 0;
 const read: string[] = [];
 let world: { crews: CrewRef[]; error?: string } = { crews: [] };
+// Reads held open, answered as the world stood when they were asked, so a
+// test can land them out of order (#2565).
+let hold = false;
+const held: (() => void)[] = [];
 vi.mock('$lib/api', () => ({
 	api: async (path: string) => {
 		fetches += 1;
 		read.push(path);
-		return world.error
+		const answer = world.error
 			? { ok: false, error: { error: 'internal_error', message: world.error } }
 			: { ok: true, data: { crews: world.crews } };
+		if (!hold) return answer;
+		return new Promise((resolve) => held.push(() => resolve(answer)));
 	},
 }));
 // A hand-driven lobby socket, so the test can deliver pings the way the hub
@@ -143,6 +149,8 @@ describe('a feed that stopped answering says so', () => {
 	afterEach(() => {
 		presence.stop();
 		world = { crews: [] };
+		hold = false;
+		held.length = 0;
 	});
 
 	it('reads the crew list', async () => {
@@ -185,5 +193,34 @@ describe('a feed that stopped answering says so', () => {
 		presence.reload();
 		await vi.waitFor(() => expect(fetches).toBeGreaterThan(seen));
 		expect(presence.stale).toBe(false);
+	});
+
+	// A read already on its way when the feed starts refusing lands after the
+	// refusals asked later — on a loaded machine the refusals come back first.
+	// It answers with the world as it was, and it must not reset the count or
+	// put its old list back: the e2e spec lost its mark exactly that way.
+	it('never lets an older read land over a newer one (#2565)', async () => {
+		const crew: CrewRef = { id: 'c1', name: 'Velvet Hammer', role: 'owner' };
+		world = { crews: [crew] };
+		presence.start();
+		await vi.waitFor(() => expect(presence.loaded).toBe(true));
+
+		hold = true;
+		presence.reload(); // the old world, answering late
+		world = { crews: [], error: 'The crews could not be loaded.' };
+		presence.reload();
+		presence.reload();
+		expect(held).toHaveLength(3);
+
+		// Two refusals land in the order they were asked: two in a row.
+		held[1]();
+		held[2]();
+		await vi.waitFor(() => expect(presence.stale).toBe(true));
+
+		// Then the old read.
+		held[0]();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(presence.stale).toBe(true);
+		expect(presence.error).toBe('The crews could not be loaded.');
 	});
 });
