@@ -5,8 +5,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
+	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 // The sidebar's one fetch (#2444).
@@ -166,5 +169,51 @@ func TestAnUnreadChannelCarriesItsLastLine(t *testing.T) {
 	}
 	if got := lastOf("alice"); got["general"] != nil {
 		t.Errorf("after reading, alice's general.last = %v, want none", got["general"])
+	}
+}
+
+// Where the name goes, the status goes (ADR-0060, #2745): every occupant of
+// a voice row carries theirs, and one that has cleared, or was never set,
+// reads as none.
+func TestVoiceOccupantsCarryTheirStatus(t *testing.T) {
+	h := setup(t)
+	live := &fakeLive{present: map[string]protocol.ChannelPresence{}}
+	h.svc.SetLive(live)
+	cave := h.create(t, "voice", "Cave", false)
+	id := func(who string) string { return store.UUIDString(h.users.ByToken[who].ID) }
+	live.present[cave] = protocol.ChannelPresence{
+		Riders:   []string{"alice", "bob", "dave"},
+		RiderIDs: []string{id("alice"), id("bob"), id("dave")},
+	}
+	set := func(who, emoji, text string, expires time.Time) {
+		t.Helper()
+		if err := h.store.Queries.SetUserStatus(t.Context(), db.SetUserStatusParams{
+			ID: h.users.ByToken[who].ID, Emoji: &emoji, Text: &text,
+			ExpiresAt: pgtype.Timestamptz{Time: expires, Valid: !expires.IsZero()},
+		}); err != nil {
+			t.Fatalf("status %s: %v", who, err)
+		}
+	}
+	set("alice", "🚴", "Base miles", time.Time{})
+	set("dave", "🌴", "Away till Monday", time.Now().Add(-time.Hour))
+
+	occupants, _ := channelsOf(h.liveCrew(t, "bob"))["Cave"]["occupants"].([]any)
+	got := map[string]any{}
+	for _, o := range occupants {
+		row, _ := o.(map[string]any)
+		line, present := row["statusLine"]
+		if !present {
+			t.Fatalf("%v carries no statusLine key — a cleared status would never clear", row["name"])
+		}
+		got[row["name"].(string)] = line
+	}
+	alice, _ := got["alice"].(map[string]any)
+	if alice["emoji"] != "🚴" || alice["text"] != "Base miles" {
+		t.Errorf("alice's status reads %v, want 🚴 Base miles", got["alice"])
+	}
+	for _, who := range []string{"bob", "dave"} {
+		if got[who] != nil {
+			t.Errorf("%s's status reads %v, want none", who, got[who])
+		}
 	}
 }

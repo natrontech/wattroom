@@ -38,3 +38,10 @@ where e.id = $1
   and exists (select 1 from users u
               where u.status_emoji_id = e.id
                 and (u.status_expires_at is null or u.status_expires_at > now()));
+
+-- name: StatusLinesOf :many
+-- These riders' statuses in one read (#2745): the sidebar's people in a
+-- crew's voice channels, where the name goes and so the status goes.
+select id, status_emoji, status_emoji_id, status_text, status_expires_at
+from users
+where id = any(sqlc.arg(ids)::uuid[]);

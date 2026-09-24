@@ -54,6 +54,48 @@ func (q *Queries) SetUserStatus(ctx context.Context, arg SetUserStatusParams) er
 	return err
 }
 
+const statusLinesOf = `-- name: StatusLinesOf :many
+select id, status_emoji, status_emoji_id, status_text, status_expires_at
+from users
+where id = any($1::uuid[])
+`
+
+type StatusLinesOfRow struct {
+	ID              pgtype.UUID
+	StatusEmoji     *string
+	StatusEmojiID   pgtype.UUID
+	StatusText      *string
+	StatusExpiresAt pgtype.Timestamptz
+}
+
+// These riders' statuses in one read (#2745): the sidebar's people in a
+// crew's voice channels, where the name goes and so the status goes.
+func (q *Queries) StatusLinesOf(ctx context.Context, ids []pgtype.UUID) ([]StatusLinesOfRow, error) {
+	rows, err := q.db.Query(ctx, statusLinesOf, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []StatusLinesOfRow
+	for rows.Next() {
+		var i StatusLinesOfRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.StatusEmoji,
+			&i.StatusEmojiID,
+			&i.StatusText,
+			&i.StatusExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const wearableCrewEmoji = `-- name: WearableCrewEmoji :one
 select e.name
 from crew_emoji e
