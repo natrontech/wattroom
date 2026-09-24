@@ -1,1 +1,0 @@
-- **Your friends' statuses in messages.** A conversation's header shows the other rider's status, and the message list shows their status emoji beside their name.
