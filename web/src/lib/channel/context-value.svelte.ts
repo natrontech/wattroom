@@ -49,12 +49,13 @@ export interface ChannelShellProps {
 	 *  answers need — an RSVP pings nobody, so the card asks for its own. */
 	plan?: ChannelContext['plan'];
 	onPlanChanged?: () => void;
-	/** Resolves false when the server refused — the picker stays open (#1766). */
+	/** Resolves to the server's refusal — the picker stays open and shows it
+	 *  under the when field (#1766, #2613). */
 	onSchedule: (
 		name: string,
 		json: string,
 		startsAt: string,
-	) => Promise<boolean> | boolean | void;
+	) => Promise<string | void> | string | void;
 }
 
 type Connection = ReturnType<typeof channelConnection.join>;

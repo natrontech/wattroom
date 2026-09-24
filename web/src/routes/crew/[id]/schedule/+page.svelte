@@ -147,11 +147,9 @@
 		});
 		busy = false;
 		// Closed only once the server took it (#1766): a refused time keeps
-		// the workout and the time chosen.
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
+		// the workout and the time chosen, and the picker says why under the
+		// field (#2613).
+		if (!res.ok) return res.error.message;
 		picking = false;
 		await reload();
 	}
@@ -177,6 +175,10 @@
 
 	let movingId = $state<string | null>(null);
 	let moveAt = $state('');
+	// Beside the field while it still holds the refused time (#2613).
+	let moveRefused = $state<{ id: string; at: string; message: string } | null>(
+		null,
+	);
 	async function move(entry: CrewPlan) {
 		busy = true;
 		const res = await moveCrewPlan(
@@ -186,7 +188,7 @@
 		);
 		busy = false;
 		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
+			moveRefused = { id: entry.id, at: moveAt, message: res.error.message };
 			return;
 		}
 		movingId = null;
@@ -438,6 +440,11 @@
 									>Move to this time</button
 								>
 							</div>
+							{#if moveRefused?.id === entry.id && moveRefused.at === moveAt}
+								<p class="text-danger mt-2 text-xs" role="alert">
+									{moveRefused.message}
+								</p>
+							{/if}
 						{/if}
 						<div class="mt-3">
 							<WorkoutPreview
