@@ -110,3 +110,45 @@ test("a text channel's reaction picker leads with the crew's set", async ({
 		await patch([]);
 	}
 });
+
+test("a voice channel cheers with the crew's own emoji from the picker", async ({
+	riders,
+	channels,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+
+	const a = await riders(A);
+	const opened = await channels.open(a, `Crew Emoji ${Date.now() % 100000}`);
+	// 409: the rider's crew outlives the run and already has it.
+	const uploaded = await a.evaluate(async (crew) => {
+		const png = Uint8Array.from(
+			atob(
+				'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+			),
+			(c) => c.charCodeAt(0),
+		);
+		const res = await fetch(`/api/crews/${crew}/emoji?name=cheer_dot`, {
+			method: 'POST',
+			headers: { 'content-type': 'image/png' },
+			body: png,
+		});
+		return res.status;
+	}, opened.crew);
+	expect([201, 409]).toContain(uploaded);
+
+	await a.goto(voicePath(opened));
+	// Not in the four: the stock set is all icons (#2692).
+	await a
+		.getByRole('button', { name: 'More reactions', exact: true })
+		.click({ timeout: 15_000 });
+	const picker = a.getByRole('dialog', { name: 'Pick an emoji' });
+	await picker
+		.getByRole('button', { name: ':cheer_dot:', exact: true })
+		.click();
+	await expect(picker).toHaveCount(0);
+	// It lands as a cheer, drawn as the crew's picture.
+	await expect(a.locator('.cheer img[src*="/emoji/"]')).toBeVisible();
+});
