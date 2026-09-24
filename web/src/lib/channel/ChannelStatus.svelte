@@ -239,7 +239,8 @@
 					<span>
 						<span class="font-medium">The session is paused.</span>
 						<span class="text-muted"
-							>Targets are released — spin easy until the coach resumes.</span
+							>Targets are released — spin easy until {shared.coachName ||
+								'the coach'} resumes.</span
 						>
 					</span>
 				</p>
