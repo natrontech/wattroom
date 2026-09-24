@@ -1,6 +1,7 @@
 package playlists
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -40,5 +41,20 @@ func TestRecentPlaysBothKinds(t *testing.T) {
 	// Another crew remembers nothing of this one (privacy is architecture).
 	if other := h.svc.Recent(ctx, h.crew(t, "alice").voice(), 5); len(other) != 0 {
 		t.Fatalf("another crew's recent = %+v, want none", other)
+	}
+}
+
+// A title the hub clipped to 200 runes is 600 bytes of hangul; cut at 200
+// bytes it ended mid-rune and Postgres refused the row (#2681).
+func TestRecentKeepsALongCJKTitle(t *testing.T) {
+	h := setup(t)
+	voice := h.crew(t, "alice").voice()
+	title := strings.Repeat("ㅋ", 200)
+
+	h.svc.TrackEnded(t.Context(), voice, hub.Play{VideoID: "dQw4w9WgXcQ", Title: title})
+
+	got := h.svc.Recent(t.Context(), voice, 5)
+	if len(got) != 1 || got[0].Title != title {
+		t.Fatalf("recent = %+v, want the play with its whole title", got)
 	}
 }

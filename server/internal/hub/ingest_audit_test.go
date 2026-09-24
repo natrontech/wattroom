@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/workout"
@@ -128,17 +127,6 @@ func TestCheckPickRefusesWhatTheAPIWould(t *testing.T) {
 		if (c.want == "" && got != "") || (c.want != "" && !strings.Contains(got, c.want)) {
 			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
 		}
-	}
-}
-
-// A clipped title stays valid UTF-8 (audit 2026-09-09).
-func TestClipKeepsRunesWhole(t *testing.T) {
-	title := strings.Repeat("音", 300)
-	if got := clip(title, 200); !utf8.ValidString(got) || utf8.RuneCountInString(got) != 200 {
-		t.Fatalf("clip cut a rune: valid=%v runes=%d", utf8.ValidString(got), utf8.RuneCountInString(got))
-	}
-	if got := truncate("音楽室の机", 4); !utf8.ValidString(got) || got != "音楽室の" {
-		t.Fatalf("truncate = %q", got)
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/textx"
 )
 
 // maxSavedTracks bounds one saved playlist — generous next to the live
@@ -71,13 +72,6 @@ func rowTrack(r db.ListPlaylistTracksRow) db.PlaylistTrack {
 	}
 }
 
-func clip(s string, n int) string {
-	if len(s) > n {
-		return s[:n]
-	}
-	return s
-}
-
 // clampSec bounds a pasted ?t= the way the live queue does (jukebox.go's
 // maxSeekSec) — a saved track is validated at write time exactly like a live
 // "add", so nothing accepted here could be refused when it is later queued.
@@ -112,8 +106,8 @@ func trackParams(playlistID pgtype.UUID, position int32, cmd protocol.JukeboxCom
 		}
 		return db.InsertPlaylistTrackParams{
 			PlaylistID: playlistID, Position: position,
-			VideoID: cmd.Tracks[0].VideoID, Title: clip(cmd.Tracks[0].Title, 200),
-			YtPlaylistID: cmd.PlaylistID, YtPlaylistTitle: clip(cmd.PlaylistTitle, 200),
+			VideoID: cmd.Tracks[0].VideoID, Title: textx.Clip(cmd.Tracks[0].Title, 200),
+			YtPlaylistID: cmd.PlaylistID, YtPlaylistTitle: textx.Clip(cmd.PlaylistTitle, 200),
 			Tracks: raw,
 		}, true
 	}
@@ -122,7 +116,7 @@ func trackParams(playlistID pgtype.UUID, position int32, cmd protocol.JukeboxCom
 	}
 	return db.InsertPlaylistTrackParams{
 		PlaylistID: playlistID, Position: position,
-		VideoID: cmd.VideoID, Title: clip(cmd.Title, 200), StartSec: clampSec(cmd.PositionSec),
+		VideoID: cmd.VideoID, Title: textx.Clip(cmd.Title, 200), StartSec: clampSec(cmd.PositionSec),
 		Tracks: []byte("[]"),
 	}, true
 }
@@ -223,7 +217,7 @@ func (s *Service) addTrack(w http.ResponseWriter, r *http.Request, sc scope) {
 		}
 		params = db.InsertPlaylistTrackParams{
 			PlaylistID: p.ID, Position: next, TrackID: library.ID,
-			Title: clip(library.Title, 200), Tracks: []byte("[]"),
+			Title: textx.Clip(library.Title, 200), Tracks: []byte("[]"),
 		}
 	} else if params, ok = trackParams(p.ID, next, cmd); !ok {
 		httpx.WriteError(w, http.StatusBadRequest, "validation_error", "That is not a track this jukebox can play.")

@@ -3,9 +3,9 @@ package hub
 import (
 	"regexp"
 	"strconv"
-	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/textx"
 )
 
 // What a queue entry IS, and what a paste is allowed to turn into one. The
@@ -131,10 +131,10 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 			if !videoIDPattern.MatchString(t.VideoID) {
 				return protocol.JukeboxEntry{}, false, refusalInvalidTrack
 			}
-			tracks = append(tracks, protocol.JukeboxTrack{VideoID: t.VideoID, Title: clip(t.Title, 200)})
+			tracks = append(tracks, protocol.JukeboxTrack{VideoID: t.VideoID, Title: textx.Clip(t.Title, 200)})
 		}
 		entry.PlaylistID = cmd.PlaylistID
-		entry.PlaylistTitle = clip(cmd.PlaylistTitle, 200)
+		entry.PlaylistTitle = textx.Clip(cmd.PlaylistTitle, 200)
 		entry.Tracks = tracks
 		// The deck reads VideoID/Title, never Tracks[Index] — one place
 		// answers "what is on the deck", for a playlist as for a video. A
@@ -156,8 +156,8 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 			return protocol.JukeboxEntry{}, false, refusalTrackCap
 		}
 		entry.TrackID = cmd.TrackID
-		entry.Title = clip(cmd.Title, 200)
-		entry.Artist = clip(cmd.Artist, 200)
+		entry.Title = textx.Clip(cmd.Title, 200)
+		entry.Artist = textx.Clip(cmd.Artist, 200)
 		entry.StartSec = clampSec(cmd.PositionSec)
 		// Display only (#1431): the tracks table caps bpm at 399, and a
 		// value outside that is a client guessing, not a tag.
@@ -178,18 +178,9 @@ func (j *jukebox) newEntry(cmd protocol.JukeboxCommand, addedBy string) (protoco
 	if j.queuedTracks() >= maxQueuedTracks {
 		return protocol.JukeboxEntry{}, false, refusalTrackCap
 	}
-	entry.VideoID, entry.Title = cmd.VideoID, clip(cmd.Title, 200)
+	entry.VideoID, entry.Title = cmd.VideoID, textx.Clip(cmd.Title, 200)
 	entry.StartSec = clampSec(cmd.PositionSec)
 	return entry, true, ""
-}
-
-// clip keeps runes whole: a byte cut mid-rune is invalid UTF-8 that
-// json.Marshal rewrites to U+FFFD on every tick (audit 2026-09-09).
-func clip(s string, n int) string {
-	if utf8.RuneCountInString(s) <= n {
-		return s
-	}
-	return string([]rune(s)[:n])
 }
 
 // queuedTracks counts what the queue actually holds — a playlist by its

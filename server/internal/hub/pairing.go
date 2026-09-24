@@ -24,9 +24,9 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"unicode/utf8"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/textx"
 )
 
 // sensorKinds is the closed set a claim may name. Anything else is dropped:
@@ -55,8 +55,8 @@ func (rm *room) claimSensors(c *client, claim protocol.SensorClaim) bool {
 	if len(claim.Held) > len(sensorKinds) {
 		claim.Held = claim.Held[:len(sensorKinds)]
 	}
-	claim.Tab = truncate(claim.Tab, 64)
-	claim.Device = truncate(claim.Device, 16)
+	claim.Tab = textx.Clip(claim.Tab, 64)
+	claim.Device = textx.Clip(claim.Device, 16)
 
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
@@ -125,14 +125,6 @@ func (rm *room) setDeviceKind(c *client, kind string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	c.deviceKind = kind
-}
-
-func truncate(s string, max int) string {
-	// Runes, not bytes: four CJK characters is the whole device label.
-	if utf8.RuneCountInString(s) <= max {
-		return s
-	}
-	return string([]rune(s)[:max])
 }
 
 // releaseSensors drops everything a leaving socket held, so the rider's other
