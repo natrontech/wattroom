@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -114,6 +115,38 @@ func TestReactionBoundariesInAChannel(t *testing.T) {
 		if code, body := post(t, w.mux, "alice", react, fmt.Sprintf(`{"messageId":%q,"emoji":%q}`, id, emoji)); code != http.StatusOK || body["count"] != float64(1) {
 			t.Fatalf("react %s: %d %v", emoji, code, body)
 		}
+	}
+}
+
+// A read covers every line that existed when it was made, whichever clock
+// stamped them (#2728). A line's created_at comes from Go; while the read took
+// Postgres's now(), a server clock running ahead left the line unread right
+// after the read, and the badge never cleared.
+func TestChannelReadCoversALineStampedAhead(t *testing.T) {
+	w := channelSetup(t)
+	channel := w.channelID(t, w.open)
+	ahead := time.Now().Add(2 * time.Second)
+	if _, err := w.svc.store.Queries.SaveChannelMessage(t.Context(), db.SaveChannelMessageParams{
+		ChannelID: channel, UserID: w.users.ByToken["alice"].ID, Text: "warm-up at 7?",
+		CreatedAt: pgtype.Timestamptz{Time: ahead, Valid: true},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if code, body := post(t, w.mux, "bob", "/api/channels/"+w.open+"/read", ""); code != http.StatusNoContent {
+		t.Fatalf("read: %d %v", code, body)
+	}
+	rows, err := w.svc.store.Queries.UnreadByChannel(t.Context(), db.UnreadByChannelParams{
+		UserID: w.users.ByToken["bob"].ID, ChannelIds: []pgtype.UUID{channel},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("unread after the read: %+v", rows)
+	}
+	// The "N new" divider goes after the line too, not above it.
+	if at := w.readAt(t, "bob", w.open); at < float64(ahead.UnixMilli()) {
+		t.Fatalf("readAt %v is before the line at %d", at, ahead.UnixMilli())
 	}
 }
 
