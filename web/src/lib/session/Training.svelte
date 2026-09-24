@@ -293,10 +293,11 @@
 					<CrewStrip riders={channel.riders.filter((r) => !r.you)} />
 				{/if}
 
-				{#if focus !== 'media'}
+				{#if focus !== 'media' && channel.segments.length > 0}
 					<!-- The horizon: the session is the ground the numbers stand on,
 					     not another card. It gives way to the player when media has
-					     the focus — two grounds is one too many. -->
+					     the focus — two grounds is one too many — and a game's
+					     session has no timeline to draw (#2597). -->
 					<div class="mt-3 h-28">
 						<IntervalGraph
 							segments={channel.segments}
