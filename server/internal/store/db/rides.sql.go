@@ -92,7 +92,7 @@ func (q *Queries) BestLast20mHRIn90Days(ctx context.Context, userID pgtype.UUID)
 
 const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
-       (rides.crew_id is not null or rides.channel_id is not null)::boolean as in_session, shared_at,
+       (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -605,7 +605,11 @@ select r.id, r.user_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.
        r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note,
        r.crew_id, r.channel_id, r.session_id,
        coalesce(c.name, '')::text as crew_name,
-       coalesce(ch.name, '')::text as channel_name
+       coalesce(ch.name, '')::text as channel_name,
+       coalesce(c.owner_id = r.user_id or exists (
+           select 1 from crew_roles cr
+           where cr.crew_id = r.crew_id and cr.user_id = r.user_id and cr.role in ('member', 'admin')
+       ), false)::boolean as crew_member
 from rides r
 left join crews c on c.id = r.crew_id
 left join channels ch on ch.id = r.channel_id
@@ -643,13 +647,16 @@ type GetRideRow struct {
 	SessionID       pgtype.UUID
 	CrewName        string
 	ChannelName     string
+	CrewMember      bool
 }
 
 // The one per-ride blob read ADR-0016 allows: a rider opening a single ride
 // is exactly what the samples are kept for. Owner-scoped, so someone else's
 // ride reads as absent rather than as forbidden. The crew and the channel
 // come along because the detail page names them — empty for a solo ride. The
-// columns are named so none of them is room_id (#2558).
+// columns are named so none of them is room_id (#2558). Whether the rider is
+// still in that crew comes too (#2630): the page names a crew they left and
+// only links one they may enter.
 func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, error) {
 	row := q.db.QueryRow(ctx, getRide, arg.ID, arg.UserID)
 	var i GetRideRow
@@ -679,6 +686,7 @@ func (q *Queries) GetRide(ctx context.Context, arg GetRideParams) (GetRideRow, e
 		&i.SessionID,
 		&i.CrewName,
 		&i.ChannelName,
+		&i.CrewMember,
 	)
 	return i, err
 }
@@ -1112,7 +1120,7 @@ func (q *Queries) ListUserRideWeeks(ctx context.Context, arg ListUserRideWeeksPa
 
 const listUserRides = `-- name: ListUserRides :many
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
-       (rides.crew_id is not null or rides.channel_id is not null)::boolean as in_session, shared_at,
+       (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -1165,6 +1173,9 @@ type ListUserRidesRow struct {
 // cursor the client had rounded down to the second, so every ride inside that
 // second went unread — including ones the client had not been given yet. The
 // row comparison is exact, which is the same shape ListUserWorkouts uses.
+//
+// A ride is a session's while anything names one (#2630): the session id has
+// no foreign key, so it outlives a crew whose deletion sets the other two null.
 func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([]ListUserRidesRow, error) {
 	rows, err := q.db.Query(ctx, listUserRides,
 		arg.UserID,

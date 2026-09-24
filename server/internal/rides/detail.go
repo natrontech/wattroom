@@ -163,6 +163,12 @@ type rideDetailJSON struct {
 	// (#2443); nil for a solo ride.
 	Crew    *placeJSON `json:"crew,omitempty"`
 	Channel *placeJSON `json:"channel,omitempty"`
+	// Ridden in a session, whether or not its crew is still there (#2630):
+	// the list's `room`, so one sentence says where a ride was on both.
+	Room bool `json:"room,omitempty"`
+	// Whether the rider may still enter the crew named above (#2630): a crew
+	// they left, or that banned them, is named and not linked.
+	CrewMember bool `json:"crewMember,omitempty"`
 	// Medals this ride won, SPEC kinds — empty for a solo or unmedalled ride.
 	Medals []medalJSON `json:"medals"`
 	// The per-second series, watts always, hr/cadence when the ride carried
@@ -246,6 +252,8 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		out.Curve = &curve
 	}
 	out.Crew, out.Channel = placeOf(row.CrewID, row.CrewName), placeOf(row.ChannelID, row.ChannelName)
+	out.Room = row.CrewID.Valid || row.ChannelID.Valid || row.SessionID.Valid
+	out.CrewMember = row.CrewMember
 	for _, medal := range medalRows {
 		out.Medals = append(out.Medals, medalJSON{
 			Kind: medal.Kind, RoomName: medal.CrewName,
