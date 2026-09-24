@@ -68,6 +68,23 @@
 	let voice = $state<CrewChannel[]>(untrack(() => data.voice));
 	let error = $state<string | null>(untrack(() => data.error));
 	let errorCode = $state<string | null>(untrack(() => data.errorCode));
+	// The plan a link named (#2608): every surface that shows one links to
+	// its row here. Scrolled by hand, as Home's #sessions is: SvelteKit's hash
+	// scroll moves the window, and the shell scrolls its page column (#1199).
+	const marked = $derived(
+		page.url.hash.startsWith('#plan-') ? page.url.hash.slice(6) : '',
+	);
+	const markedListed = $derived(
+		!!marked && !!plans?.some((plan) => plan.id === marked),
+	);
+	$effect(() => {
+		if (!markedListed) return;
+		queueMicrotask(() =>
+			document
+				.getElementById(`plan-${marked}`)
+				?.scrollIntoView({ block: 'center' }),
+		);
+	});
 	let busy = $state(false);
 
 	async function reload() {
@@ -321,7 +338,11 @@
 			<ul class="space-y-2">
 				{#each plans as entry, i (entry.id)}
 					<li
-						class="panel px-4 py-3 {i === 0 ? 'border-neon/40' : ''}"
+						id="plan-{entry.id}"
+						aria-current={entry.id === marked ? 'true' : undefined}
+						class="panel px-4 py-3 {i === 0
+							? 'border-neon/40'
+							: ''} {entry.id === marked ? 'ring-neon ring-2' : ''}"
 						title={MENU_HINT}
 						{@attach contextMenu(() => entriesOf(entry))}
 					>

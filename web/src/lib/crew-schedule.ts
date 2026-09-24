@@ -134,6 +134,12 @@ export function rotateCrewCalendar(
 export const planDue = (startsAt: string, now = serverNow()): boolean =>
 	Date.parse(startsAt) - now < 15 * 60_000;
 
+/** A plan's own place (#2608): its row on the crew's Schedule, which scrolls
+ *  to and marks it. Every surface that shows a plan links here — the crew's
+ *  Home showed only the next one, so a plan opened from elsewhere was lost. */
+export const planPath = (crewId: string, planId: string) =>
+	`/crew/${crewId}/schedule#plan-${planId}`;
+
 /** Where a plan runs, as its row says it. */
 export const planPlace = (plan: Pick<CrewPlan, 'channelName'>) =>
 	plan.channelName ? `in ${plan.channelName}` : 'no voice channel yet';
