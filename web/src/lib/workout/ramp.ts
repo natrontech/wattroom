@@ -116,6 +116,18 @@ export function rampBlown(
 }
 
 /**
+ * Whether the test is over (#2621): blown, as above, or ridden to its last
+ * step. A rider who holds all 25 is never blown, and the workout running out
+ * is the one ending rampBlown cannot see.
+ */
+export function rampOver(
+	sessionDone: boolean,
+	...blown: Parameters<typeof rampBlown>
+): boolean {
+	return sessionDone || rampBlown(...blown);
+}
+
+/**
  * Has the rider blown? True once power has sat well under target for long enough.
  * The caller passes the trailing samples; keeping the decision pure makes it
  * testable without a trainer.
