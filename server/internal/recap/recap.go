@@ -116,6 +116,12 @@ func Decode(log *slog.Logger, row db.ListCrewRecapsRow) (protocol.SessionRecap, 
 	if row.MyRideID.Valid {
 		rec.RideID = store.UUIDString(row.MyRideID)
 	}
+	if row.SessionID.Valid {
+		rec.SessionID = store.UUIDString(row.SessionID)
+	}
+	if row.ChannelID.Valid {
+		rec.ChannelID = store.UUIDString(row.ChannelID)
+	}
 	if err := json.Unmarshal(row.Riders, &rec.Riders); err != nil {
 		log.Warn("recap riders decode", "err", err, "recap", rec.ID)
 		return rec, false
