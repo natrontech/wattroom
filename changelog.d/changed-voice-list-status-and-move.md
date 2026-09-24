@@ -1,1 +1,0 @@
-- The list of who is in a voice channel now shows each rider's status, and marks anyone who is away. Moving a rider by dragging their name is smoother: the name lands in the new channel as soon as you drop it, the channel it can go to lights up while you drag, and if the move is refused, or the rider doesn't arrive, the name goes back and a message says why.

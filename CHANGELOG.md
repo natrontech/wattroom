@@ -17,6 +17,16 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.141] - 2026-09-24
+
+### Changed
+
+- The list of who is in a voice channel now shows each rider's status, and marks anyone who is away. Moving a rider by dragging their name is smoother: the name lands in the new channel as soon as you drop it, the channel it can go to lights up while you drag, and if the move is refused, or the rider doesn't arrive, the name goes back and a message says why.
+
+### Fixed
+
+- A ride that crashed or never reached your account is now much easier to find. Home and your crew's Home say so until you deal with it, and **Rides** is where you save or download it. The ramp test's setup screen offers it too, and on a solo ride it now sits at the top of the setup screen instead of at the very bottom. **Recover the ride** after a server restart now goes to Rides.
+
 ## [2026.09.140] - 2026-09-24
 
 ### Added
@@ -2958,7 +2968,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.140...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.141...HEAD
+[2026.09.141]: https://github.com/natrontech/wattroom/compare/2026.09.140...2026.09.141
 [2026.09.140]: https://github.com/natrontech/wattroom/compare/2026.09.139...2026.09.140
 [2026.09.139]: https://github.com/natrontech/wattroom/compare/2026.09.138...2026.09.139
 [2026.09.138]: https://github.com/natrontech/wattroom/compare/2026.09.137...2026.09.138
