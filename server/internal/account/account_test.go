@@ -1087,6 +1087,14 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 		t.Fatalf("fail delivery: %v", err)
 	}
 
+	// Her status (ADR-0060), words she wrote.
+	statusText := "Riding outside"
+	if err := h.store.Queries.SetUserStatus(t.Context(), db.SetUserStatusParams{
+		ID: h.id("alice"), Text: &statusText,
+	}); err != nil {
+		t.Fatalf("status: %v", err)
+	}
+
 	files := h.exportFiles(t, "alice")
 
 	// Each new category, and one string from it that only its query could
@@ -1115,7 +1123,7 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 		// (#2089 counted six; sound_pack was a room's column, and never was
 		// one of these.)
 		"profile.json": {"\"friendCode\"", "\"calendarToken\"", "\"unsubscribeToken\"",
-			"\"emailPending\"", "\"avatarUrl\""},
+			"\"emailPending\"", "\"avatarUrl\"", "Riding outside"},
 		// An edited line said so nowhere.
 		"chat.json": {"second draft", "\"editedAt\""},
 		// The FTP the ramp set (ADR-0049).

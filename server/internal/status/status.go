@@ -55,14 +55,14 @@ func (s *Service) Register(mux *http.ServeMux) {
 
 // Of is a rider's status columns as the wire carries them: nil for none, and
 // nil once it has cleared — nothing sweeps the columns, so every read asks.
-func Of(emoji *string, emojiID pgtype.UUID, text *string, expiresAt pgtype.Timestamptz, now time.Time) *protocol.Status {
+func Of(emoji *string, emojiID pgtype.UUID, text *string, expiresAt pgtype.Timestamptz, now time.Time) *protocol.StatusLine {
 	if emoji == nil && text == nil {
 		return nil
 	}
 	if expiresAt.Valid && !expiresAt.Time.After(now) {
 		return nil
 	}
-	out := &protocol.Status{}
+	out := &protocol.StatusLine{}
 	if emoji != nil {
 		out.Emoji = *emoji
 	}
@@ -79,7 +79,7 @@ func Of(emoji *string, emojiID pgtype.UUID, text *string, expiresAt pgtype.Times
 }
 
 // OfUser is Of for a whole users row.
-func OfUser(u db.User, now time.Time) *protocol.Status {
+func OfUser(u db.User, now time.Time) *protocol.StatusLine {
 	return Of(u.StatusEmoji, u.StatusEmojiID, u.StatusText, u.StatusExpiresAt, now)
 }
 

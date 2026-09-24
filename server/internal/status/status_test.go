@@ -69,7 +69,7 @@ func (w world) do(t *testing.T, method, who, path string, body any) *httptest.Re
 }
 
 // statusOf is what every surface would show for the rider right now.
-func (w world) statusOf(t *testing.T, who string) *protocol.Status {
+func (w world) statusOf(t *testing.T, who string) *protocol.StatusLine {
 	t.Helper()
 	u, err := w.st.Queries.GetUser(t.Context(), w.users.ByToken[who].ID)
 	if err != nil {

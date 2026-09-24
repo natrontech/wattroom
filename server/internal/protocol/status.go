@@ -1,9 +1,9 @@
 package protocol
 
-// Status is a rider's own line (ADR-0060): what shows beside their name
+// StatusLine is a rider's own line (ADR-0060): what shows beside their name
 // wherever their name shows. Absent is no status; one whose ExpiresAt has
 // passed is never sent.
-type Status struct {
+type StatusLine struct {
 	// A Unicode emoji, or a crew emoji's `:name:`.
 	Emoji string `json:"emoji,omitempty"`
 	// The crew emoji's picture, at /api/emoji/{EmojiID}. Absent for a Unicode

@@ -1129,11 +1129,11 @@ export interface LobbyPing {
 // source: status.go
 
 /**
- * Status is a rider's own line (ADR-0060): what shows beside their name
+ * StatusLine is a rider's own line (ADR-0060): what shows beside their name
  * wherever their name shows. Absent is no status; one whose ExpiresAt has
  * passed is never sent.
  */
-export interface Status {
+export interface StatusLine {
   /**
    * A Unicode emoji, or a crew emoji's `:name:`.
    */

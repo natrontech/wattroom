@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/status"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -23,6 +26,8 @@ type crewPersonJSON struct {
 	// Medals the crew's sessions awarded them, lifetime — on the Members
 	// page's roster only (#2442), counted by id like the room's (#1371).
 	Medals int `json:"medals,omitempty"`
+	// Their own line (ADR-0060); null for none and on the ban list.
+	StatusLine *protocol.StatusLine `json:"statusLine"`
 }
 
 type crewJSON struct {
@@ -172,6 +177,7 @@ func (s *Service) crewPeople(ctx context.Context, crew db.GetCrewRow, user db.Us
 		return nil, nil, err
 	}
 	people := make([]crewPersonJSON, 0, len(rows))
+	now := time.Now()
 	for _, p := range rows {
 		id := store.UUIDString(p.ID)
 		personRole := "member"
@@ -184,6 +190,7 @@ func (s *Service) crewPeople(ctx context.Context, crew db.GetCrewRow, user db.Us
 		people = append(people, crewPersonJSON{
 			ID: id, DisplayName: p.DisplayName, AvatarURL: p.AvatarUrl,
 			Role: personRole, Since: p.Since.Time.Format("2006-01-02"),
+			StatusLine: status.Of(p.StatusEmoji, p.StatusEmojiID, p.StatusText, p.StatusExpiresAt, now),
 		})
 	}
 	if !administers(role) {
