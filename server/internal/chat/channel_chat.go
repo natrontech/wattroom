@@ -37,6 +37,7 @@ type Channels interface {
 // lines on their next load.
 type Lobby interface {
 	ChannelChanged(channelID string)
+	ReadChanged(userID string)
 }
 
 const noSuchLine = "No such message in this channel."
@@ -378,6 +379,10 @@ func (s *Service) handleChannelRead(w http.ResponseWriter, r *http.Request) {
 func (s *Service) markChannelRead(ctx context.Context, channel db.Channel, me db.User) {
 	if err := s.store.Queries.MarkChannelRead(ctx, db.MarkChannelReadParams{ChannelID: channel.ID, UserID: me.ID}); err != nil {
 		s.log.Warn("mark channel read failed", "err", err, "channel", store.UUIDString(channel.ID))
+		return
+	}
+	if s.lobby != nil {
+		s.lobby.ReadChanged(store.UUIDString(me.ID))
 	}
 }
 

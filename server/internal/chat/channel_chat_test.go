@@ -23,10 +23,18 @@ import (
 
 // A text channel's chat (#2435), behind the real channel gate.
 
-// fakeLobby is the hub's lobby: it remembers which channels it was told moved.
+// fakeLobby is the hub's lobby: it remembers which channels it was told
+// moved, and whose reads.
 type fakeLobby struct {
 	mu    sync.Mutex
 	pings []string
+	reads []string
+}
+
+func (f *fakeLobby) ReadChanged(userID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads = append(f.reads, userID)
 }
 
 func (f *fakeLobby) ChannelChanged(id string) {

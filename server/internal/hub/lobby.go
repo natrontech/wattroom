@@ -151,6 +151,19 @@ func (h *Hub) pingLobbyLocked() {
 	}
 }
 
+// ReadChanged pings one rider's own lobby sockets (#2711): they read
+// something, so their other devices re-fetch the unread counts. Never anyone
+// else's — a read heard by another rider is a read receipt (ADR-0012).
+func (h *Hub) ReadChanged(userID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for c, id := range h.lobby {
+		if id == userID {
+			c.queue("")
+		}
+	}
+}
+
 // ChannelChanged pings every lobby client about one text channel's log
 // (#2435): a client looking at it re-fetches that channel and nothing else.
 // ponytail: every client hears it, crew or not — the id is opaque and the

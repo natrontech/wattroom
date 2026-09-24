@@ -3,6 +3,7 @@ package chat
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
@@ -157,10 +158,21 @@ func TestMarkChannelRead(t *testing.T) {
 	if unread() != 1 || w.readAt(t, "bob", w.open) != 0 {
 		t.Fatalf("before: unread %d readAt %v", unread(), w.readAt(t, "bob", w.open))
 	}
+	w.lobby.mu.Lock()
+	w.lobby.reads = nil
+	w.lobby.mu.Unlock()
 	if code, body := post(t, w.mux, "bob", "/api/channels/"+w.open+"/read", ""); code != http.StatusNoContent {
 		t.Fatalf("read: %d %v", code, body)
 	}
 	if unread() != 0 || w.readAt(t, "bob", w.open) == 0 {
 		t.Fatalf("after: unread %d readAt %v", unread(), w.readAt(t, "bob", w.open))
+	}
+	// Bob's other devices hear it, so their badge clears too (#2711) — and
+	// only Bob's: the read is pinged to its reader, never to the channel.
+	w.lobby.mu.Lock()
+	reads := append([]string(nil), w.lobby.reads...)
+	w.lobby.mu.Unlock()
+	if want := []string{store.UUIDString(bob.ID)}; !slices.Equal(reads, want) {
+		t.Fatalf("read pinged %v, want %v", reads, want)
 	}
 }
