@@ -6,6 +6,7 @@ import type { LiveRider } from '$lib/channel/types';
 import type { Announcement } from '$lib/channels';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { StageSource } from '$lib/channel/stage';
+import type { CrewPlan } from '$lib/crew-schedule';
 
 /**
  * `StageSource` is the minimum `pickStage` needs; the channel adds what the
@@ -116,6 +117,13 @@ export interface ChannelContext {
 	readonly announcement: Announcement | null;
 	/** Take it down. The coach's and the owner's; nothing else offers it. */
 	clearAnnouncement(): void;
+	/**
+	 * The next plan set to run in this voice channel (#2606), from the crew's
+	 * schedule — what the reminder mail and the calendar event link here for.
+	 * Null with none. Re-read on every lobby ping, and on `reloadPlan()`.
+	 */
+	readonly plan: CrewPlan | null;
+	reloadPlan(): void;
 	readonly members: {
 		id: string;
 		displayName: string;

@@ -391,20 +391,25 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 // the pick a plan's start stands for, then the countdown — the pair the
 // pre-M9 client sent over the socket, and a pick alone left the plan spent
 // with nothing running (#2535). The channel's one-session rule answers
-// exactly as it does on the socket — conflict, naming the coach (#2438). A
-// session the rider already has under way there counts as started, so a
-// second press is not refused its own ride; their own pick left idle gives
-// way to the plan. The channel's room is made if nobody is in it yet: the
-// coach is on their way, and a countdown nobody comes to ride ends like any
-// other.
+// exactly as it does on the socket — conflict, naming the coach (#2438). This
+// plan already under way there with the rider coaching counts as started, so
+// a second press is not refused its own ride; a different workout of theirs
+// under way is not, and says so rather than marking a plan that never loaded
+// (#2606). Their own pick left idle gives way to the plan. The channel's room
+// is made if nobody is in it yet: the coach is on their way, and a countdown
+// nobody comes to ride ends like any other.
 func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (code, message string) {
 	rm := h.room(channel)
 	rm.mu.Lock()
 	s := rm.session
 	underWay := s.open() && s.coach == rider.ID && s.phase != "idle"
+	current := s.workoutName
 	rm.mu.Unlock()
-	if underWay {
+	if underWay && current == workoutName {
 		return "", ""
+	}
+	if underWay {
+		return "conflict", "You're already riding " + current + " in this channel — end it before starting " + workoutName + "."
 	}
 	if code, message := rm.control(protocol.Control{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON}, rider, h.now()); code != "" {
 		return code, message

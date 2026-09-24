@@ -4,6 +4,7 @@ import {
 	type CrewAnnouncement,
 	type CrewChannel,
 } from '$lib/channels';
+import { fetchCrewSchedule, type CrewPlan } from '$lib/crew-schedule';
 import {
 	fetchCrew,
 	fetchCrewMembers,
@@ -24,6 +25,9 @@ export interface VoiceChannelData {
 	members: CrewMembers | null;
 	/** Carries its text channel: that is where clearing it goes. */
 	announcement: CrewAnnouncement | null;
+	/** The next plan set to run in this channel (#2606), soonest first on
+	 *  the crew's schedule; null with none, or when the schedule is quiet. */
+	plan: CrewPlan | null;
 	error: string | null;
 	/** not_found is "not yours to enter", and permanent (#1677). */
 	errorCode: string | null;
@@ -38,6 +42,7 @@ export function voiceChannelData(
 	channels: ApiResult<{ channels: CrewChannel[] }>,
 	members: ApiResult<CrewMembers>,
 	announcement: ApiResult<CrewAnnouncement | undefined>,
+	schedule?: ApiResult<{ sessions: CrewPlan[] }>,
 ): VoiceChannelData {
 	const failed = !crew.ok ? crew : !channels.ok ? channels : null;
 	if (failed && !failed.ok)
@@ -46,6 +51,7 @@ export function voiceChannelData(
 			channel: null,
 			members: null,
 			announcement: null,
+			plan: null,
 			error: failed.error.message,
 			errorCode: failed.error.error,
 		};
@@ -61,6 +67,10 @@ export function voiceChannelData(
 		channel: channel || null,
 		members: members.ok ? members.data : null,
 		announcement: announcement.ok ? (announcement.data ?? null) : null,
+		plan:
+			(schedule?.ok &&
+				schedule.data.sessions.find((p) => p.channelId === channelId)) ||
+			null,
 		error: channel ? null : NOT_HERE,
 		errorCode: channel ? null : 'not_found',
 	};
@@ -81,7 +91,7 @@ export async function loadVoiceChannel(
 	channelId: string,
 	fetcher: typeof fetch = fetch,
 ): Promise<VoiceChannelData> {
-	const [crew, channels, members, announcement] = await Promise.all([
+	const [crew, channels, members, announcement, schedule] = await Promise.all([
 		fetchCrew(crewId, fetcher),
 		fetchCrewChannels(crewId, fetcher),
 		fetchCrewMembers(crewId, fetcher),
@@ -89,6 +99,14 @@ export async function loadVoiceChannel(
 			fetcher,
 			`/api/crews/${crewId}/announcement`,
 		),
+		fetchCrewSchedule(crewId, fetcher),
 	]);
-	return voiceChannelData(channelId, crew, channels, members, announcement);
+	return voiceChannelData(
+		channelId,
+		crew,
+		channels,
+		members,
+		announcement,
+		schedule,
+	);
 }

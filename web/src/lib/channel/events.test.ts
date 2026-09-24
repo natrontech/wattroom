@@ -87,10 +87,10 @@ describe('eventText, session lines (#359)', () => {
 		);
 	});
 
-	it('renders the client-derived reminder', () => {
-		expect(eventText(plan({ verb: 'due', actor: '' }))).toContain(
-			'Sweet Spot 2×20 starts at',
-		);
+	// The due line was derived from the room's upcoming list, which went with
+	// M9; the voice channel's plan card says it now (#2606).
+	it('draws nothing for the retired due line', () => {
+		expect(eventText(plan({ verb: 'due', actor: '' }))).toBe('');
 	});
 
 	it('survives a line missing the pieces it wants', () => {

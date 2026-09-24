@@ -23,12 +23,13 @@ const CHANNEL_TO_SESSION: Record<string, { modules: string[]; why: string }> = {
 	'lib/channel/Lounge.svelte': {
 		modules: [
 			'GamePanel.svelte',
+			'PlanCard.svelte',
 			'SessionControls.svelte',
 			'SprintMoment.svelte',
 			'TrainerOverview.svelte',
 			'sensor-status',
 		],
-		why: "the channel's page shows the session running in it, and is where one is started — with the trainer card for a rider still unpaired (#2594)",
+		why: "the channel's page shows the session running in it, and is where one is started — with the trainer card for a rider still unpaired (#2594), and the plan due in it (#2606)",
 	},
 	'lib/channel/connection.svelte.ts': {
 		modules: ['ride.svelte', 'recording.svelte'],
