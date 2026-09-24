@@ -440,7 +440,13 @@ test('the HUD is a second window on our origin, opened and closed by the app', a
 	).toBe(false);
 	// And it is in the corner on purpose, not merely somewhere clear.
 	expect(hud.x).toBe(work.x + 16);
-	expect(hud.y).toBe(work.y + work.height - hud.height - 16);
+	// Within a pixel (#2671): a full macOS Dock rescales as Electron's own
+	// icon comes and goes, and the work area's bottom edge moves 917 → 918
+	// in the half second after launch — the HUD is placed against one and
+	// asserted against the other.
+	expect(
+		Math.abs(hud.y - (work.y + work.height - hud.height - 16)),
+	).toBeLessThanOrEqual(1);
 
 	// The HUD's own renderer runs the app's layout, which reports no ride
 	// there (#1938): a hud(false) from THAT window must not close it.
@@ -573,11 +579,14 @@ test('the tray offers the window, the room the app is in, and quit', async () =>
 
 	// No room yet: the item is absent rather than dead, because pressing it
 	// would open a window on the app's home and look like nothing happened.
+	// Nor is launch at login offered by an unpackaged Mac shell, which would
+	// register the prebuilt Electron.app rather than WattRoom (login-item.js).
+	const loginSwitch =
+		process.platform === 'darwin' ? [] : ['Launch at login', '---'];
 	expect(await trayLabels(app)).toEqual([
 		'Open WattRoom',
 		'---',
-		'Launch at login',
-		'---',
+		...loginSwitch,
 		'Quit WattRoom',
 	]);
 
@@ -619,6 +628,13 @@ test('the tray offers the window, the room the app is in, and quit', async () =>
 });
 
 test('launch at login writes the autostart file, and takes it away again', async () => {
+	// The file is Linux's mechanism. Elsewhere this would be a real login
+	// item for whoever ran the suite — the thing XDG_CONFIG_HOME keeps it
+	// from doing here (#2671).
+	test.skip(
+		process.platform !== 'linux',
+		'the autostart file is Linux-only; macOS and Windows use the OS login items',
+	);
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
