@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	// What a session left behind (ADR-0034): who was here, when they came, and
 	// how long they stayed. The only durable thing a session leaves the crew,
 	// and so the only entry with a border — everything around it stays as
@@ -57,7 +59,10 @@
 							: 'border-muted/60 border'}"
 						aria-hidden="true"
 					></span>
-					<span class="w-16 shrink-0 truncate">{bar.rider}</span>
+					<span class="flex w-16 shrink-0 items-center gap-0.5">
+						<span class="truncate">{bar.rider}</span>
+						<StatusMark line={people.face(bar.id)?.statusLine} size={10} />
+					</span>
 					<!-- The bar is the sentence: where it starts says when they
 					     arrived, without anyone reading a number. -->
 					<span class="bg-muted/10 relative h-2 min-w-0 flex-1 rounded-full">

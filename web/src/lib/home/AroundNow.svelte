@@ -1,4 +1,5 @@
 <script lang="ts">
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	// Home's "Around right now" (#212): the reason to open the app, which is
 	// people — the voice channels in your crews with somebody besides you in
 	// them (#1502), each a door into the channel. It reads the crews' live
@@ -69,8 +70,12 @@
 					<p class="font-display truncate font-bold">
 						{crew.name} · {channel.name}
 					</p>
+					<!-- Who is in there now, each with their status (ADR-0060). -->
 					<p class="text-muted mt-0.5 text-xs">
-						{others.map((o) => o.name).join(', ')}
+						{#each others as o, i (o.id)}{i > 0 ? ', ' : ''}{o.name}<StatusMark
+								line={o.statusLine}
+								size={11}
+							/>{/each}
 						{#if channel.session}· riding now{/if}
 					</p>
 				</div>

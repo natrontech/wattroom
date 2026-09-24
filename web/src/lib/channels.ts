@@ -129,6 +129,8 @@ export interface Announcement {
 	text: string;
 	/** The message's author, not whoever marked it. */
 	from: string;
+	/** The author's id, for their status beside the name (ADR-0060). */
+	fromId?: string;
 	/** ISO — the message's own timestamp, not the marking's. */
 	at: string;
 }

@@ -56,3 +56,36 @@ describe('crewArrivals — a session starting', () => {
 		expect(got.map((a) => a.tag)).toEqual(want);
 	});
 });
+
+describe('crewArrivals — a text channel line', () => {
+	// The notification wears the author's status emoji, as a DM's does (#2758).
+	it("titles the line with its author's status emoji", async () => {
+		const { people } = await import('$lib/people.svelte');
+		people.learn([
+			{
+				id: 'ana',
+				name: 'Ana',
+				statusLine: { emoji: '\u{1F912}', text: 'Out sick' },
+			},
+		]);
+		const chat = {
+			id: 'velvet',
+			name: 'Velvet',
+			channels: [
+				{
+					id: 'lounge',
+					kind: 'text',
+					name: 'Lounge',
+					unread: 1,
+					last: { fromId: 'ana', from: 'Ana', text: 'ride?', at: 5 },
+				},
+			],
+		} as unknown as LiveCrew;
+		const got = crewArrivals([chat], new Set(), {
+			here: '/home',
+			me: 'me',
+			looking: true,
+		});
+		expect(got.map((a) => a.title)).toEqual(['Ana \u{1F912} · Lounge']);
+	});
+});

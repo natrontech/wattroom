@@ -12,7 +12,7 @@
 	import RecoveredNotice from '$lib/ride/RecoveredNotice.svelte';
 	import CrewNow from './CrewNow.svelte';
 	import YourWeek from './YourWeek.svelte';
-	import { fetchCrew, type Crew } from '$lib/crew';
+	import { fetchCrew, learnCrewFaces, type Crew } from '$lib/crew';
 	import {
 		leaveCrewFlow,
 		MAIN_CREW_HINT,
@@ -86,6 +86,8 @@
 	const owner = $derived(crew?.role === 'owner');
 	// The crew's size, not the length of the list you may see (#1135).
 	const members = $derived(crew?.members ?? crew?.people.length ?? 0);
+	// The faces and statuses its surfaces read (ADR-0060).
+	$effect(() => learnCrewFaces(crew?.people));
 
 	// Leaving the crew (#1228, #1236): one call takes the membership and the
 	// private channels you were named into. A confirm, not an undo: rejoining

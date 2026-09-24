@@ -2,6 +2,8 @@ import { api } from '$lib/api';
 import type { LiveCrew } from '$lib/crews-live';
 import type { Arrival } from '$lib/messages/announce';
 import { sessionPath } from '$lib/channel/address';
+import { people } from '$lib/people.svelte';
+import { titleWithStatus } from '$lib/status-line/title';
 
 /** Every session running in the rider's crews, by id. */
 export function runningSessions(crews: LiveCrew[]): Set<string> {
@@ -73,7 +75,8 @@ export function crewArrivals(
 				kind: 'chat',
 				tag: `chat-c:${channel.id}`,
 				at: last.at,
-				title: `${last.from} · ${channel.name}`,
+				// Their status emoji after the name, as a DM's does (#2758).
+				title: `${titleWithStatus(last.from, people.face(last.fromId)?.statusLine)} · ${channel.name}`,
 				body: last.text || (last.hasImage ? 'sent an image' : ''),
 				href,
 				reading: where.looking && where.here === href,

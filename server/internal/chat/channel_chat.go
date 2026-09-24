@@ -47,9 +47,11 @@ const noSuchLine = "No such message in this channel."
 type Announcement struct {
 	MessageID string `json:"messageId"`
 	Text      string `json:"text"`
-	// The message's author, not whoever marked it.
-	From string `json:"from"`
-	At   string `json:"at"`
+	// The message's author, not whoever marked it — by name, and by id for
+	// the status beside it (ADR-0060).
+	From   string `json:"from"`
+	FromID string `json:"fromId"`
+	At     string `json:"at"`
 	// Set on the crew Board's read, which leads with the newest across the
 	// crew's text channels and has to say which one it is from.
 	ChannelID   string `json:"channelId,omitempty"`
@@ -448,7 +450,7 @@ func (s *Service) channelAnnouncement(ctx context.Context, channel db.Channel) *
 		return nil
 	}
 	return &Announcement{
-		MessageID: store.UUIDString(row.ID), Text: row.Text, From: row.FromName,
+		MessageID: store.UUIDString(row.ID), Text: row.Text, From: row.FromName, FromID: store.UUIDString(row.FromID),
 		At: row.CreatedAt.Time.Format(time.RFC3339),
 	}
 }
@@ -536,7 +538,7 @@ func (s *Service) handleCrewAnnouncement(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, Announcement{
-		MessageID: store.UUIDString(row.ID), Text: row.Text, From: row.FromName,
+		MessageID: store.UUIDString(row.ID), Text: row.Text, From: row.FromName, FromID: store.UUIDString(row.FromID),
 		At:        row.CreatedAt.Time.Format(time.RFC3339),
 		ChannelID: store.UUIDString(row.ChannelID), ChannelName: row.ChannelName,
 	})

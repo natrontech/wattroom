@@ -12,7 +12,7 @@
 	import { setCrewRole } from '$lib/crew';
 	import { planCrewSession } from '$lib/crew-schedule';
 	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
-	import { people } from '$lib/people.svelte';
+	import { learnCrewFaces } from '$lib/crew';
 	import { presence } from '$lib/presence.svelte';
 	import { channelAddress } from '$lib/channel/address';
 	import ChannelShell from '$lib/channel/ChannelShell.svelte';
@@ -84,9 +84,7 @@
 			statusLine: p.statusLine,
 		})),
 	);
-	$effect(() => {
-		people.learn(members.map((m) => ({ ...m, name: m.displayName })));
-	});
+	$effect(() => learnCrewFaces(crew?.people));
 
 	// The one moderation a tile's menu reaches here is the crew's ban, which
 	// is the only ban now (#2442); undoing it is lifting it.
