@@ -59,7 +59,13 @@
 	const off = $derived(biasHint ?? NO_TRAINER);
 </script>
 
-<div class="flex items-center gap-6">
+<!-- Wraps rather than overflows (#2620): with bpm and execution on it the row
+     wants ~480 px, and an Android phone rides at 360. The trim then takes a
+     line of its own, still at the right edge and still thumb-sized. -->
+<div
+	data-testid="ride-numbers"
+	class="flex flex-wrap items-center gap-x-6 gap-y-3"
+>
 	<!-- An icon per instrument (#1531): at three metres a glyph is found before
 	     a three-letter label is read, and the rider asked for exactly that. -->
 	{#each [{ label: 'rpm', value: `${cadence}`, tone: '', icon: RefreshCw }, ...(hr > 0 ? [{ label: 'bpm', value: `${hr}`, tone: lthr ? ZONE_TEXT[hrZoneOf(hr, lthr)] : '', icon: Heart }] : []), { label: 'w/kg', value: wkg(watts, kg), tone: '', icon: Scale }, ...(execution !== undefined ? [{ label: 'execution', value: `${Math.round(execution * 100)}%`, tone: '', icon: Target }] : [])] as stat (stat.label)}
