@@ -358,6 +358,10 @@ func TestSessionCancelledSaysItIsNotHappening(t *testing.T) {
 		t.Fatalf("a cancellation still invited the rider to ride it: %q", text)
 	}
 	html := fmt.Sprint(p["html"])
+	// The switch is under Settings, not on the profile (#2611).
+	if !strings.Contains(html, "switched on in your WattRoom settings") {
+		t.Fatalf("html footer does not say where the switch is: %s", html)
+	}
 	if !strings.Contains(html, "It is not happening.") {
 		t.Fatalf("html part does not say the plan is off: %s", html)
 	}
@@ -448,6 +452,10 @@ func TestUnsubscribe(t *testing.T) {
 	mux.ServeHTTP(post, httptest.NewRequestWithContext(t.Context(), "POST", link, nil))
 	if post.Code != 200 {
 		t.Fatalf("POST = %d, want 200", post.Code)
+	}
+	// Back to the page with the switch on it (#2611), not the profile.
+	if !strings.Contains(post.Body.String(), "/settings/notifications") {
+		t.Fatalf("the unsubscribed page does not lead to the notification settings: %q", post.Body.String())
 	}
 	_ = h.store.Pool.QueryRow(t.Context(), "select notify_planned from users where id = $1", h.optIn.ID).Scan(&still)
 	if still {
