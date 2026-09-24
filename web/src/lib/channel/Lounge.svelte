@@ -16,6 +16,7 @@
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
+	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import PlanCard from '$lib/session/PlanCard.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import { needsTrainer } from '$lib/session/sensor-status';
@@ -401,6 +402,17 @@
 				canControl={channel.canControl && !device.spectator}
 				end={() => void endGame(channel)}
 				me={account.me?.id}
+			/>
+		</div>
+	{/if}
+	{#if channel.phase === 'countdown'}
+		<!-- The count-in for whoever stayed here (#2599): the cues play on
+		     every page, and the digit they count belongs beside them. -->
+		<div class="mt-4">
+			<CountdownScreen
+				compact
+				remaining={channel.shared?.countdownRemaining ?? 0}
+				title={channel.shared?.workoutName ?? ''}
 			/>
 		</div>
 	{/if}

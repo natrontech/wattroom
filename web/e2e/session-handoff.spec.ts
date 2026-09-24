@@ -59,7 +59,8 @@ test('the coach hands the session to another rider', async ({
 	await expect(
 		coach.getByRole('button', { name: 'end the session' }),
 	).toHaveCount(0);
+	// The line is the channel's, read on its page: the taker is there, and
+	// the coach is on the ride (#2599).
 	const line = `${COACH} handed the session to ${TAKER}`;
-	await expect(coach.getByText(line)).toBeVisible();
 	await expect(taker.getByText(line)).toBeVisible();
 });

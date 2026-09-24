@@ -20,34 +20,56 @@
 		note?: string;
 		/** Whatever can still be done about it — end it, cancel it. */
 		controls?: Snippet;
+		/** One line, for a page that is not the ride (#2599): the voice
+		 *  channel's lobby, where riders who stayed get the count-in too. */
+		compact?: boolean;
 	}
-	let { remaining, title, note, controls }: Props = $props();
+	let { remaining, title, note, controls, compact = false }: Props = $props();
 </script>
 
-<!-- `flex-1` so the count-in fills the ride page's column, where the
+{#if compact}
+	<div class="flex items-baseline gap-3">
+		<p class="sr-only" role="status">
+			Starting {title || 'the session'} in a moment
+		</p>
+		<span
+			aria-hidden="true"
+			class="font-display text-watt glow-text-strong text-5xl leading-none font-bold tabular-nums"
+			>{remaining}</span
+		>
+		<span class="min-w-0">
+			<span class="eyebrow block">starting</span>
+			<span class="font-display block truncate text-base font-bold"
+				>{title}</span
+			>
+		</span>
+	</div>
+{:else}
+	<!-- `flex-1` so the count-in fills the ride page's column, where the
      surrounding main is a flex-col and a bare `h-full` collapses to the
      digit's own height; ignored by the Training place's grid parent. -->
-<div class="grid h-full min-h-0 flex-1 place-items-center">
-	<!-- Announced once (#1970): the start is the biggest state change in the
+	<div class="grid h-full min-h-0 flex-1 place-items-center">
+		<!-- Announced once (#1970): the start is the biggest state change in the
 	     product, and a reader heard only the cue. The ticking digit is hidden
 	     from it, or the whole block re-reads every second. -->
-	<p class="sr-only" role="status">
-		Starting {title || 'the session'} in a moment
-	</p>
-	<div class="text-center">
-		<p class="eyebrow">starting</p>
-		<p
-			aria-hidden="true"
-			class="font-display text-watt glow-text-strong text-[10rem] leading-none font-bold tabular-nums"
-		>
-			{remaining}
+		<p class="sr-only" role="status">
+			Starting {title || 'the session'} in a moment
 		</p>
-		<p class="font-display mt-4 text-2xl font-bold">{title}</p>
-		{#if note}
-			<p class="text-muted mt-1 text-sm">{note}</p>
-		{/if}
-		{#if controls}
-			<div class="mt-4 flex justify-center">{@render controls()}</div>
-		{/if}
+		<div class="text-center">
+			<p class="eyebrow">starting</p>
+			<p
+				aria-hidden="true"
+				class="font-display text-watt glow-text-strong text-[10rem] leading-none font-bold tabular-nums"
+			>
+				{remaining}
+			</p>
+			<p class="font-display mt-4 text-2xl font-bold">{title}</p>
+			{#if note}
+				<p class="text-muted mt-1 text-sm">{note}</p>
+			{/if}
+			{#if controls}
+				<div class="mt-4 flex justify-center">{@render controls()}</div>
+			{/if}
+		</div>
 	</div>
-</div>
+{/if}
