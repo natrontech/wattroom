@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/dhowden/tag"
 	"github.com/jackc/pgx/v5"
@@ -19,6 +18,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/textx"
 )
 
 func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
@@ -153,10 +153,7 @@ func normalizeTags(in []string) []string {
 	out := make([]string, 0, len(in))
 	seen := make(map[string]bool, len(in))
 	for _, raw := range in {
-		t := strings.ToLower(strings.Join(strings.Fields(raw), " "))
-		if utf8.RuneCountInString(t) > maxTagRunes {
-			t = string([]rune(t)[:maxTagRunes])
-		}
+		t := textx.Clip(strings.ToLower(strings.Join(strings.Fields(raw), " ")), maxTagRunes)
 		if t == "" || seen[t] {
 			continue
 		}
@@ -176,10 +173,4 @@ func toText(v any) string {
 	return ""
 }
 
-func clip(s string) string {
-	s = strings.TrimSpace(s)
-	if utf8.RuneCountInString(s) <= maxTextRunes {
-		return s
-	}
-	return string([]rune(s)[:maxTextRunes])
-}
+func clip(s string) string { return textx.Clip(strings.TrimSpace(s), maxTextRunes) }

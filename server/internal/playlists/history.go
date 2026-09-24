@@ -9,6 +9,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/textx"
 )
 
 // smartShuffleBatch is how many pool tracks one smart-autoplay refill queues
@@ -47,7 +48,7 @@ func (s *Service) TrackEnded(ctx context.Context, channel string, play hub.Play)
 	}
 	videoID, title := "", ""
 	if !track.Valid {
-		videoID, title = play.VideoID, clip(play.Title, 200)
+		videoID, title = play.VideoID, textx.Clip(play.Title, 200)
 	}
 	if err := s.store.Queries.RecordTrackPlay(ctx, db.RecordTrackPlayParams{
 		TrackID: track, ChannelID: channelID, QueuedBy: by, Skipped: play.Skipped,
