@@ -276,14 +276,14 @@ type sessionOpener struct {
 	coaches map[string]string
 }
 
-func (o *sessionOpener) OpenSession(channel string, rider protocol.Rider, _, _ string) (string, string) {
+func (o *sessionOpener) OpenSession(channel string, rider protocol.Rider, _, _ string) (string, string, string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if coach, busy := o.coaches[channel]; busy && coach != rider.ID {
-		return "conflict", coach + " is coaching a session in this channel — one runs here at a time."
+		return "", "conflict", coach + " is coaching a session in this channel — one runs here at a time."
 	}
 	o.coaches[channel] = rider.ID
-	return "", ""
+	return "session-in-" + channel, "", ""
 }
 
 // Starting a plan opens its session in its channel (#2440): a plan that names
@@ -305,7 +305,8 @@ func TestStartingACrewPlan(t *testing.T) {
 		t.Fatalf("a plan with no channel started without one: %d %v", status, body)
 	}
 	status, body := h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", unassigned, "/started"), fmt.Sprintf(`{"channelId":%q}`, cave))
-	if status != http.StatusOK || body["channelId"] != cave {
+	// With the session's id, so the starter lands on the ride (#2599).
+	if status != http.StatusOK || body["channelId"] != cave || body["sessionId"] != "session-in-"+cave {
 		t.Fatalf("start in Pain Cave: %d %v", status, body)
 	}
 	if coach := opener.coaches[cave]; coach != h.userID(t, "bob") {

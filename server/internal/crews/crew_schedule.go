@@ -375,9 +375,11 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	var sessionID string
 	if s.presence != nil {
 		rider := protocol.Rider{ID: store.UUIDString(user.ID), Name: user.DisplayName, Role: role}
-		if code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, string(plan.WorkoutJson)); code != "" {
+		id, code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, string(plan.WorkoutJson))
+		if code != "" {
 			status := http.StatusBadRequest
 			if code == "conflict" {
 				status = http.StatusConflict
@@ -385,6 +387,7 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, status, code, message)
 			return
 		}
+		sessionID = id
 	}
 	n, err := s.store.Queries.StartCrewPlan(r.Context(), db.StartCrewPlanParams{ID: plan.ID, CrewID: crew.ID, ChannelID: channel})
 	if err != nil {
@@ -400,5 +403,7 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 	if s.presence != nil {
 		s.presence.PresenceChanged()
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"channelId": store.UUIDString(channel)})
+	// The session's id too (#2599): the starter goes to the ride, not to the
+	// channel's lobby with the count-in already running.
+	httpx.WriteJSON(w, http.StatusOK, map[string]string{"channelId": store.UUIDString(channel), "sessionId": sessionID})
 }
