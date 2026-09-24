@@ -161,6 +161,18 @@ export function mayActuate(pairing: SensorPairing | undefined): boolean {
 }
 
 /**
+ * Nothing to ride on (#2594): no trainer linked on this screen, and none on
+ * another of the rider's. What a session asks about before its start, and
+ * again beside a countdown the rider did not start.
+ */
+export function needsTrainer(
+	trainer: unknown,
+	pairing: SensorPairing | undefined,
+): boolean {
+	return !trainer && !pairing?.elsewhere?.trainer;
+}
+
+/**
  * Every kind the rider holds on another screen, ready to render (#610) —
  * what the paired-devices grid takes, so the grid itself needs to know
  * nothing about sockets or claims.

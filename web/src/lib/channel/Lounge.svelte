@@ -15,6 +15,8 @@
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
+	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
+	import { needsTrainer } from '$lib/session/sensor-status';
 	import EventLine from '$lib/channel/EventLine.svelte';
 	import { eventText } from '$lib/channel/events';
 
@@ -406,6 +408,12 @@
 		     into the ride for a member arriving mid-session. -->
 		<div class="mt-4 flex flex-wrap items-center gap-2">
 			<SessionControls />
+			{#if needsTrainer(channel.trainer, channel.pairing)}
+				<!-- A planned session's Start now lands here mid-countdown
+				     (#2594), and so does a rider whose coach started it: the
+				     way to pair sits beside the way into the ride. -->
+				<TrainerOverview compact />
+			{/if}
 			{#if !device.spectator}
 				<!-- Not to a phone (#1627): it cannot ride, and Training would
 				     answer "bring a laptop". The coach needs the way in too: a

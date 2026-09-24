@@ -1,0 +1,1 @@
+- Starting a session in a voice channel now asks for your trainer first, the way a solo ride does: the workout picker shows the pairing card and says "Start without a trainer" until one is paired. A rider pulled into someone else's countdown gets the same card on the countdown and in the Lounge.
