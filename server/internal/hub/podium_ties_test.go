@@ -85,7 +85,7 @@ func TestEveryModeIsSampled(t *testing.T) {
 // A session start resets the ride's roster; the game keeps its own (#1581).
 func TestGameRosterSurvivesASessionStart(t *testing.T) {
 	rm := newRoom("roster")
-	if refusal := rm.startGame("watt-golf", gat(0)); refusal != "" {
+	if refusal := rm.startGame("watt-golf", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
 	rm.mu.Lock()
@@ -102,13 +102,13 @@ func TestGameRosterSurvivesASessionStart(t *testing.T) {
 // Two refusals with two different moves for the coach (#1582).
 func TestStartGameNamesItsRefusal(t *testing.T) {
 	rm := newRoom("refuse")
-	if got := rm.startGame("dodgeball", gat(0)); got != refuseNoSuchMode {
+	if got := rm.startGame("dodgeball", gameStarter, gat(0)); got != refuseNoSuchMode {
 		t.Fatalf("unknown mode: %q", got)
 	}
-	if got := rm.startGame("watt-golf", gat(0)); got != "" {
+	if got := rm.startGame("watt-golf", gameStarter, gat(0)); got != "" {
 		t.Fatalf("first start refused: %q", got)
 	}
-	if got := rm.startGame("team-relay", gat(1)); got != refuseGameRunning {
+	if got := rm.startGame("team-relay", gameStarter, gat(1)); got != refuseGameRunning {
 		t.Fatalf("second start: %q", got)
 	}
 	if !rm.endGame(gat(2)) {
@@ -125,7 +125,7 @@ func TestTickBurstsForARouletteWindow(t *testing.T) {
 	if got := rm.tickIntervalLocked(gat(0)); got != tickInterval {
 		t.Fatalf("idle room ticks every %s", got)
 	}
-	if refusal := rm.startGame("sprint-roulette", gat(0)); refusal != "" {
+	if refusal := rm.startGame("sprint-roulette", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
 	// Past the first gap (20–60 s): the next advance arms a window.
@@ -154,7 +154,7 @@ func TestTickBurstsForARouletteWindow(t *testing.T) {
 // end (#1575, #1579).
 func TestFinishedGameIsAnnouncedOnceAndLetGo(t *testing.T) {
 	rm := newRoom("finish")
-	if refusal := rm.startGame("watt-golf", gat(0)); refusal != "" {
+	if refusal := rm.startGame("watt-golf", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
 	sampled, _ := rm.game.(*sampledGame)

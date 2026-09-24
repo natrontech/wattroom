@@ -172,7 +172,7 @@ func TestCollectiveRampEndsOnTheTimeline(t *testing.T) {
 	// advanceGameLocked's `len(gs.Podium) > 0` was false and a game the whole
 	// room had just ridden left the timeline empty (ADR-0022).
 	rm := newRoom("velvet")
-	if refusal := rm.startGame("collective-ramp", gat(0)); refusal != "" {
+	if refusal := rm.startGame("collective-ramp", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
 	rm.mu.Lock()
@@ -218,7 +218,7 @@ func TestEndGameSaysSoOnce(t *testing.T) {
 	// The coach's out, and the only end Team Relay has — relay.done() is
 	// never true, so nothing else was ever going to say the paceline stopped.
 	rm := newRoom("velvet")
-	if refusal := rm.startGame("team-relay", gat(0)); refusal != "" {
+	if refusal := rm.startGame("team-relay", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
 	if !rm.endGame(gat(60)) {
@@ -234,7 +234,7 @@ func TestEndGameSaysSoOnce(t *testing.T) {
 	// A coach clearing a podium that already announced itself is not a second
 	// ending: advanceGameLocked stamped gameDoneAt when it put the line up.
 	rm2 := newRoom("velvet")
-	if refusal := rm2.startGame("collective-ramp", gat(0)); refusal != "" {
+	if refusal := rm2.startGame("collective-ramp", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
 	rm2.mu.Lock()

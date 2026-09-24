@@ -6,7 +6,6 @@ package hub
 import (
 	"context"
 	"log/slog"
-	"maps"
 	"time"
 
 	"github.com/google/uuid"
@@ -196,60 +195,6 @@ func (rm *room) mood(now time.Time) SessionMood {
 	return rm.session.mood(now)
 }
 
-// startGame begins a mode. The refusal names the reason (#1582): a game
-// already running and a mode that does not exist ask different things of
-// the coach. Empty means started.
-func (rm *room) startGame(mode string, now time.Time) string {
-	rm.mu.Lock()
-	defer rm.mu.Unlock()
-	if rm.game != nil && !rm.game.done() {
-		return refuseGameRunning
-	}
-	next := newGameMode(mode, now)
-	if next == nil {
-		return refuseNoSuchMode
-	}
-	rm.game = next
-	rm.gameMode = mode
-	rm.gameDoneAt = time.Time{}
-	// The game's own roster (#1581): the tick merges rm.seen into it, so a
-	// session start — which resets rm.seen for the new ride — does not blank
-	// the names and FTPs the running game scores against.
-	rm.gameRoster = make(map[string]protocol.Rider)
-	return ""
-}
-
-// endGame stops the running mode; false when nothing was running (#1582).
-// It is the coach's out and the only end Team Relay has — relay.done() is
-// never true — so it puts the ending on the timeline itself, unless the game
-// already announced its own: advanceGameLocked stamped gameDoneAt on the tick
-// it put a "won" or "gameEnded" line up, and a coach clearing a finished
-// game's podium is not a second ending.
-func (rm *room) endGame(now time.Time) bool {
-	rm.mu.Lock()
-	defer rm.mu.Unlock()
-	if rm.game == nil {
-		return false
-	}
-	if rm.gameDoneAt.IsZero() {
-		gs := rm.game.state(now)
-		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
-	}
-	rm.game, rm.lastGame, rm.gameDoneAt = nil, nil, time.Time{}
-	return true
-}
-
-// gameRosterLocked is the roster the game scores against: everyone the room
-// has seen this session, remembered across a session start (#1581). Caller
-// holds rm.mu.
-func (rm *room) gameRosterLocked() map[string]protocol.Rider {
-	if rm.gameRoster == nil {
-		rm.gameRoster = make(map[string]protocol.Rider)
-	}
-	maps.Copy(rm.gameRoster, rm.seen)
-	return rm.gameRoster
-}
-
 func (rm *room) armIfRunning(now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
@@ -287,18 +232,14 @@ func (rm *room) control(c protocol.Control, rider protocol.Rider, now time.Time)
 	if !rm.session.apply(c, now) {
 		return "invalid_request", "That does not work right now — the session is in another phase."
 	}
-	// A new start is a new ride: the record must not blend two sessions.
+	// A new start is a new ride.
 	if c.Action == "start" {
-		rm.record.reset()
-		rm.seen = make(map[string]protocol.Rider)
-		rm.seenOrder = nil
-		rm.saved = false
-		rm.voiceMs = make(map[string]int64)
-		// A new session is a new recap: the last one's presence must not
-		// leak into it (ADR-0034).
-		rm.present = make(map[string]*span)
-		rm.presentSince = time.Time{}
-		rm.startedBy = rider.ID
+		rm.resetRunLocked(rider.ID)
+	}
+	// Ending a game's session ends its game (#2597) — the coach's End, or a
+	// crew admin's over a game somebody left running.
+	if c.Action == "end" && rm.session.game != "" {
+		rm.stopGameLocked(now)
 	}
 	return "", ""
 }
@@ -331,11 +272,22 @@ func (rm *room) refusalLocked(action string, rider protocol.Rider) (code, messag
 		if s.open() && s.coach != rider.ID {
 			return "forbidden", coaching + " is coaching this session — only the coach can do that."
 		}
-		// ponytail: a game or a sprint with no session open is anyone's, as
-		// a game never opened a session; tie games to a session if a second
-		// rider ending someone's game becomes a complaint.
+		// A game opens a session now (#2597), so a game with none open is
+		// only a finished one's podium, lingering — anyone may clear it.
 		if !s.open() && (action == "pause" || action == "resume" || action == "handoff") {
 			return "invalid_request", "No session is running in this channel."
+		}
+		// The same guard a pick has: a game opening a session in between
+		// would replace the last one before its rides were handed over.
+		if action == "game" && s.phase == "done" && !rm.saved {
+			return "conflict", "The last session is still being saved — try again in a second."
+		}
+		// A game keeps its own clock and runs its own sprints.
+		if s.open() && s.game != "" && (action == "pause" || action == "resume") {
+			return "invalid_request", "A game keeps its own clock — it does not pause."
+		}
+		if s.open() && s.game != "" && action == "sprint" {
+			return "invalid_request", "A game runs its own sprints."
 		}
 	}
 	return "", ""

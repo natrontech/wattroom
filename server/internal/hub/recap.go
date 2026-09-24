@@ -74,6 +74,18 @@ func (rm *room) sawLocked(now time.Time) {
 	}
 }
 
+// lastPresentLocked is the last tick anybody was seen in the session, or the
+// zero time before anyone was. Caller holds rm.mu.
+func (rm *room) lastPresentLocked() time.Time {
+	var last time.Time
+	for _, s := range rm.present {
+		if s.to.After(last) {
+			last = s.to
+		}
+	}
+	return last
+}
+
 // recapLocked is the session as the card will draw it, ordered by when each
 // rider arrived — which is the order the room filled up in, and the order the
 // bars read down the card. Ties break on name so a map's iteration order

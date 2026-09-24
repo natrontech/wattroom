@@ -106,7 +106,9 @@
 		class="text-muted ml-auto shrink-0 text-sm tabular-nums"
 	>
 		{formatClock(elapsed)}
-		<span class="text-muted-dim">/ {formatClock(total)}</span>
+		<!-- A game's session has no length to count toward (#2597). -->
+		{#if total > 0}<span class="text-muted-dim">/ {formatClock(total)}</span
+			>{/if}
 	</p>
 	{@render aside?.()}
 	{@render controls?.()}

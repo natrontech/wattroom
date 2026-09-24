@@ -29,10 +29,10 @@ type session struct {
 	// Rider id and name of the coach: whoever opened it, until a hand-off.
 	coach, coachName string
 	phase            string
-	workoutName  string
-	workoutJSON  string
-	workoutHash  string
-	totalSeconds int
+	workoutName      string
+	workoutJSON      string
+	workoutHash      string
+	totalSeconds     int
 	// The instant the timeline (or countdown) started, and time carried over
 	// from before the last pause.
 	startedAt time.Time
@@ -44,6 +44,10 @@ type session struct {
 	// A new pick only reaches the timeline through a start, so this counts
 	// workout changes too.
 	run int
+	// The mode a game opened this session for (#2597), empty for a workout.
+	// A game session has no timeline of its own: it runs with no length, does
+	// not pause, and the game's end is its end.
+	game string
 }
 
 func newSession() *session {
@@ -60,6 +64,19 @@ func (s *session) open() bool { return s.id != "" && s.phase != "done" }
 // lets go (#2016).
 func (s *session) begin(id, coach, coachName string) {
 	*s = session{id: id, coach: coach, coachName: coachName, phase: "idle", run: s.run}
+}
+
+// runGame starts the session a game opened (#2597): no countdown — the mode
+// keeps its own clock — and no length, so state() never closes it on time.
+// The workout is the mode's name as an unscored, empty workout: what the
+// rides, the recap and the radar show, and JSON the saver can parse.
+func (s *session) runGame(mode, name string, now time.Time) {
+	s.game = mode
+	s.workoutName, s.workoutJSON = name, gameWorkoutJSON(name)
+	s.workoutHash = workoutHash(s.workoutJSON)
+	s.totalSeconds, s.segments = 0, nil
+	s.phase, s.startedAt, s.banked = "running", now, 0
+	s.run++
 }
 
 // drop closes a session that never started (#2438): an admin clearing a

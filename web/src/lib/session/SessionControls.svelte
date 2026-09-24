@@ -124,8 +124,10 @@
 		>
 	{:else}
 		<div class="border-muted/20 flex gap-1 rounded border p-0.5">
-			{#if running}
-				<!-- Chrome, so the structural accent (ADR-0005: only live data
+			{#if running && !channel.game}
+				<!-- Not in a game (#2597): it keeps its own clock and runs its
+				     own sprints, and the hub refuses both.
+				     Chrome, so the structural accent (ADR-0005: only live data
 				     wears --color-watt; there is no chrome exception). The watts
 				     the sprint produces are what glows. -->
 				<button
