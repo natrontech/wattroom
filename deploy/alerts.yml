@@ -1,7 +1,11 @@
-# Prometheus alert rules for WattRoom. These live here, with the app whose
-# failure modes they describe; the homelab's Prometheus — the only one, per
-# ADR-0006 — mounts this file straight from /opt/wattroom/alerts.yml and owns
-# the routing to a phone (ADR-0019). Same VM, so there is no copy to drift.
+# Prometheus alert rules for WattRoom, kept with the app whose failure modes
+# they describe. Like the rest of deploy/, this is the self-hosting reference:
+# README.md's Monitoring section mounts it into your Prometheus.
+#
+# wattroom.ch does not load this file. Its Prometheus runs on another VM and
+# reads only the rules in janlauber/homelab, which holds a hand-ported copy.
+# That copy drifts: the three job-staleness rules below were never ported
+# (#2679). A rule changed here has to be ported there as well.
 #
 # Every rule below watches a metric that something actually produces. The two
 # synthetic-ride rules that used to sit here watched wattroom_synthetic_ride_*,
@@ -16,6 +20,12 @@
 # port, which has answered 404 for /metrics since #1738. A job still pointed at
 # 8080 makes every rule here unfirable and only WattroomDown says so (#2321).
 # README.md's Monitoring section has the scrape config to copy.
+#
+# That scrape leaves honor_labels off, as Prometheus does by default, so the
+# target's job="wattroom" wins and the app's own `job` label on the
+# background-job metrics arrives as `exported_job`. The job rules select on
+# exported_job; WattroomDown selects on job. alerts.test.yml feeds them series
+# labelled the way a real scrape labels them, and CI runs it with promtool.
 groups:
   - name: wattroom-ride
     rules:
@@ -40,20 +50,20 @@ groups:
       # Strava deliveries, the voice clock, the LiveKit reconciler.
       - alert: WattroomMinuteJobStale
         expr: >-
-          time() - wattroom_job_last_success_timestamp_seconds{job=~"session reminders|strava delivery sweep|voice clock|livekit reconciler"} > 900
+          time() - wattroom_job_last_success_timestamp_seconds{exported_job=~"session reminders|strava delivery sweep|voice clock|livekit reconciler"} > 900
         for: 5m
         labels: { severity: page }
         annotations:
-          summary: 'Background job {{ $labels.job }} has not succeeded in 15 minutes'
+          summary: 'Background job {{ $labels.exported_job }} has not succeeded in 15 minutes'
 
       # The daily sweeps: three days without a success is a stopped ticker,
       # not a quiet day.
       - alert: WattroomDailyJobStale
         expr: >-
-          time() - wattroom_job_last_success_timestamp_seconds{job=~"housekeeping .*"} > 259200
+          time() - wattroom_job_last_success_timestamp_seconds{exported_job=~"housekeeping .*"} > 259200
         labels: { severity: warn }
         annotations:
-          summary: 'Daily sweep {{ $labels.job }} has not succeeded in three days'
+          summary: 'Daily sweep {{ $labels.exported_job }} has not succeeded in three days'
 
       # absent() guard: a scrape that stopped must not read as a healthy
       # service. This one is safe to ship now — the target exists.
@@ -89,7 +99,7 @@ groups:
       # signal exists to remove, so it gets a rule of its own rather than a
       # footnote. Refreshed every 15 minutes; an hour is four missed passes.
       - alert: WattroomTokenSealCountStale
-        expr: time() - wattroom_job_last_success_timestamp_seconds{job="token seal completeness"} > 3600
+        expr: time() - wattroom_job_last_success_timestamp_seconds{exported_job="token seal completeness"} > 3600
         for: 15m
         labels: { severity: warn }
         annotations:
