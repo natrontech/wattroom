@@ -15,6 +15,8 @@
 	import { device } from '$lib/device.svelte';
 	import { useChannel } from '$lib/channel/context';
 	import { controlsFor } from '$lib/session/controls';
+	import Modal from '$lib/components/Modal.svelte';
+	import Crown from '@lucide/svelte/icons/crown';
 	import Pause from '@lucide/svelte/icons/pause';
 	import Play from '@lucide/svelte/icons/play';
 	import Radio from '@lucide/svelte/icons/radio';
@@ -79,6 +81,17 @@
 		);
 		if (ok) channel.control('end');
 	}
+
+	// Whoever the coach may hand the session to (#2636): the context's rule,
+	// so this list and every person menu offer the same people. The button
+	// is the visible way in — a menu is never the only one (ux.md).
+	let handingOff = $state(false);
+	const takers = $derived(
+		channel.riders.flatMap((rider) => {
+			const give = channel.handOffOf(rider.id, rider.name);
+			return give ? [{ ...give, id: rider.id, riding: rider.riding }] : [];
+		}),
+	);
 </script>
 
 <!-- A phone is a spectator, and the roles matrix gives a spectator none of
@@ -145,6 +158,17 @@
 					><Play size={compact ? 18 : 14} />{#if !compact}Resume{/if}</button
 				>
 			{/if}
+			{#if takers.length > 0}
+				<button
+					onclick={() => (handingOff = true)}
+					title="Hand off"
+					aria-label="hand the session off"
+					class="text-muted hover:text-ink flex items-center justify-center gap-1.5 rounded text-sm {compact
+						? 'h-11 w-11'
+						: 'min-h-11 px-4'}"
+					><Crown size={compact ? 18 : 14} />{#if !compact}Hand off{/if}</button
+				>
+			{/if}
 			<button
 				onclick={endSession}
 				title="End"
@@ -167,4 +191,29 @@
 {:else if view === 'held' && !compact}
 	<!-- In place of the Start a member no longer has: who holds the channel. -->
 	<p class="text-muted text-sm">{coachName} is setting up a session here.</p>
+{/if}
+
+{#if handingOff && takers.length > 0}
+	<Modal label="Hand the session off" onclose={() => (handingOff = false)}>
+		<h2 class="font-display text-lg font-bold">Hand the session to…</h2>
+		<p class="text-muted mt-1 text-sm">
+			They get pause, sprint and end. You keep riding.
+		</p>
+		<ul class="mt-4 grid gap-2">
+			{#each takers as taker (taker.id)}
+				<li>
+					<button
+						onclick={() => {
+							taker.onSelect();
+							handingOff = false;
+						}}
+						class="btn btn-secondary btn-lg w-full justify-between"
+						>{taker.name}<span class="text-muted text-xs"
+							>{taker.riding ? 'riding' : 'not riding'}</span
+						></button
+					>
+				</li>
+			{/each}
+		</ul>
+	</Modal>
 {/if}

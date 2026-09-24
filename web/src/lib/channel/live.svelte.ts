@@ -549,6 +549,10 @@ export function createChannelLive(address: PlaceAddress) {
 				},
 			});
 		},
+		/** The coach gives the session to someone in the channel (#2636). */
+		handOff(rider: string) {
+			send({ control: { action: 'handoff', rider } });
+		},
 		close() {
 			closed = true;
 			if (reconnectTimer !== null) clearTimeout(reconnectTimer);

@@ -3,6 +3,7 @@ import { gameCues, golfMoment } from '$lib/session/game-cues';
 import { serverNow } from '$lib/server-clock';
 import { changes } from '$lib/sound/changes';
 import { play, playCountdownTick } from '$lib/sound/cues';
+import { toasts } from '$lib/toast.svelte';
 import {
 	createRideSounds,
 	type RideSoundDeps,
@@ -29,6 +30,8 @@ export interface SoundDeps extends RideSoundDeps {
 	game: () => GameState | null | undefined;
 	/** Your own rider id, for the cues a game addresses to you. */
 	me: () => string | undefined;
+	/** The open session's coach (`coachOf`), undefined while none is. */
+	coach: () => string | undefined;
 }
 
 export function createSessionSounds(deps: SoundDeps) {
@@ -48,6 +51,17 @@ export function createSessionSounds(deps: SoundDeps) {
 			play('fanfare');
 	});
 	$effect(() => heardEnd(deps.phase() ?? 'idle'));
+
+	// The session becoming yours (#2636): handed to you, or passed to you
+	// when its coach left. Only from somebody else — opening one yourself is
+	// your own tap, and says nothing back. The controls appearing are the
+	// visual half; a toast says why they did.
+	const heardCoach = changes<string>((coach, previous) => {
+		if (!coach || coach !== deps.me() || !previous) return;
+		play('handoff');
+		toasts.push("You're coaching the session now.");
+	});
+	$effect(() => heardCoach(deps.coach() ?? ''));
 
 	// The rider's own cues — block, guard, spiral, fault, the sprint and now
 	// the count-in — are the ride's, not the session's (#1792, #1800): a rider

@@ -85,6 +85,7 @@
 					onSelect: () => channel.poke(rider().id),
 				},
 				ban: channel.banOf(rider().id, rider().name),
+				handoff: channel.handOffOf(rider().id, rider().name),
 			}),
 		];
 	}

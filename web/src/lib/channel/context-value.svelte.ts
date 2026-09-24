@@ -85,6 +85,7 @@ export interface ContextDeps {
 
 	/** Actions the shell owns because they need more than the connection. */
 	banOf: (userId: string, name: string) => (() => void) | undefined;
+	handOffOf: ChannelContext['handOffOf'];
 }
 
 export function channelContextValue(deps: ContextDeps): ChannelContext {
@@ -181,5 +182,6 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 			return props.members ?? [];
 		},
 		banOf: (userId, name) => deps.banOf(userId, name),
+		handOffOf: (userId, name) => deps.handOffOf(userId, name),
 	};
 }

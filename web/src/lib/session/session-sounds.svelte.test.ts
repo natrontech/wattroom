@@ -29,6 +29,7 @@ function quiet(over: Partial<SoundDeps> = {}): SoundDeps {
 		block: () => undefined,
 		game: () => null,
 		me: () => 'u1',
+		coach: () => undefined,
 		...over,
 	};
 }
@@ -145,6 +146,24 @@ describe('createSessionSounds', () => {
 		await tick();
 		expect(heard.cues).toEqual([]);
 		game = relay(true);
+		await tick();
+		expect(heard.cues).toEqual(['handoff']);
+		stop();
+	});
+	it('hears the session become yours, and only from somebody else (#2636)', async () => {
+		heard.cues.length = 0;
+		let coach = $state<string | undefined>(undefined);
+		const stop = $effect.root(() => {
+			createSessionSounds(quiet({ coach: () => coach }));
+		});
+		await tick();
+		coach = 'u1'; // you opened it yourself: your own tap
+		await tick();
+		expect(heard.cues).toEqual([]);
+		coach = 'u2'; // you handed it on
+		await tick();
+		expect(heard.cues).toEqual([]);
+		coach = 'u1'; // and it came back
 		await tick();
 		expect(heard.cues).toEqual(['handoff']);
 		stop();

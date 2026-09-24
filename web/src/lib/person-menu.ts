@@ -5,6 +5,7 @@
  */
 import Activity from '@lucide/svelte/icons/activity';
 import BellRing from '@lucide/svelte/icons/bell-ring';
+import Crown from '@lucide/svelte/icons/crown';
 import MessageSquare from '@lucide/svelte/icons/message-square';
 import ShieldBan from '@lucide/svelte/icons/shield-ban';
 import User from '@lucide/svelte/icons/user';
@@ -91,6 +92,8 @@ export function personMenu(
 		friendship?: Friend['status'];
 		/** The crew's ban, passed only where the viewer may ban this person. */
 		ban?: () => void;
+		/** The coach's hand-off, passed only by the coach (#2636). */
+		handoff?: { name: string; onSelect: () => void };
 	} = {},
 ): MenuEntry[] {
 	const riderPage: MenuItem = {
@@ -125,6 +128,13 @@ export function personMenu(
 		: [riderPage, message];
 	if (friend) items.push(friend);
 	if (poke) items.splice(2, 0, poke);
+	// A voice channel's verb too, beside the poke.
+	if (options.handoff && !options.you)
+		items.splice(poke ? 3 : 2, 0, {
+			label: `Hand the session to ${options.handoff.name}`,
+			icon: Crown,
+			onSelect: options.handoff.onSelect,
+		});
 	// After the voice channel's own verbs, before the friendship: the fader is
 	// what you came for mid-ride, but the list still reads person-first.
 	if (options.volume && !options.you)

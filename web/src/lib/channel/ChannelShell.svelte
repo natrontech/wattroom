@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
 	import { account } from '$lib/account.svelte';
+	import { device } from '$lib/device.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { publishHud } from '$lib/hud/feed';
 	import { toasts } from '$lib/toast.svelte';
@@ -117,6 +118,14 @@
 		if (!canManage) return undefined;
 		const role = (props.members ?? []).find((m) => m.id === userId)?.role;
 		return role === 'owner' ? undefined : () => ban(userId, name);
+	}
+	// The coach hands the session to anyone else in the channel (#2636), from
+	// the screen they ride on — a phone is given none of the coach's controls
+	// (docs/SPEC.md roles). Said by the event line once the hub takes it.
+	function handOffOf(userId: string, name: string) {
+		if (!coach || coach !== account.me?.id || userId === coach) return;
+		if (device.spectator) return;
+		return { name, onSelect: () => live.handOff(userId) };
 	}
 
 	const shared = $derived(connection.shared());
@@ -240,6 +249,7 @@
 		block: () => (running ? roster.block?.index : undefined),
 		game: () => live.tick?.game ?? null,
 		me: () => account.me?.id,
+		coach: () => coach,
 	});
 
 	// TV mode and the picker are the session's layers (SessionLayers.svelte):
@@ -270,6 +280,7 @@
 			openTv: () => (layers.tv = true),
 			openPicker: (intent) => layers.openPicker(intent),
 			banOf,
+			handOffOf,
 		}),
 	);
 
@@ -369,6 +380,7 @@
 		onCheer={(emoji) => live.cheer(emoji)}
 		onPoke={(id) => live.poke(id)}
 		{banOf}
+		{handOffOf}
 		elsewhere={elsewhereIn(
 			crewLive.crew(props.address.crew),
 			props.address.channel,

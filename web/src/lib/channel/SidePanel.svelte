@@ -18,6 +18,7 @@
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { BOARD_MARK } from '$lib/channel/presence-marks';
 	import { rosterGroups, type Elsewhere } from '$lib/channel/roster';
+	import type { ChannelContext } from '$lib/channel/context';
 	import { statusOfRider } from '$lib/status';
 	import type { PanelMember, LiveRider } from '$lib/channel/types';
 
@@ -42,6 +43,7 @@
 		onCheer,
 		onPoke,
 		banOf,
+		handOffOf,
 		elsewhere,
 		cheers = STOCK_CHEERS,
 	}: {
@@ -60,6 +62,8 @@
 		onPoke?: (id: string) => void;
 		/** The crew's ban for this person, where the viewer may (ChannelShell). */
 		banOf?: (id: string, name: string) => (() => void) | undefined;
+		/** The coach's hand-off to this person (ChannelShell, #2636). */
+		handOffOf?: ChannelContext['handOffOf'];
 		/** The crew's members in its other voice channels (roster.ts). */
 		elsewhere?: ReadonlyMap<string, Elsewhere>;
 		/** The crew's one reaction vocabulary (#223), icon keys (#447). */
@@ -88,6 +92,7 @@
 				volume: rider.inVoice && !rider.you ? { name: rider.name } : undefined,
 				poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
 				ban: banOf?.(rider.id, rider.name),
+				handoff: handOffOf?.(rider.id, rider.name),
 			}),
 		)}
 	>

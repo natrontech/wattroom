@@ -35,6 +35,11 @@
 	} = $props();
 
 	const channel = useChannel();
+	const menuOf = (rider: LiveRider) =>
+		personMenu(rider.id, goto, {
+			you: rider.you,
+			handoff: channel.handOffOf(rider.id, rider.name),
+		});
 </script>
 
 {#snippet tile(rider: LiveRider, followed: boolean)}
@@ -90,9 +95,7 @@
 			     press on a 10 px label (ux.md). -->
 			<button
 				onclick={() => onFollow(rider.id)}
-				{@attach contextMenu(() =>
-					personMenu(rider.id, goto, { you: rider.you }),
-				)}
+				{@attach contextMenu(() => menuOf(rider))}
 				aria-pressed={followed}
 				title="follow {rider.name}"
 				class="w-44 shrink-0 text-left"
@@ -102,9 +105,7 @@
 			</button>
 		{:else}
 			<div
-				{@attach contextMenu(() =>
-					personMenu(rider.id, goto, { you: rider.you }),
-				)}
+				{@attach contextMenu(() => menuOf(rider))}
 				class="w-44 shrink-0"
 				data-testid="crew-tile"
 			>
