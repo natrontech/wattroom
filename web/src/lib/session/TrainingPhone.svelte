@@ -22,7 +22,7 @@
 	import SessionFlag from '$lib/session/SessionFlag.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import { device } from '$lib/device.svelte';
-	import { followedRider } from '$lib/session/follow';
+	import { crewOf, followedRider } from '$lib/session/follow';
 	import { pictureKey } from '$lib/channel/stage';
 	import { formatClock } from '$lib/format';
 	import { useChannel } from '$lib/channel/context';
@@ -59,15 +59,13 @@
 	const bands = $derived(
 		blockBands(channel.block, followed?.cadence ?? 0, followed?.hr ?? 0),
 	);
-	// Everyone but whoever the instrument is already about — and not yourself
-	// while you are not pedalling: a spectator's own 0 W tile is the one thing
-	// on this screen nobody came to look at.
+	// Everyone, and yourself only while you pedal or your camera is on: a
+	// spectator's own 0 W tile is the one thing on this screen nobody came to
+	// look at, but a self-view is how you know your camera is live (#2655).
 	// The followed rider stays in the strip, pressed (#1627): excluded, the
 	// toggle-off tap had nothing to land on and a phone could never stop
 	// following.
-	const crew = $derived(
-		channel.riders.filter((rider) => !(rider.you && rider.watts === 0)),
-	);
+	const crew = $derived(crewOf(channel.riders, true));
 </script>
 
 <div class="flex h-full min-h-0 flex-col">

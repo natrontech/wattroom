@@ -8,6 +8,7 @@
 	// returns. The player is never overlaid — RMF — so the numbers go below it.
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import CrewStrip from '$lib/session/CrewStrip.svelte';
+	import { crewOf } from '$lib/session/follow';
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
@@ -291,7 +292,7 @@
 				{#if focus !== 'game'}
 					<!-- A game's panel already lists everyone; a second list of the
 					     same people is what the sprint branch refuses too. -->
-					<CrewStrip riders={channel.riders.filter((r) => !r.you)} />
+					<CrewStrip riders={crewOf(channel.riders, false)} />
 				{/if}
 
 				{#if focus !== 'media' && channel.segments.length > 0}

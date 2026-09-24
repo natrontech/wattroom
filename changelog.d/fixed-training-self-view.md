@@ -1,0 +1,1 @@
+- With your camera on, the Training screen now shows your own picture first in the crew strip, mirrored, so you can see you are live and in frame.

@@ -1,8 +1,10 @@
 <script lang="ts">
 	// The crew under the focus slot (ADR-0020): a camera thumb and live watts,
-	// w/kg, rpm and bpm for everyone else in the voice channel. A
-	// group-training surface that shows only your own numbers is a solo app
-	// with a chat window attached.
+	// w/kg, rpm and bpm for everyone in the voice channel. A group-training
+	// surface that shows only your own numbers is a solo app with a chat
+	// window attached. Your own tile, when `crewOf` lets you in, is a mirror
+	// like every call's self-view: raise your left hand and the left side of
+	// the picture moves.
 	//
 	// Fixed-width thumbnails scrolling past the edge, never `flex-1` (#410): a
 	// tile that grows to fill turns one crewmate into a 16:9 slab and starves
@@ -52,7 +54,7 @@
 		{#if channel.videoOf(rider.id)}
 			{#key channel.videoOf(rider.id)}
 				<div
-					class="absolute inset-0"
+					class="absolute inset-0 {rider.you ? '-scale-x-100' : ''}"
 					{@attach (node) => channel.attachVideo(rider.id, node)}
 				></div>
 			{/key}
