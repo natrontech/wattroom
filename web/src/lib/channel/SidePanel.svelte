@@ -20,7 +20,11 @@
 	import { rosterGroups, type Elsewhere } from '$lib/channel/roster';
 	import type { ChannelContext } from '$lib/channel/context';
 	import { statusOfRider } from '$lib/status';
-	import type { PanelMember, LiveRider } from '$lib/channel/types';
+	import {
+		targetState,
+		type PanelMember,
+		type LiveRider,
+	} from '$lib/channel/types';
 
 	// The channel's people, in one column (ADR-0020). Discord's right column is
 	// WHO IS HERE; ours was chat alone, so the roster was legible only from
@@ -130,6 +134,15 @@
 						<Mic size={11} class="text-z4 shrink-0 motion-safe:animate-pulse" />
 					{:else if rider.muted}
 						<MicOff size={11} class="text-muted-dim shrink-0" />
+					{:else if live && rider.inVoice}
+						<!-- Mid-ride the headings split on pedalling, not on voice,
+						     so the row is the only place left that says who can
+						     hear you. -->
+						<Headphones
+							size={11}
+							class="text-muted shrink-0"
+							aria-label="in voice"
+						/>
 					{/if}
 					{#if rider.sounding}
 						<!-- The tile's own drum (#1681): the roster is the other place
@@ -141,10 +154,27 @@
 							title="playing a sound"
 						/>
 					{/if}
-					{#if live && rider.watts > 0 && rider.execution !== undefined}
-						<span class="text-muted shrink-0 text-[10px] tabular-nums"
-							>{Math.round(rider.execution * 100)}%</span
-						>
+					{#if live && rider.watts > 0}
+						{@const now = targetState(rider)}
+						{#if now.has}
+							<!-- Whether they are holding it THIS second, coloured the way
+							     the ride screen's own target reads (Instrument). The bar
+							     below is the session so far, and a spectator had only
+							     that: 0 % beside a tile at 136 W read as broken. -->
+							<span
+								class="shrink-0 text-[10px] tabular-nums {now.inBand
+									? 'text-z4'
+									: 'text-muted'}"
+								title="{rider.name}'s target is {rider.target} W — {now.inBand
+									? 'holding it'
+									: 'off it'} right now">{rider.target} W</span
+							>
+						{/if}
+						{#if rider.execution !== undefined}
+							<span class="text-muted shrink-0 text-[10px] tabular-nums"
+								>{Math.round(rider.execution * 100)}%</span
+							>
+						{/if}
 					{/if}
 				</span>
 				{#if live && rider.watts > 0 && rider.execution !== undefined}
@@ -240,7 +270,7 @@
 							<!-- The bars below had only a hover title to say what they
 							     are (#1558) — the same word the summary and the ride
 							     page use, where a rider can read it. -->
-							<span class="ml-auto">execution</span>
+							<span class="ml-auto">target · execution</span>
 						{/if}
 					</div>
 					<ul class="px-1">

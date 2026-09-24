@@ -72,6 +72,21 @@ export function targetState(rider: Pick<LiveRider, 'watts' | 'target'>) {
 	return { has, band, delta, inBand: has && Math.abs(delta) <= band };
 }
 
+/**
+ * The watts the hub scores another rider against this second (accumulator.go):
+ * the shared plan at their FTP, on their own trim (#795), and nothing while
+ * their guard has released the target (#1796). Without the trim, a rider
+ * riding their plan at 90 % read off target to everyone watching.
+ */
+export function scoredTarget(
+	planned: number,
+	reading?: { bias?: number; released?: boolean },
+): number {
+	if (reading?.released) return 0;
+	const bias = reading?.bias ?? 0;
+	return Math.round(planned * (bias > 0 ? bias : 1));
+}
+
 // The shapes the designed components share with the sidebar (moved from the
 // mockcompat barrel, consolidation sweep 2026-09-09: one import path each).
 /** Presence phases as the designed components speak them. */
