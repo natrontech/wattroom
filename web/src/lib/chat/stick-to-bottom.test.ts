@@ -6,13 +6,17 @@ import { stickToBottom } from '$lib/chat/stick-to-bottom';
 // says how tall the content is, and scrollTop clamps and fires `scroll` the way
 // a real element does.
 
-/** Stand-in for the browser's observer, so a panel resize can be driven. */
+/** Stand-in for the browser's observer, so a resize can be driven. */
 let resize: () => void = () => {};
+let watched: Element[] = [];
 class FakeResizeObserver {
 	constructor(private cb: () => void) {
+		watched = [];
 		resize = () => this.cb();
 	}
-	observe() {}
+	observe(target: Element) {
+		watched.push(target);
+	}
 	disconnect = vi.fn();
 }
 vi.stubGlobal('ResizeObserver', FakeResizeObserver);
@@ -82,13 +86,16 @@ describe('stickToBottom (#291)', () => {
 		expect(node.scrollTop).toBe(340);
 	});
 
-	it('follows an image that only takes up height once it decodes', () => {
+	it('watches the content, which grows after its line lands (#2686)', () => {
+		// A picture decoding or a link's card arriving resizes the content, not
+		// the box — only an observer on the content hears it before the frame
+		// is painted.
 		const { node, box } = log(400);
+		const content = node.appendChild(document.createElement('div'));
 		stickToBottom(node);
-		const image = document.createElement('img');
-		node.appendChild(image);
+		expect(watched).toContain(content);
 		box.content = 500;
-		image.dispatchEvent(new Event('load'));
+		resize();
 		expect(node.scrollTop).toBe(400);
 	});
 

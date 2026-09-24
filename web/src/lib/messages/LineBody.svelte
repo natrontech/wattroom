@@ -28,10 +28,9 @@
 </script>
 
 <!-- A line that names you gets the bar — there is no server
-     mention yet, this is "@" plus your first name. Pre-wrap
-     (#2642): a line break the rider typed is theirs to keep. -->
+     mention yet, this is "@" plus your first name. -->
 <span
-	class="text-ink/85 block text-sm wrap-anywhere whitespace-pre-wrap {mention
+	class="text-ink/85 block text-sm wrap-anywhere {mention
 		? 'border-neon/60 bg-neon/5 -ml-2 rounded border-l-2 py-0.5 pl-2'
 		: ''}"
 >
@@ -43,7 +42,12 @@
 		     not read as somebody's words. -->
 		<span class="text-muted text-sm italic">Message deleted</span>
 	{:else if message.text}
-		<MessageText text={message.text} {menu} />
+		<!-- Pre-wrap (#2642): a line break the rider typed is theirs to keep.
+		     Their words only (#2686) — on the whole line it also kept this
+		     template's own spaces, a blank row above every picture. -->
+		<span class="whitespace-pre-wrap"
+			><MessageText text={message.text} {menu} /></span
+		>
 	{/if}
 	{#if message.editedAt}
 		<!-- Nobody is rewritten quietly (#865). Not a
