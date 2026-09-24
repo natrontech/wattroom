@@ -46,6 +46,36 @@ test('a voice channel plans a session into itself', async ({
 });
 
 /**
+ * A double tap on Plan it plans once (#2609). Every POST is a plan on the
+ * calendar and a mail to every member, and the voice channel's picker stayed
+ * live while the first was on its way. The answer is held back so the second
+ * tap lands while the first is still unanswered.
+ */
+test('a double tap on Plan it plans once', async ({
+	page,
+	channels,
+	schedules,
+}) => {
+	await signInAs(page, 'Double Planner', '/home');
+	const opened = await channels.open(page, `Twice ${Date.now() % 100000}`);
+	await schedules.own(page, opened.crew);
+	await page.route(`**/api/crews/${opened.crew}/schedule`, async (route) => {
+		if (route.request().method() === 'POST')
+			await new Promise((wait) => setTimeout(wait, 1_000));
+		await route.continue();
+	});
+
+	await page.goto(voicePath(opened));
+	await page.getByRole('button', { name: 'Plan for later' }).click();
+	const picker = page.getByRole('dialog');
+	await picker.getByRole('listitem').getByRole('button').first().click();
+	await picker.getByRole('button', { name: 'Plan it', exact: true }).dblclick();
+	await expect(picker).toHaveCount(0);
+
+	expect(await page.evaluate(plansOf, opened.crew)).toHaveLength(1);
+});
+
+/**
  * The crew's Home plans through its Schedule, with the picker already open
  * and where it runs chosen inside it (#2572) — it used to be a line on the
  * page behind the picker, set before opening it.
