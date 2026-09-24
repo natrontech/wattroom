@@ -37,6 +37,7 @@
 	import { formatDay, formatStamp, formatTime, sameDay } from '$lib/format';
 	import { mentionsMe } from '$lib/messages/mention';
 	import type { ThreadMessage, ThreadSource } from '$lib/messages/thread-types';
+	import { arrivedSince } from '$lib/messages/timeline';
 	import { confirm } from '$lib/confirm.svelte';
 	import { copyText } from '$lib/copy';
 	import { toasts } from '$lib/toast.svelte';
@@ -161,18 +162,20 @@
 		if (refused) toasts.push(refused, { tone: 'error' });
 	}
 
-	// The log's own scroll state, told by stickToBottom (#1765).
+	// The log's own scroll state, told by stickToBottom (#1765), and what
+	// landed behind a reader who scrolled back — counted from the lines the
+	// log held when they left (#2703).
 	let log = $state<HTMLElement | null>(null);
 	let pinned = $state(true);
-	let missed = $state(0);
+	let seen = $state.raw<ReadonlySet<string>>(new Set());
+	const missed = $derived(pinned ? 0 : arrivedSince(timeline, seen, me));
 	$effect(() => {
 		const node = log;
 		if (!node) return;
 		const on = (event: Event) => {
-			const detail = (event as CustomEvent<{ pinned: boolean; missed: number }>)
-				.detail;
-			pinned = detail.pinned;
-			missed = detail.missed;
+			const next = (event as CustomEvent<{ pinned: boolean }>).detail.pinned;
+			if (pinned && !next) seen = new Set(timeline.map((entry) => entry.key));
+			pinned = next;
 		};
 		node.addEventListener('wattroom-follow', on);
 		return () => node.removeEventListener('wattroom-follow', on);
