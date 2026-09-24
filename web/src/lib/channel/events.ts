@@ -103,11 +103,6 @@ export function eventText(event: ChannelEvent): string {
 				? `${mode} ended after ${event.count} rounds`
 				: `${mode} ended`;
 		}
-		// 'due' is the one line no server sends: the hub does not know the
-		// schedule, so each client derives the reminder from the same upcoming
-		// list the lounge card renders.
-		case 'due':
-			return `${subject} starts at ${at}`;
 		// A DM that arrived while this rider was riding (#1743, $lib/channel/dm-line)
 		// — this client's own line too, and the sender without the words.
 		case 'messaged':

@@ -29,7 +29,10 @@
 
 <script lang="ts">
 	import { account } from '$lib/account.svelte';
+	import { useChannel } from '$lib/channel/context';
+	import { planDue, startCrewPlan } from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
+	import { toasts } from '$lib/toast.svelte';
 	import { flatten } from '$lib/workout/engine';
 	import type { Workout, Segment } from '$lib/workout/types';
 	import type { SessionState } from '$lib/protocol';
@@ -99,7 +102,21 @@
 	});
 
 	// ── Coach controls ────────────────────────────────────────────────────────
+	const channel = useChannel();
 	function startWorkout(picked: Workout) {
+		// The workout this channel has planned, now (#2606): started through
+		// the plan, as its card and the Schedule start it, so it is marked and
+		// stops offering itself — a bare pick left it listed for its grace and
+		// the Schedule's Start now refused against the session it became.
+		const plan = channel.plan;
+		if (plan && plan.workoutName === picked.name && planDue(plan.startsAt)) {
+			layers.setup.open = false;
+			void startCrewPlan(channel.address.crew, plan.id).then((res) => {
+				if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
+				channel.reloadPlan();
+			});
+			return;
+		}
 		const flat = flatten(picked);
 		const total = flat.reduce(
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),

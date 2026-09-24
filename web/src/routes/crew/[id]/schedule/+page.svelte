@@ -29,14 +29,15 @@
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import { fetchCrew, type Crew } from '$lib/crew';
 	import {
-		answerCrewPlan,
 		cancelCrewPlan,
 		crewCalendarLink,
 		fetchCrewSchedule,
 		mayRearrange,
 		moveCrewPlan,
 		planCrewSession,
+		planDue,
 		planPlace,
+		pressAnswer,
 		rotateCrewCalendar,
 		startCrewPlan,
 		type CrewPlan,
@@ -44,13 +45,10 @@
 	import { device } from '$lib/device.svelte';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import RsvpRow from '$lib/session/RsvpRow.svelte';
 	import SessionPicker from '$lib/session/SessionPicker.svelte';
-	import {
-		rsvpSummary,
-		tallyOf,
-		whoIsInOf,
-		type RsvpAnswer,
-	} from '$lib/session/rsvp';
+	import type { RsvpAnswer } from '$lib/session/rsvp';
 	import { parseSharedSegments } from '$lib/workout/shared';
 	import { serverNow } from '$lib/server-clock';
 	import { shareLink } from '$lib/share';
@@ -135,19 +133,19 @@
 
 	const minutes = (json: string) =>
 		Math.round(segmentsDuration(parseSharedSegments(json)) / 60);
-	/** Due enough to offer "start now", on the server's clock (#1909). */
-	const due = (iso: string) => Date.parse(iso) - serverNow() < 15 * 60_000;
+	/** Who is coaching a session in the plan's channel right now (#2606):
+	 *  its Start now would be refused with their name, so it stands down
+	 *  and says so instead (errors.md: never a button that will fail). */
+	const coachingIn = (entry: CrewPlan) =>
+		entry.channelId
+			? crewLive.crew(id)?.channels.find((c) => c.id === entry.channelId)
+					?.session?.coachName
+			: undefined;
 
 	const going = (entry: CrewPlan) => entry.going ?? [];
 	const answer = (entry: CrewPlan) => entry.yourAnswer ?? null;
-	/** Your own answer again takes it back; the other one changes your mind.
-	 *  Neither asks: a second tap undoes it (errors.md). */
 	async function choose(entry: CrewPlan, pressed: RsvpAnswer) {
-		const res = await answerCrewPlan(
-			id,
-			entry.id,
-			answer(entry) === pressed ? null : pressed,
-		);
+		const res = await pressAnswer(id, entry, pressed);
 		if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
 		await reload();
 	}
@@ -225,9 +223,10 @@
 			},
 			cancel: () => void cancel(entry),
 			startHint: startHint(entry, {
-				due: due(entry.startsAt),
+				due: planDue(entry.startsAt),
 				spectator: device.spectator,
 				channelPicked: !!planChannel,
+				coaching: coachingIn(entry),
 			}),
 			start: () => void start(entry),
 			busy,
@@ -339,10 +338,14 @@
 							>
 								<!-- The cockpit stays on the screen a coach rides on (#1767):
 								     a phone plans, and does not start. -->
-								{#if due(entry.startsAt)}
+								{#if planDue(entry.startsAt)}
 									{#if device.spectator}
 										<span class="text-watt glow-text text-xs"
 											>starting soon</span
+										>
+									{:else if coachingIn(entry)}
+										<span class="text-muted text-xs"
+											>{coachingIn(entry)} is coaching in {entry.channelName}</span
 										>
 									{:else}
 										<button
@@ -372,22 +375,11 @@
 								{/if}
 							</span>
 						</div>
-						<!-- Being there is not a role (#450): two words, no maybe, and
-						     aria-pressed says which is yours. -->
-						<div class="mt-2 flex flex-wrap items-center gap-3">
-							{#each ['in', 'out'] as const as word (word)}
-								<button
-									onclick={() => void choose(entry, word)}
-									aria-pressed={answer(entry) === word}
-									class="btn btn-xs {answer(entry) === word
-										? 'btn-primary'
-										: 'btn-secondary'}"
-									>{word === 'in' ? "I'm in" : "I'm out"}</button
-								>
-							{/each}
-							<span class="text-muted text-xs"
-								>{rsvpSummary(tallyOf(entry), whoIsInOf(entry))}</span
-							>
+						<div class="mt-2">
+							<RsvpRow
+								plan={entry}
+								onChoose={(word) => void choose(entry, word)}
+							/>
 						</div>
 						{#if movingId === entry.id}
 							<div class="mt-2 flex flex-wrap items-center gap-2">

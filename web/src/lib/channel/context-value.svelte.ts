@@ -47,6 +47,10 @@ export interface ChannelShellProps {
 	onRole: (userId: string, role: string) => void | Promise<boolean>;
 	announcement?: ChannelContext['announcement'];
 	onClearAnnouncement?: () => void;
+	/** The next plan set to run in this channel (#2606), and the reload its
+	 *  answers need — an RSVP pings nobody, so the card asks for its own. */
+	plan?: ChannelContext['plan'];
+	onPlanChanged?: () => void;
 	/** Resolves false when the server refused — the picker stays open (#1766). */
 	onSchedule: (
 		name: string,
@@ -181,6 +185,10 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 		get members() {
 			return props.members ?? [];
 		},
+		get plan() {
+			return props.plan ?? null;
+		},
+		reloadPlan: () => props.onPlanChanged?.(),
 		banOf: (userId, name) => deps.banOf(userId, name),
 		handOffOf: (userId, name) => deps.handOffOf(userId, name),
 	};

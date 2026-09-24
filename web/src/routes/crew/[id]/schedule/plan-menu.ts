@@ -79,11 +79,18 @@ export function planEntries(act: PlanActions): MenuEntry[] {
  *  rule for its button, worded for the menu. */
 export function startHint(
 	plan: Pick<CrewPlan, 'channelId'>,
-	o: { due: boolean; spectator: boolean; channelPicked: boolean },
+	o: {
+		due: boolean;
+		spectator: boolean;
+		channelPicked: boolean;
+		/** Who coaches a session in its channel right now (#2606). */
+		coaching?: string;
+	},
 ): string {
 	// The cockpit stays on the screen a coach rides on (#1767).
 	if (o.spectator) return 'start it from the screen you ride on';
 	if (!o.due) return 'not due yet';
+	if (o.coaching) return `${o.coaching} is coaching a session there`;
 	if (!plan.channelId && !o.channelPicked)
 		return 'pick a voice channel above to start it in';
 	return '';

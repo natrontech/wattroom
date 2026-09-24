@@ -181,6 +181,8 @@
 			soundPack={channel.soundPack ?? 'base'}
 			{members}
 			onSchedule={plan}
+			plan={view.plan}
+			onPlanChanged={() => void load(crewId, channelId)}
 			announcement={view.announcement}
 			onClearAnnouncement={() => void clearAnnouncement()}
 			onRole={setRole}

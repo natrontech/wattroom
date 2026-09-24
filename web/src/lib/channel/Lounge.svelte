@@ -15,6 +15,7 @@
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
+	import PlanCard from '$lib/session/PlanCard.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import { needsTrainer } from '$lib/session/sensor-status';
 	import EventLine from '$lib/channel/EventLine.svelte';
@@ -443,6 +444,7 @@
 		</section>
 	{/if}
 	{#if channel.phase === 'lounge'}
+		<PlanCard />
 		<!-- Between sessions, the channel's two actions (#2571, #2572): start
 		     one here, or plan one for later in this channel. The crew's totals,
 		     board and invite are its Home's — a voice channel shows the call.

@@ -3,6 +3,7 @@ import type { ApiResult } from '$lib/api';
 import type { CrewChannel } from '$lib/channels';
 import type { Crew, CrewMembers } from '$lib/crew';
 import type { CrewAnnouncement } from '$lib/channels';
+import type { CrewPlan } from '$lib/crew-schedule';
 import { liveRoleOf, voiceChannelData } from './voice-channel';
 
 const crew = {
@@ -56,6 +57,49 @@ describe('a voice channel page’s data (#2449)', () => {
 		const got = voiceChannelData('v1', refused, listing(), members, none);
 		expect(got.error).toBe('No crew lives here.');
 		expect(got.crew).toBeNull();
+	});
+});
+
+describe('the plan a voice channel shows (#2606)', () => {
+	const schedule = (...sessions: Partial<CrewPlan>[]) =>
+		({ ok: true, data: { sessions } }) as ApiResult<{ sessions: CrewPlan[] }>;
+	const spin = listing({ id: 'v1', kind: 'voice', name: 'Spin' });
+
+	it('is the soonest plan set to run in this channel, not the crew’s', () => {
+		const got = voiceChannelData(
+			'v1',
+			crew,
+			spin,
+			members,
+			none,
+			schedule(
+				{ id: 'p0', channelId: 'v2' },
+				{ id: 'p1' },
+				{ id: 'p2', channelId: 'v1' },
+				{ id: 'p3', channelId: 'v1' },
+			),
+		);
+		expect(got.plan?.id).toBe('p2');
+	});
+
+	it('is none when the schedule is quiet or has nothing here', () => {
+		const quiet = {
+			ok: false,
+			error: { error: 'internal_error', message: 'x' },
+		} as ApiResult<{ sessions: CrewPlan[] }>;
+		expect(
+			voiceChannelData('v1', crew, spin, members, none, quiet).plan,
+		).toBeNull();
+		expect(
+			voiceChannelData(
+				'v1',
+				crew,
+				spin,
+				members,
+				none,
+				schedule({ id: 'p0', channelId: 'v2' }),
+			).plan,
+		).toBeNull();
 	});
 });
 

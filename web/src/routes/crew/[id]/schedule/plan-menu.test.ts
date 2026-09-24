@@ -79,6 +79,10 @@ describe('startHint', () => {
 			'pick a voice channel above to start it in',
 		);
 		expect(startHint({}, ready)).toBe('');
+		// A session already in its channel would refuse it (#2606).
+		expect(startHint({ channelId: 'v' }, { ...ready, coaching: 'Ana' })).toBe(
+			'Ana is coaching a session there',
+		);
 		expect(startHint({ channelId: 'v' }, ready)).toBe('');
 	});
 });

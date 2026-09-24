@@ -1,4 +1,5 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
+import { serverNow } from '$lib/server-clock';
 import type { CrewRole } from '$lib/crew';
 import type { PlanAnswers, RsvpAnswer } from '$lib/session/rsvp';
 
@@ -76,6 +77,16 @@ export function answerCrewPlan(
 		: api<void>(path, { method: 'PUT', json: { going: answer === 'in' } });
 }
 
+/** A tap on "I'm in" or "I'm out": your own answer again takes it back, the
+ *  other one changes your mind. Neither asks — a second tap undoes it
+ *  (errors.md). */
+export const pressAnswer = (
+	crewId: string,
+	plan: Pick<CrewPlan, 'id' | 'yourAnswer'>,
+	pressed: RsvpAnswer,
+) =>
+	answerCrewPlan(crewId, plan.id, plan.yourAnswer === pressed ? null : pressed);
+
 /** Opens the plan's session in its channel with you as coach (#2440). A plan
  *  that names no channel takes one here. */
 export function startCrewPlan(
@@ -101,6 +112,11 @@ export function rotateCrewCalendar(
 ): Promise<ApiResult<{ icsToken: string }>> {
 	return api(`/api/crews/${crewId}/calendar/rotate`, { method: 'POST' });
 }
+
+/** Due enough to offer Start now: fifteen minutes out, on the server's clock
+ *  (#1909) — the Schedule's row and the voice channel's card ask the same. */
+export const planDue = (startsAt: string, now = serverNow()): boolean =>
+	Date.parse(startsAt) - now < 15 * 60_000;
 
 /** Where a plan runs, as its row says it. */
 export const planPlace = (plan: Pick<CrewPlan, 'channelName'>) =>
