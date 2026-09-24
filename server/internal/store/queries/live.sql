@@ -16,22 +16,6 @@ where m.channel_id = any(sqlc.arg(channel_ids)::uuid[])
   and (m.expires_at is null or m.expires_at > now())
 group by m.channel_id;
 
--- name: NextCrewPlan :one
--- The crew's next plan the rider may see: one for the whole crew, or one in
--- a channel they may enter — a plan in a private channel is that channel's
--- to show. The grace, the started rule and the tiebreak are ListRoomUpcoming's
--- (#1767, #1905), so "next" names the same plan on every read.
-select s.id, s.workout_name, s.starts_at, s.channel_id, coalesce(ch.name, '')::text as channel_name
-from scheduled_sessions s
-left join channels ch on ch.id = s.channel_id
-where s.crew_id = sqlc.arg(crew_id)
-  and s.starts_at > now() - interval '30 minutes'
-  and s.started_at is null
-  and (s.channel_id is null
-       or exists (select 1 from visible_channels v
-                  where v.channel_id = s.channel_id and v.user_id = sqlc.arg(viewer)))
-order by s.starts_at, s.created_at, s.id
-limit 1;
 
 -- name: LastLineByChannel :many
 -- The last thing said in each text channel (#2457), whoever said it: what a
