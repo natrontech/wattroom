@@ -154,6 +154,22 @@ func (w channelWorld) readAt(t *testing.T, who, channel string) float64 {
 	return stamp
 }
 
+// unread is the count on who's sidebar badge for one channel.
+func (w channelWorld) unread(t *testing.T, who, channel string) int32 {
+	t.Helper()
+	rows, err := w.svc.store.Queries.UnreadByChannel(t.Context(), db.UnreadByChannelParams{
+		UserID: w.users.ByToken[who].ID, ChannelIds: []pgtype.UUID{w.channelID(t, channel)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var n int32
+	for _, row := range rows {
+		n += row.Unread
+	}
+	return n
+}
+
 // pings is how many times the lobby has been told a channel moved.
 func (w channelWorld) pings() int { return len(w.lobby.heard()) }
 

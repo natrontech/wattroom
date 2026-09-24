@@ -136,14 +136,8 @@ func TestChannelReadCoversALineStampedAhead(t *testing.T) {
 	if code, body := post(t, w.mux, "bob", "/api/channels/"+w.open+"/read", ""); code != http.StatusNoContent {
 		t.Fatalf("read: %d %v", code, body)
 	}
-	rows, err := w.svc.store.Queries.UnreadByChannel(t.Context(), db.UnreadByChannelParams{
-		UserID: w.users.ByToken["bob"].ID, ChannelIds: []pgtype.UUID{channel},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(rows) != 0 {
-		t.Fatalf("unread after the read: %+v", rows)
+	if n := w.unread(t, "bob", w.open); n != 0 {
+		t.Fatalf("unread after the read: %d", n)
 	}
 	// The "N new" divider goes after the line too, not above it.
 	if at := w.readAt(t, "bob", w.open); at < float64(ahead.UnixMilli()) {
@@ -151,10 +145,47 @@ func TestChannelReadCoversALineStampedAhead(t *testing.T) {
 	}
 }
 
+// A read covers what the reader was shown and nothing after it (#2755). The
+// thread posts the newest line it has; a line that landed between that load
+// and the read stays unread, and a device with an older view cannot un-read
+// what another already read.
+func TestChannelReadCoversOnlyTheLinesTheReaderWasShown(t *testing.T) {
+	w := channelSetup(t)
+	read := func(body string, want int) {
+		t.Helper()
+		if code, got := post(t, w.mux, "bob", "/api/channels/"+w.open+"/read", body); code != want {
+			t.Fatalf("read %s: %d %v, want %d", body, code, got, want)
+		}
+	}
+	upTo := func(id string) string { return `{"upTo":"` + id + `"}` }
+
+	shown := w.say(t, "alice", w.open, "warm-up at 7?")
+	w.say(t, "alice", w.open, "make it 7:30") // lands after bob's load, before his read
+	read(upTo(shown), http.StatusNoContent)
+	if n := w.unread(t, "bob", w.open); n != 1 {
+		t.Fatalf("unread %d after reading up to the first line, want 1", n)
+	}
+	// Another channel's line is not a line here: the cursor stays put.
+	elsewhere := w.say(t, "alice", w.private, "private word")
+	read(upTo(elsewhere), http.StatusNoContent)
+	if n := w.unread(t, "bob", w.open); n != 1 {
+		t.Fatalf("unread %d after naming another channel's line, want 1", n)
+	}
+	read(upTo("nope"), http.StatusBadRequest)
+
+	read("", http.StatusNoContent) // a tab on the old script: the newest line
+	if n := w.unread(t, "bob", w.open); n != 0 {
+		t.Fatalf("unread %d after a read without upTo, want 0", n)
+	}
+	read(upTo(shown), http.StatusNoContent) // the phone, a load behind
+	if n := w.unread(t, "bob", w.open); n != 0 {
+		t.Fatalf("unread %d after an older device's read, want 0", n)
+	}
+}
+
 func TestMarkChannelRead(t *testing.T) {
 	w := channelSetup(t)
 	bob := w.users.ByToken["bob"]
-	channel := w.channelID(t, w.open)
 	w.say(t, "alice", w.open, "warm-up at 7?")
 
 	for _, c := range []struct {
@@ -175,19 +206,7 @@ func TestMarkChannelRead(t *testing.T) {
 	}
 
 	// Bob has never opened the channel: everything is new, no stamp.
-	unread := func() int32 {
-		rows, err := w.svc.store.Queries.UnreadByChannel(t.Context(), db.UnreadByChannelParams{
-			UserID: bob.ID, ChannelIds: []pgtype.UUID{channel},
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		var n int32
-		for _, row := range rows {
-			n += row.Unread
-		}
-		return n
-	}
+	unread := func() int32 { return w.unread(t, "bob", w.open) }
 	if unread() != 1 || w.readAt(t, "bob", w.open) != 0 {
 		t.Fatalf("before: unread %d readAt %v", unread(), w.readAt(t, "bob", w.open))
 	}

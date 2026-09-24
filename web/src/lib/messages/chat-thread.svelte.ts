@@ -67,7 +67,12 @@ export function createChatThread(base: string) {
 	}
 
 	async function markRead() {
-		const res = await api(`${base}/read`, { method: 'POST' });
+		// Up to the newest line on screen, not "now" (#2755): one that landed
+		// after this load stays unread until a load shows it.
+		const res = await api(`${base}/read`, {
+			method: 'POST',
+			json: { upTo: messages.at(-1)?.id },
+		});
 		// The sidebar's count comes off the lobby's list: ask for it again,
 		// or a "1" sits on the thread you are reading until the next ping.
 		if (res.ok) presence.reload();

@@ -5,7 +5,6 @@ package dms
 
 import (
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -146,20 +145,9 @@ func (s *Service) handleRead(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var req struct {
-		UpTo string `json:"upTo"`
-	}
-	if err := httpx.DecodeStrict(r, &req); err != nil && !errors.Is(err, io.EOF) {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+	upTo, ok := httpx.ReadUpTo(w, r)
+	if !ok {
 		return
-	}
-	var upTo pgtype.UUID
-	if req.UpTo != "" {
-		var err error
-		if upTo, err = store.ParseUUID(req.UpTo); err != nil {
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That is not a message in this conversation.", "upTo")
-			return
-		}
 	}
 	if err := s.store.Queries.MarkDmRead(r.Context(), db.MarkDmReadParams{UserID: me.ID, PeerID: peer, UpTo: upTo}); err != nil {
 		httpx.Fail(w, s.log, "mark dm read", err, "That conversation could not be marked read.")

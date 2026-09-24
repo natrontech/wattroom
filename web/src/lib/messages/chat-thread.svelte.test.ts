@@ -3,12 +3,17 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('$lib/presence.svelte', () => ({ presence: { reload: () => {} } }));
 
-type Pending = { path: string; method?: string; resolve: (v: unknown) => void };
+type Pending = {
+	path: string;
+	method?: string;
+	json?: unknown;
+	resolve: (v: unknown) => void;
+};
 const calls: Pending[] = [];
 vi.mock('$lib/api', () => ({
-	api: (path: string, init?: { method?: string }) =>
+	api: (path: string, init?: { method?: string; json?: unknown }) =>
 		new Promise((resolve) =>
-			calls.push({ path, method: init?.method, resolve }),
+			calls.push({ path, method: init?.method, json: init?.json, resolve }),
 		),
 }));
 
@@ -39,6 +44,19 @@ describe('a chat thread over HTTP (#2448)', () => {
 		answer(0, backlog([line('a', 'kept'), line('b', 'deleted')]));
 		await settle();
 		expect(thread.messages.map((m) => m.id)).toEqual(['a']);
+		thread.close();
+	});
+
+	it('marks read up to the newest line it showed, not "now" (#2755)', async () => {
+		calls.length = 0;
+		const thread = createChatThread('/api/channels/c1');
+		thread.start();
+		answer(0, backlog([line('a', 'warm-up at 7?'), line('b', 'make it 7:30')]));
+		await settle();
+		const reads = calls.filter((c) => c.path.endsWith('/read'));
+		expect(reads.map((c) => [c.path, c.json])).toEqual([
+			['/api/channels/c1/read', { upTo: 'b' }],
+		]);
 		thread.close();
 	});
 

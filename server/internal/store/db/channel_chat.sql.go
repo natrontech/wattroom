@@ -328,22 +328,29 @@ func (q *Queries) ListChannelReactions(ctx context.Context, arg ListChannelReact
 
 const markChannelRead = `-- name: MarkChannelRead :exec
 insert into channel_reads (channel_id, user_id, read_at)
-select $1, $2, greatest($3::timestamptz, max(created_at))
-from chat_messages where channel_id = $1
-on conflict (channel_id, user_id) do update set read_at = excluded.read_at
+select $1, $2, max(created_at)
+from chat_messages
+where channel_id = $1
+  and ($3::uuid is null or id = $3)
+having max(created_at) is not null
+on conflict (channel_id, user_id) do update set read_at = greatest(channel_reads.read_at, excluded.read_at)
 `
 
 type MarkChannelReadParams struct {
 	ChannelID pgtype.UUID
 	UserID    pgtype.UUID
-	ReadAt    pgtype.Timestamptz
+	UpTo      pgtype.UUID
 }
 
-// Stamped on the clock every line's created_at comes from — Go's, not
-// Postgres's now() — and never before the newest line, so a read covers
-// every line that existed when it was made, however the two clocks disagree.
+// The cursor moves to the line the reader was shown, up_to, by that line's
+// own created_at (#2755): a clock stamp also covered whatever landed between
+// the thread's load and this write, and reading no clock at all is what keeps
+// a skewed one from leaving a line unread after the read (#2728). No up_to —
+// a tab on the script from before — means the channel's newest line. Never
+// backwards, so a device with an older view cannot un-read another's read.
+// A channel with no such line gets no row.
 func (q *Queries) MarkChannelRead(ctx context.Context, arg MarkChannelReadParams) error {
-	_, err := q.db.Exec(ctx, markChannelRead, arg.ChannelID, arg.UserID, arg.ReadAt)
+	_, err := q.db.Exec(ctx, markChannelRead, arg.ChannelID, arg.UserID, arg.UpTo)
 	return err
 }
 
