@@ -42,6 +42,7 @@
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
 	import ConnectionInfo from '$lib/channel/ConnectionInfo.svelte';
+	import { guardTheRide } from '$lib/channel/ride-guard.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
 	import DevicePicker from '$lib/ble/DevicePicker.svelte';
 	import { devicePicker } from '$lib/ble/device-picker.svelte';
@@ -55,6 +56,9 @@
 	import { toasts } from '$lib/toast.svelte';
 
 	let { children } = $props();
+
+	// A ride in one voice channel is not ended by a tap on another (#2602).
+	guardTheRide();
 
 	// The desktop shell hides the OS title bar and this app draws the strip
 	// (#1188): the window's handle, in the app's own colour. 0 in a browser.

@@ -85,3 +85,19 @@ export function onPlacePath(
 		(path) => pathname === path || pathname.startsWith(`${path}/`),
 	);
 }
+
+/**
+ * The voice channel a path puts the rider in (#2602): a voice channel's own
+ * pages, or a session's — resolved through `sessionChannel`, since a session
+ * is addressed under its crew. Undefined for every path that joins nothing,
+ * and for a session nobody can place (one that has ended joins nothing too).
+ */
+export function channelOfPath(
+	pathname: string,
+	sessionChannel: (crew: string, sessionId: string) => string | undefined,
+): string | undefined {
+	const place = /^\/crew\/([^/]+)\/(v|s)\/([^/]+)/.exec(pathname);
+	if (!place) return undefined;
+	const [, crew, kind, id] = place;
+	return kind === 'v' ? id : sessionChannel(crew, id);
+}
