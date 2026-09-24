@@ -84,7 +84,26 @@ test('import a .zwo, read what it lost, and save it to the shelf', async ({
 	await expect(page.getByText(/ride instruction/)).toBeVisible();
 	await expect(page.getByText(/description was left out/)).toBeVisible();
 
+	// The first save meets a server having a moment (#2627): the preview,
+	// what the file lost and both Save buttons stay, and Try again saves.
+	let refused = false;
+	await page.route('**/api/workouts', (route) => {
+		if (route.request().method() !== 'POST' || refused) return route.fallback();
+		refused = true;
+		return route.fulfill({
+			status: 503,
+			json: { error: 'rate_limited', message: 'The server is busy.' },
+		});
+	});
 	await page.getByRole('button', { name: 'Save to my shelf' }).click();
+	await expect(page.getByText('The server is busy.')).toBeVisible();
+	await expect(page.getByRole('heading', { name: NAME })).toBeVisible();
+	await expect(page.getByText(/free-ride/)).toBeVisible();
+	await expect(
+		page.getByRole('button', { name: 'Save and edit' }),
+	).toBeVisible();
+
+	await page.getByRole('button', { name: 'Try again' }).click();
 	await page.waitForURL('**/workouts');
 	await expect(
 		page.getByRole('link', { name: NAME, exact: true }),
