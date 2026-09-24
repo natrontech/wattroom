@@ -38,8 +38,8 @@ export interface Arrival {
 
 /**
  * A screen the rider is on a bike in front of. While one is registered it gets
- * first refusal on a DM or a text channel's line: a voice channel with a
- * session running writes a DM into its own timeline and leaves a channel's
+ * first refusal on a DM, a poke or a text channel's line: a voice channel with
+ * a session running writes a DM or a poke into its own timeline and leaves a channel's
  * line to the sidebar's unread, and a solo ride, which has no timeline, leaves
  * both to the unread badges that were already there. Returning false hands
  * it back — off a ride the toast is still the right answer.
