@@ -1,1 +1,0 @@
-- A crew's owner or admin can move a rider into another voice channel by dragging their name in the sidebar, or with the name's right-click menu. The rider's mic and camera come along, and a toast says who moved them. A rider who is pedalling can't be moved.
