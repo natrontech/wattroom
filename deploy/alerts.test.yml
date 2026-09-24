@@ -1,0 +1,71 @@
+# promtool test rules deploy/alerts.test.yml — CI runs it.
+#
+# The series carry the labels a default scrape of README.md's config produces:
+# the target's job="wattroom", and the app's own `job` label renamed to
+# exported_job (#2679). A rule that selects on the app's label under its own
+# name matches none of them and stays silent, which reads exactly like a
+# healthy job. The value is the job's last success; 0 is a job that stopped.
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'wattroom_job_last_success_timestamp_seconds{job="wattroom",instance="wattroom:9091",exported_job="session reminders"}'
+        values: '0x90'
+      - series: 'wattroom_job_last_success_timestamp_seconds{job="wattroom",instance="wattroom:9091",exported_job="strava delivery sweep"}'
+        values: '0+60x90'
+      # Stopped too, but no rule watches it: the star count is cosmetic.
+      - series: 'wattroom_job_last_success_timestamp_seconds{job="wattroom",instance="wattroom:9091",exported_job="github stars poll"}'
+        values: '0x90'
+      - series: 'wattroom_job_last_success_timestamp_seconds{job="wattroom",instance="wattroom:9091",exported_job="token seal completeness"}'
+        values: '0x90'
+    alert_rule_test:
+      # Fifteen minutes without a success, then the rule's five.
+      - eval_time: 19m
+        alertname: WattroomMinuteJobStale
+      - eval_time: 21m
+        alertname: WattroomMinuteJobStale
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              job: wattroom
+              instance: wattroom:9091
+              exported_job: session reminders
+            exp_annotations:
+              summary: 'Background job session reminders has not succeeded in 15 minutes'
+      # An hour without a recount, then the rule's fifteen.
+      - eval_time: 74m
+        alertname: WattroomTokenSealCountStale
+      - eval_time: 76m
+        alertname: WattroomTokenSealCountStale
+        exp_alerts:
+          - exp_labels:
+              severity: warn
+              job: wattroom
+              instance: wattroom:9091
+              exported_job: token seal completeness
+            exp_annotations:
+              summary: 'wattroom_identities_plaintext_refresh_tokens has not been recounted in an hour — do not read it as an all-clear'
+
+  - interval: 1h
+    input_series:
+      - series: 'wattroom_job_last_success_timestamp_seconds{job="wattroom",instance="wattroom:9091",exported_job="housekeeping expired sessions"}'
+        values: '0x80'
+      - series: 'wattroom_job_last_success_timestamp_seconds{job="wattroom",instance="wattroom:9091",exported_job="housekeeping expired chat"}'
+        values: '0+3600x80'
+    alert_rule_test:
+      - eval_time: 71h
+        alertname: WattroomDailyJobStale
+      - eval_time: 73h
+        alertname: WattroomDailyJobStale
+        exp_alerts:
+          - exp_labels:
+              severity: warn
+              job: wattroom
+              instance: wattroom:9091
+              exported_job: housekeeping expired sessions
+            exp_annotations:
+              summary: 'Daily sweep housekeeping expired sessions has not succeeded in three days'

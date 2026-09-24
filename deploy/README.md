@@ -61,13 +61,13 @@ is the fallback, and it was never affected.
 ## Monitoring
 
 One Prometheus for the homelab, not one per workload (ADR-0006's convention,
-applied by ADR-0019). This stack no longer runs its own — the homelab's scrapes
+applied by ADR-0019). This stack does not run its own. Your Prometheus scrapes
 the container directly over a shared docker network, which is also why nothing
 has to be published to reach it:
 
-    docker network create monitoring   # once, if the homelab stack hasn't
+    docker network create monitoring   # once, if your Prometheus stack hasn't
 
-Put the homelab's Prometheus container on that same network, then give it:
+Put your Prometheus container on that same network, then give it:
 
     scrape_configs:
       - job_name: wattroom          # the job name WattroomDown matches on
@@ -76,10 +76,16 @@ Put the homelab's Prometheus container on that same network, then give it:
     rule_files:
       - /opt/wattroom/alerts.yml
 
-and mount `/opt/wattroom/alerts.yml` into it read-only. The rules live in this
-repo because they describe WattRoom's failure modes; same VM, so there is no
-copy to drift. Routing to a phone and dashboards are the homelab's, per its own
-rules.
+and mount `/opt/wattroom/alerts.yml` into it read-only. Leave `honor_labels`
+off. The background-job metrics carry a `job` label of their own; the scrape's
+`job="wattroom"` wins and the app's arrives as `exported_job`, which is what the
+job rules select on. Turn `honor_labels` on and the app's label replaces the
+scrape's, and those rules match nothing (#2679).
+
+wattroom.ch is not wired this way. Its Prometheus runs on another VM and reads
+only the rules in janlauber/homelab, which holds a hand-ported copy of
+`alerts.yml`, so a rule changed here has to be ported there too. Routing to a
+phone and dashboards are the homelab's, per its own rules.
 
 `/metrics` has its own listener on **9091** (#1738), which nothing proxies:
 port 8080 answers 404 there, and what the endpoint publishes no longer depends

@@ -195,6 +195,17 @@ jobs:
           fi
           echo "Every action is pinned to a commit."
 
+      # A rule that selects a label the scrape never produces does not fail. It
+      # stays silent, exactly like a healthy one, and the job-staleness rules
+      # did that from the day they were written (#2679). In `docs` for the
+      # reason the step above gives. Same promtool as the homelab Prometheus
+      # that runs wattroom.ch's copy of these rules.
+      - name: Alert rules fire on the series a real scrape produces
+        run: |
+          docker run --rm -v "$PWD/deploy:/rules:ro" -w /rules --entrypoint promtool \
+            prom/prometheus:v3.14.0@sha256:e906cef998316bbe319f98711e1b4d8613ad37e14b08ff831d7036e77b7464f9 \
+            test rules alerts.test.yml
+
   # A migration whose timestamp precedes the newest already on main is not an
   # error and this job never fails (#1481). Two branches cut from the same main
   # stamp timestamps minutes apart, the later-written one merges first, and the
