@@ -34,3 +34,21 @@ func TestTheLobbyPingNamesAChannelOnlyWhenItIsTheWholeStory(t *testing.T) {
 		})
 	}
 }
+
+// A read pings the reader's own devices and nobody else's (#2711): a rider
+// who heard someone else's read would be holding a read receipt (ADR-0012).
+func TestAReadPingsOnlyTheReadersOwnSockets(t *testing.T) {
+	phone := &lobbyClient{ping: make(chan struct{}, 1)}
+	desktop := &lobbyClient{ping: make(chan struct{}, 1)}
+	friend := &lobbyClient{ping: make(chan struct{}, 1)}
+	h := &Hub{lobby: map[*lobbyClient]string{phone: "me", desktop: "me", friend: "them"}}
+	h.ReadChanged("me")
+	for name, c := range map[string]struct {
+		client *lobbyClient
+		pinged bool
+	}{"phone": {phone, true}, "desktop": {desktop, true}, "friend": {friend, false}} {
+		if got := len(c.client.ping) == 1; got != c.pinged {
+			t.Errorf("%s pinged = %v, want %v", name, got, c.pinged)
+		}
+	}
+}

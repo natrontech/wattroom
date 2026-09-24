@@ -126,17 +126,14 @@
 		t.start();
 		thread = t;
 		// The open thread, so a new line in it blips nowhere (heads.svelte).
-		// Stamped AFTER the thread captures its readAt, so the "N new" line
-		// marks what's new since the last time this thread was open, not
-		// "nothing" because opening it just stamped now as seen. The name is
-		// read untracked: it arrives with the heads poll, and tracking it
-		// tore the thread down and rebuilt it — readAt and the divider with
-		// it (#824). The thread reads it live through the getter above.
+		// The name is read untracked: it arrives with the heads poll, and
+		// tracking it tore the thread down and rebuilt it — readAt and the
+		// divider with it (#824). The thread reads it live through the getter
+		// above.
 		dm.show(
 			id,
 			untrack(() => peerName),
 		);
-		dmHeads.bump();
 		return () => {
 			t.close();
 			dm.close();

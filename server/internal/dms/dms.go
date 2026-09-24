@@ -1,7 +1,8 @@
 // Package dms is direct messages under ADR-0012's amendment (#208): they
 // exist exactly where friendship exists — the accepted-friendship row is the
-// permission, enforced in SQL on every send. Bounded like room chat, no read
-// state server-side ("seen" is the reader's own business).
+// permission, enforced in SQL on every send. Bounded like room chat. The
+// reader's read cursor lives here so every device agrees (#2711), and is
+// never shown to the peer: no read receipts.
 package dms
 
 import (
@@ -76,6 +77,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/dms", s.handleHeads)
 	mux.HandleFunc("GET /api/dms/{id}", s.handleThread)
 	mux.HandleFunc("POST /api/dms/{id}", s.handleSend)
+	mux.HandleFunc("POST /api/dms/{id}/read", s.handleRead)
 	mux.HandleFunc("POST /api/dms/{id}/reactions", s.handleReact)
 	mux.HandleFunc("PATCH /api/dms/{id}/messages/{messageId}", s.handleEdit)
 	mux.HandleFunc("DELETE /api/dms/{id}/messages/{messageId}", s.handleDelete)

@@ -1,18 +1,11 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const seen: Record<string, number> = {};
-const stamped: string[] = [];
-let bumped = 0;
+const reads: string[] = [];
+let refreshed = 0;
 
-vi.mock('$lib/dm/dm.svelte', () => ({
-	dm: {
-		seenAt: (peerId: string) => seen[peerId] ?? 0,
-		stampSeen: (peerId: string) => stamped.push(peerId),
-	},
-}));
 vi.mock('$lib/dm/heads.svelte', () => ({
-	dmHeads: { bump: () => bumped++ },
+	dmHeads: { refresh: () => refreshed++ },
 }));
 vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'me-1' } } }));
 
@@ -21,6 +14,10 @@ let postResponses: unknown[] = [];
 const posted: unknown[] = [];
 vi.mock('$lib/api', () => ({
 	api: async (path: string, init?: { method?: string; json?: unknown }) => {
+		if (init?.method === 'POST' && path.endsWith('/read')) {
+			reads.push(path);
+			return { ok: true, data: null };
+		}
 		if (init?.method === 'POST') {
 			posted.push({ path, json: init.json });
 			return postResponses.shift() ?? { ok: true, data: { id: 'sent-1' } };
@@ -32,20 +29,34 @@ vi.mock('$lib/api', () => ({
 
 const { createDmThread, POLL_MS } = await import('./thread.svelte');
 
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 afterEach(() => {
 	responses = [];
 	postResponses = [];
 	posted.length = 0;
-	stamped.length = 0;
-	bumped = 0;
-	for (const k of Object.keys(seen)) delete seen[k];
+	reads.length = 0;
+	refreshed = 0;
 });
 
 describe('createDmThread (#672)', () => {
-	it('captures readAt from the reader-owned localStorage stamp, before it moves', () => {
-		seen['sven'] = 111;
+	// The cursor is the server's (#2711), so a read on another device moves
+	// it — but only the first page places the "N new" line, which must not
+	// creep down while you read.
+	it('takes readAt from the first page and keeps it there', async () => {
+		responses.push(
+			{ ok: true, data: { messages: [], readAt: 111 } },
+			{ ok: true, data: { messages: [], readAt: 999 } },
+		);
 		const thread = createDmThread('sven', () => 'Sven');
+		expect(thread.readAt).toBeNull();
+		thread.start();
+		await flush();
 		expect(thread.readAt).toBe(111);
+		thread.retry();
+		await flush();
+		expect(thread.readAt).toBe(111);
+		thread.close();
 	});
 
 	it('loads the backlog into the shared timeline shape', async () => {
@@ -82,8 +93,9 @@ describe('createDmThread (#672)', () => {
 				at: 2,
 			},
 		]);
-		expect(stamped).toEqual(['sven']);
-		expect(bumped).toBe(1);
+		await flush();
+		expect(reads).toEqual(['/api/dms/sven/read']);
+		expect(refreshed).toBe(1);
 		thread.close();
 	});
 
@@ -116,7 +128,7 @@ describe('createDmThread (#672)', () => {
 		thread.close();
 	});
 
-	it('does not stamp seen while the tab is hidden (audit #219)', async () => {
+	it('does not mark it read while the tab is hidden (audit #219)', async () => {
 		Object.defineProperty(document, 'hidden', {
 			value: true,
 			configurable: true,
@@ -129,8 +141,9 @@ describe('createDmThread (#672)', () => {
 		thread.start();
 		await Promise.resolve();
 		await Promise.resolve();
-		expect(stamped).toEqual([]);
-		expect(bumped).toBe(0);
+		await flush();
+		expect(reads).toEqual([]);
+		expect(refreshed).toBe(0);
 		thread.close();
 		Object.defineProperty(document, 'hidden', {
 			value: false,

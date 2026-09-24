@@ -1,7 +1,6 @@
 import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
 import { uploadImage } from '$lib/chat/upload';
-import { dm } from '$lib/dm/dm.svelte';
 import { dmHeads } from '$lib/dm/heads.svelte';
 import type { ChatEdit, ChatReactionCount } from '$lib/protocol';
 import { messageTimeline, type TimelineMessage } from '$lib/messages/timeline';
@@ -11,9 +10,9 @@ import { messageTimeline, type TimelineMessage } from '$lib/messages/timeline';
  * shape as a channel's thread (chat-thread.svelte.ts), but polled,
  * not a live wire, with a post going over HTTP and a merge-by-id on every
  * page so the millisecond-truncated `after` boundary can't duplicate a
- * line. "read" stays purely the reader's own business (ADR-0012 amended) —
- * a localStorage stamp, never a server fact — so `readAt` comes from there
- * instead of a `GET .../read`.
+ * line. Where the reader had read up to arrives with the first page and is
+ * moved by `POST .../read` — the reader's own cursor, on every device they
+ * use and never on the peer's (ADR-0012 amended, #2711).
  *
  * Reactions ride separately from the incremental `after` fetch: the server
  * returns the pair's FULL current reaction map on every poll (not scoped to
@@ -39,10 +38,10 @@ export function createDmThread(peerId: string, peerName: () => string) {
 	let raw = $state<DmLine[]>([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	// Captured now, before the page marks this thread seen — the "N new"
-	// line marks what's new since the LAST time you had it open, and must
-	// not creep down the list while you are reading it.
-	let readAt = $state<number | null>(dm.seenAt(peerId));
+	// Taken from the first page, before this open marks the thread read —
+	// the "N new" line marks what's new since the LAST time you had it open,
+	// and must not creep down the list while you are reading it.
+	let readAt = $state<number | null>(null);
 	let reactions = $state<Record<string, Record<string, number>>>({});
 	// "id:cheer" → I pressed it, same key shape chat-thread.svelte.ts uses.
 	let myReacts = $state<Record<string, boolean>>({});
@@ -70,6 +69,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			myReacts?: Record<string, string[]>;
 			edits?: Record<string, ChatEdit>;
 			deleted?: string[];
+			readAt?: number;
 		}>(`/api/dms/${peerId}${after ? `?after=${after}` : ''}`);
 		if (closed) return;
 		loading = false;
@@ -78,6 +78,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			return;
 		}
 		error = null;
+		if (readAt === null) readAt = res.data.readAt ?? 0;
 		// `after` is millisecond-truncated, so the boundary message can come
 		// back — merge by id, never blind-append.
 		const seen = new Set(raw.map((m) => m.id));
@@ -121,13 +122,17 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			);
 		}
 		if (raw.length > 0 && (fresh.length > 0 || !after)) {
-			// "Seen" only when you could actually have seen it — a thread left
+			// Read only when you could actually have seen it — a thread left
 			// open in a hidden tab must keep the badge (audit #219).
-			if (!document.hidden) {
-				dm.stampSeen(peerId);
-				dmHeads.bump();
-			}
+			if (!document.hidden) void markRead();
 		}
+	}
+
+	async function markRead() {
+		const res = await api(`/api/dms/${peerId}/read`, { method: 'POST' });
+		// The badge comes off the heads: ask for them again, or a dot sits on
+		// the thread you are reading until the next poll.
+		if (res.ok) dmHeads.refresh();
 	}
 
 	/**
