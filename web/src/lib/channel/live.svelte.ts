@@ -7,6 +7,7 @@ import type {
 	SensorPairing,
 	ServerMessage,
 	ServerTick,
+	SessionRecap,
 } from '$lib/protocol';
 import type { PlaceAddress } from '$lib/channel/address';
 import { account } from '$lib/account.svelte';
@@ -46,6 +47,9 @@ export const SETTLED_ATTEMPTS = 5;
 export function createChannelLive(address: PlaceAddress) {
 	let status = $state<LiveStatus>('connecting');
 	let tick = $state<ServerTick | null>(null);
+	// The last session's recap (#2600): it rides the one tick its row lands
+	// on, and the ended state draws it after. Let go when the next goes live.
+	let recap = $state<SessionRecap | null>(null);
 	// The last workout definition heard, by hash (#1710): the server sends
 	// the JSON only on the tick that changes it and names it on every other.
 	let workoutHeard: { hash: string; json: string } | null = null;
@@ -341,6 +345,8 @@ export function createChannelLive(address: PlaceAddress) {
 					state.workoutJson = workoutHeard.json;
 				}
 				tick = msg.tick;
+				if (msg.tick.recap) recap = msg.tick.recap;
+				else if (isLivePhase(state?.phase)) recap = null;
 				// The ack before the session follows it: the closing tick's
 				// own seq is what says whether the tail was heard (#1536).
 				const me = account.me?.id;
@@ -413,6 +419,9 @@ export function createChannelLive(address: PlaceAddress) {
 		retry: dialNow,
 		get tick() {
 			return tick;
+		},
+		get recap() {
+			return recap;
 		},
 		get refusal() {
 			return refusal;

@@ -1,4 +1,5 @@
 import { loadApi } from '$lib/api';
+import { fetchCrewRecaps } from '$lib/crew';
 import type { LiveSession } from '$lib/protocol';
 import {
 	loadVoiceChannel,
@@ -16,6 +17,9 @@ export interface SessionPageData {
 	voice: VoiceChannelData | null;
 	/** The crew's live list could not be read at all. */
 	error: string | null;
+	/** An ended session's voice channel, found by its recap (#2600): its
+	 *  address leads back there rather than to a page that says it ended. */
+	endedIn?: string;
 }
 
 export async function loadSessionPage(
@@ -30,7 +34,15 @@ export async function loadSessionPage(
 	if (!live.ok)
 		return { session: null, voice: null, error: live.error.message };
 	const session = live.data.sessions.find((s) => s.id === sessionId) ?? null;
-	if (!session) return { session: null, voice: null, error: null };
+	if (!session) {
+		// Only the channels you may enter list their recaps, so a private
+		// channel's ended session stays as unfound as it was.
+		const recaps = await fetchCrewRecaps(crewId, fetcher);
+		const endedIn = recaps.ok
+			? recaps.data.recaps.find((r) => r.sessionId === sessionId)?.channelId
+			: undefined;
+		return { session: null, voice: null, error: null, endedIn };
+	}
 	return {
 		session,
 		voice: await loadVoiceChannel(crewId, session.channel, fetcher),

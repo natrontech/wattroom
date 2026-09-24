@@ -18,6 +18,7 @@
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import SessionFlag from '$lib/session/SessionFlag.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
+	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import Stage from '$lib/channel/Stage.svelte';
@@ -112,9 +113,12 @@
 			<p class="text-muted mt-2 text-sm">
 				{#if channel.shared?.phase === 'done'}
 					<!-- Not "nothing is running yet" right under "it ended"
-					     (audit 2026-09-09): where it went, and what comes next. -->
-					Its recap is on the crew's
-					<a href={channel.address.members} class="underline">Members</a> page.
+					     (audit 2026-09-09): where it went, and what comes next —
+					     the recap itself once its row lands (#2600). -->
+					{#if !channelConnection.current?.live.recap}
+						Its recap is on the crew's
+						<a href={channel.address.members} class="underline">Members</a> page.
+					{/if}
 				{:else if device.spectator}
 					<!-- A phone has no trainer to pair and no session to start, so
 					     the empty state teaches what it IS for rather than listing
@@ -132,6 +136,11 @@
 					when you're ready.
 				{/if}
 			</p>
+			{#if channel.shared?.phase === 'done' && channelConnection.current?.live.recap}
+				<div class="mt-4 text-left">
+					<SessionRecapCard recap={channelConnection.current.live.recap} />
+				</div>
+			{/if}
 			<div class="mt-5">
 				<TrainerOverview />
 			</div>

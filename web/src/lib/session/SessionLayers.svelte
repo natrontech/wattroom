@@ -259,8 +259,10 @@
 							>See your ride</a
 						>
 					{/if}
+					<!-- The page is already the channel's under it (#2600): the
+					     session's address lets go when it ends. -->
 					<button onclick={() => summary.dismiss()} class="btn btn-secondary"
-						>Back to the Lounge</button
+						>Back to {placeName}</button
 					>
 				</div>
 			{/snippet}
