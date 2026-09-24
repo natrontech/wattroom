@@ -1,0 +1,1 @@
+- A dropdown inside a dialog shows its whole list. "Clear after" in the status editor showed only its first two choices, and the device pickers in the sound dialog could be cut off the same way.
