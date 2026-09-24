@@ -17,6 +17,7 @@
 	import { account } from '$lib/account.svelte';
 	import { completeMention, mentionCompletion } from '$lib/messages/mention';
 	import Banner from '$lib/components/Banner.svelte';
+	import DraftEmoji from '$lib/chat/DraftEmoji.svelte';
 	import GifPicker from '$lib/chat/GifPicker.svelte';
 	import type { Gif } from '$lib/chat/gifs';
 	import ImageChip from '$lib/chat/ImageChip.svelte';
@@ -364,6 +365,7 @@
 			class="btn btn-primary">Send</button
 		>
 	</form>
+	<DraftEmoji text={draft} />
 	{#if lock}
 		<p class="text-muted mt-1.5 text-xs">{lock}</p>
 	{:else if hint}

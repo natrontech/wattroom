@@ -20,7 +20,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import { focusTrap } from '$lib/components/focus-trap';
-	import { crewEmoji } from './crew-emoji.svelte';
+	import { crewEmoji, customName } from './crew-emoji.svelte';
 	import { loadEmoji, searchEmoji, type EmojiGroup } from './data';
 
 	let {
@@ -60,7 +60,7 @@
 		try {
 			const saved: unknown = JSON.parse(localStorage.getItem(RECENT) ?? '[]');
 			return Array.isArray(saved)
-				? saved.filter((k) => typeof k === 'string')
+				? saved.filter((k): k is string => typeof k === 'string')
 				: [];
 		} catch {
 			return [];
@@ -97,6 +97,15 @@
 	// -1 is the first tab: your set, the crew's emoji, your recent ones.
 	let tab = $state(-1);
 	const custom = $derived(crewId ? crewEmoji.list(crewId) : []);
+	// A crew's emoji is recent only in its own crew's picker: anywhere else
+	// it has no picture, and a DM or a status would take it as its `:name:`.
+	const recentHere = $derived(
+		recent.flatMap((key) => {
+			const name = customName(key);
+			const own = name ? custom.find((e) => e.name === name) : undefined;
+			return name && !own ? [] : [{ key, own }];
+		}),
+	);
 	const hits = $derived(searchEmoji(groups, query));
 	const customHits = $derived(
 		query.trim()
@@ -274,10 +283,13 @@
 					>
 				</div>
 			{/if}
-			{#if recent.length}
+			{#if recentHere.length}
 				<p class="eyebrow px-1 pt-2 pb-1">Recent</p>
 				<div class="grid grid-cols-8 gap-0.5">
-					{#each recent as key (key)}{@render cell(key, key)}{/each}
+					{#each recentHere as r (r.key)}{#if r.own}{@render crewCell(
+								r.own.name,
+								r.own.id,
+							)}{:else}{@render cell(r.key, r.key)}{/if}{/each}
 				</div>
 			{/if}
 		{:else if groups[tab]}
