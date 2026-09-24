@@ -50,6 +50,21 @@ export function createSoloTrainer() {
 		unsubscribe = [];
 	}
 
+	/** Hold a connected trainer and watch its samples. */
+	function hold(next: Trainer) {
+		status = next.status;
+		// t0 for the silence check; the first frame should be ~1 s away.
+		lastSampleAt = Date.now();
+		now = lastSampleAt;
+		unsubscribe.push(
+			next.onSample((s) => {
+				sample = s;
+				lastSampleAt = s.at;
+			}),
+		);
+		trainer = next;
+	}
+
 	/** Pair and hold. The rider starts the ride themselves, once. */
 	async function pair(next: Trainer): Promise<void> {
 		if (pairing) return;
@@ -68,17 +83,7 @@ export function createSoloTrainer() {
 		unsubscribe.push(next.onStatus((s) => (status = s)));
 		try {
 			await next.connect();
-			status = next.status;
-			// t0 for the silence check; the first frame should be ~1 s away.
-			lastSampleAt = Date.now();
-			now = lastSampleAt;
-			unsubscribe.push(
-				next.onSample((s) => {
-					sample = s;
-					lastSampleAt = s.at;
-				}),
-			);
-			trainer = next;
+			hold(next);
 		} catch (cause) {
 			error = pairError(cause);
 			release();
@@ -114,6 +119,22 @@ export function createSoloTrainer() {
 		return held;
 	}
 
+	/**
+	 * Take back a trainer no ride started on (#2615): the count-in cancelled,
+	 * or the rider left during it. `handOff` let go without disconnecting, so
+	 * nothing held it — the pre-ride showed it unpaired over an open GATT
+	 * link, and pairing again put a second client on the unit (#1716). It is
+	 * still connected, so no `connect()`.
+	 */
+	function adopt(next: Trainer | null | undefined) {
+		if (!next || next === trainer) return;
+		if (trainer) forget();
+		error = null;
+		sample = null;
+		unsubscribe.push(next.onStatus((s) => (status = s)));
+		hold(next);
+	}
+
 	return {
 		get trainer() {
 			return trainer;
@@ -144,6 +165,7 @@ export function createSoloTrainer() {
 		pair,
 		forget,
 		handOff,
+		adopt,
 	};
 }
 

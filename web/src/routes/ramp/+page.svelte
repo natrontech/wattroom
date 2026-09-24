@@ -345,7 +345,7 @@
 		// Left during the count-in (#1800): no test to stop and no riding to
 		// save.
 		if (session.state === 'countdown') {
-			session.abort();
+			solo.adopt(session.abort());
 			buffer?.end();
 			return;
 		}
@@ -465,7 +465,8 @@
 				{#snippet controls()}
 					<button
 						onclick={() => {
-							session?.abort();
+							// The trainer goes back to the pre-ride, still paired (#2615).
+							solo.adopt(session?.abort());
 							session = null;
 							buffer?.end();
 							buffer = null;

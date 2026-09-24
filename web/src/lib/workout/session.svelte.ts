@@ -625,11 +625,11 @@ export function createRideSession({
 		/**
 		 * The rider changed their mind during the count-in (#1800). Not stop():
 		 * nothing has been ridden, so there is no ride to end, save or export —
-		 * the session goes back to idle and the trainer stays paired, exactly as
-		 * it was before Start.
+		 * the session goes back to idle and hands the trainer back, still
+		 * connected, for whoever paired it to hold again (#2615).
 		 */
-		abort() {
-			if (state !== 'countdown') return;
+		abort(): Trainer | undefined {
+			if (state !== 'countdown') return undefined;
 			ticker?.stop();
 			ticker = undefined;
 			wakeLock?.release();
@@ -642,6 +642,7 @@ export function createRideSession({
 			state = 'idle';
 			ridingSince = undefined;
 			starting = false;
+			return trainer;
 		},
 		stop() {
 			finish();

@@ -134,6 +134,31 @@ describe('the solo pre-ride trainer slot (#611)', () => {
 		});
 	});
 
+	// A cancelled count-in hands the trainer back (#2615). The slot used to
+	// stay empty over a live GATT link, and pairing again put a second client
+	// on the unit (#1716).
+	it('takes back a trainer no ride started on, and can still hang it up', async () => {
+		await withSlot(async (slot) => {
+			const trainer = new FakeTrainer();
+			await slot.pair(trainer);
+			slot.adopt(slot.handOff());
+
+			expect(slot.trainer).toBe(trainer);
+			expect(slot.state).toBe('connected');
+			// Taken back as it is: not re-dialled, not hung up.
+			expect(trainer.connects).toBe(1);
+			expect(trainer.disconnects).toBe(0);
+			trainer.pedal(150, 85);
+			expect(slot.reading).toBe('150 W · 85 rpm');
+			expect(trainer.listeners).toBe(1);
+
+			// Held again, so pairing another releases it rather than orphaning it.
+			await slot.pair(new FakeTrainer('Neo'));
+			expect(trainer.disconnects).toBe(1);
+			expect(trainer.listeners).toBe(0);
+		});
+	});
+
 	it('forgetting disconnects and clears the card', async () => {
 		await withSlot(async (slot) => {
 			const trainer = new FakeTrainer();
