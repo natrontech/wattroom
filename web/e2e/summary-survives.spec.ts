@@ -52,9 +52,18 @@ test('a rider keeps their summary while the coach starts the next workout', asyn
 	};
 
 	// A minute of riding, so both have a summary; then the coach ends it.
+	// The rider joins: a session leaves everyone else alone (ADR-0059).
 	await start();
+	await rider
+		.getByRole('link', { name: 'Join the ride' })
+		.click({ timeout: COUNTDOWN_MS + 15_000 });
 	const end = coach.getByRole('button', { name: 'end the session' });
 	await expect(end).toBeVisible({ timeout: COUNTDOWN_MS + 30_000 });
+	// The minute counts from the rider being in, not from the coach's start:
+	// a join that lands late would leave them short of a summary.
+	await expect(
+		rider.getByRole('button', { name: 'Leave the ride' }),
+	).toBeVisible({ timeout: 30_000 });
 	await coach.waitForTimeout(A_MINUTE_MS);
 	await end.click();
 	await coach
