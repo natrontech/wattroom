@@ -110,13 +110,20 @@ where r.message_id = @message_id and r.user_id = @user_id and r.emoji = @emoji
   and m.id = r.message_id and m.channel_id = @channel_id;
 
 -- name: MarkChannelRead :exec
--- Stamped on the clock every line's created_at comes from — Go's, not
--- Postgres's now() — and never before the newest line, so a read covers
--- every line that existed when it was made, however the two clocks disagree.
+-- The cursor moves to the line the reader was shown, up_to, by that line's
+-- own created_at (#2755): a clock stamp also covered whatever landed between
+-- the thread's load and this write, and reading no clock at all is what keeps
+-- a skewed one from leaving a line unread after the read (#2728). No up_to —
+-- a tab on the script from before — means the channel's newest line. Never
+-- backwards, so a device with an older view cannot un-read another's read.
+-- A channel with no such line gets no row.
 insert into channel_reads (channel_id, user_id, read_at)
-select @channel_id, @user_id, greatest(@read_at::timestamptz, max(created_at))
-from chat_messages where channel_id = @channel_id
-on conflict (channel_id, user_id) do update set read_at = excluded.read_at;
+select @channel_id, @user_id, max(created_at)
+from chat_messages
+where channel_id = @channel_id
+  and (sqlc.narg(up_to)::uuid is null or id = sqlc.narg(up_to))
+having max(created_at) is not null
+on conflict (channel_id, user_id) do update set read_at = greatest(channel_reads.read_at, excluded.read_at);
 
 -- name: GetChannelReadAt :one
 select read_at from channel_reads where channel_id = $1 and user_id = $2;

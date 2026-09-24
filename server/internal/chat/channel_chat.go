@@ -180,7 +180,7 @@ func (s *Service) handleChannelPost(w http.ResponseWriter, r *http.Request) {
 	}
 	s.pruneChannelSampled(channel.ID)
 	// Saying something is reading up to it.
-	s.markChannelRead(r.Context(), channel, me)
+	s.markChannelRead(r.Context(), channel, me, id)
 	s.changedIn(channel)
 	httpx.WriteJSON(w, http.StatusOK, protocol.ChatLine{
 		ID: store.UUIDString(id), From: me.DisplayName, FromID: store.UUIDString(me.ID),
@@ -372,13 +372,19 @@ func (s *Service) handleChannelRead(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	s.markChannelRead(r.Context(), channel, me)
+	upTo, ok := httpx.ReadUpTo(w, r)
+	if !ok {
+		return
+	}
+	s.markChannelRead(r.Context(), channel, me, upTo)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Service) markChannelRead(ctx context.Context, channel db.Channel, me db.User) {
+// markChannelRead moves the rider's cursor to upTo, a line of this channel;
+// the zero id means its newest line.
+func (s *Service) markChannelRead(ctx context.Context, channel db.Channel, me db.User, upTo pgtype.UUID) {
 	if err := s.store.Queries.MarkChannelRead(ctx, db.MarkChannelReadParams{
-		ChannelID: channel.ID, UserID: me.ID, ReadAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
+		ChannelID: channel.ID, UserID: me.ID, UpTo: upTo,
 	}); err != nil {
 		s.log.Warn("mark channel read failed", "err", err, "channel", store.UUIDString(channel.ID))
 		return
