@@ -27,8 +27,11 @@
 </script>
 
 {#if shown}
+	<!-- `relative` holds the sr-only words (#2735): unpositioned, they escape
+	     every scroll box to <body> and sit where their line is in the whole
+	     history, so a long chat stretched the page and scrolled the app away. -->
 	<span
-		class="inline-flex min-w-0 items-center gap-1 align-middle"
+		class="relative inline-flex min-w-0 items-center gap-1 align-middle"
 		title={shown.text || shown.emoji}
 		data-testid="status-line"
 	>

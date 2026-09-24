@@ -166,9 +166,10 @@
 				</span>
 			</span>
 			{#if person.medals}
-				<!-- The crew's sessions awarded them, lifetime (#1371, #2442). -->
+				<!-- The crew's sessions awarded them, lifetime (#1371, #2442).
+				     `relative` keeps the sr-only word from stretching the page (#2735). -->
 				<span
-					class="text-muted flex shrink-0 items-center gap-1 text-xs tabular-nums"
+					class="text-muted relative flex shrink-0 items-center gap-1 text-xs tabular-nums"
 				>
 					<Award size={13} class="text-neon" />
 					{person.medals}
