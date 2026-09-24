@@ -82,7 +82,7 @@ test('the crew Board teaches its first pin and leads with the announcement', asy
 
 test('crew Workouts teaches what gathers there', async ({ page, channels }) => {
 	await signInAs(page, 'Crew Workouts', '/home');
-	const { crew } = await channels.open(
+	const { crew, voice } = await channels.open(
 		page,
 		`Crew Workouts ${Date.now() % 100000}`,
 	);
@@ -103,7 +103,35 @@ test('crew Workouts teaches what gathers there', async ({ page, channels }) => {
 			});
 	}, crew);
 	await page.reload();
-	await expect(
-		page.getByRole('link', { name: 'Pick a workout to ride together' }),
-	).toBeVisible();
+	// The way to the first one plans for the crew, from the crew (#2624): it
+	// used to send a rider to the solo library, where every button rode alone.
+	const plan = page.getByRole('link', { name: 'Plan a session' });
+	await expect(plan).toHaveCount(1);
+	await expect(plan).toHaveAttribute('href', `/crew/${crew}/schedule?plan`);
+
+	// A crew with something on it keeps a way to plan something new.
+	const planned = await page.evaluate(
+		async ({ crew, voice }) =>
+			(
+				await fetch(`/api/crews/${crew}/schedule`, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						workoutName: 'Openers',
+						workoutJson: JSON.stringify({
+							name: 'Openers',
+							steps: [{ type: 'steady', seconds: 600, target: 0.75 }],
+						}),
+						startsAt: new Date(Date.now() + 24 * 3600_000).toISOString(),
+						channelId: voice,
+					}),
+				})
+			).ok,
+		{ crew, voice },
+	);
+	expect(planned).toBe(true);
+	await page.reload();
+	await expect(page.getByRole('heading', { name: 'Planned' })).toBeVisible();
+	await expect(plan).toHaveCount(1);
+	await expect(plan).toHaveAttribute('href', `/crew/${crew}/schedule?plan`);
 });

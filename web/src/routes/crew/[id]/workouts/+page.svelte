@@ -20,6 +20,7 @@
 	import { toasts } from '$lib/toast.svelte';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { buildShelf } from '$lib/workout/shelf';
+	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import Repeat from '@lucide/svelte/icons/repeat';
 	import RiddenCard from './RiddenCard.svelte';
 	import { untrack } from 'svelte';
@@ -112,7 +113,20 @@
 			{/snippet}
 		</Banner>
 	{:else}
-		<h1 class="page-title mb-1">Workouts</h1>
+		<!-- Planning starts from the crew it belongs to (ADR-0058, #2624): the
+		     same button CrewNow and Home use, so a crew with a history can
+		     plan something it has not ridden yet. The empty state carries it
+		     below instead. -->
+		<div class="mb-1 flex items-center gap-3">
+			<h1 class="page-title">Workouts</h1>
+			{#if data.plans.length > 0 || ridden.length > 0}
+				<a
+					href="/crew/{data.crew.id}/schedule?plan"
+					class="btn btn-secondary btn-xs ml-auto"
+					><CalendarClock size={13} /> Plan a session</a
+				>
+			{/if}
+		</div>
 		<p class="text-muted mb-6 text-xs">
 			What {data.crew.name} has planned and ridden together in the last 90 days.
 		</p>
@@ -164,8 +178,10 @@
 					The workouts your crew rides together gather here — every session it
 					plans, and every one it finishes.
 				</p>
-				<a href="/workouts" class="btn btn-primary btn-lg mt-4"
-					>Pick a workout to ride together</a
+				<a
+					href="/crew/{data.crew.id}/schedule?plan"
+					class="btn btn-primary btn-lg mt-4"
+					><CalendarClock size={15} /> Plan a session</a
 				>
 			</div>
 		{/if}
