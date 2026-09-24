@@ -1,10 +1,26 @@
 import { api } from '$lib/api';
 import type { Medal } from '$lib/components/MedalCard.svelte';
 import { MEDAL_META } from '$lib/medals';
+import type { LiveRider } from '$lib/channel/types';
 import type { createRecording } from '$lib/session/recording.svelte';
+import { untrack } from 'svelte';
 
 /** A session is worth a summary once it has a minute of your riding in it. */
 export const SUMMARY_MIN_SAMPLES = 60;
+
+/**
+ * What the summary card draws, taken when the session closes (#2603). The
+ * live values move on under it — the coach's next pick turns the phase back
+ * to idle within a second, and the next countdown clears the recording — so
+ * the card holds what the close drew until the rider is done with it.
+ */
+export interface SummaryCard {
+	samples: ReturnType<typeof createRecording>['samples'];
+	workoutName: string;
+	riders: LiveRider[];
+	ftp: number;
+	execution: number | undefined;
+}
 
 /**
  * Session close (#39's summary design): my own samples this session become
@@ -23,8 +39,13 @@ export function createSummary(deps: {
 	myName: () => string | undefined;
 	myId: () => string | undefined;
 	myExecution: () => number | undefined;
+	/** What the card keeps at the close, beside the rider's own samples. */
+	workoutName: () => string | undefined;
+	riders: () => LiveRider[];
+	ftp: () => number;
 }) {
 	let dismissed = $state(false);
+	let card = $state<SummaryCard | null>(null);
 	let medalBase = $state<Omit<Medal, 'xp'> | undefined>(undefined);
 	// The pipeline's XP for the ride the session saved (#1411): the card said
 	// "0 XP" to everyone. Shown once the ride is found, never as a placeholder.
@@ -97,6 +118,8 @@ export function createSummary(deps: {
 	$effect(() => {
 		const phase = deps.phase();
 		if (phase === 'running') {
+			// The rider's next session is under way: the last card goes.
+			card = null;
 			dismissed = false;
 			fetched = false;
 			medalBase = undefined;
@@ -104,12 +127,21 @@ export function createSummary(deps: {
 			rideId = null;
 			sessionStart = deps.startedAt() ?? Date.now();
 		}
-		if (
-			phase !== 'done' ||
-			fetched ||
-			deps.recording.samples.length < SUMMARY_MIN_SAMPLES
-		)
+		if (phase !== 'done' || deps.recording.samples.length < SUMMARY_MIN_SAMPLES)
 			return;
+		// Taken the first time the close is seen, not only on the edge into
+		// it: a page that remounts after the close (#2600) sees it done.
+		if (!card)
+			card = untrack(() => ({
+				// Held, not copied: the recording and the roster replace their
+				// arrays rather than emptying them, so these stay the close's.
+				samples: deps.recording.samples,
+				workoutName: deps.workoutName() ?? '',
+				riders: deps.riders(),
+				ftp: deps.ftp(),
+				execution: deps.myExecution(),
+			}));
+		if (fetched) return;
 		fetched = true;
 		// Server truth over the local clock at the close: the saver dates the
 		// ride now − elapsed, and a rider who joined ten minutes in would
@@ -133,9 +165,11 @@ export function createSummary(deps: {
 		dismiss() {
 			dismissed = true;
 		},
-		/** Enough riding to be worth showing. */
-		get ready() {
-			return deps.recording.samples.length >= SUMMARY_MIN_SAMPLES;
+		/** The card, from the close until it is dismissed or the next session
+		 *  runs — whatever the phase does in between. Null with nothing worth
+		 *  showing (under a minute of riding). */
+		get card() {
+			return dismissed ? null : card;
 		},
 	};
 }
