@@ -1,1 +1,0 @@
-- **Set a status.** Pick an emoji (one of your crew's own emoji works too) and a short line, like "🤒 Out sick" or "🏔️ Riding outside", and choose when it clears. It shows beside your name in chat, the member list, the voice channel and the friends panel, and in full on your rider page. Open it from your avatar's menu or your rider page.

@@ -1,1 +1,0 @@
-- A double tap on **Plan it** in a voice channel plans the session once. It used to put it on the calendar twice and mail every member twice.
