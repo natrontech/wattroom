@@ -95,6 +95,12 @@ test('two riders share a session: crew strip, execution bars, sprint scoreboard'
 		.click();
 	await a.getByRole('button', { name: 'Start Recovery Spin' }).click();
 
+	// A session leaves everyone else's trainer alone until they join
+	// (ADR-0059): B, free-riding on the Training place, takes the way in.
+	await b
+		.getByRole('link', { name: 'Join the ride' })
+		.click({ timeout: COUNTDOWN_MS + SETTLE_MS });
+
 	// --- B is in A's crew strip, and pedalling ------------------------------
 	const tiles = a.getByTestId('crew-tile');
 	await expect(
