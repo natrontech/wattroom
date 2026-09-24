@@ -125,14 +125,17 @@
 		aria-label="back to {crew.name}"><ChevronLeft size={18} /></a
 	>
 	<span class="bg-surface grid h-7 w-7 shrink-0 place-items-center rounded">
-		{#if channel.private}
-			<Lock size={14} class="text-muted" />
-		{:else}
-			<MessageCircle size={14} class="text-muted" />
-		{/if}
+		<MessageCircle size={14} class="text-muted" />
 	</span>
 	<span class="min-w-0">
-		<h1 class="block truncate text-sm font-medium">{channel.name}</h1>
+		<!-- The bubble stays the mark; private is a small lock after the name,
+		     as the sidebar row draws it (#2696). -->
+		<span class="flex items-center gap-1">
+			<h1 class="truncate text-sm font-medium">{channel.name}</h1>
+			{#if channel.private}
+				<Lock size={11} class="text-muted-dim shrink-0" aria-label="private" />
+			{/if}
+		</span>
 		<a
 			href="/crew/{crew.id}"
 			class="text-muted hover:text-ink block truncate text-[11px]"
