@@ -17,6 +17,23 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.140] - 2026-09-24
+
+### Added
+
+- A message notification shows the sender's status emoji after their name, like "Sven 🤒", so you know they're out sick before you open it.
+- **A poke now says who and when.** If you're looking at the screen, a toast names who poked you, with a **Poke back** button. Before, you only heard a sound. Between friends, each poke is saved as a line in your direct messages ("poked you · 14:32"), so you can see who poked you and when, even later. **Poke with a message…** adds a few words, and a bell button in the message box sends your next line as a poke. You can poke a friend from anywhere: their row in your friends list, their messages, a crew's member list, or the new **Poke** button at the top of your conversation with them. The person who pokes now sees "Poked Sven" when it lands.
+- The crew switcher's **You** entry shows your status emoji.
+
+### Fixed
+
+- For self-hosters: a page a rider leaves before it finishes loading no longer
+  writes an ERROR line to the server log. A normal evening of clicking around
+  used to leave dozens of them, burying real failures and tripping error-rate
+  alerts.
+- Cancelling the 3-2-1 count-in on a solo ride or ramp test, or leaving the page during it, keeps your trainer paired and **Start** ready. Before, the trainer showed as unpaired while still connected, so pairing it again could come up empty or leave the trainer with two connections at once.
+- A direct message that arrives just as you read the conversation stays unread until it is on your screen. Before, it could be marked read the moment it landed, and if you closed the conversation right then you never got a dot for it.
+
 ## [2026.09.139] - 2026-09-24
 
 ### Added
@@ -2941,7 +2958,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.139...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.140...HEAD
+[2026.09.140]: https://github.com/natrontech/wattroom/compare/2026.09.139...2026.09.140
 [2026.09.139]: https://github.com/natrontech/wattroom/compare/2026.09.138...2026.09.139
 [2026.09.138]: https://github.com/natrontech/wattroom/compare/2026.09.137...2026.09.138
 [2026.09.137]: https://github.com/natrontech/wattroom/compare/2026.09.136...2026.09.137
