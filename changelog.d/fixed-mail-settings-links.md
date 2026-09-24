@@ -1,1 +1,0 @@
-- Session emails say that their switch is in your WattRoom **settings**, not your profile. After you unsubscribe, **Back to WattRoom** opens Settings › Notifications, where you can turn the emails back on.
