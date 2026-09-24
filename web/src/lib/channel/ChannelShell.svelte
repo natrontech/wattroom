@@ -12,6 +12,7 @@
 	import { banAsk } from '$lib/crew-flows';
 	import { pickStage, sourceLabel } from '$lib/channel/stage';
 	import { createRiders } from '$lib/channel/riders.svelte';
+	import { coachOf } from '$lib/channel/tick-session';
 	import { createSessionSounds } from '$lib/session/session-sounds.svelte';
 	import CheerLayer from '$lib/channel/CheerLayer.svelte';
 	import Soundboard from '$lib/board/Soundboard.svelte';
@@ -91,8 +92,9 @@
 			props.role,
 	);
 	// The session's coach drives it (#2438): whoever opened it, until they
-	// hand it off. With none open, anyone here may open one with a pick.
-	const coach = $derived(live.tick?.state.coach);
+	// hand it off. With none open — a done one included (#2596) — anyone here
+	// may open one with a pick.
+	const coach = $derived(coachOf(live.tick?.state));
 	const canControl = $derived(coach ? coach === account.me?.id : true);
 	// Managing the crew's playlists and calendar stays a crew role's, never
 	// the session's: the tick carries the crew's word for it (#2438).

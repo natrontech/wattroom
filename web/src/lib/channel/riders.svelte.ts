@@ -1,6 +1,7 @@
 import { isSounding } from '$lib/sound/board.svelte';
 import { describeBlock, type Block } from '$lib/workout/block';
 import type { LiveRider } from '$lib/channel/types';
+import { coachOf } from '$lib/channel/tick-session';
 import { targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
 import type { ServerTick } from '$lib/protocol';
@@ -97,8 +98,9 @@ export function createRiders(deps: RiderDeps) {
 				kg: rider.weightKg,
 				you,
 				// The session's coach, not a crew role (#2438): being the crew's
-				// owner or an admin does not make anyone coach.
-				coach: rider.id === tick.state.coach,
+				// owner or an admin does not make anyone coach. Nor does having
+				// coached the one that ended (#2596).
+				coach: rider.id === coachOf(tick.state),
 				cameraOn: !!deps.av.videoOf[rider.id],
 				sharing: deps.av.stageSources.some(
 					(source) => source.kind === 'screen' && source.id === rider.id,
