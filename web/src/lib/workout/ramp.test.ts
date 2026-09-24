@@ -9,6 +9,7 @@ import {
 	RAMP,
 	rampBlown,
 	rampFailed,
+	rampOver,
 	rampUsable,
 } from './ramp';
 
@@ -204,5 +205,36 @@ describe('a ramp the rider stops in', () => {
 		expect(session.target).toBe(0);
 		expect(rampFailed(trailing(session, session.target))).toBe(false);
 		session.stop();
+	});
+});
+
+// #2621: a rider who holds all 25 steps is never blown, so a page that asked
+// only rampBlown froze on the riding panel when the workout ran out — the
+// fanfare, then a dead dashboard, the FTP behind "I'm done".
+describe('a ramp ridden to its last step', () => {
+	it('is over when the workout runs out, which rampBlown cannot see', async () => {
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: buildRampTest(),
+			ftp: 200,
+		});
+		await session.start();
+		const cap = durationSeconds(buildRampTest()) + 60;
+		for (let i = 0; i < cap && session.state !== 'done'; i++) {
+			session.onSample({
+				watts: session.info.targetWatts ?? 150,
+				cadence: 90,
+				at: i * 1000,
+			});
+			session.tick();
+		}
+		expect(session.state).toBe('done');
+
+		const held = session.recording
+			.slice(-RAMP.failSeconds)
+			.map((s) => ({ watts: s.watts, target: s.watts }));
+		expect(rampBlown(session.elapsed, held)).toBe(false);
+		expect(rampOver(true, session.elapsed, held)).toBe(true);
+		expect(rampOver(false, session.elapsed, held)).toBe(false);
 	});
 });

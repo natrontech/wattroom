@@ -40,7 +40,7 @@
 		buildRampTest,
 		RAMP,
 		RAMP_TAKES,
-		rampBlown,
+		rampOver,
 		rampUsable,
 	} from '$lib/workout/ramp';
 
@@ -162,7 +162,7 @@
 		const last = current.sample;
 		const stale = !last || Date.now() - last.at > SIGNAL_LOST_MS;
 		if (
-			rampBlown(current.elapsed, trailing, {
+			rampOver(current.state === 'done', current.elapsed, trailing, {
 				stale,
 				released: current.spiralActive,
 			})
