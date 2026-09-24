@@ -2,6 +2,7 @@ import { isSounding } from '$lib/sound/board.svelte';
 import { describeBlock, type Block } from '$lib/workout/block';
 import type { LiveRider } from '$lib/channel/types';
 import { coachOf } from '$lib/channel/tick-session';
+import { scoredTarget } from '$lib/channel/types';
 import { targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
 import type { ServerTick } from '$lib/protocol';
@@ -39,7 +40,14 @@ export function createRiders(deps: RiderDeps) {
 	// never a zeroed one (the mock's `stale` state, real).
 	const lastKnown = new Map<
 		string,
-		{ watts: number; cadence: number; hr: number; at: number }
+		{
+			watts: number;
+			cadence: number;
+			hr: number;
+			bias?: number;
+			released?: boolean;
+			at: number;
+		}
 	>();
 	// A rider's hue is a function of their id, which never changes; it was
 	// hashed from scratch on every tick for every rider (audit 2026-09-09).
@@ -70,6 +78,8 @@ export function createRiders(deps: RiderDeps) {
 					watts: metrics.watts,
 					cadence: metrics.cadence ?? 0,
 					hr: metrics.hr ?? 0,
+					bias: metrics.bias,
+					released: metrics.released,
 					at: now,
 				});
 			const known = lastKnown.get(rider.id);
@@ -85,11 +95,14 @@ export function createRiders(deps: RiderDeps) {
 			const target = you
 				? deps.myTarget()
 				: deps.running() && deps.segments().length > 0 && rider.ftpWatts > 0
-					? (targetAt(
-							deps.segments(),
-							rider.ftpWatts,
-							deps.shared()?.elapsed ?? 0,
-						).targetWatts ?? 0)
+					? scoredTarget(
+							targetAt(
+								deps.segments(),
+								rider.ftpWatts,
+								deps.shared()?.elapsed ?? 0,
+							).targetWatts ?? 0,
+							metrics ?? held,
+						)
 					: 0;
 			return {
 				id: rider.id,
