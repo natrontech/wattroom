@@ -31,7 +31,7 @@ const { createRecording } = await import('./recording.svelte');
 async function setup(
 	startedAt: () => number | undefined,
 	// Its own close unless a test shares one: dismissals outlive a mount.
-	sessionId = crypto.randomUUID(),
+	sessionId: string = crypto.randomUUID(),
 ) {
 	let phase = $state<string | undefined>('idle');
 	let workout = $state('Openers');
