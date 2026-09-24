@@ -15,7 +15,6 @@ vi.mock('$lib/dm/dm.svelte', () => ({
 		get open() {
 			return open;
 		},
-		seenAt: () => 0,
 	},
 }));
 vi.mock('$lib/people.svelte', () => ({ people: { learn: () => {} } }));
@@ -111,6 +110,20 @@ describe('dm heads', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		expect(dmHeads.error).toBeNull();
 		expect(dmHeads.heads).toHaveLength(1);
+	});
+
+	// The badge is the server's answer (#2711): a read on another device
+	// clears it here on the next poll, a read here clears it at once.
+	it('shows unread as the server says, and asks again on refresh', async () => {
+		conversations = [{ ...line(1), unread: true }];
+		dmHeads.start();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(dmHeads.unread('mara')).toBe(true);
+
+		conversations = [{ ...line(1), unread: false }];
+		dmHeads.refresh();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(dmHeads.unread('mara')).toBe(false);
 	});
 
 	// Sign-out stops the poll (#1515): it used to run for the life of the tab

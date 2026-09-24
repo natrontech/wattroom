@@ -2,6 +2,7 @@ import { away, notify, type ReplyTo } from '$lib/notify.svelte';
 import { shouldAnnounce } from '$lib/notify-once';
 import { play } from '$lib/sound/cues';
 import { toasts, type ToastAction } from '$lib/toast.svelte';
+import MessageCircle from '@lucide/svelte/icons/message-circle';
 
 /**
  * What kind of thing arrived. Every path through here looks identical once the
@@ -75,6 +76,9 @@ function divert(arrival: Arrival): boolean {
 export function announce(arrival: Arrival): void {
 	if (arrival.reading || !shouldAnnounce(arrival.tag, arrival.at)) return;
 	play(arrival.kind === 'poke' ? 'poke' : 'chat');
+	// A written line wears the bubble — a chat channel's, as its sidebar row
+	// does, and a DM's — on the OS notification and on the toast alike.
+	const written = arrival.kind === 'chat' || arrival.kind === 'dm';
 	// A window nobody is looking at gets the OS notification — hidden, or
 	// behind another app (ADR-0042). A VISIBLE, focused one gets a toast: the
 	// rider is in the app looking at Training or a workout, where a blip
@@ -83,6 +87,7 @@ export function announce(arrival: Arrival): void {
 		notify.push(arrival.title, arrival.body, arrival.tag, {
 			href: arrival.href,
 			reply: arrival.reply,
+			icon: written ? 'chat' : undefined,
 		});
 	// Mid-ride, a message is the only thing on the screen that moves and is
 	// not data (#1743, #2531): ux.md's "persistent status, never a toast" is
@@ -92,16 +97,14 @@ export function announce(arrival: Arrival): void {
 	// line waits too: it is no longer the room the rider is riding in, but
 	// the crew talking elsewhere (ADR-0058). A session starting elsewhere is
 	// still toasted — that is ADR-0042's whole point.
-	else if (
-		(arrival.kind === 'dm' ||
-			arrival.kind === 'chat' ||
-			arrival.kind === 'poke') &&
-		divert(arrival)
-	)
-		return;
+	else if ((written || arrival.kind === 'poke') && divert(arrival)) return;
 	else
 		toasts.push(
 			arrival.body ? `${arrival.title}: ${arrival.body}` : arrival.title,
-			{ href: arrival.href, action: arrival.action },
+			{
+				href: arrival.href,
+				icon: written ? MessageCircle : undefined,
+				action: arrival.action,
+			},
 		);
 }

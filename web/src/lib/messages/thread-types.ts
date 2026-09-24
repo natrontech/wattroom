@@ -20,8 +20,6 @@ export interface ThreadSource {
 	readAt: number | null;
 	reactions?: Record<string, Record<string, number>>;
 	myReacts?: Record<string, boolean>;
-	/** The crew's reaction set, first in the picker (#2643). */
-	cheers?: string[];
 	/** The crew whose uploaded emoji the picker offers; none in a DM. */
 	crewId?: string;
 	retry: () => void;

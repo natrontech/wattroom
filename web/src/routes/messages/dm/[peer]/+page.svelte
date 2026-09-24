@@ -14,10 +14,10 @@
 	import { createDmThread } from '$lib/dm/thread.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
-	import { STOCK_CHEERS } from '$lib/icons';
 	import MessageThread from '$lib/messages/MessageThread.svelte';
 	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { friendPlace, friends } from '$lib/friends/friends.svelte';
 	import { fetchRider, type Rider } from '$lib/rider';
 	import { statusOf } from '$lib/status';
@@ -103,6 +103,7 @@
 					id,
 					name: res.data.displayName,
 					avatarUrl: res.data.avatarUrl,
+					statusLine: res.data.statusLine,
 				},
 			]);
 		});
@@ -128,17 +129,14 @@
 		t.start();
 		thread = t;
 		// The open thread, so a new line in it blips nowhere (heads.svelte).
-		// Stamped AFTER the thread captures its readAt, so the "N new" line
-		// marks what's new since the last time this thread was open, not
-		// "nothing" because opening it just stamped now as seen. The name is
-		// read untracked: it arrives with the heads poll, and tracking it
-		// tore the thread down and rebuilt it — readAt and the divider with
-		// it (#824). The thread reads it live through the getter above.
+		// The name is read untracked: it arrives with the heads poll, and
+		// tracking it tore the thread down and rebuilt it — readAt and the
+		// divider with it (#824). The thread reads it live through the getter
+		// above.
 		dm.show(
 			id,
 			untrack(() => peerName),
 		);
-		dmHeads.bump();
 		return () => {
 			t.close();
 			dm.close();
@@ -166,11 +164,8 @@
 		loading: thread?.loading ?? true,
 		error: thread?.error ?? null,
 		readAt: thread?.readAt ?? null,
-		// A DM has no crew to draw a custom cheer palette from, so it speaks
-		// the same stock vocabulary a crew without its own falls back to (#777).
 		reactions: thread?.reactions ?? {},
 		myReacts: thread?.myReacts ?? {},
-		cheers: STOCK_CHEERS,
 		retry: () => thread?.retry(),
 		// With the bell pressed, words alone go as a poke; a picture or a
 		// timer is a message, and the bell does not change that.
@@ -211,11 +206,19 @@
 		size={28}
 	/>
 	<span class="min-w-0">
-		<a
-			href="/u/{peerId}"
-			class="block truncate text-sm font-medium hover:underline"
-			title="{peerName}'s page">{peerName}</a
-		>
+		<!-- Their status in words (ADR-0060), from the faces the friends list
+		     and the heads poll teach: a friend you have not written to yet
+		     has no head, and still has a status. -->
+		<span class="flex min-w-0 items-center gap-2 text-sm">
+			<a
+				href="/u/{peerId}"
+				class="shrink-0 truncate font-medium hover:underline"
+				title="{peerName}'s page">{peerName}</a
+			>
+			<span class="text-muted min-w-0 text-xs">
+				<StatusMark line={people.face(peerId)?.statusLine} size={13} text />
+			</span>
+		</span>
 		<span class="text-muted block truncate text-[11px]">
 			{where || 'not in a voice channel'}
 		</span>

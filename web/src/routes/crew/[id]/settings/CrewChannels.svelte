@@ -9,6 +9,7 @@
 		updateChannel,
 		type CrewChannel,
 		type ChannelKind,
+		newLabel,
 	} from '$lib/channels';
 	import type { Crew } from '$lib/crew';
 	import {
@@ -42,7 +43,7 @@
 	});
 
 	const KINDS = [
-		{ kind: 'text', title: 'Text channels', cap: MaxCrewTextChannels },
+		{ kind: 'text', title: 'Chat channels', cap: MaxCrewTextChannels },
 		{ kind: 'voice', title: 'Voice channels', cap: MaxCrewVoiceChannels },
 	] as const;
 
@@ -81,7 +82,7 @@
 <section class="panel panel-xl mt-5">
 	<h2 class="font-display font-bold">Channels</h2>
 	<p class="text-muted mt-1.5 text-xs">
-		Text channels are where the crew writes; voice channels are where it talks,
+		Chat channels are where the crew writes; voice channels are where it talks,
 		plays music and rides. Drag a channel to reorder it, or right-click it.
 	</p>
 
@@ -136,7 +137,7 @@
 			{:else}
 				<p class="text-muted mt-2 text-xs">
 					{group.kind === 'text'
-						? 'No text channels — the crew has nowhere to write.'
+						? 'No chat channels — the crew has nowhere to write.'
 						: 'No voice channels — the crew has nowhere to talk or ride.'}
 				</p>
 			{/if}
@@ -152,8 +153,8 @@
 					maxlength={MaxChannelNameChars}
 					disabled={full}
 					class="input min-w-0 flex-1"
-					placeholder="New {group.kind} channel"
-					aria-label="new {group.kind} channel name"
+					placeholder={newLabel(group.kind)}
+					aria-label="{newLabel(group.kind).toLowerCase()} name"
 				/>
 				<button
 					disabled={creating || full || !draft[group.kind].trim()}
@@ -163,7 +164,7 @@
 			{#if full}
 				<p class="text-muted mt-1.5 text-xs">
 					A crew holds at most {group.cap}
-					{group.kind} channels — delete one to make room.
+					{group.title.toLowerCase()} — delete one to make room.
 				</p>
 			{:else if createError[group.kind]}
 				<p class="text-danger mt-1.5 text-xs">{createError[group.kind]}</p>

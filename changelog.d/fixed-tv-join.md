@@ -1,1 +1,0 @@
-- TV mode now shows a large **Join the ride** button when a session starts in your voice channel without you, so you can join from across the room without leaving the TV.

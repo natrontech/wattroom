@@ -6,6 +6,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
+	import { newLabel } from '$lib/channels';
 	import { MaxChannelNameChars } from '$lib/protocol';
 	import { crewLive } from './crew-live.svelte';
 
@@ -35,7 +36,7 @@
 </script>
 
 <h3 class="font-display font-bold">
-	New {kind} channel<span class="text-muted font-normal"
+	{newLabel(kind)}<span class="text-muted font-normal"
 		>&nbsp;in {crew.name}</span
 	>
 </h3>

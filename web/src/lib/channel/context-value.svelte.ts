@@ -38,8 +38,6 @@ export interface ChannelShellProps {
 	address: PlaceAddress;
 	role: string;
 	name: string;
-	/** The crew's reaction palette (#223); absent = SidePanel's base set. */
-	cheers?: string[];
 	/** The crew's join code (#1236), for the TV's idle screen. */
 	code?: string;
 	soundPack?: string;

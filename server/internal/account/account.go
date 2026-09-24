@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -180,10 +181,10 @@ func (s *Service) Register(mux *http.ServeMux) {
 //     that would mean anything, and handing back session material is not an
 //     improvement.
 //
-//   - `room_reads` and `track_plays`, which are the same judgement twice:
-//     bookkeeping attributable to the rider that no screen shows them.
-//     room_reads is an unread-marker cursor. track_plays is read back only as
-//     a ROOM's last five titles, the same five for everyone in it, with no
+//   - `channel_reads`, `dm_reads` and `track_plays`, which are the same
+//     judgement twice: bookkeeping attributable to the rider that no screen
+//     shows them. The two reads tables are unread-marker cursors.
+//     track_plays is read back only as a ROOM's last five titles, the same five for everyone in it, with no
 //     date and no per-rider view — so a dated, cross-room list of everything
 //     the rider ever queued would be strictly more than they can see, which
 //     is the line this export stops at. If a "what I put on" surface ever
@@ -280,6 +281,8 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		// yourself, which is what the privacy page now says.
 		"calendarToken":    user.IcsToken,
 		"unsubscribeToken": store.UUIDString(user.UnsubToken),
+		// The reactions they picked (#2722), as the icons they react with.
+		"cheers": auth.CheerSet(user.Cheers),
 		// The status the rider wrote (ADR-0060), as the row holds it — one
 		// already cleared included, since nothing sweeps the columns.
 		"status": map[string]any{

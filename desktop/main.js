@@ -777,6 +777,10 @@ ipcMain.on('wattroom:notify', (event, n) => {
 		body: clip(n.body, 400),
 		hasReply: placeholder !== '',
 		replyPlaceholder: placeholder || undefined,
+		// Named, never a path: the renderer picks from what the shell bundles
+		// (#2696), so remote content cannot point it at a file.
+		icon:
+			n.icon === 'chat' ? path.join(__dirname, 'icons', 'chat.png') : undefined,
 	});
 	const win = BrowserWindow.fromWebContents(event.sender);
 	note.on('click', () => {

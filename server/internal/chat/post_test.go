@@ -3,8 +3,10 @@ package chat
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -117,6 +119,38 @@ func TestReactionBoundariesInAChannel(t *testing.T) {
 	}
 }
 
+// A read covers every line that existed when it was made, whichever clock
+// stamped them (#2728). A line's created_at comes from Go; while the read took
+// Postgres's now(), a server clock running ahead left the line unread right
+// after the read, and the badge never cleared.
+func TestChannelReadCoversALineStampedAhead(t *testing.T) {
+	w := channelSetup(t)
+	channel := w.channelID(t, w.open)
+	ahead := time.Now().Add(2 * time.Second)
+	if _, err := w.svc.store.Queries.SaveChannelMessage(t.Context(), db.SaveChannelMessageParams{
+		ChannelID: channel, UserID: w.users.ByToken["alice"].ID, Text: "warm-up at 7?",
+		CreatedAt: pgtype.Timestamptz{Time: ahead, Valid: true},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if code, body := post(t, w.mux, "bob", "/api/channels/"+w.open+"/read", ""); code != http.StatusNoContent {
+		t.Fatalf("read: %d %v", code, body)
+	}
+	rows, err := w.svc.store.Queries.UnreadByChannel(t.Context(), db.UnreadByChannelParams{
+		UserID: w.users.ByToken["bob"].ID, ChannelIds: []pgtype.UUID{channel},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 0 {
+		t.Fatalf("unread after the read: %+v", rows)
+	}
+	// The "N new" divider goes after the line too, not above it.
+	if at := w.readAt(t, "bob", w.open); at < float64(ahead.UnixMilli()) {
+		t.Fatalf("readAt %v is before the line at %d", at, ahead.UnixMilli())
+	}
+}
+
 func TestMarkChannelRead(t *testing.T) {
 	w := channelSetup(t)
 	bob := w.users.ByToken["bob"]
@@ -157,10 +191,21 @@ func TestMarkChannelRead(t *testing.T) {
 	if unread() != 1 || w.readAt(t, "bob", w.open) != 0 {
 		t.Fatalf("before: unread %d readAt %v", unread(), w.readAt(t, "bob", w.open))
 	}
+	w.lobby.mu.Lock()
+	w.lobby.reads = nil
+	w.lobby.mu.Unlock()
 	if code, body := post(t, w.mux, "bob", "/api/channels/"+w.open+"/read", ""); code != http.StatusNoContent {
 		t.Fatalf("read: %d %v", code, body)
 	}
 	if unread() != 0 || w.readAt(t, "bob", w.open) == 0 {
 		t.Fatalf("after: unread %d readAt %v", unread(), w.readAt(t, "bob", w.open))
+	}
+	// Bob's other devices hear it, so their badge clears too (#2711) — and
+	// only Bob's: the read is pinged to its reader, never to the channel.
+	w.lobby.mu.Lock()
+	reads := append([]string(nil), w.lobby.reads...)
+	w.lobby.mu.Unlock()
+	if want := []string{store.UUIDString(bob.ID)}; !slices.Equal(reads, want) {
+		t.Fatalf("read pinged %v, want %v", reads, want)
 	}
 }

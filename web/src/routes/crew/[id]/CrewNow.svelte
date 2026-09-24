@@ -6,6 +6,7 @@
 	// lobby ping, which is how a session starting elsewhere reaches it.
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
 	import TogetherTiles from '$lib/components/TogetherTiles.svelte';
 	import { voiceChannelPath } from '$lib/channels';
 	import { fetchCrewMembers, fetchCrewRecaps, type Crew } from '$lib/crew';
@@ -239,6 +240,9 @@
 			>
 		</div>
 	</div>
+	<!-- The crew is where WattRoom opens (#2576), so the first plan a rider
+	     sees is usually this one (ADR-0042, #2612). -->
+	<NotifyOffer />
 {/if}
 
 {#if latest}

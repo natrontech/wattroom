@@ -11,7 +11,7 @@
 	import BoardToggle from '$lib/board/BoardToggle.svelte';
 	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
 	import { emojiCrew } from '$lib/emoji/crew-emoji.svelte';
-	import { STOCK_CHEERS } from '$lib/icons';
+	import { account } from '$lib/account.svelte';
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
 	import { goto } from '$app/navigation';
@@ -53,7 +53,6 @@
 		banOf,
 		handOffOf,
 		elsewhere,
-		cheers = STOCK_CHEERS,
 	}: {
 		live: boolean;
 		/** Who is here (ADR-0020, #181 gap 3) — the roster owns the column. */
@@ -73,8 +72,6 @@
 		handOffOf?: ChannelContext['handOffOf'];
 		/** The crew's members in its other voice channels (roster.ts). */
 		elsewhere?: ReadonlyMap<string, Elsewhere>;
-		/** The crew's quick set (#223): icon keys, emoji, its own `:name:`. */
-		cheers?: string[];
 	} = $props();
 
 	const avatarOf = $derived(new Map(members.map((m) => [m.id, m])));
@@ -326,11 +323,11 @@
 		{/if}
 
 		<div class="border-ink/5 border-t p-3">
-			<!-- The crew's reactions, and under them the soundboard: both are
+			<!-- Your reactions (#2722), and under them the soundboard: both are
 			     a thing you throw into the channel, and neither is typing —
 			     which mid-ride was never on the table anyway (ux.md). -->
 			<div class="flex gap-1.5">
-				{#each cheers.slice(0, 4) as cheer (cheer)}
+				{#each account.cheers.slice(0, 4) as cheer (cheer)}
 					<button
 						onclick={() => onCheer?.(cheer)}
 						aria-label={cheer}
@@ -351,7 +348,7 @@
 			{#if pickerAt}
 				<EmojiPicker
 					anchor={pickerAt}
-					quick={cheers}
+					quick={account.cheers}
 					crewId={crew()}
 					onPick={(key) => {
 						onCheer?.(key);

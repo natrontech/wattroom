@@ -17,6 +17,28 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.137] - 2026-09-24
+
+### Added
+
+- **Your friends' statuses in messages.** A conversation's header shows the other rider's status, and the message list shows their status emoji beside their name.
+- **Free ride** in any voice channel. Press it beside Start a session and ride with no workout: set the grade or the watts with big − and + buttons while you stay in the call, and everyone in the channel sees your live watts. **End ride** saves it to your history and, if you've connected Strava, to Strava. A session starting beside you leaves your ride alone. Joining that session saves your free ride first, and so does leaving the channel.
+
+### Changed
+
+- Clicking a voice channel in the sidebar puts you in its voice straight away, a live camera stays on when you switch channels, and an arrow beside each voice channel lists everyone in it.
+
+### Fixed
+
+- Session emails say that their switch is in your WattRoom **settings**, not your profile. After you unsubscribe, **Back to WattRoom** opens Settings › Notifications, where you can turn the emails back on.
+- A dropdown inside a dialog shows its whole list. "Clear after" in the status editor showed only its first two choices, and the device pickers in the sound dialog could be cut off the same way.
+- TV mode now shows a large **Join the ride** button when a session starts in your voice channel without you, so you can join from across the room without leaving the TV.
+- Switching voice channels while the crew is busy no longer bounces you back into the channel you just left.
+
+### Security
+
+- Deleting a private voice channel now cancels the sessions planned in it, and tells the riders who could have ridden them. Before, those plans stayed on the schedule with no channel, where every member of the crew and the crew's shared calendar feed could see them. The delete confirm now also says what happens to a channel's plans. A plan in an open channel stays on the schedule as before.
+
 ## [2026.09.136] - 2026-09-24
 
 ### Added
@@ -2893,7 +2915,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.136...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.137...HEAD
+[2026.09.137]: https://github.com/natrontech/wattroom/compare/2026.09.136...2026.09.137
 [2026.09.136]: https://github.com/natrontech/wattroom/compare/2026.09.135...2026.09.136
 [2026.09.135]: https://github.com/natrontech/wattroom/compare/2026.09.134...2026.09.135
 [2026.09.134]: https://github.com/natrontech/wattroom/compare/2026.09.133...2026.09.134

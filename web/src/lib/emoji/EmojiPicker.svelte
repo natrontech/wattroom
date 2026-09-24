@@ -1,6 +1,6 @@
 <script lang="ts">
 	// The emoji picker (#2643): a reaction, or an emoji into a draft. The
-	// crew's own set and its uploaded emoji first, then the rider's recent
+	// rider's own set (#2722) and the crew's uploaded emoji first, then recent
 	// picks, then every Unicode emoji by group, and a search across all of it.
 	// Fixed to the viewport beside the control that opened it — the chat log
 	// clips its overflow — and a sheet along the bottom on a phone.
@@ -11,6 +11,7 @@
 	import PawPrint from '@lucide/svelte/icons/paw-print';
 	import Pizza from '@lucide/svelte/icons/pizza';
 	import Plane from '@lucide/svelte/icons/plane';
+	import Pencil from '@lucide/svelte/icons/pencil';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Smile from '@lucide/svelte/icons/smile';
 	import Volleyball from '@lucide/svelte/icons/volleyball';
@@ -31,7 +32,7 @@
 	}: {
 		/** What opened it: the picker sits beside it and ignores clicks on it. */
 		anchor: HTMLElement;
-		/** The crew's reaction set, first in line. */
+		/** The rider's own reaction set (#2722), first in line. */
 		quick?: string[];
 		/** Whose uploaded emoji to offer; none outside a crew. */
 		crewId?: string;
@@ -93,7 +94,7 @@
 	load();
 
 	let query = $state('');
-	// -1 is the crew's tab: its set, its emoji, your recent ones.
+	// -1 is the first tab: your set, the crew's emoji, your recent ones.
 	let tab = $state(-1);
 	const custom = $derived(crewId ? crewEmoji.list(crewId) : []);
 	const hits = $derived(searchEmoji(groups, query));
@@ -198,7 +199,7 @@
 				type="button"
 				role="tab"
 				aria-selected={tab === -1}
-				aria-label="The crew's and your recent"
+				aria-label="Your reactions and recent"
 				onclick={() => (tab = -1)}
 				class="grid h-8 w-8 shrink-0 place-items-center rounded {tab === -1
 					? 'bg-surface-raised text-ink'
@@ -242,9 +243,19 @@
 			{/if}
 		{:else if tab === -1}
 			{#if quick.length}
-				<p class="eyebrow px-1 pb-1">The crew's set</p>
+				<p class="eyebrow px-1 pb-1">Your reactions</p>
 				<div class="grid grid-cols-8 gap-0.5">
 					{#each quick as key (key)}{@render cell(key, key)}{/each}
+					<!-- Where the set is picked (#2722): it left crew settings for
+					     the rider's own, and this row is where they meet it. -->
+					<a
+						href="/settings/profile"
+						onclick={onClose}
+						title="Change your reactions"
+						aria-label="Change your reactions"
+						class="text-muted hover:text-ink hover:bg-surface-raised grid h-9 w-9 place-items-center rounded"
+						><Pencil size={16} /></a
+					>
 				</div>
 			{/if}
 			{#if crewId}

@@ -3,7 +3,7 @@ import { getContext, setContext } from 'svelte';
 import type { Segment } from '$lib/workout/types';
 import type { Block } from '$lib/workout/block';
 import type { LiveRider } from '$lib/channel/types';
-import type { Announcement } from '$lib/channels';
+import type { CrewAnnouncement } from '$lib/channels';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { StageSource } from '$lib/channel/stage';
 import type { CrewPlan } from '$lib/crew-schedule';
@@ -115,7 +115,7 @@ export interface ChannelContext {
 	 * voice channel's load rather than a fetch of its own, so it arrives with
 	 * the page and follows a lobby ping like the plan and the roster do.
 	 */
-	readonly announcement: Announcement | null;
+	readonly announcement: CrewAnnouncement | null;
 	/** Take it down. The coach's and the owner's; nothing else offers it. */
 	clearAnnouncement(): void;
 	/**

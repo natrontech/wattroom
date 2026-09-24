@@ -4,19 +4,21 @@
  * — which is where riders actually are — not only on the two pages that
  * happened to mount the friends panel. Started once from the layout.
  */
-import { untrack } from 'svelte';
 import { api } from '$lib/api';
 import { dm } from '$lib/dm/dm.svelte';
 import { announce } from '$lib/messages/announce';
 import { away } from '$lib/notify.svelte';
 import { people } from '$lib/people.svelte';
 import { dmReply, pokeArrival, pokeFriend } from '$lib/poke';
+import type { StatusLine } from '$lib/protocol';
 
 export interface DmHead {
 	peerId: string;
 	peerName: string;
 	peerAvatarUrl?: string;
 	peerTotalXp?: number;
+	/** Their status line (ADR-0060); null for none. */
+	peerStatusLine?: StatusLine | null;
 	text: string;
 	/** The latest line was an image (#285) — it has no text to preview. */
 	hasImage?: boolean;
@@ -24,6 +26,11 @@ export interface DmHead {
 	poke?: boolean;
 	mine: boolean;
 	at: number;
+	/**
+	 * The peer said something since you last read the thread, on any
+	 * device (#2711) — the server's answer, asked of the whole thread.
+	 */
+	unread?: boolean;
 }
 
 /** What a conversation's latest line reads as; an image has no words. */
@@ -37,10 +44,9 @@ export function headPreview(head: DmHead): string {
 }
 
 let heads = $state<DmHead[]>([]);
-// peerId → newest INBOUND message time. A reply of yours becoming the head
-// must not clear the badge for an unread line beneath it.
+// peerId → newest INBOUND message time the poll has seen: what tells a new
+// line, to be announced, from one already announced.
 let inbound = $state<Record<string, number>>({});
-let seenBump = $state(0);
 // The list's own two states (#1816): a refused poll used to be dropped on
 // the floor, and /messages rendered "no conversations" over a 500.
 let loaded = $state(false);
@@ -66,6 +72,7 @@ async function poll() {
 			name: head.peerName,
 			avatarUrl: head.peerAvatarUrl,
 			totalXp: head.peerTotalXp,
+			statusLine: head.peerStatusLine,
 		})),
 	);
 	const next = { ...inbound };
@@ -123,6 +130,9 @@ export const dmHeads = {
 		if (started || typeof window === 'undefined') return;
 		started = true;
 		void poll();
+		// Also how a read on another device reaches this one (#2711).
+		// ponytail: up to 10 s late; ping the reader's lobby sockets, as a
+		// channel read does, if that ever shows.
 		timer = setInterval(() => void poll(), 10_000);
 	},
 	/**
@@ -140,14 +150,10 @@ export const dmHeads = {
 		inbound = {};
 	},
 	unread(peerId: string): boolean {
-		void seenBump; // re-check after a thread open stamps it seen
-		return (inbound[peerId] ?? 0) > dm.seenAt(peerId);
+		return heads.some((head) => head.peerId === peerId && head.unread);
 	},
-	/** Call after opening/stamping a thread so badges re-evaluate. */
-	bump() {
-		// Called from the thread page's effect: `+= 1` READS the counter too,
-		// which made that effect depend on the thing it writes — an infinite
-		// loop on every DM open (#414, same shape as #408).
-		untrack(() => (seenBump += 1));
+	/** Ask again now — after a read, so the badge clears ahead of the poll. */
+	refresh() {
+		void poll();
 	},
 };

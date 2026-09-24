@@ -5,7 +5,9 @@
 	// change; the list around it owns the order and re-reads after each save.
 	import Select from '$lib/components/Select.svelte';
 	import {
+		deleteChannelWarning,
 		deleteChannel,
+		deleteLabel,
 		setNamedInChannel,
 		updateChannel,
 		type CrewChannel,
@@ -24,8 +26,8 @@
 	import ArrowDown from '@lucide/svelte/icons/arrow-down';
 	import ArrowUp from '@lucide/svelte/icons/arrow-up';
 	import GripVertical from '@lucide/svelte/icons/grip-vertical';
-	import Hash from '@lucide/svelte/icons/hash';
 	import Lock from '@lucide/svelte/icons/lock';
+	import MessageCircle from '@lucide/svelte/icons/message-circle';
 	import Trash from '@lucide/svelte/icons/trash-2';
 	import Volume from '@lucide/svelte/icons/volume-2';
 	import ChannelAutoplay from './ChannelAutoplay.svelte';
@@ -57,7 +59,7 @@
 		name = channel.name;
 	});
 
-	const Icon = $derived(channel.kind === 'voice' ? Volume : Hash);
+	const Icon = $derived(channel.kind === 'voice' ? Volume : MessageCircle);
 	const named = $derived(new Set((channel.members ?? []).map((m) => m.id)));
 	// The owner and admins enter by role, so only a plain member is named.
 	const nameable = $derived(
@@ -95,11 +97,8 @@
 	async function remove() {
 		const ok = await confirm({
 			title: `Delete ${channel.name}?`,
-			body:
-				channel.kind === 'text'
-					? 'Every message and image in it goes with it, for everyone in the crew. There is no undo.'
-					: 'Its play log and the recaps of the sessions ridden in it go with it, for everyone in the crew. There is no undo.',
-			action: 'Delete the channel',
+			body: deleteChannelWarning(channel),
+			action: deleteLabel(channel.kind),
 			cancel: 'Keep it',
 		});
 		if (!ok) return;
@@ -131,7 +130,7 @@
 			},
 			'separator',
 			{
-				label: 'Delete the channel',
+				label: deleteLabel(channel.kind),
 				icon: Trash,
 				danger: true,
 				onSelect: () => void remove(),
@@ -241,7 +240,7 @@
 		<button
 			onclick={() => void remove()}
 			disabled={busy}
-			class="btn btn-danger btn-xs">Delete the channel</button
+			class="btn btn-danger btn-xs">{deleteLabel(channel.kind)}</button
 		>
 	</div>
 </details>

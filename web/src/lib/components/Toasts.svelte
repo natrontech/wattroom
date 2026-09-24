@@ -42,6 +42,9 @@
 				? 'border-danger/40'
 				: ''}"
 		>
+			{#if toast.icon}
+				<toast.icon size={15} class="text-muted shrink-0" />
+			{/if}
 			{#if toast.href}
 				<!-- A message toast IS the way to the thread (#568) — a plain
 				     anchor, so the router does the navigating. A refusal keeps

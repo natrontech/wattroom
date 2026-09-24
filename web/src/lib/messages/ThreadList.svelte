@@ -11,6 +11,7 @@
 	import { goto } from '$app/navigation';
 	import { personMenu } from '$lib/person-menu';
 	import { formatThreadWhen, orderThreads } from '$lib/messages/threads';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { UNREAD_DOT } from '$lib/messages/unread-marks';
 	import { friends } from '$lib/friends/friends.svelte';
 	import { presence } from '$lib/presence.svelte';
@@ -64,7 +65,7 @@
 	{:else if threads.length === 0}
 		<li class="px-1 pt-2">
 			<EmptyState>
-				Direct messages with your friends land here — a crew talks in its text
+				Direct messages with your friends land here — a crew talks in its chat
 				channels.
 				{#snippet cta()}
 					<a href="/friends" class="btn btn-primary btn-xs">Message a friend</a>
@@ -113,6 +114,7 @@
 							<span class="truncate text-sm {t.unread ? 'font-semibold' : ''}"
 								>{t.name}</span
 							>
+							<StatusMark line={t.head.peerStatusLine} size={12} />
 							<span class="text-muted-dim num ml-auto shrink-0 text-[10px]"
 								>{formatThreadWhen(t.at)}</span
 							>

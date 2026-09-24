@@ -66,7 +66,6 @@ func (q *Queries) CountDmReaction(ctx context.Context, arg CountDmReactionParams
 }
 
 const deleteDmMessage = `-- name: DeleteDmMessage :one
-
 update dm_messages
 set text = '', image_id = null, deleted_at = now()
 where id = $1 and sender_id = $2 and deleted_at is null
@@ -81,7 +80,6 @@ type DeleteDmMessageParams struct {
 	Column3  pgtype.UUID
 }
 
-// an engineering bound (#1416): peers are friends, and friends are few
 // A tombstone, not a removal (#2418): the row stays so the poll can carry
 // "this is gone" to the other side, and everything that WAS the message
 // leaves with the same statement — the words, and the picture, whose blob
@@ -206,6 +204,22 @@ func (q *Queries) GetDmMessage(ctx context.Context, arg GetDmMessageParams) (Get
 	return i, err
 }
 
+const getDmReadAt = `-- name: GetDmReadAt :one
+select read_at from dm_reads where user_id = $1 and peer_id = $2
+`
+
+type GetDmReadAtParams struct {
+	UserID pgtype.UUID
+	PeerID pgtype.UUID
+}
+
+func (q *Queries) GetDmReadAt(ctx context.Context, arg GetDmReadAtParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, getDmReadAt, arg.UserID, arg.PeerID)
+	var read_at pgtype.Timestamptz
+	err := row.Scan(&read_at)
+	return read_at, err
+}
+
 const listDmDeleted = `-- name: ListDmDeleted :many
 select id from dm_messages
 where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
@@ -285,33 +299,56 @@ func (q *Queries) ListDmEdits(ctx context.Context, arg ListDmEditsParams) ([]Lis
 }
 
 const listDmHeads = `-- name: ListDmHeads :many
-select distinct on (peer.id)
-    peer.id as peer_id, peer.display_name, peer.avatar_url,
-    user_total_xp(peer.id)::bigint as total_xp,
-    m.text, m.image_id, m.sender_id, m.created_at, m.poke
-from dm_messages m
-join users peer
-  on peer.id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
-join friendships f
-  on f.status = 'accepted'
- and ((f.requester_id = $1 and f.addressee_id = peer.id)
-   or (f.requester_id = peer.id and f.addressee_id = $1))
-where (m.sender_id = $1 or m.recipient_id = $1)
-  and (m.expires_at is null or m.expires_at > now())
-order by peer.id, m.created_at desc
-limit 1000
+select h.peer_id, h.display_name, h.avatar_url, h.total_xp,
+    h.status_emoji, h.status_emoji_id, h.status_text, h.status_expires_at,
+    h.text, h.image_id, h.sender_id, h.created_at, h.poke,
+    exists (
+        select 1 from dm_messages i
+        where least(i.sender_id, i.recipient_id) = least($1::uuid, h.peer_id)
+          and greatest(i.sender_id, i.recipient_id) = greatest($1::uuid, h.peer_id)
+          and i.sender_id = h.peer_id
+          and i.deleted_at is null
+          and (i.expires_at is null or i.expires_at > now())
+          and i.created_at > coalesce(
+              (select r.read_at from dm_reads r where r.user_id = $1 and r.peer_id = h.peer_id),
+              '-infinity')
+    ) as unread
+from (
+    select distinct on (peer.id)
+        peer.id as peer_id, peer.display_name, peer.avatar_url,
+        user_total_xp(peer.id)::bigint as total_xp,
+        -- Their status line (ADR-0060): a friend's, like everything here.
+        peer.status_emoji, peer.status_emoji_id, peer.status_text, peer.status_expires_at,
+        m.text, m.image_id, m.sender_id, m.created_at, m.poke
+    from dm_messages m
+    join users peer
+      on peer.id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
+    join friendships f
+      on f.status = 'accepted'
+     and ((f.requester_id = $1 and f.addressee_id = peer.id)
+       or (f.requester_id = peer.id and f.addressee_id = $1))
+    where (m.sender_id = $1 or m.recipient_id = $1)
+      and (m.expires_at is null or m.expires_at > now())
+    order by peer.id, m.created_at desc
+    limit 1000 -- an engineering bound (#1416): peers are friends, and friends are few
+) h
 `
 
 type ListDmHeadsRow struct {
-	PeerID      pgtype.UUID
-	DisplayName string
-	AvatarUrl   *string
-	TotalXp     int64
-	Text        string
-	ImageID     pgtype.UUID
-	SenderID    pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
-	Poke        bool
+	PeerID          pgtype.UUID
+	DisplayName     string
+	AvatarUrl       *string
+	TotalXp         int64
+	StatusEmoji     *string
+	StatusEmojiID   pgtype.UUID
+	StatusText      *string
+	StatusExpiresAt pgtype.Timestamptz
+	Text            string
+	ImageID         pgtype.UUID
+	SenderID        pgtype.UUID
+	CreatedAt       pgtype.Timestamptz
+	Poke            bool
+	Unread          bool
 }
 
 // The conversation list: my FRIENDS with their latest line, one row per
@@ -320,8 +357,13 @@ type ListDmHeadsRow struct {
 // friend and the row leaves both lists, and the peer's current name, face
 // and level stop reaching someone the rider removed (#1814). The messages
 // themselves stay until pruned, so a re-friend finds them.
-func (q *Queries) ListDmHeads(ctx context.Context, senderID pgtype.UUID) ([]ListDmHeadsRow, error) {
-	rows, err := q.db.Query(ctx, listDmHeads, senderID)
+//
+// `unread` is whether the peer said anything since I last read the thread on
+// any device (#2711) — asked of the whole pair, not the head, so my reply on
+// top does not hide their line beneath it. A thread never read is unread, as
+// a channel never read is (UnreadByChannel).
+func (q *Queries) ListDmHeads(ctx context.Context, dollar_1 pgtype.UUID) ([]ListDmHeadsRow, error) {
+	rows, err := q.db.Query(ctx, listDmHeads, dollar_1)
 	if err != nil {
 		return nil, err
 	}
@@ -334,11 +376,16 @@ func (q *Queries) ListDmHeads(ctx context.Context, senderID pgtype.UUID) ([]List
 			&i.DisplayName,
 			&i.AvatarUrl,
 			&i.TotalXp,
+			&i.StatusEmoji,
+			&i.StatusEmojiID,
+			&i.StatusText,
+			&i.StatusExpiresAt,
 			&i.Text,
 			&i.ImageID,
 			&i.SenderID,
 			&i.CreatedAt,
 			&i.Poke,
+			&i.Unread,
 		); err != nil {
 			return nil, err
 		}
@@ -466,6 +513,30 @@ func (q *Queries) ListDms(ctx context.Context, arg ListDmsParams) ([]ListDmsRow,
 		return nil, err
 	}
 	return items, nil
+}
+
+const markDmRead = `-- name: MarkDmRead :exec
+insert into dm_reads (user_id, peer_id, read_at)
+select $1, $2, now()
+where exists (
+    select 1 from dm_messages
+    where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
+      and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
+)
+on conflict (user_id, peer_id) do update set read_at = now()
+`
+
+type MarkDmReadParams struct {
+	UserID pgtype.UUID
+	PeerID pgtype.UUID
+}
+
+// The reader's own cursor (ADR-0012 amended 2026-09-24): written and read by
+// the reader alone, never by the peer. Only a pair that has a conversation
+// gets a row — which also keeps an unknown id from reaching the foreign key.
+func (q *Queries) MarkDmRead(ctx context.Context, arg MarkDmReadParams) error {
+	_, err := q.db.Exec(ctx, markDmRead, arg.UserID, arg.PeerID)
+	return err
 }
 
 const pruneDmImages = `-- name: PruneDmImages :exec

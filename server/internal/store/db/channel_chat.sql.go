@@ -328,17 +328,22 @@ func (q *Queries) ListChannelReactions(ctx context.Context, arg ListChannelReact
 
 const markChannelRead = `-- name: MarkChannelRead :exec
 insert into channel_reads (channel_id, user_id, read_at)
-values ($1, $2, now())
-on conflict (channel_id, user_id) do update set read_at = now()
+select $1, $2, greatest($3::timestamptz, max(created_at))
+from chat_messages where channel_id = $1
+on conflict (channel_id, user_id) do update set read_at = excluded.read_at
 `
 
 type MarkChannelReadParams struct {
 	ChannelID pgtype.UUID
 	UserID    pgtype.UUID
+	ReadAt    pgtype.Timestamptz
 }
 
+// Stamped on the clock every line's created_at comes from — Go's, not
+// Postgres's now() — and never before the newest line, so a read covers
+// every line that existed when it was made, however the two clocks disagree.
 func (q *Queries) MarkChannelRead(ctx context.Context, arg MarkChannelReadParams) error {
-	_, err := q.db.Exec(ctx, markChannelRead, arg.ChannelID, arg.UserID)
+	_, err := q.db.Exec(ctx, markChannelRead, arg.ChannelID, arg.UserID, arg.ReadAt)
 	return err
 }
 

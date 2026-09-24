@@ -3,7 +3,8 @@
 Date: 2026-08-31 · Status: accepted (#223, amended 2026-09-05: icon and
 reaction palette are lucide keys, not emoji — #447; amended 2026-09-22 by
 [ADR-0058](0058-the-room-dissolves-into-the-crew.md), #2425: identity and the ban are the crew's;
-amended 2026-09-24: reactions are emoji again, and a crew uploads its own — #2643)
+amended 2026-09-24: reactions are emoji again, and a crew uploads its own — #2643;
+amended 2026-09-24: the quick set is the rider's, not the crew's — #2722)
 
 ## Context
 
@@ -117,3 +118,24 @@ reaction has ever been confused by that.
   a key naming no emoji draws as its text.
 - **The crew's mark is unchanged** — one icon from the curated set. Identity is
   where consistency still earns its cost.
+
+## Amendment — the quick set is the rider's, not the crew's (2026-09-24, #2722)
+
+The maintainer's call: a reaction is a rider saying something, and which four
+things they reach for mid-ride is theirs to pick, not an owner's. A crew-level
+set also stopped at the crew's edge — a DM fell back to the stock six, and a
+rider in two crews reacted in two vocabularies.
+
+- **The set lives on the account** (`users.cheers`, the same space-joined
+  column with `''` for the base set), edited in Settings → Profile and read
+  from `/api/me`. Up to eight, the first four the mid-ride buttons, all of them
+  first in the chat's picker — in every crew and every DM.
+- **Icons and Unicode emoji only.** A crew's own `:name:` means something in
+  one crew; the set goes everywhere its rider does. The full picker still
+  offers a crew's own emoji inside that crew.
+- **The crew loses its set.** Crew settings no longer show one, the crew API
+  neither reads nor writes it, and `crews.cheers` is dropped one release after
+  the release that stopped reading it (ADR-0019). Nobody's crew-curated set is
+  carried across: every rider starts on the base set.
+- **The wire is unchanged.** The hub only ever checked a reaction's shape, so
+  a cheer from a rider's own set is the same frame it was.

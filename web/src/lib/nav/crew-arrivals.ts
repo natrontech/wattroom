@@ -80,7 +80,7 @@ export function crewArrivals(
 				// ADR-0042's answer: the channel's own chat, the request its
 				// page sends. A string back is the refusal, said out loud.
 				reply: {
-					placeholder: `Reply in #${channel.name}`,
+					placeholder: `Reply in ${channel.name}`,
 					send: async (text) => {
 						const res = await api(`/api/channels/${channel.id}/chat`, {
 							method: 'POST',

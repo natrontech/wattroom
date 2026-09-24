@@ -1,16 +1,20 @@
-// Reading a conversation: the thread with its pages, and the heads — one
-// line per peer for the sidebar. Split from dms.go, which keeps the writes.
+// Reading a conversation: the thread with its pages, the heads — one line
+// per peer for the sidebar — and the reader's own read cursor. Split from
+// dms.go, which keeps the writes.
 package dms
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/status"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -116,10 +120,34 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 	for _, id := range deletedRows {
 		deleted = append(deleted, store.UUIDString(id))
 	}
+	// Where the "N new" divider goes; zero when they never read it. The
+	// reader's own cursor, so it is theirs to see and nobody else's.
+	var readAt int64
+	if stamp, err := s.store.Queries.GetDmReadAt(r.Context(), db.GetDmReadAtParams{
+		UserID: me.ID, PeerID: peer,
+	}); err == nil && stamp.Valid {
+		readAt = stamp.Time.UnixMilli()
+	} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		s.log.Warn("dm read stamp", "err", err)
+	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"messages": out, "reactions": counts, "myReacts": mine, "edits": edits,
-		"deleted": deleted,
+		"deleted": deleted, "readAt": readAt,
 	})
+}
+
+// handleRead moves the reader's cursor to now (#2711): what clears the dot on
+// every device they are signed in on. Nothing about it reaches the peer.
+func (s *Service) handleRead(w http.ResponseWriter, r *http.Request) {
+	me, peer, ok := s.peer(w, r)
+	if !ok {
+		return
+	}
+	if err := s.store.Queries.MarkDmRead(r.Context(), db.MarkDmReadParams{UserID: me.ID, PeerID: peer}); err != nil {
+		httpx.Fail(w, s.log, "mark dm read", err, "That conversation could not be marked read.")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +166,10 @@ func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
 		// Peer avatar + lifetime XP (#253) for the thread rows.
 		PeerAvatarURL *string `json:"peerAvatarUrl,omitempty"`
 		PeerTotalXp   int64   `json:"peerTotalXp"`
-		Text          string  `json:"text"`
+		// Their status line (ADR-0060); null for none. Heads are accepted
+		// friends only, which is who sees a status (ADR-0012).
+		PeerStatusLine *protocol.StatusLine `json:"peerStatusLine"`
+		Text           string               `json:"text"`
 		// Whether the latest line was an image, so the list can preview it as
 		// something rather than as a blank (#285).
 		HasImage bool `json:"hasImage,omitempty"`
@@ -146,17 +177,22 @@ func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
 		Poke bool  `json:"poke,omitempty"`
 		Mine bool  `json:"mine"`
 		At   int64 `json:"at"`
+		// The peer said something since I last read it, on any device.
+		Unread bool `json:"unread,omitempty"`
 	}
 	out := make([]headJSON, 0, len(rows))
+	now := time.Now()
 	for _, row := range rows {
 		out = append(out, headJSON{
 			PeerID: store.UUIDString(row.PeerID), PeerName: row.DisplayName,
-			PeerAvatarURL: row.AvatarUrl,
-			PeerTotalXp:   row.TotalXp,
-			Text:          row.Text, HasImage: row.ImageID.Valid,
-			Poke: row.Poke,
-			Mine: row.SenderID == me.ID,
-			At:   row.CreatedAt.Time.UnixMilli(),
+			PeerAvatarURL:  row.AvatarUrl,
+			PeerTotalXp:    row.TotalXp,
+			PeerStatusLine: status.Of(row.StatusEmoji, row.StatusEmojiID, row.StatusText, row.StatusExpiresAt, now),
+			Text:           row.Text, HasImage: row.ImageID.Valid,
+			Poke:   row.Poke,
+			Mine:   row.SenderID == me.ID,
+			At:     row.CreatedAt.Time.UnixMilli(),
+			Unread: row.Unread,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"conversations": out})

@@ -49,7 +49,7 @@ test("a channel's row in the crew column carries the sidebar's own menu", async 
 	await bRow.click({ button: 'right' });
 	await expect(b.getByRole('menuitem', { name: 'Open' })).toBeVisible();
 	await expect(
-		b.getByRole('menuitem', { name: 'Delete the channel' }),
+		b.getByRole('menuitem', { name: 'Delete the chat' }),
 	).toHaveCount(0);
 	await expect(
 		b.getByRole('menuitem', { name: 'Make it private' }),
@@ -83,7 +83,7 @@ test("a channel's row in the crew column carries the sidebar's own menu", async 
 		'Mark as read',
 		'Make it private',
 		'Rename in settings',
-		'Delete the channel',
+		'Delete the chat',
 	])
 		await expect(a.getByRole('menuitem', { name: item })).toBeVisible();
 

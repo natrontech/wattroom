@@ -125,7 +125,7 @@ func (s *Service) RequireText(w http.ResponseWriter, r *http.Request) (db.Channe
 		return db.Channel{}, db.User{}, "", false
 	}
 	if channel.Kind != kindText {
-		httpx.WriteError(w, http.StatusNotFound, "not_found", "A voice channel keeps no chat — its crew's text channels do.")
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "A voice channel keeps no chat — its crew's chat channels do.")
 		return db.Channel{}, db.User{}, "", false
 	}
 	return channel, user, role, true
@@ -151,7 +151,7 @@ func (s *Service) RequireVoice(w http.ResponseWriter, r *http.Request) (db.Chann
 		return db.Channel{}, db.User{}, "", false
 	}
 	if channel.Kind != kindVoice {
-		httpx.WriteError(w, http.StatusNotFound, "not_found", "A text channel has no jukebox — its crew's voice channels do.")
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "A chat channel has no jukebox — its crew's voice channels do.")
 		return db.Channel{}, db.User{}, "", false
 	}
 	return channel, user, role, true

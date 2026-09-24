@@ -31,6 +31,10 @@
 	// the last device is then unreachable (#945). Measured on open, not in an
 	// effect: the trigger does not move while the list is up.
 	let above = $state(false);
+	// Where the list sits on screen. `fixed`, not `absolute` under the
+	// trigger: a dialog's panel scrolls, and a list inside it was clipped to
+	// its edge — two of six "Clear after" options showed (#2719).
+	let place = $state({ top: 0, bottom: 0, left: 0, width: 0 });
 	// The APG select-only combobox: focus stays on the trigger (or the
 	// filter) while the arrows move `active`, so aria-activedescendant names
 	// the row and the trigger's name carries the value — a reader used to
@@ -60,8 +64,33 @@
 		// ponytail: the panel's own height is assumed full — no per-list
 		// measuring, which would need the list mounted to measure.
 		above = !!box && dropsUp(box, window.innerHeight);
+		if (box)
+			place = {
+				top: box.bottom + 4,
+				bottom: window.innerHeight - box.top + 4,
+				left: box.left,
+				width: box.width,
+			};
 		open = true;
 	}
+
+	// A fixed list stays where it opened, so anything that moves its trigger —
+	// the page or the dialog scrolling, the window resizing — closes it rather
+	// than leaving it floating beside nothing. Its own list scrolling is not
+	// such a move.
+	$effect(() => {
+		if (!open) return;
+		const close = (event: Event) => {
+			if (event.target instanceof Node && list?.contains(event.target)) return;
+			open = false;
+		};
+		window.addEventListener('scroll', close, true);
+		window.addEventListener('resize', close);
+		return () => {
+			window.removeEventListener('scroll', close, true);
+			window.removeEventListener('resize', close);
+		};
+	});
 
 	function choose(next: string) {
 		value = next;
@@ -149,9 +178,11 @@
 		     the longest device name and ran it off the edge of the dialog. Long
 		     labels wrap instead. -->
 		<div
-			class="border-muted/25 bg-surface-raised absolute z-50 w-full rounded border shadow-lg shadow-black/40 {above
-				? 'bottom-full mb-1'
-				: 'top-full mt-1'}"
+			class="border-muted/25 bg-surface-raised fixed z-50 rounded border shadow-lg shadow-black/40"
+			style:top={above ? undefined : `${place.top}px`}
+			style:bottom={above ? `${place.bottom}px` : undefined}
+			style:left="{place.left}px"
+			style:width="{place.width}px"
 		>
 			{#if options.length > 6}
 				<input
@@ -169,7 +200,7 @@
 					aria-controls="{uid}-list"
 					aria-activedescendant={optionId(active)}
 					class="placeholder:text-muted-dim border-ink/5 w-full border-b bg-transparent px-3 py-2 text-xs outline-none"
-					{@attach (node) => node.focus()}
+					{@attach (node) => node.focus({ preventScroll: true })}
 				/>
 			{/if}
 			<ul

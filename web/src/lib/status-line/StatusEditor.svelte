@@ -81,7 +81,7 @@
 			emojiId = hit.id;
 			return;
 		}
-		// A crew's drawn cheers ride the picker's recents as lucide keys; a
+		// Your drawn cheers ride the picker's recents as lucide keys; a
 		// status takes an emoji, and the server would refuse one of those.
 		if (/^[a-z0-9-]+$/.test(key)) return;
 		emoji = key;

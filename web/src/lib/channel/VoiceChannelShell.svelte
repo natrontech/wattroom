@@ -186,7 +186,6 @@
 			role={liveRoleOf(crew.role)}
 			name={channel.name}
 			code={crew.code ?? ''}
-			cheers={crew.cheers}
 			soundPack={channel.soundPack ?? 'base'}
 			{members}
 			onSchedule={plan}

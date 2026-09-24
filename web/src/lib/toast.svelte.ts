@@ -4,6 +4,7 @@
  * errors stay persistent dashboard status (FaultBanner), never a toast.
  * Rendered by components/Toasts.svelte in the app layout.
  */
+import type { Icon } from '$lib/icons';
 import { play } from '$lib/sound/cues';
 
 export interface Toast {
@@ -14,6 +15,8 @@ export interface Toast {
 	undo?: () => void;
 	/** Present ⇒ the toast is a link to what it is about (#568). */
 	href?: string;
+	/** What kind of place it came from — a chat channel's bubble (#2696). */
+	icon?: Icon;
 	/** One thing to do about it, beside the link — "Poke back" (#2721). */
 	action?: ToastAction;
 }
@@ -57,6 +60,7 @@ export const toasts = {
 			tone?: 'info' | 'error';
 			undo?: () => void;
 			href?: string;
+			icon?: Icon;
 			action?: ToastAction;
 			/** 0 means it waits for the rider — nothing else takes it down. */
 			seconds?: number;
@@ -73,6 +77,7 @@ export const toasts = {
 			tone: opts?.tone ?? 'info',
 			undo: opts?.undo,
 			href: opts?.href,
+			icon: opts?.icon,
 			action: opts?.action,
 		});
 		// An undo toast does not expire (#1961): the action it reverses is

@@ -186,21 +186,60 @@ select count(*) from dm_reactions where message_id = $1 and emoji = $2;
 -- friend and the row leaves both lists, and the peer's current name, face
 -- and level stop reaching someone the rider removed (#1814). The messages
 -- themselves stay until pruned, so a re-friend finds them.
-select distinct on (peer.id)
-    peer.id as peer_id, peer.display_name, peer.avatar_url,
-    user_total_xp(peer.id)::bigint as total_xp,
-    m.text, m.image_id, m.sender_id, m.created_at, m.poke
-from dm_messages m
-join users peer
-  on peer.id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
-join friendships f
-  on f.status = 'accepted'
- and ((f.requester_id = $1 and f.addressee_id = peer.id)
-   or (f.requester_id = peer.id and f.addressee_id = $1))
-where (m.sender_id = $1 or m.recipient_id = $1)
-  and (m.expires_at is null or m.expires_at > now())
-order by peer.id, m.created_at desc
-limit 1000; -- an engineering bound (#1416): peers are friends, and friends are few
+--
+-- `unread` is whether the peer said anything since I last read the thread on
+-- any device (#2711) — asked of the whole pair, not the head, so my reply on
+-- top does not hide their line beneath it. A thread never read is unread, as
+-- a channel never read is (UnreadByChannel).
+select h.peer_id, h.display_name, h.avatar_url, h.total_xp,
+    h.status_emoji, h.status_emoji_id, h.status_text, h.status_expires_at,
+    h.text, h.image_id, h.sender_id, h.created_at, h.poke,
+    exists (
+        select 1 from dm_messages i
+        where least(i.sender_id, i.recipient_id) = least($1::uuid, h.peer_id)
+          and greatest(i.sender_id, i.recipient_id) = greatest($1::uuid, h.peer_id)
+          and i.sender_id = h.peer_id
+          and i.deleted_at is null
+          and (i.expires_at is null or i.expires_at > now())
+          and i.created_at > coalesce(
+              (select r.read_at from dm_reads r where r.user_id = $1 and r.peer_id = h.peer_id),
+              '-infinity')
+    ) as unread
+from (
+    select distinct on (peer.id)
+        peer.id as peer_id, peer.display_name, peer.avatar_url,
+        user_total_xp(peer.id)::bigint as total_xp,
+        -- Their status line (ADR-0060): a friend's, like everything here.
+        peer.status_emoji, peer.status_emoji_id, peer.status_text, peer.status_expires_at,
+        m.text, m.image_id, m.sender_id, m.created_at, m.poke
+    from dm_messages m
+    join users peer
+      on peer.id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
+    join friendships f
+      on f.status = 'accepted'
+     and ((f.requester_id = $1 and f.addressee_id = peer.id)
+       or (f.requester_id = peer.id and f.addressee_id = $1))
+    where (m.sender_id = $1 or m.recipient_id = $1)
+      and (m.expires_at is null or m.expires_at > now())
+    order by peer.id, m.created_at desc
+    limit 1000 -- an engineering bound (#1416): peers are friends, and friends are few
+) h;
+
+-- name: MarkDmRead :exec
+-- The reader's own cursor (ADR-0012 amended 2026-09-24): written and read by
+-- the reader alone, never by the peer. Only a pair that has a conversation
+-- gets a row — which also keeps an unknown id from reaching the foreign key.
+insert into dm_reads (user_id, peer_id, read_at)
+select $1, $2, now()
+where exists (
+    select 1 from dm_messages
+    where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
+      and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
+)
+on conflict (user_id, peer_id) do update set read_at = now();
+
+-- name: GetDmReadAt :one
+select read_at from dm_reads where user_id = $1 and peer_id = $2;
 
 -- name: DeleteDmMessage :one
 -- A tombstone, not a removal (#2418): the row stays so the poll can carry

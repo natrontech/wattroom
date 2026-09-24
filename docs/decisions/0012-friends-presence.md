@@ -85,7 +85,9 @@ insert. Remove the friend and the channel closes with it.
 - Same bounded-log shape as room chat: the last **500 messages per pair**,
   pruned on write; a deleted account takes its messages along (cascade).
 - No read receipts, no typing indicators — "seen" is the reader's own
-  business (client-side), never data about you held by the server.
+  business ~~(client-side), never data about you held by the server~~. The
+  _where_ is superseded by the read-cursor amendment below (2026-09-24);
+  the _whose_ stands.
 - Transport is plain REST + polling; a DM is a note between rides, not a
   live wire. If DMs ever grow real-time needs, that is a new decision.
 
@@ -121,3 +123,16 @@ The decision above says a friend's presence is "connected to a room right now, o
 Why it is acceptable: it is still friends-only (mutual, formed by code, never a listing), still a boolean with no metrics behind it, and still says nothing about what you are pushing; the room is named only when the viewer is a member of it (`friends.go`). ADR-0010's "no ambient presence" deferred a global surface for strangers; an accepted friend seeing that you are around is the thing a friend list is for. What has not changed: room-scoped metrics, nothing recorded, and a friend who wants to be invisible has the same answer as before — close the app.
 
 **What "close the app" rests on (#1506, #1740, #2087).** Presence derived from a live socket is only honest while the server can tell the socket apart from a dead one, and a laptop that sleeps, a NAT that drops or a phone that loses signal closes nothing the server ever hears. So both sockets — the lobby's and each room's — ping their peer every **30 s** and are dropped when the pong does not come back within **5 s** (`server/internal/hub/keepalive.go`); the rider then reads offline, leaves the roster, and gets their socket budget back. This is the mechanism, not a new decision: no timestamp is stored, nothing is persisted, and the boolean a friend sees is unchanged. The alternative — last-seen timestamps — stays rejected: it would record presence, which is exactly what this ADR says the server does not do.
+
+## Amendment — your read cursor lives on the server, and stays yours (2026-09-24, #2711)
+
+The DM amendment above kept "seen" in the browser: a localStorage stamp per peer, so the server held nothing about when you read. That made read state per _device_, not per rider — read a DM on the phone and the desktop keeps its dot until you open the thread there too. Text channels never worked that way: `channel_reads` (and `room_reads` before it, #389) has held each rider's read cursor on the server all along, and nobody treated it as a privacy loss, because nobody else can see it.
+
+So the line moves to where the privacy actually is:
+
+- **Where you have read up to is stored on the server** — `dm_reads` (reader, peer, time), the same shape as `channel_reads`. It is what the unread dot and the "N new" line are computed from, so every device you are signed in on agrees.
+- **It is only ever read back to you.** The peer's thread, heads and every other answer are the same whether or not you have read their line. No read receipts, no typing indicators — the part of this ADR that was about the other person is unchanged.
+- **The push is yours alone.** Reading a text channel pings your own lobby sockets so your other devices re-fetch at once (`hub.ReadChanged`); it is never broadcast, because a ping timed to your read is a read receipt by another name. DMs pick the change up on their 10 s poll.
+- It is bookkeeping no screen shows you, so the data export leaves it out, as it does `channel_reads` (`account.go`); deleting the account takes it with the rows it points at.
+
+The rejected alternative was syncing the localStorage stamps through some side channel — the same data on the server, with more code and less honesty about it.
