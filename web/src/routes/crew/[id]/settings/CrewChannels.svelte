@@ -42,7 +42,7 @@
 	});
 
 	const KINDS = [
-		{ kind: 'text', title: 'Chats', cap: MaxCrewTextChannels },
+		{ kind: 'text', title: 'Chat channels', cap: MaxCrewTextChannels },
 		{ kind: 'voice', title: 'Voice channels', cap: MaxCrewVoiceChannels },
 	] as const;
 
