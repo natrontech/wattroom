@@ -11,6 +11,7 @@ import { away } from '$lib/notify.svelte';
 import { people } from '$lib/people.svelte';
 import { dmReply, pokeArrival, pokeFriend } from '$lib/poke';
 import type { StatusLine } from '$lib/protocol';
+import { titleWithStatus } from '$lib/status-line/title';
 
 export interface DmHead {
 	peerId: string;
@@ -98,7 +99,7 @@ async function poll() {
 			kind: 'dm',
 			tag: `dm-${head.peerId}`,
 			at: head.at,
-			title: head.peerName,
+			title: titleWithStatus(head.peerName, head.peerStatusLine),
 			body: headPreview(head),
 			href: `/messages/dm/${head.peerId}`,
 			reply: dmReply(head.peerId, head.peerName),

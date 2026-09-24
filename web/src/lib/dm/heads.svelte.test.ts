@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const announced: { tag: string; reading: boolean }[] = [];
+const announced: { tag: string; reading: boolean; title: string }[] = [];
 vi.mock('$lib/messages/announce', () => ({
-	announce: (a: { tag: string; reading: boolean }) => announced.push(a),
+	announce: (a: { tag: string; reading: boolean; title: string }) =>
+		announced.push(a),
 }));
 vi.mock('$lib/notify.svelte', () => ({
 	// The real rule (ADR-0042): hidden, or not the front window.
@@ -93,6 +94,19 @@ describe('dm heads', () => {
 		expect(headPreview(poke)).toBe('poked you');
 		expect(headPreview({ ...poke, mine: true })).toBe('poked Mara');
 		expect(headPreview({ ...poke, text: 'ride?' })).toBe('poked you — ride?');
+	});
+
+	// The notification says who, and wears their status emoji (#2744).
+	it("titles a DM's notification with the sender's status emoji", async () => {
+		open = null;
+		conversations = [line(1)];
+		dmHeads.start();
+		await vi.advanceTimersByTimeAsync(0);
+		conversations = [
+			{ ...line(2), peerStatusLine: { emoji: '\u{1F912}', text: 'Out sick' } },
+		];
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(announced.map((a) => a.title)).toEqual(['Mara \u{1F912}']);
 	});
 
 	// A refused poll is a state the list can show (#1816), not a silent
