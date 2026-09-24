@@ -127,14 +127,10 @@
 			startsAt,
 			channelId,
 		});
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return false;
-		}
+		if (!res.ok) return res.error.message;
 		toasts.push('Planned — it is on the crew’s schedule.', {
 			href: `/crew/${crewId}/schedule`,
 		});
-		return true;
 	}
 </script>
 
