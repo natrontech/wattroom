@@ -259,10 +259,14 @@
 			{#snippet actions()}
 				<div class="flex flex-wrap gap-2">
 					<!-- The end links forward (#1331): the ride the session saved for
-					     you, found by the session it belongs to once the save lands. -->
+					     you, found by the session it belongs to once the save lands.
+					     Following it is done with the summary: coming back to the
+					     channel must not open it again. -->
 					{#if summary.rideId}
-						<a href="/history/{summary.rideId}" class="btn btn-primary"
-							>See your ride</a
+						<a
+							href="/history/{summary.rideId}"
+							onclick={() => summary.dismiss()}
+							class="btn btn-primary">See your ride</a
 						>
 					{/if}
 					<!-- The page is already the channel's under it (#2600): the
