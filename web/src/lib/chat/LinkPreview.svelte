@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { Part } from './inline';
 	import { unfurl, type Card } from './unfurl';
 
@@ -12,7 +13,8 @@
 	// The first external link in the message gets the card — messengers
 	// preview one link, not five.
 	const url = $derived(parts.find((p) => p.external)?.text);
-	let card = $state<Card | null>(null);
+	// Undefined while it is being asked for, null when there is nothing to draw.
+	let card = $state<Card | null>();
 
 	$effect(() => {
 		if (!url) {
@@ -20,7 +22,7 @@
 			return;
 		}
 		let alive = true;
-		card = null;
+		card = undefined;
 		void unfurl(url).then((fresh) => {
 			// A dead preview costs nothing — the link still works.
 			if (alive) card = fresh;
@@ -31,13 +33,21 @@
 	});
 </script>
 
-{#if card && url}
-	<span class="mt-1 flex items-stretch gap-1">
+<!-- The card holds one height from the moment the line lands (#2686): the
+     skeleton stands in its exact box while it is asked for, so a busy channel
+     does not shove the thread up once per link as the cards arrive. Only a
+     link with nothing to show gives its space back. `whitespace-normal`: the
+     line around it is pre-wrap (#2642), which drew the template's own spaces
+     between the card's rows as blank lines. -->
+{#if url && card === undefined}
+	<Skeleton class="mt-1 h-14" />
+{:else if card && url}
+	<span class="mt-1 flex items-stretch gap-1 whitespace-normal">
 		<a
 			href={url}
 			target="_blank"
 			rel="noopener noreferrer"
-			class="border-ink/10 hover:border-neon/40 bg-surface-raised flex min-w-0 flex-1 items-center gap-2 rounded border p-1.5"
+			class="border-ink/10 hover:border-neon/40 bg-surface-raised flex h-14 min-w-0 flex-1 items-center gap-2 rounded border p-1.5"
 		>
 			{#if card.thumb}
 				<img

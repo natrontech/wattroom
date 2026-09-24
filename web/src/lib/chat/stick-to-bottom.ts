@@ -67,19 +67,21 @@ export function stickToBottom(node: HTMLElement): () => void {
 	toBottom();
 	node.addEventListener('scroll', onScroll, { passive: true });
 	node.addEventListener('wattroom-pin', onPin);
-	// Images decode after their line is in the DOM and only then take up
-	// height, so the mutation that added them has long since been handled.
-	node.addEventListener('load', keep, true);
 
 	const lines = new MutationObserver(follow);
 	lines.observe(node, { childList: true, subtree: true, characterData: true });
+	// The content too, not only the box (#2686): a picture decoding or a
+	// link's card landing grows a line long after the mutation that added it.
+	// A resize is reported after layout and before paint, so the log re-pins
+	// in the same frame; the image `load` event this replaces could arrive a
+	// frame late, and that frame showed the thread jumping.
 	const box = new ResizeObserver(keep);
 	box.observe(node);
+	for (const content of node.children) box.observe(content);
 
 	return () => {
 		node.removeEventListener('scroll', onScroll);
 		node.removeEventListener('wattroom-pin', onPin);
-		node.removeEventListener('load', keep, true);
 		lines.disconnect();
 		box.disconnect();
 	};

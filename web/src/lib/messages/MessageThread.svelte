@@ -256,7 +256,10 @@
 </script>
 
 <!-- `mt-auto` on the list, not `justify-end` on the box (#291): spare space
-     goes above the oldest line, so overflow spills off the END edge. -->
+     goes above the oldest line, so overflow spills off the END edge. The
+     column is `min-h-full`, not `h-full` (#2686): a fixed-height column let a
+     long log overflow it, and the box's bottom padding stayed under the
+     column instead of under the last line. -->
 <div
 	bind:this={log}
 	{@attach stickToBottom}
@@ -265,7 +268,7 @@
 	aria-label="messages"
 	class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-5 py-4"
 >
-	<div class="flex h-full flex-col">
+	<div class="flex min-h-full flex-col">
 		<div class="mt-auto space-y-2">
 			{#if source.loading}
 				<Skeleton rows={4} class="mb-3 h-9" />
