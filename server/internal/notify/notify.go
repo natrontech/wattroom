@@ -393,7 +393,7 @@ func (s *Service) handleUnsubscribeForm(w http.ResponseWriter, r *http.Request) 
 // answer is a page in the app's shell, not JSON (#832).
 func (s *Service) unsubOutcome(w http.ResponseWriter, status int, heading, line string) {
 	httpx.WritePage(w, status, heading, httpx.PageBody(heading, line,
-		httpx.PageLink(s.baseURL+"/settings/profile", "Back to WattRoom")))
+		httpx.PageLink(s.baseURL+"/settings/notifications", "Back to WattRoom")))
 }
 
 func (s *Service) handleUnsubscribe(w http.ResponseWriter, r *http.Request) {
