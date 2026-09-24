@@ -45,3 +45,39 @@ test('a ramp ended early offers a test again that actually restarts', async ({
 	).toBeVisible();
 	await expect(page.getByRole('button', { name: "I'm done" })).toHaveCount(0);
 });
+
+/**
+ * A ⚑ raised mid-test goes to the developers when the rider leaves (#2619).
+ * The copy promises it "after the ride", and it went only if the rider found
+ * Send under the result — leaving the page dropped it, and the rider believed
+ * it sent. Left through the app's own link, which is the page going away.
+ */
+test('a flag raised mid-test is sent when the rider leaves without pressing Send', async ({
+	page,
+}) => {
+	const sent: string[] = [];
+	await page.route('**/api/feedback', (route) => {
+		sent.push((route.request().postDataJSON() as { route: string }).route);
+		return route.fulfill({ json: { issue: '' } });
+	});
+	await signInTo(page, '/ramp');
+	await page.getByRole('button', { name: 'Ride simulated' }).click();
+	const trainerCard = page.getByText('Simulated Trainer').locator('..');
+	await expect(trainerCard.getByText(/\d+ W · \d+ rpm/)).toBeVisible({
+		timeout: 15_000,
+	});
+	await page.getByRole('button', { name: 'Start ramp test' }).click();
+	const done = page.getByRole('button', { name: "I'm done" });
+	await expect(done).toBeVisible({ timeout: 15_000 });
+
+	await page.getByRole('button', { name: 'Flag a problem' }).click();
+	await done.click();
+	await expect(
+		page.getByRole('heading', { name: 'Not enough to measure' }),
+	).toBeVisible();
+	expect(sent).toEqual([]);
+
+	await page.locator('a[href="/home"]').first().click();
+	await page.waitForURL('/home');
+	await expect.poll(() => sent).toEqual(['/ramp']);
+});

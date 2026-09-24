@@ -357,6 +357,8 @@
 	// This page is the session's only owner: leaving mid-test ends it, or the
 	// trainer holds a step with nobody watching and the frame stays caved.
 	onDestroy(() => {
+		// What the rider flagged goes with them (#2619).
+		flags.flush();
 		if (!session) return;
 		// Left during the count-in (#1800): no test to stop and no riding to
 		// save.
@@ -617,7 +619,11 @@
 	{/if}
 </main>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
+<!-- A closed tab runs no onDestroy: the flags go on its way out (#2619). -->
+<svelte:window
+	onkeydown={(e) => e.key === 'Escape' && (tv = false)}
+	onpagehide={() => flags.flush(true)}
+/>
 
 {#if session && !done && session.state !== 'done' && tv}
 	<!-- A session's TV, on the ramp (#1799, ADR-0046): the same screen at 3 m. -->

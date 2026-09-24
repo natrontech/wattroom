@@ -468,6 +468,8 @@
 	// confirm above promises — or the trainer holds a target with nobody
 	// watching and the frame stays caved.
 	onDestroy(() => {
+		// What the rider flagged goes with them (#2619).
+		flags.flush();
 		gone = true;
 		if (!session) return;
 		// Left during the count-in (#1800): there is no ride to end or save, and
@@ -489,7 +491,11 @@
 	></svelte:head
 >
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && (tv = false)} />
+<!-- A closed tab runs no onDestroy: the flags go on its way out (#2619). -->
+<svelte:window
+	onkeydown={(e) => e.key === 'Escape' && (tv = false)}
+	onpagehide={() => flags.flush(true)}
+/>
 
 <!-- Mid-ride the whole frame is the cave, sidebar included (#113 refined,
      ADR-0020): the layout reads soloRide.active. Setup and the summary are

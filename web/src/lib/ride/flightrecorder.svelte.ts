@@ -128,9 +128,11 @@ export function createFlightRecorder() {
 		async submit(
 			flag: Flag,
 			context: { route: string; trainer: string },
+			keepalive = false,
 		): Promise<ApiResult<{ issue: string }>> {
 			return api<{ issue: string }>('/api/feedback', {
 				method: 'POST',
+				keepalive,
 				json: {
 					route: context.route,
 					note: flag.note,
