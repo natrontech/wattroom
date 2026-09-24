@@ -67,8 +67,21 @@ test('a rider keeps their summary while the coach starts the next workout', asyn
 	const mine = coach.getByRole('dialog', { name: 'Session summary' });
 	await expect(mine).toBeVisible({ timeout: 30_000 });
 
-	// The coach is done with theirs and starts the next one.
-	await mine.getByRole('button', { name: `Back to ${opened.name}` }).click();
+	// The coach is done with theirs: they look at the ride it saved, come back
+	// to the channel, and it stays closed there. Following the link used to
+	// leave it undismissed, so every return reopened it.
+	await mine
+		.getByRole('link', { name: 'See your ride' })
+		.click({ timeout: 15_000 });
+	await expect(coach).toHaveURL(/\/history\//);
+	await coach.goBack();
+	await expect(
+		coach.getByRole('button', { name: 'Start a session' }),
+	).toBeVisible({ timeout: 15_000 });
+	await expect(
+		mine,
+		`${COACH}'s summary came back after they had seen their ride`,
+	).toBeHidden();
 	await start();
 	await expect(
 		coach.getByRole('button', { name: 'Stop the countdown' }),
