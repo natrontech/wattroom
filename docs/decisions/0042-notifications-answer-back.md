@@ -66,6 +66,11 @@ only where pressing it could succeed — possible on this device, not already
 on, not blocked, not switched off or waved away before — and the browser is
 asked nothing until the press.
 
+_2026-09-24, #2612:_ WattRoom opens in the rider's crew since #2576, so Home's
+_What's next_ was no longer the first place a plan is seen. The offer rides
+along on the crew Home's next-up card and the crew's Schedule too — the same
+moment, on the pages a rider now meets it.
+
 **The dismissal is per device**, in `localStorage` beside the switch it
 flips, not a column on the account: the permission is one browser's, so a
 rider who declined on a laptop and opens the app on a desktop has not been

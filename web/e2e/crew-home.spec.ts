@@ -12,6 +12,7 @@ const A = 'Crew Home Owner';
 test('crew Home teaches when quiet, and a plan is answered from it', async ({
 	riders,
 	channels,
+	schedules,
 }) => {
 	test.skip(
 		!!process.env.PLAYWRIGHT_BASE_URL,
@@ -19,7 +20,16 @@ test('crew Home teaches when quiet, and a plan is answered from it', async ({
 	);
 
 	const a = await riders(A);
+	// Headless Chromium answers "denied" and ignores a grant; a rider's
+	// browser starts at "default", which is who the offer is for (#2612).
+	await a.context().addInitScript(() =>
+		Object.defineProperty(Notification, 'permission', {
+			get: () => 'default',
+		}),
+	);
 	const { crew } = await channels.open(a, `Crew Home ${Date.now() % 100000}`);
+	// Quiet at the start even after a run cut short, and emptied at teardown.
+	await schedules.own(a, crew);
 
 	await a.goto(`/crew/${crew}`);
 	const start = a.getByRole('link', { name: /^Go to / });
@@ -54,6 +64,10 @@ test('crew Home teaches when quiet, and a plan is answered from it', async ({
 	await expect(a.getByText(workoutName)).toBeVisible({ timeout: 15_000 });
 	// A plan is something happening: the quiet crew's lesson steps aside.
 	await expect(a.getByRole('link', { name: /^Go to / })).toHaveCount(0);
+	// WattRoom opens here (#2576), so the first plan a rider meets is this
+	// one, and the offer to be told when it starts rides along (#2612).
+	const offer = a.getByRole('button', { name: 'Turn on notifications' });
+	await expect(offer).toBeVisible();
 
 	await a.getByRole('button', { name: "I'm in" }).click();
 	await expect
@@ -82,13 +96,8 @@ test('crew Home teaches when quiet, and a plan is answered from it', async ({
 	await expect(
 		a.getByRole('listitem').filter({ hasText: workoutName }),
 	).toHaveAttribute('aria-current', 'true');
-
-	// Cancelled so a second run starts from the same quiet crew.
-	await a.evaluate(async (id) => {
-		const body = await fetch(`/api/crews/${id}/schedule`).then((res) =>
-			res.json(),
-		);
-		for (const plan of body.sessions as { id: string }[])
-			await fetch(`/api/crews/${id}/schedule/${plan.id}`, { method: 'DELETE' });
-	}, crew);
+	// The Schedule offers it too, and waving it away retires it.
+	await expect(offer).toBeVisible();
+	await a.getByRole('button', { name: 'No thanks' }).click();
+	await expect(offer).toHaveCount(0);
 });
