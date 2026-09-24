@@ -11,6 +11,7 @@
 	import Stage from '$lib/channel/Stage.svelte';
 	import { pickStage, pictureKey } from '$lib/channel/stage';
 	import { useChannel } from '$lib/channel/context';
+	import { endGame } from '$lib/session/end-game';
 	import { ridePath } from '$lib/channel/address';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
@@ -398,7 +399,7 @@
 				game={channel.game}
 				roster={channelConnection.current?.live.tick?.roster ?? []}
 				canControl={channel.canControl && !device.spectator}
-				end={() => channel.control('game-end')}
+				end={() => void endGame(channel)}
 				me={account.me?.id}
 			/>
 		</div>

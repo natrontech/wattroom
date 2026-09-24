@@ -62,7 +62,20 @@ test('a game opens a session its coach ends, and it leaves a recap', async ({
 		member.getByRole('button', { name: 'end the game' }),
 	).toHaveCount(0);
 
+	// It ends the game for everyone in it, so it asks first (#2604) — and
+	// Keep playing keeps it.
 	await coach.getByRole('button', { name: 'end the game' }).click();
+	const ask = coach.getByRole('dialog');
+	await expect(ask.getByText(/^End Floor is Lava/)).toBeVisible();
+	await ask.getByRole('button', { name: 'Keep playing' }).click();
+	await expect(
+		coach.getByRole('button', { name: 'end the game' }),
+	).toBeVisible();
+	await coach.getByRole('button', { name: 'end the game' }).click();
+	await coach
+		.getByRole('dialog')
+		.getByRole('button', { name: 'End the game' })
+		.click();
 
 	// Its end is the session's: the channel is free again, and the crew keeps
 	// its recap, named for the mode.

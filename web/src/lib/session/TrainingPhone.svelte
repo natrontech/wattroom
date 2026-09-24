@@ -26,6 +26,7 @@
 	import { pictureKey } from '$lib/channel/stage';
 	import { formatClock } from '$lib/format';
 	import { useChannel } from '$lib/channel/context';
+	import { endGame } from '$lib/session/end-game';
 	import { account } from '$lib/account.svelte';
 	import { blockBands } from '$lib/workout/block';
 	import { serverNow } from '$lib/server-clock';
@@ -138,7 +139,7 @@
 					game={channel.game}
 					roster={channelConnection.current?.live.tick?.roster ?? []}
 					canControl={channel.canControl && !device.spectator}
-					end={() => channel.control('game-end')}
+					end={() => void endGame(channel)}
 					me={account.me?.id}
 				/>
 				{#if followed && !channel.game.meterHidden}
