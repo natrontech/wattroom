@@ -45,6 +45,10 @@ export interface ChannelContext {
 				elapsed?: number;
 				totalSeconds?: number;
 				countdownRemaining?: number;
+				/** Who holds it, and its id while one is open (#2438). */
+				id?: string;
+				coach?: string;
+				coachName?: string;
 		  }
 		| undefined;
 	/** Coarse phase the places branch on: lounge, countdown or live. */
