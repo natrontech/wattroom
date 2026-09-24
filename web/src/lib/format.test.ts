@@ -3,6 +3,7 @@ import {
 	formatClock,
 	formatClockLong,
 	formatDay,
+	formatShortDate,
 	formatDuration,
 	formatLeft,
 	formatWhen,
@@ -111,5 +112,15 @@ describe('wkg', () => {
 		expect(wkg(250, 0)).toBe('–');
 		expect(wkg(250, null)).toBe('–');
 		expect(wkg(250, undefined)).toBe('–');
+	});
+});
+
+describe('formatShortDate', () => {
+	it('names the weekday, the day and the month, and no year or time', () => {
+		const day = formatShortDate(new Date(2026, 8, 16, 19, 30).getTime());
+		expect(day).toMatch(/Wed/);
+		expect(day).toMatch(/16/);
+		expect(day).toMatch(/Sep/);
+		expect(day).not.toMatch(/2026|19|30/);
 	});
 });
