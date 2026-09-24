@@ -35,6 +35,9 @@
 			class="btn btn-secondary justify-self-start"
 			>{flags.sending ? 'Sending…' : 'Send to the developers'}</button
 		>
+		<p class="text-muted text-xs">
+			They go when you leave this page anyway, with any note written here.
+		</p>
 	</div>
 {:else if flags.sent > 0}
 	<p class="text-z4 mt-3 text-xs">

@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 const fake = vi.hoisted(() => ({
 	flags: [] as { clientMs: number; note: string }[],
-	submitted: [] as { clientMs: number; route: string; trainer: string }[],
+	submitted: [] as {
+		clientMs: number;
+		route: string;
+		trainer: string;
+		keepalive?: boolean;
+	}[],
 	refuse: 0,
 }));
 vi.mock('$lib/ride/flightrecorder.svelte', () => ({
@@ -17,12 +22,13 @@ vi.mock('$lib/ride/flightrecorder.svelte', () => ({
 		submit: async (
 			flag: { clientMs: number },
 			meta: { route: string; trainer: string },
+			keepalive?: boolean,
 		) => {
 			if (fake.refuse > 0) {
 				fake.refuse--;
 				return { ok: false, error: { message: 'Not now.' } };
 			}
-			fake.submitted.push({ clientMs: flag.clientMs, ...meta });
+			fake.submitted.push({ clientMs: flag.clientMs, ...meta, keepalive });
 			return { ok: true };
 		},
 	}),
@@ -56,5 +62,36 @@ describe('createRideFlags', () => {
 			route: '/ramp',
 			trainer: 'Kickr Core',
 		});
+	});
+
+	// The tap was the consent and the copy says "after the ride it sends"
+	// (#2619): a rider who leaves the summary without pressing Send, or who
+	// left mid-ride, must not find the flag was never sent.
+	it('sends what is unsent when the page goes, once', () => {
+		fake.flags.length = 0;
+		fake.submitted.length = 0;
+		const flags = createRideFlags('/ride');
+		flags.riding('Kickr Core', 'starting Openers');
+		flags.recorder.flag();
+		flags.recorder.flag();
+
+		flags.flush();
+		expect(fake.submitted.map((s) => [s.clientMs, s.keepalive])).toEqual([
+			[1, false],
+			[2, false],
+		]);
+		expect(flags.unsent).toHaveLength(0);
+
+		flags.flush();
+		expect(fake.submitted).toHaveLength(2);
+	});
+
+	it('asks for keepalive only from a tab that is closing', () => {
+		fake.flags.length = 0;
+		fake.submitted.length = 0;
+		const flags = createRideFlags('/ramp');
+		flags.recorder.flag();
+		flags.flush(true);
+		expect(fake.submitted).toMatchObject([{ clientMs: 1, keepalive: true }]);
 	});
 });
