@@ -181,14 +181,15 @@ func (s *Service) Register(mux *http.ServeMux) {
 //     that would mean anything, and handing back session material is not an
 //     improvement.
 //
-//   - `channel_reads`, `dm_reads` and `track_plays`, which are the same
-//     judgement twice: bookkeeping attributable to the rider that no screen
-//     shows them. The two reads tables are unread-marker cursors.
-//     track_plays is read back only as a ROOM's last five titles, the same five for everyone in it, with no
-//     date and no per-rider view — so a dated, cross-room list of everything
-//     the rider ever queued would be strictly more than they can see, which
-//     is the line this export stops at. If a "what I put on" surface ever
-//     ships, this is the category to add with it.
+//   - `channel_reads`, `dm_reads` and `track_plays`, one judgement for all
+//     three: bookkeeping attributable to the rider that no screen shows
+//     them. The two reads tables are unread-marker cursors. track_plays is
+//     read back only as a ROOM's last five titles, the same five for
+//     everyone in it, with no date and no per-rider view — so a dated,
+//     cross-room list of everything the rider ever queued would be strictly
+//     more than they can see, which is the line this export stops at. If a
+//     "what I put on" surface ever ships, this is the category to add with
+//     it.
 //
 // Not legal advice — a lawyer should confirm the reading before it is relied
 // on. The provisions are cited so the next person can check rather than
