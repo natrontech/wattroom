@@ -4,12 +4,13 @@ import type { createChannelAv } from '$lib/channel/av.svelte';
 import { comingsAndGoings } from '$lib/channel/comings-and-goings';
 import { dmArrivalEvent } from '$lib/channel/dm-line';
 import type { createChannelLive } from '$lib/channel/live.svelte';
-import { announcePoke } from '$lib/channel/poke';
 import {
 	screenShareChanges,
 	screenShareEvent,
 } from '$lib/channel/screen-shares';
-import { divertWhileRiding } from '$lib/messages/announce';
+import { announce, divertWhileRiding } from '$lib/messages/announce';
+import { pokeArrival, pokeFriend } from '$lib/poke';
+import { toasts } from '$lib/toast.svelte';
 import { shouldAnnounce } from '$lib/notify-once';
 import { notify } from '$lib/notify.svelte';
 import { play } from '$lib/sound/cues';
@@ -181,21 +182,52 @@ export function connectionCues({
 			const phase = untrack(() => live.tick?.state.phase);
 			if (phase !== 'running' && phase !== 'paused') return false;
 			// A text channel's line waits in the sidebar's unread (#2531); only
-			// a DM, which has no row on this screen, is written into the timeline.
+			// a DM or a poke, which has no row on this screen, is written into
+			// the timeline — a poke by who sent it, the whole point of one.
 			if (arrival.kind === 'dm')
 				live.pushEvent(dmArrivalEvent(arrival.title, arrival.at));
+			if (arrival.kind === 'poke')
+				live.pushEvent(
+					dmArrivalEvent(arrival.from ?? arrival.title, arrival.at, 'poked'),
+				);
 			return true;
 		}),
 	);
 
-	// A poke is delivered to every socket of this rider. localStorage picks
-	// one tab on each device to make the sound/notification, while each
-	// device still receives it independently. play() keeps the receiver's
-	// cue fader authoritative; notify.push() keeps their permission and the
-	// hidden-tab gate authoritative.
+	// A poke is delivered to every socket of this rider, and announced the
+	// way every arrival is (#2721): the cue, then a toast naming who on a
+	// focused screen or the notification on a hidden one, once per device.
+	// A friend's is a DM line too, so the thread's poll finds it announced.
+	//
+	// The sender's own socket gets its poke back as the answer that it
+	// landed — silence on success read as a button that did nothing.
+	//
+	// Each poke is handled once, by identity: this effect writes a toast,
+	// and an effect that writes state is re-run by the flush that write
+	// starts — the echo has no announcement dedupe to stop it, and looped.
+	let heard: unknown = null;
 	$effect(() => {
 		const poke = live.lastPoke;
-		announcePoke(poke, address.key, address.name, address.home);
+		if (poke === heard) return;
+		heard = poke;
+		untrack(() => {
+			if (!poke?.fromId || !poke.from || !poke.at) return;
+			if (poke.fromId === account.me?.id) {
+				const name = live.tick?.roster?.find((r) => r.id === poke.to)?.name;
+				toasts.push(`Poked ${name ?? 'them'}.`);
+				return;
+			}
+			const { fromId, from } = poke;
+			announce(
+				pokeArrival(
+					{ ...poke, fromId, from, at: poke.at },
+					poke.dm
+						? () => void pokeFriend(fromId, from)
+						: () => live.poke(fromId),
+					{ name: address.name, href: address.home },
+				),
+			);
+		});
 	});
 
 	// The channel's audio follows the connection, not the page (#216): the gate

@@ -109,8 +109,6 @@ export interface ChannelContext {
 
 	readonly focusId: string | null;
 	setFocus(id: string | null): void;
-	/** Ask one connected rider's own screens for their attention. */
-	poke(id: string): void;
 
 	/**
 	 * The crew's newest announcement (ADR-0057), or null. It comes in the

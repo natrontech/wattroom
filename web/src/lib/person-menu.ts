@@ -2,22 +2,26 @@
  * The three things every person in WattRoom already carries: their page, the
  * DM thread, and the ask to be friends. Built in one place so a friend in the
  * sidebar and a member of a crew say the same words in the same order (#486).
+ * A poke joins them wherever one can land (#2721).
  */
 import Activity from '@lucide/svelte/icons/activity';
 import BellRing from '@lucide/svelte/icons/bell-ring';
 import Crown from '@lucide/svelte/icons/crown';
 import MessageSquare from '@lucide/svelte/icons/message-square';
+import MessageSquareMore from '@lucide/svelte/icons/message-square-more';
 import ShieldBan from '@lucide/svelte/icons/shield-ban';
 import User from '@lucide/svelte/icons/user';
 import UserPlus from '@lucide/svelte/icons/user-plus';
 import Volume2 from '@lucide/svelte/icons/volume-2';
 import { api } from '$lib/api';
-import type { Friend } from '$lib/friends/friends.svelte';
+import { friends, type Friend } from '$lib/friends/friends.svelte';
 import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
 import { connectionInfo } from '$lib/channel/connection-info.svelte';
 import { channelConnection } from '$lib/channel/connection.svelte';
 import { RIDER_FADER } from '$lib/sound/fader';
 import { mixer } from '$lib/sound/mixer.svelte';
+import { people } from '$lib/people.svelte';
+import { pokeFriend, threadOf } from '$lib/poke';
 import { toasts } from '$lib/toast.svelte';
 
 /**
@@ -60,6 +64,40 @@ function riderVolume(id: string, name: string): MenuSlider {
 	};
 }
 
+/**
+ * A poke, where one can land (#2721): a friend's from anywhere, as a line in
+ * your thread — with words, from the thread's own box — and anyone else's
+ * only across the voice channel you share. Nowhere to land, no entry: a
+ * disabled Poke on every person in the app says nothing a rider can act on.
+ */
+function pokeItems(
+	id: string,
+	go: (href: string) => void,
+	friendship: Friend['status'] | undefined,
+): MenuItem[] {
+	const friend = friends.list?.find((f) => f.id === id);
+	const live = channelConnection.current?.live;
+	const beside = live?.tick?.roster?.find((r) => r.id === id);
+	if ((friendship ?? friend?.status) === 'accepted') {
+		const name = friend?.name ?? people.face(id)?.name ?? 'them';
+		return [
+			{
+				label: 'Poke',
+				icon: BellRing,
+				onSelect: () => void pokeFriend(id, name),
+			},
+			{
+				label: 'Poke with a message…',
+				icon: MessageSquareMore,
+				onSelect: () => go(`${threadOf(id)}?poke`),
+			},
+		];
+	}
+	if (beside && live)
+		return [{ label: 'Poke', icon: BellRing, onSelect: () => live.poke(id) }];
+	return [];
+}
+
 export function personMenu(
 	id: string,
 	go: (href: string) => void,
@@ -68,15 +106,6 @@ export function personMenu(
 		conversation?: boolean;
 		/** You: there is no DM to yourself, and no friending yourself. */
 		you?: boolean;
-		/**
-		 * Present only on a voice channel's surfaces; disabled explains why it
-		 * cannot land.
-		 */
-		poke?: {
-			onSelect: () => void;
-			disabled?: boolean;
-			hint?: string;
-		};
 		/** Their volume, offered only where they are in voice to hear it. */
 		volume?: { name: string };
 		/**
@@ -115,22 +144,16 @@ export function personMenu(
 				onSelect: () => void askToBeFriends(id),
 				disabled: options.you,
 			};
-	const poke: MenuItem | undefined = options.poke && {
-		label: 'Poke',
-		icon: BellRing,
-		onSelect: options.poke.onSelect,
-		disabled: options.you || options.poke.disabled,
-		hint: options.you ? "that's you" : options.poke.hint,
-	};
+	const pokes = options.you ? [] : pokeItems(id, go, options.friendship);
 	// The menu leads with what a click on the object already does.
 	const items: MenuEntry[] = options.conversation
 		? [message, riderPage]
 		: [riderPage, message];
 	if (friend) items.push(friend);
-	if (poke) items.splice(2, 0, poke);
+	items.splice(2, 0, ...pokes);
 	// A voice channel's verb too, beside the poke.
 	if (options.handoff && !options.you)
-		items.splice(poke ? 3 : 2, 0, {
+		items.splice(2 + pokes.length, 0, {
 			label: `Hand the session to ${options.handoff.name}`,
 			icon: Crown,
 			onSelect: options.handoff.onSelect,

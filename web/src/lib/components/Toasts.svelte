@@ -58,6 +58,15 @@
 			{:else}
 				<span class="flex-1">{toast.text}</span>
 			{/if}
+			{#if toast.action}
+				<button
+					class="btn btn-secondary btn-xs shrink-0"
+					onclick={() => {
+						toast.action?.run();
+						toasts.dismiss(toast.id);
+					}}>{toast.action.label}</button
+				>
+			{/if}
 			{#if toast.undo}
 				<button
 					class="btn btn-secondary btn-xs shrink-0"

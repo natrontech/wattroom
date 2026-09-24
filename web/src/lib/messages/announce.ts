@@ -1,7 +1,7 @@
 import { away, notify, type ReplyTo } from '$lib/notify.svelte';
 import { shouldAnnounce } from '$lib/notify-once';
 import { play } from '$lib/sound/cues';
-import { toasts } from '$lib/toast.svelte';
+import { toasts, type ToastAction } from '$lib/toast.svelte';
 
 /**
  * What kind of thing arrived. Every path through here looks identical once the
@@ -10,11 +10,11 @@ import { toasts } from '$lib/toast.svelte';
  * session starting in another voice channel — the notification ADR-0042 calls
  * the most valuable — because both are announced by this one function (#1743).
  */
-export type ArrivalKind = 'dm' | 'chat' | 'friend' | 'session';
+export type ArrivalKind = 'dm' | 'chat' | 'friend' | 'session' | 'poke';
 
 /** A message arriving, from wherever it arrived. */
 export interface Arrival {
-	/** Which of the four this is; a DM and a text channel's line move off a riding screen. */
+	/** Which kind this is; a DM, a poke and a text channel's line move off a riding screen. */
 	kind: ArrivalKind;
 	/** One key per stream — every path that can see this line passes the same one. */
 	tag: string;
@@ -30,6 +30,10 @@ export interface Arrival {
 	reading: boolean;
 	/** How to answer from the notification itself, where the shell offers it. */
 	reply?: ReplyTo;
+	/** One thing to do about it from the toast — "Poke back" (#2721). */
+	action?: ToastAction;
+	/** Who, where the title is a whole sentence ("Jan poked you"). */
+	from?: string;
 }
 
 /**
@@ -70,7 +74,7 @@ function divert(arrival: Arrival): boolean {
  */
 export function announce(arrival: Arrival): void {
 	if (arrival.reading || !shouldAnnounce(arrival.tag, arrival.at)) return;
-	play('chat');
+	play(arrival.kind === 'poke' ? 'poke' : 'chat');
 	// A window nobody is looking at gets the OS notification — hidden, or
 	// behind another app (ADR-0042). A VISIBLE, focused one gets a toast: the
 	// rider is in the app looking at Training or a workout, where a blip
@@ -89,13 +93,15 @@ export function announce(arrival: Arrival): void {
 	// the crew talking elsewhere (ADR-0058). A session starting elsewhere is
 	// still toasted — that is ADR-0042's whole point.
 	else if (
-		(arrival.kind === 'dm' || arrival.kind === 'chat') &&
+		(arrival.kind === 'dm' ||
+			arrival.kind === 'chat' ||
+			arrival.kind === 'poke') &&
 		divert(arrival)
 	)
 		return;
 	else
 		toasts.push(
 			arrival.body ? `${arrival.title}: ${arrival.body}` : arrival.title,
-			{ href: arrival.href },
+			{ href: arrival.href, action: arrival.action },
 		);
 }

@@ -34,7 +34,7 @@ vi.mock('$lib/api', () => ({
 			: { ok: true, data: { conversations } },
 }));
 
-const { dmHeads } = await import('./heads.svelte');
+const { dmHeads, headPreview } = await import('./heads.svelte');
 
 const line = (at: number) => ({
 	peerId: 'mara',
@@ -74,6 +74,26 @@ describe('dm heads', () => {
 		conversations = [line(3)];
 		await vi.advanceTimersByTimeAsync(10_000);
 		expect(announced.map((a) => a.reading)).toEqual([false, true]);
+	});
+
+	// A poke line is announced as a poke (#2721), under the key the hub's
+	// live tap uses, so the two find each other and it sounds once.
+	it('announces a poke line as a poke from its sender', async () => {
+		conversations = [line(1)];
+		dmHeads.start();
+		await vi.advanceTimersByTimeAsync(0);
+		conversations = [{ ...line(2), text: '', poke: true }];
+		await vi.advanceTimersByTimeAsync(10_000);
+		expect(announced).toMatchObject([
+			{ kind: 'poke', tag: 'poke-mara', at: 2, title: 'Mara poked you' },
+		]);
+	});
+
+	it('previews a poke by who poked whom', () => {
+		const poke = { ...line(1), text: '', poke: true };
+		expect(headPreview(poke)).toBe('poked you');
+		expect(headPreview({ ...poke, mine: true })).toBe('poked Mara');
+		expect(headPreview({ ...poke, text: 'ride?' })).toBe('poked you — ride?');
 	});
 
 	// A refused poll is a state the list can show (#1816), not a silent

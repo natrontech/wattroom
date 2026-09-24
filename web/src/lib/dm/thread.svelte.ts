@@ -5,6 +5,7 @@ import { dm } from '$lib/dm/dm.svelte';
 import { dmHeads } from '$lib/dm/heads.svelte';
 import type { ChatEdit, ChatReactionCount } from '$lib/protocol';
 import { messageTimeline, type TimelineMessage } from '$lib/messages/timeline';
+import { sendPoke } from '$lib/poke';
 
 /**
  * A DM thread's data (#672, reactions in #777) — the same reactive-store
@@ -33,6 +34,8 @@ interface DmLine {
 	deletedAt?: number;
 	/** When a temporary line runs out (#2644). */
 	expiresAt?: number;
+	/** A poke (#2721); `text` is what came with it. */
+	poke?: boolean;
 }
 
 export function createDmThread(peerId: string, peerName: () => string) {
@@ -60,6 +63,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			editedAt: m.editedAt,
 			deletedAt: m.deletedAt,
 			expiresAt: m.expiresAt,
+			poke: m.poke ? (m.mine ? `poked ${peerName()}` : 'poked you') : undefined,
 		};
 	}
 
@@ -198,6 +202,12 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			if (!res.ok) return res.error.message;
 			await load(raw.at(-1)?.at ?? 0);
 			return null;
+		},
+		/** Poke them (#2721), with words or without; the line lands here now. */
+		async poke(text = ''): Promise<string | null> {
+			const refusal = await sendPoke(peerId, text);
+			if (!refusal) await load(raw.at(-1)?.at ?? 0);
+			return refusal;
 		},
 		/** Rewrite one of my messages (#865); the peer sees it on their poll. */
 		async edit(id: string, text: string): Promise<string | null> {

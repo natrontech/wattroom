@@ -14,13 +14,18 @@ import type { ChannelEvent } from '$lib/protocol';
  * riding screen is a screen a rider sets up to be readable from three metres
  * away, and sometimes a television.
  */
-export function dmArrivalEvent(from: string, at: number): ChannelEvent {
+export function dmArrivalEvent(
+	from: string,
+	at: number,
+	// A poke lands the same way (#2721), and its line says who poked.
+	verb: 'messaged' | 'poked' = 'messaged',
+): ChannelEvent {
 	return {
 		// The moment is in the id: two messages from the same person are two
 		// lines, the way two chat lines are.
 		id: `dm:${from}:${at}`,
 		kind: 'dm',
-		verb: 'messaged',
+		verb,
 		actor: from,
 		count: 1,
 		at,

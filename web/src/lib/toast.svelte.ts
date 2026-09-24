@@ -14,6 +14,13 @@ export interface Toast {
 	undo?: () => void;
 	/** Present ⇒ the toast is a link to what it is about (#568). */
 	href?: string;
+	/** One thing to do about it, beside the link — "Poke back" (#2721). */
+	action?: ToastAction;
+}
+
+export interface ToastAction {
+	label: string;
+	run: () => void;
 }
 
 let items = $state<Toast[]>([]);
@@ -50,6 +57,7 @@ export const toasts = {
 			tone?: 'info' | 'error';
 			undo?: () => void;
 			href?: string;
+			action?: ToastAction;
 			/** 0 means it waits for the rider — nothing else takes it down. */
 			seconds?: number;
 		},
@@ -65,6 +73,7 @@ export const toasts = {
 			tone: opts?.tone ?? 'info',
 			undo: opts?.undo,
 			href: opts?.href,
+			action: opts?.action,
 		});
 		// An undo toast does not expire (#1961): the action it reverses is
 		// already done, and a keyboard rider needs the time to reach it —

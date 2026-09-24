@@ -4,6 +4,7 @@
 	// image, the GIF picker, and the send. Split out of MessageThread for
 	// size; it owns the focus rule too — the box takes focus on navigation
 	// and never from a control the rider chose.
+	import BellRing from '@lucide/svelte/icons/bell-ring';
 	import ImageIcon from '@lucide/svelte/icons/image';
 	import ImagePlay from '@lucide/svelte/icons/image-play';
 	import Smile from '@lucide/svelte/icons/smile';
@@ -32,6 +33,7 @@
 		lock = null,
 		names = [],
 		crewId,
+		poke,
 	}: {
 		/** Null when it went; the refusal to show when it did not. */
 		send: (
@@ -54,6 +56,11 @@
 		names?: string[];
 		/** The crew whose own emoji the picker offers; none in a DM. */
 		crewId?: string;
+		/**
+		 * A DM's toggle to send the next line as a poke (#2721) — the timer's
+		 * pattern: pressed changes how the line goes, pressed again undoes it.
+		 */
+		poke?: { on: boolean; toggle: () => void };
 	} = $props();
 
 	let draft = $state('');
@@ -309,6 +316,18 @@
 			aria-expanded={emojiOpen}
 			title="add an emoji"><Smile size={16} /></button
 		>
+		{#if poke}
+			<button
+				type="button"
+				onclick={poke.toggle}
+				disabled={!!lock}
+				class="icon-btn {poke.on ? 'text-neon' : 'text-muted hover:text-ink'}"
+				aria-label="send as a poke"
+				aria-pressed={poke.on}
+				title={poke.on ? 'sends as a poke' : 'send as a poke'}
+				><BellRing size={16} /></button
+			>
+		{/if}
 		<button
 			type="button"
 			onclick={pickTimer}
