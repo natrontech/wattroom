@@ -85,6 +85,9 @@ describe('eventText, session lines (#359)', () => {
 		expect(eventText(plan({ verb: 'ended', actor: '', when: 0 }))).toBe(
 			'Sweet Spot 2×20 ended',
 		);
+		expect(eventText(plan({ verb: 'stopped', actor: '', when: 0 }))).toBe(
+			'Sweet Spot 2×20 was stopped before it started',
+		);
 	});
 
 	// The due line was derived from the room's upcoming list, which went with
