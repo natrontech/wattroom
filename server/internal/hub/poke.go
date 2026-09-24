@@ -43,3 +43,18 @@ func (rm *room) drainPokesLocked() map[*client][]protocol.Poke {
 	rm.pendingPokes = nil
 	return out
 }
+
+// PokeRider hands a poke to every socket the rider holds, in whichever
+// channel they are in (#2721): the live arm of a poke the DM thread records.
+// A rider in no channel hears it from the thread's poll instead.
+func (h *Hub) PokeRider(riderID string, poke protocol.Poke) {
+	h.mu.Lock()
+	rooms := make([]*room, 0, len(h.rooms))
+	for _, rm := range h.rooms {
+		rooms = append(rooms, rm)
+	}
+	h.mu.Unlock()
+	for _, rm := range rooms {
+		rm.queuePoke(riderID, poke)
+	}
+}

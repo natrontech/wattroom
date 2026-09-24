@@ -288,7 +288,7 @@ const listDmHeads = `-- name: ListDmHeads :many
 select distinct on (peer.id)
     peer.id as peer_id, peer.display_name, peer.avatar_url,
     user_total_xp(peer.id)::bigint as total_xp,
-    m.text, m.image_id, m.sender_id, m.created_at
+    m.text, m.image_id, m.sender_id, m.created_at, m.poke
 from dm_messages m
 join users peer
   on peer.id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
@@ -311,6 +311,7 @@ type ListDmHeadsRow struct {
 	ImageID     pgtype.UUID
 	SenderID    pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
+	Poke        bool
 }
 
 // The conversation list: my FRIENDS with their latest line, one row per
@@ -337,6 +338,7 @@ func (q *Queries) ListDmHeads(ctx context.Context, senderID pgtype.UUID) ([]List
 			&i.ImageID,
 			&i.SenderID,
 			&i.CreatedAt,
+			&i.Poke,
 		); err != nil {
 			return nil, err
 		}
@@ -401,9 +403,9 @@ func (q *Queries) ListDmReactions(ctx context.Context, arg ListDmReactionsParams
 }
 
 const listDms = `-- name: ListDms :many
-select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at, m.deleted_at, m.expires_at
+select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at, m.deleted_at, m.expires_at, m.poke
 from (
-    select id, sender_id, recipient_id, text, created_at, image_id, edited_at, deleted_at, expires_at from dm_messages
+    select id, sender_id, recipient_id, text, created_at, image_id, edited_at, deleted_at, expires_at, poke from dm_messages
     where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
       and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
       and created_at > $3
@@ -429,6 +431,7 @@ type ListDmsRow struct {
 	EditedAt  pgtype.Timestamptz
 	DeletedAt pgtype.Timestamptz
 	ExpiresAt pgtype.Timestamptz
+	Poke      bool
 }
 
 // One pair's thread: the NEWEST 200 after `after`, oldest-first for
@@ -453,6 +456,7 @@ func (q *Queries) ListDms(ctx context.Context, arg ListDmsParams) ([]ListDmsRow,
 			&i.EditedAt,
 			&i.DeletedAt,
 			&i.ExpiresAt,
+			&i.Poke,
 		); err != nil {
 			return nil, err
 		}
@@ -622,6 +626,38 @@ func (q *Queries) SendDm(ctx context.Context, arg SendDmParams) (SendDmRow, erro
 		arg.ExpiresAt,
 	)
 	var i SendDmRow
+	err := row.Scan(&i.ID, &i.CreatedAt)
+	return i, err
+}
+
+const sendDmPoke = `-- name: SendDmPoke :one
+insert into dm_messages (sender_id, recipient_id, text, poke)
+select $1, $2, $3, true
+where exists (
+    select 1 from friendships f
+    where f.status = 'accepted'
+      and ((f.requester_id = $1 and f.addressee_id = $2)
+        or (f.requester_id = $2 and f.addressee_id = $1))
+)
+returning id, created_at
+`
+
+type SendDmPokeParams struct {
+	SenderID    pgtype.UUID
+	RecipientID pgtype.UUID
+	Text        string
+}
+
+type SendDmPokeRow struct {
+	ID        pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+}
+
+// A poke is a line of its own (#2721), gated exactly like SendDm: the
+// friendship row is the permission, and zero rows back is the refusal.
+func (q *Queries) SendDmPoke(ctx context.Context, arg SendDmPokeParams) (SendDmPokeRow, error) {
+	row := q.db.QueryRow(ctx, sendDmPoke, arg.SenderID, arg.RecipientID, arg.Text)
+	var i SendDmPokeRow
 	err := row.Scan(&i.ID, &i.CreatedAt)
 	return i, err
 }

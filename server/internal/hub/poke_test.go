@@ -148,3 +148,53 @@ func TestPokeOnCooldownTellsTheSender(t *testing.T) {
 	}
 	t.Fatal("the second poke was dropped without a word to the sender")
 }
+
+// Silence on success read as a button that did nothing (#2721): the socket
+// that poked gets its own copy back, from itself.
+func TestPokeAnswersTheSender(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
+
+	sender := dial(t, url, "jan:member")
+	dial(t, url, "sven:member")
+	eventually(t, "both riders joined", func() bool {
+		return h.Presence("velvet").Connected == 2
+	})
+	if err := wsjson.Write(t.Context(), sender, protocol.ClientMessage{
+		Poke: &protocol.Poke{To: "sven"},
+	}); err != nil {
+		t.Fatalf("send poke: %v", err)
+	}
+	if got := readPoke(t, sender); got.To != "sven" || got.FromID != "jan" {
+		t.Fatalf("the sender's answer: %+v", got)
+	}
+}
+
+// A friend's poke is a DM line, and the hub is how it lands NOW (#2721):
+// every socket the rider holds, in every channel, carrying the words.
+func TestPokeRiderReachesEveryChannel(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	base := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/"
+
+	velvet := dial(t, base+"velvet", "sven:member")
+	ember := dial(t, base+"ember", "sven:member")
+	eventually(t, "sven in both channels", func() bool {
+		return h.Presence("velvet").Connected == 1 && h.Presence("ember").Connected == 1
+	})
+
+	want := protocol.Poke{To: "sven", FromID: "jan", From: "jan", At: 42, Text: "wheel!", Dm: true}
+	h.PokeRider("sven", want)
+	for name, conn := range map[string]*websocket.Conn{"velvet": velvet, "ember": ember} {
+		if got := readPoke(t, conn); got != want {
+			t.Fatalf("%s heard %+v, want %+v", name, got, want)
+		}
+	}
+}

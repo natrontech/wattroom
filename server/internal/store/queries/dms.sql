@@ -20,6 +20,19 @@ and ($4::uuid is null or exists (
 ))
 returning id, created_at;
 
+-- name: SendDmPoke :one
+-- A poke is a line of its own (#2721), gated exactly like SendDm: the
+-- friendship row is the permission, and zero rows back is the refusal.
+insert into dm_messages (sender_id, recipient_id, text, poke)
+select $1, $2, $3, true
+where exists (
+    select 1 from friendships f
+    where f.status = 'accepted'
+      and ((f.requester_id = $1 and f.addressee_id = $2)
+        or (f.requester_id = $2 and f.addressee_id = $1))
+)
+returning id, created_at;
+
 -- name: SaveDmImage :one
 -- Gated identically to SendDm (#285): an image is a message body, so it must
 -- clear the same friendship bar before a single byte is stored.
@@ -72,7 +85,7 @@ where least(dm.sender_id, dm.recipient_id) = least($1::uuid, $2::uuid)
 -- rendering, the shape ListRoomChat has (#1813). It used to take the oldest
 -- 200 of a pair's 500, so a long thread opened weeks back and a rider's own
 -- send fell past the page. The id breaks a same-millisecond tie.
-select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at, m.deleted_at, m.expires_at
+select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at, m.deleted_at, m.expires_at, m.poke
 from (
     select * from dm_messages
     where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
@@ -176,7 +189,7 @@ select count(*) from dm_reactions where message_id = $1 and emoji = $2;
 select distinct on (peer.id)
     peer.id as peer_id, peer.display_name, peer.avatar_url,
     user_total_xp(peer.id)::bigint as total_xp,
-    m.text, m.image_id, m.sender_id, m.created_at
+    m.text, m.image_id, m.sender_id, m.created_at, m.poke
 from dm_messages m
 join users peer
   on peer.id = case when m.sender_id = $1 then m.recipient_id else m.sender_id end
