@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const reads: string[] = [];
+const reads: { path: string; json: unknown }[] = [];
 let refreshed = 0;
 
 vi.mock('$lib/dm/heads.svelte', () => ({
@@ -15,7 +15,7 @@ const posted: unknown[] = [];
 vi.mock('$lib/api', () => ({
 	api: async (path: string, init?: { method?: string; json?: unknown }) => {
 		if (init?.method === 'POST' && path.endsWith('/read')) {
-			reads.push(path);
+			reads.push({ path, json: init.json });
 			return { ok: true, data: null };
 		}
 		if (init?.method === 'POST') {
@@ -94,7 +94,10 @@ describe('createDmThread (#672)', () => {
 			},
 		]);
 		await flush();
-		expect(reads).toEqual(['/api/dms/sven/read']);
+		// Up to the newest line it showed, not "now" (#2750).
+		expect(reads).toEqual([
+			{ path: '/api/dms/sven/read', json: { upTo: 'b' } },
+		]);
 		expect(refreshed).toBe(1);
 		thread.close();
 	});

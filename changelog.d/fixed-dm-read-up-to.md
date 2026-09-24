@@ -1,0 +1,1 @@
+- A direct message that arrives just as you read the conversation stays unread until it is on your screen. Before, it could be marked read the moment it landed, and if you closed the conversation right then you never got a dot for it.
