@@ -92,6 +92,11 @@ func TestSessionClosedNamesRidersAndListeners(t *testing.T) {
 	if !ran(rm.control(protocol.Control{Action: "start"}, as("coach"), t0)) {
 		t.Fatal("start refused")
 	}
+	for _, id := range []string{"kim", "lena"} {
+		if !ran(rm.control(protocol.Control{Action: "join"}, as(id), t0)) {
+			t.Fatalf("%s could not join", id)
+		}
+	}
 	rm.setVoice(map[string]struct{}{"coach": {}, "kim": {}})
 	rm.accrueVoiceLocked("countdown", 10*time.Second)
 	rm.accrueVoiceLocked("running", 40*time.Second)

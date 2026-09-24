@@ -27,6 +27,9 @@ func passRoom(t *testing.T, now *time.Time, riders ...protocol.Rider) (*room, ma
 			t.Fatalf("%s: %s %s", c.Action, code, message)
 		}
 	}
+	for _, rider := range riders {
+		joinRide(rm, rider.ID)
+	}
 	return rm, clients
 }
 

@@ -54,6 +54,7 @@ func TestEmptyRoomStillClosesAndSavesTheSession(t *testing.T) {
 			saved <- riders
 		})
 		rm.session.pick("Openers", "{}", 60)
+		joinRide(rm, "jan")
 		rm.session.start(time.Now())
 		running := time.Now().Add(countdownSeconds * time.Second)
 		go rm.run(slog.New(slog.DiscardHandler), time.Now, saver)
@@ -123,6 +124,7 @@ func TestRideIsDatedAtItsStartWhenARiderCrossesTheEnd(t *testing.T) {
 		time.Sleep(300 * time.Millisecond)
 		rm.mu.Lock()
 		rm.session.pick("Openers", "{}", 60)
+		joinRideLocked(rm, "jan")
 		rm.session.start(time.Now())
 		rm.mu.Unlock()
 		running := time.Now().Add(countdownSeconds * time.Second)
@@ -166,6 +168,7 @@ func TestWorkoutSprintBlockGetsAPodium(t *testing.T) {
 		go rm.run(slog.New(slog.DiscardHandler), time.Now, nil)
 		rm.mu.Lock()
 		rm.session.pick("Openers", timeline, 0)
+		joinRideLocked(rm, "kim", "lena")
 		rm.session.start(time.Now())
 		rm.mu.Unlock()
 		running := time.Now().Add(countdownSeconds * time.Second)

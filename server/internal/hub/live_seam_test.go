@@ -175,6 +175,7 @@ func TestCollectiveRampEndsOnTheTimeline(t *testing.T) {
 	if refusal := rm.startGame("collective-ramp", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
+	joinRide(rm, "a", "b")
 	rm.mu.Lock()
 	for id, r := range backyardRoster() {
 		rm.seen[id] = r
@@ -237,6 +238,7 @@ func TestEndGameSaysSoOnce(t *testing.T) {
 	if refusal := rm2.startGame("collective-ramp", gameStarter, gat(0)); refusal != "" {
 		t.Fatal(refusal)
 	}
+	joinRide(rm2, "a", "b")
 	rm2.mu.Lock()
 	for id, r := range backyardRoster() {
 		rm2.seen[id] = r

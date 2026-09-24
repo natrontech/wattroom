@@ -55,7 +55,10 @@
 	const focus = $derived(
 		sprintFocus ? 'sprint' : channel.game ? 'game' : share ? 'media' : 'rider',
 	);
-	const followed = $derived(followedRider(channel.riders, channel.focusId));
+	// The session's own riders (ADR-0059), and you: a phone spectates, and
+	// crewOf below decides whether your own tile belongs in the strip.
+	const inRide = $derived(channel.riders.filter((r) => r.inSession || r.you));
+	const followed = $derived(followedRider(inRide, channel.focusId));
 	const bands = $derived(
 		blockBands(channel.block, followed?.cadence ?? 0, followed?.hr ?? 0),
 	);
@@ -65,7 +68,7 @@
 	// The followed rider stays in the strip, pressed (#1627): excluded, the
 	// toggle-off tap had nothing to land on and a phone could never stop
 	// following.
-	const crew = $derived(crewOf(channel.riders, true));
+	const crew = $derived(crewOf(inRide, true));
 </script>
 
 <div class="flex h-full min-h-0 flex-col">
@@ -125,7 +128,7 @@
 				<SprintMoment
 					sprint={channel.sprint}
 					myWatts={followed?.watts ?? channel.you.watts}
-					roster={channel.riders}
+					roster={inRide}
 				/>
 			</section>
 		{:else if focus === 'game' && channel.game}

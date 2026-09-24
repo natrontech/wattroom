@@ -78,6 +78,7 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	// resending is always safe and never double-counts.
 	rm := newRoom("test")
 	rm.session.pick("Openers", "{}", 600)
+	joinRide(rm, "jan")
 	rm.session.start(time.Unix(0, 0))
 	rm.session.state(time.Unix(20, 0)) // roll countdown into running
 	// The room's own clock, one second per sample. On wall time the session
@@ -191,6 +192,7 @@ func TestRecordKeepsGrowingAcrossASeqRestart(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			rm := newRoom("test")
 			rm.session.pick("Openers", "{}", 3600)
+			joinRide(rm, "jan")
 			// Started "now" so the timeline cannot run itself out from under
 			// the samples — state() closes a session whose total has elapsed.
 			now := time.Now()
@@ -449,6 +451,7 @@ func TestOneSecondOfRidingIsOneSample(t *testing.T) {
 	// what it buffered, used to become minutes of riding that never happened.
 	rm := newRoom("test")
 	rm.session.pick("Openers", "{}", 3600)
+	joinRide(rm, "jan")
 	start := time.Now()
 	rm.session.start(start)
 	rm.session.state(start.Add(countdownSeconds * time.Second))

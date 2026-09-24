@@ -9,8 +9,24 @@
 	import { useChannel } from '$lib/channel/context';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import Training from '$lib/session/Training.svelte';
+	import { device } from '$lib/device.svelte';
 
 	const channel = useChannel();
+
+	// Opening the session is joining it (ADR-0059): Join the ride, the
+	// coach's Start and /training's redirect all land here. Asked again while
+	// the hub still has this rider out — a join lost to a reconnect is not a
+	// choice to spectate — at most every few seconds. A phone spectates.
+	let askedAt = 0;
+	$effect(() => {
+		const live = channelConnection.current?.live;
+		const here = page.params.session;
+		if (device.spectator || !live || !here || channel.you.inSession) return;
+		if (liveSessionId(live.tick?.state) !== here) return;
+		if (Date.now() - askedAt < 3000) return;
+		askedAt = Date.now();
+		live.control('join');
+	});
 
 	// The address is the session's for as long as it runs (#2600). When it
 	// ends — or a newer one is running in its channel — the page lets go: to
