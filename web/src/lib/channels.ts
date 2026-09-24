@@ -59,6 +59,10 @@ export function fetchCrewChannels(
 export const textChannelPath = (crewId: string, channelId: string) =>
 	`/crew/${crewId}/c/${channelId}`;
 
+/** The delete action's words: a rider calls a text channel a chat (#2696). */
+export const deleteLabel = (kind: ChannelKind) =>
+	kind === 'text' ? 'Delete the chat' : 'Delete the channel';
+
 /** Where a voice channel is (#2449). */
 export const voiceChannelPath = (crewId: string, channelId: string) =>
 	`/crew/${crewId}/v/${channelId}`;

@@ -15,6 +15,7 @@
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
+	import { deleteLabel } from '$lib/channels';
 	import { device } from '$lib/device.svelte';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
 	import type { CrewRef } from '$lib/crew-types';
@@ -76,7 +77,7 @@
 				c.kind === 'text'
 					? 'Every message in it goes too, and nothing brings them back.'
 					: 'Its music settings and its play history go too.',
-			action: 'Delete the channel',
+			action: deleteLabel(c.kind),
 			cancel: 'Keep it',
 		});
 		if (!sure) return;
@@ -125,7 +126,7 @@
 			},
 			'separator',
 			{
-				label: 'Delete the channel',
+				label: deleteLabel(c.kind),
 				icon: Trash2,
 				danger: true,
 				onSelect: () => void remove(c),

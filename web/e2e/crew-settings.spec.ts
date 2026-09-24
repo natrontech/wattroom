@@ -80,11 +80,11 @@ test('the owner keeps the crew channels from its settings', async ({
 	// Destructive with no undo: it asks, and only the action deletes.
 	await a
 		.locator('details[open]')
-		.getByRole('button', { name: 'Delete the channel' })
+		.getByRole('button', { name: 'Delete the chat' })
 		.click();
 	await a
 		.getByRole('dialog')
-		.getByRole('button', { name: 'Delete the channel' })
+		.getByRole('button', { name: 'Delete the chat' })
 		.click();
 	await expect.poll(() => named('Sprint Talk')).toBeUndefined();
 

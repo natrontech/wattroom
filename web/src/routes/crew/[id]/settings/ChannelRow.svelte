@@ -6,6 +6,7 @@
 	import Select from '$lib/components/Select.svelte';
 	import {
 		deleteChannel,
+		deleteLabel,
 		setNamedInChannel,
 		updateChannel,
 		type CrewChannel,
@@ -99,7 +100,7 @@
 				channel.kind === 'text'
 					? 'Every message and image in it goes with it, for everyone in the crew. There is no undo.'
 					: 'Its play log and the recaps of the sessions ridden in it go with it, for everyone in the crew. There is no undo.',
-			action: 'Delete the channel',
+			action: deleteLabel(channel.kind),
 			cancel: 'Keep it',
 		});
 		if (!ok) return;
@@ -131,7 +132,7 @@
 			},
 			'separator',
 			{
-				label: 'Delete the channel',
+				label: deleteLabel(channel.kind),
 				icon: Trash,
 				danger: true,
 				onSelect: () => void remove(),
@@ -241,7 +242,7 @@
 		<button
 			onclick={() => void remove()}
 			disabled={busy}
-			class="btn btn-danger btn-xs">Delete the channel</button
+			class="btn btn-danger btn-xs">{deleteLabel(channel.kind)}</button
 		>
 	</div>
 </details>
