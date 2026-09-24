@@ -1,4 +1,5 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
+import { people } from '$lib/people.svelte';
 import type { SessionRecap, StatusLine } from '$lib/protocol';
 import type { BoardRow, CrewRef, RiderPrefs, Together } from '$lib/crew-types';
 
@@ -21,6 +22,21 @@ export interface CrewPerson {
 	medals?: number;
 	/** Their status line (ADR-0060); null for none and on the ban list. */
 	statusLine?: StatusLine | null;
+}
+
+/**
+ * Teach the face cache a crew's people (#807), their status lines with them
+ * (ADR-0060): every surface that draws a crewmate's face or status reads
+ * `people`, and a crew page is where those people arrive.
+ */
+export function learnCrewFaces(list: readonly CrewPerson[] | undefined): void {
+	people.learn(
+		(list ?? []).map((p) => ({
+			...p,
+			name: p.displayName,
+			statusLine: p.statusLine ?? null,
+		})),
+	);
 }
 
 export interface Crew {

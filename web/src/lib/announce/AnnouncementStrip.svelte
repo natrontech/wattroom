@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	// The strip a coach's announcement draws as (#2408), at the top of the
 	// Lounge and of Chat. It is persistent status, not a toast: a rider is on
 	// a bike three metres from the screen and does not watch it (`ux.md`), so
@@ -44,8 +46,13 @@
 			<p class="text-sm">
 				<MessageText text={announcement.text} preview={false} />
 			</p>
-			<p class="text-muted mt-1 text-xs">
-				{announcement.from} · {formatWhen(announcement.at)}
+			<p class="text-muted mt-1 flex items-center gap-1 text-xs">
+				<span>{announcement.from}</span>
+				<StatusMark
+					line={people.face(announcement.fromId)?.statusLine}
+					size={11}
+				/>
+				<span>· {formatWhen(announcement.at)}</span>
 			</p>
 		</div>
 		{#if canClear}

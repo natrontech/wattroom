@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { serverNow } from '$lib/server-clock';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { account } from '$lib/account.svelte';
@@ -133,6 +135,7 @@
 						{/if}
 					</span>
 					<span class="font-medium">{score.name}</span>
+					<StatusMark line={people.face(score.riderId)?.statusLine} size={14} />
 					{#if game.mode === 'sprint-roulette'}
 						<span class="font-display ml-auto font-bold tabular-nums"
 							>{score.wkg.toFixed(1)} w/kg</span
@@ -212,6 +215,7 @@
 						: 'border-muted/20'}"
 				>
 					{name(id)}
+					<StatusMark line={people.face(id)?.statusLine} size={12} />
 					<span
 						class="inline-flex items-center gap-0.5"
 						aria-label="{lives} {lives === 1 ? 'life' : 'lives'} left"
@@ -268,7 +272,10 @@
 				{#each standing.slice(0, 3) as [id, rider], i (id)}
 					<div class="bg-surface rounded p-3">
 						<p class="eyebrow">best {i + 1}</p>
-						<p class="font-display mt-1 font-bold">{name(id)}</p>
+						<p class="font-display mt-1 flex items-center gap-1.5 font-bold">
+							<span class="truncate">{name(id)}</span>
+							<StatusMark line={people.face(id)?.statusLine} size={14} />
+						</p>
 						<p class="font-mono text-xs tabular-nums">
 							{(rider.score ?? 0).toFixed(1)} w/kg
 						</p>
@@ -283,7 +290,10 @@
 					<span class="text-muted w-5 font-mono text-xs tabular-nums"
 						>{i + 1}</span
 					>
-					<span class="w-20 truncate text-sm">{name(id)}</span>
+					<span class="flex w-20 items-center gap-1 text-sm">
+						<span class="truncate">{name(id)}</span>
+						<StatusMark line={people.face(id)?.statusLine} size={12} />
+					</span>
 					<ProgressBar
 						pct={((rider.score ?? 0) /
 							Math.max(1, standing[0]?.[1].score ?? 1)) *
@@ -309,6 +319,10 @@
 				<p class="eyebrow">on the front</p>
 				<p class="font-display text-ink mt-1 text-2xl font-bold">
 					{front ? name(front[0]) : '—'}
+					{#if front}<StatusMark
+							line={people.face(front[0])?.statusLine}
+							size={18}
+						/>{/if}
 				</p>
 				<p class="text-muted mt-1 text-xs">
 					110 % FTP · rest sit at 55 % · rotates in {formatClock(

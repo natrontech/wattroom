@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	// The crew under the focus slot (ADR-0020): a camera thumb and live watts,
 	// w/kg, rpm and bpm for everyone in the voice channel. A group-training
 	// surface that shows only your own numbers is a solo app with a chat
@@ -77,6 +79,7 @@
 				class="text-muted ml-auto truncate text-[10px]"
 				data-testid="crew-name">{rider.name}</span
 			>
+			<StatusMark line={people.face(rider.id)?.statusLine} size={10} />
 		</span>
 	</div>
 	<!-- bpm only when something is reporting it (#2160): a permanent "0 bpm"

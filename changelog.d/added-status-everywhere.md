@@ -1,0 +1,1 @@
+- Statuses now show wherever a rider's name does. That covers session and game standings, the crew tiles while riding, the list of who rode after a session, session recaps, the weekly board, rider volumes, the "who's in voice" lines on Home and the crew page, announcements, and the title of channel message notifications.

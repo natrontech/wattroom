@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { learnCrewFaces } from '$lib/crew';
 	// The crew's Workouts (#2455, ADR-0058): what it has planned and what it
 	// has ridden together, derived from its schedule and its last 90 days of
 	// recaps. "Ride it again" puts a ridden workout back on the schedule in
@@ -25,6 +26,8 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	// The faces and statuses its session recaps read (ADR-0060).
+	$effect(() => learnCrewFaces(data.crew?.people));
 
 	const custom = customWorkouts();
 	const ridden = $derived(riddenTogether(data.recaps, account.me?.id));

@@ -14,6 +14,7 @@
 		fetchCrew,
 		fetchCrewMembers,
 		fetchCrewRecaps,
+		learnCrewFaces,
 		type Crew,
 		type CrewMembers,
 	} from '$lib/crew';
@@ -29,6 +30,8 @@
 	const id = $derived(page.params.id ?? '');
 	let crew = $state<Crew | null>(untrack(() => data.crew));
 	let members = $state<CrewMembers | null>(untrack(() => data.members));
+	// The faces and statuses the board and the recaps read (ADR-0060).
+	$effect(() => learnCrewFaces(members?.members));
 	let recaps = $state<SessionRecap[] | null>(untrack(() => data.recaps));
 	let error = $state<string | null>(untrack(() => data.error));
 	let errorCode = $state<string | null>(untrack(() => data.errorCode));

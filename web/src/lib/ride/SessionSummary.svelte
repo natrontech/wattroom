@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import { account } from '$lib/account.svelte';
 	import type { Snippet } from 'svelte';
 	import { play } from '$lib/sound/cues';
 	import Logo from '$lib/brand/Logo.svelte';
@@ -246,6 +249,12 @@
 								<span class="truncate {rider.you ? 'font-medium' : ''}"
 									>{rider.you ? 'You' : rider.name}</span
 								>
+								<StatusMark
+									line={rider.you
+										? account.me?.statusLine
+										: people.face(rider.id)?.statusLine}
+									size={13}
+								/>
 								{#if rider.execution !== undefined}
 									<span
 										class="text-muted ml-auto font-mono text-xs tabular-nums"

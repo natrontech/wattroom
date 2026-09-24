@@ -129,7 +129,7 @@ func (q *Queries) EditChannelMessage(ctx context.Context, arg EditChannelMessage
 }
 
 const getChannelAnnouncement = `-- name: GetChannelAnnouncement :one
-select m.id, m.text, u.display_name as from_name, m.created_at
+select m.id, m.text, u.display_name as from_name, u.id as from_id, m.created_at
 from channels c
 join chat_messages m on m.id = c.announcement_id
 join users u on u.id = m.user_id
@@ -140,6 +140,7 @@ type GetChannelAnnouncementRow struct {
 	ID        pgtype.UUID
 	Text      string
 	FromName  string
+	FromID    pgtype.UUID
 	CreatedAt pgtype.Timestamptz
 }
 
@@ -151,6 +152,7 @@ func (q *Queries) GetChannelAnnouncement(ctx context.Context, id pgtype.UUID) (G
 		&i.ID,
 		&i.Text,
 		&i.FromName,
+		&i.FromID,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -355,7 +357,7 @@ func (q *Queries) MarkChannelRead(ctx context.Context, arg MarkChannelReadParams
 }
 
 const newestCrewAnnouncement = `-- name: NewestCrewAnnouncement :one
-select c.id as channel_id, c.name as channel_name, m.id, m.text, u.display_name as from_name, m.created_at
+select c.id as channel_id, c.name as channel_name, m.id, m.text, u.display_name as from_name, u.id as from_id, m.created_at
 from channels c
 join chat_messages m on m.id = c.announcement_id
 join users u on u.id = m.user_id
@@ -378,6 +380,7 @@ type NewestCrewAnnouncementRow struct {
 	ID          pgtype.UUID
 	Text        string
 	FromName    string
+	FromID      pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
 }
 
@@ -394,6 +397,7 @@ func (q *Queries) NewestCrewAnnouncement(ctx context.Context, arg NewestCrewAnno
 		&i.ID,
 		&i.Text,
 		&i.FromName,
+		&i.FromID,
 		&i.CreatedAt,
 	)
 	return i, err

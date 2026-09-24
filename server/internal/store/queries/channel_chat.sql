@@ -140,7 +140,7 @@ update channels set announcement_id = null where id = $1;
 
 -- name: GetChannelAnnouncement :one
 -- The author is the message's, not whoever marked it.
-select m.id, m.text, u.display_name as from_name, m.created_at
+select m.id, m.text, u.display_name as from_name, u.id as from_id, m.created_at
 from channels c
 join chat_messages m on m.id = c.announcement_id
 join users u on u.id = m.user_id
@@ -151,7 +151,7 @@ where c.id = $1;
 -- its text channels — of those the viewer may enter, `channels.mayEnter`'s
 -- rule restated because it filters rows. The handler has proved the viewer
 -- an unbanned member; `admin` is the owner or an admin.
-select c.id as channel_id, c.name as channel_name, m.id, m.text, u.display_name as from_name, m.created_at
+select c.id as channel_id, c.name as channel_name, m.id, m.text, u.display_name as from_name, u.id as from_id, m.created_at
 from channels c
 join chat_messages m on m.id = c.announcement_id
 join users u on u.id = m.user_id

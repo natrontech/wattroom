@@ -1,4 +1,5 @@
 <script lang="ts">
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	// The crew's Home (ADR-0058, #2451): what is live, what is next and who
 	// is around — in that order, because a rider opening the crew wants to
 	// know whether to get on the bike. Presence only (ADR-0010's radar): who
@@ -109,9 +110,6 @@
 		['in', "I'm in"],
 		['out', "I'm out"],
 	];
-
-	const names = (channel: LiveChannel) =>
-		(channel.occupants ?? []).map((o) => o.name).join(', ');
 </script>
 
 {#if error}
@@ -176,8 +174,14 @@
 					class="hover:bg-ink/5 flex min-h-11 items-center gap-3 px-4 py-2.5 text-sm"
 				>
 					<span class="font-medium">{channel.name}</span>
+					<!-- Who is in there now, each with their status (ADR-0060). -->
 					<span class="text-muted min-w-0 flex-1 truncate text-xs"
-						>{names(channel)}</span
+						>{#each channel.occupants ?? [] as o, i (o.id)}{i > 0
+								? ', '
+								: ''}{o.name}<StatusMark
+								line={o.statusLine}
+								size={11}
+							/>{/each}</span
 					>
 				</a>
 			</li>

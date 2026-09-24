@@ -25,7 +25,7 @@
 		type ChatThread,
 	} from '$lib/messages/chat-thread.svelte';
 	import type { ThreadSource } from '$lib/messages/thread-types';
-	import { people } from '$lib/people.svelte';
+	import { learnCrewFaces } from '$lib/crew';
 	import { presence } from '$lib/presence.svelte';
 	import { messageTimeline } from '$lib/messages/timeline';
 	import { toasts } from '$lib/toast.svelte';
@@ -67,9 +67,7 @@
 	});
 
 	// Who `@` completes to (#1766): the crew, an offline member most of all.
-	$effect(() => {
-		people.learn(crew.people.map((p) => ({ ...p, name: p.displayName })));
-	});
+	$effect(() => learnCrewFaces(crew.people));
 	const mentionNames = $derived(crew.people.map((p) => p.displayName));
 
 	const timeline = $derived(messageTimeline(thread?.messages ?? []));

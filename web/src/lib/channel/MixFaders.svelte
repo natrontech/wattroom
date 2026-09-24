@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	// Every level in one place (#179): the music ceiling, the cues, and how far
 	// both dip under a voice. Ducking happens on top of the music level — it
 	// never fights these faders.
@@ -154,7 +156,10 @@
 				{@const pct = Math.round(mixer.riderGain(rider.id) * 100)}
 				<li class="text-xs">
 					<span class="flex items-center gap-2">
-						<span class="min-w-0 flex-1 truncate">{rider.name}</span>
+						<span class="flex min-w-0 flex-1 items-center gap-1">
+							<span class="truncate">{rider.name}</span>
+							<StatusMark line={people.face(rider.id)?.statusLine} size={11} />
+						</span>
 						<span class="font-display shrink-0 tabular-nums">{pct}%</span>
 						<button
 							onclick={() => setRider(rider.id, 1)}

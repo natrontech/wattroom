@@ -374,8 +374,13 @@ func TestAnnouncementIsAChannelsMarkedLine(t *testing.T) {
 		t.Fatalf("the owner marking the private line: %d", status)
 	}
 	_, body := w.chat(t, "cara", w.open)
-	if put, _ := body["announcement"].(map[string]any); put["text"] != "Saturday is the long one" {
+	put, _ := body["announcement"].(map[string]any)
+	if put["text"] != "Saturday is the long one" {
 		t.Errorf("the channel's own announcement: %v", body["announcement"])
+	}
+	// Its author by id, for the status beside the name (ADR-0060).
+	if put["fromId"] != store.UUIDString(w.users.ByToken["bob"].ID) {
+		t.Errorf("the announcement's author is %v, want bob's id", put["fromId"])
 	}
 	board := func(who string) string {
 		t.Helper()

@@ -13,7 +13,7 @@
 	import { account } from '$lib/account.svelte';
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
-	import { fetchCrew } from '$lib/crew';
+	import { fetchCrew, learnCrewFaces } from '$lib/crew';
 	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
 	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
@@ -53,14 +53,7 @@
 		void presence.version;
 		if (!crew || !showing) return;
 		void fetchCrew(crew).then((res) => {
-			if (!res.ok) return;
-			people.learn(
-				res.data.people.map((p) => ({
-					...p,
-					name: p.displayName,
-					statusLine: p.statusLine ?? null,
-				})),
-			);
+			if (res.ok) learnCrewFaces(res.data.people);
 		});
 	});
 

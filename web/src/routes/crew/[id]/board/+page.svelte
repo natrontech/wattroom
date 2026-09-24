@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { learnCrewFaces } from '$lib/crew';
 	// The crew's Board (#2455, ADR-0058): what the crew wrote down — the
 	// newest announcement across its text channels, then its pins. The
 	// notice leads because it is the thing with a clock on it; it names the
@@ -25,6 +26,8 @@
 	const id = $derived(page.params.id ?? '');
 	// The notice is a chat line and may carry the crew's own emoji (#2643).
 	provideCrewEmoji(() => data.crew?.id);
+	// The announcement author's status (ADR-0060).
+	$effect(() => learnCrewFaces(data.crew?.people));
 	let announcement = $state<CrewAnnouncement | null>(
 		untrack(() => data.announcement),
 	);
