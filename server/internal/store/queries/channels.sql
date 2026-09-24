@@ -78,6 +78,16 @@ order by position, created_at, id;
 -- name: SetChannelPosition :exec
 update channels set position = $2 where id = $1;
 
+-- name: CancelPrivateChannelPlans :many
+-- A private channel's plans are its own (#2610), so they go before it does.
+-- The foreign key would null them into plans every member and the crew's
+-- shared feed can read. An open channel's plans keep their slot on the
+-- crew's schedule, with no channel.
+delete from scheduled_sessions s
+using channels c
+where c.id = $1 and c.private and s.channel_id = c.id
+returning s.workout_name, s.starts_at, s.started_at;
+
 -- name: DeleteChannel :exec
 -- Takes its chat, its play log and its recaps with it (the cascades on
 -- channel_id): the client confirms first (errors.md), because none of that

@@ -48,6 +48,10 @@ type session struct {
 	// A game session has no timeline of its own: it runs with no length, does
 	// not pause, and the game's end is its end.
 	game string
+	// Who joined it (ADR-0059): only they are driven and counted. The one
+	// who opened it is in from the start; everyone else in the channel
+	// spectates until they join. Bounded by riders who entered the channel.
+	joined map[string]struct{}
 }
 
 func newSession() *session {
@@ -63,7 +67,29 @@ func (s *session) open() bool { return s.id != "" && s.phase != "done" }
 // timeline keeps its run count, so a sprint latched against the old run
 // lets go (#2016).
 func (s *session) begin(id, coach, coachName string) {
-	*s = session{id: id, coach: coach, coachName: coachName, phase: "idle", run: s.run}
+	*s = session{id: id, coach: coach, coachName: coachName, phase: "idle", run: s.run,
+		joined: map[string]struct{}{coach: {}}}
+}
+
+// rides reports whether a rider is on this session's timeline (ADR-0059):
+// joined, and the session still open. A spectator's samples are theirs.
+func (s *session) rides(riderID string) bool {
+	_, in := s.joined[riderID]
+	return in && s.open()
+}
+
+// join puts a rider on the timeline, or takes them off it; false when no
+// session is open to join.
+func (s *session) join(riderID string, in bool) bool {
+	if !s.open() {
+		return false
+	}
+	if in {
+		s.joined[riderID] = struct{}{}
+	} else {
+		delete(s.joined, riderID)
+	}
+	return true
 }
 
 // runGame starts the session a game opened (#2597): no countdown — the mode
@@ -143,9 +169,20 @@ func (s *session) resume(now time.Time) bool {
 // implied: state() reads a done session's elapsed from banked alone, and a
 // close that left it at zero dated every rider's ride at the session's end
 // (audit 2026-09-09).
+//
+// A countdown stopped before its timeline started closes nothing (#2605):
+// nothing was ridden, so it goes back to idle and drops its id, as drop()
+// does for a pick — no "ended", no recap to point at, and the channel free
+// for anyone. A countdown that has already run out is a ride that started,
+// so the clock is read first.
 func (s *session) end(now time.Time) bool {
-	if s.phase == "idle" || s.phase == "done" {
+	s.state(now)
+	switch s.phase {
+	case "idle", "done":
 		return false
+	case "countdown":
+		*s = session{phase: "idle", run: s.run}
+		return true
 	}
 	if s.phase == "running" {
 		s.banked += now.Sub(s.startedAt)

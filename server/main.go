@@ -53,6 +53,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/stats"
+	"github.com/natrontech/wattroom/server/internal/status"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/strava"
 	"github.com/natrontech/wattroom/server/internal/tokens"
@@ -246,7 +247,8 @@ func main() {
 		accountService.SetCrews(crewsService)
 		// Session-planned email mounts only with WATTROOM_RESEND_KEY set —
 		// without it the profile hides the whole notifications section.
-		if notifier := notify.New(st, log, baseURL); notifier != nil {
+		notifier := notify.New(st, log, baseURL)
+		if notifier != nil {
 			notifier.Register(mux)
 			crewsService.SetNotifier(notifier)
 			authService.SetMailer(notifier)
@@ -304,6 +306,9 @@ func main() {
 		// live state keys by voice channel (#2436).
 		channelsService := channels.New(st, authService, log)
 		channelsService.Register(mux)
+		if notifier != nil {
+			channelsService.SetNotifier(notifier)
+		}
 		h := hub.New(log, channelsService, saver)
 		hubForDrain = h
 		crewsService.SetPresence(h)
@@ -349,6 +354,9 @@ func main() {
 		// The hub says which voice channel; each names it only to a viewer
 		// who may enter it (channels.PlacesFor, #2516).
 		friends.New(st, authService, h, log).Register(mux)
+		// A rider's own status line (ADR-0060): set here, carried beside the
+		// name by every surface, and heard elsewhere through the lobby ping.
+		status.New(st, authService, h, log).Register(mux)
 		riders.New(st, authService, h, log).Register(mux)
 		// The soundboard's durable half (#877, ADR-0033): clips are personal,
 		// so the hub is what says whether a listener can hear one.

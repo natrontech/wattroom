@@ -319,7 +319,10 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"A workout name has to be 1-80 characters.", "workoutName")
 		return
 	}
-	if segments, err := workout.Parse(req.WorkoutJSON); err != nil || len(segments) == 0 {
+	// An empty workout is a free ride's (ADR-0059), and only when it says
+	// so: unmarked, it is a client that lost its steps.
+	if segments, err := workout.Parse(req.WorkoutJSON); err != nil ||
+		(len(segments) == 0 && !workout.Unscored(req.WorkoutJSON)) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"That is not a workout the engine can ride.", "workoutJson")
 		return

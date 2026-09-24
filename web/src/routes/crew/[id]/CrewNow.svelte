@@ -13,6 +13,7 @@
 		answerCrewPlan,
 		fetchCrewSchedule,
 		type CrewPlan,
+		planPath,
 	} from '$lib/crew-schedule';
 	import { fetchCrewsLive, type LiveChannel } from '$lib/crews-live';
 	import { formatClock, formatWhen } from '$lib/format';
@@ -209,7 +210,12 @@
 	</p>
 {:else}
 	<div class="panel mt-2">
-		<p class="text-sm font-medium">{next.workoutName}</p>
+		<!-- Its own row on the Schedule (#2608): where it is moved, shared and
+		     answered alongside the rest of the calendar. -->
+		<a
+			href={planPath(crew.id, next.id)}
+			class="text-sm font-medium hover:underline">{next.workoutName}</a
+		>
 		<p class="text-muted mt-0.5 text-xs">
 			{formatWhen(next.startsAt, true)}{next.channelName
 				? ` · in ${next.channelName}`

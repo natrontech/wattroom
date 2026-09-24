@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -276,11 +277,27 @@ func (s *Service) membersOf(w http.ResponseWriter, ctx context.Context, c db.Cha
 }
 
 // handleDelete takes the channel and everything in it — chat, play log,
-// recaps. The client asks first (errors.md: destructive, no undo).
+// recaps, and a private channel's plans. The client asks first (errors.md:
+// destructive, no undo).
 func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
-	channel, _, role, ok := s.channelFor(w, r)
+	channel, user, role, ok := s.channelFor(w, r)
 	if !ok || !requireAdmin(w, role) {
 		return
+	}
+	// The plans first, and their mail, while the channel still says whom it
+	// admits (#2610). Should the delete below then fail, the plans are
+	// cancelled and said to be, which is true, and the channel waits for a
+	// second try.
+	plans, err := s.store.Queries.CancelPrivateChannelPlans(r.Context(), channel.ID)
+	if err != nil {
+		httpx.Fail(w, s.log, "cancel channel plans failed", err, "The channel could not be deleted.", "channel", store.UUIDString(channel.ID))
+		return
+	}
+	for _, plan := range plans {
+		// A session already ridden or gone is not news (#839).
+		if s.notifier != nil && !plan.StartedAt.Valid && plan.StartsAt.Time.After(time.Now()) {
+			s.notifier.SessionCancelled(channel.CrewID, channel.ID, plan.WorkoutName, plan.StartsAt.Time, user.ID)
+		}
 	}
 	if err := s.store.Queries.DeleteChannel(r.Context(), channel.ID); err != nil {
 		httpx.Fail(w, s.log, "delete channel failed", err, "The channel could not be deleted.", "channel", store.UUIDString(channel.ID))

@@ -265,6 +265,42 @@ func TestSessionMailInAPrivateChannelReachesItsPeopleOnly(t *testing.T) {
 	}
 }
 
+// Deleting a private channel cancels its plans and then the channel (#2610).
+// The mail used to read its audience in the background, by which time the
+// channel admitted nobody, so its own riders were never told.
+func TestSessionMailReadsItsAudienceBeforeReturning(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	s := service(h, srv.URL)
+	if _, err := h.store.Pool.Exec(t.Context(), "update channels set private = true where id = $1", h.channel.ID); err != nil {
+		t.Fatalf("make private: %v", err)
+	}
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"insert into channel_members (channel_id, user_id) values ($1, $2)", h.channel.ID, h.optIn.ID); err != nil {
+		t.Fatalf("name into channel: %v", err)
+	}
+
+	s.SessionCancelled(h.crew.ID, h.channel.ID, "Coaches Only", time.Now().Add(time.Hour), h.planner.ID)
+	if _, err := h.store.Pool.Exec(t.Context(), "delete from channels where id = $1", h.channel.ID); err != nil {
+		t.Fatalf("delete channel: %v", err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for fake.sent() == 0 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	fake.mu.Lock()
+	defer fake.mu.Unlock()
+	if len(fake.payloads) != 1 {
+		t.Fatalf("the channel's rider got %d cancellations, want 1", len(fake.payloads))
+	}
+	// Linked to the schedule: the channel is no page any more.
+	if text := fmt.Sprint(fake.payloads[0]["text"]); !strings.Contains(text, "/schedule") || strings.Contains(text, "/v/") {
+		t.Errorf("a cancellation linked somewhere other than the schedule: %q", text)
+	}
+}
+
 func TestSessionRescheduledSaysMoved(t *testing.T) {
 	h := setup(t)
 	fake := &fakeResend{}
@@ -322,6 +358,10 @@ func TestSessionCancelledSaysItIsNotHappening(t *testing.T) {
 		t.Fatalf("a cancellation still invited the rider to ride it: %q", text)
 	}
 	html := fmt.Sprint(p["html"])
+	// The switch is under Settings, not on the profile (#2611).
+	if !strings.Contains(html, "switched on in your WattRoom settings") {
+		t.Fatalf("html footer does not say where the switch is: %s", html)
+	}
 	if !strings.Contains(html, "It is not happening.") {
 		t.Fatalf("html part does not say the plan is off: %s", html)
 	}
@@ -412,6 +452,10 @@ func TestUnsubscribe(t *testing.T) {
 	mux.ServeHTTP(post, httptest.NewRequestWithContext(t.Context(), "POST", link, nil))
 	if post.Code != 200 {
 		t.Fatalf("POST = %d, want 200", post.Code)
+	}
+	// Back to the page with the switch on it (#2611), not the profile.
+	if !strings.Contains(post.Body.String(), "/settings/notifications") {
+		t.Fatalf("the unsubscribed page does not lead to the notification settings: %q", post.Body.String())
 	}
 	_ = h.store.Pool.QueryRow(t.Context(), "select notify_planned from users where id = $1", h.optIn.ID).Scan(&still)
 	if still {

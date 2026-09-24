@@ -132,14 +132,14 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		sprintNow, sprintWinner := rm.scoreSprintLocked(now())
 		eventsNow := rm.events.drain()
 		tick := protocol.ServerTick{
-			At:            now().UnixMilli(),
-			State:         state,
-			Jukebox:       rm.music.snapshot(),
-			Cheers:        rm.cheers,
-			Board:         rm.board,
-			Events:        eventsNow,
-			Sprint:        sprintNow,
-			Game:          rm.lastGame,
+			At:      now().UnixMilli(),
+			State:   state,
+			Jukebox: rm.music.snapshot(),
+			Cheers:  rm.cheers,
+			Board:   rm.board,
+			Events:  eventsNow,
+			Sprint:  sprintNow,
+			Game:    rm.lastGame,
 			Execution: func() map[string]float64 {
 				out := make(map[string]float64, len(rm.seen))
 				for id := range rm.seen {
@@ -211,6 +211,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 				rider := c.rider
 				rider.AwayReason, rider.Away = rm.away[c.rider.ID]
 				_, rider.Riding = pedalling[c.rider.ID]
+				rider.InSession = rm.session.rides(c.rider.ID)
 				// And what their board still has going, so a rider who joined
 				// mid-clip catches up (#1681). Read here rather than drained:
 				// a fire is one tick, the sound it started is not.
@@ -538,7 +539,10 @@ func (rm *room) advanceGameLocked(now time.Time) (winner string) {
 	}
 	samples := make(map[string]int, len(rm.metrics))
 	for id, m := range rm.metrics {
-		samples[id] = m.Watts
+		// Only the session's own riders play (ADR-0059).
+		if rm.session.rides(id) {
+			samples[id] = m.Watts
+		}
 	}
 	rm.game.advance(now, samples, rm.gameRosterLocked())
 	gs := rm.game.state(now)

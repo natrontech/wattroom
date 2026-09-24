@@ -43,6 +43,12 @@ func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
 	if m.Watts > 0 {
 		rm.lastWatts[rider.ID] = now
 	}
+	// The channel sees every rider's numbers; the session keeps only its
+	// own riders' (ADR-0059). A spectator — a free rider beside it, or
+	// someone who never joined — is on no podium and saves no session ride.
+	if !rm.session.rides(rider.ID) {
+		return
+	}
 	if _, known := rm.seen[rider.ID]; !known {
 		rm.seenOrder = append(rm.seenOrder, rider.ID)
 	}
@@ -70,6 +76,12 @@ func (rm *room) backfill(c *client, samples []protocol.RiderMetrics, log *slog.L
 	// used to land its buffer in the record beside the holder's (audit
 	// 2026-09-09) — the interleaving setMetrics exists to prevent.
 	if !rm.ownsTrainerLocked(c) {
+		return
+	}
+	// A spectator's replay is theirs, as their live samples are (ADR-0059).
+	// With no session open — a server that restarted idle — it lands as it
+	// always did, since there is nobody's list to check it against.
+	if rm.session.open() && !rm.session.rides(rider.ID) {
 		return
 	}
 	if _, known := rm.seen[rider.ID]; !known {
@@ -223,14 +235,26 @@ func (rm *room) control(c protocol.Control, rider protocol.Rider, now time.Time)
 	if c.Action == "handoff" {
 		return rm.handOffLocked(rider.ID, c.Rider, now)
 	}
+	if c.Action == "join" || c.Action == "leave" {
+		rm.session.join(rider.ID, c.Action == "join")
+		return "", ""
+	}
 	if c.Action == "pick" && !rm.session.open() {
 		rm.session.begin(uuid.NewString(), rider.ID, rider.Name)
 	}
+	// A countdown stopped before it started (#2605) says so on the timeline,
+	// named while the session still carries its workout: its "starting" line
+	// would otherwise stand there with nothing after it.
+	stopping := c.Action == "end" && rm.session.state(now).Phase == "countdown"
+	stopped := rm.session.workoutName
 	// The session answers first: a start the phase refuses — a stale coach
 	// tab, two coaches racing the countdown — used to wipe the running
 	// ride's record and roster before hearing no (audit 2026-09-09).
 	if !rm.session.apply(c, now) {
 		return "invalid_request", "That does not work right now — the session is in another phase."
+	}
+	if stopping {
+		rm.events.add(sessionLine("stopped", "", stopped, time.Time{}, now), now)
 	}
 	// A new start is a new ride.
 	if c.Action == "start" {
@@ -263,6 +287,12 @@ func (rm *room) refusalLocked(action string, rider protocol.Rider) (code, messag
 		// in between would replace it before its rides were handed over.
 		if action == "pick" && s.phase == "done" && !rm.saved {
 			return "conflict", "The last session is still being saved — try again in a second."
+		}
+	case "join", "leave":
+		// Anyone in the channel, the coach included: a coach may run the
+		// timeline from the side (ADR-0059).
+		if !s.open() {
+			return "invalid_request", "No session is running in this channel."
 		}
 	case "end":
 		if s.open() && s.coach != rider.ID && !rider.Administers() {
@@ -303,6 +333,7 @@ func (rm *room) handOffLocked(from, to string, now time.Time) (code, message str
 	}
 	rm.events.add(handOffLine("handedOff", rm.session.coachName, name, now), now)
 	rm.session.coach, rm.session.coachName = to, name
+	rm.session.join(to, true)
 	return "", ""
 }
 

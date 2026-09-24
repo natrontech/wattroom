@@ -2,6 +2,7 @@
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
 	import TvMode from '$lib/session/TvMode.svelte';
+	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import { focusTrap } from '$lib/components/focus-trap';
 	import type { SprintState, GameState } from '$lib/protocol';
 	import { TV_SEAT, offerSeat } from '$lib/channel/stage-slot.svelte';
@@ -32,7 +33,9 @@
 		playing = false,
 		sprint = null,
 		game = null,
+		countdown,
 		status,
+		onJoin,
 		onExit,
 	}: {
 		riders: LiveRider[];
@@ -51,12 +54,18 @@
 		sprint?: SprintState | null;
 		/** The running game (#1589): a session on the TV sees the HUD through it. */
 		game?: GameState | null;
+		/** The session's count-in (#2601): the digit, where the idle screen
+		 *  said nobody had started one while the cues counted down. */
+		countdown?: { remaining: number; title: string };
 		/**
 		 * Ride-critical status. A snippet, not `ChannelStatus` outright, because
 		 * this frame is the solo ride's TV too now (#1632) and ChannelStatus reads
 		 * a voice channel's context a solo ride has no business having.
 		 */
 		status?: Snippet;
+		/** A session runs in the channel and you are not on it (ADR-0059):
+		 *  the way in, from three metres, without leaving the TV. */
+		onJoin?: () => void;
 		onExit: () => void;
 	} = $props();
 
@@ -112,15 +121,31 @@
 		class="btn btn-secondary btn-xs absolute bottom-4 left-4 z-10"
 		>Exit TV mode (esc)</button
 	>
-	<TvMode
-		{riders}
-		{segments}
-		{total}
-		{elapsed}
-		{block}
-		{placeName}
-		{code}
-		{live}
-		{workoutName}
-	/>
+	{#if onJoin}
+		<button
+			onclick={onJoin}
+			class="btn btn-accent btn-lg absolute bottom-[4vh] left-1/2 z-10 -translate-x-1/2"
+			>Join the ride</button
+		>
+	{/if}
+	{#if countdown}
+		<div class="h-full">
+			<CountdownScreen
+				remaining={countdown.remaining}
+				title={countdown.title}
+			/>
+		</div>
+	{:else}
+		<TvMode
+			{riders}
+			{segments}
+			{total}
+			{elapsed}
+			{block}
+			{placeName}
+			{code}
+			{live}
+			{workoutName}
+		/>
+	{/if}
 </div>

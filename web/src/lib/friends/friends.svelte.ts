@@ -10,6 +10,7 @@
 import { api } from '$lib/api';
 import { announce } from '$lib/messages/announce';
 import { people } from '$lib/people.svelte';
+import type { StatusLine } from '$lib/protocol';
 import { whereabouts, type Whereabouts } from '$lib/whereabouts';
 
 /**
@@ -24,6 +25,8 @@ export interface Friend extends Whereabouts {
 	avatarUrl?: string;
 	totalXp?: number;
 	status: 'accepted' | 'pending_in' | 'pending_out';
+	/** Their status line (ADR-0060) — an accepted friend's, like presence. */
+	statusLine?: StatusLine | null;
 	/** The friendship row's creation time — what dedupes the announcement. */
 	at: number;
 }
@@ -109,7 +112,13 @@ async function refresh() {
 	error = null;
 	list = res.data.friends;
 	code = res.data.code;
-	people.learn(res.data.friends);
+	// A request's null says "not yours to see", not "none": a crew-mate who
+	// is also a pending ask keeps the line their crew taught (ADR-0060).
+	people.learn(
+		res.data.friends.map((f) =>
+			f.status === 'accepted' ? f : { ...f, statusLine: undefined },
+		),
+	);
 
 	const now: Record<string, Friend['status']> = {};
 	for (const friend of res.data.friends) now[friend.id] = friend.status;

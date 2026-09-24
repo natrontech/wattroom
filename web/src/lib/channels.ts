@@ -92,6 +92,21 @@ export function updateChannel(
 }
 
 /** Takes everything in it — chat, play log, recaps. Ask first (errors.md). */
+/** What deleting a channel takes, for the confirm that asks first (errors.md).
+ *  A private voice channel's plans go with it (#2610); an open one's stay on
+ *  the crew's schedule. */
+export function deleteChannelWarning(c: {
+	kind: ChannelKind;
+	private?: boolean;
+}): string {
+	if (c.kind === 'text')
+		return 'Every message and image in it goes with it, for everyone in the crew. There is no undo.';
+	const plans = c.private
+		? 'Any session planned in it is cancelled, and whoever could ride it is told.'
+		: 'Any session planned in it stays on the crew’s schedule, with no voice channel.';
+	return `Its play log and the recaps of the sessions ridden in it go with it, for everyone in the crew. ${plans} There is no undo.`;
+}
+
 export function deleteChannel(id: string): Promise<ApiResult<void>> {
 	return api<void>(`/api/channels/${id}`, { method: 'DELETE' });
 }

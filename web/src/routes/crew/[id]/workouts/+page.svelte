@@ -7,7 +7,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import { account } from '$lib/account.svelte';
-	import { planCrewSession } from '$lib/crew-schedule';
+	import { planCrewSession, planPath } from '$lib/crew-schedule';
 	import {
 		riddenTogether,
 		riddenTotals,
@@ -167,7 +167,11 @@
 			<ul class="mb-8 space-y-2">
 				{#each data.plans as p (p.id)}
 					<li class="panel flex items-center gap-3">
-						<span class="min-w-0 flex-1">
+						<!-- To its row on the Schedule, where it is answered (#2608). -->
+						<a
+							href={data.crew ? planPath(data.crew.id, p.id) : undefined}
+							class="min-w-0 flex-1 hover:underline"
+						>
 							<span class="block truncate text-sm font-medium"
 								>{p.workoutName}</span
 							>
@@ -177,7 +181,7 @@
 									true,
 								)}{#if p.channelName}{` · ${p.channelName}`}{/if}
 							</span>
-						</span>
+						</a>
 					</li>
 				{/each}
 			</ul>

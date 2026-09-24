@@ -181,7 +181,9 @@ with people as (
       -- must not list them twice: the page keys its list by id.
       and cr.user_id <> (select o.owner_id from crews o where o.id = sqlc.arg(crew_id))
 )
-select u.id, u.display_name, u.avatar_url, p.since::timestamptz as since
+select u.id, u.display_name, u.avatar_url, p.since::timestamptz as since,
+    -- The status goes where the name goes (ADR-0060).
+    u.status_emoji, u.status_emoji_id, u.status_text, u.status_expires_at
 from people p
 join users u on u.id = p.user_id
 where sqlc.arg(everyone)::boolean

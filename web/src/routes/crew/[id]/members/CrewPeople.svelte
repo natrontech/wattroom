@@ -8,6 +8,7 @@
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -152,6 +153,7 @@
 						class="hover:text-ink truncate text-sm font-medium hover:underline"
 						>{person.displayName}</a
 					>
+					<StatusMark line={person.statusLine} size={13} />
 					{#if person.role === 'owner'}
 						<Crown size={12} class="text-muted" aria-label="owner" />
 					{:else if person.role === 'admin'}

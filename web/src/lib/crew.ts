@@ -1,5 +1,5 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
-import type { SessionRecap } from '$lib/protocol';
+import type { SessionRecap, StatusLine } from '$lib/protocol';
 import type { BoardRow, CrewRef, RiderPrefs, Together } from '$lib/crew-types';
 
 /**
@@ -19,6 +19,8 @@ export interface CrewPerson {
 	since: string;
 	/** Medals the crew's sessions awarded them — on the Members read only (#2442). */
 	medals?: number;
+	/** Their status line (ADR-0060); null for none and on the ban list. */
+	statusLine?: StatusLine | null;
 }
 
 export interface Crew {

@@ -280,6 +280,13 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		// yourself, which is what the privacy page now says.
 		"calendarToken":    user.IcsToken,
 		"unsubscribeToken": store.UUIDString(user.UnsubToken),
+		// The status the rider wrote (ADR-0060), as the row holds it — one
+		// already cleared included, since nothing sweeps the columns.
+		"status": map[string]any{
+			"emoji":     user.StatusEmoji,
+			"text":      user.StatusText,
+			"expiresAt": timeOrNil(user.StatusExpiresAt),
+		},
 	}
 	// The hashes are not here and must not be: email_verify_hash and
 	// recover_hash are SHA-256 of a token we never stored, so there is

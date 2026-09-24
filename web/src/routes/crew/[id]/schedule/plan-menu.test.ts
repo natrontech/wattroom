@@ -63,7 +63,7 @@ describe('planEntries', () => {
 });
 
 describe('startHint', () => {
-	const ready = { due: true, spectator: false, channelPicked: true };
+	const ready = { due: true, spectator: false, voiceChannels: true };
 	it('keeps the start on the screen a coach rides on (#1767)', () => {
 		expect(startHint({ channelId: 'v' }, { ...ready, spectator: true })).toBe(
 			'start it from the screen you ride on',
@@ -75,8 +75,9 @@ describe('startHint', () => {
 		);
 	});
 	it('needs a voice channel for a plan that names none', () => {
-		expect(startHint({}, { ...ready, channelPicked: false })).toBe(
-			'pick a voice channel above to start it in',
+		// Its row offers the channels (#2607); with none to offer, it says so.
+		expect(startHint({}, { ...ready, voiceChannels: false })).toBe(
+			'this crew has no voice channel you can start it in',
 		);
 		expect(startHint({}, ready)).toBe('');
 		// A session already in its channel would refuse it (#2606).

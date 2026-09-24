@@ -166,10 +166,18 @@ const pokeCooldown = 10 * time.Second
 func (rm *room) ridingLocked(now time.Time) (names, ids []string) {
 	riders := make([]protocol.Rider, 0, len(rm.lastWatts))
 	for id, at := range rm.lastWatts {
-		if now.Sub(at) <= ridingWindow {
-			if rider, ok := rm.seen[id]; ok {
-				riders = append(riders, rider)
-			}
+		if now.Sub(at) > ridingWindow {
+			continue
+		}
+		// `seen` holds only a session's own riders since ADR-0059; a free
+		// rider or a spectator pedalling is riding all the same, and is
+		// named from their socket.
+		rider, ok := rm.seen[id]
+		if !ok {
+			rider = protocol.Rider{ID: id, Name: rm.nameOfLocked(id)}
+		}
+		if rider.Name != "" {
+			riders = append(riders, rider)
 		}
 	}
 	sort.Slice(riders, func(i, j int) bool { return riders[i].Name < riders[j].Name })

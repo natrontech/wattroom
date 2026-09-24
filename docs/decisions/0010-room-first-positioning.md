@@ -1,7 +1,8 @@
 # ADR-0010: Room-first — WattRoom replaces the voice app, not just the trainer app
 
 Date: 2026-08-30 · Status: accepted (#150), amended 2026-09-22 by
-[ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): the place you idle in is a voice channel
+[ADR-0058](0058-the-room-dissolves-into-the-crew.md) (#2425): the place you idle in is a voice channel;
+amended 2026-09-24 (#2702): a click on a voice channel in the sidebar joins it
 
 ## Context
 
@@ -119,3 +120,36 @@ the noun changed, and none of them loosens:
 3. The bounded log of the #201 amendment is per **text channel**, at
    docs/SPEC.md's bound; a voice channel has no text of its own.
 4. Unchanged.
+
+## Amendment — a click on a voice channel joins it (2026-09-24, #2702)
+
+The #681 amendment made joining explicit, and the explicit act was a second
+click: open the channel, then press *Join voice*. Riders read the first click
+as the decision — it is Discord's shape, and ADR-0020 put the app in it — so
+the second was a chore rather than a safeguard. The safeguard #681 exists for
+is that nobody lands on a hot mic by **arriving**; a rider who clicked the
+channel's name in the sidebar did not arrive, they chose.
+
+- **The sidebar row is the tap.** A plain click on a voice channel in the
+  crew's column joins its voice, with the mic on (a handheld joins listening,
+  #2142). Clicking the channel you already stand in joins it too.
+- **Every other arrival still connects nothing**: a link, a bookmark, a typed
+  address, a toast or notification, the session line under a channel (#2450),
+  the return after a session ends (#2665), the row's context-menu *Open*, and
+  a new-tab click. A reload is still the 60 s rejoin and nothing more. The
+  click leaves a one-shot note in memory (`web/src/lib/channel/voice-intent.ts`)
+  that the channel's page takes on mount and that goes stale in **10 s**, so a
+  click whose page never mounted joins nothing later.
+- **A switch carries the call.** Clicking another voice channel while in voice
+  arrives with the mic as it was — muted stays muted — and with a camera that
+  was **live** still live. A camera that was off stays off. This is a capture
+  continuing, not one restoring: "the camera never auto-restores" above still
+  holds, because a shut device is never opened.
+- **Who is in a channel, spelled out.** An arrow beside a voice channel's row
+  lists everyone in it, one per line. One channel is open at a time, which is
+  what answers the reason the line of names was chosen (#438): a list per
+  busy channel would multiply the column's height, one list adds one. The
+  arrow never joins voice. Which channel was open is not remembered across a
+  reload — the line of names is the resting state.
+
+Point 1 of the ADR-0058 amendment below reads with this exception.

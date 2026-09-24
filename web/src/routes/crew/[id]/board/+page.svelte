@@ -13,6 +13,7 @@
 	import { takeDownAnnouncement } from '$lib/announce/take-down';
 	import { fetchCrewAnnouncement, type CrewAnnouncement } from '$lib/channels';
 	import Banner from '$lib/components/Banner.svelte';
+	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
 	import CrewPins from '$lib/pins/CrewPins.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import MarkedIn from '$lib/announce/MarkedIn.svelte';
@@ -22,6 +23,8 @@
 	let { data }: { data: PageData } = $props();
 
 	const id = $derived(page.params.id ?? '');
+	// The notice is a chat line and may carry the crew's own emoji (#2643).
+	provideCrewEmoji(() => data.crew?.id);
 	let announcement = $state<CrewAnnouncement | null>(
 		untrack(() => data.announcement),
 	);

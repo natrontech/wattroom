@@ -1,26 +1,16 @@
 <script lang="ts">
-	// The channel's ride place while nothing runs (#2449): pair a trainer,
-	// open a session. The moment one opens it has its own address (#2450),
-	// and the page moves there — the same shell and connection, the ride's
-	// own URL, the one to share.
-	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
-	import { sessionPath } from '$lib/channel/address';
-	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { liveSessionId } from '$lib/channel/tick-session';
+	// The channel's ride place while you are in no session (#2449): the free
+	// ride (ADR-0059) — set the watts or the grade, ride, save. A session
+	// opening here leaves you on it and offers the way in; only the rider who
+	// starts one moves to its address (#2450, SessionLayers). A phone cannot
+	// ride, so it keeps the Training place's words.
+	import { device } from '$lib/device.svelte';
+	import FreeRide from '$lib/ride/FreeRide.svelte';
 	import Training from '$lib/session/Training.svelte';
-
-	const session = $derived(
-		liveSessionId(channelConnection.current?.live.tick?.state),
-	);
-	$effect(() => {
-		if (session && page.params.id)
-			void goto(sessionPath(page.params.id, session), {
-				replaceState: true,
-				keepFocus: true,
-				noScroll: true,
-			});
-	});
 </script>
 
-<Training />
+{#if device.spectator}
+	<Training />
+{:else}
+	<FreeRide />
+{/if}

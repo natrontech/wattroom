@@ -1,5 +1,9 @@
--- name: CreateFriendRequest :exec
-insert into friendships (requester_id, addressee_id) values ($1, $2);
+-- name: CreateFriendRequest :execrows
+-- 0 rows: the pair already has a request or a friendship, in either direction
+-- (the pkey and the pair index). The handler expects that refusal, so it is
+-- not left to Postgres to log as an ERROR (#2685).
+insert into friendships (requester_id, addressee_id) values ($1, $2)
+on conflict do nothing;
 
 -- name: GetFriendship :one
 -- Either direction — one row exists per pair (the pair index).
@@ -23,7 +27,8 @@ where (requester_id = $1 and addressee_id = $2)
 -- ride along for the friend rows' avatars (#253); created_at is what makes a
 -- request announceable exactly once, in exactly one tab (#876).
 select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_url,
-    user_total_xp(u.id)::bigint as total_xp
+    user_total_xp(u.id)::bigint as total_xp,
+    u.status_emoji, u.status_emoji_id, u.status_text, u.status_expires_at
 from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end
 where f.requester_id = $1 or f.addressee_id = $1

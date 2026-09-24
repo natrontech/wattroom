@@ -11,6 +11,7 @@
 	// ADR-0020's line. So the server's row carries no `going` to draw from.
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { planPath } from '$lib/crew-schedule';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
 	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
@@ -30,13 +31,14 @@
 		channelName?: string;
 	}
 
-	// Where a row goes until crew Home replaces this list (#2451): the crew
-	// it is on.
+	// Where a row goes (#2608): the plan's own row on its crew's Schedule,
+	// where it is answered. The crew's Home showed only its next plan, so a
+	// later one opened from here was nowhere to be found.
 	const placeOf = (session: Planned) =>
 		session.channelName
 			? `${session.crewName} · ${session.channelName}`
 			: session.crewName;
-	const hrefOf = (session: Planned) => `/crew/${session.crewId}`;
+	const hrefOf = (session: Planned) => planPath(session.crewId, session.id);
 
 	let {
 		planCrew,
@@ -147,8 +149,8 @@
 			Nothing on the calendar.
 			{#if planCrew}
 				<!-- The CTA that creates the first one (ux.md), not a word in italics (#1911). -->
-				<a href="/crew/{planCrew}/schedule" class="btn-link">Plan one</a> — it shows
-				up here, and in everyone's calendar.
+				<a href="/crew/{planCrew}/schedule?plan" class="btn-link">Plan one</a> — it
+				shows up here, and in everyone's calendar.
 			{:else}
 				Start or join a crew and plan one on its <em>Schedule</em> — it shows up here,
 				and in everyone's calendar.

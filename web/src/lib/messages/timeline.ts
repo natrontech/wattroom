@@ -44,3 +44,19 @@ export function messageTimeline(messages: TimelineMessage[]): TimelineEntry[] {
 		}))
 		.sort((a, b) => a.at - b.at);
 }
+
+/**
+ * How many lines from someone else landed after a reader scrolled back
+ * (#2703), `seen` being the keys the log held when they left. Counted from
+ * the lines, not the DOM: an edit, a reaction, a card loading or a countdown
+ * ticking is no message, and three lines in one poll are three.
+ */
+export function arrivedSince(
+	timeline: TimelineEntry[],
+	seen: ReadonlySet<string>,
+	me: string | undefined,
+): number {
+	return timeline.filter(
+		(entry) => !seen.has(entry.key) && entry.message.fromId !== me,
+	).length;
+}

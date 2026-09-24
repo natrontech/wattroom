@@ -82,7 +82,9 @@ export function startHint(
 	o: {
 		due: boolean;
 		spectator: boolean;
-		channelPicked: boolean;
+		/** A voice channel the rider may enter exists to start a plan that
+		 *  names none in — its row offers the choice (#2607). */
+		voiceChannels: boolean;
 		/** Who coaches a session in its channel right now (#2606). */
 		coaching?: string;
 	},
@@ -91,7 +93,7 @@ export function startHint(
 	if (o.spectator) return 'start it from the screen you ride on';
 	if (!o.due) return 'not due yet';
 	if (o.coaching) return `${o.coaching} is coaching a session there`;
-	if (!plan.channelId && !o.channelPicked)
-		return 'pick a voice channel above to start it in';
+	if (!plan.channelId && !o.voiceChannels)
+		return 'this crew has no voice channel you can start it in';
 	return '';
 }

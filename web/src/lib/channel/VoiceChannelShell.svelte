@@ -46,6 +46,10 @@
 
 	async function load(crew: string, channel: string) {
 		const next = await loadVoiceChannel(crew, channel);
+		// A read of the channel you just left, landing after you switched,
+		// would put it back: the shell remounts it and the connection leaves
+		// the new one mid-join (#2702).
+		if (`${crew}/${channel}` !== untrack(() => loadedFor)) return;
 		// Only a first load fails loudly: this also runs on every lobby ping,
 		// and a hiccup must not blank the channel you are riding in. Being
 		// taken out of it severs the socket, which is the signal that matters.
@@ -77,6 +81,7 @@
 			displayName: p.displayName,
 			avatarUrl: p.avatarUrl,
 			role: liveRoleOf(p.role),
+			statusLine: p.statusLine,
 		})),
 	);
 	$effect(() => {

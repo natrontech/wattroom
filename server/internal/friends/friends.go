@@ -6,19 +6,19 @@ package friends
 
 import (
 	"errors"
-	"github.com/jackc/pgx/v5"
-	"github.com/natrontech/wattroom/server/internal/budget"
-	"github.com/natrontech/wattroom/server/internal/channels"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/budget"
+	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/status"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -77,6 +77,9 @@ type friendJSON struct {
 	// Avatar + lifetime XP (#253) — same facts the rooms roster shows.
 	AvatarURL *string `json:"avatarUrl,omitempty"`
 	TotalXp   int64   `json:"totalXp"`
+	// Their own line (ADR-0060) — accepted friends only, like presence
+	// (ADR-0012); null otherwise.
+	StatusLine *protocol.StatusLine `json:"statusLine"`
 	// accepted | pending_in (they asked me) | pending_out (I asked them)
 	Status string `json:"status"`
 	// When the row was created, unix ms — the client announces a request or an
@@ -139,6 +142,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	friends := make([]friendJSON, 0, len(rows))
+	now := time.Now()
 	for _, row := range rows {
 		entry := friendJSON{
 			ID: store.UUIDString(row.ID), Name: row.DisplayName,
@@ -148,6 +152,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case row.Status == "accepted":
 			entry.Status = "accepted"
+			entry.StatusLine = status.Of(row.StatusEmoji, row.StatusEmojiID, row.StatusText, row.StatusExpiresAt, now)
 			// Present in the map = online (lobby socket); a value is the voice
 			// channel they are in.
 			channel, online := where[entry.ID]
@@ -264,16 +269,15 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		target = user.ID
 	}
-	err := s.store.Queries.CreateFriendRequest(r.Context(), db.CreateFriendRequestParams{
+	n, err := s.store.Queries.CreateFriendRequest(r.Context(), db.CreateFriendRequestParams{
 		RequesterID: me.ID, AddresseeID: target,
 	})
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-		httpx.WriteError(w, http.StatusConflict, "conflict", "There is already a request or friendship with them.")
-		return
-	}
 	if err != nil {
 		httpx.Fail(w, s.log, "create friend request", err, "The request could not be sent.", "user", store.UUIDString(me.ID))
+		return
+	}
+	if n == 0 {
+		httpx.WriteError(w, http.StatusConflict, "conflict", "There is already a request or friendship with them.")
 		return
 	}
 	s.clearDeclines(r, me.ID, target)

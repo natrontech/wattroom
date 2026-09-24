@@ -32,7 +32,7 @@ func TestBothRoutesServeOneAudience(t *testing.T) {
 		h.avatar(t, name)
 	}
 	// dan asked cara; nothing came of it yet.
-	if err := h.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+	if _, err := h.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
 		RequesterID: h.users.ByToken["dan"].ID, AddresseeID: h.users.ByToken["cara"].ID,
 	}); err != nil {
 		t.Fatalf("request: %v", err)

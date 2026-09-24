@@ -66,7 +66,7 @@ func (q *Queries) DeleteToken(ctx context.Context, arg DeleteTokenParams) (int64
 }
 
 const getUserByTokenHash = `-- name: GetUserByTokenHash :one
-select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.ics_token, u.accent_palette, u.color_scheme, u.email_verified_at, u.email_pending, u.email_verify_hash, u.email_verify_expires, u.email_required, u.timezone, u.lthr, u.ftp_source, u.weight_source, u.recover_hash, u.recover_expires, u.pending_crew_code, u.home_crew_id from users u
+select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.ics_token, u.accent_palette, u.color_scheme, u.email_verified_at, u.email_pending, u.email_verify_hash, u.email_verify_expires, u.email_required, u.timezone, u.lthr, u.ftp_source, u.weight_source, u.recover_hash, u.recover_expires, u.pending_crew_code, u.home_crew_id, u.status_emoji, u.status_emoji_id, u.status_text, u.status_expires_at from users u
 join api_tokens t on t.user_id = u.id
 where t.token_hash = $1
 `
@@ -103,6 +103,10 @@ func (q *Queries) GetUserByTokenHash(ctx context.Context, tokenHash []byte) (Use
 		&i.RecoverExpires,
 		&i.PendingCrewCode,
 		&i.HomeCrewID,
+		&i.StatusEmoji,
+		&i.StatusEmojiID,
+		&i.StatusText,
+		&i.StatusExpiresAt,
 	)
 	return i, err
 }

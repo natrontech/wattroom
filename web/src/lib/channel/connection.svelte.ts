@@ -5,6 +5,11 @@ import { pullProfile } from '$lib/profile-sync.svelte';
 import { createChannelLive } from '$lib/channel/live.svelte';
 import { createRecording } from '$lib/session/recording.svelte';
 import { createRide } from '$lib/session/ride.svelte';
+import {
+	createFreeRide,
+	type FreeRide,
+	type FreeRideOutcome,
+} from '$lib/ride/free-ride.svelte';
 import { sensorClaim } from '$lib/channel/sensor-claim';
 import { parseSharedWorkout } from '$lib/workout/shared';
 import { play } from '$lib/sound/cues';
@@ -43,6 +48,8 @@ type Connection = {
 	recording: ReturnType<typeof createRecording>;
 	/** The trainer, and the targets it holds. Lives here, not on a page (#521). */
 	ride: ReturnType<typeof createRide>;
+	/** Riding the channel with no session (ADR-0059) — beside the trainer. */
+	freeRide: FreeRide;
 	/** The shared session and its workout, parsed once per connection. */
 	shared: () => SessionState | undefined;
 	segments: () => Segment[];
@@ -79,6 +86,7 @@ function connect(address: PlaceAddress): Connection {
 	let profile!: ReturnType<typeof createProfileStore>;
 	let recording!: ReturnType<typeof createRecording>;
 	let ride!: ReturnType<typeof createRide>;
+	let freeRide!: FreeRide;
 	let sharedOf!: () => SessionState | undefined;
 	let segmentsOf!: () => Segment[];
 	let workoutOf!: () => Workout | null;
@@ -124,6 +132,9 @@ function connect(address: PlaceAddress): Connection {
 		// Here and not in a page: the recording outlives every page (#2654).
 		$effect(() => recording.follow(shared?.phase));
 
+		const joined = () =>
+			!!live.tick?.roster.find((r) => r.id === account.me?.id)?.inSession;
+		freeRide = createFreeRide({ ftp: () => profile.current.ftp });
 		ride = createRide({
 			live,
 			profile,
@@ -131,6 +142,19 @@ function connect(address: PlaceAddress): Connection {
 			myId: () => account.me?.id,
 			shared: () => shared,
 			segments: () => parsed.segments,
+			joined,
+			free: freeRide,
+		});
+		// Joining a session saves the free ride first (docs/SPEC.md): the
+		// session's trainer and record take over from here. On the step in,
+		// not on being in: the roster says "in" for a tick after Leave the
+		// ride, and a Free ride opened in that tick would be ended at once.
+		let wasJoined = false;
+		$effect(() => {
+			const now = joined();
+			if (now && !wasJoined && freeRide.armed)
+				void freeRide.end().then(sayFreeRide);
+			wasJoined = now;
 		});
 
 		// One sensor, one screen (#610). The claim belongs to the CONNECTION
@@ -250,11 +274,31 @@ function connect(address: PlaceAddress): Connection {
 		profile,
 		recording,
 		ride,
+		freeRide,
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,
 		dispose,
 	};
+}
+
+/**
+ * A free ride saved off-screen — on joining a session, or on leaving the
+ * channel — says so, since no Free ride page is there to (errors.md: a
+ * background action's result is a toast). A failure stays in the crash
+ * buffer, which the solo ride's setup offers back.
+ */
+function sayFreeRide(outcome: FreeRideOutcome | null) {
+	if (!outcome || 'short' in outcome) return;
+	if ('saved' in outcome)
+		toasts.push('Your free ride is saved.', {
+			href: `/history/${outcome.saved.id}`,
+		});
+	else
+		toasts.push(
+			`Your free ride did not save — ${outcome.failure.message} It is kept on this device, and Ride offers it again.`,
+			{ tone: 'error', href: '/ride', seconds: 0 },
+		);
 }
 
 export const channelConnection = {
@@ -291,6 +335,9 @@ export const channelConnection = {
 		if (!current) return;
 		const { address } = current;
 		const name = address.name;
+		// A free ride nobody ended is saved on the way out — the rider left
+		// the channel, not the ride. Its answer arrives after the page has gone.
+		void current.freeRide.end().then(sayFreeRide);
 		// Before dispose: stop() closes the ride buffer and releases the
 		// trainer, and both need the reactive scope the root is about to end.
 		current.ride.stop();

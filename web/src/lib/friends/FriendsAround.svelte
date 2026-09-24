@@ -3,6 +3,7 @@
 	// Home's for the ones outside that crew. A chip goes where they are when
 	// you may enter it, else to your conversation with them.
 	import Avatar from '$lib/components/Avatar.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import {
 		friendPlace,
 		friends,
@@ -40,6 +41,7 @@
 					size={20}
 				/>
 				<span class="font-medium">{friend.name}</span>
+				<StatusMark line={friend.statusLine} size={12} />
 			</a>
 		</li>
 	{/each}

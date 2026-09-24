@@ -94,7 +94,7 @@ const mailHTML = `<!doctype html>
 
 <tr><td style="padding:22px 2px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.6;color:#9182b8;">
   {{- if .Unsub}}
-  <p style="margin:0 0 8px;">You get this because session emails are switched on in your WattRoom profile. <a href="{{.Unsub}}" style="color:#9182b8;">Turn them off</a>.</p>
+  <p style="margin:0 0 8px;">You get this because session emails are switched on in your WattRoom settings. <a href="{{.Unsub}}" style="color:#9182b8;">Turn them off</a>.</p>
   {{- end}}
   <p style="margin:0;"><a href="{{.BaseURL}}" style="color:#9182b8;text-decoration:none;">wattroom.ch</a></p>
 </td></tr>

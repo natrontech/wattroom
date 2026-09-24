@@ -25,62 +25,51 @@ export function stickToBottom(node: HTMLElement): () => void {
 		node.scrollTop = node.scrollHeight;
 	};
 
+	// Whether the reader is following, for the thread's "new messages" way
+	// down. Only that: how many lines they missed is the thread's to count,
+	// from its lines (#2703) — the DOM changing is not a message arriving.
+	const tell = () =>
+		node.dispatchEvent(
+			new CustomEvent('wattroom-follow', { detail: { pinned } }),
+		);
+
 	// A log that no longer overflows has no reading position to protect —
 	// which also re-arms a reader who scrolled back and then cleared the
 	// thread (switching DM peers empties the box).
 	const keep = () => {
-		if (node.scrollHeight <= node.clientHeight) pinned = true;
+		if (!pinned && node.scrollHeight <= node.clientHeight) {
+			pinned = true;
+			tell();
+		}
 		if (pinned) toBottom();
 	};
-	// Only the DOM changing is a line landing. The box resizing — a composer
-	// growing a row as you type (#2642) — or a picture decoding is not one,
-	// and counting them told a reader about messages nobody sent.
-	const follow = () => {
-		keep();
-		if (pinned) return;
-		missed += 1;
-		tell();
-	};
 
-	// Your own send pins and scrolls (#1765): the rule that arrivals never
-	// yank a reader is right for arrivals and wrong for what you just typed.
+	// The way down (#1765): the thread's "new messages" button.
 	const onPin = () => {
 		pinned = true;
-		missed = 0;
 		toBottom();
 		tell();
 	};
-	// How many lines landed behind a reader who scrolled back, for the
-	// "new messages" way down.
-	let missed = 0;
-	const tell = () =>
-		node.dispatchEvent(
-			new CustomEvent('wattroom-follow', { detail: { pinned, missed } }),
-		);
 	const onScroll = () => {
 		const was = pinned;
 		pinned = atBottom(node);
-		if (pinned) missed = 0;
-		if (was !== pinned || pinned) tell();
+		if (was !== pinned) tell();
 	};
 
 	toBottom();
 	node.addEventListener('scroll', onScroll, { passive: true });
 	node.addEventListener('wattroom-pin', onPin);
-	// Images decode after their line is in the DOM and only then take up
-	// height, so the mutation that added them has long since been handled.
-	node.addEventListener('load', keep, true);
 
-	const lines = new MutationObserver(follow);
-	lines.observe(node, { childList: true, subtree: true, characterData: true });
+	// The content, not only the box: a new line, a picture decoding or a
+	// link's card landing all grow it (#2686). A resize is reported after
+	// layout and before paint, so the log re-pins in the same frame.
 	const box = new ResizeObserver(keep);
 	box.observe(node);
+	for (const content of node.children) box.observe(content);
 
 	return () => {
 		node.removeEventListener('scroll', onScroll);
 		node.removeEventListener('wattroom-pin', onPin);
-		node.removeEventListener('load', keep, true);
-		lines.disconnect();
 		box.disconnect();
 	};
 }

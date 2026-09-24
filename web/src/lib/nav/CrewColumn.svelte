@@ -15,11 +15,14 @@
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
-	import { deleteLabel, newLabel } from '$lib/channels';
+	import { deleteChannelWarning, deleteLabel, newLabel } from '$lib/channels';
 	import { device } from '$lib/device.svelte';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
 	import type { CrewRef } from '$lib/crew-types';
-	import { sessionPath } from '$lib/channel/address';
+	import { channelAddress, sessionPath } from '$lib/channel/address';
+	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { askVoice } from '$lib/channel/voice-intent';
+	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Lock from '@lucide/svelte/icons/lock';
@@ -30,11 +33,15 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Volume2 from '@lucide/svelte/icons/volume-2';
 	import CheckCheck from '@lucide/svelte/icons/check-check';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import Video from '@lucide/svelte/icons/video';
 	import ArrowRight from '@lucide/svelte/icons/arrow-right';
 	import { crewLive, sessionLine, type LiveChannel } from './crew-live.svelte';
 	import NewChannel from './NewChannel.svelte';
 	import { crewPlaces } from './pages';
 	import { railPeople } from './rail-people';
+	import { people as faces } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 
 	let { crew, pathname }: { crew: CrewRef; pathname: string } = $props();
 
@@ -54,6 +61,26 @@
 			? pathname === href
 			: pathname === href || pathname.startsWith(`${href}/`);
 
+	/**
+	 * A voice channel's click is the tap that joins its voice (#2702,
+	 * ADR-0010's click amendment); the channel page takes the note on mount.
+	 * A new-tab click opens a page this tab never mounts, so it leaves none.
+	 * The channel you already stand in has no page to mount: join it here.
+	 */
+	function joinOnClick(c: LiveChannel, e: MouseEvent) {
+		if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
+			return;
+		if (!account.me?.avEnabled) return;
+		const { key } = channelAddress(crew.id, c.id, c.name);
+		const here = channelConnection.current;
+		if (here?.address.key === key) void here.av.join();
+		else askVoice(key, here?.av, Date.now());
+	}
+
+	// Who is in a voice channel, spelled out (#2702): one channel open at a
+	// time, so the column never grows by more than one list.
+	let unfolded = $state<string | null>(null);
+
 	let creating = $state<'text' | 'voice' | null>(null);
 	$effect(() => {
 		pathname;
@@ -66,14 +93,11 @@
 		void crewLive.reload();
 	}
 	async function remove(c: LiveChannel) {
-		// Deleting takes the scrollback, or the deck's settings, with it and
-		// nothing brings them back (errors.md: the genuinely destructive asks).
+		// Nothing brings a deleted channel back (errors.md: the genuinely
+		// destructive asks).
 		const sure = await confirm({
 			title: `Delete ${c.name}?`,
-			body:
-				c.kind === 'text'
-					? 'Every message in it goes too, and nothing brings them back.'
-					: 'Its music settings and its play history go too.',
+			body: deleteChannelWarning(c),
 			action: deleteLabel(c.kind),
 			cancel: 'Keep it',
 		});
@@ -152,10 +176,11 @@
 	{@const Mark = c.kind === 'text' ? MessageCircle : Volume2}
 	<a
 		href={pathOf(c)}
+		onclick={c.kind === 'voice' ? (e) => joinOnClick(c, e) : undefined}
 		title={MENU_HINT}
 		aria-current={on ? 'page' : undefined}
 		{@attach contextMenu(() => menu(c))}
-		class="flex min-h-11 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
+		class="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-sm md:min-h-0 {on
 			? 'bg-ink/10 text-ink'
 			: c.unread
 				? 'text-ink/85 hover:bg-ink/5 font-medium'
@@ -220,8 +245,26 @@
 		{#each voices as c (c.id)}
 			{@const people = railPeople(c.occupants?.map((o) => o.name))}
 			{@const inVoice = c.occupants?.some((o) => o.voice)}
+			{@const open = unfolded === c.id && people.shown.length > 0}
 			<li>
-				{@render row(c)}
+				<div class="flex items-center">
+					{@render row(c)}
+					{#if people.shown.length}
+						<button
+							onclick={() => (unfolded = open ? null : c.id)}
+							aria-expanded={open}
+							aria-label="{open ? 'Hide' : 'Show'} who is in {c.name}"
+							title="{open ? 'Hide' : 'Show'} who is in {c.name}"
+							class="text-muted hover:text-ink grid h-11 w-11 shrink-0 place-items-center rounded md:h-6 md:w-6"
+							><ChevronRight
+								size={14}
+								class="transition-transform motion-reduce:transition-none {open
+									? 'rotate-90'
+									: ''}"
+							/></button
+						>
+					{/if}
+				</div>
 				{#if c.session}
 					{@const href = sessionPath(crew.id, c.session.id)}
 					{@const on = lit(href)}
@@ -241,14 +284,50 @@
 						{sessionLine(c.session)}
 					</a>
 				{/if}
-				{#if people.shown.length}
+				{#if open}
+					<ul aria-label="Who is in {c.name}" class="pb-1">
+						{#each c.occupants ?? [] as o (o.id)}
+							<li
+								class="text-muted flex items-center gap-1.5 truncate px-2 py-0.5 pl-8 text-xs"
+							>
+								<span class="min-w-0 flex-1 truncate">{o.name}</span>
+								{#if o.riding}<span class="text-watt shrink-0"
+										><RidingBars size={9} /></span
+									>{/if}
+								{#if o.camera}<Video
+										size={11}
+										class="shrink-0"
+										aria-label="camera on"
+									/>{/if}
+								{#if o.voice}<Headphones
+										size={11}
+										class="shrink-0"
+										aria-label="in voice"
+									/>{/if}
+							</li>
+						{/each}
+					</ul>
+				{:else if people.shown.length}
 					<!-- Who is in there, without going in (#438): one line of names,
 					     the way a room's row used to say it — not a strip of faces. -->
 					<p
 						class="text-muted-dim flex items-center gap-1 truncate px-2 pb-1 pl-8 text-[10px]"
 					>
 						{#if inVoice}<Headphones size={9} class="shrink-0" />{/if}
-						<span class="truncate">{people.label}</span>
+						<!-- Each name with its status emoji (ADR-0060); the emoji's
+						     title holds the words, the line's the whole list. -->
+						<span
+							class="flex min-w-0 items-center truncate"
+							title={people.label}
+						>
+							{#each c.occupants?.slice(0, people.shown.length) ?? [] as o, i (o.id)}
+								<span class="truncate">{i > 0 ? ', ' : ''}{o.name}</span>
+								<StatusMark line={faces.face(o.id)?.statusLine} size={9} />
+							{/each}
+							{#if people.more > 0}<span class="shrink-0"
+									>&nbsp;+{people.more}</span
+								>{/if}
+						</span>
 					</p>
 				{/if}
 			</li>

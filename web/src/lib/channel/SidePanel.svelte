@@ -4,10 +4,13 @@
 	import Drum from '@lucide/svelte/icons/drum';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Mic from '@lucide/svelte/icons/mic';
+	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 	import Video from '@lucide/svelte/icons/video';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 	import BoardToggle from '$lib/board/BoardToggle.svelte';
+	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
+	import { emojiCrew } from '$lib/emoji/crew-emoji.svelte';
 	import { STOCK_CHEERS } from '$lib/icons';
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import { personMenu } from '$lib/person-menu';
@@ -15,6 +18,8 @@
 	import { keepSize } from '$lib/pane';
 	import { edgeDivider } from '$lib/divider';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
+	import { people } from '$lib/people.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { BOARD_MARK } from '$lib/channel/presence-marks';
 	import { rosterGroups, type Elsewhere } from '$lib/channel/roster';
@@ -70,7 +75,7 @@
 		handOffOf?: ChannelContext['handOffOf'];
 		/** The crew's members in its other voice channels (roster.ts). */
 		elsewhere?: ReadonlyMap<string, Elsewhere>;
-		/** The crew's one reaction vocabulary (#223), icon keys (#447). */
+		/** The crew's quick set (#223): icon keys, emoji, its own `:name:`. */
 		cheers?: string[];
 	} = $props();
 
@@ -79,6 +84,11 @@
 	// channel when nobody is in it, and a column that says "in the channel — 1"
 	// and stops there hides the six people you ride with (roster.ts).
 	const groups = $derived(rosterGroups(live, riders, members, elsewhere));
+
+	// Every other reaction beside the four (#2692): the crew's own emoji most
+	// of all, which were a cheer only if an admin put them in those four.
+	const crew = emojiCrew();
+	let pickerAt = $state<HTMLElement | null>(null);
 </script>
 
 {#snippet person(rider: LiveRider)}
@@ -120,11 +130,11 @@
 			/>
 			<span class="min-w-0 flex-1">
 				<span class="flex items-center gap-1.5">
-					<span
-						class="min-w-0 flex-1 truncate {rider.speaking
-							? 'font-medium'
-							: ''}">{rider.name}</span
+					<span class="min-w-0 truncate {rider.speaking ? 'font-medium' : ''}"
+						>{rider.name}</span
 					>
+					<StatusMark line={people.face(rider.id)?.statusLine} size={12} />
+					<span class="flex-1"></span>
 					{#if rider.coach}<Crown size={11} class="text-muted shrink-0" />{/if}
 					{#if rider.cameraOn}<Video
 							size={11}
@@ -226,7 +236,10 @@
 				status={where?.status ?? 'offline'}
 				size={22}
 			/>
-			<span class="min-w-0 flex-1 truncate">{member.displayName}</span>
+			<span class="flex min-w-0 flex-1 items-center gap-1">
+				<span class="truncate">{member.displayName}</span>
+				<StatusMark line={people.face(member.id)?.statusLine} size={12} />
+			</span>
 			{#if where}
 				<span class="text-muted-dim max-w-[45%] shrink-0 truncate"
 					>in {where.channel}</span
@@ -336,7 +349,27 @@
 						><CheerIcon {cheer} size={18} /></button
 					>
 				{/each}
+				<button
+					onclick={(e) => (pickerAt = pickerAt ? null : e.currentTarget)}
+					aria-label="More reactions"
+					aria-expanded={!!pickerAt}
+					title="More reactions"
+					class="border-muted/20 hover:border-muted/50 text-muted hover:text-ink flex min-h-11 w-11 shrink-0 items-center justify-center rounded border"
+					><SmilePlus size={18} /></button
+				>
 			</div>
+			{#if pickerAt}
+				<EmojiPicker
+					anchor={pickerAt}
+					quick={cheers}
+					crewId={crew()}
+					onPick={(key) => {
+						onCheer?.(key);
+						pickerAt = null;
+					}}
+					onClose={() => (pickerAt = null)}
+				/>
+			{/if}
 			<BoardToggle />
 		</div>
 	</div>

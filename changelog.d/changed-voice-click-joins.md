@@ -1,0 +1,1 @@
+- Clicking a voice channel in the sidebar puts you in its voice straight away, a live camera stays on when you switch channels, and an arrow beside each voice channel lists everyone in it.

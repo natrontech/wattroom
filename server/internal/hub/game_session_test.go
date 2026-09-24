@@ -54,6 +54,7 @@ func TestGameOpensASession(t *testing.T) {
 	}
 
 	// Its riders' samples are a ride record, as a workout's are.
+	joinRide(rm, "ben")
 	rm.setMetrics(clients["ben"], protocol.RiderMetrics{Watts: 180, Cadence: 90, Seq: 1})
 	if rm.record.count("ben") != 1 {
 		t.Fatalf("Ben's sample was not recorded: %d", rm.record.count("ben"))

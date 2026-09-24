@@ -27,6 +27,9 @@ func passRoom(t *testing.T, now *time.Time, riders ...protocol.Rider) (*room, ma
 			t.Fatalf("%s: %s %s", c.Action, code, message)
 		}
 	}
+	for _, rider := range riders {
+		joinRide(rm, rider.ID)
+	}
 	return rm, clients
 }
 
@@ -120,7 +123,8 @@ func TestCoachGonePassesSession(t *testing.T) {
 		now := pat(0)
 		rm, clients := passRoom(t, &now, ana, ben)
 		sampleFrom(rm, clients, "ben")
-		if code, message := rm.control(protocol.Control{Action: "end"}, ana, now); code != "" {
+		// Ended once it ran: a stopped countdown drops the session (#2605).
+		if code, message := rm.control(protocol.Control{Action: "end"}, ana, pat(countdownSeconds+1)); code != "" {
 			t.Fatalf("end: %s %s", code, message)
 		}
 		rm.leave(clients["ana"])

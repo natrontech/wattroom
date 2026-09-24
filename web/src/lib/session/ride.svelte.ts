@@ -9,6 +9,7 @@ import { wireMetrics } from '$lib/session/wire';
 import { targetAt } from '$lib/workout/engine';
 import { SIGNAL_LOST_MS } from '$lib/workout/session.svelte';
 import { createSprintWindow } from '$lib/workout/sprint-window.svelte';
+import type { FreeRide } from '$lib/ride/free-ride.svelte';
 import type { Segment } from '$lib/workout/types';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { createRecording } from '$lib/session/recording.svelte';
@@ -46,6 +47,12 @@ interface RideDeps {
 	myId: () => string | undefined;
 	shared: () => { phase: string; elapsed: number } | undefined;
 	segments: () => Segment[];
+	/** On the running session's timeline, by the hub's word (ADR-0059). A
+	 *  spectator's trainer is theirs: no target, no sprint, no record. */
+	joined: () => boolean;
+	/** What an armed free ride asks of the trainer while no session drives
+	 *  it, and where its seconds go (ADR-0059). */
+	free: Pick<FreeRide, 'armed' | 'mode' | 'grade' | 'watts' | 'second'>;
 }
 
 /**
@@ -144,6 +151,12 @@ export function createRide(deps: RideDeps) {
 	 * one from the timeline.
 	 */
 	const block = $derived.by((): { watts: number; sprint: boolean } => {
+		if (!deps.joined())
+			return {
+				watts:
+					deps.free.armed && deps.free.mode === 'watts' ? deps.free.watts : 0,
+				sprint: false,
+			};
 		const game = deps.live.tick?.game;
 		const mine = game?.riders?.[deps.myId() ?? ''];
 		if (game?.phase === 'running' && mine && mine.targetPct) {
@@ -259,7 +272,7 @@ export function createRide(deps: RideDeps) {
 	});
 
 	/** Slope, whoever asked for it: the coach's armed sprint or the workout's. */
-	const sprinting = $derived(sprintLive || block.sprint);
+	const sprinting = $derived(deps.joined() && (sprintLive || block.sprint));
 	let sprintMode = false;
 	$effect(() => {
 		if (!trainer) return;
@@ -294,6 +307,12 @@ export function createRide(deps: RideDeps) {
 			return;
 		}
 		sprintMode = false;
+		// A free ride on a grade is a slope the rider chose, not a target
+		// to hold — and nothing for the guards to release (docs/SPEC.md).
+		if (!deps.joined() && deps.free.armed && deps.free.mode === 'grade') {
+			void trainer.setSimulation(deps.free.grade);
+			return;
+		}
 		void holdTarget(trainer, target);
 	});
 
@@ -382,8 +401,14 @@ export function createRide(deps: RideDeps) {
 						),
 					);
 					const shared = deps.shared();
-					if (shared?.phase === 'running')
+					if (shared?.phase === 'running' && deps.joined())
 						deps.recording.record(shared.elapsed, metrics.watts);
+					else if (counted && !deps.joined())
+						deps.free.second({
+							watts: metrics.watts,
+							cadence: metrics.cadence,
+							hr: metrics.heartRate ?? 0,
+						});
 				}),
 			);
 			trainer = next;

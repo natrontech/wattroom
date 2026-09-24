@@ -213,7 +213,7 @@ func (h *harness) createRecap(t *testing.T, at crewPlace, riders ...string) {
 func (h *harness) befriend(t *testing.T, requester, addressee string) {
 	t.Helper()
 	pair := db.CreateFriendRequestParams{RequesterID: h.id(requester), AddresseeID: h.id(addressee)}
-	if err := h.store.Queries.CreateFriendRequest(t.Context(), pair); err != nil {
+	if _, err := h.store.Queries.CreateFriendRequest(t.Context(), pair); err != nil {
 		t.Fatalf("friend request %s→%s: %v", requester, addressee, err)
 	}
 	n, err := h.store.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams(pair))
@@ -1087,6 +1087,21 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 		t.Fatalf("fail delivery: %v", err)
 	}
 
+	// Her status (ADR-0060), words she wrote.
+	statusText := "Riding outside"
+	if err := h.store.Queries.SetUserStatus(t.Context(), db.SetUserStatusParams{
+		ID: h.id("alice"), Text: &statusText,
+	}); err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	// The export reads the session's row, which the real gate loads per
+	// request and this harness kept from before the write.
+	fresh, err := h.store.Queries.GetUser(t.Context(), h.id("alice"))
+	if err != nil {
+		t.Fatalf("reread alice: %v", err)
+	}
+	h.users.ByToken["alice"] = fresh
+
 	files := h.exportFiles(t, "alice")
 
 	// Each new category, and one string from it that only its query could
@@ -1115,7 +1130,7 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 		// (#2089 counted six; sound_pack was a room's column, and never was
 		// one of these.)
 		"profile.json": {"\"friendCode\"", "\"calendarToken\"", "\"unsubscribeToken\"",
-			"\"emailPending\"", "\"avatarUrl\""},
+			"\"emailPending\"", "\"avatarUrl\"", "Riding outside"},
 		// An edited line said so nowhere.
 		"chat.json": {"second draft", "\"editedAt\""},
 		// The FTP the ramp set (ADR-0049).

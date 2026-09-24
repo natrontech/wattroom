@@ -14,6 +14,8 @@ const ALLOWLIST: Allowlist = {
 	'lib/icons.ts':
 		'the emoji-to-icon map: values rooms saved before #447, translated on read — data, not chrome',
 	'*.test.ts': 'fixtures, including the ones that prove the map above works',
+	'lib/status-line/presets.ts':
+		'the one-tap statuses (ADR-0060): emoji a rider wears as their status — data, like a typed one',
 	'routes/dev/channel/mockChannel.svelte.ts':
 		'mock chat: a rider typing an emoji into a message is content, like their words',
 };

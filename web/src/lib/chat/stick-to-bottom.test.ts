@@ -6,14 +6,20 @@ import { stickToBottom } from '$lib/chat/stick-to-bottom';
 // says how tall the content is, and scrollTop clamps and fires `scroll` the way
 // a real element does.
 
-/** Stand-in for the browser's observer, so a panel resize can be driven. */
+/** Stand-in for the browser's observer, so a resize can be driven. */
 let resize: () => void = () => {};
+let watched: Element[] = [];
 class FakeResizeObserver {
 	constructor(private cb: () => void) {
+		watched = [];
 		resize = () => this.cb();
 	}
-	observe() {}
-	disconnect = vi.fn();
+	observe(target: Element) {
+		watched.push(target);
+	}
+	disconnect() {
+		resize = () => {};
+	}
 }
 vi.stubGlobal('ResizeObserver', FakeResizeObserver);
 
@@ -35,11 +41,20 @@ function log(content: number) {
 	return { node, box };
 }
 
-/** One more line arrives: the DOM grows, then the observers get their turn. */
-async function say(node: HTMLElement, box: { content: number }, px = 20) {
+/** One more line arrives: the content grows, and its observer hears it. */
+function say(node: HTMLElement, box: { content: number }, px = 20) {
 	box.content += px;
 	node.appendChild(document.createElement('p'));
-	await new Promise((done) => setTimeout(done, 0));
+	resize();
+}
+
+/** What the log tells the thread about following, in order. */
+function heard(node: HTMLElement): boolean[] {
+	const told: boolean[] = [];
+	node.addEventListener('wattroom-follow', (event) =>
+		told.push((event as CustomEvent<{ pinned: boolean }>).detail.pinned),
+	);
+	return told;
 }
 
 describe('stickToBottom (#291)', () => {
@@ -49,46 +64,49 @@ describe('stickToBottom (#291)', () => {
 		expect(node.scrollTop).toBe(300);
 	});
 
-	it('follows a new line for a reader at the bottom', async () => {
+	it('follows a new line for a reader at the bottom', () => {
 		const { node, box } = log(400);
 		stickToBottom(node);
-		await say(node, box);
+		say(node, box);
 		expect(node.scrollTop).toBe(320);
 	});
 
-	it('leaves a reader who scrolled back where they are', async () => {
+	it('leaves a reader who scrolled back where they are', () => {
 		const { node, box } = log(400);
 		stickToBottom(node);
 		node.scrollTop = 0;
-		await say(node, box);
+		say(node, box);
 		expect(node.scrollTop).toBe(0);
 	});
 
-	it('counts a few pixels off the bottom as the bottom', async () => {
+	it('counts a few pixels off the bottom as the bottom', () => {
 		const { node, box } = log(400);
 		stickToBottom(node);
 		node.scrollTop = 290;
-		await say(node, box);
+		say(node, box);
 		expect(node.scrollTop).toBe(320);
 	});
 
-	it('re-arms once the reader scrolls back down', async () => {
+	it('re-arms once the reader scrolls back down', () => {
 		const { node, box } = log(400);
 		stickToBottom(node);
 		node.scrollTop = 0;
-		await say(node, box);
+		say(node, box);
 		node.scrollTop = box.content;
-		await say(node, box);
+		say(node, box);
 		expect(node.scrollTop).toBe(340);
 	});
 
-	it('follows an image that only takes up height once it decodes', () => {
+	it('watches the content, which grows after its line lands (#2686)', () => {
+		// A picture decoding or a link's card arriving resizes the content, not
+		// the box — only an observer on the content hears it before the frame
+		// is painted.
 		const { node, box } = log(400);
+		const content = node.appendChild(document.createElement('div'));
 		stickToBottom(node);
-		const image = document.createElement('img');
-		node.appendChild(image);
+		expect(watched).toContain(content);
 		box.content = 500;
-		image.dispatchEvent(new Event('load'));
+		resize();
 		expect(node.scrollTop).toBe(400);
 	});
 
@@ -100,25 +118,38 @@ describe('stickToBottom (#291)', () => {
 		expect(node.scrollTop).toBe(500);
 	});
 
-	it('counts a resize as no new line for a reader scrolled back', () => {
+	it('tells the thread when the reader leaves the bottom and comes back', () => {
+		// Only that: how many lines they missed is counted from the lines
+		// (#2703), never from the DOM changing behind them.
+		const { node, box } = log(400);
+		stickToBottom(node);
+		const told = heard(node);
+		node.scrollTop = 0;
+		say(node, box);
+		node.scrollTop = box.content;
+		expect(told).toEqual([false, true]);
+	});
+
+	it('re-arms a reader whose log stopped overflowing, and says so', () => {
+		// Switching DM peers empties the thread without remounting it: the
+		// thread must hear that its reader is following again, or it keeps
+		// offering the old peer's "new messages".
 		const { node, box } = log(400);
 		stickToBottom(node);
 		node.scrollTop = 0;
-		const heard: number[] = [];
-		node.addEventListener('wattroom-follow', (e) =>
-			heard.push((e as CustomEvent<{ missed: number }>).detail.missed),
-		);
-		box.content = 420;
+		const told = heard(node);
+		box.content = 50;
 		resize();
-		expect(node.scrollTop).toBe(0);
-		expect(heard).toEqual([]);
+		expect(told).toEqual([true]);
+		say(node, box, 400);
+		expect(node.scrollTop).toBe(350);
 	});
 
-	it('stops following once detached', async () => {
+	it('stops following once detached', () => {
 		const { node, box } = log(400);
 		stickToBottom(node)();
 		node.scrollTop = 0;
-		await say(node, box);
+		say(node, box);
 		expect(node.scrollTop).toBe(0);
 	});
 });

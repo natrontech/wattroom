@@ -5,6 +5,7 @@
 	// change; the list around it owns the order and re-reads after each save.
 	import Select from '$lib/components/Select.svelte';
 	import {
+		deleteChannelWarning,
 		deleteChannel,
 		deleteLabel,
 		setNamedInChannel,
@@ -96,10 +97,7 @@
 	async function remove() {
 		const ok = await confirm({
 			title: `Delete ${channel.name}?`,
-			body:
-				channel.kind === 'text'
-					? 'Every message and image in it goes with it, for everyone in the crew. There is no undo.'
-					: 'Its play log and the recaps of the sessions ridden in it go with it, for everyone in the crew. There is no undo.',
+			body: deleteChannelWarning(channel),
 			action: deleteLabel(channel.kind),
 			cancel: 'Keep it',
 		});

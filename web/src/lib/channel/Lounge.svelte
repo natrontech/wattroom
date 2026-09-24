@@ -29,6 +29,7 @@
 	import { device } from '$lib/device.svelte';
 	import { account } from '$lib/account.svelte';
 	import Radio from '@lucide/svelte/icons/radio';
+	import Bike from '@lucide/svelte/icons/bike';
 	import CalendarClock from '@lucide/svelte/icons/calendar-clock';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
@@ -228,6 +229,17 @@
 	// member list — the same lookup the people column does (SidePanel).
 	const faceOf = $derived(new Map(channel.members.map((m) => [m.id, m])));
 </script>
+
+{#snippet freeRide()}
+	<!-- Riding the channel with no session (ADR-0059), beside one too: a
+	     session leaves a free rider alone. Hidden on a phone, which has no
+	     trainer to ride — the same gate Join the ride has (ux.md). -->
+	{#if !device.spectator && !channel.you.inSession}
+		<a href={channel.address.training} class="btn btn-secondary btn-lg"
+			><Bike size={15} /> Free ride</a
+		>
+	{/if}
+{/snippet}
 
 {#snippet tile(rider: (typeof channel.riders)[number])}
 	<RiderTile
@@ -452,6 +464,7 @@
 					{channel.canControl ? 'Go to the ride' : 'Join the ride'}</a
 				>
 			{/if}
+			{@render freeRide()}
 		</div>
 	{/if}
 	{#if channel.address.channel && events.length}
@@ -473,6 +486,7 @@
 		     so it sits outside SessionControls' gate. -->
 		<div class="mt-6 flex flex-wrap items-center gap-2">
 			<SessionControls />
+			{@render freeRide()}
 			<button
 				onclick={() => channel.openPicker('plan')}
 				class="btn btn-secondary btn-lg"

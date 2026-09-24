@@ -9,6 +9,7 @@
  */
 import { api } from '$lib/api';
 import { people } from '$lib/people.svelte';
+import type { StatusLine } from '$lib/protocol';
 
 export type ProfileSource = 'default' | 'manual' | 'ramp';
 
@@ -36,6 +37,8 @@ export interface Me {
 	weightSource?: ProfileSource;
 	/** The HR anchor (ADR-0014), on the account since #1571. */
 	lthr?: number;
+	/** Your status line (ADR-0060), null when you have none. */
+	statusLine?: StatusLine | null;
 	/** When "send again" sends again — ISO 8601, absent once it can (#1608). */
 	emailResendAt?: string;
 	/** Filled when the 90-day curve outgrows the setting (#26). */
@@ -235,6 +238,29 @@ function createAccountStore() {
 				return null;
 			}
 			return res.error;
+		},
+		/** Your status line (ADR-0060): set it, or clear it with null. */
+		async setStatusLine(
+			next: {
+				emoji?: string;
+				emojiId?: string;
+				text: string;
+				expiresAt: string;
+			} | null,
+		): Promise<{ message: string; field?: string } | null> {
+			const res = next
+				? await api<StatusLine | undefined>('/api/me/status', {
+						method: 'PUT',
+						json: next,
+					})
+				: await api<undefined>('/api/me/status', { method: 'DELETE' });
+			if (!res.ok) return res.error;
+			if (me) {
+				// A 204 is the server clearing it: nothing was left to set.
+				me = { ...me, statusLine: res.data ?? null };
+				people.learn([{ ...me, name: me.displayName }]);
+			}
+			return null;
 		},
 		async signOut(): Promise<void> {
 			await api('/api/auth/logout', { method: 'POST' });

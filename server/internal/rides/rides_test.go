@@ -974,3 +974,34 @@ func TestRampTestIsSavedUnscoredAndPaysNoExecutionBonus(t *testing.T) {
 		t.Fatalf("scored xp %v did not include the execution bonus: %v", scoredXP, got)
 	}
 }
+
+// A free ride (ADR-0059) has no workout: the rider set watts or grade by
+// hand. It saves as the empty, unscored workout a game session already
+// saves as — and an empty workout that is not marked so is still refused,
+// since that is a client that lost its steps.
+func TestAFreeRideSavesWithNoWorkout(t *testing.T) {
+	h := setup(t)
+	samples := make([]string, 120)
+	for i := range samples {
+		samples[i] = `{"watts":150,"cadence":88}`
+	}
+	body := func(flag string) string {
+		return fmt.Sprintf(
+			`{"workoutName":"Free ride","workoutJson":"{\"name\":\"Free ride\",%s\"steps\":[]}","startedAt":%q,"samples":[%s]}`,
+			flag, rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second).Format(time.RFC3339),
+			strings.Join(samples, ","))
+	}
+
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body(`\"unscored\":true,`))
+	if status != http.StatusCreated {
+		t.Fatalf("free ride: %d %v", status, got)
+	}
+	if got["executionScored"] != false || got["workoutName"] != "Free ride" {
+		t.Fatalf("a free ride is unscored and named so: %v", got)
+	}
+
+	status, got = call(t, h.mux, "alice", http.MethodPost, "/api/rides", body(""))
+	if status != http.StatusBadRequest || got["field"] != "workoutJson" {
+		t.Fatalf("an empty workout not marked unscored: %d %v, want 400 on workoutJson", status, got)
+	}
+}

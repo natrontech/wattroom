@@ -13,6 +13,7 @@
 	import { type Snippet } from 'svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { friends } from '$lib/friends/friends.svelte';
 	import { statusOf } from '$lib/status';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
@@ -37,6 +38,7 @@
 	import { formatDay, formatStamp, formatTime, sameDay } from '$lib/format';
 	import { mentionsMe } from '$lib/messages/mention';
 	import type { ThreadMessage, ThreadSource } from '$lib/messages/thread-types';
+	import { arrivedSince } from '$lib/messages/timeline';
 	import { confirm } from '$lib/confirm.svelte';
 	import { copyText } from '$lib/copy';
 	import { toasts } from '$lib/toast.svelte';
@@ -161,18 +163,20 @@
 		if (refused) toasts.push(refused, { tone: 'error' });
 	}
 
-	// The log's own scroll state, told by stickToBottom (#1765).
+	// The log's own scroll state, told by stickToBottom (#1765), and what
+	// landed behind a reader who scrolled back — counted from the lines the
+	// log held when they left (#2703).
 	let log = $state<HTMLElement | null>(null);
 	let pinned = $state(true);
-	let missed = $state(0);
+	let seen = $state.raw<ReadonlySet<string>>(new Set());
+	const missed = $derived(pinned ? 0 : arrivedSince(timeline, seen, me));
 	$effect(() => {
 		const node = log;
 		if (!node) return;
 		const on = (event: Event) => {
-			const detail = (event as CustomEvent<{ pinned: boolean; missed: number }>)
-				.detail;
-			pinned = detail.pinned;
-			missed = detail.missed;
+			const next = (event as CustomEvent<{ pinned: boolean }>).detail.pinned;
+			if (pinned && !next) seen = new Set(timeline.map((entry) => entry.key));
+			pinned = next;
 		};
 		node.addEventListener('wattroom-follow', on);
 		return () => node.removeEventListener('wattroom-follow', on);
@@ -256,7 +260,10 @@
 </script>
 
 <!-- `mt-auto` on the list, not `justify-end` on the box (#291): spare space
-     goes above the oldest line, so overflow spills off the END edge. -->
+     goes above the oldest line, so overflow spills off the END edge. The
+     column is `min-h-full`, not `h-full` (#2686): a fixed-height column let a
+     long log overflow it, and the box's bottom padding stayed under the
+     column instead of under the last line. -->
 <div
 	bind:this={log}
 	{@attach stickToBottom}
@@ -265,7 +272,7 @@
 	aria-label="messages"
 	class="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-5 py-4"
 >
-	<div class="flex h-full flex-col">
+	<div class="flex min-h-full flex-col">
 		<div class="mt-auto space-y-2">
 			{#if source.loading}
 				<Skeleton rows={4} class="mb-3 h-9" />
@@ -351,6 +358,10 @@
 									<span class="min-w-0 truncate text-sm font-medium"
 										>{message.from}</span
 									>
+									<StatusMark
+										line={people.face(message.fromId)?.statusLine}
+										size={13}
+									/>
 									<time
 										datetime={new Date(message.at).toISOString()}
 										title={formatStamp(message.at)}

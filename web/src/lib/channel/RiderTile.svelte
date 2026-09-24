@@ -60,7 +60,11 @@
 	// Whether this tile has live NUMBERS to draw — not whether the rider is
 	// riding. The presence badge below asks the server that (#1016); this asks
 	// whether there is a reading worth rendering in this second.
-	const live = $derived(phase === 'live' && rider.watts > 0);
+	// Outside a session too, for whoever is riding (ADR-0059): a free rider's
+	// numbers reach the voice channel, the audience a session there has.
+	const live = $derived(
+		(phase === 'live' || !!rider.riding) && rider.watts > 0,
+	);
 	const zone = $derived(zoneOf(rider.watts, rider.ftp));
 	const fill = $derived(fillPct(rider.watts, rider.ftp));
 

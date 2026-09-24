@@ -3,7 +3,8 @@
  * who is in there, without going in. It prints what fits in 224 px and
  * counts the rest — one 10 px line, not a strip of faces, because stacking
  * names Discord-style would quadruple every busy channel's height and cost the
- * column the glance it exists for (ADR-0010).
+ * column the glance it exists for (ADR-0010). The full list is the row's
+ * arrow, one channel at a time (#2702).
  */
 
 /** Names the line prints before it starts counting instead. */

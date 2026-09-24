@@ -132,7 +132,7 @@ func (h *harness) ride(t *testing.T, name string, at crewFixture, kj int32, shar
 func (h *harness) befriend(t *testing.T, a, b string) {
 	t.Helper()
 	ua, ub := h.users.ByToken[a].ID, h.users.ByToken[b].ID
-	if err := h.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{RequesterID: ua, AddresseeID: ub}); err != nil {
+	if _, err := h.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{RequesterID: ua, AddresseeID: ub}); err != nil {
 		t.Fatalf("request: %v", err)
 	}
 	if _, err := h.store.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams{RequesterID: ua, AddresseeID: ub}); err != nil {
@@ -177,7 +177,7 @@ func TestRiderPageGate(t *testing.T) {
 	h.crew(t, "pain-cave", "alice", "bob")
 	h.befriend(t, "alice", "dan")
 	// dan asked cara; nothing came of it yet.
-	if err := h.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+	if _, err := h.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
 		RequesterID: h.users.ByToken["dan"].ID, AddresseeID: h.users.ByToken["cara"].ID,
 	}); err != nil {
 		t.Fatalf("request: %v", err)

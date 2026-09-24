@@ -30,6 +30,7 @@
 		type ChannelShellProps,
 	} from '$lib/channel/context-value.svelte';
 	import { readNotes, shouldRejoinVoice, tabId } from '$lib/channel/rejoin';
+	import { takeVoice, type VoiceIntent } from '$lib/channel/voice-intent';
 	import { stageSlot } from '$lib/channel/stage-slot.svelte';
 	import { modals } from '$lib/modals.svelte';
 
@@ -53,17 +54,27 @@
 	if (page.url.searchParams.has('voice') && account.me?.avEnabled)
 		void av.join();
 
-	// A refresh puts you back in voice, and nothing else does (#480). The
+	// A refresh puts you back in voice (#480), beside the click below. The
 	// note this tab left behind says which channel and how recently; rejoin.ts
 	// decides, and the mic comes back exactly as the rider left it — the
 	// camera does not, because nothing here opens a capture device that was
 	// already shut. Waits for the account: a reload is precisely the cold
 	// start where avEnabled is not known yet at init.
+	//
+	// A click on this channel in the sidebar is the other way in (#2702): the
+	// rider tapped it, so it joins, with the mic and a live camera carried
+	// from the channel they left. Taken on every mount so a click whose page
+	// never arrived cannot join a later one.
 	let rejoinAsked = false;
 	$effect(() => {
 		if (rejoinAsked || !account.loaded) return;
 		rejoinAsked = true;
+		const clicked = takeVoice(props.address.key, Date.now());
 		if (page.url.searchParams.has('voice')) return; // that mount is spoken for
+		if (clicked) {
+			if (account.me?.avEnabled) void joinClicked(clicked);
+			return;
+		}
 		const back = shouldRejoinVoice({
 			notes: readNotes(),
 			tab: tabId(),
@@ -74,6 +85,11 @@
 		});
 		if (back) void av.join({ mic: back.mic });
 	});
+
+	async function joinClicked(clicked: VoiceIntent) {
+		await av.join(clicked.mic === undefined ? {} : { mic: clicked.mic });
+		if (clicked.cam && av.status === 'live' && !av.camOn) await av.toggleCam();
+	}
 
 	// Space is push-to-talk while that mode is on — never while typing.
 

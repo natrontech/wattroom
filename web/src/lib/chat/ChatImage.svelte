@@ -35,10 +35,13 @@
 
 	const copyLink = () =>
 		copyText(url, 'Image link copied.', theLinkItself(url));
+
+	// Loaded or failed: either way the picture has its own size now.
+	let settled = $state(false);
 </script>
 
-<!-- No loading="lazy": the img carries no dimensions, so its box is 0x0 until
-     it decodes, the lazy threshold never fires and it never loads. -->
+<!-- No loading="lazy": the picture is fetched with its line, so scrolling
+     back finds it drawn rather than filling in. -->
 <button
 	onclick={() => openImage(src, alt)}
 	title={MENU_HINT}
@@ -62,10 +65,17 @@
 	})}
 >
 	<!-- max-w-full (#1819): the thread hides horizontal overflow, so a wide
-	     screenshot was silently cut off on a phone. -->
+	     screenshot was silently cut off on a phone. Until it decodes the img
+	     has no size at all; it holds the cap's height meanwhile (#2686), which
+	     is the height most pictures land at, so the thread does not jump when
+	     they do. -->
 	<img
 		{src}
 		{alt}
-		class="ring-ink/10 mt-1 max-h-40 max-w-full rounded ring-1"
+		onload={() => (settled = true)}
+		onerror={() => (settled = true)}
+		class="ring-ink/10 mt-1 max-h-40 max-w-full rounded ring-1 {settled
+			? ''
+			: 'skeleton h-40 w-40'}"
 	/>
 </button>

@@ -5,6 +5,7 @@
 	// pattern as TrainerOverview and lib/profile/VoiceAudio.
 	import { goto } from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import QuickAudio from '$lib/channel/QuickAudio.svelte';
 	import { account } from '$lib/account.svelte';
 	import {
@@ -162,9 +163,10 @@
 				{/if}
 			</span>
 			<span class="min-w-0">
-				<span class="block truncate text-xs font-medium"
-					>{account.me?.displayName ?? ''}</span
-				>
+				<span class="flex min-w-0 items-center gap-1 text-xs font-medium">
+					<span class="truncate">{account.me?.displayName ?? ''}</span>
+					<StatusMark line={account.me?.statusLine} size={12} />
+				</span>
 				{#if showAv}
 					<!-- Away is not repeated here: the avatar wears the mark and
 					     the button below says "I'm back" (#807). -->

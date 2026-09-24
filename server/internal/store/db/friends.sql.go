@@ -48,8 +48,9 @@ func (q *Queries) ClearFriendDeclines(ctx context.Context, arg ClearFriendDeclin
 	return err
 }
 
-const createFriendRequest = `-- name: CreateFriendRequest :exec
+const createFriendRequest = `-- name: CreateFriendRequest :execrows
 insert into friendships (requester_id, addressee_id) values ($1, $2)
+on conflict do nothing
 `
 
 type CreateFriendRequestParams struct {
@@ -57,9 +58,15 @@ type CreateFriendRequestParams struct {
 	AddresseeID pgtype.UUID
 }
 
-func (q *Queries) CreateFriendRequest(ctx context.Context, arg CreateFriendRequestParams) error {
-	_, err := q.db.Exec(ctx, createFriendRequest, arg.RequesterID, arg.AddresseeID)
-	return err
+// 0 rows: the pair already has a request or a friendship, in either direction
+// (the pkey and the pair index). The handler expects that refusal, so it is
+// not left to Postgres to log as an ERROR (#2685).
+func (q *Queries) CreateFriendRequest(ctx context.Context, arg CreateFriendRequestParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createFriendRequest, arg.RequesterID, arg.AddresseeID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const deleteFriendship = `-- name: DeleteFriendship :execrows
@@ -142,7 +149,7 @@ func (q *Queries) GetFriendship(ctx context.Context, arg GetFriendshipParams) (F
 
 const getUserByFriendCode = `-- name: GetUserByFriendCode :one
 
-select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id from users where friend_code = $1
+select id, display_name, avatar_url, ftp_watts, weight_kg, created_at, strava_upload, email, notify_planned, unsub_token, friend_code, ics_token, accent_palette, color_scheme, email_verified_at, email_pending, email_verify_hash, email_verify_expires, email_required, timezone, lthr, ftp_source, weight_source, recover_hash, recover_expires, pending_crew_code, home_crew_id, status_emoji, status_emoji_id, status_text, status_expires_at from users where friend_code = $1
 `
 
 // an engineering bound (#1416), far past any friend list
@@ -179,6 +186,10 @@ func (q *Queries) GetUserByFriendCode(ctx context.Context, friendCode string) (U
 		&i.RecoverExpires,
 		&i.PendingCrewCode,
 		&i.HomeCrewID,
+		&i.StatusEmoji,
+		&i.StatusEmojiID,
+		&i.StatusText,
+		&i.StatusExpiresAt,
 	)
 	return i, err
 }
@@ -219,7 +230,8 @@ func (q *Queries) ListFriendDeclines(ctx context.Context, requesterID pgtype.UUI
 
 const listFriendships = `-- name: ListFriendships :many
 select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_url,
-    user_total_xp(u.id)::bigint as total_xp
+    user_total_xp(u.id)::bigint as total_xp,
+    u.status_emoji, u.status_emoji_id, u.status_text, u.status_expires_at
 from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end
 where f.requester_id = $1 or f.addressee_id = $1
@@ -228,13 +240,17 @@ limit 1000
 `
 
 type ListFriendshipsRow struct {
-	Status      string
-	RequesterID pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
-	ID          pgtype.UUID
-	DisplayName string
-	AvatarUrl   *string
-	TotalXp     int64
+	Status          string
+	RequesterID     pgtype.UUID
+	CreatedAt       pgtype.Timestamptz
+	ID              pgtype.UUID
+	DisplayName     string
+	AvatarUrl       *string
+	TotalXp         int64
+	StatusEmoji     *string
+	StatusEmojiID   pgtype.UUID
+	StatusText      *string
+	StatusExpiresAt pgtype.Timestamptz
 }
 
 // All rows involving me, resolved to the other person. Avatar + lifetime XP
@@ -257,6 +273,10 @@ func (q *Queries) ListFriendships(ctx context.Context, requesterID pgtype.UUID) 
 			&i.DisplayName,
 			&i.AvatarUrl,
 			&i.TotalXp,
+			&i.StatusEmoji,
+			&i.StatusEmojiID,
+			&i.StatusText,
+			&i.StatusExpiresAt,
 		); err != nil {
 			return nil, err
 		}
