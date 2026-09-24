@@ -77,6 +77,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		lastTick = now()
 		timer.Reset(rm.tickIntervalLocked(now()))
 		if len(rm.clients) == 0 {
+			rm.endAbandonedGameLocked(now())
 			// Nobody to tick to, but the clock still runs (audit 2026-09-09):
 			// a session whose last rider closed the tab at minute 58 ends at
 			// 60 and saves then, dated right — not on the next visit.
@@ -401,7 +402,11 @@ func (rm *room) sayPhaseLocked(state protocol.SessionState, now time.Time) {
 	case "countdown":
 		rm.events.add(sessionLine("started", "", state.WorkoutName, time.Time{}, now), now)
 	case "done":
-		rm.events.add(sessionLine("ended", "", state.WorkoutName, time.Time{}, now), now)
+		// A game's session ends with the game's own line — who won, or that
+		// it ended — and a second "Floor is Lava ended" would say it twice.
+		if rm.session.game == "" {
+			rm.events.add(sessionLine("ended", "", state.WorkoutName, time.Time{}, now), now)
+		}
 	}
 }
 
@@ -543,6 +548,9 @@ func (rm *room) advanceGameLocked(now time.Time) (winner string) {
 	}
 	if rm.gameDoneAt.IsZero() {
 		rm.gameDoneAt = now
+		// The game's end is its session's (#2597): this tick closes it, and
+		// the podium lingers on while the rides are saved.
+		rm.endGameSessionLocked(now)
 		if len(gs.Podium) > 0 {
 			rm.events.add(sessionLine("won", gs.Podium[0].Name, gs.Mode, time.Time{}, now), now)
 			return gs.Podium[0].RiderID

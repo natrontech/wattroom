@@ -9,6 +9,10 @@ import (
 
 func gat(sec int) time.Time { return time.Unix(3_000_000+int64(sec), 0) }
 
+// gameStarter starts the tests' games — and, since #2597, coaches the
+// session a game opens.
+var gameStarter = protocol.Rider{ID: "starter", Name: "Starter", Role: "member"}
+
 func backyardRoster() map[string]protocol.Rider {
 	return map[string]protocol.Rider{
 		"a": {ID: "a", Name: "A", FtpWatts: 200, WeightKg: 75},

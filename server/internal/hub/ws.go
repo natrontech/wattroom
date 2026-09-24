@@ -284,7 +284,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if msg.Control.Action == "game" {
-				if refusal := rm.startGame(msg.Control.GameMode, h.now()); refusal != "" {
+				if refusal := rm.startGame(msg.Control.GameMode, rider, h.now()); refusal != "" {
 					h.writeError(c, "invalid_request", refusal)
 				}
 				continue

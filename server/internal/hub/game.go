@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"encoding/json"
 	"math/rand"
 	"sort"
 	"time"
@@ -97,6 +98,31 @@ const (
 	refuseNoSuchMode  = "That game mode does not exist."
 	refuseGameRunning = "A game is already running — end it first."
 )
+
+// gameModeNames is what a game session is called on the rides, the recap and
+// the radar (#2597): WATTROOM.md's seven modes, as web/src/lib/session/modes.ts
+// labels them.
+var gameModeNames = map[string]string{
+	"backyard-ramp":   "Backyard Ramp",
+	"collective-ramp": "Collective Ramp",
+	"floor-is-lava":   "Floor is Lava",
+	"watt-golf":       "Watt Golf",
+	"sprint-roulette": "Sprint Roulette",
+	"points-race":     "Points Race",
+	"team-relay":      "Team Relay",
+}
+
+// gameWorkoutJSON is a game session's workout: no steps, and unscored, as the
+// ramp test is — there is no prescribed target to have ridden well, so the
+// ride saves with its execution "not scored" rather than failing to parse.
+func gameWorkoutJSON(name string) string {
+	b, _ := json.Marshal(struct {
+		Name     string `json:"name"`
+		Unscored bool   `json:"unscored"`
+		Steps    []any  `json:"steps"`
+	}{name, true, []any{}})
+	return string(b)
+}
 
 // newGameMode is the registry (#31/#32). Unknown mode: nil, refused upstream.
 // Every mode is sampled at one second (#1580): a coach can arm a sprint

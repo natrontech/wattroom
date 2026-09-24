@@ -152,7 +152,7 @@ func TestLeavingRiderIsWithdrawn(t *testing.T) {
 	})
 	t.Run("the room tells the game", func(t *testing.T) {
 		rm := newRoom("relay-leave")
-		if refusal := rm.startGame("team-relay", gat(0)); refusal != "" {
+		if refusal := rm.startGame("team-relay", gameStarter, gat(0)); refusal != "" {
 			t.Fatal(refusal)
 		}
 		rm.game.advance(gat(1), map[string]int{"a": 200, "b": 200}, backyardRoster())
