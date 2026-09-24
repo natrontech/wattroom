@@ -110,9 +110,13 @@ where r.message_id = @message_id and r.user_id = @user_id and r.emoji = @emoji
   and m.id = r.message_id and m.channel_id = @channel_id;
 
 -- name: MarkChannelRead :exec
+-- Stamped on the clock every line's created_at comes from — Go's, not
+-- Postgres's now() — and never before the newest line, so a read covers
+-- every line that existed when it was made, however the two clocks disagree.
 insert into channel_reads (channel_id, user_id, read_at)
-values ($1, $2, now())
-on conflict (channel_id, user_id) do update set read_at = now();
+select @channel_id, @user_id, greatest(@read_at::timestamptz, max(created_at))
+from chat_messages where channel_id = @channel_id
+on conflict (channel_id, user_id) do update set read_at = excluded.read_at;
 
 -- name: GetChannelReadAt :one
 select read_at from channel_reads where channel_id = $1 and user_id = $2;
