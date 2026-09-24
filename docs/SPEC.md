@@ -511,7 +511,7 @@ ERG 0 W: nobody is riding the trainer then.
 - A rider sets **one status**: an optional emoji (any Unicode emoji, or a custom emoji from a crew they are in) and **up to 100 characters** of text **(default — tune in alpha)**. It needs at least one of the two, and setting neither clears it.
 - **Clear after**: don't clear, **30 minutes, 1 hour, 4 hours, today, this week** (the same presets as Slack). "Today" ends at the rider's local midnight, and "this week" at the end of their local Sunday. Once the status clears, nobody is served it.
 - **Presets** that fill the editor in one tap: 🤒 Out sick (today) · 🏔️ Riding outside (4 hours) · 😴 Recovery week (this week) · 🏖️ On holiday (don't clear).
-- Shown wherever the rider's name is already shown to the viewer: the member card and profile show the text in full; the crew's member list, the voice occupants and the friends panel show the emoji, with the text on hover; a chat message shows the emoji after the author's name.
+- Shown wherever the rider's name is already shown to the viewer: the rider's page shows the text in full; the crew's member list, the voice occupants and the friends panel show the emoji, with the text on hover; a chat message shows the emoji after the author's name. The friends panel shows it to accepted friends only.
 
 ## Session recap retention (ADR-0034)
 

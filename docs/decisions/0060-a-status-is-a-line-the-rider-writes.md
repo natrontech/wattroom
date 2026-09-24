@@ -27,12 +27,14 @@ writes it. The server never derives one from riding, because presence already
 does that job, and a status that set itself would be presence under another
 name.
 
-**It goes where the rider's name goes**, and nowhere else: the member card
-and profile, the crew's member list and the voice channel's occupants, the
-friends panel, and the author line of a chat message. Each of those surfaces
+**It goes where the rider's name goes**, and nowhere else: the rider's page,
+the crew's member list and the voice channel's occupants, the friends panel,
+and the author line of a chat message. Each of those surfaces
 already decided who may see that rider's name. The status rides along, so it
-cannot tell a viewer anything about who can see whom. It is never a ride
-control, so it has no ride-sized target.
+cannot tell a viewer anything about who can see whom. The friends panel is the
+one place that is narrower than the name: a friend request shows a name, but
+only an accepted friend sees the status, because accepting is the opt-in
+(ADR-0012). It is never a ride control, so it has no ride-sized target.
 
 **Any crew emoji the rider can use, carried by its id.** When the rider sets
 the status they must be a member of the emoji's crew. From then on, anyone
@@ -62,5 +64,9 @@ is removed with the account, because it lives on the rider's row.
   status clears or the crew deletes the emoji. Checking membership on every
   image load would close that gap, at the price of a join on a read the
   browser otherwise caches for good. Add the check if a crew ever complains.
-- The picker offers the emoji of the crew the rider is viewing. To wear
-  another crew's emoji, the rider opens the editor from that crew.
+- The picker offers the emoji of the crew the sidebar is showing, or the
+  rider's main crew when the sidebar is on You. To wear another crew's emoji,
+  the rider opens the editor from that crew.
+- In code this is the **status line** (`protocol.StatusLine`, `statusLine` on
+  every payload). The word "status" was already taken twice: by presence
+  (`$lib/status.ts`) and by a friendship's state.
