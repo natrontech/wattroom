@@ -4,6 +4,7 @@
 	// recaps. "Ride it again" puts a ridden workout back on the schedule in
 	// one of the crew's voice channels; starting it is the channel's.
 	import { invalidateAll } from '$app/navigation';
+	import { navigating } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import { account } from '$lib/account.svelte';
@@ -39,12 +40,16 @@
 		})),
 	]);
 
-	// A plan or a cancellation elsewhere pings the lobby (#570): re-read.
+	// A plan or a cancellation elsewhere pings the lobby (#570): re-read —
+	// unless the rider is already on their way out. SvelteKit hands an
+	// invalidation the navigation token, so a ping during a click's load
+	// cancelled the click and kept the rider here (#2591).
 	let heard = untrack(() => presence.version);
 	$effect(() => {
 		const version = presence.version;
 		if (version === heard) return;
 		heard = version;
+		if (untrack(() => navigating.to)) return;
 		untrack(() => void invalidateAll());
 	});
 
