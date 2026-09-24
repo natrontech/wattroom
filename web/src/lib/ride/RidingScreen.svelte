@@ -16,6 +16,7 @@
 	 * deserves the screen a rider in a session gets.
 	 */
 	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import { confirm } from '$lib/confirm.svelte';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -61,6 +62,19 @@
 
 	// The ⚑'s own acknowledgement (#52), and nothing outside this screen ever
 	// asks about it.
+	// End sits in the cluster with TV and Skip block, 44 px each, and a ride
+	// it ends cannot be resumed — one stray thumb filed a truncated ride
+	// (#2623). It asks, the way a session's End always has (errors.md).
+	async function endRide() {
+		const ok = await confirm({
+			title: 'End the ride?',
+			body: 'The rest of the workout cannot be resumed. What you have ridden is saved if it is a minute or longer.',
+			action: 'End the ride',
+			cancel: 'Keep riding',
+		});
+		if (ok) session.stop();
+	}
+
 	let flagNotice = $state(false);
 	function flag() {
 		onFlag();
@@ -109,7 +123,7 @@
 					>Skip block</button
 				>
 				<button onclick={onTv} class="btn btn-secondary btn-lg">TV</button>
-				<button onclick={() => session.stop()} class="btn btn-secondary btn-lg"
+				<button onclick={endRide} class="btn btn-secondary btn-lg"
 					>End ride</button
 				>
 				<FlagButton onflag={flag} sends="after" />
