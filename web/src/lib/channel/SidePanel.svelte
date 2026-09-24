@@ -18,6 +18,7 @@
 	import { keepSize } from '$lib/pane';
 	import { edgeDivider } from '$lib/divider';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
 	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { people } from '$lib/people.svelte';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
@@ -114,6 +115,7 @@
 		     to take the whole row. -->
 		<a
 			href="/u/{rider.id}"
+			{@attach hoverCard(() => rider.id)}
 			class="-my-1 flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1"
 			title="{rider.name} — open their page"
 		>
@@ -223,6 +225,7 @@
 	>
 		<a
 			href="/u/{member.id}"
+			{@attach hoverCard(() => member.id)}
 			class="-my-1 flex min-h-11 min-w-0 flex-1 items-center gap-2 py-1"
 			title="{member.displayName} — open their page"
 		>

@@ -10,6 +10,7 @@
 	import { statusOf } from '$lib/status';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
 	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import {
@@ -250,8 +251,10 @@
 				     and, for a request, who is asking before you answer. -->
 				<!-- docs/SPEC.md allows 60 characters, and three controls hold
 				     the other end of the row: the name gives way (#2182). -->
-				<a href="/u/{friend.id}" class="truncate hover:underline"
-					>{friend.name}</a
+				<a
+					href="/u/{friend.id}"
+					class="truncate hover:underline"
+					{@attach hoverCard(() => friend.id)}>{friend.name}</a
 				>
 				<StatusMark line={friend.statusLine} size={13} />
 				<!-- Lifetime level is friend-visible identity (#253); watts are

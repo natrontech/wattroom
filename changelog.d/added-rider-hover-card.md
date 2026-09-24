@@ -1,0 +1,1 @@
+- **Rider hover cards.** Rest your pointer on someone's face or name in chat, the member list, the people column, the friends panel or the voice strip, and a card shows their level, their status, where they are, and buttons to message them or open their page.
