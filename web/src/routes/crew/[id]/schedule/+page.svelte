@@ -16,6 +16,7 @@
 	import { fetchCrewChannels, type CrewChannel } from '$lib/channels';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
 	import Select from '$lib/components/Select.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
@@ -449,6 +450,9 @@
 					</li>
 				{/each}
 			</ul>
+			<!-- Beside the plans that make it worth having (ADR-0042, #2612):
+			     NotifyOffer decides whether it can succeed here. -->
+			<NotifyOffer />
 		{/if}
 
 		{#if crew.icsToken}

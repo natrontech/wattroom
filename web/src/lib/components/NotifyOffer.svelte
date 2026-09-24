@@ -13,9 +13,10 @@
 	// dialog until the rider presses the button; the 95% rule cuts against a
 	// prompt nobody asked for.
 	//
-	// Home's "What's next", not a crew's schedule: the same rule that keeps
-	// DesktopNotice on home (ux.md — never mid-ride), and home is the one list
-	// that spans every crew the rider is in.
+	// Wherever a rider meets a plan outside a ride (ux.md — never mid-ride):
+	// Home's "What's next", the crew Home's next-up card and the crew's
+	// Schedule (#2612). WattRoom opens in a crew since #2576, so Home alone
+	// was a page a rider in one crew might never visit.
 	import { toasts } from '$lib/toast.svelte';
 	import { notify } from '$lib/notify.svelte';
 	import BellRing from '@lucide/svelte/icons/bell-ring';
