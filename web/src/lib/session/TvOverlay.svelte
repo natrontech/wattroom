@@ -35,6 +35,7 @@
 		game = null,
 		countdown,
 		status,
+		onJoin,
 		onExit,
 	}: {
 		riders: LiveRider[];
@@ -62,6 +63,9 @@
 		 * a voice channel's context a solo ride has no business having.
 		 */
 		status?: Snippet;
+		/** A session runs in the channel and you are not on it (ADR-0059):
+		 *  the way in, from three metres, without leaving the TV. */
+		onJoin?: () => void;
 		onExit: () => void;
 	} = $props();
 
@@ -117,6 +121,13 @@
 		class="btn btn-secondary btn-xs absolute bottom-4 left-4 z-10"
 		>Exit TV mode (esc)</button
 	>
+	{#if onJoin}
+		<button
+			onclick={onJoin}
+			class="btn btn-accent btn-lg absolute bottom-[4vh] left-1/2 z-10 -translate-x-1/2"
+			>Join the ride</button
+		>
+	{/if}
 	{#if countdown}
 		<div class="h-full">
 			<CountdownScreen

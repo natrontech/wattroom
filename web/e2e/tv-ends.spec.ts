@@ -34,10 +34,13 @@ test('the TV counts in, and steps aside for the summary', async ({
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
 	// Through the app, not a reload: the simulated trainer lives in the page.
+	// The channel's own row: the "with you in" strip links there too once
+	// the coach is in the call.
 	await rider
 		.locator(
 			`nav[aria-label="crews and channels"] a[href="${voicePath(opened)}"]`,
 		)
+		.first()
 		.click();
 	await rider.waitForURL(new RegExp(`${voicePath(opened)}$`));
 	await rider.getByRole('button', { name: 'TV', exact: true }).click();
@@ -64,6 +67,14 @@ test('the TV counts in, and steps aside for the summary', async ({
 		timeout: 15_000,
 	});
 	await expect(tv.getByText('No session yet')).toHaveCount(0);
+
+	// A session leaves the rider alone until they join (ADR-0059) — from the
+	// TV, three metres away, without closing it.
+	await tv.getByRole('button', { name: 'Join the ride' }).click();
+	await expect(tv.getByRole('button', { name: 'Join the ride' })).toHaveCount(
+		0,
+		{ timeout: 10_000 },
+	);
 
 	// A minute of riding, then the coach ends it: the TV makes way.
 	const end = coach.getByRole('button', { name: 'end the session' });

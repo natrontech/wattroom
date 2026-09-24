@@ -203,6 +203,9 @@
 					title: shared?.workoutName ?? '',
 				}
 			: undefined}
+		onJoin={phase !== 'lounge' && !channel.you.inSession && !device.spectator
+			? () => channel.control('join')
+			: undefined}
 		onExit={() => (layers.tv = false)}
 	>
 		{#snippet status()}
