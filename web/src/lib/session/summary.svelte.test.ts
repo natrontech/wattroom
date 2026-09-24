@@ -28,7 +28,11 @@ const { createSummary, SUMMARY_MIN_SAMPLES } = await import('./summary.svelte');
 const { createRecording } = await import('./recording.svelte');
 
 /** A summary wired to a phase the test moves by hand. Effects flush on tick(). */
-async function setup(startedAt: () => number | undefined) {
+async function setup(
+	startedAt: () => number | undefined,
+	// Its own close unless a test shares one: dismissals outlive a mount.
+	sessionId = crypto.randomUUID(),
+) {
 	let phase = $state<string | undefined>('idle');
 	let workout = $state('Openers');
 	const recording = createRecording();
@@ -41,6 +45,7 @@ async function setup(startedAt: () => number | undefined) {
 			myName: () => 'Jan',
 			myId: () => 'u1',
 			myExecution: () => 0.9,
+			sessionId: () => sessionId,
 			workoutName: () => workout,
 			riders: () => [],
 			ftp: () => 250,
@@ -84,6 +89,7 @@ it('a summary mounted mid-ride leaves the recording alone', async () => {
 			myName: () => 'Jan',
 			myId: () => 'u1',
 			myExecution: () => 0.9,
+			sessionId: () => 's1',
 			workoutName: () => workout,
 			riders: () => [],
 			ftp: () => 250,
@@ -222,4 +228,23 @@ describe('the summary card outlives the next pick (#2603)', () => {
 		expect(t.summary.card).toBeNull();
 		t.off();
 	});
+});
+
+// The session's page hands off to its channel's at the close (#2600), and the
+// summary mounts again there. A rider who had already closed theirs saw it
+// come back (#2603).
+it('a dismissed close stays dismissed on the next mount', async () => {
+	const first = await setup(() => undefined, 'shared-close');
+	await first.go('running');
+	ride(first.recording, SUMMARY_MIN_SAMPLES);
+	await first.go('done');
+	first.summary.dismiss();
+	first.off();
+
+	const again = await setup(() => undefined, 'shared-close');
+	await again.go('running');
+	ride(again.recording, SUMMARY_MIN_SAMPLES);
+	await again.go('done');
+	expect(again.summary.card, 'the dismissed summary came back').toBeNull();
+	again.off();
 });

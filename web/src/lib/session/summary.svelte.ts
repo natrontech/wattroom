@@ -15,6 +15,8 @@ export const SUMMARY_MIN_SAMPLES = 60;
  * the card holds what the close drew until the rider is done with it.
  */
 export interface SummaryCard {
+	/** The session it closes — what a dismissal is remembered by. */
+	sessionId: string;
 	samples: ReturnType<typeof createRecording>['samples'];
 	workoutName: string;
 	riders: LiveRider[];
@@ -27,6 +29,14 @@ export interface SummaryCard {
  * the summary, and my medal — if the session awarded one — comes back with
  * the ride the pipeline saved for me, a moment after it commits (#2522).
  */
+/**
+ * The closes this tab's rider has already dismissed (#2603). The summary is
+ * mounted per page, and the session's page hands off to its channel's at the
+ * close (#2600) — a dismissal inside that hand-off came back on the next
+ * mount. Per tab and per sitting, like the recording it summarises.
+ */
+const dismissedCloses = new Set<string>();
+
 export function createSummary(deps: {
 	recording: ReturnType<typeof createRecording>;
 	phase: () => string | undefined;
@@ -40,6 +50,7 @@ export function createSummary(deps: {
 	myId: () => string | undefined;
 	myExecution: () => number | undefined;
 	/** What the card keeps at the close, beside the rider's own samples. */
+	sessionId: () => string | undefined;
 	workoutName: () => string | undefined;
 	riders: () => LiveRider[];
 	ftp: () => number;
@@ -135,6 +146,7 @@ export function createSummary(deps: {
 			card = untrack(() => ({
 				// Held, not copied: the recording and the roster replace their
 				// arrays rather than emptying them, so these stay the close's.
+				sessionId: deps.sessionId() ?? '',
 				samples: deps.recording.samples,
 				workoutName: deps.workoutName() ?? '',
 				riders: deps.riders(),
@@ -164,12 +176,14 @@ export function createSummary(deps: {
 		},
 		dismiss() {
 			dismissed = true;
+			if (card?.sessionId) dismissedCloses.add(card.sessionId);
 		},
 		/** The card, from the close until it is dismissed or the next session
 		 *  runs — whatever the phase does in between. Null with nothing worth
 		 *  showing (under a minute of riding). */
 		get card() {
-			return dismissed ? null : card;
+			if (dismissed || !card) return null;
+			return dismissedCloses.has(card.sessionId) ? null : card;
 		},
 	};
 }
