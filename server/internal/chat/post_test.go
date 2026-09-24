@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -107,6 +108,12 @@ func TestReactionBoundariesInAChannel(t *testing.T) {
 	}
 	if n := w.pings() - before; n != 2 {
 		t.Fatalf("two toggles pinged the lobby %d times, want 2", n)
+	}
+	// Any emoji the picker offers, and the crew's own by `:name:` (#2643).
+	for _, emoji := range []string{"1️⃣", ":party_parrot:"} {
+		if code, body := post(t, w.mux, "alice", react, fmt.Sprintf(`{"messageId":%q,"emoji":%q}`, id, emoji)); code != http.StatusOK || body["count"] != float64(1) {
+			t.Fatalf("react %s: %d %v", emoji, code, body)
+		}
 	}
 }
 

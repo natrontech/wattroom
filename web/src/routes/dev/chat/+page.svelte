@@ -33,7 +33,6 @@
 	import { contextMenu, MENU_HINT } from '$lib/context-menu.svelte';
 	import type { MenuEntry } from '$lib/context-menu.svelte';
 	import { formatTime } from '$lib/format';
-	import { STOCK_CHEERS } from '$lib/icons';
 	import { mentionsMe } from '$lib/messages/mention';
 	import { formatThreadWhen, orderThreads } from '$lib/messages/threads';
 	import type { Thread } from '$lib/messages/threads';
@@ -191,7 +190,6 @@
 						<Reactions
 							id={m.id}
 							counts={m.reactions}
-							cheers={STOCK_CHEERS}
 							onReact={nothing('Reacted')}
 						/>
 					</span>

@@ -431,6 +431,67 @@ func (q *Queries) ExportUserChatReactions(ctx context.Context, arg ExportUserCha
 	return items, nil
 }
 
+const exportUserCrewEmoji = `-- name: ExportUserCrewEmoji :many
+select e.id, e.name, e.mime, octet_length(e.bytes)::int as size_bytes, e.created_at,
+       e.crew_id, c.name as crew_name
+from crew_emoji e
+join crews c on c.id = e.crew_id
+where e.user_id = $1
+order by e.created_at desc
+limit $2::int
+`
+
+type ExportUserCrewEmojiParams struct {
+	UserID pgtype.UUID
+	Lim    int32
+}
+
+type ExportUserCrewEmojiRow struct {
+	ID        pgtype.UUID
+	Name      string
+	Mime      string
+	SizeBytes int32
+	CreatedAt pgtype.Timestamptz
+	CrewID    pgtype.UUID
+	CrewName  string
+}
+
+// The emoji the rider added to a crew (#2643): their upload, the way a pasted
+// picture is, and gone with the account the same way. The crew's id and the
+// emoji's together name the file — it is served at
+// /api/crews/{crew}/emoji/{id} — and the crew's name says which crew it is.
+//
+// Not `bytes`, for images.json's reason (ADR-0053): each picture is bounded
+// but how many crews a rider is in is not, so the total a rider holds has no
+// ceiling, and this archive is built whole in memory (#1990).
+func (q *Queries) ExportUserCrewEmoji(ctx context.Context, arg ExportUserCrewEmojiParams) ([]ExportUserCrewEmojiRow, error) {
+	rows, err := q.db.Query(ctx, exportUserCrewEmoji, arg.UserID, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserCrewEmojiRow
+	for rows.Next() {
+		var i ExportUserCrewEmojiRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Mime,
+			&i.SizeBytes,
+			&i.CreatedAt,
+			&i.CrewID,
+			&i.CrewName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const exportUserCrews = `-- name: ExportUserCrews :many
 select c.name,
        c.icon,

@@ -11,6 +11,7 @@
 	import { takeDownAnnouncement } from '$lib/announce/take-down';
 	import { setCrewRole } from '$lib/crew';
 	import { planCrewSession } from '$lib/crew-schedule';
+	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { channelAddress } from '$lib/channel/address';
@@ -34,6 +35,9 @@
 		initial: VoiceChannelData;
 		children: Snippet;
 	} = $props();
+
+	// A crew's own emoji in its cheer set draw mid-ride too (#2643).
+	provideCrewEmoji(() => crewId);
 
 	void account.load();
 

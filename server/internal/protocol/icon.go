@@ -13,10 +13,10 @@ func IsIconKey(s string) bool {
 	return iconKey.MatchString(s)
 }
 
-// IsIconOrEmoji is what a crew icon, a cheer or a chat reaction may be on the
-// wire and in the store: an icon key (#447) — or one emoji, still accepted so
-// what was saved, and clients built, before #447 keep working. The client
-// draws a known emoji as its icon.
+// IsIconOrEmoji is what a crew icon may be on the wire and in the store: an
+// icon key (#447) — or one emoji, still accepted so what was saved, and
+// clients built, before #447 keep working. The client draws a known emoji as
+// its icon. A cheer or a reaction may also be a crew's own emoji: IsReaction.
 func IsIconOrEmoji(s string) bool {
 	return IsIconKey(s) || IsEmoji(s)
 }

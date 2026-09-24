@@ -91,10 +91,10 @@ func (c *client) ping() int {
 	return 1
 }
 
-// Cheers and chat reactions are shape-checked (protocol.IsIconOrEmoji — an
-// icon key, or one emoji from a client built before #447; never text), not
-// allowlisted: which reactions a room speaks is its owner's palette (#223),
-// enforced client-side. The wire only guarantees a reaction can't smuggle chat.
+// Cheers and chat reactions are shape-checked (protocol.IsReaction — an icon
+// key, one emoji, or a crew's own emoji by `:name:` (#2643); never text), not
+// allowlisted: which reactions a crew speaks is its palette (#223), enforced
+// client-side. The wire only guarantees a reaction can't smuggle chat.
 
 // HandleWS upgrades the connection and pumps messages until the client leaves.
 // Membership is the price of entry: metrics are room-scoped (privacy is
@@ -235,7 +235,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.Cheer != nil {
-			if protocol.IsIconOrEmoji(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
+			if protocol.IsReaction(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
 				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name})
 			}
 		}

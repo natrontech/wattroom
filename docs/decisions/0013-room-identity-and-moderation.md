@@ -2,7 +2,8 @@
 
 Date: 2026-08-31 · Status: accepted (#223, amended 2026-09-05: icon and
 reaction palette are lucide keys, not emoji — #447; amended 2026-09-22 by
-[ADR-0058](0058-the-room-dissolves-into-the-crew.md), #2425: identity and the ban are the crew's)
+[ADR-0058](0058-the-room-dissolves-into-the-crew.md), #2425: identity and the ban are the crew's;
+amended 2026-09-24: reactions are emoji again, and a crew uploads its own — #2643)
 
 ## Context
 
@@ -83,3 +84,36 @@ with it.
   severs every channel at once, through the one gate every door asks. At the
   migration a room ban becomes a crew ban, because the narrow side is the only
   one that cannot let a banned rider back into the room that banned them.
+
+## Amendment — reactions are emoji again, and a crew uploads its own (2026-09-24, #2643)
+
+The lucide amendment traded a rider's whole vocabulary for consistent glyphs,
+and riders asked for the vocabulary back: eight drawn marks cannot say what a
+chat reaction is for, and the "insider memes" WATTROOM.md promised per crew
+never had a way in. Consistency across platforms is the cost this accepts — a
+🥵 looks a little different on a Pixel than on a Mac, and nobody reading a
+reaction has ever been confused by that.
+
+- **A reaction is any Unicode emoji, a drawn icon from the curated set, or one
+  of the crew's own.** The chat's reaction control opens a picker: the crew's
+  set first, then its uploaded emoji, the rider's recent picks, and every
+  emoji by group with a search. The composer inserts from the same picker.
+- **The crew's set stays** — up to eight, the first four the mid-ride buttons,
+  because a sweating rider needs four big targets, not a search box — and may
+  now hold emoji and the crew's own as well as icons. An emoji saved there is
+  drawn as itself; the client no longer translates one into the icon it
+  resembled.
+- **A crew uploads its own emoji.** Any member adds one; the one who added it,
+  the owner and admins take it down. A name is 2–32 characters of `a–z 0–9 _`,
+  unique in the crew, and the key is `:name:` — as a reaction, and inline in a
+  message, where the line draws it if the crew knows the name and the text it
+  is otherwise. Pictures are crew-private and live beside `chat_images` in
+  Postgres (ADR-0002). Caps are docs/SPEC.md's. A DM has no crew, so it offers
+  Unicode only and shows a `:name:` as text.
+- **The wire check widens, it does not open.** `protocol.IsReaction` is an icon
+  key, one emoji (`IsEmoji`, now accepting the keycaps and the handful of BMP
+  symbols the picker offers), or a `:name:` shape. The server still checks
+  shape, not vocabulary: which emoji a crew welcomes is its own business, and
+  a key naming no emoji draws as its text.
+- **The crew's mark is unchanged** — one icon from the curated set. Identity is
+  where consistency still earns its cost.

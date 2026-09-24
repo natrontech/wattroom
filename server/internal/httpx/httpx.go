@@ -100,9 +100,16 @@ const MaxImageBytes = 2 << 20
 // from a header, and only the four types the chat surfaces render. On refusal
 // it writes the error and reports false — the caller just returns.
 func ReadImageUpload(w http.ResponseWriter, r *http.Request) (data []byte, mime string, ok bool) {
-	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, MaxImageBytes))
+	return ReadImageUploadUpTo(w, r, MaxImageBytes, "Images are capped at 2 MB.")
+}
+
+// ReadImageUploadUpTo is ReadImageUpload under a smaller cap of the caller's —
+// a crew emoji's (#2643) — and the sentence that names it, so a picture over
+// it is refused at the cap it broke rather than at 2 MB.
+func ReadImageUploadUpTo(w http.ResponseWriter, r *http.Request, limit int64, tooBig string) (data []byte, mime string, ok bool) {
+	data, err := io.ReadAll(http.MaxBytesReader(w, r.Body, limit))
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "validation_error", "Images are capped at 2 MB.")
+		WriteError(w, http.StatusBadRequest, "validation_error", tooBig)
 		return nil, "", false
 	}
 	switch mime = http.DetectContentType(data); mime {

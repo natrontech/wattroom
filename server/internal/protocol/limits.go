@@ -73,6 +73,17 @@ const (
 	// and the server refuses past it.
 	MaxCheers = 8
 
+	// A crew's own emoji (#2643, docs/SPEC.md): how many a crew holds and how
+	// big one picture may be. The upload refuses past both, and the crew's
+	// settings disable "Add emoji" at the count rather than offering an
+	// upload the POST will refuse. A name is MinEmojiNameChars to
+	// MaxEmojiNameChars of a–z, 0–9 and _ — ASCII, so bytes and characters
+	// agree — and the crew_emoji CHECK holds the same pair as a literal.
+	MaxCrewEmoji      = 50
+	MaxEmojiBytes     = 256 << 10
+	MinEmojiNameChars = 2
+	MaxEmojiNameChars = 32
+
 	// A crew's name (docs/SPEC.md "Names"), in CHARACTERS — MaxMessageChars'
 	// rule.
 	MaxCrewNameChars = 60

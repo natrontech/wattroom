@@ -18,6 +18,7 @@
 	import type { CrewChannel } from '$lib/channels';
 	import type { Crew } from '$lib/crew';
 	import { banFromCrewFlow } from '$lib/crew-flows';
+	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
 	import { STOCK_CHEERS } from '$lib/icons';
 	import MessageThread from '$lib/messages/MessageThread.svelte';
 	import {
@@ -32,6 +33,9 @@
 	import { untrack } from 'svelte';
 
 	let { crew, channel }: { crew: Crew; channel: CrewChannel } = $props();
+
+	// The crew's own emoji draw in its lines and reactions (#2643).
+	provideCrewEmoji(() => crew.id);
 
 	const base = $derived(`/api/channels/${channel.id}`);
 	// The crew's owner and admins keep its channels (docs/SPEC.md): they
@@ -95,7 +99,10 @@
 		readAt: thread?.readAt ?? null,
 		reactions: thread?.reactions ?? {},
 		myReacts: thread?.myReacts ?? {},
-		cheers: STOCK_CHEERS,
+		// The crew's set, not the stock one (#2643, the text-channel twin of
+		// #2521); [] means the crew never changed it.
+		cheers: crew.cheers?.length ? crew.cheers : STOCK_CHEERS,
+		crewId: crew.id,
 		retry: () => thread?.retry(),
 		send: async (text, image) => (await thread?.send(text, image)) ?? null,
 		react: async (id, cheer) => (await thread?.react(id, cheer)) ?? null,

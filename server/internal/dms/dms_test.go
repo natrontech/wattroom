@@ -420,6 +420,15 @@ func TestDmReactions(t *testing.T) {
 	if code != http.StatusOK || body["added"] != false || body["count"] != float64(0) {
 		t.Fatalf("un-react: %d %v", code, body)
 	}
+
+	// Any emoji the picker offers, and a crew's own by `:name:` (#2643).
+	for _, emoji := range []string{"1️⃣", ":party_parrot:"} {
+		code, body = call(t, mux, "bob", http.MethodPost, "/api/dms/"+alice+"/reactions",
+			`{"messageId":"`+id+`","emoji":"`+emoji+`"}`)
+		if code != http.StatusOK || body["added"] != true {
+			t.Fatalf("react %s: %d %v", emoji, code, body)
+		}
+	}
 }
 
 func TestDmReactionRefusedAcrossPairs(t *testing.T) {

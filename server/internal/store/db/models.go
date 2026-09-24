@@ -110,6 +110,16 @@ type Crew struct {
 	IcsToken     string
 }
 
+type CrewEmoji struct {
+	ID        pgtype.UUID
+	CrewID    pgtype.UUID
+	UserID    pgtype.UUID
+	Name      string
+	Mime      string
+	Bytes     []byte
+	CreatedAt pgtype.Timestamptz
+}
+
 type CrewPin struct {
 	ID        pgtype.UUID
 	CrewID    pgtype.UUID

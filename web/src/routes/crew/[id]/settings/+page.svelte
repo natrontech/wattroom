@@ -25,9 +25,10 @@
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 	import { confirm } from '$lib/confirm.svelte';
-	import { keyFor } from '$lib/icons';
 	import CrewChannels from './CrewChannels.svelte';
 	import CrewReactions from './CrewReactions.svelte';
+	import CrewEmoji from './CrewEmoji.svelte';
+	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
 
 	let { data }: { data: PageData } = $props();
 	let crew = $state<Crew | null>(untrack(() => data.crew));
@@ -39,6 +40,8 @@
 	// The browser caches the picture's URL; a bump after each change makes
 	// the preview here reflect the upload without a reload.
 	let bump = $state(0);
+
+	provideCrewEmoji(() => crew?.id);
 
 	const administers = $derived(
 		crew?.role === 'owner' || crew?.role === 'admin',
@@ -117,8 +120,9 @@
 	// the typed one saves itself on change.
 	let cheers = $state<string[]>([]);
 	$effect(() => {
-		// A palette from before #447 holds emoji; edited as the keys they mean.
-		cheers = (crew?.cheers ?? []).map(keyFor);
+		// As stored (#2643): an emoji is a reaction of its own again, so one
+		// from before #447 is no longer translated into the icon it resembled.
+		cheers = crew?.cheers ?? [];
 	});
 	async function saveSettings(patch: {
 		boardEnabled?: boolean;
@@ -235,6 +239,9 @@
 				class="underline">Back to the crew</a
 			>.
 		</p>
+		<!-- The one section every member may use (#2643): any of them adds an
+		     emoji, so the list lives where each of them can reach it. -->
+		<CrewEmoji crewId={crew.id} administers={false} />
 	{:else}
 		<header class="flex items-baseline gap-3">
 			<h1 class="page-title">Crew settings</h1>
@@ -378,9 +385,11 @@
 
 		<CrewReactions
 			bind:cheers
+			crewId={crew.id}
 			{busy}
 			onchange={() => void saveSettings({ cheers })}
 		/>
+		<CrewEmoji crewId={crew.id} administers />
 
 		{#if !calendarNoticeSeen}
 			<div class="mt-5">
