@@ -3,6 +3,7 @@
 package httpx
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -153,7 +154,16 @@ func ServeImage(w http.ResponseWriter, r *http.Request, mime string, data []byte
 // internal detail goes to the log with its context keys, the rider gets a
 // curated sentence and a 500 — never err.Error() (errors.md). It stood
 // written out 207 times before it had a name.
+//
+// A context.Canceled is the rider navigating away mid-read (#2538): nothing
+// broke and nobody is listening, so it logs at Debug and writes nothing.
+// ponytail: any Canceled counts, not only the request's own — Fail has no
+// request to ask, and the server's own budgets end in DeadlineExceeded.
 func Fail(w http.ResponseWriter, log *slog.Logger, what string, err error, message string, kv ...any) {
+	if errors.Is(err, context.Canceled) {
+		log.Debug(what, append([]any{"err", err}, kv...)...)
+		return
+	}
 	log.Error(what, append([]any{"err", err}, kv...)...)
 	WriteError(w, http.StatusInternalServerError, "internal_error", message)
 }
