@@ -104,7 +104,8 @@
 		cheers: crew.cheers?.length ? crew.cheers : STOCK_CHEERS,
 		crewId: crew.id,
 		retry: () => thread?.retry(),
-		send: async (text, image) => (await thread?.send(text, image)) ?? null,
+		send: async (text, image, expiresIn) =>
+			(await thread?.send(text, image, expiresIn)) ?? null,
 		react: async (id, cheer) => (await thread?.react(id, cheer)) ?? null,
 		edit: async (id, text) => (await thread?.edit(id, text)) ?? null,
 		remove: async (id) => (await thread?.remove(id)) ?? null,

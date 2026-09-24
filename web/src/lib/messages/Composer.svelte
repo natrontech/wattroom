@@ -7,6 +7,10 @@
 	import ImageIcon from '@lucide/svelte/icons/image';
 	import ImagePlay from '@lucide/svelte/icons/image-play';
 	import Smile from '@lucide/svelte/icons/smile';
+	import Timer from '@lucide/svelte/icons/timer';
+	import X from '@lucide/svelte/icons/x';
+	import { openMenu } from '$lib/context-menu.svelte';
+	import { TemporaryDay, TemporaryHour, TemporaryWeek } from '$lib/protocol';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
@@ -30,7 +34,11 @@
 		crewId,
 	}: {
 		/** Null when it went; the refusal to show when it did not. */
-		send: (text: string, image?: Blob) => Promise<string | null>;
+		send: (
+			text: string,
+			image?: Blob,
+			expiresIn?: number,
+		) => Promise<string | null>;
 		/** The smallest gap between two lines this surface accepts; 0 for none. */
 		lineGapMs?: number;
 		placeholder: string;
@@ -115,7 +123,7 @@
 		if (tooSoon()) return;
 		draft = '';
 		sending = true;
-		const refused = await deliver(text, image);
+		const refused = await deliver(text, image, expiresIn || undefined);
 		sending = false;
 		sendError = refused;
 		// A refused message is not a deleted one — nor is its picture: the
@@ -125,6 +133,39 @@
 			lastSentAt = Date.now();
 			pending.clear();
 		}
+	}
+
+	// A temporary message (#2644): the timer stays set for every line until
+	// the rider takes it off — a run of lines meant to vanish is one choice,
+	// not one per line — and the chip above the box says it is on.
+	const TIMERS: [number, string][] = [
+		[TemporaryHour, '1 hour'],
+		[TemporaryDay, '24 hours'],
+		[TemporaryWeek, '7 days'],
+	];
+	let expiresIn = $state(0);
+	const timerLabel = $derived(TIMERS.find(([s]) => s === expiresIn)?.[1]);
+	function pickTimer(e: MouseEvent & { currentTarget: HTMLElement }) {
+		const at = e.currentTarget.getBoundingClientRect();
+		openMenu(
+			[
+				...TIMERS.map(([seconds, label]) => ({
+					label: `Disappears after ${label}`,
+					icon: Timer,
+					hint: seconds === expiresIn ? 'on' : undefined,
+					onSelect: () => (expiresIn = seconds),
+				})),
+				'separator' as const,
+				{
+					label: 'Stays',
+					hint: expiresIn ? undefined : 'on',
+					onSelect: () => (expiresIn = 0),
+				},
+			],
+			at.left,
+			at.top - 4,
+			e.currentTarget,
+		);
 	}
 
 	// An emoji goes in at the caret (#2643) — a crew's own as the `:name:`
@@ -149,7 +190,7 @@
 		gifOpen = false;
 		if (tooSoon()) return;
 		sending = true;
-		sendError = await deliver(gif.url);
+		sendError = await deliver(gif.url, undefined, expiresIn || undefined);
 		sending = false;
 		if (!sendError) lastSentAt = Date.now();
 	}
@@ -168,6 +209,18 @@
 		</div>
 	{/if}
 	<ImageChip image={pending.current} onClear={pending.clear} />
+	{#if timerLabel}
+		<span
+			class="bg-surface-raised text-muted mb-2 inline-flex items-center gap-1.5 rounded-full py-0.5 pr-1 pl-2.5 text-xs"
+			><Timer size={12} class="text-neon" />Your lines disappear after {timerLabel}
+			<button
+				type="button"
+				onclick={() => (expiresIn = 0)}
+				class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
+				aria-label="turn the timer off"><X size={12} /></button
+			></span
+		>
+	{/if}
 	{#if mention}
 		<ul
 			id={listId}
@@ -255,6 +308,18 @@
 			aria-label="add an emoji"
 			aria-expanded={emojiOpen}
 			title="add an emoji"><Smile size={16} /></button
+		>
+		<button
+			type="button"
+			onclick={pickTimer}
+			disabled={!!lock}
+			class="icon-btn {expiresIn ? 'text-neon' : 'text-muted hover:text-ink'}"
+			aria-label="make it temporary"
+			aria-haspopup="menu"
+			aria-pressed={!!expiresIn}
+			title={timerLabel
+				? `disappears after ${timerLabel}`
+				: 'make it temporary'}><Timer size={16} /></button
 		>
 		<!-- A textarea (#2642): a line break is something a rider writes, and a
 		     long line wraps in view instead of sliding off the box's left edge. -->

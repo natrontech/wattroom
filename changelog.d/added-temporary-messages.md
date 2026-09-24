@@ -1,0 +1,1 @@
+- Temporary messages: the timer button beside the message box makes what you send disappear after 1 hour, 24 hours or 7 days, in a text channel or a DM. Each temporary line shows how long it has left, and when the time is up it is gone for everyone — deleted, not hidden.

@@ -20,6 +20,12 @@ export type TimelineMessage = {
 	 * a DM leaves the row so the other side can be told at all.
 	 */
 	deletedAt?: number;
+	/**
+	 * When a temporary line runs out (#2644). The thread drops it then by its
+	 * own clock; the server has stopped serving it and sweeps it within the
+	 * minute, but a DM's poll never says "gone".
+	 */
+	expiresAt?: number;
 };
 
 export type TimelineEntry = {

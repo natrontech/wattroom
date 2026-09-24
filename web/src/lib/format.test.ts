@@ -4,6 +4,7 @@ import {
 	formatClockLong,
 	formatDay,
 	formatDuration,
+	formatLeft,
 	formatWhen,
 	sameDay,
 	wkg,
@@ -88,6 +89,19 @@ describe('formatDay', () => {
 				new Date(2026, 8, 24, 0, 1).getTime(),
 			),
 		).toBe(false);
+	});
+});
+
+describe('formatLeft', () => {
+	// A temporary line's countdown (#2644): never less than it has.
+	it('rounds up through minutes, hours and days', () => {
+		expect(formatLeft(0)).toBe('1 min');
+		expect(formatLeft(58 * 60_000 + 1)).toBe('59 min');
+		expect(formatLeft(59 * 60_000 + 1)).toBe('1 h');
+		expect(formatLeft(22 * 3_600_000 + 1)).toBe('23 h');
+		expect(formatLeft(23 * 3_600_000 + 1)).toBe('1 d');
+		expect(formatLeft(24 * 3_600_000)).toBe('1 d');
+		expect(formatLeft(7 * 86_400_000)).toBe('7 d');
 	});
 });
 
