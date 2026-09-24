@@ -585,12 +585,12 @@ describe("the count-in (#1800, docs/SPEC.md's session lifecycle)", () => {
 		expect(session.state).toBe('countdown');
 		session.tick();
 
-		session.abort();
+		// Not an End: nothing was ridden, so the connection survives and goes
+		// back to the caller, whose pairing grid holds it again (#2615).
+		expect(session.abort()).toBe(trainer);
 		expect(session.state).toBe('idle');
 		expect(session.countdownRemaining).toBe(0);
 		expect(soloRide.active).toBe(false);
-		// Not an End: nothing was ridden, so the pairing survives for the next
-		// Start rather than being handed back to the pairing grid.
 		expect(gone).not.toHaveBeenCalled();
 		// And the session is not wedged half-started: a stale tick moves
 		// nothing.

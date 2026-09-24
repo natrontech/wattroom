@@ -184,10 +184,11 @@
 	/**
 	 * Changed their mind during the count-in (#1800). Nothing was ridden, so
 	 * this is not an End: the page goes back to PreRide with the trainer still
-	 * paired, and no zero-sample ride is filed.
+	 * paired — handed back to the slot Start took it from (#2615) — and no
+	 * zero-sample ride is filed.
 	 */
 	function cancelCountdown() {
-		session?.abort();
+		solo.adopt(session?.abort());
 		session = null;
 		buffer?.end();
 		buffer = undefined;
@@ -456,7 +457,7 @@
 		// a zero-sample save would file "Nothing was recorded" against a ride
 		// that never started.
 		if (session.state === 'countdown') {
-			session.abort();
+			solo.adopt(session.abort());
 			buffer?.end();
 			return;
 		}
