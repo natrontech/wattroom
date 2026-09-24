@@ -265,6 +265,42 @@ func TestSessionMailInAPrivateChannelReachesItsPeopleOnly(t *testing.T) {
 	}
 }
 
+// Deleting a private channel cancels its plans and then the channel (#2610).
+// The mail used to read its audience in the background, by which time the
+// channel admitted nobody, so its own riders were never told.
+func TestSessionMailReadsItsAudienceBeforeReturning(t *testing.T) {
+	h := setup(t)
+	fake := &fakeResend{}
+	srv := httptest.NewServer(fake.handler())
+	defer srv.Close()
+	s := service(h, srv.URL)
+	if _, err := h.store.Pool.Exec(t.Context(), "update channels set private = true where id = $1", h.channel.ID); err != nil {
+		t.Fatalf("make private: %v", err)
+	}
+	if _, err := h.store.Pool.Exec(t.Context(),
+		"insert into channel_members (channel_id, user_id) values ($1, $2)", h.channel.ID, h.optIn.ID); err != nil {
+		t.Fatalf("name into channel: %v", err)
+	}
+
+	s.SessionCancelled(h.crew.ID, h.channel.ID, "Coaches Only", time.Now().Add(time.Hour), h.planner.ID)
+	if _, err := h.store.Pool.Exec(t.Context(), "delete from channels where id = $1", h.channel.ID); err != nil {
+		t.Fatalf("delete channel: %v", err)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for fake.sent() == 0 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	fake.mu.Lock()
+	defer fake.mu.Unlock()
+	if len(fake.payloads) != 1 {
+		t.Fatalf("the channel's rider got %d cancellations, want 1", len(fake.payloads))
+	}
+	// Linked to the schedule: the channel is no page any more.
+	if text := fmt.Sprint(fake.payloads[0]["text"]); !strings.Contains(text, "/schedule") || strings.Contains(text, "/v/") {
+		t.Errorf("a cancellation linked somewhere other than the schedule: %q", text)
+	}
+}
+
 func TestSessionRescheduledSaysMoved(t *testing.T) {
 	h := setup(t)
 	fake := &fakeResend{}

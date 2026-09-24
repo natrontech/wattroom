@@ -156,15 +156,25 @@ func (s *Service) sessionAsync(crew, channel pgtype.UUID, workoutName string, st
 	if !s.allowSessionMail(crew) {
 		return
 	}
+	note := sessionNote{
+		crew: crew, channel: channel, workout: workoutName, startsAt: startsAt,
+		actor: planner, change: change,
+	}
+	// Who it reaches is read before the caller moves on (#2610): deleting a
+	// private channel cancels its plans and then the channel, and a lookup
+	// run after that finds nobody the channel admits.
+	lookup, cancelLookup := context.WithTimeout(context.Background(), 10*time.Second)
+	audience, ok := s.sessionAudience(lookup, note)
+	cancelLookup()
+	if !ok {
+		return
+	}
 	// Guarded (#651): a mail-provider panic must not cost a ride. The outer
 	// ceiling is generous because every target has its own below (#1641).
 	safego.Go(s.log, "session mail "+store.UUIDString(crew), func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
-		s.sessionMail(ctx, sessionNote{
-			crew: crew, channel: channel, workout: workoutName, startsAt: startsAt,
-			actor: planner, change: change,
-		})
+		s.sessionSend(ctx, note, audience)
 	})
 }
 
@@ -208,13 +218,38 @@ func oneLine(text string) string {
 }
 
 func (s *Service) sessionMail(ctx context.Context, note sessionNote) {
-	startsAt, change := note.startsAt, note.change
+	if audience, ok := s.sessionAudience(ctx, note); ok {
+		s.sessionSend(ctx, note, audience)
+	}
+}
+
+// sessionAudience is what a session mail names and whom it reaches.
+type sessionAudience struct {
+	where   db.GetPlanPlaceRow
+	targets []db.ListCrewNotifyTargetsRow
+}
+
+func (s *Service) sessionAudience(ctx context.Context, note sessionNote) (sessionAudience, bool) {
 	crewID := store.UUIDString(note.crew)
 	where, err := s.store.Queries.GetPlanPlace(ctx, db.GetPlanPlaceParams{CrewID: note.crew, ChannelID: note.channel})
 	if err != nil {
 		s.log.Error("session mail place lookup failed", "err", err, "crew", crewID)
-		return
+		return sessionAudience{}, false
 	}
+	targets, err := s.store.Queries.ListCrewNotifyTargets(ctx, db.ListCrewNotifyTargetsParams{
+		CrewID: note.crew, ChannelID: note.channel, Actor: note.actor, SessionID: note.session,
+	})
+	if err != nil {
+		s.log.Error("notify targets query failed", "err", err, "crew", crewID)
+		return sessionAudience{}, false
+	}
+	return sessionAudience{where: where, targets: targets}, true
+}
+
+func (s *Service) sessionSend(ctx context.Context, note sessionNote, audience sessionAudience) {
+	startsAt, change := note.startsAt, note.change
+	crewID := store.UUIDString(note.crew)
+	where, targets := audience.where, audience.targets
 	// What the mail calls the place (#2440): "Thursday Crew · Pain Cave", or
 	// the crew alone for a plan that names no channel yet. The link goes
 	// where the rider would ride it — the channel, or the crew's calendar.
@@ -227,13 +262,6 @@ func (s *Service) sessionMail(ctx context.Context, note sessionNote) {
 		action = "Open the channel"
 	}
 	workoutName := oneLine(note.workout)
-	targets, err := s.store.Queries.ListCrewNotifyTargets(ctx, db.ListCrewNotifyTargetsParams{
-		CrewID: note.crew, ChannelID: note.channel, Actor: note.actor, SessionID: note.session,
-	})
-	if err != nil {
-		s.log.Error("notify targets query failed", "err", err, "crew", crewID)
-		return
-	}
 	// Everything below that names a time is now per rider (#858), so it waits
 	// for the loop: only the words that are the same for the whole crew are
 	// settled here.
@@ -263,6 +291,10 @@ func (s *Service) sessionMail(ctx context.Context, note sessionNote) {
 		verb = "cancelled a planned session"
 		heading = place + " cancelled a planned session"
 		closing = "Anything else planned is here"
+		// The schedule, not the channel: that is where anything else planned
+		// is, and a channel deleted with its plans is no page at all (#2610).
+		link = s.baseURL + "/crew/" + crewID + "/schedule"
+		action = "Open the crew's schedule"
 	}
 	for _, t := range targets {
 		// The rider's own clock, or the server's when no browser of theirs has

@@ -11,6 +11,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const cancelPrivateChannelPlans = `-- name: CancelPrivateChannelPlans :many
+delete from scheduled_sessions s
+using channels c
+where c.id = $1 and c.private and s.channel_id = c.id
+returning s.workout_name, s.starts_at, s.started_at
+`
+
+type CancelPrivateChannelPlansRow struct {
+	WorkoutName string
+	StartsAt    pgtype.Timestamptz
+	StartedAt   pgtype.Timestamptz
+}
+
+// A private channel's plans are its own (#2610), so they go before it does.
+// The foreign key would null them into plans every member and the crew's
+// shared feed can read. An open channel's plans keep their slot on the
+// crew's schedule, with no channel.
+func (q *Queries) CancelPrivateChannelPlans(ctx context.Context, id pgtype.UUID) ([]CancelPrivateChannelPlansRow, error) {
+	rows, err := q.db.Query(ctx, cancelPrivateChannelPlans, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CancelPrivateChannelPlansRow
+	for rows.Next() {
+		var i CancelPrivateChannelPlansRow
+		if err := rows.Scan(&i.WorkoutName, &i.StartsAt, &i.StartedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createChannel = `-- name: CreateChannel :one
 insert into channels (crew_id, kind, name, position, private)
 select $1, $2, $3,

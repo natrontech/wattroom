@@ -7,6 +7,9 @@ package channels
 import (
 	"log/slog"
 	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -44,12 +47,18 @@ type VoiceEjector interface {
 	Eject(channel, userID string)
 }
 
+// Canceller tells a cancelled plan's riders it is off (notify.Service).
+type Canceller interface {
+	SessionCancelled(crew, channel pgtype.UUID, workoutName string, startsAt time.Time, actor pgtype.UUID)
+}
+
 type Service struct {
-	store *store.Store
-	users UserSource
-	log   *slog.Logger
-	live  Live
-	voice VoiceEjector
+	store    *store.Store
+	users    UserSource
+	log      *slog.Logger
+	live     Live
+	voice    VoiceEjector
+	notifier Canceller
 }
 
 func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
@@ -62,6 +71,9 @@ func (s *Service) SetLive(l Live) { s.live = l }
 
 // SetVoiceEjector wires LiveKit ejection in when AV is configured.
 func (s *Service) SetVoiceEjector(v VoiceEjector) { s.voice = v }
+
+// SetNotifier wires the mail in when it is configured.
+func (s *Service) SetNotifier(n Canceller) { s.notifier = n }
 
 // evict severs somebody's live presence in one voice channel: the socket and
 // the call.
