@@ -1,0 +1,1 @@
+- A chat where riders carry a status line no longer grows a second scrollbar that lets the whole app scroll out of the window.

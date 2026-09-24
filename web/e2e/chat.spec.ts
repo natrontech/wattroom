@@ -147,3 +147,57 @@ test('two channels of one crew do not cross', async ({ page, channels }) => {
 		);
 	}
 });
+
+/**
+ * A long log never scrolls the page (#2735). A status mark's words are
+ * `sr-only` — absolutely positioned — and with nothing positioned above them
+ * they escaped the log to <body>, each at its line's place in the WHOLE
+ * history. The document grew to the log's height and the app could be
+ * scrolled out of the window. Lines ten minutes apart each get a name header,
+ * so every one carries a mark, down to the newest.
+ */
+test('a long log of status-marked lines leaves the page unscrollable', async ({
+	page,
+	channels,
+}) => {
+	await signInAs(page, 'Status Log', '/home');
+	const opened = await channels.open(page, `Status Log ${Date.now() % 100000}`);
+	const me = await page.evaluate(async () => {
+		await fetch('/api/me/status', {
+			method: 'PUT',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ emoji: '🚂', text: 'on the train' }),
+		});
+		return ((await (await fetch('/api/me')).json()) as { id: string }).id;
+	});
+	const lines = 40;
+	const now = Date.now();
+	await page.route(
+		(url) => url.pathname === `/api/channels/${opened.text}/chat`,
+		(route) =>
+			route.fulfill({
+				json: {
+					readAt: now,
+					messages: Array.from({ length: lines }, (_, i) => ({
+						id: `status-log-${i}`,
+						from: 'Status Log',
+						fromId: me,
+						text: `line ${i}`,
+						at: now - (lines - i) * 10 * 60_000,
+					})),
+				},
+			}),
+	);
+	try {
+		await page.goto(textPath(opened));
+		await expect(
+			page.getByTestId('thread-log').getByTestId('status-line'),
+		).toHaveCount(lines);
+		const overflow = await page.evaluate(
+			() => document.scrollingElement!.scrollHeight - window.innerHeight,
+		);
+		expect(overflow, 'px the document scrolls past the window').toBe(0);
+	} finally {
+		await page.evaluate(() => fetch('/api/me/status', { method: 'DELETE' }));
+	}
+});
