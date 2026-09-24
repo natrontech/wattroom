@@ -319,7 +319,7 @@
 				localFailure ??
 				(failure.final
 					? `${failure.message} Its summary stays on this device.`
-					: `${failure.message} This ride is kept on this device — reload to save it from the recovery card.`);
+					: `${failure.message} This ride is kept on this device — Rides offers it back with a Save.`);
 			// The page that would have shown this is gone (a ride ended by
 			// leaving): the one surface left is a toast (errors.md).
 			if (gone) toasts.push(saveStatus, { tone: 'error' });

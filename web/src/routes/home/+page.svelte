@@ -25,6 +25,7 @@
 	import { fetchProgression, type LoadSummary } from '$lib/progression';
 	import Banner from '$lib/components/Banner.svelte';
 	import DesktopNotice from '$lib/components/DesktopNotice.svelte';
+	import RecoveredNotice from '$lib/ride/RecoveredNotice.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import { sessionPath } from '$lib/channel/address';
@@ -275,6 +276,8 @@
 			</Banner>
 		</div>
 	{/if}
+
+	<RecoveredNotice />
 
 	<!-- The desktop app's offer, for a rider in a browser on a desk. What's
 	     new and every update moved to the sidebar's update row (#2588): Home

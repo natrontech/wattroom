@@ -6,6 +6,7 @@
 	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
 	import { describeBlock } from '$lib/workout/block';
 	import Banner from '$lib/components/Banner.svelte';
+	import RecoveredRides from '$lib/ride/RecoveredRides.svelte';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
 	import RampResult from './RampResult.svelte';
 	import { createRideFlags } from '$lib/ride/flags.svelte';
@@ -297,11 +298,11 @@
 				return;
 			}
 			// Under a minute is refused for good; anything else stays in the
-			// buffer and is offered back on /ride with a Save (#794).
+			// buffer and is offered back with a Save (#794) — on Rides (#2616).
 			if (outcome.failure.final) ended?.end();
 			rideStatus = outcome.failure.final
 				? outcome.failure.message
-				: `${outcome.failure.message} The riding is kept on this device — /ride offers it back with a Save.`;
+				: `${outcome.failure.message} The riding is kept on this device — Rides offers it back with a Save.`;
 		});
 	}
 	// The FTP the test produced, onto the ride the test became (#1572) — once,
@@ -422,6 +423,7 @@
 		{#if error}
 			<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 		{/if}
+		<RecoveredRides onError={(message) => (error = message)} />
 
 		<div class="mt-6 flex gap-2">
 			<!-- Never render a button that will fail (errors.md): with no

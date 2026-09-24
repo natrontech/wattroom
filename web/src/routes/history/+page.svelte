@@ -21,6 +21,7 @@
 	import { tick } from 'svelte';
 	import { page } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
+	import RecoveredRides from '$lib/ride/RecoveredRides.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { api } from '$lib/api';
@@ -147,6 +148,10 @@
 
 	// A chart's drilldown (the rides chart above, once /progression's) lands here with ?ride=<id> — ring it.
 	let highlightId = $state<string | null>(null);
+
+	// A ride that never reached the account waits here (#2616): Home and the
+	// channel's banner point at this page, not at /ride's setup screen.
+	let recoverError = $state<string | null>(null);
 
 	async function load() {
 		const res = await api<RidesPage>('/api/rides');
@@ -333,6 +338,17 @@
 			</p>
 		</div>
 	</div>
+
+	{#if recoverError}
+		<div class="mt-6"><Banner tone="error">{recoverError}</Banner></div>
+	{/if}
+	<RecoveredRides
+		onError={(message) => (recoverError = message)}
+		onSaved={(ride) => {
+			device.remove(String(ride.startedAt));
+			void load();
+		}}
+	/>
 
 	<!-- Progression, absorbed (ADR-0020): the charts and the rides they are
 	     drawn from were two pages, and every drilldown was a navigation
@@ -552,8 +568,9 @@
 	{#if device.all.length > 0}
 		<h2 class="eyebrow mt-10">on this device only</h2>
 		<p class="text-muted mt-1 text-xs">
-			Summaries the server did not take — a ride under a minute, or one finished
-			while it was unreachable. They can't move to your account.
+			Summaries the server did not take. A ride under a minute stays here; one
+			that finished while the server was unreachable is offered above, and
+			saving it moves it to your account.
 		</p>
 		<ul class="mt-3 grid gap-2 xl:grid-cols-2">
 			{#each device.all as ride (ride.id)}
