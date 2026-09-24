@@ -34,6 +34,7 @@
 		shelfError = null,
 		onRetryShelf,
 		where,
+		trainer,
 	}: {
 		shelf: ShelfEntry[];
 		/** Why your own workouts are missing from the shelf, when they are. */
@@ -59,6 +60,10 @@
 		 *  its voice channels here. Absent in a voice channel, which plans
 		 *  into itself. */
 		where?: Snippet;
+		/** The card that pairs one, present only while this rider has no
+		 *  trainer (#2594): /ride puts pairing before Start, and a session
+		 *  started unpaired rode its first interval with nothing holding it. */
+		trainer?: Snippet;
 		onClose: () => void;
 	} = $props();
 
@@ -315,6 +320,15 @@
 					     panels under the preview is what made this feel weird. -->
 					<div class="border-ink/5 mt-auto border-t pt-4">
 						{#if mode === 'start' && onStart}
+							{#if trainer}
+								<div class="mb-4">
+									<p class="mb-2 text-sm font-medium">
+										Pair your trainer first — the targets need something to hold
+										them.
+									</p>
+									{@render trainer()}
+								</div>
+							{/if}
 							<div class="flex flex-wrap items-center gap-3">
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium">
@@ -324,11 +338,18 @@
 										A 10 s countdown, then the shared timeline starts.
 									</p>
 								</div>
+								<!-- Still offered unpaired: a coach may lead without
+								     riding. Secondary, so it is a choice rather than
+								     the default. -->
 								<button
 									onclick={() => onStart(picked.workout)}
 									disabled={busy}
-									class="btn btn-accent btn-lg shrink-0"
-									>Start {picked.workout.name}</button
+									class="btn {trainer
+										? 'btn-secondary'
+										: 'btn-accent'} btn-lg shrink-0"
+									>{trainer
+										? 'Start without a trainer'
+										: `Start ${picked.workout.name}`}</button
 								>
 							</div>
 							<button

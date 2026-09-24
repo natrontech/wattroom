@@ -232,17 +232,19 @@
 							: trainerView.button.label}</button
 					>
 				{/if}
-				{#if trainer.onSimulate}
-					<button onclick={trainer.onSimulate} class="btn btn-ghost btn-xs"
-						>Ride simulated</button
-					>
-				{/if}
 			{:else}
 				<p class="text-muted text-xs">
 					Trainer {trainerView.note.toLowerCase()}{trainerView.instead
 						? ` — ${trainerView.instead.toLowerCase()}`
 						: ''}
 				</p>
+			{/if}
+			{#if trainer.onSimulate && trainerView.shape !== 'live' && !elsewhere.trainer}
+				<!-- Outside the pair button's branch, as the full grid has it: a
+				     browser with no Web Bluetooth still simulates (#2594). -->
+				<button onclick={trainer.onSimulate} class="btn btn-ghost btn-xs"
+					>Ride simulated</button
+				>
 			{/if}
 			{#if trainer.error && trainer.state !== 'connecting'}
 				<p class="text-danger text-xs">{trainer.error}</p>

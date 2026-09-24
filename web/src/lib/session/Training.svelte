@@ -146,7 +146,15 @@
 		title={channel.shared?.workoutName ?? ''}
 		note="{channel.riders.length} rider{channel.riders.length === 1 ? '' : 's'}"
 	>
-		{#snippet controls()}<SessionControls compact />{/snippet}
+		{#snippet controls()}
+			<!-- The running header's card, ten seconds early (#2594): a rider
+			     pulled in by someone else's start pairs during the count-in
+			     rather than during the first interval. -->
+			<div class="flex flex-wrap items-center justify-center gap-3">
+				{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
+				<SessionControls compact />
+			</div>
+		{/snippet}
 	</CountdownScreen>
 {:else if device.narrow}
 	<!-- One column, the followed rider's instrument, the crew strip (#412). -->

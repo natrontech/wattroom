@@ -41,6 +41,8 @@
 	import type { createRiders } from '$lib/channel/riders.svelte';
 	import type { Phase } from '$lib/channel/types';
 	import SessionPicker from '$lib/session/SessionPicker.svelte';
+	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
+	import { needsTrainer } from '$lib/session/sensor-status';
 	import TvOverlay from '$lib/session/TvOverlay.svelte';
 	import { createSummary } from '$lib/session/summary.svelte';
 
@@ -73,6 +75,10 @@
 
 	const live = $derived(connection.live);
 	const recording = $derived(connection.recording);
+	// The picker asks for a trainer before Start while there is none (#2594).
+	const unpaired = $derived(
+		needsTrainer(connection.ride.trainer, live.pairing),
+	);
 	const riders = $derived(roster.riders);
 	const you = $derived(roster.you);
 
@@ -178,9 +184,12 @@
 					live.control('game', undefined, id);
 					layers.setup.open = false;
 				}}
+		trainer={unpaired ? trainerCard : undefined}
 		onClose={() => (layers.setup.open = false)}
 	/>
 {/if}
+
+{#snippet trainerCard()}<TrainerOverview compact />{/snippet}
 
 {#if shared?.phase === 'done' && summary.ready && !summary.dismissed}
 	<!-- The summary has to call out (#359). It used to render at the bottom of
