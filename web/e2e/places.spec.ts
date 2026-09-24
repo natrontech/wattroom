@@ -20,7 +20,11 @@ test('every place in a crew renders, and none of them throws', async ({
 	const errors: string[] = [];
 	page.on('pageerror', (error) => errors.push(error.message.split('\n')[0]));
 
-	await signInAs(page, 'Places Walker', '/home');
+	// A crew of its own per repeat: the walk visits every channel in its crew,
+	// and a parallel repeat's teardown deletes the channels it opened (#2591).
+	// A letter, because a digit folds a dev rider into Dev Rider.
+	const repeat = String.fromCharCode(65 + (test.info().repeatEachIndex % 26));
+	await signInAs(page, `Places Walker ${repeat}`, '/home');
 	const opened = await channels.open(
 		page,
 		`Places Walk ${Date.now() % 100000}`,
@@ -31,9 +35,13 @@ test('every place in a crew renders, and none of them throws', async ({
 	// /api/crews/live answers, so reading it the instant the page lands finds
 	// the pages and nothing else (#960). The voice channel's row is the one
 	// link whose arrival says the channels are there; `evaluateAll` has no
-	// auto-waiting of its own to hold the read back.
+	// auto-waiting of its own to hold the read back. That read is the slowest
+	// thing on the page under load, so it gets the budget `channels.open`
+	// gives a landing (#2591).
 	const nav = page.locator('nav[aria-label="crews and channels"]');
-	await expect(nav.locator(`a[href="${voicePath(opened)}"]`)).toBeVisible();
+	await expect(nav.locator(`a[href="${voicePath(opened)}"]`)).toBeVisible({
+		timeout: 15_000,
+	});
 
 	// Everything under the crew, which is every place but its Home — Home is
 	// where the walk starts, and the walk is the places beyond it.
@@ -58,6 +66,53 @@ test('every place in a crew renders, and none of them throws', async ({
 	expect(errors, `console errors while walking ${places.join(', ')}`).toEqual(
 		[],
 	);
+});
+
+/**
+ * A lobby ping that lands while a click is loading its page never cancels the
+ * click (#2591). The crew's Workouts page re-read itself with invalidateAll()
+ * on every ping, and SvelteKit hands an invalidation the navigation token: the
+ * click's load finished into nothing and the rider stayed on Workouts. The
+ * walk above hit it at random; this holds the Board's read until a ping has
+ * landed.
+ */
+test('a lobby ping during a click does not keep the rider where they were', async ({
+	page,
+	channels,
+}) => {
+	await signInAs(page, 'Ping Clicker', '/home');
+	const opened = await channels.open(page, `Ping Click ${Date.now() % 100000}`);
+	await page.goto(`/crew/${opened.crew}/workouts`);
+	const board = `/crew/${opened.crew}/board`;
+	const row = page
+		.locator('nav[aria-label="crews and channels"]')
+		.locator(`a[href="${board}"]`);
+	await expect(row).toBeVisible();
+
+	let release = () => {};
+	const held = new Promise<void>((resolve) => (release = resolve));
+	const announcement = `**/api/crews/${opened.crew}/announcement`;
+	await page.route(announcement, async (route) => {
+		await held;
+		await route.continue();
+	});
+	const loading = page.waitForRequest(announcement);
+	await row.click();
+	await loading;
+
+	// A ping: the tab coming back re-reads the crew list, which bumps the
+	// version every page listens to. The sidebar's live read is the proof the
+	// bump reached the pages — they flush together.
+	const pinged = page.waitForRequest(
+		(req) => new URL(req.url()).pathname === '/api/crews/live',
+	);
+	await page.evaluate(() =>
+		document.dispatchEvent(new Event('visibilitychange')),
+	);
+	await pinged;
+	release();
+
+	await expect(page).toHaveURL(new RegExp(`${board}$`));
 });
 
 /**
