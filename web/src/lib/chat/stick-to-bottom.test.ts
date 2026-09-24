@@ -100,6 +100,20 @@ describe('stickToBottom (#291)', () => {
 		expect(node.scrollTop).toBe(500);
 	});
 
+	it('counts a resize as no new line for a reader scrolled back', () => {
+		const { node, box } = log(400);
+		stickToBottom(node);
+		node.scrollTop = 0;
+		const heard: number[] = [];
+		node.addEventListener('wattroom-follow', (e) =>
+			heard.push((e as CustomEvent<{ missed: number }>).detail.missed),
+		);
+		box.content = 420;
+		resize();
+		expect(node.scrollTop).toBe(0);
+		expect(heard).toEqual([]);
+	});
+
 	it('stops following once detached', async () => {
 		const { node, box } = log(400);
 		stickToBottom(node)();

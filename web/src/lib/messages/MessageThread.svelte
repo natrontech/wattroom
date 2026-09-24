@@ -11,7 +11,6 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import { type Snippet } from 'svelte';
-	import {} from '$app/navigation';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { people } from '$lib/people.svelte';
 	import { friends } from '$lib/friends/friends.svelte';
@@ -20,11 +19,11 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
-	import type {} from '$lib/chat/gifs';
 	import MessageText from '$lib/chat/MessageText.svelte';
 	import Composer from '$lib/messages/Composer.svelte';
+	import LineActions from '$lib/messages/LineActions.svelte';
+	import LineEditor from '$lib/messages/LineEditor.svelte';
 	import Reactions from '$lib/chat/Reactions.svelte';
-	import {} from '$lib/chat/pending-image.svelte';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { account } from '$lib/account.svelte';
 	import { goto } from '$app/navigation';
@@ -35,12 +34,11 @@
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
-	import { formatTime } from '$lib/format';
+	import { formatDay, formatStamp, formatTime, sameDay } from '$lib/format';
 	import { mentionsMe } from '$lib/messages/mention';
 	import type { ThreadMessage, ThreadSource } from '$lib/messages/thread-types';
 	import { confirm } from '$lib/confirm.svelte';
 	import { copyText } from '$lib/copy';
-	import { MaxMessageChars } from '$lib/protocol';
 	import { toasts } from '$lib/toast.svelte';
 
 	let {
@@ -106,47 +104,21 @@
 
 	let reactingTo = $state<string | null>(null);
 
-	// Editing a sent line (#865): the sender's own, text only. One at a time
-	// — the draft lives here, not per message, so opening a second editor
-	// cannot leave a first one half-typed somewhere off screen.
+	// Editing a sent line (#865): the sender's own, text only, one at a time —
+	// LineEditor keeps the draft and goes when this moves on.
 	let editingId = $state<string | null>(null);
-	let editDraft = $state('');
-	let editError = $state<string | null>(null);
-	let savingEdit = $state(false);
 
 	const canEdit = (message: ThreadMessage) =>
 		!!source.edit && !!message.id && message.fromId === me && !!message.text;
 
-	function startEdit(message: ThreadMessage) {
-		editingId = message.id ?? null;
-		editDraft = message.text;
-		editError = null;
-	}
+	const startEdit = (message: ThreadMessage) =>
+		(editingId = message.id ?? null);
 
-	function cancelEdit() {
-		editingId = null;
-		editDraft = '';
-		editError = null;
-	}
-
-	async function saveEdit(id: string, original: string) {
-		const text = editDraft.trim();
-		// Nothing changed is not an edit — closing is the honest answer, and
-		// it spares the channel an edit that changed nothing.
-		if (text === original.trim()) return cancelEdit();
-		if (!text) {
-			editError = 'An edited message still has to say something.';
-			return;
-		}
-		savingEdit = true;
-		const refused = await source.edit?.(id, text);
-		savingEdit = false;
-		if (refused) {
-			editError = refused; // the words stay in the box, like a refused send
-			return;
-		}
-		cancelEdit();
-	}
+	const canDelete = (message: ThreadMessage) =>
+		!!source.remove &&
+		!!message.id &&
+		!message.deletedAt &&
+		!!source.canRemove?.(message);
 	async function removeLine(id: string, mine: boolean, from: string) {
 		const yes = await confirm({
 			title: mine ? 'Delete your message?' : `Delete ${from}'s message?`,
@@ -167,12 +139,6 @@
 		if (refused) toasts.push(refused, { tone: 'error' });
 	}
 
-	// The shared copy (#2182): the await and the catch this one already had,
-	// now where every other copy in the app can reach them.
-
-	// Touch and long-press have no hover strip to reveal Copy and React, and a
-	// rider three metres from the screen cannot hit a 13px icon anyway (#663).
-	// Same actions, same handlers — the hover strip stays as the shortcut.
 	// The log's own scroll state, told by stickToBottom (#1765).
 	let log = $state<HTMLElement | null>(null);
 	let pinned = $state(true);
@@ -248,7 +214,7 @@
 		// Destructive, so last and after a separator (ux.md). It asks before
 		// it acts: a hard delete cannot be undone, which is errors.md's own
 		// test for when a confirm beats an undo toast (#1493).
-		if (source.remove && message.id && source.canRemove?.(message)) {
+		if (canDelete(message) && message.id) {
 			const id = message.id;
 			const mine = message.fromId === account.me?.id;
 			items.push('separator', {
@@ -294,11 +260,24 @@
 					{@const message = entry.message}
 					{@const prev = timeline[i - 1]}
 					{@const startsNew = !!message.id && message.id === firstNewId}
+					{@const startsDay = !prev || !sameDay(prev.at, message.at)}
 					{@const grouped =
 						!startsNew &&
+						!startsDay &&
 						prev?.message.from === message.from &&
 						message.at - prev.at < GROUP_GAP_MS}
 					{@const mention = mentionsMe(message.text, account.me?.displayName)}
+					{#if startsDay}
+						<!-- Which day a line is from (#2642): the stamp says only the
+						     clock, and a log reaches back days. -->
+						<div class="flex items-center gap-3 py-1" role="separator">
+							<span class="bg-ink/10 h-px flex-1"></span>
+							<span class="text-muted-dim text-[11px] font-medium"
+								>{formatDay(message.at)}</span
+							>
+							<span class="bg-ink/10 h-px flex-1"></span>
+						</div>
+					{/if}
 					{#if startsNew}
 						<div class="flex items-center gap-3 py-1" role="separator">
 							<span class="bg-neon/60 h-px flex-1"></span>
@@ -341,56 +320,31 @@
 						<span class="min-w-0 flex-1">
 							{#if !grouped}
 								<span class="flex items-baseline gap-2">
-									<span class="text-sm font-medium">{message.from}</span>
-									<span class="text-muted-dim num text-[10px]"
-										>{formatTime(message.at)}</span
+									<span class="min-w-0 truncate text-sm font-medium"
+										>{message.from}</span
+									>
+									<time
+										datetime={new Date(message.at).toISOString()}
+										title={formatStamp(message.at)}
+										class="text-muted-dim num shrink-0 text-[10px]"
+										>{formatTime(message.at)}</time
 									>
 								</span>
 							{/if}
-							<!-- A line that names you gets the bar — there is no server
-							     mention yet, this is "@" plus your first name. -->
 							{#if message.id && editingId === message.id}
 								{@const id = message.id}
-								{@const original = message.text}
-								<!-- The line becomes its own box: no modal for a typo, and
-								     the message stays where it is on screen while you fix
-								     it. Escape gets you out, Enter saves. -->
-								<form
-									class="mt-0.5"
-									onsubmit={(e) => {
-										e.preventDefault();
-										void saveEdit(id, original);
-									}}
-								>
-									<!-- svelte-ignore a11y_autofocus -->
-									<input
-										bind:value={editDraft}
-										autofocus
-										maxlength={MaxMessageChars}
-										onkeydown={(e) => {
-											if (e.key === 'Escape') cancelEdit();
-										}}
-										class="input w-full text-sm"
-										aria-label="edit your message"
-									/>
-									{#if editError}
-										<p class="text-danger mt-1 text-[11px]">{editError}</p>
-									{/if}
-									<span class="mt-1 flex items-center gap-2">
-										<button disabled={savingEdit} class="btn btn-primary btn-xs"
-											>Save</button
-										>
-										<button
-											type="button"
-											onclick={cancelEdit}
-											class="btn btn-ghost btn-xs">Cancel</button
-										>
-										<span class="text-muted-dim text-[10px]">{editHint}</span>
-									</span>
-								</form>
+								<LineEditor
+									original={message.text}
+									hint={editHint}
+									save={async (text) => (await source.edit?.(id, text)) ?? null}
+									onDone={() => (editingId = null)}
+								/>
 							{:else}
+								<!-- A line that names you gets the bar — there is no server
+								     mention yet, this is "@" plus your first name. Pre-wrap
+								     (#2642): a line break the rider typed is theirs to keep. -->
 								<span
-									class="text-ink/85 block text-sm wrap-anywhere {mention
+									class="text-ink/85 block text-sm wrap-anywhere whitespace-pre-wrap {mention
 										? 'border-neon/60 bg-neon/5 -ml-2 rounded border-l-2 py-0.5 pl-2'
 										: ''}"
 								>
@@ -420,9 +374,8 @@
 									{/if}
 									{#if message.imageId}
 										<!-- The picture's own menu swallows the row's right-click
-										     (#1817): hand the message's down, or a photo has no react,
-										     no copy and — on a phone, where the hover strip is hidden —
-										     no way in at all. -->
+										     (#1817): hand the message's down, or a photo has no
+										     react and no copy. -->
 										<ChatImage
 											src={imageSrc(message.imageId)}
 											alt="Sent by {message.from}"
@@ -443,32 +396,23 @@
 								/>
 							{/if}
 						</span>
-						<span
-							class="flex shrink-0 gap-1 self-start opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 pointer-coarse:hidden"
-						>
-							{#if canEdit(message) && editingId !== message.id}
-								<button
-									onclick={() => startEdit(message)}
-									class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
-									aria-label="edit message"><Pencil size={13} /></button
-								>
-							{/if}
-							{#if message.text}
-								<button
-									onclick={() => void copyText(message.text, 'Message copied.')}
-									class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
-									aria-label="copy message"><Copy size={13} /></button
-								>
-							{/if}
-							{#if message.id && source.react}
-								{@const id = message.id}
-								<button
-									onclick={() => (reactingTo = reactingTo === id ? null : id)}
-									class="icon-btn text-muted-dim hover:text-ink h-6 w-6"
-									aria-label="react"><SmilePlus size={14} /></button
-								>
-							{/if}
-						</span>
+						{#if !message.deletedAt}
+							{@const id = message.id}
+							<LineActions
+								text={message.text}
+								onEdit={canEdit(message) && editingId !== id
+									? () => startEdit(message)
+									: undefined}
+								onReact={id && source.react
+									? () => (reactingTo = reactingTo === id ? null : id)
+									: undefined}
+								onDelete={canDelete(message) && id
+									? () =>
+											void removeLine(id, message.fromId === me, message.from)
+									: undefined}
+								menu={() => messageMenu(message)}
+							/>
+						{/if}
 					</div>
 				{/each}
 			{/if}
