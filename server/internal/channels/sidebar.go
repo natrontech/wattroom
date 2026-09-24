@@ -2,11 +2,8 @@ package channels
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -18,9 +15,8 @@ import (
 // The sidebar's one fetch (#2444, ADR-0058 amending ADR-0010's radar): for
 // every crew the rider is in, its channels as they may enter them — who is in
 // each voice channel and what is running there, how much is unread in each
-// text channel — and the crew's next plan. Membership-filtered all the way
-// down: a private channel that does not name the rider is absent, and so are
-// its people and its plan.
+// text channel. Membership-filtered all the way down: a private channel that
+// does not name the rider is absent, and so are its people.
 //
 // At GET /api/crews/live rather than the /api/live the issue names: that path
 // is the landing page's public online count (main.go), which answers anyone.
@@ -32,7 +28,6 @@ type liveCrewJSON struct {
 	// The caller's own role: owner | admin | member.
 	Role     string            `json:"role"`
 	Channels []liveChannelJSON `json:"channels"`
-	Next     *livePlanJSON     `json:"next,omitempty"`
 }
 
 type liveChannelJSON struct {
@@ -69,15 +64,6 @@ type lastLineJSON struct {
 	// The line was an image (#279) — it has no text to preview.
 	HasImage bool  `json:"hasImage,omitempty"`
 	At       int64 `json:"at"`
-}
-
-type livePlanJSON struct {
-	ID          string `json:"id"`
-	WorkoutName string `json:"workoutName"`
-	StartsAt    string `json:"startsAt"`
-	// The voice channel it will run in, when it names one.
-	ChannelID   string `json:"channelId,omitempty"`
-	ChannelName string `json:"channelName,omitempty"`
 }
 
 func (s *Service) handleCrewsLive(w http.ResponseWriter, r *http.Request) {
@@ -150,21 +136,6 @@ func (s *Service) liveCrew(ctx context.Context, crewID, userID pgtype.UUID, role
 			}
 		}
 		out.Channels = append(out.Channels, entry)
-	}
-	plan, err := s.store.Queries.NextCrewPlan(ctx, db.NextCrewPlanParams{CrewID: crewID, Viewer: userID})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return out, nil
-	}
-	if err != nil {
-		return out, err
-	}
-	out.Next = &livePlanJSON{
-		ID: store.UUIDString(plan.ID), WorkoutName: plan.WorkoutName,
-		StartsAt:  plan.StartsAt.Time.Format(time.RFC3339),
-		ChannelID: store.UUIDString(plan.ChannelID), ChannelName: plan.ChannelName,
-	}
-	if !plan.ChannelID.Valid {
-		out.Next.ChannelID = ""
 	}
 	return out, nil
 }

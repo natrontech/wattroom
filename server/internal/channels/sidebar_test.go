@@ -41,7 +41,7 @@ func channelsOf(crew map[string]any) map[string]map[string]any {
 }
 
 // A private channel the rider is not named into is absent — its name, its
-// people, its unread count and its plan (#2444's bar). Presence never pierces
+// people and its unread count (#2444's bar). Presence never pierces
 // a gate the page itself would refuse.
 func TestAPrivateChannelNobodyNamedYouIntoIsNotInYourSidebar(t *testing.T) {
 	h := setup(t)
@@ -51,12 +51,6 @@ func TestAPrivateChannelNobodyNamedYouIntoIsNotInYourSidebar(t *testing.T) {
 	coaches := h.create(t, "voice", "Coaches", true)
 	live.present[coaches] = protocol.ChannelPresence{Riders: []string{"dave"}, RiderIDs: []string{store.UUIDString(h.users.ByToken["dave"].ID)}}
 	live.present[open] = protocol.ChannelPresence{Riders: []string{"alice"}, RiderIDs: []string{store.UUIDString(h.users.ByToken["alice"].ID)}, Voice: []string{"alice"}}
-	if _, err := h.store.Pool.Exec(t.Context(),
-		`insert into scheduled_sessions (crew_id, channel_id, workout_name, workout_json, starts_at, created_by)
-		 values ($1, $2, 'Coaches only', '{}', $3, $4)`,
-		h.crew, coaches, time.Now().Add(time.Hour), h.users.ByToken["alice"].ID); err != nil {
-		t.Fatalf("plan: %v", err)
-	}
 
 	bob := h.liveCrew(t, "bob")
 	if bob == nil {
@@ -66,9 +60,6 @@ func TestAPrivateChannelNobodyNamedYouIntoIsNotInYourSidebar(t *testing.T) {
 	if _, ok := seen["Coaches"]; ok {
 		t.Error("bob's sidebar names a private channel nobody named him into")
 	}
-	if bob["next"] != nil {
-		t.Errorf("bob's sidebar shows a plan in a private channel he may not enter: %v", bob["next"])
-	}
 	occupants, _ := seen["Open ride"]["occupants"].([]any)
 	if len(occupants) != 1 {
 		t.Fatalf("the open channel's occupants = %v, want alice", occupants)
@@ -77,13 +68,10 @@ func TestAPrivateChannelNobodyNamedYouIntoIsNotInYourSidebar(t *testing.T) {
 		t.Errorf("the occupant reads %v, want alice in voice", who)
 	}
 
-	// An admin enters every channel, and sees its plan.
+	// An admin enters every channel.
 	dave := h.liveCrew(t, "dave")
 	if _, ok := channelsOf(dave)["Coaches"]; !ok {
 		t.Error("an admin's sidebar is missing a private channel")
-	}
-	if next, _ := dave["next"].(map[string]any); next["workoutName"] != "Coaches only" {
-		t.Errorf("the admin's next plan = %v", dave["next"])
 	}
 	// Outside the crew, or banned from it: no entry at all.
 	for _, who := range []string{"carol", "erin"} {
