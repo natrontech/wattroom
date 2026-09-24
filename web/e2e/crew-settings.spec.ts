@@ -107,7 +107,7 @@ test('the owner keeps the crew channels from its settings', async ({
 	).toBeDisabled();
 	await expect(
 		a.getByText(
-			`A crew holds at most ${MaxCrewTextChannels} text channels — delete one to make room.`,
+			`A crew holds at most ${MaxCrewTextChannels} chats — delete one to make room.`,
 		),
 	).toBeVisible();
 

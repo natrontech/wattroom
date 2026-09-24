@@ -164,7 +164,7 @@
 		<div class="mb-4 px-16 text-center md:px-0">
 			<p class="font-display text-base font-bold">{channel.name}</p>
 			<p class="text-muted mt-0.5 text-xs">
-				Nothing said here yet. Say something — the channel keeps its last 500
+				Nothing said here yet. Say something — the chat keeps its last 500
 				lines, and the crew reads them whenever they look in.
 			</p>
 		</div>
