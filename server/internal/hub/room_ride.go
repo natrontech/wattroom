@@ -276,7 +276,7 @@ func (rm *room) control(c protocol.Control, rider protocol.Rider, now time.Time)
 		return code, message
 	}
 	if c.Action == "handoff" {
-		return rm.handOffLocked(rider.ID, c.Rider)
+		return rm.handOffLocked(rider.ID, c.Rider, now)
 	}
 	if c.Action == "pick" && !rm.session.open() {
 		rm.session.begin(uuid.NewString(), rider.ID, rider.Name)
@@ -344,11 +344,35 @@ func (rm *room) refusalLocked(action string, rider protocol.Rider) (code, messag
 // handOffLocked gives the session to someone in the channel (#2438): a light,
 // live action, never a crew-role change. Caller holds rm.mu and has checked
 // that from is the coach.
-func (rm *room) handOffLocked(from, to string) (code, message string) {
+func (rm *room) handOffLocked(from, to string, now time.Time) (code, message string) {
 	name := rm.nameOfLocked(to)
 	if to == from || name == "" {
 		return "invalid_request", "Hand the session to someone in the channel."
 	}
+	rm.events.add(handOffLine("handedOff", rm.session.coachName, name, now), now)
 	rm.session.coach, rm.session.coachName = to, name
 	return "", ""
+}
+
+// passSessionLocked hands on a session whose coach has been gone past the
+// grace window (#2636, decided 2026-09-24): to whoever has ridden in it
+// longest — the first in `seenOrder` who is still here and still pedalling.
+// Left with an absent coach, nobody could pause, resume or hand it on, and a
+// paused one would hold the channel for good. With nobody riding it stays
+// where it is, and a crew admin's End is the way out (#2598). Caller holds
+// rm.mu.
+func (rm *room) passSessionLocked(now time.Time) {
+	for _, id := range rm.seenOrder {
+		at, pedalling := rm.lastWatts[id]
+		if id == rm.session.coach || !pedalling || now.Sub(at) > ridingWindow {
+			continue
+		}
+		name := rm.nameOfLocked(id)
+		if name == "" {
+			continue // rode, and has left too
+		}
+		rm.events.add(handOffLine("passedOn", rm.session.coachName, name, now), now)
+		rm.session.coach, rm.session.coachName = id, name
+		return
+	}
 }

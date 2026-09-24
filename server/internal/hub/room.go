@@ -291,6 +291,9 @@ func (rm *room) sayDepartedLocked(now time.Time) {
 			rm.events.add(presenceLine("left", name, now), now)
 			delete(rm.departedNames, riderID)
 		}
+		if riderID == rm.session.coach && rm.session.open() {
+			rm.passSessionLocked(now)
+		}
 	}
 }
 

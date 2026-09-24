@@ -85,6 +85,11 @@ export function eventText(event: ChannelEvent): string {
 			return `${subject} is starting`;
 		case 'ended':
 			return `${subject} ended`;
+		// A change of coach (#2636): the actor had the session, the subject has it.
+		case 'handedOff':
+			return `${event.actor} handed the session to ${event.subject}`;
+		case 'passedOn':
+			return `${event.actor} left — ${event.subject} is coaching now`;
 		// A game's end (#1575): the subject is the mode's id, labelled here.
 		case 'won':
 			return `${event.actor} won ${gameMode(event.subject ?? '')?.label ?? subject}`;
