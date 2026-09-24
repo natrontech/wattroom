@@ -66,7 +66,7 @@
 				</p>
 			{/if}
 			<p class="text-muted mt-[6vh] text-[2vh]">
-				Waiting for the coach to start a session.
+				No session yet — start one from the laptop.
 			</p>
 		</div>
 	{:else}

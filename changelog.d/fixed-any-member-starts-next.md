@@ -1,0 +1,1 @@
+- When a session in a voice channel ends, anyone still in the channel can start the next one. Until now only the rider who had coached the last session was offered "Start a session", and the coach crown stayed on them between sessions.
