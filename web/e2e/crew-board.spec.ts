@@ -135,3 +135,93 @@ test('crew Workouts teaches what gathers there', async ({ page, channels }) => {
 	await expect(plan).toHaveCount(1);
 	await expect(plan).toHaveAttribute('href', `/crew/${crew}/schedule?plan`);
 });
+
+/**
+ * Plan it again works like the Schedule's picker (#2628): it plans, so it
+ * says so; the time starts at the next hour rather than empty; a crew may
+ * plan with no channel yet; and channels that could not be read are the
+ * page failing, not a crew with none. A ridden workout comes from a finished
+ * session, so the crew's recap is served here — the plan itself is real.
+ */
+test('crew Workouts plans a ridden workout again like the Schedule does', async ({
+	page,
+	channels,
+}) => {
+	await signInAs(page, 'Crew Plans Again', '/home');
+	const { crew } = await channels.open(
+		page,
+		`Plans Again ${Date.now() % 100000}`,
+	);
+	const name = `Openers ${Date.now() % 100000}`;
+	const ended = Date.now() - 24 * 3600_000;
+	await page.route(`**/api/crews/${crew}/recaps*`, (route) =>
+		route.fulfill({
+			json: {
+				recaps: [
+					{
+						id: 'recap-1',
+						workout: name,
+						startedAt: ended - 3600_000,
+						endedAt: ended,
+						riders: [
+							{
+								id: 'peer',
+								rider: 'Kim',
+								from: ended - 3600_000,
+								to: ended,
+								rode: true,
+							},
+						],
+					},
+				],
+			},
+		}),
+	);
+	// Where the definition comes from: the rider's own shelf.
+	const shelved = await page.evaluate(
+		async (name) =>
+			(
+				await fetch('/api/workouts', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						workout: {
+							name,
+							steps: [{ type: 'steady', seconds: 600, target: 0.75 }],
+						},
+					}),
+				})
+			).status,
+		name,
+	);
+	expect([200, 201]).toContain(shelved);
+
+	await page.goto(`/crew/${crew}/workouts`);
+	const again = page.getByRole('button', { name: 'Plan it again' });
+	await expect(again).toBeEnabled({ timeout: 15_000 });
+	await again.click();
+	const where = page.getByRole('combobox');
+	await expect(
+		where.locator('option', { hasText: 'No channel yet' }),
+	).toHaveCount(1);
+	await where.selectOption('');
+	const plan = page.getByRole('button', { name: 'Plan it', exact: true });
+	await expect(plan).toBeEnabled();
+	await plan.click();
+	await expect(page.getByText(`${name} is planned for`)).toBeVisible();
+
+	// Channels that could not be read fail the page, with its Retry.
+	await page.route(`**/api/crews/${crew}/channels*`, (route) =>
+		route.fulfill({
+			status: 500,
+			json: {
+				error: 'internal_error',
+				message: 'The channels are unavailable.',
+			},
+		}),
+	);
+	await page.reload();
+	await expect(page.getByText('The channels are unavailable.')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+	await page.unrouteAll({ behavior: 'ignoreErrors' });
+});
