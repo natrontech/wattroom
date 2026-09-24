@@ -14,6 +14,7 @@
 	import { people } from '$lib/people.svelte';
 	import { presence } from '$lib/presence.svelte';
 	import { fetchCrew } from '$lib/crew';
+	import { hoverCard } from '$lib/rider-card/rider-card.svelte';
 	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import {
@@ -108,6 +109,7 @@
 				     people column offers the same page on click. -->
 				<a
 					href={conn.address.home}
+					{@attach hoverCard(() => rider.id)}
 					title="{rider.name} · back to the Lounge"
 					{@attach contextMenu(() =>
 						personMenu(rider.id, goto, {
