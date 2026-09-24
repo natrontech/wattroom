@@ -28,7 +28,7 @@ returning id, created_at;
 -- names nobody's way in and
 -- is shown to nobody but those two — the narrow side. The 90 days are stated
 -- here as well as pruned, so a sweep that is running late does not widen it.
-select r.id, r.workout, r.started_at, r.ended_at, r.riders,
+select r.id, r.workout, r.started_at, r.ended_at, r.riders, r.session_id, r.channel_id,
        (select ride.id from rides ride
          where ride.user_id = sqlc.arg(viewer)
            and ride.crew_id = r.crew_id
@@ -38,7 +38,7 @@ select r.id, r.workout, r.started_at, r.ended_at, r.riders,
          order by ride.started_at
          limit 1) as my_ride_id
 from (
-    select s.id, s.crew_id, s.channel_id, s.workout, s.started_at, s.ended_at, s.riders
+    select s.id, s.crew_id, s.channel_id, s.session_id, s.workout, s.started_at, s.ended_at, s.riders
     from session_recaps s
     left join channels ch on ch.id = s.channel_id
     where s.crew_id = sqlc.arg(crew_id)

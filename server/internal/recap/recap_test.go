@@ -112,6 +112,12 @@ func TestSaveRecapKeysTheSession(t *testing.T) {
 	if crewID != crew.ID || channelID != channel.ID {
 		t.Errorf("the recap is crew %v channel %v, want %v and %v", crewID, channelID, crew.ID, channel.ID)
 	}
+	// And the list says both (#2600): an ended session's address finds its
+	// voice channel through them.
+	if got := w.list(t, "alice"); got.SessionID != session || got.ChannelID != store.UUIDString(channel.ID) {
+		t.Errorf("the listed recap names session %q in channel %q, want %q in %q",
+			got.SessionID, got.ChannelID, session, store.UUIDString(channel.ID))
+	}
 }
 
 // ride saves one ride in the crew's voice channel for a rider, started at `at`.

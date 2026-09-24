@@ -72,7 +72,7 @@ func (q *Queries) ExportUserRecaps(ctx context.Context, dollar_1 string) ([]Expo
 }
 
 const listCrewRecaps = `-- name: ListCrewRecaps :many
-select r.id, r.workout, r.started_at, r.ended_at, r.riders,
+select r.id, r.workout, r.started_at, r.ended_at, r.riders, r.session_id, r.channel_id,
        (select ride.id from rides ride
          where ride.user_id = $1
            and ride.crew_id = r.crew_id
@@ -82,7 +82,7 @@ select r.id, r.workout, r.started_at, r.ended_at, r.riders,
          order by ride.started_at
          limit 1) as my_ride_id
 from (
-    select s.id, s.crew_id, s.channel_id, s.workout, s.started_at, s.ended_at, s.riders
+    select s.id, s.crew_id, s.channel_id, s.session_id, s.workout, s.started_at, s.ended_at, s.riders
     from session_recaps s
     left join channels ch on ch.id = s.channel_id
     where s.crew_id = $2
@@ -111,6 +111,8 @@ type ListCrewRecapsRow struct {
 	StartedAt pgtype.Timestamptz
 	EndedAt   pgtype.Timestamptz
 	Riders    []byte
+	SessionID pgtype.UUID
+	ChannelID pgtype.UUID
 	MyRideID  pgtype.UUID
 }
 
@@ -145,6 +147,8 @@ func (q *Queries) ListCrewRecaps(ctx context.Context, arg ListCrewRecapsParams) 
 			&i.StartedAt,
 			&i.EndedAt,
 			&i.Riders,
+			&i.SessionID,
+			&i.ChannelID,
 			&i.MyRideID,
 		); err != nil {
 			return nil, err

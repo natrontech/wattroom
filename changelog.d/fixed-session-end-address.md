@@ -1,0 +1,1 @@
+- When a session ends, the page leaves the session's address and takes you back to its voice channel, where the call still is. Reopening an ended session's link, or reloading it, lands in that voice channel too instead of on a dead-end "This session has ended" page. The ride screen's ended state shows the session's recap card, and the summary's button names the channel.

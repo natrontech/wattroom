@@ -624,6 +624,11 @@ type SessionRecap struct {
 	// nowhere. Empty for the coach without a trainer, and on the tick that
 	// posts the recap, where the ride has not been written yet.
 	RideID string `json:"rideId,omitempty"`
+	// The session it recaps and the voice channel it ran in (#2600), where
+	// the recap row keeps them: an ended session's address finds its way
+	// back to the channel through these. Empty on a recap from before M9.
+	SessionID string `json:"sessionId,omitempty"`
+	ChannelID string `json:"channelId,omitempty"`
 }
 
 // ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's

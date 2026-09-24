@@ -44,7 +44,7 @@
 					href="/crew/{crewId}/members"
 					class="underline">Members</a
 				>
-				page, and your ride is in
+				page, and if you rode it, your ride is in
 				<a href="/history" class="underline">Rides</a>.
 			</p>
 			<a href="/crew/{crewId}" class="btn btn-secondary mt-4"
