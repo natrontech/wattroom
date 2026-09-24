@@ -227,10 +227,25 @@ func (s *Service) handleUpdateMe(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if s.live != nil {
+		s.live.SetProfile(store.UUIDString(updated.ID), updated.DisplayName,
+			int(updated.FtpWatts), int(updated.WeightKg))
+	}
 	// The client replaces its whole `me` with this response — it has to be as
 	// complete as GET /api/me, or providers/AV/FTP-suggestion/XP vanish on save.
 	httpx.WriteJSON(w, http.StatusOK, s.fullMe(r.Context(), updated))
 }
+
+// LiveProfile is the hub, as far as a profile save reaches it: a rider
+// standing in a voice channel carries their FTP, weight and name on every
+// open socket, captured when it opened. Without the push, a mid-session FTP
+// change is scored against the old one until they reconnect.
+type LiveProfile interface {
+	SetProfile(userID, name string, ftpWatts, weightKg int)
+}
+
+// SetLive wires the hub in after construction, the same shape SetMailer uses.
+func (s *Service) SetLive(l LiveProfile) { s.live = l }
 
 // handleSetAvatar takes the rider's own picture (#1353): the same trust
 // boundary as a pasted chat image and a crew's picture — bounded read, type
