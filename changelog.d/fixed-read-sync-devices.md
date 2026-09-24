@@ -1,1 +1,0 @@
-- Reading a conversation on one device now clears its unread mark on your others: a text channel's count goes at once, a direct message's dot within ten seconds. Direct messages used to remember what you read per browser; the first start after upgrading counts every existing conversation as read.

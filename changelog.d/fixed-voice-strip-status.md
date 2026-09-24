@@ -1,1 +1,0 @@
-- The voice strip shows your crewmates' statuses and keeps them current while you're on another page, and the tiles in a voice channel show them too.
