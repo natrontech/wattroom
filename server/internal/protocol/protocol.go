@@ -197,6 +197,10 @@ type ChatLine struct {
 	// The client renders "edited" off this, so it is a fact about the line
 	// and not a separate event to remember.
 	EditedAt int64 `json:"editedAt,omitempty"`
+	// When a temporary line runs out (#2644), server millis; 0 for a line
+	// that stays. Readers drop it by their own clock at that moment — the
+	// server stops serving it then and sweeps it within the minute.
+	ExpiresAt int64 `json:"expiresAt,omitempty"`
 }
 
 // ChatEdit is one line rewritten by its author (#865): the new text lands

@@ -71,6 +71,8 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 		// side is told at all — a poll merges by id and can never say "gone" —
 		// and the words and the picture left with the delete.
 		DeletedAt int64 `json:"deletedAt,omitempty"`
+		// When a temporary line runs out (#2644); absent for one that stays.
+		ExpiresAt int64 `json:"expiresAt,omitempty"`
 	}
 	out := make([]messageJSON, 0, len(rows))
 	for _, row := range rows {
@@ -79,6 +81,7 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 			Text: row.Text, ImageID: store.UUIDString(row.ImageID),
 			At: row.CreatedAt.Time.UnixMilli(), EditedAt: store.Millis(row.EditedAt),
 			DeletedAt: store.Millis(row.DeletedAt),
+			ExpiresAt: store.Millis(row.ExpiresAt),
 		})
 	}
 	// Edits ride separately from the incremental fetch for the same reason

@@ -82,6 +82,25 @@ func (q *Queries) DeleteChannelMessage(ctx context.Context, arg DeleteChannelMes
 	return result.RowsAffected(), nil
 }
 
+const deleteExpiredChat = `-- name: DeleteExpiredChat :execrows
+delete from chat_messages
+where id in (
+    select id from chat_messages
+    where expires_at <= now()
+    limit 10000
+)
+`
+
+// Temporary lines whose timer ran out (#2644), a batch at a time; reactions
+// cascade and a picture is swept with the orphans.
+func (q *Queries) DeleteExpiredChat(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredChat)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const editChannelMessage = `-- name: EditChannelMessage :one
 update chat_messages
 set text = $1, edited_at = now()
@@ -162,6 +181,7 @@ func (q *Queries) GetChannelImage(ctx context.Context, arg GetChannelImageParams
 const getChannelMessage = `-- name: GetChannelMessage :one
 select user_id, text, image_id from chat_messages
 where id = $1 and channel_id = $2
+  and (expires_at is null or expires_at > now())
 `
 
 type GetChannelMessageParams struct {
@@ -199,10 +219,11 @@ func (q *Queries) GetChannelReadAt(ctx context.Context, arg GetChannelReadAtPara
 }
 
 const listChannelChat = `-- name: ListChannelChat :many
-select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at, m.edited_at
+select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at, m.edited_at, m.expires_at
 from (
-    select id, user_id, text, image_id, created_at, edited_at from chat_messages
+    select id, user_id, text, image_id, created_at, edited_at, expires_at from chat_messages
     where channel_id = $1
+      and (expires_at is null or expires_at > now())
     order by created_at desc, id desc
     limit $2
 ) m
@@ -223,9 +244,12 @@ type ListChannelChatRow struct {
 	ImageID     pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
 	EditedAt    pgtype.Timestamptz
+	ExpiresAt   pgtype.Timestamptz
 }
 
 // Newest $2, oldest first for rendering; the id breaks a same-millisecond tie.
+// A line whose timer ran out is gone to every reader at once (#2644), not at
+// the next sweep.
 func (q *Queries) ListChannelChat(ctx context.Context, arg ListChannelChatParams) ([]ListChannelChatRow, error) {
 	rows, err := q.db.Query(ctx, listChannelChat, arg.ChannelID, arg.Limit)
 	if err != nil {
@@ -243,6 +267,7 @@ func (q *Queries) ListChannelChat(ctx context.Context, arg ListChannelChatParams
 			&i.ImageID,
 			&i.CreatedAt,
 			&i.EditedAt,
+			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -450,8 +475,8 @@ func (q *Queries) SaveChannelImage(ctx context.Context, arg SaveChannelImagePara
 
 const saveChannelMessage = `-- name: SaveChannelMessage :one
 
-insert into chat_messages (channel_id, user_id, text, image_id, created_at)
-select $1, $2, $3, $4, $5
+insert into chat_messages (channel_id, user_id, text, image_id, created_at, expires_at)
+select $1, $2, $3, $4, $5, $6::timestamptz
 where $4::uuid is null
    or exists (select 1 from chat_images where id = $4 and channel_id = $1)
 returning id
@@ -463,6 +488,7 @@ type SaveChannelMessageParams struct {
 	Text      string
 	ImageID   pgtype.UUID
 	CreatedAt pgtype.Timestamptz
+	ExpiresAt pgtype.Timestamptz
 }
 
 // A text channel's chat (ADR-0058, #2435): what the room's chat queries were,
@@ -478,6 +504,7 @@ func (q *Queries) SaveChannelMessage(ctx context.Context, arg SaveChannelMessage
 		arg.Text,
 		arg.ImageID,
 		arg.CreatedAt,
+		arg.ExpiresAt,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)

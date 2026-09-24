@@ -318,6 +318,7 @@ func main() {
 		// The deletions no write can trigger (#1153, #1163). Sessions and
 		// recaps are both bounded by TIME, which nothing but a clock enforces.
 		housekeeping.Run(ctx, st, log)
+		housekeeping.RunExpiry(ctx, st, log)
 		// What a finished session leaves behind (ADR-0034). The hub writes
 		// through it when a session ends; the backlog reads it back, so the
 		// card survives the reload every other timeline entry does not.

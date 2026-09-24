@@ -6,8 +6,8 @@
 -- name: SaveChannelMessage :one
 -- An attached image must be THIS channel's, for the room's reason: a foreign
 -- id would pin its bytes past the sweep.
-insert into chat_messages (channel_id, user_id, text, image_id, created_at)
-select @channel_id, @user_id, @text, @image_id, @created_at
+insert into chat_messages (channel_id, user_id, text, image_id, created_at, expires_at)
+select @channel_id, @user_id, @text, @image_id, @created_at, sqlc.narg(expires_at)::timestamptz
 where @image_id::uuid is null
    or exists (select 1 from chat_images where id = @image_id and channel_id = @channel_id)
 returning id;
@@ -48,10 +48,13 @@ where cm.channel_id = $1
 
 -- name: ListChannelChat :many
 -- Newest $2, oldest first for rendering; the id breaks a same-millisecond tie.
-select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at, m.edited_at
+-- A line whose timer ran out is gone to every reader at once (#2644), not at
+-- the next sweep.
+select m.id, m.user_id, u.display_name, m.text, m.image_id, m.created_at, m.edited_at, m.expires_at
 from (
-    select id, user_id, text, image_id, created_at, edited_at from chat_messages
+    select id, user_id, text, image_id, created_at, edited_at, expires_at from chat_messages
     where channel_id = $1
+      and (expires_at is null or expires_at > now())
     order by created_at desc, id desc
     limit $2
 ) m
@@ -60,7 +63,18 @@ order by m.created_at, m.id;
 
 -- name: GetChannelMessage :one
 select user_id, text, image_id from chat_messages
-where id = $1 and channel_id = $2;
+where id = $1 and channel_id = $2
+  and (expires_at is null or expires_at > now());
+
+-- name: DeleteExpiredChat :execrows
+-- Temporary lines whose timer ran out (#2644), a batch at a time; reactions
+-- cascade and a picture is swept with the orphans.
+delete from chat_messages
+where id in (
+    select id from chat_messages
+    where expires_at <= now()
+    limit 10000
+);
 
 -- name: EditChannelMessage :one
 -- Only the author, only the text (#865); the scope repeated, not trusted.

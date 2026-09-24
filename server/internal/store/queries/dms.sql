@@ -1,8 +1,8 @@
 -- name: SendDm :one
 -- The friendship row IS the permission (ADR-0012 amended): no accepted
 -- friendship, no insert — the caller reads zero rows back and refuses.
-insert into dm_messages (sender_id, recipient_id, text, image_id)
-select $1, $2, $3, $4
+insert into dm_messages (sender_id, recipient_id, text, image_id, expires_at)
+select $1, $2, $3, $4, sqlc.narg(expires_at)::timestamptz
 where exists (
     select 1 from friendships f
     where f.status = 'accepted'
@@ -72,12 +72,13 @@ where least(dm.sender_id, dm.recipient_id) = least($1::uuid, $2::uuid)
 -- rendering, the shape ListRoomChat has (#1813). It used to take the oldest
 -- 200 of a pair's 500, so a long thread opened weeks back and a rider's own
 -- send fell past the page. The id breaks a same-millisecond tie.
-select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at, m.deleted_at
+select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at, m.deleted_at, m.expires_at
 from (
     select * from dm_messages
     where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
       and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
       and created_at > $3
+      and (expires_at is null or expires_at > now())
     order by created_at desc, id desc
     limit 200
 ) m
@@ -90,7 +91,18 @@ order by m.created_at, m.id;
 select sender_id, text, image_id from dm_messages
 where id = $1
   and least(sender_id, recipient_id) = least($2::uuid, $3::uuid)
-  and greatest(sender_id, recipient_id) = greatest($2::uuid, $3::uuid);
+  and greatest(sender_id, recipient_id) = greatest($2::uuid, $3::uuid)
+  and (expires_at is null or expires_at > now());
+
+-- name: DeleteExpiredDms :execrows
+-- A DM whose timer ran out (#2644) leaves no tombstone: nothing was taken
+-- back, the line simply ended, and both sides already knew when.
+delete from dm_messages
+where id in (
+    select id from dm_messages
+    where expires_at <= now()
+    limit 10000
+);
 
 -- name: EditDmMessage :one
 -- Only the sender rewrites their own line (#865). No friendship re-check:
@@ -172,7 +184,8 @@ join friendships f
   on f.status = 'accepted'
  and ((f.requester_id = $1 and f.addressee_id = peer.id)
    or (f.requester_id = peer.id and f.addressee_id = $1))
-where m.sender_id = $1 or m.recipient_id = $1
+where (m.sender_id = $1 or m.recipient_id = $1)
+  and (m.expires_at is null or m.expires_at > now())
 order by peer.id, m.created_at desc
 limit 1000; -- an engineering bound (#1416): peers are friends, and friends are few
 

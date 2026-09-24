@@ -159,6 +159,22 @@ export const TargetBandFraction = 0.05;
  * zones derive from (ADR-0014). Both sides read these; neither retypes them.
  */
 export const TargetBandFloorWatts = 10;
+/**
+ * A temporary message's timer (#2644, docs/SPEC.md "Text channel chat"),
+ * in seconds: the three a sender picks from. The composer offers exactly
+ * these and the server refuses any other, so both read them from here.
+ */
+export const TemporaryHour = 60 * 60;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const TemporaryDay = 24 * TemporaryHour;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const TemporaryWeek = 7 * TemporaryDay;
 
 //////////
 // source: protocol.go
@@ -396,6 +412,12 @@ export interface ChatLine {
    * and not a separate event to remember.
    */
   editedAt?: number /* int64 */;
+  /**
+   * When a temporary line runs out (#2644), server millis; 0 for a line
+   * that stays. Readers drop it by their own clock at that moment — the
+   * server stops serving it then and sweeps it within the minute.
+   */
+  expiresAt?: number /* int64 */;
 }
 /**
  * ChatEdit is one line rewritten by its author (#865): the new text lands
