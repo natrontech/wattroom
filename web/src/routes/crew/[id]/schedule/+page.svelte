@@ -97,6 +97,16 @@
 
 	// Where a new plan goes: the crew's first voice channel, or none.
 	let planChannel = $state(untrack(() => data.voice[0]?.id ?? ''));
+	// Where a plan that names no channel starts (#2607): chosen on its own
+	// row. It used to borrow the picker's choice, so picking "No channel yet"
+	// for one plan greyed every other's Start now, and the hint pointed
+	// "above" at a control that had moved into the picker. Falls back to the
+	// first channel if the chosen one goes.
+	let startChoice = $state(untrack(() => data.voice[0]?.id ?? ''));
+	const startIn = $derived(voice.find((c) => c.id === startChoice) ?? voice[0]);
+	const voiceOptions = $derived(
+		voice.map((c) => ({ value: c.id, label: c.name })),
+	);
 	const channelOptions = $derived([
 		...voice.map((c) => ({ value: c.id, label: c.name })),
 		{ value: '', label: 'No channel yet' },
@@ -193,7 +203,7 @@
 		const res = await startCrewPlan(
 			id,
 			entry.id,
-			entry.channelId ? undefined : planChannel || undefined,
+			entry.channelId ? undefined : startIn?.id,
 		);
 		busy = false;
 		if (!res.ok) {
@@ -222,7 +232,7 @@
 			startHint: startHint(entry, {
 				due: planDue(entry.startsAt),
 				spectator: device.spectator,
-				channelPicked: !!planChannel,
+				voiceChannels: voice.length > 0,
 				coaching: coachingIn(entry),
 			}),
 			start: () => void start(entry),
@@ -344,14 +354,32 @@
 										<span class="text-muted text-xs"
 											>{coachingIn(entry)} is coaching in {entry.channelName}</span
 										>
-									{:else}
+									{:else if entry.channelId}
 										<button
 											onclick={() => void start(entry)}
-											disabled={busy || (!entry.channelId && !planChannel)}
-											title={!entry.channelId && !planChannel
-												? 'Pick a voice channel above to start it in'
-												: undefined}
+											disabled={busy}
 											class="btn btn-primary">Start now</button
+										>
+									{:else if startIn}
+										<!-- No channel named: where it runs is chosen here, with
+										     the start, and the button says where (#2607). -->
+										<span class="w-44">
+											<Select
+												label="voice channel to start it in"
+												options={voiceOptions}
+												bind:value={startChoice}
+											/>
+										</span>
+										<button
+											onclick={() => void start(entry)}
+											disabled={busy}
+											class="btn btn-primary">Start in {startIn.name}</button
+										>
+									{:else}
+										<!-- Never a button that will fail (errors.md): said, not
+										     hovered. -->
+										<span class="text-muted text-xs"
+											>This crew has no voice channel you can start it in.</span
 										>
 									{/if}
 								{/if}
