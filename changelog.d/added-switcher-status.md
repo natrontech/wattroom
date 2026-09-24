@@ -1,0 +1,1 @@
+- The crew switcher's **You** entry shows your status emoji.
