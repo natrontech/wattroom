@@ -17,6 +17,32 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.136] - 2026-09-24
+
+### Added
+
+- **Set a status.** Pick an emoji (one of your crew's own emoji works too) and a short line, like "🤒 Out sick" or "🏔️ Riding outside", and choose when it clears. It shows beside your name in chat, the member list, the voice channel and the friends panel, and in full on your rider page. Open it from your avatar's menu or your rider page.
+- A voice channel's reactions open the full emoji picker beside the crew's four: cheer with the crew's own emoji, any other emoji, or the rest of the crew's set.
+
+### Fixed
+
+- An announcement draws the crew's own emoji, bold and links the way the chat line it came from does — it showed `:name:` as text, in the channel, the voice channel and on the crew's Board.
+- On the crew's Schedule, a planned session with no voice channel now lets you choose one on its own row when it's due, and the button says "Start in {channel}". Before, Start now was greyed out with a tooltip pointing at a control that no longer existed. A crew with no voice channel you can use says so in plain text.
+- Chat: opening a busy channel or DM no longer makes the thread jump as it
+  loads. Link cards and pictures hold their space while they load, so the
+  lines you are reading stay where they are. The last message also has room
+  above the message box again, where it used to sit flush against it. Link
+  cards are more compact, and a picture no longer has a blank row above it.
+- Chat: the "new messages" button counts only new messages from other
+  people. Before, an edit, a reaction, a link preview loading or your own
+  message could raise it, and several messages arriving at once could count
+  as one.
+- A plan's name on your Home, on the crew's Home and on the crew's Workouts page now opens that plan's row on the crew's Schedule, scrolled into view and marked. Before, some of these went to the top of the Schedule and some weren't links at all.
+- A double tap on **Plan it** in a voice channel plans the session once. It used to put it on the calendar twice and mail every member twice.
+- A session starting in your voice channel no longer takes over your trainer. You join it with **Join the ride** (the coach who starts it is in already), and until then you're a spectator: your trainer keeps doing what it was doing, and nothing you ride counts toward the session's podium, sprint, recap or saved rides. **Leave the ride** on the session's screen puts you back to spectating.
+- Stopping a session's countdown no longer tells everyone the session ended or points them to a recap that doesn't exist. The voice channel shows "… was stopped before it started", is free for anyone to start the next session, and the person who stopped it is taken back to the channel.
+- TV mode now shows the countdown when a session starts, instead of "No session yet" while the countdown sounds play. When a session you rode ends, TV mode closes so your summary appears in front, where before it opened hidden behind the TV screen.
+
 ## [2026.09.135] - 2026-09-24
 
 ### Fixed
@@ -2867,7 +2893,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.135...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.136...HEAD
+[2026.09.136]: https://github.com/natrontech/wattroom/compare/2026.09.135...2026.09.136
 [2026.09.135]: https://github.com/natrontech/wattroom/compare/2026.09.134...2026.09.135
 [2026.09.134]: https://github.com/natrontech/wattroom/compare/2026.09.133...2026.09.134
 [2026.09.133]: https://github.com/natrontech/wattroom/compare/2026.09.132...2026.09.133

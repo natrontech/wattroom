@@ -1,1 +1,0 @@
-- A voice channel's reactions open the full emoji picker beside the crew's four: cheer with the crew's own emoji, any other emoji, or the rest of the crew's set.

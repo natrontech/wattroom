@@ -1,1 +1,0 @@
-- Stopping a session's countdown no longer tells everyone the session ended or points them to a recap that doesn't exist. The voice channel shows "… was stopped before it started", is free for anyone to start the next session, and the person who stopped it is taken back to the channel.

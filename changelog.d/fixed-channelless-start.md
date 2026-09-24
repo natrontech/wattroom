@@ -1,1 +1,0 @@
-- On the crew's Schedule, a planned session with no voice channel now lets you choose one on its own row when it's due, and the button says "Start in {channel}". Before, Start now was greyed out with a tooltip pointing at a control that no longer existed. A crew with no voice channel you can use says so in plain text.

@@ -1,1 +1,0 @@
-- An announcement draws the crew's own emoji, bold and links the way the chat line it came from does — it showed `:name:` as text, in the channel, the voice channel and on the crew's Board.
