@@ -1,0 +1,1 @@
+- Your reactions are your own: pick up to eight icons or emoji in Settings → Profile, and they are your mid-ride cheer buttons and the first row of the chat's picker in every crew and DM. Crews no longer set a reaction set, and everyone starts on the stock six.

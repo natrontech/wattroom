@@ -58,8 +58,6 @@ type crewJSON struct {
 	Listed bool `json:"listed,omitempty"`
 	// The weekly board is on (ADR-0036 as amended by ADR-0058).
 	BoardEnabled bool `json:"boardEnabled,omitempty"`
-	// The reaction palette every voice channel of the crew speaks.
-	Cheers []string `json:"cheers"`
 	// The crew's calendar feed (#2441, ADR-0021): every member gets it, as
 	// every member of a room did — the feed is for sharing.
 	IcsToken string `json:"icsToken,omitempty"`
@@ -238,7 +236,6 @@ func (s *Service) handleGetCrew(w http.ResponseWriter, r *http.Request) {
 		People:       []crewPersonJSON{},
 		Listed:       administers(role) && crew.Listed,
 		BoardEnabled: crew.BoardEnabled,
-		Cheers:       CheerSet(crew.Cheers),
 		IcsToken:     crew.IcsToken,
 	}
 	people, banned, err := s.crewPeople(r.Context(), crew, user, role)

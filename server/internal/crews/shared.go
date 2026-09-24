@@ -3,13 +3,10 @@ package crews
 import (
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"strings"
 	"unicode"
 
 	"github.com/jackc/pgx/v5/pgconn"
-
-	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
 // crewRefJSON is a crew as a write answers it: what it is called and what it
@@ -32,44 +29,6 @@ type crewRefJSON struct {
 	// A person has named it (#1151): until then it carries the owner's name
 	// and the set-up step stays open.
 	Named bool `json:"named,omitempty"`
-}
-
-// The six reactions every crew speaks until its owner curates their own. Icon
-// keys since #447; the client draws them.
-var baseCheers = []string{"flame", "biceps-flexed", "party-popper", "skull", "rocket", "snowflake"}
-
-// CheerSet parses the stored space-joined palette; "" means the base set.
-// Exported because the account export carries the palette as the icons it
-// actually speaks (#2089), and "empty means the stock set" is a rule that must
-// not be written down twice.
-func CheerSet(stored string) []string {
-	if stored == "" {
-		return baseCheers
-	}
-	return strings.Fields(stored)
-}
-
-// cleanCheers validates a curated palette and returns it stored: deduplicated
-// and space-joined, "" for an empty pick (back to the base set). A non-empty
-// refusal is the message to answer with.
-func cleanCheers(picked []string) (stored, refusal string) {
-	if len(picked) > protocol.MaxCheers {
-		return "", fmt.Sprintf("Pick at most %d reactions.", protocol.MaxCheers)
-	}
-	deduped := make([]string, 0, len(picked))
-	seen := map[string]struct{}{}
-	for _, cheer := range picked {
-		// An icon key, one emoji, or the crew's own by `:name:` (#2643).
-		if !protocol.IsReaction(cheer) {
-			return "", "That is not a reaction — pick an icon, an emoji or one of the crew's own."
-		}
-		if _, dup := seen[cheer]; dup {
-			continue
-		}
-		seen[cheer] = struct{}{}
-		deduped = append(deduped, cheer)
-	}
-	return strings.Join(deduped, " "), ""
 }
 
 // randomCode draws from an alphabet with no 0/O/1/I/L — codes get read out

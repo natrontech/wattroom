@@ -51,7 +51,7 @@ One table, because there is one place roles live: the crew ([ADR-0058](decisions
 | Capability | Crew owner | Crew admin | Member | On a phone † |
 | --- | --- | --- | --- | --- |
 | Rename the crew, set its icon and picture (#1237) | ✓ | ✓ | – | ✓ |
-| Edit the crew — reaction set, directory listing, weekly board (#2454) | ✓ | ✓ | – | ✓ |
+| Edit the crew — directory listing, weekly board (#2454) | ✓ | ✓ | – | ✓ |
 | Make / unmake a crew admin | ✓ | ✓ | – | ✓ |
 | Ban / unban from the crew (#1150) — never the owner | ✓ | ✓ | – | ✓ |
 | See the crew's ban list | ✓ | ✓ | – | ✓ |
@@ -138,13 +138,17 @@ out, so the horizon hides nothing anyone planned.
 
 Crew identity & vocabulary (#223, #447, #2643): the crew's icon is **one drawn
 icon from a curated set, or none**, stored as its lucide key, beside an optional
-picture (#1237). Its reaction set is **up to 8** — drawn icons from a second
-curated set (base set: flame, biceps-flexed, party-popper, skull, rocket,
-snowflake), any Unicode emoji, or the crew's own — the first four are the
-mid-ride cheer buttons, and all of them lead the chat's emoji picker, which
-offers every emoji besides ([ADR-0013](decisions/0013-room-identity-and-moderation.md),
-2026-09-24 amendment). The server checks a reaction's shape, not the
-vocabulary. Channels are named, not marked.
+picture (#1237). Channels are named, not marked.
+
+A rider's **reaction set is their own** (#2722), not the crew's: **up to 8** —
+drawn icons from a second curated set (base set: flame, biceps-flexed,
+party-popper, skull, rocket, snowflake) or any Unicode emoji, picked in
+Settings → Profile. The first four are their mid-ride cheer buttons, and all
+of them lead the chat's emoji picker in every crew and DM, which offers every
+emoji and the crew's own besides. A crew's own emoji is not in the set — it
+means something in one crew only ([ADR-0013](decisions/0013-room-identity-and-moderation.md),
+2026-09-24 amendments). The server checks a reaction's shape, not the
+vocabulary.
 
 **Crew emoji** (#2643): any member adds one; the one who added it, the owner
 and admins delete it. A crew holds at most **50**, a picture is at most

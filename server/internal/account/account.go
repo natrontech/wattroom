@@ -23,6 +23,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -280,6 +281,8 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		// yourself, which is what the privacy page now says.
 		"calendarToken":    user.IcsToken,
 		"unsubscribeToken": store.UUIDString(user.UnsubToken),
+		// The reactions they picked (#2722), as the icons they react with.
+		"cheers": auth.CheerSet(user.Cheers),
 		// The status the rider wrote (ADR-0060), as the row holds it — one
 		// already cleared included, since nothing sweeps the columns.
 		"status": map[string]any{

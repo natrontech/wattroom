@@ -1,5 +1,5 @@
 // Package crews is the crew (ADR-0038, ADR-0058): who is in it and what they
-// are to it, its door and its directory entry, its picture, pins and cheers,
+// are to it, its door and its directory entry, its picture and pins,
 // its members' page, its schedule and its calendar feeds. Durable data only —
 // what is live in a voice channel is the hub's, and the channels themselves
 // are package channels'. The rooms it grew out of are gone (#2446).

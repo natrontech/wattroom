@@ -401,7 +401,6 @@
 			crewLive.crew(props.address.crew),
 			props.address.channel,
 		)}
-		cheers={props.cheers}
 	>
 		{#snippet player()}
 			<Jukebox

@@ -374,6 +374,7 @@ type User struct {
 	StatusEmojiID      pgtype.UUID
 	StatusText         *string
 	StatusExpiresAt    pgtype.Timestamptz
+	Cheers             string
 }
 
 type UserAvatar struct {

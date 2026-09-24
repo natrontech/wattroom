@@ -26,7 +26,6 @@
 	import type { PageData } from './$types';
 	import { confirm } from '$lib/confirm.svelte';
 	import CrewChannels from './CrewChannels.svelte';
-	import CrewReactions from './CrewReactions.svelte';
 	import CrewEmoji from './CrewEmoji.svelte';
 	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
 
@@ -116,18 +115,11 @@
 		await reload();
 	}
 
-	// The crew's switches and palette, written whole with the name it has —
-	// the typed one saves itself on change.
-	let cheers = $state<string[]>([]);
-	$effect(() => {
-		// As stored (#2643): an emoji is a reaction of its own again, so one
-		// from before #447 is no longer translated into the icon it resembled.
-		cheers = crew?.cheers ?? [];
-	});
+	// The crew's switches, written whole with the name it has — the typed one
+	// saves itself on change.
 	async function saveSettings(patch: {
 		boardEnabled?: boolean;
 		listed?: boolean;
-		cheers?: string[];
 	}) {
 		if (!crew) return;
 		busy = true;
@@ -383,12 +375,6 @@
 			</label>
 		</section>
 
-		<CrewReactions
-			bind:cheers
-			crewId={crew.id}
-			{busy}
-			onchange={() => void saveSettings({ cheers })}
-		/>
 		<CrewEmoji crewId={crew.id} administers />
 
 		{#if !calendarNoticeSeen}

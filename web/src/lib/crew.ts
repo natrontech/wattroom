@@ -48,8 +48,6 @@ export interface Crew {
 	listed?: boolean;
 	/** The crew keeps a weekly board (ADR-0036 as amended by ADR-0058). */
 	boardEnabled?: boolean;
-	/** The reaction palette its voice channels speak — icon keys. */
-	cheers?: string[];
 	/** The crew's calendar feed token (#2441): every member's, for sharing. */
 	icsToken?: string;
 }
@@ -64,7 +62,7 @@ export function fetchCrew(
 /**
  * Crew Settings' one write, owner or admin: the name the day-one screen
  * exists for (#1151) rides every call, and each other field is left as it is
- * when absent. `cheers: []` is the base set.
+ * when absent.
  */
 export function updateCrew(
 	id: string,
@@ -73,7 +71,6 @@ export function updateCrew(
 		icon?: string;
 		boardEnabled?: boolean;
 		listed?: boolean;
-		cheers?: string[];
 	},
 ): Promise<ApiResult<CrewRef>> {
 	return api<CrewRef>(`/api/crews/${id}`, { method: 'PATCH', json: patch });

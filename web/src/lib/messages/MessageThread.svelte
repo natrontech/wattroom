@@ -440,7 +440,7 @@
 	{@const id = reactingTo.id}
 	<EmojiPicker
 		anchor={reactingTo.at}
-		quick={source.cheers}
+		quick={account.cheers}
 		crewId={source.crewId}
 		onPick={(key) => void react(id, key)}
 		onClose={() => (reactingTo = null)}

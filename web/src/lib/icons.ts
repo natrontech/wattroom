@@ -28,10 +28,10 @@ import { type LucideIcon } from '@lucide/svelte';
 export type Icon = LucideIcon;
 
 /**
- * A crew's icon and its reactions are drawn icons, stored as their lucide
- * name (#447): the server keeps the key, the client draws it, so they look
- * the same on every device and in every theme. Two curated vocabularies —
- * the identity mark a crew wears, and the palette it cheers with.
+ * A crew's icon and a rider's reactions are drawn icons, stored as their
+ * lucide name (#447): the server keeps the key, the client draws it, so they
+ * look the same on every device and in every theme. Two curated vocabularies —
+ * the identity mark a crew wears, and the set a rider cheers with (#2722).
  */
 export const MARK_ICONS: Record<string, Icon> = {
 	bike: Bike,
