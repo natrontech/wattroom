@@ -99,6 +99,30 @@ export const MaxCrewPins = 20;
  */
 export const MaxCheers = 8;
 /**
+ * A crew's own emoji (#2643, docs/SPEC.md): how many a crew holds and how
+ * big one picture may be. The upload refuses past both, and the crew's
+ * settings disable "Add emoji" at the count rather than offering an
+ * upload the POST will refuse. A name is MinEmojiNameChars to
+ * MaxEmojiNameChars of a–z, 0–9 and _ — ASCII, so bytes and characters
+ * agree — and the crew_emoji CHECK holds the same pair as a literal.
+ */
+export const MaxCrewEmoji = 50;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxEmojiBytes = 256 << 10;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MinEmojiNameChars = 2;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxEmojiNameChars = 32;
+/**
  * A crew's name (docs/SPEC.md "Names"), in CHARACTERS — MaxMessageChars'
  * rule.
  */

@@ -361,3 +361,20 @@ left join dm_messages m on m.image_id = i.id
 where i.sender_id = sqlc.arg(user_id)
 order by i.created_at desc
 limit sqlc.arg(lim)::int;
+
+-- name: ExportUserCrewEmoji :many
+-- The emoji the rider added to a crew (#2643): their upload, the way a pasted
+-- picture is, and gone with the account the same way. The crew's id and the
+-- emoji's together name the file — it is served at
+-- /api/crews/{crew}/emoji/{id} — and the crew's name says which crew it is.
+--
+-- Not `bytes`, for images.json's reason (ADR-0053): each picture is bounded
+-- but how many crews a rider is in is not, so the total a rider holds has no
+-- ceiling, and this archive is built whole in memory (#1990).
+select e.id, e.name, e.mime, octet_length(e.bytes)::int as size_bytes, e.created_at,
+       e.crew_id, c.name as crew_name
+from crew_emoji e
+join crews c on c.id = e.crew_id
+where e.user_id = sqlc.arg(user_id)
+order by e.created_at desc
+limit sqlc.arg(lim)::int;

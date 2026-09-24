@@ -245,13 +245,13 @@ func TestCheerShapeAndBound(t *testing.T) {
 	if len(rm.cheers) != 32 {
 		t.Fatalf("cheer buffer unbounded: %d", len(rm.cheers))
 	}
-	// The wire gate is the shape check — IsIconOrEmoji has its own table
-	// test; this pins that the hub actually consults it, for a key (#447)
-	// and for the emoji an older client still throws.
-	if !protocol.IsIconOrEmoji("flame") || !protocol.IsIconOrEmoji("🔥") {
+	// The wire gate is the shape check — IsReaction has its own table test;
+	// this pins the shapes the hub takes: a key (#447), an emoji, and a
+	// crew's own emoji (#2643).
+	if !protocol.IsReaction("flame") || !protocol.IsReaction("🔥") || !protocol.IsReaction(":gg:") {
 		t.Fatal("shape check missing the obvious ones")
 	}
-	if protocol.IsIconOrEmoji("<script>") {
+	if protocol.IsReaction("<script>") {
 		t.Fatal("shape check lets text through")
 	}
 }

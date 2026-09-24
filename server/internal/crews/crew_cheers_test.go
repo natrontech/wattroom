@@ -52,6 +52,9 @@ func TestCrewSettingsSaveThePaletteAndTheBoard(t *testing.T) {
 			strings.TrimSuffix(strings.Repeat(`"flame",`, protocol.MaxCheers+1), ",")), http.StatusBadRequest, ""},
 		// A palette picked before #447 was emoji, and it still saves.
 		{"an emoji from before icon keys", "alice", `{"name":"Palette Crew","cheers":["🦖","🌵"]}`, http.StatusOK, "🦖 🌵"},
+		// Any emoji the picker offers, and the crew's own by name (#2643).
+		{"a keycap and a crew emoji", "alice", `{"name":"Palette Crew","cheers":["1️⃣",":party_parrot:"]}`, http.StatusOK, "1️⃣ :party_parrot:"},
+		{"a crew emoji is lowercase too", "alice", `{"name":"Palette Crew","cheers":[":Parrot:"]}`, http.StatusBadRequest, ""},
 		{"a pick, deduplicated", "alice", `{"name":"Palette Crew","cheers":["rocket","flame","rocket"]}`, http.StatusOK, "rocket flame"},
 		{"a rename keeps it", "alice", `{"name":"Palette Crew Two"}`, http.StatusOK, "rocket flame"},
 		{"empty is the base set", "alice", `{"name":"Palette Crew","cheers":[]}`, http.StatusOK, strings.Join(baseCheers, " ")},
@@ -99,7 +102,8 @@ func TestCrewSettingsSaveTheIcon(t *testing.T) {
 	if _, body := h.call(t, "alice", http.MethodGet, path, ""); body["icon"] != nil {
 		t.Errorf("a new crew has an icon: %v", body["icon"])
 	}
-	for _, junk := range []string{"not an icon!", "<script>"} {
+	// A crew's own emoji is a reaction, not a mark (#2643).
+	for _, junk := range []string{"not an icon!", "<script>", ":party_parrot:"} {
 		if status, body := patch(fmt.Sprintf(`{"name":"Icon Cave","icon":%q}`, junk)); status != http.StatusBadRequest || body["field"] != "icon" {
 			t.Errorf("icon %q: %d %v, want 400 on the icon", junk, status, body)
 		}

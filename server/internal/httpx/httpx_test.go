@@ -215,3 +215,23 @@ func TestReadImageUploadCapsAtMaxImageBytes(t *testing.T) {
 		}
 	})
 }
+
+// A caller's own cap (#2643) is the one refused at, in the caller's words.
+func TestReadImageUploadUpToCapsAtTheCallersLimit(t *testing.T) {
+	read := func(size int) (bool, *httptest.ResponseRecorder) {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/crews/x/emoji", bytes.NewReader(imageBytes(pngMagic, size)))
+		rec := httptest.NewRecorder()
+		_, _, ok := ReadImageUploadUpTo(rec, req, 1024, "Emoji are capped at 1 KB.")
+		return ok, rec
+	}
+	if ok, rec := read(1024); !ok {
+		t.Fatalf("refused exactly the cap: %d %s", rec.Code, rec.Body.String())
+	}
+	ok, rec := read(1025)
+	if ok || rec.Code != http.StatusBadRequest {
+		t.Fatalf("one byte over: ok=%v %d", ok, rec.Code)
+	}
+	if e := decodeError(t, rec); e.Error != "validation_error" || e.Message != "Emoji are capped at 1 KB." {
+		t.Errorf("unexpected error %+v", e)
+	}
+}

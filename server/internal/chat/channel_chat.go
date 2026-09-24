@@ -324,7 +324,7 @@ func (s *Service) handleChannelReact(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
 		return
 	}
-	if !protocol.IsIconOrEmoji(req.Emoji) {
+	if !protocol.IsReaction(req.Emoji) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That is not a reaction this crew speaks.", "emoji")
 		return
 	}

@@ -1211,7 +1211,7 @@ func TestExportCarriesTheRidersOwnUploads(t *testing.T) {
 	clips := map[string][]byte{"alice": []byte("alice-clip-mp3"), "bob": []byte("bob-clip-mp3")}
 	chatShots := map[string][]byte{"alice": []byte("alice-pasted-png"), "bob": []byte("bob-pasted-png")}
 
-	clipID, shotID := map[string]pgtype.UUID{}, map[string]pgtype.UUID{}
+	clipID, shotID, emojiID := map[string]pgtype.UUID{}, map[string]pgtype.UUID{}, map[string]pgtype.UUID{}
 	for _, name := range []string{"alice", "bob"} {
 		url := "/api/riders/" + store.UUIDString(h.id(name)) + "/avatar"
 		if _, err := h.store.Queries.SetUserAvatar(t.Context(), db.SetUserAvatarParams{
@@ -1234,6 +1234,15 @@ func TestExportCarriesTheRidersOwnUploads(t *testing.T) {
 			t.Fatalf("chat image %s: %v", name, err)
 		}
 		shotID[name] = shot
+		// An emoji each added to the crew they share (#2643): rows, not bytes.
+		added, err := h.store.Queries.CreateCrewEmoji(t.Context(), db.CreateCrewEmojiParams{
+			CrewID: place.crew, UserID: h.id(name), Name: name + "_wave", Mime: "image/gif",
+			Bytes: []byte(name + "-emoji-gif"),
+		})
+		if err != nil {
+			t.Fatalf("crew emoji %s: %v", name, err)
+		}
+		emojiID[name] = added.ID
 	}
 	// One each way, because a DM image belongs to whoever SENT it: the one
 	// bob sent alice is on a line she can read and is still his upload.
@@ -1278,6 +1287,10 @@ func TestExportCarriesTheRidersOwnUploads(t *testing.T) {
 		// size that says what is not in the zip.
 		"images.json": {"\"on\": \"channel\"", "\"on\": \"dm\"", "\"sizeBytes\"", "\"stillOnALine\"",
 			store.UUIDString(shotID["alice"]), store.UUIDString(dmShotID["alice"])},
+		// The emoji she added, by the ids that name its picture and the name
+		// she typed — and its size, because the picture itself is not here.
+		"emoji.json": {"\"alice_wave\"", store.UUIDString(emojiID["alice"]), store.UUIDString(place.crew),
+			"\"image/gif\"", "\"sizeBytes\"", "\"uploadedAt\""},
 		// Counted, so a clip that failed to read cannot go quietly.
 		"manifest.json": {"\"avatar\": true", "\"clips\"", "\"written\": 1", "\"complete\": true"},
 	} {
@@ -1300,7 +1313,7 @@ func TestExportCarriesTheRidersOwnUploads(t *testing.T) {
 	for _, theirs := range []string{
 		string(avatars["bob"]), string(clips["bob"]), string(chatShots["bob"]), "bob-dm-webp",
 		store.UUIDString(clipID["bob"]), store.UUIDString(shotID["bob"]),
-		store.UUIDString(dmShotID["bob"]),
+		store.UUIDString(dmShotID["bob"]), "bob_wave", store.UUIDString(emojiID["bob"]),
 	} {
 		for name, body := range files {
 			if strings.Contains(body, theirs) {

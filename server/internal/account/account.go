@@ -746,12 +746,12 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			// Two reads into one file, the way reactions.json holds one act
 			// on two surfaces.
 			//
-			// The BYTES are not here, and this is the one omission left in
-			// the archive: a rider's pictures have no per-rider ceiling the
-			// way their clips do (docs/SPEC.md's MaxRiderBytes), and the zip
-			// is built whole in memory (#1990). That is a limit of the
-			// archive's shape, not a judgement about the files — ADR-0053 —
-			// and they follow when the build streams.
+			// The BYTES are not here, and this and emoji.json are the
+			// omissions left in the archive: a rider's pictures have no
+			// per-rider ceiling the way their clips do (docs/SPEC.md's
+			// MaxRiderBytes), and the zip is built whole in memory (#1990).
+			// That is a limit of the archive's shape, not a judgement about
+			// the files — ADR-0053 — and they follow when the build streams.
 			chat, err := s.store.Queries.ExportUserChatImages(r.Context(), db.ExportUserChatImagesParams{
 				UserID: user.ID, Lim: maxExportRows,
 			})
@@ -782,6 +782,22 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			// and for its reason: a sum calls a file truncated that neither
 			// bound touched.
 			return out, max(len(chat), len(dms)), nil
+		}),
+		bounded("emoji.json", func() (any, int, error) {
+			// The emoji the rider added to their crews (#2643): the name they
+			// typed, and the crew and emoji ids that name the picture — it is
+			// served at /api/crews/{crewId}/emoji/{emoji}. Rows only, for
+			// images.json's reason: each picture is capped, but the crews a
+			// rider is in are not, so their total is not (ADR-0053).
+			rows, err := s.store.Queries.ExportUserCrewEmoji(r.Context(), db.ExportUserCrewEmojiParams{
+				UserID: user.ID, Lim: maxExportRows,
+			})
+			out, err := mapRows(rows, err, func(row db.ExportUserCrewEmojiRow) any {
+				return map[string]any{"name": row.Name, "emoji": store.UUIDString(row.ID),
+					"crew": row.CrewName, "crewId": store.UUIDString(row.CrewID),
+					"mime": row.Mime, "sizeBytes": row.SizeBytes, "uploadedAt": row.CreatedAt.Time}
+			})
+			return out, len(rows), err
 		}),
 		{"medals.json", func() (any, error) {
 			// Shown on the ride and rider pages, purged with the account —

@@ -59,9 +59,9 @@ func cleanCheers(picked []string) (stored, refusal string) {
 	deduped := make([]string, 0, len(picked))
 	seen := map[string]struct{}{}
 	for _, cheer := range picked {
-		// Keys now, and the emoji a crew picked before #447.
-		if !protocol.IsIconOrEmoji(cheer) {
-			return "", "Reactions are icons from the set."
+		// An icon key, one emoji, or the crew's own by `:name:` (#2643).
+		if !protocol.IsReaction(cheer) {
+			return "", "That is not a reaction — pick an icon, an emoji or one of the crew's own."
 		}
 		if _, dup := seen[cheer]; dup {
 			continue

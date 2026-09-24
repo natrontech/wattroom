@@ -32,6 +32,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/crews"
 	"github.com/natrontech/wattroom/server/internal/customworkouts"
 	"github.com/natrontech/wattroom/server/internal/dms"
+	"github.com/natrontech/wattroom/server/internal/emoji"
 	"github.com/natrontech/wattroom/server/internal/feedback"
 	"github.com/natrontech/wattroom/server/internal/fitexport"
 	"github.com/natrontech/wattroom/server/internal/friends"
@@ -311,6 +312,9 @@ func main() {
 		// lobby ping names the channel whose log moved.
 		chatService := chat.New(st, log)
 		chatService.RegisterChannels(mux, channelsService, h)
+		// A crew's own emoji (#2643), behind the crew's gate; the lobby ping
+		// is how a picker open elsewhere hears the set changed.
+		emoji.New(st, channelsService, h, log).Register(mux)
 		// The deletions no write can trigger (#1153, #1163). Sessions and
 		// recaps are both bounded by TIME, which nothing but a clock enforces.
 		housekeeping.Run(ctx, st, log)
