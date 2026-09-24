@@ -159,18 +159,22 @@ export function createChannelLive(address: PlaceAddress) {
 			// fresh process acks the live stream it hears while holding
 			// nothing to save.
 			if (phase === 'done') settle(buffer);
-			else if (bufferedRows >= MIN_SAMPLES && !t.state?.workoutName)
-				// No workout at all is the fresh process: a session that
-				// closed keeps its workout named on every later tick, and a
-				// new pick names the next one, so an idle channel that can name
-				// nothing is one that remembers nothing. Only the banner
-				// hangs on this — the buffer is kept on the `done` test
-				// alone, which cannot be fooled by a coach who picks the
-				// next workout before this tick arrives.
-				lostSession = {
-					workoutName: openedName,
-					minutes: Math.round(bufferedRows / 60),
-				};
+			else {
+				// Nothing saved it, and nothing records it now (#2617).
+				buffer?.release();
+				if (bufferedRows >= MIN_SAMPLES && !t.state?.workoutName)
+					// No workout at all is the fresh process: a session that
+					// closed keeps its workout named on every later tick, and a
+					// new pick names the next one, so an idle channel that can
+					// name nothing is one that remembers nothing. Only the
+					// banner hangs on this — the buffer is kept on the `done`
+					// test alone, which cannot be fooled by a coach who picks
+					// the next workout before this tick arrives.
+					lostSession = {
+						workoutName: openedName,
+						minutes: Math.round(bufferedRows / 60),
+					};
+			}
 			buffer = null;
 			noCrashSafety = false;
 			return;
@@ -186,7 +190,7 @@ export function createChannelLive(address: PlaceAddress) {
 			startedAt,
 			workoutName: openedName,
 		}).then((opened) => {
-			if (!riding || openedFor !== startedAt) return;
+			if (!riding || openedFor !== startedAt) return opened.release();
 			buffer = opened;
 			noCrashSafety = !opened.crashSafe;
 		});
@@ -203,6 +207,8 @@ export function createChannelLive(address: PlaceAddress) {
 		if (!opened) return;
 		void opened.since(acked).then((tail) => {
 			if (tail.length < MIN_SAMPLES) opened.end();
+			// The hub never heard its tail: offered back from here (#2617).
+			else opened.release();
 		});
 	}
 
@@ -571,6 +577,8 @@ export function createChannelLive(address: PlaceAddress) {
 		},
 		close() {
 			closed = true;
+			// Left mid-session: this tab records no more of it (#2617).
+			buffer?.release();
 			if (reconnectTimer !== null) clearTimeout(reconnectTimer);
 			if (silenceTimer !== null) clearTimeout(silenceTimer);
 			window.removeEventListener('offline', wentOffline);

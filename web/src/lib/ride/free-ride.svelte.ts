@@ -114,6 +114,7 @@ export function createFreeRide(deps: { ftp: () => number }) {
 					workoutJson: FREE_RIDE_JSON,
 				}).then((opened) => {
 					if (rideId === opening) buffer = opened;
+					else opened.release();
 				});
 			}
 			samples.push(sample);
@@ -154,6 +155,8 @@ export function createFreeRide(deps: { ftp: () => number }) {
 			const result = await uploadRide(ride);
 			saving = false;
 			if ('saved' in result) ended?.end();
+			// Not saved and no longer recorded: a ride to offer back (#2617).
+			else ended?.release();
 			outcome = result;
 			return result;
 		},
