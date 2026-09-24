@@ -520,6 +520,7 @@ func TestFriendCodeIsTheOnlyDoor(t *testing.T) {
 		t.Fatalf("stranger-by-code request: %d", code)
 	}
 	if got := friendsOf(t, mux, "cara")[0]["status"]; got != "pending_in" {
+		t.Fatalf("cara sees %v", got)
 	}
 }
 
