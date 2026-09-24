@@ -17,6 +17,18 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.139] - 2026-09-24
+
+### Added
+
+- **Rider hover cards.** Rest your pointer on someone's face or name in chat, the member list, the people column, the friends panel or the voice strip, and a card shows their level, their status, where they are, and buttons to message them or open their page.
+- A crew's owner or admin can move a rider into another voice channel by dragging their name in the sidebar, or with the name's right-click menu. The rider's mic and camera come along, and a toast says who moved them. A rider who is pedalling can't be moved.
+
+### Fixed
+
+- A chat where riders carry a status line no longer grows a second scrollbar that lets the whole app scroll out of the window.
+- When the server refuses a time you chose for a planned session, or for moving one, the reason now shows right under the time field instead of in a toast over the picker. It goes away once you pick another time.
+
 ## [2026.09.138] - 2026-09-24
 
 ### Changed
@@ -2929,7 +2941,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.138...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.139...HEAD
+[2026.09.139]: https://github.com/natrontech/wattroom/compare/2026.09.138...2026.09.139
 [2026.09.138]: https://github.com/natrontech/wattroom/compare/2026.09.137...2026.09.138
 [2026.09.137]: https://github.com/natrontech/wattroom/compare/2026.09.136...2026.09.137
 [2026.09.136]: https://github.com/natrontech/wattroom/compare/2026.09.135...2026.09.136
