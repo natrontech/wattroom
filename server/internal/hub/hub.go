@@ -397,24 +397,32 @@ func (h *Hub) SessionAnnounce(channel, verb, actor, workout string, startsAt tim
 // under way is not, and says so rather than marking a plan that never loaded
 // (#2606). Their own pick left idle gives way to the plan. The channel's room
 // is made if nobody is in it yet: the coach is on their way, and a countdown
-// nobody comes to ride ends like any other.
-func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (code, message string) {
+// nobody comes to ride ends like any other. The id is the session's, so the
+// starter can be taken to it (#2599); empty with a refusal.
+func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (id, code, message string) {
 	rm := h.room(channel)
 	rm.mu.Lock()
 	s := rm.session
 	underWay := s.open() && s.coach == rider.ID && s.phase != "idle"
-	current := s.workoutName
+	current, running := s.workoutName, s.id
 	rm.mu.Unlock()
 	if underWay && current == workoutName {
-		return "", ""
+		return running, "", ""
 	}
 	if underWay {
-		return "conflict", "You're already riding " + current + " in this channel — end it before starting " + workoutName + "."
+		return "", "conflict", "You're already riding " + current + " in this channel — end it before starting " + workoutName + "."
 	}
-	if code, message := rm.control(protocol.Control{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON}, rider, h.now()); code != "" {
-		return code, message
+	for _, c := range []protocol.Control{
+		{Action: "pick", WorkoutName: workoutName, WorkoutJSON: workoutJSON},
+		{Action: "start"},
+	} {
+		if code, message := rm.control(c, rider, h.now()); code != "" {
+			return "", code, message
+		}
 	}
-	return rm.control(protocol.Control{Action: "start"}, rider, h.now())
+	rm.mu.Lock()
+	defer rm.mu.Unlock()
+	return rm.session.id, "", ""
 }
 
 // QueuePlaylist appends a saved playlist's tracks onto a room's live queue

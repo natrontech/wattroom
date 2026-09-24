@@ -30,7 +30,11 @@
 <script lang="ts">
 	import { account } from '$lib/account.svelte';
 	import { useChannel } from '$lib/channel/context';
-	import { planDue, startCrewPlan } from '$lib/crew-schedule';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { sessionPath } from '$lib/channel/address';
+	import { liveSessionId } from '$lib/channel/tick-session';
+	import { planDue, startCrewPlan, startedPath } from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { flatten } from '$lib/workout/engine';
@@ -112,8 +116,9 @@
 		if (plan && plan.workoutName === picked.name && planDue(plan.startsAt)) {
 			layers.setup.open = false;
 			void startCrewPlan(channel.address.crew, plan.id).then((res) => {
-				if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
 				channel.reloadPlan();
+				if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
+				else void goto(startedPath(channel.address.crew, res.data), GO);
 			});
 			return;
 		}
@@ -131,8 +136,24 @@
 		// blind, a refused pick's reason was overwritten by start's own
 		// refusal, and a refused pick after a good one started the old one.
 		startAfterPick = picked.name;
+		following = true;
 		layers.setup.open = false;
 	}
+
+	// The tab that pressed Start goes where the ride is (#2599): the session's
+	// own address, once the tick names it — the count-in happens there, and
+	// the voice channel's lobby left the coach looking at camera tiles while
+	// the timeline started without them. Only this tab, and only its own
+	// start: a refusal lets go, and nobody else's start moves anyone.
+	const GO = { keepFocus: true, noScroll: true };
+	let following = $state(false);
+	$effect(() => {
+		const id = liveSessionId(live.tick?.state);
+		if (!following || !id) return;
+		following = false;
+		const to = sessionPath(channel.address.crew, id);
+		if (page.url.pathname !== to) void goto(to, GO);
+	});
 	let startAfterPick = $state<string | null>(null);
 	$effect(() => {
 		const state = live.tick?.state;
@@ -143,7 +164,9 @@
 		}
 	});
 	$effect(() => {
-		if (live.refusal) startAfterPick = null;
+		if (!live.refusal) return;
+		startAfterPick = null;
+		following = false;
 	});
 </script>
 
@@ -199,6 +222,7 @@
 				undefined
 			: (id) => {
 					live.control('game', undefined, id);
+					following = true;
 					layers.setup.open = false;
 				}}
 		trainer={unpaired ? trainerCard : undefined}

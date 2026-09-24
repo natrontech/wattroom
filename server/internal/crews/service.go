@@ -41,9 +41,9 @@ type Presence interface {
 	// ping is how every other client hears, and re-fetches.
 	PresenceChanged()
 	// A planned session's start opens it in its voice channel (#2440), and
-	// answers the channel's one-session rule: a code and a message, or two
-	// empty strings when it opened.
-	OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (code, message string)
+	// answers the channel's one-session rule: the session's id when it
+	// opened, or a code and a message.
+	OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (id, code, message string)
 }
 
 // VoiceEjector is the LiveKit arm of a kick — satisfied by *av.Service.

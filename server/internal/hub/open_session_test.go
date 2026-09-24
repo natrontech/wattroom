@@ -41,7 +41,7 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 		{
 			name: "the plan already under way is started, not refused",
 			before: func(h *Hub, rm *room) {
-				if code, msg := h.OpenSession("track", alice, "Thursday", plan); code != "" {
+				if _, code, msg := h.OpenSession("track", alice, "Thursday", plan); code != "" {
 					t.Fatalf("first start: %s %s", code, msg)
 				}
 			},
@@ -76,9 +76,17 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 			rm := h.room("track")
 			tt.before(h, rm)
 
-			code, _ := h.OpenSession("track", alice, "Thursday", plan)
+			id, code, _ := h.OpenSession("track", alice, "Thursday", plan)
 			if code != tt.wantCode {
 				t.Fatalf("code = %q, want %q", code, tt.wantCode)
+			}
+			// The starter is taken to it (#2599): an id with every start,
+			// the session's own, and none with a refusal.
+			rm.mu.Lock()
+			want := rm.session.id
+			rm.mu.Unlock()
+			if code != "" && id != "" || code == "" && (id == "" || id != want) {
+				t.Fatalf("id = %q with code %q, want %q", id, code, want)
 			}
 			rm.mu.Lock()
 			s := rm.session

@@ -22,6 +22,7 @@ const CHANNEL_TO_SESSION: Record<string, { modules: string[]; why: string }> = {
 	},
 	'lib/channel/Lounge.svelte': {
 		modules: [
+			'CountdownScreen.svelte',
 			'GamePanel.svelte',
 			'PlanCard.svelte',
 			'end-game',

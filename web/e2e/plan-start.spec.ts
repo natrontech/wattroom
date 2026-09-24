@@ -41,6 +41,8 @@ test('Start now on a plan counts it down in its voice channel', async ({
 
 	await page.goto(`/crew/${crew}/schedule`);
 	await page.getByRole('button', { name: 'Start now' }).first().click();
+	// To the ride, not the channel's lobby: the count-in is there (#2599).
+	await page.waitForURL(`/crew/${crew}/s/**`, { timeout: 30_000 });
 
 	// The crew's live read is what every sidebar draws a session from.
 	await expect
