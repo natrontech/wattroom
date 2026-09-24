@@ -1,1 +1,0 @@
-- Your session summary now stays open until you close it. Before, it closed for everyone the moment the coach picked the next workout, taking the "See your ride" link with it. It still goes away once your next session is actually under way. Once you've closed it, it no longer pops back up when the page switches to the voice channel at the end of the session.
