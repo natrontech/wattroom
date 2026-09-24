@@ -133,7 +133,12 @@ export function createDmThread(peerId: string, peerName: () => string) {
 	}
 
 	async function markRead() {
-		const res = await api(`/api/dms/${peerId}/read`, { method: 'POST' });
+		// Up to the newest line on screen, not "now" (#2750): one that landed
+		// after this fetch stays unread until a poll shows it.
+		const res = await api(`/api/dms/${peerId}/read`, {
+			method: 'POST',
+			json: { upTo: raw.at(-1)?.id },
+		});
 		// The badge comes off the heads: ask for them again, or a dot sits on
 		// the thread you are reading until the next poll.
 		if (res.ok) dmHeads.refresh();

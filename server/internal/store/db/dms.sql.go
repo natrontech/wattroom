@@ -517,25 +517,31 @@ func (q *Queries) ListDms(ctx context.Context, arg ListDmsParams) ([]ListDmsRow,
 
 const markDmRead = `-- name: MarkDmRead :exec
 insert into dm_reads (user_id, peer_id, read_at)
-select $1, $2, now()
-where exists (
-    select 1 from dm_messages
-    where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
-      and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
-)
-on conflict (user_id, peer_id) do update set read_at = now()
+select $1, $2, max(created_at)
+from dm_messages
+where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
+  and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
+  and ($3::uuid is null or id = $3)
+having max(created_at) is not null
+on conflict (user_id, peer_id) do update set read_at = greatest(dm_reads.read_at, excluded.read_at)
 `
 
 type MarkDmReadParams struct {
 	UserID pgtype.UUID
 	PeerID pgtype.UUID
+	UpTo   pgtype.UUID
 }
 
 // The reader's own cursor (ADR-0012 amended 2026-09-24): written and read by
-// the reader alone, never by the peer. Only a pair that has a conversation
-// gets a row — which also keeps an unknown id from reaching the foreign key.
+// the reader alone, never by the peer. It moves to the line the reader was
+// shown, up_to, by that line's own created_at (#2750): now() also covered
+// whatever landed between the thread's fetch and this write. No up_to — a
+// tab on the script from before — means the pair's newest line. Never
+// backwards, so a device with an older view cannot un-read another's read.
+// A pair with no such line gets no row, which also keeps an unknown id from
+// reaching the foreign key.
 func (q *Queries) MarkDmRead(ctx context.Context, arg MarkDmReadParams) error {
-	_, err := q.db.Exec(ctx, markDmRead, arg.UserID, arg.PeerID)
+	_, err := q.db.Exec(ctx, markDmRead, arg.UserID, arg.PeerID, arg.UpTo)
 	return err
 }
 
