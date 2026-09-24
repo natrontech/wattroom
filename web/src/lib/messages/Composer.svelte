@@ -15,6 +15,7 @@
 	import type { Gif } from '$lib/chat/gifs';
 	import ImageChip from '$lib/chat/ImageChip.svelte';
 	import { createPendingImage } from '$lib/chat/pending-image.svelte';
+	import { fitsText, sendsOnEnter } from '$lib/chat/textarea';
 
 	let {
 		send: deliver,
@@ -43,7 +44,7 @@
 	} = $props();
 
 	let draft = $state('');
-	let composer = $state<HTMLInputElement | null>(null);
+	let composer = $state<HTMLTextAreaElement | null>(null);
 
 	// `@` completes over the thread's people (#1766). Escape puts the list
 	// away for this draft; typing on brings it back.
@@ -64,7 +65,12 @@
 		composer?.focus({ preventScroll: true });
 	}
 	function onKey(e: KeyboardEvent) {
-		if (!mention) return;
+		if (!mention) {
+			if (!sendsOnEnter(e)) return;
+			e.preventDefault();
+			void send();
+			return;
+		}
 		const { hits } = mention;
 		if (e.key === 'ArrowDown') pick = (pick + 1) % hits.length;
 		else if (e.key === 'ArrowUp') pick = (pick + hits.length - 1) % hits.length;
@@ -171,7 +177,7 @@
 		</ul>
 	{/if}
 	<form
-		class="flex items-center gap-2"
+		class="flex items-end gap-2"
 		onsubmit={(e) => {
 			e.preventDefault();
 			void send();
@@ -212,9 +218,13 @@
 				title="send a GIF"><ImagePlay size={16} /></button
 			>
 		{/if}
-		<input
+		<!-- A textarea (#2642): a line break is something a rider writes, and a
+		     long line wraps in view instead of sliding off the box's left edge. -->
+		<textarea
 			bind:this={composer}
 			bind:value={draft}
+			{@attach fitsText(() => draft)}
+			rows="1"
 			onpaste={pending.paste}
 			onkeydown={onKey}
 			role="combobox"
@@ -226,8 +236,7 @@
 			{placeholder}
 			aria-label={placeholder}
 			disabled={!!lock}
-			class="input min-w-0 flex-1"
-		/>
+			class="input max-h-40 min-w-0 flex-1 resize-none"></textarea>
 		<button
 			disabled={!!lock || sending || (!draft.trim() && !pending.current)}
 			class="btn btn-primary">Send</button

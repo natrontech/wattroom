@@ -78,6 +78,39 @@ export function formatTime(ms: number): string {
 	});
 }
 
+/**
+ * The day a chat line was written, for the divider above a day's first line:
+ * "Today", "Yesterday", else "Monday 21 September" — the year only once it is
+ * not this one. `formatTime` beside the line says the rest.
+ */
+export function formatDay(ms: number, now = Date.now()): string {
+	const then = new Date(ms);
+	const ago = -calendarDaysApart(new Date(now), then);
+	if (ago === 0) return 'Today';
+	if (ago === 1) return 'Yesterday';
+	return then.toLocaleDateString(undefined, {
+		weekday: 'long',
+		day: 'numeric',
+		month: 'long',
+		...(then.getFullYear() === new Date(now).getFullYear()
+			? {}
+			: { year: 'numeric' }),
+	});
+}
+
+/** Whether two instants fall on one local calendar day. */
+export function sameDay(a: number, b: number): boolean {
+	return calendarDaysApart(new Date(a), new Date(b)) === 0;
+}
+
+/** A line's stamp spelled out, for its tooltip: date and time together. */
+export function formatStamp(ms: number): string {
+	return new Date(ms).toLocaleString(undefined, {
+		dateStyle: 'full',
+		timeStyle: 'short',
+	});
+}
+
 /** One decimal, or an en dash while weight is unknown — never `Infinity`. */
 export function wkg(watts: number, kg: number | null | undefined): string {
 	return kg && kg > 0 ? (watts / kg).toFixed(1) : '–';

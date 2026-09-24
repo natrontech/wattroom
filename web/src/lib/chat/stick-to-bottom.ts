@@ -25,16 +25,21 @@ export function stickToBottom(node: HTMLElement): () => void {
 		node.scrollTop = node.scrollHeight;
 	};
 
-	const follow = () => {
-		// A log that no longer overflows has no reading position to protect —
-		// which also re-arms a reader who scrolled back and then cleared the
-		// thread (switching DM peers empties the box).
+	// A log that no longer overflows has no reading position to protect —
+	// which also re-arms a reader who scrolled back and then cleared the
+	// thread (switching DM peers empties the box).
+	const keep = () => {
 		if (node.scrollHeight <= node.clientHeight) pinned = true;
 		if (pinned) toBottom();
-		else {
-			missed += 1;
-			tell();
-		}
+	};
+	// Only the DOM changing is a line landing. The box resizing — a composer
+	// growing a row as you type (#2642) — or a picture decoding is not one,
+	// and counting them told a reader about messages nobody sent.
+	const follow = () => {
+		keep();
+		if (pinned) return;
+		missed += 1;
+		tell();
 	};
 
 	// Your own send pins and scrolls (#1765): the rule that arrivals never
@@ -64,17 +69,17 @@ export function stickToBottom(node: HTMLElement): () => void {
 	node.addEventListener('wattroom-pin', onPin);
 	// Images decode after their line is in the DOM and only then take up
 	// height, so the mutation that added them has long since been handled.
-	node.addEventListener('load', follow, true);
+	node.addEventListener('load', keep, true);
 
 	const lines = new MutationObserver(follow);
 	lines.observe(node, { childList: true, subtree: true, characterData: true });
-	const box = new ResizeObserver(follow);
+	const box = new ResizeObserver(keep);
 	box.observe(node);
 
 	return () => {
 		node.removeEventListener('scroll', onScroll);
 		node.removeEventListener('wattroom-pin', onPin);
-		node.removeEventListener('load', follow, true);
+		node.removeEventListener('load', keep, true);
 		lines.disconnect();
 		box.disconnect();
 	};

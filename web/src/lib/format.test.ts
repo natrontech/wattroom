@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
 	formatClock,
 	formatClockLong,
+	formatDay,
 	formatDuration,
 	formatWhen,
+	sameDay,
 	wkg,
 } from './format';
 
@@ -54,6 +56,38 @@ describe('formatWhen', () => {
 		expect(formatWhen(iso, true).length).toBeGreaterThan(
 			formatWhen(iso).length,
 		);
+	});
+});
+
+describe('formatDay', () => {
+	// The chat divider (#2642): a day's first line says which day it was.
+	const now = new Date(2026, 8, 24, 0, 30).getTime();
+	it('says Today and Yesterday by the calendar, not by 24 hours', () => {
+		expect(formatDay(new Date(2026, 8, 24, 0, 5).getTime(), now)).toBe('Today');
+		expect(formatDay(new Date(2026, 8, 23, 23, 55).getTime(), now)).toBe(
+			'Yesterday',
+		);
+		expect(formatDay(new Date(2026, 8, 22, 12).getTime(), now)).not.toMatch(
+			/^(Today|Yesterday)$/,
+		);
+	});
+	it('names the year only once it is not this one', () => {
+		expect(formatDay(new Date(2026, 0, 3).getTime(), now)).not.toMatch(/2026/);
+		expect(formatDay(new Date(2025, 11, 30).getTime(), now)).toMatch(/2025/);
+	});
+	it('groups by local day', () => {
+		expect(
+			sameDay(
+				new Date(2026, 8, 24, 0, 1).getTime(),
+				new Date(2026, 8, 24, 23, 59).getTime(),
+			),
+		).toBe(true);
+		expect(
+			sameDay(
+				new Date(2026, 8, 23, 23, 59).getTime(),
+				new Date(2026, 8, 24, 0, 1).getTime(),
+			),
+		).toBe(false);
 	});
 });
 
