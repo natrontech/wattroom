@@ -131,7 +131,7 @@ export const sensors = {
 			slots[kind].name = sensor.name;
 		} catch (cause) {
 			await releaseSlot(kind);
-			slots[kind].error = pairError(cause);
+			slots[kind].error = pairError(cause, kind);
 		} finally {
 			pairing = null;
 		}

@@ -22,4 +22,22 @@ describe('pairError', () => {
 	it('has an answer for something that is not an error at all', () => {
 		expect(pairError('nope')).toBe('Could not connect to that sensor.');
 	});
+
+	it('tells a strap that refused the link what to try (#2650)', () => {
+		expect(
+			pairError(
+				new DOMException('Connection attempt failed', 'NetworkError'),
+				'heart-rate',
+			),
+		).toMatch(/^Connection attempt failed\. On a Garmin HRM 600.*Retry/);
+	});
+
+	it('keeps the strap hint off a chooser that found nothing', () => {
+		expect(
+			pairError(
+				new DOMException('User cancelled', 'NotFoundError'),
+				'heart-rate',
+			),
+		).not.toMatch(/Garmin/);
+	});
 });

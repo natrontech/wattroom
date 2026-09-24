@@ -291,6 +291,15 @@
 		{#if trainer.error && trainer.state !== 'connecting'}
 			<p class="text-danger mt-2 text-xs">{trainer.error}</p>
 		{/if}
+		<!-- The card only says "Couldn't connect"; the why and what-to-do go
+		     here, as the trainer's do (#2650). -->
+		{#each SENSORS as sensor (sensor.kind)}
+			{#if sensorState(sensor.kind) === 'failed'}
+				<p class="text-danger mt-2 text-xs">
+					{sensor.label}: {sensors.slot(sensor.kind).error}
+				</p>
+			{/if}
+		{/each}
 		{#if trainer.onSimulate && !elsewhere.trainer}
 			<!-- Dev-only (#123): simulated watts in a live session would count for
 			     medals, XP and streaks — the fairness layer takes no fakes. Gone
