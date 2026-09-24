@@ -204,7 +204,7 @@
 		</p>
 	{/if}
 {:else}
-	{@render section('chats', 'text')}
+	{@render section('chat channels', 'text')}
 	<ul class="space-y-0.5">
 		{#each texts as c (c.id)}
 			<li>{@render row(c)}</li>
