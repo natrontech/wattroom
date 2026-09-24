@@ -87,6 +87,10 @@
 	);
 	const riders = $derived(roster.riders);
 	const you = $derived(roster.you);
+	// A plan on its way holds the picker (#2609): each POST is a plan and a
+	// mail to every member, so a second tap before the first answers was a
+	// duplicate on the calendar and in everyone's inbox.
+	let planning = $state(false);
 
 	// ── Composed, not owned (code-quality.md): the summary that reads the
 	// recording and the roster — each its own module, wired here to the
@@ -215,12 +219,19 @@
 		intent={layers.setup.intent}
 		ftp={connection.profile.current.ftp}
 		gameRunning={!!live.tick?.game}
+		busy={planning}
 		onPlan={async (name, json, at) => {
-			// Closed only once the server took it (#1766): a refused time used
-			// to leave a toast and a closed picker — the workout and the time
-			// to choose again. The refusal is the toast the channel already shows.
-			if ((await onSchedule(name, json, at)) !== false)
-				layers.setup.open = false;
+			if (planning) return;
+			planning = true;
+			try {
+				// Closed only once the server took it (#1766): a refused time used
+				// to leave a toast and a closed picker — the workout and the time
+				// to choose again. The refusal is the toast the channel already shows.
+				if ((await onSchedule(name, json, at)) !== false)
+					layers.setup.open = false;
+			} finally {
+				planning = false;
+			}
 		}}
 		onStart={device.spectator
 			? // A phone plans, and does not start (#1767). The Sessions place
