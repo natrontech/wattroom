@@ -15,6 +15,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"sync/atomic"
 	"time"
 
@@ -22,16 +23,20 @@ import (
 )
 
 // pollStars keeps the repo's star count fresh in the background so the landing
-// page reads one number from us instead of every visitor calling GitHub —
-// unauthenticated api.github.com allows 60 requests an hour per address, and
-// no visitor's address needs to reach GitHub for a star count. Zero means
+// page reads one number from us instead of every visitor calling GitHub — no
+// visitor's address needs to reach GitHub for a star count. Zero means
 // unknown (not fetched yet, or GitHub unreachable) and the page hides it.
+// The feedback issuer's WATTROOM_GITHUB_TOKEN rides along when set:
+// unauthenticated api.github.com allows 60 requests an hour per address,
+// shared with everything else behind the box's egress, and in production
+// that ran dry (#2689).
 // ponytail: fixed 15 min refresh, no ETag — stars are not a live metric.
 func pollStars(ctx context.Context, log *slog.Logger) *atomic.Int64 {
 	var stars atomic.Int64
+	token := os.Getenv("WATTROOM_GITHUB_TOKEN")
 	safego.Supervise(log, time.Now, "github stars poll", ctx.Done(), func() {
 		for {
-			n, err := fetchStars(ctx)
+			n, err := fetchStars(ctx, token)
 			jobmetrics.Ran("github stars poll", err)
 			if err != nil {
 				log.Warn("github stars unavailable", "err", err)
@@ -48,7 +53,7 @@ func pollStars(ctx context.Context, log *slog.Logger) *atomic.Int64 {
 	return &stars
 }
 
-func fetchStars(ctx context.Context) (int64, error) {
+func fetchStars(ctx context.Context, token string) (int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
@@ -57,6 +62,9 @@ func fetchStars(ctx context.Context) (int64, error) {
 		return 0, err
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return 0, err
