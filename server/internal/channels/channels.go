@@ -37,6 +37,9 @@ type Live interface {
 	LiveSession(channel string) (protocol.LiveSession, bool)
 	// Taking somebody out of a private channel severs them there too.
 	Kick(channel, userID string)
+	// An admin's drag (#2730): tell a rider's sockets in one voice channel
+	// to go to another. hub.ErrNotInChannel, hub.ErrRiding.
+	Move(channel, userID string, to protocol.Moved) error
 	// A deleted voice channel's live state dies with it (#618).
 	CloseRoom(channel string)
 }
@@ -104,6 +107,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/channels/{id}", s.handleDelete)
 	mux.HandleFunc("PUT /api/channels/{id}/members/{userID}", s.handleNameMember)
 	mux.HandleFunc("DELETE /api/channels/{id}/members/{userID}", s.handleUnnameMember)
+	mux.HandleFunc("POST /api/channels/{id}/move", s.handleMove)
 }
 
 type memberJSON struct {

@@ -73,6 +73,9 @@ type fakeLive struct {
 	mu      sync.Mutex
 	kicked  []string
 	closed  []string
+	moved   []string
+	// What Move answers; nil moves.
+	moveErr error
 	present map[string]protocol.ChannelPresence
 	running map[string]protocol.LiveSession
 }
@@ -96,6 +99,16 @@ func (f *fakeLive) Kick(channel, userID string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.kicked = append(f.kicked, channel+"/"+userID)
+}
+
+func (f *fakeLive) Move(channel, userID string, to protocol.Moved) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.moveErr != nil {
+		return f.moveErr
+	}
+	f.moved = append(f.moved, channel+"/"+userID+"->"+to.Channel+" "+to.Name+" by "+to.By)
+	return nil
 }
 
 func (f *fakeLive) CloseRoom(channel string) {

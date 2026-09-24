@@ -578,6 +578,22 @@ export interface Poke {
   at?: number /* int64 */;
 }
 /**
+ * Moved tells a rider's sockets in one voice channel that the crew's owner or
+ * an admin moved them into another (#2730), Discord's drag. The client goes
+ * there the way a sidebar click would, and the call comes along.
+ */
+export interface Moved {
+  /**
+   * The voice channel they now belong in, and its name for the toast.
+   */
+  channel: string;
+  name: string;
+  /**
+   * Who moved them.
+   */
+  by: string;
+}
+/**
  * AwayState is a rider stepping out (#706) — the Lounge's button, never a
  * timer: being off the bike is not being away, and a coach watching the stage
  * is present and not pedalling.
@@ -1109,6 +1125,7 @@ export interface ServerMessage {
   error?: Error;
   pairing?: SensorPairing;
   poke?: Poke;
+  moved?: Moved;
   /**
    * This socket's own address, sent once on join and to nobody else (#2131).
    */
