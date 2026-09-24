@@ -2,6 +2,7 @@ import { away, notify, type ReplyTo } from '$lib/notify.svelte';
 import { shouldAnnounce } from '$lib/notify-once';
 import { play } from '$lib/sound/cues';
 import { toasts } from '$lib/toast.svelte';
+import MessageCircle from '@lucide/svelte/icons/message-circle';
 
 /**
  * What kind of thing arrived. Every path through here looks identical once the
@@ -96,6 +97,10 @@ export function announce(arrival: Arrival): void {
 	else
 		toasts.push(
 			arrival.body ? `${arrival.title}: ${arrival.body}` : arrival.title,
-			{ href: arrival.href },
+			{
+				href: arrival.href,
+				// A chat channel's line wears its bubble, as the sidebar row does.
+				icon: arrival.kind === 'chat' ? MessageCircle : undefined,
+			},
 		);
 }
