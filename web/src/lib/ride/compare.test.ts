@@ -31,6 +31,25 @@ describe('compareRows', () => {
 	});
 });
 
+// The ramp is unscored by design and the workout riders repeat to compare
+// (#2629): its execution is not 0 %, it is not a number at all — the tile
+// above it says "not scored", and the row agrees.
+describe('compareRows for an unscored ride', () => {
+	it('says — for an execution that was not scored, and no delta', () => {
+		const rows = compareRows(
+			ride({ id: 'today', execution: 0, executionScored: false }),
+			ride({ id: 'best', execution: 0.9 }),
+		);
+		const execution = rows.find((r) => r.label === 'execution')!;
+		expect(execution).toEqual({
+			label: 'execution',
+			today: '—',
+			best: '90%',
+			delta: '',
+		});
+	});
+});
+
 describe('curveSentence', () => {
 	// d30 ⊂ d90, so d30 can never exceed d90 — equal means the 90-day best was
 	// set inside the last 30 days, which is the good news, not a zero delta.
