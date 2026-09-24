@@ -39,6 +39,27 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 			wantPhase: "countdown", wantName: "Thursday", wantTotal: 600, wantCoach: "alice",
 		},
 		{
+			name: "the plan already under way is started, not refused",
+			before: func(h *Hub, rm *room) {
+				if code, msg := h.OpenSession("track", alice, "Thursday", plan); code != "" {
+					t.Fatalf("first start: %s %s", code, msg)
+				}
+			},
+			wantPhase: "countdown", wantName: "Thursday", wantTotal: 600, wantCoach: "alice",
+		},
+		{
+			name: "a different ride of the starter's own is not the plan (#2606)",
+			before: func(h *Hub, rm *room) {
+				for _, c := range []protocol.Control{pick, {Action: "start"}} {
+					if code, msg := rm.control(c, alice, h.now()); code != "" {
+						t.Fatalf("%s: %s %s", c.Action, code, msg)
+					}
+				}
+			},
+			wantCode:  "conflict",
+			wantPhase: "countdown", wantName: "Other", wantTotal: 60, wantCoach: "alice",
+		},
+		{
 			name: "someone else's session keeps the channel, and says who",
 			before: func(h *Hub, rm *room) {
 				if code, msg := rm.control(pick, bob, h.now()); code != "" {
