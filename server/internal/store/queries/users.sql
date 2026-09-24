@@ -209,3 +209,7 @@ where u.id = $1
   and not exists (select 1 from crew_roles cr where cr.crew_id = c.id and cr.user_id = u.id)
   and not exists (select 1 from crews o where o.owner_id = u.id)
   and not exists (select 1 from crew_roles cr where cr.user_id = u.id and cr.role in ('member', 'admin'));
+
+-- name: SetUserCheers :one
+-- The rider's own reaction set (#2722), space-joined; '' is the base set.
+update users set cheers = $2 where id = $1 returning *;

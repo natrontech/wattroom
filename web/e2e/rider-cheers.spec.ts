@@ -1,17 +1,29 @@
+import type { Page } from '@playwright/test';
 import { expect, test, textPath, voicePath } from './crew';
 
 /**
- * A crew picks its reactions in Settings (ADR-0058 moved the palette from the
- * room to the crew), and its voice channels offer exactly those (#2521) — they
- * used to show the stock set whatever the crew chose.
+ * A rider picks their own reactions in Settings (#2722 — the crew's until
+ * then), and every voice and text channel offers exactly those (#2521).
  */
 
 /** This spec's own rider — nobody else's (#2133). */
-const A = 'Crew Cheers Owner';
+const A = 'Rider Cheers Owner';
+
+/** The rider's set, through the same write Settings makes; [] is the stock set. */
+function setCheers(page: Page, cheers: string[]) {
+	return page.evaluate(async (cheers) => {
+		const res = await fetch('/api/me/cheers', {
+			method: 'PUT',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ cheers }),
+		});
+		return res.status;
+	}, cheers);
+}
 
 const PALETTE = ['rocket', 'snowflake', 'skull', 'trophy'];
 
-test("a voice channel offers its crew's reactions", async ({
+test("a voice channel offers the rider's reactions", async ({
 	riders,
 	channels,
 }) => {
@@ -21,25 +33,10 @@ test("a voice channel offers its crew's reactions", async ({
 	);
 
 	const a = await riders(A);
-	const opened = await channels.open(a, `Crew Cheers ${Date.now() % 100000}`);
-	const setPalette = (cheers: string[]) =>
-		a.evaluate(
-			async ({ crew, cheers }) => {
-				const { name } = await fetch(`/api/crews/${crew}`).then((res) =>
-					res.json(),
-				);
-				const res = await fetch(`/api/crews/${crew}`, {
-					method: 'PATCH',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ name, cheers }),
-				});
-				return res.status;
-			},
-			{ crew: opened.crew, cheers },
-		);
+	const opened = await channels.open(a, `Rider Cheers ${Date.now() % 100000}`);
 
 	try {
-		expect(await setPalette(PALETTE), 'saving the palette').toBe(200);
+		expect(await setCheers(a, PALETTE), 'saving the set').toBe(200);
 		await a.goto(voicePath(opened));
 		for (const cheer of PALETTE)
 			await expect(
@@ -52,12 +49,12 @@ test("a voice channel offers its crew's reactions", async ({
 			a.getByRole('button', { name: 'party-popper', exact: true }),
 		).toHaveCount(0);
 	} finally {
-		// The rider's crew outlives the run: back to the stock set.
-		await setPalette([]);
+		// The rider outlives the run: back to the stock set.
+		await setCheers(a, []);
 	}
 });
 
-test("a text channel's reaction picker leads with the crew's set", async ({
+test("a text channel's reaction picker leads with the rider's set", async ({
 	riders,
 	channels,
 }) => {
@@ -67,25 +64,11 @@ test("a text channel's reaction picker leads with the crew's set", async ({
 	);
 
 	const a = await riders(A);
-	const opened = await channels.open(a, `Crew Picks ${Date.now() % 100000}`);
-	const patch = (cheers: string[]) =>
-		a.evaluate(
-			async ({ crew, cheers }) => {
-				const { name } = await fetch(`/api/crews/${crew}`).then((res) =>
-					res.json(),
-				);
-				await fetch(`/api/crews/${crew}`, {
-					method: 'PATCH',
-					headers: { 'content-type': 'application/json' },
-					body: JSON.stringify({ name, cheers }),
-				});
-			},
-			{ crew: opened.crew, cheers },
-		);
+	const opened = await channels.open(a, `Rider Picks ${Date.now() % 100000}`);
 
 	try {
-		// An emoji in the set is a reaction of its own now (#2643).
-		await patch(['trophy', '🥵']);
+		// An emoji in the set is a reaction of its own (#2643).
+		expect(await setCheers(a, ['trophy', '🥵'])).toBe(200);
 		await a.goto(textPath(opened));
 		const draft = a.getByPlaceholder(/^Message /);
 		await draft.fill('who is in tonight');
@@ -94,7 +77,7 @@ test("a text channel's reaction picker leads with the crew's set", async ({
 		await line.hover();
 		await line.getByRole('button', { name: 'react' }).click();
 		const picker = a.getByRole('dialog', { name: 'Pick an emoji' });
-		// The text channel drew the stock set whatever the crew chose — the
+		// The text channel once drew the stock set whatever was chosen — the
 		// voice channel's #2521, one surface over.
 		await expect(
 			picker.getByRole('button', { name: 'trophy', exact: true }),
@@ -107,7 +90,7 @@ test("a text channel's reaction picker leads with the crew's set", async ({
 			line.getByRole('button', { name: '🥵 1', exact: true }),
 		).toHaveAttribute('aria-pressed', 'true');
 	} finally {
-		await patch([]);
+		await setCheers(a, []);
 	}
 });
 

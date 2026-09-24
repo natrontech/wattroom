@@ -43,7 +43,7 @@ where crew_id = $1 and role in ('member', 'admin')
 
 -- name: GetCrew :one
 -- Everything but the image bytes (#1237): GetCrewImage serves those.
-select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled, listed, cheers, ics_token from crews where id = $1;
+select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::boolean as has_image, (renamed_at is not null)::boolean as named, board_enabled, listed, ics_token from crews where id = $1;
 
 -- name: SetCrewRole :exec
 -- Admin, member or banned. The owner is crews.owner_id and cannot be expressed here,
@@ -60,11 +60,6 @@ update crews set board_enabled = $2 where id = $1;
 -- In the public directory (ADR-0039 as amended by ADR-0058, #2445): off until
 -- the crew's owner or an admin lists it.
 update crews set listed = $2 where id = $1;
-
--- name: SetCrewCheers :exec
--- The crew's reaction palette (ADR-0058: the room's, moved up), stored
--- space-joined; '' is the base set.
-update crews set cheers = $2 where id = $1;
 
 -- name: GetCrewPrefs :one
 -- The caller's own switches on their crew membership (#2432). No row is an

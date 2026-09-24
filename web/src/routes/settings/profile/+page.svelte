@@ -22,6 +22,7 @@
 	import { hrZoneRanges, ZONE_TEXT } from '$lib/components/zones';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
+	import Reactions from './Reactions.svelte';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
 
@@ -518,5 +519,7 @@
 				/>
 			</div>
 		{/if}
+
+		<Reactions />
 	{/if}
 </div>

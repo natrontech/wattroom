@@ -19,7 +19,6 @@
 	import type { Crew } from '$lib/crew';
 	import { banFromCrewFlow } from '$lib/crew-flows';
 	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
-	import { STOCK_CHEERS } from '$lib/icons';
 	import MessageThread from '$lib/messages/MessageThread.svelte';
 	import {
 		createChatThread,
@@ -99,9 +98,6 @@
 		readAt: thread?.readAt ?? null,
 		reactions: thread?.reactions ?? {},
 		myReacts: thread?.myReacts ?? {},
-		// The crew's set, not the stock one (#2643, the text-channel twin of
-		// #2521); [] means the crew never changed it.
-		cheers: crew.cheers?.length ? crew.cheers : STOCK_CHEERS,
 		crewId: crew.id,
 		retry: () => thread?.retry(),
 		send: async (text, image, expiresIn) =>

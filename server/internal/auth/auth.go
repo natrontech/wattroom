@@ -161,6 +161,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	// Reported by the browser, not chosen by the rider (#858). timezone.go.
 	mux.HandleFunc("PUT /api/me/timezone", s.handleUpdateTimezone)
 	mux.HandleFunc("PUT /api/me/home-crew", s.handleSetHomeCrew)
+	mux.HandleFunc("PUT /api/me/cheers", s.handleSetCheers)
 	// The way back out of a connection (#783); linking is ?link=1 on start.
 	mux.HandleFunc("DELETE /api/me/identities/{provider}", s.handleDisconnectProvider)
 	s.registerPasskeyRoutes(mux)

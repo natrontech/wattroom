@@ -729,6 +729,9 @@ func TestExportCarriesEveryCategoryTheLawAsksFor(t *testing.T) {
 	if !strings.Contains(files["profile.json"], "\"stravaUpload\"") {
 		t.Errorf("profile.json does not carry the Strava switch:\n%s", files["profile.json"])
 	}
+	if !strings.Contains(files["profile.json"], "\"cheers\"") {
+		t.Errorf("profile.json does not carry the rider's reactions:\n%s", files["profile.json"])
+	}
 	if strings.Contains(files["chat.json"], "bobs own line") {
 		t.Errorf("the export carries another rider's chat line:\n%s", files["chat.json"])
 	}

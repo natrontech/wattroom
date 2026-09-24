@@ -66,9 +66,6 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 		BoardEnabled *bool `json:"boardEnabled"`
 		// In the public directory (ADR-0039 as amended by ADR-0058). Nil keeps.
 		Listed *bool `json:"listed"`
-		// The reaction palette (the room's, moved up by ADR-0058). Nil keeps,
-		// [] resets to the base set.
-		Cheers *[]string `json:"cheers"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -88,14 +85,6 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	var cheers string
-	if req.Cheers != nil {
-		var refusal string
-		if cheers, refusal = cleanCheers(*req.Cheers); refusal != "" {
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", refusal, "cheers")
-			return
-		}
-	}
 	tx, err := s.store.Pool.Begin(r.Context())
 	if err != nil {
 		httpx.Fail(w, s.log, "crew update begin failed", err, "The crew could not be saved.", "crew", store.UUIDString(crew.ID))
@@ -109,9 +98,6 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil && req.Listed != nil {
 		err = q.SetCrewListed(r.Context(), db.SetCrewListedParams{ID: crew.ID, Listed: *req.Listed})
-	}
-	if err == nil && req.Cheers != nil {
-		err = q.SetCrewCheers(r.Context(), db.SetCrewCheersParams{ID: crew.ID, Cheers: cheers})
 	}
 	if err == nil {
 		err = tx.Commit(r.Context())

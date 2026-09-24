@@ -104,6 +104,8 @@ type meResponse struct {
 	// The rider's own status (ADR-0060), absent when none or cleared — what
 	// the editor opens on.
 	StatusLine *protocol.StatusLine `json:"statusLine"`
+	// The rider's own reaction set (#2722), the base set until they pick.
+	Cheers []string `json:"cheers"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -402,6 +404,7 @@ func (s *Service) toMe(u db.User) meResponse {
 		Timezone:      u.Timezone,
 		HomeCrewID:    homeCrew(u),
 		StatusLine:    status.OfUser(u, time.Now()),
+		Cheers:        CheerSet(u.Cheers),
 	}
 }
 

@@ -8,6 +8,7 @@
  * know accounts exist.
  */
 import { api } from '$lib/api';
+import { STOCK_CHEERS } from '$lib/icons';
 import { people } from '$lib/people.svelte';
 import type { StatusLine } from '$lib/protocol';
 
@@ -79,6 +80,9 @@ export interface Me {
 	/** The crew's door you were sent to and have not joined (#2144): a code,
 	 * while it still opens a crew and you are in none. */
 	pendingInvite?: string;
+	/** Your own reaction set (#2722): icon keys and emoji, the first four the
+	 * mid-ride cheer buttons. The server fills in the base set. */
+	cheers?: string[];
 }
 
 function createAccountStore() {
@@ -188,6 +192,11 @@ function createAccountStore() {
 		get unreachable() {
 			return unreachable;
 		},
+		/** What you react with, everywhere (#2722) — the stock set until you
+		 * pick, or while signed out. */
+		get cheers(): string[] {
+			return me?.cheers?.length ? me.cheers : STOCK_CHEERS;
+		},
 		load,
 		/** Returns a field-keyed error message, or null on success. */
 		async save(next: {
@@ -219,6 +228,18 @@ function createAccountStore() {
 			const res = await api<Me>('/api/me/home-crew', {
 				method: 'PUT',
 				json: { crewId },
+			});
+			if (res.ok) {
+				me = res.data;
+				return null;
+			}
+			return res.error;
+		},
+		/** Your reaction set (#2722); [] goes back to the stock set. */
+		async setCheers(cheers: string[]): Promise<{ message: string } | null> {
+			const res = await api<Me>('/api/me/cheers', {
+				method: 'PUT',
+				json: { cheers },
 			});
 			if (res.ok) {
 				me = res.data;

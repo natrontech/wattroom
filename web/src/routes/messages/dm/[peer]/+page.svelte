@@ -13,7 +13,6 @@
 	import { createDmThread } from '$lib/dm/thread.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
-	import { STOCK_CHEERS } from '$lib/icons';
 	import MessageThread from '$lib/messages/MessageThread.svelte';
 	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { people } from '$lib/people.svelte';
@@ -150,11 +149,8 @@
 		loading: thread?.loading ?? true,
 		error: thread?.error ?? null,
 		readAt: thread?.readAt ?? null,
-		// A DM has no crew to draw a custom cheer palette from, so it speaks
-		// the same stock vocabulary a crew without its own falls back to (#777).
 		reactions: thread?.reactions ?? {},
 		myReacts: thread?.myReacts ?? {},
-		cheers: STOCK_CHEERS,
 		retry: () => thread?.retry(),
 		send: async (text, image, expiresIn) =>
 			(await thread?.send(text, image, expiresIn)) ?? null,
