@@ -506,6 +506,13 @@ ERG 0 W: nobody is riding the trainer then.
 
 - **A sender may make a line temporary** ([#2644](https://github.com/natrontech/wattroom/issues/2644)), in a text channel or a DM: it disappears **1 hour, 24 hours or 7 days** after it was sent **(defaults — tune in alpha)**, and no other timer is offered or accepted. The timer is the composer's and stays set for the lines that follow until the sender takes it off; each temporary line says how long it has left. When it runs out the line is gone for everyone at once — no reader is served it and the export no longer carries it — and the server deletes it within the minute, its reactions with it. Nothing is left in its place, a DM included: a timer is not a deletion, and both sides knew when it would go. A temporary line still counts toward the 500-message bound while it lives.
 
+## Personal status ([ADR-0060](decisions/0060-a-status-is-a-line-the-rider-writes.md), #2694)
+
+- A rider sets **one status**: an optional emoji (any Unicode emoji, or a custom emoji from a crew they are in) and **up to 100 characters** of text **(default — tune in alpha)**. It needs at least one of the two, and setting neither clears it.
+- **Clear after**: don't clear, **30 minutes, 1 hour, 4 hours, today, this week** (the same presets as Slack). "Today" ends at the rider's local midnight, and "this week" at the end of their local Sunday. Once the status clears, nobody is served it.
+- **Presets** that fill the editor in one tap: 🤒 Out sick (today) · 🏔️ Riding outside (4 hours) · 😴 Recovery week (this week) · 🏖️ On holiday (don't clear).
+- Shown wherever the rider's name is already shown to the viewer: the member card and profile show the text in full; the crew's member list, the voice occupants and the friends panel show the emoji, with the text on hover; a chat message shows the emoji after the author's name.
+
 ## Session recap retention (ADR-0034)
 
 - A finished session leaves **one recap** per session: who was in the session's voice channel, when they arrived, how long they stayed, and whether they rode. **Presence and time only** — never watts, kJ, execution, heart rate or a per-rider workout.
