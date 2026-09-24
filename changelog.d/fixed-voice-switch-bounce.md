@@ -1,0 +1,1 @@
+- Switching voice channels while the crew is busy no longer bounces you back into the channel you just left.

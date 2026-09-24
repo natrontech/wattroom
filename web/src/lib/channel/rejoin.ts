@@ -1,5 +1,6 @@
 /**
- * A refresh puts you back in voice — and nothing else does (#480).
+ * A refresh puts you back in voice (#480) — and, besides a click on the
+ * channel in the sidebar (voice-intent.ts, #2702), nothing else does.
  *
  * The page dies with the LiveKit connection, so a reload starts at
  * `status: 'off'` and the rider goes silent without noticing. The fix is a

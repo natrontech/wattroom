@@ -68,8 +68,26 @@ export default defineConfig({
 				'mobile-channel.spec.ts',
 				'phone-width.spec.ts',
 				'voice-duck.spec.ts',
+				'voice-click-join.spec.ts',
 			],
 			use: { ...devices['Desktop Chrome'], launchOptions: { args: [MUTE] } },
+		},
+		{
+			// A real call with a camera in it (#2702): Chromium's own fake
+			// devices stand in for the mic and camera, muted like every spec
+			// whose subject is not the sound.
+			name: 'av',
+			testMatch: ['voice-click-join.spec.ts'],
+			use: {
+				...devices['Desktop Chrome'],
+				launchOptions: {
+					args: [
+						MUTE,
+						'--use-fake-ui-for-media-stream',
+						'--use-fake-device-for-media-stream',
+					],
+				},
+			},
 		},
 		{
 			// A real phone profile, not a narrow desktop window: device.svelte.ts
