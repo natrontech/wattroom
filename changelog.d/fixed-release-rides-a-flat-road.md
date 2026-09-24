@@ -1,1 +1,0 @@
-- The trainer no longer goes limp when your target drops away mid-ride. Auto-pause, the low-cadence release, the count-in and the time between sessions used to set the trainer to 0 W in ERG, which leaves nothing to pedal against. They now ride like a flat road, and your target comes back as before.

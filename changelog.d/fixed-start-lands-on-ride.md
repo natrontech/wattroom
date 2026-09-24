@@ -1,1 +1,0 @@
-- Starting a session now takes you to the ride, where the count-in is. That applies whether you start from a voice channel's Start a session, a game, the channel's plan card, or the Schedule's Start now. Before, you stayed on the voice channel page looking at camera tiles while the countdown ran. Riders who stay on the voice channel page see the count-in there too.

@@ -1,1 +1,0 @@
-- A crew's owner or admin can now end a session someone else is coaching, from the voice channel on a desk or a phone, or clear a workout someone picked and never started. Until now only the coach had an End button, so a session left running or paused kept the voice channel shut. Members see who is setting up a pick, and the paused banner names the coach.
