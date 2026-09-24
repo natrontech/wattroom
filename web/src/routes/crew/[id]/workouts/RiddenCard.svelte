@@ -23,7 +23,7 @@
 		/** Its definition, when a plan or your shelf holds it — the graph. */
 		json: string | null;
 		ftp: number;
-		/** Ride it again, and the plan form it opens: the page's. */
+		/** Plan it again, and the plan form it opens: the page's. */
 		actions: Snippet;
 	} = $props();
 

@@ -2,12 +2,14 @@
 	import { learnCrewFaces } from '$lib/crew';
 	// The crew's Workouts (#2455, ADR-0058): what it has planned and what it
 	// has ridden together, derived from its schedule and its last 90 days of
-	// recaps. "Ride it again" puts a ridden workout back on the schedule in
-	// one of the crew's voice channels; starting it is the channel's.
+	// recaps. "Plan it again" puts a ridden workout back on the schedule, in
+	// one of the crew's voice channels or none yet; starting it is the
+	// channel's.
 	import { invalidateAll } from '$app/navigation';
 	import { navigating } from '$app/state';
 	import Banner from '$lib/components/Banner.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
+	import { nextHourInput } from '$lib/components/when';
 	import { account } from '$lib/account.svelte';
 	import { planCrewSession, planPath } from '$lib/crew-schedule';
 	import {
@@ -64,9 +66,11 @@
 	let busy = $state(false);
 	let refusal = $state<string | null>(null);
 
+	// The Schedule's picker, in one row (#2628): the next hour to start
+	// from, the first voice channel or none yet.
 	function open(name: string) {
 		planning = name;
-		when = '';
+		when = nextHourInput();
 		channel = data.voice[0]?.id ?? '';
 		refusal = null;
 	}
@@ -78,7 +82,7 @@
 			workoutName: name,
 			workoutJson: json,
 			startsAt: new Date(when).toISOString(),
-			channelId: channel,
+			channelId: channel || undefined,
 		});
 		busy = false;
 		if (!res.ok) {
@@ -225,16 +229,12 @@
 									planning === workout.name
 										? (planning = null)
 										: open(workout.name)}
-								disabled={!json || data.voice.length === 0}
+								disabled={!json}
 								aria-expanded={planning === workout.name}
 								class="btn btn-secondary btn-xs disabled:opacity-40"
-								><Repeat size={13} /> Ride it again</button
+								><Repeat size={13} /> Plan it again</button
 							>
-							{#if json && data.voice.length === 0}
-								<p class="text-muted basis-full text-xs">
-									{data.crew?.name} has no voice channel to ride it in yet.
-								</p>
-							{:else if json && planning === workout.name}
+							{#if json && planning === workout.name}
 								<div class="border-ink/5 basis-full border-t pt-3">
 									<div class="flex flex-wrap items-end gap-3">
 										<div>
@@ -247,6 +247,7 @@
 												{#each data.voice as v (v.id)}
 													<option value={v.id}>{v.name}</option>
 												{/each}
+												<option value="">No channel yet</option>
 											</select>
 										</label>
 										<button
