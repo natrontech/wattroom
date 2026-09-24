@@ -1094,6 +1094,13 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("status: %v", err)
 	}
+	// The export reads the session's row, which the real gate loads per
+	// request and this harness kept from before the write.
+	fresh, err := h.store.Queries.GetUser(t.Context(), h.id("alice"))
+	if err != nil {
+		t.Fatalf("reread alice: %v", err)
+	}
+	h.users.ByToken["alice"] = fresh
 
 	files := h.exportFiles(t, "alice")
 
