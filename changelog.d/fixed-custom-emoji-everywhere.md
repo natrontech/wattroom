@@ -1,0 +1,1 @@
+- A crew's own emoji now shows as its picture in more places: a message that uses one added moments earlier no longer stays stuck as `:name:` until you reload, pins draw them, the message box and the edit box show how the line will read, and the emoji picker no longer offers another crew's emoji as bare text in a DM, your status or your reaction set.

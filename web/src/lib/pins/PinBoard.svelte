@@ -3,6 +3,7 @@
 	// editor. What a pin IS, and which of its lines are copyable, lives in
 	// `pins.ts`; loading and saving belong to the place that draws this.
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import MessageText from '$lib/chat/MessageText.svelte';
 	import Modal from '$lib/components/Modal.svelte';
 	import {
 		contextMenu,
@@ -238,7 +239,11 @@ Whitelist is on — ask Nina.`;
 					</div>
 					{#each parsePin(pin.body) as line, i (i)}
 						{#if line.kind === 'text'}
-							<p class="text-muted px-4 py-2 text-xs">{line.text}</p>
+							<!-- Chat's own renderer, so a crew emoji in a pin is its
+							     picture rather than its `:name:`. -->
+							<p class="text-muted px-4 py-2 text-xs">
+								<MessageText text={line.text} preview={false} />
+							</p>
 						{:else if isLink(line.value)}
 							<!-- The row is the target, not the icon beside it: a
 							     rider reaching for this is often on a bike. -->

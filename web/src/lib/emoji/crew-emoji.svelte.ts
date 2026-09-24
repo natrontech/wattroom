@@ -21,6 +21,7 @@ const lists = $state<Record<string, CrewEmoji[]>>({});
 // Plain, not state: read during render, written after a fetch.
 const fetchedAt: Record<string, number> = {};
 const inflight: Record<string, Promise<string | null> | undefined> = {};
+const retry: Record<string, ReturnType<typeof setTimeout> | undefined> = {};
 
 // A name nobody here knows yet is most likely one a member just added: ask
 // again, but at most this often, so a typo'd `:nmae:` costs one read.
@@ -44,7 +45,10 @@ export function loadCrewEmoji(crewId: string): Promise<string | null> {
 		inflight[crewId] = undefined;
 		fetchedAt[crewId] = Date.now();
 		if (!res.ok) return res.error.message;
-		lists[crewId] = res.data.emoji;
+		// The same list again changes nothing on screen, and redrawing would
+		// miss every clock again (18:30:00 reads `:30:`) and ask again, forever.
+		if (JSON.stringify(lists[crewId]) !== JSON.stringify(res.data.emoji))
+			lists[crewId] = res.data.emoji;
 		return null;
 	});
 	return inflight[crewId];
@@ -56,8 +60,16 @@ export const crewEmoji = {
 	url(crewId: string, name: string): string | null {
 		const hit = lists[crewId]?.find((e) => e.name === name);
 		if (hit) return `/api/crews/${crewId}/emoji/${hit.id}`;
-		if (Date.now() - (fetchedAt[crewId] ?? 0) > STALE_MS)
-			void loadCrewEmoji(crewId);
+		// Asked too recently: ask once the window closes, not never. Nothing
+		// else redraws a line, so an emoji added a moment before it was used
+		// stayed its `:name:` until a reload.
+		const wait = (fetchedAt[crewId] ?? 0) + STALE_MS - Date.now();
+		if (wait <= 0) void loadCrewEmoji(crewId);
+		else
+			retry[crewId] ??= setTimeout(() => {
+				retry[crewId] = undefined;
+				void loadCrewEmoji(crewId);
+			}, wait);
 		return null;
 	},
 };
