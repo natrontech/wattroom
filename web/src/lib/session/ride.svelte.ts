@@ -3,7 +3,7 @@ import { arbitrate } from '$lib/ble/arbitrate';
 import { createPersonalGuards, type GuardPhase } from '$lib/workout/guards';
 import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
 import { serverNow } from '$lib/server-clock';
-import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
+import { holdTarget, type Trainer, type TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/session/wire';
 import { targetAt } from '$lib/workout/engine';
@@ -294,7 +294,7 @@ export function createRide(deps: RideDeps) {
 			return;
 		}
 		sprintMode = false;
-		void trainer.setTargetPower(target);
+		void holdTarget(trainer, target);
 	});
 
 	async function ride(next: Trainer) {
@@ -319,7 +319,7 @@ export function createRide(deps: RideDeps) {
 				// mode so a window still open re-issues its slope.
 				if (back && trainer === next && actuating) {
 					sprintMode = false;
-					void next.setTargetPower(target);
+					void holdTarget(next, target);
 				}
 			}),
 		);

@@ -212,7 +212,7 @@ describe('a sprint the ticks stop under (#789)', () => {
 		// inside the window forever. The window still has to end.
 		await vi.advanceTimersByTimeAsync(11_000);
 		await settle();
-		expect(trainer.commands.at(-1)).toBe('erg:0');
+		expect(trainer.commands.at(-1)).toBe('sim:0');
 
 		dispose();
 		live.close();
@@ -333,7 +333,7 @@ describe('the personal guards in a group ride (#788)', () => {
 		await settle();
 		expect(ride.guard).toBe('autopaused');
 		expect(ride.target).toBe(0);
-		expect(trainer.commands.at(-1)).toBe('erg:0');
+		expect(trainer.commands.at(-1)).toBe('sim:0');
 		// The session's own timeline is untouched: the shared clock still says
 		// running, and this rider's guard is nobody else's business.
 		expect(deps.shared().phase).toBe('running');
@@ -368,7 +368,7 @@ describe('the personal guards in a group ride (#788)', () => {
 		for (let i = 0; i < 5; i++) trainer.pedal(120, 40);
 		await settle();
 		expect(ride.target).toBe(0);
-		expect(trainer.commands.at(-1)).toBe('erg:0');
+		expect(trainer.commands.at(-1)).toBe('sim:0');
 
 		dispose();
 		live.close();

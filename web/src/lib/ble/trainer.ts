@@ -45,3 +45,13 @@ export interface Trainer {
 	onSample(cb: (s: TrainerSample) => void): () => void;
 	onStatus(cb: (s: TrainerStatus) => void): () => void;
 }
+
+/**
+ * A ride's target, or a flat road where it has none (#2658). Zero in ERG is a
+ * freewheel: every guard release, count-in and gap between sessions wrote it,
+ * and the rider pedalled against nothing. Letting go of the trainer — Stop,
+ * leaving — still writes ERG 0 W; nobody is riding it then.
+ */
+export function holdTarget(trainer: Trainer, watts: number): Promise<void> {
+	return watts > 0 ? trainer.setTargetPower(watts) : trainer.setSimulation(0);
+}

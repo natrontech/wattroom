@@ -2,7 +2,12 @@ import { arbitrate } from '$lib/ble/arbitrate';
 import { publishHud } from '$lib/hud/feed';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
 import type { SensorKind, SensorReading } from '$lib/ble/sensor';
-import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
+import {
+	holdTarget,
+	type Trainer,
+	type TrainerSample,
+	type TrainerStatus,
+} from '$lib/ble/trainer';
 import { flatten, targetAt } from './engine';
 import { createPersonalGuards, DEFAULTS } from './guards';
 import { createSprintWindow } from './sprint-window.svelte';
@@ -299,7 +304,7 @@ export function createRideSession({
 			return;
 		}
 		leaveSprint();
-		void trainer.setTargetPower(target);
+		void holdTarget(trainer, target);
 	}
 	// The hill is a second write 500 ms after the flat; a ride ending inside
 	// that gap wrote the grade after the release (#1852).

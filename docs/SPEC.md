@@ -473,6 +473,12 @@ The power-collapse fallback is unit-tested but has never run on hardware: every 
 the team reports cadence (ADR-0007), so the cadence branch always wins. It stays for any
 future trainer that reports none.
 
+**No target is a flat road** (#2658): a release, auto-pause, and a voice channel with no session
+running (before it, its count-in, between sessions) put the trainer in slope at 0 %, never
+ERG 0 W — zero in ERG is a freewheel, and a
+rider pedalling through a release felt nothing under their legs. Stop and leaving still write
+ERG 0 W: nobody is riding the trainer then.
+
 ## Medals (per group session)
 
 - **Diesel** — lowest power variability (coefficient of variation) across steady steps

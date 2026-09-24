@@ -272,12 +272,18 @@ describe('createRideSession', () => {
 		session.stop();
 	});
 
-	it('trips the spiral guard on collapsing cadence and releases the target', async () => {
-		const session = ride();
+	it('trips the spiral guard on collapsing cadence and releases the target to a flat road', async () => {
+		const trainer = new SimulatedTrainer();
+		const slope = vi.spyOn(trainer, 'setSimulation');
+		const erg = vi.spyOn(trainer, 'setTargetPower');
+		const session = createRideSession({ trainer, workout, ftp: 200 });
 		await startRiding(session);
 		pedal(session, 190, 40, DEFAULTS.spiralAfterSeconds);
 		expect(session.spiralActive).toBe(true);
 		expect(session.target).toBe(0);
+		// Zero in ERG is a freewheel (#2658): ten seconds against nothing.
+		expect(slope).toHaveBeenLastCalledWith(0);
+		expect(erg).not.toHaveBeenCalledWith(0);
 		session.stop();
 	});
 
