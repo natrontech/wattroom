@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { channelAddress, onPlacePath } from './address';
+import { channelAddress, channelOfPath, onPlacePath } from './address';
 
 // One address per place (#2449): the shell reads its paths from here.
 describe('place addresses', () => {
@@ -44,5 +44,22 @@ describe('onPlacePath', () => {
 		expect(onPlacePath('/crew/c1/s/s8', voice, 's9')).toBe(false);
 		expect(onPlacePath('/crew/c1/s/s9', voice)).toBe(false);
 		expect(onPlacePath('/crew/c2/s/s9', voice, 's9')).toBe(false);
+	});
+});
+
+describe('channelOfPath (#2602)', () => {
+	const live = (crew: string, id: string) =>
+		crew === 'c1' && id === 's1' ? 'v2' : undefined;
+	it.each([
+		['/crew/c1/v/v1', 'v1'],
+		['/crew/c1/v/v1/training', 'v1'],
+		['/crew/c1/s/s1', 'v2'],
+		['/crew/c1/s/s1/watch', 'v2'],
+		['/crew/c1/s/gone', undefined],
+		['/crew/c1/c/t1', undefined],
+		['/crew/c1/schedule', undefined],
+		['/workouts', undefined],
+	])('%s → %s', (path, want) => {
+		expect(channelOfPath(path, live)).toBe(want);
 	});
 });

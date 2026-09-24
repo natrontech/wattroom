@@ -1,0 +1,1 @@
+- Clicking another voice channel, or another channel's session, while you're riding a session now asks first. Doing so leaves your call, stops your ride and lets go of your trainer. Everything else, such as the crew's pages, your own pages or a text channel, keeps the ride running as before, and the Leave button still leaves at once.
