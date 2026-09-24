@@ -17,7 +17,7 @@
 	import { hwlog } from '$lib/ble/hwlog';
 	import { apiBlob } from '$lib/api';
 	import { downloadBlob } from '$lib/download';
-	import { uploadRide } from '$lib/ride/save';
+	import { uploadRide, type RideUpload } from '$lib/ride/save';
 	import { toasts } from '$lib/toast.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
@@ -82,6 +82,9 @@
 	// The save's outcome is persistent status (errors.md); an export or a
 	// flag failing must not overwrite it (audit 2026-09-09).
 	let saveStatus = $state<string | null>(null);
+	// The same upload again, while a save failed and could still go through
+	// (#2618): the endpoint is idempotent, and the payload is still here.
+	let retrySave = $state<(() => void) | null>(null);
 	// The ride on the account, once it is: the summary's way forward (#1331).
 	let savedId = $state<string | null>(null);
 
@@ -265,8 +268,8 @@
 			return;
 		}
 		const ended = buffer;
-		saving = true;
-		void uploadRide({
+		const id = `${current.startedAt.getTime()}`;
+		const upload: RideUpload = {
 			workoutName: workout.name,
 			workoutJson: JSON.stringify(workout),
 			startedAt: current.startedAt.toISOString(),
@@ -284,48 +287,60 @@
 				// The guard's own seconds (#1796): never a miss.
 				released: sample.released,
 			})),
-		}).then((outcome) => {
-			saving = false;
-			if ('saved' in outcome) {
-				// The ride is on the account: NOW it stops being a ride to
-				// recover. Ending the buffer before the server answered is
-				// what used to make a failed save vanish (#794).
-				ended?.end();
-				savedId = outcome.saved.id || null;
-				if (gone)
-					toasts.push('Ride saved to your history.', {
-						href: savedId ? `/history/${savedId}` : undefined,
-					});
-				return;
-			}
-			const { failure } = outcome;
-			// A refusal the server will repeat — under a minute — is not a
-			// ride to recover either: offering it back would refuse it again
-			// on every reload. Its summary still lands on the device below.
-			if (failure.final) ended?.end();
-			// Not saved and no longer recorded: a ride to offer back (#2617).
-			else ended?.release();
-			// Otherwise the buffer keeps every sample and stays unfinished, so
-			// the ride is offered back below with a Save that retries this
-			// POST. The local summary is the second copy, not the only one.
-			const localFailure = history.add({
-				id: `${current.startedAt.getTime()}`,
-				workoutName: workout.name,
-				startedAt: current.startedAt.toISOString(),
-				execution: current.execution,
-				executionScored: current.scored,
-				ftp,
-				...summary,
+		};
+		const attempt = () => {
+			saving = true;
+			retrySave = null;
+			void uploadRide(upload).then((outcome) => {
+				saving = false;
+				if ('saved' in outcome) {
+					// The ride is on the account: NOW it stops being a ride to
+					// recover. Ending the buffer before the server answered is
+					// what used to make a failed save vanish (#794).
+					ended?.end();
+					// A retry that went through leaves one copy, on the account.
+					history.remove(id);
+					saveStatus = null;
+					savedId = outcome.saved.id || null;
+					if (gone)
+						toasts.push('Ride saved to your history.', {
+							href: savedId ? `/history/${savedId}` : undefined,
+						});
+					return;
+				}
+				const { failure } = outcome;
+				// A refusal the server will repeat — under a minute — is not a
+				// ride to recover either: offering it back would refuse it again
+				// on every reload. Its summary still lands on the device below.
+				if (failure.final) ended?.end();
+				// Not saved and no longer recorded: a ride to offer back (#2617).
+				else ended?.release();
+				// Otherwise the buffer keeps every sample and stays unfinished, so
+				// the ride is offered back on Rides with a Save that retries this
+				// POST. The local summary is the second copy, not the only one —
+				// one of it, however many tries failed.
+				history.remove(id);
+				const localFailure = history.add({
+					id,
+					workoutName: workout.name,
+					startedAt: current.startedAt.toISOString(),
+					execution: current.execution,
+					executionScored: current.scored,
+					ftp,
+					...summary,
+				});
+				saveStatus =
+					localFailure ??
+					(failure.final
+						? `${failure.message} Its summary stays on this device.`
+						: `${failure.message} The ride is kept on this device meanwhile, and Rides offers it back if you leave.`);
+				if (!failure.final) retrySave = attempt;
+				// The page that would have shown this is gone (a ride ended by
+				// leaving): the one surface left is a toast (errors.md).
+				if (gone) toasts.push(saveStatus, { tone: 'error' });
 			});
-			saveStatus =
-				localFailure ??
-				(failure.final
-					? `${failure.message} Its summary stays on this device.`
-					: `${failure.message} This ride is kept on this device — Rides offers it back with a Save.`);
-			// The page that would have shown this is gone (a ride ended by
-			// leaving): the one surface left is a toast (errors.md).
-			if (gone) toasts.push(saveStatus, { tone: 'error' });
-		});
+		};
+		attempt();
 	}
 
 	// A frozen number is worse than a warning: past 3 s without a sample the
@@ -635,7 +650,18 @@
 							>
 						</div>
 						{#if saveStatus}
-							<div class="mt-2"><Banner tone="warn">{saveStatus}</Banner></div>
+							<div class="mt-2">
+								<Banner tone="warn">
+									{saveStatus}
+									{#snippet action()}
+										{#if retrySave}
+											<button onclick={retrySave} class="btn btn-secondary"
+												>Try again</button
+											>
+										{/if}
+									{/snippet}
+								</Banner>
+							</div>
 						{/if}
 						{#if error}
 							<div class="mt-2"><Banner tone="error">{error}</Banner></div>

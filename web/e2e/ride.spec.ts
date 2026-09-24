@@ -17,6 +17,18 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	// true of this production build and false of production.
 	await signInTo(page, '/ride?w=smoke-test');
 	await expect(page.getByRole('heading', { name: 'Smoke Test' })).toBeVisible();
+	// The first save hits a server that is having a moment (#2618): the
+	// summary offers Try again rather than sending the rider off to reload.
+	// Here rather than in its own test, to reuse the minute already ridden.
+	let refused = false;
+	await page.route('**/api/rides', (route) => {
+		if (route.request().method() !== 'POST' || refused) return route.fallback();
+		refused = true;
+		return route.fulfill({
+			status: 503,
+			json: { error: 'rate_limited', message: 'The server is busy.' },
+		});
+	});
 	// Pairing and starting are two steps now (#611): the simulated trainer lands
 	// in the paired-devices grid, which has to show it reporting watts before
 	// Start is enabled at all.
@@ -43,6 +55,14 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	// Ride it out. 60 s of workout plus generous slack for the browser's timer drift.
 	const download = page.getByTestId('download-fit');
 	await expect(download).toBeVisible({ timeout: 120_000 });
+
+	const retry = page.getByRole('button', { name: 'Try again' });
+	await expect(retry).toBeVisible({ timeout: 15_000 });
+	await retry.click();
+	await expect(page.getByRole('link', { name: 'See your ride' })).toBeVisible({
+		timeout: 15_000,
+	});
+	await expect(page.getByText('The server is busy.')).toHaveCount(0);
 
 	const [file] = await Promise.all([
 		page.waitForEvent('download'),

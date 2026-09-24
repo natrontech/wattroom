@@ -35,7 +35,7 @@
 		signalLost as isSignalLost,
 	} from '$lib/workout/session.svelte';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
-	import { stampFtpAfter, uploadRide } from '$lib/ride/save';
+	import { stampFtpAfter, uploadRide, type RideUpload } from '$lib/ride/save';
 	import {
 		buildRampTest,
 		RAMP,
@@ -70,6 +70,9 @@
 	let noCrashSafety = $state(false);
 	let savedId = $state<string | null>(null);
 	let rideStatus = $state<string | null>(null);
+	// The same upload again, while a save failed and could still go through
+	// (#2618) — /ride's retry, for the ride half of the test.
+	let retryRide = $state<(() => void) | null>(null);
 	let recorded = false;
 	// The number this test produced, once the rider accepts it (#1572). The
 	// ride is saved the moment the test ends — carrying the FTP it was SCORED
@@ -229,6 +232,7 @@
 		buffer = null;
 		savedId = null;
 		rideStatus = null;
+		retryRide = null;
 		recorded = false;
 		done = false;
 		error = null;
@@ -284,7 +288,7 @@
 			return;
 		}
 		const ended = buffer;
-		void uploadRide({
+		const upload: RideUpload = {
 			workoutName: workout.name,
 			workoutJson: JSON.stringify(workout),
 			startedAt: current.startedAt.toISOString(),
@@ -293,21 +297,28 @@
 				cadence: sample.cadence,
 				hr: sample.heartRate,
 			})),
-		}).then((outcome) => {
-			if ('saved' in outcome) {
-				ended?.end();
-				savedId = outcome.saved.id || null;
-				return;
-			}
-			// Under a minute is refused for good; anything else stays in the
-			// buffer and is offered back with a Save (#794) — on Rides (#2616).
-			if (outcome.failure.final) ended?.end();
-			// Not saved and no longer recorded: a ride to offer back (#2617).
-			else ended?.release();
-			rideStatus = outcome.failure.final
-				? outcome.failure.message
-				: `${outcome.failure.message} The riding is kept on this device — Rides offers it back with a Save.`;
-		});
+		};
+		const attempt = () => {
+			retryRide = null;
+			void uploadRide(upload).then((outcome) => {
+				if ('saved' in outcome) {
+					ended?.end();
+					rideStatus = null;
+					savedId = outcome.saved.id || null;
+					return;
+				}
+				// Under a minute is refused for good; anything else stays in the
+				// buffer and is offered back with a Save (#794) — on Rides (#2616).
+				if (outcome.failure.final) ended?.end();
+				// Not saved and no longer recorded: a ride to offer back (#2617).
+				else ended?.release();
+				rideStatus = outcome.failure.final
+					? outcome.failure.message
+					: `${outcome.failure.message} The riding is kept on this device meanwhile, and Rides offers it back if you leave.`;
+				if (!outcome.failure.final) retryRide = attempt;
+			});
+		};
+		attempt();
 	}
 	// The FTP the test produced, onto the ride the test became (#1572) — once,
 	// and only once both halves exist. `ftp_watts` on that row is the number
@@ -368,7 +379,18 @@
 			>.
 		</p>
 	{:else if rideStatus}
-		<div class="mt-3"><Banner tone="warn">{rideStatus}</Banner></div>
+		<div class="mt-3">
+			<Banner tone="warn">
+				{rideStatus}
+				{#snippet action()}
+					{#if retryRide}
+						<button onclick={retryRide} class="btn btn-secondary"
+							>Try again</button
+						>
+					{/if}
+				{/snippet}
+			</Banner>
+		</div>
 	{/if}
 	{#if ftpMarkStatus}
 		<div class="mt-3"><Banner tone="warn">{ftpMarkStatus}</Banner></div>
