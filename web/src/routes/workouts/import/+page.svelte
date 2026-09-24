@@ -43,6 +43,10 @@
 	let imported = $state<Imported | null>(null);
 	let fileName = $state('');
 	let saving = $state(false);
+	// A save the server refused (#2627) is not a file that cannot be read: it
+	// keeps the preview and its Save row, and offers the same save again.
+	let saveError = $state<string | null>(null);
+	let savedAndEdit = false;
 
 	const segments = $derived(imported ? flatten(imported.workout) : []);
 	const total = $derived(imported ? durationSeconds(imported.workout) : 0);
@@ -66,6 +70,7 @@
 		if (!file) return;
 		reading = true;
 		error = null;
+		saveError = null;
 		imported = null;
 		fileName = file.name;
 		const outcome = await importWorkoutFile(file, riderFtp);
@@ -87,10 +92,12 @@
 	async function save(andEdit: boolean) {
 		if (!imported || blocked) return;
 		saving = true;
+		saveError = null;
+		savedAndEdit = andEdit;
 		const result = await custom.save($state.snapshot(imported.workout));
 		saving = false;
 		if (result.error) {
-			error = result.error;
+			saveError = result.error;
 			return;
 		}
 		toasts.push(`Imported “${imported.workout.name}” onto your shelf.`);
@@ -193,6 +200,21 @@
 						</p>
 					{/if}
 
+					{#if saveError}
+						<!-- Atop the form it failed to submit (errors.md). -->
+						<div class="mt-5">
+							<Banner tone="error">
+								{saveError}
+								{#snippet action()}
+									<button
+										onclick={() => void save(savedAndEdit)}
+										disabled={saving}
+										class="btn-link text-xs">Try again</button
+									>
+								{/snippet}
+							</Banner>
+						</div>
+					{/if}
 					<div class="mt-5 flex flex-wrap items-center gap-3">
 						<button
 							onclick={() => void save(false)}
