@@ -152,7 +152,7 @@ func TestTrophies(t *testing.T) {
 	})
 
 	t.Run("a friend sees the case", func(t *testing.T) {
-		if err := s.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+		if _, err := s.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
 			RequesterID: bob.ID, AddresseeID: alice.ID,
 		}); err != nil {
 			t.Fatalf("friend request: %v", err)
@@ -304,7 +304,7 @@ func TestTrophyCaseOpensToAPendingAsk(t *testing.T) {
 	s, _, alice, bob := setup(t)
 	mux := http.NewServeMux()
 	s.Register(mux)
-	if err := s.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+	if _, err := s.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
 		RequesterID: alice.ID, AddresseeID: bob.ID,
 	}); err != nil {
 		t.Fatalf("friend request: %v", err)

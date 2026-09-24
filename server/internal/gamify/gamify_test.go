@@ -113,7 +113,7 @@ func ban(t *testing.T, s *Service, crew pgtype.UUID, user db.User) {
 
 func befriend(t *testing.T, s *Service, a, b db.User) {
 	t.Helper()
-	if err := s.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+	if _, err := s.store.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
 		RequesterID: a.ID, AddresseeID: b.ID,
 	}); err != nil {
 		t.Fatalf("friend request: %v", err)

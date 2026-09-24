@@ -38,7 +38,7 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users) {
 		})
 	}
 	// alice ↔ bob are accepted friends; cara is nobody's.
-	if err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+	if _, err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
 		RequesterID: users.ByToken["alice"].ID, AddresseeID: users.ByToken["bob"].ID,
 	}); err != nil {
 		t.Fatal(err)
@@ -67,7 +67,7 @@ func TestDmWritesAreBoundedPerAccount(t *testing.T) {
 		users.ByToken[name] = u
 		t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID) })
 	}
-	if err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{RequesterID: users.ByToken["alice"].ID, AddresseeID: users.ByToken["bob"].ID}); err != nil {
+	if _, err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{RequesterID: users.ByToken["alice"].ID, AddresseeID: users.ByToken["bob"].ID}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := st.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams{RequesterID: users.ByToken["alice"].ID, AddresseeID: users.ByToken["bob"].ID}); err != nil {
@@ -339,7 +339,7 @@ func TestDmImageFromAnotherPairIsRefused(t *testing.T) {
 	cara := store.UUIDString(users.ByToken["cara"].ID)
 
 	// bob ↔ cara become friends too, and bob sends cara a picture.
-	if err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+	if _, err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
 		RequesterID: users.ByToken["bob"].ID, AddresseeID: users.ByToken["cara"].ID,
 	}); err != nil {
 		t.Fatal(err)
@@ -451,7 +451,7 @@ func TestDmReactionRefusedAcrossPairs(t *testing.T) {
 
 	// bob ↔ cara become friends and talk; cara must not react to alice and
 	// bob's message by addressing it through her own thread with bob.
-	if err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
+	if _, err := st.Queries.CreateFriendRequest(t.Context(), db.CreateFriendRequestParams{
 		RequesterID: users.ByToken["bob"].ID, AddresseeID: users.ByToken["cara"].ID,
 	}); err != nil {
 		t.Fatal(err)

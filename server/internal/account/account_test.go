@@ -213,7 +213,7 @@ func (h *harness) createRecap(t *testing.T, at crewPlace, riders ...string) {
 func (h *harness) befriend(t *testing.T, requester, addressee string) {
 	t.Helper()
 	pair := db.CreateFriendRequestParams{RequesterID: h.id(requester), AddresseeID: h.id(addressee)}
-	if err := h.store.Queries.CreateFriendRequest(t.Context(), pair); err != nil {
+	if _, err := h.store.Queries.CreateFriendRequest(t.Context(), pair); err != nil {
 		t.Fatalf("friend request %s→%s: %v", requester, addressee, err)
 	}
 	n, err := h.store.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams(pair))
