@@ -5,6 +5,7 @@ package dms
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -136,14 +137,31 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleRead moves the reader's cursor to now (#2711): what clears the dot on
-// every device they are signed in on. Nothing about it reaches the peer.
+// handleRead moves the reader's cursor to the newest line they were shown,
+// `upTo` (#2711, #2750): what clears the dot on every device they are signed
+// in on. Nothing about it reaches the peer. A body-less read covers the
+// pair's newest line.
 func (s *Service) handleRead(w http.ResponseWriter, r *http.Request) {
 	me, peer, ok := s.peer(w, r)
 	if !ok {
 		return
 	}
-	if err := s.store.Queries.MarkDmRead(r.Context(), db.MarkDmReadParams{UserID: me.ID, PeerID: peer}); err != nil {
+	var req struct {
+		UpTo string `json:"upTo"`
+	}
+	if err := httpx.DecodeStrict(r, &req); err != nil && !errors.Is(err, io.EOF) {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
+		return
+	}
+	var upTo pgtype.UUID
+	if req.UpTo != "" {
+		var err error
+		if upTo, err = store.ParseUUID(req.UpTo); err != nil {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That is not a message in this conversation.", "upTo")
+			return
+		}
+	}
+	if err := s.store.Queries.MarkDmRead(r.Context(), db.MarkDmReadParams{UserID: me.ID, PeerID: peer, UpTo: upTo}); err != nil {
 		httpx.Fail(w, s.log, "mark dm read", err, "That conversation could not be marked read.")
 		return
 	}

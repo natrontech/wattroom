@@ -11,7 +11,71 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-// The read cursor is the server's now (#2711), so reading on one device
+// headUnread is the dot on who's conversation with peer, as the heads say.
+func headUnread(t *testing.T, mux *http.ServeMux, who, peer string) bool {
+	t.Helper()
+	code, body := call(t, mux, who, http.MethodGet, "/api/dms", "")
+	if code != http.StatusOK {
+		t.Fatalf("heads: %d %v", code, body)
+	}
+	heads, _ := body["conversations"].([]any)
+	for _, raw := range heads {
+		if head, _ := raw.(map[string]any); head["peerId"] == peer {
+			return head["unread"] == true
+		}
+	}
+	t.Fatalf("%s has no conversation with %s", who, peer)
+	return false
+}
+
+// A read covers what the reader was shown and nothing after it (#2750). The
+// thread posts the newest line it has; a line that landed between that fetch
+// and the read stays unread, and a device with an older view cannot un-read
+// what another already read.
+func TestDmReadCoversOnlyTheLinesTheReaderWasShown(t *testing.T) {
+	mux, _, users := setup(t)
+	alice := store.UUIDString(users.ByToken["alice"].ID)
+	bob := store.UUIDString(users.ByToken["bob"].ID)
+	send := func(text string) string {
+		t.Helper()
+		code, body := call(t, mux, "alice", http.MethodPost, "/api/dms/"+bob, `{"text":"`+text+`"}`)
+		id, _ := body["id"].(string)
+		if code != http.StatusOK || id == "" {
+			t.Fatalf("send: %d %v", code, body)
+		}
+		return id
+	}
+	read := func(body string, want int) {
+		t.Helper()
+		if code, got := call(t, mux, "bob", http.MethodPost, "/api/dms/"+alice+"/read", body); code != want {
+			t.Fatalf("read %s: %d %v, want %d", body, code, got, want)
+		}
+	}
+	upTo := func(id string) string { return `{"upTo":"` + id + `"}` }
+
+	shown := send("warm-up at 7?")
+	send("make it 7:30") // lands after bob's thread fetched, before it reads
+	read(upTo(shown), http.StatusNoContent)
+	if !headUnread(t, mux, "bob", alice) {
+		t.Fatal("a line bob was never shown counts as read")
+	}
+	read(upTo("00000000-0000-0000-0000-000000000000"), http.StatusNoContent)
+	if !headUnread(t, mux, "bob", alice) {
+		t.Fatal("a read naming no line of this pair moved the cursor")
+	}
+	read(upTo("nope"), http.StatusBadRequest)
+
+	read("", http.StatusNoContent) // a tab on the old script: the newest line
+	if headUnread(t, mux, "bob", alice) {
+		t.Fatal("a read without upTo left the newest line unread")
+	}
+	read(upTo(shown), http.StatusNoContent) // the phone, a poll behind
+	if headUnread(t, mux, "bob", alice) {
+		t.Fatal("an older device's read moved the cursor back")
+	}
+}
+
+// The read cursor lives on the server (#2711), so reading on one device
 // clears the dot on the others — and it stays the reader's own: the peer's
 // answers never change because of it (ADR-0012 amended 2026-09-24).
 func TestDmReadIsTheReadersOwnOnEveryDevice(t *testing.T) {
@@ -26,18 +90,7 @@ func TestDmReadIsTheReadersOwnOnEveryDevice(t *testing.T) {
 	}
 	unread := func(who, peer string) bool {
 		t.Helper()
-		code, body := call(t, mux, who, http.MethodGet, "/api/dms", "")
-		if code != http.StatusOK {
-			t.Fatalf("heads: %d %v", code, body)
-		}
-		heads, _ := body["conversations"].([]any)
-		for _, raw := range heads {
-			if head, _ := raw.(map[string]any); head["peerId"] == peer {
-				return head["unread"] == true
-			}
-		}
-		t.Fatalf("%s has no conversation with %s", who, peer)
-		return false
+		return headUnread(t, mux, who, peer)
 	}
 	readAt := func(who, peer string) float64 {
 		t.Helper()

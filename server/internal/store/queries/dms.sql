@@ -227,16 +227,21 @@ from (
 
 -- name: MarkDmRead :exec
 -- The reader's own cursor (ADR-0012 amended 2026-09-24): written and read by
--- the reader alone, never by the peer. Only a pair that has a conversation
--- gets a row — which also keeps an unknown id from reaching the foreign key.
+-- the reader alone, never by the peer. It moves to the line the reader was
+-- shown, up_to, by that line's own created_at (#2750): now() also covered
+-- whatever landed between the thread's fetch and this write. No up_to — a
+-- tab on the script from before — means the pair's newest line. Never
+-- backwards, so a device with an older view cannot un-read another's read.
+-- A pair with no such line gets no row, which also keeps an unknown id from
+-- reaching the foreign key.
 insert into dm_reads (user_id, peer_id, read_at)
-select $1, $2, now()
-where exists (
-    select 1 from dm_messages
-    where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
-      and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
-)
-on conflict (user_id, peer_id) do update set read_at = now();
+select @user_id, @peer_id, max(created_at)
+from dm_messages
+where least(sender_id, recipient_id) = least(@user_id::uuid, @peer_id::uuid)
+  and greatest(sender_id, recipient_id) = greatest(@user_id::uuid, @peer_id::uuid)
+  and (sqlc.narg(up_to)::uuid is null or id = sqlc.narg(up_to))
+having max(created_at) is not null
+on conflict (user_id, peer_id) do update set read_at = greatest(dm_reads.read_at, excluded.read_at);
 
 -- name: GetDmReadAt :one
 select read_at from dm_reads where user_id = $1 and peer_id = $2;
