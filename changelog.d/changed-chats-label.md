@@ -1,1 +1,1 @@
-- A crew's text channels are now **chat channels** throughout the app, beside its voice channels, and carry a chat bubble instead of a `#`.
+- A crew's text channels are now **chat channels** throughout the app, beside its voice channels, and carry a chat bubble instead of a `#`. A voice channel's announcement now links to the chat channel it was marked in, as the Board's does.
