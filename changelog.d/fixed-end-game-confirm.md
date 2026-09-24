@@ -1,1 +1,0 @@
-- Ending a game in a voice channel now asks first ("End Floor is Lava for 3 riders?"), the way ending a session does, because it ends the game for everyone playing. Clearing the podium of a game that has already finished doesn't ask.

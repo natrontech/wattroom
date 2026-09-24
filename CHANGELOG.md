@@ -17,6 +17,43 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.134] - 2026-09-24
+
+### Added
+
+- React with any emoji: the react button opens a picker with search, your recent picks and the crew's own set up front, and the same picker drops an emoji into what you are typing. A crew can now upload its own emoji — any member adds one from the crew's settings, it works as a reaction and inside a message as `:name:`, and the crew's cheer set can hold emoji and the crew's own as well as icons. A text channel's reactions now start from the crew's set rather than the stock one.
+- A session's coach can hand it to another rider, from **Hand off** beside the session controls or from the rider's right-click menu. The new coach hears the hand-off cue, and the channel shows a line saying who handed it to whom. If the coach leaves and doesn't come back within about 15 seconds, the session passes on its own to whoever has been riding in it longest. It no longer sits there, maybe paused, with nobody able to control it.
+- Temporary messages: the timer button beside the message box makes what you send disappear after 1 hour, 24 hours or 7 days, in a text channel or a DM. Each temporary line shows how long it has left, and when the time is up it is gone for everyone — deleted, not hidden.
+
+### Changed
+
+- Pins on a crew's Board are easier to read: each value sits on its own line under its label and never breaks mid-word, links show without the `https://www.`, and each pin's title is set as a heading instead of small capitals.
+
+### Fixed
+
+- A crew's owner or admin can now end a session someone else is coaching, from the voice channel on a desk or a phone, or clear a workout someone picked and never started. Until now only the coach had an End button, so a session left running or paused kept the voice channel shut. Members see who is setting up a pick, and the paused banner names the coach.
+- When a session in a voice channel ends, anyone still in the channel can start the next one. Until now only the rider who had coached the last session was offered "Start a session", and the coach crown stayed on them between sessions.
+- A rider's camera no longer sits under a white haze in the day themes; the name and watts over it stay readable in both.
+- Chat takes a line break — Shift+Enter at a desk, Enter on a phone — and keeps it, in the box you type in and in the edit box; a long message wraps in view instead of sliding off the box's left edge. The log names the day above each day's first line (Today, Yesterday, Monday 21 September), and the time beside a line gives its full date on hover. Delete sits beside Edit, Copy and React on a line, and a ⋯ on every line opens its actions on a phone.
+- Ending a game in a voice channel now asks first ("End Floor is Lava for 3 riders?"), the way ending a session does, because it ends the game for everyone playing. Clearing the podium of a game that has already finished doesn't ask.
+- A game started in a voice channel is now a proper session. Everyone who plays it gets the ride saved to their history with XP, a summary at the end, and a recap on the crew's Members page. The crew's sidebar shows it running, and a dropped connection is buffered like any ride. Only the rider who started it (or a crew admin) can end it, and it ends by itself when the game finishes or nobody is left. Games don't pause, and the coach's sprint button is hidden during one.
+- Leaving the ride for another page mid-session and coming back no longer wipes your power line from the workout graph, or the minutes ridden before it from the summary at the close.
+- On a Mac, starting a ride in the desktop app no longer makes WattRoom vanish
+  from the Dock, ⌘-Tab and the menu bar. Opening the floating HUD used to do
+  that, so if the riding screen went behind another app you could only get
+  back to it by quitting. Clicking the Dock icon mid-ride now also brings back
+  a minimised riding screen.
+- Changing your FTP, weight or name during a session now takes effect straight away for everyone in the voice channel. Before, the session kept the numbers you had when you joined: after an FTP change it scored your execution against the old targets while your trainer held the new ones, so you could hold every target and still show 0 %. Until now the fix was to leave the channel and rejoin.
+- Clicking another voice channel, or another channel's session, while you're riding a session now asks first. Doing so leaves your call, stops your ride and lets go of your trainer. Everything else, such as the crew's pages, your own pages or a text channel, keeps the ride running as before, and the Leave button still leaves at once.
+- During a session, the people column now shows each rider's target in watts. It turns green while they are holding it, so anyone watching can see who is on target right now, not only the running score. The target includes each rider's own trim, so a rider riding their plan at 90 % no longer looks off target to everyone else. Each row in the column also shows a headphones mark when that person is in voice: once a session starts, the column groups people by pedalling, and until now it no longer said who could hear you.
+- A voice channel now shows the next session planned in it: its time, who's in, I'm in / I'm out, and once it's due, a Start button (which asks for your trainer first). The reminder email and calendar event already link there. Starting it from there, or picking the same workout, marks the plan as started, so the Schedule and Home stop listing it. While a session is running in a plan's channel, the Schedule shows who is coaching instead of a Start now button that would fail.
+- The trainer no longer goes limp when your target drops away mid-ride. Auto-pause, the low-cadence release, the count-in and the time between sessions used to set the trainer to 0 W in ERG, which leaves nothing to pedal against. They now ride like a flat road, and your target comes back as before.
+- A heart-rate strap, power meter or cadence sensor that fails to pair now says why under the sensor cards, instead of only "Couldn't connect". For a strap that shows up but will not connect, it says what to try: a Garmin HRM 600 has to be switched to its open connection type (press its button twice quickly until the light flashes 3 times), or another app may be holding the strap.
+- Starting a session in a voice channel now asks for your trainer first, the way a solo ride does: the workout picker shows the pairing card and says "Start without a trainer" until one is paired. A rider pulled into someone else's countdown gets the same card on the countdown and in the Lounge.
+- When a session ends, the page leaves the session's address and takes you back to its voice channel, where the call still is. Reopening an ended session's link, or reloading it, lands in that voice channel too instead of on a dead-end "This session has ended" page. The ride screen's ended state shows the session's recap card, and the summary's button names the channel.
+- Starting a session now takes you to the ride, where the count-in is. That applies whether you start from a voice channel's Start a session, a game, the channel's plan card, or the Schedule's Start now. Before, you stayed on the voice channel page looking at camera tiles while the countdown ran. Riders who stay on the voice channel page see the count-in there too.
+- With your camera on, the Training screen now shows your own picture first in the crew strip, mirrored, so you can see you are live and in frame.
+
 ## [2026.09.133] - 2026-09-23
 
 ### Added
@@ -2814,7 +2851,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.133...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.134...HEAD
+[2026.09.134]: https://github.com/natrontech/wattroom/compare/2026.09.133...2026.09.134
 [2026.09.133]: https://github.com/natrontech/wattroom/compare/2026.09.132...2026.09.133
 [2026.09.132]: https://github.com/natrontech/wattroom/compare/2026.09.131...2026.09.132
 [2026.09.131]: https://github.com/natrontech/wattroom/compare/2026.09.130...2026.09.131
