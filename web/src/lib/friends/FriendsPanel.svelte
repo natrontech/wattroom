@@ -10,6 +10,7 @@
 	import { statusOf } from '$lib/status';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import {
 		contextMenu,
@@ -252,6 +253,7 @@
 				<a href="/u/{friend.id}" class="truncate hover:underline"
 					>{friend.name}</a
 				>
+				<StatusMark line={friend.statusLine} size={13} />
 				<!-- Lifetime level is friend-visible identity (#253); watts are
 				     not (ADR-0012). -->
 				<span class="text-muted-dim text-[10px] font-normal"

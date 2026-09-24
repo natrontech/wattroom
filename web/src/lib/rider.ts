@@ -5,6 +5,7 @@
  */
 import { api, loadApi } from '$lib/api';
 import { formatDuration } from '$lib/format';
+import type { StatusLine } from '$lib/protocol';
 import type { VoicePlace } from '$lib/whereabouts';
 
 export interface CrewRef {
@@ -52,6 +53,8 @@ export interface Rider {
 		channel?: VoicePlace;
 	};
 	friend: 'self' | 'none' | 'pending_in' | 'pending_out' | 'accepted';
+	/** Their status line (ADR-0060); null for none. */
+	statusLine?: StatusLine | null;
 	canAdd: boolean;
 	/** Friends and yourself only; null otherwise. */
 	month: { rides: number; seconds: number; kj: number } | null;

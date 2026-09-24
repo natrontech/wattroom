@@ -13,6 +13,7 @@
 	import { type Snippet } from 'svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { friends } from '$lib/friends/friends.svelte';
 	import { statusOf } from '$lib/status';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
@@ -354,6 +355,10 @@
 									<span class="min-w-0 truncate text-sm font-medium"
 										>{message.from}</span
 									>
+									<StatusMark
+										line={people.face(message.fromId)?.statusLine}
+										size={13}
+									/>
 									<time
 										datetime={new Date(message.at).toISOString()}
 										title={formatStamp(message.at)}

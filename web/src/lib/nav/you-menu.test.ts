@@ -3,6 +3,7 @@ import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
 import { account } from '$lib/account.svelte';
 import { youMenu } from '$lib/nav/you-menu';
 import { mixer } from '$lib/sound/mixer.svelte';
+import { statusEditor } from '$lib/status-line/editor.svelte';
 
 // The voice channel decides whether a voice can dip anything (#904), and
 // whether this browser can move the voice to another output (#920).
@@ -25,9 +26,14 @@ const isSlider = (entry: MenuEntry): entry is MenuSlider =>
 	entry !== 'separator' && entry.kind === 'slider';
 
 describe('youMenu (#898)', () => {
-	it('offers your page and your settings, at their own addresses', () => {
+	it('opens with your status, then your page and your settings', () => {
 		const go = vi.fn();
-		const [page, settings] = youMenu(go).filter(isItem);
+		const [status, page, settings] = youMenu(go).filter(isItem);
+		// ADR-0060: first thing under your own face, as Slack has it.
+		expect(status.label).toBe('Set a status');
+		status.onSelect();
+		expect(statusEditor.open).toBe(true);
+		statusEditor.close();
 		expect([page.label, settings.label]).toEqual([
 			'Your rider page',
 			'Settings',

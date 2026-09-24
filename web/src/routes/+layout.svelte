@@ -41,6 +41,8 @@
 	import VerifyEmailGate from '$lib/components/VerifyEmailGate.svelte';
 	import ContextMenuHost from '$lib/components/ContextMenuHost.svelte';
 	import ConfirmHost from '$lib/components/ConfirmHost.svelte';
+	import StatusEditor from '$lib/status-line/StatusEditor.svelte';
+	import { statusEditor } from '$lib/status-line/editor.svelte';
 	import ConnectionInfo from '$lib/channel/ConnectionInfo.svelte';
 	import { guardTheRide } from '$lib/channel/ride-guard.svelte';
 	import ImageViewer from '$lib/chat/ImageViewer.svelte';
@@ -527,6 +529,9 @@
 <ImageViewer />
 <ContextMenuHost />
 <ConfirmHost />
+{#if statusEditor.open}
+	<StatusEditor />
+{/if}
 <!-- One rider's connection, raised from `personMenu` on any surface (#2131).
      Here rather than in the voice channel's shell: the sidebar and the
      friends panel draw people too, and the channel it reads is the one you
