@@ -1,3 +1,4 @@
+import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
 
 /** A finished solo ride, in the shape POST /api/rides wants. */
@@ -46,7 +47,13 @@ export async function uploadRide(
 		method: 'POST',
 		json: ride,
 	});
-	if (res.ok) return { saved: { id: String(res.data?.id ?? '') } };
+	if (res.ok) {
+		// A saved ride can move what the account suggests — an FTP, an LTHR —
+		// and /api/me is where those ride (#2626): re-read it now, so the
+		// prompt follows the ride that earned it rather than the next reload.
+		void account.load();
+		return { saved: { id: String(res.data?.id ?? '') } };
+	}
 	return {
 		failure: { message: res.error.message, final: FINAL.has(res.error.error) },
 	};

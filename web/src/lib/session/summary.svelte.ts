@@ -1,3 +1,4 @@
+import { account } from '$lib/account.svelte';
 import { api } from '$lib/api';
 import type { Medal } from '$lib/components/MedalCard.svelte';
 import { MEDAL_META } from '$lib/medals';
@@ -96,6 +97,8 @@ export function createSummary(deps: {
 				rideId = mine.id;
 				rideXp = mine.xp ?? null;
 				void readMedal(mine.id);
+				// The ride has landed: what it suggests rides on /api/me (#2626).
+				void account.load();
 			} else if (attempt < 2) setTimeout(() => findMyRide(attempt + 1), 3000);
 		});
 	}
