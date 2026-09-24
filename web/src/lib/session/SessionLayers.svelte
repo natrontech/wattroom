@@ -107,6 +107,12 @@
 		riders: () => riders,
 		ftp: () => you.ftp,
 	});
+	// The close is read on the summary (#2601): TV mode drew over it, and its
+	// "Exit TV mode (esc)" dismissed a summary nobody had seen. TV steps aside
+	// the moment there is one to read.
+	$effect(() => {
+		if (summary.card) layers.tv = false;
+	});
 
 	// ── Coach controls ────────────────────────────────────────────────────────
 	const channel = useChannel();
@@ -187,6 +193,12 @@
 		playing={!!live.tick?.jukebox?.current}
 		sprint={live.tick?.sprint ?? connection.ride.blockSprint}
 		game={live.tick?.game ?? null}
+		countdown={phase === 'countdown'
+			? {
+					remaining: shared?.countdownRemaining ?? 0,
+					title: shared?.workoutName ?? '',
+				}
+			: undefined}
 		onExit={() => (layers.tv = false)}
 	>
 		{#snippet status()}

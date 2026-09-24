@@ -1,0 +1,1 @@
+- TV mode now shows the countdown when a session starts, instead of "No session yet" while the countdown sounds play. When a session you rode ends, TV mode closes so your summary appears in front, where before it opened hidden behind the TV screen.
