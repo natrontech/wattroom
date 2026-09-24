@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { formatShortDate } from '$lib/format';
 import { recapBars, recapSummary } from './recap';
 import type { SessionRecap } from '$lib/protocol';
 
@@ -117,7 +118,9 @@ describe('recapBars', () => {
 });
 
 describe('recapSummary', () => {
-	it('counts the riders and the session', () => {
+	// The day comes first (#2625): three lists hold these cards back 90 days,
+	// and nothing else on the card says which evening it was.
+	it('says the day, then counts the riders and the session', () => {
 		expect(
 			recapSummary(
 				session([
@@ -125,7 +128,7 @@ describe('recapSummary', () => {
 					{ id: 'u2', rider: 'Kim', from: START, to: END, rode: true },
 				]),
 			),
-		).toBe('2 riders · 1 h 07');
+		).toBe(`${formatShortDate(START)} · 2 riders · 1 h 07`);
 	});
 
 	it('says rider, not riders, when one person rode alone', () => {
@@ -133,6 +136,6 @@ describe('recapSummary', () => {
 			recapSummary(
 				session([{ id: 'u1', rider: 'Jan', from: START, to: END, rode: true }]),
 			),
-		).toBe('1 rider · 1 h 07');
+		).toBe(`${formatShortDate(START)} · 1 rider · 1 h 07`);
 	});
 });

@@ -70,6 +70,18 @@ export function formatMonth(iso: string): string {
 	});
 }
 
+/**
+ * A past day, short: "Tue 16 Sep". What a card in a list says it was from —
+ * a ridden workout's last evening, a session's recap (#2625).
+ */
+export function formatShortDate(ms: number): string {
+	return new Date(ms).toLocaleDateString(undefined, {
+		weekday: 'short',
+		day: 'numeric',
+		month: 'short',
+	});
+}
+
 /** A message's wall-clock time, "23:33" — the stamp beside every chat line. */
 export function formatTime(ms: number): string {
 	return new Date(ms).toLocaleTimeString(undefined, {

@@ -1,4 +1,4 @@
-import { formatDuration } from '$lib/format';
+import { formatDuration, formatShortDate } from '$lib/format';
 import type { SessionRecap, SessionRecapRider } from '$lib/protocol';
 
 /**
@@ -66,5 +66,7 @@ export function recapBars(recap: SessionRecap): RecapBar[] {
 export function recapSummary(recap: SessionRecap): string {
 	const riders = recap.riders.length;
 	const long = stayed(recap.endedAt - recap.startedAt);
-	return `${riders} ${riders === 1 ? 'rider' : 'riders'} · ${long}`;
+	// The day first (#2625): the card sits in lists that reach back 90 days,
+	// and "who rode with us last month" is the question it is kept for.
+	return `${formatShortDate(recap.startedAt)} · ${riders} ${riders === 1 ? 'rider' : 'riders'} · ${long}`;
 }

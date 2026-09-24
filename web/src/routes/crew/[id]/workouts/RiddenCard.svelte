@@ -7,7 +7,7 @@
 	import type { Snippet } from 'svelte';
 	import WorkoutPreview from '$lib/components/WorkoutPreview.svelte';
 	import type { RiddenWorkout } from '$lib/crew-workouts';
-	import { formatClock, formatDuration } from '$lib/format';
+	import { formatClock, formatDuration, formatShortDate } from '$lib/format';
 	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
 	import { segmentsDuration } from '$lib/workout/engine';
 	import { parseSharedSegments } from '$lib/workout/shared';
@@ -44,13 +44,7 @@
 				? ` +${workout.riders.length - NAMES}`
 				: ''),
 	);
-	const last = $derived(
-		new Date(workout.lastAt).toLocaleDateString(undefined, {
-			weekday: 'short',
-			day: 'numeric',
-			month: 'short',
-		}),
-	);
+	const last = $derived(formatShortDate(workout.lastAt));
 </script>
 
 <li class="panel panel-flush flex flex-col overflow-hidden">
