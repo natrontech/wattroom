@@ -84,6 +84,10 @@ const (
 	MinEmojiNameChars = 2
 	MaxEmojiNameChars = 32
 
+	// A rider's status line (ADR-0060, docs/SPEC.md "Personal status"), in
+	// CHARACTERS — MaxMessageChars' rule.
+	MaxStatusChars = 100
+
 	// A crew's name (docs/SPEC.md "Names"), in CHARACTERS — MaxMessageChars'
 	// rule.
 	MaxCrewNameChars = 60

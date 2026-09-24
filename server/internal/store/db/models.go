@@ -370,6 +370,10 @@ type User struct {
 	RecoverExpires     pgtype.Timestamptz
 	PendingCrewCode    *string
 	HomeCrewID         pgtype.UUID
+	StatusEmoji        *string
+	StatusEmojiID      pgtype.UUID
+	StatusText         *string
+	StatusExpiresAt    pgtype.Timestamptz
 }
 
 type UserAvatar struct {

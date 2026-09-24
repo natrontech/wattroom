@@ -18,6 +18,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
+	"github.com/natrontech/wattroom/server/internal/status"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -100,6 +101,9 @@ type meResponse struct {
 	// follows it — the deep link lived in one tab, and a new account's email
 	// confirmation opens another.
 	PendingInvite string `json:"pendingInvite,omitempty"`
+	// The rider's own status (ADR-0060), absent when none or cleared — what
+	// the editor opens on.
+	Status *protocol.Status `json:"status,omitempty"`
 }
 
 func (s *Service) handleMe(w http.ResponseWriter, r *http.Request) {
@@ -397,6 +401,7 @@ func (s *Service) toMe(u db.User) meResponse {
 		ColorScheme:   u.ColorScheme,
 		Timezone:      u.Timezone,
 		HomeCrewID:    homeCrew(u),
+		Status:        status.OfUser(u, time.Now()),
 	}
 }
 
