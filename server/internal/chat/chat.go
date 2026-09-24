@@ -81,6 +81,8 @@ type messageJSON struct {
 	At      int64  `json:"at"`
 	// When the author last rewrote it (#865); absent for a line as sent.
 	EditedAt int64 `json:"editedAt,omitempty"`
+	// When a temporary line runs out (#2644); absent for one that stays.
+	ExpiresAt int64 `json:"expiresAt,omitempty"`
 	// emoji → count, plus which the viewer pressed — same shape the live
 	// path builds client-side, so the panel renders one way.
 	Reactions map[string]int `json:"reactions,omitempty"`

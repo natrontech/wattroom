@@ -103,6 +103,18 @@ export function sameDay(a: number, b: number): boolean {
 	return calendarDaysApart(new Date(a), new Date(b)) === 0;
 }
 
+/**
+ * What a temporary line has left (#2644): "45 min", "23 h", "6 d" — rounded
+ * up, so a line never claims less time than it has, and "1 min" at the end.
+ */
+export function formatLeft(ms: number): string {
+	const minutes = Math.max(1, Math.ceil(ms / 60_000));
+	if (minutes < 60) return `${minutes} min`;
+	const hours = Math.ceil(minutes / 60);
+	if (hours < 24) return `${hours} h`;
+	return `${Math.ceil(hours / 24)} d`;
+}
+
 /** A line's stamp spelled out, for its tooltip: date and time together. */
 export function formatStamp(ms: number): string {
 	return new Date(ms).toLocaleString(undefined, {

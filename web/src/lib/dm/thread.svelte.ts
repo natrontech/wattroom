@@ -31,6 +31,8 @@ interface DmLine {
 	at: number;
 	editedAt?: number;
 	deletedAt?: number;
+	/** When a temporary line runs out (#2644). */
+	expiresAt?: number;
 }
 
 export function createDmThread(peerId: string, peerName: () => string) {
@@ -57,6 +59,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			at: m.at,
 			editedAt: m.editedAt,
 			deletedAt: m.deletedAt,
+			expiresAt: m.expiresAt,
 		};
 	}
 
@@ -177,7 +180,11 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			void load(0);
 		},
 		/** Returns the refusal, or null once the line is in the thread. */
-		async send(text: string, image?: Blob): Promise<string | null> {
+		async send(
+			text: string,
+			image?: Blob,
+			expiresIn?: number,
+		): Promise<string | null> {
 			let imageId: string | undefined;
 			if (image) {
 				const up = await uploadImage(`/api/dms/${peerId}/images`, image);
@@ -186,7 +193,7 @@ export function createDmThread(peerId: string, peerName: () => string) {
 			}
 			const res = await api(`/api/dms/${peerId}`, {
 				method: 'POST',
-				json: { text, imageId },
+				json: { text, imageId, expiresIn },
 			});
 			if (!res.ok) return res.error.message;
 			await load(raw.at(-1)?.at ?? 0);

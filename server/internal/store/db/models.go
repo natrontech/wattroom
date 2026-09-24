@@ -84,6 +84,7 @@ type ChatMessage struct {
 	ImageID   pgtype.UUID
 	EditedAt  pgtype.Timestamptz
 	ChannelID pgtype.UUID
+	ExpiresAt pgtype.Timestamptz
 }
 
 type ChatReaction struct {
@@ -158,6 +159,7 @@ type DmMessage struct {
 	ImageID     pgtype.UUID
 	EditedAt    pgtype.Timestamptz
 	DeletedAt   pgtype.Timestamptz
+	ExpiresAt   pgtype.Timestamptz
 }
 
 type DmReaction struct {

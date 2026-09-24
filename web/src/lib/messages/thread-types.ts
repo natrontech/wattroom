@@ -25,7 +25,12 @@ export interface ThreadSource {
 	/** The crew whose uploaded emoji the picker offers; none in a DM. */
 	crewId?: string;
 	retry: () => void;
-	send: (text: string, image?: Blob) => Promise<string | null>;
+	/** `expiresIn`: a temporary line's timer in seconds (#2644). */
+	send: (
+		text: string,
+		image?: Blob,
+		expiresIn?: number,
+	) => Promise<string | null>;
 	react?: (id: string, cheer: string) => Promise<string | null>;
 	/**
 	 * Rewrite a line this rider sent (#865). Capability-gated like `react`:

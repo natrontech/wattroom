@@ -18,10 +18,9 @@
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
-	import ChatImage from '$lib/chat/ChatImage.svelte';
-	import MessageText from '$lib/chat/MessageText.svelte';
 	import Composer from '$lib/messages/Composer.svelte';
 	import LineActions from '$lib/messages/LineActions.svelte';
+	import LineBody from '$lib/messages/LineBody.svelte';
 	import LineEditor from '$lib/messages/LineEditor.svelte';
 	import Reactions from '$lib/chat/Reactions.svelte';
 	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
@@ -72,7 +71,25 @@
 		emptyState: Snippet;
 	} = $props();
 
-	const timeline = $derived(source.timeline);
+	// A temporary line (#2644) leaves at its time by this reader's own clock:
+	// the server stops serving it then, but a DM's poll never says "gone".
+	// The clock ticks at the next expiry, or each minute for the countdowns.
+	let now = $state(Date.now());
+	$effect(() => {
+		void now;
+		const soonest = Math.min(
+			...source.timeline.map((e) => e.message.expiresAt ?? Infinity),
+		);
+		if (soonest === Infinity) return;
+		const wait = Math.min(Math.max(soonest - Date.now(), 0) + 50, 60_000);
+		const tick = setTimeout(() => (now = Date.now()), wait);
+		return () => clearTimeout(tick);
+	});
+	const timeline = $derived(
+		source.timeline.filter(
+			(e) => !e.message.expiresAt || e.message.expiresAt > now,
+		),
+	);
 	// Who `@` completes to: the caller's people first (the crew's people),
 	// then whoever has spoken here; never yourself.
 	const names = $derived.by(() => {
@@ -351,49 +368,13 @@
 									onDone={() => (editingId = null)}
 								/>
 							{:else}
-								<!-- A line that names you gets the bar — there is no server
-								     mention yet, this is "@" plus your first name. Pre-wrap
-								     (#2642): a line break the rider typed is theirs to keep. -->
-								<span
-									class="text-ink/85 block text-sm wrap-anywhere whitespace-pre-wrap {mention
-										? 'border-neon/60 bg-neon/5 -ml-2 rounded border-l-2 py-0.5 pl-2'
-										: ''}"
-								>
-									{#if message.deletedAt}
-										<!-- A tombstone, DMs only (#2418): the row stays so
-										     the other side is told at all, and there is
-										     nothing left of the message but the fact that
-										     something was here. Italic and muted, so it does
-										     not read as somebody's words. -->
-										<span class="text-muted text-sm italic"
-											>Message deleted</span
-										>
-									{:else if message.text}
-										<MessageText
-											text={message.text}
-											menu={() => messageMenu(message)}
-										/>
-									{/if}
-									{#if message.editedAt}
-										<!-- Nobody is rewritten quietly (#865). Not a
-										     timestamp: WHEN it was fixed is nobody's
-										     business, THAT it was is everybody's. -->
-										<span
-											class="text-muted-dim ml-1 align-baseline text-[10px]"
-											title="edited {formatTime(message.editedAt)}">edited</span
-										>
-									{/if}
-									{#if message.imageId}
-										<!-- The picture's own menu swallows the row's right-click
-										     (#1817): hand the message's down, or a photo has no
-										     react and no copy. -->
-										<ChatImage
-											src={imageSrc(message.imageId)}
-											alt="Sent by {message.from}"
-											menu={() => messageMenu(message)}
-										/>
-									{/if}
-								</span>
+								<LineBody
+									{message}
+									{mention}
+									{now}
+									{imageSrc}
+									menu={() => messageMenu(message)}
+								/>
 							{/if}
 							{#if message.id && source.reactions}
 								{@const id = message.id}

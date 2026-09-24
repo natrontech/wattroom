@@ -107,6 +107,13 @@ const (
 	// 60 W, 5 % is 3 W, which is inside a trainer's own error.
 	TargetBandFraction   = 0.05
 	TargetBandFloorWatts = 10
+
+	// A temporary message's timer (#2644, docs/SPEC.md "Text channel chat"),
+	// in seconds: the three a sender picks from. The composer offers exactly
+	// these and the server refuses any other, so both read them from here.
+	TemporaryHour = 60 * 60
+	TemporaryDay  = 24 * TemporaryHour
+	TemporaryWeek = 7 * TemporaryDay
 )
 
 // TargetBand is docs/SPEC.md's band around a target, in watts.
@@ -118,4 +125,10 @@ const (
 // generated protocol.
 func TargetBand(target float64) float64 {
 	return math.Max(target*TargetBandFraction, TargetBandFloorWatts)
+}
+
+// IsTemporaryTimer reports whether seconds is one of the timers a sender may
+// set on a message (#2644).
+func IsTemporaryTimer(seconds int) bool {
+	return seconds == TemporaryHour || seconds == TemporaryDay || seconds == TemporaryWeek
 }

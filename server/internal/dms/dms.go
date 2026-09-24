@@ -105,6 +105,8 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Text    string `json:"text"`
 		ImageID string `json:"imageId"`
+		// A temporary line's timer in seconds (#2644); absent for one that stays.
+		ExpiresIn int `json:"expiresIn"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
@@ -113,6 +115,9 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 	text := strings.TrimSpace(req.Text)
 	if utf8.RuneCountInString(text) > protocol.MaxMessageChars {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", lengthRefusal, "text")
+		return
+	}
+	if httpx.BadTimer(w, req.ExpiresIn) {
 		return
 	}
 	// An image is a message body of its own (#285), so text is only required
@@ -126,8 +131,10 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", lengthRefusal, "text")
 		return
 	}
+	expires := store.ExpiresAt(time.Now(), req.ExpiresIn)
 	sent, err := s.store.Queries.SendDm(r.Context(), db.SendDmParams{
 		SenderID: me.ID, RecipientID: peer, Text: text, ImageID: image,
+		ExpiresAt: expires,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		// Zero rows back = the friendship gate refused — the one way a valid
@@ -148,6 +155,7 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 	s.pruneImages(r, me.ID, peer)
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"id": store.UUIDString(sent.ID), "at": sent.CreatedAt.Time.UnixMilli(),
+		"expiresAt": store.Millis(expires),
 	})
 }
 

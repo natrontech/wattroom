@@ -132,13 +132,15 @@ func (s *Service) handleChannelPost(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Text    string `json:"text"`
 		ImageID string `json:"imageId"`
+		// A temporary line's timer in seconds (#2644); absent for one that stays.
+		ExpiresIn int `json:"expiresIn"`
 	}
 	if err := httpx.DecodeStrict(r, &req); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
 		return
 	}
 	text := strings.TrimSpace(req.Text)
-	if tooLong(w, text) {
+	if tooLong(w, text) || httpx.BadTimer(w, req.ExpiresIn) {
 		return
 	}
 	if text == "" && req.ImageID == "" {
@@ -165,9 +167,11 @@ func (s *Service) handleChannelPost(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	at := time.Now().UnixMilli()
+	expires := store.ExpiresAt(time.UnixMilli(at), req.ExpiresIn)
 	id, err := s.store.Queries.SaveChannelMessage(r.Context(), db.SaveChannelMessageParams{
 		ChannelID: channel.ID, UserID: me.ID, Text: text, ImageID: img,
 		CreatedAt: pgtype.Timestamptz{Time: time.UnixMilli(at), Valid: true},
+		ExpiresAt: expires,
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "save channel chat", err, "The message could not be sent. Try again.", "channel", store.UUIDString(channel.ID))
@@ -179,7 +183,7 @@ func (s *Service) handleChannelPost(w http.ResponseWriter, r *http.Request) {
 	s.changedIn(channel)
 	httpx.WriteJSON(w, http.StatusOK, protocol.ChatLine{
 		ID: store.UUIDString(id), From: me.DisplayName, FromID: store.UUIDString(me.ID),
-		Text: text, ImageID: req.ImageID, At: at,
+		Text: text, ImageID: req.ImageID, At: at, ExpiresAt: store.Millis(expires),
 	})
 }
 
@@ -552,6 +556,7 @@ func messageOf(row db.ListChannelChatRow, counts map[string]map[string]int, mine
 		ImageID:   store.UUIDString(row.ImageID), // "" when the line has none
 		At:        row.CreatedAt.Time.UnixMilli(),
 		EditedAt:  store.Millis(row.EditedAt),
+		ExpiresAt: store.Millis(row.ExpiresAt),
 		Reactions: counts[id], Mine: mine[id],
 	}
 }

@@ -238,6 +238,7 @@ from chat_messages c
 left join channels ch on ch.id = c.channel_id
 left join crews cw on cw.id = ch.crew_id
 where c.user_id = $1
+  and (c.expires_at is null or c.expires_at > now())
 order by c.created_at
 `
 
@@ -702,7 +703,8 @@ select m.text, m.created_at, m.edited_at, m.image_id, m.sender_id = $1 as sent_b
 from dm_messages m
 join users s on s.id = m.sender_id
 join users r on r.id = m.recipient_id
-where m.sender_id = $1 or m.recipient_id = $1
+where (m.sender_id = $1 or m.recipient_id = $1)
+  and (m.expires_at is null or m.expires_at > now())
 order by m.created_at
 `
 

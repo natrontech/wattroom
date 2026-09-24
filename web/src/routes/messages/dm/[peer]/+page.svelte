@@ -154,7 +154,8 @@
 		myReacts: thread?.myReacts ?? {},
 		cheers: STOCK_CHEERS,
 		retry: () => thread?.retry(),
-		send: async (text, image) => (await thread?.send(text, image)) ?? null,
+		send: async (text, image, expiresIn) =>
+			(await thread?.send(text, image, expiresIn)) ?? null,
 		react: async (id, cheer) => (await thread?.react(id, cheer)) ?? null,
 		edit: async (id, text) => (await thread?.edit(id, text)) ?? null,
 		// Taking a line back (#2418): the sender's own only — a conversation

@@ -113,7 +113,11 @@ export function createChatThread(base: string) {
 			void load();
 		},
 		/** Returns the refusal, or null once the line is in the thread. */
-		async send(text: string, image?: Blob): Promise<string | null> {
+		async send(
+			text: string,
+			image?: Blob,
+			expiresIn?: number,
+		): Promise<string | null> {
 			let imageId: string | undefined;
 			if (image) {
 				const up = await uploadImage(`${base}/chat/images`, image);
@@ -122,7 +126,7 @@ export function createChatThread(base: string) {
 			}
 			const res = await api<ChatLine>(`${base}/chat`, {
 				method: 'POST',
-				json: { text, imageId },
+				json: { text, imageId, expiresIn },
 			});
 			if (!res.ok) return res.error.message;
 			// Straight into the log: the lobby ping brings it too, a beat

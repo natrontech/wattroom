@@ -100,6 +100,25 @@ func (q *Queries) DeleteDmMessage(ctx context.Context, arg DeleteDmMessageParams
 	return deleted_at, err
 }
 
+const deleteExpiredDms = `-- name: DeleteExpiredDms :execrows
+delete from dm_messages
+where id in (
+    select id from dm_messages
+    where expires_at <= now()
+    limit 10000
+)
+`
+
+// A DM whose timer ran out (#2644) leaves no tombstone: nothing was taken
+// back, the line simply ended, and both sides already knew when.
+func (q *Queries) DeleteExpiredDms(ctx context.Context) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteExpiredDms)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const editDmMessage = `-- name: EditDmMessage :one
 update dm_messages
 set text = $4, edited_at = now()
@@ -162,6 +181,7 @@ select sender_id, text, image_id from dm_messages
 where id = $1
   and least(sender_id, recipient_id) = least($2::uuid, $3::uuid)
   and greatest(sender_id, recipient_id) = greatest($2::uuid, $3::uuid)
+  and (expires_at is null or expires_at > now())
 `
 
 type GetDmMessageParams struct {
@@ -276,7 +296,8 @@ join friendships f
   on f.status = 'accepted'
  and ((f.requester_id = $1 and f.addressee_id = peer.id)
    or (f.requester_id = peer.id and f.addressee_id = $1))
-where m.sender_id = $1 or m.recipient_id = $1
+where (m.sender_id = $1 or m.recipient_id = $1)
+  and (m.expires_at is null or m.expires_at > now())
 order by peer.id, m.created_at desc
 limit 1000
 `
@@ -380,12 +401,13 @@ func (q *Queries) ListDmReactions(ctx context.Context, arg ListDmReactionsParams
 }
 
 const listDms = `-- name: ListDms :many
-select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at, m.deleted_at
+select m.id, m.sender_id, m.text, m.image_id, m.created_at, m.edited_at, m.deleted_at, m.expires_at
 from (
-    select id, sender_id, recipient_id, text, created_at, image_id, edited_at, deleted_at from dm_messages
+    select id, sender_id, recipient_id, text, created_at, image_id, edited_at, deleted_at, expires_at from dm_messages
     where least(sender_id, recipient_id) = least($1::uuid, $2::uuid)
       and greatest(sender_id, recipient_id) = greatest($1::uuid, $2::uuid)
       and created_at > $3
+      and (expires_at is null or expires_at > now())
     order by created_at desc, id desc
     limit 200
 ) m
@@ -406,6 +428,7 @@ type ListDmsRow struct {
 	CreatedAt pgtype.Timestamptz
 	EditedAt  pgtype.Timestamptz
 	DeletedAt pgtype.Timestamptz
+	ExpiresAt pgtype.Timestamptz
 }
 
 // One pair's thread: the NEWEST 200 after `after`, oldest-first for
@@ -429,6 +452,7 @@ func (q *Queries) ListDms(ctx context.Context, arg ListDmsParams) ([]ListDmsRow,
 			&i.CreatedAt,
 			&i.EditedAt,
 			&i.DeletedAt,
+			&i.ExpiresAt,
 		); err != nil {
 			return nil, err
 		}
@@ -554,8 +578,8 @@ func (q *Queries) SaveDmImage(ctx context.Context, arg SaveDmImageParams) (pgtyp
 }
 
 const sendDm = `-- name: SendDm :one
-insert into dm_messages (sender_id, recipient_id, text, image_id)
-select $1, $2, $3, $4
+insert into dm_messages (sender_id, recipient_id, text, image_id, expires_at)
+select $1, $2, $3, $4, $5::timestamptz
 where exists (
     select 1 from friendships f
     where f.status = 'accepted'
@@ -576,6 +600,7 @@ type SendDmParams struct {
 	RecipientID pgtype.UUID
 	Text        string
 	ImageID     pgtype.UUID
+	ExpiresAt   pgtype.Timestamptz
 }
 
 type SendDmRow struct {
@@ -594,6 +619,7 @@ func (q *Queries) SendDm(ctx context.Context, arg SendDmParams) (SendDmRow, erro
 		arg.RecipientID,
 		arg.Text,
 		arg.ImageID,
+		arg.ExpiresAt,
 	)
 	var i SendDmRow
 	err := row.Scan(&i.ID, &i.CreatedAt)

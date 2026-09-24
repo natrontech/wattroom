@@ -112,6 +112,7 @@ left join channel_reads r on r.channel_id = m.channel_id and r.user_id = $1
 where m.channel_id = any($2::uuid[])
   and m.user_id <> $1
   and (r.read_at is null or m.created_at > r.read_at)
+  and (m.expires_at is null or m.expires_at > now())
 group by m.channel_id
 `
 

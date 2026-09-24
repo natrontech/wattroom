@@ -134,3 +134,41 @@ func Once(ctx context.Context, st *store.Store, log *slog.Logger) {
 }
 
 const sweepBudget = 5 * time.Minute
+
+// ExpiryEvery is how often temporary messages are swept (#2644). Not daily:
+// a timer is the rider's own promise that the line will be gone, and the
+// shortest one is an hour. Reads already hide a line the moment it runs out;
+// this is what makes it gone rather than hidden.
+const ExpiryEvery = time.Minute
+
+// RunExpiry deletes run-out temporary messages at boot and every ExpiryEvery.
+func RunExpiry(ctx context.Context, st *store.Store, log *slog.Logger) {
+	safego.Supervise(log, time.Now, "message expiry", ctx.Done(), func() {
+		ticker := time.NewTicker(ExpiryEvery)
+		defer ticker.Stop()
+		for {
+			Expire(ctx, st, log)
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	})
+}
+
+// Expire sweeps one pass over channel lines and DMs.
+func Expire(ctx context.Context, st *store.Store, log *slog.Logger) {
+	sweepCtx, cancel := context.WithTimeout(ctx, ExpiryEvery)
+	defer cancel()
+	for name, del := range map[string]func(context.Context) (int64, error){
+		"expired chat": st.Queries.DeleteExpiredChat,
+		"expired dms":  st.Queries.DeleteExpiredDms,
+	} {
+		err := batched(sweepCtx, del)
+		jobmetrics.Ran("housekeeping "+name, err)
+		if err != nil {
+			log.Warn("housekeeping sweep failed", "sweep", name, "err", err)
+		}
+	}
+}
