@@ -124,6 +124,16 @@ func presenceLine(verb, actor string, now time.Time) protocol.ChannelEvent {
 // riders were reading it nowhere.
 const sessionKind = "session"
 
+// handOffLine is the session changing coach (#2636): Actor had it, Subject has
+// it now. "handedOff" when the coach passed it on, "passedOn" when they left
+// and the room passed it for them.
+func handOffLine(verb, from, to string, now time.Time) protocol.ChannelEvent {
+	return protocol.ChannelEvent{
+		Kind: sessionKind, Verb: verb, Actor: from, Subject: to,
+		Count: 1, At: now.UnixMilli(),
+	}
+}
+
 // gameEndedLine is a game that ended with nobody to name: a collective ramp
 // the whole room rode — it finishes when the room average falls off the line,
 // not when one rider outlasts the rest — or any mode a coach ended, which is
