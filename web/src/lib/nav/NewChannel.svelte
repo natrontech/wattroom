@@ -6,6 +6,7 @@
 	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
+	import { newLabel } from '$lib/channels';
 	import { MaxChannelNameChars } from '$lib/protocol';
 	import { crewLive } from './crew-live.svelte';
 
@@ -35,8 +36,8 @@
 </script>
 
 <h3 class="font-display font-bold">
-	{kind === 'text' ? 'New chat' : 'New voice'}<span
-		class="text-muted font-normal">&nbsp;in {crew.name}</span
+	{newLabel(kind)}<span class="text-muted font-normal"
+		>&nbsp;in {crew.name}</span
 	>
 </h3>
 <p class="text-muted mt-1 text-xs">

@@ -49,12 +49,8 @@ test('the owner keeps the crew channels from its settings', async ({
 				await fetch(`/api/channels/${channel.id}`, { method: 'DELETE' });
 	}, crew);
 	await a.goto(`/crew/${crew}/settings`);
-	await a
-		.getByRole('textbox', { name: 'new text channel name' })
-		.fill('Sprints');
-	await a
-		.getByRole('textbox', { name: 'new text channel name' })
-		.press('Enter');
+	await a.getByRole('textbox', { name: 'new chat name' }).fill('Sprints');
+	await a.getByRole('textbox', { name: 'new chat name' }).press('Enter');
 	await expect.poll(() => named('Sprints')).toMatchObject({ kind: 'text' });
 
 	// Open the row; its name saves on change.
@@ -103,7 +99,7 @@ test('the owner keeps the crew channels from its settings', async ({
 	);
 	await a.reload();
 	await expect(
-		a.getByRole('textbox', { name: 'new text channel name' }),
+		a.getByRole('textbox', { name: 'new chat name' }),
 	).toBeDisabled();
 	await expect(
 		a.getByText(

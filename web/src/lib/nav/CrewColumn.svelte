@@ -15,7 +15,7 @@
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
-	import { deleteLabel } from '$lib/channels';
+	import { deleteLabel, newLabel } from '$lib/channels';
 	import { device } from '$lib/device.svelte';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
 	import type { CrewRef } from '$lib/crew-types';
@@ -55,9 +55,6 @@
 			: pathname === href || pathname.startsWith(`${href}/`);
 
 	let creating = $state<'text' | 'voice' | null>(null);
-	// A rider's text channel is a chat channel (#2696).
-	const newLabel = (kind: 'text' | 'voice') =>
-		kind === 'text' ? 'new chat' : 'new voice';
 	$effect(() => {
 		pathname;
 		creating = null;
@@ -143,8 +140,8 @@
 			<button
 				onclick={() => (creating = kind)}
 				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
-				title={newLabel(kind)}
-				aria-label={newLabel(kind)}><Plus size={16} /></button
+				title={newLabel(kind).toLowerCase()}
+				aria-label={newLabel(kind).toLowerCase()}><Plus size={16} /></button
 			>
 		{/if}
 	</div>

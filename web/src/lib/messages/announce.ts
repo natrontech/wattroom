@@ -99,8 +99,12 @@ export function announce(arrival: Arrival): void {
 			arrival.body ? `${arrival.title}: ${arrival.body}` : arrival.title,
 			{
 				href: arrival.href,
-				// A chat channel's line wears its bubble, as the sidebar row does.
-				icon: arrival.kind === 'chat' ? MessageCircle : undefined,
+				// A written line wears the bubble — a chat channel's, as its sidebar
+				// row does, and a DM's.
+				icon:
+					arrival.kind === 'chat' || arrival.kind === 'dm'
+						? MessageCircle
+						: undefined,
 			},
 		);
 }
