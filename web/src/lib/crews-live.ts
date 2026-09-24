@@ -1,7 +1,7 @@
 import { loadApi, type ApiResult } from '$lib/api';
 import type { ChannelKind } from '$lib/channels';
 import type { CrewRole } from '$lib/crew';
-import type { LiveSession } from '$lib/protocol';
+import type { LiveSession, StatusLine } from '$lib/protocol';
 
 /**
  * What is going on in every crew you are in, from one fetch (#2444): who is
@@ -17,6 +17,8 @@ export interface LiveOccupant {
 	camera?: boolean;
 	riding?: boolean;
 	away?: boolean;
+	/** Their status (ADR-0060, #2745); null is none. */
+	statusLine?: StatusLine | null;
 }
 
 export interface LiveChannel {
