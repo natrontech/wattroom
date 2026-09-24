@@ -15,6 +15,7 @@
 	import { ridePath } from '$lib/channel/address';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
+	import MarkedIn from '$lib/announce/MarkedIn.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import PlanCard from '$lib/session/PlanCard.svelte';
@@ -270,6 +271,13 @@
 			canClear={isOwner || channel.myRole === 'admin'}
 			onclear={() => channel.clearAnnouncement()}
 		/>
+		{#if channel.announcement}
+			<MarkedIn
+				crewId={channel.address.crew}
+				announcement={channel.announcement}
+				class="-mt-2 mb-4"
+			/>
+		{/if}
 	{/if}
 	<!-- No page header: the sidebar says which channel this is and the people
 	     column says who is in it. What is left is what the lounge can DO. -->

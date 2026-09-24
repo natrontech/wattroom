@@ -9,13 +9,13 @@
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import { deleteChannelWarning } from '$lib/channels';
 	import { confirm } from '$lib/confirm.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
+	import { deleteChannelWarning, deleteLabel, newLabel } from '$lib/channels';
 	import { device } from '$lib/device.svelte';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
 	import type { CrewRef } from '$lib/crew-types';
@@ -24,10 +24,10 @@
 	import { askVoice } from '$lib/channel/voice-intent';
 	import { account } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
-	import Hash from '@lucide/svelte/icons/hash';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Lock from '@lucide/svelte/icons/lock';
 	import LockOpen from '@lucide/svelte/icons/lock-open';
+	import MessageCircle from '@lucide/svelte/icons/message-circle';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Settings from '@lucide/svelte/icons/settings';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -96,9 +96,9 @@
 		// Nothing brings a deleted channel back (errors.md: the genuinely
 		// destructive asks).
 		const sure = await confirm({
-			title: `Delete ${c.kind === 'text' ? '#' : ''}${c.name}?`,
+			title: `Delete ${c.name}?`,
 			body: deleteChannelWarning(c),
-			action: 'Delete the channel',
+			action: deleteLabel(c.kind),
 			cancel: 'Keep it',
 		});
 		if (!sure) return;
@@ -147,7 +147,7 @@
 			},
 			'separator',
 			{
-				label: 'Delete the channel',
+				label: deleteLabel(c.kind),
 				icon: Trash2,
 				danger: true,
 				onSelect: () => void remove(c),
@@ -164,8 +164,8 @@
 			<button
 				onclick={() => (creating = kind)}
 				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
-				title="new {kind} channel"
-				aria-label="new {kind} channel"><Plus size={16} /></button
+				title={newLabel(kind).toLowerCase()}
+				aria-label={newLabel(kind).toLowerCase()}><Plus size={16} /></button
 			>
 		{/if}
 	</div>
@@ -173,7 +173,7 @@
 
 {#snippet row(c: LiveChannel)}
 	{@const on = lit(pathOf(c))}
-	{@const Mark = c.kind === 'text' ? Hash : Volume2}
+	{@const Mark = c.kind === 'text' ? MessageCircle : Volume2}
 	<a
 		href={pathOf(c)}
 		onclick={c.kind === 'voice' ? (e) => joinOnClick(c, e) : undefined}
@@ -226,21 +226,21 @@
 		</p>
 	{/if}
 {:else}
-	{@render section('channels', 'text')}
+	{@render section('chat channels', 'text')}
 	<ul class="space-y-0.5">
 		{#each texts as c (c.id)}
 			<li>{@render row(c)}</li>
 		{:else}
-			<!-- Empty states teach (ux.md): what a text channel is, and who makes one. -->
+			<!-- Empty states teach (ux.md): what a chat channel is, and who makes one. -->
 			<li class="text-muted px-2 py-1 text-xs">
 				{admin
-					? 'No text channels yet — the + makes the first place to write.'
-					: 'No text channels yet. The crew’s owner or an admin makes them.'}
+					? 'No chat channels yet — the + makes the first place to write.'
+					: 'No chat channels yet. The crew’s owner or an admin makes them.'}
 			</li>
 		{/each}
 	</ul>
 
-	{@render section('voice', 'voice')}
+	{@render section('voice channels', 'voice')}
 	<ul class="space-y-0.5">
 		{#each voices as c (c.id)}
 			{@const people = railPeople(c.occupants?.map((o) => o.name))}
@@ -343,7 +343,7 @@
 
 {#if creating}
 	<Modal
-		label="New {creating} channel"
+		label={newLabel(creating)}
 		onclose={() => (creating = null)}
 		class="max-w-sm"
 	>

@@ -75,7 +75,9 @@ test('the crew Board teaches its first pin and leads with the announcement', asy
 	await page.reload();
 	await expect(page.getByText('Thursday is intervals')).toBeVisible();
 	await expect(page.getByRole('img', { name: ':board_dot:' })).toBeVisible();
-	await expect(page.getByRole('link', { name: `#${name}` })).toBeVisible();
+	await expect(
+		page.getByText('Marked in').getByRole('link', { name, exact: true }),
+	).toBeVisible();
 });
 
 test('crew Workouts teaches what gathers there', async ({ page, channels }) => {

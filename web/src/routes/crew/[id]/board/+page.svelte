@@ -11,15 +11,12 @@
 	import { invalidateAll } from '$app/navigation';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import { takeDownAnnouncement } from '$lib/announce/take-down';
-	import {
-		fetchCrewAnnouncement,
-		textChannelPath,
-		type CrewAnnouncement,
-	} from '$lib/channels';
+	import { fetchCrewAnnouncement, type CrewAnnouncement } from '$lib/channels';
 	import Banner from '$lib/components/Banner.svelte';
 	import { provideCrewEmoji } from '$lib/emoji/crew-emoji.svelte';
 	import CrewPins from '$lib/pins/CrewPins.svelte';
 	import { presence } from '$lib/presence.svelte';
+	import MarkedIn from '$lib/announce/MarkedIn.svelte';
 	import { untrack } from 'svelte';
 	import type { PageData } from './$types';
 
@@ -94,13 +91,7 @@
 				canClear={administers}
 				onclear={() => void clear()}
 			/>
-			<p class="text-muted -mt-2 mb-5 text-xs">
-				Marked in
-				<a
-					href={textChannelPath(data.crew.id, announcement.channelId)}
-					class="btn-link">#{announcement.channelName}</a
-				>
-			</p>
+			<MarkedIn crewId={data.crew.id} {announcement} class="-mt-2 mb-5" />
 		{/if}
 
 		<CrewPins crewId={data.crew.id} crewName={data.crew.name} />

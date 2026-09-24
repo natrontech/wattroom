@@ -126,7 +126,7 @@
 					{joinFirst ? 'Or start a crew of your own' : 'Start a crew'}
 				</h3>
 				<p class="text-muted mt-1 text-xs">
-					Yours to run. It opens with a text channel and a voice channel, and
+					Yours to run. It opens with a chat channel and a voice channel, and
 					anyone joins with its code or link.
 				</p>
 				{#if startError}

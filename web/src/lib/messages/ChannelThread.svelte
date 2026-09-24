@@ -9,7 +9,7 @@
 	// shared with a DM's; this supplies the channel's endpoints and what the
 	// viewer's crew role allows.
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
-	import Hash from '@lucide/svelte/icons/hash';
+	import MessageCircle from '@lucide/svelte/icons/message-circle';
 	import Lock from '@lucide/svelte/icons/lock';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
@@ -125,14 +125,17 @@
 		aria-label="back to {crew.name}"><ChevronLeft size={18} /></a
 	>
 	<span class="bg-surface grid h-7 w-7 shrink-0 place-items-center rounded">
-		{#if channel.private}
-			<Lock size={14} class="text-muted" />
-		{:else}
-			<Hash size={14} class="text-muted" />
-		{/if}
+		<MessageCircle size={14} class="text-muted" />
 	</span>
 	<span class="min-w-0">
-		<h1 class="block truncate text-sm font-medium">{channel.name}</h1>
+		<!-- The bubble stays the mark; private is a small lock after the name,
+		     as the sidebar row draws it (#2696). -->
+		<span class="flex items-center gap-1">
+			<h1 class="truncate text-sm font-medium">{channel.name}</h1>
+			{#if channel.private}
+				<Lock size={11} class="text-muted-dim shrink-0" aria-label="private" />
+			{/if}
+		</span>
 		<a
 			href="/crew/{crew.id}"
 			class="text-muted hover:text-ink block truncate text-[11px]"
@@ -164,7 +167,7 @@
 		<div class="mb-4 px-16 text-center md:px-0">
 			<p class="font-display text-base font-bold">{channel.name}</p>
 			<p class="text-muted mt-0.5 text-xs">
-				Nothing said here yet. Say something — the channel keeps its last 500
+				Nothing said here yet. Say something — the chat keeps its last 500
 				lines, and the crew reads them whenever they look in.
 			</p>
 		</div>

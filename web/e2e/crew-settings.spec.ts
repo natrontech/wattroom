@@ -49,12 +49,8 @@ test('the owner keeps the crew channels from its settings', async ({
 				await fetch(`/api/channels/${channel.id}`, { method: 'DELETE' });
 	}, crew);
 	await a.goto(`/crew/${crew}/settings`);
-	await a
-		.getByRole('textbox', { name: 'new text channel name' })
-		.fill('Sprints');
-	await a
-		.getByRole('textbox', { name: 'new text channel name' })
-		.press('Enter');
+	await a.getByRole('textbox', { name: 'new chat name' }).fill('Sprints');
+	await a.getByRole('textbox', { name: 'new chat name' }).press('Enter');
 	await expect.poll(() => named('Sprints')).toMatchObject({ kind: 'text' });
 
 	// Open the row; its name saves on change.
@@ -80,11 +76,11 @@ test('the owner keeps the crew channels from its settings', async ({
 	// Destructive with no undo: it asks, and only the action deletes.
 	await a
 		.locator('details[open]')
-		.getByRole('button', { name: 'Delete the channel' })
+		.getByRole('button', { name: 'Delete the chat' })
 		.click();
 	await a
 		.getByRole('dialog')
-		.getByRole('button', { name: 'Delete the channel' })
+		.getByRole('button', { name: 'Delete the chat' })
 		.click();
 	await expect.poll(() => named('Sprint Talk')).toBeUndefined();
 
@@ -103,11 +99,11 @@ test('the owner keeps the crew channels from its settings', async ({
 	);
 	await a.reload();
 	await expect(
-		a.getByRole('textbox', { name: 'new text channel name' }),
+		a.getByRole('textbox', { name: 'new chat name' }),
 	).toBeDisabled();
 	await expect(
 		a.getByText(
-			`A crew holds at most ${MaxCrewTextChannels} text channels — delete one to make room.`,
+			`A crew holds at most ${MaxCrewTextChannels} chat channels — delete one to make room.`,
 		),
 	).toBeVisible();
 

@@ -24,7 +24,11 @@ interface ShellNotification {
 	tag: string;
 	href?: string;
 	replyPlaceholder?: string;
+	/** A picture the shell bundles (desktop/icons/<name>.png); only it names one. */
+	icon?: NotificationIcon;
 }
+/** The one picture a notification may carry: the bubble of a written line (#2696). */
+export type NotificationIcon = 'chat';
 interface Bridge {
 	notify?: (n: ShellNotification) => void;
 	onNotification?: (
@@ -109,7 +113,7 @@ function send(
 	title: string,
 	body: string,
 	tag: string,
-	opts: { href?: string; reply?: ReplyTo },
+	opts: { href?: string; reply?: ReplyTo; icon?: NotificationIcon },
 ) {
 	if (opts.reply) replies.set(tag, opts.reply.send);
 	else replies.delete(tag);
@@ -121,12 +125,17 @@ function send(
 			tag,
 			href: opts.href,
 			replyPlaceholder: opts.reply?.placeholder,
+			icon: opts.icon,
 		});
 		return;
 	}
 	try {
 		// tag dedupes a burst into one notification per stream.
-		const n = new Notification(title, { body, tag });
+		const n = new Notification(title, {
+			body,
+			tag,
+			icon: opts.icon && `/notify/${opts.icon}.png`,
+		});
 		n.onclick = () => {
 			window.focus();
 			if (opts.href) navigate(opts.href);
@@ -204,7 +213,7 @@ export const notify = {
 		title: string,
 		body: string,
 		tag: string,
-		opts: { href?: string; reply?: ReplyTo } = {},
+		opts: { href?: string; reply?: ReplyTo; icon?: NotificationIcon } = {},
 	) {
 		if (!enabled || typeof document === 'undefined' || !away()) return;
 		send(title, body, tag, opts);

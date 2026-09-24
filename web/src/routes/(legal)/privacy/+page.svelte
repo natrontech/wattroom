@@ -69,8 +69,8 @@
 			processing stops.
 		</li>
 		<li>
-			<strong class="text-ink font-medium">Chat.</strong> A crew's text channels and
-			direct messages are rolling logs: only the most recent 500 messages per text
+			<strong class="text-ink font-medium">Chat.</strong> A crew's chat channels and
+			direct messages are rolling logs: only the most recent 500 messages per chat
 			channel or conversation are kept, older ones are deleted automatically.
 		</li>
 		<li>
