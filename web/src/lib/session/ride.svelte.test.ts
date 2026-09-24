@@ -121,6 +121,7 @@ describe('the seq stream (#522)', () => {
 			recording: { record() {} } as never,
 			myId: () => 'me',
 			shared: () => undefined,
+			joined: () => true,
 			segments: () => [],
 		};
 
@@ -179,6 +180,7 @@ describe('a sprint the ticks stop under (#789)', () => {
 			recording: { record() {} } as never,
 			myId: () => 'me',
 			shared: () => undefined,
+			joined: () => true,
 			segments: () => [],
 		};
 		return { live, socket, deps };
@@ -257,6 +259,7 @@ function inASession() {
 		recording: { record() {} } as never,
 		myId: () => 'me',
 		shared: () => ({ phase: 'running', elapsed: 10 }),
+		joined: () => true,
 		segments: () => [
 			{
 				kind: 'steady' as const,
@@ -373,6 +376,29 @@ describe('the personal guards in a group ride (#788)', () => {
 		dispose();
 		live.close();
 		vi.useRealTimers();
+	});
+
+	it('leaves a spectator’s trainer alone until they join (ADR-0059)', async () => {
+		const { live, deps } = inASession();
+		let joined = $state(false);
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide({ ...deps, joined: () => joined });
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		trainer.pedal(150, 90);
+		await settle();
+		expect(ride.target).toBe(0);
+		expect(trainer.commands).not.toContain('erg:200');
+
+		joined = true;
+		await settle();
+		expect(ride.target).toBe(200);
+		expect(trainer.commands.at(-1)).toBe('erg:200');
+
+		dispose();
+		live.close();
 	});
 
 	it('leaves a rider resting between sessions alone', async () => {
@@ -492,6 +518,7 @@ describe("a workout's own sprint block (#2014)", () => {
 			recording: { record() {} } as never,
 			myId: () => 'me',
 			shared: () => ({ phase: 'running', elapsed }),
+			joined: () => true,
 			segments: () => segments,
 		};
 		return {
@@ -758,6 +785,7 @@ describe("the trainer's silence, one number (#2161)", () => {
 			recording: { record() {} } as never,
 			myId: () => 'me',
 			shared: () => undefined,
+			joined: () => true,
 			segments: () => [],
 		};
 		let ride!: ReturnType<typeof createRide>;

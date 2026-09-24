@@ -110,7 +110,7 @@ type GameState struct {
 // Control is a coach/owner command over the shared session (SPEC roles matrix:
 // pick workout, start countdown, pause/end). The server enforces the role.
 type Control struct {
-	Action string `json:"action"` // "pick" | "start" | "pause" | "resume" | "end" | "handoff" | "game" | "game-end" | "sprint"
+	Action string `json:"action"` // "pick" | "start" | "pause" | "resume" | "end" | "handoff" | "game" | "game-end" | "sprint" | "join" | "leave"
 	// Workout definition, opaque to the server: the docs/SPEC.md JSON as a
 	// string. The server owns the clock, the clients own the targets.
 	WorkoutName string `json:"workoutName,omitempty"`
@@ -422,6 +422,9 @@ type Rider struct {
 	// which flickered, and the friends page decided it from "a trainer is
 	// talking", which never went out at all.
 	Riding bool `json:"riding,omitempty"`
+	// On the running session's timeline (ADR-0059). Everyone else in the
+	// channel spectates it: not driven, not counted, and drawn apart.
+	InSession bool `json:"inSession,omitempty"`
 	// What this rider's soundboard has playing right now, and how far into it
 	// the channel already is (#1681). A fire is one tick and gone
 	// (ADR-0022/0033), so a rider who walked in halfway through a clip heard

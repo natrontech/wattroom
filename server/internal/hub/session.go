@@ -48,6 +48,10 @@ type session struct {
 	// A game session has no timeline of its own: it runs with no length, does
 	// not pause, and the game's end is its end.
 	game string
+	// Who joined it (ADR-0059): only they are driven and counted. The one
+	// who opened it is in from the start; everyone else in the channel
+	// spectates until they join. Bounded by riders who entered the channel.
+	joined map[string]struct{}
 }
 
 func newSession() *session {
@@ -63,7 +67,29 @@ func (s *session) open() bool { return s.id != "" && s.phase != "done" }
 // timeline keeps its run count, so a sprint latched against the old run
 // lets go (#2016).
 func (s *session) begin(id, coach, coachName string) {
-	*s = session{id: id, coach: coach, coachName: coachName, phase: "idle", run: s.run}
+	*s = session{id: id, coach: coach, coachName: coachName, phase: "idle", run: s.run,
+		joined: map[string]struct{}{coach: {}}}
+}
+
+// rides reports whether a rider is on this session's timeline (ADR-0059):
+// joined, and the session still open. A spectator's samples are theirs.
+func (s *session) rides(riderID string) bool {
+	_, in := s.joined[riderID]
+	return in && s.open()
+}
+
+// join puts a rider on the timeline, or takes them off it; false when no
+// session is open to join.
+func (s *session) join(riderID string, in bool) bool {
+	if !s.open() {
+		return false
+	}
+	if in {
+		s.joined[riderID] = struct{}{}
+	} else {
+		delete(s.joined, riderID)
+	}
+	return true
 }
 
 // runGame starts the session a game opened (#2597): no countdown — the mode

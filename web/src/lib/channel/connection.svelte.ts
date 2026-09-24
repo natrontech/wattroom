@@ -131,6 +131,8 @@ function connect(address: PlaceAddress): Connection {
 			myId: () => account.me?.id,
 			shared: () => shared,
 			segments: () => parsed.segments,
+			joined: () =>
+				!!live.tick?.roster.find((r) => r.id === account.me?.id)?.inSession,
 		});
 
 		// One sensor, one screen (#610). The claim belongs to the CONNECTION

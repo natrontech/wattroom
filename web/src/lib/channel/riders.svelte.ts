@@ -94,7 +94,10 @@ export function createRiders(deps: RiderDeps) {
 			const you = rider.id === deps.myId();
 			const target = you
 				? deps.myTarget()
-				: deps.running() && deps.segments().length > 0 && rider.ftpWatts > 0
+				: deps.running() &&
+					  rider.inSession &&
+					  deps.segments().length > 0 &&
+					  rider.ftpWatts > 0
 					? scoredTarget(
 							targetAt(
 								deps.segments(),
@@ -128,6 +131,7 @@ export function createRiders(deps: RiderDeps) {
 				away: !!rider.away,
 				awayReason: rider.awayReason ?? '',
 				riding: !!rider.riding,
+				inSession: !!rider.inSession,
 				hue: hueOf(rider.id),
 				watts: metrics?.watts ?? held?.watts ?? 0,
 				cadence: metrics?.cadence ?? held?.cadence ?? 0,
@@ -153,6 +157,7 @@ export function createRiders(deps: RiderDeps) {
 			speaking: false,
 			away: false,
 			riding: false,
+			inSession: false,
 			hue: 210,
 			watts: 0,
 			cadence: 0,

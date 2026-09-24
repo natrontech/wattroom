@@ -16,6 +16,8 @@
 	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
+	import LogOut from '@lucide/svelte/icons/log-out';
+	import { goto } from '$app/navigation';
 	import SessionFlag from '$lib/session/SessionFlag.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import SessionRecapCard from '$lib/session/SessionRecapCard.svelte';
@@ -65,6 +67,14 @@
 	const sprintFocus = $derived(
 		!!channel.sprint && now < channel.sprint.endsAtMs + PODIUM_MS,
 	);
+	// The session's own riders (ADR-0059). Everyone else in the channel is a
+	// spectator: on the Lounge's tiles, never in the session's lists.
+	const inRide = $derived(channel.riders.filter((r) => r.inSession));
+	async function leaveRide() {
+		// Away first: this page joins whoever is on it.
+		await goto(channel.address.home);
+		channel.control('leave');
+	}
 	const focus = $derived(
 		sprintFocus ? 'sprint' : channel.game ? 'game' : share ? 'media' : 'you',
 	);
@@ -75,7 +85,7 @@
 	// `riding` is the server's word (#1016) — a coast holds it — so a rider
 	// who freewheels for one sample no longer drops off the list and the
 	// ranking stops re-sorting under their eyes (#1411).
-	const riding = $derived(channel.riders.filter((r) => r.riding));
+	const riding = $derived(inRide.filter((r) => r.riding));
 </script>
 
 {#if channel.phase === 'lounge' && channel.game}
@@ -155,7 +165,7 @@
 	<CountdownScreen
 		remaining={channel.shared?.countdownRemaining ?? 0}
 		title={channel.shared?.workoutName ?? ''}
-		note="{channel.riders.length} rider{channel.riders.length === 1 ? '' : 's'}"
+		note="{inRide.length} rider{inRide.length === 1 ? '' : 's'}"
 	>
 		{#snippet controls()}
 			<!-- The running header's card, ten seconds early (#2594): a rider
@@ -199,6 +209,11 @@
 						class="btn btn-secondary btn-lg"
 						aria-label="TV mode"><MonitorUp size={15} /> TV</button
 					>
+					{#if channel.you.inSession}
+						<button onclick={leaveRide} class="btn btn-ghost btn-lg"
+							><LogOut size={15} /> Leave the ride</button
+						>
+					{/if}
 					<SessionFlag />
 				{/snippet}
 			</RideHeader>
@@ -209,7 +224,7 @@
 				<SprintMoment
 					sprint={channel.sprint}
 					myWatts={channel.you.watts}
-					roster={channel.riders}
+					roster={inRide}
 				/>
 			</section>
 		{:else if focus === 'game' && channel.game}
@@ -301,7 +316,7 @@
 				{#if focus !== 'game'}
 					<!-- A game's panel already lists everyone; a second list of the
 					     same people is what the sprint branch refuses too. -->
-					<CrewStrip riders={crewOf(channel.riders, false)} />
+					<CrewStrip riders={crewOf(inRide, false)} />
 				{/if}
 
 				{#if focus !== 'media' && channel.segments.length > 0}

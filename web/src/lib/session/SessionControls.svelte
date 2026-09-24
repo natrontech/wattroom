@@ -34,7 +34,7 @@
 	const idle = $derived(!phase || phase === 'idle' || phase === 'done');
 
 	async function endSession() {
-		const n = channel.riders.length;
+		const n = channel.riders.filter((r) => r.inSession).length;
 		const ok = await confirm({
 			title: `End the session for ${n} rider${n === 1 ? '' : 's'}?`,
 			body: 'The ride stops for everyone and cannot be resumed.',
@@ -64,7 +64,7 @@
 	 *  paid by the coach and whoever rides, so it asks (errors.md). */
 	async function endTheirs() {
 		const pick = view === 'clear';
-		const n = channel.riders.length;
+		const n = channel.riders.filter((r) => r.inSession).length;
 		const ok = await confirm(
 			pick
 				? {

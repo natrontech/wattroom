@@ -46,6 +46,9 @@ interface RideDeps {
 	myId: () => string | undefined;
 	shared: () => { phase: string; elapsed: number } | undefined;
 	segments: () => Segment[];
+	/** On the running session's timeline, by the hub's word (ADR-0059). A
+	 *  spectator's trainer is theirs: no target, no sprint, no record. */
+	joined: () => boolean;
 }
 
 /**
@@ -144,6 +147,7 @@ export function createRide(deps: RideDeps) {
 	 * one from the timeline.
 	 */
 	const block = $derived.by((): { watts: number; sprint: boolean } => {
+		if (!deps.joined()) return { watts: 0, sprint: false };
 		const game = deps.live.tick?.game;
 		const mine = game?.riders?.[deps.myId() ?? ''];
 		if (game?.phase === 'running' && mine && mine.targetPct) {
@@ -259,7 +263,7 @@ export function createRide(deps: RideDeps) {
 	});
 
 	/** Slope, whoever asked for it: the coach's armed sprint or the workout's. */
-	const sprinting = $derived(sprintLive || block.sprint);
+	const sprinting = $derived(deps.joined() && (sprintLive || block.sprint));
 	let sprintMode = false;
 	$effect(() => {
 		if (!trainer) return;
@@ -382,7 +386,7 @@ export function createRide(deps: RideDeps) {
 						),
 					);
 					const shared = deps.shared();
-					if (shared?.phase === 'running')
+					if (shared?.phase === 'running' && deps.joined())
 						deps.recording.record(shared.elapsed, metrics.watts);
 				}),
 			);

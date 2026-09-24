@@ -294,7 +294,7 @@ export interface GameState {
  * pick workout, start countdown, pause/end). The server enforces the role.
  */
 export interface Control {
-  action: string; // "pick" | "start" | "pause" | "resume" | "end" | "handoff" | "game" | "game-end" | "sprint"
+  action: string; // "pick" | "start" | "pause" | "resume" | "end" | "handoff" | "game" | "game-end" | "sprint" | "join" | "leave"
   /**
    * Workout definition, opaque to the server: the docs/SPEC.md JSON as a
    * string. The server owns the clock, the clients own the targets.
@@ -672,6 +672,11 @@ export interface Rider {
    * talking", which never went out at all.
    */
   riding?: boolean;
+  /**
+   * On the running session's timeline (ADR-0059). Everyone else in the
+   * channel spectates it: not driven, not counted, and drawn apart.
+   */
+  inSession?: boolean;
   /**
    * What this rider's soundboard has playing right now, and how far into it
    * the channel already is (#1681). A fire is one tick and gone

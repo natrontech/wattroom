@@ -30,6 +30,9 @@ export interface LiveRider {
 	/** Pedalling inside the hub's window (#1016) — the server's word, not this
 	 * tile's reading of the current sample. A coast holds it. */
 	riding?: boolean;
+	/** On the running session's timeline (ADR-0059); everyone else in the
+	 * channel spectates it and is left out of its lists. */
+	inSession?: boolean;
 	/** camera-off fallback hue, so the grid isn't uniformly dark */
 	hue: number;
 	watts: number;
