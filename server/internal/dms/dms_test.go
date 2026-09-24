@@ -22,6 +22,13 @@ import (
 
 func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users) {
 	t.Helper()
+	return setupLive(t, nil)
+}
+
+// setupLive is setup with the hub's half stood in for, where a test watches
+// what a poke hands it.
+func setupLive(t *testing.T, live Live) (*http.ServeMux, *store.Store, *testx.Users) {
+	t.Helper()
 	st := storetest.Open(t)
 
 	users := &testx.Users{ByToken: map[string]db.User{}}
@@ -49,7 +56,7 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users) {
 		t.Fatal(err)
 	}
 	mux := http.NewServeMux()
-	New(st, users, slog.New(slog.DiscardHandler)).Register(mux)
+	New(st, users, live, slog.New(slog.DiscardHandler)).Register(mux)
 	return mux, st, users
 }
 
@@ -73,7 +80,7 @@ func TestDmWritesAreBoundedPerAccount(t *testing.T) {
 	if _, err := st.Queries.AcceptFriendRequest(t.Context(), db.AcceptFriendRequestParams{RequesterID: users.ByToken["alice"].ID, AddresseeID: users.ByToken["bob"].ID}); err != nil {
 		t.Fatal(err)
 	}
-	svc := New(st, users, slog.New(slog.DiscardHandler))
+	svc := New(st, users, nil, slog.New(slog.DiscardHandler))
 	svc.lines = budget.New[pgtype.UUID](2, time.Minute)
 	svc.uploads = budget.New[pgtype.UUID](1, time.Hour)
 	mux := http.NewServeMux()

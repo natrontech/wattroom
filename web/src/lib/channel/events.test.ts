@@ -240,6 +240,12 @@ describe('a DM that arrived mid-ride', () => {
 		});
 	});
 
+	it('says who poked, the same local line (#2721)', () => {
+		expect(eventText(dmArrivalEvent('Ruben', 1000, 'poked'))).toBe(
+			'Ruben poked you',
+		);
+	});
+
 	it('is one line per message', () => {
 		const first = dmArrivalEvent('Ruben', 1000);
 		const second = dmArrivalEvent('Ruben', 2000);

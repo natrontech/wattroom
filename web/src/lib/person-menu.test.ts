@@ -11,11 +11,20 @@ const connection = vi.hoisted(() => ({
 			voice: Record<string, 'live' | 'muted'>;
 			setRiderGain: (id: string, gain: number, name?: string) => void;
 		};
-		live?: { tick?: { roster?: { id: string }[] } };
+		live?: {
+			tick?: { roster?: { id: string }[] };
+			poke?: (id: string) => void;
+		};
 	},
 }));
 vi.mock('$lib/channel/connection.svelte', () => ({
 	channelConnection: connection,
+}));
+
+const poked = vi.hoisted(() => [] as string[][]);
+vi.mock('$lib/poke', () => ({
+	pokeFriend: (id: string, name: string) => poked.push([id, name]),
+	threadOf: (id: string) => `/messages/dm/${id}`,
 }));
 
 const opened = vi.hoisted(() => ({ id: null as string | null }));
@@ -71,25 +80,46 @@ describe('personMenu (#486)', () => {
 		expect(theirFriend.disabled).toBeFalsy();
 	});
 
-	it('offers a capability-gated poke', () => {
-		const poke = vi.fn();
-		const entries = items(
-			personMenu('u1', () => {}, {
-				poke: { onSelect: poke, disabled: true, hint: 'not in the channel' },
-			}),
-		);
+	// A poke goes where it can land (#2721): a friend's from anywhere, as a
+	// DM line, with words from the thread's own box; anyone else's only
+	// across the voice channel you share; nobody's, no entry at all.
+	it('offers a friend a poke, with or without words', () => {
+		poked.length = 0;
+		const go = vi.fn();
+		const entries = items(personMenu('u1', go, { friendship: 'accepted' }));
 		expect(entries.map((item) => item.label)).toEqual([
 			'Rider page',
 			'Message',
 			'Poke',
-			'Add friend',
+			'Poke with a message…',
 		]);
-		expect(entries[2]).toMatchObject({
-			disabled: true,
-			hint: 'not in the channel',
-		});
 		entries[2].onSelect();
-		expect(poke).toHaveBeenCalledOnce();
+		entries[3].onSelect();
+		expect(poked).toEqual([['u1', 'them']]);
+		expect(go).toHaveBeenCalledWith('/messages/dm/u1?poke');
+	});
+
+	it('offers anyone else a poke only across the channel you share', () => {
+		const poke = vi.fn();
+		connection.current = {
+			av: { voice: {}, setRiderGain: () => {} },
+			live: { tick: { roster: [{ id: 'u1' }] }, poke },
+		};
+		try {
+			const entries = items(personMenu('u1', () => {}));
+			expect(entries.map((item) => item.label)).toContain('Poke');
+			expect(entries.map((item) => item.label)).not.toContain(
+				'Poke with a message…',
+			);
+			entries.find((item) => item.label === 'Poke')!.onSelect();
+			expect(poke).toHaveBeenCalledWith('u1');
+			expect(labels(personMenu('u2', () => {}))).not.toContain('Poke');
+			expect(labels(personMenu('u1', () => {}, { you: true }))).not.toContain(
+				'Poke',
+			);
+		} finally {
+			connection.current = null;
+		}
 	});
 
 	// One person, one menu: the tile used to append the ban itself, so the
@@ -241,7 +271,7 @@ describe('personMenu connection (#2131)', () => {
 	it('leaves out "Add friend" for someone already connected', () => {
 		expect(
 			labels(personMenu('u1', () => {}, { friendship: 'accepted' })),
-		).toEqual(['Rider page', 'Message']);
+		).not.toContain('Add friend');
 		expect(
 			labels(personMenu('u1', () => {}, { friendship: 'pending_out' })),
 		).not.toContain('Add friend');

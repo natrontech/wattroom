@@ -86,9 +86,6 @@
 			...personMenu(rider().id, goto, {
 				you: rider().you,
 				volume: rider().inVoice ? { name: rider().name } : undefined,
-				poke: {
-					onSelect: () => channel.poke(rider().id),
-				},
 				ban: channel.banOf(rider().id, rider().name),
 				handoff: channel.handOffOf(rider().id, rider().name),
 			}),
@@ -247,7 +244,6 @@
 		phase={channel.phase}
 		face={faceOf.get(rider.id)}
 		menu={() => tileEntries(() => rider)}
-		onPoke={(id) => channel.poke(id)}
 		videoKey={channel.videoOf(rider.id) ?? 0}
 		videoAttach={channel.videoOf(rider.id)
 			? (node) => channel.attachVideo(rider.id, node)

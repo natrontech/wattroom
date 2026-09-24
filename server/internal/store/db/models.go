@@ -160,6 +160,7 @@ type DmMessage struct {
 	EditedAt    pgtype.Timestamptz
 	DeletedAt   pgtype.Timestamptz
 	ExpiresAt   pgtype.Timestamptz
+	Poke        bool
 }
 
 type DmReaction struct {

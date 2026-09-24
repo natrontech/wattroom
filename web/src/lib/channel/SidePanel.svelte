@@ -51,7 +51,6 @@
 		members = [],
 		player,
 		onCheer,
-		onPoke,
 		banOf,
 		handOffOf,
 		elsewhere,
@@ -68,7 +67,6 @@
 		/** The jukebox playlist renders into the panel's top slot. */
 		player?: Snippet;
 		onCheer?: (emoji: string) => void;
-		onPoke?: (id: string) => void;
 		/** The crew's ban for this person, where the viewer may (ChannelShell). */
 		banOf?: (id: string, name: string) => (() => void) | undefined;
 		/** The coach's hand-off to this person (ChannelShell, #2636). */
@@ -102,7 +100,6 @@
 				// is the one thing that is only ever about yourself.
 				you: rider.you,
 				volume: rider.inVoice && !rider.you ? { name: rider.name } : undefined,
-				poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
 				ban: banOf?.(rider.id, rider.name),
 				handoff: handOffOf?.(rider.id, rider.name),
 			}),
@@ -212,13 +209,6 @@
 		class="text-muted-dim flex min-h-11 items-center gap-2 rounded px-2 py-1 text-xs"
 		{@attach contextMenu(() =>
 			personMenu(member.id, goto, {
-				poke: onPoke
-					? {
-							onSelect: () => onPoke(member.id),
-							disabled: true,
-							hint: 'not in the channel',
-						}
-					: undefined,
 				ban: banOf?.(member.id, member.displayName),
 			}),
 		)}

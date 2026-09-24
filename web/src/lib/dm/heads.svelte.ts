@@ -9,6 +9,7 @@ import { dm } from '$lib/dm/dm.svelte';
 import { announce } from '$lib/messages/announce';
 import { away } from '$lib/notify.svelte';
 import { people } from '$lib/people.svelte';
+import { dmReply, pokeArrival, pokeFriend } from '$lib/poke';
 import type { StatusLine } from '$lib/protocol';
 
 export interface DmHead {
@@ -21,6 +22,8 @@ export interface DmHead {
 	text: string;
 	/** The latest line was an image (#285) — it has no text to preview. */
 	hasImage?: boolean;
+	/** The latest line is a poke (#2721); `text` is what came with it. */
+	poke?: boolean;
 	mine: boolean;
 	at: number;
 	/**
@@ -32,6 +35,10 @@ export interface DmHead {
 
 /** What a conversation's latest line reads as; an image has no words. */
 export function headPreview(head: DmHead): string {
+	if (head.poke) {
+		const verb = head.mine ? `poked ${head.peerName}` : 'poked you';
+		return head.text ? `${verb} — ${head.text}` : verb;
+	}
 	if (head.text) return head.text;
 	return head.hasImage ? 'sent an image' : '';
 }
@@ -76,6 +83,17 @@ async function poll() {
 		next[head.peerId] = head.at;
 		// A NEW inbound line, announced the one way every message is (#568).
 		if (first) continue;
+		// A poke the hub may already have tapped live: same tag, same moment,
+		// so this finds it announced (#2721).
+		if (head.poke) {
+			announce(
+				pokeArrival(
+					{ ...head, fromId: head.peerId, from: head.peerName, dm: true },
+					() => void pokeFriend(head.peerId, head.peerName),
+				),
+			);
+			continue;
+		}
 		announce({
 			kind: 'dm',
 			tag: `dm-${head.peerId}`,
@@ -83,16 +101,7 @@ async function poll() {
 			title: head.peerName,
 			body: headPreview(head),
 			href: `/messages/dm/${head.peerId}`,
-			reply: {
-				placeholder: `Reply to ${head.peerName}`,
-				send: async (text) => {
-					const res = await api(`/api/dms/${head.peerId}`, {
-						method: 'POST',
-						json: { text },
-					});
-					return res.ok ? null : res.error.message;
-				},
-			},
+			reply: dmReply(head.peerId, head.peerName),
 			reading: dm.open?.id === head.peerId && !away(),
 		});
 	}

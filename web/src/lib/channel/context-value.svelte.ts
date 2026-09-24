@@ -177,7 +177,6 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 			return deps.focusId();
 		},
 		setFocus: (id) => deps.setFocus(id),
-		poke: (id) => live.poke(id),
 		get announcement() {
 			return props.announcement ?? null;
 		},

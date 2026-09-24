@@ -35,7 +35,6 @@
 		metrics = ['hr', 'cadence', 'wkg'],
 		videoKey = 0,
 		videoAttach,
-		onPoke,
 		menu,
 		face,
 	}: {
@@ -48,9 +47,6 @@
 		videoKey?: number;
 		/** Attaches the live track into the tile; the mock gradient stands in without it. */
 		videoAttach?: (node: HTMLElement) => void;
-		/** Ask for their attention. The tile IS the person (#807) — poking was
-		 * reachable only from the people column and the sidebar strip. */
-		onPoke?: (id: string) => void;
 		/** The whole right-click menu, when the surface has more to offer than
 		 * the person (the lounge: focus, watch a screen, ban). The tile's own
 		 * listener stops propagation, so a menu on a wrapper never fired (#824). */
@@ -115,7 +111,6 @@
 					you: rider.you,
 					volume:
 						rider.inVoice && !rider.you ? { name: rider.name } : undefined,
-					poke: onPoke ? { onSelect: () => onPoke(rider.id) } : undefined,
 				}),
 	)}
 >

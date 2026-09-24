@@ -570,13 +570,31 @@ export interface SensorClaim {
  * Poke is one rider asking for another rider's attention. The client sends
  * only To; the hub replaces every sender field from authenticated presence
  * before routing it to the addressed rider's sockets.
+ * Between friends a poke is a DM line (#2721), and the DM service hands the
+ * hub the same shape with Dm set: the thread is where it lives, and At is
+ * the line's own time, so the socket and the thread's poll announce it once.
  */
 export interface Poke {
   to?: string;
   fromId?: string;
   from?: string;
   at?: number /* int64 */;
+  /**
+   * The words a friend sent with it; never read from a client's socket.
+   */
+  text?: string;
+  /**
+   * A line in your DM thread with the poker, not only a moment in a channel.
+   */
+  dm?: boolean;
 }
+/**
+ * PokeCooldownSeconds is how long before one rider may poke the same rider
+ * again, through either door — a channel's socket or the DM thread. A poke
+ * asks one person's machine for attention and must not become a harassment
+ * button.
+ */
+export const PokeCooldownSeconds = 10;
 /**
  * Moved tells a rider's sockets in one voice channel that the crew's owner or
  * an admin moved them into another (#2730), Discord's drag. The client goes

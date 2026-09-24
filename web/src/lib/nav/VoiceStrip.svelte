@@ -111,11 +111,7 @@
 					href={conn.address.home}
 					{@attach hoverCard(() => rider.id)}
 					title="{rider.name} · back to the Lounge"
-					{@attach contextMenu(() =>
-						personMenu(rider.id, goto, {
-							poke: { onSelect: () => conn.live.poke(rider.id) },
-						}),
-					)}
+					{@attach contextMenu(() => personMenu(rider.id, goto))}
 					class="bg-surface-raised relative block aspect-[16/10] overflow-hidden rounded {tileFrame(
 						!!av.speaking[rider.id],
 						!!rider.away,

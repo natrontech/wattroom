@@ -3,6 +3,7 @@
 	// tombstone a taken-back DM leaves, the marks that say it was edited or
 	// will disappear, and its picture. The row around it — the face, the
 	// name, the reactions and the actions — stays MessageThread's.
+	import BellRing from '@lucide/svelte/icons/bell-ring';
 	import Timer from '@lucide/svelte/icons/timer';
 	import ChatImage from '$lib/chat/ChatImage.svelte';
 	import MessageText from '$lib/chat/MessageText.svelte';
@@ -41,13 +42,22 @@
 		     something was here. Italic and muted, so it does
 		     not read as somebody's words. -->
 		<span class="text-muted text-sm italic">Message deleted</span>
-	{:else if message.text}
-		<!-- Pre-wrap (#2642): a line break the rider typed is theirs to keep.
+	{:else}
+		{#if message.poke}
+			<!-- A poke (#2721) says who and when by being a line at all; this
+			     says it was a poke, and whatever they added reads beneath. -->
+			<span class="text-neon flex items-center gap-1.5 font-medium"
+				><BellRing size={14} />{message.poke}</span
+			>
+		{/if}
+		{#if message.text}
+			<!-- Pre-wrap (#2642): a line break the rider typed is theirs to keep.
 		     Their words only (#2686) — on the whole line it also kept this
 		     template's own spaces, a blank row above every picture. -->
-		<span class="whitespace-pre-wrap"
-			><MessageText text={message.text} {menu} /></span
-		>
+			<span class="whitespace-pre-wrap"
+				><MessageText text={message.text} {menu} /></span
+			>
+		{/if}
 	{/if}
 	{#if message.editedAt}
 		<!-- Nobody is rewritten quietly (#865). Not a

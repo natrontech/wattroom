@@ -50,6 +50,7 @@
 		composerPlaceholder,
 		composerHint,
 		composerLock = null,
+		composerPoke,
 		editHint = 'Escape cancels · the channel sees the change',
 		lineGapMs = 1000,
 		mentionNames = [],
@@ -62,6 +63,8 @@
 		composerHint?: string;
 		/** Why nothing can be sent here, when nothing can — the box says so. */
 		composerLock?: string | null;
+		/** A DM's send-as-a-poke toggle (#2721); a text channel has none. */
+		composerPoke?: { on: boolean; toggle: () => void };
 		/**
 		 * Who sees an edit land — a channel, or the one person a DM has
 		 * (#1819).
@@ -458,5 +461,6 @@
 	placeholder={composerPlaceholder}
 	hint={composerHint}
 	lock={composerLock}
+	poke={composerPoke}
 	error={timeline.length > 0 ? source.error : null}
 />

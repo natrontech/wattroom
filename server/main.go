@@ -365,7 +365,8 @@ func main() {
 		tracksService.Register(mux)
 		// A purge takes the rider's uploaded audio off disk with the rows (#1897).
 		accountService.SetTrackReaper(tracksService)
-		dms.New(st, authService, log).Register(mux)
+		// A poke between friends is a DM line; the hub is how it lands now.
+		dms.New(st, authService, h, log).Register(mux)
 		// The GIF picker (#878, ADR-0032) mounts only with a Giphy key — no
 		// button that opens onto a 404.
 		if gifService := gifs.New(authService, log); gifService != nil {

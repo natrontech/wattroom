@@ -17,6 +17,13 @@ export interface Toast {
 	href?: string;
 	/** What kind of place it came from — a chat channel's bubble (#2696). */
 	icon?: Icon;
+	/** One thing to do about it, beside the link — "Poke back" (#2721). */
+	action?: ToastAction;
+}
+
+export interface ToastAction {
+	label: string;
+	run: () => void;
 }
 
 let items = $state<Toast[]>([]);
@@ -54,6 +61,7 @@ export const toasts = {
 			undo?: () => void;
 			href?: string;
 			icon?: Icon;
+			action?: ToastAction;
 			/** 0 means it waits for the rider — nothing else takes it down. */
 			seconds?: number;
 		},
@@ -70,6 +78,7 @@ export const toasts = {
 			undo: opts?.undo,
 			href: opts?.href,
 			icon: opts?.icon,
+			action: opts?.action,
 		});
 		// An undo toast does not expire (#1961): the action it reverses is
 		// already done, and a keyboard rider needs the time to reach it —

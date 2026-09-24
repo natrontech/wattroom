@@ -110,6 +110,9 @@ export function eventText(event: ChannelEvent): string {
 		// — this client's own line too, and the sender without the words.
 		case 'messaged':
 			return `${event.actor} sent you a message`;
+		// A poke that landed mid-ride (#2721), the same local line.
+		case 'poked':
+			return `${event.actor} poked you`;
 		// A screen appearing (#664) — this client's own line, never the
 		// server's: LiveKit is the only one who saw it.
 		case 'shared':

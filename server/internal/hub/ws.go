@@ -192,11 +192,17 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				h.writeError(c, "rate_limited", "You just poked them — give them a moment to notice.")
 				continue
 			}
-			if !rm.queuePoke(to, protocol.Poke{
+			poke := protocol.Poke{
 				To: to, FromID: rider.ID, From: rider.Name, At: h.now().UnixMilli(),
-			}) {
-				h.writeError(c, "invalid_request", "That rider is no longer in the room.")
 			}
+			if !rm.queuePoke(to, poke) {
+				h.writeError(c, "invalid_request", "That rider is no longer in the room.")
+				continue
+			}
+			// The sender's answer (#2721): this socket's own copy, which the
+			// client reads as "it landed" because it is from them. Silence on
+			// success read as a button that did nothing.
+			c.sendJSON(h.log, protocol.ServerMessage{Poke: &poke})
 		}
 		if msg.Device != nil {
 			// Untrusted input, bounded at the boundary to the closed set

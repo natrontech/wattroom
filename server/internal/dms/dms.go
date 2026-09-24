@@ -42,10 +42,13 @@ const (
 type Service struct {
 	store *store.Store
 	users UserSource
+	live  Live
 	log   *slog.Logger
 	// Per account: sends, edits and reactions share one; uploads have their own.
 	lines   *budget.Budget[pgtype.UUID]
 	uploads *budget.Budget[pgtype.UUID]
+	// One poke per pair per cooldown, the channel socket's own rule (#2721).
+	pokes *budget.Budget[pokePair]
 }
 
 // lengthRefusal is what a message outside the bounds is told, at both ends:
@@ -54,11 +57,13 @@ type Service struct {
 // and a prose copy of it drifts the way #1393 and #1986 did (#2240).
 var lengthRefusal = fmt.Sprintf("A message is 1–%d characters.", protocol.MaxMessageChars)
 
-func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
+// New takes the hub as live; nil leaves a poke to the thread's poll alone.
+func New(st *store.Store, users UserSource, live Live, log *slog.Logger) *Service {
 	return &Service{
-		store: st, users: users, log: log,
+		store: st, users: users, live: live, log: log,
 		lines:   budget.New[pgtype.UUID](linesPerMinute, time.Minute),
 		uploads: budget.New[pgtype.UUID](uploadsPerHour, time.Hour),
+		pokes:   budget.New[pokePair](1, protocol.PokeCooldownSeconds*time.Second),
 	}
 }
 
@@ -79,6 +84,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/dms/{id}", s.handleSend)
 	mux.HandleFunc("POST /api/dms/{id}/read", s.handleRead)
 	mux.HandleFunc("POST /api/dms/{id}/reactions", s.handleReact)
+	mux.HandleFunc("POST /api/dms/{id}/poke", s.handlePoke)
 	mux.HandleFunc("PATCH /api/dms/{id}/messages/{messageId}", s.handleEdit)
 	mux.HandleFunc("DELETE /api/dms/{id}/messages/{messageId}", s.handleDelete)
 	// Four segments, so neither collides with the thread routes above.

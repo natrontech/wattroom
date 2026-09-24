@@ -26,6 +26,11 @@ export type TimelineMessage = {
 	 * minute, but a DM's poll never says "gone".
 	 */
 	expiresAt?: number;
+	/**
+	 * A poke (#2721), a DM only: what the line says in place of words —
+	 * "poked you", "poked Sven". `text` is whatever came with it.
+	 */
+	poke?: string;
 };
 
 export type TimelineEntry = {

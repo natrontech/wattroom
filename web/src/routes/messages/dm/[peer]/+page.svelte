@@ -8,6 +8,7 @@
 	// is MessageThread.svelte, shared with a text channel's (#672); this page
 	// only supplies what is DM-specific: the peer's header and the poll
 	// loop in createDmThread.
+	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { createDmThread } from '$lib/dm/thread.svelte';
@@ -23,7 +24,9 @@
 	import { placePath } from '$lib/whereabouts';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import BellRing from '@lucide/svelte/icons/bell-ring';
 	import Radio from '@lucide/svelte/icons/radio';
+	import { toasts } from '$lib/toast.svelte';
 
 	const peerId = $derived(page.params.peer ?? '');
 	const head = $derived(dmHeads.heads.find((h) => h.peerId === peerId));
@@ -141,6 +144,21 @@
 		};
 	});
 
+	// A poke (#2721): the header's one tap, or the box's next line with the
+	// bell pressed — which "Poke with a message…" arrives here with, as
+	// `?poke` so the menu can link straight to it.
+	const poking = $derived(page.url.searchParams.has('poke'));
+	function setPoking(on: boolean) {
+		const url = new URL(page.url);
+		if (on) url.searchParams.set('poke', '');
+		else url.searchParams.delete('poke');
+		void goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+	async function poke() {
+		const refusal = await thread?.poke();
+		if (refusal) toasts.push(refusal, { tone: 'error' });
+	}
+
 	const source: ThreadSource = $derived({
 		timeline: thread?.timeline ?? [],
 		loading: thread?.loading ?? true,
@@ -149,8 +167,15 @@
 		reactions: thread?.reactions ?? {},
 		myReacts: thread?.myReacts ?? {},
 		retry: () => thread?.retry(),
-		send: async (text, image, expiresIn) =>
-			(await thread?.send(text, image, expiresIn)) ?? null,
+		// With the bell pressed, words alone go as a poke; a picture or a
+		// timer is a message, and the bell does not change that.
+		send: async (text, image, expiresIn) => {
+			if (!poking || image || expiresIn)
+				return (await thread?.send(text, image, expiresIn)) ?? null;
+			const refusal = (await thread?.poke(text)) ?? null;
+			if (!refusal) setPoking(false);
+			return refusal;
+		},
 		react: async (id, cheer) => (await thread?.react(id, cheer)) ?? null,
 		edit: async (id, text) => (await thread?.edit(id, text)) ?? null,
 		// Taking a line back (#2418): the sender's own only — a conversation
@@ -198,20 +223,31 @@
 			{where || 'not in a voice channel'}
 		</span>
 	</span>
-	{#if peer?.channel}
-		<a
-			href={placePath(peer.channel)}
-			class="btn btn-accent btn-xs ml-auto shrink-0"
-			><Radio size={13} /> Walk in</a
-		>
-	{/if}
+	<span class="ml-auto flex shrink-0 items-center gap-2">
+		{#if !lock}
+			<button
+				type="button"
+				class="btn btn-secondary btn-xs"
+				title="Poke {peerName} — they hear it wherever they are"
+				onclick={() => void poke()}><BellRing size={13} /> Poke</button
+			>
+		{/if}
+		{#if peer?.channel}
+			<a href={placePath(peer.channel)} class="btn btn-accent btn-xs"
+				><Radio size={13} /> Walk in</a
+			>
+		{/if}
+	</span>
 </header>
 
 <MessageThread
 	{source}
 	imageSrc={(imageId) => `/api/dms/images/${imageId}`}
-	composerPlaceholder="Message {peerName}…"
+	composerPlaceholder={poking
+		? `Poke ${peerName} — add a message…`
+		: `Message ${peerName}…`}
 	composerLock={lock}
+	composerPoke={{ on: poking, toggle: () => setPoking(!poking) }}
 	editHint="Escape cancels · they see the change"
 	lineGapMs={0}
 >

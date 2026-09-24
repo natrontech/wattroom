@@ -77,6 +77,8 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 		DeletedAt int64 `json:"deletedAt,omitempty"`
 		// When a temporary line runs out (#2644); absent for one that stays.
 		ExpiresAt int64 `json:"expiresAt,omitempty"`
+		// A poke (#2721): the line says who and when; Text is what they added.
+		Poke bool `json:"poke,omitempty"`
 	}
 	out := make([]messageJSON, 0, len(rows))
 	for _, row := range rows {
@@ -86,6 +88,7 @@ func (s *Service) handleThread(w http.ResponseWriter, r *http.Request) {
 			At: row.CreatedAt.Time.UnixMilli(), EditedAt: store.Millis(row.EditedAt),
 			DeletedAt: store.Millis(row.DeletedAt),
 			ExpiresAt: store.Millis(row.ExpiresAt),
+			Poke:      row.Poke,
 		})
 	}
 	// Edits ride separately from the incremental fetch for the same reason
@@ -169,9 +172,11 @@ func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
 		Text           string               `json:"text"`
 		// Whether the latest line was an image, so the list can preview it as
 		// something rather than as a blank (#285).
-		HasImage bool  `json:"hasImage,omitempty"`
-		Mine     bool  `json:"mine"`
-		At       int64 `json:"at"`
+		HasImage bool `json:"hasImage,omitempty"`
+		// The latest line is a poke (#2721), announced as one.
+		Poke bool  `json:"poke,omitempty"`
+		Mine bool  `json:"mine"`
+		At   int64 `json:"at"`
 		// The peer said something since I last read it, on any device.
 		Unread bool `json:"unread,omitempty"`
 	}
@@ -184,6 +189,7 @@ func (s *Service) handleHeads(w http.ResponseWriter, r *http.Request) {
 			PeerTotalXp:    row.TotalXp,
 			PeerStatusLine: status.Of(row.StatusEmoji, row.StatusEmojiID, row.StatusText, row.StatusExpiresAt, now),
 			Text:           row.Text, HasImage: row.ImageID.Valid,
+			Poke:   row.Poke,
 			Mine:   row.SenderID == me.ID,
 			At:     row.CreatedAt.Time.UnixMilli(),
 			Unread: row.Unread,

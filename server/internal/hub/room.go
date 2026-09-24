@@ -150,9 +150,8 @@ type room struct {
 // ridingWindow is how recent a sample must be to count as "riding now".
 const ridingWindow = 10 * time.Second
 
-// A poke is deliberately harder to repeat than chat or a cheer: it asks one
-// person's machine for attention and must not become a harassment button.
-const pokeCooldown = 10 * time.Second
+// A poke is deliberately harder to repeat than chat or a cheer.
+const pokeCooldown = protocol.PokeCooldownSeconds * time.Second
 
 // ridingLocked names riders who have PEDALLED inside ridingWindow, and
 // returns their account ids in the same order — names render, ids identify

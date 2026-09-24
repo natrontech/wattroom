@@ -394,7 +394,6 @@
 		{riders}
 		members={props.members}
 		onCheer={(emoji) => live.cheer(emoji)}
-		onPoke={(id) => live.poke(id)}
 		{banOf}
 		{handOffOf}
 		elsewhere={elsewhereIn(
