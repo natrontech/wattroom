@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 const api = vi.hoisted(() => vi.fn());
 vi.mock('$lib/api', () => ({ api }));
+const account = vi.hoisted(() => ({ load: vi.fn() }));
+vi.mock('$lib/account.svelte', () => ({ account }));
 
 const { uploadRide } = await import('./save');
 
@@ -51,5 +53,26 @@ describe('uploadRide', () => {
 		expect(await uploadRide(ride)).toEqual({
 			failure: { message: 'A ride under a minute is not saved.', final: true },
 		});
+	});
+});
+
+// A ride that raised the curve is what makes the server suggest an FTP (and
+// an LTHR); `suggestedFtp` rides on /api/me, which nothing re-read after a
+// save — so the prompt showed only after a reload or a Home visit, detached
+// from the ride that earned it (#2626).
+describe('a saved ride', () => {
+	it('re-reads the account, and a refused one does not', async () => {
+		account.load.mockClear();
+		api.mockResolvedValueOnce({ ok: true, data: { id: 'r-2' } });
+		await uploadRide(ride);
+		expect(account.load).toHaveBeenCalledOnce();
+
+		account.load.mockClear();
+		api.mockResolvedValueOnce({
+			ok: false,
+			error: { error: 'internal_error', message: 'Not now.' },
+		});
+		await uploadRide(ride);
+		expect(account.load).not.toHaveBeenCalled();
 	});
 });

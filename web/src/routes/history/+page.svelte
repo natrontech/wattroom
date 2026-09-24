@@ -49,6 +49,9 @@
 	// and a settings sub-page was the only place that did. The decline is
 	// remembered, keyed on the value.
 	const profile = createProfileStore();
+	// The suggestion rides on /api/me, which a ride just saved has moved:
+	// read it again on the way in, as Home does (#2626).
+	void account.load();
 	let declined = $state(declinedSuggestion('ftp'));
 	let applied = $state(false);
 	const suggestion = $derived(
@@ -350,6 +353,36 @@
 		}}
 	/>
 
+	<!-- The prompts stand on their own (#2626): drawn inside the charts'
+	     branch, a failed progression read hid them as well. -->
+	{#if (lthrSuggestion && account.me?.lthr) || (suggestion && account.me)}
+		<div class="mt-6 grid gap-3">
+			{#if lthrSuggestion && account.me?.lthr}
+				<LthrPrompt
+					current={account.me.lthr}
+					suggested={lthrSuggestion}
+					onApply={() => void applyLthr(lthrSuggestion)}
+					onKeep={() => {
+						declineSuggestion('lthr', lthrSuggestion);
+						lthrDeclined = lthrSuggestion;
+					}}
+				/>
+			{/if}
+			{#if suggestion && account.me}
+				<FtpPrompt
+					current={account.me.ftpWatts}
+					suggested={suggestion}
+					best20={account.me.best20m ?? 0}
+					onApply={() => void applySuggestion(suggestion)}
+					onKeep={() => {
+						declineSuggestion('ftp', suggestion);
+						declined = suggestion;
+					}}
+				/>
+			{/if}
+		</div>
+	{/if}
+
 	<!-- Progression, absorbed (ADR-0020): the charts and the rides they are
 	     drawn from were two pages, and every drilldown was a navigation
 	     between them. The charts ring a ride further down this page now. -->
@@ -407,33 +440,6 @@
 					all={progression.curve.all}
 				/>
 			</div>
-			{#if lthrSuggestion && account.me?.lthr}
-				<div class="mb-3">
-					<LthrPrompt
-						current={account.me.lthr}
-						suggested={lthrSuggestion}
-						onApply={() => void applyLthr(lthrSuggestion)}
-						onKeep={() => {
-							declineSuggestion('lthr', lthrSuggestion);
-							lthrDeclined = lthrSuggestion;
-						}}
-					/>
-				</div>
-			{/if}
-			{#if suggestion && account.me}
-				<div class="mb-3">
-					<FtpPrompt
-						current={account.me.ftpWatts}
-						suggested={suggestion}
-						best20={account.me.best20m ?? 0}
-						onApply={() => void applySuggestion(suggestion)}
-						onKeep={() => {
-							declineSuggestion('ftp', suggestion);
-							declined = suggestion;
-						}}
-					/>
-				</div>
-			{/if}
 			<div class="panel panel-xl">
 				<h2 class="text-ink text-sm font-semibold">FTP over the last year</h2>
 				<!-- ADR-0016: every load-derived surface says what it is scoped to (#1692). -->

@@ -24,6 +24,10 @@ vi.mock('$lib/api', () => ({
 				},
 }));
 
+// The account re-read a found ride sets off (#2626), recorded, not run.
+const account = vi.hoisted(() => ({ load: vi.fn() }));
+vi.mock('$lib/account.svelte', () => ({ account }));
+
 const { createSummary, SUMMARY_MIN_SAMPLES } = await import('./summary.svelte');
 const { createRecording } = await import('./recording.svelte');
 
@@ -125,6 +129,8 @@ describe('the late joiner finds their ride (#1537)', () => {
 		await t.go('done');
 		await vi.advanceTimersByTimeAsync(3_000);
 		expect(t.summary.rideId).toBe('r1');
+		// What the ride suggests — an FTP, an LTHR — rides on /api/me (#2626).
+		expect(account.load).toHaveBeenCalled();
 		t.off();
 		vi.useRealTimers();
 	});
