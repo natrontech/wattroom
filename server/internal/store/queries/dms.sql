@@ -176,6 +176,8 @@ select count(*) from dm_reactions where message_id = $1 and emoji = $2;
 select distinct on (peer.id)
     peer.id as peer_id, peer.display_name, peer.avatar_url,
     user_total_xp(peer.id)::bigint as total_xp,
+    -- Their status line (ADR-0060): a friend's, like everything here.
+    peer.status_emoji, peer.status_emoji_id, peer.status_text, peer.status_expires_at,
     m.text, m.image_id, m.sender_id, m.created_at
 from dm_messages m
 join users peer

@@ -288,6 +288,8 @@ const listDmHeads = `-- name: ListDmHeads :many
 select distinct on (peer.id)
     peer.id as peer_id, peer.display_name, peer.avatar_url,
     user_total_xp(peer.id)::bigint as total_xp,
+    -- Their status line (ADR-0060): a friend's, like everything here.
+    peer.status_emoji, peer.status_emoji_id, peer.status_text, peer.status_expires_at,
     m.text, m.image_id, m.sender_id, m.created_at
 from dm_messages m
 join users peer
@@ -303,14 +305,18 @@ limit 1000
 `
 
 type ListDmHeadsRow struct {
-	PeerID      pgtype.UUID
-	DisplayName string
-	AvatarUrl   *string
-	TotalXp     int64
-	Text        string
-	ImageID     pgtype.UUID
-	SenderID    pgtype.UUID
-	CreatedAt   pgtype.Timestamptz
+	PeerID          pgtype.UUID
+	DisplayName     string
+	AvatarUrl       *string
+	TotalXp         int64
+	StatusEmoji     *string
+	StatusEmojiID   pgtype.UUID
+	StatusText      *string
+	StatusExpiresAt pgtype.Timestamptz
+	Text            string
+	ImageID         pgtype.UUID
+	SenderID        pgtype.UUID
+	CreatedAt       pgtype.Timestamptz
 }
 
 // The conversation list: my FRIENDS with their latest line, one row per
@@ -333,6 +339,10 @@ func (q *Queries) ListDmHeads(ctx context.Context, senderID pgtype.UUID) ([]List
 			&i.DisplayName,
 			&i.AvatarUrl,
 			&i.TotalXp,
+			&i.StatusEmoji,
+			&i.StatusEmojiID,
+			&i.StatusText,
+			&i.StatusExpiresAt,
 			&i.Text,
 			&i.ImageID,
 			&i.SenderID,

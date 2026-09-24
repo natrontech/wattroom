@@ -17,6 +17,7 @@
 	import MessageThread from '$lib/messages/MessageThread.svelte';
 	import type { ThreadSource } from '$lib/messages/thread-types';
 	import { people } from '$lib/people.svelte';
+	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { friendPlace, friends } from '$lib/friends/friends.svelte';
 	import { fetchRider, type Rider } from '$lib/rider';
 	import { statusOf } from '$lib/status';
@@ -100,6 +101,7 @@
 					id,
 					name: res.data.displayName,
 					avatarUrl: res.data.avatarUrl,
+					statusLine: res.data.statusLine,
 				},
 			]);
 		});
@@ -186,11 +188,19 @@
 		size={28}
 	/>
 	<span class="min-w-0">
-		<a
-			href="/u/{peerId}"
-			class="block truncate text-sm font-medium hover:underline"
-			title="{peerName}'s page">{peerName}</a
-		>
+		<!-- Their status in words (ADR-0060), from the faces the friends list
+		     and the heads poll teach: a friend you have not written to yet
+		     has no head, and still has a status. -->
+		<span class="flex min-w-0 items-center gap-2 text-sm">
+			<a
+				href="/u/{peerId}"
+				class="shrink-0 truncate font-medium hover:underline"
+				title="{peerName}'s page">{peerName}</a
+			>
+			<span class="text-muted min-w-0 text-xs">
+				<StatusMark line={people.face(peerId)?.statusLine} size={13} text />
+			</span>
+		</span>
 		<span class="text-muted block truncate text-[11px]">
 			{where || 'not in a voice channel'}
 		</span>
