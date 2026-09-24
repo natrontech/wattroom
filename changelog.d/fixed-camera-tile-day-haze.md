@@ -1,0 +1,1 @@
+- A rider's camera no longer sits under a white haze in the day themes; the name and watts over it stay readable in both.
