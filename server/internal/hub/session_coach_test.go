@@ -94,7 +94,11 @@ func TestTheNextSessionWaitsForTheLastOnesClose(t *testing.T) {
 	expect(t, rm, openers, ana, "")
 	expect(t, rm, protocol.Control{Action: "start"}, ana, "")
 	first := rm.session.id
-	expect(t, rm, protocol.Control{Action: "end"}, ana, "")
+	// Ended once it ran: a stopped countdown closes nothing to wait for (#2605).
+	ran := time.Now().Add((countdownSeconds + 1) * time.Second)
+	if code, message := rm.control(protocol.Control{Action: "end"}, ana, ran); code != "" {
+		t.Fatalf("end: %s %s", code, message)
+	}
 	expect(t, rm, openers, ben, "conflict")
 
 	rm.closeLocked(rm.session.state(time.Now()), time.Now(), false)
@@ -147,8 +151,12 @@ func TestAdminEnds(t *testing.T) {
 	expect(t, rm, protocol.Control{Action: "sprint"}, admin, "forbidden")
 	expect(t, rm, protocol.Control{Action: "handoff", Rider: "cleo"}, owner, "forbidden")
 	expect(t, rm, protocol.Control{Action: "end"}, member, "forbidden")
-	expect(t, rm, protocol.Control{Action: "end"}, admin, "")
-	if phase := rm.session.state(time.Now()).Phase; phase != "done" {
+	// A session that ran — a stopped countdown goes back to idle (#2605).
+	ran := time.Now().Add((countdownSeconds + 1) * time.Second)
+	if code, message := rm.control(protocol.Control{Action: "end"}, admin, ran); code != "" {
+		t.Fatalf("the admin's end: %s %s", code, message)
+	}
+	if phase := rm.session.state(ran).Phase; phase != "done" {
 		t.Fatalf("the admin's end left the session %q", phase)
 	}
 

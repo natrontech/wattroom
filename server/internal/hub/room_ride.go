@@ -226,11 +226,19 @@ func (rm *room) control(c protocol.Control, rider protocol.Rider, now time.Time)
 	if c.Action == "pick" && !rm.session.open() {
 		rm.session.begin(uuid.NewString(), rider.ID, rider.Name)
 	}
+	// A countdown stopped before it started (#2605) says so on the timeline,
+	// named while the session still carries its workout: its "starting" line
+	// would otherwise stand there with nothing after it.
+	stopping := c.Action == "end" && rm.session.state(now).Phase == "countdown"
+	stopped := rm.session.workoutName
 	// The session answers first: a start the phase refuses — a stale coach
 	// tab, two coaches racing the countdown — used to wipe the running
 	// ride's record and roster before hearing no (audit 2026-09-09).
 	if !rm.session.apply(c, now) {
 		return "invalid_request", "That does not work right now — the session is in another phase."
+	}
+	if stopping {
+		rm.events.add(sessionLine("stopped", "", stopped, time.Time{}, now), now)
 	}
 	// A new start is a new ride.
 	if c.Action == "start" {

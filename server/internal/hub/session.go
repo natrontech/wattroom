@@ -143,9 +143,20 @@ func (s *session) resume(now time.Time) bool {
 // implied: state() reads a done session's elapsed from banked alone, and a
 // close that left it at zero dated every rider's ride at the session's end
 // (audit 2026-09-09).
+//
+// A countdown stopped before its timeline started closes nothing (#2605):
+// nothing was ridden, so it goes back to idle and drops its id, as drop()
+// does for a pick — no "ended", no recap to point at, and the channel free
+// for anyone. A countdown that has already run out is a ride that started,
+// so the clock is read first.
 func (s *session) end(now time.Time) bool {
-	if s.phase == "idle" || s.phase == "done" {
+	s.state(now)
+	switch s.phase {
+	case "idle", "done":
 		return false
+	case "countdown":
+		*s = session{phase: "idle", run: s.run}
+		return true
 	}
 	if s.phase == "running" {
 		s.banked += now.Sub(s.startedAt)

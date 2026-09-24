@@ -85,6 +85,9 @@ export function eventText(event: ChannelEvent): string {
 			return `${subject} is starting`;
 		case 'ended':
 			return `${subject} ended`;
+		// The coach stopped the count-in (#2605): nothing ran, nothing ended.
+		case 'stopped':
+			return `${subject} was stopped before it started`;
 		// A change of coach (#2636): the actor had the session, the subject has it.
 		case 'handedOff':
 			return `${event.actor} handed the session to ${event.subject}`;
