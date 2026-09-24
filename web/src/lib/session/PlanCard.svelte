@@ -5,7 +5,13 @@
 	// answers, and — once it is due — a Start that starts it the way the
 	// Schedule does, so the plan is marked and stops offering itself.
 	import { useChannel } from '$lib/channel/context';
-	import { planDue, pressAnswer, startCrewPlan } from '$lib/crew-schedule';
+	import { goto } from '$app/navigation';
+	import {
+		planDue,
+		pressAnswer,
+		startCrewPlan,
+		startedPath,
+	} from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
 	import { formatWhen } from '$lib/format';
 	import { serverNow } from '$lib/server-clock';
@@ -39,8 +45,16 @@
 		busy = true;
 		const res = await startCrewPlan(channel.address.crew, plan.id);
 		busy = false;
-		if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
 		channel.reloadPlan();
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		// To the ride, where the count-in is (#2599).
+		void goto(startedPath(channel.address.crew, res.data), {
+			keepFocus: true,
+			noScroll: true,
+		});
 	}
 	async function choose(word: RsvpAnswer) {
 		if (!plan) return;

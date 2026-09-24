@@ -13,11 +13,7 @@
 		copyCalendarLink,
 		RESET_DONE,
 	} from '$lib/calendar-link';
-	import {
-		fetchCrewChannels,
-		voiceChannelPath,
-		type CrewChannel,
-	} from '$lib/channels';
+	import { fetchCrewChannels, type CrewChannel } from '$lib/channels';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import Select from '$lib/components/Select.svelte';
@@ -39,6 +35,7 @@
 		planPlace,
 		pressAnswer,
 		rotateCrewCalendar,
+		startedPath,
 		startCrewPlan,
 		type CrewPlan,
 	} from '$lib/crew-schedule';
@@ -203,7 +200,7 @@
 			toasts.push(res.error.message, { tone: 'error' });
 			return;
 		}
-		void goto(voiceChannelPath(id, res.data.channelId));
+		void goto(startedPath(id, res.data));
 	}
 
 	/** The row's menu (#2514): every button it has, plus the link. */

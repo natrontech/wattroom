@@ -1,4 +1,6 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
+import { sessionPath } from '$lib/channel/address';
+import { voiceChannelPath } from '$lib/channels';
 import { serverNow } from '$lib/server-clock';
 import type { CrewRole } from '$lib/crew';
 import type { PlanAnswers, RsvpAnswer } from '$lib/session/rsvp';
@@ -87,13 +89,27 @@ export const pressAnswer = (
 ) =>
 	answerCrewPlan(crewId, plan.id, plan.yourAnswer === pressed ? null : pressed);
 
+/** Where a started plan runs: its channel, and the session it opened. */
+export interface StartedPlan {
+	channelId: string;
+	sessionId?: string;
+}
+
+/** Where the rider who started a plan goes (#2599): the ride, at the session's
+ *  own address — not the channel's lobby with the count-in already running.
+ *  The channel when the server named no session. */
+export const startedPath = (crewId: string, started: StartedPlan) =>
+	started.sessionId
+		? sessionPath(crewId, started.sessionId)
+		: voiceChannelPath(crewId, started.channelId);
+
 /** Opens the plan's session in its channel with you as coach (#2440). A plan
  *  that names no channel takes one here. */
 export function startCrewPlan(
 	crewId: string,
 	planId: string,
 	channelId?: string,
-): Promise<ApiResult<{ channelId: string }>> {
+): Promise<ApiResult<StartedPlan>> {
 	return api(`/api/crews/${crewId}/schedule/${planId}/started`, {
 		method: 'POST',
 		json: channelId ? { channelId } : {},
