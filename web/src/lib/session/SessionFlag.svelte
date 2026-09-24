@@ -15,32 +15,12 @@
 	 */
 	import FlagButton from '$lib/ride/FlagButton.svelte';
 	import { FLAG_SAID } from '$lib/ride/flag';
-	import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
 	import { useChannel } from '$lib/channel/context';
 
 	const channel = useChannel();
-	const recorder = createFlightRecorder();
-
-	// The ring, fed by the channel's own tick — the same four fields solo records,
-	// and heart rate deliberately not among them (ADR-0008: a report becomes a
-	// public issue).
-	//
-	// One tick per ridden second, not per change: watts, cadence and target
-	// land in separate updates, and recording each of them tripled the ring
-	// with samples that had not moved. Plain let, not $state — an effect that
-	// reads its own state invalidates itself.
-	let recordedSecond = -1;
-	$effect(() => {
-		const second = channel.shared?.elapsed ?? 0;
-		if (second === recordedSecond) return;
-		recordedSecond = second;
-		recorder.tick({
-			watts: channel.you.watts,
-			cadence: channel.you.cadence,
-			target: channel.you.target,
-			state: channel.shared?.phase ?? channel.phase,
-		});
-	});
+	// The ride's ring, not this component's (#2657): it ticks from pairing on,
+	// so a report tapped 20 s into a session still holds the minutes before it.
+	const recorder = channel.recorder;
 
 	let sending = $state(false);
 	let sent = $state(false);

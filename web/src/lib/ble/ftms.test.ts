@@ -210,11 +210,13 @@ const targetsWritten = (control: FakeCharacteristic): number[] =>
 const targetWatts = (frame: Uint8Array) => view(frame).getInt16(1, true);
 
 describe('FtmsTrainer control-point queue', () => {
-	let warn: ReturnType<typeof vi.spyOn>;
+	// What the ⚑'s flight recorder hears (#2657): it keeps console.error.
+	let logged: ReturnType<typeof vi.spyOn>;
+	const LINK_LOST = '[ftms] trainer link lost — reattaching';
 
 	beforeEach(() => {
 		vi.useFakeTimers();
-		warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 	});
 	afterEach(() => {
 		vi.useRealTimers();
@@ -251,6 +253,8 @@ describe('FtmsTrainer control-point queue', () => {
 		await trainer.disconnect();
 		expect(order).toEqual(['write:0', 'gatt.disconnect']);
 		expect(trainer.status).toBe('disconnected');
+		// The rider let go: nothing for a report to explain.
+		expect(logged).not.toHaveBeenCalledWith(LINK_LOST);
 	});
 
 	it('still drops the link when the release is refused or never answered', async () => {
@@ -314,7 +318,10 @@ describe('FtmsTrainer control-point queue', () => {
 		const { trainer, control } = await paired();
 		control.answer = () => 'fail';
 		await expect(trainer.setTargetPower(200)).rejects.toThrow();
-		expect(warn).toHaveBeenCalled();
+		expect(logged).toHaveBeenCalledWith(
+			'[ftms] control-point write failed',
+			expect.anything(),
+		);
 	});
 
 	it('keeps ERG alive after a control-point timeout', async () => {
@@ -343,6 +350,7 @@ describe('FtmsTrainer control-point queue', () => {
 		device.drop();
 		await dropped;
 		expect(trainer.status).toBe('connecting');
+		expect(logged).toHaveBeenCalledWith(LINK_LOST);
 
 		await vi.advanceTimersByTimeAsync(1000);
 		expect(trainer.status).toBe('connected');

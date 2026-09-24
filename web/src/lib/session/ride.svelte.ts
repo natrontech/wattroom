@@ -1,6 +1,7 @@
 import { pairError } from '$lib/ble/pair-error';
 import { arbitrate } from '$lib/ble/arbitrate';
 import { createPersonalGuards, type GuardPhase } from '$lib/workout/guards';
+import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
 import { serverNow } from '$lib/server-clock';
 import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
@@ -68,6 +69,7 @@ export function createRide(deps: RideDeps) {
 	let guardSecond = -1;
 	let pairing = $state(false);
 	let unsubscribe: (() => void)[] = [];
+	const recorder = createFlightRecorder();
 
 	/**
 	 * What the trainer is actually doing (#520). "Paired" used to be the only
@@ -350,6 +352,22 @@ export function createRide(deps: RideDeps) {
 						guards.sample(metrics, prescribed, counted ? 1 : 0);
 					else guards.reset();
 					syncGuards();
+					// The ⚑'s ring (#2657): this ride's own numbers from pairing
+					// on — the target the trainer was given and why — not the
+					// hub's echo, and not only while a session's clock runs.
+					if (counted)
+						recorder.tick({
+							watts: metrics.watts,
+							cadence: metrics.cadence,
+							target,
+							state: sprinting
+								? 'sprint'
+								: prescribed === 0
+									? 'no target'
+									: spiralActive
+										? 'spiral'
+										: guardPhase,
+						});
 					hrSource =
 						metrics.from.heartRate === 'heart-rate' ||
 						metrics.from.heartRate === 'trainer'
@@ -402,6 +420,8 @@ export function createRide(deps: RideDeps) {
 		get trainer() {
 			return trainer;
 		},
+		/** What a session's ⚑ sends: lives as long as the ride, not the page. */
+		recorder,
 		get error() {
 			return error;
 		},

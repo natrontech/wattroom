@@ -67,6 +67,8 @@ export function describeReason(reason: unknown): string {
 	}
 }
 
+export type FlightRecorder = ReturnType<typeof createFlightRecorder>;
+
 export function createFlightRecorder() {
 	let ticks: RecorderTick[] = [];
 	let events: { at: number; kind: string; text: string }[] = [];

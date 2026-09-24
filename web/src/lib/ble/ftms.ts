@@ -218,6 +218,9 @@ export class FtmsTrainer implements Trainer {
 				this.#setStatus('disconnected');
 				return;
 			}
+			// Into the ⚑'s report too (#2657): a gap in its ticks says samples
+			// stopped, this says why.
+			console.error('[ftms] trainer link lost — reattaching');
 			this.#setStatus('connecting');
 			this.#scheduleReattach();
 		});
@@ -423,7 +426,9 @@ export class FtmsTrainer implements Trainer {
 		this.#queue = run.catch((err: unknown) => {
 			// Most callers void this promise (ride.svelte.ts), so without a word
 			// here a dying control point is invisible until #520 gives it a status.
-			console.warn('[ftms] control-point write failed', err);
+			// An error, not a warning: the ⚑'s flight recorder keeps errors, and
+			// a command the trainer never took is what a report needs (#2657).
+			console.error('[ftms] control-point write failed', err);
 		});
 		return run;
 	}
