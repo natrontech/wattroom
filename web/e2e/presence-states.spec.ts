@@ -120,11 +120,14 @@ test('the friends panel says riding, and names the place only to a member', asyn
  * is the case #1743 is about.
  */
 const FEEDS = [
-	{ route: '**/api/crews', what: 'the crew list' },
+	{ path: '/api/crews', what: 'the crew list' },
 	// Its error line draws only over an EMPTY channel list, so the header's
 	// mark is the one word a stalled live read gets (#2518).
-	{ route: '**/api/crews/live', what: 'what is live in the crew' },
+	{ path: '/api/crews/live', what: 'what is live in the crew' },
 ];
+const FEED_PATHS = FEEDS.map((feed) => feed.path);
+/** How long both feeds stay unasked before the test calls the page settled. */
+const QUIET_MS = 1_000;
 
 for (const feed of FEEDS) {
 	test(`the sidebar marks its crew header when ${feed.what} stops answering`, async ({
@@ -137,6 +140,39 @@ for (const feed of FEEDS) {
 		);
 
 		const a = await riders(A);
+		// Both feeds pass through here from the start, so the test knows
+		// exactly which reads are still on their way (#2565). The landing
+		// reads both, and each crew-list answer sets off a live re-read; one
+		// answering after the refusals begin is a refusal this test did not
+		// ask for, or a success that resets the count — the mark early or
+		// never. Watching network events cannot count them: a read the
+		// landing's navigation cut off never reports finishing.
+		let refusing = false;
+		let reading = 0;
+		let lastRead = Date.now();
+		await a.route(
+			(url) => FEED_PATHS.includes(url.pathname),
+			async (route) => {
+				if (refusing && new URL(route.request().url()).pathname === feed.path)
+					return route.fulfill({
+						status: 503,
+						json: {
+							error: 'rate_limited',
+							message: 'The crews are unavailable.',
+						},
+					});
+				reading += 1;
+				lastRead = Date.now();
+				try {
+					await route.fulfill({ response: await route.fetch() });
+				} catch {
+					// The page went away under it; nothing is waiting.
+				} finally {
+					reading -= 1;
+					lastRead = Date.now();
+				}
+			},
+		);
 		// The lobby socket held silent, so the test's own refetches are the
 		// only reads: the hub pings every signed-in rider on anyone's move
 		// (hub/lobby.go), and a neighbouring spec's ping re-reads the refused
@@ -149,22 +185,29 @@ for (const feed of FEEDS) {
 		await channels.open(a, `Presence States ${Date.now() % 100000}`);
 		const mark = a.locator('[aria-label="not updating — retrying"]');
 		await expect(mark).toHaveCount(0);
+		// Quiet first: nothing of the landing's still on its way.
+		await expect
+			.poll(() => reading === 0 && Date.now() - lastRead >= QUIET_MS, {
+				timeout: 15_000,
+			})
+			.toBe(true);
 
 		// The read refuses from here on. The list already on screen stays.
-		await a.route(feed.route, (route) =>
-			route.fulfill({
-				status: 503,
-				json: { error: 'rate_limited', message: 'The crews are unavailable.' },
-			}),
-		);
+		refusing = true;
 		// A tab coming back re-fetches both (presence.svelte.ts, and the
 		// sidebar's re-read on its version) — the honest way to drive a read
 		// from a test, and the one a sleeping laptop takes.
 		const refetch = () =>
 			a.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
 
-		// One failure is a blip the 60 s fallback poll already covers.
+		// One failure is a blip the 60 s fallback poll already covers — asked
+		// once it has landed, which is when the mark would draw.
+		const refused = a.waitForResponse(
+			(res) =>
+				new URL(res.url()).pathname === feed.path && res.status() === 503,
+		);
 		await refetch();
+		await refused;
 		await expect(mark).toHaveCount(0);
 
 		// The second in a row is a feed that has stopped answering.
@@ -172,7 +215,7 @@ for (const feed of FEEDS) {
 		await expect(mark).toBeVisible({ timeout: 15_000 });
 
 		// And one good read takes it back off.
-		await a.unroute(feed.route);
+		refusing = false;
 		await refetch();
 		await expect(mark).toHaveCount(0, { timeout: 15_000 });
 	});

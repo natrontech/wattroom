@@ -3,7 +3,7 @@ import { fetchCrewsLive, type LiveCrew } from '$lib/crews-live';
 import { announce } from '$lib/messages/announce';
 import { shouldAnnounce } from '$lib/notify-once';
 import { away } from '$lib/notify.svelte';
-import { STALE_AFTER } from '$lib/stale';
+import { STALE_AFTER, readOrder } from '$lib/stale';
 import type { LiveSession } from '$lib/protocol';
 import { channelConnection } from '$lib/channel/connection.svelte';
 import { crewArrivals, runningSessions } from './crew-arrivals';
@@ -23,17 +23,17 @@ let error = $state<string | null>(null);
 // Failed reads in a row, for the header's stale mark (#2518): a failed
 // re-read keeps the last list on screen, so nothing else says it is old.
 let failures = $state(0);
-// Reads overlap on a busy lobby; only the newest may land.
-let issued = 0;
+// Reads overlap on a busy lobby; an older one never lands over a newer one.
+const order = readOrder();
 // The first read is the state of the world, not a burst of arrivals: its
 // sessions are old news and its lines are claimed, not announced (#2421).
 let started = false;
 let seen = new Set<string>();
 
 async function load() {
-	const mine = ++issued;
+	const mine = order.begin();
 	const res = await fetchCrewsLive();
-	if (mine !== issued) return;
+	if (!order.lands(mine)) return;
 	if (!res.ok) {
 		// A failed re-read keeps what is on screen; only a first read that
 		// failed has nothing to show and says so.
@@ -80,7 +80,7 @@ export const crewLive = {
 	reload: load,
 	/** Signing out starts the world over: the next rider's first read is theirs. */
 	reset() {
-		issued += 1;
+		order.reset();
 		crews = [];
 		loaded = false;
 		error = null;

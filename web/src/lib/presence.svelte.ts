@@ -1,5 +1,5 @@
 import { api } from '$lib/api';
-import { STALE_AFTER } from '$lib/stale';
+import { STALE_AFTER, readOrder } from '$lib/stale';
 import type { CrewRef } from '$lib/crew-types';
 
 /**
@@ -20,6 +20,7 @@ let error = $state<string | null>(null);
 // crews, the dots and "32 min in" keep their last values with full confidence
 // for as long as it lasts (#1743).
 let failures = $state(0);
+const order = readOrder();
 let version = $state(0);
 let socket: WebSocket | null = null;
 let fallback: ReturnType<typeof setInterval> | null = null;
@@ -36,7 +37,9 @@ let pingWindow: ReturnType<typeof setTimeout> | null = null;
 let pingedDuringWindow = false;
 
 async function refresh() {
+	const mine = order.begin();
 	const res = await api<{ crews: CrewRef[] }>('/api/crews');
+	if (!order.lands(mine)) return;
 	if (res.ok) {
 		error = null;
 		failures = 0;
@@ -150,6 +153,7 @@ export const presence = {
 		document.removeEventListener('visibilitychange', onVisible);
 		if (fallback) clearInterval(fallback);
 		if (reconnect) clearTimeout(reconnect);
+		order.reset();
 		failures = 0;
 		if (pingWindow) clearTimeout(pingWindow);
 		pingWindow = null;

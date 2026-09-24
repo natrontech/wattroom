@@ -7,12 +7,18 @@ import type { LiveChannel, LiveCrew } from '$lib/crews-live';
 let reads = 0;
 let world: LiveCrew[] = [];
 let failing = false;
+// Reads held open, answered as the world stood when they were asked, so a
+// test can land them out of order (#2565).
+let hold = false;
+const held: (() => void)[] = [];
 vi.mock('$lib/crews-live', () => ({
 	fetchCrewsLive: async () => {
 		reads += 1;
-		if (failing)
-			return { ok: false, error: { error: 'internal_error', message: 'down' } };
-		return { ok: true, data: { crews: structuredClone(world) } };
+		const answer = failing
+			? { ok: false, error: { error: 'internal_error', message: 'down' } }
+			: { ok: true, data: { crews: structuredClone(world) } };
+		if (!hold) return answer;
+		return new Promise((resolve) => held.push(() => resolve(answer)));
 	},
 }));
 vi.mock('$lib/account.svelte', () => ({ account: { me: { id: 'me' } } }));
@@ -201,6 +207,8 @@ describe('what the crew read announces', () => {
 describe('the live read going stale', () => {
 	afterEach(() => {
 		failing = false;
+		hold = false;
+		held.length = 0;
 		crewLive.reset();
 	});
 
@@ -216,5 +224,42 @@ describe('the live read going stale', () => {
 		failing = false;
 		await read();
 		expect(crewLive.stale).toBe(false);
+	});
+
+	// Two reads a busy lobby overlapped are two reads: dropping the first one
+	// because a second was already asked counted a feed that refused twice as
+	// having refused once, and the e2e spec's mark never came (#2565).
+	it('counts two failed reads that overlapped as two', async () => {
+		world = crew(text());
+		await read();
+		failing = true;
+		hold = true;
+		const first = crewLive.reload();
+		const second = crewLive.reload();
+		held[0]();
+		await first;
+		held[1]();
+		await second;
+		expect(crewLive.stale).toBe(true);
+	});
+
+	// ...and an older read that lands after a newer one is dropped: it cannot
+	// clear the mark, or put its old list back.
+	it('never lets an older read land over a newer one', async () => {
+		world = crew(text());
+		await read();
+		hold = true;
+		const old = crewLive.reload();
+		failing = true;
+		const a = crewLive.reload();
+		const b = crewLive.reload();
+		held[1]();
+		await a;
+		held[2]();
+		await b;
+		expect(crewLive.stale).toBe(true);
+		held[0]();
+		await old;
+		expect(crewLive.stale).toBe(true);
 	});
 });
