@@ -17,6 +17,67 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.142] - 2026-09-25
+
+### Added
+
+- Statuses now show wherever a rider's name does. That covers session and game standings, the crew tiles while riding, the list of who rode after a session, session recaps, the weekly board, rider volumes, the "who's in voice" lines on Home and the crew page, announcements, and the title of channel message notifications.
+
+### Fixed
+
+- A text channel line that arrives just as you read the channel stays unread until it is on your screen. Before, it could be marked read the moment it landed, and if you left the channel right then it never counted as new.
+- A crew's Workouts page now has **Plan a session**, which opens the crew's
+  schedule ready to plan. It used to send you to your own workout library,
+  where every button started a solo ride, and once the crew had any history
+  the page had no way to plan something new.
+- A crew's own emoji now shows as its picture in more places: a message that uses one added moments earlier no longer stays stuck as `:name:` until you reload, pins draw them, the message box and the edit box show how the line will read, and the emoji picker no longer offers another crew's emoji as bare text in a DM, your status or your reaction set.
+- **End ride** during a solo ride and **I'm done** during a ramp test now ask
+  before they end it. A stray tap next to TV or Skip block used to end a ride
+  that can't be resumed, or stop a ramp test early with too low an FTP.
+- A ⚑ you tap during a solo ride or ramp test now reaches the developers
+  even if you leave without pressing **Send**. Before, it was sent only from
+  the button under the summary, and leaving the page dropped it without a
+  word.
+- The "your FTP looks low" prompt now shows up right after the ride that
+  earned it, on Rides, and a session ride brings it too. Before, it appeared
+  only after a reload or a visit to Home. It also shows when the charts on
+  Rides fail to load, which used to hide it.
+- If saving an imported workout fails, the preview and both Save buttons now
+  stay on screen, with a **Try again** above them. Before, they disappeared
+  behind a message that read as if the file were broken, and you had to pick
+  the file again.
+- A solo ride and a ramp test show your live execution score beside your
+  cadence and heart rate again, as you ride. It never appeared during the ride,
+  only on the summary afterwards.
+- On a crew's Workouts page, **Plan it again** (it used to say "Ride it again",
+  but it only ever planned) now works like the Schedule. The time starts at
+  the next hour, you can plan with no voice channel yet, and a crew whose
+  channels failed to load is told so with a Retry, instead of that it has no
+  voice channel.
+- A ramp test you ride all the way to its last step now shows your result
+  when it ends. It used to stop on a frozen riding screen until you pressed
+  **I'm done**.
+- Session recap cards now say which day the session was ("Tue 16 Sep · 4
+  riders · 1 h 02") on a crew's Members page, its Home and under a workout's
+  sessions. A recap from weeks ago used to look like last night's.
+- On a phone-sized screen, the ride's numbers row no longer runs off the
+  edge once heart rate and execution appear. The bias buttons move to a line
+  of their own and stay whole, instead of the + ending up off screen.
+- A ride you are still riding, in another tab or in a live session, is no
+  longer offered as a recovered ride. Saving it from there kept only the part
+  ridden so far, and Discard could delete the only copy on this device of a
+  session still in progress.
+- When a ride or ramp test can't be saved because the server or your
+  connection is down for a moment, the summary now has a **Try again** button.
+  Before, it told you to reload and look for the ride on Rides.
+- On a slow connection the sidebar no longer lets a late answer overwrite a
+  newer one. A crew you had just left could come back until the next update,
+  and a late answer could clear the "not updating" mark while the crew list
+  was still failing.
+- On a crew's Workouts page, clicking another page in the sidebar no longer
+  does nothing now and then. If anyone in your crews joined, left or planned
+  something at that moment, the click was dropped and you stayed on Workouts.
+
 ## [2026.09.141] - 2026-09-24
 
 ### Changed
@@ -2968,7 +3029,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.141...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.142...HEAD
+[2026.09.142]: https://github.com/natrontech/wattroom/compare/2026.09.141...2026.09.142
 [2026.09.141]: https://github.com/natrontech/wattroom/compare/2026.09.140...2026.09.141
 [2026.09.140]: https://github.com/natrontech/wattroom/compare/2026.09.139...2026.09.140
 [2026.09.139]: https://github.com/natrontech/wattroom/compare/2026.09.138...2026.09.139
