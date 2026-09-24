@@ -156,6 +156,7 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 		get trainer() {
 			return ride.trainer;
 		},
+		recorder: ride.recorder,
 		get pairing() {
 			return live.pairing;
 		},

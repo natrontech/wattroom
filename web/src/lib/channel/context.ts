@@ -7,6 +7,7 @@ import type { Announcement } from '$lib/channels';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { StageSource } from '$lib/channel/stage';
 import type { CrewPlan } from '$lib/crew-schedule';
+import type { FlightRecorder } from '$lib/ride/flightrecorder.svelte';
 
 /**
  * `StageSource` is the minimum `pickStage` needs; the channel adds what the
@@ -76,6 +77,8 @@ export interface ChannelContext {
 	readonly trainer: unknown;
 	/** What this tab is paired to, for a ⚑ report's context (#1631). '' = nothing. */
 	readonly trainerName: string;
+	/** The ride's flight recorder, ticking from pairing on — what the ⚑ sends (#2657). */
+	readonly recorder: FlightRecorder;
 	/**
 	 * Which sensors this tab holds, and where the rider's other screens hold
 	 * the rest (#610). Server truth — a place renders "paired on your phone"

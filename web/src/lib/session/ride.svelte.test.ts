@@ -785,3 +785,59 @@ describe("the trainer's silence, one number (#2161)", () => {
 		live.close();
 	});
 });
+
+describe("the ⚑'s ring, off the ride's own numbers (#2657)", () => {
+	// The first session report from real hardware held 23 s, all of them
+	// `running` at the prescribed target: a release could not have shown.
+	async function riding(inSession: boolean) {
+		const { live, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(
+				inSession ? deps : { ...deps, shared: () => undefined },
+			);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		const lastTick = () => {
+			ride.recorder.flag();
+			return ride.recorder.flags.at(-1)?.snapshot.ticks.at(-1);
+		};
+		return {
+			trainer,
+			lastTick,
+			done: () => {
+				dispose();
+				live.close();
+			},
+		};
+	}
+
+	it('ticks from pairing on, before any session runs', async () => {
+		const { trainer, lastTick, done } = await riding(false);
+		trainer.pedal(150, 85);
+		expect(lastTick()).toMatchObject({
+			watts: 150,
+			cadence: 85,
+			target: 0,
+			state: 'no target',
+		});
+		done();
+	});
+
+	it('records a spiral release as the target the trainer was given', async () => {
+		const { trainer, lastTick, done } = await riding(true);
+		trainer.pedal(200, 90);
+		expect(lastTick()).toMatchObject({ target: 200, state: 'running' });
+		for (let i = 0; i < 5; i++) trainer.pedal(120, 40);
+		expect(lastTick()).toMatchObject({ target: 0, state: 'spiral' });
+		done();
+	});
+
+	it('records an auto-pause', async () => {
+		const { trainer, lastTick, done } = await riding(true);
+		for (let i = 0; i < 3; i++) trainer.pedal(0, 0);
+		expect(lastTick()).toMatchObject({ target: 0, state: 'autopaused' });
+		done();
+	});
+});
