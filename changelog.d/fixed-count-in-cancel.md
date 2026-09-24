@@ -1,1 +1,0 @@
-- Cancelling the 3-2-1 count-in on a solo ride or ramp test, or leaving the page during it, keeps your trainer paired and **Start** ready. Before, the trainer showed as unpaired while still connected, so pairing it again could come up empty or leave the trainer with two connections at once.

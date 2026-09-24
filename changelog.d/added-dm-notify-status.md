@@ -1,1 +1,0 @@
-- A message notification shows the sender's status emoji after their name, like "Sven 🤒", so you know they're out sick before you open it.
