@@ -12,7 +12,7 @@ describe('createRecording', () => {
 		expect(recording.samples.length).toBe(2);
 		recording.record(6.9, 220);
 		expect(recording.samples.length).toBe(2);
-		recording.reset();
+		recording.follow('running');
 		recording.record(0, 100);
 		expect(recording.samples.length).toBe(1);
 	});
@@ -28,5 +28,40 @@ describe('createRecording', () => {
 		expect(recording.trace.length).toBe(3600);
 		expect(recording.trace[0]).toEqual({ t: 0, w: 150 });
 		expect(recording.trace.at(-1)).toEqual({ t: 3599, w: 150 + (3599 % 50) });
+	});
+});
+
+function ride(recording: ReturnType<typeof createRecording>, seconds: number) {
+	for (let s = 0; s < seconds; s++) recording.record(s, 200);
+}
+
+describe('the recording belongs to one session (#1535)', () => {
+	it('clears on the edge into a session, on every client', () => {
+		const recording = createRecording();
+		recording.follow('idle');
+		recording.follow('countdown');
+		recording.follow('running');
+		ride(recording, 90);
+		recording.follow('done');
+		// The summary of the first session keeps its samples while it shows.
+		expect(recording.samples).toHaveLength(90);
+		// The coach starts the main set: nobody pressed Start on this client.
+		recording.follow('countdown');
+		expect(recording.samples).toEqual([]);
+		recording.follow('running');
+		ride(recording, 30);
+		expect(recording.samples).toHaveLength(30);
+	});
+
+	it('clears when a session starts without a countdown seen', () => {
+		const recording = createRecording();
+		ride(recording, 10);
+		recording.follow('running');
+		expect(recording.samples).toEqual([]);
+		// Pausing and resuming is the same session: nothing clears.
+		ride(recording, 5);
+		recording.follow('paused');
+		recording.follow('running');
+		expect(recording.samples).toHaveLength(5);
 	});
 });
