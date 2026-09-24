@@ -24,6 +24,7 @@
 	import LineActions from '$lib/messages/LineActions.svelte';
 	import LineEditor from '$lib/messages/LineEditor.svelte';
 	import Reactions from '$lib/chat/Reactions.svelte';
+	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
 	import { stickToBottom } from '$lib/chat/stick-to-bottom';
 	import { account } from '$lib/account.svelte';
 	import { goto } from '$app/navigation';
@@ -102,7 +103,11 @@
 	// only after a gap, like every messenger.
 	const GROUP_GAP_MS = 5 * 60_000;
 
-	let reactingTo = $state<string | null>(null);
+	// The line whose reaction is being picked, and what the picker sits beside.
+	let reactingTo = $state<{ id: string; at: HTMLElement } | null>(null);
+	const openPicker = (id: string, at: HTMLElement | null | undefined) => {
+		reactingTo = at && reactingTo?.id !== id ? { id, at } : null;
+	};
 
 	// Editing a sent line (#865): the sender's own, text only, one at a time —
 	// LineEditor keeps the draft and goes when this moves on.
@@ -197,7 +202,12 @@
 			items.push({
 				label: 'React',
 				icon: SmilePlus,
-				onSelect: () => (reactingTo = reactingTo === id ? null : id),
+				// From a menu there is no button to sit beside: the line itself.
+				onSelect: () =>
+					openPicker(
+						id,
+						log?.querySelector<HTMLElement>(`[data-line="${id}"]`),
+					),
 			});
 		}
 		// The coach's mark (#2408). Here rather than in a composer of its own:
@@ -287,6 +297,7 @@
 					{/if}
 					<div
 						data-testid="thread-message"
+						data-line={message.id}
 						class="group flex gap-2.5 {grouped ? '-mt-1' : ''}"
 						title={MENU_HINT}
 						{@attach contextMenu(() => messageMenu(message))}
@@ -390,8 +401,6 @@
 									{id}
 									counts={source.reactions[id]}
 									myReacts={source.myReacts}
-									cheers={source.cheers ?? []}
-									picking={reactingTo === id}
 									onReact={(cheer) => void react(id, cheer)}
 								/>
 							{/if}
@@ -404,7 +413,7 @@
 									? () => startEdit(message)
 									: undefined}
 								onReact={id && source.react
-									? () => (reactingTo = reactingTo === id ? null : id)
+									? (at) => openPicker(id, at)
 									: undefined}
 								onDelete={canDelete(message) && id
 									? () =>
@@ -435,8 +444,19 @@
      is never yanked, e2e/chat.spec.ts asserts it on the sender's own line)
      stands until the own-send case is decided (#1767). The "new messages"
      button above is the way down. -->
+{#if reactingTo}
+	{@const id = reactingTo.id}
+	<EmojiPicker
+		anchor={reactingTo.at}
+		quick={source.cheers}
+		crewId={source.crewId}
+		onPick={(key) => void react(id, key)}
+		onClose={() => (reactingTo = null)}
+	/>
+{/if}
 <Composer
 	send={source.send}
+	crewId={source.crewId}
 	{lineGapMs}
 	{names}
 	placeholder={composerPlaceholder}

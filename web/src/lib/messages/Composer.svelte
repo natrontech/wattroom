@@ -6,6 +6,7 @@
 	// and never from a control the rider chose.
 	import ImageIcon from '@lucide/svelte/icons/image';
 	import ImagePlay from '@lucide/svelte/icons/image-play';
+	import Smile from '@lucide/svelte/icons/smile';
 	import { onMount, tick } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
@@ -16,6 +17,7 @@
 	import ImageChip from '$lib/chat/ImageChip.svelte';
 	import { createPendingImage } from '$lib/chat/pending-image.svelte';
 	import { fitsText, sendsOnEnter } from '$lib/chat/textarea';
+	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
 
 	let {
 		send: deliver,
@@ -25,6 +27,7 @@
 		error = null,
 		lock = null,
 		names = [],
+		crewId,
 	}: {
 		/** Null when it went; the refusal to show when it did not. */
 		send: (text: string, image?: Blob) => Promise<string | null>;
@@ -41,6 +44,8 @@
 		lock?: string | null;
 		/** Who `@` can complete to (#1766): the people in this thread. */
 		names?: string[];
+		/** The crew whose own emoji the picker offers; none in a DM. */
+		crewId?: string;
 	} = $props();
 
 	let draft = $state('');
@@ -122,6 +127,21 @@
 		}
 	}
 
+	// An emoji goes in at the caret (#2643) — a crew's own as the `:name:`
+	// the line then draws — and the caret lands after it.
+	let emojiButton = $state<HTMLButtonElement | null>(null);
+	let emojiOpen = $state(false);
+	async function insertEmoji(key: string) {
+		emojiOpen = false;
+		const box = composer;
+		const at = box?.selectionStart ?? draft.length;
+		const end = box?.selectionEnd ?? at;
+		draft = draft.slice(0, at) + key + draft.slice(end);
+		await tick();
+		box?.focus({ preventScroll: true });
+		box?.setSelectionRange(at + key.length, at + key.length);
+	}
+
 	// A picked GIF is its own message, not something typed into the draft:
 	// the URL IS the message, and MessageText draws it (#279, #878).
 	let gifOpen = $state(false);
@@ -183,6 +203,14 @@
 			void send();
 		}}
 	>
+		{#if emojiOpen && emojiButton}
+			<EmojiPicker
+				anchor={emojiButton}
+				{crewId}
+				onPick={(key) => void insertEmoji(key)}
+				onClose={() => (emojiOpen = false)}
+			/>
+		{/if}
 		<input
 			bind:this={filePicker}
 			type="file"
@@ -218,6 +246,16 @@
 				title="send a GIF"><ImagePlay size={16} /></button
 			>
 		{/if}
+		<button
+			type="button"
+			bind:this={emojiButton}
+			onclick={() => (emojiOpen = !emojiOpen)}
+			disabled={!!lock}
+			class="icon-btn {emojiOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
+			aria-label="add an emoji"
+			aria-expanded={emojiOpen}
+			title="add an emoji"><Smile size={16} /></button
+		>
 		<!-- A textarea (#2642): a line break is something a rider writes, and a
 		     long line wraps in view instead of sliding off the box's left edge. -->
 		<textarea

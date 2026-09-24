@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { MenuEntry } from '$lib/context-menu.svelte';
+	import { crewEmoji, emojiCrew } from '$lib/emoji/crew-emoji.svelte';
 	import { parseInline } from './inline';
 	import { gifUrl } from './media';
 	import ChatImage from './ChatImage.svelte';
@@ -23,6 +24,14 @@
 	const gif = $derived(preview ? gifUrl(text) : null);
 
 	const parts = $derived(parseInline(text, location.origin));
+
+	// A `:name:` the crew knows is its picture (#2643); any other — outside a
+	// crew, or a clock like 18:30:00 — stays exactly the text it was.
+	const crew = emojiCrew();
+	const emojiSrc = (name: string) => {
+		const id = crew();
+		return id ? crewEmoji.url(id, name) : null;
+	};
 
 	const marks = (part: {
 		bold?: boolean;
@@ -57,5 +66,10 @@
 				>{:else if part.code}<code
 					class="bg-surface-raised text-ink/90 rounded px-1 py-0.5 font-mono text-[0.95em]"
 					>{part.text}</code
-				>{:else}<span class={marks(part)}>{part.text}</span>{/if}{/each}</span
+				>{:else if part.emoji && emojiSrc(part.emoji)}<img
+					src={emojiSrc(part.emoji)}
+					alt={part.text}
+					title={part.text}
+					class="inline-block h-[1.4em] w-auto align-[-0.35em]"
+				/>{:else}<span class={marks(part)}>{part.text}</span>{/if}{/each}</span
 	>{#if preview}<LinkPreview {parts} />{/if}{/if}

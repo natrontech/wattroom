@@ -56,3 +56,22 @@ describe('parseInline marks', () => {
 		]);
 	});
 });
+
+describe('parseInline crew emoji', () => {
+	// #2643: `:name:` is a crew's own emoji; MessageText draws it if known.
+	it('splits a name out of its sentence, keeping the colons as its text', () => {
+		expect(parseInline('nice :party_parrot: ride', '')).toEqual([
+			{ text: 'nice ' },
+			{ text: ':party_parrot:', emoji: 'party_parrot' },
+			{ text: ' ride' },
+		]);
+	});
+
+	it('does not reach into a URL or code, or read the underscore as emphasis', () => {
+		expect(parseInline('https://a.b/:x_y:/z', '')[0].href).toBe(
+			'https://a.b/:x_y:/z',
+		);
+		expect(parseInline('`:x_y:`', '')).toEqual([{ text: ':x_y:', code: true }]);
+		expect(parseInline(':a_b_c:', '').some((p) => p.italic)).toBe(false);
+	});
+});

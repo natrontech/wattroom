@@ -1,3 +1,5 @@
+import { EMOJI_NAME } from '$lib/emoji/crew-emoji.svelte';
+
 /** One run of chat text: plain, a link, or marked up. Marks don't nest. */
 export type Part = {
 	text: string;
@@ -7,6 +9,8 @@ export type Part = {
 	bold?: boolean;
 	italic?: boolean;
 	strike?: boolean;
+	/** A crew's own emoji by name (#2643) — drawn if the crew knows it. */
+	emoji?: string;
 };
 
 // One pass, first alternative wins: code is literal, and a URL is claimed
@@ -18,6 +22,7 @@ const TOKEN = new RegExp(
 	[
 		/`(?<code>[^`\n]+)`/,
 		/(?<url>https?:\/\/[^\s<>"]*[^\s<>"'.,:;!?)\]}])/,
+		new RegExp(`:(?<emoji>${EMOJI_NAME}):`),
 		/\*\*(?<bold>\S(?:[^*\n]*\S)?)\*\*/,
 		/(?<![\w*_])(?<fence>[*_])(?<italic>\S(?:[^*_\n]*\S)?)\k<fence>(?![\w*_])/,
 		/~~(?<strike>\S(?:[^~\n]*\S)?)~~/,
@@ -44,6 +49,8 @@ export function parseInline(text: string, origin: string): Part[] {
 				external: !internal,
 			});
 		} else if (g.code !== undefined) parts.push({ text: g.code, code: true });
+		else if (g.emoji !== undefined)
+			parts.push({ text: match[0], emoji: g.emoji });
 		else if (g.bold !== undefined) parts.push({ text: g.bold, bold: true });
 		else if (g.italic !== undefined)
 			parts.push({ text: g.italic, italic: true });

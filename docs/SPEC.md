@@ -134,14 +134,23 @@ out, so the horizon hides nothing anyone planned.
   deleted. Never the departing owner, never anyone the crew banned, never
   ownerless.
 
-Crew identity & vocabulary (#223, #447): the crew's icon is **one drawn icon
-from a curated set, or none**, stored as its lucide key, beside an optional
-picture (#1237); its reaction set is **up to 8 icons** from a second curated
-set (base set: flame, biceps-flexed, party-popper, skull, rocket, snowflake)
-and is the palette for cheers and chat reactions alike, in every channel. The
-server checks a key's shape, not the vocabulary, and still accepts one emoji so
-data and clients from before #447 keep working — the client draws a known emoji
-as its icon. Channels are named, not marked.
+Crew identity & vocabulary (#223, #447, #2643): the crew's icon is **one drawn
+icon from a curated set, or none**, stored as its lucide key, beside an optional
+picture (#1237). Its reaction set is **up to 8** — drawn icons from a second
+curated set (base set: flame, biceps-flexed, party-popper, skull, rocket,
+snowflake), any Unicode emoji, or the crew's own — the first four are the
+mid-ride cheer buttons, and all of them lead the chat's emoji picker, which
+offers every emoji besides ([ADR-0013](decisions/0013-room-identity-and-moderation.md),
+2026-09-24 amendment). The server checks a reaction's shape, not the
+vocabulary. Channels are named, not marked.
+
+**Crew emoji** (#2643): any member adds one; the one who added it, the owner
+and admins delete it. A crew holds at most **50**, a picture is at most
+**256 KB** (a still is drawn at 128 px; a GIF keeps its animation), and a name
+is **2–32 characters of `a–z 0–9 _`**, unique in the crew **(defaults — tune in
+alpha)**. Used as a reaction and inline in a message as `:name:`; a name the
+crew does not know is shown as the text it is. The 51st is refused the way the
+other ceilings are (429, the number and the remedy).
 
 Session lifecycle: a voice channel idles (voice and jukebox) → a member who may enter it starts a session and picks the workout, becoming its coach → 10 s countdown **(default)** → shared timeline runs → riders execute their own %FTP targets → session closes when the timeline ends (or the coach ends it, or the crew's owner or an admin does) → server computes stats + medals in one transaction. **One session per voice channel**: starting another while one runs there is refused with `conflict`, and the refusal names the coach (#2438). The coach hands the session to anyone riding in it — a light, live action, never a crew-role change. Late joiners sync to the current timeline position. A member stopping mid-session pauses _their own_ targets (auto-pause) — the shared timeline never waits. The picked workout is then ridden as planned: **nobody skips a block or adds a minute in a session** ([ADR-0046](decisions/0046-one-riding-surface.md) amended, #1635). Pause, resume and end are the coach's only holds on the shared timeline — the coach cannot add a minute, and ending the session is the only escape; changing the work itself is the workout editor's job. A rider **alone** owns their clock outright and keeps `+1 min` and `Skip block`.
 

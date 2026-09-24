@@ -23,7 +23,8 @@
 		text: string;
 		/** Each is offered only when the thread allows it for this line. */
 		onEdit?: () => void;
-		onReact?: () => void;
+		/** Opens the picker beside the button that asked. */
+		onReact?: (at: HTMLElement) => void;
 		onDelete?: () => void;
 		menu: () => MenuEntry[];
 	} = $props();
@@ -50,7 +51,7 @@
 	{/if}
 	{#if onReact}
 		<button
-			onclick={onReact}
+			onclick={(e) => onReact(e.currentTarget)}
 			class="{button} pointer-coarse:hidden"
 			aria-label="react"><SmilePlus size={14} /></button
 		>
