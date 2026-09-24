@@ -20,10 +20,10 @@
 	import type { CrewRef } from '$lib/crew-types';
 	import { sessionPath } from '$lib/channel/address';
 	import { toasts } from '$lib/toast.svelte';
-	import Hash from '@lucide/svelte/icons/hash';
 	import Headphones from '@lucide/svelte/icons/headphones';
 	import Lock from '@lucide/svelte/icons/lock';
 	import LockOpen from '@lucide/svelte/icons/lock-open';
+	import MessageCircle from '@lucide/svelte/icons/message-circle';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Settings from '@lucide/svelte/icons/settings';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -54,6 +54,9 @@
 			: pathname === href || pathname.startsWith(`${href}/`);
 
 	let creating = $state<'text' | 'voice' | null>(null);
+	// A rider calls a text channel a chat (#2696).
+	const newLabel = (kind: 'text' | 'voice') =>
+		kind === 'text' ? 'new chat' : 'new voice channel';
 	$effect(() => {
 		pathname;
 		creating = null;
@@ -68,7 +71,7 @@
 		// Deleting takes the scrollback, or the deck's settings, with it and
 		// nothing brings them back (errors.md: the genuinely destructive asks).
 		const sure = await confirm({
-			title: `Delete ${c.kind === 'text' ? '#' : ''}${c.name}?`,
+			title: `Delete ${c.name}?`,
 			body:
 				c.kind === 'text'
 					? 'Every message in it goes too, and nothing brings them back.'
@@ -139,8 +142,8 @@
 			<button
 				onclick={() => (creating = kind)}
 				class="hover:text-ink -my-2 ml-auto grid h-11 w-11 place-items-center md:h-6 md:w-6"
-				title="new {kind} channel"
-				aria-label="new {kind} channel"><Plus size={16} /></button
+				title={newLabel(kind)}
+				aria-label={newLabel(kind)}><Plus size={16} /></button
 			>
 		{/if}
 	</div>
@@ -148,7 +151,7 @@
 
 {#snippet row(c: LiveChannel)}
 	{@const on = lit(pathOf(c))}
-	{@const Mark = c.kind === 'text' ? Hash : Volume2}
+	{@const Mark = c.kind === 'text' ? MessageCircle : Volume2}
 	<a
 		href={pathOf(c)}
 		title={MENU_HINT}
@@ -200,16 +203,16 @@
 		</p>
 	{/if}
 {:else}
-	{@render section('channels', 'text')}
+	{@render section('chats', 'text')}
 	<ul class="space-y-0.5">
 		{#each texts as c (c.id)}
 			<li>{@render row(c)}</li>
 		{:else}
-			<!-- Empty states teach (ux.md): what a text channel is, and who makes one. -->
+			<!-- Empty states teach (ux.md): what a chat is, and who makes one. -->
 			<li class="text-muted px-2 py-1 text-xs">
 				{admin
-					? 'No text channels yet — the + makes the first place to write.'
-					: 'No text channels yet. The crew’s owner or an admin makes them.'}
+					? 'No chats yet — the + makes the first place to write.'
+					: 'No chats yet. The crew’s owner or an admin makes them.'}
 			</li>
 		{/each}
 	</ul>
@@ -263,7 +266,7 @@
 
 {#if creating}
 	<Modal
-		label="New {creating} channel"
+		label={newLabel(creating)}
 		onclose={() => (creating = null)}
 		class="max-w-sm"
 	>

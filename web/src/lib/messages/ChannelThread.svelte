@@ -9,7 +9,7 @@
 	// shared with a DM's; this supplies the channel's endpoints and what the
 	// viewer's crew role allows.
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
-	import Hash from '@lucide/svelte/icons/hash';
+	import MessageCircle from '@lucide/svelte/icons/message-circle';
 	import Lock from '@lucide/svelte/icons/lock';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
@@ -128,7 +128,7 @@
 		{#if channel.private}
 			<Lock size={14} class="text-muted" />
 		{:else}
-			<Hash size={14} class="text-muted" />
+			<MessageCircle size={14} class="text-muted" />
 		{/if}
 	</span>
 	<span class="min-w-0">

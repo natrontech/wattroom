@@ -35,8 +35,8 @@
 </script>
 
 <h3 class="font-display font-bold">
-	New {kind} channel<span class="text-muted font-normal"
-		>&nbsp;in {crew.name}</span
+	{kind === 'text' ? 'New chat' : 'New voice channel'}<span
+		class="text-muted font-normal">&nbsp;in {crew.name}</span
 	>
 </h3>
 <p class="text-muted mt-1 text-xs">

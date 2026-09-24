@@ -165,7 +165,7 @@ test('a dialog opened by a button in the phone drawer comes up over it', async (
 	await hamburger.click();
 	await expect(hamburger).toHaveAttribute('aria-expanded', 'true');
 
-	await a.getByRole('button', { name: 'new text channel' }).click();
+	await a.getByRole('button', { name: 'new chat' }).click();
 
 	await expect(hamburger).toHaveAttribute('aria-expanded', 'false');
 	const dialog = a.getByRole('dialog');

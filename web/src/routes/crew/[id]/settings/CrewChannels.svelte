@@ -42,7 +42,7 @@
 	});
 
 	const KINDS = [
-		{ kind: 'text', title: 'Text channels', cap: MaxCrewTextChannels },
+		{ kind: 'text', title: 'Chats', cap: MaxCrewTextChannels },
 		{ kind: 'voice', title: 'Voice channels', cap: MaxCrewVoiceChannels },
 	] as const;
 
@@ -81,8 +81,8 @@
 <section class="panel panel-xl mt-5">
 	<h2 class="font-display font-bold">Channels</h2>
 	<p class="text-muted mt-1.5 text-xs">
-		Text channels are where the crew writes; voice channels are where it talks,
-		plays music and rides. Drag a channel to reorder it, or right-click it.
+		Chats are where the crew writes; voice channels are where it talks, plays
+		music and rides. Drag a channel to reorder it, or right-click it.
 	</p>
 
 	{#if error && !channels}
@@ -136,7 +136,7 @@
 			{:else}
 				<p class="text-muted mt-2 text-xs">
 					{group.kind === 'text'
-						? 'No text channels — the crew has nowhere to write.'
+						? 'No chats — the crew has nowhere to write.'
 						: 'No voice channels — the crew has nowhere to talk or ride.'}
 				</p>
 			{/if}

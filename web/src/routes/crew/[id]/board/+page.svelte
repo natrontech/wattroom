@@ -95,7 +95,7 @@
 				Marked in
 				<a
 					href={textChannelPath(data.crew.id, announcement.channelId)}
-					class="btn-link">#{announcement.channelName}</a
+					class="btn-link">{announcement.channelName}</a
 				>
 			</p>
 		{/if}
