@@ -174,6 +174,17 @@ const PRIMITIVES: { call: RegExp; callers: string[]; guard: string }[] = [
 		guard: 'confirmDiscard in lib/ride/recovered.ts',
 	},
 	{
+		// An account's rides on this device go only with the account (#2805).
+		call: /(?<!function )\bdiscardRidesOf\(/,
+		callers: ['lib/ride/buffer.ts', 'lib/account/forget-device.ts'],
+		guard: 'forgetAccountHere in lib/account/forget-device.ts',
+	},
+	{
+		call: /(?<!function )\bforgetAccountHere\(/,
+		callers: ['lib/account/forget-device.ts', 'lib/profile/YourData.svelte'],
+		guard: 'the typed DELETE in lib/profile/YourData.svelte',
+	},
+	{
 		call: /\bpasskeys\.remove\(/,
 		callers: ['lib/components/PasskeyList.svelte'],
 		guard: 'passkeys.confirmRemoval',

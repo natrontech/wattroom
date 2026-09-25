@@ -99,7 +99,7 @@
 	// being under a minute, saved while it was unreachable, or from before
 	// #110. They have no samples, so they cannot become account rides — they
 	// stay listed here until cleared.
-	const device = createHistoryStore();
+	const device = createHistoryStore(() => account.me?.id);
 
 	async function clearDevice() {
 		const n = device.all.length;

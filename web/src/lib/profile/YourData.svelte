@@ -6,6 +6,7 @@
 	// that nothing else on the profile page reads, and because the destructive
 	// half wants to be read on its own (#126, #686).
 	import { account } from '$lib/account.svelte';
+	import { forgetAccountHere } from '$lib/account/forget-device';
 	import { api, apiBlob } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
 	import { downloadBlob } from '$lib/download';
@@ -43,6 +44,8 @@
 		const res = await api('/api/me', { method: 'DELETE' });
 		deleting = false;
 		if (res.ok) {
+			// Its rides, heart rate and all, would otherwise outlive it here.
+			if (account.me) await forgetAccountHere(account.me.id);
 			await account.signOut();
 			location.href = '/';
 		} else {

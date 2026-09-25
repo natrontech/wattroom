@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { IDBFactory } from 'fake-indexeddb';
 import {
 	discardRide,
+	discardRidesOf,
 	openRideBuffer,
 	stale,
 	unfinishedRides,
@@ -17,17 +18,31 @@ const sample = (seq: number): BufferedSample => ({
 	at: seq * 1000,
 });
 
+/** Two riders sharing one browser (#2805). */
+const ANA = 'rider-ana';
+const BEN = 'rider-ben';
+/** What Ana is offered back — the rider most of these tests are about. */
+const offered = () => unfinishedRides(ANA);
+
 /**
- * A ride with `count` samples. Unless it is still `recording`, the tab that
- * rode it is gone — a crash, a closed tab — and so is its lock (#2617).
+ * A ride with `count` samples, Ana's unless it says whose. Unless it is still
+ * `recording`, the tab that rode it is gone — a crash, a closed tab — and so
+ * is its lock (#2617).
  */
 async function fill(
 	rideId: string,
 	count: number,
-	opts: { end?: boolean; saveable?: boolean; recording?: boolean } = {},
+	opts: {
+		end?: boolean;
+		saveable?: boolean;
+		recording?: boolean;
+		owner?: string | null;
+	} = {},
 ) {
 	const buffer = await openRideBuffer({
 		rideId,
+		// null: a ride buffered before rides were stamped.
+		ownerId: opts.owner === null ? undefined : (opts.owner ?? ANA),
 		startedAt: Number(rideId) || 1,
 		workoutName: 'Openers',
 		...(opts.saveable ? { workoutJson: '{"name":"Openers","steps":[]}' } : {}),
@@ -61,7 +76,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe('ride buffer', () => {
 	it('offers back a ride that never ended — the crash case', async () => {
 		await fill('100', 90);
-		const rides = await unfinishedRides();
+		const rides = await offered();
 		expect(rides).toHaveLength(1);
 		expect(rides[0].samples).toHaveLength(90);
 		expect(rides[0].samples[0].watts).toBe(201);
@@ -69,12 +84,12 @@ describe('ride buffer', () => {
 
 	it('does not offer back a ride that finished properly', async () => {
 		await fill('100', 90, { end: true });
-		expect(await unfinishedRides()).toHaveLength(0);
+		expect(await offered()).toHaveLength(0);
 	});
 
 	it('ignores a fragment under a minute — a misclick, not a lost ride', async () => {
 		await fill('100', 30);
-		expect(await unfinishedRides()).toHaveLength(0);
+		expect(await offered()).toHaveLength(0);
 	});
 
 	it('replays only what a reconnect missed', async () => {
@@ -86,7 +101,7 @@ describe('ride buffer', () => {
 	it('discard removes the ride and its samples', async () => {
 		await fill('100', 90);
 		await discardRide('100');
-		expect(await unfinishedRides()).toHaveLength(0);
+		expect(await offered()).toHaveLength(0);
 	});
 
 	it('keeps only the most recent rides', async () => {
@@ -95,7 +110,7 @@ describe('ride buffer', () => {
 		// just opened is a fragment at that moment and rides along, and the
 		// two oldest go.
 		await fill('8', 61);
-		const ids = (await unfinishedRides()).map((r) => r.rideId).sort();
+		const ids = (await offered()).map((r) => r.rideId).sort();
 		expect(ids).toEqual(['3', '4', '5', '6', '7', '8']);
 	});
 
@@ -115,7 +130,7 @@ describe('ride buffer', () => {
 		// a buffer of its own and ended it cleanly.
 		await fill('1', 61, { saveable: true });
 		for (let i = 2; i <= 8; i++) await fill(String(i), 61, { end: true });
-		const rides = await unfinishedRides();
+		const rides = await offered();
 		expect(rides.map((r) => r.rideId)).toContain('1');
 	});
 });
@@ -127,7 +142,7 @@ describe('a solo save that failed (#794)', () => {
 	// them back.
 	it('is still offered back, with what a retry needs', async () => {
 		await fill('100', 90, { saveable: true });
-		const [ride] = await unfinishedRides();
+		const [ride] = await offered();
 		expect(ride.samples).toHaveLength(90);
 		expect(ride.workoutJson).toBe('{"name":"Openers","steps":[]}');
 	});
@@ -135,14 +150,14 @@ describe('a solo save that failed (#794)', () => {
 	it('stops being offered back once the save goes through', async () => {
 		const buffer = await fill('100', 90, { saveable: true });
 		buffer.end();
-		expect(await unfinishedRides()).toHaveLength(0);
+		expect(await offered()).toHaveLength(0);
 	});
 
 	it('offers a ride buffered before the retry existed, without the retry', async () => {
 		// The store has no schema: an older ride simply has no workout on it,
 		// and the card hides Save rather than offering a button that cannot work.
 		await fill('100', 90);
-		const [ride] = await unfinishedRides();
+		const [ride] = await offered();
 		expect(ride.workoutJson).toBeUndefined();
 	});
 });
@@ -153,7 +168,12 @@ describe('a solo save that failed (#794)', () => {
 // it is known before the first pedal stroke, so the buffer has to SAY it.
 describe('a store that will not open', () => {
 	const openable = () =>
-		openRideBuffer({ rideId: '900', startedAt: 900, workoutName: 'Openers' });
+		openRideBuffer({
+			rideId: '900',
+			ownerId: ANA,
+			startedAt: 900,
+			workoutName: 'Openers',
+		});
 
 	it('is crash safe when the store opens', async () => {
 		expect((await openable()).crashSafe).toBe(true);
@@ -212,20 +232,69 @@ describe('a store that will not open', () => {
 describe('a ride still being recorded', () => {
 	it('is not offered back while it is being recorded', async () => {
 		await fill('1', 60, { recording: true });
-		expect(await unfinishedRides()).toEqual([]);
+		expect(await offered()).toEqual([]);
 	});
 
 	it('is offered back once the tab recording it is gone', async () => {
 		await fill('1', 60, { recording: true });
 		held.clear();
-		expect(await unfinishedRides()).toHaveLength(1);
+		expect(await offered()).toHaveLength(1);
 	});
 
 	it('is offered back once recording stops without a save', async () => {
 		const buffer = await fill('1', 60, { recording: true });
 		buffer.release();
-		await vi.waitFor(async () =>
-			expect(await unfinishedRides()).toHaveLength(1),
-		);
+		await vi.waitFor(async () => expect(await offered()).toHaveLength(1));
+	});
+});
+
+/** Every ride the store holds, finished or not — what a purge must reach. */
+async function stored(): Promise<string[]> {
+	const db = await new Promise<IDBDatabase>((resolve) => {
+		const request = indexedDB.open('wattroom-rides', 1);
+		request.onsuccess = () => resolve(request.result);
+	});
+	const ids = await new Promise<IDBValidKey[]>((resolve) => {
+		const request = db
+			.transaction('rides', 'readonly')
+			.objectStore('rides')
+			.getAllKeys();
+		request.onsuccess = () => resolve(request.result);
+	});
+	db.close();
+	return ids.map(String).sort();
+}
+
+// One laptop beside one trainer, and whoever signs in on it (#2805). A ride
+// carries its rider's heart rate, and the recovery card offered Ana's crash
+// to Ben with a Save that filed it into his history.
+describe('a browser two riders share', () => {
+	it("never offers one rider's ride to another", async () => {
+		await fill('100', 90, { saveable: true });
+		expect(await unfinishedRides(BEN)).toEqual([]);
+	});
+
+	it("keeps a signed-out rider's ride for when they are back", async () => {
+		await fill('100', 90, { saveable: true });
+		await unfinishedRides(BEN);
+		const [ride] = await offered();
+		expect(ride.ownerId).toBe(ANA);
+		expect(ride.samples).toHaveLength(90);
+	});
+
+	it('offers a ride from before rides were stamped, naming nobody', async () => {
+		// Its rider cannot be told apart, so the card offers it without Save.
+		await fill('100', 90, { saveable: true, owner: null });
+		const [ride] = await unfinishedRides(BEN);
+		expect(ride.ownerId).toBeUndefined();
+	});
+
+	it("takes an account's rides with it, finished or not, and nobody else's", async () => {
+		await fill('1', 90);
+		await fill('2', 90, { end: true });
+		await fill('3', 90, { owner: BEN });
+		await fill('4', 90, { owner: null });
+		await discardRidesOf(ANA);
+		expect(await stored()).toEqual(['3', '4']);
 	});
 });

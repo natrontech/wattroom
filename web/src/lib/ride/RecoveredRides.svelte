@@ -6,8 +6,9 @@
 	// (.claude/rules/errors.md — the rider is on a bike).
 	import { apiBlob } from '$lib/api';
 	import { downloadBlob } from '$lib/download';
-	import { discardRide, unfinishedRides } from '$lib/ride/buffer';
+	import { discardRide } from '$lib/ride/buffer';
 	import {
+		canSave,
 		confirmDiscard,
 		exportFilename,
 		exportPayload,
@@ -15,6 +16,7 @@
 		uploadPayload,
 		type RecoveredRide,
 	} from '$lib/ride/recovered';
+	import { recoverableRides } from '$lib/ride/recoverable.svelte';
 	import { uploadRide } from '$lib/ride/save';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -27,16 +29,16 @@
 		onSaved?: (ride: RecoveredRide) => void;
 	} = $props();
 
-	let rides = $state<RecoveredRide[]>([]);
+	// The signed-in rider's own, never the last rider's on this browser (#2805).
+	const rides = recoverableRides();
 	let busy = $state(false);
-	void unfinishedRides().then((found) => (rides = found));
 
 	// `forget` is also how a saved or exported ride leaves the card, so the ask
 	// belongs on the Discard button and not in here (errors.md, #1493): by the
 	// time download() and save() call it, the samples exist somewhere else.
 	const forget = async (rideId: string) => {
 		await discardRide(rideId);
-		rides = rides.filter((r) => r.rideId !== rideId);
+		rides.drop(rideId);
 	};
 
 	async function discard(ride: RecoveredRide) {
@@ -84,7 +86,7 @@
 	}
 </script>
 
-{#each rides as ride (ride.rideId)}
+{#each rides.all as ride (ride.rideId)}
 	<div
 		class="border-z4/40 bg-z4/10 mt-6 rounded-lg border px-4 py-3 text-left text-sm"
 	>
@@ -94,7 +96,7 @@
 			{recordedMinutes(ride)} min recorded.
 		</p>
 		<div class="mt-2 flex gap-2">
-			{#if ride.workoutJson}
+			{#if canSave(ride)}
 				<button
 					onclick={() => save(ride)}
 					disabled={busy}
@@ -104,7 +106,7 @@
 			<button
 				onclick={() => download(ride)}
 				disabled={busy}
-				class="btn {ride.workoutJson ? 'btn-secondary' : 'btn-primary'} btn-xs"
+				class="btn {canSave(ride) ? 'btn-secondary' : 'btn-primary'} btn-xs"
 				>Download .fit</button
 			>
 			<button onclick={() => discard(ride)} class="btn btn-secondary btn-xs"

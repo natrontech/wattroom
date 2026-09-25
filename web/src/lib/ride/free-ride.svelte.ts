@@ -1,3 +1,4 @@
+import { account } from '$lib/account.svelte';
 import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { uploadRide, type RideUpload, type SaveFailure } from '$lib/ride/save';
 
@@ -109,6 +110,7 @@ export function createFreeRide(deps: { ftp: () => number }) {
 				const opening = rideId;
 				void openRideBuffer({
 					rideId,
+					ownerId: account.me?.id,
 					startedAt,
 					workoutName: FREE_RIDE_NAME,
 					workoutJson: FREE_RIDE_JSON,

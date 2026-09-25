@@ -26,6 +26,7 @@
 	import Banner from '$lib/components/Banner.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+	import { account } from '$lib/account.svelte';
 	import { createRideFlags } from '$lib/ride/flags.svelte';
 	import RideFlags from '$lib/ride/RideFlags.svelte';
 	import PreRide from '$lib/ride/PreRide.svelte';
@@ -66,7 +67,7 @@
 
 	// FTP comes from the profile, set by hand or measured by a ramp test (#14).
 	const profile = createProfileStore();
-	const history = createHistoryStore();
+	const history = createHistoryStore(() => account.me?.id);
 	// The profile is FTP's only home — the field below writes through to it, so a
 	// rider who corrects the number here does not find the old one on /settings/profile.
 	const ftp = $derived(profile.current.ftp);
@@ -139,6 +140,7 @@
 			const startedAt = Date.now();
 			buffer = await openRideBuffer({
 				rideId: String(startedAt),
+				ownerId: account.me?.id,
 				startedAt,
 				workoutName: workout.name,
 				// Carried so a ride whose save failed can be saved from the

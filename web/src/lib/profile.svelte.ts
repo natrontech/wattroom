@@ -9,6 +9,15 @@ import * as protocol from '$lib/protocol';
 
 const KEY = 'wattroom.profile.v1';
 
+/** The device half of deleting an account (#2805): its numbers go with it. */
+export function forgetProfile(): void {
+	try {
+		localStorage.removeItem(KEY);
+	} catch {
+		// Blocked storage kept nothing to forget.
+	}
+}
+
 /**
  * The bounds this store enforces. The three docs/SPEC.md shares with the
  * server come from the generated protocol (#2122) — the server's validator
@@ -28,6 +37,12 @@ export const PROFILE_LIMITS = {
 } as const;
 
 export interface Profile {
+	/**
+	 * The account this cache was last pulled for (#2805). The browser is
+	 * shared, the numbers are one rider's: a copy nobody stamped, or another
+	 * account stamped, is never pushed up as this rider's own.
+	 */
+	ownerId?: string;
 	ftp: number;
 	kg: number;
 	/** ms epoch of the ramp test that set this FTP, if one did. */
@@ -76,9 +91,18 @@ function inRange(value: unknown, min: number, max: number): value is number {
 export function parseProfile(value: unknown): Profile {
 	if (typeof value !== 'object' || value === null)
 		return { ...DEFAULT_PROFILE };
-	const { ftp, kg, ftpMeasuredAt, lthr, shareHr, sprintGrade, singleSpeed } =
-		value as Record<string, unknown>;
+	const {
+		ownerId,
+		ftp,
+		kg,
+		ftpMeasuredAt,
+		lthr,
+		shareHr,
+		sprintGrade,
+		singleSpeed,
+	} = value as Record<string, unknown>;
 	return {
+		...(typeof ownerId === 'string' ? { ownerId } : {}),
 		ftp: inRange(ftp, PROFILE_LIMITS.minFtp, PROFILE_LIMITS.maxFtp)
 			? ftp
 			: DEFAULT_PROFILE.ftp,
