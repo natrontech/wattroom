@@ -47,10 +47,11 @@ export interface Profile {
 	sprintGrade: number;
 	singleSpeed: boolean;
 	/**
-	 * Whether live heart rate leaves this browser into a session (#62,
-	 * ADR-0008). Default true — visible-in-session is the product promise —
-	 * but stopping it
-	 * is one action, and the rider's own .fit is unaffected either way.
+	 * Whether live heart rate leaves this browser for the voice channel (#62,
+	 * ADR-0008). Default true — visible in the call is the product promise —
+	 * and stopping it is one action, `HrShare` beside the rider's numbers
+	 * (#2804). Off, it leaves for nobody: a free ride keeps it on this device,
+	 * but a session ride is saved from what reached the hub and has none.
 	 */
 	shareHr: boolean;
 }
@@ -105,12 +106,22 @@ export function createProfileStore() {
 	let profile = $state<Profile>(load());
 
 	function load(): Profile {
-		if (typeof localStorage === 'undefined') return { ...DEFAULT_PROFILE };
+		return { ...DEFAULT_PROFILE, ...saved() };
+	}
+
+	/**
+	 * What is in storage now, or nothing. Every screen holds a store of its
+	 * own — the root layout, the voice channel, Settings — so this store's
+	 * copy is only as fresh as its last write, and a write built on it would
+	 * put back whatever another screen changed since (#2804).
+	 */
+	function saved(): Partial<Profile> {
+		if (typeof localStorage === 'undefined') return {};
 		try {
 			const raw = localStorage.getItem(KEY);
-			return raw ? parseProfile(JSON.parse(raw)) : { ...DEFAULT_PROFILE };
+			return raw ? parseProfile(JSON.parse(raw)) : {};
 		} catch {
-			return { ...DEFAULT_PROFILE };
+			return {};
 		}
 	}
 
@@ -157,7 +168,7 @@ export function createProfileStore() {
 			) {
 				return `Sprint grade has to be between ${PROFILE_LIMITS.minSprintGrade} and ${PROFILE_LIMITS.maxSprintGrade} %.`;
 			}
-			const merged = parseProfile({ ...profile, ...next });
+			const merged = parseProfile({ ...profile, ...saved(), ...next });
 			try {
 				localStorage.setItem(KEY, JSON.stringify(merged));
 			} catch {

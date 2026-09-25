@@ -21,6 +21,7 @@
 	import Stage from '$lib/channel/Stage.svelte';
 	import SessionFlag from '$lib/session/SessionFlag.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
+	import HrShare from '$lib/channel/HrShare.svelte';
 	import { device } from '$lib/device.svelte';
 	import { crewOf, followedRider } from '$lib/session/follow';
 	import { pictureKey } from '$lib/channel/stage';
@@ -109,10 +110,13 @@
 		</div>
 		<!-- Both draw nothing on a phone and both come back with ?full=1 or on
 		     a narrow screen that can actually reach a trainer: the gate lives
-		     in them, so this surface is narrow, not permanently spectating. -->
+		     in them, so this surface is narrow, not permanently spectating.
+		     HrShare too: it is about this screen's trainer, not the followed
+		     rider the numbers below belong to (#2804). -->
 		<div class="mt-2 flex flex-wrap items-center gap-2 empty:mt-0">
 			<SessionControls compact />
 			<TrainerOverview compact />
+			<HrShare />
 			<SessionFlag />
 		</div>
 	</header>

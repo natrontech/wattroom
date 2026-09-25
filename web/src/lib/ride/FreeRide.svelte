@@ -12,6 +12,7 @@
 	import { formatClock } from '$lib/format';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
+	import HrShare from '$lib/channel/HrShare.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import { trainerTargetsNote } from '$lib/session/sensor-status';
@@ -152,13 +153,18 @@
 					>
 				</div>
 			</div>
-			<SecondaryRow
-				cadence={channel.you.cadence}
-				hr={channel.you.hr}
-				watts={channel.you.watts}
-				kg={channel.you.kg}
-				lthr={conn?.profile.current.lthr}
-			/>
+			<div>
+				<SecondaryRow
+					cadence={channel.you.cadence}
+					hr={channel.you.hr}
+					watts={channel.you.watts}
+					kg={channel.you.kg}
+					lthr={conn?.profile.current.lthr}
+				/>
+				<!-- A free ride shows the call your numbers (ADR-0059), heart rate
+				     included, so it says so under them (ADR-0008, #2804). -->
+				<HrShare class="mt-2" />
+			</div>
 		</section>
 
 		{#if free?.saving}

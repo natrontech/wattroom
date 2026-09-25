@@ -65,8 +65,11 @@
 			<strong class="text-ink font-medium">Heart rate is health data</strong>
 			and is treated accordingly: it is visible live, only inside the session you
 			ride in, only while it runs. It never appears in shared ride artifacts and is
-			never scored. You consent by pairing a heart-rate monitor; unpair it and the
-			processing stops.
+			never scored. You consent by pairing a heart-rate monitor. A trainer can also
+			relay one that is bonded to it, with nothing paired here — so your riding screen
+			says whenever your heart rate is being shared, from either, and
+			<strong class="text-ink font-medium">Stop sharing</strong> there ends it at
+			once. Unpairing ends it too.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Chat.</strong> A crew's chat channels and
@@ -144,8 +147,9 @@
 			name, avatar and level, and which of its voice channels you are in.
 			<strong class="text-ink font-medium">People in your session</strong> — riding
 			it with you, or in its voice channel — see your live power and cadence while
-			you ride, and heart rate if you paired a monitor, only inside the session and
-			only while it runs.
+			you ride, and your heart rate — from a monitor you paired, or relayed by your
+			trainer — unless you stopped sharing it, only inside the session and only while
+			it runs.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Your rider page</strong> is visible to
@@ -226,9 +230,10 @@
 	<p class="text-muted mt-2 text-sm leading-relaxed">
 		Running your account, crews and rides: performance of contract (Art. 6
 		(1)(b) GDPR). Heart rate: your explicit consent (Art. 9 (2)(a) GDPR), given
-		by pairing a monitor and withdrawable by unpairing it. Security logging:
-		legitimate interest (Art. 6 (1)(f) GDPR). The Swiss revDSG applies
-		alongside.
+		by pairing a monitor and withdrawable at any time with Stop sharing on your
+		riding screen — which also covers heart rate your trainer relays — or by
+		unpairing. Security logging: legitimate interest (Art. 6 (1)(f) GDPR). The
+		Swiss revDSG applies alongside.
 	</p>
 </section>
 
