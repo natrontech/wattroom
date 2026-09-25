@@ -8,6 +8,7 @@
 	import { device } from '$lib/device.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { publishHud } from '$lib/hud/feed';
+	import { FREE_RIDE_NAME } from '$lib/ride/free-ride.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { confirm } from '$lib/confirm.svelte';
 	import { banAsk } from '$lib/crew-flows';
@@ -162,9 +163,30 @@
 	// and says what ChannelStatus would.
 	$effect(() => {
 		const phase = live.tick?.state.phase;
-		if (phase !== 'countdown' && phase !== 'running' && phase !== 'paused')
-			return;
+		const free = connection.freeRide;
+		const session =
+			phase === 'countdown' || phase === 'running' || phase === 'paused';
+		// A free ride is a ride too (#2843) — unless the rider has joined the
+		// session beside it, whose numbers are the ones that count.
+		if (!session && !free.recording) return;
 		const you = roster.you;
+		const fault =
+			live.status !== 'live'
+				? ('channel' as const)
+				: rideCtl.fault
+					? ('trainer' as const)
+					: undefined;
+		if (free.recording && !connection.joined()) {
+			publishHud({
+				watts: you.watts,
+				target: free.mode === 'watts' ? free.watts : 0,
+				remaining: 0,
+				elapsed: free.seconds,
+				label: FREE_RIDE_NAME,
+				fault,
+			});
+			return;
+		}
 		publishHud({
 			watts: you.watts,
 			target: you.target,
@@ -173,12 +195,7 @@
 				(shared?.totalSeconds ?? 0) - (shared?.elapsed ?? 0),
 			),
 			label: shared?.workoutName || 'Session ride',
-			fault:
-				live.status !== 'live'
-					? 'channel'
-					: rideCtl.fault
-						? 'trainer'
-						: undefined,
+			fault,
 		});
 	});
 

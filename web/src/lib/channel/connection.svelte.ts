@@ -21,6 +21,7 @@ import type { SessionState } from '$lib/protocol';
 import type { Segment, Workout } from '$lib/workout/types';
 import { listening } from '$lib/channel/listening.svelte';
 import { onPlacePath, type PlaceAddress } from '$lib/channel/address';
+import { isLivePhase } from '$lib/channel/tick-session';
 
 /**
  * The voice channel you are IN (#173, ADR-0010's logical end): joining is a
@@ -53,6 +54,12 @@ type Connection = {
 	freeRide: FreeRide;
 	/** You are riding the channel's session, not standing beside it. */
 	joined: () => boolean;
+	/**
+	 * A ride is under way on this connection: a session live in the channel,
+	 * or your free ride recording (ADR-0059, #2843). What the frame darkens
+	 * for, the HUD follows and the leave guard protects.
+	 */
+	riding: () => boolean;
 	/** The shared session and its workout, parsed once per connection. */
 	shared: () => SessionState | undefined;
 	segments: () => Segment[];
@@ -282,6 +289,7 @@ function connect(address: PlaceAddress): Connection {
 		ride,
 		freeRide,
 		joined,
+		riding: () => isLivePhase(live.tick?.state.phase) || freeRide.recording,
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,
