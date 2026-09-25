@@ -15,3 +15,10 @@ linters:
   settings:
     errcheck:
       check-type-assertions: true
+
+# gofmt as a check (#2785): the format-on-edit hook covers edits made through
+# the agent tooling, and a file written any other way landed unformatted with
+# CI green.
+formatters:
+  enable:
+    - gofmt

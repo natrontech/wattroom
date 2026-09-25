@@ -15,10 +15,10 @@ import (
 func TestMoveSendsOnlyTheMovedRiderAndNeverOneRiding(t *testing.T) {
 	to := protocol.Moved{Channel: "lair", Name: "Lair", By: "Jan"}
 	for _, tc := range []struct {
-		name    string
-		rider   string
+		name   string
+		rider  string
 		pedals bool
-		want    error
+		want   error
 	}{
 		{"on the page, both tabs go", "kim", false, nil},
 		{"pedalling stays put", "kim", true, ErrRiding},
