@@ -234,6 +234,45 @@ test('the navigation guard refuses another origin', async () => {
 	await app.close();
 });
 
+// A same-origin link the SERVER redirects off-site never reaches will-navigate
+// with the foreign URL: /api/auth/{id}/start is ours and answers 302 to the
+// provider (#2826). Google refuses the embedded window and the other two
+// would load with the preload bridge on a third-party origin (ADR-0037).
+test('the navigation guard refuses a redirect to another origin', async () => {
+	const http = require('node:http');
+	const server = http.createServer((req, res) => {
+		if (req.url === '/away') {
+			res.writeHead(302, { Location: 'https://example.com/' });
+			return res.end();
+		}
+		res.writeHead(200, { 'Content-Type': 'text/html' });
+		res.end('<h1>app</h1>');
+	});
+	await new Promise((r) => server.listen(0, 'localhost', r));
+	const origin = `http://localhost:${server.address().port}`;
+	const app = await launch(`${origin}/`);
+	const win = await app.firstWindow();
+	await expect(win.locator('h1')).toHaveText('app');
+	await app.evaluate(({ shell }) => {
+		globalThis.__opened = [];
+		shell.openExternal = async (url) => {
+			globalThis.__opened.push(url);
+		};
+	});
+
+	await win.evaluate(() => {
+		window.location.href = '/away';
+	});
+	await new Promise((r) => setTimeout(r, 1500));
+
+	expect(win.url()).not.toContain('example.com');
+	const opened = await app.evaluate(() => globalThis.__opened);
+	expect(opened).toEqual(['https://example.com/']);
+
+	await app.close();
+	server.close();
+});
+
 /**
  * The chooser's own rules (#1545, #1716), which is the half of
  * `select-bluetooth-device` that CI *can* prove: no radio here, only the

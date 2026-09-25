@@ -9,6 +9,7 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { providerName } from '$lib/auth/providers';
+	import { shellVersion } from '$lib/desktop';
 
 	let {
 		onUploadToggle,
@@ -52,7 +53,17 @@
 		) ?? '',
 	);
 
+	// Inside the desktop shell a provider's page is a dead end (ADR-0040,
+	// #2826): Google refuses the embedded window, and GitHub and Strava would
+	// load with the shell's bridge on their origin. So there, Connect opens
+	// this page in the system browser, where the round trip works.
+	const shell = shellVersion() !== null;
+
 	function connect(id: string) {
+		if (shell) {
+			window.open(`${location.origin}/settings/profile`, '_blank');
+			return;
+		}
 		window.location.href = `/api/auth/${id}/start?link=1`;
 	}
 
@@ -186,8 +197,9 @@
 			{/each}
 		</div>
 		<p class="text-muted mt-2 text-[11px]">
-			Another way to sign in to this same account — your rides stay where they
-			are.
+			{shell
+				? 'Connecting opens this page in your browser — sign-ins happen there, not in the app.'
+				: 'Another way to sign in to this same account — your rides stay where they are.'}
 		</p>
 	{/if}
 
