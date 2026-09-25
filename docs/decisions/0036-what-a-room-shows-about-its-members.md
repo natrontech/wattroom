@@ -209,3 +209,12 @@ off it and can switch themselves on.
 The known gap above — the opt-out does not survive leaving — moves with the
 column: leaving the crew takes the row, and the answer still needs somewhere to
 keep a preference past the membership that holds it.
+
+## Amendment, 2026-09-24 (#2633): the session's closing card is not a member surface
+
+The card a session shows as it closes orders its riders by execution. That is
+not one of this decision's member surfaces: it is the session's last screen,
+shown to the riders who rode it and kept nowhere afterwards.
+[ADR-0058](0058-the-room-dissolves-into-the-crew.md)'s 2026-09-24 amendment
+says so and says why. Everything a member can open later still holds to the
+three surfaces above.
