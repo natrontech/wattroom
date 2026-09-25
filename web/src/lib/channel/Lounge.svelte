@@ -12,7 +12,7 @@
 	import { pickStage, pictureKey } from '$lib/channel/stage';
 	import { useChannel } from '$lib/channel/context';
 	import { endGame } from '$lib/session/end-game';
-	import { ridePath } from '$lib/channel/address';
+	import { ridePath, sessionPath } from '$lib/channel/address';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import AnnouncementStrip from '$lib/announce/AnnouncementStrip.svelte';
 	import MarkedIn from '$lib/announce/MarkedIn.svelte';
@@ -458,6 +458,17 @@
 					class="btn btn-accent btn-lg"
 					><Radio size={15} />
 					{channel.canControl ? 'Go to the ride' : 'Join the ride'}</a
+				>
+			{:else if liveSessionId(channelConnection.current?.live.tick?.state)}
+				<!-- A phone watches (#2635): the session's watch page is the
+				     phone's view of it since #2450, and the Lounge had no way
+				     there once the ride link was held back. -->
+				<a
+					href="{sessionPath(
+						channel.address.crew,
+						liveSessionId(channelConnection.current?.live.tick?.state)!,
+					)}/watch"
+					class="btn btn-accent btn-lg"><Radio size={15} /> Watch the session</a
 				>
 			{/if}
 			{@render freeRide()}
