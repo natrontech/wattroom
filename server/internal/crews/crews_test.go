@@ -183,7 +183,7 @@ func TestACrewOutlivesItsFoundersAccountInTheCrewList(t *testing.T) {
 	crew := h.newCrew(t, "alice", "Crew Founder Gone")
 	h.join(t, "bob", crew)
 	alice := h.users.ByToken["alice"].ID
-	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, alice); err != nil {
+	if _, err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, alice); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 	if _, err := h.store.Pool.Exec(t.Context(), "delete from users where id = $1", alice); err != nil {
