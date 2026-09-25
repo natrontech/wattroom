@@ -46,6 +46,10 @@ func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics)
 	}
 	scorable = Scorable(segments)
 	var weight, inBand float64
+	// Whether the ride reached a second with a target at all (#2871). A ride
+	// that ended inside the warm-up never did: that is nothing to score, not
+	// a 0 — the summary already says "—", and the live meter never scored.
+	reached := false
 	keyed := clockKeyed(samples)
 	for i, sample := range samples {
 		// The workout second: what the sample says when the ride stamped one
@@ -55,6 +59,7 @@ func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics)
 			second = sample.Clock
 		}
 		target, scored := workout.TargetAt(segments, ftp, second)
+		reached = reached || (scored && target > 0)
 		// SPEC's stopped predicate, the same one the live meter asks (#795):
 		// excluding only 0 W here scored a soft-pedalled second as a miss
 		// that the meter had dropped (audit 2026-09-09).
@@ -74,11 +79,11 @@ func Execution(workoutJSON string, ftp float64, samples []protocol.RiderMetrics)
 		}
 	}
 	if weight == 0 {
-		// No second counted. Either the workout had nothing to score
-		// (scorable is false and the caller must not use this number), or the
-		// rider produced no power against targets that existed — and 0 is the
-		// honest answer to that one.
-		return 0, scorable, nil
+		// No second counted. Either there was nothing to score — the workout
+		// prescribed nothing, or the ride never reached a target (#2871) — and
+		// the caller must not use this number, or the rider produced no power
+		// against targets that existed, and 0 is the honest answer to that one.
+		return 0, scorable && reached, nil
 	}
 	return inBand / weight, scorable, nil
 }
