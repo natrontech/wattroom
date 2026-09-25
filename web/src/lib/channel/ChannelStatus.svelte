@@ -20,6 +20,7 @@
 		ELIMINATION_MODES,
 	} from '$lib/session/modes';
 	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { dropClock } from '$lib/channel/drop-clock.svelte';
 	import { trainerForChannel } from '$lib/ride/solo-trainer.svelte';
 
 	const connection = $derived(channelConnection.current);
@@ -28,14 +29,16 @@
 	const rideCtl = $derived(connection?.ride);
 	const shared = $derived(connection?.shared());
 
-	// How long the buffer has been catching samples the server has not seen.
-	// Its own state because nothing else needs it, and its own effect because
-	// the drop has to be stamped when it happens, not when it is rendered.
-	let droppedAt = $state<number | null>(null);
-	$effect(() => {
-		if (live?.down && droppedAt === null) droppedAt = Date.now();
-		if (live?.status === 'live') droppedAt = null;
-	});
+	// How long the socket has been down, counting while it is (#2855): the
+	// riding the buffer holds during a ride, and the game's grace spent.
+	const drop = dropClock(() => live?.status);
+	// Whether this device is holding riding for the channel: a session's
+	// buffer or a free ride's own. A paired trainer alone records nothing, and
+	// the banner must not promise stored riding that does not exist.
+	const holdsRiding = $derived(
+		!!rideCtl?.trainer &&
+			(!!connection?.freeRide.recording || !!connection?.joined()),
+	);
 </script>
 
 {#if connection && live && av && rideCtl}
@@ -46,9 +49,6 @@
 	     the lost banner on every entry, which trains riders to ignore the one
 	     banner that must not be ignored (#1411). -->
 	{#if live.down}
-		{@const droppedFor = droppedAt
-			? Math.round((Date.now() - droppedAt) / 1000)
-			: 0}
 		{@const game = live.tick?.game}
 		<div class="shrink-0 px-5 pt-4">
 			<!-- Past the backoff's settling point the banner turns to "lost" and
@@ -65,10 +65,10 @@
 								? 'lost'
 								: 'reconnecting',
 				}}
-				bufferedSeconds={droppedFor}
+				bufferedSeconds={holdsRiding ? drop.seconds : undefined}
 				onRecover={() => live.retry()}
 				note={game?.phase === 'running' && ELIMINATION_MODES.has(game.mode)
-					? `${Math.max(0, DISCONNECT_GRACE_SECONDS - droppedFor)} s of the game's disconnect grace left — your pedalling is buffered and counts when you're back.`
+					? `${Math.max(0, DISCONNECT_GRACE_SECONDS - drop.seconds)} s of the game's disconnect grace left — your pedalling is buffered and counts when you're back.`
 					: undefined}
 			/>
 		</div>
@@ -129,7 +129,6 @@
 		<div class="shrink-0 px-5 pt-4">
 			<FaultBanner
 				fault={{ kind: 'trainer', state: rideCtl.fault }}
-				bufferedSeconds={0}
 				onRecover={() => {
 					rideCtl.unpair();
 					void rideCtl.ride(trainerForChannel());
@@ -141,7 +140,6 @@
 		<div class="shrink-0 px-5 pt-4">
 			<FaultBanner
 				fault={{ kind: 'voice', state: 'reconnecting' }}
-				bufferedSeconds={0}
 				onRecover={() => void av.join({ mic: av.micBeforeDrop })}
 			/>
 		</div>
@@ -152,7 +150,6 @@
 		<div class="shrink-0 px-5 pt-4">
 			<FaultBanner
 				fault={{ kind: 'voice', state: 'lost' }}
-				bufferedSeconds={0}
 				onRecover={() => void av.join({ mic: av.micBeforeDrop })}
 			/>
 		</div>
@@ -163,7 +160,6 @@
 		<div class="shrink-0 px-5 pt-4">
 			<FaultBanner
 				fault={{ kind: 'mic', state: 'lost' }}
-				bufferedSeconds={0}
 				onRecover={() => void av.reconnectMic()}
 			/>
 		</div>
