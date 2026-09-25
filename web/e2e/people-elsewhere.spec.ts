@@ -30,12 +30,13 @@ test("the people column names a member's other channel, not offline", async ({
 	await a.goto(voicePath(here));
 	const column = a
 		.getByRole('complementary')
-		.filter({ hasText: /offline|in another channel/ });
+		.filter({ hasText: /not here|in another channel/ });
 	await expect(column.getByText('in another channel — 1')).toBeVisible({
 		timeout: 15_000,
 	});
 	const row = column.getByRole('listitem').filter({ hasText: B });
 	await expect(row).toContainText(`in ${there.name}`);
-	// And nobody is listed offline: both riders are connected somewhere.
-	await expect(column.getByText(/^offline —/)).toHaveCount(0);
+	// And nobody is filed as not here: both riders are connected somewhere,
+	// and the viewer is never in that group (#2849).
+	await expect(column.getByText(/^not here —/)).toHaveCount(0);
 });
