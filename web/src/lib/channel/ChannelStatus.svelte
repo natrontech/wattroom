@@ -32,6 +32,13 @@
 	// How long the socket has been down, counting while it is (#2855): the
 	// riding the buffer holds during a ride, and the game's grace spent.
 	const drop = dropClock(() => live?.status);
+	// Whether this device is holding riding for the channel: a session's
+	// buffer or a free ride's own. A paired trainer alone records nothing, and
+	// the banner must not promise stored riding that does not exist.
+	const holdsRiding = $derived(
+		!!rideCtl?.trainer &&
+			(!!connection?.freeRide.recording || !!connection?.joined()),
+	);
 </script>
 
 {#if connection && live && av && rideCtl}
@@ -58,7 +65,7 @@
 								? 'lost'
 								: 'reconnecting',
 				}}
-				bufferedSeconds={rideCtl.trainer ? drop.seconds : undefined}
+				bufferedSeconds={holdsRiding ? drop.seconds : undefined}
 				onRecover={() => live.retry()}
 				note={game?.phase === 'running' && ELIMINATION_MODES.has(game.mode)
 					? `${Math.max(0, DISCONNECT_GRACE_SECONDS - drop.seconds)} s of the game's disconnect grace left — your pedalling is buffered and counts when you're back.`

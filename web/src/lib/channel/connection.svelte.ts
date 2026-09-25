@@ -51,6 +51,8 @@ type Connection = {
 	ride: ReturnType<typeof createRide>;
 	/** Riding the channel with no session (ADR-0059) — beside the trainer. */
 	freeRide: FreeRide;
+	/** You are riding the channel's session, not standing beside it. */
+	joined: () => boolean;
 	/** The shared session and its workout, parsed once per connection. */
 	shared: () => SessionState | undefined;
 	segments: () => Segment[];
@@ -105,6 +107,10 @@ function connect(address: PlaceAddress): Connection {
 	 */
 	let awayEcho = noEcho;
 
+	/** You are riding the channel's session, not standing beside it. */
+	const joined = () =>
+		!!live.tick?.roster.find((r) => r.id === account.me?.id)?.inSession;
+
 	const dispose = $effect.root(() => {
 		// The trainer belongs to the connection, not to a page (#521). It is a
 		// property of standing in the channel, exactly like the socket and the
@@ -133,8 +139,6 @@ function connect(address: PlaceAddress): Connection {
 		// Here and not in a page: the recording outlives every page (#2654).
 		$effect(() => recording.follow(shared?.phase));
 
-		const joined = () =>
-			!!live.tick?.roster.find((r) => r.id === account.me?.id)?.inSession;
 		freeRide = createFreeRide({ ftp: () => profile.current.ftp });
 		ride = createRide({
 			live,
@@ -277,6 +281,7 @@ function connect(address: PlaceAddress): Connection {
 		recording,
 		ride,
 		freeRide,
+		joined,
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,
