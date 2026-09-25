@@ -1,4 +1,7 @@
-package account
+// Package inflight is the ceiling for work whose cost is concurrent: one run
+// per account at a time. The data export was first (#1554), a track upload
+// second (#2862).
+package inflight
 
 import (
 	"sync"
@@ -6,7 +9,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// inFlight is the export ceiling (#1554): one export per account at a time.
+// Set is the ceiling: one run per account at a time — one export (#1554),
+// one track upload (#2862).
 //
 // Deliberately not budget.Budget, which is the app's other ceiling shape. That
 // one is a fixed window, and a window is the thing this ceiling must not have:
@@ -18,41 +22,42 @@ import (
 //
 // In memory and per process, like every other live-state ceiling here
 // (ADR-0002 is one VM): a set that forgets on restart is one nobody can be
-// locked out by across one.
-type inFlight struct {
+// locked out by across one. The zero value is ready to use.
+type Set struct {
 	mu  sync.Mutex
 	ids map[pgtype.UUID]struct{}
 }
 
-func newInFlight() *inFlight { return &inFlight{ids: map[pgtype.UUID]struct{}{}} }
-
-// acquire reports whether this account may start an export now, and marks it
+// Acquire reports whether this account may start one now, and marks it
 // running when it may. The caller that gets true owes exactly one release.
-func (f *inFlight) acquire(id pgtype.UUID) bool {
+func (f *Set) Acquire(id pgtype.UUID) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if _, running := f.ids[id]; running {
 		return false
 	}
+	if f.ids == nil {
+		f.ids = map[pgtype.UUID]struct{}{}
+	}
 	f.ids[id] = struct{}{}
 	return true
 }
 
-// release hands the slot back. Idempotent, and safe for a key that never held
+// Release hands the slot back. Idempotent, and safe for a key that never held
 // one — deleting an absent key is a no-op — so a defer can never be the thing
 // that breaks. No sweep either, unlike budget: an entry lives only as long as
-// the request holding it, so the map is bounded by exports running right now
+// the request holding it, so the map is bounded by what is running right now
 // rather than by every account that ever asked.
-func (f *inFlight) release(id pgtype.UUID) {
+func (f *Set) Release(id pgtype.UUID) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	delete(f.ids, id)
 }
 
-// running reports whether an export is in flight for this account. Tests only:
+// Running reports whether one is in flight for this account. Tests only:
 // the leak this guards against is invisible from the outside until a rider is
 // already locked out.
-func (f *inFlight) running(id pgtype.UUID) bool {
+func (f *Set) Running(id pgtype.UUID) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	_, ok := f.ids[id]

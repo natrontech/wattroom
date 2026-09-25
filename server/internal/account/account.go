@@ -25,6 +25,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/inflight"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -102,7 +103,7 @@ type Service struct {
 	reaper   BlobReaper
 	live     Live
 	// One export in flight per account (#1554). inflight.go.
-	exports *inFlight
+	exports *inflight.Set
 }
 
 // SetStravaRevoker wires the uploader in after construction, like SetCrews.
@@ -122,7 +123,7 @@ func (s *Service) SetTrackReaper(r BlobReaper) { s.reaper = r }
 func (s *Service) SetLive(l Live) { s.live = l }
 
 func New(st *store.Store, sessions Sessions, log *slog.Logger) *Service {
-	return &Service{store: st, sessions: sessions, log: log, exports: newInFlight()}
+	return &Service{store: st, sessions: sessions, log: log, exports: &inflight.Set{}}
 }
 
 // SetAlerter wires the notify capability in after construction, the shape
@@ -217,7 +218,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	// worth refusing is a second copy of that running beside the first — a
 	// double-click, or a second tab. After RequireUser, so a slot is only ever
 	// held against a known account and a signed-out caller cannot take one.
-	if !s.exports.acquire(user.ID) {
+	if !s.exports.Acquire(user.ID) {
 		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
 			"Your export is already being built. Wait for it to finish, then ask again.")
 		return
@@ -226,7 +227,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	// out: an entry left behind would lock this rider out of their own data
 	// until the next restart, which is a worse bug than the one the ceiling
 	// fixes.
-	defer s.exports.release(user.ID)
+	defer s.exports.Release(user.ID)
 
 	rides, err := s.store.Queries.ListUserRidesFull(r.Context(), user.ID)
 	if err != nil {
