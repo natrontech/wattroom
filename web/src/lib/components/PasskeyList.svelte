@@ -10,6 +10,7 @@
 	import Skeleton from './Skeleton.svelte';
 	import { account } from '$lib/account.svelte';
 	import * as passkeys from '$lib/passkeys';
+	import { shellVersion } from '$lib/desktop';
 
 	// Two different preconditions, and the rider can act on one of them
 	// (#2256). The browser is theirs to change; whether this server derived a
@@ -17,6 +18,10 @@
 	// that did not leaves every route below unmounted — Add answered 404.
 	const browserCan = passkeys.supported();
 	const canPasskey = $derived(browserCan && account.passkeysAvailable);
+	// The desktop shell's Chromium says it can, and then the prompt never
+	// comes (ADR-0040, #2826): adding one happens in the browser. The list,
+	// rename and remove are plain requests and stay here.
+	const shell = shellVersion() !== null;
 
 	let keys = $state<passkeys.Passkey[]>([]);
 	let loaded = $state(false);
@@ -170,17 +175,28 @@
 			</ul>
 		{/if}
 
-		<div class="mt-3 flex flex-wrap items-center gap-2">
-			<input
-				bind:value={name}
-				maxlength="40"
-				placeholder="Phone, YubiKey…"
-				aria-label="name for the passkey"
-				class="input w-40"
-			/>
-			<button onclick={add} disabled={busy} class="btn btn-secondary btn-xs">
-				{busy ? 'Waiting…' : 'Add a passkey'}
-			</button>
-		</div>
+		{#if shell}
+			<p class="text-muted mt-3 text-[11px]">
+				Passkeys are added in your browser — the app cannot show the prompt.
+				<button
+					onclick={() =>
+						window.open(`${location.origin}/settings/profile`, '_blank')}
+					class="btn-link text-[11px]">Open this page in your browser</button
+				>
+			</p>
+		{:else}
+			<div class="mt-3 flex flex-wrap items-center gap-2">
+				<input
+					bind:value={name}
+					maxlength="40"
+					placeholder="Phone, YubiKey…"
+					aria-label="name for the passkey"
+					class="input w-40"
+				/>
+				<button onclick={add} disabled={busy} class="btn btn-secondary btn-xs">
+					{busy ? 'Waiting…' : 'Add a passkey'}
+				</button>
+			</div>
+		{/if}
 	{/if}
 </div>

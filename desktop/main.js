@@ -505,6 +505,15 @@ function guardNavigation(win) {
 		event.preventDefault();
 		if (/^https?:/.test(url)) void shell.openExternal(url);
 	});
+	// A navigation to our origin that the server redirects elsewhere never
+	// reaches will-navigate with the foreign URL (#2826): /api/auth/{id}/start
+	// answers 302 to the provider. The main frame only — the jukebox's
+	// YouTube frame redirects within Google's own hosts.
+	win.webContents.on('will-redirect', (event) => {
+		if (!event.isMainFrame || isOurs(event.url)) return;
+		event.preventDefault();
+		if (/^https?:/.test(event.url)) void shell.openExternal(event.url);
+	});
 }
 
 /**
