@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { formatClock } from '$lib/format';
 	import type { Segment } from '$lib/workout/types';
-	import { splitTrace, type TracePoint } from './trace';
+	import { splitTrace, type TracePoint, thinRun } from './trace';
 	import { CEILING, ZONE_NAMES, ZONE_TEXT, zoneOf } from './zones';
 	import {
 		fractionAt,
@@ -241,10 +241,14 @@
 	}
 
 	// One polyline per continuously-ridden run: skip and extend make the clock jump,
-	// and a single line across those jumps draws work that never happened.
+	// and a single line across those jumps draws work that never happened. Each
+	// run is thinned to one low and one high per viewBox unit (#2878): the graph cannot
+	// draw more, and a long ride's line is rebuilt every second.
 	const runs = $derived(
 		splitTrace(trace).map((run) =>
-			run.map((sample) => `${x(sample.t)},${y(sample.w / ftp)}`).join(' '),
+			thinRun(run, span / W)
+				.map((sample) => `${x(sample.t)},${y(sample.w / ftp)}`)
+				.join(' '),
 		),
 	);
 </script>

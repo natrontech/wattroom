@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { splitTrace } from './trace';
+import { splitTrace, thinRun } from './trace';
 
 const at = (...ts: number[]) => ts.map((t) => ({ t, w: 200 }));
 
@@ -34,5 +34,28 @@ describe('splitTrace', () => {
 
 	it('handles an empty trace', () => {
 		expect(splitTrace([])).toEqual([]);
+	});
+});
+
+// A long ride's line is built from at most two points per viewBox unit
+// (#2878): a 2 h ride used to put 7 200 points in one polyline, rebuilt
+// every second, where the graph can draw about 2 000.
+describe('thinRun', () => {
+	const ride = (seconds: number) =>
+		Array.from({ length: seconds }, (_, t) => ({ t, w: 200 + (t % 7) * 10 }));
+
+	it('keeps a run that already fits', () => {
+		const run = ride(300);
+		expect(thinRun(run, 1)).toBe(run);
+	});
+
+	it('keeps each bucket’s low and high, in time order', () => {
+		const thinned = thinRun(ride(7200), 7200 / 1000);
+		expect(thinned.length).toBeLessThanOrEqual(2 * 1000 + 2);
+		expect(thinned.length).toBeGreaterThan(1000);
+		expect(Math.min(...thinned.map((p) => p.w))).toBe(200);
+		expect(Math.max(...thinned.map((p) => p.w))).toBe(260);
+		for (let i = 1; i < thinned.length; i++)
+			expect(thinned[i].t).toBeGreaterThan(thinned[i - 1].t);
 	});
 });
