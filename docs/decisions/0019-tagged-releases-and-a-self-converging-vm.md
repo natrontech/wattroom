@@ -58,6 +58,21 @@
 > it. Nothing about rollback changes: the image goes back, the schema never
 > does.
 
+> **Amended 2026-09-26 (#2836).** **A column is in use while any query sqlc
+> generated still names it**, and that includes `select *` and `returning *`.
+> sqlc expands a star into an explicit column list when it generates, so every
+> release's binary names each column its stars covered, whatever the
+> handwritten code reads. Dropping a column the code has stopped reading is
+> therefore not the contract step: the previous image's expanded `SELECT`
+> still names it, and after a retag to `PREVIOUS` every query on that table
+> fails. A contract takes two releases. The first makes every query that names
+> the column explicit without it, replacing the stars on that table as #2784
+> did for `crews.cheers`. The second drops the column. It was hit twice before
+> it was written down (`room_id` in #2558, `crews.cheers` in #2784), both
+> times found by reading generated code. The check before a migration drops
+> a column, against the release tag a rollback would land on:
+> `git grep -n <column> <tag> -- server/internal/store/db/` prints nothing.
+
 
 ## Context
 
@@ -92,7 +107,7 @@ ADR-0006 named the homelab's conventions — repo-is-truth, `make sync-<stack>`,
 
 **Migrations are named for when they were written, not for their turn in a queue** (amended 2026-09-06, #928). `scripts/new-migration.sh` stamps a UTC `yyyymmddhhmmss`; goose sorts numerically, so every timestamp lands after every one of the original `000NN` files and nothing is renamed. The ordering the file names carry is therefore *when it was written*, not *what ran before it* — which is the honest version anyway, because a sequence number was only ever correct at the instant a branch merged. Two branches each take the next free number, each is green alone, and goose panics on the duplicate before applying anything: main does not boot. That happened, and the branch that finally collided had already been renumbered twice while waiting for review. Expand/contract is what makes any order safe; the names only have to be unique.
 
-**Migrations are expand/contract, and this is a hard rule.** A release only adds — nullable columns, new tables, new indexes. Dropping or renaming happens one release *after* the release whose code stopped using the thing. This is the single load-bearing rule of the whole document: it is the only reason retagging to `PREVIOUS` is safe, and every other guarantee here is downstream of it. It sharpens ADR-0006's "forward-only migrations that survive one image rollback" from an aspiration into a review criterion.
+**Migrations are expand/contract, and this is a hard rule.** A release only adds — nullable columns, new tables, new indexes. Dropping or renaming happens one release *after* the release whose code stopped using the thing. *(Amended 2026-09-26, #2836: "using" includes the SQL sqlc generated — a `select *` names every column it covered. See the amendment above.)* This is the single load-bearing rule of the whole document: it is the only reason retagging to `PREVIOUS` is safe, and every other guarantee here is downstream of it. It sharpens ADR-0006's "forward-only migrations that survive one image rollback" from an aspiration into a review criterion.
 
 **Monitoring moves to the homelab's Prometheus and Alertmanager.** The `prometheus` service, `deploy/prometheus.yml`, and `deploy/alerts.yml` leave this repository; the homelab scrapes `wattroom:9091` (`wattroom:8080` until #1738, see the amendment above) and the rules live next to every other alert Jan owns, with a routing path to his phone that already works. This is ADR-0006's "Prometheus as the one metrics system" applied literally — one Prometheus, not one per workload. Caddy stops proxying `/metrics` to the public internet, which it does today: rider counts and runtime internals are currently a `curl` away on a project whose canon is that privacy is architecture.
 
