@@ -43,12 +43,21 @@ export function rsvpSummary(tally: RsvpTally, whoIsIn = ''): string {
 	return parts.join(' · ');
 }
 
+interface Rider {
+	id: string;
+	displayName: string;
+}
+
 /** A plan's answers as the crew's schedule sends them. */
 export interface PlanAnswers {
 	/** Who said they are in, first to say so first. */
-	going?: { id: string; displayName: string }[];
+	going?: Rider[];
 	out?: number;
 	unanswered?: number;
+	/** The names behind `out` and `unanswered` (#2797) — sent only to the
+	 *  plan's organiser: its planner, the crew's owner and admins. */
+	outRiders?: Rider[];
+	unansweredRiders?: Rider[];
 	/** Your own answer; absent while you have not given one. */
 	yourAnswer?: RsvpAnswer;
 }
@@ -61,12 +70,45 @@ export function tallyOf(plan: PlanAnswers): RsvpTally {
 	};
 }
 
+/** How many of the riders who are in the summary line names. */
+const NAMED_IN_LINE = 4;
+
 /** The riders who are in, as a row has width for. */
 export function whoIsInOf(plan: PlanAnswers): string {
 	const names = plan.going ?? [];
 	const shown = names
-		.slice(0, 4)
+		.slice(0, NAMED_IN_LINE)
 		.map((who) => who.displayName)
 		.join(', ');
-	return names.length > 4 ? `${shown} +${names.length - 4} more` : shown;
+	return names.length > NAMED_IN_LINE
+		? `${shown} +${names.length - NAMED_IN_LINE} more`
+		: shown;
+}
+
+/**
+ * Every name the viewer may read that the summary line does not show, by
+ * answer (#2797): the organiser's out and unanswered, and the riders who are
+ * in once there are more than the line names. Empty when the line already
+ * says it all, so nothing is drawn.
+ */
+export function rosterOf(
+	plan: PlanAnswers,
+): { word: 'in' | 'out' | 'unanswered'; names: string }[] {
+	const going = plan.going ?? [];
+	const hidden =
+		going.length > NAMED_IN_LINE ||
+		!!plan.outRiders?.length ||
+		!!plan.unansweredRiders?.length;
+	if (!hidden) return [];
+	const groups = [
+		{ word: 'in' as const, riders: going },
+		{ word: 'out' as const, riders: plan.outRiders ?? [] },
+		{ word: 'unanswered' as const, riders: plan.unansweredRiders ?? [] },
+	];
+	return groups
+		.filter((group) => group.riders.length > 0)
+		.map(({ word, riders }) => ({
+			word,
+			names: riders.map((who) => who.displayName).join(', '),
+		}));
 }
