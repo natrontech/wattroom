@@ -155,9 +155,21 @@
 		loaded: disableCaptions,
 	});
 
+	// Built only while the deck holds a YouTube entry (#2840): the IFrame
+	// API is a megabyte from Google and its player's timers run all ride,
+	// which buys a crew that never queues a video nothing. Pool tracks play
+	// through AudioDeck. When the last YouTube entry leaves the deck, the
+	// effect's cleanup takes the player down with it.
+	const wantsYouTube = $derived(
+		!!jukebox &&
+			[jukebox.current, ...jukebox.queue].some(
+				(entry) => entry && !entry.trackId,
+			),
+	);
+
 	$effect(() => {
 		const node = container;
-		if (!node || player) return;
+		if (!node || player || !wantsYouTube) return;
 		// A blocked iframe_api (adblock, corporate DNS) must say so instead of
 		// rendering a silent black tile forever (#219).
 		const failTimer = setTimeout(() => {
@@ -223,11 +235,12 @@
 		});
 		return () => {
 			clearTimeout(failTimer);
-			// The dock unmounts only when the connection ends — tear the
-			// iframe down cleanly so a rejoin starts fresh.
+			// The connection ended or the deck has no video left — tear the
+			// iframe down cleanly so the next one starts fresh.
 			player?.destroy?.();
 			player = null;
 			playerReady = false;
+			apiFailed = false;
 			chase.reset();
 		};
 	});
