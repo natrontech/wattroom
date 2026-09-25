@@ -166,6 +166,30 @@ func TestAwayAndBackEachSayItOnce(t *testing.T) {
 	}
 }
 
+// A client toggling away and back cannot flood the tick (#2869): the
+// buffer holds 64 lines and drops the rest, so a thousand flips used to
+// crowd out the session starting and the game's result. The state follows
+// every flip — throttling the message would strand a rider on a dropped one
+// — but the rider has one away line per tick, and it says where they ended.
+func TestAwayFlipsOneLinePerTick(t *testing.T) {
+	now := pat(0)
+	rm := presenceRoom(&now)
+	rm.join(socket("r-kim", "Kim"))
+	rm.join(socket("r-ana", "Ana"))
+	rm.events.drain()
+
+	for i := 0; i < 1000; i++ {
+		rm.setAway("r-kim", i%2 == 0, "")
+	}
+	rm.setAway("r-ana", true, "")
+	if got := verbs(rm); len(got) != 2 || got[0] != "back:Kim" || got[1] != "away:Ana" {
+		t.Fatalf("a thousand flips left %d lines: %v", len(got), got)
+	}
+	if _, away := rm.away["r-kim"]; away {
+		t.Error("the state did not follow the last flip")
+	}
+}
+
 // A rider who is not in the room has no name to print — the socket that knew
 // it has gone.
 func TestAwayForSomebodyNotHereSaysNothing(t *testing.T) {
