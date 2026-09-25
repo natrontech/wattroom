@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/jobmetrics"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -46,6 +47,12 @@ type Service struct {
 	// RideSaved goroutine both read it.
 	holdMu    sync.Mutex
 	holdUntil time.Time
+	// A grant revoked on Strava's side (#2823, deauth.go): what forgets it,
+	// the push webhook's verify token (empty: no webhook), and how often one
+	// athlete's event may be checked with Strava.
+	forget      GrantForgetter
+	verifyToken string
+	confirms    *budget.Budget[string]
 }
 
 // New returns nil when the Strava app is not configured — the saver treats a
@@ -63,6 +70,8 @@ func New(st *store.Store, log *slog.Logger, keys *secrets.Cipher) *Service {
 		revokeURL: "https://www.strava.com/oauth/revoke", //nolint:gosec // likewise
 		httpc:     &http.Client{Timeout: 30 * time.Second},
 		now:       time.Now, pollEvery: 2 * time.Second,
+		verifyToken: os.Getenv("WATTROOM_STRAVA_WEBHOOK_TOKEN"),
+		confirms:    budget.New[string](1, confirmEvery),
 	}
 }
 
@@ -242,9 +251,15 @@ func (s *Service) deliver(ctx context.Context, rideID pgtype.UUID) {
 	case err != nil:
 		s.log.Warn("strava upload failed", "err", err, "ride", store.UUIDString(rideID))
 		message := exportFailure(err)
+		attempts := int32(maxAttempts)
+		if errors.Is(err, errGrantRevoked) {
+			// Every retry would be refused the same way until the rider
+			// connects Strava again, so the delivery fails now (#2823).
+			attempts = 0
+		}
 		if failErr := s.store.Queries.FailRideExport(record, db.FailRideExportParams{
 			RideID: rideID, Destination: Destination,
-			LastError: &message, MaxAttempts: maxAttempts,
+			LastError: &message, MaxAttempts: attempts,
 		}); failErr != nil {
 			s.log.Warn("strava delivery record not updated", "err", failErr)
 		}

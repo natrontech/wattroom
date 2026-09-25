@@ -239,6 +239,10 @@ func main() {
 			// so does deleting the account (#1825).
 			authService.SetStravaRevoker(uploader)
 			accountService.SetStravaRevoker(uploader)
+			// A grant taken back on Strava's side is forgotten the same way
+			// (#2823), told by Strava's push webhook or found by an upload.
+			uploader.SetGrantForgetter(authService.ForgetStravaGrant)
+			uploader.Register(mux)
 			// A delivery abandoned by a restart or an outage is retried from
 			// its durable record rather than lost with the goroutine (#799).
 			uploader.Sweep(ctx)

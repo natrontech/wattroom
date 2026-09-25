@@ -48,6 +48,7 @@ func (s *Service) upload(ctx context.Context, rideID pgtype.UUID) (*int64, error
 	}
 	token, err := s.freshToken(ctx, ident)
 	if err != nil {
+		s.grantGone(ctx, ident, err)
 		return nil, fmt.Errorf("%w: %w", errToken, err)
 	}
 
@@ -57,10 +58,16 @@ func (s *Service) upload(ctx context.Context, rideID pgtype.UUID) (*int64, error
 	}
 
 	uploadID, err := s.post(ctx, token, ride, fit)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		var activityID *int64
+		if activityID, err = s.await(ctx, token, uploadID); err == nil {
+			return activityID, nil
+		}
 	}
-	return s.await(ctx, token, uploadID)
+	if s.grantGone(ctx, ident, err) {
+		return nil, fmt.Errorf("%w: %w", errGrantRevoked, err)
+	}
+	return nil, err
 }
 
 func (s *Service) encode(ride db.GetRideForUploadRow) ([]byte, error) {

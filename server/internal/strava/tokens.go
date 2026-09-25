@@ -3,9 +3,11 @@
 package strava
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -68,6 +70,14 @@ func (s *Service) freshToken(ctx context.Context, ident db.Identity) (string, er
 	}
 	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != http.StatusOK {
+		// Strava names the refresh token as the invalid resource when the
+		// rider took the grant back (#2823). Wrong client credentials name the
+		// application instead, and must never read as every rider revoking at
+		// once — so the status alone is not enough.
+		body, _ := io.ReadAll(io.LimitReader(res.Body, 1<<10))
+		if res.StatusCode == http.StatusBadRequest && bytes.Contains(body, []byte(`"RefreshToken"`)) {
+			return "", fmt.Errorf("refresh: status %d: %w", res.StatusCode, errGrantRevoked)
+		}
 		return "", fmt.Errorf("refresh: status %d", res.StatusCode)
 	}
 	var tok struct {
