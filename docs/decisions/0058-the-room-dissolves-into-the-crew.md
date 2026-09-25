@@ -243,6 +243,9 @@ Unchanged and restated so nobody reads the reshuffle as licence: AV is never
 recorded, rides are private by default, and nothing here puts a rider's
 numbers anywhere a rider did not choose to ride.
 
+The card a session shows as it closes is still inside the session — see the
+2026-09-24 amendment below (#2633).
+
 ### What does not change
 
 The door (`/c/[code]`, the crew code). Voice connecting on a tap and never on
@@ -422,3 +425,26 @@ Standing in a crew chooses it, however you got there, and starting WattRoom
 opens in the crew the column would choose — the main crew, else the one this
 device was last in (#2576). Since this decision Home is the You mode, so a
 start that always went Home had opened every session in You.
+
+## Amendment — the session's closing card is inside the session (2026-09-24, #2633)
+
+As a session closes, its card lists who rode it, ordered by execution, with
+each rider's percentage beside their name. Read literally, that is a number
+derived from other riders' rides, ordered, which
+[0036](0036-what-a-room-shows-about-its-members.md) keeps off a crew's
+surfaces; and it outlives the running timeline that _Privacy gets tighter_
+limits live numbers to.
+
+**It stays, ranking and all** (the maintainer, 2026-09-24). The closing card is
+the end of the session, not a crew surface. It is drawn only for a rider who
+rode at least a minute of that session, at the moment it ends, from numbers
+each of them was shown live on its timeline; and it is the payoff of having
+ridden together. "Inside the session, only while it runs" includes its close:
+the card is the session's last screen, not a page anyone can open later.
+
+What it may not become: **nothing on the card is kept where a member can read
+it afterwards.** It goes when the rider dismisses it or the next session in
+the channel starts. What the session leaves the crew is
+[0034](0034-a-session-leaves-one-recap.md)'s recap, which carries presence and
+time and never a rider's number, and each rider's own numbers stay on their
+own ride.
