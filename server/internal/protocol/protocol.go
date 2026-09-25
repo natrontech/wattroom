@@ -790,7 +790,8 @@ type ServerMessage struct {
 // one text channel whose log changed (#2435, the first step of #2324), so a
 // client refetches only the channel it is looking at; absent, or when several
 // changes coalesced into one ping, everything is to be re-fetched. An id and
-// nothing else — the lines stay behind the channel's own gate.
+// nothing else — the lines stay behind the channel's own gate — and only to
+// riders who may enter the channel (#2821): its activity is gated too.
 type LobbyPing struct {
 	Channel string `json:"channel,omitempty"`
 }
