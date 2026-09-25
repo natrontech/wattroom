@@ -5,10 +5,12 @@ import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 
 /** The voice channel a solo screen has to take the trainer back from (#521). */
 const unpair = vi.fn();
+/** The voice channel's own hand-off (#2635): nothing held, unless a test says. */
+const channelHandOff = vi.fn((): unknown => null);
 vi.mock('$lib/channel/connection.svelte', () => ({
 	channelConnection: {
 		get current() {
-			return { ride: { unpair } };
+			return { ride: { unpair, handOff: channelHandOff } };
 		},
 	},
 }));
@@ -72,6 +74,8 @@ function withSlot(
 
 afterEach(() => {
 	unpair.mockClear();
+	channelHandOff.mockClear();
+	channelHandOff.mockImplementation(() => null);
 	vi.useRealTimers();
 });
 
@@ -131,6 +135,19 @@ describe('the solo pre-ride trainer slot (#611)', () => {
 			expect(slot.state).toBe('idle');
 			expect(trainer.listeners).toBe(0);
 			expect(slot.handOff()).toBeNull();
+		});
+	});
+
+	// Nothing paired here, but the voice channel this tab stands in holds a
+	// trainer (#2635): Start rides that one, handed over still connected, and
+	// the channel's link is not dropped to pair the same unit again.
+	it("hands over the voice channel's trainer when it holds none of its own", async () => {
+		await withSlot(async (slot) => {
+			const trainer = new FakeTrainer();
+			channelHandOff.mockImplementation(() => trainer);
+			expect(slot.handOff()).toBe(trainer);
+			expect(channelHandOff).toHaveBeenCalledTimes(1);
+			expect(unpair).not.toHaveBeenCalled();
 		});
 	});
 

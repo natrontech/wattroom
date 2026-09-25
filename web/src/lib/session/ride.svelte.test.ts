@@ -311,6 +311,27 @@ describe('the personal guards in a group ride (#788)', () => {
 		dispose();
 	});
 
+	// A solo ride started from /ride takes the trainer a voice channel holds
+	// (#2635): handed over still connected, not dropped and paired again.
+	it('hands its trainer over connected, and stops reading it', async () => {
+		const { deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		expect(ride.handOff()).toBe(trainer);
+		expect(trainer.disconnected).toBe(false);
+		expect(ride.trainer).toBeNull();
+		trainer.pedal(210, 88);
+		await settle();
+		expect(ride.reading).toBeUndefined();
+		expect(ride.handOff()).toBeNull();
+		dispose();
+	});
+
 	// A reattach mid-block re-asserts the target (#1846): the driver re-took
 	// control, the target had not changed, and the effect had nothing to
 	// say — the trainer held no ERG for the rest of the block.

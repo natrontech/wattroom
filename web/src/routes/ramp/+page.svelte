@@ -22,7 +22,7 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
-	import { trainerHint } from '$lib/session/sensor-status';
+	import { heldTrainer } from '$lib/session/sensor-status';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { device } from '$lib/device.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
@@ -86,6 +86,9 @@
 	// Paired before the test, not by starting it (#611): the paired-devices
 	// grid owns the trainer until Start hands it to the session.
 	const solo = soloTrainer();
+	// A voice channel's trainer counts as paired here too, and Start rides it
+	// (#2635) — the pre-ride's rule, from the same helper.
+	const held = $derived(heldTrainer(solo, channelConnection.current?.ride));
 
 	// FTP is irrelevant to the test itself — the steps are absolute watts — but the
 	// session needs one, so it gets the current profile value.
@@ -442,17 +445,17 @@
 		<div class="mt-4 max-w-2xl">
 			<SensorOverview
 				trainer={{
-					state: solo.state,
-					device: solo.trainer?.name,
-					reading: solo.reading,
+					state: held.state,
+					device: held.device,
+					reading: held.reading,
 					// The one place a trainer fault is put into words
 					// (sensor-status.ts): this card retyped the 'silent' case
 					// and had nothing at all for 'no-power', which is the fault
 					// this whole screen most needs to name (#2158).
-					hint: trainerHint(solo.fault),
-					error: solo.error,
+					hint: held.hint,
+					error: held.error,
 					onPair: () => void solo.pair(new FtmsTrainer()),
-					onForget: () => solo.forget(),
+					onForget: held.forget,
 					// Simulated watts pair like any other trainer rather than
 					// starting the test outright: the card is where a rider sees
 					// a trainer reporting before Start.
@@ -476,11 +479,11 @@
 					const trainer = solo.handOff();
 					if (trainer) void begin(trainer);
 				}}
-				disabled={!solo.trainer || solo.fault === 'reconnecting'}
+				disabled={!held.paired || held.fault === 'reconnecting'}
 				class="btn btn-primary btn-lg">Start ramp test</button
 			>
 		</div>
-		{#if solo.fault === 'reconnecting'}
+		{#if held.fault === 'reconnecting'}
 			<p class="text-muted mt-3 text-xs">
 				Waiting for the trainer to come back.
 			</p>
@@ -492,7 +495,7 @@
 				This device can't reach a trainer — its browser has no Web Bluetooth.
 				Test from a desktop, or Chrome on Android.
 			</p>
-		{:else if !solo.trainer}
+		{:else if !held.paired}
 			<p class="text-muted mt-3 text-xs">
 				Pair your trainer above to start — the test's steps need something to
 				hold them.

@@ -106,10 +106,13 @@ export function createSoloTrainer() {
 	/**
 	 * Hand the live connection to the session that will ride it: the slot stops
 	 * watching samples and lets go of the reference, without disconnecting.
-	 * Returns null when nothing is paired, so a caller cannot start a ride on
-	 * a trainer that is not there.
+	 * Returns null when nothing is paired, here or in the voice channel you
+	 * stand in, so a caller cannot start a ride on a trainer that is not there.
 	 */
 	function handOff(): Trainer | null {
+		// A voice channel's trainer is the one to ride when this slot holds
+		// none (#2635): handed over connected, never dropped to pair again.
+		if (!trainer) return channelConnection.current?.ride.handOff() ?? null;
 		const held = trainer;
 		release();
 		trainer = null;

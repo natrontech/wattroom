@@ -15,11 +15,10 @@
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { deviceWord } from '$lib/device.svelte';
-	import { pairedElsewhereAll, trainerState } from '$lib/session/sensor-status';
+	import { heldTrainer, pairedElsewhereAll } from '$lib/session/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
 	import Gauge from '@lucide/svelte/icons/gauge';
 	import { RAMP_TAKES } from '$lib/workout/ramp';
-	import { trainerHint } from '$lib/session/sensor-status';
 
 	// A voice channel holds the trainer's BLE connection for as long as you
 	// stand in it (#521), and this page could not see it (#565) — so when
@@ -30,21 +29,13 @@
 	const solo = soloTrainer();
 	const profile = createProfileStore();
 	const ride = $derived(channelConnection.current?.ride);
-	const channelHolds = $derived(!!ride?.trainer);
 	// And what the rider's OTHER screens hold (#610) — answering only for this
 	// tab would be the same half-truth #565 fixed.
 	const elsewhere = $derived(
 		pairedElsewhereAll(channelConnection.current?.live.pairing, deviceWord()),
 	);
 
-	const channelTrainerState = $derived(
-		trainerState({
-			trainer: ride?.trainer ?? null,
-			fault: ride?.fault ?? null,
-			error: ride?.error ?? null,
-			pairing: ride?.pairing ?? false,
-		}),
-	);
+	const held = $derived(heldTrainer(solo, ride));
 
 	async function pairTrainer() {
 		await solo.pair(new FtmsTrainer());
@@ -54,11 +45,6 @@
 		await solo.pair(
 			new SimulatedTrainer({ baseWatts: profile.current.ftp * 0.75 }),
 		);
-	}
-
-	function forgetTrainer() {
-		if (channelHolds) ride?.unpair();
-		else solo.forget();
 	}
 
 	// How a sprint moment drives the trainer (#1860). It lived on Profile, which
@@ -97,15 +83,15 @@
 		<SensorOverview
 			{elsewhere}
 			trainer={{
-				state: channelHolds ? channelTrainerState : solo.state,
-				device: channelHolds ? ride?.trainer?.name : solo.trainer?.name,
+				state: held.state,
+				device: held.device,
 				// Live-ness is the honest confirmation: paired but silent is not
 				// working (#520), and this is the screen a rider checks it on.
-				reading: channelHolds ? ride?.reading : solo.reading,
-				hint: trainerHint(channelHolds ? ride?.fault : solo.fault),
-				error: channelHolds ? ride?.error : solo.error,
+				reading: held.reading,
+				hint: held.hint,
+				error: held.error,
 				onPair: () => void pairTrainer(),
-				onForget: forgetTrainer,
+				onForget: held.forget,
 				onSimulate: canSimulate() ? () => void pairSimulated() : undefined,
 			}}
 		/>

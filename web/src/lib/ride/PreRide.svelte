@@ -26,7 +26,9 @@
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { durationSeconds, flatten } from '$lib/workout/engine';
 	import type { Workout } from '$lib/workout/types';
-	import { trainerHint } from '$lib/session/sensor-status';
+	import { heldTrainer } from '$lib/session/sensor-status';
+	import { account, unchosen } from '$lib/account.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
 
 	let {
 		workout,
@@ -58,6 +60,13 @@
 		/** A recovered ride reached the account (#1544). */
 		onSaved?: (ride: { startedAt: number }) => void;
 	} = $props();
+
+	// The trainer a voice channel holds counts as paired here too (#2635),
+	// and Start rides it (solo.handOff takes it over, still connected).
+	const held = $derived(heldTrainer(solo, channelConnection.current?.ride));
+	// The FTP nobody chose (docs/SPEC.md, "The rider's two numbers"): said so,
+	// and asked above Start rather than after it.
+	const guessed = $derived(unchosen(account.me?.ftpSource));
 </script>
 
 <!-- Pre-ride: pick your effort level and how you are getting power in. -->
@@ -95,13 +104,13 @@
 	<div class="mt-6">
 		<SensorOverview
 			trainer={{
-				state: solo.state,
-				device: solo.trainer?.name,
-				reading: solo.reading,
-				hint: trainerHint(solo.fault),
-				error: solo.error,
+				state: held.state,
+				device: held.device,
+				reading: held.reading,
+				hint: held.hint,
+				error: held.error,
 				onPair: () => void solo.pair(new FtmsTrainer()),
-				onForget: () => solo.forget(),
+				onForget: held.forget,
 				// Simulated watts pair like any other trainer rather than
 				// starting the ride outright: the card is where a rider
 				// (and the e2e) sees a trainer reporting before Start.
@@ -116,6 +125,8 @@
 		<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 	{/if}
 
+	{#if guessed}{@render ftpField()}{/if}
+
 	<div class="mt-6 grid gap-2">
 		<!-- Never render a button that will fail (errors.md): with no
 		     trainer there is nothing to hold a target. -->
@@ -124,10 +135,10 @@
 				const trainer = solo.handOff();
 				if (trainer) onStart(trainer);
 			}}
-			disabled={!solo.trainer || solo.fault === 'reconnecting'}
+			disabled={!held.paired || held.fault === 'reconnecting'}
 			class="btn btn-primary btn-lg">Start the ride</button
 		>
-		{#if solo.fault === 'reconnecting'}
+		{#if held.fault === 'reconnecting'}
 			<!-- Never a control that will fail (ux.md, #1851): a start on a
 			     trainer mid-reattach opened a second chooser over the ride. -->
 			<p class="text-muted text-xs">Waiting for the trainer to come back.</p>
@@ -147,7 +158,7 @@
 			This device can't reach a trainer — its browser has no Web Bluetooth. Ride
 			from a desktop, or Chrome on Android.
 		</p>
-	{:else if !solo.trainer}
+	{:else if !held.paired}
 		<p class="text-muted mt-3 text-xs">
 			Pair your trainer above to start — the workout's targets need something to
 			hold them.
@@ -156,7 +167,12 @@
 
 	<!-- Below Start on purpose: the grid made this column taller than a
 	     laptop window, and FTP is a number you correct once in a month
-	     while Start is what you came for. -->
+	     while Start is what you came for — unless nobody chose it yet, when
+	     it is the question to answer first (above). -->
+	{#if !guessed}{@render ftpField()}{/if}
+</div>
+
+{#snippet ftpField()}
 	<label class="mt-8 block text-left">
 		<span class="eyebrow">your FTP (watts)</span>
 		<input
@@ -167,10 +183,17 @@
 			max={PROFILE_LIMITS.maxFtp}
 			class="input num mt-1 w-full"
 		/>
+		{#if guessed}
+			<!-- Profile's words (#1484): an unchosen number never reads as a
+			     measured one. -->
+			<span class="text-muted mt-1 block text-xs"
+				>This {ftp} W is where we start everyone, not a measurement.</span
+			>
+		{/if}
 	</label>
 	<a
 		href="/ramp"
 		class="text-muted hover:text-ink mt-2 inline-block text-xs underline"
 		>Measure it with a ramp test</a
 	>
-</div>
+{/snippet}
