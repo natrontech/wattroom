@@ -31,6 +31,14 @@ export interface BufferedSample {
 
 export interface RideMeta {
 	rideId: string;
+	/**
+	 * The account that recorded the ride (#2805). One browser serves everyone
+	 * who signs in on it — the laptop beside a shared trainer — and a ride,
+	 * heart rate and all, is its rider's alone: offered back only to them,
+	 * kept for them across a sign-out, taken when their account is deleted.
+	 * Absent on a ride buffered before it, whose rider nobody can name.
+	 */
+	ownerId?: string;
 	startedAt: number;
 	workoutName: string;
 	/**
@@ -156,7 +164,13 @@ async function recording(): Promise<Set<string>> {
 	}
 }
 
-export async function openRideBuffer(meta: RideMeta): Promise<RideBuffer> {
+/**
+ * `ownerId` is required here and optional on RideMeta: every ride from now on
+ * says whose it is, and only a ride from before could not (#2805).
+ */
+export async function openRideBuffer(
+	meta: RideMeta & { ownerId: string | undefined },
+): Promise<RideBuffer> {
 	const db = await open();
 	if (db) {
 		await tx(db, 'readwrite', (_, rides) => rides.put(meta));
@@ -197,23 +211,46 @@ function readSamples(
 	).then((rows) => (rows ?? []) as BufferedSample[]);
 }
 
-/** Rides that never ended, have samples and nobody is recording: the crashes worth offering back. */
-export async function unfinishedRides(): Promise<
-	Array<RideMeta & { samples: BufferedSample[] }>
-> {
+/**
+ * The rider's rides that never ended, have samples and nobody is recording:
+ * the crashes worth offering back. Another account's never are (#2805) — a
+ * ride from before rides were stamped comes along too, since it may well be
+ * this rider's, and the card offers it without the Save that would file it.
+ */
+export async function unfinishedRides(
+	ownerId: string,
+): Promise<Array<RideMeta & { samples: BufferedSample[] }>> {
 	const db = await open();
 	if (!db) return [];
-	const rides = ((await tx(db, 'readonly', (_, r) => r.getAll())) ??
-		[]) as RideMeta[];
+	const rides = await allRides(db);
 	const held = await recording();
 	const out: Array<RideMeta & { samples: BufferedSample[] }> = [];
 	for (const ride of rides) {
+		if (ride.ownerId && ride.ownerId !== ownerId) continue;
 		// Still being recorded, here or in another tab: not a crash (#2617).
 		if (ride.endedAt || held.has(RECORDING + ride.rideId)) continue;
 		const samples = await readSamples(db, ride.rideId);
 		if (samples.length >= MIN_SAMPLES) out.push({ ...ride, samples });
 	}
 	return out;
+}
+
+function allRides(db: IDBDatabase): Promise<RideMeta[]> {
+	return tx(db, 'readonly', (_, rides) => rides.getAll()).then(
+		(rows) => (rows ?? []) as RideMeta[],
+	);
+}
+
+/**
+ * Every ride an account left in this browser, finished or not (#2805): the
+ * device half of deleting the account. Its rides carry its heart rate, and a
+ * full purge that leaves five of them on the laptop is not one.
+ */
+export async function discardRidesOf(ownerId: string): Promise<void> {
+	const db = await open();
+	if (!db) return;
+	for (const ride of await allRides(db))
+		if (ride.ownerId === ownerId) await discard(db, ride.rideId);
 }
 
 export async function discardRide(rideId: string): Promise<void> {
@@ -250,8 +287,7 @@ export function stale(rides: Array<RideMeta & { samples: number }>): string[] {
 }
 
 async function prune(db: IDBDatabase): Promise<void> {
-	const rides = ((await tx(db, 'readonly', (_, r) => r.getAll())) ??
-		[]) as RideMeta[];
+	const rides = await allRides(db);
 	const counted: Array<RideMeta & { samples: number }> = [];
 	for (const ride of rides) {
 		const samples =

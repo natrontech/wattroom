@@ -5,10 +5,12 @@
 	// and the ride stayed in one browser's storage for good. Persistent, not a
 	// toast (errors.md), until Rides takes it.
 	import Banner from '$lib/components/Banner.svelte';
-	import { unfinishedRides } from '$lib/ride/buffer';
+	import { recoverableRides } from '$lib/ride/recoverable.svelte';
 
-	let waiting = $state(0);
-	void unfinishedRides().then((rides) => (waiting = rides.length));
+	// The signed-in rider's own (#2805): another account's ride on this
+	// browser is not one this rider lost.
+	const rides = recoverableRides();
+	const waiting = $derived(rides.all.length);
 </script>
 
 {#if waiting > 0}

@@ -187,6 +187,7 @@ export function createChannelLive(address: PlaceAddress) {
 		bufferedRows = 0;
 		void openRideBuffer({
 			rideId: `room-${address.key}-${startedAt}`,
+			ownerId: account.me?.id,
 			startedAt,
 			workoutName: openedName,
 		}).then((opened) => {

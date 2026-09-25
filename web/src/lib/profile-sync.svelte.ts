@@ -1,6 +1,6 @@
-import { account } from '$lib/account.svelte';
+import { account, type Me } from '$lib/account.svelte';
 import { untrack } from 'svelte';
-import type { createProfileStore } from '$lib/profile.svelte';
+import type { createProfileStore, Profile } from '$lib/profile.svelte';
 
 /**
  * The account is the truth for FTP and weight (everything is signed in,
@@ -11,6 +11,16 @@ import type { createProfileStore } from '$lib/profile.svelte';
  */
 type ProfileStore = ReturnType<typeof createProfileStore>;
 
+/**
+ * The LTHR this browser holds as `me`'s own (#2805) — none when another
+ * account's pull put it there, or nobody's did. The laptop beside a shared
+ * trainer holds the last rider's cache, and an account with no LTHR of its
+ * own used to be handed theirs, for good.
+ */
+export function ownCachedLthr(cached: Profile, me: Me): number | undefined {
+	return cached.ownerId === me.id ? cached.lthr : undefined;
+}
+
 /** Server → local, called from the root layout whenever `me` loads. */
 export function pullProfile(profile: ProfileStore): void {
 	const me = account.me;
@@ -18,16 +28,27 @@ export function pullProfile(profile: ProfileStore): void {
 	// untrack: update() spreads the profile state internally, and an effect
 	// must not subscribe to what it writes.
 	untrack(() => {
+		const cached = profile.current;
+		const server = { ownerId: me.id, ftp: me.ftpWatts, kg: me.weightKg };
 		// LTHR joined the account in #1571. A browser that set one before
 		// that, against an account that has none, is the one copy there is:
-		// push it up instead of pulling the blank down over it.
-		const local = profile.current.lthr;
+		// push it up instead of pulling the blank down over it — when it is
+		// this account's copy.
+		const local = ownCachedLthr(cached, me);
 		if (me.lthr == null && local) {
 			void pushProfile({ lthr: local });
-			profile.update({ ftp: me.ftpWatts, kg: me.weightKg });
+			profile.update(server);
 			return;
 		}
-		profile.update({ ftp: me.ftpWatts, kg: me.weightKg, lthr: me.lthr });
+		// The ramp that measured another rider's FTP did not measure this one.
+		// A cache nobody stamped keeps its date: it is almost always this
+		// rider's own browser, and the date is not what leaked.
+		const theirs = cached.ownerId !== undefined && cached.ownerId !== me.id;
+		profile.update({
+			...server,
+			lthr: me.lthr,
+			...(theirs ? { ftpMeasuredAt: undefined } : {}),
+		});
 	});
 }
 

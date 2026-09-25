@@ -21,6 +21,7 @@
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import { hrZoneRanges, ZONE_TEXT } from '$lib/components/zones';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
+	import { ownCachedLthr } from '$lib/profile-sync.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import Reactions from './Reactions.svelte';
 	import type { PageData } from './$types';
@@ -95,8 +96,9 @@
 		filled = true;
 		ftp = me.ftpWatts;
 		// The anchor follows the account too (#1571); an account without one
-		// leaves whatever this browser holds until the pull pushes it up.
-		if (me.lthr != null) lthr = me.lthr;
+		// keeps what this browser holds as its own until the pull pushes it
+		// up, and never another rider's (#2805).
+		lthr = me.lthr ?? ownCachedLthr(profile.current, me) ?? null;
 		kg = me.weightKg;
 		name = me.displayName;
 		// A pending address is the one the rider last asked for — show that,

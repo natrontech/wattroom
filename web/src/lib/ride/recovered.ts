@@ -27,12 +27,21 @@ export function exportPayload(ride: RecoveredRide) {
 }
 
 /**
- * The ride upload. Only offered when the buffer carries the workout JSON —
- * a ride buffered before #794 has none, and an offer you cannot act on is not
- * an offer.
+ * Whether the card may offer "Save to your account". A ride buffered before
+ * #794 has no workout to save, and an offer you cannot act on is not an offer.
+ * A ride buffered before #2805 names no rider, and filing it would put whoever
+ * rode it — their heart rate included — into whoever is signed in now: it can
+ * still be downloaded, never saved.
  */
+export function canSave(
+	ride: RecoveredRide,
+): ride is RecoveredRide & { workoutJson: string; ownerId: string } {
+	return !!ride.workoutJson && !!ride.ownerId;
+}
+
+/** The ride upload, for a ride the card may save. */
 export function uploadPayload(ride: RecoveredRide) {
-	if (!ride.workoutJson) return null;
+	if (!canSave(ride)) return null;
 	return {
 		workoutName: ride.workoutName,
 		workoutJson: ride.workoutJson,
@@ -61,13 +70,12 @@ export function recordedMinutes(ride: RecoveredRide): number {
 
 /**
  * What discarding takes, and the ways to keep it instead — only the ways the
- * card is actually offering: a ride buffered before #794 carries no workout
- * JSON, so `uploadPayload` returns null and "Save to your account" never
- * renders. Naming a button that is not there is the same fault as rendering
- * one that will fail (errors.md).
+ * card is actually offering: `canSave` decides whether "Save to your account"
+ * renders at all. Naming a button that is not there is the same fault as
+ * rendering one that will fail (errors.md).
  */
 export function discardBody(ride: RecoveredRide): string {
-	const keep = ride.workoutJson
+	const keep = canSave(ride)
 		? 'Save it to your account or download the .fit first'
 		: 'Download the .fit first';
 	return `“${ride.workoutName}”, ${recordedMinutes(ride)} min recorded — these samples are on this device and nowhere else, so discarding deletes the only copy. ${keep} if you want to keep it.`;

@@ -7,9 +7,15 @@ vi.mock('$lib/confirm.svelte', () => ({ confirm: mocks.confirm }));
 const { confirmDiscard, discardBody, recordedMinutes } =
 	await import('./recovered');
 
-const ride = (samples: number, workoutJson = '{}'): RecoveredRide =>
+const ride = (
+	samples: number,
+	workoutJson = '{}',
+	/** null: a ride buffered before rides were stamped (#2805). */
+	owner: string | null = 'rider-ana',
+): RecoveredRide =>
 	({
 		rideId: 'r1',
+		ownerId: owner ?? undefined,
 		workoutName: 'Sweet Spot',
 		workoutJson,
 		startedAt: 1_700_000_000_000,
@@ -39,6 +45,13 @@ describe('discardBody', () => {
 	// which carries no workout JSON — so the copy must not name that button.
 	it('offers only the .fit when there is no workout to save', () => {
 		const body = discardBody(ride(2520, ''));
+		expect(body).toMatch(/Download the \.fit first if you want to keep it/);
+		expect(body).not.toMatch(/Save it to your account/);
+	});
+
+	// Nor for a ride that names no rider (#2805): the card hides Save there too.
+	it('offers only the .fit when nobody can say whose ride it is', () => {
+		const body = discardBody(ride(2520, '{}', null));
 		expect(body).toMatch(/Download the \.fit first if you want to keep it/);
 		expect(body).not.toMatch(/Save it to your account/);
 	});

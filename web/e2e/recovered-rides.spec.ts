@@ -5,15 +5,19 @@ import { signInAs } from './signin';
  * A crashed ride is offered back where a rider looks (#2616). The only offer
  * sat at the foot of /ride's setup screen, under the FTP field, so a rider
  * who rides sessions or does not scroll never found it. Seeded straight into
- * the crash-safety buffer, as a tab that died mid-ride leaves it.
+ * the crash-safety buffer, as a tab that died mid-ride leaves it: the
+ * signed-in rider's own, unless `unstamped` makes it a ride buffered before
+ * rides named their rider (#2805).
  */
 async function crash(
 	page: Page,
 	workoutName: string,
 	minutesAgo = 30,
+	unstamped = false,
 ): Promise<string> {
 	return page.evaluate(
-		async ([workoutName, minutesAgo]) => {
+		async ([workoutName, minutesAgo, unstamped]) => {
+			const me = await fetch('/api/me').then((res) => res.json());
 			const db = await new Promise<IDBDatabase>((resolve, reject) => {
 				const request = indexedDB.open('wattroom-rides', 1);
 				request.onupgradeneeded = () => {
@@ -30,6 +34,7 @@ async function crash(
 			const t = db.transaction(['samples', 'rides'], 'readwrite');
 			t.objectStore('rides').put({
 				rideId,
+				...(unstamped ? {} : { ownerId: me.id }),
 				startedAt,
 				workoutName,
 				workoutJson: JSON.stringify({
@@ -53,7 +58,7 @@ async function crash(
 			db.close();
 			return rideId;
 		},
-		[workoutName, minutesAgo] as const,
+		[workoutName, minutesAgo, unstamped] as const,
 	);
 }
 
@@ -125,4 +130,98 @@ test('a ride another tab is still recording is not offered back', async ({
 	await riding.close();
 	await page.reload();
 	await expect(card(live)).toBeVisible({ timeout: 15_000 });
+});
+
+/** The LTHR on the signed-in account, null for none. */
+const accountLthr = (page: Page) =>
+	page.evaluate(() =>
+		fetch('/api/me')
+			.then((res) => res.json())
+			.then((me) => (me.lthr as number | undefined) ?? null),
+	);
+
+/** Sets or clears (0) the signed-in account's LTHR, the way the settings save does. */
+async function setLthr(page: Page, lthr: number): Promise<void> {
+	const status = await page.evaluate(async (lthr) => {
+		const me = await fetch('/api/me').then((res) => res.json());
+		const res = await fetch('/api/me', {
+			method: 'PATCH',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				displayName: me.displayName,
+				ftpWatts: me.ftpWatts,
+				weightKg: me.weightKg,
+				lthr,
+			}),
+		});
+		return res.status;
+	}, lthr);
+	expect(status).toBe(200);
+}
+
+/** Whose numbers the browser's profile cache holds, once the pull has run. */
+const cachedFor = (page: Page) =>
+	page.evaluate(
+		() =>
+			JSON.parse(localStorage.getItem('wattroom.profile.v1') ?? '{}')
+				.ownerId as string | undefined,
+	);
+
+/**
+ * One laptop beside one trainer, two riders (#2805). Ana's crashed ride —
+ * heart rate and all — was offered to Ben with a Save that filed it into his
+ * history, and her cached LTHR was written onto his account the moment the
+ * app booted. Ben signs in over her session, with no sign-out between, the
+ * way an expired cookie or a second sign-in swaps the account.
+ */
+test("a crashed ride on a shared browser is its rider's alone", async ({
+	page,
+	browser,
+}) => {
+	// Ben has never set an LTHR. Cleared from a browser of his own: the shared
+	// one pulls whoever the cookie names the moment it changes, and would cache
+	// whatever an earlier run left on his account as his.
+	const his = await browser.newPage();
+	await signInAs(his, 'Shared Laptop Ben', '/api/me');
+	await setLthr(his, 0);
+	await his.close();
+
+	const stamp = Date.now() % 100000;
+	const hers = `Ana Spin ${stamp}`;
+	const nobodys = `Unstamped Spin ${stamp}`;
+	const card = (name: string) =>
+		page.getByText(`Recovered an unfinished ride — ${name}`);
+
+	await signInAs(page, 'Shared Laptop Ana', '/home');
+	await setLthr(page, 171);
+	const ana = await page.evaluate(() =>
+		fetch('/api/me').then((res) => res.json()),
+	);
+	// The pull caches her 171 in this browser, under her name.
+	await page.reload();
+	await expect.poll(() => cachedFor(page)).toBe(ana.id);
+	await crash(page, hers, 40);
+	await crash(page, nobodys, 20, true);
+
+	await signInAs(page, 'Shared Laptop Ben', '/history');
+	const ben = await page.evaluate(() =>
+		fetch('/api/me').then((res) => res.json()),
+	);
+	await expect.poll(() => cachedFor(page)).toBe(ben.id);
+	expect(await accountLthr(page)).toBeNull();
+
+	// The ride nobody's name is on proves the card read the buffer: offered
+	// to download, never to save into whoever is here.
+	await expect(card(nobodys)).toBeVisible({ timeout: 15_000 });
+	await expect(
+		page.getByRole('button', { name: 'Save to your account' }),
+	).toHaveCount(0);
+	await expect(card(hers)).toHaveCount(0);
+
+	// Ana back: her ride waited for her, Save and all.
+	await signInAs(page, 'Shared Laptop Ana', '/history');
+	await expect(card(hers)).toBeVisible({ timeout: 15_000 });
+	await expect(
+		page.getByRole('button', { name: 'Save to your account' }),
+	).toHaveCount(1);
 });

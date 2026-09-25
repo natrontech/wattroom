@@ -36,6 +36,7 @@
 		signalLost as isSignalLost,
 	} from '$lib/workout/session.svelte';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+	import { account } from '$lib/account.svelte';
 	import { stampFtpAfter, uploadRide, type RideUpload } from '$lib/ride/save';
 	import {
 		buildRampTest,
@@ -113,6 +114,7 @@
 			ftpMarkStatus = null;
 			buffer = await openRideBuffer({
 				rideId: String(startedAt),
+				ownerId: account.me?.id,
 				startedAt,
 				workoutName: workout.name,
 				workoutJson: JSON.stringify(workout),

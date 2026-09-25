@@ -13,6 +13,12 @@ const MAX_ENTRIES = 200;
 
 export interface RideRecord {
 	id: string;
+	/**
+	 * The account that rode it (#2805): a summary is its rider's, and the next
+	 * one signing in on this browser does not see it. Absent on a summary kept
+	 * before it, which stays listed — it names nobody, and holds no heart rate.
+	 */
+	ownerId?: string;
 	workoutName: string;
 	/** ISO 8601 */
 	startedAt: string;
@@ -36,6 +42,7 @@ function parse(value: unknown): RideRecord[] {
 		return [
 			{
 				id: r.id,
+				...(typeof r.ownerId === 'string' ? { ownerId: r.ownerId } : {}),
 				workoutName: typeof r.workoutName === 'string' ? r.workoutName : 'Ride',
 				startedAt: r.startedAt,
 				seconds: r.seconds,
@@ -66,53 +73,75 @@ export function summarise(samples: { watts: number }[]): {
 	};
 }
 
-export function createHistoryStore() {
-	let rides = $state<RideRecord[]>(read());
-
-	function read(): RideRecord[] {
-		if (typeof localStorage === 'undefined') return [];
-		try {
-			const raw = localStorage.getItem(KEY);
-			return raw ? parse(JSON.parse(raw)) : [];
-		} catch {
-			return [];
-		}
+function read(): RideRecord[] {
+	if (typeof localStorage === 'undefined') return [];
+	try {
+		const raw = localStorage.getItem(KEY);
+		return raw ? parse(JSON.parse(raw)) : [];
+	} catch {
+		return [];
 	}
+}
+
+/** Returns false when the browser would not take the write. */
+function write(rides: RideRecord[]): boolean {
+	try {
+		if (rides.length) localStorage.setItem(KEY, JSON.stringify(rides));
+		else localStorage.removeItem(KEY);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * The summaries an account left in this browser go with the account (#2805):
+ * the device half of deleting it.
+ */
+export function forgetHistoryOf(ownerId: string): void {
+	write(read().filter((r) => r.ownerId !== ownerId));
+}
+
+/**
+ * The signed-in rider's device summaries. `owner` is asked on every read, so
+ * a different account signing in sees its own list, not the one it found.
+ */
+export function createHistoryStore(owner: () => string | undefined) {
+	let rides = $state<RideRecord[]>(read());
+	const mine = (r: RideRecord) => !r.ownerId || r.ownerId === owner();
 
 	return {
 		get all(): RideRecord[] {
-			return [...rides].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+			return rides
+				.filter(mine)
+				.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
 		},
 		add(record: RideRecord): string | null {
 			// Oldest first out: a rider cares about this week, and the cap keeps the
 			// key well under any browser's quota.
-			const next = [record, ...rides].slice(0, MAX_ENTRIES);
-			try {
-				localStorage.setItem(KEY, JSON.stringify(next));
-			} catch {
+			const next = [{ ...record, ownerId: owner() }, ...rides].slice(
+				0,
+				MAX_ENTRIES,
+			);
+			if (!write(next))
 				return 'Could not save this ride — local storage is full or blocked.';
-			}
 			rides = next;
 			return null;
 		},
 		/** The ride reached the account after all (#1544): one copy, there. */
 		remove(id: string): void {
-			const next = rides.filter((r) => r.id !== id);
+			const next = rides.filter((r) => r.id !== id || !mine(r));
 			if (next.length === rides.length) return;
-			try {
-				localStorage.setItem(KEY, JSON.stringify(next));
-			} catch {
-				/* the account copy exists either way */
-			}
+			// The account copy exists either way.
+			write(next);
 			rides = next;
 		},
+		/** Clears this rider's list; another account's summaries stay theirs. */
 		clear(): void {
-			try {
-				localStorage.removeItem(KEY);
-			} catch {
-				/* nothing to do — the list is already gone from view */
-			}
-			rides = [];
+			// Nothing to do on a refusal — the list is already gone from view.
+			const next = rides.filter((r) => !mine(r));
+			write(next);
+			rides = next;
 		},
 	};
 }

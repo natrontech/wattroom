@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	canSave,
 	exportFilename,
 	exportPayload,
 	uploadPayload,
@@ -11,6 +12,7 @@ const STARTED = Date.UTC(2026, 2, 14, 9, 30);
 
 const ride = (over: Partial<RecoveredRide> = {}): RecoveredRide => ({
 	rideId: 'r1',
+	ownerId: 'rider-ana',
 	startedAt: STARTED,
 	workoutName: 'Openers',
 	workoutJson: '{"name":"Openers","steps":[]}',
@@ -50,6 +52,22 @@ describe('uploadPayload', () => {
 
 	it('refuses a ride buffered before the workout was kept (#794)', () => {
 		expect(uploadPayload(ride({ workoutJson: undefined }))).toBeNull();
+	});
+
+	// Whoever is signed in is not who rode it (#2805): a ride from before rides
+	// were stamped would file its rider's heart rate into the next account.
+	it('refuses a ride that names no rider', () => {
+		expect(uploadPayload(ride({ ownerId: undefined }))).toBeNull();
+	});
+});
+
+describe('canSave', () => {
+	it("offers Save for a rider's own ride with its workout", () => {
+		expect(canSave(ride())).toBe(true);
+	});
+
+	it('never for a ride that names no rider — Download and Discard only', () => {
+		expect(canSave(ride({ ownerId: undefined }))).toBe(false);
 	});
 });
 
