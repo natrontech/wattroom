@@ -304,6 +304,13 @@ func (rm *room) sayDepartedLocked(now time.Time) {
 		if riderID == rm.session.coach && rm.session.open() {
 			rm.passSessionLocked(now)
 		}
+		// Out of the game too (#1577), and only now (#2832): a paceline must
+		// not hand the front to a closed tab, and a podium is not topped from
+		// outside the room — but a reload is a leave and a join inside the
+		// grace, and withdrawing on the leave cost the rider the game.
+		if w, ok := rm.game.(withdrawing); ok {
+			w.withdraw(riderID)
+		}
 	}
 }
 
@@ -336,14 +343,10 @@ func (rm *room) leave(c *client) {
 		// so a stale entry would only tell the next joiner to start a sound
 		// nobody else can hear.
 		delete(rm.sounding, c.rider.ID)
-		// Not announced yet: the tick says so once the grace window is out.
+		// Not announced yet — nor out of the game: the tick does both once
+		// the grace window is out (sayDepartedLocked).
 		rm.departed[c.rider.ID] = rm.now()
 		rm.departedNames[c.rider.ID] = c.rider.Name
-		// Out of the game too (#1577): a paceline must not hand the front
-		// to a closed tab, and a podium is not topped from outside the room.
-		if w, ok := rm.game.(withdrawing); ok {
-			w.withdraw(c.rider.ID)
-		}
 	}
 	metricRiders.Dec()
 }

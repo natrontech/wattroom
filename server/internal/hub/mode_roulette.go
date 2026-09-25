@@ -60,6 +60,9 @@ func (r *roulette) advance(now time.Time, samples map[string]int, roster map[str
 	}
 	for id := range samples {
 		r.joined[id] = true
+		// Back in the room after the grace had withdrawn them: a returning
+		// rider is in it again (#1577, #2832).
+		delete(r.left, id)
 	}
 
 	if r.window == nil && now.After(r.nextAt) {
