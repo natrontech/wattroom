@@ -2,12 +2,14 @@ package hub
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"testing"
 	"testing/synctest"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 type saverFunc func(startedAt time.Time, riders []RiderRecord)
@@ -209,4 +211,55 @@ func TestWorkoutSprintBlockGetsAPodium(t *testing.T) {
 			t.Fatalf("podium %+v, want Kim over Lena", rm.sprint.results)
 		}
 	})
+}
+
+// A closed session's scores are its riders' own (#2819). ADR-0058 keeps the
+// closing card because only a rider who rode is shown it; the tick used to
+// carry every rider's execution to every socket in the channel until the
+// next start, so a member who joined afterwards could read them off the
+// wire. Whoever rode still gets them — the card is rebuilt from the tick on
+// a page that remounts after the close (#2600).
+func TestAClosedSessionsScoresReachOnlyItsRiders(t *testing.T) {
+	segments, err := workout.Parse(`{"steps":[{"type":"steady","seconds":60,"target":1.0}]}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rm := newRoom("afterglow")
+	ana := &client{rider: protocol.Rider{ID: "ana", Name: "Ana"}, out: make(chan []byte, clientQueue)}
+	cat := &client{rider: protocol.Rider{ID: "cat", Name: "Cat"}, out: make(chan []byte, clientQueue)}
+	// Ana rode the session and it has closed; Cat arrives after.
+	rm.session = &session{id: "s1", phase: "done", workoutName: "W", workoutJSON: `{}`}
+	rm.saved = true
+	rm.seen["ana"] = ana.rider
+	rm.seenOrder = append(rm.seenOrder, "ana")
+	rm.record.add("ana", protocol.RiderMetrics{Watts: 200, Seq: 1}, segments, 200, 1)
+	rm.join(ana)
+	rm.join(cat)
+	go rm.run(slog.New(slog.DiscardHandler), time.Now, nil)
+	t.Cleanup(func() { close(rm.stop) })
+
+	take := func(c *client) protocol.ServerTick {
+		t.Helper()
+		select {
+		case frame := <-c.out:
+			var msg protocol.ServerMessage
+			if err := json.Unmarshal(frame, &msg); err != nil || msg.Tick == nil {
+				t.Fatalf("%s got no tick: %v: %s", c.rider.ID, err, frame)
+			}
+			return *msg.Tick
+		case <-time.After(3 * time.Second):
+			t.Fatalf("%s never got a tick", c.rider.ID)
+			return protocol.ServerTick{}
+		}
+	}
+	anaTick, catTick := take(ana), take(cat)
+	if catTick.State.Phase != "done" {
+		t.Fatalf("the tick says %q, want done", catTick.State.Phase)
+	}
+	if catTick.Execution != nil {
+		t.Errorf("a member who never rode the session reads its scores: %v", catTick.Execution)
+	}
+	if _, scored := anaTick.Execution["ana"]; !scored {
+		t.Errorf("the rider who rode lost the closing card's scores: %v", anaTick.Execution)
+	}
 }
