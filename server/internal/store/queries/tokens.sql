@@ -24,3 +24,8 @@ where t.token_hash = $1;
 
 -- name: TouchToken :exec
 update api_tokens set last_used_at = now() where token_hash = $1;
+
+-- name: DeleteUserTokens :execrows
+-- Recovery's sweep (#2811): a token a borrowed session minted is a second
+-- way in that ending sessions never reached.
+delete from api_tokens where user_id = $1;

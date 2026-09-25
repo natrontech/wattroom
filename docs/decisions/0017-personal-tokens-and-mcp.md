@@ -78,3 +78,18 @@ Two rulings the original text did not make:
 The MCP transport budgets calls per account and guesses per address, bounds
 a tool call to ten seconds, and refuses a batch with `-32600` (batching left
 the protocol in 2025-06-18).
+
+## Amendment — what revokes a token besides its owner (2026-09-25, #2811)
+
+"Until revoked" assumed the owner had a reason to revoke. A token outlives the
+session that minted it, so after a borrowed session it was the one way in that
+sign-out-everywhere and recovery both left standing.
+
+- **Recovery revokes every token** ([ADR-0051](0051-a-mailed-link-is-the-way-back-into-an-account.md)).
+  The rider holding the link is meant to be the only one in the account, and a
+  token is a way in. A coach's tooling stops with it, and the landing page says
+  how many tokens went, so the rider knows to mint new ones.
+- **Minting a token raises the security alarm** ([ADR-0030](0030-what-wattroom-emails.md)),
+  so the owner hears about a token they did not make.
+- Deleting the account still cascades them away. Signing out everywhere else
+  does not revoke them yet; whether it should is a separate decision.

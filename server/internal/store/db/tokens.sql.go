@@ -65,6 +65,20 @@ func (q *Queries) DeleteToken(ctx context.Context, arg DeleteTokenParams) (int64
 	return result.RowsAffected(), nil
 }
 
+const deleteUserTokens = `-- name: DeleteUserTokens :execrows
+delete from api_tokens where user_id = $1
+`
+
+// Recovery's sweep (#2811): a token a borrowed session minted is a second
+// way in that ending sessions never reached.
+func (q *Queries) DeleteUserTokens(ctx context.Context, userID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUserTokens, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getUserByTokenHash = `-- name: GetUserByTokenHash :one
 select u.id, u.display_name, u.avatar_url, u.ftp_watts, u.weight_kg, u.created_at, u.strava_upload, u.email, u.notify_planned, u.unsub_token, u.friend_code, u.ics_token, u.accent_palette, u.color_scheme, u.email_verified_at, u.email_pending, u.email_verify_hash, u.email_verify_expires, u.email_required, u.timezone, u.lthr, u.ftp_source, u.weight_source, u.recover_hash, u.recover_expires, u.pending_crew_code, u.home_crew_id, u.status_emoji, u.status_emoji_id, u.status_text, u.status_expires_at, u.cheers from users u
 join api_tokens t on t.user_id = u.id

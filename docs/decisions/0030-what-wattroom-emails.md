@@ -74,9 +74,11 @@ that undoes it. The triggers it serves:
   mail is the only evidence it happened
 - **added 2026-09-10 (#1822)**: the account was recovered from its address —
   see the amendment at the end of this file
+- **added 2026-09-25 (#2811)**: a personal token was created — see the
+  amendment at the end of this file
 
-Eight call sites, one body, one place to read to answer "do we mail on this?".
-Adding a ninth is a normal change; adding a second security template is an
+Nine call sites, one body, one place to read to answer "do we mail on this?".
+Adding a tenth is a normal change; adding a second security template is an
 amendment to this ADR, because the moment there are two there are ten.
 `TestTheAlarmTriggerListMatchesTheCallSites` counts the call sites against
 this paragraph, so a trigger added without the list is a red test rather than
@@ -165,3 +167,15 @@ receipt is exempt: it has no button and no account left to recover.
 address it was mailed to. The refusal of sign-in alerts is untouched — this
 one is not "somebody signed in somewhere", it is "somebody used the one thing
 that can take this account over", and the rider can act on it precisely.
+
+## Amendment, 2026-09-25 (#2811): a personal token is a way in
+
+A personal token ([ADR-0017](0017-personal-tokens-and-mcp.md)) reads a rider's
+rides and progression until it is revoked, and it outlives the session that
+minted it. A borrowed session could mint one as its last move and leave with a
+key nobody knew to look for.
+
+**The trigger list gains an eighth**: a personal token was created. It is the
+same shape as a passkey being added — a new standing way into the account's
+data, which the rider can act on precisely by revoking it on Settings › Data.
+The mail leaves the token's name out, because whoever minted it chose it.

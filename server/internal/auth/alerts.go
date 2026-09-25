@@ -26,6 +26,15 @@ func (s *Service) alert(user db.User, heading, line string) {
 	s.mailer.AccountAlert(user, heading, line)
 }
 
+// TokenMinted is the alarm for a new personal token (#2811). A token outlives
+// the session that minted it — recovery revokes it, signing out does not — so
+// it is a way into the rider's rides that a borrowed session can leave behind.
+// The rider-typed name stays out of the mail: whoever minted it chose it.
+func (s *Service) TokenMinted(user db.User) {
+	s.alert(user, "A personal token was created",
+		"A personal token was created for your WattRoom account. It reads your rides and progression until it is revoked on Settings › Data.")
+}
+
 // providerLabel is a provider id as a rider reads it. Only the odd
 // capitalisation is worth saying; the rest is the id with a capital.
 func providerLabel(id string) string {

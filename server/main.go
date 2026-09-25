@@ -267,7 +267,7 @@ func main() {
 		customworkouts.New(st, authService, log).Register(mux)
 		// Personal read tokens (ADR-0017): bearer auth for GETs of own data
 		// and the MCP coach endpoint. Cookie auth stays the write path.
-		tokenService := tokens.New(st, authService, log)
+		tokenService := tokens.New(st, authService, authService, log)
 		tokenService.Register(mux)
 		readAuth := tokenService.ReadSource(authService)
 		mcp.New(st, tokenService, log).Register(mux)

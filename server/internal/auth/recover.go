@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -196,7 +197,7 @@ func (s *Service) handleRecoverFinishForm(w http.ResponseWriter, r *http.Request
 	// all, so nothing request-derived is ever written into the HTML.
 	httpx.WritePage(w, http.StatusOK, "Sign in", httpx.PageBody(
 		"Sign in to your WattRoom account?",
-		"This link works once. It signs the account out everywhere else, so you will be the only one in it.",
+		"This link works once. It signs the account out everywhere else and revokes its personal tokens, so you will be the only one in it.",
 		`<form method="post"><button>Sign in</button></form>`))
 }
 
@@ -237,15 +238,22 @@ func (s *Service) handleRecoverFinish(w http.ResponseWriter, r *http.Request) {
 	// survives a recovery. Whoever else was in the account is out of it
 	// before the rider is in.
 	ended := s.endSessions(r.Context(), user.ID, nil)
+	// A personal token is the other way in a borrowed session can leave
+	// behind, and ending sessions never reached it (#2811). Every one goes:
+	// a coach's tooling stops, and the landing page says so.
+	revoked, revokeErr := s.store.Queries.DeleteUserTokens(r.Context(), user.ID)
+	if revokeErr != nil {
+		s.log.Error("revoking personal tokens on recovery failed", "err", revokeErr, "user", store.UUIDString(user.ID))
+	}
 	if err := s.startSession(w, r, user.ID); err != nil {
 		s.log.Error("recovery session create failed", "err", err, "user", store.UUIDString(user.ID))
 		s.recoverOutcome(w, http.StatusInternalServerError, "That did not work",
 			"You were signed out everywhere, but the new session could not be saved. Ask for a new link.")
 		return
 	}
-	s.log.Info("account recovered by email", "user", store.UUIDString(user.ID), "sessionsEnded", ended)
+	s.log.Info("account recovered by email", "user", store.UUIDString(user.ID), "sessionsEnded", ended, "tokensRevoked", revoked)
 	s.alert(user, "Your account was recovered by email",
-		"Someone used the recovery link sent to this address to sign in to your WattRoom account, and every other signed-in screen was signed out.")
+		"Someone used the recovery link sent to this address to sign in to your WattRoom account, and every other signed-in screen was signed out and every personal token revoked.")
 
 	// The account may now hold no credential at all — recovery is for exactly
 	// the rider whose last one is gone — so the one thing to do next is add
@@ -253,6 +261,22 @@ func (s *Service) handleRecoverFinish(w http.ResponseWriter, r *http.Request) {
 	// find out at the next sign-in.
 	httpx.WritePage(w, http.StatusOK, "You are signed in", httpx.PageBody(
 		"You are signed in",
-		"Every other screen was signed out. Add a passkey or connect a sign-in provider now — that, not this email, is how you get in next time.",
+		"Every other screen was signed out."+tokensRevokedLine(revoked, revokeErr)+
+			" Add a passkey or connect a sign-in provider now — that, not this email, is how you get in next time.",
 		httpx.PageLink(s.baseURL+"/settings/profile", "Add a way to sign in")))
+}
+
+// tokensRevokedLine is the landing page's account of the tokens recovery
+// revoked: a coach whose tooling just stopped needs a new one, and a failed
+// sweep is said rather than papered over.
+func tokensRevokedLine(n int64, err error) string {
+	switch {
+	case err != nil:
+		return " Your personal tokens could not be revoked — revoke them yourself on Settings › Data."
+	case n == 1:
+		return " 1 personal token was revoked — mint a new one on Settings › Data for whoever used it."
+	case n > 1:
+		return " " + strconv.FormatInt(n, 10) + " personal tokens were revoked — mint new ones on Settings › Data for whoever used them."
+	}
+	return ""
 }
