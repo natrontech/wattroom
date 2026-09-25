@@ -188,9 +188,10 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 // voice channels are severed the way a ban severs them.
 //
 // One transaction (#2079): a leave that failed halfway left a rider with a
-// crew role and none of what it opens, or the reverse. Leaving never ends the
-// crew — its channels are what it holds (ADR-0058), and docs/SPEC.md deletes a
-// crew only on succession with nobody left.
+// crew role and none of what it opens, or the reverse. The last one out of a
+// crew with nothing left in it takes the crew in the same transaction
+// (DeleteCrewIfEmpty, #2837) — a crew with a channel never goes this way,
+// because its channels are what it holds (ADR-0058, #2502).
 //
 // The evictions stay AFTER the commit: they close live sockets, which no
 // rollback can reopen.
@@ -216,6 +217,10 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		err = q.LeaveCrewRole(r.Context(), db.LeaveCrewRoleParams{CrewID: crew.ID, UserID: user.ID})
 	}
+	var swept int64
+	if err == nil {
+		swept, err = q.DeleteCrewIfEmpty(r.Context(), crew.ID)
+	}
 	if err != nil {
 		httpx.Fail(w, s.log, "crew leave failed", err, "Leaving did not work. Try again.", "crew", store.UUIDString(crew.ID))
 		return
@@ -229,7 +234,7 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 	for _, id := range voice {
 		s.evict(store.UUIDString(id), store.UUIDString(user.ID))
 	}
-	s.log.Info("crew left", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID))
+	s.log.Info("crew left", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID), "crewDeleted", swept > 0)
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
 }

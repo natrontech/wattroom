@@ -85,3 +85,65 @@ func TestDeletingAPrivateChannelCancelsItsPlans(t *testing.T) {
 			channel, mail.workouts)
 	}
 }
+
+// A crew's last channel, deleted by an owner nobody else is in the crew with,
+// takes the crew (#1935, #2837): it has nothing left in it, and until now its
+// founder could neither leave it, hand it on nor delete it — the crew held a
+// founding slot for good. A banned row is not somebody in the crew, and a
+// crew with anyone else in it keeps its name, logo and code.
+func TestDeletingTheLastChannelOfACrewNobodyElseIsInTakesTheCrew(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		keep   []string // who, besides the owner and banned erin, stays in the crew
+		gone   bool
+		reason string
+	}{
+		{"alone", nil, true, "the crew outlived its last channel with nobody but its owner in it"},
+		{"with bob", []string{"bob"}, false, "the crew went with its last channel while bob was still in it"},
+		{"with an admin", []string{"dave"}, false, "the crew went with its last channel while dave was still in it"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := setup(t)
+			crewID, _ := store.ParseUUID(h.crew)
+			if _, err := h.store.Pool.Exec(t.Context(),
+				`delete from crew_roles where crew_id = $1 and role in ('member', 'admin') and not (user_id = any($2))`,
+				crewID, h.ids(tc.keep)); err != nil {
+				t.Fatalf("empty the crew: %v", err)
+			}
+			first := h.create(t, "text", "Banter", false)
+			last := h.create(t, "voice", "Pain Cave", false)
+
+			if status, _ := h.call(t, "alice", http.MethodDelete, "/api/channels/"+first, ""); status != http.StatusNoContent {
+				t.Fatalf("delete the first channel: %d", status)
+			}
+			if h.crewGone(t, crewID) {
+				t.Fatal("the crew went with a channel while another was left")
+			}
+			if status, _ := h.call(t, "alice", http.MethodDelete, "/api/channels/"+last, ""); status != http.StatusNoContent {
+				t.Fatalf("delete the last channel: %d", status)
+			}
+			if h.crewGone(t, crewID) != tc.gone {
+				t.Fatal(tc.reason)
+			}
+		})
+	}
+}
+
+// ids is the account ids of the named riders.
+func (h *harness) ids(names []string) []pgtype.UUID {
+	out := make([]pgtype.UUID, 0, len(names))
+	for _, n := range names {
+		out = append(out, h.users.ByToken[n].ID)
+	}
+	return out
+}
+
+// crewGone reads whether the crew row is gone, failing on any other answer.
+func (h *harness) crewGone(t *testing.T, crew pgtype.UUID) bool {
+	t.Helper()
+	var n int
+	if err := h.store.Pool.QueryRow(t.Context(), "select count(*) from crews where id = $1", crew).Scan(&n); err != nil {
+		t.Fatalf("crew read: %v", err)
+	}
+	return n == 0
+}

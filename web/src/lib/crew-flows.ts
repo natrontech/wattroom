@@ -8,6 +8,12 @@ import {
 	transferCrew,
 	type CrewPerson,
 } from '$lib/crew';
+import {
+	deleteChannel,
+	deleteChannelWarning,
+	deleteLabel,
+	type ChannelKind,
+} from '$lib/channels';
 import { chosenCrew } from '$lib/nav/chosen-crew.svelte';
 import { presence } from '$lib/presence.svelte';
 import { channelConnection } from '$lib/channel/connection.svelte';
@@ -30,9 +36,13 @@ export async function leaveCrewFlow(
 	crew: Pick<CrewRef, 'id' | 'name'>,
 ): Promise<boolean> {
 	const standing = channelConnection.current?.address.crew === crew.id;
+	// The server's word, off the crew list (#2079): the confirm names the
+	// crew going before the button rather than it vanishing after.
+	const lastOut =
+		presence.crews.find((c) => c.id === crew.id)?.lastOut === true;
 	const sure = await confirm({
 		title: `Leave ${crew.name}?`,
-		body: leaveBody(crew.name),
+		body: leaveBody(crew.name, lastOut),
 		action: 'Leave the crew',
 		cancel: 'Keep it',
 	});
@@ -44,14 +54,57 @@ export async function leaveCrewFlow(
 	}
 	if (standing) channelConnection.leave();
 	presence.reload();
-	toasts.push(`You left ${crew.name}.`);
+	toasts.push(
+		lastOut
+			? `You left ${crew.name}, and it is gone.`
+			: `You left ${crew.name}.`,
+	);
 	await goto('/home');
 	return true;
 }
 
-/** What leaving takes, said before the button. */
-export const leaveBody = (name: string): string =>
-	`You leave ${name}. Its code gets you back in.`;
+/** What leaving takes, said before the button — and when the last one out
+ *  of a crew with nothing left in it takes the crew (#2079, #2837), that. */
+export const leaveBody = (name: string, lastOut = false): string =>
+	lastOut
+		? `You are the last one in ${name} besides its owner, and it has no channels left, so it goes when you leave. Its code will open nothing.`
+		: `You leave ${name}. Its code gets you back in.`;
+
+/**
+ * Deleting a channel, from wherever it is offered — the crew's sidebar menu
+ * and its Settings — as one flow, so the ask cannot drift between them: the
+ * confirm names what goes, and the crew with it when the server says this is
+ * the last channel of a crew nobody else is in (#1935, #2837); then the
+ * delete. A crew that went takes the rider Home.
+ *
+ * A confirm, not an undo (errors.md): nothing brings a deleted channel back.
+ * Resolves true when the channel went and its crew still stands — the
+ * caller's own follow-up — and false otherwise.
+ */
+export async function deleteChannelFlow(
+	channel: { id: string; name: string; kind: ChannelKind; private?: boolean },
+	crewId: string,
+): Promise<boolean> {
+	const crew = presence.crews.find((c) => c.id === crewId);
+	const crewGoes = crew?.goesWithChannel ? crew.name : undefined;
+	const sure = await confirm({
+		title: `Delete ${channel.name}?`,
+		body: deleteChannelWarning(channel, crewGoes),
+		action: deleteLabel(channel.kind),
+		cancel: 'Keep it',
+	});
+	if (!sure) return false;
+	const res = await deleteChannel(channel.id);
+	if (!res.ok) {
+		toasts.push(res.error.message, { tone: 'error' });
+		return false;
+	}
+	if (!crewGoes) return true;
+	presence.reload();
+	toasts.push(`${crewGoes} went with its last channel.`);
+	await goto('/home');
+	return false;
+}
 
 /**
  * Handing the crew on (#1208, #2095), from wherever it is offered — the

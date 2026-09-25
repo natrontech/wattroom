@@ -86,7 +86,7 @@ const GUARDED: Guarded[] = [
 	{
 		// #2530: the ask moved into the flow the text channel shares, so these
 		// rows watch each call site keep going through it, and the last one
-		// ties the flow to its own copy — crew-flows.ts holds three asks.
+		// ties the flow to its own copy — crew-flows.ts holds four asks.
 		file: 'routes/crew/[id]/members/CrewPeople.svelte',
 		action: 'ban someone from the crew',
 		asks: /banFromCrewFlow\(/,
@@ -141,9 +141,21 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(/,
 	},
 	{
+		// #2837: the ask moved into the flow both call sites share, which
+		// also names the crew when its last channel takes it.
 		file: 'routes/crew/[id]/settings/ChannelRow.svelte',
 		action: 'delete a channel — its chat, or its play log and recaps',
-		asks: /confirm\(/,
+		asks: /deleteChannelFlow\(/,
+	},
+	{
+		file: 'lib/nav/CrewColumn.svelte',
+		action: "delete a channel from the crew's sidebar",
+		asks: /deleteChannelFlow\(/,
+	},
+	{
+		file: 'lib/crew-flows.ts',
+		action: 'delete a channel, from the flow both call sites share',
+		asks: /confirm\(\{[\s\S]{0,200}?body: deleteChannelWarning\(/,
 	},
 	{
 		file: 'routes/settings/profile/+page.svelte',
@@ -201,6 +213,14 @@ const PRIMITIVES: { call: RegExp; callers: string[]; guard: string }[] = [
 		call: /\bdeleteRide\(/,
 		callers: ['lib/ride/detail.ts', 'lib/ride/delete-ride.ts'],
 		guard: 'deleteRideAfterConfirm',
+	},
+	{
+		call: /\bdeleteChannel\(/,
+		callers: [
+			'lib/channels.ts', // the definition
+			'lib/crew-flows.ts',
+		],
+		guard: 'deleteChannelFlow in lib/crew-flows.ts',
 	},
 	{
 		call: /\btransferCrew\(/,

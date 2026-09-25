@@ -25,6 +25,14 @@ export interface CrewRef {
 	 * comparing the name to the owner's display name (audit 2026-09-09).
 	 */
 	named?: boolean;
+	/**
+	 * The server's word that the next step takes the crew (#2079, #2837):
+	 * deleting your one channel of a crew nobody else is in, or — for a
+	 * member — leaving a crew with no channel whose only other person is its
+	 * owner. A crew with nothing left in it goes.
+	 */
+	goesWithChannel?: boolean;
+	lastOut?: boolean;
 }
 
 /**

@@ -158,7 +158,8 @@
 					{#if foundedOut}
 						<p class="text-muted mt-2 text-xs">
 							You own the {founded} crews you founded — the most a rider starts. Hand
-							one on to start another.
+							one on to start another, or delete the channels of one nobody else is
+							in: it goes with the last.
 						</p>
 					{/if}
 				</form>

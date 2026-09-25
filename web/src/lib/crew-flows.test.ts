@@ -8,6 +8,14 @@ const mocks = vi.hoisted(() => ({
 	push: vi.fn(),
 	leave: vi.fn(),
 	current: null as { address: { crew: string } } | null,
+	crews: [] as {
+		id: string;
+		name: string;
+		goesWithChannel?: boolean;
+		lastOut?: boolean;
+	}[],
+	reload: vi.fn(),
+	deleteChannel: vi.fn(),
 }));
 vi.mock('$app/navigation', () => ({ goto: mocks.goto }));
 vi.mock('$lib/confirm.svelte', () => ({ confirm: mocks.confirm }));
@@ -17,7 +25,18 @@ vi.mock('$lib/crew', () => ({
 	joinCrew: vi.fn(),
 	inviteLink: (code: string) => `/c/${code}`,
 }));
-vi.mock('$lib/presence.svelte', () => ({ presence: { reload() {} } }));
+vi.mock('$lib/presence.svelte', () => ({
+	presence: {
+		get crews() {
+			return mocks.crews;
+		},
+		reload: mocks.reload,
+	},
+}));
+vi.mock('$lib/channels', async (importOriginal) => ({
+	...(await importOriginal<typeof import('$lib/channels')>()),
+	deleteChannel: mocks.deleteChannel,
+}));
 vi.mock('$lib/channel/connection.svelte', () => ({
 	channelConnection: {
 		get current() {
@@ -28,8 +47,13 @@ vi.mock('$lib/channel/connection.svelte', () => ({
 }));
 vi.mock('$lib/toast.svelte', () => ({ toasts: { push: mocks.push } }));
 
-const { HAND_OVER_BODY, handOverCrewFlow, leaveBody, leaveCrewFlow } =
-	await import('./crew-flows');
+const {
+	HAND_OVER_BODY,
+	deleteChannelFlow,
+	handOverCrewFlow,
+	leaveBody,
+	leaveCrewFlow,
+} = await import('./crew-flows');
 
 describe('leaveCrewFlow', () => {
 	beforeEach(() => {
@@ -74,6 +98,77 @@ describe('leaveCrewFlow', () => {
 		mocks.current = { address: { crew: 'c1' } };
 		await leaveCrewFlow({ id: 'c1', name: 'Natron' });
 		expect(mocks.leave).toHaveBeenCalledOnce();
+	});
+});
+
+// The last one out of a crew with nothing left in it takes it (#2079), and
+// the confirm says so on the server's word rather than promising the code.
+describe('leaveCrewFlow, last one out', () => {
+	beforeEach(() => {
+		mocks.confirm.mockReset();
+		mocks.leaveCrew.mockReset();
+		mocks.push.mockReset();
+		mocks.crews = [];
+	});
+
+	it('says the crew goes when the crew list says lastOut', async () => {
+		mocks.crews = [{ id: 'c1', name: 'Natron', lastOut: true }];
+		mocks.confirm.mockResolvedValue(true);
+		mocks.leaveCrew.mockResolvedValue({ ok: true, data: undefined });
+		await leaveCrewFlow({ id: 'c1', name: 'Natron' });
+		const body = mocks.confirm.mock.calls[0][0].body as string;
+		expect(body).toContain('it goes when you leave');
+		expect(body).not.toContain('gets you back in');
+		expect(mocks.push).toHaveBeenCalledWith('You left Natron, and it is gone.');
+	});
+});
+
+// A crew's last channel, with nobody else in the crew, takes the crew
+// (#1935, #2837): the confirm names it and the rider lands Home, because the
+// crew page they were on no longer exists.
+describe('deleteChannelFlow', () => {
+	const channel = { id: 'ch1', name: 'Pain Cave', kind: 'voice' as const };
+	beforeEach(() => {
+		mocks.confirm.mockReset();
+		mocks.deleteChannel.mockReset();
+		mocks.goto.mockReset();
+		mocks.push.mockReset();
+		mocks.reload.mockReset();
+		mocks.crews = [];
+	});
+
+	it('names the crew going, and takes the rider Home after', async () => {
+		mocks.crews = [{ id: 'c1', name: 'Natron', goesWithChannel: true }];
+		mocks.confirm.mockResolvedValue(true);
+		mocks.deleteChannel.mockResolvedValue({ ok: true, data: undefined });
+		expect(await deleteChannelFlow(channel, 'c1')).toBe(false);
+		expect(mocks.confirm.mock.calls[0][0].body).toContain('so Natron goes too');
+		expect(mocks.goto).toHaveBeenCalledWith('/home');
+		expect(mocks.reload).toHaveBeenCalled();
+	});
+
+	it('leaves a crew that stands to the caller', async () => {
+		mocks.crews = [{ id: 'c1', name: 'Natron' }];
+		mocks.confirm.mockResolvedValue(true);
+		mocks.deleteChannel.mockResolvedValue({ ok: true, data: undefined });
+		expect(await deleteChannelFlow(channel, 'c1')).toBe(true);
+		expect(mocks.confirm.mock.calls[0][0].body).not.toContain('goes too');
+		expect(mocks.goto).not.toHaveBeenCalled();
+	});
+
+	it('deletes nothing on no, and says a refusal', async () => {
+		mocks.confirm.mockResolvedValue(false);
+		expect(await deleteChannelFlow(channel, 'c1')).toBe(false);
+		expect(mocks.deleteChannel).not.toHaveBeenCalled();
+		mocks.confirm.mockResolvedValue(true);
+		mocks.deleteChannel.mockResolvedValue({
+			ok: false,
+			error: { error: 'forbidden', message: 'Only admins delete channels.' },
+		});
+		expect(await deleteChannelFlow(channel, 'c1')).toBe(false);
+		expect(mocks.push).toHaveBeenCalledWith('Only admins delete channels.', {
+			tone: 'error',
+		});
 	});
 });
 

@@ -6,15 +6,13 @@
 	// change; the list around it owns the order and re-reads after each save.
 	import Select from '$lib/components/Select.svelte';
 	import {
-		deleteChannelWarning,
-		deleteChannel,
 		deleteLabel,
 		setNamedInChannel,
 		updateChannel,
 		type CrewChannel,
 		type ChannelPatch,
 	} from '$lib/channels';
-	import { confirm } from '$lib/confirm.svelte';
+	import { deleteChannelFlow } from '$lib/crew-flows';
 	import {
 		contextMenu,
 		MENU_HINT,
@@ -35,6 +33,7 @@
 
 	let {
 		channel,
+		crewId,
 		people,
 		playlists,
 		first,
@@ -43,6 +42,7 @@
 		onmove,
 	}: {
 		channel: CrewChannel;
+		crewId: string;
 		/** The crew's people, for naming a member into a private channel. */
 		people: CrewPerson[];
 		playlists: PlaylistStore;
@@ -93,21 +93,11 @@
 		await onchange();
 	}
 
-	// Destructive with no undo (errors.md): the channel's history goes with
-	// it, for everyone, so the body names exactly what.
 	async function remove() {
-		const ok = await confirm({
-			title: `Delete ${channel.name}?`,
-			body: deleteChannelWarning(channel),
-			action: deleteLabel(channel.kind),
-			cancel: 'Keep it',
-		});
-		if (!ok) return;
 		busy = true;
-		const res = await deleteChannel(channel.id);
+		const stands = await deleteChannelFlow(channel, crewId);
 		busy = false;
-		if (!res.ok) toasts.push(res.error.message, { tone: 'error' });
-		await onchange();
+		if (stands) await onchange();
 	}
 
 	function entries(): MenuEntry[] {

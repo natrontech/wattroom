@@ -84,6 +84,10 @@
 		crew?.role === 'owner' || crew?.role === 'admin',
 	);
 	const owner = $derived(crew?.role === 'owner');
+	// The last one out of a crew with nothing left in it takes it (#2079).
+	const lastOut = $derived(
+		presence.crews.find((c) => c.id === crew?.id)?.lastOut === true,
+	);
 	// The crew's size, not the length of the list you may see (#1135).
 	const members = $derived(crew?.members ?? crew?.people.length ?? 0);
 	// The faces and statuses its surfaces read (ADR-0060).
@@ -244,10 +248,19 @@
 		<h2 class="eyebrow mt-8">leave</h2>
 		<div class="panel mt-2 flex flex-wrap items-center gap-3">
 			<p class="text-muted min-w-0 flex-1 text-xs">
-				{#if owner}
+				{#if owner && crew.members === 1}
+					<!-- Nobody to hand it to (#2837): a crew with nothing left in it
+					     goes, so the way out is its channels. -->
+					Nobody else is in {crew.name}. Delete its channels on
+					<a href="/crew/{crew.id}/settings" class="underline">Settings</a> and it
+					goes with the last one.
+				{:else if owner}
 					You own {crew.name} — hand it to someone on
 					<a href="/crew/{crew.id}/members" class="underline">Members</a> first, then
 					leave.
+				{:else if lastOut}
+					You are the last one in {crew.name} besides its owner, and it has no channels
+					left: it goes when you leave.
 				{:else}
 					Leaving takes you out of {crew.name}. The code gets you back.
 				{/if}

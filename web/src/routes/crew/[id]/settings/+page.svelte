@@ -421,10 +421,11 @@
 		{#if crew.role === 'owner'}
 			<!-- Both halves of this line used to be wrong (#1935): a crew with
 			     people in it passes to one of them rather than going with your
-			     account, and one with nobody else in it goes with your account. -->
+			     account, and one with nothing left in it goes (#2837). -->
 			<p class="text-muted mt-1 text-xs">
 				A crew has no delete button. With people still in it, it passes to one
-				of them — hand it on yourself, or your account's deletion does.
+				of them — hand it on yourself, or your account's deletion does. With
+				nobody else in it, it goes with its last channel.
 			</p>
 		{/if}
 		<button

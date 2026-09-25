@@ -228,13 +228,49 @@ select c.id, c.name, c.icon,
        -- founded_by is NULL once the founder deleted their account (#2815).
        coalesce(c.founded_by = sqlc.arg(user_id), false)::boolean as founded,
        exists (select 1 from crew_roles cr
-               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin')::boolean as admin
+               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role = 'admin')::boolean as admin,
+       -- DeleteCrewIfEmpty's predicate one step early, so each confirm says
+       -- the crew goes before the button rather than it vanishing after
+       -- (#2079, #2837). Change one and change the others. Deleting the
+       -- owner's one channel takes a crew nobody else is in...
+       (c.owner_id = sqlc.arg(user_id)
+        and (select count(*) from channels ch where ch.crew_id = c.id) = 1
+        and not exists (select 1 from crew_roles cr
+                        where cr.crew_id = c.id and cr.role in ('member', 'admin')
+                          and cr.user_id <> c.owner_id))::boolean as goes_with_channel,
+       -- ...and a member leaving takes a crew with no channel whose only
+       -- other person is its owner.
+       (c.owner_id <> sqlc.arg(user_id)
+        and not exists (select 1 from channels ch where ch.crew_id = c.id)
+        and not exists (select 1 from crew_roles cr
+                        where cr.crew_id = c.id and cr.role in ('member', 'admin')
+                          and cr.user_id <> c.owner_id and cr.user_id <> sqlc.arg(user_id)))::boolean as last_out
 from crews c
 where c.owner_id = sqlc.arg(user_id)
    or exists (select 1 from crew_roles cr
               where cr.crew_id = c.id and cr.user_id = sqlc.arg(user_id) and cr.role in ('member', 'admin'))
 order by c.created_at
 limit 100; -- an engineering bound (#1416): a rider is in a handful of crews
+
+-- name: DeleteCrewIfEmpty :execrows
+-- A crew with nothing left in it goes (#1935, #2079, #2837): no channel —
+-- its channels and their history are what it holds (ADR-0058, #2502) — and
+-- nobody in it but its owner. Without it a founder whose crew nobody joined,
+-- or everybody left, could neither leave it, hand it on nor delete it, and it
+-- held one of their founding slots for good. Called in the transaction that
+-- deletes a channel and in the one that leaves a crew; a ban does not sweep
+-- (#2079: an owner's moderation click must not destroy the crew).
+--
+-- One statement, not a read the caller acts on: the predicate is tested at
+-- the moment of the delete, so a channel made a millisecond earlier keeps
+-- the crew. A `banned` row is not somebody in the crew, and the owner's own
+-- row is their switches (SetCrewPrefs, #2493). ListCrewsFor's
+-- goes_with_channel and last_out are this, one step early.
+delete from crews c where c.id = sqlc.arg(crew_id)
+  and not exists (select 1 from channels ch where ch.crew_id = c.id)
+  and not exists (select 1 from crew_roles cr
+                  where cr.crew_id = c.id and cr.role in ('member', 'admin')
+                    and cr.user_id <> c.owner_id);
 
 -- name: PickCrewSuccessor :one
 -- docs/SPEC.md's succession rule: the longest-standing admin, else the

@@ -284,7 +284,9 @@ func (s *Service) membersOf(w http.ResponseWriter, ctx context.Context, c db.Cha
 
 // handleDelete takes the channel and everything in it — chat, play log,
 // recaps, and a private channel's plans. The client asks first (errors.md:
-// destructive, no undo).
+// destructive, no undo). The last channel of a crew nobody but its owner is
+// in takes the crew with it, in the same transaction (DeleteCrewIfEmpty,
+// #1935, #2837); the crew list told the confirm so beforehand.
 func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	channel, user, role, ok := s.channelFor(w, r)
 	if !ok || !requireAdmin(w, role) {
@@ -305,13 +307,37 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 			s.notifier.SessionCancelled(channel.CrewID, channel.ID, plan.WorkoutName, plan.StartsAt.Time, user.ID)
 		}
 	}
-	if err := s.store.Queries.DeleteChannel(r.Context(), channel.ID); err != nil {
+	swept, err := s.deleteChannel(r.Context(), channel)
+	if err != nil {
 		httpx.Fail(w, s.log, "delete channel failed", err, "The channel could not be deleted.", "channel", store.UUIDString(channel.ID))
 		return
+	}
+	if swept {
+		s.log.Info("crew deleted with its last channel", "crew", store.UUIDString(channel.CrewID))
 	}
 	if channel.Kind == kindVoice && s.live != nil {
 		s.live.CloseRoom(store.UUIDString(channel.ID))
 	}
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// deleteChannel drops the channel and, when that leaves its crew with
+// nothing in it, the crew — one transaction, so a crew is never left
+// channel-less and stuck because the second statement failed.
+func (s *Service) deleteChannel(ctx context.Context, channel db.Channel) (crewSwept bool, err error) {
+	tx, err := s.store.Pool.Begin(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.store.Queries.WithTx(tx)
+	if err := q.DeleteChannel(ctx, channel.ID); err != nil {
+		return false, err
+	}
+	n, err := q.DeleteCrewIfEmpty(ctx, channel.CrewID)
+	if err != nil {
+		return false, err
+	}
+	return n > 0, tx.Commit(ctx)
 }

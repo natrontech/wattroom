@@ -128,6 +128,37 @@ func (q *Queries) DeleteCrew(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
+const deleteCrewIfEmpty = `-- name: DeleteCrewIfEmpty :execrows
+
+delete from crews c where c.id = $1
+  and not exists (select 1 from channels ch where ch.crew_id = c.id)
+  and not exists (select 1 from crew_roles cr
+                  where cr.crew_id = c.id and cr.role in ('member', 'admin')
+                    and cr.user_id <> c.owner_id)
+`
+
+// an engineering bound (#1416): a rider is in a handful of crews
+// A crew with nothing left in it goes (#1935, #2079, #2837): no channel —
+// its channels and their history are what it holds (ADR-0058, #2502) — and
+// nobody in it but its owner. Without it a founder whose crew nobody joined,
+// or everybody left, could neither leave it, hand it on nor delete it, and it
+// held one of their founding slots for good. Called in the transaction that
+// deletes a channel and in the one that leaves a crew; a ban does not sweep
+// (#2079: an owner's moderation click must not destroy the crew).
+//
+// One statement, not a read the caller acts on: the predicate is tested at
+// the moment of the delete, so a channel made a millisecond earlier keeps
+// the crew. A `banned` row is not somebody in the crew, and the owner's own
+// row is their switches (SetCrewPrefs, #2493). ListCrewsFor's
+// goes_with_channel and last_out are this, one step early.
+func (q *Queries) DeleteCrewIfEmpty(ctx context.Context, crewID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteCrewIfEmpty, crewID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const foundCrew = `-- name: FoundCrew :one
 insert into crews (name, owner_id, code, founded_by, renamed_at)
 values ($1, $2, $3, $2, now())
@@ -522,7 +553,23 @@ select c.id, c.name, c.icon,
        -- founded_by is NULL once the founder deleted their account (#2815).
        coalesce(c.founded_by = $1, false)::boolean as founded,
        exists (select 1 from crew_roles cr
-               where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin')::boolean as admin
+               where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin')::boolean as admin,
+       -- DeleteCrewIfEmpty's predicate one step early, so each confirm says
+       -- the crew goes before the button rather than it vanishing after
+       -- (#2079, #2837). Change one and change the others. Deleting the
+       -- owner's one channel takes a crew nobody else is in...
+       (c.owner_id = $1
+        and (select count(*) from channels ch where ch.crew_id = c.id) = 1
+        and not exists (select 1 from crew_roles cr
+                        where cr.crew_id = c.id and cr.role in ('member', 'admin')
+                          and cr.user_id <> c.owner_id))::boolean as goes_with_channel,
+       -- ...and a member leaving takes a crew with no channel whose only
+       -- other person is its owner.
+       (c.owner_id <> $1
+        and not exists (select 1 from channels ch where ch.crew_id = c.id)
+        and not exists (select 1 from crew_roles cr
+                        where cr.crew_id = c.id and cr.role in ('member', 'admin')
+                          and cr.user_id <> c.owner_id and cr.user_id <> $1))::boolean as last_out
 from crews c
 where c.owner_id = $1
    or exists (select 1 from crew_roles cr
@@ -532,15 +579,17 @@ limit 100
 `
 
 type ListCrewsForRow struct {
-	ID       pgtype.UUID
-	Name     string
-	Icon     string
-	HasImage bool
-	Code     string
-	Named    bool
-	Owned    bool
-	Founded  bool
-	Admin    bool
+	ID              pgtype.UUID
+	Name            string
+	Icon            string
+	HasImage        bool
+	Code            string
+	Named           bool
+	Owned           bool
+	Founded         bool
+	Admin           bool
+	GoesWithChannel bool
+	LastOut         bool
 }
 
 // Every crew you are in (#1476), for the sidebar.
@@ -563,6 +612,8 @@ func (q *Queries) ListCrewsFor(ctx context.Context, userID pgtype.UUID) ([]ListC
 			&i.Owned,
 			&i.Founded,
 			&i.Admin,
+			&i.GoesWithChannel,
+			&i.LastOut,
 		); err != nil {
 			return nil, err
 		}
@@ -680,7 +731,6 @@ func (q *Queries) LockCrew(ctx context.Context, id pgtype.UUID) error {
 }
 
 const pickCrewSuccessor = `-- name: PickCrewSuccessor :one
-
 select cr.user_id
 from crew_roles cr
 where cr.crew_id = $1 and cr.user_id <> $2 and cr.role in ('admin', 'member')
@@ -693,7 +743,6 @@ type PickCrewSuccessorParams struct {
 	Departing pgtype.UUID
 }
 
-// an engineering bound (#1416): a rider is in a handful of crews
 // docs/SPEC.md's succession rule: the longest-standing admin, else the
 // longest-standing member (#1236: the rows, not the rooms); never the
 // departing owner, never anyone the crew banned. No row means nobody is left
