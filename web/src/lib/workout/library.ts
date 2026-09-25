@@ -475,15 +475,17 @@ const fixtures: LibraryWorkout[] = [
 	{
 		id: 'smoke-test',
 		focus: 'Recovery',
-		summary: 'CI fixture — one minute, end to end.',
+		summary: 'CI fixture — just over a minute, end to end.',
 		workout: {
-			// Half a minute of ramp and half of steady: the seam the e2e ride proves
-			// needs a step transition and a real-time clock, not a long ride. This is
-			// the dominant term in CI's slowest job, so the length is the minimum that
-			// still exercises both step kinds.
+			// Half a minute of ramp and a little more of steady: the seam the e2e
+			// ride proves needs a step transition and a real-time clock, not a long
+			// ride. This is the dominant term in CI's slowest job, so the length is
+			// the minimum that exercises both step kinds AND saves: the server keeps
+			// no ride under 60 samples, and at exactly 60 s a busy machine that
+			// loses one second got the smoke ride refused (#2788).
 			name: 'Smoke Test',
 			author: 'wattroom',
-			steps: [warm(30, 0.4, 0.65), hold(30, 0.75)],
+			steps: [warm(30, 0.4, 0.65), hold(35, 0.75)],
 		},
 	},
 ];
