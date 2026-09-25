@@ -14,6 +14,14 @@ describe('deleteChannelWarning', () => {
 		expect(said).toContain('stays on the crew’s schedule');
 		expect(said).not.toContain('cancelled');
 	});
+	it('names the crew when the channel takes it (#2837)', () => {
+		const said = deleteChannelWarning({ kind: 'text' }, 'Natron');
+		expect(said).toContain('the last channel of Natron');
+		expect(said).toMatch(/There is no undo\.$/);
+		expect(deleteChannelWarning({ kind: 'text' })).not.toContain(
+			'last channel',
+		);
+	});
 	it('names a text channel’s messages, not plans', () => {
 		expect(deleteChannelWarning({ kind: 'text', private: true })).not.toContain(
 			'planned',

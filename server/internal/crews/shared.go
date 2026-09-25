@@ -29,6 +29,12 @@ type crewRefJSON struct {
 	// A person has named it (#1151): until then it carries the owner's name
 	// and the set-up step stays open.
 	Named bool `json:"named,omitempty"`
+	// Whether the next step takes the crew with it (#2079, #2837), so the
+	// confirm can say so: deleting the owner's one channel of a crew nobody
+	// else is in, or a member leaving a crew with no channel and nobody else
+	// but its owner. The crew list sets them; nothing else does.
+	GoesWithChannel bool `json:"goesWithChannel,omitempty"`
+	LastOut         bool `json:"lastOut,omitempty"`
 }
 
 // randomCode draws from an alphabet with no 0/O/1/I/L — codes get read out

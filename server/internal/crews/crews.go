@@ -114,6 +114,7 @@ func (s *Service) handleMyCrews(w http.ResponseWriter, r *http.Request) {
 			Id: store.UUIDString(c.ID), Name: c.Name, Icon: c.Icon,
 			ImageURL: crewImageURL(c.ID, c.HasImage), Code: c.Code,
 			Role: role, Named: c.Named, Founded: c.Founded,
+			GoesWithChannel: c.GoesWithChannel, LastOut: c.LastOut,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"crews": out})

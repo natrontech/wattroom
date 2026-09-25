@@ -124,6 +124,7 @@
 						>
 							<ChannelRow
 								{channel}
+								crewId={crew.id}
 								people={crew.people}
 								{playlists}
 								first={i === 0}

@@ -10,13 +10,13 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import Modal from '$lib/components/Modal.svelte';
-	import { confirm } from '$lib/confirm.svelte';
 	import {
 		contextMenu,
 		MENU_HINT,
 		type MenuEntry,
 	} from '$lib/context-menu.svelte';
-	import { deleteChannelWarning, deleteLabel, newLabel } from '$lib/channels';
+	import { deleteLabel, newLabel } from '$lib/channels';
+	import { deleteChannelFlow } from '$lib/crew-flows';
 	import { device } from '$lib/device.svelte';
 	import { UNREAD_COUNT, unreadCount } from '$lib/messages/unread-marks';
 	import type { CrewRef } from '$lib/crew-types';
@@ -95,20 +95,7 @@
 		void crewLive.reload();
 	}
 	async function remove(c: LiveChannel) {
-		// Nothing brings a deleted channel back (errors.md: the genuinely
-		// destructive asks).
-		const sure = await confirm({
-			title: `Delete ${c.name}?`,
-			body: deleteChannelWarning(c),
-			action: deleteLabel(c.kind),
-			cancel: 'Keep it',
-		});
-		if (!sure) return;
-		const res = await api(`/api/channels/${c.id}`, { method: 'DELETE' });
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
+		if (!(await deleteChannelFlow(c, crew.id))) return;
 		if (pathname.startsWith(pathOf(c))) void goto(`/crew/${crew.id}`);
 		void crewLive.reload();
 	}
