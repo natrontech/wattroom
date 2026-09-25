@@ -108,7 +108,9 @@
 		myExecution: () => you.execution,
 		sessionId: () => shared?.id,
 		workoutName: () => shared?.workoutName,
-		riders: () => riders,
+		// Who rode is the session's riders (#2635): the channel's roster also
+		// holds phones and people who were only in the call.
+		riders: () => riders.filter((r) => r.inSession),
 		ftp: () => you.ftp,
 	});
 	// The close is read on the summary (#2601): TV mode drew over it, and its
