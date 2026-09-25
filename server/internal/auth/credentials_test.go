@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -186,41 +187,8 @@ func TestDisconnectingStravaForgetsItsActivityIds(t *testing.T) {
 	linkIdentity(t, s, user, "github", "disconnect-strava-keeps-github")
 	linkIdentity(t, s, other, "strava", "another-riders-strava")
 
-	delivered := func(owner db.User, activity int64) pgtype.UUID {
-		t.Helper()
-		ride, err := s.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
-			UserID: owner.ID, WorkoutName: "Openers",
-			StartedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
-			Seconds:   60, AvgWatts: 200, Kj: 12, FtpWatts: 200,
-			Samples: []byte("{}"), Curve: []byte("{}"),
-		})
-		if err != nil {
-			t.Fatalf("create ride: %v", err)
-		}
-		if err := s.store.Queries.StartRideExport(t.Context(), db.StartRideExportParams{
-			RideID: ride, Destination: "strava",
-		}); err != nil {
-			t.Fatalf("start export: %v", err)
-		}
-		if err := s.store.Queries.FinishRideExport(t.Context(), db.FinishRideExportParams{
-			RideID: ride, Destination: "strava", RemoteID: &activity,
-		}); err != nil {
-			t.Fatalf("finish export: %v", err)
-		}
-		return ride
-	}
-	mine, theirs := delivered(user, 111222333), delivered(other, 444555666)
-
-	read := func(ride pgtype.UUID) db.GetRideExportRow {
-		t.Helper()
-		row, err := s.store.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
-			RideID: ride, Destination: "strava",
-		})
-		if err != nil {
-			t.Fatalf("read delivery: %v", err)
-		}
-		return row
-	}
+	mine, theirs := delivered(t, s, user, 111222333), delivered(t, s, other, 444555666)
+	read := func(ride pgtype.UUID) db.GetRideExportRow { return readDelivery(t, s, ride) }
 	if got := read(mine).RemoteID; got == nil || *got != 111222333 {
 		t.Fatalf("the fixture never stored an activity id: %v", got)
 	}
@@ -251,8 +219,22 @@ func TestTheLastCredentialKeepsItsActivityIds(t *testing.T) {
 	cookie := signedIn(t, s, user)
 	linkIdentity(t, s, user, "strava", "only-strava")
 
+	activity := int64(777888999)
+	ride := delivered(t, s, user, activity)
+
+	if w := disconnect(t, s, cookie, "strava"); w.Code != http.StatusConflict {
+		t.Fatalf("disconnecting the last credential = %d, want 409: %s", w.Code, w.Body.String())
+	}
+	if row := readDelivery(t, s, ride); row.RemoteID == nil || *row.RemoteID != activity {
+		t.Errorf("a refused disconnect cleared the ids anyway: %v", row.RemoteID)
+	}
+}
+
+// delivered is a ride of owner's that Strava accepted as activity.
+func delivered(t *testing.T, s *Service, owner db.User, activity int64) pgtype.UUID {
+	t.Helper()
 	ride, err := s.store.Queries.CreateRide(t.Context(), db.CreateRideParams{
-		UserID: user.ID, WorkoutName: "Openers",
+		UserID: owner.ID, WorkoutName: "Openers",
 		StartedAt: pgtype.Timestamptz{Time: time.Now(), Valid: true},
 		Seconds:   60, AvgWatts: 200, Kj: 12, FtpWatts: 200,
 		Samples: []byte("{}"), Curve: []byte("{}"),
@@ -265,23 +247,104 @@ func TestTheLastCredentialKeepsItsActivityIds(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("start export: %v", err)
 	}
-	activity := int64(777888999)
 	if err := s.store.Queries.FinishRideExport(t.Context(), db.FinishRideExportParams{
 		RideID: ride, Destination: "strava", RemoteID: &activity,
 	}); err != nil {
 		t.Fatalf("finish export: %v", err)
 	}
+	return ride
+}
 
-	if w := disconnect(t, s, cookie, "strava"); w.Code != http.StatusConflict {
-		t.Fatalf("disconnecting the last credential = %d, want 409: %s", w.Code, w.Body.String())
-	}
+func readDelivery(t *testing.T, s *Service, ride pgtype.UUID) db.GetRideExportRow {
+	t.Helper()
 	row, err := s.store.Queries.GetRideExport(t.Context(), db.GetRideExportParams{
 		RideID: ride, Destination: "strava",
 	})
 	if err != nil {
 		t.Fatalf("read delivery: %v", err)
 	}
-	if row.RemoteID == nil || *row.RemoteID != activity {
-		t.Errorf("a refused disconnect cleared the ids anyway: %v", row.RemoteID)
+	return row
+}
+
+// A grant taken back on Strava's side (#2823) costs what the in-app
+// disconnect costs — the identity, the activity ids, an alarm — and nothing
+// of anyone else's.
+func TestStravaSideRevocationForgetsTheGrant(t *testing.T) {
+	s := testService(t)
+	mailer := &fakeMailer{}
+	s.SetMailer(mailer)
+	user := testUser(t, s)
+	other := testUser(t, s)
+	if _, err := s.store.Pool.Exec(t.Context(),
+		"update users set email = $2, email_verified_at = now() where id = $1",
+		user.ID, "revoked@example.test"); err != nil {
+		t.Fatalf("verify address: %v", err)
+	}
+	linkIdentity(t, s, user, "strava", "revoked-on-strava")
+	linkIdentity(t, s, user, "github", "revoked-on-strava-backup")
+	linkIdentity(t, s, other, "strava", "still-granted")
+	mine, theirs := delivered(t, s, user, 121212), delivered(t, s, other, 343434)
+	ident, err := s.store.Queries.GetUserIdentity(t.Context(), db.GetUserIdentityParams{UserID: user.ID, Provider: "strava"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.ForgetStravaGrant(t.Context(), ident); err != nil {
+		t.Fatalf("forget: %v", err)
+	}
+	if _, err := s.store.Queries.GetUserIdentity(t.Context(), db.GetUserIdentityParams{
+		UserID: user.ID, Provider: "strava",
+	}); !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("the identity outlived the grant: %v", err)
+	}
+	if got := readDelivery(t, s, mine).RemoteID; got != nil {
+		t.Errorf("the activity id outlived the grant: %d", *got)
+	}
+	if got := readDelivery(t, s, theirs).RemoteID; got == nil || *got != 343434 {
+		t.Errorf("another rider's activity id was cleared: %v", got)
+	}
+	if got := mailer.sent(t); len(got) != 1 || !strings.Contains(got[0].line, "Strava") {
+		t.Errorf("alerts = %+v, want the one that names Strava", got)
+	}
+}
+
+// When Strava is the only way in, the identity stays so the rider can still
+// sign in — and re-grant by doing so — but nothing Strava gave us stays with
+// it: no token, sealed or not, and no activity id.
+func TestStravaSideRevocationOfTheLastCredentialEmptiesIt(t *testing.T) {
+	s := testService(t)
+	mailer := &fakeMailer{}
+	s.SetMailer(mailer)
+	user := testUser(t, s)
+	access, refresh := "access-token", "refresh-token"
+	if err := s.store.Queries.CreateIdentity(t.Context(), db.CreateIdentityParams{
+		Provider: "strava", ProviderUserID: "only-way-in", UserID: user.ID,
+		AccessToken: &access, RefreshToken: &refresh, RefreshTokenEnc: []byte("sealed"),
+		TokenExpiresAt: pgtype.Timestamptz{Time: time.Now().Add(time.Hour), Valid: true},
+	}); err != nil {
+		t.Fatalf("create identity: %v", err)
+	}
+	ride := delivered(t, s, user, 565656)
+	ident, err := s.store.Queries.GetUserIdentity(t.Context(), db.GetUserIdentityParams{UserID: user.ID, Provider: "strava"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.ForgetStravaGrant(t.Context(), ident); err != nil {
+		t.Fatalf("forget: %v", err)
+	}
+	kept, err := s.store.Queries.GetUserIdentity(t.Context(), db.GetUserIdentityParams{UserID: user.ID, Provider: "strava"})
+	if err != nil {
+		t.Fatalf("the only way into the account was removed: %v", err)
+	}
+	if kept.AccessToken != nil || kept.RefreshToken != nil || kept.RefreshTokenEnc != nil || kept.TokenExpiresAt.Valid {
+		t.Errorf("tokens outlived the grant: %+v", kept)
+	}
+	if got := readDelivery(t, s, ride).RemoteID; got != nil {
+		t.Errorf("the activity id outlived the grant: %d", *got)
+	}
+	// Nothing left the account, so there is nothing to alarm about.
+	if got := mailer.sent(t); len(got) != 0 {
+		t.Errorf("alerts = %+v, want none", got)
 	}
 }
