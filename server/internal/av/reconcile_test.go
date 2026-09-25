@@ -14,6 +14,10 @@ import (
 // memory), and a 500 room is left alone — don't-know must not wipe the radar.
 func TestReconcile(t *testing.T) {
 	lk := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/twirp/livekit.RoomService/ListRooms" {
+			_, _ = w.Write([]byte(`{"rooms":[]}`))
+			return
+		}
 		if r.URL.Path != "/twirp/livekit.RoomService/ListParticipants" {
 			t.Errorf("unexpected path %s", r.URL.Path)
 		}
@@ -50,5 +54,45 @@ func TestReconcile(t *testing.T) {
 	}
 	if _, ok := sink.synced["flaky"]; ok {
 		t.Fatal("a failed LiveKit answer must not sync anything")
+	}
+}
+
+// Whether LiveKit answers at all is asked every sweep, and above all with
+// nobody in voice (#2850): that is the state a first join meets, and it is
+// the one the participant sweep never asks about. Any answer from the
+// RoomService is "up"; a call that fails is "down"; and the next answer
+// brings it back.
+func TestReconcileLearnsWhetherLiveKitAnswers(t *testing.T) {
+	up := true
+	lk := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !up {
+			http.Error(w, "bad gateway", http.StatusBadGateway)
+			return
+		}
+		_, _ = w.Write([]byte(`{"rooms":[]}`))
+	}))
+	defer lk.Close()
+	svc := New(Config{URL: lk.URL, Key: "devkey", Secret: "secret"}, nil, slog.New(slog.DiscardHandler))
+	svc.SetVoiceSink(&fakeSink{})
+
+	svc.reconcile(t.Context())
+	if !svc.Reachable() {
+		t.Fatal("a LiveKit that answers reads as down")
+	}
+	up = false
+	svc.reconcile(t.Context())
+	if svc.Reachable() {
+		t.Fatal("a LiveKit that answers 502 with nobody in voice reads as up")
+	}
+	up = true
+	svc.reconcile(t.Context())
+	if !svc.Reachable() {
+		t.Fatal("LiveKit came back and the service still says it is down")
+	}
+
+	lk.Close()
+	svc.reconcile(t.Context())
+	if svc.Reachable() {
+		t.Fatal("a LiveKit nobody can connect to reads as up")
 	}
 }

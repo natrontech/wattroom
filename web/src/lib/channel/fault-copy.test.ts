@@ -53,3 +53,17 @@ describe('a trainer fault reads the same on every riding surface', () => {
 		expect(status).not.toMatch(/signal lost|reconnecting on its own/i);
 	});
 });
+
+// A voice 'lost' is a join that never connected — av-session sets 'failed'
+// only there (#2850). It said the call "didn't come back" and "could not
+// reconnect", and promised a ride on a page where nobody rides.
+describe('faultCopy for a join that never connected', () => {
+	it('says it did not connect, promises no ride, and offers the one retry', () => {
+		const copy = faultCopy({ kind: 'voice', state: 'lost' });
+		expect(copy.title).toBe('Voice could not connect');
+		expect(`${copy.title} ${copy.detail}`).not.toMatch(
+			/come back|reconnect|ride/i,
+		);
+		expect(copy.action).toBe('Try voice again');
+	});
+});

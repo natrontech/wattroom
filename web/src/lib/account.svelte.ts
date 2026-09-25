@@ -15,6 +15,14 @@ import type { StatusLine } from '$lib/protocol';
 export type ProfileSource = 'default' | 'manual' | 'ramp';
 
 /** Whether the app, rather than the rider, chose this number (#1484). */
+/**
+ * Voice can be joined right now: configured, and answering (#2850). An older
+ * server sends no avReachable, which reads as up — as it always did.
+ */
+export function voiceUp(me: Me | null | undefined): boolean {
+	return !!me?.avEnabled && me.avReachable !== false;
+}
+
 export function unchosen(source: ProfileSource | undefined): boolean {
 	return source === 'default';
 }
@@ -52,6 +60,11 @@ export interface Me {
 	providers?: string[];
 	/** LiveKit is configured — voice/camera affordances render at all (#219). */
 	avEnabled?: boolean;
+	/**
+	 * LiveKit answered the server's last check (#2850). Configured and down,
+	 * Join voice renders disabled with its hint instead of failing four ways.
+	 */
+	avReachable?: boolean;
 	/** Giphy is configured — the composer's GIF button renders at all (#878). */
 	gifsEnabled?: boolean;
 	stravaUpload?: boolean;

@@ -150,6 +150,7 @@
 		<div class="shrink-0 px-5 pt-4">
 			<FaultBanner
 				fault={{ kind: 'voice', state: 'lost' }}
+				note={av.error?.message}
 				onRecover={() => void av.join({ mic: av.micBeforeDrop })}
 			/>
 		</div>

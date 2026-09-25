@@ -23,7 +23,7 @@
 	import { channelAddress, sessionPath } from '$lib/channel/address';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { askVoice } from '$lib/channel/voice-intent';
-	import { account } from '$lib/account.svelte';
+	import { account, voiceUp } from '$lib/account.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import Lock from '@lucide/svelte/icons/lock';
 	import LockOpen from '@lucide/svelte/icons/lock-open';
@@ -69,7 +69,7 @@
 	function joinOnClick(c: LiveChannel, e: MouseEvent) {
 		if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey)
 			return;
-		if (!account.me?.avEnabled) return;
+		if (!voiceUp(account.me)) return;
 		const { key } = channelAddress(crew.id, c.id, c.name);
 		const here = channelConnection.current;
 		if (here?.address.key === key) void here.av.join();

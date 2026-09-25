@@ -63,6 +63,9 @@ type Service struct {
 	// absent rather than broken. SetMailer lives in email.go.
 	mailer    Mailer
 	avEnabled bool
+	// Whether LiveKit answered the server's last check (#2850); nil until
+	// the voice service is wired, which reads as up.
+	avReachable func() bool
 	// Whether a Giphy key is configured (#878, #909) — the composer's GIF button
 	// renders at all only when it is.
 	gifsEnabled bool
@@ -130,6 +133,11 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *s
 // SetAvEnabled marks LiveKit as configured; /api/me carries it so the
 // client can gate voice/camera affordances (#219).
 func (s *Service) SetAvEnabled(v bool) { s.avEnabled = v }
+
+// SetAvReachable hands /api/me the voice service's view of whether LiveKit
+// answers (#2850): configured is not the same as up, and a Join voice that
+// can only fail is a button errors.md says not to draw.
+func (s *Service) SetAvReachable(f func() bool) { s.avReachable = f }
 
 // SetGifsEnabled marks Giphy as configured; /api/me carries it so the
 // composer hides the GIF button rather than opening a picker that 404s

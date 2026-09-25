@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -78,11 +79,20 @@ type Service struct {
 	log    *slog.Logger
 	now    func() time.Time
 	voice  VoiceSink
+	// Whether LiveKit answered the last sweep (#2850). Up until a sweep says
+	// otherwise: a server that has not asked yet has no reason to refuse.
+	reachable atomic.Bool
 }
 
 func New(cfg Config, access Access, log *slog.Logger) *Service {
-	return &Service{cfg: cfg, access: access, log: log, now: time.Now}
+	s := &Service{cfg: cfg, access: access, log: log, now: time.Now}
+	s.reachable.Store(true)
+	return s
 }
+
+// Reachable is whether LiveKit answered the last sweep — what /api/me tells
+// the client, so it can say voice is down before a rider presses Join.
+func (s *Service) Reachable() bool { return s.reachable.Load() }
 
 func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/channels/{id}/av-token", s.HandleToken)
@@ -104,6 +114,15 @@ func (s *Service) HandleToken(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		httpx.Fail(w, s.log, "av token authorize", err, "The call could not be set up. Try again.", "channel", r.PathValue("id"))
+		return
+	}
+	// Handing out a token for a call that cannot connect told the rider to
+	// check their own connection while the call server was down (#2850).
+	// rate_limited, like any shared resource that is not there: the move is
+	// to wait and try again (errors.md).
+	if !s.Reachable() {
+		httpx.WriteError(w, http.StatusServiceUnavailable, "rate_limited",
+			"Voice is down on this server right now. It comes back on its own — try again in a minute; everything else in the channel works.")
 		return
 	}
 	token, err := s.mint(channel, rider)

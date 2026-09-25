@@ -24,6 +24,9 @@ func (s *Service) StartReconciler(ctx context.Context) {
 	safego.Supervise(s.log, time.Now, "livekit reconciler", ctx.Done(), func() { // exits on ctx.Done
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
+		// Once at start too, so a server that boots beside a dead LiveKit
+		// says so within seconds, not a minute (#2850).
+		s.reconcile(ctx)
 		for {
 			select {
 			case <-ctx.Done():
@@ -37,6 +40,7 @@ func (s *Service) StartReconciler(ctx context.Context) {
 }
 
 func (s *Service) reconcile(ctx context.Context) {
+	s.reachable.Store(s.answers(ctx))
 	if s.voice == nil {
 		return
 	}
@@ -48,6 +52,24 @@ func (s *Service) reconcile(ctx context.Context) {
 		}
 		s.voice.VoiceSync(channel, present, since)
 	}
+}
+
+// answers is whether LiveKit's RoomService answers at all (#2850), asked
+// every sweep because the participant sweep below asks only about rooms
+// someone is in — and nobody being in voice is exactly when a first join
+// finds out. Any answer short of a server error is "up", a refusal included.
+func (s *Service) answers(ctx context.Context) bool {
+	resp, err := s.roomAPI(ctx, "ListRooms", "", map[string]any{})
+	if err != nil {
+		s.log.Warn("livekit unreachable", "err", err)
+		return false
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode >= http.StatusInternalServerError {
+		s.log.Warn("livekit unhealthy", "status", resp.StatusCode)
+		return false
+	}
+	return true
 }
 
 // listParticipants asks LiveKit who is in the room right now. A 404 is an

@@ -421,6 +421,7 @@ func main() {
 		if cfg, ok := av.FromEnv(); ok {
 			authService.SetAvEnabled(true)
 			avService := av.New(cfg, channelsService, log)
+			authService.SetAvReachable(avService.Reachable)
 			avService.Register(mux)
 			avService.SetVoiceSink(h)
 			avService.RegisterWebhook(mux)

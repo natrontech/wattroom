@@ -30,8 +30,11 @@ import { riderOf } from '$lib/channel/tabs';
  * and put the mixer back where a page with no call expects it.
  */
 
+// The token was granted and the call server still did not take the
+// connection: this device's network or the server's, and nothing here can
+// tell which — so it blames neither (#2850).
 const VOICE_UNREACHABLE =
-	'Voice could not connect — check your connection and try again.';
+	'The call server did not answer. Try again in a moment — if the rest of the channel is working, it is not your connection.';
 /**
  * A join that neither connects nor fails (#1203): a browser that never
  * delivers the gesture the SDK is waiting for, a webview, a network that
