@@ -33,10 +33,10 @@ type Channels interface {
 }
 
 // Lobby is how everyone else hears (#2435): a ping naming the channel whose
-// log changed. Satisfied by the hub. Optional: without it a reader sees new
-// lines on their next load.
+// log changed, to the riders who may enter it (#2821). Satisfied by the hub.
+// Optional: without it a reader sees new lines on their next load.
 type Lobby interface {
-	ChannelChanged(channelID string)
+	ChannelChanged(channelID string, audience []string)
 	ReadChanged(userID string)
 }
 
@@ -74,11 +74,25 @@ func (s *Service) RegisterChannels(mux *http.ServeMux, gate Channels, lobby Lobb
 	mux.HandleFunc("GET /api/crews/{id}/announcement", s.handleCrewAnnouncement)
 }
 
-// changedIn tells every lobby client which channel moved.
-func (s *Service) changedIn(channel db.Channel) {
-	if s.lobby != nil {
-		s.lobby.ChannelChanged(store.UUIDString(channel.ID))
+// changedIn tells the lobby sockets of everyone who may enter the channel
+// that it moved — nobody else's (#2821).
+func (s *Service) changedIn(ctx context.Context, channel db.Channel) {
+	if s.lobby == nil {
+		return
 	}
+	id := store.UUIDString(channel.ID)
+	// The write is stored whether or not its poster is still connected.
+	rows, err := s.store.Queries.ChannelAudience(context.WithoutCancel(ctx), channel.ID)
+	if err != nil {
+		// The line is stored; readers see it on their next load.
+		s.log.Warn("channel audience lookup failed", "channel", id, "err", err)
+		return
+	}
+	audience := make([]string, len(rows))
+	for i, userID := range rows {
+		audience[i] = store.UUIDString(userID)
+	}
+	s.lobby.ChannelChanged(id, audience)
 }
 
 func (s *Service) handleChannelBacklog(w http.ResponseWriter, r *http.Request) {
@@ -183,7 +197,7 @@ func (s *Service) handleChannelPost(w http.ResponseWriter, r *http.Request) {
 	s.pruneChannelSampled(channel.ID)
 	// Saying something is reading up to it.
 	s.markChannelRead(r.Context(), channel, me, id)
-	s.changedIn(channel)
+	s.changedIn(r.Context(), channel)
 	httpx.WriteJSON(w, http.StatusOK, protocol.ChatLine{
 		ID: store.UUIDString(id), From: me.DisplayName, FromID: store.UUIDString(me.ID),
 		Text: text, ImageID: req.ImageID, At: at, ExpiresAt: store.Millis(expires),
@@ -256,7 +270,7 @@ func (s *Service) handleChannelEdit(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "edit channel message", err, "The message could not be edited. Try again.", "channel", store.UUIDString(channel.ID))
 		return
 	}
-	s.changedIn(channel)
+	s.changedIn(r.Context(), channel)
 	httpx.WriteJSON(w, http.StatusOK, protocol.ChatEdit{
 		MessageID: store.UUIDString(id), Text: text, EditedAt: store.Millis(edited),
 	})
@@ -297,7 +311,7 @@ func (s *Service) handleChannelDelete(w http.ResponseWriter, r *http.Request) {
 		s.log.Info("chat line deleted by a crew admin",
 			"channel", store.UUIDString(channel.ID), "by", store.UUIDString(me.ID), "author", store.UUIDString(msg.UserID))
 	}
-	s.changedIn(channel)
+	s.changedIn(r.Context(), channel)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -362,7 +376,7 @@ func (s *Service) handleChannelReact(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "channel reaction", err, "The reaction did not land. Try again.", "channel", store.UUIDString(channel.ID))
 		return
 	}
-	s.changedIn(channel)
+	s.changedIn(r.Context(), channel)
 	httpx.WriteJSON(w, http.StatusOK, protocol.ChatReactionCount{
 		MessageID: req.MessageID, Emoji: req.Emoji, Count: int(count),
 		By: store.UUIDString(me.ID), Added: added > 0,
@@ -491,7 +505,7 @@ func (s *Service) handleSetChannelAnnouncement(w http.ResponseWriter, r *http.Re
 		return
 	}
 	s.log.Info("announcement set", "channel", store.UUIDString(channel.ID), "by", store.UUIDString(me.ID))
-	s.changedIn(channel)
+	s.changedIn(r.Context(), channel)
 	if put := s.channelAnnouncement(r.Context(), channel); put != nil {
 		httpx.WriteJSON(w, http.StatusOK, put)
 		return
@@ -514,7 +528,7 @@ func (s *Service) handleClearChannelAnnouncement(w http.ResponseWriter, r *http.
 		httpx.Fail(w, s.log, "channel announcement clear failed", err, "The announcement could not be taken down.", "channel", store.UUIDString(channel.ID))
 		return
 	}
-	s.changedIn(channel)
+	s.changedIn(r.Context(), channel)
 	w.WriteHeader(http.StatusNoContent)
 }
 

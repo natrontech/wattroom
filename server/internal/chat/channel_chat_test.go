@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -24,11 +25,12 @@ import (
 // A text channel's chat (#2435), behind the real channel gate.
 
 // fakeLobby is the hub's lobby: it remembers which channels it was told
-// moved, and whose reads.
+// moved, who each ping was for, and whose reads.
 type fakeLobby struct {
-	mu    sync.Mutex
-	pings []string
-	reads []string
+	mu        sync.Mutex
+	pings     []string
+	audiences [][]string
+	reads     []string
 }
 
 func (f *fakeLobby) ReadChanged(userID string) {
@@ -37,10 +39,27 @@ func (f *fakeLobby) ReadChanged(userID string) {
 	f.reads = append(f.reads, userID)
 }
 
-func (f *fakeLobby) ChannelChanged(id string) {
+func (f *fakeLobby) ChannelChanged(id string, audience []string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.pings = append(f.pings, id)
+	f.audiences = append(f.audiences, audience)
+}
+
+// lastAudience names who the newest ping was for, sorted.
+func (f *fakeLobby) lastAudience(users *testx.Users) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var names []string
+	for _, id := range f.audiences[len(f.audiences)-1] {
+		for name, u := range users.ByToken {
+			if store.UUIDString(u.ID) == id {
+				names = append(names, name)
+			}
+		}
+	}
+	slices.Sort(names)
+	return names
 }
 
 func (f *fakeLobby) heard() []string {
@@ -240,6 +259,31 @@ func TestTwoRidersInATextChannelHearEachOtherByPing(t *testing.T) {
 	w.say(t, "alice", w.open, "at seven")
 	if got := w.lines(t, "bob", w.open); len(got) != 2 || got[1] != "at seven" {
 		t.Errorf("bob's re-fetch = %v", got)
+	}
+}
+
+// A write pings only the riders who may enter the channel (#2821): a stranger
+// holding its id, a member not named into a private one and a banned member
+// would otherwise learn the moment of every line their 404 keeps from them.
+func TestAChannelPingReachesOnlyWhoMayEnterIt(t *testing.T) {
+	w := channelSetup(t)
+	for _, c := range []struct {
+		name, who, channel, ban string
+		want                    []string
+	}{
+		{"an open channel", "cara", w.open, "", []string{"alice", "bob", "cara"}},
+		{"a private channel", "bob", w.private, "", []string{"alice", "bob"}},
+		{"after a ban", "bob", w.open, "cara", []string{"alice", "bob"}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if c.ban != "" {
+				w.setRole(t, c.ban, "banned")
+			}
+			w.say(t, c.who, c.channel, "hello")
+			if got := w.lobby.lastAudience(w.users); !slices.Equal(got, c.want) {
+				t.Errorf("the ping reached %v, want %v", got, c.want)
+			}
+		})
 	}
 }
 
