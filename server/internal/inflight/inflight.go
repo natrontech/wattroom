@@ -46,7 +46,7 @@ func (f *Set) Acquire(id pgtype.UUID) bool {
 // Release hands the slot back. Idempotent, and safe for a key that never held
 // one — deleting an absent key is a no-op — so a defer can never be the thing
 // that breaks. No sweep either, unlike budget: an entry lives only as long as
-// the request holding it, so the map is bounded by exports running right now
+// the request holding it, so the map is bounded by what is running right now
 // rather than by every account that ever asked.
 func (f *Set) Release(id pgtype.UUID) {
 	f.mu.Lock()
