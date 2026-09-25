@@ -50,6 +50,8 @@ type Service struct {
 	// door answered a guess with 404, 409 or a name, unmetered, and
 	// ADR-0012 rests on the code being unguessable in practice.
 	asks *budget.Budget[pgtype.UUID]
+	// Whom each rider just parted from, for the undo that asks again (#2842).
+	parted partings
 }
 
 const (
@@ -199,11 +201,6 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if s.asks != nil && !s.asks.Spend(me.ID) {
-		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
-			"That is a lot of friend requests in one hour. Wait an hour, then try again.")
-		return
-	}
 	var body struct {
 		Code string `json:"code"`
 		// A rider's page (ADR-0024) asks by id — allowed only across a
@@ -225,20 +222,31 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That would be you.")
 			return
 		}
-		// A shared channel is the formation gate here (ADR-0012's original
-		// rule, ADR-0058's boundary): none in common, no request — and no
-		// confirmation that the id exists.
-		shared, err := s.store.Queries.SharesChannel(r.Context(), db.SharesChannelParams{Rider: id, Viewer: me.ID})
-		if err != nil {
-			httpx.Fail(w, s.log, "channels in common lookup", err, "The request could not be sent. Try again.", "user", store.UUIDString(me.ID))
-			return
-		}
-		if !shared {
-			httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider there that you share a room with — ask them for their code instead.")
-			return
+		// Taking back a withdrawal or an unfriending (#2842): the pair was
+		// connected a moment ago, which is the permission — and an undo is no
+		// guess, so it spends no ask.
+		if !s.parted.take(me.ID, id, time.Now()) {
+			if !s.spendAsk(w, me.ID) {
+				return
+			}
+			// A shared channel is the formation gate here (ADR-0012's original
+			// rule, ADR-0058's boundary): none in common, no request — and no
+			// confirmation that the id exists.
+			shared, err := s.store.Queries.SharesChannel(r.Context(), db.SharesChannelParams{Rider: id, Viewer: me.ID})
+			if err != nil {
+				httpx.Fail(w, s.log, "channels in common lookup", err, "The request could not be sent. Try again.", "user", store.UUIDString(me.ID))
+				return
+			}
+			if !shared {
+				httpx.WriteError(w, http.StatusNotFound, "not_found", "No rider there that you share a channel with — ask them for their code instead.")
+				return
+			}
 		}
 		target = id
 	} else {
+		if !s.spendAsk(w, me.ID) {
+			return
+		}
 		// The formation gate (ADR-0012 amendment): knowing someone's code IS
 		// the permission to ask them.
 		code := strings.ToUpper(strings.TrimSpace(body.Code))
@@ -383,9 +391,22 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 			// The dismissal itself stood; only the telling failed.
 			s.log.Error("note friend decline", "err", err, "user", store.UUIDString(me.ID))
 		}
+	} else {
+		// A withdrawal or an unfriending: its undo asks again (#2842).
+		s.parted.note(me.ID, target, time.Now())
 	}
 	s.presence.PresenceChanged()
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// spendAsk takes one of the hour's asks (#1652), or says there are none left.
+func (s *Service) spendAsk(w http.ResponseWriter, me pgtype.UUID) bool {
+	if s.asks != nil && !s.asks.Spend(me) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"That is a lot of friend requests in one hour. Wait an hour, then try again.")
+		return false
+	}
+	return true
 }
 
 // clearDeclines wipes the pair's tombstone once they are talking again — an

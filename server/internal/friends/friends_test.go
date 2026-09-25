@@ -700,3 +700,82 @@ func TestAStatusLineIsAnAcceptedFriends(t *testing.T) {
 		t.Fatalf("a pending ask read her status: %v", line)
 	}
 }
+
+// The undo after a withdrawal or an unfriending asks again (#2842, #2008),
+// and most friendships are made by code between riders with no channel in
+// common (ADR-0012). The ask by id needs a shared channel, so for exactly
+// those friends the undo always failed — and spent an ask doing it. Having
+// just been connected is the permission; only the rider who parted holds it.
+func TestTakingItBackAsksAgain(t *testing.T) {
+	mux, _, users, _ := setup(t)
+	alice, bob := users.ByToken["alice"], users.ByToken["bob"]
+	id := func(u db.User) string { return store.UUIDString(u.ID) }
+	statusOf := func(user string) any {
+		t.Helper()
+		list := friendsOf(t, mux, user)
+		if len(list) == 0 {
+			return nil
+		}
+		return list[0]["status"]
+	}
+
+	// A code-made ask, withdrawn, then taken back — with the hour's asks spent.
+	if code := request(t, mux, "alice", bob.FriendCode); code != http.StatusOK {
+		t.Fatalf("alice asks bob by code: %d", code)
+	}
+	if code, _ := call(t, mux, "alice", http.MethodDelete, "/api/friends/"+id(bob)); code != http.StatusOK {
+		t.Fatalf("alice withdraws: %d", code)
+	}
+	for i := 1; i < asksPerWindow; i++ {
+		request(t, mux, "alice", "ZZZZZZZZ")
+	}
+	if code := requestByID(t, mux, "alice", id(bob)); code != http.StatusOK {
+		t.Fatalf("alice takes the withdrawal back: %d, want 200 — no shared channel, no asks left, and it is still her own ask", code)
+	}
+	if got := statusOf("bob"); got != "pending_in" {
+		t.Fatalf("bob sees %v, want alice's ask again", got)
+	}
+
+	// A friendship, removed, then taken back by the one who removed it.
+	if code, _ := call(t, mux, "bob", http.MethodPost, "/api/friends/"+id(alice)+"/accept"); code != http.StatusOK {
+		t.Fatalf("bob accepts: %d", code)
+	}
+	if code, _ := call(t, mux, "alice", http.MethodDelete, "/api/friends/"+id(bob)); code != http.StatusOK {
+		t.Fatalf("alice removes bob: %d", code)
+	}
+	// The rider who was removed holds no such permission.
+	if code := requestByID(t, mux, "bob", id(alice)); code != http.StatusNotFound {
+		t.Fatalf("the removed rider asks by id: %d, want 404", code)
+	}
+	if code := requestByID(t, mux, "alice", id(bob)); code != http.StatusOK {
+		t.Fatalf("alice takes the removal back: %d, want 200", code)
+	}
+	if got := statusOf("bob"); got != "pending_in" {
+		t.Fatalf("bob sees %v, want alice's ask — acceptance is his to give again", got)
+	}
+	// Spent on that one ask: once bob dismisses it, alice is metered again.
+	if code, _ := call(t, mux, "bob", http.MethodDelete, "/api/friends/"+id(alice)); code != http.StatusOK {
+		t.Fatalf("bob dismisses: %d", code)
+	}
+	if code := requestByID(t, mux, "alice", id(bob)); code != http.StatusTooManyRequests {
+		t.Fatalf("alice asks by id again: %d, want 429 — the undo was hers once", code)
+	}
+}
+
+// The door a rider page asks through is a shared channel, and it says so in
+// this app's words (ADR-0058: "room" left the vocabulary).
+func TestNoSharedChannelSaysChannel(t *testing.T) {
+	mux, _, users, _ := setup(t)
+	body := strings.NewReader(`{"userId":"` + store.UUIDString(users.ByToken["cara"].ID) + `"}`)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/friends", body)
+	req.Header.Set("X-Test-User", "alice")
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("status %d, want 404", w.Code)
+	}
+	msg := w.Body.String()
+	if strings.Contains(msg, "room") || !strings.Contains(msg, "channel") {
+		t.Errorf("the refusal reads %s — want a shared channel, and no room", msg)
+	}
+}
