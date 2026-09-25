@@ -88,6 +88,29 @@ func (s *Service) work() {
 // jobBudget bounds one queued job: a handful of single-row statements.
 const jobBudget = 5 * time.Second
 
+// Drain waits until every job queued before it has run, or timeout passes,
+// and reports which (#2870). It is shutdown's last step, after the hub's own
+// drain, because a session's close queues its XP here in its final moments.
+// The one worker takes jobs in order, so a marker queued behind them runs
+// only once they have — no close of the channel, which a late enqueue would
+// panic on.
+func (s *Service) Drain(timeout time.Duration) bool {
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	done := make(chan struct{})
+	select {
+	case s.jobs <- func(context.Context) { close(done) }:
+	case <-deadline.C:
+		return false
+	}
+	select {
+	case <-done:
+		return true
+	case <-deadline.C:
+		return false
+	}
+}
+
 // enqueue never blocks the caller: a full queue drops the event and says so.
 // XP lost to a backlog is a shrug; a stalled tick is not.
 func (s *Service) enqueue(what string, job func(context.Context)) {
