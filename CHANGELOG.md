@@ -17,6 +17,30 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.144] - 2026-09-25
+
+### Removed
+
+- A crew's old shared reaction set is removed from the database. Since
+  2026.09.138 each rider picks their own, and nothing has used the crew's
+  since. The privacy policy now lists a crew's own emoji in its place.
+
+### Fixed
+
+- A session's closing summary lists only the people who rode it, not
+  everyone who was in the voice channel. The sidebar's line for a running
+  session names its coach and says "paused" while it is. A phone no longer
+  shows "block 1 of 1" for a paused session. A rider alone in a session sees
+  their live execution score, as they would on a solo ride.
+- A phone in a voice channel with a session running now offers **Watch the
+  session**. TV mode's exit button is full size. **Join the ride** on a crew's
+  Home now opens the session itself, as it already did from Home and from the
+  session-start notification.
+- The pre-ride now counts a trainer you paired in a voice channel as paired,
+  and **Start** rides it — before, /ride called it unpaired and pairing again
+  dropped the link. A new account's FTP is now asked about above **Start** and
+  called what it is: the 200 W everyone starts at, not a measurement.
+
 ## [2026.09.143] - 2026-09-25
 
 ### Added
@@ -3063,7 +3087,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.143...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.144...HEAD
+[2026.09.144]: https://github.com/natrontech/wattroom/compare/2026.09.143...2026.09.144
 [2026.09.143]: https://github.com/natrontech/wattroom/compare/2026.09.142...2026.09.143
 [2026.09.142]: https://github.com/natrontech/wattroom/compare/2026.09.141...2026.09.142
 [2026.09.141]: https://github.com/natrontech/wattroom/compare/2026.09.140...2026.09.141
