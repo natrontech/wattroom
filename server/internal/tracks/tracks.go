@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/inflight"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -40,6 +41,11 @@ const (
 	// bitrate is 320 kbps x 600 s ~ 24 MB; the rest is slack for an ID3 tag
 	// carrying cover art. A DJ set longer than that is not what this is for.
 	maxUploadBytes = 48 << 20
+
+	// uploadReadBudget is how long one upload may take to arrive — an
+	// operational guard, not a product number. The 48 MB cap inside it needs
+	// about 0.64 Mbit/s of uplink; an ordinary track needs a tenth of that.
+	uploadReadBudget = 10 * time.Minute
 
 	// A title has to fit a queue row and a now-playing line.
 	maxTextRunes = 200
@@ -65,6 +71,8 @@ type Service struct {
 	auth  Auth
 	log   *slog.Logger
 	dir   string
+	// One upload per rider in flight (#2862).
+	uploading inflight.Set
 }
 
 // RemoveBlobs deletes stored audio nothing points at any more — the purge's
@@ -139,9 +147,10 @@ the soundboard takes a clip. Multipart would buy nothing here: there is one
 file and one string, and the string is only a fallback for a missing ID3 title.
 
 The gates run in the order that spends least on a body that will be refused:
-the byte cap bounds the read, the frame walk decides whether it is an MP3 at
-all, the content address asks whether we already have it, and only then does
-the quota get consulted.
+one upload per rider at a time, the first bytes refuse what cannot start an
+MP3, the byte cap bounds the stream to disk, the frame walk decides whether it
+is an MP3 at all, the content address asks whether we already have it, and
+only then does the quota get consulted (#2862 for the first three).
 */
 
 /*

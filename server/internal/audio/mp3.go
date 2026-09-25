@@ -1,5 +1,11 @@
 package audio
 
+import (
+	"bufio"
+	"bytes"
+	"io"
+)
+
 // MP3 is the one upload format the app accepts (#877 for soundboard clips,
 // #266 for the music pool): every browser decodes it, and its frame headers
 // carry enough to measure a file without a decoder — which is what lets the
@@ -30,23 +36,53 @@ var sampleRates = map[int][4]int{
 // Reports ok=false when the bytes are not an MP3 we can measure — no frame
 // found where one must be, or a header using a reserved value.
 func DurationMillis(data []byte) (ms int, ok bool) {
-	i := skipID3(data)
+	return DurationMillisFrom(bytes.NewReader(data))
+}
+
+// DurationMillisFrom is the same walk over a stream, holding one frame at a
+// time: a 48 MB track is measured off disk rather than out of a 48 MB slice
+// (#2862).
+func DurationMillisFrom(r io.Reader) (ms int, ok bool) {
+	br := bufio.NewReader(r)
+	if head, err := br.Peek(10); err == nil && string(head[:3]) == "ID3" {
+		if _, err := br.Discard(id3Size(head)); err != nil {
+			return 0, false // a tag that claims more than the file holds
+		}
+	}
 	samples, rate := 0, 0
 	frames := 0
-	for i+4 <= len(data) {
-		size, frameSamples, frameRate, valid := frameAt(data[i:])
+	for {
+		head, err := br.Peek(4)
+		if err != nil {
+			break
+		}
+		size, frameSamples, frameRate, valid := frameAt(head)
 		if !valid {
+			break
+		}
+		// A frame that does not fit what is left is not counted.
+		if n, _ := br.Discard(size); n < size {
 			break
 		}
 		samples += frameSamples
 		rate = frameRate
 		frames++
-		i += size
 	}
 	if frames == 0 || rate == 0 {
 		return 0, false
 	}
 	return samples * 1000 / rate, true
+}
+
+// LooksLikeMP3 reports whether head, the first bytes of a body, can begin a
+// file DurationMillis would measure: an ID3 tag or a frame header. An upload
+// asks it before reading the rest, so junk is refused at its first bytes.
+func LooksLikeMP3(head []byte) bool {
+	if len(head) >= 3 && string(head[:3]) == "ID3" {
+		return true
+	}
+	_, _, _, ok := frameAt(head)
+	return ok
 }
 
 // frameAt reads one frame header. It does not scan for the next sync word:
@@ -74,27 +110,21 @@ func frameAt(b []byte) (size, samples, rate int, ok bool) {
 		samples, coefficient = 576, 72
 	}
 	size = coefficient*bitrate/rate + padding
-	if size < 4 || size > len(b) {
+	if size < 4 {
 		return 0, 0, 0, false
 	}
 	return size, samples, rate, true
 }
 
-// skipID3 steps over an ID3v2 tag so the first frame is where the walk starts.
-// The size is syncsafe — seven bits per byte, so the length can never contain
-// a byte that looks like a frame sync.
-func skipID3(data []byte) int {
-	if len(data) < 10 || string(data[:3]) != "ID3" {
-		return 0
-	}
-	n := data[6:10]
+// id3Size is how many bytes an ID3v2 tag occupies, header included, so the
+// first frame is where the walk starts. The size is syncsafe — seven bits per
+// byte, so the length can never contain a byte that looks like a frame sync.
+func id3Size(head []byte) int {
+	n := head[6:10]
 	size := int(n[0]&0x7F)<<21 | int(n[1]&0x7F)<<14 | int(n[2]&0x7F)<<7 | int(n[3]&0x7F)
 	skip := 10 + size
-	if data[5]&0x10 != 0 {
+	if head[5]&0x10 != 0 {
 		skip += 10 // a footer, present only when the flag says so
-	}
-	if skip < 0 || skip > len(data) {
-		return len(data)
 	}
 	return skip
 }

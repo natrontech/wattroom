@@ -22,13 +22,11 @@ import (
 //
 // In memory and per process, like every other live-state ceiling here
 // (ADR-0002 is one VM): a set that forgets on restart is one nobody can be
-// locked out by across one.
+// locked out by across one. The zero value is ready to use.
 type Set struct {
 	mu  sync.Mutex
 	ids map[pgtype.UUID]struct{}
 }
-
-func New() *Set { return &Set{ids: map[pgtype.UUID]struct{}{}} }
 
 // Acquire reports whether this account may start one now, and marks it
 // running when it may. The caller that gets true owes exactly one release.
@@ -37,6 +35,9 @@ func (f *Set) Acquire(id pgtype.UUID) bool {
 	defer f.mu.Unlock()
 	if _, running := f.ids[id]; running {
 		return false
+	}
+	if f.ids == nil {
+		f.ids = map[pgtype.UUID]struct{}{}
 	}
 	f.ids[id] = struct{}{}
 	return true

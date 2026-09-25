@@ -3,6 +3,8 @@ package tracks
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/natrontech/wattroom/server/internal/testx"
@@ -31,6 +33,7 @@ type harness struct {
 	users *testx.Users
 	store *store.Store
 	dir   string
+	svc   *Service
 }
 
 func setup(t *testing.T) *harness {
@@ -57,7 +60,7 @@ func setup(t *testing.T) *harness {
 	mux := http.NewServeMux()
 	svc := &Service{store: st, auth: users, log: slog.New(slog.DiscardHandler), dir: dir}
 	svc.Register(mux)
-	return &harness{mux: mux, users: users, store: st, dir: dir}
+	return &harness{mux: mux, users: users, store: st, dir: dir, svc: svc}
 }
 
 func (h *harness) do(t *testing.T, who, method, path string, body []byte) *httptest.ResponseRecorder {
@@ -78,6 +81,13 @@ func decode(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
 		t.Fatalf("decode %s: %v", w.Body.String(), err)
 	}
 	return out
+}
+
+// address is the content address of these bytes — what receive works out on
+// the way to disk.
+func address(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
 
 // song is a real MP3 of `frames` frames, unique per `seed` so two tests do not
@@ -117,7 +127,7 @@ func TestUploadMeasuresTheFileAndStoresItByContent(t *testing.T) {
 	}
 
 	// The file is on disk at its content address, fanned out by two hex chars.
-	sha := Address(data)
+	sha := address(data)
 	path := filepath.Join(h.dir, sha[:2], sha+".mp3")
 	info, err := os.Stat(path)
 	if err != nil {
@@ -163,7 +173,7 @@ func TestTwoRidersHoldingOneSongShareTheFileNotTheRow(t *testing.T) {
 
 	// One blob on disk, not two: privacy is what you can see, not how many
 	// times the bytes are stored.
-	sha := Address(data)
+	sha := address(data)
 	entries, err := os.ReadDir(filepath.Join(h.dir, sha[:2]))
 	if err != nil {
 		t.Fatalf("read store: %v", err)
@@ -208,7 +218,7 @@ func TestReUploadingRestoresATrackWhoseFileWentMissing(t *testing.T) {
 	data := song(12, 383)
 	track := h.upload(t, "alice", data, "Lost.mp3")
 	id, _ := track["id"].(string)
-	sha := Address(data)
+	sha := address(data)
 	path := filepath.Join(h.dir, sha[:2], sha+".mp3")
 	if err := os.Remove(path); err != nil {
 		t.Fatalf("remove the blob: %v", err)
@@ -302,7 +312,7 @@ func TestOnlyTheUploaderEditsOrDeletes(t *testing.T) {
 	if w := h.do(t, "alice", http.MethodGet, "/api/tracks/"+id+"/audio", nil); w.Code != http.StatusNotFound {
 		t.Errorf("deleted track still plays: %d", w.Code)
 	}
-	sha := Address(data)
+	sha := address(data)
 	if _, err := os.Stat(filepath.Join(h.dir, sha[:2], sha+".mp3")); !os.IsNotExist(err) {
 		t.Errorf("the file outlived its row")
 	}
@@ -600,7 +610,7 @@ func TestTagsFilterThePoolAndCountThemselves(t *testing.T) {
 func TestDeletingOneShelfsCopyLeavesTheFileForTheOther(t *testing.T) {
 	h := setup(t)
 	data := song(12, 383)
-	sha := Address(data)
+	sha := address(data)
 	path := filepath.Join(h.dir, sha[:2], sha+".mp3")
 
 	hersRow := h.upload(t, "alice", data, "Ours.mp3")

@@ -123,7 +123,7 @@ func (s *Service) SetTrackReaper(r BlobReaper) { s.reaper = r }
 func (s *Service) SetLive(l Live) { s.live = l }
 
 func New(st *store.Store, sessions Sessions, log *slog.Logger) *Service {
-	return &Service{store: st, sessions: sessions, log: log, exports: inflight.New()}
+	return &Service{store: st, sessions: sessions, log: log, exports: &inflight.Set{}}
 }
 
 // SetAlerter wires the notify capability in after construction, the shape

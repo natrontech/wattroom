@@ -89,7 +89,7 @@ func TestInFlightSlotIsOnePerAccount(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tc.run(t, New())
+			tc.run(t, &Set{})
 		})
 	}
 }
@@ -97,7 +97,7 @@ func TestInFlightSlotIsOnePerAccount(t *testing.T) {
 // Exactly one of many simultaneous exports gets the slot — the double-click
 // this ceiling exists for, run under -race.
 func TestInFlightGivesTheSlotToExactlyOneCaller(t *testing.T) {
-	f := New()
+	f := &Set{}
 	alice := uuid(1)
 
 	const callers = 50

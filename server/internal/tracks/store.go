@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -15,12 +16,6 @@ import (
 // the metadata and nothing else, which is the durable-data seam.
 
 var shaPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
-
-// Address is the content address of these bytes.
-func Address(data []byte) string {
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:])
-}
 
 // pathFor fans out on the first two hex characters. One flat directory of tens
 // of thousands of files is slow to list on every filesystem that matters, and
@@ -36,9 +31,35 @@ func (s *Service) pathFor(sha string) (string, error) {
 	return filepath.Join(s.dir, sha[:2], sha+".mp3"), nil
 }
 
-// put writes the bytes unless that content is already stored. Returns whether
-// it wrote, so a caller can tell a genuine upload from a deduplicated one.
-func (s *Service) put(sha string, data []byte) (wrote bool, err error) {
+// receive streams an upload into a file beside the store, hashing it on the
+// way (#2862): what a request holds is one copy buffer, not the whole track —
+// six parallel 48 MB bodies used to be six 48 MB slices. The file is the
+// caller's to close and remove; place moves it to its address.
+func (s *Service) receive(body io.Reader) (f *os.File, sha string, size int64, err error) {
+	if err := os.MkdirAll(s.dir, 0o750); err != nil {
+		return nil, "", 0, err
+	}
+	// CreateTemp makes it 0600: the server is the only reader, and the HTTP
+	// handler is the access control.
+	f, err = os.CreateTemp(s.dir, ".upload-*")
+	if err != nil {
+		return nil, "", 0, err
+	}
+	sum := sha256.New()
+	if size, err = io.Copy(f, io.TeeReader(body, sum)); err != nil {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+		return nil, "", 0, err
+	}
+	return f, hex.EncodeToString(sum.Sum(nil)), size, nil
+}
+
+// place moves a received file to its content address unless that content is
+// already stored. Returns whether it moved it, so a caller can tell a genuine
+// upload from a deduplicated one. The file was written beside the store and
+// is renamed whole: a crash mid-upload must not leave a truncated file sitting
+// at the address of the whole song, where nothing would ever look at it twice.
+func (s *Service) place(sha string, f *os.File) (moved bool, err error) {
 	path, err := s.pathFor(sha)
 	if err != nil {
 		return false, err
@@ -51,31 +72,7 @@ func (s *Service) put(sha string, data []byte) (wrote bool, err error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return false, err
 	}
-	// Written beside and renamed: a crash mid-write must not leave a truncated
-	// file sitting at the address of the whole song, where nothing would ever
-	// look at it twice.
-	tmp, err := os.CreateTemp(filepath.Dir(path), ".upload-*")
-	if err != nil {
-		return false, err
-	}
-	defer func() {
-		if err != nil {
-			_ = os.Remove(tmp.Name())
-		}
-	}()
-	if _, err = tmp.Write(data); err != nil {
-		_ = tmp.Close()
-		return false, err
-	}
-	if err = tmp.Close(); err != nil {
-		return false, err
-	}
-	// The server is the only reader: nothing else on the box has business
-	// with a rider's library, and the HTTP handler is the access control.
-	if err = os.Chmod(tmp.Name(), 0o600); err != nil {
-		return false, err
-	}
-	if err = os.Rename(tmp.Name(), path); err != nil {
+	if err := os.Rename(f.Name(), path); err != nil {
 		return false, err
 	}
 	return true, nil
