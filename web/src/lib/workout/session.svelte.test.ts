@@ -846,3 +846,54 @@ describe('the trace the graph draws (#2017)', () => {
 		await session.stop();
 	});
 });
+
+// A rider who gets off during the cooldown and walks away (#2622): the ride
+// sat auto-paused all night, recording 0 W, and End next morning filed a
+// nine-hour ride the server refuses. Stopped for docs/SPEC.md's ten minutes,
+// it ends itself, and the stopped run is not part of it.
+describe('a solo ride left stopped', () => {
+	/** Seconds of rider behaviour on one continuous wall clock, from `from`. */
+	function feed(
+		session: ReturnType<typeof ride>,
+		watts: number,
+		cadence: number,
+		seconds: number,
+		from: number,
+	): number {
+		for (let i = 0; i < seconds; i++) {
+			session.onSample({ watts, cadence, at: (from + i) * 1000 });
+			session.tick();
+		}
+		return from + seconds;
+	}
+	const stopped = DEFAULTS.pauseAfterSeconds + DEFAULTS.stoppedEndsAfterSeconds;
+
+	it('ends itself once stopped long enough, with the stopped tail trimmed', async () => {
+		const session = ride();
+		await startRiding(session);
+		const t = feed(session, 200, 90, 30, 0);
+		expect(session.recording).toHaveLength(30);
+
+		feed(session, 0, 0, stopped - 10, t);
+		expect(session.state).toBe('autopaused');
+		feed(session, 0, 0, 10, t + stopped - 10);
+		expect(session.state).toBe('done');
+		// Thirty seconds were ridden; the stop is not a part of the ride.
+		expect(session.recording).toHaveLength(30);
+		expect(session.recording.every((s) => s.watts === 200)).toBe(true);
+	});
+
+	it('counts each stop afresh, so a long ride with short stops rides on', async () => {
+		const session = ride();
+		await startRiding(session);
+		let t = feed(session, 200, 90, 10, 0);
+		t = feed(session, 0, 0, stopped - 30, t);
+		expect(session.state).toBe('autopaused');
+		// Back on the bike: the resume countdown, then riding again.
+		t = feed(session, 200, 90, DEFAULTS.resumeCountdown + 5, t);
+		expect(session.state).toBe('running');
+		t = feed(session, 0, 0, stopped - 30, t);
+		expect(session.state).toBe('autopaused');
+		session.stop();
+	});
+});

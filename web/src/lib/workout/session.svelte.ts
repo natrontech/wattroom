@@ -202,6 +202,8 @@ export function createRideSession({
 		released: boolean;
 	}[] = [];
 	let recordedSeconds = 0;
+	// How long the rider has sat auto-paused, on the ride's own clock (#2622).
+	let pausedSeconds = 0;
 	// The wall-clock second the record last admitted a sample for: a trainer
 	// notifies more than once a second and everything downstream — kJ,
 	// duration, the power curve, the XP the server pays — reads this record
@@ -322,6 +324,7 @@ export function createRideSession({
 	 */
 	function syncGuards() {
 		state = guards.phase;
+		if (state !== 'autopaused') pausedSeconds = 0;
 		resumeIn = guards.resumeIn;
 		spiralActive = guards.spiralActive;
 	}
@@ -463,6 +466,16 @@ export function createRideSession({
 			if (actuate) applyTarget();
 			return;
 		}
+		// Stopped long enough that the rider has gone (#2622): the ride ends
+		// itself, and the stopped run is not part of it.
+		if (state === 'autopaused') {
+			pausedSeconds += seconds;
+			if (pausedSeconds >= DEFAULTS.stoppedEndsAfterSeconds) {
+				trimStoppedTail();
+				finish();
+			}
+			return;
+		}
 		if (state !== 'running') return;
 
 		if (spiralActive) {
@@ -478,6 +491,21 @@ export function createRideSession({
 		}
 		applyTarget();
 		sprintWindow.sync();
+	}
+
+	/**
+	 * The trailing run of not pedalling, off a ride that ended itself (#2622):
+	 * those seconds are the rider gone, not riding, so they stay out of its
+	 * duration, its normalised power and the .fit. Read by the guards' own
+	 * definition of stopped, so the grace seconds before the pause go too.
+	 */
+	function trimStoppedTail() {
+		let keep = recording.length;
+		while (keep > 0 && !guards.pedalling(recording[keep - 1])) keep--;
+		const cut = recording.length - keep;
+		if (cut === 0) return;
+		recording.length = keep;
+		trace = trace.slice(0, Math.max(0, trace.length - cut));
 	}
 
 	/**
