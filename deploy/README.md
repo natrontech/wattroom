@@ -132,6 +132,20 @@ count fails, so a `0` is only worth acting on beside a fresh
 `WattroomTokenSealCountStale` is the rule that watches that. Without Prometheus
 at all, the server logs the number whenever it changes, `sealed` or not.
 
+### How much is it used?
+
+The same endpoint carries usage counts (#2913), recounted from the database
+every five minutes: `wattroom_accounts`, `wattroom_rides`,
+`wattroom_ridden_seconds`, `wattroom_ridden_joules`, `wattroom_crews`,
+`wattroom_workouts`, `wattroom_tracks`, `wattroom_strava_connections` and
+`wattroom_sessions_upcoming`, plus two with a `window` of `1d`, `7d` or `30d` —
+`wattroom_accounts_created` (signups that still exist) and
+`wattroom_riders_active` (accounts with a ride that started in the window).
+Counts only: no label names a rider, a crew or a channel. `NaN` means not
+counted yet, as above, and
+`wattroom_job_last_success_timestamp_seconds{job="usage counts"}` says how fresh
+the numbers are.
+
 The production synthetic ride — the check that proves a *ride* works rather
 than that a homepage returns 200 — is not wired yet (#314). Until it is,
 `WATTROOM_SYNTHETIC_TOKEN` can stay unset: `POST /api/auth/synthetic` 404s and

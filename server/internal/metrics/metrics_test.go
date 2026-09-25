@@ -16,6 +16,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/metrics"
 	_ "github.com/natrontech/wattroom/server/internal/safego"
 	_ "github.com/natrontech/wattroom/server/internal/secrets"
+	_ "github.com/natrontech/wattroom/server/internal/usage"
 )
 
 // labelledMetric finds a labelled collector's declaration: New…Vec(…, []string
@@ -46,8 +47,8 @@ var (
 // `{"slug", "rider"}` and pass again every day until it was used.
 func TestNoMetricLabelCanNameARoomOrARider(t *testing.T) {
 	// The reviewed list. `job` is a constant in this codebase (jobmetrics'
-	// own doc) and `outcome` is ok|error.
-	allowed := [][]string{{"job", "outcome"}, {"job"}}
+	// own doc), `outcome` is ok|error, and `window` is 1d|7d|30d (usage).
+	allowed := [][]string{{"job", "outcome"}, {"job"}, {"window"}}
 
 	found := 0
 	walk(t, func(path, body string) {
@@ -108,7 +109,7 @@ func TestTheHandlerServesTheRegistry(t *testing.T) {
 		t.Fatalf("metrics = %d", rec.Code)
 	}
 	body := rec.Body.String()
-	for _, want := range []string{"wattroom_room_riders", "wattroom_identities_plaintext_refresh_tokens", "go_build_info", "process_start_time_seconds"} {
+	for _, want := range []string{"wattroom_room_riders", "wattroom_identities_plaintext_refresh_tokens", "wattroom_accounts", "go_build_info", "process_start_time_seconds"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("the metrics page does not carry %s", want)
 		}
