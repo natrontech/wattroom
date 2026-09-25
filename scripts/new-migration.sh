@@ -30,7 +30,9 @@ cat > "$file" <<'TEMPLATE'
 --
 -- Expand/contract (ADR-0019): a release only ADDS — nullable columns, new
 -- tables, new indexes. Dropping or renaming happens one release AFTER the
--- release whose code stopped using the thing.
+-- release whose code stopped using the thing, and a `select *` sqlc expanded
+-- is a use: `git grep -n <column> <tag> -- server/internal/store/db/`, at the
+-- release a rollback would land on, prints nothing before this drops it (#2836).
 
 -- +goose Down
 TEMPLATE
