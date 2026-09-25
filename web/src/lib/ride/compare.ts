@@ -30,6 +30,10 @@ function signed(n: number, unit = ''): string {
 /** The comparison table's rows, in reading order. */
 export function compareRows(today: RideRecord, best: RideRecord): CompareRow[] {
 	const pct = (r: RideRecord) => Math.round(r.execution * 100);
+	// An unscored ride — the ramp, by design — has no execution to show or to
+	// subtract: "—", as the list and the tile say, never 0 % (#2629).
+	const scored = (r: RideRecord) => r.executionScored !== false;
+	const execution = (r: RideRecord) => (scored(r) ? `${pct(r)}%` : '—');
 	return [
 		{
 			label: 'average',
@@ -39,9 +43,12 @@ export function compareRows(today: RideRecord, best: RideRecord): CompareRow[] {
 		},
 		{
 			label: 'execution',
-			today: `${pct(today)}%`,
-			best: `${pct(best)}%`,
-			delta: signed(pct(today) - pct(best), ' pt'),
+			today: execution(today),
+			best: execution(best),
+			delta:
+				scored(today) && scored(best)
+					? signed(pct(today) - pct(best), ' pt')
+					: '',
 		},
 		{
 			label: 'energy',
