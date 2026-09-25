@@ -1,1 +1,0 @@
-- A text channel line that arrives just as you read the channel stays unread until it is on your screen. Before, it could be marked read the moment it landed, and if you left the channel right then it never counted as new.
