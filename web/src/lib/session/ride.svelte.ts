@@ -424,12 +424,29 @@ export function createRide(deps: RideDeps) {
 	 *  its subscription, keeping the ride buffer open so a fresh pair
 	 *  continues the same session. */
 	function unpair() {
+		const held = trainer;
+		// Read before letting go: zeroing is an actuation like any other
+		// (#1853), and a screen that is not driving must not release a target
+		// the screen that IS driving holds.
+		const zero = actuating;
+		letGo();
+		if (zero) void held?.setTargetPower(0);
+		void held?.disconnect();
+	}
+	/**
+	 * Give the trainer to a solo ride (#2635), still connected — the solo
+	 * slot's handOff, from the channel's side. /ride used to drop the link a
+	 * voice channel held and ask the rider to pair the same unit again.
+	 * Null when nothing is held.
+	 */
+	function handOff(): Trainer | null {
+		const held = trainer;
+		letGo();
+		return held;
+	}
+	function letGo() {
 		for (const off of unsubscribe) off();
 		unsubscribe = [];
-		// Zeroing is an actuation like any other (#1853): a screen that is not
-		// driving must not release a target the screen that IS driving holds.
-		if (actuating) void trainer?.setTargetPower(0);
-		void trainer?.disconnect();
 		trainer = null;
 		error = null;
 		status = 'disconnected';
@@ -504,6 +521,7 @@ export function createRide(deps: RideDeps) {
 		nudgeBias,
 		ride,
 		unpair,
+		handOff,
 		stop,
 	};
 }

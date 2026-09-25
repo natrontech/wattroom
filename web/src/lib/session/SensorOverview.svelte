@@ -59,8 +59,9 @@
 		 * Kinds one of the rider's OTHER screens holds, as the phrase naming
 		 * it — "on your phone" (#610). A card with one shows that instead of
 		 * a pair button: the hub grants one screen per sensor and would
-		 * refuse a second. Empty on the solo pre-ride screens, which hold no
-		 * voice channel socket and so have nothing to arbitrate.
+		 * refuse a second. Empty on the solo pre-ride screens: a voice channel
+		 * this tab stands in may hold the trainer (#521), and those screens
+		 * show it as theirs to ride (#2635), not as another screen's.
 		 */
 		elsewhere?: Record<string, string>;
 		/**

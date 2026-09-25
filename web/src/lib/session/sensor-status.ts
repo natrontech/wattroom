@@ -56,6 +56,35 @@ export function trainerHint(
 	return undefined;
 }
 
+type TrainerSlot = Pick<
+	ReturnType<typeof createRide>,
+	'trainer' | 'fault' | 'error' | 'pairing' | 'reading'
+>;
+
+/**
+ * Whichever slot holds the trainer, as the trainer card and Start read it
+ * (#2635): a voice channel's, when it holds one (it owns the hardware while
+ * you stand in it, #521), else the solo slot. Settings → Equipment answered
+ * this; /ride and /ramp read the solo slot alone, called the channel's
+ * trainer unpaired, and Pair dropped its link to ask for the same unit.
+ */
+export function heldTrainer(
+	solo: TrainerSlot & { forget: () => void },
+	channel: (TrainerSlot & { unpair: () => void }) | undefined,
+) {
+	const slot = channel?.trainer ? channel : solo;
+	return {
+		paired: !!slot.trainer,
+		fault: slot.fault,
+		state: trainerState(slot),
+		device: slot.trainer?.name,
+		reading: slot.reading,
+		hint: trainerHint(slot.fault),
+		error: slot.error,
+		forget: channel?.trainer ? () => channel.unpair() : () => solo.forget(),
+	};
+}
+
 export function trainerState(
 	ride: Pick<
 		ReturnType<typeof createRide>,
