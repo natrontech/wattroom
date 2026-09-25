@@ -348,8 +348,8 @@ body {
  * background with the system's Canvas, so a bar drawn in backgrounds becomes
  * blank space: the riding screen's gauge lost its fill, leaving a number with
  * nothing to read it against. A zone fill opts out and speaks the system
- * palette instead — effort in CanvasText, every zone alike, since a zone's
- * name is always written beside its colour. Unlayered, to beat the utilities.
+ * palette instead — effort in CanvasText, every zone alike. Which zone is then
+ * the gauge's written label alone (#1531). Unlayered, to beat the utilities.
  */
 @media (forced-colors: active) {
 	:is(.bg-z1, .bg-z2, .bg-z3, .bg-z4, .bg-z5, .bg-z6, .bg-z7) {
