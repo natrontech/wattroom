@@ -16,6 +16,11 @@ concurrency:
   group: publish-${{ github.ref }}
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
+# Nothing at the top, so a job added here later starts from zero rather than
+# from the repository's write default; the one job that pushes the image and
+# cuts the Release names its two writes itself (#2806, the note in ci.yml).
+permissions: {}
+
 jobs:
   image:
     runs-on: ubuntu-latest
@@ -24,6 +29,8 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # No QEMU: the Dockerfile cross-compiles for arm64 natively.
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
