@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import Banner from '$lib/components/Banner.svelte';
-	import { foundCrew, joinCrew } from '$lib/crew';
+	import { crewDoor, crewDoorPath, foundCrew } from '$lib/crew';
 	import {
 		administersNone,
 		foundedCount,
@@ -80,16 +80,19 @@
 		} else startError = res.error.message;
 	}
 
-	// The code is the crew's (ADR-0038 amended, #1236): joining lands on the
-	// crew's page.
-	async function joinByCode() {
+	// The code is the crew's (ADR-0038 amended, #1236), and it opens the
+	// crew's door rather than the crew (#2810): the door is where a weekly
+	// board is disclosed before the join (ADR-0036 as amended by ADR-0058),
+	// and joining from here put a rider's week on a board no sentence had
+	// named. Asked first, so a mistyped code is refused beside its field.
+	async function openDoor() {
+		joinError = null;
 		busy = true;
-		const res = await joinCrew(joinCode);
+		const code = joinCode.trim().toUpperCase();
+		const res = await crewDoor(code);
 		busy = false;
-		if (res.ok) {
-			presence.reload();
-			void goto(`/crew/${res.data.id}`);
-		} else joinError = res.error.message;
+		if (res.ok) void goto(crewDoorPath(code));
+		else joinError = res.error.message;
 	}
 </script>
 
@@ -183,7 +186,7 @@
 				<form
 					onsubmit={(e) => {
 						e.preventDefault();
-						void joinByCode();
+						void openDoor();
 					}}
 				>
 					<!-- svelte-ignore a11y_autofocus -->

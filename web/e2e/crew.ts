@@ -24,7 +24,7 @@ export interface ChannelOwner {
 	 * rider standing in the voice one — where a room's link used to land.
 	 */
 	open(page: Page, name: string): Promise<OpenedChannels>;
-	/** The way in for a second rider: the crew by its code, then the voice channel. */
+	/** A second rider joins the crew by its code, then stands in the voice channel. */
 	enter(page: Page, opened: OpenedChannels): Promise<void>;
 }
 
@@ -210,15 +210,31 @@ export const test = base.extend<{
 				return channels;
 			},
 			async enter(page, opened) {
-				// Plain /home, for the reason `riders` gives above.
-				await page.goto('/home');
-				await page.locator('#join-code').fill(opened.code);
-				await page.getByRole('button', { name: 'Join crew' }).click();
-				await page.waitForURL(/\/crew\//, { timeout: 15_000 });
+				// The join itself, not the pages in front of it. Walking in by
+				// the door (#2810) spends the per-address door budget (#1673)
+				// three or four times — its read, the invite it remembers, the
+				// join, and Home's own read of the code — and every rider in
+				// this suite shares one address, so its joins would trip the
+				// 429 mid-run. The walk is two specs of its own:
+				// crew-invite.spec.ts by the link, home-join-door.spec.ts by
+				// Home's code box.
+				const joined = await page.evaluate(
+					(code) =>
+						fetch('/api/crews/join', {
+							method: 'POST',
+							headers: { 'content-type': 'application/json' },
+							body: JSON.stringify({ code }),
+						}).then((res) => res.status),
+					opened.code,
+				);
+				expect(
+					joined,
+					`the join into "${opened.name}"'s crew was refused`,
+				).toBe(200);
 				await page.goto(voicePath(opened));
 				await expect(
 					page.getByRole('heading', { name: opened.name }),
-					`never landed in "${opened.name}" through the crew's door`,
+					`never landed in "${opened.name}" after joining its crew`,
 				).toBeAttached({ timeout: 15_000 });
 			},
 		});
