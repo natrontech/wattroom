@@ -312,8 +312,17 @@ func (q *Queries) ListCrewChannels(ctx context.Context, crewID pgtype.UUID) ([]C
 }
 
 const movedRoom = `-- name: MovedRoom :one
-select crew_id, text_channel_id, voice_channel_id from moved_rooms where slug = $1
+select m.crew_id, t.channel_id as text_channel_id, v.channel_id as voice_channel_id
+from moved_rooms m
+left join visible_channels t on t.channel_id = m.text_channel_id and t.user_id = $1
+left join visible_channels v on v.channel_id = m.voice_channel_id and v.user_id = $1
+where m.slug = $2
 `
+
+type MovedRoomParams struct {
+	Viewer pgtype.UUID
+	Slug   string
+}
 
 type MovedRoomRow struct {
 	CrewID         pgtype.UUID
@@ -323,9 +332,11 @@ type MovedRoomRow struct {
 
 // Where an old room link lands now (#2446, #2458): the crew the room became
 // part of and the two channels it became, from the table kept for exactly
-// this (#2558): the rooms themselves are gone (#2433).
-func (q *Queries) MovedRoom(ctx context.Context, slug string) (MovedRoomRow, error) {
-	row := q.db.QueryRow(ctx, movedRoom, slug)
+// this (#2558): the rooms themselves are gone (#2433). A channel is named only
+// to a viewer who may enter it (`visible_channels`, #2821): an old link is no
+// key, and a private channel's id is part of what its gate keeps.
+func (q *Queries) MovedRoom(ctx context.Context, arg MovedRoomParams) (MovedRoomRow, error) {
+	row := q.db.QueryRow(ctx, movedRoom, arg.Viewer, arg.Slug)
 	var i MovedRoomRow
 	err := row.Scan(&i.CrewID, &i.TextChannelID, &i.VoiceChannelID)
 	return i, err
