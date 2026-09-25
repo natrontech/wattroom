@@ -50,9 +50,9 @@
       "entitlementsInherit": "build/entitlements.mac.inherit.plist",
       "extendInfo": {
         "NSBluetoothAlwaysUsageDescription": "WattRoom connects to your trainer and heart-rate strap over Bluetooth.",
-        "NSMicrophoneUsageDescription": "WattRoom uses your microphone for the room's voice channel.",
+        "NSMicrophoneUsageDescription": "WattRoom uses your microphone for your crew's voice channels.",
         "NSCameraUsageDescription": "WattRoom uses your camera so your crew can see you ride.",
-        "NSAudioCaptureUsageDescription": "WattRoom can share your computer's audio with the room."
+        "NSAudioCaptureUsageDescription": "WattRoom can share your computer's audio with the call."
       },
       "notarize": true
     },

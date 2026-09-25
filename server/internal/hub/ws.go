@@ -109,11 +109,11 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// The database did not answer (#1984): logged, and a 503 the
 			// client retries — not a refusal it would believe.
 			h.log.Error("room door", "channel", r.PathValue("id"), "err", err)
-			http.Error(w, "the room could not be checked", http.StatusServiceUnavailable)
+			http.Error(w, "the voice channel could not be checked", http.StatusServiceUnavailable)
 			return
 		}
 		// Before the upgrade: a plain 403 is clearer to debug than a WS close code.
-		http.Error(w, "not a member of this room", http.StatusForbidden)
+		http.Error(w, "not one of the people this voice channel admits", http.StatusForbidden)
 		return
 	}
 
@@ -184,7 +184,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if !rm.hasRider(to) {
-				h.writeError(c, "invalid_request", "That rider is no longer in the room.")
+				h.writeError(c, "invalid_request", "That rider is no longer in this voice channel.")
 				continue
 			}
 			// The target is part of the rate-limit key: one rider cannot evade
@@ -199,7 +199,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 				To: to, FromID: rider.ID, From: rider.Name, At: h.now().UnixMilli(),
 			}
 			if !rm.queuePoke(to, poke) {
-				h.writeError(c, "invalid_request", "That rider is no longer in the room.")
+				h.writeError(c, "invalid_request", "That rider is no longer in this voice channel.")
 				continue
 			}
 			// The sender's answer (#2721): this socket's own copy, which the
@@ -420,7 +420,7 @@ func checkPick(c protocol.Control) string {
 		return "A workout name has to be 1-80 characters."
 	}
 	if len(c.WorkoutJSON) > maxWorkoutJSONBytes {
-		return "That workout is too large to share with the room."
+		return "That workout is too large to share with the session."
 	}
 	if err := workout.Validate(c.WorkoutJSON); err != nil {
 		if msg, ok := workout.RefusalMessage(err); ok {
@@ -434,7 +434,7 @@ func checkPick(c protocol.Control) string {
 	// nothing and no client would draw it.
 	segments, err := workout.Parse(c.WorkoutJSON)
 	if err != nil || len(segments) == 0 {
-		return "That workout expands past what a room can ride — fewer repeats, or fewer steps inside them."
+		return "That workout expands past what a session can ride — fewer repeats, or fewer steps inside them."
 	}
 	// The workout's own length is the session's (#1708), so it is the one
 	// checked (#2868); the socket's number never was the length.

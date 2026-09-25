@@ -535,7 +535,7 @@ func (s *Service) AccountAlert(user db.User, heading, line string) {
 // alert whose subject is not something the rider might want to reverse.
 func (s *Service) AccountDeleted(user db.User) {
 	s.alert(user, "Your WattRoom account was deleted",
-		"Your account is gone, and so is every ride, room membership and message that belonged to it. "+
+		"Your account is gone, and so is every ride, crew membership and message that belonged to it. "+
 			"Nothing was kept and there is nothing to undo.", "", "")
 }
 

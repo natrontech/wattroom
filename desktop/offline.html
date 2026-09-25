@@ -64,8 +64,8 @@
 	<body>
 		<h1>WattRoom can’t be reached</h1>
 		<p id="why">
-			The app didn’t answer. If you’re offline this is expected — a room is
-			other people, so there is nothing to ride alone here.
+			The app didn’t answer. If you’re offline this is expected — WattRoom
+			runs on its server, so it opens again once your connection is back.
 		</p>
 		<code id="target"></code>
 		<button id="retry" autofocus>Try again</button>
@@ -79,7 +79,7 @@
 				document.getElementById('why').textContent =
 					'The app didn’t answer (' +
 					reason +
-					'). If you’re offline this is expected — a room is other people, so there is nothing to ride alone here.';
+					'). If you’re offline this is expected — WattRoom runs on its server, so it opens again once your connection is back.';
 			}
 			document.getElementById('retry').addEventListener('click', () => {
 				window.wattroom?.retry();

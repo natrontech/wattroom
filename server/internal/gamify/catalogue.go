@@ -57,7 +57,7 @@ var Catalogue = []Achievement{
 		Icon: "coffee", XP: XpMedium},
 	{Key: keyLounge, Name: "Lounge Lizard", How: "10 hours in a lounge, in voice",
 		Icon: "headphones", XP: XpMedium, Need: 10 * 60},
-	{Key: keyDJ, Name: "DJ", How: "Queue 50 tracks the room played to the end",
+	{Key: keyDJ, Name: "DJ", How: "Queue 50 tracks the voice channel played to the end",
 		Icon: "music", XP: XpMedium, Need: 50},
 	{Key: keyCrewChief, Name: "Crew Chief", How: "Coach 20 sessions with 3+ riders",
 		Icon: "users", XP: XpHard, Need: 20},

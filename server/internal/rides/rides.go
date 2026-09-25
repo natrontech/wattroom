@@ -334,7 +334,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(req.Samples) < minSamples {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A ride under a minute is not saved — same rule the room uses.", "samples")
+			"A ride under a minute is not saved — the same rule a session uses.", "samples")
 		return
 	}
 	if len(req.Samples) > maxSamples {
