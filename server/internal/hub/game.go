@@ -67,10 +67,11 @@ type pedalled interface {
 	keptPedalling(riderID string, seconds int, now time.Time)
 }
 
-// withdrawing is a mode a departed rider leaves (#1577): the room's leave()
-// tells the game when the rider's last socket goes, so a paceline does not
-// hand the front to an empty seat and a podium is not topped from outside
-// the room.
+// withdrawing is a mode a departed rider leaves (#1577): the room tells the
+// game once the rider's last socket has been gone for the presence grace
+// (#2832), so a paceline does not hand the front to an empty seat and a
+// podium is not topped from outside the room — while a reload, a leave and a
+// join inside the grace, costs the rider nothing.
 type withdrawing interface {
 	withdraw(riderID string)
 }

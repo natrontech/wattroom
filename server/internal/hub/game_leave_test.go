@@ -81,6 +81,77 @@ func TestBackfillVouchesForTheGrace(t *testing.T) {
 	})
 }
 
+// A reload is a leave and a join a second later, and a garage phone flaps
+// the same way: inside docs/SPEC.md's presence grace neither is a departure
+// (#2832). The game used to withdraw the rider on the leave itself, so a
+// reload lost Sprint Roulette and the Points Race for good and sent a relay
+// rider to the back of the line. Past the grace without coming back, they are
+// withdrawn as before (#1577).
+func TestAReloadKeepsTheRiderInTheGame(t *testing.T) {
+	for _, mode := range []string{"sprint-roulette", "points-race", "team-relay"} {
+		t.Run(mode, func(t *testing.T) {
+			now := gat(0)
+			rm := newRoom("reload")
+			rm.now = func() time.Time { return now }
+			if refusal := rm.startGame(mode, gameStarter, now); refusal != "" {
+				t.Fatal(refusal)
+			}
+			withdrawn := func() bool {
+				switch g := rm.game.(*sampledGame).gameMode.(type) {
+				case *roulette:
+					return g.left["jan"]
+				case *pointsRace:
+					return g.roulette.left["jan"]
+				case *relay:
+					return !g.joined["jan"]
+				}
+				t.Fatalf("unexpected mode %T", rm.game)
+				return false
+			}
+			jan := sock("jan")
+			rm.join(jan)
+			now = now.Add(time.Second) // the sampled game's first second
+			rm.game.advance(now, map[string]int{"jan": 200}, backyardRoster())
+			if withdrawn() {
+				t.Fatal("jan never took a seat, so this proves nothing")
+			}
+
+			rm.leave(jan)
+			now = now.Add(time.Second)
+			rm.join(sock("jan"))
+			now = now.Add(presenceGrace + time.Second)
+			rm.mu.Lock()
+			rm.sayDepartedLocked(now)
+			rm.mu.Unlock()
+			if withdrawn() {
+				t.Fatal("a reload inside the grace withdrew the rider")
+			}
+
+			for c := range rm.clients {
+				rm.leave(c)
+			}
+			if withdrawn() {
+				t.Fatal("the rider was withdrawn before the grace ran out")
+			}
+			now = now.Add(presenceGrace + time.Second)
+			rm.mu.Lock()
+			rm.sayDepartedLocked(now)
+			rm.mu.Unlock()
+			if !withdrawn() {
+				t.Fatal("a rider gone past the grace is still in the game")
+			}
+
+			// And back after that: a returning rider is in the room again.
+			rm.join(sock("jan"))
+			now = now.Add(time.Second)
+			rm.game.advance(now, map[string]int{"jan": 200}, backyardRoster())
+			if withdrawn() {
+				t.Fatal("a rider back in the room is still counted as gone")
+			}
+		})
+	}
+}
+
 // The rider whose last socket left is out of the game (#1577).
 func TestLeavingRiderIsWithdrawn(t *testing.T) {
 	t.Run("the paceline drops the seat", func(t *testing.T) {
@@ -160,6 +231,10 @@ func TestLeavingRiderIsWithdrawn(t *testing.T) {
 		c := sock("b")
 		rm.join(c)
 		rm.leave(c)
+		// Once the presence grace is out without b coming back (#2832).
+		rm.mu.Lock()
+		rm.sayDepartedLocked(rm.now().Add(presenceGrace + time.Second))
+		rm.mu.Unlock()
 		sampled, _ := rm.game.(*sampledGame)
 		r, _ := sampled.gameMode.(*relay)
 		if r == nil || len(r.order) != 1 || r.order[0] != "a" {
