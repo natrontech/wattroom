@@ -302,3 +302,42 @@ func TestClosingATabFreesItsSensors(t *testing.T) {
 		t.Error("the remaining screen was never told the trainer is free")
 	}
 }
+
+// A silent drop reconnects before the old socket is reaped (#2867): the
+// client is back in about a second with the same tab label, and the server
+// notices the half-open socket only after its keepalive. Reaping that old
+// socket released the claim the reconnected tab now holds, told the rider's
+// phone the trainer was free, and a phone that took it stopped the desktop
+// that was still riding.
+func TestReapingAStaleSocketKeepsTheReconnectedTabsClaim(t *testing.T) {
+	rm := newRoom("test")
+	stale := screen("jan", "t1", "desktop")
+	phone := screen("jan", "t2", "phone")
+	rm.join(stale)
+	rm.join(phone)
+	rm.claimSensors(stale, protocol.SensorClaim{Held: []string{"trainer"}, Tab: "t1", Device: "desktop"})
+
+	back := screen("jan", "t1", "desktop") // the same tab, reconnected
+	rm.join(back)
+	rm.claimSensors(back, protocol.SensorClaim{Held: []string{"trainer"}, Tab: "t1", Device: "desktop"})
+	rm.mu.Lock()
+	clear(rm.pendingPairing)
+	rm.mu.Unlock()
+
+	rm.leave(stale) // the keepalive reaps the half-open socket
+
+	rm.mu.Lock()
+	owns := rm.ownsTrainerLocked(back)
+	phoneSees := rm.pairingForLocked(phone)
+	queued := len(rm.pendingPairing)
+	rm.mu.Unlock()
+	if !owns {
+		t.Error("the reconnected tab lost the trainer it still holds")
+	}
+	if phoneSees.Elsewhere["trainer"] == "" {
+		t.Errorf("the phone was told the trainer is free: %+v", phoneSees)
+	}
+	if queued != 0 {
+		t.Errorf("the reap told %d screens something changed; nothing did", queued)
+	}
+}

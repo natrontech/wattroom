@@ -134,6 +134,15 @@ func (rm *room) releaseSensorsLocked(c *client) bool {
 	if held == nil || c.tab == "" {
 		return false
 	}
+	// The tab is still here on a newer socket (#2867): a silent drop
+	// reconnects in about a second with the same label, and the keepalive
+	// reaps the old socket only after. The claims are that tab's, and it
+	// still holds them.
+	for other := range rm.clients {
+		if other != c && other.rider.ID == c.rider.ID && other.tab == c.tab {
+			return false
+		}
+	}
 	changed := false
 	for kind, owner := range held {
 		if owner.tab == c.tab {
