@@ -446,6 +446,75 @@ func (q *Queries) ListCrewNotifyTargets(ctx context.Context, arg ListCrewNotifyT
 	return items, nil
 }
 
+const listCrewPlanRoster = `-- name: ListCrewPlanRoster :many
+with plans as (
+    select s.id, s.crew_id, s.channel_id from scheduled_sessions s
+    where s.crew_id = $1 and s.starts_at > now() - interval '30 minutes'
+      and s.started_at is null
+      and ($2::bool or s.created_by = $3)
+),
+audience as (
+    select p.id as session_id, cw.owner_id as user_id
+    from plans p join crews cw on cw.id = p.crew_id where p.channel_id is null
+    union
+    select p.id, cr.user_id
+    from plans p join crew_roles cr on cr.crew_id = p.crew_id
+    where p.channel_id is null and cr.role in ('member', 'admin')
+    union
+    select p.id, v.user_id
+    from plans p join visible_channels v on v.channel_id = p.channel_id
+)
+select a.session_id, a.user_id, u.display_name, r.going
+from audience a
+join users u on u.id = a.user_id
+left join session_rsvps r on r.session_id = a.session_id and r.user_id = a.user_id
+where r.going is not true
+order by lower(u.display_name), u.id
+`
+
+type ListCrewPlanRosterParams struct {
+	CrewID      pgtype.UUID
+	Administers bool
+	Viewer      pgtype.UUID
+}
+
+type ListCrewPlanRosterRow struct {
+	SessionID   pgtype.UUID
+	UserID      pgtype.UUID
+	DisplayName string
+	Going       *bool
+}
+
+// The organiser's half of #1011 (#2797): for each upcoming plan the viewer
+// may move or cancel — their own, or any when they administer the crew —
+// everyone it reaches who is out or has not answered, by name. `going` is
+// false for out and null for no answer. The crew at large still reads
+// ListCrewRsvps, which never selects a decliner's name.
+func (q *Queries) ListCrewPlanRoster(ctx context.Context, arg ListCrewPlanRosterParams) ([]ListCrewPlanRosterRow, error) {
+	rows, err := q.db.Query(ctx, listCrewPlanRoster, arg.CrewID, arg.Administers, arg.Viewer)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCrewPlanRosterRow
+	for rows.Next() {
+		var i ListCrewPlanRosterRow
+		if err := rows.Scan(
+			&i.SessionID,
+			&i.UserID,
+			&i.DisplayName,
+			&i.Going,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCrewRsvps = `-- name: ListCrewRsvps :many
 select r.session_id, r.user_id, r.going,
        case when r.going then u.display_name else '' end as display_name

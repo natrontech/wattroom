@@ -41,8 +41,8 @@ func (s *Service) registerCrewSchedule(mux *http.ServeMux) {
 
 // tallyAnswers splits the RSVPs the way every schedule shows them (#1011): an
 // "in" is named, an "out" is a number, and the caller's own answer is theirs.
-func tallyAnswers(me pgtype.UUID, answers []db.ListCrewRsvpsRow) (going map[string][]goingJSON, out map[string]int, yours map[string]string) {
-	going, out, yours = map[string][]goingJSON{}, map[string]int{}, map[string]string{}
+func tallyAnswers(me pgtype.UUID, answers []db.ListCrewRsvpsRow) (going map[string][]riderJSON, out map[string]int, yours map[string]string) {
+	going, out, yours = map[string][]riderJSON{}, map[string]int{}, map[string]string{}
 	for _, row := range answers {
 		id := store.UUIDString(row.SessionID)
 		if row.UserID == me {
@@ -52,14 +52,30 @@ func tallyAnswers(me pgtype.UUID, answers []db.ListCrewRsvpsRow) (going map[stri
 			out[id]++
 			continue
 		}
-		going[id] = append(going[id], goingJSON{ID: store.UUIDString(row.UserID), DisplayName: row.DisplayName})
+		going[id] = append(going[id], riderJSON{ID: store.UUIDString(row.UserID), DisplayName: row.DisplayName})
 	}
 	return going, out, yours
 }
 
+// rosterOf splits the organiser's names (#2797) the way tallyAnswers splits
+// the crew's: a row with an answer is out, a row without one is unanswered.
+func rosterOf(rows []db.ListCrewPlanRosterRow) (out, unanswered map[string][]riderJSON) {
+	out, unanswered = map[string][]riderJSON{}, map[string][]riderJSON{}
+	for _, row := range rows {
+		id := store.UUIDString(row.SessionID)
+		who := riderJSON{ID: store.UUIDString(row.UserID), DisplayName: row.DisplayName}
+		if row.Going == nil {
+			unanswered[id] = append(unanswered[id], who)
+		} else {
+			out[id] = append(out[id], who)
+		}
+	}
+	return out, unanswered
+}
+
 // handleCrewSchedule is the crew's calendar as the caller may see it.
 func (s *Service) handleCrewSchedule(w http.ResponseWriter, r *http.Request) {
-	crew, user, _, ok := s.crewByID(w, r)
+	crew, user, role, ok := s.crewByID(w, r)
 	if !ok {
 		return
 	}
@@ -73,7 +89,15 @@ func (s *Service) handleCrewSchedule(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "list crew rsvps failed", err, "The schedule could not be loaded.", "crew", store.UUIDString(crew.ID))
 		return
 	}
+	roster, err := s.store.Queries.ListCrewPlanRoster(r.Context(), db.ListCrewPlanRosterParams{
+		CrewID: crew.ID, Viewer: user.ID, Administers: administers(role),
+	})
+	if err != nil {
+		httpx.Fail(w, s.log, "list crew plan roster failed", err, "The schedule could not be loaded.", "crew", store.UUIDString(crew.ID))
+		return
+	}
 	going, out, yours := tallyAnswers(user.ID, answers)
+	outRiders, unansweredRiders := rosterOf(roster)
 	sessions := make([]scheduledJSON, 0, len(rows))
 	for _, row := range rows {
 		id := store.UUIDString(row.ID)
@@ -82,8 +106,10 @@ func (s *Service) handleCrewSchedule(w http.ResponseWriter, r *http.Request) {
 			StartsAt: row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
 			Going: going[id], Out: out[id], YourAnswer: yours[id],
 			// Never below zero: someone can answer and leave between reads.
-			Unanswered: max(0, int(row.Audience)-len(going[id])-out[id]),
-			Mine:       row.CreatedByID == user.ID,
+			Unanswered:       max(0, int(row.Audience)-len(going[id])-out[id]),
+			OutRiders:        outRiders[id],
+			UnansweredRiders: unansweredRiders[id],
+			Mine:             row.CreatedByID == user.ID,
 		}
 		if row.ChannelID.Valid {
 			entry.ChannelID, entry.ChannelName = store.UUIDString(row.ChannelID), row.ChannelName

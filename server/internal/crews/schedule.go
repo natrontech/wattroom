@@ -27,15 +27,22 @@ type scheduledJSON struct {
 	CreatedBy   string `json:"createdBy"`
 	// Who said they are in (#450), first to say so first. A plan with an
 	// RSVP is what this repo calls an event — there is no second object.
-	Going []goingJSON `json:"going,omitempty"`
+	Going []riderJSON `json:"going,omitempty"`
 	// How many said no, and how many have not answered (#1011). COUNTS, and
-	// never names: the number is what changes a planner's decision — hold
-	// the session or move it — and the names would only add the pressure.
-	// Crews are small, so a list of who declined is close to naming them
-	// out loud, which is a thing a crew does to a person rather than a
-	// thing the software has to do for it.
+	// never names to the crew: the number is what changes a planner's
+	// decision — hold the session or move it — and the names would only add
+	// the pressure. Crews are small, so a list of who declined is close to
+	// naming them out loud, which is a thing a crew does to a person rather
+	// than a thing the software has to do for it.
 	Out        int `json:"out,omitempty"`
 	Unanswered int `json:"unanswered,omitempty"`
+	// The same two, by name, for the plan's organiser only (#2797): whoever
+	// may move or cancel it — its planner, the crew's owner and admins. They
+	// are the ones who chase an answer or call the session off, and a count
+	// cannot tell them whom to ask. Absent for everyone else, so a name
+	// withheld is never on the wire.
+	OutRiders        []riderJSON `json:"outRiders,omitempty"`
+	UnansweredRiders []riderJSON `json:"unansweredRiders,omitempty"`
 	// The caller's own answer — "in", "out", or absent for not yet asked.
 	// Read rather than derived from Going: that list is the crew's public
 	// half and would only ever answer half the question.
@@ -48,7 +55,7 @@ type scheduledJSON struct {
 	Mine        bool   `json:"mine,omitempty"`
 }
 
-type goingJSON struct {
+type riderJSON struct {
 	ID          string `json:"id"`
 	DisplayName string `json:"displayName"`
 }
