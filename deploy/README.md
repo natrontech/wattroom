@@ -9,6 +9,13 @@ explains each value and what happens when an optional capability stays unset.
     cp livekit.yaml.example livekit.yaml   # real keys, same values as .env
     docker compose -f docker-compose.prod.yml up -d
 
+LiveKit runs on the host's network (WebRTC needs real UDP on the VM's
+address) and everything else on the compose network, so the two never see each
+other by name. Caddy reaches LiveKit as `host.docker.internal`, and LiveKit's
+webhook reaches the server on the loopback port the compose publishes — keep
+both if you change either side, or Join voice answers 502 and the voice radar
+never moves.
+
 Every deploy after that is a tag bump in `.env`:
 
     WATTROOM_TAG=2026.09.1

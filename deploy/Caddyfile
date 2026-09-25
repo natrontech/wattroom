@@ -25,9 +25,12 @@
 		respond 404
 	}
 
-	# LiveKit signaling; media flows over host-network UDP directly.
+	# LiveKit signaling; media flows over host-network UDP directly. LiveKit
+	# is on the host's network and Caddy is not, so `localhost` here is Caddy
+	# itself: host.docker.internal is the host, mapped in the compose file
+	# (#2827). The server's own calls to LiveKit come through here too.
 	handle_path /livekit* {
-		reverse_proxy localhost:7880
+		reverse_proxy host.docker.internal:7880
 	}
 
 	# Binary unreachable (deploy, crash, `compose stop wattroom` for planned

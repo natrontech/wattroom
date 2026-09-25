@@ -7,6 +7,9 @@ keys:
   REPLACE_KEY: REPLACE_SECRET
 webhook:
   # The sidebar radar (#149): participant events feed the app's voice map.
+  # LiveKit is on the host network, where compose names like `wattroom` do not
+  # resolve; the compose file publishes the server on the host's loopback
+  # (#2827).
   api_key: REPLACE_KEY
   urls:
-    - http://wattroom:8080/api/livekit/webhook
+    - http://127.0.0.1:8080/api/livekit/webhook
