@@ -385,6 +385,13 @@ test('no page outside a voice channel scrolls sideways on a phone', async ({
 	await seedAPlannedSession(page, crewId ?? '');
 	await seedALongToken(page, textChannel);
 
+	// The two pages a rider types on (#2857): a composer whose tools shared its
+	// row left 72 px to type in on a DM, and no overflow check could see it.
+	const composers = new Set([
+		byPattern['/messages/dm/[peer]'],
+		byPattern['/crew/[id]/c/[channel]'],
+	]);
+	const cramped: string[] = [];
 	const wide: string[] = [];
 	for (const route of routes) {
 		await page.goto(route);
@@ -401,9 +408,16 @@ test('no page outside a voice channel scrolls sideways on a phone', async ({
 			.catch(() => {});
 		const excess = await excessOf();
 		if (excess > 0) wide.push(`${route} overflows by ${excess}px`);
+		if (composers.has(route)) {
+			const typing = await page
+				.locator('textarea[role=combobox]')
+				.evaluate((el) => Math.round(el.getBoundingClientRect().width));
+			if (typing < 200) cramped.push(`${route} leaves ${typing}px to type in`);
+		}
 	}
 
 	expect(wide, 'pages wider than a 375px phone').toEqual([]);
+	expect(cramped, 'message boxes too narrow to type in').toEqual([]);
 });
 
 /**

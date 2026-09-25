@@ -204,7 +204,7 @@
 	}
 </script>
 
-<div class="border-ink/5 relative shrink-0 border-t px-5 py-3">
+<div class="border-ink/5 @container relative shrink-0 border-t px-5 py-3">
 	{#if gifOpen}
 		<GifPicker
 			onPick={(gif) => void sendGif(gif)}
@@ -258,7 +258,7 @@
 		</ul>
 	{/if}
 	<form
-		class="flex items-end gap-2"
+		class="flex flex-wrap items-end gap-2"
 		onsubmit={(e) => {
 			e.preventDefault();
 			void send();
@@ -282,65 +282,71 @@
 				e.currentTarget.value = '';
 			}}
 		/>
-		<!-- The kit's icon button, not a hand-typed one (#2170): these two sat
-		     at 24 px under ux.md's 24 px floor, and only the attach one dimmed
-		     when the box was locked, because each had typed its own skin. -->
-		<button
-			type="button"
-			onclick={() => filePicker?.click()}
-			disabled={!!lock}
-			class="icon-btn text-muted hover:text-ink"
-			aria-label="attach an image"
-			title="attach an image (or paste one)"><ImageIcon size={16} /></button
-		>
-		<!-- Gated on the server having a Tenor key (ux.md): no button that
+		<!-- The tools take a row of their own when the composer is narrow
+		     (#2857): five 40 px buttons beside the box left it 72 px to type in
+		     on a phone. The composer's own width decides, not the screen's — a
+		     desk window with the sidebar open squeezes it the same way. -->
+		<div class="flex items-end gap-2 @max-lg:basis-full">
+			<!-- The kit's icon button, not a hand-typed one (#2170): these two sat
+			     at 24 px under ux.md's 24 px floor, and only the attach one dimmed
+			     when the box was locked, because each had typed its own skin. -->
+			<button
+				type="button"
+				onclick={() => filePicker?.click()}
+				disabled={!!lock}
+				class="icon-btn text-muted hover:text-ink"
+				aria-label="attach an image"
+				title="attach an image (or paste one)"><ImageIcon size={16} /></button
+			>
+			<!-- Gated on the server having a Tenor key (ux.md): no button that
 		     opens a picker with nothing behind it. -->
-		{#if account.me?.gifsEnabled}
+			{#if account.me?.gifsEnabled}
+				<button
+					type="button"
+					onclick={() => (gifOpen = !gifOpen)}
+					disabled={!!lock}
+					data-gif-toggle
+					class="icon-btn {gifOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
+					aria-label="send a GIF"
+					aria-expanded={gifOpen}
+					title="send a GIF"><ImagePlay size={16} /></button
+				>
+			{/if}
 			<button
 				type="button"
-				onclick={() => (gifOpen = !gifOpen)}
+				bind:this={emojiButton}
+				onclick={() => (emojiOpen = !emojiOpen)}
 				disabled={!!lock}
-				data-gif-toggle
-				class="icon-btn {gifOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
-				aria-label="send a GIF"
-				aria-expanded={gifOpen}
-				title="send a GIF"><ImagePlay size={16} /></button
+				class="icon-btn {emojiOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
+				aria-label="add an emoji"
+				aria-expanded={emojiOpen}
+				title="add an emoji"><Smile size={16} /></button
 			>
-		{/if}
-		<button
-			type="button"
-			bind:this={emojiButton}
-			onclick={() => (emojiOpen = !emojiOpen)}
-			disabled={!!lock}
-			class="icon-btn {emojiOpen ? 'text-ink' : 'text-muted hover:text-ink'}"
-			aria-label="add an emoji"
-			aria-expanded={emojiOpen}
-			title="add an emoji"><Smile size={16} /></button
-		>
-		{#if poke}
+			{#if poke}
+				<button
+					type="button"
+					onclick={poke.toggle}
+					disabled={!!lock}
+					class="icon-btn {poke.on ? 'text-neon' : 'text-muted hover:text-ink'}"
+					aria-label="send as a poke"
+					aria-pressed={poke.on}
+					title={poke.on ? 'sends as a poke' : 'send as a poke'}
+					><BellRing size={16} /></button
+				>
+			{/if}
 			<button
 				type="button"
-				onclick={poke.toggle}
+				onclick={pickTimer}
 				disabled={!!lock}
-				class="icon-btn {poke.on ? 'text-neon' : 'text-muted hover:text-ink'}"
-				aria-label="send as a poke"
-				aria-pressed={poke.on}
-				title={poke.on ? 'sends as a poke' : 'send as a poke'}
-				><BellRing size={16} /></button
+				class="icon-btn {expiresIn ? 'text-neon' : 'text-muted hover:text-ink'}"
+				aria-label="make it temporary"
+				aria-haspopup="menu"
+				aria-pressed={!!expiresIn}
+				title={timerLabel
+					? `disappears after ${timerLabel}`
+					: 'make it temporary'}><Timer size={16} /></button
 			>
-		{/if}
-		<button
-			type="button"
-			onclick={pickTimer}
-			disabled={!!lock}
-			class="icon-btn {expiresIn ? 'text-neon' : 'text-muted hover:text-ink'}"
-			aria-label="make it temporary"
-			aria-haspopup="menu"
-			aria-pressed={!!expiresIn}
-			title={timerLabel
-				? `disappears after ${timerLabel}`
-				: 'make it temporary'}><Timer size={16} /></button
-		>
+		</div>
 		<!-- A textarea (#2642): a line break is something a rider writes, and a
 		     long line wraps in view instead of sliding off the box's left edge. -->
 		<textarea
