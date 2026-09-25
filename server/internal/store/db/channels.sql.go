@@ -48,6 +48,32 @@ func (q *Queries) CancelPrivateChannelPlans(ctx context.Context, id pgtype.UUID)
 	return items, nil
 }
 
+const channelAudience = `-- name: ChannelAudience :many
+select user_id from visible_channels where channel_id = $1
+`
+
+// Who may enter one channel (`visible_channels`): the only riders a ping about
+// its log may reach (#2821) — its activity is part of what its gate keeps.
+func (q *Queries) ChannelAudience(ctx context.Context, channelID pgtype.UUID) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, channelAudience, channelID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var user_id pgtype.UUID
+		if err := rows.Scan(&user_id); err != nil {
+			return nil, err
+		}
+		items = append(items, user_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const createChannel = `-- name: CreateChannel :one
 insert into channels (crew_id, kind, name, position, private)
 select $1, $2, $3,

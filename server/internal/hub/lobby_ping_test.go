@@ -52,3 +52,19 @@ func TestAReadPingsOnlyTheReadersOwnSockets(t *testing.T) {
 		}
 	}
 }
+
+// A channel's ping reaches only the riders who may enter it (#2821): anyone
+// else who held a socket would learn the moment of every line in a channel
+// whose gate refuses them its log — activity is what the gate keeps.
+func TestAChannelPingReachesOnlyItsAudience(t *testing.T) {
+	member := &lobbyClient{ping: make(chan struct{}, 1)}
+	stranger := &lobbyClient{ping: make(chan struct{}, 1)}
+	h := &Hub{lobby: map[*lobbyClient]string{member: "in", stranger: "out"}}
+	h.ChannelChanged("c1", []string{"in"})
+	if len(member.ping) != 1 || string(member.take()) != `{"channel":"c1"}` {
+		t.Errorf("the member was not told c1 moved")
+	}
+	if len(stranger.ping) != 0 {
+		t.Errorf("the stranger heard the channel: %s", stranger.take())
+	}
+}

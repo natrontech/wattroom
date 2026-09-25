@@ -23,6 +23,11 @@ where c.crew_id = $1 and cm.user_id = $2;
 -- name: IsNamedInChannel :one
 select exists (select 1 from channel_members where channel_id = $1 and user_id = $2);
 
+-- name: ChannelAudience :many
+-- Who may enter one channel (`visible_channels`): the only riders a ping about
+-- its log may reach (#2821) — its activity is part of what its gate keeps.
+select user_id from visible_channels where channel_id = $1;
+
 -- name: ListChannelMembers :many
 -- A private channel's named members, for the channels of one crew.
 select cm.channel_id, u.id, u.display_name, u.avatar_url

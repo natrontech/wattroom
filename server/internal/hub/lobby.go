@@ -1,17 +1,20 @@
 // The lobby socket (#251): every signed-in client holds one, and the hub
 // pushes an empty ping whenever presence changes anywhere — a roster, voice,
 // camera, phase, or riding-set change, or a user coming online. The socket
-// carries no data at all: clients re-fetch the HTTP endpoints they already
-// use, which stay membership-filtered, so nothing here can pierce the room
-// boundary. Holding the socket IS being online (WhereIs reads it) — no
-// last-seen timestamps, closing it is going offline; the keepalive in
-// keepalive.go is how the server notices a close that never arrived.
+// carries no data beyond the id of a text channel whose log changed, and that
+// only to riders who may enter it (#2435, #2821): clients re-fetch the HTTP
+// endpoints they already use, which stay membership-filtered, so nothing here
+// can pierce a channel's gate. Holding the socket IS being online (WhereIs
+// reads it) — no last-seen timestamps, closing it is going offline; the
+// keepalive in keepalive.go is how the server notices a close that never
+// arrived.
 package hub
 
 import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"slices"
 	"sync"
 
 	"github.com/coder/websocket"
@@ -164,14 +167,18 @@ func (h *Hub) ReadChanged(userID string) {
 	}
 }
 
-// ChannelChanged pings every lobby client about one text channel's log
-// (#2435): a client looking at it re-fetches that channel and nothing else.
-// ponytail: every client hears it, crew or not — the id is opaque and the
-// log is behind its gate; route by crew when the lobby learns crews (#2324).
-func (h *Hub) ChannelChanged(channelID string) {
+// ChannelChanged pings the lobby sockets of the riders who may enter one text
+// channel (audience) about its log (#2435): a client looking at it re-fetches
+// that channel and nothing else. Never anyone else's (#2821) — a ping timed to
+// every write is the channel's activity, and that is what its gate keeps
+// (ADR-0058), from a stranger holding an old id as much as from a banned or
+// un-named member.
+func (h *Hub) ChannelChanged(channelID string, audience []string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for c := range h.lobby {
-		c.queue(channelID)
+	for c, userID := range h.lobby {
+		if slices.Contains(audience, userID) {
+			c.queue(channelID)
+		}
 	}
 }
