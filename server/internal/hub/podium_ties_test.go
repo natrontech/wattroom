@@ -194,3 +194,46 @@ func TestFinishedGameIsAnnouncedOnceAndLetGo(t *testing.T) {
 		t.Fatalf("linger: still there %v, gone after %v", stillThere, gone)
 	}
 }
+
+// Riders who go out on the same tick are tied on the only thing an
+// elimination mode measures, and were placed by map order — the podium, the
+// won line and the credit went to whoever Go's seed put last (#2831). They
+// place by id, like every other tie in the modes (#1574): two dropping
+// together behind a survivor finish b then c, every time.
+func TestSameTickEliminationsPlaceByRiderID(t *testing.T) {
+	roster := map[string]protocol.Rider{
+		"a": {ID: "a", Name: "Ada", FtpWatts: 200, WeightKg: 70},
+		"b": {ID: "b", Name: "Bea", FtpWatts: 200, WeightKg: 70},
+		"c": {ID: "c", Name: "Cy", FtpWatts: 200, WeightKg: 70},
+	}
+	rng := rand.New(rand.NewSource(1)) //nolint:gosec // a test seed
+	builds := map[string]func() []protocol.SprintScore{
+		"backyard-ramp": func() []protocol.SprintScore {
+			b := newBackyard(gat(0), false)
+			b.joined = map[string]bool{"c": true, "b": true, "a": true}
+			b.below = map[string]int{"b": backyardBelowSecs - 1, "c": backyardBelowSecs - 1}
+			b.advance(gat(1), map[string]int{"a": 160, "b": 0, "c": 0}, roster)
+			return b.podium
+		},
+		"floor-is-lava": func() []protocol.SprintScore {
+			l := newLava(gat(0), rng)
+			l.joined = map[string]bool{"c": true, "b": true, "a": true}
+			l.lives = map[string]int{"a": lavaLives, "b": 1, "c": 1}
+			l.outOfZone = map[string]int{"b": lavaGraceSecs, "c": lavaGraceSecs}
+			mid := int(200 * (zoneBounds[l.zone][0] + zoneBounds[l.zone][1]) / 2)
+			l.advance(gat(1), map[string]int{"a": mid, "b": 0, "c": 0}, roster)
+			return l.podium
+		},
+	}
+	for mode, build := range builds {
+		t.Run(mode, func(t *testing.T) {
+			// Small maps iterate in a skewed order — 20 builds passed by luck.
+			for i := 0; i < 200; i++ {
+				podium := build()
+				if len(podium) != 3 || podium[0].RiderID != "a" || podium[1].RiderID != "b" || podium[2].RiderID != "c" {
+					t.Fatalf("build %d: %+v", i, podium)
+				}
+			}
+		})
+	}
+}

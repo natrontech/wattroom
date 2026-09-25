@@ -77,6 +77,7 @@ func (l *lava) advance(now time.Time, samples map[string]int, roster map[string]
 	}
 	low, high := zoneBounds[l.zone][0], zoneBounds[l.zone][1]
 
+	var gone []string
 	for id, watts := range samples {
 		l.joined[id] = true
 		if l.out[id] {
@@ -100,7 +101,7 @@ func (l *lava) advance(now time.Time, samples map[string]int, roster map[string]
 			l.outOfZone[id] = 0
 			if l.lives[id] <= 0 {
 				l.out[id] = true
-				l.order = append(l.order, id)
+				gone = append(gone, id)
 			}
 		}
 	}
@@ -120,10 +121,12 @@ func (l *lava) advance(now time.Time, samples map[string]int, roster map[string]
 			l.outOfZone[id] = 0
 			if l.lives[id] <= 0 {
 				l.out[id] = true
-				l.order = append(l.order, id)
+				gone = append(gone, id)
 			}
 		}
 	}
+
+	l.order = appendEliminated(l.order, gone)
 
 	alive := 0
 	for id := range l.joined {
