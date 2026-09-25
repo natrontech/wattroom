@@ -180,6 +180,14 @@ export const TemporaryDay = 24 * TemporaryHour;
  * zones derive from (ADR-0014). Both sides read these; neither retypes them.
  */
 export const TemporaryWeek = 7 * TemporaryDay;
+/**
+ * One reconnect replay frame, in samples: an hour of the ride buffer's
+ * one row a second (audit 2026-09-09). The hub takes one frame a second
+ * per rider and cuts a longer one, so the client sends a longer outage
+ * in frames of this size, a second apart (#2839). Not a SPEC number, but
+ * one both sides have to agree on.
+ */
+export const MaxBackfillBatch = 60 * 60;
 
 //////////
 // source: protocol.go
@@ -213,9 +221,13 @@ export interface RiderMetrics {
    * record counts wall seconds — the ride clock stops while auto-paused,
    * and skip and extend make it jump — so the array index stops being the
    * workout second at the first pause, and every sample after it would be
-   * scored against the wrong block. Absent (0 on every sample) is a ride
-   * that sends none: a session ride, where the hub's clock IS the workout
-   * clock, or one recorded before this existed; those score by index.
+   * scored against the wrong block.
+   * A session ride is stamped with the timeline second (#2814): by the hub
+   * on a live sample, which ignores what the client sent, and by the
+   * client's buffer on a replayed one, which the hub cannot place
+   * otherwise. A rider who joins at minute ten starts at 600, not at 0.
+   * Absent (0 on every sample) is a ride recorded before either existed;
+   * those score by index.
    */
   clock?: number /* int */;
   /**

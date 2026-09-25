@@ -196,8 +196,14 @@ export async function openRideBuffer(
 		release,
 		async since(seq) {
 			if (!db) return [];
-			const all = await readSamples(db, meta.rideId);
-			return all.filter((s) => s.seq > seq);
+			// The rows past `seq` and no others (#2839): reading the whole
+			// ride to filter it made every reconnect cost the ride's length.
+			const rows = await tx(db, 'readonly', (samples) =>
+				samples.getAll(
+					IDBKeyRange.bound([meta.rideId, seq], [meta.rideId, Infinity], true),
+				),
+			);
+			return (rows ?? []) as BufferedSample[];
 		},
 	};
 }

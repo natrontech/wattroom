@@ -93,14 +93,15 @@ func (s *Saver) save(
 		if len(rider.Samples) < hub.MinRideSamples {
 			continue
 		}
-		row, err := s.rideRow(workoutName, workoutJSON, startedAt, rider)
+		start := rideStart(startedAt, rider)
+		row, err := s.rideRow(workoutName, workoutJSON, start, rider)
 		if err != nil {
 			// One rider's junk must not eat the whole room's rides.
 			s.log.Warn("ride skipped", "err", err, "rider", rider.Rider.ID)
 			continue
 		}
 		row.CrewID, row.ChannelID, row.SessionID = at.crew, at.channel, at.session
-		row.Xp += StreakXP(ctx, q, row.UserID, startedAt)
+		row.Xp += StreakXP(ctx, q, row.UserID, start)
 		// A retry after a commit whose answer was lost must not insert the
 		// rider's ride — or their medals — twice (audit 2026-09-09).
 		if existing, err := q.FindRideAt(ctx, db.FindRideAtParams{UserID: row.UserID, StartedAt: row.StartedAt}); err == nil {
@@ -121,20 +122,24 @@ func (s *Saver) save(
 			watts[i] = sample.Watts
 		}
 		kept = append(kept, savedRide{
-			rideID: rideID, userID: row.UserID, facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
+			rideID: rideID, userID: row.UserID, facts: Facts(start, rider.Rider.FtpWatts, watts),
 		})
 		curve := PowerCurve(watts)
 		wkg := 0.0
 		if rider.Rider.WeightKg > 0 {
 			wkg = float64(curve.Best5s) / float64(rider.Rider.WeightKg)
 		}
+		// By the workout second, not the sample's place in the record (#2814):
+		// a rider who joined late would otherwise be judged on the blocks of
+		// minute 0, and never reach the last one.
+		timeline := onTimeline(rider.Samples)
 		results = append(results, RiderResult{
 			UserID: rider.Rider.ID, JoinOrder: join,
 			Execution: float64(row.Execution),
 			Scored:    row.ExecutionScored,
-			CoV:       SteadyCoV(segments, watts),
+			CoV:       SteadyCoV(segments, timeline),
 			Best5sWkg: wkg,
-			Completed: Completed(segments, len(rider.Samples)),
+			Completed: Completed(segments, len(timeline)),
 		})
 	}
 
@@ -195,6 +200,15 @@ func (s *Saver) placeOf(ctx context.Context, channel, session string) (place, er
 	// Empty for a session that came back from a restart without one.
 	at.session, _ = store.ParseUUID(session)
 	return at, nil
+}
+
+// rideStart is when a session rider's ride began: the hub's own answer
+// (#2814), the session's start for a record that carries none.
+func rideStart(session time.Time, rider hub.RiderRecord) time.Time {
+	if rider.StartedAt.IsZero() {
+		return session
+	}
+	return rider.StartedAt
 }
 
 func (s *Saver) rideRow(
@@ -384,7 +398,8 @@ func (s *Saver) AmendRide(
 	var judged *savedRide
 	err := retrySave(ctx, s.log, channel, func(ctx context.Context) error {
 		judged = nil
-		row, err := s.rideRow(workoutName, workoutJSON, startedAt, rider)
+		start := rideStart(startedAt, rider)
+		row, err := s.rideRow(workoutName, workoutJSON, start, rider)
 		if err != nil {
 			s.log.Warn("ride amendment skipped", "err", err, "rider", rider.Rider.ID)
 			return nil
@@ -396,7 +411,7 @@ func (s *Saver) AmendRide(
 			return nil
 		}
 		// The ride is already in the table, so the streak is read without it.
-		row.Xp += streakXPExcept(ctx, q, row.UserID, startedAt, existing)
+		row.Xp += streakXPExcept(ctx, q, row.UserID, start, existing)
 		grown, err := q.AmendRide(ctx, db.AmendRideParams{
 			ID: existing, Seconds: row.Seconds, AvgWatts: row.AvgWatts, Kj: row.Kj,
 			Execution: row.Execution, ExecutionScored: row.ExecutionScored,
@@ -413,7 +428,7 @@ func (s *Saver) AmendRide(
 			}
 			judged = &savedRide{
 				rideID: existing, userID: row.UserID,
-				facts: Facts(startedAt, rider.Rider.FtpWatts, watts),
+				facts: Facts(start, rider.Rider.FtpWatts, watts),
 			}
 		}
 		return nil

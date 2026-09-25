@@ -103,7 +103,8 @@ func TestSessionClosedNamesRidersAndListeners(t *testing.T) {
 	rm.accrueVoiceLocked("paused", 30*time.Second)
 	samples := make([]protocol.RiderMetrics, MinRideSamples)
 	for i := range samples {
-		samples[i] = protocol.RiderMetrics{Watts: 200, Seq: i}
+		// Each at its own second of the minute the timeline ran (#2814).
+		samples[i] = protocol.RiderMetrics{Watts: 200, Seq: i, Clock: i + 1}
 	}
 	rm.backfill(&client{rider: protocol.Rider{ID: "kim", Name: "Kim"}}, samples, nil, nil)
 	rm.backfill(&client{rider: protocol.Rider{ID: "lena", Name: "Lena"}}, samples[:5], nil, nil)

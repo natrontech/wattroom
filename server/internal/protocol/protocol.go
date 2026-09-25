@@ -23,9 +23,14 @@ type RiderMetrics struct {
 	// record counts wall seconds — the ride clock stops while auto-paused,
 	// and skip and extend make it jump — so the array index stops being the
 	// workout second at the first pause, and every sample after it would be
-	// scored against the wrong block. Absent (0 on every sample) is a ride
-	// that sends none: a session ride, where the hub's clock IS the workout
-	// clock, or one recorded before this existed; those score by index.
+	// scored against the wrong block.
+	//
+	// A session ride is stamped with the timeline second (#2814): by the hub
+	// on a live sample, which ignores what the client sent, and by the
+	// client's buffer on a replayed one, which the hub cannot place
+	// otherwise. A rider who joins at minute ten starts at 600, not at 0.
+	// Absent (0 on every sample) is a ride recorded before either existed;
+	// those score by index.
 	Clock int `json:"clock,omitempty"`
 	// The rider's own guard had the trainer off the target this second
 	// (#1796): auto-pause, the resume countdown, the spiral release. The

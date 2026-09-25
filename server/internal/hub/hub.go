@@ -20,8 +20,12 @@ import (
 
 // RiderRecord is one rider's finished session, handed to the saver.
 type RiderRecord struct {
-	Rider   protocol.Rider
+	Rider protocol.Rider
+	// In timeline order (#2814).
 	Samples []protocol.RiderMetrics
+	// When this rider's ride began: the timeline's start plus their first
+	// second (#2814), which is not the session's for a rider who joined late.
+	StartedAt time.Time
 }
 
 // SessionSaver persists a closed session's rides. Defined here, where it is

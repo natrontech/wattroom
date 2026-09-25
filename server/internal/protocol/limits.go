@@ -118,6 +118,13 @@ const (
 	TemporaryHour = 60 * 60
 	TemporaryDay  = 24 * TemporaryHour
 	TemporaryWeek = 7 * TemporaryDay
+
+	// One reconnect replay frame, in samples: an hour of the ride buffer's
+	// one row a second (audit 2026-09-09). The hub takes one frame a second
+	// per rider and cuts a longer one, so the client sends a longer outage
+	// in frames of this size, a second apart (#2839). Not a SPEC number, but
+	// one both sides have to agree on.
+	MaxBackfillBatch = 60 * 60
 )
 
 // TargetBand is docs/SPEC.md's band around a target, in watts.

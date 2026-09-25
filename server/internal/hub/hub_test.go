@@ -95,10 +95,12 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	if got := rm.record.count("jan"); got != 3 {
 		t.Fatalf("expected the 3 live samples recorded before the drop, got %d", got)
 	}
-	// The socket dropped after seq 3; the client replays 2..6 from its buffer.
+	// The socket dropped after seq 3 for three seconds; the client replays
+	// 2..6 from its buffer, each at the timeline second it was ridden (#2814).
+	clock = clock.Add(3 * time.Second)
 	rm.backfill(sock("jan"), []protocol.RiderMetrics{
-		{Watts: 200, Seq: 2}, {Watts: 201, Seq: 3}, {Watts: 202, Seq: 4},
-		{Watts: 203, Seq: 5}, {Watts: 204, Seq: 6},
+		{Watts: 200, Seq: 2, Clock: 12}, {Watts: 201, Seq: 3, Clock: 13}, {Watts: 202, Seq: 4, Clock: 14},
+		{Watts: 203, Seq: 5, Clock: 15}, {Watts: 204, Seq: 6, Clock: 16},
 	},
 		nil, nil)
 	if got := rm.record.count("jan"); got != 6 {
@@ -106,7 +108,7 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	}
 
 	// A hostile batch cannot grow memory: junk is dropped at the bound.
-	rm.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 9999, Seq: 7}}, nil, nil)
+	rm.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 9999, Seq: 7, Clock: 16}}, nil, nil)
 	if got := rm.record.count("jan"); got != 6 {
 		t.Fatalf("out-of-bounds sample was recorded: %d", got)
 	}
@@ -159,6 +161,16 @@ func TestRecordKeepsGrowingAcrossASeqRestart(t *testing.T) {
 		return out
 	}
 
+	// A replayed row carries the timeline second it was buffered at (#2814):
+	// the seconds its seqs were sent at, one a second from `from`.
+	replayed := func(from int, seqs ...int) []protocol.RiderMetrics {
+		out := live(seqs...)
+		for i := range out {
+			out[i].Clock = from + i
+		}
+		return out
+	}
+
 	tests := []struct {
 		name   string
 		after  []protocol.RiderMetrics // live, after seqs 1..100
@@ -177,13 +189,13 @@ func TestRecordKeepsGrowingAcrossASeqRestart(t *testing.T) {
 		},
 		{
 			name:   "a replay still dedupes against what it already sent",
-			replay: live(99, 100, 101),
+			replay: replayed(99, 99, 100, 101),
 			want:   sent + 1,
 		},
 		{
 			name:   "a replay after a restart dedupes on the new stream",
 			after:  live(1, 2, 3),
-			replay: live(2, 3, 4),
+			replay: replayed(102, 2, 3, 4),
 			want:   sent + 4,
 		},
 	}
@@ -478,11 +490,13 @@ func TestOneSecondOfRidingIsOneSample(t *testing.T) {
 		t.Errorf("five more seconds recorded %d samples in total, want 6", got)
 	}
 
-	// A backfill is not gated on the clock: a replayed sample's timeline
-	// second is unknown, it dedupes on seq, and dropping it is the data loss
-	// the buffer exists to prevent (#19).
+	// A backfill is not gated on the room's clock: a replayed sample says
+	// which second it was ridden at (#2814), dedupes on seq, and fills the
+	// seconds a drop swallowed — dropping it is the data loss the buffer
+	// exists to prevent (#19).
+	clock = clock.Add(2 * time.Second)
 	rm.backfill(sock("jan"), []protocol.RiderMetrics{
-		{Watts: 180, Seq: 900}, {Watts: 185, Seq: 901},
+		{Watts: 180, Seq: 900, Clock: 6}, {Watts: 185, Seq: 901, Clock: 7},
 	},
 		nil, nil)
 	if got := rm.record.count("jan"); got != 8 {
@@ -544,14 +558,15 @@ func TestBackfillAfterTheCloseAmendsTheRide(t *testing.T) {
 		rm.record.add("jan", protocol.RiderMetrics{Watts: 200, Cadence: 90, Seq: seq}, segments, 250, seq)
 	}
 	now := time.Unix(1_000, 0)
-	end := rm.closeLocked(protocol.SessionState{Phase: "done", Elapsed: 5, WorkoutName: "W", WorkoutJSON: "{}"}, now, true)
+	// The timeline ran to 7; the drop swallowed this rider's 6 and 7.
+	end := rm.closeLocked(protocol.SessionState{Phase: "done", Elapsed: 7, WorkoutName: "W", WorkoutJSON: "{}"}, now, true)
 	if end == nil || len(end.records) != 1 || len(end.records[0].Samples) != 5 {
 		t.Fatalf("the close: %+v", end)
 	}
 	rm.handOff(log, func() time.Time { return now }, saver, end)
 
 	// The socket comes back and replays what the drop swallowed.
-	rm.backfill(c, []protocol.RiderMetrics{{Watts: 210, Cadence: 90, Seq: 6}, {Watts: 220, Cadence: 90, Seq: 7}}, log, saver)
+	rm.backfill(c, []protocol.RiderMetrics{{Watts: 210, Cadence: 90, Seq: 6, Clock: 6}, {Watts: 220, Cadence: 90, Seq: 7, Clock: 7}}, log, saver)
 	select {
 	case whole := <-saver.amended:
 		if whole.Rider.ID != "jan" || len(whole.Samples) != 7 {
