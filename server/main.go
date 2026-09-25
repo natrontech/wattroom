@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -129,6 +130,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	var hubForDrain *hub.Hub
+	var gamifyForDrain *gamify.Service
 
 	// The database is optional only in the sense that the binary starts
 	// without it: /api/healthz and /api/version answer, every other route
@@ -360,6 +362,7 @@ func main() {
 		// same amendment says a bearer DOES authenticate, so it takes
 		// readAuth.
 		trophies := gamify.New(st, authService, readAuth, log)
+		gamifyForDrain = trophies
 		trophies.Register(mux)
 		saver.SetRideKeeper(trophies)
 		ridesService.SetRideKeeper(trophies)
@@ -487,24 +490,21 @@ func main() {
 		// the std logger bridges to (#2864); ERROR reaches the alerts.
 		ErrorLog: slog.NewLogLogger(log.Handler(), slog.LevelError),
 	}
-	go func() {
-		<-ctx.Done()
-		log.Info("shutting down", "grace", drainGrace)
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), drainGrace)
-		defer cancel()
-		_ = srv.Shutdown(shutdownCtx)
-	}()
-	log.Info("wattroom-server listening", "addr", addr)
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	var drains []drain
+	if hubForDrain != nil {
+		drains = append(drains, drain{"session saves", hubForDrain.Drain})
+	}
+	if gamifyForDrain != nil {
+		drains = append(drains, drain{"queued XP", gamifyForDrain.Drain})
+	}
+	ln, err := net.Listen("tcp", addr)
+	if err == nil {
+		log.Info("wattroom-server listening", "addr", addr)
+		err = serve(ctx, srv, ln, log, drainGrace, drains...)
+	}
+	if err != nil {
 		log.Error("server exited", "err", err)
 		os.Exit(1)
-	}
-	if hubForDrain != nil {
-		if hubForDrain.Drain(drainGrace) {
-			log.Info("shutdown complete")
-		} else {
-			log.Error("shutdown gave up waiting on session saves", "grace", drainGrace)
-		}
 	}
 }
 
