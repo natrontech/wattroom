@@ -1109,7 +1109,9 @@ export interface LiveSession {
   coach: string;
   coachName: string;
   /**
-   * Who is in the channel, by name and by id in the same order.
+   * Who rides it (ADR-0059): joined, and in the channel now — by name and
+   * by id in the same order. A spectator standing in the channel is not
+   * here (#2853).
    */
   riders: string[];
   riderIds: string[];

@@ -103,7 +103,7 @@ export function livePulse(crew: LiveCrew | undefined) {
 	return pulse;
 }
 
-/** "Sweet Spot 2×20 · 12 min · 4" — what is running, how far in, how many. */
+/** "Sweet Spot 2×20 · 12 min · Sven coaching · 4 riding" — what is running, how far in, who rides it. */
 export function sessionLine(session: LiveSession): string {
 	const minutes = Math.floor(session.elapsed / 60);
 	const riders = session.riders.length;
@@ -117,6 +117,9 @@ export function sessionLine(session: LiveSession): string {
 				: `${minutes} min`,
 		// Who is coaching is presence (ADR-0058), not a number.
 		`${session.coachName} coaching`,
-		String(riders),
+		// The session's own riders (ADR-0059), said as what they are: a bare
+		// number sat over the channel's occupants and read as a count of them
+		// (#2853).
+		`${riders} riding`,
 	].join(' · ');
 }
