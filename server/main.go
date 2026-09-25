@@ -59,6 +59,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/tokens"
 	"github.com/natrontech/wattroom/server/internal/tracks"
 	"github.com/natrontech/wattroom/server/internal/unfurl"
+	"github.com/natrontech/wattroom/server/internal/usage"
 )
 
 // webdist is populated by `make web` (SvelteKit static build). The committed
@@ -203,6 +204,8 @@ func main() {
 			secrets.Backfill(backfillCtx, st, keys, log)
 			secrets.Watch(ctx, st.Queries, log)
 		})
+		// Accounts, signups, riders who ride (#2913). Supervises its own loop.
+		usage.Watch(ctx, st.Queries, log)
 		if err := auth.DevLoginMisconfigured(baseURL); err != nil {
 			log.Error("refusing to start", "err", err)
 			os.Exit(1)
