@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { STRIP_MAX, orderBySpoke } from './voice-strip';
 
@@ -39,5 +41,20 @@ describe('orderBySpoke', () => {
 
 	it('fits a two-by-two grid', () => {
 		expect(STRIP_MAX).toBe(4);
+	});
+});
+
+// The strip's contract: the channel's own pages already show everyone, so it
+// stays off them (#2852). It hid on the Lounge's path alone and drew on
+// Training and the session's page, a fourth copy of riders the crew strip
+// and the people column already show.
+describe('where the voice strip stays off', () => {
+	it('asks the connection whether this is one of the channel’s own pages', () => {
+		const source = readFileSync(
+			join(import.meta.dirname, 'VoiceStrip.svelte'),
+			'utf8',
+		);
+		expect(source).toMatch(/channelConnection\.onPlacePath\(pathname\)/);
+		expect(source).not.toMatch(/pathname === conn\.address\.home/);
 	});
 });
