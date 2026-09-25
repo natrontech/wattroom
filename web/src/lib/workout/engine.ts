@@ -97,6 +97,7 @@ export function targetAt(
 			secondsRemainingInSegment: 0,
 			secondsRemainingTotal: 0,
 			done: true,
+			bias,
 		};
 	}
 
@@ -129,5 +130,6 @@ export function targetAt(
 		secondsRemainingInSegment: seg.seconds - into,
 		secondsRemainingTotal: total - clamped,
 		done: false,
+		bias,
 	};
 }

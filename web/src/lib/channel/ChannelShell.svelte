@@ -196,6 +196,7 @@
 		}),
 		running: () => running,
 		shared: () => shared,
+		bias: () => rideCtl.bias,
 		segments: () => segments,
 		workout: () => connection.workout(),
 	});

@@ -97,4 +97,10 @@ export interface TargetInfo {
 	secondsRemainingTotal: number;
 	/** true when t is past the end of the workout */
 	done: boolean;
+	/**
+	 * The rider's trim that targetWatts carries (docs/SPEC.md: the target is
+	 * the prescribed fraction × their bias). What the next block is told in
+	 * too, or a rider at 90 % reads the prescribed number for it (#2835).
+	 */
+	bias: number;
 }

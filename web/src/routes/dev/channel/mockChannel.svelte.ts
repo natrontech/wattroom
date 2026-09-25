@@ -1,5 +1,6 @@
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import type { Medal } from '$lib/components/MedalCard.svelte';
+import { describeBlock } from '$lib/workout/block';
 import { flatten, targetAt } from '$lib/workout/engine';
 import type { Segment, Workout } from '$lib/workout/types';
 // Zone vocabulary lives in lib now that a real screen needs it; re-exported so the
@@ -13,7 +14,6 @@ export {
 	zoneOf,
 } from '$lib/components/zones';
 export { formatClock } from '$lib/format';
-import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
 
 export const workout: Workout = {
 	name: 'Sweet Spot 2×20',
@@ -238,48 +238,6 @@ export const queue = [
 	{ title: 'Perturbator — Sentient', length: '5:29', by: 'Sara' },
 ];
 
-/** What a rider reads mid-interval: what this block is, how long is left, what's next. */
-function describeBlock(
-	info: ReturnType<typeof targetAt>,
-	segments: Segment[],
-	ftp: number,
-	bias: number,
-): Block {
-	const label = (seg: Segment | undefined): string => {
-		if (!seg) return '';
-		if (seg.kind === 'sprint') return 'Sprint';
-		const step = workout.steps[seg.stepPath[0]];
-		if (step?.type === 'warmup') return 'Warm-up';
-		if (step?.type === 'cooldown') return 'Cool-down';
-		const mid =
-			((seg.fromFraction ?? 0) + (seg.toFraction ?? seg.fromFraction ?? 0)) / 2;
-		return ZONE_NAMES[zoneOf(mid * ftp, ftp)];
-	};
-	const wattsOf = (seg: Segment | undefined): number => {
-		if (!seg || seg.kind === 'sprint') return 0;
-		if (seg.watts !== undefined) return Math.round(seg.watts * bias);
-		const mid =
-			((seg.fromFraction ?? 0) + (seg.toFraction ?? seg.fromFraction ?? 0)) / 2;
-		return Math.round(mid * ftp * bias);
-	};
-
-	const upcoming = segments[info.segmentIndex + 1];
-	return {
-		index: info.segmentIndex + 1,
-		count: segments.length,
-		label: label(info.segment),
-		watts: info.targetWatts ?? 0,
-		secondsLeft: Math.round(info.secondsRemainingInSegment),
-		next: upcoming
-			? {
-					label: label(upcoming),
-					watts: wattsOf(upcoming),
-					seconds: upcoming.seconds,
-				}
-			: null,
-	};
-}
-
 /**
  * A voice channel of simulated riders on one workout, across the phases a real
  * one moves through. Every tile is a real SimulatedTrainer holding a real ERG target.
@@ -417,7 +375,7 @@ export function createMockChannel() {
 				void trainers[i].setTargetPower(
 					Math.round((info.targetWatts ?? 0) * seed.discipline),
 				);
-				if (seed.you) block = describeBlock(info, segments, seed.ftp, bias);
+				if (seed.you) block = describeBlock(info, segments, workout, seed.ftp);
 			});
 		}, 1000);
 	}

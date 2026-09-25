@@ -24,6 +24,8 @@ interface RiderDeps {
 	fallback: () => { ftp: number; kg: number; coach: boolean };
 	running: () => boolean;
 	shared: () => { elapsed: number } | undefined;
+	/** The trim the trainer is held at (#2835) — 1 on a screen not driving it. */
+	bias: () => number;
 	segments: () => Segment[];
 	workout: () => Workout | null;
 }
@@ -171,7 +173,9 @@ export function createRiders(deps: RiderDeps) {
 	const block = $derived(
 		deps.running() && deps.segments().length > 0
 			? describeBlock(
-					targetAt(deps.segments(), you.ftp, deps.shared()?.elapsed ?? 0),
+					targetAt(deps.segments(), you.ftp, deps.shared()?.elapsed ?? 0, {
+						bias: deps.bias(),
+					}),
 					deps.segments(),
 					deps.workout(),
 					you.ftp,
