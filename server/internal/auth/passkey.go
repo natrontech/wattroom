@@ -162,6 +162,10 @@ func newWebAuthn(baseURL string, log *slog.Logger) (*webauthn.WebAuthn, error) {
 		RPID:          parsed.Hostname(),
 		RPDisplayName: "WattRoom",
 		RPOrigins:     origins,
+		// A passkey is a passwordless credential (ADR-0029), so it has to
+		// prove the person and not only the key: go-webauthn checks the UV
+		// flag at finish only when the ceremony asked for it (#2865).
+		AuthenticatorSelection: protocol.AuthenticatorSelection{UserVerification: protocol.VerificationRequired},
 	})
 }
 

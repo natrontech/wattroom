@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-webauthn/webauthn/protocol"
 	"github.com/go-webauthn/webauthn/webauthn"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -161,6 +162,35 @@ func TestNewWebAuthnDerivesRelyingParty(t *testing.T) {
 
 	if _, err := newWebAuthn("::not a url", slog.New(slog.DiscardHandler)); err == nil {
 		t.Error("an unparseable base URL built a relying party")
+	}
+}
+
+// A passkey is the account's passwordless credential (ADR-0029), so signing
+// in has to prove the person, not only the key: an assertion with the UV flag
+// clear must be refused (#2865). go-webauthn checks that flag at finish only
+// when the ceremony's session asked for it, so both ceremonies have to ask —
+// and the browser is told to, so it prompts for the PIN or biometric.
+func TestPasskeyCeremoniesRequireUserVerification(t *testing.T) {
+	wa, err := newWebAuthn("https://wattroom.ch", slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+	assertion, login, err := wa.BeginDiscoverableLogin()
+	if err != nil {
+		t.Fatalf("login start: %v", err)
+	}
+	if login.UserVerification != protocol.VerificationRequired || assertion.Response.UserVerification != protocol.VerificationRequired {
+		t.Errorf("sign-in asks for user verification %q (session %q), want %q",
+			assertion.Response.UserVerification, login.UserVerification, protocol.VerificationRequired)
+	}
+	var user passkeyUser
+	user.user.DisplayName = "velvet"
+	creation, reg, err := wa.BeginRegistration(user, webauthn.WithResidentKeyRequirement(protocol.ResidentKeyRequirementRequired))
+	if err != nil {
+		t.Fatalf("registration start: %v", err)
+	}
+	if got := creation.Response.AuthenticatorSelection.UserVerification; reg.UserVerification != protocol.VerificationRequired || got != protocol.VerificationRequired {
+		t.Errorf("adding a passkey asks for user verification %q (session %q), want %q", got, reg.UserVerification, protocol.VerificationRequired)
 	}
 }
 
