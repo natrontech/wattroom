@@ -260,6 +260,14 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// synthetic is not OAuth either and has its own POST door (#2864): with no
+	// app behind it, the redirect below would dereference a nil config.
+	if p.config == nil {
+		httpx.WriteError(w, http.StatusNotFound, "not_found",
+			"That sign-in provider is not configured on this server.")
+		return
+	}
+
 	// The intent rides in the state itself: the callback already has to match
 	// it against the HttpOnly cookie byte for byte, so the prefix inherits that
 	// proof and needs no second cookie. randomToken is base64url, never a dot.
@@ -321,8 +329,10 @@ func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
 	if s.throttle(w, r, s.loginBudget, tooManySignIns) {
 		return
 	}
+	// dev and synthetic have no OAuth app, so no callback of theirs is real
+	// (#2864) — and a state cookie the caller set would pass the check below.
 	p, ok := s.providers[r.PathValue("provider")]
-	if !ok {
+	if !ok || p.config == nil {
 		httpx.WriteError(w, http.StatusNotFound, "not_found",
 			"That sign-in provider is not configured on this server.")
 		return

@@ -322,7 +322,7 @@ func TestMeUnauthenticated(t *testing.T) {
 
 func TestCallbackRejectsForgedState(t *testing.T) {
 	s := bareService()
-	s.providers["github"] = provider{id: "github"}
+	s.providers["github"] = provider{id: "github", config: &oauth2.Config{}}
 
 	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/github/callback?state=forged&code=x", nil)
 	req.SetPathValue("provider", "github")
@@ -334,6 +334,40 @@ func TestCallbackRejectsForgedState(t *testing.T) {
 	s.handleCallback(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("a forged state got past the check: %d", w.Code)
+	}
+}
+
+// dev and synthetic are providers with no OAuth app behind them (#2864): their
+// start and callback must answer like an unknown provider, never reach an
+// OAuth call on a nil config — each such request was a panic and a goroutine
+// dump in the log, and the synthetic one is mounted in production.
+func TestProvidersWithoutOAuthRefuseTheOAuthDoors(t *testing.T) {
+	s := bareService()
+	s.providers["dev"] = provider{id: "dev"}
+	s.providers["synthetic"] = provider{id: "synthetic"}
+	for _, c := range []struct {
+		name, path, provider string
+		callback             bool
+	}{
+		{"synthetic start", "/api/auth/synthetic/start", "synthetic", false},
+		{"synthetic callback", "/api/auth/synthetic/callback?state=mine&code=x", "synthetic", true},
+		{"dev callback", "/api/auth/dev/callback?state=mine&code=x", "dev", true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, c.path, nil)
+			req.SetPathValue("provider", c.provider)
+			// A state cookie the caller set themselves passes the state check.
+			req.AddCookie(&http.Cookie{Name: stateCookie, Value: "mine"})
+			w := httptest.NewRecorder()
+			if c.callback {
+				s.handleCallback(w, req)
+			} else {
+				s.handleStart(w, req)
+			}
+			if w.Code != http.StatusNotFound || !strings.Contains(w.Body.String(), `"not_found"`) {
+				t.Fatalf("%d %s, want 404 not_found", w.Code, w.Body.String())
+			}
+		})
 	}
 }
 
