@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // LogRing tees slog records into a bounded in-memory ring, so a report can
@@ -14,15 +16,24 @@ import (
 type LogRing struct {
 	inner slog.Handler
 	mu    sync.Mutex
-	lines []string
+	lines []entry
 	at    int
 	full  bool
 }
 
+// entry keeps a record's attributes apart from its head, so Snapshot can tell
+// whose line it is. Values are formatted at capture, as the line always was.
+type entry struct {
+	head   string
+	fields []field
+}
+
+type field struct{ key, val string }
+
 const ringSize = 400
 
 func NewLogRing(inner slog.Handler) *LogRing {
-	return &LogRing{inner: inner, lines: make([]string, ringSize)}
+	return &LogRing{inner: inner, lines: make([]entry, ringSize)}
 }
 
 // ringFloor is what the REPORT keeps: Info and above, whatever stdout is set
@@ -34,13 +45,13 @@ func (l *LogRing) capture(r slog.Record) {
 	if r.Level < ringFloor {
 		return
 	}
-	line := fmt.Sprintf("%s %s %s", r.Time.UTC().Format(time.RFC3339), r.Level, r.Message)
+	e := entry{head: fmt.Sprintf("%s %s %s", r.Time.UTC().Format(time.RFC3339), r.Level, r.Message)}
 	r.Attrs(func(a slog.Attr) bool {
-		line += " " + a.Key + "=" + a.Value.String()
+		e.fields = append(e.fields, field{a.Key, a.Value.String()})
 		return true
 	})
 	l.mu.Lock()
-	l.lines[l.at] = line
+	l.lines[l.at] = e
 	l.at = (l.at + 1) % ringSize
 	if l.at == 0 {
 		l.full = true
@@ -98,21 +109,53 @@ func (c *ringChild) WithGroup(name string) slog.Handler {
 	return &ringChild{ring: c.ring, inner: c.inner.WithGroup(name)}
 }
 
-// Snapshot returns the ring oldest-first.
-func (l *LogRing) Snapshot() []string {
+// Snapshot returns, oldest first, the lines that name the reporter as their
+// rider or user: "the session's own log lines", never the room's (ADR-0006,
+// #2822). The ring is process-wide, so everything else in it is somebody
+// else's — a co-rider's join, another account's deletion, a panic from
+// another request — and is left out. On a kept line, any other id outside the
+// rider's own context (their channel, crew, session, ride) is blanked, since
+// a line about the reporter can still name who they acted on.
+func (l *LogRing) Snapshot(reporter string) []string {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-	var out []string
+	var entries []entry
 	if l.full {
-		out = append(out, l.lines[l.at:]...)
+		entries = append(entries, l.lines[l.at:]...)
 	}
-	out = append(out, l.lines[:l.at]...)
-	// Drop empty slots from a young ring.
-	trimmed := out[:0]
-	for _, line := range out {
-		if line != "" {
-			trimmed = append(trimmed, line)
+	entries = append(entries, l.lines[:l.at]...)
+	l.mu.Unlock()
+	var out []string
+	for _, e := range entries {
+		if reporter != "" && e.names(reporter) {
+			out = append(out, e.line(reporter))
 		}
 	}
-	return trimmed
+	return out
+}
+
+// personKeys are the attributes a log line names its rider by.
+var personKeys = map[string]bool{"rider": true, "user": true}
+
+// contextKeys hold ids of the reporter's own surroundings, kept on their lines.
+var contextKeys = map[string]bool{"channel": true, "crew": true, "session": true, "ride": true}
+
+func (e entry) names(reporter string) bool {
+	for _, f := range e.fields {
+		if personKeys[f.key] && f.val == reporter {
+			return true
+		}
+	}
+	return false
+}
+
+func (e entry) line(reporter string) string {
+	line := e.head
+	for _, f := range e.fields {
+		val := f.val
+		if val != reporter && !contextKeys[f.key] && uuid.Validate(val) == nil {
+			val = "(someone else)"
+		}
+		line += " " + f.key + "=" + val
+	}
+	return line
 }
