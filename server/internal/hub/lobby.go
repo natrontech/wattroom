@@ -22,6 +22,9 @@ import (
 
 type lobbyClient struct {
 	conn *websocket.Conn
+	// The session this socket rode in on (#2807), like client's: set at
+	// connect and never written again.
+	session []byte
 	// Size 1: a burst of changes coalesces into one ping per client.
 	ping chan struct{}
 	// What the queued ping says: the one channel it is about, or "" for
@@ -84,7 +87,7 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	c := &lobbyClient{conn: conn, ping: make(chan struct{}, 1)}
+	c := &lobbyClient{conn: conn, session: h.sessionOf(r), ping: make(chan struct{}, 1)}
 	h.mu.Lock()
 	h.lobby[c] = userID
 	h.mu.Unlock()

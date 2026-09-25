@@ -44,6 +44,9 @@ const maxFrame = 512 << 10
 type client struct {
 	rider protocol.Rider
 	conn  *websocket.Conn
+	// The session this socket rode in on (#2807), what ending that session
+	// severs it by. Set at connect and never written again.
+	session []byte
 	// Outbound frames, already marshalled, written by this socket's own
 	// goroutine (#670). The tick loop used to write to every socket in turn
 	// with a one-second deadline each, so one client that stopped reading
@@ -131,7 +134,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	// it runs after rm.leave below.
 	rm := h.holdRoom(channel)
 	defer h.releaseRoom(channel)
-	c := &client{rider: rider, conn: conn, out: make(chan []byte, clientQueue)}
+	c := &client{rider: rider, conn: conn, session: h.sessionOf(r), out: make(chan []byte, clientQueue)}
 	// This socket's own writer, so the room's tick never waits on it (#670).
 	writerDone := make(chan struct{})
 	defer close(writerDone)

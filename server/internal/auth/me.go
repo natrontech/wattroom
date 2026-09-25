@@ -250,8 +250,15 @@ type LiveProfile interface {
 	SetProfile(userID, name string, ftpWatts, weightKg int)
 }
 
+// Live is the hub, as far as auth reaches it: a saved profile, and a session
+// ending (session.go).
+type Live interface {
+	LiveProfile
+	LiveSessions
+}
+
 // SetLive wires the hub in after construction, the same shape SetMailer uses.
-func (s *Service) SetLive(l LiveProfile) { s.live = l }
+func (s *Service) SetLive(l Live) { s.live = l }
 
 // handleSetAvatar takes the rider's own picture (#1353): the same trust
 // boundary as a pasted chat image and a crew's picture — bounded read, type

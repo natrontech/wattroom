@@ -161,6 +161,10 @@ type Hub struct {
 	// it IS being online, and every presence change pings it. See lobby.go.
 	lobby     map[*lobbyClient]string
 	lobbyAuth func(*http.Request) (userID string, ok bool)
+	// Which session a request rides on, and LiveKit's half of ending one
+	// (#2807). See drop.go.
+	sessionKey func(*http.Request) []byte
+	ejector    VoiceEjector
 	// Rooms a socket is arriving at or standing in, by channel (#2297): the
 	// claim the idle sweep refuses to forget a room under. Held from before
 	// HandleWS is handed the room until after its client has left it, so a
@@ -284,32 +288,6 @@ func (h *Hub) triggerAutoplay(rm *room, channel string) {
 		// will try again — better than a joining rider's upgrade or read
 		// loop blocking.
 		h.log.Warn("autoplay queue full, skipping", "channel", channel)
-	}
-}
-
-// Kick severs every socket a rider holds in channel — the live arm of a ban or
-// removal (#223), which must eject, not drift. Lock, copy, unlock, then
-// close: CloseNow unblocks the read loop, whose defer runs the leave.
-func (h *Hub) Kick(channel, userID string) {
-	h.mu.Lock()
-	rm := h.rooms[channel]
-	h.mu.Unlock()
-	if rm == nil {
-		return
-	}
-	rm.mu.Lock()
-	var conns []*websocket.Conn
-	for c := range rm.clients {
-		if c.rider.ID == userID {
-			conns = append(conns, c.conn)
-		}
-	}
-	rm.mu.Unlock()
-	for _, conn := range conns {
-		_ = conn.CloseNow()
-	}
-	if len(conns) > 0 {
-		h.log.Info("rider kicked", "channel", channel, "rider", userID, "sockets", len(conns))
 	}
 }
 

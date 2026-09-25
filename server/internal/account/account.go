@@ -84,6 +84,12 @@ type GrantRevoker interface {
 	RevokeGrant(ctx context.Context, ident db.Identity) error
 }
 
+// Live is the hub, as far as a purge reaches it (#2807): the cascade takes
+// the sessions, and closes none of the sockets or calls they opened.
+type Live interface {
+	DropUser(userID string, keep []byte)
+}
+
 type Service struct {
 	store    *store.Store
 	sessions Sessions
@@ -92,6 +98,7 @@ type Service struct {
 	crews    CrewReleaser
 	revoker  GrantRevoker
 	reaper   BlobReaper
+	live     Live
 	// One export in flight per account (#1554). inflight.go.
 	exports *inFlight
 }
@@ -107,6 +114,10 @@ type BlobReaper interface {
 
 // SetTrackReaper wires the tracks service in after construction, like the rest.
 func (s *Service) SetTrackReaper(r BlobReaper) { s.reaper = r }
+
+// SetLive wires the hub in after construction. Absent, a delete still purges
+// the rows.
+func (s *Service) SetLive(l Live) { s.live = l }
 
 func New(st *store.Store, sessions Sessions, log *slog.Logger) *Service {
 	return &Service{store: st, sessions: sessions, log: log, exports: newInFlight()}
@@ -947,6 +958,12 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	// Log the fact, never the identity details: the account is gone.
 	s.log.Info("account deleted", "user", store.UUIDString(user.ID))
+	// After the commit, sparing nothing: a deleted rider's open tab went on
+	// receiving the crew's watts and heart rate, and stood on the roster and
+	// in the call under the old name until it closed.
+	if s.live != nil {
+		s.live.DropUser(store.UUIDString(user.ID), nil)
+	}
 	// The rider's uploaded audio goes with them (#1897): the cascade took the
 	// rows, and the blobs only they pointed at come off disk after the commit.
 	// A file another rider also holds stays — one blob per sha (#1095).
