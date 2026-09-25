@@ -70,10 +70,10 @@ func TestAuthorizeIsTheGate(t *testing.T) {
 }
 
 type fakeLive struct {
-	mu      sync.Mutex
-	kicked  []string
-	closed  []string
-	moved   []string
+	mu     sync.Mutex
+	kicked []string
+	closed []string
+	moved  []string
 	// What Move answers; nil moves.
 	moveErr error
 	present map[string]protocol.ChannelPresence
