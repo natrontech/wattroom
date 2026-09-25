@@ -25,14 +25,14 @@ func TestServeStopsOnlyOnceTheRequestInFlightHasFinished(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		}),
 	}
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := (&net.ListenConfig{}).Listen(t.Context(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx, sigterm := context.WithCancel(t.Context())
 	stopped := make(chan error, 1)
 	go func() {
-		stopped <- serve(ctx, srv, ln, slog.New(slog.DiscardHandler), 10*time.Second,
+		stopped <- serve(ctx, srv, func() error { return srv.Serve(ln) }, slog.New(slog.DiscardHandler), 10*time.Second,
 			drain{"test", func(time.Duration) bool {
 				if !answered.Load() {
 					t.Error("a drain ran before the request in flight had finished")

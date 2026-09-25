@@ -16,7 +16,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
 	"os"
 	"time"
@@ -497,12 +496,8 @@ func main() {
 	if gamifyForDrain != nil {
 		drains = append(drains, drain{"queued XP", gamifyForDrain.Drain})
 	}
-	ln, err := net.Listen("tcp", addr)
-	if err == nil {
-		log.Info("wattroom-server listening", "addr", addr)
-		err = serve(ctx, srv, ln, log, drainGrace, drains...)
-	}
-	if err != nil {
+	log.Info("wattroom-server listening", "addr", addr)
+	if err := serve(ctx, srv, srv.ListenAndServe, log, drainGrace, drains...); err != nil {
 		log.Error("server exited", "err", err)
 		os.Exit(1)
 	}
