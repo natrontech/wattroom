@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
@@ -137,17 +138,22 @@ func TestSessionDecline(t *testing.T) {
 	if out, un := count(t, entry, "out"), count(t, entry, "unanswered"); out != 1 || un != 2 {
 		t.Fatalf("after one decline: %d out, %d unanswered, want 1 and 2 — %v", out, un, entry)
 	}
-	// The decision this implements, asserted rather than described: the plan
-	// carries the number and NOT the name. Marshalled whole, because a
-	// decline leaking through some other field is the failure to catch.
-	seen, err := json.Marshal(entry)
+	// The decision this implements, asserted rather than described: the crew's
+	// copy carries the number and NOT the name. Marshalled whole, because a
+	// decline leaking through some other field is the failure to catch. Carol
+	// is the crew here — alice planned it, and the organiser reads the name
+	// (#2797).
+	seen, err := json.Marshal(h.planSeenBy(t, "carol", crew, plan))
 	if err != nil {
 		t.Fatalf("marshal the plan: %v", err)
 	}
 	for _, trace := range []string{h.userID(t, "bob"), h.displayName(t, "bob")} {
 		if bytes.Contains(seen, []byte(trace)) {
-			t.Errorf("the schedule named who declined (%s): %s", trace, seen)
+			t.Errorf("the crew's schedule named who declined (%s): %s", trace, seen)
 		}
+	}
+	if got := names(entry, "outRiders"); !slices.Equal(got, []string{"bob"}) {
+		t.Errorf("the organiser reads out %v, want [bob]", got)
 	}
 	// Bob's own copy tells him where he stands — nobody else's does.
 	if mine := h.planSeenBy(t, "bob", crew, plan)["yourAnswer"]; mine != "out" {

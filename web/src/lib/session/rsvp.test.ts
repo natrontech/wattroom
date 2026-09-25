@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rsvpSummary, tallyOf, whoIsInOf } from './rsvp';
+import { rosterOf, rsvpSummary, tallyOf, whoIsInOf } from './rsvp';
 
 describe('rsvpSummary', () => {
 	it('names the three states as counts', () => {
@@ -72,5 +72,41 @@ describe('tallyOf and whoIsInOf', () => {
 		expect(whoIsInOf({ going: [1, 2, 3, 4, 5, 6].map(rider) })).toBe(
 			'Rider 1, Rider 2, Rider 3, Rider 4 +2 more',
 		);
+	});
+});
+
+describe('rosterOf', () => {
+	const rider = (n: number) => ({ id: `r${n}`, displayName: `Rider ${n}` });
+
+	it('draws nothing when the line already names everyone it may', () => {
+		expect(rosterOf({})).toEqual([]);
+		// The crew's copy (#1011): counts only, and four in fit the line.
+		expect(
+			rosterOf({ going: [1, 2, 3, 4].map(rider), out: 2, unanswered: 5 }),
+		).toEqual([]);
+	});
+
+	// #2797: the organiser's copy carries the names behind the counts.
+	it('names who is out and who has not answered for the organiser', () => {
+		expect(
+			rosterOf({
+				going: [rider(1)],
+				outRiders: [rider(2)],
+				unansweredRiders: [rider(3), rider(4)],
+			}),
+		).toEqual([
+			{ word: 'in', names: 'Rider 1' },
+			{ word: 'out', names: 'Rider 2' },
+			{ word: 'unanswered', names: 'Rider 3, Rider 4' },
+		]);
+	});
+
+	it('lists everyone in once the line has to count some of them', () => {
+		expect(rosterOf({ going: [1, 2, 3, 4, 5].map(rider) })).toEqual([
+			{
+				word: 'in',
+				names: 'Rider 1, Rider 2, Rider 3, Rider 4, Rider 5',
+			},
+		]);
 	});
 });

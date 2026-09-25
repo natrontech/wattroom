@@ -7,6 +7,7 @@ package crews
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -226,6 +227,8 @@ func TestAPlanInAPrivateChannelIsItsPeoples(t *testing.T) {
 	}
 	if entry := h.crewSchedule(t, "alice", crew)[plan]; count(t, entry, "unanswered") != 2 {
 		t.Errorf("unanswered = %v, want 2 (alice and carol, not bob)", entry["unanswered"])
+	} else if got := names(entry, "unansweredRiders"); !slices.Equal(got, []string{"alice", "carol"}) {
+		t.Errorf("the organiser's unanswered names are %v, want [alice carol]", got)
 	}
 	// Planning into a private channel the planner cannot enter is refused
 	// like a channel that is not there.
@@ -265,6 +268,66 @@ func TestCrewRsvp(t *testing.T) {
 	entry = h.crewSchedule(t, "alice", crew)[plan]
 	if going, _ := entry["going"].([]any); len(going) != 0 {
 		t.Errorf("a banned rider is still listed as coming: %v", going)
+	}
+}
+
+// names reads one of a plan's rider lists as its display names, in order.
+func names(plan map[string]any, key string) []string {
+	var out []string
+	list, _ := plan[key].([]any)
+	for _, item := range list {
+		who, _ := item.(map[string]any)
+		out = append(out, fmt.Sprint(who["displayName"]))
+	}
+	return out
+}
+
+// The organiser reads the names behind the counts (#2797): whoever may move
+// or cancel a plan — its planner, the crew's owner and admins — sees who is
+// out and who has not answered. Everyone else keeps #1011's counts, and the
+// names are not in their payload at all.
+func TestTheOrganiserSeesWhoAnswered(t *testing.T) {
+	h := setup(t)
+	crew, channel := h.crewWithChannel(t)
+	h.join(t, "carol", crew)
+	cave := store.UUIDString(channel)
+	bobs := h.planSession(t, "bob", crew, "Openers", time.Now().Add(time.Hour), cave)
+	alices := h.planSession(t, "alice", crew, "Sweet spot", time.Now().Add(2*time.Hour), "")
+	for _, plan := range []string{bobs, alices} {
+		if status, _ := h.call(t, "carol", http.MethodPut, schedulePath(crew, "/", plan, "/rsvp"), `{"going":false}`); status != http.StatusNoContent {
+			t.Fatalf("carol out: %d", status)
+		}
+	}
+	if status, _ := h.call(t, "bob", http.MethodPut, schedulePath(crew, "/", bobs, "/rsvp"), ""); status != http.StatusNoContent {
+		t.Fatalf("bob in: %d", status)
+	}
+
+	for _, tc := range []struct {
+		viewer, plan, why string
+		out, unanswered   []string
+	}{
+		{"bob", bobs, "a member reads their own plan's names", []string{"carol"}, []string{"alice"}},
+		{"bob", alices, "a member reads nobody else's", nil, nil},
+		{"alice", bobs, "the owner reads every plan's", []string{"carol"}, []string{"alice"}},
+		{"alice", alices, "the owner's own", []string{"carol"}, []string{"alice", "bob"}},
+		{"carol", bobs, "the rider who said no reads counts", nil, nil},
+	} {
+		entry := h.planSeenBy(t, tc.viewer, crew, tc.plan)
+		if got := names(entry, "outRiders"); !slices.Equal(got, tc.out) {
+			t.Errorf("%s: %s reads out %v, want %v", tc.why, tc.viewer, got, tc.out)
+		}
+		if got := names(entry, "unansweredRiders"); !slices.Equal(got, tc.unanswered) {
+			t.Errorf("%s: %s reads unanswered %v, want %v", tc.why, tc.viewer, got, tc.unanswered)
+		}
+		if count(t, entry, "out") != 1 {
+			t.Errorf("%s: %s lost the out count: %v", tc.why, tc.viewer, entry["out"])
+		}
+	}
+
+	// Made an admin, carol organises every plan too.
+	h.makeCrewAdmin(t, crew, "carol")
+	if got := names(h.planSeenBy(t, "carol", crew, bobs), "unansweredRiders"); !slices.Equal(got, []string{"alice"}) {
+		t.Errorf("an admin reads unanswered %v on bob's plan, want [alice]", got)
 	}
 }
 

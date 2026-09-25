@@ -60,6 +60,36 @@ where s.crew_id = sqlc.arg(crew_id) and s.starts_at > now() - interval '30 minut
       end
 order by r.created_at;
 
+-- name: ListCrewPlanRoster :many
+-- The organiser's half of #1011 (#2797): for each upcoming plan the viewer
+-- may move or cancel — their own, or any when they administer the crew —
+-- everyone it reaches who is out or has not answered, by name. `going` is
+-- false for out and null for no answer. The crew at large still reads
+-- ListCrewRsvps, which never selects a decliner's name.
+with plans as (
+    select s.id, s.crew_id, s.channel_id from scheduled_sessions s
+    where s.crew_id = sqlc.arg(crew_id) and s.starts_at > now() - interval '30 minutes'
+      and s.started_at is null
+      and (sqlc.arg(administers)::bool or s.created_by = sqlc.arg(viewer))
+),
+audience as (
+    select p.id as session_id, cw.owner_id as user_id
+    from plans p join crews cw on cw.id = p.crew_id where p.channel_id is null
+    union
+    select p.id, cr.user_id
+    from plans p join crew_roles cr on cr.crew_id = p.crew_id
+    where p.channel_id is null and cr.role in ('member', 'admin')
+    union
+    select p.id, v.user_id
+    from plans p join visible_channels v on v.channel_id = p.channel_id
+)
+select a.session_id, a.user_id, u.display_name, r.going
+from audience a
+join users u on u.id = a.user_id
+left join session_rsvps r on r.session_id = a.session_id and r.user_id = a.user_id
+where r.going is not true
+order by lower(u.display_name), u.id;
+
 -- name: GetCrewPlan :one
 -- One plan of the crew, if the viewer may see it: a plan in a private channel
 -- they cannot enter answers as one that does not exist.
