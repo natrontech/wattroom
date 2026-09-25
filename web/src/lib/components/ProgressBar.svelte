@@ -24,9 +24,16 @@
 	} = $props();
 </script>
 
-<div class="{track} {h} overflow-hidden rounded-full {cls}" {title}>
+<!-- Forced colours (#2860) paint both backgrounds Canvas, so the bar would
+     vanish: the track keeps an edge and the fill speaks CanvasText. -->
+<div
+	data-testid="progress"
+	class="{track} {h} overflow-hidden rounded-full forced-colors:border {cls}"
+	{title}
+>
 	<div
-		class="{fill} h-full rounded-full"
+		data-testid="progress-fill"
+		class="{fill} h-full rounded-full forced-color-adjust-none forced-colors:bg-[CanvasText]"
 		style="width: {Math.min(100, Math.max(0, pct))}%"
 	></div>
 </div>
