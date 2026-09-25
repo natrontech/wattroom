@@ -8,6 +8,10 @@ import (
 	"testing"
 )
 
+// rider is who the lines below are about: a report keeps only its reporter's
+// lines (#2822), so every line these tests expect back names one.
+const rider = "0f5b6a3e-1c2d-4e5f-8a9b-0c1d2e3f4a5b"
+
 // ring wires a LogRing over a JSON handler at the given stdout level, the
 // same shape main.go builds.
 func ring(t *testing.T, level slog.Level) (*LogRing, *bytes.Buffer) {
@@ -47,13 +51,13 @@ func TestDebugReachesStdoutWhenStdoutAsksForIt(t *testing.T) {
 func TestTheRingKeepsInfoEvenWhenStdoutIsQuiet(t *testing.T) {
 	r, out := ring(t, slog.LevelError)
 	log := slog.New(r)
-	log.Info("room opened", "room", "velvet")
-	log.Warn("autoplay queue full", "room", "velvet")
+	log.Info("room opened", "room", "velvet", "rider", rider)
+	log.Warn("autoplay queue full", "room", "velvet", "rider", rider)
 
 	if strings.Contains(out.String(), "room opened") {
 		t.Errorf("an error-level stdout printed an info line: %q", out.String())
 	}
-	snap := strings.Join(r.Snapshot(), "\n")
+	snap := strings.Join(r.Snapshot(rider), "\n")
 	for _, want := range []string{"room opened", "autoplay queue full", "room=velvet"} {
 		if !strings.Contains(snap, want) {
 			t.Errorf("the report lost %q. Ring: %q", want, snap)
@@ -67,13 +71,13 @@ func TestTheRingKeepsInfoEvenWhenStdoutIsQuiet(t *testing.T) {
 func TestTheRingDoesNotKeepDebugEvenWhenStdoutDoes(t *testing.T) {
 	r, out := ring(t, slog.LevelDebug)
 	log := slog.New(r)
-	log.Debug("chasing playhead", "drift", 0.2)
-	log.Info("room opened", "room", "velvet")
+	log.Debug("chasing playhead", "drift", 0.2, "rider", rider)
+	log.Info("room opened", "room", "velvet", "rider", rider)
 
 	if !strings.Contains(out.String(), "chasing playhead") {
 		t.Fatalf("debug did not reach stdout, so this test proves nothing: %q", out.String())
 	}
-	snap := strings.Join(r.Snapshot(), "\n")
+	snap := strings.Join(r.Snapshot(rider), "\n")
 	if strings.Contains(snap, "chasing playhead") {
 		t.Errorf("debug flooded the report ring: %q", snap)
 	}
@@ -88,13 +92,13 @@ func TestTheRingDoesNotKeepDebugEvenWhenStdoutDoes(t *testing.T) {
 func TestADerivedHandlerBehavesLikeItsParent(t *testing.T) {
 	r, out := ring(t, slog.LevelDebug)
 	log := slog.New(r).With("room", "velvet")
-	log.Debug("chasing playhead")
-	log.Info("room opened")
+	log.Debug("chasing playhead", "rider", rider)
+	log.Info("room opened", "rider", rider)
 
 	if !strings.Contains(out.String(), "chasing playhead") {
 		t.Errorf("a derived handler swallowed debug: %q", out.String())
 	}
-	snap := strings.Join(r.Snapshot(), "\n")
+	snap := strings.Join(r.Snapshot(rider), "\n")
 	if strings.Contains(snap, "chasing playhead") {
 		t.Errorf("a derived handler put debug in the report ring: %q", snap)
 	}
