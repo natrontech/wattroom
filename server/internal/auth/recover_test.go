@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
@@ -101,7 +102,7 @@ func spend(t *testing.T, s *Service, token string, carrying ...*http.Cookie) *ht
 // session dies, the rider's is the only one left, and the address hears about
 // it.
 func TestRecoveryEndsEveryOtherSessionAndSignsTheRiderIn(t *testing.T) {
-	s := testService(t)
+	s, live := liveService(t)
 	user, mailer := recoverable(t, s, "locked-out@example.test")
 	stolen := signedIn(t, s, user)
 	if _, ok := s.User(withCookie(t, stolen)); !ok {
@@ -148,6 +149,11 @@ func TestRecoveryEndsEveryOtherSessionAndSignsTheRiderIn(t *testing.T) {
 	}
 	if _, ok := s.User(withCookie(t, stolen)); ok {
 		t.Fatal("the other session survived recovery — the lockout is still live")
+	}
+	// And its open sockets with it, sparing none (#2807): the rider taking the
+	// account back has no socket yet, and the attacker's must not outlive the row.
+	if len(live.users) != 1 || live.users[0].id != store.UUIDString(user.ID) || len(live.users[0].keep) != 0 {
+		t.Fatalf("hub drops after recovery: %+v, want the account sparing nothing", live.users)
 	}
 	// One session, the rider's.
 	var sessions int

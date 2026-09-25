@@ -101,6 +101,22 @@ func (h *Hub) VoiceRiderIDs() []string {
 	return ids
 }
 
+// voiceChannelsOfLocked is every voice channel LiveKit has reported the rider
+// in, from any of their connections (#2807). The caller holds h.mu; the set is
+// the caller's to keep.
+func (h *Hub) voiceChannelsOfLocked(riderID string) map[string]struct{} {
+	channels := make(map[string]struct{})
+	for channel, entries := range h.voice {
+		for _, entry := range entries {
+			if entry.rider == riderID {
+				channels[channel] = struct{}{}
+				break
+			}
+		}
+	}
+	return channels
+}
+
 // VoiceCamera flips one participant's camera flag (#251) — track_published /
 // track_unpublished. Upserts: the track event can beat the join webhook, and
 // a live camera implies presence in the voice room anyway.

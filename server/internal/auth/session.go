@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
@@ -120,9 +121,11 @@ func (s *Service) requireVerifiedEmail(w http.ResponseWriter, user db.User) bool
 	return false
 }
 
-// currentSessionHash is the hash of the session this request rides on, or
-// nil when it carries none.
-func currentSessionHash(r *http.Request) []byte {
+// SessionKey is the hash of the session this request rides on, or nil when
+// it carries none — the row's own key, which is how the hub tells one
+// session's sockets from another's (#2807). The hash, never the cookie: it
+// cannot be turned back into a credential.
+func SessionKey(r *http.Request) []byte {
 	cookie, err := r.Cookie(sessionCookie)
 	if err != nil || cookie.Value == "" {
 		return nil
@@ -130,26 +133,46 @@ func currentSessionHash(r *http.Request) []byte {
 	return hash(cookie.Value)
 }
 
+// LiveSessions is the hub, as far as a session ending reaches it (#2807): a
+// socket is authorised once, at connect, and keepalive holds it open for as
+// long as the client answers — so deleting the row closes nothing live. A
+// revoked screen went on receiving the crew's watts and heart rate, and
+// sending as the rider, until its tab closed.
+type LiveSessions interface {
+	// Every socket and call of the rider except the session keep hashes to;
+	// an empty keep spares nothing.
+	DropUser(userID string, keep []byte)
+	// Every socket that rode in on this one session.
+	DropSession(session []byte)
+}
+
 // endOtherSessions signs the account out everywhere but on this request's
 // own session (#1607): the answer to ADR-0030's alarm, and what a credential
 // removal does on its own — whoever added the passkey being removed may be
 // holding a session too. Returns how many it ended.
 func (s *Service) endOtherSessions(ctx context.Context, userID pgtype.UUID, r *http.Request) int64 {
-	return s.endSessions(ctx, userID, currentSessionHash(r))
+	return s.endSessions(ctx, userID, SessionKey(r))
 }
 
 // endSessions ends every session of the account except the one `keep` hashes
-// to; a nil keep ends all of them, which is what recovery needs (#1822) and
-// what "pass a hash no session has" means in the query. Returns how many.
+// to; a nil keep ends all of them, which is what recovery needs (#1822). The
+// sessions' live sockets and calls end with them, once the rows are gone, so
+// the reconnect each one attempts is refused (#2807). Returns how many.
 func (s *Service) endSessions(ctx context.Context, userID pgtype.UUID, keep []byte) int64 {
-	if keep == nil {
-		keep = []byte{}
+	// What "pass a hash no session has" means in the query. The hub gets keep
+	// as it came: an empty one there spares nothing either.
+	except := keep
+	if except == nil {
+		except = []byte{}
 	}
 	n, err := s.store.Queries.DeleteUserSessionsExcept(ctx, db.DeleteUserSessionsExceptParams{
-		UserID: userID, TokenHash: keep,
+		UserID: userID, TokenHash: except,
 	})
 	if err != nil {
 		s.log.Error("ending sessions failed", "err", err)
+	}
+	if n > 0 && s.live != nil {
+		s.live.DropUser(store.UUIDString(userID), keep)
 	}
 	return n
 }
@@ -172,8 +195,12 @@ func (s *Service) handleLogout(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusForbidden, "forbidden", "Cross-origin request refused.")
 		return
 	}
-	if cookie, err := r.Cookie(sessionCookie); err == nil && cookie.Value != "" {
-		_ = s.store.Queries.DeleteSession(r.Context(), hash(cookie.Value))
+	if session := SessionKey(r); session != nil {
+		// The browser's other tabs share this cookie, so they are signed out
+		// too, and their sockets go with the row (#2807).
+		if err := s.store.Queries.DeleteSession(r.Context(), session); err == nil && s.live != nil {
+			s.live.DropSession(session)
+		}
 	}
 	s.clearCookie(w, sessionCookie)
 	w.WriteHeader(http.StatusNoContent)

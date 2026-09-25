@@ -76,9 +76,9 @@ type Service struct {
 	// Hands a Strava grant back when the rider disconnects it (#783).
 	// SetStravaRevoker lives in credentials.go.
 	stravaRevoker GrantRevoker
-	// Carries a saved profile to the hub's copy on open sockets. SetLive
-	// lives in me.go.
-	live LiveProfile
+	// Carries a saved profile to the hub's copy on open sockets, and closes
+	// the ones an ended session opened (#2807). SetLive lives in me.go.
+	live Live
 	// How much confirmation mail one account may cause (#827). budget.go.
 	verifyMail *mailBudget
 	// Per-address ceilings on the unauthenticated sign-in doors (#1606).

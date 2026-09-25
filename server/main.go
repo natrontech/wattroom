@@ -313,6 +313,10 @@ func main() {
 		hubForDrain = h
 		crewsService.SetPresence(h)
 		authService.SetLive(h)
+		// An ended session, or a deleted account, takes its open sockets with
+		// it (#2807); the key is how the hub spares the session that asked.
+		accountService.SetLive(h)
+		h.SetSessionKey(auth.SessionKey)
 		channelsService.SetLive(h)
 		// A text channel's chat (#2435), behind the channel's own gate; the
 		// lobby ping names the channel whose log moved.
@@ -412,9 +416,11 @@ func main() {
 			avService.RegisterWebhook(mux)
 			// Webhooks alone leak ghosts when LiveKit hard-crashes (#234).
 			avService.StartReconciler(ctx)
-			// Bans and removals eject from voice too, not just the metrics WS.
+			// Bans and removals eject from voice too, not just the metrics WS;
+			// so does a session ending (#2807).
 			crewsService.SetVoiceEjector(avService)
 			channelsService.SetVoiceEjector(avService)
+			h.SetVoiceEjector(avService)
 		}
 	}
 	// Link previews: crawlers don't run JS, so og meta + images come from Go (#240).
