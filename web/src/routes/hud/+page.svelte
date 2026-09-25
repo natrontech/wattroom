@@ -89,7 +89,9 @@
 			</p>
 		{/if}
 		<p class="text-muted mt-2 text-xs tabular-nums" data-testid="hud-remaining">
-			{formatClock(snapshot.remaining)} left
+			{snapshot.elapsed === undefined
+				? `${formatClock(snapshot.remaining)} left`
+				: `${formatClock(snapshot.elapsed)} ridden`}
 		</p>
 	{/if}
 </main>

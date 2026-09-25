@@ -12,6 +12,11 @@ export interface HudSnapshot {
 	target: number;
 	/** Seconds left in the session. */
 	remaining: number;
+	/**
+	 * Seconds ridden, for a ride with no end to count down to — a free ride
+	 * (#2843). Set, the HUD shows it in place of `remaining`.
+	 */
+	elapsed?: number;
 	/** The workout's name, solo or in a session. */
 	label: string;
 	/**

@@ -26,7 +26,6 @@
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { isLivePhase } from '$lib/channel/tick-session';
 	import { soloRide } from '$lib/workout/session.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
@@ -164,10 +163,10 @@
 	// The ride is running, here or on the live place's pages — the cave below
 	// and, in the desktop shell, the floating HUD (ADR-0041): it opens when a
 	// ride starts and closes when it ends, and the shell shows it only while
-	// WattRoom is not the front window.
+	// WattRoom is not the front window. A free ride is a ride (#2843).
 	const riding = $derived(
 		(channelConnection.onPlacePath(page.url.pathname) &&
-			isLivePhase(channelConnection.current?.live.tick?.state.phase)) ||
+			!!channelConnection.current?.riding()) ||
 			soloRide.active,
 	);
 	// A solo ride has no timeline to write a DM into (#1743), so it takes the
