@@ -168,7 +168,10 @@
 {/if}
 
 {#if around.length > 0}
-	<h2 class="eyebrow mt-8">in voice</h2>
+	<!-- Standing in a voice channel, which is not being on its call (#2854):
+	     "in voice" is LiveKit's word for the call alone (docs/SPEC.md), and
+	     the people column says this the same way. -->
+	<h2 class="eyebrow mt-8">in the channel</h2>
 	<ul class="divide-ink/5 panel panel-flush mt-2 divide-y">
 		{#each around as channel (channel.id)}
 			<li>
