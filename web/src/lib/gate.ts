@@ -260,7 +260,9 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 	const ref = reference(theme.family, catalogue);
 	const checks: GateCheck[] = [];
 
-	for (const token of ['ink', 'muted', 'muted-dim'] as const) {
+	// Danger is a word colour (#2858): every refusal under a field and every
+	// Delete is small text in it, so it answers to the text floor.
+	for (const token of ['ink', 'muted', 'muted-dim', 'danger'] as const) {
 		const value = worst(theme, token);
 		checks.push(
 			check(
@@ -274,7 +276,7 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 			),
 		);
 	}
-	for (const token of ['watt', 'neon', 'danger'] as const) {
+	for (const token of ['watt', 'neon'] as const) {
 		const value = worst(theme, token);
 		checks.push(
 			check(

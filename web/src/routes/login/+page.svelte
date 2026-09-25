@@ -349,7 +349,7 @@
 									>
 								{:else}
 									<span
-										class="font-display text-neon w-5 shrink-0 text-center text-xs font-bold"
+										class="font-display text-muted w-5 shrink-0 text-center text-xs font-bold"
 										>&gt;_</span
 									>
 								{/if}

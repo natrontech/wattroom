@@ -65,7 +65,7 @@
 {:else if state.kind === 'live'}
 	<button type="button" class="update-row" onclick={onreload}>
 		{@render face(RefreshCw, `${state.version} is live`, 'Reload to get it')}
-		<span class="text-neon shrink-0 text-[11px] font-semibold">Reload</span>
+		<span class="text-ink shrink-0 text-[11px] font-semibold">Reload</span>
 	</button>
 {:else if state.kind === 'desktop'}
 	<button type="button" class="update-row" onclick={oninstall}>

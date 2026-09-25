@@ -173,6 +173,9 @@ const FAMILY: Record<
  * accents are gated at 3:1 — a graphic's floor, and large text's — so
  * `text-watt`/`text-neon` are for the giant watt number and marks, never for
  * 10–11 px words (#1965): the light watt is 3.9:1 and the dark neon 3.8:1.
+ * `no-small-accent-text.test.ts` holds the call sites to that (#2858).
+ * Danger is fitted to the text floor instead: it is the colour of every
+ * refusal and every Delete, and those are small words.
  */
 export const CONTRAST = { text: 4.5, accent: 3 } as const;
 
@@ -276,7 +279,7 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		fitContrast(
 			{ ...f.danger, h: DANGER_HUE },
 			backgrounds,
-			CONTRAST.accent,
+			CONTRAST.text,
 			away,
 		),
 	);

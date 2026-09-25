@@ -84,7 +84,7 @@
 	{#if release}
 		<div class="flex min-h-full flex-col">
 			<div class="flex items-center justify-between px-8 pt-7">
-				<p class="eyebrow text-neon">what's new</p>
+				<p class="eyebrow">what's new</p>
 				<button
 					type="button"
 					onclick={onclose}
@@ -99,7 +99,7 @@
 				<span class="text-muted text-sm">{day(release.date)}</span>
 				{#if release.version === changelog.version}
 					<span
-						class="border-neon/45 text-neon rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+						class="border-neon/45 text-ink rounded-full border px-2 py-0.5 text-[11px] font-semibold"
 						>running now</span
 					>
 				{/if}

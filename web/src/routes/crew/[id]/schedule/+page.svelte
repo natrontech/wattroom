@@ -373,7 +373,7 @@
 								     a phone plans, and does not start. -->
 								{#if planDue(entry.startsAt)}
 									{#if device.spectator}
-										<span class="text-watt glow-text text-xs"
+										<span class="text-ink text-xs font-medium"
 											>starting soon</span
 										>
 									{:else if coachingIn(entry)}
