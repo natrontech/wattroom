@@ -2,6 +2,7 @@ package hub
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -80,6 +81,29 @@ func (el *eventLog) resend(ev protocol.ChannelEvent) {
 		}
 	}
 	el.append(ev)
+}
+
+// restate records where a rider's away state ended up this tick (#2869):
+// their away or back line still waiting for the tick is replaced rather
+// than joined by another. A client flipping it a thousand times a second
+// used to fill the buffer and push out the lines that mattered; now it
+// costs one line a tick, and the one line says where they ended.
+func (el *eventLog) restate(ev protocol.ChannelEvent, now time.Time) {
+	for i, pending := range el.pending {
+		if pending.Kind == presenceKind && pending.Actor == ev.Actor && awayLine(pending.Verb) {
+			ev.ID = pending.ID
+			el.pending[i] = ev
+			el.open = nil
+			return
+		}
+	}
+	el.add(ev, now)
+}
+
+// awayLine is whether a verb says where a rider stands — away, a reason for
+// it, or back (awayVerb).
+func awayLine(verb string) bool {
+	return verb == "back" || verb == "away" || strings.HasPrefix(verb, "away_")
 }
 
 func (el *eventLog) append(ev protocol.ChannelEvent) {

@@ -389,7 +389,7 @@ func (rm *room) setAway(riderID string, away bool, reason string) {
 		return
 	}
 	now := rm.now()
-	rm.events.add(presenceLine(awayVerb(away, reason), name, now), now)
+	rm.events.restate(presenceLine(awayVerb(away, reason), name, now), now)
 }
 
 // awayVerb is the timeline's word for a state. One verb per state rather than
