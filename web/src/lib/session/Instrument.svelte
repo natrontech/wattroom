@@ -51,12 +51,16 @@
 {#snippet track(height: string)}
 	<div class="relative {height}">
 		<div
-			class="bg-surface-raised absolute inset-0 overflow-hidden rounded-full"
+			data-testid="power-gauge"
+			class="bg-surface-raised absolute inset-0 overflow-hidden rounded-full forced-colors:border"
 		>
+			<!-- Forced colours (#2860): the track keeps an edge, and the slot and
+			     the target speak Highlight; app.css paints the fill. -->
 			{#if state.has}
 				<!-- The slot you are aiming at. -->
 				<div
-					class="bg-neon/30 absolute inset-y-0"
+					data-testid="gauge-slot"
+					class="bg-neon/30 absolute inset-y-0 forced-color-adjust-none forced-colors:bg-[Highlight]/40"
 					style="left: {pct(target - state.band)}%; width: {pct(
 						target + state.band,
 					) - pct(target - state.band)}%"
@@ -69,11 +73,15 @@
 				class="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
 				style="width: {pct(watts)}%"
 			>
-				<div class="{ZONE_BG[zone]} h-full w-full"></div>
+				<div
+					data-testid="gauge-fill"
+					class="{ZONE_BG[zone]} h-full w-full"
+				></div>
 			</div>
 			{#if state.has}
 				<div
-					class="bg-neon absolute inset-y-0 w-1"
+					data-testid="gauge-target"
+					class="bg-neon absolute inset-y-0 w-1 forced-color-adjust-none forced-colors:bg-[Highlight]"
 					style="left: {pct(target)}%"
 				></div>
 			{/if}
