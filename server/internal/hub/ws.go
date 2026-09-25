@@ -147,7 +147,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	// that a property of the shape rather than of a filter somebody has to
 	// remember. Nothing stores it — it is read off the request and sent.
 	c.sendJSON(h.log, protocol.ServerMessage{
-		Connection: &protocol.OwnConnection{IP: httpx.ClientIP(r)},
+		Connection: &protocol.OwnConnection{IP: httpx.ClientAddr(r)},
 	})
 	rm.join(c)
 	h.PresenceChanged()

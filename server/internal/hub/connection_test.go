@@ -78,7 +78,9 @@ func TestAnAddressReachesItsOwnSocketAndNoOther(t *testing.T) {
 	defer srv.Close()
 	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
 
-	const janIP, kimIP = "203.0.113.7", "198.51.100.4"
+	// Kim is on IPv6 and is told the whole address: the per-address budgets
+	// key on its /64 (#2825), which is a network, not the rider's own line.
+	const janIP, kimIP = "203.0.113.7", "2001:db8:1:2:aaaa::4"
 	jan := dialFrom(t, url, "jan:owner", janIP)
 	// Jan's own address arrives first, before any tick: it is queued on the
 	// socket at join.

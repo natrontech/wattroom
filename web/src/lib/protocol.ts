@@ -769,7 +769,7 @@ export interface Rider {
  */
 export interface OwnConnection {
   /**
-   * The address this socket reached the server from, as httpx.ClientIP
+   * The address this socket reached the server from, as httpx.ClientAddr
    * resolves it: the last X-Forwarded-For hop behind the deploy's proxy
    * (#1824), else the peer.
    */

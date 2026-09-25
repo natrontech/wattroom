@@ -114,6 +114,53 @@ func TestClientIPIgnoresTheHeaderWithNoProxyDeclared(t *testing.T) {
 	}
 }
 
+// One host is routinely handed a whole IPv6 /64, so the full address is a
+// fresh budget per request from a single machine, and 4096 of them used to
+// fill every per-address table (#2825). The key is the /64; an IPv4 address,
+// mapped or not, stays itself.
+func TestClientIPIsTheIPv6Network(t *testing.T) {
+	for _, trust := range []bool{true, false} {
+		trustProxyForTest(t, trust)
+		for _, c := range []struct{ xff, remote, want string }{
+			{"", "[2001:db8:1:2:aaaa::1]:443", "2001:db8:1:2::/64"},
+			{"", "[2001:db8:1:2:ffff:ffff:ffff:ffff]:443", "2001:db8:1:2::/64"},
+			{"", "[::ffff:203.0.113.9]:443", "203.0.113.9"},
+			{"", "[fe80::1%eth0]:443", "fe80::/64"},
+			{"", "10.0.0.7:4242", "10.0.0.7"},
+		} {
+			if got := ClientIP(clientIPRequest(t, c.xff, c.remote)); got != c.want {
+				t.Errorf("trust %v remote %q: got %q, want %q", trust, c.remote, got, c.want)
+			}
+		}
+	}
+	trustProxyForTest(t, true)
+	for _, c := range []struct{ xff, want string }{
+		{"2001:db8:1:2:bbbb::9", "2001:db8:1:2::/64"},
+		{"spoofed, 2001:db8:1:2:cccc::9", "2001:db8:1:2::/64"},
+		// A hop that is not an address is still one key, not a panic.
+		{"not-an-address", "not-an-address"},
+	} {
+		if got := ClientIP(clientIPRequest(t, c.xff, "10.0.0.1:1")); got != c.want {
+			t.Errorf("xff %q: got %q, want %q", c.xff, got, c.want)
+		}
+	}
+}
+
+// ClientAddr is the whole address — what a rider is shown as their own
+// connection, where a /64 would be a stranger's network rather than theirs.
+func TestClientAddrIsTheWholeAddress(t *testing.T) {
+	trustProxyForTest(t, true)
+	for _, c := range []struct{ xff, remote, want string }{
+		{"", "[2001:db8:1:2:aaaa::1]:443", "2001:db8:1:2:aaaa::1"},
+		{"1.2.3.4, 2001:db8:1:2:bbbb::9", "10.0.0.1:1", "2001:db8:1:2:bbbb::9"},
+		{"", "10.0.0.7:4242", "10.0.0.7"},
+	} {
+		if got := ClientAddr(clientIPRequest(t, c.xff, c.remote)); got != c.want {
+			t.Errorf("xff %q remote %q: got %q, want %q", c.xff, c.remote, got, c.want)
+		}
+	}
+}
+
 func trustProxyForTest(t *testing.T, trust bool) {
 	t.Helper()
 	was := trustProxy.Load()

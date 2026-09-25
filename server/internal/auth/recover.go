@@ -94,7 +94,15 @@ func (s *Service) handleRecover(w http.ResponseWriter, r *http.Request) {
 	// address's hourly link budget on their behalf, which delays a recovery
 	// by up to an hour. ADR-0051 takes that over the alternative, which is
 	// no ceiling on mail to an address a stranger types.
-	if !s.recoverMail.Spend(strings.ToLower(address)) {
+	//
+	// Keyed by what the stranger types, so a flood can fill the table; full,
+	// it is everyone's recovery that is busy, not this address (#2825).
+	if ok, full := s.recoverMail.Take(strings.ToLower(address)); full {
+		s.log.Warn("recovery mail budget full")
+		httpx.WriteError(w, http.StatusServiceUnavailable, "rate_limited",
+			"Account recovery is busy right now. Try again in a few minutes.")
+		return
+	} else if !ok {
 		httpx.WriteFieldError(w, http.StatusTooManyRequests, "rate_limited",
 			"That is a lot of recovery emails for one address. Wait an hour, then try again.", "email")
 		return

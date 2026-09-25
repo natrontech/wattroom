@@ -113,7 +113,7 @@ func New(st *store.Store, log *slog.Logger, baseURL string, secure bool, keys *s
 		loginBudget:     budget.New[string](loginAttemptsPerWindow, loginWindow),
 		syntheticBudget: budget.New[string](syntheticPerWindow, loginWindow),
 		recoverDoor:     budget.New[string](recoverAsksPerWindow, loginWindow),
-		recoverMail:     budget.New[string](recoverMailsPerWindow, recoverMailWindow),
+		recoverMail:     budget.NewKeeping[string](recoverMailsPerWindow, recoverMailWindow),
 	}
 	if _, ok := svc.providers["dev"]; ok {
 		log.Warn("WATTROOM_DEV_LOGIN is enabled — anyone reaching this server can sign in as Dev Rider")
