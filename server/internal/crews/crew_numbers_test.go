@@ -76,12 +76,13 @@ func TestCrewTogetherIsCooperativeAndOwn(t *testing.T) {
 func TestTheCrewBoardIsThisWeekAndWithholdsAGuess(t *testing.T) {
 	h := setup(t)
 	crew := h.newCrew(t, "alice", "Board Crew")
-	h.join(t, "bob", crew)
-	h.join(t, "carol", crew)
-	voice := h.voice(t, crew)
+	// On before anyone joins, so the door they walk through names it (#2820).
 	if status, body := h.call(t, "alice", http.MethodPatch, crewPath(crew), `{"name":"Board Crew","boardEnabled":true}`); status != http.StatusOK {
 		t.Fatalf("board on: %d %v", status, body)
 	}
+	h.join(t, "bob", crew)
+	h.join(t, "carol", crew)
+	voice := h.voice(t, crew)
 	board := func() map[string]map[string]any {
 		t.Helper()
 		status, body := h.call(t, "alice", http.MethodGet, crewPath(crew, "/members"), "")
