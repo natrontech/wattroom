@@ -1,9 +1,11 @@
 <script lang="ts">
 	// Discord's voice-connected panel (#446): you are in a voice channel but
 	// looking at something else — Training, Home, a message — and the people
-	// with you stay bottom-left, above you. The channel's own page already
-	// shows everyone in tiles, so the strip stays off it; everywhere else this
-	// is the only place their faces appear.
+	// with you stay bottom-left, above you. The channel's own pages already
+	// show everyone — the Lounge's tiles, and on Training and the session's
+	// page the crew strip and the people column — so the strip stays off all
+	// of them (#2852); everywhere else this is the only place their faces
+	// appear.
 	import { SvelteMap } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { contextMenu } from '$lib/context-menu.svelte';
@@ -30,7 +32,7 @@
 	let { pathname }: { pathname: string } = $props();
 
 	const conn = $derived(channelConnection.current);
-	const onLounge = $derived(!!conn && pathname === conn.address.home);
+	const onPlace = $derived(channelConnection.onPlacePath(pathname));
 	// The heading names the place it means (#1017). "with you" alone was the
 	// clearest job in the sidebar with the weakest label: three sections list
 	// people, and this is the only one that means "right now, where you are
@@ -47,7 +49,7 @@
 	// arrives (#2732).
 	// A boolean, so the effect wakes when the strip comes or goes — not on
 	// every tick, which hands `others` a new array each second.
-	const showing = $derived(!!conn && !onLounge && others.length > 0);
+	const showing = $derived(!!conn && !onPlace && others.length > 0);
 	$effect(() => {
 		const crew = conn?.address.crew;
 		void presence.version;
@@ -77,7 +79,7 @@
 	const more = $derived(ordered.length - shown.length);
 </script>
 
-{#if conn && !onLounge && others.length > 0}
+{#if conn && !onPlace && others.length > 0}
 	{@const av = conn.av}
 	<div class="border-ink/5 border-t px-3 pt-2.5 pb-1.5">
 		<div class="eyebrow flex min-w-0 items-center gap-1.5 pb-1.5">
