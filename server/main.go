@@ -479,6 +479,9 @@ func main() {
 		// Header timeout only: /ws connections are long-lived, so no blanket
 		// read/write timeouts here — the hub owns per-message deadlines.
 		ReadHeaderTimeout: 10 * time.Second,
+		// A handler panic is a bug nobody is told about at the default INFO
+		// the std logger bridges to (#2864); ERROR reaches the alerts.
+		ErrorLog: slog.NewLogLogger(log.Handler(), slog.LevelError),
 	}
 	go func() {
 		<-ctx.Done()

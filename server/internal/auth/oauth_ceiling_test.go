@@ -41,7 +41,7 @@ func callback(t *testing.T, s *Service, state string) *httptest.ResponseRecorder
 // passkey-login routes.
 func TestTheCallbackDoorHasACeiling(t *testing.T) {
 	s := callbackService()
-	s.providers["github"] = provider{id: "github"}
+	s.providers["github"] = provider{id: "github", config: &oauth2.Config{}}
 
 	for i := range loginAttemptsPerWindow {
 		if code := callback(t, s, "forged").Code; code != http.StatusBadRequest {
