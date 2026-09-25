@@ -468,6 +468,11 @@ once cadence recovered to 82 rpm. No false trips across any prior hardware sessi
 | …AND power below        | 20 W (cadence alone unsafe — some trainers report none) |
 | Pause after             | 3 s stopped                                             |
 | Resume countdown        | 3 s (resuming must not be a jump-scare)                 |
+| Stopped this long → the ride ends | 10 min paused (default — tune in alpha), solo ride and ramp test only (#2622) |
+
+A solo ride that ends itself this way drops its trailing stopped run before it is saved or
+exported: the rider had gone, and those seconds are not in its duration, normalised power or
+`.fit`. A session is its coach's to end, so this never ends one.
 
 **Spiral-of-death guard** — ERG piles on resistance as cadence dies; the guard breaks the loop:
 

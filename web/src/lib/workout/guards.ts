@@ -42,6 +42,12 @@ export const DEFAULTS = {
 	pauseAfterSeconds: 3,
 	/** Countdown shown when they start again, so resuming is not a jump-scare. */
 	resumeCountdown: 3,
+	/**
+	 * Auto-paused this long, and a solo ride ends itself (#2622): the rider got
+	 * off and walked away. Without it the ride sat paused all night and End
+	 * filed a nine-hour ride the server refuses.
+	 */
+	stoppedEndsAfterSeconds: 600,
 	/** Spiral guard: cadence under this while an ERG target is held. */
 	spiralCadence: 50,
 	/** ...for this long, before the target is released. */
