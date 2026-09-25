@@ -113,6 +113,7 @@
 		<section class="grid content-center gap-6">
 			<Instrument
 				watts={channel.you.watts}
+				stale={channel.youStale}
 				target={watts ? (free?.watts ?? 0) : 0}
 				ftp={channel.you.ftp}
 			/>
@@ -156,6 +157,7 @@
 			<div>
 				<SecondaryRow
 					cadence={channel.you.cadence}
+					stale={channel.youStale}
 					hr={channel.you.hr}
 					watts={channel.you.watts}
 					kg={channel.you.kg}

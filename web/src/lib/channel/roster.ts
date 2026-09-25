@@ -48,8 +48,10 @@ export function rosterGroups(
 	elsewhere: (PanelMember & Elsewhere)[];
 	offline: PanelMember[];
 } {
+	// A dropped trainer holds its last watts a few seconds (#2851); that
+	// rider is not holding target, whatever the number says.
 	const here = live
-		? riders.filter((r) => r.watts > 0)
+		? riders.filter((r) => r.watts > 0 && !r.stale)
 		: riders.filter((r) => r.inVoice);
 	const connected = new Set(riders.map((r) => r.id));
 	const absent = members.filter((m) => !connected.has(m.id));

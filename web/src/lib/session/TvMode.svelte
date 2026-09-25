@@ -87,7 +87,13 @@
 			     the bright slot" reads from the sofa the way it reads from the
 			     saddle. One design at two distances (ADR-0020). -->
 			<section class="flex min-w-0 flex-1 flex-col justify-center">
-				<Instrument watts={you.watts} target={you.target} ftp={you.ftp} tv />
+				<Instrument
+					watts={you.watts}
+					target={you.target}
+					ftp={you.ftp}
+					stale={you.stale}
+					tv
+				/>
 				<div class="mt-[2.5vh]">
 					<IntervalStrip
 						{block}

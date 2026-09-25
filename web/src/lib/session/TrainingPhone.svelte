@@ -160,6 +160,7 @@
 					<div class="mt-3">
 						<Instrument
 							watts={followed.watts}
+							stale={followed.you ? channel.youStale : followed.stale}
 							target={followed.target}
 							ftp={followed.ftp}
 							compact
@@ -190,6 +191,7 @@
 					<div class="mt-1.5">
 						<Instrument
 							watts={followed.watts}
+							stale={followed.you ? channel.youStale : followed.stale}
 							target={followed.target}
 							ftp={followed.ftp}
 							compact={focus === 'media'}
@@ -201,6 +203,7 @@
 						     control (#565, ux.md). -->
 						<SecondaryRow
 							cadence={followed.cadence}
+							stale={followed.you ? channel.youStale : followed.stale}
 							hr={followed.hr}
 							watts={followed.watts}
 							kg={followed.kg}

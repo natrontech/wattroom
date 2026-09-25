@@ -62,17 +62,19 @@
 			{/key}
 		{:else}
 			<div class="grid h-full w-full place-items-center">
-				{#if rider.watts > 0}<RidingBars size={16} />{/if}
+				{#if rider.watts > 0 && !rider.stale}<RidingBars size={16} />{/if}
 			</div>
 		{/if}
 		<span
 			class="from-paper/85 absolute inset-x-0 bottom-0 flex items-baseline gap-1 bg-gradient-to-t to-transparent px-1.5 pt-4 pb-1"
 		>
+			<!-- Their trainer went quiet (#2851): the coach sees it, instead of
+			     the last number standing in for a rider holding target. -->
 			<span
-				class="font-display {ZONE_TEXT[
-					zone
-				]} text-xl leading-none font-bold tabular-nums"
-				data-testid="crew-watts">{rider.watts}</span
+				class="font-display {rider.stale
+					? 'text-muted'
+					: ZONE_TEXT[zone]} text-xl leading-none font-bold tabular-nums"
+				data-testid="crew-watts">{rider.stale ? '—' : rider.watts}</span
 			>
 			<span class="text-muted text-[9px]">W</span>
 			<span
@@ -87,8 +89,9 @@
 	     #1057 made for the solo ride and SecondaryRow, TvMode and RiderTile
 	     all keep. This strip printed it under every crewmate without one. -->
 	<p class="text-muted mt-1 truncate text-[10px] tabular-nums">
-		{wkg(rider.watts, rider.kg)} w/kg · {rider.cadence} rpm{#if rider.hr > 0}
-			· {rider.hr} bpm{/if}
+		{#if rider.stale}no signal{:else}{wkg(rider.watts, rider.kg)} w/kg · {rider.cadence}
+			rpm{#if rider.hr > 0}
+				· {rider.hr} bpm{/if}{/if}
 	</p>
 {/snippet}
 

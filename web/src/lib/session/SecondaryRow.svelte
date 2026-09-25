@@ -22,6 +22,7 @@
 		small = false,
 		onBias,
 		biasHint,
+		stale = false,
 	}: {
 		cadence: number;
 		hr: number;
@@ -46,7 +47,11 @@
 		 * problem that is not there.
 		 */
 		biasHint?: string;
+		/** Nothing is being measured (#2851): the last numbers are not live. */
+		stale?: boolean;
 	} = $props();
+
+	const measured = (value: string) => (stale ? '—' : value);
 
 	// bpm appears only when something is actually reporting it: a permanent
 	// "0 bpm" is worse than no cell, because it reads as a broken strap rather
@@ -68,7 +73,7 @@
 >
 	<!-- An icon per instrument (#1531): at three metres a glyph is found before
 	     a three-letter label is read, and the rider asked for exactly that. -->
-	{#each [{ label: 'rpm', value: `${cadence}`, tone: '', icon: RefreshCw }, ...(hr > 0 ? [{ label: 'bpm', value: `${hr}`, tone: lthr ? ZONE_TEXT[hrZoneOf(hr, lthr)] : '', icon: Heart }] : []), { label: 'w/kg', value: wkg(watts, kg), tone: '', icon: Scale }, ...(execution !== undefined ? [{ label: 'execution', value: `${Math.round(execution * 100)}%`, tone: '', icon: Target }] : [])] as stat (stat.label)}
+	{#each [{ label: 'rpm', value: measured(`${cadence}`), tone: '', icon: RefreshCw }, ...(hr > 0 ? [{ label: 'bpm', value: measured(`${hr}`), tone: lthr && !stale ? ZONE_TEXT[hrZoneOf(hr, lthr)] : '', icon: Heart }] : []), { label: 'w/kg', value: measured(wkg(watts, kg)), tone: '', icon: Scale }, ...(execution !== undefined ? [{ label: 'execution', value: `${Math.round(execution * 100)}%`, tone: '', icon: Target }] : [])] as stat (stat.label)}
 		<div class="shrink-0">
 			<span
 				class="font-display block leading-none font-bold tabular-nums {small

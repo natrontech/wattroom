@@ -74,6 +74,11 @@ export interface ChannelContext {
 	 * is gated on — a trainer being linked is a different question.
 	 */
 	readonly actuating: boolean;
+	/**
+	 * Your own numbers are not live (#2851): the trainer went quiet, or the
+	 * channel has stopped echoing them. What the instrument dims on.
+	 */
+	readonly youStale: boolean;
 	readonly trainer: unknown;
 	/** What this tab is paired to, for a ⚑ report's context (#1631). '' = nothing. */
 	readonly trainerName: string;

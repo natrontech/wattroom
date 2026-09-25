@@ -29,6 +29,18 @@ describe('rosterGroups', () => {
 		expect(groups.away.map((r) => r.id)).toEqual(['a']);
 	});
 
+	// A dropped trainer holds its last watts for a few seconds (#2851): that
+	// rider is not holding target, whatever the number still says.
+	it('leaves a rider whose numbers went quiet out of holding target', () => {
+		const groups = rosterGroups(
+			true,
+			[rider('a', { watts: 200 }), rider('b', { watts: 180, stale: true })],
+			[],
+		);
+		expect(groups.here.map((r) => r.id)).toEqual(['a']);
+		expect(groups.away.map((r) => r.id)).toEqual(['b']);
+	});
+
 	it('counts a connected rider who is not a member as here, never offline', () => {
 		// The roster is the live truth; the member list can lag a fresh join.
 		const groups = rosterGroups(false, [rider('a', { inVoice: true })], []);

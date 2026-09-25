@@ -569,13 +569,14 @@
 				{session}
 				{signalLost}
 				{noCrashSafety}
-				lost="Trainer signal lost — reconnecting. Keep pedalling; the step resumes the moment it is back, and the test will not end on the gap."
+				note="The step resumes the moment it is back, and the test will not end on the gap."
 			/>
 
 			<!-- Scaled to the test's own top, not the FTP it exists to correct
 			     (#1565): at FTP 180 the bar used to pin at 270 W on step 10. -->
 			<Instrument
 				watts={session.sample?.watts ?? 0}
+				stale={signalLost}
 				target={session.target}
 				ftp={profile.current.ftp}
 				targetLabel="step"
@@ -587,6 +588,7 @@
 			     (#1531). -->
 			<SecondaryRow
 				cadence={session.sample?.cadence ?? 0}
+				stale={signalLost}
 				hr={session.sample?.heartRate ?? 0}
 				watts={session.sample?.watts ?? 0}
 				kg={profile.current.kg}

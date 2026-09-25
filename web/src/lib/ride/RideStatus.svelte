@@ -9,6 +9,7 @@
 	 * and reattaching, and paired a second one the ride never heard.
 	 */
 	import Banner from '$lib/components/Banner.svelte';
+	import FaultBanner from '$lib/channel/FaultBanner.svelte';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { pairError } from '$lib/ble/pair-error';
 	import type { createRideSession } from '$lib/workout/session.svelte';
@@ -17,7 +18,7 @@
 		session,
 		signalLost,
 		noCrashSafety = false,
-		lost = 'Trainer signal lost — reconnecting. Keep pedalling; your targets resume the moment it is back.',
+		note,
 	}: {
 		session: ReturnType<typeof createRideSession>;
 		signalLost: boolean;
@@ -28,8 +29,8 @@
 		 * on it then — ADR-0052 rule 3.
 		 */
 		noCrashSafety?: boolean;
-		/** What the banner says while the trainer is quiet. */
-		lost?: string;
+		/** What this ride adds while the trainer is quiet — the ramp's promise. */
+		note?: string;
 	} = $props();
 
 	let repairing = $state(false);
@@ -80,26 +81,20 @@
 {/if}
 
 {#if signalLost}
+	<!-- The session's banner, words and way back alike (#2881, ADR-0046):
+	     manual recovery is one big button (errors.md), and picking the
+	     trainer again carries the ride on with it. -->
 	<div class="mt-4">
-		<Banner tone="error">{lost}</Banner>
-		<!-- Manual recovery is one big button (errors.md): pick the trainer
-		     again and the ride carries on with it. -->
-		<div class="mt-3 flex flex-wrap items-center gap-3">
-			<span class="text-muted text-xs">
-				{session.trainerName} —
-				{#if session.trainerStatus === 'connected'}
-					connected, but sending nothing
-				{:else}
-					reconnecting on its own
-				{/if}
-			</span>
-			<button
-				onclick={() => void repair()}
-				disabled={repairing}
-				class="btn btn-secondary btn-lg"
-				>{repairing ? 'Pairing…' : 'Pair the trainer again'}</button
-			>
-		</div>
+		<FaultBanner
+			fault={{
+				kind: 'trainer',
+				state:
+					session.trainerStatus === 'connected' ? 'silent' : 'reconnecting',
+			}}
+			onRecover={() => void repair()}
+			busy={repairing}
+			note={[session.trainerName, note].filter(Boolean).join(' — ')}
+		/>
 		{#if repairError}
 			<p class="text-danger mt-2 text-xs">{repairError}</p>
 		{/if}

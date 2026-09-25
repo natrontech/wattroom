@@ -149,6 +149,9 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 		get actuating() {
 			return ride.actuating;
 		},
+		get youStale() {
+			return !!ride.fault || roster.you.stale;
+		},
 		get trainerName() {
 			return ride.trainer?.name ?? '';
 		},

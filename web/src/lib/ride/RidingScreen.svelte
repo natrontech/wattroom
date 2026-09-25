@@ -146,12 +146,13 @@
 			     seconds of all-out. No roster: nobody else is here. -->
 			<SprintMoment sprint={session.sprint} myWatts={watts} />
 		{:else}
-			<Instrument {watts} {target} {ftp} />
+			<Instrument {watts} {target} {ftp} stale={signalLost} />
 		{/if}
 	</section>
 
 	<SecondaryRow
 		cadence={session.sample?.cadence ?? 0}
+		stale={signalLost}
 		hr={session.sample?.heartRate ?? 0}
 		{watts}
 		{kg}
