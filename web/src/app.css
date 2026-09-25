@@ -243,7 +243,7 @@ body {
  * whole border chain to add one red line, which is how three of them ended up
  * with three different fields. */
 @utility input {
-	@apply border-muted/25 placeholder:text-muted-dim focus:border-muted/60 aria-invalid:border-danger/60 rounded border bg-transparent px-3 py-2 text-sm outline-none;
+	@apply border-muted-dim placeholder:text-muted-dim focus:border-muted aria-invalid:border-danger rounded border bg-transparent px-3 py-2 text-sm outline-none;
 }
 @utility input-xs {
 	@apply px-3 py-1.5 text-xs;
@@ -375,11 +375,10 @@ body {
 	height: 1rem;
 	cursor: pointer;
 	background: var(--color-surface);
-	border: 1px solid
-		light-dark(
-			color-mix(in oklab, var(--color-muted) 30%, transparent),
-			color-mix(in oklab, var(--color-muted) 55%, transparent)
-		);
+	/* The edge is what says "this is a control", so WCAG 1.4.11 holds it to
+	 * 3:1 (#2861): muted-dim, which the palette gate fits to 4.5:1 against
+	 * both surfaces. Thinned with an alpha it was 1.55:1 on the light themes. */
+	border: 1px solid var(--color-muted-dim);
 	transition:
 		border-color 120ms ease,
 		background-color 120ms ease;
@@ -429,7 +428,7 @@ input[type='range'] {
 input[type='range']::-webkit-slider-runnable-track {
 	height: 4px;
 	border-radius: 999px;
-	background: color-mix(in oklab, var(--color-muted) 30%, transparent);
+	background: var(--color-muted-dim); /* a control's edge (#2861) */
 }
 input[type='range']::-webkit-slider-thumb {
 	appearance: none;
@@ -443,7 +442,7 @@ input[type='range']::-webkit-slider-thumb {
 input[type='range']::-moz-range-track {
 	height: 4px;
 	border-radius: 999px;
-	background: color-mix(in oklab, var(--color-muted) 30%, transparent);
+	background: var(--color-muted-dim); /* a control's edge (#2861) */
 }
 input[type='range']::-moz-range-thumb {
 	width: 14px;
