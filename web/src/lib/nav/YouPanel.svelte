@@ -7,7 +7,7 @@
 	import Avatar from '$lib/components/Avatar.svelte';
 	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import QuickAudio from '$lib/channel/QuickAudio.svelte';
-	import { account } from '$lib/account.svelte';
+	import { account, voiceUp } from '$lib/account.svelte';
 	import {
 		contextMenu,
 		openMenu,
@@ -54,6 +54,12 @@
 	// and "Join voice" renders with nothing to join, which is the dead control
 	// ux.md forbids.
 	const showAv = $derived(!!account.me?.avEnabled && !!conn);
+	// Configured is not up (#2850): with the call server down, Join voice
+	// is drawn disabled with the reason, not offered to fail.
+	const voiceDown = $derived(!voiceUp(account.me));
+	// On the channel's own pages its banner owns a failed join — the reason
+	// and the one big button (#2850) — so the reason is not said twice here.
+	const onPlace = $derived(channelConnection.onPlacePath(pathname));
 
 	// The way into voice; mic and camera only appear once you are in.
 	const voiceStatus = $derived(av?.status ?? 'off');
@@ -215,6 +221,7 @@
 				{:else}
 					<button
 						onclick={() => onJoin?.()}
+						disabled={voiceDown}
 						class="btn btn-primary min-h-11 flex-1"
 						><Headphones size={13} />
 						{voiceStatus === 'failed'
@@ -230,7 +237,14 @@
 					     first opens a microphone into a voice channel (audit
 					     2026-09-09). -->
 					<p class="text-muted-dim basis-full px-1 text-[10px]">
-						{#if device.coarse}
+						{#if voiceDown}
+							<!-- Why the button above is off, where the promise would be
+							     (#2850): a join now could only fail. -->
+							<span class="text-muted"
+								>Voice is down on this server right now — it comes back on its
+								own.</span
+							>
+						{:else if device.coarse}
 							<!-- The gate would hold the capture open, and a phone plays the
 							     call through its earpiece for as long as anything is
 							     capturing (`mic-chain.svelte.ts`). So the mic button is the
@@ -391,7 +405,7 @@
 			>
 		</div>
 	{/if}
-	{#if showAv && voiceError}
+	{#if showAv && voiceError && !(voiceStatus === 'failed' && onPlace)}
 		<!-- The failure itself, not "voice failed" (#642, errors.md): what
 		     the browser refused and where to allow it, or that the session
 		     is over and the way back is the login page. Persistent like the

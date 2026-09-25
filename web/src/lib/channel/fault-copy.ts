@@ -56,9 +56,13 @@ export function faultCopy(fault: Fault, bufferedSeconds?: number): FaultCopy {
 						'Reconnecting the call — the others may not hear you right now. Your ride and metrics are unaffected.',
 				}
 			: {
-					title: "Voice didn't come back",
+					// 'lost' is a join that never connected: av-session sets
+					// 'failed' only there. It is not a call that dropped, and the
+					// ride may not exist (#2850) — the reason rides as the note.
+					title: 'Voice could not connect',
 					detail:
-						'The call could not reconnect. Your ride is unaffected — rejoin voice when you are ready.',
+						'You are in the channel without the call — everything else here works.',
+					action: 'Try voice again',
 				};
 	}
 	if (fault.kind === 'mic') {

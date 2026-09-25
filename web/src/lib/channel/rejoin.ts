@@ -49,7 +49,7 @@ export interface RejoinInput {
 	tab: string;
 	/** The key of the place being opened. */
 	key: string;
-	/** `account.me.avEnabled` — no AV, no rejoin. */
+	/** `voiceUp(account.me)` — no AV, or AV down, no rejoin (#2850). */
 	avEnabled: boolean;
 	now: number;
 }

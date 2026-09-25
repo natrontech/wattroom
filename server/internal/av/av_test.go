@@ -277,3 +277,22 @@ func TestEject(t *testing.T) {
 		t.Fatalf("admin grant: %+v", got.Video)
 	}
 }
+
+// A join the server already knows will fail is refused with that reason
+// (#2850), not handed a token for a call that cannot connect — which told
+// the rider to check their own connection when the call server was down.
+func TestTokenRefusedWhileLiveKitIsDown(t *testing.T) {
+	svc := service(allowAll{})
+	svc.reachable.Store(false)
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/channels/velvet/av-token", nil)
+	req.SetPathValue("id", "velvet")
+	w := httptest.NewRecorder()
+	svc.HandleToken(w, req)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status %d, want 503: %s", w.Code, w.Body.String())
+	}
+	var body httpx.ErrorResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil || body.Error != "rate_limited" || body.Message == "" {
+		t.Fatalf("body %s, want rate_limited with a message", w.Body.String())
+	}
+}

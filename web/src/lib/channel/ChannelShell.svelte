@@ -4,7 +4,7 @@
 	import { elsewhereIn } from '$lib/channel/roster';
 	import { page } from '$app/state';
 	import { setMuted } from '$lib/sound/cues';
-	import { account } from '$lib/account.svelte';
+	import { account, voiceUp } from '$lib/account.svelte';
 	import { device } from '$lib/device.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { publishHud } from '$lib/hud/feed';
@@ -52,8 +52,7 @@
 	const rideCtl = connection.ride;
 	// The rail's "voice is busy" link lands you IN the channel, not next to it
 	// (#251): ?voice=1 auto-joins once on mount; join() is idempotent.
-	if (page.url.searchParams.has('voice') && account.me?.avEnabled)
-		void av.join();
+	if (page.url.searchParams.has('voice') && voiceUp(account.me)) void av.join();
 
 	// A refresh puts you back in voice (#480), beside the click below. The
 	// note this tab left behind says which channel and how recently; rejoin.ts
@@ -73,7 +72,7 @@
 		const clicked = takeVoice(props.address.key, Date.now());
 		if (page.url.searchParams.has('voice')) return; // that mount is spoken for
 		if (clicked) {
-			if (account.me?.avEnabled) void joinClicked(clicked);
+			if (voiceUp(account.me)) void joinClicked(clicked);
 			return;
 		}
 		const back = shouldRejoinVoice({
@@ -81,7 +80,7 @@
 			tab: tabId(),
 			// The note is keyed by the place (#2449).
 			key: props.address.key,
-			avEnabled: !!account.me?.avEnabled,
+			avEnabled: voiceUp(account.me),
 			now: Date.now(),
 		});
 		if (back) void av.join({ mic: back.mic });

@@ -56,6 +56,10 @@ type meResponse struct {
 	// Whether LiveKit is configured — the client hides voice/cam controls
 	// instead of serving 404s on click (#219, capability gating).
 	AvEnabled bool `json:"avEnabled"`
+	// Whether LiveKit answered the server's last check (#2850): configured
+	// and down, the client draws Join voice disabled with a one-line hint
+	// rather than a join that fails four ways.
+	AvReachable bool `json:"avReachable"`
 	// Whether GIF search is configured (#878) — same gating, for the
 	// composer's picker button.
 	GifsEnabled bool `json:"gifsEnabled"`
@@ -347,6 +351,7 @@ func (s *Service) handleUpdateAppearance(w http.ResponseWriter, r *http.Request)
 func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 	response := s.toMe(user)
 	response.AvEnabled = s.avEnabled
+	response.AvReachable = s.avEnabled && (s.avReachable == nil || s.avReachable())
 	response.GifsEnabled = s.gifsEnabled
 	// Each of these is optional: a failure leaves its field empty rather
 	// than failing the whole record. What it may not do is pass unnoticed
