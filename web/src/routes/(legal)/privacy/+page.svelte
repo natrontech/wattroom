@@ -4,7 +4,7 @@
 
 <h1 class="page-title">Privacy policy</h1>
 <p class="text-muted mt-1 text-sm">
-	Datenschutzerklärung · last updated 23 September 2026
+	Datenschutzerklärung · last updated 25 September 2026
 </p>
 
 <p class="text-muted mt-6 text-sm leading-relaxed">
@@ -91,7 +91,7 @@
 		<li>
 			<strong class="text-ink font-medium">Crews and channels.</strong> A crew is
 			a row: its name, icon and picture, its join code, whether it is listed in the
-			directory, whether it keeps a weekly board, its reactions and its calendar link.
+			directory, whether it keeps a weekly board, its own emoji and its calendar link.
 			Its channels carry their names, whether they are private, and a voice channel's
 			sounds and jukebox settings. A crew you are in keeps your standing in it — member,
 			admin or banned — and when that was set, and a private channel that names you

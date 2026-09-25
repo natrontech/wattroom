@@ -5,7 +5,8 @@
 -- No `*` on crews (#2733): sqlc expands it into the generated SQL, so a
 -- column stays named in a release's binary for as long as any `*` read it,
 -- and a later drop breaks the rollback to that release. The four reads below
--- list their columns; `cheers` left the list before it leaves the table.
+-- list their columns, which is how `cheers` could leave (#2784, then #2733's
+-- drop); a column added to crews is added to them by hand.
 
 -- name: CreateCrew :one
 -- Founded by its first owner (#1928): what "your own crew" means after a

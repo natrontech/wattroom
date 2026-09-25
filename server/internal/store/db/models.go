@@ -106,7 +106,6 @@ type Crew struct {
 	RenamedAt    pgtype.Timestamptz
 	FoundedBy    pgtype.UUID
 	BoardEnabled bool
-	Cheers       string
 	Listed       bool
 	IcsToken     string
 }

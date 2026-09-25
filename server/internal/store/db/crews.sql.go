@@ -62,23 +62,6 @@ type CreateCrewParams struct {
 	Code    *string
 }
 
-type CreateCrewRow struct {
-	ID           pgtype.UUID
-	Name         string
-	Icon         string
-	OwnerID      pgtype.UUID
-	CreatedAt    pgtype.Timestamptz
-	Code         *string
-	ImageMime    *string
-	Image        []byte
-	ImageSetAt   pgtype.Timestamptz
-	RenamedAt    pgtype.Timestamptz
-	FoundedBy    pgtype.UUID
-	BoardEnabled bool
-	Listed       bool
-	IcsToken     string
-}
-
 // The crew (ADR-0038, #1106; amended #1236). Crew membership is a row in
 // crew_roles — member, admin or banned — written by the crew's door (JoinCrew)
 // and read by everything else. The owner is crews.owner_id and holds no row.
@@ -86,12 +69,13 @@ type CreateCrewRow struct {
 // No `*` on crews (#2733): sqlc expands it into the generated SQL, so a
 // column stays named in a release's binary for as long as any `*` read it,
 // and a later drop breaks the rollback to that release. The four reads below
-// list their columns; `cheers` left the list before it leaves the table.
+// list their columns, which is how `cheers` could leave (#2784, then #2733's
+// drop); a column added to crews is added to them by hand.
 // Founded by its first owner (#1928): what "your own crew" means after a
 // hand-over, when a rider may own more than one.
-func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (CreateCrewRow, error) {
+func (q *Queries) CreateCrew(ctx context.Context, arg CreateCrewParams) (Crew, error) {
 	row := q.db.QueryRow(ctx, createCrew, arg.Name, arg.OwnerID, arg.Code)
-	var i CreateCrewRow
+	var i Crew
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -157,28 +141,11 @@ type FoundCrewParams struct {
 	Code    *string
 }
 
-type FoundCrewRow struct {
-	ID           pgtype.UUID
-	Name         string
-	Icon         string
-	OwnerID      pgtype.UUID
-	CreatedAt    pgtype.Timestamptz
-	Code         *string
-	ImageMime    *string
-	Image        []byte
-	ImageSetAt   pgtype.Timestamptz
-	RenamedAt    pgtype.Timestamptz
-	FoundedBy    pgtype.UUID
-	BoardEnabled bool
-	Listed       bool
-	IcsToken     string
-}
-
 // A crew a rider starts by name (#2480). The name is a person's from the
 // first moment, so the day-one naming step (#1151) never opens for it.
-func (q *Queries) FoundCrew(ctx context.Context, arg FoundCrewParams) (FoundCrewRow, error) {
+func (q *Queries) FoundCrew(ctx context.Context, arg FoundCrewParams) (Crew, error) {
 	row := q.db.QueryRow(ctx, foundCrew, arg.Name, arg.OwnerID, arg.Code)
-	var i FoundCrewRow
+	var i Crew
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
@@ -608,32 +575,15 @@ select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_
 from crews where owner_id = $1 order by created_at
 `
 
-type ListCrewsOwnedByRow struct {
-	ID           pgtype.UUID
-	Name         string
-	Icon         string
-	OwnerID      pgtype.UUID
-	CreatedAt    pgtype.Timestamptz
-	Code         *string
-	ImageMime    *string
-	Image        []byte
-	ImageSetAt   pgtype.Timestamptz
-	RenamedAt    pgtype.Timestamptz
-	FoundedBy    pgtype.UUID
-	BoardEnabled bool
-	Listed       bool
-	IcsToken     string
-}
-
-func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]ListCrewsOwnedByRow, error) {
+func (q *Queries) ListCrewsOwnedBy(ctx context.Context, ownerID pgtype.UUID) ([]Crew, error) {
 	rows, err := q.db.Query(ctx, listCrewsOwnedBy, ownerID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []ListCrewsOwnedByRow
+	var items []Crew
 	for rows.Next() {
-		var i ListCrewsOwnedByRow
+		var i Crew
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
@@ -921,28 +871,11 @@ type UpdateCrewParams struct {
 	Icon string
 }
 
-type UpdateCrewRow struct {
-	ID           pgtype.UUID
-	Name         string
-	Icon         string
-	OwnerID      pgtype.UUID
-	CreatedAt    pgtype.Timestamptz
-	Code         *string
-	ImageMime    *string
-	Image        []byte
-	ImageSetAt   pgtype.Timestamptz
-	RenamedAt    pgtype.Timestamptz
-	FoundedBy    pgtype.UUID
-	BoardEnabled bool
-	Listed       bool
-	IcsToken     string
-}
-
 // A changed name is a person naming the crew; an icon pick with the same name
 // is not (audit 2026-09-09).
-func (q *Queries) UpdateCrew(ctx context.Context, arg UpdateCrewParams) (UpdateCrewRow, error) {
+func (q *Queries) UpdateCrew(ctx context.Context, arg UpdateCrewParams) (Crew, error) {
 	row := q.db.QueryRow(ctx, updateCrew, arg.ID, arg.Name, arg.Icon)
-	var i UpdateCrewRow
+	var i Crew
 	err := row.Scan(
 		&i.ID,
 		&i.Name,
