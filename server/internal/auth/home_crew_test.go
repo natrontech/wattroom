@@ -43,7 +43,7 @@ func getMe(t *testing.T, s *Service, cookie *http.Cookie) map[string]any {
 // crewOwnedBy founds a crew for the test, cleaned up before its owner is.
 // The code is testx's rather than the caller's, and the returned row carries
 // it for the one test that needs the value.
-func crewOwnedBy(t *testing.T, s *Service, owner db.User) db.CreateCrewRow {
+func crewOwnedBy(t *testing.T, s *Service, owner db.User) db.Crew {
 	t.Helper()
 	code := testx.CrewCode()
 	crew, err := s.store.Queries.CreateCrew(t.Context(), db.CreateCrewParams{Name: "Crew " + *code, OwnerID: owner.ID, Code: code})

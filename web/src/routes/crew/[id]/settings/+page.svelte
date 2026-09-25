@@ -1,6 +1,6 @@
 <script lang="ts">
 	// The crew's settings (#1237, #2454): what it is called and what it looks
-	// like, its channels, its board, its listing and its reactions — all that
+	// like, its channels, its board, its listing and its own emoji — all that
 	// a room's own settings page held before the room dissolved into the crew
 	// (ADR-0058). Owner and admins; a member who lands here is told where the
 	// roster is. The invite is not here: it is every member's to share, so its
