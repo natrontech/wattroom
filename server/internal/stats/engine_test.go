@@ -438,3 +438,35 @@ func TestPowerZone(t *testing.T) {
 		t.Errorf("PowerZone with no FTP = Z%d, want Z1", got)
 	}
 }
+
+// A ride that ended inside the warm-up reached no scored second (#2871): the
+// summary said "—" and the saved ride said 0 %, which then stood as the
+// rider's result in "Against your best". Nothing was scored, so nothing is
+// stored; 0 stays the answer for a rider who reached targets and put no
+// power on them.
+func TestExecutionOfARideThatEndedInTheWarmUp(t *testing.T) {
+	const workout = `{"name":"t","steps":[
+		{"type":"warmup","seconds":300,"from":0.4,"to":0.7},
+		{"type":"steady","seconds":600,"target":1.0}]}`
+	tests := []struct {
+		name     string
+		samples  []protocol.RiderMetrics
+		scorable bool
+		score    float64
+	}{
+		{"73 s, all of it warm-up", ride(flat(120, 73)), false, 0},
+		{"into the block with no power", ride(flat(120, 300), flat(0, 60)), true, 0},
+		{"into the block on target", ride(flat(120, 300), flat(200, 60)), true, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			score, scorable, err := Execution(workout, 200, tt.samples)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if scorable != tt.scorable || score != tt.score {
+				t.Fatalf("got %v scorable=%v, want %v scorable=%v", score, scorable, tt.score, tt.scorable)
+			}
+		})
+	}
+}
