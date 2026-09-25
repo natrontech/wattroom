@@ -10,7 +10,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
-	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
 // Authorize is the live door into a voice channel (#2436) — the hub's socket
@@ -41,19 +40,11 @@ func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string,
 	if ch.Kind != kindVoice {
 		return protocol.Rider{}, "", av.ErrNotMember
 	}
-	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: ch.CrewID, UserID: user.ID})
+	role, admitted, err := s.standing(r.Context(), ch, user.ID)
 	if err != nil {
-		return protocol.Rider{}, "", fmt.Errorf("channels: authorize crew role: %w", err)
+		return protocol.Rider{}, "", fmt.Errorf("channels: authorize: %w", err)
 	}
-	named := false
-	if ch.Private && role == "member" {
-		if named, err = s.store.Queries.IsNamedInChannel(r.Context(), db.IsNamedInChannelParams{
-			ChannelID: ch.ID, UserID: user.ID,
-		}); err != nil {
-			return protocol.Rider{}, "", fmt.Errorf("channels: authorize named: %w", err)
-		}
-	}
-	if !mayEnter(role, ch.Private, named) {
+	if !admitted {
 		return protocol.Rider{}, "", av.ErrNotMember
 	}
 	// The level rides with the rest of the channel-visible identity (#690);
@@ -66,18 +57,18 @@ func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string,
 	return protocol.Rider{
 		ID:       store.UUIDString(user.ID),
 		Name:     user.DisplayName,
-		Role:     LiveRole(role),
+		Role:     liveRole(role),
 		FtpWatts: int(user.FtpWatts),
 		WeightKg: int(user.WeightKg),
 		TotalXp:  xp,
 	}, store.UUIDString(ch.ID), nil
 }
 
-// LiveRole is the crew role as a voice channel carries it — the door's
-// answer, and what a crew role change re-roles open sockets to. The crew's
-// own words (#2438); anything else, a ban included, is a member here, since
-// a banned rider never reaches the door.
-func LiveRole(crewRole string) string {
+// liveRole is the crew role as a voice channel carries it: the door's answer,
+// and what the gate asked again re-roles an open socket to (#2808). The
+// crew's own words (#2438); anything else, a ban included, is a member here,
+// since a banned rider never reaches the door.
+func liveRole(crewRole string) string {
 	switch crewRole {
 	case "owner", "admin":
 		return crewRole

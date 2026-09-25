@@ -86,6 +86,26 @@ func (h *Hub) Presence(channel string) protocol.ChannelPresence {
 	return p
 }
 
+// Occupants is everyone standing in a voice channel right now, by account id
+// and once each: a socket in its room or a connection in its call (#2808).
+// It is who a gate change asks the gate about again, and the call counts as
+// much as a socket does, since a rider can hear a channel with no socket open.
+// h.mu is released before the room lock is taken, as in Presence.
+func (h *Hub) Occupants(channel string) []string {
+	h.mu.Lock()
+	rm := h.rooms[channel]
+	ids := h.voiceRidersLocked(channel)
+	h.mu.Unlock()
+	if rm != nil {
+		rm.mu.Lock()
+		for c := range rm.clients {
+			ids[c.rider.ID] = struct{}{}
+		}
+		rm.mu.Unlock()
+	}
+	return slices.Sorted(maps.Keys(ids))
+}
+
 // LiveSession is the session running in a voice channel right now (#2438):
 // false while none is counting down, running or paused. The riders are who
 // stands in the channel, by name and id — the channel's own live data, which

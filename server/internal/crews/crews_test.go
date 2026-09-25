@@ -27,16 +27,6 @@ type kickRecorder struct {
 
 func (k *kickRecorder) Kick(channel, _ string) { k.kicked = append(k.kicked, channel) }
 
-// roleRecorder remembers every re-role the hub was asked for.
-type roleRecorder struct {
-	fakePresence
-	roles []string
-}
-
-func (r *roleRecorder) SetRole(channel, userID, role string) {
-	r.roles = append(r.roles, channel+"/"+userID+"/"+role)
-}
-
 // stranger is a signed-in rider in no crew at all, for the disclosures that
 // turn on membership rather than on being signed in.
 func (h *harness) stranger(t *testing.T) string {
@@ -117,31 +107,6 @@ func (h *harness) roster(t *testing.T, who string, crew db.GetCrewRow) []string 
 	return out
 }
 
-// The door reads the crew role once, at connect (#2436): a crew promotion
-// re-roles the sockets already open in every voice channel of the crew, in
-// the words the hub's controls read.
-func TestACrewRoleReachesOpenSockets(t *testing.T) {
-	h := setup(t)
-	roles := &roleRecorder{}
-	h.svc.SetPresence(roles)
-	crew := h.newCrew(t, "alice", "Role Crew")
-	lounge := h.voice(t, crew)
-	second := h.channel(t, crew, "voice", "Second", false)
-	h.join(t, "bob", crew)
-	bob := h.userID(t, "bob")
-	if status, _ := h.call(t, "alice", http.MethodPost, crewPath(crew, "/role"),
-		fmt.Sprintf(`{"userId":%q,"role":"admin"}`, bob)); status != http.StatusNoContent {
-		t.Fatalf("promote: %d", status)
-	}
-	// The crew's word for it (#2438): coach is the session's, not a role.
-	want := []string{store.UUIDString(lounge) + "/" + bob + "/admin", store.UUIDString(second) + "/" + bob + "/admin"}
-	slices.Sort(roles.roles)
-	slices.Sort(want)
-	if !slices.Equal(roles.roles, want) {
-		t.Errorf("re-roled %v, want %v", roles.roles, want)
-	}
-}
-
 // The deliberate hand-over (#1208): owner only, to someone in the crew, and
 // the old owner stays on as an admin. The new owner's own role row is settled
 // with it (#1212) — owner beats every row, and a stale one is a lockout.
@@ -193,7 +158,7 @@ func TestTheSuccessorInheritsWithAPlainMemberRow(t *testing.T) {
 	crew := h.newCrew(t, "alice", "Crew Successor Row")
 	h.join(t, "bob", crew)
 	h.makeCrewAdmin(t, crew, "bob")
-	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["alice"].ID); err != nil {
+	if _, err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["alice"].ID); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 	if after := h.crew(t, store.UUIDString(crew.ID)); after.OwnerID != h.users.ByToken["bob"].ID {
@@ -470,7 +435,7 @@ func TestACrewPassesOnWithItsOwnerAndGoesWithNobodyLeft(t *testing.T) {
 	crew := h.newCrew(t, "alice", "Crew Passes On")
 	h.join(t, "bob", crew)
 
-	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["alice"].ID); err != nil {
+	if _, err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["alice"].ID); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 	after, err := h.store.Queries.GetCrew(t.Context(), crew.ID)
@@ -480,7 +445,7 @@ func TestACrewPassesOnWithItsOwnerAndGoesWithNobodyLeft(t *testing.T) {
 	if after.OwnerID != h.users.ByToken["bob"].ID {
 		t.Errorf("the crew passed to %s, want bob", store.UUIDString(after.OwnerID))
 	}
-	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["bob"].ID); err != nil {
+	if _, err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["bob"].ID); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); err == nil {
@@ -700,7 +665,7 @@ func TestACrewWithNobodyButABannedRiderLeftGoes(t *testing.T) {
 	h.join(t, "bob", crew)
 	h.banFromCrew(t, crew, "bob")
 
-	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["alice"].ID); err != nil {
+	if _, err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, h.users.ByToken["alice"].ID); err != nil {
 		t.Fatalf("release: %v", err)
 	}
 	if _, err := h.store.Queries.GetCrew(t.Context(), crew.ID); !errors.Is(err, pgx.ErrNoRows) {

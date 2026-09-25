@@ -204,8 +204,6 @@ type fakePresence struct{}
 
 func (fakePresence) Kick(string, string) {}
 
-func (fakePresence) SetRole(string, string, string) {}
-
 func (fakePresence) SessionAnnounce(string, string, string, string, time.Time) {}
 
 func (fakePresence) PresenceChanged() {}
