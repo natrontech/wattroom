@@ -5,6 +5,7 @@ package hub
 // closes with the game.
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -176,6 +177,52 @@ func TestGameInsideAWorkoutRidesThatSession(t *testing.T) {
 	rm.endGame(now)
 	if !rm.session.open() {
 		t.Fatal("ending a game inside a workout ended the workout")
+	}
+}
+
+// A game inside a workout plays that workout's riders (ADR-0059), so when the
+// workout ends it has nobody left to feed it (#2830). It used to run on,
+// score everyone as silent, eliminate them all on one tick and pay a win to
+// whoever the map put first. It ends with the workout instead: the game's
+// own "ended" line, no podium, nobody paid.
+func TestAGameEndsWithTheWorkoutItRides(t *testing.T) {
+	now := pat(0)
+	ana := protocol.Rider{ID: "ana", Name: "Ana", Role: "member"}
+	rm, _ := gameChannel(t, &now, ana)
+	for _, c := range []protocol.Control{openers, {Action: "start"}} {
+		if code, message := rm.control(c, ana, now); code != "" {
+			t.Fatalf("%s: %s %s", c.Action, code, message)
+		}
+	}
+	if refusal := rm.startGame("backyard-ramp", ana, now); refusal != "" {
+		t.Fatalf("start: %s", refusal)
+	}
+	advance := func(at time.Time) string {
+		rm.mu.Lock()
+		defer rm.mu.Unlock()
+		rm.metrics = map[string]protocol.RiderMetrics{"ana": {Watts: 200}}
+		return rm.advanceGameLocked(at)
+	}
+	if winner := advance(pat(60)); winner != "" || rm.game == nil {
+		t.Fatalf("the game stopped mid-workout: winner %q, game %v", winner, rm.game)
+	}
+	rm.events.drain()
+
+	// Openers is 600 s; well past it the workout is done.
+	for _, at := range []time.Time{pat(700), pat(760), pat(900)} {
+		if winner := advance(at); winner != "" {
+			t.Fatalf("a game outliving its workout paid a win to %q", winner)
+		}
+	}
+	if rm.game != nil || rm.lastGame != nil {
+		t.Fatalf("the game is still running after its workout ended: %+v", rm.lastGame)
+	}
+	var verbs []string
+	for _, ev := range rm.events.pending {
+		verbs = append(verbs, ev.Verb)
+	}
+	if !slices.Contains(verbs, "gameEnded") || slices.Contains(verbs, "won") {
+		t.Errorf("lines after the workout ended: %v, want gameEnded and no winner", verbs)
 	}
 }
 

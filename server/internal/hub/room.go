@@ -54,7 +54,10 @@ type room struct {
 	// zero while it runs (#1575, #1579).
 	gameMode   string
 	gameDoneAt time.Time
-	seen       map[string]protocol.Rider
+	// The workout session a game started inside rides (#2830): the game
+	// ends with it. Empty for a game that opened its own session.
+	gameHost string
+	seen     map[string]protocol.Rider
 	// First-seen order this session — the SPEC medal tie-break.
 	seenOrder []string
 	saved     bool
