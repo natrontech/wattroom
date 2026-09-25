@@ -75,12 +75,13 @@ export function describeBlock(
 			((seg.fromFraction ?? 0) + (seg.toFraction ?? seg.fromFraction ?? 0)) / 2;
 		return ZONE_NAMES[zoneOf(mid * ftp, ftp)];
 	};
+	// Trimmed as the current block is (#2835), absolute watts included —
+	// targetAt's rule, so the two numbers side by side agree.
 	const wattsOf = (seg: Segment | undefined): number => {
 		if (!seg || seg.kind === 'sprint') return 0;
-		if (seg.watts !== undefined) return Math.round(seg.watts);
 		const mid =
 			((seg.fromFraction ?? 0) + (seg.toFraction ?? seg.fromFraction ?? 0)) / 2;
-		return Math.round(mid * ftp);
+		return Math.round((seg.watts ?? mid * ftp) * info.bias);
 	};
 
 	const upcoming = segments[info.segmentIndex + 1];
