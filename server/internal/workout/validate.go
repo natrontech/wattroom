@@ -42,6 +42,25 @@ const (
 	maxHr            = 220
 )
 
+// MaxSeconds is the longest workout, and so the longest session: a day.
+// One bound for the pick, the plan and the shelf (#2868) — the pick used to
+// check the client's own number and the plan nothing at all, while the
+// steps each allow four hours and a workout two hundred segments.
+const MaxSeconds = 24 * 60 * 60
+
+// CheckLength refuses a workout, as expanded, that is empty or longer than
+// a day. The error is written for the rider, like Validate's.
+func CheckLength(segments []Segment) error {
+	total := 0
+	for _, s := range segments {
+		total += s.Seconds
+	}
+	if total <= 0 || total > MaxSeconds {
+		return refusal("A workout runs between a second and a day.")
+	}
+	return nil
+}
+
 // Validate is the per-step half of the boundary: Parse proves the JSON
 // expands, this proves every step is one the engine and the editor agree
 // on. The error is written for the rider — it names the step — and is safe

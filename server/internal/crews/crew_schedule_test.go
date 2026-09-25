@@ -119,6 +119,12 @@ func TestCrewScheduleLifecycle(t *testing.T) {
 		t.Errorf("the plan mail named %+v, want the crew and Pain Cave", mails)
 	}
 
+	// A plan longer than a day is refused like a pick is (#2868).
+	long := `{"steps":[` + strings.Repeat(`{"type":"steady","seconds":14400,"target":0.5},`, 6) + `{"type":"steady","seconds":14400,"target":0.5}]}`
+	if status, body := h.call(t, "bob", http.MethodPost, schedulePath(crew), fmt.Sprintf(`{"workoutName":"Everest","workoutJson":%q,"startsAt":%q,"channelId":%q}`, long, time.Now().Add(time.Hour).UTC().Format(time.RFC3339), cave)); status != http.StatusBadRequest || body["field"] != "workoutJson" {
+		t.Errorf("a 28 h plan: %d %v", status, body)
+	}
+
 	// Validation at the boundary: the past, and a channel that is not one of
 	// this crew's voice channels, each name their field.
 	if status, body := h.call(t, "bob", http.MethodPost, schedulePath(crew), crewPlanBody(time.Now().Add(-2*time.Hour), "")); status != http.StatusBadRequest || body["field"] != "startsAt" {

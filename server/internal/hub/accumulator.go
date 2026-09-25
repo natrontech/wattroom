@@ -10,11 +10,14 @@ import (
 	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
-// The limit on what one rider can make the room remember. Six hours at 1 Hz
-// is longer than any session; past it (or a hostile client), samples drop
-// rather than growing server memory unboundedly. One replay frame is bounded
-// separately, by protocol.MaxBackfillBatch.
-const maxAccumulated = 6 * 60 * 60
+// The limit on what one rider can make the room remember: the longest
+// session a pick admits, at one sample a second (#2868). Six hours used to be
+// "longer than any session" while a day was allowed, and an Everesting ride's
+// record stopped at the sixth hour without a word. Past it (or a hostile
+// client), samples drop rather than growing server memory unboundedly — a
+// day's record is a few MB. One replay frame is bounded separately, by
+// protocol.MaxBackfillBatch.
+const maxAccumulated = workout.MaxSeconds
 
 // accumulator is one session's ride record per rider, in memory like all live
 // state. It exists so a reconnect has somewhere to land its replay: live
