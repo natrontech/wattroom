@@ -72,6 +72,14 @@ unconstrained, so software authenticators (iCloud Keychain, Google Password
 Manager, 1Password) and hardware keys work through one code path. A passkey is
 not a password; "no passwords, ever" is unamended.
 
+**Both ceremonies require user verification** (amended 2026-09-25, #2865). A
+passkey is the passwordless way in, so it has to prove the person — a PIN, a
+fingerprint, a face — and not only that the key is at hand: an assertion with
+the UV flag clear is refused. Software authenticators verify anyway, so riders
+on a phone or a laptop see nothing new; a hardware key with no PIN set has to
+be given one before it can be added or used, which the browser offers at the
+prompt.
+
 **Strava demotes from everyday door to fitness connection.** It remains the
 ride-upload integration and remains a way in for whoever already uses it, but
 the login riders actually use should be the one that does not cap at ten.
