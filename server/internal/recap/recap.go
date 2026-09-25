@@ -76,9 +76,9 @@ func (s *Service) SaveRecap(channel, session string, rec protocol.SessionRecap) 
 	// lost answer lands on the row it already made.
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
-	var id pgtype.UUID
+	var row db.SaveSessionRecapRow
 	err = retry.Do(ctx, s.log, "session recap "+channel, 5, time.Second, 5*time.Second, func(ctx context.Context) error {
-		row, err := s.store.Queries.SaveSessionRecap(ctx, db.SaveSessionRecapParams{
+		saved, err := s.store.Queries.SaveSessionRecap(ctx, db.SaveSessionRecapParams{
 			ChannelID: channelID,
 			SessionID: sessionID,
 			Workout:   rec.Workout,
@@ -89,14 +89,20 @@ func (s *Service) SaveRecap(channel, session string, rec protocol.SessionRecap) 
 		if err != nil {
 			return err
 		}
-		id = row.ID
+		row = saved
 		return nil
 	})
 	if err != nil {
 		s.log.Error("save recap failed, recap lost", "err", err, "channel", channel, "session", session)
 		return
 	}
-	rec.ID = store.UUIDString(id)
+	rec.ID = store.UUIDString(row.ID)
+	// The card shows what was stored: the row has already left out anyone
+	// whose account went mid-session (#2809).
+	if err := json.Unmarshal(row.Riders, &rec.Riders); err != nil {
+		s.log.Error("recap riders decode", "err", err, "channel", channel, "session", session)
+		return
+	}
 	if s.live != nil {
 		s.live.PostRecap(channel, rec)
 	}

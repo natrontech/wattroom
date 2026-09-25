@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -117,6 +118,37 @@ func TestSaveRecapKeysTheSession(t *testing.T) {
 	if got := w.list(t, "alice"); got.SessionID != session || got.ChannelID != store.UUIDString(channel.ID) {
 		t.Errorf("the listed recap names session %q in channel %q, want %q in %q",
 			got.SessionID, got.ChannelID, session, store.UUIDString(channel.ID))
+	}
+}
+
+type liveSpy struct{ posted []protocol.SessionRecap }
+
+func (l *liveSpy) PostRecap(_ string, rec protocol.SessionRecap) { l.posted = append(l.posted, rec) }
+
+// ADR-0034: a deleted account's interval leaves every recap (#2809). The hub
+// still holds the rider's span when their account goes mid-session, and the
+// purge's trigger only cleans rows that already exist — so the write is where
+// the name has to drop, both from the row and from the card the channel sees.
+func TestSaveRecapLeavesADeletedAccountOut(t *testing.T) {
+	w := setup(t)
+	spy := &liveSpy{}
+	w.svc.SetLive(spy)
+	alice, bob := store.UUIDString(w.users["alice"].ID), store.UUIDString(w.users["bob"].ID)
+	if _, err := w.st.Pool.Exec(t.Context(), "delete from users where id = $1", w.users["bob"].ID); err != nil {
+		t.Fatalf("delete bob: %v", err)
+	}
+	w.svc.SaveRecap(store.UUIDString(w.channel.ID), uuid.NewString(), protocol.SessionRecap{
+		Workout: "Openers", StartedAt: sessionStart.UnixMilli(), EndedAt: sessionEnd.UnixMilli(),
+		Riders: []protocol.SessionRecapRider{{ID: alice, Rider: "alice"}, {ID: bob, Rider: "bob"}},
+	})
+	if got := w.list(t, "alice").Riders; len(got) != 1 || got[0].ID != alice {
+		t.Errorf("the stored recap names %+v, want alice alone", got)
+	}
+	if len(spy.posted) != 1 {
+		t.Fatalf("posted %d recaps to the channel, want 1", len(spy.posted))
+	}
+	if got := spy.posted[0].Riders; len(got) != 1 || got[0].ID != alice {
+		t.Errorf("the channel's card names %+v, want alice alone", got)
 	}
 }
 
