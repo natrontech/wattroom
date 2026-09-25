@@ -41,8 +41,8 @@
 {#snippet face(Glyph: Icon, title: string, sub: string, neutral = false)}
 	<span
 		class="lift grid size-8 shrink-0 place-items-center rounded-md {neutral
-			? 'bg-ink'
-			: 'bg-neon'} text-paper"><Glyph size={17} /></span
+			? 'bg-ink text-paper'
+			: 'bg-neon text-on-neon'}"><Glyph size={17} /></span
 	>
 	<span class="min-w-0 flex-1 text-left">
 		<span class="block truncate text-sm leading-tight font-semibold"

@@ -26,6 +26,10 @@
 	--color-watt: light-dark(#e6247d, #ff3d8b);
 	/* horizons, grids, mark accents — structural, doesn't glow */
 	--color-neon: light-dark(#6f1ad1, #8b2bff);
+	/* What is drawn on a neon fill — a tick, a chip's digit (#2859): ink or
+	 * paper, whichever reads there. Outrun's is white in both families; a
+	 * light neon (Monokai) takes the dark one. Derived in palette.ts. */
+	--color-on-neon: light-dark(#ffffff, #ffffff);
 	/* Foreground pair: ink is the text color, paper its inverse (button faces,
 	 * scrims). Components never say white/black — these flip with the scheme. */
 	--color-ink: light-dark(#180a2e, #ffffff);
@@ -404,8 +408,8 @@ input[type='checkbox']:checked::after {
 	content: '';
 	width: 0.5rem;
 	height: 0.28rem;
-	border-left: 2px solid #fff;
-	border-bottom: 2px solid #fff;
+	border-left: 2px solid var(--color-on-neon);
+	border-bottom: 2px solid var(--color-on-neon);
 	transform: rotate(-45deg) translateY(-1px);
 }
 input[type='radio']:checked::after {
@@ -413,7 +417,7 @@ input[type='radio']:checked::after {
 	width: 0.375rem;
 	height: 0.375rem;
 	border-radius: 50%;
-	background: #fff;
+	background: var(--color-on-neon);
 }
 input[type='checkbox']:disabled,
 input[type='radio']:disabled {

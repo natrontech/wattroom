@@ -13,7 +13,13 @@
  *
  * Pure: the DOM lives in palette.svelte.ts, so every rule here is testable.
  */
-import { fitContrast, hexToOklch, oklchToHex, type Oklch } from './color';
+import {
+	contrast,
+	fitContrast,
+	hexToOklch,
+	oklchToHex,
+	type Oklch,
+} from './color';
 
 export const TOKENS = [
 	'surface',
@@ -24,6 +30,7 @@ export const TOKENS = [
 	'neon',
 	'ink',
 	'paper',
+	'on-neon',
 	'danger',
 	'z1',
 	'z2',
@@ -241,6 +248,7 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		neon: at(f.neon, spec.neonHue),
 		ink: at(f.ink, spec.surfaceHue),
 		paper: at(f.paper, spec.surfaceHue),
+		'on-neon': '',
 		danger: '',
 		z1: '',
 		z2: '',
@@ -296,12 +304,27 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		);
 		tokens[`z${i + 1}` as TokenName] = oklchToHex(fitted);
 	});
+	const shipped: Tokens = { ...tokens, ...spec.exact };
+	// Off the neon the theme actually ships, pinned or derived — so after the
+	// merge — unless a theme pins its own.
+	if (!spec.exact?.['on-neon']) shipped['on-neon'] = onNeon(shipped);
 	return {
 		id: spec.id,
 		identity: spec.identity,
 		name: spec.name,
 		note: spec.note,
 		family: spec.family,
-		tokens: { ...tokens, ...spec.exact },
+		tokens: shipped,
 	};
+}
+
+/**
+ * What is drawn ON the neon fill — the level chip's digit, a checked box's tick
+ * and a radio's dot (#2859): ink or paper, whichever reads better there. White
+ * was hard-coded, and a light neon (Monokai's #66bcff) put it at 2.06:1. One of
+ * the pair always clears the text floor — black or white against any colour is
+ * at least √21:1 — and the gate checks the pair a theme actually has.
+ */
+function onNeon(t: Tokens): string {
+	return contrast(t.ink, t.neon) >= contrast(t.paper, t.neon) ? t.ink : t.paper;
 }
