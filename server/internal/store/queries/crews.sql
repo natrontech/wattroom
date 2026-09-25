@@ -1,17 +1,26 @@
 -- The crew (ADR-0038, #1106; amended #1236). Crew membership is a row in
 -- crew_roles — member, admin or banned — written by the crew's door (JoinCrew)
 -- and read by everything else. The owner is crews.owner_id and holds no row.
+--
+-- No `*` on crews (#2733): sqlc expands it into the generated SQL, so a
+-- column stays named in a release's binary for as long as any `*` read it,
+-- and a later drop breaks the rollback to that release. The four reads below
+-- list their columns; `cheers` left the list before it leaves the table.
 
 -- name: CreateCrew :one
 -- Founded by its first owner (#1928): what "your own crew" means after a
 -- hand-over, when a rider may own more than one.
-insert into crews (name, owner_id, code, founded_by) values ($1, $2, $3, $2) returning *;
+insert into crews (name, owner_id, code, founded_by) values ($1, $2, $3, $2)
+returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at,
+       renamed_at, founded_by, board_enabled, listed, ics_token;
 
 -- name: FoundCrew :one
 -- A crew a rider starts by name (#2480). The name is a person's from the
 -- first moment, so the day-one naming step (#1151) never opens for it.
 insert into crews (name, owner_id, code, founded_by, renamed_at)
-values ($1, $2, $3, $2, now()) returning *;
+values ($1, $2, $3, $2, now())
+returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at,
+       renamed_at, founded_by, board_enabled, listed, ics_token;
 
 -- name: CountFoundedCrews :one
 -- docs/SPEC.md's founding cap counts the crews a rider founded AND still
@@ -110,7 +119,9 @@ update crews set owner_id = $2 where id = $1;
 -- is not (audit 2026-09-09).
 update crews set name = $2, icon = $3,
        renamed_at = case when name <> $2 then now() else renamed_at end
-where id = $1 returning *;
+where id = $1
+returning id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at,
+       renamed_at, founded_by, board_enabled, listed, ics_token;
 
 -- name: SetCrewCode :exec
 -- A new invite (#1930): the old code, and every link carrying it, stops
@@ -129,7 +140,9 @@ update crews set image_mime = null, image = null, image_set_at = null where id =
 select image_mime, image, image_set_at from crews where id = $1 and image is not null;
 
 -- name: ListCrewsOwnedBy :many
-select * from crews where owner_id = $1 order by created_at;
+select id, name, icon, owner_id, created_at, code, image_mime, image, image_set_at,
+       renamed_at, founded_by, board_enabled, listed, ics_token
+from crews where owner_id = $1 order by created_at;
 
 -- name: DeleteCrew :exec
 delete from crews where id = $1;

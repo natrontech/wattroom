@@ -26,7 +26,7 @@ type harness struct {
 	store *store.Store
 	// Thursday Crew, founded by the planner, with the voice channel its
 	// sessions name (#2440).
-	crew    db.Crew
+	crew    db.CreateCrewRow
 	channel db.Channel
 	planner db.User // coach who plans — never emailed
 	optIn   db.User // email + notify_planned on

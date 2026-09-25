@@ -25,7 +25,7 @@ var (
 type world struct {
 	st      *store.Store
 	svc     *Service
-	crew    db.Crew
+	crew    db.CreateCrewRow
 	channel db.Channel
 	users   map[string]db.User
 }
