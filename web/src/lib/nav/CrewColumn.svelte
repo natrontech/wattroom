@@ -152,6 +152,10 @@
 				label: deleteLabel(c.kind),
 				icon: Trash2,
 				danger: true,
+				// A session holds its channel (#2816): the server refuses until
+				// it ends, so the item says why rather than failing on click.
+				disabled: !!c.session,
+				hint: c.session ? 'session running' : undefined,
 				onSelect: () => void remove(c),
 			},
 		);

@@ -290,6 +290,16 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if !ok || !requireAdmin(w, role) {
 		return
 	}
+	// A session holds its channel (#2816). Closing the room drops the
+	// session before it saves, and every joined rider's ride with it; an
+	// owner or admin may end any session, so the way out is one click.
+	if channel.Kind == kindVoice && s.live != nil {
+		if _, running := s.live.LiveSession(store.UUIDString(channel.ID)); running {
+			httpx.WriteError(w, http.StatusConflict, "conflict",
+				"A session is running in this channel. End it first, then delete the channel.")
+			return
+		}
+	}
 	// The plans first, and their mail, while the channel still says whom it
 	// admits (#2610). Should the delete below then fail, the plans are
 	// cancelled and said to be, which is true, and the channel waits for a
