@@ -84,8 +84,18 @@ test('the shell half, no sign-in yet: one button, and it goes to the browser', a
 	await expect(page.getByText('Sign in with a passkey')).toHaveCount(0);
 	// ...including the dev provider, which is what the dev server offers.
 	await expect(
-		page.getByText(/Continue with|Connect with|Dev sign-in/),
+		page.getByRole('button', {
+			name: /Continue with|Connect with|Dev sign-in/,
+		}),
 	).toHaveCount(0);
+	// The line under the button names what the browser will offer — this
+	// server's own providers, not a fixed list (#2844) — and the provider
+	// row's "none configured" is not drawn under it: the shell offers none on
+	// purpose, and saying so told every desktop rider the server was broken.
+	await expect(
+		page.getByText(/Your passkey or Dev sign-in — in the browser/),
+	).toBeVisible();
+	await expect(page.getByText(/No sign-in providers/)).toHaveCount(0);
 
 	const popup = page.waitForEvent('popup');
 	await page.getByRole('button', { name: 'Sign in with your browser' }).click();
