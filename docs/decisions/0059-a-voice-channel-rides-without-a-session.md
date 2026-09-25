@@ -73,3 +73,20 @@ a free rider is pedalling, so the session would still take their trainer.
 - Implementation: [#2675](https://github.com/natrontech/wattroom/issues/2675)
   (joining) and [#2676](https://github.com/natrontech/wattroom/issues/2676)
   (the free ride).
+
+## Amendment, 2026-09-25 (#2824): the audience is the channel, and heart rate is in it
+
+"The people in the call" was narrower than what ships. The hub sends every
+rider's sample to every screen that has the voice channel open, whether that
+screen has joined the call or not. That was already true of a session's
+numbers, and WATTROOM.md's 2026-09-22 divergence says so: "whoever is in the
+voice channel it runs in". The audience of a free ride is therefore **whoever
+has the voice channel open while the rider rides there**, and nobody else.
+
+**Heart rate travels with the watts**, as it does in a session, until the
+rider stops sharing it. The control on the riding surface that ADR-0008
+requires is back since #2804, and it covers the free ride and the Lounge.
+
+The places a rider reads before riding with people all say this in one shared
+sentence (`$lib/privacy-copy`): the crew's door, Settings › Your data, and the
+privacy policy.
