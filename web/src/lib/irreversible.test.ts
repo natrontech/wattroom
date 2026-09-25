@@ -75,7 +75,7 @@ const GUARDED: Guarded[] = [
 	},
 	{
 		file: 'lib/ride/delete-ride.ts',
-		action: 'delete a ride — its trace, medals and XP',
+		action: 'delete a ride — its trace and medals (the XP stays)',
 		asks: /confirm\(/,
 	},
 	{
