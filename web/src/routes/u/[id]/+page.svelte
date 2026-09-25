@@ -551,7 +551,7 @@
 						</li>
 						<li>
 							<strong class="text-ink">Never:</strong> live watts, heart rate, weight,
-							FTP — they stay inside the session, as always.
+							FTP — live numbers reach only the voice channel a rider rides in.
 						</li>
 					</ul>
 				</section>

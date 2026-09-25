@@ -209,7 +209,7 @@
 					</li>
 					<li>
 						<strong class="text-ink">Never:</strong> live watts, heart rate, weight,
-						FTP — session-scoped, as today.
+						FTP — live numbers stay in the voice channel, as today.
 					</li>
 				</ul>
 				<p class="text-muted-dim mt-2 flex items-center gap-1 text-[10px]">

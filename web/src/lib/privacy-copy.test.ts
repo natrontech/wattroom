@@ -31,6 +31,9 @@ describe('who sees live numbers is said once', () => {
 		/only inside the session you ride in/i,
 		/live metrics are\s+session-scoped/i,
 		/stay\s+inside the session you ride in/i,
+		// The rider page's "Never" aside, which the list above missed.
+		/stay\s+inside the session, as always/i,
+		/session-scoped, as today/i,
 	];
 
 	it('no page still promises the session-only rule', () => {
