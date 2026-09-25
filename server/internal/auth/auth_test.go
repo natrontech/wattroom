@@ -357,7 +357,10 @@ func TestProvidersWithoutOAuthRefuseTheOAuthDoors(t *testing.T) {
 			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, c.path, nil)
 			req.SetPathValue("provider", c.provider)
 			// A state cookie the caller set themselves passes the state check.
-			req.AddCookie(&http.Cookie{Name: stateCookie, Value: "mine"})
+			req.AddCookie(&http.Cookie{
+				Name: stateCookie, Value: "mine",
+				Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode,
+			})
 			w := httptest.NewRecorder()
 			if c.callback {
 				s.handleCallback(w, req)
