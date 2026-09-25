@@ -75,7 +75,7 @@
 	{@const Glyph = MARKS[heading] ?? Sparkles}
 	<span
 		class="grid size-7 shrink-0 place-items-center rounded-lg {lit
-			? 'bg-neon text-paper'
+			? 'bg-neon text-on-neon'
 			: 'border-ink/20 border'}"><Glyph size={15} /></span
 	>
 {/snippet}

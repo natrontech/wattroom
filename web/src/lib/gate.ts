@@ -348,6 +348,21 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 		);
 	}
 	{
+		// The level chip's digit and a checked box's tick (#2859).
+		const value = contrast(theme.tokens['on-neon'], theme.tokens.neon);
+		checks.push(
+			check(
+				'on-neon',
+				'on-neon on neon',
+				value,
+				CONTRAST.text,
+				value >= CONTRAST.text,
+				':1',
+				apca(theme.tokens['on-neon'], theme.tokens.neon),
+			),
+		);
+	}
+	{
 		const value = hueDistance(hexToOklch(theme.tokens.danger).h, DANGER_HUE);
 		checks.push(
 			check('danger-hue', 'danger stays on-hue', value, 15, value <= 15, '°'),

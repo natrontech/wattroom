@@ -59,7 +59,8 @@
 	const circumference = $derived(2 * Math.PI * radius);
 	const dash = $derived(circumference * (xp == null ? 0 : levelProgress(xp)));
 	const inset = $derived(xp == null ? 0 : stroke + 2);
-	const chip = $derived(Math.max(14, Math.round(size * 0.26)));
+	// Floored so the digit is 10 px, not the 7 px a 14 px chip gave (#2859).
+	const chip = $derived(Math.max(16, Math.round(size * 0.26)));
 	const showChip = $derived(level !== null && size >= 28);
 	// A dot is a dot; a mark that holds a glyph needs space around it.
 	const mark = $derived(Math.max(10, Math.round(size * 0.34)));
@@ -144,9 +145,10 @@
 	{/if}
 	{#if showChip}
 		<span
-			class="font-display absolute -right-0.5 -bottom-0.5 flex items-center justify-center rounded-full font-bold text-white tabular-nums"
-			style="background:var(--color-neon);border:2px solid var(--color-surface);min-width:{chip}px;height:{chip}px;font-size:{Math.round(
-				chip * 0.52,
+			class="font-display absolute -right-0.5 -bottom-0.5 flex items-center justify-center rounded-full font-bold tabular-nums"
+			style="background:var(--color-neon);color:var(--color-on-neon);border:2px solid var(--color-surface);min-width:{chip}px;height:{chip}px;font-size:{Math.max(
+				10,
+				Math.round(chip * 0.52),
 			)}px;padding:0 3px">{level}</span
 		>
 	{/if}

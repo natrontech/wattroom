@@ -23,8 +23,6 @@ const ALLOWLIST: Allowlist = {
 		'the YouTube tile and its failure scrim sit on black, like the player itself',
 	'lib/brand/LandingHero.svelte':
 		'the fake camera feeds: the meter track is a scrim over "video", dark like the real ones',
-	'lib/components/Avatar.svelte':
-		'the level chip is white on the neon fill in both families',
 };
 
 const HEX = /#(?:[0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b/gi;

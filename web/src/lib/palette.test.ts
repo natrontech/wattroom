@@ -79,6 +79,12 @@ function expectLegible(theme: Theme, label: string) {
 		contrast(theme.tokens.paper, theme.tokens.danger),
 		`${label} paper on danger`,
 	).toBeGreaterThanOrEqual(CONTRAST.text);
+	// The level chip's digit and a checked box's tick sit on the neon fill
+	// (#2859): white there was 2.06:1 in Monokai, whose neon is light.
+	expect(
+		contrast(theme.tokens['on-neon'], theme.tokens.neon),
+		`${label} on-neon on neon`,
+	).toBeGreaterThanOrEqual(CONTRAST.text);
 }
 
 /** A theme cannot rotate danger: the hue is the meaning (#397). */
@@ -143,6 +149,8 @@ describe('the catalogue', () => {
 		// are here so the stylesheet and the derivation cannot drift (#1522).
 		expect(k['muted-dim']).toBe('#8576ab');
 		expect(themeById('outrun-day')!.tokens['muted-dim']).toBe('#71659d');
+		expect(k['on-neon']).toBe('#ffffff');
+		expect(themeById('outrun-day')!.tokens['on-neon']).toBe('#ffffff');
 	});
 
 	it('gives every identity one theme in each family', () => {
@@ -214,6 +222,7 @@ describe('the APCA report', () => {
 				...ZONES,
 				'paper-ink',
 				'paper-danger',
+				'on-neon',
 			]) {
 				expect(ids, `${theme.id} reports Lc for ${expected}`).toContain(
 					expected,
