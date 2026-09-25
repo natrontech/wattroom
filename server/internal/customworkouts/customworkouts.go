@@ -83,12 +83,9 @@ func checkDefinition(name string, raw json.RawMessage) (code, message, field str
 		}
 		return "validation_error", "That is not a workout the engine can ride.", "workout"
 	}
-	total := 0
-	for _, segment := range segments {
-		total += segment.Seconds
-	}
-	if total <= 0 || total > 24*60*60 {
-		return "validation_error", "A workout runs between a second and a day.", "workout"
+	if err := workout.CheckLength(segments); err != nil {
+		msg, _ := workout.RefusalMessage(err)
+		return "validation_error", msg, "workout"
 	}
 	return "", "", ""
 }

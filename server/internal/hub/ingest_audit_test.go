@@ -117,7 +117,10 @@ func TestCheckPickRefusesWhatTheAPIWould(t *testing.T) {
 		{"no name", protocol.Control{WorkoutName: "  ", WorkoutJSON: ok, TotalSeconds: 600}, "1-80 characters"},
 		{"a name past 80 runes", protocol.Control{WorkoutName: strings.Repeat("ä", 81), WorkoutJSON: ok, TotalSeconds: 600}, "1-80 characters"},
 		{"too much JSON", protocol.Control{WorkoutName: "x", WorkoutJSON: strings.Repeat(" ", 65<<10) + ok, TotalSeconds: 600}, "too large"},
-		{"a two-day session", protocol.Control{WorkoutName: "x", WorkoutJSON: ok, TotalSeconds: 48 * 3600}, "between a second and a day"},
+		// The length is the workout's, not the socket's number (#1708, #2868):
+		// seven four-hour steps pass every per-step bound and run 28 h.
+		{"a workout longer than a day", protocol.Control{WorkoutName: "x", WorkoutJSON: `{"steps":[` + strings.Repeat(`{"type":"steady","seconds":14400,"target":0.5},`, 6) + `{"type":"steady","seconds":14400,"target":0.5}]}`, TotalSeconds: 600}, "between a second and a day"},
+		{"the socket's number is not the length", protocol.Control{WorkoutName: "x", WorkoutJSON: ok, TotalSeconds: 48 * 3600}, ""},
 		{"a workout the editor refuses", protocol.Control{WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"steady","seconds":600,"target":25}]}`, TotalSeconds: 600}, "300% ceiling"},
 		// Within every per-step bound and past the expansion budget (#1708).
 		{"a pick that expands past the budget", protocol.Control{WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"repeat","times":50,"steps":[{"type":"repeat","times":50,"steps":[{"type":"steady","seconds":60,"target":0.8}]}]}]}`, TotalSeconds: 600}, "expands past"},
@@ -152,5 +155,19 @@ func TestThePickTakesTheWorkoutsOwnLength(t *testing.T) {
 	empty.pick("W", "{}", 60)
 	if empty.totalSeconds != 60 {
 		t.Fatalf("an empty pick: %d, want 60", empty.totalSeconds)
+	}
+}
+
+// A session the pick admits is recorded to its end (#2868): the record used
+// to stop at six hours while a pick could run a day, and the rest of an
+// Everesting ride was lost without a word.
+func TestARecordOutlastsSixHours(t *testing.T) {
+	acc := newAccumulator()
+	const sixHours = 6 * 60 * 60
+	for second := 0; second <= sixHours; second++ {
+		acc.add("jan", protocol.RiderMetrics{Watts: 150, Cadence: 90, Seq: second + 1}, nil, 200, second)
+	}
+	if got := acc.count("jan"); got != sixHours+1 {
+		t.Fatalf("the record holds %d seconds, want %d — it stopped at six hours", got, sixHours+1)
 	}
 }

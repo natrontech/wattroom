@@ -160,9 +160,17 @@ func checkPlan(w http.ResponseWriter, name, workoutJSON string, startsAt time.Ti
 			"A workout name has to be 1-80 characters on one line.", "workoutName")
 		return "", false
 	}
-	if segments, err := workout.Parse(workoutJSON); err != nil || len(segments) == 0 {
+	segments, err := workout.Parse(workoutJSON)
+	if err != nil || len(segments) == 0 {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"That is not a workout the engine can ride.", "workoutJson")
+		return "", false
+	}
+	// A pick's bound (#2868): a plan starts a session, so it cannot be a
+	// longer one than a coach could start.
+	if err := workout.CheckLength(segments); err != nil {
+		message, _ := workout.RefusalMessage(err)
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", message, "workoutJson")
 		return "", false
 	}
 	// The editor's bounds too (audit 2026-09-09); the message names the step.

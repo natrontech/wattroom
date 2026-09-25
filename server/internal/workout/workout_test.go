@@ -143,3 +143,26 @@ func TestUnscored(t *testing.T) {
 		})
 	}
 }
+
+// One bound on a workout's length, for the pick, the plan and the shelf
+// (#2868): between a second and a day, counted over what it expands to.
+func TestCheckLength(t *testing.T) {
+	day := 24 * 60 * 60
+	for _, tt := range []struct {
+		seconds []int
+		ok      bool
+	}{
+		{[]int{60}, true},
+		{[]int{day}, true},
+		{[]int{day - 1, 2}, false},
+		{[]int{}, false},
+	} {
+		var segments []Segment
+		for _, s := range tt.seconds {
+			segments = append(segments, Segment{Seconds: s})
+		}
+		if err := CheckLength(segments); (err == nil) != tt.ok {
+			t.Errorf("%v: err %v, want ok=%v", tt.seconds, err, tt.ok)
+		}
+	}
+}

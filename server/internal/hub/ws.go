@@ -410,7 +410,6 @@ func (h *Hub) writeError(c *client, code, message string) {
 const (
 	maxWorkoutNameRunes = 80
 	maxWorkoutJSONBytes = 64 << 10
-	maxSessionSeconds   = 24 * 60 * 60
 	metricsMinGap       = 100 * time.Millisecond
 )
 
@@ -423,9 +422,6 @@ func checkPick(c protocol.Control) string {
 	if len(c.WorkoutJSON) > maxWorkoutJSONBytes {
 		return "That workout is too large to share with the room."
 	}
-	if c.TotalSeconds <= 0 || c.TotalSeconds > maxSessionSeconds {
-		return "A session runs between a second and a day."
-	}
 	if err := workout.Validate(c.WorkoutJSON); err != nil {
 		if msg, ok := workout.RefusalMessage(err); ok {
 			return msg
@@ -436,8 +432,15 @@ func checkPick(c protocol.Control) string {
 	// API and the scheduler both ask it first (#1708). A pick that expands
 	// past it used to start a session with no blocks: the meter scored
 	// nothing and no client would draw it.
-	if segments, err := workout.Parse(c.WorkoutJSON); err != nil || len(segments) == 0 {
+	segments, err := workout.Parse(c.WorkoutJSON)
+	if err != nil || len(segments) == 0 {
 		return "That workout expands past what a room can ride — fewer repeats, or fewer steps inside them."
+	}
+	// The workout's own length is the session's (#1708), so it is the one
+	// checked (#2868); the socket's number never was the length.
+	if err := workout.CheckLength(segments); err != nil {
+		msg, _ := workout.RefusalMessage(err)
+		return msg
 	}
 	return ""
 }
