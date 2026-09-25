@@ -275,3 +275,38 @@ func TestCrewCardsAreCachedAndBudgeted(t *testing.T) {
 		t.Fatalf("past the ceiling: %d, want 429", rec.Code)
 	}
 }
+
+// The page shell of /c/{code} spends the same per-address ceiling as the card
+// (#2812): unbudgeted, its <title> told a real code from a guess at full speed
+// beside the door and the card that were rationed against exactly that. Over
+// the ceiling the shell still answers — with the default meta an unknown code
+// gets, so the refusal is no oracle either.
+func TestCrewMetaIsBudgeted(t *testing.T) {
+	s := testService()
+	meta := func(addr string) string {
+		r := httptest.NewRequestWithContext(t.Context(), "GET", "/c/TUESDAY", nil)
+		r.RemoteAddr = addr
+		return string(s.Meta(r))
+	}
+	named := "Tuesday &lt;Crew&gt;"
+	for i := range cardsPerWindow {
+		if !strings.Contains(meta("192.0.2.1:1234"), named) {
+			t.Fatalf("shell %d within the ceiling lost the crew's name", i)
+		}
+	}
+	if got := meta("192.0.2.1:1234"); strings.Contains(got, named) || !strings.Contains(got, "og/default.png") {
+		t.Fatalf("past the ceiling the shell still named the crew:\n%s", got)
+	}
+	if !strings.Contains(meta("198.51.100.7:1234"), named) {
+		t.Fatal("another address was refused the crew's name")
+	}
+	// Paths that are not a door spend nothing.
+	r := httptest.NewRequestWithContext(t.Context(), "GET", "/history", nil)
+	r.RemoteAddr = "203.0.113.9:1234"
+	for range cardsPerWindow + 1 {
+		s.Meta(r)
+	}
+	if !strings.Contains(meta("203.0.113.9:1234"), named) {
+		t.Fatal("a non-door path spent the door's budget")
+	}
+}

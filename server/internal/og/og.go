@@ -133,7 +133,7 @@ func (s *Service) handleCrew(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// An unknown code still gets the default card: no broken previews, and no
-	// oracle beyond what GET /api/crew-doors/{code} already answers.
+	// oracle beyond the budgeted door, card and page shell (Meta).
 	s.serve(w, title, sub, pic)
 }
 
@@ -176,10 +176,13 @@ func (s *Service) card(title, sub string, pic []byte) ([]byte, error) {
 
 // Meta builds the <title> + social meta block for a SPA route. A crew's door,
 // /c/{code}, gets the crew's name and card; everything else gets the site's.
+// The door spends the card's per-address budget first (#2812) — a name in the
+// title tells a real code from a guess — and past it gets the site's meta,
+// which is what an unknown code gets, never a 429 that would blank the app.
 func (s *Service) Meta(r *http.Request) []byte {
 	title := siteName + " — train together, not alone"
 	desc, img := metaDesc, s.baseURL+"/og/default.png"
-	if rest, ok := strings.CutPrefix(r.URL.Path, "/c/"); ok && s.lookup != nil {
+	if rest, ok := strings.CutPrefix(r.URL.Path, "/c/"); ok && s.lookup != nil && s.doors.Spend(httpx.ClientIP(r)) {
 		code, _, _ := strings.Cut(rest, "/")
 		// The name alone: a crew icon is a lucide key, and "flame Sunday
 		// Ride" is not a title (#973).
