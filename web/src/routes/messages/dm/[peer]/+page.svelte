@@ -205,7 +205,9 @@
 		{status}
 		size={28}
 	/>
-	<span class="min-w-0">
+	<!-- Bounded, so the status truncates (#2846): an unbounded column sized
+	     to a 100-character status and pushed the thread sideways on a phone. -->
+	<span class="min-w-0 flex-1 overflow-hidden">
 		<!-- Their status in words (ADR-0060), from the faces the friends list
 		     and the heads poll teach: a friend you have not written to yet
 		     has no head, and still has a status. -->
@@ -215,7 +217,7 @@
 				class="shrink-0 truncate font-medium hover:underline"
 				title="{peerName}'s page">{peerName}</a
 			>
-			<span class="text-muted min-w-0 text-xs">
+			<span class="text-muted flex min-w-0 overflow-hidden text-xs">
 				<StatusMark line={people.face(peerId)?.statusLine} size={13} text />
 			</span>
 		</span>

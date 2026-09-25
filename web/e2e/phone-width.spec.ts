@@ -251,6 +251,24 @@ test('no page outside a voice channel scrolls sideways on a phone', async ({
 			((await (await fetch('/api/me')).json()) as { id?: string }).id ?? '',
 		),
 	);
+	// A status that uses every character SPEC allows (#2846): it rides the
+	// DM header beside the name, and a line that never truncated pushed the
+	// thread 283 px sideways while the seed had no status to show it.
+	const statusSet = await peerPage.evaluate(
+		async (text) => {
+			const res = await fetch('/api/me/status', {
+				method: 'PUT',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ text }),
+			});
+			return `${res.status} ${await res.text()}`;
+		},
+		'riding the long way round today, back when the rain stops, ping me for a spin'.padEnd(
+			100,
+			'.',
+		),
+	);
+	expect(statusSet, "the peer's status").toMatch(/^2\d\d/);
 	const myId = await page.evaluate(async () =>
 		String(
 			((await (await fetch('/api/me')).json()) as { id?: string }).id ?? '',
