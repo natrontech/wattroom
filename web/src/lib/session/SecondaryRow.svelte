@@ -74,12 +74,12 @@
 >
 	<!-- An icon per instrument (#1531): at three metres a glyph is found before
 	     a three-letter label is read, and the rider asked for exactly that. -->
-	{#each [{ label: 'rpm', value: measured(`${cadence}`), tone: '', icon: RefreshCw }, ...(hr > 0 ? [{ label: 'bpm', value: measured(`${hr}`), tone: '', zone: lthr && !stale ? hrZoneOf(hr, lthr) : 0, icon: Heart }] : []), { label: 'w/kg', value: measured(wkg(watts, kg)), tone: '', icon: Scale }, ...(execution !== undefined ? [{ label: 'execution', value: `${Math.round(execution * 100)}%`, tone: '', icon: Target }] : [])] as stat (stat.label)}
+	{#each [{ label: 'rpm', value: measured(`${cadence}`), icon: RefreshCw }, ...(hr > 0 ? [{ label: 'bpm', value: measured(`${hr}`), zone: lthr && !stale ? hrZoneOf(hr, lthr) : 0, icon: Heart }] : []), { label: 'w/kg', value: measured(wkg(watts, kg)), icon: Scale }, ...(execution !== undefined ? [{ label: 'execution', value: `${Math.round(execution * 100)}%`, icon: Target }] : [])] as stat (stat.label)}
 		<div class="shrink-0">
 			<span
 				class="font-display block leading-none font-bold tabular-nums {small
 					? 'text-lg'
-					: 'text-3xl'} {stat.tone}">{stat.value}</span
+					: 'text-3xl'}">{stat.value}</span
 			>
 			<span class="eyebrow mt-0.5 flex items-center gap-1">
 				<stat.icon size={small ? 10 : 12} aria-hidden="true" />{stat.label}
