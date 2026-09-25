@@ -20,7 +20,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -319,85 +318,4 @@ func (s *Service) handleSynthetic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (s *Service) handleCallback(w http.ResponseWriter, r *http.Request) {
-	// The callback is unauthenticated and does outbound work — a token
-	// exchange and an identity fetch — so a loop here is a request amplifier
-	// against the provider, and Strava's tier is the tightest thing this app
-	// depends on (#2255). Same door and same message as the passkey login.
-	if s.throttle(w, r, s.loginBudget, tooManySignIns) {
-		return
-	}
-	// dev and synthetic have no OAuth app, so no callback of theirs is real
-	// (#2864) — and a state cookie the caller set would pass the check below.
-	p, ok := s.providers[r.PathValue("provider")]
-	if !ok || p.config == nil {
-		httpx.WriteError(w, http.StatusNotFound, "not_found",
-			"That sign-in provider is not configured on this server.")
-		return
-	}
-
-	// The state cookie proves this callback belongs to a flow we started in
-	// this browser; without it any link could complete a login (login CSRF).
-	cookie, err := r.Cookie(stateCookie)
-	if err != nil || cookie.Value == "" ||
-		subtle.ConstantTimeCompare([]byte(r.URL.Query().Get("state")), []byte(cookie.Value)) != 1 {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid_request",
-			"This sign-in link is stale or was not started here. Start again from the sign-in page.")
-		return
-	}
-	linking := strings.HasPrefix(cookie.Value, linkStatePrefix)
-	s.clearCookie(w, stateCookie)
-
-	// Bounded from here down (#2255): the exchange and the identity fetch are
-	// the only outbound calls a signing-in rider makes, and oauth2 falls back
-	// to http.DefaultClient, which has no timeout.
-	ctx := oauthCtx(r.Context())
-	tok, err := p.config.Exchange(ctx, r.URL.Query().Get("code"))
-	if err != nil {
-		s.log.Warn("oauth exchange failed", "provider", p.id, "err", err)
-		httpx.WriteError(w, http.StatusBadRequest, "invalid_request",
-			"The provider rejected this sign-in. Start again from the sign-in page.")
-		return
-	}
-	ident, err := p.fetch(ctx, p.config, tok)
-	if err != nil {
-		httpx.Fail(w, s.log, "identity fetch failed", err, "Signing in worked but reading your profile did not. Try again.", "provider", p.id)
-		return
-	}
-
-	// Linking never mints a session: the rider is already in one, and the
-	// point is to leave them in it with one more way back.
-	if linking {
-		linkTo, ok := s.RequireUser(w, r, "Sign in before connecting another provider.")
-		if !ok {
-			return
-		}
-		s.finishLink(w, r, p, ident, tok, linkTo)
-		return
-	}
-
-	user, created, err := s.upsert(r, p, ident, tok)
-	if err != nil {
-		httpx.Fail(w, s.log, "identity upsert failed", err, "Your account could not be created. Try again.", "provider", p.id)
-		return
-	}
-
-	if err := s.startSession(w, r, user.ID); err != nil {
-		httpx.Fail(w, s.log, "session create failed", err, "Signed in, but the session could not be saved. Try again.")
-		return
-	}
-	http.Redirect(w, r, afterSignIn(p.id, created), http.StatusFound)
-}
-
-// afterSignIn is where the OAuth round trip lands. A sign-in that *created* an
-// account says so in the URL, because a rider who meant to reach the account
-// they already have has just made a second one, and this is the only moment
-// undoing it is cheap (#784). The client reads it once and clears it.
-func afterSignIn(provider string, created bool) string {
-	if !created {
-		return "/"
-	}
-	return "/?new=" + url.QueryEscape(provider)
 }
