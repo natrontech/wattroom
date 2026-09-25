@@ -2,7 +2,6 @@ package tracks
 
 import (
 	"bytes"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -57,34 +56,6 @@ func TestASecondUploadWaitsForTheFirst(t *testing.T) {
 	h.upload(t, "alice", song(40, 383), "Next.mp3")
 	if h.svc.uploading.Running(alice) {
 		t.Fatal("a finished upload kept its slot")
-	}
-}
-
-// countingReader is a body that says how much of itself was read.
-type countingReader struct {
-	r    io.Reader
-	read int
-}
-
-func (c *countingReader) Read(p []byte) (int, error) {
-	n, err := c.r.Read(p)
-	c.read += n
-	return n, err
-}
-
-// Junk is refused at its first bytes, not after 48 MB of it (#2862).
-func TestJunkIsRefusedBeforeItIsRead(t *testing.T) {
-	h := setup(t)
-	body := &countingReader{r: io.MultiReader(strings.NewReader("PNG, honestly"), bytes.NewReader(make([]byte, 8<<20)))}
-	req := httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/tracks?name=x.mp3", body)
-	req.Header.Set("X-Test-User", "alice")
-	w := httptest.NewRecorder()
-	h.mux.ServeHTTP(w, req)
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400", w.Code)
-	}
-	if body.read > 64<<10 {
-		t.Fatalf("read %d KB of a body its first bytes had already refused", body.read>>10)
 	}
 }
 

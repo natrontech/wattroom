@@ -147,10 +147,10 @@ the soundboard takes a clip. Multipart would buy nothing here: there is one
 file and one string, and the string is only a fallback for a missing ID3 title.
 
 The gates run in the order that spends least on a body that will be refused:
-one upload per rider at a time, the first bytes refuse what cannot start an
-MP3, the byte cap bounds the stream to disk, the frame walk decides whether it
-is an MP3 at all, the content address asks whether we already have it, and
-only then does the quota get consulted (#2862 for the first three).
+one upload per rider at a time, the byte cap bounds the stream to disk (#2862
+for both), the frame walk decides whether it is an MP3 at all, the content
+address asks whether we already have it, and only then does the quota get
+consulted.
 */
 
 /*

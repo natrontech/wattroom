@@ -74,17 +74,6 @@ func DurationMillisFrom(r io.Reader) (ms int, ok bool) {
 	return samples * 1000 / rate, true
 }
 
-// LooksLikeMP3 reports whether head, the first bytes of a body, can begin a
-// file DurationMillis would measure: an ID3 tag or a frame header. An upload
-// asks it before reading the rest, so junk is refused at its first bytes.
-func LooksLikeMP3(head []byte) bool {
-	if len(head) >= 3 && string(head[:3]) == "ID3" {
-		return true
-	}
-	_, _, _, ok := frameAt(head)
-	return ok
-}
-
 // frameAt reads one frame header. It does not scan for the next sync word:
 // a file whose frames do not sit end to end is not one we will measure, and
 // resynchronising would let junk between frames read as audio.

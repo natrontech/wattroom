@@ -4,7 +4,6 @@
 package tracks
 
 import (
-	"bufio"
 	"errors"
 	"io"
 	"io/fs"
@@ -42,12 +41,10 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 	// connection stayed open. A recorder in a test cannot take a deadline.
 	_ = http.NewResponseController(w).SetReadDeadline(time.Now().Add(uploadReadBudget))
 
-	body := bufio.NewReader(http.MaxBytesReader(w, r.Body, maxUploadBytes))
-	if head, _ := body.Peek(10); !audio.LooksLikeMP3(head) {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error", notAnMP3)
-		return
-	}
-	file, sha, size, err := s.receive(body)
+	// Read whole even when it is junk: answering before the body is in
+	// makes the server close on a client still sending, which then reports a
+	// dropped connection instead of this refusal.
+	file, sha, size, err := s.receive(http.MaxBytesReader(w, r.Body, maxUploadBytes))
 	var tooBig *http.MaxBytesError
 	var disk *fs.PathError
 	switch {
