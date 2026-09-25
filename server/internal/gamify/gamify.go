@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/natrontech/wattroom/server/internal/jobmetrics"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -81,9 +82,15 @@ func (s *Service) work() {
 		// nobody alerts on.
 		ctx, cancel := context.WithTimeout(context.Background(), jobBudget)
 		job(ctx)
+		// A job that outran its budget is the one thing here an operator
+		// can alert on (#2874); what failed inside it is logged there.
+		jobmetrics.Ran(workerJobName, ctx.Err())
 		cancel()
 	}
 }
+
+// workerJobName is the queue worker's name to the operator's metrics.
+const workerJobName = "gamify worker"
 
 // jobBudget bounds one queued job: a handful of single-row statements.
 const jobBudget = 5 * time.Second
@@ -118,5 +125,6 @@ func (s *Service) enqueue(what string, job func(context.Context)) {
 	case s.jobs <- job:
 	default:
 		s.log.Warn("gamify queue full, event dropped", "event", what)
+		jobmetrics.Dropped(workerJobName)
 	}
 }

@@ -19,7 +19,7 @@ import (
 var (
 	runs = promauto.With(metrics.Registry).NewCounterVec(prometheus.CounterOpts{
 		Name: "wattroom_job_runs_total",
-		Help: "Background job runs, by job and outcome (ok | error).",
+		Help: "Background job runs, by job and outcome (ok | error | dropped).",
 	}, []string{"job", "outcome"})
 	lastSuccess = promauto.With(metrics.Registry).NewGaugeVec(prometheus.GaugeOpts{
 		Name: "wattroom_job_last_success_timestamp_seconds",
@@ -38,4 +38,11 @@ func Ran(job string, err error) {
 	if err == nil {
 		lastSuccess.WithLabelValues(job).SetToCurrentTime()
 	}
+}
+
+// Dropped records a job a full queue turned away before it could run (#2874):
+// a worker that stalls fills its queue first, and a log line was all that
+// said so.
+func Dropped(job string) {
+	runs.WithLabelValues(job, "dropped").Inc()
 }
