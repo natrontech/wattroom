@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { signInTo } from './signin';
 
 /**
- * WATTROOM.md's single end-to-end flow: simulated trainer → ride a 1-minute
+ * WATTROOM.md's single end-to-end flow: simulated trainer → ride a 65-second
  * workout → .fit produced.
  *
  * The value is the seam. Unit tests cover the workout engine, the session logic and
@@ -52,7 +52,7 @@ test('a simulated ride produces a .fit file', async ({ page }) => {
 	// loaded runner.
 	await expect(clock).not.toHaveText(firstClock, { timeout: 10_000 });
 
-	// Ride it out. 60 s of workout plus generous slack for the browser's timer drift.
+	// Ride it out. 65 s of workout plus generous slack for the browser's timer drift.
 	const download = page.getByTestId('download-fit');
 	await expect(download).toBeVisible({ timeout: 120_000 });
 
