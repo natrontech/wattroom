@@ -97,3 +97,47 @@ func TestNoMetronomeWhenTheWorkoutScoredNothing(t *testing.T) {
 		t.Errorf("hammer=%q lanterne=%q, want b and c", got["hammer"], got["lanterne_rouge"])
 	}
 }
+
+// Diesel is "lowest power variability across steady steps" (docs/SPEC.md), so
+// a session with no steady step measured nobody on it: a game session saves
+// its rides under steps [] (#2597) and a sprint-only workout has none either.
+// SteadyCoV says "no steady seconds" as MaxFloat for everyone, and bestOf
+// handed the medal to the first joiner on that tie (#2833) — the #1143 lesson
+// Metronome already learned.
+func TestNoDieselWithoutASteadyStep(t *testing.T) {
+	watts := make([]int, 120)
+	for i := range watts {
+		watts[i] = 200 + i%7
+	}
+	for name, segments := range map[string][]workout.Segment{
+		"a game session": nil,
+		"a sprint-only workout": {
+			{Kind: "warmup", Start: 0, Seconds: 60},
+			{Kind: "sprint", Start: 60, Seconds: 60},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			var riders []RiderResult
+			for i, id := range []string{"a", "b", "c"} {
+				riders = append(riders, result(id, i, 0.9, SteadyCoV(segments, watts), float64(5+i)))
+			}
+			got := Medals(riders)
+			if id, ok := got["diesel"]; ok {
+				t.Errorf("diesel awarded with no steady step, to %q", id)
+			}
+			if got["hammer"] != "c" {
+				t.Errorf("hammer=%q, want c — the other medals still stand", got["hammer"])
+			}
+		})
+	}
+	t.Run("only those who rode a steady step are in it", func(t *testing.T) {
+		got := Medals([]RiderResult{
+			result("a", 0, 0.9, SteadyCoV(nil, watts), 5),
+			result("b", 1, 0.9, 0.2, 6),
+			result("c", 2, 0.9, 0.1, 4),
+		})
+		if got["diesel"] != "c" {
+			t.Errorf("diesel=%q, want c", got["diesel"])
+		}
+	})
+}
