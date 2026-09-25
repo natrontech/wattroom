@@ -4,29 +4,9 @@
  * signed-in redirect picks the stash up. Same-origin paths only — "//host"
  * and full URLs are open redirects and are dropped.
  */
-const KEY = 'wattroom.login.next';
+import { sameOriginPath } from '$lib/same-origin';
 
-/**
- * Same-origin, positively (#1610): "/\\evil.com" passed the two prefix
- * checks and the URL parser folds the backslash, so it resolved off-site.
- * Parsing it the way the browser will is the only check that agrees with
- * the browser.
- */
-function sameOriginPath(path: string | null | undefined): path is string {
-	if (!path || !path.startsWith('/')) return false;
-	// The tests run under node, where there is no location; any origin
-	// serves, since the check is "did the parser keep it on that origin".
-	const origin =
-		typeof location === 'undefined'
-			? 'http://wattroom.invalid'
-			: location.origin;
-	try {
-		const url = new URL(path, origin);
-		return url.origin === origin && url.href.startsWith(origin + '/');
-	} catch {
-		return false;
-	}
-}
+const KEY = 'wattroom.login.next';
 
 export function rememberNext(path: string | null): void {
 	try {

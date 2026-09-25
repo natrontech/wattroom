@@ -18,6 +18,37 @@ describe('parseInline links', () => {
 		]);
 	});
 
+	it('keeps the bare origin inside the SPA', () => {
+		expect(
+			parseInline('https://wattroom.cc', 'https://wattroom.cc')[0],
+		).toEqual({ text: 'https://wattroom.cc', href: '/', external: false });
+	});
+
+	it('sends a path the browser reads as another host away (#2817)', () => {
+		const origin = 'https://wattroom.cc';
+		for (const url of [
+			// Sliced to "//evil.example/x", a protocol-relative href.
+			'https://wattroom.cc//evil.example/x',
+			// The parser folds the backslash, so "/\evil" is "//evil" too.
+			'https://wattroom.cc/\\evil.example/x',
+			'https://wattroom.cc@evil.example/x',
+			'https://wattroom.cc.evil.example/x',
+		])
+			expect(parseInline(url, origin)).toEqual([
+				{ text: url, href: url, external: true },
+			]);
+	});
+
+	it('keeps an encoded slash a literal path on our origin', () => {
+		expect(
+			parseInline('https://wattroom.cc/%2F%2Fhost', 'https://wattroom.cc')[0],
+		).toEqual({
+			text: 'https://wattroom.cc/%2F%2Fhost',
+			href: '/%2F%2Fhost',
+			external: false,
+		});
+	});
+
 	it('leaves non-http schemes as text', () => {
 		expect(parseInline('javascript:alert(1) and mailto:a@b.c', '')).toEqual([
 			{ text: 'javascript:alert(1) and mailto:a@b.c' },

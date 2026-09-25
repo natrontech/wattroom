@@ -12,6 +12,7 @@
  * not apologise (ux.md).
  */
 import { api } from '$lib/api';
+import { sameOriginPath } from '$lib/same-origin';
 
 export type OS = 'mac' | 'windows' | 'linux' | 'phone' | 'other';
 
@@ -192,8 +193,7 @@ export function onShellNavigate(cb: (to: string) => void): void {
 			wattroom?: { onNavigate?: (cb: (to: string) => void) => void };
 		}
 	).wattroom?.onNavigate?.((to) => {
-		if (typeof to === 'string' && to.startsWith('/') && !to.startsWith('//'))
-			cb(to);
+		if (typeof to === 'string' && sameOriginPath(to)) cb(to);
 	});
 }
 
