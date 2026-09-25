@@ -38,6 +38,7 @@
 		placeName = 'WattRoom',
 		riders,
 		actions,
+		unsaved = false,
 	}: {
 		title?: string;
 		subtitle: string;
@@ -54,6 +55,8 @@
 		 */
 		riders?: { id: string; name: string; execution?: number; you?: boolean }[];
 		actions?: Snippet;
+		/** The save failed (#2634): none of the XP below reached the account. */
+		unsaved?: boolean;
 	} = $props();
 
 	// The ride second by second (#1559): the screen a rider looks at while
@@ -290,8 +293,12 @@
 					</li>
 				</ul>
 				<p class="text-muted mt-2 text-[11px]">
-					Your own streak bonus and level land on your account with the ride —
-					your weeks, not the crew's.
+					{#if unsaved}
+						None of this is on your account: the ride has not been saved.
+					{:else}
+						Your own streak bonus and level land on your account with the ride —
+						your weeks, not the crew's.
+					{/if}
 				</p>
 			</section>
 		</div>

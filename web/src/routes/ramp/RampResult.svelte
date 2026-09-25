@@ -37,6 +37,9 @@
 
 	const profile = createProfileStore();
 	let saved = $state(false);
+	// Keeping the number is an answer, not a way out (#2634): it used to send
+	// the rider to their profile and drop this result and the LTHR below.
+	let kept = $state(false);
 	let lthrSaved = $state(false);
 	let error = $state<string | null>(null);
 
@@ -132,6 +135,10 @@
 			Saved. Every workout now scales to {result.ftp} W.
 		</p>
 		<a href="/workouts" class="btn btn-secondary mt-3">Pick a workout</a>
+	{:else if kept}
+		<p class="text-muted mt-6 text-sm">
+			Kept {profile.current.ftp} W. Every workout still scales to it.
+		</p>
 	{:else}
 		<div class="mt-6 flex gap-2">
 			<button
@@ -141,10 +148,10 @@
 			>
 			<button onclick={onRestart} class="btn btn-secondary">Test again</button>
 			<!-- Never silently change FTP: it moves every workout's difficulty. -->
-			<a
-				href="/settings/profile"
+			<button
+				onclick={() => (kept = true)}
 				class="text-muted hover:text-ink self-center py-2 text-xs underline"
-				>Keep my current {profile.current.ftp} W</a
+				>Keep my current {profile.current.ftp} W</button
 			>
 		</div>
 	{/if}

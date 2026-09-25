@@ -459,7 +459,7 @@
 			session.state !== 'countdown',
 		{
 			title: 'End the ride and leave?',
-			body: 'The ride so far is saved to your account.',
+			body: 'The ride so far is saved to your account if it is a minute or longer.',
 			action: 'End the ride',
 			cancel: 'Keep riding',
 		},
@@ -613,7 +613,10 @@
 		     zeros behind it (#126). -->
 		<div class="mx-auto mt-4 w-full max-w-3xl">
 			<SessionSummary
-				title="Ride complete"
+				title={session.elapsed >= session.total
+					? 'Ride complete'
+					: 'Ride ended'}
+				unsaved={saveStatus !== null && !savedId}
 				subtitle="{workout.name} · {new Date().toLocaleDateString()}"
 				samples={session.recording}
 				ftp={profile.current.ftp}

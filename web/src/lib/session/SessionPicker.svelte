@@ -35,6 +35,7 @@
 		onRetryShelf,
 		where,
 		trainer,
+		channelName = 'this voice channel',
 	}: {
 		shelf: ShelfEntry[];
 		/** Why your own workouts are missing from the shelf, when they are. */
@@ -66,6 +67,8 @@
 		 *  trainer (#2594): /ride puts pairing before Start, and a session
 		 *  started unpaired rode its first interval with nothing holding it. */
 		trainer?: Snippet;
+		/** The voice channel a session started here runs in (#2634). */
+		channelName?: string;
 		onClose: () => void;
 	} = $props();
 
@@ -346,7 +349,8 @@
 							<div class="flex flex-wrap items-center gap-3">
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium">
-										Everyone in the lounge rides it with you.
+										It runs in {channelName}: anyone there can join it and ride
+										with you.
 									</p>
 									<p class="text-muted mt-0.5 text-xs">
 										A 10 s countdown, then the shared timeline starts.
@@ -389,9 +393,11 @@
 									{refused.message}
 								</p>
 							{/if}
+							<!-- A private channel's plan reaches its people, not the whole
+							     crew (#2634). -->
 							<p class="text-muted mt-2 text-xs">
-								The crew hears about it, and it lands in every subscribed
-								calendar.
+								Everyone who can join it hears about it, and it lands in their
+								calendars.
 							</p>
 							{#if onStart}
 								<button

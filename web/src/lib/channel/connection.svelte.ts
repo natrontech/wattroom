@@ -355,7 +355,9 @@ export const channelConnection = {
 		// The leave cue, not the fault buzz: the sound already means "someone
 		// is out of the channel", and an error-toned toast would sound its own.
 		play('leave');
-		toasts.push(`Your session ended — you left ${name}.`, {
+		// Signed out is the one reason there is (#2634): "your session ended"
+		// read as the ride's session, which a rider in the lounge had none of.
+		toasts.push(`You were signed out — you left ${name}.`, {
 			href: address.home,
 			seconds: 12,
 		});

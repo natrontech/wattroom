@@ -103,7 +103,7 @@
 				<a
 					href={conn.address.home}
 					{@attach hoverCard(() => rider.id)}
-					title="{rider.name} · back to the Lounge"
+					title="{rider.name} · back to {conn.address.name}"
 					{@attach contextMenu(() => personMenu(rider.id, goto))}
 					class="bg-surface-raised relative block aspect-[16/10] overflow-hidden rounded {tileFrame(
 						!!av.speaking[rider.id],

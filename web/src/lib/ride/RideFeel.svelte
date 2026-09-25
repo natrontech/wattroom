@@ -19,7 +19,7 @@
 	import {
 		RPE_SCALE,
 		noteTooLong,
-		rpeLabel,
+		rpeText,
 		setRideFeel,
 		type RideFeel,
 	} from '$lib/ride/feel';
@@ -98,7 +98,7 @@
 				<button
 					type="button"
 					aria-pressed={rpe === n}
-					title="{n} — {rpeLabel(n)}"
+					title={rpeText(n)}
 					onclick={() => (rpe = rpe === n ? null : n)}
 					class="btn min-h-11 px-0 tabular-nums {rpe === n
 						? 'btn-primary'
@@ -110,7 +110,7 @@
 			{#if rpe === null}
 				1 very easy · 10 maximal. Tap a number, or leave it — nothing needs it.
 			{:else}
-				{rpe} — {rpeLabel(rpe)}. Tap it again to un-rate the ride.
+				{rpeText(rpe)}. Tap it again to un-rate the ride.
 			{/if}
 		</p>
 	</fieldset>
