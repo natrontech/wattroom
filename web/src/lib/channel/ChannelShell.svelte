@@ -135,12 +135,15 @@
 		const role = (props.members ?? []).find((m) => m.id === userId)?.role;
 		return role === 'owner' ? undefined : () => ban(userId, name);
 	}
-	// The coach hands the session to anyone else in the channel (#2636), from
-	// the screen they ride on — a phone is given none of the coach's controls
-	// (docs/SPEC.md roles). Said by the event line once the hub takes it.
+	// The coach hands the session to someone riding in it (#2636; SPEC's
+	// roles), from the screen they ride on — a phone is given none of the
+	// coach's controls. Never to a spectator or a free rider beside it: the
+	// hub refuses, since joining is theirs to do (ADR-0059, #2829). Said by
+	// the event line once the hub takes it.
 	function handOffOf(userId: string, name: string) {
 		if (!coach || coach !== account.me?.id || userId === coach) return;
 		if (device.spectator) return;
+		if (!riders.some((r) => r.id === userId && r.inSession)) return;
 		return { name, onSelect: () => live.handOff(userId) };
 	}
 

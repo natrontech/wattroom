@@ -117,9 +117,11 @@ func TestHandOff(t *testing.T) {
 
 	expect(t, rm, openers, ana, "")
 	expect(t, rm, protocol.Control{Action: "start"}, ana, "")
-	// Only the coach hands it on, and only to someone in the channel.
+	// Only the coach hands it on, and only to someone riding in it (#2829).
 	expect(t, rm, protocol.Control{Action: "handoff", Rider: "ana"}, ben, "forbidden")
 	expect(t, rm, protocol.Control{Action: "handoff", Rider: "nobody"}, ana, "invalid_request")
+	expect(t, rm, protocol.Control{Action: "handoff", Rider: "ben"}, ana, "invalid_request")
+	expect(t, rm, protocol.Control{Action: "join"}, ben, "")
 	expect(t, rm, protocol.Control{Action: "handoff", Rider: "ben"}, ana, "")
 	if state := rm.session.state(time.Now()); state.Coach != "ben" || state.CoachName != "Ben" {
 		t.Fatalf("after the hand-off the coach is %q (%q), want Ben", state.Coach, state.CoachName)
