@@ -249,6 +249,12 @@
 			<a href="/crew/{firstCrew.id}/schedule?plan" class="btn btn-secondary"
 				><CalendarClock size={15} /> Plan a session</a
 			>
+		{:else if !ready}
+			<!-- Not "start your first" before the list has said there is none
+			     (#2848): a rider with crews was one tap from founding a
+			     duplicate while it loaded, and after it failed — when the banner
+			     below says why. -->
+			{#if !presence.error}<Skeleton class="h-11 w-36" />{/if}
 		{:else}
 			<!-- Carrying an invite, the big button is joining the crew that sent
 			     it (#2144, #2184); everyone else gets the crew the signed-out
@@ -264,7 +270,11 @@
 		{/if}
 	</div>
 
-	<FirstRun crew={ownCrew} ridden={xp > 0 || recent.length > 0} />
+	<!-- Its steps read the crew list and the rides; before both have landed
+	     it listed steps the rider had already done (#2848). -->
+	{#if ready && rides !== null}
+		<FirstRun crew={ownCrew} ridden={xp > 0 || recent.length > 0} />
+	{/if}
 
 	{#if error}
 		<div class="mt-6">
