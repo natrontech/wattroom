@@ -12,10 +12,10 @@
 		fillPct,
 		ZONE_BG,
 		ZONE_NAMES,
-		ZONE_TEXT,
 		zoneOf,
 	} from '$lib/components/zones';
 	import { targetState } from '$lib/channel/types';
+	import ZoneDot from '$lib/components/ZoneDot.svelte';
 
 	// Primitives, not a LiveRider: the solo ride and the ramp test have watts
 	// and a target without a roster to belong to, and coupling the instrument
@@ -139,8 +139,14 @@
 			     colour was a code with no key on the one screen that could give
 			     it one. Silent at 0 W — Z1 for a rider who stopped is a lie. -->
 			{#if shown > 0}
-				<span class="eyebrow block {ZONE_TEXT[zone]} {tv ? 'text-[1.6vh]' : ''}"
-					>z{zone} {ZONE_NAMES[zone]}</span
+				<!-- Muted words and a zone dot (#2856): the ramp is fitted to a
+				     fill's floor, and Z1 written in its own colour was 2.1:1. -->
+				<span
+					class="eyebrow flex items-center justify-center gap-1 {tv
+						? 'text-[1.6vh]'
+						: ''}"
+					><ZoneDot {zone} class={tv ? 'size-[1vh]' : 'size-1.5'} />z{zone}
+					{ZONE_NAMES[zone]}</span
 				>
 			{/if}
 		</div>

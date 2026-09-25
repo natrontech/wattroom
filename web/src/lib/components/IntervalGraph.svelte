@@ -2,7 +2,7 @@
 	import { formatClock } from '$lib/format';
 	import type { Segment } from '$lib/workout/types';
 	import { splitTrace, type TracePoint, thinRun } from './trace';
-	import { CEILING, ZONE_NAMES, ZONE_TEXT, zoneOf } from './zones';
+	import { CEILING, ZONE_NAMES, ZONE_VAR, zoneOf } from './zones';
 	import {
 		fractionAt,
 		grabAt,
@@ -270,7 +270,8 @@
 			<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 			<polygon
 				points={block.points}
-				class="{ZONE_TEXT[block.zone]} {picked
+				style:color={ZONE_VAR[block.zone]}
+				class="{picked
 					? 'opacity-80'
 					: block.sprint
 						? 'opacity-30'
@@ -299,7 +300,7 @@
 		{#each blocks as block, i (i)}
 			<polyline
 				points={block.edge}
-				class={ZONE_TEXT[block.zone]}
+				style:color={ZONE_VAR[block.zone]}
 				fill="none"
 				stroke="currentColor"
 				stroke-width={compact ? 1.5 : 2}

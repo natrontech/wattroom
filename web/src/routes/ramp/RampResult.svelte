@@ -8,7 +8,6 @@
 	 */
 	import type { Snippet } from 'svelte';
 	import Banner from '$lib/components/Banner.svelte';
-	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import { pushProfile } from '$lib/profile-sync.svelte';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
@@ -119,9 +118,7 @@
 		do.
 	</p>
 	<p class="mt-3 text-sm">
-		That's <span class={ZONE_TEXT[zoneOf(result.ftp, result.ftp)]}
-			>{wkg} w/kg</span
-		>
+		That's <span class="text-ink font-semibold">{wkg} w/kg</span>
 		at {profile.current.kg} kg.
 	</p>
 	{@render children()}

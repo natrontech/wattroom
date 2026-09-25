@@ -3,7 +3,8 @@
 	// boxes. Bias keeps thumb-sized targets whatever else shrinks: it is the
 	// one control a rider reaches for mid-interval (ux.md).
 	import { wkg } from '$lib/format';
-	import { hrZoneOf, ZONE_TEXT } from '$lib/components/zones';
+	import ZoneDot from '$lib/components/ZoneDot.svelte';
+	import { hrZoneOf } from '$lib/components/zones';
 	import Heart from '@lucide/svelte/icons/heart';
 	import RefreshCw from '@lucide/svelte/icons/refresh-cw';
 	import Scale from '@lucide/svelte/icons/scale';
@@ -73,7 +74,7 @@
 >
 	<!-- An icon per instrument (#1531): at three metres a glyph is found before
 	     a three-letter label is read, and the rider asked for exactly that. -->
-	{#each [{ label: 'rpm', value: measured(`${cadence}`), tone: '', icon: RefreshCw }, ...(hr > 0 ? [{ label: 'bpm', value: measured(`${hr}`), tone: lthr && !stale ? ZONE_TEXT[hrZoneOf(hr, lthr)] : '', icon: Heart }] : []), { label: 'w/kg', value: measured(wkg(watts, kg)), tone: '', icon: Scale }, ...(execution !== undefined ? [{ label: 'execution', value: `${Math.round(execution * 100)}%`, tone: '', icon: Target }] : [])] as stat (stat.label)}
+	{#each [{ label: 'rpm', value: measured(`${cadence}`), tone: '', icon: RefreshCw }, ...(hr > 0 ? [{ label: 'bpm', value: measured(`${hr}`), tone: '', zone: lthr && !stale ? hrZoneOf(hr, lthr) : 0, icon: Heart }] : []), { label: 'w/kg', value: measured(wkg(watts, kg)), tone: '', icon: Scale }, ...(execution !== undefined ? [{ label: 'execution', value: `${Math.round(execution * 100)}%`, tone: '', icon: Target }] : [])] as stat (stat.label)}
 		<div class="shrink-0">
 			<span
 				class="font-display block leading-none font-bold tabular-nums {small
@@ -82,6 +83,11 @@
 			>
 			<span class="eyebrow mt-0.5 flex items-center gap-1">
 				<stat.icon size={small ? 10 : 12} aria-hidden="true" />{stat.label}
+				<!-- The heart-rate zone as a dot, the number in ink (#2856). -->
+				{#if 'zone' in stat && stat.zone}<ZoneDot
+						zone={stat.zone}
+						class="size-1.5"
+					/>{/if}
 			</span>
 		</div>
 	{/each}

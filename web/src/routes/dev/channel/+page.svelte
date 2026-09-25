@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { play, playCountdown, playCountdownTick } from '$lib/sound/cues';
 	import CheerLayer from './CheerLayer.svelte';
+	import ZoneDot from '$lib/components/ZoneDot.svelte';
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
 	import FaultBanner from '$lib/channel/FaultBanner.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
@@ -19,7 +20,6 @@
 		CHANNEL_NAME,
 		type TileMetric,
 		workout,
-		ZONE_TEXT,
 		zoneOf,
 		type Phase,
 	} from './mockChannel.svelte';
@@ -386,9 +386,8 @@
 					{/each}
 					<div class="text-right">
 						<span
-							class="font-display text-lg leading-none font-semibold {ZONE_TEXT[
-								zone
-							]}">Z{zone}</span
+							class="font-display text-ink inline-flex items-center gap-1 text-lg leading-none font-semibold"
+							><ZoneDot {zone} />Z{zone}</span
 						>
 						<span class="eyebrow ml-1">zone</span>
 					</div>

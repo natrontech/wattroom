@@ -15,7 +15,8 @@
 	// Lifted out of the Training place when the phone got the same strip
 	// (#412) — one definition, so the desktop and the phone cannot drift.
 	import RidingBars from '$lib/components/RidingBars.svelte';
-	import { ZONE_TEXT, zoneOf } from '$lib/components/zones';
+	import ZoneDot from '$lib/components/ZoneDot.svelte';
+	import { zoneOf } from '$lib/components/zones';
 	import { wkg } from '$lib/format';
 	import { useChannel } from '$lib/channel/context';
 	import { contextMenu } from '$lib/context-menu.svelte';
@@ -70,10 +71,13 @@
 		>
 			<!-- Their trainer went quiet (#2851): the coach sees it, instead of
 			     the last number standing in for a rider holding target. -->
+			<!-- Ink numerals and a zone dot (#2856): in a zone colour a warm-up's
+			     watts were 1.9:1 on the tile. -->
+			{#if !rider.stale}<ZoneDot {zone} class="size-1.5 self-center" />{/if}
 			<span
 				class="font-display {rider.stale
 					? 'text-muted'
-					: ZONE_TEXT[zone]} text-xl leading-none font-bold tabular-nums"
+					: 'text-ink'} text-xl leading-none font-bold tabular-nums"
 				data-testid="crew-watts">{rider.stale ? '—' : rider.watts}</span
 			>
 			<span class="text-muted text-[9px]">W</span>
