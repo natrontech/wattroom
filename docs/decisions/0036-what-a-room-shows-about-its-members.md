@@ -218,3 +218,25 @@ shown to the riders who rode it and kept nowhere afterwards.
 [ADR-0058](0058-the-room-dissolves-into-the-crew.md)'s 2026-09-24 amendment
 says so and says why. Everything a member can open later still holds to the
 three surfaces above.
+
+## Amendment, 2026-09-25 (#2820): the door's answer is the switch's default
+
+`on_board` defaulted to `true` for every joiner, and #1651's disclosure made
+that right only for a crew whose board was already on. A rider who walked in
+through a door that said *"Joining shows nobody your numbers"* was on the board
+the day an admin turned it on. That is enrolment by existence arriving late,
+and the #1100 amendment's own reason for the per-rider switch.
+
+**A joiner's `on_board` is what the door said**: on behind a door that named
+the board, off behind one that said it was off. Turning the board on changes no
+member's switch. A row that never came through the door at all, such as a
+pre-emptive ban that was lifted or a former owner who never set a switch,
+starts off the board too.
+
+#1651's rejected option B stays rejected. A rider who joins a crew whose board
+is on is still on it by default, because the door told them.
+
+The migration that ships this takes members of crews whose board is off today
+off the board. The rows cannot tell a default from a rider who switched
+themselves on while the board was off, so both go off, which is the narrow
+side. Nobody can see any difference until the board is turned on.

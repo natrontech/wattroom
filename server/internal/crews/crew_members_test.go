@@ -3,6 +3,7 @@ package crews
 import (
 	"fmt"
 	"net/http"
+	"sort"
 	"testing"
 	"time"
 
@@ -54,10 +55,8 @@ func TestTheCrewBoardIsOffByDefaultAndTheDoorSaysSo(t *testing.T) {
 	crew := h.newCrew(t, "alice", "Board Crew")
 	code := codeOf(crew.Code)
 	h.joinCrew(t, "bob", code)
-	h.joinCrew(t, "carol", code)
 	voice := h.channel(t, crew, "voice", "Ride", false)
 	h.crewRide(t, "bob", crew, voice, time.Now(), 400)
-	h.crewRide(t, "carol", crew, voice, time.Now(), 500)
 
 	door := func() any {
 		status, body := h.call(t, "", http.MethodGet, "/api/crew-doors/"+code, "")
@@ -86,20 +85,35 @@ func TestTheCrewBoardIsOffByDefaultAndTheDoorSaysSo(t *testing.T) {
 		t.Errorf("the door of a crew with a board says boardEnabled = %v, want true", got)
 	}
 
-	// Carol says no for herself; bob is on it, carol is not, and the owner —
-	// who never answered — is not on it either.
-	if status, body := h.call(t, "carol", http.MethodPatch, path+"/me", `{"notify":true,"onBoard":false}`); status != http.StatusOK || body["onBoard"] != false {
-		t.Fatalf("carol leaving the board: %d %v", status, body)
-	}
+	// Carol walks in through a door that named the board, so she is on it.
+	// Bob walked in through one that said "Joining shows nobody your
+	// numbers" and never answered, so turning the board on does not put him
+	// there (#2820). The owner, who never answered either, is not on it.
+	h.joinCrew(t, "carol", code)
+	h.crewRide(t, "carol", crew, voice, time.Now(), 500)
 	h.crewRide(t, "alice", crew, voice, time.Now(), 900)
-	board, _ := h.crewMembers(t, "bob", crew)["board"].([]any)
-	var on []string
-	for _, row := range board {
-		line, _ := row.(map[string]any)
-		on = append(on, fmt.Sprint(line["displayName"]))
+	onBoard := func() []string {
+		board, _ := h.crewMembers(t, "bob", crew)["board"].([]any)
+		var on []string
+		for _, row := range board {
+			line, _ := row.(map[string]any)
+			on = append(on, fmt.Sprint(line["displayName"]))
+		}
+		sort.Strings(on)
+		return on
 	}
-	if len(on) != 1 || on[0] != h.displayName(t, "bob") {
-		t.Errorf("board = %v, want only bob", on)
+	if on := onBoard(); len(on) != 1 || on[0] != h.displayName(t, "carol") {
+		t.Errorf("board = %v, want only carol", on)
+	}
+
+	// Bob says yes for himself, and only then is he ranked.
+	if status, body := h.call(t, "bob", http.MethodPatch, path+"/me", `{"notify":true,"onBoard":true}`); status != http.StatusOK || body["onBoard"] != true {
+		t.Fatalf("bob joining the board: %d %v", status, body)
+	}
+	want := []string{h.displayName(t, "bob"), h.displayName(t, "carol")}
+	sort.Strings(want)
+	if on := onBoard(); fmt.Sprint(on) != fmt.Sprint(want) {
+		t.Errorf("board = %v, want %v", on, want)
 	}
 }
 

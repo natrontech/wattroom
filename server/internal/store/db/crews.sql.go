@@ -302,19 +302,23 @@ func (q *Queries) GetCrewPrefs(ctx context.Context, arg GetCrewPrefsParams) (Get
 }
 
 const joinCrew = `-- name: JoinCrew :exec
-insert into crew_roles (crew_id, user_id, role) values ($1, $2, 'member')
+insert into crew_roles (crew_id, user_id, role, on_board)
+select c.id, $1, 'member', c.board_enabled from crews c where c.id = $2
 on conflict (crew_id, user_id) do nothing
 `
 
 type JoinCrewParams struct {
-	CrewID pgtype.UUID
 	UserID pgtype.UUID
+	CrewID pgtype.UUID
 }
 
 // Stored membership (ADR-0038 amended, #1236). A banned or admin row wins the
-// conflict: joining never lifts a ban and never demotes an admin.
+// conflict: joining never lifts a ban and never demotes an admin. on_board is
+// what the door said (#2820): on behind a door that named the board, off
+// behind one that said joining shows nobody your numbers — turning the board
+// on later must not enrol everyone who walked in under that promise.
 func (q *Queries) JoinCrew(ctx context.Context, arg JoinCrewParams) error {
-	_, err := q.db.Exec(ctx, joinCrew, arg.CrewID, arg.UserID)
+	_, err := q.db.Exec(ctx, joinCrew, arg.UserID, arg.CrewID)
 	return err
 }
 
@@ -799,7 +803,7 @@ func (q *Queries) SetCrewPrefs(ctx context.Context, arg SetCrewPrefsParams) (Set
 }
 
 const setCrewRole = `-- name: SetCrewRole :exec
-insert into crew_roles (crew_id, user_id, role) values ($1, $2, $3)
+insert into crew_roles (crew_id, user_id, role, on_board) values ($1, $2, $3, false)
 on conflict (crew_id, user_id) do update set role = excluded.role, set_at = now()
 `
 
@@ -810,7 +814,9 @@ type SetCrewRoleParams struct {
 }
 
 // Admin, member or banned. The owner is crews.owner_id and cannot be expressed here,
-// which is what makes them un-removable (ADR-0038, second amendment).
+// which is what makes them un-removable (ADR-0038, second amendment). A row
+// this inserts never came through the door — a pre-emptive ban, or a former
+// owner who never set a switch — so it starts off the board (#2820).
 func (q *Queries) SetCrewRole(ctx context.Context, arg SetCrewRoleParams) error {
 	_, err := q.db.Exec(ctx, setCrewRole, arg.CrewID, arg.UserID, arg.Role)
 	return err
