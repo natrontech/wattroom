@@ -116,11 +116,12 @@
 
 	// Every client reports the end and the hub takes the first (#286): the
 	// anchor match is what makes N reports advance the queue exactly once.
-	function reportEnded() {
+	// 'unplayable' is a track nobody could play (#2834): a skip, not a play.
+	function reportEnded(action: 'ended' | 'unplayable' = 'ended') {
 		const now = deck;
 		if (!now?.current) return;
 		conn?.live.jukebox({
-			action: 'ended',
+			action,
 			trackId: now.current.trackId,
 			anchorMs: now.anchorMs,
 		});
@@ -149,7 +150,7 @@
 			.catch(() => 0);
 		if (trackFailureIsGlobal(status)) {
 			toasts.push(`“${title}” could not be played here — skipped.`);
-			reportEnded();
+			reportEnded('unplayable');
 			return;
 		}
 		toasts.push(
@@ -172,7 +173,7 @@
 		bind:this={audio}
 		src={audioSrc(track)}
 		preload="auto"
-		onended={reportEnded}
+		onended={() => reportEnded()}
 		onerror={failed}
 		ondurationchange={measured}
 	></audio>

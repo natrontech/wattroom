@@ -204,7 +204,9 @@ func (j *jukebox) applyWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy
 	case "skipPlaylist":
 		return j.onSkipPlaylist(cmd, riderID, addedBy, now)
 	case "ended":
-		return j.onEnded(cmd, riderID, addedBy, now)
+		return j.onEnded(cmd, now, true)
+	case "unplayable":
+		return j.onEnded(cmd, now, false)
 	default:
 		return nil, false, ""
 	}
