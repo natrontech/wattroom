@@ -295,6 +295,14 @@
 							onclick={() => summary.dismiss()}
 							class="btn btn-primary">See your ride</a
 						>
+					{:else if summary.rideLate}
+						<!-- A save slower than the looks, or a look refused (#2631):
+						     the ride lands on Rides, and the rider is told so. -->
+						<a
+							href="/history"
+							onclick={() => summary.dismiss()}
+							class="btn btn-primary">Your ride lands on Rides</a
+						>
 					{/if}
 					<!-- The page is already the channel's under it (#2600): the
 					     session's address lets go when it ends. -->

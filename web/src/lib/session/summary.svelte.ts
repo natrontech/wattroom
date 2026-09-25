@@ -76,6 +76,9 @@ export function createSummary(deps: {
 	// tick or two, and once more if it has not landed yet. A crew ride names
 	// its voice channel (#2443); `room` is only ever set on one from before.
 	let rideId = $state<string | null>(null);
+	// The looks ran out, or one was refused (#2631): the ride is saved or on
+	// its way, and the summary says where rather than dropping the link.
+	let rideLate = $state(false);
 	let sessionStart = 0;
 	function findMyRide(attempt: number) {
 		void api<{
@@ -87,7 +90,10 @@ export function createSummary(deps: {
 				xp?: number;
 			}[];
 		}>('/api/rides').then((res) => {
-			if (!res.ok) return;
+			if (!res.ok) {
+				rideLate = true;
+				return;
+			}
 			const mine = (res.data.rides ?? []).find(
 				(r) =>
 					(r.channel || r.room) &&
@@ -100,6 +106,7 @@ export function createSummary(deps: {
 				// The ride has landed: what it suggests rides on /api/me (#2626).
 				void account.load();
 			} else if (attempt < 2) setTimeout(() => findMyRide(attempt + 1), 3000);
+			else rideLate = true;
 		});
 	}
 
@@ -139,6 +146,7 @@ export function createSummary(deps: {
 			medalBase = undefined;
 			rideXp = null;
 			rideId = null;
+			rideLate = false;
 			sessionStart = deps.startedAt() ?? Date.now();
 		}
 		if (phase !== 'done' || deps.recording.samples.length < SUMMARY_MIN_SAMPLES)
@@ -176,6 +184,10 @@ export function createSummary(deps: {
 		/** The ride's own page, once the session has saved it. */
 		get rideId() {
 			return rideId;
+		},
+		/** No ride found yet, and no more looking: send the rider to Rides. */
+		get rideLate() {
+			return rideLate;
 		},
 		dismiss() {
 			dismissed = true;

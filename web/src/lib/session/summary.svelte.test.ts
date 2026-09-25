@@ -11,17 +11,21 @@ const served = vi.hoisted(() => ({
 		xp?: number;
 	}[],
 	medals: {} as Record<string, { kind: string }[]>,
+	/** The rides read refuses, as a server having a moment does. */
+	refuse: false,
 }));
 vi.mock('$lib/api', () => ({
 	api: async (path: string) =>
-		path === '/api/rides'
-			? { ok: true, data: { rides: served.rides } }
-			: {
-					ok: true,
-					data: {
-						medals: served.medals[path.replace('/api/rides/', '')] ?? [],
+		path === '/api/rides' && served.refuse
+			? { ok: false, error: { error: 'internal_error', message: 'Not now.' } }
+			: path === '/api/rides'
+				? { ok: true, data: { rides: served.rides } }
+				: {
+						ok: true,
+						data: {
+							medals: served.medals[path.replace('/api/rides/', '')] ?? [],
+						},
 					},
-				},
 }));
 
 // The account re-read a found ride sets off (#2626), recorded, not run.
@@ -253,4 +257,41 @@ it('a dismissed close stays dismissed on the next mount', async () => {
 	await again.go('done');
 	expect(again.summary.card, 'the dismissed summary came back').toBeNull();
 	again.off();
+});
+
+// A save slower than the three looks, or a look that fails, left the summary
+// with no way forward and no word about it (#2631). It now says where the
+// ride lands instead.
+describe('a ride the summary cannot find yet', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+		served.rides = [];
+		served.refuse = false;
+	});
+
+	it('points to Rides once the last look finds nothing', async () => {
+		const t = await setup(() => Date.now());
+		await t.go('running');
+		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		await t.go('done');
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(t.summary.rideLate).toBe(false);
+		await vi.advanceTimersByTimeAsync(7_000);
+		expect(t.summary.rideId).toBeNull();
+		expect(t.summary.rideLate).toBe(true);
+		t.off();
+		vi.useRealTimers();
+	});
+
+	it('points to Rides when a look is refused', async () => {
+		served.refuse = true;
+		const t = await setup(() => Date.now());
+		await t.go('running');
+		ride(t.recording, SUMMARY_MIN_SAMPLES);
+		await t.go('done');
+		await vi.advanceTimersByTimeAsync(3_000);
+		expect(t.summary.rideLate).toBe(true);
+		t.off();
+		vi.useRealTimers();
+	});
 });
