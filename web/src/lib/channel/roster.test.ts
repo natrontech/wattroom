@@ -16,7 +16,7 @@ describe('rosterGroups', () => {
 		);
 		expect(groups.here.map((r) => r.id)).toEqual(['a']);
 		expect(groups.away.map((r) => r.id)).toEqual(['b']);
-		expect(groups.offline.map((m) => m.id)).toEqual(['c']);
+		expect(groups.notHere.map((m) => m.id)).toEqual(['c']);
 	});
 
 	it('splits on pedalling mid-ride', () => {
@@ -41,11 +41,26 @@ describe('rosterGroups', () => {
 		expect(groups.away.map((r) => r.id)).toEqual(['b']);
 	});
 
+	// The last group is members this channel's socket has not got (#2849):
+	// it cannot know they are offline — a friend on Home has the app open —
+	// so it says what it knows, and it never lists you, even with your own
+	// socket refused and no tick yet.
+	it('never files you among the members who are not here', () => {
+		const groups = rosterGroups(
+			false,
+			[],
+			[member('me'), member('b')],
+			new Map(),
+			'me',
+		);
+		expect(groups.notHere.map((m) => m.id)).toEqual(['b']);
+	});
+
 	it('counts a connected rider who is not a member as here, never offline', () => {
 		// The roster is the live truth; the member list can lag a fresh join.
 		const groups = rosterGroups(false, [rider('a', { inVoice: true })], []);
 		expect(groups.here).toHaveLength(1);
-		expect(groups.offline).toEqual([]);
+		expect(groups.notHere).toEqual([]);
 	});
 
 	it("names a member in another of the crew's channels instead of calling them offline (#2536)", () => {
@@ -77,6 +92,6 @@ describe('rosterGroups', () => {
 		expect(groups.elsewhere).toEqual([
 			{ id: 'b', displayName: 'b', channel: 'Garage', status: 'riding' },
 		]);
-		expect(groups.offline.map((m) => m.id)).toEqual(['c']);
+		expect(groups.notHere.map((m) => m.id)).toEqual(['c']);
 	});
 });

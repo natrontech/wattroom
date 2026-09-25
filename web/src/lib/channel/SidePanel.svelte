@@ -25,7 +25,8 @@
 	import { BOARD_MARK } from '$lib/channel/presence-marks';
 	import { rosterGroups, type Elsewhere } from '$lib/channel/roster';
 	import type { ChannelContext } from '$lib/channel/context';
-	import { statusOfRider } from '$lib/status';
+	import { statusOf, statusOfRider } from '$lib/status';
+	import { friends } from '$lib/friends/friends.svelte';
 	import {
 		targetState,
 		type PanelMember,
@@ -61,7 +62,7 @@
 		/**
 		 * Everyone in the crew, connected or not. The tick's roster carries no
 		 * avatar and knows nothing of the members who are away, so the faces and
-		 * the offline group both come from here.
+		 * the not-here group both come from here.
 		 */
 		members?: PanelMember[];
 		/** The jukebox playlist renders into the panel's top slot. */
@@ -79,7 +80,9 @@
 	// Discord's offline half of the member list: the channel is the same
 	// channel when nobody is in it, and a column that says "in the channel — 1"
 	// and stops there hides the six people you ride with (roster.ts).
-	const groups = $derived(rosterGroups(live, riders, members, elsewhere));
+	const groups = $derived(
+		rosterGroups(live, riders, members, elsewhere, account.me?.id),
+	);
 
 	// Every other reaction beside the four (#2692): the crew's own emoji most
 	// of all, which were a cheer only if an admin put them in those four.
@@ -223,7 +226,7 @@
 				name={member.displayName}
 				avatarUrl={member.avatarUrl}
 				xp={member.totalXp}
-				status={where?.status ?? 'offline'}
+				status={where?.status ?? statusOf([], member.id, friends.list)}
 				size={22}
 			/>
 			<span class="flex min-w-0 flex-1 items-center gap-1">
@@ -257,11 +260,11 @@
 		aria-label="resize the panel"
 	></div>
 	<div class="flex h-full flex-col">
-		{#if riders.length > 0 || groups.elsewhere.length > 0 || groups.offline.length > 0}
+		{#if riders.length > 0 || groups.elsewhere.length > 0 || groups.notHere.length > 0}
 			<!-- Everyone the crew HAS, in the three groups roster.ts decides. The
-			     headings say which question the split answers, and the ones who
-			     are not connected sit last, greyed. -->
-			{@const { here, away, elsewhere: others, offline } = groups}
+			     headings say which question the split answers, and the ones this
+			     channel has not got sit last, greyed. -->
+			{@const { here, away, elsewhere: others, notHere } = groups}
 			<div class="border-ink/5 min-h-0 flex-1 overflow-y-auto border-b">
 				{#if here.length > 0}
 					<div class="eyebrow flex items-center gap-1.5 px-3 pt-3 pb-1">
@@ -303,10 +306,12 @@
 							)}{/each}
 					</ul>
 				{/if}
-				{#if offline.length > 0}
-					<div class="eyebrow px-3 pt-3 pb-1">offline — {offline.length}</div>
+				{#if notHere.length > 0}
+					<!-- Not "offline" (#2849): this channel only knows they are not
+					     in it. A friend's dot says more, from the friends list. -->
+					<div class="eyebrow px-3 pt-3 pb-1">not here — {notHere.length}</div>
 					<ul class="px-1 pb-2">
-						{#each offline as member (member.id)}{@render absent(member)}{/each}
+						{#each notHere as member (member.id)}{@render absent(member)}{/each}
 					</ul>
 				{/if}
 			</div>
