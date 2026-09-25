@@ -418,3 +418,60 @@ test('a phone follows a session link and watches it run', async ({
 		phone.getByRole('heading', { name: 'This session has ended' }),
 	).toBeVisible();
 });
+
+/**
+ * A phone in a voice channel with a session running is offered the way to
+ * watch it (#2635). The Lounge holds the ride link back from a device that
+ * cannot ride (#1627), and since #2450 the session's watch page is the
+ * phone's view — so the phone had no way there from the channel at all.
+ * This is the project's own phone, a real spectator; `riders()` contexts are
+ * desks at phone width, which see the ride link instead.
+ */
+test('a phone in the voice channel is offered the running session to watch', async ({
+	page,
+	riders,
+	channels,
+}) => {
+	test.skip(
+		!!process.env.PLAYWRIGHT_BASE_URL,
+		'the ?as= dev provider only exists on a dev server',
+	);
+	const coach = await riders('Watch Coach');
+	await coach.setViewportSize({ width: 1440, height: 900 });
+	const opened = await channels.open(
+		coach,
+		`Watch Link ${Date.now() % 100000}`,
+	);
+	await coach.goto(`${voicePath(opened)}/training`);
+	await coach
+		.getByRole('button', { name: 'Ride simulated' })
+		.click({ timeout: 15_000 });
+	await coach.getByRole('button', { name: 'Start a session' }).click();
+	await coach
+		.getByRole('textbox', { name: 'find a workout' })
+		.fill('Recovery Spin');
+	await coach
+		.getByRole('button', { name: /Recovery Spin/ })
+		.first()
+		.click();
+	await coach.getByRole('button', { name: 'Start Recovery Spin' }).click();
+	await coach.waitForURL(new RegExp(`/crew/${opened.crew}/s/[^/]+$`), {
+		timeout: 15_000,
+	});
+	const session = new URL(coach.url()).pathname;
+
+	await signInAs(page, 'Watch Phone', '/home');
+	await channels.enter(page, opened);
+	const watch = page.getByRole('link', { name: 'Watch the session' });
+	await expect(watch).toHaveAttribute('href', `${session}/watch`, {
+		timeout: 15_000,
+	});
+	await expect(page.getByRole('link', { name: 'Join the ride' })).toHaveCount(
+		0,
+	);
+	await watch.click();
+	await page.waitForURL(new RegExp(`${session}$`), { timeout: 15_000 });
+	await expect(page.getByText('Recovery Spin').first()).toBeVisible({
+		timeout: 15_000,
+	});
+});

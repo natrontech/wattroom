@@ -10,6 +10,7 @@
 	import NotifyOffer from '$lib/components/NotifyOffer.svelte';
 	import TogetherTiles from '$lib/components/TogetherTiles.svelte';
 	import { voiceChannelPath } from '$lib/channels';
+	import { sessionPath } from '$lib/channel/address';
 	import { fetchCrewMembers, fetchCrewRecaps, type Crew } from '$lib/crew';
 	import {
 		answerCrewPlan,
@@ -154,8 +155,10 @@
 								.length} riding · {formatClock(session.elapsed)}
 						</p>
 					</div>
+					<!-- The session's own page, as Home and the start notification
+					     go (#1332, #2635): one door, one place it leads. -->
 					<a
-						href={voiceChannelPath(crew.id, channel.id)}
+						href={sessionPath(crew.id, session.id)}
 						class="btn btn-accent btn-lg">Join the ride</a
 					>
 				</li>
