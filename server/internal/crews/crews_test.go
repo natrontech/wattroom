@@ -210,6 +210,35 @@ func TestTheSuccessorInheritsWithAPlainMemberRow(t *testing.T) {
 	}
 }
 
+// A founder who deletes their account leaves founded_by NULL on the crew
+// they handed on (#2815). The successor's crew list must still load — it
+// answered 500 for everyone left in the crew, on every crew they were in.
+func TestACrewOutlivesItsFoundersAccountInTheCrewList(t *testing.T) {
+	h := setup(t)
+	crew := h.newCrew(t, "alice", "Crew Founder Gone")
+	h.join(t, "bob", crew)
+	alice := h.users.ByToken["alice"].ID
+	if err := h.svc.ReleaseCrews(t.Context(), h.store.Queries, alice); err != nil {
+		t.Fatalf("release: %v", err)
+	}
+	if _, err := h.store.Pool.Exec(t.Context(), "delete from users where id = $1", alice); err != nil {
+		t.Fatalf("delete the founder: %v", err)
+	}
+
+	status, body := h.call(t, "bob", http.MethodGet, "/api/crews", "")
+	if status != http.StatusOK {
+		t.Fatalf("the successor's crew list: %d %v", status, body)
+	}
+	crews, _ := body["crews"].([]any)
+	if len(crews) != 1 {
+		t.Fatalf("crews = %v, want the one bob inherited", body)
+	}
+	got, _ := crews[0].(map[string]any)
+	if got["founded"] == true || got["role"] != "owner" {
+		t.Errorf("bob's inherited crew reads founded=%v role=%v, want not founded and owner", got["founded"], got["role"])
+	}
+}
+
 // The door (#1236) knows its own: a member following the crew's link again
 // is told they are in and handed the way in; a stranger is not handed the
 // crew's id, which is not theirs to know until they join.

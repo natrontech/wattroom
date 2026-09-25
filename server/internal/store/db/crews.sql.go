@@ -515,7 +515,8 @@ select c.id, c.name, c.icon,
        coalesce(c.code, '')::text as code,
        (c.renamed_at is not null)::boolean as named,
        (c.owner_id = $1)::boolean as owned,
-       (c.founded_by = $1)::boolean as founded,
+       -- founded_by is NULL once the founder deleted their account (#2815).
+       coalesce(c.founded_by = $1, false)::boolean as founded,
        exists (select 1 from crew_roles cr
                where cr.crew_id = c.id and cr.user_id = $1 and cr.role = 'admin')::boolean as admin
 from crews c
