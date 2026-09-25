@@ -1,3 +1,7 @@
+<script lang="ts">
+	import { liveNumbersLine } from '$lib/privacy-copy';
+</script>
+
 <svelte:head>
 	<title>Privacy policy · WattRoom</title>
 </svelte:head>
@@ -9,10 +13,10 @@
 
 <p class="text-muted mt-6 text-sm leading-relaxed">
 	Privacy on WattRoom is architecture, not a settings page: live metrics stay
-	inside the session you ride in, audio and video are never recorded, and rides
-	are private by default. This page spells out what that means in GDPR and Swiss
-	revDSG terms. WattRoom is open source, so every claim here can be checked
-	against the
+	inside the voice channel you ride in, audio and video are never recorded, and
+	rides are private by default. This page spells out what that means in GDPR and
+	Swiss revDSG terms. WattRoom is open source, so every claim here can be
+	checked against the
 	<a
 		href="https://github.com/natrontech/wattroom"
 		class="hover:text-ink underline">code</a
@@ -63,11 +67,12 @@
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Heart rate is health data</strong>
-			and is treated accordingly: it is visible live, only inside the session you
-			ride in, only while it runs. It never appears in shared ride artifacts and is
-			never scored. You consent by pairing a heart-rate monitor. A trainer can also
-			relay one that is bonded to it, with nothing paired here — so your riding screen
-			says whenever your heart rate is being shared, from either, and
+			and is treated accordingly: it is visible live, only to whoever has the voice
+			channel you ride in open, only while you ride there. It never appears in shared
+			ride artifacts and is never scored. You consent by pairing a heart-rate monitor.
+			A trainer can also relay one that is bonded to it, with nothing paired here
+			— so your riding screen says whenever your heart rate is being shared, from
+			either, and
 			<strong class="text-ink font-medium">Stop sharing</strong> there ends it at
 			once. Unpairing ends it too.
 		</li>
@@ -123,9 +128,7 @@
 	</h2>
 	<p class="text-muted mt-2 text-sm leading-relaxed">
 		No analytics, no tracking pixels, no error-tracking services, no ads, no
-		selling or sharing of data, no public leaderboards. Your live metrics are
-		session-scoped: visible only to the riders in your session and whoever is in
-		its voice channel, only while it runs.
+		selling or sharing of data, no public leaderboards. {liveNumbersLine}
 	</p>
 </section>
 
@@ -145,11 +148,11 @@
 		<li>
 			<strong class="text-ink font-medium">Your crew</strong> sees your display
 			name, avatar and level, and which of its voice channels you are in.
-			<strong class="text-ink font-medium">People in your session</strong> — riding
-			it with you, or in its voice channel — see your live power and cadence while
-			you ride, and your heart rate — from a monitor you paired, or relayed by your
-			trainer — unless you stopped sharing it, only inside the session and only while
-			it runs.
+			<strong class="text-ink font-medium">People in your voice channel</strong> —
+			whoever has it open while you ride there, in a session or on a free ride, in
+			the call or not — see your live power and cadence, and your heart rate — from
+			a monitor you paired, or relayed by your trainer — unless you stopped sharing
+			it, only while you ride there.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Your rider page</strong> is visible to

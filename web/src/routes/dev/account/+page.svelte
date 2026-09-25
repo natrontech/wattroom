@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Logo from '$lib/brand/Logo.svelte';
 	import FtpPrompt from '$lib/components/FtpPrompt.svelte';
+	import { liveNumbersLine } from '$lib/privacy-copy';
 
 	let signedIn = $state(true);
 	let confirmDelete = $state(false);
@@ -103,9 +104,7 @@
 			<h2 class="font-display font-bold">Your data</h2>
 			<ul class="text-muted mt-3 space-y-1.5 text-xs">
 				<li>Rides are private by default — sharing is per ride, and opt-in.</li>
-				<li>
-					Live power is visible only inside a session, only while it runs.
-				</li>
+				<li>{liveNumbersLine}</li>
 				<li>
 					Voice and camera are never recorded. They pass through and are gone.
 				</li>

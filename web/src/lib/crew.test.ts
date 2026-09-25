@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { crewDoorDisclosure } from './crew';
+import { liveNumbersLine } from './privacy-copy';
 import { FILES, code } from './source-scan.test-helper';
 
 describe('crewDoorDisclosure (#2456)', () => {
@@ -29,9 +30,7 @@ describe('crewDoorDisclosure (#2456)', () => {
 
 	it('keeps the standing privacy line either way', () => {
 		for (const door of [{ boardEnabled: true }, { boardEnabled: false }]) {
-			expect(crewDoorDisclosure(door).privacy).toMatch(
-				/visible to the session you ride in, while you ride, and nowhere else/,
-			);
+			expect(crewDoorDisclosure(door).privacy).toContain(liveNumbersLine);
 		}
 	});
 });

@@ -10,6 +10,7 @@
 	import { api, apiBlob } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
 	import { downloadBlob } from '$lib/download';
+	import { liveNumbersLine } from '$lib/privacy-copy';
 
 	// Failures are said where the button is (errors.md): the page's own
 	// status line at the far end of the page held a fixed sentence while
@@ -58,7 +59,7 @@
 	<h2 class="font-display font-bold">Your data</h2>
 	<ul class="text-muted mt-3 space-y-1.5 text-xs">
 		<li>Rides are private by default — sharing is per ride, and opt-in.</li>
-		<li>Live power is visible only inside a session, only while it runs.</li>
+		<li>{liveNumbersLine}</li>
 		<li>
 			Voice and camera are never recorded. They pass through and are gone.
 		</li>
