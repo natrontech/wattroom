@@ -48,7 +48,7 @@ func (s *Service) handleFoundCrew(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", crewNameRule, "name")
 		return
 	}
-	var crew db.Crew
+	var crew db.FoundCrewRow
 	var err error
 	// The code is the crew's invite (#1236) and the unique index is the check;
 	// a collision aborts the transaction, so the whole founding retries.

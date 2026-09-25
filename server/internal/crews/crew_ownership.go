@@ -21,22 +21,22 @@ import (
 // docs/SPEC.md's successor, and with nobody left the crew goes — and the
 // room rows still pointing at it with it (rooms.crew_id cascades since
 // #2558).
-func (s *Service) releaseCrew(ctx context.Context, q *db.Queries, crew db.Crew) error {
-	next, err := q.PickCrewSuccessor(ctx, db.PickCrewSuccessorParams{CrewID: crew.ID, Departing: crew.OwnerID})
+func (s *Service) releaseCrew(ctx context.Context, q *db.Queries, crew, owner pgtype.UUID) error {
+	next, err := q.PickCrewSuccessor(ctx, db.PickCrewSuccessorParams{CrewID: crew, Departing: owner})
 	if errors.Is(err, pgx.ErrNoRows) {
-		if err := q.DeleteCrew(ctx, crew.ID); err != nil {
+		if err := q.DeleteCrew(ctx, crew); err != nil {
 			return err
 		}
-		s.log.Info("crew deleted", "crew", store.UUIDString(crew.ID))
+		s.log.Info("crew deleted", "crew", store.UUIDString(crew))
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	if err := makeOwner(ctx, q, crew.ID, next); err != nil {
+	if err := makeOwner(ctx, q, crew, next); err != nil {
 		return err
 	}
-	s.log.Info("crew transferred", "crew", store.UUIDString(crew.ID), "to", store.UUIDString(next))
+	s.log.Info("crew transferred", "crew", store.UUIDString(crew), "to", store.UUIDString(next))
 	return nil
 }
 
@@ -64,7 +64,7 @@ func (s *Service) ReleaseCrews(ctx context.Context, q *db.Queries, user pgtype.U
 		return err
 	}
 	for _, crew := range crews {
-		if err := s.releaseCrew(ctx, q, crew); err != nil {
+		if err := s.releaseCrew(ctx, q, crew.ID, crew.OwnerID); err != nil {
 			return err
 		}
 	}
