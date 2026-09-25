@@ -107,6 +107,14 @@ export async function api<T>(
 	);
 }
 
+/**
+ * How long a route's read may take before it is an error (#2845). A load()
+ * holds the whole page until it answers, so a read that hangs held it for
+ * ever; this turns one into the page's error state and its Retry. Generous:
+ * it is there for a server that has stopped answering, not a slow one.
+ */
+const LOAD_TIMEOUT_MS = 15_000;
+
 /** Use SvelteKit's navigation-aware fetch from a route load function. */
 export async function loadApi<T>(
 	fetcher: Fetcher,
@@ -114,13 +122,15 @@ export async function loadApi<T>(
 	init?: ApiInit,
 ): Promise<ApiResult<T>> {
 	const { json, ...rest } = init ?? {};
+	const signal = rest.signal ?? AbortSignal.timeout(LOAD_TIMEOUT_MS);
 	return request<T>(
 		fetcher,
 		path,
 		json === undefined
-			? rest
+			? { ...rest, signal }
 			: {
 					...rest,
+					signal,
 					headers: { 'content-type': 'application/json', ...rest.headers },
 					body: JSON.stringify(json),
 				},

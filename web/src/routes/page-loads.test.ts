@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { load as loadHistory, type HistoryPageData } from './history/+page';
-import { load as loadSettings } from './settings/+layout';
+import { buildLine } from '$lib/build-line';
 import { load as loadData } from './settings/data/+page';
 import {
 	load as loadProfile,
@@ -92,16 +92,18 @@ describe('route page loads', () => {
 		expect(data.tokens).toEqual([]);
 	});
 
-	it('the settings layout reads the build for its footer', async () => {
-		const { fetch } = fetchMap({
-			'/api/version': { commit: 'abc123', version: '2026.09.1' },
+	it('the settings footer names the release, or the commit of a dev build', () => {
+		// Read by the layout itself now, not a load() that held every
+		// settings page until it answered (#2845).
+		expect(buildLine({ commit: 'abc123', version: '2026.09.1' })).toEqual({
+			version: 'abc123',
+			release: '2026.09.1',
 		});
-		const data = (await loadSettings({ fetch } as never)) as {
-			version: string | null;
-			release: string | null;
-		};
-		expect(data.version).toBe('abc123');
-		expect(data.release).toBe('2026.09.1');
+		expect(buildLine({ commit: 'abc123', version: 'dev' })).toEqual({
+			version: 'abc123',
+			release: null,
+		});
+		expect(buildLine(null)).toEqual({ version: null, release: null });
 	});
 
 	// /u/me (#1330): one read to learn who "me" is, then the two the page

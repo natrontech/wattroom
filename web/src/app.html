@@ -25,6 +25,46 @@
 		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
+		<!-- The frame held with the mark until the app draws itself (#2845).
+		     ssr is off, so a route whose load() is waiting on the server
+		     renders nothing at all until it answers — on a cold server, a
+		     void the rider reads as broken (errors.md). The root layout
+		     removes this the moment it mounts, and holds the same frame
+		     itself while /api/me answers. -->
+		<style>
+			#boot {
+				position: fixed;
+				inset: 0;
+				display: grid;
+				place-items: center;
+				text-align: center;
+				font:
+					14px/1.4 system-ui,
+					sans-serif;
+				background: var(--color-surface, #f6f2fa);
+				color: var(--color-muted, #60548a);
+			}
+			@media (prefers-color-scheme: dark) {
+				#boot {
+					background: var(--color-surface, #0a0118);
+					color: var(--color-muted, #9182b8);
+				}
+			}
+		</style>
+		<div id="boot" aria-busy="true">
+			<div>
+				<svg viewBox="0 0 64 64" width="40" height="40" aria-hidden="true">
+					<g fill="var(--color-watt, #e6247d)">
+						<rect x="2" y="12" width="8" height="46" rx="4" />
+						<rect x="15" y="38" width="8" height="20" rx="4" />
+						<rect x="28" y="24" width="8" height="34" rx="4" />
+						<rect x="41" y="38" width="8" height="20" rx="4" />
+						<rect x="54" y="12" width="8" height="46" rx="4" />
+					</g>
+				</svg>
+				<p style="margin-top: 16px">Opening WattRoom…</p>
+			</div>
+		</div>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>
