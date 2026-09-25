@@ -14,7 +14,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"slices"
 	"sync"
 
 	"github.com/coder/websocket"
@@ -174,10 +173,16 @@ func (h *Hub) ReadChanged(userID string) {
 // (ADR-0058), from a stranger holding an old id as much as from a banned or
 // un-named member.
 func (h *Hub) ChannelChanged(channelID string, audience []string) {
+	// A set built outside the lock: a crew can be large, and the loop below
+	// runs under the hub's one mutex.
+	may := make(map[string]bool, len(audience))
+	for _, userID := range audience {
+		may[userID] = true
+	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for c, userID := range h.lobby {
-		if slices.Contains(audience, userID) {
+		if may[userID] {
 			c.queue(channelID)
 		}
 	}

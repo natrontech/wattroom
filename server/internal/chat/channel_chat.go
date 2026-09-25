@@ -81,7 +81,8 @@ func (s *Service) changedIn(ctx context.Context, channel db.Channel) {
 		return
 	}
 	id := store.UUIDString(channel.ID)
-	rows, err := s.store.Queries.ChannelAudience(ctx, channel.ID)
+	// The write is stored whether or not its poster is still connected.
+	rows, err := s.store.Queries.ChannelAudience(context.WithoutCancel(ctx), channel.ID)
 	if err != nil {
 		// The line is stored; readers see it on their next load.
 		s.log.Warn("channel audience lookup failed", "channel", id, "err", err)
