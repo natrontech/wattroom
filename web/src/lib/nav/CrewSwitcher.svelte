@@ -294,7 +294,7 @@
 						<span class="truncate font-medium">{c.name}</span>
 						<span class="ml-auto flex shrink-0 items-center gap-2">
 							{#if pulse.riding}
-								<span class="text-watt/90 flex items-center gap-1"
+								<span class="text-ink flex items-center gap-1"
 									><RidingBars size={8} />{pulse.riding} riding</span
 								>
 							{/if}

@@ -140,7 +140,7 @@
 			{#if view.shape === 'live'}
 				<p class="mt-0.5 truncate text-xs">{args.device}</p>
 				{#if args.reading}
-					<p class="font-display text-watt text-sm font-bold tabular-nums">
+					<p class="font-display text-ink text-sm font-bold tabular-nums">
 						{args.reading}
 					</p>
 				{/if}

@@ -163,7 +163,7 @@
 {#snippet frame(title: string, note: string, accent: boolean)}
 	<div class="flex w-80 shrink-0 flex-col gap-2">
 		<div class="flex items-baseline gap-2">
-			<span class="font-display text-sm {accent ? 'text-neon' : 'text-ink'}"
+			<span class="font-display text-ink text-sm {accent ? 'font-bold' : ''}"
 				>{title}</span
 			>
 		</div>

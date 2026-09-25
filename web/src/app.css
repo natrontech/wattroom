@@ -205,7 +205,9 @@ body {
 /* Accent affordance — the one chrome exception ADR-0005 allows: an affordance
  * that *creates* live data (start ride, go live). Border only, never a fill. */
 @utility btn-accent {
-	@apply border-watt/40 text-watt hover:bg-watt/10 border;
+	/* The accent is the frame and the tint, never the word (#1965, #2858):
+	 * watt is gated at 3:1 and the label is small. */
+	@apply border-watt/40 text-ink hover:bg-watt/10 border;
 }
 @utility btn-xs {
 	@apply px-3 py-1.5 text-xs;

@@ -121,9 +121,7 @@
 								{point.label}
 							</div>
 							{#if point.best}
-								<div
-									class="text-watt mt-1 text-[10px] tracking-wider uppercase"
-								>
+								<div class="text-ink mt-1 text-[10px] tracking-wider uppercase">
 									90-day best
 								</div>
 							{/if}

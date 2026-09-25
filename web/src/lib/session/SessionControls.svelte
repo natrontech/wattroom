@@ -138,10 +138,13 @@
 					disabled={!!channel.sprint}
 					title={channel.sprint ? 'A sprint is already running' : 'Sprint'}
 					aria-label="arm a sprint"
-					class="text-neon hover:bg-neon/10 flex items-center justify-center gap-1.5 rounded text-sm disabled:opacity-40 {compact
+					class="text-ink hover:bg-neon/10 flex items-center justify-center gap-1.5 rounded text-sm disabled:opacity-40 {compact
 						? 'h-11 w-11'
 						: 'min-h-11 px-4'}"
-					><Zap size={compact ? 18 : 14} />{#if !compact}Sprint{/if}</button
+					><Zap
+						size={compact ? 18 : 14}
+						class="text-neon"
+					/>{#if !compact}Sprint{/if}</button
 				>
 				<button
 					onclick={() => channel.control('pause')}

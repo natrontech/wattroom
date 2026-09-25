@@ -82,9 +82,12 @@
 		{#if recap.rideId}
 			<a
 				href="/history/{recap.rideId}"
-				class="text-neon hover:text-ink mt-3 inline-flex items-center gap-1 text-[11px] underline-offset-2 hover:underline"
+				class="text-ink mt-3 inline-flex items-center gap-1 text-[11px] underline-offset-2 hover:underline"
 			>
-				Your numbers from this session <ArrowRight size={12} />
+				Your numbers from this session <ArrowRight
+					size={12}
+					class="text-neon"
+				/>
 			</a>
 		{/if}
 		<p class="text-muted-dim mt-2 flex items-center gap-3 text-[10px]">

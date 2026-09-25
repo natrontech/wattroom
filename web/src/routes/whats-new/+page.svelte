@@ -55,7 +55,7 @@
 						<h2 class="font-display text-lg font-bold">{release.version}</h2>
 						<span class="eyebrow">{release.date}</span>
 						{#if release.version === changelog.version}
-							<span class="eyebrow text-neon">running now</span>
+							<span class="eyebrow text-ink">running now</span>
 						{/if}
 					</div>
 					<!-- Unkeyed on purpose: these are render-only lists whose content repeats.

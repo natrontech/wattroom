@@ -79,7 +79,8 @@
 			</div>
 			{#if due && device.spectator}
 				<!-- The cockpit stays on the screen a coach rides on (#1767). -->
-				<span class="text-watt glow-text text-xs">starting soon</span>
+				<!-- A word, not live data: no watt, no glow (ADR-0005, #2858). -->
+				<span class="text-ink text-xs font-medium">starting soon</span>
 			{:else if due && canStart}
 				<span class="flex flex-wrap items-center gap-2">
 					{#if unpaired}<TrainerOverview compact />{/if}
