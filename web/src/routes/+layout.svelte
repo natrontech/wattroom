@@ -9,7 +9,7 @@
 	import '@fontsource/chakra-petch/700.css';
 	import { dev } from '$app/environment';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
+	import { navigating, page } from '$app/state';
 	import { device } from '$lib/device.svelte';
 	import { account } from '$lib/account.svelte';
 	import { noteNewAccount } from '$lib/auth/new-account';
@@ -66,6 +66,9 @@
 	// The desktop shell hides the OS title bar and this app draws the strip
 	// (#1188): the window's handle, in the app's own colour. 0 in a browser.
 	const titleBar = shellTitleBar();
+	// app.html's held frame (#2845) stood in until this mounted; this layout
+	// holds its own from here.
+	document.getElementById('boot')?.remove();
 	// Notifications answer back (ADR-0042): a click lands in the
 	// conversation, a reply from the shell's own notification is sent.
 	notify.listen((href) => void goto(href));
@@ -331,6 +334,19 @@
 	     bundle. A link here would only be a second, hashed copy. -->
 </svelte:head>
 
+{#if navigating.to}
+	<!-- A client navigation waits for the next page's reads, and the page it
+	     leaves stays up meanwhile (#2845): without this, a tap in the sidebar
+	     looked like it had done nothing. Chrome, so neon and no glow
+	     (ADR-0005); it shows only once a navigation outlasts a blink. -->
+	<div
+		role="progressbar"
+		aria-label="Loading the page"
+		class="nav-pending bg-neon fixed inset-x-0 z-[70] h-0.5"
+		style="top: {titleBar}px"
+	></div>
+{/if}
+
 {#if titleBar}
 	<!-- The window's handle: drag, double-click to zoom. It sits over every
 	     page, and the framed layout below starts under it so the traffic
@@ -543,3 +559,17 @@
 	devices={devicePicker.devices}
 	onpick={(id) => devicePicker.pick(id)}
 />
+
+<style>
+	/* Past a blink only: a navigation the hover preload already answered
+	   should not flash a bar. */
+	.nav-pending {
+		opacity: 0;
+		animation: nav-pending-show 0s 150ms forwards;
+	}
+	@keyframes nav-pending-show {
+		to {
+			opacity: 1;
+		}
+	}
+</style>

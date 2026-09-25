@@ -5,12 +5,18 @@
 	// linked to from wherever it is needed — the voice channel's Sound panel, a
 	// suggested FTP, the first-run card.
 	import { page } from '$app/state';
-	import type { LayoutData } from './$types';
+	import { api } from '$lib/api';
+	import { buildLine } from '$lib/build-line';
 
-	let {
-		data,
-		children,
-	}: { data: LayoutData; children: import('svelte').Snippet } = $props();
+	let { children }: { children: import('svelte').Snippet } = $props();
+
+	// The footer's build line (#345). Read here, not in a load(), which held
+	// every settings page — Appearance and Voice included — until this
+	// decorative line answered (#2845).
+	let data = $state(buildLine(null));
+	void api<{ commit: string; version?: string }>('/api/version').then((res) => {
+		if (res.ok) data = buildLine(res.data);
+	});
 
 	const SECTIONS = [
 		{ href: '/settings/profile', label: 'Profile' },
