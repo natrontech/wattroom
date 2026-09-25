@@ -105,6 +105,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: the tag and the shell's version agree
         if: startsWith(github.ref, 'refs/tags/')
         run: |
@@ -151,6 +153,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # Fail here rather than four minutes later inside electron-builder, and
       # name what is missing. See the header for why unsigned is not an option

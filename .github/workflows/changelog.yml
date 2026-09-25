@@ -21,6 +21,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Read-only: see the note in ci.yml (#2806).
+permissions:
+  contents: read
+
 jobs:
   changelog:
     if: >-
@@ -30,6 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       # An entry that does not begin with "- " is not a list item, so Markdown

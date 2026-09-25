@@ -28,6 +28,10 @@ concurrency:
   group: feedback-canary
   cancel-in-progress: false
 
+# No token at all: the job checks nothing out, and both things it talks to
+# take their own secret, below (#2806; the note in ci.yml has the why).
+permissions: {}
+
 jobs:
   canary:
     # A fork has neither the secret nor any business posting to production.

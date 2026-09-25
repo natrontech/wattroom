@@ -14,6 +14,23 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Read-only, and this is the canonical note for every workflow here (#2806).
+# A workflow that names no permissions inherits the repository default, which
+# can write contents, packages, actions and issues — and every job below runs
+# other people's code with that token in reach: pnpm install, svelte-check,
+# vitest, go test over third-party modules. One compromised package could then
+# push an image to ghcr.io/natrontech/wattroom under the next CalVer tag, or
+# cut a Release. Nothing in this file writes, so nothing gets more; a job that
+# does write widens its own block, as publish.yml's image job does, never the
+# top. The docs job below fails a workflow that forgets.
+#
+# Every checkout sets `persist-credentials: false` for the same reason: no job
+# pushes with git, and without it the token stays in .git/config for every
+# later step to read. That is defence in depth only — a process on the runner
+# can still find the token in memory — so the block below is what matters.
+permissions:
+  contents: read
+
 jobs:
   server:
     runs-on: ubuntu-latest
@@ -37,6 +54,8 @@ jobs:
         working-directory: server
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: server/go.mod
@@ -84,6 +103,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: golang/govulncheck-action@032d45514ae346b1db93c04b0c90b841c370344f # v1.1.0
         with:
           work-dir: server
@@ -98,6 +119,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: ADR numbers are unique
         run: |
           dupes=$(ls docs/decisions/ | cut -d- -f1 | sort | uniq -d)
@@ -195,6 +218,55 @@ jobs:
           fi
           echo "Every action is pinned to a commit."
 
+      # Keeps the permissions note at the top of this file true (#2806). A new
+      # workflow written out of habit names no permissions, inherits the
+      # repository's write default, and hands it to every dependency its jobs
+      # install — silently, because every job still goes green. So every
+      # workflow says what its token may do at the top, and the top never
+      # grants a write: that is the job's own block, where the reason can sit
+      # beside it. In `docs` for the reason the pin check gives.
+      - name: Every workflow starts from a read-only token
+        run: |
+          bad=()
+          for f in .github/workflows/*.yml .github/workflows/*.yaml; do
+            [ -e "$f" ] || continue
+            # Column 0 is YAML's top level; the block ends at the next key.
+            verdict=$(awk '
+              { sub(/#.*/, "") }
+              /^permissions:/ { found = 1; top = 1; if (/write/) wide = 1; next }
+              top && /^[^[:space:]]/ { top = 0 }
+              top && /:[[:space:]]*write/ { wide = 1 }
+              END { print (!found ? "missing" : wide ? "write" : "ok") }
+            ' "$f")
+            case "$verdict" in
+              missing) bad+=("$f names no top-level permissions") ;;
+              write) bad+=("$f grants a write at the top level") ;;
+            esac
+          done
+          if [ ${#bad[@]} -gt 0 ]; then
+            printf '    %s\n' "${bad[@]}" >&2
+            cat >&2 <<'MSG'
+
+          A workflow that names no permissions inherits the repository default,
+          which can write contents, packages, actions and issues, and a write
+          granted at the top reaches every job in the file, including the ones
+          that install and run other people's code. Start from read, and widen
+          only the job that writes:
+
+              permissions:
+                contents: read
+
+              jobs:
+                release:
+                  permissions:
+                    contents: write # gh release create
+
+          A workflow that never uses GITHUB_TOKEN takes `permissions: {}`.
+          MSG
+            exit 1
+          fi
+          echo "Every workflow starts from a read-only token."
+
       # A rule that selects a label the scrape never produces does not fail. It
       # stays silent, exactly like a healthy one, and the job-staleness rules
       # did that from the day they were written (#2679). In `docs` for the
@@ -232,6 +304,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: a new migration older than the base branch's newest
         run: |
@@ -266,6 +339,8 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # Not `pnpm/setup`, and this is the canonical note for all five call
       # sites (#2375). `pnpm/setup` is real and maintained, but it is not the
       # successor this action was briefly said to have: action-setup's README
@@ -343,6 +418,8 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       # Not `pnpm/setup` — see the note in ci.yml's `web` job (#2375).
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
