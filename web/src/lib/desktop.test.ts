@@ -301,6 +301,7 @@ describe('the tray’s voice channel and its way back (#1313)', () => {
 		// that turns a menu item into an open redirect.
 		handler('https://evil.example/');
 		handler('//evil.example/');
+		handler('/\\evil.example/');
 		handler(42);
 		handler('/r/tuesday');
 		expect(went).toEqual(['/r/tuesday']);

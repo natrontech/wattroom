@@ -1,4 +1,5 @@
 import { EMOJI_NAME } from '$lib/emoji/crew-emoji.svelte';
+import { sameOriginPath } from '$lib/same-origin';
 
 /** One run of chat text: plain, a link, or marked up. Marks don't nest. */
 export type Part = {
@@ -41,13 +42,8 @@ export function parseInline(text: string, origin: string): Part[] {
 		cut = match.index + match[0].length;
 		if (g.url !== undefined) {
 			// Same-origin links stay in the SPA (crew invites); the rest open away.
-			const internal =
-				origin !== '' && (g.url === origin || g.url.startsWith(origin + '/'));
-			parts.push({
-				text: g.url,
-				href: internal ? g.url.slice(origin.length) || '/' : g.url,
-				external: !internal,
-			});
+			const path = ownPath(g.url, origin);
+			parts.push({ text: g.url, href: path ?? g.url, external: path === null });
 		} else if (g.code !== undefined) parts.push({ text: g.code, code: true });
 		else if (g.emoji !== undefined)
 			parts.push({ text: match[0], emoji: g.emoji });
@@ -59,4 +55,20 @@ export function parseInline(text: string, origin: string): Part[] {
 	}
 	if (cut < text.length) parts.push({ text: text.slice(cut) });
 	return parts;
+}
+
+/**
+ * The in-app path a URL on `origin` names, or null. The origin alone is not
+ * enough (#2817): "<origin>//evil.example" keeps the origin, and its path
+ * is protocol-relative once the origin is sliced off.
+ */
+function ownPath(url: string, origin: string): string | null {
+	if (origin === '') return null;
+	try {
+		const u = new URL(url);
+		const path = u.pathname + u.search + u.hash;
+		return u.origin === origin && sameOriginPath(path, origin) ? path : null;
+	} catch {
+		return null;
+	}
 }

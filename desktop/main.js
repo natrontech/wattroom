@@ -763,6 +763,7 @@ ipcMain.on('wattroom:hud', (event, on) => {
 const clip = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
 // A path on our origin: one slash, and not a second slash OR a backslash
 // behind it — the URL parser reads `/\evil` as `//evil` (#1946).
+// The web app asks the same of its paths in web/src/lib/same-origin.ts.
 const ownPath = (v) =>
 	typeof v === 'string' && v.startsWith('/') && !/^\/[\/\\]/.test(v) ? v : '';
 
