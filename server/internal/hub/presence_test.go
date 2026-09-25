@@ -2,6 +2,7 @@ package hub
 
 import (
 	"log/slog"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -296,5 +297,26 @@ func TestComingBackCarriesNoReason(t *testing.T) {
 	}
 	if _, still := rm.away["r-kim"]; still {
 		t.Error("the rider is still marked away")
+	}
+}
+
+// A session's live line names the riders who joined it (ADR-0059, #2853).
+// It named everyone standing in the channel, so a spectator made the crew
+// page say "3 riding" while two rode.
+func TestALiveSessionNamesOnlyItsRiders(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	rm := h.room("session-count")
+	for _, c := range []*client{socket("r-ana", "Ana"), socket("r-kim", "Kim"), socket("r-sofa", "Sofa")} {
+		rm.join(c)
+	}
+	rm.session.pick("Openers", "{}", 3600)
+	joinRide(rm, "r-ana", "r-kim")
+	rm.session.start(h.now())
+	live, ok := h.LiveSession("session-count")
+	if !ok {
+		t.Fatal("no live session")
+	}
+	if !slices.Equal(live.RiderIDs, []string{"r-ana", "r-kim"}) || !slices.Equal(live.Riders, []string{"Ana", "Kim"}) {
+		t.Fatalf("the session names %v %v — want Ana and Kim, not the spectator", live.Riders, live.RiderIDs)
 	}
 }

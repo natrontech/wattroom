@@ -107,9 +107,11 @@ func (h *Hub) Occupants(channel string) []string {
 }
 
 // LiveSession is the session running in a voice channel right now (#2438):
-// false while none is counting down, running or paused. The riders are who
-// stands in the channel, by name and id — the channel's own live data, which
-// the caller answers only to someone who may enter it.
+// false while none is counting down, running or paused. The riders are the
+// session's own (ADR-0059): who joined it and stands in the channel now, by
+// name and id. A spectator in the channel is not riding it (#2853). The
+// channel's own live data, which the caller answers only to someone who may
+// enter it.
 func (h *Hub) LiveSession(channel string) (protocol.LiveSession, bool) {
 	// Not occupied(): a session runs on in a channel whose riders all
 	// dropped for a moment, and it is still live.
@@ -132,7 +134,9 @@ func (h *Hub) LiveSession(channel string) (protocol.LiveSession, bool) {
 	// By rider, not by socket: two tabs are one person.
 	present := map[string]protocol.Rider{}
 	for c := range rm.clients {
-		present[c.rider.ID] = c.rider
+		if rm.session.rides(c.rider.ID) {
+			present[c.rider.ID] = c.rider
+		}
 	}
 	riders := slices.SortedFunc(maps.Values(present), func(a, b protocol.Rider) int {
 		return cmp.Or(cmp.Compare(a.Name, b.Name), cmp.Compare(a.ID, b.ID))
