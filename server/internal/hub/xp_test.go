@@ -213,3 +213,36 @@ func TestJukeboxCreditsTracksPlayedThrough(t *testing.T) {
 		t.Fatalf("owners leaked: %v", rm.music.owners)
 	}
 }
+
+// A track nobody could play — a removed or non-embeddable video, a pool
+// track gone from the library — moves the deck on like an end, but nobody
+// heard it: it is a skip, and a skip earns no DJ credit (docs/SPEC.md, `dj`;
+// #2834). Every client reports it, so the anchor still makes the first report
+// advance and every echo, "unplayable" or "ended", a no-op.
+func TestAnUnplayableTrackAdvancesWithoutCredit(t *testing.T) {
+	rm := newRoom("velvet")
+	var logged []trackEvent
+	rm.deckPlayed = func(ev trackEvent) { logged = append(logged, ev) }
+	now := time.Unix(1000, 0)
+	rm.jukebox(protocol.JukeboxCommand{Action: "add", VideoID: "dQw4w9WgXcQ", Title: "gone"}, "kim", "Kim", now)
+	rm.jukebox(protocol.JukeboxCommand{Action: "add", VideoID: "abcdefghijk", Title: "next"}, "lena", "Lena", now)
+
+	anchor := rm.music.state.AnchorMs
+	for _, action := range []string{"unplayable", "unplayable", "ended"} {
+		if played, _ := rm.jukebox(protocol.JukeboxCommand{Action: action, VideoID: "dQw4w9WgXcQ", AnchorMs: anchor}, "lena", "Lena", now.Add(time.Second)); played != nil {
+			t.Fatalf("%q on a track nobody could play credited %+v", action, played)
+		}
+	}
+	if cur := rm.music.state.Current; cur == nil || cur.VideoID != "abcdefghijk" {
+		t.Fatalf("the deck did not move on exactly once: %+v", cur)
+	}
+	if len(logged) != 1 || !logged[0].skipped || logged[0].videoID != "dQw4w9WgXcQ" {
+		t.Fatalf("the play log does not say it was skipped, once: %+v", logged)
+	}
+	if _, owned := rm.music.owners[rm.music.state.Current.ID]; !owned {
+		t.Fatal("the next entry lost its owner")
+	}
+	if len(rm.music.owners) != 1 {
+		t.Fatalf("the unplayable entry's owner leaked: %v", rm.music.owners)
+	}
+}

@@ -586,7 +586,8 @@ export function createChannelLive(address: PlaceAddress) {
 		jukebox(command: import('$lib/protocol').JukeboxCommand) {
 			// The dock's own end-of-track report is not the rider acting: it
 			// must not wipe a refusal they are still reading (#824).
-			if (command.action !== 'ended') jukeboxRefusal = null;
+			if (command.action !== 'ended' && command.action !== 'unplayable')
+				jukeboxRefusal = null;
 			send({ jukebox: command });
 		},
 		control(

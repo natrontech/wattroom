@@ -126,18 +126,20 @@
 		player?.unloadModule?.('captions');
 	}
 
-	function sendEnded(on: Play) {
+	// 'unplayable' is the end of a video nobody could play (#2834): the deck
+	// moves on the same way, and it counts as a skip, not a play.
+	function sendEnded(on: Play, action: 'ended' | 'unplayable' = 'ended') {
 		conn?.live.jukebox({
-			action: 'ended',
+			action,
 			videoId: on.videoId,
 			anchorMs: on.anchorMs,
 		});
 	}
 
 	/** Report the end against the anchor we were playing — never the newest one. */
-	function reportEnded() {
+	function reportEnded(action: 'ended' | 'unplayable' = 'ended') {
 		const on = chase.playing;
-		if (on) sendEnded(on);
+		if (on) sendEnded(on, action);
 	}
 
 	const chase = createJukeboxChase({
@@ -205,7 +207,7 @@
 									? 'That video blocks playback outside YouTube — skipped. Try another upload of it.'
 									: 'That video could not be played here — skipped.',
 							);
-							reportEnded();
+							reportEnded('unplayable');
 							return;
 						}
 						// This browser's own trouble (#1896): the deck plays on for

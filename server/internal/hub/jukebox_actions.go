@@ -264,8 +264,12 @@ func (j *jukebox) onSkipPlaylist(cmd protocol.JukeboxCommand, riderID, addedBy s
 	return events, true, ""
 }
 
-// onEnded is the "ended" command.
-func (j *jukebox) onEnded(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
+// onEnded is the "ended" command, and — with played false — "unplayable"
+// (#2834): a track nobody could play, a removed or non-embeddable video or a
+// pool track gone from the library. The deck moves on the same way, but
+// nobody heard it, so it is a skip: no DJ credit (docs/SPEC.md, `dj`: a skip
+// does not count), and the play log says skipped.
+func (j *jukebox) onEnded(cmd protocol.JukeboxCommand, now time.Time, played bool) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
 	// Every client reports the end; the (video, epoch) pair makes the
 	// first report advance and every echo a no-op — a video queued twice
 	// used to be eaten by its own echoes (audit #219).
@@ -279,7 +283,7 @@ func (j *jukebox) onEnded(cmd protocol.JukeboxCommand, riderID, addedBy string, 
 	}
 	// Played through, not skipped: the DJ's credit (#467). The anchor
 	// makes the ref unique to this play of this entry.
-	if owner := j.owners[j.state.Current.ID]; owner != "" {
+	if owner := j.owners[j.state.Current.ID]; owner != "" && played {
 		j.finished = &playedTrack{
 			riderID: owner,
 			ref:     j.state.Current.ID + "@" + strconv.FormatInt(j.state.AnchorMs, 10),
@@ -288,6 +292,7 @@ func (j *jukebox) onEnded(cmd protocol.JukeboxCommand, riderID, addedBy string, 
 	j.event = &trackEvent{
 		trackID: j.state.Current.TrackID, videoID: j.state.Current.VideoID,
 		title: j.state.Current.Title, queuedBy: j.owners[j.state.Current.ID],
+		skipped: !played,
 	}
 	// Every track of a playlist played through is its own credit; the
 	// owner only leaves when the ENTRY does (#615).

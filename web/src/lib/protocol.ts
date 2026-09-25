@@ -346,7 +346,11 @@ export interface Backfill {
  * play/pause/skip to members, and adding is everyone's.
  */
 export interface JukeboxCommand {
-  action: string; // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended" | "restore"
+  /**
+   * "unplayable" is "ended" for a track nobody could play (#2834): the deck
+   * moves on, and it counts as a skip.
+   */
+  action: string; // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended" | "unplayable" | "restore"
   videoId?: string;
   title?: string;
   /**

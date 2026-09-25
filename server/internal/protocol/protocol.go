@@ -140,7 +140,9 @@ type Backfill struct {
 // JukeboxCommand is any member's jukebox action — the matrix defaults
 // play/pause/skip to members, and adding is everyone's.
 type JukeboxCommand struct {
-	Action  string `json:"action"` // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended" | "restore"
+	// "unplayable" is "ended" for a track nobody could play (#2834): the deck
+	// moves on, and it counts as a skip.
+	Action  string `json:"action"` // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended" | "unplayable" | "restore"
 	VideoID string `json:"videoId,omitempty"`
 	Title   string `json:"title,omitempty"`
 	// For "add": queue a whole YouTube playlist as one entry (#615). The
