@@ -17,7 +17,10 @@ export async function deleteRideAfterConfirm(ride: {
 }): Promise<boolean> {
 	const ok = await confirm({
 		title: 'Delete this ride?',
-		body: `“${ride.workoutName}”, ${new Date(ride.startedAt).toLocaleDateString()} — its power trace, its medals and its XP go with it. This one can't be undone.`,
+		// The XP stays (ADR-0047): deleting a ride is privacy, not work
+		// undone, and saying otherwise discouraged the very thing the ADR
+		// protects (#2632).
+		body: `“${ride.workoutName}”, ${new Date(ride.startedAt).toLocaleDateString()} — its power trace and its medals go with it; your XP and level stay. This one can't be undone.`,
 		action: 'Delete ride',
 		cancel: 'Keep it',
 	});
