@@ -287,6 +287,9 @@
 					onBias={channel.trainer && channel.actuating
 						? (step) => channel.nudgeBias(step)
 						: undefined}
+					execution={riding.length <= 1 && channel.you.inSession
+						? channel.you.execution
+						: undefined}
 					biasHint={targetsNote
 						? `${targetsNote} — trim them there`
 						: undefined}
@@ -299,7 +302,9 @@
 				     the crew: the strip is presence, this is the contest, and a
 				     second full-width list of the same people is what the sprint
 				     and game branches below already refuse to draw.
-				     Alone it is not a leaderboard, so solo rides do not show it. -->
+				     Alone it is not a leaderboard, so it does not draw: a rider alone
+				     in a session gets their score in the row above instead, as a solo
+				     ride does (ADR-0046 parity, #2635). -->
 				{#if riding.length > 1 && focus !== 'media' && focus !== 'game'}
 					<!-- Not while a screen has the focus: this row already picks up
 					     the compact instrument there, and the player's own floor

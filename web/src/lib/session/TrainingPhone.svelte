@@ -74,7 +74,13 @@
 <div class="flex h-full min-h-0 flex-col">
 	<header class="shrink-0 px-4 pt-4 pb-3">
 		<p class="eyebrow">
-			block {channel.block?.index ?? 1} of {channel.block?.count ?? 1}
+			<!-- Paused, the block is not where the session is (#2635): it read
+			     "block 1 of 1" with nothing running. -->
+			{#if channel.shared?.phase === 'paused'}
+				paused
+			{:else}
+				block {channel.block?.index ?? 1} of {channel.block?.count ?? 1}
+			{/if}
 		</p>
 		<h2 class="font-display truncate text-2xl leading-tight font-bold">
 			{channel.block?.label ?? channel.shared?.workoutName ?? ''}

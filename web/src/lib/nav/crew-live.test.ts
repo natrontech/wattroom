@@ -54,12 +54,22 @@ describe('sessionLine', () => {
 		riders: ['Sven', 'Lena', 'Kim', 'Ana'],
 		riderIds: ['a', 'b', 'c', 'd'],
 	};
-	it('says what, how far in and how many', () => {
-		expect(sessionLine(session)).toBe('Sweet Spot 2×20 · 12 min · 4');
+	// Who is coaching is presence, and ADR-0058 lists it among what the rest
+	// of the crew sees (#2635).
+	it('says what, how far in, who coaches and how many', () => {
+		expect(sessionLine(session)).toBe(
+			'Sweet Spot 2×20 · 12 min · Sven coaching · 4',
+		);
 	});
 	it('says starting through the countdown', () => {
 		expect(sessionLine({ ...session, phase: 'countdown', elapsed: 0 })).toBe(
-			'Sweet Spot 2×20 · starting · 4',
+			'Sweet Spot 2×20 · starting · Sven coaching · 4',
+		);
+	});
+	// A paused session's clock stands still; "12 min" read as running.
+	it('says paused while it is', () => {
+		expect(sessionLine({ ...session, phase: 'paused' })).toBe(
+			'Sweet Spot 2×20 · paused · Sven coaching · 4',
 		);
 	});
 });

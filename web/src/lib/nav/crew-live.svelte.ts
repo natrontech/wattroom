@@ -109,7 +109,14 @@ export function sessionLine(session: LiveSession): string {
 	const riders = session.riders.length;
 	return [
 		session.workout || 'A session',
-		session.phase === 'countdown' ? 'starting' : `${minutes} min`,
+		// A paused clock stands still (#2635): "12 min" read as running.
+		session.phase === 'countdown'
+			? 'starting'
+			: session.phase === 'paused'
+				? 'paused'
+				: `${minutes} min`,
+		// Who is coaching is presence (ADR-0058), not a number.
+		`${session.coachName} coaching`,
 		String(riders),
 	].join(' · ');
 }
