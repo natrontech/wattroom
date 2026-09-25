@@ -32,6 +32,10 @@ export interface RideDetail {
 	execution: number;
 	/** #1143: false when the workout prescribed nothing to score. */
 	executionScored?: boolean;
+	/** Ridden in a session, whatever became of its crew (#2630). */
+	room?: boolean;
+	/** Whether the rider may still enter `crew` — named, not linked, if not. */
+	crewMember?: boolean;
 	ftp: number;
 	xp: number;
 	/** Per-ride opt-in (ADR-0024): shown and flipped on the page (#1691). */

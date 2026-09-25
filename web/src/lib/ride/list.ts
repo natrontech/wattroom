@@ -8,15 +8,18 @@ export interface RidePlace {
 
 /**
  * How a ride says where it was ridden (#2457): "with Thursday Crew in Pain
- * Cave", the crew alone for a ride whose channel is gone, and "solo" for a
- * ride that was not in a session at all. One sentence for the list and the
- * ride page, so a ride never reads as two places on two screens.
+ * Cave", the crew alone for a ride whose channel is gone, "in a session" for
+ * one whose crew is gone (#2630), and "solo" for a ride that was not in a
+ * session at all. One sentence for the list and the ride page, so a ride
+ * never reads as two places on two screens.
  */
 export function ridePlace(ride: {
 	crew?: RidePlace | null;
 	channel?: RidePlace | null;
+	/** Ridden in a session, whatever became of its crew. */
+	room?: boolean;
 }): string {
-	if (!ride.crew) return 'solo';
+	if (!ride.crew) return ride.room ? 'in a session' : 'solo';
 	return ride.channel
 		? `with ${ride.crew.name} in ${ride.channel.name}`
 		: `with ${ride.crew.name}`;

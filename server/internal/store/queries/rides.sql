@@ -21,8 +21,11 @@ returning id;
 -- cursor the client had rounded down to the second, so every ride inside that
 -- second went unread — including ones the client had not been given yet. The
 -- row comparison is exact, which is the same shape ListUserWorkouts uses.
+--
+-- A ride is a session's while anything names one (#2630): the session id has
+-- no foreign key, so it outlives a crew whose deletion sets the other two null.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
-       (rides.crew_id is not null or rides.channel_id is not null)::boolean as in_session, shared_at,
+       (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -41,7 +44,7 @@ limit $2;
 -- workout across the whole history, not the first page of the list. Same
 -- columns as ListUserRides so one JSON mapping serves both.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
-       (rides.crew_id is not null or rides.channel_id is not null)::boolean as in_session, shared_at,
+       (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -62,13 +65,19 @@ limit 1;
 -- is exactly what the samples are kept for. Owner-scoped, so someone else's
 -- ride reads as absent rather than as forbidden. The crew and the channel
 -- come along because the detail page names them — empty for a solo ride. The
--- columns are named so none of them is room_id (#2558).
+-- columns are named so none of them is room_id (#2558). Whether the rider is
+-- still in that crew comes too (#2630): the page names a crew they left and
+-- only links one they may enter.
 select r.id, r.user_id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj,
        r.execution, r.ftp_watts, r.samples, r.shared_at, r.created_at, r.curve, r.xp,
        r.norm_watts, r.execution_scored, r.ftp_after_watts, r.last20m_hr, r.rpe, r.note,
        r.crew_id, r.channel_id, r.session_id,
        coalesce(c.name, '')::text as crew_name,
-       coalesce(ch.name, '')::text as channel_name
+       coalesce(ch.name, '')::text as channel_name,
+       coalesce(c.owner_id = r.user_id or exists (
+           select 1 from crew_roles cr
+           where cr.crew_id = r.crew_id and cr.user_id = r.user_id and cr.role in ('member', 'admin')
+       ), false)::boolean as crew_member
 from rides r
 left join crews c on c.id = r.crew_id
 left join channels ch on ch.id = r.channel_id

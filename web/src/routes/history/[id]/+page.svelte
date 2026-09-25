@@ -14,6 +14,7 @@
 	import { downloadRideCard } from '$lib/ride/card';
 	import { deleteRideAfterConfirm } from '$lib/ride/delete-ride';
 	import { fetchRide, type RideDetail } from '$lib/ride/detail';
+	import { ridePlace } from '$lib/ride/list';
 	import RideComparison from '$lib/ride/RideComparison.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
 	import { api } from '$lib/api';
@@ -239,15 +240,16 @@
 						ride.seconds,
 					)}
 					<!-- Where it was ridden (#2457): the crew is the link, the
-					     channel is the words. -->
-					{#if ride.crew}
+					     channel is the words. A crew the rider left is named and
+					     not linked — its page is not theirs to open (#2630). -->
+					{#if ride.crew && ride.crewMember}
 						· with <a
 							href="/crew/{ride.crew.id}"
 							class="hover:text-ink underline underline-offset-2"
 							>{ride.crew.name}</a
 						>{#if ride.channel}&nbsp;in {ride.channel.name}{/if}
 					{:else}
-						· solo
+						· {ridePlace(ride)}
 					{/if}
 				</p>
 			</div>
