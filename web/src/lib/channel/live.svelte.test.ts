@@ -1,6 +1,7 @@
 import { channelAddress } from '$lib/channel/address';
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MaxBackfillBatch } from '$lib/protocol';
 
 const buffered = vi.hoisted(() => ({
 	rows: [] as { watts: number }[],
@@ -220,6 +221,100 @@ describe('channel live ride buffer', () => {
 		FakeSocket.last!.open();
 		await vi.advanceTimersByTimeAsync(0);
 		expect(buffered.since).toEqual([3]);
+		vi.useRealTimers();
+	});
+});
+
+describe('channel live replay is scored as it was ridden (#2814, #2839)', () => {
+	beforeEach(() => {
+		FakeSocket.last = null;
+		buffered.rows.length = 0;
+		buffered.since.length = 0;
+		buffered.tail = [];
+	});
+
+	it('stamps each buffered row with its timeline second, trim and guard', async () => {
+		vi.useFakeTimers();
+		const live = createChannelLive(channelAddress('c', 'stamp', 'stamp'));
+		const socket = FakeSocket.last!;
+		socket.open();
+		running(socket, 600);
+		await vi.advanceTimersByTimeAsync(1_000);
+		live.sendMetrics({ watts: 200, bias: 0.9, released: true });
+		// Thirty silent seconds are a drop, and no tick arrives through one:
+		// the count carries on from the last.
+		await vi.advanceTimersByTimeAsync(30_000);
+		live.sendMetrics({ watts: 210, bias: 0.9 });
+		const back = FakeSocket.last!;
+		expect(back).not.toBe(socket);
+		back.open();
+		back.onmessage?.({
+			data: JSON.stringify({
+				tick: { at: Date.now(), state: { phase: 'paused', elapsed: 631 } },
+			}),
+		});
+		await vi.advanceTimersByTimeAsync(1_000);
+		live.sendMetrics({ watts: 0 });
+		const rows = buffered.rows as unknown as {
+			clock?: number;
+			bias?: number;
+			released?: boolean;
+		}[];
+		expect(rows.map((r) => r.clock)).toEqual([601, 631, undefined]);
+		expect(rows[0]).toMatchObject({ bias: 0.9, released: true });
+		vi.useRealTimers();
+	});
+
+	it('sends a long replay a frame at a time, and a drop resumes it where it stopped', async () => {
+		vi.useFakeTimers();
+		const live = createChannelLive(channelAddress('c', 'long', 'long'));
+		let socket = FakeSocket.last!;
+		socket.open();
+		running(socket);
+		await vi.advanceTimersByTimeAsync(0);
+		live.sendMetrics({ watts: 200 });
+		buffered.tail = Array.from({ length: MaxBackfillBatch * 3 }, (_, i) => ({
+			seq: i + 1,
+			watts: 200,
+			cadence: 90,
+			heartRate: 0,
+			clock: i,
+			at: i,
+		}));
+		const frames = () =>
+			FakeSocket.last!.sent.map((m) => JSON.parse(m))
+				.filter((m) => m.backfill)
+				.map((m) => m.backfill.samples as { seq: number; clock: number }[]);
+		socket.close();
+		socket.onclose?.();
+		await vi.advanceTimersByTimeAsync(2_500);
+		socket = FakeSocket.last!;
+		socket.open();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(frames().map((f) => f.length)).toEqual([MaxBackfillBatch]);
+		expect(frames()[0][0]).toMatchObject({ seq: 1, clock: 0 });
+		await vi.advanceTimersByTimeAsync(1_500);
+		expect(frames().map((f) => f.length)).toEqual([
+			MaxBackfillBatch,
+			MaxBackfillBatch,
+		]);
+		// The live stream has resumed past every replayed row.
+		socket.onmessage?.({
+			data: JSON.stringify({
+				tick: {
+					at: Date.now(),
+					state: { phase: 'running', elapsed: 20_000 },
+					riders: { u1: { watts: 200, seq: 50_000 } },
+				},
+			}),
+		});
+		// Dropped again before the third frame: the next replay starts there.
+		socket.close();
+		socket.onclose?.();
+		await vi.advanceTimersByTimeAsync(5_000);
+		FakeSocket.last!.open();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(buffered.since.at(-1)).toBe(MaxBackfillBatch * 2);
 		vi.useRealTimers();
 	});
 });

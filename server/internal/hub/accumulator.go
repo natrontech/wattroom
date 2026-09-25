@@ -1,22 +1,20 @@
 package hub
 
 import (
+	"cmp"
 	"math"
+	"slices"
+	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
-// Limits on what one rider can make the room remember. Six hours at 1 Hz is
-// longer than any session; past it (or a hostile client), samples drop rather
-// than growing server memory unboundedly. A replay carries one sample a
-// second (the client buffers no faster), so one batch holds an hour's drop —
-// at 600 a ten-minute outage was silently cut to its oldest ten minutes
-// (audit 2026-09-09).
-const (
-	maxAccumulated   = 6 * 60 * 60
-	maxBackfillBatch = 60 * 60
-)
+// The limit on what one rider can make the room remember. Six hours at 1 Hz
+// is longer than any session; past it (or a hostile client), samples drop
+// rather than growing server memory unboundedly. One replay frame is bounded
+// separately, by protocol.MaxBackfillBatch.
+const maxAccumulated = 6 * 60 * 60
 
 // accumulator is one session's ride record per rider, in memory like all live
 // state. It exists so a reconnect has somewhere to land its replay: live
@@ -42,6 +40,11 @@ type seqKey struct {
 type riderRecord struct {
 	seen    map[seqKey]struct{}
 	samples []protocol.RiderMetrics
+	// The timeline seconds already held (#2814). One sample per second
+	// (#791) across both doors: a replayed row's second can already hold a
+	// live sample, when the client's reckoning of the timeline was a second
+	// off from the hub's.
+	clocks map[int]struct{}
 	// The live stream this record is on, and the last seq it carried. A live
 	// stream is monotonic per client session, so a seq that fails to advance
 	// is a client that started over — never a duplicate.
@@ -69,7 +72,7 @@ func newAccumulator() *accumulator {
 func (a *accumulator) recordFor(riderID string) *riderRecord {
 	record, ok := a.byRider[riderID]
 	if !ok {
-		record = &riderRecord{seen: make(map[seqKey]struct{})}
+		record = &riderRecord{seen: make(map[seqKey]struct{}), clocks: make(map[int]struct{})}
 		a.byRider[riderID] = record
 	}
 	return record
@@ -82,12 +85,39 @@ func (r *riderRecord) keep(m protocol.RiderMetrics) bool {
 	if _, dup := r.seen[key]; dup {
 		return false
 	}
+	// Second 0 cannot be told from "no clock", which a record kept with no
+	// session behind it is full of — so it is never a duplicate.
+	if _, dup := r.clocks[m.Clock]; dup && m.Clock > 0 {
+		return false
+	}
 	if len(r.samples) >= maxAccumulated {
 		return false
 	}
 	r.seen[key] = struct{}{}
+	r.clocks[m.Clock] = struct{}{}
 	r.samples = append(r.samples, m)
 	return true
+}
+
+// inOrder is the record as the saver reads it (#2814): by timeline second,
+// in a copy. Samples arrive in the order the socket delivered them, and a
+// reconnect's replay lands after the live samples that resumed before it —
+// the power trace, the curve and NormPower all read the slice in order.
+func (r *riderRecord) inOrder() []protocol.RiderMetrics {
+	samples := slices.Clone(r.samples)
+	slices.SortStableFunc(samples, func(a, b protocol.RiderMetrics) int { return cmp.Compare(a.Clock, b.Clock) })
+	return samples
+}
+
+// riderStart is when this rider's ride began (#2814): the timeline's start
+// plus the second of their first sample. A rider who joined at minute ten
+// was dated at the session's start, and so were their .fit and their Strava
+// activity.
+func riderStart(timeline time.Time, samples []protocol.RiderMetrics) time.Time {
+	if len(samples) == 0 {
+		return timeline
+	}
+	return timeline.Add(time.Duration(samples[0].Clock) * time.Second)
 }
 
 // add records one LIVE sample. segments/ftp/second score it live (#27): nil
@@ -110,6 +140,8 @@ func (a *accumulator) add(riderID string, m protocol.RiderMetrics, segments []wo
 		return
 	}
 	record.lastSecond, record.secondSet = second, true
+	// The hub's clock is the timeline's (#2814), whatever the client sent.
+	m.Clock = second
 	if !record.keep(m) {
 		return
 	}
@@ -137,8 +169,9 @@ func (a *accumulator) add(riderID string, m protocol.RiderMetrics, segments []wo
 
 // replay records one BACKFILLED sample: a reconnect resending what it already
 // sent, which is the one place a seq legitimately goes backwards. It stays on
-// the stream it was sent on, so the overlap still dedupes away, and it never
-// scores — a replayed sample's timeline second is unknown (#19).
+// the stream it was sent on, so the overlap still dedupes away. It carries
+// the second the client buffered it at (#2814), which the caller has checked
+// against the timeline; it is not live-scored — the save scores it.
 func (a *accumulator) replay(riderID string, m protocol.RiderMetrics) {
 	a.recordFor(riderID).keep(m)
 }

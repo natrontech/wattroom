@@ -64,6 +64,8 @@ type room struct {
 	// What the close handed the saver, for a backfill that arrives after it (#1536).
 	savedMeta  protocol.SessionState
 	savedStart time.Time
+	// Each rider's ride start as the close saved it (#2814).
+	savedStarts map[string]time.Time
 	// kind+rider → last accepted time: limits are per RIDER, not per socket —
 	// a second tab must not double every allowance (audit #219).
 	lastInput map[string]time.Time

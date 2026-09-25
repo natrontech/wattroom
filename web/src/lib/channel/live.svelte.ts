@@ -14,7 +14,17 @@ import type { PlaceAddress } from '$lib/channel/address';
 import { account } from '$lib/account.svelte';
 import { deviceWord } from '$lib/device.svelte';
 import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
-import { observeServerTime, resetServerClock } from '$lib/server-clock';
+import {
+	observeServerTime,
+	resetServerClock,
+	serverNow,
+} from '$lib/server-clock';
+import {
+	REPLAY_SPACING_MS,
+	replayFrames,
+	timelineOrigin,
+	timelineSecond,
+} from '$lib/channel/replay';
 import { isLivePhase } from '$lib/channel/tick-session';
 
 /**
@@ -115,6 +125,14 @@ export function createChannelLive(address: PlaceAddress) {
 	// seq on the server, so over-replaying costs nothing.
 	let acked = 0;
 	let gapSeq: number | null = null;
+	// The replay in flight (#2839): the seq of the first row it has not sent,
+	// so a drop in the middle of it starts the next replay there, and which
+	// replay it is, so the one a drop cut short stops.
+	let replayFrom: number | null = null;
+	let replayRun = 0;
+	// Where the running timeline's second 0 sits on the server's clock, from
+	// the last tick (#2814): what a buffered row is stamped with.
+	let timelineAt: number | null = null;
 	// One row a second (#791, audit 2026-09-09): the buffer is what a replay
 	// sends and what a recovered .fit reads as one row per second, and a
 	// trainer notifying at 2 Hz used to double both.
@@ -238,8 +256,12 @@ export function createChannelLive(address: PlaceAddress) {
 		if (silenceTimer !== null) clearTimeout(silenceTimer);
 		silenceTimer = null;
 		if (closed) return;
-		// Remember where the stream broke; the replay starts there.
+		// Remember where the stream broke; the replay starts there — or where
+		// a replay this drop cut short had got to, if that is further back.
 		if (gapSeq === null) gapSeq = acked;
+		if (replayFrom !== null) gapSeq = Math.min(gapSeq, replayFrom - 1);
+		replayFrom = null;
+		replayRun++;
 		// Ride-critical errors are persistent status, never toasts
 		// (.claude/rules/errors.md) — and recovery is automatic. Offline says
 		// whose problem it is (#2121), but the backoff runs on either way:
@@ -308,22 +330,14 @@ export function createChannelLive(address: PlaceAddress) {
 			// reconnect is a new socket. Re-declare it, or a rider who stepped
 			// out quietly comes back on everyone else's screen but their own.
 			if (away) send({ away: { away } });
-			if (gapSeq !== null) {
+			if (gapSeq !== null && buffer) {
 				const since = gapSeq;
 				gapSeq = null;
-				void buffer?.since(since).then((samples) => {
-					if (samples.length > 0)
-						send({
-							backfill: {
-								samples: samples.map((sample) => ({
-									watts: sample.watts,
-									cadence: sample.cadence,
-									hr: sample.heartRate,
-									seq: sample.seq,
-								})),
-							},
-						});
-				});
+				const run = ++replayRun;
+				replayFrom = since + 1;
+				void buffer
+					.since(since)
+					.then((rows) => replay(replayFrames(rows), run));
 			}
 		};
 		socket.onmessage = (event) => {
@@ -363,6 +377,7 @@ export function createChannelLive(address: PlaceAddress) {
 				const me = account.me?.id;
 				const mine = me ? msg.tick.riders?.[me] : undefined;
 				if (mine) acked = mine.seq;
+				timelineAt = timelineOrigin(msg.tick);
 				followSession(msg.tick);
 				if (msg.tick.events?.length) mergeEvents(msg.tick.events);
 			}
@@ -403,6 +418,17 @@ export function createChannelLive(address: PlaceAddress) {
 	let away = false;
 	/** On the wire, or waiting for it; past the bound, dropped. Metrics are
 	 * never queued: the next sample supersedes a lost one. */
+	// One frame a replay, a frame at a time — the hub takes one a second — and
+	// only on an open socket: a frame queued for the next one would land beside
+	// that one's own replay and be dropped as the second inside a second.
+	function replay(frames: RiderMetrics[][], run: number) {
+		if (run !== replayRun || socket?.readyState !== WebSocket.OPEN) return;
+		const [frame, ...rest] = frames;
+		if (frame) send({ backfill: { samples: frame } });
+		replayFrom = rest[0]?.[0]?.seq ?? null;
+		if (rest.length > 0) setTimeout(() => replay(rest, run), REPLAY_SPACING_MS);
+	}
+
 	function send(message: ClientMessage) {
 		if (socket?.readyState === WebSocket.OPEN) {
 			socket.send(JSON.stringify(message));
@@ -501,6 +527,12 @@ export function createChannelLive(address: PlaceAddress) {
 						watts: metrics.watts,
 						cadence: metrics.cadence ?? 0,
 						heartRate: metrics.hr ?? 0,
+						// What a replay needs to be scored as it was ridden
+						// (#2814, #2839); the live frame lets the hub stamp
+						// the second itself.
+						bias: metrics.bias,
+						released: metrics.released,
+						clock: timelineSecond(timelineAt, serverNow()),
 						at,
 					});
 				}

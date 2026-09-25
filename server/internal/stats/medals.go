@@ -33,12 +33,14 @@ type RiderResult struct {
 // Completed is docs/SPEC.md's "but completed the session" (Lanterne Rouge):
 // the rider's record reaches the workout's final segment. It was hard-coded
 // true, so it was no criterion at all (audit 2026-09-09). A workout with no
-// segments has nothing to complete.
-func Completed(segments []workout.Segment, samples int) bool {
+// segments has nothing to complete. reached is how far along the timeline
+// the record runs — its last second plus one, not its count (#2814): a rider
+// who joined at minute ten and rode to the end holds ten minutes fewer.
+func Completed(segments []workout.Segment, reached int) bool {
 	if len(segments) == 0 {
 		return true
 	}
-	return samples > segments[len(segments)-1].Start
+	return reached > segments[len(segments)-1].Start
 }
 
 // Medals awards per docs/SPEC.md. Fewer than three riders: no medals at all.

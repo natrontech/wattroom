@@ -271,9 +271,9 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			// must never repaint anyone's live tile. Batch size is bounded like
 			// every other client input.
 			samples := msg.Backfill.Samples
-			if len(samples) > maxBackfillBatch {
-				h.log.Warn("backfill truncated", "channel", channel, "rider", rider.ID, "samples", len(samples), "kept", maxBackfillBatch)
-				samples = samples[:maxBackfillBatch]
+			if len(samples) > protocol.MaxBackfillBatch {
+				h.log.Warn("backfill truncated", "channel", channel, "rider", rider.ID, "samples", len(samples), "kept", protocol.MaxBackfillBatch)
+				samples = samples[:protocol.MaxBackfillBatch]
 			}
 			// One batch a second: it runs 600 validations under the room's
 			// lock, and it was the one channel a member could loop unlimited

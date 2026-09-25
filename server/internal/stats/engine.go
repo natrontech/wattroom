@@ -96,6 +96,32 @@ func clockKeyed(samples []protocol.RiderMetrics) bool {
 	return false
 }
 
+// onTimeline lays a ride's watts on the workout seconds they were ridden at
+// (#2814): a session rider who joined at minute ten starts at index 600, not
+// at 0, so a reader that walks the slice by second sees the blocks they
+// actually rode. Zero is "nothing this second", which its readers already
+// skip. A ride that stamps no clock is its own timeline.
+func onTimeline(samples []protocol.RiderMetrics) []int {
+	if !clockKeyed(samples) {
+		watts := make([]int, len(samples))
+		for i, sample := range samples {
+			watts[i] = sample.Watts
+		}
+		return watts
+	}
+	last := 0
+	for _, sample := range samples {
+		last = max(last, sample.Clock)
+	}
+	watts := make([]int, last+1)
+	for _, sample := range samples {
+		if sample.Clock >= 0 {
+			watts[sample.Clock] = sample.Watts
+		}
+	}
+	return watts
+}
+
 // Scorable reports whether a workout prescribes any second the execution score
 // can be computed from. Only a steady step carries a target (workout.TargetAt);
 // warmup, cooldown, ramp and sprint ask for effort rather than a number.

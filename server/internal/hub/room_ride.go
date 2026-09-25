@@ -88,16 +88,23 @@ func (rm *room) backfill(c *client, samples []protocol.RiderMetrics, log *slog.L
 		rm.seenOrder = append(rm.seenOrder, rider.ID)
 	}
 	rm.seen[rider.ID] = rider
+	// A session's record is kept by the timeline second (#2814): a replayed
+	// sample goes where its clock says, and one the hub cannot place — no
+	// clock, or a second the timeline never reached — is left out, as the
+	// live path leaves out a second outside the running timeline. With no
+	// session behind the record (a server that came back idle) there is no
+	// timeline to place it on, and it lands as it always did.
+	reached, placed := rm.replayReachLocked()
 	kept := 0
 	for _, m := range samples {
-		if validMetrics(m) {
-			// Backfilled samples have no known timeline second — recorded, not
-			// live-scored; the save-time score is the authoritative one. They
-			// are also the one place a seq goes backwards on purpose, so they
-			// stay on the stream that sent them (#522).
-			rm.record.replay(rider.ID, m)
-			kept++
+		if !validMetrics(m) || placed && (m.Clock <= 0 || m.Clock > reached) {
+			continue
 		}
+		// Not live-scored: the save-time score is the authoritative one. The
+		// one place a seq goes backwards on purpose, so it stays on the
+		// stream that sent it (#522).
+		rm.record.replay(rider.ID, m)
+		kept++
 	}
 	// One row a second: the buffer's length is the silence it covers, and
 	// an elimination mode forgives a silence the rider pedalled through
@@ -112,13 +119,32 @@ func (rm *room) backfill(c *client, samples []protocol.RiderMetrics, log *slog.L
 	// ride from it — outside the lock, like every hand-off.
 	if kept > 0 && rm.saved && saver != nil {
 		if record, ok := rm.record.byRider[rider.ID]; ok {
-			whole := RiderRecord{Rider: rider, Samples: append([]protocol.RiderMetrics(nil), record.samples...)}
+			whole := RiderRecord{Rider: rider, Samples: record.inOrder()}
+			// The start the close saved, however far back this replay reaches;
+			// a rider with none had no ride saved, and the saver finds nothing.
+			var saved bool
+			if whole.StartedAt, saved = rm.savedStarts[rider.ID]; !saved {
+				whole.StartedAt = riderStart(rm.savedStart, whole.Samples)
+			}
 			meta, start := rm.savedMeta, rm.savedStart
 			rm.detach(log, "ride amend "+rm.channel, func() {
 				saver.AmendRide(context.Background(), rm.channel, meta.ID, meta.WorkoutName, meta.WorkoutJSON, start, whole)
 			})
 		}
 	}
+}
+
+// replayReachLocked is the last timeline second a replayed sample may carry,
+// and whether the record belongs to a session at all: the one running, or the
+// one that closed and may still be amended (#1536). Caller holds rm.mu.
+func (rm *room) replayReachLocked() (int, bool) {
+	switch {
+	case rm.session.open():
+		return rm.session.state(rm.now()).Elapsed, true
+	case rm.saved:
+		return rm.savedMeta.Elapsed, true
+	}
+	return 0, false
 }
 
 // cheer queues one reaction for the next tick; bounded so a hostile burst
