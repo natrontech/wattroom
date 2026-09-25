@@ -521,6 +521,7 @@ func (rm *room) tickIntervalLocked(now time.Time) time.Duration {
 // names them for the XP ledger; gameLinger later the game is let go. Caller
 // holds rm.mu; the returned winner is handed to the keeper after the unlock.
 func (rm *room) advanceGameLocked(now time.Time) (winner string) {
+	rm.endOrphanedGameLocked(now)
 	if rm.game == nil {
 		rm.lastGame = nil
 		return ""
@@ -555,7 +556,7 @@ func (rm *room) advanceGameLocked(now time.Time) (winner string) {
 		return ""
 	}
 	if now.Sub(rm.gameDoneAt) > gameLinger {
-		rm.game, rm.lastGame, rm.gameDoneAt = nil, nil, time.Time{}
+		rm.game, rm.lastGame, rm.gameDoneAt, rm.gameHost = nil, nil, time.Time{}, ""
 	}
 	return ""
 }

@@ -30,10 +30,12 @@ func (rm *room) startGame(mode string, rider protocol.Rider, now time.Time) stri
 	if next == nil {
 		return refuseNoSuchMode
 	}
+	rm.gameHost = rm.session.id
 	if !rm.session.open() || rm.session.phase == "idle" {
 		rm.session.begin(uuid.NewString(), rider.ID, rider.Name)
 		rm.session.runGame(mode, gameModeNames[mode], now)
 		rm.resetRunLocked(rider.ID)
+		rm.gameHost = ""
 	}
 	rm.game = next
 	rm.gameMode = mode
@@ -68,7 +70,7 @@ func (rm *room) stopGameLocked(now time.Time) {
 		gs := rm.game.state(now)
 		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
 	}
-	rm.game, rm.lastGame, rm.gameDoneAt = nil, nil, time.Time{}
+	rm.game, rm.lastGame, rm.gameDoneAt, rm.gameHost = nil, nil, time.Time{}, ""
 	rm.endGameSessionLocked(now)
 }
 
@@ -79,6 +81,23 @@ func (rm *room) stopGameLocked(now time.Time) {
 func (rm *room) endAbandonedGameLocked(now time.Time) {
 	if rm.session.game != "" && rm.session.open() &&
 		now.Sub(rm.lastPresentLocked()) >= presenceGrace {
+		rm.stopGameLocked(now)
+	}
+}
+
+// endOrphanedGameLocked ends a game whose workout session is over (#2830). A
+// game started inside a workout rides that session and plays only its riders
+// (ADR-0059); once the workout is done or ended it has none, and left running
+// it scored everyone as silent, eliminated them on one tick and paid a win to
+// whoever came first in the map. It ends the way a coach's End would: its own
+// line, no podium. Caller holds rm.mu.
+func (rm *room) endOrphanedGameLocked(now time.Time) {
+	if rm.game == nil || rm.gameHost == "" || !rm.gameDoneAt.IsZero() {
+		return
+	}
+	// state() first: the tick that crosses the workout's end sees it done.
+	rm.session.state(now)
+	if rm.session.id != rm.gameHost || !rm.session.open() {
 		rm.stopGameLocked(now)
 	}
 }
