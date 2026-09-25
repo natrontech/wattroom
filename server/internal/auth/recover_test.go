@@ -198,6 +198,44 @@ func TestRecoveryKeepsNoSessionTheBrowserAlreadyHeld(t *testing.T) {
 	t.Fatal("recovery minted no session")
 }
 
+// A personal token is a second way in that a borrowed session can mint and
+// ending sessions never touched (#2811): recovery revokes every one, and the
+// page names how many so the rider knows to mint their coach a new one.
+func TestRecoveryRevokesEveryPersonalToken(t *testing.T) {
+	s := testService(t)
+	user, mailer := recoverable(t, s, "token-thief@example.test")
+	for _, name := range []string{"coach", "planted"} {
+		if _, err := s.store.Queries.CreateToken(t.Context(), db.CreateTokenParams{
+			UserID: user.ID, Name: name, TokenHash: []byte(name + "-hash"),
+		}); err != nil {
+			t.Fatalf("mint %s: %v", name, err)
+		}
+	}
+
+	form := httptest.NewRecorder()
+	s.handleRecoverFinishForm(form, httptest.NewRequestWithContext(t.Context(), http.MethodGet,
+		"http://localhost:8080/api/auth/recover/finish?t=x", nil))
+	if !strings.Contains(form.Body.String(), "personal token") {
+		t.Fatalf("the confirm page does not say the tokens go too: %s", form.Body.String())
+	}
+
+	if w := ask(t, s, `{"email":"token-thief@example.test"}`); w.Code != http.StatusNoContent {
+		t.Fatalf("ask: %d", w.Code)
+	}
+	w := spend(t, s, recoverToken(t, mailer.waitRecovery(t, 0).link))
+	if w.Code != http.StatusOK {
+		t.Fatalf("spend the link: %d %s", w.Code, w.Body.String())
+	}
+	var tokens int
+	if err := s.store.Pool.QueryRow(context.Background(),
+		"select count(*) from api_tokens where user_id = $1", user.ID).Scan(&tokens); err != nil || tokens != 0 {
+		t.Fatalf("tokens on the account after recovery: %d (err %v), want none", tokens, err)
+	}
+	if !strings.Contains(w.Body.String(), "2 personal tokens were revoked") {
+		t.Fatalf("the landing page does not name the revoked tokens: %s", w.Body.String())
+	}
+}
+
 // withCookie is a request carrying one session cookie, for asking whether it
 // still resolves.
 func withCookie(t *testing.T, c *http.Cookie) *http.Request {

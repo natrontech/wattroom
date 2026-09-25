@@ -94,8 +94,8 @@
 					in a day.
 				</p>
 				<p class="text-muted mt-3 text-sm leading-relaxed">
-					Opening it signs that account out everywhere else, so you will be the
-					only one in it.
+					Opening it signs that account out everywhere else and revokes its
+					personal tokens, so you will be the only one in it.
 				</p>
 				<button
 					onclick={() => {

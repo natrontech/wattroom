@@ -33,14 +33,22 @@ type UserSource interface {
 	RequireUser(w http.ResponseWriter, r *http.Request, signInMessage string) (db.User, bool)
 }
 
+// Alarm is ADR-0030's security mail, told when a token is minted (#2811): a
+// token outlives the session that made it, so a borrowed session's last move
+// can be one, and only the owner can revoke it.
+type Alarm interface {
+	TokenMinted(user db.User)
+}
+
 type Service struct {
 	store *store.Store
 	users UserSource
+	alarm Alarm
 	log   *slog.Logger
 }
 
-func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, log: log}
+func New(st *store.Store, users UserSource, alarm Alarm, log *slog.Logger) *Service {
+	return &Service{store: st, users: users, alarm: alarm, log: log}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
@@ -173,6 +181,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "token create failed", err, "The token could not be created.")
 		return
 	}
+	s.alarm.TokenMinted(user)
 	httpx.WriteJSON(w, http.StatusCreated, tokenJSON{
 		ID: store.UUIDString(row.ID), Name: req.Name,
 		CreatedAt: row.CreatedAt.Time.Format(time.RFC3339),

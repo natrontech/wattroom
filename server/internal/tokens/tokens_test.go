@@ -8,11 +8,24 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
 )
+
+// alarms records the ADR-0030 alarms a mint raised, by owner.
+type alarms struct {
+	mu     sync.Mutex
+	minted []string
+}
+
+func (a *alarms) TokenMinted(user db.User) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.minted = append(a.minted, user.DisplayName)
+}
 
 func setup(t *testing.T) (*http.ServeMux, *Service) {
 	t.Helper()
@@ -37,7 +50,7 @@ func setup(t *testing.T) (*http.ServeMux, *Service) {
 		_, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", bob.ID)
 	})
 	users := &testx.Users{ByToken: map[string]db.User{"alice": u, "bob": bob}}
-	svc := New(st, users, slog.New(slog.DiscardHandler))
+	svc := New(st, users, &alarms{}, slog.New(slog.DiscardHandler))
 	mux := http.NewServeMux()
 	svc.Register(mux)
 	return mux, svc
@@ -114,5 +127,26 @@ func TestTokenLifecycle(t *testing.T) {
 	}
 	if _, ok := src.User(get); ok {
 		t.Fatal("a revoked token must not authenticate")
+	}
+}
+
+// A token outlives the session that minted it, so minting one is an ADR-0030
+// alarm (#2811): a borrowed session's last move must not be a silent one. A
+// refused mint minted nothing and says nothing.
+func TestMintingATokenRaisesTheAlarm(t *testing.T) {
+	mux, svc := setup(t)
+	rang, _ := svc.alarm.(*alarms)
+
+	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/tokens", `{"name":""}`); code != http.StatusBadRequest {
+		t.Fatalf("empty name must be 400, got %d", code)
+	}
+	if len(rang.minted) != 0 {
+		t.Fatalf("a refused mint alarmed: %v", rang.minted)
+	}
+	if code, _ := call(t, mux, "alice", http.MethodPost, "/api/tokens", `{"name":"planted"}`); code != http.StatusCreated {
+		t.Fatalf("create: got %d", code)
+	}
+	if len(rang.minted) != 1 || rang.minted[0] != "alice" {
+		t.Fatalf("minting did not alarm the owner once: %v", rang.minted)
 	}
 }
