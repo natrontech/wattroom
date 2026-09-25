@@ -194,12 +194,15 @@ const saveSessionRecap = `-- name: SaveSessionRecap :one
 
 insert into session_recaps (crew_id, channel_id, session_id, workout, started_at, ended_at, riders)
 select ch.crew_id, ch.id, $1::uuid,
-       $2, $3, $4, $5
+       $2, $3, $4,
+       (select coalesce(jsonb_agg(r.e order by r.n), '[]'::jsonb)
+          from jsonb_array_elements($5::jsonb) with ordinality as r(e, n)
+         where exists (select 1 from users u where u.id = (r.e ->> 'id')::uuid))
 from channels ch
 where ch.id = $6
 on conflict (session_id) where session_id is not null do update
     set workout = excluded.workout, ended_at = excluded.ended_at, riders = excluded.riders
-returning id, created_at
+returning id, created_at, riders
 `
 
 type SaveSessionRecapParams struct {
@@ -214,6 +217,7 @@ type SaveSessionRecapParams struct {
 type SaveSessionRecapRow struct {
 	ID        pgtype.UUID
 	CreatedAt pgtype.Timestamptz
+	Riders    []byte
 }
 
 // One row per finished session (ADR-0034): who was in the room, and for how
@@ -224,6 +228,12 @@ type SaveSessionRecapRow struct {
 // (audit 2026-09-09), and the second write of the same session updates
 // rather than duplicates. The crew and the channel come from the channel it
 // ran in.
+//
+// A rider whose account is gone is left out here (#2809, ADR-0034): the hub
+// keeps a span for everyone it saw, and the purge's trigger only cleans rows
+// that already exist, so an account deleted mid-session would otherwise be
+// written back in when the session ends. RETURNING hands the kept riders back
+// because the live card is drawn from them too.
 func (q *Queries) SaveSessionRecap(ctx context.Context, arg SaveSessionRecapParams) (SaveSessionRecapRow, error) {
 	row := q.db.QueryRow(ctx, saveSessionRecap,
 		arg.SessionID,
@@ -234,6 +244,6 @@ func (q *Queries) SaveSessionRecap(ctx context.Context, arg SaveSessionRecapPara
 		arg.ChannelID,
 	)
 	var i SaveSessionRecapRow
-	err := row.Scan(&i.ID, &i.CreatedAt)
+	err := row.Scan(&i.ID, &i.CreatedAt, &i.Riders)
 	return i, err
 }

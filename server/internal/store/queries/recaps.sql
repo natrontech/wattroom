@@ -8,14 +8,23 @@
 -- (audit 2026-09-09), and the second write of the same session updates
 -- rather than duplicates. The crew and the channel come from the channel it
 -- ran in.
+--
+-- A rider whose account is gone is left out here (#2809, ADR-0034): the hub
+-- keeps a span for everyone it saw, and the purge's trigger only cleans rows
+-- that already exist, so an account deleted mid-session would otherwise be
+-- written back in when the session ends. RETURNING hands the kept riders back
+-- because the live card is drawn from them too.
 insert into session_recaps (crew_id, channel_id, session_id, workout, started_at, ended_at, riders)
 select ch.crew_id, ch.id, sqlc.arg(session_id)::uuid,
-       sqlc.arg(workout), sqlc.arg(started_at), sqlc.arg(ended_at), sqlc.arg(riders)
+       sqlc.arg(workout), sqlc.arg(started_at), sqlc.arg(ended_at),
+       (select coalesce(jsonb_agg(r.e order by r.n), '[]'::jsonb)
+          from jsonb_array_elements(sqlc.arg(riders)::jsonb) with ordinality as r(e, n)
+         where exists (select 1 from users u where u.id = (r.e ->> 'id')::uuid))
 from channels ch
 where ch.id = sqlc.arg(channel_id)
 on conflict (session_id) where session_id is not null do update
     set workout = excluded.workout, ended_at = excluded.ended_at, riders = excluded.riders
-returning id, created_at;
+returning id, created_at, riders;
 
 -- name: ListCrewRecaps :many
 -- The crew's recaps (#2442), oldest first, and only those
