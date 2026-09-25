@@ -17,6 +17,15 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.145] - 2026-09-25
+
+### Added
+
+- Whoever planned a session, and the crew's owner and admins, can now see who
+  is out and who has not answered yet, under _Show names_ on the Schedule and
+  on the voice channel's plan card. The rest of the crew still sees only how
+  many are out.
+
 ## [2026.09.144] - 2026-09-25
 
 ### Removed
@@ -3087,7 +3096,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.144...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.145...HEAD
+[2026.09.145]: https://github.com/natrontech/wattroom/compare/2026.09.144...2026.09.145
 [2026.09.144]: https://github.com/natrontech/wattroom/compare/2026.09.143...2026.09.144
 [2026.09.143]: https://github.com/natrontech/wattroom/compare/2026.09.142...2026.09.143
 [2026.09.142]: https://github.com/natrontech/wattroom/compare/2026.09.141...2026.09.142
