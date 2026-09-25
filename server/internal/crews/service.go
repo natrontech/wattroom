@@ -6,6 +6,7 @@
 package crews
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
@@ -31,9 +32,6 @@ type UserSource interface {
 // hears that anything changed until they reload.
 type Presence interface {
 	Kick(channel, userID string)
-	// A crew role change has to reach the sockets that are already open, or
-	// a new admin stays refused until they reconnect.
-	SetRole(channel, userID, role string)
 	// A plan is something the crew did (#359): planning over HTTP reaches
 	// the timeline of the people standing in the channel it names.
 	SessionAnnounce(channel, verb, actor, workout string, startsAt time.Time)
@@ -44,6 +42,17 @@ type Presence interface {
 	// answers the channel's one-session rule: the session's id when it
 	// opened, or a code and a message.
 	OpenSession(channel string, rider protocol.Rider, workoutName, workoutJSON string) (id, code, message string)
+}
+
+// Gate is the channels' one gate, asked again (#2808). The door asks it once,
+// at connect, so a crew role change or a hand-over has to reach the sockets
+// and calls already open, once it has committed: a new admin or owner gets
+// their controls there (#278), and a demoted admin leaves the private
+// channels that do not name them. Satisfied by *channels.Service. Optional
+// like the hub; without it nothing already open hears the change until it
+// reconnects.
+type Gate interface {
+	Reauthorize(ctx context.Context, crewID, userID pgtype.UUID)
 }
 
 // VoiceEjector is the LiveKit arm of a kick — satisfied by *av.Service.
@@ -67,6 +76,7 @@ type Service struct {
 	users    UserSource
 	log      *slog.Logger
 	presence Presence
+	gate     Gate
 	notifier Notifier
 	voice    VoiceEjector
 	// Guesses at a crew code per address (#1673): the door and the join were
@@ -87,6 +97,9 @@ func New(st *store.Store, users UserSource, log *slog.Logger) *Service {
 
 // SetPresence wires the hub in after construction.
 func (s *Service) SetPresence(p Presence) { s.presence = p }
+
+// SetGate wires the channels' gate in, once the hub is behind it.
+func (s *Service) SetGate(g Gate) { s.gate = g }
 
 // SetVoiceEjector wires LiveKit ejection in when AV is configured.
 func (s *Service) SetVoiceEjector(v VoiceEjector) { s.voice = v }
@@ -125,6 +138,18 @@ func (s *Service) evict(channel, userID string) {
 	}
 	if s.voice != nil {
 		s.voice.Eject(channel, userID)
+	}
+}
+
+// reauthorize asks the gate again about riders whose crew role has just
+// changed, in every voice channel of the crew. Only after the commit: it
+// closes live sockets, which no rollback can reopen.
+func (s *Service) reauthorize(ctx context.Context, crew pgtype.UUID, riders ...pgtype.UUID) {
+	if s.gate == nil {
+		return
+	}
+	for _, rider := range riders {
+		s.gate.Reauthorize(ctx, crew, rider)
 	}
 }
 

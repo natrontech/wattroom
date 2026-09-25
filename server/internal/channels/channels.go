@@ -37,6 +37,11 @@ type Live interface {
 	LiveSession(channel string) (protocol.LiveSession, bool)
 	// Taking somebody out of a private channel severs them there too.
 	Kick(channel, userID string)
+	// Everyone in a voice channel by account id, socket or call: who a gate
+	// change asks the gate about again (#2808).
+	Occupants(channel string) []string
+	// The crew role the gate answers, onto the sockets already open (#278).
+	SetRole(channel, userID, role string)
 	// An admin's drag (#2730): tell a rider's sockets in one voice channel
 	// to go to another. hub.ErrNotInChannel, hub.ErrRiding.
 	Move(channel, userID string, to protocol.Moved) error

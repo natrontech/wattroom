@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -204,17 +203,12 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 			s.evict(store.UUIDString(id), store.UUIDString(target))
 		}
 		s.log.Info("crew ban", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(target), "channels", len(voice))
-	} else if s.presence != nil {
-		// The door read the crew role once, at connect (#2436): a promotion
+	} else {
+		// The door read the crew role once, at connect (#2436). A promotion
 		// has to reach the sockets already open, or the new admin stays
-		// refused until they reconnect (#278).
-		voice, err := s.store.Queries.ListChannelIDsOfKind(r.Context(), db.ListChannelIDsOfKindParams{CrewID: crew.ID, Kind: "voice"})
-		if err != nil {
-			s.log.Error("crew voice channels lookup failed", "err", err, "crew", store.UUIDString(crew.ID))
-		}
-		for _, id := range voice {
-			s.presence.SetRole(store.UUIDString(id), store.UUIDString(target), channels.LiveRole(req.Role))
-		}
+		// refused until they reconnect (#278). A demotion has to take them
+		// out of the private channels that no longer admit them (#2808).
+		s.reauthorize(r.Context(), crew.ID, target)
 	}
 	s.changed()
 	w.WriteHeader(http.StatusNoContent)
