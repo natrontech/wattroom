@@ -74,6 +74,10 @@ services:
   caddy:
     image: caddy:2
     restart: unless-stopped
+    # LiveKit runs on the host network, which no bridge container reaches as
+    # `localhost` — the Caddyfile proxies it at this name instead (#2827).
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     ports:
       - '80:80'
       - '443:443'
