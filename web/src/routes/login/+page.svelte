@@ -11,6 +11,7 @@
 	import CrewMark from '$lib/components/CrewMark.svelte';
 	import { crewDoor, type CrewDoor } from '$lib/crew';
 	import { lastProvider, rememberProvider } from '$lib/auth/last-provider';
+	import { providerRow, signInWays } from '$lib/auth/providers';
 	import Banner from '$lib/components/Banner.svelte';
 	import * as passkeys from '$lib/passkeys';
 	import {
@@ -117,6 +118,10 @@
 		// effect below route on from there.
 		await account.load();
 	}
+
+	// Nothing in the shell or on the way back to it (#2844): neither offers a
+	// provider here, so the row's "none configured" would be a false alarm.
+	const row = $derived(providerRow(account, shell || backToApp !== null));
 
 	// ADR-0029: still no passwords. A passkey is not one.
 	const providerLabels: Record<string, { label: string; note?: string }> = {
@@ -265,8 +270,8 @@
 							Sign in with your browser
 						</button>
 						<p class="text-muted mt-2 text-xs leading-relaxed">
-							Your passkey, GitHub or Strava — in the browser you already use.
-							Come back here once it says you are signed in.
+							{signInWays(account.providers)} — in the browser you already use. Come
+							back here once it says you are signed in.
 						</p>
 						{#if browserOpened}
 							<p class="text-muted mt-5 text-xs" aria-live="polite">
@@ -309,7 +314,7 @@
 				{/if}
 			{/if}
 
-			{#if account.loaded && account.providers.length > 0 && !shell && !backToApp}
+			{#if row === 'providers'}
 				<div class="mt-4 grid gap-2.5">
 					{#each account.providers as id (id)}
 						{#if id === 'strava'}
@@ -386,7 +391,7 @@
 						</span>
 					{/if}
 				</p>
-			{:else if account.loaded && account.unreachable}
+			{:else if row === 'unreachable'}
 				<!-- Not "unconfigured": the question never reached the server. -->
 				<div class="mx-auto mt-8 max-w-sm text-left">
 					<Banner tone="error">
@@ -400,7 +405,7 @@
 						{/snippet}
 					</Banner>
 				</div>
-			{:else if account.loaded}
+			{:else if row === 'unconfigured'}
 				<!-- Capability gating: no providers, no dead buttons — say why. A
 				     passkey is only ever added from an account that already exists,
 				     so without a provider nobody can make a first one. -->
