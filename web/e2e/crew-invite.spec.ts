@@ -8,9 +8,9 @@ import { expect, test, voicePath } from './crew';
  * before the join; the crew page after it; an open voice channel opening; and
  * the link read again as a member, which is no longer an invite.
  *
- * Every earlier spec enters a crew through the Home form (`channels.enter`),
- * so the link itself — the thing riders actually paste to each other — had no
- * test until this one.
+ * The other specs join by the API (`channels.enter`), and Home's code box has
+ * home-join-door.spec.ts, so the link itself — the thing riders actually paste
+ * to each other — is this one's.
  */
 
 /**

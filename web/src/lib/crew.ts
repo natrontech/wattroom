@@ -217,9 +217,17 @@ export function leaveCrew(id: string): Promise<ApiResult<void>> {
 	return api<void>(`/api/crews/${id}/leave`, { method: 'POST' });
 }
 
+/**
+ * The crew's door (#1236): the one page that joins, because it is where the
+ * board is disclosed first (ADR-0036 as amended by ADR-0058, #2810).
+ */
+export function crewDoorPath(code: string): string {
+	return `/c/${encodeURIComponent(code)}`;
+}
+
 /** The share link a code becomes. */
 export function inviteLink(code: string): string {
-	return `${location.origin}/c/${code}`;
+	return `${location.origin}${crewDoorPath(code)}`;
 }
 
 /** The crew's picture (#1237): owner and admins; the same reader as a pasted image. */
