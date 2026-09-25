@@ -92,6 +92,16 @@ func rankIDs(ids []string, better func(a, b string) bool) {
 	sort.SliceStable(ids, func(i, j int) bool { return better(ids[i], ids[j]) })
 }
 
+// appendEliminated puts one tick's eliminations on an elimination order. The
+// riders are tied — they went out on the same second — so they go on by id,
+// the higher first: the podium reads the order backwards, and a tie places
+// by id in every mode (#1574). Ranging a map for them made it Go's seed
+// (#2831).
+func appendEliminated(order, gone []string) []string {
+	sort.Sort(sort.Reverse(sort.StringSlice(gone)))
+	return append(order, gone...)
+}
+
 // The refusals startGame can answer with — two different things a coach
 // can do about them (#1582).
 const (

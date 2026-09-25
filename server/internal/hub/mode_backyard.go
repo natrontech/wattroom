@@ -132,6 +132,7 @@ func (b *backyard) advance(now time.Time, samples map[string]int, roster map[str
 		return
 	}
 
+	var gone []string
 	for id := range b.joined {
 		if b.out[id] {
 			continue
@@ -158,9 +159,10 @@ func (b *backyard) advance(now time.Time, samples map[string]int, roster map[str
 		if b.below[id] >= backyardBelowSecs {
 			b.out[id] = true
 			b.outRound[id] = b.round
-			b.order = append(b.order, id)
+			gone = append(gone, id)
 		}
 	}
+	b.order = appendEliminated(b.order, gone)
 
 	// One rider left standing (and at least one eliminated): the game ends.
 	alive := 0
