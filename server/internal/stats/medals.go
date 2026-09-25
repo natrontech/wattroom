@@ -74,7 +74,13 @@ func Medals(results []RiderResult) map[string]string {
 	if len(rode) < 2 {
 		return out
 	}
-	out["diesel"] = bestOf(rode, func(a, b RiderResult) bool { return a.CoV < b.CoV })
+	// Diesel is measured across steady steps, so a rider who rode none —
+	// everyone in a game session, or on a sprint-only workout — has no value
+	// for it, which SteadyCoV says as MaxFloat. The tie on that went to the
+	// first joiner (#2833); like Metronome below, no field, no medal.
+	if steady := filter(rode, func(r RiderResult) bool { return r.CoV != math.MaxFloat64 }); len(steady) > 0 {
+		out["diesel"] = bestOf(steady, func(a, b RiderResult) bool { return a.CoV < b.CoV })
+	}
 	out["hammer"] = bestOf(rode, func(a, b RiderResult) bool { return a.Best5sWkg > b.Best5sWkg })
 	// Last on the podium metric but completed — celebrated, not shamed.
 	out["lanterne_rouge"] = bestOf(rode, func(a, b RiderResult) bool { return a.Best5sWkg < b.Best5sWkg })
