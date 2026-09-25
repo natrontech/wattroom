@@ -17,6 +17,40 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.143] - 2026-09-25
+
+### Added
+
+- A solo ride or ramp test left paused for 10 minutes now ends itself, and
+  the stopped time is left off the ride. Getting off without pressing **End**
+  used to leave the ride running all night, and pressing End the next morning
+  filed a ride too long to save or export.
+
+### Fixed
+
+- A ride page's **Against your best** no longer shows "execution 0%" for a ride
+  that isn't scored, such as a second ramp test. It shows "—", as the rest of
+  the page does.
+- Deleting a ride no longer warns that its XP goes with it. It doesn't: your
+  XP and level stay, and only the power trace and medals are removed.
+- Several ride screens stopped saying things that weren't true:
+  - leaving a ride promised it would be saved even when it was under a minute;
+  - a ride ended early said "Ride complete";
+  - a ride whose save failed said its XP had reached your account;
+  - "Keep my current FTP" after a ramp test threw the result away;
+  - effort ratings 6, 8 and 9 showed made-up words where the scale has none;
+  - a few leftover "lounge" and "session ended" lines now name the voice
+    channel or say what actually happened;
+  - a planned session's notes now say who is told, and where your own
+    calendar link lives.
+- A ride you rode with a crew no longer reads "solo" once that crew is
+  deleted. It says "in a session". A crew you have left or been banned from
+  is still named on the ride's page, but no longer as a link to a page you
+  can't open.
+- If your ride from a session takes a while to save, the session summary now
+  offers **Your ride lands on Rides** instead of leaving you with no link and
+  no word about where the ride went.
+
 ## [2026.09.142] - 2026-09-25
 
 ### Added
@@ -3029,7 +3063,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.142...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.143...HEAD
+[2026.09.143]: https://github.com/natrontech/wattroom/compare/2026.09.142...2026.09.143
 [2026.09.142]: https://github.com/natrontech/wattroom/compare/2026.09.141...2026.09.142
 [2026.09.141]: https://github.com/natrontech/wattroom/compare/2026.09.140...2026.09.141
 [2026.09.140]: https://github.com/natrontech/wattroom/compare/2026.09.139...2026.09.140
