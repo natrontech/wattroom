@@ -19,6 +19,7 @@
   "build": {
     "appId": "ch.wattroom.desktop",
     "productName": "WattRoom",
+    "icon": "build/icon.png",
     "files": [
       "main.js",
       "preload.js",
