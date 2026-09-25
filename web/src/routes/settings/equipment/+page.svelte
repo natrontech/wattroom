@@ -107,7 +107,9 @@
 			<dt class="text-ink font-medium">Heart rate</dt>
 			<dd>
 				Adds bpm to your dashboard and your .fit export. If your strap is
-				already paired to your trainer, it comes through without this.
+				already paired to your trainer, it comes through without this. In a
+				voice channel the call sees it too — Stop sharing, under your numbers,
+				turns that off.
 			</dd>
 		</div>
 		<div>

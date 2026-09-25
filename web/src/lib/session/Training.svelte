@@ -14,6 +14,7 @@
 	import Instrument from '$lib/session/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
+	import HrShare from '$lib/channel/HrShare.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
 	import LogOut from '@lucide/svelte/icons/log-out';
@@ -98,6 +99,7 @@
 		<header class="flex flex-wrap items-center gap-3 px-6 py-3">
 			<p class="eyebrow">game</p>
 			{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
+			<HrShare />
 			<div class="ml-auto"><SessionControls compact /></div>
 		</header>
 		<section class="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
@@ -153,6 +155,9 @@
 			{/if}
 			<div class="mt-5">
 				<TrainerOverview />
+				<!-- The pairing screen says what it is transmitting (ADR-0008),
+				     before the first interval does. -->
+				<HrShare class="mt-3 justify-center" />
 			</div>
 			<div class="mt-5 flex flex-wrap justify-center gap-2">
 				<SessionControls />
@@ -264,55 +269,60 @@
 			<div></div>
 			<div></div>
 		{:else}
-			<div class="mt-4 flex items-center gap-6 px-6">
-				{#if focus === 'media' || focus === 'game'}
-					<!-- Under the player, never over it (RMF). -->
-					<div class="min-w-0 flex-1">
-						<Instrument
-							watts={channel.you.watts}
-							target={channel.you.target}
-							ftp={channel.you.ftp}
-							compact
-						/>
-					</div>
-				{/if}
-				<SecondaryRow
-					cadence={channel.you.cadence}
-					hr={channel.you.hr}
-					watts={channel.you.watts}
-					kg={channel.you.kg}
-					bias={channel.bias}
-					lthr={channelConnection.current?.profile.current.lthr}
-					small={focus === 'media'}
-					onBias={channel.trainer && channel.actuating
-						? (step) => channel.nudgeBias(step)
-						: undefined}
-					execution={riding.length <= 1 && channel.you.inSession
-						? channel.you.execution
-						: undefined}
-					biasHint={targetsNote
-						? `${targetsNote} — trim them there`
-						: undefined}
-				/>
+			<!-- Your numbers (ADR-0046 slot 3), and under them whether your heart
+			     rate is reaching the call — the line ADR-0008 requires (#2804). -->
+			<div class="mt-4 px-6">
+				<div class="flex items-center gap-6">
+					{#if focus === 'media' || focus === 'game'}
+						<!-- Under the player, never over it (RMF). -->
+						<div class="min-w-0 flex-1">
+							<Instrument
+								watts={channel.you.watts}
+								target={channel.you.target}
+								ftp={channel.you.ftp}
+								compact
+							/>
+						</div>
+					{/if}
+					<SecondaryRow
+						cadence={channel.you.cadence}
+						hr={channel.you.hr}
+						watts={channel.you.watts}
+						kg={channel.you.kg}
+						bias={channel.bias}
+						lthr={channelConnection.current?.profile.current.lthr}
+						small={focus === 'media'}
+						onBias={channel.trainer && channel.actuating
+							? (step) => channel.nudgeBias(step)
+							: undefined}
+						execution={riding.length <= 1 && channel.you.inSession
+							? channel.you.execution
+							: undefined}
+						biasHint={targetsNote
+							? `${targetsNote} — trim them there`
+							: undefined}
+					/>
 
-				<!-- The live half of the execution score (WATTROOM.md: "live on the
-				     group dashboard during sessions"). The server has sent it per
-				     rider since #27 and only the render site was missing (#543).
-				     It rides in the secondary row's spare width rather than beside
-				     the crew: the strip is presence, this is the contest, and a
-				     second full-width list of the same people is what the sprint
-				     and game branches below already refuse to draw.
-				     Alone it is not a leaderboard, so it does not draw: a rider alone
-				     in a session gets their score in the row above instead, as a solo
-				     ride does (ADR-0046 parity, #2635). -->
-				{#if riding.length > 1 && focus !== 'media' && focus !== 'game'}
-					<!-- Not while a screen has the focus: this row already picks up
-					     the compact instrument there, and the player's own floor
-					     (RMF) is what the width is for. -->
-					<div class="ml-auto max-h-32 w-64 shrink-0 overflow-y-auto">
-						<ExecutionMeter riders={riding} />
-					</div>
-				{/if}
+					<!-- The live half of the execution score (WATTROOM.md: "live on the
+					     group dashboard during sessions"). The server has sent it per
+					     rider since #27 and only the render site was missing (#543).
+					     It rides in the secondary row's spare width rather than beside
+					     the crew: the strip is presence, this is the contest, and a
+					     second full-width list of the same people is what the sprint
+					     and game branches below already refuse to draw.
+					     Alone it is not a leaderboard, so it does not draw: a rider alone
+					     in a session gets their score in the row above instead, as a solo
+					     ride does (ADR-0046 parity, #2635). -->
+					{#if riding.length > 1 && focus !== 'media' && focus !== 'game'}
+						<!-- Not while a screen has the focus: this row already picks up
+						     the compact instrument there, and the player's own floor
+						     (RMF) is what the width is for. -->
+						<div class="ml-auto max-h-32 w-64 shrink-0 overflow-y-auto">
+							<ExecutionMeter riders={riding} />
+						</div>
+					{/if}
+				</div>
+				<HrShare class="mt-2" />
 			</div>
 
 			<!-- The crew. A group-training surface that shows only your own

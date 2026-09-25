@@ -452,6 +452,8 @@ export function createRide(deps: RideDeps) {
 		status = 'disconnected';
 		lastSampleAt = 0;
 		latest = null;
+		// Nothing is sent without a trainer, so "shared" would be a lie (#2804).
+		hrSource = null;
 	}
 	function stop() {
 		deps.live.finish();

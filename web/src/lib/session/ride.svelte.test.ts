@@ -87,9 +87,9 @@ class FakeTrainer implements Trainer {
 	 * readings stamped with one frozen Date.now() are one second, not three.
 	 */
 	#at = 0;
-	pedal(watts: number, cadence = 90) {
+	pedal(watts: number, cadence = 90, heartRate?: number) {
 		this.#at = Math.max(this.#at + 1000, Date.now());
-		this.listener?.({ watts, cadence, at: this.#at });
+		this.listener?.({ watts, cadence, heartRate, at: this.#at });
 	}
 }
 
@@ -939,5 +939,60 @@ describe("the ⚑'s ring, off the ride's own numbers (#2657)", () => {
 		for (let i = 0; i < 3; i++) trainer.pedal(0, 0);
 		expect(lastTick()).toMatchObject({ target: 0, state: 'autopaused' });
 		done();
+	});
+});
+
+describe('heart rate a trainer relays (#2804, ADR-0008)', () => {
+	/** Every `hr` this socket has put on the wire, in order. */
+	function hrSentOn(socket: FakeSocket): number[] {
+		return socket.sent
+			.map((line) => JSON.parse(line) as { metrics?: RiderMetrics })
+			.flatMap((message) => (message.metrics ? [message.metrics.hr ?? 0] : []));
+	}
+
+	// A strap bonded to the trainer in another app arrives with no pairing
+	// step here, so the riding screen's "shared · Stop sharing" line is the
+	// only place the rider learns of it — and it is drawn off this answer.
+	it('names the trainer as the source, and forgets it with the trainer', async () => {
+		const { live, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		expect(ride.hrSource).toBeNull();
+		trainer.pedal(200, 90, 142);
+		expect(ride.hrSource).toBe('trainer');
+
+		// Unpaired, nothing is sent at all: a line still saying "shared"
+		// would be the one lie on the screen.
+		ride.unpair();
+		expect(ride.hrSource).toBeNull();
+
+		dispose();
+		live.close();
+	});
+
+	it('stops on the next sample, not on the next pairing', async () => {
+		const { live, socket, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		trainer.pedal(200, 90, 142);
+		deps.profile.current.shareHr = false;
+		trainer.pedal(200, 90, 144);
+		deps.profile.current.shareHr = true;
+		trainer.pedal(200, 90, 146);
+		expect(hrSentOn(socket)).toEqual([142, 0, 146]);
+		// Not sharing is not "no heart rate": the line stays up, now offering
+		// to share again.
+		expect(ride.hrSource).toBe('trainer');
+
+		dispose();
+		live.close();
 	});
 });

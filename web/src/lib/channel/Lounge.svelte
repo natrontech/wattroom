@@ -20,6 +20,7 @@
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import PlanCard from '$lib/session/PlanCard.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
+	import HrShare from '$lib/channel/HrShare.svelte';
 	import { needsTrainer } from '$lib/session/sensor-status';
 	import EventLine from '$lib/channel/EventLine.svelte';
 	import { eventText } from '$lib/channel/events';
@@ -281,6 +282,9 @@
 		<!-- Away moved to the you-panel (#807): it is a statement about you,
 		     like the mic and the camera, and those are pinned bottom-left in
 		     every place rather than only in the Lounge's header. -->
+		<!-- Your tile shows the call your bpm whenever the trainer is paired
+		     (ADR-0008, #2804). -->
+		<HrShare />
 		{#if channel.stageSources.length > 0}
 			<div
 				class="border-muted/20 ml-auto flex gap-0.5 rounded border p-0.5"

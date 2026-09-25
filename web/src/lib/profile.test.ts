@@ -138,4 +138,22 @@ describe('shareHr', () => {
 	it('discards junk rather than guessing', () => {
 		expect(parseProfile({ shareHr: 'no' }).shareHr).toBe(true);
 	});
+
+	/**
+	 * #2804: several screens hold a store each — the root layout, the voice
+	 * channel's connection, Settings. A rider stopped sharing on the riding
+	 * screen, then set a status: the root layout's store re-pulled FTP from
+	 * the account and wrote back the whole profile it had loaded at boot,
+	 * sharing on. Nothing said so, and the next channel shared again.
+	 */
+	it('survives another store saving something else', () => {
+		stored.clear();
+		const layout = createProfileStore();
+		const channel = createProfileStore();
+		expect(channel.update({ shareHr: false })).toBeNull();
+		expect(layout.update({ ftp: 265 })).toBeNull();
+		const next = createProfileStore();
+		expect(next.current.shareHr).toBe(false);
+		expect(next.current.ftp).toBe(265);
+	});
 });
