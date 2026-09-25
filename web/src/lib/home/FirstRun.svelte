@@ -9,6 +9,7 @@
 	// card at all, and the one instruction that makes a watt appear went
 	// down with the two that are the owner's alone.
 	import { account, unchosen } from '$lib/account.svelte';
+	import { canSimulate } from '$lib/ble/can-simulate';
 	import { fetchCrew } from '$lib/crew';
 	import FtpAsk from '$lib/home/FtpAsk.svelte';
 	import type { CrewRef } from '$lib/crew-types';
@@ -58,7 +59,10 @@
 	const first: Step = $derived({
 		done: ridden,
 		label: 'Take your first ride',
-		hint: 'pair your trainer, or ride simulated once to see it work',
+		// The simulator is dev equipment (#123): offered only where it exists.
+		hint: canSimulate()
+			? 'pair your trainer, or ride simulated once to see it work'
+			: 'pair your trainer and ride once',
 		href: '/settings/equipment',
 	});
 	// Above the trainer step, because it is above it in consequence (#1484):

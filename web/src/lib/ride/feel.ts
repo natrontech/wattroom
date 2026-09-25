@@ -39,15 +39,18 @@ const ANCHORS: Record<number, string> = {
 };
 
 /**
- * What a rating is called, for a title and for the line under the picker. An
- * unanchored value is named by the anchor below it, hedged — "harder than
- * hard" is how the scale is actually read, and it beats a blank.
+ * What a rating is called: its published anchor, or nothing. 6, 8 and 9
+ * carry no word in the CR10 (docs/SPEC.md "How a ride felt"), and naming
+ * them — "harder than hard" — would make it a different scale (#2634).
  */
 export function rpeLabel(rpe: number): string {
-	const exact = ANCHORS[rpe];
-	if (exact) return exact;
-	const below = RPE_SCALE.filter((n) => n < rpe && ANCHORS[n]).pop();
-	return below ? `harder than ${ANCHORS[below]}` : '';
+	return ANCHORS[rpe] ?? '';
+}
+
+/** A rating as the picker writes it: "7 — very hard", or "6 of 10". */
+export function rpeText(rpe: number): string {
+	const word = rpeLabel(rpe);
+	return word ? `${rpe} — ${word}` : `${rpe} of 10`;
 }
 
 /** True when the box holds more than the server will take. */

@@ -112,8 +112,7 @@
 		>
 			<span class="font-medium">You're out this game.</span>
 			<span class="text-muted"
-				>Spin easy — you're still in the session, and the panel shows how it
-				ends.</span
+				>Spin easy — you're still riding, and the panel shows how it ends.</span
 			>
 		</p>
 	{/if}

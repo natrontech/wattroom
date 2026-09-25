@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MaxRideNoteChars, MaxRPE, MinRPE } from '$lib/protocol';
-import { RPE_SCALE, noteTooLong, rpeLabel } from './feel';
+import { RPE_SCALE, noteTooLong, rpeLabel, rpeText } from './feel';
 
 /**
  * docs/SPEC.md "How a ride felt" fixes the scale; this is the picker reading
@@ -29,16 +29,19 @@ describe('the RPE scale (#2328)', () => {
 		expect(rpeLabel(10)).toBe('maximal');
 	});
 
-	// 6, 8 and 9 carry no word in the CR10. Inventing three would not be the
-	// scale any more, so they are named off the anchor below them.
-	it('names an unanchored step against the anchor below it', () => {
-		expect(rpeLabel(6)).toBe('harder than hard');
-		expect(rpeLabel(8)).toBe('harder than very hard');
-		expect(rpeLabel(9)).toBe('harder than very hard');
+	// 6, 8 and 9 carry no word in the CR10, and docs/SPEC.md says so: a
+	// word for them — even "harder than hard" — is not the scale any more
+	// (#2634). They read as their number out of ten.
+	it('gives an unanchored step no word', () => {
+		expect(rpeLabel(6)).toBe('');
+		expect(rpeLabel(8)).toBe('');
+		expect(rpeLabel(9)).toBe('');
 	});
 
-	it('leaves no rating without a word', () => {
-		for (const n of RPE_SCALE) expect(rpeLabel(n)).not.toBe('');
+	it('writes an anchor with its word and a step as its number', () => {
+		expect(rpeText(7)).toBe('7 — very hard');
+		expect(rpeText(6)).toBe('6 of 10');
+		expect(rpeText(9)).toBe('9 of 10');
 	});
 });
 

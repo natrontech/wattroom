@@ -205,7 +205,9 @@
 			: 'The crew loses the plan';
 		const ok = await confirm({
 			title: `Cancel “${entry.workoutName}”?`,
-			body: `${who}${mailed ? ', and get an email' : ''}. It cannot be put back.`,
+			// Every member who gets session mail is told, not only the riders
+			// who are in (#2634).
+			body: `${who}.${mailed ? ' Everyone who gets session emails for it is told.' : ''} It cannot be put back.`,
 			action: 'Cancel the session',
 			cancel: 'Keep it',
 		});
@@ -469,9 +471,9 @@
 				<CalendarClock size={16} class="text-muted shrink-0" />
 				<p class="text-muted min-w-0 flex-1 text-xs">
 					This crew's schedule as a calendar link, for anyone — plans in private
-					channels stay out of it. Your own calendar, every crew at once, is on <a
-						href="/home#sessions"
-						class="underline">Home</a
+					channels stay out of it. Your own calendar, every crew at once, is in <a
+						href="/settings/data"
+						class="underline">Settings → Data</a
 					>.
 				</p>
 				<button

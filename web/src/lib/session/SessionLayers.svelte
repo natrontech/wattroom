@@ -220,6 +220,7 @@
 		shelfError={layers.setup.custom.error}
 		onRetryShelf={() => void layers.setup.custom.retry()}
 		intent={layers.setup.intent}
+		channelName={placeName}
 		ftp={connection.profile.current.ftp}
 		gameRunning={!!live.tick?.game}
 		busy={planning}
