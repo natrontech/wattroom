@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -394,6 +395,29 @@ func TestRecoveryRefusesPastItsCeilings(t *testing.T) {
 	}
 	if !shut {
 		t.Fatalf("the per-caller door never refused inside %d asks", recoverAsksPerWindow+2)
+	}
+}
+
+// A table filled by a flood of typed addresses is a shared resource that is
+// full, not this address asking too often (#2825): 503, and a message that
+// does not tell the rider their own inbox got too many links.
+func TestRecoveryAnswersBusyWhenTheMailTableIsFull(t *testing.T) {
+	s := testService(t)
+	recoverable(t, s, "fresh@example.test")
+	for i := 0; ; i++ {
+		if i > 1<<16 {
+			t.Fatal("the recovery mail table never filled")
+		}
+		if _, full := s.recoverMail.Take(fmt.Sprintf("flood%d@example.test", i)); full {
+			break
+		}
+	}
+	w := ask(t, s, `{"email":"fresh@example.test"}`)
+	if w.Code != http.StatusServiceUnavailable || !strings.Contains(w.Body.String(), `"rate_limited"`) {
+		t.Fatalf("a full table: %d %s, want 503 rate_limited", w.Code, w.Body.String())
+	}
+	if strings.Contains(w.Body.String(), "one address") {
+		t.Fatalf("a full table blamed the rider's address: %s", w.Body.String())
 	}
 }
 

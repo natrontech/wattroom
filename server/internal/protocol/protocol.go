@@ -499,7 +499,7 @@ type Rider struct {
 // sent straight back, so there is no stored address to export under Art. 15
 // or to purge with an account.
 type OwnConnection struct {
-	// The address this socket reached the server from, as httpx.ClientIP
+	// The address this socket reached the server from, as httpx.ClientAddr
 	// resolves it: the last X-Forwarded-For hop behind the deploy's proxy
 	// (#1824), else the peer.
 	IP string `json:"ip"`
