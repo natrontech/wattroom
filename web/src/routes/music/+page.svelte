@@ -48,6 +48,10 @@
 	// One tag at a time: the shelf a rider is standing at. '' is the whole pool.
 	let tag = $state('');
 	let loading = $state(true);
+	// Whether the library has been read at all: `error` also carries an
+	// upload's refusal, so it cannot say whether the empty state is true — a
+	// failed first read drew "Add the first tracks" under the banner (#2848).
+	let listed = $state(false);
 	let error = $state<string | null>(null);
 	let query = $state('');
 	let uploading = $state<string[]>([]);
@@ -67,6 +71,7 @@
 			return;
 		}
 		error = null;
+		listed = true;
 		tracks = res.data.tracks;
 		// Counted over the whole pool, so the row does not empty out as a rider
 		// narrows — the other shelves are how they get back.
@@ -364,6 +369,9 @@
 
 		{#if loading}
 			<Skeleton rows={5} class="mb-2 h-14" />
+		{:else if !listed}
+			<!-- The banner above says why and offers Retry; an empty library
+			     under it would be a guess. -->
 		{:else if tracks.length === 0 && tag}
 			<EmptyState>
 				{#snippet icon()}<Music

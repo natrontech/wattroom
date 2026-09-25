@@ -263,7 +263,16 @@
 				/></button
 			>
 		</div>
-		{#if dmHeads.loaded && dmHeads.heads.length === 0 && !dmsFolded}
+		{#if dmHeads.error && dmHeads.heads.length === 0 && !dmsFolded}
+			<!-- A refused poll is not "no conversations" (#1816, #2848): the
+			     prompt below told a rider with threads to start their first. -->
+			<p class="text-muted mx-2 mb-2 px-2 py-1 text-xs">
+				Messages did not load.
+				<button onclick={() => dmHeads.retry()} class="btn-link text-xs"
+					>Retry</button
+				>
+			</p>
+		{:else if dmHeads.loaded && dmHeads.heads.length === 0 && !dmsFolded}
 			<!-- A heading over nothing taught nothing (#1819): the first thread
 			     starts on a friend's page. -->
 			<a
