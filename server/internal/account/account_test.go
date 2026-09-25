@@ -83,6 +83,18 @@ func (h *harness) call(t *testing.T, user, method, path string) *httptest.Respon
 
 func (h *harness) id(name string) pgtype.UUID { return h.users.ByToken[name].ID }
 
+// reread hands the session the rider's row as it stands now. The export
+// reads the session's row, which the real gate loads per request and this
+// harness kept from setup, before any write a test made to it.
+func (h *harness) reread(t *testing.T, name string) {
+	t.Helper()
+	fresh, err := h.store.Queries.GetUser(t.Context(), h.id(name))
+	if err != nil {
+		t.Fatalf("reread %s: %v", name, err)
+	}
+	h.users.ByToken[name] = fresh
+}
+
 // exportFiles runs one rider's export and returns the archive keyed by file
 // name. Every assertion about the export's contents starts this way, so it is
 // written once (#2089).
@@ -1097,13 +1109,7 @@ func TestExportCarriesTheCategoriesTheSweepFound(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("status: %v", err)
 	}
-	// The export reads the session's row, which the real gate loads per
-	// request and this harness kept from before the write.
-	fresh, err := h.store.Queries.GetUser(t.Context(), h.id("alice"))
-	if err != nil {
-		t.Fatalf("reread alice: %v", err)
-	}
-	h.users.ByToken["alice"] = fresh
+	h.reread(t, "alice")
 
 	files := h.exportFiles(t, "alice")
 

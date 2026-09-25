@@ -903,6 +903,58 @@ func (q *Queries) ExportUserPasskeys(ctx context.Context, userID pgtype.UUID) ([
 	return items, nil
 }
 
+const exportUserPins = `-- name: ExportUserPins :many
+select c.name as crew_name, p.title, p.body, p.created_at, p.updated_at
+from crew_pins p
+join crews c on c.id = p.crew_id
+where p.created_by = $1
+order by p.created_at desc, p.id
+limit $2::int
+`
+
+type ExportUserPinsParams struct {
+	UserID pgtype.UUID
+	Lim    int32
+}
+
+type ExportUserPinsRow struct {
+	CrewName  string
+	Title     string
+	Body      string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+// The pins the rider wrote on a crew's board (ADR-0056, #2863), on a screen
+// every member reads. Only their own: another member's pin is that member's
+// writing, the rule chat.json follows. A pin outlives its author's account
+// (created_by SET NULL), so it is theirs until then and the board's after.
+func (q *Queries) ExportUserPins(ctx context.Context, arg ExportUserPinsParams) ([]ExportUserPinsRow, error) {
+	rows, err := q.db.Query(ctx, exportUserPins, arg.UserID, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ExportUserPinsRow
+	for rows.Next() {
+		var i ExportUserPinsRow
+		if err := rows.Scan(
+			&i.CrewName,
+			&i.Title,
+			&i.Body,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const exportUserPlaylists = `-- name: ExportUserPlaylists :many
 select p.name, p.created_at, coalesce(
     (select json_agg(json_build_object(

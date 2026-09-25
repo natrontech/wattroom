@@ -380,3 +380,15 @@ join crews c on c.id = e.crew_id
 where e.user_id = sqlc.arg(user_id)
 order by e.created_at desc
 limit sqlc.arg(lim)::int;
+
+-- name: ExportUserPins :many
+-- The pins the rider wrote on a crew's board (ADR-0056, #2863), on a screen
+-- every member reads. Only their own: another member's pin is that member's
+-- writing, the rule chat.json follows. A pin outlives its author's account
+-- (created_by SET NULL), so it is theirs until then and the board's after.
+select c.name as crew_name, p.title, p.body, p.created_at, p.updated_at
+from crew_pins p
+join crews c on c.id = p.crew_id
+where p.created_by = sqlc.arg(user_id)
+order by p.created_at desc, p.id
+limit sqlc.arg(lim)::int;

@@ -257,6 +257,18 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		return true
 	}
 
+	// The crew the rider chose as home (#2863), by name: an id is not
+	// something a person reads. Null when unset.
+	var homeCrew any
+	if user.HomeCrewID.Valid {
+		crew, err := s.store.Queries.GetCrew(r.Context(), user.HomeCrewID)
+		if err != nil {
+			fail("export home crew", err)
+			return
+		}
+		homeCrew = crew.Name
+	}
+
 	profile := map[string]any{
 		"displayName": user.DisplayName,
 		"ftpWatts":    user.FtpWatts,
@@ -295,12 +307,21 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		"unsubscribeToken": store.UUIDString(user.UnsubToken),
 		// The reactions they picked (#2722), as the icons they react with.
 		"cheers": auth.CheerSet(user.Cheers),
+		// The last of the row (#2863): the crew the sidebar opens in, the
+		// invite they were sent and have not taken up (Home offers it back),
+		// and whether the account had to confirm an address before it rode.
+		"homeCrew":      homeCrew,
+		"pendingInvite": user.PendingCrewCode,
+		"emailRequired": user.EmailRequired,
 		// The status the rider wrote (ADR-0060), as the row holds it — one
 		// already cleared included, since nothing sweeps the columns.
 		"status": map[string]any{
-			"emoji":     user.StatusEmoji,
-			"text":      user.StatusText,
-			"expiresAt": timeOrNil(user.StatusExpiresAt),
+			"emoji": user.StatusEmoji,
+			// Whether that emoji is drawn as a crew's own picture — which the
+			// row points at by id, and which emoji.json names if it is theirs.
+			"emojiIsCrewPicture": user.StatusEmojiID.Valid,
+			"text":               user.StatusText,
+			"expiresAt":          timeOrNil(user.StatusExpiresAt),
 		},
 	}
 	// The hashes are not here and must not be: email_verify_hash and
@@ -626,6 +647,19 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 					// Her two switches on the membership (#2432), which
 					// rooms.json carried per room until M9 moved them here.
 					"notify": row.Notify, "onBoard": row.OnBoard}
+			})
+			return out, len(rows), err
+		}),
+		bounded("pins.json", func() (any, int, error) {
+			// What the rider wrote on a crew's pin board (ADR-0056, #2863) —
+			// their own pins only; the rest of the board is other members'
+			// writing, the line chat.json draws.
+			rows, err := s.store.Queries.ExportUserPins(r.Context(), db.ExportUserPinsParams{
+				UserID: user.ID, Lim: maxExportRows,
+			})
+			out, err := mapRows(rows, err, func(row db.ExportUserPinsRow) any {
+				return map[string]any{"crew": row.CrewName, "title": row.Title, "body": row.Body,
+					"createdAt": row.CreatedAt.Time, "updatedAt": row.UpdatedAt.Time}
 			})
 			return out, len(rows), err
 		}),
