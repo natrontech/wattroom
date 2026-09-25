@@ -7,6 +7,7 @@
 		bufferedSeconds,
 		onRecover,
 		note,
+		busy = false,
 	}: {
 		fault: Fault;
 		/** Riding this device holds for the channel; absent when no ride runs. */
@@ -14,6 +15,8 @@
 		onRecover: () => void;
 		/** One more line the channel knows and the fault does not (#1590). */
 		note?: string;
+		/** The way back is under way — the chooser is open. */
+		busy?: boolean;
 	} = $props();
 
 	const copy = $derived(faultCopy(fault, bufferedSeconds));
@@ -23,6 +26,10 @@
 	const recovering = $derived(
 		fault.state === 'reconnecting' || fault.state === 'offline',
 	);
+	// A trainer's way back works while it is still reconnecting: the driver
+	// retries for as long as the page lives, so hiding the button until it
+	// gives up hid it for good (#2881).
+	const offered = $derived(!recovering || fault.kind === 'trainer');
 </script>
 
 <!--
@@ -51,13 +58,14 @@
 		<p class="text-muted text-xs">{copy.detail}</p>
 		{#if note}<p class="text-xs">{note}</p>{/if}
 	</div>
-	{#if !recovering}
+	{#if offered}
 		<!-- Its own row at phone width (#1628): beside 200 characters of
 		     copy it left the words 140 px. -->
 		<button
 			onclick={onRecover}
+			disabled={busy}
 			class="btn btn-primary btn-lg ml-auto shrink-0 max-sm:ml-0 max-sm:w-full"
-			>{copy.action ?? 'Reconnect'}</button
+			>{busy ? 'Pairing…' : (copy.action ?? 'Reconnect')}</button
 		>
 	{/if}
 </div>

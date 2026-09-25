@@ -12,7 +12,11 @@ export interface FaultCopy {
 // bufferedSeconds is how much riding this device holds for the channel; absent
 // when there is no ride, so a dropped channel promises nothing stored (#2855).
 export function faultCopy(fault: Fault, bufferedSeconds?: number): FaultCopy {
+	// A trainer's way back is the chooser, on every riding surface (ADR-0046,
+	// #2881): the driver reattaches by itself for as long as the page lives
+	// (#37), so a rider whose trainer never answers again has only this.
 	if (fault.kind === 'trainer') {
+		const action = 'Pair the trainer again';
 		if (fault.state === 'no-power')
 			return {
 				title: 'Trainer is connected but sends no power',
@@ -28,17 +32,20 @@ export function faultCopy(fault: Fault, bufferedSeconds?: number): FaultCopy {
 				title: 'Trainer is connected but sending nothing',
 				detail:
 					'No data has arrived over Bluetooth. Spin the cranks to wake it — and close anything else holding the trainer (Zwift, the Wahoo app, another tab), since it only accepts one connection.',
+				action,
 			};
 		return fault.state === 'reconnecting'
 			? {
 					title: 'Trainer disconnected',
 					detail:
 						'Reconnecting over Bluetooth. Keep pedalling — your ride is still recording.',
+					action,
 				}
 			: {
 					title: "Trainer didn't come back",
 					detail:
-						'Bluetooth dropped and three retries failed. Wake the trainer (spin the cranks) and reconnect.',
+						'Bluetooth dropped and three retries failed. Wake the trainer (spin the cranks) and pair it again.',
+					action,
 				};
 	}
 	if (fault.kind === 'voice') {

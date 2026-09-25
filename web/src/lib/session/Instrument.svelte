@@ -28,6 +28,7 @@
 		tv = false,
 		targetLabel = 'target',
 		fullScale = undefined,
+		stale = false,
 	}: {
 		watts: number;
 		target: number;
@@ -41,11 +42,20 @@
 		targetLabel?: string;
 		/** The right-hand end of the track in watts; FTP × 1.5 unless said (#1565). */
 		fullScale?: number;
+		/**
+		 * Nothing is being measured (#2851): the trainer went quiet, and what
+		 * is left is its last number. Glow means live (ADR-0005), so it goes,
+		 * the number with it, and the line says why — a rider three metres
+		 * away reads the number, not the banner above it.
+		 */
+		stale?: boolean;
 	} = $props();
 
 	const pct = (w: number) => fillPct(w, ftp, fullScale);
-	const state = $derived(targetState({ watts, target }));
-	const zone = $derived(zoneOf(watts, ftp));
+	const shown = $derived(stale ? 0 : watts);
+	const state = $derived(targetState({ watts: shown, target }));
+	const zone = $derived(zoneOf(shown, ftp));
+	const numeral = $derived(stale ? 'text-muted' : 'text-watt glow-text-strong');
 </script>
 
 {#snippet track(height: string)}
@@ -67,7 +77,7 @@
 			     is contrast-gated at 3:1 and dimming it voids that. -->
 			<div
 				class="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
-				style="width: {pct(watts)}%"
+				style="width: {pct(shown)}%"
 			>
 				<div class="{ZONE_BG[zone]} h-full w-full"></div>
 			</div>
@@ -85,8 +95,8 @@
 	<div class="flex items-center gap-6">
 		<span class="flex shrink-0 items-baseline gap-1.5">
 			<span
-				class="font-display text-watt glow-text-strong text-4xl leading-none font-bold tabular-nums"
-				>{watts}</span
+				class="font-display {numeral} text-4xl leading-none font-bold tabular-nums"
+				>{stale ? '—' : watts}</span
 			>
 			<span class="eyebrow">w</span>
 		</span>
@@ -95,28 +105,32 @@
 			class="shrink-0 text-xs tabular-nums {state.inBand
 				? 'text-z4'
 				: 'text-muted'}"
-			>{state.has ? `${targetLabel} ${target} W` : 'no target'}</span
+			>{stale
+				? 'no signal'
+				: state.has
+					? `${targetLabel} ${target} W`
+					: 'no target'}</span
 		>
 	</div>
 {:else}
 	<div class="relative {tv ? 'h-[22vh]' : 'h-28'}">
 		<div
 			class="absolute bottom-0 -translate-x-1/2 text-center transition-[left] duration-500 ease-out"
-			style="left: clamp({tv ? '10vh' : '5rem'}, {pct(watts)}%, calc(100% - {tv
+			style="left: clamp({tv ? '10vh' : '5rem'}, {pct(shown)}%, calc(100% - {tv
 				? '10vh'
 				: '5rem'}))"
 		>
 			<span
-				class="font-display text-watt glow-text-strong block leading-[0.85] font-bold tabular-nums {tv
+				class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
 					? 'text-[16vh]'
-					: 'text-[6.5rem]'}">{watts}</span
+					: 'text-[6.5rem]'}">{stale ? '—' : watts}</span
 			>
 			<span class="eyebrow {tv ? 'text-[1.6vh]' : ''}">watts</span>
 			<!-- The zone you are actually in, named (#1531, ADR-0046): the gauge
 			     has been tinted by it since #386 and never said which one, so the
 			     colour was a code with no key on the one screen that could give
 			     it one. Silent at 0 W — Z1 for a rider who stopped is a lie. -->
-			{#if watts > 0}
+			{#if shown > 0}
 				<span class="eyebrow block {ZONE_TEXT[zone]} {tv ? 'text-[1.6vh]' : ''}"
 					>z{zone} {ZONE_NAMES[zone]}</span
 				>
@@ -141,7 +155,9 @@
 					? 'text-z5'
 					: 'text-muted'}"
 		>
-			{#if !state.has}
+			{#if stale}
+				no signal
+			{:else if !state.has}
 				no {targetLabel} — spin easy
 			{:else if state.inBand}
 				on {targetLabel} · {target} W

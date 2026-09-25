@@ -256,6 +256,7 @@
 			<section class="grid min-h-0 content-center px-6">
 				<Instrument
 					watts={channel.you.watts}
+					stale={channel.youStale}
 					target={channel.you.target}
 					ftp={channel.you.ftp}
 				/>
@@ -278,6 +279,7 @@
 						<div class="min-w-0 flex-1">
 							<Instrument
 								watts={channel.you.watts}
+								stale={channel.youStale}
 								target={channel.you.target}
 								ftp={channel.you.ftp}
 								compact
@@ -286,6 +288,7 @@
 					{/if}
 					<SecondaryRow
 						cadence={channel.you.cadence}
+						stale={channel.youStale}
 						hr={channel.you.hr}
 						watts={channel.you.watts}
 						kg={channel.you.kg}
