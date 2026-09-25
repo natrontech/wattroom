@@ -78,6 +78,21 @@ type fakeLive struct {
 	moveErr error
 	present map[string]protocol.ChannelPresence
 	running map[string]protocol.LiveSession
+	// Who stands in each channel, socket or call, and every re-role asked.
+	occupants map[string][]string
+	roles     []string
+}
+
+func (f *fakeLive) Occupants(channel string) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.occupants[channel]
+}
+
+func (f *fakeLive) SetRole(channel, userID, role string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.roles = append(f.roles, channel+"/"+userID+"/"+role)
 }
 
 func (f *fakeLive) LiveSession(channel string) (protocol.LiveSession, bool) {

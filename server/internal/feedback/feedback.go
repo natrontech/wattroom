@@ -178,11 +178,12 @@ func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	stored := map[string]any{
-		"at":        now.UTC(),
-		"reporter":  user.DisplayName,
-		"serverSHA": s.buildSHA,
-		"report":    report,
-		"serverLog": s.ring.Snapshot(),
+		"at":         now.UTC(),
+		"reporter":   user.DisplayName,
+		"reporterId": store.UUIDString(user.ID),
+		"serverSHA":  s.buildSHA,
+		"report":     report,
+		"serverLog":  s.ring.Snapshot(store.UUIDString(user.ID)),
 	}
 	// Disk first — the invariant.
 	if err := s.append(stored); err != nil {

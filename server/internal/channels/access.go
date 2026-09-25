@@ -1,7 +1,9 @@
 package channels
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/jackc/pgx/v5"
@@ -85,25 +87,36 @@ func (s *Service) channelFor(w http.ResponseWriter, r *http.Request) (db.Channel
 		httpx.Fail(w, s.log, "channel lookup failed", err, "The channel could not be loaded.")
 		return db.Channel{}, db.User{}, "", false
 	}
-	role, err := s.store.Queries.CrewRoleOf(r.Context(), db.CrewRoleOfParams{CrewID: channel.CrewID, UserID: user.ID})
+	role, admitted, err := s.standing(r.Context(), channel, user.ID)
 	if err != nil {
-		httpx.Fail(w, s.log, "crew role lookup failed", err, "The channel could not be loaded.")
+		httpx.Fail(w, s.log, "channel gate lookup failed", err, "The channel could not be loaded.")
 		return db.Channel{}, db.User{}, "", false
 	}
-	named := false
-	if channel.Private && role == "member" {
-		if named, err = s.store.Queries.IsNamedInChannel(r.Context(), db.IsNamedInChannelParams{
-			ChannelID: channel.ID, UserID: user.ID,
-		}); err != nil {
-			httpx.Fail(w, s.log, "channel membership lookup failed", err, "The channel could not be loaded.")
-			return db.Channel{}, db.User{}, "", false
-		}
-	}
-	if !mayEnter(role, channel.Private, named) {
+	if !admitted {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", notFound)
 		return db.Channel{}, db.User{}, "", false
 	}
 	return channel, user, role, true
+}
+
+// standing is the gate asked about one person at one channel: their crew
+// role, and whether mayEnter lets them in. Every door asks it here: the HTTP
+// ones, the socket's, and the second asking a gate change makes of whoever is
+// already inside (#2808).
+func (s *Service) standing(ctx context.Context, c db.Channel, userID pgtype.UUID) (role string, admitted bool, err error) {
+	role, err = s.store.Queries.CrewRoleOf(ctx, db.CrewRoleOfParams{CrewID: c.CrewID, UserID: userID})
+	if err != nil {
+		return "", false, fmt.Errorf("crew role: %w", err)
+	}
+	named := false
+	if c.Private && role == "member" {
+		if named, err = s.store.Queries.IsNamedInChannel(ctx, db.IsNamedInChannelParams{
+			ChannelID: c.ID, UserID: userID,
+		}); err != nil {
+			return "", false, fmt.Errorf("named in channel: %w", err)
+		}
+	}
+	return role, mayEnter(role, c.Private, named), nil
 }
 
 // requireAdmin refuses a member who may see the channel but not keep it.

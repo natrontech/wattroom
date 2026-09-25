@@ -22,6 +22,43 @@ func (h *harness) crewSwitches(t *testing.T, who string, crew db.GetCrewRow) map
 	return me
 }
 
+// boardOn turns the crew's board on as its owner, alice.
+func (h *harness) boardOn(t *testing.T, crew db.GetCrewRow) {
+	t.Helper()
+	if status, body := h.call(t, "alice", http.MethodPatch, crewPath(crew),
+		fmt.Sprintf(`{"name":%q,"boardEnabled":true}`, crew.Name)); status != http.StatusOK {
+		t.Fatalf("board on: %d %v", status, body)
+	}
+}
+
+// A door that said the board was off keeps its word (#2820): the joiner
+// starts off the board, and turning it on later does not put them there.
+// A row that never came through a door at all — a pre-emptive ban, lifted —
+// starts off it too.
+func TestABoardOffDoorKeepsTheJoinerOffTheBoard(t *testing.T) {
+	h := setup(t)
+	crew := h.newCrew(t, "alice", "Quiet")
+	h.join(t, "bob", crew)
+	if me := h.crewSwitches(t, "bob", crew); me["onBoard"] != false {
+		t.Fatalf("joining behind a board-off door put bob on the board: %v", me)
+	}
+	h.boardOn(t, crew)
+	if me := h.crewSwitches(t, "bob", crew); me["onBoard"] != false {
+		t.Errorf("turning the board on enrolled bob: %v", me)
+	}
+
+	carol := h.userID(t, "carol")
+	for _, role := range []string{"banned", "member"} {
+		if status, body := h.call(t, "alice", http.MethodPost, crewPath(crew, "/role"),
+			fmt.Sprintf(`{"userId":%q,"role":%q}`, carol, role)); status != http.StatusOK && status != http.StatusNoContent {
+			t.Fatalf("set carol %s: %d %v", role, status, body)
+		}
+	}
+	if me := h.crewSwitches(t, "carol", crew); me["onBoard"] != false {
+		t.Errorf("a lifted pre-emptive ban put carol on the board: %v", me)
+	}
+}
+
 // The switches are the easy half; what matters is that the two queries
 // downstream actually honour them, because a preference nothing reads is
 // worse than no preference at all — the rider believes they are off the
@@ -29,12 +66,14 @@ func (h *harness) crewSwitches(t *testing.T, who string, crew db.GetCrewRow) map
 func TestCrewPrefsAreTheirOwnAndAreHonoured(t *testing.T) {
 	h := setup(t)
 	crew := h.newCrew(t, "alice", "Prefs")
+	h.boardOn(t, crew)
 	for _, member := range []string{"bob", "carol"} {
 		h.join(t, member, crew)
 	}
 
-	// A member's defaults are mail on and on the board: nobody is opted out
-	// by joining. This is the box that a silent opt-out would fail.
+	// A member's defaults behind a door that named the board are mail on and
+	// on the board: nobody is opted out by joining. This is the box that a
+	// silent opt-out would fail.
 	if me := h.crewSwitches(t, "bob", crew); me["notify"] != true || me["onBoard"] != true {
 		t.Fatalf("a member's defaults are not mail on and on the board: %v", me)
 	}
@@ -146,6 +185,7 @@ func TestOnlyYouSetYourOwnCrewPrefs(t *testing.T) {
 func TestLeavingTheCrewForgetsYourPreferences(t *testing.T) {
 	h := setup(t)
 	crew := h.newCrew(t, "alice", "Forgetful")
+	h.boardOn(t, crew)
 	h.join(t, "bob", crew)
 	if status, _ := h.call(t, "bob", http.MethodPatch, crewPath(crew, "/me"),
 		`{"notify":false,"onBoard":false}`); status != http.StatusOK {

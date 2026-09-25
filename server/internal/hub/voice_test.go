@@ -90,6 +90,31 @@ func TestVoiceFoldsTabsPerRider(t *testing.T) {
 	}
 }
 
+// Who a gate change asks about again (#2808) is everyone who can hear the
+// channel: a socket in its room, or a connection in its call with no socket
+// open. Two tabs are one rider, and another channel's call is not this one.
+func TestOccupantsAreTheSocketsAndTheCall(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), nil, nil)
+	rm := h.room("velvet")
+	rm.join(socket("kim-id", "Kim"))
+	rm.join(socket("kim-id", "Kim"))
+	rm.join(socket("jan-id", "Jan"))
+	h.VoiceJoined("velvet", "kim-id#aaa", "Kim")
+	h.VoiceJoined("velvet", "lena-id#bbb", "Lena")
+	h.VoiceJoined("elsewhere", "omar-id#ccc", "Omar")
+
+	if got, want := h.Occupants("velvet"), []string{"jan-id", "kim-id", "lena-id"}; !slices.Equal(got, want) {
+		t.Fatalf("occupants = %v, want %v", got, want)
+	}
+	// A call with no room open yet is still somebody listening.
+	if got, want := h.Occupants("elsewhere"), []string{"omar-id"}; !slices.Equal(got, want) {
+		t.Fatalf("occupants of a call with no room = %v, want %v", got, want)
+	}
+	if got := h.Occupants("nowhere"); len(got) != 0 {
+		t.Fatalf("occupants of an empty channel = %v, want none", got)
+	}
+}
+
 // Voice is keyed by voice channel (#2436): two channels of one crew are two
 // calls, and a join in one is nothing in the other — not on the radar, not in
 // the channel's live room, not a hold that keeps it from being forgotten.

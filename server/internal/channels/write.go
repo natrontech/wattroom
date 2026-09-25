@@ -144,6 +144,12 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "update channel failed", err, "The channel could not be saved.", "channel", store.UUIDString(channel.ID))
 		return
 	}
+	// Made private, it shuts out whoever it no longer names, and that
+	// includes the sockets and the call already open (#2808). Opening a
+	// channel shuts nobody out, so only the flip to private asks.
+	if updated.Private && !channel.Private {
+		s.reauthorizeOccupants(r.Context(), updated)
+	}
 	members, ok := s.membersOf(w, r.Context(), updated)
 	if !ok {
 		return

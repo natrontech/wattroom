@@ -4,9 +4,9 @@ import { expect, test } from './crew';
  * A code typed on Home opens the crew's door, never the crew (#2810).
  *
  * ADR-0036, amended with ADR-0058, says a crew's weekly board at the door so
- * that nobody is enrolled on it just by joining — and `on_board` defaults to
- * true on exactly that premise. The code box on Home and behind the sidebar's
- * + joined on its own: a rider who typed a code there was ranked on a board
+ * that nobody is enrolled on it just by joining — and `on_board` starts on
+ * behind a door that named the board on exactly that premise (#2820). The
+ * code box on Home and behind the sidebar's + joined on its own: a rider who typed a code there was ranked on a board
  * no sentence had mentioned. This is that journey against a crew whose board
  * is on, where the gap was: the sentence before the join, and no membership
  * until the door's own button.

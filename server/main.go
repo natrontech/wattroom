@@ -318,6 +318,9 @@ func main() {
 		accountService.SetLive(h)
 		h.SetSessionKey(auth.SessionKey)
 		channelsService.SetLive(h)
+		// A crew role change or a hand-over asks the channels' gate again
+		// about the sockets and calls already open (#2808).
+		crewsService.SetGate(channelsService)
 		// A text channel's chat (#2435), behind the channel's own gate; the
 		// lobby ping names the channel whose log moved.
 		chatService := chat.New(st, log)

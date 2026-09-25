@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
@@ -42,9 +44,9 @@ func TestLogRingCapturesAndBounds(t *testing.T) {
 	ring := NewLogRing(slog.DiscardHandler)
 	log := slog.New(ring)
 	for i := 0; i < ringSize+50; i++ {
-		log.Info("tick", "n", i)
+		log.Info("tick", "rider", rider, "n", i)
 	}
-	lines := ring.Snapshot()
+	lines := ring.Snapshot(rider)
 	if len(lines) != ringSize {
 		t.Fatalf("ring size: %d", len(lines))
 	}
@@ -56,8 +58,8 @@ func TestLogRingCapturesAndBounds(t *testing.T) {
 		t.Fatal("ancient line survived the ring")
 	}
 	// Derived handlers write into the same ring.
-	slog.New(ring.WithAttrs([]slog.Attr{slog.String("room", "velvet")})).Info("derived")
-	if !strings.Contains(strings.Join(ring.Snapshot(), "\n"), "derived") {
+	slog.New(ring.WithAttrs([]slog.Attr{slog.String("room", "velvet")})).Info("derived", "rider", rider)
+	if !strings.Contains(strings.Join(ring.Snapshot(rider), "\n"), "derived") {
 		t.Fatal("derived handler bypassed the ring")
 	}
 }
@@ -207,5 +209,61 @@ func TestSubmitKeepsTheReporterOutOfThePublicIssue(t *testing.T) {
 		if !strings.Contains(disk, want) {
 			t.Errorf("the disk record lost %q:\n%s", want, disk)
 		}
+	}
+}
+
+// ADR-0006: a report carries "the session's own log lines" and "only the
+// reporter's own data — never the room's", and the flag's copy promises
+// "Only yours, nobody else's" (#2822). The ring is process-wide, so the
+// report has to pick the reporter's lines out of it — and keep the row
+// findable by account, not only by a display name.
+func TestSubmitStoresOnlyTheReportersOwnLogLines(t *testing.T) {
+	t.Setenv("WATTROOM_FEEDBACK_DIR", t.TempDir())
+	const me, other = "0f5b6a3e-1c2d-4e5f-8a9b-0c1d2e3f4a5b", "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+	var id pgtype.UUID
+	if err := id.Scan(me); err != nil {
+		t.Fatal(err)
+	}
+	ring := NewLogRing(slog.DiscardHandler)
+	log := slog.New(ring)
+	log.Info("rider joined", "channel", "c-1", "rider", me)
+	log.Info("rider joined", "channel", "c-1", "rider", other)
+	log.Info("account deleted", "user", other)
+	log.Error("http: panic serving 10.0.0.7: boom")
+	log.Info("crew handed on", "crew", "k-1", "user", me, "to", other)
+	svc := New(fakeSessions{db.User{ID: id, DisplayName: "velvet"}}, nil, ring, slog.New(slog.DiscardHandler))
+	mux := http.NewServeMux()
+	svc.Register(mux)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), http.MethodPost, "/api/feedback",
+		strings.NewReader(`{"route":"/ride","note":"","firstError":"","clientBuild":"dev","userAgent":"vitest","trainer":"","clientMs":1}`)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	raw, err := os.ReadFile(filepath.Join(svc.dir, "reports.jsonl")) //nolint:gosec // dir is t.TempDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored struct {
+		ReporterID string   `json:"reporterId"`
+		ServerLog  []string `json:"serverLog"`
+	}
+	if err := json.Unmarshal(raw, &stored); err != nil {
+		t.Fatal(err)
+	}
+	log2 := strings.Join(stored.ServerLog, "\n")
+	for _, gone := range []string{other, "account deleted", "panic"} {
+		if strings.Contains(log2, gone) {
+			t.Errorf("the stored report carries %q, which is not the reporter's:\n%s", gone, log2)
+		}
+	}
+	for _, kept := range []string{"rider joined channel=c-1 rider=" + me, "crew handed on crew=k-1 user=" + me} {
+		if !strings.Contains(log2, kept) {
+			t.Errorf("the stored report lost the reporter's own line %q:\n%s", kept, log2)
+		}
+	}
+	if stored.ReporterID != me {
+		t.Errorf("the row names reporter id %q, want %q", stored.ReporterID, me)
 	}
 }

@@ -73,8 +73,10 @@ type Alerter interface {
 // amendment): crews.owner_id is ON DELETE RESTRICT, so every crew the rider
 // owns is handed on or removed before the row goes. Inside the purge's own
 // transaction, so a transfer that fails leaves the account exactly as it was.
+// What it hands back runs after the commit: the successors' open sockets
+// taking their new role (#2808).
 type CrewReleaser interface {
-	ReleaseCrews(ctx context.Context, q *db.Queries, user pgtype.UUID) error
+	ReleaseCrews(ctx context.Context, q *db.Queries, user pgtype.UUID) (handedOn func(context.Context), err error)
 }
 
 // GrantRevoker hands a third-party grant back — the seam auth uses for a
@@ -1011,8 +1013,9 @@ func (s *Service) purge(ctx context.Context, user pgtype.UUID) ([]string, error)
 	if err != nil {
 		return nil, fmt.Errorf("tracks: %w", err)
 	}
+	handedOn := func(context.Context) {}
 	if s.crews != nil {
-		if err := s.crews.ReleaseCrews(ctx, q, user); err != nil {
+		if handedOn, err = s.crews.ReleaseCrews(ctx, q, user); err != nil {
 			return nil, fmt.Errorf("crews: %w", err)
 		}
 	}
@@ -1022,6 +1025,7 @@ func (s *Service) purge(ctx context.Context, user pgtype.UUID) ([]string, error)
 	if err := tx.Commit(ctx); err != nil {
 		return nil, err
 	}
+	handedOn(ctx)
 	return orphans, nil
 }
 

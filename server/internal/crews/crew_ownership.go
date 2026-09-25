@@ -20,24 +20,24 @@ import (
 // releaseCrew hands the crew on or removes it, never leaving it ownerless:
 // docs/SPEC.md's successor, and with nobody left the crew goes — and the
 // room rows still pointing at it with it (rooms.crew_id cascades since
-// #2558).
-func (s *Service) releaseCrew(ctx context.Context, q *db.Queries, crew, owner pgtype.UUID) error {
+// #2558). The successor comes back, or false when the crew went.
+func (s *Service) releaseCrew(ctx context.Context, q *db.Queries, crew, owner pgtype.UUID) (pgtype.UUID, bool, error) {
 	next, err := q.PickCrewSuccessor(ctx, db.PickCrewSuccessorParams{CrewID: crew, Departing: owner})
 	if errors.Is(err, pgx.ErrNoRows) {
 		if err := q.DeleteCrew(ctx, crew); err != nil {
-			return err
+			return pgtype.UUID{}, false, err
 		}
 		s.log.Info("crew deleted", "crew", store.UUIDString(crew))
-		return nil
+		return pgtype.UUID{}, false, nil
 	}
 	if err != nil {
-		return err
+		return pgtype.UUID{}, false, err
 	}
 	if err := makeOwner(ctx, q, crew, next); err != nil {
-		return err
+		return pgtype.UUID{}, false, err
 	}
 	s.log.Info("crew transferred", "crew", store.UUIDString(crew), "to", store.UUIDString(next))
-	return nil
+	return next, true, nil
 }
 
 // makeOwner is the only way a crew changes hands. Owner beats every role, so
@@ -58,17 +58,32 @@ func makeOwner(ctx context.Context, q *db.Queries, crew, next pgtype.UUID) error
 // crews.owner_id is ON DELETE RESTRICT, so an account that owns a crew cannot
 // be deleted until each crew has been handed on or, with nobody left,
 // removed. Runs inside the purge's transaction.
-func (s *Service) ReleaseCrews(ctx context.Context, q *db.Queries, user pgtype.UUID) error {
+//
+// What it hands back is for the purge to run once it has committed: each
+// successor's open sockets asked again, so a member who inherits the crew
+// holds an owner's controls without reconnecting (#2808). Never inside the
+// transaction, which can still roll back.
+func (s *Service) ReleaseCrews(ctx context.Context, q *db.Queries, user pgtype.UUID) (handedOn func(context.Context), err error) {
 	crews, err := q.ListCrewsOwnedBy(ctx, user)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	type succession struct{ crew, owner pgtype.UUID }
+	var handed []succession
 	for _, crew := range crews {
-		if err := s.releaseCrew(ctx, q, crew.ID, crew.OwnerID); err != nil {
-			return err
+		next, ok, err := s.releaseCrew(ctx, q, crew.ID, crew.OwnerID)
+		if err != nil {
+			return nil, err
+		}
+		if ok {
+			handed = append(handed, succession{crew.ID, next})
 		}
 	}
-	return nil
+	return func(ctx context.Context) {
+		for _, h := range handed {
+			s.reauthorize(ctx, h.crew, h.owner)
+		}
+	}, nil
 }
 
 // handleTransferCrew: the deliberate hand-over ADR-0038's second amendment
@@ -134,6 +149,10 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info("crew handed on", "crew", store.UUIDString(crew.ID), "from", store.UUIDString(actor.ID), "to", req.UserID)
+	// Both roles moved, and the sockets already open carry the old ones: the
+	// new owner could not end another rider's session until they reconnected
+	// (#2808, the #278 shape).
+	s.reauthorize(r.Context(), crew.ID, target, actor.ID)
 	s.changed()
 	httpx.WriteJSON(w, http.StatusOK, crewRefJSON{
 		Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: "admin",

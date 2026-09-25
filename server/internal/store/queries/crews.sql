@@ -35,8 +35,12 @@ select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::b
 
 -- name: JoinCrew :exec
 -- Stored membership (ADR-0038 amended, #1236). A banned or admin row wins the
--- conflict: joining never lifts a ban and never demotes an admin.
-insert into crew_roles (crew_id, user_id, role) values ($1, $2, 'member')
+-- conflict: joining never lifts a ban and never demotes an admin. on_board is
+-- what the door said (#2820): on behind a door that named the board, off
+-- behind one that said joining shows nobody your numbers — turning the board
+-- on later must not enrol everyone who walked in under that promise.
+insert into crew_roles (crew_id, user_id, role, on_board)
+select c.id, sqlc.arg(user_id), 'member', c.board_enabled from crews c where c.id = sqlc.arg(crew_id)
 on conflict (crew_id, user_id) do nothing;
 
 -- name: LeaveCrewRole :exec
@@ -57,8 +61,10 @@ select id, name, icon, owner_id, created_at, code, (image_set_at is not null)::b
 
 -- name: SetCrewRole :exec
 -- Admin, member or banned. The owner is crews.owner_id and cannot be expressed here,
--- which is what makes them un-removable (ADR-0038, second amendment).
-insert into crew_roles (crew_id, user_id, role) values ($1, $2, $3)
+-- which is what makes them un-removable (ADR-0038, second amendment). A row
+-- this inserts never came through the door — a pre-emptive ban, or a former
+-- owner who never set a switch — so it starts off the board (#2820).
+insert into crew_roles (crew_id, user_id, role, on_board) values ($1, $2, $3, false)
 on conflict (crew_id, user_id) do update set role = excluded.role, set_at = now();
 
 -- name: SetCrewBoard :exec

@@ -1,5 +1,6 @@
 import { api, loadApi, type ApiResult } from '$lib/api';
 import { people } from '$lib/people.svelte';
+import { liveNumbersLine } from '$lib/privacy-copy';
 import type { SessionRecap, StatusLine } from '$lib/protocol';
 import type { BoardRow, CrewRef, RiderPrefs, Together } from '$lib/crew-types';
 
@@ -157,16 +158,14 @@ export function crewDoorDisclosure(door: { boardEnabled?: boolean }): {
 	board?: string;
 	privacy: string;
 } {
-	const watts =
-		'Your watts are visible to the session you ride in, while you ride, and nowhere else.';
 	return door.boardEnabled
 		? {
 				board:
 					"This crew keeps a weekly board: your kJ and time are ranked beside everyone else's in your category, and it starts fresh every Monday. You can take yourself off it once you are in.",
-				privacy: watts,
+				privacy: liveNumbersLine,
 			}
 		: // "Shows nobody your numbers" is true only of a crew with no board.
-			{ privacy: `Joining shows nobody your numbers. ${watts}` };
+			{ privacy: `Joining shows nobody your numbers. ${liveNumbersLine}` };
 }
 
 export function crewDoor(

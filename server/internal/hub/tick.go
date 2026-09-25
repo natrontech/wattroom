@@ -5,7 +5,6 @@ package hub
 
 import (
 	"context"
-	"encoding/json"
 	"log/slog"
 	"sort"
 	"strings"
@@ -169,6 +168,16 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		if tick.State.Phase == "running" || tick.State.Phase == "paused" {
 			rm.sawLocked(now())
 		}
+		// Once it has closed, the scores go only to the session's riders
+		// (#2819) — nil while it runs, when the channel watches it live, and
+		// when there is nothing to score, so everyone shares one frame.
+		var rode map[string]struct{}
+		if tick.State.Phase != "running" && tick.State.Phase != "paused" && len(tick.Execution) > 0 {
+			rode = make(map[string]struct{}, len(rm.seen))
+			for id := range rm.seen {
+				rode[id] = struct{}{}
+			}
+		}
 		// The session just closed: hand the ride record to the saver exactly
 		// once. Snapshot under the lock, persist outside it (hub discipline:
 		// no I/O while holding a room mutex).
@@ -253,44 +262,23 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		}
 
 		metricTicks.Inc()
-		// Once for the room, not once per rider: the tick is identical for
-		// everyone in it — roster, metrics, game state — and marshalling it
-		// per client put the same work N times on the critical path between
-		// one slow socket and the next (#670).
-		//
-		// The workout definition is the one exception (#1710): the shared
-		// payload names it by hash, and the JSON itself goes only to a socket
-		// that has not seen this hash — its first tick, and the tick after a
-		// pick — in a full copy marshalled once, lazily, and only then.
-		lean := tick
-		lean.State.WorkoutJSON = ""
-		payload, err := json.Marshal(protocol.ServerMessage{Tick: &lean})
-		if err != nil {
-			// Half a tick is worse than none: skip the broadcast and say so.
-			logger(log).Error("tick could not be marshalled", "channel", rm.channel, "err", err)
-			payload = nil
-		}
-		var full []byte
-		var fullErr error
+		frames := tickFrames{tick: &tick, log: log, channel: rm.channel}
 		for _, c := range clients {
-			if payload != nil {
-				frame, carries := payload, false
-				if c.workoutSent != tick.State.WorkoutHash {
-					if full == nil && fullErr == nil {
-						if full, fullErr = json.Marshal(protocol.ServerMessage{Tick: &tick}); fullErr != nil {
-							logger(log).Error("full tick could not be marshalled", "channel", rm.channel, "err", fullErr)
-						}
-					}
-					if full != nil {
-						frame, carries = full, true
-					}
+			_, scores := rode[c.rider.ID]
+			scores = scores || rode == nil
+			// Half a tick is worse than none: a frame that did not marshal
+			// is skipped, and said so.
+			frame, carries := frames.frame(frameKind{scores: scores}), false
+			if frame != nil && c.workoutSent != tick.State.WorkoutHash {
+				if full := frames.frame(frameKind{workout: true, scores: scores}); full != nil {
+					frame, carries = full, true
 				}
-				// Marked heard only when the definition was actually queued: a
-				// dropped frame (slow socket) leaves it owed, and the next tick
-				// tries again rather than believing it arrived.
-				if c.send(frame) && carries {
-					c.workoutSent = tick.State.WorkoutHash
-				}
+			}
+			// Marked heard only when the definition was actually queued: a
+			// dropped frame (slow socket) leaves it owed, and the next tick
+			// tries again rather than believing it arrived.
+			if frame != nil && c.send(frame) && carries {
+				c.workoutSent = tick.State.WorkoutHash
 			}
 			// Addressed to this socket alone, so it cannot be folded into the
 			// tick — but it rides the same queue, so it keeps its order.
