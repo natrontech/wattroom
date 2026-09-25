@@ -48,8 +48,9 @@ describe('confirmCalendarReset', () => {
 		const ask = mocks.confirm.mock.calls[0][0];
 		expect(ask.title).toBe("Reset this crew's calendar link?");
 		expect(ask.action).toBe('Reset the link');
-		// confirm.svelte.ts: the safe answer has one spelling.
-		expect(ask.cancel).toBe('Keep it');
+		// confirm.svelte.ts: the safe answer has one spelling, and confirm()
+		// is the one that spells it (#2887).
+		expect(ask.cancel).toBeUndefined();
 		expect(ask.body).toBe(resetBody('crew'));
 	});
 

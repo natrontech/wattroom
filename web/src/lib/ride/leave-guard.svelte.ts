@@ -1,5 +1,5 @@
 import { beforeNavigate, goto } from '$app/navigation';
-import { confirm } from '$lib/confirm.svelte';
+import { confirm, type ConfirmRequest } from '$lib/confirm.svelte';
 
 /**
  * A stray tap on the rail mid-effort must not eat the effort (#126): one
@@ -8,10 +8,7 @@ import { confirm } from '$lib/confirm.svelte';
  * none — a back gesture at minute 14 of a maximal test lost the number
  * (audit 2026-09-09). Call during component init, like beforeNavigate.
  */
-export function guardLeaving(
-	live: () => boolean,
-	ask: { title: string; body: string; action: string; cancel: string },
-): void {
+export function guardLeaving(live: () => boolean, ask: ConfirmRequest): void {
 	// The guard must cancel synchronously and the dialog answers later, so a
 	// "yes" re-issues the navigation with the guard stood down.
 	let leaving = false;

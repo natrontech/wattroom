@@ -23,7 +23,7 @@ export async function endGame(
 				: `End ${label}?`,
 			body: 'The game stops for everyone in it and cannot be picked back up.',
 			action: 'End the game',
-			cancel: 'Keep playing',
+			cancel: 'Keep riding',
 		});
 		if (!ok) return;
 	}

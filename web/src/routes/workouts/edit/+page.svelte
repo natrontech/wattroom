@@ -69,7 +69,6 @@
 		title: 'Leave without saving?',
 		body: 'The changes to this workout are not saved. Leave, and they are gone.',
 		action: 'Leave',
-		cancel: 'Keep it',
 	});
 	$effect(() => {
 		if (hydrated || !custom.loaded) return;

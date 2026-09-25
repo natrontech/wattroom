@@ -209,7 +209,6 @@
 			// who are in (#2634).
 			body: `${who}.${mailed ? ' Everyone who gets session emails for it is told.' : ''} It cannot be put back.`,
 			action: 'Cancel the session',
-			cancel: 'Keep it',
 		});
 		if (!ok) return;
 		const res = await cancelCrewPlan(id, entry.id);

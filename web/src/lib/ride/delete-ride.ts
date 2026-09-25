@@ -22,7 +22,6 @@ export async function deleteRideAfterConfirm(ride: {
 		// protects (#2632).
 		body: `“${ride.workoutName}”, ${new Date(ride.startedAt).toLocaleDateString()} — its power trace and its medals go with it; your XP and level stay. This one can't be undone.`,
 		action: 'Delete ride',
-		cancel: 'Keep it',
 	});
 	if (!ok) return false;
 	const res = await deleteRide(ride.id);

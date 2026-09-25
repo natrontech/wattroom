@@ -73,13 +73,11 @@
 						title: `Clear ${whose} pick?`,
 						body: `${channel.shared?.workoutName || 'A workout'} is picked here and was never started. Clearing it frees the channel for another session.`,
 						action: 'Clear the pick',
-						cancel: 'Leave it',
 					}
 				: {
 						title: `End ${whose} session for ${n} rider${n === 1 ? '' : 's'}?`,
 						body: 'The ride stops for everyone and cannot be resumed.',
 						action: 'End the session',
-						cancel: 'Keep it running',
 					},
 		);
 		if (ok) channel.control('end');

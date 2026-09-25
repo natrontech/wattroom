@@ -6,7 +6,6 @@ describe('confirm', () => {
 		const asked = confirm({
 			title: 'Delete it?',
 			action: 'Delete',
-			cancel: 'Keep it',
 		});
 		expect(confirmation.current?.title).toBe('Delete it?');
 		confirmation.settle(true);
@@ -16,15 +15,25 @@ describe('confirm', () => {
 		const again = confirm({
 			title: 'Again?',
 			action: 'Yes',
-			cancel: 'Keep it',
 		});
 		confirmation.settle(false);
 		await expect(again).resolves.toBe(false);
 	});
 
+	// errors.md: confirm() owns the safe answer's spelling and call sites do
+	// not restate it (#2887) — six spellings had grown back when each passed
+	// its own. The only override is the mid-effort verb.
+	it('spells the safe answer itself', async () => {
+		void confirm({ title: 'Delete it?', action: 'Delete' });
+		expect(confirmation.current?.cancel).toBe('Keep it');
+		void confirm({ title: 'Stop?', action: 'Stop', cancel: 'Keep riding' });
+		expect(confirmation.current?.cancel).toBe('Keep riding');
+		confirmation.settle(false);
+	});
+
 	it('a second question declines the first instead of stranding it', async () => {
-		const first = confirm({ title: 'One', action: 'a', cancel: 'Keep it' });
-		const second = confirm({ title: 'Two', action: 'b', cancel: 'Keep it' });
+		const first = confirm({ title: 'One', action: 'a' });
+		const second = confirm({ title: 'Two', action: 'b' });
 		await expect(first).resolves.toBe(false);
 		expect(confirmation.current?.title).toBe('Two');
 		confirmation.settle(true);

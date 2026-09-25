@@ -134,6 +134,5 @@ export function confirmRemoval(key: Pick<Passkey, 'name'>): Promise<boolean> {
 		title: `Remove “${key.name}”?`,
 		body: removeBody(`“${key.name}”`),
 		action: 'Remove',
-		cancel: 'Keep it',
 	});
 }

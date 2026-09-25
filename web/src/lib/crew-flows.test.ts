@@ -72,7 +72,6 @@ describe('leaveCrewFlow', () => {
 			title: 'Leave Natron?',
 			body: leaveBody('Natron'),
 			action: 'Leave the crew',
-			cancel: 'Keep it',
 		});
 		expect(leaveBody('Natron')).toBe(
 			'You leave Natron. Its code gets you back in.',
@@ -196,7 +195,6 @@ describe('handOverCrewFlow (#2095)', () => {
 			title: 'Hand Natron to Mira?',
 			body: HAND_OVER_BODY,
 			action: 'Hand it over',
-			cancel: 'Keep it',
 		});
 	});
 

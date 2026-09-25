@@ -167,7 +167,6 @@
 			title: 'Make a new invite link?',
 			body: 'The old link and code stop working the moment you do. Anyone you already shared it with needs the new one.',
 			action: 'Make a new link',
-			cancel: 'Keep it',
 		});
 		if (!ok) return;
 		busy = true;
