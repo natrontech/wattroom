@@ -567,10 +567,16 @@ resistance, and nothing it does reaches a trainer.
   a bottle never spends the poke. It is never a DM line. The rider's screen
   **holds it until their next recovery valley**: the ride asks nothing harder
   than **Z1** (≤ 55 % FTP, the zones above) or nothing at all — paused,
-  stopped, off the ride — and no sprint is on. Under Floor is Lava the called
-  zone is what counts. Then it is announced like a poke: the cue, and a line in
-  the timeline mid-ride. Held in memory, so a reload lets go of a bottle not
-  yet taken.
+  stopped, off the ride — and no sprint is on. What the ride asks is the
+  block's prescription, so the spiral release's ten seconds at 0 W are not a
+  valley. A running game asks what its mode does: a ramp's or the relay's own
+  target, Floor is Lava's called zone, Watt Golf's hole (60–110 %, so never a
+  valley), a Sprint Roulette window from its klaxon; a Points Race, whose
+  sprints come unannounced, and any mode the screen does not know are never a
+  valley while they run. A rider a game has put out is asked only their own
+  easy spin. Then it is announced like a poke: the cue, and a line in the
+  timeline mid-ride. Held in memory, so a reload lets go of a bottle not yet
+  taken.
 - **Eliminated riders** — Backyard Ramp and Floor is Lava put riders out one
   at a time — are told they are at the roadside, with the deck, for as long as
   the game runs.
