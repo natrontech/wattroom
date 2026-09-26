@@ -429,7 +429,7 @@ test('no page outside a voice channel scrolls sideways on a phone', async ({
 test('the landing, the gate and recovery fit a phone', async ({ page }) => {
 	const wide: string[] = [];
 	for (const route of MEASURED_SIGNED_OUT) {
-		await page.goto(route);
+		await page.goto(route.replace('[rival]', 'zwift'));
 		const excessOf = () =>
 			page.evaluate(
 				() =>

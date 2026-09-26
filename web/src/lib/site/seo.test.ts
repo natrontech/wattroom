@@ -1,7 +1,29 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { jsonLd, LANDING, siteIdentity, SITE_PAGES } from './seo';
+import { SITE_PAGES } from './pages';
+import { RIVALS } from './rivals';
+import { jsonLd, siteGraph } from './seo';
+
+const SITE = join(import.meta.dirname, '../../routes/(site)');
+
+/** Every page under (site), as its URL — [rival] spelled out per rival. */
+function sitePaths(dir = SITE): string[] {
+	const found: string[] = [];
+	for (const entry of readdirSync(dir)) {
+		const path = join(dir, entry);
+		if (statSync(path).isDirectory()) found.push(...sitePaths(path));
+		else if (entry === '+page.svelte') {
+			const url = `/${relative(SITE, dir)}`.replace(/\/$/, '') || '/';
+			found.push(
+				...(url.includes('[rival]')
+					? RIVALS.map((r) => url.replace('[rival]', r.slug))
+					: [url]),
+			);
+		}
+	}
+	return found;
+}
 
 describe('the public pages’ head (ADR-0061)', () => {
 	it('cannot close its own script element', () => {
@@ -15,19 +37,28 @@ describe('the public pages’ head (ADR-0061)', () => {
 	// Google's site-names feature reads the root's WebSite node, and nothing
 	// else labels a result "WattRoom" instead of "wattroom.ch" (#2136).
 	it('names the site at the root', () => {
-		expect(siteIdentity()).toMatchObject({
-			'@type': 'WebSite',
+		const graph = (siteGraph() as { '@graph': Record<string, unknown>[] })[
+			'@graph'
+		];
+		expect(graph.find((n) => n['@type'] === 'WebSite')).toMatchObject({
 			name: 'WattRoom',
 			url: 'https://wattroom.ch/',
 		});
 	});
 
-	it('keeps each search snippet within what Google shows', () => {
+	// A page missing here is missing from the sitemap, which is how search
+	// finds the pages nothing links to yet.
+	it('lists every (site) page in the sitemap, and nothing else', () => {
+		expect(SITE_PAGES.map((p) => p.path).sort()).toEqual(sitePaths().sort());
+	});
+
+	it('keeps each title and snippet within what Google shows', () => {
 		for (const page of SITE_PAGES) {
+			expect(page.title.length, page.path).toBeLessThanOrEqual(65);
 			expect(page.description.length, page.path).toBeLessThanOrEqual(160);
-			expect(page.path, page.path).toMatch(/^\/[a-z0-9-]*$/);
 		}
-		expect(SITE_PAGES[0]).toBe(LANDING);
+		const titles = SITE_PAGES.map((p) => p.title);
+		expect(new Set(titles).size).toBe(titles.length);
 	});
 
 	// Every page carries the icons search can use — the prerendered ones too,

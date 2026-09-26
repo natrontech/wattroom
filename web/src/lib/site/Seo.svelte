@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { TRANSLATIONS } from './pages';
 	import {
 		DEFAULT_IMAGE,
 		jsonLd,
@@ -16,14 +17,33 @@
 	}: { page: SitePage; image?: string; ld?: unknown[] } = $props();
 
 	const url = $derived(SITE_ORIGIN + page.path);
+	// A page with a translation names both, and English as the default —
+	// Google wants the pair declared from each side, or it ignores both.
+	const other = $derived(TRANSLATIONS[page.path]);
+	const alternates = $derived(
+		other
+			? [
+					{ lang: page.lang ?? 'en', href: url },
+					{ lang: other.lang ?? 'en', href: SITE_ORIGIN + other.path },
+					{
+						lang: 'x-default',
+						href: SITE_ORIGIN + (page.lang ? other.path : page.path),
+					},
+				]
+			: [],
+	);
 </script>
 
 <svelte:head>
 	<title>{page.title}</title>
 	<meta name="description" content={page.description} />
 	<link rel="canonical" href={url} />
+	{#each alternates as alt (alt.lang)}
+		<link rel="alternate" hreflang={alt.lang} href={alt.href} />
+	{/each}
 	<meta property="og:site_name" content={SITE_NAME} />
 	<meta property="og:type" content="website" />
+	<meta property="og:locale" content={page.lang === 'de' ? 'de_CH' : 'en'} />
 	<meta property="og:title" content={page.title} />
 	<meta property="og:description" content={page.description} />
 	<meta property="og:url" content={url} />

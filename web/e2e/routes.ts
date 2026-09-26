@@ -53,6 +53,16 @@ export const MEASURED_SIGNED_OUT: readonly string[] = [
 	'/',
 	'/login',
 	'/login/recover',
+	// The prerendered public pages (ADR-0061); a comparison is measured as
+	// /vs/zwift, which phone-width.spec.ts fills in.
+	'/group-workouts',
+	'/zwift-alternative',
+	'/vs/[rival]',
+	'/game-modes',
+	'/ftp-test',
+	'/smart-trainer-app',
+	'/self-host',
+	'/de',
 ];
 
 /**
