@@ -557,12 +557,19 @@ func TestDevLoginAsMintsASecondRider(t *testing.T) {
 	if count != 2 {
 		t.Fatalf("expected Dev Rider + Nina, got %d dev identities", count)
 	}
-	// Junk falls back rather than failing a dev at the door.
-	junk := login("%3Cscript%3E")
-	authed3 := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/me", nil)
-	authed3.AddCookie(junk)
-	if user, ok := s.User(authed3); !ok || user.DisplayName != "Dev Rider" {
-		t.Fatalf("junk ?as= should fall back to Dev Rider (ok=%v)", ok)
+	// A name the door cannot take is refused, not quietly turned into the
+	// one Dev Rider every other agent also lands on (#2876 L9-14): a
+	// plausible "l9-ana" put two review lenses' crews on one account.
+	for _, as := range []string{"l9-ana", "%3Cscript%3E"} {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/api/auth/dev/start?as="+as, nil)
+		req.SetPathValue("provider", "dev")
+		w := httptest.NewRecorder()
+		s.handleStart(w, req)
+		var body httpx.ErrorResponse
+		_ = json.Unmarshal(w.Body.Bytes(), &body)
+		if w.Code != http.StatusBadRequest || body.Error != "validation_error" || body.Field != "as" {
+			t.Errorf("?as=%s: %d %s, want 400 validation_error on as", as, w.Code, w.Body.String())
+		}
 	}
 }
 

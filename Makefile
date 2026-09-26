@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed build test lint check ci release print-golangci-version desktop desktop-smoke desktop-release
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed build test lint ci release print-golangci-version desktop desktop-smoke desktop-release licenses worktree-gc
 
 DEV_ENV := scripts/dev-env.sh
 

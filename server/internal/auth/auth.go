@@ -202,12 +202,16 @@ func (s *Service) handleProviders(w http.ResponseWriter, _ *http.Request) {
 }
 
 // devNames is what ?as= accepts: a display name, letters and spaces, short.
-// Anything else falls back to the one Dev Rider rather than 400ing a dev.
+// Anything else is refused at the door (#2876 L9-14): it used to become the
+// one Dev Rider, which is how two agents' "l9-ana" and "l9-ben" signed in as
+// the same account every other agent was also using.
 var devNames = regexp.MustCompile(`^[A-Za-z][A-Za-z ]{0,23}$`)
+
+const devNameRule = "A dev rider's name is 1–24 letters and spaces, starting with a letter."
 
 func devIdentity(as string) identity {
 	as = strings.TrimSpace(as)
-	if as == "" || !devNames.MatchString(as) || strings.EqualFold(as, "Dev Rider") {
+	if as == "" || strings.EqualFold(as, "Dev Rider") {
 		return identity{ProviderUserID: "local-dev", DisplayName: "Dev Rider"}
 	}
 	return identity{
@@ -250,7 +254,12 @@ func (s *Service) handleStart(w http.ResponseWriter, r *http.Request) {
 			httpx.WriteError(w, http.StatusForbidden, "forbidden", "The dev login only answers a navigation from this origin.")
 			return
 		}
-		ident := devIdentity(r.URL.Query().Get("as"))
+		as := strings.TrimSpace(r.URL.Query().Get("as"))
+		if as != "" && !devNames.MatchString(as) {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", devNameRule, "as")
+			return
+		}
+		ident := devIdentity(as)
 		if linking {
 			s.finishLink(w, r, p, ident, &oauth2.Token{}, linkTo)
 			return
