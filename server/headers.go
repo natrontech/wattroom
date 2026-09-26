@@ -21,20 +21,24 @@ import (
 //     a gap, which is why every directive the app needs is named explicitly.
 //   - script-src — 'self' for the bundle; https://www.youtube.com because the
 //     jukebox loads https://www.youtube.com/iframe_api as a <script> tag
-//     (web/src/lib/room/youtube-api.ts) and the frame-src entry does not cover
+//     (web/src/lib/channel/youtube-api.ts) and the frame-src entry does not cover
 //     a script; and blob: because a Worklet module is matched against
 //     script-src rather than worker-src — the mic meter's AudioWorklet is added
-//     from a blob: URL (web/src/lib/room/mic-level.ts). That last one was
+//     from a blob: URL (web/src/lib/channel/mic-level.ts). That last one was
 //     settled by trying it both ways in a browser, not from the spec: without
 //     blob: the module is refused with a bare AbortError and **no
 //     securitypolicyviolation is reported at all**, so a report-only run could
-//     never have named it. 'unsafe-inline' is for the theme block at
-//     app.html:8 and stays until someone hashes it; while it stands, blob:
-//     widens nothing that is not already open. No 'unsafe-eval' and no
+//     never have named it. 'unsafe-inline' is for two inline scripts:
+//     app.html's theme block, and SvelteKit's boot script in the SPA
+//     fallback, whose content changes with every build — so hashing the
+//     theme block alone would not let it go; the build's own hashes would
+//     (#2965). While it stands, blob: widens nothing that is not already
+//     open. No 'unsafe-eval' and no
 //     'wasm-unsafe-eval': the production bundle carries no eval, no
 //     `new Function` and no WebAssembly, livekit-client included.
-//   - style-src — the bundle's stylesheet, plus 'unsafe-inline' for both the
-//     <style> the theme block injects and every `style=` attribute Svelte
+//   - style-src — the bundle's stylesheet, plus 'unsafe-inline' for the
+//     <style> the theme block injects, app.html's own for the frame it holds
+//     while the app loads (#2845), and every `style=` attribute Svelte
 //     renders (style-src-attr falls back to here).
 //   - media-src 'self' blob: — the audio pool streams from
 //     /api/tracks/{id}/audio (web/src/lib/music/pool.ts) and a pasted image
@@ -54,7 +58,7 @@ import (
 //     — deploy/docker-compose.prod.yml uses wss://, and an https page cannot
 //     open a ws:// socket anyway.
 //   - frame-src — the jukebox player, which the dock pins to youtube-nocookie
-//     (web/src/lib/room/JukeboxDock.svelte); www.youtube.com is named beside it
+//     (web/src/lib/channel/JukeboxDock.svelte); www.youtube.com is named beside it
 //     because the IFrame API rewrites the frame's host when it falls back. The
 //     locked RMF constraints make the official player the only one, so this
 //     list cannot shrink.
@@ -63,10 +67,10 @@ import (
 //   - frame-ancestors / base-uri / object-src — enforced since #1775.
 //
 // One thing this should not oversell: with a third-party script host the locked
-// RMF constraints make unavoidable, plus the 'unsafe-inline' the theme block
-// still needs, the enforced script-src is defence-in-depth and not an XSS
-// boundary. Hashing the theme block is what would change that, and it is its
-// own piece of work.
+// RMF constraints make unavoidable, plus the 'unsafe-inline' the two inline
+// scripts still need, the enforced script-src is defence-in-depth and not an
+// XSS boundary. Serving the build's hashes of both is what would change that
+// (#2965).
 const enforcedCSP = "default-src 'self'; " +
 	"script-src 'self' 'unsafe-inline' blob: https://www.youtube.com; " +
 	"style-src 'self' 'unsafe-inline'; " +
@@ -86,7 +90,7 @@ const enforcedCSP = "default-src 'self'; " +
 	// covers every rider's face, and the list is closed:
 	//
 	//   - i.ytimg.com — the jukebox deck's video thumbnails
-	//     (web/src/lib/room/jukebox-add.ts).
+	//     (web/src/lib/channel/jukebox-add.ts).
 	//   - *.giphy.com, *.tenor.com — a picked or pasted GIF is drawn as a
 	//     direct <img> at its own CDN by design (ADR-0032,
 	//     web/src/lib/chat/media.ts, server/internal/gifs). Both shard their
