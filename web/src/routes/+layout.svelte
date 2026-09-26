@@ -455,7 +455,14 @@
 						live={channelConnection.current?.live.tick?.state.phase ===
 							'running'}
 					/>
-					<span class="font-display truncate text-sm font-bold">WattRoom</span>
+					<!-- Where you are, on the voice channel's own pages: its heading is
+					     for screen readers there, and the brand word said nothing
+					     about which channel this is (#2882 L6-16). -->
+					<span class="font-display truncate text-sm font-bold"
+						>{(channelConnection.onPlacePath(page.url.pathname) &&
+							channelConnection.current?.address.name) ||
+							'WattRoom'}</span
+					>
 				</div>
 			{/if}
 			<!-- Persistent, above whatever page you are on and outside its

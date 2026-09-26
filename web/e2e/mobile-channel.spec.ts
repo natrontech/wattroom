@@ -88,6 +88,20 @@ test('a phone opens a voice channel and reaches its text channel', async ({
 	const opened = await channels.open(page, name);
 
 	await expect(page.getByRole('heading', { name })).toBeVisible();
+	// The heading is for screen readers; the top bar is where a phone reads
+	// which channel this is — it said "WattRoom" (#2882 L6-16).
+	await expect(
+		page
+			.getByRole('button', { name: 'open navigation' })
+			.locator('..')
+			.getByText(name, { exact: true }),
+	).toBeVisible();
+	// And with no camera on, a tile is not a 16:9 frame the width of the
+	// phone: two to a row, so the channel's actions stay above the fold.
+	const tile = await page.getByTestId('rider-tile').first().boundingBox();
+	expect(tile?.width ?? 375, 'a camera-less tile fills the phone').toBeLessThan(
+		375 * 0.6,
+	);
 	// A spectator, even as the crew's owner: nothing that needs a trainer
 	// or starts a session is offered (#412, #1624).
 	await expect(
