@@ -1,1 +1,0 @@
-- Removing a crew's picture asks first, since everyone stops seeing it and putting it back takes the file again; taking a member out of a private channel now offers an undo.
