@@ -23,19 +23,19 @@ const ALLOWLIST: Allowlist = {
 		'a menu: its items carry the padding, and p-1 is the inset that keeps a highlighted item off the border',
 	'lib/messages/Composer.svelte':
 		'the emoji menu, taking ContextMenuHost’s inset for the same reason',
-	'routes/home/+page.svelte':
+	'routes/(app)/home/+page.svelte':
 		'the crew picker is a menu (py-1, inset as above)',
 	'lib/friends/FriendsAround.svelte':
 		'the friends-around row is pills at text-xs, which the card density would draw at twice their height',
-	'routes/u/[id]/+page.svelte':
+	'routes/(app)/u/[id]/+page.svelte':
 		'medals and crews-in-common are two-column pills at text-xs/text-sm — tighter than a card, deliberately',
-	'routes/dev/profile/+page.svelte':
+	'routes/(app)/dev/profile/+page.svelte':
 		'the gallery mock of /u/[id], drawn at that page’s sizes',
-	'routes/ramp/+page.svelte':
+	'routes/(app)/ramp/+page.svelte':
 		'the ramp test is read from the saddle at arm’s length (ux.md), so its instruction cards keep p-8; the one with a control at the bottom also clears the phone’s browser chrome',
-	'routes/ramp/RampResult.svelte':
+	'routes/(app)/ramp/RampResult.svelte':
 		'the ramp result, read from the saddle — p-8 for the same reason',
-	'routes/c/[code]/+page.svelte':
+	'routes/(app)/c/[code]/+page.svelte':
 		'the invite door: a single centred card on an otherwise empty page, where py-10 is what keeps it from reading as a dropped fragment',
 };
 

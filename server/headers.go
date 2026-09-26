@@ -97,7 +97,7 @@ const enforcedCSP = "default-src 'self'; " +
 	//     hostnames (media0…mediaN, i, c), so the wildcard host-source is the
 	//     only form that covers them.
 	//   - data: for the inline pictures the component gallery draws
-	//     (web/src/routes/dev/components), blob: for the preview of an image
+	//     (web/src/routes/(app)/dev/components), blob: for the preview of an image
 	//     a rider has pasted but not yet sent.
 	//
 	// Chat link previews and rider pictures need no host here on purpose:

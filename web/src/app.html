@@ -5,6 +5,16 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<!-- No text-scale meta (#1971): it was not a standard and did nothing. The
 		     scaling story is page zoom, which the viewport above leaves enabled. -->
+		<!-- The PNG is what search can use (#2136): Google reads rel="icon"
+		     from the served HTML, takes no SVG, and drops an icon whose URL
+		     moves — a hashed asset's does every build. The SVG is for a tab,
+		     crisp at any zoom; each consumer takes the one it understands.
+		     Here rather than in the server's og meta, so the prerendered
+		     pages carry them too (ADR-0061). -->
+		<link rel="icon" href="/favicon.png" sizes="192x192" type="image/png" />
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+		<link rel="apple-touch-icon" href="/favicon.png" />
+		<meta name="theme-color" content="#0a0118" />
 		%sveltekit.head%
 		<script>
 			// The rider's theme before the bundle runs (#398): palette.svelte.ts
@@ -43,6 +53,12 @@
 					sans-serif;
 				background: var(--color-surface, #f6f2fa);
 				color: var(--color-muted, #60548a);
+			}
+			/* A prerendered page (ADR-0061) is already drawn: the frame is for a
+			   page the bundle has yet to draw, and over this one it would hide
+			   the words until the script ran. */
+			body:has([data-site]) #boot {
+				display: none;
 			}
 			@media (prefers-color-scheme: dark) {
 				#boot {

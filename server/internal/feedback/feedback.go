@@ -334,10 +334,10 @@ func fenced(s string) string {
 var (
 	routeSegments = fieldSet(`
 		account appearance board brand c channel chat components crew crews data dev directory
-		dm download edit editor equipment friends hardware history home
+		dm download edit editor enter equipment friends hardware history home
 		hud import legal licenses login medal members messages modes music
 		notifications pairing panel pins privacy profile progression r ramp
-		recover ride rooms schedule sessions settings sound spectator
+		recover ride rooms schedule sessions settings sitemap.xml sound spectator
 		styleguide summary terms theme-editor themes training trophies u
 		s v voice watch whats-new workouts
 	`)

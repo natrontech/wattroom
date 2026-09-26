@@ -13,7 +13,7 @@
 	import { confirm } from '$lib/confirm.svelte';
 	import { toasts } from '$lib/toast.svelte';
 	import { untrack } from 'svelte';
-	import type { ApiToken } from '../../routes/settings/data/+page';
+	import type { ApiToken } from '../../routes/(app)/settings/data/+page';
 
 	let {
 		initial,

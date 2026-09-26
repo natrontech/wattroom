@@ -91,13 +91,26 @@ const web = createServer((req, res) => {
 		return;
 	}
 
-	const requested = normalize(decodeURIComponent(url.split('?')[0])).replace(
+	const [path, query] = url.split('?');
+	const requested = normalize(decodeURIComponent(path)).replace(
 		/^(\.\.[/\\])+/,
 		'',
 	);
-	let file = join(dist, requested);
+	// server/spa.go's rules (ADR-0061): "/" is the prerendered landing for a
+	// stranger and /enter for a rider, a prerendered page is served for its
+	// path, and everything else gets the app's fallback page.
+	if (
+		requested === '/' &&
+		/(?:^|;\s*)wattroom_session=[^;]/.test(req.headers.cookie ?? '')
+	) {
+		res.writeHead(302, { location: `/enter${query ? `?${query}` : ''}` });
+		res.end();
+		return;
+	}
+	let file = join(dist, requested === '/' ? 'index.html' : requested);
+	if (!extname(file) && existsSync(`${file}.html`)) file = `${file}.html`;
 	if (!existsSync(file) || statSync(file).isDirectory())
-		file = join(dist, 'index.html');
+		file = join(dist, 'spa.html');
 	res.writeHead(200, {
 		'content-type': types[extname(file)] ?? 'application/octet-stream',
 	});

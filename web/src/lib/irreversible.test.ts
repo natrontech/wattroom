@@ -44,7 +44,7 @@ const GUARDED: Guarded[] = [
 		asks: /confirmCalendarReset\('yours'\)/,
 	},
 	{
-		file: 'routes/crew/[id]/schedule/+page.svelte',
+		file: 'routes/(app)/crew/[id]/schedule/+page.svelte',
 		action: "reset the crew's calendar link (#2452)",
 		asks: /confirmCalendarReset\('crew'\)/,
 	},
@@ -93,7 +93,7 @@ const GUARDED: Guarded[] = [
 		// #2530: the ask moved into the flow the text channel shares, so these
 		// rows watch each call site keep going through it, and the last one
 		// ties the flow to its own copy — crew-flows.ts holds four asks.
-		file: 'routes/crew/[id]/members/CrewPeople.svelte',
+		file: 'routes/(app)/crew/[id]/members/CrewPeople.svelte',
 		action: 'ban someone from the crew',
 		asks: /banFromCrewFlow\(/,
 	},
@@ -119,7 +119,7 @@ const GUARDED: Guarded[] = [
 		// answer `Cancel`, with no danger token and the action first in the
 		// DOM. The ask lives in the flow now, so this row watches the call
 		// site keep going through it.
-		file: 'routes/crew/[id]/members/CrewPeople.svelte',
+		file: 'routes/(app)/crew/[id]/members/CrewPeople.svelte',
 		action: 'hand the crew on — only the new owner can hand it back',
 		asks: /handOverCrewFlow\(/,
 	},
@@ -132,32 +132,32 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(\{[\s\S]{0,200}?body: HAND_OVER_BODY/,
 	},
 	{
-		file: 'routes/crew/[id]/settings/+page.svelte',
+		file: 'routes/(app)/crew/[id]/settings/+page.svelte',
 		action: 'rotate the crew invite link — the same shape as a calendar reset',
 		asks: /confirm\(/,
 	},
 	{
 		// #2885: the upload is deleted server-side, for every member and the
 		// directory at once. Tied to the copy — this page holds another ask.
-		file: 'routes/crew/[id]/settings/+page.svelte',
+		file: 'routes/(app)/crew/[id]/settings/+page.svelte',
 		action:
 			"remove the crew's picture — everyone stops seeing it, and the file is gone",
 		asks: /confirm\(\{[\s\S]{0,80}?title: "Remove the crew's picture\?"/,
 	},
 	{
-		file: 'routes/history/+page.svelte',
+		file: 'routes/(app)/history/+page.svelte',
 		action: 'clear this device’s ride summaries',
 		asks: /confirm\(/,
 	},
 	{
-		file: 'routes/music/+page.svelte',
+		file: 'routes/(app)/music/+page.svelte',
 		action: 'delete a track from your library — the file goes with it',
 		asks: /confirm\(/,
 	},
 	{
 		// #2837: the ask moved into the flow both call sites share, which
 		// also names the crew when its last channel takes it.
-		file: 'routes/crew/[id]/settings/ChannelRow.svelte',
+		file: 'routes/(app)/crew/[id]/settings/ChannelRow.svelte',
 		action: 'delete a channel — its chat, or its play log and recaps',
 		asks: /deleteChannelFlow\(/,
 	},
@@ -172,7 +172,7 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(\{[\s\S]{0,200}?body: deleteChannelWarning\(/,
 	},
 	{
-		file: 'routes/settings/profile/+page.svelte',
+		file: 'routes/(app)/settings/profile/+page.svelte',
 		action: 'clear the recovery address',
 		asks: /confirm\(/,
 	},
@@ -240,7 +240,7 @@ const PRIMITIVES: { call: RegExp; callers: string[]; guard: string }[] = [
 		call: /\bclearCrewImage\(/,
 		callers: [
 			'lib/crew.ts', // the definition
-			'routes/crew/[id]/settings/+page.svelte',
+			'routes/(app)/crew/[id]/settings/+page.svelte',
 		],
 		guard: "the crew settings page's confirm (#2885)",
 	},

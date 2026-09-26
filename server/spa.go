@@ -9,6 +9,7 @@ import (
 	// that should depend on what the base layer happens to ship.
 	_ "time/tzdata"
 
+	"bytes"
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
@@ -17,20 +18,28 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/og"
 )
 
 // immutablePrefix is the SvelteKit build's content-hashed output. A file
 // under it never changes meaning: a new build writes a new name, so a stale
-// copy is unreachable rather than wrong. index.html is deliberately NOT in
-// here — it is the fallback that names the current hashes, and spaHandler
-// rewrites it per request to splice in og meta.
+// copy is unreachable rather than wrong. The pages are deliberately NOT in
+// here — they name the current hashes.
 const immutablePrefix = "/_app/immutable/"
 
-// spaHandler serves the embedded SvelteKit build; SPA-route fallbacks get
-// index.html with og meta spliced in at request time (the embedded FS is
-// read-only, and only the server knows what a /r/{slug} link points at).
+// fallbackPage is the app's page for every route the build has no file for,
+// which spaHandler rewrites per request to splice in og meta. index.html is
+// not it: that is the prerendered landing, like every other page under the
+// (site) route group (ADR-0061).
+const fallbackPage = "spa.html"
+
+// spaHandler serves the embedded SvelteKit build: a prerendered page for its
+// path, and for every other route the fallback with og meta spliced in at
+// request time (the embedded FS is read-only, and only the server knows what
+// a /c/{code} link points at).
 func spaHandler(social *og.Service) http.Handler {
 	dist, err := fs.Sub(webdist, "webdist")
 	if err != nil {
@@ -56,7 +65,7 @@ func spaHandler(social *og.Service) http.Handler {
 //     this one cannot see or test (deploy/Caddyfile says as much). Text
 //     responses are gzipped here for any client that asks.
 func serveSPA(dist fs.FS, social *og.Service) http.Handler {
-	index, _ := fs.ReadFile(dist, "index.html") // nil before `make web` (dev placeholder)
+	index, _ := fs.ReadFile(dist, fallbackPage) // nil before `make web` (dev placeholder)
 	s := &spa{dist: dist, files: http.FileServerFS(dist), index: index, social: social}
 	return compressed(s)
 }
@@ -72,7 +81,32 @@ type spa struct {
 }
 
 func (s *spa) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if p := strings.TrimPrefix(r.URL.Path, "/"); p != "" && p != "index.html" {
+	if r.URL.Path == "/" && auth.CarriesSession(r) {
+		// The landing is for strangers. A rider is routed onward by the app,
+		// which reads what only the browser holds — the stashed deep link and
+		// the crew the sidebar opens in — so the redirect is to the page that
+		// does it, carrying ?new= from the OAuth round-trip with it.
+		target := "/enter"
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusFound) //nolint:gosec // the path is the constant /enter; only the query is the caller's, and a query cannot leave the origin
+		return
+	}
+	if page := prerendered(r.URL.Path); page != "" {
+		if body, err := fs.ReadFile(s.dist, page); err == nil {
+			// A page the build wrote out whole carries its own head, so it goes
+			// out as it is — revalidated like the fallback, for the same reason.
+			// Not through the file server, which answers a request for
+			// index.html with a redirect to ./ — where it came from.
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("ETag", s.etagOf(page))
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			http.ServeContent(w, r, page, time.Time{}, bytes.NewReader(body))
+			return
+		}
+	}
+	if p := strings.TrimPrefix(r.URL.Path, "/"); p != "" && p != fallbackPage {
 		if _, err := fs.Stat(s.dist, p); err == nil {
 			// SvelteKit hashes everything under _app/immutable/ into its
 			// filename, which is exactly what an immutable cache wants — the
@@ -107,15 +141,58 @@ func (s *spa) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// store": the shell is a few KB and only it has to be revalidated. The
 	// og meta varies by path, so the tag is over the bytes actually sent.
 	body := s.social.Inject(s.index, r)
-	tag := weakETag(body)
 	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if !appRoute(r.URL.Path) {
+		// Still the app's page, so the rider gets its own "no page here" —
+		// but with the status that says so, where a 200 made every typo and
+		// every probe for /favicon.ico or /llms.txt an indexable copy of the
+		// landing's meta (a soft 404, which search counts against a site).
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write(body)
+		return
+	}
+	tag := weakETag(body)
 	w.Header().Set("ETag", tag)
 	if strings.Contains(r.Header.Get("If-None-Match"), tag) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write(body)
+}
+
+// appRoutes is the first segment of every path the app has a route under —
+// web/src/routes with the route groups read out, less (site), whose pages are
+// files. TestAppRoutesMatchTheRouteTree keeps it in step with the tree.
+var appRoutes = map[string]bool{
+	"c": true, "crew": true, "crews": true, "dev": true, "dm": true,
+	"download": true, "enter": true, "friends": true, "history": true,
+	"home": true, "hud": true, "legal": true, "login": true, "messages": true,
+	"music": true, "privacy": true, "progression": true, "r": true,
+	"ramp": true, "ride": true, "rooms": true, "sessions": true,
+	"settings": true, "terms": true, "u": true, "whats-new": true,
+	"workouts": true,
+}
+
+// appRoute reports whether the app has a route that could answer path. "/"
+// counts: without a prerendered landing (a dev build) the app draws it.
+func appRoute(path string) bool {
+	first, _, _ := strings.Cut(strings.TrimPrefix(path, "/"), "/")
+	return first == "" || appRoutes[first]
+}
+
+// prerendered names the file a prerendered page would be at: SvelteKit writes
+// "/" as index.html and "/x" as x.html. An extension means the path is a file
+// already, which the file server answers for itself.
+func prerendered(path string) string {
+	if path == "/" {
+		return "index.html"
+	}
+	p := strings.TrimPrefix(path, "/")
+	if p == "" || strings.HasSuffix(p, "/") || filepath.Ext(p) != "" {
+		return ""
+	}
+	return p + ".html"
 }
 
 func (s *spa) etagOf(path string) string {

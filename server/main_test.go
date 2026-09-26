@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -109,8 +111,8 @@ func TestVersionHandlerReportsTag(t *testing.T) {
 	}
 }
 
-// The hashed build is the only thing that may be cached forever. index.html
-// names the current hashes, so caching it would pin a rider to the build they
+// The hashed build is the only thing that may be cached forever. The pages
+// name the current hashes, so caching it would pin a rider to the build they
 // first loaded and hide every deploy from them — the failure this test exists
 // to prevent, since nothing else in the response would look wrong.
 // Hashed assets are pinned for a year; everything else revalidates. The pair
@@ -119,7 +121,9 @@ func TestVersionHandlerReportsTag(t *testing.T) {
 // returning riders on the previous release (#966).
 func TestSPACachesHashedAssetsOnly(t *testing.T) {
 	dist := fstest.MapFS{
-		"index.html":                   {Data: []byte("<html></html>")},
+		"spa.html":                     {Data: []byte("<html></html>")},
+		"index.html":                   {Data: []byte("<html>landing</html>")},
+		"zwift-alternative.html":       {Data: []byte("<html>page</html>")},
 		"_app/immutable/chunks/abc.js": {Data: []byte("console.log(1)")},
 		"favicon.png":                  {Data: []byte("png")},
 	}
@@ -132,10 +136,10 @@ func TestSPACachesHashedAssetsOnly(t *testing.T) {
 		want string
 	}{
 		{"/_app/immutable/chunks/abc.js", immutable},
-		{"/index.html", revalidate},
-		{"/", revalidate},
-		{"/r/velvet-hammer", revalidate}, // SPA fallback: index.html again
-		{"/favicon.png", revalidate},     // from the build, but not hashed
+		{"/", revalidate},                  // prerendered landing
+		{"/zwift-alternative", revalidate}, // prerendered page
+		{"/r/velvet-hammer", revalidate},   // SPA fallback
+		{"/favicon.png", revalidate},       // from the build, but not hashed
 	} {
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", tc.path, nil))
@@ -153,7 +157,8 @@ func TestSPACachesHashedAssetsOnly(t *testing.T) {
 // changelog on every visit to /home, and the shell on every cold load.
 func TestSPARevalidatesWithAnETag(t *testing.T) {
 	dist := fstest.MapFS{
-		"index.html":   {Data: []byte("<html><head></head></html>")},
+		"spa.html":     {Data: []byte("<html><head></head></html>")},
+		"index.html":   {Data: []byte("<html><head></head>landing</html>")},
 		"changelog.md": {Data: []byte("# 2026.09.73\n- something")},
 	}
 	handler := serveSPA(dist, og.New("https://wattroom.test", nil, discardLog()))
@@ -183,7 +188,8 @@ func TestSPARevalidatesWithAnETag(t *testing.T) {
 func TestSPACompressesTextForClientsThatAskForIt(t *testing.T) {
 	script := strings.Repeat("console.log('a long enough line to compress');\n", 40)
 	dist := fstest.MapFS{
-		"index.html":                   {Data: []byte("<html><head></head><body>shell</body></html>")},
+		"spa.html":                     {Data: []byte("<html><head></head><body>shell</body></html>")},
+		"index.html":                   {Data: []byte("<html><head></head><body>landing</body></html>")},
 		"_app/immutable/chunks/abc.js": {Data: []byte(script)},
 		"favicon.png":                  {Data: []byte("not really a png")},
 	}
@@ -233,10 +239,125 @@ func TestSPACompressesTextForClientsThatAskForIt(t *testing.T) {
 	}
 }
 
+// The public pages are prerendered (ADR-0061) and go out as the build wrote
+// them, head included; everything else is the app's fallback with og meta
+// spliced in. "/" is the landing for a stranger only: a request carrying a
+// session goes to /enter, where the app routes the rider onward, and keeps
+// the query the OAuth round-trip put on it.
+func TestSPAServesPrerenderedPagesAndSendsRidersOn(t *testing.T) {
+	dist := fstest.MapFS{
+		"spa.html":               {Data: []byte("<html><head></head><body>app</body></html>")},
+		"index.html":             {Data: []byte("<html><head><title>landing</title></head></html>")},
+		"zwift-alternative.html": {Data: []byte("<html><head><title>page</title></head></html>")},
+	}
+	handler := serveSPA(dist, og.New("https://wattroom.test", nil, discardLog()))
+	get := func(path string, cookie *http.Cookie) *httptest.ResponseRecorder {
+		req := httptest.NewRequestWithContext(t.Context(), "GET", path, nil)
+		if cookie != nil {
+			req.AddCookie(cookie)
+		}
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec
+	}
+	for path, want := range map[string]string{
+		"/":                  "<title>landing</title>",
+		"/zwift-alternative": "<title>page</title>",
+	} {
+		rec := get(path, nil)
+		if rec.Code != 200 || !strings.Contains(rec.Body.String(), want) {
+			t.Errorf("%s: %d %q, want the prerendered page", path, rec.Code, rec.Body.String())
+		}
+		if strings.Contains(rec.Body.String(), "og:title") {
+			t.Errorf("%s: og meta spliced into a page that carries its own head", path)
+		}
+		if ct := rec.Header().Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+			t.Errorf("%s: Content-Type = %q", path, ct)
+		}
+	}
+	if rec := get("/crew/abc", nil); !strings.Contains(rec.Body.String(), "app") || !strings.Contains(rec.Body.String(), "og:title") {
+		t.Errorf("an app route did not get the fallback with og meta: %q", rec.Body.String())
+	}
+	session := &http.Cookie{Name: "wattroom_session", Value: "token"} //nolint:gosec // a cookie the test SENDS: its attributes are the server's to set
+	for path, want := range map[string]string{
+		"/":            "/enter",
+		"/?new=strava": "/enter?new=strava",
+	} {
+		rec := get(path, session)
+		if rec.Code != http.StatusFound || rec.Header().Get("Location") != want {
+			t.Errorf("%s with a session: %d to %q, want 302 to %q", path, rec.Code, rec.Header().Get("Location"), want)
+		}
+	}
+	if rec := get("/zwift-alternative", session); rec.Code != 200 {
+		t.Errorf("a rider reading a public page was redirected: %d", rec.Code)
+	}
+}
+
+// A path no route answers gets the app's page with a 404 (a soft 404 is what
+// search counts against a site) — a typo, and a probe for a file that is not
+// in the build, which a single segment with a dot always is.
+func TestSPAAnswersAnUnknownPathWith404(t *testing.T) {
+	dist := fstest.MapFS{"spa.html": {Data: []byte("<html><head></head><body>app</body></html>")}}
+	handler := serveSPA(dist, og.New("https://wattroom.test", nil, discardLog()))
+	for path, want := range map[string]int{
+		"/crew/abc/c/general": 200,
+		"/login":              200,
+		"/":                   200,
+		"/no-such-page":       404,
+		"/favicon.ico":        404,
+		"/llms.txt":           404,
+		"/crewz":              404,
+	} {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", path, nil))
+		if rec.Code != want {
+			t.Errorf("%s: status %d, want %d", path, rec.Code, want)
+		}
+		if !strings.Contains(rec.Body.String(), "app") {
+			t.Errorf("%s: not the app's page, which draws the rider's 404", path)
+		}
+	}
+}
+
+// appRoutes is written by hand; this is what stops a new route from shipping
+// as a 404. It reads the tree the way SvelteKit does: a (group) adds no
+// segment, and (site)'s pages are files the server finds without the list.
+func TestAppRoutesMatchTheRouteTree(t *testing.T) {
+	const tree = "../web/src/routes"
+	found := map[string]bool{}
+	var walk func(dir string)
+	walk = func(dir string) {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Fatalf("read %s: %v", dir, err)
+		}
+		for _, e := range entries {
+			switch name := e.Name(); {
+			case !e.IsDir(), name == "(site)":
+			case strings.HasPrefix(name, "("):
+				walk(filepath.Join(dir, name))
+			default:
+				found[name] = true
+			}
+		}
+	}
+	walk(tree)
+	for name := range found {
+		if !appRoutes[name] {
+			t.Errorf("web/src/routes has /%s, which appRoutes lacks: it would answer 404", name)
+		}
+	}
+	for name := range appRoutes {
+		if !found[name] {
+			t.Errorf("appRoutes has /%s, which web/src/routes does not", name)
+		}
+	}
+}
+
 // An unknown API path is the API's 404, never the shell with a 200 (#1604);
 // and every response carries the hardening headers (#1609).
 func TestUnknownAPIRouteAndSecurityHeaders(t *testing.T) {
-	dist := fstest.MapFS{"index.html": {Data: []byte("<html></html>")}}
+	dist := fstest.MapFS{"spa.html": {Data: []byte("<html></html>")}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/", apiNotFound)
 	mux.Handle("/", serveSPA(dist, og.New("https://wattroom.test", nil, discardLog())))
