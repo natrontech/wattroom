@@ -182,8 +182,16 @@
 		presence.reload();
 	}
 
+	// Asked first (errors.md, #2885): the upload is deleted server-side, for
+	// every member and the directory, and nothing here can put it back.
 	async function removeImage() {
 		if (!crew) return;
+		const ok = await confirm({
+			title: "Remove the crew's picture?",
+			body: 'Everyone in the crew, and the directory, stops seeing it. Putting it back takes the image file again.',
+			action: 'Remove the picture',
+		});
+		if (!ok) return;
 		busy = true;
 		const res = await clearCrewImage(crew.id);
 		busy = false;
