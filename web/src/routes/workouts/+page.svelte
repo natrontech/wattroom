@@ -145,13 +145,18 @@
 				>
 			{:else}
 				<!-- Buttons, not inline words (#2886): at 16 px they were under
-				     ux.md's 24 px floor on a phone. -->
-				<a href="/workouts/edit" class="btn btn-ghost btn-xs">Build a workout</a
-				>
-				<!-- Both doors sit behind the same ceiling: an import lands on
-				     this shelf exactly as a built workout does (#2327). -->
-				<a href="/workouts/import" class="btn btn-ghost btn-xs">Import a file</a
-				>
+				     ux.md's 24 px floor on a phone. One row of their own, so the
+				     column a phone stacks into does not stretch each across it. -->
+				<span class="flex flex-wrap gap-1">
+					<a href="/workouts/edit" class="btn btn-ghost btn-xs"
+						>Build a workout</a
+					>
+					<!-- Both doors sit behind the same ceiling: an import lands on
+					     this shelf exactly as a built workout does (#2327). -->
+					<a href="/workouts/import" class="btn btn-ghost btn-xs"
+						>Import a file</a
+					>
+				</span>
 			{/if}
 		</div>
 		{#if custom.error}
