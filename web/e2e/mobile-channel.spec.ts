@@ -223,7 +223,10 @@ test('the coach rows, the confirm, a menu and the picker fit a phone', async ({
 	// The coach's row: Start now, Move and Cancel session beside "I'm in".
 	await page.goto(`/crew/${opened.crew}/schedule?full=1`);
 	await expect(page.getByRole('button', { name: 'Move…' })).toBeVisible();
-	await expect(page.getByRole('button', { name: 'Start now' })).toBeVisible();
+	// Unpaired here, so it names the choice (#2594, #2880).
+	await expect(
+		page.getByRole('button', { name: /^Start (now|without a trainer)$/ }),
+	).toBeVisible();
 	await noOverflow('the Schedule with the coach row');
 
 	// The confirm behind Cancel session.
@@ -307,7 +310,9 @@ test('a phone plans a session and still does not start one', async ({
 	await expect(
 		page.getByRole('button', { name: 'Cancel session', exact: true }),
 	).toBeVisible();
-	await expect(page.getByRole('button', { name: 'Start now' })).toHaveCount(0);
+	await expect(
+		page.getByRole('button', { name: /^Start (now|without a trainer)$/ }),
+	).toHaveCount(0);
 	await expect(page.getByText('starting soon')).toBeVisible();
 });
 

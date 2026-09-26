@@ -102,5 +102,7 @@ test('the voice channel shows its plan, answers it and starts it', async ({
 		.getByRole('listitem')
 		.filter({ hasText: `${RIDER} is coaching in ${opened.name}` });
 	await expect(later).toBeVisible({ timeout: 15_000 });
-	await expect(later.getByRole('button', { name: 'Start now' })).toHaveCount(0);
+	await expect(
+		later.getByRole('button', { name: /^Start (now|without a trainer)$/ }),
+	).toHaveCount(0);
 });

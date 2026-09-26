@@ -44,6 +44,8 @@
 	let together = $state<Together | null>(null);
 	let streakWeeks = $state(0);
 	let error = $state<string | null>(null);
+	// The failure is a not_found — no crew of yours any more — so no Retry.
+	let gone = $state(false);
 	let answering = $state(false);
 
 	async function load(id: string) {
@@ -68,6 +70,7 @@
 		}
 		const failed = [live, schedule, recaps, members].find((res) => !res.ok);
 		error = failed && !failed.ok ? failed.error.message : null;
+		gone = !!failed && !failed.ok && failed.error.error === 'not_found';
 	}
 	$effect(() => {
 		void load(crew.id);
@@ -118,9 +121,14 @@
 		<Banner tone="error">
 			{error}
 			{#snippet action()}
-				<button onclick={() => void load(crew.id)} class="btn-link text-xs"
-					>Retry</button
-				>
+				<!-- Permanent (#1677, #2880): a Retry would answer the same. -->
+				{#if gone}
+					<a href="/home" class="btn-link text-xs">Home</a>
+				{:else}
+					<button onclick={() => void load(crew.id)} class="btn-link text-xs"
+						>Retry</button
+					>
+				{/if}
 			{/snippet}
 		</Banner>
 	</div>

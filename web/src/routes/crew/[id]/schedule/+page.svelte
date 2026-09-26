@@ -41,6 +41,8 @@
 		type CrewPlan,
 	} from '$lib/crew-schedule';
 	import { device } from '$lib/device.svelte';
+	import { channelConnection } from '$lib/channel/connection.svelte';
+	import { needsTrainer } from '$lib/session/sensor-status';
 	import { formatWhen } from '$lib/format';
 	import { presence } from '$lib/presence.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
@@ -219,6 +221,17 @@
 	/** Opens the session in the plan's channel — or the one picked above,
 	 *  for a plan that named none — and takes you there (#2440). A channel
 	 *  another coach holds answers with their name. */
+	// The gear first (#2594, #2880), read the way the plan's card in the voice
+	// channel reads it: the trainer this screen's connection holds, or one
+	// another screen of yours holds. Starting unpaired stays a choice — a
+	// coach may lead without riding — but a named one, not an accident.
+	const unpaired = $derived(
+		needsTrainer(
+			channelConnection.current?.ride.trainer,
+			channelConnection.current?.live.pairing,
+		),
+	);
+
 	async function start(entry: CrewPlan) {
 		busy = true;
 		const res = await startCrewPlan(
@@ -380,10 +393,18 @@
 											>{coachingIn(entry)} is coaching in {entry.channelName}</span
 										>
 									{:else if entry.channelId}
+										{#if unpaired}<a
+												href="/settings/equipment"
+												class="text-muted text-xs underline"
+												>Pair your trainer first</a
+											>{/if}
 										<button
 											onclick={() => void start(entry)}
 											disabled={busy}
-											class="btn btn-primary">Start now</button
+											class="btn {unpaired ? 'btn-secondary' : 'btn-primary'}"
+											>{unpaired
+												? 'Start without a trainer'
+												: 'Start now'}</button
 										>
 									{:else if startIn}
 										<!-- No channel named: where it runs is chosen here, with
@@ -398,7 +419,10 @@
 										<button
 											onclick={() => void start(entry)}
 											disabled={busy}
-											class="btn btn-primary">Start in {startIn.name}</button
+											class="btn {unpaired ? 'btn-secondary' : 'btn-primary'}"
+											>Start in {startIn.name}{unpaired
+												? ' without a trainer'
+												: ''}</button
 										>
 									{:else}
 										<!-- Never a button that will fail (errors.md): said, not

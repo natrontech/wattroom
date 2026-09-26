@@ -45,10 +45,16 @@ test('a plan that names no channel starts in one chosen on its row', async ({
 
 	await page.goto(`/crew/${opened.crew}/schedule`);
 	const row = page.getByRole('listitem').filter({ hasText: workoutName });
-	// Where it runs is asked on the row, and the button says where.
-	const start = row.getByRole('button', { name: /^Start in / });
+	// Where it runs is asked on the row, and the button says where — and,
+	// with no trainer paired in this browser, that it starts without one
+	// (#2594, #2880): a named choice, not an accident.
+	const start = row.getByRole('button', {
+		name: /^Start in .+ without a trainer$/,
+	});
 	await expect(start).toBeEnabled({ timeout: 15_000 });
-	await expect(row.getByRole('button', { name: 'Start now' })).toHaveCount(0);
+	await expect(
+		row.getByRole('button', { name: /^Start (now|without a trainer)$/ }),
+	).toHaveCount(0);
 
 	await start.click();
 	await page.waitForURL(`/crew/${opened.crew}/s/**`, { timeout: 30_000 });
