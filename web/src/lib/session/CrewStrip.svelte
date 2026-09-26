@@ -73,14 +73,19 @@
 			     the last number standing in for a rider holding target. -->
 			<!-- Ink numerals and a zone dot (#2856): in a zone colour a warm-up's
 			     watts were 1.9:1 on the tile. -->
-			{#if !rider.stale}<ZoneDot {zone} class="size-1.5 self-center" />{/if}
-			<span
-				class="font-display {rider.stale
-					? 'text-muted'
-					: 'text-ink'} text-xl leading-none font-bold tabular-nums"
-				data-testid="crew-watts">{rider.stale ? '—' : rider.watts}</span
-			>
-			<span class="text-muted text-[9px]">W</span>
+			<!-- The followed rider's numbers are the instrument above it on the
+			     phone (#2882 L6-13); their tile keeps the ring and the name, the
+			     tap that stops following (#1627). -->
+			{#if !followed}
+				{#if !rider.stale}<ZoneDot {zone} class="size-1.5 self-center" />{/if}
+				<span
+					class="font-display {rider.stale
+						? 'text-muted'
+						: 'text-ink'} text-xl leading-none font-bold tabular-nums"
+					data-testid="crew-watts">{rider.stale ? '—' : rider.watts}</span
+				>
+				<span class="text-muted text-[9px]">W</span>
+			{/if}
 			<span
 				class="text-muted ml-auto truncate text-[10px]"
 				data-testid="crew-name">{rider.name}</span
@@ -92,11 +97,13 @@
 	     reads as a broken strap rather than as no strap, which is the call
 	     #1057 made for the solo ride and SecondaryRow, TvMode and RiderTile
 	     all keep. This strip printed it under every crewmate without one. -->
-	<p class="text-muted mt-1 truncate text-[10px] tabular-nums">
-		{#if rider.stale}no signal{:else}{wkg(rider.watts, rider.kg)} w/kg · {rider.cadence}
-			rpm{#if rider.hr > 0}
-				· {rider.hr} bpm{/if}{/if}
-	</p>
+	{#if !followed}
+		<p class="text-muted mt-1 truncate text-[10px] tabular-nums">
+			{#if rider.stale}no signal{:else}{wkg(rider.watts, rider.kg)} w/kg · {rider.cadence}
+				rpm{#if rider.hr > 0}
+					· {rider.hr} bpm{/if}{/if}
+		</p>
+	{/if}
 {/snippet}
 
 <div class="flex gap-2 overflow-x-auto {pad}">
