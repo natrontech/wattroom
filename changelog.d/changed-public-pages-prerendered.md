@@ -1,1 +1,0 @@
-- The landing page arrives finished: it draws before any script runs, and search engines, AI search and link previews read the whole page instead of an empty frame. wattroom.ch now has a sitemap, and a mistyped address answers "not found" instead of a copy of the landing.

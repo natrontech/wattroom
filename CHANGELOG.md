@@ -17,6 +17,35 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.147] - 2026-09-26
+
+### Added
+
+- wattroom.ch now explains itself. The new landing page has an FTP slider that shows one workout scaled to four riders, and a sprint you can play with your thumb. New pages cover:
+  - group workouts with friends
+  - the seven game modes
+  - a free FTP ramp test, with an FTP and zones calculator
+  - riding a smart trainer from the browser
+  - self-hosting
+  - honest comparisons with Zwift, TrainerRoad and MyWhoosh
+  - a page in German.
+
+### Changed
+
+- The landing page arrives finished: it draws before any script runs, and search engines, AI search and link previews read the whole page instead of an empty frame. wattroom.ch now has a sitemap, and a mistyped address answers "not found" instead of a copy of the landing.
+
+### Fixed
+
+- A paused session that everyone has left now ends on its own after 10
+  minutes, and saves everyone's ride. Before, it waited for the coach or an
+  admin to come back and press End, kept the voice channel locked to everyone
+  else in the meantime, and the next update threw the rides away.
+- Strava uploads work again on servers that set `WATTROOM_TOKEN_KEY`. Once
+  that key encrypted the stored Strava sign-ins, the uploader could not read
+  them, so every ride failed to reach Strava as soon as the rider's short-lived
+  access token expired. Update, then retry any failed upload from the ride's
+  page. Nobody needs to reconnect Strava.
+
 ## [2026.09.146] - 2026-09-26
 
 ### Added
@@ -3436,7 +3465,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.146...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.147...HEAD
+[2026.09.147]: https://github.com/natrontech/wattroom/compare/2026.09.146...2026.09.147
 [2026.09.146]: https://github.com/natrontech/wattroom/compare/2026.09.145...2026.09.146
 [2026.09.145]: https://github.com/natrontech/wattroom/compare/2026.09.144...2026.09.145
 [2026.09.144]: https://github.com/natrontech/wattroom/compare/2026.09.143...2026.09.144
