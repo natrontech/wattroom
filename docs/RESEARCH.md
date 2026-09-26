@@ -676,6 +676,102 @@ present.
   avatar per server). Runs against privacy-is-architecture and ADR-0036; not
   proposed, recorded here so the question is not mistaken for an oversight.
 
+## 19. Getting found: search, positioning, and where riders look (run of 2026-09-26)
+
+Research for #2993 and #2995. Two passes: search demand, competitors and AI-search visibility; and READMEs, social cards, Search Console and distribution. Tier: **extracted** (sourced, not adversarially verified). Keyword volumes are **unverified**: no tool publishes them. The demand signal is Google autocomplete (`suggestqueries`, 2026-09-26).
+
+### 19.1 What the served HTML said (measured, and fixed by ADR-0061)
+
+- As GPTBot saw it, `https://wattroom.ch/` was a 5 KB shell: a title, a meta description, `WebSite` JSON-LD and "Opening WattRoom…".
+- OpenAI's, Anthropic's and Perplexity's crawlers run no script ([Vercel/MERJ, Dec 2024](https://vercel.com/blog/the-rise-of-the-ai-crawler)). Googlebot renders, after a queue.
+- `/sitemap.xml`, `/favicon.ico`, `/llms.txt` and any typo answered **200 with the shell**. Those are soft 404s.
+- Google's documented fixes for a SPA are a JS redirect to a URL that 404s, or `noindex` ([JavaScript SEO basics](https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics)). A server that knows its route segments can just answer 404 with the shell.
+- Google treats dynamic rendering as a workaround, not a recommendation ([SEL](https://searchengineland.com/google-no-longer-recommends-using-dynamic-rendering-for-google-search-387054)). Prerendering at build time is what ADR-0061 does.
+
+### 19.2 Two corrections to our own pitch
+
+- **Zwift already scales a group workout to each rider's FTP** ([forum](https://forums.zwift.com/t/group-workouts-different-watt-kgs/546458)). What it lacks is built-in voice, which riders have asked for for years ([forum, 2025](https://forums.zwift.com/t/voice-chat-option/651000)), and a private group workout goes through a Meetup ([Zwift Insider](https://zwiftinsider.com/zwift-meetup-group-workouts/)).
+- **TrainerRoad has group workouts with voice and video**: up to 11 riders, each on their own FTP, desktop apps only, every rider subscribed ([TrainerRoad](https://www.trainerroad.com/blog/introducing-group-workouts/)).
+
+So "the only way to ride one workout on your own FTP" is false. What holds, as far as this search found, is the combination:
+
+- free, and in the browser
+- a standing crew space with text and voice channels
+- one synced ERG workout started by anyone in the channel
+- games decided by watts alone
+- a shared jukebox
+
+`web/src/lib/site/rivals.ts` carries the comparison facts with their sources, and says both corrections in its header.
+
+### 19.3 The landscape (checked 2026-09-26)
+
+| App | Price | Group story |
+|---|---|---|
+| [Zwift](https://www.zwift.com/) | US$19.99/mo, $199.99/yr ([DCR](https://www.dcrainmaker.com/2024/05/increases-prices-hardware.html)) | FTP-scaled group workouts; text chat; crews run Discord ([Zwift Insider](https://zwiftinsider.com/using-discord/)) |
+| [TrainerRoad](https://www.trainerroad.com/) | US$21.99/mo | Group workouts with voice and video, up to 11 riders |
+| [MyWhoosh](https://www.mywhoosh.com/) | Free | Group rides and pacer-led workouts in a 3D world; text chat |
+| [Rouvy](https://rouvy.com/) | €179.99/yr | Owned by Zwift since 29 Apr 2026, with FulGaz ([DCR](https://www.dcrainmaker.com/2026/04/zwift-acquires-rouvy-including-fulgaz.html)); in-ride chat is text ([support](https://support.rouvy.com/hc/en-us/articles/46882435891217-In-ride-chat)) |
+| [icTrainer](https://ictrainer.de/en/groups-trainers-clubs/) | $29.99/yr | Built-in video calls, individual zones; the German incumbent |
+| [dundring](https://github.com/sivertschou/dundring) | Free, Apache-2.0 | Browser group sessions with live data, no voice; the closest open-source overlap |
+| [Auuki](https://github.com/dvmarinoff/Auuki), [BullWatt](https://www.bullwatt.com/) | Free, AGPL | Browser, solo |
+
+BKOOL was retired into Rouvy on 30 Nov 2025 ([Rouvy](https://rouvy.com/faq/bkool)).
+
+### 19.4 Queries, ranked by fit × difficulty
+
+1. "zwift workout with friends", "can you ride with friends on zwift". Best fit, low to medium difficulty. Target: `/group-workouts`.
+2. "does zwift have voice chat". Low difficulty. Answered in `/group-workouts`' FAQ.
+3. "create/custom group workout zwift", "zwift group workout meetup". Low difficulty.
+4. "free zwift alternative", "zwift alternative". High demand, high difficulty. Page one is publisher listicles, [AlternativeTo](https://alternativeto.net/software/zwift/), a vendor page, and one small site with a dated table and FAQ. Target: `/zwift-alternative` and `/vs/*`.
+5. "zwift open source alternative". Low volume, low difficulty.
+6. "zwift chromebook" (7 autocomplete variants). Web Bluetooth ships on ChromeOS ([status](https://github.com/WebBluetoothCG/web-bluetooth/blob/main/implementation-status.md)), but the page says "tell us" rather than claiming it untested.
+7. "ramp test online", "ftp test", "ftp calculator". Medium difficulty. Target: `/ftp-test`, with a calculator.
+8. "free erg mode app", "smart trainer app free". Target: `/smart-trainer-app`.
+9. **German, for `hl=de, gl=ch`**: "zwift alternative kostenlos / ohne abo", "zwift mit freunden fahren", "indoor cycling app deutsch kostenlos". One German page with hreflang (`/de`), saying plainly that the app is in English.
+
+"Indoor cycling with friends" returned no autocomplete. It stays hero copy, not a page target.
+
+### 19.5 What a comparison page must do to be credible
+
+Google's [review guidance](https://developers.google.com/search/docs/specialty/ecommerce/write-high-quality-reviews) asks for:
+
+- first-hand evidence
+- quantitative comparison
+- pros and cons
+- alternatives named
+
+The pages built on it (`/vs/*`) add:
+
+- a "we make WattRoom" disclosure
+- prices linked to the vendor's own pages, with the date checked
+- a "pick them if…" section that means it
+- a trademark note
+
+### 19.6 AI search and structured data
+
+- **Off-site mentions matter more than anything on the page.** In [Ahrefs' 75K-brand study](https://ahrefs.com/blog/ai-overview-brand-correlation/), web mentions correlated 0.664 with AI visibility, backlinks 0.218, and YouTube mentions about 0.74. Hence the distribution list in LAUNCH.md.
+- **ChatGPT citations and Bing's top 10.** One study found 87 % of ChatGPT citations in Bing's top 10 ([Seer](https://www.seerinteractive.com/insights/87-percent-of-searchgpt-citations-match-bings-top-results)); a replication found 27 %. Uncertain, but Bing Webmaster Tools costs nothing.
+- **llms.txt is close to unused**: 97 % of 137K files got zero requests in May 2026 ([Ahrefs](https://ahrefs.com/blog/llmstxt-study/)). Not built.
+- **FAQ rich results are gone.** Restricted in 2023 and removed on 7 May 2026 ([SEJ](https://www.searchenginejournal.com/google-drops-faq-rich-results-from-search/574429/)). The FAQs stay as visible text, which is what AI answers quote; there is no FAQPage markup.
+- **The software-app rich result needs `aggregateRating` or `review`** ([Google](https://developers.google.com/search/docs/appearance/structured-data/software-app)). We have neither, and inventing one is what gets penalised. `WebApplication` is marked up anyway so the entity is understood.
+
+### 19.7 READMEs and share cards
+
+- **What good product READMEs share** ([Excalidraw](https://github.com/excalidraw/excalidraw), [Plane](https://github.com/makeplane/plane), [Immich](https://github.com/immich-app/immich)):
+  - a pitch in one line
+  - a row of links for users, not only contributors
+  - a captioned hero image
+  - one screenshot per feature
+  - self-host instructions
+  - dev setup below the fold
+- **GitHub markdown**: dark and light images use `<picture>` with `prefers-color-scheme` ([GitHub blog](https://github.blog/developer-skills/github/how-to-make-your-images-in-markdown-on-github-adjust-for-dark-mode-and-light-mode/)). Use one or two alerts at most.
+- **The repo's social preview** is set by hand in the repo's settings. It should be at least 640×320, 1280×640 is best, and under 1 MB ([docs](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/customizing-your-repositorys-social-media-preview)).
+- **Share-card crops and limits**:
+  - X shows only the image and a domain, so the message has to be inside the image ([TechCrunch](https://techcrunch.com/2024/01/03/x-briefly-brought-back-headlines-to-link-previews-but-theyre-gone-again)).
+  - WhatsApp wants under 600 KB ([Meta](https://developers.facebook.com/documentation/business-messaging/whatsapp/link-previews)).
+  - iMessage reportedly crops toward a square (unverified), hence the centred cards.
+  - Avoid WebP for Slack and Discord.
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.

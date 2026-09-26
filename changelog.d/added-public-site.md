@@ -1,0 +1,8 @@
+- wattroom.ch now explains itself. The new landing page has an FTP slider that shows one workout scaled to four riders, and a sprint you can play with your thumb. New pages cover:
+  - group workouts with friends
+  - the seven game modes
+  - a free FTP ramp test, with an FTP and zones calculator
+  - riding a smart trainer from the browser
+  - self-hosting
+  - honest comparisons with Zwift, TrainerRoad and MyWhoosh
+  - a page in German.

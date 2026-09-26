@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed build test lint ci release print-golangci-version desktop desktop-smoke desktop-release licenses worktree-gc
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release licenses worktree-gc
 
 DEV_ENV := scripts/dev-env.sh
 
@@ -81,6 +81,17 @@ sqlc: ## regenerate internal/store/db from queries + migrations (commit the resu
 seed: ## seed this checkout's dev database (idempotent)
 	@$(DEV_ENV) ensure-db
 	@eval "$$($(DEV_ENV) print)"; cd server && WATTROOM_DB="$$WATTROOM_DEV_DSN" go run ./cmd/seed
+
+screenshots: web-deps ## redraw the site's share cards and the site/README screenshots (needs make dev-server + make dev-web running)
+	@# Drives the dev pair that is already up rather than starting one: its
+	@# world is seeded through the API and outlives the run. Through the web
+	@# port, so the check covers Vite and the server it proxies to in one go.
+	@eval "$$($(DEV_ENV) print)"; \
+		curl -sf -o /dev/null "http://localhost:$$WATTROOM_DEV_WEB_PORT/api/healthz" || { \
+			echo "Nothing answers on http://localhost:$$WATTROOM_DEV_WEB_PORT/api/healthz — start the dev pair first: make infra, then make dev-server and make dev-web." >&2; \
+			exit 1; \
+		}; \
+		cd web && node scripts/cards.mjs && node scripts/screenshots.mjs
 
 desktop: ## run the desktop shell against a URL (WATTROOM_URL, default this worktree's web)
 	@cd desktop && pnpm install --silent

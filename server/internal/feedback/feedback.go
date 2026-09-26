@@ -333,20 +333,21 @@ func fenced(s string) string {
 // from either is loud rather than silent.
 var (
 	routeSegments = fieldSet(`
-		account appearance board brand c channel chat components crew crews data dev directory
+		account appearance board brand c card channel chat components crew crews data dev directory
 		dm download edit editor enter equipment friends hardware history home
 		hud import legal licenses login medal members messages modes music
 		notifications pairing panel pins privacy profile progression r ramp
 		recover ride rooms schedule sessions settings sitemap.xml sound spectator
 		styleguide summary terms theme-editor themes training trophies u
 		s v voice watch whats-new workouts
+		de ftp-test game-modes group-workouts self-host smart-trainer-app vs zwift-alternative
 	`)
 	// Keyed by the prefix as already redacted, so a parameter under another
 	// one has a name: /crew/[id]/c/[channel] is `/crew/…/c` (#2448), and a
 	// voice channel's /crew/[id]/v/[channel] is `/crew/…/v` (#2449), and a
 	// session's /crew/[id]/s/[session] is `/crew/…/s` (#2450).
 	paramUnder = fieldSet(`
-		/c /crew /crew/…/c /crew/…/s /crew/…/v /dm /history /messages/dm /messages/r /r /u
+		/c /crew /crew/…/c /crew/…/s /crew/…/v /dm /history /messages/dm /messages/r /r /u /vs
 	`)
 )
 
