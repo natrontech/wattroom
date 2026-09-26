@@ -217,8 +217,93 @@ describe('the suspended context', () => {
 		document.dispatchEvent(new Event('pointerdown'));
 		expect(off.mock.calls.map(([kind]) => kind)).toEqual([
 			'pointerdown',
+			'pointerup',
+			'touchend',
 			'keydown',
 		]);
 		off.mockRestore();
+	});
+
+	/**
+	 * A phone's context (#3022): a resume takes only inside a user
+	 * activation, which a touch's pointerdown is not — the tap counts when it
+	 * lifts. Listening for the press alone left every phone silent.
+	 */
+	function phone() {
+		const phone = { activated: false, made: 0 };
+		class Phone extends FakeAudioContext {
+			state = 'suspended';
+			constructor() {
+				super();
+				phone.made++;
+			}
+			resume = async () => {
+				if (phone.activated) this.state = 'running';
+			};
+		}
+		vi.stubGlobal('AudioContext', Phone);
+		return phone;
+	}
+	const stateOf = (cues: Awaited<ReturnType<typeof freshCues>>) =>
+		(cues.bus()?.ctx as unknown as { state: string }).state;
+
+	it.each(['pointerup', 'touchend'])(
+		'resumes on the %s that ends a tap, not only on the press',
+		async (lift) => {
+			const device = phone();
+			const cues = await freshCues();
+			cues.play('go'); // a sound asked outside any gesture: still shut
+			document.dispatchEvent(new Event('pointerdown'));
+			expect(stateOf(cues)).toBe('suspended');
+
+			device.activated = true;
+			document.dispatchEvent(new Event(lift));
+			device.activated = false;
+			await Promise.resolve();
+			expect(stateOf(cues)).toBe('running');
+			vi.stubGlobal('AudioContext', FakeAudioContext);
+		},
+	);
+
+	it('opens the bus from inside a deck tap before anything asked for sound', async () => {
+		const device = phone();
+		const cues = await freshCues();
+		expect(device.made).toBe(0);
+
+		device.activated = true; // inside the click handler
+		cues.unlockCues();
+		device.activated = false;
+		await Promise.resolve();
+		expect(device.made).toBe(1);
+		expect(stateOf(cues)).toBe('running');
+		vi.stubGlobal('AudioContext', FakeAudioContext);
+	});
+});
+
+describe('the cowbell (#3022)', () => {
+	// The catalogue can say bandpass all it likes; the engine is what rings it.
+	it('rings through a bandpass, where every other cue takes the lowpass', async () => {
+		const filters: { type: string }[] = [];
+		class Recording extends FakeAudioContext {
+			createBiquadFilter = () => {
+				const filter = fakeNode();
+				filters.push(filter);
+				return filter;
+			};
+		}
+		vi.stubGlobal('AudioContext', Recording);
+		const cues = await freshCues();
+		cues.play('cowbell');
+		expect(filters.map((filter) => filter.type)).toEqual([
+			'bandpass',
+			'bandpass',
+		]);
+		filters.length = 0;
+		cues.play('klaxon');
+		expect(filters.map((filter) => filter.type)).toEqual([
+			'lowpass',
+			'lowpass',
+		]);
+		vi.stubGlobal('AudioContext', FakeAudioContext);
 	});
 });

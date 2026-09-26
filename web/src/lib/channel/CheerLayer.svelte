@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
+	import { cheerCues } from '$lib/roadside';
 	import type { Cheer } from '$lib/protocol';
 	import CheerIcon from '$lib/components/CheerIcon.svelte';
 
@@ -19,8 +20,8 @@
 		const batch = cheers;
 		if (!batch || batch.length === 0 || batch === seenTick) return;
 		seenTick = batch;
-		// A burst lands higher than a single cheer — the pitch is the crowd size.
-		play('cheer', Math.min((batch.length - 1) * 2, 12));
+		// The bell rings the cowbell; the rest blip, higher for a crowd.
+		for (const cue of cheerCues(batch)) play(cue.id, cue.semitones);
 		const next = batch.map((cheer) => ({
 			...cheer,
 			key: counter++,

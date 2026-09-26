@@ -7,6 +7,7 @@
 import Activity from '@lucide/svelte/icons/activity';
 import BellRing from '@lucide/svelte/icons/bell-ring';
 import Crown from '@lucide/svelte/icons/crown';
+import GlassWater from '@lucide/svelte/icons/glass-water';
 import MessageSquare from '@lucide/svelte/icons/message-square';
 import MessageSquareMore from '@lucide/svelte/icons/message-square-more';
 import ShieldBan from '@lucide/svelte/icons/shield-ban';
@@ -69,6 +70,10 @@ function riderVolume(id: string, name: string): MenuSlider {
  * your thread — with words, from the thread's own box — and anyone else's
  * only across the voice channel you share. Nowhere to land, no entry: a
  * disabled Poke on every person in the app says nothing a rider can act on.
+ *
+ * A bottle is a poke's sibling from the roadside (#3022), and lands only on a
+ * rider riding the session in the channel you share — the hub's own rule, so
+ * the entry is never one that would be refused.
  */
 function pokeItems(
 	id: string,
@@ -78,6 +83,16 @@ function pokeItems(
 	const friend = friends.list?.find((f) => f.id === id);
 	const live = channelConnection.current?.live;
 	const beside = live?.tick?.roster?.find((r) => r.id === id);
+	const bottle: MenuItem[] =
+		beside?.inSession && live
+			? [
+					{
+						label: 'Hand up a bottle',
+						icon: GlassWater,
+						onSelect: () => live.bottle(id),
+					},
+				]
+			: [];
 	if ((friendship ?? friend?.status) === 'accepted') {
 		const name = friend?.name ?? people.face(id)?.name ?? 'them';
 		return [
@@ -91,10 +106,14 @@ function pokeItems(
 				icon: MessageSquareMore,
 				onSelect: () => go(`${threadOf(id)}?poke`),
 			},
+			...bottle,
 		];
 	}
 	if (beside && live)
-		return [{ label: 'Poke', icon: BellRing, onSelect: () => live.poke(id) }];
+		return [
+			{ label: 'Poke', icon: BellRing, onSelect: () => live.poke(id) },
+			...bottle,
+		];
 	return [];
 }
 

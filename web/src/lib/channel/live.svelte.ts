@@ -10,6 +10,7 @@ import type {
 	ServerTick,
 	SessionRecap,
 } from '$lib/protocol';
+import { PokeKindBottle } from '$lib/protocol';
 import type { PlaceAddress } from '$lib/channel/address';
 import { fillDeck, type DeckHeard } from '$lib/channel/deck-heard';
 import { account } from '$lib/account.svelte';
@@ -94,6 +95,10 @@ export function createChannelLive(address: PlaceAddress) {
 	// Addressed off the tick like pairing: every update is one new request for
 	// this rider's attention, carrying the authenticated sender and server time.
 	let lastPoke = $state<Poke | null>(null);
+	// A bottle handed up (#3022) arrives the same way and waits for the
+	// rider's valley rather than announcing now — its own slot, so the poke's
+	// path never has to know one exists.
+	let lastBottle = $state<Poke | null>(null);
 	// The crew's owner or an admin moved this rider elsewhere (#2730).
 	let lastMove = $state<Moved | null>(null);
 	// This socket's own public address (#2131), addressed off the tick for a
@@ -347,7 +352,8 @@ export function createChannelLive(address: PlaceAddress) {
 		socket.onmessage = (event) => {
 			heard();
 			const msg = JSON.parse(event.data) as ServerMessage;
-			if (msg.poke) lastPoke = msg.poke;
+			if (msg.poke?.kind === PokeKindBottle) lastBottle = msg.poke;
+			else if (msg.poke) lastPoke = msg.poke;
 			if (msg.moved) lastMove = msg.moved;
 			if (msg.pairing) {
 				// Off the tick by design (#610) — it is addressed to this
@@ -490,6 +496,9 @@ export function createChannelLive(address: PlaceAddress) {
 		get lastPoke() {
 			return lastPoke;
 		},
+		get lastBottle() {
+			return lastBottle;
+		},
 		get lastMove() {
 			return lastMove;
 		},
@@ -565,6 +574,10 @@ export function createChannelLive(address: PlaceAddress) {
 		},
 		poke(to: string) {
 			send({ poke: { to } });
+		},
+		/** Hand a rider in the session a bottle from the roadside (#3022). */
+		bottle(to: string) {
+			send({ poke: { to, kind: PokeKindBottle } });
 		},
 		/**
 		 * Step out, or come back (#706). The whole state, never a toggle: the

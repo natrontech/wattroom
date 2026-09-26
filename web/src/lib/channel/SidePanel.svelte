@@ -7,7 +7,7 @@
 	import SmilePlus from '@lucide/svelte/icons/smile-plus';
 	import MicOff from '@lucide/svelte/icons/mic-off';
 	import Video from '@lucide/svelte/icons/video';
-	import CheerIcon from '$lib/components/CheerIcon.svelte';
+	import CheerDeck from '$lib/channel/CheerDeck.svelte';
 	import BoardToggle from '$lib/board/BoardToggle.svelte';
 	import EmojiPicker from '$lib/emoji/EmojiPicker.svelte';
 	import { emojiCrew } from '$lib/emoji/crew-emoji.svelte';
@@ -330,25 +330,18 @@
 			<!-- Your reactions (#2722), and under them the soundboard: both are
 			     a thing you throw into the channel, and neither is typing —
 			     which mid-ride was never on the table anyway (ux.md). -->
-			<div class="flex gap-1.5">
-				{#each account.cheers.slice(0, 4) as cheer (cheer)}
+			<CheerDeck onCheer={(key) => onCheer?.(key)}>
+				{#snippet more()}
 					<button
-						onclick={() => onCheer?.(cheer)}
-						aria-label={cheer}
-						title={cheer}
-						class="border-muted/20 hover:border-muted/50 flex min-h-11 flex-1 items-center justify-center rounded border"
-						><CheerIcon {cheer} size={18} /></button
+						onclick={(e) => (pickerAt = pickerAt ? null : e.currentTarget)}
+						aria-label="More reactions"
+						aria-expanded={!!pickerAt}
+						title="More reactions"
+						class="border-muted/20 hover:border-muted/50 text-muted hover:text-ink flex min-h-11 w-11 shrink-0 items-center justify-center rounded border"
+						><SmilePlus size={18} /></button
 					>
-				{/each}
-				<button
-					onclick={(e) => (pickerAt = pickerAt ? null : e.currentTarget)}
-					aria-label="More reactions"
-					aria-expanded={!!pickerAt}
-					title="More reactions"
-					class="border-muted/20 hover:border-muted/50 text-muted hover:text-ink flex min-h-11 w-11 shrink-0 items-center justify-center rounded border"
-					><SmilePlus size={18} /></button
-				>
-			</div>
+				{/snippet}
+			</CheerDeck>
 			{#if pickerAt}
 				<EmojiPicker
 					anchor={pickerAt}
