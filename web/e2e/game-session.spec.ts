@@ -63,11 +63,11 @@ test('a game opens a session its coach ends, and it leaves a recap', async ({
 	).toHaveCount(0);
 
 	// It ends the game for everyone in it, so it asks first (#2604) — and
-	// Keep playing keeps it.
+	// the mid-effort safe answer, Keep riding, keeps it (#2887).
 	await coach.getByRole('button', { name: 'end the game' }).click();
 	const ask = coach.getByRole('dialog');
 	await expect(ask.getByText(/^End Floor is Lava/)).toBeVisible();
-	await ask.getByRole('button', { name: 'Keep playing' }).click();
+	await ask.getByRole('button', { name: 'Keep riding' }).click();
 	await expect(
 		coach.getByRole('button', { name: 'end the game' }),
 	).toBeVisible();
