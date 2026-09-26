@@ -18,7 +18,8 @@
 -- and runs no scan, so the boot this migrates on cannot fail under any data,
 -- however large or however old. New and updated rows are checked from here.
 -- Validating it — the scan that lets codeOf() drop its nil branch for real —
--- is #2333's visit, off the boot path.
+-- happens off the boot path, #2974 (it was #2333's, which closed for its
+-- rooms half).
 alter table crews add constraint crews_code_present check (code is not null) not valid;
 
 -- +goose Down

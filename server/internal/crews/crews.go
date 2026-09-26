@@ -215,8 +215,8 @@ func administers(role string) bool { return role == "owner" || role == "admin" }
 // codeOf: crews.code is still nullable in the column type, but crews_code_present
 // (#2334) refuses a new row without one and every crew has had one since the
 // 20260908204419 backfill, so "" only ever means a row that should not exist.
-// The nil branch goes when that constraint is validated (#2333's visit) and
-// the column can take its not null.
+// The nil branch goes when that constraint is validated and the column takes
+// its not null (#2974).
 func codeOf(code *string) string {
 	if code == nil {
 		return ""
