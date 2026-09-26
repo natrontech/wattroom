@@ -14,7 +14,9 @@
  * which is a real line on paper and a whisper in the cave.
  */
 export function tileFrame(speaking: boolean, away = false): string {
-	if (away) return 'ring-edge/50 ring-1 opacity-60';
+	// Away is the avatar's mark and word to say, not a faded tile: opacity took
+	// the name under the text floor with everything else on it (#2888).
+	if (away) return 'ring-edge/50 ring-1';
 	return speaking ? 'ring-z4 ring-2' : 'ring-edge ring-1';
 }
 

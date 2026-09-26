@@ -22,9 +22,11 @@ describe('presence marks (#505)', () => {
 	});
 
 	it('makes away a third quiet presence state, never live data', () => {
-		expect(tileFrame(true, true)).toContain('ring-edge');
-		expect(tileFrame(true, true)).toContain('opacity-60');
+		expect(tileFrame(true, true)).toContain('ring-edge/50');
 		expect(tileFrame(true, true)).not.toMatch(/watt|glow|ring-z4/);
+		// Quiet by its frame, not by fading the tile: opacity took the name on
+		// it under the text floor (#2888).
+		expect(tileFrame(true, true)).not.toMatch(/opacity/);
 	});
 
 	// #1681 shipped the drum on the tile alone, so everyone could hear an

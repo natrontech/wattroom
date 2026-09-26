@@ -61,7 +61,8 @@
 					? 'cursor-grab active:cursor-grabbing'
 					: ''}"
 			>
-				<span class="min-w-0 shrink truncate {o.away ? 'opacity-60' : ''}"
+				<!-- Away is the glyph's to say; the name stays readable (#2888). -->
+				<span class="min-w-0 shrink truncate {o.away ? 'text-muted-dim' : ''}"
 					>{o.name}</span
 				>
 				<span class="text-muted-dim min-w-0 flex-1 truncate">

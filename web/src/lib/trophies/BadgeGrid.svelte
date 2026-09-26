@@ -39,11 +39,9 @@
 		{#each ACHIEVEMENTS as meta (meta.key)}
 			{@const state = byKey.get(meta.key)}
 			{@const done = Boolean(state?.earnedAt)}
-			<li
-				class="panel flex items-start gap-3 px-4 py-3 {done
-					? ''
-					: 'opacity-75'}"
-			>
+			<!-- Locked says so with its lock, not by fading the words (#2888):
+			     opacity took this card's 10–11 px text to 3.1:1. -->
+			<li class="panel flex items-start gap-3">
 				<span
 					class="grid h-10 w-10 shrink-0 place-items-center rounded-full {done
 						? 'bg-neon/15 text-neon'
