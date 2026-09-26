@@ -131,38 +131,50 @@
 	</div>
 </section>
 
-<section class="mx-auto mt-24 w-full max-w-4xl px-4 sm:px-6">
-	<SectionHead
-		eyebrow="Where it runs"
-		title="Chrome or Edge, on a laptop or an Android phone"
-		lede="Web Bluetooth is what lets a web page reach your trainer, and not every browser has it. Here is exactly where WattRoom can ride."
+<section
+	class="mx-auto mt-24 grid w-full max-w-6xl items-start gap-10 px-4 sm:px-6 lg:grid-cols-[1fr_18rem]"
+>
+	<div>
+		<SectionHead
+			eyebrow="Where it runs"
+			title="Chrome or Edge, on a laptop or an Android phone"
+			lede="Web Bluetooth is what lets a web page reach your trainer, and not every browser has it. Here is exactly where WattRoom can ride."
+		/>
+		<ul class="panel panel-flush divide-edge mt-8 divide-y">
+			{#each where as w (w.place)}
+				<li class="flex items-start gap-3 px-4 py-3">
+					<span
+						class="mt-0.5 shrink-0"
+						aria-label={w.state === 'yes'
+							? 'Works'
+							: w.state === 'partly'
+								? 'Partly'
+								: 'No trainer'}
+					>
+						{#if w.state === 'yes'}
+							<Check size={18} class="text-neon" />
+						{:else if w.state === 'partly'}
+							<Minus size={18} class="text-muted" />
+						{:else}
+							<X size={18} class="text-muted" />
+						{/if}
+					</span>
+					<span>
+						<span class="font-semibold">{w.place}</span>
+						<span class="text-muted block text-sm">{w.note}</span>
+					</span>
+				</li>
+			{/each}
+		</ul>
+	</div>
+	<Screen
+		name="phone"
+		width={375}
+		height={812}
+		narrow
+		alt="WattRoom on a phone, following a session: the watts, the riders and the timeline"
+		caption="A phone on the bars follows the session while the laptop runs the trainer."
 	/>
-	<ul class="panel panel-flush divide-edge mt-8 divide-y">
-		{#each where as w (w.place)}
-			<li class="flex items-start gap-3 px-4 py-3">
-				<span
-					class="mt-0.5 shrink-0"
-					aria-label={w.state === 'yes'
-						? 'Works'
-						: w.state === 'partly'
-							? 'Partly'
-							: 'No trainer'}
-				>
-					{#if w.state === 'yes'}
-						<Check size={18} class="text-neon" />
-					{:else if w.state === 'partly'}
-						<Minus size={18} class="text-muted" />
-					{:else}
-						<X size={18} class="text-muted" />
-					{/if}
-				</span>
-				<span>
-					<span class="font-semibold">{w.place}</span>
-					<span class="text-muted block text-sm">{w.note}</span>
-				</span>
-			</li>
-		{/each}
-	</ul>
 </section>
 
 <div class="mt-24">

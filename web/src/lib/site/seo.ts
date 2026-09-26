@@ -10,8 +10,13 @@ export const SITE_ORIGIN = 'https://wattroom.ch';
 export const SITE_NAME = 'WattRoom';
 export const REPO = 'https://github.com/natrontech/wattroom';
 
-/** The card a page without its own shows — drawn by the server (og.go). */
-export const DEFAULT_IMAGE = `${SITE_ORIGIN}/og/default.png`;
+/**
+ * A page's share card: web/static/cards/<name>.png, shot from /dev/card by
+ * `make screenshots` (seo.test.ts fails on a page without one).
+ */
+export function cardName(page: SitePage): string {
+	return page.path === '/' ? 'home' : page.path.slice(1).replaceAll('/', '-');
+}
 
 /** A public page, as the sitemap and its own head describe it. */
 export type SitePage = {

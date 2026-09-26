@@ -3,6 +3,7 @@
 	import Faq from '$lib/site/Faq.svelte';
 	import GameModeCards from '$lib/site/GameModeCards.svelte';
 	import PageHero from '$lib/site/PageHero.svelte';
+	import Screen from '$lib/site/Screen.svelte';
 	import SectionHead from '$lib/site/SectionHead.svelte';
 	import Seo from '$lib/site/Seo.svelte';
 	import SprintGame from '$lib/site/SprintGame.svelte';
@@ -40,6 +41,21 @@
 
 <section class="mx-auto w-full max-w-6xl px-4 sm:px-6">
 	<GameModeCards full />
+</section>
+
+<section
+	class="mx-auto mt-24 grid w-full max-w-6xl gap-8 px-4 sm:px-6 lg:grid-cols-2"
+>
+	<Screen
+		name="game-modes"
+		alt="Starting a session in WattRoom: the Games tab lists all seven modes with their rules"
+		caption="Pick a game when you start the session."
+	/>
+	<Screen
+		name="sprint"
+		alt="A sprint in a live session: the countdown, the rider’s watts, and the crew ranked by watts per kilo"
+		caption="A sprint mid-session: the crew ranked live by w/kg."
+	/>
 </section>
 
 <section class="mx-auto mt-24 w-full max-w-3xl px-4 sm:px-6">

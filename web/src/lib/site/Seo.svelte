@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { TRANSLATIONS } from './pages';
 	import {
-		DEFAULT_IMAGE,
+		cardName,
 		jsonLd,
 		SITE_NAME,
 		SITE_ORIGIN,
@@ -10,13 +10,10 @@
 
 	// A public page's head (ADR-0061): the same tags the server splices into
 	// the app's fallback (og.go), written at build time instead.
-	let {
-		page,
-		image = DEFAULT_IMAGE,
-		ld = [],
-	}: { page: SitePage; image?: string; ld?: unknown[] } = $props();
+	let { page, ld = [] }: { page: SitePage; ld?: unknown[] } = $props();
 
 	const url = $derived(SITE_ORIGIN + page.path);
+	const image = $derived(`${SITE_ORIGIN}/cards/${cardName(page)}.png`);
 	// A page with a translation names both, and English as the default —
 	// Google wants the pair declared from each side, or it ignores both.
 	const other = $derived(TRANSLATIONS[page.path]);

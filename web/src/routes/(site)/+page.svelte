@@ -56,8 +56,8 @@
 			screen: 'session',
 			eyebrow: 'The session',
 			title: 'Everyone’s numbers on one screen, everyone’s voice in your ears',
-			body: 'Watts, heart rate, cadence and how precisely each rider hits the target, beside the interval chart and the chat. It is a group ride, minus the road.',
-			alt: 'A live WattRoom session: rider tiles with watts and heart rate, the interval timeline and the voice channel',
+			body: 'Your watts big enough to read from the saddle, every rider’s watts, w/kg and cadence, how precisely each of you holds the target, the interval chart — and the crew’s jukebox beside it. A group ride, minus the road.',
+			alt: 'A live WattRoom session: the rider’s own watts on target, the other riders’ tiles, everyone’s execution, the interval timeline and the jukebox',
 		},
 		{
 			screen: 'crew',
@@ -68,6 +68,7 @@
 		},
 		{
 			screen: 'jukebox',
+			portrait: true,
 			eyebrow: 'The jukebox',
 			title: 'One soundtrack, in sync, for the whole crew',
 			body: 'Paste a YouTube link or a playlist and it plays for everyone in the voice channel at the same moment. Vote tracks up. Duck it under the voices. Bring your own MP3s.',
@@ -214,7 +215,11 @@
 			<div class={i % 2 ? 'lg:order-2' : ''}>
 				<SectionHead eyebrow={f.eyebrow} title={f.title} lede={f.body} />
 			</div>
-			<Screen name={f.screen} alt={f.alt} />
+			{#if f.portrait}
+				<Screen name={f.screen} alt={f.alt} width={399} height={826} narrow />
+			{:else}
+				<Screen name={f.screen} alt={f.alt} />
+			{/if}
 		</div>
 	{/each}
 </section>

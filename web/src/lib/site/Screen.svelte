@@ -9,6 +9,7 @@
 		width = 1280,
 		height = 800,
 		eager = false,
+		narrow = false,
 	}: {
 		name: string;
 		alt: string;
@@ -16,10 +17,12 @@
 		width?: number;
 		height?: number;
 		eager?: boolean;
+		/** A portrait shot — a panel or a phone — held to a phone's width. */
+		narrow?: boolean;
 	} = $props();
 </script>
 
-<figure>
+<figure class={narrow ? 'mx-auto w-full max-w-72' : ''}>
 	<div
 		class="border-muted/20 bg-surface-raised overflow-hidden rounded-xl border shadow-2xl"
 	>

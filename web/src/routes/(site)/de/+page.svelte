@@ -71,7 +71,7 @@
 		<Screen
 			name="session"
 			eager
-			alt="Eine laufende WattRoom-Session: Watt und Puls jedes Fahrers neben der gemeinsamen Intervall-Zeitleiste"
+			alt="Eine laufende WattRoom-Session: Watt, W/kg und Trittfrequenz jedes Fahrers neben der gemeinsamen Intervall-Zeitleiste"
 			caption="Eine Zeitleiste, die Zahlen aller Fahrer, und der Sprachkanal, in dem ihr fahrt. (Die App ist auf Englisch.)"
 		/>
 	</section>

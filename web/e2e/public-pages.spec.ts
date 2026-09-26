@@ -16,7 +16,7 @@ test.describe('without JavaScript', () => {
 		);
 		await expect(page.getByText('Opening WattRoom…')).toBeHidden();
 		await expect(
-			page.getByRole('link', { name: 'Start your crew' }),
+			page.getByRole('link', { name: 'Start your crew' }).first(),
 		).toBeVisible();
 	});
 });
@@ -41,5 +41,5 @@ test('a rider opening the landing is taken into the app', async ({ page }) => {
 	await expect(page).not.toHaveURL(/\/(enter)?$/);
 	await expect(
 		page.getByRole('link', { name: 'Start your crew' }),
-	).toBeHidden();
+	).toHaveCount(0);
 });

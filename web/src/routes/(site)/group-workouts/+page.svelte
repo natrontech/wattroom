@@ -70,7 +70,7 @@
 	<Screen
 		name="session"
 		eager
-		alt="A WattRoom group session: several riders’ watts and heart rate beside the shared interval timeline"
+		alt="A WattRoom group session: several riders’ watts, w/kg and cadence beside the shared interval timeline"
 		caption="One timeline, every rider’s numbers, and the voice channel it runs in."
 	/>
 </section>
