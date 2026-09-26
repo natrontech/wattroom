@@ -154,7 +154,10 @@ func TestUnnamingSeversTheCall(t *testing.T) {
 	}
 }
 
-func TestVoiceRowsSayWhoIsIn(t *testing.T) {
+// Who is in a voice channel is the crews' live read's (#2877): the sidebar
+// draws its occupants from GET /api/crews/live, and the channel list carried
+// a second, fuller copy on every load that nothing read.
+func TestTheChannelListLeavesPresenceToTheLiveRead(t *testing.T) {
 	h := setup(t)
 	live := &fakeLive{}
 	h.svc.SetLive(live)
@@ -162,13 +165,10 @@ func TestVoiceRowsSayWhoIsIn(t *testing.T) {
 	h.create(t, "text", "general", false)
 	live.present = map[string]protocol.ChannelPresence{voice: {Connected: 1, Riders: []string{"alice"}, Voice: []string{"alice"}}}
 
-	rows := h.listed(t, "bob")
-	presence, ok := rows["Pain Cave"]["presence"].(map[string]any)
-	if !ok || presence["connected"] != float64(1) {
-		t.Errorf("the voice row's presence reads %v, want one rider in it", rows["Pain Cave"]["presence"])
-	}
-	if rows["general"]["presence"] != nil {
-		t.Errorf("a text channel carries presence: %v", rows["general"]["presence"])
+	for name, row := range h.listed(t, "bob") {
+		if presence, carried := row["presence"]; carried {
+			t.Errorf("%s carries presence: %v", name, presence)
+		}
 	}
 }
 
