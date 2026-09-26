@@ -242,7 +242,7 @@
 		{@attach wheelZoom}
 		{@attach reclamp}
 		{@attach aspect}
-		class="ring-neon/40 relative overflow-hidden rounded-lg bg-black ring-1 will-change-[filter] {popped
+		class="ring-neon/40 relative overflow-hidden rounded-lg bg-black ring-1 {popped
 			? 'w-[720px] max-w-[90vw]'
 			: height
 				? 'mx-auto'
@@ -286,12 +286,11 @@
 			</div>
 
 			<!-- Zoom chrome sits on the frame, never on the picture's middle.
-			     Its blur reads only the frame: `will-change-[filter]` there makes
-			     the frame its backdrop root (#2998). Reading the whole page, it was
-			     blurred again on every frame anything else on the page animated —
-			     a rider's riding bars were enough — ~15% GPU on a MacBook. -->
+			     No backdrop blur (#3199): it was recomputed on every frame
+			     anything else on the page animated, ~20% GPU on a 5K 165 Hz
+			     display. 90% surface instead of 80% + blur. -->
 			<div
-				class="bg-surface/80 ring-ink/10 absolute right-2 bottom-2 flex items-center gap-1 rounded-full px-1.5 py-1 ring-1 backdrop-blur"
+				class="bg-surface/90 ring-ink/10 absolute right-2 bottom-2 flex items-center gap-1 rounded-full px-1.5 py-1 ring-1"
 			>
 				<button
 					onclick={() => rezoom(view.zoom / 1.5)}
