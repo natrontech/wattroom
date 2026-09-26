@@ -11,7 +11,7 @@ import { scanSource, stale, type Allowlist } from './source-scan.test-helper';
  * once. What is left is what is neither.
  */
 const ALLOWLIST: Allowlist = {
-	'routes/dev/':
+	'routes/(app)/dev/':
 		'dev-only galleries: mocks of other surfaces, drawn at those surfaces’ sizes',
 	'routes/+error.svelte':
 		'the error page speaks quietly — its headline is deliberately below page size',

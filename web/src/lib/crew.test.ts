@@ -45,7 +45,7 @@ describe('crewDoorDisclosure (#2456)', () => {
  */
 describe('joining a crew goes through its door (#2810)', () => {
 	const SRC = join(import.meta.dirname, '..');
-	const DOOR = 'routes/c/[code]/+page.svelte';
+	const DOOR = 'routes/(app)/c/[code]/+page.svelte';
 	// Un-`g`ged on purpose: a global regex carries `lastIndex` from one
 	// file's test into the next.
 	const JOINS: { call: RegExp; callers: string[] }[] = [

@@ -22,7 +22,7 @@ describe('rider each-blocks', () => {
 			// The dev galleries key static mocks by name — medals, trophies,
 			// glow samples — and two of them never share one; the rule is
 			// about riders in a real voice channel.
-			if (name.startsWith('routes/dev/')) continue;
+			if (name.startsWith('routes/(app)/dev/')) continue;
 			const source = readFileSync(join(root, name), 'utf8');
 			for (const match of source.matchAll(
 				/\{#each [^}]* as (\w+) \((\w+)\.name\)\}/g,

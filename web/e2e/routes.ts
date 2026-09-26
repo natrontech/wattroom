@@ -97,6 +97,8 @@ export const NOT_MEASURED: Readonly<Record<string, string>> = {
 	'/sessions': 'Retired by ADR-0020; redirects to /home#sessions.',
 	'/rooms': 'Retired with the rooms (#2458); redirects to /crews/directory.',
 	'/dm/[peer]': 'Moved to /messages/dm/[peer] (#468); +page.ts redirects.',
+	'/enter':
+		'A hold, not a page: where a signed-in "/" goes, and the shell routes on from it at once (ADR-0061).',
 };
 
 const ROUTE_TREE = fileURLToPath(new URL('../src/routes', import.meta.url));

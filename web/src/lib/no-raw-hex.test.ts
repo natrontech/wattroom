@@ -14,7 +14,7 @@ const ALLOWLIST: Allowlist = {
 	'lib/themes.ts':
 		'the token layer — Outrun pins the exact values that shipped',
 	'*.test.ts': 'fixtures',
-	'routes/dev/':
+	'routes/(app)/dev/':
 		'dev-only galleries: browser chrome and fake video frames, drawn in the colours the real thing has',
 	'lib/brand/icons.ts': "Google's mark — provider colours never follow a theme",
 	'lib/channel/Stage.svelte':

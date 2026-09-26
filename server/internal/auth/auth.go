@@ -45,6 +45,15 @@ const (
 	linkStatePrefix = "link."
 )
 
+// CarriesSession reports whether a request holds a session cookie at all —
+// not whether it is valid. It decides which page "/" serves (ADR-0061), where
+// a stale cookie costs one hop to the landing and a database read per visit
+// would cost every stranger one.
+func CarriesSession(r *http.Request) bool {
+	c, err := r.Cookie(sessionCookie)
+	return err == nil && c.Value != ""
+}
+
 type Service struct {
 	store *store.Store
 	log   *slog.Logger

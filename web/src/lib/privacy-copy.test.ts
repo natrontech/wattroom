@@ -13,8 +13,8 @@ describe('who sees live numbers is said once', () => {
 	const SURFACES = [
 		'lib/crew.ts',
 		'lib/profile/YourData.svelte',
-		'routes/dev/account/+page.svelte',
-		'routes/(legal)/privacy/+page.svelte',
+		'routes/(app)/dev/account/+page.svelte',
+		'routes/(app)/(legal)/privacy/+page.svelte',
 	];
 
 	it.each(SURFACES)('%s says it with liveNumbersLine', (file) => {

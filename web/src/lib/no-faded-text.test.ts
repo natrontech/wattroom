@@ -30,12 +30,12 @@ const ALLOWLIST: Allowlist = {};
  * and passes; so do `opacity-0` and `opacity-100`.
  */
 const OPACITY: Allowlist = {
-	'routes/dev/': 'dev-only galleries',
+	'routes/(app)/dev/': 'dev-only galleries',
 	'lib/nav/VoiceOccupants.svelte':
 		'the rider being dragged or in flight between channels — transient feedback on a move in progress',
-	'routes/workouts/edit/StepList.svelte':
+	'routes/(app)/workouts/edit/StepList.svelte':
 		'the step being dragged — transient feedback on a move in progress',
-	'routes/crew/[id]/settings/CrewChannels.svelte':
+	'routes/(app)/crew/[id]/settings/CrewChannels.svelte':
 		'the channel being dragged — transient feedback on a move in progress',
 	'lib/board/BoardFace.svelte':
 		'a pad being dragged, or cooling down and aria-disabled — WCAG 1.4.3 exempts an inactive control',
@@ -51,15 +51,15 @@ const OPACITY: Allowlist = {
 	'lib/channel/Stage.svelte': 'the grip glyph',
 	'lib/channel/EventLine.svelte': "the line's mark glyph",
 	'lib/components/ContextMenuHost.svelte': "a menu item's icon",
-	'routes/messages/+page.svelte': "the empty state's icon",
+	'routes/(app)/messages/+page.svelte': "the empty state's icon",
 	'lib/channel/JukeboxDeck.svelte': 'cover art under a scrim — an image',
 	'lib/channel/JukeboxRail.svelte': 'cover art under a scrim — an image',
 	'lib/components/PalettePicker.svelte': "a swatch's accent bar",
-	'routes/+page.svelte': 'the background gridlines',
+	'routes/(site)/+page.svelte': 'the background gridlines',
 	'routes/+error.svelte': 'the background gridlines',
-	'routes/login/+page.svelte': 'the background gridlines',
-	'routes/login/recover/+page.svelte': 'the background gridlines',
-	'routes/(legal)/+layout.svelte': 'the background gridlines',
+	'routes/(app)/login/+page.svelte': 'the background gridlines',
+	'routes/(app)/login/recover/+page.svelte': 'the background gridlines',
+	'routes/(app)/(legal)/+layout.svelte': 'the background gridlines',
 };
 
 /** A resting fade: not after a variant's colon, not part of another word. */

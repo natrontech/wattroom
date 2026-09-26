@@ -11,15 +11,23 @@
 	import { GITHUB_MARK } from '$lib/brand/icons';
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { shellVersion } from '$lib/desktop';
+	import Seo from '$lib/site/Seo.svelte';
+	import { LANDING, siteIdentity } from '$lib/site/seo';
 
-	void account.load();
+	if (browser) void account.load();
 
-	// The desktop shell has already been installed: nobody in it needs the
-	// pitch, and it has a sign-in of its own (#1188).
+	// The server sends a request carrying a session to /enter before this
+	// page is ever served (ADR-0061); a rider reaches it here only by a
+	// client navigation, and goes the same way. The desktop shell has
+	// already been installed: nobody in it needs the pitch, and it has a
+	// sign-in of its own (#1188).
 	$effect(() => {
-		if (account.loaded && !account.me && shellVersion())
+		if (account.me)
+			void goto(`/enter${location.search}`, { replaceState: true });
+		else if (account.loaded && shellVersion())
 			void goto('/login', { replaceState: true });
 	});
 
@@ -85,14 +93,9 @@
 	];
 </script>
 
-<svelte:head>
-	<!-- The layout's bare default would otherwise replace the title the server
-	     served, the moment the bundle boots (#2136) — so the tab, a bookmark
-	     and anyone's screenshot disagree with the search result. -->
-	<title>WattRoom — train together, not alone</title>
-</svelte:head>
+<Seo page={LANDING} ld={[siteIdentity()]} />
 
-{#if !account.loaded}
+{#if account.me}
 	<!-- Hold: a signed-in rider must never flash the marketing page — and a
 	     void reads as broken, so the mark holds the screen (errors.md). -->
 	<div class="grid min-h-dvh place-items-center" aria-busy="true">
@@ -101,9 +104,10 @@
 			<p class="text-muted mt-4 text-sm">Opening WattRoom…</p>
 		</div>
 	</div>
-{:else if !account.me}
+{:else}
 	<!-- The public face of wattroom.ch (#111): one screen tells the story. -->
 	<main
+		data-site
 		class="cave bg-surface text-ink relative flex min-h-dvh flex-col overflow-hidden"
 	>
 		<div
@@ -225,7 +229,4 @@
 			<a href="/privacy" class="hover:text-ink underline">privacy</a>
 		</footer>
 	</main>
-{:else}
-	<!-- Redirecting to /home (the layout owns that effect). -->
-	<div class="grid min-h-dvh place-items-center" aria-busy="true"></div>
 {/if}

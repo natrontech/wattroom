@@ -220,6 +220,6 @@ describe('read-only everywhere but the editor', () => {
 				);
 			})
 			.map((file) => file.slice(SRC.length));
-		expect(optedIn).toEqual(['routes/workouts/edit/+page.svelte']);
+		expect(optedIn).toEqual(['routes/(app)/workouts/edit/+page.svelte']);
 	});
 });

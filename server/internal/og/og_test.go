@@ -179,43 +179,18 @@ func TestMeta(t *testing.T) {
 }
 
 // What a crawler that never runs the bundle has to find in the served head
-// (#2136). Each of these was absent in production while the client-side
-// equivalent looked perfectly correct in a browser, which is the whole
-// failure mode: nothing errors, the mark just never shows.
+// (#2136). The icons and theme-color moved to web/src/app.html, where the
+// prerendered pages get them too, and the home page's identity went with the
+// home page into the (site) route group (ADR-0061); web/src/lib/site tests
+// both. What is left here varies by path.
 func TestCrawlerHead(t *testing.T) {
 	s := testService()
-	head := func(path string) string {
-		return string(s.Meta(httptest.NewRequestWithContext(t.Context(), "GET", path, nil)))
+	for _, path := range []string{"/", "/rooms", "/c/TUESDAY"} {
+		head := string(s.Meta(httptest.NewRequestWithContext(t.Context(), "GET", path, nil)))
+		if want := `<link rel="canonical" href="https://wattroom.ch` + path + `" />`; !strings.Contains(head, want) {
+			t.Errorf("%s: head missing %s", path, want)
+		}
 	}
-	t.Run("icons and canonical, on every path", func(t *testing.T) {
-		for _, path := range []string{"/", "/rooms", "/c/TUESDAY"} {
-			for _, want := range []string{
-				// A format Google accepts (not SVG) at a URL that survives a
-				// deploy (not a hashed asset name).
-				`<link rel="icon" href="/favicon.png" sizes="192x192" type="image/png" />`,
-				`<link rel="apple-touch-icon" href="/favicon.png" />`,
-				`<link rel="canonical" href="https://wattroom.ch` + path + `" />`,
-				`<meta name="theme-color" content="#0a0118" />`,
-			} {
-				if !strings.Contains(head(path), want) {
-					t.Errorf("%s: head missing %s", path, want)
-				}
-			}
-		}
-	})
-	t.Run("the site's identity belongs to the home page alone", func(t *testing.T) {
-		home := head("/")
-		for _, want := range []string{`"@type":"WebSite"`, `"name":"WattRoom"`, `"url":"https://wattroom.ch/"`} {
-			if !strings.Contains(home, want) {
-				t.Fatalf("home page missing %s:\n%s", want, home)
-			}
-		}
-		// Google's site-names feature reads the root and nowhere else, so
-		// anywhere else is noise a room page pays to send.
-		if strings.Contains(head("/rooms"), "ld+json") {
-			t.Error("structured data served off the home page")
-		}
-	})
 }
 
 func TestInject(t *testing.T) {

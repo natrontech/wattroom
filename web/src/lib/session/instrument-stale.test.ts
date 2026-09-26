@@ -16,7 +16,7 @@ const read = (file: string) => code(readFileSync(join(SRC, file), 'utf8'));
 const surfaces = FILES.filter(
 	(file) =>
 		file.endsWith('.svelte') &&
-		!file.startsWith('routes/dev/') &&
+		!file.startsWith('routes/(app)/dev/') &&
 		read(file).includes('<Instrument'),
 );
 
@@ -28,7 +28,7 @@ describe('the instrument knows when its numbers are not live (#2851)', () => {
 				'lib/ride/FreeRide.svelte',
 				'lib/session/Training.svelte',
 				'lib/session/TrainingPhone.svelte',
-				'routes/ramp/+page.svelte',
+				'routes/(app)/ramp/+page.svelte',
 			]),
 		);
 	});

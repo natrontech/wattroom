@@ -57,7 +57,7 @@ function eagerShell(): { plugin: Plugin; contains: (id: string) => boolean } {
 	const isSeed = (id: string) =>
 		id.endsWith('/client-optimized/app.js') ||
 		id.endsWith('/kit/src/runtime/client/entry.js') ||
-		id.endsWith('/client-optimized/nodes/0.js');
+		id.endsWith('/src/routes/(app)/+layout.svelte');
 
 	return {
 		contains: (id) => eager.has(id),
@@ -99,8 +99,9 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true,
 			},
 
-			// SPA mode: the Go server serves index.html as fallback for all routes.
-			adapter: adapter({ fallback: 'index.html' }),
+			// The app is a SPA: the Go server serves spa.html for every route it
+			// has no file for. index.html is the prerendered landing (ADR-0061).
+			adapter: adapter({ fallback: 'spa.html' }),
 		}),
 	],
 	environments: {
