@@ -4,7 +4,11 @@
 	// never in the eager shell every other page pays for.
 	import { STYLES } from './styles';
 
-	const load = () => import('$lib/world/World.svelte');
+	const load = () =>
+		import('$lib/world/World.svelte').catch((err: unknown) => {
+			console.error('world: the renderer did not load', err);
+			throw err;
+		});
 	let world = $state(load());
 </script>
 
@@ -17,8 +21,8 @@
 		<div class="panel panel-lg max-w-sm">
 			<p class="text-sm">The world renderer did not load.</p>
 			<p class="text-muted mt-1 text-sm">
-				Usually the dev server restarted underneath the page. Trying again
-				fetches it anew.
+				Usually the dev server restarted underneath the page, and trying again
+				fetches it anew. If it fails again, the browser console has the reason.
 			</p>
 			<button class="btn btn-secondary mt-4" onclick={() => (world = load())}
 				>Try again</button

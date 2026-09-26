@@ -6,6 +6,15 @@ export type GpxPoint = { lat: number; lon: number; ele: number };
 // A file this page cannot ride, in words a rider can act on.
 export class GpxError extends Error {}
 
+// What to tell a rider whose file did not become a world. A GpxError is the
+// file's fault and says what is wrong with it; anything else is ours, so it
+// is logged and owned rather than blamed on the file.
+export function buildFailureMessage(err: unknown): string {
+	if (err instanceof GpxError) return err.message;
+	console.error('world: a loaded route did not build', err);
+	return 'The world could not be built from this file. The browser console has the reason. Try another GPX, or a shorter stretch of this one.';
+}
+
 // ponytail: regex, not DOMParser — the same code runs in node for the tests
 // and in the browser; GPX trkpt/rtept is flat enough that this holds.
 export function parseGpx(text: string): { name: string; points: GpxPoint[] } {

@@ -4,7 +4,7 @@
 	// hands it to scene.ts; everything three.js happens there.
 	import { onMount, untrack } from 'svelte';
 	import Profile from './Profile.svelte';
-	import { GpxError, parseGpx } from './gpx';
+	import { buildFailureMessage, parseGpx } from './gpx';
 	import { toRoute, type Route } from './route';
 	import { mount, type CameraMode, type Hud, type WorldScene } from './scene';
 	import type { Style } from './styles';
@@ -71,10 +71,7 @@
 			await nextPaint();
 			built = build(text);
 		} catch (err) {
-			fileError =
-				err instanceof GpxError
-					? err.message
-					: 'That file is not a GPX track this page can read. Pick a .gpx exported from a route planner or a ride.';
+			fileError = buildFailureMessage(err);
 		} finally {
 			building = false;
 		}
