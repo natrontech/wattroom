@@ -226,6 +226,21 @@ jobs:
           GH_TOKEN: ''
         run: pnpm exec electron-builder --publish never
 
+      # #3009: with RunAsNode, NODE_OPTIONS or --inspect on, any local process
+      # can run its own code as the signed app, with the camera, microphone
+      # and Bluetooth the rider granted it. electron-builder flips them from
+      # package.json; a build it did not flip them in stops here.
+      - name: the fuses are off
+        working-directory: desktop
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            macOS) app=dist/mac-universal/WattRoom.app ;;
+            Windows) app=dist/win-unpacked/WattRoom.exe ;;
+            Linux) app=dist/linux-unpacked/wattroom ;;
+          esac
+          node fuses-check.js "$app"
+
       # What a rider's Mac will do with it. codesign shows which identity
       # signed — an "Apple Development" .p12 signs happily and fails here, by
       # name, instead of at the rider's first launch. spctl is Gatekeeper's own
