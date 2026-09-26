@@ -128,6 +128,15 @@ export function generate(route: Route, opts: { margin?: number } = {}): World {
 			(a[k + nx] * (1 - tx) + a[k + nx + 1] * tx) * tz
 		);
 	};
+	// The coarse vertex nearest (x, z).
+	const vertexAt = (x: number, z: number) =>
+		Math.min(
+			N - 1,
+			Math.max(
+				0,
+				Math.round((z - minZ) / cell) * nx + Math.round((x - minX) / cell),
+			),
+		);
 	const roads = roadIndex(route);
 	const nearest = roads.nearest;
 	const baseGrid = new Float32Array(N);
@@ -218,20 +227,17 @@ export function generate(route: Route, opts: { margin?: number } = {}): World {
 		},
 		(x, z, coarseD) => {
 			const hit = nearest(x, z);
-			const d = hit ? hit.d : coarseD;
-			return {
-				h: lake(field.height(x, z, d, hit ? hit.ele : route.ele[0]), d),
-				d,
-			};
+			if (hit)
+				return { h: lake(field.height(x, z, hit.d, hit.ele), hit.d), d: hit.d };
+			// Past the index's reach — a long route's wide chunks: the road as the
+			// coarse pass saw it, so this vertex agrees with the coarse ground around it.
+			const ele = route.ele[nearestIdx[vertexAt(x, z)]];
+			return { h: lake(field.height(x, z, coarseD, ele), coarseD), d: coarseD };
 		},
 		land,
 	);
 
-	const biomeAt = (x: number, z: number) => {
-		const k =
-			Math.round((z - minZ) / cell) * nx + Math.round((x - minX) / cell);
-		return biome[Math.min(N - 1, Math.max(0, k))] as Biome;
-	};
+	const biomeAt = (x: number, z: number) => biome[vertexAt(x, z)] as Biome;
 	const props = dress(route, {
 		rand,
 		field,

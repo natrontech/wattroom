@@ -5,6 +5,7 @@ import { parseGpx } from './gpx';
 import { at, toRoute, type Route } from './route';
 import { SYNTHETIC_NAME, syntheticGpx, syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
+import { folds, worstRiseThroughRoad } from './world.test-helper';
 
 /**
  * The prototype's check.ts, as tests (#3021): the smallest set of things
@@ -137,26 +138,10 @@ describe('the world', () => {
 	});
 
 	it('never lifts the ground through the road', () => {
-		let worst = -Infinity;
-		for (let i = 0; i < route.x.length; i += 7)
-			worst = Math.max(
-				worst,
-				world.heightAt(route.x[i], route.z[i]) - route.ele[i],
-			);
-		expect(worst).toBeLessThan(0.2);
+		expect(worstRiseThroughRoad(route, world)).toBeLessThan(0.2);
 	});
 
 	it('folds no terrain face into a wall steeper than 58°', () => {
-		const { pos, index } = world.mesh;
-		let folds = 0;
-		const flat = (p: number, q: number) =>
-			Math.hypot(pos[p * 3] - pos[q * 3], pos[p * 3 + 2] - pos[q * 3 + 2]);
-		for (let t = 0; t < index.length; t += 3) {
-			const [a, b, c] = [index[t], index[t + 1], index[t + 2]];
-			const ys = [pos[a * 3 + 1], pos[b * 3 + 1], pos[c * 3 + 1]];
-			const span = Math.max(flat(a, b), flat(b, c), flat(c, a), 1);
-			if ((Math.max(...ys) - Math.min(...ys)) / span > 1.6) folds++;
-		}
-		expect(folds).toBe(0);
+		expect(folds(world)).toBe(0);
 	});
 });

@@ -30,6 +30,8 @@ export type Grid = {
 };
 
 // The true ground at a fine vertex: its height and its distance to the road.
+// `coarseD` is the coarse grid's distance interpolated at the vertex, for a
+// vertex farther out than the road index searches.
 export type Probe = (
 	x: number,
 	z: number,
@@ -108,7 +110,6 @@ export function buildMesh(g: Grid, probe: Probe, land: LandUse) {
 					const k = j * M + i;
 					const cornerI = i % F === 0;
 					const cornerJ = j % F === 0;
-					const coarseK = (oz + j / F) * nx + ox + i / F;
 					const edgeToCoarse =
 						(i === 0 && !g.fine(cx - 1, cz)) ||
 						(i === M - 1 && !g.fine(cx + 1, cz)) ||
@@ -117,8 +118,9 @@ export function buildMesh(g: Grid, probe: Probe, land: LandUse) {
 					const onChunkCorner =
 						(i === 0 || i === M - 1) && (j === 0 || j === M - 1);
 					if (cornerI && cornerJ && (onChunkCorner || edgeToCoarse)) {
-						fineH[k] = height[coarseK];
-						fineD[k] = roadDist[coarseK];
+						const c = (oz + j / F) * nx + ox + i / F; // a coarse vertex
+						fineH[k] = height[c];
+						fineD[k] = roadDist[c];
 					} else if (edgeToCoarse && (i === 0 || i === M - 1)) {
 						const a = (oz + Math.floor(j / F)) * nx + ox + i / F;
 						const t = (j % F) / F;
@@ -133,7 +135,12 @@ export function buildMesh(g: Grid, probe: Probe, land: LandUse) {
 						const p = probe(
 							X(ox) + i * fs,
 							Z(oz) + j * fs,
-							roadDist[Math.round(coarseK)] ?? 999,
+							onGrid(
+								roadDist,
+								nx,
+								Math.min(nx - 1.0001, ox + i / F),
+								Math.min(nz - 1.0001, oz + j / F),
+							),
 						);
 						fineH[k] = p.h;
 						fineD[k] = p.d;
