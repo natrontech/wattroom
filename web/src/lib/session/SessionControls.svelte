@@ -114,9 +114,9 @@
 		>
 	{/if}
 	{#if idle}
-		<button
-			onclick={() => channel.openPicker()}
-			class="btn btn-accent {compact ? '' : 'btn-lg'}"
+		<!-- Riding size in the compact header too (#2886): a free rider turns
+		     the ride into a session from here while pedalling. -->
+		<button onclick={() => channel.openPicker()} class="btn btn-accent btn-lg"
 			><Radio size={15} /> Start a session</button
 		>
 	{:else if phase === 'countdown'}

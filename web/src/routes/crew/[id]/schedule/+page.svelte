@@ -492,7 +492,9 @@
 				<!-- For a leaked link, which 95% of crews never need (ux.md):
 				     folded, with the one line that says what it breaks. -->
 				<details class="mt-2">
-					<summary class="text-muted hover:text-ink cursor-pointer text-[11px]"
+					<!-- py-1.5: a fold is a control, and 24 px is the floor (#2886). -->
+					<summary
+						class="text-muted hover:text-ink cursor-pointer py-1.5 text-[11px]"
 						>Advanced</summary
 					>
 					<p class="text-muted mt-2 max-w-md text-xs">
