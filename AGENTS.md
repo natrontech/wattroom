@@ -19,6 +19,7 @@ WattRoom: collaborative indoor cycling ("Discord for indoor cycling"). Go server
 - `make protocol` — regenerate `web/src/lib/protocol.ts` after editing `server/internal/protocol/` (commit both)
 - `make migration name=<slug>` — a new migration, named for the moment you wrote it. **Never type the next sequence number**: it is only correct at the instant your branch merges, two branches take it at once, and main then does not boot at all (#928)
 - `make build` — single binary with embedded SPA
+- `make perf` — what each animated element and media path costs in GPU and CPU, per display (macOS, needs `make dev-web`); how to read it: [docs/PERFORMANCE.md](docs/PERFORMANCE.md)
 
 ## Working on the issue board (mandatory for humans AND agents)
 
