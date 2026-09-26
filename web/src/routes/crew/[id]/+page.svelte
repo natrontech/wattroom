@@ -44,7 +44,11 @@
 			// Only a first load fails loudly: this also runs on every lobby
 			// ping, and one hiccup must not replace the page you are reading
 			// with a sentence (the voice channel's shell draws the same line).
-			if (!crew) {
+			// A not_found is no hiccup: banned, or the crew is gone, and the
+			// page kept its code, its roster and a Retry that could never
+			// succeed (#2880). It is the first load's answer, permanently.
+			if (!crew || res.error.error === 'not_found') {
+				crew = null;
 				error = res.error.message;
 				errorCode = res.error.error;
 			}
