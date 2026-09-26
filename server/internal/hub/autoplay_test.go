@@ -158,8 +158,8 @@ func tickUntil(t *testing.T, conn *websocket.Conn, what string, want func(protoc
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		tick := readTick(t, conn)
-		if want(tick.Jukebox) {
-			return tick.Jukebox
+		if tick.Jukebox != nil && want(*tick.Jukebox) {
+			return *tick.Jukebox
 		}
 		if time.Now().After(deadline) {
 			t.Fatalf("%s never happened; deck: %+v", what, tick.Jukebox)
@@ -222,7 +222,7 @@ func TestAutoplayOffLeavesADryDeckIdle(t *testing.T) {
 	// Two ticks is long past the worker's turnaround; the deck must still
 	// be empty — nothing to loop, nothing to spin on.
 	readTick(t, conn)
-	if deck = readTick(t, conn).Jukebox; deck.Current != nil || len(deck.Queue) != 0 {
+	if deck = *readTick(t, conn).Jukebox; deck.Current != nil || len(deck.Queue) != 0 {
 		t.Fatalf("autoplay off must leave a dry deck idle: %+v", deck)
 	}
 }

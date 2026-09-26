@@ -129,14 +129,15 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		sprintNow, sprintWinner := rm.scoreSprintLocked(now())
 		eventsNow := rm.events.drain()
 		tick := protocol.ServerTick{
-			At:      now().UnixMilli(),
-			State:   state,
-			Jukebox: rm.music.snapshot(),
-			Cheers:  rm.cheers,
-			Board:   rm.board,
-			Events:  eventsNow,
-			Sprint:  sprintNow,
-			Game:    rm.lastGame,
+			At:         now().UnixMilli(),
+			State:      state,
+			Jukebox:    new(rm.music.snapshot()),
+			JukeboxRev: rm.music.rev,
+			Cheers:     rm.cheers,
+			Board:      rm.board,
+			Events:     eventsNow,
+			Sprint:     sprintNow,
+			Game:       rm.lastGame,
 			Execution: func() map[string]float64 {
 				out := make(map[string]float64, len(rm.seen))
 				for id := range rm.seen {
@@ -265,18 +266,34 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			_, scores := rode[c.rider.ID]
 			scores = scores || rode == nil
 			// Half a tick is worse than none: a frame that did not marshal
-			// is skipped, and said so.
-			frame, carries := frames.frame(frameKind{scores: scores}), false
-			if frame != nil && c.workoutSent != tick.State.WorkoutHash {
-				if full := frames.frame(frameKind{workout: true, scores: scores}); full != nil {
-					frame, carries = full, true
+			// is skipped, and said so. The workout (#1710) and the deck
+			// (#2838) ride only to a socket that has not heard them; a full
+			// frame that fails to marshal falls back to the light one and
+			// leaves both owed.
+			light := frameKind{scores: scores}
+			kind := frameKind{
+				scores:  scores,
+				workout: c.workoutSent != tick.State.WorkoutHash,
+				deck:    c.jukeboxSent != tick.JukeboxRev,
+			}
+			frame := frames.frame(light)
+			if frame != nil && kind != light {
+				if full := frames.frame(kind); full != nil {
+					frame = full
+				} else {
+					kind = light
 				}
 			}
-			// Marked heard only when the definition was actually queued: a
-			// dropped frame (slow socket) leaves it owed, and the next tick
-			// tries again rather than believing it arrived.
-			if frame != nil && c.send(frame) && carries {
-				c.workoutSent = tick.State.WorkoutHash
+			// Marked heard only when the frame was actually queued: a dropped
+			// frame (slow socket) leaves it owed, and the next tick tries
+			// again rather than believing it arrived.
+			if frame != nil && c.send(frame) {
+				if kind.workout {
+					c.workoutSent = tick.State.WorkoutHash
+				}
+				if kind.deck {
+					c.jukeboxSent = tick.JukeboxRev
+				}
 			}
 			// Addressed to this socket alone, so it cannot be folded into the
 			// tick — but it rides the same queue, so it keeps its order.

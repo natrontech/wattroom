@@ -25,7 +25,7 @@ type tickFrames struct {
 	built   map[frameKind][]byte
 }
 
-type frameKind struct{ workout, scores bool }
+type frameKind struct{ workout, scores, deck bool }
 
 // frame is nil when the tick could not be marshalled, remembered so the
 // failure is logged once per tick and kind.
@@ -40,13 +40,16 @@ func (f *tickFrames) frame(kind frameKind) []byte {
 	if !kind.scores {
 		t.Execution = nil
 	}
+	if !kind.deck {
+		t.Jukebox = nil
+	}
 	b, err := json.Marshal(protocol.ServerMessage{Tick: &t})
 	if err != nil {
-		logger(f.log).Error("tick could not be marshalled", "channel", f.channel, "workout", kind.workout, "scores", kind.scores, "err", err)
+		logger(f.log).Error("tick could not be marshalled", "channel", f.channel, "workout", kind.workout, "scores", kind.scores, "deck", kind.deck, "err", err)
 		b = nil
 	}
 	if f.built == nil {
-		f.built = make(map[frameKind][]byte, 4)
+		f.built = make(map[frameKind][]byte, 8)
 	}
 	f.built[kind] = b
 	return b

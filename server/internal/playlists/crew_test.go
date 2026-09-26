@@ -178,8 +178,10 @@ func deckOf(t *testing.T, conn *websocket.Conn) protocol.JukeboxState {
 		if err != nil {
 			t.Fatalf("read tick: %v", err)
 		}
-		if msg.Tick != nil && msg.Tick.Jukebox.Current != nil {
-			return msg.Tick.Jukebox
+		// The deck rides only the tick that changes it (#2838), and this
+		// waits for the one that started it.
+		if msg.Tick != nil && msg.Tick.Jukebox != nil && msg.Tick.Jukebox.Current != nil {
+			return *msg.Tick.Jukebox
 		}
 	}
 	t.Fatal("the deck never started")

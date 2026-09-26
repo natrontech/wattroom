@@ -11,6 +11,7 @@ import type {
 	SessionRecap,
 } from '$lib/protocol';
 import type { PlaceAddress } from '$lib/channel/address';
+import { fillDeck, type DeckHeard } from '$lib/channel/deck-heard';
 import { account } from '$lib/account.svelte';
 import { deviceWord } from '$lib/device.svelte';
 import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
@@ -64,6 +65,9 @@ export function createChannelLive(address: PlaceAddress) {
 	// The last workout definition heard, by hash (#1710): the server sends
 	// the JSON only on the tick that changes it and names it on every other.
 	let workoutHeard: { hash: string; json: string } | null = null;
+	// The last deck heard, by revision (#2838): the same pattern for the
+	// jukebox, which only a command changes.
+	let deckHeard: DeckHeard | null = null;
 	// What happened in the channel (#321), for the Lounge's event lines.
 	// Ephemeral by design (ADR-0022): nothing seeds these on join, and a
 	// reload forgets them — "now playing" is worthless tomorrow.
@@ -369,6 +373,7 @@ export function createChannelLive(address: PlaceAddress) {
 				) {
 					state.workoutJson = workoutHeard.json;
 				}
+				deckHeard = fillDeck(msg.tick, deckHeard);
 				tick = msg.tick;
 				if (msg.tick.recap) recap = msg.tick.recap;
 				else if (isLivePhase(state?.phase)) recap = null;

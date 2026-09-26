@@ -669,9 +669,16 @@ type SessionRecap struct {
 // ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
 // latest sample, the roster, and the shared session state.
 type ServerTick struct {
-	At      int64        `json:"at"` // unix millis
-	State   SessionState `json:"state"`
-	Jukebox JukeboxState `json:"jukebox"`
+	At    int64        `json:"at"` // unix millis
+	State SessionState `json:"state"`
+	// The deck (#286), only on the tick a socket has not heard it on
+	// (#2838). It changes with a command and never with the clock — the
+	// position is an anchor — so a socket already holding JukeboxRev's deck
+	// is not sent it again, the way the workout rides by hash (#1710). A few
+	// queued playlists were 85–97 % of every frame. Absent = the deck of
+	// JukeboxRev, which the client kept.
+	Jukebox    *JukeboxState `json:"jukebox,omitempty"`
+	JukeboxRev int64         `json:"jukeboxRev"`
 	// This second's cheers, drained each tick like metrics.
 	Cheers []Cheer `json:"cheers,omitempty"`
 	// This second's soundboard fires, drained the same way. The clip itself
