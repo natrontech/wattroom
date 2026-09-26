@@ -37,7 +37,14 @@ export function focusTrap(node: HTMLElement): { destroy(): void } {
 	return {
 		destroy() {
 			node.removeEventListener('keydown', onKeydown);
-			prev?.focus({ preventScroll: true });
+			if (!prev) return;
+			const restore = () => prev.focus({ preventScroll: true });
+			// A control that disables itself while its dialog is open is still
+			// disabled now, and focusing it is a silent no-op that leaves the
+			// rider on <body> (#2888). Its caller re-enables it in this same
+			// turn, so ask again once that has run.
+			if (prev.matches(':disabled')) setTimeout(restore);
+			else restore();
 		},
 	};
 }

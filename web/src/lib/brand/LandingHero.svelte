@@ -7,6 +7,7 @@
 
 	import ClayRider from '$lib/brand/ClayRider.svelte';
 	import Logo from '$lib/brand/Logo.svelte';
+	import { reducedMotion } from '$lib/motion';
 
 	const uid = $props.id();
 
@@ -46,7 +47,7 @@
 
 	let watts = $state(riders.map((r) => r.base));
 	$effect(() => {
-		if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		if (reducedMotion()) return;
 		const tick = setInterval(() => {
 			watts = riders.map(
 				(r) => r.base + Math.round((Math.random() - 0.5) * 16),

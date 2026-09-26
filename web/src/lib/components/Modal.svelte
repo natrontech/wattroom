@@ -3,6 +3,7 @@
 	import { countModal, modals } from '$lib/modals.svelte';
 	import { focusTrap } from './focus-trap';
 	import { fly } from 'svelte/transition';
+	import { reducedMotion } from '$lib/motion';
 	import type { Snippet } from 'svelte';
 
 	// The one modal (#230). Call sites keep their {#if} — mounting IS opening.
@@ -69,7 +70,9 @@
 		class={placement === 'right'
 			? `bg-surface border-ink/10 h-dvh w-full overflow-y-auto border-l shadow-2xl ${cls}`
 			: `panel panel-lg max-h-[calc(100dvh-2rem)] w-full overflow-y-auto ${cls}`}
-		in:fly={placement === 'right' ? { x: 48, duration: 180 } : { duration: 0 }}
+		in:fly={placement === 'right' && !reducedMotion()
+			? { x: 48, duration: 180 }
+			: { duration: 0 }}
 		role="dialog"
 		aria-modal="true"
 		aria-label={label}

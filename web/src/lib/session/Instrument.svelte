@@ -121,9 +121,16 @@
 		>
 	</div>
 {:else}
-	<div class="relative {tv ? 'h-[22vh]' : 'h-28'}">
+	<!-- In flow, not pinned to the foot of a fixed box (#2888): 112 px held
+	     about 130 of number, "watts" and zone line, and the rest spilled up
+	     over whatever named the number — a phone's "watching …". The floor
+	     reserves all three lines so the zone line arriving moves nothing. -->
+	<div
+		data-testid="instrument-readout"
+		class="flex items-end {tv ? 'min-h-[22vh]' : 'min-h-32'}"
+	>
 		<div
-			class="absolute bottom-0 -translate-x-1/2 text-center transition-[left] duration-500 ease-out"
+			class="relative w-max -translate-x-1/2 text-center transition-[left] duration-500 ease-out"
 			style="left: clamp({tv ? '10vh' : '5rem'}, {pct(shown)}%, calc(100% - {tv
 				? '10vh'
 				: '5rem'}))"
