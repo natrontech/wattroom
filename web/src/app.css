@@ -323,28 +323,41 @@ body {
 
 /* Placeholder for content that is on its way. Pairs with .claude/rules/errors.md's
    loading / error / empty / content contract. */
+/* The shimmer is a strip of the same gradient, tiled every two widths,
+ * gliding two tiles to the right: what animating background-position drew,
+ * moved by transform instead (#2998). That repainted the gradient on the
+ * main thread every frame — 6 blocks held ~12% GPU on a 5K display — where a
+ * transform moves pixels drawn once. UpdateRow's sweep made the same move. */
 @utility skeleton {
-	background: linear-gradient(
-		90deg,
-		var(--color-surface-raised) 0%,
-		color-mix(in oklab, var(--color-neon) 12%, var(--color-surface-raised)) 50%,
-		var(--color-surface-raised) 100%
-	);
-	background-size: 200% 100%;
-	animation: shimmer 1.4s ease-in-out infinite;
+	position: relative;
+	overflow: hidden;
+	background: var(--color-surface-raised);
+
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 0 auto 0 -400%;
+		width: 600%;
+		background: linear-gradient(
+				90deg,
+				var(--color-surface-raised) 0%,
+				color-mix(in oklab, var(--color-neon) 12%, var(--color-surface-raised))
+					50%,
+				var(--color-surface-raised) 100%
+			)
+			0 0 / calc(100% / 3) 100%;
+		animation: shimmer 1.4s ease-in-out infinite;
+	}
 }
 
 @keyframes shimmer {
-	from {
-		background-position: 200% 0;
-	}
 	to {
-		background-position: -200% 0;
+		transform: translateX(calc(200% / 3));
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.skeleton {
+	.skeleton::after {
 		animation: none;
 	}
 	/* Nothing glides for a rider who asked the OS for stillness (#2888): the

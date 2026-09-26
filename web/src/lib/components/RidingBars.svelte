@@ -12,18 +12,26 @@
 	 * `Logo.svelte`, which ADR-0005 already animates while a session runs. This
 	 * is that idea at status size, so "riding" looks the same everywhere it
 	 * appears — the rail, the roster, the friends list.
+	 *
+	 * The glow sits on each bar, never on the span: a filter over animated
+	 * content is blurred again on every frame at the display's refresh rate,
+	 * ~5% GPU per copy on a 165 Hz 5K display (#2998). On the bar it is
+	 * rasterised once and the compositor scales it.
 	 */
 	let { size = 11 }: { size?: number } = $props();
 </script>
 
 <span
-	class="text-watt glow-stroke inline-flex shrink-0 items-end gap-[1.5px]"
+	class="text-watt inline-flex shrink-0 items-end gap-[1.5px]"
 	style="height: {size}px"
 	title="riding now"
 	aria-label="riding now"
 >
 	{#each [0, 1, 2] as i (i)}
-		<i class="bar block w-[2px] rounded-full bg-current" style="--i: {i}"></i>
+		<i
+			class="bar glow-stroke block w-[2px] rounded-full bg-current"
+			style="--i: {i}"
+		></i>
 	{/each}
 </span>
 

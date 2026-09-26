@@ -79,9 +79,13 @@
 			<!-- Literal zone class: Tailwind scans source text, so a composed
 			     `bg-z3/60` is never generated (zones.ts). Full strength — the ramp
 			     is contrast-gated at 3:1 and dimming it voids that. -->
+			<!-- Scaled, not sized (#2998): a width transition repaints the fill
+			     on every frame of its glide, and with it anything sharing its
+			     layer — the glowing number above, once, cost 18% GPU. A solid
+			     colour clipped by the track looks the same either way. -->
 			<div
-				class="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
-				style="width: {pct(shown)}%"
+				class="absolute inset-0 origin-left transition-transform duration-500 ease-out"
+				style="transform: scaleX({pct(shown) / 100})"
 			>
 				<div
 					data-testid="gauge-fill"
@@ -125,15 +129,19 @@
 	     about 130 of number, "watts" and zone line, and the rest spilled up
 	     over whatever named the number — a phone's "watching …". The floor
 	     reserves all three lines so the zone line arriving moves nothing. -->
+	<!-- The number glides by `transform`, measured in the readout's own width
+	     (cqw), never by `left` (#2998): moving it by layout repainted its
+	     glow's two large blurs on every frame of each second's glide, ~24%
+	     GPU on a MacBook. A transform only moves what was drawn. -->
 	<div
 		data-testid="instrument-readout"
-		class="flex items-end {tv ? 'min-h-[22vh]' : 'min-h-32'}"
+		class="@container flex items-end {tv ? 'min-h-[22vh]' : 'min-h-32'}"
 	>
 		<div
-			class="relative w-max -translate-x-1/2 text-center transition-[left] duration-500 ease-out"
-			style="left: clamp({tv ? '10vh' : '5rem'}, {pct(shown)}%, calc(100% - {tv
-				? '10vh'
-				: '5rem'}))"
+			class="w-max text-center transition-transform duration-500 ease-out"
+			style="transform: translateX(calc(clamp({tv ? '10vh' : '5rem'}, {pct(
+				shown,
+			)}cqw, 100cqw - {tv ? '10vh' : '5rem'}) - 50%))"
 		>
 			<span
 				class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
