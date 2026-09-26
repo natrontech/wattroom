@@ -144,6 +144,26 @@ func TestBackfillSealsRowsWrittenBeforeTheKey(t *testing.T) {
 	}
 }
 
+// The tests above hand the service its key directly, which is how New dropped
+// it from #697 on and nobody saw: every sealed row failed to open in
+// production the first time a deployment actually set WATTROOM_TOKEN_KEY
+// (#2999). This one goes through the constructor main.go uses.
+func TestNewKeepsTheKey(t *testing.T) {
+	t.Setenv("WATTROOM_OAUTH_STRAVA_ID", "id")
+	t.Setenv("WATTROOM_OAUTH_STRAVA_SECRET", "secret")
+	keys := cipherWith(t, 6)
+	_, sealed, err := keys.Columns("refresh-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	svc := New(nil, slog.New(slog.DiscardHandler), keys)
+	got, err := svc.refreshToken(db.Identity{RefreshTokenEnc: sealed})
+	if err != nil || got != "refresh-1" {
+		t.Fatalf("refreshToken = (%q, %v), want the sealed token opened", got, err)
+	}
+}
+
 // A wrong or rotated key must read as "cannot open this", never as "no token
 // stored" — the second would tell every rider to reconnect their Strava
 // account over an operator's mistake.

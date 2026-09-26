@@ -64,7 +64,7 @@ func New(st *store.Store, log *slog.Logger, keys *secrets.Cipher) *Service {
 		return nil
 	}
 	return &Service{ //nolint:gosec // the values come from env, nothing is hardcoded
-		store: st, log: log, clientID: id, clientSecret: secret,
+		store: st, log: log, keys: keys, clientID: id, clientSecret: secret,
 		apiBase:   "https://www.strava.com/api/v3",
 		tokenURL:  "https://www.strava.com/oauth/token",  //nolint:gosec // a public endpoint URL, not a credential
 		revokeURL: "https://www.strava.com/oauth/revoke", //nolint:gosec // likewise
