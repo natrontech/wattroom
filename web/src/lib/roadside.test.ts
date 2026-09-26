@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { BELL } from '$lib/icons';
 import type { GameState } from '$lib/protocol';
 import { CUES } from '$lib/sound/cue-catalogue';
+import type { LiveRider } from '$lib/channel/types';
 import {
 	atRoadside,
 	bottleArrival,
+	bottleFor,
 	cheerCues,
 	effortOf,
 	inRecoveryValley,
@@ -122,5 +124,25 @@ describe('a bottle popping (#3022)', () => {
 			href: '/crew/c/v/lounge',
 			reading: false,
 		});
+	});
+});
+
+describe('bottleFor (#3022)', () => {
+	const rider = (id: string, over: Partial<LiveRider> = {}): LiveRider =>
+		({ id, name: id, watts: 0, ftp: 200, you: false, ...over }) as LiveRider;
+
+	it('hands it to the watched rider in the session, never to you', () => {
+		const riders = [
+			rider('me', { you: true, inSession: true, watts: 400 }),
+			rider('a', { inSession: true, watts: 150 }),
+			rider('free', { watts: 390 }), // pedalling beside the session
+		];
+		expect(bottleFor(riders, null)?.id).toBe('a');
+		expect(bottleFor(riders, 'me')?.id).toBe('a');
+		expect(bottleFor(riders, 'free')?.id).toBe('a');
+	});
+
+	it('has nobody to hand it to when nobody rides the session', () => {
+		expect(bottleFor([rider('me', { you: true })], null)).toBeNull();
 	});
 });

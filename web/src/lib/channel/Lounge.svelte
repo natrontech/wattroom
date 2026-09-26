@@ -27,8 +27,8 @@
 
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
-	import RoadsideDeck from '$lib/session/RoadsideDeck.svelte';
-	import { bottleFor } from '$lib/session/follow';
+	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
+	import { bottleFor } from '$lib/roadside';
 	import { device } from '$lib/device.svelte';
 	import { account } from '$lib/account.svelte';
 	import Radio from '@lucide/svelte/icons/radio';

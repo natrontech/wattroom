@@ -31,21 +31,6 @@ export function followedRider(
 }
 
 /**
- * Who a bottle from this screen goes to (#3022): the rider being watched, out
- * of the session's own riders — never yourself, and never someone the hub
- * would refuse it for, since a bottle lands only on a rider in the session.
- */
-export function bottleFor(
-	riders: LiveRider[],
-	focusId: string | null,
-): LiveRider | null {
-	return followedRider(
-		riders.filter((rider) => rider.inSession && !rider.you),
-		focusId,
-	);
-}
-
-/**
  * Who the Training place's crew strip draws, you first when you are in it.
  *
  * You are in it whenever your camera is on (#2655): the strip was the only

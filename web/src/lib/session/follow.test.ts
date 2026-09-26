@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bottleFor, crewOf, followedRider } from './follow';
+import { crewOf, followedRider } from './follow';
 import type { LiveRider } from '$lib/channel/types';
 
 const rider = (id: string, over: Partial<LiveRider> = {}): LiveRider =>
@@ -89,22 +89,5 @@ describe('crewOf', () => {
 	it('leaves a spectator with no camera out on the phone', () => {
 		const riders = [rider('a'), rider('me', { you: true })];
 		expect(ids(crewOf(riders, true))).toEqual(['a']);
-	});
-});
-
-describe('bottleFor (#3022)', () => {
-	it('hands it to the watched rider in the session, never to you', () => {
-		const riders = [
-			rider('me', { you: true, inSession: true, watts: 400 }),
-			rider('a', { inSession: true, watts: 150 }),
-			rider('free', { watts: 390 }), // pedalling beside the session
-		];
-		expect(bottleFor(riders, null)?.id).toBe('a');
-		expect(bottleFor(riders, 'me')?.id).toBe('a');
-		expect(bottleFor(riders, 'free')?.id).toBe('a');
-	});
-
-	it('has nobody to hand it to when nobody rides the session', () => {
-		expect(bottleFor([rider('me', { you: true })], null)).toBeNull();
 	});
 });

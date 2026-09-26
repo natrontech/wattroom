@@ -4,13 +4,15 @@
  * rider a game has put out. What the roadside may do is paint, sound and
  * information; never a rider's resistance, so nothing here reaches a trainer.
  *
- * The rules, pure. The deck is RoadsideDeck.svelte, and holding a bottle until
- * the rider can take it is bottles.svelte.ts.
+ * The rules, pure. The deck is channel/RoadsideDeck.svelte, and holding a
+ * bottle until the rider can take it is channel/bottles.svelte.ts.
  */
+import type { LiveRider } from '$lib/channel/types';
 import { zoneOf } from '$lib/components/zones';
 import { BELL } from '$lib/icons';
 import type { Arrival } from '$lib/messages/announce';
 import type { Cheer, GameState } from '$lib/protocol';
+import { followedRider } from '$lib/session/follow';
 import type { CueId } from '$lib/sound/cue-catalogue';
 
 /**
@@ -106,4 +108,21 @@ export function bottleArrival(
 		reading: false,
 		from: bottle.from,
 	};
+}
+
+/**
+ * Who a bottle from this screen goes to: the rider being watched, out of the
+ * session's own riders — never yourself, and never someone the hub would
+ * refuse it for, since a bottle lands only on a rider in the session. The
+ * watched rider is the session's followed one (session/follow.ts), so the
+ * phone's instrument and its bottle name the same person.
+ */
+export function bottleFor(
+	riders: LiveRider[],
+	focusId: string | null,
+): LiveRider | null {
+	return followedRider(
+		riders.filter((rider) => rider.inSession && !rider.you),
+		focusId,
+	);
 }

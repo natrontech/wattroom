@@ -8,8 +8,9 @@
 	// returns. The player is never overlaid — RMF — so the numbers go below it.
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import CrewStrip from '$lib/session/CrewStrip.svelte';
-	import { bottleFor, crewOf } from '$lib/session/follow';
-	import RoadsideDeck from '$lib/session/RoadsideDeck.svelte';
+	import { crewOf } from '$lib/session/follow';
+	import { bottleFor } from '$lib/roadside';
+	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
