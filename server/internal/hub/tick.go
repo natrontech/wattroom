@@ -76,6 +76,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		timer.Reset(rm.tickIntervalLocked(now()))
 		if len(rm.clients) == 0 {
 			rm.endAbandonedGameLocked(now())
+			rm.endAbandonedSessionLocked(now())
 			// Nobody to tick to, but the clock still runs (audit 2026-09-09):
 			// a session whose last rider closed the tab at minute 58 ends at
 			// 60 and saves then, dated right — not on the next visit.
@@ -111,6 +112,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		}
 		// Somebody is here: the idle window starts over when they go.
 		rm.emptySince = time.Time{}
+		rm.abandonedSince = time.Time{}
 		gameWinner := rm.advanceGameLocked(now())
 		// Resolved before the drain so a transition's own line rides the tick
 		// that carries the transition, not the one after it.

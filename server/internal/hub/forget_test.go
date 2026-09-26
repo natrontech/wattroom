@@ -202,20 +202,16 @@ func TestAForgottenRoomComesBackOnTheNextJoin(t *testing.T) {
 func TestARoomWithAnUnfinishedSessionKeepsItsClock(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h, _ := forgetHub(t)
-		rm := h.room("paused")
+		rm := h.room("running")
 		rm.mu.Lock()
 		rm.session.pick("Openers", "{}", 24*3600)
 		rm.session.start(time.Now())
 		rm.mu.Unlock()
-		time.Sleep(2 * countdownSeconds * time.Second)
-		rm.mu.Lock()
-		rm.session.pause(time.Now())
-		rm.mu.Unlock()
 
 		time.Sleep(roomIdleTTL + time.Minute)
 		synctest.Wait()
-		if live(h, "paused") != rm {
-			t.Fatal("forgot a room whose session is paused, with its samples unsaved")
+		if live(h, "running") != rm {
+			t.Fatal("forgot a room whose session is running, with its samples unsaved")
 		}
 	})
 }

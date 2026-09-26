@@ -105,6 +105,73 @@ func TestEmptyRoomStillClosesAndSavesTheSession(t *testing.T) {
 	})
 }
 
+// A paused session has no clock to run out (#2813). Once everyone has left,
+// the hub ends it after abandonedSessionAfter and the same tick saves the
+// rides; a rider still in voice holds it, since they can resume.
+func TestAPausedSessionEveryoneLeftEndsAndSaves(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		inVoice bool
+		saved   bool
+	}{
+		{"nobody left", false, true},
+		{"a rider still in voice", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				rm := newRoom("abandoned")
+				rm.now = time.Now
+				saved := make(chan []RiderRecord, 2)
+				saver := saverFunc(func(_ time.Time, riders []RiderRecord) { saved <- riders })
+				rm.session.pick("Openers", "{}", 3600)
+				joinRide(rm, "jan")
+				rm.session.start(time.Now())
+				go rm.run(slog.New(slog.DiscardHandler), time.Now, saver)
+
+				time.Sleep(countdownSeconds*time.Second + time.Second)
+				c := sock("jan")
+				rm.join(c)
+				for seq := 1; seq <= 30; seq++ {
+					rm.setMetrics(c, protocol.RiderMetrics{Watts: 200, Seq: seq})
+					time.Sleep(time.Second)
+				}
+				rm.mu.Lock()
+				rm.session.pause(time.Now())
+				if tc.inVoice {
+					rm.voiceNow["ana"] = struct{}{}
+				}
+				rm.mu.Unlock()
+				rm.leave(c)
+
+				time.Sleep(abandonedSessionAfter - time.Minute)
+				synctest.Wait()
+				if len(saved) != 0 {
+					t.Fatal("ended a paused session before the window ran out")
+				}
+				time.Sleep(2 * time.Minute)
+				synctest.Wait()
+				close(rm.stop)
+
+				rm.mu.Lock()
+				phase := rm.session.phase
+				rm.mu.Unlock()
+				if !tc.saved {
+					if len(saved) != 0 || phase != "paused" {
+						t.Fatalf("saved %d, phase %q: a rider in voice can still resume", len(saved), phase)
+					}
+					return
+				}
+				if len(saved) != 1 || phase != "done" {
+					t.Fatalf("saved %d times, phase %q: want one save and done", len(saved), phase)
+				}
+				if riders := <-saved; len(riders) != 1 || len(riders[0].Samples) != 30 {
+					t.Fatalf("saved %+v, want jan's 30 samples", riders)
+				}
+			})
+		})
+	}
+}
+
 // A rider's metrics message is a state() call too, and with someone in the
 // room it is usually the one that crosses the timeline's end; the tick that
 // saves the ride reads the answer after it (audit 2026-09-09). The ride used

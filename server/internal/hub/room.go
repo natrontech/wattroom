@@ -90,6 +90,10 @@ type room struct {
 	// between sessions (forget.go). Zero the rest of the time, which is how
 	// the window restarts.
 	emptySince time.Time
+	// When the tick first found a paused session with nobody left to resume
+	// it — no socket, nobody in voice (#2813). Its own stamp: emptySince is
+	// zeroed for any open session. Zero the rest of the time.
+	abandonedSince time.Time
 	// Asks the hub to forget this room, reporting whether it did (#2297).
 	// Called from the tick goroutine holding no lock, and the tick returns
 	// on a yes. Nil for a room built without a hub (tests), which then ticks
