@@ -47,9 +47,22 @@ async function planSoon(
 }
 
 /**
- * The session picker, shut by its own Close button. The room's picker also
- * shut on Escape, and on the crew's Schedule it does not — the fixme below
- * holds that; these tests close it the way a finger would.
+ * How far a session page scrolls sideways, as [page body, place body]. A
+ * session is the voice channel's shell, whose place scrolls inside its own
+ * place-body — the page body alone stays 0 with the ride 400 px too wide
+ * (#2889), which is how a session "measured" at 375 measured nothing.
+ */
+async function sideways(page: Page): Promise<number[]> {
+	return Promise.all(
+		['page-body', 'place-body'].map((id) =>
+			page.getByTestId(id).evaluate((el) => el.scrollWidth - el.clientWidth),
+		),
+	);
+}
+
+/**
+ * The session picker, shut by its own Close button: these tests close it the
+ * way a finger would. Escape shuts it too, and has its own test below (#2513).
  */
 async function closePicker(page: Page): Promise<void> {
 	await page
@@ -223,7 +236,7 @@ test('the coach rows, the confirm, a menu and the picker fit a phone', async ({
 	// The picker.
 	await page.getByRole('button', { name: 'Plan a session' }).click();
 	await fits('the session picker', page.getByRole('dialog'));
-	// Its own Close, not Escape: Escape is the fixme below.
+	// Its own Close, the way a finger shuts it; Escape has its own test.
 	await closePicker(page);
 
 	// The guest's row, and the menu behind it. In the page, not the drawer:
@@ -404,14 +417,11 @@ test('a phone follows a session link and watches it run', async ({
 	await expect(phone.getByText('Recovery Spin').first()).toBeVisible({
 		timeout: 15_000,
 	});
-	const body = phone.getByTestId('page-body');
-	const width = await body.evaluate((el) => ({
-		scroll: el.scrollWidth,
-		client: el.clientWidth,
-	}));
-	expect(width.scroll, 'the session page scrolls sideways on a phone').toBe(
-		width.client,
-	);
+	await expect
+		.poll(() => sideways(phone), {
+			message: 'the session page scrolls sideways at 375',
+		})
+		.toEqual([0, 0]);
 
 	await phone.goto(`/crew/${opened.crew}/s/not-a-session`);
 	await expect(
@@ -474,4 +484,11 @@ test('a phone in the voice channel is offered the running session to watch', asy
 	await expect(page.getByText('Recovery Spin').first()).toBeVisible({
 		timeout: 15_000,
 	});
+	// The spectator layout only a real phone gets (#2889): the `riders()`
+	// phone above is a desk at 375, which is offered the ride instead.
+	await expect
+		.poll(() => sideways(page), {
+			message: 'the session page scrolls sideways on a phone',
+		})
+		.toEqual([0, 0]);
 });
