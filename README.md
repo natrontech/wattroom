@@ -70,7 +70,7 @@ own FTP, so the smallest engine in the crew can win.
 **A shared jukebox.** YouTube links, playlists and your own MP3s play in
 sync for everyone in the voice channel. Vote tracks up.
 
-<img src="web/static/screens/jukebox.webp" alt="The jukebox: the track playing and the queue" />
+<p align="center"><img src="web/static/screens/jukebox.webp" alt="The jukebox: the track playing and the queue" width="220" /></p>
 
 </td>
 <td width="50%" valign="top">
@@ -173,7 +173,7 @@ make dev-web      # terminal 2: Vite dev server on :5174 (proxies /api + /ws)
 
 No smart trainer needed: the simulated trainer covers development, and
 `/dev/channel` is a full mock voice channel. `make screenshots` redraws every
-image in this README and on the website from the running dev pair. Start with
+screenshot in this README, and every page's share card, from the running dev pair. Start with
 [CONTRIBUTING.md](CONTRIBUTING.md); every product and architecture decision is
 in [WATTROOM.md](WATTROOM.md) and [docs/decisions/](docs/decisions/).
 
