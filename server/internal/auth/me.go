@@ -68,6 +68,13 @@ type meResponse struct {
 	// Which providers this account signs in with. Drives the profile's
 	// connect rows (#719), so an absent one is an offer, not just copy.
 	Providers []string `json:"providers,omitempty"`
+	// How many ways into this account there are: its providers and its
+	// passkeys (#2879). With one, the profile draws that one's Disconnect or
+	// Remove disabled with the reason — the server refuses to take the last
+	// (refuseIfLastCredential), and asking first only to be refused is a
+	// button that fails. Zero when the count could not be read: nothing is
+	// then disabled, and the server's refusal still stands.
+	Credentials int32 `json:"credentials"`
 	// Auto-upload rides to the rider's own Strava (#34, default true).
 	StravaUpload bool `json:"stravaUpload"`
 	// Email notifications for planned sessions (#117): the address is typed
@@ -378,6 +385,11 @@ func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 		s.log.Warn("me: provider list unavailable — the profile will draw no connected accounts", "err", err, "user", store.UUIDString(user.ID))
 	} else {
 		response.Providers = providers
+	}
+	if total, err := s.store.Queries.CountUserCredentials(ctx, user.ID); err != nil {
+		s.log.Warn("me: credential count unavailable", "err", err, "user", store.UUIDString(user.ID))
+	} else {
+		response.Credentials = total
 	}
 	if xp, err := s.store.Queries.UserTotalXp(ctx, user.ID); err != nil {
 		s.log.Warn("me: total xp unavailable", "err", err, "user", store.UUIDString(user.ID))

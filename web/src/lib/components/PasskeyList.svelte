@@ -11,6 +11,7 @@
 	import { account } from '$lib/account.svelte';
 	import * as passkeys from '$lib/passkeys';
 	import { shellVersion } from '$lib/desktop';
+	import { LAST_WAY_IN, isLastWayIn } from '$lib/auth/last-way-in';
 
 	// Two different preconditions, and the rider can act on one of them
 	// (#2256). The browser is theirs to change; whether this server derived a
@@ -56,6 +57,7 @@
 		if (!error) {
 			name = '';
 			await refresh();
+			await account.load();
 		}
 	}
 
@@ -85,7 +87,11 @@
 		if (!(await passkeys.confirmRemoval(key))) return;
 		error = (await passkeys.remove(key.id)) ?? '';
 		await refresh();
+		// The count of ways in moved (#2879): the providers' Disconnect reads it.
+		await account.load();
 	}
+	// The server refuses the last way in; Remove says so first (#2879).
+	const lastWayIn = $derived(isLastWayIn(account.me));
 
 	const when = (iso?: string) =>
 		iso ? new Date(iso).toLocaleDateString() : 'never used';
@@ -166,8 +172,11 @@
 								onclick={() => startRename(key)}
 								class="btn btn-ghost btn-xs">Rename</button
 							>
-							<button onclick={() => remove(key)} class="btn btn-danger btn-xs"
-								>Remove</button
+							<button
+								onclick={() => remove(key)}
+								disabled={lastWayIn}
+								title={lastWayIn ? LAST_WAY_IN : undefined}
+								class="btn btn-danger btn-xs disabled:opacity-40">Remove</button
 							>
 						{/if}
 					</li>

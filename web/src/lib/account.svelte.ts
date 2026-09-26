@@ -58,6 +58,8 @@ export interface Me {
 	suggestedLthr?: number;
 	best20m?: number;
 	providers?: string[];
+	/** Providers plus passkeys — the ways into this account (#2879). */
+	credentials?: number;
 	/** LiveKit is configured — voice/camera affordances render at all (#219). */
 	avEnabled?: boolean;
 	/**
