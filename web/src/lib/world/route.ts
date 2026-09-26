@@ -3,11 +3,11 @@
 // trainer as a grade spike. Everything downstream (world, physics, the
 // trainer's grade) reads the Route, never the GPX.
 
-import type { GpxPoint } from './gpx';
+import { GpxError, type GpxPoint } from './gpx';
 
 export type Route = {
 	name: string;
-	step: number; // metres between samples
+	step: number; // metres between samples: about STEP, so the last one lands on the end
 	length: number; // metres
 	x: Float64Array; // east, metres from the route's centroid
 	z: Float64Array; // south (three.js: -z is north), metres
@@ -75,6 +75,10 @@ export function toRoute(name: string, points: GpxPoint[]): Route {
 	// every kink becomes a curve of at least ~5 m radius, the line moves at
 	// most a couple of metres, and the length stays the drawn length.
 	const fine = resample(px, pz, pe, 1);
+	if (fine.length < 2 * STEP)
+		throw new GpxError(
+			`This track covers only ${Math.round(fine.length)} m, too little to build a road on. Pick a longer track.`,
+		);
 	const sx = gaussian(fine.x, SIGMA, loop);
 	const sz = gaussian(fine.z, SIGMA, loop);
 	const line = resample(
@@ -83,15 +87,15 @@ export function toRoute(name: string, points: GpxPoint[]): Route {
 		Array.from(fine.e),
 		STEP,
 	);
-	const { x, z, e: raw, length } = line;
+	const { x, z, e: raw, length, step } = line;
 	const n = x.length;
 
-	const ele = movingAverage(raw, Math.max(1, Math.round(SMOOTH_M / STEP / 2)));
+	const ele = movingAverage(raw, Math.max(1, Math.round(SMOOTH_M / step / 2)));
 	const grade = new Float64Array(n);
 	for (let i = 0; i < n; i++) {
 		const a = Math.max(0, i - 1);
 		const b = Math.min(n - 1, i + 1);
-		const g = ((ele[b] - ele[a]) / ((b - a) * STEP)) * 100;
+		const g = ((ele[b] - ele[a]) / ((b - a) * step)) * 100;
 		grade[i] = Math.min(GRADE_MAX, Math.max(GRADE_MIN, g));
 	}
 	let gain = 0;
@@ -104,7 +108,7 @@ export function toRoute(name: string, points: GpxPoint[]): Route {
 	}
 	return {
 		name,
-		step: STEP,
+		step,
 		length,
 		x,
 		z,
@@ -117,12 +121,16 @@ export function toRoute(name: string, points: GpxPoint[]): Route {
 	};
 }
 
-function resample(px: number[], pz: number[], pe: number[], step: number) {
+// Evenly spaced samples, about `about` metres apart, the last one exactly on
+// the line's end. A smoothed loop ends where it began and at() joins the two;
+// a sample stopping short of the end left a stub riders stalled on every lap.
+function resample(px: number[], pz: number[], pe: number[], about: number) {
 	const cum = [0];
 	for (let i = 1; i < px.length; i++)
 		cum.push(cum[i - 1] + Math.hypot(px[i] - px[i - 1], pz[i] - pz[i - 1]));
 	const length = cum[cum.length - 1];
-	const n = Math.max(2, Math.floor(length / step) + 1);
+	const n = Math.max(1, Math.round(length / about)) + 1;
+	const step = length / (n - 1);
 	const x = new Float64Array(n);
 	const z = new Float64Array(n);
 	const e = new Float64Array(n);
@@ -135,7 +143,7 @@ function resample(px: number[], pz: number[], pe: number[], step: number) {
 		z[i] = pz[j] + (pz[j + 1] - pz[j]) * t;
 		e[i] = pe[j] + (pe[j + 1] - pe[j]) * t;
 	}
-	return { x, z, e, length };
+	return { x, z, e, length, step };
 }
 
 function gaussian(a: Float64Array, sigma: number, loop: boolean): Float64Array {

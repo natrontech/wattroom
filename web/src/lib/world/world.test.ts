@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { roadIndex } from './field';
 import { steadySpeed, step } from './physics';
-import { parseGpx } from './gpx';
+import { GpxError, parseGpx } from './gpx';
 import { at, toRoute, type Route } from './route';
 import { SYNTHETIC_NAME, syntheticGpx, syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
@@ -35,6 +35,25 @@ function turns(x: ArrayLike<number>, z: ArrayLike<number>): number[] {
 	return out;
 }
 
+/**
+ * How fast a rider moving along the route moves in space around the start of
+ * a lap, slowest and fastest, per metre of distance: 1 is a steady ride.
+ */
+function paceAcrossStart(r: Route): { slowest: number; fastest: number } {
+	const dd = 0.1;
+	let slowest = Infinity;
+	let fastest = -Infinity;
+	let prev = at(r, r.length - 60);
+	for (let d = r.length - 60 + dd; d <= r.length + 60; d += dd) {
+		const p = at(r, d);
+		const pace = Math.hypot(p.x - prev.x, p.z - prev.z) / dd;
+		slowest = Math.min(slowest, pace);
+		fastest = Math.max(fastest, pace);
+		prev = p;
+	}
+	return { slowest, fastest };
+}
+
 describe('the route', () => {
 	it('reads the synthetic GPX the way it reads a rider’s file', () => {
 		const { name, points } = parseGpx(syntheticGpx());
@@ -52,6 +71,26 @@ describe('the route', () => {
 		expect(route.gain).toBeLessThan(800);
 		const p = at(route, route.length + 5);
 		expect(Math.hypot(p.x - route.x[0], p.z - route.z[0])).toBeLessThan(20);
+	});
+
+	it('rides through the start of a lap at the speed it rides the rest', () => {
+		const { slowest, fastest } = paceAcrossStart(route);
+		expect(slowest).toBeGreaterThan(0.9);
+		expect(fastest).toBeLessThan(1.1);
+	});
+
+	it('rides as steadily across a loop whose track stops short of its start', () => {
+		const short = syntheticPoints().slice(0, -8); // ~60 m short
+		const open = toRoute(SYNTHETIC_NAME, short);
+		expect(open.loop).toBe(true);
+		const { slowest, fastest } = paceAcrossStart(open);
+		expect(slowest).toBeGreaterThan(0.9);
+		expect(fastest).toBeLessThan(1.1);
+	});
+
+	it('refuses a track too short to build a road on', () => {
+		const here = { lat: 46.6, lon: 7.6, ele: 500 };
+		expect(() => toRoute('Nowhere', [here, { ...here }])).toThrow(GpxError);
 	});
 
 	it('removes the reversal the track carries, and leaves none', () => {
