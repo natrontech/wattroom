@@ -347,6 +347,16 @@ body {
 	.skeleton {
 		animation: none;
 	}
+	/* Nothing glides for a rider who asked the OS for stillness (#2888): the
+	 * drawer, the big number crossing the gauge every second, a stage's zoom.
+	 * One rule rather than a variant per call site, so the next transition
+	 * honours it too; it beats an inline `transition` as well. Motion driven
+	 * from script asks $lib/motion instead. */
+	*,
+	::before,
+	::after {
+		transition: none !important;
+	}
 }
 
 /*

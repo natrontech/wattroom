@@ -15,6 +15,7 @@
 	import Video from '@lucide/svelte/icons/video';
 	import { railPeople } from './rail-people';
 	import type { VoiceMover } from './voice-mover.svelte';
+	import { reducedMotion } from '$lib/motion';
 
 	let {
 		channel,
@@ -29,12 +30,13 @@
 
 	// Motion is the landing's feedback, never its meaning: with reduced motion
 	// the name is simply there.
-	const still = () =>
-		typeof matchMedia === 'function' &&
-		matchMedia('(prefers-reduced-motion: reduce)').matches;
 	const glide = (node: Element, axis: 'x' | 'y') =>
-		slide(node, { axis, duration: still() ? 0 : 200, easing: cubicOut });
-	const settle = () => ({ duration: still() ? 0 : 200 });
+		slide(node, {
+			axis,
+			duration: reducedMotion() ? 0 : 200,
+			easing: cubicOut,
+		});
+	const settle = () => ({ duration: reducedMotion() ? 0 : 200 });
 </script>
 
 {#if open}
