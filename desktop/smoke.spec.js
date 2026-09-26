@@ -185,6 +185,37 @@ test('the window opens and the bridge carries what the app looks for', async () 
 	await app.close();
 });
 
+// #3006: Electron draws no context menu, so a text field had no paste. Real
+// right-clicks, with popup() stubbed so nothing opens on the screen: one on a
+// field, and one on something the page gives its own menu, which must not
+// get ours on top.
+test('a text field gets the edit menu on right-click, and the page keeps its own', async () => {
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	await app.evaluate(({ Menu }) => {
+		globalThis.__popped = [];
+		Menu.prototype.popup = function () {
+			globalThis.__popped.push(this.items.map((i) => i.role ?? i.label));
+		};
+	});
+	await win.evaluate(() => {
+		const owned = document.createElement('p');
+		owned.id = 'owned';
+		owned.textContent = 'a message with its own menu';
+		owned.addEventListener('contextmenu', (e) => e.preventDefault());
+		const field = document.createElement('input');
+		field.id = 'field';
+		document.body.append(owned, field);
+	});
+	await win.click('#owned', { button: 'right' });
+	await win.click('#field', { button: 'right' });
+	await expect
+		.poll(() => app.evaluate(() => globalThis.__popped))
+		.toEqual([['cut', 'copy', 'paste', 'selectall']]);
+	await app.close();
+});
+
 // #3001: macOS has Close in the File menu, and a menu without one leaves ⌘W
 // doing nothing. The runner is Linux, where the shell draws no menu at all,
 // so this one speaks only on a Mac.
