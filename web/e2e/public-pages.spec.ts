@@ -39,7 +39,7 @@ test('a rider opening the landing is taken into the app', async ({ page }) => {
 	await signInAs(page, 'Landing Rider', '/home');
 	await page.goto('/');
 	await expect(page).not.toHaveURL(/\/(enter)?$/);
-	await expect(
-		page.getByRole('link', { name: 'Start your crew' }),
-	).toHaveCount(0);
+	await expect(page.getByRole('link', { name: 'Start your crew' })).toHaveCount(
+		0,
+	);
 });

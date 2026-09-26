@@ -426,7 +426,9 @@ test('no page outside a voice channel scrolls sideways on a phone', async ({
  * the shell that gives everything else `page-body`. Out there the document is
  * the page, and the document's own width is the honest measure.
  */
-test('the public pages, the gate and recovery fit a phone', async ({ page }) => {
+test('the public pages, the gate and recovery fit a phone', async ({
+	page,
+}) => {
 	const wide: string[] = [];
 	for (const route of MEASURED_SIGNED_OUT) {
 		await page.goto(route.replace('[rival]', 'zwift'));
