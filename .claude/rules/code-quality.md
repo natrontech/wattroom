@@ -23,5 +23,6 @@ Soft ceilings — split in the same change when crossed: Go files ~400 lines, Sv
 - [ ] No new duplication (function, type, magic number)
 - [ ] Any test written for a silent failure — one that would ship quietly rather than error — was seen to fail: break the code the way it would realistically break, confirm red, restore. A test you never saw fail is decoration
 - [ ] Colors/durations from theme tokens, product numbers from docs/SPEC.md
+- [ ] Anything that animates without end has a `/dev/perf` case and was measured with `make perf` — a glow over moving content cost a third of a GPU before anyone looked (docs/PERFORMANCE.md)
 - [ ] No dead or commented-out code
 - [ ] `make ci` green
