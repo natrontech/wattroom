@@ -99,6 +99,44 @@ curl -s https://wattroom.ch/api/auth/providers
 - Afterwards: the flag button + `/api` feedback loop is live — reports
   become issues automatically (ADR-0006).
 
+## 5. Getting found (#2995)
+
+The site is ready to be read: prerendered pages, a sitemap, share cards and structured data (ADR-0061). What follows needs your accounts. The research behind the order is [RESEARCH.md §19](RESEARCH.md).
+
+**Once, this week:**
+
+1. **Google Search Console.** Add a **Domain property** for `wattroom.ch` and verify it with the DNS TXT record Google gives you, in Cloudflare. That covers every subdomain and protocol, and needs no deploy. Then:
+   - Submit `https://wattroom.ch/sitemap.xml`.
+   - Use URL inspection → "Request indexing" on `/`, `/group-workouts` and `/zwift-alternative`.
+2. **Bing Webmaster Tools.** Import the site from Search Console; the sitemap comes with it. ChatGPT's search leans on Bing's index, so this is the cheap half of AI-search visibility. (Cloudflare's Crawler Hints only works for proxied traffic, and wattroom.ch is DNS-only for LiveKit, so skip it.)
+3. **The repository's front door.**
+   - Upload `docs/assets/social-preview.png` under Settings → General → Social preview (1280×640, drawn by `make screenshots`).
+   - Set the About box's website to `https://wattroom.ch`.
+   - Add topics: `indoor-cycling`, `zwift-alternative`, `smart-trainer`, `web-bluetooth`, `ftms`, `group-workouts`, `self-hosted`, `sveltekit`, `golang`, `livekit`.
+4. **Check that it all landed.**
+   - `curl -s https://wattroom.ch/ | grep '<h1'` shows the headline.
+   - The [Rich Results Test](https://search.google.com/test/rich-results) on `/` finds `WebApplication`, `WebSite` and `Organization`.
+   - Pasting a page's link into Slack or Discord shows its card.
+
+**Listings, most useful first.** Mentions on other sites drive AI answers more than anything on ours (§19.6). Every one of these is a post under your name, so they are yours to make:
+
+1. **[AlternativeTo](https://alternativeto.net/software/zwift/)**: suggest WattRoom as an alternative to Zwift, TrainerRoad and MyWhoosh. Its Zwift page lists one open-source entry today. It reportedly wants an account about a week old.
+2. **[awesome-web-bluetooth](https://github.com/urish/awesome-web-bluetooth)** and **[awesome-cycling](https://github.com/Dunky-Z/awesome-cycling)**: a one-line PR to each.
+3. **Editorial "best free indoor cycling apps" lists.** Write to the editor, with a link to `/zwift-alternative`:
+   - [BikeRadar](https://www.bikeradar.com/advice/buyers-guides/best-free-indoor-cycling-apps)
+   - [Cyclist](https://www.cyclist.co.uk/buying-guides/buyers-guide-best-cycling-training-apps)
+   - [indoorcyclingtips](https://indoorcyclingtips.com/best-free-zwift-alternatives-2026/)
+   - In German, with a link to `/de`: [TOUR](https://www.tour-magazin.de/fitness/indoortraining/indoor-training-4-virtuelle-apps-furs-rollentraining-im-vergleich/), [mission-triathlon](https://mission-triathlon.de/apps-fuers-indoor-cycling-im-test/) and [Ergon](https://www.ergonbike.com/de/magazin/indoor-cycling-apps-kostenlos)
+4. **Reddit.** r/selfhosted suits the self-host angle, and r/indoorcycling suits the crew angle. Read each sidebar's self-promotion rule first. r/Zwift will likely read a post as an ad.
+5. **Show HN.** It wants something people can try without signing up, which WattRoom does not have yet: the landing's sprint and FTP slider are the closest. Post when there is a demo crew a visitor can watch.
+6. **[awesome-selfhosted](https://github.com/awesome-selfhosted/awesome-selfhosted-data)**, tag `Health and Fitness`. Its rule is a first release more than four months old, so it is **eligible from 2026-12-31** (the first release was 2026-08-31).
+7. **Product Hunt**, once there is a story worth the day: group ERG rides with voice, free.
+8. **Later.** Reviewers like DC Rainmaker, GPLama and Shane Miller cover hardware first. Pitch one when there is a story, not before.
+
+`awesome-go` does not fit: it wants semver tags, and CalVer's `2026.09.1` is not one. Neither does `awesome-sveltekit` until the repo has around 50 stars.
+
+**Every month:** `/vs/*` and `/zwift-alternative` state prices and facts about other products, dated in `web/src/lib/site/seo.ts` (`CHECKED`). Re-check them against the sources in `rivals.ts`, update, and bump the date. A stale price on a comparison page costs more trust than the page earns.
+
 ## Rollback
 
 Rollback is an image tag, never the database
