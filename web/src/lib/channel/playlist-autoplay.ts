@@ -27,6 +27,5 @@ export function deleteQuestion(
 		title: `Delete “${name}”?`,
 		body: `${where} ${channels.length === 1 ? 'plays' : 'play'} it when the queue runs dry. Deleting it stops that for everyone there, and Undo brings the tracks back but not the autoplay — someone has to choose a playlist for ${channels.length === 1 ? 'it' : 'them'} again.`,
 		action: 'Delete the playlist',
-		cancel: 'Keep it',
 	};
 }

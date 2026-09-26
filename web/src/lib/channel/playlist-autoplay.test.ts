@@ -38,6 +38,7 @@ describe('a playlist a channel plays', () => {
 		expect(q.body).toContain('Lounge');
 		expect(q.body).toMatch(/Undo/);
 		expect(q.action).toBe('Delete the playlist');
-		expect(q.cancel).toBe('Keep it');
+		// The safe answer is the dialog's own "Keep it" (confirm.svelte).
+		expect(q.cancel).toBeUndefined();
 	});
 });
