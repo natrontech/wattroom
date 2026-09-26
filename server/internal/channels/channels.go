@@ -140,8 +140,8 @@ type channelJSON struct {
 	// A private channel's named members. The crew's owner and admins enter
 	// by role and are not listed.
 	Members []memberJSON `json:"members,omitempty"`
-	// A voice channel's: who is in it right now (#2436).
-	Presence *protocol.ChannelPresence `json:"presence,omitempty"`
+	// No presence: who is in a voice channel is the crews' live read's
+	// (sidebar.go), and a second copy here went to no reader (#2877).
 }
 
 func toJSON(c db.Channel, members []memberJSON) channelJSON {
@@ -191,12 +191,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 	out := []channelJSON{}
 	for _, c := range rows {
 		id := store.UUIDString(c.ID)
-		entry := toJSON(c, members[id])
-		if c.Kind == kindVoice && s.live != nil {
-			presence := s.live.Presence(id)
-			entry.Presence = &presence
-		}
-		out = append(out, entry)
+		out = append(out, toJSON(c, members[id]))
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"channels": out})
 }
