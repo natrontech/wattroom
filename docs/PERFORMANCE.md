@@ -14,7 +14,7 @@ make dev-web
 make perf
 ```
 
-`make perf` opens a window over each display in turn, about three minutes per display. The report is printed and written to `$TMPDIR/wattroom-perf-*/report.md`, with every sample in `results.jsonl` beside it.
+`make perf` opens a window over each display in turn, about a minute and a half per display. The report is printed and written to `$TMPDIR/wattroom-perf-*/report.md`, with every sample in `results.jsonl` beside it.
 
 **Before a run, quit whatever redraws:** the WattRoom app itself, videos, browser tabs with animation, and the Claude app's browser pane. Then leave the machine alone. The report names every other process that used the GPU during its first baseline, so a noisy run shows as noisy.
 
@@ -24,8 +24,8 @@ Knobs, all optional:
 |---|---|---|
 | `PERF_DISPLAYS` | all | Comma-separated display names or ids, matched as substrings: `benq,built-in` |
 | `PERF_CASES` | the list in `desktop/perf/main.js` | Space-separated `case=…` specs, e.g. `"riding-bars&n=4 riding-bars&n=4&theme=light youtube"` |
-| `PERF_SAMPLES` / `PERF_SAMPLE_MS` | 3 / 2500 | Samples per case and how long each lasts; the median is reported |
-| `PERF_SETTLE_MS` | 2500 | Wait after a case loads before sampling starts |
+| `PERF_SAMPLES` / `PERF_SAMPLE_MS` | 3 / 1000 | Samples per case and how long each lasts; the median is reported |
+| `PERF_SETTLE_MS` | 1500 | Wait after a case loads before sampling starts |
 | `PERF_OUT` | `$TMPDIR/wattroom-perf-<time>` | Where the report and the raw samples go |
 
 ## What runs
@@ -42,12 +42,14 @@ Each display's section starts with its resolution and refresh rate. Both multipl
 
 | Column | What it is | How to read it |
 |---|---|---|
-| **GPU %** | GPU time of the page's GPU process as a share of wall time: the figure Activity Monitor calls "% GPU" | Anything that stays above 0 is doing GPU work on every frame |
+| **GPU % (spread)** | GPU time of the page's GPU process as a share of wall time: the figure Activity Monitor calls "% GPU". The spread is max − min across the samples | Anything that stays above 0 is doing GPU work on every frame |
 | **renderer CPU %** | The page's renderer processes, as % of one core | Script, style, layout and paint |
 | **GPU-process CPU %** | The GPU process's CPU, as % of one core | Mostly the cost of producing frames at all |
 | **main thread ms/s** | Milliseconds of main-thread work per second, from DevTools' `TaskDuration` | Above a few ms/s for a pure CSS animation means it runs on the main thread and repaints every frame instead of being composited |
 | **WindowServer GPU Δ / CPU Δ** | WindowServer compared with the display's baseline median | Only meaningful when the baselines agree; otherwise they are marked `~`. The system compositor's share of every frame the window produces |
 | **video** | Received resolution and frame rate | Proves the stream arrived, and at what rate |
+
+**How closely it measures.** On a quiet machine, one-second samples scatter by about ±0.5% GPU; half a second is barely worse. CPU is coarser — `ps` counts in centiseconds, and WindowServer's CPU wanders by a few percent. Between runs the same case can move by a few points of GPU, because "% GPU" is busy time at whatever clock the GPU is running at. **Compare two variants inside one run**, not across runs.
 
 Where a number came from matters as much as the number: 0% GPU on a video case is real. Decoded video goes to macOS as an overlay and never enters the page's GPU process.
 
@@ -56,6 +58,8 @@ Where a number came from matters as much as the number: 0% GPU on a video case i
 Measured on an M2 Max in September 2026 (#2998):
 
 - **An element that moves forever makes the window redraw at the display's refresh rate:** 120 or 165 times a second, against 6 for a real screen share. That is cheap only when the compositor can reuse what it drew: animate `transform` or `opacity` on an element whose own content does not change.
+- **On a quiet machine, the redraw itself shows up in WindowServer.** Any element that moves forever — even the roster's 11 px pulsing mic, 0% GPU in the page — costs WindowServer about +8–11% GPU and +26–55% of a CPU core, the most on the 5K/165 Hz surface. The page-side fixes below do not touch this.
+- **Fewer frames is the only thing that shrinks that floor.** Chromium produces a frame only when a stepped animation changes step: the pulse with `steps(12)` cost WindowServer +1.1% GPU and +1.3% CPU instead of +10.8% and +55%, and the riding bars with the glow per bar plus `steps(12)` +4.3% and +10% instead of +11.3% and +43%. Whether the stepping shows is a design question; the numbers are not.
 - **Never put a `filter` on an ancestor of something that moves.** The drop-shadow has to be recomputed on every frame. `RidingBars` and `Logo` with `live` did exactly this, and cost 7–32% GPU. The same glow on each moving element cost 0%, and looks the same.
 - **Never loop a paint property.** Looping `background-position`, `box-shadow`, colours or sizes repaints the element on the main thread every frame. That was `skeleton`, at 7–12% GPU and about 60 ms/s of main-thread work. Moving a band with `transform` instead cost 0%, as `UpdateRow` already does.
 - **Animate HTML, not SVG, when it loops.** An SVG `rect`'s transform animation composited on one display and not on the two others.

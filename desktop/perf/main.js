@@ -14,8 +14,10 @@ const path = require('node:path');
 const { gpuNanos, cpuSeconds } = require('./counters');
 
 const BASE = (process.env.PERF_URL ?? '').replace(/\/$/, '');
-const SETTLE_MS = Number(process.env.PERF_SETTLE_MS ?? 2500);
-const SAMPLE_MS = Number(process.env.PERF_SAMPLE_MS ?? 2500);
+const SETTLE_MS = Number(process.env.PERF_SETTLE_MS ?? 1500);
+// One-second samples scatter by about ±0.5% GPU on a quiet machine; CPU
+// is coarser, because ps counts in centiseconds (#3039).
+const SAMPLE_MS = Number(process.env.PERF_SAMPLE_MS ?? 1000);
 const SAMPLES = Number(process.env.PERF_SAMPLES ?? 3);
 const OUT =
 	process.env.PERF_OUT ?? path.join(os.tmpdir(), `wattroom-perf-${Date.now()}`);
@@ -70,17 +72,32 @@ function withBaselines(cases) {
 	return out;
 }
 
+/**
+ * A load that survives a bad navigation: one lost page must not cost the
+ * displays still to come.
+ */
+async function load(win, url) {
+	for (let attempt = 1; ; attempt++) {
+		try {
+			return await win.loadURL(url);
+		} catch (err) {
+			if (attempt === 3) throw err;
+			await sleep(1000);
+		}
+	}
+}
+
 /** One case, measured: its medians over SAMPLES windows of SAMPLE_MS. */
 async function measure(win, spec, { noise }) {
 	const remote = /^(screen-share|camera)\b/.test(spec);
-	const viewer = win.loadURL(`${BASE}/dev/perf?case=${spec}`);
+	const viewer = load(win, `${BASE}/dev/perf?case=${spec}`);
 	let sender = null;
 	if (remote) {
 		sender = new BrowserWindow({
 			show: false,
 			webPreferences: { backgroundThrottling: false },
 		});
-		await sender.loadURL(`${BASE}/dev/perf/send?case=${spec}`);
+		await load(sender, `${BASE}/dev/perf/send?case=${spec}`);
 	}
 	await viewer;
 	// The load event comes before SvelteKit has mounted the route; the page
@@ -180,8 +197,14 @@ async function measure(win, spec, { noise }) {
 		}
 	}
 	const result = { case: spec };
+	result.samples = rows.map((r) =>
+		Object.fromEntries(Object.entries(r).map(([k, v]) => [k, round(v)])),
+	);
 	for (const key of Object.keys(rows[0]))
 		result[key] = round(median(rows.map((r) => r[key])));
+	result.gpuSpread = round(
+		Math.max(...rows.map((r) => r.gpu)) - Math.min(...rows.map((r) => r.gpu)),
+	);
 	if (hasVideo) {
 		const video1 = await win.webContents.executeJavaScript('perfVideo()');
 		const secs = (performance.now() - v0) / 1000;
@@ -225,14 +248,14 @@ function report(display, results, noise) {
 			? `Other GPU users during the first baseline: ${noise.map((p) => `${p.name} ${p.gpu}%`).join(', ')}.`
 			: 'No other process used the GPU during the first baseline.',
 		'',
-		'| case | GPU % | renderer CPU % | GPU-process CPU % | main thread ms/s | WindowServer GPU Δ | WindowServer CPU Δ | video |',
+		'| case | GPU % (spread) | renderer CPU % | GPU-process CPU % | main thread ms/s | WindowServer GPU Δ | WindowServer CPU Δ | video |',
 		'|---|---|---|---|---|---|---|---|',
 	];
 	for (const r of results) {
 		const ws = (value, baseline, steady) =>
 			`${steady ? '' : '~'}${round(value - baseline)}`;
 		lines.push(
-			`| ${r.case} | ${r.gpu} | ${r.cpuRenderer} | ${r.cpuGpuProcess} | ${r.mainThreadMsPerSec} | ` +
+			`| ${r.case} | ${r.gpu} (${r.gpuSpread}) | ${r.cpuRenderer} | ${r.cpuGpuProcess} | ${r.mainThreadMsPerSec} | ` +
 				`${ws(r.windowServerGpu, base.gpu, steadyGpu)} | ${ws(r.windowServerCpu, base.cpu, steadyCpu)} | ${r.video ?? ''} |`,
 		);
 	}
@@ -286,7 +309,7 @@ async function run() {
 		win.setAlwaysOnTop(true, 'floating');
 		win.webContents.debugger.attach('1.3');
 		// Unrecorded: the first load of a fresh window pays for the window.
-		await win.loadURL(`${BASE}/dev/perf?case=none`);
+		await load(win, `${BASE}/dev/perf?case=none`);
 		await sleep(SETTLE_MS);
 		const results = [];
 		const noise = [];
@@ -297,15 +320,15 @@ async function run() {
 			results.push(r);
 			jsonl.write(JSON.stringify({ display: display.label, ...r }) + '\n');
 			console.log(
-				`  ${spec.padEnd(28)} GPU ${String(r.gpu).padStart(5)}%  CPU ${String(r.cpuRenderer + r.cpuGpuProcess).padStart(5)}%${r.video ? `  ${r.video}` : ''}`,
+				`  ${spec.padEnd(28)} GPU ${String(r.gpu).padStart(5)}%  CPU ${String(round(r.cpuRenderer + r.cpuGpuProcess)).padStart(5)}%${r.video ? `  ${r.video}` : ''}`,
 			);
 		}
 		win.destroy();
 		sections.push(report(display, results, noise));
+		// After every display, so a run that fails later keeps what it measured.
+		fs.writeFileSync(path.join(OUT, 'report.md'), sections.join('\n\n') + '\n');
 	}
 	jsonl.end();
-	const md = sections.join('\n\n');
-	fs.writeFileSync(path.join(OUT, 'report.md'), md + '\n');
-	console.log(`\n${md}\n\nWritten to ${OUT}/report.md`);
+	console.log(`\n${sections.join('\n\n')}\n\nWritten to ${OUT}/report.md`);
 	app.quit();
 }
