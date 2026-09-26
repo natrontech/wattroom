@@ -23,7 +23,8 @@
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import { device } from '$lib/device.svelte';
-	import { crewOf, followedRider } from '$lib/session/follow';
+	import { followedRider } from '$lib/channel/followed-rider';
+	import { crewOf } from '$lib/session/follow';
 	import { bottleFor } from '$lib/roadside';
 	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
 	import { pictureKey } from '$lib/channel/stage';
