@@ -79,9 +79,13 @@
 			<!-- Literal zone class: Tailwind scans source text, so a composed
 			     `bg-z3/60` is never generated (zones.ts). Full strength — the ramp
 			     is contrast-gated at 3:1 and dimming it voids that. -->
+			<!-- Scaled, not sized (#2998): a width transition repaints the fill
+			     on every frame of its glide, and with it anything sharing its
+			     layer — the glowing number above, once, cost 18% GPU. A solid
+			     colour clipped by the track looks the same either way. -->
 			<div
-				class="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
-				style="width: {pct(shown)}%"
+				class="absolute inset-0 origin-left transition-transform duration-500 ease-out"
+				style="transform: scaleX({pct(shown) / 100})"
 			>
 				<div
 					data-testid="gauge-fill"
