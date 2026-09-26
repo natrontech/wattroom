@@ -336,13 +336,6 @@
 					{/if}
 				</div>
 				<HrShare class="mt-2" />
-				{#if !channel.you.inSession}
-					<!-- Watching, not riding (#3022): the roadside's deck, where
-					     a rider's own numbers would be doing the work. -->
-					<div class="mt-3 max-w-md">
-						<RoadsideDeck to={watched} />
-					</div>
-				{/if}
 			</div>
 
 			<!-- The crew. A group-training surface that shows only your own

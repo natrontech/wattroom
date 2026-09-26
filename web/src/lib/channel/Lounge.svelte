@@ -27,6 +27,8 @@
 
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
+	import RoadsideDeck from '$lib/session/RoadsideDeck.svelte';
+	import { bottleFor } from '$lib/session/follow';
 	import { device } from '$lib/device.svelte';
 	import { account } from '$lib/account.svelte';
 	import Radio from '@lucide/svelte/icons/radio';
@@ -429,7 +431,11 @@
 				canControl={channel.canControl && !device.spectator}
 				end={() => void endGame(channel)}
 				me={account.me?.id}
-			/>
+			>
+				{#snippet roadside()}<RoadsideDeck
+						to={bottleFor(channel.riders, channel.focusId)}
+					/>{/snippet}
+			</GamePanel>
 		</div>
 	{/if}
 	{#if channel.phase === 'countdown'}
@@ -484,6 +490,14 @@
 			{/if}
 			{@render freeRide()}
 		</div>
+		{#if channel.phase === 'live' && !channel.you.inSession}
+			<!-- Beside the session, not on it (#3022): the roadside's deck, so
+			     a bottle is a button here and not only a tile's menu entry. A
+			     rider a game put out has it in the game's panel instead. -->
+			<div class="mt-3 max-w-md">
+				<RoadsideDeck to={bottleFor(channel.riders, channel.focusId)} />
+			</div>
+		{/if}
 	{/if}
 	{#if channel.address.channel && events.length}
 		<!-- A voice channel's events (ADR-0022 as amended by ADR-0058): it has
