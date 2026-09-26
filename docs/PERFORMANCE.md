@@ -29,14 +29,14 @@ make perf-scenes
 
 Knobs, all optional:
 
-| Variable                          | Default                            | What it does                                                                                                                                                                                                                                                                      |
-| --------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PERF_DISPLAYS`                   | all                                | Comma-separated display names or ids, matched as substrings: `benq,built-in`                                                                                                                                                                                                      |
-| `PERF_CASES`                      | the list in `desktop/perf/main.js` | Space-separated `case=…` specs, e.g. `"riding-bars&n=4 riding-bars&n=4&theme=light youtube"`                                                                                                                                                                                      |
-| `PERF_SAMPLES` / `PERF_SAMPLE_MS` | 3 / 1000                           | Samples per case and how long each lasts; the median is reported                                                                                                                                                                                                                  |
-| `PERF_SETTLE_MS`                  | 1500                               | Wait after a case loads before sampling starts                                                                                                                                                                                                                                    |
-| `PERF_PROBE`                      | off                                | `make perf-scenes` only: after each scene, sample it again with one CSS feature switched off at a time (animations, transitions, filters, shadows, the stage's video). Where the number falls is what the scene pays for; it found the ride screen's gliding watts number (#2998) |
-| `PERF_OUT`                        | `$TMPDIR/wattroom-perf-<time>`     | Where the report and the raw samples go                                                                                                                                                                                                                                           |
+| Variable | Default | What it does |
+|---|---|---|
+| `PERF_DISPLAYS` | all | Comma-separated display names or ids, matched as substrings: `benq,built-in` |
+| `PERF_CASES` | the list in `desktop/perf/main.js` | Space-separated `case=…` specs, e.g. `"riding-bars&n=4 riding-bars&n=4&theme=light youtube"` |
+| `PERF_SAMPLES` / `PERF_SAMPLE_MS` | 3 / 1000 | Samples per case and how long each lasts; the median is reported |
+| `PERF_SETTLE_MS` | 1500 | Wait after a case loads before sampling starts |
+| `PERF_PROBE` | off | `make perf-scenes` only: after each scene, sample it again with one CSS feature switched off at a time (animations, transitions, filters, shadows, the stage's video). Where the number falls is what the scene pays for; it found the ride screen's gliding watts number (#2998) |
+| `PERF_OUT` | `$TMPDIR/wattroom-perf-<time>` | Where the report and the raw samples go |
 
 ## What runs
 
@@ -44,21 +44,21 @@ Knobs, all optional:
 - **The page skips the app shell and the dev layout.** The dev nav bar's backdrop blur would otherwise sit inside every measurement.
 - **Dark theme by default.** `theme=light` measures the light one.
 - **Screen share and camera cases** receive their tracks from `/dev/perf/send`. It runs in a hidden window, its own renderer, drawing on a CPU-backed canvas. So a share costs the measured page its decoding and drawing, never its encoding.
-- **`desktop/perf/scenes.js`** signs in as _Perf Viewer_, the measured window, and founds or reuses the crew _Perf Bench_ with an animated crew emoji. Three more riders run in `desktop/perf/crowd.js`, a second Electron process with offscreen windows at 5 fps, so their work lands neither in the viewer's numbers nor in WindowServer's. The rider riding uses the app's own simulated trainer. The talker's microphone is a WebAudio source that talks in bursts; every other microphone is silent. The share is a 1080p code screen at 6 fps. Each scene saves a screenshot next to the report, so every number can be checked against what was on screen.
+- **`desktop/perf/scenes.js`** signs in as *Perf Viewer*, the measured window, and founds or reuses the crew *Perf Bench* with an animated crew emoji. Three more riders run in `desktop/perf/crowd.js`, a second Electron process with offscreen windows at 5 fps, so their work lands neither in the viewer's numbers nor in WindowServer's. The rider riding uses the app's own simulated trainer. The talker's microphone is a WebAudio source that talks in bursts; every other microphone is silent. The share is a 1080p code screen at 6 fps. Each scene saves a screenshot next to the report, so every number can be checked against what was on screen.
 - **`desktop/perf/main.js`** is an Electron script, the same Chromium the desktop shell ships. For each display it loads every case, with a baseline (`case=none`) at the start, after every fifth case and at the end.
 
 ## Reading the report
 
 Each display's section starts with its resolution and refresh rate. Both multiply every per-frame cost, so a number means nothing without them.
 
-| Column                         | What it is                                                                                                                                        | How to read it                                                                                                                            |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| **GPU % (spread)**             | GPU time of the page's GPU process as a share of wall time: the figure Activity Monitor calls "% GPU". The spread is max − min across the samples | Anything that stays above 0 is doing GPU work on every frame                                                                              |
-| **renderer CPU %**             | The page's renderer processes, as % of one core                                                                                                   | Script, style, layout and paint                                                                                                           |
-| **GPU-process CPU %**          | The GPU process's CPU, as % of one core                                                                                                           | Mostly the cost of producing frames at all                                                                                                |
-| **main thread ms/s**           | Milliseconds of main-thread work per second, from DevTools' `TaskDuration`                                                                        | Above a few ms/s for a pure CSS animation means it runs on the main thread and repaints every frame instead of being composited           |
-| **WindowServer GPU Δ / CPU Δ** | WindowServer compared with the display's baseline median                                                                                          | Only meaningful when the baselines agree; otherwise they are marked `~`. The system compositor's share of every frame the window produces |
-| **video**                      | Received resolution and frame rate                                                                                                                | Proves the stream arrived, and at what rate                                                                                               |
+| Column | What it is | How to read it |
+|---|---|---|
+| **GPU % (spread)** | GPU time of the page's GPU process as a share of wall time: the figure Activity Monitor calls "% GPU". The spread is max − min across the samples | Anything that stays above 0 is doing GPU work on every frame |
+| **renderer CPU %** | The page's renderer processes, as % of one core | Script, style, layout and paint |
+| **GPU-process CPU %** | The GPU process's CPU, as % of one core | Mostly the cost of producing frames at all |
+| **main thread ms/s** | Milliseconds of main-thread work per second, from DevTools' `TaskDuration` | Above a few ms/s for a pure CSS animation means it runs on the main thread and repaints every frame instead of being composited |
+| **WindowServer GPU Δ / CPU Δ** | WindowServer compared with the display's baseline median | Only meaningful when the baselines agree; otherwise they are marked `~`. The system compositor's share of every frame the window produces |
+| **video** | Received resolution and frame rate | Proves the stream arrived, and at what rate |
 
 **How closely it measures.** On a quiet machine, one-second samples scatter by about ±0.5% GPU; half a second is barely worse. CPU is coarser — `ps` counts in centiseconds, and WindowServer's CPU wanders by a few percent. Between runs the same case can move by a few points of GPU, because "% GPU" is busy time at whatever clock the GPU is running at. **Compare two variants inside one run**, not across runs.
 
@@ -68,14 +68,14 @@ Where a number came from matters as much as the number: 0% GPU on a video case i
 
 `make perf-scenes` on an M2 Max, September 2026, before the #2998 fixes. Page GPU is the viewer's GPU process; WindowServer is its change from the baseline.
 
-| Scene                           | XG27ACS: 5K backing, 165 Hz | Built-in: 2×, 120 Hz | BenQ: 1×, 120 Hz |
-| ------------------------------- | --------------------------- | -------------------- | ---------------- |
-| Lounge, 4 in voice              | 0% GPU, WindowServer +0     | 0%, +0               | 0%, +0           |
-| + 3 animated emoji statuses     | 2.4%, +1.8                  | 1.8%, +1.8           | 1.7%, +1.1       |
-| + one rider riding              | **25.7%, +9.1**             | 19.8%, +7.7          | 18.6%, +7.6      |
-| + one rider talking             | 25.7%, +8.5                 | 19.4%, +7.6          | 18.1%, +7.8      |
-| + screen share on stage (6 fps) | 29.9%, +21.3                | 25.6%, +10.2         | 21.2%, +10.8     |
-| + you ride (Training)           | 46.4%, +16.5                | 45.5%, +10.2         | 31.8%, +7.5      |
+| Scene | XG27ACS: 5K backing, 165 Hz | Built-in: 2×, 120 Hz | BenQ: 1×, 120 Hz |
+|---|---|---|---|
+| Lounge, 4 in voice | 0% GPU, WindowServer +0 | 0%, +0 | 0%, +0 |
+| + 3 animated emoji statuses | 2.4%, +1.8 | 1.8%, +1.8 | 1.7%, +1.1 |
+| + one rider riding | **25.7%, +9.1** | 19.8%, +7.7 | 18.6%, +7.6 |
+| + one rider talking | 25.7%, +8.5 | 19.4%, +7.6 | 18.1%, +7.8 |
+| + screen share on stage (6 fps) | 29.9%, +21.3 | 25.6%, +10.2 | 21.2%, +10.8 |
+| + you ride (Training) | 46.4%, +16.5 | 45.5%, +10.2 | 31.8%, +7.5 |
 
 **Reading this table:**
 
