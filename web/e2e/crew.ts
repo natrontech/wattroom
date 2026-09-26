@@ -239,13 +239,32 @@ export const test = base.extend<{
 			},
 		});
 		for (const { page, id } of made) {
-			const status = await page.evaluate(
-				(channel) =>
+			const status = await page.evaluate(async (channel) => {
+				const remove = () =>
 					fetch(`/api/channels/${channel}`, { method: 'DELETE' }).then(
 						(res) => res.status,
-					),
-				id,
-			);
+					);
+				let answer = await remove();
+				if (answer !== 409) return answer;
+				// A session still runs there, and a channel holds while one does
+				// (#2816). End it the way its coach would — the owner may end
+				// any session — and delete once the hub lets it go.
+				const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+				const socket = new WebSocket(
+					`${scheme}://${location.host}/ws/channels/${channel}`,
+				);
+				await new Promise((open, fail) => {
+					socket.onopen = open;
+					socket.onerror = fail;
+				});
+				socket.send(JSON.stringify({ control: { action: 'end' } }));
+				for (let tries = 0; tries < 20 && answer === 409; tries++) {
+					await new Promise((wait) => setTimeout(wait, 250));
+					answer = await remove();
+				}
+				socket.close();
+				return answer;
+			}, id);
 			expect(
 				status,
 				`channel ${id} survived the test — every leak counts against the crew's channel cap`,

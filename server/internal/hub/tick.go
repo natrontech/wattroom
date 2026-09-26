@@ -61,8 +61,9 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 	for {
 		select {
 		case <-rm.stop:
-			// The room was deleted: no tick, and no session save — the
-			// durable row it would reference is already gone.
+			// The room was deleted: no tick, and no session save. The
+			// channel's delete refuses while a session is open (#2816), so
+			// there is none here to lose.
 			return
 		case <-timer.C:
 		}
