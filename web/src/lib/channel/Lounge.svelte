@@ -219,6 +219,13 @@
 	// into. Side by side and the grid already show everyone at one size, so a
 	// focused rider there was a third size for no reason.
 	const focusable = $derived(!onStage || stacked);
+	// No picture anywhere — no camera on a tile, nothing on the stage: a
+	// 16:9 frame per rider is a name and an initial in a lot of empty space,
+	// and on a phone three of them pushed everything else below the fold
+	// (#2882 L6-16). Two to a row there instead.
+	const pictureless = $derived(
+		!onStage && tiles.every((r) => !channel.videoOf(r.id)),
+	);
 	const focused = $derived(
 		focusable ? tiles.find((r) => r.id === channel.focusId) : undefined,
 	);
@@ -385,8 +392,8 @@
 				</div>
 			{:else}
 				<div
-					class="grid shrink-0 gap-3 {onStage && !stacked
-						? 'grid-cols-2'
+					class="grid shrink-0 gap-3 {(onStage && !stacked) || pictureless
+						? 'grid-cols-2 2xl:grid-cols-3'
 						: 'sm:grid-cols-2 2xl:grid-cols-3'}"
 				>
 					{#each tiles as rider (rider.id)}
