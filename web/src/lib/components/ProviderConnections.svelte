@@ -85,7 +85,6 @@
 						'Ride upload stops, and each past ride loses its link to the Strava activity it became. The rides stay on Strava.'
 					: undefined,
 			action: `Disconnect ${name}`,
-			cancel: 'Keep it',
 		});
 		if (!ok) return;
 

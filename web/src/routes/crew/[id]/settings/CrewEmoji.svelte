@@ -100,7 +100,6 @@
 			title: `Delete :${emoji.name}:?`,
 			body: `Every reaction and message that uses it shows :${emoji.name}: as text instead. Anyone in the crew can add one by that name again.`,
 			action: 'Delete it',
-			cancel: 'Keep it',
 		});
 		if (!yes) return;
 		const res = await api(`/api/crews/${crewId}/emoji/${emoji.id}`, {

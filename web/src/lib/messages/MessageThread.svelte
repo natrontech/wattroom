@@ -154,7 +154,6 @@
 				? 'It goes for everyone, and it cannot be brought back.'
 				: `It goes for everyone, including ${from}, and it cannot be brought back.`,
 			action: 'Delete',
-			cancel: 'Keep it',
 		});
 		if (!yes) return;
 		const refused = await source.remove?.(id);

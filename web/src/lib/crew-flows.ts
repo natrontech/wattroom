@@ -44,7 +44,6 @@ export async function leaveCrewFlow(
 		title: `Leave ${crew.name}?`,
 		body: leaveBody(crew.name, lastOut),
 		action: 'Leave the crew',
-		cancel: 'Keep it',
 	});
 	if (!sure) return false;
 	const res = await leaveCrew(crew.id);
@@ -91,7 +90,6 @@ export async function deleteChannelFlow(
 		title: `Delete ${channel.name}?`,
 		body: deleteChannelWarning(channel, crewGoes),
 		action: deleteLabel(channel.kind),
-		cancel: 'Keep it',
 	});
 	if (!sure) return false;
 	const res = await deleteChannel(channel.id);
@@ -126,7 +124,6 @@ export async function handOverCrewFlow(
 		title: `Hand ${crew.name} to ${to.displayName}?`,
 		body: HAND_OVER_BODY,
 		action: 'Hand it over',
-		cancel: 'Keep it',
 	});
 	if (!sure) return false;
 	const res = await transferCrew(crew.id, to.id);
@@ -157,7 +154,6 @@ export const banAsk = (name: string) => ({
 	title: `Ban ${name} from the crew?`,
 	body: `They cannot come back through the crew's code until you lift the ban.`,
 	action: 'Ban',
-	cancel: 'Keep it',
 });
 
 /**

@@ -151,7 +151,6 @@
 			title: `Delete “${track.title}” from your library?`,
 			body: 'The file goes with it. This cannot be undone.',
 			action: 'Delete track',
-			cancel: 'Keep it',
 		});
 		if (!ok) return;
 		const res = await deleteTrack(track.id);

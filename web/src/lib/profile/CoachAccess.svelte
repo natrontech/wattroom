@@ -61,7 +61,6 @@
 			title: `Revoke “${entry.name}”?`,
 			body: 'Whatever you connected with it stops working, and the token cannot be shown again — you would create a new one.',
 			action: 'Revoke',
-			cancel: 'Keep it',
 		});
 		if (!sure) return;
 		const res = await api<undefined>(`/api/tokens/${entry.id}`, {

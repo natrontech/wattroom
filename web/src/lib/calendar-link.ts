@@ -33,7 +33,6 @@ export function confirmCalendarReset(scope: CalendarScope): Promise<boolean> {
 		title: `Reset ${whoseLink[scope]} calendar link?`,
 		body: resetBody(scope),
 		action: 'Reset the link',
-		cancel: 'Keep it',
 	});
 }
 

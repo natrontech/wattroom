@@ -92,6 +92,5 @@ export function confirmDiscard(ride: RecoveredRide): Promise<boolean> {
 		title: 'Discard the recovered ride?',
 		body: discardBody(ride),
 		action: 'Discard it',
-		cancel: 'Keep it',
 	});
 }

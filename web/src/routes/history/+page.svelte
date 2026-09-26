@@ -107,7 +107,6 @@
 			title: `Clear ${n} device ride${n === 1 ? '' : 's'}?`,
 			body: 'These summaries exist only on this device — nothing can bring them back.',
 			action: 'Clear them',
-			cancel: 'Keep it',
 		});
 		if (ok) device.clear();
 	}

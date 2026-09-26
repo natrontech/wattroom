@@ -60,7 +60,6 @@
 			title: `Delete ${clip.name}?`,
 			body: 'The audio goes with it — this cannot be undone.',
 			action: 'Delete',
-			cancel: 'Keep it',
 		});
 		if (ok) void remove(clip.id);
 	}

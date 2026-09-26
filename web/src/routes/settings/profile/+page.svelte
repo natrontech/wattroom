@@ -118,7 +118,6 @@
 					title: 'Remove your recovery address?',
 					body: 'Without it there is no way back into this account if every passkey and sign-in provider is lost, and no more account alarms. Adding one again means confirming a new link.',
 					action: 'Remove the address',
-					cancel: 'Keep it',
 				});
 				if (!ok) {
 					email = had;

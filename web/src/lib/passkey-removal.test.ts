@@ -31,7 +31,8 @@ describe('confirmRemoval', () => {
 		const ask = mocks.confirm.mock.calls[0][0];
 		expect(ask.title).toBe('Remove “YubiKey”?');
 		expect(ask.action).toBe('Remove');
-		expect(ask.cancel).toBe('Keep it');
+		// confirm() spells the safe answer; the call site does not (#2887).
+		expect(ask.cancel).toBeUndefined();
 		expect(ask.body).toBe(removeBody('“YubiKey”'));
 	});
 
