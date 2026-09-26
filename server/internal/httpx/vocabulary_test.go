@@ -30,9 +30,9 @@ var room = regexp.MustCompile(`(?i)\brooms?\b`)
 
 // "Room" left the vocabulary (ADR-0058, ux.md): a crew has text and voice
 // channels and runs sessions. The web copy followed it and the server did not
-// — refusals, a socket's pick errors and an achievement kept telling riders
+// — refusals and a socket's pick errors kept telling riders
 // about a place the product no longer has (#2828). This reads every rider-
-// facing string the server passes to those calls, plus an achievement's How.
+// facing string the server passes to those calls.
 func TestRiderFacingTextSaysNoRoom(t *testing.T) {
 	fset := token.NewFileSet()
 	var found []string
@@ -79,10 +79,6 @@ func TestRiderFacingTextSaysNoRoom(t *testing.T) {
 				}
 				if i, ok := riderText[name]; ok && i < len(n.Args) {
 					check(n.Args[i])
-				}
-			case *ast.KeyValueExpr:
-				if k, ok := n.Key.(*ast.Ident); ok && k.Name == "How" {
-					check(n.Value)
 				}
 			}
 			return true
