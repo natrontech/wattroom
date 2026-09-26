@@ -86,6 +86,7 @@ One table, because there is one place roles live: the crew ([ADR-0058](decisions
 | Ride (metrics on dashboard) | ✓ | ✓ | ✓ | – |
 | Voice/camera | ✓ | ✓ | ✓ | ✓ |
 | Cheers | ✓ | ✓ | ✓ | ✓ |
+| Hand a bottle up to a rider riding the session (#3022) | ✓ | ✓ | ✓ | ✓ |
 
 ‡ **Only while they are the session's coach** — whoever started it, until they hand it to someone in the session (#2438). Being the crew's owner or an admin does not make anyone coach. The one lever the owner and admins hold over a session somebody else is running is **ending** it, which is what a voice channel needs when a session is left running in it: there is one session per channel, so an abandoned one would hold the channel shut.
 
@@ -546,6 +547,40 @@ ERG 0 W: nobody is riding the trainer then.
 | Collective Ramp | Backyard rules on the **session-average** %FTP; line starts 75 %, +4 %/round; score = rounds survived                                                                                   |
 
 Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued pedalling on reconnect).
+
+## The roadside (#3022, ADR-0064 — defaults, tune in alpha)
+
+The **roadside** is everyone in a voice channel who is not riding a given
+rider's session: a phone propped beside the bike, a desk in the lounge, a rider
+a game has put out. It paints, sounds and informs; it never changes a rider's
+resistance, and nothing it does reaches a trainer.
+
+- **The cowbell.** Every deck carries the fixed `bell-ring` key after the
+  rider's own four cheers, whatever their reaction set holds. It is a cheer —
+  the same **one a second** per rider — that rings the cowbell cue instead of
+  the cheer's blip: the TR-808's, two square voices at **540 Hz** and
+  **800 Hz** through one bandpass at **880 Hz**, **0.3 s** long. **Once a
+  tick**, however many rang it.
+- **A bottle** goes to a rider **riding the session** in the voice channel you
+  share, and to nobody else; the hub refuses the rest and says why. **One per
+  sender and rider every 10 s** — the poke's cooldown, on a key of its own, so
+  a bottle never spends the poke. It is never a DM line. The rider's screen
+  **holds it until their next recovery valley**: the ride asks nothing harder
+  than **Z1** (≤ 55 % FTP, the zones above) or nothing at all — paused,
+  stopped, off the ride — and no sprint is on. Under Floor is Lava the called
+  zone is what counts. Then it is announced like a poke: the cue, and a line in
+  the timeline mid-ride. Held in memory, so a reload lets go of a bottle not
+  yet taken.
+- **Eliminated riders** — Backyard Ramp and Floor is Lava put riders out one
+  at a time — are told they are at the roadside, with the deck, for as long as
+  the game runs.
+- **Phones hear the first tap.** The cue bus opens on the tap that lifts (a
+  touch's press is not a gesture a browser lets sound start in), and a tap on
+  the deck opens it from inside the tap.
+- **One gauge**, for the service rather than about anybody:
+  `wattroom_room_spectators`, the sockets in voice channels whose session is
+  running, held by someone not riding it. Unlabelled, beside
+  `wattroom_room_riding` — WATTROOM.md rules out product analytics.
 
 ## Sync tolerances
 
