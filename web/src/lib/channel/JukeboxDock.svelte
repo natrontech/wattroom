@@ -352,7 +352,7 @@
 			: 'ring-ink/15 shadow-2xl ring-1'} {showPlayer
 			? ''
 			: 'hidden'} {channelConnection.onPlacePath(page.url.pathname)
-			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,320px)+1.25rem)] xl:bottom-4'
+			? 'right-4 bottom-20 xl:right-[calc(var(--pane-side-panel-w,272px)+1.25rem)] xl:bottom-4'
 			: 'right-4 bottom-4'}"
 		style="width: {CORNER.w}px; height: {CORNER.h}px; max-width: 96vw;
 			max-height: 90vh"

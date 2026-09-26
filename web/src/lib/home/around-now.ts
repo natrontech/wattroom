@@ -30,3 +30,11 @@ export function aroundNow(
 			.filter((around) => around.others.length > 0),
 	);
 }
+
+/**
+ * The riders already named in a card above (#2882 L6-11), so the friends row
+ * beneath says who else is around rather than naming someone twice.
+ */
+export function namedInCards(around: readonly AroundChannel[]): Set<string> {
+	return new Set(around.flatMap((a) => a.others.map((o) => o.id)));
+}

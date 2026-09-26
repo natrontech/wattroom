@@ -1,8 +1,8 @@
 import { expect, test, voicePath } from './crew';
 
 /**
- * Home's "Around right now" chip says where a friend is, in the app's one
- * presence vocabulary ($lib/status, #807) — not a mark of its own.
+ * Home says where a friend is, in the app's one presence vocabulary
+ * ($lib/status, #807) — not a mark of its own.
  *
  * It drew RidingBars for anyone in a room, and those bars say "riding now" to
  * the eye and to a screen reader (#2168). So a friend standing in a room's
@@ -132,22 +132,20 @@ test('a friend who is in a voice channel but not pedalling is not shown as ridin
 
 	await a.goto('/home');
 	// Scoped to the page: the sidebar carries the same names.
-	const chip = a
-		.getByTestId('page-body')
-		.getByRole('listitem')
+	const body = a.getByTestId('page-body');
+	// B stands in a channel of A's crew, so Around right now names B in that
+	// channel's card, which walks in there (#2516) — and only there: the
+	// friends chips below skip anyone a card already names (#2882 L6-11).
+	const card = body
+		.locator(`a[href="${voicePath(opened)}"]`)
 		.filter({ hasText: B });
-	await expect(chip).toBeVisible({ timeout: 15_000 });
-	// B stands in a channel A may enter, so the chip names it — crew, then
-	// channel — and walks in there (#2516), not into the DM it falls back to
-	// for a friend somewhere unnamed.
-	const link = chip.getByRole('link');
-	await expect(link).toHaveAttribute('href', voicePath(opened));
-	await expect(link).toHaveAttribute(
-		'title',
-		new RegExp(`^in .+ · ${opened.name}$`),
-	);
-	// The badge Avatar draws, with the word the rest of the app uses. The
-	// assertion that fails is the label: "riding now" is what RidingBars says.
-	await expect(chip.getByLabel('riding now')).toHaveCount(0);
-	await expect(chip.getByTitle('riding now')).toHaveCount(0);
+	await expect(card).toBeVisible({ timeout: 15_000 });
+	await expect(
+		body.getByRole('listitem').filter({ hasText: B }),
+		`${B} is named twice on Home — in the channel's card and again as a chip`,
+	).toHaveCount(0);
+	// Nothing draws B as pedalling: "riding now" is what RidingBars says, and
+	// B is standing, not riding (#2168).
+	await expect(card.getByLabel('riding now')).toHaveCount(0);
+	await expect(card.getByTitle('riding now')).toHaveCount(0);
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LiveChannel, LiveCrew, LiveOccupant } from '$lib/crews-live';
-import { aroundNow } from './around-now';
+import { aroundNow, namedInCards } from './around-now';
 
 const voice = (id: string, occupants?: LiveOccupant[]): LiveChannel => ({
 	id,
@@ -57,5 +57,18 @@ describe('aroundNow', () => {
 		expect(aroundNow([crew('c1', [voice('lounge', [jan])])], 'u-jan')).toEqual(
 			[],
 		);
+	});
+});
+
+// Home named a friend in voice twice (#2882 L6-11): in the channel's card and
+// again as a chip below it. The chips skip whoever a card already names.
+describe('namedInCards', () => {
+	it('is everyone a card names besides you, across crews', () => {
+		const crews = [
+			crew('c1', [voice('cave', [jan, mike])]),
+			crew('c2', [voice('lounge', [sara]), voice('empty', [])]),
+		];
+		const named = namedInCards(aroundNow(crews, 'u-jan'));
+		expect([...named].sort()).toEqual(['u-mike', 'u-sara']);
 	});
 });
