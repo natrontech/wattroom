@@ -18,6 +18,7 @@ const { test, expect, _electron: electron } = require('@playwright/test');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
+const { execFileSync } = require('node:child_process');
 
 /**
  * Nothing listens here, so the shell lands on its offline screen.
@@ -216,19 +217,52 @@ test('a text field gets the edit menu on right-click, and the page keeps its own
 	await app.close();
 });
 
-// #3001: macOS has Close in the File menu, and a menu without one leaves ⌘W
-// doing nothing. The runner is Linux, where the shell draws no menu at all,
-// so this one speaks only on a Mac.
-test('⌘W closes the window on macOS', async () => {
-	test.skip(process.platform !== 'darwin', 'the menu exists only on macOS');
+// An Electron window's shortcuts are its menu's accelerators. #3001: ⌘W had
+// no Close behind it on macOS. #3007: Windows and Linux had no menu, so no
+// zoom for a rider three metres away — and the frameless window must still
+// draw no bar there (#1943). The keys are pressed on Linux only, through
+// xdotool: Playwright's and sendInputEvent's keys go straight to the page
+// and never reach an accelerator, so they read 0 with the fix or without.
+test('close, zoom and reload have shortcuts, and no menu bar is drawn', async () => {
 	const app = await launch(DEAD_URL);
-	await app.firstWindow();
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
 	const roles = await app.evaluate(({ Menu }) =>
-		Menu.getApplicationMenu().items.flatMap((m) =>
+		(Menu.getApplicationMenu()?.items ?? []).flatMap((m) =>
 			(m.submenu?.items ?? []).map((i) => i.role),
 		),
 	);
-	expect(roles).toContain('close');
+	expect(roles).toEqual(
+		expect.arrayContaining(['close', 'zoomin', 'zoomout', 'resetzoom', 'reload']),
+	);
+	if (process.platform === 'linux') {
+		const barShown = await app.evaluate(({ BrowserWindow }) =>
+			BrowserWindow.getAllWindows()[0].isMenuBarVisible(),
+		);
+		expect(barShown).toBe(false);
+		const zoom = () =>
+			app.evaluate(({ BrowserWindow }) =>
+				BrowserWindow.getAllWindows()[0].webContents.getZoomLevel(),
+			);
+		// --onlyvisible: Electron's first X window is a hidden leader.
+		const [xid] = execFileSync('xdotool', [
+			'search', '--onlyvisible', '--pid', String(app.process().pid),
+		])
+			.toString()
+			.split('\n');
+		const press = (keys) =>
+			execFileSync('xdotool', [
+				'windowfocus', '--sync', xid, 'key', '--clearmodifiers', keys,
+			]);
+		// Ctrl+=, not Ctrl+Shift+=: the key a rider presses, which the role's
+		// own Ctrl+Plus does not answer.
+		press('ctrl+equal');
+		await expect.poll(zoom).toBeGreaterThan(0);
+		press('ctrl+0');
+		await expect.poll(zoom).toBe(0);
+		press('ctrl+minus');
+		await expect.poll(zoom).toBeLessThan(0);
+	}
 	await app.close();
 });
 

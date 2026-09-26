@@ -17,6 +17,7 @@ const {
 	dialog,
 	ipcMain,
 	Menu,
+	MenuItem,
 	Notification,
 	powerSaveBlocker,
 	screen,
@@ -967,23 +968,34 @@ if (!app.requestSingleInstanceLock()) {
 	});
 
 	app.whenReady().then(() => {
-		// An explicit menu (#1943): Electron's default one shipped into the
-		// frameless window, Help and all. macOS keeps the roles a Mac app
-		// needs (⌘W, copy and paste, reload); Windows and Linux draw none —
-		// the app's own strip is the top of the window there. On macOS Close
-		// is in the File menu, not the Window one: without fileMenu, ⌘W did
-		// nothing (#3001).
-		Menu.setApplicationMenu(
-			process.platform === 'darwin'
-				? Menu.buildFromTemplate([
-						{ role: 'appMenu' },
-						{ role: 'fileMenu' },
-						{ role: 'editMenu' },
-						{ role: 'viewMenu' },
-						{ role: 'windowMenu' },
-					])
-				: null,
-		);
+		// An explicit menu (#1943): Electron's default one shipped Help and
+		// all. The roles are the shortcuts: in Electron a window's keyboard
+		// shortcuts ARE its menu's accelerators, so Windows and Linux, which
+		// had none, had no zoom for a rider three metres away and no Ctrl+R
+		// (#3007). There the window is frameless, which draws no menu bar and
+		// still registers every accelerator — the app's own strip stays the top
+		// of the window. On macOS Close is in the File menu, not the Window
+		// one: without fileMenu, ⌘W did nothing (#3001).
+		const menu = Menu.buildFromTemplate([
+			...(process.platform === 'darwin' ? [{ role: 'appMenu' }] : []),
+			{ role: 'fileMenu' },
+			{ role: 'editMenu' },
+			{ role: 'viewMenu' },
+			{ role: 'windowMenu' },
+		]);
+		// Ctrl+= zooms in every browser. The role's own accelerator is
+		// Ctrl+Plus, which Windows and Linux read as Ctrl+Shift+=, so the key
+		// a rider actually presses did nothing without this.
+		menu.items
+			.find((m) => m.role === 'viewmenu')
+			.submenu.append(
+				new MenuItem({
+					role: 'zoomIn',
+					accelerator: 'CommandOrControl+=',
+					visible: false,
+				}),
+			);
+		Menu.setApplicationMenu(menu);
 		// Launched by the login item, the shell opens no window: it comes up
 		// in the tray and waits to be asked (login-item.js). Every other
 		// launch is unchanged.
