@@ -225,16 +225,7 @@ function connect(address: PlaceAddress): Connection {
 		bottleHandUps({
 			address,
 			live,
-			effort: () =>
-				effortOf(
-					{
-						targetWatts: ride.target,
-						ftp: profile.current.ftp,
-						sprinting: !!live.tick?.sprint || !!ride.blockSprint,
-					},
-					live.tick?.game,
-					account.me?.id,
-				),
+			effort: () => effortOf(ride.effort, live.tick?.game, account.me?.id),
 		});
 		followMoves({ address, live, av });
 

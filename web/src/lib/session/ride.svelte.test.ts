@@ -6,6 +6,7 @@ import type { RiderMetrics } from '$lib/protocol';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
 import { SIGNAL_LOST_MS } from '$lib/workout/session.svelte';
+import { effortOf, inRecoveryValley } from '$lib/roadside';
 
 // The socket's own dependencies, silenced: IndexedDB, and the module the
 // tick's clock window lives in stays real (it only does arithmetic).
@@ -406,6 +407,39 @@ describe('the personal guards in a group ride (#788)', () => {
 		await settle();
 		expect(ride.target).toBe(0);
 		expect(trainer.commands.at(-1)).toBe('sim:0');
+
+		dispose();
+		live.close();
+		vi.useRealTimers();
+	});
+
+	// The spiral's ten seconds are the middle of the interval (#3022): read
+	// off the trainer's released 0, they were a recovery valley, and a bottle
+	// held through the block popped in the rider's hardest moment.
+	it('still asks the block of a rider the spiral released, and nothing of one who stopped', async () => {
+		vi.useFakeTimers();
+		const { live, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide(deps);
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		const valley = () =>
+			inRecoveryValley(effortOf(ride.effort, undefined, 'me'));
+
+		for (let i = 0; i < 5; i++) trainer.pedal(120, 40);
+		await settle();
+		expect(ride.spiralActive).toBe(true);
+		expect(ride.target).toBe(0);
+		expect(ride.effort.targetWatts).toBe(200);
+		expect(valley()).toBe(false);
+
+		for (let i = 0; i < 3; i++) trainer.pedal(0, 0);
+		await settle();
+		expect(ride.guard).toBe('autopaused');
+		expect(valley()).toBe(true);
 
 		dispose();
 		live.close();

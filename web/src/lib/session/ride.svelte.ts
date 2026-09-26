@@ -13,6 +13,7 @@ import type { FreeRide } from '$lib/ride/free-ride.svelte';
 import type { Segment } from '$lib/workout/types';
 import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
 import type { createRecording } from '$lib/session/recording.svelte';
+import type { RideEffort } from '$lib/roadside';
 import {
 	mayActuate,
 	quietFault,
@@ -519,6 +520,20 @@ export function createRide(deps: RideDeps) {
 		 */
 		get blockSprint() {
 			return blockWindow.current;
+		},
+		/**
+		 * What the ride asks of this rider, for a bottle from the roadside
+		 * (#3022): the block's own watts, never the trainer's. The spiral
+		 * release zeroes the trainer for ten seconds in the middle of an
+		 * interval — the rider's hardest moment, and no easy block. A rider
+		 * who has stopped is asked nothing. A sprint counts from its klaxon.
+		 */
+		get effort(): RideEffort {
+			return {
+				targetWatts: guardPhase === 'autopaused' ? 0 : prescribed,
+				ftp: deps.profile.current.ftp,
+				sprinting: !!deps.live.tick?.sprint || !!blockWindow.current,
+			};
 		},
 		nudgeBias,
 		ride,
