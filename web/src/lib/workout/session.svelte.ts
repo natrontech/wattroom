@@ -167,7 +167,8 @@ export function createRideSession({
 	let shift = $state(0);
 	/** The ride's own power history, for the interval graph. Owned here rather than
 	 *  rebuilt in the screen — a component effect that reads and writes it loops. */
-	let trace = $state<{ t: number; w: number }[]>([]);
+	// Raw, replaced on each push (#2878): see createRecording.
+	let trace = $state.raw<{ t: number; w: number }[]>([]);
 	/**
 	 * What actually happened, in real time. Distinct from `trace`, which is keyed on
 	 * the workout clock so it lines up with the interval graph — skip and extend make
@@ -386,7 +387,7 @@ export function createRideSession({
 			// Uncapped, for the reason session/recording.svelte.ts gives: the graph
 			// is keyed on the workout clock, so dropping the oldest entries
 			// erased the start of the line rather than scrolling it (#2017).
-			trace.push({ t: clockSeconds, w: next.watts });
+			trace = [...trace, { t: clockSeconds, w: next.watts }];
 		}
 
 		// Execution excludes auto-paused time and untargeted blocks (docs/SPEC.md). The

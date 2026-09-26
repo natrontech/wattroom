@@ -12,13 +12,14 @@ import { isLivePhase } from '$lib/channel/tick-session';
  * start of the line — the graph, the TV mode and the saved summary all lost
  * it (#2017). The ride's own length is the ceiling.
  *
- * ponytail: one point per second, never downsampled — a 3 h ride is 10 800 of
- * them in one polyline. If a long ride ever stutters, thin it in IntervalGraph
- * where the line is built, not here where the data is kept.
+ * One point per second, never downsampled here: IntervalGraph thins the line
+ * it builds (#2878). Raw state, replaced on every push rather than mutated:
+ * a deep proxy put a trap on every point each time the line was read, and a
+ * new array is what tells the graph there is a new point.
  */
 export function createRecording() {
-	let trace = $state<{ t: number; w: number }[]>([]);
-	let samples = $state<{ watts: number }[]>([]);
+	let trace = $state.raw<{ t: number; w: number }[]>([]);
+	let samples = $state.raw<{ watts: number }[]>([]);
 	// One sample per timeline second (#1411): the summary reads the record
 	// as one entry per second — Σ watts / 1000 = kJ, sixty entries = a
 	// minute — and a trainer notifying at 2 Hz used to double both. The
@@ -45,8 +46,8 @@ export function createRecording() {
 			const second = Math.floor(elapsed);
 			if (second <= lastSecond) return;
 			lastSecond = second;
-			trace.push({ t: elapsed, w: watts });
-			samples.push({ watts: Math.max(0, Math.round(watts)) });
+			trace = [...trace, { t: elapsed, w: watts }];
+			samples = [...samples, { watts: Math.max(0, Math.round(watts)) }];
 		},
 		/** Fed every phase the session passes through; clears on the way in. */
 		follow(phase: string | undefined) {
