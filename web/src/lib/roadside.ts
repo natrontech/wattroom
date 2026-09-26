@@ -132,7 +132,9 @@ export function inRecoveryValley(effort: Effort): boolean {
 	if (effort.sprinting || effort.unreadable) return false;
 	if (effort.calledZone > 1) return false;
 	if (effort.targetWatts <= 0 || effort.ftp <= 0) return true;
-	return zoneOf(effort.targetWatts, effort.ftp) === 1;
+	// Targets arrive as whole watts, so a 55 % block can read up to half a
+	// watt over Z1's top; the rounding must not turn a recovery into Z2.
+	return zoneOf(effort.targetWatts - 0.5, effort.ftp) === 1;
 }
 
 /** A bottle, announced the way every arrival is — the rider's valley has come. */

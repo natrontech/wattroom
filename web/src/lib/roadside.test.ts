@@ -163,6 +163,32 @@ describe('a recovery valley under each game mode (#3022)', () => {
 		expect(valley(target('backyard-ramp', 0.5, true))).toBe(true);
 	});
 
+	// The ride hands over whole watts: 55 % of 250 W arrives as 138 W, which
+	// is 55.2 % — Z1's top is 55 %, so the rounding alone must not make it Z2.
+	it('reads a 55 % block as a valley at every FTP, whole watts and all', () => {
+		for (let ftp = 100; ftp <= 400; ftp++) {
+			const ride = {
+				targetWatts: Math.round(0.55 * ftp),
+				ftp,
+				sprinting: false,
+			};
+			const wheel = running('team-relay', {
+				riders: { me: { targetPct: 0.55 } },
+			});
+			expect(valley(wheel, ride), `relay wheel at FTP ${ftp}`).toBe(true);
+			expect(
+				inRecoveryValley(effortOf(ride, undefined, 'me')),
+				`55 % block at FTP ${ftp}`,
+			).toBe(true);
+		}
+		const z2 = {
+			targetWatts: Math.round(0.56 * 250),
+			ftp: 250,
+			sprinting: false,
+		};
+		expect(inRecoveryValley(effortOf(z2, undefined, 'me'))).toBe(false);
+	});
+
 	// A stopped rider's trainer is released to 0, and the ramp still asks.
 	it('is not a ramp round a stopped rider is about to be put out of', () => {
 		const ramp = running('backyard-ramp', {
