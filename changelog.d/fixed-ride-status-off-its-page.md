@@ -1,1 +1,0 @@
-- A dropped connection or a lost trainer during a free ride or a session now shows on every page, not only on the ride's own — a rider reading chat mid-ride is told, and sees how much riding this device is holding.

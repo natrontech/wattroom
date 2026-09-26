@@ -17,6 +17,346 @@ not a second copy of `git log`.
 
 ## [Unreleased]
 
+## [2026.09.146] - 2026-09-26
+
+### Added
+
+- Operators: `/metrics` now says how much the instance is used — accounts,
+  signups and riders who rode over the last day, week and month, rides, time
+  and work ridden, crews, workouts, jukebox tracks, Strava connections and
+  upcoming sessions. Counts only, recounted from the database every five
+  minutes, so they survive a restart; nothing names a rider or a crew.
+
+### Changed
+
+- Every "are you sure?" question now offers the same way out, "Keep it",
+  or "Keep riding" / "Keep going" while you are mid-effort. A few had
+  drifted to "Leave it", "Keep it running" and "Keep playing".
+- Deleting a channel or an account, opening your messages, and checking your
+  medals no longer get slower as the server's ride and message history grows:
+  the database now has an index for each of them.
+- A voice channel with playlists queued now uses a fraction of the data it
+  did. The jukebox queue is sent when it changes, not every second: with a few
+  long playlists queued, each second's update drops from about 14–25 KB to
+  about 0.2 KB, which matters most for a phone on mobile data over a two-hour
+  ride.
+- Quieter screens: the WattRoom mark glows only while something is live, Home
+  no longer lists a friend in a voice channel twice (and says "Nobody is in a
+  voice channel" rather than "Nobody's around" when friends are online), Join
+  voice is no longer the brightest button on the riding screen, and the
+  people column starts at the width it was designed for.
+- The ride graph does less work on long rides. It used to rebuild every
+  second from every second of the ride, which grew heavier on phones and TV
+  sticks as a ride went on. It now draws the peaks and troughs the screen
+  can show, so the last hour of a long ride costs no more than the first.
+- A voice channel no longer downloads YouTube's player — over a megabyte from
+  Google, running for the whole ride — until someone queues a YouTube link.
+  Channels that never use the jukebox, or play only your own tracks, load
+  nothing from YouTube at all.
+
+### Fixed
+
+- Small words are readable again in the light themes. "Start a session",
+  "Start" and "Walk in" buttons, the "Reload" and "running now" labels, the
+  crew switcher's "riding" count and "starting soon" were drawn in the
+  magenta or violet accent at 3.2–4.3:1; they are now in the text colour,
+  with the accent kept on the button's edge and on icons. Red error and
+  Delete text in Monokai Day now clears 4.5:1 too.
+- Someone stepping away and back over and over can no longer flood a voice
+  channel's timeline and push out the lines that matter, like a session
+  starting or a game's result. It now shows one line a second for them,
+  saying where they ended up.
+- On a phone, or in a narrow window, the message box now spans the
+  width beside Send, with the image, emoji, poke and timer buttons on a
+  row above it. Before, those buttons left about one word's width to
+  type in.
+- When your connection drops mid-ride, the banner now counts how much
+  riding this device is holding, and an elimination game's disconnect
+  grace counts down. Both used to sit at 0:00 and 30 s for the whole
+  outage, so a rider was knocked out with no warning. With no ride
+  running, the banner no longer claims riding is stored.
+- When a crew's founder deleted their account, everyone left in that crew
+  could no longer load any of their crews ("Your crews could not be
+  loaded"), and live sessions and plans vanished from every crew they were
+  in. The crew list loads again.
+- A crew page you are looking at when you are banned from that crew now closes
+  and offers Home. It used to keep the crew's code, its members and a Retry
+  that could never work. The Schedule's Start button now says "Start without a
+  trainer" when none is paired, the same as the plan card in the voice
+  channel.
+- Removing a crew's picture asks first, since everyone stops seeing it and putting it back takes the file again; taking a member out of a private channel now offers an undo.
+- A voice channel can no longer be deleted while a session is running in it.
+  Deleting one mid-session used to throw away every rider's ride from that
+  session. End the session first, then delete the channel.
+- The desktop app has its WattRoom icon again. Since desktop 2026.9.11 it
+  showed Electron's default atom in the Dock, the Applications folder and
+  the Windows and Linux installers.
+- In the desktop app, Connect Google, GitHub or Strava and Add a passkey in
+  Settings now open that page in your browser, where they work. Before, Connect
+  Google left the window stuck on a Google page with no way back, and adding a
+  passkey waited forever.
+- The desktop app's sign-in screen, and the browser page that hands a sign-in
+  back to it, no longer claim the server has no sign-in providers configured.
+  The desktop app's line now names the ways this server offers, Google
+  included.
+- The Diesel medal is no longer handed to whoever joined first when nobody
+  rode a steady step — a game session, or a workout of only ramps, sprints
+  or free riding. It now goes only to a rider whose steady power was measured.
+- On a phone, a direct message with a friend whose status is long no
+  longer scrolls sideways or pushes their status under the Poke button.
+  The status is cut short in the header instead.
+- A crew you founded that nobody else is in no longer sticks to you for good.
+  Delete its channels and it goes with the last one, which frees one of your
+  three founding slots. The confirm says so before you click. A crew with no
+  channels left also goes when its last member leaves, and that member is told
+  first. A crew with a channel is never deleted this way.
+- While your crews, library or messages are loading, or if they fail to load,
+  WattRoom no longer tells you to start your first crew, add your first tracks
+  or message a friend. Home waits for your crew list before offering "Start a
+  crew", so you cannot found a duplicate by accident.
+- Your data export now includes the pins you wrote on a crew's board, the crew
+  you chose as home, an invite you have not taken up yet, and whether your
+  status emoji is a crew's own picture.
+- Locked achievements, empty medal counts, away riders' names, an offline
+  rider's initial, the jukebox's "just played" list and the small print on a
+  few buttons are no longer faded below readable contrast. A locked badge
+  still shows its lock, and an away rider their away mark.
+- The power gauge no longer disappears in Windows high-contrast mode. The
+  riding screen kept the big number and "on target" but painted the bar, the
+  target band and its marker away, so there was nothing to read your power
+  against; they now draw in your contrast theme's own colours, and so do the
+  zone bars on rider tiles, the TV and the execution meter.
+- Checkboxes, radio buttons, text fields and sliders have edges you can see.
+  On the light themes an unchecked box was a faint outline, so settings like
+  "list the crew in the directory" read as bare labels; every form control's
+  edge now clears the contrast a control needs, in every theme.
+- A free ride now counts as a ride everywhere: the screen goes dark as it does
+  in a session, the desktop app's floating HUD shows your watts and time
+  ridden, and tapping another voice channel asks before it ends the ride and
+  lets your trainer go.
+- Undo after removing a friend or withdrawing a friend request now sends
+  them a new request, even when you share no crew with them. It used to fail
+  for friends made by trading codes, told you to ask for the code you had
+  just used, and still counted against your hourly friend requests.
+- A game started during a workout session now ends when the workout does.
+  Before, it kept running with nobody feeding it, knocked every rider out on
+  the same second and named a random winner.
+- Reloading the page, or a phone dropping Wi-Fi for a few seconds, no longer
+  costs you Sprint Roulette or the Points Race, or your place in the Team
+  Relay line. You leave the game only once you have been gone for 15 seconds.
+- A coach can hand the session only to someone riding in it. Handing it to
+  a spectator or to someone free-riding beside the session used to put them
+  on its timeline and take over their trainer. When a coach leaves, the
+  session also no longer passes to a rider who left the ride.
+- You can see and stop your heart rate going to the call again. Whenever bpm
+  is coming in — from a strap you paired, or relayed by your trainer with
+  nothing paired here — the riding screen, the free ride and the Lounge say
+  it is shared with the call, with a Stop sharing button beside it. The
+  control had been missing since early September, so a trainer-relayed heart
+  rate reached everyone in the voice channel with no way to turn it off.
+  Your choice also sticks now: setting a status used to write back whatever
+  the app had loaded at start, which could undo a sprint grade changed in
+  Equipment and would have switched sharing back on.
+- "In voice" now only ever means someone is on the call. The crew page listed
+  everyone standing in a voice channel under "in voice", even with nobody
+  talking; it and the sidebar's strip now say "in the channel", and the
+  strip's count includes you.
+- A crew code typed on Home or in the sidebar's + sheet now opens the crew's
+  invite, which says whether the crew keeps a weekly board, before you join.
+  Joining from that box used to put your kJ and time on the crew's board with
+  nothing having mentioned it. A mistyped code is still refused right under
+  the box.
+- On your profile, Disconnect and Remove are now disabled on your last way
+  to sign in, with the reason shown, instead of asking "are you sure" and
+  then being refused.
+- Joining a session partway through now saves the ride you rode. It is
+  scored against the blocks you actually rode, counts as completing the
+  session when you reach the end, and is dated (and sent to Strava) from
+  when you joined. Seconds replayed after a dropped connection land where
+  you rode them, with your trim and auto-pause, instead of at the end of
+  the ride. An outage longer than an hour no longer loses its newest part.
+- With "reduce motion" set on your device, nothing slides or glides any more
+  — the menu drawer, side sheets and the big number crossing the power bar
+  now simply appear. Backing out of "Leave the crew" with the keyboard puts
+  you back on its button, and the big number no longer overlaps the "watching
+  …" line above it on a phone.
+- With your targets trimmed (the ± control), the next block now shows the
+  watts your trainer will actually hold, on /ride, in a session and on the
+  TV. It showed the untrimmed number, and in a session the current block
+  did too.
+- A request to the sign-in start or callback of the dev or synthetic
+  provider now gets a 404 instead of crashing the handler and writing a
+  stack dump to the log. Any handler crash is now logged at ERROR, where
+  alerts can see it.
+- The server and the desktop app stopped talking about "rooms": a refused
+  poke, a too-big workout, a too-short ride, the DJ achievement, the email
+  after deleting your account, the desktop app's offline screen and its
+  microphone prompt now say crew, voice channel or session.
+- Each number on the riding screen is drawn once. On a phone, your own tile no
+  longer repeats the watts the big instrument already shows, and the rider you
+  follow keeps just their name and ring in the strip; on a wide screen the
+  execution scores sit only in the people column, which no longer prints each
+  rider's target watts beside their live ones.
+- Cancelling at Google, GitHub or Strava, reloading the page after a
+  sign-in, or finishing one in a second tab now lands on a page that
+  says what happened and links back to sign-in (or to your profile when
+  you were connecting a provider). Before, it showed raw error text with
+  no way back.
+- The level number on avatars and the tick in a checked box can be read in
+  every theme. Both were white on the violet fill, which in Monokai is a light
+  blue — about 2:1 — and the level number was 7 px. They now take whichever of
+  the theme's dark and light reads on it, and the number is 10 px.
+- A voice channel's people column no longer calls crew members "offline"
+  just because they are not in that channel. The last group is now "not
+  here", only friends show whether they are online, and you are never
+  listed there yourself, even when the channel cannot connect.
+- On a phone, a voice channel's page now names the channel in the top bar
+  instead of "WattRoom", and riders without a camera sit two to a row rather
+  than one wide empty frame each, so the channel's buttons stay on screen.
+- A playlist can be deleted from its row, not only from its right-click
+  menu, so touch and keyboard riders can reach it. Deleting a crew playlist
+  that a voice channel plays when its queue runs dry now asks first and
+  names the channel. Undo can bring the tracks back, but not the channel's
+  autoplay.
+- The crew's door, Settings › Your data and the privacy policy now say who
+  really sees your live numbers. Since free rides, that is whoever has the
+  voice channel open while you ride there, in a session or not, and it
+  includes your heart rate until you stop sharing it. Before, they still
+  promised your numbers stayed inside a session.
+- A dropped connection or a lost trainer during a free ride or a session now shows on every page, not only on the ride's own — a rider reading chat mid-ride is told, and sees how much riding this device is holding.
+- A rider's page no longer says their live numbers "stay inside the session".
+  Since free rides they reach the voice channel the rider rides in, and the
+  page now says so, like the crew's door and the privacy policy.
+- The header buttons you reach for while pedalling are now full riding
+  size: "Start a session" on a free ride, and "Unpair trainer" in a
+  running session. On a phone, "Save a copy", "Build a workout",
+  "Import a file" and the "Advanced" folds are big enough to tap.
+- Backyard Ramp and The Floor Is Lava no longer hand out places at random when
+  riders go out in the same second. Riders knocked out together now finish in
+  a fixed order, so the podium and the win credit stop depending on luck.
+- A session is held to a day however it is started or planned. Before, a
+  workout built from long steps could start or be planned for hundreds of
+  hours, keeping its voice channel shut. A ride in a session longer than six
+  hours now saves to its end instead of stopping at hour six.
+- The sidebar's session line and the crew page's "live now" count only the
+  riders who joined the session. Someone standing in the voice channel
+  without joining made them say "3 riding" while two rode. The sidebar now
+  says "N riding" instead of a bare number.
+- Saving a ride, uploading a track or importing a file while the server
+  restarts for an update now finishes instead of failing. XP earned in the
+  last moments before the restart is kept too.
+- A slow or waking server no longer leaves a black screen: opening a crew,
+  channel or settings link shows WattRoom's mark while it loads, a tap in the
+  sidebar shows a loading bar at the top, and a read that never answers turns
+  into an error with Retry. Settings pages no longer wait on the build number
+  in their footer.
+- A voice channel's log now says a session "started" instead of "is
+  starting", which stayed there long after it had started, and even above
+  the line saying it ended.
+- Revoking WattRoom on Strava's own site now disconnects it here too. Until
+  now only the disconnect in Settings forgot the Strava sign-in and the ids of
+  uploaded activities; revoking at strava.com left both with us, and every
+  later ride failed its upload five times over. Operators: set
+  `WATTROOM_STRAVA_WEBHOOK_TOKEN` and create the Strava subscription described
+  in `deploy/.env.example` so a revocation is heard the moment it happens.
+- Uploading music no longer holds whole tracks in the server's memory. A
+  track went into memory in full before anything was checked, so a few large
+  uploads at once could starve the server — and the database beside it — mid
+  ride. Tracks are now written to disk as they arrive, one upload per rider
+  at a time, and an upload that stalls is cut off after ten minutes.
+- When your trainer drops, the power number stops glowing its last value
+  and "on target": it reads "—" with "no signal", and so do rpm and w/kg,
+  until the trainer is back. The crew sees it too — you drop out of
+  "holding target" and your tile reads "no signal". Solo rides, the ramp
+  test and sessions now show the same dropout banner, and each offers
+  "Pair the trainer again" while the trainer is still reconnecting.
+- A video nobody could play (removed, private, or blocked from embedding), or
+  a library track that has gone, no longer counts towards the DJ trophy. The
+  jukebox still skips it for everyone, and it now counts as a skip, not a play.
+- When the server's voice service is down, Join voice now says so and stays
+  off until it is back, instead of failing and telling you to check your own
+  connection. A join that does not connect says it once, with one Try voice
+  again, and no longer claims your call "didn't come back".
+- The sidebar's "with you in" strip stays off Training and a session's own
+  page, as it already did on the Lounge. Those pages show the riders in the
+  crew strip and the people column, so the strip only repeated them.
+- A ride that ended before the warm-up was over no longer saves as 0 %
+  execution. Nothing in it was scored, so its ride page shows a dash like
+  the end-of-ride summary did, and it no longer counts as your result in
+  "Against your best".
+- A Wi-Fi blip no longer tells your phone the trainer is free while your
+  desktop is still riding on it. If the phone took it, the desktop stopped
+  setting the trainer's resistance and its watts dropped out of the session.
+- Zone names and crewmates' watts are readable at every effort. The zone
+  under the big number, the watts in the crew strip, your heart rate and the
+  zones on your profile were written in the zone's own colour, so a warm-up
+  in zone 1 was near-invisible from the bike; they are now drawn in text
+  colours with a coloured dot beside them for the zone.
+
+### Security
+
+- Joining a crew whose weekly board is off no longer puts you on that board
+  when an admin turns it on later. The door said nobody would see your
+  numbers, and now it holds to that. Riders already in such a crew start off
+  the board too, and can switch themselves on from the Members page.
+- A flood of requests from thousands of addresses can no longer lock new riders
+  out of signing in, the crew door or account recovery. An IPv6 network now
+  counts as one address, and when recovery is overloaded it says so instead of
+  blaming the address you typed.
+- A write in a text channel is announced only to riders who may enter
+  it. Before, every signed-in rider's app was told the moment of each
+  line in any channel whose id they held — private channels included,
+  and after a ban. Following an old room link now also names only the
+  crew and channels it would open, and is rate limited like a crew code.
+- A chat link written as `wattroom.ch//another-site` (or with a backslash)
+  now opens in a new tab with its preview card, like any outside link. It
+  used to pass for a WattRoom link and replace the app with that site.
+- A finished session's per-rider scores now go only to the riders who rode
+  it. Anyone who joined the voice channel afterwards, before the next session
+  started, used to receive every rider's score with each update, though the
+  app never showed them.
+- A crew's invite link no longer confirms which codes are real to anyone
+  guessing at full speed. The page behind `/c/<code>` put the crew's name in
+  its title with no limit per address, beside a door and a share card that
+  were rate-limited against exactly that; it now spends the same ceiling and
+  falls back to the site's own title past it.
+- A flag report now keeps only your own server log lines, as the flag
+  promises. Until now each report also stored the server's latest 400 lines
+  about everyone else online — their joins, leaves and account changes.
+- Making a voice channel private now removes the members it no longer admits
+  from the channel and its call straight away. Before, anyone already
+  connected kept seeing everyone's live numbers there, heart rate included,
+  until they happened to disconnect. The same goes for an admin demoted to
+  member while in a private channel that does not name them. And the rider a
+  crew is handed on to gets the owner's controls on the connection they
+  already have, without reconnecting.
+- Signing in with a passkey now always asks for your PIN, fingerprint or face,
+  never just the key. Phones and laptops already did; a security key without a
+  PIN has to be given one before you can add it or sign in with it.
+- Deleting your account in the middle of a session now keeps you off that
+  session's recap too. Until now the recap written when the session ended
+  still named you and your time in it, for the 90 days your crew can read it.
+- Recovering an account by email now revokes every personal token too, so a
+  token minted from a borrowed session no longer keeps reading your rides
+  afterwards. The page after recovery says how many went, so you can mint your
+  coach a new one. Creating a personal token now sends the same security email
+  as adding a passkey.
+- A laptop two riders share no longer hands one rider's unsaved ride to the
+  next. A crashed or unsaved ride, heart rate included, is offered back only to
+  the account that rode it and waits for them across a sign-out; a ride kept
+  from before this release can still be downloaded but not saved into whoever
+  is signed in. Deleting your account now also clears your rides, ride
+  summaries and cached FTP, weight and LTHR from that browser, and an account
+  with no LTHR no longer picks up the previous rider's.
+- Signing out everywhere, removing a passkey or sign-in provider, recovering
+  an account by email and deleting an account now cut off the screens they
+  sign out at once. Before, a tab that was already open kept receiving the
+  crew's live watts and heart rate, kept acting as the rider and stayed in
+  the voice call until it was closed. The screen you do this from stays
+  signed in. If it is in a voice call, it drops out and rejoins after about
+  two seconds. Signing out in one tab also cuts the live feed to the other
+  tabs of that browser, which share its sign-in.
+
 ## [2026.09.145] - 2026-09-25
 
 ### Added
@@ -3096,7 +3436,8 @@ the git history.*
   reachable for as long as it had been running. The fix itself is unchanged;
   only the claim about impact was false.
 
-[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.145...HEAD
+[Unreleased]: https://github.com/natrontech/wattroom/compare/2026.09.146...HEAD
+[2026.09.146]: https://github.com/natrontech/wattroom/compare/2026.09.145...2026.09.146
 [2026.09.145]: https://github.com/natrontech/wattroom/compare/2026.09.144...2026.09.145
 [2026.09.144]: https://github.com/natrontech/wattroom/compare/2026.09.143...2026.09.144
 [2026.09.143]: https://github.com/natrontech/wattroom/compare/2026.09.142...2026.09.143
