@@ -39,6 +39,12 @@ test('the coach hands the session to another rider', async ({
 		.click();
 	await picker.getByRole('button', { name: 'Start without a trainer' }).click();
 
+	// A session goes to someone riding in it (ADR-0059, #2829): the taker
+	// joins the ride first, which is what puts them on the coach's list.
+	await taker
+		.getByRole('link', { name: 'Join the ride' })
+		.click({ timeout: COUNTDOWN_MS + 15_000 });
+
 	// The visible way in, beside the coach's other controls.
 	await coach
 		.getByRole('button', { name: 'hand the session off' })
@@ -59,8 +65,13 @@ test('the coach hands the session to another rider', async ({
 	await expect(
 		coach.getByRole('button', { name: 'end the session' }),
 	).toHaveCount(0);
-	// The line is the channel's, read on its page: the taker is there, and
-	// the coach is on the ride (#2599).
+	// The line is the channel's, read on its page (#2599). The taker rides
+	// the session now (#2829), so they walk back to the channel inside the
+	// app: its timeline lives in the channel's store, and a reload drops it.
 	const line = `${COACH} handed the session to ${TAKER}`;
-	await expect(taker.getByText(line)).toBeVisible();
+	await taker
+		.locator(`a[href="${voicePath(opened)}"]`)
+		.first()
+		.click();
+	await expect(taker.getByText(line)).toBeVisible({ timeout: 15_000 });
 });
