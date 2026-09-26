@@ -215,6 +215,22 @@ describe('channelConnection', () => {
 		}
 	});
 
+	// #2885: the ride's status lives in the place's shell, so a rider who
+	// pedals on into a chat channel lost every word of a dropped connection.
+	it('says a held ride is away from its place only off the place', () => {
+		const connection = channelConnection.join(
+			channelAddress('c', 'lounge', 'Lounge'),
+		);
+		const chat = '/crew/c/c/talk';
+		expect(channelConnection.ridingAway(chat)).toBe(false);
+
+		connection.freeRide.arm();
+		connection.freeRide.second({ watts: 150, cadence: 90, hr: 0 });
+
+		expect(channelConnection.ridingAway(chat)).toBe(true);
+		expect(channelConnection.ridingAway('/crew/c/v/lounge')).toBe(false);
+	});
+
 	it('claims the trainer for this tab, and releases it on unpair', async () => {
 		// The claim is what stops a second screen pairing the same trainer and
 		// feeding a second stream of watts into one ride record (#610).
