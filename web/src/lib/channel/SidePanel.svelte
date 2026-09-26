@@ -248,7 +248,7 @@
      width it sets, the same way it did for the native grip. -->
 <aside
 	{@attach (node) => keepSize(node, 'side-panel')}
-	class="border-ink/5 relative h-full w-80 shrink-0 overflow-hidden border-l"
+	class="border-ink/5 relative h-full w-68 shrink-0 overflow-hidden border-l"
 	style="min-width: 240px; max-width: 40vw"
 >
 	<!-- The panel is right of its divider: pulling left makes it wider. -->

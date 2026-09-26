@@ -57,6 +57,10 @@
 	// Configured is not up (#2850): with the call server down, Join voice
 	// is drawn disabled with the reason, not offered to fail.
 	const voiceDown = $derived(!voiceUp(account.me));
+	// Mid-ride the way into voice is not a ride control, so it is not the
+	// loudest thing on the riding screen (#2882 L6-12, ux.md): quieter weight,
+	// and the privacy promise moves into its title.
+	const riding = $derived(!!conn?.riding());
 	// On the channel's own pages its banner owns a failed join — the reason
 	// and the one big button (#2850) — so the reason is not said twice here.
 	const onPlace = $derived(channelConnection.onPlacePath(pathname));
@@ -185,9 +189,9 @@
 							<span class="text-z5">voice reconnecting…</span>
 						{:else if voiceStatus === 'failed'}
 							<span class="text-danger">voice failed</span>
-						{:else}
-							<span class="text-muted">not in voice</span>
 						{/if}
+						<!-- Nothing for "not in voice": the Join voice button right below
+						     says it (#2882 L6-12). -->
 					</span>
 				{/if}
 			</span>
@@ -222,7 +226,12 @@
 					<button
 						onclick={() => onJoin?.()}
 						disabled={voiceDown}
-						class="btn btn-primary min-h-11 flex-1"
+						title={riding && !voiceDown
+							? 'Never recorded. Your mic opens when you speak.'
+							: undefined}
+						class="btn {riding
+							? 'btn-secondary'
+							: 'btn-primary'} min-h-11 flex-1"
 						><Headphones size={13} />
 						{voiceStatus === 'failed'
 							? 'Try voice again'
@@ -230,7 +239,7 @@
 					>
 				{/if}
 				<QuickAudio compact />
-				{#if voiceStatus !== 'connecting' && voiceStatus !== 'reconnecting'}
+				{#if voiceStatus !== 'connecting' && voiceStatus !== 'reconnecting' && (!riding || voiceDown)}
 					<!-- The promise at the moment of the decision: AV is transit-only
 					     (WATTROOM.md) and the mic gates on speech (docs/SPEC.md). Said on
 					     the marketing page and in settings, never here — where a rider

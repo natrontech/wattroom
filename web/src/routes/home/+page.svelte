@@ -8,6 +8,7 @@
 	import { presence } from '$lib/presence.svelte';
 	import { friends, friendsAround } from '$lib/friends/friends.svelte';
 	import FriendsAround from '$lib/friends/FriendsAround.svelte';
+	import { aroundNow, namedInCards } from '$lib/home/around-now';
 	import { weekTotals } from '$lib/ride/week';
 	import { revealCrews } from '$lib/home/reveal';
 	import { page } from '$app/state';
@@ -103,7 +104,14 @@
 	// The friends the app already keeps (#1740): this page used to fetch its
 	// own copy on every ping — and filter it on a status the server never
 	// sends, so the row never rendered for anyone.
-	const friendsOnline = $derived(friendsAround(friends.list ?? []));
+	// Named once (#2882 L6-11): a friend standing in a voice channel is in its
+	// card in Around right now, so the chips are the friends who are not.
+	const inCards = $derived(
+		namedInCards(aroundNow(crewLive.crews, account.me?.id ?? '')),
+	);
+	const friendsOnline = $derived(
+		friendsAround(friends.list ?? []).filter((f) => !inCards.has(f.id)),
+	);
 
 	const recent = $derived((rides ?? []).slice(0, 3));
 	// Sent to a door and not through it: the one predicate the button's word,
