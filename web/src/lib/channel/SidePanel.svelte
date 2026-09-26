@@ -165,23 +165,19 @@
 					{/if}
 					{#if live && rider.watts > 0}
 						{@const now = targetState(rider)}
-						{#if now.has}
-							<!-- Whether they are holding it THIS second, coloured the way
-							     the ride screen's own target reads (Instrument). The bar
-							     below is the session so far, and a spectator had only
-							     that: 0 % beside a tile at 136 W read as broken. -->
+						{#if rider.execution !== undefined}
+							<!-- Whether they are holding it THIS second, in the colour the
+							     ride screen's own target reads (Instrument); the bar below
+							     is the session so far. The target's watts were printed here
+							     too, and beside the tile's live watts they read as a second
+							     number disagreeing with the first (#2882 L6-09). -->
 							<span
-								class="shrink-0 text-[10px] tabular-nums {now.inBand
+								class="shrink-0 text-[10px] tabular-nums {now.has && now.inBand
 									? 'text-z4'
 									: 'text-muted'}"
-								title="{rider.name}'s target is {rider.target} W — {now.inBand
-									? 'holding it'
-									: 'off it'} right now">{rider.target} W</span
-							>
-						{/if}
-						{#if rider.execution !== undefined}
-							<span class="text-muted shrink-0 text-[10px] tabular-nums"
-								>{Math.round(rider.execution * 100)}%</span
+								title={now.has
+									? `${rider.name} is ${now.inBand ? 'holding' : 'off'} target right now`
+									: undefined}>{Math.round(rider.execution * 100)}%</span
 							>
 						{/if}
 					{/if}

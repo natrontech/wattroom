@@ -73,6 +73,19 @@ describe('crewOf', () => {
 		expect(ids(crewOf(riders, true))).toEqual(['me', 'a']);
 	});
 
+	// #2882 L6-13: on a 375 px screen your watts, rpm and w/kg were drawn
+	// twice — the instrument follows you while you pedal, and your tile
+	// repeated it underneath.
+	it('leaves you out on the phone when the instrument already follows you', () => {
+		const riders = [rider('a'), rider('me', { you: true, watts: 200 })];
+		expect(ids(crewOf(riders, true, 'me'))).toEqual(['a']);
+	});
+
+	it('keeps you on the phone while the instrument follows someone else', () => {
+		const riders = [rider('a'), rider('me', { you: true, watts: 200 })];
+		expect(ids(crewOf(riders, true, 'a'))).toEqual(['me', 'a']);
+	});
+
 	it('leaves a spectator with no camera out on the phone', () => {
 		const riders = [rider('a'), rider('me', { you: true })];
 		expect(ids(crewOf(riders, true))).toEqual(['a']);

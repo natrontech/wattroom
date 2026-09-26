@@ -69,7 +69,7 @@
 	// The followed rider stays in the strip, pressed (#1627): excluded, the
 	// toggle-off tap had nothing to land on and a phone could never stop
 	// following.
-	const crew = $derived(crewOf(inRide, true));
+	const crew = $derived(crewOf(inRide, true, followed?.id ?? null));
 </script>
 
 <div class="flex h-full min-h-0 flex-col">

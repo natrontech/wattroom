@@ -320,7 +320,12 @@
 						<!-- Not while a screen has the focus: this row already picks up
 						     the compact instrument there, and the player's own floor
 						     (RMF) is what the width is for. -->
-						<div class="ml-auto max-h-32 w-64 shrink-0 overflow-y-auto">
+						<!-- Below xl only (#2882 L6-09): from xl the people column is on
+						     screen and carries each rider's execution beside their name,
+						     so a second copy here was the contest drawn twice. -->
+						<div
+							class="ml-auto max-h-32 w-64 shrink-0 overflow-y-auto xl:hidden"
+						>
 							<ExecutionMeter riders={riding} />
 						</div>
 					{/if}
