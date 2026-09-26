@@ -226,3 +226,31 @@ func TestAutoplayOffLeavesADryDeckIdle(t *testing.T) {
 		t.Fatalf("autoplay off must leave a dry deck idle: %+v", deck)
 	}
 }
+
+// deadlineSpy reports whether the read it was handed can end on its own.
+type deadlineSpy struct{ bounded chan bool }
+
+func (d *deadlineSpy) Autoplay(ctx context.Context, _ string, _ SessionMood) ([]protocol.JukeboxCommand, bool) {
+	_, ok := ctx.Deadline()
+	d.bounded <- ok
+	return nil, false
+}
+
+// The one autoplay worker serves every voice channel on the server, so a
+// read that hangs stalls autoplay everywhere and the queue fills behind it
+// (#2874). Its read carries a deadline, like the seed read beside it and
+// like gamify's worker since the 2026-09-09 audit.
+func TestTheAutoplayReadHasADeadline(t *testing.T) {
+	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	spy := &deadlineSpy{bounded: make(chan bool, 1)}
+	h.SetPlaylistSource(spy)
+	h.triggerAutoplay(newRoom("deadline"), "deadline")
+	select {
+	case bounded := <-spy.bounded:
+		if !bounded {
+			t.Fatal("the autoplay read has no deadline — one hung statement stalls every channel's autoplay")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the worker never ran the job")
+	}
+}

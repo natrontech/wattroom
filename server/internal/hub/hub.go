@@ -14,6 +14,7 @@ import (
 
 	"github.com/coder/websocket"
 
+	"github.com/natrontech/wattroom/server/internal/jobmetrics"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/safego"
 )
@@ -244,10 +245,25 @@ func (h *Hub) autoplayWorker() {
 		// Read the mood at the moment of the REFILL, not when the job was
 		// queued: the worker can lag a busy hub, and a block that has since
 		// ended is not what the room is riding.
-		tracks, ok := h.playlists.Autoplay(context.Background(), job.channel, job.rm.mood(h.now()))
+		//
+		// Bounded (#2874): this one worker serves every channel, so a read
+		// that hung would stall autoplay everywhere while the queue filled.
+		ctx, cancel := context.WithTimeout(context.Background(), autoplayBudget)
+		tracks, ok := h.playlists.Autoplay(ctx, job.channel, job.rm.mood(h.now()))
+		jobmetrics.Ran(autoplayJobName, ctx.Err())
+		cancel()
 		job.rm.applyAutoplay(tracks, ok, h.now())
 	}
 }
+
+// autoplayBudget bounds one autoplay read: a channel's settings and one
+// playlist's tracks, or smart shuffle's history — gamify's jobBudget shape.
+const autoplayBudget = 5 * time.Second
+
+// autoplayJobName is the worker's name to the operator's metrics
+// (jobmetrics): its runs, the reads that timed out, the jobs a full queue
+// dropped.
+const autoplayJobName = "hub autoplay"
 
 // recordTrackEvent logs one pool track the deck finished with (#269). The
 // deck has already moved on, so nothing is waiting on this — but it runs
@@ -292,6 +308,7 @@ func (h *Hub) triggerAutoplay(rm *room, channel string) {
 		// will try again — better than a joining rider's upgrade or read
 		// loop blocking.
 		h.log.Warn("autoplay queue full, skipping", "channel", channel)
+		jobmetrics.Dropped(autoplayJobName)
 	}
 }
 
