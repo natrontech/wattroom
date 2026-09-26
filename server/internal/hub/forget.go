@@ -34,8 +34,8 @@ const roomIdleTTL = 2 * time.Hour
 //     timeline still holds samples nobody has saved, and this room's clock is
 //     the only thing that will close and save them (closeLocked) — forgetting
 //     the room would discard the ride. A running timeline ends itself when the
-//     workout runs out; a paused one keeps the room until somebody resumes or
-//     ends it.
+//     workout runs out; a paused one is ended by the empty room's tick once
+//     nobody has been in the channel for abandonedSessionAfter (#2813).
 //
 // The deck is deliberately not a condition. The server holds an anchor and no
 // duration (docs/SPEC.md, sync tolerances): only a client reports `ended`, so

@@ -23,6 +23,30 @@ type sessionEnd struct {
 	recaps    RecapKeeper
 }
 
+// abandonedSessionAfter is how long a paused session may sit with nobody in
+// the channel before the hub ends it (docs/SPEC.md, #2813).
+const abandonedSessionAfter = 10 * time.Minute
+
+// endAbandonedSessionLocked ends a paused session nobody is left to resume
+// (#2813). A paused timeline has no clock to run out, so without this its
+// rides waited for the coach or an admin, and a deploy discarded them first.
+// Ended here, the same tick's closeLocked saves them. Countdown and running
+// are left alone: their own clocks close them. Called from the empty room's
+// tick. Caller holds rm.mu.
+func (rm *room) endAbandonedSessionLocked(now time.Time) {
+	if rm.session.phase != "paused" || len(rm.voiceNow) > 0 {
+		rm.abandonedSince = time.Time{}
+		return
+	}
+	if rm.abandonedSince.IsZero() {
+		rm.abandonedSince = now
+	}
+	if now.Sub(rm.abandonedSince) >= abandonedSessionAfter {
+		rm.session.end(now)
+		rm.abandonedSince = time.Time{}
+	}
+}
+
 // closeLocked snapshots the session exactly once, on the tick its phase
 // crosses to done — nil on every other tick. Caller holds rm.mu.
 func (rm *room) closeLocked(state protocol.SessionState, now time.Time, saving bool) *sessionEnd {
