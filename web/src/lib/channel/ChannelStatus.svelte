@@ -9,9 +9,10 @@
 	// with no power is broken and a ride with no talking is not. Keeping the
 	// chain in one file is what keeps that order readable (#686).
 	//
-	// Reads the connection rather than taking eight props: it is only ever
-	// rendered inside the shell, which has already joined, and this is the
-	// pattern the channel's other components follow.
+	// Reads the connection rather than taking eight props: it is rendered by
+	// the shell, which has already joined, or by the frame while a held ride
+	// is off its place (#2885), and this is the pattern the channel's other
+	// components follow.
 	import Banner from '$lib/components/Banner.svelte';
 	import { device } from '$lib/device.svelte';
 	import FaultBanner from '$lib/channel/FaultBanner.svelte';

@@ -476,6 +476,15 @@
 						onSound={(on) => void av.setShareSound(on)}
 					/>
 				{/await}
+				{#if channelConnection.ridingAway(page.url.pathname)}
+					<!-- The ride's status, off its place (#2885): the place's shell
+					     draws it there and is not mounted here, and the ride records
+					     on while the rider reads chat. A dropped connection or a lost
+					     trainer is ride-critical wherever the rider is (errors.md). -->
+					{#await import('$lib/channel/ChannelStatus.svelte') then { default: ChannelStatus }}
+						<ChannelStatus />
+					{/await}
+				{/if}
 			{/if}
 			<!-- The page body. It scrolls down, never sideways: wide content
 			     wraps itself in its own overflow-x container (.claude/rules/ux.md).

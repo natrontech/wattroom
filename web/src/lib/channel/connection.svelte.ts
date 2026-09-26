@@ -330,6 +330,18 @@ export const channelConnection = {
 			onPlacePath(pathname, current.address, current.live.tick?.state.id)
 		);
 	},
+	/**
+	 * A ride is held — a free ride, or the session you joined — and `pathname`
+	 * is not its place (#2885): the place's own shell carries the ride's status
+	 * and is not mounted here, so the frame has to.
+	 */
+	ridingAway(pathname: string): boolean {
+		return (
+			!!current &&
+			(current.freeRide.recording || current.joined()) &&
+			!this.onPlacePath(pathname)
+		);
+	},
 	/** Idempotent per place; switching places leaves the old one first. */
 	join(address: PlaceAddress) {
 		if (current?.address.key === address.key) return current;
