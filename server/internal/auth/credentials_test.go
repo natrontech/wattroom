@@ -348,3 +348,19 @@ func TestStravaSideRevocationOfTheLastCredentialEmptiesIt(t *testing.T) {
 		t.Errorf("alerts = %+v, want none", got)
 	}
 }
+
+// /api/me says how many ways into the account there are (#2879), so the
+// profile can draw the last one's Disconnect or Remove disabled with the
+// reason, rather than asking "are you sure" and then being refused.
+func TestMeCountsTheWaysIn(t *testing.T) {
+	s := testService(t)
+	user := testUser(t, s)
+	linkIdentity(t, s, user, "github", "ways-in-github")
+	if got := s.fullMe(t.Context(), user).Credentials; got != 1 {
+		t.Fatalf("one provider counts %d ways in, want 1", got)
+	}
+	linkIdentity(t, s, user, "google", "ways-in-google")
+	if got := s.fullMe(t.Context(), user).Credentials; got != 2 {
+		t.Fatalf("two providers count %d ways in, want 2", got)
+	}
+}

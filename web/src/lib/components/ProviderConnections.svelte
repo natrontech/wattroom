@@ -9,6 +9,7 @@
 	import { account } from '$lib/account.svelte';
 	import { api } from '$lib/api';
 	import { providerName } from '$lib/auth/providers';
+	import { LAST_WAY_IN, isLastWayIn } from '$lib/auth/last-way-in';
 	import { shellVersion } from '$lib/desktop';
 
 	let {
@@ -69,6 +70,8 @@
 
 	let disconnectError = $state('');
 	let disconnecting = $state('');
+	// The server refuses the last way in; the button says so first (#2879).
+	const lastWayIn = $derived(isLastWayIn(account.me));
 
 	// A confirm rather than an undo toast (.claude/rules/errors.md): undoing
 	// means a whole OAuth round trip, and for Strava the grant is handed back
@@ -150,14 +153,18 @@
 					<span class="min-w-0 flex-1 truncate">{providerName[id] ?? id}</span>
 					<button
 						onclick={() => disconnect(id)}
-						disabled={disconnecting === id}
-						class="btn btn-danger btn-xs"
+						disabled={disconnecting === id || lastWayIn}
+						title={lastWayIn ? LAST_WAY_IN : undefined}
+						class="btn btn-danger btn-xs disabled:opacity-40"
 					>
 						{disconnecting === id ? 'Disconnecting…' : 'Disconnect'}
 					</button>
 				</li>
 			{/each}
 		</ul>
+		{#if lastWayIn}
+			<p class="text-muted mt-1.5 text-[11px]">{LAST_WAY_IN}</p>
+		{/if}
 	{/if}
 
 	{#if connectable.length > 0}
