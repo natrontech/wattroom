@@ -12,6 +12,7 @@
     "dist": "electron-builder"
   },
   "devDependencies": {
+    "@electron/fuses": "1.8.0",
     "@playwright/test": "^1.63.0",
     "electron": "^44.4.1",
     "electron-builder": "26.16.1"
@@ -20,6 +21,11 @@
     "appId": "ch.wattroom.desktop",
     "productName": "WattRoom",
     "icon": "build/icon.png",
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false
+    },
     "files": [
       "main.js",
       "preload.js",
