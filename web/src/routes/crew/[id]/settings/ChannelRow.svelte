@@ -93,6 +93,22 @@
 		await onchange();
 	}
 
+	// Undo over confirm (errors.md, #2885): naming them again is the way
+	// back, and a slip on the button used to leave no word of it.
+	async function takeOut(member: { id: string; displayName: string }) {
+		busy = true;
+		const res = await setNamedInChannel(channel.id, member.id, false);
+		busy = false;
+		if (!res.ok) {
+			toasts.push(res.error.message, { tone: 'error' });
+			return;
+		}
+		await onchange();
+		toasts.push(`Took ${member.displayName} out of ${channel.name}.`, {
+			undo: () => void setNamed(member.id, true),
+		});
+	}
+
 	async function remove() {
 		busy = true;
 		const stands = await deleteChannelFlow(channel, crewId);
@@ -190,7 +206,7 @@
 								/>
 							</span>
 							<button
-								onclick={() => void setNamed(member.id, false)}
+								onclick={() => void takeOut(member)}
 								disabled={busy}
 								class="btn btn-ghost btn-xs">Take out</button
 							>

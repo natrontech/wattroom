@@ -137,6 +137,14 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(/,
 	},
 	{
+		// #2885: the upload is deleted server-side, for every member and the
+		// directory at once. Tied to the copy — this page holds another ask.
+		file: 'routes/crew/[id]/settings/+page.svelte',
+		action:
+			"remove the crew's picture — everyone stops seeing it, and the file is gone",
+		asks: /confirm\(\{[\s\S]{0,80}?title: "Remove the crew's picture\?"/,
+	},
+	{
 		file: 'routes/history/+page.svelte',
 		action: 'clear this device’s ride summaries',
 		asks: /confirm\(/,
@@ -227,6 +235,14 @@ const PRIMITIVES: { call: RegExp; callers: string[]; guard: string }[] = [
 			'lib/crew-flows.ts',
 		],
 		guard: 'deleteChannelFlow in lib/crew-flows.ts',
+	},
+	{
+		call: /\bclearCrewImage\(/,
+		callers: [
+			'lib/crew.ts', // the definition
+			'routes/crew/[id]/settings/+page.svelte',
+		],
+		guard: "the crew settings page's confirm (#2885)",
 	},
 	{
 		call: /\btransferCrew\(/,
