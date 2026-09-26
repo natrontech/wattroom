@@ -83,9 +83,13 @@
 	{@const av = conn.av}
 	<div class="border-ink/5 border-t px-3 pt-2.5 pb-1.5">
 		<div class="eyebrow flex min-w-0 items-center gap-1.5 pb-1.5">
-			<span class="shrink-0">with you in</span>
+			<!-- The people column's words for standing in a channel (#2854), and
+			     its count: everyone there, you included. -->
+			<span class="shrink-0">in the channel</span>
 			<span class="text-ink min-w-0 truncate normal-case">{placeName}</span>
-			<span class="num ml-auto shrink-0 tracking-normal">{others.length}</span>
+			<span class="num ml-auto shrink-0 tracking-normal"
+				>{others.length + 1}</span
+			>
 		</div>
 		<div class="grid grid-cols-2 gap-1.5">
 			{#each shown as rider (rider.id)}

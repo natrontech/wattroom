@@ -34,7 +34,7 @@ test('the TV counts in, and steps aside for the summary', async ({
 		.getByRole('button', { name: 'Ride simulated' })
 		.click({ timeout: 15_000 });
 	// Through the app, not a reload: the simulated trainer lives in the page.
-	// The channel's own row: the "with you in" strip links there too once
+	// The channel's own row: the "in the channel" strip links there too once
 	// the coach is in the call.
 	await rider
 		.locator(
