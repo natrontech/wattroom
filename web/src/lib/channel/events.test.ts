@@ -80,7 +80,7 @@ describe('eventText, session lines (#359)', () => {
 	it('names the workout, not a rider, when the timeline itself moves', () => {
 		// Nobody's name: the clock closes a session as readily as a coach.
 		expect(eventText(plan({ verb: 'started', actor: '', when: 0 }))).toBe(
-			'Sweet Spot 2×20 is starting',
+			'Sweet Spot 2×20 started',
 		);
 		expect(eventText(plan({ verb: 'ended', actor: '', when: 0 }))).toBe(
 			'Sweet Spot 2×20 ended',
