@@ -2,6 +2,8 @@
 // camera rig, the riders and the trail advance only on frames it renders,
 // at 30 fps paced on vsync, and nothing runs while the tab is hidden. It
 // builds no DOM — the caller hands it a canvas and takes it back on dispose.
+// mount() throws when the scene will not start (no WebGL, most often), having
+// released whatever it had made.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { pace, pixelRatio } from './budget';
@@ -199,14 +201,25 @@ export function mount(
 		cancelAnimationFrame(raf);
 	}
 	const onVisibility = () => (document.hidden ? stop() : start());
+	function release() {
+		controls?.dispose();
+		disposeTree(scene);
+		renderer.dispose();
+		renderer.forceContextLoss(); // stay clear of the browser's cap on live contexts
+	}
 
-	dress(opts.style);
-	fit();
+	try {
+		dress(opts.style);
+		fit();
+		advanceBy(0);
+		renderer.render(scene, camera); // the first frame, before the loop's first tick
+	} catch (err) {
+		release(); // a scene that did not start holds no context either
+		throw err;
+	}
 	const observer = new ResizeObserver(fit);
 	observer.observe(canvas);
 	document.addEventListener('visibilitychange', onVisibility);
-	advanceBy(0);
-	renderer.render(scene, camera); // the first frame, before the loop's first tick
 	start();
 
 	return {
@@ -225,10 +238,7 @@ export function mount(
 			stop();
 			document.removeEventListener('visibilitychange', onVisibility);
 			observer.disconnect();
-			controls?.dispose();
-			disposeTree(scene);
-			renderer.dispose();
-			renderer.forceContextLoss(); // stay clear of the browser's cap on live contexts
+			release();
 		},
 	};
 }

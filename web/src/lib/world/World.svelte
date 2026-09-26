@@ -5,6 +5,7 @@
 	import { onMount, untrack } from 'svelte';
 	import Profile from './Profile.svelte';
 	import { buildFailureMessage, parseGpx } from './gpx';
+	import { placeScene } from './place-scene';
 	import { toRoute, type Route } from './route';
 	import { mount, type CameraMode, type Hud, type WorldScene } from './scene';
 	import type { Style } from './styles';
@@ -25,6 +26,8 @@
 	let building = $state(true);
 	let failed = $state(''); // the default route would not build
 	let fileError = $state(''); // a rider's GPX would not
+	let drawFailed = $state(false); // the 3D view would not start: no WebGL, most often
+	let draws = $state(0); // bumped by "Try again" to start the view afresh
 	let host = $state<HTMLDivElement>();
 	let hud = $state.raw<Hud | null>(null);
 	let watts = $state(200);
@@ -79,35 +82,57 @@
 
 	$effect(() => {
 		const data = built;
-		if (!data || !host) return;
-		const canvas = document.createElement('canvas');
-		canvas.style.display = 'block';
-		canvas.style.width = '100%';
-		canvas.style.height = '100%';
-		canvas.setAttribute('role', 'img');
-		canvas.setAttribute(
-			'aria-label',
-			`A world generated around ${data.route.name}, with you and three riders on it`,
+		const into = host;
+		void draws;
+		if (!data || !into) return;
+		const placed = untrack(() =>
+			placeScene(
+				into,
+				`A world generated around ${data.route.name}, with you and three riders on it`,
+				(canvas) =>
+					mount(canvas, {
+						route: data.route,
+						world: data.world,
+						style,
+						camera,
+						watts,
+						speedup,
+						onTick: (next) => (hud = next),
+					}),
+			),
 		);
-		host.append(canvas);
-		const s = untrack(() =>
-			mount(canvas, {
-				route: data.route,
-				world: data.world,
-				style,
-				camera,
-				watts,
-				speedup,
-				onTick: (next) => (hud = next),
-			}),
-		);
-		scene = s;
+		if (!placed) {
+			drawFailed = true;
+			return;
+		}
+		scene = placed.scene;
 		return () => {
-			s.dispose();
-			canvas.remove();
-			if (scene === s) scene = null;
+			placed.remove();
+			if (scene === placed.scene) scene = null;
 		};
 	});
+
+	function redraw() {
+		drawFailed = false;
+		draws++;
+	}
+
+	// One panel for whatever stops the page: what happened, why, and a retry.
+	const blocked = $derived(
+		failed
+			? {
+					what: failed,
+					why: 'The browser console has the reason. Trying again rebuilds it from the start.',
+					retry: buildDefault,
+				}
+			: drawFailed
+				? {
+						what: 'The 3D view did not start.',
+						why: 'Most often the browser gave this page no WebGL: hardware acceleration is off, or too many 3D tabs are open. The browser console has the exact reason.',
+						retry: redraw,
+					}
+				: null,
+	);
 
 	function chooseStyle(next: Style) {
 		styleId = next.id;
@@ -130,15 +155,12 @@
 <div class="relative h-full min-h-[560px] overflow-hidden">
 	<div bind:this={host} class="absolute inset-0"></div>
 
-	{#if failed}
+	{#if blocked}
 		<div class="bg-surface absolute inset-0 grid place-items-center p-6">
-			<div class="panel panel-lg max-w-sm text-center">
-				<p class="text-sm">{failed}</p>
-				<p class="text-muted mt-1 text-sm">
-					The browser console has the reason. Trying again rebuilds it from the
-					start.
-				</p>
-				<button class="btn btn-secondary mt-4" onclick={buildDefault}
+			<div class="panel panel-lg max-w-sm text-center" role="alert">
+				<p class="text-sm">{blocked.what}</p>
+				<p class="text-muted mt-1 text-sm">{blocked.why}</p>
+				<button class="btn btn-secondary mt-4" onclick={blocked.retry}
 					>Try again</button
 				>
 			</div>
@@ -151,7 +173,7 @@
 		</p>
 	{/if}
 
-	{#if built}
+	{#if built && !drawFailed}
 		{@const { route, world } = built}
 		<section
 			aria-label="Your ride"

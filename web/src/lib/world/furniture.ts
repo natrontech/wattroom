@@ -91,13 +91,30 @@ export function kits(
 
 const FONT = 'Barlow, system-ui, sans-serif';
 
+type Painting = {
+	cv: OffscreenCanvas | HTMLCanvasElement;
+	x: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null;
+};
+
+// An OffscreenCanvas where the browser has one (Safari only since 16.4), a
+// detached DOM canvas where it does not: a sign is never why the world fails.
+function canvas2d(w: number, h: number): Painting {
+	if (typeof OffscreenCanvas === 'function') {
+		const cv = new OffscreenCanvas(w, h);
+		return { cv, x: cv.getContext('2d') };
+	}
+	const cv = document.createElement('canvas');
+	cv.width = w;
+	cv.height = h;
+	return { cv, x: cv.getContext('2d') };
+}
+
 function paintedTexture(
 	w: number,
 	h: number,
-	draw: (x: OffscreenCanvasRenderingContext2D) => void,
-): THREE.CanvasTexture<OffscreenCanvas> {
-	const cv = new OffscreenCanvas(w, h);
-	const x = cv.getContext('2d');
+	draw: (x: NonNullable<Painting['x']>) => void,
+): THREE.CanvasTexture<Painting['cv']> {
+	const { cv, x } = canvas2d(w, h);
 	if (x) draw(x);
 	const tex = new THREE.CanvasTexture(cv);
 	tex.colorSpace = THREE.SRGBColorSpace;
