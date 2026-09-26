@@ -36,20 +36,13 @@
 </span>
 
 <style>
+	/* app.css's stepped `equalizer` (#3199). */
 	.bar {
+		--eq-low: 0.35;
 		height: 100%;
 		transform-origin: bottom;
-		animation: eq 1.1s ease-in-out infinite;
+		animation: equalizer 1.1s step-end infinite;
 		animation-delay: calc(var(--i) * -0.28s);
-	}
-	@keyframes eq {
-		0%,
-		100% {
-			transform: scaleY(0.35);
-		}
-		50% {
-			transform: scaleY(1);
-		}
 	}
 	/* Still legible standing still: the bars hold the letter's own heights. */
 	@media (prefers-reduced-motion: reduce) {

@@ -52,19 +52,12 @@
 	.bar {
 		background: linear-gradient(var(--color-watt), var(--color-neon));
 	}
+	/* app.css's stepped `equalizer` (#3199). */
 	.live .bar {
+		--eq-low: 0.5;
 		transform-origin: bottom;
-		animation: eq 1.1s ease-in-out infinite;
+		animation: equalizer 1.1s step-end infinite;
 		animation-delay: calc(var(--i, 0) * -0.19s);
-	}
-	@keyframes eq {
-		0%,
-		100% {
-			transform: scaleY(0.5);
-		}
-		50% {
-			transform: scaleY(1);
-		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.live .bar {

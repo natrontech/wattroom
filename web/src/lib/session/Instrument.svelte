@@ -84,7 +84,7 @@
 			     layer — the glowing number above, once, cost 18% GPU. A solid
 			     colour clipped by the track looks the same either way. -->
 			<div
-				class="absolute inset-0 origin-left transition-transform duration-500 ease-out"
+				class="absolute inset-0 origin-left transition-transform duration-250 ease-out"
 				style="transform: scaleX({pct(shown) / 100})"
 			>
 				<div
@@ -132,13 +132,15 @@
 	<!-- The number glides by `transform`, measured in the readout's own width
 	     (cqw), never by `left` (#2998): moving it by layout repainted its
 	     glow's two large blurs on every frame of each second's glide, ~24%
-	     GPU on a MacBook. A transform only moves what was drawn. -->
+	     GPU on a MacBook. A transform only moves what was drawn. The glide
+	     is 250 ms, as is the fill's (#3199): while the big glowing number
+	     moves, a 5K 165 Hz display is recomposited at its full rate. -->
 	<div
 		data-testid="instrument-readout"
 		class="@container flex items-end {tv ? 'min-h-[22vh]' : 'min-h-32'}"
 	>
 		<div
-			class="w-max text-center transition-transform duration-500 ease-out"
+			class="w-max text-center transition-transform duration-250 ease-out"
 			style="transform: translateX(calc(clamp({tv ? '10vh' : '5rem'}, {pct(
 				shown,
 			)}cqw, 100cqw - {tv ? '10vh' : '5rem'}) - 50%))"
