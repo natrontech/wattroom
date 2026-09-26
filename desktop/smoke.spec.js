@@ -185,19 +185,37 @@ test('the window opens and the bridge carries what the app looks for', async () 
 	await app.close();
 });
 
-// #3001: macOS has Close in the File menu, and a menu without one leaves ⌘W
-// doing nothing. The runner is Linux, where the shell draws no menu at all,
-// so this one speaks only on a Mac.
-test('⌘W closes the window on macOS', async () => {
-	test.skip(process.platform !== 'darwin', 'the menu exists only on macOS');
+// An Electron window's shortcuts are its menu's accelerators. #3001: ⌘W had
+// no Close behind it on macOS. #3007: Windows and Linux had no menu, so no
+// Ctrl+Plus for a rider three metres away — and the frameless window must
+// still draw no bar there (#1943). The key press runs only off a Mac: there
+// the system menu bar takes it, where Playwright's keys never arrive.
+test('close, zoom and reload have shortcuts, and no menu bar is drawn', async () => {
 	const app = await launch(DEAD_URL);
-	await app.firstWindow();
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
 	const roles = await app.evaluate(({ Menu }) =>
-		Menu.getApplicationMenu().items.flatMap((m) =>
+		(Menu.getApplicationMenu()?.items ?? []).flatMap((m) =>
 			(m.submenu?.items ?? []).map((i) => i.role),
 		),
 	);
-	expect(roles).toContain('close');
+	expect(roles).toEqual(
+		expect.arrayContaining(['close', 'zoomin', 'zoomout', 'resetzoom', 'reload']),
+	);
+	if (process.platform !== 'darwin') {
+		const barShown = await app.evaluate(({ BrowserWindow }) =>
+			BrowserWindow.getAllWindows()[0].isMenuBarVisible(),
+		);
+		expect(barShown).toBe(false);
+		await win.keyboard.press('Control+Equal');
+		await expect
+			.poll(() =>
+				app.evaluate(({ BrowserWindow }) =>
+					BrowserWindow.getAllWindows()[0].webContents.getZoomLevel(),
+				),
+			)
+			.toBeGreaterThan(0);
+	}
 	await app.close();
 });
 
