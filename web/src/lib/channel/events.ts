@@ -81,8 +81,10 @@ export function eventText(event: ChannelEvent): string {
 			return `${event.actor} left`;
 		case 'back':
 			return `${event.actor} is back`;
+		// Past tense like its neighbours (#2883): a log is read after the fact,
+		// and "is starting" stood above "ended". The live cue keeps the present.
 		case 'started':
-			return `${subject} is starting`;
+			return `${subject} started`;
 		case 'ended':
 			return `${subject} ended`;
 		// The coach stopped the count-in (#2605): nothing ran, nothing ended.
