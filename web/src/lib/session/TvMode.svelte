@@ -3,7 +3,8 @@
 	import IntervalStrip from '$lib/session/IntervalStrip.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import { ZONE_BG, ZONE_TEXT, fillPct, zoneOf } from '$lib/components/zones';
+	import ZoneDot from '$lib/components/ZoneDot.svelte';
+	import { ZONE_BG, fillPct, zoneOf } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import type { LiveRider } from '$lib/channel/types';
 
@@ -116,7 +117,9 @@
 						>
 					{/if}
 					{#if you.watts > 0}
-						<span class="font-display font-bold {ZONE_TEXT[zone]}">Z{zone}</span
+						<span
+							class="font-display text-ink flex items-center gap-[0.8vh] font-bold"
+							><ZoneDot {zone} class="size-[1.6vh]" />Z{zone}</span
 						>
 					{/if}
 				</div>

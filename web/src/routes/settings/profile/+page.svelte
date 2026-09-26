@@ -19,7 +19,8 @@
 	import { api } from '$lib/api';
 	import { compressImage } from '$lib/chat/media';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
-	import { hrZoneRanges, ZONE_TEXT } from '$lib/components/zones';
+	import ZoneDot from '$lib/components/ZoneDot.svelte';
+	import { hrZoneRanges } from '$lib/components/zones';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { ownCachedLthr } from '$lib/profile-sync.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
@@ -421,8 +422,9 @@
 								<span
 									class="border-muted/15 bg-surface-raised rounded-full border px-3 py-1.5 text-[11px]"
 								>
-									<span class="{ZONE_TEXT[range.zone]} font-semibold"
-										>Z{range.zone}</span
+									<span
+										class="text-ink inline-flex items-center gap-1 font-semibold"
+										><ZoneDot zone={range.zone} />Z{range.zone}</span
 									>
 									<span class="text-muted ml-1">{range.name}</span>
 									<span class="num ml-1"

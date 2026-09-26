@@ -21,17 +21,6 @@ export const ZONE_NAMES = [
 	'Neuromuscular',
 ];
 
-export const ZONE_TEXT = [
-	'',
-	'text-z1',
-	'text-z2',
-	'text-z3',
-	'text-z4',
-	'text-z5',
-	'text-z6',
-	'text-z7',
-];
-
 /**
  * The same ramp as CSS custom properties, for the places a Tailwind class
  * cannot reach — an SVG `stop-color`, which takes a paint and not a class.

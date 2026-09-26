@@ -10,7 +10,6 @@ export {
 	fillPct,
 	ZONE_BG,
 	ZONE_NAMES,
-	ZONE_TEXT,
 	zoneOf,
 } from '$lib/components/zones';
 export { formatClock } from '$lib/format';

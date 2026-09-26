@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { formatClock } from '$lib/format';
-	import { ZONE_BG, ZONE_NAMES } from './zones';
+	import ZoneDot from './ZoneDot.svelte';
+	import { ZONE_NAMES } from './zones';
 
 	/**
 	 * The zones something touches, named and timed — `seconds` indexed by zone
@@ -21,7 +22,7 @@
 	{#each seconds as zsec, zone (zone)}
 		{#if zsec > 0}
 			<li class="flex items-center gap-1.5 text-xs" title={ZONE_NAMES[zone]}>
-				<span class="h-2 w-2 shrink-0 rounded-full {ZONE_BG[zone]}"></span>
+				<ZoneDot {zone} />
 				<span class="text-muted"
 					>Z{zone}{names ? ` ${ZONE_NAMES[zone]}` : ''}</span
 				>

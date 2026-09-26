@@ -6,7 +6,8 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import WhenPicker from '$lib/components/WhenPicker.svelte';
 	import { nextHourInput } from '$lib/components/when';
-	import { ZONE_BG, plannedZoneSeconds } from '$lib/components/zones';
+	import ZoneDot from '$lib/components/ZoneDot.svelte';
+	import { plannedZoneSeconds } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import {
 		fetchProgression,
@@ -320,8 +321,7 @@
 						<span class="num">{formatClock(total)}</span>
 						{#each zoneChips as chip (chip.zone)}
 							<span class="num flex items-center gap-1">
-								<span class="h-2 w-2 rounded-full {ZONE_BG[chip.zone]}"
-								></span>Z{chip.zone}
+								<ZoneDot zone={chip.zone} />Z{chip.zone}
 								{chip.minutes}m
 							</span>
 						{/each}

@@ -1,9 +1,5 @@
 <script lang="ts">
-	import {
-		formatClock,
-		ZONE_TEXT,
-		zoneOf,
-	} from '../channel/mockChannel.svelte';
+	import { formatClock } from '../channel/mockChannel.svelte';
 
 	// docs/SPEC.md: start 100 W (default), +20 W/min, FTP = 75 % of best 1-min power.
 	const START = 100;
@@ -125,7 +121,7 @@
 				{minute + 1} steps. Every workout you ride from here scales to this number.
 			</p>
 			<p class="mt-3 text-sm">
-				That's <span class={ZONE_TEXT[zoneOf(estimatedFtp, estimatedFtp)]}
+				That's <span class="text-ink font-semibold"
 					>{(estimatedFtp / 74).toFixed(2)} w/kg</span
 				> at 74 kg.
 			</p>

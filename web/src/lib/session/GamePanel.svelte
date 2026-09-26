@@ -4,7 +4,8 @@
 	import { serverNow } from '$lib/server-clock';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { account } from '$lib/account.svelte';
-	import { ZONE_BG, ZONE_NAMES, ZONE_TEXT } from '$lib/components/zones';
+	import ZoneDot from '$lib/components/ZoneDot.svelte';
+	import { ZONE_BG, ZONE_NAMES } from '$lib/components/zones';
 	import { formatClock } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { gameMode } from '$lib/session/modes';
@@ -194,9 +195,12 @@
 	{:else if game.mode === 'floor-is-lava'}
 		<div class="mt-4 flex flex-wrap items-baseline gap-4">
 			<span
-				class="font-display text-2xl font-bold {ZONE_TEXT[
-					game.calledZone ?? 2
-				]}">Z{game.calledZone} {ZONE_NAMES[game.calledZone ?? 2]}</span
+				class="font-display text-ink flex items-center gap-2 text-2xl font-bold"
+				><ZoneDot
+					zone={game.calledZone ?? 2}
+					class="size-3"
+				/>Z{game.calledZone}
+				{ZONE_NAMES[game.calledZone ?? 2]}</span
 			>
 			<span class="text-muted text-xs"
 				>{zoneBounds[game.calledZone ?? 2]} FTP</span
