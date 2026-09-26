@@ -84,8 +84,7 @@
 								? 'btn-primary'
 								: 'btn-secondary'}"
 							>Push to talk
-							<span class="block text-[10px] font-normal opacity-70"
-								>hold Space</span
+							<span class="block text-[10px] font-normal">hold Space</span
 							></button
 						>
 					{/if}

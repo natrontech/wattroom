@@ -31,12 +31,19 @@
 	<ul class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
 		{#each MEDAL_KINDS as kind (kind)}
 			{@const n = trophies.medals[MEDAL_COUNT_KEY[kind]]}
-			<li class="panel px-4 py-3 {n === 0 ? 'opacity-75' : ''}">
+			<li class="panel">
 				<p class="eyebrow flex items-center gap-1">
 					<Award size={11} />
 					{MEDAL_META[kind].name}
 				</p>
-				<p class="font-display text-2xl font-bold tabular-nums">{n}</p>
+				<!-- None yet reads in the count, not a faded card (#2888). -->
+				<p
+					class="font-display text-2xl font-bold tabular-nums {n === 0
+						? 'text-muted'
+						: ''}"
+				>
+					{n}
+				</p>
 				<p class="text-muted text-[11px]">{MEDAL_META[kind].criterion}</p>
 			</li>
 		{/each}

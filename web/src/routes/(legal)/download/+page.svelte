@@ -130,7 +130,7 @@
 						<Download size={18} />
 						{i === 0 ? `Download ${release.version}` : installer.name}
 						{#if installer.bytes}
-							<span class="text-xs opacity-70"
+							<span class="text-xs font-normal"
 								>{formatBytes(installer.bytes)}</span
 							>
 						{/if}
@@ -149,7 +149,7 @@
 						<a href={installer.url} class="btn btn-secondary">
 							{NAMES[installer.os]} · {installer.name.replace(/^.*\./, '')}
 							{#if installer.bytes}
-								<span class="text-xs opacity-70"
+								<span class="text-xs font-normal"
 									>{formatBytes(installer.bytes)}</span
 								>
 							{/if}

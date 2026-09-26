@@ -203,17 +203,17 @@
 
 	<!-- Power, top-right. Only your own tile glows. -->
 	{#if live}
-		<div
-			class="absolute top-2 right-2.5 text-right {rider.stale
-				? 'opacity-40'
-				: ''}"
-		>
+		<div class="absolute top-2 right-2.5 text-right">
 			<!-- No drop-shadow: on paper a shadow under near-black numerals is
-			     the blur the rider reported (#505); the scrim carries them. -->
+			     the blur the rider reported (#505); the scrim carries them.
+			     Last known is muted, not faded (#2888): at opacity-40 it read
+			     under the text floor. -->
 			<span
-				class="font-display text-2xl leading-none font-bold tabular-nums {rider.you
-					? 'text-watt glow-text'
-					: 'text-ink'}">{rider.watts}</span
+				class="font-display text-2xl leading-none font-bold tabular-nums {rider.stale
+					? 'text-muted'
+					: rider.you
+						? 'text-watt glow-text'
+						: 'text-ink'}">{rider.watts}</span
 			>
 			<span class="text-ink/80 text-xs font-medium">W</span>
 		</div>

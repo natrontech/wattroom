@@ -78,7 +78,7 @@
 					<Download size={18} />
 					Download for {NAMES[os]}
 					{#if installer.bytes}
-						<span class="text-xs opacity-70"
+						<span class="text-xs font-normal"
 							>{formatBytes(installer.bytes)}</span
 						>
 					{/if}

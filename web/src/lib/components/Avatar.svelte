@@ -80,9 +80,13 @@
 			.filter(Boolean)
 			.join(' · '),
 	);
-	const disc =
+	// An offline initial dims to muted-dim rather than fading (#2888): at
+	// opacity-50 the letter was 2.2:1. A picture still fades — it is no text.
+	const disc = $derived(
 		`background:var(--color-surface-raised);` +
-		`border:1px solid color-mix(in oklab, var(--color-muted) 30%, transparent);color:var(--color-muted)`;
+			`border:1px solid color-mix(in oklab, var(--color-muted) 30%, transparent);` +
+			`color:var(--color-${status === 'offline' ? 'muted-dim' : 'muted'})`,
+	);
 </script>
 
 <span
@@ -94,7 +98,7 @@
 	<span class="sr-only">{label}</span>
 	<span
 		class="absolute flex items-center justify-center overflow-hidden rounded-full {status ===
-		'offline'
+			'offline' && picture
 			? 'opacity-50'
 			: ''}"
 		style="inset:{inset}px;{picture ? '' : disc}"

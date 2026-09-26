@@ -199,7 +199,7 @@
 			<summary class="eyebrow cursor-pointer select-none"
 				>just played · {history.length}</summary
 			>
-			<ul class="mt-1.5 flex flex-col gap-1.5 opacity-70">
+			<ul class="mt-1.5 flex flex-col gap-1.5">
 				{#each history as entry (entry.id)}
 					<!-- A pool track's row carries a trackId and no videoId (#267); the
 					     hub takes the pool branch whenever one is set. Sending only the
