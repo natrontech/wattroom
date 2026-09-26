@@ -40,7 +40,11 @@ test('Start now on a plan counts it down in its voice channel', async ({
 	expect(planned).toBeLessThan(300);
 
 	await page.goto(`/crew/${crew}/schedule`);
-	await page.getByRole('button', { name: 'Start now' }).first().click();
+	// This browser pairs no trainer, so the button names that (#2880).
+	await page
+		.getByRole('button', { name: /^Start (now|without a trainer)$/ })
+		.first()
+		.click();
 	// To the ride, not the channel's lobby: the count-in is there (#2599).
 	await page.waitForURL(`/crew/${crew}/s/**`, { timeout: 30_000 });
 

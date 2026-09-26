@@ -52,7 +52,9 @@ test('a plan that names no channel starts in one chosen on its row', async ({
 		name: /^Start in .+ without a trainer$/,
 	});
 	await expect(start).toBeEnabled({ timeout: 15_000 });
-	await expect(row.getByRole('button', { name: 'Start now' })).toHaveCount(0);
+	await expect(
+		row.getByRole('button', { name: /^Start (now|without a trainer)$/ }),
+	).toHaveCount(0);
 
 	await start.click();
 	await page.waitForURL(`/crew/${opened.crew}/s/**`, { timeout: 30_000 });
