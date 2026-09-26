@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -75,6 +76,10 @@ func eventually(t *testing.T, what string, want func() bool) {
 	}
 }
 
+// decksHeard is each test socket's last deck, filled back into the ticks
+// that do not carry it — what the client does (#2838).
+var decksHeard sync.Map // *websocket.Conn → *protocol.JukeboxState
+
 func readTick(t *testing.T, conn *websocket.Conn) protocol.ServerTick {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -87,6 +92,11 @@ func readTick(t *testing.T, conn *websocket.Conn) protocol.ServerTick {
 			t.Fatalf("read: %v", err)
 		}
 		if msg.Tick != nil {
+			if msg.Tick.Jukebox != nil {
+				decksHeard.Store(conn, msg.Tick.Jukebox)
+			} else if heard, ok := decksHeard.Load(conn); ok {
+				msg.Tick.Jukebox, _ = heard.(*protocol.JukeboxState)
+			}
 			return *msg.Tick
 		}
 	}

@@ -71,6 +71,15 @@ func nowPlaying(entry protocol.JukeboxEntry, now time.Time) protocol.ChannelEven
 // Not goroutine-safe on its own — the owning room's mutex guards it.
 type jukebox struct {
 	state protocol.JukeboxState
+	// Which deck this is (#2838): the tick sends the deck only to a socket
+	// that has not heard this revision, so every change has to move it.
+	// Starts at 1, so a socket that has heard nothing (0) is always owed.
+	//
+	// ponytail: moved by every command, refused ones too, rather than by the
+	// handlers that change something — a missed move leaves riders on a
+	// stale queue, a spare one costs a single resend. Move it per mutation
+	// if refused-command traffic ever shows up in the bytes.
+	rev int64
 	// Entry ids are per-room and monotonic: unique is all they must be, and
 	// a counter is unique without a random source (which tests would fight).
 	nextID int
@@ -138,7 +147,7 @@ func newJukebox() *jukebox {
 	return &jukebox{state: protocol.JukeboxState{
 		Queue:   []protocol.JukeboxEntry{},
 		History: []protocol.JukeboxEntry{},
-	}, owners: make(map[string]string)}
+	}, rev: 1, owners: make(map[string]string)}
 }
 
 // snapshot renders the state at now. The slices are CLONED: the caller
@@ -180,6 +189,7 @@ func (j *jukebox) apply(cmd protocol.JukeboxCommand, riderID, addedBy string, no
 // controls default to members). riderID identifies the voter; addedBy is the
 // display name entries carry.
 func (j *jukebox) applyWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) ([]protocol.ChannelEvent, bool, jukeboxRefusal) {
+	j.rev++
 	switch cmd.Action {
 	case "add":
 		return j.onAdd(cmd, riderID, addedBy, now)
@@ -287,6 +297,7 @@ func (j *jukebox) seedHistory(entries []protocol.JukeboxEntry) {
 		}
 	}
 	j.state.History = entries
+	j.rev++
 }
 
 // advance moves the deck on by one track: to the next track of the playlist

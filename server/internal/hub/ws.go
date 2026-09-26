@@ -68,6 +68,9 @@ type client struct {
 	// The workout hash this socket last received the definition for (#1710).
 	// Owned by the tick loop: read and written there alone.
 	workoutSent string
+	// The deck revision this socket last received the deck for (#2838). Same
+	// owner, same rule.
+	jukeboxSent int64
 	// This socket's last measured round trip, in MICROSECONDS, zero until the
 	// first ping has been answered (#2131). Written by this socket's writer
 	// goroutine and read by the room's tick loop — two goroutines, neither

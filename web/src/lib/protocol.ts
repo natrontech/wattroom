@@ -1003,7 +1003,16 @@ export interface SessionRecap {
 export interface ServerTick {
   at: number /* int64 */; // unix millis
   state: SessionState;
-  jukebox: JukeboxState;
+  /**
+   * The deck (#286), only on the tick a socket has not heard it on
+   * (#2838). It changes with a command and never with the clock — the
+   * position is an anchor — so a socket already holding JukeboxRev's deck
+   * is not sent it again, the way the workout rides by hash (#1710). A few
+   * queued playlists were 85–97 % of every frame. Absent = the deck of
+   * JukeboxRev, which the client kept.
+   */
+  jukebox?: JukeboxState;
+  jukeboxRev: number /* int64 */;
   /**
    * This second's cheers, drained each tick like metrics.
    */
