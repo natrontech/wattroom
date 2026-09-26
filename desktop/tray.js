@@ -108,8 +108,9 @@ function install(handlers) {
 	// Windows is the only platform where a left click can mean "open the
 	// window": on macOS a click opens the menu, and Linux's AppIndicator has
 	// no click event at all — the menu is the whole interface there, which is
-	// why every item has to be in it.
-	tray.on('click', () => actions.open());
+	// why every item has to be in it. On macOS the click fires beside the
+	// menu, and the window it raised took the menu away (#3001).
+	if (process.platform === 'win32') tray.on('click', () => actions.open());
 	refresh();
 	return true;
 }
