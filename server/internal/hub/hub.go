@@ -219,7 +219,7 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	// Supervised (#651): a poison job costs one log line and is skipped, not
 	// the rest of the process's autoplay.
 	safego.Supervise(log, h.now, "hub autoplay worker", nil, h.autoplayWorker)
-	h.registerRidingMetric()
+	h.registerRideGauges()
 	return h
 }
 
@@ -444,6 +444,20 @@ func (h *Hub) QueuePlaylist(channel, riderID, addedBy string, tracks []protocol.
 		addedCount++
 	}
 	return addedCount, true
+}
+
+// liveRooms copies the hub's room pointers and lets the hub's lock go, so a
+// caller then takes one room's lock at a time and never holds both: the lock
+// order every read across rooms keeps, and why a metrics scrape cannot wedge
+// a tick.
+func (h *Hub) liveRooms() []*room {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	rooms := make([]*room, 0, len(h.rooms))
+	for _, rm := range h.rooms {
+		rooms = append(rooms, rm)
+	}
+	return rooms
 }
 
 func (h *Hub) room(channel string) *room {

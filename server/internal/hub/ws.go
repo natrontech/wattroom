@@ -181,34 +181,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if msg.Poke != nil {
-			to := strings.TrimSpace(msg.Poke.To)
-			if to == "" || to == rider.ID {
-				h.writeError(c, "validation_error", "Choose another rider to poke.")
-				continue
-			}
-			if !rm.hasRider(to) {
-				h.writeError(c, "invalid_request", "That rider is no longer in this voice channel.")
-				continue
-			}
-			// The target is part of the rate-limit key: one rider cannot evade
-			// the cooldown with another tab, but may still poke somebody else.
-			if !rm.allow("poke:"+to, rider.ID, h.now(), pokeCooldown) {
-				// A cooldown that drops in silence reads as a broken button,
-				// and the sender pokes again (errors.md).
-				h.writeError(c, "rate_limited", "You just poked them — give them a moment to notice.")
-				continue
-			}
-			poke := protocol.Poke{
-				To: to, FromID: rider.ID, From: rider.Name, At: h.now().UnixMilli(),
-			}
-			if !rm.queuePoke(to, poke) {
-				h.writeError(c, "invalid_request", "That rider is no longer in this voice channel.")
-				continue
-			}
-			// The sender's answer (#2721): this socket's own copy, which the
-			// client reads as "it landed" because it is from them. Silence on
-			// success read as a button that did nothing.
-			c.sendJSON(h.log, protocol.ServerMessage{Poke: &poke})
+			h.poke(c, rm, rider, *msg.Poke)
 		}
 		if msg.Device != nil {
 			// Untrusted input, bounded at the boundary to the closed set

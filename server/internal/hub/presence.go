@@ -215,12 +215,7 @@ func (h *Hub) Riding(userIDs []string) map[string]bool {
 	for _, id := range userIDs {
 		wanted[id] = struct{}{}
 	}
-	h.mu.Lock()
-	rooms := make([]*room, 0, len(h.rooms))
-	for _, rm := range h.rooms {
-		rooms = append(rooms, rm)
-	}
-	h.mu.Unlock()
+	rooms := h.liveRooms()
 
 	now := h.now()
 	out := make(map[string]bool, len(userIDs))

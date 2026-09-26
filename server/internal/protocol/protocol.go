@@ -340,12 +340,32 @@ type Poke struct {
 	Text string `json:"text,omitempty"`
 	// A line in your DM thread with the poker, not only a moment in a channel.
 	Dm bool `json:"dm,omitempty"`
+	// What is asked for (#3022): PokeKindPoke — the plain ask, and what an
+	// empty kind means — or PokeKindBottle. Anything else is refused at the
+	// socket.
+	Kind PokeKind `json:"kind,omitempty"`
 }
+
+// PokeKind is the closed set a poke may carry (#3022).
+type PokeKind string
+
+const (
+	// PokeKindPoke asks for attention now.
+	PokeKindPoke PokeKind = "poke"
+	// PokeKindBottle is a bottle handed up from the roadside (ADR-0064) to a
+	// rider riding the voice channel's session: only across that channel,
+	// never as a DM line, and never anywhere near anybody's trainer. The
+	// rider's own screen holds it until their next recovery valley
+	// (docs/SPEC.md, "The roadside"), so it lands on an easy block rather
+	// than in the middle of an interval.
+	PokeKindBottle PokeKind = "bottle"
+)
 
 // PokeCooldownSeconds is how long before one rider may poke the same rider
 // again, through either door — a channel's socket or the DM thread. A poke
 // asks one person's machine for attention and must not become a harassment
-// button.
+// button. A bottle takes the same cooldown on a key of its own, so handing
+// one up never spends the poke.
 const PokeCooldownSeconds = 10
 
 // Moved tells a rider's sockets in one voice channel that the crew's owner or
