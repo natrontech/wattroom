@@ -185,6 +185,49 @@ test('the window opens and the bridge carries what the app looks for', async () 
 	await app.close();
 });
 
+// #3001: macOS has Close in the File menu, and a menu without one leaves ⌘W
+// doing nothing. The runner is Linux, where the shell draws no menu at all,
+// so this one speaks only on a Mac.
+test('⌘W closes the window on macOS', async () => {
+	test.skip(process.platform !== 'darwin', 'the menu exists only on macOS');
+	const app = await launch(DEAD_URL);
+	await app.firstWindow();
+	const roles = await app.evaluate(({ Menu }) =>
+		Menu.getApplicationMenu().items.flatMap((m) =>
+			(m.submenu?.items ?? []).map((i) => i.role),
+		),
+	);
+	expect(roles).toContain('close');
+	await app.close();
+});
+
+// #3001: a notification nothing held was collected with its click handler,
+// so clicking it in Notification Center opened the app and not the
+// conversation. Nothing is shown here — show() is stubbed — and gc() is the
+// part a rider waited minutes for.
+test('a notification outlives a garbage collection, so its click still lands', async () => {
+	const app = await launch(DEAD_URL, null, ['--js-flags=--expose-gc']);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	const supported = await app.evaluate(({ Notification }) => {
+		globalThis.__shown = [];
+		Notification.prototype.show = function () {
+			globalThis.__shown.push(new WeakRef(this));
+		};
+		return Notification.isSupported();
+	});
+	test.skip(!supported, 'no notifications on this runner');
+	await win.evaluate(() =>
+		window.wattroom.notify({ title: 'Ruben', body: 'hi', tag: 'dm-1' }),
+	);
+	await expect.poll(() => app.evaluate(() => globalThis.__shown.length)).toBe(1);
+	await app.evaluate(() => globalThis.gc());
+	expect(
+		await app.evaluate(() => globalThis.__shown[0].deref() !== undefined),
+	).toBe(true);
+	await app.close();
+});
+
 test('an unreachable app renders the offline screen, not a blank window', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();

@@ -776,6 +776,14 @@ const clip = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
 const ownPath = (v) =>
 	typeof v === 'string' && v.startsWith('/') && !/^\/[\/\\]/.test(v) ? v : '';
 
+// Every notification still showing, by tag (#3001). A Notification nothing
+// references is garbage collected with its listeners, and a click on it in
+// Notification Center then only activates the app: the conversation never
+// opened. One per tag, as the web's own Notification does: the newer line
+// replaces the older one rather than leaving a dead one behind it.
+// ponytail: never pruned; one entry per conversation that ever notified.
+const shown = new Map();
+
 ipcMain.on('wattroom:notify', (event, n) => {
 	if (!Notification.isSupported() || !n || typeof n !== 'object') return;
 	const title = clip(n.title, 120);
@@ -809,6 +817,8 @@ ipcMain.on('wattroom:notify', (event, n) => {
 				reply: clip(reply, 4000),
 			});
 	});
+	shown.get(payload.tag)?.close();
+	shown.set(payload.tag, note);
 	note.show();
 });
 
@@ -918,12 +928,15 @@ if (!app.requestSingleInstanceLock()) {
 	app.whenReady().then(() => {
 		// An explicit menu (#1943): Electron's default one shipped into the
 		// frameless window, Help and all. macOS keeps the roles a Mac app
-		// needs (copy and paste, reload); Windows and Linux draw none —
-		// the app's own strip is the top of the window there.
+		// needs (⌘W, copy and paste, reload); Windows and Linux draw none —
+		// the app's own strip is the top of the window there. On macOS Close
+		// is in the File menu, not the Window one: without fileMenu, ⌘W did
+		// nothing (#3001).
 		Menu.setApplicationMenu(
 			process.platform === 'darwin'
 				? Menu.buildFromTemplate([
 						{ role: 'appMenu' },
+						{ role: 'fileMenu' },
 						{ role: 'editMenu' },
 						{ role: 'viewMenu' },
 						{ role: 'windowMenu' },
