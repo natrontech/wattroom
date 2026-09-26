@@ -204,7 +204,10 @@
 						{trainerView.note}
 					</p>
 				{/if}
-				<button onclick={trainer.onForget} class="btn btn-ghost btn-xs"
+				<!-- Riding size, quiet (#2886): at 28 px beside the coach's
+				     controls it was small to hit on purpose and easy to hit by
+				     mistake, and a slip unpairs the trainer mid-session. -->
+				<button onclick={trainer.onForget} class="btn btn-ghost btn-lg"
 					>Unpair trainer</button
 				>
 			{:else if trainerView.button}
