@@ -10,6 +10,7 @@ import {
 	cheerCues,
 	effortOf,
 	inRecoveryValley,
+	type Effort,
 } from './roadside';
 
 describe('the cowbell (#3022)', () => {
@@ -77,7 +78,13 @@ describe('at the roadside (#3022)', () => {
 });
 
 describe('a recovery valley (#3022)', () => {
-	const easy = { targetWatts: 0, ftp: 250, calledZone: 0, sprinting: false };
+	const easy: Effort = {
+		targetWatts: 0,
+		ftp: 250,
+		calledZone: 0,
+		sprinting: false,
+		unreadable: false,
+	};
 
 	it('is a target in Z1, active recovery, and nothing above it', () => {
 		expect(inRecoveryValley({ ...easy, targetWatts: 137 })).toBe(true); // 55 %
@@ -106,6 +113,70 @@ describe('a recovery valley (#3022)', () => {
 		expect(inRecoveryValley(effortOf(ride, lava(1), 'me'))).toBe(true);
 		// Out of the game, the zone is everyone else's.
 		expect(inRecoveryValley(effortOf(ride, lava(4, true), 'me'))).toBe(true);
+	});
+});
+
+describe('a recovery valley under each game mode (#3022)', () => {
+	// The trainer asks nothing: the only word on effort is the game's. Every
+	// mode is taken as the server sends it (hub/mode_*.go).
+	const free = { targetWatts: 0, ftp: 250, sprinting: false };
+	const running = (mode: string, over: Partial<GameState> = {}) =>
+		({ mode, phase: 'running', riders: {}, ...over }) as GameState;
+	const valley = (game: GameState, ride = free) =>
+		inRecoveryValley(effortOf(ride, game, 'me'));
+
+	// Watt Golf's holes are 60–110 % of FTP and live only in linePct: the
+	// meter is hidden, the trainer holds nothing, and a bottle mid-hole is a
+	// hand in the rider's face while they chase a number blind.
+	it('is never a Watt Golf hole, whose target is the line', () => {
+		const golf = (linePct: number) =>
+			running('watt-golf', { linePct, riders: { me: { score: 12 } } });
+		expect(valley(golf(0.6))).toBe(false);
+		expect(valley(golf(1.1))).toBe(false);
+	});
+
+	// The window rides the game from the klaxon to its end — not tick.sprint,
+	// which only the coach's own sprint sets.
+	it('is never a Sprint Roulette window, and is between them', () => {
+		const window = running('sprint-roulette', {
+			roundStartsAtMs: 5_000,
+			roundEndsAtMs: 17_000,
+		});
+		expect(valley(window)).toBe(false);
+		expect(valley(running('sprint-roulette'))).toBe(true);
+	});
+
+	// A Points Race's sprints come roulette-style but never reach the tick.
+	it('is never a Points Race, whose sprints come unannounced', () => {
+		expect(valley(running('points-race'))).toBe(false);
+		expect(valley({ ...running('points-race'), phase: 'done' })).toBe(true);
+	});
+
+	it('follows the rider’s own target in the ramps and the relay', () => {
+		const target = (mode: string, targetPct: number, eliminated = false) =>
+			running(mode, { riders: { me: { targetPct, eliminated } } });
+		expect(valley(target('backyard-ramp', 0.8))).toBe(false);
+		expect(valley(target('collective-ramp', 0.75))).toBe(false);
+		expect(valley(target('team-relay', 1.1))).toBe(false); // on the front
+		expect(valley(target('team-relay', 0.55))).toBe(true); // on a wheel
+		// Put out: spinning easy at 50 %, at the roadside themselves.
+		expect(valley(target('backyard-ramp', 0.5, true))).toBe(true);
+	});
+
+	// A stopped rider's trainer is released to 0, and the ramp still asks.
+	it('is not a ramp round a stopped rider is about to be put out of', () => {
+		const ramp = running('backyard-ramp', {
+			riders: { me: { targetPct: 0.85 } },
+		});
+		expect(valley(ramp)).toBe(false);
+	});
+
+	// The server may learn an eighth mode before this client does.
+	it('is never a mode this screen does not know, while it runs', () => {
+		expect(valley(running('king-of-the-mountain'))).toBe(false);
+		expect(valley({ ...running('king-of-the-mountain'), phase: 'done' })).toBe(
+			true,
+		);
 	});
 });
 

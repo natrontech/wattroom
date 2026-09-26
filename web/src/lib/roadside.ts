@@ -50,31 +50,74 @@ export function atRoadside(
 
 /** What the ride is asking of this rider right now. */
 export interface Effort {
-	/** The watts the trainer is being given; 0 for none — paused, stopped, not riding. */
+	/**
+	 * The watts asked of the rider — the block's own or a game's, whichever is
+	 * harder; 0 for none: paused, stopped, not riding.
+	 */
 	targetWatts: number;
 	ftp: number;
 	/** The zone a game calls for everyone (Floor is Lava); 0 when none is called. */
 	calledZone: number;
 	/** A sprint window is open or about to — the one moment nobody reaches down. */
 	sprinting: boolean;
+	/**
+	 * A running game this screen cannot read an easy moment from: a Points
+	 * Race keeps its sprint windows to itself, and a mode this client does not
+	 * know yet says nothing at all. Never a valley until it ends.
+	 */
+	unreadable: boolean;
 }
 
 /**
- * The effort from what a connection knows: the trainer's target, and the zone
- * a game calls — for a rider it has not put out, since an eliminated rider is
- * spinning easy whatever the zone.
+ * The ride's half, from the rider's own session (session/ride.svelte.ts):
+ * what the block prescribes — not what the trainer holds, which the spiral
+ * release zeroes for ten seconds in the middle of an interval — and whether a
+ * sprint is armed.
+ */
+export type RideEffort = Pick<Effort, 'targetWatts' | 'ftp' | 'sprinting'>;
+
+/**
+ * The effort from what a connection knows: the ride's, and the game's as the
+ * server sends each mode (hub/mode_*.go). A rider a game has put out is
+ * spinning easy whatever the rest of the field is asked.
  */
 export function effortOf(
-	ride: Omit<Effort, 'calledZone'>,
+	ride: RideEffort,
 	game: GameState | undefined,
 	me: string | undefined,
 ): Effort {
-	const mine = me ? game?.riders?.[me] : undefined;
-	const called =
-		game?.phase === 'running' && mine && !mine.eliminated
-			? (game.calledZone ?? 0)
-			: 0;
-	return { ...ride, calledZone: called };
+	const effort: Effort = { ...ride, calledZone: 0, unreadable: false };
+	if (game?.phase !== 'running') return effort;
+	const ask = (pct: number | undefined) => {
+		effort.targetWatts = Math.max(effort.targetWatts, (pct ?? 0) * ride.ftp);
+	};
+	const mine = me ? game.riders?.[me] : undefined;
+	// A target of the rider's own — the ramp's line, the relay's front or its
+	// wheel, the eliminated rider's easy spin — asks like a block, and still
+	// asks of a rider who has stopped pedalling under it.
+	ask(mine?.targetPct);
+	if (mine?.eliminated) return effort;
+	switch (game.mode) {
+		case 'backyard-ramp':
+		case 'collective-ramp':
+		case 'team-relay':
+			break;
+		case 'floor-is-lava':
+			effort.calledZone = game.calledZone ?? 0;
+			break;
+		case 'watt-golf':
+			// Every hole is 60–110 % of FTP, carried only as the line.
+			ask(game.linePct);
+			break;
+		case 'sprint-roulette':
+			// The window rides the game from its klaxon to its end, never
+			// tick.sprint — which only the coach's own sprint sets.
+			if (game.roundStartsAtMs) effort.sprinting = true;
+			break;
+		default:
+			effort.unreadable = true;
+	}
+	return effort;
 }
 
 /**
@@ -86,7 +129,7 @@ export function effortOf(
  * pedalling or left the ride can take a bottle this second.
  */
 export function inRecoveryValley(effort: Effort): boolean {
-	if (effort.sprinting) return false;
+	if (effort.sprinting || effort.unreadable) return false;
 	if (effort.calledZone > 1) return false;
 	if (effort.targetWatts <= 0 || effort.ftp <= 0) return true;
 	return zoneOf(effort.targetWatts, effort.ftp) === 1;

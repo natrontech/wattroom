@@ -20,6 +20,7 @@ const hard: Effort = {
 	ftp: 250,
 	calledZone: 0,
 	sprinting: false,
+	unreadable: false,
 };
 const easy: Effort = { ...hard, targetWatts: 125 };
 
