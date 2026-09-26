@@ -63,6 +63,8 @@ export function createPlaylistStore(base: string) {
 	void refresh();
 
 	return {
+		/** The crew whose playlists these are; undefined for your own. */
+		crew: /^\/api\/crews\/([^/]+)\//.exec(base)?.[1],
 		get loaded(): boolean {
 			return loaded;
 		},

@@ -31,6 +31,12 @@ interface Guarded {
 }
 
 const GUARDED: Guarded[] = [
+	{
+		file: 'lib/channel/JukeboxPlaylistRow.svelte',
+		action:
+			"delete a crew playlist a voice channel's autoplay plays — the channel stops playing it for everyone, and Undo cannot point it back (#2884)",
+		asks: /confirm\(deleteQuestion\(/,
+	},
 	// The four #1493 closed.
 	{
 		file: 'lib/profile/CalendarFeed.svelte',
