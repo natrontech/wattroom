@@ -11,6 +11,9 @@
 	import X from '@lucide/svelte/icons/x';
 	import { contextMenu, type MenuEntry } from '$lib/context-menu.svelte';
 	import { toasts } from '$lib/toast.svelte';
+	import { confirm } from '$lib/confirm.svelte';
+	import { fetchCrewChannels } from '$lib/channels';
+	import { deleteQuestion, playingIn } from '$lib/channel/playlist-autoplay';
 	import type { JukeboxCommand } from '$lib/protocol';
 	import { thumbnailFor } from '$lib/channel/jukebox-add';
 	import JukeboxAdd from '$lib/channel/JukeboxAdd.svelte';
@@ -159,6 +162,12 @@
 
 	async function remove() {
 		const name = playlist.name;
+		// A voice channel's autoplay loses it for everyone, and the undo below
+		// cannot point the channel back at a re-created playlist (#2884): ask
+		// first, naming the channel. Otherwise undo over confirm, as before.
+		const playing = await playingChannels();
+		if (playing.length > 0 && !(await confirm(deleteQuestion(name, playing))))
+			return;
 		const saved = await trackSnapshot();
 		const message = await store.remove(playlist.id);
 		if (message) {
@@ -168,6 +177,13 @@
 		toasts.push(`Deleted “${name}”.`, {
 			undo: () => void recreate(name, saved),
 		});
+	}
+
+	/** The voice channels whose autoplay plays this playlist — a crew's only. */
+	async function playingChannels(): Promise<string[]> {
+		if (!store.crew) return [];
+		const res = await fetchCrewChannels(store.crew);
+		return res.ok ? playingIn(res.data?.channels ?? [], playlist.id) : [];
 	}
 
 	/** The tracks as they stand, read from the server when the row is folded:
@@ -369,6 +385,15 @@
 					verb="Saved"
 				/>
 			</div>
+			<!-- Nothing lives only in a menu (ux.md, #2884): on touch or a
+			     keyboard the context menu's Delete had no visible way in. -->
+			{#if canManage}
+				<button
+					onclick={() => void remove()}
+					class="btn btn-xs text-danger mt-2 flex items-center gap-1"
+					><Trash2 size={12} />Delete playlist</button
+				>
+			{/if}
 		</div>
 	{/if}
 
