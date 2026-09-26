@@ -6,7 +6,7 @@
 # tree keeps :8080/:5174 and the `wattroom` database; every linked worktree
 # derives its own from its path. `make dev-env` prints what this one takes.
 
-.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf licenses worktree-gc
+.PHONY: infra dev-env dev-server dev-web dev-db-drop web web-deps changelog protocol migration sqlc seed screenshots build test lint ci release print-golangci-version desktop desktop-smoke desktop-release perf perf-scenes licenses worktree-gc
 
 DEV_ENV := scripts/dev-env.sh
 
@@ -113,6 +113,16 @@ perf: ## GPU/CPU of each animated element, per display (macOS; needs `make dev-w
 	@cd desktop && [ -d node_modules/electron/dist ] || node node_modules/electron/install.js
 	@eval "$$($(DEV_ENV) print)"; \
 		cd desktop && PERF_URL="$${PERF_URL:-http://localhost:$$WATTROOM_DEV_WEB_PORT}" pnpm exec electron perf/main.js
+
+perf-scenes: ## the same, for whole screens: a crew's voice channel filling up, then your own ride (macOS; needs `make dev-server` + `make dev-web`)
+	@cd desktop && pnpm install --silent
+	@cd desktop && [ -d node_modules/electron/dist ] || node node_modules/electron/install.js
+	@eval "$$($(DEV_ENV) print)"; \
+		curl -sf -o /dev/null "http://localhost:$$WATTROOM_DEV_WEB_PORT/api/healthz" || { \
+			echo "Nothing answers on http://localhost:$$WATTROOM_DEV_WEB_PORT/api/healthz — start the dev pair first: make infra, then make dev-server and make dev-web." >&2; \
+			exit 1; \
+		}; \
+		cd desktop && PERF_URL="$${PERF_URL:-http://localhost:$$WATTROOM_DEV_WEB_PORT}" pnpm exec electron perf/scenes.js
 
 build: web ## single binary with embedded frontend
 	cd server && go build -o ../bin/wattroom-server .
