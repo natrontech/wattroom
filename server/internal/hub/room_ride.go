@@ -349,17 +349,19 @@ func (rm *room) refusalLocked(action string, rider protocol.Rider) (code, messag
 	return "", ""
 }
 
-// handOffLocked gives the session to someone in the channel (#2438): a light,
-// live action, never a crew-role change. Caller holds rm.mu and has checked
-// that from is the coach.
+// handOffLocked gives the session to someone riding in it (#2438; SPEC's
+// roles: "until they hand it to someone in the session"): a light, live
+// action, never a crew-role change. Only to a rider who joined (#2829) —
+// joining is explicit (ADR-0059), and a hand-off used to draft whoever it
+// named onto the timeline, their trainer with it. Caller holds rm.mu and has
+// checked that from is the coach.
 func (rm *room) handOffLocked(from, to string, now time.Time) (code, message string) {
 	name := rm.nameOfLocked(to)
-	if to == from || name == "" {
-		return "invalid_request", "Hand the session to someone in the channel."
+	if to == from || name == "" || !rm.session.rides(to) {
+		return "invalid_request", "Hand the session to someone riding in it."
 	}
 	rm.events.add(handOffLine("handedOff", rm.session.coachName, name, now), now)
 	rm.session.coach, rm.session.coachName = to, name
-	rm.session.join(to, true)
 	return "", ""
 }
 
@@ -373,7 +375,9 @@ func (rm *room) handOffLocked(from, to string, now time.Time) (code, message str
 func (rm *room) passSessionLocked(now time.Time) {
 	for _, id := range rm.seenOrder {
 		at, pedalling := rm.lastWatts[id]
-		if id == rm.session.coach || !pedalling || now.Sub(at) > ridingWindow {
+		// Still riding it: one who pressed Leave the ride is a free rider
+		// now, however long they rode it first (ADR-0059, #2829).
+		if id == rm.session.coach || !rm.session.rides(id) || !pedalling || now.Sub(at) > ridingWindow {
 			continue
 		}
 		name := rm.nameOfLocked(id)

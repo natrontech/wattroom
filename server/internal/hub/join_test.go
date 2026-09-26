@@ -83,7 +83,11 @@ func TestASessionCountsOnlyWhoJoinedIt(t *testing.T) {
 	}
 }
 
-func TestJoiningNeedsASessionAndAHandOffJoins(t *testing.T) {
+// A session goes to someone riding in it (SPEC's roles, ADR-0059, #2829).
+// A hand-off used to draft whoever it named onto the timeline — a free rider
+// beside the session had their trainer taken over by somebody else's
+// right-click, which is the takeover ADR-0059 exists to stop.
+func TestJoiningNeedsASessionAndAHandOffNeedsARider(t *testing.T) {
 	coach, ben := as("coach"), as("ben")
 	rm, _ := inChannel(t, "velvet", coach, ben)
 	expect(t, rm, protocol.Control{Action: "join"}, ben, "invalid_request")
@@ -93,8 +97,13 @@ func TestJoiningNeedsASessionAndAHandOffJoins(t *testing.T) {
 	if !rm.session.rides("coach") || rm.session.rides("ben") {
 		t.Fatal("the opener is not riding it, or a bystander is")
 	}
+	expect(t, rm, protocol.Control{Action: "handoff", Rider: "ben"}, coach, "invalid_request")
+	if rm.session.rides("ben") || rm.session.coach != "coach" {
+		t.Fatal("a hand-off drafted a bystander onto the timeline")
+	}
+	expect(t, rm, protocol.Control{Action: "join"}, ben, "")
 	expect(t, rm, protocol.Control{Action: "handoff", Rider: "ben"}, coach, "")
-	if !rm.session.rides("ben") {
-		t.Fatal("the new coach is not on the timeline they now drive")
+	if rm.session.coach != "ben" {
+		t.Fatal("a rider in the session could not take it")
 	}
 }

@@ -93,6 +93,24 @@ func TestCoachGonePassesSession(t *testing.T) {
 		}
 	})
 
+	// Leave the ride is explicit (ADR-0059): pedalling beside the session,
+	// they are a free rider now, not a coach in waiting (#2829).
+	t.Run("skips a rider who left the ride", func(t *testing.T) {
+		now := pat(0)
+		rm, clients := passRoom(t, &now, ana, ben, cat)
+		sampleFrom(rm, clients, "cat") // rode it first, so longest
+		if code, message := rm.control(protocol.Control{Action: "leave"}, cat, now); code != "" {
+			t.Fatalf("leave: %s %s", code, message)
+		}
+		rm.leave(clients["ana"])
+		now = pat(pastGrace)
+		sampleFrom(rm, clients, "cat", "ben")
+		sweep(rm, now)
+		if coachOf(rm) != "ben" {
+			t.Fatalf("coach is %q, want Ben — Cat left the ride", coachOf(rm))
+		}
+	})
+
 	t.Run("stays with nobody riding", func(t *testing.T) {
 		now := pat(0)
 		rm, clients := passRoom(t, &now, ana, ben)
