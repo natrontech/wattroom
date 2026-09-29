@@ -18,6 +18,39 @@ export interface RideUpload {
 }
 
 /**
+ * A solo ride as the account takes it: the workout it rode and every recorded
+ * second — the trim it was ridden at (#1530), the workout second (#1733) and
+ * the guard's own seconds (#1796), which the server scores by. One mapping for
+ * /ride and a voice channel's own workout (#2329).
+ */
+export function recordingUpload(
+	workout: { name: string },
+	startedAt: Date,
+	recording: readonly {
+		watts: number;
+		cadence: number;
+		heartRate: number;
+		bias: number;
+		clock: number;
+		released: boolean;
+	}[],
+): RideUpload {
+	return {
+		workoutName: workout.name,
+		workoutJson: JSON.stringify(workout),
+		startedAt: startedAt.toISOString(),
+		samples: recording.map((sample) => ({
+			watts: sample.watts,
+			cadence: sample.cadence,
+			hr: sample.heartRate,
+			bias: sample.bias,
+			clock: sample.clock,
+			released: sample.released,
+		})),
+	};
+}
+
+/**
  * Save a finished solo ride to the account. One place, because there are two
  * ways in: the ride that just ended, and the retry of one that did not make it
  * the first time (#794).

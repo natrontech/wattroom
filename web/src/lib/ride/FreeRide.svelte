@@ -10,6 +10,7 @@
 	import { ridePath } from '$lib/channel/address';
 	import { liveSessionId } from '$lib/channel/tick-session';
 	import { formatClock } from '$lib/format';
+	import Banner from '$lib/components/Banner.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
@@ -66,6 +67,18 @@
 		{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
 		<div class="ml-auto flex flex-wrap items-center gap-2">
 			<SessionControls compact />
+			<!-- Your own workout, beside anything running here (#2329): the same
+			     picker, the ride-alone lifecycle. It needs the trainer to hold
+			     its targets, so without one it says so rather than failing. -->
+			{#if !riding}
+				<button
+					onclick={() => channel.openPicker('ride')}
+					disabled={!channel.trainer}
+					title={channel.trainer ? undefined : 'Pair your trainer first'}
+					class="btn btn-secondary btn-lg disabled:opacity-40"
+					>Ride a workout</button
+				>
+			{/if}
 			{#if free?.recording}
 				<button
 					onclick={() => void free?.end()}
@@ -75,6 +88,9 @@
 			{/if}
 		</div>
 	</header>
+	{#if conn?.ownRide.error}
+		<Banner tone="error">{conn.ownRide.error}</Banner>
+	{/if}
 
 	{#if riding}
 		<!-- In the session already: its screen is where the ride is, and the

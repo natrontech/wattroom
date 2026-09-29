@@ -1,5 +1,6 @@
 <script module lang="ts">
 	import { createSessionSetup } from '$lib/session/session-setup.svelte';
+	import type { PickerIntent } from '$lib/channel/context';
 
 	/**
 	 * What the shell opens over a voice channel for its session: TV mode and
@@ -19,7 +20,7 @@
 			},
 			/** The picker: open, intent, and the shelf it offers. */
 			setup,
-			openPicker(intent: 'start' | 'plan' = 'start') {
+			openPicker(intent: PickerIntent = 'start') {
 				setup.intent = intent;
 				setup.open = true;
 			},
@@ -256,6 +257,13 @@
 				planning = false;
 			}
 		}}
+		onRide={device.spectator
+			? undefined
+			: (workout) => {
+					// Beside the session, on this channel's riding surface (#2329).
+					layers.setup.open = false;
+					void connection.ownRide.start(workout);
+				}}
 		onStart={device.spectator
 			? // A phone plans, and does not start (#1767). The Sessions place
 				// opens this picker on a spectator device now, and the picker
