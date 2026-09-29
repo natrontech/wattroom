@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { EXAG, yOf } from './geometry';
 import { REFERENCE, steadySpeed } from './physics';
 import { noise2, prng } from './rand';
-import type { Route } from './route';
+import type { Route } from '$lib/road/route';
 
 export type Peaks = { hero: number; second: number; share: number }; // radians (heading convention), share of riding time
 

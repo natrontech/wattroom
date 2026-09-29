@@ -14,6 +14,22 @@ type heardPokes struct {
 	mu  sync.Mutex
 	ids []string
 	got []protocol.Poke
+	// The lobby pings asked for (#2937): a pair per conversation change, a
+	// rider per read.
+	pairs [][2]string
+	reads []string
+}
+
+func (h *heardPokes) DmChanged(a, b string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.pairs = append(h.pairs, [2]string{a, b})
+}
+
+func (h *heardPokes) ReadChanged(userID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.reads = append(h.reads, userID)
 }
 
 func (h *heardPokes) PokeRider(riderID string, poke protocol.Poke) {

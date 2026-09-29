@@ -11,11 +11,18 @@ import MessageCircle from '@lucide/svelte/icons/message-circle';
  * session starting in another voice channel — the notification ADR-0042 calls
  * the most valuable — because both are announced by this one function (#1743).
  */
-export type ArrivalKind = 'dm' | 'chat' | 'friend' | 'session' | 'poke';
+export type ArrivalKind =
+	| 'dm'
+	| 'chat'
+	| 'friend'
+	| 'session'
+	| 'poke'
+	// A bottle handed up from the roadside (#3022), a poke's sibling.
+	| 'bottle';
 
 /** A message arriving, from wherever it arrived. */
 export interface Arrival {
-	/** Which kind this is; a DM, a poke and a text channel's line move off a riding screen. */
+	/** Which kind this is; a DM, a poke, a bottle and a text channel's line move off a riding screen. */
 	kind: ArrivalKind;
 	/** One key per stream — every path that can see this line passes the same one. */
 	tag: string;
@@ -75,7 +82,9 @@ function divert(arrival: Arrival): boolean {
  */
 export function announce(arrival: Arrival): void {
 	if (arrival.reading || !shouldAnnounce(arrival.tag, arrival.at)) return;
-	play(arrival.kind === 'poke' ? 'poke' : 'chat');
+	// A poke and a bottle are one person reaching for this rider, not words.
+	const nudge = arrival.kind === 'poke' || arrival.kind === 'bottle';
+	play(nudge ? 'poke' : 'chat');
 	// A written line wears the bubble — a chat channel's, as its sidebar row
 	// does, and a DM's — on the OS notification and on the toast alike.
 	const written = arrival.kind === 'chat' || arrival.kind === 'dm';
@@ -97,7 +106,7 @@ export function announce(arrival: Arrival): void {
 	// line waits too: it is no longer the room the rider is riding in, but
 	// the crew talking elsewhere (ADR-0058). A session starting elsewhere is
 	// still toasted — that is ADR-0042's whole point.
-	else if ((written || arrival.kind === 'poke') && divert(arrival)) return;
+	else if ((written || nudge) && divert(arrival)) return;
 	else
 		toasts.push(
 			arrival.body ? `${arrival.title}: ${arrival.body}` : arrival.title,

@@ -567,6 +567,28 @@ export const TemporaryDay = 24 * TemporaryHour;
  */
 export const TemporaryWeek = 7 * TemporaryDay;
 /**
+ * A route a rider imports (docs/SPEC.md "Route rides", ADR-0062): its
+ * length, and the grade its stored road may carry. The browser reads the
+ * file and the server keeps what the browser read (#3024), so both hold
+ * the road to the same bounds.
+ */
+export const MinRouteMeters = 2000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxRouteMeters = 200000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MinRoadGradePct = -15;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxRoadGradePct = 20;
+/**
  * One reconnect replay frame, in samples: an hour of the ride buffer's
  * one row a second (audit 2026-09-09). The hub takes one frame a second
  * per rider and cuts a longer one, so the client sends a longer outage
@@ -813,12 +835,36 @@ export interface Poke {
    * A line in your DM thread with the poker, not only a moment in a channel.
    */
   dm?: boolean;
+  /**
+   * What is asked for (#3022): PokeKindPoke — the plain ask, and what an
+   * empty kind means — or PokeKindBottle. Anything else is refused at the
+   * socket.
+   */
+  kind?: PokeKind;
 }
+/**
+ * PokeKind is the closed set a poke may carry (#3022).
+ */
+export type PokeKind = string;
+/**
+ * PokeKindPoke asks for attention now.
+ */
+export const PokeKindPoke: PokeKind = "poke";
+/**
+ * PokeKindBottle is a bottle handed up from the roadside (ADR-0064) to a
+ * rider riding the voice channel's session: only across that channel,
+ * never as a DM line, and never anywhere near anybody's trainer. The
+ * rider's own screen holds it until their next recovery valley
+ * (docs/SPEC.md, "The roadside"), so it lands on an easy block rather
+ * than in the middle of an interval.
+ */
+export const PokeKindBottle: PokeKind = "bottle";
 /**
  * PokeCooldownSeconds is how long before one rider may poke the same rider
  * again, through either door — a channel's socket or the DM thread. A poke
  * asks one person's machine for attention and must not become a harassment
- * button.
+ * button. A bottle takes the same cooldown on a key of its own, so handing
+ * one up never spends the poke.
  */
 export const PokeCooldownSeconds = 10;
 

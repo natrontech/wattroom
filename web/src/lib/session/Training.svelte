@@ -9,6 +9,8 @@
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import CrewStrip from '$lib/session/CrewStrip.svelte';
 	import { crewOf } from '$lib/session/follow';
+	import { bottleFor } from '$lib/roadside';
+	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
 	import ExecutionMeter from '$lib/session/ExecutionMeter.svelte';
 	import GamePanel from '$lib/session/GamePanel.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
@@ -71,6 +73,8 @@
 	// The session's own riders (ADR-0059). Everyone else in the channel is a
 	// spectator: on the Lounge's tiles, never in the session's lists.
 	const inRide = $derived(channel.riders.filter((r) => r.inSession));
+	// Who this screen's bottle goes to, from the roadside (#3022).
+	const watched = $derived(bottleFor(channel.riders, channel.focusId));
 	async function leaveRide() {
 		// Away first: this page joins whoever is on it.
 		await goto(channel.address.home);
@@ -240,7 +244,9 @@
 					canControl={channel.canControl}
 					end={() => void endGame(channel)}
 					me={account.me?.id}
-				/>
+				>
+					{#snippet roadside()}<RoadsideDeck to={watched} />{/snippet}
+				</GamePanel>
 			</section>
 		{:else if focus === 'media' && share}
 			<section class="grid min-h-0 place-items-center px-6">

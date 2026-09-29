@@ -17,8 +17,9 @@ import type { ChannelEvent } from '$lib/protocol';
 export function dmArrivalEvent(
 	from: string,
 	at: number,
-	// A poke lands the same way (#2721), and its line says who poked.
-	verb: 'messaged' | 'poked' = 'messaged',
+	// A poke lands the same way (#2721), and its line says who poked; so
+	// does a bottle handed up from the roadside once it pops (#3022).
+	verb: 'messaged' | 'poked' | 'bottled' = 'messaged',
 ): ChannelEvent {
 	return {
 		// The moment is in the id: two messages from the same person are two

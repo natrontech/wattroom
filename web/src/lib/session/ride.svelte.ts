@@ -9,6 +9,7 @@ import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 import type { RideDeps } from '$lib/session/ride-deps';
 import { createRideTarget } from '$lib/session/ride-target.svelte';
 import { createSessionSprint } from '$lib/session/ride-sprint.svelte';
+import type { RideEffort } from '$lib/roadside';
 import {
 	mayActuate,
 	quietFault,
@@ -313,6 +314,20 @@ export function createRide(deps: RideDeps) {
 		 */
 		get blockSprint() {
 			return sprint.blockWindow;
+		},
+		/**
+		 * What the ride asks of this rider, for a bottle from the roadside
+		 * (#3022): the block's own watts, never the trainer's. The spiral
+		 * release zeroes the trainer for ten seconds in the middle of an
+		 * interval — the rider's hardest moment, and no easy block. A rider
+		 * who has stopped is asked nothing. A sprint counts from its klaxon.
+		 */
+		get effort(): RideEffort {
+			return {
+				targetWatts: aim.guard === 'autopaused' ? 0 : aim.prescribed,
+				ftp: deps.profile.current.ftp,
+				sprinting: !!deps.live.tick?.sprint || !!sprint.blockWindow,
+			};
 		},
 		nudgeBias: aim.nudgeBias,
 		ride,

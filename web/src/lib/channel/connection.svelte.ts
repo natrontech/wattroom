@@ -15,6 +15,8 @@ import { parseSharedWorkout } from '$lib/workout/shared';
 import { play } from '$lib/sound/cues';
 import { applyAway, noEcho, pressed } from '$lib/channel/away-echo';
 import { connectionCues } from '$lib/channel/connection-cues.svelte';
+import { bottleHandUps } from '$lib/channel/bottles.svelte';
+import { effortOf } from '$lib/roadside';
 import { followMoves } from '$lib/channel/follow-move.svelte';
 import { toasts } from '$lib/toast.svelte';
 import type { SessionState } from '$lib/protocol';
@@ -146,7 +148,10 @@ function connect(address: PlaceAddress): Connection {
 		// Here and not in a page: the recording outlives every page (#2654).
 		$effect(() => recording.follow(shared?.phase));
 
-		freeRide = createFreeRide({ ftp: () => profile.current.ftp });
+		freeRide = createFreeRide({
+			ftp: () => profile.current.ftp,
+			singleSpeed: () => profile.current.singleSpeed,
+		});
 		ride = createRide({
 			live,
 			profile,
@@ -219,6 +224,12 @@ function connect(address: PlaceAddress): Connection {
 
 		// Everything the connection says out loud (connection-cues.svelte.ts).
 		connectionCues({ address, live, av });
+		// A bottle from the roadside waits for this rider's valley (#3022).
+		bottleHandUps({
+			address,
+			live,
+			effort: () => effortOf(ride.effort, live.tick?.game, account.me?.id),
+		});
 		followMoves({ address, live, av });
 
 		// PTT keys work on EVERY page while in voice — and a keyup lost to

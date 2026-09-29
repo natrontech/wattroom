@@ -11,6 +11,8 @@
 	import { gameMode } from '$lib/session/modes';
 	import { PLACES } from '$lib/session/podium';
 	import Heart from '@lucide/svelte/icons/heart';
+	import { atRoadside } from '$lib/roadside';
+	import type { Snippet } from 'svelte';
 	import type { GameState } from '$lib/protocol';
 
 	// One panel, seven heroes (#39's modes design): the server owns every rule;
@@ -21,6 +23,7 @@
 		end,
 		canControl,
 		me,
+		roadside,
 	}: {
 		game: GameState;
 		/** Names for ids — the tick's roster, or the channel's riders (#1589). */
@@ -29,6 +32,9 @@
 		canControl: boolean;
 		/** The viewer's rider id: their own elimination is status (#1590). */
 		me?: string;
+		/** The deck an eliminated rider is handed (#3022) — the caller knows
+		 *  who they are watching. */
+		roadside?: Snippet;
 	} = $props();
 
 	const profile = createProfileStore();
@@ -103,19 +109,22 @@
 		{/if}
 	</div>
 
-	{#if me && game.riders?.[me]?.eliminated && game.phase !== 'done'}
+	{#if atRoadside(game, me)}
 		<!-- The moment the mode is about, addressed to the person it happened
-		     to (#1590): it was a comma in the smallest type on screen. Persistent
-		     status, never a toast (errors.md). -->
-		<p
-			role="status"
-			class="border-z5/40 bg-z5/10 mt-4 rounded-lg border px-4 py-3 text-sm"
-		>
-			<span class="font-medium">You're out this game.</span>
-			<span class="text-muted"
-				>Spin easy — you're still riding, and the panel shows how it ends.</span
-			>
-		</p>
+		     to (#1590): it was a comma in the smallest type on screen. And where
+		     it leaves them (#3022): at the roadside, with the deck in reach —
+		     out of the game, not out of the ride. Persistent status, never a
+		     toast (errors.md). -->
+		<div class="border-z5/40 bg-z5/10 mt-4 rounded-lg border px-4 py-3">
+			<p role="status" class="text-sm">
+				<span class="font-medium">You're out — you're at the roadside now.</span
+				>
+				<span class="text-muted"
+					>Spin easy, you're still riding. Cheer the ones still in.</span
+				>
+			</p>
+			{#if roadside}<div class="mt-3">{@render roadside()}</div>{/if}
+		</div>
 	{/if}
 
 	{#if game.phase === 'done' && game.podium}

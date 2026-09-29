@@ -2,7 +2,8 @@
 // materials, so one world can be drawn in any art style.
 import * as THREE from 'three';
 import { Biome } from './biome';
-import { at, wrapAngle, type Route } from './route';
+import { type Route } from '$lib/road/route';
+import { at, wrapAngle } from '$lib/road/along';
 import type { Palette, Style } from './styles';
 import type { World } from './world';
 

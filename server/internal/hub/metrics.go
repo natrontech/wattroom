@@ -47,7 +47,13 @@ var (
 // No label for the room: an aggregate says whether anyone is riding without
 // putting channel ids in a metrics endpoint. Metrics are room-scoped by
 // architecture and a GaugeVec would quietly widen that.
-func (h *Hub) registerRidingMetric() {
+//
+// Beside it, the roadside (#3022, ADR-0064): sockets watching a running
+// session without riding it. Unlabelled for the same reason, and a gauge of
+// the service rather than of anybody — WATTROOM.md rules out product
+// analytics, and a count of open sockets says how loaded the hub is, never
+// who watched whom.
+func (h *Hub) registerRideGauges() {
 	// Into metrics.Registry, the one the handler serves: since #1738 nothing
 	// serves the default registry, so `prometheus.Register` here published the
 	// gauge to no one (#2321).
@@ -59,6 +65,10 @@ func (h *Hub) registerRidingMetric() {
 		Name: "wattroom_room_riding",
 		Help: "Riders with a live sample in the last 10s, across all rooms.",
 	}, h.ridingCount))
+	_ = metrics.Registry.Register(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
+		Name: "wattroom_room_spectators",
+		Help: "Sockets in rooms with a running session, held by someone not riding it.",
+	}, h.spectatorCount))
 }
 
 // ridingCount deliberately never holds the hub lock and a room lock at the same
@@ -67,12 +77,7 @@ func (h *Hub) registerRidingMetric() {
 // cannot wedge a tick, and the critical section is a map scan with no I/O in
 // it; the tick loop releases rm.mu before it writes to any socket.
 func (h *Hub) ridingCount() float64 {
-	h.mu.Lock()
-	rooms := make([]*room, 0, len(h.rooms))
-	for _, rm := range h.rooms {
-		rooms = append(rooms, rm)
-	}
-	h.mu.Unlock()
+	rooms := h.liveRooms()
 
 	now := h.now()
 	riding := 0
@@ -82,4 +87,34 @@ func (h *Hub) ridingCount() float64 {
 		rm.mu.Unlock()
 	}
 	return float64(riding)
+}
+
+// spectatorCount is ridingCount's shape for the roadside: one room lock at a
+// time, never the hub's alongside it.
+func (h *Hub) spectatorCount() float64 {
+	watching := 0
+	for _, rm := range h.liveRooms() {
+		rm.mu.Lock()
+		watching += rm.spectatorsLocked()
+		rm.mu.Unlock()
+	}
+	return float64(watching)
+}
+
+// spectatorsLocked counts the sockets watching this room's running session
+// rather than riding it — a phone beside the bike, a desk in the lounge, a
+// rider a game has put out. Sockets, not riders: the gauge is load. Nothing
+// while no session runs, since then there is nothing to watch. The caller
+// holds rm.mu.
+func (rm *room) spectatorsLocked() int {
+	if rm.session.phase != "running" {
+		return 0
+	}
+	watching := 0
+	for c := range rm.clients {
+		if !rm.session.rides(c.rider.ID) {
+			watching++
+		}
+	}
+	return watching
 }

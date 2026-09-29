@@ -6,12 +6,7 @@ package hub
 // scoring against the old one while the rider's own trainer held targets
 // from the new, and they read off target however well they held it.
 func (h *Hub) SetProfile(userID, name string, ftpWatts, weightKg int) {
-	h.mu.Lock()
-	rooms := make([]*room, 0, len(h.rooms))
-	for _, rm := range h.rooms {
-		rooms = append(rooms, rm)
-	}
-	h.mu.Unlock()
+	rooms := h.liveRooms()
 	for _, rm := range rooms {
 		rm.setProfile(userID, name, ftpWatts, weightKg)
 	}

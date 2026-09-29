@@ -2,7 +2,8 @@
 // Every consumer — the fine terrain beside the road, the coarse terrain far
 // away, props, the camera's floor — asks this function, so nothing floats
 // and nothing sinks through the road.
-import { curvature, type Route } from './route';
+import { type Route } from '$lib/road/route';
+import { curvature } from '$lib/road/along';
 import { fbm, noise2, smoothstep } from './rand';
 
 export type RoadHit = {

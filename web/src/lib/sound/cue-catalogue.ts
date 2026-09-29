@@ -11,8 +11,12 @@ interface Envelope {
 	dur: number;
 	/** peak gain before the master mix, 0–1 */
 	gain?: number;
-	/** lowpass sweep — the single most synthwave-sounding thing available */
-	filter?: { from: number; to?: number; q?: number };
+	/**
+	 * A filter sweep: lowpass unless it says otherwise — the single most
+	 * synthwave-sounding thing available. A bandpass is for a struck metal
+	 * body, which is all partials and no floor (the cowbell).
+	 */
+	filter?: { from: number; to?: number; q?: number; type?: 'bandpass' };
 }
 
 export interface Voice extends Envelope {
@@ -47,6 +51,7 @@ export type CueId =
 	| 'elimination'
 	| 'fanfare'
 	| 'cheer'
+	| 'cowbell'
 	| 'reaction'
 	| 'block'
 	| 'join'
@@ -234,6 +239,34 @@ export const CUES: Record<CueId, Cue> = {
 				at: 0,
 				dur: 0.14,
 				gain: 0.3,
+			},
+		],
+	},
+
+	// The roadside's one fixed sound (#3022, ADR-0064): the TR-808 cowbell,
+	// which is two square waves a little under a fifth apart — 540 and 800 Hz,
+	// the 808's own pair — rung through one bandpass. Over in a third of a
+	// second, so a crowd of them is a clatter rather than a drone.
+	cowbell: {
+		id: 'cowbell',
+		label: 'Cowbell',
+		hint: 'Someone at the roadside rang the bell for you. The one sound a spectator can make that is not a rider reaction.',
+		voices: [
+			{
+				type: 'square',
+				freq: 540,
+				at: 0,
+				dur: 0.3,
+				gain: 0.34,
+				filter: { from: 880, q: 3, type: 'bandpass' },
+			},
+			{
+				type: 'square',
+				freq: 800,
+				at: 0,
+				dur: 0.3,
+				gain: 0.3,
+				filter: { from: 880, q: 3, type: 'bandpass' },
 			},
 		],
 	},

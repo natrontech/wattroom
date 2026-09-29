@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { toRoute, type Route } from './route';
+import { toRoute, type Route } from '$lib/road/route';
 import { generate, type World } from './world';
 import {
 	folds,
@@ -19,7 +19,7 @@ import {
 let route: Route;
 let world: World;
 beforeAll(() => {
-	route = toRoute('Long loop', longLoopPoints());
+	route = toRoute(longLoopPoints());
 	world = generate(route);
 }, 30_000);
 

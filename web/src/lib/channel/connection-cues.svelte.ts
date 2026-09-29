@@ -182,13 +182,18 @@ export function connectionCues({
 			const phase = untrack(() => live.tick?.state.phase);
 			if (phase !== 'running' && phase !== 'paused') return false;
 			// A text channel's line waits in the sidebar's unread (#2531); only
-			// a DM or a poke, which has no row on this screen, is written into
-			// the timeline — a poke by who sent it, the whole point of one.
+			// a DM, a poke or a bottle, which have no row on this screen, is
+			// written into the timeline — a poke by who sent it, the whole
+			// point of one.
 			if (arrival.kind === 'dm')
 				live.pushEvent(dmArrivalEvent(arrival.title, arrival.at));
-			if (arrival.kind === 'poke')
+			if (arrival.kind === 'poke' || arrival.kind === 'bottle')
 				live.pushEvent(
-					dmArrivalEvent(arrival.from ?? arrival.title, arrival.at, 'poked'),
+					dmArrivalEvent(
+						arrival.from ?? arrival.title,
+						arrival.at,
+						arrival.kind === 'poke' ? 'poked' : 'bottled',
+					),
 				);
 			return true;
 		}),

@@ -31,7 +31,41 @@ func TestTheRidingGaugeReachesTheMetricsEndpoint(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("metrics = %d", rec.Code)
 	}
-	if !strings.Contains(rec.Body.String(), "wattroom_room_riding ") {
-		t.Error("wattroom_room_riding is not on /metrics — registerRidingMetric is writing to a registry nothing serves")
+	for _, gauge := range []string{"wattroom_room_riding ", "wattroom_room_spectators "} {
+		if !strings.Contains(rec.Body.String(), gauge) {
+			t.Errorf("%sis not on /metrics — registerRideGauges is writing to a registry nothing serves", gauge)
+		}
+	}
+}
+
+// The roadside gauge (#3022) counts sockets watching a running session: not
+// the riders on its timeline, and nothing at all while no session runs.
+func TestSpectatorsAreSocketsBesideARunningSession(t *testing.T) {
+	cases := []struct {
+		name  string
+		phase string
+		want  float64
+	}{
+		{"running", "running", 2},
+		{"paused is not running", "paused", 0},
+		{"idle", "idle", 0},
+		{"done", "done", 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			h := New(slog.New(slog.DiscardHandler), nil, nil)
+			rm := h.room("velvet")
+			// The coach rides; Ben watches from a desk and a phone.
+			for _, c := range []*client{sock("coach"), sock("ben"), sock("ben")} {
+				rm.join(c)
+			}
+			joinRide(rm, "coach")
+			rm.mu.Lock()
+			rm.session.phase = tc.phase
+			rm.mu.Unlock()
+			if got := h.spectatorCount(); got != tc.want {
+				t.Fatalf("spectatorCount = %v, want %v", got, tc.want)
+			}
+		})
 	}
 }

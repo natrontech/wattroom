@@ -14,7 +14,7 @@ import { FAR_W, makeField, roadIndex } from './field';
 import { landUse } from './land';
 import { markersFor, type Marker } from './markers';
 import { hashSeed, prng } from './rand';
-import type { Route } from './route';
+import type { Route } from '$lib/road/route';
 import type { Names } from './names';
 import { setPieces, type Arch, type Piece, type Sign } from './setpieces';
 import { buildMesh, CH, type TerrainMesh } from './terrain-mesh';
