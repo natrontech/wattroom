@@ -76,4 +76,9 @@ contextBridge.exposeInMainWorld('wattroom', {
 	// offering a switch that fails on click.
 	launchAtLogin: () => ipcRenderer.invoke('wattroom:login-item'),
 	setLaunchAtLogin: (on) => ipcRenderer.invoke('wattroom:login-item-set', on),
+	// Whether the rider's window is showing (#3005, #3079): a close hides it
+	// rather than destroying it, and the page hears both directions — to
+	// leave voice on a hide, and to pause what nobody can see.
+	onVisibility: (cb) =>
+		ipcRenderer.on('wattroom:visibility', (_event, visible) => cb(visible)),
 });

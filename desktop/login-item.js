@@ -9,9 +9,9 @@
 // reversible from the two places that can turn it on — Settings and the
 // tray — so undoing a click never means editing OS config.
 //
-// A login launch opens no window: the shell starts in the tray, because a
-// window in the rider's face at every boot is what makes people turn this
-// back off. HIDDEN_FLAG is how the launch says so.
+// A login launch shows no window: the shell starts in the tray with its window
+// loaded but hidden (#3005), because a window in the rider's face at every boot
+// is what makes people turn this back off. HIDDEN_FLAG is how the launch says so.
 
 const { app } = require('electron');
 const fs = require('node:fs');
@@ -19,7 +19,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 /**
- * What a login launch passes, and what main.js reads to stay windowless.
+ * What a login launch passes, and what main.js reads to keep its window hidden.
  *
  * macOS has nowhere to put it — `setLoginItemSettings`'s `args` is Windows
  * only — so there the same question is asked of the system instead, in
@@ -167,7 +167,7 @@ function setEnabled(on) {
 }
 
 /**
- * Whether this launch is the login item's, so the shell opens no window.
+ * Whether this launch is the login item's, so the shell's window loads hidden.
  *
  * macOS gets no argument to read, so the system is asked instead — and only
  * in a packaged build, because an unpackaged one is never a login item (see

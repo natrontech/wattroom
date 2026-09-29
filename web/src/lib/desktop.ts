@@ -198,6 +198,19 @@ export function onShellNavigate(cb: (to: string) => void): void {
 }
 
 /**
+ * The shell's window hiding and showing (#3005, #3079). A close hides the
+ * window rather than destroying it, so the page keeps running behind it and
+ * hears which way it went. A no-op in a browser, and in a shell too old to say.
+ */
+export function onShellVisibility(cb: (visible: boolean) => void): void {
+	(
+		globalThis as {
+			wattroom?: { onVisibility?: (cb: (visible: unknown) => void) => void };
+		}
+	).wattroom?.onVisibility?.((visible) => cb(visible === true));
+}
+
+/**
  * The height of the strip the app draws where the shell hid the OS title bar
  * (#1188), or 0 in a browser and in a shell old enough to keep its own bar.
  */
