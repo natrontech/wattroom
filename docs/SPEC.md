@@ -204,8 +204,53 @@ in raw bpm ("stay under 145" is `{ "hrHigh": 145 }`). Raw bpm on purpose —
 these are personal workouts; %LTHR is the upgrade path if shared HR workouts
 ever want it. Display-only and **never scored** (ADR-0008: no HR-derived
 competition — no execution, no medals, no ranking). Bounds 60–220 bpm.
-Closed-loop HR ERG (the trainer chasing a zone) is #67's remaining half and
-its own project.
+Closed-loop HR ERG is **HR hold**, below.
+
+**HR hold (#67 flavour 2; defaults — tune in alpha, every number a
+proposal with its source)**: a `steady` step with an HR band may set
+`"hrHold": true`. The rider's own client then moves the ERG watts to keep heart
+rate in the band, inside the one trainer-actuation module (#3049). The hub and
+the protocol do not change.
+
+- **Validation**: a hold needs `hrLow` and/or `hrHigh`, and one without either
+  is refused. A ceiling alone (`hrHigh`) is a cap: the controller only ever
+  lowers the watts from `target`, never raises them past it.
+- **Start and window**: it starts at the step's `target`, biased, and never
+  leaves **±10 % FTP** around it. That is half of Z2's width (56–75 %, Power
+  zones below), so a hold on an endurance step stays in or beside Z2.
+- **Interval**: one adjustment every **60 s**. This is the top of #67's 30–60 s
+  range, because heart rate lags effort by 30 s to 2 min (#67). It is also three
+  time constants of the simulated strap (τ **20 s**,
+  `web/src/lib/ble/simulated-sensor.ts`), after which a first-order lag has
+  covered 95 % of a step.
+- **Step**: at most **2 % FTP** per adjustment. Crossing from the target to the
+  window's edge takes five adjustments, five minutes, so one lagging reading
+  cannot swing the ride.
+- **Smoothing**: heart rate averaged over the last **10 s**. That is half the
+  strap model's τ: it adds little lag and removes the beat-to-beat jitter the
+  model carries (±1 bpm).
+- **Freshness**: a reading older than **3 s** is lost, the dashboard's own
+  signal-lost rule (`SIGNAL_LOST_MS`, #37). A reading outside **60–220 bpm**
+  (the band's bounds above) is implausible. Either way the controller holds the
+  current watts and never raises them, and the dashboard shows it as
+  persistent status, never a toast.
+- **CI bounds**, on the simulated strap: the hold settles inside the band
+  within **10 min** (ten adjustments) of the step starting. After that it
+  oscillates by at most **±4 % FTP** (two steps), well inside the ±40 W a
+  naive loop swings (#67). The strap gains a power-to-heart-rate response for
+  this test; that gain belongs to the test, not to the product.
+- **Never scored** (ADR-0008): a hold step carries no weight in execution and
+  counts toward no sprint moment, medal or ranking.
+- **Alone only**: a session refuses to start a workout that contains a hold
+  step, and says why in one line.
+- **Easier / Harder** move the bias by ±1 % during a hold, as in any ERG
+  workout; the start point and the window move with the biased target
+  ([ADR-0084](decisions/0084-wattroom-shifts.md), #3328).
+
+```jsonc
+{ "type": "steady", "seconds": 3600, "target": 0.65, "hrHigh": 145, "hrHold": true }, // a MAF-style cap: never above 145 bpm, never above 65 % FTP
+{ "type": "steady", "seconds": 2700, "target": 0.65, "hrLow": 130, "hrHigh": 140, "hrHold": true }, // hold 130–140 bpm, within 55–75 % FTP
+```
 
 **Cadence bands (#66, shipped)**: `steady` steps may carry `cadenceLow` and/or
 `cadenceHigh` (rpm) — "under 60" is `{ "cadenceHigh": 60 }`, "over 100" is
