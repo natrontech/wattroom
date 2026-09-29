@@ -39,7 +39,7 @@ export function createSessionSounds(deps: SoundDeps) {
 	// something different, and they were the silent one (#834). The block cue
 	// is exactly right for it: the target just changed.
 	const heardPause = changes<boolean>((paused) =>
-		play('block', paused ? -5 : 0),
+		play('block', { semitones: paused ? -5 : 0 }),
 	);
 	$effect(() => heardPause(deps.phase() === 'paused'));
 
@@ -90,7 +90,7 @@ export function createSessionSounds(deps: SoundDeps) {
 		seenGame = game;
 		if (!game) return;
 		for (const cue of gameCues(before, game, deps.me()))
-			play(cue.id, cue.shift);
+			play(cue.id, { semitones: cue.shift });
 	});
 	// Watt Golf's run-in is a clock, not a state change: which second was
 	// last spoken is all that is kept, so a re-render stays quiet.

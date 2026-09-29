@@ -34,7 +34,7 @@
 		error = conn.profile.update({ shareHr: next });
 		// Heard as well as seen (ux.md): the rider is on the bike, and the
 		// pitch says which way it went — lower is off, as a pause is.
-		if (!error) play('block', next ? 0 : -5);
+		if (!error) play('block', { semitones: next ? 0 : -5 });
 	}
 </script>
 

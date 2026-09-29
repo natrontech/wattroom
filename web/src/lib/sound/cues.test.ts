@@ -29,11 +29,21 @@ function fakeParam() {
 	};
 }
 
+/** When each source was told to start, and where each cue was panned. */
+const starts: number[] = [];
+const pans: number[] = [];
+
 function fakeNode() {
 	return {
 		connect: () => {},
-		start: () => {},
+		start: (at: number) => void starts.push(at),
 		stop: () => {},
+		set buffer(_: unknown) {},
+		pan: {
+			set value(v: number) {
+				pans.push(v);
+			},
+		},
 		gain: fakeParam(),
 		frequency: fakeParam(),
 		detune: fakeParam(),
@@ -59,6 +69,10 @@ class FakeAudioContext {
 	createDynamicsCompressor = fakeNode;
 	createOscillator = fakeNode;
 	createBiquadFilter = fakeNode;
+	createStereoPanner = fakeNode;
+	createBufferSource = fakeNode;
+	sampleRate = 8;
+	createBuffer = () => ({ getChannelData: () => new Float32Array(8) });
 	resume = async () => {};
 }
 
@@ -220,5 +234,53 @@ describe('the suspended context', () => {
 			'keydown',
 		]);
 		off.mockRestore();
+	});
+});
+
+/**
+ * A cue lands on its motion's hit (#3209): scheduled on the audio clock, not
+ * whenever the call happened to run, and placed on a side.
+ */
+describe('when and where a cue sounds', () => {
+	beforeEach(() => {
+		vi.spyOn(console, 'debug').mockImplementation(() => {});
+		starts.length = 0;
+		pans.length = 0;
+		now = 5;
+	});
+
+	it('starts inMs after the audio clock, to the millisecond', async () => {
+		const cues = await freshCues();
+		cues.play('shutter');
+		const soon = starts.splice(0);
+		cues.play('shutter', { inMs: 250 });
+		const later = starts.splice(0);
+		expect(soon).toHaveLength(1);
+		expect(soon[0]).toBeCloseTo(5 + 0.01, 3);
+		expect(later[0] - soon[0]).toBeCloseTo(0.25, 3);
+	});
+
+	it('keeps every voice of a cue in step, however far ahead', async () => {
+		const cues = await freshCues();
+		cues.play('prime', { inMs: 400 });
+		expect(starts).toEqual([
+			expect.closeTo(5.41, 3),
+			expect.closeTo(5.41 + 0.14, 3),
+		]);
+	});
+
+	it('never schedules into the past', async () => {
+		const cues = await freshCues();
+		cues.play('shutter', { inMs: -500 });
+		expect(starts[0]).toBeCloseTo(5.01, 3);
+	});
+
+	it('pans, and clamps short of one ear', async () => {
+		const cues = await freshCues();
+		cues.play('equip', { pan: -0.3 });
+		cues.play('equip', { pan: 1 });
+		cues.play('equip', { pan: -4 });
+		cues.play('equip');
+		expect(pans).toEqual([-0.3, cues.PAN_LIMIT, -cues.PAN_LIMIT, 0]);
 	});
 });
