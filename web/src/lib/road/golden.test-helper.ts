@@ -53,7 +53,16 @@ export const golden = JSON.parse(
 		),
 		'utf8',
 	),
-) as { vectors: GoldenVector[] };
+) as {
+	vectors: GoldenVector[];
+	/** road.Shelter's own cases (#3233), one call and its answer each. */
+	shelters: {
+		gapM: number;
+		laneDelta: number;
+		lineIndex: number;
+		shelter: number;
+	}[];
+};
 
 /** The one vector with this name at this CdA. */
 export function goldenVector(name: string, cda: number): GoldenVector {
