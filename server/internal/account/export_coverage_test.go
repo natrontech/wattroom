@@ -15,10 +15,11 @@ import (
 // that turns up here without a reason a person would accept belongs in a
 // category instead (GDPR Art. 15).
 var notExported = map[string]string{
-	"sessions":      "a hash of a sign-in cookie: no screen lists it, and session material is nothing to hand back",
-	"channel_reads": "an unread-marker cursor: bookkeeping no screen shows the rider",
-	"dm_reads":      "an unread-marker cursor: bookkeeping no screen shows the rider",
-	"track_plays":   "read back only as a room's last five titles, the same for everyone in it, with no per-rider view",
+	"sessions":       "a hash of a sign-in cookie: no screen lists it, and session material is nothing to hand back",
+	"channel_reads":  "an unread-marker cursor: bookkeeping no screen shows the rider",
+	"dm_reads":       "an unread-marker cursor: bookkeeping no screen shows the rider",
+	"track_plays":    "read back only as a room's last five titles, the same for everyone in it, with no per-rider view",
+	"ride_upload_xp": "today's running total under the uploaded-ride XP ceiling (#3044): a rate limit's bookkeeping, and the XP it bounds is on rides.json ride by ride",
 }
 
 // userTables is every table with a foreign key to users — the tables a

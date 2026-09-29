@@ -48,6 +48,12 @@ const (
 	// and they are what GET /api/me/export builds in memory.
 	savesPerWindow = 10
 	saveWindow     = time.Minute
+	// What uploaded rides may pay a rider in one UTC save day, whatever they
+	// claim (#3044, docs/SPEC.md's XP sources): about six hours at 280 W.
+	// The samples here are the client's word, and without it one scripted
+	// save was worth ~65,000 XP. A ride the hub saved from a live session is
+	// outside it — the server watched those seconds arrive.
+	maxUploadXpPerDay = 6000
 )
 
 type UserSource interface {
@@ -398,9 +404,36 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteJSON(w, http.StatusOK, map[string]string{"id": store.UUIDString(existing)})
 		return
 	}
+	// A different start that shares a second with a saved ride is not a
+	// retry and not a second ride either (#3044): nobody rides two at once.
+	overlaps, err := q.RideOverlaps(r.Context(), db.RideOverlapsParams{
+		UserID: user.ID, StartsAt: row.StartedAt,
+		EndsAt: pgtype.Timestamptz{Time: row.StartedAt.Time.Add(time.Duration(row.Seconds) * time.Second), Valid: true},
+	})
+	if err != nil {
+		httpx.Fail(w, s.log, "solo ride overlap check failed", err, "The ride could not be saved. It stays on this device.")
+		return
+	}
+	if overlaps {
+		httpx.WriteError(w, http.StatusConflict, "conflict",
+			"You already have a ride saved at this time, and nobody rides two at once — this one was not saved.")
+		return
+	}
+	// The day's ceiling, under the same lock (#3044). The ride keeps every
+	// other number; only what it pays is cut, and the row says what it paid.
+	minted, err := q.UploadXpToday(r.Context(), user.ID)
+	if err != nil {
+		httpx.Fail(w, s.log, "solo ride xp ceiling read failed", err, "The ride could not be saved. It stays on this device.")
+		return
+	}
+	row.Xp = min(row.Xp, max(0, maxUploadXpPerDay-minted))
 	id, err := q.CreateRide(r.Context(), row)
 	if err != nil {
 		httpx.Fail(w, s.log, "solo ride save failed", err, "The ride could not be saved. It stays on this device.")
+		return
+	}
+	if err := q.AddUploadXp(r.Context(), db.AddUploadXpParams{UserID: user.ID, Xp: row.Xp}); err != nil {
+		httpx.Fail(w, s.log, "solo ride xp ceiling write failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {

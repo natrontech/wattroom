@@ -169,7 +169,9 @@ func (x *export) bounded(name string, tables []string, read func() (any, int, er
 //     cross-room list of everything the rider ever queued would be strictly
 //     more than they can see, which is the line this export stops at. If a
 //     "what I put on" surface ever ships, this is the category to add with
-//     it.
+//     it. `ride_upload_xp` (#3044) takes the same judgement: one number,
+//     today's running total under the uploaded-ride XP ceiling, and the XP
+//     it bounds is in rides.json ride by ride.
 //
 // Not legal advice — a lawyer should confirm the reading before it is relied
 // on. The provisions are cited so the next person can check rather than
