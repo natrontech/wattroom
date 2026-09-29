@@ -121,6 +121,21 @@ describe('the gear space', () => {
 		}
 	});
 
+	it('moves at most a step and a half from a ratio outside the table (#3517)', () => {
+		const step = GEAR_RATIOS[1] / GEAR_RATIOS[0];
+		for (const [real, dir] of [
+			[0.01, 1],
+			[1e-6, 1],
+			[100, -1],
+		] as const) {
+			const k = gearSpace(real, 1).step(dir);
+			expect(Math.abs(Math.log(k)), `a shift from ${real}`).toBeLessThanOrEqual(
+				(Math.log(step) * 3) / 2 + 1e-9,
+			);
+			expect(k).not.toBe(1);
+		}
+	});
+
 	it('starts a Cog rider at gear 15 with k = 1, and a 42×14 rider at 17', () => {
 		expect(gearSpace(34 / 14, 1).gear).toBe(15);
 		const road = gearSpace(42 / 14, 1);
