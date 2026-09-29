@@ -95,7 +95,7 @@ func TestARoadRideKeepsItsSummaryAndTheReplayIsTheRecord(t *testing.T) {
 	for i := range samples {
 		samples[i] = protocol.RiderMetrics{Watts: 250, M: 1000 + 20*float64(i)}
 	}
-	want := stats.ReplayRoad(ridden, samples, 70+protocol.BikeKg)
+	want := stats.ReplayRoad(ridden, samples, nil, 70+protocol.BikeKg)
 
 	if s.routeID == nil || *s.routeID != routeID || s.routeKey == nil || *s.routeKey != hash || s.roadH == nil || *s.roadH != hash {
 		t.Errorf("route %v, key %v, road %v; want %s and %s twice", s.routeID, s.routeKey, s.roadH, routeID, hash)
@@ -226,4 +226,78 @@ func deref(b *bool) string {
 		return "null"
 	}
 	return fmt.Sprint(*b)
+}
+
+// lapJSON is one lap of a lappedRide: `seconds` at 250 W from `from` m, the
+// client's metres stepping `mps` — negative on a lap that runs down the road.
+type lapJSON struct {
+	lap       int
+	reverse   bool
+	seconds   int
+	from, mps float64
+}
+
+// lappedRide is a free ride on routeID in those laps.
+func lappedRide(routeID string, laps ...lapJSON) string {
+	var samples []string
+	for _, l := range laps {
+		for i := range l.seconds {
+			reverse := ""
+			if i == 0 && l.reverse {
+				reverse = `,"reverse":true`
+			}
+			samples = append(samples, fmt.Sprintf(`{"watts":250,"cadence":90,"m":%g,"lap":%d%s}`, l.from+l.mps*float64(i), l.lap, reverse))
+		}
+	}
+	return fmt.Sprintf(
+		`{"workoutName":"Free ride","workoutJson":"{\"name\":\"Free ride\",\"unscored\":true,\"steps\":[]}","startedAt":%q,"samples":[%s],"routeId":%q,"drive":"sim"}`,
+		nextStart().Format(time.RFC3339), strings.Join(samples, ","), routeID)
+}
+
+// "Ride back the way you came" is one saved ride with two laps (#3598): out
+// up the road, back down it, the distance and climbing the replay's lap by
+// lap. A lap's metres run its own way; a lap that runs the other way, or laps
+// out of order, are refused.
+func TestARoadRideSavesWithLaps(t *testing.T) {
+	h := setup(t)
+	routeID, _ := storeRoute(t, h, "alice")
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", lappedRide(routeID,
+		lapJSON{lap: 0, seconds: 60, from: 1000, mps: 8},
+		lapJSON{lap: 1, reverse: true, seconds: 60, from: 1480, mps: -8}))
+	if status != http.StatusCreated {
+		t.Fatalf("an out-and-back: %d %v", status, got)
+	}
+	id, _ := got["id"].(string)
+	s := readSummary(t, h, id)
+
+	ridden, err := road.UnpackRoad(testx.FlatRoad(5000, 100))
+	if err != nil {
+		t.Fatal(err)
+	}
+	samples := make([]protocol.RiderMetrics, 120)
+	for i := range samples {
+		samples[i] = protocol.RiderMetrics{Watts: 250, M: 1000 + 8*float64(i)}
+		if i >= 60 {
+			samples[i].M = 1480 - 8*float64(i-60)
+		}
+	}
+	want := stats.ReplayRoad(ridden, samples, []stats.Lap{{Start: 0}, {Start: 60, Reverse: true}}, 70+protocol.BikeKg)
+	if s.fromM == nil || *s.fromM != 1000 || s.distanceM == nil || int(*s.distanceM) != int(want.DistanceM+0.5) ||
+		s.climbedM == nil || int(*s.climbedM) != int(want.ClimbedM+0.5) {
+		t.Errorf("from %v, %v m ridden, %v m climbed; want 1000, the laps' %.0f m and %.0f m", s.fromM, s.distanceM, s.climbedM, want.DistanceM, want.ClimbedM)
+	}
+
+	for _, c := range []struct {
+		name string
+		laps []lapJSON
+	}{
+		{"a reversed lap whose metres count up", []lapJSON{{lap: 0, seconds: 60, from: 1000, mps: 8}, {lap: 1, reverse: true, seconds: 60, from: 1480, mps: 8}}},
+		{"a forward lap whose metres count down", []lapJSON{{lap: 0, seconds: 60, from: 1480, mps: -8}}},
+		{"a lap skipped", []lapJSON{{lap: 0, seconds: 60, from: 1000, mps: 8}, {lap: 2, seconds: 60, from: 1000, mps: 8}}},
+		{"a ride that starts on lap 1", []lapJSON{{lap: 1, seconds: 60, from: 1000, mps: 8}}},
+	} {
+		if status, body := call(t, h.mux, "alice", http.MethodPost, "/api/rides", lappedRide(routeID, c.laps...)); status != http.StatusBadRequest || body["field"] != "samples" {
+			t.Errorf("%s: %d %v, want 400 on samples", c.name, status, body)
+		}
+	}
 }
