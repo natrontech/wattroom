@@ -137,7 +137,7 @@ describe('presence lines (#984)', () => {
  * fails, the line simply never appears. That is how `restored` was broadcast
  * to everyone and thrown away by every client (#1068).
  *
- * This list is the server's, kept beside `protocol.go`'s ChannelEvent comment.
+ * This list is the server's, kept beside `chat.go`'s ChannelEvent comment.
  * Adding a verb there without a case here fails now, rather than going quiet.
  */
 const SERVER_VERBS = [

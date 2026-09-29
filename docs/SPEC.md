@@ -91,6 +91,8 @@ One table, because there is one place roles live: the crew ([ADR-0058](decisions
 
 † **The last column is a device, not a fourth role** (#1767, headed "Spectator (phone)" until then; `device.spectator` in the code is this column). It is the same rider holding a phone, and it reads _and on a phone?_ — a ✓ says the capability the first three columns gave them still works there. A **–** marks the only thing that can take one away: needing something a phone has not got — a **paired trainer** (Web Bluetooth is not on iOS Safari, [ADR-0004](decisions/0004-chrome-first-with-native-escape-hatch.md)), or the **riding screen a session is run from**, since starting a session, picking its workout, counting it in and arming a sprint are the coach's cockpit and belong on the device they are pedalling at. Moderating and planning need neither, so an owner with nothing but a phone can ban a griefer, end a session left running and put next Tuesday on the calendar. The crew's **Settings** page is not offered in the narrow drawer (#2447) — a navigation choice under the 95 % rule, not a capability the phone lacks, so its rows keep their ✓. This column read "–" on every row above _Say you are in_ until #1767; the code had never gated moderation, so it was the matrix that was wrong ([ADR-0020](decisions/0020-the-app-takes-discords-shape.md)'s 2026-09-05 amendment gates "the affordances that need something a phone does not have", and WATTROOM.md's device row gates "the affordances that would fail on it rather than the page").
 
+Session controls — pick, start, pause, resume, end, arm a sprint, hand off, start or end a game — are rate-limited on the server **per rider and per control: the same control at most four times a second** (#3019, defaults — tune in alpha). No coach needs one button twice inside a quarter second, and without it a looping client had the room re-validate a 64 KiB workout as fast as its socket delivered. It is per control, not one allowance per rider, because the client sends its own Start on the first tick that shows its pick landed: ticks are once a second, so the Start follows the pick by a round trip plus anything up to a second, and a shared allowance would refuse up to one Start in four. A second tab shares the rider's allowance rather than doubling it, and a refused control answers `rate_limited`. Joining and leaving the session are not limited: each only marks the rider in or out, which the next tick carries, and the session page sends its join by itself, so a rider's second tab would otherwise be refused a join nobody tapped.
+
 Caps (defaults — tune in alpha): a rider **founds at most 3 crews**, counted over the crews they founded and still own, so handing one on frees the slot, and so does one going. A crew has no delete button (#1935): **a crew with nothing left in it goes** — no channel and nobody in it but its owner — with the owner's delete of its last channel or its last member's leave, never with a ban (#2079, #2837). A crew with a channel never goes that way; its channels are what it holds (ADR-0058). A crew holds at most **20 text channels** and **10 voice channels**. A voice channel runs **one session** at a time — that one is not a default but the model (ADR-0058), and a second start is refused rather than counted. Membership is uncapped.
 
 Names, counted in characters (not bytes, #1986): a crew or channel name is 1–60, a workout name (planned, ridden or saved) 1–80, a token name 1–60, a chat or direct message 1–500, a display name 1–60.
@@ -546,6 +548,39 @@ ERG 0 W: nobody is riding the trainer then.
 | Collective Ramp | Backyard rules on the **session-average** %FTP; line starts 75 %, +4 %/round; score = rounds survived                                                                                   |
 
 Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued pedalling on reconnect).
+
+## Rider animation (defaults — tune in alpha; #3066)
+
+How a rider's figure in a ride world moves. Every number here replaced one the world prototype
+invented (#3021): a cadence of 68 + W/9 rpm, sprint thresholds of 1.6/1.3 × FTP, a 0.25 s time
+constant and a 0.12 rock. `r` is the rider's power ÷ their FTP; grade is the road's, in %.
+
+**Cadence and stopping**
+
+- A rider whose trainer reports **no cadence** pedals at the jukebox's effort tiers (Voice
+  channel audio defaults, BPM matching): **≤ 55 % FTP → 80 rpm**, **≤ 75 % → 85**,
+  **≤ 90 % → 90**, **above → 95 rpm**.
+- **Stopped** is Ride guards' stopped: cadence below **5 rpm** and power below **20 W**.
+- **Coasting** turns the cranks forward only, to the next level position, within **1.2 s**.
+
+**Postures**
+
+| Posture        | Enters                                                                      | Exits                                             | Held at least |
+| -------------- | --------------------------------------------------------------------------- | ------------------------------------------------- | ------------- |
+| Sprint         | r ≥ **1.6** (≥ **1.2** while a sprint moment is armed) and cadence ≥ **50** | r below **1.2** (below **1.0** while armed)       | **2 s**       |
+| Standing climb | grade ≥ **5 %**, cadence < **72** and r ≥ **0.8**, for **2 s**              | cadence > **78**, grade < **3 %** or r < **0.65** | **3 s**       |
+| Stretch stand  | for **8–15 s** every **180–360 s**, on grades of **5 %** or more            | when its 8–15 s are up                            | —             |
+| Tuck           | coasting at ≥ **50 km/h** on a grade of **−4 %** or steeper                 | below **42 km/h**                                 | **1.5 s**     |
+| Drops          | ≥ **45 km/h**, or r ≥ **1.2**                                               | —                                                 | —             |
+| Tops           | grade ≥ **4 %** with r < **0.55**                                           | —                                                 | —             |
+
+**Springs** (half-lives): cadence **0.3 s** (**0.5 s** for remote riders), stand **0.25 s**,
+lean **0.3 s**, steer **0.15 s**.
+
+**Motion**
+
+- **Sway**: **0.6° × r** seated, **4° × r** climbing, **9° × r ÷ 1.6** sprinting.
+- **Lean** = atan(v²κ ÷ g), clamped to **16–22°** while pedalling and **32°** coasting.
 
 ## Sync tolerances
 

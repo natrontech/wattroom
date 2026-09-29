@@ -7,6 +7,147 @@
  * colour tokens together when the rider chooses another theme.
  */
 @theme {
+	/* Tailwind's pulse, sampled 44 times in its 2 s instead of on every frame
+	 * (#3199): the same opacity curve, but the window only has to be
+	 * recomposited ~22 times a second rather than at the display's 120 or
+	 * 165. The loops a rider sits beside for a whole ride step at that rate
+	 * (`equalizer` below); between steps nothing on screen changes. */
+	--animate-pulse: pulse-stepped 2s step-end infinite;
+	@keyframes pulse-stepped {
+		0% {
+			opacity: 1;
+		}
+		2.273% {
+			opacity: 0.998;
+		}
+		4.545% {
+			opacity: 0.991;
+		}
+		6.818% {
+			opacity: 0.98;
+		}
+		9.091% {
+			opacity: 0.964;
+		}
+		11.364% {
+			opacity: 0.944;
+		}
+		13.636% {
+			opacity: 0.92;
+		}
+		15.909% {
+			opacity: 0.891;
+		}
+		18.182% {
+			opacity: 0.859;
+		}
+		20.455% {
+			opacity: 0.824;
+		}
+		22.727% {
+			opacity: 0.788;
+		}
+		25% {
+			opacity: 0.75;
+		}
+		27.273% {
+			opacity: 0.712;
+		}
+		29.545% {
+			opacity: 0.676;
+		}
+		31.818% {
+			opacity: 0.641;
+		}
+		34.091% {
+			opacity: 0.609;
+		}
+		36.364% {
+			opacity: 0.58;
+		}
+		38.636% {
+			opacity: 0.556;
+		}
+		40.909% {
+			opacity: 0.536;
+		}
+		43.182% {
+			opacity: 0.52;
+		}
+		45.455% {
+			opacity: 0.509;
+		}
+		47.727% {
+			opacity: 0.502;
+		}
+		50% {
+			opacity: 0.5;
+		}
+		52.273% {
+			opacity: 0.502;
+		}
+		54.545% {
+			opacity: 0.509;
+		}
+		56.818% {
+			opacity: 0.52;
+		}
+		59.091% {
+			opacity: 0.536;
+		}
+		61.364% {
+			opacity: 0.556;
+		}
+		63.636% {
+			opacity: 0.58;
+		}
+		65.909% {
+			opacity: 0.609;
+		}
+		68.182% {
+			opacity: 0.641;
+		}
+		70.455% {
+			opacity: 0.676;
+		}
+		72.727% {
+			opacity: 0.712;
+		}
+		75% {
+			opacity: 0.75;
+		}
+		77.273% {
+			opacity: 0.788;
+		}
+		79.545% {
+			opacity: 0.824;
+		}
+		81.818% {
+			opacity: 0.859;
+		}
+		84.091% {
+			opacity: 0.891;
+		}
+		86.364% {
+			opacity: 0.92;
+		}
+		88.636% {
+			opacity: 0.944;
+		}
+		90.909% {
+			opacity: 0.964;
+		}
+		93.182% {
+			opacity: 0.98;
+		}
+		95.455% {
+			opacity: 0.991;
+		}
+		97.727% {
+			opacity: 0.998;
+		}
+	}
+
 	/* Chakra Petch carries display and every number; Barlow does the reading. */
 	--font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
 	--font-display: 'Chakra Petch', var(--font-sans);
@@ -323,28 +464,120 @@ body {
 
 /* Placeholder for content that is on its way. Pairs with .claude/rules/errors.md's
    loading / error / empty / content contract. */
+/* The shimmer is a strip of the same gradient, tiled every two widths,
+ * gliding two tiles to the right: what animating background-position drew,
+ * moved by transform instead (#2998). That repainted the gradient on the
+ * main thread every frame — 6 blocks held ~12% GPU on a 5K display — where a
+ * transform moves pixels drawn once. UpdateRow's sweep made the same move. */
 @utility skeleton {
-	background: linear-gradient(
-		90deg,
-		var(--color-surface-raised) 0%,
-		color-mix(in oklab, var(--color-neon) 12%, var(--color-surface-raised)) 50%,
-		var(--color-surface-raised) 100%
-	);
-	background-size: 200% 100%;
-	animation: shimmer 1.4s ease-in-out infinite;
+	position: relative;
+	overflow: hidden;
+	background: var(--color-surface-raised);
+
+	&::after {
+		content: '';
+		position: absolute;
+		inset: 0 auto 0 -400%;
+		width: 600%;
+		background: linear-gradient(
+				90deg,
+				var(--color-surface-raised) 0%,
+				color-mix(in oklab, var(--color-neon) 12%, var(--color-surface-raised))
+					50%,
+				var(--color-surface-raised) 100%
+			)
+			0 0 / calc(100% / 3) 100%;
+		animation: shimmer 1.4s ease-in-out infinite;
+	}
 }
 
 @keyframes shimmer {
-	from {
-		background-position: 200% 0;
-	}
 	to {
-		background-position: -200% 0;
+		transform: translateX(calc(200% / 3));
+	}
+}
+
+/* The equalizer bars' breathing — RidingBars and the live Logo — as 24
+ * samples of the ease-in-out it used to be, each held until the next
+ * (#3199), so a bar changes ~22 times a second instead of on every frame.
+ * An element sets `--eq-low`, the scale it breathes down to. */
+@keyframes equalizer {
+	0% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0));
+	}
+	4.167% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.0136));
+	}
+	8.333% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.0561));
+	}
+	12.500% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.1292));
+	}
+	16.667% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.2318));
+	}
+	20.833% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.3588));
+	}
+	25% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.5));
+	}
+	29.167% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.6412));
+	}
+	33.333% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.7682));
+	}
+	37.500% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.8708));
+	}
+	41.667% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.9439));
+	}
+	45.833% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.9864));
+	}
+	50% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 1));
+	}
+	54.167% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.9864));
+	}
+	58.333% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.9439));
+	}
+	62.500% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.8708));
+	}
+	66.667% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.7682));
+	}
+	70.833% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.6412));
+	}
+	75% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.5));
+	}
+	79.167% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.3588));
+	}
+	83.333% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.2318));
+	}
+	87.500% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.1292));
+	}
+	91.667% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.0561));
+	}
+	95.833% {
+		transform: scaleY(calc(var(--eq-low) + (1 - var(--eq-low)) * 0.0136));
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.skeleton {
+	.skeleton::after {
 		animation: none;
 	}
 	/* Nothing glides for a rider who asked the OS for stillness (#2888): the
