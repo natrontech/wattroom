@@ -947,6 +947,26 @@ fills them in.
 - **Neutral figure** (until the rider chooses): athletic build, a middle height, the neutral tone.
 - **The live zone** is a flat ground ring under the bike, never the jersey.
 
+## The living world (defaults — tune in alpha; #3178)
+
+What dresses the road beside the budgets of "The world" above.
+
+| Parameter     | Value                                                                                                     |
+| ------------- | --------------------------------------------------------------------------------------------------------- |
+| Corridor      | at most **150 KB** gzipped per **50 km**                                                                  |
+| Land cover    | weights OSM **1.0** > WorldCover **0.7** > generator **0.4**; edges warped **±6 m**; meadow below **1,300 m**, pasture above |
+| Buildings     | footprints fitted at **0.7–1.4×** scale                                                                   |
+| Water         | streams shown within **300 m** of the road; lakes reflect with Schlick F0 **0.02**                        |
+| Set pieces    | a generated one never within **90 s** of a real landmark of the same class                                |
+| Snow poles    | every **25 m** above **1,100 m**                                                                          |
+| Animals       | at most **80** in one draw, birds at most **40**; a cow turns its head toward riders within **60 m**      |
+| Ambience      | at most **6** voices; **−12 dB** under music; at most **8** one-shots a minute                            |
+| Fog sea       | September to April, its top at **700–1,000 m**, clamped so the climb crosses it                           |
+| Rain          | at most **3,000** streaks                                                                                 |
+| Crowds        | solo: **0–1** locals per km; a session: about **20** at the summit                                        |
+| Postbus       | at most once per **20 min**                                                                               |
+| Weather       | lookups cached **1 h** per **0.1°** cell                                                                  |
+
 ## Rider animation (defaults — tune in alpha; #3066)
 
 How a rider's figure in a ride world moves. Every number here replaced one the world prototype
