@@ -57,11 +57,6 @@ func finishMux(mux *http.ServeMux, baseURL string, crewCard og.LookupCrew, log *
 	mux.Handle("/", spaHandler(social))
 }
 
-// logLevel reads WATTROOM_LOG_LEVEL, the same shape as WATTROOM_ADDR and
-// WATTROOM_DEV_LOGIN rather than a new mechanism. Unset or unreadable means
-// info, which is what every deployment has had until now — an operator who
-// mistypes it gets the old behaviour and a line saying so, not a silent
-// server.
 // metricsAddress is where the metrics listener binds (#1738). A separate
 // port rather than a path on the public one: what an endpoint publishes
 // should not depend on an edge proxy's configuration, and wattroom.ch's edge
