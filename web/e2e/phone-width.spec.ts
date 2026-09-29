@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { importARoute } from './route';
 import { MEASURED, MEASURED_BY_ID, MEASURED_SIGNED_OUT } from './routes.js';
 import { signInAs } from './signin';
 
@@ -321,6 +322,8 @@ test('no page outside a voice channel scrolls sideways on a phone', async ({
 	expect(sent, 'the first line').toMatch(/^2\d\d/);
 	await peerContext.close();
 
+	// A route's page needs a route (#3061), stored the way a rider stores one.
+	const routeId = await importARoute(page);
 	const byId = await page.evaluate(async () => {
 		const me = (await (await fetch('/api/me')).json()) as { id?: string };
 		const rides = (await (await fetch('/api/rides')).json()) as {
@@ -353,6 +356,7 @@ test('no page outside a voice channel scrolls sideways on a phone', async ({
 		'/crew/[id]/board': `/crew/${crewId}/board`,
 		'/crew/[id]/workouts': `/crew/${crewId}/workouts`,
 		'/c/[code]': `/c/${crewCode}`,
+		'/workouts/routes/[id]': `/workouts/routes/${routeId}`,
 	};
 	expect(
 		Object.keys(byPattern).sort(),
@@ -361,11 +365,15 @@ test('no page outside a voice channel scrolls sideways on a phone', async ({
 	const routes = [...MEASURED, ...Object.values(byPattern)];
 	// The id-reached pages are the point of the seeding above: a run where
 	// none of them resolved would pass while asserting nothing about them.
-	expect(byId, 'the seeded ride and your own page resolve').toEqual(
+	expect(
+		{ ...byId, routeId },
+		'the seeded ride, route and your own page resolve',
+	).toEqual(
 		expect.objectContaining({
 			me: expect.stringMatching(/.+/),
 			ride: expect.stringMatching(/.+/),
 			peer: expect.stringMatching(/.+/),
+			routeId: expect.stringMatching(/.+/),
 		}),
 	);
 	// The crew's routes hang off locals the guard above cannot see,

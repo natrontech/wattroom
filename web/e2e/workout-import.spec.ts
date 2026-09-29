@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { routeGpx, TRACK_NAME } from './route';
 import { signInAs } from './signin';
 
 /**
@@ -157,27 +158,9 @@ test('import a .erg, and refuse the files that are not one', async ({
 	await expect(page.getByLabel('Workout name')).toHaveValue(ERG_NAME);
 });
 
-/**
- * A route file through the same door (#3057): the file stays in the browser,
- * the preview says what it became, and Save stores the road — which then
- * reads back under its generated name. Invented, in the open South Atlantic:
- * no fixture here is anyone's road (#3054). Three kilometres climbing 4 %,
- * so the one climb is class IV.
- */
-function routeGpx(): string {
-	const perLon = 111_195 * Math.cos((30 * Math.PI) / 180);
-	const points = Array.from({ length: 301 }, (_, i) => {
-		const lon = -25 + (i * 10) / perLon;
-		return `<trkpt lat="-30.0000000" lon="${lon.toFixed(7)}"><ele>${(100 + 0.4 * i).toFixed(1)}</ele></trkpt>`;
-	});
-	return `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="WattRoom e2e" xmlns="http://www.topografix.com/GPX/1/1">
-<trk><name>My street to the office</name><trkseg>
-${points.join('\n')}
-</trkseg></trk>
-</gpx>`;
-}
-
+// A route file through the same door (#3057): the file stays in the browser,
+// the preview says what it became, and Save stores the road — which then
+// reads back under its generated name.
 test('import a .gpx route, read its preview, and save it', async ({ page }) => {
 	await page.addInitScript(() =>
 		localStorage.setItem(
@@ -199,7 +182,7 @@ test('import a .gpx route, read its preview, and save it', async ({ page }) => {
 	});
 	await expect(heading).toBeVisible();
 	const generated = (await heading.textContent())!.trim();
-	await expect(page.getByText('My street to the office')).toHaveCount(0);
+	await expect(page.getByText(TRACK_NAME)).toHaveCount(0);
 	await expect(page.getByRole('list', { name: 'Climbs' })).toContainText('IV');
 	await expect(page.getByText('At the reference pace')).toBeVisible();
 	await expect(page.getByText(/smoothing every route gets/)).toBeVisible();

@@ -18,3 +18,10 @@ export const liveNumbersLine =
  */
 export const routePrivacyLine =
 	'A route’s map is sealed and only you can open it. A crew you ride it with sees its road — heights and turns, never where it is or its two ends — and a file from Strava rides with you alone. Deleting the route, or your account, erases it.';
+
+/**
+ * Where a route's name travels (#3055), beside the box that renames it: the
+ * importer and the route's own page say it the same way.
+ */
+export const routeNameLine = (generated: string) =>
+	`Only you see this name. Your crews, friends, calendars, emails and Strava see “${generated}”.`;

@@ -10,6 +10,7 @@
 	import { goto } from '$app/navigation';
 	import { account } from '$lib/account.svelte';
 	import { type MenuEntry } from '$lib/context-menu.svelte';
+	import RouteShelf from './RouteShelf.svelte';
 	import WorkoutCard from './WorkoutCard.svelte';
 	import { durationSeconds } from '$lib/workout/engine';
 	import { byFocus, focuses, library, type Focus } from '$lib/workout/library';
@@ -226,6 +227,8 @@
 			</p>
 		{/if}
 	</section>
+
+	<RouteShelf />
 
 	<!-- /ramp retires here (ADR-0020): a ramp test is a workout you start, not
 	     a destination. It keeps its own ride screen — it writes your FTP — but
