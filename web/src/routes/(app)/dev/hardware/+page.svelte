@@ -92,7 +92,7 @@
 
 	async function sendGrade(grade: number) {
 		try {
-			await trainer?.setSimulation(grade);
+			await trainer?.setSimulation({ gradePct: grade });
 			note(`set simulation → ${grade}% grade`);
 		} catch (error) {
 			note(error instanceof Error ? error.message : String(error), true);

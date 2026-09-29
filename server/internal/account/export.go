@@ -80,7 +80,7 @@ type export struct {
 // to their data should get what we could gather, not a 500.
 func (x *export) categories() []category {
 	return []category{
-		x.rides(), x.chat(), x.messages(), x.sessions(), x.friends(), x.dismissedRequests(),
+		x.rides(), x.chat(), x.messages(), x.sessions(), x.friends(), x.dismissedRequests(), x.hiddenRiders(),
 		x.playlists(), x.tracks(), x.plannedSessions(), x.workouts(), x.xp(), x.trophies(),
 		x.identities(), x.passkeys(), x.coachAccess(), x.reactions(), x.crews(), x.pins(),
 		x.scheduledSessions(), x.channelMembers(), x.soundboard(), x.rideUploads(),

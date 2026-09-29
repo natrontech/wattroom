@@ -61,6 +61,7 @@ type Service struct {
 	crews    CrewReleaser
 	revoker  GrantRevoker
 	reaper   BlobReaper
+	reports  ReportReaper
 	live     Live
 	// One export in flight per account (#1554). inflight.go.
 	exports *inflight.Set
@@ -77,6 +78,16 @@ type BlobReaper interface {
 
 // SetTrackReaper wires the tracks service in after construction, like the rest.
 func (s *Service) SetTrackReaper(r BlobReaper) { s.reaper = r }
+
+// ReportReaper takes the rider's flag reports off disk (#2906): they hold
+// their name, their last two minutes and their own log lines.
+type ReportReaper interface {
+	RemoveReporter(userID string)
+}
+
+// SetReportReaper wires the feedback service in after construction. Absent,
+// a delete still purges the rows.
+func (s *Service) SetReportReaper(r ReportReaper) { s.reports = r }
 
 // SetLive wires the hub in after construction. Absent, a delete still purges
 // the rows.

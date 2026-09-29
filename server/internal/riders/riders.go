@@ -175,6 +175,9 @@ type riderJSON struct {
 	// The viewer may ask: they share a channel and nothing is pending. The
 	// friend code itself never travels — see friends.handleRequest.
 	CanAdd bool `json:"canAdd"`
+	// The viewer hid this rider (#3202), so the page offers to show them
+	// again. Never the other way round: who hid you is not yours to read.
+	Hidden bool `json:"hidden,omitempty"`
 	// Friends (and the rider) only; null otherwise.
 	Month       *monthJSON       `json:"month"`
 	SharedRides []sharedRideJSON `json:"sharedRides"`
@@ -229,6 +232,11 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, "friendship", err, me)
 		return
 	}
+	hid, err := s.store.Queries.HiddenBetween(ctx, db.HiddenBetweenParams{Viewer: me.ID, Other: id})
+	if err != nil {
+		s.fail(w, "hidden", err, me)
+		return
+	}
 
 	totals, err := s.store.Queries.RiderTotals(ctx, id)
 	if err != nil {
@@ -255,7 +263,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		Since:     rider.CreatedAt.Time.Format(time.RFC3339),
 		TotalXp:   totals.TotalXp, TotalKj: totals.TotalKj, Rides: totals.Rides,
 		Medals: medals, CrewsInCommon: inCommon,
-		Friend: friend, CanAdd: friend == "none",
+		Friend: friend, CanAdd: friend == "none" && !hid.ViewerHid, Hidden: hid.ViewerHid,
 		StatusLine: status.OfUser(rider, time.Now()),
 	}
 	trusted := friend == "self" || friend == "accepted"

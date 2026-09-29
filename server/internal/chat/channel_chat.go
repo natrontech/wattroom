@@ -370,7 +370,7 @@ func (s *Service) handleChannelReact(w http.ResponseWriter, r *http.Request) {
 	}
 	var count int64
 	if err == nil {
-		count, err = s.store.Queries.CountChatReaction(r.Context(), db.CountChatReactionParams{MessageID: mid, Emoji: req.Emoji})
+		count, err = s.store.Queries.CountChatReaction(r.Context(), db.CountChatReactionParams{MessageID: mid, Emoji: req.Emoji, Viewer: me.ID})
 	}
 	if err != nil {
 		httpx.Fail(w, s.log, "channel reaction", err, "The reaction did not land. Try again.", "channel", store.UUIDString(channel.ID))

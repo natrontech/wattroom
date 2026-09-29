@@ -3,9 +3,11 @@ import {
 	parseIndoorBikeData,
 	clampTarget,
 	DEFAULT_POWER_RANGE,
+	encodeSimulation,
 	FtmsTrainer,
 	parsePowerRange,
 } from './ftms';
+import type { TrainerSample } from './trainer';
 
 /** Little-endian byte builder, so the cases read like the spec's field order. */
 function packet(flags: number, ...bytes: number[]): DataView {
@@ -56,6 +58,48 @@ describe('parseIndoorBikeData', () => {
 	it('reads negative power without wrapping', () => {
 		// SINT16: coasting on some units reports slightly negative rather than zero.
 		expect(parseIndoorBikeData(packet(0x0041, 0xf6, 0xff)).watts).toBe(-10);
+	});
+});
+
+describe('encodeSimulation', () => {
+	const bytes = (road: Parameters<typeof encodeSimulation>[0]) => [
+		...new Uint8Array(encodeSimulation(road)),
+	];
+
+	it('sends a grade alone as the 7 bytes every trainer was always sent', () => {
+		// Pinned as literals, not computed from SIM_DEFAULTS: changing a
+		// default changes what every current caller writes (#3324).
+		// op 0x11 | wind 0 | grade 2.5 % = 250 | Crr 0.0040 = 40 | Cw 0.51 = 51
+		expect(bytes({ gradePct: 2.5 })).toEqual([
+			0x11, 0x00, 0x00, 0xfa, 0x00, 0x28, 0x33,
+		]);
+		expect(bytes({ gradePct: -3 })).toEqual([
+			0x11, 0x00, 0x00, 0xd4, 0xfe, 0x28, 0x33,
+		]);
+	});
+
+	it('writes each field at its FTMS resolution', () => {
+		// wind −2.5 m/s = −2500 | grade 8 % = 800 | Crr 0.005 = 50 | Cw 0.33 = 33
+		expect(bytes({ gradePct: 8, crr: 0.005, cw: 0.33, windMps: -2.5 })).toEqual(
+			[0x11, 0x3c, 0xf6, 0x20, 0x03, 0x32, 0x21],
+		);
+	});
+
+	it('clamps Cw at 2.55 kg/m and Crr at 0.0255, the width of their UINT8 fields', () => {
+		const [, , , , , crr, cw] = bytes({ gradePct: 0, crr: 0.05, cw: 3 });
+		expect(crr).toBe(255);
+		expect(cw).toBe(255);
+		const [, , , , , noCrr, noCw] = bytes({ gradePct: 0, crr: -1, cw: -1 });
+		expect(noCrr).toBe(0);
+		expect(noCw).toBe(0);
+	});
+
+	it('clamps grade and wind to SINT16 rather than wrapping', () => {
+		const road = new DataView(
+			encodeSimulation({ gradePct: 400, windMps: -40 }),
+		);
+		expect(road.getInt16(3, true)).toBe(0x7fff);
+		expect(road.getInt16(1, true)).toBe(-0x8000);
 	});
 });
 
@@ -387,6 +431,34 @@ describe('FtmsTrainer control-point queue', () => {
 		expect(samples).toEqual([{ watts: 250, cadence: 90 }]);
 	});
 
+	it("carries a Kickr Core's speed in m/s, and none from a frame without it", async () => {
+		// The Kickr Core of the #10 session (2026-08-29) read 78 W, 40 rpm and
+		// 15.03 km/h in one Indoor Bike Data notification. Re-encoded from
+		// those logged values — the session's log kept parsed fields, not the
+		// bytes: flags 0x0044 (speed, cadence, power), 1503 × 0.01 km/h,
+		// 80 half-rpm, 78 W.
+		const { trainer, device } = await paired();
+		const samples: TrainerSample[] = [];
+		trainer.onSample((s) => samples.push(s));
+		device.bikeData.notify(
+			Uint8Array.of(0x44, 0x00, 0xdf, 0x05, 0x50, 0x00, 0x4e, 0x00),
+		);
+		expect(samples[0]).toMatchObject({ watts: 78, cadence: 40 });
+		expect(samples[0].speedMps).toBeCloseTo(15.03 / 3.6, 6);
+
+		const quiet = new FtmsTrainer();
+		const other = new FakeDevice();
+		vi.stubGlobal('navigator', {
+			bluetooth: { requestDevice: async () => other },
+		});
+		await quiet.connect();
+		const unsped: TrainerSample[] = [];
+		quiet.onSample((s) => unsped.push(s));
+		// flags 0x0041: More Data set, so no speed field — power only.
+		other.bikeData.notify(Uint8Array.of(0x41, 0x00, 0xfa, 0x00));
+		expect(unsped[0].speedMps).toBeUndefined();
+	});
+
 	it('ignores a late indication for an op that already timed out', async () => {
 		// #1850: A times out, B is written, A's indication arrives — B stays
 		// pending until its own answer.
@@ -399,7 +471,9 @@ describe('FtmsTrainer control-point queue', () => {
 		expect(await a).toMatchObject({ message: /timed out/ });
 		// A different op than A's, so the match is on the op and not on luck.
 		let settled = false;
-		const b = trainer.setSimulation(2).then(() => (settled = true));
+		const b = trainer
+			.setSimulation({ gradePct: 2 })
+			.then(() => (settled = true));
 		await vi.advanceTimersByTimeAsync(0);
 		control.indicate(0x05);
 		await vi.advanceTimersByTimeAsync(0);

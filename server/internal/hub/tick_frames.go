@@ -33,7 +33,23 @@ func (f *tickFrames) frame(kind frameKind) []byte {
 	if b, done := f.built[kind]; done {
 		return b
 	}
+	b := f.marshal(kind, f.tick.Cheers)
+	if f.built == nil {
+		f.built = make(map[frameKind][]byte, 8)
+	}
+	f.built[kind] = b
+	return b
+}
+
+// withCheers is one socket's own copy of the frame, carrying only the cheers
+// it may hear (#3202). Never cached: it is that socket's alone.
+func (f *tickFrames) withCheers(kind frameKind, cheers []protocol.Cheer) []byte {
+	return f.marshal(kind, cheers)
+}
+
+func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer) []byte {
 	t := *f.tick
+	t.Cheers = cheers
 	if !kind.workout {
 		t.State.WorkoutJSON = ""
 	}
@@ -46,11 +62,7 @@ func (f *tickFrames) frame(kind frameKind) []byte {
 	b, err := json.Marshal(protocol.ServerMessage{Tick: &t})
 	if err != nil {
 		logger(f.log).Error("tick could not be marshalled", "channel", f.channel, "workout", kind.workout, "scores", kind.scores, "deck", kind.deck, "err", err)
-		b = nil
+		return nil
 	}
-	if f.built == nil {
-		f.built = make(map[frameKind][]byte, 8)
-	}
-	f.built[kind] = b
 	return b
 }

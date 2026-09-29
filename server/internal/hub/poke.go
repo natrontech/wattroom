@@ -66,6 +66,12 @@ func (h *Hub) poke(c *client, rm *room, rider protocol.Rider, sent protocol.Poke
 	if kind == protocol.PokeKindBottle {
 		poke.Kind = kind
 	}
+	// Across a hidden pair a poke or a bottle goes nowhere, and the sender
+	// is answered exactly as if it landed: they are never told (#3202).
+	if rm.hides(rider.ID, to) {
+		c.sendJSON(h.log, protocol.ServerMessage{Poke: &poke})
+		return
+	}
 	if !rm.queuePoke(to, poke) {
 		h.writeError(c, "invalid_request", "That rider is no longer in this voice channel.")
 		return

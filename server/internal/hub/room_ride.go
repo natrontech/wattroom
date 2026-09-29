@@ -149,11 +149,12 @@ func (rm *room) replayReachLocked() (int, bool) {
 
 // cheer queues one reaction for the next tick; bounded so a hostile burst
 // cannot grow the payload (the per-client rate limit already makes this rare).
-func (rm *room) cheer(c protocol.Cheer) {
+func (rm *room) cheer(c protocol.Cheer, fromID string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if len(rm.cheers) < 32 {
 		rm.cheers = append(rm.cheers, c)
+		rm.cheerFrom = append(rm.cheerFrom, fromID)
 	}
 }
 

@@ -242,6 +242,29 @@ func (h *harness) sendDm(t *testing.T, from, to, text string) {
 	}
 }
 
+// hide writes a block straight to the table, as the blocks service would.
+func (h *harness) hide(t *testing.T, blocker, blocked string) {
+	t.Helper()
+	if found, err := h.store.Queries.HideRider(t.Context(), db.HideRiderParams{Blocker: h.id(blocker), Blocked: h.id(blocked)}); err != nil || !found {
+		t.Fatalf("%s hides %s: %v %v", blocker, blocked, found, err)
+	}
+}
+
+// The riders you hid are yours to see in Settings, so yours to take along —
+// and only those: who hid you is not yours to read (#3202).
+func TestExportCarriesTheRidersYouHidAndNotWhoHidYou(t *testing.T) {
+	h := setup(t)
+	h.hide(t, "alice", "bob")
+	h.hide(t, "carol", "alice")
+	var hidden []map[string]any
+	if err := json.Unmarshal([]byte(h.exportFiles(t, "alice")["hidden-riders.json"]), &hidden); err != nil {
+		t.Fatalf("hidden-riders.json: %v", err)
+	}
+	if len(hidden) != 1 || hidden[0]["name"] != "bob" || hidden[0]["since"] == nil {
+		t.Fatalf("alice's hidden riders: %v", hidden)
+	}
+}
+
 // count runs one `select count(*)` with the user id bound as $1.
 func (h *harness) count(t *testing.T, query string, user string) int {
 	t.Helper()
@@ -265,6 +288,8 @@ var userRowQueries = map[string]string{
 	"medals":      "select count(*) from medals where user_id = $1",
 	"friendships": "select count(*) from friendships where requester_id = $1 or addressee_id = $1",
 	"dm_messages": "select count(*) from dm_messages where sender_id = $1 or recipient_id = $1",
+	// Both directions (#3202): the riders she hid, and the riders who hid her.
+	"rider_blocks": "select count(*) from rider_blocks where blocker_id = $1 or blocked_id = $1",
 	// Everything the export learned to carry (#696) has to leave with them too
 	// — the second half of the same promise.
 	"chat_messages": "select count(*) from chat_messages where user_id = $1",
@@ -393,6 +418,9 @@ func TestDeletePurgesEverythingOfTheRiderAndNothingOfAnyoneElse(t *testing.T) {
 	h.sendDm(t, "alice", "bob", "see you at 7")
 	h.sendDm(t, "bob", "alice", "bring legs")
 	h.sendDm(t, "bob", "carol", "unrelated")
+	h.hide(t, "alice", "carol")
+	h.hide(t, "carol", "alice")
+	h.hide(t, "bob", "carol")
 	// Alice's Strava grant is handed back with the purge (#1825). Only hers:
 	// the row counts below keep bob at one identity, and a purge that revoked
 	// anyone else's would show up in the fake as a foreign row.
@@ -436,6 +464,9 @@ func TestDeletePurgesEverythingOfTheRiderAndNothingOfAnyoneElse(t *testing.T) {
 	}
 	if n := h.count(t, userRowQueries["dm_messages"], "bob"); n != 1 {
 		t.Errorf("bob should keep his DM with carol only, has %d", n)
+	}
+	if n := h.count(t, userRowQueries["rider_blocks"], "bob"); n != 1 {
+		t.Errorf("bob should keep hiding carol, has %d block rows", n)
 	}
 	// The recap itself survives — it is the crew's, and bob was there. What
 	// leaves with alice is her interval inside it, asserted on the row rather

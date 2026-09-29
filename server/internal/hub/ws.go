@@ -234,7 +234,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		}
 		if msg.Cheer != nil {
 			if protocol.IsReaction(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
-				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name})
+				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name}, rider.ID)
 			}
 		}
 		if msg.Jukebox != nil {

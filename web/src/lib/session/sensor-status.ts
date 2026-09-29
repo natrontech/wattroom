@@ -202,6 +202,23 @@ export function needsTrainer(
 }
 
 /**
+ * Nothing measures power (#2941): nothing to ride on, and no power meter on
+ * this screen or another of the rider's either. The instrument's 0 is then
+ * not a reading, and ADR-0005 keeps the glow for live data.
+ */
+export function unmeasured(
+	trainer: unknown,
+	pairing: SensorPairing | undefined,
+	powerMeterHere: boolean,
+): boolean {
+	return (
+		needsTrainer(trainer, pairing) &&
+		!powerMeterHere &&
+		!pairing?.elsewhere?.['power-meter']
+	);
+}
+
+/**
  * Every kind the rider holds on another screen, ready to render (#610) —
  * what the paired-devices grid takes, so the grid itself needs to know
  * nothing about sockets or claims.

@@ -279,7 +279,9 @@ select (
         join visible_channels b on a.channel_id = b.channel_id
         where a.user_id = $1 and b.user_id = $2
     )
-    or exists (
+    -- A friendship opens the page only where it is not hidden (#3202); a
+    -- shared channel still does — hiding never parts a crew.
+    or (exists (
         select 1 from friendships
         where status = 'accepted'
           and ((requester_id = $1 and addressee_id = $2)
@@ -291,7 +293,7 @@ select (
         -- pending ask *to* them is not a door.
         select 1 from friendships
         where status = 'pending' and requester_id = $2 and addressee_id = $1
-    )
+    )) and not rider_hidden($1, $2)
 )::boolean
 `
 

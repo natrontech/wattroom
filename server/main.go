@@ -26,6 +26,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/avatars"
+	"github.com/natrontech/wattroom/server/internal/blocks"
 	"github.com/natrontech/wattroom/server/internal/board"
 	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/chat"
@@ -233,7 +234,10 @@ func main() {
 		authService.Register(mux)
 		accountService := account.New(st, authService, log)
 		accountService.Register(mux)
-		feedback.New(authService, issuerOrNil(), logRing, log).Register(mux)
+		feedbackService := feedback.New(authService, issuerOrNil(), logRing, log)
+		feedbackService.Register(mux)
+		// A purge takes the rider's flag reports off disk too (#2906).
+		accountService.SetReportReaper(feedbackService)
 		uploader := strava.New(st, log, keys)
 		if uploader != nil {
 			// Disconnecting Strava hands the grant back, not just our row (#783);
@@ -351,6 +355,16 @@ func main() {
 		h.SetPlaylistSource(playlistsService)
 		h.SetTrackHistory(playlistsService) // #269, what smart shuffle weights by
 		playlistsService.SetLive(h)         // #627
+		// Hide this rider (#3202): the SQL gates do the HTTP half; the hub
+		// reads the in-memory copy on the tick, so it is loaded — and wired
+		// in — before the first room opens.
+		hidden := blocks.New(st, authService, h, log)
+		if err := hidden.Load(ctx); err != nil {
+			log.Error("refusing to start", "err", err)
+			os.Exit(1)
+		}
+		h.SetHider(hidden)
+		hidden.Register(mux)
 		// The trophy case (#467): XP off the bike and achievements. It hears
 		// about rides from both savers, about sprints, tracks and sessions
 		// from the hub, and about voice minutes from its own ticker.

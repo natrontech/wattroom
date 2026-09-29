@@ -45,6 +45,11 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if s.reaper != nil && len(orphans) > 0 {
 		s.reaper.RemoveBlobs(orphans)
 	}
+	// And the flag reports they filed (#2906), which live in a file the
+	// cascade cannot reach.
+	if s.reports != nil {
+		s.reports.RemoveReporter(store.UUIDString(user.ID))
+	}
 	// The grant goes back after the commit, detached and best-effort, the
 	// disconnect's own posture: Strava being down must not fail a deletion
 	// that already happened, and a failure is a warning, never a rider.

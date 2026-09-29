@@ -13,8 +13,43 @@ export interface TrainerSample {
 	 * a directly-paired strap wins, see arbitrate.ts.
 	 */
 	heartRate?: number;
+	/**
+	 * The trainer's own flywheel speed, m/s, from Indoor Bike Data's
+	 * instantaneous speed. The virtual drivetrain is its only reader
+	 * (ADR-0084): the dot, timing and the bike computer never read it.
+	 */
+	speedMps?: number;
 	/** ms epoch */
 	at: number;
+}
+
+/**
+ * What a SIM write carries (FTMS op 0x11 / WCPS op 0x46). An absent field is
+ * SIM_DEFAULTS' value, so a grade alone sends the bytes every trainer has
+ * always been sent.
+ */
+export interface SimParams {
+	/** Signed grade, percent. */
+	gradePct: number;
+	/** Rolling resistance coefficient. */
+	crr?: number;
+	/** Wind resistance coefficient, kg/m. */
+	cw?: number;
+	/** Head wind, m/s; negative is a tail wind. */
+	windMps?: number;
+}
+
+/** The road every SIM write described before it could say otherwise. */
+export const SIM_DEFAULTS = { crr: 0.004, cw: 0.51, windMps: 0 } as const;
+
+/** Every field of a SIM write, the absent ones at their defaults. */
+export function resolveSim(road: SimParams): Required<SimParams> {
+	return {
+		gradePct: road.gradePct,
+		crr: road.crr ?? SIM_DEFAULTS.crr,
+		cw: road.cw ?? SIM_DEFAULTS.cw,
+		windMps: road.windMps ?? SIM_DEFAULTS.windMps,
+	};
 }
 
 /**
@@ -39,8 +74,8 @@ export interface Trainer {
 	disconnect(): Promise<void>;
 	/** ERG: trainer holds these watts. Implementations serialize writes behind device acks. */
 	setTargetPower(watts: number): Promise<void>;
-	/** Slope mode: signed grade percent (FTMS op 0x11 / WCPS op 0x46). Switches mode to 'sim'. */
-	setSimulation(gradePercent: number): Promise<void>;
+	/** Slope mode: the road to ride (FTMS op 0x11 / WCPS op 0x46). Switches mode to 'sim'. */
+	setSimulation(road: SimParams): Promise<void>;
 	/** ~1 Hz while connected. Returns unsubscribe. */
 	onSample(cb: (s: TrainerSample) => void): () => void;
 	onStatus(cb: (s: TrainerStatus) => void): () => void;

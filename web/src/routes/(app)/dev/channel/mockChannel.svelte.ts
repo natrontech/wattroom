@@ -461,7 +461,7 @@ export function createMockChannel() {
 					// Slope mode, not ERG: a sprint is the rider's watts, not the trainer's.
 					SEEDS.forEach((seed, i) => {
 						const grade = (seed.sprintFactor / 0.7 - 1) / 0.08;
-						void trainers[i].setSimulation(grade);
+						void trainers[i].setSimulation({ gradePct: grade });
 					});
 				} else if (sprint === 'active') {
 					sprint = 'podium';
