@@ -28,7 +28,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 
 ### What WattRoom is NOT
 
-- No virtual world, ~~roads~~, maps or avatars **Diverged 2026-09-29 (#3020, ADR-0062)**: roads are in — a route the rider imports, ridden in any mode.
+- No virtual world, ~~roads~~, ~~maps~~ or avatars **Diverged 2026-09-29 (#3020, ADR-0062)**: roads are in — a route the rider imports, ridden in any mode. **Diverged 2026-09-29 (#3120, ADR-0070)**: maps are in, as our own copy of OpenStreetMap served from wattroom.ch, so no map company sees where a rider rides.
 - No racing simulation, drafting physics or game mechanics
 - No content treadmill (~~routes~~, worlds, events) **Diverged 2026-09-29 (#3020, ADR-0062)**: riders bring their own routes, which is no treadmill; the one thing WattRoom curates is a growing library of famous climbs, and that is a deliberate divergence from this line.
 - Not a training plan generator (integrate with existing tools later)
