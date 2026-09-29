@@ -80,6 +80,14 @@ export function clampTarget(watts: number, range: PowerRange): number {
 	return Math.min(range.maxWatts, Math.max(range.minWatts, stepped));
 }
 
+/** A notification's bytes as sent, space-separated hex. */
+function toHex(view: DataView): string {
+	return Array.from(
+		new Uint8Array(view.buffer, view.byteOffset, view.byteLength),
+		(byte) => byte.toString(16).padStart(2, '0'),
+	).join(' ');
+}
+
 /** Round onto a field's integer grid and clamp to its width. */
 function toField(value: number, min: number, max: number): number {
 	return Math.min(max, Math.max(min, Math.round(value)));
@@ -179,6 +187,15 @@ export class FtmsTrainer implements Trainer {
 	 */
 	frames = 0;
 	poweredFrames = 0;
+	/**
+	 * The Indoor Bike Data notifications the latest sample was read from, as
+	 * hex (#3377): one on most units, several on one that splits a frame
+	 * (More Data, #1849). A captured set is how a parser test pins a real
+	 * unit's flag layout rather than a re-encoded reading.
+	 */
+	lastRaw: string[] = [];
+	/** Notifications since the last sample: all of them, on a unit that never sends power. */
+	pendingRaw: string[] = [];
 	#statusCbs = new Set<(s: TrainerStatus) => void>();
 
 	/**
@@ -296,6 +313,9 @@ export class FtmsTrainer implements Trainer {
 			(event) => {
 				const view = (event.target as BluetoothRemoteGATTCharacteristic).value;
 				if (!view) return;
+				// ponytail: the last 8 unpowered notifications, a few seconds of a
+				// unit that never sends power (#520); enough to see its layout.
+				this.pendingRaw = [...this.pendingRaw, toHex(view)].slice(-8);
 				const data = parseIndoorBikeData(view);
 				// A conformant unit may split Indoor Bike Data across notifications
 				// (More Data, #1849): cadence in one frame, power in the next. Read
@@ -313,6 +333,8 @@ export class FtmsTrainer implements Trainer {
 				this.frames += 1;
 				if (data.watts === undefined) return;
 				this.poweredFrames += 1;
+				this.lastRaw = this.pendingRaw;
+				this.pendingRaw = [];
 				const merged = this.lastFrame;
 				for (const cb of this.#sampleCbs) {
 					cb({

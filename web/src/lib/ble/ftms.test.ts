@@ -358,6 +358,22 @@ describe('FtmsTrainer control-point queue', () => {
 		expect(samples).toEqual([{ watts: 250, cadence: 90 }]);
 	});
 
+	// #3377: the bytes as sent, so a captured Kickr frame can be pinned here.
+	it('keeps the notifications each sample was read from, as hex', async () => {
+		const { trainer, device } = await paired();
+		const raw: string[][] = [];
+		trainer.onSample(() => raw.push(trainer.lastRaw));
+
+		device.bikeData.notify(Uint8Array.of(0x04, 0x00, 0x00, 0x00, 0xb4, 0x00));
+		expect(trainer.pendingRaw).toEqual(['04 00 00 00 b4 00']);
+		device.bikeData.notify(Uint8Array.of(0x41, 0x00, 0xfa, 0x00));
+		expect(raw).toEqual([['04 00 00 00 b4 00', '41 00 fa 00']]);
+		expect(trainer.pendingRaw).toEqual([]);
+
+		device.bikeData.notify(Uint8Array.of(0x41, 0x00, 0x2c, 0x01));
+		expect(raw.at(-1)).toEqual(['41 00 2c 01']);
+	});
+
 	it('stamps heart rate with the frame that carried it, not the one with power (#3517)', async () => {
 		const { trainer, device } = await paired();
 		const samples: TrainerSample[] = [];
