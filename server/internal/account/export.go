@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -70,6 +71,11 @@ type export struct {
 		name  string
 		bytes []byte
 	}
+	// The key a route's map opens with (#3024), and what routes.json found:
+	// the GPX files to write, and how many routes had a map to write one of.
+	keys            *secrets.Cipher
+	routeFiles      []routeFile
+	routesWithPlace int
 }
 
 // categories is everything the account holds besides the profile (#696), in
@@ -84,7 +90,7 @@ func (x *export) categories() []category {
 		x.playlists(), x.tracks(), x.plannedSessions(), x.workouts(), x.xp(), x.trophies(),
 		x.identities(), x.passkeys(), x.coachAccess(), x.reactions(), x.crews(), x.pins(),
 		x.scheduledSessions(), x.channelMembers(), x.soundboard(), x.rideUploads(),
-		x.avatar(), x.images(), x.emoji(), x.medals(),
+		x.avatar(), x.images(), x.emoji(), x.medals(), x.routes(),
 	}
 }
 
@@ -229,7 +235,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	x := &export{ctx: r.Context(), q: s.store.Queries, user: user, rideRows: rides,
-		truncated: map[string]bool{}}
+		truncated: map[string]bool{}, keys: s.routeKeys}
 	profile, err := x.profile()
 	if err != nil {
 		fail("export home crew", err)
@@ -325,6 +331,11 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		}
 		clipsWritten++
 	}
+	for _, file := range x.routeFiles {
+		if !writeUpload(file.name, file.gpx) {
+			return
+		}
+	}
 	if !writeJSON("manifest.json", map[string]any{
 		"generatedAt": time.Now().UTC(),
 		"categories":  manifest,
@@ -335,8 +346,12 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		"uploads": map[string]any{
 			"avatar": x.avatarFile.name != "",
 			"clips":  map[string]int{"rows": len(x.clipIDs), "written": clipsWritten},
+			// A route's GPX needs its map (#3024): one stored without a key
+			// has heights only, in routes.json, and is not owed a file.
+			"routes": map[string]int{"withMap": x.routesWithPlace, "written": len(x.routeFiles)},
 		},
 		"complete": samplesWritten == len(rides) && clipsWritten == len(x.clipIDs) &&
+			len(x.routeFiles) == x.routesWithPlace &&
 			!slices.ContainsFunc(manifest, func(e entry) bool { return !e.Ok || e.Truncated }),
 	}) {
 		return
@@ -358,57 +373,4 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "private, no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	_, _ = w.Write(buf.Bytes())
-}
-
-// imageExt names an uploaded picture's file in the archive. The four types
-// httpx.ReadImageUpload accepts, spelled the way a person expects to see them
-// — mime.ExtensionsByType would answer ".jfif" for a JPEG on one machine and
-// something else on the next, and this is a filename in a zip somebody opens.
-func imageExt(mime string) string {
-	switch mime {
-	case "image/png":
-		return ".png"
-	case "image/jpeg":
-		return ".jpg"
-	case "image/webp":
-		return ".webp"
-	case "image/gif":
-		return ".gif"
-	}
-	return ".bin"
-}
-
-// place names where a row happened (#2554): its crew and its channel —
-// never a room (#2558, #2433).
-func place(row map[string]any, crew, channel string) map[string]any {
-	if crew != "" {
-		row["crew"] = crew
-	}
-	if channel != "" {
-		row["channel"] = channel
-	}
-	return row
-}
-
-// timeOrNil is a nullable timestamp as the file should read it: a time, or
-// null — never Go's zero date dressed as one.
-func timeOrNil(t pgtype.Timestamptz) any {
-	if !t.Valid {
-		return nil
-	}
-	return t.Time
-}
-
-// mapRows turns a query's rows into the shape the export writes: the reader's
-// vocabulary, not the schema's. An empty result is an empty array rather than
-// null — a rider with no playlists should read "none", not "unknown".
-func mapRows[R any](rows []R, err error, one func(R) any) (any, error) {
-	if err != nil {
-		return nil, err
-	}
-	out := make([]any, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, one(row))
-	}
-	return out, nil
 }

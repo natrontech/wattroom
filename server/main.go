@@ -52,6 +52,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/recap"
 	"github.com/natrontech/wattroom/server/internal/riders"
 	"github.com/natrontech/wattroom/server/internal/rides"
+	"github.com/natrontech/wattroom/server/internal/routes"
 	"github.com/natrontech/wattroom/server/internal/safego"
 	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/stats"
@@ -130,6 +131,15 @@ func main() {
 	// save starts retrying, and an untracked save died with the process.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	// The one subcommand (#3024): a key rotation's re-seal, run and done.
+	if len(os.Args) > 1 && os.Args[1] == "reseal-routes" {
+		if err := resealRoutes(ctx, log); err != nil {
+			log.Error("reseal-routes", "err", err)
+			stop()
+			os.Exit(1)
+		}
+		return
+	}
 	var hubForDrain *hub.Hub
 	var gamifyForDrain *gamify.Service
 
@@ -302,6 +312,12 @@ func main() {
 		safego.Go(log, "last-20 HR backfill", func() { stats.BackfillLast20mHR(ctx, st, log) })
 		// And the critical-power pair on rides inside the 90-day curve (#3261).
 		safego.Go(log, "critical-power backfill", func() { stats.BackfillCriticalPower(ctx, st, log) })
+		// A rider's stored roads (#3024, ADR-0063): the session source, never
+		// readAuth — a personal token is how a coach's AI reads, and no
+		// coordinate reaches an AI context.
+		routes.New(st, authService, keys, log).Register(mux)
+		// The export carries each route's GPX, which needs the key to open.
+		accountService.SetRouteKeys(keys)
 		ridesService := rides.New(st, readAuth, log)
 		if uploader != nil {
 			ridesService.SetUploader(uploader)

@@ -115,7 +115,7 @@ Session controls — pick, start, pause, resume, end, arm a sprint, hand off, st
 
 Caps (defaults — tune in alpha): a rider **founds at most 3 crews**, counted over the crews they founded and still own, so handing one on frees the slot, and so does one going. A crew has no delete button (#1935): **a crew with nothing left in it goes** — no channel and nobody in it but its owner — with the owner's delete of its last channel or its last member's leave, never with a ban (#2079, #2837). A crew with a channel never goes that way; its channels are what it holds (ADR-0058). A crew holds at most **20 text channels** and **10 voice channels**. A voice channel runs **one session** at a time — that one is not a default but the model (ADR-0058), and a second start is refused rather than counted. Membership is uncapped.
 
-Names, counted in characters (not bytes, #1986): a crew or channel name is 1–60, a workout name (planned, ridden or saved) 1–80, a token name 1–60, a chat or direct message 1–500, a display name 1–60.
+Names, counted in characters (not bytes, #1986): a crew or channel name is 1–60, a workout name (planned, ridden or saved) 1–80, a route name 1–80 ([#3024](https://github.com/natrontech/wattroom/issues/3024)), a token name 1–60, a chat or direct message 1–500, a display name 1–60.
 
 Shelf ceilings (#1414, defaults — tune in alpha). A crew holds at most **100
 planned sessions** — counted the way the crew's own schedule counts them,

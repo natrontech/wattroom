@@ -295,6 +295,23 @@ type RiderBlock struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type Route struct {
+	ID         pgtype.UUID
+	OwnerID    pgtype.UUID
+	Src        string
+	Name       string
+	GenName    string
+	Road       []byte
+	RoadHash   string
+	LengthM    int32
+	GainM      int32
+	Climbs     []byte
+	EleSource  string
+	GeomSealed []byte
+	KeyVersion *int32
+	CreatedAt  pgtype.Timestamptz
+}
+
 type ScheduledSession struct {
 	ID          pgtype.UUID
 	WorkoutName string
