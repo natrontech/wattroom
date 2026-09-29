@@ -339,6 +339,7 @@ type ScheduledSession struct {
 	StartedAt   pgtype.Timestamptz
 	CrewID      pgtype.UUID
 	ChannelID   pgtype.UUID
+	RouteID     pgtype.UUID
 }
 
 type Session struct {

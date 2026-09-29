@@ -62,6 +62,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/unfurl"
 	"github.com/natrontech/wattroom/server/internal/usage"
 	"github.com/natrontech/wattroom/server/internal/wallet"
+	"github.com/natrontech/wattroom/server/internal/wardrobe"
 )
 
 // wired is what main still needs from the wiring: what to drain on shutdown,
@@ -151,6 +152,10 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 		uploader.Sweep(ctx)
 	}
 	crewsService := crews.New(st, authService, log)
+	// A workout names its road by reference and each reader is handed their
+	// cut of it (#3051): the one attacher every workout read goes through.
+	roads := routes.NewAttacher(st.Queries)
+	crewsService.SetRoads(roads)
 	crewsService.Register(mux)
 	crewCard = crewsService.CrewCard
 	// A purge hands the rider's crews on before the row goes (ADR-0038).
@@ -174,7 +179,9 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 		// (#1643): it needs the store, not the key.
 		notify.Bare(st, log, baseURL).RegisterUnsubscribe(mux)
 	}
-	customworkouts.New(st, authService, log).Register(mux)
+	shelf := customworkouts.New(st, authService, log)
+	shelf.SetRoads(roads)
+	shelf.Register(mux)
 	// Personal read tokens (ADR-0017): bearer auth for GETs of own data
 	// and the MCP coach endpoint. Cookie auth stays the write path.
 	tokenService := tokens.New(st, authService, authService, log)
@@ -204,6 +211,8 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	safego.Go(log, "wallet opening grants", func() { wallet.Open(ctx, st, log) })
 	// Always private: the session source, never a personal token.
 	wallet.New(st, authService, log).Register(mux)
+	// Buying, undoing and dressing (#3154): the session source too.
+	wardrobe.New(st, authService, log).Register(mux)
 	// A rider's stored roads (#3024, ADR-0063): the session source, never
 	// readAuth — a personal token is how a coach's AI reads, and no
 	// coordinate reaches an AI context.
@@ -278,6 +287,7 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 		os.Exit(1)
 	}
 	h.SetHider(hidden)
+	h.SetRoads(roads)
 	hidden.Register(mux)
 	// The trophy case (#467): XP off the bike and achievements. It hears
 	// about rides from both savers, about sprints, tracks and sessions

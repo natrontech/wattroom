@@ -45,6 +45,10 @@ type Step struct {
 	// HR hold (#67 flavour 2): the rider's own client moves the watts to
 	// keep heart rate in the band. Never scored, and it rides alone.
 	HrHold bool `json:"hrHold,omitempty"`
+	// A road step (#3051): where on the workout's road it starts; absent is
+	// where the last one left off. The road decides the grade, so it has no
+	// target and no score (TargetAt's default).
+	FromM float64 `json:"fromM,omitempty"`
 }
 
 type definition struct {

@@ -178,6 +178,12 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 			h.writeError(c, "validation_error", refusal)
 			return
 		}
+		attached, refusal := h.sessionRoad(cmd.WorkoutJSON, rider.ID)
+		if refusal != "" {
+			h.writeError(c, "forbidden", refusal)
+			return
+		}
+		cmd.WorkoutJSON = attached
 	}
 	if code, refusal := rm.control(cmd, rider, h.now()); code != "" {
 		h.writeError(c, code, refusal)

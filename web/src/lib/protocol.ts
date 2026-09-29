@@ -589,6 +589,18 @@ export const MinRoadGradePct = -15;
  */
 export const MaxRoadGradePct = 20;
 /**
+ * What a crew is sent of a route that is not theirs (ADR-0063, #3051):
+ * the road between its anchors, which until the geo pack draws zones are
+ * this far in from each end — a route hides its first and last metres by
+ * default — and at most this many bytes of it, packed, on a workout.
+ */
+export const RouteHiddenEndM = 400;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxAttachedRoadBytes = 48 << 10;
+/**
  * The range every SIM write is clamped to (docs/SPEC.md "Route rides",
  * ADR-0062): one range for every trainer, since FTMS cannot report an
  * indoor bike's. MaxTrainerGrade is also the free ride's top and the felt

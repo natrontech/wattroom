@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
 // refusal is a rider-facing sentence, which is why it may end in a full stop
@@ -73,6 +75,9 @@ func Validate(workoutJSON string) error {
 	if len(d.Steps) == 0 {
 		return refusal("A workout needs at least one step.")
 	}
+	if _, err := RoadOf(workoutJSON); err != nil {
+		return err
+	}
 	for i, s := range d.Steps {
 		if err := checkStep(s, fmt.Sprintf("Step %d", i+1), 0); err != nil {
 			return err
@@ -115,6 +120,11 @@ func checkStep(s Step, where string, depth int) error {
 		}
 		return checkFraction(s.Target, where, "target")
 	case "sprint":
+		return checkSeconds(s.Seconds, where)
+	case "road":
+		if s.FromM < 0 || s.FromM > protocol.MaxRouteMeters {
+			return refusal(fmt.Sprintf("%s: a road step starts somewhere along the road.", where))
+		}
 		return checkSeconds(s.Seconds, where)
 	case "repeat":
 		if depth >= maxDepth {
