@@ -27,6 +27,7 @@
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
+	import { worldSlotOn } from '$lib/world/flag';
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import type { Block } from '$lib/workout/block';
 	import type { createRideSession } from '$lib/workout/session.svelte';
@@ -90,6 +91,18 @@
 		setTimeout(() => (flagNotice = false), FLAG_NOTICE_MS);
 	}
 
+	// The world in slot 2, where this device has it on (#3031): three.js comes
+	// in its own chunk, and a world that will not start leaves the slots as
+	// they were for the rest of the ride.
+	let worldFailed = $state(false);
+	const inWorld = $derived(worldSlotOn() && !worldFailed);
+	const rideWorld = () =>
+		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
+			console.error('world: the renderer did not load', err);
+			worldFailed = true;
+			throw err;
+		});
+
 	// The HUD feed (ADR-0041): what this screen shows, once a second, for a
 	// second window to mirror — the shell's overlay, or another tab.
 </script>
@@ -97,57 +110,67 @@
 <!-- The bottom padding is the floating navigation button's (ux.md: the last
      item clears the chrome); on a desk there is no such button. The slots are
      a session's (ADR-0046), minus the crew. -->
-<RidingSurface class="flex-1 pb-16 sm:pb-0">
-	{#snippet header()}
-		<RideHeader
-			{block}
-			elapsed={session.elapsed}
-			total={session.total}
-			cadence={session.sample?.cadence ?? 0}
-			hr={session.sample?.heartRate ?? 0}
-			title={workout.name}
-			erg
+{#snippet rideControls()}
+	<!-- Rider controls: big targets, no precision needed (ux.md). The
+		     session's coach controls sit in this same slot; the bias trim is not
+		     here, because it belongs with the numbers it trims. -->
+	<!-- Wraps rather than shrinking (#1634): at 375 px the cluster ran 39
+		     px past the viewport and the ⚑ — the last button — could not be
+		     reached at all. -->
+	<div class="flex flex-wrap items-center justify-end gap-2">
+		<!-- The kit's riding size (ux.md: btn-lg is the 44 px a rider hits
+			     while pedalling); these used to retype the chrome by hand. -->
+		<button onclick={() => session.extend(60)} class="btn btn-secondary btn-lg"
+			>+1 min</button
 		>
-			{#snippet controls()}
-				<!-- Rider controls: big targets, no precision needed (ux.md). The
-				     session's coach controls sit in this same slot; the bias trim is not
-				     here, because it belongs with the numbers it trims. -->
-				<!-- Wraps rather than shrinking (#1634): at 375 px the cluster ran 39
-				     px past the viewport and the ⚑ — the last button — could not be
-				     reached at all. -->
-				<div class="flex flex-wrap items-center justify-end gap-2">
-					<!-- The kit's riding size (ux.md: btn-lg is the 44 px a rider hits
-					     while pedalling); these used to retype the chrome by hand. -->
-					<button
-						onclick={() => session.extend(60)}
-						class="btn btn-secondary btn-lg">+1 min</button
-					>
-					<!-- Nothing to skip to on the last block: disabled with the
-					     reason, never a click that does nothing (ux.md, #1799). -->
-					<button
-						onclick={() => session.skip()}
-						disabled={session.info.segmentIndex + 1 >= session.segments.length}
-						title={session.info.segmentIndex + 1 >= session.segments.length
-							? 'Last block — End ride instead'
-							: undefined}
-						class="btn btn-secondary btn-lg disabled:opacity-40"
-						>Skip block</button
-					>
-					{#if onTv}
-						<button onclick={onTv} class="btn btn-secondary btn-lg">TV</button>
-					{/if}
-					<button onclick={endRide} class="btn btn-secondary btn-lg"
-						>End ride</button
-					>
-					{#if onFlag}
-						<FlagButton onflag={flag} sends="after" />
-					{/if}
-				</div>
-			{/snippet}
-		</RideHeader>
+		<!-- Nothing to skip to on the last block: disabled with the
+			     reason, never a click that does nothing (ux.md, #1799). -->
+		<button
+			onclick={() => session.skip()}
+			disabled={session.info.segmentIndex + 1 >= session.segments.length}
+			title={session.info.segmentIndex + 1 >= session.segments.length
+				? 'Last block — End ride instead'
+				: undefined}
+			class="btn btn-secondary btn-lg disabled:opacity-40">Skip block</button
+		>
+		{#if onTv}
+			<button onclick={onTv} class="btn btn-secondary btn-lg">TV</button>
+		{/if}
+		<button onclick={endRide} class="btn btn-secondary btn-lg">End ride</button>
+		{#if onFlag}
+			<FlagButton onflag={flag} sends="after" />
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet road()}
+	{#await rideWorld() then { default: RideWorld }}
+		<RideWorld {watts} {ftp} onfail={() => (worldFailed = true)} />
+	{/await}
+{/snippet}
+
+<RidingSurface class="flex-1 pb-16 sm:pb-0" world={inWorld ? road : undefined}>
+	{#snippet header()}
+		<div class={inWorld ? 'px-4 py-2' : ''}>
+			<RideHeader
+				{block}
+				elapsed={session.elapsed}
+				total={session.total}
+				cadence={session.sample?.cadence ?? 0}
+				hr={session.sample?.heartRate ?? 0}
+				title={workout.name}
+				erg
+				controls={inWorld ? undefined : rideControls}
+			/>
+		</div>
 	{/snippet}
 
 	{#snippet status()}
+		{#if inWorld}
+			<!-- On the road the header keeps to the band above it, and the
+			     controls stand in the column beneath. -->
+			<div class="p-3">{@render rideControls()}</div>
+		{/if}
 		<!-- Ride-critical states are persistent status, never toasts
 		     (.claude/rules/errors.md); the way back from a dropout is the
 		     status's own button, wired to this ride's trainer (#1847). -->
@@ -157,20 +180,26 @@
 	{#snippet focus()}
 		<!-- The focus slot takes the free height rather than sitting under the
 		     header with a screen of nothing below it (#1531: "two thirds empty"). -->
-		<section class="grid min-h-0 content-center">
-			{#if session.sprint}
-				<!-- A sprint block takes the focus, solo as in a session (#1793,
+		<!-- On the road the world has the focus, and your watts sit with your numbers. -->
+		{#if !inWorld || session.sprint}
+			<section class="grid min-h-0 content-center">
+				{#if session.sprint}
+					<!-- A sprint block takes the focus, solo as in a session (#1793,
 				     ADR-0046): the count-in, the window and your watts, where the
 				     instrument used to read "no target — spin easy" for fifteen
 				     seconds of all-out. No roster: nobody else is here. -->
-				<SprintMoment sprint={session.sprint} myWatts={watts} />
-			{:else}
-				<Instrument {watts} {target} {ftp} stale={signalLost} />
-			{/if}
-		</section>
+					<SprintMoment sprint={session.sprint} myWatts={watts} />
+				{:else}
+					<Instrument {watts} {target} {ftp} stale={signalLost} />
+				{/if}
+			</section>
+		{/if}
 	{/snippet}
 
 	{#snippet numbers()}
+		{#if inWorld && !session.sprint}
+			<Instrument {watts} {target} {ftp} stale={signalLost} compact />
+		{/if}
 		<div class="flex flex-wrap items-end gap-4">
 			<div class="min-w-0 flex-1">
 				<BikeComputer
@@ -198,7 +227,7 @@
 	{/snippet}
 
 	{#snippet horizon()}
-		<div class="mt-4 h-28 shrink-0">
+		<div class={inWorld ? 'h-full' : 'mt-4 h-28 shrink-0'}>
 			<IntervalGraph
 				segments={session.segments}
 				total={session.total}

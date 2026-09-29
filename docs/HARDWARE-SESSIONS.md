@@ -55,6 +55,11 @@ not *"not there"*. The probe list lives in `web/src/lib/ble/enumerate.ts`.
 - **Worth provoking deliberately**: a hard sprint followed by easing off. Wahoo
   cadence is firmware-estimated and is reported to drop out on exactly that
   transition (RESEARCH.md §11). Whether it does is a real open question.
+- **A minute of raw frames** (#3377): ride a steady minute and send it back.
+  Every `sample` line in the log carries `raw`, the Indoor Bike Data
+  notifications it was read from as the trainer sent them. One captured frame
+  pins this unit's flag layout in a parser test, where a re-encoded reading
+  cannot.
 
 ### 3. The route checklist (#3025, on every trainer a road will ride)
 

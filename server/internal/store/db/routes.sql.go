@@ -81,10 +81,15 @@ func (q *Queries) DeleteRoute(ctx context.Context, arg DeleteRouteParams) (int64
 
 const exportUserRoutes = `-- name: ExportUserRoutes :many
 select id, src, name, gen_name, road, length_m, gain_m, climbs, ele_source,
-       geom_sealed, key_version, created_at, road_sealed
+       geom_sealed, key_version, created_at, road_sealed,
+       coalesce((select jsonb_agg(jsonb_build_object(
+                     'crewId', a.crew_id, 'crew', c.name, 'shared', a.shared, 'decidedAt', a.decided_at)
+                     order by a.decided_at)
+                 from route_crew_consents a join crews c on c.id = a.crew_id
+                 where a.route_id = routes.id), '[]'::jsonb)::jsonb as crew_answers
 from routes
-where owner_id = $1
-order by created_at
+where routes.owner_id = $1
+order by routes.created_at
 limit $2
 `
 
@@ -94,24 +99,27 @@ type ExportUserRoutesParams struct {
 }
 
 type ExportUserRoutesRow struct {
-	ID         pgtype.UUID
-	Src        string
-	Name       string
-	GenName    string
-	Road       []byte
-	LengthM    int32
-	GainM      int32
-	Climbs     []byte
-	EleSource  string
-	GeomSealed []byte
-	KeyVersion *int32
-	CreatedAt  pgtype.Timestamptz
-	RoadSealed []byte
+	ID          pgtype.UUID
+	Src         string
+	Name        string
+	GenName     string
+	Road        []byte
+	LengthM     int32
+	GainM       int32
+	Climbs      []byte
+	EleSource   string
+	GeomSealed  []byte
+	KeyVersion  *int32
+	CreatedAt   pgtype.Timestamptz
+	RoadSealed  []byte
+	CrewAnswers []byte
 }
 
 // Every route the rider stored, for the export (ADR-0053): the road and the
 // sealed place with it, since the GPX is built from both. Bounded like every
-// category a rider runs up a row at a time.
+// category a rider runs up a row at a time. Each route carries the answers
+// its owner gave crews listed in the directory (#3569), by the crew's name
+// as it is now.
 func (q *Queries) ExportUserRoutes(ctx context.Context, arg ExportUserRoutesParams) ([]ExportUserRoutesRow, error) {
 	rows, err := q.db.Query(ctx, exportUserRoutes, arg.UserID, arg.Lim)
 	if err != nil {
@@ -135,6 +143,7 @@ func (q *Queries) ExportUserRoutes(ctx context.Context, arg ExportUserRoutesPara
 			&i.KeyVersion,
 			&i.CreatedAt,
 			&i.RoadSealed,
+			&i.CrewAnswers,
 		); err != nil {
 			return nil, err
 		}
@@ -236,8 +245,36 @@ func (q *Queries) GetRouteGenName(ctx context.Context, id pgtype.UUID) (string, 
 	return gen_name, err
 }
 
+const getRoutePlace = `-- name: GetRoutePlace :one
+select owner_id, src, geom_sealed, key_version, length_m from routes where id = $1
+`
+
+type GetRoutePlaceRow struct {
+	OwnerID    pgtype.UUID
+	Src        string
+	GeomSealed []byte
+	KeyVersion *int32
+	LengthM    int32
+}
+
+// A route's sealed place and length by id alone (#3096): for the crew tier of
+// /shape, which cuts it to the span between the anchors. Not owner-scoped —
+// routes.Service's audience is the rule, and the only caller asks it first.
+func (q *Queries) GetRoutePlace(ctx context.Context, id pgtype.UUID) (GetRoutePlaceRow, error) {
+	row := q.db.QueryRow(ctx, getRoutePlace, id)
+	var i GetRoutePlaceRow
+	err := row.Scan(
+		&i.OwnerID,
+		&i.Src,
+		&i.GeomSealed,
+		&i.KeyVersion,
+		&i.LengthM,
+	)
+	return i, err
+}
+
 const getRouteRoad = `-- name: GetRouteRoad :one
-select owner_id, src, road, road_sealed, key_version from routes where id = $1
+select owner_id, src, road, road_sealed, key_version, road_hash, length_m from routes where id = $1
 `
 
 type GetRouteRoadRow struct {
@@ -246,6 +283,8 @@ type GetRouteRoadRow struct {
 	Road       []byte
 	RoadSealed []byte
 	KeyVersion *int32
+	RoadHash   string
+	LengthM    int32
 }
 
 // A route's road, its source and whose it is (#3051): what a workout read
@@ -260,6 +299,8 @@ func (q *Queries) GetRouteRoad(ctx context.Context, id pgtype.UUID) (GetRouteRoa
 		&i.Road,
 		&i.RoadSealed,
 		&i.KeyVersion,
+		&i.RoadHash,
+		&i.LengthM,
 	)
 	return i, err
 }
@@ -445,6 +486,59 @@ func (q *Queries) ResealRoute(ctx context.Context, arg ResealRouteParams) (int64
 	return result.RowsAffected(), nil
 }
 
+const routeAudienceCrews = `-- name: RouteAudienceCrews :many
+select c.id, c.listed, a.shared as consent
+from crews c
+left join route_crew_consents a on a.route_id = $1 and a.crew_id = c.id
+where (
+    exists (select 1 from scheduled_sessions s
+            where s.crew_id = c.id and s.route_id = $1 and s.started_at is null)
+    and (c.owner_id = $2
+         or exists (select 1 from crew_roles cr
+                    where cr.crew_id = c.id and cr.user_id = $2 and cr.role in ('member', 'admin')))
+) or exists (
+    select 1 from channels ch
+    join visible_channels v on v.channel_id = ch.id and v.user_id = $2
+    where ch.crew_id = c.id and ch.id = any($3::uuid[])
+)
+`
+
+type RouteAudienceCrewsParams struct {
+	RouteID pgtype.UUID
+	Viewer  pgtype.UUID
+	Riding  []pgtype.UUID
+}
+
+type RouteAudienceCrewsRow struct {
+	ID      pgtype.UUID
+	Listed  bool
+	Consent *bool
+}
+
+// The crews through which a rider may read a route that is not theirs (#3096):
+// one of their crews whose unstarted plan carries it, or one whose channel —
+// one they may enter — is riding it right now (the hub names those). Each with
+// whether it is listed in the directory and what the owner answered for it.
+func (q *Queries) RouteAudienceCrews(ctx context.Context, arg RouteAudienceCrewsParams) ([]RouteAudienceCrewsRow, error) {
+	rows, err := q.db.Query(ctx, routeAudienceCrews, arg.RouteID, arg.Viewer, arg.Riding)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RouteAudienceCrewsRow
+	for rows.Next() {
+		var i RouteAudienceCrewsRow
+		if err := rows.Scan(&i.ID, &i.Listed, &i.Consent); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const sealRouteRoad = `-- name: SealRouteRoad :execrows
 update routes set road = $1, road_sealed = $2
 where id = $3 and road_sealed is null
@@ -471,4 +565,22 @@ func (q *Queries) SealRouteRoad(ctx context.Context, arg SealRouteRoadParams) (i
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const setRouteCrewConsent = `-- name: SetRouteCrewConsent :exec
+insert into route_crew_consents (route_id, crew_id, shared)
+values ($1, $2, $3)
+on conflict (route_id, crew_id) do update set shared = excluded.shared, decided_at = now()
+`
+
+type SetRouteCrewConsentParams struct {
+	RouteID pgtype.UUID
+	CrewID  pgtype.UUID
+	Shared  bool
+}
+
+// The owner's answer for one crew; a later answer replaces it.
+func (q *Queries) SetRouteCrewConsent(ctx context.Context, arg SetRouteCrewConsentParams) error {
+	_, err := q.db.Exec(ctx, setRouteCrewConsent, arg.RouteID, arg.CrewID, arg.Shared)
+	return err
 }

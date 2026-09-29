@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/testx"
@@ -45,22 +47,31 @@ func TestExportCarriesTheRidersRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	keep := func(name string, geom []byte, v *int32) {
+	keep := func(name string, geom []byte, v *int32) pgtype.UUID {
 		t.Helper()
 		stored, sealedRoad := testx.FlatRoad(3000, 20), []byte(nil)
 		if geom != nil {
 			stored, sealedRoad = testx.PackedRoad(3000, bareHeights), roadSealed
 		}
-		if _, err := h.store.Queries.CreateRoute(t.Context(), db.CreateRouteParams{
+		row, err := h.store.Queries.CreateRoute(t.Context(), db.CreateRouteParams{
 			OwnerID: h.id("alice"), Src: "gpx", Name: name, GenName: "Road · 3.0 km · 20 m",
 			Road: stored, RoadSealed: sealedRoad, RoadHash: "h", LengthM: 3000, GainM: 20,
 			Climbs: []byte("[]"), EleSource: "file", GeomSealed: geom, KeyVersion: v,
-		}); err != nil {
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return row.ID
+	}
+	mapped := keep("Stollestich & back", sealed, &version)
+	keep("Heights only", nil, nil)
+	// The owner's answers for two crews listed in the directory (#3569).
+	for name, shared := range map[string]bool{"Hinterfeld RC": true, "Oberstolle Velo": false} {
+		crew := testx.Crew(t, h.store, name, h.id("alice"))
+		if err := h.store.Queries.SetRouteCrewConsent(t.Context(), db.SetRouteCrewConsentParams{RouteID: mapped, CrewID: crew, Shared: shared}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	keep("Stollestich & back", sealed, &version)
-	keep("Heights only", nil, nil)
 
 	files := h.exportFiles(t, "alice")
 	var rows []map[string]any
@@ -71,6 +82,20 @@ func TestExportCarriesTheRidersRoutes(t *testing.T) {
 	for _, row := range rows {
 		switch row["name"] {
 		case "Stollestich & back":
+			answers := map[string]bool{}
+			crews, _ := row["crews"].([]any)
+			for _, a := range crews {
+				a, _ := a.(map[string]any)
+				crew, _ := a["crew"].(string)
+				shared, _ := a["shared"].(bool)
+				answers[crew] = shared
+				if a["crewId"] == nil || a["decidedAt"] == nil {
+					t.Errorf("an answer without its crew id or time: %v", a)
+				}
+			}
+			if len(answers) != 2 || !answers["Hinterfeld RC"] || answers["Oberstolle Velo"] {
+				t.Errorf("the route's answers: %v, want Hinterfeld RC yes and Oberstolle Velo no", row["crews"])
+			}
 			file, _ := row["file"].(string)
 			gpx = files[file]
 			if !strings.HasPrefix(file, "routes/") || gpx == "" {
@@ -79,6 +104,9 @@ func TestExportCarriesTheRidersRoutes(t *testing.T) {
 		case "Heights only":
 			if row["file"] != nil || len(row["heightsM"].([]any)) != 151 { //nolint:errcheck // asserted by the length
 				t.Fatalf("the heights-only route: %v", row)
+			}
+			if crews, ok := row["crews"].([]any); !ok || len(crews) != 0 {
+				t.Errorf("a route with no answers exports %v, want []", row["crews"])
 			}
 		}
 	}

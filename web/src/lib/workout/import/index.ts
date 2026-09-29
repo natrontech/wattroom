@@ -4,6 +4,14 @@ import type { ImportOutcome } from './types';
 import { parseZwo } from './zwo';
 
 export type { Imported, ImportOutcome } from './types';
+export {
+	base64Of,
+	importRoute,
+	readRouteFile,
+	type ImportedRoute,
+	type RouteChoice,
+	type RouteOutcome,
+} from './route';
 
 /**
  * Bringing an existing plan in (#2327). A rider who already has a coach, a
@@ -16,11 +24,21 @@ export type { Imported, ImportOutcome } from './types';
  * bounds it server-side exactly as the editor's Save does.
  */
 
+/** Workout files, which become a workout on the shelf. */
+export const WORKOUT_EXTENSIONS = ['.zwo', '.erg'] as const;
+/**
+ * Route files, which become a road (#3057). Their ceiling is a route's own,
+ * MAX_ROUTE_FILE_BYTES — a recorded track is far bigger than a workout file.
+ */
+export const ROUTE_EXTENSIONS = ['.gpx', '.tcx'] as const;
 /** What the file picker and the drop zone accept. */
-export const IMPORT_EXTENSIONS = ['.zwo', '.erg'] as const;
+export const IMPORT_EXTENSIONS = [
+	...WORKOUT_EXTENSIONS,
+	...ROUTE_EXTENSIONS,
+] as const;
 
 /**
- * A megabyte, so a hostile or mistaken pick is refused before it is read
+ * A workout file's ceiling: a megabyte, so a hostile or mistaken pick is refused before it is read
  * rather than after. It is two orders of magnitude above the largest real
  * file this takes: a four-hour .erg written one row per second is under
  * 200 KB, and a .zwo is a few KB whatever it prescribes.
@@ -39,6 +57,10 @@ function extensionOf(fileName: string): string {
 	return dot < 0 ? '' : base.slice(dot).toLowerCase();
 }
 
+/** A route file goes through importRoute; everything else through importWorkout. */
+export const isRouteFile = (fileName: string) =>
+	(ROUTE_EXTENSIONS as readonly string[]).includes(extensionOf(fileName));
+
 /**
  * `riderFtp` only matters to a `.erg` that ramps in watts and states no FTP
  * of its own — see parseErg. Pass the rider's real FTP or null; never a
@@ -53,10 +75,10 @@ export function importWorkout(
 	const stem = stemOf(fileName) || 'Imported workout';
 	// The kind of file comes first: a rider who picked the wrong one wants to
 	// hear that, not that the wrong one happened to be empty.
-	if (!(IMPORT_EXTENSIONS as readonly string[]).includes(extension)) {
+	if (!(WORKOUT_EXTENSIONS as readonly string[]).includes(extension)) {
 		return {
 			ok: false,
-			error: `WattRoom reads ${IMPORT_EXTENSIONS.join(' and ')} workout files. “${fileName}” is neither.`,
+			error: `WattRoom reads ${WORKOUT_EXTENSIONS.join(' and ')} workouts, and ${ROUTE_EXTENSIONS.join(' and ')} routes. “${fileName}” is none of them.`,
 		};
 	}
 	if (source.trim() === '') return { ok: false, error: 'That file is empty.' };

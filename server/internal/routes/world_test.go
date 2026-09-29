@@ -120,7 +120,7 @@ func TestTheOwnersShapeCarriesTheWorldsSecrets(t *testing.T) {
 		want             int
 	}{
 		{"signed out", "", "/api/routes/" + id + "/shape", http.StatusUnauthorized},
-		{"someone else's", "bob", "/api/routes/" + id + "/shape", http.StatusNotFound},
+		{"someone else's, not ridden with them", "bob", "/api/routes/" + id + "/shape", http.StatusForbidden},
 		{"none at all", "alice", "/api/routes/00000000-0000-4000-8000-000000000001/shape", http.StatusNotFound},
 		{"not an id", "alice", "/api/routes/nope/shape", http.StatusBadRequest},
 	} {

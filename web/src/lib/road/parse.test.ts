@@ -29,7 +29,13 @@ function tcx(author: string): string {
 
 describe('parseRoute', () => {
 	it('reads a GPX track with its heights', () => {
-		expect(parseRoute(toGpx(TWO))).toEqual({ points: TWO, src: 'gpx' });
+		expect(parseRoute(toGpx(TWO))).toEqual({
+			points: TWO,
+			tracks: [TWO],
+			src: 'gpx',
+			heights: 'file',
+			filled: 0,
+		});
 	});
 
 	it('reads route points when the file has no track', () => {
@@ -41,17 +47,32 @@ describe('parseRoute', () => {
 	});
 
 	it('reads a TCX, skipping trackpoints with no position, filling a missing height', () => {
-		const { points, src } = parseRoute(tcx('A planner'));
+		const { points, src, heights, filled } = parseRoute(tcx('A planner'));
 		expect(src).toBe('tcx');
+		expect({ heights, filled }).toEqual({ heights: 'file', filled: 1 });
 		expect(points).toEqual([
 			{ lat: 46.6, lon: 7.6, ele: 500 },
 			{ lat: 46.601, lon: 7.601, ele: 500 },
 		]);
 	});
 
-	it('rides a file with no heights at all, flat', () => {
+	it('rides a file with no heights at all, flat, and says it had none', () => {
 		const gpx = toGpx(TWO).replace(/<ele>[^<]*<\/ele>/g, '');
-		expect(parseRoute(gpx).points.map((p) => p.ele)).toEqual([0, 0]);
+		const { points, heights, filled } = parseRoute(gpx);
+		expect(points.map((p) => p.ele)).toEqual([0, 0]);
+		expect({ heights, filled }).toEqual({ heights: 'none', filled: 0 });
+	});
+
+	it('keeps several tracks apart, for the rider to pick one (#3057)', () => {
+		const one = toGpx(TWO);
+		const two = one.replace(
+			'</trk>',
+			'</trk><trk><trkseg><trkpt lat="46.7" lon="7.7"><ele>600</ele></trkpt><trkpt lat="46.701" lon="7.701"><ele>610</ele></trkpt></trkseg></trk>',
+		);
+		const { tracks, points } = parseRoute(two);
+		expect(tracks.map((t) => t.length)).toEqual([2, 2]);
+		expect(tracks[1][0]).toEqual({ lat: 46.7, lon: 7.7, ele: 600 });
+		expect(points).toHaveLength(4);
 	});
 
 	// ADR-0063: a Strava export rides owner-only, so it has to be told apart.

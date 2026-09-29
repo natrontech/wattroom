@@ -220,7 +220,8 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	// A rider's stored roads (#3024, ADR-0063): the session source, never
 	// readAuth — a personal token is how a coach's AI reads, and no
 	// coordinate reaches an AI context.
-	routes.New(st, authService, keys, log).Register(mux)
+	routesService := routes.New(st, authService, keys, log)
+	routesService.Register(mux)
 	// The export carries each route's GPX, which needs the key to open.
 	accountService.SetRouteKeys(keys)
 	ridesService := rides.New(st, readAuth, log)
@@ -292,6 +293,8 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	}
 	h.SetHider(hidden)
 	h.SetRoads(roads)
+	// The road a session rides reaches its channel's members (#3096).
+	routesService.SetRiding(h)
 	hidden.Register(mux)
 	// The trophy case (#467): XP off the bike and achievements. It hears
 	// about rides from both savers, about sprints, tracks and sessions

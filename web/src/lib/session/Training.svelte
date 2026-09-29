@@ -15,6 +15,7 @@
 	import GamePanel from '$lib/session/GamePanel.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
+	import { worldSlotOn } from '$lib/world/flag';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import BiasTrim from '$lib/session/BiasTrim.svelte';
 	import BikeComputer from '$lib/session/BikeComputer.svelte';
@@ -93,6 +94,17 @@
 	// who freewheels for one sample no longer drops off the list and the
 	// ranking stops re-sorting under their eyes (#1411).
 	const riding = $derived(inRide.filter((r) => r.riding));
+	// The world in slot 2, where this device has it on (#3031, ADR-0066): it
+	// has the focus when nothing else takes it, holds under a shared screen,
+	// and a world that will not start leaves the slots as they were.
+	let worldFailed = $state(false);
+	const inWorld = $derived(worldSlotOn() && !worldFailed);
+	const rideWorld = () =>
+		import('$lib/world/RideWorld.svelte').catch((err: unknown) => {
+			console.error('world: the renderer did not load', err);
+			worldFailed = true;
+			throw err;
+		});
 	// The sprint carries its own numbers and Watt Golf hides the meter:
 	// slots 3 to 5 stand empty while either has the focus.
 	const quiet = $derived(
@@ -197,9 +209,46 @@
 	<!-- One column, the followed rider's instrument, the crew strip (#412). -->
 	<TrainingPhone />
 {:else}
-	<RidingSurface class="h-full overflow-hidden">
+	{#snippet trainerCard()}
+		{#if !channel.trainer || targetsNote}<TrainerOverview compact />{/if}
+	{/snippet}
+	{#snippet sessionControls()}
+		<SessionControls compact />
+		<!-- The 3 m view, from the place the rider is on (#1667): the
+		     Lounge had the only button, off the numbers, mid-interval. -->
+		<!-- btn-lg, as /ride and /ramp give the same control and as
+		     every neighbour in this header already is (#2161): it is
+		     pressed while pedalling, which is what ux.md's 44 px is
+		     about. -->
+		<button
+			onclick={() => channel.openTv()}
+			class="btn btn-secondary btn-lg"
+			aria-label="TV mode"><MonitorUp size={15} /> TV</button
+		>
+		{#if channel.you.inSession}
+			<button onclick={leaveRide} class="btn btn-ghost btn-lg"
+				><LogOut size={15} /> Leave the ride</button
+			>
+		{/if}
+		<SessionFlag />
+	{/snippet}
+	{#snippet road()}
+		{#await rideWorld() then { default: RideWorld }}
+			<RideWorld
+				watts={channel.you.watts}
+				ftp={channel.you.ftp}
+				paused={inFocus === 'media'}
+				onfail={() => (worldFailed = true)}
+			/>
+		{/await}
+	{/snippet}
+	<RidingSurface
+		class="h-full overflow-hidden"
+		world={inWorld ? road : undefined}
+		stage={inFocus === 'media'}
+	>
 		{#snippet header()}
-			<div class="px-6 pt-5 pb-4">
+			<div class={inWorld ? 'px-4 py-2' : 'px-6 pt-5 pb-4'}>
 				<RideHeader
 					block={channel.block}
 					{elapsed}
@@ -208,34 +257,21 @@
 					hr={channel.you.hr}
 					title={channel.shared?.workoutName ?? ''}
 					erg={!!channel.trainer && channel.actuating}
-				>
-					{#snippet aside()}
-						{#if !channel.trainer || targetsNote}<TrainerOverview
-								compact
-							/>{/if}
-					{/snippet}
-					{#snippet controls()}
-						<SessionControls compact />
-						<!-- The 3 m view, from the place the rider is on (#1667): the
-					     Lounge had the only button, off the numbers, mid-interval. -->
-						<!-- btn-lg, as /ride and /ramp give the same control and as
-					     every neighbour in this header already is (#2161): it is
-					     pressed while pedalling, which is what ux.md's 44 px is
-					     about. -->
-						<button
-							onclick={() => channel.openTv()}
-							class="btn btn-secondary btn-lg"
-							aria-label="TV mode"><MonitorUp size={15} /> TV</button
-						>
-						{#if channel.you.inSession}
-							<button onclick={leaveRide} class="btn btn-ghost btn-lg"
-								><LogOut size={15} /> Leave the ride</button
-							>
-						{/if}
-						<SessionFlag />
-					{/snippet}
-				</RideHeader>
+					aside={inWorld ? undefined : trainerCard}
+					controls={inWorld ? undefined : sessionControls}
+				/>
 			</div>
+		{/snippet}
+
+		{#snippet status()}
+			{#if inWorld}
+				<!-- On the road the header keeps to the band above it, and the
+				     trainer and the controls stand in the column beneath. -->
+				<div class="flex flex-wrap items-center gap-2 p-3">
+					{@render trainerCard()}
+					{@render sessionControls()}
+				</div>
+			{/if}
 		{/snippet}
 
 		{#snippet focus()}
@@ -269,6 +305,8 @@
 						attach={(node) => channel.attachStage(node, share.key)}
 					/>
 				</section>
+			{:else if inWorld}
+				<!-- On the road the world has the focus, and your watts sit with your numbers. -->
 			{:else}
 				<section class="grid min-h-0 content-center px-6">
 					<Instrument
@@ -287,8 +325,13 @@
 				<!-- Your numbers (ADR-0046 slot 3), and under them whether your heart
 			     rate is reaching the call — the line ADR-0008 requires (#2804). -->
 				<div class="mt-4 px-6">
-					<div class="flex flex-wrap items-center gap-6">
-						{#if inFocus === 'media' || inFocus === 'game'}
+					<!-- In a narrow dock beside the road they stack. -->
+					<div
+						class={inWorld
+							? 'flex flex-col items-start gap-3'
+							: 'flex flex-wrap items-center gap-6'}
+					>
+						{#if inFocus === 'media' || inFocus === 'game' || inWorld}
 							<!-- Under the player, never over it (RMF). -->
 							<div class="min-w-0 flex-1">
 								<Instrument
@@ -368,12 +411,13 @@
 		{/snippet}
 
 		{#snippet horizon()}
-			{#if !quiet && inFocus !== 'media' && channel.segments.length > 0}
+			{#if !quiet && (inFocus !== 'media' || inWorld) && channel.segments.length > 0}
 				<!-- The horizon: the session is the ground the numbers stand on,
 			     not another card. It gives way to the player when media has
 			     the focus — two grounds is one too many — and a game's
 			     session has no timeline to draw (#2597). -->
-				<div class="mt-3 h-28">
+				<!-- In the world its dock sets the height: a strip under a shared screen. -->
+				<div class={inWorld ? 'h-full' : 'mt-3 h-28'}>
 					<IntervalGraph
 						segments={channel.segments}
 						{total}

@@ -2,7 +2,12 @@
 	// The ride-world prototype (#3021). World.svelte comes in through a
 	// dynamic import so three.js lands in its own chunk, fetched only here —
 	// never in the eager shell every other page pays for.
+	import { setWorldSlot, worldSlotOn } from '$lib/world/flag';
 	import { STYLES } from './styles';
+
+	// Slot 2 on this device's rides (#3031): the world behind the docked
+	// slots, until #3082 has measured it and the default flips.
+	let slot = $state(worldSlotOn());
 
 	const load = () =>
 		import('$lib/world/World.svelte').catch((err: unknown) => {
@@ -11,6 +16,15 @@
 		});
 	let world = $state(load());
 </script>
+
+<label class="page flex items-center gap-2 pb-0 text-sm">
+	<input
+		type="checkbox"
+		checked={slot}
+		onchange={(e) => setWorldSlot((slot = e.currentTarget.checked))}
+	/>
+	Ride in the world on this device — slot 2 of /ride and a voice channel's Training
+</label>
 
 {#await world}
 	<p class="text-muted page text-sm">Loading the world renderer…</p>
