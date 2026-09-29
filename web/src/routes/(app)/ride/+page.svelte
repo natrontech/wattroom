@@ -5,8 +5,11 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
 	import { createRideSession } from '$lib/workout/session.svelte';
-	import { signalLost as isSignalLost } from '$lib/workout/ride-state';
-	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
+	import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
+	import {
+		createRideSounds,
+		soloRideSounds,
+	} from '$lib/ride/ride-sounds.svelte';
 	import { byId } from '$lib/workout/library';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
 	import { pushProfile } from '$lib/profile-sync.svelte';
@@ -209,31 +212,13 @@
 	}
 
 	// What the ride says out loud (#1792): the cues a session plays for its
-	// riders — block, auto-pause, the resume count, the spiral release, a
-	// trainer fault, a sprint, the end — from the session's own state.
-	createRideSounds({
-		fault: () => (signalLost ? 'trainer' : null),
-		sprint: () => session?.sprint ?? null,
-		guard: () => guardOfRide(session?.state),
-		spiral: () => session?.spiralActive,
-		block: () =>
-			session &&
-			session.state !== 'idle' &&
-			session.state !== 'countdown' &&
-			session.state !== 'done'
-				? session.info.segmentIndex
-				: undefined,
-		// The 3-2-1 and the go, from the session's own implementation (#1800):
-		// seconds left while counting in, 0 once the clock runs so the `go`
-		// lands, undefined when a cancelled count-in must stay silent.
-		countdown: () =>
-			session?.state === 'countdown'
-				? Math.max(1, session.countdownRemaining)
-				: session?.state === 'running'
-					? 0
-					: undefined,
-		ended: () => session?.state === 'done',
-	});
+	// riders, from the session's own state — the same wiring as /ramp's (#3359).
+	createRideSounds(
+		soloRideSounds(
+			() => session,
+			() => signalLost,
+		),
+	);
 
 	// Guard telemetry for #46: the hardware session has to produce evidence, not
 	// an anecdote. Dev-only via hwlog; plain lets, same reasoning as heardBlock.
@@ -354,26 +339,8 @@
 		attempt();
 	}
 
-	// A frozen number is worse than a warning: past 3 s without a sample the
-	// dashboard says so, persistently, while the driver reconnects (#37).
-	let nowMs = $state(Date.now());
-	$effect(() => {
-		const id = setInterval(() => (nowMs = Date.now()), 1000);
-		return () => clearInterval(id);
-	});
-	// From the start, not from the first sample (#1799): a trainer that
-	// streams frames without a power field never delivered one, and the ride
-	// used to run its full length with nothing on screen and "Nothing was
-	// recorded" at the end. Stamped when the CLOCK starts rather than when
-	// Start was pressed (#1800) — the count-in is not a gap in the trainer's
-	// reporting, and stamping it there had the banner up on the first tick.
-	let ridingSince: number | undefined = $state();
-	$effect(() => {
-		if (session?.state === 'running' && ridingSince === undefined)
-			ridingSince = Date.now();
-		if (!session) ridingSince = undefined;
-	});
-	const signalLost = $derived(isSignalLost(session, ridingSince, nowMs));
+	const signal = createSignalWatch(() => session);
+	const signalLost = $derived(signal.lost);
 
 	// The block, derived once for both screens that draw it — the riding
 	// surface and the TV (ADR-0046).

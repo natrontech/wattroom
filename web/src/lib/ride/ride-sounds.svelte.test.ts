@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
+import type { RideState } from '$lib/workout/ride-state';
 
 const heard = vi.hoisted(() => ({ cues: [] as string[] }));
 vi.mock('$lib/sound/cues', () => ({
@@ -10,6 +11,8 @@ vi.mock('$lib/sound/cues', () => ({
 vi.mock('$lib/server-clock', () => ({ serverNow: () => 0 }));
 
 import {
+	soloRideSounds,
+	type SoloSession,
 	createRideSounds,
 	guardOfRide,
 	type RideSoundDeps,
@@ -116,5 +119,56 @@ describe('createRideSounds', () => {
 		await tick();
 		expect(heard.cues).toEqual(['block', 'tick:3', 'go']);
 		stop();
+	});
+});
+
+// /ride and /ramp built these deps twice (#3359); one mapping now, the one
+// both pages had — held here so the two cannot drift apart again.
+describe('soloRideSounds', () => {
+	const at = (
+		state: RideState,
+		extra: Partial<SoloSession> = {},
+	): SoloSession => ({
+		state,
+		info: { segmentIndex: 2 },
+		countdownRemaining: 3,
+		...extra,
+	});
+
+	it('counts in, hands the clock the go, and says the block while it runs', () => {
+		const counting = soloRideSounds(
+			() => at('countdown'),
+			() => false,
+		);
+		expect([counting.countdown?.(), counting.block()]).toEqual([3, undefined]);
+		const running = soloRideSounds(
+			() => at('running'),
+			() => false,
+		);
+		expect([running.countdown?.(), running.block()]).toEqual([0, 2]);
+		const done = soloRideSounds(
+			() => at('done'),
+			() => false,
+		);
+		expect([done.countdown?.(), done.block(), done.ended?.()]).toEqual([
+			undefined,
+			undefined,
+			true,
+		]);
+	});
+
+	it('says a quiet trainer as the fault, and no sprint where there is none', () => {
+		const quietTrainer = soloRideSounds(
+			() => at('running'),
+			() => true,
+		);
+		expect(quietTrainer.fault()).toBe('trainer');
+		expect(quietTrainer.sprint()).toBeNull();
+		expect(
+			soloRideSounds(
+				() => null,
+				() => false,
+			).block(),
+		).toBeUndefined();
 	});
 });
