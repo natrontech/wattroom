@@ -1,7 +1,7 @@
 import { IDBFactory } from 'fake-indexeddb';
 import { describe, expect, it } from 'vitest';
 import { GOLDEN_SALT, goldenKeying } from '../place/golden.test-helper';
-import { CHUNK_M, chunkOf, type Cell } from '../place/lattice';
+import { chunkOf, type Cell } from '../place/lattice';
 import { onStroke, type Keying } from '../place/region';
 import { STROKE_STEP_M, type Stroke } from '../place/stroke';
 import { createBuilder } from './builder';
