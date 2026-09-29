@@ -134,6 +134,19 @@ export default defineConfig({
 				},
 			},
 		},
+		// The world must be the same bits in every engine (#3224), so its one
+		// placement spec also runs where no rider rides: the app itself is
+		// Chromium's (ADR-0004). No sound is made, so nothing to mute.
+		{
+			name: 'webkit',
+			testMatch: ['world-place.spec.ts'],
+			use: { ...devices['Desktop Safari'] },
+		},
+		{
+			name: 'firefox',
+			testMatch: ['world-place.spec.ts'],
+			use: { ...devices['Desktop Firefox'] },
+		},
 	],
 	// Serves the built SPA and proxies /api to the Go server, matching production.
 	//

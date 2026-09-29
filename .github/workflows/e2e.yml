@@ -100,6 +100,10 @@ jobs:
       # libraries, so it was an apt-get round trip for nothing.
       - run: pnpm exec playwright install chromium
         working-directory: web
+      # WebKit and Firefox run one spec, world-place.spec.ts (#3224), and the
+      # runner ships neither's libraries — so these two do need --with-deps.
+      - run: pnpm exec playwright install --with-deps webkit firefox
+        working-directory: web
       # No `pnpm run build` here: playwright.config.ts's webServer always builds
       # (deliberately — a reused build serves stale code), so a step here is a
       # second full build of the same bundle.
