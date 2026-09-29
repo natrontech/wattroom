@@ -1,3 +1,4 @@
+import { rememberRodeIn } from '$lib/crew-lounge';
 import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
@@ -161,6 +162,16 @@ function connect(address: PlaceAddress): Connection {
 			segments: () => parsed.segments,
 			joined,
 			free: freeRide,
+		});
+		// The lounge is where you last rode (#3274): noted on this device when
+		// the roster first says you are riding here — a free ride or a session.
+		let notedRiding = false;
+		$effect(() => {
+			const riding = !!live.tick?.roster.find(
+				(r) => r.id === account.me?.id && r.riding,
+			);
+			if (riding && !notedRiding) rememberRodeIn(address.crew, address.channel);
+			notedRiding = riding;
 		});
 		// Joining a session saves the free ride first (docs/SPEC.md): the
 		// session's trainer and record take over from here. On the step in,
