@@ -26,6 +26,7 @@ const {
 const fs = require('node:fs');
 const path = require('node:path');
 const badge = require('./badge');
+const log = require('./log');
 const loginItem = require('./login-item');
 const tray = require('./tray');
 const visibility = require('./visibility');
@@ -40,6 +41,13 @@ const APP_ORIGIN = new URL(APP_URL).origin;
 // against the newest release tag. Read the manifest directly: main is not
 // sandboxed, and this is the same number in both.
 const SHELL_VERSION = require('./package.json').version;
+
+// Before anything can warn: stdout goes nowhere in a packaged app (#3012).
+const LOG_FILE = log.teeConsole(path.join(app.getPath('logs'), 'main.log'));
+log.append(
+	LOG_FILE,
+	`${new Date().toISOString()} start ${SHELL_VERSION}${app.isPackaged ? '' : ' (unpackaged)'} ${process.platform}\n`,
+);
 
 // The OS title bar is hidden and the web app draws the strip (#1188): macOS
 // drew a white bar over a dark app, and a bar the app owns follows its theme

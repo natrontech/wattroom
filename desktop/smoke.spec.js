@@ -78,6 +78,26 @@ function clickTray(app, label, checked = undefined) {
 	}, [label, checked]);
 }
 
+test('the shell keeps a log where a rider can find it (#3012)', async () => {
+	const app = await launch(DEAD_URL);
+	await (await app.firstWindow()).locator('#retry').waitFor();
+	// This run's own words: on macOS the folder is ~/Library/Logs, shared by every run.
+	const said = `smoke: a warning for the log ${process.pid}-${Date.now()}`;
+	const dir = await app.evaluate(({ app: a }, words) => {
+		console.warn(words);
+		return a.getPath('logs');
+	}, said);
+	const file = path.join(dir, 'main.log');
+	await expect
+		.poll(() => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''))
+		.toContain(`Z warn ${said}\n`);
+	const version = require('./package.json').version;
+	expect(fs.readFileSync(file, 'utf8')).toContain(
+		` start ${version} (unpackaged) ${process.platform}\n`,
+	);
+	await app.close();
+});
+
 // The page hears its window hide and show (#3005, #3079): a close hides the
 // window rather than destroying it, and the page leaves voice when it does.
 test('the page hears its window hide and come back', async () => {
