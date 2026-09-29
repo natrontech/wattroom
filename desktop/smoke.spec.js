@@ -82,23 +82,30 @@ test('the window comes back where it was, unless that is off every display', asy
 	const first = await launch(DEAD_URL);
 	const win = await first.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
-	await first.evaluate(({ BrowserWindow }) => {
+	// What the window took, not what was asked: a display too short for it
+	// clamps the size — macOS on a CI runner gives 700 px back as 677 (#3011).
+	const set = await first.evaluate(({ BrowserWindow }) => {
 		const [w] = BrowserWindow.getAllWindows();
 		w.setBounds({ x: 40, y: 60, width: 900, height: 700 });
+		return w.getBounds();
 	});
 	const dir = first.userData;
 	await first.close();
 	const saved = JSON.parse(
 		fs.readFileSync(path.join(dir, 'window.json'), 'utf8'),
 	);
-	expect(saved).toMatchObject({ width: 900, height: 700, maximized: false });
+	expect(saved).toMatchObject({
+		width: set.width,
+		height: set.height,
+		maximized: false,
+	});
 
 	const second = await launch(DEAD_URL, dir);
 	await expect((await second.firstWindow()).locator('#retry')).toBeVisible();
 	const bounds = await second.evaluate(({ BrowserWindow }) =>
 		BrowserWindow.getAllWindows()[0].getBounds(),
 	);
-	expect([bounds.width, bounds.height]).toEqual([900, 700]);
+	expect([bounds.width, bounds.height]).toEqual([set.width, set.height]);
 	await second.close();
 
 	// A position off every display keeps the size and drops the position.
