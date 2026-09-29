@@ -65,7 +65,7 @@
 	<!-- Headline numbers first: what you did, how well, what it earned. -->
 	<section class="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 		{#each [{ label: 'duration', value: formatClock(ride.seconds) }, { label: 'work', value: `${ride.kj} kJ` }, { label: 'execution', value: `${Math.round(ride.execution * 100)}%` }, { label: 'normalised', value: `${ride.normalised} W` }] as stat (stat.label)}
-			<div class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+			<div class="border-frame bg-surface-raised rounded-lg border p-5">
 				<div class="font-display text-3xl leading-none font-bold tabular-nums">
 					{stat.value}
 				</div>
@@ -79,7 +79,7 @@
 	<div class="mt-3 grid gap-3 lg:grid-cols-[1fr_400px]">
 		<div class="grid gap-3">
 			<!-- Time in zone -->
-			<section class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+			<section class="border-frame bg-surface-raised rounded-lg border p-5">
 				<h2 class="eyebrow">time in zone</h2>
 				<div class="mt-4 flex h-3 overflow-hidden rounded-full">
 					{#each zoneSeconds as seconds, zone (zone)}
@@ -107,7 +107,7 @@
 			</section>
 
 			<!-- Power curve -->
-			<section class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+			<section class="border-frame bg-surface-raised rounded-lg border p-5">
 				<h2 class="eyebrow">power curve</h2>
 				<div class="mt-4 grid grid-cols-4 gap-3">
 					{#each curve as point (point.label)}
@@ -131,7 +131,7 @@
 			</section>
 
 			<!-- XP + level + category, each traceable to a SPEC formula -->
-			<section class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+			<section class="border-frame bg-surface-raised rounded-lg border p-5">
 				<div class="flex items-baseline gap-3">
 					<h2 class="eyebrow">progress</h2>
 					<span class="text-muted ml-auto font-mono text-[11px] tabular-nums"
@@ -188,7 +188,7 @@
 			<div class="mt-3">
 				<MedalCard {medal} placeName={CHANNEL_NAME} />
 			</div>
-			<div class="border-muted/15 mt-3 rounded-lg border p-4">
+			<div class="border-frame mt-3 rounded-lg border p-4">
 				<label class="flex items-start gap-3">
 					<input type="checkbox" class="mt-0.5" />
 					<span>

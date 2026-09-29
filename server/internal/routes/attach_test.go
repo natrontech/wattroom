@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -175,13 +176,20 @@ func TestASessionRidesTheCoachsOwnRoadAsTheCrewsCut(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	route, refused, err := a.SessionRoute(t.Context(), store.UUIDString(alice), mine)
+	route, profile, refused, err := a.SessionRoute(t.Context(), store.UUIDString(alice), mine)
 	if err != nil || refused != nil {
 		t.Fatalf("alice's own route: %+v %v", refused, err)
 	}
 	want := protocol.SessionRoute{ID: mine, Hash: "telling", GenName: "Road · 3.0 km · 50 m", LengthM: whole.LengthM - 2*protocol.RouteHiddenEndM}
 	if route != want {
 		t.Errorf("the session rides %+v, want %+v", route, want)
+	}
+	// The bunch's heights are the crew's cut's, and the hub holds no turns:
+	// no shape leaves for it (ADR-0063, #3028).
+	cut, _ := whole.Cut(protocol.RouteHiddenEndM, whole.LengthM-protocol.RouteHiddenEndM)
+	if profile.LengthM != cut.LengthM || !slices.Equal(profile.Heights, cut.Heights) || profile.Turns != nil {
+		t.Errorf("the bunch climbs %v m over %d heights with turns %v, want the crew's cut's %v m and %d heights, no turns",
+			profile.LengthM, len(profile.Heights), profile.Turns, cut.LengthM, len(cut.Heights))
 	}
 
 	for _, c := range []struct {
@@ -194,7 +202,7 @@ func TestASessionRidesTheCoachsOwnRoadAsTheCrewsCut(t *testing.T) {
 		{"gone", alice, uuid.NewString(), "not_found"},
 		{"from Strava", alice, strava, "forbidden"},
 	} {
-		if _, refused, err := a.SessionRoute(t.Context(), store.UUIDString(c.coach), c.route); err != nil || refused == nil || refused.Code != c.code {
+		if _, _, refused, err := a.SessionRoute(t.Context(), store.UUIDString(c.coach), c.route); err != nil || refused == nil || refused.Code != c.code {
 			t.Errorf("%s: %+v %v, want %s", c.name, refused, err, c.code)
 		}
 	}

@@ -252,6 +252,16 @@
 	--color-z7: light-dark(#d9186f, #ff2e88);
 }
 
+/* The structural line (#3420): a panel's frame, a divider, a section rule —
+ * today's `border-muted/15` exactly, now with a name, so how strong the frames
+ * read is one line to change (the design owner's call, #613). `inline` on
+ * purpose: the mix has to happen where the line is drawn. A variable resolved
+ * at :root keeps :root's muted inside .cave, which the palette gives a muted
+ * of its own. The tile frames and the trim face keep --color-edge. */
+@theme inline {
+	--color-frame: color-mix(in oklab, var(--color-muted) 15%, transparent);
+}
+
 /*
  * The scheme itself (#113 + rider-requested toggle): the OS decides by
  * default, data-theme (set by the rail's toggle, persisted) overrides it,
@@ -463,7 +473,7 @@ body {
  * reshuffles it fails there rather than on a screen.
  */
 @utility panel {
-	@apply border-muted/15 bg-surface-raised rounded-lg border px-4 py-3;
+	@apply border-frame bg-surface-raised rounded-lg border px-4 py-3;
 }
 /* A card with a heading and a paragraph — a notice, a settings section. */
 @utility panel-lg {

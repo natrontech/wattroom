@@ -217,7 +217,7 @@
 	aria-label={title}
 	tabindex="-1"
 	use:focusTrap
-	class="border-muted/15 bg-surface fixed inset-x-4 top-[6dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[64rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2"
+	class="border-frame bg-surface fixed inset-x-4 top-[6dvh] z-50 flex flex-col overflow-hidden rounded-xl border md:right-auto md:left-1/2 md:w-[64rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2"
 	style="bottom: 6dvh"
 >
 	<header class="border-ink/5 flex items-center gap-4 border-b px-5 py-3.5">
@@ -456,9 +456,7 @@
 			{/if}
 			<div class="grid gap-2 sm:grid-cols-2">
 				{#each GAME_MODES as game (game.id)}
-					<div
-						class="border-muted/15 flex flex-col rounded-lg border px-4 py-3"
-					>
+					<div class="border-frame flex flex-col rounded-lg border px-4 py-3">
 						<p class="font-display flex items-center gap-2 text-sm font-bold">
 							<game.icon size={15} class="text-neon shrink-0" />
 							{game.label}

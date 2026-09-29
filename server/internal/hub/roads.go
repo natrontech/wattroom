@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/road"
 	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
@@ -20,9 +21,9 @@ type Roads interface {
 	// refusal the coach is told, or the error that kept it from being read.
 	ForSession(ctx context.Context, coach, workoutJSON string) (attached, refusal string, err error)
 	// SessionRoute describes the road a session rides (#3095) as the crew
-	// rides it, or the refusal the coach is told, or the error that kept
-	// it from being read.
-	SessionRoute(ctx context.Context, coach, routeID string) (protocol.SessionRoute, *protocol.Error, error)
+	// rides it, and that cut's heights for the bunch (#3028) — or the
+	// refusal the coach is told, or the error that kept it from being read.
+	SessionRoute(ctx context.Context, coach, routeID string) (protocol.SessionRoute, road.Road, *protocol.Error, error)
 	// SharedName is the name a picked workout goes out under (#3055): on a
 	// road, the route's generated name, never the owner's rename.
 	SharedName(ctx context.Context, workoutJSON, name string) (string, error)
@@ -66,9 +67,9 @@ func (h *Hub) sessionRoad(workoutJSON, name, coach string) (attached, shared, re
 // before the room's lock: the coach's own route, never Strava's, with the
 // start inside the crew's cut. A refusal is for the coach, in errors.md's
 // codes.
-func (h *Hub) sessionRoute(ask protocol.ControlRoute, workoutJSON, coach string) (protocol.SessionRoute, *protocol.Error) {
-	refuse := func(code, message string) (protocol.SessionRoute, *protocol.Error) {
-		return protocol.SessionRoute{}, &protocol.Error{Code: code, Message: message}
+func (h *Hub) sessionRoute(ask protocol.ControlRoute, workoutJSON, coach string) (routeRide, *protocol.Error) {
+	refuse := func(code, message string) (routeRide, *protocol.Error) {
+		return routeRide{}, &protocol.Error{Code: code, Message: message}
 	}
 	id, err := uuid.Parse(ask.ID)
 	if err != nil {
@@ -88,17 +89,17 @@ func (h *Hub) sessionRoute(ask protocol.ControlRoute, workoutJSON, coach string)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), roadReadTimeout)
 	defer cancel()
-	route, refusal, err := h.roads.SessionRoute(ctx, coach, id.String())
+	route, profile, refusal, err := h.roads.SessionRoute(ctx, coach, id.String())
 	if err != nil {
 		h.log.Warn("session route unreadable", "err", err, "coach", coach, "route", id)
 		return refuse("internal_error", "The road could not be read just now. Pick it again in a moment.")
 	}
 	if refusal != nil {
-		return protocol.SessionRoute{}, refusal
+		return routeRide{}, refusal
 	}
 	if ask.FromM >= route.LengthM {
 		return refuse("validation_error", fmt.Sprintf("A session starts within its road — before %.1f km.", route.LengthM/1000))
 	}
 	route.FromM, route.Reverse, route.Loop = ask.FromM, ask.Reverse, ask.Loop
-	return route, nil
+	return routeRide{SessionRoute: route, profile: profile}, nil
 }

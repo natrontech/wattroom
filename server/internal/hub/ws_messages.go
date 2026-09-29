@@ -178,7 +178,7 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 		h.writeError(c, "invalid_request", "Sprints arm during a running session.")
 		return
 	}
-	var route *protocol.SessionRoute
+	var route *routeRide
 	if cmd.Action == "pick" {
 		if refusal := checkPick(cmd); refusal != "" {
 			h.writeError(c, "validation_error", refusal)
@@ -205,7 +205,7 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 
 // askedRoute is the road a pick or a game asked for, resolved; nil when it
 // asked for none.
-func (h *Hub) askedRoute(cmd protocol.Control, coach string) (*protocol.SessionRoute, *protocol.Error) {
+func (h *Hub) askedRoute(cmd protocol.Control, coach string) (*routeRide, *protocol.Error) {
 	if cmd.Route == nil || cmd.Action != "pick" && cmd.Action != "game" {
 		return nil, nil
 	}

@@ -54,7 +54,7 @@
 
 	{#if !running && !done}
 		<div
-			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8 text-center"
+			class="border-frame bg-surface-raised mt-8 rounded-lg border p-8 text-center"
 		>
 			<p class="text-sm">
 				About 12–18 minutes, and the last two are unpleasant.
@@ -70,7 +70,7 @@
 			>
 		</div>
 	{:else if running}
-		<div class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8">
+		<div class="border-frame bg-surface-raised mt-8 rounded-lg border p-8">
 			<div class="flex items-end justify-between gap-6">
 				<div>
 					<div class="flex items-baseline gap-2">
@@ -105,7 +105,7 @@
 			</div>
 		</div>
 	{:else}
-		<div class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8">
+		<div class="border-frame bg-surface-raised mt-8 rounded-lg border p-8">
 			<p class="eyebrow">your new FTP</p>
 			<div class="mt-2 flex items-baseline gap-2">
 				<span

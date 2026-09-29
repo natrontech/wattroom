@@ -350,6 +350,7 @@ function createWindow({ hidden = false } = {}) {
 	});
 	visibility.manage(win, {
 		hides: hasTray,
+		hidden,
 		rideHeld: () => sleepBlockerId !== null,
 	});
 	// A drag or a resize fires on every frame of it; the state is written once it settles.

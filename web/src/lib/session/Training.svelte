@@ -116,7 +116,7 @@
 			<GamePanel
 				game={channel.game}
 				roster={channelConnection.current?.live.tick?.roster ?? []}
-				canControl={channel.canControl && !device.spectator}
+				canControl={channel.canDrive}
 				end={() => void endGame(channel)}
 			/>
 		</section>

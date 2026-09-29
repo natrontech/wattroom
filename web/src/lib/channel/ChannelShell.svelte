@@ -368,6 +368,7 @@
 		<Soundboard
 			fires={live.tick?.board}
 			roster={live.tick?.roster}
+			shifting={connection.shifting()}
 			onFire={(clipId) => live.fireClip(clipId)}
 			onStop={() => live.stopClip()}
 		/>

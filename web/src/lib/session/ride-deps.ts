@@ -38,5 +38,8 @@ export interface RideDeps {
 	joined: () => boolean;
 	/** What an armed free ride asks of the trainer while no session drives
 	 *  it, and where its seconds go (ADR-0059). */
-	free: Pick<FreeRide, 'armed' | 'mode' | 'grade' | 'watts' | 'second'>;
+	free: Pick<
+		FreeRide,
+		'armed' | 'mode' | 'grade' | 'watts' | 'second' | 'nudge'
+	>;
 }

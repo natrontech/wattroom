@@ -133,7 +133,7 @@
 		{@render children()}
 	</div>
 
-	<footer class="border-muted/15 relative z-10 mt-24 border-t">
+	<footer class="border-frame relative z-10 mt-24 border-t">
 		<div
 			class="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-4 py-12 sm:grid-cols-4 sm:px-6"
 		>

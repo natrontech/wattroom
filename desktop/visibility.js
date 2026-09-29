@@ -57,9 +57,11 @@ function throttleIfIdle(win, rideHeld) {
  * @param win the rider's window
  * @param opts.hides whether a close hides it (false where there is no tray,
  *   and then a close is today's close)
+ * @param opts.hidden whether a login launch created it hidden: in the tray
+ *   from boot, and throttled like any window a close put there (#3510)
  * @param opts.rideHeld whether a ride holds keepAwake right now
  */
-function manage(win, { hides, rideHeld }) {
+function manage(win, { hides, hidden, rideHeld }) {
 	const tell = (visible) => {
 		if (!win.isDestroyed()) win.webContents.send('wattroom:visibility', visible);
 		throttleIfIdle(win, rideHeld);
@@ -74,10 +76,14 @@ function manage(win, { hides, rideHeld }) {
 		if (quitting) return;
 		event.preventDefault();
 		closedToTray.add(win);
-		win.hide();
+		hideLeavingFullScreen(win);
 		tell(false);
 		announceOnce();
 	});
+	if (hidden) {
+		closedToTray.add(win);
+		throttleIfIdle(win, rideHeld);
+	}
 }
 
 /**
@@ -87,6 +93,16 @@ function manage(win, { hides, rideHeld }) {
  */
 function shown(win) {
 	if (closedToTray.delete(win)) tellers.get(win)?.(true);
+}
+
+/**
+ * Hide, leaving native fullscreen first: a fullscreen window ordered out on
+ * macOS leaves its Space behind, black, until the rider swipes away (#3510).
+ */
+function hideLeavingFullScreen(win) {
+	if (!win.isFullScreen()) return win.hide();
+	win.once('leave-full-screen', () => win.hide());
+	win.setFullScreen(false);
 }
 
 /**

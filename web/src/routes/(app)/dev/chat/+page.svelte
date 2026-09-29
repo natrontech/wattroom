@@ -234,7 +234,7 @@
 	     a gallery of a wide screen must not make this page scroll sideways. -->
 	<div class="mt-4 overflow-x-auto">
 		<div
-			class="border-muted/15 bg-surface grid h-[34rem] min-w-[56rem] grid-cols-[19rem_minmax(0,1fr)] overflow-hidden rounded-lg border"
+			class="border-frame bg-surface grid h-[34rem] min-w-[56rem] grid-cols-[19rem_minmax(0,1fr)] overflow-hidden rounded-lg border"
 		>
 			<aside class="border-ink/5 flex min-h-0 flex-col border-r">
 				{@render list()}
@@ -250,7 +250,7 @@
 		Something is waiting in a conversation you are not looking at. Today only
 		the row's dot says so.
 	</p>
-	<div class="border-muted/15 bg-surface mt-4 max-w-md rounded-lg border p-3">
+	<div class="border-frame bg-surface mt-4 max-w-md rounded-lg border p-3">
 		<p class="text-muted text-[11px]">
 			On the way in —
 			<button
@@ -299,7 +299,7 @@
 	<div class="mt-4 flex flex-wrap gap-6">
 		<div>
 			<div
-				class="border-muted/15 bg-surface flex h-[30rem] w-[22rem] flex-col overflow-hidden rounded-lg border"
+				class="border-frame bg-surface flex h-[30rem] w-[22rem] flex-col overflow-hidden rounded-lg border"
 			>
 				<div
 					class="border-ink/5 flex h-11 shrink-0 items-center gap-2 border-b px-3"
@@ -314,7 +314,7 @@
 		</div>
 		<div>
 			<div
-				class="border-muted/15 bg-surface flex h-[30rem] w-[22rem] flex-col overflow-hidden rounded-lg border"
+				class="border-frame bg-surface flex h-[30rem] w-[22rem] flex-col overflow-hidden rounded-lg border"
 			>
 				{@render thread(true)}
 			</div>
@@ -324,7 +324,7 @@
 		</div>
 		<div>
 			<div
-				class="border-muted/15 bg-surface flex h-[30rem] w-[22rem] flex-col overflow-hidden rounded-lg border"
+				class="border-frame bg-surface flex h-[30rem] w-[22rem] flex-col overflow-hidden rounded-lg border"
 			>
 				<div
 					class="border-ink/5 flex h-11 shrink-0 items-center gap-2 border-b px-3"
@@ -351,7 +351,7 @@
 	<h2 class="eyebrow mt-12">Still open — this page decides none of these</h2>
 	<ol class="mt-4 space-y-3">
 		{#each questions as question (question.q)}
-			<li class="border-muted/15 bg-surface rounded-lg border p-4">
+			<li class="border-frame bg-surface rounded-lg border p-4">
 				<p class="text-sm font-medium">{question.q}</p>
 				<p class="text-muted mt-1.5 text-xs">
 					<span class="text-ink/80 font-medium">Today:</span>

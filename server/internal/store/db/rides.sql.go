@@ -1181,6 +1181,8 @@ select distinct date_trunc('week', started_at at time zone $1::text)::date as we
 from rides
 where user_id = $2
   and ($3::uuid is null or rides.id <> $3)
+  and date_trunc('week', started_at at time zone $1::text)
+      >= date_trunc('week', created_at at time zone $1::text) - interval '1 week'
 order by week desc
 limit 60
 `
@@ -1207,6 +1209,10 @@ type ListUserRideWeeksParams struct {
 // row is already in the table, so its own week came back and the bonus was
 // one week too high. Excluding the ride rather than the week is the same
 // question save asks — a second ride the same week still counts.
+// A ride counts only when it started no earlier than the week before the one
+// it was saved in (#3514): a back-dated upload is kept, and builds no streak
+// — ten one-minute uploads dated a week apart bought a 10-week streak whose
+// bonus every session ride then paid outside the upload ceiling.
 func (q *Queries) ListUserRideWeeks(ctx context.Context, arg ListUserRideWeeksParams) ([]pgtype.Date, error) {
 	rows, err := q.db.Query(ctx, listUserRideWeeks, arg.Tz, arg.UserID, arg.ExceptID)
 	if err != nil {

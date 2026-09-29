@@ -159,7 +159,7 @@
 					path,
 				)
 					? 'bg-surface-raised border-ink/40'
-					: 'border-muted/15 hover:border-muted/40'}"
+					: 'border-frame hover:border-muted/40'}"
 			>
 				<GripVertical size={14} class="text-muted-dim -ml-1 shrink-0" />
 				<span

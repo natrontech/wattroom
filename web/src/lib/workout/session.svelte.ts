@@ -3,6 +3,7 @@ import { publishHud } from '$lib/hud/feed';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { createActuator } from '$lib/ride/actuation';
+import { biasPress } from '$lib/ride/easier-harder';
 import { nudgedBias, toleranceBand } from './guards';
 import { createRiderGuards } from './rider-guards.svelte';
 import { wireSoloGuards } from './solo-guards';
@@ -187,6 +188,11 @@ export function createRideSession({
 		clock.sync();
 	}
 
+	function nudgeBias(step: number) {
+		bias = nudgedBias(bias, step);
+		applyTarget();
+	}
+
 	/**
 	 * The end of the ride, whichever door it came through: the clock running
 	 * out, a rider gone (#2622) or End. It used to live in stop() alone
@@ -282,10 +288,13 @@ export function createRideSession({
 		start: life.start,
 		abort: life.abort,
 		stop: finish,
-		nudgeBias(step: number) {
-			bias = nudgedBias(bias, step);
-			applyTarget();
-		},
+		nudgeBias,
+		/** Easier / Harder (#3328): a gear in SIM, the bias in ERG. */
+		easierHarder: (dir: 1 | -1) =>
+			actuator.easierHarder(
+				dir,
+				biasPress(() => bias, nudgeBias),
+			),
 		/** Jump to the start of the next block. */
 		skip() {
 			if (!clock.skip()) return;

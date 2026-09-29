@@ -63,6 +63,13 @@ export interface ChannelContext {
 	readonly phase: 'lounge' | 'countdown' | 'live';
 	/** The session's controls: the coach's, or anyone's while none is open (#2438). */
 	readonly canControl: boolean;
+	/**
+	 * The session may be driven from THIS screen (#3538): the rider may coach,
+	 * and this is not a phone watching — a phone is a read-only spectator
+	 * (WATTROOM.md). The lounge, the plan card and both training places each
+	 * spelled it as `canControl && !device.spectator`.
+	 */
+	readonly canDrive: boolean;
 	/** The crew's own things — its playlists, its calendar: its owner's and
 	 *  its admins', whoever is coaching. */
 	readonly canManage: boolean;

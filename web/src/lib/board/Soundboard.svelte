@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { isTyping } from '$lib/keys';
+	import { shiftsGears } from '$lib/ride/keys';
 	/**
 	 * The floating soundboard (#877), dragged where the rider wants it — the
 	 * same `dragPane` the popped-out stage uses, so a board and a stage behave
@@ -47,6 +48,7 @@
 	let {
 		fires,
 		roster,
+		shifting = false,
 		onFire,
 		onStop,
 	}: {
@@ -57,6 +59,8 @@
 		 * sounding (#1681) — a fire is one tick, the clip it started is not.
 		 */
 		roster: Rider[] | undefined;
+		/** A ride here shifts on its keys, which win over a pad's (#3329). */
+		shifting?: boolean;
 		onFire: (clipId: string) => void;
 		/** End your own clip for the whole voice channel (#1321). */
 		onStop: () => void;
@@ -198,6 +202,7 @@
 		}
 		if (boardPanel.open && face !== 'board') return;
 		if (event.metaKey || event.ctrlKey || event.altKey) return;
+		if (shifting && shiftsGears(event.key)) return;
 		const clip = board.onKey(event.key);
 		if (clip) {
 			event.preventDefault();

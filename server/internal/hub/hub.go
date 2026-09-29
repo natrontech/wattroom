@@ -69,6 +69,8 @@ type SessionClosed struct {
 	Seconds int
 	At      time.Time
 	Riders  []SessionRider
+	// The road the bunch covered and climbed (#3028), 0 off a road.
+	DistanceM, ClimbedM float64
 }
 
 // SessionRider is one person the session saw — on a bike, in voice, or both.

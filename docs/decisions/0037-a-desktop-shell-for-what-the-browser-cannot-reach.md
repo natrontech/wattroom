@@ -325,6 +325,13 @@ recorded recommendation (option 1b):
 The page hears a hide and a show through one preload signal, `onVisibility`,
 which #3079 reuses.
 
+Three follow-ups the same day (#3510). On Linux, "no tray" means nothing owns
+`org.kde.StatusNotifierWatcher` on the session bus: `new Tray` succeeds without
+one and draws nowhere, so the shell asks the bus instead. A login launch's
+hidden window is throttled from boot, like a window a close put in the tray.
+And a close in fullscreen leaves fullscreen before it hides, because macOS
+would leave the fullscreen Space behind, black.
+
 ## Amendment, 2026-09-29 (#2818): only macOS installs its own updates
 
 The #1303 amendment made the shell install its own updates everywhere, and

@@ -56,6 +56,9 @@ func (rm *channelState) setMetrics(c *client, m protocol.RiderMetrics) {
 	if !rm.session.rides(rider.ID) {
 		return
 	}
+	if rm.session.bunch != nil {
+		rm.session.bunch.hear(rider.ID, m.Watts, rider.FtpWatts)
+	}
 	if _, known := rm.seen[rider.ID]; !known {
 		rm.seenOrder = append(rm.seenOrder, rider.ID)
 	}
@@ -266,7 +269,7 @@ func (rm *channelState) control(c protocol.Control, rider protocol.Rider, now ti
 
 // controlOn is control with the road a pick rides (#3095), resolved before
 // the lock; a pick without one rides none, replacing the last pick's.
-func (rm *channelState) controlOn(c protocol.Control, route *protocol.SessionRoute, rider protocol.Rider, now time.Time) (code, message string) {
+func (rm *channelState) controlOn(c protocol.Control, route *routeRide, rider protocol.Rider, now time.Time) (code, message string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if code, message := rm.refusalLocked(c.Action, rider); code != "" {

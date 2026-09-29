@@ -179,7 +179,7 @@
 		{@const { route, world } = built}
 		<section
 			aria-label="Your ride"
-			class="border-muted/15 bg-surface/90 absolute top-3 right-3 left-3 grid gap-2 rounded-lg border px-4 py-3 sm:right-auto sm:w-60"
+			class="border-frame bg-surface/90 absolute top-3 right-3 left-3 grid gap-2 rounded-lg border px-4 py-3 sm:right-auto sm:w-60"
 		>
 			<p class="m-0 flex items-baseline gap-1">
 				<span
@@ -224,7 +224,7 @@
 
 		<section
 			aria-label="View"
-			class="border-muted/15 bg-surface/90 absolute right-3 bottom-32 left-3 grid gap-2 rounded-lg border px-4 py-3 sm:top-3 sm:bottom-auto sm:left-auto sm:max-w-sm sm:justify-items-end"
+			class="border-frame bg-surface/90 absolute right-3 bottom-32 left-3 grid gap-2 rounded-lg border px-4 py-3 sm:top-3 sm:bottom-auto sm:left-auto sm:max-w-sm sm:justify-items-end"
 		>
 			<div class="flex flex-wrap gap-1 sm:justify-end">
 				{#each styles as s (s.id)}
@@ -284,7 +284,7 @@
 		</section>
 
 		<div
-			class="border-muted/15 bg-surface/80 absolute right-3 bottom-3 left-3 h-24 rounded-lg border px-2 py-1.5"
+			class="border-frame bg-surface/80 absolute right-3 bottom-3 left-3 h-24 rounded-lg border px-2 py-1.5"
 		>
 			<Profile {route} riders={hud?.riders ?? []} />
 		</div>
