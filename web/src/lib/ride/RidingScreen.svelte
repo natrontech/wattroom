@@ -16,6 +16,8 @@
 	 * deserves the screen a rider in a session gets.
 	 */
 	import FlagButton from '$lib/ride/FlagButton.svelte';
+	import { gearsEnabled } from '$lib/ride/gears-enabled';
+	import { bindRideShift } from '$lib/ride/keys';
 	import { confirm } from '$lib/confirm.svelte';
 	import { FLAG_NOTICE_MS, FLAG_SAID } from '$lib/ride/flag';
 	import RideStatus from '$lib/ride/RideStatus.svelte';
@@ -75,6 +77,9 @@
 		});
 		if (ok) session.stop();
 	}
+
+	// Easier / Harder from the keys and any clicker, while this ride runs (#3329).
+	$effect(() => (gearsEnabled() ? bindRideShift(session) : undefined));
 
 	let flagNotice = $state(false);
 	function flag() {

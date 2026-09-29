@@ -82,6 +82,21 @@ step says otherwise; everything below logs itself.
 - **A long descent.** **Slope −5 %** (the felt floor) for ten minutes. Does the
   trainer stay rideable, or spin out?
 
+#### Shifting by key (#3329)
+
+Anything that types keys shifts, because a browser cannot tell it from the
+keyboard: a presentation clicker (most send PgUp / PgDn), a foot switch, an
+8BitDo Micro in keyboard mode, BikeControl in keystroke mode. Harder is `.` `+`
+`=` Numpad+ PgUp, Easier is `,` `-` Numpad− PgDn. In BikeControl, pick the
+**Rouvy** or **TrainingPeaks Virtual** keystroke preset: both send `,` `.` `-`
+`+`, so WattRoom needs no preset of its own. Try it in a free ride on a grade
+(a gear) and in an ERG workout (the bias), and note for each device:
+
+- one tap is one step, never two;
+- a held button steps again after about 0.4 s, then every 0.2 s, and stops the
+  moment it comes up — the device's own auto-repeat adds nothing;
+- switching to another window mid-hold stops it too.
+
 ### 4. Hand it back
 
 Post `web/.hwlog/session.jsonl` on the issue — attach it, or paste it if it is small.

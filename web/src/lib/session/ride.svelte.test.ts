@@ -110,6 +110,7 @@ const idleFree = {
 	grade: 0,
 	watts: 110,
 	second() {},
+	nudge() {},
 };
 
 function seqsSentOn(socket: FakeSocket): number[] {
@@ -514,6 +515,57 @@ describe('the personal guards in a group ride (#788)', () => {
 		expect(ride.target).toBe(130);
 		expect(second.commands.at(-1)).toBe('erg:130');
 		watts();
+		live.close();
+	});
+
+	// #3328/#3329: one pair of controls — the session's bias, the free
+	// ride's watts, a gear on its grade — and the keys bind while it acts.
+	it('makes a session, a free ride in watts and one on a grade easier or harder', async () => {
+		const { live, deps } = inASession();
+		let joined = $state(true);
+		let mode = $state<'grade' | 'watts'>('watts');
+		let watts = $state(130);
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide({
+				...deps,
+				joined: () => joined,
+				free: {
+					...idleFree,
+					armed: true,
+					grade: 4,
+					get mode() {
+						return mode;
+					},
+					get watts() {
+						return watts;
+					},
+					nudge: (dir) => (watts += 10 * dir),
+				},
+			});
+		});
+		expect(ride.shifting).toBe(false);
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		expect(ride.shifting).toBe(true);
+
+		expect(ride.easierHarder(1)).toEqual({ moved: true });
+		expect(ride.bias).toBe(1.01);
+		expect(watts).toBe(130);
+
+		joined = false;
+		await settle();
+		expect(ride.easierHarder(-1)).toEqual({ moved: true });
+		expect(watts).toBe(120);
+		expect(ride.bias).toBe(1.01);
+
+		mode = 'grade';
+		await settle();
+		expect(ride.easierHarder(1)).toEqual({ moved: true });
+		expect(watts).toBe(120);
+
+		dispose();
 		live.close();
 	});
 

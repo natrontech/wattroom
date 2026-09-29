@@ -114,6 +114,10 @@ export function createShifter(atEnd: (dir: ShiftDir) => boolean) {
 			held.delete(source);
 			lastEdge.delete(source);
 		},
+		/** Nothing held and nothing waiting: time passing changes nothing. */
+		get idle() {
+			return held.size === 0 && queued.length === 0;
+		},
 		/** Time passing: queued presses, and a held control's repeats. */
 		tick(at: number): ShiftEvent[] {
 			const out: ShiftEvent[] = [];
@@ -127,3 +131,46 @@ export function createShifter(atEnd: (dir: ShiftDir) => boolean) {
 		},
 	};
 }
+
+/** The driver's clock, well inside the shifter's 100 ms rate and 200 ms repeat. */
+const CLOCK_MS = 20;
+
+/**
+ * The shifter on a real clock (#3329): what every input presses — the keys,
+ * later the on-screen pair and a controller — turned into moves for `onMove`.
+ * The clock runs only while a control is held or a press waits.
+ */
+export function createShiftDriver(
+	onMove: (dir: ShiftDir) => void,
+	now: () => number = () => performance.now(),
+) {
+	// ponytail: no ends here — the ride answers a press at an end itself
+	// (#3328), and the end's cue is the gear field's (#3330).
+	const shifter = createShifter(() => false);
+	let clock: ReturnType<typeof setInterval> | undefined;
+	const emit = (events: ShiftEvent[]) => {
+		for (const event of events) if (event.kind === 'shift') onMove(event.dir);
+	};
+	function stop() {
+		clearInterval(clock);
+		clock = undefined;
+	}
+	return {
+		press(dir: ShiftDir, source: string) {
+			emit(shifter.press(dir, now(), source));
+			clock ??= setInterval(() => {
+				emit(shifter.tick(now()));
+				if (shifter.idle) stop();
+			}, CLOCK_MS);
+		},
+		release(source: string) {
+			shifter.release(source, now());
+		},
+		drop(source: string) {
+			shifter.drop(source);
+		},
+		stop,
+	};
+}
+
+export type ShiftDriver = ReturnType<typeof createShiftDriver>;
