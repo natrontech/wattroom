@@ -546,7 +546,7 @@ ERG 0 W: nobody is riding the trainer then.
 - A rider sets **one status**: an optional emoji (any Unicode emoji, or a custom emoji from a crew they are in) and **up to 100 characters** of text **(default — tune in alpha)**. It needs at least one of the two, and setting neither clears it.
 - **Clear after**: don't clear, **30 minutes, 1 hour, 4 hours, today, this week** (the same presets as Slack). "Today" ends at the rider's local midnight, and "this week" at the end of their local Sunday. Once the status clears, nobody is served it.
 - **Presets** that fill the editor in one tap: 🤒 Out sick (today) · 🏔️ Riding outside (4 hours) · 😴 Recovery week (this week) · 🏖️ On holiday (don't clear).
-- Shown wherever the rider's name is already shown to the viewer: the rider's page shows the text in full; the crew's member list, the voice occupants and the friends panel show the emoji, with the text on hover; a chat message shows the emoji after the author's name. The friends panel shows it to accepted friends only.
+- Shown wherever the rider's name is already shown to the viewer, **except the riding surface**: the session's crew strip, the sprint takeover, the game panel, the session summary and the session controls, and whatever joins that screen later (ADR-0060, amended by #2872). For example, the rider's page shows the text in full; the crew's member list, the voice occupants and the friends panel show the emoji, with the text on hover; a chat message shows the emoji after the author's name. The friends panel shows it to accepted friends only.
 
 ## Session recap retention (ADR-0034)
 
@@ -665,6 +665,20 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
 | Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
 
+## Riding a road together (defaults — tune in alpha; [ADR-0065](decisions/0065-riding-a-road-together.md))
+
+The bunch's one position advances once per whole second, never on a sprint
+window's 4 Hz ticks. Its pace:
+
+| The plan is                             | The bunch moves at                                                   |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| an ERG workout, or a workout on a route | the reference rider (Route rides) at the block's prescribed %FTP     |
+| a sprint block                          | the reference rider at **150 %** FTP                                 |
+| paused                                  | **0**                                                                |
+| a road step                             | the live mean %FTP of the pedalling riders, each capped at **150 %** |
+
+A rider's bias never moves the bunch.
+
 ## The world (defaults — tune in alpha; [ADR-0066](decisions/0066-the-world-is-the-ride-view.md), [ADR-0072](decisions/0072-light-in-the-world.md))
 
 | Parameter           | Value                                                                                                                   |
@@ -714,6 +728,27 @@ lean **0.3 s**, steer **0.15 s**.
 
 - **Sway**: **0.6° × r** seated, **4° × r** climbing, **9° × r ÷ 1.6** sprinting.
 - **Lean** = atan(v²κ ÷ g), clamped to **16–22°** while pedalling and **32°** coasting.
+
+## The bike computer (defaults — tune in alpha; [ADR-0071](decisions/0071-the-bike-computer-pages-slot-3.md))
+
+Slot 3's pages, in order: **RIDE** (default, and where every ride starts),
+**CLIMB** (opens by itself from RIDE when a climb begins), **POWER**, **MAP**
+(on a road only), **RACE** (later). ← / → or a tap on the panel turn them;
+PgUp / PgDn are Harder / Easier, never a page.
+
+**Legibility**, at the design distance — desk: **0.8 m** from a **14-inch**
+laptop; TV: **3 m** from a **55-inch** set:
+
+| Text                  | At least      | TV       | Desk       |
+| --------------------- | ------------- | -------- | ---------- |
+| Watts                 | **45 arcmin** | **12vh** | **104 px** |
+| Time left             | **45 arcmin** | **9vh**  | **72 px**  |
+| Secondary numbers     | **22 arcmin** | **5vh**  | **36 px**  |
+| "Next", labels, words | **16 arcmin** | **3vh**  | **24 px**  |
+
+Nothing on the TV is smaller than **2.9vh**. Panels are at least **85 %**
+opaque; a unit is at most half its number's size. The big watts figure is a
+**3 s** average; scoring still reads every second.
 
 ## Sync tolerances
 

@@ -70,3 +70,31 @@ is removed with the account, because it lives on the rider's row.
 - In code this is the **status line** (`protocol.StatusLine`, `statusLine` on
   every payload). The word "status" was already taken twice: by presence
   (`$lib/status.ts`) and by a friendship's state.
+
+## Amendment — where the name goes, except the riding surface (2026-09-29, #2872)
+
+The list in the decision read as complete, and the code read it as a set of
+examples: a status showed on about 24 surfaces, the riding screen among them.
+The rule is now:
+
+**A status goes wherever the rider's name goes, except the riding surface.**
+The surfaces named above are examples, not the whole list.
+
+The riding surface is the screen a rider pedals in front of (ADR-0046):
+
+- the session's crew strip;
+- the sprint takeover;
+- the game panel;
+- the session summary;
+- the session controls;
+- anything that joins that screen later, including rider labels in the 3D ride
+  view and the HUD pages.
+
+At three metres a written status is noise beside the numbers. One session
+screen drew the same status up to five times. ADR-0020 holds a session's column to
+ux.md in full, and ADR-0046 gives slots 2 and 4 to ride data. This is the
+decision's own "never a ride control", applied to the screen the ride happens
+on.
+
+How often one status may repeat on a page is left alone. Limiting it to once
+per viewport was considered and is not part of this.

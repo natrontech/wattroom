@@ -10,8 +10,7 @@
 	import { api } from '$lib/api';
 	import Banner from '$lib/components/Banner.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
-	import { confirm } from '$lib/confirm.svelte';
-	import { toasts } from '$lib/toast.svelte';
+	import TokenList from './TokenList.svelte';
 	import { untrack } from 'svelte';
 	import type { ApiToken } from '../../routes/(app)/settings/data/+page';
 
@@ -51,28 +50,6 @@
 		name = '';
 		fresh = res.data.token;
 		await load();
-	}
-
-	// A confirm, not an undo (errors.md): the row is deleted and the secret
-	// cannot be reissued, and whatever the rider connected with it stops
-	// working — one click used to do that in silence (#1759).
-	async function revoke(entry: ApiToken) {
-		const sure = await confirm({
-			title: `Revoke “${entry.name}”?`,
-			body: 'Whatever you connected with it stops working, and the token cannot be shown again — you would create a new one.',
-			action: 'Revoke',
-		});
-		if (!sure) return;
-		const res = await api<undefined>(`/api/tokens/${entry.id}`, {
-			method: 'DELETE',
-		});
-		if (!res.ok) {
-			error = res.error.message;
-			return;
-		}
-		error = null;
-		tokens = tokens.filter((t) => t.id !== entry.id);
-		toasts.push(`Revoked “${entry.name}”.`);
 	}
 
 	// "Copy it now" with nothing to press was a long-press-and-drag on a phone
@@ -143,24 +120,7 @@
 			</Banner>
 		</div>
 	{/if}
-	{#if tokens.length > 0}
-		<ul class="mt-4 grid gap-2">
-			{#each tokens as entry (entry.id)}
-				<li class="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs">
-					<span class="text-ink font-semibold">{entry.name}</span>
-					<span class="text-muted">
-						created {new Date(entry.createdAt).toLocaleDateString()}
-						{entry.lastUsedAt
-							? `· last used ${new Date(entry.lastUsedAt).toLocaleDateString()}`
-							: '· never used'}
-					</span>
-					<button onclick={() => void revoke(entry)} class="btn-link ml-auto"
-						>Revoke</button
-					>
-				</li>
-			{/each}
-		</ul>
-	{/if}
+	<TokenList bind:tokens onError={(message) => (error = message)} />
 	{#if error}
 		<div class="mt-4"><Banner tone="error">{error}</Banner></div>
 	{/if}

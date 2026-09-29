@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { people } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	// The coach's mid-ride controls (roles matrix): sprint, pause, resume,
 	// end. RoomLive carried them in its header; the split into places lost
 	// them, which left a coach with no way to end a session. They render in
@@ -215,11 +213,7 @@
 						}}
 						class="btn btn-secondary btn-lg w-full justify-between"
 						><span class="flex min-w-0 items-center gap-1.5"
-							><span class="truncate">{taker.name}</span>
-							<StatusMark
-								line={people.face(taker.id)?.statusLine}
-								size={16}
-							/></span
+							><span class="truncate">{taker.name}</span></span
 						><span class="text-muted text-xs"
 							>{taker.riding ? 'riding' : 'not riding'}</span
 						></button
