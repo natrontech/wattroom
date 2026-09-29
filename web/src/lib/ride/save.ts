@@ -14,7 +14,14 @@ export interface RideUpload {
 		bias?: number;
 		clock?: number;
 		released?: boolean;
+		/** On a road (#3052): metres along it, and the height there. */
+		m?: number;
+		alt?: number;
 	}[];
+	/** The stored route a ride on a road rode (#3053): one of the rider's own. */
+	routeId?: string;
+	/** How the trainer was driven along it (#3516): sim, gears or ergByRoad. */
+	drive?: 'sim' | 'gears' | 'ergByRoad';
 }
 
 /**

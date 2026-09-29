@@ -139,7 +139,10 @@ export function createRide(deps: RideDeps) {
 		// A free ride on a grade is a slope the rider chose, not a target
 		// to hold — and nothing for the guards to release (docs/SPEC.md).
 		if (!deps.joined() && deps.free.armed && deps.free.mode === 'grade') {
-			actuator.grade(deps.free.grade);
+			// On a road the grade is the road's felt grade (#3027, ADR-0062).
+			const road = deps.free.road;
+			if (road) actuator.road(road.felt);
+			else actuator.grade(deps.free.grade);
 			return;
 		}
 		actuator.hold(aim.target);
@@ -241,6 +244,7 @@ export function createRide(deps: RideDeps) {
 							watts: metrics.watts,
 							cadence: metrics.cadence,
 							hr: metrics.heartRate ?? 0,
+							at: sample.at,
 						});
 				}),
 			);
@@ -372,7 +376,7 @@ export function createRide(deps: RideDeps) {
 		easierHarder(dir: 1 | -1) {
 			const erg = deps.joined()
 				? biasPress(() => aim.bias, aim.nudgeBias)
-				: deps.free.armed && deps.free.mode === 'watts'
+				: deps.free.armed && deps.free.mode === 'watts' && !deps.free.road
 					? ergPress(() => deps.free.watts, deps.free.nudge)
 					: undefined;
 			return actuator.easierHarder(dir, erg);

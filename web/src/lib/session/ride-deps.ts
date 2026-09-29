@@ -40,6 +40,13 @@ export interface RideDeps {
 	 *  it, and where its seconds go (ADR-0059). */
 	free: Pick<
 		FreeRide,
-		'armed' | 'mode' | 'grade' | 'watts' | 'second' | 'nudge'
+		| 'armed'
+		| 'mode'
+		| 'grade'
+		| 'watts'
+		| 'second'
+		| 'nudge'
+		| 'road'
+		| 'targetWatts'
 	>;
 }

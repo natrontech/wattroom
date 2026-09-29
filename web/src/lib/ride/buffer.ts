@@ -26,6 +26,8 @@ export interface BufferedSample {
 	clock?: number;
 	/** The guard had the trainer off the target this second (#1796). */
 	released?: boolean;
+	/** On a road, metres along it (#3027): where a resumed ride starts again. */
+	m?: number;
 	/** ms epoch */
 	at: number;
 }

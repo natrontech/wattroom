@@ -173,6 +173,7 @@ function connect(address: PlaceAddress): Connection {
 		freeRide = createFreeRide({
 			ftp: () => profile.current.ftp,
 			singleSpeed: () => profile.current.singleSpeed,
+			kg: () => profile.current.kg,
 		});
 		ride = createRide({
 			live,
