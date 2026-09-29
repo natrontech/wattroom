@@ -355,16 +355,17 @@ test('an unreachable app renders the offline screen, not a blank window', async 
 	await app.close();
 });
 
-test('Linux is offered the download at once, and never installs by itself', async () => {
-	// #2818: a Linux update is checked only against a sha512 beside it, so
-	// Linux takes home's download offer from the first newer version. macOS
-	// and Windows check a signature and install their own, until three fail.
+test('outside macOS the download is offered at once, and nothing installs itself', async () => {
+	// #2818: only macOS checks a signature it trusts before installing, so
+	// Linux and Windows take home's download offer from the first newer
+	// version. macOS installs its own, and offers the download after three
+	// failures.
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
 
 	expect(await win.evaluate(() => window.wattroom.updateFailed())).toBe(
-		process.platform === 'linux',
+		process.platform !== 'darwin',
 	);
 
 	await app.close();

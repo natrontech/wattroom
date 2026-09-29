@@ -631,10 +631,12 @@ async function chooseFrom(win, title, options, checkboxLabel = null) {
 // construction.
 let updateReady = null;
 let autoUpdater = null;
-// Where the shell installs its own updates: everywhere a signature is checked
-// first (#2818). Squirrel.Mac requires the Developer ID; NsisUpdater checks
-// Authenticode against the publisherName CSC_LINK writes into app-update.yml.
-const selfInstalls = process.platform !== 'linux';
+// Where the shell installs its own updates: only macOS (#2818), where
+// Squirrel.Mac refuses anything without the Developer ID. Linux checks nothing
+// but a sha512 published beside the binary, which whoever can write a release
+// can also write. Windows checks Authenticode, and the Apple-signed build reads
+// UnknownError on a stock Windows, so every download was refused anyway.
+const selfInstalls = process.platform === 'darwin';
 
 function watchForUpdates() {
 	// Required here, not at the top: merely touching electron-updater's
@@ -643,10 +645,7 @@ function watchForUpdates() {
 	// package.json's, and a malformed one crashes at launch with a dialog.
 	if (!app.isPackaged) return;
 	({ autoUpdater } = require('electron-updater'));
-	// Linux installs whatever matches a sha512 published beside the binary, so
-	// anyone who could write a release could run code on every Linux machine
-	// at its next quit (#2818). It takes the download offer instead; macOS and
-	// Windows check a signature before they install anything.
+	// Elsewhere the feed is still read, and home offers the download (#2818).
 	autoUpdater.autoDownload = selfInstalls;
 	autoUpdater.autoInstallOnAppQuit = selfInstalls;
 	// stdout: nothing in a Dock launch, everything when run from a terminal —
@@ -688,8 +687,8 @@ function watchForUpdates() {
 
 // The renderer asks on mount, in case the download finished before it did.
 ipcMain.handle('wattroom:update-ready', () => updateReady);
-// Consecutive failures of the updater (#1940): three is "not coming". Linux
-// never self-installs (#2818), so there the page offers the download for
+// Consecutive failures of the updater (#1940): three is "not coming". Only
+// macOS self-installs (#2818), so elsewhere the page offers the download for
 // every newer version, at once.
 let updateFailures = 0;
 ipcMain.handle(
