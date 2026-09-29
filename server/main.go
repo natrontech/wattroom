@@ -233,7 +233,10 @@ func main() {
 		authService.Register(mux)
 		accountService := account.New(st, authService, log)
 		accountService.Register(mux)
-		feedback.New(authService, issuerOrNil(), logRing, log).Register(mux)
+		feedbackService := feedback.New(authService, issuerOrNil(), logRing, log)
+		feedbackService.Register(mux)
+		// A purge takes the rider's flag reports off disk too (#2906).
+		accountService.SetReportReaper(feedbackService)
 		uploader := strava.New(st, log, keys)
 		if uploader != nil {
 			// Disconnecting Strava hands the grant back, not just our row (#783);
