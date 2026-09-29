@@ -140,7 +140,7 @@
 							class="text-muted shrink-0"
 						/>{/if}
 					{#if rider.speaking}
-						<Mic size={11} class="text-z4 shrink-0 motion-safe:animate-pulse" />
+						<Mic size={11} class="text-ok shrink-0 motion-safe:animate-pulse" />
 					{:else if rider.muted}
 						<MicOff size={11} class="text-muted-dim shrink-0" />
 					{:else if live && rider.inVoice}
@@ -173,7 +173,7 @@
 							     number disagreeing with the first (#2882 L6-09). -->
 							<span
 								class="shrink-0 text-[10px] tabular-nums {now.has && now.inBand
-									? 'text-z4'
+									? 'text-ok'
 									: 'text-muted'}"
 								title={now.has
 									? `${rider.name} is ${now.inBand ? 'holding' : 'off'} target right now`

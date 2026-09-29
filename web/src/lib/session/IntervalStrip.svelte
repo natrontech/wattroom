@@ -50,7 +50,7 @@
 				<p
 					class="font-display font-semibold tabular-nums {big
 						? 'text-[2.2vh]'
-						: 'text-sm'} {b.inBand ? 'text-z4' : 'text-z5'}"
+						: 'text-sm'} {b.inBand ? 'text-ok' : 'text-warn'}"
 				>
 					at {b.text}
 				</p>

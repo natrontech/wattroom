@@ -40,7 +40,7 @@
 		</p>
 	</div>
 {:else if flags.sent > 0}
-	<p class="text-z4 mt-3 text-xs">
+	<p class="text-ok mt-3 text-xs">
 		Thanks — {flags.sent} flag{flags.sent > 1 ? 's' : ''} sent.
 	</p>
 {/if}

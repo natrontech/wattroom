@@ -51,7 +51,7 @@
 			? 'transmitting — the call hears you'
 			: 'closed until you hold Space to talk'}
 	{:else if transmitting}
-		<span class="text-z4">gate open</span> — the call hears you
+		<span class="text-ok">gate open</span> — the call hears you
 	{:else}
 		gate closed — speak up, or drag the gate left
 	{/if}

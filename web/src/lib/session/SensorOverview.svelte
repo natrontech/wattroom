@@ -129,7 +129,7 @@
 	>
 		<args.icon
 			size={28}
-			class={view.shape === 'live' ? 'text-z4' : 'text-muted'}
+			class={view.shape === 'live' ? 'text-ok' : 'text-muted'}
 			opacity={view.instead ? 0.5 : 1}
 		/>
 		<div class="min-w-0">

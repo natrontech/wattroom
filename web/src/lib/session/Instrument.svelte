@@ -115,7 +115,7 @@
 		<span class="min-w-0 flex-1">{@render track('h-3')}</span>
 		<span
 			class="shrink-0 text-xs tabular-nums {state.inBand
-				? 'text-z4'
+				? 'text-ok'
 				: 'text-muted'}"
 			>{stale
 				? 'no signal'
@@ -181,9 +181,9 @@
 		<span>0</span>
 		<span
 			class="mx-auto {tv ? 'text-[2.6vh]' : 'text-sm'} {state.inBand
-				? 'text-z4'
+				? 'text-ok'
 				: state.delta > 0
-					? 'text-z5'
+					? 'text-warn'
 					: 'text-muted'}"
 		>
 			{#if stale}

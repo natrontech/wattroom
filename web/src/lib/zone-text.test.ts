@@ -9,15 +9,20 @@ import { scan } from './source-scan.test-helper';
  * colour put "z1 Active recovery" at 2.1:1 under the big number. A zone is now
  * a ZoneDot beside text drawn in text colours, and nothing may look a text
  * class up by zone again: the lookup that made it easy is gone.
+ *
+ * Nor may it name one (#2969): "on target" and "voice reconnecting…" were
+ * `text-z4` and `text-z5`, 2.6–2.9:1 on every light theme. A status word
+ * takes `text-ok` or `text-warn` — Z4 and Z5 pulled to the text floor — and
+ * a chart line that wants a zone strokes `var(--color-zN)`.
  */
 describe('zone colours on text', () => {
 	it('no file paints text by zone', () => {
-		const { offenders } = scan(/\bZONE_TEXT\b|text-z\$\{/g, {
+		const { offenders } = scan(/\bZONE_TEXT\b|text-z(?:\$\{|[1-7]\b)/g, {
 			'lib/zone-text.test.ts': 'this guard',
 		});
 		expect(
 			offenders,
-			'mark the zone with ZoneDot and draw the words in text-ink or text-muted',
+			'mark the zone with ZoneDot and draw the words in text-ink or text-muted; a status word takes text-ok or text-warn',
 		).toEqual([]);
 	});
 });
