@@ -191,12 +191,12 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 			h.writeError(c, refused.Code, refused.Message)
 			return
 		}
-		attached, refusal := h.sessionRoad(cmd.WorkoutJSON, rider.ID)
+		attached, name, refusal := h.sessionRoad(cmd.WorkoutJSON, cmd.WorkoutName, rider.ID)
 		if refusal != "" {
 			h.writeError(c, "forbidden", refusal)
 			return
 		}
-		cmd.WorkoutJSON = attached
+		cmd.WorkoutJSON, cmd.WorkoutName = attached, name
 	}
 	if code, refusal := rm.controlOn(cmd, route, rider, h.now()); code != "" {
 		h.writeError(c, code, refusal)

@@ -163,7 +163,7 @@ func (s *Service) handleCrewPlan(w http.ResponseWriter, r *http.Request) {
 	if !valid {
 		return
 	}
-	route, ok := s.planRoad(w, r, req.WorkoutJSON, user.ID)
+	route, name, ok := s.planRoad(w, r, req.WorkoutJSON, name, user.ID)
 	if !ok {
 		return
 	}

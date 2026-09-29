@@ -15,6 +15,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/road"
+	"github.com/natrontech/wattroom/server/internal/routes"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -149,6 +150,15 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// A ride on a road is kept under its route's generated name (#3055):
+	// friends' shared rides, the ride's card and its Strava title all read
+	// the name kept here, and the owner's rename can say where they live.
+	name, err := routes.SharedName(r.Context(), s.store.Queries, req.WorkoutJSON, req.WorkoutName)
+	if err != nil {
+		httpx.Fail(w, s.log, "ride road name unreadable", err, "The ride could not be saved. It stays on this device.")
+		return
+	}
+	req.WorkoutName = name
 	row, err := stats.BuildRideRow(user.ID, req.WorkoutName,
 		req.WorkoutJSON, req.StartedAt, int(user.FtpWatts), samples)
 	if err != nil {

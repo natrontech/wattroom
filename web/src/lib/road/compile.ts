@@ -90,10 +90,12 @@ function blocksOf(
  * The route compiled for one rider — their FTP and their weight with the
  * bike, which is what the estimate is timed at — in legs of at most
  * MaxLegSeconds (docs/SPEC.md "Leg"): the first is the ride, later ones are
- * offered. Every block ends on the road at its `stepEndM`.
+ * offered. Every block ends on the road at its `stepEndM`. Legs are named by
+ * the route's generated name, never the owner's rename (#3055): a workout
+ * goes out to the session, the ride list and friends' feeds.
  */
 export function compileRoad(
-	route: { id: string; name: string; road: Road; climbs: Climb[] },
+	route: { id: string; genName: string; road: Road; climbs: Climb[] },
 	ftp: number,
 	massKg: number,
 ): Workout[] {
@@ -118,8 +120,8 @@ export function compileRoad(
 		const leg: Workout = {
 			name:
 				legs.length > 1
-					? `${route.name} · leg ${k + 1} of ${legs.length}`
-					: route.name,
+					? `${route.genName} · leg ${k + 1} of ${legs.length}`
+					: route.genName,
 			road: {
 				routeId: route.id,
 				fromM,

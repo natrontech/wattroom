@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -172,6 +173,35 @@ func TestStartingARoadPlanSendsTheCrewCut(t *testing.T) {
 	for i, turn := range r.Turns {
 		if turn == testx.TellingEndTurn || r.Heights[i] != 0 {
 			t.Fatalf("the session holds sample %d of a hidden end or an altitude", i)
+		}
+	}
+}
+
+// A planned road goes out under its route's generated name (#3055): alice
+// named her route "Home loop", and neither the plan nor the crew's schedule
+// nor its calendar feed says so — nor the reminder emails, which read the
+// same row.
+func TestAPlannedRoadGoesOutUnderItsGeneratedName(t *testing.T) {
+	h := setup(t)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	crew, _ := h.crewWithChannel(t)
+	route := h.tellingRoute(t, "alice", "gpx")
+	status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), roadPlanBody(route, time.Now().Add(24*time.Hour)))
+	if status != http.StatusCreated {
+		t.Fatalf("alice plans her road: %d %v", status, body)
+	}
+	plan, _ := body["id"].(string)
+	_, member := h.call(t, "bob", http.MethodGet, crewPath(crew), "")
+	token, _ := member["icsToken"].(string)
+	_, ics, _ := h.rawGet(t, crewPath(crew, "/calendar/", token, ".ics"))
+	const generated = "Road · 3.0 km · 50 m"
+	for surface, text := range map[string]string{
+		"the plan":          fmt.Sprint(body["workoutName"]),
+		"bob's schedule":    fmt.Sprint(h.crewSchedule(t, "bob", crew)[plan]["workoutName"]),
+		"the calendar feed": ics,
+	} {
+		if strings.Contains(text, "Home loop") || !strings.Contains(text, generated) {
+			t.Errorf("%s says %q, want %q and never the route's own name", surface, text, generated)
 		}
 	}
 }

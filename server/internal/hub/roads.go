@@ -23,6 +23,9 @@ type Roads interface {
 	// rides it, or the refusal the coach is told, or the error that kept
 	// it from being read.
 	SessionRoute(ctx context.Context, coach, routeID string) (protocol.SessionRoute, *protocol.Error, error)
+	// SharedName is the name a picked workout goes out under (#3055): on a
+	// road, the route's generated name, never the owner's rename.
+	SharedName(ctx context.Context, workoutJSON, name string) (string, error)
 }
 
 // SetRoads wires the routes in. Nil rides no roads: a pick carrying one is
@@ -34,24 +37,29 @@ func (h *Hub) SetRoads(r Roads) { h.roads = r }
 // socket's writes.
 const roadReadTimeout = 5 * time.Second
 
-// sessionRoad is a pick's workout as the channel may read it: unchanged when
-// it rides no road, else with the crew's cut attached. A refusal is for the
-// coach.
-func (h *Hub) sessionRoad(workoutJSON, coach string) (string, string) {
+// sessionRoad is a pick's workout as the channel may read it, and the name
+// it goes out under: unchanged when it rides no road, else with the crew's
+// cut attached and the route's generated name (#3055) — the name reaches the
+// tick, the presence radar, the recap and the saved rides from here. A
+// refusal is for the coach.
+func (h *Hub) sessionRoad(workoutJSON, name, coach string) (attached, shared, refusal string) {
 	if ref, _ := workout.RoadOf(workoutJSON); ref == nil {
-		return workoutJSON, ""
+		return workoutJSON, name, ""
 	}
 	if h.roads == nil {
-		return "", "This server does not ride roads yet, so a session cannot carry one."
+		return "", "", "This server does not ride roads yet, so a session cannot carry one."
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), roadReadTimeout)
 	defer cancel()
 	attached, refusal, err := h.roads.ForSession(ctx, coach, workoutJSON)
+	if err == nil && refusal == "" {
+		shared, err = h.roads.SharedName(ctx, workoutJSON, name)
+	}
 	if err != nil {
 		h.log.Warn("pick road unreadable", "err", err, "coach", coach)
-		return "", "The road could not be read just now. Pick it again in a moment."
+		return "", "", "The road could not be read just now. Pick it again in a moment."
 	}
-	return attached, refusal
+	return attached, shared, refusal
 }
 
 // sessionRoute resolves the road a pick or a game asks to ride (#3095),

@@ -159,3 +159,30 @@ func TestARideOnSomeoneElsesRouteIsRefused(t *testing.T) {
 		}
 	}
 }
+
+// A ride on a road workout is kept under its route's generated name (#3055):
+// friends' shared rides, the ride's card and its Strava title all read the
+// name kept here, so the owner's "Home loop" stays with the owner.
+func TestARoadWorkoutRideIsKeptUnderItsGeneratedName(t *testing.T) {
+	h := setup(t)
+	route, _ := storeRoute(t, h, "alice")
+	samples := make([]string, 120)
+	for i := range samples {
+		samples[i] = fmt.Sprintf(`{"watts":250,"cadence":90,"m":%d}`, 1000+8*i)
+	}
+	workout := `{"name":"Home loop","road":{"routeId":"` + route + `","fromM":0,"toM":5000},"steps":[{"type":"road","seconds":120}]}`
+	body := fmt.Sprintf(`{"workoutName":"Home loop","workoutJson":%q,"startedAt":%q,"samples":[%s],"routeId":%q}`,
+		workout, nextStart().Format(time.RFC3339), strings.Join(samples, ","), route)
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
+	if status != http.StatusCreated {
+		t.Fatalf("save: %d %v", status, got)
+	}
+	var kept string
+	if err := h.store.Pool.QueryRow(t.Context(), `select workout_name from rides where id = $1`, got["id"]).Scan(&kept); err != nil {
+		t.Fatal(err)
+	}
+	const generated = "Road · 5.0 km · 100 m"
+	if kept != generated || got["workoutName"] != generated {
+		t.Errorf("the ride is kept as %q and answered as %v, want %q", kept, got["workoutName"], generated)
+	}
+}

@@ -26,7 +26,7 @@ function road(...legs: [number, number][]): Road {
 
 function compiled(r: Road, ftp = FTP) {
 	return compileRoad(
-		{ id: 'route-1', name: 'Road · test', road: r, climbs: climbsOf(r) },
+		{ id: 'route-1', genName: 'Road · test', road: r, climbs: climbsOf(r) },
 		ftp,
 		MASS,
 	);
@@ -89,7 +89,7 @@ describe('compileRoad', () => {
 	it('compiles a fixture route end to end', () => {
 		const r = toRoute(hairpinClimb());
 		const [leg] = compileRoad(
-			{ id: 'route-2', name: r.name, road: r.road, climbs: r.climbs },
+			{ id: 'route-2', genName: r.name, road: r.road, climbs: r.climbs },
 			FTP,
 			MASS,
 		);

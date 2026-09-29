@@ -74,6 +74,37 @@ func (a *Attacher) CheckShared(ctx context.Context, workoutJSON string, actor pg
 	return id, nil
 }
 
+// SharedName is the name a workout goes out under wherever someone besides
+// its route's owner may read it (#3055, ADR-0063): a workout on a road is
+// named by the route's generated name — the owner's rename can say where
+// they live, and it stays on the owner's own reads. A workout on no road
+// keeps its name, and so does one whose route is gone, since the app named
+// it from the generated name in the first place.
+func (a *Attacher) SharedName(ctx context.Context, workoutJSON, name string) (string, error) {
+	return SharedName(ctx, a.q, workoutJSON, name)
+}
+
+// SharedName is Attacher.SharedName for a caller holding only the queries: a
+// name needs no road, so no key.
+func SharedName(ctx context.Context, q *db.Queries, workoutJSON, name string) (string, error) {
+	ref, err := workout.RoadOf(workoutJSON)
+	if err != nil || ref == nil {
+		return name, nil
+	}
+	id, err := store.ParseUUID(ref.RouteID)
+	if err != nil {
+		return name, nil
+	}
+	gen, err := q.GetRouteGenName(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return name, nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("routes: read name of %s: %w", ref.RouteID, err)
+	}
+	return gen, nil
+}
+
 // CheckOwn is the write rule for a rider's own library: the road must be one
 // of their routes, Strava's included — nobody else ever reads it.
 func (a *Attacher) CheckOwn(ctx context.Context, workoutJSON string, owner pgtype.UUID) error {
