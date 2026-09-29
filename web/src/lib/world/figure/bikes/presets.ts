@@ -228,3 +228,40 @@ export const FRAMES = {
 } satisfies Record<string, FramePreset>;
 
 export type FrameId = keyof typeof FRAMES;
+
+/** Where each grip sits from the bar clamp, metres: forward, up, out to the right hand. */
+export const BARS: Record<
+	BarStyle,
+	Record<'hoods' | 'drops' | 'tops', [number, number, number]>
+> = {
+	drop: {
+		hoods: [0.105, 0.028, 0.2],
+		drops: [-0.005, -0.118, 0.2],
+		tops: [0, 0.006, 0.11],
+	},
+	aero: {
+		hoods: [0.105, 0.03, 0.2],
+		drops: [-0.005, -0.115, 0.2],
+		tops: [0.012, 0.012, 0.12],
+	},
+	flare: {
+		hoods: [0.098, 0.026, 0.2],
+		drops: [-0.01, -0.108, 0.245],
+		tops: [0, 0.006, 0.11],
+	},
+	track: {
+		hoods: [0.072, -0.01, 0.19],
+		drops: [-0.03, -0.14, 0.195],
+		tops: [0, 0.005, 0.1],
+	},
+	tt: {
+		hoods: [0.15, -0.024, 0.2],
+		drops: [0.15, -0.024, 0.2],
+		tops: [0.02, 0.004, 0.1],
+	},
+	upright: {
+		hoods: [-0.155, 0.07, 0.262],
+		drops: [-0.155, 0.07, 0.262],
+		tops: [-0.155, 0.07, 0.262],
+	},
+};

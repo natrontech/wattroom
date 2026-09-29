@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
 	BUILDS,
@@ -165,4 +167,12 @@ describe('the fit solver', () => {
 		expect(riderDims(2.4).height).toBe(HEIGHT_M.max);
 		expect(riderDims(Number.NaN).height).toBe(HEIGHT_M.default);
 	});
+});
+
+it('keeps every module under 300 lines', () => {
+	for (const f of readdirSync(__dirname).filter((f) => !f.includes('.test')))
+		expect(
+			readFileSync(join(__dirname, f), 'utf8').split('\n').length,
+			f,
+		).toBeLessThanOrEqual(300);
 });
