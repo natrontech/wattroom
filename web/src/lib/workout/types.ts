@@ -80,6 +80,13 @@ export interface WorkoutRoad {
 	fromM: number;
 	toM: number;
 	stepEndM?: number[];
+	/**
+	 * Attached on read, never sent back (byReference): the reader's cut of
+	 * the road, packed and base64, starting `originM` metres along the
+	 * owner's road (#3051).
+	 */
+	profile?: string;
+	originM?: number;
 }
 
 /** One entry of the flattened timeline — repeats expanded, absolute offsets. */

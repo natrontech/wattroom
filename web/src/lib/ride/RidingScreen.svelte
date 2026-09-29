@@ -120,19 +120,28 @@
 	<div class="flex flex-wrap items-center justify-end gap-2">
 		<!-- The kit's riding size (ux.md: btn-lg is the 44 px a rider hits
 			     while pedalling); these used to retype the chrome by hand. -->
-		<button onclick={() => session.extend(60)} class="btn btn-secondary btn-lg"
-			>+1 min</button
-		>
-		<!-- Nothing to skip to on the last block: disabled with the
-			     reason, never a click that does nothing (ux.md, #1799). -->
-		<button
-			onclick={() => session.skip()}
-			disabled={session.info.segmentIndex + 1 >= session.segments.length}
-			title={session.info.segmentIndex + 1 >= session.segments.length
-				? 'Last block — End ride instead'
-				: undefined}
-			class="btn btn-secondary btn-lg disabled:opacity-40">Skip block</button
-		>
+		<!-- A road workout's blocks end at their metres (#3499): nothing to
+		     skip or hold longer, and the reason said where they were. -->
+		{#if session.road}
+			<span class="text-muted text-xs"
+				>The road decides where a block ends.</span
+			>
+		{:else}
+			<button
+				onclick={() => session.extend(60)}
+				class="btn btn-secondary btn-lg">+1 min</button
+			>
+			<!-- Nothing to skip to on the last block: disabled with the
+				     reason, never a click that does nothing (ux.md, #1799). -->
+			<button
+				onclick={() => session.skip()}
+				disabled={session.info.segmentIndex + 1 >= session.segments.length}
+				title={session.info.segmentIndex + 1 >= session.segments.length
+					? 'Last block — End ride instead'
+					: undefined}
+				class="btn btn-secondary btn-lg disabled:opacity-40">Skip block</button
+			>
+		{/if}
 		{#if onTv}
 			<button onclick={onTv} class="btn btn-secondary btn-lg">TV</button>
 		{/if}

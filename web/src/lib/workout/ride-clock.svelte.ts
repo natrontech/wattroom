@@ -10,7 +10,15 @@ import type { Segment, Workout } from './types';
 export function createRideClock(
 	workout: Workout,
 	ftp: number,
-	ride: { bias: () => number; over: () => boolean },
+	ride: {
+		bias: () => number;
+		over: () => boolean;
+		/**
+		 * A road workout's position (#3499): the workout second the dot's
+		 * metre puts the rider at, which replaces the clock's own.
+		 */
+		road?: (segments: readonly Segment[]) => number;
+	},
 ) {
 	const segments: Segment[] = flatten(workout);
 	const total = segments.reduce(
@@ -20,7 +28,11 @@ export function createRideClock(
 	let elapsed = $state(0);
 	/** Per-segment time shifts from skip/extend, so the timeline stays authoritative. */
 	let shift = $state(0);
-	const seconds = $derived(Math.min(total, Math.max(0, elapsed + shift)));
+	const seconds = $derived(
+		ride.road
+			? Math.min(total, Math.max(0, ride.road(segments)))
+			: Math.min(total, Math.max(0, elapsed + shift)),
+	);
 	const info = $derived(
 		targetAt(segments, ftp, seconds, { bias: ride.bias() }),
 	);

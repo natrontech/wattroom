@@ -80,4 +80,6 @@ export interface RideOptions {
 	sprint?: () => SprintSetup;
 	/** Called with each recorded sample — the crash-safety buffer's seam (#19). */
 	onRecord?: (sample: RecordedSecond) => void;
+	/** The rider's weight, kg: a road workout's dot carries it (#3499). */
+	kg?: () => number;
 }
