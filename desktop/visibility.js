@@ -60,9 +60,19 @@ function manage(win, { hides, rideHeld }) {
 	win.on('close', (event) => {
 		if (quitting) return;
 		event.preventDefault();
-		win.hide();
+		hideLeavingFullScreen(win);
 		announceOnce();
 	});
+}
+
+/**
+ * Hide, leaving native fullscreen first: a fullscreen window ordered out on
+ * macOS leaves its Space behind, black, until the rider swipes away (#3510).
+ */
+function hideLeavingFullScreen(win) {
+	if (!win.isFullScreen()) return win.hide();
+	win.once('leave-full-screen', () => win.hide());
+	win.setFullScreen(false);
 }
 
 /**
