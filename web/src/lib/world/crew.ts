@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { zoneOf } from '$lib/components/zones';
 import { damp } from '$lib/motion/damp';
+import { effortRpm } from './figure/cadence';
 import { yOf } from './geometry';
 import { ramp } from './materials';
 import { buildGeometry } from './rider-geometry';
@@ -34,13 +35,6 @@ export function hueOf(id: string): number {
 	for (const ch of id) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
 	const u = ((h >>> 0) % 1000) / 1000;
 	return (20 + u * 280) % 360; // skips 300°–20°, the watt magenta's neighbourhood
-}
-
-// The cadence a rider without a cadence sensor pedals at, from their effort
-// (docs/SPEC.md "Rider animation": the jukebox's effort tiers).
-export function effortRpm(watts: number, ftp: number): number {
-	const r = watts / ftp;
-	return r <= 0.55 ? 80 : r <= 0.75 ? 85 : r <= 0.9 ? 90 : 95;
 }
 
 // What a rider's legs are doing, kept across style changes.

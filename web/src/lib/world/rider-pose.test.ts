@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { bikeParts } from './bike-geometry';
-import { effortRpm } from './crew';
+import { effortRpm } from './figure/cadence';
 import { buildGeometry } from './rider-geometry';
 import { makeRider } from './rider-model';
 import { pose } from './rider-pose';

@@ -239,7 +239,7 @@ export function buildBars(mb: MeshBuilder, rig: Rig): void {
 			);
 			// prettier-ignore
 			mb.geo(new THREE.CapsuleGeometry(0.03, 0.07, 3, 10).rotateZ(Math.PI / 2).scale(1, 0.35, 1), bone, S.hood, TR(padC.x, padC.y - 0.006, padC.z));
-			const tipR = fit.grips.extensions;
+			const tipR = fit.grips.extensions.R.p;
 			const tip = V(tipR.x, tipR.y, tipR.z * s);
 			// prettier-ignore
 			sweep(mb, [padC.clone().add(V(-0.02, -0.03, -0.022 * s)), padC.clone().add(V(0.08, -0.026, -0.022 * s)), tip.clone().add(V(-0.03, -0.022, 0)), tip.clone().add(V(0.02, 0.005, 0))], { bone, slot: (u) => (u > 0.72 ? tape : S.frame), r: 0.0105, samples: 16, sides: 8 });
