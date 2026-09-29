@@ -28,10 +28,13 @@ select exists (
 )::boolean;
 
 -- name: ListAccountsWithoutOpening :many
--- Every account the opening job still owes its one grant (ADR-0069). The
--- synthetic account is owed nothing.
+-- Every account the opening job still owes its one grant (ADR-0069): an
+-- existing rider's, made before the wallet arrived (#3513) — an account made
+-- since earns by riding, like everyone does from then on. The synthetic
+-- account is owed nothing.
 select u.id from users u
-where not exists (select 1 from wallet_events w where w.user_id = u.id and w.source = 'opening')
+where u.created_at < sqlc.arg(wallet_arrived)::timestamptz
+  and not exists (select 1 from wallet_events w where w.user_id = u.id and w.source = 'opening')
   and not exists (select 1 from identities i where i.user_id = u.id and i.provider = 'synthetic');
 
 -- name: OpenWallet :execrows
@@ -71,8 +74,9 @@ where session_id is not null
   and session_id = (select r.session_id from rides r where r.id = $1);
 
 -- name: LastRideBatzen :one
--- What the rider's last ride paid, for "about one ride like your last one".
+-- What the rider's last paid ride paid, for "about one ride like your last
+-- one" — a ride the day's cap took to 0 is no measure.
 select amount from wallet_events
-where user_id = $1 and source = 'ride'
+where user_id = $1 and source = 'ride' and amount > 0
 order by created_at desc, id desc
 limit 1;
