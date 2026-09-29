@@ -85,12 +85,13 @@ func (q *Queries) ExportUserWallet(ctx context.Context, arg ExportUserWalletPara
 
 const lastRideBatzen = `-- name: LastRideBatzen :one
 select amount from wallet_events
-where user_id = $1 and source = 'ride'
+where user_id = $1 and source = 'ride' and amount > 0
 order by created_at desc, id desc
 limit 1
 `
 
-// What the rider's last ride paid, for "about one ride like your last one".
+// What the rider's last paid ride paid, for "about one ride like your last
+// one" — a ride the day's cap took to 0 is no measure.
 func (q *Queries) LastRideBatzen(ctx context.Context, userID pgtype.UUID) (int32, error) {
 	row := q.db.QueryRow(ctx, lastRideBatzen, userID)
 	var amount int32
@@ -100,14 +101,17 @@ func (q *Queries) LastRideBatzen(ctx context.Context, userID pgtype.UUID) (int32
 
 const listAccountsWithoutOpening = `-- name: ListAccountsWithoutOpening :many
 select u.id from users u
-where not exists (select 1 from wallet_events w where w.user_id = u.id and w.source = 'opening')
+where u.created_at < $1::timestamptz
+  and not exists (select 1 from wallet_events w where w.user_id = u.id and w.source = 'opening')
   and not exists (select 1 from identities i where i.user_id = u.id and i.provider = 'synthetic')
 `
 
-// Every account the opening job still owes its one grant (ADR-0069). The
-// synthetic account is owed nothing.
-func (q *Queries) ListAccountsWithoutOpening(ctx context.Context) ([]pgtype.UUID, error) {
-	rows, err := q.db.Query(ctx, listAccountsWithoutOpening)
+// Every account the opening job still owes its one grant (ADR-0069): an
+// existing rider's, made before the wallet arrived (#3513) — an account made
+// since earns by riding, like everyone does from then on. The synthetic
+// account is owed nothing.
+func (q *Queries) ListAccountsWithoutOpening(ctx context.Context, walletArrived pgtype.Timestamptz) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listAccountsWithoutOpening, walletArrived)
 	if err != nil {
 		return nil, err
 	}

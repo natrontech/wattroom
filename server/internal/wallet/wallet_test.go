@@ -42,6 +42,7 @@ func TestBatzen(t *testing.T) {
 		{"half an hour at twice FTP: held to 1.2 × the minutes", steady(1800, 500), 250, false, 36},
 		{"zero-watt seconds earn nothing, nor count as minutes", append(steady(1800, 500), steady(1800, 0)...), 250, false, 36},
 		{"an hour at FTP in a group session", steady(3600, 250), 250, true, 72},
+		{"half an hour at twice FTP in a group: still 1.2 × the minutes", steady(1800, 500), 250, true, 36},
 		{"a minute short of a Batzen", steady(59, 250), 250, false, 0},
 		{"no FTP", steady(3600, 250), 0, false, 0},
 	}
@@ -78,6 +79,26 @@ func setup(t *testing.T) *harness {
 }
 
 func (h *harness) id(name string) pgtype.UUID { return h.users.ByToken[name].ID }
+
+// existedBefore makes accounts older than the wallet: an existing rider's,
+// the only kind owed an opening grant (#3513).
+func (h *harness) existedBefore(t *testing.T, users ...pgtype.UUID) {
+	t.Helper()
+	if _, err := h.st.Pool.Exec(t.Context(), "update users set created_at = '2020-01-01' where id = any($1)", users); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// opening is an account's opening grant: how many rows, and what they paid.
+func (h *harness) opening(t *testing.T, user pgtype.UUID) (n int, amount int32) {
+	t.Helper()
+	if err := h.st.Pool.QueryRow(t.Context(),
+		"select count(*), coalesce(sum(amount), 0) from wallet_events where user_id = $1 and source = 'opening'",
+		user).Scan(&n, &amount); err != nil {
+		t.Fatal(err)
+	}
+	return n, amount
+}
 
 func (h *harness) balance(t *testing.T, name string) int64 {
 	t.Helper()
@@ -164,19 +185,12 @@ func TestTheOpeningGrantIsCappedAndOnce(t *testing.T) {
 		synthetic.ID, store.UUIDString(synthetic.ID)); err != nil {
 		t.Fatal(err)
 	}
+	h.existedBefore(t, h.id("alice"), h.id("bob"), synthetic.ID)
 
 	for range 2 {
 		Open(t.Context(), h.st, slog.New(slog.DiscardHandler))
 	}
-	opening := func(user pgtype.UUID) (n int, amount int32) {
-		t.Helper()
-		if err := h.st.Pool.QueryRow(t.Context(),
-			"select count(*), coalesce(sum(amount), 0) from wallet_events where user_id = $1 and source = 'opening'",
-			user).Scan(&n, &amount); err != nil {
-			t.Fatal(err)
-		}
-		return n, amount
-	}
+	opening := func(user pgtype.UUID) (int, int32) { return h.opening(t, user) }
 	if n, amount := opening(h.id("alice")); n != 1 || amount != 60 {
 		t.Errorf("alice's opening: %d rows of %d, want one of 60 — the paid ride counted, or the grant ran twice", n, amount)
 	}
@@ -223,6 +237,54 @@ func TestTheBalanceIsPrivateAndStartsWithTheWelcome(t *testing.T) {
 	for range 2 { // the welcome is granted once, however often it is read
 		if status, body := get("alice"); status != http.StatusOK || body["balance"] != float64(welcome) {
 			t.Fatalf("alice's balance: %d %v, want %d", status, body, welcome)
+		}
+	}
+}
+
+// An account made since the wallet arrived is owed no opening grant (#3513,
+// ADR-0069: existing riders): it earns by riding, and a ride it saved that
+// nothing minted is not history from before the wallet.
+func TestANewAccountIsOwedNoOpening(t *testing.T) {
+	h := setup(t)
+	h.ride(t, "bob", 900, 3600, time.Hour) // unpaid: a save path that minted nothing
+	Open(t.Context(), h.st, slog.New(slog.DiscardHandler))
+	if n, amount := h.opening(t, h.id("bob")); n != 0 {
+		t.Fatalf("an account made after the wallet got %d opening rows of %d", n, amount)
+	}
+}
+
+// A ride the day's cap took to nothing is still paid — a row of 0 — so the
+// opening grant never counts it as history (#3513): it would pay the rides
+// the cap withheld after all.
+func TestACappedRideCountsNoOpening(t *testing.T) {
+	h := setup(t)
+	h.existedBefore(t, h.id("alice"))
+	for i := range 3 { // 120 each: 120, then the day's last 60, then nothing
+		h.mintLocked(t, "alice", h.ride(t, "alice", 1800, 7200, time.Duration(i+1)*time.Hour), 120)
+	}
+	Open(t.Context(), h.st, slog.New(slog.DiscardHandler))
+	if n, amount := h.opening(t, h.id("alice")); n != 1 || amount != 0 {
+		t.Fatalf("alice's opening: %d rows of %d, want one of 0 — the capped ride was paid after all", n, amount)
+	}
+	if got := h.balance(t, "alice"); got != welcome+dayCap {
+		t.Fatalf("balance %d, want the welcome and the day's cap, %d", got, welcome+dayCap)
+	}
+}
+
+// A purchase or a refund whose ref the ledger already holds is an error, so
+// the caller's transaction rolls back rather than handing over an item it
+// never charged for (#3513).
+func TestSpendAndRefundWriteOnce(t *testing.T) {
+	h := setup(t)
+	for _, write := range []func() error{
+		func() error { return Spend(t.Context(), h.st.Queries, h.id("alice"), "hub.buzz@1", 60) },
+		func() error { return Refund(t.Context(), h.st.Queries, h.id("alice"), "hub.buzz@1", 60) },
+	} {
+		if err := write(); err != nil {
+			t.Fatal(err)
+		}
+		if err := write(); err == nil {
+			t.Fatal("the same ref was written twice without an error")
 		}
 	}
 }

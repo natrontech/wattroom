@@ -6,6 +6,7 @@ package wallet
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"math"
 	"net/http"
@@ -34,8 +35,9 @@ const (
 
 // Batzen is what a ride earns (ADR-0069): one per minute ridden at the
 // rider's own FTP — kJ × 1000 / (FTP × 60), the FTP the ride was ridden at —
-// held to 1.2 × the minutes pedalled, since zero-watt seconds earn nothing,
-// and × 1.2 in a group session. Whole Batzen, rounded down.
+// × 1.2 in a group session, then held to 1.2 × the minutes pedalled, since
+// zero-watt seconds earn nothing: 72 an hour at most, in a group too (#3513).
+// Whole Batzen, rounded down.
 func Batzen(watts []int, ftp int, group bool) int32 {
 	if ftp <= 0 {
 		return 0
@@ -47,10 +49,11 @@ func Batzen(watts []int, ftp int, group bool) int32 {
 			pedalled++
 		}
 	}
-	earned := min(float64(sum)/float64(ftp*60), perMinuteCap*float64(pedalled)/60)
+	earned := float64(sum) / float64(ftp*60)
 	if group {
 		earned *= groupFactor
 	}
+	earned = min(earned, perMinuteCap*float64(pedalled)/60)
 	return int32(math.Floor(earned)) //nolint:gosec // a ride is at most hours of minutes
 }
 
@@ -89,8 +92,11 @@ func mint(ctx context.Context, q *db.Queries, user pgtype.UUID, source, ref stri
 	if err != nil {
 		return err
 	}
-	amount = min(amount, max(0, dayCap-today))
-	if amount <= 0 {
+	amount = max(0, min(amount, dayCap-today))
+	// A ride the cap took to nothing still writes its row of 0 (#3513): it
+	// is paid, and the opening grant counts only rides nothing paid. A growth
+	// of nothing writes no row — its ride has one.
+	if amount == 0 && source != "ride" {
 		return nil
 	}
 	_, err = q.CreateWalletEvent(ctx, db.CreateWalletEventParams{
@@ -113,21 +119,27 @@ func Balance(ctx context.Context, q *db.Queries, user pgtype.UUID) (int64, error
 	return q.WalletBalance(ctx, user)
 }
 
-// Spend writes a purchase of `price` Batzen (#3154): one row per ref, so a
-// retried purchase spends once. The caller has read the balance under the
-// rider's row lock, which is what keeps it from going below zero.
+// Spend writes a purchase of `price` Batzen (#3154). The caller has read the
+// balance under the rider's row lock, which is what keeps it from going below
+// zero. A ref already spent is an error, never a free item (#3513): the
+// ledger's one-row-per-ref would otherwise drop the charge and the caller
+// would hand the item over anyway.
 func Spend(ctx context.Context, q *db.Queries, user pgtype.UUID, ref string, price int32) error {
-	_, err := q.CreateWalletEvent(ctx, db.CreateWalletEventParams{
-		UserID: user, Source: "purchase", Amount: -price, Ref: ref,
-	})
-	return err
+	return writeOnce(ctx, q, db.CreateWalletEventParams{UserID: user, Source: "purchase", Amount: -price, Ref: ref})
 }
 
-// Refund gives an undone purchase back, under the purchase's own ref.
+// Refund gives an undone purchase back, under the purchase's own ref — once.
 func Refund(ctx context.Context, q *db.Queries, user pgtype.UUID, ref string, price int32) error {
-	_, err := q.CreateWalletEvent(ctx, db.CreateWalletEventParams{
-		UserID: user, Source: "undo", Amount: price, Ref: ref,
-	})
+	return writeOnce(ctx, q, db.CreateWalletEventParams{UserID: user, Source: "undo", Amount: price, Ref: ref})
+}
+
+// writeOnce writes a row the caller's transaction depends on, and fails when
+// the ledger already held one under that ref.
+func writeOnce(ctx context.Context, q *db.Queries, row db.CreateWalletEventParams) error {
+	n, err := q.CreateWalletEvent(ctx, row)
+	if err == nil && n == 0 {
+		err = fmt.Errorf("wallet: a %s under %q is already written", row.Source, row.Ref)
+	}
 	return err
 }
 
@@ -145,7 +157,14 @@ func ensureWelcome(ctx context.Context, q *db.Queries, user pgtype.UUID) error {
 // grant and nobody else theirs. Idempotent, so it runs at every start and
 // does nothing once done.
 func Open(ctx context.Context, st *store.Store, log *slog.Logger) {
-	owed, err := st.Queries.ListAccountsWithoutOpening(ctx)
+	arrived, err := walletArrived(ctx, st)
+	if err != nil {
+		if ctx.Err() == nil {
+			log.Error("wallet opening grants: when the wallet arrived is unknown", "err", err)
+		}
+		return
+	}
+	owed, err := st.Queries.ListAccountsWithoutOpening(ctx, arrived)
 	if err != nil {
 		if ctx.Err() == nil {
 			log.Error("wallet opening grants: list failed", "err", err)
@@ -166,6 +185,20 @@ func Open(ctx context.Context, st *store.Store, log *slog.Logger) {
 	if granted > 0 {
 		log.Info("wallet opening grants", "accounts", granted)
 	}
+}
+
+// walletMigration is the migration that brought the wallet.
+const walletMigration = 20260929183545
+
+// walletArrived is when this database applied walletMigration, read off
+// goose's own record: an account made before it is an existing rider's
+// (ADR-0069). Per database, so a self-hoster's cutoff is their own upgrade.
+func walletArrived(ctx context.Context, st *store.Store) (pgtype.Timestamptz, error) {
+	var at pgtype.Timestamptz
+	err := st.Pool.QueryRow(ctx,
+		"select tstamp::timestamptz from goose_db_version where version_id = $1 and is_applied order by id limit 1",
+		walletMigration).Scan(&at)
+	return at, err
 }
 
 func openOne(ctx context.Context, st *store.Store, user pgtype.UUID) error {
