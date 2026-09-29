@@ -726,6 +726,27 @@ lean **0.3 s**, steer **0.15 s**.
 - **Sway**: **0.6° × r** seated, **4° × r** climbing, **9° × r ÷ 1.6** sprinting.
 - **Lean** = atan(v²κ ÷ g), clamped to **16–22°** while pedalling and **32°** coasting.
 
+## The bike computer (defaults — tune in alpha; [ADR-0071](decisions/0071-the-bike-computer-pages-slot-3.md))
+
+Slot 3's pages, in order: **RIDE** (default, and where every ride starts),
+**CLIMB** (opens by itself from RIDE when a climb begins), **POWER**, **MAP**
+(on a road only), **RACE** (later). ← / → or a tap on the panel turn them;
+PgUp / PgDn are Harder / Easier, never a page.
+
+**Legibility**, at the design distance — desk: **0.8 m** from a **14-inch**
+laptop; TV: **3 m** from a **55-inch** set:
+
+| Text                  | At least      | TV       | Desk       |
+| --------------------- | ------------- | -------- | ---------- |
+| Watts                 | **45 arcmin** | **12vh** | **104 px** |
+| Time left             | **45 arcmin** | **9vh**  | **72 px**  |
+| Secondary numbers     | **22 arcmin** | **5vh**  | **36 px**  |
+| "Next", labels, words | **16 arcmin** | **3vh**  | **24 px**  |
+
+Nothing on the TV is smaller than **2.9vh**. Panels are at least **85 %**
+opaque; a unit is at most half its number's size. The big watts figure is a
+**3 s** average; scoring still reads every second.
+
 ## Sync tolerances
 
 - Metrics latency budget: pedal → every screen **< 500 ms**.
