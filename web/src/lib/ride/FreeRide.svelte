@@ -18,6 +18,7 @@
 	import { trainerTargetsNote } from '$lib/session/sensor-status';
 	import { deviceWord } from '$lib/device.svelte';
 	import { GRADE, WATTS, type FreeMode } from '$lib/ride/free-ride.svelte';
+	import { modeLine } from '$lib/ride/mode-copy';
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Radio from '@lucide/svelte/icons/radio';
@@ -155,6 +156,11 @@
 					>
 				</div>
 			</div>
+			<!-- What the mode does, in one line (#3203): grade was the free ride
+			     without ERG a rider asked for, and the toggle never said so. -->
+			<p class="text-muted -mt-3 text-center text-sm">
+				{modeLine(free?.mode ?? 'grade', !!conn?.profile.current.singleSpeed)}
+			</p>
 			<div>
 				<SecondaryRow
 					cadence={channel.you.cadence}
