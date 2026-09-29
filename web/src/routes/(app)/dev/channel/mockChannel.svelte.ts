@@ -295,10 +295,12 @@ export function createMockChannel() {
 		})),
 	);
 
+	// The share of FTP a mock rider holds between sprints.
+	const CRUISE = 0.7;
 	const trainers = SEEDS.map(
 		(s) =>
 			new SimulatedTrainer({
-				baseWatts: s.ftp * 0.7,
+				baseWatts: s.ftp * CRUISE,
 				tauSeconds: 2.5,
 				noiseWatts: 6,
 			}),
@@ -460,12 +462,13 @@ export function createMockChannel() {
 					sprintLeft = 15;
 					// Slope mode, not ERG: a sprint is the rider's watts, not the trainer's.
 					SEEDS.forEach((seed, i) => {
-						const grade = (seed.sprintFactor / 0.7 - 1) / 0.08;
-						void trainers[i].setSimulation({ gradePct: grade });
+						trainers[i].effort = seed.ftp * seed.sprintFactor;
+						void trainers[i].setSimulation({ gradePct: 0 });
 					});
 				} else if (sprint === 'active') {
 					sprint = 'podium';
 					sprintLeft = 8;
+					SEEDS.forEach((seed, i) => (trainers[i].effort = seed.ftp * CRUISE));
 					podium = SEEDS.map((seed, i) => ({
 						name: seed.name,
 						watts: peaks[i],

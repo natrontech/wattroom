@@ -170,3 +170,11 @@ canvas, leaving a keep-clear corridor in the middle 40 % of the width and 55 %
 of the height. Slot 2's focus order gains the world: sprint > a game without a
 road > a shared screen > the world > the instrument. A ride with no road keeps
 the surface as this ADR drew it, and the parity rule is unchanged.
+
+## Amendment, 2026-09-29 (#3063): slot 3 may page
+
+[ADR-0071](0071-the-bike-computer-pages-slot-3.md) lets **slot 3**, your
+numbers, turn between fixed pages — RIDE, CLIMB, POWER, MAP on a road, RACE
+later — with ← and → or a tap. No other slot pages, the slots never move, and
+the page resets to RIDE on every ride. The parity rule is unchanged: every
+riding surface has the same pages.

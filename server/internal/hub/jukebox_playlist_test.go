@@ -243,7 +243,8 @@ func TestEveryPlaylistTrackCreditsTheRiderWhoQueuedIt(t *testing.T) {
 	j := newJukebox()
 	addPlaylist(j, 3, jat(0))
 	for i := range 3 {
-		endCurrent(j, jat(10+i))
+		// Each track a minute and more, the play a credit needs (#2931).
+		endCurrent(j, jat(61*(i+1)))
 		if j.finished == nil || j.finished.riderID != "r-jan" {
 			t.Fatalf("track %d played through uncredited: %+v", i, j.finished)
 		}

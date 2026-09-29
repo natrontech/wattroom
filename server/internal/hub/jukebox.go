@@ -90,6 +90,12 @@ type jukebox struct {
 	// The track the last command let finish, for the room to credit once
 	// the lock is released; nil otherwise.
 	finished *playedTrack
+	// How long the track on the deck has played by the server's own clock
+	// (#2931) — what the DJ credit asks for instead of the client's "ended".
+	// playedMs is banked at each pause and runningSince is when the span now
+	// running began. A seek moves the playhead and never this.
+	playedMs     int64
+	runningSince int64
 	// What the last command did to a POOL track, for the room to record
 	// once the lock is released (#269); nil otherwise. Deliberately not
 	// folded into finished: that one is the DJ credit — a natural end only,
@@ -164,6 +170,37 @@ func (j *jukebox) snapshot() protocol.JukeboxState {
 	out.Queue = append(make([]protocol.JukeboxEntry, 0, len(j.state.Queue)), j.state.Queue...)
 	out.History = append(make([]protocol.JukeboxEntry, 0, len(j.state.History)), j.state.History...)
 	return out
+}
+
+// What a play-through must show the server before it credits the DJ
+// (#2931, docs/SPEC.md `dj` — defaults, tune in alpha).
+const (
+	djMinPlay  = 60 * time.Second
+	djEndSlack = 5 * time.Second
+)
+
+// timedPlay reports whether the track on the deck played through by the
+// server's own measure: a minute of real play, pauses left out, and — for a
+// library track whose length is known — a playhead within djEndSlack of its
+// end. The client's "ended" still moves the deck on; only the credit asks.
+//
+// ponytail: a library track's DurationMs arrives on the add command, the
+// length the server measured at upload as an honest client passes it on —
+// the minute of play is the part this clock times itself. Look the length
+// up server-side if a client ever lies about it.
+func (j *jukebox) timedPlay(now time.Time) bool {
+	played := j.playedMs
+	if j.state.Playing {
+		played += now.UnixMilli() - j.runningSince
+	}
+	if time.Duration(played)*time.Millisecond < djMinPlay {
+		return false
+	}
+	cur := j.state.Current
+	if cur.DurationMs <= 0 {
+		return true
+	}
+	return time.Duration(j.positionAt(now)*float64(time.Second)) >= time.Duration(cur.DurationMs)*time.Millisecond-djEndSlack
 }
 
 // positionAt is the shared playhead at a given instant.
@@ -250,6 +287,7 @@ func (j *jukebox) play(entry protocol.JukeboxEntry, now time.Time) {
 	j.state.Playing = true
 	j.state.PositionSec = entry.StartSec
 	j.state.AnchorMs = now.UnixMilli()
+	j.playedMs, j.runningSince = 0, now.UnixMilli()
 }
 
 // remember puts what the deck just played at the head of the short history.

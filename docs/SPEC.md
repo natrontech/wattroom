@@ -382,7 +382,7 @@ in hand — rides store no zone seconds — so they show no partial progress.
 | `hot-end`             | Hot End             | ≥ 3 min in Z6 or above (≥ 121 % FTP) in one ride                                                        | medium |
 | `espresso-ride`       | Espresso Ride       | a ride under 25 min with ≥ 80 % of its seconds above sweet spot (> 94 % FTP; sweet spot is 88–94 %)     | medium |
 | `lounge-lizard`       | Lounge Lizard       | 10 h of voice presence (120 five-minute blocks)                                                         | medium |
-| `dj`                  | DJ                  | 50 queued tracks a voice channel played to the end — a skip does not count, the "ended" report does            | medium |
+| `dj`                  | DJ                  | 50 queued tracks a voice channel played to the end — a skip does not count. "Played" is the server's own clock ([#2931](https://github.com/natrontech/wattroom/issues/2931)): at least **60 s** of play, pauses left out, and a library track whose length is known must also reach **its length − 5 s** **(defaults — tune in alpha)**. The client's "ended" moves the deck on and earns nothing by itself | medium |
 | `crew-chief`          | Crew Chief          | pressed start on 20 sessions with ≥ 3 saved rides (the medal minimum)                                   | hard   |
 | `sprint-snob`         | Sprint Snob         | first on the w/kg podium of 10 sprint moments with **≥ 2** riders scored — a podium of one is not a win | medium |
 
@@ -546,7 +546,7 @@ ERG 0 W: nobody is riding the trainer then.
 - A rider sets **one status**: an optional emoji (any Unicode emoji, or a custom emoji from a crew they are in) and **up to 100 characters** of text **(default — tune in alpha)**. It needs at least one of the two, and setting neither clears it.
 - **Clear after**: don't clear, **30 minutes, 1 hour, 4 hours, today, this week** (the same presets as Slack). "Today" ends at the rider's local midnight, and "this week" at the end of their local Sunday. Once the status clears, nobody is served it.
 - **Presets** that fill the editor in one tap: 🤒 Out sick (today) · 🏔️ Riding outside (4 hours) · 😴 Recovery week (this week) · 🏖️ On holiday (don't clear).
-- Shown wherever the rider's name is already shown to the viewer: the rider's page shows the text in full; the crew's member list, the voice occupants and the friends panel show the emoji, with the text on hover; a chat message shows the emoji after the author's name. The friends panel shows it to accepted friends only.
+- Shown wherever the rider's name is already shown to the viewer, **except the riding surface**: the session's crew strip, the sprint takeover, the game panel, the session summary and the session controls, and whatever joins that screen later (ADR-0060, amended by #2872). For example, the rider's page shows the text in full; the crew's member list, the voice occupants and the friends panel show the emoji, with the text on hover; a chat message shows the emoji after the author's name. The friends panel shows it to accepted friends only.
 
 ## Session recap retention (ADR-0034)
 
@@ -665,7 +665,21 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
 | Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
 
-## The world (defaults — tune in alpha; [ADR-0066](decisions/0066-the-world-is-the-ride-view.md))
+## Riding a road together (defaults — tune in alpha; [ADR-0065](decisions/0065-riding-a-road-together.md))
+
+The bunch's one position advances once per whole second, never on a sprint
+window's 4 Hz ticks. Its pace:
+
+| The plan is                             | The bunch moves at                                                   |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| an ERG workout, or a workout on a route | the reference rider (Route rides) at the block's prescribed %FTP     |
+| a sprint block                          | the reference rider at **150 %** FTP                                 |
+| paused                                  | **0**                                                                |
+| a road step                             | the live mean %FTP of the pedalling riders, each capped at **150 %** |
+
+A rider's bias never moves the bunch.
+
+## The world (defaults — tune in alpha; [ADR-0066](decisions/0066-the-world-is-the-ride-view.md), [ADR-0072](decisions/0072-light-in-the-world.md))
 
 | Parameter           | Value                                                                                                                   |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -678,6 +692,9 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | Fallback            | to the Skyline when more than **20 %** of vsync-divisor intervals are missed over **10 s**; one-way for the ride        |
 | Keep-clear corridor | the middle **40 %** of the width and **55 %** of the height                                                             |
 | GPU gate            | set by the first `make perf-scenes` measurement; proposal: at most **5** points of GPU on #2998's rig                  |
+| Ride sky            | lit by the sky only; sun **−4°** at the start to **−8°** at the finish by the ride's progress, **−6°** with no known end |
+| Alpenglow           | OKLCH hue **58–60°**                                                                                                     |
+| Flashes             | WCAG 2.3.1, and at most one dim flash per **10 s** over **25 %** of a 10° field; none under reduced motion               |
 
 ## Rider animation (defaults — tune in alpha; #3066)
 
@@ -711,6 +728,27 @@ lean **0.3 s**, steer **0.15 s**.
 
 - **Sway**: **0.6° × r** seated, **4° × r** climbing, **9° × r ÷ 1.6** sprinting.
 - **Lean** = atan(v²κ ÷ g), clamped to **16–22°** while pedalling and **32°** coasting.
+
+## The bike computer (defaults — tune in alpha; [ADR-0071](decisions/0071-the-bike-computer-pages-slot-3.md))
+
+Slot 3's pages, in order: **RIDE** (default, and where every ride starts),
+**CLIMB** (opens by itself from RIDE when a climb begins), **POWER**, **MAP**
+(on a road only), **RACE** (later). ← / → or a tap on the panel turn them;
+PgUp / PgDn are Harder / Easier, never a page.
+
+**Legibility**, at the design distance — desk: **0.8 m** from a **14-inch**
+laptop; TV: **3 m** from a **55-inch** set:
+
+| Text                  | At least      | TV       | Desk       |
+| --------------------- | ------------- | -------- | ---------- |
+| Watts                 | **45 arcmin** | **12vh** | **104 px** |
+| Time left             | **45 arcmin** | **9vh**  | **72 px**  |
+| Secondary numbers     | **22 arcmin** | **5vh**  | **36 px**  |
+| "Next", labels, words | **16 arcmin** | **3vh**  | **24 px**  |
+
+Nothing on the TV is smaller than **2.9vh**. Panels are at least **85 %**
+opaque; a unit is at most half its number's size. The big watts figure is a
+**3 s** average; scoring still reads every second.
 
 ## Sync tolerances
 

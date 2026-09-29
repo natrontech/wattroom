@@ -1,6 +1,7 @@
 import { createMicMeter, type MicMeter } from '$lib/channel/mic-level';
 import { mixer } from '$lib/sound/mixer.svelte';
 import { riderOf } from '$lib/channel/tabs';
+import { makeLimiter } from '$lib/sound/cue-graph';
 import { onDuck } from '$lib/sound/duck';
 
 /**
@@ -60,7 +61,7 @@ export function createRiderOutput(
 	onLevel?: (identity: string, level: number) => void,
 ) {
 	let ctx: AudioContext | null = null;
-	let bus: DynamicsCompressorNode | null = null;
+	let bus: AudioNode | null = null;
 	const gains = new Map<string, GainNode>();
 	const sources = new Map<string, MediaStreamAudioSourceNode>();
 	const meters = new Map<string, MicMeter>();
@@ -137,13 +138,7 @@ export function createRiderOutput(
 					applySink();
 				}
 				if (!bus) {
-					bus = ctx.createDynamicsCompressor();
-					bus.threshold.value = -6;
-					bus.knee.value = 4;
-					bus.ratio.value = 12;
-					bus.attack.value = 0.003;
-					bus.release.value = 0.25;
-					bus.connect(ctx.destination);
+					bus = makeLimiter(ctx, ctx.destination);
 				}
 				// A key routed twice is a voice heard twice (#1339): the first
 				// graph would stay wired to the bus with nothing left holding
