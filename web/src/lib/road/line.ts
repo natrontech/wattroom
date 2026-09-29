@@ -51,8 +51,9 @@ const SAME_FIX_M = 0.5;
  * without that floor every step of the way back would read as a spike on the
  * way out, eating the return leg a cut at a time.
  */
-export function despike({ x, z, e }: Line): Line {
-	const out: Line = { x: [x[0]], z: [z[0]], e: [e[0]] };
+export function despike({ x, z, e }: Line): Line & { cuts: number } {
+	// cuts: how many spikes were cut out, for the importer's "what we fixed".
+	const out = { x: [x[0]], z: [z[0]], e: [e[0]], cuts: 0 };
 	const along = [0];
 	let floor = 0;
 	for (let i = 1; i < x.length; i++) {
@@ -68,6 +69,7 @@ export function despike({ x, z, e }: Line): Line {
 			)
 				back = j;
 		if (back >= 0) {
+			out.cuts++;
 			for (const a of [out.x, out.z, out.e, along]) a.length = back + 1;
 			along.push(
 				along[back] + Math.hypot(x[i] - out.x[back], z[i] - out.z[back]),
