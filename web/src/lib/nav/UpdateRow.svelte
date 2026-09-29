@@ -119,8 +119,8 @@
 		border: 1px solid color-mix(in oklab, var(--color-neon) 35%, transparent);
 		cursor: pointer;
 		transition:
-			background-color 140ms ease,
-			border-color 140ms ease;
+			background-color var(--dur-quick) ease,
+			border-color var(--dur-quick) ease;
 	}
 	.update-row:hover {
 		background: color-mix(in oklab, var(--color-neon) 18%, transparent);

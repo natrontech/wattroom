@@ -152,6 +152,52 @@
 	--font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
 	--font-display: 'Chakra Petch', var(--font-sans);
 
+	/* Motion (ADR-0079; the values are docs/SPEC.md's "Motion"). Mirrored for
+	 * script in $lib/motion/tokens.ts, and motion-tokens.test.ts holds the two
+	 * equal. `ease-*` are utilities; a duration is `duration-(--dur-base)`. */
+	--ease-arrive: cubic-bezier(0.05, 0.7, 0.1, 1);
+	--ease-leave: cubic-bezier(0.3, 0, 0.8, 0.15);
+	--ease-move: cubic-bezier(0.2, 0, 0, 1);
+	--ease-live: cubic-bezier(0, 0, 0.2, 1);
+	/* A spring at ζ 0.63, an 8 % overshoot, resampled — $lib/motion/damp.ts. */
+	--ease-pop: linear(
+		0,
+		0.066,
+		0.221,
+		0.41,
+		0.596,
+		0.759,
+		0.887,
+		0.979,
+		1.037,
+		1.068,
+		1.078,
+		1.075,
+		1.064,
+		1.049,
+		1.034,
+		1.021,
+		1.011,
+		1.003,
+		0.998,
+		0.995,
+		0.994,
+		0.994,
+		0.995,
+		0.996,
+		1
+	);
+	--dur-press: 90ms;
+	--dur-quick: 160ms;
+	--dur-base: 240ms;
+	--dur-reveal: 400ms;
+	--dur-live: 500ms;
+	--dur-stage: 700ms;
+	--dur-draw: 1200ms;
+	--hold-announce: 2400ms;
+	--stagger: 60ms;
+	--stagger-podium: 400ms;
+
 	/* Every color is a light-dark() pair resolved by the effective
 	 * color-scheme: the OS by default, the rider's toggle when set, and
 	 * always dark inside .cave. One definition, no duplicate blocks. */
@@ -635,8 +681,8 @@ body {
 	 * both surfaces. Thinned with an alpha it was 1.55:1 on the light themes. */
 	border: 1px solid var(--color-muted-dim);
 	transition:
-		border-color 120ms ease,
-		background-color 120ms ease;
+		border-color var(--dur-quick) ease,
+		background-color var(--dur-quick) ease;
 }
 input[type='checkbox'] {
 	border-radius: 4px;
