@@ -115,8 +115,9 @@
 				</div>
 				<div class="mt-[2vh] flex items-end gap-[2.5vw]">
 					<!-- Slot 3 at three metres (#3088): the same pages, turned by the
-					     same keys, with nothing on it to walk over and tap. -->
-					<div class="w-[30vw]">
+					     same keys, with nothing on it to walk over and tap. The width
+					     of the section, so POWER's eight numbers take two rows. -->
+					<div class="min-w-0 flex-1">
 						<BikeComputer
 							tv
 							cadence={you.cadence}

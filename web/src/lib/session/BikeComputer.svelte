@@ -55,7 +55,7 @@
 		phone
 			? 'grid grid-cols-3 gap-x-3 gap-y-2'
 			: tv
-				? 'flex flex-wrap gap-x-[2.5vw] gap-y-[2vh]'
+				? 'flex flex-wrap items-end gap-x-[2.5vw] gap-y-[2vh]'
 				: 'flex flex-wrap gap-x-8 gap-y-3',
 	);
 
@@ -72,7 +72,6 @@
 	const zoneStrip = $derived(
 		shown === 'power' && ctx.stats ? ctx.stats.zoneSeconds.slice(1, 8) : null,
 	);
-	const zoneMost = $derived(Math.max(1, ...(zoneStrip ?? [0])));
 </script>
 
 <svelte:window
@@ -89,10 +88,38 @@
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
 	class="panel relative"
 >
-	<p class="{size.word} text-muted mb-2 leading-none tracking-[0.2em]">
-		{PAGE_NAMES[shown]}
-	</p>
+	<!-- On the TV the page's name sits in the row of numbers, so the panel is
+	     one row tall and the horizon under it keeps its height. -->
+	{#snippet name()}
+		<p
+			class="{size.word} text-muted leading-none tracking-[0.2em] {tv
+				? 'self-start'
+				: 'mb-2'}"
+		>
+			{PAGE_NAMES[shown]}
+		</p>
+	{/snippet}
+	{#snippet strip(bars: number[])}
+		<!-- Time in each zone as one strip of seven, each as wide as its time:
+		     the ride summary's own picture, thin enough to leave the TV's
+		     horizon its height. -->
+		<div
+			data-testid="zone-strip"
+			aria-label="time in zones 1 to 7"
+			role="img"
+			class="flex overflow-hidden rounded-full {tv
+				? 'mt-[1vh] h-[1.5vh]'
+				: 'mt-3 h-2'}"
+		>
+			{#each bars as seconds, i (i)}
+				<span class={ZONE_BG[i + 1]} style:flex-grow={seconds}></span>
+			{/each}
+		</div>
+	{/snippet}
+
+	{#if !tv}{@render name()}{/if}
 	<div class={layout}>
+		{#if tv}{@render name()}{/if}
 		{#each fields as field (field.key)}
 			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
 				<span
@@ -123,23 +150,7 @@
 			</div>
 		{/each}
 	</div>
-
-	{#if zoneStrip}
-		<!-- Time in each zone, one bar per zone, tallest the most ridden. -->
-		<div
-			data-testid="zone-strip"
-			aria-label="time in zones 1 to 7"
-			role="img"
-			class="mt-3 flex items-end gap-1 {tv ? 'h-[4vh]' : 'h-8'}"
-		>
-			{#each zoneStrip as seconds, i (i)}
-				<span
-					class="{ZONE_BG[i + 1]} min-h-px flex-1 rounded-sm"
-					style:height="{(seconds / zoneMost) * 100}%"
-				></span>
-			{/each}
-		</div>
-	{/if}
+	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
 
 	{#if turns && !tv}
 		<!-- The whole panel turns the page (ADR-0071); the dots sit above it.
