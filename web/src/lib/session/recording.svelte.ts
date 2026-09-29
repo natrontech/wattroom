@@ -1,8 +1,5 @@
 import { isLivePhase } from '$lib/channel/tick-session';
-import {
-	createLiveStats,
-	type LiveSecond,
-} from '$lib/ride/live-stats.svelte';
+import { createLiveStats, type LiveSecond } from '$lib/ride/live-stats.svelte';
 
 /**
  * What you rode this session, kept for the summary and the graph: the trace
@@ -55,11 +52,7 @@ export function createRecording(deps: { ftp: () => number }) {
 			return stats.current;
 		},
 		/** `at` carries the block and the scored target, when the caller has them. */
-		record(
-			elapsed: number,
-			watts: number,
-			at: Omit<LiveSecond, 'watts'> = {},
-		) {
+		record(elapsed: number, watts: number, at: Omit<LiveSecond, 'watts'> = {}) {
 			const second = Math.floor(elapsed);
 			if (second <= lastSecond) return;
 			lastSecond = second;
