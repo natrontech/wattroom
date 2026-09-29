@@ -160,6 +160,11 @@ const (
 	// one sitting is at most six hours, so a long route compiles into legs.
 	MaxLegSeconds = 6 * 60 * 60
 
+	// ADR-0065's 150 % of FTP (docs/SPEC.md "Riding a road together"): the
+	// pace of a sprint block, and the most any one rider adds to a road
+	// step's live mean. Terrain Match rides a sprint at it too (#3099).
+	BunchMaxPct = 1.5
+
 	// The range every SIM write is clamped to (docs/SPEC.md "Route rides",
 	// ADR-0062): one range for every trainer, since FTMS cannot report an
 	// indoor bike's. MaxTrainerGrade is also the free ride's top and the felt
