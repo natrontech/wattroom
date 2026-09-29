@@ -14,6 +14,7 @@
  * anchor walks off into the DVR window and a chasing client seeks on every
  * single tick. Live rides the edge instead.
  */
+import { MaxSeekSeconds } from '$lib/protocol';
 export type Chase = { do: 'seek'; to: number } | { do: 'rate'; rate: number };
 
 /** docs/SPEC.md — a seek costs a stutter, so only a real gap earns one. */
@@ -44,9 +45,6 @@ export function pausedChase(targetSec: number, atSec: number): Chase | null {
 		: null;
 }
 
-/** Mirrors the server's clamp — a track longer than six hours is not a party track. */
-const MAX_SEEK_SEC = 6 * 3600;
-
 /**
  * Where the deck is at `nowMs`: an anchor plus elapsed time, never a counter.
  * `nowMs` must be SERVER time (see server-clock.ts) — the anchor is the
@@ -66,6 +64,6 @@ export function playheadAt(
 
 /** Keep a requested seek inside the track — and inside what the server accepts. */
 export function clampSeek(pos: number, durationSec = 0): number {
-	const max = durationSec > 0 ? durationSec - 1 : MAX_SEEK_SEC;
+	const max = durationSec > 0 ? durationSec - 1 : MaxSeekSeconds;
 	return Math.min(Math.max(pos, 0), max);
 }

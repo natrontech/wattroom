@@ -150,7 +150,7 @@ func TestRodeMatchesTheSaversOwnThreshold(t *testing.T) {
 	rm.join(socket("r-jan", "Jan"))
 	rm.join(socket("r-kim", "Kim"))
 	sawAt(rm, 0)
-	for i := range MinRideSamples {
+	for i := range protocol.MinRideSamples {
 		rm.record.add("r-jan", protocol.RiderMetrics{Watts: 200, Seq: i + 1}, nil, 200, i)
 	}
 	rm.record.add("r-kim", protocol.RiderMetrics{Watts: 200, Seq: 1}, nil, 200, 0)
@@ -175,7 +175,7 @@ func TestARecapCarriesNoMetrics(t *testing.T) {
 	rm := presenceRoom(&now)
 	rm.join(socket("r-jan", "Jan"))
 	sawAt(rm, 0)
-	for i := range MinRideSamples {
+	for i := range protocol.MinRideSamples {
 		rm.record.add("r-jan", protocol.RiderMetrics{Watts: 300, Cadence: 95, HR: 160, Seq: i + 1}, nil, 200, i)
 	}
 

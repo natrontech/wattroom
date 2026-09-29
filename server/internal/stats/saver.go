@@ -96,7 +96,7 @@ func (s *Saver) save(
 	// rides saved, whether this was a group session (#3152).
 	longest := 0
 	for join, rider := range riders {
-		if len(rider.Samples) < hub.MinRideSamples {
+		if len(rider.Samples) < protocol.MinRideSamples {
 			continue
 		}
 		start := rideStart(startedAt, rider)
@@ -402,7 +402,7 @@ func (s *Saver) AmendRide(
 	startedAt time.Time,
 	rider hub.RiderRecord,
 ) {
-	if len(rider.Samples) < hub.MinRideSamples {
+	if len(rider.Samples) < protocol.MinRideSamples {
 		return
 	}
 	// Set inside the closure when the ride actually grew, acted on after the

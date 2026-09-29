@@ -10,12 +10,12 @@ import type {
 	ServerTick,
 	SessionRecap,
 } from '$lib/protocol';
-import { PokeKindBottle } from '$lib/protocol';
+import { MinRideSamples, PokeKindBottle } from '$lib/protocol';
 import type { PlaceAddress } from '$lib/channel/address';
 import { fillDeck, type DeckHeard } from '$lib/channel/deck-heard';
 import { account } from '$lib/account.svelte';
 import { deviceWord } from '$lib/device.svelte';
-import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import {
 	observeServerTime,
 	resetServerClock,
@@ -189,7 +189,7 @@ export function createChannelLive(address: PlaceAddress) {
 			else {
 				// Nothing saved it, and nothing records it now (#2617).
 				buffer?.release();
-				if (bufferedRows >= MIN_SAMPLES && !t.state?.workoutName)
+				if (bufferedRows >= MinRideSamples && !t.state?.workoutName)
 					// No workout at all is the fresh process: a session that
 					// closed keeps its workout named on every later tick, and a
 					// new pick names the next one, so an idle channel that can
@@ -234,7 +234,7 @@ export function createChannelLive(address: PlaceAddress) {
 	function settle(opened: RideBuffer | null) {
 		if (!opened) return;
 		void opened.since(acked).then((tail) => {
-			if (tail.length < MIN_SAMPLES) opened.end();
+			if (tail.length < MinRideSamples) opened.end();
 			// The hub never heard its tail: offered back from here (#2617).
 			else opened.release();
 		});

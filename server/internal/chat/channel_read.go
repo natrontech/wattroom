@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -24,12 +25,12 @@ func (s *Service) handleChannelBacklog(w http.ResponseWriter, r *http.Request) {
 	}
 	limit := 100
 	if raw := r.URL.Query().Get("limit"); raw != "" {
-		if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= 500 {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 && n <= protocol.MaxChannelLines {
 			limit = n
 		}
 	}
 	rows, err := s.store.Queries.ListChannelChat(r.Context(), db.ListChannelChatParams{
-		ChannelID: channel.ID, Limit: int32(limit), //nolint:gosec // bounded 1–500 above
+		ChannelID: channel.ID, Limit: int32(limit), //nolint:gosec // bounded to MaxChannelLines above
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "list channel chat", err, "The chat could not be loaded.", "channel", store.UUIDString(channel.ID))

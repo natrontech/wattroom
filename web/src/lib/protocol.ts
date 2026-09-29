@@ -544,6 +544,39 @@ export const MaxCrewTextChannels = 20;
  */
 export const MaxCrewVoiceChannels = 10;
 /**
+ * A text channel keeps its newest lines (docs/SPEC.md "Text channel
+ * chat", default — tune in alpha): the prune on every write keeps this
+ * many, and a backlog read returns at most this many.
+ */
+export const MaxChannelLines = 500;
+/**
+ * A ride the saver keeps is at least a minute of samples: fewer is a
+ * misclick, not a ride. The hub's saver, POST /api/rides, the browser's
+ * crash recovery and the closing summary all hold this one line.
+ */
+export const MinRideSamples = 60;
+/**
+ * A rider's bias, the trim on their own targets (#795, docs/SPEC.md):
+ * the workout clamps it here, and the server refuses a sample outside.
+ */
+export const MinBias = 0.8;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxBias = 1.2;
+/**
+ * Normalised power below 20 minutes is not meaningful (docs/SPEC.md
+ * "Stats formulas"): shorter rides show plain average power, on the
+ * server's stats and the ride page alike (#1542).
+ */
+export const NormPowerMinSeconds = 20 * 60;
+/**
+ * A playhead past six hours is not a party track: every seek is clamped
+ * here, live on the deck and saved in a playlist, and in the browser.
+ */
+export const MaxSeekSeconds = 6 * 60 * 60;
+/**
  * The tolerance band a second is scored in: within ±5 % of target, floor
  * ±10 W (#2159). The floor is what keeps an easy block scoreable — at
  * 60 W, 5 % is 3 W, which is inside a trainer's own error.
@@ -842,8 +875,8 @@ export interface RiderMetrics {
   cadence?: number /* int */;
   seq: number /* int */; // monotonic per ride, for reconnect dedup
   /**
-   * The rider's personal trim on their own targets at this second, 0.8–1.2
-   * (docs/SPEC.md). A score answers "did you ride the plan you were on?",
+   * The rider's personal trim on their own targets at this second,
+   * MinBias–MaxBias (docs/SPEC.md). A score answers "did you ride the plan you were on?",
    * and this is what the plan was — so the second is scored against the
    * biased target, not the prescribed one (#795). It rides every sample
    * because bias moves mid-ride, and it is stored with them, which is what
