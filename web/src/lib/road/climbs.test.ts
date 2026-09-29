@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-	MAX_CLIMBS,
-	classOf,
-	climbsOf,
-	hairpinsOf,
-	type Climb,
-} from './climbs';
+import { MaxClimbs } from '$lib/protocol';
+import { classOf, climbsOf, hairpinsOf, type Climb } from './climbs';
 import {
 	HAIRPINS,
 	bridgeAndTunnel,
@@ -87,7 +82,7 @@ describe('climbsOf, SPEC’s rule', () => {
 		const legs: [number, number][] = [];
 		for (let k = 0; k < 40; k++) legs.push([600 + 20 * k, 4], [600, -4]);
 		const cs = climbsOf(road(...legs));
-		expect(cs).toHaveLength(MAX_CLIMBS);
+		expect(cs).toHaveLength(MaxClimbs);
 		// The eight shortest were the first eight.
 		expect(cs[0].startM).toBeGreaterThan(8 * 1200);
 		const starts = cs.map((c) => c.startM);
