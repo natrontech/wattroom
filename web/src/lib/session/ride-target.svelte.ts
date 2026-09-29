@@ -1,4 +1,4 @@
-import { DEFAULTS, type GuardSample } from '$lib/workout/guards';
+import { nudgedBias, type GuardSample } from '$lib/workout/guards';
 import { createRiderGuards } from '$lib/workout/rider-guards.svelte';
 import { targetAt } from '$lib/workout/engine';
 import type { RideDeps } from '$lib/session/ride-deps';
@@ -39,10 +39,7 @@ export function createRideTarget(
 		// The control is disabled where it is drawn (ux.md); this is the same
 		// answer for anything that reaches past it.
 		if (!actuating()) return;
-		bias = Math.min(
-			DEFAULTS.biasMax,
-			Math.max(DEFAULTS.biasMin, Math.round((bias + step) * 100) / 100),
-		);
+		bias = nudgedBias(bias, step);
 	}
 
 	/**

@@ -62,6 +62,14 @@ export const DEFAULTS = {
 	biasMax: 1.2,
 } as const;
 
+/** The ±% control's next bias: `step` on, to the percent, inside its range. */
+export function nudgedBias(bias: number, step: number): number {
+	return Math.min(
+		DEFAULTS.biasMax,
+		Math.max(DEFAULTS.biasMin, Math.round((bias + step) * 100) / 100),
+	);
+}
+
 /** Where the rider is, personally — the session may be somewhere else entirely. */
 export type GuardPhase = 'running' | 'autopaused' | 'resuming';
 
