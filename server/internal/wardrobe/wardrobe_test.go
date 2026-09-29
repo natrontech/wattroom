@@ -16,11 +16,13 @@ type client struct {
 	} `json:"currency"`
 	Guard struct {
 		ItemKeys []string `json:"itemKeys"`
+		guard
 	} `json:"guard"`
 	Slots []struct {
 		ID string `json:"id"`
 	} `json:"slots"`
-	Items []map[string]any `json:"items"`
+	Items      []map[string]any  `json:"items"`
+	UnlockText map[string]string `json:"unlockText"`
 }
 
 func readClient(t *testing.T) client {

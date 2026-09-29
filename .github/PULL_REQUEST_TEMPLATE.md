@@ -9,3 +9,4 @@
 - [ ] Protocol touched? → edited Go structs + ran `make protocol`, both committed
 - [ ] Decision made? → ADR added in `docs/decisions/`
 - [ ] BLE layer touched? → tested on real hardware (state trainer model) or explained why simulator coverage suffices
+- [ ] Named something a rider reads (an item, a place, a mode)? → not a common word that is also a cycling mark: Record, Edge, Look, Time, Bell, Giant, Scott, Trek. The catalogue test refuses the rest (#3256)
