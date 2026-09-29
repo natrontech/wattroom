@@ -13,8 +13,11 @@ import (
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"log/slog"
+	"math"
 	"net/http"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/keyset"
 	"github.com/natrontech/wattroom/server/internal/progression"
@@ -139,7 +142,8 @@ var toolList = []map[string]any{
 	{
 		"name": "list_rides",
 		"description": "The rider's recent ride summaries, newest first: workout, date, duration, " +
-			"average watts, kJ, execution score, and `inSession` for a ride ridden in a crew " +
+			"average watts, kJ, execution score, `Route ride` as the workout of a ride on a road with " +
+			"that road's `km` and `gainM`, and `inSession` for a ride ridden in a crew " +
 			"session (`room` is the same flag under its old name and goes in a later release). " +
 			"Answers `more` when older rides remain, with " +
 			"`nextBefore`/`nextBeforeId` to pass back for the next page.",
@@ -251,28 +255,46 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 	// so a follow-up can name a ride, and `more` with the cursor for the
 	// next page.
 	type ride struct {
-		ID                string  `json:"id"`
-		Workout           string  `json:"workout"`
-		Date              string  `json:"date"`
-		Seconds           int     `json:"seconds"`
-		AvgWatts          int     `json:"avgWatts"`
-		Kj                int     `json:"kj"`
-		Execution         float64 `json:"execution"`
-		ExecutionScored   bool    `json:"executionScored"`
-		Ftp               int     `json:"ftp"`
-		Xp                int     `json:"xp"`
-		Room              bool    `json:"room"`
-		InSession         bool    `json:"inSession"`
-		SharedWithFriends bool    `json:"sharedWithFriends"`
+		ID                string   `json:"id"`
+		Workout           string   `json:"workout"`
+		Date              string   `json:"date"`
+		Seconds           int      `json:"seconds"`
+		AvgWatts          int      `json:"avgWatts"`
+		Kj                int      `json:"kj"`
+		Execution         float64  `json:"execution"`
+		ExecutionScored   bool     `json:"executionScored"`
+		Ftp               int      `json:"ftp"`
+		Xp                int      `json:"xp"`
+		Room              bool     `json:"room"`
+		InSession         bool     `json:"inSession"`
+		SharedWithFriends bool     `json:"sharedWithFriends"`
+		Km                *float64 `json:"km,omitempty"`
+		GainM             *int32   `json:"gainM,omitempty"`
+	}
+	numbers, err := s.routeNumbers(ctx, rows)
+	if err != nil {
+		return nil, err
 	}
 	out := make([]ride, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, ride{
+		r := ride{
 			ID: store.UUIDString(row.ID), Workout: row.WorkoutName, Date: row.StartedAt.Time.Format(time.RFC3339),
 			Seconds: int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 			Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 			Room: row.InSession, InSession: row.InSession, SharedWithFriends: row.SharedAt.Valid,
-		})
+		}
+		// A road ride is its road's numbers and nothing else here (#3054,
+		// ADR-0063): its workout is named after the route, and a route's name
+		// is a place, which never enters an AI context — nor does its id, its
+		// shape or the ride's own metres (#3053).
+		if row.DistanceM != nil {
+			r.Workout = "Route ride"
+			if n, ok := numbers[store.UUIDString(row.ID)]; ok {
+				km := math.Round(float64(n.LengthM)/100) / 10
+				r.Km, r.GainM = &km, &n.GainM
+			}
+		}
+		out = append(out, r)
 	}
 	payload := map[string]any{"rides": out, "more": len(rows) == int(params.Limit)}
 	// The cursor comes from here rather than from the caller re-reading
@@ -284,6 +306,26 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 		keyset.Next(payload, last.StartedAt, last.ID)
 	}
 	return payload, nil
+}
+
+// routeNumbers is the route's length and gain for each road ride on the page,
+// by ride id. Only a road ride has a distance (stats.SetRoad).
+func (s *Service) routeNumbers(ctx context.Context, rows []db.ListUserRidesRow) (map[string]db.RouteNumbersOfRidesRow, error) {
+	var ids []pgtype.UUID
+	for _, row := range rows {
+		if row.DistanceM != nil {
+			ids = append(ids, row.ID)
+		}
+	}
+	out := map[string]db.RouteNumbersOfRidesRow{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	found, err := s.store.Queries.RouteNumbersOfRides(ctx, ids)
+	for _, n := range found {
+		out[store.UUIDString(n.ID)] = n
+	}
+	return out, err
 }
 
 // isBatch says whether the body began a JSON array — a batch, which the

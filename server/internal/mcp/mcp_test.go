@@ -16,6 +16,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/store/storetest"
+	"github.com/natrontech/wattroom/server/internal/testx"
 )
 
 type fakeTokens struct{ user *db.User }
@@ -263,7 +264,8 @@ func TestListRidesCursorIsAPair(t *testing.T) {
 
 // A ride's road summary stays off every AI context (#3053, ADR-0063): the
 // metres, the climbing and the road's hashes are location-derived, and
-// list_rides reads the same rows the history page does.
+// list_rides reads the same rows the history page does. The ride reads as a
+// route ride (#3054), and a road whose route is gone brings no numbers.
 func TestListRidesCarriesNoRoadSummary(t *testing.T) {
 	mux, st, user := setup(t)
 	distance, climbed, from := int32(12_345), int32(678), int32(1000)
@@ -282,13 +284,56 @@ func TestListRidesCarriesNoRoadSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, leak := range []string{"12345", "678", "a-road-hash", "distance", "climb", "rideMode", "route", "road"} {
+	for _, leak := range []string{"12345", "12.3", "678", "a-road-hash", "distance", "climb", "rideMode", "routeId", "road", "km", "gainM"} {
 		if strings.Contains(strings.ToLower(string(raw)), strings.ToLower(leak)) {
 			t.Errorf("list_rides carries %q: %s", leak, raw)
 		}
 	}
-	if !strings.Contains(string(raw), "Openers") {
-		t.Fatalf("the seeded ride is not in the answer, so nothing was checked: %s", raw)
+	if !strings.Contains(string(raw), "Route ride") {
+		t.Fatalf("the seeded ride is not in the answer as a route ride, so nothing was checked: %s", raw)
+	}
+}
+
+// A route ride reaches an AI context as its road's numbers alone (#3054,
+// ADR-0063): the generated name's km and gain, never the route's name, its
+// id, a coordinate, or the ride's own metres — whatever the workout was
+// called.
+func TestListRidesNamesNoPlace(t *testing.T) {
+	mux, st, user := setup(t)
+	route, err := st.Queries.CreateRoute(t.Context(), db.CreateRouteParams{
+		OwnerID: user.ID, Src: "gpx", Name: testx.Corridor.Route, GenName: "Road · 52.9 km · 1,312 m",
+		Road: []byte("x"), RoadHash: "a-road-hash", LengthM: 52_940, GainM: 1312, Climbs: []byte(`[]`), EleSource: "file",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	distance, climbed := int32(20_417), int32(533)
+	if _, err := st.Queries.CreateRide(t.Context(), db.CreateRideParams{
+		UserID: user.ID, WorkoutName: testx.Corridor.Route + " via " + testx.Corridor.Climbs[0],
+		StartedAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+		Seconds:   3600, AvgWatts: 200, Kj: 720, Execution: 1, ExecutionScored: true,
+		FtpWatts: 250, Samples: []byte(`[]`), Curve: []byte(`{}`), Xp: 10,
+		RouteID: route.ID, DistanceM: &distance, ClimbedM: &climbed,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	_, body := post(t, mux, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rides","arguments":{}}}`)
+	raw, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if leak := testx.Leak(string(raw)); leak != "" {
+		t.Errorf("list_rides carries %q: %s", leak, raw)
+	}
+	for _, leak := range []string{store.UUIDString(route.ID), "20417", "20.4", "533"} {
+		if strings.Contains(string(raw), leak) {
+			t.Errorf("list_rides carries %q: %s", leak, raw)
+		}
+	}
+	for _, want := range []string{`\"workout\":\"Route ride\"`, `\"km\":52.9`, `\"gainM\":1312`} {
+		if !strings.Contains(string(raw), want) {
+			t.Errorf("list_rides lacks %s: %s", want, raw)
+		}
 	}
 }
 
