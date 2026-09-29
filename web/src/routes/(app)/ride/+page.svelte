@@ -36,6 +36,7 @@
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { downloadRideCard } from '$lib/ride/card';
 	import RideDoors from '$lib/ride/RideDoors.svelte';
+	import SoloGames from '$lib/ride/SoloGames.svelte';
 	import { doorsFor } from '$lib/crew-lounge';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 
@@ -555,6 +556,11 @@
 				}}
 				onError={(message) => (error = message)}
 			/>
+		{/if}
+		<!-- A game from the solo ride (#3276) — not once a workout was picked,
+		     which is its own ride. -->
+		{#if !requested && !shelfPending && !shelfMissing}
+			<SoloGames />
 		{/if}
 	{:else if session.state === 'countdown'}
 		<!-- Sound AND visual (.claude/rules/ux.md): the cue alone reaches a
