@@ -171,6 +171,18 @@ const (
 	// in m/s². No brake control: a rider on a trainer never touches one.
 	PaceCornerG   = 0.6
 	PaceBrakeMps2 = 4
+
+	// Drafting (docs/SPEC.md "Drafting", ADR-0077): the share of the air a
+	// wheel ahead takes — the second wheel's, the third's, and every later
+	// one's, which is also the cap on any shelter (a rule) — at full strength
+	// within ShelterFullGapM of that wheel, fading linearly to none at
+	// ShelterNoneGapM, and halved from the adjacent lane.
+	ShelterSecondWheel = 0.35
+	ShelterThirdWheel  = 0.45
+	ShelterMax         = 0.5
+	ShelterFullGapM    = 1.0
+	ShelterNoneGapM    = 6
+	ShelterAdjacent    = 0.5
 	// The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
 	// whom a road's estimates are made for when no real rider is in question.
 	ReferenceRiderKg    = 75

@@ -121,7 +121,9 @@ func SteadySpeed(watts, grade, mass, cda, shelter float64) float64 {
 // resistance is everything but the rider's own power, in newtons, at speed v.
 func resistance(v, grade, mass, cda, shelter float64) float64 {
 	theta := math.Atan(grade / 100)
-	sheltered := 1 - math.Min(1, math.Max(0, shelter))
+	// No draft takes more than ShelterMax of the air (a rule, ADR-0077),
+	// whatever a caller hands in.
+	sheltered := 1 - math.Min(protocol.ShelterMax, math.Max(0, shelter))
 	return mass*protocol.PaceGravity*math.Sin(theta) +
 		protocol.PaceCrr*mass*protocol.PaceGravity*math.Cos(theta) +
 		0.5*protocol.PaceAirDensity*cda*sheltered*v*v

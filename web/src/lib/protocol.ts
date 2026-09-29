@@ -671,6 +671,39 @@ export const PaceCornerG = 0.6;
  */
 export const PaceBrakeMps2 = 4;
 /**
+ * Drafting (docs/SPEC.md "Drafting", ADR-0077): the share of the air a
+ * wheel ahead takes — the second wheel's, the third's, and every later
+ * one's, which is also the cap on any shelter (a rule) — at full strength
+ * within ShelterFullGapM of that wheel, fading linearly to none at
+ * ShelterNoneGapM, and halved from the adjacent lane.
+ */
+export const ShelterSecondWheel = 0.35;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ShelterThirdWheel = 0.45;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ShelterMax = 0.5;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ShelterFullGapM = 1.0;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ShelterNoneGapM = 6;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ShelterAdjacent = 0.5;
+/**
  * The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
  * whom a road's estimates are made for when no real rider is in question.
  */
