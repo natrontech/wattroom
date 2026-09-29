@@ -32,7 +32,9 @@ func (x *export) routes() category {
 			one := map[string]any{"name": row.Name, "generatedName": row.GenName,
 				"source": row.Src, "lengthM": row.LengthM, "gainM": row.GainM,
 				"climbs": json.RawMessage(row.Climbs), "heightsFrom": row.EleSource,
-				"createdAt": row.CreatedAt.Time, "file": nil}
+				"createdAt": row.CreatedAt.Time, "file": nil,
+				// Whether each crew listed in the directory may see its map (#3569).
+				"crews": json.RawMessage(row.CrewAnswers)}
 			// The whole road, heights above sea included (#3511); a seal
 			// this key will not open exports the bare heights, and its map
 			// below says why it has no file.
