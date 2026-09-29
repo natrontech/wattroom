@@ -97,7 +97,8 @@ func TestUploadedRidesPayAtMostTheDailyCeiling(t *testing.T) {
 	}
 
 	// One rider's day is theirs: bob starts from nothing.
-	if status, body := call(t, h.mux, "bob", http.MethodPost, "/api/rides", rideBody(120, 200)); status != http.StatusCreated || body["xp"].(float64) == 0 {
+	status, body := call(t, h.mux, "bob", http.MethodPost, "/api/rides", rideBody(120, 200))
+	if xp, _ := body["xp"].(float64); status != http.StatusCreated || xp == 0 {
 		t.Fatalf("another rider paid nothing under someone else's ceiling: %d %v", status, body)
 	}
 }
