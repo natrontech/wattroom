@@ -24,6 +24,7 @@
 		{ href: '/dev/medal', label: 'Medals' },
 		{ href: '/dev/board', label: 'Board' },
 		{ href: '/dev/world', label: 'World' },
+		{ href: '/dev/road', label: 'Road' },
 	];
 </script>
 
