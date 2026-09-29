@@ -105,7 +105,10 @@ export function createActuator(
 	let draftOn = false;
 	let clamp = $state<Clamp>(null);
 	let entry: ReturnType<typeof setTimeout> | undefined;
-	// Another of the rider's screens took the trainer (#1853).
+	// Another of the rider's screens took the trainer (#1853). While it is
+	// set nothing is written: the intent still follows, so the grant coming
+	// back writes the road this screen is on, and no caller has to remember
+	// the rule (#3517).
 	let lost = false;
 	// The last SIM bytes written and to which trainer, so unchanged terrain
 	// writes nothing — and a trainer swapped in (#1847) is written afresh.
@@ -141,7 +144,7 @@ export function createActuator(
 	function toSim(felt: number) {
 		intent = { felt };
 		const held = trainer();
-		if (!held || entry) return;
+		if (lost || !held || entry) return;
 		if (held.mode !== 'erg') {
 			writeRoad(held, false);
 			return;
@@ -157,7 +160,7 @@ export function createActuator(
 	function toWatts(watts: number) {
 		intent = { watts };
 		written = undefined;
-		void trainer()?.setTargetPower(watts);
+		if (!lost) void trainer()?.setTargetPower(watts);
 	}
 
 	function shift(dir: 1 | -1): boolean {
@@ -247,12 +250,12 @@ export function createActuator(
 		shelter(value: number, feel: boolean) {
 			shelter = value;
 			draftOn = feel;
-			if (!lost && intent && 'felt' in intent) toSim(intent.felt);
+			if (intent && 'felt' in intent) toSim(intent.felt);
 		},
 		/** The link came back (#1846): the current state again, recomputed. */
 		reissue() {
 			const held = trainer();
-			if (!held || !intent) return;
+			if (lost || !held || !intent) return;
 			clearTimeout(entry);
 			entry = undefined;
 			if ('watts' in intent) void held.setTargetPower(intent.watts);

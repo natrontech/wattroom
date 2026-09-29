@@ -143,6 +143,27 @@ describe('a lost grant', () => {
 		act.shelter(0.3, true);
 		expect(trainer.writes).toEqual(['sim:4']);
 	});
+
+	// #3517: the rule is the actuator's, not each caller's to remember.
+	it('writes nothing at all until the grant comes back', () => {
+		const trainer = new Recorder();
+		trainer.mode = 'sim';
+		const act = createActuator(() => trainer);
+		act.grade(4);
+		act.grant(false);
+		act.road(6);
+		act.grade(7);
+		act.hold(200);
+		act.hold(0);
+		act.sprint({ grade: 8, singleSpeed: false }, 250);
+		act.sprint({ grade: 8, singleSpeed: true }, 250);
+		act.reissue();
+		expect(trainer.writes).toEqual(['sim:4']);
+
+		act.grant(true);
+		act.grade(5);
+		expect(trainer.writes).toEqual(['sim:4', 'sim:5']);
+	});
 });
 
 describe('simulate()', () => {
