@@ -46,7 +46,7 @@
 						track="bg-surface"
 						fill="{entry.you
 							? 'bg-watt'
-							: 'bg-neon/60'} transition-[width] duration-500"
+							: 'bg-neon/60'} transition-[width] duration-(--dur-live)"
 					/>
 				</div>
 				<!-- A dot for whether they are inside the band right now, not just cumulatively. -->

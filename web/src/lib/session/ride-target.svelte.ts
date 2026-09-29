@@ -1,9 +1,5 @@
-import {
-	createPersonalGuards,
-	DEFAULTS,
-	type GuardPhase,
-	type GuardSample,
-} from '$lib/workout/guards';
+import { DEFAULTS, type GuardSample } from '$lib/workout/guards';
+import { createRiderGuards } from '$lib/workout/rider-guards.svelte';
 import { targetAt } from '$lib/workout/engine';
 import type { RideDeps } from '$lib/session/ride-deps';
 
@@ -97,22 +93,9 @@ export function createRideTarget(
 	 * session's clock does not notice, because the guards mask this rider's
 	 * target and touch nothing shared.
 	 */
-	const guards = createPersonalGuards();
-	let guardsReleased = $state(false);
-	let guardPhase = $state<GuardPhase>('running');
-	let guardResumeIn = $state(0);
-	// The spiral release (docs/SPEC.md) fires in a session exactly as it does
-	// solo; solo had a banner and a cue for it and the session had nothing —
-	// the resistance vanished for ten seconds unexplained (audit 2026-09-09).
-	let spiralActive = $state(false);
-	function syncGuards() {
-		guardsReleased = guards.released;
-		guardPhase = guards.phase;
-		guardResumeIn = guards.resumeIn;
-		spiralActive = guards.spiralActive;
-	}
+	const guards = createRiderGuards();
 
-	const target = $derived(guardsReleased ? 0 : prescribed);
+	const target = $derived(guards.released ? 0 : prescribed);
 
 	return {
 		/** What the trim is doing, not what the rider once set it to (#2075). */
@@ -131,13 +114,13 @@ export function createRideTarget(
 			return block.sprint;
 		},
 		get guard() {
-			return guardPhase;
+			return guards.phase;
 		},
 		get resumeIn() {
-			return guardResumeIn;
+			return guards.resumeIn;
 		},
 		get spiralActive() {
-			return spiralActive;
+			return guards.spiralActive;
 		},
 		/** False while a guard has the trainer off the target. */
 		get scoring() {
@@ -155,12 +138,10 @@ export function createRideTarget(
 		sample(metrics: GuardSample, counted: boolean) {
 			if (prescribed > 0) guards.sample(metrics, prescribed, counted ? 1 : 0);
 			else guards.reset();
-			syncGuards();
 		},
 		/** The guards' countdowns, on the rider's own second. */
 		tick() {
 			guards.tick();
-			syncGuards();
 		},
 	};
 }

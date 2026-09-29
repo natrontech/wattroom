@@ -132,3 +132,21 @@ rules, not alpha defaults: loosening one takes an ADR.
   [#3096](https://github.com/natrontech/wattroom/issues/3096) (a crew's span
   coordinates), [#3132](https://github.com/natrontech/wattroom/issues/3132),
   [#3240](https://github.com/natrontech/wattroom/issues/3240) (the corridor).
+
+## Amendment, 2026-09-29 (#3250): the world is keyed by place
+
+[ADR-0081](0081-the-world-is-keyed-by-place.md) is accepted, so the lines this
+ADR left conditional on it now hold: outside private regions a world is a
+function of the place and its data snapshot, not of a per-route salt; the
+world's tiles are cut per audience and cached per tile; and the fixed random
+offset of every privacy zone stays load-bearing. Private regions keep their
+owner-only secrets in local cells, and no map data is read there.
+
+## Amendment, 2026-09-29 (#3283): Amended by ADR-0078 — a crew's real ground
+
+[ADR-0078](0078-real-ground-painted-light.md) shows a crew the real ground between the km-0 anchors, under #3096's
+conditions and in the corridor #3240 clamps to stop at the anchor. The
+absolute heights it uses are the ones this ADR already allows once the crew
+holds the span's coordinates (the round-4 line under "Who sees what"), so this
+settles "the coordinates of that span come later". Privacy zones render
+generated for every viewer, the owner included.

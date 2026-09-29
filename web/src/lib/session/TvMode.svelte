@@ -143,7 +143,7 @@
 								h="h-[1.6vh]"
 								fill="{ZONE_BG[
 									riderZone
-								]} transition-[width] duration-500 ease-out"
+								]} transition-[width] duration-(--dur-live) ease-live"
 								class="flex-1"
 							/>
 							<span
