@@ -679,6 +679,14 @@ never the metres a client sent, and an imported file never sets one.
 | `board_ok`: provenance        | recorded by WattRoom and saved fresh; never imported, never Strava-origin               |
 | Crew climb times              | this week only, Monday reset, bracketed by Category D–A; fastest and most ascents       |
 
+## Races ([ADR-0067](decisions/0067-racing-on-a-road.md) — defaults, tune in alpha)
+
+- **Physics**: a rider's speed is the reference rider's (Route rides) at their **W/kg × 75 kg**, plus an **8 kg** bike, on the grade.
+- **Race FTP**: the profile FTP, or the FTP suggestion (Stats formulas) when it is higher, frozen at the flag.
+- **Race weight**: frozen at the flag. A weight changed within **14 days**, or a weight or FTP from the default source, rides unranked.
+- **Weight confirmation**: once every **90 days**, one tap through the FTP prompt, never a gate; a weight not confirmed within 90 days rides unranked.
+- **Results**: per Category D–A on the closing card only; a lone rider reads "rode alone in C". A restart voids the race. On an open ride each rider sees only their own placing.
+
 ## Riding a road together (defaults — tune in alpha; [ADR-0065](decisions/0065-riding-a-road-together.md))
 
 The bunch's one position advances once per whole second, never on a sprint
