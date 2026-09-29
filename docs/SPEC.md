@@ -1002,6 +1002,7 @@ A rider's bias never moves the bunch.
 | Frame rate          | **30 fps** on a vsync divisor                                                                                           |
 | High tier           | at most **60** draws and **400k** triangles                                                                             |
 | … figures           | at most **110k** triangles: **3** at LOD0 (**14k** each) and **9** at LOD1 (**7k** each)                                |
+| … far figures       | every figure past those 12 — strangers (Open rides) and the crowd on a climb (Races) — at a far LOD, instanced, inside the tier's totals; its triangles per figure are set by the first `make perf-scenes` measurement, as the GPU gate is |
 | … dressing          | at most **24** draws and **180k** triangles                                                                             |
 | Low tier            | at most **30** draws and **150k** triangles; dressing **12** draws and **70k**                                          |
 | Fallback            | to the Skyline when more than **20 %** of vsync-divisor intervals are missed over **10 s**; one-way for the ride        |
