@@ -213,6 +213,26 @@ func (q *Queries) GetOwnerRoutePlace(ctx context.Context, arg GetOwnerRoutePlace
 	return i, err
 }
 
+const getRouteRoad = `-- name: GetRouteRoad :one
+select owner_id, src, road from routes where id = $1
+`
+
+type GetRouteRoadRow struct {
+	OwnerID pgtype.UUID
+	Src     string
+	Road    []byte
+}
+
+// A route's road, its source and whose it is (#3051): what a workout read
+// cuts to its reader. Deliberately not owner-scoped — the cut is the
+// audience rule, and routes.Attacher is the one place that applies it.
+func (q *Queries) GetRouteRoad(ctx context.Context, id pgtype.UUID) (GetRouteRoadRow, error) {
+	row := q.db.QueryRow(ctx, getRouteRoad, id)
+	var i GetRouteRoadRow
+	err := row.Scan(&i.OwnerID, &i.Src, &i.Road)
+	return i, err
+}
+
 const listOwnerRoutes = `-- name: ListOwnerRoutes :many
 select id, src, name, gen_name, length_m, gain_m, climbs,
        (geom_sealed is not null)::boolean as has_place, created_at

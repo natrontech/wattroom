@@ -116,6 +116,8 @@ type Hub struct {
 	// Who a hub-born change concerns (#2324); nil tells everyone.
 	audiences Audiences
 	hider     Hider
+	// A picked workout's road is cut for the channel through this (#3051).
+	roads Roads
 	// What makes a finished session durable (ADR-0034). Nil = no database,
 	// and a session leaves nothing.
 	recaps RecapKeeper

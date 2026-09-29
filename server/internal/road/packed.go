@@ -14,8 +14,12 @@ import (
 type Road struct {
 	// Metres from the first sample to the last.
 	LengthM float64
-	// Metres above sea at each sample.
+	// Metres above sea at each sample — or above the first sample, on a road
+	// cut for someone who is not its owner (Cut).
 	Heights []float64
+	// Whole degrees the road turns from each sample to the next, positive to
+	// the right; one fewer than Heights.
+	Turns []int8
 }
 
 const packedVersion = 1
@@ -23,8 +27,7 @@ const packedVersion = 1
 // UnpackRoad reads packRoad's little-endian bytes and refuses anything it
 // could not have written: another version, a length that does not match the
 // sample count, a road outside docs/SPEC.md's 2–200 km, or samples closer
-// than its 10 m resampling step. The turns are checked for their bytes and
-// not kept — nothing on the server reads them yet.
+// than its 10 m resampling step.
 //
 //	u8   version
 //	u32  samples
@@ -48,13 +51,15 @@ func UnpackRoad(b []byte) (Road, error) {
 		return Road{}, errors.New("road: samples closer than 10 m")
 	}
 	heights := make([]float64, n)
+	turns := make([]int8, n-1)
 	cm := int64(int32(binary.LittleEndian.Uint32(b[9:13]))) //nolint:gosec // i32 on the wire
 	heights[0] = float64(cm) / 100
 	for i := 1; i < int(n); i++ {
 		cm += int64(int16(binary.LittleEndian.Uint16(b[13+2*(i-1):]))) //nolint:gosec // i16 on the wire
 		heights[i] = float64(cm) / 100
+		turns[i-1] = int8(b[13+2*(int(n)-1)+(i-1)]) //nolint:gosec // i8 on the wire
 	}
-	return Road{LengthM: lengthM, Heights: heights}, nil
+	return Road{LengthM: lengthM, Heights: heights, Turns: turns}, nil
 }
 
 // GainM is the metres climbed over the road's heights.

@@ -17,6 +17,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/routes"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -82,6 +83,8 @@ type Service struct {
 	gate     Gate
 	notifier Notifier
 	voice    VoiceEjector
+	// A plan's road is checked and cut through this (#3051); nil rides none.
+	roads *routes.Attacher
 	// Guesses at a crew code per address (#1673): the door and the join were
 	// unmetered over a 31^6 space, and every hit is a real crew join. The
 	// sign-in ceiling, because the door is a sign-in-shaped surface.
