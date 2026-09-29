@@ -17,7 +17,11 @@
 	import { onDestroy } from 'svelte';
 	import { guardLeaving } from '$lib/ride/leave-guard.svelte';
 	import { confirm } from '$lib/confirm.svelte';
-	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
+	import {
+		createRideSounds,
+		soloRideSounds,
+	} from '$lib/ride/ride-sounds.svelte';
+	import { createSignalWatch } from '$lib/workout/signal-watch.svelte';
 	import { canSimulate } from '$lib/ble/can-simulate';
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { channelConnection } from '$lib/channel/connection.svelte';
@@ -31,10 +35,7 @@
 	import { formatClock } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { createRideSession } from '$lib/workout/session.svelte';
-	import {
-		SIGNAL_LOST_MS,
-		signalLost as isSignalLost,
-	} from '$lib/workout/ride-state';
+	import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { account } from '$lib/account.svelte';
 	import { stampFtpAfter, uploadRide, type RideUpload } from '$lib/ride/save';
@@ -178,53 +179,20 @@
 		}
 	});
 
-	// The same persistent status /ride shows (#37, errors.md): past 3 s without
-	// a sample the test says so rather than freezing a number the rider is
-	// about to trust for a month.
-	let nowMs = $state(Date.now());
-	$effect(() => {
-		const id = setInterval(() => (nowMs = Date.now()), 1000);
-		return () => clearInterval(id);
-	});
-	// From the start, not from the first sample (#2158, the way /ride has
-	// counted since #1799): a trainer that streams frames without a power
-	// field never delivers one, so `!!session.sample` was never true and the
-	// ramp ran its full length with no banner, no fault cue, and `rampBlown`'s
-	// stale guard holding the test open — thirty minutes of nothing and then a
-	// 0 W result. Stamped when the CLOCK starts, not when Start was pressed:
-	// the count-in is not a gap in the trainer's reporting.
-	let ridingSince: number | undefined = $state();
-	$effect(() => {
-		if (session?.state === 'running' && ridingSince === undefined)
-			ridingSince = Date.now();
-		if (!session) ridingSince = undefined;
-	});
-	const signalLost = $derived(isSignalLost(session, ridingSince, nowMs));
+	// The same persistent status /ride shows (#37, errors.md), from the same
+	// watch (#3359).
+	const signal = createSignalWatch(() => session);
+	const signalLost = $derived(signal.lost);
 
 	// The ramp speaks like every ride (#1792): each step is a block cue, the
 	// guards and a dropout say so, and the end is heard — the number a rider
-	// keeps for a month should not arrive in silence.
-	createRideSounds({
-		fault: () => (signalLost ? 'trainer' : null),
-		sprint: () => null,
-		guard: () => guardOfRide(session?.state),
-		spiral: () => session?.spiralActive,
-		block: () =>
-			session &&
-			session.state !== 'idle' &&
-			session.state !== 'countdown' &&
-			session.state !== 'done'
-				? session.info.segmentIndex
-				: undefined,
-		// The count-in, said the way a session and /ride say theirs (#1800).
-		countdown: () =>
-			session?.state === 'countdown'
-				? Math.max(1, session.countdownRemaining)
-				: session?.state === 'running'
-					? 0
-					: undefined,
-		ended: () => session?.state === 'done',
-	});
+	// keeps for a month should not arrive in silence. /ride's wiring (#3359).
+	createRideSounds(
+		soloRideSounds(
+			() => session,
+			() => signalLost,
+		),
+	);
 
 	// "Test again" used to be a link to this page, which a same-route
 	// navigation leaves exactly as it was (#1797): the page kept its finished
