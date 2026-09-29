@@ -131,6 +131,9 @@ func (rm *channelState) tickEmptyLocked(now func() time.Time, saving bool) (*ses
 	// a session whose last rider closed the tab at minute 58 ends at
 	// 60 and saves then, dated right — not on the next visit.
 	state := rm.session.state(now())
+	// And the bunch rides on with nobody watching: the plan still sets
+	// its pace, so the first rider back finds it where the plan put it.
+	rm.session.rideBunch(now())
 	// Said now, at the moment it happened: skipping the line here
 	// left phaseSaid at "running", and the next visitor watched the
 	// session "end" live, hours late (audit 2026-09-09).
@@ -163,6 +166,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 	// After state() has promoted a finished countdown: mood() never
 	// advances anything, and running is the only phase with a block.
 	state.TargetRpm = rm.session.mood(now()).TargetRPM()
+	rm.session.rideBunch(now())
 	rm.sayPhaseLocked(state, now())
 	// Whoever has been gone longer than the grace window (#984). The tick
 	// is the room's only clock, and the line has to be resolved before the
@@ -194,6 +198,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 			return out
 		}(),
 		Voice:  rm.voiceIDsLocked(),
+		World:  rm.session.world(),
 		Riders: rm.metrics,
 		Roster: make([]protocol.Rider, 0, len(rm.clients)),
 	}

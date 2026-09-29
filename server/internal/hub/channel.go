@@ -174,12 +174,27 @@ const pokeCooldown = protocol.PokeCooldownSeconds * time.Second
 // times a minute, because coasting into a corner, freewheeling between
 // intervals and reaching for a bottle are all 0 W. Ten seconds of no watts
 // is sitting down; two is riding a bike.
+//
+// On a road a rider rides while their virtual speed is above 0.5 m/s
+// (docs/SPEC.md "Route rides", #3028): a descent coasted at 0 W is riding
+// however long it lasts, so long as their trainer is still talking. Their
+// speed is the bunch's until the offsets (#3097) give each rider their own.
 func (rm *channelState) ridingLocked(now time.Time) (names, ids []string) {
-	riders := make([]protocol.Rider, 0, len(rm.lastWatts))
+	riding := make(map[string]struct{}, len(rm.lastWatts))
 	for id, at := range rm.lastWatts {
-		if now.Sub(at) > ridingWindow {
-			continue
+		if now.Sub(at) <= ridingWindow {
+			riding[id] = struct{}{}
 		}
+	}
+	if rm.session.onRollingRoad() {
+		for id, at := range rm.lastMetric {
+			if now.Sub(at) <= ridingWindow && rm.session.rides(id) {
+				riding[id] = struct{}{}
+			}
+		}
+	}
+	riders := make([]protocol.Rider, 0, len(riding))
+	for id := range riding {
 		// `seen` holds only a session's own riders since ADR-0059; a free
 		// rider or a spectator pedalling is riding all the same, and is
 		// named from their socket.

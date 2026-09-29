@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/road"
 )
 
 const roadWorkout = `{"name":"Home loop","road":{"routeId":"3f0c2a4e-8b1d-4c5e-9f6a-7b8c9d0e1f2a","fromM":0,"toM":3000},"steps":[{"type":"road","seconds":600}]}`
@@ -17,13 +18,20 @@ type fakeRoads struct {
 	refusal string
 	refused *protocol.Error
 	err     error
+	// The cut's heights every 20 m; nil is a flat 2.2 km.
+	heights []float64
 }
 
-func (f fakeRoads) SessionRoute(_ context.Context, _, routeID string) (protocol.SessionRoute, *protocol.Error, error) {
+func (f fakeRoads) SessionRoute(_ context.Context, _, routeID string) (protocol.SessionRoute, road.Road, *protocol.Error, error) {
 	if f.err != nil || f.refused != nil {
-		return protocol.SessionRoute{}, f.refused, f.err
+		return protocol.SessionRoute{}, road.Road{}, f.refused, f.err
 	}
-	return protocol.SessionRoute{ID: routeID, Hash: "h-home", GenName: "Road · 3.0 km · 50 m", LengthM: 2200}, nil, nil
+	heights := f.heights
+	if heights == nil {
+		heights = make([]float64, 2200/20+1)
+	}
+	profile := road.Road{LengthM: float64(20 * (len(heights) - 1)), Heights: heights}
+	return protocol.SessionRoute{ID: routeID, Hash: "h-home", GenName: "Road · 3.0 km · 50 m", LengthM: profile.LengthM}, profile, nil, nil
 }
 
 func (f fakeRoads) ForSession(_ context.Context, coach, workoutJSON string) (string, string, error) {
