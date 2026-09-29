@@ -57,8 +57,7 @@ export function createRideTarget(
 	const block = $derived.by((): { watts: number; sprint: boolean } => {
 		if (!deps.joined())
 			return {
-				watts:
-					deps.free.armed && deps.free.mode === 'watts' ? deps.free.watts : 0,
+				watts: deps.free.armed ? deps.free.targetWatts : 0,
 				sprint: false,
 			};
 		const game = deps.live.tick?.game;

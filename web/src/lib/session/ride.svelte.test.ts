@@ -12,6 +12,7 @@ import type {
 import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
 import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 import { effortOf, inRecoveryValley } from '$lib/roadside';
+import { createFreeRide } from '$lib/ride/free-ride.svelte';
 
 // The socket's own dependencies, silenced: IndexedDB, and the module the
 // tick's clock window lives in stays real (it only does arithmetic).
@@ -111,6 +112,8 @@ const idleFree = {
 	mode: 'grade' as 'grade' | 'watts',
 	grade: 0,
 	watts: 110,
+	road: null,
+	targetWatts: 0,
 	second() {},
 	nudge() {},
 };
@@ -481,6 +484,42 @@ describe('the personal guards in a group ride (#788)', () => {
 		live.close();
 	});
 
+	// #3027: on a road, grade mode rides the road's felt grade, never a
+	// hand-set one, and the dot moves by the watts the trainer reports.
+	it('rides the road’s felt grade on a free ride on a road', async () => {
+		const { live, deps } = inASession();
+		let free!: ReturnType<typeof createFreeRide>;
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+			free.arm();
+			free.ride({
+				id: 'route-1',
+				name: 'Test climb',
+				road: {
+					length: 2000,
+					heights: Array.from({ length: 101 }, (_, i) => 100 + 0.8 * i),
+					turns: Array<number>(100).fill(0),
+				},
+			});
+			ride = createRide({ ...deps, joined: () => false, free });
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		trainer.pedal(250, 90);
+		await settle();
+		expect(trainer.commands.at(-1)).toBe('sim:0');
+		await new Promise((resolve) => setTimeout(resolve, 600));
+		// 4 % felt at half (docs/SPEC.md "Felt grade").
+		expect(trainer.commands.at(-1)).toBe('sim:2');
+		trainer.pedal(250, 90);
+		await settle();
+		expect(free.road!.m).toBeGreaterThan(0);
+
+		dispose();
+		live.close();
+	});
+
 	it('rides a spectator’s free ride on the grade or the watts they set (ADR-0059)', async () => {
 		const { live, deps } = inASession();
 		const free = { ...idleFree, armed: true, grade: 4 };
@@ -508,7 +547,13 @@ describe('the personal guards in a group ride (#788)', () => {
 			ride = createRide({
 				...deps,
 				joined: () => false,
-				free: { ...idleFree, armed: true, mode: 'watts', watts: 130 },
+				free: {
+					...idleFree,
+					armed: true,
+					mode: 'watts',
+					watts: 130,
+					targetWatts: 130,
+				},
 			});
 		});
 		const second = new FakeTrainer();
@@ -541,6 +586,9 @@ describe('the personal guards in a group ride (#788)', () => {
 					},
 					get watts() {
 						return watts;
+					},
+					get targetWatts() {
+						return mode === 'watts' ? watts : 0;
 					},
 					nudge: (dir) => (watts += 10 * dir),
 				},

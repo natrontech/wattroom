@@ -1,5 +1,7 @@
 import { MaxTrainerGrade } from '$lib/protocol';
 import { at } from '$lib/road/along';
+import { gradeAt } from '$lib/road/at-metre';
+import type { Road } from '$lib/road/road';
 import type { Route } from '$lib/road/route';
 
 /**
@@ -59,15 +61,26 @@ export function feltGrade(
  */
 export function createRideGrade(difficulty: number = ROAD.difficulty) {
 	let last: number | undefined;
+	function toward(roadPct: number, seconds: number): number {
+		const target = feltGrade(roadPct, difficulty);
+		const step = ROAD.slewPerSecond * seconds;
+		last =
+			last === undefined ? target : last + clamp(target - last, -step, step);
+		return last;
+	}
 	return {
 		/** At `distance` metres, moving at the dot's `speed` (m/s), `seconds` after the last. */
 		at(route: Route, distance: number, speed: number, seconds = 1): number {
 			const ahead = distance + speed * ROAD.lookAheadSeconds;
-			const target = feltGrade(at(route, ahead).grade, difficulty);
-			const step = ROAD.slewPerSecond * seconds;
-			last =
-				last === undefined ? target : last + clamp(target - last, -step, step);
-			return last;
+			return toward(at(route, ahead).grade, seconds);
+		},
+		/**
+		 * The same, read off a stored road (#3027): the grade the server's
+		 * replay steps the dot by, so the trainer and the record agree.
+		 */
+		road(road: Road, distance: number, speed: number, seconds = 1): number {
+			const ahead = distance + speed * ROAD.lookAheadSeconds;
+			return toward(gradeAt(road, ahead), seconds);
 		},
 		/** Off the road: the next one starts where it stands. */
 		reset() {

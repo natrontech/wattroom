@@ -15,9 +15,22 @@ export const MODE_LINES: Record<FreeMode, string> = {
 export const ONE_GEAR_LINE =
 	'One gear: the grade has no range here, use Watts.';
 
+/** The same two modes on a road (#3027): the road chooses, not the rider. */
+export const ROAD_LINES: Record<FreeMode, string> = {
+	grade:
+		'The road sets the slope you feel, and you shift your own gears (SIM).',
+	watts:
+		'The trainer holds the watts the road asks for, whatever your cadence (ERG).',
+};
+
 /** The line under the toggle for the mode a rider is in. */
-export function modeLine(mode: FreeMode, singleSpeed: boolean): string {
-	return mode === 'grade' && singleSpeed ? ONE_GEAR_LINE : MODE_LINES[mode];
+export function modeLine(
+	mode: FreeMode,
+	singleSpeed: boolean,
+	onRoad = false,
+): string {
+	if (mode === 'grade' && singleSpeed) return ONE_GEAR_LINE;
+	return (onRoad ? ROAD_LINES : MODE_LINES)[mode];
 }
 
 /** Settings › Equipment's `singleSpeed`, said as what it does. */

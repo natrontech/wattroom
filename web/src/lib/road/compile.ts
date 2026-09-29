@@ -8,8 +8,9 @@ import { MaxLegSeconds, PaceDefaultCdA } from '$lib/protocol';
 import type { SteadyStep, Workout } from '$lib/workout/types';
 import { LIMITS } from '$lib/workout/validate';
 import type { Climb } from './climbs';
+import { heightAt } from './at-metre';
 import { steadySpeed } from './pace';
-import { roadStep, type Road } from './road';
+import type { Road } from './road';
 
 /**
  * ERG by the road (#3026's decided formula): a stretch asks for
@@ -38,14 +39,6 @@ function stretchesOf(road: Road, climbs: Climb[]): Stretch[] {
 	}
 	if (road.length > at) out.push({ fromM: at, toM: road.length });
 	return out;
-}
-
-/** Height m metres along the stored road, between its samples. */
-function heightAt(road: Road, m: number): number {
-	const step = roadStep(road);
-	const f = Math.min(Math.max(m / step, 0), road.heights.length - 1);
-	const i = Math.min(Math.floor(f), road.heights.length - 2);
-	return road.heights[i] + (road.heights[i + 1] - road.heights[i]) * (f - i);
 }
 
 type Block = { toM: number; seconds: number; target: number };

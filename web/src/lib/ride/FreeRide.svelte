@@ -22,6 +22,8 @@
 	import { modeLine } from '$lib/ride/mode-copy';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import RoadPick from '$lib/ride/RoadPick.svelte';
+	import { roadsEnabled } from '$lib/ride/roads';
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Radio from '@lucide/svelte/icons/radio';
@@ -35,8 +37,12 @@
 		trainerTargetsNote(channel.pairing, deviceWord()),
 	);
 	const watts = $derived(free?.mode === 'watts');
+	// On a road the road chooses (#3027): its grade, or the watts it asks for.
+	const road = $derived(free?.road ?? null);
 	const value = $derived(
-		watts ? `${free?.watts ?? 0} W` : `${(free?.grade ?? 0).toFixed(1)} %`,
+		watts
+			? `${road ? (free?.targetWatts ?? 0) : (free?.watts ?? 0)} W`
+			: `${(road ? road.roadPct : (free?.grade ?? 0)).toFixed(1)} %`,
 	);
 	const atMin = $derived(
 		watts ? free?.watts === WATTS.min : free?.grade === GRADE.min,
@@ -54,10 +60,10 @@
 	// Riding the session instead: the trainer follows it, so the controls
 	// here would set nothing.
 	const riding = $derived(!!session && channel.you.inSession);
-	const modes: { id: FreeMode; label: string }[] = [
-		{ id: 'grade', label: 'Grade' },
+	const modes: { id: FreeMode; label: string }[] = $derived([
+		{ id: 'grade', label: road ? 'Road' : 'Grade' },
 		{ id: 'watts', label: 'Watts' },
-	];
+	]);
 </script>
 
 <div class="page flex h-full min-h-0 flex-col gap-6 overflow-y-auto pb-20">
@@ -134,7 +140,7 @@
 				watts={channel.you.watts}
 				stale={channel.youStale}
 				idle={channel.youUnmeasured}
-				target={watts ? (free?.watts ?? 0) : 0}
+				target={watts ? (free?.targetWatts ?? 0) : 0}
 				ftp={channel.you.ftp}
 			/>
 			<div class="flex flex-wrap items-center justify-center gap-4">
@@ -153,32 +159,47 @@
 						>
 					{/each}
 				</div>
+				<!-- On a road the road sets it, so the ± pair goes (#3027); in
+				     grade mode Easier and Harder below are what a rider moves. -->
 				<div class="flex items-center gap-3">
-					<button
-						onclick={() => free?.nudge(-1)}
-						disabled={atMin}
-						class="btn btn-secondary btn-lg"
-						aria-label={watts ? 'fewer watts' : 'lower grade'}
-						><Minus size={18} /></button
-					>
+					{#if !road}
+						<button
+							onclick={() => free?.nudge(-1)}
+							disabled={atMin}
+							class="btn btn-secondary btn-lg"
+							aria-label={watts ? 'fewer watts' : 'lower grade'}
+							><Minus size={18} /></button
+						>
+					{/if}
 					<span
 						class="font-display w-28 text-center text-3xl font-bold tabular-nums"
 						aria-live="polite">{value}</span
 					>
-					<button
-						onclick={() => free?.nudge(1)}
-						disabled={atMax}
-						class="btn btn-secondary btn-lg"
-						aria-label={watts ? 'more watts' : 'steeper grade'}
-						><Plus size={18} /></button
-					>
+					{#if !road}
+						<button
+							onclick={() => free?.nudge(1)}
+							disabled={atMax}
+							class="btn btn-secondary btn-lg"
+							aria-label={watts ? 'more watts' : 'steeper grade'}
+							><Plus size={18} /></button
+						>
+					{/if}
 				</div>
 			</div>
 			<!-- What the mode does, in one line (#3203): grade was the free ride
 			     without ERG a rider asked for, and the toggle never said so. -->
 			<p class="text-muted -mt-3 text-center text-sm">
-				{modeLine(free?.mode ?? 'grade', !!conn?.profile.current.singleSpeed)}
+				{modeLine(
+					free?.mode ?? 'grade',
+					!!conn?.profile.current.singleSpeed,
+					!!road,
+				)}
 			</p>
+			{#if free && roadsEnabled()}
+				<div class="mx-auto w-full max-w-xl">
+					<RoadPick {free} />
+				</div>
+			{/if}
 			<!-- Grade mode shifts too (ADR-0084, amending ADR-0059): Easier and
 			     Harder below the grade pair, full width, the gear between. -->
 			{#if !watts && conn && gearsEnabled()}
