@@ -35,7 +35,7 @@
 	const due = $derived(!!plan && planDue(plan.startsAt, now));
 	// Nobody else holds the channel's session — the one-session rule would
 	// refuse it with their name, and SessionControls already says whose it is.
-	const canStart = $derived(channel.canControl && !device.spectator);
+	const canStart = $derived(channel.canDrive);
 	// The gear first, as the picker asks it (#2594).
 	const unpaired = $derived(needsTrainer(channel.trainer, channel.pairing));
 
