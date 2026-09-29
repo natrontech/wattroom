@@ -568,6 +568,20 @@ ERG 0 W: nobody is riding the trainer then.
 
 Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued pedalling on reconnect).
 
+## The roadside ([ADR-0064](decisions/0064-the-roadside.md) — defaults, tune in alpha)
+
+The **roadside** is everyone in a voice channel who is not riding a given
+rider's session, eliminated riders included. It paints, sounds and informs; it
+never changes a rider's resistance, nothing it does reaches a trainer, and it
+picks **when, never who** ([ADR-0064](decisions/0064-the-roadside.md)).
+
+- **Marks**: at most **24** per ride.
+- **Sounds**: at most **12** roadside sounds a minute reach any one rider.
+- **A Prime**: best 5 s W/kg inside the 15 s sprint window, and never within
+  **5 min** of another sprint.
+- **Flashes**: at most one dim flash per **10 s**, and none under reduced
+  motion.
+
 ## Route rides (defaults — tune in alpha; [ADR-0062](decisions/0062-the-horizon-may-be-a-road.md))
 
 | Parameter                    | Value                                                                                                                                   |
