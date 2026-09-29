@@ -57,9 +57,9 @@
 			<span>
 				Start WattRoom when I sign in to this computer
 				<span class="text-muted block text-xs">
-					It starts in {tray} with its window hidden, so messages and session
-					reminders reach you from the moment you sign in. While it runs your crews
-					see you online — quit it from {tray} to go offline.
+					It starts in {tray} with its window hidden, so messages and session reminders
+					reach you from the moment you sign in. While it runs your crews see you
+					online — quit it from {tray} to go offline.
 				</span>
 			</span>
 		</label>
