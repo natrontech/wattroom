@@ -1,3 +1,9 @@
+import type { SensorKind, SensorReading } from '$lib/ble/sensor';
+import type { Trainer } from '$lib/ble/trainer';
+import type { SprintSetup } from '$lib/ride/actuation';
+import type { RecordedSecond } from './ride-record.svelte';
+import type { Workout } from './types';
+
 export type RideState =
 	'idle' | 'countdown' | 'running' | 'autopaused' | 'resuming' | 'done';
 
@@ -43,4 +49,35 @@ export function signalLost(
 	if (!session || ridingSince === undefined) return false;
 	if (session.state === 'countdown' || session.state === 'done') return false;
 	return now - (session.sample?.at ?? ridingSince) > SIGNAL_LOST_MS;
+}
+
+/** What createRideSession is built from. */
+export interface RideOptions {
+	trainer: Trainer;
+	workout: Workout;
+	ftp: number;
+	/** Injected so tests can drive the clock; defaults to wall time. */
+	now?: () => number;
+	/**
+	 * When the ride began, ms epoch — the crash-safety buffer's own stamp
+	 * (#19), so the upload and a later retry from the recovery card name the
+	 * same ride. Two stamps a few hundred ms apart used to save it twice
+	 * (audit 2026-09-09). Defaults to now.
+	 */
+	startedAt?: number;
+	/**
+	 * Latest reading from each paired sensor (#11). Read per sample rather than
+	 * subscribed to, because arbitration is a snapshot question — which source wins
+	 * *right now* — and a sensor that has gone quiet has to lose on staleness.
+	 */
+	readings?: () => Partial<Record<SensorKind, SensorReading>>;
+	/**
+	 * The rider's sprint setup (#30/#41), read per sprint so a change on
+	 * /settings lands mid-ride. A `sprint` step carries no ERG target by
+	 * design — the trainer is released to slope for the window — and this path
+	 * used to collapse that into ERG 0 W, which is a freewheel (#1529).
+	 */
+	sprint?: () => SprintSetup;
+	/** Called with each recorded sample — the crash-safety buffer's seam (#19). */
+	onRecord?: (sample: RecordedSecond) => void;
 }
