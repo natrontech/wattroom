@@ -267,6 +267,7 @@
 					session.segments,
 					workout,
 					profile.current.ftp,
+					session.trace,
 				)
 			: null,
 	);
@@ -543,6 +544,7 @@
 				hr={session.sample?.heartRate ?? 0}
 				title={workout.name}
 				unit="step"
+				erg
 				eyebrow={stepEyebrow}
 			>
 				{#snippet controls()}

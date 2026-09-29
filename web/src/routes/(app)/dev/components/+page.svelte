@@ -122,6 +122,9 @@
 		label: 'Threshold',
 		watts: 239,
 		secondsLeft: 134,
+		band: { low: 227, high: 251 },
+		rep: { index: 3, count: 5 },
+		last: null,
 		next: { label: 'Active recovery', watts: 146, seconds: 300 },
 	};
 	// The kit's icon picker, live: pick one and the mark beside it follows.

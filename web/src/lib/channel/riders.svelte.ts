@@ -179,6 +179,7 @@ export function createRiders(deps: RiderDeps) {
 					deps.segments(),
 					deps.workout(),
 					you.ftp,
+					deps.recording.trace,
 				)
 			: null,
 	);

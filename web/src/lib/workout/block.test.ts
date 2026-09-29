@@ -34,3 +34,51 @@ describe('describeBlock under a trim', () => {
 		expect(describeBlock(now, segments, workout, ftp).next?.watts).toBe(270);
 	});
 });
+
+// Slot 1 (#3090): the target with its band, where you are in a repeat, and
+// for a few seconds after a block, how that block went.
+describe('describeBlock for slot 1', () => {
+	const workout: Workout = {
+		name: 'Reps',
+		author: 'test',
+		steps: [
+			{ type: 'steady', seconds: 60, target: 0.5 },
+			{
+				type: 'repeat',
+				times: 3,
+				steps: [
+					{ type: 'steady', seconds: 60, target: 1.0 },
+					{ type: 'steady', seconds: 30, target: 0.5 },
+				],
+			},
+		],
+	};
+	const segments = flatten(workout);
+	const ftp = 200;
+	const at = (t: number, trace: { t: number; w: number }[] = []) =>
+		describeBlock(targetAt(segments, ftp, t), segments, workout, ftp, trace);
+
+	it('gives the target its tolerance band', () => {
+		const block = at(70);
+		expect(block.watts).toBe(200);
+		expect(block.band).toEqual({ low: 190, high: 210 });
+	});
+
+	it('counts the passes of a repeated step, and none outside a repeat', () => {
+		expect(at(10).rep).toBeUndefined();
+		expect(at(70).rep).toEqual({ index: 1, count: 3 });
+		expect(at(60 + 90 + 10).rep).toEqual({ index: 2, count: 3 });
+		expect(at(60 + 90 * 2 + 70).rep).toEqual({ index: 3, count: 3 });
+	});
+
+	it('says how the last block went, for its first seconds only', () => {
+		// The warm-up held 100 W for 60 s, the last 15 of them at 150.
+		const trace = Array.from({ length: 60 }, (_, t) => ({
+			t,
+			w: t < 45 ? 100 : 150,
+		}));
+		expect(at(62, trace).last).toEqual({ watts: 113, onTarget: 75 });
+		expect(at(60 + 6, trace).last).toBeNull();
+		expect(at(62).last).toBeNull();
+	});
+});

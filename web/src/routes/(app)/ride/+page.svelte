@@ -379,7 +379,13 @@
 	// surface and the TV (ADR-0046).
 	const block = $derived(
 		session && session.segments.length > 0
-			? describeBlock(session.info, session.segments, workout, ftp)
+			? describeBlock(
+					session.info,
+					session.segments,
+					workout,
+					ftp,
+					session.trace,
+				)
 			: null,
 	);
 
