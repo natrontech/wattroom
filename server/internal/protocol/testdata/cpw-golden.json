@@ -1,0 +1,148 @@
+{
+  "about": "The critical-power model's golden vectors (#3262), written by `go test ./internal/road -run TestCPWGolden -update` and replayed by web/src/lib/road/cpw.test.ts; the two twins agree within 0.1 %.",
+  "fits": [
+    {
+      "best3m": 400,
+      "best12m": 300,
+      "best5m": 0,
+      "best20m": 0,
+      "ok": true,
+      "cp": 266.66666666666663,
+      "wPrime": 24000,
+      "estimate": false
+    },
+    {
+      "best3m": 520,
+      "best12m": 390,
+      "best5m": 470,
+      "best20m": 360,
+      "ok": true,
+      "cp": 346.66666666666663,
+      "wPrime": 31200,
+      "estimate": false
+    },
+    {
+      "best3m": 0,
+      "best12m": 300,
+      "best5m": 350,
+      "best20m": 280,
+      "ok": true,
+      "cp": 256.6666666666667,
+      "wPrime": 28000,
+      "estimate": true
+    },
+    {
+      "best3m": 400,
+      "best12m": 0,
+      "best5m": 350,
+      "best20m": 280,
+      "ok": true,
+      "cp": 256.6666666666667,
+      "wPrime": 28000,
+      "estimate": true
+    },
+    {
+      "best3m": 300,
+      "best12m": 300,
+      "best5m": 330,
+      "best20m": 290,
+      "ok": true,
+      "cp": 276.6666666666667,
+      "wPrime": 16000,
+      "estimate": true
+    },
+    {
+      "best3m": 300,
+      "best12m": 300,
+      "best5m": 0,
+      "best20m": 0,
+      "ok": false,
+      "cp": 0,
+      "wPrime": 0,
+      "estimate": true
+    },
+    {
+      "best3m": 0,
+      "best12m": 0,
+      "best5m": 0,
+      "best20m": 0,
+      "ok": false,
+      "cp": 0,
+      "wPrime": 0,
+      "estimate": true
+    }
+  ],
+  "traces": [
+    {
+      "name": "over CP, then recovering below it",
+      "cp": 250,
+      "wPrime": 20000,
+      "legs": [
+        {
+          "seconds": 100,
+          "watts": 300,
+          "balance": 15000
+        },
+        {
+          "seconds": 200,
+          "watts": 150,
+          "balance": 18160.602794142786
+        }
+      ]
+    },
+    {
+      "name": "intervals: 3 × (60 s at 400 W, 60 s at 120 W)",
+      "cp": 266.6,
+      "wPrime": 24000,
+      "legs": [
+        {
+          "seconds": 60,
+          "watts": 400,
+          "balance": 15995.999999999918
+        },
+        {
+          "seconds": 60,
+          "watts": 120,
+          "balance": 18451.978283593588
+        },
+        {
+          "seconds": 60,
+          "watts": 400,
+          "balance": 10447.978283593582
+        },
+        {
+          "seconds": 60,
+          "watts": 120,
+          "balance": 14606.33298552806
+        },
+        {
+          "seconds": 60,
+          "watts": 400,
+          "balance": 6602.332985528083
+        },
+        {
+          "seconds": 60,
+          "watts": 120,
+          "balance": 11940.700348438677
+        }
+      ]
+    },
+    {
+      "name": "riding through empty",
+      "cp": 200,
+      "wPrime": 10000,
+      "legs": [
+        {
+          "seconds": 120,
+          "watts": 300,
+          "balance": -2000
+        },
+        {
+          "seconds": 30,
+          "watts": 0,
+          "balance": 3414.2603668716924
+        }
+      ]
+    }
+  ]
+}
