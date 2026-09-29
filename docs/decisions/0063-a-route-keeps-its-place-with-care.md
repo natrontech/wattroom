@@ -132,3 +132,12 @@ rules, not alpha defaults: loosening one takes an ADR.
   [#3096](https://github.com/natrontech/wattroom/issues/3096) (a crew's span
   coordinates), [#3132](https://github.com/natrontech/wattroom/issues/3132),
   [#3240](https://github.com/natrontech/wattroom/issues/3240) (the corridor).
+
+## Amendment, 2026-09-29 (#3250): the world is keyed by place
+
+[ADR-0081](0081-the-world-is-keyed-by-place.md) is accepted, so the lines this
+ADR left conditional on it now hold: outside private regions a world is a
+function of the place and its data snapshot, not of a per-route salt; the
+world's tiles are cut per audience and cached per tile; and the fixed random
+offset of every privacy zone stays load-bearing. Private regions keep their
+owner-only secrets in local cells, and no map data is read there.
