@@ -1,5 +1,29 @@
 import type { GuardSample } from './guards';
 import { toleranceBand } from './guards';
+import type { RideState } from './ride-state';
+import type { Segment } from './types';
+
+/**
+ * Whether a kept second counts toward execution. SPEC excludes auto-paused
+ * time and untargeted blocks, and the grace seconds before auto-pause
+ * engages — the rider had already stopped, we simply had not noticed yet. A
+ * ramp is a warmup or a cooldown, which SPEC excludes as well: the server
+ * has always agreed (workout.TargetAt reports those seconds unscored).
+ */
+export function countsToward(second: {
+	state: RideState;
+	target: number;
+	pedalling: boolean;
+	segment: Segment | undefined;
+}): boolean {
+	return (
+		second.state === 'running' &&
+		second.target > 0 &&
+		second.pedalling &&
+		second.segment?.kind === 'steady' &&
+		!second.segment.hrHold // never scored (ADR-0008)
+	);
+}
 
 /** One ride second as recorded, for .fit export and the crash-safety buffer (#19). */
 export interface RecordedSecond {
