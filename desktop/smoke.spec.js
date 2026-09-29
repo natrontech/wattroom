@@ -355,6 +355,21 @@ test('an unreachable app renders the offline screen, not a blank window', async 
 	await app.close();
 });
 
+test('Linux is offered the download at once, and never installs by itself', async () => {
+	// #2818: a Linux update is checked only against a sha512 beside it, so
+	// Linux takes home's download offer from the first newer version. macOS
+	// and Windows check a signature and install their own, until three fail.
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+
+	expect(await win.evaluate(() => window.wattroom.updateFailed())).toBe(
+		process.platform === 'linux',
+	);
+
+	await app.close();
+});
+
 test('the navigation guard refuses another origin', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
