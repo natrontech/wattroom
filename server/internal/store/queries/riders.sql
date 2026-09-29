@@ -121,12 +121,11 @@ order by m.kind;
 -- The rides the rider marked shared, newest first — friends only. The
 -- channel is named only when the viewer may enter it (`visible_channels`,
 -- ADR-0058; ADR-0012: friendship never pierces the boundary); otherwise the
--- ride just "was in a room". The column names are the page's until #2457.
--- A group ride is one with a crew or a channel on it (#2443, backfilled for
+-- ride was just "with the crew". A group ride is one with a crew or a channel on it (#2443, backfilled for
 -- every room ride by M9).
 select r.id, r.workout_name, r.started_at, r.seconds, r.kj, r.execution, r.execution_scored,
-       (r.crew_id is not null or r.channel_id is not null)::boolean as in_room,
-       coalesce(case when v.user_id is not null then ch.name end, '')::text as room_name,
+       (r.crew_id is not null or r.channel_id is not null)::boolean as with_crew,
+       coalesce(case when v.user_id is not null then ch.name end, '')::text as channel_name,
        coalesce((select string_agg(m.kind, ' ' order by m.kind) from medals m where m.ride_id = r.id), '')::text as medal_kinds
 from rides r
 left join channels ch on ch.id = r.channel_id

@@ -20,7 +20,7 @@ func sampleCard() RideCard {
 	return RideCard{
 		WorkoutName: "Sweet Spot Builder",
 		StartedAt:   time.Date(2026, 9, 11, 19, 42, 0, 0, time.UTC),
-		RoomName:    "Sunday Sufferfest",
+		Place:       "Sunday Sufferfest",
 		Seconds:     len(watts), AvgWatts: 239, NormWatts: 248, Kj: 645,
 		Ftp: 250, Xp: 1287, Execution: 0.94, ExecutionScored: true,
 		Curve: stats.Curve{Best5s: 900, Best1m: 298, Best5m: 268, Best20m: 252},
@@ -76,7 +76,7 @@ func TestRenderRideWithoutSamples(t *testing.T) {
 func TestRenderRideNameThatDoesNotFit(t *testing.T) {
 	long := sampleCard()
 	long.WorkoutName = "An Extremely Long Workout Name That Cannot Possibly Fit Across One Card"
-	long.RoomName = "🔥 emoji the embedded face has no glyph for 🔥"
+	long.Place = "🔥 emoji the embedded face has no glyph for 🔥"
 	decode(t, mustRender(t, long))
 }
 

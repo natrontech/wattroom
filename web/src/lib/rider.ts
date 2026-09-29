@@ -24,9 +24,10 @@ export interface SharedRide {
 	executionScored?: boolean;
 	/** docs/SPEC.md medal kinds won on this ride. */
 	medals?: string[];
-	inRoom: boolean;
+	/** Ridden with a crew (#3361: `inRoom` before crews, still sent for a release). */
+	withCrew: boolean;
 	/** The voice channel's name, only when you may enter it. */
-	roomName?: string;
+	channelName?: string;
 }
 
 export interface Rider {
@@ -85,10 +86,10 @@ export function monthLine(month: { seconds: number; kj: number }): string {
 
 /** Where the ride happened, for the line after its name. */
 export function ridePlace(
-	ride: Pick<SharedRide, 'inRoom' | 'roomName'>,
+	ride: Pick<SharedRide, 'withCrew' | 'channelName'>,
 ): string {
-	if (ride.roomName) return ride.roomName;
-	return ride.inRoom ? 'in a session' : 'solo';
+	if (ride.channelName) return ride.channelName;
+	return ride.withCrew ? 'in a session' : 'solo';
 }
 
 export function medalTotal(medals: Record<string, number>): number {

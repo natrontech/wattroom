@@ -423,7 +423,7 @@
 									>{medalName(medal.kind)}</span
 								>
 								<span class="text-muted block text-[10px]">
-									{MEDAL_META[medal.kind]?.criterion ?? medal.roomName}
+									{MEDAL_META[medal.kind]?.criterion ?? medal.crewName}
 								</span>
 							</span>
 						</li>
