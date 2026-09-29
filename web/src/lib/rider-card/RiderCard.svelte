@@ -3,12 +3,15 @@
 	// at once — the faces every feed teaches — and fills in where they are from
 	// their page's own read, whose gate it keeps: a rider you may not open
 	// shows no whereabouts.
+	import Eye from '@lucide/svelte/icons/eye';
+	import EyeOff from '@lucide/svelte/icons/eye-off';
 	import MessageSquare from '@lucide/svelte/icons/message-square';
 	import Smile from '@lucide/svelte/icons/smile';
 	import User from '@lucide/svelte/icons/user';
 	import { account } from '$lib/account.svelte';
 	import Avatar from '$lib/components/Avatar.svelte';
 	import { dm } from '$lib/dm/dm.svelte';
+	import { hiddenRiders, stillTogether } from '$lib/hidden-riders.svelte';
 	import { levelFromXp } from '$lib/level';
 	import { people } from '$lib/people.svelte';
 	import { fetchRider, type Rider } from '$lib/rider';
@@ -42,6 +45,20 @@
 		you ? account.me?.statusLine : (rider?.statusLine ?? face?.statusLine),
 	);
 	const where = $derived(rider ? whereabouts(rider.presence) : '');
+	// Hiding never parts a crew (#3202): the card says so where it applies.
+	const together = $derived(rider?.crewsInCommon[0]?.name);
+
+	async function toggleHidden() {
+		const was = rider;
+		if (!was) return;
+		const done = was.hidden
+			? await hiddenRiders.show(id, name)
+			: await hiddenRiders.hide(id, name);
+		// Flipped from what the card held: once a friend is hidden their page
+		// may close to you, and a reread of it answers 404.
+		if (done && rider === was)
+			rider = cachedRider(id, { ...was, hidden: !was.hidden });
+	}
 
 	let box = $state<HTMLDivElement | null>(null);
 	const place = $derived.by(() => {
@@ -95,6 +112,12 @@
 	{#if where}
 		<p class="text-muted mt-2 text-xs">{where}</p>
 	{/if}
+	{#if rider?.hidden}
+		<p class="text-muted mt-2 text-xs" data-testid="rider-card-hidden">
+			Hidden — you no longer reach each other.
+			{#if together}{stillTogether(together)}{/if}
+		</p>
+	{/if}
 
 	<div class="mt-3 flex flex-wrap gap-2">
 		{#if rider?.friend === 'accepted'}
@@ -121,5 +144,14 @@
 		<a href="/u/{id}" onclick={riderCard.close} class="btn btn-secondary btn-xs"
 			><User size={13} /> Rider page</a
 		>
+		{#if rider && !you}
+			<button
+				onclick={() => void toggleHidden()}
+				class="btn btn-secondary btn-xs"
+				>{#if rider.hidden}<Eye size={13} /> Show again{:else}<EyeOff
+						size={13}
+					/> Hide this rider{/if}</button
+			>
+		{/if}
 	</div>
 </div>

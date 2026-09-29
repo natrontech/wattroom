@@ -42,10 +42,8 @@ having accepted the friend. Remove them and they see nothing again.
 
 **Requests**: pending requests show to both sides; the addressee accepts or
 dismisses. Dismissing deletes the request; the requester just sees it
-pending no more.
-<!-- ponytail: no block list — the shared-room gate already limits requests
-     to people you chose to share a room with. Add blocking when rooms grow
-     past hand-picked crews. -->
+pending no more. A rider can also be hidden — see the 2026-09-29 amendment
+below.
 
 ## Consequences
 
@@ -57,8 +55,8 @@ pending no more.
   them nothing; it only constrains strangers, who are exactly who it should
   constrain.
 - A removed friend can re-request (they still share a room with you, or
-  they can't). Annoyance ceiling accepted for the alpha; blocking is the
-  named upgrade path.
+  they can't). Annoyance ceiling accepted for the alpha; blocking was the
+  named upgrade path, and is taken below (2026-09-29).
 
 ## Amendment — formation by friend code only (2026-08-31)
 
@@ -136,3 +134,13 @@ So the line moves to where the privacy actually is:
 - It is bookkeeping no screen shows you, so the data export leaves it out, as it does `channel_reads` (`account.go`); deleting the account takes it with the rows it points at.
 
 The rejected alternative was syncing the localStorage stamps through some side channel — the same data on the server, with more code and less honesty about it.
+
+## Amendment — hide this rider, both ways (2026-09-29, #3202)
+
+The decision above deferred a block list "until rooms grow past hand-picked crews". They have: the public crew directory (ADR-0039) puts strangers in the same crews, and friend codes and DMs already reach people in other crews. So a rider can now **hide** another rider.
+
+- **Both ways, from either side's hiding.** A hidden pair's DM thread is closed and leaves both conversation lists; their friendship leaves both friends lists, presence with it; neither's friend requests (by id or by code), cheers, pokes or reactions reach the other. It is stored as `rider_blocks` (blocker, blocked, created_at), and every friendship gate asks it beside its own question — so a hidden DM is refused by the very branch a closed thread is.
+- **The blocked rider is never told.** Their DM fails exactly as a closed thread fails, byte for byte; their friend request is answered as a sent one and stays pending in front of them, never reaching the other list; the friend who hid them reads as an unfriending, which was already silent. Who hid you is not something any answer carries.
+- **It never parts a crew.** Inside a shared crew, sessions, voice and live numbers stay shared — that is the crew ban's job, and the hiding rider is told so in one line: “You still ride together in *crew*. An admin can remove a member.”
+- **Reversible, so no confirm** (errors.md): nothing between the two is deleted, the friendship row included, so showing them again — from the toast's undo or *Hidden riders* in Settings — puts everything back as it was.
+- **Privacy.** The list is the hiding rider's alone: in their export (`hidden-riders.json`), never shown to the rider hidden, and purged in both directions with either account. The hub keeps an in-memory copy of the pairs to sort cheers and pokes per socket; nothing about a block is persisted anywhere else.

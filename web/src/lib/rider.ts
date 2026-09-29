@@ -56,6 +56,8 @@ export interface Rider {
 	/** Their status line (ADR-0060); null for none. */
 	statusLine?: StatusLine | null;
 	canAdd: boolean;
+	/** You hid them (#3202). Never whether they hid you. */
+	hidden?: boolean;
 	/** Friends and yourself only; null otherwise. */
 	month: { rides: number; seconds: number; kj: number } | null;
 	sharedRides: SharedRide[] | null;
