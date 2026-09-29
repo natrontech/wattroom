@@ -99,3 +99,11 @@ trainer is in SIM. The free ride also rides **alone on `/ride`**, not only in a
 voice channel; alone, nobody sees its numbers but the rider. Time trial, recon,
 climb repeats and "ride with a friend" are ways into the free ride, not modes
 of their own.
+
+## Amendment, 2026-09-29 (#3322): grade mode carries a second pair
+
+[ADR-0084](0084-wattroom-shifts.md) lets a rider shift virtual gears. In the
+free ride's **grade** mode the grade pair stays, because it sets the road, and
+**Easier / Harder** join it below to set the gear. On a road the road sets the
+grade, so only Easier / Harder remain. In **watts** mode Easier / Harder move
+the target by 10 W.
