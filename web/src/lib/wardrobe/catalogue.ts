@@ -10,15 +10,27 @@
 import data from './catalogue.json';
 
 export type Tier = keyof typeof data.currency.tiers;
-export type Item = (typeof data.items)[number] & {
+
+/** One catalogue entry: what every item has, and the look it carries beside. */
+export interface Item {
+	id: string;
+	slot: string;
+	name: string;
+	/** A maker's id; WattRoom's own items have none. */
+	brand?: string;
+	/** A price tier (docs/SPEC.md "Wardrobe"), on an item sold for Batzen. */
 	tier?: Tier;
+	/** "earned:<rule>" or "with:<frame>|<frame>", on an item never sold. */
 	unlock?: string;
 	starter?: boolean;
 	free?: boolean;
 	crewOnly?: boolean;
-};
+	[look: string]: unknown;
+}
 
-export const catalogue = data as typeof data & { items: Item[] };
+export const catalogue = data as unknown as Omit<typeof data, 'items'> & {
+	items: Item[];
+};
 
 /** How an item is had: sold, earned, with a frame, a crew's, or free. */
 export type Kind = 'buy' | 'earn' | 'with' | 'crew' | 'free';
