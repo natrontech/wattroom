@@ -232,6 +232,7 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		'pickDevice',
 		'platform',
 		'retry',
+		'setBadge',
 		'setLaunchAtLogin',
 		'setRoom',
 		'titleBar',
@@ -252,6 +253,30 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		() => typeof require !== 'undefined' || typeof process !== 'undefined',
 	);
 	expect(leaked, 'node reachable from the renderer').toBe(false);
+
+	await app.close();
+});
+
+// #3008: the page's unread count reaches the icon, clamped the way badge.js
+// promises — a whole count, never negative, never a fraction. Read back on
+// macOS only: Linux keeps a badge only under a Unity launcher, and Windows
+// draws an overlay, which has no getter.
+test('the page\'s unread count reaches the Dock', async () => {
+	test.skip(process.platform !== 'darwin', 'no badge count to read back here');
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	const badge = () => app.evaluate(({ app }) => app.getBadgeCount());
+	const send = (n) => win.evaluate((count) => window.wattroom.setBadge(count), n);
+
+	await send(7);
+	await expect.poll(badge).toBe(7);
+	await send(-3);
+	await expect.poll(badge).toBe(0);
+	await send(5000);
+	await expect.poll(badge).toBe(999);
+	await send(0);
+	await expect.poll(badge).toBe(0);
 
 	await app.close();
 });

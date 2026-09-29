@@ -35,7 +35,7 @@ type Rig = { id: FrameId; height: number; build: Build };
 // prettier-ignore
 const rigs: Rig[] = FULL
 	? frames.flatMap((id) => builds.flatMap((build) => [1.5, 1.7, 1.9, 2.05].map((height) => ({ id, height, build }))))
-	: [...frames.map((id) => ({ id, height: 1.8, build: 'athletic' as const })), { id: 'race', height: 1.5, build: 'slim' }, { id: 'tt', height: 2.05, build: 'strong' }, { id: 'ordonnanz', height: 2.05, build: 'strong' }];
+	: [...frames.map((id) => ({ id, height: 1.8, build: 'athletic' as const })), { id: 'race', height: 1.5, build: 'slim' }, { id: 'tt', height: 2.05, build: 'strong' }, { id: 'tt', height: 1.5, build: 'strong' }, { id: 'ordonnanz', height: 2.05, build: 'strong' }];
 // prettier-ignore
 const riders: Rig[] = FULL ? rigs : [{ id: 'race', height: 2.05, build: 'strong' }, { id: 'tt', height: 1.5, build: 'slim' }, { id: 'ordonnanz', height: 1.8, build: 'athletic' }];
 const name = (r: Rig) => `${r.id} ${r.height} m ${r.build}`;
@@ -121,6 +121,22 @@ describe(`the figure's gates, ${FULL ? 'every rig' : 'the quick sweep'} (#3072)`
 							measure(m, t, g);
 						}
 					}
+			// Onto the pads and off them, the second hand 0.12 s behind the first over a 0.5 s move (#3481).
+			if (m.userData.rig.fit.grips.extensions)
+				for (const [a, b] of [
+					['hoods', 'extensions'],
+					['extensions', 'hoods'],
+				] as const)
+					for (let q = 1; q < 10; q++)
+						for (const crank of cranks) {
+							const p = q / 10;
+							pose(m, {
+								crank,
+								elbow: 21,
+								grip: { R: { a, b, p }, L: { a, b, p: Math.max(0, p - 0.24) } },
+							});
+							measure(m, t);
+						}
 			for (const pitch of [-0.15, 0, 0.12])
 				for (const turn of turns)
 					for (const crank of cranks) {

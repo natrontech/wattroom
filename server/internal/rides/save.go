@@ -19,6 +19,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/wallet"
+	"github.com/natrontech/wattroom/server/internal/wardrobe"
 	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
@@ -227,6 +228,11 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	// the day's cap holds under two saves at once.
 	if err := wallet.MintRide(r.Context(), q, user.ID, id, wallet.Batzen(watts, int(row.FtpWatts), false)); err != nil {
 		httpx.Fail(w, s.log, "solo ride wallet mint failed", err, "The ride could not be saved. It stays on this device.")
+		return
+	}
+	// What the rider wore on it is theirs to keep now, past the undo (#3154).
+	if err := wardrobe.MarkWorn(r.Context(), q, user.ID); err != nil {
+		httpx.Fail(w, s.log, "solo ride outfit worn failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
 	if err := tx.Commit(r.Context()); err != nil {

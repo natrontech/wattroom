@@ -83,6 +83,21 @@ func (q *Queries) ExportUserWallet(ctx context.Context, arg ExportUserWalletPara
 	return items, nil
 }
 
+const lastRideBatzen = `-- name: LastRideBatzen :one
+select amount from wallet_events
+where user_id = $1 and source = 'ride'
+order by created_at desc, id desc
+limit 1
+`
+
+// What the rider's last ride paid, for "about one ride like your last one".
+func (q *Queries) LastRideBatzen(ctx context.Context, userID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, lastRideBatzen, userID)
+	var amount int32
+	err := row.Scan(&amount)
+	return amount, err
+}
+
 const listAccountsWithoutOpening = `-- name: ListAccountsWithoutOpening :many
 select u.id from users u
 where not exists (select 1 from wallet_events w where w.user_id = u.id and w.source = 'opening')

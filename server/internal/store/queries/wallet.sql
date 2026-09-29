@@ -69,3 +69,10 @@ select count(*)::integer as rides, coalesce(max(seconds), 0)::integer as longest
 from rides
 where session_id is not null
   and session_id = (select r.session_id from rides r where r.id = $1);
+
+-- name: LastRideBatzen :one
+-- What the rider's last ride paid, for "about one ride like your last one".
+select amount from wallet_events
+where user_id = $1 and source = 'ride'
+order by created_at desc, id desc
+limit 1;

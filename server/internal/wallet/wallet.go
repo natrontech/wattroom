@@ -99,6 +99,38 @@ func mint(ctx context.Context, q *db.Queries, user pgtype.UUID, source, ref stri
 	return err
 }
 
+// Balance is what the rider holds, the welcome grant included the first time
+// they are asked about (the synthetic account holds nothing). The caller
+// holds their row lock when a spend depends on it.
+func Balance(ctx context.Context, q *db.Queries, user pgtype.UUID) (int64, error) {
+	synthetic, err := q.UserIsSynthetic(ctx, user)
+	if err == nil && !synthetic {
+		err = ensureWelcome(ctx, q, user)
+	}
+	if err != nil {
+		return 0, err
+	}
+	return q.WalletBalance(ctx, user)
+}
+
+// Spend writes a purchase of `price` Batzen (#3154): one row per ref, so a
+// retried purchase spends once. The caller has read the balance under the
+// rider's row lock, which is what keeps it from going below zero.
+func Spend(ctx context.Context, q *db.Queries, user pgtype.UUID, ref string, price int32) error {
+	_, err := q.CreateWalletEvent(ctx, db.CreateWalletEventParams{
+		UserID: user, Source: "purchase", Amount: -price, Ref: ref,
+	})
+	return err
+}
+
+// Refund gives an undone purchase back, under the purchase's own ref.
+func Refund(ctx context.Context, q *db.Queries, user pgtype.UUID, ref string, price int32) error {
+	_, err := q.CreateWalletEvent(ctx, db.CreateWalletEventParams{
+		UserID: user, Source: "undo", Amount: price, Ref: ref,
+	})
+	return err
+}
+
 func ensureWelcome(ctx context.Context, q *db.Queries, user pgtype.UUID) error {
 	_, err := q.CreateWalletEvent(ctx, db.CreateWalletEventParams{
 		UserID: user, Source: "welcome", Amount: welcome, Ref: "welcome",
@@ -177,15 +209,7 @@ func (s *Service) handleBalance(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	synthetic, err := s.store.Queries.UserIsSynthetic(r.Context(), user.ID)
-	if err == nil && !synthetic {
-		err = ensureWelcome(r.Context(), s.store.Queries, user.ID)
-	}
-	if err != nil {
-		httpx.Fail(w, s.log, "wallet welcome failed", err, "Your Batzen could not be loaded.")
-		return
-	}
-	balance, err := s.store.Queries.WalletBalance(r.Context(), user.ID)
+	balance, err := Balance(r.Context(), s.store.Queries, user.ID)
 	if err != nil {
 		httpx.Fail(w, s.log, "wallet balance failed", err, "Your Batzen could not be loaded.")
 		return
