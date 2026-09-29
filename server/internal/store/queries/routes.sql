@@ -65,6 +65,11 @@ limit sqlc.arg(lim);
 -- audience rule, and routes.Attacher is the one place that applies it.
 select owner_id, src, road, road_sealed, key_version from routes where id = $1;
 
+-- name: GetRouteGenName :one
+-- The name a route goes out under beyond its owner (#3055, ADR-0063): the
+-- generated one, never the owner's rename.
+select gen_name from routes where id = $1;
+
 -- name: ListRoutesWithRoadInTheClear :many
 -- The boot's sealing of roads stored before #3511, a page at a time by id:
 -- every row with nothing sealed yet. ponytail: a keyless server's rows never

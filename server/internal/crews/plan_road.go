@@ -20,28 +20,33 @@ func (s *Service) SetRoads(a *routes.Attacher) { s.roads = a }
 
 // planRoad checks a plan's road — the planner's own route, and never one
 // from Strava, since the crew reads it — and answers the route for the
-// plan's row, null when the workout rides none. False when it wrote the
+// plan's row, null when the workout rides none, and the name the plan is
+// kept under: on a road, the route's generated name (#3055), which is all the
+// calendar feed and the crew's emails ever see. False when it wrote the
 // refusal.
-func (s *Service) planRoad(w http.ResponseWriter, r *http.Request, workoutJSON string, planner pgtype.UUID) (pgtype.UUID, bool) {
+func (s *Service) planRoad(w http.ResponseWriter, r *http.Request, workoutJSON, name string, planner pgtype.UUID) (pgtype.UUID, string, bool) {
 	if s.roads == nil {
 		if ref, _ := workout.RoadOf(workoutJSON); ref != nil {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 				"This server does not ride roads yet, so a plan cannot carry one.", "workoutJson")
-			return pgtype.UUID{}, false
+			return pgtype.UUID{}, "", false
 		}
-		return pgtype.UUID{}, true
+		return pgtype.UUID{}, name, true
 	}
 	id, err := s.roads.CheckShared(r.Context(), workoutJSON, planner)
 	var refused routes.Refused
 	if errors.As(err, &refused) {
 		httpx.WriteFieldError(w, http.StatusForbidden, "forbidden", string(refused), "workoutJson")
-		return pgtype.UUID{}, false
+		return pgtype.UUID{}, "", false
+	}
+	if err == nil {
+		name, err = s.roads.SharedName(r.Context(), workoutJSON, name)
 	}
 	if err != nil {
 		httpx.Fail(w, s.log, "plan road check failed", err, "The session could not be planned. Try again.")
-		return pgtype.UUID{}, false
+		return pgtype.UUID{}, "", false
 	}
-	return id, true
+	return id, name, true
 }
 
 // readable is a plan's workout as viewer may read it: its road cut to them.

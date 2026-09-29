@@ -207,3 +207,22 @@ func TestASessionRidesTheCoachsOwnRoadAsTheCrewsCut(t *testing.T) {
 		}
 	}
 }
+
+// A workout on a road goes out under its route's generated name (#3055);
+// one on no road keeps its own, and so does one whose route is gone.
+func TestAWorkoutOnARoadIsSharedUnderItsGeneratedName(t *testing.T) {
+	h := setup(t, nil)
+	route := storeTellingRoute(t, h, h.users.ByToken["alice"].ID, "gpx")
+	for _, c := range []struct {
+		name, workout, want string
+	}{
+		{"on a road", workoutOn(route), "Road · 3.0 km · 50 m"},
+		{"on a road as a reader's copy carries it", `{"name":"Home loop","road":{"routeId":"` + route + `","fromM":0,"toM":3000,"profile":"AQ==","originM":400},"steps":[{"type":"road","seconds":600}]}`, "Road · 3.0 km · 50 m"},
+		{"on no road", `{"name":"Openers","steps":[{"type":"steady","seconds":600,"target":0.6}]}`, "From home"},
+		{"on a road that is gone", workoutOn(uuid.NewString()), "From home"},
+	} {
+		if got, err := SharedName(t.Context(), h.store.Queries, c.workout, "From home"); err != nil || got != c.want {
+			t.Errorf("%s: %q %v, want %q", c.name, got, err, c.want)
+		}
+	}
+}

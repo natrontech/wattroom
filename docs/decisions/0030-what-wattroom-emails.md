@@ -187,4 +187,5 @@ place. What is never sent gains one line: **a mail's subject and lead, an ICS
 event and a Strava title never carry a place name** — not the owner's own
 name for a route, and not a generated one that names a place. A route in a
 planned session reaches a mail as its numeric name ("Road · 52.9 km ·
-1,312 m") or not at all.
+1,312 m") or not at all. A climb's name is a place name too, and goes the
+same way (#3055).

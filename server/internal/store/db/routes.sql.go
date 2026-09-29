@@ -222,6 +222,19 @@ func (q *Queries) GetOwnerRoutePlace(ctx context.Context, arg GetOwnerRoutePlace
 	return i, err
 }
 
+const getRouteGenName = `-- name: GetRouteGenName :one
+select gen_name from routes where id = $1
+`
+
+// The name a route goes out under beyond its owner (#3055, ADR-0063): the
+// generated one, never the owner's rename.
+func (q *Queries) GetRouteGenName(ctx context.Context, id pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getRouteGenName, id)
+	var gen_name string
+	err := row.Scan(&gen_name)
+	return gen_name, err
+}
+
 const getRouteRoad = `-- name: GetRouteRoad :one
 select owner_id, src, road, road_sealed, key_version from routes where id = $1
 `
