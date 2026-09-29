@@ -114,3 +114,64 @@ func TestOnlyTheOwnerPlansTheirRoad(t *testing.T) {
 		}
 	}
 }
+
+// workoutOpener is the hub as a plan's start reaches it, keeping the workout
+// every socket in the channel would be sent.
+type workoutOpener struct {
+	fakePresence
+	workoutJSON string
+}
+
+func (o *workoutOpener) OpenSession(channel string, _ protocol.Rider, _, workoutJSON string) (string, string, string) {
+	o.workoutJSON = workoutJSON
+	return "session-in-" + channel, "", ""
+}
+
+// Starting a planned road session sends every socket the crew's cut, the
+// same as picking it does (#3512): bob starts alice's plan and the session
+// holds the stretch between the anchors, from zero — never the bare
+// reference nobody but alice could ride.
+func TestStartingARoadPlanSendsTheCrewCut(t *testing.T) {
+	h := setup(t)
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
+	opener := &workoutOpener{}
+	h.svc.SetPresence(opener)
+	crew, channel := h.crewWithChannel(t)
+	route := h.tellingRoute(t, "alice", "gpx")
+	status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), roadPlanBody(route, time.Now().Add(10*time.Minute)))
+	if status != http.StatusCreated {
+		t.Fatalf("alice plans her road: %d %v", status, body)
+	}
+	plan, _ := body["id"].(string)
+	status, body = h.call(t, "bob", http.MethodPost, schedulePath(crew, "/", plan, "/started"),
+		fmt.Sprintf(`{"channelId":%q}`, store.UUIDString(channel)))
+	if status != http.StatusOK {
+		t.Fatalf("bob starts it: %d %v", status, body)
+	}
+	var w struct {
+		Road struct {
+			RouteID string  `json:"routeId"`
+			Profile string  `json:"profile"`
+			OriginM float64 `json:"originM"`
+		} `json:"road"`
+	}
+	if err := json.Unmarshal([]byte(opener.workoutJSON), &w); err != nil {
+		t.Fatalf("the session's workout: %v (%q)", err, opener.workoutJSON)
+	}
+	packed, err := base64.StdEncoding.DecodeString(w.Road.Profile)
+	if err != nil || w.Road.Profile == "" {
+		t.Fatalf("the session's road carries no profile — the bare reference went out: %s", opener.workoutJSON)
+	}
+	r, err := road.UnpackRoad(packed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if w.Road.RouteID != route || w.Road.OriginM != protocol.RouteHiddenEndM || len(r.Heights) != 111 {
+		t.Errorf("the session rides %d samples from %v m of %s, want the crew's 111 from %d", len(r.Heights), w.Road.OriginM, w.Road.RouteID, protocol.RouteHiddenEndM)
+	}
+	for i, turn := range r.Turns {
+		if turn == testx.TellingEndTurn || r.Heights[i] != 0 {
+			t.Fatalf("the session holds sample %d of a hidden end or an altitude", i)
+		}
+	}
+}

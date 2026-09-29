@@ -408,8 +408,12 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 	}
 	var sessionID string
 	if s.presence != nil {
+		workoutJSON, ok := s.sessionCut(w, r, plan.WorkoutJson)
+		if !ok {
+			return
+		}
 		rider := protocol.Rider{ID: store.UUIDString(user.ID), Name: user.DisplayName, Role: role}
-		id, code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, string(plan.WorkoutJson))
+		id, code, message := s.presence.OpenSession(store.UUIDString(channel), rider, plan.WorkoutName, workoutJSON)
 		if code != "" {
 			status := http.StatusBadRequest
 			if code == "conflict" {
