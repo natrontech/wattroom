@@ -143,6 +143,20 @@ fi
 echo "cutting $version (previous: ${prev:-none})"
 repo_url=https://github.com/natrontech/wattroom
 
+# The patent watch runs with the first release of each ISO week (ADR-0084,
+# #3347): a reminder only — it blocks nothing, asks nothing and fetches
+# nothing. first_of_week takes the newest release tag's ISO week, empty when
+# there is none, and this week's.
+first_of_week() {
+	[ -z "$1" ] || [ "$1" != "$2" ]
+}
+last_week=""
+[ -z "$prev" ] || last_week=$(git for-each-ref --format='%(creatordate:format:%G-W%V)' "refs/tags/$prev")
+this_week=$(date +%G-W%V)
+if first_of_week "$last_week" "$this_week"; then
+	echo "Patent watch: first release of $this_week — check the registers and log it on $repo_url/issues/3323"
+fi
+
 # Promote: the new heading slots in directly under [Unreleased], so everything
 # written there becomes this release and Unreleased is left empty.
 tmp=$(mktemp)
