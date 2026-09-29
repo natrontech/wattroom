@@ -156,14 +156,16 @@ export function bikeParts(q: Detail): THREE.BufferGeometry[] {
 	);
 	p.push(
 		part(
-			new THREE.BoxGeometry(0.03, 0.18, 0.02).translate(0, -0.086, 0.1),
+			// The right arm lies along +X, so the crank bone's Rz(−a) carries it to
+			// the pedal rider-pose.ts puts the right foot on.
+			new THREE.BoxGeometry(0.18, 0.03, 0.02).translate(0.086, 0, 0.1),
 			B.crank,
 			S.metal,
 		),
 	);
 	p.push(
 		part(
-			new THREE.BoxGeometry(0.03, 0.18, 0.02).translate(0, 0.086, -0.1),
+			new THREE.BoxGeometry(0.18, 0.03, 0.02).translate(-0.086, 0, -0.1),
 			B.crank,
 			S.metal,
 		),

@@ -3,6 +3,7 @@
 	// style, the camera, time, and a GPX of your own. It owns the canvas and
 	// hands it to scene.ts; everything three.js happens there.
 	import { onMount, untrack } from 'svelte';
+	import { createProfileStore } from '$lib/profile.svelte';
 	import Profile from './Profile.svelte';
 	import { buildFailureMessage, parseGpx } from './gpx';
 	import { placeScene } from './place-scene';
@@ -35,6 +36,7 @@
 	let camera = $state<CameraMode>('chase');
 	let speedup = $state(1);
 	let scene: WorldScene | null = null;
+	const profile = createProfileStore();
 
 	const style = $derived(styles.find((s) => s.id === styleId) ?? styles[0]);
 
@@ -96,6 +98,7 @@
 						style,
 						camera,
 						watts,
+						ftp: profile.current.ftp,
 						speedup,
 						onTick: (next) => (hud = next),
 					}),

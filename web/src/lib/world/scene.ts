@@ -35,6 +35,7 @@ export type MountOptions = {
 	style: Style;
 	camera?: CameraMode;
 	watts?: number;
+	ftp: number; // the signed-in rider's: your cadence and zone ring read against it
 	speedup?: number;
 	onTick?: (hud: Hud) => void; // a few times a second, while the loop runs
 };
@@ -59,7 +60,7 @@ export function mount(
 	let mode: CameraMode = opts.camera ?? 'chase';
 	let speedup = opts.speedup ?? 1;
 	const env: Env = { windMs: 0, difficulty: 0.5 };
-	const riders = defaultRiders(opts.watts ?? 200);
+	const riders = defaultRiders(opts.watts ?? 200, opts.ftp);
 	const you = riders.find((r) => r.you) ?? riders[0];
 	const pedal: Pedalling[] = riders.map(() => ({
 		crank: 0,

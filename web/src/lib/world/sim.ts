@@ -48,8 +48,9 @@ export function trainerFor(route: Route, r: SimRider, env: Env): number {
 	return trainerGrade(at(route, r.d).grade, env.difficulty);
 }
 
-// You and a small crew, a few wheels apart so the camera sees you and them.
-export function defaultRiders(watts: number): SimRider[] {
+// You, on your own FTP, and a small crew, a few wheels apart so the camera
+// sees you and them.
+export function defaultRiders(watts: number, ftp: number): SimRider[] {
 	const mk = (
 		id: string,
 		name: string,
@@ -68,7 +69,7 @@ export function defaultRiders(watts: number): SimRider[] {
 		lap: 0,
 	});
 	return [
-		mk('you', 'You', 80, 250, 0),
+		mk('you', 'You', 80, ftp, 0),
 		mk('sven', 'Sven', 74, 270, 1),
 		mk('mia', 'Mia', 61, 215, 2),
 		mk('tom', 'Tom', 92, 300, 3),

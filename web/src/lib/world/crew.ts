@@ -35,6 +35,13 @@ export function hueOf(id: string): number {
 	return (20 + u * 280) % 360; // skips 300°–20°, the watt magenta's neighbourhood
 }
 
+// The cadence a rider without a cadence sensor pedals at, from their effort
+// (docs/SPEC.md "Rider animation": the jukebox's effort tiers).
+export function effortRpm(watts: number, ftp: number): number {
+	const r = watts / ftp;
+	return r <= 0.55 ? 80 : r <= 0.75 ? 85 : r <= 0.9 ? 90 : 95;
+}
+
 // What a rider's legs are doing, kept across style changes.
 export type Pedalling = { crank: number; wheel: number; stand: number };
 
@@ -135,9 +142,9 @@ export function makeCrew(riders: SimRider[], style: Style) {
 			v.bead.scale.setScalar(overview ? 22 : 1);
 			v.bead.position.y = overview ? 22 : 0;
 			v.ring.material.color.copy(zones[zoneOf(r.watts, r.ftp) - 1]);
-			// Pedal only when the data says so (a rider at 0 W coasts); spin up with watts.
+			// Pedal only when the data says so (a rider at 0 W coasts).
 			const s = pedal[i];
-			const rpm = r.watts < 5 ? 0 : Math.min(105, 68 + r.watts / 9);
+			const rpm = r.watts < 5 ? 0 : effortRpm(r.watts, r.ftp);
 			s.crank += (rpm / 60) * Math.PI * 2 * dt;
 			s.wheel += (r.v / GEO.wheelR) * dt;
 			// Stand for a sprint with hysteresis: up above 1.6 × FTP, down below 1.3 ×.
