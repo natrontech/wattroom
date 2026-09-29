@@ -1,9 +1,9 @@
 -- name: CreateRoute :one
 insert into routes (
     owner_id, src, name, gen_name, road, road_hash, length_m, gain_m,
-    climbs, ele_source, geom_sealed, key_version
+    climbs, ele_source, geom_sealed, key_version, road_sealed
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 returning id, created_at;
 
 -- name: ListOwnerRoutes :many
@@ -18,7 +18,8 @@ order by created_at desc, id desc;
 -- name: GetOwnerRoute :one
 -- One route, the owner's only: someone else's reads as absent.
 select id, src, name, gen_name, road, road_hash, length_m, gain_m, climbs,
-       ele_source, (geom_sealed is not null)::boolean as has_place, created_at
+       ele_source, (geom_sealed is not null)::boolean as has_place, created_at,
+       road_sealed, key_version
 from routes
 where id = $1 and owner_id = $2;
 
@@ -35,7 +36,7 @@ delete from routes where id = $1 and owner_id = $2;
 
 -- name: ListRoutesSealedUnder :many
 -- The re-seal's read: a batch of rows sealed under one key version.
-select id, geom_sealed from routes
+select id, geom_sealed, road_sealed from routes
 where key_version = $1
 order by id
 limit $2;
@@ -43,7 +44,8 @@ limit $2;
 -- name: ResealRoute :execrows
 -- Only while the row still carries the version it was read under, so a
 -- concurrent re-seal cannot overwrite a newer seal with an older one.
-update routes set geom_sealed = sqlc.arg(geom_sealed), key_version = sqlc.arg(new_version)
+update routes set geom_sealed = sqlc.arg(geom_sealed), road_sealed = sqlc.narg(road_sealed),
+       key_version = sqlc.arg(new_version)
 where id = sqlc.arg(id) and key_version = sqlc.arg(old_version);
 
 -- name: ExportUserRoutes :many
@@ -51,7 +53,7 @@ where id = sqlc.arg(id) and key_version = sqlc.arg(old_version);
 -- sealed place with it, since the GPX is built from both. Bounded like every
 -- category a rider runs up a row at a time.
 select id, src, name, gen_name, road, length_m, gain_m, climbs, ele_source,
-       geom_sealed, key_version, created_at
+       geom_sealed, key_version, created_at, road_sealed
 from routes
 where owner_id = sqlc.arg(user_id)
 order by created_at
@@ -61,4 +63,21 @@ limit sqlc.arg(lim);
 -- A route's road, its source and whose it is (#3051): what a workout read
 -- cuts to its reader. Deliberately not owner-scoped — the cut is the
 -- audience rule, and routes.Attacher is the one place that applies it.
-select owner_id, src, road from routes where id = $1;
+select owner_id, src, road, road_sealed, key_version from routes where id = $1;
+
+-- name: ListRoutesWithRoadInTheClear :many
+-- The boot's sealing of roads stored before #3511, a page at a time by id:
+-- every row with nothing sealed yet. ponytail: a keyless server's rows never
+-- leave this list, so each boot reads them again and finds them already
+-- bare; a marker column is the upgrade once that read shows at boot.
+select id, road, key_version from routes
+where road_sealed is null and id > sqlc.arg(after)::uuid
+order by id
+limit sqlc.arg(lim);
+
+-- name: SealRouteRoad :execrows
+-- One row's road sealed and stripped, only while it is still as it was read:
+-- nothing sealed yet, under the same key version.
+update routes set road = sqlc.arg(road), road_sealed = sqlc.narg(road_sealed)
+where id = sqlc.arg(id) and road_sealed is null
+  and key_version is not distinct from sqlc.narg(key_version);

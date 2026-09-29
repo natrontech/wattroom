@@ -12,6 +12,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/road"
+	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/workout"
@@ -22,11 +23,13 @@ import (
 // place the road itself is read out for a workout, so it is the one place
 // the audience rule has to hold.
 type Attacher struct {
-	q *db.Queries
+	q    *db.Queries
+	keys *secrets.Cipher
 }
 
-// NewAttacher reads routes through q.
-func NewAttacher(q *db.Queries) *Attacher { return &Attacher{q: q} }
+// NewAttacher reads routes through q, and opens their sealed roads with keys
+// (#3511) — nil on a server with no key, which keeps bare roads only.
+func NewAttacher(q *db.Queries, keys *secrets.Cipher) *Attacher { return &Attacher{q: q, keys: keys} }
 
 // Refused is a road a workout may not take where others read it, in words
 // for the rider who tried.
@@ -112,7 +115,14 @@ func (a *Attacher) Attach(ctx context.Context, workoutJSON string, viewer pgtype
 	case err != nil:
 		return workoutJSON, fmt.Errorf("routes: read road %s: %w", ref.RouteID, err)
 	default:
-		ridden, err := road.UnpackRoad(row.Road)
+		// The crew's cut carries headings, so it is cut from the whole road;
+		// a seal this key will not open leaves the bare one, which still rides
+		// (the owner's read logs it).
+		whole, err := WholeRoad(a.keys, row.Road, row.RoadSealed, row.KeyVersion)
+		if err != nil {
+			whole = row.Road
+		}
+		ridden, err := road.UnpackRoad(whole)
 		if err != nil {
 			return workoutJSON, fmt.Errorf("routes: stored road %s unreadable: %w", ref.RouteID, err)
 		}

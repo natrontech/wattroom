@@ -326,6 +326,7 @@ type Route struct {
 	GeomSealed []byte
 	KeyVersion *int32
 	CreatedAt  pgtype.Timestamptz
+	RoadSealed []byte
 }
 
 type ScheduledSession struct {

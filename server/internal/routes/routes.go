@@ -135,11 +135,18 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "get route failed", err, "That route could not be loaded.")
 		return
 	}
+	// The owner rides the whole road; a seal this key will not open leaves
+	// them the bare one, which still rides.
+	whole, err := WholeRoad(s.keys, row.Road, row.RoadSealed, row.KeyVersion)
+	if err != nil {
+		s.log.Warn("route road would not open", "route", store.UUIDString(row.ID), "err", err)
+		whole = row.Road
+	}
 	httpx.WriteJSON(w, http.StatusOK, routeJSON{
 		ID: store.UUIDString(row.ID), Name: row.Name, GeneratedName: row.GenName, Src: row.Src,
 		LengthM: row.LengthM, GainM: row.GainM, Climbs: row.Climbs, HasPlace: row.HasPlace,
 		OwnerOnly: row.Src == stravaSrc, CreatedAt: row.CreatedAt.Time,
-		Road: row.Road, RoadHash: row.RoadHash, EleSource: row.EleSource,
+		Road: whole, RoadHash: row.RoadHash, EleSource: row.EleSource,
 	})
 }
 

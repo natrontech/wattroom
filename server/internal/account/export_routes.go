@@ -33,7 +33,14 @@ func (x *export) routes() category {
 				"source": row.Src, "lengthM": row.LengthM, "gainM": row.GainM,
 				"climbs": json.RawMessage(row.Climbs), "heightsFrom": row.EleSource,
 				"createdAt": row.CreatedAt.Time, "file": nil}
-			rd, err := road.UnpackRoad(row.Road)
+			// The whole road, heights above sea included (#3511); a seal
+			// this key will not open exports the bare heights, and its map
+			// below says why it has no file.
+			whole, err := routes.WholeRoad(x.keys, row.Road, row.RoadSealed, row.KeyVersion)
+			if err != nil {
+				whole = row.Road
+			}
+			rd, err := road.UnpackRoad(whole)
 			if err != nil {
 				return nil, 0, err
 			}

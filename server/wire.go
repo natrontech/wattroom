@@ -154,7 +154,7 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	crewsService := crews.New(st, authService, log)
 	// A workout names its road by reference and each reader is handed their
 	// cut of it (#3051): the one attacher every workout read goes through.
-	roads := routes.NewAttacher(st.Queries)
+	roads := routes.NewAttacher(st.Queries, keys)
 	crewsService.SetRoads(roads)
 	crewsService.Register(mux)
 	crewCard = crewsService.CrewCard
@@ -209,6 +209,10 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	// Batzen (#3152): each account's one opening grant from the riding it did
 	// before the wallet existed; a no-op once every account has one.
 	safego.Go(log, "wallet opening grants", func() { wallet.Open(ctx, st, log) })
+	// A route's road stored before #3511 held its turns and altitude in the
+	// clear: sealed with the shape under the key, and stripped to bare
+	// heights; a no-op once every road is.
+	safego.Go(log, "route roads sealed", func() { routes.SealRoads(ctx, st.Queries, keys, log) })
 	// Always private: the session source, never a personal token.
 	wallet.New(st, authService, log).Register(mux)
 	// Buying, undoing and dressing (#3154): the session source too.

@@ -76,7 +76,7 @@ func (h *harness) call(t *testing.T, user, method, path string, body any) (int, 
 	return w.Code, out
 }
 
-// A 3 km road climbing 20 m, and the owner's place for it: Zürich's lake shore.
+// A 3 km road climbing 20 m, and the owner's place for it: open ocean.
 var (
 	shape   = testx.Polyline6([][2]float64{{-48.8767, -123.3933}, {-48.8700, -123.3950}, {-48.8650, -123.3970}})
 	request = map[string]any{
@@ -274,10 +274,15 @@ func TestResealMovesRoutesToTheNewKey(t *testing.T) {
 	if err != nil || moved < 1 {
 		t.Fatalf("re-seal moved %d (%v)", moved, err)
 	}
-	var sealed []byte
+	var sealed, stored, roadSealed []byte
 	var version int32
-	if err := h.store.Pool.QueryRow(t.Context(), "select geom_sealed, key_version from routes where id = $1", id).Scan(&sealed, &version); err != nil {
+	if err := h.store.Pool.QueryRow(t.Context(), "select geom_sealed, key_version, road, road_sealed from routes where id = $1", id).
+		Scan(&sealed, &version, &stored, &roadSealed); err != nil {
 		t.Fatal(err)
+	}
+	// The whole road moves with the shape (#3511).
+	if whole, err := WholeRoad(next, stored, roadSealed, &version); err != nil || !bytes.Equal(whole, testx.FlatRoad(3000, 20)) {
+		t.Fatalf("the new key opens a road of %d bytes (%v), want the one posted", len(whole), err)
 	}
 	if version != next.Version() {
 		t.Fatalf("key_version %d, want the new key's %d", version, next.Version())
