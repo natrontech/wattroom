@@ -163,6 +163,8 @@ type rideDetailJSON struct {
 	// Ridden in a session, whether or not its crew is still there (#2630):
 	// the list's `room`, so one sentence says where a ride was on both.
 	Room bool `json:"room,omitempty"`
+	// `room` under the list's new name (#2959); `room` goes in #3461.
+	InSession bool `json:"inSession,omitempty"`
 	// Whether the rider may still enter the crew named above (#2630): a crew
 	// they left, or that banned them, is named and not linked.
 	CrewMember bool `json:"crewMember,omitempty"`
@@ -250,6 +252,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 	out.Crew, out.Channel = placeOf(row.CrewID, row.CrewName), placeOf(row.ChannelID, row.ChannelName)
 	out.Room = row.CrewID.Valid || row.ChannelID.Valid || row.SessionID.Valid
+	out.InSession = out.Room
 	out.CrewMember = row.CrewMember
 	for _, medal := range medalRows {
 		out.Medals = append(out.Medals, medalJSON{

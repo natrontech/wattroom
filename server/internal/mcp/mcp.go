@@ -139,7 +139,9 @@ var toolList = []map[string]any{
 	{
 		"name": "list_rides",
 		"description": "The rider's recent ride summaries, newest first: workout, date, duration, " +
-			"average watts, kJ, execution score. Answers `more` when older rides remain, with " +
+			"average watts, kJ, execution score, and `inSession` for a ride ridden in a crew " +
+			"session (`room` is the same flag under its old name and goes in a later release). " +
+			"Answers `more` when older rides remain, with " +
 			"`nextBefore`/`nextBeforeId` to pass back for the next page.",
 		"inputSchema": map[string]any{
 			"type": "object",
@@ -260,6 +262,7 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 		Ftp               int     `json:"ftp"`
 		Xp                int     `json:"xp"`
 		Room              bool    `json:"room"`
+		InSession         bool    `json:"inSession"`
 		SharedWithFriends bool    `json:"sharedWithFriends"`
 	}
 	out := make([]ride, 0, len(rows))
@@ -268,7 +271,7 @@ func (s *Service) listRides(ctx context.Context, user db.User, args json.RawMess
 			ID: store.UUIDString(row.ID), Workout: row.WorkoutName, Date: row.StartedAt.Time.Format(time.RFC3339),
 			Seconds: int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 			Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
-			Room: row.InSession, SharedWithFriends: row.SharedAt.Valid,
+			Room: row.InSession, InSession: row.InSession, SharedWithFriends: row.SharedAt.Valid,
 		})
 	}
 	payload := map[string]any{"rides": out, "more": len(rows) == int(params.Limit)}
