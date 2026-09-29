@@ -89,6 +89,8 @@ func (j *jukebox) onRestore(cmd protocol.JukeboxCommand, riderID, addedBy string
 	j.state.Playing = p.wasPlaying
 	j.state.PositionSec = p.positionSec
 	j.state.AnchorMs = now.UnixMilli()
+	// Its play so far went with the skip; the credit starts counting again.
+	j.playedMs, j.runningSince = 0, now.UnixMilli()
 	if p.ownerID != "" {
 		j.owners[restored.ID] = p.ownerID
 	}
@@ -164,6 +166,7 @@ func (j *jukebox) onPlay(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 	}
 	j.state.Playing = true
 	j.state.AnchorMs = now.UnixMilli()
+	j.runningSince = now.UnixMilli()
 	return nil, true, ""
 }
 
@@ -173,6 +176,7 @@ func (j *jukebox) onPause(cmd protocol.JukeboxCommand, riderID, addedBy string, 
 		return nil, false, ""
 	}
 	j.state.PositionSec = j.positionAt(now)
+	j.playedMs += now.UnixMilli() - j.runningSince
 	j.state.Playing = false
 	return nil, true, ""
 }
@@ -282,8 +286,10 @@ func (j *jukebox) onEnded(cmd protocol.JukeboxCommand, now time.Time, played boo
 		return nil, false, ""
 	}
 	// Played through, not skipped: the DJ's credit (#467). The anchor
-	// makes the ref unique to this play of this entry.
-	if owner := j.owners[j.state.Current.ID]; owner != "" && played {
+	// makes the ref unique to this play of this entry. "Played through" is
+	// the server's clock, not the report (#2931): a report alone, sent the
+	// moment a track was queued, used to earn it.
+	if owner := j.owners[j.state.Current.ID]; owner != "" && played && j.timedPlay(now) {
 		j.finished = &playedTrack{
 			riderID: owner,
 			ref:     j.state.Current.ID + "@" + strconv.FormatInt(j.state.AnchorMs, 10),
