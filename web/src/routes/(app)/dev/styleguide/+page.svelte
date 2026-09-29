@@ -80,7 +80,7 @@
 	<h2 class="eyebrow mt-12">Surfaces &amp; accent</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 		{#each surfaces as token, i (token.name)}
-			<div class="border-muted/15 overflow-hidden rounded-lg border">
+			<div class="border-frame overflow-hidden rounded-lg border">
 				<div class="h-20 {token.cls}" bind:this={swatches[i]}></div>
 				<div class="bg-surface-raised px-4 py-3">
 					<div class="font-mono text-xs">--color-{token.name}</div>
@@ -151,7 +151,7 @@
 
 	<!-- Zones -->
 	<h2 class="eyebrow mt-12">Power zones</h2>
-	<div class="border-muted/15 mt-4 overflow-hidden rounded-lg border">
+	<div class="border-frame mt-4 overflow-hidden rounded-lg border">
 		{#each zones as zone (zone.n)}
 			<div
 				class="border-ink/5 flex items-center gap-4 border-b px-4 py-2.5 last:border-0"
@@ -170,7 +170,7 @@
 	<h2 class="eyebrow mt-12">Glow scale</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-3">
 		{#each glows as glow (glow.name)}
-			<div class="border-muted/15 bg-surface-raised rounded-lg border p-6">
+			<div class="border-frame bg-surface-raised rounded-lg border p-6">
 				<div class="text-watt text-6xl font-bold tabular-nums {glow.cls}">
 					312
 				</div>
@@ -179,7 +179,7 @@
 			</div>
 		{/each}
 	</div>
-	<div class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6">
+	<div class="border-frame bg-surface-raised mt-3 rounded-lg border p-6">
 		<svg viewBox="0 0 400 60" class="text-ok glow-stroke h-16 w-full">
 			<polyline
 				points="0,48 40,44 80,20 120,24 160,18 200,40 240,16 280,20 320,44 360,12 400,16"

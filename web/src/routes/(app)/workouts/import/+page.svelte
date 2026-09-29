@@ -166,7 +166,7 @@
 				{:else if imported}
 					<div class="mt-4">
 						<div
-							class="border-muted/15 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b pb-2"
+							class="border-frame flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b pb-2"
 						>
 							<h2 class="font-display min-w-0 truncate text-base font-bold">
 								{imported.workout.name}

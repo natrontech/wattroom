@@ -37,7 +37,7 @@
 
 {#if !crewLive.loaded}
 	<!-- Not "nobody's around" while the read is out (#1666). -->
-	<div class="border-muted/15 mt-3 rounded-lg border px-5 py-4">
+	<div class="border-frame mt-3 rounded-lg border px-5 py-4">
 		<Skeleton class="h-4 w-48" />
 		<Skeleton class="mt-2 h-3 w-28" />
 	</div>

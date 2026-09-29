@@ -23,18 +23,18 @@
 	<!-- The full lockup needs a whole row: at size 72 it is ~410px wide. -->
 	<div class="mt-4 grid gap-3">
 		<div
-			class="border-muted/15 bg-surface-raised flex items-center justify-center rounded-lg border p-8"
+			class="border-frame bg-surface-raised flex items-center justify-center rounded-lg border p-8"
 		>
 			<Logo size={72} wordmark />
 		</div>
 		<div class="grid gap-3 sm:grid-cols-2">
 			<div
-				class="border-muted/15 bg-surface-raised flex items-center justify-center rounded-lg border p-8"
+				class="border-frame bg-surface-raised flex items-center justify-center rounded-lg border p-8"
 			>
 				<Logo size={72} />
 			</div>
 			<div
-				class="border-muted/15 bg-ink flex items-center justify-center rounded-lg border p-8"
+				class="border-frame bg-ink flex items-center justify-center rounded-lg border p-8"
 			>
 				<Logo size={72} />
 			</div>
@@ -49,7 +49,7 @@
 	</p>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2">
 		<div
-			class="border-muted/15 bg-surface-raised flex items-center gap-5 rounded-lg border p-6"
+			class="border-frame bg-surface-raised flex items-center gap-5 rounded-lg border p-6"
 		>
 			<Logo size={56} />
 			<div>
@@ -58,7 +58,7 @@
 			</div>
 		</div>
 		<div
-			class="border-muted/15 bg-surface-raised flex items-center gap-5 rounded-lg border p-6"
+			class="border-frame bg-surface-raised flex items-center gap-5 rounded-lg border p-6"
 		>
 			<Logo size={56} live />
 			<div>
@@ -72,14 +72,14 @@
 
 	<h2 class="eyebrow mt-12">Favicon</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2">
-		<div class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+		<div class="border-frame bg-surface-raised rounded-lg border p-5">
 			<div class="flex items-center gap-2 rounded-t-md bg-[#2b2b31] px-3 py-2">
 				<Logo size={16} />
 				<span class="text-ink/80 text-xs">WattRoom — Sweet Spot 2×20</span>
 			</div>
 			<p class="text-muted mt-3 text-xs">Dark browser chrome.</p>
 		</div>
-		<div class="border-muted/15 bg-surface-raised rounded-lg border p-5">
+		<div class="border-frame bg-surface-raised rounded-lg border p-5">
 			<div class="flex items-center gap-2 rounded-t-md bg-[#dedee3] px-3 py-2">
 				<Logo size={16} />
 				<span class="text-paper/80 text-xs">WattRoom — Sweet Spot 2×20</span>
@@ -89,7 +89,7 @@
 	</div>
 
 	<h2 class="eyebrow mt-12">Type</h2>
-	<div class="border-muted/15 bg-surface-raised mt-4 rounded-lg border p-6">
+	<div class="border-frame bg-surface-raised mt-4 rounded-lg border p-6">
 		<div class="flex items-baseline gap-2">
 			<span
 				class="text-watt glow-text-strong font-display text-7xl leading-none font-bold tabular-nums"

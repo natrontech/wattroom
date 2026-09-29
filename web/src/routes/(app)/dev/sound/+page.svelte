@@ -41,7 +41,7 @@
 	</p>
 
 	<div
-		class="border-muted/15 bg-surface-raised mt-6 flex flex-wrap items-center gap-6 rounded-lg border p-5"
+		class="border-frame bg-surface-raised mt-6 flex flex-wrap items-center gap-6 rounded-lg border p-5"
 	>
 		<label class="flex items-center gap-3">
 			<span class="eyebrow">volume</span>
@@ -73,7 +73,7 @@
 			<li>
 				<button
 					onclick={() => fire(id)}
-					class="border-muted/15 hover:border-muted/40 flex w-full items-center gap-4 rounded-lg border px-5 py-3.5 text-left {last ===
+					class="border-frame hover:border-muted/40 flex w-full items-center gap-4 rounded-lg border px-5 py-3.5 text-left {last ===
 					id
 						? 'bg-surface-raised'
 						: ''}"
@@ -92,7 +92,7 @@
 		{/each}
 	</ul>
 
-	<div class="border-muted/15 mt-6 rounded-lg border p-5">
+	<div class="border-frame mt-6 rounded-lg border p-5">
 		<h2 class="font-display font-bold">Rules these follow</h2>
 		<ul class="text-muted mt-3 space-y-1.5 text-xs leading-relaxed">
 			<li>

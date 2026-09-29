@@ -197,7 +197,7 @@
 		<h2 class="font-display font-bold">Measurement</h2>
 		<a
 			href="/ramp"
-			class="border-muted/15 hover:border-muted/40 mt-4 flex items-center gap-3 rounded-lg border px-4 py-3"
+			class="border-frame hover:border-muted/40 mt-4 flex items-center gap-3 rounded-lg border px-4 py-3"
 		>
 			<Gauge size={16} class="text-muted shrink-0" />
 			<span class="min-w-0">

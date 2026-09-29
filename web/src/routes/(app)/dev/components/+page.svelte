@@ -461,7 +461,7 @@
 		is a bug.
 	</p>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-		<div class="border-muted/15 rounded-lg border p-4">
+		<div class="border-frame rounded-lg border p-4">
 			<Skeleton class="h-4 w-32" />
 			<Skeleton class="mt-2 h-3 w-20" />
 			<p class="text-muted mt-4 text-[11px]">loading</p>
@@ -480,7 +480,7 @@
 			</p>
 			<p class="text-muted mt-4 text-[11px]">empty, teaching</p>
 		</div>
-		<div class="border-muted/15 bg-surface-raised rounded-lg border p-4">
+		<div class="border-frame bg-surface-raised rounded-lg border p-4">
 			<p class="font-display font-bold">Thursday Sufferfest</p>
 			<p class="text-muted mt-1 text-xs">riding now · 6 in the channel</p>
 			<p class="text-muted mt-4 text-[11px]">content</p>
@@ -496,7 +496,7 @@
 		not live data.
 	</p>
 	<div
-		class="border-muted/15 bg-surface-raised mt-4 grid gap-6 rounded-lg border p-6 sm:grid-cols-2"
+		class="border-frame bg-surface-raised mt-4 grid gap-6 rounded-lg border p-6 sm:grid-cols-2"
 	>
 		<div class="space-y-3">
 			<label class="flex items-center gap-3 text-sm"
@@ -542,7 +542,7 @@
 		<div class="sm:col-span-2">
 			<span class="eyebrow">scrollbar</span>
 			<div
-				class="border-muted/15 mt-1 h-24 overflow-y-auto rounded border p-3 text-xs"
+				class="border-frame mt-1 h-24 overflow-y-auto rounded border p-3 text-xs"
 			>
 				{#each { length: 14 } as _, i (i)}
 					<p class="text-muted py-0.5">
@@ -560,7 +560,7 @@
 		per component.
 	</p>
 	<div
-		class="border-muted/15 bg-surface-raised mt-4 flex flex-wrap items-center gap-3 rounded-lg border p-6"
+		class="border-frame bg-surface-raised mt-4 flex flex-wrap items-center gap-3 rounded-lg border p-6"
 	>
 		<button class="bg-ink text-paper rounded px-4 py-2 text-sm font-medium"
 			>Primary</button

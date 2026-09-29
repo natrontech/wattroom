@@ -33,7 +33,7 @@
 
 	{#if !signedIn}
 		<div
-			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-8 text-center"
+			class="border-frame bg-surface-raised mt-8 rounded-lg border p-8 text-center"
 		>
 			<Logo size={48} />
 			<p class="mt-5 text-sm">Train together, not alone.</p>
@@ -55,9 +55,7 @@
 			</div>
 		</div>
 	{:else}
-		<section
-			class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-6"
-		>
+		<section class="border-frame bg-surface-raised mt-8 rounded-lg border p-6">
 			<div class="grid gap-4 sm:grid-cols-2">
 				<label class="block">
 					<span class="eyebrow">display name</span>
@@ -100,7 +98,7 @@
 		</div>
 
 		<!-- WATTROOM.md: privacy is architecture. Say what is true, not what sounds good. -->
-		<section class="border-muted/15 mt-3 rounded-lg border p-6">
+		<section class="border-frame mt-3 rounded-lg border p-6">
 			<h2 class="font-display font-bold">Your data</h2>
 			<ul class="text-muted mt-3 space-y-1.5 text-xs">
 				<li>Rides are private by default — sharing is per ride, and opt-in.</li>

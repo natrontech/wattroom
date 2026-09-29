@@ -329,7 +329,7 @@
 	{:else if progression === null}
 		<div class="mt-8 grid gap-3">
 			{#each { length: 2 } as _, i (i)}
-				<div class="border-muted/15 rounded-lg border p-6">
+				<div class="border-frame rounded-lg border p-6">
 					<Skeleton class="h-4 w-48" />
 					<Skeleton class="mt-4 h-40" />
 				</div>
@@ -434,7 +434,7 @@
 	{:else if rides === null}
 		<div class="mt-8 grid gap-3">
 			{#each { length: 3 } as _, i (i)}
-				<div class="border-muted/15 rounded-lg border px-5 py-4">
+				<div class="border-frame rounded-lg border px-5 py-4">
 					<Skeleton class="h-4 w-48" />
 					<Skeleton class="mt-2 h-3 w-28" />
 				</div>

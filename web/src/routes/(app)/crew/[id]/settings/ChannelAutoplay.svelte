@@ -73,7 +73,7 @@
 	<label
 		class="mt-2 flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 {autoplay.enabled
 			? 'border-ink/40'
-			: 'border-muted/15'}"
+			: 'border-frame'}"
 	>
 		<input
 			type="checkbox"
@@ -107,7 +107,7 @@
 				class="flex items-center gap-3 rounded-lg border px-4 py-3 text-left {autoplay.order ===
 				choice.key
 					? 'border-ink/40'
-					: 'border-muted/15'}"
+					: 'border-frame'}"
 			>
 				<choice.icon size={16} class="text-muted shrink-0" />
 				<span class="min-w-0">
