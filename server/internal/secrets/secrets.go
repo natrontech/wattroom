@@ -16,7 +16,9 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -31,7 +33,11 @@ const KeyEnv = "WATTROOM_TOKEN_KEY"
 // Cipher seals and opens stored credentials. A nil Cipher is the unconfigured
 // case and stores in the clear, which is what every deployment did before this
 // existed — see FromEnv for why that is a warning rather than a refusal.
-type Cipher struct{ aead cipher.AEAD }
+type Cipher struct {
+	aead cipher.AEAD
+	// version names the key without revealing it (#3024): see Version.
+	version int32
+}
 
 // FromEnv reads KeyEnv.
 //
@@ -52,22 +58,42 @@ func FromEnv(log *slog.Logger) (*Cipher, error) {
 		log.Warn(KeyEnv + " is unset — stored third-party credentials are in the clear (#697)")
 		return nil, nil
 	}
+	return FromKey(KeyEnv, raw)
+}
+
+// FromKey builds a Cipher from a base64 key held in the variable `name` —
+// FromEnv's own, or the previous key a re-seal opens old rows with (#3024).
+// The name is only for the error, so an operator reads which variable is
+// wrong.
+func FromKey(name, raw string) (*Cipher, error) {
 	key, err := base64.StdEncoding.DecodeString(raw)
 	if err != nil {
-		return nil, fmt.Errorf("%s is not base64: %w", KeyEnv, err)
+		return nil, fmt.Errorf("%s is not base64: %w", name, err)
 	}
 	if len(key) != 32 {
-		return nil, fmt.Errorf("%s decodes to %d bytes, want 32 (AES-256)", KeyEnv, len(key))
+		return nil, fmt.Errorf("%s decodes to %d bytes, want 32 (AES-256)", name, len(key))
 	}
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", KeyEnv, err)
+		return nil, fmt.Errorf("%s: %w", name, err)
 	}
 	aead, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %w", KeyEnv, err)
+		return nil, fmt.Errorf("%s: %w", name, err)
 	}
-	return &Cipher{aead: aead}, nil
+	sum := sha256.Sum256(key)
+	return &Cipher{aead: aead, version: int32(binary.BigEndian.Uint32(sum[:4]) >> 1)}, nil //nolint:gosec // shifted into int32's range
+}
+
+// Version names the key a value was sealed under (#3024, ADR-0063): 31 bits
+// of the key's SHA-256, stored beside what it sealed so a rotated key is a
+// re-seal of the rows still under the old one rather than a guess. It says
+// which key, never anything about it. 0 when no key is configured.
+func (c *Cipher) Version() int32 {
+	if !c.Enabled() {
+		return 0
+	}
+	return c.version
 }
 
 // Enabled reports whether anything is actually encrypted. Nil-safe, so callers

@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/inflight"
+	"github.com/natrontech/wattroom/server/internal/secrets"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
@@ -62,7 +63,9 @@ type Service struct {
 	revoker  GrantRevoker
 	reaper   BlobReaper
 	reports  ReportReaper
-	live     Live
+	// The key a route's map opens with, for its GPX in the export (#3024).
+	routeKeys *secrets.Cipher
+	live      Live
 	// One export in flight per account (#1554). inflight.go.
 	exports *inflight.Set
 }
@@ -88,6 +91,10 @@ type ReportReaper interface {
 // SetReportReaper wires the feedback service in after construction. Absent,
 // a delete still purges the rows.
 func (s *Service) SetReportReaper(r ReportReaper) { s.reports = r }
+
+// SetRouteKeys hands the export the server's key (#3024). Absent, a route's
+// map stays sealed and the manifest says the export is not complete.
+func (s *Service) SetRouteKeys(k *secrets.Cipher) { s.routeKeys = k }
 
 // SetLive wires the hub in after construction. Absent, a delete still purges
 // the rows.
