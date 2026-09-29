@@ -63,6 +63,14 @@ export const GEAR_RATIOS: readonly number[] = Array.from(
 		GEARS.lowest * (GEARS.highest / GEARS.lowest) ** (i / (GEARS.count - 1)),
 );
 
+/**
+ * "A shift" moves k at most a step and a half. Inside the table that is where
+ * the neighbour already lies; from a ratio outside it — a flywheel creeping at
+ * a turning crank reads as a ratio near 0 — gear 1 is nearest, and its
+ * neighbour divided by that ratio multiplied k many times over (#3517).
+ */
+const MAX_SHIFT = (GEARS.highest / GEARS.lowest) ** (1.5 / (GEARS.count - 1));
+
 /** The table gear (1-based) nearest a ratio, by ratio rather than by difference. */
 function nearestGear(ratio: number): number {
 	let best = 1;
@@ -102,7 +110,13 @@ export function gearSpace(realRatio: number | null, k: number): GearSpace {
 			label: `Gear ${gear}`,
 			gear,
 			atEnd,
-			step: (dir) => (atEnd(dir) ? k : GEAR_RATIOS[to(dir) - 1] / realRatio),
+			step: (dir) =>
+				atEnd(dir)
+					? k
+					: Math.min(
+							k * MAX_SHIFT,
+							Math.max(k / MAX_SHIFT, GEAR_RATIOS[to(dir) - 1] / realRatio),
+						),
 		};
 	}
 	const n = Math.round(Math.log(k) / Math.log(GEARS.blindStep));
