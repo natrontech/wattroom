@@ -56,13 +56,24 @@ type bunch struct {
 	heard map[string]sample
 	// Every joined rider's place in it (#3097), once the plan runs.
 	places map[string]*place
+	// Where the road's KOM sprints open (#3102), the next one ahead, laps
+	// unrolled, while komLeft; how many this ride armed, and when the last
+	// one opened.
+	koms      []float64
+	komU      float64
+	komLeft   bool
+	komsArmed int
+	lastKom   time.Time
 }
 
 func newBunch(r *routeRide, now time.Time) *bunch {
-	return &bunch{
+	b := &bunch{
 		road: r.profile, fromM: r.FromM, reverse: r.Reverse, loop: r.Loop,
 		at: now, heard: make(map[string]sample), places: make(map[string]*place),
+		koms: komOpenings(r.profile, r.Reverse),
 	}
+	b.komU, b.komLeft = b.komAt(b.fromM, false)
+	return b
 }
 
 // hear takes one joined rider's sample into this second.
