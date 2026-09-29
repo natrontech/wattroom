@@ -610,7 +610,13 @@ export function createChannelLive(address: PlaceAddress) {
 		},
 		control(
 			action: string,
-			workout?: { name: string; json: string; totalSeconds: number },
+			workout?: {
+				name: string;
+				json: string;
+				totalSeconds: number;
+				/** The road the pick rides, when it rides one (#3095, #3105). */
+				route?: import('$lib/protocol').ControlRoute;
+			},
 			gameMode?: string,
 		) {
 			send({
@@ -619,6 +625,7 @@ export function createChannelLive(address: PlaceAddress) {
 					workoutName: workout?.name,
 					workoutJson: workout?.json,
 					totalSeconds: workout?.totalSeconds,
+					route: workout?.route,
 					gameMode,
 				},
 			});
