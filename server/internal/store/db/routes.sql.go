@@ -200,7 +200,7 @@ func (q *Queries) GetOwnerRoute(ctx context.Context, arg GetOwnerRouteParams) (G
 }
 
 const getOwnerRoutePlace = `-- name: GetOwnerRoutePlace :one
-select geom_sealed, key_version from routes where id = $1 and owner_id = $2
+select geom_sealed, key_version, length_m from routes where id = $1 and owner_id = $2
 `
 
 type GetOwnerRoutePlaceParams struct {
@@ -211,6 +211,7 @@ type GetOwnerRoutePlaceParams struct {
 type GetOwnerRoutePlaceRow struct {
 	GeomSealed []byte
 	KeyVersion *int32
+	LengthM    int32
 }
 
 // The sealed place, for its owner alone (ADR-0063) — and for nobody else,
@@ -218,7 +219,7 @@ type GetOwnerRoutePlaceRow struct {
 func (q *Queries) GetOwnerRoutePlace(ctx context.Context, arg GetOwnerRoutePlaceParams) (GetOwnerRoutePlaceRow, error) {
 	row := q.db.QueryRow(ctx, getOwnerRoutePlace, arg.ID, arg.OwnerID)
 	var i GetOwnerRoutePlaceRow
-	err := row.Scan(&i.GeomSealed, &i.KeyVersion)
+	err := row.Scan(&i.GeomSealed, &i.KeyVersion, &i.LengthM)
 	return i, err
 }
 

@@ -469,6 +469,11 @@ type Workout struct {
 	CreatedAt  pgtype.Timestamptz
 }
 
+type WorldKey struct {
+	One bool
+	Key []byte
+}
+
 type XpEvent struct {
 	ID     pgtype.UUID
 	UserID pgtype.UUID
