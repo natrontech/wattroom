@@ -10,7 +10,7 @@ import { LIMITS } from '$lib/workout/validate';
 import type { Climb } from './climbs';
 import { heightAt } from './at-metre';
 import { steadySpeed } from './pace';
-import type { Road } from './road';
+import { roadStep, type Road } from './road';
 
 /**
  * ERG by the road (#3026's decided formula): a stretch asks for
@@ -126,4 +126,27 @@ export function compileRoad(
 		fromM = toM;
 		return leg;
 	});
+}
+
+/**
+ * Any workout on a route (#3100): the road by reference, with no block pinned
+ * to it. The ERG steps stay exactly as written and score as always; only where
+ * the dot rides changes — solo by the rider's own watts, in a session at the
+ * bunch's prescribed pace (ADR-0065). The stretch runs from `fromM` to the
+ * road's end, and a road the workout already carried is replaced.
+ */
+export function onRoute(
+	workout: Workout,
+	route: { id: string; road: Road },
+	fromM = 0,
+): Workout {
+	const toM = route.road.length;
+	return {
+		...workout,
+		road: {
+			routeId: route.id,
+			fromM: Math.min(Math.max(fromM, 0), toM - roadStep(route.road)),
+			toM,
+		},
+	};
 }
