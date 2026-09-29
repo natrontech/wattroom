@@ -12,6 +12,7 @@ import {
 } from './fixtures';
 import type { TrackPoint } from './parse';
 import { decodePolyline6, packRoad, roadHash, roadStep } from './road';
+import { kmAndClimb, roadName } from './profile';
 import { toRoute, type Route } from './route';
 
 const M_PER_DEG = (Math.PI / 180) * 6371008.8;
@@ -148,6 +149,12 @@ describe('toRoute', () => {
 		expect(r.road.turns).toHaveLength(r.road.heights.length - 1);
 		expect(r.road.length).toBeCloseTo(r.length, 2);
 		expect(r.road.heights.at(-1)).toBeCloseTo(r.ele[r.ele.length - 1], 2);
+	});
+
+	// The history row reads a road ride the same way (#3053).
+	it('writes a stretch of road as km and metres climbed', () => {
+		expect(kmAndClimb(52_900, 1312.4)).toBe('52.9 km · 1,312 m');
+		expect(roadName(52_900, 1312.4)).toBe('Road · 52.9 km · 1,312 m');
 	});
 
 	it('names the road by its numbers, never by the file', () => {
