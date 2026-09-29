@@ -237,7 +237,9 @@ jobs:
           case "$RUNNER_OS" in
             macOS) app=dist/mac-universal/WattRoom.app ;;
             Windows) app=dist/win-unpacked/WattRoom.exe ;;
-            Linux) app=dist/linux-unpacked/wattroom ;;
+            # electron-builder names the Linux binary after package.json's
+            # `name`, not its productName (its own log: electronPath=…).
+            Linux) app=dist/linux-unpacked/wattroom-desktop ;;
           esac
           node fuses-check.js "$app"
 
