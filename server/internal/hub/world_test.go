@@ -59,7 +59,7 @@ func TestTheBunchRidesThePlansPace(t *testing.T) {
 		{"a free block at the live mean", workout.Segment{Kind: "freeride"}, 0, true, live},
 		{"a game, with no blocks, at the live mean", workout.Segment{}, 0, false, live},
 	} {
-		if got := planWatts(c.seg, c.pct, c.inBlock, live); got != c.want {
+		if got := planAt(c.seg, c.pct, c.inBlock).watts(live / protocol.ReferenceRiderWatts); got != c.want {
 			t.Errorf("%s: %v W, want %v W", c.name, got, c.want)
 		}
 	}
@@ -69,17 +69,17 @@ func TestTheBunchRidesThePlansPace(t *testing.T) {
 // one strong rider cannot tow the bunch away, and nobody pedalling is 0 W.
 func TestTheLiveMeanCapsEveryRider(t *testing.T) {
 	b := newBunch(rideOn(slope(0, 2200), 0, false, false), time.Unix(0, 0))
-	if b.liveWatts() != 0 {
-		t.Fatalf("nobody pedalling rides %v W, want 0", b.liveWatts())
+	if b.livePct() != 0 {
+		t.Fatalf("nobody pedalling rides at %v, want 0", b.livePct())
 	}
-	b.hear("steady", 150, 250)   // 60 %
-	b.hear("strong", 400, 200)   // 200 %, capped at 150 %
-	b.hear("flat-out", 300, 200) // 150 %
-	b.hear("no-ftp", 250, 0)     // no %FTP to take
-	b.hear("stopped", 250, 250)
-	b.hear("stopped", 0, 250) // then stopped inside the same second
-	if want := (0.6 + 1.5 + 1.5) / 3 * protocol.ReferenceRiderWatts; math.Abs(b.liveWatts()-want) > 1e-9 {
-		t.Fatalf("the live mean rides %v W, want %v W", b.liveWatts(), want)
+	b.hear("steady", protocol.RiderMetrics{Watts: 150}, protocol.Rider{FtpWatts: 250})   // 60 %
+	b.hear("strong", protocol.RiderMetrics{Watts: 400}, protocol.Rider{FtpWatts: 200})   // 200 %, capped at 150 %
+	b.hear("flat-out", protocol.RiderMetrics{Watts: 300}, protocol.Rider{FtpWatts: 200}) // 150 %
+	b.hear("no-ftp", protocol.RiderMetrics{Watts: 250}, protocol.Rider{FtpWatts: 0})     // no %FTP to take
+	b.hear("stopped", protocol.RiderMetrics{Watts: 250}, protocol.Rider{FtpWatts: 250})
+	b.hear("stopped", protocol.RiderMetrics{Watts: 0}, protocol.Rider{FtpWatts: 250}) // then stopped inside the same second
+	if want := (0.6 + 1.5 + 1.5) / 3; math.Abs(b.livePct()-want) > 1e-9 {
+		t.Fatalf("the live mean rides at %v, want %v", b.livePct(), want)
 	}
 }
 
@@ -111,14 +111,14 @@ func TestAnErgBunchRidesThePrescriptionOncePerSecond(t *testing.T) {
 	for range 4 * 120 {
 		now = now.Add(time.Second / 4)
 		s.state(now)
-		s.bunch.hear("strong", 450, 200)
+		s.bunch.hear("strong", protocol.RiderMetrics{Watts: 450}, protocol.Rider{FtpWatts: 200})
 		s.rideBunch(now)
 	}
 	want := referencePace(120, func(int) float64 { return 0.75 * protocol.ReferenceRiderWatts }, func(float64) float64 { return 0 })
 	if got := s.bunch.pace; got.Distance != want.Distance || got.Speed != want.Speed {
 		t.Fatalf("after 120 s the bunch is at %+v, want the reference rider's %+v", s.bunch.pace, want)
 	}
-	w := s.world()
+	w := s.world(false)
 	if w.BunchM != math.Round(want.Distance*100)/100 || w.SpeedMps != math.Round(want.Speed*100)/100 {
 		t.Fatalf("the tick carries %+v, want %.2f m at %.2f m/s", w, want.Distance, want.Speed)
 	}
@@ -143,7 +143,7 @@ func TestAPausedBunchStops(t *testing.T) {
 		s.state(now)
 		s.rideBunch(now)
 	}
-	if w := s.world(); s.bunch.pace.Distance != held || w.SpeedMps != 0 {
+	if w := s.world(false); s.bunch.pace.Distance != held || w.SpeedMps != 0 {
 		t.Fatalf("paused, the bunch moved to %v m at %v m/s, want held at %v m and stopped", s.bunch.pace.Distance, w.SpeedMps, held)
 	}
 	s.resume(now)
@@ -171,7 +171,7 @@ func TestTheBunchHoldsAtTheEndOfTheRoad(t *testing.T) {
 	start := time.Unix(1_700_000_000, 0)
 	s := startedOn(t, rideOn(slope(3, 2200), 2100, false, false), ergHalfHour, start)
 	ride(s, start.Add(countdownSeconds*time.Second), 120)
-	if w := s.world(); w.BunchM != 2200 || w.Lap != 0 || !s.bunch.rolling() {
+	if w := s.world(false); w.BunchM != 2200 || w.Lap != 0 || !s.bunch.rolling() {
 		t.Fatalf("at the end the bunch reads %+v, rolling %v; want held at 2200 m, still riding", w, s.bunch.rolling())
 	}
 	if s.bunch.distance() != 100 {
@@ -190,7 +190,7 @@ func TestALoopAddsALap(t *testing.T) {
 	s := startedOn(t, rideOn(slope(-1, 2200), 2000, true, false), ergHalfHour, start)
 	ride(s, start.Add(countdownSeconds*time.Second), 600)
 	u := 2000 + s.bunch.pace.Distance
-	w := s.world()
+	w := s.world(false)
 	if w.Lap != int(u/2200) || w.Lap < 2 || math.Abs(w.BunchM-math.Mod(u, 2200)) > 0.01 {
 		t.Fatalf("after %.0f m from 2000 m the bunch reads %+v, want lap %d at %.2f m", s.bunch.pace.Distance, w, int(u/2200), math.Mod(u, 2200))
 	}
@@ -368,12 +368,15 @@ func TestTheCloseCarriesTheRoadRidden(t *testing.T) {
 }
 
 // Well under 1 ms per room per second (#3028's acceptance): one second of a
-// bunch with a crew's worth of riders heard.
+// bunch with a crew's worth of riders joined and heard, offsets and all.
 func BenchmarkABunchSecond(b *testing.B) {
 	start := time.Unix(1_700_000_000, 0)
 	s := newSession()
 	s.begin("ride", "coach", "Coach")
-	s.pick("Ride", `{"steps":[{"type":"road","seconds":86400}]}`, 0)
+	for r := range 12 {
+		s.join(string(rune('a'+r)), true)
+	}
+	s.pick("Ride", `{"steps":[{"type":"road","seconds":1000000000}]}`, 0)
 	s.route = rideOn(slope(4, 200_000), 0, true, false)
 	s.start(start)
 	now := start.Add(countdownSeconds * time.Second)
@@ -382,9 +385,9 @@ func BenchmarkABunchSecond(b *testing.B) {
 		now = now.Add(time.Second)
 		s.state(now)
 		for r := range 12 {
-			s.bunch.hear(string(rune('a'+r)), 200+i%50, 250)
+			s.bunch.hear(string(rune('a'+r)), protocol.RiderMetrics{Watts: 200 + i%50}, protocol.Rider{FtpWatts: 250, WeightKg: 70})
 		}
 		s.rideBunch(now)
-		_ = s.world()
+		_ = s.world(false)
 	}
 }
