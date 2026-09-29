@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { account } from '$lib/account.svelte';
 	import type { Snippet } from 'svelte';
 	import { play } from '$lib/sound/cues';
 	import Logo from '$lib/brand/Logo.svelte';
