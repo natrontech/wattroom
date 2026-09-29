@@ -81,10 +81,15 @@ func (q *Queries) DeleteRoute(ctx context.Context, arg DeleteRouteParams) (int64
 
 const exportUserRoutes = `-- name: ExportUserRoutes :many
 select id, src, name, gen_name, road, length_m, gain_m, climbs, ele_source,
-       geom_sealed, key_version, created_at, road_sealed
+       geom_sealed, key_version, created_at, road_sealed,
+       coalesce((select jsonb_agg(jsonb_build_object(
+                     'crewId', a.crew_id, 'crew', c.name, 'shared', a.shared, 'decidedAt', a.decided_at)
+                     order by a.decided_at)
+                 from route_crew_consents a join crews c on c.id = a.crew_id
+                 where a.route_id = routes.id), '[]'::jsonb)::jsonb as crew_answers
 from routes
-where owner_id = $1
-order by created_at
+where routes.owner_id = $1
+order by routes.created_at
 limit $2
 `
 
@@ -94,24 +99,27 @@ type ExportUserRoutesParams struct {
 }
 
 type ExportUserRoutesRow struct {
-	ID         pgtype.UUID
-	Src        string
-	Name       string
-	GenName    string
-	Road       []byte
-	LengthM    int32
-	GainM      int32
-	Climbs     []byte
-	EleSource  string
-	GeomSealed []byte
-	KeyVersion *int32
-	CreatedAt  pgtype.Timestamptz
-	RoadSealed []byte
+	ID          pgtype.UUID
+	Src         string
+	Name        string
+	GenName     string
+	Road        []byte
+	LengthM     int32
+	GainM       int32
+	Climbs      []byte
+	EleSource   string
+	GeomSealed  []byte
+	KeyVersion  *int32
+	CreatedAt   pgtype.Timestamptz
+	RoadSealed  []byte
+	CrewAnswers []byte
 }
 
 // Every route the rider stored, for the export (ADR-0053): the road and the
 // sealed place with it, since the GPX is built from both. Bounded like every
-// category a rider runs up a row at a time.
+// category a rider runs up a row at a time. Each route carries the answers
+// its owner gave crews listed in the directory (#3569), by the crew's name
+// as it is now.
 func (q *Queries) ExportUserRoutes(ctx context.Context, arg ExportUserRoutesParams) ([]ExportUserRoutesRow, error) {
 	rows, err := q.db.Query(ctx, exportUserRoutes, arg.UserID, arg.Lim)
 	if err != nil {
@@ -135,6 +143,7 @@ func (q *Queries) ExportUserRoutes(ctx context.Context, arg ExportUserRoutesPara
 			&i.KeyVersion,
 			&i.CreatedAt,
 			&i.RoadSealed,
+			&i.CrewAnswers,
 		); err != nil {
 			return nil, err
 		}
