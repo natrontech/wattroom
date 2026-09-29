@@ -71,6 +71,10 @@
 | **Line** | An effort's position over time, a point every 10 m — what a ghost is drawn from ([ADR-0082](decisions/0082-a-climb-belongs-to-the-map.md)). |
 | **Faded** | A live rider whose connection dropped: greyed, with "last seen 0:06". Never drawn like a ghost, so "ghost" keeps one meaning (#3227). |
 | **Leg** | The stretch of a route ridden in one sitting. A long route rides in several legs, each starting where the last one stopped; a leg is at most 6 h. |
+| **Tour** | A crew's season: one running, ordered list of stages its caravan rides through, cooperative and never ranked ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
+| **Stage** | One route in a Tour, ridden from its km-0 anchor; a Strava-origin route never is one ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
+| **Caravan** | The crew's one position on its Tour: the kilometre every opted-in member's rides move ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
+| **Tour metres** | What a counted ride adds to the caravan: the reference rider's distance at that ride's %FTP profile, so the same relative effort moves everyone equally ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
 | **Reference rider** | The rider a road's estimates are made for when no real rider is in question — 75 kg on an 8 kg bike at 225 W (Route rides below). |
 | **Figure** | The 3D person on the road. A **rider** is the person and an **avatar** is their profile picture; the three words never stand in for each other ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)). |
 | **Geo pack** | The pmtiles file of map data the world is built from — the Alps first ([ADR-0070](decisions/0070-our-own-copy-of-openstreetmap.md)). One route's enrichment cut from it is a **corridor**. |
@@ -895,6 +899,14 @@ A rider's bias never moves the bunch.
 | Late join            | a **3 s** drop-off                                                                                      |
 | KOM sprints          | open **300 m** before the top of a class **III** climb or harder; at most one per **5 min**, **6** per ride |
 | Terrain Match        | **250 m** step; penalty weight **0.3**; suggestion floor **0.2**                                        |
+
+## Crew Tour (defaults — tune in alpha; [ADR-0080](decisions/0080-a-crews-season-is-a-tour.md))
+
+- **Tour metres**: the reference rider's distance (Route rides) at the ride's %FTP profile, on the flat; zero-watt seconds pay nothing.
+- **Per ride**: at most **60 km** of tour metres.
+- **Per member per week**: at most **150 km**.
+- **A stage**: the route's own length; at most **12** stages in a Tour.
+- **The col of the month's crew count**: opted-in riders only, no Strava-origin routes, hidden below **3**.
 
 ## The world (defaults — tune in alpha; [ADR-0066](decisions/0066-the-world-is-the-ride-view.md), [ADR-0072](decisions/0072-light-in-the-world.md))
 
