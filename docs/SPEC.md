@@ -51,6 +51,12 @@
 | **Road workout** | Code name for a workout whose ERG blocks are pinned to metres of a road: a block ends at its `stepEndM`, so bias stretches or shortens the ride, and Skip block and +1 min are hidden ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)). |
 | **Workout on a route** | Code name **scenery**: a workout ridden by time, the road only shown ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)). |
 | **Bunch ride** | A **session** riding one road together, on one position the hub owns ([ADR-0065](decisions/0065-riding-a-road-together.md)). One of the five **modes**, never a game mode. |
+| **Shelter** | The share of a rider's air drag that riders ahead take away, computed by the hub, at most 50 % ([ADR-0077](decisions/0077-the-wind-is-shared.md)). Felt through the trainer only in SIM, and only while the rider leaves it on. |
+| **Group** | Riders on a road with no gap of 2 s or more between them ([ADR-0077](decisions/0077-the-wind-is-shared.md)). |
+| **Gap** | The time between two groups on a road; at 2 s a group splits ([ADR-0077](decisions/0077-the-wind-is-shared.md)). |
+| **Attack** | Riding at least 1.0 W/kg above the group's mean, in the wind, for at least 3 s ([ADR-0077](decisions/0077-the-wind-is-shared.md)). |
+| **Pull** | A turn at the front of a group, in the wind, sheltering the riders behind. |
+| **Passing lane** | The lane the hub always keeps open, so a faster rider can come through without steering ([ADR-0077](decisions/0077-the-wind-is-shared.md)). |
 | **Felt grade** | The grade a rider feels on a road: difficulty × the road's grade, halved again on descents, clamped and slewed (Route rides below). The dot always moves by the road's own grade; difficulty never changes speed, time, XP or Batzen ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)). |
 | **Virtual gear** | A multiplier on the road the trainer simulates ([ADR-0084](decisions/0084-wattroom-shifts.md)). It changes cadence and torque, never the speed the watts buy. |
 | **Real gear** | The chainring and cog on the bike. A virtual gear rides on top of it. |
@@ -770,6 +776,26 @@ never the metres a client sent, and an imported file never sets one.
 - **Race weight**: frozen at the flag. A weight changed within **14 days**, or a weight or FTP from the default source, rides unranked.
 - **Weight confirmation**: once every **90 days**, one tap through the FTP prompt, never a gate; a weight not confirmed within 90 days rides unranked.
 - **Results**: per Category D–A on the closing card only; a lone rider reads "rode alone in C". A restart voids the race. On an open ride each rider sees only their own placing.
+
+## Drafting (defaults — tune in alpha; [ADR-0077](decisions/0077-the-wind-is-shared.md))
+
+Only in races and in free rides on a road, and always computed by the hub. The
+numbers follow Blocken (2018, 2025), Spoelstra (2021) and Zwift's PD4.1.1
+tests; the 50 % cap is a rule.
+
+| Parameter        | Value                                                                                                     |
+| ---------------- | --------------------------------------------------------------------------------------------------------- |
+| Shelter behind   | **35 %** up to a **1.0 m** wheel gap, fading linearly to **0** at **6 m**                                 |
+| Shelter in a line | **35 / 45 / 50 %** for second, third and later wheels; capped at **50 %** (rule)                          |
+| Adjacent lane    | **× 0.5**                                                                                                 |
+| Front rider      | **−3 %** drag with a wheel within **1 m** behind                                                          |
+| Lanes            | **3 / 4 / 5** lanes for up to **6 / 12 / more** riders, plus the passing lane; minimum gap **0.3 m**; one lane change per **2 s** |
+| Easing           | shelter eased with τ **2 s**                                                                              |
+| Groups           | split at a **2 s** gap                                                                                    |
+| Attack           | at least **+1.0 W/kg** over the group mean, with no shelter, for at least **3 s**                         |
+| Timing           | an effort above **5 %** mean shelter is untimeable (rule; Road times)                                     |
+| Trainer          | Cw = **0.51** × (1 − shelter) × k³ (Virtual gears), eased, written on a change of at least **5** points and at least **2 s** apart; a gear shift is exempt from the spacing |
+| No Cw            | a trainer that ignores Cw gets an equal grade offset                                                      |
 
 ## Riding a road together (defaults — tune in alpha; [ADR-0065](decisions/0065-riding-a-road-together.md))
 
