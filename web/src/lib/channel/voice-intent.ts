@@ -49,6 +49,14 @@ export function askVoice(key: string, call: CallNow | undefined, now: number) {
 	};
 }
 
+/**
+ * The lounge door's arrival (#3274): in the call, so the crew hears the
+ * rider come in, with the mic off and no camera until they choose.
+ */
+export function askVoiceMuted(key: string, now: number) {
+	pending = { key, mic: false, cam: false, at: now };
+}
+
 /** The shell's mount: the note for this place, once, or nothing. */
 export function takeVoice(key: string, now: number): VoiceIntent | null {
 	const note = pending;
