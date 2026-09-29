@@ -19,7 +19,7 @@ func TestDeleteTakesTheRidersFlagReportsOffDisk(t *testing.T) {
 	h := setup(t)
 	dir := t.TempDir()
 	t.Setenv("WATTROOM_FEEDBACK_DIR", dir)
-	h.svc.SetReportReaper(feedback.New(h.users, nil, feedback.NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler)))
+	h.svc.SetReportReaper(feedback.New(h.users, nil, nil, feedback.NewLogRing(slog.DiscardHandler), slog.New(slog.DiscardHandler)))
 	path := filepath.Join(dir, "reports.jsonl")
 	rows := `{"reporter":"alice","reporterId":"` + store.UUIDString(h.id("alice")) + `","report":{"note":"erg felt off"}}
 {"reporter":"bob","reporterId":"` + store.UUIDString(h.id("bob")) + `","report":{"note":"bobs flag"}}

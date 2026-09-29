@@ -28,7 +28,7 @@ func TestExportCarriesTheRidersRoutes(t *testing.T) {
 	h := setup(t)
 	keys := routeKey(t, "k")
 	h.svc.SetRouteKeys(keys)
-	shape := testx.Polyline6([][2]float64{{47.3547, 8.55}, {47.36, 8.548}, {47.365, 8.546}})
+	shape := testx.Polyline6([][2]float64{{-48.8767, -123.3933}, {-48.87, -123.395}, {-48.865, -123.397}})
 	sealed, err := keys.Seal(shape)
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +44,7 @@ func TestExportCarriesTheRidersRoutes(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	keep("Seestrasse & back", sealed, &version)
+	keep("Stollestich & back", sealed, &version)
 	keep("Heights only", nil, nil)
 
 	files := h.exportFiles(t, "alice")
@@ -55,7 +55,7 @@ func TestExportCarriesTheRidersRoutes(t *testing.T) {
 	var gpx string
 	for _, row := range rows {
 		switch row["name"] {
-		case "Seestrasse & back":
+		case "Stollestich & back":
 			file, _ := row["file"].(string)
 			gpx = files[file]
 			if !strings.HasPrefix(file, "routes/") || gpx == "" {
@@ -67,7 +67,7 @@ func TestExportCarriesTheRidersRoutes(t *testing.T) {
 			}
 		}
 	}
-	for _, want := range []string{`<name>Seestrasse &amp; back</name>`, `lat="47.354700" lon="8.550000"`, `lat="47.365000" lon="8.546000"><ele>120.00</ele>`} {
+	for _, want := range []string{`<name>Stollestich &amp; back</name>`, `lat="-48.876700" lon="-123.393300"`, `lat="-48.865000" lon="-123.397000"><ele>120.00</ele>`} {
 		if !strings.Contains(gpx, want) {
 			t.Errorf("the GPX lacks %s:\n%s", want, gpx)
 		}

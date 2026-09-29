@@ -548,3 +548,13 @@ where r.id = e.ride_id
   and r.user_id = $1
   and e.destination = $2
   and e.remote_id is not null;
+
+-- name: RouteNumbersOfRides :many
+-- The generated name's numbers for the road rides on one page of MCP's
+-- list_rides (#3054, ADR-0063): the route's length and gain, which every
+-- surface may carry, and never its name, its id or the ride's own metres. A
+-- ride whose route was deleted has none.
+select rides.id, r.length_m, r.gain_m
+from rides
+join routes r on r.id = rides.route_id
+where rides.id = any(sqlc.arg(ids)::uuid[]);

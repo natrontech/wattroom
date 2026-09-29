@@ -133,7 +133,7 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	authService.Register(mux)
 	accountService := account.New(st, authService, log)
 	accountService.Register(mux)
-	feedbackService := feedback.New(authService, issuerOrNil(), logRing, log)
+	feedbackService := feedback.New(authService, issuerOrNil(), st.Queries, logRing, log)
 	feedbackService.Register(mux)
 	// A purge takes the rider's flag reports off disk too (#2906).
 	accountService.SetReportReaper(feedbackService)
