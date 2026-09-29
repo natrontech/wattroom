@@ -46,15 +46,27 @@ describe('SimulatedTrainer', () => {
 		});
 		collect(t);
 		await t.connect();
-		await t.setSimulation(5);
+		await t.setSimulation({ gradePct: 5 });
 		vi.advanceTimersByTime(8000);
 		expect(t.mode).toBe('sim');
 		const climbing = lastSample(t).watts;
 		expect(climbing).toBeGreaterThan(250); // 200 × (1 + 0.08×5) = 280
 
-		await t.setSimulation(-5);
+		await t.setSimulation({ gradePct: -5 });
 		vi.advanceTimersByTime(8000);
 		expect(lastSample(t).watts).toBeLessThan(150); // 200 × 0.6 = 120
+	});
+
+	it('logs every control write, SIM with its defaults resolved', async () => {
+		const t = new SimulatedTrainer({ rng: flatRng });
+		await t.connect();
+		await t.setTargetPower(200);
+		await t.setSimulation({ gradePct: 4, cw: 0.33 });
+		expect(t.writes).toEqual([
+			{ op: 'erg', watts: 200 },
+			{ op: 'sim', gradePct: 4, crr: 0.004, cw: 0.33, windMps: 0 },
+		]);
+		expect(t.road).toEqual({ gradePct: 4, crr: 0.004, cw: 0.33, windMps: 0 });
 	});
 
 	it('cadence follows power and is 0 when stopped', async () => {

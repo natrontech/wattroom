@@ -162,7 +162,7 @@ describe('a sprint block', () => {
 		const { session, slope, erg } = sprintRide();
 		await startRiding(session);
 		pedal(session, 700, 110, 3);
-		expect(slope).toHaveBeenCalledWith(0);
+		expect(slope).toHaveBeenCalledWith({ gradePct: 0 });
 		// The bug: `info.targetWatts ?? 0` made a sprint indistinguishable from
 		// a guard's zero, and zero in ERG is a freewheel.
 		expect(erg).not.toHaveBeenCalledWith(0);
@@ -184,10 +184,10 @@ describe('a sprint block', () => {
 			const { session, slope } = sprintRide();
 			await startRiding(session);
 			pedal(session, 700, 110, 3);
-			expect(slope).toHaveBeenCalledWith(0);
+			expect(slope).toHaveBeenCalledWith({ gradePct: 0 });
 			session.stop();
 			await vi.advanceTimersByTimeAsync(600);
-			expect(slope).not.toHaveBeenCalledWith(6);
+			expect(slope).not.toHaveBeenCalledWith({ gradePct: 6 });
 		} finally {
 			vi.useRealTimers();
 		}
@@ -277,7 +277,7 @@ describe('createRideSession', () => {
 		expect(session.spiralActive).toBe(true);
 		expect(session.target).toBe(0);
 		// Zero in ERG is a freewheel (#2658): ten seconds against nothing.
-		expect(slope).toHaveBeenLastCalledWith(0);
+		expect(slope).toHaveBeenLastCalledWith({ gradePct: 0 });
 		expect(erg).not.toHaveBeenCalledWith(0);
 		session.stop();
 	});

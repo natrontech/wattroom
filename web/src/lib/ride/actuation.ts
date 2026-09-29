@@ -25,7 +25,7 @@ export function simulate(
 	trainer: Trainer,
 	gradePercent: number,
 ): Promise<void> {
-	return trainer.setSimulation(gradePercent);
+	return trainer.setSimulation({ gradePct: gradePercent });
 }
 
 /**
