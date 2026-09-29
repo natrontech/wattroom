@@ -710,6 +710,15 @@ A rider's bias never moves the bunch.
 | Alpenglow           | OKLCH hue **58–60°**                                                                                                     |
 | Flashes             | WCAG 2.3.1, and at most one dim flash per **10 s** over **25 %** of a 10° field; none under reduced motion               |
 
+## The figure ([ADR-0073](decisions/0073-the-rider-is-dressed-never-measured.md) — defaults, tune in alpha)
+
+- **Proportions**: stylised athletic, about **7 heads** tall, head scale **1.08**. No face.
+- **Build**: slim, athletic or strong — the rider's choice, never derived from weight.
+- **Height**: the rider's choice; the range is [#3413](https://github.com/natrontech/wattroom/issues/3413)'s.
+- **Skin**: one of **8** free swatches, never sold; the values are #3413's. The neutral figure's tone is none of the 8.
+- **Neutral figure** (until the rider chooses): athletic build, a middle height, the neutral tone.
+- **The live zone** is a flat ground ring under the bike, never the jersey.
+
 ## Rider animation (defaults — tune in alpha; #3066)
 
 How a rider's figure in a ride world moves. Every number here replaced one the world prototype
