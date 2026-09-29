@@ -24,6 +24,7 @@ export const S_ = {
 	knee: V(), bend: V(), ankle: V(), sp: V(), hj: V(), pole: V(), elbow: V(), el: V(), mid: V(), xw: V(), zw: V(), neck: V(),
 	qa: new THREE.Quaternion(), qb: new THREE.Quaternion(), qf: new THREE.Quaternion(), tx: V(), ty: V(), tz: V(),
 	tq: new THREE.Quaternion(), pq: new THREE.Quaternion(), s1: V(), s2: V(),
+	pad: { R: 0, L: 0 }, lift: { R: 0, L: 0 },
 };
 
 export function setBone(
