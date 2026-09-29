@@ -2,6 +2,8 @@ import { pairError } from '$lib/ble/pair-error';
 import { arbitrate } from '$lib/ble/arbitrate';
 import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
 import { createActuator } from '$lib/ride/actuation';
+import { biasPress, ergPress } from '$lib/ride/easier-harder';
+import { gearsEnabled } from '$lib/ride/gears-enabled';
 import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/session/wire';
@@ -325,6 +327,24 @@ export function createRide(deps: RideDeps) {
 			};
 		},
 		nudgeBias: aim.nudgeBias,
+		/** Easier / Harder (#3328): a gear in SIM; in ERG a session's bias, or the free ride's watts. */
+		easierHarder(dir: 1 | -1) {
+			const erg = deps.joined()
+				? biasPress(() => aim.bias, aim.nudgeBias)
+				: deps.free.armed && deps.free.mode === 'watts'
+					? ergPress(() => deps.free.watts, deps.free.nudge)
+					: undefined;
+			return actuator.easierHarder(dir, erg);
+		},
+		/** Easier / Harder acts: this screen drives a trainer, in a session or a free ride (#3329). */
+		get shifting() {
+			return (
+				gearsEnabled() &&
+				!!trainer &&
+				actuating &&
+				(deps.joined() || deps.free.armed)
+			);
+		},
 		ride,
 		unpair,
 		handOff,

@@ -7,12 +7,8 @@ import type {
 	TrainerStatus,
 } from '$lib/ble/trainer';
 import { DEFAULTS, nudgedBias } from '$lib/workout/guards';
-import {
-	createActuator,
-	EASIER_HARDER_OFF,
-	ergPress,
-	simulate,
-} from './actuation';
+import { createActuator, simulate } from './actuation';
+import { EASIER_HARDER_OFF, ergPress } from './easier-harder';
 import { nudged } from './free-ride.svelte';
 
 /** A trainer that remembers every write and switches mode as a real one does. */

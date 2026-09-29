@@ -2,6 +2,8 @@ import { rememberRodeIn } from '$lib/crew-lounge';
 import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
+import { gearsEnabled } from '$lib/ride/gears-enabled';
+import { bindRideShift } from '$lib/ride/keys';
 import { pullProfile } from '$lib/profile-sync.svelte';
 import { createChannelLive } from '$lib/channel/live.svelte';
 import { createRecording } from '$lib/session/recording.svelte';
@@ -70,6 +72,8 @@ type Connection = {
 	 * for, the HUD follows and the leave guard protects.
 	 */
 	riding: () => boolean;
+	/** Easier / Harder acts on a ride here: the soundboard yields its keys (#3329). */
+	shifting: () => boolean;
 	/** The shared session and its workout, parsed once per connection. */
 	shared: () => SessionState | undefined;
 	segments: () => Segment[];
@@ -292,6 +296,10 @@ function connect(address: PlaceAddress): Connection {
 			};
 		});
 
+		// Easier / Harder from the keys and any clicker, on every page while
+		// this channel's ride shifts (#3329) — a clicker cannot see the page.
+		$effect(() => (ride.shifting ? bindRideShift(ride) : undefined));
+
 		// LiveKit dropping us while live gets ONE automatic rejoin with a
 		// fresh token — covers token expiry and transient drops (#219). It is
 		// a resume, not a fresh join: the mic comes back the way it was, and
@@ -337,6 +345,7 @@ function connect(address: PlaceAddress): Connection {
 			isLivePhase(live.tick?.state.phase) ||
 			freeRide.recording ||
 			ownRide.riding,
+		shifting: () => ride.shifting || (gearsEnabled() && ownRide.riding),
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,
