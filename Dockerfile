@@ -2,7 +2,14 @@
 # Multi-stage: SPA build -> Go build with the SPA embedded -> distroless (#36).
 # Build stages run on $BUILDPLATFORM and cross-compile — no QEMU emulation,
 # and the SPA (arch-independent) builds once instead of once per arch.
-FROM --platform=$BUILDPLATFORM node:24-alpine AS web
+#
+# Every FROM is pinned by its multi-arch index digest (#2866, ADR-0054
+# amended): the node and golang stages produce the SPA and the binary that
+# ship, so a tag moved upstream would reach production with nothing in this
+# repository changing. Dependabot moves the digests monthly. A new node or
+# golang tag stays a human's edit — the Node major tracks ci.yml's `web` job
+# and the Go version tracks go.mod.
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS web
 RUN corepack enable
 WORKDIR /src/web
 # pnpm-workspace.yaml is part of the install's input, not a convenience:
@@ -18,7 +25,7 @@ COPY web/ ./
 COPY CHANGELOG.md ./static/changelog.md
 RUN pnpm build
 
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS server
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:8ac98ca534ac3f51e1f420a1dd2c15e74c75cfa0f23f3ad27eb5d7236c349a0c AS server
 WORKDIR /src/server
 COPY server/go.mod server/go.sum ./
 RUN go mod download
@@ -35,7 +42,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # that tried them. Made here because the final stage has no shell to mkdir with.
 RUN mkdir -p /mountpoints/data/tracks /mountpoints/data/feedback
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
 COPY --from=server /wattroom /wattroom
 # 65532 is distroless's `nonroot`, the uid this image runs as.
 COPY --from=server --chown=65532:65532 /mountpoints/data /data
