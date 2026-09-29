@@ -412,7 +412,16 @@ select
     coalesce(max((curve->>'best5s')::int),  0)::int as all_best5s,
     coalesce(max((curve->>'best1m')::int),  0)::int as all_best1m,
     coalesce(max((curve->>'best5m')::int),  0)::int as all_best5m,
-    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m
+    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m,
+    -- The critical-power pair (#3261), carried beside the four windows and
+    -- never drawn among them. A ride saved before it has no key, and max
+    -- skips it.
+    coalesce(max((curve->>'best3m')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best3m,
+    coalesce(max((curve->>'best12m')::int) filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best12m,
+    coalesce(max((curve->>'best3m')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best3m,
+    coalesce(max((curve->>'best12m')::int) filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best12m,
+    coalesce(max((curve->>'best3m')::int),  0)::int as all_best3m,
+    coalesce(max((curve->>'best12m')::int), 0)::int as all_best12m
 from rides
 where user_id = $1
 `
@@ -430,6 +439,12 @@ type CurveBestsRow struct {
 	AllBest1m  int32
 	AllBest5m  int32
 	AllBest20m int32
+	D30Best3m  int32
+	D30Best12m int32
+	D90Best3m  int32
+	D90Best12m int32
+	AllBest3m  int32
+	AllBest12m int32
 }
 
 // Progression overlay (#222): best per SPEC curve window over three ranges,
@@ -450,6 +465,12 @@ func (q *Queries) CurveBests(ctx context.Context, userID pgtype.UUID) (CurveBest
 		&i.AllBest1m,
 		&i.AllBest5m,
 		&i.AllBest20m,
+		&i.D30Best3m,
+		&i.D30Best12m,
+		&i.D90Best3m,
+		&i.D90Best12m,
+		&i.AllBest3m,
+		&i.AllBest12m,
 	)
 	return i, err
 }
@@ -960,6 +981,41 @@ func (q *Queries) ListRideMedals(ctx context.Context, rideID pgtype.UUID) ([]Lis
 	return items, nil
 }
 
+const listRidesMissingCriticalPower = `-- name: ListRidesMissingCriticalPower :many
+select id, samples from rides
+where started_at >= now() - interval '90 days'
+  and curve is not null and not (curve ? 'best3m')
+limit $1
+`
+
+type ListRidesMissingCriticalPowerRow struct {
+	ID      pgtype.UUID
+	Samples []byte
+}
+
+// The #3261 backfill's read: rides inside the 90-day curve whose curve has no
+// 3-minute best yet, blob and all, read once each. A ride with no curve at
+// all has nothing to add the pair to.
+func (q *Queries) ListRidesMissingCriticalPower(ctx context.Context, limit int32) ([]ListRidesMissingCriticalPowerRow, error) {
+	rows, err := q.db.Query(ctx, listRidesMissingCriticalPower, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRidesMissingCriticalPowerRow
+	for rows.Next() {
+		var i ListRidesMissingCriticalPowerRow
+		if err := rows.Scan(&i.ID, &i.Samples); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRidesMissingLast20mHR = `-- name: ListRidesMissingLast20mHR :many
 select id, samples from rides where last20m_hr is null limit $1
 `
@@ -1403,6 +1459,24 @@ func (q *Queries) RideOverlaps(ctx context.Context, arg RideOverlapsParams) (boo
 	var column_1 bool
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const setRideCriticalPower = `-- name: SetRideCriticalPower :exec
+update rides
+set curve = curve || jsonb_build_object('best3m', $1::int, 'best12m', $2::int)
+where id = $3
+`
+
+type SetRideCriticalPowerParams struct {
+	Best3m  int32
+	Best12m int32
+	ID      pgtype.UUID
+}
+
+// Adds the pair to a ride's curve and touches nothing else in it.
+func (q *Queries) SetRideCriticalPower(ctx context.Context, arg SetRideCriticalPowerParams) error {
+	_, err := q.db.Exec(ctx, setRideCriticalPower, arg.Best3m, arg.Best12m, arg.ID)
+	return err
 }
 
 const setRideFeel = `-- name: SetRideFeel :execrows

@@ -141,6 +141,43 @@ func TestPowerCurve(t *testing.T) {
 	}
 }
 
+// The critical-power pair (#3261): 3 and 12 minutes, the two-point fit for
+// CP and W′. Exact windows, and zero rather than a guess when the ride is
+// shorter than the window — PowerCurve's posture for every window.
+func TestPowerCurveKeepsTheCriticalPowerPair(t *testing.T) {
+	// block puts `seconds` at `effort` W at the start of a ride of `total`
+	// seconds at 200 W.
+	block := func(total, seconds, effort int) []int {
+		watts := wattsOnly(flat(200, total))
+		for i := range seconds {
+			watts[i] = effort
+		}
+		return watts
+	}
+	tests := []struct {
+		name                string
+		watts               []int
+		want3m, wantTwelveM int
+	}{
+		// 180 s at 400 is the best three minutes; twelve minutes around it
+		// average (180×400 + 540×200) / 720 = 250.
+		{"a three-minute effort", block(1200, 180, 400), 400, 250},
+		{"a twelve-minute effort", block(1500, 720, 300), 300, 300},
+		{"exactly three minutes", wattsOnly(flat(310, 180)), 310, 0},
+		{"a second short of three minutes", wattsOnly(flat(310, 179)), 0, 0},
+		{"exactly twelve minutes", wattsOnly(flat(260, 720)), 260, 260},
+		{"a second short of twelve minutes", wattsOnly(flat(260, 719)), 260, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := PowerCurve(tt.watts)
+			if got.Best3m != tt.want3m || got.Best12m != tt.wantTwelveM {
+				t.Fatalf("3 min %d, 12 min %d; want %d and %d", got.Best3m, got.Best12m, tt.want3m, tt.wantTwelveM)
+			}
+		})
+	}
+}
+
 func TestXPAndCategory(t *testing.T) {
 	// SPEC: 1 kJ = 1 XP + execution% × 50 → 400 + 45.
 	if got := XP(400, 0.9); got != 445 {
