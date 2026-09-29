@@ -164,6 +164,7 @@
 					{elapsed}
 					ftp={you.ftp}
 					trace={you.trace}
+					tv
 				/>
 			</div>
 		</div>
