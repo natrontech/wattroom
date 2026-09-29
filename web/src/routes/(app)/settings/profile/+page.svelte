@@ -212,7 +212,7 @@
 							fill="bg-neon"
 							class="mt-3 max-w-60"
 						/>
-						<p class="text-muted mt-1.5 font-mono text-[11px] tabular-nums">
+						<p class="text-muted num mt-1.5 text-[11px]">
 							{xp.toLocaleString()} XP · {(
 								xpForLevel(level + 1) - xp
 							).toLocaleString()} to level {level + 1}

@@ -27,9 +27,7 @@
 					? 'bg-surface-raised'
 					: ''}"
 			>
-				<span class="text-muted w-4 shrink-0 font-mono text-xs tabular-nums"
-					>{i + 1}</span
-				>
+				<span class="text-muted num w-4 shrink-0 text-xs">{i + 1}</span>
 				<span class="flex min-w-0 flex-1 items-baseline gap-1.5">
 					<span class="truncate">{row.displayName}</span>
 					<StatusMark line={people.face(row.id)?.statusLine} size={12} />
@@ -40,7 +38,7 @@
 						title="category — who you are comparable with">{row.category}</span
 					>
 				{/if}
-				<span class="shrink-0 font-mono text-xs tabular-nums"
+				<span class="num shrink-0 text-xs"
 					>{row.kj.toLocaleString()}<span class="text-muted ml-0.5">kJ</span
 					></span
 				>

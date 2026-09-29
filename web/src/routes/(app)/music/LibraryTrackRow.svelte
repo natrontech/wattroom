@@ -163,7 +163,7 @@
 					title="beats per minute">{track.bpm} bpm</span
 				>
 			{/if}
-			<span class="text-muted shrink-0 font-mono text-xs tabular-nums"
+			<span class="text-muted num shrink-0 text-xs"
 				>{trackClock(track.durationMs)}</span
 			>
 			<span class="text-muted hidden shrink-0 text-xs sm:inline"

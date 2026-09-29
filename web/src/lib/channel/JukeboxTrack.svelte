@@ -137,14 +137,14 @@
 			{/if}
 			{#if position}
 				<span
-					class="bg-paper/70 text-ink absolute bottom-0 left-0 rounded-tr px-1 font-mono text-[9px] tabular-nums"
+					class="bg-paper/70 text-ink num absolute bottom-0 left-0 rounded-tr px-1 text-[9px]"
 					>{position}</span
 				>
 			{/if}
 			{#if tracks.length}
 				<!-- The stack says "more than one" before any words do. -->
 				<span
-					class="border-neon/50 bg-paper/80 text-muted absolute right-0 bottom-0 rounded-tl border-t border-l px-1 font-mono text-[9px] tabular-nums"
+					class="border-neon/50 bg-paper/80 text-muted num absolute right-0 bottom-0 rounded-tl border-t border-l px-1 text-[9px]"
 					>{tracks.length}</span
 				>
 			{/if}
@@ -196,9 +196,7 @@
 					: 'border-muted/20 text-muted hover:border-muted/50'}"
 			>
 				<ChevronUp size={12} />
-				<span class="font-mono text-[10px] leading-none tabular-nums"
-					>{votes}</span
-				>
+				<span class="num text-[10px] leading-none">{votes}</span>
 			</button>
 		{/if}
 

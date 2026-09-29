@@ -250,8 +250,7 @@
 									>{rider.you ? 'You' : rider.name}</span
 								>
 								{#if rider.execution !== undefined}
-									<span
-										class="text-muted ml-auto font-mono text-xs tabular-nums"
+									<span class="text-muted num ml-auto text-xs"
 										>{Math.round(rider.execution * 100)}%</span
 									>
 								{/if}
@@ -267,13 +266,9 @@
 					<h2 class="eyebrow flex items-center gap-1.5">
 						<Trophy size={13} class="text-neon" aria-hidden="true" /> progress
 					</h2>
-					<span class="text-muted ml-auto font-mono text-[11px] tabular-nums"
-						>+{xp} XP</span
-					>
+					<span class="text-muted num ml-auto text-[11px]">+{xp} XP</span>
 				</div>
-				<ul
-					class="text-muted mt-3 space-y-1 font-mono text-[11px] tabular-nums"
-				>
+				<ul class="text-muted num mt-3 space-y-1 text-[11px]">
 					<li class="flex">
 						<span>{kj} kJ ridden</span><span class="ml-auto">+{kj}</span>
 					</li>

@@ -278,7 +278,7 @@
 									<span class="block truncate text-sm font-medium"
 										>{entry.workout.name}</span
 									>
-									<span class="block font-mono text-[11px] tabular-nums"
+									<span class="num block text-[11px]"
 										>{formatClock(durationSeconds(entry.workout))}
 										<span class="text-muted-dim font-sans"
 											>· {entry.focus ?? (entry.yours ? 'yours' : '')}</span

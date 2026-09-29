@@ -48,7 +48,7 @@
 		<a {href} class="font-display font-bold hover:underline">{workout.name}</a>
 		{#if focus}<span class="eyebrow">{focus}</span>{/if}
 		{@render badge?.()}
-		<span class="text-muted ml-auto font-mono text-xs tabular-nums"
+		<span class="text-muted num ml-auto text-xs"
 			>{formatClock(durationSeconds(workout))}</span
 		>
 	</div>

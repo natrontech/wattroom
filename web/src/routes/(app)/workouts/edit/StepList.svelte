@@ -173,7 +173,7 @@
 					<span class="block text-sm font-medium capitalize">{step.type}</span>
 					<span class="text-muted block text-xs">{describe(step)}</span>
 				</span>
-				<span class="text-muted shrink-0 font-mono text-xs tabular-nums"
+				<span class="text-muted num shrink-0 text-xs"
 					>{formatClock(stepSeconds(step))}</span
 				>
 			</button>

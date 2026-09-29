@@ -68,15 +68,14 @@
 	<!-- How far a road ride went and what it climbed (#3053): the server's
 	     replay, on a ride that had a road. -->
 	{#if server?.distanceM != null}
-		<span class="text-muted font-mono text-xs tabular-nums"
+		<span class="text-muted num text-xs"
 			>{kmAndClimb(server.distanceM, server.climbedM ?? 0)}</span
 		>
 	{/if}
-	<span class="text-muted ml-auto font-mono text-xs tabular-nums"
-		>{formatClock(ride.seconds)}</span
+	<span class="text-muted num ml-auto text-xs">{formatClock(ride.seconds)}</span
 	>
-	<span class="font-mono text-xs tabular-nums">{ride.avgWatts} W</span>
-	<span class="text-muted font-mono text-xs tabular-nums">{ride.kj} kJ</span>
+	<span class="num text-xs">{ride.avgWatts} W</span>
+	<span class="text-muted num text-xs">{ride.kj} kJ</span>
 	<!-- A ride whose workout prescribed no target has no execution to show;
 	     the dash says so on hover rather than sitting there unexplained. -->
 	<span
