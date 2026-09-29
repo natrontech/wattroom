@@ -17,9 +17,9 @@ export function ridePlace(ride: {
 	crew?: RidePlace | null;
 	channel?: RidePlace | null;
 	/** Ridden in a session, whatever became of its crew. */
-	room?: boolean;
+	inSession?: boolean;
 }): string {
-	if (!ride.crew) return ride.room ? 'in a session' : 'solo';
+	if (!ride.crew) return ride.inSession ? 'in a session' : 'solo';
 	return ride.channel
 		? `with ${ride.crew.name} in ${ride.channel.name}`
 		: `with ${ride.crew.name}`;
@@ -27,7 +27,7 @@ export function ridePlace(ride: {
 
 export interface ServerRide extends RideRecord {
 	xp: number;
-	room?: boolean;
+	inSession?: boolean;
 	crew?: RidePlace;
 	channel?: RidePlace;
 	/** The per-ride opt-in (ADR-0024): friends see it on your page. */

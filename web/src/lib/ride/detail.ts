@@ -35,7 +35,7 @@ export interface RideDetail {
 	/** #1143: false when the workout prescribed nothing to score. */
 	executionScored?: boolean;
 	/** Ridden in a session, whatever became of its crew (#2630). */
-	room?: boolean;
+	inSession?: boolean;
 	/** Whether the rider may still enter `crew` — named, not linked, if not. */
 	crewMember?: boolean;
 	ftp: number;

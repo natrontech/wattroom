@@ -117,11 +117,11 @@ func TestASessionRideStaysOneWhenItsCrewIsGone(t *testing.T) {
 		return nil
 	}
 
-	if d := page(ride); d["crewMember"] != true || d["room"] != true {
-		t.Errorf("a member's session ride: crewMember %v room %v", d["crewMember"], d["room"])
+	if d := page(ride); d["crewMember"] != true || d["room"] != true || d["inSession"] != true {
+		t.Errorf("a member's session ride: crewMember %v room %v inSession %v", d["crewMember"], d["room"], d["inSession"])
 	}
-	if d := page(solo); d["room"] == true || d["crewMember"] == true {
-		t.Errorf("a solo ride: room %v crewMember %v", d["room"], d["crewMember"])
+	if d := page(solo); d["room"] == true || d["inSession"] == true || d["crewMember"] == true {
+		t.Errorf("a solo ride: room %v inSession %v crewMember %v", d["room"], d["inSession"], d["crewMember"])
 	}
 
 	// Alice leaves: the crew is still named, and no longer hers to enter.
@@ -137,13 +137,13 @@ func TestASessionRideStaysOneWhenItsCrewIsGone(t *testing.T) {
 	if _, err := h.store.Pool.Exec(t.Context(), "delete from crews where id = $1", crew.ID); err != nil {
 		t.Fatal(err)
 	}
-	if r := listed(ride); r["crew"] != nil || r["room"] != true {
-		t.Errorf("the list, crew gone: crew %v room %v", r["crew"], r["room"])
+	if r := listed(ride); r["crew"] != nil || r["room"] != true || r["inSession"] != true {
+		t.Errorf("the list, crew gone: crew %v room %v inSession %v", r["crew"], r["room"], r["inSession"])
 	}
-	if d := page(ride); d["crew"] != nil || d["room"] != true {
-		t.Errorf("the page, crew gone: crew %v room %v", d["crew"], d["room"])
+	if d := page(ride); d["crew"] != nil || d["room"] != true || d["inSession"] != true {
+		t.Errorf("the page, crew gone: crew %v room %v inSession %v", d["crew"], d["room"], d["inSession"])
 	}
-	if r := listed(solo); r["room"] == true {
-		t.Errorf("the solo ride reads as a session ride: %v", r["room"])
+	if r := listed(solo); r["room"] == true || r["inSession"] == true {
+		t.Errorf("the solo ride reads as a session ride: room %v inSession %v", r["room"], r["inSession"])
 	}
 }

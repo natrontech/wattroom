@@ -113,6 +113,10 @@ type rideJSON struct {
 	// True for rides ridden with a crew — the list marks them. The key is the
 	// list's from before crews (#2558).
 	Room bool `json:"room,omitempty"`
+	// The same flag under a word ADR-0058 did not retire (#2959). Personal-
+	// token tooling reads `room`, so it stays one release beside this and
+	// then goes (#3461).
+	InSession bool `json:"inSession,omitempty"`
 	// The crew it was ridden with and the voice channel it was ridden in
 	// (#2443); nil for a solo ride.
 	Crew    *placeJSON `json:"crew,omitempty"`
@@ -191,7 +195,7 @@ func rideJSONOf(row db.ListUserRidesRow) rideJSON {
 		StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
-		Room: row.InSession, SharedWithFriends: row.SharedAt.Valid,
+		Room: row.InSession, InSession: row.InSession, SharedWithFriends: row.SharedAt.Valid,
 		Crew: placeOf(row.CrewID, row.CrewName), Channel: placeOf(row.ChannelID, row.ChannelName),
 		DistanceM: row.DistanceM, ClimbedM: row.ClimbedM,
 	}
