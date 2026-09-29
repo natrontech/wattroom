@@ -15,8 +15,6 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { account, unchosen } from '$lib/account.svelte';
 	import { EMAIL_IS_FOR } from '$lib/auth/address';
-	import { toasts } from '$lib/toast.svelte';
-	import { api } from '$lib/api';
 	import { compressImage } from '$lib/chat/media';
 	import { levelFromXp, levelProgress, xpForLevel } from '$lib/level';
 	import ZoneDot from '$lib/components/ZoneDot.svelte';
@@ -25,6 +23,7 @@
 	import { ownCachedLthr } from '$lib/profile-sync.svelte';
 	import FtpTrendChart from '$lib/components/FtpTrendChart.svelte';
 	import Reactions from './Reactions.svelte';
+	import SignOutElsewhere from './SignOutElsewhere.svelte';
 	import type { PageData } from './$types';
 	import { untrack } from 'svelte';
 
@@ -45,27 +44,6 @@
 	let lthr = $state<number | null>(profile.current.lthr ?? null);
 	let status = $state<string | null>(null);
 	let saveError = $state<{ message: string; field?: string } | null>(null);
-	let signingOut = $state(false);
-	async function signOutElsewhere() {
-		signingOut = true;
-		const res = await api<{ signedOut: number }>(
-			'/api/auth/logout-everywhere',
-			{
-				method: 'POST',
-			},
-		);
-		signingOut = false;
-		if (!res.ok) {
-			toasts.push(res.error.message, { tone: 'error' });
-			return;
-		}
-		const n = res.data.signedOut;
-		toasts.push(
-			n === 0
-				? 'No other device was signed in.'
-				: `Signed out on ${n} other ${n === 1 ? 'device' : 'devices'}.`,
-		);
-	}
 	// The decline outlives the visit (#1552), keyed on the suggested value.
 	let declined = $state(declinedSuggestion('ftp'));
 	let applied = $state(false);
@@ -322,19 +300,7 @@
 						return err?.message ?? null;
 					}}
 				/>
-				<!-- The response to "a passkey was added to your account" (ADR-0030,
-				     #1607): every other screen signed out, this one kept. -->
-				<div class="text-muted self-end pb-2 text-xs sm:col-span-2">
-					<button
-						onclick={signOutElsewhere}
-						disabled={signingOut}
-						class="btn btn-secondary btn-xs">Sign out everywhere else</button
-					>
-					<span class="ml-2"
-						>Every other browser and device signed in to this account is signed
-						out; this one stays.</span
-					>
-				</div>
+				<SignOutElsewhere />
 				<PasskeyList />
 				<!-- The chart is a SIBLING of the label, not inside it (#2181):
 				     a label passes a click to its control, so tapping the trend
