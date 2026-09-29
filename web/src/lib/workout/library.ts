@@ -488,6 +488,19 @@ const fixtures: LibraryWorkout[] = [
 			steps: [warm(30, 0.4, 0.65), hold(35, 0.75)],
 		},
 	},
+	{
+		id: 'sprint-smoke',
+		focus: 'Recovery',
+		summary: 'CI fixture — a sprint straight after the count-in.',
+		workout: {
+			// The riding surface's loudest minute in the fewest seconds: the
+			// count-in, the sprint's own armed countdown, its window and its
+			// podium, for the reduced-motion gate (#3208) to watch.
+			name: 'Sprint Smoke',
+			author: 'wattroom',
+			steps: [hold(5, 0.5), sprint(15), hold(40, 0.5)],
+		},
+	},
 ];
 
 export const byId = (id: string): LibraryWorkout | undefined =>
