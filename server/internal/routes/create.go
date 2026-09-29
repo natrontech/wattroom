@@ -25,8 +25,12 @@ type createRequest struct {
 	Climbs []climbJSON `json:"climbs"`
 }
 
+// A GPX downloaded from strava.com, which rides with its owner alone
+// (ADR-0063): never in a plan or a session.
+const stravaSrc = "stravagpx"
+
 var (
-	sources    = map[string]bool{"gpx": true, "tcx": true, "fit": true, "stravagpx": true}
+	sources    = map[string]bool{"gpx": true, "tcx": true, "fit": true, stravaSrc: true}
 	eleSources = map[string]bool{"file": true, "none": true}
 	classes    = map[string]bool{"IV": true, "III": true, "II": true, "I": true, "HC": true}
 )
@@ -89,7 +93,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	out := routeJSON{
 		ID: store.UUIDString(created.ID), Name: name, GeneratedName: name, Src: req.Src,
 		LengthM: int32(math.Round(rd.LengthM)), GainM: int32(math.Round(rd.GainM())), //nolint:gosec // bounded by UnpackRoad
-		Climbs: climbs, HasPlace: sealed != nil, OwnerOnly: req.Src == "stravagpx",
+		Climbs: climbs, HasPlace: sealed != nil, OwnerOnly: req.Src == stravaSrc,
 		CreatedAt: created.CreatedAt.Time, RoadHash: roadHash(req.Road), EleSource: req.EleSource,
 	}
 	if sealed == nil {

@@ -261,6 +261,12 @@ func (rm *channelState) armIfRunning(now time.Time) bool {
 // Checked and applied under one lock, so two riders picking at the same
 // moment cannot both open the channel's one session.
 func (rm *channelState) control(c protocol.Control, rider protocol.Rider, now time.Time) (code, message string) {
+	return rm.controlOn(c, nil, rider, now)
+}
+
+// controlOn is control with the road a pick rides (#3095), resolved before
+// the lock; a pick without one rides none, replacing the last pick's.
+func (rm *channelState) controlOn(c protocol.Control, route *protocol.SessionRoute, rider protocol.Rider, now time.Time) (code, message string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if code, message := rm.refusalLocked(c.Action, rider); code != "" {
@@ -286,6 +292,9 @@ func (rm *channelState) control(c protocol.Control, rider protocol.Rider, now ti
 	// ride's record and roster before hearing no (audit 2026-09-09).
 	if !rm.session.apply(c, now) {
 		return "invalid_request", "That does not work right now — the session is in another phase."
+	}
+	if c.Action == "pick" {
+		rm.session.route = route
 	}
 	if stopping {
 		rm.events.add(sessionLine("stopped", "", stopped, time.Time{}, now), now)

@@ -48,6 +48,9 @@ type session struct {
 	// A game session has no timeline of its own: it runs with no length, does
 	// not pause, and the game's end is its end.
 	game string
+	// The road it rides (#3095), from the pick or the game that opened it;
+	// nil rides none.
+	route *protocol.SessionRoute
 	// Who joined it (ADR-0059): only they are driven and counted. The one
 	// who opened it is in from the start; everyone else in the channel
 	// spectates until they join. Bounded by riders who entered the channel.
@@ -202,6 +205,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 				Phase: "countdown", CountdownRemaining: remaining,
 				ID: s.id, Coach: s.coach, CoachName: s.coachName,
 				WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
+				Route: s.route,
 			}
 		}
 		// The countdown elapsed; the timeline started the instant it hit zero.
@@ -232,6 +236,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 		Phase: s.phase, Elapsed: elapsed,
 		ID: s.id, Coach: s.coach, CoachName: s.coachName,
 		WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
+				Route: s.route,
 	}
 }
 
