@@ -65,3 +65,10 @@ same section, never only in code.
   ([#3070](https://github.com/natrontech/wattroom/issues/3070)), the first-ride
   ask ([#3342](https://github.com/natrontech/wattroom/issues/3342)), the
   garage's You tab ([#3159](https://github.com/natrontech/wattroom/issues/3159)).
+
+## Amendment, 2026-09-29 (#3151): the height range is recorded
+
+The height range was recorded after all, in #3151's SPEC proposals: **1.50–2.05
+m**, with 3 builds. It is in docs/SPEC.md's "The figure" section. Only the eight
+swatch values and the neutral tone remain
+[#3413](https://github.com/natrontech/wattroom/issues/3413)'s.
