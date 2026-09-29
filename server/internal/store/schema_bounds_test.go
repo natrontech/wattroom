@@ -40,6 +40,9 @@ func TestSchemaChecksMatchTheProtocolBounds(t *testing.T) {
 		// `protocol` moves the picker and the handler and leaves the column
 		// refusing the new number as a 500.
 		{"rides", "rpe", protocol.MinRPE, protocol.MaxRPE},
+		// The weight a ride was ridden at (#3053) is the rider's own, copied
+		// at save, so it holds to the rider's bound.
+		{"rides", "weight_kg", protocol.MinWeightKg, protocol.MaxWeightKg},
 	} {
 		t.Run(want.table+"."+want.column, func(t *testing.T) {
 			var def string

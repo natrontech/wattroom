@@ -34,6 +34,13 @@ type harness struct {
 
 func setup(t *testing.T) *harness {
 	t.Helper()
+	return setupWith(t, slog.New(slog.DiscardHandler))
+}
+
+// setupWith is setup with the service logging to log, for a test that reads
+// what a save logged.
+func setupWith(t *testing.T, log *slog.Logger) *harness {
+	t.Helper()
 	st := storetest.Open(t)
 
 	users := &testx.Users{ByToken: map[string]db.User{}}
@@ -50,7 +57,7 @@ func setup(t *testing.T) *harness {
 		})
 	}
 	mux := http.NewServeMux()
-	New(st, users, slog.New(slog.DiscardHandler)).Register(mux)
+	New(st, users, log).Register(mux)
 	return &harness{mux: mux, store: st, users: users}
 }
 

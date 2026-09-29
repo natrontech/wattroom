@@ -145,6 +145,10 @@ const (
 	MinRoadAltM     = -500
 	MaxRoadAltM     = 9000
 
+	// docs/SPEC.md "Road times": an effort whose mean shelter exceeds 5 % is
+	// untimeable (ADR-0074, ADR-0077), as a fraction of the air.
+	MaxTimeableShelter = 0.05
+
 	// The pace model (docs/SPEC.md "Route rides", #3048): what turns a
 	// rider's watts into speed on a road. The client's dot, the hub's bunch,
 	// stats replay and races all read this one model, in $lib/road/pace.ts

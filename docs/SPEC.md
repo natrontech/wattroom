@@ -71,6 +71,10 @@
 | **Line** | An effort's position over time, a point every 10 m — what a ghost is drawn from ([ADR-0082](decisions/0082-a-climb-belongs-to-the-map.md)). |
 | **Faded** | A live rider whose connection dropped: greyed, with "last seen 0:06". Never drawn like a ghost, so "ghost" keeps one meaning (#3227). |
 | **Leg** | The stretch of a route ridden in one sitting. A long route rides in several legs, each starting where the last one stopped; a leg is at most 6 h. |
+| **Tour** | A crew's season: one running, ordered list of stages its caravan rides through, cooperative and never ranked ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
+| **Stage** | One route in a Tour, ridden from its km-0 anchor; a Strava-origin route never is one ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
+| **Caravan** | The crew's one position on its Tour: the kilometre every opted-in member's rides move ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
+| **Tour metres** | What a counted ride adds to the caravan: the reference rider's distance at that ride's %FTP profile, so the same relative effort moves everyone equally ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
 | **Reference rider** | The rider a road's estimates are made for when no real rider is in question — 75 kg on an 8 kg bike at 225 W (Route rides below). |
 | **Figure** | The 3D person on the road. A **rider** is the person and an **avatar** is their profile picture; the three words never stand in for each other ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)). |
 | **Geo pack** | The pmtiles file of map data the world is built from — the Alps first ([ADR-0070](decisions/0070-our-own-copy-of-openstreetmap.md)). One route's enrichment cut from it is a **corridor**. |
@@ -898,6 +902,14 @@ A rider's bias never moves the bunch.
 | KOM sprints          | open **300 m** before the top of a class **III** climb or harder; at most one per **5 min**, **6** per ride |
 | Terrain Match        | **250 m** step; penalty weight **0.3**; suggestion floor **0.2**                                        |
 
+## Crew Tour (defaults — tune in alpha; [ADR-0080](decisions/0080-a-crews-season-is-a-tour.md))
+
+- **Tour metres**: the reference rider's distance (Route rides) at the ride's %FTP profile, on the flat; zero-watt seconds pay nothing.
+- **Per ride**: at most **60 km** of tour metres.
+- **Per member per week**: at most **150 km**.
+- **A stage**: the route's own length; at most **12** stages in a Tour.
+- **The col of the month's crew count**: opted-in riders only, no Strava-origin routes, hidden below **3**.
+
 ## The world (defaults — tune in alpha; [ADR-0066](decisions/0066-the-world-is-the-ride-view.md), [ADR-0072](decisions/0072-light-in-the-world.md))
 
 | Parameter           | Value                                                                                                                   |
@@ -946,6 +958,26 @@ fills them in.
 - **Skin**: one of **8** free swatches, never sold; the values are #3413's. The neutral figure's tone is none of the 8.
 - **Neutral figure** (until the rider chooses): athletic build, a middle height, the neutral tone.
 - **The live zone** is a flat ground ring under the bike, never the jersey.
+
+## The living world (defaults — tune in alpha; #3178)
+
+What dresses the road beside the budgets of "The world" above.
+
+| Parameter     | Value                                                                                                     |
+| ------------- | --------------------------------------------------------------------------------------------------------- |
+| Corridor      | at most **150 KB** gzipped per **50 km**                                                                  |
+| Land cover    | weights OSM **1.0** > WorldCover **0.7** > generator **0.4**; edges warped **±6 m**; meadow below **1,300 m**, pasture above |
+| Buildings     | footprints fitted at **0.7–1.4×** scale                                                                   |
+| Water         | streams shown within **300 m** of the road; lakes reflect with Schlick F0 **0.02**                        |
+| Set pieces    | a generated one never within **90 s** of a real landmark of the same class                                |
+| Snow poles    | every **25 m** above **1,100 m**                                                                          |
+| Animals       | at most **80** in one draw, birds at most **40**; a cow turns its head toward riders within **60 m**      |
+| Ambience      | at most **6** voices; **−12 dB** under music; at most **8** one-shots a minute                            |
+| Fog sea       | September to April, its top at **700–1,000 m**, clamped so the climb crosses it                           |
+| Rain          | at most **3,000** streaks                                                                                 |
+| Crowds        | solo: **0–1** locals per km; a session: about **20** at the summit                                        |
+| Postbus       | at most once per **20 min**                                                                               |
+| Weather       | lookups cached **1 h** per **0.1°** cell                                                                  |
 
 ## Rider animation (defaults — tune in alpha; #3066)
 

@@ -1,3 +1,4 @@
+import { flip } from 'svelte/animate';
 import { prefersReducedMotion } from 'svelte/motion';
 import { fade, fly, scale, slide } from 'svelte/transition';
 import { pop as popCurve } from './damp';
@@ -48,8 +49,8 @@ export const pop = (node: Element) =>
 export const swap = (node: Element) =>
 	fade(node, { duration: still() ? 0 : DUR.quick, easing: moving });
 
-/** For `animate:flip`: a thing changing place, on `--ease-move`. */
-export const move = () => ({
-	duration: still() ? 0 : DUR.base,
-	easing: moving,
-});
+/** `animate:reorder` — a thing changing place in a list, on `--ease-move`. */
+export const reorder = (
+	node: Element,
+	fromTo: { from: DOMRect; to: DOMRect },
+) => flip(node, fromTo, { duration: still() ? 0 : DUR.base, easing: moving });

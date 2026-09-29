@@ -124,6 +124,10 @@ type rideJSON struct {
 	// ride has one (#1553), so the list can mark a failed upload; empty for a
 	// ride that was never sent. The detail carries the whole record.
 	ExportState string `json:"exportState,omitempty"`
+	// A road ride's metres and climbing (#3053), the server's replay of them;
+	// absent on a ride with no road.
+	DistanceM *int32 `json:"distanceM,omitempty"`
+	ClimbedM  *int32 `json:"climbedM,omitempty"`
 }
 
 // placeJSON names where a ride happened — a crew, or a channel of one.
@@ -189,6 +193,7 @@ func rideJSONOf(row db.ListUserRidesRow) rideJSON {
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
 		Room: row.InSession, SharedWithFriends: row.SharedAt.Valid,
 		Crew: placeOf(row.CrewID, row.CrewName), Channel: placeOf(row.ChannelID, row.ChannelName),
+		DistanceM: row.DistanceM, ClimbedM: row.ClimbedM,
 	}
 	if row.ExportState != nil {
 		out.ExportState = *row.ExportState

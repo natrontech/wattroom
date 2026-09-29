@@ -260,3 +260,34 @@ func TestListRidesCursorIsAPair(t *testing.T) {
 		})
 	}
 }
+
+// A ride's road summary stays off every AI context (#3053, ADR-0063): the
+// metres, the climbing and the road's hashes are location-derived, and
+// list_rides reads the same rows the history page does.
+func TestListRidesCarriesNoRoadSummary(t *testing.T) {
+	mux, st, user := setup(t)
+	distance, climbed, from := int32(12_345), int32(678), int32(1000)
+	mode, key := "free", "a-road-hash"
+	if _, err := st.Queries.CreateRide(t.Context(), db.CreateRideParams{
+		UserID: user.ID, WorkoutName: "Openers",
+		StartedAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+		Seconds:   600, AvgWatts: 200, Kj: 120, Execution: 1, ExecutionScored: true,
+		FtpWatts: 250, Samples: []byte(`[]`), Curve: []byte(`{}`), Xp: 10,
+		DistanceM: &distance, ClimbedM: &climbed, FromM: &from, RideMode: &mode, RouteKey: &key, RoadH: &key,
+	}); err != nil {
+		t.Fatalf("seed ride: %v", err)
+	}
+	_, body := post(t, mux, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rides","arguments":{}}}`)
+	raw, err := json.Marshal(body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"12345", "678", "a-road-hash", "distance", "climb", "rideMode", "route", "road"} {
+		if strings.Contains(strings.ToLower(string(raw)), strings.ToLower(leak)) {
+			t.Errorf("list_rides carries %q: %s", leak, raw)
+		}
+	}
+	if !strings.Contains(string(raw), "Openers") {
+		t.Fatalf("the seeded ride is not in the answer, so nothing was checked: %s", raw)
+	}
+}
