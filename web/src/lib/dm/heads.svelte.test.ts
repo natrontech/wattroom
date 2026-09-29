@@ -34,7 +34,7 @@ vi.mock('$lib/api', () => ({
 			: { ok: true, data: { conversations } },
 }));
 
-const { dmHeads, headPreview } = await import('./heads.svelte');
+const { dmHeads, headPreview, FALLBACK_MS } = await import('./heads.svelte');
 
 const line = (at: number) => ({
 	peerId: 'mara',
@@ -67,12 +67,12 @@ describe('dm heads', () => {
 		open = { id: 'mara', name: 'Mara' };
 		document.hasFocus = () => false;
 		conversations = [line(2)];
-		await vi.advanceTimersByTimeAsync(10_000);
+		await vi.advanceTimersByTimeAsync(FALLBACK_MS);
 		expect(announced.map((a) => a.reading)).toEqual([false]);
 
 		document.hasFocus = () => true;
 		conversations = [line(3)];
-		await vi.advanceTimersByTimeAsync(10_000);
+		await vi.advanceTimersByTimeAsync(FALLBACK_MS);
 		expect(announced.map((a) => a.reading)).toEqual([false, true]);
 	});
 
@@ -83,7 +83,7 @@ describe('dm heads', () => {
 		dmHeads.start();
 		await vi.advanceTimersByTimeAsync(0);
 		conversations = [{ ...line(2), text: '', poke: true }];
-		await vi.advanceTimersByTimeAsync(10_000);
+		await vi.advanceTimersByTimeAsync(FALLBACK_MS);
 		expect(announced).toMatchObject([
 			{ kind: 'poke', tag: 'poke-mara', at: 2, title: 'Mara poked you' },
 		]);
@@ -105,7 +105,7 @@ describe('dm heads', () => {
 		conversations = [
 			{ ...line(2), peerStatusLine: { emoji: '\u{1F912}', text: 'Out sick' } },
 		];
-		await vi.advanceTimersByTimeAsync(10_000);
+		await vi.advanceTimersByTimeAsync(FALLBACK_MS);
 		expect(announced.map((a) => a.title)).toEqual(['Mara \u{1F912}']);
 	});
 
@@ -160,5 +160,37 @@ describe('dm heads', () => {
 		await vi.advanceTimersByTimeAsync(0);
 		expect(dmHeads.heads).toHaveLength(1);
 		expect(announced).toEqual([]);
+	});
+
+	// The list follows the lobby ping (#2937), not a 10 s poll: a new ping
+	// count asks again, the count start() already answered does not, and the
+	// fallback stays quiet while pings keep the list fresh.
+	it('asks again on each lobby ping, and polls only when the pings go quiet', async () => {
+		conversations = [line(1)];
+		dmHeads.start();
+		dmHeads.follow(4);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(dmHeads.heads[0].at).toBe(1);
+
+		conversations = [line(2)];
+		dmHeads.follow(4); // the same count: nothing new
+		await vi.advanceTimersByTimeAsync(0);
+		expect(dmHeads.heads[0].at).toBe(1);
+		dmHeads.follow(5); // a ping
+		await vi.advanceTimersByTimeAsync(0);
+		expect(dmHeads.heads[0].at).toBe(2);
+		expect(announced.map((a) => a.tag)).toEqual(['dm-mara']);
+
+		// Pinged every 40 s, the fallback never adds a read of its own.
+		conversations = [line(3)];
+		await vi.advanceTimersByTimeAsync(40_000);
+		expect(dmHeads.heads[0].at).toBe(2);
+		dmHeads.follow(6);
+		await vi.advanceTimersByTimeAsync(40_000);
+		expect(dmHeads.heads[0].at).toBe(3);
+		// With no ping for a minute, it reads anyway.
+		conversations = [line(4)];
+		await vi.advanceTimersByTimeAsync(FALLBACK_MS);
+		expect(dmHeads.heads[0].at).toBe(4);
 	});
 });

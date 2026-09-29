@@ -12,6 +12,7 @@
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import { createProfileStore, PROFILE_LIMITS } from '$lib/profile.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
+	import { ONE_GEAR_SETTING } from '$lib/ride/mode-copy';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { deviceWord } from '$lib/device.svelte';
@@ -158,12 +159,10 @@
 					bind:checked={singleSpeed}
 					onchange={() => saveSprint({ singleSpeed })}
 				/>
-				Sprints stay in ERG — don't make me shift
+				{ONE_GEAR_SETTING.label}
 			</span>
 			<span class="text-muted mt-1 block text-[11px]">
-				A sprint moment holds a hard target instead of switching to slope.
-				Choose this if you ride single-speed (a Zwift Cog), or just prefer not
-				to shift indoors.
+				{ONE_GEAR_SETTING.hint}
 			</span>
 		</label>
 		{#if !singleSpeed}

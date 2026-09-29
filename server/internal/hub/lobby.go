@@ -169,6 +169,20 @@ func (h *Hub) ReadChanged(userID string) {
 	}
 }
 
+// DmChanged pings the lobby sockets of the two riders in one conversation
+// (#2937): a line, an edit, a delete or a reaction between them, so both
+// sides' conversation lists re-fetch now rather than on a poll. Never anyone
+// else's — who talks to whom, and when, is theirs.
+func (h *Hub) DmChanged(a, b string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for c, id := range h.lobby {
+		if id == a || id == b {
+			c.queue("")
+		}
+	}
+}
+
 // ChannelChanged pings the lobby sockets of the riders who may enter one text
 // channel (audience) about its log (#2435): a client looking at it re-fetches
 // that channel and nothing else. Never anyone else's (#2821) — a ping timed to

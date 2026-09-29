@@ -1,7 +1,7 @@
 import { ducking, onDuck } from '$lib/sound/duck';
 import { DUCK_ATTACK_MS, DUCK_DEFAULT } from '$lib/sound/ducking';
 import { CUES, type CueId } from '$lib/sound/cue-catalogue';
-import { makeLimiter, scheduleVoices } from '$lib/sound/cue-graph';
+import { makeLimiter, makeNoise, scheduleVoices } from '$lib/sound/cue-graph';
 import { glideTo } from '$lib/sound/glide';
 
 /**
@@ -48,15 +48,25 @@ function settle(ms: number): void {
 }
 
 /**
+ * The gestures a browser lets a suspended context resume in (#1681, #3022).
+ *
+ * `pointerdown` was a desk's list. A touch's pointerdown is not a user
+ * activation — the HTML standard counts a touch when it lifts, at
+ * `pointerup` and `touchend` — so on a phone every tap went by and the
+ * context stayed shut: the roadside's whole audience heard nothing. Nothing
+ * listened for a KEY either, which is the board's whole pitch: hitting a pad
+ * without looking.
+ */
+const GESTURES = ['pointerdown', 'pointerup', 'touchend', 'keydown'] as const;
+
+/**
  * Resume a context the browser started suspended. Registered on the first
- * gesture of either kind and removed once it takes (#1681).
+ * gesture of any kind above and removed once it takes.
  *
  * `ensure` already asks on every play, but a refused `resume()` is never
  * retried — and the ask arrives a tick after the press, inside a WebSocket
- * message rather than the gesture. Nothing was listening for a KEY at all,
- * which is the board's whole pitch: hitting a pad without looking. So a rider
- * who had not happened to click anything heard nothing — their own clip or
- * anyone else's — until they opened the panel, which is a click.
+ * message rather than the gesture. So a rider who had not happened to make
+ * the right gesture heard nothing — their own clip or anyone else's.
  */
 function unlock(): void {
 	if (!ctx) return;
@@ -64,8 +74,7 @@ function unlock(): void {
 		void ctx.resume();
 		return;
 	}
-	document.removeEventListener('pointerdown', unlock);
-	document.removeEventListener('keydown', unlock);
+	for (const gesture of GESTURES) document.removeEventListener(gesture, unlock);
 }
 
 function ensure(): { ctx: AudioContext; master: GainNode } | null {
@@ -74,8 +83,7 @@ function ensure(): { ctx: AudioContext; master: GainNode } | null {
 		ctx = new AudioContext();
 		// Only once something has asked for sound: a page that never makes one
 		// gets no listeners and no context to resume.
-		document.addEventListener('pointerdown', unlock);
-		document.addEventListener('keydown', unlock);
+		for (const gesture of GESTURES) document.addEventListener(gesture, unlock);
 		master = ctx.createGain();
 		limiter = makeLimiter(ctx, ctx.destination);
 		master.connect(limiter);
@@ -84,6 +92,16 @@ function ensure(): { ctx: AudioContext; master: GainNode } | null {
 	// Browsers start the context suspended until a user gesture; every play attempt retries.
 	if (ctx.state === 'suspended') void ctx.resume();
 	return { ctx, master: master! };
+}
+
+/**
+ * Open the cue bus from inside a tap that wants to hear its own answer — the
+ * roadside deck, whose cowbell comes back a tick later (#3022). The context
+ * is made and resumed inside the gesture, the one moment a phone allows it,
+ * rather than waiting for a sound to ask and the NEXT tap to let it out.
+ */
+export function unlockCues(): void {
+	ensure();
 }
 
 /**
@@ -132,23 +150,51 @@ export function setDuckLevel(next: number): void {
 	}
 }
 
-export function play(id: CueId, semitonesUp = 0): void {
+/**
+ * When and where a cue sounds (#3209). `inMs` puts it on the audio clock that
+ * far ahead, so a sound lands on the frame its motion hits rather than
+ * whenever the call happened to run — audio may trail a visual hit by 40 ms
+ * and lead it by 20. `pan` puts it on a side, -1 left to 1 right.
+ */
+export interface CueTiming {
+	semitones?: number;
+	inMs?: number;
+	pan?: number;
+}
+
+/** Past this a cue is in one ear, which reads as a broken headphone, not a place. */
+export const PAN_LIMIT = 0.8;
+
+/** A second of white noise, made once and only for a cue that has a noise voice. */
+let noise: AudioBuffer | undefined;
+
+export function play(
+	id: CueId,
+	{ semitones = 0, inMs = 0, pan = 0 }: CueTiming = {},
+): void {
 	// debug-level so sound issues are diagnosable without ears on the machine
-	console.debug('[cue]', id, semitonesUp || '');
+	console.debug('[cue]', id, semitones || '');
 	const audio = ensure();
 	if (!audio) return;
 	const { ctx: context, master: out } = audio;
-	const now = context.currentTime + 0.01;
-	const shift = Math.pow(2, semitonesUp / 12);
+	const now = context.currentTime + Math.max(0, inMs) / 1000 + 0.01;
+	const shift = Math.pow(2, semitones / 12);
+	// A panner per cue, not one on the bus: two cues overlapping from
+	// different sides would otherwise drag each other to the last one's.
+	const side = context.createStereoPanner();
+	side.pan.value = Math.min(PAN_LIMIT, Math.max(-PAN_LIMIT, pan));
+	side.connect(out);
 
-	scheduleVoices(context, out, CUES[id].voices, now, shift);
+	scheduleVoices(context, side, CUES[id].voices, now, shift, () =>
+		(noise ??= makeNoise(context)),
+	);
 }
 
 /** 3-2-1 rise up the minor triad so each tick tells you how many are left; 'go' resolves above them. */
 const TICK_STEPS: Record<number, number> = { 3: 0, 2: 3, 1: 7 };
 
 export function playCountdownTick(secondsLeft: number): void {
-	play('countdown', TICK_STEPS[secondsLeft] ?? 0);
+	play('countdown', { semitones: TICK_STEPS[secondsLeft] ?? 0 });
 }
 
 /** The full 3-2-1-go sequence, at real cadence. */

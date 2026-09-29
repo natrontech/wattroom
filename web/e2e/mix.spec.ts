@@ -1,6 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import { CUES, type Cue } from '../src/lib/sound/cue-catalogue';
-import { makeLimiter, scheduleVoices } from '../src/lib/sound/cue-graph';
+import {
+	makeLimiter,
+	makeNoise,
+	scheduleVoices,
+} from '../src/lib/sound/cue-graph';
 
 /**
  * The mix, measured (#3353, the machine half of #152's listening pass).
@@ -14,6 +18,10 @@ import { makeLimiter, scheduleVoices } from '../src/lib/sound/cue-graph';
  * Loudness is BS.1770's: K-weighted (its two pre-filters as Web Audio
  * biquads), the loudest 400 ms momentary window. A cue shorter than the window
  * is measured over the whole window, which is what a short blip sounds like.
+ *
+ * Rendered mono, without the panner play() puts each cue through: a cue
+ * centred loses 3 dB a side, one panned to the edge keeps nearly all of it on
+ * that side, so mono is each side's worst case.
  */
 
 // The loudest a board clip can be: a clip gain at its ceiling (docs/SPEC.md
@@ -28,13 +36,14 @@ type Measured = { id: string; peakDb: number; loudness: number };
 declare global {
 	interface Window {
 		makeLimiter: typeof makeLimiter;
+		makeNoise: typeof makeNoise;
 		scheduleVoices: typeof scheduleVoices;
 	}
 }
 
 async function loadGraph(page: Page): Promise<void> {
 	await page.addScriptTag({
-		content: `window.makeLimiter = ${makeLimiter};\nwindow.scheduleVoices = ${scheduleVoices};`,
+		content: `window.makeLimiter = ${makeLimiter};\nwindow.makeNoise = ${makeNoise};\nwindow.scheduleVoices = ${scheduleVoices};`,
 	});
 }
 
@@ -49,7 +58,9 @@ function measureCues(page: Page): Promise<Measured[]> {
 			);
 			const ctx = new OfflineAudioContext(2, Math.ceil(seconds * RATE), RATE);
 			const sum = ctx.createGain();
-			window.scheduleVoices(ctx, sum, cue.voices, 0.01, 1);
+			window.scheduleVoices(ctx, sum, cue.voices, 0.01, 1, () =>
+				window.makeNoise(ctx),
+			);
 			const shelf = new BiquadFilterNode(ctx, {
 				type: 'highshelf',
 				frequency: 1681.97,
@@ -142,7 +153,9 @@ test.describe('the mix', () => {
 				const limiter = window.makeLimiter(ctx, ctx.destination);
 				master.connect(limiter);
 				for (const cue of cues)
-					window.scheduleVoices(ctx, master, cue.voices, 0.01, 1);
+					window.scheduleVoices(ctx, master, cue.voices, 0.01, 1, () =>
+						window.makeNoise(ctx),
+					);
 				// A clip as dense as a clip can be: a full-scale square, played at the
 				// loudest the board and the rider's fader allow.
 				const clip = ctx.createBuffer(1, seconds * RATE, RATE);

@@ -105,6 +105,7 @@ One table, because there is one place roles live: the crew ([ADR-0058](decisions
 | Ride (metrics on dashboard) | ✓ | ✓ | ✓ | – |
 | Voice/camera | ✓ | ✓ | ✓ | ✓ |
 | Cheers | ✓ | ✓ | ✓ | ✓ |
+| Hand a bottle up to a rider riding the session (#3022) | ✓ | ✓ | ✓ | ✓ |
 
 ‡ **Only while they are the session's coach** — whoever started it, until they hand it to someone in the session (#2438). Being the crew's owner or an admin does not make anyone coach. The one lever the owner and admins hold over a session somebody else is running is **ending** it, which is what a voice channel needs when a session is left running in it: there is one session per channel, so an abandoned one would hold the channel shut.
 
@@ -185,7 +186,7 @@ Session lifecycle: a voice channel idles (voice and jukebox) → a member who ma
 
 A ride **alone** has the same lifecycle with the roster removed: rider picks workout → **3 s count-in** → their own timeline runs → closes when it ends (or they end it) → the ride is saved to their account. The count-in is a session's, shortened because nobody else is being waited for — same 3-2-1-go cues, same one-digit screen, and the same three seconds the resume countdown gets below. It is **not** an exception to ADR-0046's parity rule: the clock starts when the count-in ends, so the first block's target reaches the trainer then and not at the tap. A rider who changes their mind during it cancels back to the setup screen with the trainer still paired — nothing was ridden, so nothing is saved. The ramp test counts in the same way; it is a workout, not a third thing.
 
-A **free ride** ([ADR-0059](decisions/0059-a-voice-channel-rides-without-a-session.md)) has no timeline and no count-in. One control, one toggle between two modes: **grade** in **0.5 %** steps from **−5 %** to **+15 %**, where it opens, at **0 %**; and **watts** in **10 W** steps from **50 W** to **1000 W**, opening at **55 % of FTP** rounded to 10 W (defaults — tune in alpha). The ride guards below apply in watts mode only, since grade holds no target to release. It records from the first pedal stroke to **End ride**, is saved as the empty, unscored workout "Free ride", and follows the solo ride's minute rule. A session in the channel leaves it alone; joining one saves the free ride first. A third mode rides a **road** ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)): the grade is the road's **felt grade**, the step control goes, and the numbers are under Route rides. The free ride rides alone on `/ride` too, in all three modes.
+A **free ride** ([ADR-0059](decisions/0059-a-voice-channel-rides-without-a-session.md)) has no timeline and no count-in. One control, one toggle between two modes: **grade** in **0.5 %** steps from **−5 %** to **+15 %**, where it opens, at **0 %**; and **watts** in **10 W** steps from **50 W** to **1000 W**, opening at **55 % of FTP** rounded to 10 W (defaults — tune in alpha). A one-gear setup (`singleSpeed`, a Zwift Cog) opens in **watts** instead, since the slope has no usable range there; grade stays one tap away. The ride guards below apply in watts mode only, since grade holds no target to release. It records from the first pedal stroke to **End ride**, is saved as the empty, unscored workout "Free ride", and follows the solo ride's minute rule. A session in the channel leaves it alone; joining one saves the free ride first. A third mode rides a **road** ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)): the grade is the road's **felt grade**, the step control goes, and the numbers are under Route rides. The free ride rides alone on `/ride` too, in all three modes.
 
 ## Workout JSON (draft — M1 finalizes)
 
@@ -338,7 +339,7 @@ Bounds, enforced identically by the schema CHECKs, the profile PATCH and the web
 - **Execution score** (per ride): `% of riding seconds inside the band`, weighted by step intensity (each second weighs `target/FTP`, so nailing VO2 intervals counts more than nailing recovery). Warmup, cooldown and road steps excluded. Auto-paused time excluded. Because the band is biased, execution is not like-for-like between riders — one at 0.8 rides 20 % easier and can still score 1.0; Metronome and the execution bonus reward riding the plan you set, not the hardest plan.
 - **XP**: `1 kJ = 1 XP`, plus per-ride bonus `execution% × 50`, plus streak bonus `25 × current-week-streak` (capped at 250) — the **rider streak**, their own weeks wherever they rode, never the crew streak its Home displays (Glossary). Level thresholds: level n requires `500 × n^1.6` cumulative XP (a winter of 3 rides/week ≈ level 25–30).
 - **Category** from best 20-min w/kg over rolling 90 days: **D < 2.5, C 2.5–3.2, B 3.2–4.0, A ≥ 4.0**. Recompute on ride completion; category changes announce in the session (up: fanfare; down: silently).
-- **Power curve**: best-effort 5 s / 1 min / 5 min / 20 min per ride, merged into the 90-day rolling curve.
+- **Power curve**: best-effort 5 s / 1 min / 5 min / 20 min per ride, merged into the 90-day rolling curve. 3 and 12 min are kept too, per ride and in the 90-day curve, for the critical-power model (CP and W′ from the standard two-point pair, [#3261](https://github.com/natrontech/wattroom/issues/3261)), and are never shown as PRs or rank currencies.
 - **FTP suggestions**: when 90-day `0.95 × best-20-min` exceeds set FTP by >2 %, prompt (never auto-apply).
 - **FTP history** (the trend chart, #222/#1572): the line is the FTP each ride was **scored against**, captured on the ride row — a record, never a reconstruction. A ramp test additionally records the FTP it **produced** on its own ride, set only once the rider accepts the number, and that is drawn as its own mark rather than bending the line; without it a test's result would not appear until the rider's next ride. Fewer than two rides is not a trend and draws the empty state instead.
 - **Ramp test**: 5-min warmup (35 → 50 % FTP), then target starts at 100 W **(default)**, +20 W/min for up to 25 steps; FTP = 75 % of **best rolling 60 s** (rolling, not per-step — riders fail mid-step and their best minute straddles the boundary). The 75 % is Ric Stern's MAP→FTP midpoint of a 72–77 % band, ±5 % for most riders and worse at the extremes (RESEARCH §17.1).
@@ -571,16 +572,54 @@ Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued peda
 ## The roadside ([ADR-0064](decisions/0064-the-roadside.md) — defaults, tune in alpha)
 
 The **roadside** is everyone in a voice channel who is not riding a given
-rider's session, eliminated riders included. It paints, sounds and informs; it
-never changes a rider's resistance, nothing it does reaches a trainer, and it
-picks **when, never who** ([ADR-0064](decisions/0064-the-roadside.md)).
+rider's session: a phone propped beside the bike, a desk in the lounge, a rider
+a game has put out. It paints, sounds and informs; it never changes a rider's
+resistance, nothing it does reaches a trainer, and it picks **when, never who**
+([ADR-0064](decisions/0064-the-roadside.md)).
 
 - **Marks**: at most **24** per ride.
 - **Sounds**: at most **12** roadside sounds a minute reach any one rider.
+  The cowbell counts against it; a ring past the ceiling stays silent, and the
+  cheer still floats up.
 - **A Prime**: best 5 s W/kg inside the 15 s sprint window, and never within
   **5 min** of another sprint.
 - **Flashes**: at most one dim flash per **10 s**, and none under reduced
   motion.
+
+What v0 ships (#3022):
+
+- **The cowbell.** Every deck carries the fixed `bell-ring` key after the
+  rider's own four cheers, whatever their reaction set holds. It is a cheer —
+  the same **one a second** per rider — that rings the cowbell cue instead of
+  the cheer's blip: the TR-808's, two square voices at **540 Hz** and
+  **800 Hz** through one bandpass at **880 Hz**, **0.3 s** long. **Once a
+  tick**, however many rang it, and within the sound ceiling above.
+- **A bottle** goes to a rider **riding the session** in the voice channel you
+  share, and to nobody else; the hub refuses the rest and says why. **One per
+  sender and rider every 10 s** — the poke's cooldown, on a key of its own, so
+  a bottle never spends the poke. It is never a DM line. The rider's screen
+  **holds it until their next recovery valley**: the ride asks nothing harder
+  than **Z1** (≤ 55 % FTP, the zones above) or nothing at all — paused,
+  stopped, off the ride — and no sprint is on. What the ride asks is the
+  block's prescription, so the spiral release's ten seconds at 0 W are not a
+  valley. A running game asks what its mode does: a ramp's or the relay's own
+  target, Floor is Lava's called zone, Watt Golf's hole (60–110 %, so never a
+  valley), a Sprint Roulette window from its klaxon; a Points Race, whose
+  sprints come unannounced, and any mode the screen does not know are never a
+  valley while they run. A rider a game has put out is asked only their own
+  easy spin. Then it is announced like a poke: the cue, and a line in the
+  timeline mid-ride. Held in memory, so a reload lets go of a bottle not yet
+  taken.
+- **Eliminated riders** — Backyard Ramp and Floor is Lava put riders out one
+  at a time — are told they are at the roadside, with the deck, for as long as
+  the game runs.
+- **Phones hear the first tap.** The cue bus opens on the tap that lifts (a
+  touch's press is not a gesture a browser lets sound start in), and a tap on
+  the deck opens it from inside the tap.
+- **One gauge**, for the service rather than about anybody:
+  `wattroom_room_spectators`, the sockets in voice channels whose session is
+  running, held by someone not riding it. Unlabelled, beside
+  `wattroom_room_riding` — WATTROOM.md rules out product analytics.
 
 ## Route rides (defaults — tune in alpha; [ADR-0062](decisions/0062-the-horizon-may-be-a-road.md))
 
@@ -595,7 +634,7 @@ picks **when, never who** ([ADR-0064](decisions/0064-the-roadside.md)).
 | Entering a road              | **0 %** for **500 ms**, then the road                                                                                                   |
 | Grade written to the trainer | `MinTrainerGrade` **−10 %** (a default until hardware check P11) … `MaxTrainerGrade` **+15 %**, both in `protocol/limits.go`, one range for every trainer |
 | Reference rider              | **75 kg** rider + **8 kg** bike at **225 W**                                                                                            |
-| Pace model                   | Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, and the Cw FTMS is sent (**0.51 kg/m**, `ftms.ts`) — one Cw for both; a hardware session measures it and this row does not assert it |
+| Pace model                   | Martin et al. 1998, stepped once a second in **4** substeps (`$lib/road/pace.ts` and its Go twin `internal/road`, held to **0.1 %** by shared golden vectors): Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, CdA **0.32 m²** until the Kickr sessions measure it. The pace model and FTMS share this one CdA; the factor between it and the Cw FTMS is sent (**0.51 kg/m** today, `SIM_DEFAULTS`) is what that session measures, and this row does not assert it |
 | Riding on a road             | virtual speed above **0.5 m/s** — presence, auto-pause, auto-end and the recording rule read this                                        |
 | Leg                          | at most **6 h**                                                                                                                         |
 
@@ -610,6 +649,21 @@ scored workout (ADR-0062's table).
 - its class by score: **IV** above 8,000, **III** above 16,000, **II** above
   32,000, **I** above 64,000, **HC** above 80,000 — always in Roman numerals;
 - the climb card opens by itself for class **IV** and harder.
+
+## A route's place ([ADR-0063](decisions/0063-a-route-keeps-its-place-with-care.md))
+
+Privacy rules, not alpha defaults: loosening any of these takes an ADR.
+
+| Parameter                     | Value                                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| Privacy zone                  | a circle of **200–1,600 m**, about a fixed random offset from the point it hides                |
+| Default                       | **400 m** hidden at both ends of every route                                                    |
+| km-0 anchor                   | at least **1,000 m** outside every zone                                                         |
+| A crew's corridor             | at most **±1,000 m**, stopping at the anchor; tiles withheld within max(anchor distance, **1,000 m**) of the true ends and of any zone |
+| An effort near a private end  | within **1,000 m** of the ride's ends: marked at save                                           |
+| An effort near a zone         | within **1,000 m** of any zone: hidden at read time                                             |
+| A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
+| Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
 
 ## Rider animation (defaults — tune in alpha; #3066)
 

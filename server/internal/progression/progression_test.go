@@ -43,7 +43,8 @@ func setup(t *testing.T) (*http.ServeMux, *store.Store, *testx.Users, db.User) {
 func addRide(t *testing.T, st *store.Store, user db.User, daysAgo int, best20m int) pgtype.UUID {
 	t.Helper()
 	curve, _ := json.Marshal(map[string]int{
-		"best5s": best20m + 100, "best1m": best20m + 50, "best5m": best20m + 20, "best20m": best20m,
+		"best5s": best20m + 100, "best1m": best20m + 50, "best3m": best20m + 35, "best5m": best20m + 20,
+		"best12m": best20m + 10, "best20m": best20m,
 	})
 	id, err := st.Queries.CreateRide(t.Context(), db.CreateRideParams{
 		UserID: user.ID, WorkoutName: "test ride",
@@ -61,6 +62,8 @@ type bodyJSON struct {
 	Error string `json:"error"`
 	Curve struct {
 		D90 struct {
+			Best3m  int `json:"best3m"`
+			Best12m int `json:"best12m"`
 			Best20m int `json:"best20m"`
 		} `json:"d90"`
 		All struct {
@@ -132,6 +135,10 @@ func TestTrends(t *testing.T) {
 	}
 	if body.Curve.D90.Best20m != 230 {
 		t.Fatalf("d90 best20m: got %d, want 230", body.Curve.D90.Best20m)
+	}
+	// The critical-power pair rides the 90-day curve too (#3261).
+	if body.Curve.D90.Best3m != 265 || body.Curve.D90.Best12m != 240 {
+		t.Fatalf("d90 3 and 12 min: got %d and %d, want 265 and 240", body.Curve.D90.Best3m, body.Curve.D90.Best12m)
 	}
 	if body.Curve.All.Best20m != 260 {
 		t.Fatalf("all-time best20m: got %d, want 260", body.Curve.All.Best20m)

@@ -3,9 +3,9 @@
 // time and a second one at least 60° away. The world stops; the view doesn't.
 import * as THREE from 'three';
 import { EXAG, yOf } from './geometry';
-import { REFERENCE, steadySpeed } from './physics';
+import { referenceSpeed } from '$lib/road/pace';
 import { noise2, prng } from './rand';
-import type { Route } from './route';
+import type { Route } from '$lib/road/route';
 
 export type Peaks = { hero: number; second: number; share: number }; // radians (heading convention), share of riding time
 
@@ -14,7 +14,7 @@ export function bearings(route: Route): Peaks {
 	const bins = new Float64Array(36);
 	let total = 0;
 	for (let i = 0; i < route.x.length - 1; i++) {
-		const v = steadySpeed(REFERENCE.watts, route.grade[i], REFERENCE.body);
+		const v = referenceSpeed(route.grade[i]);
 		const dt = route.step / Math.max(1, v);
 		const h = Math.atan2(
 			route.x[i + 1] - route.x[i],

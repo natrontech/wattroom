@@ -12,8 +12,9 @@ const connection = vi.hoisted(() => ({
 			setRiderGain: (id: string, gain: number, name?: string) => void;
 		};
 		live?: {
-			tick?: { roster?: { id: string }[] };
+			tick?: { roster?: { id: string; inSession?: boolean }[] };
 			poke?: (id: string) => void;
+			bottle?: (id: string) => void;
 		};
 	},
 }));
@@ -131,6 +132,39 @@ describe('personMenu (#486)', () => {
 			expect(labels(personMenu('u2', () => {}))).not.toContain('Poke');
 			expect(labels(personMenu('u1', () => {}, { you: true }))).not.toContain(
 				'Poke',
+			);
+		} finally {
+			connection.current = null;
+		}
+	});
+
+	// A bottle lands only on a rider riding the session (#3022): the hub
+	// refuses anyone else, so the menu never offers what would be refused.
+	it('offers a bottle to a rider in the session, beside the poke', () => {
+		const bottle = vi.fn();
+		connection.current = {
+			av: { voice: {}, setRiderGain: () => {} },
+			live: {
+				tick: {
+					roster: [{ id: 'u1', inSession: true }, { id: 'u2' }],
+				},
+				poke: () => {},
+				bottle,
+			},
+		};
+		try {
+			const entries = items(personMenu('u1', () => {}));
+			const labelled = entries.map((item) => item.label);
+			expect(labelled.indexOf('Hand up a bottle')).toBe(
+				labelled.indexOf('Poke') + 1,
+			);
+			entries.find((item) => item.label === 'Hand up a bottle')!.onSelect();
+			expect(bottle).toHaveBeenCalledWith('u1');
+			expect(labels(personMenu('u2', () => {}))).not.toContain(
+				'Hand up a bottle',
+			);
+			expect(labels(personMenu('u1', () => {}, { you: true }))).not.toContain(
+				'Hand up a bottle',
 			);
 		} finally {
 			connection.current = null;

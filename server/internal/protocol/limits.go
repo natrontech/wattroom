@@ -119,6 +119,37 @@ const (
 	TemporaryDay  = 24 * TemporaryHour
 	TemporaryWeek = 7 * TemporaryDay
 
+	// A route a rider imports (docs/SPEC.md "Route rides", ADR-0062): its
+	// length, and the grade its stored road may carry. The browser reads the
+	// file and the server keeps what the browser read (#3024), so both hold
+	// the road to the same bounds.
+	MinRouteMeters  = 2000
+	MaxRouteMeters  = 200000
+	MinRoadGradePct = -15
+	MaxRoadGradePct = 20
+
+	// The pace model (docs/SPEC.md "Route rides", #3048): what turns a
+	// rider's watts into speed on a road. The client's dot, the hub's bunch,
+	// stats replay and races all read this one model, in $lib/road/pace.ts
+	// and internal/road — two that disagree put riders on different metres
+	// on different screens.
+	PaceCrr                  = 0.004
+	PaceAirDensity           = 1.225 // kg/m³
+	PaceDrivetrainEfficiency = 0.97
+	PaceGravity              = 9.80665 // m/s², standard gravity
+	// The CdA a road is ridden at, m², until the Kickr sessions measure one
+	// (#3025, #3331). The golden vectors carry CdA as an input, so a measured
+	// value adds vectors at it and moves this default.
+	PaceDefaultCdA = 0.32
+	// Substeps in each one-second step. Not a SPEC number, but both twins
+	// have to take the same ones to land on the same metre.
+	PaceSubsteps = 4
+	// The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
+	// whom a road's estimates are made for when no real rider is in question.
+	ReferenceRiderKg    = 75
+	BikeKg              = 8
+	ReferenceRiderWatts = 225
+
 	// One reconnect replay frame, in samples: an hour of the ride buffer's
 	// one row a second (audit 2026-09-09). The hub takes one frame a second
 	// per rider and cuts a longer one, so the client sends a longer outage

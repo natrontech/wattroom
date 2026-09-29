@@ -1,4 +1,4 @@
-import type { Voice } from './cue-catalogue';
+import type { NoiseVoice, Voice } from './cue-catalogue';
 
 /**
  * The nodes a cue and a master are made of (#152, #3353). Both functions
@@ -49,30 +49,59 @@ export function makeLimiter(
 	return squash;
 }
 
-/** One cue's voices onto `out`, starting at `now`, every pitch times `shift`. */
+/** A second of white noise: a shutter's click has no pitch. Its caller keeps it. */
+export function makeNoise(context: BaseAudioContext): AudioBuffer {
+	const noise = context.createBuffer(1, context.sampleRate, context.sampleRate);
+	const samples = noise.getChannelData(0);
+	for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+	return noise;
+}
+
+/**
+ * One cue's voices onto `out`, starting at `now`, every pitch times `shift`.
+ * `noise` is asked for only by a noise voice.
+ */
 export function scheduleVoices(
 	context: BaseAudioContext,
 	out: AudioNode,
-	voices: readonly Voice[],
+	voices: readonly (Voice | NoiseVoice)[],
 	now: number,
 	shift: number,
+	noise: () => AudioBuffer,
 ): void {
 	for (const voice of voices) {
-		const osc = context.createOscillator();
-		osc.type = voice.type;
-		osc.detune.value = voice.detune ?? 0;
-
 		const start = now + voice.at;
 		const end = start + voice.dur;
-		osc.frequency.setValueAtTime(voice.freq * shift, start);
-		if (voice.to)
-			osc.frequency.exponentialRampToValueAtTime(voice.to * shift, end);
+		let source: AudioScheduledSourceNode;
+		if (voice.type === 'noise') {
+			const click = context.createBufferSource();
+			click.buffer = noise();
+			source = click;
+		} else {
+			const osc = context.createOscillator();
+			osc.type = voice.type;
+			osc.detune.value = voice.detune ?? 0;
+			osc.frequency.setValueAtTime(voice.freq * shift, start);
+			if (voice.to)
+				osc.frequency.exponentialRampToValueAtTime(voice.to * shift, end);
+			if (voice.wobble) {
+				const lfo = context.createOscillator();
+				const depth = context.createGain();
+				lfo.frequency.value = voice.wobble.rate;
+				depth.gain.value = voice.wobble.depth;
+				lfo.connect(depth);
+				depth.connect(osc.detune);
+				lfo.start(start);
+				lfo.stop(end);
+			}
+			source = osc;
+		}
 
-		let node: AudioNode = osc;
+		let node: AudioNode = source;
 
 		if (voice.filter) {
 			const filter = context.createBiquadFilter();
-			filter.type = 'lowpass';
+			filter.type = voice.filter.type ?? 'lowpass';
 			filter.Q.value = voice.filter.q ?? 1;
 			filter.frequency.setValueAtTime(voice.filter.from, start);
 			if (voice.filter.to)
@@ -90,18 +119,7 @@ export function scheduleVoices(
 		node.connect(env);
 		env.connect(out);
 
-		if (voice.wobble) {
-			const lfo = context.createOscillator();
-			const depth = context.createGain();
-			lfo.frequency.value = voice.wobble.rate;
-			depth.gain.value = voice.wobble.depth;
-			lfo.connect(depth);
-			depth.connect(osc.detune);
-			lfo.start(start);
-			lfo.stop(end);
-		}
-
-		osc.start(start);
-		osc.stop(end + 0.02);
+		source.start(start);
+		source.stop(end + 0.02);
 	}
 }

@@ -198,3 +198,112 @@ func TestPokeRiderReachesEveryChannel(t *testing.T) {
 		}
 	}
 }
+
+// readRefusal reads until the socket's next refusal, skipping ticks.
+func readRefusal(t *testing.T, conn *websocket.Conn) protocol.Error {
+	t.Helper()
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+		var msg protocol.ServerMessage
+		err := wsjson.Read(ctx, conn, &msg)
+		cancel()
+		if err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		if msg.Error != nil {
+			return *msg.Error
+		}
+		if msg.Poke != nil {
+			t.Fatalf("expected a refusal, the socket heard %+v", *msg.Poke)
+		}
+	}
+	t.Fatal("no refusal within deadline")
+	return protocol.Error{}
+}
+
+// roadside opens a voice channel where Sven rides the session and Jan
+// stands beside it with his phone — the roadside of ADR-0064.
+func roadside(t *testing.T) (h *Hub, jan, sven *websocket.Conn) {
+	t.Helper()
+	h = New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws/channels/{id}", h.HandleWS)
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws/channels/velvet"
+
+	jan = dial(t, url, "jan:member")
+	sven = dial(t, url, "sven:member")
+	dial(t, url, "kai:member")
+	eventually(t, "all three joined", func() bool {
+		return h.Presence("velvet").Connected == 3
+	})
+	joinRide(h.room("velvet"), "sven")
+	return h, jan, sven
+}
+
+func sendPoke(t *testing.T, conn *websocket.Conn, poke protocol.Poke) {
+	t.Helper()
+	if err := wsjson.Write(t.Context(), conn, protocol.ClientMessage{Poke: &poke}); err != nil {
+		t.Fatalf("send poke: %v", err)
+	}
+}
+
+// A bottle handed up from the roadside reaches the rider it names, sent by
+// whoever authenticated the socket, and the hand that passed it hears that
+// it landed (#3022).
+func TestABottleReachesARiderInTheSession(t *testing.T) {
+	_, jan, sven := roadside(t)
+	sendPoke(t, jan, protocol.Poke{To: "sven", Kind: protocol.PokeKindBottle, FromID: "forged"})
+
+	got := readPoke(t, sven)
+	if got.Kind != protocol.PokeKindBottle || got.FromID != "jan" || got.From != "jan" || got.At == 0 {
+		t.Fatalf("sven was handed %+v, want a bottle from jan", got)
+	}
+	if answer := readPoke(t, jan); answer.Kind != protocol.PokeKindBottle || answer.To != "sven" {
+		t.Fatalf("jan's answer: %+v", answer)
+	}
+}
+
+// A bottle is a session's: the valley it waits for is one of the session's
+// blocks, so a rider standing in the channel without riding gets none — and
+// the one who tried is told why rather than left pressing (errors.md).
+func TestABottleForSomeoneNotRidingIsRefused(t *testing.T) {
+	_, jan, _ := roadside(t)
+	sendPoke(t, jan, protocol.Poke{To: "kai", Kind: protocol.PokeKindBottle})
+	if refusal := readRefusal(t, jan); refusal.Code != "invalid_request" || refusal.Message == "" {
+		t.Fatalf("refusal = %+v, want invalid_request with words", refusal)
+	}
+}
+
+func TestAPokeOfNoKnownKindIsRefused(t *testing.T) {
+	_, jan, _ := roadside(t)
+	sendPoke(t, jan, protocol.Poke{To: "sven", Kind: "anvil"})
+	if refusal := readRefusal(t, jan); refusal.Code != "validation_error" {
+		t.Fatalf("refusal = %+v, want validation_error", refusal)
+	}
+}
+
+// Handing up a bottle every second would be a harassment button with a
+// nicer name. It takes the poke's cooldown on a key of its own: a second
+// bottle waits, and says so, while a poke to the same rider still lands.
+func TestABottleTakesThePokeCooldownOnItsOwnKey(t *testing.T) {
+	_, jan, sven := roadside(t)
+	sendPoke(t, jan, protocol.Poke{To: "sven", Kind: protocol.PokeKindBottle})
+	readPoke(t, jan) // the first one's answer
+
+	sendPoke(t, jan, protocol.Poke{To: "sven", Kind: protocol.PokeKindBottle})
+	refusal := readRefusal(t, jan)
+	if refusal.Code != "rate_limited" || !strings.Contains(refusal.Message, "bottle") {
+		t.Fatalf("second bottle: %+v, want rate_limited about the bottle", refusal)
+	}
+
+	sendPoke(t, jan, protocol.Poke{To: "sven"})
+	for {
+		got := readPoke(t, sven)
+		if got.Kind == "" {
+			break // the poke, behind the first bottle
+		}
+	}
+}

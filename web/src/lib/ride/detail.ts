@@ -5,6 +5,7 @@ import type { RidePlace } from './list';
  * sends, and the two calls the detail page and the list row share.
  */
 import { api, type ApiResult } from '$lib/api';
+import type { Curve } from '$lib/progression';
 import type { RideFeel } from './feel';
 import type { RideSample } from './stats';
 
@@ -41,7 +42,7 @@ export interface RideDetail {
 	/** Per-ride opt-in (ADR-0024): shown and flipped on the page (#1691). */
 	sharedWithFriends: boolean;
 	/** The ride's own power curve (SPEC), absent when none was stored. */
-	curve?: { best5s: number; best1m: number; best5m: number; best20m: number };
+	curve?: Curve;
 	/** Where it was ridden (#2443); absent for a solo ride. */
 	crew?: RidePlace;
 	channel?: RidePlace;

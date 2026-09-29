@@ -8,8 +8,9 @@ import type { Ground } from './dress';
 import { clearOf } from './field';
 import { namesFor } from './names';
 import type { Marker } from './markers';
-import { REFERENCE, steadySpeed } from './physics';
-import { frameAt, type Route } from './route';
+import { referenceSpeed } from '$lib/road/pace';
+import { type Route } from '$lib/road/route';
+import { frameAt } from '$lib/road/along';
 
 export type PieceKind =
 	| 'bench'
@@ -115,12 +116,7 @@ export function setPieces(route: Route, markers: Marker[], c: Ctx) {
 	const t = new Float64Array(n);
 	for (let i = 1; i < n; i++)
 		t[i] =
-			t[i - 1] +
-			route.step /
-				Math.max(
-					1.5,
-					steadySpeed(REFERENCE.watts, route.grade[i], REFERENCE.body),
-				);
+			t[i - 1] + route.step / Math.max(1.5, referenceSpeed(route.grade[i]));
 	const nearVillage = (i: number) =>
 		c.villages.some((v) => Math.abs(v.d - i * route.step) < 600);
 

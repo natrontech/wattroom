@@ -8,7 +8,7 @@
 // joined by five hairpins, a short summit ridge, a long winding descent and the valley
 // again — about 30 km and 600 m up.
 import { prng } from './rand';
-import type { GpxPoint } from './gpx';
+import type { TrackPoint } from '$lib/road/parse';
 
 export const SYNTHETIC_NAME = 'Synthetic pass loop';
 
@@ -132,7 +132,7 @@ function heightAlong(knots: number[], length: number) {
 	};
 }
 
-export function syntheticPoints(): GpxPoint[] {
+export function syntheticPoints(): TrackPoint[] {
 	const { points, knots, length } = centreline();
 	const ele = heightAlong(knots, length);
 	const noise = prng(3021);

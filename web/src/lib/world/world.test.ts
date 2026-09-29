@@ -1,9 +1,10 @@
+// @vitest-environment happy-dom
 import { beforeAll, describe, expect, it } from 'vitest';
 import { roadIndex } from './field';
-import { steadySpeed, step } from './physics';
-import { GpxError, parseGpx } from './gpx';
-import { at, toRoute, type Route } from './route';
-import { SYNTHETIC_NAME, syntheticGpx, syntheticPoints } from './synthetic';
+import { RouteError, parseRoute } from '$lib/road/parse';
+import { toRoute, type Route } from '$lib/road/route';
+import { at } from '$lib/road/along';
+import { syntheticGpx, syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
 import { folds, worstRiseThroughRoad } from './world.test-helper';
 
@@ -16,7 +17,7 @@ import { folds, worstRiseThroughRoad } from './world.test-helper';
 let route: Route;
 let world: World;
 beforeAll(() => {
-	route = toRoute(SYNTHETIC_NAME, syntheticPoints());
+	route = toRoute(syntheticPoints());
 	world = generate(route);
 });
 
@@ -56,9 +57,7 @@ function paceAcrossStart(r: Route): { slowest: number; fastest: number } {
 
 describe('the route', () => {
 	it('reads the synthetic GPX the way it reads a rider’s file', () => {
-		const { name, points } = parseGpx(syntheticGpx());
-		expect(name).toBe(SYNTHETIC_NAME);
-		const fromFile = toRoute(name, points);
+		const fromFile = toRoute(parseRoute(syntheticGpx()).points);
 		expect(fromFile.length).toBeCloseTo(route.length, 0);
 		expect(fromFile.gain).toBeCloseTo(route.gain, 0);
 	});
@@ -81,7 +80,7 @@ describe('the route', () => {
 
 	it('rides as steadily across a loop whose track stops short of its start', () => {
 		const short = syntheticPoints().slice(0, -8); // ~60 m short
-		const open = toRoute(SYNTHETIC_NAME, short);
+		const open = toRoute(short);
 		expect(open.loop).toBe(true);
 		const { slowest, fastest } = paceAcrossStart(open);
 		expect(slowest).toBeGreaterThan(0.9);
@@ -90,7 +89,7 @@ describe('the route', () => {
 
 	it('refuses a track too short to build a road on', () => {
 		const here = { lat: 46.6, lon: 7.6, ele: 500 };
-		expect(() => toRoute('Nowhere', [here, { ...here }])).toThrow(GpxError);
+		expect(() => toRoute([here, { ...here }])).toThrow(RouteError);
 	});
 
 	it('removes the reversal the track carries, and leaves none', () => {
@@ -114,22 +113,6 @@ describe('the route', () => {
 		expect(kinds.filter((k) => k === 'climb').length).toBeGreaterThanOrEqual(1);
 		expect(kinds.filter((k) => k === 'hairpin').length).toBe(5);
 		expect(world.villageNames.length).toBeGreaterThanOrEqual(1);
-	});
-});
-
-describe('the physics', () => {
-	const rider = { mass: 80 };
-
-	it('rides 200 W on the flat at a road bike’s speed', () => {
-		const kmh = steadySpeed(200, 0, rider) * 3.6;
-		expect(kmh).toBeGreaterThan(30);
-		expect(kmh).toBeLessThan(36);
-	});
-
-	it('integrates to the same steady speed', () => {
-		let v = 0;
-		for (let t = 0; t < 120; t += 0.1) v = step(v, 200, 0, rider, 0.1);
-		expect(Math.abs(v - steadySpeed(200, 0, rider)) * 3.6).toBeLessThan(0.5);
 	});
 });
 

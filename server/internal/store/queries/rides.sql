@@ -281,6 +281,21 @@ select id, samples from rides where last20m_hr is null limit $1;
 -- name: SetRideLast20mHR :exec
 update rides set last20m_hr = $2 where id = $1;
 
+-- name: ListRidesMissingCriticalPower :many
+-- The #3261 backfill's read: rides inside the 90-day curve whose curve has no
+-- 3-minute best yet, blob and all, read once each. A ride with no curve at
+-- all has nothing to add the pair to.
+select id, samples from rides
+where started_at >= now() - interval '90 days'
+  and curve is not null and not (curve ? 'best3m')
+limit $1;
+
+-- name: SetRideCriticalPower :exec
+-- Adds the pair to a ride's curve and touches nothing else in it.
+update rides
+set curve = curve || jsonb_build_object('best3m', sqlc.arg(best3m)::int, 'best12m', sqlc.arg(best12m)::int)
+where id = sqlc.arg(id);
+
 -- name: CurveBests :one
 -- Progression overlay (#222): best per SPEC curve window over three ranges,
 -- summary columns only — the sample blob stays cold.
@@ -296,7 +311,16 @@ select
     coalesce(max((curve->>'best5s')::int),  0)::int as all_best5s,
     coalesce(max((curve->>'best1m')::int),  0)::int as all_best1m,
     coalesce(max((curve->>'best5m')::int),  0)::int as all_best5m,
-    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m
+    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m,
+    -- The critical-power pair (#3261), carried beside the four windows and
+    -- never drawn among them. A ride saved before it has no key, and max
+    -- skips it.
+    coalesce(max((curve->>'best3m')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best3m,
+    coalesce(max((curve->>'best12m')::int) filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best12m,
+    coalesce(max((curve->>'best3m')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best3m,
+    coalesce(max((curve->>'best12m')::int) filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best12m,
+    coalesce(max((curve->>'best3m')::int),  0)::int as all_best3m,
+    coalesce(max((curve->>'best12m')::int), 0)::int as all_best12m
 from rides
 where user_id = $1;
 

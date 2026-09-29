@@ -1,5 +1,5 @@
-import type { GpxPoint } from './gpx';
-import type { Route } from './route';
+import type { TrackPoint } from '$lib/road/parse';
+import type { Route } from '$lib/road/route';
 import type { World } from './world';
 
 /**
@@ -40,13 +40,13 @@ const M_PER_DEG = (Math.PI / 180) * 6371008.8;
  * between 400 and 1200 m three times a lap. It starts on a top, so a stretch
  * that borrowed the start's height would sit 800 m wrong.
  */
-export function longLoopPoints(): GpxPoint[] {
+export function longLoopPoints(): TrackPoint[] {
 	const a = 24_000;
 	const b = 15_000;
 	const n = 6200;
 	const lat0 = 46.6;
 	const kx = M_PER_DEG * Math.cos((lat0 * Math.PI) / 180);
-	const out: GpxPoint[] = [];
+	const out: TrackPoint[] = [];
 	for (let i = 0; i <= n; i++) {
 		const th = (2 * Math.PI * (i % n)) / n;
 		out.push({

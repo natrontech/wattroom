@@ -6,7 +6,8 @@
 import { Biome } from './biome';
 import { clearOf, type Field, type Nearest } from './field';
 import { VILLAGES } from './names';
-import { frameAt, type Route } from './route';
+import { type Route } from '$lib/road/route';
+import { frameAt } from '$lib/road/along';
 
 export type Props = {
 	trees: Float32Array; // x, y, z, scale, kind (0 spruce, 1 broadleaf) ×N
