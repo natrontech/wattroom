@@ -631,6 +631,10 @@ async function chooseFrom(win, title, options, checkboxLabel = null) {
 // construction.
 let updateReady = null;
 let autoUpdater = null;
+// Where the shell installs its own updates: everywhere a signature is checked
+// first (#2818). Squirrel.Mac requires the Developer ID; NsisUpdater checks
+// Authenticode against the publisherName CSC_LINK writes into app-update.yml.
+const selfInstalls = process.platform !== 'linux';
 
 function watchForUpdates() {
 	// Required here, not at the top: merely touching electron-updater's
@@ -639,8 +643,12 @@ function watchForUpdates() {
 	// package.json's, and a malformed one crashes at launch with a dialog.
 	if (!app.isPackaged) return;
 	({ autoUpdater } = require('electron-updater'));
-	autoUpdater.autoDownload = true;
-	autoUpdater.autoInstallOnAppQuit = true;
+	// Linux installs whatever matches a sha512 published beside the binary, so
+	// anyone who could write a release could run code on every Linux machine
+	// at its next quit (#2818). It takes the download offer instead; macOS and
+	// Windows check a signature before they install anything.
+	autoUpdater.autoDownload = selfInstalls;
+	autoUpdater.autoInstallOnAppQuit = selfInstalls;
 	// stdout: nothing in a Dock launch, everything when run from a terminal —
 	// which is how "why did it not update" gets answered in a minute.
 	autoUpdater.logger = console;
@@ -680,9 +688,14 @@ function watchForUpdates() {
 
 // The renderer asks on mount, in case the download finished before it did.
 ipcMain.handle('wattroom:update-ready', () => updateReady);
-// Consecutive failures of the updater (#1940): three is "not coming".
+// Consecutive failures of the updater (#1940): three is "not coming". Linux
+// never self-installs (#2818), so there the page offers the download for
+// every newer version, at once.
 let updateFailures = 0;
-ipcMain.handle('wattroom:update-failed', () => updateFailures >= 3);
+ipcMain.handle(
+	'wattroom:update-failed',
+	() => !selfInstalls || updateFailures >= 3,
+);
 ipcMain.on('wattroom:install-update', () => installUpdate());
 
 // Restarting into the update, and why "Restart" used to just close the app.

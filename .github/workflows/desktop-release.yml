@@ -216,6 +216,12 @@ jobs:
         working-directory: desktop
         shell: bash
         env:
+          # Load-bearing for WINDOWS too, not only macOS (#2818): electron-builder
+          # signs the Windows build with this same certificate and writes its CN
+          # into app-update.yml as publisherName, which is what makes NsisUpdater
+          # check a download's Authenticode signature before installing it. Do
+          # not scope these two to macOS until Windows has a signing identity of
+          # its own (ADR-0037) — alone, that switches the Windows check off.
           CSC_LINK: ${{ secrets.MACOS_CERT_P12 }}
           CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
@@ -242,6 +248,25 @@ jobs:
             Linux) app=dist/linux-unpacked/wattroom-desktop ;;
           esac
           node fuses-check.js "$app"
+
+      # #2818: what a Windows rider's updater will check. NsisUpdater installs an
+      # update only when its Authenticode status is Valid and the signer matches
+      # app-update.yml's publisherName. Reported, never failed: the job summary
+      # says what the signature is, and a warning says when it is not Valid,
+      # because that means Windows self-update is failing closed.
+      - name: the Windows signature
+        if: runner.os == 'Windows'
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem dist -Filter '*.exe' | ForEach-Object FullName) + (Resolve-Path 'dist/win-unpacked/WattRoom.exe').Path
+          "### Windows Authenticode (#2818)" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          foreach ($f in $files) {
+            $sig = Get-AuthenticodeSignature $f
+            $name = Split-Path $f -Leaf
+            "- ``$name``: **$($sig.Status)**, signed by $($sig.SignerCertificate.Subject)" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            if ($sig.Status -ne 'Valid') { Write-Output "::warning::$name has Authenticode status $($sig.Status)" }
+          }
 
       # What a rider's Mac will do with it. codesign shows which identity
       # signed — an "Apple Development" .p12 signs happily and fails here, by
