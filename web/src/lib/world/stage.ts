@@ -16,7 +16,7 @@ import {
 import { PROP_RAMP, ramp, toon, type Sight } from './materials';
 import * as P from './props';
 import { prng } from './rand';
-import type { Route } from './route';
+import type { Route } from '$lib/road/route';
 import { skyMaterial, sunDir, terrainMaterial, type Style } from './styles';
 import type { World } from './world';
 

@@ -9,7 +9,8 @@ import { clearOf } from './field';
 import { namesFor } from './names';
 import type { Marker } from './markers';
 import { REFERENCE, steadySpeed } from './physics';
-import { frameAt, type Route } from './route';
+import { type Route } from '$lib/road/route';
+import { frameAt } from '$lib/road/along';
 
 export type PieceKind =
 	| 'bench'

@@ -1,6 +1,7 @@
 // What the route itself says: where it starts, where it tops out, every
 // kilometre, every hairpin, every village and every climb worth a name.
-import { wrapAngle, type Route } from './route';
+import { type Route } from '$lib/road/route';
+import { wrapAngle } from '$lib/road/along';
 
 export type Marker = {
 	kind: 'start' | 'summit' | 'km' | 'hairpin' | 'village' | 'climb';

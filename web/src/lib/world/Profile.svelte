@@ -1,7 +1,7 @@
 <script lang="ts">
 	// The 2.5D horizon: the route's elevation as one line, riders as dots on
 	// it — yours in the watt colour. Same data as the 3D world.
-	import type { Route } from './route';
+	import type { Route } from '$lib/road/route';
 	import type { Hud } from './scene';
 
 	let { route, riders }: { route: Route; riders: Hud['riders'] } = $props();

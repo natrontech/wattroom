@@ -5,9 +5,9 @@
 	import { onMount, untrack } from 'svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import Profile from './Profile.svelte';
-	import { buildFailureMessage, parseGpx } from './gpx';
+	import { buildFailureMessage, parseRoute } from '$lib/road/parse';
 	import { placeScene } from './place-scene';
-	import { toRoute, type Route } from './route';
+	import { toRoute, type Route } from '$lib/road/route';
 	import { mount, type CameraMode, type Hud, type WorldScene } from './scene';
 	import type { Style } from './styles';
 	import { syntheticGpx } from './synthetic';
@@ -42,8 +42,7 @@
 
 	function build(text: string): Built {
 		const t0 = performance.now();
-		const { name, points } = parseGpx(text);
-		const route = toRoute(name, points);
+		const route = toRoute(parseRoute(text).points);
 		return { route, world: generate(route), ms: performance.now() - t0 };
 	}
 
@@ -274,9 +273,8 @@
 			{/if}
 			<p class="text-muted m-0 text-xs sm:text-right">
 				{world.names.pass} ({Math.round(route.maxEle)} m) under the {world.names
-					.peak} · {route.name} · {(route.length / 1000).toFixed(1)} km · {Math.round(
-					route.gain,
-				)} m up · built in {Math.round(built.ms)} ms · {world.trees.length / 5}
+					.peak} · {route.name} up · built in {Math.round(built.ms)} ms · {world
+					.trees.length / 5}
 				trees, {world.houses.length / 5} houses
 			</p>
 			<p class="text-muted m-0 text-xs sm:text-right">

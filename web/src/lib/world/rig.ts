@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import { damp } from './damp';
 import { yOf } from './geometry';
-import { at, type Route } from './route';
+import { type Route } from '$lib/road/route';
+import { at } from '$lib/road/along';
 import type { SimRider } from './sim';
 import type { World } from './world';
 
