@@ -108,6 +108,22 @@ describe('recording a free ride', () => {
 		expect(free.seconds).toBe(2);
 	});
 
+	// #3056: on a road, a descent coasted at 0 W is ridden, and counts.
+	it('counts a coasted second on a road, and uploads none of its speed', async () => {
+		const free = createFreeRide({ ftp: () => 200 });
+		free.arm();
+		free.second(pedal);
+		free.second({ watts: 0, cadence: 0, hr: 110, virtualMps: 9 });
+		free.second({ watts: 0, cadence: 0, hr: 110, virtualMps: 0.4 });
+		expect(free.seconds).toBe(2);
+		for (let i = 0; i < 60; i++)
+			free.second({ watts: 0, cadence: 0, hr: 110, virtualMps: 12 });
+		expect(await free.end()).toEqual({ saved: { id: 'r1' } });
+		// The server's decoder refuses a field it does not know.
+		for (const sample of (uploads[0] as { samples: object[] }).samples)
+			expect(Object.keys(sample).sort()).toEqual(['cadence', 'hr', 'watts']);
+	});
+
 	it('saves as the empty, unscored workout named Free ride', async () => {
 		const free = createFreeRide({ ftp: () => 200 });
 		free.arm();

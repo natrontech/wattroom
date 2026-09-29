@@ -4,6 +4,7 @@ import { ROAD } from '$lib/ride/ride-grade';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { createLiveStats } from '$lib/ride/live-stats.svelte';
 import { uploadRide, type RideUpload, type SaveFailure } from '$lib/ride/save';
+import { DEFAULTS } from '$lib/workout/guards';
 
 /**
  * docs/SPEC.md's free ride (ADR-0059) — defaults, tune in alpha. Its grade
@@ -126,8 +127,16 @@ export function createFreeRide(deps: {
 			else watts = nudged('watts', watts ?? openingWatts(deps.ftp()), dir);
 		},
 		/** One counted second from the trainer, while no session drives it. */
-		second(sample: { watts: number; cadence: number; hr: number }) {
-			if (!armed || (sample.watts <= 0 && sample.cadence <= 0)) return;
+		second(sample: {
+			watts: number;
+			cadence: number;
+			hr: number;
+			/** On a road, the dot's speed: a coasted descent is ridden (#3056). */
+			virtualMps?: number;
+		}) {
+			const rolling = (sample.virtualMps ?? 0) > DEFAULTS.ridingMps;
+			if (!armed || (sample.watts <= 0 && sample.cadence <= 0 && !rolling))
+				return;
 			if (startedAt === null) {
 				startedAt = Date.now();
 				outcome = null;
@@ -147,7 +156,12 @@ export function createFreeRide(deps: {
 					else opened.release();
 				});
 			}
-			samples.push(sample);
+			// The upload's own fields: its decoder refuses anything else.
+			samples.push({
+				watts: sample.watts,
+				cadence: sample.cadence,
+				hr: sample.hr,
+			});
 			seconds = samples.length;
 			live.push({ watts: sample.watts });
 			buffer?.append({
