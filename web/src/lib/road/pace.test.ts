@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
 	BikeKg,
@@ -7,34 +6,7 @@ import {
 	ReferenceRiderWatts,
 } from '$lib/protocol';
 import { createPace, steadySpeed } from './pace';
-
-interface Leg {
-	seconds: number;
-	watts: number;
-	grade: number;
-	shelter: number;
-	speed: number;
-	distance: number;
-}
-interface Vector {
-	name: string;
-	cda: number;
-	mass: number;
-	speed: number;
-	legs: Leg[];
-}
-
-// Written by the Go twin (`go test ./internal/road -run TestGolden -update`);
-// the two models agree on every vector within 0.1 % (#3048).
-const golden = JSON.parse(
-	readFileSync(
-		new URL(
-			'../../../../server/internal/protocol/testdata/road-golden.json',
-			import.meta.url,
-		),
-		'utf8',
-	),
-) as { vectors: Vector[] };
+import { golden } from './golden.test-helper';
 
 const within = (got: number, want: number) =>
 	Math.abs(got - want) <= 0.001 * Math.max(Math.abs(want), 1);

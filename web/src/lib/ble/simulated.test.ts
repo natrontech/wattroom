@@ -38,10 +38,10 @@ describe('SimulatedTrainer', () => {
 		expect(last.watts).toBeLessThanOrEqual(255);
 	});
 
-	it('sim mode: power rises with grade and falls below base when descending', async () => {
+	it('sim mode: a rider holding cadence pushes harder uphill and freewheels down', async () => {
 		const t = new SimulatedTrainer({
 			rng: flatRng,
-			baseWatts: 200,
+			cadence: 90,
 			tauSeconds: 1,
 		});
 		collect(t);
@@ -49,12 +49,90 @@ describe('SimulatedTrainer', () => {
 		await t.setSimulation({ gradePct: 5 });
 		vi.advanceTimersByTime(8000);
 		expect(t.mode).toBe('sim');
-		const climbing = lastSample(t).watts;
-		expect(climbing).toBeGreaterThan(250); // 200 × (1 + 0.08×5) = 280
+		expect(lastSample(t).watts).toBeGreaterThan(400);
 
 		await t.setSimulation({ gradePct: -5 });
 		vi.advanceTimersByTime(8000);
-		expect(lastSample(t).watts).toBeLessThan(150); // 200 × 0.6 = 120
+		expect(lastSample(t).watts).toBeLessThan(20);
+	});
+
+	it('sim mode: a rider holding power keeps it, and the road sets the speed', async () => {
+		const t = new SimulatedTrainer({
+			rng: flatRng,
+			baseWatts: 200,
+			tauSeconds: 1,
+		});
+		collect(t);
+		await t.connect();
+		await t.setSimulation({ gradePct: 0 });
+		vi.advanceTimersByTime(60_000);
+		const flat = lastSample(t);
+		await t.setSimulation({ gradePct: 6 });
+		vi.advanceTimersByTime(60_000);
+		const climb = lastSample(t);
+		expect(flat.watts).toBe(200);
+		expect(climb.watts).toBe(200);
+		expect(climb.speedMps!).toBeLessThan(flat.speedMps! / 2);
+		// One gear: slower wheel, slower legs.
+		expect(climb.cadence).toBeLessThan(flat.cadence);
+	});
+
+	it('reports the flywheel speed through its real gear', async () => {
+		const t = new SimulatedTrainer({ rng: flatRng, cadence: 90 });
+		collect(t);
+		await t.connect();
+		await t.setSimulation({ gradePct: 2 });
+		vi.advanceTimersByTime(5000);
+		// 90 rpm × 34/14 × 2.096 m = 7.64 m/s (27.5 km/h)
+		expect(lastSample(t).speedMps).toBeCloseTo(
+			(90 / 60) * (34 / 14) * 2.096,
+			6,
+		);
+
+		const small = new SimulatedTrainer({
+			rng: flatRng,
+			cadence: 90,
+			ratio: { chainring: 34, cog: 28 },
+		});
+		collect(small);
+		await small.connect();
+		await small.setSimulation({ gradePct: 2 });
+		vi.advanceTimersByTime(5000);
+		expect(lastSample(small).speedMps).toBeCloseTo(
+			lastSample(t).speedMps! / 2,
+			6,
+		);
+	});
+
+	it.each([
+		['a steeper grade', { gradePct: 4 }],
+		['more rolling resistance', { gradePct: 0, crr: 0.012 }],
+		['more wind resistance', { gradePct: 0, cw: 0.9 }],
+		['a head wind', { gradePct: 0, windMps: 5 }],
+	])('sim mode: %s slows a rider holding power', async (_, road) => {
+		const ride = async (
+			sim: Parameters<SimulatedTrainer['setSimulation']>[0],
+		) => {
+			const t = new SimulatedTrainer({ rng: flatRng, baseWatts: 200 });
+			collect(t);
+			await t.connect();
+			await t.setSimulation(sim);
+			vi.advanceTimersByTime(120_000);
+			return lastSample(t).speedMps!;
+		};
+		expect(await ride(road)).toBeLessThan(await ride({ gradePct: 0 }));
+	});
+
+	it('sim mode: more resistance at the same cadence is more watts, as a shift is', async () => {
+		const ride = async (cw: number) => {
+			const t = new SimulatedTrainer({ rng: flatRng, cadence: 90 });
+			collect(t);
+			await t.connect();
+			await t.setSimulation({ gradePct: 2, cw });
+			vi.advanceTimersByTime(20_000);
+			return lastSample(t).watts;
+		};
+		expect(await ride(0.9)).toBeGreaterThan((await ride(0.51)) + 50);
 	});
 
 	it('logs every control write, SIM with its defaults resolved', async () => {
