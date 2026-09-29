@@ -14,9 +14,9 @@ func PackedRoad(lengthM float64, heights []float64) []byte {
 	b := make([]byte, 13+3*(n-1))
 	cm := func(m float64) int64 { return int64(math.Round(m * 100)) }
 	b[0] = 1
-	binary.LittleEndian.PutUint32(b[1:], uint32(n))           //nolint:gosec // test fixture
-	binary.LittleEndian.PutUint32(b[5:], uint32(cm(lengthM))) //nolint:gosec // test fixture
-	binary.LittleEndian.PutUint32(b[9:], uint32(int32(cm(heights[0]))))
+	binary.LittleEndian.PutUint32(b[1:], uint32(n))                     //nolint:gosec // test fixture
+	binary.LittleEndian.PutUint32(b[5:], uint32(cm(lengthM)))           //nolint:gosec // test fixture
+	binary.LittleEndian.PutUint32(b[9:], uint32(int32(cm(heights[0])))) //nolint:gosec // i32 on the wire, test fixture
 	for i := 1; i < n; i++ {
 		binary.LittleEndian.PutUint16(b[13+2*(i-1):], uint16(int16(cm(heights[i])-cm(heights[i-1])))) //nolint:gosec // test fixture
 	}
@@ -44,10 +44,10 @@ func Polyline6(points [][2]float64) string {
 			v = ^v
 		}
 		for v >= 0x20 {
-			out = append(out, byte((0x20|(v&0x1f))+63))
+			out = append(out, byte((0x20|(v&0x1f))+63)) //nolint:gosec // five bits plus 95, always a byte
 			v >>= 5
 		}
-		out = append(out, byte(v+63))
+		out = append(out, byte(v+63)) //nolint:gosec // under 0x20 plus 63, always a byte
 	}
 	var lat, lon int64
 	for _, p := range points {
