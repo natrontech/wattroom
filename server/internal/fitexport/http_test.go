@@ -1,6 +1,7 @@
 package fitexport
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -8,6 +9,9 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/muktihari/fit/decoder"
+	"github.com/muktihari/fit/profile/filedef"
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/testx"
@@ -109,6 +113,10 @@ func TestHandlerRejectsBadInput(t *testing.T) {
 		"absurd heart rate": `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":0,"watts":200,"heartRate":9999}]}`,
 		"negative second":   `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":-1,"watts":200}]}`,
 		"out of order":      `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":5,"watts":200},{"second":2,"watts":200}]}`,
+		// #3052: along the road, forward only, at a rider's speed, at a road's height.
+		"back down the road":  `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":0,"watts":200,"m":50},{"second":1,"watts":200,"m":40}]}`,
+		"faster than a rider": `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":0,"watts":200,"m":50},{"second":1,"watts":200,"m":81}]}`,
+		"above any road":      `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":0,"watts":200,"m":50,"alt":9001}]}`,
 	}
 
 	for name, body := range tests {
@@ -159,4 +167,24 @@ func itoa(i int) string {
 		i /= 10
 	}
 	return string(digits)
+}
+
+// A gap between samples allows its seconds' worth of road (#3052): a rider
+// at 25 m/s over a 3-second gap is 75 m on, and the file says so.
+func TestHandlerWritesARoadRideAcrossAGap(t *testing.T) {
+	rec := post(t, `{"startedAt":"2026-08-29T06:00:00Z","samples":[{"second":0,"watts":200,"m":100,"alt":400},{"second":3,"watts":200,"m":175,"alt":401}]}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body.String())
+	}
+	fit, err := decoder.New(bytes.NewReader(rec.Body.Bytes())).Decode()
+	if err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	records := filedef.NewActivity(fit.Messages...).Records
+	if got := records[1].DistanceScaled(); got != 75 {
+		t.Errorf("distance ridden = %v m, want 75 (measured from the first sample, not the route's start)", got)
+	}
+	if got := records[1].EnhancedSpeedScaled(); got != 25 {
+		t.Errorf("speed = %v m/s, want 25", got)
+	}
 }

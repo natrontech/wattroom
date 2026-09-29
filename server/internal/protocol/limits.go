@@ -128,6 +128,14 @@ const (
 	MinRoadGradePct = -15
 	MaxRoadGradePct = 20
 
+	// A sample on a road (#3052): its place along the road runs from 0 to the
+	// route's length (MaxRouteMeters above), never back, and at most this far
+	// a second; its height stays inside these. The floor is the .fit's own —
+	// enhanced_altitude cannot say lower than −500 m.
+	MaxRoadSpeedMps = 30
+	MinRoadAltM     = -500
+	MaxRoadAltM     = 9000
+
 	// The pace model (docs/SPEC.md "Route rides", #3048): what turns a
 	// rider's watts into speed on a road. The client's dot, the hub's bunch,
 	// stats replay and races all read this one model, in $lib/road/pace.ts

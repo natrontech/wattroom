@@ -17,7 +17,8 @@ import (
 func validMetrics(m protocol.RiderMetrics) bool {
 	return m.Watts >= 0 && m.Watts <= 3000 &&
 		m.HR >= 0 && m.HR <= 250 &&
-		m.Cadence >= 0 && m.Cadence <= 250
+		m.Cadence >= 0 && m.Cadence <= 250 &&
+		m.RoadInBounds()
 }
 
 func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
@@ -38,7 +39,13 @@ func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
 	if !rm.ownsTrainerLocked(c) {
 		return
 	}
-	rm.metrics[rider.ID] = m
+	// The channel sees a rider's numbers but not where they are on a road
+	// (#3052): the ride record below keeps m and alt, the tick carries
+	// neither. A route owner's heights are absolute, and ADR-0063 keeps
+	// absolute height with the owner.
+	live := m
+	live.M, live.Alt = 0, 0
+	rm.metrics[rider.ID] = live
 	rm.lastMetric[rider.ID] = now
 	if m.Watts > 0 {
 		rm.lastWatts[rider.ID] = now

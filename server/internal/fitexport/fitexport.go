@@ -27,6 +27,8 @@ import (
 	"github.com/muktihari/fit/profile/mesgdef"
 	"github.com/muktihari/fit/profile/typedef"
 	"github.com/muktihari/fit/proto"
+
+	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
 // FIT fields are fixed-width, so every summary has to narrow. These clamps are
@@ -72,6 +74,10 @@ type Sample struct {
 	Watts     uint16
 	Cadence   uint8
 	HeartRate uint8
+	// Metres along the road and the height there — read only on a Ride with
+	// Road set, where 0 is a real place rather than "not measured".
+	Distance float64
+	Altitude float64
 }
 
 // Ride is everything needed to produce an activity file.
@@ -83,6 +89,24 @@ type Sample struct {
 type Ride struct {
 	StartedAt time.Time
 	Samples   []Sample
+	// Ridden on a road (ADR-0062): every record carries the distance ridden,
+	// the speed and the height. Never a position — the .fit has no place for
+	// the road to leave by (ADR-0063).
+	Road bool
+}
+
+// FromMetrics is a stored ride as the encoder takes it: one record a second,
+// numbered from the start, and on a road when any sample moved along one.
+func FromMetrics(startedAt time.Time, metrics []protocol.RiderMetrics) Ride {
+	ride := Ride{StartedAt: startedAt, Samples: make([]Sample, len(metrics))}
+	for i, m := range metrics {
+		ride.Samples[i] = Sample{
+			Second: i, Watts: clampU16(m.Watts), Cadence: clampU8(m.Cadence), HeartRate: clampU8(m.HR),
+			Distance: m.M, Altitude: m.Alt,
+		}
+		ride.Road = ride.Road || m.M > 0
+	}
+	return ride
 }
 
 // Encode writes ride as a .fit Activity file.
@@ -129,10 +153,13 @@ func Encode(ride Ride) ([]byte, error) {
 		cadCount   uint64
 	)
 
-	for _, s := range ride.Samples {
+	for i, s := range ride.Samples {
 		record := mesgdef.NewRecord(nil).
 			SetTimestamp(start.Add(time.Duration(s.Second) * time.Second)).
 			SetPower(s.Watts)
+		if ride.Road {
+			setRoad(record, ride.Samples, i)
+		}
 
 		if s.Cadence > 0 {
 			record.SetCadence(s.Cadence)
@@ -216,6 +243,11 @@ func Encode(ride Ride) ([]byte, error) {
 		SetEvent(typedef.EventSession).
 		SetEventType(typedef.EventTypeStop)
 
+	if ride.Road {
+		ridden := roadCm(ride.Samples[len(ride.Samples)-1].Distance - ride.Samples[0].Distance)
+		lap.SetTotalDistance(ridden)
+		session.SetTotalDistance(ridden)
+	}
 	if cadCount > 0 {
 		avg := narrowU8((cadSum + cadCount/2) / cadCount)
 		lap.SetAvgCadence(avg).SetMaxCadence(maxCadence)
@@ -255,6 +287,24 @@ func Encode(ride Ride) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
+
+// setRoad writes where on the road record i is, in the .fit's own scales:
+// distance ridden since the first record in centimetres, enhanced speed in
+// mm/s, enhanced altitude in fifths of a metre above −500 m. Rounded, where
+// the library's scaled setters truncate.
+func setRoad(record *mesgdef.Record, samples []Sample, i int) {
+	s := samples[i]
+	record.SetDistance(roadCm(s.Distance - samples[0].Distance))
+	var speed float64
+	if i > 0 {
+		prev := samples[i-1]
+		speed = (s.Distance - prev.Distance) / float64(s.Second-prev.Second)
+	}
+	record.SetEnhancedSpeed(narrowU32(int64(math.Round(speed * 1000))))
+	record.SetEnhancedAltitude(narrowU32(int64(math.Round((s.Altitude + 500) * 5))))
+}
+
+func roadCm(m float64) uint32 { return narrowU32(int64(math.Round(m * 100))) }
 
 // MessageKinds lists the message numbers in the encoded file, in order. Tests assert
 // on this rather than only on bytes: a library upgrade that reorders or drops a
