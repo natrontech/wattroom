@@ -66,6 +66,19 @@ function trayLabels(app) {
 	);
 }
 
+/** Put the rider's window into native fullscreen, or out, and wait until it is. */
+function fullScreen(app, on) {
+	return app.evaluate(
+		({ BrowserWindow }, want) =>
+			new Promise((done) => {
+				const [w] = BrowserWindow.getAllWindows();
+				w.once(want ? 'enter-full-screen' : 'leave-full-screen', done);
+				w.setFullScreen(want);
+			}),
+		on,
+	);
+}
+
 /** Press a tray item by label, in the main process, as a rider would. */
 function clickTray(app, label, checked = undefined) {
 	return app.evaluate((_electron, [wanted, box]) => {
@@ -161,8 +174,8 @@ test('a covered or minimised window keeps the page in the call', async () => {
 });
 
 // Where there is a tray, closing the window hides it (#3005), so the app keeps
-// running behind it. Only macOS is certain to have one: a headless Linux runner
-// may have no status notifier, and there a close still quits.
+// running behind it. Only macOS is certain to have one: the Linux runner has
+// no status notifier host, and there a close quits (#3510, tested below).
 test('closing the window hides it where there is a tray', async () => {
 	test.skip(process.platform !== 'darwin', 'a tray is certain only on macOS');
 	const app = await launch(DEAD_URL);
@@ -271,19 +284,9 @@ test('fullscreen comes back fullscreen, and leaving it is kept too', async () =>
 		process.platform === 'linux',
 		'xvfb runs no window manager to go fullscreen',
 	);
-	const toggle = (app, on) =>
-		app.evaluate(
-			({ BrowserWindow }, want) =>
-				new Promise((done) => {
-					const [w] = BrowserWindow.getAllWindows();
-					w.once(want ? 'enter-full-screen' : 'leave-full-screen', done);
-					w.setFullScreen(want);
-				}),
-			on,
-		);
 	const first = await launch(DEAD_URL);
 	await expect((await first.firstWindow()).locator('#retry')).toBeVisible();
-	await toggle(first, true);
+	await fullScreen(first, true);
 	await expect.poll(() => savedState(first.userData)?.fullScreen).toBe(true);
 	first.process().kill('SIGKILL');
 
@@ -296,7 +299,7 @@ test('fullscreen comes back fullscreen, and leaving it is kept too', async () =>
 			),
 		)
 		.toBe(true);
-	await toggle(second, false);
+	await fullScreen(second, false);
 	await expect.poll(() => savedState(second.userData)?.fullScreen).toBe(false);
 	await second.close();
 });
@@ -1096,6 +1099,10 @@ test('launch at login writes the autostart file, and takes it away again', async
 });
 
 test('a login launch loads its window hidden, and closing it goes back to the tray', async () => {
+	test.skip(
+		process.platform === 'linux',
+		'the Linux runner has no status notifier host, so no tray (#3510)',
+	);
 	const app = await launch(DEAD_URL, null, ['--hidden']);
 	let gone = false;
 	app.on('close', () => (gone = true));
@@ -1109,6 +1116,13 @@ test('a login launch loads its window hidden, and closing it goes back to the tr
 	await expect(win.locator('#retry')).toBeVisible();
 	await new Promise((r) => setTimeout(r, 1000));
 	expect(await shown()).toEqual([false]);
+	// And throttled from boot, like any window in the tray (#3510): it never
+	// emitted 'hide', so nothing had told it.
+	expect(
+		await app.evaluate(({ BrowserWindow }) =>
+			BrowserWindow.getAllWindows()[0].webContents.getBackgroundThrottling(),
+		),
+	).toBe(true);
 
 	// The tray is the way in, and it shows that same window.
 	await clickTray(app, 'Open WattRoom');
@@ -1127,5 +1141,52 @@ test('a login launch loads its window hidden, and closing it goes back to the tr
 	expect(await shown()).toEqual([false]);
 	expect(await trayLabels(app)).toContain('Open WattRoom');
 
+	await app.close();
+});
+
+// A Linux desktop with no status notifier host draws no tray, however quietly
+// `new Tray` succeeds (#3510). There a login launch shows its window and a
+// close quits: a hidden window with no icon has no way back. The Linux runner
+// is exactly that desktop.
+test('with no tray host, a login launch shows its window and a close quits', async () => {
+	test.skip(process.platform !== 'linux', 'a tray host is a Linux question');
+	const app = await launch(DEAD_URL, null, ['--hidden']);
+	let gone = false;
+	app.on('close', () => (gone = true));
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	await expect
+		.poll(() =>
+			app.evaluate(({ BrowserWindow }) =>
+				BrowserWindow.getAllWindows()[0].isVisible(),
+			),
+		)
+		.toBe(true);
+
+	await app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].close(),
+	);
+	await expect.poll(() => gone, 'the close quit the shell').toBe(true);
+});
+
+// Hiding a fullscreen window on macOS leaves its Space behind, black (#3510),
+// so a close leaves fullscreen first and hides after.
+test('closing a fullscreen window leaves fullscreen, then hides', async () => {
+	test.skip(process.platform !== 'darwin', 'a tray is certain only on macOS');
+	const app = await launch(DEAD_URL);
+	await expect((await app.firstWindow()).locator('#retry')).toBeVisible();
+	await fullScreen(app, true);
+
+	await app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].close(),
+	);
+	await expect
+		.poll(() =>
+			app.evaluate(({ BrowserWindow }) => {
+				const [w] = BrowserWindow.getAllWindows();
+				return { fullScreen: w.isFullScreen(), visible: w.isVisible() };
+			}),
+		)
+		.toEqual({ fullScreen: false, visible: false });
 	await app.close();
 });
