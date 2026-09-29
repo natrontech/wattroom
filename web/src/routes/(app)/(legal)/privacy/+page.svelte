@@ -193,13 +193,14 @@
 		Cookies
 	</h2>
 	<p class="text-muted mt-2 text-sm leading-relaxed">
-		Three, all strictly necessary: <code class="text-ink">wattroom_session</code
-		>
+		Four, all strictly necessary: <code class="text-ink">wattroom_session</code>
 		keeps you signed in (a server-side session we can revoke),
 		<code class="text-ink">wattroom_oauth_state</code> protects the sign-in flow
-		for a few minutes, and <code class="text-ink">wattroom_passkey</code> carries
-		a passkey sign-in between its two steps for ten minutes. There are no tracking
-		or third-party cookies — which is why there is no cookie banner.
+		for a few minutes, <code class="text-ink">wattroom_passkey</code> carries a
+		passkey sign-in between its two steps for ten minutes, and
+		<code class="text-ink">wattroom_intervals_state</code> protects a pull from intervals.icu
+		the same way, for ten minutes. There are no tracking or third-party cookies —
+		which is why there is no cookie banner.
 	</p>
 </section>
 
@@ -223,6 +224,15 @@
 			tell you whether it arrived: the state, how many times we tried, the error if
 			it failed, and the activity number Strava gave it. Nobody but you ever sees
 			it.
+		</li>
+		<li>
+			<strong class="text-ink font-medium">intervals.icu.</strong> If you press
+			<em>Pull my planned workouts</em>, you sign in at intervals.icu, and our
+			server reads your next seven days of planned workouts with a token that
+			can read nothing else, then drops the token. The week waits in memory for
+			ten minutes, for you only, and is gone once opened. Nothing from
+			intervals.icu is stored, except a workout you choose to save, which
+			becomes an ordinary workout of yours.
 		</li>
 		<li>
 			<strong class="text-ink font-medium">YouTube.</strong> A voice channel's jukebox
