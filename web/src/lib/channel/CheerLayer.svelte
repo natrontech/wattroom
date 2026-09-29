@@ -1,3 +1,10 @@
+<script lang="ts" module>
+	import { createSoundCeiling } from '$lib/roadside';
+
+	// One ceiling for the page, however many layers draw cheers.
+	const roadsideSound = createSoundCeiling();
+</script>
+
 <script lang="ts">
 	import { play } from '$lib/sound/cues';
 	import { cheerCues } from '$lib/roadside';
@@ -21,7 +28,10 @@
 		if (!batch || batch.length === 0 || batch === seenTick) return;
 		seenTick = batch;
 		// The bell rings the cowbell; the rest blip, higher for a crowd.
-		for (const cue of cheerCues(batch)) play(cue.id, cue.semitones);
+		// The cowbell is the roadside's sound, so it answers to its ceiling.
+		for (const cue of cheerCues(batch))
+			if (cue.id !== 'cowbell' || roadsideSound(Date.now()))
+				play(cue.id, cue.semitones);
 		const next = batch.map((cheer) => ({
 			...cheer,
 			key: counter++,

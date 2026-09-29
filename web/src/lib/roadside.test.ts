@@ -8,10 +8,26 @@ import {
 	bottleArrival,
 	bottleFor,
 	cheerCues,
+	createSoundCeiling,
+	ROADSIDE_SOUNDS_PER_MINUTE,
 	effortOf,
 	inRecoveryValley,
 	type Effort,
 } from './roadside';
+
+describe('the roadside sound ceiling (ADR-0064)', () => {
+	it('lets 12 a minute through, drops the 13th, and frees up as the minute rolls', () => {
+		const mayPlay = createSoundCeiling();
+		const t0 = 1_000_000;
+		for (let i = 0; i < ROADSIDE_SOUNDS_PER_MINUTE; i++)
+			expect(mayPlay(t0 + i * 1000)).toBe(true);
+		expect(mayPlay(t0 + 12_000)).toBe(false);
+		expect(mayPlay(t0 + 59_999)).toBe(false);
+		// The first ring is a minute old: one slot comes back, and only one.
+		expect(mayPlay(t0 + 60_000)).toBe(true);
+		expect(mayPlay(t0 + 60_001)).toBe(false);
+	});
+});
 
 describe('the cowbell (#3022)', () => {
 	// SPEC's roadside: the TR-808's two square voices through one bandpass.

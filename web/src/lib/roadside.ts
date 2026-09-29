@@ -33,6 +33,28 @@ export function cheerCues(
 	return cues;
 }
 
+/** SPEC "The roadside": how many roadside sounds reach one rider a minute. */
+export const ROADSIDE_SOUNDS_PER_MINUTE = 12;
+
+/**
+ * The roadside's sound ceiling (ADR-0064): a crowd may ring as often as it
+ * likes, but one rider hears at most so many a minute. Answers whether a
+ * sound may play at `now` and counts it when it may; a ring past the ceiling
+ * is dropped, not queued, because a cowbell late is only noise.
+ */
+export function createSoundCeiling(
+	limit = ROADSIDE_SOUNDS_PER_MINUTE,
+	windowMs = 60_000,
+): (now: number) => boolean {
+	const played: number[] = [];
+	return (now) => {
+		while (played.length > 0 && now - played[0] >= windowMs) played.shift();
+		if (played.length >= limit) return false;
+		played.push(now);
+		return true;
+	};
+}
+
 /**
  * A game has put this rider out and is still going (#3022): they are at the
  * roadside now, spinning easy with the deck in reach. Only the modes that
