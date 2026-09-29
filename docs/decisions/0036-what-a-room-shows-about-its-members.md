@@ -250,3 +250,13 @@ the crew's owner or an admin turns it on, only riders who are `on_board`, this
 week only with the Monday reset, bracketed by Category D–A. Only efforts that
 are `timeable` and `board_ok` count, and flat stretches are never on it. It is
 still the one ordered surface a crew has, and never its front page.
+
+## Amendment, 2026-09-29 (#3277): a member may let their rides count
+
+[ADR-0080](0080-a-crews-season-is-a-tour.md) gives a crew a cooperative tour.
+Point 3 — nothing else derived from another member's rides, **by default** —
+stands, and gains one opt-in: **"My rides count for ⟨crew⟩"**, on the
+membership, off by default and not retroactive. A counted ride adds tour metres
+to the crew's caravan; the crew sees a kilometre and an unordered list of who
+moved it this week, never a number per member. Leaving the crew takes the
+opt-in with it.
