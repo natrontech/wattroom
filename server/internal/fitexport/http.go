@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
@@ -58,6 +59,9 @@ type exportSample struct {
 	Watts     int `json:"watts"`
 	Cadence   int `json:"cadence"`
 	HeartRate int `json:"heartRate"`
+	// On a road (#3052): metres along it and the height there.
+	M   float64 `json:"m,omitempty"`
+	Alt float64 `json:"alt,omitempty"`
 }
 
 // UserSource is the sign-in gate — the same shape rides and rooms consume.
@@ -128,7 +132,9 @@ func toRide(req exportRequest) (Ride, string) {
 	}
 
 	samples := make([]Sample, 0, len(req.Samples))
+	road := false
 	for i, s := range req.Samples {
+		here := protocol.RiderMetrics{M: s.M, Alt: s.Alt}
 		switch {
 		case s.Second < 0:
 			return Ride{}, fmt.Sprintf("sample %d has a negative time offset", i)
@@ -146,13 +152,21 @@ func toRide(req exportRequest) (Ride, string) {
 				"samples must be in time order: sample %d is at %ds, after %ds",
 				i, s.Second, req.Samples[i-1].Second,
 			)
+		case !here.RoadInBounds():
+			return Ride{}, fmt.Sprintf("sample %d is off the road: %g m along it at %g m high", i, s.M, s.Alt)
+		case i > 0 && !protocol.RoadFollows(
+			protocol.RiderMetrics{M: req.Samples[i-1].M}, here, s.Second-req.Samples[i-1].Second):
+			return Ride{}, fmt.Sprintf("sample %d moves along the road backwards or faster than %d m/s", i, protocol.MaxRoadSpeedMps)
 		}
 		samples = append(samples, Sample{
 			Second:    s.Second,
 			Watts:     clampU16(s.Watts),
 			Cadence:   clampU8(s.Cadence),
 			HeartRate: clampU8(s.HeartRate),
+			Distance:  s.M,
+			Altitude:  s.Alt,
 		})
+		road = road || s.M > 0
 	}
-	return Ride{StartedAt: req.StartedAt, Samples: samples}, ""
+	return Ride{StartedAt: req.StartedAt, Samples: samples, Road: road}, ""
 }

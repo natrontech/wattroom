@@ -24,6 +24,11 @@ func TestValidMetricsBounds(t *testing.T) {
 		{"99999 W", protocol.RiderMetrics{Watts: 99999}, false},
 		{"a heart at 251", protocol.RiderMetrics{HR: 251}, false},
 		{"cadence past a motor", protocol.RiderMetrics{Cadence: 251}, false},
+		// #3052: a place on a road is bounded like everything else.
+		{"on a road", protocol.RiderMetrics{Watts: 250, M: 52_000, Alt: 1712}, true},
+		{"behind the road's start", protocol.RiderMetrics{M: -1}, false},
+		{"beyond any route", protocol.RiderMetrics{M: protocol.MaxRouteMeters + 1}, false},
+		{"higher than any road", protocol.RiderMetrics{Alt: protocol.MaxRoadAltM + 1}, false},
 	}
 	for _, c := range cases {
 		if got := validMetrics(c.m); got != c.ok {
@@ -169,5 +174,27 @@ func TestARecordOutlastsSixHours(t *testing.T) {
 	}
 	if got := acc.count("jan"); got != sixHours+1 {
 		t.Fatalf("the record holds %d seconds, want %d — it stopped at six hours", got, sixHours+1)
+	}
+}
+
+// A place on a road rides into the record and never onto the tick (#3052):
+// the owner's heights are absolute, and ADR-0063 keeps those with them.
+func TestARoadPlaceIsRecordedButNeverBroadcast(t *testing.T) {
+	rm := newRoom("test")
+	t0 := time.Unix(1000, 0)
+	if !ran(rm.control(protocol.Control{Action: "pick", WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"steady","seconds":600,"target":0.8}]}`, TotalSeconds: 600}, as("jan"), t0)) {
+		t.Fatal("pick refused")
+	}
+	if !ran(rm.control(protocol.Control{Action: "start"}, as("jan"), t0)) {
+		t.Fatal("start refused")
+	}
+	rm.now = func() time.Time { return t0.Add(30 * time.Second) }
+	rm.session.state(rm.now())
+	rm.setMetrics(sock("jan"), protocol.RiderMetrics{Watts: 200, Seq: 1, M: 52_000, Alt: 1712})
+	if got := rm.metrics["jan"]; got.M != 0 || got.Alt != 0 || got.Watts != 200 {
+		t.Fatalf("the tick would carry %+v, want watts and no place on the road", got)
+	}
+	if record := rm.record.byRider["jan"]; record == nil || record.samples[0].M != 52_000 || record.samples[0].Alt != 1712 {
+		t.Fatalf("the ride record lost the road: %+v", record)
 	}
 }

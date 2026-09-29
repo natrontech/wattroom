@@ -36,6 +36,28 @@ type RiderMetrics struct {
 	// spiral trip was ten pedalling seconds against no resistance, out of
 	// band by construction. Absent means scored.
 	Released bool `json:"released,omitempty"`
+	// On a road (ADR-0062, #3052): metres along it from the route's start,
+	// and the height there. A rider who is not the route's owner was sent its
+	// heights relative to the span's start (ADR-0063), and that relative
+	// height is what they record. Absent on a ride with no road; a ride is on
+	// one once any of its samples has moved along it.
+	M   float64 `json:"m,omitempty"`
+	Alt float64 `json:"alt,omitempty"`
+}
+
+// RoadInBounds reports whether the sample's place on a road is one a road can
+// have. A sample with no road is 0 and 0, which is.
+func (m RiderMetrics) RoadInBounds() bool {
+	return m.M >= 0 && m.M <= MaxRouteMeters &&
+		m.Alt >= MinRoadAltM && m.Alt <= MaxRoadAltM
+}
+
+// RoadFollows reports whether next is somewhere a rider can be `seconds` after
+// prev on the same road: never behind it, and no further on than
+// MaxRoadSpeedMps allows.
+func RoadFollows(prev, next RiderMetrics, seconds int) bool {
+	d := next.M - prev.M
+	return d >= 0 && d <= float64(MaxRoadSpeedMps*seconds)
 }
 
 // BiasOr is the trim to score one sample against — 1.0 for a sample that

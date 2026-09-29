@@ -589,6 +589,23 @@ export const MinRoadGradePct = -15;
  */
 export const MaxRoadGradePct = 20;
 /**
+ * A sample on a road (#3052): its place along the road runs from 0 to the
+ * route's length (MaxRouteMeters above), never back, and at most this far
+ * a second; its height stays inside these. The floor is the .fit's own —
+ * enhanced_altitude cannot say lower than −500 m.
+ */
+export const MaxRoadSpeedMps = 30;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MinRoadAltM = -500;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxRoadAltM = 9000;
+/**
  * The pace model (docs/SPEC.md "Route rides", #3048): what turns a
  * rider's watts into speed on a road. The client's dot, the hub's bunch,
  * stats replay and races all read this one model, in $lib/road/pace.ts
@@ -691,6 +708,15 @@ export interface RiderMetrics {
    * band by construction. Absent means scored.
    */
   released?: boolean;
+  /**
+   * On a road (ADR-0062, #3052): metres along it from the route's start,
+   * and the height there. A rider who is not the route's owner was sent its
+   * heights relative to the span's start (ADR-0063), and that relative
+   * height is what they record. Absent on a ride with no road; a ride is on
+   * one once any of its samples has moved along it.
+   */
+  m?: number /* float64 */;
+  alt?: number /* float64 */;
 }
 /**
  * Backfill is a reconnect's replay: samples the client buffered while the

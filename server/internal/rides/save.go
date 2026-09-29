@@ -2,6 +2,7 @@ package rides
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -36,6 +37,9 @@ type sampleJSON struct {
 	Clock int `json:"clock,omitempty"`
 	// The rider's guard had the trainer off the target (#1796); not scored.
 	Released bool `json:"released,omitempty"`
+	// On a road (#3052): metres along it and the height there; absent off one.
+	M   float64 `json:"m,omitempty"`
+	Alt float64 `json:"alt,omitempty"`
 }
 
 type createRequest struct {
@@ -44,6 +48,11 @@ type createRequest struct {
 	StartedAt   time.Time    `json:"startedAt"`
 	Samples     []sampleJSON `json:"samples"`
 }
+
+// roadRefusal answers a sample off the road in the bounds protocol holds it to.
+var roadRefusal = fmt.Sprintf(
+	"A sample's place on the road is out of range — it only moves forward, at most %d m a second, between %d m and %d m high.",
+	protocol.MaxRoadSpeedMps, protocol.MinRoadAltM, protocol.MaxRoadAltM)
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
@@ -120,6 +129,13 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		}
 		samples[i] = protocol.RiderMetrics{
 			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence, Bias: sample.Bias, Clock: sample.Clock, Released: sample.Released, Seq: i,
+			M: sample.M, Alt: sample.Alt,
+		}
+		// A sample a second: along the road, never back, and no faster than
+		// a rider can go (#3052).
+		if !samples[i].RoadInBounds() || i > 0 && !protocol.RoadFollows(samples[i-1], samples[i], 1) {
+			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", roadRefusal, "samples")
+			return
 		}
 	}
 
