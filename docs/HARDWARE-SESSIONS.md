@@ -56,7 +56,33 @@ not *"not there"*. The probe list lives in `web/src/lib/ble/enumerate.ts`.
   cadence is firmware-estimated and is reported to drop out on exactly that
   transition (RESEARCH.md §11). Whether it does is a real open question.
 
-### 3. Hand it back
+### 3. The route checklist (#3025, on every trainer a road will ride)
+
+Roads ride in SIM at a felt grade, so this is what decides SPEC's "Route rides"
+numbers (#3351). Hold **one real gear and a steady cadence** throughout unless a
+step says otherwise; everything below logs itself.
+
+- **Cw factor.** At **0 %**, ride three steady powers (about 150, 200 and 250 W)
+  for a minute each. Speed against power at a known Cw is how the pace model's
+  CdA and the Cw FTMS sends become one number; the ½ρ factor is measured here,
+  not assumed.
+- **Cw steps.** Run the **Cw steps** probe: 0.51 → 0.33 → 0.26 → 0.51 kg/m at 0 %,
+  30 s each. Power should drop at each step down and recover at the last.
+- **Grade slew.** Run the **grade slew** probe: 0 → 8 % at the felt grade's
+  1 %/s, a 20 s hold, and back. Note any surge or lag in the resistance.
+- **Rider weight.** Does the trainer read one (User Data Service in the GATT
+  dump) or assume one? The dump answers the first half; the Cw-factor speeds
+  the second.
+- **SIM ↔ ERG.** Alternate **Slope 5 %** and **ERG 200 W** a few times, as a
+  road step and an ERG block would. Watch for a power spike on the switch.
+- **A road sprint.** At **Slope 2 %**, switch to **8 %** for 15 s, then back to
+  2 %. Note how the return feels.
+- **The single-speed flip.** At **Slope 2 %**, set ERG to twice your FTP for
+  15 s, then back to **Slope 2 %**.
+- **A long descent.** **Slope −5 %** (the felt floor) for ten minutes. Does the
+  trainer stay rideable, or spin out?
+
+### 4. Hand it back
 
 Post `web/.hwlog/session.jsonl` on the issue — attach it, or paste it if it is small.
 Add a sentence or two on how it *felt*, especially anything that felt broken. The
@@ -66,7 +92,8 @@ unrideable, and those turn out to matter.
 ## For the agent helping with this
 
 The log is JSONL, one object per line, `kind` being `sample`, `event`, `control-ack`,
-`gatt-dump` or `page-loaded`. Useful things to compute rather than eyeball:
+`gatt-dump`, `probe` (one per probe second: the road written, and the watts,
+cadence and speed reported) or `page-loaded`. Useful things to compute rather than eyeball:
 
 - **ERG settling time** — seconds from a `set target power` event until `watts` sits
   within ±5 % (floor ±10 W) of the target. Compare against the ack latency: if acks

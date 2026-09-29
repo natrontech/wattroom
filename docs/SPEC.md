@@ -631,7 +631,9 @@ What v0 ships (#3022):
 | Stored grade                 | **−15 … +20 %**                                                                                                                         |
 | Felt grade                   | difficulty × grade, **× 0.5** again on descents; clamped to **−5 … +15 %**; slewed at most **1 %/s**                                    |
 | Difficulty                   | **50 %**; **100 %** under Advanced                                                                                                      |
-| Entering a road              | **0 %** for **500 ms**, then the road                                                                                                   |
+| Entering a road              | **0 %** for **500 ms** on entering SIM from ERG, then the road |
+| Look-ahead                   | the felt grade is read **1 s** ahead of the rider, at the dot's speed                                                                   |
+| One gear on a road           | ERG-by-road instead of SIM: FTP × clamp(**0.60** + **0.03** × the road's grade %, **0.50**, **0.90**), and **0.50** on descents steeper than **−2 %**; ± bias |
 | Grade written to the trainer | `MinTrainerGrade` **−10 %** (a default until hardware check P11) … `MaxTrainerGrade` **+15 %**, both in `protocol/limits.go`, one range for every trainer |
 | Reference rider              | **75 kg** rider + **8 kg** bike at **225 W**                                                                                            |
 | Pace model                   | Martin et al. 1998, stepped once a second in **4** substeps (`$lib/road/pace.ts` and its Go twin `internal/road`, held to **0.1 %** by shared golden vectors): Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, CdA **0.32 m²** until the Kickr sessions measure it. The pace model and FTMS share this one CdA; the factor between it and the Cw FTMS is sent (**0.51 kg/m** today, `SIM_DEFAULTS`) is what that session measures, and this row does not assert it |
