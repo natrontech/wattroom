@@ -28,6 +28,8 @@ export interface BufferedSample {
 	released?: boolean;
 	/** On a road, metres along it (#3027): where a resumed ride starts again. */
 	m?: number;
+	/** And the road's height there, as the save carries it. */
+	alt?: number;
 	/** ms epoch */
 	at: number;
 }
@@ -53,6 +55,11 @@ export interface RideMeta {
 	 * this existed; the retry hides itself for those.
 	 */
 	workoutJson?: string;
+	/**
+	 * The stored route a free ride on a road rode (#3027): a recovered one
+	 * saves against it, and offers to carry on along it.
+	 */
+	routeId?: string;
 	/** Set when the ride is SAVED, not when the recording stops (#794). */
 	endedAt?: number;
 }

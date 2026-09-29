@@ -40,6 +40,8 @@
 	import { downloadRideCard } from '$lib/ride/card';
 	import RideDoors from '$lib/ride/RideDoors.svelte';
 	import SoloGames from '$lib/ride/SoloGames.svelte';
+	import SoloRoadRide from '$lib/ride/SoloRoadRide.svelte';
+	import { roadsEnabled } from '$lib/ride/roads';
 	import { doorsFor } from '$lib/crew-lounge';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
 
@@ -47,6 +49,10 @@
 	// is the session most people ride.
 	const custom = customWorkouts();
 	const requested = page.url.searchParams.get('w') ?? '';
+	// A free ride alone on one of your own roads (#3027), behind the roads
+	// dev gate; `from` is where a recovered ride on it stopped.
+	const roadId = roadsEnabled() ? page.url.searchParams.get('road') : null;
+	const roadFrom = Math.max(0, Number(page.url.searchParams.get('from')) || 0);
 	// Derived, not once: the shelf loads async — read at init it is always
 	// empty, and every custom ride silently fell back to the default.
 	const saved = $derived(custom.byId(requested));
@@ -473,7 +479,9 @@
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
 <main class="bg-surface text-ink flex min-h-screen flex-col px-4 py-5 sm:px-6">
-	{#if !session || session.state === 'idle'}
+	{#if roadId}
+		<SoloRoadRide {roadId} from={roadFrom} />
+	{:else if !session || session.state === 'idle'}
 		<!-- Idle with a session in hand is the moment between Start and the
 		     trainer answering it (#1800): still the setup screen, because
 		     nothing is counting in yet. -->

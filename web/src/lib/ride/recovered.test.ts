@@ -5,6 +5,7 @@ import {
 	exportPayload,
 	uploadPayload,
 	type RecoveredRide,
+	resumeAt,
 } from './recovered';
 
 /** 2026-03-14T09:30:00Z, so the filename's day is unambiguous in either hemisphere. */
@@ -74,5 +75,54 @@ describe('canSave', () => {
 describe('exportFilename', () => {
 	it('names the file for the day the ride happened', () => {
 		expect(exportFilename(ride())).toBe('wattroom-recovered-2026-03-14.fit');
+	});
+});
+
+// #3027: a free ride on a road, buffered, saves against its route and
+// offers to carry on from where it stopped.
+describe('a recovered ride on a road', () => {
+	const onRoad = ride({
+		ownerId: 'rider-1',
+		workoutJson: '{"name":"Free ride","unscored":true,"steps":[]}',
+		routeId: 'route-1',
+		samples: [
+			{
+				seq: 1,
+				watts: 200,
+				cadence: 85,
+				heartRate: 120,
+				m: 0,
+				alt: 100,
+				at: STARTED,
+			},
+			{
+				seq: 2,
+				watts: 200,
+				cadence: 85,
+				heartRate: 121,
+				m: 6.4,
+				alt: 100.3,
+				at: STARTED + 1000,
+			},
+		],
+	});
+
+	it('saves against its route, with its metres and heights', () => {
+		const payload = uploadPayload(onRoad)!;
+		expect(payload.routeId).toBe('route-1');
+		expect(payload.samples[1]).toMatchObject({ m: 6.4, alt: 100.3 });
+	});
+
+	it('offers to carry on from its last metre', () => {
+		expect(resumeAt(onRoad)).toEqual({ routeId: 'route-1', m: 6.4 });
+	});
+
+	it('leaves every other ride as it was', () => {
+		const plain = ride({ ownerId: 'rider-1', workoutJson: '{}' });
+		expect(resumeAt(plain)).toBeNull();
+		const payload = uploadPayload(plain)!;
+		expect(payload).not.toHaveProperty('routeId');
+		for (const sample of payload.samples)
+			expect(sample).not.toHaveProperty('m');
 	});
 });
