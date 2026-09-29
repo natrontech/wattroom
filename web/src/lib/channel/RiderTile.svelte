@@ -255,7 +255,7 @@
 
 	{#if live && extras.length && !rider.stale}
 		<div
-			class="text-ink absolute right-2.5 bottom-3 flex gap-3 font-mono text-xs font-medium tabular-nums"
+			class="text-ink num absolute right-2.5 bottom-3 flex gap-3 text-xs font-medium"
 		>
 			{#each extras as extra (extra.key)}
 				<span class={extra.key === 'wkg' ? 'hidden @[10rem]:inline' : ''}

@@ -214,7 +214,7 @@
 							· {track.artist}</span
 						>{/if}
 				</span>
-				<span class="text-muted shrink-0 font-mono text-[10px] tabular-nums"
+				<span class="text-muted num shrink-0 text-[10px]"
 					>{trackClock(track.durationMs)}</span
 				>
 				<button

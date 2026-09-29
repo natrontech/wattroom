@@ -56,7 +56,7 @@
 						: 'bg-muted/30'}"
 					title={entry.inBand ? 'in band' : 'off target'}
 				></span>
-				<span class="w-8 shrink-0 text-right font-mono text-[11px] tabular-nums"
+				<span class="num w-8 shrink-0 text-right text-[11px]"
 					>{entry.pct === null ? '—' : `${entry.pct}%`}</span
 				>
 			</li>

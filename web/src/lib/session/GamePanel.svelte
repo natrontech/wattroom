@@ -96,7 +96,7 @@
 			<span class="text-muted text-xs">round {game.round}</span>
 		{/if}
 		{#if game.roundEndsAtMs && game.phase === 'running' && game.mode !== 'sprint-roulette'}
-			<span class="text-muted font-mono text-xs tabular-nums"
+			<span class="text-muted num text-xs"
 				>{formatClock(Math.round(roundLeft))}</span
 			>
 		{/if}
@@ -253,7 +253,7 @@
 					your power is hidden until the hole ends
 				</div>
 			{/if}
-			<p class="text-muted mt-4 font-mono text-xs tabular-nums">
+			<p class="text-muted num mt-4 text-xs">
 				strokes so far: {Math.round(
 					game.riders?.[account.me?.id ?? '']?.score ?? 0,
 				)}
@@ -283,7 +283,7 @@
 						<p class="font-display mt-1 flex items-center gap-1.5 font-bold">
 							<span class="truncate">{name(id)}</span>
 						</p>
-						<p class="font-mono text-xs tabular-nums">
+						<p class="num text-xs">
 							{(rider.score ?? 0).toFixed(1)} w/kg
 						</p>
 					</div>
@@ -294,9 +294,7 @@
 		<ul class="mt-4 space-y-2">
 			{#each standing as [id, rider], i (id)}
 				<li class="flex items-center gap-3">
-					<span class="text-muted w-5 font-mono text-xs tabular-nums"
-						>{i + 1}</span
-					>
+					<span class="text-muted num w-5 text-xs">{i + 1}</span>
 					<span class="flex w-20 items-center gap-1 text-sm">
 						<span class="truncate">{name(id)}</span>
 					</span>

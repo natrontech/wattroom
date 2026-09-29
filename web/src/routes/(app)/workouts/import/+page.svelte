@@ -171,7 +171,7 @@
 							<h2 class="font-display min-w-0 truncate text-base font-bold">
 								{imported.workout.name}
 							</h2>
-							<span class="text-muted ml-auto font-mono text-xs tabular-nums"
+							<span class="text-muted num ml-auto text-xs"
 								>{formatClock(total)}</span
 							>
 						</div>

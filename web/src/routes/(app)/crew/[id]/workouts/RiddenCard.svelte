@@ -56,7 +56,7 @@
 			>{workout.name}</button
 		>
 		{#if segments.length}
-			<span class="text-muted ml-auto font-mono text-xs tabular-nums"
+			<span class="text-muted num ml-auto text-xs"
 				>{formatClock(segmentsDuration(segments))}</span
 			>
 		{/if}
