@@ -92,7 +92,7 @@
 			     layer — the glowing number above, once, cost 18% GPU. A solid
 			     colour clipped by the track looks the same either way. -->
 			<div
-				class="absolute inset-0 origin-left transition-transform duration-250 ease-out"
+				class="absolute inset-0 origin-left transition-transform duration-[250ms] ease-live"
 				style="transform: scaleX({pct(shown) / 100})"
 			>
 				<div
@@ -150,7 +150,7 @@
 		class="@container flex items-end {tv ? 'min-h-[22vh]' : 'min-h-32'}"
 	>
 		<div
-			class="w-max text-center transition-transform duration-250 ease-out"
+			class="w-max text-center transition-transform duration-[250ms] ease-live"
 			style="transform: translateX(calc(clamp({tv ? '10vh' : '5rem'}, {pct(
 				shown,
 			)}cqw, 100cqw - {tv ? '10vh' : '5rem'}) - 50%))"

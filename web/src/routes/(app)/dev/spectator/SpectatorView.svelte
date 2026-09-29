@@ -86,7 +86,7 @@
 							class="bg-surface-raised h-1.5 flex-1 overflow-hidden rounded-full"
 						>
 							<div
-								class="h-full transition-[width] duration-500 {ZONE_BG[zone]}"
+								class="h-full transition-[width] duration-(--dur-live) {ZONE_BG[zone]}"
 								style="width: {fillPct(rider.watts, rider.ftp)}%"
 							></div>
 						</div>

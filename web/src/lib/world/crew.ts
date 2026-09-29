@@ -3,7 +3,7 @@
 // for the orbit view, and — for you alone — the trail your power leaves.
 import * as THREE from 'three';
 import { zoneOf } from '$lib/components/zones';
-import { damp } from './damp';
+import { damp } from '$lib/motion/damp';
 import { yOf } from './geometry';
 import { ramp } from './materials';
 import { buildGeometry } from './rider-geometry';
