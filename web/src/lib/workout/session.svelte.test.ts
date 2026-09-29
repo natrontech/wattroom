@@ -98,6 +98,25 @@ describe('the recovery (#1847)', () => {
 		expect(session.state).toBe('running');
 		session.stop();
 	});
+
+	// #3515: the group ride has said its target again on a reconnect since
+	// #1846; the solo ride only noted the status, and a SIM hold dedupes, so
+	// the trainer that came back held nothing until the target moved.
+	it('says the held road again when the trainer link comes back', async () => {
+		const trainer = new SimulatedTrainer();
+		const session = createRideSession({ trainer, workout, ftp: 200 });
+		await startRiding(session);
+		const sim = vi.spyOn(trainer, 'setSimulation');
+		pedal(session, 0, 0, DEFAULTS.pauseAfterSeconds);
+		expect(session.state).toBe('autopaused');
+		expect(sim).toHaveBeenCalledWith({ gradePct: 0 });
+		sim.mockClear();
+		trainer.simulateDropout(5);
+		await new Promise((resolve) => setTimeout(resolve, 30));
+		expect(session.trainerStatus).toBe('connected');
+		expect(sim).toHaveBeenCalled();
+		session.stop();
+	});
 });
 
 describe('the sprint window (#1793)', () => {

@@ -46,6 +46,7 @@ export function createRideSession({
 		tick,
 		now,
 		state: () => state,
+		back: () => actuator.reissue(),
 	});
 	/** The ride's life, and while it rides, the guards' word on how (#3369). */
 	const state = $derived<RideState>(
