@@ -57,7 +57,7 @@ func (rm *channelState) setMetrics(c *client, m protocol.RiderMetrics) {
 		return
 	}
 	if rm.session.bunch != nil {
-		rm.session.bunch.hear(rider.ID, m.Watts, rider.FtpWatts)
+		rm.session.bunch.hear(rider.ID, m, rider)
 	}
 	if _, known := rm.seen[rider.ID]; !known {
 		rm.seenOrder = append(rm.seenOrder, rider.ID)

@@ -198,7 +198,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 			return out
 		}(),
 		Voice:  rm.voiceIDsLocked(),
-		World:  rm.session.world(),
+		World:  rm.session.world(rm.lastGame != nil && rm.lastGame.MeterHidden),
 		Riders: rm.metrics,
 		Roster: make([]protocol.Rider, 0, len(rm.clients)),
 	}
