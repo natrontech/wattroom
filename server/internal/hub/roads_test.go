@@ -11,8 +11,20 @@ import (
 const roadWorkout = `{"name":"Home loop","road":{"routeId":"3f0c2a4e-8b1d-4c5e-9f6a-7b8c9d0e1f2a","fromM":0,"toM":3000},"steps":[{"type":"road","seconds":600}]}`
 
 // fakeRoads answers every pick the way routes.Attacher would for a crew:
-// the reference with the crew's cut attached, marked so the test can see it.
-type fakeRoads struct{ refusal string }
+// the reference with the crew's cut attached, marked so the test can see it,
+// and every session road as a 2.2 km cut of the coach's home loop.
+type fakeRoads struct {
+	refusal string
+	refused *protocol.Error
+	err     error
+}
+
+func (f fakeRoads) SessionRoute(_ context.Context, _, routeID string) (protocol.SessionRoute, *protocol.Error, error) {
+	if f.err != nil || f.refused != nil {
+		return protocol.SessionRoute{}, f.refused, f.err
+	}
+	return protocol.SessionRoute{ID: routeID, Hash: "h-home", GenName: "Road · 3.0 km · 50 m", LengthM: 2200}, nil, nil
+}
 
 func (f fakeRoads) ForSession(_ context.Context, coach, workoutJSON string) (string, string, error) {
 	if f.refusal != "" {
