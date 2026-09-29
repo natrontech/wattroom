@@ -108,6 +108,9 @@ type Service struct {
 
 	mu       sync.Mutex
 	lastSeen map[string]time.Time
+	// fileMu orders appends against the purge's rewrite of reports.jsonl
+	// (#2906): an append between its read and its rename would be lost.
+	fileMu sync.Mutex
 }
 
 func New(sessions Sessions, issuer Issuer, ring *LogRing, log *slog.Logger) *Service {
@@ -208,6 +211,8 @@ func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) append(v any) error {
+	s.fileMu.Lock()
+	defer s.fileMu.Unlock()
 	if err := os.MkdirAll(s.dir, 0o750); err != nil {
 		return err
 	}
