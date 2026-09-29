@@ -743,6 +743,35 @@ lean **0.3 s**, steer **0.15 s**.
 - **Sway**: **0.6° × r** seated, **4° × r** climbing, **9° × r ÷ 1.6** sprinting.
 - **Lean** = atan(v²κ ÷ g), clamped to **16–22°** while pedalling and **32°** coasting.
 
+## Motion (defaults — tune in alpha; [ADR-0079](decisions/0079-motion-announces-the-camera-stays-still.md))
+
+**Durations and timings** (`app.css` `@theme`, mirrored in `$lib/motion`):
+
+| Token              | Value      | Token             | Value      |
+| ------------------ | ---------- | ----------------- | ---------- |
+| `--dur-press`      | **90 ms**  | `--dur-stage`     | **700 ms** |
+| `--dur-quick`      | **160 ms** | `--dur-draw`      | **1200 ms** |
+| `--dur-base`       | **240 ms** | `--hold-announce` | **2400 ms** |
+| `--dur-reveal`     | **400 ms** | `--stagger`       | **60 ms**  |
+| `--dur-live`       | **500 ms** | `--stagger-podium` | **400 ms** |
+
+**Easings**: `--ease-arrive` cubic-bezier(0.05, 0.7, 0.1, 1); `--ease-leave`
+cubic-bezier(0.3, 0, 0.8, 0.15); `--ease-move` cubic-bezier(0.2, 0, 0, 1);
+`--ease-live` cubic-bezier(0, 0, 0.2, 1); `--ease-pop` a `linear()` spring,
+ζ ≈ **0.63**, **8 %** overshoot. The watts numeral keeps its **250 ms**
+transform glide (#3200).
+
+**The camera**: follow first order or critically damped; FOV at most **+4°**
+over base with a **2 s** half-life; a shot change is a cut or a **300 ms**
+fog-dip.
+
+**The World control**: Full, Steady (heli camera, fixed FOV, cuts, no
+particles), Light (the lowest 3D tier), Flat (the Skyline). Per device; reduced
+motion opens on Flat.
+
+**Flashes**: WCAG 2.3.1; at most one luminance flash per **10 s** over **25 %**
+of a **10°** field.
+
 ## The bike computer (defaults — tune in alpha; [ADR-0071](decisions/0071-the-bike-computer-pages-slot-3.md))
 
 Slot 3's pages, in order: **RIDE** (default, and where every ride starts),

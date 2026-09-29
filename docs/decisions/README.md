@@ -104,7 +104,7 @@ first one past the highest file here, stubs included.
 | [0076](0076-shared-roads-not-an-open-world.md) | Shared roads, not an open world — live strangers only on open rides, if at all | reserved for [#3298](https://github.com/natrontech/wattroom/issues/3298) | |
 | [0077](0077-the-wind-is-shared.md) | The wind is shared | reserved for [#3232](https://github.com/natrontech/wattroom/issues/3232) | |
 | [0078](0078-real-ground-painted-light.md) | Real ground, painted light | reserved for [#3283](https://github.com/natrontech/wattroom/issues/3283) | |
-| [0079](0079-motion-announces-the-camera-stays-still.md) | Motion announces, the camera stays still — and one World control | reserved for [#3206](https://github.com/natrontech/wattroom/issues/3206) | |
+| [0079](0079-motion-announces-the-camera-stays-still.md) | Motion announces, the camera stays still — a tripod on a rail, juice on models, one per-device World control, a flash budget | accepted; settles [#3206](https://github.com/natrontech/wattroom/issues/3206) | The camera and the World control that [0066](0066-the-world-is-the-ride-view.md) cites; the flash rule beside [0072](0072-light-in-the-world.md) and [0064](0064-the-roadside.md). Adds `.claude/rules/ux.md`'s Motion section |
 | [0080](0080-a-crews-season-is-a-tour.md) | A crew's season is a tour, never a league | reserved for [#3277](https://github.com/natrontech/wattroom/issues/3277) | |
 | [0081](0081-the-world-is-keyed-by-place.md) | The world is keyed by place, never by the route | reserved for [#3250](https://github.com/natrontech/wattroom/issues/3250) | |
 | [0082](0082-a-climb-belongs-to-the-map.md) | A climb belongs to the map — roads are strokes | reserved for [#3237](https://github.com/natrontech/wattroom/issues/3237) | |
