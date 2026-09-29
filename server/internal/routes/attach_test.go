@@ -6,6 +6,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -157,5 +158,44 @@ func TestADeletedRouteSaysSo(t *testing.T) {
 	}
 	if _, meta := roadIn(t, out); !meta.Deleted || meta.Profile != "" || meta.RouteID != route {
 		t.Errorf("a deleted route's workout reads %+v, want its reference and deleted", meta)
+	}
+}
+
+// A session's road is the coach's own route as the crew rides it (#3095):
+// the cut between the anchors, under its generated name. Someone else's
+// route reads as absent, and one from Strava never rides a session.
+func TestASessionRidesTheCoachsOwnRoadAsTheCrewsCut(t *testing.T) {
+	h := setup(t, nil)
+	alice, bob := h.users.ByToken["alice"].ID, h.users.ByToken["bob"].ID
+	mine := storeTellingRoute(t, h, alice, "gpx")
+	strava := storeTellingRoute(t, h, alice, "stravagpx")
+	a := NewAttacher(h.store.Queries)
+	whole, err := road.UnpackRoad(testx.TellingRoad())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	route, refused, err := a.SessionRoute(t.Context(), store.UUIDString(alice), mine)
+	if err != nil || refused != nil {
+		t.Fatalf("alice's own route: %+v %v", refused, err)
+	}
+	want := protocol.SessionRoute{ID: mine, Hash: "telling", GenName: "Road · 3.0 km · 50 m", LengthM: whole.LengthM - 2*protocol.RouteHiddenEndM}
+	if route != want {
+		t.Errorf("the session rides %+v, want %+v", route, want)
+	}
+
+	for _, c := range []struct {
+		name  string
+		coach pgtype.UUID
+		route string
+		code  string
+	}{
+		{"someone else's", bob, mine, "not_found"},
+		{"gone", alice, uuid.NewString(), "not_found"},
+		{"from Strava", alice, strava, "forbidden"},
+	} {
+		if _, refused, err := a.SessionRoute(t.Context(), store.UUIDString(c.coach), c.route); err != nil || refused == nil || refused.Code != c.code {
+			t.Errorf("%s: %+v %v, want %s", c.name, refused, err, c.code)
+		}
 	}
 }

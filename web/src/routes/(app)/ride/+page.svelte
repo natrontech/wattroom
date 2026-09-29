@@ -18,7 +18,7 @@
 	import { hwlog } from '$lib/ble/hwlog';
 	import { apiBlob } from '$lib/api';
 	import { downloadBlob } from '$lib/download';
-	import { uploadRide, type RideUpload } from '$lib/ride/save';
+	import { recordingUpload, uploadRide } from '$lib/ride/save';
 	import { toasts } from '$lib/toast.svelte';
 	import { createHistoryStore, summarise } from '$lib/history.svelte';
 	import { onDestroy } from 'svelte';
@@ -265,25 +265,11 @@
 		}
 		const ended = buffer;
 		const id = `${current.startedAt.getTime()}`;
-		const upload: RideUpload = {
-			workoutName: workout.name,
-			workoutJson: JSON.stringify(workout),
-			startedAt: current.startedAt.toISOString(),
-			samples: current.recording.map((sample) => ({
-				watts: sample.watts,
-				cadence: sample.cadence,
-				hr: sample.heartRate,
-				// The trim this second was ridden at (#1530): without it the
-				// server re-scores the ride against the workout as written and
-				// hands back an execution the rider never saw.
-				bias: sample.bias,
-				// The workout second it was ridden at (#1733): the server scores
-				// by it, so a pause mid-block no longer shifts the rest.
-				clock: sample.clock,
-				// The guard's own seconds (#1796): never a miss.
-				released: sample.released,
-			})),
-		};
+		const upload = recordingUpload(
+			workout,
+			current.startedAt,
+			current.recording,
+		);
 		const attempt = () => {
 			saving = true;
 			retrySave = null;

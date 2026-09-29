@@ -1516,6 +1516,43 @@ func (q *Queries) RideOverlaps(ctx context.Context, arg RideOverlapsParams) (boo
 	return column_1, err
 }
 
+const routeNumbersOfRides = `-- name: RouteNumbersOfRides :many
+select rides.id, r.length_m, r.gain_m
+from rides
+join routes r on r.id = rides.route_id
+where rides.id = any($1::uuid[])
+`
+
+type RouteNumbersOfRidesRow struct {
+	ID      pgtype.UUID
+	LengthM int32
+	GainM   int32
+}
+
+// The generated name's numbers for the road rides on one page of MCP's
+// list_rides (#3054, ADR-0063): the route's length and gain, which every
+// surface may carry, and never its name, its id or the ride's own metres. A
+// ride whose route was deleted has none.
+func (q *Queries) RouteNumbersOfRides(ctx context.Context, ids []pgtype.UUID) ([]RouteNumbersOfRidesRow, error) {
+	rows, err := q.db.Query(ctx, routeNumbersOfRides, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RouteNumbersOfRidesRow
+	for rows.Next() {
+		var i RouteNumbersOfRidesRow
+		if err := rows.Scan(&i.ID, &i.LengthM, &i.GainM); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setRideCriticalPower = `-- name: SetRideCriticalPower :exec
 update rides
 set curve = curve || jsonb_build_object('best3m', $1::int, 'best12m', $2::int)

@@ -78,6 +78,26 @@ function clickTray(app, label, checked = undefined) {
 	}, [label, checked]);
 }
 
+test('the shell keeps a log where a rider can find it (#3012)', async () => {
+	const app = await launch(DEAD_URL);
+	await (await app.firstWindow()).locator('#retry').waitFor();
+	// This run's own words: on macOS the folder is ~/Library/Logs, shared by every run.
+	const said = `smoke: a warning for the log ${process.pid}-${Date.now()}`;
+	const dir = await app.evaluate(({ app: a }, words) => {
+		console.warn(words);
+		return a.getPath('logs');
+	}, said);
+	const file = path.join(dir, 'main.log');
+	await expect
+		.poll(() => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''))
+		.toContain(`Z warn ${said}\n`);
+	const version = require('./package.json').version;
+	expect(fs.readFileSync(file, 'utf8')).toContain(
+		` start ${version} (unpackaged) ${process.platform}\n`,
+	);
+	await app.close();
+});
+
 // The page hears its window hide and show (#3005, #3079): a close hides the
 // window rather than destroying it, and the page leaves voice when it does.
 test('the page hears its window hide and come back', async () => {
@@ -259,6 +279,51 @@ test('the page\'s unread count reaches the Dock', async () => {
 	await expect.poll(badge).toBe(0);
 
 	await app.close();
+});
+
+// #3010: every IPC handler answers only our own page — Electron's checklist,
+// item 17. A message whose frame is on another origin is dropped before the
+// handler runs; the same message from the page lands. Read back through the
+// badge, the one handler with a getter (macOS).
+test('a message from a frame that is not ours is refused', async () => {
+	test.skip(process.platform !== 'darwin', 'no badge count to read back here');
+	const app = await launch(DEAD_URL);
+	await app.firstWindow();
+	const counts = await app.evaluate(({ app, BrowserWindow, ipcMain }) => {
+		const win = BrowserWindow.getAllWindows()[0];
+		const foreign = {
+			sender: win.webContents,
+			senderFrame: { url: 'https://evil.example/' },
+		};
+		const ours = {
+			sender: win.webContents,
+			senderFrame: win.webContents.mainFrame,
+		};
+		ipcMain.emit('wattroom:badge', foreign, 9);
+		const refused = app.getBadgeCount();
+		ipcMain.emit('wattroom:badge', ours, 9);
+		const heard = app.getBadgeCount();
+		app.setBadgeCount(0);
+		return { refused, heard };
+	});
+	expect(counts).toEqual({ refused: 0, heard: 9 });
+	await app.close();
+});
+
+// The wrapper is only a guarantee if nothing goes around it (#3010): every
+// handler in main.js registers through `ipc.on` / `ipc.handle`.
+test('main.js registers no IPC handler around the sender check', () => {
+	const source = require('node:fs')
+		.readFileSync(require('node:path').join(__dirname, 'main.js'), 'utf8')
+		.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+	const wrapper = source.slice(
+		source.indexOf('const ipc = {'),
+		source.indexOf('};', source.indexOf('const ipc = {')),
+	);
+	expect(wrapper).toContain('fromUs(event)');
+	expect(
+		source.replace(wrapper, '').match(/ipcMain\.(on|handle)\(/g) ?? [],
+	).toEqual([]);
 });
 
 // #3006: Electron draws no context menu, so a text field had no paste. Real
@@ -491,9 +556,15 @@ test('the Bluetooth chooser holds the scan open and streams it to the app', asyn
 			dialog.showMessageBox = async () => ({ response: 1 });
 
 			const win = BrowserWindow.getAllWindows()[0];
+			// Sent the way the page sends it: every handler answers only its
+			// own page (#3010), and a bare emit has no frame to be.
+			const fromPage = {
+				sender: win.webContents,
+				senderFrame: win.webContents.mainFrame,
+			};
 			// What the preload does on load: registering onBleScan is the app
 			// saying it can draw the picker itself.
-			ipcMain.emit('wattroom:ble-picker-ready');
+			ipcMain.emit('wattroom:ble-picker-ready', fromPage);
 
 			const sent = [];
 			const pass = win.webContents.send.bind(win.webContents);
@@ -521,10 +592,10 @@ test('the Bluetooth chooser holds the scan open and streams it to the app', asyn
 			]);
 			const answeredWhileScanning = answers.length;
 
-			ipcMain.emit('wattroom:ble-pick', {}, 'a');
+			ipcMain.emit('wattroom:ble-pick', fromPage, 'a');
 			// A late answer from a picker whose request is over must not settle
 			// the next one.
-			ipcMain.emit('wattroom:ble-pick', {}, 'b');
+			ipcMain.emit('wattroom:ble-pick', fromPage, 'b');
 			return { sent, answeredWhileScanning, answers };
 		},
 	);

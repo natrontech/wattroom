@@ -5,7 +5,7 @@
 // other must ignore.
 module.exports = {
 	testDir: '.',
-	testMatch: 'smoke.spec.js',
+	testMatch: ['smoke.spec.js', 'files.spec.js', 'log.spec.js'],
 	// Each test launches its own Electron; the app takes a single-instance
 	// lock, so a second one would quit immediately instead of failing loudly.
 	workers: 1,

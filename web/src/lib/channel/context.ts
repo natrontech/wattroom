@@ -13,6 +13,12 @@ import type { FlightRecorder } from '$lib/ride/flightrecorder.svelte';
  * `StageSource` is the minimum `pickStage` needs; the channel adds what the
  * picker draws — a generation, so a fresh track remounts, and a label.
  */
+
+/**
+ * What opened the session picker: a session to start now, one to plan, or
+ * your own workout to ride beside the session (#2329).
+ */
+export type PickerIntent = 'start' | 'plan' | 'ride';
 export interface ChannelStageSource extends StageSource {
 	gen: string;
 	label: string;
@@ -107,7 +113,7 @@ export interface ChannelContext {
 		userId: string,
 		name: string,
 	): { name: string; onSelect: () => void } | undefined;
-	openPicker(intent?: 'start' | 'plan'): void;
+	openPicker(intent?: PickerIntent): void;
 	openTv(): void;
 
 	/** Stage sources and the active one — the lounge's shared-screen surface. */

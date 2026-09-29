@@ -115,7 +115,7 @@ func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
 		out = append(out, routeJSON{
 			ID: store.UUIDString(row.ID), Name: row.Name, GeneratedName: row.GenName, Src: row.Src,
 			LengthM: row.LengthM, GainM: row.GainM, Climbs: row.Climbs, HasPlace: row.HasPlace,
-			OwnerOnly: row.Src == "stravagpx", CreatedAt: row.CreatedAt.Time,
+			OwnerOnly: row.Src == stravaSrc, CreatedAt: row.CreatedAt.Time,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"routes": out})
@@ -138,7 +138,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, routeJSON{
 		ID: store.UUIDString(row.ID), Name: row.Name, GeneratedName: row.GenName, Src: row.Src,
 		LengthM: row.LengthM, GainM: row.GainM, Climbs: row.Climbs, HasPlace: row.HasPlace,
-		OwnerOnly: row.Src == "stravagpx", CreatedAt: row.CreatedAt.Time,
+		OwnerOnly: row.Src == stravaSrc, CreatedAt: row.CreatedAt.Time,
 		Road: row.Road, RoadHash: row.RoadHash, EleSource: row.EleSource,
 	})
 }

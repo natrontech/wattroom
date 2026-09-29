@@ -65,7 +65,7 @@ func (a *Attacher) CheckShared(ctx context.Context, workoutJSON string, actor pg
 	if err != nil {
 		return pgtype.UUID{}, fmt.Errorf("routes: read road %s: %w", ref.RouteID, err)
 	}
-	if row.Src == "stravagpx" {
+	if row.Src == stravaSrc {
 		return pgtype.UUID{}, Refused("Routes from Strava ride with you alone, never in a plan or a session.")
 	}
 	return id, nil
@@ -138,6 +138,36 @@ func (a *Attacher) Attach(ctx context.Context, workoutJSON string, viewer pgtype
 	fields["road"] = raw
 	joined, err := json.Marshal(fields)
 	return string(joined), err
+}
+
+// SessionRoute is the road a session rides (#3095): the coach's own route,
+// never one from Strava, described as everyone in the channel rides it — the
+// crew's cut between the anchors, under its generated name. A route that is
+// not the coach's reads as absent, as it does everywhere else.
+func (a *Attacher) SessionRoute(ctx context.Context, coach, routeID string) (protocol.SessionRoute, *protocol.Error, error) {
+	owner, err := store.ParseUUID(coach)
+	if err != nil {
+		return protocol.SessionRoute{}, nil, fmt.Errorf("routes: coach %q is not an id: %w", coach, err)
+	}
+	id, err := store.ParseUUID(routeID)
+	if err != nil {
+		return protocol.SessionRoute{}, nil, fmt.Errorf("routes: route %q is not an id: %w", routeID, err)
+	}
+	row, err := a.q.GetOwnerRoute(ctx, db.GetOwnerRouteParams{ID: id, OwnerID: owner})
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return protocol.SessionRoute{}, &protocol.Error{Code: "not_found", Message: "That route is not one of yours."}, nil
+	case err != nil:
+		return protocol.SessionRoute{}, nil, fmt.Errorf("routes: read route %s: %w", routeID, err)
+	case row.Src == stravaSrc:
+		return protocol.SessionRoute{}, &protocol.Error{Code: "forbidden", Message: "Routes from Strava ride with you alone, never in a session."}, nil
+	}
+	ridden, err := road.UnpackRoad(row.Road)
+	if err != nil {
+		return protocol.SessionRoute{}, nil, fmt.Errorf("routes: stored road %s unreadable: %w", routeID, err)
+	}
+	cut, _ := ridden.Cut(protocol.RouteHiddenEndM, ridden.LengthM-protocol.RouteHiddenEndM)
+	return protocol.SessionRoute{ID: routeID, Hash: row.RoadHash, GenName: row.GenName, LengthM: cut.LengthM}, nil, nil
 }
 
 // ForSession is a session's pick (#3051): the coach's own route, never one

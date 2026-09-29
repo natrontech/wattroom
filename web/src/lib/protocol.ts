@@ -152,6 +152,10 @@ export interface Control {
    * (#2438) — someone in the voice channel.
    */
   rider?: string;
+  /**
+   * For actions "pick" and "game": the road it rides (#3095).
+   */
+  route?: ControlRoute;
 }
 
 //////////
@@ -601,6 +605,11 @@ export const RouteHiddenEndM = 400;
  */
 export const MaxAttachedRoadBytes = 48 << 10;
 /**
+ * A leg (docs/SPEC.md "Route rides"): the stretch of a route ridden in
+ * one sitting is at most six hours, so a long route compiles into legs.
+ */
+export const MaxLegSeconds = 6 * 60 * 60;
+/**
  * The range every SIM write is clamped to (docs/SPEC.md "Route rides",
  * ADR-0062): one range for every trainer, since FTMS cannot report an
  * indoor bike's. MaxTrainerGrade is also the free ride's top and the felt
@@ -955,6 +964,10 @@ export interface ServerTick {
    * Running game mode (#31/#32), replacing the workout timeline while on.
    */
   game?: GameState;
+  /**
+   * The bunch on the session's road (ADR-0065), while it rides one.
+   */
+  world?: World;
   /**
    * Live execution per rider (#27) — the SPEC score so far this session.
    */
@@ -1421,6 +1434,11 @@ export interface SessionState {
    * fit.
    */
   targetRpm?: number /* int */;
+  /**
+   * The road the session rides (#3095), from the pick or the game that
+   * opened it; absent on a session with no road.
+   */
+  route?: SessionRoute;
 }
 /**
  * SessionRecapRider is one person a session saw, and when — the only two
@@ -1527,4 +1545,71 @@ export interface StatusLine {
    * When it clears, RFC 3339; absent is "don't clear".
    */
   expiresAt?: string;
+}
+
+//////////
+// source: world.go
+
+/**
+ * ControlRoute is the road a pick or a game rides (#3095, ADR-0065): one of
+ * the coach's own routes, where on it the bunch starts, which way it runs,
+ * and whether it rides again from the start when it reaches the end.
+ */
+export interface ControlRoute {
+  id: string;
+  /**
+   * Metres along the road as the crew rides it — the span between its
+   * anchors (ADR-0063) — in the direction ridden.
+   */
+  fromM?: number /* float64 */;
+  reverse?: boolean;
+  loop?: boolean;
+}
+/**
+ * SessionRoute is the road a session rides, by reference: never the road
+ * itself, which every socket fetches by Hash as the crew's cut (#3096). One
+ * frame for everyone — the coach who owns the route included — so a restart
+ * (ADR-0052) re-picks FromM and the bunch comes back where it was.
+ */
+export interface SessionRoute {
+  id: string;
+  /**
+   * The stored road's hash, the key a client caches the crew's cut under.
+   */
+  hash: string;
+  /**
+   * docs/SPEC.md's generated name ("Road · 52.9 km · 1,312 m"), never the
+   * owner's own, which may name the place the route's ends hide.
+   */
+  genName: string;
+  fromM: number /* float64 */;
+  reverse?: boolean;
+  /**
+   * The crew's cut, the length every metre above is bounded by.
+   */
+  lengthM: number /* float64 */;
+  loop?: boolean;
+}
+/**
+ * World is the bunch on the session's road (ADR-0065), on every tick while
+ * one rides it: one position, advanced once per whole second, and each
+ * rider's elastic place around it. Never ranked (ADR-0036) — an offset is
+ * where a figure stands, not a gap anyone is told about.
+ */
+export interface World {
+  bunchM: number /* float64 */;
+  speedMps: number /* float64 */;
+  /**
+   * Laps completed on a looped road.
+   */
+  lap?: number /* int */;
+  /**
+   * Each joined rider's place from the bunch in decimetres, by rider id.
+   */
+  offsets?: { [key: string]: number /* int16 */};
+  /**
+   * Riders coasting back to the bunch's tail (docs/SPEC.md "Riding a road
+   * together"), by rider id.
+   */
+  resting?: string[];
 }

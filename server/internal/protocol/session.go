@@ -32,6 +32,9 @@ type SessionState struct {
 	// weighs against, said on the wire so a queue row can show which tracks
 	// fit.
 	TargetRpm int `json:"targetRpm,omitempty"`
+	// The road the session rides (#3095), from the pick or the game that
+	// opened it; absent on a session with no road.
+	Route *SessionRoute `json:"route,omitempty"`
 }
 
 // SessionRecapRider is one person a session saw, and when — the only two

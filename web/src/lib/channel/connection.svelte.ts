@@ -12,6 +12,11 @@ import {
 	type FreeRideOutcome,
 } from '$lib/ride/free-ride.svelte';
 import { sensorClaim } from '$lib/channel/sensor-claim';
+import {
+	createOwnRide,
+	type OwnRide,
+	type OwnRideOutcome,
+} from '$lib/ride/own-ride.svelte';
 import { parseSharedWorkout } from '$lib/workout/shared';
 import { play } from '$lib/sound/cues';
 import { applyAway, noEcho, pressed } from '$lib/channel/away-echo';
@@ -55,6 +60,8 @@ type Connection = {
 	ride: ReturnType<typeof createRide>;
 	/** Riding the channel with no session (ADR-0059) — beside the trainer. */
 	freeRide: FreeRide;
+	/** Your own workout, ridden beside the session (#2329). */
+	ownRide: OwnRide;
 	/** You are riding the channel's session, not standing beside it. */
 	joined: () => boolean;
 	/**
@@ -105,6 +112,7 @@ function connect(address: PlaceAddress): Connection {
 	let recording!: ReturnType<typeof createRecording>;
 	let ride!: ReturnType<typeof createRide>;
 	let freeRide!: FreeRide;
+	let ownRide!: OwnRide;
 	let sharedOf!: () => SessionState | undefined;
 	let segmentsOf!: () => Segment[];
 	let workoutOf!: () => Workout | null;
@@ -168,6 +176,13 @@ function connect(address: PlaceAddress): Connection {
 			joined,
 			free: freeRide,
 		});
+		ownRide = createOwnRide({
+			ride,
+			live,
+			profile,
+			joined,
+			endFreeRide: () => freeRide.end().then(sayFreeRide),
+		});
 		// The lounge is where you last rode (#3274): noted on this device when
 		// the roster first says you are riding here — a free ride or a session.
 		let notedRiding = false;
@@ -195,7 +210,8 @@ function connect(address: PlaceAddress): Connection {
 		// shell unmounting on the way to another page, or a walk to /workouts
 		// would hand the rider's own trainer back to their phone.
 		$effect(() => {
-			live.claimSensors(sensorClaim(ride.trainer !== null));
+			// Your own workout borrows the trainer and keeps the claim (#2329).
+			live.claimSensors(sensorClaim(ride.trainer !== null || ownRide.riding));
 		});
 
 		// Away is per rider in the hub (#706), so every one of that rider's
@@ -315,8 +331,12 @@ function connect(address: PlaceAddress): Connection {
 		recording,
 		ride,
 		freeRide,
+		ownRide,
 		joined,
-		riding: () => isLivePhase(live.tick?.state.phase) || freeRide.recording,
+		riding: () =>
+			isLivePhase(live.tick?.state.phase) ||
+			freeRide.recording ||
+			ownRide.riding,
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,
@@ -339,6 +359,20 @@ function sayFreeRide(outcome: FreeRideOutcome | null) {
 	else
 		toasts.push(
 			`Your free ride did not save — ${outcome.failure.message} It is kept on this device, and Ride offers it again.`,
+			{ tone: 'error', href: '/ride', seconds: 0 },
+		);
+}
+
+/** Your own workout, saved on the way out of the channel — sayFreeRide's rule. */
+function sayOwnRide(outcome: OwnRideOutcome | null) {
+	if (!outcome || 'nothing' in outcome) return;
+	if ('saved' in outcome)
+		toasts.push('Your ride is saved.', {
+			href: outcome.saved ? `/history/${outcome.saved}` : undefined,
+		});
+	else
+		toasts.push(
+			`Your ride did not save — ${outcome.failure.message} It is kept on this device, and Ride offers it again.`,
 			{ tone: 'error', href: '/ride', seconds: 0 },
 		);
 }
@@ -366,7 +400,9 @@ export const channelConnection = {
 	rideStatusUnshown(): boolean {
 		return (
 			!!current &&
-			(current.freeRide.recording || current.joined()) &&
+			(current.freeRide.recording ||
+				current.ownRide.riding ||
+				current.joined()) &&
 			statusShown === 0
 		);
 	},
@@ -400,6 +436,7 @@ export const channelConnection = {
 		// A free ride nobody ended is saved on the way out — the rider left
 		// the channel, not the ride. Its answer arrives after the page has gone.
 		void current.freeRide.end().then(sayFreeRide);
+		void current.ownRide.leave().then(sayOwnRide);
 		// Before dispose: stop() closes the ride buffer and releases the
 		// trainer, and both need the reactive scope the root is about to end.
 		current.ride.stop();

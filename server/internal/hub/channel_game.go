@@ -21,19 +21,31 @@ import (
 // coaching, so its riders' rides, XP and recap are kept like a workout's. A
 // game inside a workout session already running rides that session.
 func (rm *channelState) startGame(mode string, rider protocol.Rider, now time.Time) string {
+	return rm.startGameOn(mode, nil, rider, now)
+}
+
+// startGameOn is startGame on a road (#3095). The road is the session's, so
+// only a game that opens the session sets it; one inside a running session
+// rides that session's road.
+func (rm *channelState) startGameOn(mode string, route *protocol.SessionRoute, rider protocol.Rider, now time.Time) string {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if rm.game != nil && !rm.game.done() {
 		return refuseGameRunning
+	}
+	opens := !rm.session.open() || rm.session.phase == "idle"
+	if route != nil && !opens {
+		return "A game inside a running session rides the session's road."
 	}
 	next := newGameMode(mode, now)
 	if next == nil {
 		return refuseNoSuchMode
 	}
 	rm.gameHost = rm.session.id
-	if !rm.session.open() || rm.session.phase == "idle" {
+	if opens {
 		rm.session.begin(uuid.NewString(), rider.ID, rider.Name)
 		rm.session.runGame(mode, gameModeNames[mode], now)
+		rm.session.route = route
 		rm.resetRunLocked(rider.ID)
 		rm.gameHost = ""
 	}

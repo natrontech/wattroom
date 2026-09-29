@@ -66,6 +66,20 @@ export interface Workout {
 	 * The editor never writes it; it is not a per-workout setting.
 	 */
 	unscored?: boolean;
+	/**
+	 * The road it rides, by reference (#3051): the stored route and the
+	 * stretch of it, with where each block ends on a road workout (#3026).
+	 * The server attaches the reader's cut of the road on read; a profile is
+	 * never sent back up.
+	 */
+	road?: WorkoutRoad;
+}
+
+export interface WorkoutRoad {
+	routeId: string;
+	fromM: number;
+	toM: number;
+	stepEndM?: number[];
 }
 
 /** One entry of the flattened timeline — repeats expanded, absolute offsets. */

@@ -154,7 +154,12 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 		return
 	}
 	if cmd.Action == "game" {
-		if refusal := rm.startGame(cmd.GameMode, rider, h.now()); refusal != "" {
+		route, refused := h.askedRoute(cmd, rider.ID)
+		if refused != nil {
+			h.writeError(c, refused.Code, refused.Message)
+			return
+		}
+		if refusal := rm.startGameOn(cmd.GameMode, route, rider, h.now()); refusal != "" {
 			h.writeError(c, "invalid_request", refusal)
 		}
 		return
@@ -173,9 +178,17 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 		h.writeError(c, "invalid_request", "Sprints arm during a running session.")
 		return
 	}
+	var route *protocol.SessionRoute
 	if cmd.Action == "pick" {
 		if refusal := checkPick(cmd); refusal != "" {
 			h.writeError(c, "validation_error", refusal)
+			return
+		}
+		// Before the cut is attached: the road is checked against the
+		// workout's own reference, which reads nothing else.
+		var refused *protocol.Error
+		if route, refused = h.askedRoute(cmd, rider.ID); refused != nil {
+			h.writeError(c, refused.Code, refused.Message)
 			return
 		}
 		attached, refusal := h.sessionRoad(cmd.WorkoutJSON, rider.ID)
@@ -185,7 +198,20 @@ func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd pro
 		}
 		cmd.WorkoutJSON = attached
 	}
-	if code, refusal := rm.control(cmd, rider, h.now()); code != "" {
+	if code, refusal := rm.controlOn(cmd, route, rider, h.now()); code != "" {
 		h.writeError(c, code, refusal)
 	}
+}
+
+// askedRoute is the road a pick or a game asked for, resolved; nil when it
+// asked for none.
+func (h *Hub) askedRoute(cmd protocol.Control, coach string) (*protocol.SessionRoute, *protocol.Error) {
+	if cmd.Route == nil || cmd.Action != "pick" && cmd.Action != "game" {
+		return nil, nil
+	}
+	route, refused := h.sessionRoute(*cmd.Route, cmd.WorkoutJSON, coach)
+	if refused != nil {
+		return nil, refused
+	}
+	return &route, nil
 }

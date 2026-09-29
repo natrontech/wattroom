@@ -89,6 +89,13 @@ Add a sentence or two on how it *felt*, especially anything that felt broken. Th
 file has the numbers; it cannot tell us that ERG felt sluggish or that a grade was
 unrideable, and those turn out to matter.
 
+Rode it in the desktop app? Attach the shell's own log too. It holds every warning the
+app printed, with the time, and `main.old.log` beside it holds the one before:
+
+- macOS: `~/Library/Logs/WattRoom/main.log`
+- Windows: `%APPDATA%\WattRoom\logs\main.log`
+- Linux: `~/.config/WattRoom/logs/main.log`
+
 ## For the agent helping with this
 
 The log is JSONL, one object per line, `kind` being `sample`, `event`, `control-ack`,
