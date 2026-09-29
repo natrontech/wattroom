@@ -9,6 +9,13 @@
 	} from '$lib/ble/trainer';
 	import { simulate } from '$lib/ride/actuation.svelte';
 	import { ROAD } from '$lib/ride/ride-grade';
+	import { GEARS_PROBE } from '$lib/ride/gears-probe-steps';
+	import {
+		runProbeStep,
+		writesPerShift,
+		type ProbeEvent,
+		type ProbeStep,
+	} from '$lib/ride/gears-probe';
 	import { formatClock } from '../channel/mockChannel.svelte';
 
 	/**
@@ -152,6 +159,44 @@
 			note(error instanceof Error ? error.message : String(error), true);
 		} finally {
 			probing = null;
+		}
+	}
+
+	/**
+	 * The Gears probe (#3331): docs/HARDWARE-SESSIONS.md's virtual-gears
+	 * checklist, one button per step. Every write and sample lands in the
+	 * session file as a `gears` event; P7 counts the last P6 run's writes.
+	 */
+	let gearing = $state<string | null>(null);
+	let lastShifts: ProbeEvent[] = [];
+	async function gears(step: ProbeStep) {
+		if (gearing || probing) return;
+		if (!step.run) {
+			const counts = writesPerShift(lastShifts);
+			hwlog('gears-p7', { counts });
+			note(
+				counts.length
+					? `P7: ${counts.length} shifts, writes each: ${[...new Set(counts)].join(', ')}`
+					: 'P7: run P6 first',
+				counts.some((n) => n !== 1),
+			);
+			return;
+		}
+		if (!trainer) return;
+		gearing = step.id;
+		const events: ProbeEvent[] = [];
+		note(`${step.id} ${step.title}: ${step.how}`);
+		try {
+			await runProbeStep(step, trainer, (event) => {
+				events.push(event);
+				hwlog('gears', event);
+			});
+			if (step.id === 'P6') lastShifts = events;
+			note(`${step.id} done`);
+		} catch (error) {
+			note(error instanceof Error ? error.message : String(error), true);
+		} finally {
+			gearing = null;
 		}
 	}
 
@@ -406,7 +451,7 @@
 			{#each Object.keys(probes) as name (name)}
 				<button
 					onclick={() => probe(name)}
-					disabled={!connected || !!probing}
+					disabled={!connected || !!probing || !!gearing}
 					class="border-muted/25 hover:border-muted/60 rounded border px-3 py-2 text-xs disabled:opacity-40"
 					>{probing === name
 						? `${name} running…`
@@ -414,6 +459,30 @@
 				>
 			{/each}
 		</div>
+
+		<h2 class="font-display mt-6 font-bold">Gears</h2>
+		<p class="text-muted mt-1 text-xs">
+			The virtual-gears checklist (docs/HARDWARE-SESSIONS.md): 85 rpm ±3 in one
+			real gear unless a step says otherwise. Every write is logged with the
+			road, the wheel, the gear and the time since the press.
+		</p>
+		<ul class="mt-3 space-y-2">
+			{#each GEARS_PROBE as step (step.id)}
+				<li class="flex flex-wrap items-center gap-3">
+					<button
+						onclick={() => gears(step)}
+						disabled={step.run
+							? !connected || !!probing || !!gearing
+							: !!gearing}
+						class="border-muted/25 hover:border-muted/60 w-36 shrink-0 rounded border px-3 py-2 text-left text-xs disabled:opacity-40"
+						>{gearing === step.id
+							? `${step.id} running…`
+							: `${step.id} ${step.title}`}</button
+					>
+					<span class="text-muted text-xs">{step.how}</span>
+				</li>
+			{/each}
+		</ul>
 	</div>
 
 	<div class="border-frame mt-3 rounded-lg border p-6">
