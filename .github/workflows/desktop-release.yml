@@ -216,6 +216,13 @@ jobs:
         working-directory: desktop
         shell: bash
         env:
+          # These reach WINDOWS too, not only macOS (#2818): electron-builder
+          # signs the Windows build with this same certificate and writes its CN
+          # into app-update.yml as publisherName, the name NsisUpdater checks a
+          # download against. Windows does not trust the Apple chain, so Windows
+          # takes the download offer instead of installing its own updates.
+          # Leave these as they are until Windows has a signing identity of its
+          # own (ADR-0037); scoped to macOS, the Windows check turns off, not on.
           CSC_LINK: ${{ secrets.MACOS_CERT_P12 }}
           CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
           APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
@@ -258,6 +265,27 @@ jobs:
             Linux) asar=dist/linux-unpacked/resources/app.asar ;;
           esac
           node asar-check.js "$asar"
+
+      # #2818: what a Windows rider's updater would check. NsisUpdater installs
+      # an update only when its Authenticode status is Valid and the signer
+      # matches app-update.yml's publisherName. Reported, never failed: this
+      # must read Valid before Windows installs its own updates again, and with
+      # the Apple certificate it reads UnknownError.
+      - name: the Windows signature
+        if: runner.os == 'Windows'
+        working-directory: desktop
+        shell: pwsh
+        run: |
+          $files = @(Get-ChildItem dist -Filter '*.exe' | ForEach-Object FullName) + (Resolve-Path 'dist/win-unpacked/WattRoom.exe').Path
+          "### Windows Authenticode (#2818)" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+          foreach ($f in $files) {
+            $sig = Get-AuthenticodeSignature $f
+            $name = Split-Path $f -Leaf
+            $line = "- ``$name``: **$($sig.Status)** ($($sig.StatusMessage)), signed by $($sig.SignerCertificate.Subject)"
+            $line | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            Write-Output $line # the log too: `gh run view --log` reads it, a summary it cannot
+            if ($sig.Status -ne 'Valid') { Write-Output "::warning::$name has Authenticode status $($sig.Status)" }
+          }
 
       # What a rider's Mac will do with it. codesign shows which identity
       # signed — an "Apple Development" .p12 signs happily and fails here, by

@@ -546,6 +546,22 @@ test('an unreachable app renders the offline screen, not a blank window', async 
 	await app.close();
 });
 
+test('outside macOS the download is offered at once, and nothing installs itself', async () => {
+	// #2818: only macOS checks a signature it trusts before installing, so
+	// Linux and Windows take home's download offer from the first newer
+	// version. macOS installs its own, and offers the download after three
+	// failures.
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+
+	expect(await win.evaluate(() => window.wattroom.updateFailed())).toBe(
+		process.platform !== 'darwin',
+	);
+
+	await app.close();
+});
+
 test('the navigation guard refuses another origin', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
