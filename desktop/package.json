@@ -39,6 +39,9 @@
       "hud.js",
       "deep-link.js",
       "updater.js",
+      "bluetooth.js",
+      "permissions.js",
+      "chooser.js",
       "offline.html",
       "package.json",
       "icons/*.png"
