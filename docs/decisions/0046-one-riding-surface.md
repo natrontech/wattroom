@@ -153,3 +153,11 @@ never called it; that, and not a missing design, is why they say less.
   client that did not draw what it already had — including skip/extend in a
   room, which was the one protocol question here and is now answered above
   (#1635): the hub gains no control for it.
+
+## Amendment, 2026-09-29 (#3020): the horizon may be a road
+
+[ADR-0062](0062-the-horizon-may-be-a-road.md) lets any ride carry a road. On
+one, slot 5 may be **the road ahead** instead of the interval graph, and under a
+shared screen it becomes a **40 px strip**. The five slots, their order and the
+parity rule are unchanged: a road a session has, a rider alone has too. What
+fills slot 2 on a road is [ADR-0066](0066-the-world-is-the-ride-view.md)'s.
