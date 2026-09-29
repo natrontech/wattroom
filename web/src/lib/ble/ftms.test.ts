@@ -345,6 +345,24 @@ describe('FtmsTrainer control-point queue', () => {
 		expect(samples).toEqual([{ watts: 250, cadence: 90 }]);
 	});
 
+	it('stamps heart rate with the frame that carried it, not the one with power (#3517)', async () => {
+		const { trainer, device } = await paired();
+		const samples: TrainerSample[] = [];
+		trainer.onSample((s) => samples.push(s));
+
+		// flags 0x0200: speed 0.00 km/h, heart rate 140 — no power, no sample.
+		device.bikeData.notify(Uint8Array.of(0x00, 0x02, 0x00, 0x00, 0x8c));
+		const measured = Date.now();
+		await vi.advanceTimersByTimeAsync(4000);
+		// flags 0x0041: power only. The unit has stopped relaying heart rate.
+		device.bikeData.notify(Uint8Array.of(0x41, 0x00, 0xfa, 0x00));
+		expect(samples.at(-1)).toMatchObject({
+			heartRate: 140,
+			heartRateAt: measured,
+		});
+		expect(samples.at(-1)!.at - measured).toBe(4000);
+	});
+
 	it("carries a Kickr Core's speed in m/s, and none from a frame without it", async () => {
 		// The Kickr Core of the #10 session (2026-08-29) read 78 W, 40 rpm and
 		// 15.03 km/h in one Indoor Bike Data notification. Re-encoded from

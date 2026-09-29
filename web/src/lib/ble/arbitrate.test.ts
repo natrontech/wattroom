@@ -7,6 +7,7 @@ const trainer = (
 		watts: number;
 		cadence: number;
 		heartRate: number;
+		heartRateAt: number;
 		at: number;
 	}> = {},
 ) => ({
@@ -112,5 +113,34 @@ describe('arbitrate', () => {
 		expect(m.watts).toBe(200);
 		expect(m.from.watts).toBe('trainer');
 		expect(m.heartRate).toBeUndefined();
+	});
+
+	it('ages heart rate by when it was measured, not by the sample (#3517)', () => {
+		const strap = arbitrate(
+			{
+				trainer: trainer(),
+				sensors: { 'heart-rate': { heartRate: 152, at: NOW - 2000 } },
+			},
+			NOW,
+		);
+		expect(strap.heartRateAt).toBe(NOW - 2000);
+
+		// The trainer still streams power but stopped relaying heart rate: its
+		// last bpm rides along on every sample and must not stay fresh.
+		const stale = NOW - ARBITRATION.staleMs - 1;
+		const relay = arbitrate(
+			{ trainer: trainer({ heartRate: 140, heartRateAt: stale }), sensors: {} },
+			NOW,
+		);
+		expect(relay.heartRate).toBeUndefined();
+
+		const live = arbitrate(
+			{
+				trainer: trainer({ heartRate: 140, heartRateAt: NOW - 1000 }),
+				sensors: {},
+			},
+			NOW,
+		);
+		expect(live).toMatchObject({ heartRate: 140, heartRateAt: NOW - 1000 });
 	});
 });
