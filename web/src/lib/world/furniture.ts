@@ -3,7 +3,8 @@
 import * as THREE from 'three';
 import { yOf } from './geometry';
 import * as P from './props';
-import { at, type Route } from './route';
+import { type Route } from '$lib/road/route';
+import { at } from '$lib/road/along';
 import type { Piece, PieceKind, Sign } from './setpieces';
 import type { PropColors, Style } from './styles';
 import type { World } from './world';

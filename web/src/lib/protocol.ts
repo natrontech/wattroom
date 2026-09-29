@@ -567,6 +567,28 @@ export const TemporaryDay = 24 * TemporaryHour;
  */
 export const TemporaryWeek = 7 * TemporaryDay;
 /**
+ * A route a rider imports (docs/SPEC.md "Route rides", ADR-0062): its
+ * length, and the grade its stored road may carry. The browser reads the
+ * file and the server keeps what the browser read (#3024), so both hold
+ * the road to the same bounds.
+ */
+export const MinRouteMeters = 2000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxRouteMeters = 200000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MinRoadGradePct = -15;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxRoadGradePct = 20;
+/**
  * One reconnect replay frame, in samples: an hour of the ride buffer's
  * one row a second (audit 2026-09-09). The hub takes one frame a second
  * per rider and cuts a longer one, so the client sends a longer outage

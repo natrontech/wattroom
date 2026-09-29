@@ -2,7 +2,8 @@
 // drawn from that pair alone, which is also all a session would ever put
 // on the wire per rider — one number more than today's tick.
 import { step, trainerGrade } from './physics';
-import { at, type Route } from './route';
+import { type Route } from '$lib/road/route';
+import { at } from '$lib/road/along';
 
 export type SimRider = {
 	id: string;

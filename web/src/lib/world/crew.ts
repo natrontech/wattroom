@@ -17,7 +17,8 @@ import {
 	type RiderModel,
 } from './rider-model';
 import { pose } from './rider-pose';
-import { at, leftOf, type Route } from './route';
+import { type Route } from '$lib/road/route';
+import { at, leftOf } from '$lib/road/along';
 import type { SimRider } from './sim';
 import type { Style } from './styles';
 
