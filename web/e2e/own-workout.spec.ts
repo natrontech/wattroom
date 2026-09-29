@@ -87,6 +87,19 @@ test('a rider rides their own workout beside the session, and nothing of it coun
 		'the session beside B is not offered',
 	).toBeVisible({ timeout: COUNTDOWN_MS + SETTLE_MS });
 
+	// A desk at phone width: B's ride, and later B's summary, never scroll
+	// sideways — measured on the place-body, where the channel's shell scrolls.
+	await b.setViewportSize({ width: 375, height: 812 });
+	const sideways = () =>
+		Promise.all(
+			['page-body', 'place-body'].map((id) =>
+				b.getByTestId(id).evaluate((el) => el.scrollWidth - el.clientWidth),
+			),
+		);
+	await expect
+		.poll(sideways, { message: "B's ride scrolls sideways at 375px" })
+		.toEqual([0, 0]);
+
 	// A's sprint ranks A alone: B rides beside the session, not in it.
 	await a
 		.getByRole('button', { name: 'arm a sprint' })
@@ -118,17 +131,24 @@ test('a rider rides their own workout beside the session, and nothing of it coun
 		b.getByRole('link', { name: 'See your ride' }),
 		"B's own workout did not save",
 	).toBeVisible({ timeout: SETTLE_MS });
-	const saved = await b.evaluate(async () => {
+	await expect
+		.poll(sideways, { message: "B's summary scrolls sideways at 375px" })
+		.toEqual([0, 0]);
+	// By the id the summary links to: B is a dev identity every run shares,
+	// so B's list holds earlier runs' rides too.
+	const id = (
+		await b.getByRole('link', { name: 'See your ride' }).getAttribute('href')
+	)
+		?.split('/')
+		.pop();
+	const saved = await b.evaluate(async (id) => {
 		const res = await fetch('/api/rides');
 		const { rides } = (await res.json()) as {
-			rides: { workoutName: string }[];
+			rides: { id: string; workoutName: string }[];
 		};
-		return rides.map((r) => r.workoutName);
-	});
-	expect(saved, "B's ride saved as someone else's workout").toContain(
-		'Openers',
-	);
-	expect(saved).not.toContain('Recovery Spin');
+		return rides.find((r) => r.id === id)?.workoutName;
+	}, id);
+	expect(saved, "B's ride saved as someone else's workout").toBe('Openers');
 
 	// A ends the session: its recap is A's ride, and B, beside it, rode none of it.
 	await a.getByRole('button', { name: 'end the session' }).click();

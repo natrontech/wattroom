@@ -83,7 +83,10 @@
 </script>
 
 {#if own && session && workout}
-	<div class="page flex h-full min-h-0 flex-col gap-4 overflow-y-auto pb-8">
+	<!-- Grows with the ride rather than holding the place's height: the place
+	     body is the scroller, and a held height let the instrument slide over
+	     End ride at 375 px. -->
+	<div class="page flex min-h-full flex-col gap-4 pb-8">
 		{#if session.state === 'countdown' || session.state === 'idle'}
 			<CountdownScreen
 				remaining={session.countdownRemaining}
