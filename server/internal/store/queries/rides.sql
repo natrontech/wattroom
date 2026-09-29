@@ -182,10 +182,16 @@ values ($1, $2, $3, $4);
 -- row is already in the table, so its own week came back and the bonus was
 -- one week too high. Excluding the ride rather than the week is the same
 -- question save asks — a second ride the same week still counts.
+-- A ride counts only when it started no earlier than the week before the one
+-- it was saved in (#3514): a back-dated upload is kept, and builds no streak
+-- — ten one-minute uploads dated a week apart bought a 10-week streak whose
+-- bonus every session ride then paid outside the upload ceiling.
 select distinct date_trunc('week', started_at at time zone sqlc.arg(tz)::text)::date as week
 from rides
 where user_id = sqlc.arg(user_id)
   and (sqlc.narg(except_id)::uuid is null or rides.id <> sqlc.narg(except_id))
+  and date_trunc('week', started_at at time zone sqlc.arg(tz)::text)
+      >= date_trunc('week', created_at at time zone sqlc.arg(tz)::text) - interval '1 week'
 order by week desc
 limit 60;
 

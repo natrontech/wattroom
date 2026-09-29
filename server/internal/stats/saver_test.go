@@ -81,6 +81,15 @@ func TestRetrySaveStopsOnCancel(t *testing.T) {
 	})
 }
 
+// savedWhenRidden dates a fixture ride's save to its start: a ride ridden in
+// a past week was saved then, and only such a ride builds a streak (#3514).
+func savedWhenRidden(t *testing.T, st *store.Store, ride pgtype.UUID) {
+	t.Helper()
+	if _, err := st.Pool.Exec(context.Background(), "update rides set created_at = started_at where id = $1", ride); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // The streak that pays is the rider's own, never the crew's (#1451,
 // docs/SPEC.md glossary). WeekStreak and StreakBonus are both tested; the
 // choice of input was not, which is how the room's number and the paid
@@ -110,14 +119,16 @@ func TestStreakXPPaysTheRidersOwnWeeksNotTheCrews(t *testing.T) {
 	now := time.Now().UTC()
 	ride := func(user pgtype.UUID, weeksAgo int) {
 		t.Helper()
-		if _, err := st.Queries.CreateRide(ctx, db.CreateRideParams{
+		id, err := st.Queries.CreateRide(ctx, db.CreateRideParams{
 			UserID: user, CrewID: crew, ChannelID: voice, WorkoutName: "W",
 			StartedAt: pgtype.Timestamptz{Time: now.AddDate(0, 0, -7*weeksAgo), Valid: true},
 			Seconds:   600, AvgWatts: 200, Kj: 120, Execution: 1, ExecutionScored: true,
 			FtpWatts: 250, Samples: []byte{}, Curve: []byte("[]"),
-		}); err != nil {
+		})
+		if err != nil {
 			t.Fatal(err)
 		}
+		savedWhenRidden(t, st, id)
 	}
 	// The crew has ridden for six straight weeks, all of them the regular's.
 	for w := range 6 {
@@ -176,14 +187,16 @@ func TestStreakXPBucketsWeeksInTheRidersZone(t *testing.T) {
 	}
 	ride := func(user pgtype.UUID, at time.Time) {
 		t.Helper()
-		if _, err := st.Queries.CreateRide(ctx, db.CreateRideParams{
+		id, err := st.Queries.CreateRide(ctx, db.CreateRideParams{
 			UserID: user, WorkoutName: "W",
 			StartedAt: pgtype.Timestamptz{Time: at, Valid: true},
 			Seconds:   600, AvgWatts: 200, Kj: 120, Execution: 1, ExecutionScored: true,
 			FtpWatts: 250, Samples: []byte{}, Curve: []byte("[]"),
-		}); err != nil {
+		})
+		if err != nil {
 			t.Fatal(err)
 		}
+		savedWhenRidden(t, st, id)
 	}
 	zurich := "Europe/Zurich"
 	// Monday 2026-09-07 00:30 in Zurich is Sunday 2026-09-06 22:30 in UTC:
