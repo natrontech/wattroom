@@ -6,6 +6,8 @@
 package hub
 
 import (
+	"maps"
+	"slices"
 	"sort"
 	"time"
 
@@ -43,18 +45,19 @@ func (h *Hub) VoiceJoined(channel, identity, name string) {
 		entry.joinedAt = h.now()
 	}
 	h.voice[channel][identity] = entry
-	after := h.voiceChangedLocked(channel)
+	after := h.voiceChangedLocked(channel, entry.rider)
 	h.mu.Unlock()
 	after()
 }
 
 func (h *Hub) VoiceLeft(channel, identity string) {
 	h.mu.Lock()
+	gone := h.voice[channel][identity].rider
 	delete(h.voice[channel], identity)
 	if len(h.voice[channel]) == 0 {
 		delete(h.voice, channel)
 	}
-	after := h.voiceChangedLocked(channel)
+	after := h.voiceChangedLocked(channel, gone)
 	h.mu.Unlock()
 	after()
 }
@@ -69,17 +72,22 @@ func (h *Hub) voiceRidersLocked(channel string) map[string]struct{} {
 	return riders
 }
 
-// voiceChangedLocked pings the lobby and hands back what to do once h.mu is
-// released: tell the live room who is in voice now (#467). The room lock is
-// never taken under the hub lock — same discipline as Presence.
-func (h *Hub) voiceChangedLocked(channel string) func() {
-	h.pingLobbyLocked()
+// voiceChangedLocked hands back what to do once h.mu is released: tell who
+// the change concerns — the channel's riders and the friends of the ones who
+// moved (#2324) — and tell the live room who is in voice now (#467). Neither
+// the room lock nor the lookup happens under the hub lock — same discipline
+// as Presence.
+func (h *Hub) voiceChangedLocked(channel string, moved ...string) func() {
+	tell := func() { h.tellChannel(channel, moved...) }
 	rm, live := h.rooms[channel]
 	if !live {
-		return func() {}
+		return tell
 	}
 	riders := h.voiceRidersLocked(channel)
-	return func() { rm.setVoice(riders) }
+	return func() {
+		tell()
+		rm.setVoice(riders)
+	}
 }
 
 // VoiceRiderIDs is every rider in any voice channel right now, once each —
@@ -135,6 +143,8 @@ func (h *Hub) VoiceCamera(channel, identity, name string, on bool) {
 		h.voice[channel] = make(map[string]voiceEntry, 4)
 	}
 	h.voice[channel][identity] = entry
+	// A camera moves nobody on a friends list: it never shows voice or
+	// camera state (ADR-0012) — the channel's own riders are the audience.
 	after := h.voiceChangedLocked(channel)
 	h.mu.Unlock()
 	after()
@@ -143,8 +153,9 @@ func (h *Hub) VoiceCamera(channel, identity, name string, on bool) {
 // VoiceRoomClosed clears a whole room's voice state (room_finished).
 func (h *Hub) VoiceRoomClosed(channel string) {
 	h.mu.Lock()
+	gone := h.voiceRidersLocked(channel)
 	delete(h.voice, channel)
-	after := h.voiceChangedLocked(channel)
+	after := h.voiceChangedLocked(channel, slices.Collect(maps.Keys(gone))...)
 	h.mu.Unlock()
 	after()
 }
@@ -169,11 +180,11 @@ func (h *Hub) VoiceSync(channel string, present map[string]string, since time.Ti
 	h.mu.Lock()
 	after := func() {}
 	defer func() { h.mu.Unlock(); after() }()
-	changed := false
+	var moved []string
 	for identity, entry := range h.voice[channel] {
 		if _, ok := present[identity]; !ok && entry.joinedAt.Before(since) {
 			delete(h.voice[channel], identity)
-			changed = true
+			moved = append(moved, entry.rider)
 		}
 	}
 	for identity, name := range present {
@@ -184,13 +195,13 @@ func (h *Hub) VoiceSync(channel string, present map[string]string, since time.Ti
 			h.voice[channel] = make(map[string]voiceEntry, len(present))
 		}
 		h.voice[channel][identity] = voiceEntry{rider: av.RiderID(identity), name: name, joinedAt: h.now()}
-		changed = true
+		moved = append(moved, av.RiderID(identity))
 	}
 	if len(h.voice[channel]) == 0 {
 		delete(h.voice, channel)
 	}
-	if changed {
-		after = h.voiceChangedLocked(channel)
+	if len(moved) > 0 {
+		after = h.voiceChangedLocked(channel, moved...)
 	}
 }
 

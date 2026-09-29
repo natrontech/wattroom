@@ -153,7 +153,7 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 	// new owner could not end another rider's session until they reconnected
 	// (#2808, the #278 shape).
 	s.reauthorize(r.Context(), crew.ID, target, actor.ID)
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusOK, crewRefJSON{
 		Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: "admin",
 	})

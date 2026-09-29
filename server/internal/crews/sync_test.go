@@ -23,6 +23,8 @@ func (p *countingPresence) PresenceChanged() {
 	p.pings++
 }
 
+func (p *countingPresence) PresenceChangedFor([]string) { p.PresenceChanged() }
+
 func (p *countingPresence) count() int {
 	p.mu.Lock()
 	defer p.mu.Unlock()

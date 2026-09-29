@@ -122,7 +122,7 @@ func (s *Service) handleCreatePin(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "pin create failed", err, "The pin could not be saved.", "crew", store.UUIDString(crew.ID))
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusCreated, pinJSON{
 		ID: store.UUIDString(row.ID), Title: title, Body: body,
 		CreatedBy: user.DisplayName,
@@ -156,7 +156,7 @@ func (s *Service) handleUpdatePin(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "pin update failed", err, "The pin could not be saved.", "crew", store.UUIDString(crew.ID))
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusOK, pinJSON{
 		ID: store.UUIDString(row.ID), Title: title, Body: body,
 		CreatedAt: row.CreatedAt.Time.Format(time.RFC3339),
@@ -186,6 +186,6 @@ func (s *Service) handleDeletePin(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "That pin is not on this board.")
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	w.WriteHeader(http.StatusNoContent)
 }

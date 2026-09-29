@@ -22,6 +22,7 @@ import (
 type nobody struct{}
 
 func (nobody) PresenceChanged()                   {}
+func (nobody) PresenceChangedFor([]string)        {}
 func (nobody) WhereIs([]string) map[string]string { return nil }
 func (nobody) Riding([]string) map[string]bool    { return nil }
 

@@ -93,14 +93,15 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 	h.mu.Lock()
 	h.lobby[c] = userID
 	h.mu.Unlock()
-	// Coming online is itself a presence change — friends panels go green.
-	h.PresenceChanged()
+	// Coming online is itself a presence change — friends panels go green —
+	// and it concerns the rider's friends and crew-mates, nobody else (#2324).
+	h.tellRider(userID)
 	defer func() {
 		h.mu.Lock()
 		delete(h.lobby, c)
 		h.mu.Unlock()
 		_ = conn.CloseNow()
-		h.PresenceChanged()
+		h.tellRider(userID)
 	}()
 
 	done := make(chan struct{})
@@ -141,16 +142,12 @@ func (h *Hub) HandleLobbyWS(w http.ResponseWriter, r *http.Request) {
 }
 
 // PresenceChanged pings every lobby client: something about who-is-where
-// changed, re-fetch. Callers already holding h.mu use pingLobbyLocked.
-// ponytail: every client re-fetches the full lists per ping — per-user diffs
-// when the fleet outgrows one crew.
+// changed, re-fetch. Only for a change nobody could name an audience for, or
+// whose lookup failed — everything else goes through PresenceChangedFor
+// (#2324), because every client pinged here re-runs its whole set of reads.
 func (h *Hub) PresenceChanged() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.pingLobbyLocked()
-}
-
-func (h *Hub) pingLobbyLocked() {
 	for c := range h.lobby {
 		c.queue("")
 	}
@@ -160,13 +157,7 @@ func (h *Hub) pingLobbyLocked() {
 // something, so their other devices re-fetch the unread counts. Never anyone
 // else's — a read heard by another rider is a read receipt (ADR-0012).
 func (h *Hub) ReadChanged(userID string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	for c, id := range h.lobby {
-		if id == userID {
-			c.queue("")
-		}
-	}
+	h.PresenceChangedFor([]string{userID})
 }
 
 // DmChanged pings the lobby sockets of the two riders in one conversation
@@ -174,13 +165,7 @@ func (h *Hub) ReadChanged(userID string) {
 // sides' conversation lists re-fetch now rather than on a poll. Never anyone
 // else's — who talks to whom, and when, is theirs.
 func (h *Hub) DmChanged(a, b string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	for c, id := range h.lobby {
-		if id == a || id == b {
-			c.queue("")
-		}
-	}
+	h.PresenceChangedFor([]string{a, b})
 }
 
 // ChannelChanged pings the lobby sockets of the riders who may enter one text

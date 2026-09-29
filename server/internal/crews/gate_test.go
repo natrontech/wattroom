@@ -29,7 +29,8 @@ func (l *liveRecorder) Kick(channel, userID string) {
 
 func (*liveRecorder) Occupants(string) []string { return nil }
 
-func (*liveRecorder) PresenceChanged() {}
+func (*liveRecorder) PresenceChanged()            {}
+func (*liveRecorder) PresenceChangedFor([]string) {}
 
 func (*liveRecorder) Presence(string) protocol.ChannelPresence { return protocol.ChannelPresence{} }
 
