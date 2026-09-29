@@ -51,12 +51,12 @@ var flatRoad = *rideOn(slope(0, 200_000), 0, false, false)
 func TestAnOffsetFollowsTheRidersSurplus(t *testing.T) {
 	erg := planned{pct: 0.75}
 	for _, c := range []struct {
-		name   string
-		road   routeRide
-		plan   planned
-		seconds   int
-		riders []bunchRider
-		check  func(t *testing.T, b *bunch)
+		name    string
+		road    routeRide
+		plan    planned
+		seconds int
+		riders  []bunchRider
+		check   func(t *testing.T, b *bunch)
 	}{
 		{
 			// A trim is the rider's own plan (#795): riding 90 % of the
