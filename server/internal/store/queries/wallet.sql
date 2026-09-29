@@ -64,14 +64,14 @@ where user_id = sqlc.arg(user_id)
 order by created_at, id
 limit sqlc.arg(lim);
 
--- name: SessionShapeOfRide :one
--- How many rides a ride's session saved and the longest of them: whether it
--- was a group session, for the wallet's × 1.2 on an amendment (#3152). A
--- solo ride has no session and counts none.
-select count(*)::integer as rides, coalesce(max(seconds), 0)::integer as longest
-from rides
-where session_id is not null
-  and session_id = (select r.session_id from rides r where r.id = $1);
+-- name: MarkGroupSession :exec
+-- The save's own answer to "a group session?", kept on each ride it wrote so
+-- an amendment pays the same × 1.2 (#3517).
+update rides set group_session = sqlc.arg(group_session)::boolean
+where id = any(sqlc.arg(ids)::uuid[]);
+
+-- name: RideGroupSession :one
+select group_session from rides where id = $1;
 
 -- name: LastRideBatzen :one
 -- What the rider's last paid ride paid, for "about one ride like your last

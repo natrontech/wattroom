@@ -130,6 +130,23 @@ func (q *Queries) ListAccountsWithoutOpening(ctx context.Context, walletArrived 
 	return items, nil
 }
 
+const markGroupSession = `-- name: MarkGroupSession :exec
+update rides set group_session = $1::boolean
+where id = any($2::uuid[])
+`
+
+type MarkGroupSessionParams struct {
+	GroupSession bool
+	Ids          []pgtype.UUID
+}
+
+// The save's own answer to "a group session?", kept on each ride it wrote so
+// an amendment pays the same × 1.2 (#3517).
+func (q *Queries) MarkGroupSession(ctx context.Context, arg MarkGroupSessionParams) error {
+	_, err := q.db.Exec(ctx, markGroupSession, arg.GroupSession, arg.Ids)
+	return err
+}
+
 const openWallet = `-- name: OpenWallet :execrows
 insert into wallet_events (user_id, source, amount, ref)
 select $1::uuid, 'opening',
@@ -165,26 +182,15 @@ func (q *Queries) OpenWallet(ctx context.Context, arg OpenWalletParams) (int64, 
 	return result.RowsAffected(), nil
 }
 
-const sessionShapeOfRide = `-- name: SessionShapeOfRide :one
-select count(*)::integer as rides, coalesce(max(seconds), 0)::integer as longest
-from rides
-where session_id is not null
-  and session_id = (select r.session_id from rides r where r.id = $1)
+const rideGroupSession = `-- name: RideGroupSession :one
+select group_session from rides where id = $1
 `
 
-type SessionShapeOfRideRow struct {
-	Rides   int32
-	Longest int32
-}
-
-// How many rides a ride's session saved and the longest of them: whether it
-// was a group session, for the wallet's × 1.2 on an amendment (#3152). A
-// solo ride has no session and counts none.
-func (q *Queries) SessionShapeOfRide(ctx context.Context, id pgtype.UUID) (SessionShapeOfRideRow, error) {
-	row := q.db.QueryRow(ctx, sessionShapeOfRide, id)
-	var i SessionShapeOfRideRow
-	err := row.Scan(&i.Rides, &i.Longest)
-	return i, err
+func (q *Queries) RideGroupSession(ctx context.Context, id pgtype.UUID) (*bool, error) {
+	row := q.db.QueryRow(ctx, rideGroupSession, id)
+	var group_session *bool
+	err := row.Scan(&group_session)
+	return group_session, err
 }
 
 const userIsSynthetic = `-- name: UserIsSynthetic :one
