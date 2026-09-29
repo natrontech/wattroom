@@ -10,11 +10,13 @@
  * 5. heights: a 200 m median, then a 120 m average (profile.ts);
  * 6. hold the grade to −15 … +20 %;
  * 7. turns: the heading's change over 100 m, as int8 degrees;
- * 8. the road every 20 m, packed and hashed (road.ts), and the owner's shape.
+ * 8. the road every 20 m, packed and hashed (road.ts), and the owner's shape;
+ * 9. its climbs, read off that road (climbs.ts).
  *
  * Deterministic: the same points always make the same Route, byte for byte.
  */
 import * as protocol from '$lib/protocol';
+import { climbsOf, type Climb } from './climbs';
 import {
 	despike,
 	frameOf,
@@ -61,6 +63,8 @@ export type Route = {
 	road: Road;
 	/** The owner's shape, polyline6 of the smoothed line — sealed by the server, never shown to anyone else. */
 	shape: string;
+	/** Read off `road`, so the server's twin finds the same ones (#3238). */
+	climbs: Climb[];
 };
 
 /** docs/SPEC.md: resample every 10 m, store every 20 m. */
@@ -135,6 +139,7 @@ export function toRoute(points: TrackPoint[]): Route {
 		loop,
 		road,
 		shape,
+		climbs: climbsOf(road),
 	};
 }
 
