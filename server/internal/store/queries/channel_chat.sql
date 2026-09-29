@@ -95,6 +95,8 @@ select r.message_id, r.emoji,
 from chat_reactions r
 join chat_messages m on m.id = r.message_id
 where m.channel_id = @channel_id
+  -- A hidden rider's reactions never reach the other, either way (#3202).
+  and not rider_hidden(r.user_id, @viewer)
 group by r.message_id, r.emoji;
 
 -- name: AddChannelReaction :execrows

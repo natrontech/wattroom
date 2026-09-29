@@ -29,7 +29,10 @@ type room struct {
 	clients map[*client]struct{}
 	metrics map[string]protocol.RiderMetrics // keyed by rider id, drained each tick
 	cheers  []protocol.Cheer                 // this second's reactions, drained each tick
-	board   []protocol.Board                 // this second's soundboard fires, drained the same way
+	// Who sent each of `cheers`, index for index: the wire names a cheer's
+	// sender by name alone, and a hidden pair is sorted by id (#3202).
+	cheerFrom []string
+	board     []protocol.Board // this second's soundboard fires, drained the same way
 	// What each rider still has sounding, so a rider who joins mid-clip both
 	// hears it and sees who fired it (#1681). Unlike `board` this is NOT
 	// drained: a fire is one tick, but the sound it started is not.
@@ -154,6 +157,7 @@ type room struct {
 	startedBy string
 	xp        XpKeeper
 	recaps    RecapKeeper
+	hider     Hider
 }
 
 // ridingWindow is how recent a sample must be to count as "riding now".

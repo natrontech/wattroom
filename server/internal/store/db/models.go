@@ -289,6 +289,12 @@ type RideUploadXp struct {
 	Xp     int32
 }
 
+type RiderBlock struct {
+	BlockerID pgtype.UUID
+	BlockedID pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+}
+
 type ScheduledSession struct {
 	ID          pgtype.UUID
 	WorkoutName string

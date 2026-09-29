@@ -69,6 +69,17 @@ func (x *export) dismissedRequests() category {
 	}}
 }
 
+func (x *export) hiddenRiders() category {
+	return category{"hidden-riders.json", []string{"rider_blocks"}, func() (any, error) {
+		// The riders I hid (#3202): mine to see in Settings, by name. Who
+		// hid me is theirs — the one thing the block never tells.
+		rows, err := x.q.ExportUserHiddenRiders(x.ctx, x.user.ID)
+		return mapRows(rows, err, func(row db.ExportUserHiddenRidersRow) any {
+			return map[string]any{"name": row.DisplayName, "since": row.CreatedAt.Time}
+		})
+	}}
+}
+
 func (x *export) reactions() category {
 	return x.bounded("reactions.json", []string{"chat_reactions", "dm_reactions"}, func() (any, int, error) {
 		// The emoji the rider put on things other people wrote (#2089):

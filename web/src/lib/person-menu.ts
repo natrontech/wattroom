@@ -2,11 +2,14 @@
  * The three things every person in WattRoom already carries: their page, the
  * DM thread, and the ask to be friends. Built in one place so a friend in the
  * sidebar and a member of a crew say the same words in the same order (#486).
- * A poke joins them wherever one can land (#2721).
+ * A poke joins them wherever one can land (#2721), and every one of them can
+ * be hidden (#3202).
  */
 import Activity from '@lucide/svelte/icons/activity';
 import BellRing from '@lucide/svelte/icons/bell-ring';
 import Crown from '@lucide/svelte/icons/crown';
+import Eye from '@lucide/svelte/icons/eye';
+import EyeOff from '@lucide/svelte/icons/eye-off';
 import MessageSquare from '@lucide/svelte/icons/message-square';
 import MessageSquareMore from '@lucide/svelte/icons/message-square-more';
 import ShieldBan from '@lucide/svelte/icons/shield-ban';
@@ -15,6 +18,7 @@ import UserPlus from '@lucide/svelte/icons/user-plus';
 import Volume2 from '@lucide/svelte/icons/volume-2';
 import { api } from '$lib/api';
 import { friends, type Friend } from '$lib/friends/friends.svelte';
+import { hiddenRiders } from '$lib/hidden-riders.svelte';
 import type { MenuEntry, MenuItem, MenuSlider } from '$lib/context-menu.svelte';
 import { connectionInfo } from '$lib/channel/connection-info.svelte';
 import { channelConnection } from '$lib/channel/connection.svelte';
@@ -179,6 +183,27 @@ export function personMenu(
 			icon: Activity,
 			onSelect: () => connectionInfo.open(id),
 		});
+	// Hiding them (#3202): reversible, so no danger token and no separator —
+	// the ban below it is the crew's, and the one that parts anybody.
+	if (!options.you) {
+		const name =
+			people.face(id)?.name ??
+			friends.list?.find((f) => f.id === id)?.name ??
+			'They';
+		items.push(
+			hiddenRiders.has(id)
+				? {
+						label: 'Show this rider again',
+						icon: Eye,
+						onSelect: () => void hiddenRiders.show(id, name),
+					}
+				: {
+						label: 'Hide this rider',
+						icon: EyeOff,
+						onSelect: () => void hiddenRiders.hide(id, name),
+					},
+		);
+	}
 	// Last, after a separator (ux.md). The tile used to append this itself, so
 	// the same griefer was bannable from their tile and not from the roster row
 	// two hundred pixels away (#951).

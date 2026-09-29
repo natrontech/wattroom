@@ -27,6 +27,18 @@ vi.mock('$lib/poke', () => ({
 	threadOf: (id: string) => `/messages/dm/${id}`,
 }));
 
+const hidden = vi.hoisted(() => ({
+	ids: new Set<string>(),
+	calls: [] as string[][],
+}));
+vi.mock('$lib/hidden-riders.svelte', () => ({
+	hiddenRiders: {
+		has: (id: string) => hidden.ids.has(id),
+		hide: (id: string, name: string) => hidden.calls.push(['hide', id, name]),
+		show: (id: string, name: string) => hidden.calls.push(['show', id, name]),
+	},
+}));
+
 const opened = vi.hoisted(() => ({ id: null as string | null }));
 vi.mock('$lib/channel/connection-info.svelte', () => ({
 	connectionInfo: {
@@ -56,11 +68,13 @@ describe('personMenu (#486)', () => {
 			'Rider page',
 			'Message',
 			'Add friend',
+			'Hide this rider',
 		]);
 		expect(labels(personMenu('u1', () => {}, { conversation: true }))).toEqual([
 			'Open the conversation',
 			'Rider page',
 			'Add friend',
+			'Hide this rider',
 		]);
 	});
 
@@ -92,6 +106,7 @@ describe('personMenu (#486)', () => {
 			'Message',
 			'Poke',
 			'Poke with a message…',
+			'Hide this rider',
 		]);
 		entries[2].onSelect();
 		entries[3].onSelect();
@@ -131,6 +146,7 @@ describe('personMenu (#486)', () => {
 			'Rider page',
 			'Message',
 			'Add friend',
+			'Hide this rider',
 			'—',
 			'Ban from the crew',
 		]);
@@ -140,6 +156,27 @@ describe('personMenu (#486)', () => {
 		expect(
 			labels(personMenu('me', () => {}, { you: true, ban: banned })),
 		).not.toContain('Ban from the crew');
+	});
+
+	// Anyone but you can be hidden (#3202), and someone hidden shown again —
+	// by name, for the toast that says so.
+	it('hides a rider, or shows a hidden one again, and never you', () => {
+		hidden.calls.length = 0;
+		items(personMenu('u1', () => {}))
+			.at(-1)!
+			.onSelect();
+		hidden.ids.add('u2');
+		const again = items(personMenu('u2', () => {})).at(-1)!;
+		expect(again.label).toBe('Show this rider again');
+		again.onSelect();
+		hidden.ids.clear();
+		expect(hidden.calls).toEqual([
+			['hide', 'u1', 'They'],
+			['show', 'u2', 'They'],
+		]);
+		expect(labels(personMenu('me', () => {}, { you: true }))).not.toContain(
+			'Hide this rider',
+		);
 	});
 
 	// The menu never asks who is already a friend — the server's own refusal
@@ -202,6 +239,7 @@ describe('personMenu volume', () => {
 			'Message',
 			'Volume',
 			'Add friend',
+			'Hide this rider',
 		]);
 		fader.onInput(80);
 		expect(setRiderGain).toHaveBeenCalledWith('u1', 0.8, 'Ada');
@@ -289,7 +327,7 @@ describe('personMenu connection (#2131)', () => {
 		const withFriend = labels(
 			personMenu('u1', () => {}, { volume: { name: 'Ruben' } }),
 		);
-		expect(withFriend.at(-1)).toBe('Add friend');
+		expect(withFriend.slice(-2)).toEqual(['Add friend', 'Hide this rider']);
 		expect(withFriend).toContain('Volume');
 		const without = labels(
 			personMenu('u1', () => {}, {

@@ -14,6 +14,7 @@ import (
 const acceptFriendRequest = `-- name: AcceptFriendRequest :execrows
 update friendships set status = 'accepted'
 where requester_id = $1 and addressee_id = $2 and status = 'pending'
+  and not rider_hidden($1, $2)
 `
 
 type AcceptFriendRequestParams struct {
@@ -21,7 +22,8 @@ type AcceptFriendRequestParams struct {
 	AddresseeID pgtype.UUID
 }
 
-// Only the addressee accepts.
+// Only the addressee accepts, and never across a hidden pair (#3202): the ask
+// is not in front of either of them to accept.
 func (q *Queries) AcceptFriendRequest(ctx context.Context, arg AcceptFriendRequestParams) (int64, error) {
 	result, err := q.db.Exec(ctx, acceptFriendRequest, arg.RequesterID, arg.AddresseeID)
 	if err != nil {
@@ -71,8 +73,9 @@ func (q *Queries) CreateFriendRequest(ctx context.Context, arg CreateFriendReque
 
 const deleteFriendship = `-- name: DeleteFriendship :execrows
 delete from friendships
-where (requester_id = $1 and addressee_id = $2)
-   or (requester_id = $2 and addressee_id = $1)
+where ((requester_id = $1 and addressee_id = $2)
+    or (requester_id = $2 and addressee_id = $1))
+  and friendship_visible(requester_id, addressee_id, status, $1)
 `
 
 type DeleteFriendshipParams struct {
@@ -80,7 +83,8 @@ type DeleteFriendshipParams struct {
 	AddresseeID pgtype.UUID
 }
 
-// Cancel, dismiss, or unfriend — same act from either side.
+// Cancel, dismiss, or unfriend — same act from either side, on a row $1 can
+// see: across a hidden pair it answers as for no row at all (#3202).
 func (q *Queries) DeleteFriendship(ctx context.Context, arg DeleteFriendshipParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteFriendship, arg.RequesterID, arg.AddresseeID)
 	if err != nil {
@@ -125,8 +129,9 @@ func (q *Queries) ExportUserFriendDeclines(ctx context.Context, requesterID pgty
 
 const getFriendship = `-- name: GetFriendship :one
 select requester_id, addressee_id, status, created_at from friendships
-where (requester_id = $1 and addressee_id = $2)
-   or (requester_id = $2 and addressee_id = $1)
+where ((requester_id = $1 and addressee_id = $2)
+    or (requester_id = $2 and addressee_id = $1))
+  and friendship_visible(requester_id, addressee_id, status, $1)
 `
 
 type GetFriendshipParams struct {
@@ -134,7 +139,8 @@ type GetFriendshipParams struct {
 	AddresseeID pgtype.UUID
 }
 
-// Either direction — one row exists per pair (the pair index).
+// Either direction — one row exists per pair (the pair index) — as $1 sees
+// it: a hidden pair's row is not there for either of them (#3202).
 func (q *Queries) GetFriendship(ctx context.Context, arg GetFriendshipParams) (Friendship, error) {
 	row := q.db.QueryRow(ctx, getFriendship, arg.RequesterID, arg.AddresseeID)
 	var i Friendship
@@ -235,7 +241,9 @@ select f.status, f.requester_id, f.created_at, u.id, u.display_name, u.avatar_ur
     u.status_emoji, u.status_emoji_id, u.status_text, u.status_expires_at
 from friendships f
 join users u on u.id = case when f.requester_id = $1 then f.addressee_id else f.requester_id end
-where f.requester_id = $1 or f.addressee_id = $1
+where (f.requester_id = $1 or f.addressee_id = $1)
+  -- A hidden pair leaves both lists (#3202), bar the blocked rider's own ask.
+  and friendship_visible(f.requester_id, f.addressee_id, f.status, $1)
 order by u.display_name
 limit 1000
 `

@@ -753,7 +753,9 @@ select (case when f.requester_id = $1 then a.display_name else b.display_name en
 from friendships f
 join users b on b.id = f.requester_id
 join users a on a.id = f.addressee_id
-where f.requester_id = $1 or f.addressee_id = $1
+where (f.requester_id = $1 or f.addressee_id = $1)
+  -- What the friends list shows them (#3202): a hidden pair is not in it.
+  and friendship_visible(f.requester_id, f.addressee_id, f.status, $1)
 order by f.created_at
 `
 

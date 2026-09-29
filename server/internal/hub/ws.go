@@ -214,6 +214,12 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			poke := protocol.Poke{
 				To: to, FromID: rider.ID, From: rider.Name, At: h.now().UnixMilli(),
 			}
+			// Across a hidden pair the poke goes nowhere, and the sender is
+			// answered exactly as if it landed: they are never told (#3202).
+			if rm.hides(rider.ID, to) {
+				c.sendJSON(h.log, protocol.ServerMessage{Poke: &poke})
+				continue
+			}
 			if !rm.queuePoke(to, poke) {
 				h.writeError(c, "invalid_request", "That rider is no longer in this voice channel.")
 				continue
@@ -261,7 +267,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		}
 		if msg.Cheer != nil {
 			if protocol.IsReaction(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
-				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name})
+				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name}, rider.ID)
 			}
 		}
 		if msg.Jukebox != nil {

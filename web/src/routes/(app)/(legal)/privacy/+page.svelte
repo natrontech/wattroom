@@ -8,7 +8,7 @@
 
 <h1 class="page-title">Privacy policy</h1>
 <p class="text-muted mt-1 text-sm">
-	Datenschutzerklärung · last updated 25 September 2026
+	Datenschutzerklärung · last updated 29 September 2026
 </p>
 
 <p class="text-muted mt-6 text-sm leading-relaxed">
@@ -160,6 +160,11 @@
 			level, energy ridden, badges earned in crews you share, and where you are right
 			now. Rides appear there only if you shared them, one by one, and only to friends.
 		</li>
+		<li>
+			<strong class="text-ink font-medium">Hiding a rider</strong> stores who you
+			hid and when. Only you can see that list, and it is in your export; the rider
+			you hid is never told.
+		</li>
 	</ul>
 </section>
 
@@ -250,10 +255,10 @@
 		The two big ones are built in: your profile has
 		<strong class="text-ink font-medium">export everything</strong> — a zip of
 		your profile, every ride with its per-second samples, the messages you
-		wrote, your DM threads and the reactions you left, friends, your crews —
-		your standing and your choices in each, and the ones you own with their
-		settings — the pins you wrote on their boards, the private channels that
-		name you, playlists, workouts, sessions you said yes to
+		wrote, your DM threads and the reactions you left, friends, the riders you
+		hid, your crews — your standing and your choices in each, and the ones you
+		own with their settings — the pins you wrote on their boards, the private
+		channels that name you, playlists, workouts, sessions you said yes to
 		<em>and</em>
 		sessions you put on a calendar, the library tracks you uploaded, your soundboard
 		clips, your coach-access tokens, where each ride was delivered, and your XP and

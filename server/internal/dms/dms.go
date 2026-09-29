@@ -335,7 +335,7 @@ func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	count, err := s.store.Queries.CountDmReaction(r.Context(), db.CountDmReactionParams{
-		MessageID: mid, Emoji: req.Emoji,
+		MessageID: mid, Emoji: req.Emoji, Viewer: me.ID,
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "count dm reaction", err, "The reaction could not be saved.")

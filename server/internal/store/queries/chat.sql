@@ -9,4 +9,6 @@ delete from chat_images i
                    limit 10000);
 
 -- name: CountChatReaction :one
-select count(*) from chat_reactions where message_id = $1 and emoji = $2;
+-- The toggle's answer, counted as the list counts it for this viewer (#3202).
+select count(*) from chat_reactions
+where message_id = @message_id and emoji = @emoji and not rider_hidden(user_id, @viewer);
