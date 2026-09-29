@@ -4,9 +4,10 @@
 // the place.
 //
 // Every route here is its owner's: the reads are keyed by owner, so someone
-// else's route reads as absent. Sessions only — a personal token, which is how
-// a coach's AI reads rides, never reaches a route (AGENTS.md: no coordinates
-// in an AI context).
+// else's route reads as absent — except the road and the span of its map the
+// crews that ride it may read (road.go, #3096). Sessions only — a personal
+// token, which is how a coach's AI reads rides, never reaches a route
+// (AGENTS.md: no coordinates in an AI context).
 package routes
 
 import (
@@ -49,10 +50,11 @@ type Users interface {
 }
 
 type Service struct {
-	store *store.Store
-	users Users
-	keys  *secrets.Cipher
-	log   *slog.Logger
+	store  *store.Store
+	users  Users
+	keys   *secrets.Cipher
+	riding Riding
+	log    *slog.Logger
 }
 
 // New takes the server's key; nil, or one not configured, stores roads only.
@@ -68,6 +70,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/routes/{id}", s.handleDelete)
 	mux.HandleFunc("GET /api/routes/{id}/shape", s.handleShape)
 	mux.HandleFunc("GET /api/world", s.handleWorld)
+	mux.HandleFunc("GET /api/routes/{id}/road", s.handleRoad)
+	mux.HandleFunc("PUT /api/routes/{id}/crews/{crew}", s.handleConsent)
 }
 
 // noKeyHint is the one line a route stored without its place carries.
@@ -159,7 +163,7 @@ func (s *Service) handleShape(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := s.store.Queries.GetOwnerRoutePlace(r.Context(), db.GetOwnerRoutePlaceParams{ID: id, OwnerID: user.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		notFound(w)
+		s.crewShape(w, r, user.ID, id)
 		return
 	}
 	if err != nil {
