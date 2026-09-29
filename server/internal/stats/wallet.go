@@ -8,6 +8,7 @@ import (
 
 	"github.com/natrontech/wattroom/server/internal/store/db"
 	"github.com/natrontech/wattroom/server/internal/wallet"
+	"github.com/natrontech/wattroom/server/internal/wardrobe"
 )
 
 // mintSession pays each ride a session saved into its rider's wallet (#3152),
@@ -24,6 +25,10 @@ func mintSession(ctx context.Context, q *db.Queries, kept []savedRide, rides, lo
 		}
 		if err := wallet.MintRide(ctx, q, ride.userID, ride.rideID, wallet.Batzen(ride.watts, ride.ftp, group)); err != nil {
 			return fmt.Errorf("stats: wallet: %w", err)
+		}
+		// Whatever each rider wore is theirs to keep now, past the undo (#3154).
+		if err := wardrobe.MarkWorn(ctx, q, ride.userID); err != nil {
+			return fmt.Errorf("stats: outfit worn: %w", err)
 		}
 	}
 	return nil

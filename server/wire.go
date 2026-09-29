@@ -62,6 +62,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/unfurl"
 	"github.com/natrontech/wattroom/server/internal/usage"
 	"github.com/natrontech/wattroom/server/internal/wallet"
+	"github.com/natrontech/wattroom/server/internal/wardrobe"
 )
 
 // wired is what main still needs from the wiring: what to drain on shutdown,
@@ -204,6 +205,8 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	safego.Go(log, "wallet opening grants", func() { wallet.Open(ctx, st, log) })
 	// Always private: the session source, never a personal token.
 	wallet.New(st, authService, log).Register(mux)
+	// Buying, undoing and dressing (#3154): the session source too.
+	wardrobe.New(st, authService, log).Register(mux)
 	// A rider's stored roads (#3024, ADR-0063): the session source, never
 	// readAuth — a personal token is how a coach's AI reads, and no
 	// coordinate reaches an AI context.
