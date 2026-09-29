@@ -269,7 +269,8 @@
 				class="h-full w-full"
 				style="transform: translate({view.x}px, {view.y}px) scale({view.zoom}); transition: {dragging
 					? 'none'
-					: 'transform var(--dur-quick) var(--ease-live)'}; cursor: {view.zoom === 1
+					: 'transform var(--dur-quick) var(--ease-live)'}; cursor: {view.zoom ===
+				1
 					? 'default'
 					: dragging
 						? 'grabbing'

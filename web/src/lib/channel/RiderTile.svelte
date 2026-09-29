@@ -271,7 +271,9 @@
 	<div class="bg-edge absolute inset-x-0 bottom-0 h-1.5">
 		{#if live}
 			<div
-				class="h-full transition-[width] duration-(--dur-live) ease-live {ZONE_BG[zone]}"
+				class="ease-live h-full transition-[width] duration-(--dur-live) {ZONE_BG[
+					zone
+				]}"
 				style="width: {fill}%"
 			></div>
 		{/if}
