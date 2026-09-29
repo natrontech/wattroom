@@ -117,4 +117,4 @@ on conflict (route_id, crew_id) do update set shared = excluded.shared, decided_
 -- A route's sealed place and length by id alone (#3096): for the crew tier of
 -- /shape, which cuts it to the span between the anchors. Not owner-scoped —
 -- routes.Service's audience is the rule, and the only caller asks it first.
-select owner_id, geom_sealed, key_version, length_m from routes where id = $1;
+select owner_id, src, geom_sealed, key_version, length_m from routes where id = $1;

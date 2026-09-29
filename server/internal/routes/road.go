@@ -88,6 +88,12 @@ func (s *Service) handleRoad(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	owner := row.OwnerID == user.ID
+	// A route from Strava rides with its owner alone (ADR-0063): no plan or
+	// pick can carry one, and no crew reads one here either.
+	if !owner && row.Src == stravaSrc {
+		notRidingIt(w)
+		return
+	}
 	if !owner {
 		crews, err := s.audience(r.Context(), id, user.ID)
 		if err != nil {
@@ -185,7 +191,7 @@ func (s *Service) crewShape(w http.ResponseWriter, r *http.Request, viewer, id p
 		httpx.Fail(w, s.log, "route audience failed", err, "That route's map could not be loaded.")
 		return
 	}
-	if len(crews) == 0 {
+	if len(crews) == 0 || row.Src == stravaSrc {
 		notRidingIt(w)
 		return
 	}

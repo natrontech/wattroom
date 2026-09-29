@@ -126,6 +126,20 @@ func TestTheRoadReachesOnlyTheCrewsThatRideIt(t *testing.T) {
 		t.Error("the crew's road carries another secret than the route's")
 	}
 
+	// A route from Strava never reaches a crew, however it came to be in reach.
+	if _, err := c.h.store.Pool.Exec(t.Context(), "update routes set src = 'stravagpx' where id = $1", c.route); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, _ := c.road(t, "bob", c.hash); status != http.StatusForbidden {
+		t.Errorf("bob reads a Strava route: %d, want 403", status)
+	}
+	if status, _ := c.h.call(t, "bob", http.MethodGet, "/api/routes/"+c.route+"/shape", nil); status != http.StatusForbidden {
+		t.Errorf("bob reads a Strava route's map: %d, want 403", status)
+	}
+	if _, err := c.h.store.Pool.Exec(t.Context(), "update routes set src = 'gpx' where id = $1", c.route); err != nil {
+		t.Fatal(err)
+	}
+
 	for _, r := range []struct {
 		name, who, h string
 		want         int

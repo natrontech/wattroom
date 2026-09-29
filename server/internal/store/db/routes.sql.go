@@ -237,11 +237,12 @@ func (q *Queries) GetRouteGenName(ctx context.Context, id pgtype.UUID) (string, 
 }
 
 const getRoutePlace = `-- name: GetRoutePlace :one
-select owner_id, geom_sealed, key_version, length_m from routes where id = $1
+select owner_id, src, geom_sealed, key_version, length_m from routes where id = $1
 `
 
 type GetRoutePlaceRow struct {
 	OwnerID    pgtype.UUID
+	Src        string
 	GeomSealed []byte
 	KeyVersion *int32
 	LengthM    int32
@@ -255,6 +256,7 @@ func (q *Queries) GetRoutePlace(ctx context.Context, id pgtype.UUID) (GetRoutePl
 	var i GetRoutePlaceRow
 	err := row.Scan(
 		&i.OwnerID,
+		&i.Src,
 		&i.GeomSealed,
 		&i.KeyVersion,
 		&i.LengthM,
