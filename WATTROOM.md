@@ -32,7 +32,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 
 - No ~~virtual world~~, ~~roads~~, ~~maps~~ or avatars **Diverged 2026-09-29 (#3020, ADR-0062)**: roads are in — a route the rider imports, ridden in any mode. **Diverged 2026-09-29 (#3120, ADR-0070)**: maps are in, as our own copy of OpenStreetMap served from wattroom.ch, so no map company sees where a rider rides. **Diverged 2026-09-29 (#3062, ADR-0066)**: on a road the ride view is a 3D world, with the 2D Skyline taking over wherever it cannot run.
 - No racing simulation, drafting physics or game mechanics **Diverged 2026-09-29 (#3093, ADR-0065)**: on a road, a power model moves a bunch's one shared position, paced by the workout. The bunch has no drafting, no power-ups and no ranking.
-- No content treadmill (~~routes~~, worlds, events) **Diverged 2026-09-29 (#3020, ADR-0062)**: riders bring their own routes, which is no treadmill; the one thing WattRoom curates is a growing library of famous climbs, and that is a deliberate divergence from this line.
+- No content treadmill (~~routes~~, worlds, events) **Diverged 2026-09-29 (#3020, ADR-0062)**: riders bring their own routes, which is no treadmill; the one thing WattRoom curates is a growing library of famous climbs, and that is a deliberate divergence from this line. **Diverged 2026-09-29 (#3150, ADR-0069)**: a garage of cosmetics earned by riding grows by parts that combine and seasons that come back every year, never by items that expire or are sold.
 - Not a training plan generator (integrate with existing tools later)
 
 ---
