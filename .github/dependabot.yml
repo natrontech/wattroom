@@ -15,13 +15,13 @@
 # outside the schedule and outside the open-PR limit, which is the correct
 # asymmetry — see `vulncheck` in ci.yml for the Go half of the same job.
 #
-# No `docker` ecosystem, on purpose: the only image that ships is
-# `gcr.io/distroless/static-debian12:nonroot`, a floating tag already resolved
-# fresh on every build, and the node/golang stages above it are builders that
-# are discarded in the same Dockerfile. Bumping those would be PRs about
-# layers no rider ever runs. The Node version used to build the SPA does
-# matter, but it has to track ci.yml's `web` job rather than the registry, so
-# it is a human's edit in both files at once.
+# The `docker` ecosystem moves the Dockerfile's digests (#2866). Every FROM is
+# pinned by digest, because the node and golang stages are not "builders
+# discarded": they produce the SPA and the binary that ship, so a moved tag
+# reached production with nothing here changing. The node and golang TAGS stay
+# a human's edit — the Node major tracks ci.yml's `web` job and the Go version
+# tracks go.mod — so the bot is told to ignore every version change on those
+# two and propose digests only. The distroless runtime moves freely.
 #
 # A hand-sweep of web/ wedges the npm updater for three days, and the error
 # names the wrong package. Dependabot resolves the pnpm lockfile with
@@ -107,6 +107,26 @@ updates:
       desktop:
         patterns: ['*']
         update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    labels:
+      - dependencies
+      - infra
+      - no-changelog
+    commit-message:
+      prefix: chore(deps)
+    ignore:
+      - dependency-name: node
+        update-types: [version-update:semver-major, version-update:semver-minor, version-update:semver-patch]
+      - dependency-name: golang
+        update-types: [version-update:semver-major, version-update:semver-minor, version-update:semver-patch]
+    groups:
+      images:
+        patterns: ['*']
 
   - package-ecosystem: github-actions
     directory: /
