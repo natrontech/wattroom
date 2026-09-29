@@ -53,8 +53,23 @@ export function uploadPayload(ride: RecoveredRide) {
 			bias: sample.bias,
 			clock: sample.clock,
 			released: sample.released,
+			...(sample.m !== undefined && { m: sample.m, alt: sample.alt }),
 		})),
+		// A free ride on a road saves against its route (#3027); how the
+		// trainer was driven went with the page, so the time is not claimed.
+		...(ride.routeId && { routeId: ride.routeId }),
 	};
+}
+
+/**
+ * Where a recovered ride on a road stopped, to carry on from (#3027): the
+ * route and the last metre it recorded. Null for any other ride.
+ */
+export function resumeAt(
+	ride: RecoveredRide,
+): { routeId: string; m: number } | null {
+	const m = ride.samples.at(-1)?.m;
+	return ride.routeId && m !== undefined ? { routeId: ride.routeId, m } : null;
 }
 
 /** The filename a rider gets: the day the ride happened, not the day they saved it. */
