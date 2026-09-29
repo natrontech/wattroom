@@ -4,6 +4,7 @@
 	 * what $lib/road makes of a route — the line, the heights and the turns
 	 * it keeps, and what it would send. A loaded file never leaves the tab.
 	 */
+	import { hairpinsOf } from '$lib/road/climbs';
 	import { FIXTURES, toGpx } from '$lib/road/fixtures';
 	import { parseRoute, type RouteSource } from '$lib/road/parse';
 	import { packRoad, roadHash, roadStep } from '$lib/road/road';
@@ -124,7 +125,20 @@
 			<dd>{route.loop ? 'yes' : 'no'}</dd>
 			<dt class="text-muted">Turned</dt>
 			<dd>
-				{route.road.turns.reduce((a, t) => a + Math.abs(t), 0)}° in all
+				{route.road.turns.reduce((a, t) => a + Math.abs(t), 0)}° in all,
+				{hairpinsOf(route.road).length} hairpins
+			</dd>
+			<dt class="text-muted">Climbs</dt>
+			<dd class="col-span-3">
+				{#each route.climbs as c (c.startM)}
+					<span class="mr-3 inline-block">
+						{c.cls ?? '·'}
+						{((c.topM - c.startM) / 1000).toFixed(1)} km, {Math.round(c.gainM)} m
+						up, top at {(c.topM / 1000).toFixed(1)} km
+					</span>
+				{:else}
+					none
+				{/each}
 			</dd>
 			<dt class="text-muted">Hash</dt>
 			<dd class="col-span-3 font-mono text-xs break-all">{hash || '…'}</dd>
