@@ -143,3 +143,18 @@ func TestAGameRidesTheSessionsRoad(t *testing.T) {
 		}
 	})
 }
+
+// A road workout picked onto its own road rides it, however the coach's
+// client spells the id, and the tick names the route one way.
+func TestARoadWorkoutRidesItsOwnRoad(t *testing.T) {
+	h, _, url := controlHub(t)
+	h.SetRoads(fakeRoads{})
+	coach := dial(t, url, "jan:owner")
+	pick := roadPick()
+	pick.Route = &protocol.ControlRoute{ID: "{" + strings.ToUpper(homeLoop) + "}"}
+	sendControl(t, coach, pick)
+	tick := awaitFrame(t, coach, "the road workout on its road", routeTick)
+	if got := tick.Tick.State.Route.ID; got != homeLoop {
+		t.Fatalf("the tick names the route %q, want %q", got, homeLoop)
+	}
+}

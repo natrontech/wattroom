@@ -62,24 +62,27 @@ func (h *Hub) sessionRoute(ask protocol.ControlRoute, workoutJSON, coach string)
 	refuse := func(code, message string) (protocol.SessionRoute, *protocol.Error) {
 		return protocol.SessionRoute{}, &protocol.Error{Code: code, Message: message}
 	}
-	if _, err := uuid.Parse(ask.ID); err != nil {
+	id, err := uuid.Parse(ask.ID)
+	if err != nil {
 		return refuse("validation_error", "A session's road names no route.")
 	}
 	if ask.FromM < 0 {
 		return refuse("validation_error", "A session starts on its road, not before it.")
 	}
 	// A workout built on a road ends its blocks at that road's metres.
-	if ref, _ := workout.RoadOf(workoutJSON); ref != nil && ref.RouteID != ask.ID {
-		return refuse("validation_error", "This workout was built on another road — pick the route it rides.")
+	if ref, err := workout.RoadOf(workoutJSON); err == nil && ref != nil {
+		if built, _ := uuid.Parse(ref.RouteID); built != id {
+			return refuse("validation_error", "This workout was built on another road — pick the route it rides.")
+		}
 	}
 	if h.roads == nil {
 		return refuse("forbidden", "This server does not ride roads yet, so a session cannot carry one.")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), roadReadTimeout)
 	defer cancel()
-	route, refusal, err := h.roads.SessionRoute(ctx, coach, ask.ID)
+	route, refusal, err := h.roads.SessionRoute(ctx, coach, id.String())
 	if err != nil {
-		h.log.Warn("session route unreadable", "err", err, "coach", coach, "route", ask.ID)
+		h.log.Warn("session route unreadable", "err", err, "coach", coach, "route", id)
 		return refuse("internal_error", "The road could not be read just now. Pick it again in a moment.")
 	}
 	if refusal != nil {

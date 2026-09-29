@@ -49,7 +49,8 @@ type session struct {
 	// not pause, and the game's end is its end.
 	game string
 	// The road it rides (#3095), from the pick or the game that opened it;
-	// nil rides none.
+	// nil rides none. Replaced whole, never written through: state() hands
+	// the pointer to a tick that is encoded after the lock is let go.
 	route *protocol.SessionRoute
 	// Who joined it (ADR-0059): only they are driven and counted. The one
 	// who opened it is in from the start; everyone else in the channel
@@ -236,7 +237,7 @@ func (s *session) state(now time.Time) protocol.SessionState {
 		Phase: s.phase, Elapsed: elapsed,
 		ID: s.id, Coach: s.coach, CoachName: s.coachName,
 		WorkoutName: s.workoutName, WorkoutJSON: s.workoutJSON, WorkoutHash: s.workoutHash, TotalSeconds: s.totalSeconds,
-				Route: s.route,
+		Route: s.route,
 	}
 }
 
