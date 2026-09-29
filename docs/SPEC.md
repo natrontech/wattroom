@@ -382,7 +382,7 @@ in hand — rides store no zone seconds — so they show no partial progress.
 | `hot-end`             | Hot End             | ≥ 3 min in Z6 or above (≥ 121 % FTP) in one ride                                                        | medium |
 | `espresso-ride`       | Espresso Ride       | a ride under 25 min with ≥ 80 % of its seconds above sweet spot (> 94 % FTP; sweet spot is 88–94 %)     | medium |
 | `lounge-lizard`       | Lounge Lizard       | 10 h of voice presence (120 five-minute blocks)                                                         | medium |
-| `dj`                  | DJ                  | 50 queued tracks a voice channel played to the end — a skip does not count, the "ended" report does            | medium |
+| `dj`                  | DJ                  | 50 queued tracks a voice channel played to the end — a skip does not count. "Played" is the server's own clock ([#2931](https://github.com/natrontech/wattroom/issues/2931)): at least **60 s** of play, pauses left out, and a library track whose length is known must also reach **its length − 5 s** **(defaults — tune in alpha)**. The client's "ended" moves the deck on and earns nothing by itself | medium |
 | `crew-chief`          | Crew Chief          | pressed start on 20 sessions with ≥ 3 saved rides (the medal minimum)                                   | hard   |
 | `sprint-snob`         | Sprint Snob         | first on the w/kg podium of 10 sprint moments with **≥ 2** riders scored — a podium of one is not a win | medium |
 
