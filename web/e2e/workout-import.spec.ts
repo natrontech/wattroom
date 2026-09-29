@@ -156,3 +156,77 @@ test('import a .erg, and refuse the files that are not one', async ({
 	await page.waitForURL('**/workouts/edit?w=*');
 	await expect(page.getByLabel('Workout name')).toHaveValue(ERG_NAME);
 });
+
+/**
+ * A route file through the same door (#3057): the file stays in the browser,
+ * the preview says what it became, and Save stores the road — which then
+ * reads back under its generated name. Invented, in the open South Atlantic:
+ * no fixture here is anyone's road (#3054). Three kilometres climbing 4 %,
+ * so the one climb is class IV.
+ */
+function routeGpx(): string {
+	const perLon = 111_195 * Math.cos((30 * Math.PI) / 180);
+	const points = Array.from({ length: 301 }, (_, i) => {
+		const lon = -25 + (i * 10) / perLon;
+		return `<trkpt lat="-30.0000000" lon="${lon.toFixed(7)}"><ele>${(100 + 0.4 * i).toFixed(1)}</ele></trkpt>`;
+	});
+	return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="WattRoom e2e" xmlns="http://www.topografix.com/GPX/1/1">
+<trk><name>My street to the office</name><trkseg>
+${points.join('\n')}
+</trkseg></trk>
+</gpx>`;
+}
+
+test('import a .gpx route, read its preview, and save it', async ({ page }) => {
+	await page.addInitScript(() =>
+		localStorage.setItem(
+			'wattroom.mixer.v1',
+			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+		),
+	);
+	await signInAs(page, 'Import Verify Route', '/workouts/import');
+
+	await page.locator('input[type=file]').setInputFiles({
+		name: 'commute.gpx',
+		mimeType: 'application/gpx+xml',
+		buffer: Buffer.from(routeGpx()),
+	});
+
+	// The generated name, never the file's own <name>.
+	const heading = page.getByRole('heading', {
+		name: /^Road · 3\.0 km · \d+ m$/,
+	});
+	await expect(heading).toBeVisible();
+	const generated = (await heading.textContent())!.trim();
+	await expect(page.getByText('My street to the office')).toHaveCount(0);
+	await expect(page.getByRole('list', { name: 'Climbs' })).toContainText('IV');
+	await expect(page.getByText('At the reference pace')).toBeVisible();
+	await expect(page.getByText(/smoothing every route gets/)).toBeVisible();
+	await expect(page.getByText(/map is sealed/)).toBeVisible();
+	await expect(
+		page.getByRole('button', { name: 'Ride it now' }),
+	).toBeDisabled();
+	await expect(
+		page.getByRole('button', { name: 'Plan it for a crew' }),
+	).toBeDisabled();
+
+	await page.getByLabel('your name for it').fill('Commute climb');
+	await page.getByRole('button', { name: 'Save to my routes' }).click();
+	await expect(
+		page.getByText(/“Commute climb” is on your routes/),
+	).toBeVisible();
+
+	// Stored: the owner's name on their own read, the generated one beside it.
+	const listed = await page.request.get('/api/routes');
+	expect(listed.ok()).toBe(true);
+	const { routes } = (await listed.json()) as {
+		routes: { name: string; generatedName: string }[];
+	};
+	expect(routes).toContainEqual(
+		expect.objectContaining({
+			name: 'Commute climb',
+			generatedName: generated,
+		}),
+	);
+});

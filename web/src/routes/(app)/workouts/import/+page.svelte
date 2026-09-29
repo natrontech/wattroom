@@ -275,9 +275,11 @@
 		</div>
 	</section>
 
-	<p class="text-muted mt-6 text-xs">
-		A converted workout is a WattRoom workout: every target scales to your FTP,
-		and you can reshape it in the editor afterwards.
-		<a href="/workouts" class="hover:text-ink underline">Back to workouts</a>
-	</p>
+	{#if routeSource === null}
+		<p class="text-muted mt-6 text-xs">
+			A converted workout is a WattRoom workout: every target scales to your
+			FTP, and you can reshape it in the editor afterwards.
+			<a href="/workouts" class="hover:text-ink underline">Back to workouts</a>
+		</p>
+	{/if}
 </main>

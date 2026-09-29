@@ -10,7 +10,6 @@
 	} from '$lib/protocol';
 	import { compileRoad } from '$lib/road/compile';
 	import { planPath, profilePath } from '$lib/road/draw';
-	import { kmAndClimb } from '$lib/road/profile';
 	import { durationSeconds } from '$lib/workout/engine';
 	import type { ImportedRoute } from '$lib/workout/import';
 
@@ -68,10 +67,8 @@
 		<h2 class="font-display min-w-0 truncate text-base font-bold">
 			{route.name}
 		</h2>
-		<span class="text-muted num ml-auto text-xs"
-			>{kmAndClimb(route.length, route.gain)}{route.loop
-				? ' · a loop'
-				: ''}</span
+		<span class="text-muted ml-auto text-xs"
+			>{route.loop ? 'A loop' : 'Point to point'}</span
 		>
 	</div>
 
