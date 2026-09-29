@@ -28,6 +28,7 @@
 		eyebrow = '',
 		controls,
 		aside,
+		erg = false,
 	}: {
 		block: Block | null;
 		elapsed: number;
@@ -46,6 +47,13 @@
 		controls?: Snippet;
 		/** Anything the screen wants between the clock and the controls. */
 		aside?: Snippet;
+		/**
+		 * This screen's trainer is holding the targets in ERG, so the header
+		 * may say so (#3090). Off where nothing is paired, or another of the
+		 * rider's screens holds it: a chip naming a mode no trainer is in is
+		 * a claim, not a fact.
+		 */
+		erg?: boolean;
 	} = $props();
 
 	const bands = $derived(blockBands(block, cadence, hr));
@@ -58,7 +66,8 @@
 				{eyebrow}
 			{:else if block}
 				{unit}
-				{block.index} of {block.count}
+				{block.index} of {block.count}{#if block.rep}
+					· rep {block.rep.index} of {block.rep.count}{/if}
 			{:else}
 				&nbsp;
 			{/if}
@@ -68,12 +77,36 @@
 		</h2>
 	</div>
 	{#if block}
+		<!-- Time left is the figure a rider looks up for (#3090): the largest
+		     thing in the header, 72 px on a desk. -->
 		<div class="shrink-0">
 			<p class="eyebrow">left in {unit}</p>
-			<p class="font-display text-3xl leading-none font-bold tabular-nums">
+			<p
+				data-testid="block-left"
+				class="num text-5xl leading-none font-bold md:text-7xl"
+			>
 				{formatClock(block.secondsLeft)}
 			</p>
 		</div>
+		{#if block.band}
+			<!-- Prescribed, so neon: watt is only ever measured live data (round
+			     4, #3090). The band is execution's own — on target means inside it. -->
+			<div class="shrink-0">
+				<p class="eyebrow flex items-center gap-2">
+					target
+					{#if erg}<span
+							class="border-neon/40 text-muted rounded border px-2 leading-tight tracking-normal normal-case"
+							>ERG {block.watts} W</span
+						>{/if}
+				</p>
+				<p
+					data-testid="block-target"
+					class="num text-neon text-3xl leading-none font-bold"
+				>
+					{block.watts} W · {block.band.low}–{block.band.high}
+				</p>
+			</div>
+		{/if}
 		{#each bands as band (band.unit)}
 			<!-- The block's own band (#66, #67): the work itself on a torque or a
 			     zone block, coloured by your live value. -->
@@ -92,12 +125,22 @@
 			<!-- The countdown into the next effort is a name and an absolute
 			     target, never a delta: a rider at threshold should not be doing
 			     arithmetic to find out what is coming (#1531). -->
-			<p class="text-muted min-w-0 truncate text-xs">
+			<p class="text-muted max-w-full min-w-0 truncate text-2xl">
 				next · {block.next.label}
-				{#if block.next.watts > 0}{block.next.watts} W{/if}
+				{#if block.next.watts > 0}<span class="num text-neon"
+						>{block.next.watts} W</span
+					>{/if}
 				for {block.next.seconds < 60
 					? `${block.next.seconds} s`
 					: `${Math.round(block.next.seconds / 60)} min`}
+			</p>
+		{/if}
+		{#if block.last}
+			<!-- The block just ridden, for its first seconds: measured, so ink,
+			     never the prescribed neon. -->
+			<p data-testid="last-block" class="text-muted basis-full text-sm">
+				last block <span class="num text-ink">{block.last.watts} W</span> ·
+				<span class="num text-ink">{block.last.onTarget} %</span> on target
 			</p>
 		{/if}
 	{/if}

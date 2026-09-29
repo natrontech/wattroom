@@ -96,6 +96,7 @@
 		cadence={session.sample?.cadence ?? 0}
 		hr={session.sample?.heartRate ?? 0}
 		title={workout.name}
+		erg
 	>
 		{#snippet controls()}
 			<!-- Rider controls: big targets, no precision needed (ux.md). The
