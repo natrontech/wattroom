@@ -1,3 +1,4 @@
+import type { PickerIntent } from '$lib/channel/context';
 import type { PlaceAddress } from '$lib/channel/address';
 import type { ChannelContext, ChannelStageSource } from '$lib/channel/context';
 import type { channelConnection } from '$lib/channel/connection.svelte';
@@ -86,7 +87,7 @@ export interface ContextDeps {
 	focusId: () => string | null;
 	setFocus: (id: string | null) => void;
 	openTv: () => void;
-	openPicker: (intent?: 'start' | 'plan') => void;
+	openPicker: (intent?: PickerIntent) => void;
 
 	/** Actions the shell owns because they need more than the connection. */
 	banOf: (userId: string, name: string) => (() => void) | undefined;

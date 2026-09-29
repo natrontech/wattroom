@@ -56,8 +56,9 @@
 		signalLost: boolean;
 		/** Nothing is writing this ride down (#1466) — RideStatus says so. */
 		noCrashSafety?: boolean;
-		onFlag: () => void;
-		onTv: () => void;
+		/** Absent where the page has its own ⚑ and TV — a voice channel's (#2329). */
+		onFlag?: () => void;
+		onTv?: () => void;
 	} = $props();
 
 	// The ⚑'s own acknowledgement (#52), and nothing outside this screen ever
@@ -77,7 +78,7 @@
 
 	let flagNotice = $state(false);
 	function flag() {
-		onFlag();
+		onFlag?.();
 		flagNotice = true;
 		setTimeout(() => (flagNotice = false), FLAG_NOTICE_MS);
 	}
@@ -123,11 +124,15 @@
 					class="btn btn-secondary btn-lg disabled:opacity-40"
 					>Skip block</button
 				>
-				<button onclick={onTv} class="btn btn-secondary btn-lg">TV</button>
+				{#if onTv}
+					<button onclick={onTv} class="btn btn-secondary btn-lg">TV</button>
+				{/if}
 				<button onclick={endRide} class="btn btn-secondary btn-lg"
 					>End ride</button
 				>
-				<FlagButton onflag={flag} sends="after" />
+				{#if onFlag}
+					<FlagButton onflag={flag} sends="after" />
+				{/if}
 			</div>
 		{/snippet}
 	</RideHeader>

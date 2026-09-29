@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { PickerIntent } from '$lib/channel/context';
 	// "What are we doing tonight" (#115, redesigned on #181 feedback): workouts
 	// and games are explicit tabs — no guessing which one you're starting — and
 	// a workout answers the questions a coach actually has before committing the
@@ -29,6 +30,7 @@
 		busy = false,
 		gameRunning = false,
 		onStart,
+		onRide,
 		onPlan,
 		onStartGame,
 		onClose,
@@ -46,11 +48,13 @@
 		/** Which question opened it: ride now, or put it on the calendar. The
 		 *  old single modal answered both at once, in two stacked sections
 		 *  under the preview — which is how riders stopped finding either. */
-		intent?: 'start' | 'plan';
+		intent?: PickerIntent;
 		busy?: boolean;
 		gameRunning?: boolean;
 		/** Absent when this picker only plans: no voice channel to start it in. */
 		onStart?: (workout: Workout) => void;
+		/** Your own workout, ridden beside the session (#2329); the 'ride' intent's one action. */
+		onRide?: (workout: Workout) => void;
 		/** Resolves to the server's refusal, which the picker shows under the
 		 *  when field (#2613); resolves to nothing once the plan is made. */
 		onPlan: (
@@ -80,9 +84,15 @@
 
 	let tab = $state<'workouts' | 'games'>('workouts');
 	// svelte-ignore state_referenced_locally
-	let mode = $state<'start' | 'plan'>(onStart ? intent : 'plan');
+	let mode = $state<PickerIntent>(
+		intent === 'ride' && onRide ? 'ride' : onStart ? intent : 'plan',
+	);
 	const title = $derived(
-		mode === 'start' ? 'Start a session' : 'Plan a session',
+		mode === 'ride'
+			? 'Ride a workout'
+			: mode === 'start'
+				? 'Start a session'
+				: 'Plan a session',
 	);
 
 	// Find it by name or by what it trains — a shelf of 27 is a list, not a
@@ -339,7 +349,26 @@
 					     The other intent is a link, not a second section: two equal
 					     panels under the preview is what made this feel weird. -->
 					<div class="border-ink/5 mt-auto border-t pt-4">
-						{#if ridesAlone}
+						{#if mode === 'ride' && onRide}
+							<!-- Beside the session, not in it (ADR-0059 amended): the one
+							     thing a rider needs to know before tapping. -->
+							<div class="flex flex-wrap items-center gap-3">
+								<div class="min-w-0 flex-1">
+									<p class="text-sm font-medium">
+										You ride it yourself, beside anything running here.
+									</p>
+									<p class="text-muted mt-1 text-xs">
+										A 3 s count-in, then your own clock. The call sees your
+										numbers; the workout stays yours.
+									</p>
+								</div>
+								<button
+									onclick={() => onRide(picked.workout)}
+									class="btn btn-accent btn-lg shrink-0"
+									>Ride {picked.workout.name}</button
+								>
+							</div>
+						{:else if ridesAlone}
 							<p class="text-muted text-sm">
 								This workout holds your heart rate, and that rides alone: ride
 								it on your own, or take the hold off its steps.

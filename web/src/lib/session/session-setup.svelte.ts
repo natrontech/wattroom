@@ -1,3 +1,4 @@
+import type { PickerIntent } from '$lib/channel/context';
 import { api } from '$lib/api';
 import { buildShelf } from '$lib/workout/shelf';
 import { customWorkouts } from '$lib/workout/custom.svelte';
@@ -10,9 +11,10 @@ import { customWorkouts } from '$lib/workout/custom.svelte';
  * and the shell wires it to the picker. Lifted in #686 because the shelf and
  * its ranking are one concern and none of it is about being a shell.
  */
+
 export function createSessionSetup() {
 	let open = $state(false);
-	let intent = $state<'start' | 'plan'>('start');
+	let intent = $state<PickerIntent>('start');
 	const custom = customWorkouts();
 	// Recently ridden first: the rider's history ranks the shelf.
 	let recency = $state<Map<string, number>>(new Map());
@@ -49,7 +51,7 @@ export function createSessionSetup() {
 		get intent() {
 			return intent;
 		},
-		set intent(next: 'start' | 'plan') {
+		set intent(next: PickerIntent) {
 			intent = next;
 		},
 		get shelf() {

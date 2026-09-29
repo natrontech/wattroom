@@ -4,13 +4,19 @@
 	// opening here leaves you on it and offers the way in; only the rider who
 	// starts one moves to its address (#2450, SessionLayers). A phone cannot
 	// ride, so it keeps the Training place's words.
+	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { device } from '$lib/device.svelte';
 	import FreeRide from '$lib/ride/FreeRide.svelte';
+	import OwnRide from '$lib/ride/OwnRide.svelte';
 	import Training from '$lib/session/Training.svelte';
 </script>
 
+<!-- Your own workout, once picked, takes the place of the free ride until you
+     are back from its summary (#2329). -->
 {#if device.spectator}
 	<Training />
+{:else if channelConnection.current?.ownRide.session}
+	<OwnRide />
 {:else}
 	<FreeRide />
 {/if}
