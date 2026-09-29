@@ -17,6 +17,6 @@ describe('ridePlace (#2457)', () => {
 	// A deleted crew sets the ride's crew and channel null; the ride was still
 	// ridden with friends, and never reads "solo" for it (#2630).
 	it('says in a session for a session ride whose crew is gone', () => {
-		expect(ridePlace({ room: true })).toBe('in a session');
+		expect(ridePlace({ inSession: true })).toBe('in a session');
 	});
 });

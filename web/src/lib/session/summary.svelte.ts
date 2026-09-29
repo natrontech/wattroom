@@ -85,7 +85,7 @@ export function createSummary(deps: {
 			rides?: {
 				id: string;
 				startedAt: string;
-				room?: boolean;
+				inSession?: boolean;
 				channel?: { id: string };
 				xp?: number;
 			}[];
@@ -96,7 +96,7 @@ export function createSummary(deps: {
 			}
 			const mine = (res.data.rides ?? []).find(
 				(r) =>
-					(r.channel || r.room) &&
+					(r.channel || r.inSession) &&
 					Date.parse(r.startedAt) >= sessionStart - 60_000,
 			);
 			if (mine) {

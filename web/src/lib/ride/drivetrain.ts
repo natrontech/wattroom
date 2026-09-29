@@ -119,6 +119,8 @@ export function gearSpace(realRatio: number | null, k: number): GearSpace {
 export interface RatioState {
 	/** Off for a trainer whose ratio moves with grade (hardware check P1). */
 	detect: boolean;
+	/** The last flywheel speed, m/s, for folding Cw into grade. */
+	speed: number;
 	/** The real ratio, once 7 in-band samples have agreed on one. */
 	ratio: number | null;
 	window: number[];
@@ -127,7 +129,7 @@ export interface RatioState {
 }
 
 export function ratioState(detect = true): RatioState {
-	return { detect, ratio: null, window: [], refine: [], strikes: 0 };
+	return { detect, speed: 0, ratio: null, window: [], refine: [], strikes: 0 };
 }
 
 const median = (xs: number[]) => {
@@ -143,7 +145,9 @@ const median = (xs: number[]) => {
  */
 export function trackRatio(state: RatioState, sample: TrainerSample): boolean {
 	const { speedMps, cadence } = sample;
-	if (!state.detect || speedMps === undefined) return false;
+	if (speedMps === undefined) return false;
+	state.speed = speedMps;
+	if (!state.detect) return false;
 	if (cadence < REAL_RATIO.minRpm || cadence > REAL_RATIO.maxRpm) return false;
 	const r = speedMps / ((cadence / 60) * REAL_RATIO.wheelMetres);
 	state.window = [...state.window, r].slice(-REAL_RATIO.window);

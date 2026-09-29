@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {
 	fitRider,
+	handBasis,
 	riderDims,
 	toeDown,
 	type Build,
@@ -25,6 +26,18 @@ import { TR } from './shapes';
 const DEG = Math.PI / 180;
 const v3 = (p: Pt, z = 0) => V(p.x, p.y, z);
 
+export type GripPose = { p: THREE.Vector3; q: THREE.Quaternion };
+
+/** A hand's orientation from its basis: toward the knuckles, out of the back of the hand. */
+function handQuat(basis: ReturnType<typeof handBasis>): THREE.Quaternion {
+	const [x, y, z] = [basis.fwd, basis.up, basis.out].map((v) =>
+		V(v[0], v[1], v[2]),
+	);
+	return new THREE.Quaternion().setFromRotationMatrix(
+		new THREE.Matrix4().makeBasis(x, y, z),
+	);
+}
+
 export type Rig = {
 	dims: RiderDims;
 	style: BarStyle;
@@ -46,6 +59,7 @@ export type Rig = {
 		dtFront: THREE.Vector3;
 		hta: number;
 		sta: number;
+		wheelbase: number;
 	};
 	fit: {
 		crank: number;
@@ -57,8 +71,10 @@ export type Rig = {
 		clampPt: THREE.Vector3;
 		stemDir: THREE.Vector3;
 		pad: THREE.Vector3 | null;
-		/** Right-hand grip centres; the left mirrors z. */
-		grips: Partial<Record<GripName, THREE.Vector3>>;
+		/** Each grip's centre and the hand's orientation on it, right and left. */
+		grips: Partial<Record<GripName, Record<'R' | 'L', GripPose>>>;
+		/** Time trial only: the elbow on its pad. */
+		ext: { elbow: THREE.Vector3 } | null;
 	};
 	/** The lean, radians, before a pedal or shoe meets the road: pedalling, and coasting with level cranks. */
 	leanMax: { pedal: number; coast: number };
@@ -77,7 +93,10 @@ export function rigFor(
 	const f = fitRider(dims, g, { ...frame.cockpit, bar: style });
 	const grips: Rig['fit']['grips'] = {};
 	for (const [name, pair] of Object.entries(f.grips))
-		grips[name as GripName] = V(pair.R.p[0], pair.R.p[1], pair.R.p[2]);
+		grips[name as GripName] = {
+			R: { p: V(...pair.R.p), q: handQuat(handBasis(pair.R.hand, 1)) },
+			L: { p: V(...pair.L.p), q: handQuat(handBasis(pair.L.hand, -1)) },
+		};
 	const rig: Rig = {
 		dims,
 		style,
@@ -98,6 +117,7 @@ export function rigFor(
 			dtFront: v3(g.dtFront),
 			hta: g.hta,
 			sta: g.sta,
+			wheelbase: g.wheelbase,
 		},
 		fit: {
 			crank: f.crank,
@@ -110,6 +130,7 @@ export function rigFor(
 			stemDir: v3(f.stemDir),
 			pad: f.pad ? v3(f.pad) : null,
 			grips,
+			ext: f.ext ? { elbow: v3(f.ext.elbow) } : null,
 		},
 		leanMax: { pedal: 0, coast: 0 },
 	};

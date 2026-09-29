@@ -1,0 +1,1 @@
+- For scripts and AI tools that read your rides with a personal token: a ride now says `inSession` when it was ridden in a crew session, in the ride list, the ride page and the MCP `list_rides` tool. The old `room` flag gives the same answer for one more release and is then removed, so move your tooling over now.

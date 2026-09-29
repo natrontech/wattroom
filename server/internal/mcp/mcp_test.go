@@ -291,3 +291,37 @@ func TestListRidesCarriesNoRoadSummary(t *testing.T) {
 		t.Fatalf("the seeded ride is not in the answer, so nothing was checked: %s", raw)
 	}
 }
+
+// The session flag rides under its standing name (#2959), beside the retired
+// `room` a coach's script still reads until #3461 drops it: both present,
+// both saying the same thing.
+func TestListRidesCarriesInSessionBesideRoom(t *testing.T) {
+	mux, st, user := setup(t)
+	if _, err := st.Queries.CreateRide(t.Context(), db.CreateRideParams{
+		UserID: user.ID, WorkoutName: "Openers",
+		StartedAt: pgtype.Timestamptz{Time: time.Now().Add(-time.Hour), Valid: true},
+		Seconds:   600, AvgWatts: 200, Kj: 120, Execution: 1, ExecutionScored: true,
+		FtpWatts: 250, Samples: []byte(`[]`), Curve: []byte(`{}`), Xp: 10,
+	}); err != nil {
+		t.Fatalf("seed ride: %v", err)
+	}
+	_, body := post(t, mux, `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_rides","arguments":{}}}`)
+	result, _ := body["result"].(map[string]any)
+	content, _ := result["content"].([]any)
+	if len(content) != 1 {
+		t.Fatalf("list_rides result: %v", body)
+	}
+	first, _ := content[0].(map[string]any)
+	text, _ := first["text"].(string)
+	var payload struct {
+		Rides []map[string]any `json:"rides"`
+	}
+	if err := json.Unmarshal([]byte(text), &payload); err != nil || len(payload.Rides) != 1 {
+		t.Fatalf("payload %v: %s", err, text)
+	}
+	ride := payload.Rides[0]
+	in, has := ride["inSession"]
+	if !has || in != ride["room"] || in != false {
+		t.Fatalf("a solo ride: inSession %v (present %v), room %v", in, has, ride["room"])
+	}
+}

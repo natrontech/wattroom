@@ -22,7 +22,8 @@ class Recorder implements Trainer {
 	}
 	async setSimulation(road: SimParams) {
 		this.mode = 'sim';
-		this.writes.push(`sim:${road.gradePct}`);
+		// At FTMS resolution: a composed grade is 4.000000000000001 on the way.
+		this.writes.push(`sim:${Math.round(road.gradePct * 100) / 100}`);
 	}
 	onSample(_: (s: TrainerSample) => void) {
 		return () => {};

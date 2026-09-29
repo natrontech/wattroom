@@ -55,7 +55,8 @@ const { createRide } = await import('./ride.svelte');
 /** A trainer that is only ever asked to hand over samples. */
 class FakeTrainer implements Trainer {
 	status: TrainerStatus = 'connected';
-	mode = 'erg' as const;
+	// As a real trainer: in ERG until the first SIM write, and back on the next target.
+	mode: 'erg' | 'sim' = 'erg';
 	private listener: ((sample: TrainerSample) => void) | null = null;
 	constructor(readonly name = 'Kickr') {}
 	async connect() {}
@@ -66,10 +67,13 @@ class FakeTrainer implements Trainer {
 	/** Every actuator command, in order — what the sprint effect is judged on. */
 	commands: string[] = [];
 	async setTargetPower(watts: number) {
+		this.mode = 'erg';
 		this.commands.push(`erg:${watts}`);
 	}
 	async setSimulation(road: SimParams) {
-		this.commands.push(`sim:${road.gradePct}`);
+		this.mode = 'sim';
+		// At FTMS resolution: a composed grade is 4.000000000000001 on the way.
+		this.commands.push(`sim:${Math.round(road.gradePct * 100) / 100}`);
 	}
 	onSample(cb: (sample: TrainerSample) => void) {
 		this.listener = cb;
@@ -490,6 +494,9 @@ describe('the personal guards in a group ride (#788)', () => {
 		await ride.ride(trainer);
 		trainer.pedal(150, 90);
 		await settle();
+		// Out of ERG the flat comes first (ADR-0084), then the grade.
+		expect(trainer.commands.at(-1)).toBe('sim:0');
+		await new Promise((resolve) => setTimeout(resolve, 600));
 		expect(trainer.commands.at(-1)).toBe('sim:4');
 		expect(seconds).toEqual([150]);
 		dispose();
