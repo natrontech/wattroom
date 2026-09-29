@@ -11,6 +11,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addWardrobeItem = `-- name: AddWardrobeItem :one
+insert into wardrobe (user_id, item_id, source)
+values ($1, $2, $3)
+returning acquired_at
+`
+
+type AddWardrobeItemParams struct {
+	UserID pgtype.UUID
+	ItemID string
+	Source string
+}
+
+func (q *Queries) AddWardrobeItem(ctx context.Context, arg AddWardrobeItemParams) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, addWardrobeItem, arg.UserID, arg.ItemID, arg.Source)
+	var acquired_at pgtype.Timestamptz
+	err := row.Scan(&acquired_at)
+	return acquired_at, err
+}
+
 const exportUserWardrobe = `-- name: ExportUserWardrobe :many
 select item_id, source, acquired_at, first_worn_at from wardrobe
 where user_id = $1
@@ -73,4 +92,121 @@ func (q *Queries) GetUserOutfit(ctx context.Context, userID pgtype.UUID) (GetUse
 	var i GetUserOutfitRow
 	err := row.Scan(&i.Loadout, &i.UpdatedAt)
 	return i, err
+}
+
+const getWardrobeItem = `-- name: GetWardrobeItem :one
+select source, acquired_at, first_worn_at from wardrobe
+where user_id = $1 and item_id = $2
+`
+
+type GetWardrobeItemParams struct {
+	UserID pgtype.UUID
+	ItemID string
+}
+
+type GetWardrobeItemRow struct {
+	Source      string
+	AcquiredAt  pgtype.Timestamptz
+	FirstWornAt pgtype.Timestamptz
+}
+
+// One item the rider owns, read under their row lock: how it came, when,
+// and whether it has been worn on a ride — what an undo asks (#3154).
+func (q *Queries) GetWardrobeItem(ctx context.Context, arg GetWardrobeItemParams) (GetWardrobeItemRow, error) {
+	row := q.db.QueryRow(ctx, getWardrobeItem, arg.UserID, arg.ItemID)
+	var i GetWardrobeItemRow
+	err := row.Scan(&i.Source, &i.AcquiredAt, &i.FirstWornAt)
+	return i, err
+}
+
+const listOwnedItems = `-- name: ListOwnedItems :many
+select item_id from wardrobe where user_id = $1
+`
+
+func (q *Queries) ListOwnedItems(ctx context.Context, userID pgtype.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listOwnedItems, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var item_id string
+		if err := rows.Scan(&item_id); err != nil {
+			return nil, err
+		}
+		items = append(items, item_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markOutfitWorn = `-- name: MarkOutfitWorn :exec
+update wardrobe w set first_worn_at = now()
+from outfits o, jsonb_each_text(o.loadout) as slot(name, item)
+where o.user_id = $1 and w.user_id = $1
+  and w.item_id = slot.item and w.first_worn_at is null
+`
+
+// A saved ride wears the outfit (#3154): every owned item it holds is worn
+// from now on, which ends a purchase's undo (docs/SPEC.md "Wardrobe").
+func (q *Queries) MarkOutfitWorn(ctx context.Context, userID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, markOutfitWorn, userID)
+	return err
+}
+
+const removeUnwornWardrobeItem = `-- name: RemoveUnwornWardrobeItem :execrows
+delete from wardrobe
+where user_id = $1 and item_id = $2 and first_worn_at is null
+`
+
+type RemoveUnwornWardrobeItemParams struct {
+	UserID pgtype.UUID
+	ItemID string
+}
+
+// An undone purchase leaves the wardrobe — only while never worn on a ride.
+func (q *Queries) RemoveUnwornWardrobeItem(ctx context.Context, arg RemoveUnwornWardrobeItemParams) (int64, error) {
+	result, err := q.db.Exec(ctx, removeUnwornWardrobeItem, arg.UserID, arg.ItemID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setOutfit = `-- name: SetOutfit :exec
+insert into outfits (user_id, loadout) values ($1, $2)
+on conflict (user_id) do update set loadout = excluded.loadout, updated_at = now()
+`
+
+type SetOutfitParams struct {
+	UserID  pgtype.UUID
+	Loadout []byte
+}
+
+// What the rider's figure wears, as the client built it, checked before
+// this: one per rider, replaced whole.
+func (q *Queries) SetOutfit(ctx context.Context, arg SetOutfitParams) error {
+	_, err := q.db.Exec(ctx, setOutfit, arg.UserID, arg.Loadout)
+	return err
+}
+
+const takeOffItem = `-- name: TakeOffItem :exec
+update outfits set loadout = loadout - $1::text, updated_at = now()
+where user_id = $2 and loadout ->> $1::text = $3::text
+`
+
+type TakeOffItemParams struct {
+	Slot   string
+	UserID pgtype.UUID
+	ItemID string
+}
+
+// An undone purchase comes off the outfit too: its slot falls back to what
+// the client starts every rider in.
+func (q *Queries) TakeOffItem(ctx context.Context, arg TakeOffItemParams) error {
+	_, err := q.db.Exec(ctx, takeOffItem, arg.Slot, arg.UserID, arg.ItemID)
+	return err
 }

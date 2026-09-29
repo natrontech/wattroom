@@ -55,6 +55,13 @@ func TestASessionPaysBatzenInItsOwnTransaction(t *testing.T) {
 	saver := NewSaver(st, slog.New(slog.DiscardHandler))
 	workoutJSON := `{"name":"W","steps":[{"type":"steady","seconds":1200,"target":1}]}`
 
+	// Alice rides in a bought finish: the session makes it hers to keep (#3154).
+	if _, err := st.Pool.Exec(ctx, `
+		with owned as (insert into wardrobe (user_id, item_id, source) values ($1, 'finish.metallic', 'bought'))
+		insert into outfits (user_id, loadout) values ($1, '{"finish":"finish.metallic"}')`, alice.ID); err != nil {
+		t.Fatal(err)
+	}
+
 	// Two riders, twenty minutes each: a group session, 20 × 1.2.
 	group := time.Now().Add(-3 * time.Hour).Truncate(time.Second)
 	if err := saver.save(ctx, voice, "", "W", workoutJSON, group, []hub.RiderRecord{
@@ -64,6 +71,10 @@ func TestASessionPaysBatzenInItsOwnTransaction(t *testing.T) {
 	}
 	if a, b := riding(alice.ID), riding(bob.ID); a != 24 || b != 24 {
 		t.Fatalf("a group session paid %d and %d, want 24 each", a, b)
+	}
+	var worn bool
+	if err := st.Pool.QueryRow(ctx, "select first_worn_at is not null from wardrobe where user_id = $1", alice.ID).Scan(&worn); err != nil || !worn {
+		t.Fatalf("alice's finish after the session: worn %v (%v), want worn", worn, err)
 	}
 
 	// Carol alone for ten minutes, then her tail arrives: 10, then 10 more.
