@@ -130,8 +130,8 @@
 				: stale
 					? 'no signal'
 					: state.has
-					? `${targetLabel} ${target} W`
-					: 'no target'}</span
+						? `${targetLabel} ${target} W`
+						: 'no target'}</span
 		>
 	</div>
 {:else}

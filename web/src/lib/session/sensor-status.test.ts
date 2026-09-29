@@ -109,8 +109,20 @@ describe('unmeasured (#2941)', () => {
 		['a trainer on this screen', trainer, undefined, false, false],
 		['a power meter on this screen', undefined, undefined, true, false],
 		['a trainer on the phone', undefined, elsewhere('trainer'), false, false],
-		['a power meter on the phone', undefined, elsewhere('power-meter'), false, false],
-		['only a heart-rate strap on the phone', undefined, elsewhere('heart-rate'), false, true],
+		[
+			'a power meter on the phone',
+			undefined,
+			elsewhere('power-meter'),
+			false,
+			false,
+		],
+		[
+			'only a heart-rate strap on the phone',
+			undefined,
+			elsewhere('heart-rate'),
+			false,
+			true,
+		],
 	] as const)('%s', (_, t, pairing, meterHere, expected) => {
 		expect(unmeasured(t, pairing, meterHere)).toBe(expected);
 	});
