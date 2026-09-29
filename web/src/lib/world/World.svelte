@@ -100,6 +100,7 @@
 						ftp: profile.current.ftp,
 						speedup,
 						onTick: (next) => (hud = next),
+						onFail: () => (drawFailed = true),
 					}),
 			),
 		);
