@@ -265,7 +265,9 @@ jobs:
           foreach ($f in $files) {
             $sig = Get-AuthenticodeSignature $f
             $name = Split-Path $f -Leaf
-            "- ``$name``: **$($sig.Status)** ($($sig.StatusMessage)), signed by $($sig.SignerCertificate.Subject)" | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            $line = "- ``$name``: **$($sig.Status)** ($($sig.StatusMessage)), signed by $($sig.SignerCertificate.Subject)"
+            $line | Out-File -Append $env:GITHUB_STEP_SUMMARY
+            Write-Output $line # the log too: `gh run view --log` reads it, a summary it cannot
             if ($sig.Status -ne 'Valid') { Write-Output "::warning::$name has Authenticode status $($sig.Status)" }
           }
 
