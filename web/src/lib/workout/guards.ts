@@ -18,9 +18,9 @@ import * as protocol from '$lib/protocol';
  * that scores the ride and the app that draws "on target" cannot disagree
  * about what counts.
  *
- * Here rather than beside the session, and re-exported from there: the channel's
- * view reads it too, and it is a plain function — nothing that pulls a rune
- * module into a module that has no state of its own (#2159).
+ * Here rather than beside the session: the channel's view reads it too, and it
+ * is a plain function — nothing that pulls a rune module into a module that has
+ * no state of its own (#2159).
  */
 export function toleranceBand(target: number): number {
 	return Math.max(
