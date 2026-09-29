@@ -83,6 +83,8 @@ export interface Trainer {
 	setTargetPower(watts: number): Promise<void>;
 	/** Slope mode: the road to ride (FTMS op 0x11 / WCPS op 0x46). Switches mode to 'sim'. */
 	setSimulation(road: SimParams): Promise<void>;
+	/** FTMS op 0x12, for the Gears probe alone (#3331); absent where unsupported. */
+	setWheelCircumference?(mm: number): Promise<void>;
 	/** ~1 Hz while connected. Returns unsubscribe. */
 	onSample(cb: (s: TrainerSample) => void): () => void;
 	onStatus(cb: (s: TrainerStatus) => void): () => void;

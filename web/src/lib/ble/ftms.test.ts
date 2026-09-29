@@ -4,6 +4,7 @@ import {
 	clampTarget,
 	DEFAULT_POWER_RANGE,
 	encodeSimulation,
+	encodeWheelCircumference,
 	FtmsTrainer,
 	parsePowerRange,
 } from './ftms';
@@ -59,6 +60,18 @@ describe('parseIndoorBikeData', () => {
 	it('reads negative power without wrapping', () => {
 		// SINT16: coasting on some units reports slightly negative rather than zero.
 		expect(parseIndoorBikeData(packet(0x0041, 0xf6, 0xff)).watts).toBe(-10);
+	});
+});
+
+describe('encodeWheelCircumference (#3331)', () => {
+	it('writes op 0x12 with the circumference at 0.1 mm, little-endian', () => {
+		// 2096 mm = 20960 = 0x51e0 | 4192 mm = 41920 = 0xa3c0
+		expect([...new Uint8Array(encodeWheelCircumference(2096))]).toEqual([
+			0x12, 0xe0, 0x51,
+		]);
+		expect([...new Uint8Array(encodeWheelCircumference(4192))]).toEqual([
+			0x12, 0xc0, 0xa3,
+		]);
 	});
 });
 

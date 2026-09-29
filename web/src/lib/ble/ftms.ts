@@ -24,6 +24,7 @@ const CPS_SERVICE = 0x1818;
 const OP_REQUEST_CONTROL = 0x00;
 const OP_SET_TARGET_POWER = 0x05;
 const OP_SET_SIMULATION = 0x11;
+const OP_SET_WHEEL_CIRCUMFERENCE = 0x12;
 const OP_RESPONSE = 0x80;
 const RESULT_SUCCESS = 0x01;
 /** Fitness Machine Status: control permission lost — we have to ask again. */
@@ -98,6 +99,17 @@ export function encodeSimulation(road: SimParams): ArrayBuffer {
 	payload.setInt16(3, toField(gradePct * 100, -0x8000, 0x7fff), true);
 	payload.setUint8(5, toField(crr * 10000, 0, 0xff));
 	payload.setUint8(6, toField(cw * 100, 0, 0xff));
+	return payload.buffer;
+}
+
+/**
+ * Set Wheel Circumference (op 0x12): UINT16 at 0.1 mm. Only the Gears
+ * probe sends it (#3331, P5): what a trainer does with it is the question.
+ */
+export function encodeWheelCircumference(mm: number): ArrayBuffer {
+	const payload = new DataView(new ArrayBuffer(3));
+	payload.setUint8(0, OP_SET_WHEEL_CIRCUMFERENCE);
+	payload.setUint16(1, toField(mm * 10, 0, 0xffff), true);
 	return payload.buffer;
 }
 
@@ -412,6 +424,11 @@ export class FtmsTrainer implements Trainer {
 	async setSimulation(road: SimParams): Promise<void> {
 		this.#mode = 'sim';
 		await this.#writeTarget(encodeSimulation(road));
+	}
+
+	/** Not a target: nothing later supersedes it in the queue. */
+	async setWheelCircumference(mm: number): Promise<void> {
+		await this.#write(encodeWheelCircumference(mm));
 	}
 
 	onSample(cb: (s: TrainerSample) => void): () => void {
