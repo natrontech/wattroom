@@ -192,6 +192,25 @@ const (
 	CPLongSeconds          = 720
 	CPEstimateShortSeconds = 300
 	CPEstimateLongSeconds  = 1200
+
+	// Climbs (docs/SPEC.md "Climbs", Garmin's rule; #3047, #3238): at least
+	// ClimbMinM long, averaging ClimbMinPct, scoring ClimbMinScore — length
+	// in m × average %, 100 × the gain. A class is held when the score is
+	// above its floor. A dip that loses less than ClimbDipLossM and is back
+	// over the top within ClimbDipM does not end a climb, and a road keeps
+	// its hardest MaxClimbs. $lib/road/climbs.ts and internal/road run the one
+	// rule on these.
+	ClimbMinM     = 500
+	ClimbMinPct   = 3
+	ClimbMinScore = 1500
+	ClimbClassIV  = 8000
+	ClimbClassIII = 16000
+	ClimbClassII  = 32000
+	ClimbClassI   = 64000
+	ClimbClassHC  = 80000
+	ClimbDipLossM = 20
+	ClimbDipM     = 300
+	MaxClimbs     = 32
 	// The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
 	// whom a road's estimates are made for when no real rider is in question.
 	ReferenceRiderKg    = 75

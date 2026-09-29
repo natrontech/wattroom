@@ -726,6 +726,66 @@ export const CPEstimateShortSeconds = 300;
  */
 export const CPEstimateLongSeconds = 1200;
 /**
+ * Climbs (docs/SPEC.md "Climbs", Garmin's rule; #3047, #3238): at least
+ * ClimbMinM long, averaging ClimbMinPct, scoring ClimbMinScore — length
+ * in m × average %, 100 × the gain. A class is held when the score is
+ * above its floor. A dip that loses less than ClimbDipLossM and is back
+ * over the top within ClimbDipM does not end a climb, and a road keeps
+ * its hardest MaxClimbs. $lib/road/climbs.ts and internal/road run the one
+ * rule on these.
+ */
+export const ClimbMinM = 500;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbMinPct = 3;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbMinScore = 1500;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbClassIV = 8000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbClassIII = 16000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbClassII = 32000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbClassI = 64000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbClassHC = 80000;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbDipLossM = 20;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ClimbDipM = 300;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const MaxClimbs = 32;
+/**
  * The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
  * whom a road's estimates are made for when no real rider is in question.
  */
