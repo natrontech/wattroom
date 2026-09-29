@@ -3,10 +3,11 @@ import { publishHud } from '$lib/hud/feed';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { createActuator } from '$lib/ride/actuation';
-import { DEFAULTS, toleranceBand } from './guards';
+import { nudgedBias, toleranceBand } from './guards';
 import { createRiderGuards } from './rider-guards.svelte';
+import { wireSoloGuards } from './solo-guards';
 import { createHrHold } from './hr-hold.svelte';
-import { createRideRecord } from './ride-record.svelte';
+import { countsToward, createRideRecord } from './ride-record.svelte';
 import { createRideClock } from './ride-clock.svelte';
 import { createRideLife } from './ride-life.svelte';
 import { signalLost, type RideOptions, type RideState } from './ride-state';
@@ -45,6 +46,7 @@ export function createRideSession({
 		tick,
 		now,
 		state: () => state,
+		back: () => actuator.reissue(),
 	});
 	/** The ride's life, and while it rides, the guards' word on how (#3369). */
 	const state = $derived<RideState>(
@@ -74,6 +76,13 @@ export function createRideSession({
 	);
 
 	const actuator = createActuator(() => life.trainer);
+	const guarding = wireSoloGuards(guards, {
+		state: () => state,
+		prescribed: () => clock.info.targetWatts ?? 0,
+		actuate: applyTarget,
+		record,
+		end: finish,
+	});
 
 	function applyTarget() {
 		// Nothing reaches the trainer during the count-in (#1800). This is the
@@ -112,46 +121,20 @@ export function createRideSession({
 		// score and the guards belong to a ride that has not begun.
 		if (state === 'countdown') return;
 		// The record and the score admit one sample per ride second; the
-		// guards below look at every one — a stop is noticed by the sample
-		// that stopped, not by the second's first.
+		// guards look at every one — a stop is noticed by the sample that
+		// stopped, not by the second's first.
 		const admit = record.admits(raw.at);
-
-		// Auto-pause and the spiral guard, against the PRESCRIBED target: the one
-		// the trainer holds is zero exactly when a guard is already up. Before
-		// the record below, so the second that trips a guard is stamped as
-		// the guard's (#1796) — the same answer the live score gives it.
-		const pedalling = guards.pedalling(next);
-		if (state !== 'idle') {
-			// The same per-second gate the record uses (#1798): the guards count
-			// seconds, and a trainer notifies more than once a second.
-			if (guards.sample(next, clock.info.targetWatts ?? 0, admit ? 1 : 0))
-				applyTarget();
-		}
-
-		if (admit) {
-			const recorded = record.add(
-				raw.at,
-				clock.seconds,
-				next,
-				bias,
-				!guards.scoring,
-			);
-			onRecord?.(recorded);
-		}
-
-		// Execution excludes auto-paused time and untargeted blocks (docs/SPEC.md). The
-		// grace seconds before auto-pause engages are excluded too — the rider had
-		// already stopped, we simply had not noticed yet. A ramp is a warmup or a
-		// cooldown, which SPEC excludes as well: the server has always agreed
-		// (workout.TargetAt reports those seconds unscored) and this side had not.
-		if (
-			admit &&
-			state === 'running' &&
-			target > 0 &&
-			pedalling &&
-			clock.info.segment?.kind === 'steady' &&
-			!clock.info.segment.hrHold // never scored (ADR-0008)
-		)
+		const pedalling = guarding.sample(next, admit);
+		if (!admit) return;
+		const recorded = record.add(
+			raw.at,
+			clock.seconds,
+			next,
+			bias,
+			!guards.scoring,
+		);
+		onRecord?.(recorded);
+		if (countsToward({ state, target, pedalling, segment: clock.info.segment }))
 			record.score(next.watts, target, bias);
 	}
 
@@ -193,23 +176,7 @@ export function createRideSession({
 			return;
 		}
 		publish();
-		if (state === 'resuming') {
-			if (guards.tick(seconds)) applyTarget();
-			return;
-		}
-		// Stopped long enough that the rider has gone (#2622): the ride ends
-		// itself, and the stopped run is not part of it.
-		if (state === 'autopaused') {
-			if (guards.stoppedFor(seconds) >= DEFAULTS.stoppedEndsAfterSeconds) {
-				record.trimStoppedTail(guards.pedalling);
-				finish();
-			}
-			return;
-		}
-		if (state !== 'running') return;
-
-		if (guards.spiralActive && guards.tick(seconds)) applyTarget();
-
+		if (guarding.tick(seconds)) return;
 		clock.advance(seconds);
 		if (clock.seconds >= clock.total) {
 			finish();
@@ -316,10 +283,7 @@ export function createRideSession({
 		abort: life.abort,
 		stop: finish,
 		nudgeBias(step: number) {
-			bias = Math.min(
-				DEFAULTS.biasMax,
-				Math.max(DEFAULTS.biasMin, Math.round((bias + step) * 100) / 100),
-			);
+			bias = nudgedBias(bias, step);
 			applyTarget();
 		},
 		/** Jump to the start of the next block. */

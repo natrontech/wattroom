@@ -1,0 +1,1 @@
+- A resistance change your trainer missed is sent again. When a write timed out or was refused, or the trainer dropped and reconnected mid-ride, a solo ride could leave the trainer on its old ERG target. That included the whole of the spin-out release and auto-pause, when you should be freewheeling.

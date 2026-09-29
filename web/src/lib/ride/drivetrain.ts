@@ -93,7 +93,8 @@ export interface GearSpace {
  * fixed factor and the label counts steps from the real gear.
  */
 export function gearSpace(realRatio: number | null, k: number): GearSpace {
-	if (realRatio !== null) {
+	// Only a ratio a shift can divide by; anything else steps blind, bounded.
+	if (realRatio !== null && realRatio > 0) {
 		const gear = nearestGear(k * realRatio);
 		const to = (dir: 1 | -1) => gear + dir;
 		const atEnd = (dir: 1 | -1) => to(dir) < 1 || to(dir) > GEARS.count;
@@ -150,6 +151,9 @@ export function trackRatio(state: RatioState, sample: TrainerSample): boolean {
 	if (!state.detect) return false;
 	if (cadence < REAL_RATIO.minRpm || cadence > REAL_RATIO.maxRpm) return false;
 	const r = speedMps / ((cadence / 60) * REAL_RATIO.wheelMetres);
+	// A flywheel at rest under a turning crank is a glitch, not a gear: a
+	// ratio of 0 made the next shift divide by it (#3515).
+	if (!(r > 0)) return false;
 	state.window = [...state.window, r].slice(-REAL_RATIO.window);
 	if (state.window.length < REAL_RATIO.window) return false;
 	const m = median(state.window);

@@ -245,10 +245,13 @@ function openPath(to) {
 	win.webContents.send('wattroom:go', to);
 }
 
-// Where the window was (#1948): size, position and whether it was maximized,
-// kept in userData and restored only when the saved rect still lands on a
-// display that is here — a monitor that went with the rider's desk keeps
-// the size and drops the position. The HUD places itself (ADR-0041).
+// Where the window was (#1948): size, position and whether it was maximized
+// or fullscreen, kept in userData and restored only when the saved rect still
+// lands on a display that is here — a monitor that went with the rider's desk
+// keeps the size and drops the position. Saved as it changes, not only on
+// close (#3013): a crash, a force-quit or a power cut mid-ride keeps it too.
+// The HUD places itself (ADR-0041).
+const WINDOW_STATE_SETTLE_MS = 500;
 function windowStateFile() {
 	return path.join(app.getPath('userData'), 'window.json');
 }
@@ -272,11 +275,18 @@ function onADisplay(b) {
 	});
 }
 function saveWindowState(win) {
+	if (win.isDestroyed()) return;
 	try {
-		const bounds = win.isMaximized() ? win.getNormalBounds() : win.getBounds();
+		const maximized = win.isMaximized();
+		const fullScreen = win.isFullScreen();
+		// Maximized, fullscreen or minimized, the bounds to come back to are the normal ones.
+		const bounds =
+			maximized || fullScreen || win.isMinimized()
+				? win.getNormalBounds()
+				: win.getBounds();
 		fs.writeFileSync(
 			windowStateFile(),
-			JSON.stringify({ ...bounds, maximized: win.isMaximized() }),
+			JSON.stringify({ ...bounds, maximized, fullScreen }),
 		);
 	} catch (err) {
 		console.warn('window state not saved:', err?.message ?? err);
@@ -333,14 +343,27 @@ function createWindow({ hidden = false } = {}) {
 
 	// Maximizing shows a window, so a hidden launch waits for the first show.
 	win.once(hidden ? 'show' : 'ready-to-show', () => {
-		if (saved?.maximized) win.maximize();
+		if (saved?.fullScreen) win.setFullScreen(true);
+		else if (saved?.maximized) win.maximize();
 		if (!hidden) win.show();
 	});
 	visibility.manage(win, {
 		hides: hasTray,
 		rideHeld: () => sleepBlockerId !== null,
 	});
-	win.on('close', () => saveWindowState(win));
+	// A drag or a resize fires on every frame of it; the state is written once it settles.
+	let settling = null;
+	const saveSoon = () => {
+		clearTimeout(settling);
+		settling = setTimeout(() => saveWindowState(win), WINDOW_STATE_SETTLE_MS);
+	};
+	// Maximizing and going fullscreen resize the window too, so they are saved the same way.
+	win.on('resize', saveSoon);
+	win.on('move', saveSoon);
+	win.on('close', () => {
+		clearTimeout(settling);
+		saveWindowState(win);
+	});
 	// The HUD shows only while this window is NOT in front (ADR-0041): in
 	// front, the riding screen has the numbers, and floating them over the
 	// jukebox's player would put a HUD over video, which YouTube's terms forbid.

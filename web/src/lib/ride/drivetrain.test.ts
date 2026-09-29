@@ -5,6 +5,7 @@ import { encodeSimulation } from '$lib/ble/ftms';
 import { BikeKg, PaceGravity, ReferenceRiderKg } from '$lib/protocol';
 import {
 	GEAR_RATIOS,
+	GEARS,
 	gearSpace,
 	ratioState,
 	simTransform,
@@ -193,6 +194,20 @@ describe('real-ratio detection', () => {
 		const off = ratioState(false);
 		for (let s = 0; s < 20; s++) trackRatio(off, sample(3, 90));
 		expect(off.ratio).toBeNull();
+	});
+
+	// #3515: a flywheel reporting 0 m/s at 90 rpm read as a ratio of 0, and
+	// the next Harder divided a table gear by it — k = Infinity.
+	it('takes no ratio from a stopped flywheel, and a shift from none stays in range', () => {
+		const state = ratioState();
+		for (let s = 0; s < 20; s++) trackRatio(state, sample(0, 90));
+		expect(state.ratio).toBeNull();
+		for (const ratio of [null, 0, -1, NaN]) {
+			const k = gearSpace(ratio, 1).step(1);
+			expect(k, `k after a shift from ratio ${ratio}`).toBeLessThanOrEqual(
+				GEARS.blindMax,
+			);
+		}
 	});
 });
 

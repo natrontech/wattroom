@@ -33,6 +33,8 @@ export function createRideLife(
 		tick: (seconds?: number) => void;
 		now: () => number;
 		state: () => RideState;
+		/** The link came back (#1846): say what the ride wants again. */
+		back: () => void;
 	},
 ) {
 	let life = $state<RideLife>('idle');
@@ -57,7 +59,14 @@ export function createRideLife(
 
 	function listen() {
 		offSample = trainer.onSample(ride.onSample);
-		offStatus = trainer.onStatus((s) => (status = s));
+		offStatus = trainer.onStatus((s) => {
+			const back = s === 'connected' && status !== 'connected';
+			status = s;
+			// The driver re-requested control, but the ride's SIM writes are
+			// deduped: without this the trainer that came back held nothing
+			// until the target moved (#3515), as the group ride once did.
+			if (back) ride.back();
+		});
 		status = trainer.status;
 	}
 	function deafen() {
