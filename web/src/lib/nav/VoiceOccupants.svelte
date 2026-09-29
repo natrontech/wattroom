@@ -3,7 +3,6 @@
 	// line of names while folded, one rider per line with their status and
 	// states while unfolded (#2745). Names are also what an admin drags to
 	// move a rider (#2730), so arrivals and departures glide rather than jump.
-	import { flip } from 'svelte/animate';
 	import RidingBars from '$lib/components/RidingBars.svelte';
 	import { contextMenu } from '$lib/context-menu.svelte';
 	import type { LiveChannel } from '$lib/crews-live';
@@ -13,7 +12,7 @@
 	import Video from '@lucide/svelte/icons/video';
 	import { railPeople } from './rail-people';
 	import type { VoiceMover } from './voice-mover.svelte';
-	import { enter, exit, move } from '$lib/motion/transitions';
+	import { enter, exit, reorder } from '$lib/motion/transitions';
 
 	let {
 		channel,
@@ -41,7 +40,7 @@
 				{@attach contextMenu(() => mover.menu(channel, o))}
 				in:enter={{ axis: 'y' }}
 				out:exit={{ axis: 'y' }}
-				animate:flip={move()}
+				animate:reorder
 				class:landed={mover.landed(channel, o)}
 				class:opacity-40={mover.dragging?.rider === o.id}
 				class:opacity-60={mover.inFlight(o.id)}
@@ -89,7 +88,7 @@
 				<span
 					in:enter={{ axis: 'x' }}
 					out:exit={{ axis: 'x' }}
-					animate:flip={move()}
+					animate:reorder
 					class:landed={mover.landed(channel, o)}
 					class:opacity-40={mover.dragging?.rider === o.id}
 					class:opacity-60={mover.inFlight(o.id)}
