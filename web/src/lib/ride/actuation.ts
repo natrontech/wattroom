@@ -28,8 +28,8 @@ export function sprintSlope(setup: SprintSetup): number {
 
 /**
  * A bare grade, held to the write range every trainer shares (docs/SPEC.md,
- * ADR-0062): the entry flat, and /dev/hardware's own probes. Everything a
- * ride writes in SIM is composed instead.
+ * ADR-0062): /dev/hardware's own probes. Everything a ride writes in SIM is
+ * composed instead, bar the entry flat, which is 0 and in range.
  */
 export function simulate(
 	trainer: Trainer,
@@ -109,14 +109,25 @@ export function createActuator(
 		return out.road;
 	}
 
+	/**
+	 * One SIM write, held as written until it fails (#3515): a write the
+	 * trainer timed out or refused is forgotten while it is still the last
+	 * one, so the next hold of the same road writes it again.
+	 */
+	function send(held: Trainer, road: SimParams, next: string) {
+		written = { to: held, bytes: next };
+		held.setSimulation(road).catch(() => {
+			if (written?.to === held && written.bytes === next) written = undefined;
+		});
+	}
+
 	/** The current felt road at the current gear, unless the trainer already holds it. */
 	function writeRoad(held: Trainer, force: boolean) {
 		if (!intent || !('felt' in intent)) return;
 		const road = compose(intent.felt);
 		const next = bytes(road);
 		if (!force && written?.to === held && written.bytes === next) return;
-		written = { to: held, bytes: next };
-		void held.setSimulation(road);
+		send(held, road, next);
 	}
 
 	function toSim(felt: number) {
@@ -127,8 +138,7 @@ export function createActuator(
 			writeRoad(held, false);
 			return;
 		}
-		written = { to: held, bytes: FLAT };
-		void simulate(held, 0);
+		send(held, { gradePct: 0 }, FLAT);
 		entry = setTimeout(() => {
 			entry = undefined;
 			const now = trainer();
@@ -189,7 +199,8 @@ export function createActuator(
 		 * moves k only. False when nothing moved.
 		 */
 		shift(dir: 1 | -1): boolean {
-			if (!gearsEnabled() || !intent || !('felt' in intent)) return false;
+			if (lost || !gearsEnabled() || !intent || !('felt' in intent))
+				return false;
 			const space = gearSpace(ratio.ratio, k);
 			if (space.atEnd(dir)) return false;
 			k = space.step(dir);
@@ -205,7 +216,7 @@ export function createActuator(
 		shelter(value: number, feel: boolean) {
 			shelter = value;
 			draftOn = feel;
-			if (intent && 'felt' in intent) toSim(intent.felt);
+			if (!lost && intent && 'felt' in intent) toSim(intent.felt);
 		},
 		/** The link came back (#1846): the current state again, recomputed. */
 		reissue() {
