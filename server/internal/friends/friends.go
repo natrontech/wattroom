@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/audience"
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -29,16 +30,17 @@ type UserSource interface {
 }
 
 // PresenceSource answers "which voice channel is this user in right now" —
-// defined here where it is consumed, implemented by the hub. PresenceChanged
-// pings every lobby socket: a request, an acceptance or a removal reaches the
-// other side now rather than on their next fallback poll (#876).
+// defined here where it is consumed, implemented by the hub.
+// PresenceChangedFor pings the two riders of a friendship (#2324): a request,
+// an acceptance or a removal reaches the other side now rather than on their
+// next fallback poll (#876), and reaches nobody else.
 type PresenceSource interface {
 	WhereIs(userIDs []string) map[string]string
 	// Who is pedalling right now, of the ids asked about (ADR-0012's third
 	// state). Standing in a voice channel is not riding in it, and WhereIs
 	// cannot tell them apart.
 	Riding(userIDs []string) map[string]bool
-	PresenceChanged()
+	PresenceChangedFor(audience []string)
 }
 
 type Service struct {
@@ -293,7 +295,7 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.clearDeclines(r, me.ID, target)
-	s.presence.PresenceChanged()
+	s.presence.PresenceChangedFor(audience.Pair(me.ID, target))
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -315,7 +317,7 @@ func (s *Service) handleAccept(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.clearDeclines(r, me.ID, target)
-	s.presence.PresenceChanged()
+	s.presence.PresenceChangedFor(audience.Pair(me.ID, target))
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -358,7 +360,7 @@ func (s *Service) handleRestore(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.clearDeclines(r, me.ID, target)
-	s.presence.PresenceChanged()
+	s.presence.PresenceChangedFor(audience.Pair(me.ID, target))
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -399,7 +401,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		// A withdrawal or an unfriending: its undo asks again (#2842).
 		s.parted.note(me.ID, target, time.Now())
 	}
-	s.presence.PresenceChanged()
+	s.presence.PresenceChangedFor(audience.Pair(me.ID, target))
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

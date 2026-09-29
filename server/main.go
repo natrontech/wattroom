@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/natrontech/wattroom/server/internal/account"
+	"github.com/natrontech/wattroom/server/internal/audience"
 	"github.com/natrontech/wattroom/server/internal/auth"
 	"github.com/natrontech/wattroom/server/internal/av"
 	"github.com/natrontech/wattroom/server/internal/avatars"
@@ -323,6 +324,9 @@ func main() {
 		}
 		h := hub.New(log, channelsService, saver)
 		hubForDrain = h
+		// Who a change the hub sees concerns (#2324) — a socket, a voice
+		// roster, the tick — answered from the store, off the hub's lock.
+		h.SetAudiences(audience.Hub{Q: st.Queries})
 		crewsService.SetPresence(h)
 		authService.SetLive(h)
 		// An ended session, or a deleted account, takes its open sockets with

@@ -206,7 +206,8 @@ func (fakePresence) Kick(string, string) {}
 
 func (fakePresence) SessionAnnounce(string, string, string, string, time.Time) {}
 
-func (fakePresence) PresenceChanged() {}
+func (fakePresence) PresenceChanged()            {}
+func (fakePresence) PresenceChangedFor([]string) {}
 
 func (fakePresence) OpenSession(string, protocol.Rider, string, string) (string, string, string) {
 	return "", "", ""

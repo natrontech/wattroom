@@ -104,7 +104,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "create channel failed", err, "The channel could not be created.", "crew", store.UUIDString(crewID))
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), crewID)
 	httpx.WriteJSON(w, http.StatusCreated, toJSON(row, []memberJSON{}))
 }
 
@@ -154,7 +154,7 @@ func (s *Service) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), channel.CrewID)
 	httpx.WriteJSON(w, http.StatusOK, toJSON(updated, members))
 }
 
@@ -328,7 +328,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 	if channel.Kind == kindVoice && s.live != nil {
 		s.live.CloseRoom(store.UUIDString(channel.ID))
 	}
-	s.changed()
+	s.changed(r.Context(), channel.CrewID, user.ID)
 	w.WriteHeader(http.StatusNoContent)
 }
 

@@ -25,7 +25,7 @@ func TestRoomLoopSurvivesAPanic(t *testing.T) {
 	var panicked atomic.Bool
 	// The presence push runs on the tick goroutine, outside the room lock.
 	// Once. The locked half of the tick has its own test below.
-	rm.changed = func() {
+	rm.changed = func([]string) {
 		if panicked.CompareAndSwap(false, true) {
 			panic("presence push blew up")
 		}

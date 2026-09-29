@@ -88,7 +88,7 @@ type room struct {
 	// says it once, not every tick it stays there.
 	phaseSaid string
 	// Pings the lobby (#251) when the tick sees phase or the riding set change.
-	changed func()
+	changed func(riders []string)
 	// When the tick first found this room forgettable — empty, quiet and
 	// between sessions (forget.go). Zero the rest of the time, which is how
 	// the window restarts.

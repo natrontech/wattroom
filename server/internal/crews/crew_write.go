@@ -42,7 +42,7 @@ func (s *Service) handleRotateCrewCode(w http.ResponseWriter, r *http.Request) {
 	}
 	// The fact, never the code: an invite in the log is an invite.
 	s.log.Info("crew code rotated", "crew", store.UUIDString(crew.ID), "by", store.UUIDString(user.ID))
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"code": code})
 }
 
@@ -105,7 +105,7 @@ func (s *Service) handleUpdateCrew(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "crew update failed", err, "The crew could not be saved.", "crew", store.UUIDString(crew.ID))
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusOK, crewRefJSON{
 		Id: store.UUIDString(updated.ID), Name: updated.Name, Icon: updated.Icon, Role: role,
 		ImageURL: crewImageURL(updated.ID, updated.ImageSetAt.Valid),
@@ -210,6 +210,6 @@ func (s *Service) handleSetCrewRole(w http.ResponseWriter, r *http.Request) {
 		// out of the private channels that no longer admit them (#2808).
 		s.reauthorize(r.Context(), crew.ID, target)
 	}
-	s.changed()
+	s.changed(r.Context(), crew.ID, target)
 	w.WriteHeader(http.StatusNoContent)
 }

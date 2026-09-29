@@ -159,7 +159,9 @@ type Hub struct {
 	// against LiveKit's own participant list (#234).
 	voice map[string]map[string]voiceEntry
 	xp    XpKeeper
-	hider Hider
+	// Who a hub-born change concerns (#2324); nil tells everyone.
+	audiences Audiences
+	hider     Hider
 	// What makes a finished session durable (ADR-0034). Nil = no database,
 	// and a session leaves nothing.
 	recaps RecapKeeper
@@ -476,7 +478,7 @@ func (h *Hub) room(channel string) *room {
 		// room exists, and a later write races every room goroutine reading it.
 		rm.now = h.now
 		rm.pending = &h.handoffs
-		rm.changed = h.PresenceChanged
+		rm.changed = func(riders []string) { h.tellChannel(channel, riders...) }
 		rm.deckIdled = func() { h.triggerAutoplay(rm, channel) }
 		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(channel, ev) }
 		rm.forget = func() bool { return h.forgetRoom(rm) }

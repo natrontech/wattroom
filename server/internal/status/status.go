@@ -6,6 +6,7 @@
 package status
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -18,6 +19,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/audience"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -30,9 +32,12 @@ type Users interface {
 }
 
 // Lobby is how everybody else's screens hear a status changed: the lobby's
-// re-fetch ping, the one a friend coming online sends. Satisfied by the hub.
+// re-fetch ping, the one a friend coming online sends — to the rider, their
+// friends and their crew-mates, who are everyone it shows to (#2324).
+// Satisfied by the hub.
 type Lobby interface {
 	PresenceChanged()
+	PresenceChangedFor(audience []string)
 }
 
 type Service struct {
@@ -170,7 +175,7 @@ func (s *Service) handleSet(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "status set failed", err, "The status could not be saved. Try again.")
 		return
 	}
-	s.lobby.PresenceChanged()
+	s.changed(r, me.ID)
 	httpx.WriteJSON(w, http.StatusOK,
 		Of(params.Emoji, params.EmojiID, params.Text, params.ExpiresAt, s.now()))
 }
@@ -190,8 +195,14 @@ func (s *Service) clear(w http.ResponseWriter, r *http.Request, me pgtype.UUID) 
 		httpx.Fail(w, s.log, "status clear failed", err, "The status could not be cleared. Try again.")
 		return
 	}
-	s.lobby.PresenceChanged()
+	s.changed(r, me)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// changed tells whoever the rider's status line shows to.
+func (s *Service) changed(r *http.Request, me pgtype.UUID) {
+	who, err := audience.Rider(context.WithoutCancel(r.Context()), s.store.Queries, me)
+	audience.Tell(s.lobby, s.log, who, err)
 }
 
 // handleImage serves a crew emoji somebody wears (ADR-0060) to anyone signed
