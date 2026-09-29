@@ -481,13 +481,15 @@
 						onSound={(on) => void av.setShareSound(on)}
 					/>
 				{/await}
-				{#if channelConnection.ridingAway(page.url.pathname)}
-					<!-- The ride's status, off its place (#2885): the place's shell
-					     draws it there and is not mounted here, and the ride records
-					     on while the rider reads chat. A dropped connection or a lost
-					     trainer is ride-critical wherever the rider is (errors.md). -->
+				{#if channelConnection.rideStatusUnshown()}
+					<!-- The ride's status wherever no page draws it: off its place
+					     (#2885), where the ride records on while the rider reads
+					     chat, and on it when the place's page failed to load and
+					     its shell never mounted (#2986). A dropped connection or a
+					     lost trainer is ride-critical wherever the rider is
+					     (errors.md). -->
 					{#await import('$lib/channel/ChannelStatus.svelte') then { default: ChannelStatus }}
-						<ChannelStatus />
+						<ChannelStatus frame />
 					{/await}
 				{/if}
 			{/if}
