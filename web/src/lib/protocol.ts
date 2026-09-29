@@ -704,6 +704,28 @@ export const ShelterNoneGapM = 6;
  */
 export const ShelterAdjacent = 0.5;
 /**
+ * The critical-power model (#3262, docs/SPEC.md "Stats formulas" — the
+ * curve keeps 3 and 12 min for it): CP and W′ come from the rider's
+ * 90-day bests at this two-point pair, in seconds, and from the 5/20-min
+ * pair — flagged an estimate — until the curve holds both.
+ */
+export const CPShortSeconds = 180;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const CPLongSeconds = 720;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const CPEstimateShortSeconds = 300;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const CPEstimateLongSeconds = 1200;
+/**
  * The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
  * whom a road's estimates are made for when no real rider is in question.
  */

@@ -183,6 +183,15 @@ const (
 	ShelterFullGapM    = 1.0
 	ShelterNoneGapM    = 6
 	ShelterAdjacent    = 0.5
+
+	// The critical-power model (#3262, docs/SPEC.md "Stats formulas" — the
+	// curve keeps 3 and 12 min for it): CP and W′ come from the rider's
+	// 90-day bests at this two-point pair, in seconds, and from the 5/20-min
+	// pair — flagged an estimate — until the curve holds both.
+	CPShortSeconds         = 180
+	CPLongSeconds          = 720
+	CPEstimateShortSeconds = 300
+	CPEstimateLongSeconds  = 1200
 	// The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
 	// whom a road's estimates are made for when no real rider is in question.
 	ReferenceRiderKg    = 75
