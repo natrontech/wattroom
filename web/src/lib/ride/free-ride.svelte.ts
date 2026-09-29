@@ -1,7 +1,7 @@
 import { account } from '$lib/account.svelte';
-import { MaxTrainerGrade } from '$lib/protocol';
+import { MaxTrainerGrade, MinRideSamples } from '$lib/protocol';
 import { ROAD } from '$lib/ride/ride-grade';
-import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { uploadRide, type RideUpload, type SaveFailure } from '$lib/ride/save';
 
 /**
@@ -168,7 +168,7 @@ export function createFreeRide(deps: {
 			seconds = 0;
 			samples = [];
 			// The buffer never offers a ride this short back either.
-			if (ride.samples.length < MIN_SAMPLES) {
+			if (ride.samples.length < MinRideSamples) {
 				ended?.end();
 				outcome = { short: true };
 				return outcome;

@@ -6,8 +6,11 @@
 // all live in the page, and a destroyed window takes them with it. Quitting is
 // ⌘Q, the app menu or the tray's Quit, which all go through `before-quit`.
 //
-// The page is told when the window hides and shows (`wattroom:visibility`), so
-// it can leave voice on a hide: a closed window is never a live mic.
+// The page is told when a close hides the window and when it comes back
+// (`wattroom:visibility`), so it can leave voice: a closed window is never a
+// live mic. Only a close says so (#3509). macOS also fires 'hide' whenever the
+// window is minimised, covered, behind a fullscreen app, on another Space or
+// on a sleeping display, and a rider behind a film is still in the call.
 
 const { app, Notification, powerMonitor } = require('electron');
 const fs = require('node:fs');
@@ -16,6 +19,11 @@ const path = require('node:path');
 // Set by every real quit — ⌘Q, the app menu, the tray — so the close that
 // follows it destroys the window rather than hiding it.
 let quitting = false;
+
+// Windows a close put in the tray, until they are shown again, and how each
+// one tells its page.
+const closedToTray = new WeakSet();
+const tellers = new WeakMap();
 
 /**
  * Let the next close through. Two quits close the windows BEFORE
@@ -31,13 +39,16 @@ app.on('before-quit', allowClose);
 app.whenReady().then(() => powerMonitor.on('shutdown', allowClose));
 
 /**
- * Whether throttling may come back: the window is hidden and no ride holds
- * the machine awake. A ride's own clock survives throttling (#51); the rest
- * of the page does not need full-rate timers nobody is looking at.
+ * Whether throttling may come back: a close put the window in the tray and
+ * no ride holds the machine awake. A ride's own clock survives throttling
+ * (#51); the rest of the page does not need full-rate timers nobody is
+ * looking at. A covered or minimised window is not closed, and keeps them.
  */
 function throttleIfIdle(win, rideHeld) {
 	if (win.isDestroyed()) return;
-	win.webContents.setBackgroundThrottling(!win.isVisible() && !rideHeld());
+	win.webContents.setBackgroundThrottling(
+		closedToTray.has(win) && !rideHeld(),
+	);
 }
 
 /**
@@ -53,16 +64,29 @@ function manage(win, { hides, rideHeld }) {
 		if (!win.isDestroyed()) win.webContents.send('wattroom:visibility', visible);
 		throttleIfIdle(win, rideHeld);
 	};
-	win.on('show', () => tell(true));
-	win.on('hide', () => tell(false));
 	if (!hides) return;
+	tellers.set(win, tell);
+	// On macOS 'show' tracks occlusion and may never come for a window that
+	// reopens under another one, so the ways back call shown() themselves.
+	win.on('show', () => shown(win));
 	win.on('session-end', allowClose); // Windows logoff and shutdown
 	win.on('close', (event) => {
 		if (quitting) return;
 		event.preventDefault();
+		closedToTray.add(win);
 		hideLeavingFullScreen(win);
+		tell(false);
 		announceOnce();
 	});
+}
+
+/**
+ * The rider brought the window back — the tray, the Dock, a second launch, a
+ * notification. The page hears it only if a close had put the window away;
+ * uncovering a covered window is no news (#3509).
+ */
+function shown(win) {
+	if (closedToTray.delete(win)) tellers.get(win)?.(true);
 }
 
 /**
@@ -96,4 +120,4 @@ function announceOnce() {
 	}).show();
 }
 
-module.exports = { manage, throttleIfIdle, allowClose };
+module.exports = { manage, shown, throttleIfIdle, allowClose };

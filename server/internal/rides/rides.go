@@ -26,14 +26,10 @@ import (
 // series, capped before any of it is believed.
 const (
 	maxSamples   = 6 * 60 * 60 // 6 h at 1 Hz — longer than any indoor session
-	minSamples   = 60          // under a minute is a misclick, the saver's rule
 	maxBodyBytes = 4 << 20
 	maxWatts     = 3000
-	// The rider's trim, as workout/guards bounds it and protocol.BiasOr clamps it.
-	minBias    = 0.8
-	maxBias    = 1.2
-	maxCadence = 250
-	maxHR      = 250
+	maxCadence   = 250
+	maxHR        = 250
 	// Saves per account per minute (#2251). POST /api/rides was the one
 	// rider-created row with no ceiling at all, while every neighbour has
 	// one — custom workouts 200 per account, MCP 60 calls a minute, OG cards

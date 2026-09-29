@@ -217,6 +217,7 @@ function focusWindow(win) {
 	if (win.isMinimized()) win.restore();
 	win.show();
 	win.focus();
+	visibility.shown(win);
 }
 
 /**
@@ -698,6 +699,12 @@ async function chooseFrom(win, title, options, checkboxLabel = null) {
 // construction.
 let updateReady = null;
 let autoUpdater = null;
+// Where the shell installs its own updates: only macOS (#2818), where
+// Squirrel.Mac refuses anything without the Developer ID. Linux checks nothing
+// but a sha512 published beside the binary, which whoever can write a release
+// can also write. Windows checks Authenticode, and the Apple-signed build reads
+// UnknownError on a stock Windows, so every download was refused anyway.
+const selfInstalls = process.platform === 'darwin';
 
 function watchForUpdates() {
 	// Required here, not at the top: merely touching electron-updater's
@@ -706,8 +713,9 @@ function watchForUpdates() {
 	// package.json's, and a malformed one crashes at launch with a dialog.
 	if (!app.isPackaged) return;
 	({ autoUpdater } = require('electron-updater'));
-	autoUpdater.autoDownload = true;
-	autoUpdater.autoInstallOnAppQuit = true;
+	// Elsewhere the feed is still read, and home offers the download (#2818).
+	autoUpdater.autoDownload = selfInstalls;
+	autoUpdater.autoInstallOnAppQuit = selfInstalls;
 	// stdout: nothing in a Dock launch, everything when run from a terminal —
 	// which is how "why did it not update" gets answered in a minute.
 	autoUpdater.logger = console;
@@ -747,9 +755,14 @@ function watchForUpdates() {
 
 // The renderer asks on mount, in case the download finished before it did.
 ipc.handle('wattroom:update-ready', () => updateReady);
-// Consecutive failures of the updater (#1940): three is "not coming".
+// Consecutive failures of the updater (#1940): three is "not coming". Only
+// macOS self-installs (#2818), so elsewhere the page offers the download for
+// every newer version, at once.
 let updateFailures = 0;
-ipc.handle('wattroom:update-failed', () => updateFailures >= 3);
+ipc.handle(
+	'wattroom:update-failed',
+	() => !selfInstalls || updateFailures >= 3,
+);
 ipc.on('wattroom:install-update', () => installUpdate());
 
 // Restarting into the update, and why "Restart" used to just close the app.

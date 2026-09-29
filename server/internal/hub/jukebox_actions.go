@@ -189,7 +189,7 @@ func (j *jukebox) onSeek(cmd protocol.JukeboxCommand, riderID, addedBy string, n
 	if j.state.Current == nil {
 		return nil, false, ""
 	}
-	j.state.PositionSec = clampSec(cmd.PositionSec)
+	j.state.PositionSec = protocol.ClampSeek(cmd.PositionSec)
 	j.state.AnchorMs = now.UnixMilli()
 	return nil, true, ""
 }

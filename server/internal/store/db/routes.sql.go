@@ -14,9 +14,9 @@ import (
 const createRoute = `-- name: CreateRoute :one
 insert into routes (
     owner_id, src, name, gen_name, road, road_hash, length_m, gain_m,
-    climbs, ele_source, geom_sealed, key_version
+    climbs, ele_source, geom_sealed, key_version, road_sealed
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 returning id, created_at
 `
 
@@ -33,6 +33,7 @@ type CreateRouteParams struct {
 	EleSource  string
 	GeomSealed []byte
 	KeyVersion *int32
+	RoadSealed []byte
 }
 
 type CreateRouteRow struct {
@@ -54,6 +55,7 @@ func (q *Queries) CreateRoute(ctx context.Context, arg CreateRouteParams) (Creat
 		arg.EleSource,
 		arg.GeomSealed,
 		arg.KeyVersion,
+		arg.RoadSealed,
 	)
 	var i CreateRouteRow
 	err := row.Scan(&i.ID, &i.CreatedAt)
@@ -79,7 +81,7 @@ func (q *Queries) DeleteRoute(ctx context.Context, arg DeleteRouteParams) (int64
 
 const exportUserRoutes = `-- name: ExportUserRoutes :many
 select id, src, name, gen_name, road, length_m, gain_m, climbs, ele_source,
-       geom_sealed, key_version, created_at
+       geom_sealed, key_version, created_at, road_sealed
 from routes
 where owner_id = $1
 order by created_at
@@ -104,6 +106,7 @@ type ExportUserRoutesRow struct {
 	GeomSealed []byte
 	KeyVersion *int32
 	CreatedAt  pgtype.Timestamptz
+	RoadSealed []byte
 }
 
 // Every route the rider stored, for the export (ADR-0053): the road and the
@@ -131,6 +134,7 @@ func (q *Queries) ExportUserRoutes(ctx context.Context, arg ExportUserRoutesPara
 			&i.GeomSealed,
 			&i.KeyVersion,
 			&i.CreatedAt,
+			&i.RoadSealed,
 		); err != nil {
 			return nil, err
 		}
@@ -144,7 +148,8 @@ func (q *Queries) ExportUserRoutes(ctx context.Context, arg ExportUserRoutesPara
 
 const getOwnerRoute = `-- name: GetOwnerRoute :one
 select id, src, name, gen_name, road, road_hash, length_m, gain_m, climbs,
-       ele_source, (geom_sealed is not null)::boolean as has_place, created_at
+       ele_source, (geom_sealed is not null)::boolean as has_place, created_at,
+       road_sealed, key_version
 from routes
 where id = $1 and owner_id = $2
 `
@@ -155,18 +160,20 @@ type GetOwnerRouteParams struct {
 }
 
 type GetOwnerRouteRow struct {
-	ID        pgtype.UUID
-	Src       string
-	Name      string
-	GenName   string
-	Road      []byte
-	RoadHash  string
-	LengthM   int32
-	GainM     int32
-	Climbs    []byte
-	EleSource string
-	HasPlace  bool
-	CreatedAt pgtype.Timestamptz
+	ID         pgtype.UUID
+	Src        string
+	Name       string
+	GenName    string
+	Road       []byte
+	RoadHash   string
+	LengthM    int32
+	GainM      int32
+	Climbs     []byte
+	EleSource  string
+	HasPlace   bool
+	CreatedAt  pgtype.Timestamptz
+	RoadSealed []byte
+	KeyVersion *int32
 }
 
 // One route, the owner's only: someone else's reads as absent.
@@ -186,6 +193,8 @@ func (q *Queries) GetOwnerRoute(ctx context.Context, arg GetOwnerRouteParams) (G
 		&i.EleSource,
 		&i.HasPlace,
 		&i.CreatedAt,
+		&i.RoadSealed,
+		&i.KeyVersion,
 	)
 	return i, err
 }
@@ -214,13 +223,15 @@ func (q *Queries) GetOwnerRoutePlace(ctx context.Context, arg GetOwnerRoutePlace
 }
 
 const getRouteRoad = `-- name: GetRouteRoad :one
-select owner_id, src, road from routes where id = $1
+select owner_id, src, road, road_sealed, key_version from routes where id = $1
 `
 
 type GetRouteRoadRow struct {
-	OwnerID pgtype.UUID
-	Src     string
-	Road    []byte
+	OwnerID    pgtype.UUID
+	Src        string
+	Road       []byte
+	RoadSealed []byte
+	KeyVersion *int32
 }
 
 // A route's road, its source and whose it is (#3051): what a workout read
@@ -229,7 +240,13 @@ type GetRouteRoadRow struct {
 func (q *Queries) GetRouteRoad(ctx context.Context, id pgtype.UUID) (GetRouteRoadRow, error) {
 	row := q.db.QueryRow(ctx, getRouteRoad, id)
 	var i GetRouteRoadRow
-	err := row.Scan(&i.OwnerID, &i.Src, &i.Road)
+	err := row.Scan(
+		&i.OwnerID,
+		&i.Src,
+		&i.Road,
+		&i.RoadSealed,
+		&i.KeyVersion,
+	)
 	return i, err
 }
 
@@ -286,7 +303,7 @@ func (q *Queries) ListOwnerRoutes(ctx context.Context, ownerID pgtype.UUID) ([]L
 }
 
 const listRoutesSealedUnder = `-- name: ListRoutesSealedUnder :many
-select id, geom_sealed from routes
+select id, geom_sealed, road_sealed from routes
 where key_version = $1
 order by id
 limit $2
@@ -300,6 +317,7 @@ type ListRoutesSealedUnderParams struct {
 type ListRoutesSealedUnderRow struct {
 	ID         pgtype.UUID
 	GeomSealed []byte
+	RoadSealed []byte
 }
 
 // The re-seal's read: a batch of rows sealed under one key version.
@@ -312,7 +330,49 @@ func (q *Queries) ListRoutesSealedUnder(ctx context.Context, arg ListRoutesSeale
 	var items []ListRoutesSealedUnderRow
 	for rows.Next() {
 		var i ListRoutesSealedUnderRow
-		if err := rows.Scan(&i.ID, &i.GeomSealed); err != nil {
+		if err := rows.Scan(&i.ID, &i.GeomSealed, &i.RoadSealed); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRoutesWithRoadInTheClear = `-- name: ListRoutesWithRoadInTheClear :many
+select id, road, key_version from routes
+where road_sealed is null and id > $1::uuid
+order by id
+limit $2
+`
+
+type ListRoutesWithRoadInTheClearParams struct {
+	After pgtype.UUID
+	Lim   int32
+}
+
+type ListRoutesWithRoadInTheClearRow struct {
+	ID         pgtype.UUID
+	Road       []byte
+	KeyVersion *int32
+}
+
+// The boot's sealing of roads stored before #3511, a page at a time by id:
+// every row with nothing sealed yet. ponytail: a keyless server's rows never
+// leave this list, so each boot reads them again and finds them already
+// bare; a marker column is the upgrade once that read shows at boot.
+func (q *Queries) ListRoutesWithRoadInTheClear(ctx context.Context, arg ListRoutesWithRoadInTheClearParams) ([]ListRoutesWithRoadInTheClearRow, error) {
+	rows, err := q.db.Query(ctx, listRoutesWithRoadInTheClear, arg.After, arg.Lim)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRoutesWithRoadInTheClearRow
+	for rows.Next() {
+		var i ListRoutesWithRoadInTheClearRow
+		if err := rows.Scan(&i.ID, &i.Road, &i.KeyVersion); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -342,12 +402,14 @@ func (q *Queries) RenameRoute(ctx context.Context, arg RenameRouteParams) (int64
 }
 
 const resealRoute = `-- name: ResealRoute :execrows
-update routes set geom_sealed = $1, key_version = $2
-where id = $3 and key_version = $4
+update routes set geom_sealed = $1, road_sealed = $2,
+       key_version = $3
+where id = $4 and key_version = $5
 `
 
 type ResealRouteParams struct {
 	GeomSealed []byte
+	RoadSealed []byte
 	NewVersion *int32
 	ID         pgtype.UUID
 	OldVersion *int32
@@ -358,9 +420,38 @@ type ResealRouteParams struct {
 func (q *Queries) ResealRoute(ctx context.Context, arg ResealRouteParams) (int64, error) {
 	result, err := q.db.Exec(ctx, resealRoute,
 		arg.GeomSealed,
+		arg.RoadSealed,
 		arg.NewVersion,
 		arg.ID,
 		arg.OldVersion,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const sealRouteRoad = `-- name: SealRouteRoad :execrows
+update routes set road = $1, road_sealed = $2
+where id = $3 and road_sealed is null
+  and key_version is not distinct from $4
+`
+
+type SealRouteRoadParams struct {
+	Road       []byte
+	RoadSealed []byte
+	ID         pgtype.UUID
+	KeyVersion *int32
+}
+
+// One row's road sealed and stripped, only while it is still as it was read:
+// nothing sealed yet, under the same key version.
+func (q *Queries) SealRouteRoad(ctx context.Context, arg SealRouteRoadParams) (int64, error) {
+	result, err := q.db.Exec(ctx, sealRouteRoad,
+		arg.Road,
+		arg.RoadSealed,
+		arg.ID,
+		arg.KeyVersion,
 	)
 	if err != nil {
 		return 0, err

@@ -17,7 +17,6 @@ const buffered = vi.hoisted(() => ({
 	crashSafe: true,
 }));
 vi.mock('$lib/ride/buffer', () => ({
-	MIN_SAMPLES: 60,
 	openRideBuffer: async (meta: { workoutName: string; startedAt: number }) => {
 		buffered.opened.push(meta);
 		return {

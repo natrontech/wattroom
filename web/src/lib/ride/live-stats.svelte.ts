@@ -1,6 +1,6 @@
 import { zoneOf } from '$lib/components/zones';
 import { toleranceBand } from '$lib/workout/guards';
-import { NP_MIN_SECONDS } from './stats';
+import { NormPowerMinSeconds } from '$lib/protocol';
 
 /**
  * The ride's numbers while it happens — one module for every riding surface
@@ -128,7 +128,7 @@ export function createLiveStats(ftp: () => number) {
 		}
 
 		const normPower =
-			seconds < NP_MIN_SECONDS
+			seconds < NormPowerMinSeconds
 				? Math.round(total / seconds)
 				: Math.round(Math.pow(fourthSum / fourthCount, 0.25));
 		const intensity = rider > 0 ? normPower / rider : 0;
