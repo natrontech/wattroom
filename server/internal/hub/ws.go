@@ -41,6 +41,19 @@ const writeTimeout = 5 * time.Second
 // the socket died with it, replay and all (audit 2026-09-09).
 const maxFrame = 512 << 10
 
+// controlMinGap is how soon one rider may send the same session control again
+// (docs/SPEC.md, #3019): four a second. No coach needs the same control twice
+// inside a quarter second — a double tap is one intent — and nothing else
+// stopped a looping client re-validating a 64 KiB pick as fast as its socket
+// delivered.
+//
+// Per control, not per rider: the client sends its own start on the first tick
+// that shows its pick landed. Ticks are 1 Hz, so the start reaches the hub a
+// round trip plus anything up to a second after the pick, and one allowance
+// shared by the two would refuse up to one start in four. Join and leave take
+// no allowance at all; the read loop says why.
+const controlMinGap = 250 * time.Millisecond
+
 type client struct {
 	rider protocol.Rider
 	conn  *websocket.Conn
@@ -288,6 +301,27 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 			h.log.Debug("backfill received", "channel", channel, "rider", rider.ID, "samples", len(samples))
 		}
 		if msg.Control != nil {
+			// The vocabulary first: the action is part of the throttle's key,
+			// so an unknown one must not reach the room's map of allowances.
+			if !protocol.IsControlAction(msg.Control.Action) {
+				h.writeError(c, "validation_error", "That is not something a session can do.")
+				continue
+			}
+			// Throttled like every other input (#3019), ahead of the role and
+			// pick checks it would otherwise leave free to loop. Pick, start,
+			// pause: deliberate taps a rider watches for a result, so a
+			// refused one says so (#2232).
+			//
+			// Join and leave are unlimited, like away above: each is one set
+			// entry for this rider's own id, broadcasting, writing and
+			// queueing nothing, and the next tick carries it. The session
+			// page also sends join by itself, so a rider's second tab had its
+			// join refused and read "That was quick" over a tap nobody made.
+			if a := msg.Control.Action; a != "join" && a != "leave" &&
+				!rm.allow("control:"+a, rider.ID, h.now(), controlMinGap) {
+				h.writeError(c, "rate_limited", "That was quick — give the session a moment, then try again.")
+				continue
+			}
 			// The rider on THIS socket, not the copy captured when it opened:
 			// a crew role change mid-session has to land without a reconnect.
 			rider := rm.riderOf(c)
