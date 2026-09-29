@@ -161,6 +161,7 @@ func (s *Service) handleSend(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("prune dms", "err", err)
 	}
 	s.pruneImages(r, me.ID, peer)
+	s.changed(me.ID, peer)
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"id": store.UUIDString(sent.ID), "at": sent.CreatedAt.Time.UnixMilli(),
 		"expiresAt": store.Millis(expires),
@@ -218,6 +219,7 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "dm delete", err, "The message could not be deleted. Try again.", "user", store.UUIDString(me.ID))
 		return
 	}
+	s.changed(me.ID, peer)
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"messageId": store.UUIDString(mid), "deletedAt": store.Millis(deleted),
 	})
@@ -279,6 +281,7 @@ func (s *Service) handleEdit(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "dm edit", err, "The edit could not be saved. Try again.", "user", store.UUIDString(me.ID))
 		return
 	}
+	s.changed(me.ID, peer)
 	httpx.WriteJSON(w, http.StatusOK, protocol.ChatEdit{
 		MessageID: store.UUIDString(mid), Text: text, EditedAt: store.Millis(edited),
 	})
@@ -341,6 +344,7 @@ func (s *Service) handleReact(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "count dm reaction", err, "The reaction could not be saved.")
 		return
 	}
+	s.changed(me.ID, peer)
 	httpx.WriteJSON(w, http.StatusOK, protocol.ChatReactionCount{
 		MessageID: req.MessageID, Emoji: req.Emoji, Count: int(count),
 		By: store.UUIDString(me.ID), Added: isAdd,
