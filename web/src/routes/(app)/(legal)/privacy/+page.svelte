@@ -113,6 +113,20 @@
 			once, at creation. Revoke it and the row goes.
 		</li>
 		<li>
+			<strong class="text-ink font-medium">Flag reports.</strong> When you press the
+			flag button we keep a report on our own disk: your display name and account
+			ID, the page you were on, your note, the app's build, your browser and trainer,
+			the last two minutes of your ride as the app recorded them (power, cadence,
+			the target, the ride's state, what you tapped and any errors — never heart rate),
+			and the server's log lines about your own requests. The names of your routes
+			and any coordinates are taken out before it is kept. A copy without your name
+			also becomes a public issue on GitHub, where WattRoom is built, so the fault
+			can be fixed in the open: the note, the page with anything that could name someone
+			replaced by an ellipsis, the build, your browser and trainer, and those two
+			minutes. Deleting your account removes the report from our disk; the public
+			issue stays, because nothing in it names you.
+		</li>
+		<li>
 			<strong class="text-ink font-medium">Voice, camera, screenshare.</strong>
 			Real-time audio and video run through our own self-hosted LiveKit server. It
 			is transit-only: nothing is ever recorded or stored, by design.
