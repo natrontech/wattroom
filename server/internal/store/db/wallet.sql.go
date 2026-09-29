@@ -83,37 +83,63 @@ func (q *Queries) ExportUserWallet(ctx context.Context, arg ExportUserWalletPara
 	return items, nil
 }
 
-const openWallets = `-- name: OpenWallets :execrows
-insert into wallet_events (user_id, source, amount, ref)
-select u.id, 'opening',
-       least($1::integer, floor(coalesce(sum(least(
-           r.kj * 1000.0 / (r.ftp_watts * 60.0),
-           $2::float8 * r.seconds / 60.0)), 0)))::integer,
-       'opening'
-from users u
-left join rides r on r.user_id = u.id and r.ftp_watts > 0
-    and not exists (
-        select 1 from wallet_events w
-        where w.user_id = u.id and w.source in ('ride', 'ride_grew')
-          and (w.ref = r.id::text or w.ref like r.id::text || '@%'))
+const listAccountsWithoutOpening = `-- name: ListAccountsWithoutOpening :many
+select u.id from users u
 where not exists (select 1 from wallet_events w where w.user_id = u.id and w.source = 'opening')
   and not exists (select 1 from identities i where i.user_id = u.id and i.provider = 'synthetic')
-group by u.id
+`
+
+// Every account the opening job still owes its one grant (ADR-0069). The
+// synthetic account is owed nothing.
+func (q *Queries) ListAccountsWithoutOpening(ctx context.Context) ([]pgtype.UUID, error) {
+	rows, err := q.db.Query(ctx, listAccountsWithoutOpening)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []pgtype.UUID
+	for rows.Next() {
+		var id pgtype.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const openWallet = `-- name: OpenWallet :execrows
+insert into wallet_events (user_id, source, amount, ref)
+select $1::uuid, 'opening',
+       least($2::integer, floor(coalesce(sum(least(
+           r.kj * 1000.0 / (r.ftp_watts * 60.0),
+           $3::float8 * r.seconds / 60.0)), 0)))::integer,
+       'opening'
+from rides r
+where r.user_id = $1::uuid and r.ftp_watts > 0
+  and not exists (
+      select 1 from wallet_events w
+      where w.user_id = r.user_id and w.source in ('ride', 'ride_grew')
+        and (w.ref = r.id::text or w.ref like r.id::text || '@%'))
 on conflict (user_id, source, ref) do nothing
 `
 
-type OpenWalletsParams struct {
+type OpenWalletParams struct {
+	UserID    pgtype.UUID
 	GrantCap  int32
 	PerMinute float64
 }
 
-// The opening grant (#3152, ADR-0069): every account without one gets
-// min(its history, the cap), where its history is the Batzen its rides saved
-// before the wallet would have minted — a minute at the ride's own FTP, held
-// to the per-ride ceiling — and a ride the wallet already minted counts
-// nothing here. One row per account, ever: a second run inserts none.
-func (q *Queries) OpenWallets(ctx context.Context, arg OpenWalletsParams) (int64, error) {
-	result, err := q.db.Exec(ctx, openWallets, arg.GrantCap, arg.PerMinute)
+// One account's opening grant (#3152): min(its history, the cap), where its
+// history is the Batzen its rides saved before the wallet would have minted —
+// a minute at the ride's own FTP, held to the per-ride ceiling — and a ride
+// the wallet already paid counts nothing. Read under the rider's row lock, so
+// a ride minting at the same moment cannot be counted twice.
+func (q *Queries) OpenWallet(ctx context.Context, arg OpenWalletParams) (int64, error) {
+	result, err := q.db.Exec(ctx, openWallet, arg.UserID, arg.GrantCap, arg.PerMinute)
 	if err != nil {
 		return 0, err
 	}

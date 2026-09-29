@@ -27,27 +27,31 @@ select exists (
     select 1 from identities where user_id = $1 and provider = 'synthetic'
 )::boolean;
 
--- name: OpenWallets :execrows
--- The opening grant (#3152, ADR-0069): every account without one gets
--- min(its history, the cap), where its history is the Batzen its rides saved
--- before the wallet would have minted — a minute at the ride's own FTP, held
--- to the per-ride ceiling — and a ride the wallet already minted counts
--- nothing here. One row per account, ever: a second run inserts none.
+-- name: ListAccountsWithoutOpening :many
+-- Every account the opening job still owes its one grant (ADR-0069). The
+-- synthetic account is owed nothing.
+select u.id from users u
+where not exists (select 1 from wallet_events w where w.user_id = u.id and w.source = 'opening')
+  and not exists (select 1 from identities i where i.user_id = u.id and i.provider = 'synthetic');
+
+-- name: OpenWallet :execrows
+-- One account's opening grant (#3152): min(its history, the cap), where its
+-- history is the Batzen its rides saved before the wallet would have minted —
+-- a minute at the ride's own FTP, held to the per-ride ceiling — and a ride
+-- the wallet already paid counts nothing. Read under the rider's row lock, so
+-- a ride minting at the same moment cannot be counted twice.
 insert into wallet_events (user_id, source, amount, ref)
-select u.id, 'opening',
+select sqlc.arg(user_id)::uuid, 'opening',
        least(sqlc.arg(grant_cap)::integer, floor(coalesce(sum(least(
            r.kj * 1000.0 / (r.ftp_watts * 60.0),
            sqlc.arg(per_minute)::float8 * r.seconds / 60.0)), 0)))::integer,
        'opening'
-from users u
-left join rides r on r.user_id = u.id and r.ftp_watts > 0
-    and not exists (
-        select 1 from wallet_events w
-        where w.user_id = u.id and w.source in ('ride', 'ride_grew')
-          and (w.ref = r.id::text or w.ref like r.id::text || '@%'))
-where not exists (select 1 from wallet_events w where w.user_id = u.id and w.source = 'opening')
-  and not exists (select 1 from identities i where i.user_id = u.id and i.provider = 'synthetic')
-group by u.id
+from rides r
+where r.user_id = sqlc.arg(user_id)::uuid and r.ftp_watts > 0
+  and not exists (
+      select 1 from wallet_events w
+      where w.user_id = r.user_id and w.source in ('ride', 'ride_grew')
+        and (w.ref = r.id::text or w.ref like r.id::text || '@%'))
 on conflict (user_id, source, ref) do nothing;
 
 -- name: ExportUserWallet :many

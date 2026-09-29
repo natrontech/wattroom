@@ -107,22 +107,49 @@ func ensureWelcome(ctx context.Context, q *db.Queries, user pgtype.UUID) error {
 }
 
 // Open grants every account its opening grant, once (ADR-0069): what its
-// rides saved before the wallet would have minted, capped. Idempotent, so it
-// runs at every start and does nothing once done.
-// ponytail: one statement over every account; a ride saved in the instant
-// the job runs could count both here and in its own mint — rare at boot, and
-// worth per-account locks only if the job ever runs while riders ride.
+// rides saved before the wallet would have minted, capped. Account by
+// account, each under its own row lock: a ride minting at the same moment is
+// never counted twice, and an account deleted mid-run costs that account its
+// grant and nobody else theirs. Idempotent, so it runs at every start and
+// does nothing once done.
 func Open(ctx context.Context, st *store.Store, log *slog.Logger) {
-	n, err := st.Queries.OpenWallets(ctx, db.OpenWalletsParams{GrantCap: openingCap, PerMinute: perMinuteCap})
+	owed, err := st.Queries.ListAccountsWithoutOpening(ctx)
 	if err != nil {
 		if ctx.Err() == nil {
-			log.Error("wallet opening grants failed", "err", err)
+			log.Error("wallet opening grants: list failed", "err", err)
 		}
 		return
 	}
-	if n > 0 {
-		log.Info("wallet opening grants", "accounts", n)
+	granted := 0
+	for _, user := range owed {
+		if err := openOne(ctx, st, user); err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			log.Warn("wallet opening grant failed", "err", err, "user", store.UUIDString(user))
+			continue
+		}
+		granted++
 	}
+	if granted > 0 {
+		log.Info("wallet opening grants", "accounts", granted)
+	}
+}
+
+func openOne(ctx context.Context, st *store.Store, user pgtype.UUID) error {
+	tx, err := st.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := st.Queries.WithTx(tx)
+	if err := q.LockUser(ctx, user); err != nil {
+		return err
+	}
+	if _, err := q.OpenWallet(ctx, db.OpenWalletParams{UserID: user, GrantCap: openingCap, PerMinute: perMinuteCap}); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 // Users is who is asking: the session source only. A wallet is always
