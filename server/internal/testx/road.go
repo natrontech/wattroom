@@ -28,7 +28,7 @@ func PackedRoadTurning(lengthM float64, heights []float64, turns []int8) []byte 
 	for i := 1; i < n; i++ {
 		binary.LittleEndian.PutUint16(b[13+2*(i-1):], uint16(int16(cm(heights[i])-cm(heights[i-1])))) //nolint:gosec // test fixture
 		if i-1 < len(turns) {
-			b[13+2*(n-1)+(i-1)] = byte(turns[i-1])
+			b[13+2*(n-1)+(i-1)] = byte(turns[i-1]) //nolint:gosec // an i8 on the wire, test fixture
 		}
 	}
 	return b

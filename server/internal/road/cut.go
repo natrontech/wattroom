@@ -51,7 +51,7 @@ func (r Road) Pack() []byte {
 	for i := 1; i < n; i++ {
 		binary.LittleEndian.PutUint16(b[13+2*(i-1):], uint16(int16(cm(r.Heights[i])-cm(r.Heights[i-1])))) //nolint:gosec // the stored grade keeps a step inside an i16
 		if i-1 < len(r.Turns) {
-			b[13+2*(n-1)+(i-1)] = byte(r.Turns[i-1])
+			b[13+2*(n-1)+(i-1)] = byte(r.Turns[i-1]) //nolint:gosec // an i8 on the wire, two's complement by design
 		}
 	}
 	return b
