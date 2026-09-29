@@ -5,8 +5,7 @@
 	import { formatDuration } from '$lib/format';
 	import { MaxLegSeconds, type ControlRoute } from '$lib/protocol';
 	import { loadRoad } from '$lib/ride/roads';
-	import { referenceSeconds } from '$lib/road/pace';
-	import { rideTogether } from '$lib/road/ride-together';
+	import { crewSeconds, rideTogether } from '$lib/road/ride-together';
 	import { roadStep, type Road } from '$lib/road/road';
 	import type { StoredRoute } from '$lib/road/stored';
 	import { durationSeconds } from '$lib/workout/engine';
@@ -53,10 +52,22 @@
 				});
 			}
 	});
-	const minutes = (id: string) =>
-		roads[id] ? Math.round(referenceSeconds(roads[id]) / 60) : null;
+	// The crew's pace for each road (#3105): the road workout the bunch rides.
+	const minutes = (id: string) => {
+		const r = list.find((route) => route.id === id);
+		return r && roads[id]
+			? Math.round(
+					crewSeconds({
+						id,
+						genName: r.generatedName,
+						road: roads[id],
+						climbs: r.climbs,
+					}) / 60,
+				)
+			: null;
+	};
 
-	// At most this far, this high, this long at the reference pace; empty is no bound.
+	// At most this far, this high, this long at the crew’s pace; empty is no bound.
 	let maxKm = $state<number | null>(null);
 	let maxUp = $state<number | null>(null);
 	let maxHours = $state<number | null>(null);
@@ -285,7 +296,7 @@
 							<span class="num"
 								>{formatDuration(durationSeconds(choice.workout))}</span
 							>
-							at the reference pace{choice.legs > 1
+							at the crew’s pace{choice.legs > 1
 								? ` — the first of ${choice.legs} legs of at most ${MaxLegSeconds / 3600} h`
 								: ''}.
 						</p>

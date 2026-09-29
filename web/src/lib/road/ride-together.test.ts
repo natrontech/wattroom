@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { RouteHiddenEndM } from '$lib/protocol';
 import { validateWorkout } from '$lib/workout/validate';
 import { climbsOf } from './climbs';
-import { crewFromM, rideTogether } from './ride-together';
+import { crewFromM, crewSeconds, rideTogether } from './ride-together';
+import { durationSeconds } from '$lib/workout/engine';
 import type { Road } from './road';
 
 /** A road drawn as legs of [metres, percent], a sample every 20 m. */
@@ -64,5 +65,11 @@ describe('rideTogether (#3105)', () => {
 		expect(crewFromM(r, 100)).toBe(0);
 		expect(crewFromM(r, RouteHiddenEndM + 1000)).toBe(1000);
 		expect(crewFromM(r, 6990)).toBeLessThan(7000 - 2 * RouteHiddenEndM);
+	});
+
+	// The list, its time filter and the pick read one clock: the crew's pace.
+	it('times the whole road at the pace the crew rides it', () => {
+		const { workout } = rideTogether(route, { fromM: 0, toM: 7000 });
+		expect(crewSeconds(route)).toBe(durationSeconds(workout));
 	});
 });

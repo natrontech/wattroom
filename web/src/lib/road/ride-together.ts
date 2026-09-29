@@ -5,6 +5,7 @@ import {
 	RouteHiddenEndM,
 	type ControlRoute,
 } from '$lib/protocol';
+import { durationSeconds } from '$lib/workout/engine';
 import type { Workout } from '$lib/workout/types';
 import type { Climb } from './climbs';
 import { compileRoad, type Stretch } from './compile';
@@ -47,4 +48,22 @@ export function crewFromM(road: Road, fromM: number): number {
 		road.heights.length - 1,
 	);
 	return Math.min(Math.max(fromM - first * step, 0), (last - first - 1) * step);
+}
+
+/**
+ * How long the crew rides the whole road, every leg: the road's own workout
+ * at the reference rider, which is the pace the bunch moves at (ADR-0065) —
+ * the "crew pace" the picker's list and its time filter read (#3105).
+ */
+export function crewSeconds(route: {
+	id: string;
+	genName: string;
+	road: Road;
+	climbs: Climb[];
+}): number {
+	return compileRoad(
+		route,
+		ReferenceRiderWatts,
+		ReferenceRiderKg + BikeKg,
+	).reduce((total, leg) => total + durationSeconds(leg), 0);
 }
