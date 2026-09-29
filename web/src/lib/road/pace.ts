@@ -44,6 +44,23 @@ function resistance(
 	);
 }
 
+/**
+ * One substep of the model: kinetic energy after dt at this driving power
+ * (watts at the wheel) against this resistance (newtons at speed v). The
+ * SimulatedTrainer's flywheel runs on it too, against the trainer's own road
+ * rather than the dot's (#3050).
+ */
+export function nextSpeed(
+	v: number,
+	mass: number,
+	drive: number,
+	force: number,
+	dt: number,
+): number {
+	const energy = 0.5 * mass * v * v + (drive - force * v) * dt;
+	return energy > 0 ? Math.sqrt((2 * energy) / mass) : 0;
+}
+
 /** One rider's speed and distance on a road, advanced a second at a time. */
 export function createPace(speed = 0) {
 	let v = speed;
@@ -72,11 +89,13 @@ export function createPace(speed = 0) {
 		): void {
 			const dt = 1 / PaceSubsteps;
 			for (let i = 0; i < PaceSubsteps; i++) {
-				const drag = resistance(v, grade, mass, cda, shelter);
-				const energy =
-					0.5 * mass * v * v +
-					(PaceDrivetrainEfficiency * watts - drag * v) * dt;
-				const next = energy > 0 ? Math.sqrt((2 * energy) / mass) : 0;
+				const next = nextSpeed(
+					v,
+					mass,
+					PaceDrivetrainEfficiency * watts,
+					resistance(v, grade, mass, cda, shelter),
+					dt,
+				);
 				d += ((v + next) / 2) * dt;
 				v = next;
 			}
