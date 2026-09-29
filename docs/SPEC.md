@@ -846,8 +846,9 @@ never the metres a client sent, and an imported file never sets one.
 
 ## Road stats and collections (defaults — tune in alpha; #3123)
 
-What a rider's own road riding adds up to. All of it is the rider's own
-(ADR-0063, ADR-0074): location-derived, owner-only, never ranked.
+What a rider's road riding adds up to. Location-derived stats are the rider's
+own (ADR-0063, ADR-0074); a crew gets cooperative sums, such as Everest
+together. Nothing here is ranked.
 
 | Parameter          | Value                                                                                                 |
 | ------------------ | ----------------------------------------------------------------------------------------------------- |
