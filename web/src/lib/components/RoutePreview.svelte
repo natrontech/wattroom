@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Info from '@lucide/svelte/icons/info';
 	import { formatDuration } from '$lib/format';
-	import { routePrivacyLine } from '$lib/privacy-copy';
+	import { routeNameLine, routePrivacyLine } from '$lib/privacy-copy';
 	import {
 		BikeKg,
 		MaxLegSeconds,
@@ -9,8 +9,9 @@
 		ReferenceRiderWatts,
 	} from '$lib/protocol';
 	import { compileRoad } from '$lib/road/compile';
-	import { planPath, profilePath } from '$lib/road/draw';
 	import { durationSeconds } from '$lib/workout/engine';
+	import RouteProfile from './RouteProfile.svelte';
+	import RouteShape from './RouteShape.svelte';
 	import type { ImportedRoute } from '$lib/workout/import';
 
 	/**
@@ -33,14 +34,7 @@
 		rename: string;
 	} = $props();
 
-	const W = 600;
-	const PLAN_H = 300;
-	const PROFILE_H = 140;
-
 	const route = $derived(imported.route);
-	const plan = $derived(planPath(route.x, route.z, W, PLAN_H));
-	const profile = $derived(profilePath(route.road.heights, W, PROFILE_H));
-	const classed = $derived(route.climbs.filter((c) => c.cls));
 
 	// The road ridden as its road workout — ERG by the road — timed at the
 	// rider's own FTP and weight, which is what "Ride it now" will ride.
@@ -73,69 +67,8 @@
 	</div>
 
 	<div class="mt-3 grid gap-4 sm:grid-cols-[2fr_3fr]">
-		<figure>
-			<svg
-				viewBox="0 0 {W} {PLAN_H}"
-				width="100%"
-				class="text-ink"
-				role="img"
-				aria-label="Your route from above, north up"
-			>
-				<path
-					d={plan}
-					fill="none"
-					stroke="currentColor"
-					stroke-width="3"
-					stroke-linejoin="round"
-				/>
-			</svg>
-			<figcaption class="text-muted mt-1 text-xs">
-				From above, north up. Only you ever see this.
-			</figcaption>
-		</figure>
-		<figure>
-			<svg
-				viewBox="0 0 {W} {PROFILE_H}"
-				width="100%"
-				preserveAspectRatio="none"
-				class="text-ink h-28"
-				role="img"
-				aria-label="The road's heights by distance, its climbs shaded"
-			>
-				{#each classed as c (c.startM)}
-					<rect
-						x={(c.startM / route.road.length) * W}
-						y="0"
-						width={((c.topM - c.startM) / route.road.length) * W}
-						height={PROFILE_H}
-						class="fill-neon/15"
-					/>
-				{/each}
-				<path
-					d={profile}
-					fill="none"
-					stroke="currentColor"
-					stroke-width="2"
-					vector-effect="non-scaling-stroke"
-				/>
-			</svg>
-			{#if classed.length > 0}
-				<ul class="mt-2 flex flex-wrap gap-2" aria-label="Climbs">
-					{#each classed as c (c.startM)}
-						<li class="border-neon/40 rounded border px-2 text-xs">
-							<span class="font-display font-bold">{c.cls}</span>
-							<span class="text-muted num"
-								>{((c.topM - c.startM) / 1000).toFixed(1)} km · {Math.round(
-									c.gainM,
-								)} m</span
-							>
-						</li>
-					{/each}
-				</ul>
-			{:else}
-				<p class="text-muted mt-2 text-xs">No classed climbs on this road.</p>
-			{/if}
-		</figure>
+		<RouteShape x={route.x} z={route.z} />
+		<RouteProfile road={route.road} climbs={route.climbs} />
 	</div>
 
 	<dl class="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
@@ -188,10 +121,7 @@
 			placeholder={route.name}
 			class="input mt-1 w-full"
 		/>
-		<p class="text-muted mt-1 text-xs">
-			Only you see this name. Your crews, friends, calendars, emails and Strava
-			see “{route.name}”.
-		</p>
+		<p class="text-muted mt-1 text-xs">{routeNameLine(route.name)}</p>
 	</div>
 
 	<p class="text-muted mt-4 text-xs">{routePrivacyLine}</p>
