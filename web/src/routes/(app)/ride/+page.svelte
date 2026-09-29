@@ -4,10 +4,8 @@
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
-	import {
-		createRideSession,
-		signalLost as isSignalLost,
-	} from '$lib/workout/session.svelte';
+	import { createRideSession } from '$lib/workout/session.svelte';
+	import { signalLost as isSignalLost } from '$lib/workout/ride-state';
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
 	import { byId } from '$lib/workout/library';
 	import { customWorkouts } from '$lib/workout/custom.svelte';

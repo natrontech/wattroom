@@ -5,7 +5,7 @@ import { flushSync } from 'svelte';
 import type { RiderMetrics } from '$lib/protocol';
 import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
 import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
-import { SIGNAL_LOST_MS } from '$lib/workout/session.svelte';
+import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 
 // The socket's own dependencies, silenced: IndexedDB, and the module the
 // tick's clock window lives in stays real (it only does arithmetic).
