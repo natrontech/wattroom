@@ -100,7 +100,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"A ride starts at a real time in the past.", "startedAt")
 		return
 	}
-	if len(req.Samples) < minSamples {
+	if len(req.Samples) < protocol.MinRideSamples {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"A ride under a minute is not saved — the same rule a session uses.", "samples")
 		return
@@ -119,12 +119,11 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 				"A sample is out of range — watts 0-3000, cadence 0-250, heart rate 0-250.", "samples")
 			return
 		}
-		// The bounds are the trim's own (workout/guards DEFAULTS.biasMin/Max,
-		// and what protocol.BiasOr clamps to) rather than numbers invented
-		// here; 0 is a sample from a ride that sends none.
-		if sample.Bias != 0 && (sample.Bias < minBias || sample.Bias > maxBias) {
+		// The bounds are the trim's own, the ones protocol.BiasOr clamps to;
+		// 0 is a sample from a ride that sends none.
+		if sample.Bias != 0 && (sample.Bias < protocol.MinBias || sample.Bias > protocol.MaxBias) {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"A sample's bias is out of range — 0.8 to 1.2.", "samples")
+				fmt.Sprintf("A sample's bias is out of range — %.1f to %.1f.", protocol.MinBias, protocol.MaxBias), "samples")
 			return
 		}
 		// A workout second past the six-hour ceiling is no second of any

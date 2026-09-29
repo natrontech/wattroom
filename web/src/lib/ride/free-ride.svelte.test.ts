@@ -12,7 +12,6 @@ vi.mock('$lib/ride/save', () => ({
 }));
 const ended: string[] = [];
 vi.mock('$lib/ride/buffer', () => ({
-	MIN_SAMPLES: 60,
 	openRideBuffer: vi.fn(async () => ({
 		crashSafe: true,
 		append() {},

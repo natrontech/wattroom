@@ -42,10 +42,6 @@ type SessionSaver interface {
 	AmendRide(ctx context.Context, channel, session, workoutName, workoutJSON string, startedAt time.Time, rider RiderRecord)
 }
 
-// MinRideSamples is the saver's threshold: fewer than a minute of samples is
-// a misclick, not a ride — the same rule the client's crash recovery uses.
-const MinRideSamples = 60
-
 // XpKeeper hears what a room did that earns XP or counts toward an
 // achievement (#467). Defined here, where it is consumed; the gamify service
 // implements it. Every call happens outside the hub's locks and must return
@@ -78,7 +74,7 @@ type SessionClosed struct {
 // SessionRider is one person the session saw — on a bike, in voice, or both.
 type SessionRider struct {
 	ID string
-	// At least MinRideSamples samples: a ride the saver keeps.
+	// At least protocol.MinRideSamples samples: a ride the saver keeps.
 	Rode bool
 	// Seconds in the voice channel while the timeline ran.
 	VoiceSeconds int

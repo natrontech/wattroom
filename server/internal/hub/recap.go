@@ -102,7 +102,7 @@ func (rm *channelState) recapLocked(state protocol.SessionState, now time.Time) 
 			From: s.from.UnixMilli(), To: s.to.UnixMilli(),
 			// The same threshold the saver keeps a ride at: a filled pip
 			// means there is a ride row to match it.
-			Rode: rm.record.count(id) >= MinRideSamples,
+			Rode: rm.record.count(id) >= protocol.MinRideSamples,
 		})
 	}
 	sort.Slice(out.Riders, func(i, j int) bool {

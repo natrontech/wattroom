@@ -58,8 +58,8 @@ export const DEFAULTS = {
 	spiralReleaseSeconds: 10,
 	/** Bias step and range for the ±% control. */
 	biasStep: 0.01,
-	biasMin: 0.8,
-	biasMax: 1.2,
+	biasMin: protocol.MinBias,
+	biasMax: protocol.MaxBias,
 } as const;
 
 /** The ±% control's next bias: `step` on, to the percent, inside its range. */

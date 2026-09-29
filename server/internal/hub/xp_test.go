@@ -101,7 +101,7 @@ func TestSessionClosedNamesRidersAndListeners(t *testing.T) {
 	rm.accrueVoiceLocked("countdown", 10*time.Second)
 	rm.accrueVoiceLocked("running", 40*time.Second)
 	rm.accrueVoiceLocked("paused", 30*time.Second)
-	samples := make([]protocol.RiderMetrics, MinRideSamples)
+	samples := make([]protocol.RiderMetrics, protocol.MinRideSamples)
 	for i := range samples {
 		// Each at its own second of the minute the timeline ran (#2814).
 		samples[i] = protocol.RiderMetrics{Watts: 200, Seq: i, Clock: i + 1}

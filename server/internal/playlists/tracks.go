@@ -72,20 +72,6 @@ func rowTrack(r db.ListPlaylistTracksRow) db.PlaylistTrack {
 	}
 }
 
-// clampSec bounds a pasted ?t= the way the live queue does (jukebox.go's
-// maxSeekSec) — a saved track is validated at write time exactly like a live
-// "add", so nothing accepted here could be refused when it is later queued.
-func clampSec(v float64) float32 {
-	const maxSeekSec = 6 * 3600
-	if v < 0 || v != v { // NaN guards itself
-		return 0
-	}
-	if v > maxSeekSec {
-		return maxSeekSec
-	}
-	return float32(v)
-}
-
 // trackParams validates one add-track request into what InsertPlaylistTrack
 // needs — the same video-id/playlist-id shape check jukebox_entry.go's
 // newEntry applies to a live "add", reused via hub's exported validators so
@@ -116,7 +102,7 @@ func trackParams(playlistID pgtype.UUID, position int32, cmd protocol.JukeboxCom
 	}
 	return db.InsertPlaylistTrackParams{
 		PlaylistID: playlistID, Position: position,
-		VideoID: cmd.VideoID, Title: textx.Clip(cmd.Title, 200), StartSec: clampSec(cmd.PositionSec),
+		VideoID: cmd.VideoID, Title: textx.Clip(cmd.Title, 200), StartSec: float32(protocol.ClampSeek(cmd.PositionSec)),
 		Tracks: []byte("[]"),
 	}, true
 }

@@ -132,7 +132,7 @@ func (rm *channelState) closedLocked(state protocol.SessionState, now time.Time)
 	ev := &SessionClosed{Channel: rm.channel, SessionID: state.ID, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
 	for _, id := range rm.seenOrder {
 		ev.Riders = append(ev.Riders, SessionRider{
-			ID: id, Rode: rm.record.count(id) >= MinRideSamples,
+			ID: id, Rode: rm.record.count(id) >= protocol.MinRideSamples,
 			VoiceSeconds: int(rm.voiceMs[id] / 1000),
 		})
 	}

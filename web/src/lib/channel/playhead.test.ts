@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MaxSeekSeconds } from '$lib/protocol';
 import {
 	chase,
 	clampSeek,
@@ -61,6 +62,6 @@ describe('clampSeek', () => {
 	it('stops a scrub short of the end, and at the server cap without one', () => {
 		expect(clampSeek(500, 120)).toBe(119);
 		expect(clampSeek(-30)).toBe(0);
-		expect(clampSeek(99_999)).toBe(6 * 3600);
+		expect(clampSeek(99_999)).toBe(MaxSeekSeconds);
 	});
 });
