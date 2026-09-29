@@ -316,6 +316,15 @@ Targets are fractions of FTP; absolute watts allowed via `"watts": 250` instead 
 
 `repeat` steps nest: a set of sets expresses over-unders without writing every rep out. The engine has always flattened recursively; the type used to forbid it (#12).
 
+A **road workout** carries its road by reference at the top level, and nothing
+else: `"road": { "routeId": "…", "fromM": 0, "toM": 42000, "stepEndM": [ … ] }`
+names the stored route, the stretch it rides (forward, within the route's
+**200 km**), and where each block ends, in order along that stretch. A road
+that carries heights or a shape is refused, because a copy could not be erased
+with the route (#3051). Every read attaches the reader's cut of the road (A
+route's place). A `road` step may set `fromM`, where on the road it starts;
+absent is where the last one left off. It has no target and is unscored.
+
 A workout may also carry top-level `"unscored": true`, which says its execution score is meaningless and stores the ride with `execution_scored = false` — no percentage on the ride, no `execution% × 50` XP bonus. Absent is scored. The **ramp test is the only workout that sets it**, and the editor never offers it: it is a property of a workout that measures the rider, not a setting (#1400).
 
 ## Power zones (Coggan 7-zone, % of FTP)
@@ -820,6 +829,9 @@ What v0 ships (#3022):
 | Reference rider              | **75 kg** rider + **8 kg** bike at **225 W**                                                                                            |
 | Pace model                   | Martin et al. 1998, stepped once a second in **4** substeps (`$lib/road/pace.ts` and its Go twin `internal/road`, held to **0.1 %** by shared golden vectors): Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, CdA **0.32 m²** until the Kickr sessions measure it. The pace model and FTMS share this one CdA; the factor between it and the Cw FTMS is sent (**0.51 kg/m** today, `SIM_DEFAULTS`) is what that session measures, and this row does not assert it |
 | Riding on a road             | virtual speed above **0.5 m/s** — presence, auto-pause, auto-end and the recording rule read this                                        |
+| Corners                      | a bend of radius r is taken at √(**0.6 g** × r), a 31° lean, and the pace brakes at **4 m/s²** to meet it; there is no brake control     |
+| A sample on a road           | its place runs forward from 0 to the route's length, at most **30 m** a second; its height stays within **−500 … 9,000 m** (the .fit's own floor) |
+| A road on a workout          | the reader's cut (A route's place), at most **48 KiB** packed                                                                            |
 | Leg                          | at most **6 h**                                                                                                                         |
 
 At the default difficulty a −6 % descent feels −1.5 %. A route ride is unscored;
@@ -832,6 +844,9 @@ scored workout (ADR-0062's table).
   (length in m × average %) at least **1,500**;
 - its class by score: **IV** above 8,000, **III** above 16,000, **II** above
   32,000, **I** above 64,000, **HC** above 80,000 — always in Roman numerals;
+- a dip that loses less than **20 m** and is back over the top within
+  **300 m** does not end a climb;
+- a road keeps its hardest **32** climbs;
 - the climb card opens by itself for class **IV** and harder.
 
 ## A route's place ([ADR-0063](decisions/0063-a-route-keeps-its-place-with-care.md))
