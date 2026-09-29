@@ -27,6 +27,12 @@ export interface SteadyStep {
 	 */
 	hrLow?: number;
 	hrHigh?: number;
+	/**
+	 * HR hold (#67 flavour 2, docs/SPEC.md): the rider's own client moves the
+	 * ERG watts to keep heart rate in the band above, within ±10 % FTP of the
+	 * target. Needs a band; never scored; rides alone.
+	 */
+	hrHold?: boolean;
 }
 
 export interface RepeatStep {
@@ -78,6 +84,8 @@ export interface Segment {
 	/** HR band carried from the step (steady only, display-only, bpm) */
 	hrLow?: number;
 	hrHigh?: number;
+	/** The band is held rather than shown (#67) — unscored. */
+	hrHold?: boolean;
 	/**
 	 * Path into the original (unexpanded) step tree, for UI highlighting:
 	 * `[i]` a top-level step, `[i, j]` a step inside a repeat. Every pass of a

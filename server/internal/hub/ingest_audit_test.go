@@ -128,6 +128,9 @@ func TestCheckPickRefusesWhatTheAPIWould(t *testing.T) {
 		{"the socket's number is not the length", protocol.Control{WorkoutName: "x", WorkoutJSON: ok, TotalSeconds: 48 * 3600}, ""},
 		{"a workout the editor refuses", protocol.Control{WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"steady","seconds":600,"target":25}]}`, TotalSeconds: 600}, "300% ceiling"},
 		// Within every per-step bound and past the expansion budget (#1708).
+		// A heart-rate hold rides alone (#67): riding to heart rate as a group
+		// means seeing other riders' heart rate (ADR-0008).
+		{"a heart-rate hold", protocol.Control{WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"steady","seconds":600,"target":0.65,"hrHigh":145,"hrHold":true}]}`, TotalSeconds: 600}, "rides alone"},
 		{"a pick that expands past the budget", protocol.Control{WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"repeat","times":50,"steps":[{"type":"repeat","times":50,"steps":[{"type":"steady","seconds":60,"target":0.8}]}]}]}`, TotalSeconds: 600}, "expands past"},
 	}
 	for _, c := range cases {

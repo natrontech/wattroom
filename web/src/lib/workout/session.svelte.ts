@@ -5,6 +5,7 @@ import type { Trainer, TrainerSample } from '$lib/ble/trainer';
 import { createActuator } from '$lib/ride/actuation';
 import { DEFAULTS, toleranceBand } from './guards';
 import { createRiderGuards } from './rider-guards.svelte';
+import { createHrHold } from './hr-hold.svelte';
 import { createRideRecord } from './ride-record.svelte';
 import { createRideClock } from './ride-clock.svelte';
 import { createRideLife } from './ride-life.svelte';
@@ -37,6 +38,8 @@ export function createRideSession({
 	 */
 	const guards = createRiderGuards();
 	const record = createRideRecord(ftp);
+	// A step that holds heart rate moves its own watts (#67).
+	const hrHold = createHrHold(ftp);
 	const life = createRideLife(trainer, {
 		onSample,
 		tick,
@@ -61,7 +64,7 @@ export function createRideSession({
 	const target = $derived(
 		state === 'autopaused' || state === 'countdown' || guards.spiralActive
 			? 0
-			: (clock.info.targetWatts ?? 0),
+			: hrHold.watts(clock.info.segment, clock.info.targetWatts ?? 0),
 	);
 
 	const inBand = $derived(
@@ -102,6 +105,7 @@ export function createRideSession({
 			at: raw.at,
 		};
 		sample = next;
+		hrHold.reading(next.heartRate, raw.at);
 		publish();
 		// Nothing is ridden during the count-in (#1800): the sample is kept, so
 		// the numbers are live the instant the clock starts, but the record, the
@@ -145,7 +149,8 @@ export function createRideSession({
 			state === 'running' &&
 			target > 0 &&
 			pedalling &&
-			clock.info.segment?.kind === 'steady'
+			clock.info.segment?.kind === 'steady' &&
+			!clock.info.segment.hrHold // never scored (ADR-0008)
 		)
 			record.score(next.watts, target, bias);
 	}
@@ -210,6 +215,7 @@ export function createRideSession({
 			finish();
 			return;
 		}
+		hrHold.tick(clock.info.segment, now());
 		applyTarget();
 		clock.sync();
 	}
@@ -272,6 +278,10 @@ export function createRideSession({
 		},
 		get spiralActive() {
 			return guards.spiralActive;
+		},
+		/** A heart-rate hold with no fresh heart rate: holding its watts (#67). */
+		get hrHoldLost() {
+			return hrHold.lost;
 		},
 		/** The trainer this ride holds, for the recovery card (#1847). */
 		get trainerName() {

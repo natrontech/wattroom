@@ -104,6 +104,9 @@ func checkStep(s Step, where string, depth int) error {
 		if err := checkBand(s.HrLow, s.HrHigh, minHr, maxHr, "bpm", where); err != nil {
 			return err
 		}
+		if s.HrHold && s.HrLow == 0 && s.HrHigh == 0 {
+			return refusal(fmt.Sprintf("%s: a heart-rate hold needs an HR band to hold.", where))
+		}
 		if s.Watts != 0 {
 			if s.Watts < 0 || s.Watts > maxWatts {
 				return refusal(fmt.Sprintf("%s: %.0f W is outside 1–%d.", where, s.Watts, maxWatts))
@@ -163,6 +166,19 @@ func checkBand(low, high, min, max int, unit, where string) error {
 	}
 	if low != 0 && high != 0 && low > high {
 		return refusal(fmt.Sprintf("%s: the %s band is upside down (%d > %d).", where, unit, low, high))
+	}
+	return nil
+}
+
+// CheckRidesAlone refuses a workout a session cannot ride: one with a
+// heart-rate hold (#67, docs/SPEC.md). Riding to heart rate as a group
+// means seeing other riders' heart rate, which ADR-0008 leaves for a
+// decision of its own. The refusal is one line, safe to send.
+func CheckRidesAlone(segments []Segment) error {
+	for _, s := range segments {
+		if s.HrHold {
+			return refusal("This workout holds your heart rate, and that rides alone: ride it on your own, or take the hold off its steps.")
+		}
 	}
 	return nil
 }

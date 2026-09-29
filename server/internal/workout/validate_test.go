@@ -29,6 +29,8 @@ func TestValidateMirrorsTheEditor(t *testing.T) {
 		{"a cadence floor on the guard", steady(`,"cadenceLow":50`), "spiral guard"},
 		{"a cadence band upside down", steady(`,"cadenceLow":100,"cadenceHigh":80`), "upside down"},
 		{"an HR band past a heart", steady(`,"hrLow":100,"hrHigh":230`), "outside 60–220"},
+		{"a heart-rate hold under a cap", steady(`,"hrHigh":145,"hrHold":true`), ""},
+		{"a heart-rate hold with no band", steady(`,"hrHold":true`), "needs an HR band"},
 		{"a warm-up", `{"steps":[{"type":"warmup","seconds":300,"from":0.35,"to":0.5}]}`, ""},
 		{"a ramp to nowhere", `{"steps":[{"type":"ramp","seconds":300,"from":0.5}]}`, "to must be above 0"},
 		{"a sprint", `{"steps":[{"type":"sprint","seconds":15}]}`, ""},
@@ -58,5 +60,25 @@ func TestRefusalMessage(t *testing.T) {
 	}
 	if _, ok := RefusalMessage(errors.New("pgx: connection reset")); ok {
 		t.Fatal("any other error is not a message")
+	}
+}
+
+// A heart-rate hold is never scored (ADR-0008) and rides alone (#67).
+func TestAHeartRateHoldIsUnscoredAndRidesAlone(t *testing.T) {
+	segments, err := Parse(`{"steps":[{"type":"steady","seconds":60,"target":0.8},{"type":"steady","seconds":60,"target":0.65,"hrHigh":145,"hrHold":true}]}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, scored := TargetAt(segments, 200, 30); !scored {
+		t.Fatal("a plain steady block went unscored")
+	}
+	if watts, scored := TargetAt(segments, 200, 90); scored || watts != 130 {
+		t.Fatalf("the hold: %v W scored %v, want 130 W unscored", watts, scored)
+	}
+	if err := CheckRidesAlone(segments); err == nil || !strings.Contains(err.Error(), "rides alone") {
+		t.Fatalf("CheckRidesAlone = %v", err)
+	}
+	if err := CheckRidesAlone(segments[:1]); err != nil {
+		t.Fatalf("a workout with no hold refused: %v", err)
 	}
 }

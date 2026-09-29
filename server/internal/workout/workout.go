@@ -42,6 +42,9 @@ type Step struct {
 	// only so Validate can bound it the way the editor does.
 	HrLow  int `json:"hrLow,omitempty"`
 	HrHigh int `json:"hrHigh,omitempty"`
+	// HR hold (#67 flavour 2): the rider's own client moves the watts to
+	// keep heart rate in the band. Never scored, and it rides alone.
+	HrHold bool `json:"hrHold,omitempty"`
 }
 
 type definition struct {
@@ -77,6 +80,8 @@ type Segment struct {
 	// The block's cadence band in rpm, 0 when the workout did not say (#66).
 	CadenceLow  int
 	CadenceHigh int
+	// The block holds heart rate (#67): unscored, and no session rides it.
+	HrHold bool
 }
 
 // Parse flattens a workout JSON into timeline segments.
@@ -121,6 +126,7 @@ func flatten(steps []Step, at, depth int, budget *int) ([]Segment, int, error) {
 				Kind: s.Type, Start: at, Seconds: s.Seconds,
 				Target: s.Target, Watts: s.Watts, From: s.From, To: s.To,
 				CadenceLow: s.CadenceLow, CadenceHigh: s.CadenceHigh,
+				HrHold: s.HrHold,
 			})
 			at += s.Seconds
 		}
@@ -139,10 +145,11 @@ func TargetAt(segments []Segment, ftp float64, second int) (watts float64, score
 		}
 		switch seg.Kind {
 		case "steady":
+			// A heart-rate hold carries no weight in execution (ADR-0008, #67).
 			if seg.Watts > 0 {
-				return seg.Watts, true
+				return seg.Watts, !seg.HrHold
 			}
-			return seg.Target * ftp, true
+			return seg.Target * ftp, !seg.HrHold
 		case "warmup", "cooldown", "ramp":
 			return seg.rampPct(second) * ftp, false
 		default:
