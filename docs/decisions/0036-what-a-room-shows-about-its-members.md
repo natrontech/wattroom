@@ -260,3 +260,8 @@ membership, off by default and not retroactive. A counted ride adds tour metres
 to the crew's caravan; the crew sees a kilometre and an unordered list of who
 moved it this week, never a number per member. Leaving the crew takes the
 opt-in with it.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+An open ride **orders nobody**. Its race formats show each rider only their
+own placing, once, on the closing card, and nothing is stored.

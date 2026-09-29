@@ -41,3 +41,9 @@ Easier: a report costs the rider one tap and costs the fixer no archaeology, bec
 Harder: a report is an export of that rider's ride telemetry to a third party, against a "rides private by default" promise. Capture must say so in plain words at the moment of the tap, and the payload carries only the reporter's own data — never the room's.
 
 Accepted ceilings, each with its upgrade trigger. Session logs are in-memory and die with the process — add Loki when a report needs logs older than the current server. Reports go to disk as JSONL with no database — add a table when there are enough to want queries. There is no staging environment, so a fix is proven by tests and local verification, and production is the first place it meets a real trainer — add `beta.wattroom.ch` when a bad deploy lands on a real ride. The agent runs only while a human is watching, so nothing progresses overnight — move to a scheduled headless run when the queue outgrows the attention. Nobody is told their report shipped except by reading the issue — add a notification when riders stop reporting. Screenshots exist only when the agent reproduces, so a browser- or GPU-specific rendering bug that reproduces nowhere else has no picture — that class of bug is the trigger for client-side capture, not a reason to build it now.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+A report about a rider or an open ride goes to the operator's **private
+queue**, never to a public issue. Open rides put strangers on one road, and a
+public issue about one of them would name them to everyone.

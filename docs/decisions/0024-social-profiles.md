@@ -138,3 +138,8 @@ the conversation, it does not black out the history" is about pictures already
 **Not narrowed with it: the audience itself.** This route now reads
 `visible_rooms` like the other two, so the 2026-09-10 amendment above still
 holds — a room you may both enter, crew-visible rooms and grants included.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+A marker on an open ride **never links to a page**: a stranger has no profile
+to open.

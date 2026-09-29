@@ -177,3 +177,9 @@ later, and narrowing it is still a promise broken. Listing opens the door into
 the crew and nothing past it — the channels, their chat, the roster and every
 number stay behind the door, for members. The link unfurls with the crew's
 name and mark (#2445), which is the same disclosure the entry already makes.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+An open ride's **card** is a second public surface: a listed crew's name, mark
+and door, or "Hosted by a crew"; the road, format, pace and time. An
+**unlisted crew's name and image never become public**.
