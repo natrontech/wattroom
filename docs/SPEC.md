@@ -70,6 +70,7 @@
 | **Ghost** | A recorded line ridden again beside you: your own, a crewmate's or a board line ([ADR-0068](decisions/0068-your-own-ghost.md)). Never a live rider. |
 | **Line** | An effort's position over time, a point every 10 m — what a ghost is drawn from ([ADR-0082](decisions/0082-a-climb-belongs-to-the-map.md)). |
 | **Faded** | A live rider whose connection dropped: greyed, with "last seen 0:06". Never drawn like a ghost, so "ghost" keeps one meaning (#3227). |
+| **Road board** | The unnamed, opt-in times on a library climb ([ADR-0083](decisions/0083-the-road-board.md)): a time, a Category and an ISO week — no name, crew or watts — the top 10 per Category and stretch over 90 days. The one board WattRoom has. |
 | **Leg** | The stretch of a route ridden in one sitting. A long route rides in several legs, each starting where the last one stopped; a leg is at most 6 h. |
 | **Tour** | A crew's season: one running, ordered list of stages its caravan rides through, cooperative and never ranked ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
 | **Stage** | One route in a Tour, ridden from its km-0 anchor; a Strava-origin route never is one ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
@@ -833,6 +834,9 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | Ghosts            | at most **3** at once                                                                                                            |
 | Visible to others | only efforts that pass `board_ok` (Road times)                                                                                   |
 | A board           | only on climbs of at least **5 %** and **3 min** ([ADR-0083](decisions/0083-the-road-board.md))                                  |
+| Board entries     | the top **10** per Category and stretch, over a rolling **90 days**, each rider's best only; opt-in, unnamed ([ADR-0083](decisions/0083-the-road-board.md)) |
+| Board privacy     | no effort whose segment lies within **1,000 m** of its rider's zones or ends, checked when read                                 |
+| Board token       | valid **7 days**: an HMAC of the effort id and the ISO week                                                                      |
 
 ## Road times ([ADR-0074](decisions/0074-a-time-is-yours-when-your-watts-moved-your-dot.md) — defaults, tune in alpha)
 
