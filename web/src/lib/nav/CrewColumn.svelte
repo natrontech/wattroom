@@ -243,7 +243,7 @@
 			     the pointer fills in. -->
 			<li
 				{...mover.target(c)}
-				class="rounded outline-1 -outline-offset-1 transition-[background-color,outline-color] duration-150 motion-reduce:transition-none {mover.dropOn ===
+				class="rounded outline-1 -outline-offset-1 transition-[background-color,outline-color] duration-(--dur-quick) motion-reduce:transition-none {mover.dropOn ===
 				c.id
 					? 'bg-neon/15 outline-neon/70 outline'
 					: mover.dragging && mover.dragging.from !== c.id

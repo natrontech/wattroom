@@ -110,7 +110,7 @@
 				>
 				<span class="bg-ink/5 h-3 overflow-hidden rounded-full">
 					<span
-						class="block h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none"
+						class="block h-full rounded-full transition-[width] duration-(--dur-live) motion-reduce:transition-none"
 						style="width: {(watts / most) * 100}%; background: {ZONE_VAR[zone]}"
 					></span>
 				</span>

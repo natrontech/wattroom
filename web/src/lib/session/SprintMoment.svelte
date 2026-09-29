@@ -127,7 +127,7 @@
 							class="bg-surface hidden h-3 w-48 shrink-0 overflow-hidden rounded-full sm:block"
 						>
 							<span
-								class="bg-watt block h-full transition-[width] duration-300"
+								class="bg-watt block h-full transition-[width] duration-(--dur-live)"
 								style="width: {leader > 0
 									? Math.min(100, (rider.watts / rider.kg / leader) * 100)
 									: 0}%"

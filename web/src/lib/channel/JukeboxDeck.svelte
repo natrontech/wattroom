@@ -278,7 +278,7 @@
 			>
 				<span class="bg-muted/20 block h-1.5 rounded-full">
 					<span
-						class="bg-watt relative block h-full rounded-full transition-[width] duration-200"
+						class="bg-watt relative block h-full rounded-full transition-[width] duration-(--dur-base)"
 						style="width: {progress}%"
 					>
 						<span
