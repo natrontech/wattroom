@@ -25,6 +25,7 @@ type harness struct {
 	store *store.Store
 	users *testx.Users
 	keys  *secrets.Cipher
+	svc   *Service
 }
 
 // testKey is a key for tests alone, 32 bytes of one letter.
@@ -51,8 +52,9 @@ func setup(t *testing.T, keys *secrets.Cipher) *harness {
 		t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", u.ID) })
 	}
 	mux := http.NewServeMux()
-	New(st, users, keys, slog.New(slog.DiscardHandler)).Register(mux)
-	return &harness{mux: mux, store: st, users: users, keys: keys}
+	svc := New(st, users, keys, slog.New(slog.DiscardHandler))
+	svc.Register(mux)
+	return &harness{mux: mux, store: st, users: users, keys: keys, svc: svc}
 }
 
 func (h *harness) call(t *testing.T, user, method, path string, body any) (int, map[string]any) {
@@ -174,6 +176,9 @@ func TestWithoutAKeyNoCoordinateReachesTheTable(t *testing.T) {
 	}
 }
 
+// Someone else's route reads as absent (#3024). Its map is the one read that
+// answers otherwise: a rider it is not being ridden with is refused, 403
+// (#3096, road_test.go).
 func TestSomebodyElsesRouteIsAbsent(t *testing.T) {
 	h := setup(t, testKey(t, "k"))
 	id := h.keep(t, "alice")
@@ -182,7 +187,6 @@ func TestSomebodyElsesRouteIsAbsent(t *testing.T) {
 		body         any
 	}{
 		{http.MethodGet, "/api/routes/" + id, nil},
-		{http.MethodGet, "/api/routes/" + id + "/shape", nil},
 		{http.MethodPatch, "/api/routes/" + id, map[string]string{"name": "mine now"}},
 		{http.MethodDelete, "/api/routes/" + id, nil},
 	} {

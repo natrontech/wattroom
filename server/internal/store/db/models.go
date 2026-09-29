@@ -330,6 +330,13 @@ type Route struct {
 	RoadSealed []byte
 }
 
+type RouteCrewConsent struct {
+	RouteID   pgtype.UUID
+	CrewID    pgtype.UUID
+	Shared    bool
+	DecidedAt pgtype.Timestamptz
+}
+
 type ScheduledSession struct {
 	ID          pgtype.UUID
 	WorkoutName string
