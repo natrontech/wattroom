@@ -1,13 +1,18 @@
 -- name: CreateRide :one
 -- A session's ride names its crew, the voice channel and the session (#2443);
--- a solo ride leaves all three null.
+-- a solo ride leaves all three null. The road summary (#3053) is what exists
+-- only at the moment of saving: null where a ride had no road, or the saver
+-- did not know.
 insert into rides (
     user_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
     ftp_watts, samples, curve, xp, norm_watts, last20m_hr,
-    crew_id, channel_id, session_id
+    crew_id, channel_id, session_id,
+    route_id, route_key, road_h, ride_mode, timeable,
+    from_m, distance_m, climbed_m, weight_kg, mean_shelter
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 returning id;
 
 -- name: ListUserRides :many
@@ -26,6 +31,7 @@ returning id;
 -- no foreign key, so it outlives a crew whose deletion sets the other two null.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
+       rides.distance_m, rides.climbed_m,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -45,6 +51,7 @@ limit $2;
 -- columns as ListUserRides so one JSON mapping serves both.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
+       rides.distance_m, rides.climbed_m,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -377,7 +384,9 @@ update rides set norm_watts = $2 where id = $1;
 select r.id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution,
        r.execution_scored, r.norm_watts, r.ftp_watts, r.ftp_after_watts, r.xp, r.curve,
        r.shared_at, r.rpe, r.note,
-       c.name as crew_name, ch.name as channel_name
+       c.name as crew_name, ch.name as channel_name,
+       r.ride_mode, r.timeable, r.from_m, r.distance_m, r.climbed_m, r.weight_kg,
+       r.mean_shelter, r.route_key, r.road_h
 from rides r
 left join crews c on c.id = r.crew_id
 left join channels ch on ch.id = r.channel_id

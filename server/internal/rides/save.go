@@ -2,16 +2,19 @@ package rides
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 	"unicode/utf8"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
+	"github.com/natrontech/wattroom/server/internal/road"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -47,6 +50,8 @@ type createRequest struct {
 	WorkoutJSON string       `json:"workoutJson"`
 	StartedAt   time.Time    `json:"startedAt"`
 	Samples     []sampleJSON `json:"samples"`
+	// The stored route the ride rode (#3053): one of the rider's own.
+	RouteID string `json:"routeId,omitempty"`
 }
 
 // roadRefusal answers a sample off the road in the bounds protocol holds it to.
@@ -139,12 +144,27 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	route, ridden, ok := s.routeOf(w, r, user.ID, req.RouteID)
+	if !ok {
+		return
+	}
 	row, err := stats.BuildRideRow(user.ID, req.WorkoutName,
 		req.WorkoutJSON, req.StartedAt, int(user.FtpWatts), samples)
 	if err != nil {
 		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
 			"That ride could not be scored against this workout.", "workoutJson")
 		return
+	}
+	stats.SetHow(&row, stats.RideMode(req.WorkoutJSON, false), route != nil, stats.WeightThatDay(user))
+	if route != nil {
+		ride := stats.ReplayRoad(ridden, samples, float64(user.WeightKg)+protocol.BikeKg)
+		stats.SetRoad(&row, *route, ride)
+		// The replay is the record (ADR-0074); a client whose own metres
+		// part from it by more than this is worth knowing about.
+		if ride.Gap > stats.ReplayGapLogged {
+			s.log.Warn("road ride replay parts from the client", "route", req.RouteID,
+				"replayed_m", ride.DistanceM, "gap", ride.Gap)
+		}
 	}
 	row.Xp += stats.StreakXP(r.Context(), s.store.Queries, user.ID, req.StartedAt)
 	// Under the rider's row lock, and only if it is not there yet (audit
@@ -218,5 +238,36 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		StartedAt: req.StartedAt.Format(time.RFC3339),
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(user.FtpWatts), Xp: int(row.Xp),
+		DistanceM: row.DistanceM, ClimbedM: row.ClimbedM,
 	})
+}
+
+// routeOf reads the stored route a ride names (#3053): the rider's own, or
+// none when the ride names none. A route that is someone else's reads as
+// absent, like a ride that is.
+func (s *Service) routeOf(w http.ResponseWriter, r *http.Request, user pgtype.UUID, id string) (*db.GetOwnerRouteRow, road.Road, bool) {
+	if id == "" {
+		return nil, road.Road{}, true
+	}
+	routeID, err := store.ParseUUID(id)
+	if err != nil {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", "That is not a route id.", "routeId")
+		return nil, road.Road{}, false
+	}
+	route, err := s.store.Queries.GetOwnerRoute(r.Context(), db.GetOwnerRouteParams{ID: routeID, OwnerID: user})
+	if errors.Is(err, pgx.ErrNoRows) {
+		httpx.WriteFieldError(w, http.StatusNotFound, "not_found",
+			"That route is not one of yours, so the ride cannot be saved on it.", "routeId")
+		return nil, road.Road{}, false
+	}
+	if err != nil {
+		httpx.Fail(w, s.log, "ride route read failed", err, "The ride could not be saved. It stays on this device.")
+		return nil, road.Road{}, false
+	}
+	ridden, err := road.UnpackRoad(route.Road)
+	if err != nil {
+		httpx.Fail(w, s.log, "stored road unreadable", err, "The ride could not be saved. It stays on this device.", "route", id)
+		return nil, road.Road{}, false
+	}
+	return &route, ridden, true
 }

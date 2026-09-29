@@ -269,6 +269,16 @@ type Ride struct {
 	CrewID          pgtype.UUID
 	ChannelID       pgtype.UUID
 	SessionID       pgtype.UUID
+	RouteID         pgtype.UUID
+	RouteKey        *string
+	RoadH           *string
+	RideMode        *string
+	Timeable        *bool
+	FromM           *int32
+	DistanceM       *int32
+	ClimbedM        *int32
+	WeightKg        *int16
+	MeanShelter     *float32
 }
 
 type RideExport struct {

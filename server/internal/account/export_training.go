@@ -48,6 +48,19 @@ func (x *export) rides() category {
 				// nobody rated, which is most of them.
 				"rpe":  ride.Rpe,
 				"note": ride.Note,
+				// How and where it was ridden (#3053): null on a ride from
+				// before the columns, and the road ones on a ride with no road.
+				// routeKey and roadHash are hashes of the rider's own road —
+				// data held about them, so it goes, though it names no place.
+				"rideMode":    ride.RideMode,
+				"timeable":    ride.Timeable,
+				"fromM":       ride.FromM,
+				"distanceM":   ride.DistanceM,
+				"climbedM":    ride.ClimbedM,
+				"weightKg":    ride.WeightKg,
+				"meanShelter": ride.MeanShelter,
+				"routeKey":    ride.RouteKey,
+				"roadHash":    ride.RoadH,
 			})
 		}
 		return summaries, nil
