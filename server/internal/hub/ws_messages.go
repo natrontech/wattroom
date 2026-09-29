@@ -23,6 +23,9 @@ func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider p
 	if msg.Poke != nil {
 		h.poke(c, rm, rider, *msg.Poke)
 	}
+	if msg.Roadside != nil {
+		h.roadside(c, rm, rider, *msg.Roadside)
+	}
 	if msg.Device != nil {
 		// Untrusted input, bounded at the boundary to the closed set
 		// (errors.md): the room renders this, and anything outside the

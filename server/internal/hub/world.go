@@ -64,13 +64,18 @@ type bunch struct {
 	komLeft   bool
 	komsArmed int
 	lastKom   time.Time
+	// Where each spectator stands (#3029), and the revision the tick
+	// carries them under.
+	stands    map[string]*stand
+	standsRev int64
 }
 
 func newBunch(r *routeRide, now time.Time) *bunch {
 	b := &bunch{
 		road: r.profile, fromM: r.FromM, reverse: r.Reverse, loop: r.Loop,
 		at: now, heard: make(map[string]sample), places: make(map[string]*place),
-		koms: komOpenings(r.profile, r.Reverse),
+		koms:   komOpenings(r.profile, r.Reverse),
+		stands: make(map[string]*stand),
 	}
 	b.komU, b.komLeft = b.komAt(b.fromM, false)
 	return b
@@ -274,9 +279,15 @@ func (s *session) rideBunch(now time.Time) {
 	})
 }
 
+// onRoad is whether the session rides a bunch on a road now: from its
+// countdown until it is done.
+func (s *session) onRoad() bool {
+	return s.bunch != nil && s.phase != "idle" && s.phase != "done"
+}
+
 // world is the bunch on the tick while the session rides it; nil otherwise.
 func (s *session) world(hideOffsets bool) *protocol.World {
-	if s.bunch == nil || s.phase == "idle" || s.phase == "done" {
+	if !s.onRoad() {
 		return nil
 	}
 	return s.bunch.world(hideOffsets)
