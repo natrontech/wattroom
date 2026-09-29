@@ -48,6 +48,12 @@ export interface RecordedSecond {
 	 */
 	bias: number;
 	/**
+	 * On a road, the dot's speed this second (#3056): what tells a coasted
+	 * descent from a rider who got off when a stopped tail is trimmed.
+	 * Never uploaded — every upload names its fields.
+	 */
+	virtualMps?: number;
+	/**
 	 * The guard had the trainer off the target this second (#1796):
 	 * paused, counting back in, or released. The live score skips it;
 	 * so must the saved one.
@@ -115,7 +121,12 @@ export function createRideRecord(ftp: number) {
 		add(
 			at: number,
 			clock: number,
-			sample: { watts: number; cadence: number; heartRate?: number },
+			sample: {
+				watts: number;
+				cadence: number;
+				heartRate?: number;
+				virtualMps?: number;
+			},
 			bias: number,
 			released: boolean,
 		): RecordedSecond {
@@ -129,6 +140,9 @@ export function createRideRecord(ftp: number) {
 				heartRate: Math.max(0, Math.round(sample.heartRate ?? 0)),
 				bias,
 				released,
+				...(sample.virtualMps !== undefined && {
+					virtualMps: sample.virtualMps,
+				}),
 			};
 			recording.push(recorded);
 			// Uncapped, for the reason session/recording.svelte.ts gives: the graph
