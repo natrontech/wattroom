@@ -665,6 +665,20 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
 | Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
 
+## Riding a road together (defaults — tune in alpha; [ADR-0065](decisions/0065-riding-a-road-together.md))
+
+The bunch's one position advances once per whole second, never on a sprint
+window's 4 Hz ticks. Its pace:
+
+| The plan is                             | The bunch moves at                                                   |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| an ERG workout, or a workout on a route | the reference rider (Route rides) at the block's prescribed %FTP     |
+| a sprint block                          | the reference rider at **150 %** FTP                                 |
+| paused                                  | **0**                                                                |
+| a road step                             | the live mean %FTP of the pedalling riders, each capped at **150 %** |
+
+A rider's bias never moves the bunch.
+
 ## Rider animation (defaults — tune in alpha; #3066)
 
 How a rider's figure in a ride world moves. Every number here replaced one the world prototype
