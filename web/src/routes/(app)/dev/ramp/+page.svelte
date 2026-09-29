@@ -99,7 +99,7 @@
 			</div>
 			<div class="bg-surface mt-2 h-1.5 overflow-hidden rounded-full">
 				<div
-					class="bg-neon h-full transition-[width] duration-300"
+					class="bg-neon h-full transition-[width] duration-(--dur-live)"
 					style="width: {((60 - secondsToStep) / 60) * 100}%"
 				></div>
 			</div>

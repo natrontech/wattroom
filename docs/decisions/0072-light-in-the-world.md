@@ -74,3 +74,10 @@ The numbers are in docs/SPEC.md's "The world" section.
   curve with #3291.
 - Implementation: [#3085](https://github.com/natrontech/wattroom/issues/3085),
   [#3187](https://github.com/natrontech/wattroom/issues/3187).
+
+## Amendment, 2026-09-29 (#3283): Amended by ADR-0078 — one tone curve for world materials
+
+[ADR-0078](0078-real-ground-painted-light.md) replaces `NoToneMapping` for world materials with one hue-preserving
+curve, `NeutralToneMapping`. The rider's own dot, the zone ring and every watt
+accent set `toneMapped: false`, so ADR-0005's tokens never drift. The sky's hue
+stays art-directed to this ADR's blue hour. #3291 builds it.

@@ -18,6 +18,8 @@ Read the whole file first; grep for callers before changing a signature and upda
 
 Soft ceilings — split in the same change when crossed: Go files ~400 lines, Svelte components ~500, TS modules ~300.
 
+Pure data tables are exempt rather than split: `web/src/lib/workout/library.ts`, `web/src/lib/sound/cue-catalogue.ts` and `web/src/lib/themes.ts` are lists of entries, and cutting a list in two makes it harder to read, not easier. Their length is the content; logic that grows beside it still leaves (#3358).
+
 ## Done-checklist for any change
 
 - [ ] No new duplication (function, type, magic number)

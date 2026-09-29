@@ -3,7 +3,7 @@
 // It never looks along a single segment's heading, so bends sweep instead
 // of snapping, and it never goes below the ground.
 import * as THREE from 'three';
-import { damp } from './damp';
+import { damp } from '$lib/motion/damp';
 import { yOf } from './geometry';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
