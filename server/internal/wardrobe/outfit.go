@@ -17,6 +17,9 @@ import (
 // looks are the loadout's keys that are not slots: a look's free choices —
 // colours, options, sizes, skin and body — which cost nothing and are owned
 // by everyone (the catalogue's rules.priceTheIdea).
+// ponytail: stored as sent, bounded only by DecodeStrict's 64 KiB — the client
+// clamps them when it draws. Validate their shape here once another rider's
+// client draws them (Refs #3155).
 var looks = []string{"body", "colours", "opts", "params", "skin"}
 
 // handleOutfit saves what the rider wears: one item per slot, each one they
@@ -32,21 +35,24 @@ func (s *Service) handleOutfit(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "An outfit is a JSON object of slots and their items.")
 		return
 	}
-	owned, err := s.store.Queries.ListOwnedItems(r.Context(), user.ID)
-	if err != nil {
-		httpx.Fail(w, s.log, "outfit owned items failed", err, "The outfit could not be saved. Try again.")
-		return
-	}
-	if msg := checkLoadout(loadout, owned); msg != "" {
-		httpx.WriteError(w, http.StatusBadRequest, "validation_error", msg)
-		return
-	}
 	body, err := json.Marshal(loadout)
-	if err == nil {
-		err = s.store.Queries.SetOutfit(r.Context(), db.SetOutfitParams{UserID: user.ID, Loadout: body})
-	}
 	if err != nil {
-		httpx.Fail(w, s.log, "outfit save failed", err, "The outfit could not be saved. Try again.")
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "An outfit is a JSON object of slots and their items.")
+		return
+	}
+	// Under the lock an undo takes, so an item given back cannot be put on in
+	// the moment between reading the wardrobe and writing the outfit.
+	err = s.store.WithUserLocked(r.Context(), user.ID, func(q *db.Queries) error {
+		owned, err := q.ListOwnedItems(r.Context(), user.ID)
+		if err != nil {
+			return err
+		}
+		if msg := checkLoadout(loadout, owned); msg != "" {
+			return refusal{http.StatusBadRequest, "validation_error", msg}
+		}
+		return q.SetOutfit(r.Context(), db.SetOutfitParams{UserID: user.ID, Loadout: body})
+	})
+	if s.refused(w, err, "outfit save failed", "The outfit could not be saved. Try again.") {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
