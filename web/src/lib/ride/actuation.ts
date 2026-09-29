@@ -64,6 +64,39 @@ export function composeSim(
 	);
 }
 
+/**
+ * Why Easier / Harder does nothing here — the one line the controls show
+ * beside them, disabled (ux.md: never a press that fails).
+ */
+export const EASIER_HARDER_OFF = {
+	gated: 'Easier and Harder are not switched on here yet.',
+	noTrainer: 'Pair your trainer to make the ride easier or harder.',
+	lost: 'Another of your screens has the trainer.',
+	idle: 'Easier and Harder start with the ride.',
+	fixed: 'This ride sets your watts: nothing to make easier or harder.',
+} as const;
+
+/** One Easier / Harder press: whether anything moved, or why nothing can. */
+export type EasierHarder = { moved: boolean } | { disabled: string };
+
+/** What a press moves in ERG, when anything: true when it moved. */
+export type ErgPress = (dir: 1 | -1) => boolean;
+
+/**
+ * An ERG press over a value and its nudge — a workout's bias, the free
+ * ride's watts. It moved when the value did: a clamp at an end holds it.
+ */
+export function ergPress(
+	read: () => number,
+	nudge: (dir: 1 | -1) => void,
+): ErgPress {
+	return (dir) => {
+		const was = read();
+		nudge(dir);
+		return read() !== was;
+	};
+}
+
 const bytes = (road: SimParams) =>
 	Array.from(new Uint8Array(encodeSimulation(road))).join();
 const FLAT = bytes({ gradePct: 0 });
@@ -152,6 +185,16 @@ export function createActuator(
 		void trainer()?.setTargetPower(watts);
 	}
 
+	function shift(dir: 1 | -1): boolean {
+		if (lost || !gearsEnabled() || !intent || !('felt' in intent)) return false;
+		const space = gearSpace(ratio.ratio, k);
+		if (space.atEnd(dir)) return false;
+		k = space.step(dir);
+		const held = trainer();
+		if (held && !entry) writeRoad(held, true);
+		return true;
+	}
+
 	/** Out of the sprint and off the road: the next flips again, and a pending grade never lands. */
 	function release() {
 		clearTimeout(entry);
@@ -198,15 +241,21 @@ export function createActuator(
 		 * felt-grade slew and the drafting spacing; inside the entry flat it
 		 * moves k only. False when nothing moved.
 		 */
-		shift(dir: 1 | -1): boolean {
-			if (lost || !gearsEnabled() || !intent || !('felt' in intent))
-				return false;
-			const space = gearSpace(ratio.ratio, k);
-			if (space.atEnd(dir)) return false;
-			k = space.step(dir);
-			const held = trainer();
-			if (held && !entry) writeRoad(held, true);
-			return true;
+		shift,
+		/**
+		 * Easier / Harder, the ride's one pair of controls (ADR-0084; Jan,
+		 * 2026-09-28): a gear in SIM; in ERG what `erg` moves — a workout's
+		 * bias, the free ride's watts — and never k; anywhere else nothing,
+		 * with the hint the controls show.
+		 */
+		easierHarder(dir: 1 | -1, erg?: ErgPress): EasierHarder {
+			if (!gearsEnabled()) return { disabled: EASIER_HARDER_OFF.gated };
+			if (!trainer()) return { disabled: EASIER_HARDER_OFF.noTrainer };
+			if (lost) return { disabled: EASIER_HARDER_OFF.lost };
+			if (!intent) return { disabled: EASIER_HARDER_OFF.idle };
+			if ('felt' in intent) return { moved: shift(dir) };
+			if (!erg) return { disabled: EASIER_HARDER_OFF.fixed };
+			return { moved: erg(dir) };
 		},
 		/** A trainer sample, for the drivetrain: the real ratio and the flywheel speed. */
 		sample(sample: TrainerSample) {

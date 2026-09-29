@@ -6,7 +6,14 @@ import type {
 	TrainerSample,
 	TrainerStatus,
 } from '$lib/ble/trainer';
-import { createActuator, simulate } from './actuation';
+import { DEFAULTS, nudgedBias } from '$lib/workout/guards';
+import {
+	createActuator,
+	EASIER_HARDER_OFF,
+	ergPress,
+	simulate,
+} from './actuation';
+import { nudged } from './free-ride.svelte';
 
 /** A trainer that remembers every write and switches mode as a real one does. */
 class Recorder implements Trainer {
@@ -150,4 +157,118 @@ describe('simulate()', () => {
 		await simulate(trainer, 3);
 		expect(trainer.writes).toEqual(['sim:15', 'sim:-10', 'sim:3']);
 	});
+});
+
+// Jan, 2026-09-28 (ADR-0084): one pair of controls in every mode — a gear in
+// SIM, a workout's bias or the free ride's watts in ERG, and nothing, with a
+// hint, anywhere else.
+describe('Easier / Harder (#3328)', () => {
+	/** A value a press moves, by the rule that moves it. */
+	function held(start: number, step: (value: number, dir: 1 | -1) => number) {
+		let value = start;
+		return {
+			get value() {
+				return value;
+			},
+			press: ergPress(
+				() => value,
+				(dir) => (value = step(value, dir)),
+			),
+		};
+	}
+	const bias = (start: number) =>
+		held(start, (b, dir) => nudgedBias(b, dir * DEFAULTS.biasStep));
+	const watts = (start: number) =>
+		held(start, (w, dir) => nudged('watts', w, dir));
+
+	type Ride = 'sim' | 'erg' | 'no trainer' | 'lost' | 'not started';
+	const table: {
+		ride: Ride;
+		erg?: ReturnType<typeof held>;
+		dir: 1 | -1;
+		answer: object;
+		after?: number;
+	}[] = [
+		{ ride: 'sim', dir: 1, answer: { moved: true } },
+		{ ride: 'sim', dir: -1, answer: { moved: true } },
+		{ ride: 'erg', erg: bias(1), dir: 1, answer: { moved: true }, after: 1.01 },
+		{
+			ride: 'erg',
+			erg: bias(1),
+			dir: -1,
+			answer: { moved: true },
+			after: 0.99,
+		},
+		{
+			ride: 'erg',
+			erg: bias(1.2),
+			dir: 1,
+			answer: { moved: false },
+			after: 1.2,
+		},
+		{
+			ride: 'erg',
+			erg: bias(0.8),
+			dir: -1,
+			answer: { moved: false },
+			after: 0.8,
+		},
+		{
+			ride: 'erg',
+			erg: watts(200),
+			dir: 1,
+			answer: { moved: true },
+			after: 210,
+		},
+		{
+			ride: 'erg',
+			erg: watts(200),
+			dir: -1,
+			answer: { moved: true },
+			after: 190,
+		},
+		{
+			ride: 'erg',
+			erg: watts(1000),
+			dir: 1,
+			answer: { moved: false },
+			after: 1000,
+		},
+		{
+			ride: 'erg',
+			erg: watts(50),
+			dir: -1,
+			answer: { moved: false },
+			after: 50,
+		},
+		{ ride: 'erg', dir: 1, answer: { disabled: EASIER_HARDER_OFF.fixed } },
+		{
+			ride: 'no trainer',
+			dir: 1,
+			answer: { disabled: EASIER_HARDER_OFF.noTrainer },
+		},
+		{ ride: 'lost', dir: -1, answer: { disabled: EASIER_HARDER_OFF.lost } },
+		{
+			ride: 'not started',
+			dir: 1,
+			answer: { disabled: EASIER_HARDER_OFF.idle },
+		},
+	];
+
+	it.each(table)(
+		'$ride, $dir: $answer',
+		({ ride, erg, dir, answer, after }) => {
+			const trainer = new Recorder();
+			const act = createActuator(() =>
+				ride === 'no trainer' ? null : trainer,
+			);
+			if (ride === 'sim') act.grade(4);
+			if (ride === 'erg' || ride === 'lost') act.hold(200);
+			if (ride === 'lost') act.grant(false);
+			expect(act.easierHarder(dir, erg?.press)).toEqual(answer);
+			if (after !== undefined) expect(erg?.value).toBe(after);
+			// A gear moves in SIM alone: an ERG press never changes k.
+			expect(Math.sign(act.gear.k - 1)).toBe(ride === 'sim' ? dir : 0);
+		},
+	);
 });
