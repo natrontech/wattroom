@@ -10,7 +10,7 @@ import (
 )
 
 // handleMessage takes one client message, kind by kind.
-func (h *Hub) handleMessage(c *client, rm *room, channel string, rider protocol.Rider, msg protocol.ClientMessage) {
+func (h *Hub) handleMessage(c *client, rm *channelState, channel string, rider protocol.Rider, msg protocol.ClientMessage) {
 	// One message may carry several kinds; each is taken in this order.
 	if msg.Sensors != nil {
 		// Claims are per rider and cost one comparison per kind, so they
@@ -66,7 +66,7 @@ func (h *Hub) handleMessage(c *client, rm *room, channel string, rider protocol.
 }
 
 // board is a soundboard fire, or a stop.
-func (h *Hub) board(rm *room, rider protocol.Rider, cmd protocol.Board) {
+func (h *Hub) board(rm *channelState, rider protocol.Rider, cmd protocol.Board) {
 	switch {
 	case cmd.ClipID == "":
 		// A stop (#1321) takes no cooldown: it only ever makes the room
@@ -82,7 +82,7 @@ func (h *Hub) board(rm *room, rider protocol.Rider, cmd protocol.Board) {
 }
 
 // jukebox is a deck command, answered when it is refused.
-func (h *Hub) jukebox(c *client, rm *room, channel string, rider protocol.Rider, cmd protocol.JukeboxCommand) {
+func (h *Hub) jukebox(c *client, rm *channelState, channel string, rider protocol.Rider, cmd protocol.JukeboxCommand) {
 	// Any member; the jukebox validates its own input. Throttled like
 	// every other input — it was the one unlimited channel (audit #219).
 	if rm.allow("jukebox", rider.ID, h.now(), 300*time.Millisecond) {
@@ -102,7 +102,7 @@ func (h *Hub) jukebox(c *client, rm *room, channel string, rider protocol.Rider,
 }
 
 // backfill is a reconnect's replay; false when it was turned away.
-func (h *Hub) backfill(c *client, rm *room, channel string, rider protocol.Rider, cmd protocol.Backfill) bool {
+func (h *Hub) backfill(c *client, rm *channelState, channel string, rider protocol.Rider, cmd protocol.Backfill) bool {
 	// A reconnect's replay: into the ride record only — stale samples
 	// must never repaint anyone's live tile. Batch size is bounded like
 	// every other client input.
@@ -124,7 +124,7 @@ func (h *Hub) backfill(c *client, rm *room, channel string, rider protocol.Rider
 
 // control is a session command: the vocabulary, the throttle, the role, then
 // the action.
-func (h *Hub) control(c *client, rm *room, rider protocol.Rider, cmd protocol.Control) {
+func (h *Hub) control(c *client, rm *channelState, rider protocol.Rider, cmd protocol.Control) {
 	// The vocabulary first: the action is part of the throttle's key,
 	// so an unknown one must not reach the room's map of allowances.
 	if !protocol.IsControlAction(cmd.Action) {

@@ -20,7 +20,7 @@ import (
 // only the starter's own pick, never started — it opens one with the starter
 // coaching, so its riders' rides, XP and recap are kept like a workout's. A
 // game inside a workout session already running rides that session.
-func (rm *room) startGame(mode string, rider protocol.Rider, now time.Time) string {
+func (rm *channelState) startGame(mode string, rider protocol.Rider, now time.Time) string {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if rm.game != nil && !rm.game.done() {
@@ -50,7 +50,7 @@ func (rm *room) startGame(mode string, rider protocol.Rider, now time.Time) stri
 // endGame stops the running mode; false when nothing was running (#1582).
 // It is the coach's out and the only end Team Relay has — relay.done() is
 // never true.
-func (rm *room) endGame(now time.Time) bool {
+func (rm *channelState) endGame(now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if rm.game == nil {
@@ -65,7 +65,7 @@ func (rm *room) endGame(now time.Time) bool {
 // announced its own: advanceGameLocked stamped gameDoneAt on the tick it put a
 // "won" or "gameEnded" line up, and a coach clearing a finished game's podium
 // is not a second ending. Caller holds rm.mu.
-func (rm *room) stopGameLocked(now time.Time) {
+func (rm *channelState) stopGameLocked(now time.Time) {
 	if rm.game != nil && rm.gameDoneAt.IsZero() {
 		gs := rm.game.state(now)
 		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
@@ -78,7 +78,7 @@ func (rm *room) stopGameLocked(now time.Time) {
 // (#2597): it has no length to run out, and a session left running holds the
 // room for good. After the presence grace, so a reload is not an end. Called
 // from the empty room's tick. Caller holds rm.mu.
-func (rm *room) endAbandonedGameLocked(now time.Time) {
+func (rm *channelState) endAbandonedGameLocked(now time.Time) {
 	if rm.session.game != "" && rm.session.open() &&
 		now.Sub(rm.lastPresentLocked()) >= presenceGrace {
 		rm.stopGameLocked(now)
@@ -91,7 +91,7 @@ func (rm *room) endAbandonedGameLocked(now time.Time) {
 // it scored everyone as silent, eliminated them on one tick and paid a win to
 // whoever came first in the map. It ends the way a coach's End would: its own
 // line, no podium. Caller holds rm.mu.
-func (rm *room) endOrphanedGameLocked(now time.Time) {
+func (rm *channelState) endOrphanedGameLocked(now time.Time) {
 	if rm.game == nil || rm.gameHost == "" || !rm.gameDoneAt.IsZero() {
 		return
 	}
@@ -105,7 +105,7 @@ func (rm *room) endOrphanedGameLocked(now time.Time) {
 // endGameSessionLocked closes a session a game opened, if one is open; the
 // tick that sees it done saves its rides and writes its recap. Caller holds
 // rm.mu.
-func (rm *room) endGameSessionLocked(now time.Time) {
+func (rm *channelState) endGameSessionLocked(now time.Time) {
 	if rm.session.game != "" && rm.session.open() {
 		rm.session.end(now)
 	}
@@ -114,7 +114,7 @@ func (rm *room) endGameSessionLocked(now time.Time) {
 // resetRunLocked starts a new ride's record: a workout's start or a game's
 // session. The record must not blend two sessions, and the last one's
 // presence must not leak into the new recap (ADR-0034). Caller holds rm.mu.
-func (rm *room) resetRunLocked(starter string) {
+func (rm *channelState) resetRunLocked(starter string) {
 	rm.record.reset()
 	rm.seen = make(map[string]protocol.Rider)
 	rm.seenOrder = nil
@@ -128,7 +128,7 @@ func (rm *room) resetRunLocked(starter string) {
 // gameRosterLocked is the roster the game scores against: everyone the room
 // has seen this session, remembered across a session start (#1581). Caller
 // holds rm.mu.
-func (rm *room) gameRosterLocked() map[string]protocol.Rider {
+func (rm *channelState) gameRosterLocked() map[string]protocol.Rider {
 	if rm.gameRoster == nil {
 		rm.gameRoster = make(map[string]protocol.Rider)
 	}
@@ -145,7 +145,7 @@ const gameLinger = sprintLinger
 // the first tick that sees it done puts the winner on the timeline once and
 // names them for the XP ledger; gameLinger later the game is let go. Caller
 // holds rm.mu; the returned winner is handed to the keeper after the unlock.
-func (rm *room) advanceGameLocked(now time.Time) (winner string) {
+func (rm *channelState) advanceGameLocked(now time.Time) (winner string) {
 	rm.endOrphanedGameLocked(now)
 	if rm.game == nil {
 		rm.lastGame = nil

@@ -306,8 +306,8 @@ func TestMixedCaseChannelIDSharesRoom(t *testing.T) {
 		return len(h.Presence("velvet").Riders) == 2
 	})
 	h.mu.Lock()
-	n := len(h.rooms)
-	_, canonical := h.rooms["velvet"]
+	n := len(h.states)
+	_, canonical := h.states["velvet"]
 	h.mu.Unlock()
 	if n != 1 || !canonical {
 		t.Fatalf("live rooms = %d (canonical present: %v), want exactly one keyed \"velvet\"", n, canonical)
@@ -509,7 +509,7 @@ func TestASlowSocketMissesTicksAlone(t *testing.T) {
 // Which is why this one is in-process: the frame is the evidence, and over a
 // socket the frame is a copy by the time it arrives.
 func TestEveryRiderGetsTheSameTickBytes(t *testing.T) {
-	rm := newRoom("together")
+	rm := newChannelState("together")
 	jan := &client{rider: protocol.Rider{ID: "jan", Name: "Jan", Role: "owner"}, out: make(chan []byte, clientQueue)}
 	sven := &client{rider: protocol.Rider{ID: "sven", Name: "Sven", Role: "member"}, out: make(chan []byte, clientQueue)}
 	rm.join(jan)

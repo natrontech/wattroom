@@ -20,7 +20,7 @@ func sock(riderID string) *client {
 }
 
 func TestRoomMetricsCoalescing(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 
 	tests := []struct {
 		name    string
@@ -62,7 +62,7 @@ func TestRoomMetricsCoalescing(t *testing.T) {
 }
 
 func TestLeaveRemovesMetrics(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	c := &client{rider: protocol.Rider{ID: "jan"}}
 	rm.join(c)
 	rm.setMetrics(sock("jan"), protocol.RiderMetrics{Watts: 200})
@@ -76,7 +76,7 @@ func TestAccumulatorDedupesAcrossLiveAndBackfill(t *testing.T) {
 	// The crash-safety property (#19): live samples and a reconnect's replay
 	// arrive through different doors but land in one record, deduped by seq —
 	// resending is always safe and never double-counts.
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	rm.session.pick("Openers", "{}", 600)
 	joinRide(rm, "jan")
 	rm.session.start(time.Unix(0, 0))
@@ -129,7 +129,7 @@ func TestBackfillNeedsTheTrainerClaim(t *testing.T) {
 	// The replay is gated like live metrics (audit 2026-09-09): the screen
 	// that lost the trainer to the rider's other tab must not land its
 	// buffer in the record beside the holder's.
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	holder := screen("jan", "desk", "desktop")
 	other := screen("jan", "phone", "phone")
 	rm.join(holder)
@@ -202,7 +202,7 @@ func TestRecordKeepsGrowingAcrossASeqRestart(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rm := newRoom("test")
+			rm := newChannelState("test")
 			rm.session.pick("Openers", "{}", 3600)
 			joinRide(rm, "jan")
 			// Started "now" so the timeline cannot run itself out from under
@@ -244,7 +244,7 @@ func TestRecordKeepsGrowingAcrossASeqRestart(t *testing.T) {
 func TestBackfillSurvivesAnIdleRoom(t *testing.T) {
 	// After a server restart the room comes back idle; the reconnect replay
 	// must still land — dropping it there is exactly the loss #19 prevents.
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	rm.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 200, Seq: 1}, {Watts: 201, Seq: 2}}, nil, nil)
 	if got := rm.record.count("jan"); got != 2 {
 		t.Fatalf("idle-room backfill dropped: %d", got)
@@ -252,7 +252,7 @@ func TestBackfillSurvivesAnIdleRoom(t *testing.T) {
 }
 
 func TestCheerShapeAndBound(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	for i := 0; i < 50; i++ {
 		rm.cheer(protocol.Cheer{Emoji: "🔥", From: "jan"}, "jan")
 	}
@@ -271,7 +271,7 @@ func TestCheerShapeAndBound(t *testing.T) {
 }
 
 func TestSprintLifecycle(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	rm.session.pick("W", `{"name":"W","steps":[{"type":"steady","seconds":600,"target":0.9}]}`, 600)
 	rm.session.start(time.Unix(0, 0))
 	rm.session.state(time.Unix(20, 0)) // countdown -> running
@@ -321,12 +321,12 @@ func TestRidingGaugeCountsLiveTrainersNotPresence(t *testing.T) {
 	now := time.Now()
 	h.now = func() time.Time { return now }
 
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	rm.seen["jan"] = protocol.Rider{ID: "jan", Name: "Jan"}
 	rm.seen["sven"] = protocol.Rider{ID: "sven", Name: "Sven"}
 	rm.lastMetric["jan"] = now.Add(-2 * time.Second)   // trainer talking
 	rm.lastMetric["sven"] = now.Add(-60 * time.Second) // present, sample stale
-	h.rooms["test"] = rm
+	h.states["test"] = rm
 
 	if got := h.ridingCount(); got != 1 {
 		t.Fatalf("ridingCount = %v, want 1 — sven is in the room, trainer silent", got)
@@ -358,7 +358,7 @@ func TestRidingLockedNeedsWatts(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			rm := newRoom("test")
+			rm := newChannelState("test")
 			rider := protocol.Rider{ID: "jan", Name: "Jan"}
 			rm.seen["jan"] = rider
 			// The trainer is paired and talking at 1 Hz throughout — that is
@@ -394,10 +394,10 @@ func TestRidingCountSumsRooms(t *testing.T) {
 	h.now = func() time.Time { return now }
 
 	for _, channel := range []string{"a", "b"} {
-		rm := newRoom(channel)
+		rm := newChannelState(channel)
 		rm.seen[channel] = protocol.Rider{ID: channel, Name: channel}
 		rm.lastMetric[channel] = now
-		h.rooms[channel] = rm
+		h.states[channel] = rm
 	}
 	if got := h.ridingCount(); got != 2 {
 		t.Fatalf("ridingCount = %v, want 2 across two rooms", got)
@@ -408,19 +408,19 @@ func TestRidingCountSumsRooms(t *testing.T) {
 // and used to open holding the deleted room's jukebox queue, because nothing
 // ever removed the room from the hub (#618). The durable row and the live
 // state have to go together.
-func TestCloseRoomForgetsLiveState(t *testing.T) {
+func TestCloseChannelForgetsLiveState(t *testing.T) {
 	h := New(slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil)
-	rm := h.room("reverify")
+	rm := h.stateOf("reverify")
 	rm.mu.Lock()
 	rm.music.state.Queue = []protocol.JukeboxEntry{{ID: "1", VideoID: "abc", Title: "Left behind"}}
 	rm.seen["jan"] = protocol.Rider{ID: "jan", Name: "Jan"}
 	rm.mu.Unlock()
 	h.voice["reverify"] = map[string]voiceEntry{"jan": {}}
 
-	h.CloseRoom("reverify")
+	h.CloseChannel("reverify")
 
 	h.mu.Lock()
-	_, stillThere := h.rooms["reverify"]
+	_, stillThere := h.states["reverify"]
 	_, voiceThere := h.voice["reverify"]
 	h.mu.Unlock()
 	if stillThere || voiceThere {
@@ -428,7 +428,7 @@ func TestCloseRoomForgetsLiveState(t *testing.T) {
 	}
 
 	// A new room on the freed channel is a new room, not the old one.
-	fresh := h.room("reverify")
+	fresh := h.stateOf("reverify")
 	if fresh == rm {
 		t.Fatal("the recreated room is the deleted room")
 	}
@@ -444,10 +444,10 @@ func TestCloseRoomForgetsLiveState(t *testing.T) {
 
 // The tick goroutine has to end with the room, or every deleted room leaves a
 // ticker running for the life of the process.
-func TestCloseRoomStopsTheTicker(t *testing.T) {
+func TestCloseChannelStopsTheTicker(t *testing.T) {
 	h := New(slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil)
-	rm := h.room("stopper")
-	h.CloseRoom("stopper")
+	rm := h.stateOf("stopper")
+	h.CloseChannel("stopper")
 	select {
 	case <-rm.stop:
 	default:
@@ -461,7 +461,7 @@ func TestOneSecondOfRidingIsOneSample(t *testing.T) {
 	// proof that it sent something, never that a second passed, and trainer
 	// notifications are irregular: a burst, or a backgrounded tab flushing
 	// what it buffered, used to become minutes of riding that never happened.
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	rm.session.pick("Openers", "{}", 3600)
 	joinRide(rm, "jan")
 	start := time.Now()
@@ -547,7 +547,7 @@ func (a *amendingSaver) AmendRide(_ context.Context, _, _, _, _ string, _ time.T
 }
 
 func TestBackfillAfterTheCloseAmendsTheRide(t *testing.T) {
-	rm := newRoom("late-tail")
+	rm := newChannelState("late-tail")
 	log := slog.New(slog.DiscardHandler)
 	saver := &amendingSaver{saverFunc: func(time.Time, []RiderRecord) {}, amended: make(chan RiderRecord, 1)}
 	c := sock("jan")
@@ -576,7 +576,7 @@ func TestBackfillAfterTheCloseAmendsTheRide(t *testing.T) {
 		t.Fatal("the backfill after the close amended nothing")
 	}
 	// Before the close nothing is amended: the record is live, the save is ahead.
-	fresh := newRoom("live")
+	fresh := newChannelState("live")
 	fresh.backfill(sock("jan"), []protocol.RiderMetrics{{Watts: 200, Seq: 1}}, log, saver)
 	select {
 	case <-saver.amended:
@@ -592,7 +592,7 @@ func TestBackfillAfterTheCloseAmendsTheRide(t *testing.T) {
 // and through it the saved ride and every podium — was read from a struct
 // being written. `make test` runs with -race, which is what fails this.
 func TestARoleWriteDoesNotRaceTheMetricsRead(t *testing.T) {
-	rm := newRoom("race")
+	rm := newChannelState("race")
 	c := sock("jan")
 	var wg sync.WaitGroup
 	wg.Add(2)

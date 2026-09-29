@@ -69,7 +69,7 @@ func (f *tickFrames) marshal(kind frameKind, cheers []protocol.Cheer) []byte {
 
 // sendTick hands every socket its frame of the tick, and what is addressed to
 // it alone. Runs after rm.mu is released.
-func (rm *room) sendTick(log *slog.Logger, out *tickOut) {
+func (rm *channelState) sendTick(log *slog.Logger, out *tickOut) {
 	metricTicks.Inc()
 	frames := tickFrames{tick: &out.tick, log: log, channel: rm.channel}
 	for _, c := range out.clients {

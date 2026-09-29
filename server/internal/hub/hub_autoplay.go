@@ -60,7 +60,7 @@ type Play struct {
 // autoplayJob is one idle deck worth checking — enough to read the room's
 // autoplay plan and hand it back to the room that asked.
 type autoplayJob struct {
-	rm      *room
+	rm      *channelState
 	channel string
 	// A room the hub just created (#1432): read its "just played" from the
 	// log instead of an autoplay plan.
@@ -143,7 +143,7 @@ func (h *Hub) recordTrackEvent(channel string, ev trackEvent) {
 // room's playlist. Nothing here re-fires itself: a loop needs a real "ended"
 // from a client each pass, and a source with nothing to play — autoplay off,
 // an empty playlist — leaves the deck idle and the queue quiet.
-func (h *Hub) triggerAutoplay(rm *room, channel string) {
+func (h *Hub) triggerAutoplay(rm *channelState, channel string) {
 	if h.playlists == nil {
 		return
 	}

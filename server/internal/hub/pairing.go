@@ -48,7 +48,7 @@ type holder struct {
 // The claim is the socket's whole set: kinds the socket held and no longer
 // names are released here, which is what makes "Forget" and a dropped message
 // converge on the same state.
-func (rm *room) claimSensors(c *client, claim protocol.SensorClaim) bool {
+func (rm *channelState) claimSensors(c *client, claim protocol.SensorClaim) bool {
 	// Untrusted input, bounded before it touches room state (errors.md): a
 	// claim naming four kinds needs no more than this, and both strings are
 	// stored per socket and copied per kind.
@@ -118,7 +118,7 @@ var deviceKinds = []string{"desktop", "phone", "tablet"}
 // setDeviceKind records what this socket says it is running on. Silent when
 // the word is not one of ours — a client too old to send anything, or one
 // sending something we do not draw, leaves the label absent rather than wrong.
-func (rm *room) setDeviceKind(c *client, kind string) {
+func (rm *channelState) setDeviceKind(c *client, kind string) {
 	if !slices.Contains(deviceKinds, kind) {
 		return
 	}
@@ -129,7 +129,7 @@ func (rm *room) setDeviceKind(c *client, kind string) {
 
 // releaseSensors drops everything a leaving socket held, so the rider's other
 // screens can pair. Called from leave, under the room lock already held there.
-func (rm *room) releaseSensorsLocked(c *client) bool {
+func (rm *channelState) releaseSensorsLocked(c *client) bool {
 	held := rm.claims[c.rider.ID]
 	if held == nil || c.tab == "" {
 		return false
@@ -158,7 +158,7 @@ func (rm *room) releaseSensorsLocked(c *client) bool {
 
 // pairingForLocked is what one socket is told: what it holds, and where the
 // rest of its rider's sensors are.
-func (rm *room) pairingForLocked(c *client) protocol.SensorPairing {
+func (rm *channelState) pairingForLocked(c *client) protocol.SensorPairing {
 	out := protocol.SensorPairing{}
 	for kind, owner := range rm.claims[c.rider.ID] {
 		if owner.tab == c.tab {
@@ -188,7 +188,7 @@ func (rm *room) pairingForLocked(c *client) protocol.SensorPairing {
 // A rider with no trainer claim at all rides exactly as before — an older
 // client, or one whose claim has not arrived yet, must not be silenced. The
 // drop applies only when the claim exists and belongs to another screen.
-func (rm *room) ownsTrainerLocked(c *client) bool {
+func (rm *channelState) ownsTrainerLocked(c *client) bool {
 	owner, taken := rm.claims[c.rider.ID]["trainer"]
 	if !taken {
 		return true
@@ -205,7 +205,7 @@ func (rm *room) ownsTrainerLocked(c *client) bool {
 // writing to a SIBLING socket from this read loop is exactly the race that
 // would cause. Pair and unpair are not sub-second events; the next tick is
 // soon enough.
-func (rm *room) queuePairingLocked(riderID string) {
+func (rm *channelState) queuePairingLocked(riderID string) {
 	if rm.pendingPairing == nil {
 		rm.pendingPairing = make(map[*client]protocol.SensorPairing)
 	}
@@ -219,7 +219,7 @@ func (rm *room) queuePairingLocked(riderID string) {
 // announcePairing is claimSensors' follow-up: take the lock again and line up
 // the answers. Separate from the claim itself so the claim can stay a pure
 // decision under one lock acquisition.
-func (rm *room) announcePairing(riderID string) {
+func (rm *channelState) announcePairing(riderID string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.queuePairingLocked(riderID)
@@ -227,7 +227,7 @@ func (rm *room) announcePairing(riderID string) {
 
 // drainPairingLocked hands the tick loop what to send and forgets it. Called
 // with the room lock held, like the rest of the tick's snapshotting.
-func (rm *room) drainPairingLocked() map[*client]protocol.SensorPairing {
+func (rm *channelState) drainPairingLocked() map[*client]protocol.SensorPairing {
 	if len(rm.pendingPairing) == 0 {
 		return nil
 	}

@@ -11,7 +11,7 @@ import (
 // the hub has to score them against it too, or their execution says they
 // never held a watt of it.
 func TestAProfileSaveReachesTheScore(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	t0 := time.Unix(1000, 0)
 	jan := &client{rider: protocol.Rider{ID: "jan", Name: "jan", FtpWatts: 200}}
 	rm.clients[jan] = struct{}{}

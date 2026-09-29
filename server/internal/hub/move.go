@@ -22,7 +22,7 @@ var (
 // (#2602).
 func (h *Hub) Move(channel, userID string, to protocol.Moved) error {
 	h.mu.Lock()
-	rm := h.rooms[channel]
+	rm := h.states[channel]
 	h.mu.Unlock()
 	if rm == nil {
 		return ErrNotInChannel

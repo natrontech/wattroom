@@ -12,12 +12,12 @@ import (
 // this command was the one that ended it (#467) — for the caller to credit
 // outside the lock. A command that ran the deck dry hands the room to
 // autoplay (#676), also outside the lock: the trigger takes it again.
-func (rm *room) jukebox(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) (*playedTrack, bool) {
+func (rm *channelState) jukebox(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) (*playedTrack, bool) {
 	played, ok, _ := rm.jukeboxWithRefusal(cmd, riderID, addedBy, now)
 	return played, ok
 }
 
-func (rm *room) jukeboxWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) (*playedTrack, bool, jukeboxRefusal) {
+func (rm *channelState) jukeboxWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy string, now time.Time) (*playedTrack, bool, jukeboxRefusal) {
 	rm.mu.Lock()
 	events, ok, refusal := rm.music.applyWithRefusal(cmd, riderID, addedBy, now)
 	for _, ev := range events {
@@ -44,7 +44,7 @@ func (rm *room) jukeboxWithRefusal(cmd protocol.JukeboxCommand, riderID, addedBy
 // manual add — or another join's own trigger racing this one — may have
 // already filled the deck by the time this runs, and the last one to the
 // lock backs off rather than doubling the queue.
-func (rm *room) applyAutoplay(tracks []protocol.JukeboxCommand, ok bool, now time.Time) {
+func (rm *channelState) applyAutoplay(tracks []protocol.JukeboxCommand, ok bool, now time.Time) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if !ok || rm.music.state.Current != nil {

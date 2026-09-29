@@ -34,7 +34,7 @@ const abandonedSessionAfter = 10 * time.Minute
 // Ended here, the same tick's closeLocked saves them. Countdown and running
 // are left alone: their own clocks close them. Called from the empty room's
 // tick. Caller holds rm.mu.
-func (rm *room) endAbandonedSessionLocked(now time.Time) {
+func (rm *channelState) endAbandonedSessionLocked(now time.Time) {
 	if rm.session.phase != "paused" || len(rm.voiceNow) > 0 {
 		rm.abandonedSince = time.Time{}
 		return
@@ -50,7 +50,7 @@ func (rm *room) endAbandonedSessionLocked(now time.Time) {
 
 // closeLocked snapshots the session exactly once, on the tick its phase
 // crosses to done — nil on every other tick. Caller holds rm.mu.
-func (rm *room) closeLocked(state protocol.SessionState, now time.Time, saving bool) *sessionEnd {
+func (rm *channelState) closeLocked(state protocol.SessionState, now time.Time, saving bool) *sessionEnd {
 	if state.Phase != "done" || rm.saved {
 		return nil
 	}
@@ -86,7 +86,7 @@ func (rm *room) closeLocked(state protocol.SessionState, now time.Time, saving b
 
 // handOff persists a closed session outside the lock, like every other
 // hand-off; nil is every tick on which nothing closed.
-func (rm *room) handOff(log *slog.Logger, now func() time.Time, saver SessionSaver, end *sessionEnd) {
+func (rm *channelState) handOff(log *slog.Logger, now func() time.Time, saver SessionSaver, end *sessionEnd) {
 	if end == nil {
 		return
 	}
@@ -114,7 +114,7 @@ func (rm *room) handOff(log *slog.Logger, now func() time.Time, saver SessionSav
 
 // detach runs fn on its own goroutine like safego.Go, counted on the hub's
 // hand-offs while it runs so Drain can wait for it.
-func (rm *room) detach(log *slog.Logger, where string, fn func()) {
+func (rm *channelState) detach(log *slog.Logger, where string, fn func()) {
 	if rm.pending == nil {
 		safego.Go(log, where, fn)
 		return
@@ -128,7 +128,7 @@ func (rm *room) detach(log *slog.Logger, where string, fn func()) {
 
 // closedLocked is the session as the XpKeeper hears it (#467): everyone who
 // rode, everyone who was in voice, and who pressed start. Caller holds rm.mu.
-func (rm *room) closedLocked(state protocol.SessionState, now time.Time) *SessionClosed {
+func (rm *channelState) closedLocked(state protocol.SessionState, now time.Time) *SessionClosed {
 	ev := &SessionClosed{Channel: rm.channel, SessionID: state.ID, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
 	for _, id := range rm.seenOrder {
 		ev.Riders = append(ev.Riders, SessionRider{

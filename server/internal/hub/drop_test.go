@@ -70,8 +70,8 @@ func registered(h *Hub, rider string) int {
 			n++
 		}
 	}
-	rooms := make([]*room, 0, len(h.rooms))
-	for _, rm := range h.rooms {
+	rooms := make([]*channelState, 0, len(h.states))
+	for _, rm := range h.states {
 		rooms = append(rooms, rm)
 	}
 	h.mu.Unlock()
