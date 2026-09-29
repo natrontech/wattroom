@@ -135,6 +135,10 @@ const (
 	RouteHiddenEndM      = 400
 	MaxAttachedRoadBytes = 48 << 10
 
+	// A leg (docs/SPEC.md "Route rides"): the stretch of a route ridden in
+	// one sitting is at most six hours, so a long route compiles into legs.
+	MaxLegSeconds = 6 * 60 * 60
+
 	// The range every SIM write is clamped to (docs/SPEC.md "Route rides",
 	// ADR-0062): one range for every trainer, since FTMS cannot report an
 	// indoor bike's. MaxTrainerGrade is also the free ride's top and the felt
