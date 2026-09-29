@@ -5,7 +5,7 @@ import {
 	ReferenceRiderKg,
 	ReferenceRiderWatts,
 } from '$lib/protocol';
-import { cornerLimit, createPace, steadySpeed } from './pace';
+import { cornerLimit, createPace, shelter, steadySpeed } from './pace';
 import { BEND_STEP, curvatureOf, golden } from './golden.test-helper';
 
 const within = (got: number, want: number) =>
@@ -102,5 +102,27 @@ describe('corners (#3204)', () => {
 			pace.step(400, -10, mass, PaceDefaultCdA, 0);
 			expect(pace.braking).toBe(false);
 		}
+	});
+});
+
+describe('shelter (#3233)', () => {
+	it('answers every case the Go twin wrote', () => {
+		expect(golden.shelters.length).toBeGreaterThan(0);
+		for (const c of golden.shelters)
+			expect(
+				shelter(c.gapM, c.laneDelta, c.lineIndex),
+				`shelter(${c.gapM}, ${c.laneDelta}, ${c.lineIndex})`,
+			).toBeCloseTo(c.shelter, 12);
+	});
+
+	it('never lets a caller shelter past the cap', () => {
+		const mass = ReferenceRiderKg + BikeKg;
+		const ride = (s: number) => {
+			const pace = createPace(10);
+			for (let i = 0; i < 60; i++) pace.step(225, 0, mass, PaceDefaultCdA, s);
+			return pace.speed;
+		};
+		expect(ride(0.9)).toBe(ride(0.5));
+		expect(ride(-0.2)).toBe(ride(0));
 	});
 });

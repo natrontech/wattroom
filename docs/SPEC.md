@@ -37,6 +37,12 @@
 | **Vote**              | One rider's upvote on a queued track, toggled. A vote floats its track above every lower-voted track ahead of it; hand-reordering sets the order among equals.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | **Channel event** | A line on a voice channel's page for something that happened there rather than something a rider said (#321) — `Kim queued Midnight City`, `Kim skipped Midnight City`, `now playing: Midnight City — queued by Kim`. Ephemeral ([ADR-0022](decisions/0022-room-events-are-ephemeral.md), amended by ADR-0058): it rides the voice channel's tick, is never persisted and never enters a text channel. A burst of adds is one line ("Kim queued 8 tracks"). |
 | **Planned session** | A session put on a crew's calendar for a time (#116), naming the voice channel it will run in, or none yet (#2440). Members **RSVP**: in, or out — there is no maybe. Three states are _stored_ and only two are ever asked for: **in**, **out**, and the crew not having heard from you, which is the absence of an answer rather than a third thing a rider can say (#1011). It is not a second kind of object, and it is not a _channel event_, which is the line above. |
+| **Open ride** | A planned session its crew opened to everyone, on a library road, with a curated pace, a format and a time ([ADR-0076](decisions/0076-shared-roads-not-an-open-world.md)). Not a crew's planned session, and not a channel event. |
+| **Group ride** | An open ride's v1 format: a bunch ride on one shared position ([ADR-0065](decisions/0065-riding-a-road-together.md)), which tells nobody anyone's strength. |
+| **Pen** | Where an open ride's riders gather before the flag; it opens 10 min before. |
+| **Stranger** | A rider on an open ride who shares no crew with you. Seen as a marker — a position, a speed and a coarse kit — never a name, a number or a profile ([ADR-0076](decisions/0076-shared-roads-not-an-open-world.md)). |
+| **Your people** | The riders on an open ride who are not strangers to you: they share a crew with you, and so see your name. The set is refreshed every 60 s. |
+| **Leader call** | One of six fixed calls a ride leader may send to an open ride — welcome, climb ahead, stay together over the top, last 5 km, sprint at the sign, thanks for riding. Never free text. |
 | **Streak**            | Consecutive **weeks**, counted from Monday-start weeks, in which something was ridden. The current week is forgiving: a streak survives until that week ends without a ride, so a crew that always rides on Saturday does not read as broken on Tuesday. There are **two** streaks and they are different numbers — a **crew streak** and a **rider streak**, below. Say which one you mean; unqualified "streak" is ambiguous.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | **Crew streak** | Consecutive weeks in which a **crew** held at least one session, in whichever of its voice channels, in **UTC** weeks — a crew's riders are in several zones and a crew has none of its own. Two sessions in two channels in one week are one week, not two. It is a consistency number and it is the one on screen: the crew's Home labels it **this crew's streak**. It pays **no** XP — a crew streak that paid would let a rider join a crew on a six-week run and be paid for other people's rides. |
 | **Rider streak**      | Consecutive weeks in which a **rider** rode at least once — in any crew's session, or solo — in **their own** weeks (the day boundary under Stats formulas). This is the streak that **pays**: the XP streak bonus below is `25 ×` the rider's own current-week streak, capped at 250. It is read before the ride being saved lands, so the ride extends the streak from the next ride on. Never displayed as the crew's number.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -78,6 +84,11 @@
 | **Tour metres** | What a counted ride adds to the caravan: the reference rider's distance at that ride's %FTP profile, so the same relative effort moves everyone equally ([ADR-0080](decisions/0080-a-crews-season-is-a-tour.md)). |
 | **Reference rider** | The rider a road's estimates are made for when no real rider is in question — 75 kg on an 8 kg bike at 225 W (Route rides below). |
 | **Figure** | The 3D person on the road. A **rider** is the person and an **avatar** is their profile picture; the three words never stand in for each other ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)). |
+| **Batzen** | WattRoom's one currency, for cosmetics only: one Batzen is one minute ridden at your own FTP. Earned by riding, never bought, traded or gifted ([ADR-0069](decisions/0069-cosmetics-are-earned-never-bought.md)). |
+| **Wardrobe** | The items a rider owns — bought with Batzen or earned by an achievement, a medal or a streak ([ADR-0069](decisions/0069-cosmetics-are-earned-never-bought.md)). |
+| **Outfit** | What a rider's figure wears: one owned item per slot. It rides on the roster, never on the tick (#3155). |
+| **Crew kit** | A kit a crew's owner or admins design; members wear it in the crew's sessions by default and can switch it off. Templates unlock by crew session hours (#3161). |
+| **Souvenir** | An item printed with the silhouette of a climb ridden in a crew session — never from a Strava-origin route, never with a place name (#3164). |
 | **Geo pack** | The pmtiles file of map data the world is built from — the Alps first ([ADR-0070](decisions/0070-our-own-copy-of-openstreetmap.md)). One route's enrichment cut from it is a **corridor**. |
 | **Corridor** | One route's enrichment from the **geo pack**: what lines its road. Derived and regenerable (ADR-0063). |
 | **Computer page** | One page of the bike computer ([ADR-0071](decisions/0071-the-bike-computer-pages-slot-3.md)). Its table in code is `computer-pages.ts`, never a third `pages.ts`. |
@@ -679,6 +690,22 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
 - **A decline is cleared when the session moves to a new time**, on exactly the condition that re-arms the hour-before reminder: the time really changed. The session that was turned down is not the session now planned, so the people who turned it down are asked again. An "in" survives a move — dropping it would empty a line the crew reads, while a decline that outlived a move would silence a reminder for a session the rider never turned down.
 - **Two windows around a plan's time (defaults — tune in alpha)**: *Start now* is offered from **15 minutes** before it, on the server's clock (`planDue`), and a plan whose time passed unstarted stays on the schedule, still startable, for **30 minutes** after it before it drops off — the same grace on the crew's Schedule and on Home's _What's next_ (#2635). The calendar feeds keep their own 30 days of history, above.
 - **A rider who said they are out is not reminded about it.** The hour-before reminder ([ADR-0030](decisions/0030-what-wattroom-emails.md)) is the only session mail whose audience depends on the answers: a plan has no answers yet, a move clears the declines, and a cancellation is news whatever anyone said. Changing your mind is one tap and asks nothing — there is nothing to undo that a second tap does not.
+- **An open plan offers no _Start now_** ([ADR-0076](decisions/0076-shared-roads-not-an-open-world.md)): it opens its own pen and starts at its time.
+
+## Open rides (defaults — tune in alpha; [ADR-0076](decisions/0076-shared-roads-not-an-open-world.md))
+
+| Parameter            | Value                                                                                                                  |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Per crew             | at most **3** open rides starting in any rolling **7 days**, opened at most **28 days** ahead, inside the 3-month planning bound |
+| Riders per ride      | **100**; the 101st is refused with `rate_limited` ("This ride is full")                                                 |
+| The pen              | opens **10 min** before the flag; the count-in is #3087's                                                               |
+| Group ride, late join | lands at the bunch with #3108's drop-off, up to the plan's last **10 min**                                            |
+| Race formats         | the pen closes at the flag; disconnect grace **30 s** (Races)                                                          |
+| Stranger figures     | **40** visible on the high tier, **16** on the low; the rest are Skyline dots and counts in the peloton ring            |
+| Coarse kit           | **12** jersey colourways and **6** bike silhouettes                                                                    |
+| Ride-id map          | kept until **24 h** after the ride ends; reports kept **30 days**                                                      |
+| Name audience        | refreshed every **60 s**                                                                                               |
+| Leader calls         | **6** codes — welcome; climb ahead; stay together over the top; last 5 km; sprint at the sign; thanks for riding — at most **1** per **20 s** per ride |
 
 ## Text channel chat
 
@@ -996,10 +1023,38 @@ fills them in.
 
 - **Proportions**: stylised athletic, about **7 heads** tall, head scale **1.08**. No face.
 - **Build**: slim, athletic or strong — the rider's choice, never derived from weight.
-- **Height**: the rider's choice; the range is [#3413](https://github.com/natrontech/wattroom/issues/3413)'s.
-- **Skin**: one of **8** free swatches, never sold; the values are #3413's. The neutral figure's tone is none of the 8.
+- **Height**: the rider's choice, **1.50–2.05 m** (#3151).
+- **Builds**: **3**.
+- **Skin**: one of **8** free swatches, never sold; the values are [#3413](https://github.com/natrontech/wattroom/issues/3413)'s. The neutral figure's tone is none of the 8.
 - **Neutral figure** (until the rider chooses): athletic build, a middle height, the neutral tone.
 - **The live zone** is a flat ground ring under the bike, never the jersey.
+
+## Wardrobe (defaults — tune in alpha; [ADR-0069](decisions/0069-cosmetics-are-earned-never-bought.md))
+
+**Earning Batzen** (one Batzen is a minute ridden at your own FTP):
+
+- per ride, at most **1.2 ×** the minutes ridden (so at most **72** an hour);
+- at most **180** per UTC day of the save;
+- zero-watt seconds earn nothing;
+- **× 1.2** in a group session.
+
+**Grants**: **100** on welcome; an opening grant for existing riders of
+min(their history, **1,500**).
+
+**The catalogue (v3)**:
+
+| Parameter       | Value                                                                                                |
+| --------------- | ---------------------------------------------------------------------------------------------------- |
+| Slots           | **39**                                                                                               |
+| Price tiers     | **60 / 150 / 400 / 1,200 / 2,400** Batzen                                                            |
+| Buyable items   | **122**, **29,860** Batzen in total — one discipline's complete look in about **17–24 weeks** at three rides a week |
+| Earned-only     | **33** items                                                                                         |
+| Parameters      | width, depth, length, height, count, lens category and colour are free on anything you own           |
+| Patina          | at **25** rides                                                                                      |
+| Seasons         | **8** season windows a year; a seasonal item needs **3** rides inside its window, and returns every year |
+| Crew kits       | templates unlock at **100 / 500 / 2,000** crew session hours                                         |
+| Undo            | within **10 min**, and only if the item has not yet been worn on a ride                              |
+| UCI limits      | the 2026 limits (bars **400 mm**, rims **65 mm**, socks halfway to the knee) as information chips only |
 
 ## The living world (defaults — tune in alpha; #3178)
 

@@ -361,7 +361,7 @@ func TestUnknownAPIRouteAndSecurityHeaders(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/", apiNotFound)
 	mux.Handle("/", serveSPA(dist, og.New("https://wattroom.test", nil, discardLog())))
-	handler := secured(mux)
+	handler := secured(mux, enforcedCSP(nil))
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequestWithContext(t.Context(), "GET", "/api/nope", nil))
@@ -373,8 +373,8 @@ func TestUnknownAPIRouteAndSecurityHeaders(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("the shell: %d", rec.Code)
 	}
-	if got := rec.Header().Get("Content-Security-Policy"); got != enforcedCSP {
-		t.Errorf("the shell's CSP = %q, want %q", got, enforcedCSP)
+	if got := rec.Header().Get("Content-Security-Policy"); got != enforcedCSP(nil) {
+		t.Errorf("the shell's CSP = %q, want %q", got, enforcedCSP(nil))
 	}
 }
 
@@ -385,7 +385,7 @@ func securedHeaders(t *testing.T, overTLS bool) http.Header {
 	t.Helper()
 	handler := secured(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
-	}))
+	}), enforcedCSP(nil))
 	req := httptest.NewRequestWithContext(t.Context(), "GET", "/r/velvet", nil)
 	if overTLS {
 		req.TLS = &tls.ConnectionState{}
@@ -399,7 +399,7 @@ func securedHeaders(t *testing.T, overTLS bool) http.Header {
 func TestSecuredSetsEveryHardeningHeader(t *testing.T) {
 	h := securedHeaders(t, false)
 	for header, want := range map[string]string{
-		"Content-Security-Policy":   enforcedCSP,
+		"Content-Security-Policy":   enforcedCSP(nil),
 		"X-Content-Type-Options":    "nosniff",
 		"Referrer-Policy":           "strict-origin-when-cross-origin",
 		"Strict-Transport-Security": "max-age=31536000",
@@ -506,7 +506,9 @@ func TestEnforcedCSPNamesEveryOriginTheAppLoads(t *testing.T) {
 		// meter's AudioWorklet (web/src/lib/room/mic-level.ts): a worklet module
 		// is matched against script-src, and refusing it reports NO violation,
 		// so only trying it in a browser could establish that.
-		{"the YouTube IFrame API script and the mic worklet", "script-src", "'self' 'unsafe-inline' blob: https://www.youtube.com"},
+		// No 'unsafe-inline' (#2965): the build's inline scripts are allowed by
+		// hash, and a build with none (this test's) allows none.
+		{"the YouTube IFrame API script and the mic worklet", "script-src", "'self' blob: https://www.youtube.com"},
 		// The theme block at app.html:8 injects a <style>, and Svelte renders
 		// `style=` attributes, which fall back to here from style-src-attr.
 		{"the theme block's stylesheet and every style= attribute", "style-src", "'self' 'unsafe-inline'"},
@@ -560,7 +562,7 @@ func TestImgSrcNamesHostsAndNotSchemes(t *testing.T) {
 	if _, reportOnly := securedHeaders(t, false)["Content-Security-Policy-Report-Only"]; reportOnly {
 		t.Error("a report-only policy is back; it existed only while img-src could not be enforced (#2078)")
 	}
-	sources := strings.Fields(directives(t, enforcedCSP)["img-src"])
+	sources := strings.Fields(directives(t, enforcedCSP(nil))["img-src"])
 	if len(sources) == 0 {
 		t.Fatal("img-src names nothing at all")
 	}

@@ -1,0 +1,1 @@
+- The app no longer lets just any inline script run. Only the handful of scripts WattRoom itself ships are allowed, each by its fingerprint, so a script slipped into a page is refused by the browser instead of running.

@@ -71,6 +71,11 @@ type Connection = {
 };
 
 let current = $state<Connection | null>(null);
+// How many ChannelStatus a page has mounted for the live place (#2986): the
+// shell's and a session's layers each register theirs. The frame draws one
+// exactly when a held ride has none — which a path cannot say, because a
+// place's own page can fail to load and leave its path with no shell.
+let statusShown = $state(0);
 
 // The AV half loads with the channel, not with the shell (#1514): av.svelte.ts
 // and what it pulls — device choices, the mic chain, the stage — were the
@@ -353,16 +358,24 @@ export const channelConnection = {
 		);
 	},
 	/**
-	 * A ride is held — a free ride, or the session you joined — and `pathname`
-	 * is not its place (#2885): the place's own shell carries the ride's status
-	 * and is not mounted here, so the frame has to.
+	 * A ride is held — a free ride, or the session you joined — and nothing on
+	 * screen draws its status: off its place (#2885), or on it with the page
+	 * failed to load and no shell mounted (#2986). The frame draws it then; a
+	 * ride-critical error is persistent status wherever the rider is.
 	 */
-	ridingAway(pathname: string): boolean {
+	rideStatusUnshown(): boolean {
 		return (
 			!!current &&
 			(current.freeRide.recording || current.joined()) &&
-			!this.onPlacePath(pathname)
+			statusShown === 0
 		);
+	},
+	/** A page's ChannelStatus mounted; the function it returns unmounts it. */
+	showingStatus(): () => void {
+		statusShown++;
+		return () => {
+			statusShown--;
+		};
 	},
 	/** Idempotent per place; switching places leaves the old one first. */
 	join(address: PlaceAddress) {

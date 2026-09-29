@@ -10,6 +10,12 @@ import {
 	PaceSubsteps,
 	ReferenceRiderKg,
 	ReferenceRiderWatts,
+	ShelterAdjacent,
+	ShelterFullGapM,
+	ShelterMax,
+	ShelterNoneGapM,
+	ShelterSecondWheel,
+	ShelterThirdWheel,
 } from '$lib/protocol';
 
 /**
@@ -38,12 +44,44 @@ function resistance(
 	shelter: number,
 ): number {
 	const theta = Math.atan(grade / 100);
-	const sheltered = 1 - Math.min(1, Math.max(0, shelter));
+	// No draft takes more than ShelterMax of the air (a rule, ADR-0077),
+	// whatever a caller hands in.
+	const sheltered = 1 - Math.min(ShelterMax, Math.max(0, shelter));
 	return (
 		mass * PaceGravity * Math.sin(theta) +
 		PaceCrr * mass * PaceGravity * Math.cos(theta) +
 		0.5 * PaceAirDensity * cda * sheltered * v * v
 	);
+}
+
+/**
+ * The share of a rider's air drag the wheels ahead take (#3233, docs/SPEC.md
+ * "Drafting"): by where they are in the line — lineIndex 0 is the front, with
+ * nothing ahead, 1 the second wheel, 2 the third — how far behind the wheel
+ * ahead they ride, in metres, and how many lanes over. A wheel within
+ * ShelterFullGapM gives it whole, fading to none at ShelterNoneGapM; the
+ * adjacent lane gets half, and two lanes over nothing. Never more than
+ * ShelterMax. The hub computes it (ADR-0077); step() takes it as its
+ * shelter. The Go twin is road.Shelter.
+ */
+export function shelter(
+	gapM: number,
+	laneDelta: number,
+	lineIndex: number,
+): number {
+	if (lineIndex < 1 || gapM >= ShelterNoneGapM) return 0;
+	let share =
+		lineIndex === 1
+			? ShelterSecondWheel
+			: lineIndex === 2
+				? ShelterThirdWheel
+				: ShelterMax;
+	if (gapM > ShelterFullGapM)
+		share *= (ShelterNoneGapM - gapM) / (ShelterNoneGapM - ShelterFullGapM);
+	const lanes = Math.abs(laneDelta);
+	if (lanes === 1) share *= ShelterAdjacent;
+	else if (lanes > 1) return 0;
+	return Math.min(share, ShelterMax);
 }
 
 /**

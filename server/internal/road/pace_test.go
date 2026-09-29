@@ -74,6 +74,30 @@ func curvatureOf(bends []bend) []float64 {
 type golden struct {
 	About   string   `json:"about"`
 	Vectors []vector `json:"vectors"`
+	// Shelter's own cases (#3233): the TypeScript twin reads the same ones.
+	Shelters []shelterCase `json:"shelters"`
+}
+
+// shelterCase is one call of Shelter and what it returned.
+type shelterCase struct {
+	GapM      float64 `json:"gapM"`
+	LaneDelta int     `json:"laneDelta"`
+	LineIndex int     `json:"lineIndex"`
+	Shelter   float64 `json:"shelter"`
+}
+
+// shelterCases walks the drafting table's edges: the front, each wheel, the
+// fade, both adjacent lanes and beyond.
+func shelterCases() []shelterCase {
+	var out []shelterCase
+	for _, gap := range []float64{-0.5, 0.3, 1, 2.2, 3.5, 5.9, 6, 7.5} {
+		for _, lane := range []int{-2, -1, 0, 1, 2} {
+			for _, line := range []int{0, 1, 2, 3, 7} {
+				out = append(out, shelterCase{GapM: gap, LaneDelta: lane, LineIndex: line, Shelter: Shelter(gap, lane, line)})
+			}
+		}
+	}
+	return out
 }
 
 // The inputs; -update fills in where each leg ends.
@@ -102,6 +126,15 @@ func vectors() []vector {
 				}},
 			vector{Name: "rolling down 10 % from a standstill", CdA: cda, Mass: reference,
 				Legs: []leg{{Seconds: 120, Grade: -10}}},
+			// #3233: the reference rider's watts at the speed they settle on,
+			// alone, then behind one wheel, then deep in a line — shelter 0,
+			// 0.35 and 0.50 — on the flat, at 3 % and at 6 %.
+			vector{Name: "225 W on the flat, alone, behind a wheel, deep in a line", CdA: cda, Mass: reference,
+				Speed: SteadySpeed(watts, 0, reference, cda, 0), Legs: shelteredLegs(watts, 0)},
+			vector{Name: "225 W at 3 %, alone, behind a wheel, deep in a line", CdA: cda, Mass: reference,
+				Speed: SteadySpeed(watts, 3, reference, cda, 0), Legs: shelteredLegs(watts, 3)},
+			vector{Name: "225 W at 6 %, alone, behind a wheel, deep in a line", CdA: cda, Mass: reference,
+				Speed: SteadySpeed(watts, 6, reference, cda, 0), Legs: shelteredLegs(watts, 6)},
 			// #3204: coasting down −8 % at the speed it settles on, into a
 			// 10 m hairpin 200 m on — braked for, ridden through at the
 			// bend's limit, and ridden out of.
@@ -112,6 +145,15 @@ func vectors() []vector {
 		)
 	}
 	return out
+}
+
+// shelteredLegs is two minutes at each of shelter 0, 0.35 and 0.50.
+func shelteredLegs(watts, grade float64) []leg {
+	return []leg{
+		{Seconds: 120, Watts: watts, Grade: grade},
+		{Seconds: 120, Watts: watts, Grade: grade, Shelter: protocol.ShelterSecondWheel},
+		{Seconds: 120, Watts: watts, Grade: grade, Shelter: protocol.ShelterMax},
+	}
 }
 
 // ride replays a vector's legs through Pace and returns them with where each ended.
@@ -140,6 +182,7 @@ func TestGolden(t *testing.T) {
 			v.Legs = ride(v)
 			g.Vectors = append(g.Vectors, v)
 		}
+		g.Shelters = shelterCases()
 		raw, err := json.MarshalIndent(g, "", "  ")
 		if err != nil {
 			t.Fatal(err)
@@ -156,6 +199,14 @@ func TestGolden(t *testing.T) {
 	var g golden
 	if err := json.Unmarshal(raw, &g); err != nil {
 		t.Fatal(err)
+	}
+	if cases := shelterCases(); len(g.Shelters) != len(cases) {
+		t.Errorf("%d shelter cases in the file, the model defines %d: run with -update", len(g.Shelters), len(cases))
+	}
+	for _, c := range g.Shelters {
+		if got := Shelter(c.GapM, c.LaneDelta, c.LineIndex); !near(got, c.Shelter, 1e-12) {
+			t.Errorf("Shelter(%v, %d, %d) = %v; the file says %v — run with -update if the rule moved on purpose", c.GapM, c.LaneDelta, c.LineIndex, got, c.Shelter)
+		}
 	}
 	want := vectors()
 	if len(g.Vectors) != len(want) {
