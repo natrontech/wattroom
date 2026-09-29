@@ -156,3 +156,77 @@ test('import a .erg, and refuse the files that are not one', async ({
 	await page.waitForURL('**/workouts/edit?w=*');
 	await expect(page.getByLabel('Workout name')).toHaveValue(ERG_NAME);
 });
+
+/**
+ * The intervals.icu pull as the page meets it (#2327). The round trip through
+ * intervals.icu's consent page needs a registered client (#3575), so the two
+ * reads this page makes are stubbed here; the server's half is Go-tested
+ * against a hand-written fake intervals.icu. This owns the landing, the list,
+ * a preview through the same importer, a real save, and a pull read once.
+ */
+test('a pulled week lists, previews and saves, and the pull is read once', async ({
+	page,
+}) => {
+	await page.addInitScript(() =>
+		localStorage.setItem(
+			'wattroom.mixer.v1',
+			JSON.stringify({ music: 0, cues: 0, board: 0, share: 0 }),
+		),
+	);
+	await signInAs(page, 'Import Pull', '/workouts/import');
+	// This dev server has no intervals.icu client: nothing is offered.
+	await expect(
+		page.getByRole('button', { name: 'Choose a file' }),
+	).toBeVisible();
+	await expect(page.getByText('from intervals.icu')).toHaveCount(0);
+
+	const PLANNED = `Planned Tempo ${RUN}`;
+	await page.route('**/api/intervals', (route) =>
+		route.fulfill({ json: { available: true } }),
+	);
+	let opened = 0;
+	await page.route('**/api/intervals/pulls/*', (route) => {
+		opened += 1;
+		return route.fulfill({
+			json: {
+				workouts: [
+					{
+						name: PLANNED,
+						date: '2026-10-01',
+						zwo: `<workout_file><name>${PLANNED}</name><workout><SteadyState Duration="1200" Power="0.8"/></workout></workout_file>`,
+					},
+				],
+				skipped: 1,
+			},
+		});
+	});
+	await page.goto('/workouts/import?intervals=a-pull');
+
+	const row = page.getByRole('listitem').filter({ hasText: PLANNED });
+	await expect(row).toContainText('2026-10-01');
+	await expect(
+		page.getByText(
+			'1 planned item had no workout file WattRoom can read, and was left out.',
+		),
+	).toBeVisible();
+	await expect(
+		page.getByRole('link', { name: 'Pull my planned workouts' }),
+	).toHaveAttribute('href', '/api/intervals/start');
+	// Spent: a reload would not ask for it again.
+	await expect.poll(() => new URL(page.url()).search).toBe('');
+
+	await row.getByRole('button', { name: 'Preview' }).click();
+	await expect(page.getByRole('heading', { name: PLANNED })).toBeVisible();
+	await expect(page.getByText('20:00', { exact: true }).first()).toBeVisible();
+	await page.getByRole('button', { name: 'Save to my shelf' }).click();
+	await expect(row).toContainText('On your shelf');
+	expect(new URL(page.url()).pathname).toBe('/workouts/import');
+	expect(opened).toBe(1);
+
+	await page.goto('/workouts/import?intervals=denied');
+	await expect(
+		page.getByText(
+			'Nothing was pulled: intervals.icu was not given access to your calendar.',
+		),
+	).toBeVisible();
+});

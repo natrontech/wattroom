@@ -1,7 +1,9 @@
 <script lang="ts">
 	import FileUp from '@lucide/svelte/icons/file-up';
 	import Info from '@lucide/svelte/icons/info';
-	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { goto, replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 	import { account } from '$lib/account.svelte';
 	import Banner from '$lib/components/Banner.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
@@ -17,6 +19,12 @@
 		importWorkoutFile,
 		type Imported,
 	} from '$lib/workout/import';
+	import {
+		importPlanned,
+		intervalsAvailable,
+		openPull,
+		type PlannedWorkout,
+	} from '$lib/workout/import/intervals';
 
 	/**
 	 * Bringing a plan in from somewhere else (#2327). The rider already has
@@ -65,9 +73,51 @@
 				: null,
 	);
 
+	// The planned week from intervals.icu (#2327): offered only where the
+	// server has a client (errors.md: never a button that fails), and opened
+	// once, when the pull lands here.
+	let offerPull = $state(false);
+	type Pull =
+		| { state: 'opening' }
+		| { state: 'error'; error: string }
+		| { state: 'open'; workouts: PlannedWorkout[]; skipped: number };
+	let pull = $state<Pull | null>(null);
+	let previewing = $state<number | null>(null);
+	let saved = $state<number[]>([]);
+
+	onMount(() => {
+		void intervalsAvailable().then((yes) => (offerPull = yes));
+		const landing = page.url.searchParams.get('intervals');
+		if (!landing) return;
+		// A reload must not ask again for a pull that is already spent.
+		replaceState(page.url.pathname, {});
+		pull = { state: 'opening' };
+		void openPull(landing).then((result) => {
+			pull = result.ok
+				? { state: 'open', workouts: result.workouts, skipped: result.skipped }
+				: { state: 'error', error: result.error };
+		});
+	});
+
+	function preview(index: number) {
+		if (pull?.state !== 'open') return;
+		const planned = pull.workouts[index];
+		error = null;
+		saveError = null;
+		fileName = `${planned.name || 'Planned workout'} · ${planned.date} · intervals.icu`;
+		previewing = index;
+		const outcome = importPlanned(planned, riderFtp);
+		imported = outcome.ok ? outcome.imported : null;
+		if (!outcome.ok) error = outcome.error;
+	}
+
+	const leftOut = (n: number) =>
+		`${n} planned ${n === 1 ? 'item' : 'items'} had no workout file WattRoom can read, and ${n === 1 ? 'was' : 'were'} left out.`;
+
 	async function take(files: FileList) {
 		const file = files[0];
 		if (!file) return;
+		previewing = null;
 		reading = true;
 		error = null;
 		saveError = null;
@@ -101,6 +151,13 @@
 			return;
 		}
 		toasts.push(`Imported “${imported.workout.name}” onto your shelf.`);
+		// A pulled week is several workouts: one saved keeps the rest in reach.
+		if (previewing !== null && !andEdit) {
+			saved = [...saved, previewing];
+			previewing = null;
+			imported = null;
+			return;
+		}
 		await goto(andEdit ? `/workouts/edit?w=${result.id}` : '/workouts');
 	}
 </script>
@@ -122,6 +179,75 @@
 		class="sr-only"
 		aria-label="Choose a workout file"
 	/>
+
+	{#if offerPull || pull}
+		<section class="mt-6">
+			<div class="flex flex-wrap items-center gap-3">
+				<h2 class="eyebrow">from intervals.icu</h2>
+				{#if offerPull}
+					<!-- A full navigation: the pull is a round trip through
+					     intervals.icu's consent page, not a route of this app. -->
+					<a
+						href="/api/intervals/start"
+						data-sveltekit-reload
+						class="btn btn-secondary ml-auto">Pull my planned workouts</a
+					>
+				{/if}
+			</div>
+			{#if !pull}
+				<p class="text-muted mt-2 text-xs">
+					The next seven days of your intervals.icu calendar, read once.
+					WattRoom asks for planned workouts only, keeps no access to your
+					account, and saves nothing until you choose.
+				</p>
+			{:else if pull.state === 'opening'}
+				<Skeleton class="mt-3 h-16" rows={2} />
+			{:else if pull.state === 'error'}
+				<div class="mt-3">
+					<Banner tone="error">
+						{pull.error}
+						{#snippet action()}
+							{#if offerPull}
+								<a
+									href="/api/intervals/start"
+									data-sveltekit-reload
+									class="btn-link text-xs">Pull again</a
+								>
+							{/if}
+						{/snippet}
+					</Banner>
+				</div>
+			{:else if pull.workouts.length === 0}
+				<p class="text-muted mt-3 text-xs">
+					No planned workouts in the next seven days on intervals.icu.
+					{#if pull.skipped > 0}{leftOut(pull.skipped)}{/if}
+				</p>
+			{:else}
+				<ul class="border-frame mt-3 divide-y border-y">
+					{#each pull.workouts as planned, index (index)}
+						<li class="flex flex-wrap items-center gap-3 py-2">
+							<span class="text-muted num text-xs">{planned.date}</span>
+							<span class="min-w-0 flex-1 truncate text-sm"
+								>{planned.name || 'Planned workout'}</span
+							>
+							{#if saved.includes(index)}
+								<span class="text-ok text-xs">On your shelf</span>
+							{:else}
+								<button
+									onclick={() => preview(index)}
+									aria-pressed={previewing === index}
+									class="btn btn-secondary btn-xs">Preview</button
+								>
+							{/if}
+						</li>
+					{/each}
+				</ul>
+				{#if pull.skipped > 0}
+					<p class="text-muted mt-2 text-xs">{leftOut(pull.skipped)}</p>
+				{/if}
+			{/if}
+		</section>
+	{/if}
 
 	<section class="mt-6">
 		<div
