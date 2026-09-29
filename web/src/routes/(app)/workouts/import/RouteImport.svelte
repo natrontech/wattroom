@@ -154,7 +154,7 @@
 		<button disabled class="btn btn-ghost btn-lg">Plan it for a crew</button>
 		{#if imported.src === 'stravagpx'}
 			<span
-				class="border-frame text-muted inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs"
+				class="border-frame text-muted inline-flex items-center gap-1 rounded border px-2 text-xs"
 			>
 				<Lock size={12} /> Only you can ride this one
 			</span>

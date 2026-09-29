@@ -120,9 +120,9 @@
 				/>
 			</svg>
 			{#if classed.length > 0}
-				<ul class="mt-2 flex flex-wrap gap-1.5" aria-label="Climbs">
+				<ul class="mt-2 flex flex-wrap gap-2" aria-label="Climbs">
 					{#each classed as c (c.startM)}
-						<li class="border-neon/40 rounded border px-1.5 py-0.5 text-xs">
+						<li class="border-neon/40 rounded border px-2 text-xs">
 							<span class="font-display font-bold">{c.cls}</span>
 							<span class="text-muted num"
 								>{((c.topM - c.startM) / 1000).toFixed(1)} km · {Math.round(
