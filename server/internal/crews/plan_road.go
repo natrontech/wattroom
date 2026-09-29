@@ -58,3 +58,25 @@ func (s *Service) readable(ctx context.Context, workoutJSON []byte, viewer pgtyp
 	}
 	return out
 }
+
+// sessionCut is a plan's workout as its session sends it to every socket
+// (#3512): the crew's cut of its road — the planner's own route, checked when
+// it was planned — never the bare reference, which no crewmate can ride. A
+// road that cannot be cut refuses the start, as the hub refuses a pick
+// (hub.sessionRoad). False when it wrote the refusal.
+func (s *Service) sessionCut(w http.ResponseWriter, r *http.Request, workoutJSON []byte) (string, bool) {
+	if ref, _ := workout.RoadOf(string(workoutJSON)); ref == nil {
+		return string(workoutJSON), true
+	}
+	if s.roads == nil {
+		httpx.WriteError(w, http.StatusBadRequest, "validation_error",
+			"This server does not ride roads yet, so a session cannot carry one.")
+		return "", false
+	}
+	out, err := s.roads.Attach(r.Context(), string(workoutJSON), pgtype.UUID{})
+	if err != nil {
+		httpx.Fail(w, s.log, "plan road cut failed", err, "The road could not be read just now. Start the session again in a moment.")
+		return "", false
+	}
+	return out, true
+}
