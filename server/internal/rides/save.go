@@ -46,6 +46,11 @@ type sampleJSON struct {
 	// On a road (#3052): metres along it and the height there; absent off one.
 	M   float64 `json:"m,omitempty"`
 	Alt float64 `json:"alt,omitempty"`
+	// Which pass along the road (#3598): 0, 1, … in order. A lap's first
+	// sample says whether it runs down the stored road — "Ride back the way
+	// you came" — and then its m counts down.
+	Lap     int  `json:"lap,omitempty"`
+	Reverse bool `json:"reverse,omitempty"`
 }
 
 type createRequest struct {
@@ -62,8 +67,23 @@ type createRequest struct {
 
 // roadRefusal answers a sample off the road in the bounds protocol holds it to.
 var roadRefusal = fmt.Sprintf(
-	"A sample's place on the road is out of range — it only moves forward, at most %d m a second, between %d m and %d m high.",
+	"A sample's place on the road is out of range — within a lap it only moves the lap's way, at most %d m a second, between %d m and %d m high.",
 	protocol.MaxRoadSpeedMps, protocol.MinRoadAltM, protocol.MaxRoadAltM)
+
+// lapFollows says whether a sample follows the one before it on the road
+// (#3598): within a lap, along it the lap's way and no faster than a rider
+// goes; a new lap — the next number — starts wherever its way says.
+func lapFollows(prev, next protocol.RiderMetrics, prevLap, nextLap int, reverse bool) bool {
+	switch {
+	case nextLap == prevLap+1:
+		return true
+	case nextLap != prevLap:
+		return false
+	case reverse:
+		return protocol.RoadFollows(next, prev, 1)
+	}
+	return protocol.RoadFollows(prev, next, 1)
+}
 
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Not signed in.")
@@ -115,6 +135,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	samples := make([]protocol.RiderMetrics, len(req.Samples))
+	var laps []stats.Lap
 	for i, sample := range req.Samples {
 		if sample.Watts < 0 || sample.Watts > maxWatts ||
 			sample.Cadence < 0 || sample.Cadence > maxCadence ||
@@ -141,9 +162,13 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence, Bias: sample.Bias, Clock: sample.Clock, Released: sample.Released, Seq: i,
 			M: sample.M, Alt: sample.Alt,
 		}
-		// A sample a second: along the road, never back, and no faster than
-		// a rider can go (#3052).
-		if !samples[i].RoadInBounds() || i > 0 && !protocol.RoadFollows(samples[i-1], samples[i], 1) {
+		// A sample a second: along the road the lap's way, never back, and no
+		// faster than a rider can go (#3052, #3598).
+		if i == 0 || sample.Lap != req.Samples[i-1].Lap {
+			laps = append(laps, stats.Lap{Start: i, Reverse: sample.Reverse})
+		}
+		if !samples[i].RoadInBounds() || i == 0 && sample.Lap != 0 ||
+			i > 0 && !lapFollows(samples[i-1], samples[i], req.Samples[i-1].Lap, sample.Lap, laps[len(laps)-1].Reverse) {
 			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error", roadRefusal, "samples")
 			return
 		}
@@ -176,7 +201,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	stats.SetHow(&row, stats.RideMode(req.WorkoutJSON, false), req.WorkoutJSON, route != nil, req.Drive, stats.WeightThatDay(user))
 	if route != nil {
-		ride := stats.ReplayRoad(ridden, samples, float64(user.WeightKg)+protocol.BikeKg)
+		ride := stats.ReplayRoad(ridden, samples, laps, float64(user.WeightKg)+protocol.BikeKg)
 		stats.SetRoad(&row, *route, ride)
 		// The replay is the record (ADR-0074); a client whose own metres
 		// part from it by more than this is worth knowing about.
