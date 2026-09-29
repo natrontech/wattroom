@@ -75,11 +75,15 @@ func (b *bunch) hear(riderID string, watts, ftp int) {
 
 // ride steps the bunch through every whole second since the last, each at
 // the watts wattsAt answers for that second of the plan. A plan that is not
-// running moves nothing: paused, the bunch slows to 0 at once.
+// running moves nothing: paused, the bunch slows to 0 at once, and what it
+// heard meanwhile is not the first second's.
+// ponytail: no cap on the catch-up; the room's clock only moves by real
+// time, and the room rides the bunch on every tick, empty or not.
 func (b *bunch) ride(now time.Time, running bool, wattsAt func(at time.Time) float64) {
 	if !running {
 		b.pace.Speed = 0
 		b.at = now
+		clear(b.heard)
 		return
 	}
 	for !now.Before(b.at.Add(time.Second)) {
@@ -207,12 +211,13 @@ func (s *session) rideBunch(now time.Time) {
 	if s.bunch == nil {
 		return
 	}
-	// Wall-clock instant of workout second zero, as sprintBlockAt reads it:
-	// the countdown's seconds are not ridden.
-	origin := s.startedAt.Add(-s.banked)
-	if s.phase == "running" && s.bunch.at.Before(origin) {
-		s.bunch.at = origin
+	// The countdown's seconds and a pause's are not ridden: the run under
+	// way started at startedAt.
+	if s.phase == "running" && s.bunch.at.Before(s.startedAt) {
+		s.bunch.at = s.startedAt
 	}
+	// Wall-clock instant of workout second zero, as sprintBlockAt reads it.
+	origin := s.startedAt.Add(-s.banked)
 	s.bunch.ride(now, s.phase == "running", func(at time.Time) float64 {
 		// The second just ridden is the one that ends at `at`.
 		seg, pct, ok := workout.SegmentAt(s.segments, int(at.Sub(origin)/time.Second)-1)
