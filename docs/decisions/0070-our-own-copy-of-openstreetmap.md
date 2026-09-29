@@ -90,3 +90,10 @@ geo pack is therefore not only the basemap and the spatial index but what
 every world is built from: its heights, its roads (as ADR-0082's strokes) and
 its names, so two riders on the same road see the same world. A world changes
 only when the pack's data snapshot does, for everyone at once.
+
+## Amendment, 2026-09-29 (#3283): Amended by ADR-0078 — a look pack beside the geo pack
+
+[ADR-0078](0078-real-ground-painted-light.md) adds a **look pack**: real heights, tree crowns and graded imagery,
+baked offline by place from swisstopo's open data (bulk download, never
+per-ride WMTS) and Copernicus and WorldCover abroad. Like the geo pack it is
+served from our own origin and never follows a route.

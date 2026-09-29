@@ -915,6 +915,29 @@ A rider's bias never moves the bunch.
 | Alpenglow           | OKLCH hue **58–60°**                                                                                                     |
 | Flashes             | WCAG 2.3.1, and at most one dim flash per **10 s** over **25 %** of a 10° field; none under reduced motion               |
 
+## Real ground (defaults — tune in alpha; [ADR-0078](decisions/0078-real-ground-painted-light.md))
+
+| Parameter           | Value                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| Near heights        | swissALTI3D **2 m**, averaged to **4 m**                                                                |
+| Far heights         | swissALTIRegio **80 m**, out to **±60 km**, with the earth's curvature                                  |
+| Panorama stations   | on a global **2 km** grid                                                                               |
+| Look pack ceiling   | **50 GB** for Switzerland, checked against the one-canton pilot first                                   |
+| Imagery             | **0.5 m**, or **2 m** if the pilot extrapolates over the ceiling                                        |
+| Height tiles        | lossless Terrarium WebP (rule)                                                                          |
+
+**The ladder** starts from the realism lab's fast-rig numbers (an M2 Pro at
+1280×720, 30 fps); M20's measurements, the slow rig's included, rewrite them:
+
+| Rung | GPU per frame | Triangles     | Textures    |
+| ---- | ------------- | ------------- | ----------- |
+| L1   | **1.95 ms**   | —             | —           |
+| L2   | **2.5 ms**    | **0.58 M**    | **109 MB**  |
+| L3   | **4.15 ms**   | **0.92 M**    | **170 MB**  |
+
+The lab did not report L1's triangles or textures; its first measurement
+fills them in.
+
 ## The figure ([ADR-0073](decisions/0073-the-rider-is-dressed-never-measured.md) — defaults, tune in alpha)
 
 - **Proportions**: stylised athletic, about **7 heads** tall, head scale **1.08**. No face.
