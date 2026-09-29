@@ -107,7 +107,7 @@ func (s *Saver) save(
 			continue
 		}
 		row.CrewID, row.ChannelID, row.SessionID = at.crew, at.channel, at.session
-		SetHow(&row, RideMode(workoutJSON, true), false, accountWeight(ctx, q, row.UserID))
+		SetHow(&row, RideMode(workoutJSON, true), workoutJSON, false, "", accountWeight(ctx, q, row.UserID))
 		row.Xp += StreakXP(ctx, q, row.UserID, start)
 		// A retry after a commit whose answer was lost must not insert the
 		// rider's ride — or their medals — twice (audit 2026-09-09).
