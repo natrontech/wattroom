@@ -30,7 +30,7 @@
 {#snippet lc(c: GateCheck)}
 	{#if c.lc !== undefined}
 		<span
-			class="num {c.warning ? 'text-z5' : 'text-muted-dim'}"
+			class="num {c.warning ? 'text-warn' : 'text-muted-dim'}"
 			title="APCA Lc — reported, not gated">Lc {fmt(c.lc)}</span
 		>
 	{/if}
@@ -69,7 +69,7 @@
 			{/each}
 		</ul>
 	{:else if !waived.length}
-		<p class="text-z4 mt-2 text-xs">Every check passes.</p>
+		<p class="text-ok mt-2 text-xs">Every check passes.</p>
 	{/if}
 
 	{#if waived.length}
@@ -82,7 +82,7 @@
 							{fmt(c.value)}{c.unit} / {fmt(c.floor)}{c.unit}
 						</span>
 						{@render lc(c)}
-						<span class="text-z5 shrink-0 font-mono text-[10px]">waived</span>
+						<span class="text-warn shrink-0 font-mono text-[10px]">waived</span>
 					</div>
 					<p class="text-muted-dim mt-0.5 pr-16 text-[11px] leading-snug">
 						{c.exempt}
@@ -99,7 +99,7 @@
 					<div class="flex items-baseline gap-2">
 						<span class="min-w-0 flex-1 truncate">{c.label}</span>
 						<span class="num">Lc {c.lc?.toFixed(2)}</span>
-						<span class="text-z5 shrink-0 font-mono text-[10px]">warning</span>
+						<span class="text-warn shrink-0 font-mono text-[10px]">warning</span>
 					</div>
 					<p class="text-muted-dim mt-0.5 pr-16 text-[11px] leading-snug">
 						{c.warning}
@@ -123,9 +123,9 @@
 					{@render lc(c)}
 					<span
 						class="shrink-0 font-mono text-[10px] {c.passes
-							? 'text-z4'
+							? 'text-ok'
 							: c.exempt
-								? 'text-z5'
+								? 'text-warn'
 								: 'text-danger'}"
 						>{c.passes ? 'pass' : c.exempt ? 'waived' : 'fail'}</span
 					>

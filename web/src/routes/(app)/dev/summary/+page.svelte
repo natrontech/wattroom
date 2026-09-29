@@ -173,7 +173,7 @@
 				</ul>
 				<!-- SPEC: category rises announce in the session; drops happen silently. -->
 				<div class="border-z4/40 bg-z4/10 mt-4 rounded border px-3 py-2">
-					<p class="text-z4 text-xs font-medium">
+					<p class="text-ok text-xs font-medium">
 						Category {ride.category.from} → {ride.category.to}
 					</p>
 					<p class="text-muted mt-0.5 text-[11px]">

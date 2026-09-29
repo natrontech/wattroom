@@ -178,6 +178,12 @@
 	/* Semantic, not data (#397): destructive controls and errors. The hue is
 	 * fixed red-orange in every theme; only lightness follows the family. */
 	--color-danger: light-dark(#c21725, #fc5855);
+	/* Status words (#2969): "on target", "in voice" say ok; "reconnecting…",
+	 * "no signal" say warn. Z4 and Z5 pulled to the text floor in palette.ts —
+	 * the cave's ship as they are, the day's darken — because a zone is fitted
+	 * to a fill's floor and a word needs 4.5:1. Zones mark; these write. */
+	--color-ok: light-dark(#027e5f, #06d6a0);
+	--color-warn: light-dark(#a35d01, #ffa62b);
 	/* The line around a raised thing (#505). Ink at a tenth is a whisper in
 	 * the cave and nothing at all on paper, where a white tile sits on a
 	 * near-white page — so the light family draws a real edge. Derived from

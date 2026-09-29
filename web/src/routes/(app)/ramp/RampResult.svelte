@@ -156,7 +156,7 @@
 	{#if suggestedLthr > 0}
 		<div class="border-ink/5 mt-6 border-t pt-4">
 			{#if lthrSaved}
-				<p class="text-z4 text-xs">
+				<p class="text-ok text-xs">
 					LTHR set to {suggestedLthr} bpm — your heart-rate zones now follow it.
 				</p>
 			{:else}

@@ -96,7 +96,7 @@
 			{#each bands as band (band.unit)}
 				<p
 					class="font-display text-lg leading-none font-bold tabular-nums {band.inBand
-						? 'text-z4'
+						? 'text-ok'
 						: 'text-muted'}"
 				>
 					{band.text}

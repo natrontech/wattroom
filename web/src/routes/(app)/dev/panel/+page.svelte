@@ -84,7 +84,7 @@
 		{#if r.cam}<Video size={11} class="text-muted shrink-0" />{/if}
 		{#if r.speaking}<Mic
 				size={11}
-				class="text-z4 shrink-0"
+				class="text-ok shrink-0"
 			/>{:else if r.muted}<MicOff
 				size={11}
 				class="text-muted-dim shrink-0"

@@ -177,7 +177,7 @@
 				</p>
 				<p
 					class="font-display text-2xl font-bold tabular-nums {tier === 'gold'
-						? 'text-z5'
+						? 'text-warn'
 						: ''}"
 				>
 					{n}
@@ -241,7 +241,7 @@
 									<span
 										class="rounded-full px-2 py-0.5 text-[10px] tracking-wider uppercase {row.status ===
 										'shipped'
-											? 'bg-z4/15 text-z4'
+											? 'bg-z4/15 text-ok'
 											: 'bg-neon/15 text-neon'}">{row.status}</span
 									>
 									<span class="text-muted ml-2 text-[11px]">{row.note}</span>

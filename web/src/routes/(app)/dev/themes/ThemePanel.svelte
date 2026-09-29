@@ -128,7 +128,7 @@
 						<div
 							class="pt-px text-center font-mono text-[9px] {ramp[i].lc <
 							APCA_MIN_LC
-								? 'text-z5'
+								? 'text-warn'
 								: 'text-muted-dim'}"
 							title="APCA Lc — reported, not gated (ADR-0023 §3)"
 						>
@@ -195,7 +195,7 @@
 						</span>
 						<span
 							class="num {reading.lc < APCA_MIN_LC
-								? 'text-z5'
+								? 'text-warn'
 								: 'text-muted-dim'}"
 							title="APCA Lc — reported, not gated"
 						>
@@ -203,7 +203,7 @@
 						</span>
 						<span
 							class="font-mono text-[10px] {reading.passes
-								? 'text-z4'
+								? 'text-ok'
 								: 'text-danger'}"
 						>
 							{reading.passes ? 'pass' : 'fail'} · {reading.floor}
