@@ -581,8 +581,15 @@ resistance, nothing it does reaches a trainer, and it picks **when, never who**
 - **Sounds**: at most **12** roadside sounds a minute reach any one rider.
   The cowbell counts against it; a ring past the ceiling stays silent, and the
   cheer still floats up.
-- **A Prime**: best 5 s W/kg inside the 15 s sprint window, and never within
-  **5 min** of another sprint.
+- **A Prime**: best 5 s W/kg inside the 15 s sprint window. **One** per
+  spectator per ride; never within **5 min** of another sprint, never near a
+  KOM, and never in the last **3 min**.
+- **A stand** (where a spectator watches from): **300 m – 5 km** ahead of the
+  bunch, moved at most once per **60 s**.
+- **Paint**: **6** stamps per spectator, one per climb; at most **12** live on
+  the road.
+- **Backing a rider**: **one** per spectator per ride.
+- **Weather**: in rounds of **5 min**.
 - **Flashes**: at most one dim flash per **10 s**, and none under reduced
   motion.
 
@@ -702,6 +709,18 @@ window's 4 Hz ticks. Its pace:
 | a road step                             | the live mean %FTP of the pedalling riders, each capped at **150 %** |
 
 A rider's bias never moves the bunch.
+
+| Parameter            | Value                                                                                                   |
+| -------------------- | ------------------------------------------------------------------------------------------------------- |
+| Offset decay         | τ **20 s**                                                                                              |
+| Offset clamp         | **−10 … +25 m** while pedalling                                                                         |
+| Resting              | a rider silent past **10 s** (the virtual-speed rule) coasts back to **−40 m** and is marked Resting    |
+| Team-car tow back    | **20 s**                                                                                                |
+| Front row            | rotates every **120 s** of elapsed time                                                                 |
+| Client snap          | eases at **25 m** off over **5 s**; relaxes to **0 %** grade at **1 %/s** after **5 s** of dead reckoning |
+| Late join            | a **3 s** drop-off                                                                                      |
+| KOM sprints          | open **300 m** before the top of a class **III** climb or harder; at most one per **5 min**, **6** per ride |
+| Terrain Match        | **250 m** step; penalty weight **0.3**; suggestion floor **0.2**                                        |
 
 ## The world (defaults — tune in alpha; [ADR-0066](decisions/0066-the-world-is-the-ride-view.md), [ADR-0072](decisions/0072-light-in-the-world.md))
 
