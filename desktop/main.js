@@ -2,8 +2,9 @@
 //
 // A window, a permission boundary, and the handlers Electron makes mandatory.
 // It holds no product code: it loads the deployed web app, so the UI ships on
-// every server deploy and a desktop release only happens when this file
-// changes.
+// every server deploy and a desktop release only happens when the shell
+// changes. What would crowd this file lives beside it: the window's state,
+// notifications, the HUD, deep links and the updater each have a module.
 //
 // Everything interesting here is in the four handlers (RESEARCH.md §15.1).
 // Electron is not a browser with a title bar — each of these is something
@@ -18,18 +19,20 @@ const {
 	ipcMain,
 	Menu,
 	MenuItem,
-	Notification,
 	powerSaveBlocker,
-	screen,
 	shell,
 } = require('electron');
-const fs = require('node:fs');
 const path = require('node:path');
 const badge = require('./badge');
+const deepLink = require('./deep-link');
+const hud = require('./hud');
 const log = require('./log');
 const loginItem = require('./login-item');
+const notifications = require('./notifications');
 const tray = require('./tray');
+const updater = require('./updater');
 const visibility = require('./visibility');
+const windowState = require('./window-state');
 
 // Where the shell points. The default is production; a dev build overrides it
 // to a worktree's own Vite port (`make dev-env` prints it).
@@ -206,7 +209,7 @@ let hasTray = false;
 function mainWindow() {
 	return (
 		BrowserWindow.getAllWindows().find(
-			(w) => !w.isDestroyed() && w !== hudWindow,
+			(w) => !w.isDestroyed() && w !== hud.current(),
 		) ?? null
 	);
 }
@@ -246,66 +249,11 @@ function openPath(to) {
 	win.webContents.send('wattroom:go', to);
 }
 
-// Where the window was (#1948): size, position and whether it was maximized
-// or fullscreen, kept in userData and restored only when the saved rect still
-// lands on a display that is here — a monitor that went with the rider's desk
-// keeps the size and drops the position. Saved as it changes, not only on
-// close (#3013): a crash, a force-quit or a power cut mid-ride keeps it too.
-// The HUD places itself (ADR-0041).
-const WINDOW_STATE_SETTLE_MS = 500;
-function windowStateFile() {
-	return path.join(app.getPath('userData'), 'window.json');
-}
-function readWindowState() {
-	try {
-		const s = JSON.parse(fs.readFileSync(windowStateFile(), 'utf8'));
-		if (typeof s.width === 'number' && typeof s.height === 'number') return s;
-	} catch {
-		/* first launch, or a file nobody wrote */
-	}
-	return null;
-}
-function onADisplay(b) {
-	return screen.getAllDisplays().some(({ workArea: a }) => {
-		return (
-			b.x < a.x + a.width &&
-			b.x + b.width > a.x &&
-			b.y < a.y + a.height &&
-			b.y + b.height > a.y
-		);
-	});
-}
-function saveWindowState(win) {
-	if (win.isDestroyed()) return;
-	try {
-		const maximized = win.isMaximized();
-		const fullScreen = win.isFullScreen();
-		// Maximized, fullscreen or minimized, the bounds to come back to are the normal ones.
-		const bounds =
-			maximized || fullScreen || win.isMinimized()
-				? win.getNormalBounds()
-				: win.getBounds();
-		fs.writeFileSync(
-			windowStateFile(),
-			JSON.stringify({ ...bounds, maximized, fullScreen }),
-		);
-	} catch (err) {
-		console.warn('window state not saved:', err?.message ?? err);
-	}
-}
-
 /** @param opts.hidden load it without showing it (a login launch, #3005) */
 function createWindow({ hidden = false } = {}) {
-	const saved = readWindowState();
-	const placed =
-		saved &&
-		typeof saved.x === 'number' &&
-		typeof saved.y === 'number' &&
-		onADisplay(saved)
-			? { x: saved.x, y: saved.y, width: saved.width, height: saved.height }
-			: { width: saved?.width ?? 1280, height: saved?.height ?? 860 };
+	const saved = windowState.read();
 	const win = new BrowserWindow({
-		...placed,
+		...windowState.bounds(saved),
 		minWidth: 380,
 		backgroundColor: '#0a0118', // --color-surface, so the first paint is not white
 		show: false,
@@ -353,26 +301,14 @@ function createWindow({ hidden = false } = {}) {
 		hidden,
 		rideHeld: () => sleepBlockerId !== null,
 	});
-	// A drag or a resize fires on every frame of it; the state is written once it settles.
-	let settling = null;
-	const saveSoon = () => {
-		clearTimeout(settling);
-		settling = setTimeout(() => saveWindowState(win), WINDOW_STATE_SETTLE_MS);
-	};
-	// Maximizing and going fullscreen resize the window too, so they are saved the same way.
-	win.on('resize', saveSoon);
-	win.on('move', saveSoon);
-	win.on('close', () => {
-		clearTimeout(settling);
-		saveWindowState(win);
-	});
+	windowState.track(win);
 	// The HUD shows only while this window is NOT in front (ADR-0041): in
 	// front, the riding screen has the numbers, and floating them over the
 	// jukebox's player would put a HUD over video, which YouTube's terms forbid.
-	win.on('focus', () => hudWindow?.hide());
-	win.on('blur', () => hudWindow?.showInactive());
+	win.on('focus', () => hud.current()?.hide());
+	win.on('blur', () => hud.current()?.showInactive());
 	win.on('closed', () => {
-		setHud(false);
+		hud.set(false);
 		// Nothing is connected to a room any more, so the tray must stop
 		// offering to open one (it would open a window on the app's home and
 		// look like the item did nothing).
@@ -610,16 +546,10 @@ function textMenu(win) {
  * same hole as the permission default, one step removed. Every window the
  * shell opens gets this — the main one and the HUD.
  */
-// When the app last sent the rider to the system browser to sign in
-// (#1941): a wattroom:// link is accepted only for a little while after,
-// so a page in the rider's browser cannot throw a riding shell onto /login.
-let signInStartedAt = 0;
-const SIGN_IN_WINDOW_MS = 10 * 60 * 1000;
-
 function guardNavigation(win) {
 	win.webContents.setWindowOpenHandler(({ url }) => {
 		if (url.startsWith(`${APP_ORIGIN}/login?desktop=`))
-			signInStartedAt = Date.now();
+			deepLink.signInStarted();
 		if (/^https?:/.test(url)) void shell.openExternal(url);
 		return { action: 'deny' };
 	});
@@ -689,276 +619,16 @@ async function chooseFrom(win, title, options, checkboxLabel = null) {
 	};
 }
 
-// Self-update (#1303, ADR-0037 amended). Four shell releases in a day made
-// the nudge the wrong answer: the shell now asks the releases repo on launch
-// and every few hours, downloads the next release in the background, and
-// installs it when the rider restarts — or quietly on quit. The feed is
-// GitHub's `releases/latest/download` alias (package.json → publish), which
-// is what lets the tags stay desktop-v<CalVer> instead of v<semver>. The web
-// app is told when a download is ready and offers "Restart to update" at the
-// top of the sidebar, which a ride never shows — so never mid-ride, by
-// construction.
-let updateReady = null;
-let autoUpdater = null;
-// Where the shell installs its own updates: only macOS (#2818), where
-// Squirrel.Mac refuses anything without the Developer ID. Linux checks nothing
-// but a sha512 published beside the binary, which whoever can write a release
-// can also write. Windows checks Authenticode, and the Apple-signed build reads
-// UnknownError on a stock Windows, so every download was refused anyway.
-const selfInstalls = process.platform === 'darwin';
-
-function watchForUpdates() {
-	// Required here, not at the top: merely touching electron-updater's
-	// autoUpdater constructs it, and it parses the app's version as semver —
-	// a dev run reports Electron's own version, a packaged app reports
-	// package.json's, and a malformed one crashes at launch with a dialog.
-	if (!app.isPackaged) return;
-	({ autoUpdater } = require('electron-updater'));
-	// Elsewhere the feed is still read, and home offers the download (#2818).
-	autoUpdater.autoDownload = selfInstalls;
-	autoUpdater.autoInstallOnAppQuit = selfInstalls;
-	// stdout: nothing in a Dock launch, everything when run from a terminal —
-	// which is how "why did it not update" gets answered in a minute.
-	autoUpdater.logger = console;
-	autoUpdater.on('update-available', () => (updateFailures = 0));
-	autoUpdater.on('update-not-available', () => (updateFailures = 0));
-	autoUpdater.on('update-downloaded', (info) => {
-		updateFailures = 0;
-		updateReady = { version: info.version };
-		// Every window, not the one at launch (#1947): on macOS a window
-		// closed and reopened from the Dock is a new one.
-		for (const w of BrowserWindow.getAllWindows())
-			if (!w.isDestroyed()) w.webContents.send('wattroom:update', updateReady);
-	});
-	autoUpdater.on('error', (err) => {
-		// Offline, or the feed is missing: not worth a dialog. Counted (#1940):
-		// after three in a row the app's home offers the download instead of
-		// waiting for a self-update that is not coming.
-		updateFailures += 1;
-		console.warn('update check failed:', err?.message ?? err);
-	});
-	// On macOS closing the window leaves the app running, and a click on the
-	// Dock icon brings the window back without a launch — so a check tied to
-	// launch alone can sit six hours behind a release the rider is waiting
-	// for. Check when the app comes back into view too, at most once every
-	// ten minutes.
-	let lastCheck = 0;
-	const check = (force = false) => {
-		if (!force && Date.now() - lastCheck < 10 * 60 * 1000) return;
-		lastCheck = Date.now();
-		void autoUpdater.checkForUpdates().catch(() => {});
-	};
-	setTimeout(() => check(true), 15_000);
-	setInterval(() => check(true), 6 * 60 * 60 * 1000);
-	app.on('activate', () => check());
-	app.on('browser-window-focus', () => check());
-}
-
-// The renderer asks on mount, in case the download finished before it did.
-ipc.handle('wattroom:update-ready', () => updateReady);
-// Consecutive failures of the updater (#1940): three is "not coming". Only
-// macOS self-installs (#2818), so elsewhere the page offers the download for
-// every newer version, at once.
-let updateFailures = 0;
-ipc.handle(
-	'wattroom:update-failed',
-	() => !selfInstalls || updateFailures >= 3,
-);
-ipc.on('wattroom:install-update', () => installUpdate());
-
-// Restarting into the update, and why "Restart" used to just close the app.
-// quitAndInstall() hands Squirrel's ShipIt a job that waits for EVERY
-// instance of the bundle to go away before it touches /Applications, and it
-// waits in silence: one log here sat twenty-six minutes between "install
-// request" and "Beginning installation", then gave up with
-//
-//     Aborting update attempt because there are 1 running instances
-//     Installation cancelled: … "App Still Running Error"
-//
-// The window had closed the moment the rider pressed the button, so what
-// they saw was the app dying and never coming back — no install, no
-// relaunch, no message. Electron's own quit is what ShipIt is waiting for
-// and it is not guaranteed to arrive: on macOS a window can close without
-// the process following it. So we do not leave the termination to chance.
-// Replacing the bundle then takes ShipIt the better part of half a minute,
-// and nothing can narrate that from here: a notification shown on the way out
-// is withdrawn with the process (checked against the signed build — it never
-// reaches Notification Center). So the sidebar's "Installing… reopens by
-// itself" is the last thing the rider gets, and this is the beat that lets
-// them read it.
-const INSTALL_QUIT_MS = 900;
-// Long enough for Squirrel to have handed ShipIt the job (the logs show it
-// registering within a second), short enough that the rider is still watching.
-const INSTALL_FORCE_EXIT_MS = 5000;
-let installing = false;
-
-function installUpdate() {
-	if (!autoUpdater || !updateReady || installing) return;
-	installing = true;
-	setTimeout(() => {
-		// quitAndInstall closes every window before `before-quit`, and a window
-		// that hides on close would refuse it (#3005).
-		visibility.allowClose();
-		autoUpdater.quitAndInstall();
-		app.quit();
-		// If either of those took, this timer died with the process. Reaching
-		// it means the quit was refused — and a refused quit IS the abort, so
-		// exit() rather than sit here being the thing ShipIt waits for.
-		setTimeout(() => app.exit(0), INSTALL_FORCE_EXIT_MS);
-	}, INSTALL_QUIT_MS);
-}
-
-// The HUD (#296, ADR-0041): the rider's own numbers in a small frameless
-// window that floats over everything else — for the rider who alt-tabbed to
-// a film mid-interval. The web app opens it when a ride starts and closes it
-// when the ride ends; it loads /hud on our origin, in the same session, and
-// that page mirrors the riding screen through a BroadcastChannel. This
-// process only decides WHEN it is visible: never while the main window is in
-// front (see createWindow). The page's own close button sends hud(false),
-// and it stays closed until the next ride starts.
-const HUD_SIZE = { width: 320, height: 132 };
-let hudWindow = null;
-
-function setHud(on) {
-	if (!on) {
-		if (hudWindow && !hudWindow.isDestroyed()) hudWindow.close();
-		hudWindow = null;
-		return;
-	}
-	if (hudWindow) return;
-	const main = mainWindow();
-	if (!main) return;
-	hudWindow = new BrowserWindow({
-		...HUD_SIZE,
-		frame: false,
-		alwaysOnTop: true,
-		resizable: false,
-		minimizable: false,
-		maximizable: false,
-		fullscreenable: false,
-		skipTaskbar: true,
-		// A panel is how a window floats over another app's full-screen Space
-		// on macOS without the whole process becoming a UI element (#2660).
-		type: process.platform === 'darwin' ? 'panel' : undefined,
-		backgroundColor: '#0a0118',
-		show: false,
-		webPreferences: {
-			preload: path.join(__dirname, 'preload.js'),
-			additionalArguments: [`--wattroom-version=${SHELL_VERSION}`],
-			contextIsolation: true,
-			nodeIntegration: false,
-			sandbox: true,
-			backgroundThrottling: false,
-		},
-	});
-	// Above full-screen apps too, and on every desktop — that is the point.
-	hudWindow.setAlwaysOnTop(true, 'floating');
-	// Never the process transform (#2660): without skipTransformProcessType,
-	// visibleOnFullScreen is Electron calling app.dock.hide() — WattRoom lost
-	// its Dock icon, ⌘-Tab and menu bar for the rest of the run, and a rider
-	// whose main window went behind another app could not get back to it.
-	hudWindow.setVisibleOnAllWorkspaces(true, {
-		visibleOnFullScreen: true,
-		skipTransformProcessType: true,
-	});
-	// BOTTOM-LEFT of the display the app is on, a finger's width in (#1669).
-	//
-	// It used to sit top-right, which is exactly where TV mode seats the
-	// YouTube player (TvOverlay.svelte: `top-[3vh] right-[3vw]`, ≥240×200) —
-	// and this is an alwaysOnTop OS window, so at 1920×1080 roughly 280×115 px
-	// of the player was under it with nothing the page could do about it.
-	// ADR-0041's focus rule does not cover it: a room on a TV with WattRoom
-	// un-focused is the normal case, and un-focused is when the HUD SHOWS.
-	//
-	// Bottom-left is the one corner nothing else claims — TV's seat is
-	// top-right and the jukebox dock's corner fallback is bottom-right.
-	const { workArea } = screen.getDisplayMatching(main.getBounds());
-	hudWindow.setPosition(
-		workArea.x + 16,
-		workArea.y + workArea.height - HUD_SIZE.height - 16,
-	);
-	guardNavigation(hudWindow);
-	hudWindow.on('closed', () => {
-		hudWindow = null;
-	});
-	hudWindow.once('ready-to-show', () => {
-		if (hudWindow && !main.isFocused()) hudWindow.showInactive();
-	});
-	hudWindow.loadURL(`${APP_ORIGIN}/hud`).catch(() => {
-		/* a HUD that cannot load is closed by the next hud(false) */
-	});
-}
-
-ipc.on('wattroom:hud', (event, on) => {
-	// The HUD's own renderer runs the app's layout and used to answer its
-	// opening with hud(false) (#1938); only the main window drives the HUD.
-	if (
-		hudWindow &&
-		!hudWindow.isDestroyed() &&
-		event.sender === hudWindow.webContents
-	)
-		return;
-	setHud(Boolean(on));
+updater.install({ ipc });
+hud.install({
+	ipc,
+	appOrigin: APP_ORIGIN,
+	version: SHELL_VERSION,
+	mainWindow,
+	guardNavigation,
 });
-
-// Notifications (ADR-0042). The web app's lib/notify decides WHETHER to
-// notify — enabled, nobody looking — and sends the words here, because the
-// shell's own Notification can do what the renderer's cannot: carry a reply
-// field (macOS) and hand a click back to the app with the conversation it
-// belongs to. Everything is clipped and the href must be a path on our
-// origin: remote content chooses the words, never where the app goes.
-const clip = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
-// A path on our origin: one slash, and not a second slash OR a backslash
-// behind it — the URL parser reads `/\evil` as `//evil` (#1946).
-// The web app asks the same of its paths in web/src/lib/same-origin.ts.
-const ownPath = (v) =>
-	typeof v === 'string' && v.startsWith('/') && !/^\/[\/\\]/.test(v) ? v : '';
-
-// Every notification still showing, by tag (#3001). A Notification nothing
-// references is garbage collected with its listeners, and a click on it in
-// Notification Center then only activates the app: the conversation never
-// opened. One per tag, as the web's own Notification does: the newer line
-// replaces the older one rather than leaving a dead one behind it.
-// ponytail: never pruned; one entry per conversation that ever notified.
-const shown = new Map();
-
-ipc.on('wattroom:notify', (event, n) => {
-	if (!Notification.isSupported() || !n || typeof n !== 'object') return;
-	const title = clip(n.title, 120);
-	if (!title) return;
-	const payload = { tag: clip(n.tag, 80), href: ownPath(n.href) };
-	const placeholder = clip(n.replyPlaceholder, 60);
-	const note = new Notification({
-		title,
-		body: clip(n.body, 400),
-		hasReply: placeholder !== '',
-		replyPlaceholder: placeholder || undefined,
-		// Named, never a path: the renderer picks from what the shell bundles
-		// (#2696), so remote content cannot point it at a file.
-		icon:
-			n.icon === 'chat' ? path.join(__dirname, 'icons', 'chat.png') : undefined,
-	});
-	const win = BrowserWindow.fromWebContents(event.sender);
-	note.on('click', () => {
-		focusWindow(win);
-		if (!event.sender.isDestroyed())
-			event.sender.send('wattroom:notification', payload);
-	});
-	note.on('reply', (_e, reply) => {
-		if (!event.sender.isDestroyed())
-			event.sender.send('wattroom:notification', {
-				...payload,
-				// Not cut at the server's 500 (#1945): the field has no limit, and a
-				// 600-character reply arrived as 500 with nothing said. Sent whole
-				// (bounded far above, against a runaway paste), the server's own
-				// refusal reaches the rider through the renderer's toast (#1834).
-				reply: clip(reply, 4000),
-			});
-	});
-	shown.get(payload.tag)?.close();
-	shown.set(payload.tag, note);
-	note.show();
-});
+notifications.install({ ipc, focus: focusWindow });
+const { clip, ownPath } = notifications;
 
 // The tray's "Open <room>" (#1313). The app says which room it is connected
 // to, and the shell only ever puts the name in a menu item and sends the
@@ -967,7 +637,7 @@ ipc.on('wattroom:notify', (event, n) => {
 ipc.on('wattroom:room', (event, r) => {
 	// The HUD runs the app's layout too (#1938), and it speaks for no room.
 	const win = BrowserWindow.fromWebContents(event.sender);
-	if (!win || win.isDestroyed() || win === hudWindow) return;
+	if (!win || win.isDestroyed() || win === hud.current()) return;
 	const to = r && typeof r === 'object' ? ownPath(r.path) : '';
 	tray.setRoom(to ? { path: to, name: clip(r.name, 60) || to } : null);
 });
@@ -977,7 +647,7 @@ ipc.on('wattroom:room', (event, r) => {
 // badge.js before the OS sees it.
 ipc.on('wattroom:badge', (event, n) => {
 	const win = BrowserWindow.fromWebContents(event.sender);
-	if (!win || win.isDestroyed() || win === hudWindow) return;
+	if (!win || win.isDestroyed() || win === hud.current()) return;
 	badge.set(n, win);
 });
 
@@ -994,65 +664,11 @@ ipc.handle('wattroom:login-item-set', (_event, on) => {
 	return { ...loginItem.state(), error };
 });
 
-// wattroom:// — the way back into the app from the system browser (#1188).
-//
-// Sign-in happens in the browser, because it cannot happen here: Electron has
-// no WebAuthn UI, so a passkey request never resolves, and Google refuses
-// OAuth from an Electron window outright. The web app opens
-// /login?desktop=<nonce> in the browser, the rider signs in there however
-// they like, and the page comes back through wattroom://auth/<token>. All
-// the shell does with it is load /login?handoff=<token> on its own origin;
-// the page redeems the token with the nonce it kept, and the server mints
-// this window its own session. Nothing else is accepted: an unknown path or
-// an odd-looking token is dropped, not loaded.
-const DEEP_LINK_TOKEN = /^[A-Za-z0-9_-]{20,200}$/;
-
-function deepLinkToken(link) {
-	let url;
-	try {
-		url = new URL(link);
-	} catch {
-		return null;
-	}
-	if (url.protocol !== 'wattroom:' || url.hostname !== 'auth') return null;
-	const token = url.pathname.replace(/^\//, '');
-	return DEEP_LINK_TOKEN.test(token) ? token : null;
-}
-
-// The token goes to the page over IPC (#1941), never as a navigation: the
-// app decides what to do with it — redeem on /login, or say it is already
-// signed in — and a ride in progress is never loaded over. Only within the
-// sign-in window this shell itself opened; a link arriving cold, with no
-// sign-in started here, is dropped (ponytail: a shell quit mid-sign-in
-// loses the link and the rider starts again — a restart is not a session).
-function openDeepLink(link) {
-	const token = deepLinkToken(link);
-	if (!token) return;
-	if (Date.now() - signInStartedAt > SIGN_IN_WINDOW_MS) {
-		console.warn(
-			'wattroom:// link ignored: no sign-in was started from this app',
-		);
-		return;
-	}
-	const win = mainWindow();
-	if (!win) return;
-	focusWindow(win);
-	win.webContents.send('wattroom:handoff', token);
-}
-
-const deepLinkIn = (argv) => argv.find((a) => a.startsWith('wattroom://'));
-
 // Windows shows a notification only for an app with a model id; without
 // this every new Notification() from the renderer is dropped on the floor.
 if (process.platform === 'win32') app.setAppUserModelId('ch.wattroom.desktop');
 
-// Packaged only (#1944): unpackaged this registered the raw Electron binary
-// and took the link away from the installed app.
-if (app.isPackaged) app.setAsDefaultProtocolClient('wattroom');
-app.on('open-url', (event, link) => {
-	event.preventDefault();
-	openDeepLink(link);
-});
+deepLink.install({ mainWindow, focus: focusWindow });
 
 // One instance. Without this every wattroom:// link opens a second window
 // against the same session; on Windows and Linux the link arrives as the
@@ -1061,9 +677,9 @@ if (!app.requestSingleInstanceLock()) {
 	app.quit();
 } else {
 	app.on('second-instance', (_event, argv) => {
-		const link = deepLinkIn(argv);
+		const link = deepLink.inArgv(argv);
 		if (link) {
-			openDeepLink(link);
+			deepLink.open(link);
 			return;
 		}
 		// Launching the installed app again shows the window, hidden or not —
@@ -1113,10 +729,10 @@ if (!app.requestSingleInstanceLock()) {
 		hasTray = tray.install({ open: openWindow, go: openPath });
 		if (!hasTray) startedHidden = false;
 		createWindow({ hidden: startedHidden });
-		watchForUpdates();
+		updater.watch();
 		// A cold start from a link is dropped (#1941): no sign-in was started
 		// from this run, and the rider starts the sign-in again.
-		if (deepLinkIn(process.argv))
+		if (deepLink.inArgv(process.argv))
 			console.warn('wattroom:// link at launch ignored');
 		// A Dock click brings the rider's window back, not merely a window
 		// (#2660): with the HUD up macOS counts a visible window and restores
