@@ -67,6 +67,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/routes/{id}", s.handleRename)
 	mux.HandleFunc("DELETE /api/routes/{id}", s.handleDelete)
 	mux.HandleFunc("GET /api/routes/{id}/shape", s.handleShape)
+	mux.HandleFunc("GET /api/world", s.handleWorld)
 }
 
 // noKeyHint is the one line a route stored without its place carries.
@@ -175,7 +176,18 @@ func (s *Service) handleShape(w http.ResponseWriter, r *http.Request) {
 			"This route's map is sealed under a key this server no longer holds. Its heights still ride.")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, map[string]string{"shape": shape})
+	// The world's secrets for the owner (#3225): the route's, and each
+	// private region's with where it lies — nobody else is ever sent these.
+	key, err := s.worldKey(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "world key read failed", err, "That route's map could not be loaded.")
+		return
+	}
+	route := store.UUIDString(id)
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"shape": shape, "secret": key.RouteSecret(route),
+		"regions": hiddenEnds(key, route, float64(row.LengthM)),
+	})
 }
 
 func (s *Service) handleRename(w http.ResponseWriter, r *http.Request) {

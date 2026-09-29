@@ -26,7 +26,7 @@ where id = $1 and owner_id = $2;
 -- name: GetOwnerRoutePlace :one
 -- The sealed place, for its owner alone (ADR-0063) — and for nobody else,
 -- which the where clause says rather than a caller remembering to.
-select geom_sealed, key_version from routes where id = $1 and owner_id = $2;
+select geom_sealed, key_version, length_m from routes where id = $1 and owner_id = $2;
 
 -- name: RenameRoute :execrows
 update routes set name = $3 where id = $1 and owner_id = $2;
