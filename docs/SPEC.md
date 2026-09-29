@@ -708,6 +708,8 @@ Every number below is a **default**, to be tuned in alpha and re-measured by the
 
 Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued pedalling on reconnect).
 
+Alone, a game shows your own score; medals need three riders (Medals, above). Watt Golf, Floor is Lava and Backyard Ramp start from the solo ride's door, in the rider's lounge (#3276).
+
 ## The roadside ([ADR-0064](decisions/0064-the-roadside.md) — defaults, tune in alpha)
 
 The **roadside** is everyone in a voice channel who is not riding a given
