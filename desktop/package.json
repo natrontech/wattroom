@@ -29,6 +29,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "log.js",
       "login-item.js",
       "tray.js",
       "offline.html",
