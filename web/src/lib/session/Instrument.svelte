@@ -29,6 +29,7 @@
 		targetLabel = 'target',
 		fullScale = undefined,
 		stale = false,
+		idle = false,
 	}: {
 		watts: number;
 		target: number;
@@ -49,13 +50,20 @@
 		 * away reads the number, not the banner above it.
 		 */
 		stale?: boolean;
+		/**
+		 * Nothing is paired that could measure (#2941). The same quiet face as
+		 * `stale`, but not a fault, so it says what to do instead of "no
+		 * signal" — capability gating, not an error (ux.md).
+		 */
+		idle?: boolean;
 	} = $props();
 
+	const quiet = $derived(stale || idle);
 	const pct = (w: number) => fillPct(w, ftp, fullScale);
-	const shown = $derived(stale ? 0 : watts);
+	const shown = $derived(quiet ? 0 : watts);
 	const state = $derived(targetState({ watts: shown, target }));
 	const zone = $derived(zoneOf(shown, ftp));
-	const numeral = $derived(stale ? 'text-muted' : 'text-watt glow-text-strong');
+	const numeral = $derived(quiet ? 'text-muted' : 'text-watt glow-text-strong');
 </script>
 
 {#snippet track(height: string)}
@@ -108,7 +116,7 @@
 		<span class="flex shrink-0 items-baseline gap-1.5">
 			<span
 				class="font-display {numeral} text-4xl leading-none font-bold tabular-nums"
-				>{stale ? '—' : watts}</span
+				>{quiet ? '—' : watts}</span
 			>
 			<span class="eyebrow">w</span>
 		</span>
@@ -117,9 +125,11 @@
 			class="shrink-0 text-xs tabular-nums {state.inBand
 				? 'text-ok'
 				: 'text-muted'}"
-			>{stale
-				? 'no signal'
-				: state.has
+			>{idle
+				? 'no trainer'
+				: stale
+					? 'no signal'
+					: state.has
 					? `${targetLabel} ${target} W`
 					: 'no target'}</span
 		>
@@ -148,7 +158,7 @@
 			<span
 				class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
 					? 'text-[16vh]'
-					: 'text-[6.5rem]'}">{stale ? '—' : watts}</span
+					: 'text-[6.5rem]'}">{quiet ? '—' : watts}</span
 			>
 			<span class="eyebrow {tv ? 'text-[1.6vh]' : ''}">watts</span>
 			<!-- The zone you are actually in, named (#1531, ADR-0046): the gauge
@@ -186,7 +196,9 @@
 					? 'text-warn'
 					: 'text-muted'}"
 		>
-			{#if stale}
+			{#if idle}
+				no trainer — pair one to see your watts
+			{:else if stale}
 				no signal
 			{:else if !state.has}
 				no {targetLabel} — spin easy

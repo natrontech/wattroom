@@ -161,6 +161,7 @@
 						<Instrument
 							watts={followed.watts}
 							stale={followed.you ? channel.youStale : followed.stale}
+							idle={followed.you && channel.youUnmeasured}
 							target={followed.target}
 							ftp={followed.ftp}
 							compact
@@ -192,6 +193,7 @@
 						<Instrument
 							watts={followed.watts}
 							stale={followed.you ? channel.youStale : followed.stale}
+							idle={followed.you && channel.youUnmeasured}
 							target={followed.target}
 							ftp={followed.ftp}
 							compact={focus === 'media'}

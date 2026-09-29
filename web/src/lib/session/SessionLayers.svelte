@@ -188,6 +188,7 @@
 {#if layers.tv}
 	<TvOverlay
 		{riders}
+		idle={channel.youUnmeasured}
 		{segments}
 		total={shared?.totalSeconds ?? 0}
 		elapsed={shared?.elapsed ?? 0}

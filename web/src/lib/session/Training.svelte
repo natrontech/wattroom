@@ -257,6 +257,7 @@
 				<Instrument
 					watts={channel.you.watts}
 					stale={channel.youStale}
+					idle={channel.youUnmeasured}
 					target={channel.you.target}
 					ftp={channel.you.ftp}
 				/>
@@ -280,6 +281,7 @@
 							<Instrument
 								watts={channel.you.watts}
 								stale={channel.youStale}
+								idle={channel.youUnmeasured}
 								target={channel.you.target}
 								ftp={channel.you.ftp}
 								compact

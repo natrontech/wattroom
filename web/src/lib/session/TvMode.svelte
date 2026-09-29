@@ -10,6 +10,7 @@
 
 	let {
 		riders,
+		idle = false,
 		segments,
 		total,
 		elapsed,
@@ -20,6 +21,8 @@
 		code = '',
 	}: {
 		riders: LiveRider[];
+		/** Your instrument has nothing paired to read (#2941). */
+		idle?: boolean;
 		segments: import('$lib/workout/types').Segment[];
 		total: number;
 		elapsed: number;
@@ -93,6 +96,7 @@
 					target={you.target}
 					ftp={you.ftp}
 					stale={you.stale}
+					{idle}
 					tv
 				/>
 				<div class="mt-[2.5vh]">
