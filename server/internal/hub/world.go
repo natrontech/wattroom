@@ -15,10 +15,6 @@ import (
 // ponytail: hub-local until a client reads it; then protocol/limits.go.
 const roadRidingMps = 0.5
 
-// bunchMaxPct is ADR-0065's 150 %: the pace of a sprint block, and the most
-// any one rider adds to a road step's live mean.
-const bunchMaxPct = 1.5
-
 // routeRide is a road a session rides, as the hub holds it (#3095, #3028):
 // the reference every socket is sent, and the crew's cut the bunch climbs —
 // its heights, never its turns, so the hub holds no shape (ADR-0063).
@@ -109,14 +105,14 @@ func (b *bunch) ride(now time.Time, running bool, joined map[string]struct{}, pl
 }
 
 // livePct is the mean %FTP of the riders pedalling this second, each capped
-// at bunchMaxPct so one strong rider cannot tow the bunch; their bias is
+// at protocol.BunchMaxPct so one strong rider cannot tow the bunch; their bias is
 // never read — a personal trim must not move everyone's road. Nobody
 // pedalling is 0.
 func (b *bunch) livePct() float64 {
 	sum, n := 0.0, 0
 	for _, s := range b.heard {
 		if pct := s.pct(); pct > 0 {
-			sum += min(pct, bunchMaxPct)
+			sum += min(pct, protocol.BunchMaxPct)
 			n++
 		}
 	}
@@ -155,7 +151,7 @@ func planAt(seg workout.Segment, pct float64, inBlock bool) planned {
 func (p planned) watts(livePct float64) float64 {
 	switch {
 	case p.sprint:
-		return bunchMaxPct * protocol.ReferenceRiderWatts
+		return protocol.BunchMaxPct * protocol.ReferenceRiderWatts
 	case p.absolute > 0:
 		return p.absolute
 	case p.pct > 0:
