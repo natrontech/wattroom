@@ -73,8 +73,9 @@ func (q *Queries) CreateFriendRequest(ctx context.Context, arg CreateFriendReque
 
 const deleteFriendship = `-- name: DeleteFriendship :execrows
 delete from friendships
-where (requester_id = $1 and addressee_id = $2)
-   or (requester_id = $2 and addressee_id = $1)
+where ((requester_id = $1 and addressee_id = $2)
+    or (requester_id = $2 and addressee_id = $1))
+  and friendship_visible(requester_id, addressee_id, status, $1)
 `
 
 type DeleteFriendshipParams struct {
@@ -82,7 +83,8 @@ type DeleteFriendshipParams struct {
 	AddresseeID pgtype.UUID
 }
 
-// Cancel, dismiss, or unfriend — same act from either side.
+// Cancel, dismiss, or unfriend — same act from either side, on a row $1 can
+// see: across a hidden pair it answers as for no row at all (#3202).
 func (q *Queries) DeleteFriendship(ctx context.Context, arg DeleteFriendshipParams) (int64, error) {
 	result, err := q.db.Exec(ctx, deleteFriendship, arg.RequesterID, arg.AddresseeID)
 	if err != nil {

@@ -203,6 +203,12 @@ func TestAFriendRequestAcrossAHiddenPairStaysPendingAndNeverArrives(t *testing.T
 	if _, ok := h.friendsOf(t, "bob")[alice]; ok {
 		t.Fatal("bob still sees the friend who hid him — presence included")
 	}
+	// A stale panel's "Remove" is answered as for a friendship already gone.
+	code, gone := h.call(t, "bob", http.MethodDelete, "/api/friends/"+alice, "")
+	strangerCode, stranger := h.call(t, "bob", http.MethodDelete, "/api/friends/"+cara, "")
+	if code != strangerCode || gone != stranger {
+		t.Fatalf("unfriending the rider who hid him gives the block away:\n %d %q\n %d %q", code, gone, strangerCode, stranger)
+	}
 
 	// cara asks alice by code, as anyone would, and is answered as anyone is.
 	code, body := h.call(t, "cara", http.MethodPost, "/api/friends", `{"code":"`+h.users.ByToken["alice"].FriendCode+`"}`)

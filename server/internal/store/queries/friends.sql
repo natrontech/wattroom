@@ -21,10 +21,12 @@ where requester_id = $1 and addressee_id = $2 and status = 'pending'
   and not rider_hidden($1, $2);
 
 -- name: DeleteFriendship :execrows
--- Cancel, dismiss, or unfriend — same act from either side.
+-- Cancel, dismiss, or unfriend — same act from either side, on a row $1 can
+-- see: across a hidden pair it answers as for no row at all (#3202).
 delete from friendships
-where (requester_id = $1 and addressee_id = $2)
-   or (requester_id = $2 and addressee_id = $1);
+where ((requester_id = $1 and addressee_id = $2)
+    or (requester_id = $2 and addressee_id = $1))
+  and friendship_visible(requester_id, addressee_id, status, $1);
 
 -- name: ListFriendships :many
 -- All rows involving me, resolved to the other person. Avatar + lifetime XP
