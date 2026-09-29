@@ -16,7 +16,9 @@ const DEG = Math.PI / 180;
 /** The joints' bind pose: mid-range keeps linear blend skinning honest. */
 export const REST_FLEX = { knee: 70 * DEG, elbow: 40 * DEG };
 
-type Profile = { xP: number; xN: number; z: number };
+export type Profile = { xP: number; xN: number; z: number };
+/** A limb's cross-section s metres from its root, from the rounded cap at s = from. */
+export type Section = ((s: number) => Profile) & { from: number };
 type LimbStation = { s: number; slot: number; aux?: Aux; seam?: boolean };
 type Limb = {
 	a: number;
@@ -108,7 +110,8 @@ function stationsFor(
 	return out;
 }
 
-export function buildLegs(mb: MeshBuilder, d: RiderDims, kit: Kit): void {
+/** The leg's cross-section s metres down from the hip: the mesh's shape, and qa.ts's clearances (#3072). */
+export function legProfile(d: RiderDims): Section {
 	const { k, build: b } = d;
 	const L1 = d.thigh;
 	const L2 = d.shin;
@@ -119,7 +122,7 @@ export function buildLegs(mb: MeshBuilder, d: RiderDims, kit: Kit): void {
 	// prettier-ignore
 	const quad = curve([[0.02 * k, 0], [0.15 * k, 0.013], [0.3 * k, 0.006], [L1 - 0.03 * k, 0.008], [L1 + 0.005, 0.011], [L1 + 0.05 * k, 0]]);
 	const cap = 0.08 * b * k;
-	const prof = (s: number): Profile => {
+	const at = (s: number): Profile => {
 		if (s < 0) {
 			const r = Math.sqrt(Math.max(cap * cap - s * s, 1e-6));
 			return { xP: r, xN: r, z: r * 0.97 };
@@ -131,6 +134,15 @@ export function buildLegs(mb: MeshBuilder, d: RiderDims, kit: Kit): void {
 			z: r * (s < L1 ? 0.95 : 0.92),
 		};
 	};
+	return Object.assign(at, { from: -cap });
+}
+
+export function buildLegs(mb: MeshBuilder, d: RiderDims, kit: Kit): void {
+	const { k } = d;
+	const L1 = d.thigh;
+	const L2 = d.shin;
+	const prof = legProfile(d);
+	const cap = -prof.from;
 	const shortsEnd = kit.shorts === 'knicker' ? L1 + 0.13 * k : 0.8 * L1;
 	const sockH = kit.socks.height * k;
 	const bands: Band[] = [
@@ -154,7 +166,8 @@ export function buildLegs(mb: MeshBuilder, d: RiderDims, kit: Kit): void {
 		limb(mb, { a, b: bb, L1, L2, restFlex: REST_FLEX.knee, band: 0.05 * k, prof, sides: 12, stations, side, capEnd: 0.028 * k });
 }
 
-export function buildArms(mb: MeshBuilder, d: RiderDims, kit: Kit): void {
+/** The arm's cross-section s metres down from the shoulder. */
+export function armProfile(d: RiderDims): Section {
 	const { k, build: b } = d;
 	const L1 = d.upperArm;
 	const L2 = d.foreArm;
@@ -163,7 +176,7 @@ export function buildArms(mb: MeshBuilder, d: RiderDims, kit: Kit): void {
 	// prettier-ignore
 	const bic = curve([[0.05 * k, 0], [0.15 * k, 0.011], [0.26 * k, 0], [L1 + 0.02 * k, 0], [L1 + 0.07 * k, 0.006], [L1 + 0.15 * k, 0]]);
 	const cap = 0.058 * b * k;
-	const prof = (s: number): Profile => {
+	const at = (s: number): Profile => {
 		if (s < 0) {
 			const rr = Math.sqrt(Math.max(cap * cap - s * s, 1e-6));
 			return { xP: rr, xN: rr, z: rr };
@@ -171,6 +184,15 @@ export function buildArms(mb: MeshBuilder, d: RiderDims, kit: Kit): void {
 		const rr = r(s) * b * k;
 		return { xP: rr, xN: rr + bic(s) * b * k, z: rr * 0.95 };
 	};
+	return Object.assign(at, { from: -cap });
+}
+
+export function buildArms(mb: MeshBuilder, d: RiderDims, kit: Kit): void {
+	const { k } = d;
+	const L1 = d.upperArm;
+	const L2 = d.foreArm;
+	const prof = armProfile(d);
+	const cap = -prof.from;
 	const long = kit.jersey.sleeves === 'long';
 	const sleeveEnd = long ? L1 + L2 - 0.03 * k : 0.44 * L1;
 	const bands: Band[] = [

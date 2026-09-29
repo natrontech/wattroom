@@ -5,47 +5,12 @@ import { B } from './contract';
 import { buildFigure } from './figure';
 import { resolveKit } from './kit';
 import { pose } from './pose';
-import { cleatGaps, finite, wristGaps } from './qa';
+import { DT, ride } from './ride.test-helper';
+import { finite } from './qa';
 
-const DT = 1 / 60;
 const DEG_IN = 180 / Math.PI;
 const figure = (id?: Parameters<typeof resolveKit>[0]) =>
 	buildFigure(resolveKit(id), { lod: 1 });
-
-/** A seeded wobble, so a noisy ride is the same noisy ride every run. */
-function noise(seed: number) {
-	return () => {
-		seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-		return seed / 2 ** 32 - 0.5;
-	};
-}
-
-/** A ride that spends time near every threshold: sprints, a climb, a descent, a stop. */
-function ride(seconds: number, seed = 7): RideInput[] {
-	const n = noise(seed);
-	return Array.from({ length: Math.round(seconds / DT) }, (_, i) => {
-		const t = i * DT;
-		const leg = Math.floor(t / 20) % 6;
-		// prettier-ignore
-		const base = [
-			{ power: 200, cadence: 90, speed: 9, grade: 0 },
-			{ power: 390, cadence: 105, speed: 13, grade: 0, sprint: true }, // around the sprint's entry
-			{ power: 210, cadence: 70, speed: 4, grade: 5 }, // around the climb's entry
-			{ power: 0, cadence: 0, speed: 14, grade: -4 }, // around the tuck's entry
-			{ power: 20, cadence: 5, speed: 0.4, grade: 0 }, // around a stop
-			{ power: 150, speed: 8, grade: 0, curvature: 0.05 }, // no cadence from the trainer
-		][leg];
-		return {
-			...base,
-			ftp: 250,
-			power: base.power * (1 + 0.3 * n()),
-			cadence:
-				base.cadence === undefined ? undefined : base.cadence * (1 + 0.2 * n()),
-			speed: base.speed * (1 + 0.1 * n()),
-			grade: base.grade + n(),
-		};
-	});
-}
 
 describe('the rider animator', () => {
 	it('never turns the crank backwards, pedalling, coasting or stopping (G11)', () => {
@@ -98,22 +63,6 @@ describe('the rider animator', () => {
 		expect(ride(120).some((inp) => b.update(DT, inp).headYaw! > 0.1)).toBe(
 			true,
 		);
-	});
-
-	it('keeps the feet on the pedals and the hands on the grips through the whole ride (G1, G7)', () => {
-		for (const id of ['race', 'tt', 'ordonnanz'] as const) {
-			const m = figure(id);
-			const a = new RiderAnimator(m, { seed: 1 });
-			let cleat = 0;
-			let wrist = 0;
-			for (const inp of ride(240)) {
-				pose(m, a.update(DT, inp));
-				cleat = Math.max(cleat, ...cleatGaps(m));
-				wrist = Math.max(wrist, ...wristGaps(m));
-			}
-			expect(cleat, id).toBeLessThan(0.005);
-			expect(wrist, id).toBeLessThan(0.003);
-		}
 	});
 
 	it('never writes a NaN, whatever the data (G14)', () => {
