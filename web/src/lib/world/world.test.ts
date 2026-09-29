@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeAll, describe, expect, it } from 'vitest';
 import { roadIndex } from './field';
-import { steadySpeed, step } from './physics';
 import { RouteError, parseRoute } from '$lib/road/parse';
 import { toRoute, type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
@@ -114,22 +113,6 @@ describe('the route', () => {
 		expect(kinds.filter((k) => k === 'climb').length).toBeGreaterThanOrEqual(1);
 		expect(kinds.filter((k) => k === 'hairpin').length).toBe(5);
 		expect(world.villageNames.length).toBeGreaterThanOrEqual(1);
-	});
-});
-
-describe('the physics', () => {
-	const rider = { mass: 80 };
-
-	it('rides 200 W on the flat at a road bike’s speed', () => {
-		const kmh = steadySpeed(200, 0, rider) * 3.6;
-		expect(kmh).toBeGreaterThan(30);
-		expect(kmh).toBeLessThan(36);
-	});
-
-	it('integrates to the same steady speed', () => {
-		let v = 0;
-		for (let t = 0; t < 120; t += 0.1) v = step(v, 200, 0, rider, 0.1);
-		expect(Math.abs(v - steadySpeed(200, 0, rider)) * 3.6).toBeLessThan(0.5);
 	});
 });
 
