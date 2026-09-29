@@ -88,7 +88,7 @@ func TestARoadIsCutToWhoeverReadsIt(t *testing.T) {
 	h := setup(t, nil)
 	alice, bob := h.users.ByToken["alice"].ID, h.users.ByToken["bob"].ID
 	route := storeTellingRoute(t, h, alice, "gpx")
-	a := NewAttacher(h.store.Queries)
+	a := NewAttacher(h.store.Queries, h.keys)
 
 	own, err := a.Attach(t.Context(), workoutOn(route), alice)
 	if err != nil {
@@ -121,7 +121,7 @@ func TestOnlyTheOwnerSharesARoadAndNeverStravas(t *testing.T) {
 	alice, bob := h.users.ByToken["alice"].ID, h.users.ByToken["bob"].ID
 	mine := storeTellingRoute(t, h, alice, "gpx")
 	strava := storeTellingRoute(t, h, alice, "stravagpx")
-	a := NewAttacher(h.store.Queries)
+	a := NewAttacher(h.store.Queries, h.keys)
 	var refused Refused
 
 	if _, err := a.CheckShared(t.Context(), workoutOn(mine), bob); !errors.As(err, &refused) {
@@ -152,7 +152,7 @@ func TestADeletedRouteSaysSo(t *testing.T) {
 	if _, err := h.store.Pool.Exec(t.Context(), "delete from routes where id = $1", route); err != nil {
 		t.Fatal(err)
 	}
-	out, err := NewAttacher(h.store.Queries).Attach(t.Context(), workoutOn(route), alice)
+	out, err := NewAttacher(h.store.Queries, h.keys).Attach(t.Context(), workoutOn(route), alice)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestASessionRidesTheCoachsOwnRoadAsTheCrewsCut(t *testing.T) {
 	alice, bob := h.users.ByToken["alice"].ID, h.users.ByToken["bob"].ID
 	mine := storeTellingRoute(t, h, alice, "gpx")
 	strava := storeTellingRoute(t, h, alice, "stravagpx")
-	a := NewAttacher(h.store.Queries)
+	a := NewAttacher(h.store.Queries, h.keys)
 	whole, err := road.UnpackRoad(testx.TellingRoad())
 	if err != nil {
 		t.Fatal(err)

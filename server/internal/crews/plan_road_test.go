@@ -41,7 +41,7 @@ func roadPlanBody(routeID string, at time.Time) string {
 // stretch between its anchors, from zero — and alice reads all of it.
 func TestAPlansRoadReachesTheCrewCut(t *testing.T) {
 	h := setup(t)
-	h.svc.SetRoads(routes.NewAttacher(h.store.Queries))
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
 	crew, _ := h.crewWithChannel(t)
 	route := h.tellingRoute(t, "alice", "gpx")
 	status, body := h.call(t, "alice", http.MethodPost, schedulePath(crew), roadPlanBody(route, time.Now().Add(24*time.Hour)))
@@ -100,7 +100,7 @@ func TestAPlansRoadReachesTheCrewCut(t *testing.T) {
 // Only a route's owner plans it for the crew, and never one from Strava.
 func TestOnlyTheOwnerPlansTheirRoad(t *testing.T) {
 	h := setup(t)
-	h.svc.SetRoads(routes.NewAttacher(h.store.Queries))
+	h.svc.SetRoads(routes.NewAttacher(h.store.Queries, nil))
 	crew, _ := h.crewWithChannel(t)
 	alices := h.tellingRoute(t, "alice", "gpx")
 	strava := h.tellingRoute(t, "alice", "stravagpx")

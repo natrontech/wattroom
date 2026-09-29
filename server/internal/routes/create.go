@@ -79,10 +79,19 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"The route's map could not be read. Import the file again.", "shape")
 		return
 	}
+	// The whole road is sealed with the shape; the table's own copy is bare
+	// (#3511). Its hash is the whole road's: the identity ghosts match on.
+	var roadSealed []byte
+	if s.keys.Enabled() {
+		if roadSealed, err = sealRoad(s.keys, req.Road); err != nil {
+			httpx.Fail(w, s.log, "seal route road failed", err, "The route could not be kept. Try again.")
+			return
+		}
+	}
 	name := rd.Name()
 	created, err := s.store.Queries.CreateRoute(r.Context(), db.CreateRouteParams{
 		OwnerID: user.ID, Src: req.Src, Name: name, GenName: name,
-		Road: req.Road, RoadHash: roadHash(req.Road),
+		Road: bare(rd), RoadSealed: roadSealed, RoadHash: roadHash(req.Road),
 		LengthM: int32(math.Round(rd.LengthM)), GainM: int32(math.Round(rd.GainM())), //nolint:gosec // bounded by UnpackRoad
 		Climbs: climbs, EleSource: req.EleSource, GeomSealed: sealed, KeyVersion: version,
 	})

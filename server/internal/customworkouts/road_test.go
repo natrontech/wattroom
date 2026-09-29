@@ -20,7 +20,7 @@ func TestTheShelfRidesOnlyTheRidersOwnRoads(t *testing.T) {
 	_, st, users := setup(t)
 	mux := http.NewServeMux()
 	shelf := New(st, users, slog.New(slog.DiscardHandler))
-	shelf.SetRoads(routes.NewAttacher(st.Queries))
+	shelf.SetRoads(routes.NewAttacher(st.Queries, nil))
 	shelf.Register(mux)
 	routeOf := func(who, src string) string {
 		row, err := st.Queries.CreateRoute(t.Context(), db.CreateRouteParams{

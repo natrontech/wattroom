@@ -34,11 +34,26 @@ func TestExportCarriesTheRidersRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	version := keys.Version()
+	// Stored as the server stores it (#3511): with a key, the whole road
+	// sealed and the table's copy bare — heights from 0, so an <ele> above
+	// sea can only have come from the seal.
+	bareHeights := make([]float64, 151)
+	for i := range bareHeights {
+		bareHeights[i] = 20 * float64(i) / 150
+	}
+	roadSealed, err := keys.Seal(base64.StdEncoding.EncodeToString(testx.FlatRoad(3000, 20)))
+	if err != nil {
+		t.Fatal(err)
+	}
 	keep := func(name string, geom []byte, v *int32) {
 		t.Helper()
+		stored, sealedRoad := testx.FlatRoad(3000, 20), []byte(nil)
+		if geom != nil {
+			stored, sealedRoad = testx.PackedRoad(3000, bareHeights), roadSealed
+		}
 		if _, err := h.store.Queries.CreateRoute(t.Context(), db.CreateRouteParams{
 			OwnerID: h.id("alice"), Src: "gpx", Name: name, GenName: "Road · 3.0 km · 20 m",
-			Road: testx.FlatRoad(3000, 20), RoadHash: "h", LengthM: 3000, GainM: 20,
+			Road: stored, RoadSealed: sealedRoad, RoadHash: "h", LengthM: 3000, GainM: 20,
 			Climbs: []byte("[]"), EleSource: "file", GeomSealed: geom, KeyVersion: v,
 		}); err != nil {
 			t.Fatal(err)
