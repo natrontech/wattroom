@@ -27,6 +27,7 @@ const MUTANTS = [
 	['G9', 'steering about the origin', 'pose-frame.ts', [['.multiply(_m.makeTranslation(bk.htTop.x, bk.htTop.y, 0))\n\t\t.multiply(_m2.makeRotationAxis(bk.up, -steer))', '.multiply(_m2.makeRotationAxis(bk.up, -steer))']]],
 	['G10', 'knees turned in', 'pose.ts', [['\t\t\t0.08 +\n', '\t\t\t-0.4 +\n']]],
 	['G10', 'elbows hang toward the knees', 'pose.ts', [['T_.b.set(-0.3, -0.75 - 0.25 * tuck, 0)', 'T_.b.set(0.6, -4, 0)']]],
+	['G10', 'the elbow stays down moving onto the pads (#3481)', 'pose.ts', [['const ELBOW_LIFT = 0.6;', 'const ELBOW_LIFT = 0;']]],
 	['G11', 'coasting settles backwards', 'crank-motion.ts', [['Math.ceil((this.crank + dmin) / Math.PI - 1e-9)', 'Math.round(this.crank / Math.PI)']]],
 	['G12', 'no stand spring', 'animator.ts', [['spring(sp.stand, mind.standGoal, hl.stand, dt);', 'sp.stand.x = mind.standGoal;']]],
 	['G12', 'no lean spring', 'animator.ts', [['\t\t\thl.lean,\n', '\t\t\t1e-6,\n']]],
