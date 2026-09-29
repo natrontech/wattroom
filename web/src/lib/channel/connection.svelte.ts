@@ -132,7 +132,7 @@ function connect(address: PlaceAddress): Connection {
 		// dropped as a duplicate. The tiles kept moving, which is why it read
 		// as half-working; the execution meter and the saved ride did not.
 		profile = createProfileStore();
-		recording = createRecording();
+		recording = createRecording({ ftp: () => profile.current.ftp });
 		// The account is the truth for FTP and weight (ADR-0009). The root
 		// layout pulls on boot; a connection that outlives many pages has to
 		// pull too, or a ramp-measured FTP never reaches the session's targets.

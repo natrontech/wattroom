@@ -285,9 +285,12 @@
 				{/key}
 			</div>
 
-			<!-- Zoom chrome sits on the frame, never on the picture's middle. -->
+			<!-- Zoom chrome sits on the frame, never on the picture's middle.
+			     No backdrop blur (#3199): it was recomputed on every frame
+			     anything else on the page animated, ~20% GPU on a 5K 165 Hz
+			     display. 90% surface instead of 80% + blur. -->
 			<div
-				class="bg-surface/80 ring-ink/10 absolute right-2 bottom-2 flex items-center gap-1 rounded-full px-1.5 py-1 ring-1 backdrop-blur"
+				class="bg-surface/90 ring-ink/10 absolute right-2 bottom-2 flex items-center gap-1 rounded-full px-1.5 py-1 ring-1"
 			>
 				<button
 					onclick={() => rezoom(view.zoom / 1.5)}

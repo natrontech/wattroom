@@ -1,4 +1,5 @@
 import { isLivePhase } from '$lib/channel/tick-session';
+import { createLiveStats, type LiveSecond } from '$lib/ride/live-stats.svelte';
 
 /**
  * What you rode this session, kept for the summary and the graph: the trace
@@ -16,8 +17,11 @@ import { isLivePhase } from '$lib/channel/tick-session';
  * it builds (#2878). Raw state, replaced on every push rather than mutated:
  * a deep proxy put a trap on every point each time the line was read, and a
  * new array is what tells the graph there is a new point.
+ *
+ * Every admitted second also feeds the live numbers (#3068), so the HUD and
+ * the summary read one ride.
  */
-export function createRecording() {
+export function createRecording(deps: { ftp: () => number }) {
 	let trace = $state.raw<{ t: number; w: number }[]>([]);
 	let samples = $state.raw<{ watts: number }[]>([]);
 	// One sample per timeline second (#1411): the summary reads the record
@@ -30,10 +34,12 @@ export function createRecording() {
 	// and for exactly as long — a summary that remounted with every page
 	// crossed it again mid-ride and wiped the graph (#2654).
 	let live = false;
+	const stats = createLiveStats(deps.ftp);
 	function reset() {
 		trace = [];
 		samples = [];
 		lastSecond = -1;
+		stats.reset();
 	}
 	return {
 		get trace() {
@@ -42,12 +48,17 @@ export function createRecording() {
 		get samples() {
 			return samples;
 		},
-		record(elapsed: number, watts: number) {
+		get live() {
+			return stats.current;
+		},
+		/** `at` carries the block and the scored target, when the caller has them. */
+		record(elapsed: number, watts: number, at: Omit<LiveSecond, 'watts'> = {}) {
 			const second = Math.floor(elapsed);
 			if (second <= lastSecond) return;
 			lastSecond = second;
 			trace = [...trace, { t: elapsed, w: watts }];
 			samples = [...samples, { watts: Math.max(0, Math.round(watts)) }];
+			stats.push({ ...at, watts });
 		},
 		/** Fed every phase the session passes through; clears on the way in. */
 		follow(phase: string | undefined) {

@@ -279,7 +279,7 @@
 			>
 				{#snippet badge()}
 					{#if suggestion && suggested.includes(entry.focus)}
-						<span class="eyebrow text-z4" title={suggestion.why}
+						<span class="eyebrow text-ok" title={suggestion.why}
 							>suggested today</span
 						>
 					{/if}

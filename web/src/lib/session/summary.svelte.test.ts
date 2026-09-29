@@ -43,7 +43,7 @@ async function setup(
 ) {
 	let phase = $state<string | undefined>('idle');
 	let workout = $state('Openers');
-	const recording = createRecording();
+	const recording = createRecording({ ftp: () => 200 });
 	let summary!: ReturnType<typeof createSummary>;
 	const off = $effect.root(() => {
 		summary = createSummary({
@@ -85,7 +85,7 @@ function ride(recording: ReturnType<typeof createRecording>, seconds: number) {
 // mid-session used to read as the edge into a session and wiped the graph's
 // power line and the summary's samples with it (#2654).
 it('a summary mounted mid-ride leaves the recording alone', async () => {
-	const recording = createRecording();
+	const recording = createRecording({ ftp: () => 200 });
 	const workout = 'Openers';
 	recording.follow('running');
 	ride(recording, 90);

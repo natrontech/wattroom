@@ -198,7 +198,7 @@
 				y1="0"
 				x2="0"
 				y2="104"
-				stroke="white"
+				stroke="var(--color-ink)"
 				stroke-width="0.4"
 				opacity="0.6"
 				class="now"

@@ -30,11 +30,11 @@
 	import { sensors } from '$lib/sensors.svelte';
 	import { formatClock } from '$lib/format';
 	import { createProfileStore } from '$lib/profile.svelte';
+	import { createRideSession } from '$lib/workout/session.svelte';
 	import {
-		createRideSession,
 		SIGNAL_LOST_MS,
 		signalLost as isSignalLost,
-	} from '$lib/workout/session.svelte';
+	} from '$lib/workout/ride-state';
 	import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 	import { account } from '$lib/account.svelte';
 	import { stampFtpAfter, uploadRide, type RideUpload } from '$lib/ride/save';

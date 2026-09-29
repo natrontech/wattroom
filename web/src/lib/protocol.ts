@@ -3,6 +3,392 @@
 // Regenerate with `make protocol`.
 
 //////////
+// source: chat.go
+
+/**
+ * ChatLine is one chat message as the HTTP chat answers it (ADR-0010
+ * amended, #201; off the tick since #2437). Warm-up and phone talk;
+ * mid-effort stays the cheers' job.
+ */
+export interface ChatLine {
+  /**
+   * Persisted identity (ADR-0010 amended, #201) — what reactions attach to.
+   * Empty when the server runs without a database.
+   */
+  id?: string;
+  from: string; // filled by the server, like cheers
+  /**
+   * The author's rider id (#219): display names are not unique, and the
+   * client's own-message suppression must not mute a namesake.
+   */
+  fromId?: string;
+  text: string;
+  /**
+   * A pasted image (#279): id of a channel-scoped blob the client uploaded
+   * via POST /api/channels/{id}/chat/images before sending; rendered from
+   * the matching GET. A line may be image-only (empty text).
+   */
+  imageId?: string;
+  at: number /* int64 */; // server millis, for ordering only
+  /**
+   * When the author last rewrote this line (#865); 0 for a line as sent.
+   * The client renders "edited" off this, so it is a fact about the line
+   * and not a separate event to remember.
+   */
+  editedAt?: number /* int64 */;
+  /**
+   * When a temporary line runs out (#2644), server millis; 0 for a line
+   * that stays. Readers drop it by their own clock at that moment — the
+   * server stops serving it then and sweeps it within the minute.
+   */
+  expiresAt?: number /* int64 */;
+}
+/**
+ * ChatEdit is one line rewritten by its author (#865): the new text lands
+ * on the line already in the log, rather than arriving as a second message
+ * that would push the conversation along.
+ */
+export interface ChatEdit {
+  messageId: string;
+  text: string;
+  editedAt: number /* int64 */;
+}
+/**
+ * ChatReactionCount is a changed total, as the toggle answers it — plus who
+ * changed it and which way (#219), so the actor reconciles their "did I
+ * react" highlight from the server instead of trusting the click.
+ */
+export interface ChatReactionCount {
+  messageId: string;
+  emoji: string;
+  count: number /* int */;
+  by?: string; // rider id of the toggler
+  added: boolean;
+}
+/**
+ * ChannelEvent is something that happened in a voice channel rather than
+ * something a rider said (#321): the jukebox changing under everyone is half
+ * of what happens there, and thirty seconds later "who put this on?" has no
+ * other answer. Structured, not a sentence — the client owns the wording, so
+ * the lounge and the dock name a track identically.
+ * Ephemeral by design (ADR-0022): it rides the tick like cheers and is never
+ * written to the chat table. A month of "now playing" in the backlog is noise.
+ */
+export interface ChannelEvent {
+  /**
+   * Unique within the voice channel, and stable across re-broadcasts: a
+   * growing burst re-sends the SAME id with a higher Count, and clients
+   * replace the line in place.
+   */
+  id: string;
+  kind: string; // "jukebox" | "session" | "presence"
+  /**
+   * jukebox: "queued" | "removed" | "skipped" | "playing" | "restored"
+   * session: "planned" | "moved" | "cancelled" | "started" | "ended" |
+   *          "won" | "gameEnded"
+   * presence: "joined" | "left" | "away" | "back"
+   */
+  verb: string;
+  /**
+   * Who did it. Empty when nobody did — the deck advancing on its own, or
+   * a session the clock started.
+   */
+  actor?: string;
+  /**
+   * The title the dock shows, so both surfaces name the same track. Empty
+   * on a coalesced burst, which has no single title left to show.
+   */
+  track?: string;
+  /**
+   * The workout a session line is about.
+   */
+  subject?: string;
+  /**
+   * When that session is planned for, server millis. 0 on a line with no
+   * time of its own ("started", "ended").
+   */
+  when?: number /* int64 */;
+  /**
+   * For "playing": who put this track in the queue.
+   */
+  queuedBy?: string;
+  /**
+   * How many things this one line covers — 1 normally, more when a burst
+   * coalesced ("queued 8 tracks", "Ana and 2 others joined"). Eight lines
+   * would push the actual conversation off the screen. On "gameEnded" it
+   * is instead the round the game reached, which for a collective ramp is
+   * the score the whole session rode for.
+   */
+  count: number /* int */;
+  at: number /* int64 */; // server millis, for ordering only
+}
+
+//////////
+// source: control.go
+
+/**
+ * Control is a coach/owner command over the shared session (SPEC roles matrix:
+ * pick workout, start countdown, pause/end). The server enforces the role.
+ */
+export interface Control {
+  action: string; // "pick" | "start" | "pause" | "resume" | "end" | "handoff" | "game" | "game-end" | "sprint" | "join" | "leave"
+  /**
+   * Workout definition, opaque to the server: the docs/SPEC.md JSON as a
+   * string. The server owns the clock, the clients own the targets.
+   */
+  workoutName?: string;
+  workoutJson?: string;
+  /**
+   * Total length in seconds, so the server can end the session on time
+   * without parsing the workout.
+   */
+  totalSeconds?: number /* int */;
+  /**
+   * For action "game": which mode to start.
+   */
+  gameMode?: string;
+  /**
+   * For action "handoff": the rider id the session's coach hands it to
+   * (#2438) — someone in the voice channel.
+   */
+  rider?: string;
+}
+
+//////////
+// source: game.go
+
+/**
+ * SprintScore is one rider's place on the mini-podium.
+ */
+export interface SprintScore {
+  riderId: string;
+  name: string;
+  wkg: number /* float64 */;
+  watts: number /* int */;
+  /**
+   * Ramp modes (#1593): the rounds the rider survived — the number the
+   * podium shows, where Wkg is only a placing score.
+   */
+  rounds?: number /* int */;
+}
+/**
+ * SprintState rides the tick while a sprint moment is armed, live, or just
+ * scored. Times are server-clock millis, the same clock as ServerTick.At —
+ * clients render the klaxon countdown and the window from these anchors.
+ */
+export interface SprintState {
+  startsAtMs: number /* int64 */;
+  endsAtMs: number /* int64 */;
+  /**
+   * Filled once the window closes; podium order.
+   */
+  results?: SprintScore[];
+}
+/**
+ * GameRider is one rider's standing inside a game mode.
+ */
+export interface GameRider {
+  eliminated?: boolean;
+  lives?: number /* int */;
+  score?: number /* float64 */;
+  onFront?: boolean;
+  /**
+   * The rider's personal target as a fraction of their FTP; 0 = ride free.
+   */
+  targetPct?: number /* float64 */;
+}
+/**
+ * GameState is a running game mode on the tick (#31). One generic shape for
+ * all seven modes: the client renders labels per mode, the server owns every
+ * rule. Riders execute their own %FTP targets, so mixed groups stay fair.
+ */
+export interface GameState {
+  mode: string;
+  phase: string; // "running" | "done"
+  round?: number /* int */;
+  /**
+   * The shared line as a fraction of FTP (ramp modes), the called zone
+   * (lava), or the hole target pct (golf) — mode-dependent, one at a time.
+   */
+  linePct?: number /* float64 */;
+  calledZone?: number /* int */;
+  roundEndsAtMs?: number /* int64 */;
+  /**
+   * Sprint Roulette's window opens here (#1578): the length is random, so
+   * the client cannot derive the 3-2-1 from the end alone.
+   */
+  roundStartsAtMs?: number /* int64 */;
+  meterHidden?: boolean;
+  teamDistance?: number /* float64 */;
+  riders: { [key: string]: GameRider};
+  podium?: SprintScore[];
+}
+
+//////////
+// source: jukebox.go
+
+/**
+ * JukeboxCommand is any member's jukebox action — the matrix defaults
+ * play/pause/skip to members, and adding is everyone's.
+ */
+export interface JukeboxCommand {
+  /**
+   * "unplayable" is "ended" for a track nobody could play (#2834): the deck
+   * moves on, and it counts as a skip.
+   */
+  action: string; // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended" | "unplayable" | "restore"
+  videoId?: string;
+  title?: string;
+  /**
+   * For "add": queue a whole YouTube playlist as one entry (#615). The
+   * client resolves the tracks — the server still knows nothing about
+   * YouTube, it just holds the list the paste produced.
+   */
+  playlistId?: string;
+  playlistTitle?: string;
+  tracks?: JukeboxTrack[];
+  /**
+   * For "add": a track from the pool rather than a YouTube video (#267).
+   * Mutually exclusive with VideoID; Title and Artist ride along for
+   * display, because the deck carries no metadata of its own.
+   */
+  trackId?: string;
+  artist?: string;
+  /**
+   * The track's tempo, when its tags say (#1431): read off the library
+   * row by whoever adds it, shown on the queue row, and matched against
+   * the block's cadence while a session runs. 0 = untagged.
+   */
+  bpm?: number /* int */;
+  /**
+   * For "add" of a library track: its length as the server measured it at
+   * upload (#1509), so the deck can draw a seek bar before — or without —
+   * any client's <audio> reporting one. 0 = unknown.
+   */
+  durationMs?: number /* int */;
+  /**
+   * For "remove" | "vote" | "move": which queue entry (#286). Video ids
+   * are not unique — the same track queued twice is two entries, and
+   * addressing by video used to hit the wrong one.
+   */
+  entryId?: string;
+  /**
+   * For "move": the entry's new index in the queue, clamped to it.
+   */
+  index?: number /* int */;
+  /**
+   * For "seek": the new shared playhead. For "add": start the entry here
+   * (a pasted ?t= timestamp) — 0 means the beginning, like any URL.
+   */
+  positionSec?: number /* float64 */;
+  /**
+   * For "ended": the anchor the client was playing against. Every client
+   * (and tab) reports the end — the epoch match makes N echoes advance
+   * the queue exactly once even when the same video is queued twice.
+   */
+  anchorMs?: number /* int64 */;
+}
+/**
+ * JukeboxTrack is one video inside a queued playlist (#615). Ids and titles
+ * both ride the wire: the client resolves them once when the playlist is
+ * pasted, and the server needs the title for the now-playing timeline line.
+ */
+export interface JukeboxTrack {
+  videoId: string;
+  title: string;
+}
+export interface JukeboxEntry {
+  /**
+   * Unique within the voice channel, server-assigned: what
+   * remove/vote/move address (#286).
+   */
+  id: string;
+  /**
+   * What is on the deck RIGHT NOW. For a playlist entry (#615) this is
+   * Tracks[Index] and changes as the entry plays through — which is why
+   * the whole client playback path needed no playlist branch of its own.
+   */
+  videoId: string;
+  title: string;
+  addedBy: string;
+  /**
+   * Where playback begins when this entry reaches the deck (?t= paste).
+   */
+  startSec?: number /* float64 */;
+  /**
+   * Upvotes float an entry above lower-voted ones (#286). The voters are
+   * rider ids, not a count — scoped to the channel like every other live
+   * field, and the only way a client renders "you voted" from truth, not
+   * from its own click. The count is len(voters); nothing to keep in sync.
+   */
+  voters?: string[];
+  /**
+   * Set when the entry is a whole YouTube playlist queued as one thing
+   * (#615) — a playlist takes ONE queue slot, so a paste cannot own the
+   * channel's 50 and the vote order keeps meaning something.
+   */
+  playlistId?: string;
+  playlistTitle?: string;
+  /**
+   * The playlist in order, resolved by the client that pasted it. Empty
+   * for a single video: len(Tracks) > 0 is what makes an entry a playlist.
+   */
+  tracks?: JukeboxTrack[];
+  /**
+   * Which track is on the deck. Only ever moves within [0, len(Tracks)):
+   * running off the end advances to the next QUEUE entry rather than
+   * wrapping — a playlist plays once through and never restarts itself.
+   */
+  index?: number /* int */;
+  /**
+   * A track from the self-hosted pool (#267, ADR-0015) instead of a
+   * YouTube video: the id the client fetches audio for. VideoID is empty
+   * on such an entry, and `TrackID != ""` is what makes an entry a pool
+   * track — the deck's rules do not otherwise care where audio comes from.
+   * RMF's tile rules bind only while a YouTube entry plays (WATTROOM.md),
+   * which is the whole reason a pool track may be audio-only.
+   */
+  trackId?: string;
+  /**
+   * Display only, resolved by whoever queued it: the server holds no
+   * track metadata on the deck, the same way it holds no YouTube titles.
+   */
+  artist?: string;
+  /**
+   * Tempo of a library entry, 0 when untagged (#1431).
+   */
+  bpm?: number /* int */;
+  /**
+   * Length of a library entry in milliseconds (#1509): measured by the
+   * server at upload, so every client — muted, sitting out, still loading
+   * — draws the same seek bar. 0 for a video, whose length only a player
+   * that loaded it knows.
+   */
+  durationMs?: number /* int */;
+}
+/**
+ * JukeboxState is the server's truth about what plays where. Clients chase the
+ * anchor: position = PositionSec, plus SERVER time since AnchorMs while
+ * playing — a client's own wall clock is skewed by seconds and applying it
+ * here is what made the jukebox "not synced" (#286). Clients estimate the
+ * offset from ServerTick.At and translate.
+ * The audio itself is local per rider — their iframe, their volume — and never
+ * enters the voice path (SPEC voice channel audio defaults).
+ */
+export interface JukeboxState {
+  queue: JukeboxEntry[];
+  current?: JukeboxEntry;
+  playing: boolean;
+  positionSec: number /* float64 */;
+  anchorMs: number /* int64 */;
+  /**
+   * What the channel just played, newest first (#286) — the deck's short
+   * memory, so "put that on again" is one tap and nobody retypes a link.
+   */
+  history: JukeboxEntry[];
+}
+
+//////////
 // source: limits.go
 
 /**
@@ -190,12 +576,7 @@ export const TemporaryWeek = 7 * TemporaryDay;
 export const MaxBackfillBatch = 60 * 60;
 
 //////////
-// source: protocol.go
-/*
-Package protocol defines the WebSocket message types. These Go structs are
-the single source of truth; `make protocol` generates the TypeScript types
-via tygo (see WATTROOM.md decisions: WS protocol).
-*/
+// source: metrics.go
 
 /**
  * RiderMetrics is one rider's live sample, sent client -> server at ~1 Hz.
@@ -241,99 +622,6 @@ export interface RiderMetrics {
   released?: boolean;
 }
 /**
- * SprintScore is one rider's place on the mini-podium.
- */
-export interface SprintScore {
-  riderId: string;
-  name: string;
-  wkg: number /* float64 */;
-  watts: number /* int */;
-  /**
-   * Ramp modes (#1593): the rounds the rider survived — the number the
-   * podium shows, where Wkg is only a placing score.
-   */
-  rounds?: number /* int */;
-}
-/**
- * SprintState rides the tick while a sprint moment is armed, live, or just
- * scored. Times are server-clock millis, the same clock as ServerTick.At —
- * clients render the klaxon countdown and the window from these anchors.
- */
-export interface SprintState {
-  startsAtMs: number /* int64 */;
-  endsAtMs: number /* int64 */;
-  /**
-   * Filled once the window closes; podium order.
-   */
-  results?: SprintScore[];
-}
-/**
- * GameRider is one rider's standing inside a game mode.
- */
-export interface GameRider {
-  eliminated?: boolean;
-  lives?: number /* int */;
-  score?: number /* float64 */;
-  onFront?: boolean;
-  /**
-   * The rider's personal target as a fraction of their FTP; 0 = ride free.
-   */
-  targetPct?: number /* float64 */;
-}
-/**
- * GameState is a running game mode on the tick (#31). One generic shape for
- * all seven modes: the client renders labels per mode, the server owns every
- * rule. Riders execute their own %FTP targets, so mixed groups stay fair.
- */
-export interface GameState {
-  mode: string;
-  phase: string; // "running" | "done"
-  round?: number /* int */;
-  /**
-   * The shared line as a fraction of FTP (ramp modes), the called zone
-   * (lava), or the hole target pct (golf) — mode-dependent, one at a time.
-   */
-  linePct?: number /* float64 */;
-  calledZone?: number /* int */;
-  roundEndsAtMs?: number /* int64 */;
-  /**
-   * Sprint Roulette's window opens here (#1578): the length is random, so
-   * the client cannot derive the 3-2-1 from the end alone.
-   */
-  roundStartsAtMs?: number /* int64 */;
-  meterHidden?: boolean;
-  teamDistance?: number /* float64 */;
-  riders: { [key: string]: GameRider};
-  podium?: SprintScore[];
-}
-/**
- * Control is a coach/owner command over the shared session (SPEC roles matrix:
- * pick workout, start countdown, pause/end). The server enforces the role.
- */
-export interface Control {
-  action: string; // "pick" | "start" | "pause" | "resume" | "end" | "handoff" | "game" | "game-end" | "sprint" | "join" | "leave"
-  /**
-   * Workout definition, opaque to the server: the docs/SPEC.md JSON as a
-   * string. The server owns the clock, the clients own the targets.
-   */
-  workoutName?: string;
-  workoutJson?: string;
-  /**
-   * Total length in seconds, so the server can end the session on time
-   * without parsing the workout.
-   */
-  totalSeconds?: number /* int */;
-  /**
-   * For action "game": which mode to start.
-   */
-  gameMode?: string;
-  /**
-   * For action "handoff": the rider id the session's coach hands it to
-   * (#2438) — someone in the voice channel.
-   */
-  rider?: string;
-}
-/**
  * Backfill is a reconnect's replay: samples the client buffered while the
  * socket was down (WATTROOM.md crash safety). The server dedupes by Seq, so
  * resending is always safe and never double-counts.
@@ -341,184 +629,136 @@ export interface Control {
 export interface Backfill {
   samples: RiderMetrics[];
 }
+
+//////////
+// source: protocol.go
+/*
+Package protocol defines the WebSocket message types. These Go structs are
+the single source of truth; `make protocol` generates the TypeScript types
+via tygo (see WATTROOM.md decisions: WS protocol).
+*/
+
 /**
- * JukeboxCommand is any member's jukebox action — the matrix defaults
- * play/pause/skip to members, and adding is everyone's.
+ * ClientMessage is the envelope for everything a client sends.
  */
-export interface JukeboxCommand {
-  /**
-   * "unplayable" is "ended" for a track nobody could play (#2834): the deck
-   * moves on, and it counts as a skip.
-   */
-  action: string; // "add" | "remove" | "vote" | "move" | "play" | "pause" | "skip" | "back" | "skipPlaylist" | "seek" | "ended" | "unplayable" | "restore"
-  videoId?: string;
-  title?: string;
-  /**
-   * For "add": queue a whole YouTube playlist as one entry (#615). The
-   * client resolves the tracks — the server still knows nothing about
-   * YouTube, it just holds the list the paste produced.
-   */
-  playlistId?: string;
-  playlistTitle?: string;
-  tracks?: JukeboxTrack[];
-  /**
-   * For "add": a track from the pool rather than a YouTube video (#267).
-   * Mutually exclusive with VideoID; Title and Artist ride along for
-   * display, because the deck carries no metadata of its own.
-   */
-  trackId?: string;
-  artist?: string;
-  /**
-   * The track's tempo, when its tags say (#1431): read off the library
-   * row by whoever adds it, shown on the queue row, and matched against
-   * the block's cadence while a session runs. 0 = untagged.
-   */
-  bpm?: number /* int */;
-  /**
-   * For "add" of a library track: its length as the server measured it at
-   * upload (#1509), so the deck can draw a seek bar before — or without —
-   * any client's <audio> reporting one. 0 = unknown.
-   */
-  durationMs?: number /* int */;
-  /**
-   * For "remove" | "vote" | "move": which queue entry (#286). Video ids
-   * are not unique — the same track queued twice is two entries, and
-   * addressing by video used to hit the wrong one.
-   */
-  entryId?: string;
-  /**
-   * For "move": the entry's new index in the queue, clamped to it.
-   */
-  index?: number /* int */;
-  /**
-   * For "seek": the new shared playhead. For "add": start the entry here
-   * (a pasted ?t= timestamp) — 0 means the beginning, like any URL.
-   */
-  positionSec?: number /* float64 */;
-  /**
-   * For "ended": the anchor the client was playing against. Every client
-   * (and tab) reports the end — the epoch match makes N echoes advance
-   * the queue exactly once even when the same video is queued twice.
-   */
-  anchorMs?: number /* int64 */;
+export interface ClientMessage {
+  cheer?: Cheer;
+  board?: Board;
+  metrics?: RiderMetrics;
+  control?: Control;
+  backfill?: Backfill;
+  jukebox?: JukeboxCommand;
+  sensors?: SensorClaim;
+  poke?: Poke;
+  away?: AwayState;
+  device?: DeviceKind;
 }
 /**
- * ChatLine is one chat message as the HTTP chat answers it (ADR-0010
- * amended, #201; off the tick since #2437). Warm-up and phone talk;
- * mid-effort stays the cheers' job.
+ * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
+ * latest sample, the roster, and the shared session state.
  */
-export interface ChatLine {
+export interface ServerTick {
+  at: number /* int64 */; // unix millis
+  state: SessionState;
   /**
-   * Persisted identity (ADR-0010 amended, #201) — what reactions attach to.
-   * Empty when the server runs without a database.
+   * The deck (#286), only on the tick a socket has not heard it on
+   * (#2838). It changes with a command and never with the clock — the
+   * position is an anchor — so a socket already holding JukeboxRev's deck
+   * is not sent it again, the way the workout rides by hash (#1710). A few
+   * queued playlists were 85–97 % of every frame. Absent = the deck of
+   * JukeboxRev, which the client kept.
    */
-  id?: string;
-  from: string; // filled by the server, like cheers
+  jukebox?: JukeboxState;
+  jukeboxRev: number /* int64 */;
   /**
-   * The author's rider id (#219): display names are not unique, and the
-   * client's own-message suppression must not mute a namesake.
+   * This second's cheers, drained each tick like metrics.
    */
-  fromId?: string;
-  text: string;
+  cheers?: Cheer[];
   /**
-   * A pasted image (#279): id of a channel-scoped blob the client uploaded
-   * via POST /api/channels/{id}/chat/images before sending; rendered from
-   * the matching GET. A line may be image-only (empty text).
+   * This second's soundboard fires, drained the same way. The clip itself
+   * is fetched over HTTP — only the trigger rides the tick (ADR-0033).
    */
-  imageId?: string;
-  at: number /* int64 */; // server millis, for ordering only
+  board?: Board[];
   /**
-   * When the author last rewrote this line (#865); 0 for a line as sent.
-   * The client renders "edited" off this, so it is a fact about the line
-   * and not a separate event to remember.
+   * No chat (#2437, ADR-0058): a voice channel carries none, and a text
+   * channel's chat is read over HTTP and re-read on the lobby ping.
+   * The recap of the session that just ended (ADR-0034), on the tick where
+   * the row lands — the async write's follow-up. Everyone else gets it from the backlog on their next
+   * join, because unlike everything above it, this one is durable.
    */
-  editedAt?: number /* int64 */;
+  recap?: SessionRecap;
   /**
-   * When a temporary line runs out (#2644), server millis; 0 for a line
-   * that stays. Readers drop it by their own clock at that moment — the
-   * server stops serving it then and sweeps it within the minute.
+   * What happened in the channel this second (#321) — the lines the lounge
+   * draws beside the deck. Ephemeral, like the cheers above.
    */
-  expiresAt?: number /* int64 */;
+  events?: ChannelEvent[];
+  /**
+   * Sprint moment (#30): armed/live window and, after it closes, the podium.
+   */
+  sprint?: SprintState;
+  /**
+   * Running game mode (#31/#32), replacing the workout timeline while on.
+   */
+  game?: GameState;
+  /**
+   * Live execution per rider (#27) — the SPEC score so far this session.
+   */
+  execution?: { [key: string]: number /* float64 */};
+  /**
+   * Who the LiveKit webhooks say is in voice (#467), by rider id. A client
+   * learns this from LiveKit only once it has joined itself, so without the
+   * server's answer an empty voice roster is indistinguishable from a full
+   * one you have not entered yet.
+   */
+  voice?: string[];
+  roster: Rider[];
+  riders: { [key: string]: RiderMetrics};
 }
 /**
- * ChatEdit is one line rewritten by its author (#865): the new text lands
- * on the line already in the log, rather than arriving as a second message
- * that would push the conversation along.
+ * Error tells a client why its connection or command was refused.
  */
-export interface ChatEdit {
-  messageId: string;
-  text: string;
-  editedAt: number /* int64 */;
+export interface Error {
+  /**
+   * One of errors.md's closed set — validation_error, invalid_request,
+   * unauthorized, forbidden, not_found, conflict, rate_limited,
+   * internal_error — optionally prefixed with the surface the refusal
+   * belongs to ("jukebox_rate_limited"), so a client can land it beside
+   * the control the rider touched instead of in the channel's own refusal
+   * slot. The prefix routes; the part after it is always a code from the
+   * set.
+   */
+  code: string;
+  message: string;
 }
 /**
- * ChatReactionCount is a changed total, as the toggle answers it — plus who
- * changed it and which way (#219), so the actor reconciles their "did I
- * react" highlight from the server instead of trusting the click.
+ * ServerMessage is the envelope for everything the server sends.
  */
-export interface ChatReactionCount {
-  messageId: string;
-  emoji: string;
-  count: number /* int */;
-  by?: string; // rider id of the toggler
-  added: boolean;
+export interface ServerMessage {
+  tick?: ServerTick;
+  error?: Error;
+  pairing?: SensorPairing;
+  poke?: Poke;
+  moved?: Moved;
+  /**
+   * This socket's own address, sent once on join and to nobody else (#2131).
+   */
+  connection?: OwnConnection;
 }
 /**
- * ChannelEvent is something that happened in a voice channel rather than
- * something a rider said (#321): the jukebox changing under everyone is half
- * of what happens there, and thirty seconds later "who put this on?" has no
- * other answer. Structured, not a sentence — the client owns the wording, so
- * the lounge and the dock name a track identically.
- * Ephemeral by design (ADR-0022): it rides the tick like cheers and is never
- * written to the chat table. A month of "now playing" in the backlog is noise.
+ * LobbyPing is what the lobby socket says (#251): re-fetch. Channel names the
+ * one text channel whose log changed (#2435, the first step of #2324), so a
+ * client refetches only the channel it is looking at; absent, or when several
+ * changes coalesced into one ping, everything is to be re-fetched. An id and
+ * nothing else — the lines stay behind the channel's own gate — and only to
+ * riders who may enter the channel (#2821): its activity is gated too.
  */
-export interface ChannelEvent {
-  /**
-   * Unique within the voice channel, and stable across re-broadcasts: a
-   * growing burst re-sends the SAME id with a higher Count, and clients
-   * replace the line in place.
-   */
-  id: string;
-  kind: string; // "jukebox" | "session" | "presence"
-  /**
-   * jukebox: "queued" | "removed" | "skipped" | "playing" | "restored"
-   * session: "planned" | "moved" | "cancelled" | "started" | "ended" |
-   *          "won" | "gameEnded"
-   * presence: "joined" | "left" | "away" | "back"
-   */
-  verb: string;
-  /**
-   * Who did it. Empty when nobody did — the deck advancing on its own, or
-   * a session the clock started.
-   */
-  actor?: string;
-  /**
-   * The title the dock shows, so both surfaces name the same track. Empty
-   * on a coalesced burst, which has no single title left to show.
-   */
-  track?: string;
-  /**
-   * The workout a session line is about.
-   */
-  subject?: string;
-  /**
-   * When that session is planned for, server millis. 0 on a line with no
-   * time of its own ("started", "ended").
-   */
-  when?: number /* int64 */;
-  /**
-   * For "playing": who put this track in the queue.
-   */
-  queuedBy?: string;
-  /**
-   * How many things this one line covers — 1 normally, more when a burst
-   * coalesced ("queued 8 tracks", "Ana and 2 others joined"). Eight lines
-   * would push the actual conversation off the screen. On "gameEnded" it
-   * is instead the round the game reached, which for a collective ramp is
-   * the score the whole session rode for.
-   */
-  count: number /* int */;
-  at: number /* int64 */; // server millis, for ordering only
+export interface LobbyPing {
+  channel?: string;
 }
+
+//////////
+// source: reactions.go
+
 /**
  * Cheer is a voice channel's reaction layer (#74) — and the spectator's one
  * verb.
@@ -551,36 +791,6 @@ export interface Board {
    */
   fromId?: string;
   from?: string;
-}
-/**
- * SensorClaim is one socket telling the hub which sensors it has connected
- * (#610).
- * A Web Bluetooth grant cannot leave the browser that made it, so pairing
- * itself stays client-owned (ARCHITECTURE seam 1). What the hub owns is which
- * of a rider's sockets holds each kind — so the rider's other tabs and devices
- * stop offering to pair a second one, and so only one of them feeds the ride
- * record.
- */
-export interface SensorClaim {
-  /**
-   * Kinds this socket holds: "trainer", "heart-rate", "power-meter" or
-   * "cadence". Always the socket's WHOLE current set, never a delta — a
-   * message lost to a reconnect can then never leave a claim stuck behind.
-   */
-  held: string[];
-  /**
-   * Which tab this is, so a reload reclaims what it already had instead of
-   * locking itself out behind its own not-yet-reaped socket. Client-minted
-   * and per-tab (sessionStorage); the hub treats it as an opaque label and
-   * scopes it to the rider, so it can only ever address that rider's own
-   * claims.
-   */
-  tab?: string;
-  /**
-   * A coarse word for the rider's OTHER screens to render: "phone",
-   * "tablet" or "desktop". Never leaves the rider's own sockets.
-   */
-  device?: string;
 }
 /**
  * Poke is one rider asking for another rider's attention. The client sends
@@ -635,74 +845,10 @@ export const PokeKindBottle: PokeKind = "bottle";
  * one up never spends the poke.
  */
 export const PokeCooldownSeconds = 10;
-/**
- * Moved tells a rider's sockets in one voice channel that the crew's owner or
- * an admin moved them into another (#2730), Discord's drag. The client goes
- * there the way a sidebar click would, and the call comes along.
- */
-export interface Moved {
-  /**
-   * The voice channel they now belong in, and its name for the toast.
-   */
-  channel: string;
-  name: string;
-  /**
-   * Who moved them.
-   */
-  by: string;
-}
-/**
- * AwayState is a rider stepping out (#706) — the Lounge's button, never a
- * timer: being off the bike is not being away, and a coach watching the stage
- * is present and not pedalling.
- * The whole state every time rather than a toggle, for the reason SensorClaim
- * carries its whole set: a message lost to a reconnect can then never strand a
- * rider away on everyone else's screen.
- */
-export interface AwayState {
-  away: boolean;
-  /**
-   * Why, from AwayReasons — "" is the plain away the button's face has
-   * always sent, and the only thing one tap can produce. Ignored when Away
-   * is false: coming back has no reason.
-   */
-  reason?: string;
-}
-/**
- * DeviceKind is what a socket says it is running on (#2131): one of
- * "desktop", "phone" or "tablet", sent once when the socket opens and again
- * on every reconnect, the way SensorClaim is resent.
- * Its own message rather than a field on SensorClaim, which already carries a
- * device word: that one is arbitration between a rider's OWN screens and is
- * addressed back to them alone, so it says nothing to the voice channel and
- * only exists once a sensor has been paired — which a spectator on a phone
- * never does. This one is visible to the whole channel by design and arrives
- * whether or not anything is paired.
- * Unlike the ping beside it on the roster, this is the client's word for
- * itself and nothing checks it. That is the right trade for a label this
- * coarse: a rider who lies about being on a phone misleads nobody about
- * anything, and the alternative is parsing a user agent, which is a
- * fingerprint. Kept to the three words below for the same reason — the
- * channel learns roughly what screen someone is on, never which device it is.
- */
-export interface DeviceKind {
-  kind: string;
-}
-/**
- * ClientMessage is the envelope for everything a client sends.
- */
-export interface ClientMessage {
-  cheer?: Cheer;
-  board?: Board;
-  metrics?: RiderMetrics;
-  control?: Control;
-  backfill?: Backfill;
-  jukebox?: JukeboxCommand;
-  sensors?: SensorClaim;
-  poke?: Poke;
-  away?: AwayState;
-  device?: DeviceKind;
-}
+
+//////////
+// source: rider.go
+
 /**
  * Rider is presence: who is in the voice channel right now, with what the
  * dashboard needs to render them. FTP crosses the wire so every screen can
@@ -793,6 +939,43 @@ export interface Rider {
   device?: string;
 }
 /**
+ * AwayState is a rider stepping out (#706) — the Lounge's button, never a
+ * timer: being off the bike is not being away, and a coach watching the stage
+ * is present and not pedalling.
+ * The whole state every time rather than a toggle, for the reason SensorClaim
+ * carries its whole set: a message lost to a reconnect can then never strand a
+ * rider away on everyone else's screen.
+ */
+export interface AwayState {
+  away: boolean;
+  /**
+   * Why, from AwayReasons — "" is the plain away the button's face has
+   * always sent, and the only thing one tap can produce. Ignored when Away
+   * is false: coming back has no reason.
+   */
+  reason?: string;
+}
+/**
+ * DeviceKind is what a socket says it is running on (#2131): one of
+ * "desktop", "phone" or "tablet", sent once when the socket opens and again
+ * on every reconnect, the way SensorClaim is resent.
+ * Its own message rather than a field on SensorClaim, which already carries a
+ * device word: that one is arbitration between a rider's OWN screens and is
+ * addressed back to them alone, so it says nothing to the voice channel and
+ * only exists once a sensor has been paired — which a spectator on a phone
+ * never does. This one is visible to the whole channel by design and arrives
+ * whether or not anything is paired.
+ * Unlike the ping beside it on the roster, this is the client's word for
+ * itself and nothing checks it. That is the right trade for a label this
+ * coarse: a rider who lies about being on a phone misleads nobody about
+ * anything, and the alternative is parsing a user agent, which is a
+ * fingerprint. Kept to the three words below for the same reason — the
+ * channel learns roughly what screen someone is on, never which device it is.
+ */
+export interface DeviceKind {
+  kind: string;
+}
+/**
  * OwnConnection is what a socket is told about ITSELF, and about no other
  * socket in the voice channel (#2131).
  * Its own message rather than a field on Rider, deliberately: Rider is the
@@ -815,6 +998,128 @@ export interface OwnConnection {
    */
   ip: string;
 }
+/**
+ * Moved tells a rider's sockets in one voice channel that the crew's owner or
+ * an admin moved them into another (#2730), Discord's drag. The client goes
+ * there the way a sidebar click would, and the call comes along.
+ */
+export interface Moved {
+  /**
+   * The voice channel they now belong in, and its name for the toast.
+   */
+  channel: string;
+  name: string;
+  /**
+   * Who moved them.
+   */
+  by: string;
+}
+/**
+ * ChannelPresence is the hub's live answer for one voice channel (#251, #2436):
+ * the sidebar renders this shape. It rides the channel list rather than the
+ * channel's WS, but it is shared vocabulary like Rider — one canonical home,
+ * generated for the client like everything here.
+ */
+export interface ChannelPresence {
+  /**
+   * Riders connected to the channel WS, counted as people, not sockets.
+   */
+  connected?: number /* int */;
+  phase?: string;
+  /**
+   * Display names — members-only server-side, scoped to the channel like
+   * all live data. For rendering only: display names are not unique, so
+   * anything asking "is this particular person in there?" reads RiderIDs
+   * instead (#649).
+   */
+  riders?: string[];
+  /**
+   * The same riders by account id, in the same order as Riders.
+   */
+  riderIds?: string[];
+  /**
+   * Who is in the voice channel, and who has a camera live (LiveKit webhooks).
+   */
+  voice?: string[];
+  cameras?: string[];
+  /**
+   * Names with live metrics in the last few seconds — the watt dot.
+   */
+  riding?: string[];
+  /**
+   * The same riders by account id, in the same order as Riding.
+   */
+  ridingIds?: string[];
+  /**
+   * Who said away (#1742), by account id: the sidebar's dot and the rider's
+   * tile used to disagree — away on the tile, online two panels over.
+   */
+  awayIds?: string[];
+  /**
+   * The late-join radar: what is on and how far in, while a session runs.
+   */
+  workoutName?: string;
+  elapsedSec?: number /* int */;
+}
+
+//////////
+// source: sensors.go
+
+/**
+ * SensorClaim is one socket telling the hub which sensors it has connected
+ * (#610).
+ * A Web Bluetooth grant cannot leave the browser that made it, so pairing
+ * itself stays client-owned (ARCHITECTURE seam 1). What the hub owns is which
+ * of a rider's sockets holds each kind — so the rider's other tabs and devices
+ * stop offering to pair a second one, and so only one of them feeds the ride
+ * record.
+ */
+export interface SensorClaim {
+  /**
+   * Kinds this socket holds: "trainer", "heart-rate", "power-meter" or
+   * "cadence". Always the socket's WHOLE current set, never a delta — a
+   * message lost to a reconnect can then never leave a claim stuck behind.
+   */
+  held: string[];
+  /**
+   * Which tab this is, so a reload reclaims what it already had instead of
+   * locking itself out behind its own not-yet-reaped socket. Client-minted
+   * and per-tab (sessionStorage); the hub treats it as an opaque label and
+   * scopes it to the rider, so it can only ever address that rider's own
+   * claims.
+   */
+  tab?: string;
+  /**
+   * A coarse word for the rider's OTHER screens to render: "phone",
+   * "tablet" or "desktop". Never leaves the rider's own sockets.
+   */
+  device?: string;
+}
+/**
+ * SensorPairing is the hub's answer to a SensorClaim: what this socket ended
+ * up holding, and what one of the rider's other screens is already holding.
+ * It goes ONLY to the sockets of the rider it describes, and deliberately not
+ * on the tick: what a rider straps on is nobody else's business (privacy is
+ * architecture, WATTROOM.md), and the tick stays one message per voice
+ * channel per second (ARCHITECTURE seam 2) for state that changes every
+ * second — this changes only when somebody pairs or unpairs.
+ */
+export interface SensorPairing {
+  /**
+   * Kinds this socket holds, as GRANTED — the claim minus anything another
+   * of the rider's screens got to first.
+   */
+  held?: string[];
+  /**
+   * Kind -> the device word of the rider's other screen holding it. What
+   * the sensor cards render instead of a pair button.
+   */
+  elsewhere?: { [key: string]: string};
+}
+
+//////////
+// source: session.go
+
 /**
  * SessionState is the shared timeline, server-owned. Late joiners need no
  * catch-up protocol: every tick carries the whole truth — except the workout
@@ -861,105 +1166,6 @@ export interface SessionState {
    * fit.
    */
   targetRpm?: number /* int */;
-}
-/**
- * JukeboxTrack is one video inside a queued playlist (#615). Ids and titles
- * both ride the wire: the client resolves them once when the playlist is
- * pasted, and the server needs the title for the now-playing timeline line.
- */
-export interface JukeboxTrack {
-  videoId: string;
-  title: string;
-}
-export interface JukeboxEntry {
-  /**
-   * Unique within the voice channel, server-assigned: what
-   * remove/vote/move address (#286).
-   */
-  id: string;
-  /**
-   * What is on the deck RIGHT NOW. For a playlist entry (#615) this is
-   * Tracks[Index] and changes as the entry plays through — which is why
-   * the whole client playback path needed no playlist branch of its own.
-   */
-  videoId: string;
-  title: string;
-  addedBy: string;
-  /**
-   * Where playback begins when this entry reaches the deck (?t= paste).
-   */
-  startSec?: number /* float64 */;
-  /**
-   * Upvotes float an entry above lower-voted ones (#286). The voters are
-   * rider ids, not a count — scoped to the channel like every other live
-   * field, and the only way a client renders "you voted" from truth, not
-   * from its own click. The count is len(voters); nothing to keep in sync.
-   */
-  voters?: string[];
-  /**
-   * Set when the entry is a whole YouTube playlist queued as one thing
-   * (#615) — a playlist takes ONE queue slot, so a paste cannot own the
-   * channel's 50 and the vote order keeps meaning something.
-   */
-  playlistId?: string;
-  playlistTitle?: string;
-  /**
-   * The playlist in order, resolved by the client that pasted it. Empty
-   * for a single video: len(Tracks) > 0 is what makes an entry a playlist.
-   */
-  tracks?: JukeboxTrack[];
-  /**
-   * Which track is on the deck. Only ever moves within [0, len(Tracks)):
-   * running off the end advances to the next QUEUE entry rather than
-   * wrapping — a playlist plays once through and never restarts itself.
-   */
-  index?: number /* int */;
-  /**
-   * A track from the self-hosted pool (#267, ADR-0015) instead of a
-   * YouTube video: the id the client fetches audio for. VideoID is empty
-   * on such an entry, and `TrackID != ""` is what makes an entry a pool
-   * track — the deck's rules do not otherwise care where audio comes from.
-   * RMF's tile rules bind only while a YouTube entry plays (WATTROOM.md),
-   * which is the whole reason a pool track may be audio-only.
-   */
-  trackId?: string;
-  /**
-   * Display only, resolved by whoever queued it: the server holds no
-   * track metadata on the deck, the same way it holds no YouTube titles.
-   */
-  artist?: string;
-  /**
-   * Tempo of a library entry, 0 when untagged (#1431).
-   */
-  bpm?: number /* int */;
-  /**
-   * Length of a library entry in milliseconds (#1509): measured by the
-   * server at upload, so every client — muted, sitting out, still loading
-   * — draws the same seek bar. 0 for a video, whose length only a player
-   * that loaded it knows.
-   */
-  durationMs?: number /* int */;
-}
-/**
- * JukeboxState is the server's truth about what plays where. Clients chase the
- * anchor: position = PositionSec, plus SERVER time since AnchorMs while
- * playing — a client's own wall clock is skewed by seconds and applying it
- * here is what made the jukebox "not synced" (#286). Clients estimate the
- * offset from ServerTick.At and translate.
- * The audio itself is local per rider — their iframe, their volume — and never
- * enters the voice path (SPEC voice channel audio defaults).
- */
-export interface JukeboxState {
-  queue: JukeboxEntry[];
-  current?: JukeboxEntry;
-  playing: boolean;
-  positionSec: number /* float64 */;
-  anchorMs: number /* int64 */;
-  /**
-   * What the channel just played, newest first (#286) — the deck's short
-   * memory, so "put that on again" is one tap and nobody retypes a link.
-   */
-  history: JukeboxEntry[];
 }
 /**
  * SessionRecapRider is one person a session saw, and when — the only two
@@ -1021,114 +1227,6 @@ export interface SessionRecap {
   channelId?: string;
 }
 /**
- * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
- * latest sample, the roster, and the shared session state.
- */
-export interface ServerTick {
-  at: number /* int64 */; // unix millis
-  state: SessionState;
-  /**
-   * The deck (#286), only on the tick a socket has not heard it on
-   * (#2838). It changes with a command and never with the clock — the
-   * position is an anchor — so a socket already holding JukeboxRev's deck
-   * is not sent it again, the way the workout rides by hash (#1710). A few
-   * queued playlists were 85–97 % of every frame. Absent = the deck of
-   * JukeboxRev, which the client kept.
-   */
-  jukebox?: JukeboxState;
-  jukeboxRev: number /* int64 */;
-  /**
-   * This second's cheers, drained each tick like metrics.
-   */
-  cheers?: Cheer[];
-  /**
-   * This second's soundboard fires, drained the same way. The clip itself
-   * is fetched over HTTP — only the trigger rides the tick (ADR-0033).
-   */
-  board?: Board[];
-  /**
-   * No chat (#2437, ADR-0058): a voice channel carries none, and a text
-   * channel's chat is read over HTTP and re-read on the lobby ping.
-   * The recap of the session that just ended (ADR-0034), on the tick where
-   * the row lands — the async write's follow-up. Everyone else gets it from the backlog on their next
-   * join, because unlike everything above it, this one is durable.
-   */
-  recap?: SessionRecap;
-  /**
-   * What happened in the channel this second (#321) — the lines the lounge
-   * draws beside the deck. Ephemeral, like the cheers above.
-   */
-  events?: ChannelEvent[];
-  /**
-   * Sprint moment (#30): armed/live window and, after it closes, the podium.
-   */
-  sprint?: SprintState;
-  /**
-   * Running game mode (#31/#32), replacing the workout timeline while on.
-   */
-  game?: GameState;
-  /**
-   * Live execution per rider (#27) — the SPEC score so far this session.
-   */
-  execution?: { [key: string]: number /* float64 */};
-  /**
-   * Who the LiveKit webhooks say is in voice (#467), by rider id. A client
-   * learns this from LiveKit only once it has joined itself, so without the
-   * server's answer an empty voice roster is indistinguishable from a full
-   * one you have not entered yet.
-   */
-  voice?: string[];
-  roster: Rider[];
-  riders: { [key: string]: RiderMetrics};
-}
-/**
- * ChannelPresence is the hub's live answer for one voice channel (#251, #2436):
- * the sidebar renders this shape. It rides the channel list rather than the
- * channel's WS, but it is shared vocabulary like Rider — one canonical home,
- * generated for the client like everything here.
- */
-export interface ChannelPresence {
-  /**
-   * Riders connected to the channel WS, counted as people, not sockets.
-   */
-  connected?: number /* int */;
-  phase?: string;
-  /**
-   * Display names — members-only server-side, scoped to the channel like
-   * all live data. For rendering only: display names are not unique, so
-   * anything asking "is this particular person in there?" reads RiderIDs
-   * instead (#649).
-   */
-  riders?: string[];
-  /**
-   * The same riders by account id, in the same order as Riders.
-   */
-  riderIds?: string[];
-  /**
-   * Who is in the voice channel, and who has a camera live (LiveKit webhooks).
-   */
-  voice?: string[];
-  cameras?: string[];
-  /**
-   * Names with live metrics in the last few seconds — the watt dot.
-   */
-  riding?: string[];
-  /**
-   * The same riders by account id, in the same order as Riding.
-   */
-  ridingIds?: string[];
-  /**
-   * Who said away (#1742), by account id: the sidebar's dot and the rider's
-   * tile used to disagree — away on the tile, online two panels over.
-   */
-  awayIds?: string[];
-  /**
-   * The late-join radar: what is on and how far in, while a session runs.
-   */
-  workoutName?: string;
-  elapsedSec?: number /* int */;
-}
-/**
  * LiveSession is one session running in a crew's voice channel (#2438), as
  * GET /api/crews/{id}/live answers it — only for channels the caller may
  * enter, like every other live read.
@@ -1148,68 +1246,6 @@ export interface LiveSession {
    */
   riders: string[];
   riderIds: string[];
-}
-/**
- * Error tells a client why its connection or command was refused.
- */
-export interface Error {
-  /**
-   * One of errors.md's closed set — validation_error, invalid_request,
-   * unauthorized, forbidden, not_found, conflict, rate_limited,
-   * internal_error — optionally prefixed with the surface the refusal
-   * belongs to ("jukebox_rate_limited"), so a client can land it beside
-   * the control the rider touched instead of in the channel's own refusal
-   * slot. The prefix routes; the part after it is always a code from the
-   * set.
-   */
-  code: string;
-  message: string;
-}
-/**
- * SensorPairing is the hub's answer to a SensorClaim: what this socket ended
- * up holding, and what one of the rider's other screens is already holding.
- * It goes ONLY to the sockets of the rider it describes, and deliberately not
- * on the tick: what a rider straps on is nobody else's business (privacy is
- * architecture, WATTROOM.md), and the tick stays one message per voice
- * channel per second (ARCHITECTURE seam 2) for state that changes every
- * second — this changes only when somebody pairs or unpairs.
- */
-export interface SensorPairing {
-  /**
-   * Kinds this socket holds, as GRANTED — the claim minus anything another
-   * of the rider's screens got to first.
-   */
-  held?: string[];
-  /**
-   * Kind -> the device word of the rider's other screen holding it. What
-   * the sensor cards render instead of a pair button.
-   */
-  elsewhere?: { [key: string]: string};
-}
-/**
- * ServerMessage is the envelope for everything the server sends.
- */
-export interface ServerMessage {
-  tick?: ServerTick;
-  error?: Error;
-  pairing?: SensorPairing;
-  poke?: Poke;
-  moved?: Moved;
-  /**
-   * This socket's own address, sent once on join and to nobody else (#2131).
-   */
-  connection?: OwnConnection;
-}
-/**
- * LobbyPing is what the lobby socket says (#251): re-fetch. Channel names the
- * one text channel whose log changed (#2435, the first step of #2324), so a
- * client refetches only the channel it is looking at; absent, or when several
- * changes coalesced into one ping, everything is to be re-fetched. An id and
- * nothing else — the lines stay behind the channel's own gate — and only to
- * riders who may enter the channel (#2821): its activity is gated too.
- */
-export interface LobbyPing {
-  channel?: string;
 }
 
 //////////

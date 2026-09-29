@@ -2,89 +2,15 @@ import { arbitrate } from '$lib/ble/arbitrate';
 import { publishHud } from '$lib/hud/feed';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
 import type { SensorKind, SensorReading } from '$lib/ble/sensor';
-import {
-	holdTarget,
-	type Trainer,
-	type TrainerSample,
-	type TrainerStatus,
-} from '$lib/ble/trainer';
-import { flatten, targetAt } from './engine';
-import { createPersonalGuards, DEFAULTS } from './guards';
-import { createSprintWindow } from './sprint-window.svelte';
-import { createTicker, type Ticker } from './ticker';
-import { acquireWakeLock, type WakeLock } from './wakelock';
-import type { Segment, Workout } from './types';
+import type { Trainer, TrainerSample } from '$lib/ble/trainer';
+import { createActuator, type SprintSetup } from '$lib/ride/actuation';
+import { createPersonalGuards, DEFAULTS, toleranceBand } from './guards';
+import { createRideRecord, type RecordedSecond } from './ride-record.svelte';
+import { createRideClock } from './ride-clock.svelte';
+import { createRideHold } from './ride-hold.svelte';
+import type { Workout } from './types';
 
-/**
- * Every number here is docs/SPEC.md's ("Ride guards") — ridden and promoted in #46.
- * Tune them there, not here. They live with the guard machine that reads them
- * (workout/guards), and are re-exported because half the app imports them from
- * this module.
- */
-// `toleranceBand` comes through here because every caller already imports it
-// from the session; it lives in guards.ts so the channel's view can read it
-// without importing a rune module (#2159).
-export { DEFAULTS, toleranceBand } from './guards';
-import { toleranceBand } from './guards';
-
-export type RideState =
-	'idle' | 'countdown' | 'running' | 'autopaused' | 'resuming' | 'done';
-
-/**
- * The count-in before the clock starts (#1800, docs/SPEC.md's session
- * lifecycle). A rider taps Start on the laptop beside the bike and needs a
- * moment to get back on it — a group session has always given them one,
- * and ADR-0046's parity rule makes it the surface's, not the group's.
- * Shorter than a group session's ten seconds because nobody else is being
- * waited for; the same three seconds SPEC gives the resume countdown, and
- * the same 3-2-1 cues.
- */
-export const COUNTDOWN_SECONDS = 3;
-
-/** Past this without a sample the dashboard, and the HUD, say so (#37). */
-export const SIGNAL_LOST_MS = 3000;
-
-/**
- * Whether the trainer has gone quiet — the rule both riding pages draw their
- * dropout banner from (#2158).
- *
- * It counts from the moment the CLOCK started, not from the first sample
- * (#1799). A trainer that streams frames with no power field never delivers
- * one, so a rule of the shape `sample && now - sample.at > …` is never true
- * for the rider it matters most to: /ramp ran its whole length that way, with
- * no banner, no fault cue, and its own stale guard holding the test open.
- *
- * `ridingSince` is stamped when the clock starts and not when Start was
- * pressed (#1800): the count-in is not a gap in the trainer's reporting, and
- * stamping it there put the banner up on the first tick.
- */
-export function signalLost(
-	session:
-		| { state: RideState; sample: { at: number } | null | undefined }
-		| null
-		| undefined,
-	// `undefined` is "the clock has not started", not 0: an injected clock
-	// starts at 0 in a test, and a real timestamp of 0 must not read as no
-	// timestamp at all (#2200).
-	ridingSince: number | undefined,
-	now: number,
-): boolean {
-	if (!session || ridingSince === undefined) return false;
-	if (session.state === 'countdown' || session.state === 'done') return false;
-	return now - (session.sample?.at ?? ridingSince) > SIGNAL_LOST_MS;
-}
-
-/**
- * The frame caves while a solo session is live (ADR-0020: the ride is the
- * cave, sidebar included). The layout cannot see a page's session, so the
- * last one started is published here; /ride and /ramp stop theirs on destroy.
- */
-let latest = $state.raw<{ state: RideState } | null>(null);
-export const soloRide = {
-	get active() {
-		return !!latest && latest.state !== 'idle' && latest.state !== 'done';
-	},
-};
+import { COUNTDOWN_SECONDS, signalLost, type RideState } from './ride-state';
 
 export interface RideOptions {
 	trainer: Trainer;
@@ -111,17 +37,9 @@ export interface RideOptions {
 	 * design — the trainer is released to slope for the window — and this path
 	 * used to collapse that into ERG 0 W, which is a freewheel (#1529).
 	 */
-	sprint?: () => { grade: number; singleSpeed: boolean };
+	sprint?: () => SprintSetup;
 	/** Called with each recorded sample — the crash-safety buffer's seam (#19). */
-	onRecord?: (sample: {
-		second: number;
-		clock: number;
-		watts: number;
-		cadence: number;
-		heartRate: number;
-		bias: number;
-		released: boolean;
-	}) => void;
+	onRecord?: (sample: RecordedSecond) => void;
 }
 
 /**
@@ -142,14 +60,7 @@ export function createRideSession({
 	}),
 	onRecord,
 }: RideOptions) {
-	const segments: Segment[] = flatten(workout);
-	const total = segments.reduce(
-		(t, s) => Math.max(t, s.startSeconds + s.seconds),
-		0,
-	);
-
 	const startedAt = new Date(startedAtMs ?? now());
-	let elapsed = $state(0);
 	let state = $state<RideState>('idle');
 	/** Seconds left in the count-in; 0 whenever the ride is not counting in. */
 	let countdownRemaining = $state(0);
@@ -163,80 +74,24 @@ export function createRideSession({
 	const guards = createPersonalGuards();
 	let resumeIn = $state(0);
 	let spiralActive = $state(false);
-	/** Per-segment time shifts from skip/extend, so the timeline stays authoritative. */
-	let shift = $state(0);
-	/** The ride's own power history, for the interval graph. Owned here rather than
-	 *  rebuilt in the screen — a component effect that reads and writes it loops. */
-	// Raw, replaced on each push (#2878): see createRecording.
-	let trace = $state.raw<{ t: number; w: number }[]>([]);
-	/**
-	 * What actually happened, in real time. Distinct from `trace`, which is keyed on
-	 * the workout clock so it lines up with the interval graph — skip and extend make
-	 * that clock jump, and a .fit needs strictly increasing seconds.
-	 */
-	const recording: {
-		second: number;
-		/**
-		 * The workout second this sample was ridden at (#1733). `second` is
-		 * the wall clock; this one stops while auto-paused and jumps on skip
-		 * and extend, and it is the coordinate the score is keyed on — the
-		 * server used to score the saved ride by array index, so a 30 s stop
-		 * mid-block read every later second against the wrong block.
-		 */
-		clock: number;
-		watts: number;
-		cadence: number;
-		heartRate: number;
-		/**
-		 * The trim this second was ridden at (#1530). The live score bands the
-		 * BIASED target; the server re-scores the saved ride and bands whatever
-		 * bias each sample carries — so a ride that never sends one is scored
-		 * against the workout as written, and a rider who trims to 95 % reads
-		 * 100 % on the summary and 93 % on the ride's own page.
-		 */
-		bias: number;
-		/**
-		 * The guard had the trainer off the target this second (#1796):
-		 * paused, counting back in, or released. The live score skips it;
-		 * so must the saved one.
-		 */
-		released: boolean;
-	}[] = [];
-	let recordedSeconds = 0;
+	const record = createRideRecord(ftp);
 	// How long the rider has sat auto-paused, on the ride's own clock (#2622).
 	let pausedSeconds = 0;
-	// The wall-clock second the record last admitted a sample for: a trainer
-	// notifies more than once a second and everything downstream — kJ,
-	// duration, the power curve, the XP the server pays — reads this record
-	// as one entry per second. Wall clock, not the ride clock: the ride clock
-	// stops while auto-paused and the record must keep counting (the ramp's
-	// blown-detector reads it). The session's recorder and the hub's admit the
-	// same way (#1411, #791); this was the third recorder (audit 2026-09-09).
-	let lastRecordedSecond = -1;
-
-	// SPEC's execution score, accumulated as the ride happens: seconds inside
-	// the band over seconds ridden, each weighed by the step's prescribed
-	// intensity (target/FTP), warmup, cooldown and freeride excluded. It used
-	// to count samples equally and include every targeted second, so the same
-	// ride scored one number here and another one when the server saved it
-	// (#795). State, because the numbers row reads it live (#2769): as plain
-	// variables the score froze at its first read and the cell never appeared.
-	let insideWeight = $state(0);
-	let scoredWeight = $state(0);
-	let ticker: Ticker | undefined;
-	let wakeLock: WakeLock | undefined;
-	let unsubscribe: (() => void) | undefined;
-	let unsubscribeStatus: (() => void) | undefined;
 	// Flipped synchronously by start(), before it awaits the trainer: two taps
 	// a frame apart both got past a state check that only moved once the
 	// hardware answered (#1800).
 	let starting = false;
-	// The link as the driver reports it (#1847): the screen draws the
-	// recovery card from this, not from a slot that let go at Start.
-	let trainerStatus = $state<TrainerStatus>(trainer.status);
+	const hold = createRideHold(trainer, {
+		onSample,
+		tick,
+		now,
+		state: () => state,
+	});
 
-	const clockSeconds = $derived(Math.min(total, Math.max(0, elapsed + shift)));
-	const info = $derived(targetAt(segments, ftp, clockSeconds, { bias }));
+	const clock = createRideClock(workout, ftp, {
+		bias: () => bias,
+		over: () => state === 'done',
+	});
 
 	/**
 	 * Released during spiral guard and while auto-paused — both mean "no
@@ -246,38 +101,16 @@ export function createRideSession({
 	const target = $derived(
 		state === 'autopaused' || state === 'countdown' || spiralActive
 			? 0
-			: (info.targetWatts ?? 0),
+			: (clock.info.targetWatts ?? 0),
 	);
 
-	const execution = $derived(
-		scoredWeight > 0 ? insideWeight / scoredWeight : 1,
-	);
 	const inBand = $derived(
 		target > 0 &&
 			sample !== null &&
 			Math.abs(sample.watts - target) <= toleranceBand(target),
 	);
 
-	/**
-	 * No ERG target because this is a sprint — not because a guard is up. The
-	 * `?? 0` below folded both into zero, and zero in ERG is a freewheel: the
-	 * rider pedalled against nothing for the whole window (#1529).
-	 */
-	const sprinting = $derived(!info.done && info.segment?.kind === 'sprint');
-
-	/** True while the trainer is in slope for a sprint, so the flip happens once. */
-	let sprintMode = false;
-
-	// The sprint window the screen draws (#1793), its own module: the
-	// block under way or the one about to start, anchored once per block.
-	const sprintWindow = createSprintWindow(() => ({
-		segments,
-		segment: info.segment,
-		index: info.segmentIndex,
-		clock: clockSeconds,
-		done: info.done,
-		over: state === 'done',
-	}));
+	const actuator = createActuator(() => hold.trainer);
 
 	function applyTarget() {
 		// Nothing reaches the trainer during the count-in (#1800). This is the
@@ -285,38 +118,11 @@ export function createRideSession({
 		// nudge, skip/extend and repair() all come through here — so the first
 		// block's target lands when the clock does and not three seconds early.
 		if (state === 'countdown') return;
-		if (sprinting) {
-			// A sprint outranks the guards, for the reason a group session gives
-			// (session/ride.svelte.ts): auto-pause is an INFERENCE that the rider
-			// left, a sprint is an announced effort they are about to answer.
-			if (sprintMode) return;
-			sprintMode = true;
-			const setup = sprint();
-			if (setup.singleSpeed) {
-				// Slope has no usable range on a single-speed setup (Zwift Cog),
-				// so the sprint runs as a target nobody holds instead (#30/#41).
-				void trainer.setTargetPower(ftp * 2);
-				return;
-			}
-			// Flat first, then the hill: the same two-step a session uses to get
-			// an FTMS trainer out of ERG before the grade lands.
-			void trainer.setSimulation(0);
-			sprintStep = setTimeout(() => {
-				sprintStep = undefined;
-				if (sprintMode) void trainer.setSimulation(setup.grade);
-			}, 500);
-			return;
-		}
-		leaveSprint();
-		void holdTarget(trainer, target);
-	}
-	// The hill is a second write 500 ms after the flat; a ride ending inside
-	// that gap wrote the grade after the release (#1852).
-	let sprintStep: ReturnType<typeof setTimeout> | undefined;
-	function leaveSprint() {
-		clearTimeout(sprintStep);
-		sprintStep = undefined;
-		sprintMode = false;
+		// A sprint outranks the guards, for the reason a group session gives
+		// (session/ride.svelte.ts): auto-pause is an INFERENCE that the rider
+		// left, a sprint is an announced effort they are about to answer.
+		if (clock.sprinting) actuator.sprint(sprint(), ftp);
+		else actuator.hold(target);
 	}
 
 	/**
@@ -354,8 +160,7 @@ export function createRideSession({
 		// The record and the score admit one sample per ride second; the
 		// guards below look at every one — a stop is noticed by the sample
 		// that stopped, not by the second's first.
-		const second = Math.floor(raw.at / 1000);
-		const admit = second > lastRecordedSecond;
+		const admit = record.admits(raw.at);
 
 		// Auto-pause and the spiral guard, against the PRESCRIBED target: the one
 		// the trainer holds is zero exactly when a guard is already up. Before
@@ -365,29 +170,24 @@ export function createRideSession({
 		if (state !== 'idle') {
 			// The same per-second gate the record uses (#1798): the guards count
 			// seconds, and a trainer notifies more than once a second.
-			const actuate = guards.sample(next, info.targetWatts ?? 0, admit ? 1 : 0);
+			const actuate = guards.sample(
+				next,
+				clock.info.targetWatts ?? 0,
+				admit ? 1 : 0,
+			);
 			syncGuards();
 			if (actuate) applyTarget();
 		}
 
 		if (admit) {
-			lastRecordedSecond = second;
-			const recorded = {
-				second: recordedSeconds++,
-				clock: clockSeconds,
-				watts: Math.max(0, Math.round(next.watts)),
-				cadence: Math.max(0, Math.round(next.cadence)),
-				// Reaches the .fit export now that a strap can be paired (#11, #44).
-				heartRate: Math.max(0, Math.round(next.heartRate ?? 0)),
+			const recorded = record.add(
+				raw.at,
+				clock.seconds,
+				next,
 				bias,
-				released: !guards.scoring,
-			};
-			recording.push(recorded);
+				!guards.scoring,
+			);
 			onRecord?.(recorded);
-			// Uncapped, for the reason session/recording.svelte.ts gives: the graph
-			// is keyed on the workout clock, so dropping the oldest entries
-			// erased the start of the line rather than scrolling it (#2017).
-			trace = [...trace, { t: clockSeconds, w: next.watts }];
 		}
 
 		// Execution excludes auto-paused time and untargeted blocks (docs/SPEC.md). The
@@ -400,17 +200,9 @@ export function createRideSession({
 			state === 'running' &&
 			target > 0 &&
 			pedalling &&
-			info.segment?.kind === 'steady'
-		) {
-			// The band is the rider's own biased target; the weight is the
-			// intensity the workout asked for, so dialling down does not also
-			// quietly reduce how much the second counts for. `target` is
-			// already biased, so the prescribed one is target / bias.
-			const weight = target / bias / ftp;
-			scoredWeight += weight;
-			if (Math.abs(next.watts - target) <= toleranceBand(target))
-				insideWeight += weight;
-		}
+			clock.info.segment?.kind === 'steady'
+		)
+			record.score(next.watts, target, bias);
 	}
 
 	/**
@@ -426,7 +218,7 @@ export function createRideSession({
 		publishHud({
 			watts: sample?.watts ?? 0,
 			target,
-			remaining: Math.max(0, total - clockSeconds),
+			remaining: Math.max(0, clock.total - clock.seconds),
 			label: workout.name,
 			// The rule both riding pages draw their banner from (#2158) — the
 			// HUD used to need a first sample, so the rider who alt-tabbed
@@ -457,7 +249,7 @@ export function createRideSession({
 			// is not one.
 			ridingSince = now();
 			applyTarget();
-			sprintWindow.sync();
+			clock.sync();
 			return;
 		}
 		publish();
@@ -472,7 +264,7 @@ export function createRideSession({
 		if (state === 'autopaused') {
 			pausedSeconds += seconds;
 			if (pausedSeconds >= DEFAULTS.stoppedEndsAfterSeconds) {
-				trimStoppedTail();
+				record.trimStoppedTail(guards.pedalling);
 				finish();
 			}
 			return;
@@ -485,28 +277,13 @@ export function createRideSession({
 			if (actuate) applyTarget();
 		}
 
-		elapsed += seconds;
-		if (clockSeconds >= total) {
+		clock.advance(seconds);
+		if (clock.seconds >= clock.total) {
 			finish();
 			return;
 		}
 		applyTarget();
-		sprintWindow.sync();
-	}
-
-	/**
-	 * The trailing run of not pedalling, off a ride that ended itself (#2622):
-	 * those seconds are the rider gone, not riding, so they stay out of its
-	 * duration, its normalised power and the .fit. Read by the guards' own
-	 * definition of stopped, so the grace seconds before the pause go too.
-	 */
-	function trimStoppedTail() {
-		let keep = recording.length;
-		while (keep > 0 && !guards.pedalling(recording[keep - 1])) keep--;
-		const cut = recording.length - keep;
-		if (cut === 0) return;
-		recording.length = keep;
-		trace = trace.slice(0, Math.max(0, trace.length - cut));
+		clock.sync();
 	}
 
 	/**
@@ -518,31 +295,24 @@ export function createRideSession({
 	 */
 	function finish() {
 		if (state === 'done') return;
-		wakeLock?.release();
-		wakeLock = undefined;
-		ticker?.stop();
-		ticker = undefined;
-		unsubscribe?.();
-		unsubscribe = undefined;
-		unsubscribeStatus?.();
-		unsubscribeStatus = undefined;
-		leaveSprint();
+		hold.drop();
+		actuator.release();
 		countdownRemaining = 0;
-		void trainer.setTargetPower(0);
+		void hold.trainer.setTargetPower(0);
 		// Let go of the hardware (#1546): after the summary nothing owns
 		// this link, and the next pairing screen showed an unpaired grid
 		// over a connection that was still open — a session's unpair()
 		// does the same.
-		void trainer.disconnect();
+		void hold.trainer.disconnect();
 		state = 'done';
-		sprintWindow.sync();
+		clock.sync();
 	}
 
 	return {
-		segments,
-		total,
+		segments: clock.segments,
+		total: clock.total,
 		get elapsed() {
-			return clockSeconds;
+			return clock.seconds;
 		},
 		get state() {
 			return state;
@@ -551,11 +321,11 @@ export function createRideSession({
 			return sample;
 		},
 		get trace() {
-			return trace;
+			return record.trace;
 		},
 		/** The ride as recorded, for .fit export. */
 		get recording() {
-			return recording;
+			return record.recording;
 		},
 		get startedAt() {
 			return startedAt;
@@ -567,14 +337,14 @@ export function createRideSession({
 			return bias;
 		},
 		get info() {
-			return info;
+			return clock.info;
 		},
 		get execution() {
-			return execution;
+			return record.execution;
 		},
 		/** False when the workout prescribed nothing to score (#1454, #1544). */
 		get scored() {
-			return scoredWeight > 0;
+			return record.scored;
 		},
 		get inBand() {
 			return inBand;
@@ -587,10 +357,10 @@ export function createRideSession({
 		},
 		/** The trainer this ride holds, for the recovery card (#1847). */
 		get trainerName() {
-			return trainer.name;
+			return hold.trainer.name;
 		},
 		get trainerStatus() {
-			return trainerStatus;
+			return hold.status;
 		},
 		/**
 		 * Ride on with another trainer (#1847): the recovery card used to pair
@@ -601,20 +371,14 @@ export function createRideSession({
 		 */
 		repair(next: Trainer) {
 			if (state === 'done') return;
-			const old = trainer;
-			unsubscribe?.();
-			unsubscribeStatus?.();
-			trainer = next;
-			unsubscribe = next.onSample(onSample);
-			unsubscribeStatus = next.onStatus((s) => (trainerStatus = s));
-			trainerStatus = next.status;
-			sprintMode = false;
+			const old = hold.swap(next);
+			actuator.release();
 			applyTarget();
 			void old.disconnect();
 		},
 		/** The sprint block on screen, or the one about to be — null otherwise. */
 		get sprint() {
-			return sprintWindow.current;
+			return clock.window;
 		},
 
 		/** Seconds left in the count-in — 0 unless `state` is `countdown`. */
@@ -629,28 +393,18 @@ export function createRideSession({
 			if (starting || state !== 'idle') return;
 			starting = true;
 			try {
-				if (trainer.status !== 'connected') await trainer.connect();
+				const held = hold.trainer;
+				if (held.status !== 'connected') await held.connect();
 			} catch (cause) {
 				starting = false;
 				throw cause;
 			}
-			unsubscribe = trainer.onSample(onSample);
-			unsubscribeStatus = trainer.onStatus((s) => (trainerStatus = s));
-			trainerStatus = trainer.status;
 			// The clock starts when the count-in ends, not when Start is pressed
 			// (#1800, ADR-0046): tick() owns the move to 'running', and with it
 			// the first target write.
 			state = 'countdown';
 			countdownRemaining = COUNTDOWN_SECONDS;
-			latest = {
-				get state() {
-					return state;
-				},
-			};
-			ticker = createTicker(tick, { now });
-			// The screen staying on is part of "a ride is running" — owned here so
-			// /ride and /ramp cannot each forget it separately (#58).
-			wakeLock = acquireWakeLock();
+			hold.take();
 		},
 		/**
 		 * The rider changed their mind during the count-in (#1800). Not stop():
@@ -660,19 +414,12 @@ export function createRideSession({
 		 */
 		abort(): Trainer | undefined {
 			if (state !== 'countdown') return undefined;
-			ticker?.stop();
-			ticker = undefined;
-			wakeLock?.release();
-			wakeLock = undefined;
-			unsubscribe?.();
-			unsubscribe = undefined;
-			unsubscribeStatus?.();
-			unsubscribeStatus = undefined;
+			hold.drop();
 			countdownRemaining = 0;
 			state = 'idle';
 			ridingSince = undefined;
 			starting = false;
-			return trainer;
+			return hold.trainer;
 		},
 		stop() {
 			finish();
@@ -686,24 +433,15 @@ export function createRideSession({
 		},
 		/** Jump to the start of the next block. */
 		skip() {
-			const next = segments[info.segmentIndex + 1];
-			if (!next) return;
-			shift += next.startSeconds - clockSeconds;
+			if (!clock.skip()) return;
 			applyTarget();
-			sprintWindow.sync();
+			clock.sync();
 		},
-		/**
-		 * Hold the current block longer by rewinding the workout clock, which pushes
-		 * this block's end out along with everything after it.
-		 * Known edge: within the first `seconds` of the whole workout the clock floors
-		 * at zero, so an early extend gives less than asked. Fixing it properly needs
-		 * per-segment durations rather than one global shift — not worth it until a
-		 * rider complains.
-		 */
+		/** Hold the current block longer (see the clock's extend). */
 		extend(seconds: number) {
-			shift -= seconds;
+			clock.extend(seconds);
 			applyTarget();
-			sprintWindow.sync();
+			clock.sync();
 		},
 		/** Exposed for the ride screen's clock display and tests. */
 		tick,

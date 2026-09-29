@@ -24,6 +24,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.3.0",
 		"@tailwindcss/vite": "^4.3.3",
 		"@types/node": "^26.6.1",
+		"@types/three": "0.186.0",
 		"@types/web-bluetooth": "^0.0.21",
 		"fake-indexeddb": "^6.2.5",
 		"happy-dom": "^20.14.5",
@@ -41,6 +42,7 @@
 	"dependencies": {
 		"@lucide/svelte": "^1.47.0",
 		"emojibase-data": "17.0.0",
-		"livekit-client": "^2.22.3"
+		"livekit-client": "^2.22.3",
+		"three": "0.186.1"
 	}
 }

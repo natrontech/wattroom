@@ -283,6 +283,12 @@ type RideExport struct {
 	StaleSince  pgtype.Timestamptz
 }
 
+type RideUploadXp struct {
+	UserID pgtype.UUID
+	Day    pgtype.Date
+	Xp     int32
+}
+
 type ScheduledSession struct {
 	ID          pgtype.UUID
 	WorkoutName string

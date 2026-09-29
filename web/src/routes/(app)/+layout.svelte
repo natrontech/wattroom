@@ -21,7 +21,7 @@
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { soloRide } from '$lib/workout/session.svelte';
+	import { soloRide } from '$lib/workout/ride-hold.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';

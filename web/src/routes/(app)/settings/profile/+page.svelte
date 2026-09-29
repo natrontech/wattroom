@@ -460,7 +460,7 @@
 								and expires in a day.
 							</span>
 						{:else if account.me?.emailVerified}
-							<span class="text-z4 mt-1 block text-[11px]"
+							<span class="text-ok mt-1 block text-[11px]"
 								>Confirmed. {EMAIL_IS_FOR}</span
 							>
 						{:else}

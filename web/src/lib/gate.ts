@@ -261,8 +261,16 @@ export function gateChecks(theme: Theme, catalogue: Theme[]): GateCheck[] {
 	const checks: GateCheck[] = [];
 
 	// Danger is a word colour (#2858): every refusal under a field and every
-	// Delete is small text in it, so it answers to the text floor.
-	for (const token of ['ink', 'muted', 'muted-dim', 'danger'] as const) {
+	// Delete is small text in it, so it answers to the text floor — and so do
+	// the status words, ok and warn (#2969).
+	for (const token of [
+		'ink',
+		'muted',
+		'muted-dim',
+		'danger',
+		'ok',
+		'warn',
+	] as const) {
 		const value = worst(theme, token);
 		checks.push(
 			check(

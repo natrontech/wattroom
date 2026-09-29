@@ -129,9 +129,8 @@
 		<path
 			d={path((p) => p.fatigue)}
 			fill="none"
-			stroke="currentColor"
+			stroke="var(--color-z2)"
 			stroke-width="2"
-			class="text-z2"
 		/>
 		<path
 			d={path((p) => p.fitness)}

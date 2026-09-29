@@ -2,7 +2,8 @@
 import { flushSync, tick } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
 import { SimulatedTrainer } from '$lib/ble/simulated';
-import { COUNTDOWN_SECONDS, createRideSession } from './session.svelte';
+import { createRideSession } from './session.svelte';
+import { COUNTDOWN_SECONDS } from './ride-state';
 import type { Workout } from './types';
 
 vi.mock('$lib/hud/feed', () => ({ publishHud: () => {} }));
