@@ -631,7 +631,9 @@ What v0 ships (#3022):
 | Stored grade                 | **−15 … +20 %**                                                                                                                         |
 | Felt grade                   | difficulty × grade, **× 0.5** again on descents; clamped to **−5 … +15 %**; slewed at most **1 %/s**                                    |
 | Difficulty                   | **50 %**; **100 %** under Advanced                                                                                                      |
-| Entering a road              | **0 %** for **500 ms**, then the road                                                                                                   |
+| Entering a road              | **0 %** for **500 ms** on entering SIM from ERG, then the road |
+| Look-ahead                   | the felt grade is read **1 s** ahead of the rider, at the dot's speed                                                                   |
+| One gear on a road           | ERG-by-road instead of SIM: FTP × clamp(**0.60** + **0.03** × the road's grade %, **0.50**, **0.90**), and **0.50** on descents steeper than **−2 %**; ± bias |
 | Grade written to the trainer | `MinTrainerGrade` **−10 %** (a default until hardware check P11) … `MaxTrainerGrade` **+15 %**, both in `protocol/limits.go`, one range for every trainer |
 | Reference rider              | **75 kg** rider + **8 kg** bike at **225 W**                                                                                            |
 | Pace model                   | Martin et al. 1998, stepped once a second in **4** substeps (`$lib/road/pace.ts` and its Go twin `internal/road`, held to **0.1 %** by shared golden vectors): Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, CdA **0.32 m²** until the Kickr sessions measure it. The pace model and FTMS share this one CdA; the factor between it and the Cw FTMS is sent (**0.51 kg/m** today, `SIM_DEFAULTS`) is what that session measures, and this row does not assert it |
@@ -718,6 +720,15 @@ A rider's bias never moves the bunch.
 | Alpenglow           | OKLCH hue **58–60°**                                                                                                     |
 | Flashes             | WCAG 2.3.1, and at most one dim flash per **10 s** over **25 %** of a 10° field; none under reduced motion               |
 
+## The figure ([ADR-0073](decisions/0073-the-rider-is-dressed-never-measured.md) — defaults, tune in alpha)
+
+- **Proportions**: stylised athletic, about **7 heads** tall, head scale **1.08**. No face.
+- **Build**: slim, athletic or strong — the rider's choice, never derived from weight.
+- **Height**: the rider's choice; the range is [#3413](https://github.com/natrontech/wattroom/issues/3413)'s.
+- **Skin**: one of **8** free swatches, never sold; the values are #3413's. The neutral figure's tone is none of the 8.
+- **Neutral figure** (until the rider chooses): athletic build, a middle height, the neutral tone.
+- **The live zone** is a flat ground ring under the bike, never the jersey.
+
 ## Rider animation (defaults — tune in alpha; #3066)
 
 How a rider's figure in a ride world moves. Every number here replaced one the world prototype
@@ -750,6 +761,35 @@ lean **0.3 s**, steer **0.15 s**.
 
 - **Sway**: **0.6° × r** seated, **4° × r** climbing, **9° × r ÷ 1.6** sprinting.
 - **Lean** = atan(v²κ ÷ g), clamped to **16–22°** while pedalling and **32°** coasting.
+
+## Motion (defaults — tune in alpha; [ADR-0079](decisions/0079-motion-announces-the-camera-stays-still.md))
+
+**Durations and timings** (`app.css` `@theme`, mirrored in `$lib/motion`):
+
+| Token              | Value      | Token             | Value      |
+| ------------------ | ---------- | ----------------- | ---------- |
+| `--dur-press`      | **90 ms**  | `--dur-stage`     | **700 ms** |
+| `--dur-quick`      | **160 ms** | `--dur-draw`      | **1200 ms** |
+| `--dur-base`       | **240 ms** | `--hold-announce` | **2400 ms** |
+| `--dur-reveal`     | **400 ms** | `--stagger`       | **60 ms**  |
+| `--dur-live`       | **500 ms** | `--stagger-podium` | **400 ms** |
+
+**Easings**: `--ease-arrive` cubic-bezier(0.05, 0.7, 0.1, 1); `--ease-leave`
+cubic-bezier(0.3, 0, 0.8, 0.15); `--ease-move` cubic-bezier(0.2, 0, 0, 1);
+`--ease-live` cubic-bezier(0, 0, 0.2, 1); `--ease-pop` a `linear()` spring,
+ζ ≈ **0.63**, **8 %** overshoot. The watts numeral keeps its **250 ms**
+transform glide (#3200).
+
+**The camera**: follow first order or critically damped; FOV at most **+4°**
+over base with a **2 s** half-life; a shot change is a cut or a **300 ms**
+fog-dip.
+
+**The World control**: Full, Steady (heli camera, fixed FOV, cuts, no
+particles), Light (the lowest 3D tier), Flat (the Skyline). Per device; reduced
+motion opens on Flat.
+
+**Flashes**: WCAG 2.3.1; at most one luminance flash per **10 s** over **25 %**
+of a **10°** field.
 
 ## The bike computer (defaults — tune in alpha; [ADR-0071](decisions/0071-the-bike-computer-pages-slot-3.md))
 

@@ -1,4 +1,6 @@
 import type { Trainer } from '$lib/ble/trainer';
+import { MaxTrainerGrade, MinTrainerGrade } from '$lib/protocol';
+import { ROAD } from '$lib/ride/ride-grade';
 
 /** The rider's sprint setup (#30/#41), read per sprint so a change on /settings lands mid-ride. */
 export interface SprintSetup {
@@ -17,15 +19,20 @@ export function sprintSlope(setup: SprintSetup): number {
 
 /**
  * Every SIM write the ride makes goes through here: the free ride's grade,
- * both steps of a sprint's entry, and a target's flat road. One entry point,
- * so composing the grade with gears and shelter, and the write policy that
- * never pulses, land in one place (#3327).
+ * a road's, both steps of a sprint's entry, and a target's flat road. One
+ * entry point, so composing the grade with gears and shelter, and the write
+ * policy that never pulses, land in one place (#3327). The grade written is
+ * held to one range for every trainer (docs/SPEC.md, ADR-0062).
  */
 export function simulate(
 	trainer: Trainer,
 	gradePercent: number,
 ): Promise<void> {
-	return trainer.setSimulation({ gradePct: gradePercent });
+	const gradePct = Math.min(
+		MaxTrainerGrade,
+		Math.max(MinTrainerGrade, gradePercent),
+	);
+	return trainer.setSimulation({ gradePct });
 }
 
 /**
@@ -39,7 +46,7 @@ export function holdTarget(trainer: Trainer, watts: number): Promise<void> {
 }
 
 /**
- * What one ride writes to its trainer: a target, a grade, or a sprint. The
+ * What one ride writes to its trainer: a target, a grade, a road or a sprint. The
  * solo ride and the session ride each carried their own copy of the sprint
  * (#3049); both now say what they want and this decides the writes.
  *
@@ -49,23 +56,46 @@ export function holdTarget(trainer: Trainer, watts: number): Promise<void> {
 export function createActuator(trainer: () => Trainer | null | undefined) {
 	// In slope for a sprint, so the flip happens once per window.
 	let sprinting = false;
-	// The hill is a second write 500 ms after the flat; a ride ending inside
-	// that gap wrote the grade after the release (#1852).
-	let hill: ReturnType<typeof setTimeout> | undefined;
+	// The grade an entry's flat gives way to, read when the flat ends and not
+	// when it began: a grade asked for inside it is the one that lands.
+	let wanted: number | undefined;
+	// The flat on entering SIM from ERG. A ride ending inside it used to get
+	// the grade after its release (#1852), so release() clears it.
+	let entry: ReturnType<typeof setTimeout> | undefined;
 
-	/** Out of the sprint: the next sprint flips again, and a pending hill never lands. */
+	/** Out of the sprint and off the road: the next flips again, and a pending grade never lands. */
 	function release() {
-		clearTimeout(hill);
-		hill = undefined;
+		clearTimeout(entry);
+		entry = undefined;
+		wanted = undefined;
 		sprinting = false;
+	}
+
+	/**
+	 * A road's or a sprint's grade. Flat first only on entering SIM from ERG,
+	 * where an FTMS trainer has to leave ERG before the grade lands; already
+	 * in SIM, it is written at once.
+	 */
+	function slope(held: Trainer, percent: number) {
+		wanted = percent;
+		if (entry) return;
+		if (held.mode !== 'erg') {
+			void simulate(held, percent);
+			return;
+		}
+		void simulate(held, 0);
+		entry = setTimeout(() => {
+			entry = undefined;
+			const now = trainer();
+			if (now && wanted !== undefined) void simulate(now, wanted);
+		}, ROAD.entryFlatMs);
 	}
 
 	return {
 		/**
 		 * The sprint, once per window. Slope has no usable range on a
 		 * single-speed setup (Zwift Cog), so there it runs as a target nobody
-		 * holds instead (#30/#41). Otherwise flat first, then the hill: an FTMS
-		 * trainer has to leave ERG before the grade lands.
+		 * holds instead (#30/#41). Otherwise the hill, flat first out of ERG.
 		 */
 		sprint(setup: SprintSetup, ftp: number) {
 			const held = trainer();
@@ -75,13 +105,13 @@ export function createActuator(trainer: () => Trainer | null | undefined) {
 				void held.setTargetPower(ftp * 2);
 				return;
 			}
-			const grade = sprintSlope(setup);
-			void simulate(held, 0);
-			hill = setTimeout(() => {
-				hill = undefined;
-				const now = trainer();
-				if (sprinting && now) void simulate(now, grade);
-			}, 500);
+			slope(held, sprintSlope(setup));
+		},
+		/** This second's grade from createRideGrade — roads only. */
+		road(percent: number) {
+			sprinting = false;
+			const held = trainer();
+			if (held) slope(held, percent);
 		},
 		/** Hold a target, or a flat road where there is none. */
 		hold(watts: number) {

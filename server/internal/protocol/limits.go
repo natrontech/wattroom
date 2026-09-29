@@ -128,6 +128,15 @@ const (
 	MinRoadGradePct = -15
 	MaxRoadGradePct = 20
 
+	// The range every SIM write is clamped to (docs/SPEC.md "Route rides",
+	// ADR-0062): one range for every trainer, since FTMS cannot report an
+	// indoor bike's. MaxTrainerGrade is also the free ride's top and the felt
+	// grade's; MinTrainerGrade is a default until hardware check P11 measures
+	// a trainer's descent, and the room below the felt floor is for virtual
+	// gears (ADR-0084).
+	MinTrainerGrade = -10
+	MaxTrainerGrade = 15
+
 	// A sample on a road (#3052): its place along the road runs from 0 to the
 	// route's length (MaxRouteMeters above), never back, and at most this far
 	// a second; its height stays inside these. The floor is the .fit's own —
