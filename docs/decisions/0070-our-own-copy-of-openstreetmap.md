@@ -74,3 +74,11 @@ browser ever talks to Overpass.
 - Implementation: [#3125](https://github.com/natrontech/wattroom/issues/3125),
   [#3124](https://github.com/natrontech/wattroom/issues/3124),
   [#3131](https://github.com/natrontech/wattroom/issues/3131).
+
+## Amendment, 2026-09-29 (#3237): the ride follows the matched road
+
+[ADR-0082](0082-a-climb-belongs-to-the-map.md) builds the map's roads into
+**strokes** at geo-build time, reading no route. Over a span matched to a
+climb, the road served to the ride is **the map's line and the climb's frozen
+profile**, so identical watts give an identical time whichever file brought
+the rider. The stored track is still never snapped.

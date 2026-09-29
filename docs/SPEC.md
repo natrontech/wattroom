@@ -55,6 +55,12 @@
 | **Skyline** | The 2D road profile: the world's automatic fallback when the 3D view cannot run ([ADR-0066](decisions/0066-the-world-is-the-ride-view.md)). |
 | **Climb** | A stretch of road at least 500 m long, averaging at least 3 %, whose score (length in m × average %) is at least 1,500 (Route rides below). A climb belongs to the map, not to one route ([ADR-0082](decisions/0082-a-climb-belongs-to-the-map.md)). |
 | **Climb class** | A climb's difficulty by its score: **IV**, **III**, **II**, **I**, **HC**, always in Roman numerals (Route rides below). |
+| **Stroke** | A road as the map draws it: road-class ways split at junctions and re-joined through two-way joins, keyed by both ends and its length ([ADR-0082](decisions/0082-a-climb-belongs-to-the-map.md)). Built from the map alone, never from a route. |
+| **Stretch** | The part of a climb an effort is timed over: the whole climb, or its top half ([ADR-0082](decisions/0082-a-climb-belongs-to-the-map.md)). |
+| **Effort** | One ride over one stretch: its time, and nothing about where the rest of the ride went. Owner-only near the ride's ends and near any zone ([ADR-0082](decisions/0082-a-climb-belongs-to-the-map.md)). |
+| **Ghost** | A recorded line ridden again beside you: your own, a crewmate's or a board line ([ADR-0068](decisions/0068-your-own-ghost.md)). Never a live rider. |
+| **Line** | An effort's position over time, a point every 10 m — what a ghost is drawn from ([ADR-0082](decisions/0082-a-climb-belongs-to-the-map.md)). |
+| **Faded** | A live rider whose connection dropped: greyed, with "last seen 0:06". Never drawn like a ghost, so "ghost" keeps one meaning (#3227). |
 | **Leg** | The stretch of a route ridden in one sitting. A long route rides in several legs, each starting where the last one stopped; a leg is at most 6 h. |
 | **Reference rider** | The rider a road's estimates are made for when no real rider is in question — 75 kg on an 8 kg bike at 225 W (Route rides below). |
 | **Figure** | The 3D person on the road. A **rider** is the person and an **avatar** is their profile picture; the three words never stand in for each other ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)). |
@@ -666,6 +672,19 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | An effort near a zone         | within **1,000 m** of any zone: hidden at read time                                             |
 | A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
 | Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
+
+## Road segments and ghosts (defaults — tune in alpha; [ADR-0082](decisions/0082-a-climb-belongs-to-the-map.md))
+
+| Parameter         | Value                                                                                                                            |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Match             | the matched runs cover every stroke span in order and direction, within **20 m** of the segment's ends, length within **±2 %**   |
+| Top half          | only on climbs of at least **2 km**                                                                                              |
+| Snapshot          | the same version while the strokes resolve, or the polyline re-matches within a Fréchet distance of **10 m** and **±1 %** length |
+| Private distance  | **1,000 m** from the ride's own ends and from every zone (A route's place)                                                       |
+| The line          | a point every **10 m** at **0.1 s**; kept for **90 days**, plus the all-time best                                                |
+| Ghosts            | at most **3** at once                                                                                                            |
+| Visible to others | only efforts that pass `board_ok` (Road times)                                                                                   |
+| A board           | only on climbs of at least **5 %** and **3 min** ([ADR-0083](decisions/0083-the-road-board.md))                                  |
 
 ## Road times ([ADR-0074](decisions/0074-a-time-is-yours-when-your-watts-moved-your-dot.md) — defaults, tune in alpha)
 
