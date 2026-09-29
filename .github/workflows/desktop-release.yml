@@ -243,6 +243,22 @@ jobs:
           esac
           node fuses-check.js "$app"
 
+      # #3508: electron-builder packs only package.json's build.files, and a
+      # module main.js requires that the list leaves out ships an app that
+      # throws before whenReady — no window, no tray, and no self-update to
+      # get out of it. files.spec.js checks the list in the advisory desktop
+      # job; this reads the archive each build actually made.
+      - name: the installer carries every module
+        working-directory: desktop
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            macOS) asar=dist/mac-universal/WattRoom.app/Contents/Resources/app.asar ;;
+            Windows) asar=dist/win-unpacked/resources/app.asar ;;
+            Linux) asar=dist/linux-unpacked/resources/app.asar ;;
+          esac
+          node asar-check.js "$asar"
+
       # What a rider's Mac will do with it. codesign shows which identity
       # signed — an "Apple Development" .p12 signs happily and fails here, by
       # name, instead of at the rider's first launch. spctl is Gatekeeper's own
