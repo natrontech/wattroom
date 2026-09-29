@@ -46,6 +46,8 @@ export type WorldScene = {
 	setCamera(mode: CameraMode): void;
 	setWatts(watts: number): void;
 	setSpeedup(factor: number): void;
+	/** Hold the loop — the desktop shell hid its window, or a shared screen has the focus (#3031). */
+	setPaused(paused: boolean): void;
 	dispose(): void;
 };
 
@@ -176,6 +178,7 @@ export function mount(
 
 	let raf = 0;
 	let running = false;
+	let paused = false;
 	let last = -1;
 	let banked = 0;
 	let since = 0;
@@ -192,7 +195,7 @@ export function mount(
 		renderer.render(scene, camera);
 	}
 	function start() {
-		if (running || document.hidden) return;
+		if (running || paused || document.hidden) return;
 		running = true;
 		last = -1;
 		since = 0;
@@ -235,6 +238,11 @@ export function mount(
 		},
 		setSpeedup(factor) {
 			speedup = factor;
+		},
+		setPaused(next) {
+			paused = next;
+			if (paused) stop();
+			else start();
 		},
 		dispose() {
 			stop();
