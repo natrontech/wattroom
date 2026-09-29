@@ -50,3 +50,21 @@ describe('who sees live numbers is said once', () => {
 		).toEqual([]);
 	});
 });
+
+/**
+ * What a saved route shares (ADR-0063, #3057): the importer says it as the
+ * rider saves one, and the privacy page lists it. Two copies of the promise
+ * drift apart the way the live-numbers line did.
+ */
+describe('what happens to a route is said once', () => {
+	const SRC = join(import.meta.dirname, '..');
+	it.each([
+		'lib/components/RoutePreview.svelte',
+		'routes/(app)/(legal)/privacy/+page.svelte',
+	])('%s renders routePrivacyLine', (file) => {
+		expect(FILES, `${file} moved — point this test at it`).toContain(file);
+		expect(code(readFileSync(join(SRC, file), 'utf8'))).toMatch(
+			/\{routePrivacyLine\}/,
+		);
+	});
+});
