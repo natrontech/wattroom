@@ -88,3 +88,10 @@ The budgets are in docs/SPEC.md's "The world" section.
   its quality ladder.
 - WATTROOM.md §1's "no virtual world" and "no 3D" are marked; roads and maps
   were marked by ADR-0062 and ADR-0070.
+
+## Amendment, 2026-09-29 (#3283): Amended by ADR-0078 — the quality ladder
+
+[ADR-0078](0078-real-ground-painted-light.md) adds real ground and a quality ladder, **L1–L3**, measured at the
+count-in and never stepped up mid-ride. The World control caps it (ADR-0079):
+Full takes the measured rung, Light caps at L1, and Flat skips real ground. The
+fallback to the Skyline and its triggers are unchanged.
