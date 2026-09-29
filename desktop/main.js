@@ -48,6 +48,41 @@ const SHELL_VERSION = require('./package.json').version;
 // overlay controls are placed to sit inside it.
 const TITLE_BAR_PX = 32;
 
+/** The shell's own offline screen, the one page not on APP_ORIGIN that speaks to it. */
+const OFFLINE_URL = require('node:url').pathToFileURL(
+	path.join(__dirname, 'offline.html'),
+).href;
+
+/**
+ * Whether an IPC message came from our own page (#3010, Electron's security
+ * checklist, item 17): the app on APP_ORIGIN, or the offline screen. The
+ * preload runs only in the main frame and the navigation guard keeps that
+ * frame on our origin, so this is the second line — the one that still holds
+ * the day either of those changes. A frame that is gone has no URL, and is
+ * refused.
+ */
+function fromUs(event) {
+	const url = event?.senderFrame?.url;
+	if (typeof url !== 'string') return false;
+	return isOurs(url) || url.split(/[?#]/)[0] === OFFLINE_URL;
+}
+
+/**
+ * `ipcMain.on` and `.handle`, answering only `fromUs`. Every handler goes
+ * through here so a new one cannot forget the check; smoke.spec.js refuses a
+ * bare `ipcMain.on(` or `.handle(` anywhere else in this file.
+ */
+const ipc = {
+	on: (channel, fn) =>
+		ipcMain.on(channel, (event, ...args) => {
+			if (fromUs(event)) fn(event, ...args);
+		}),
+	handle: (channel, fn) =>
+		ipcMain.handle(channel, (event, ...args) =>
+			fromUs(event) ? fn(event, ...args) : undefined,
+		),
+};
+
 // How long a scan may find NOTHING before the rider gets an answer. A trainer
 // woken by the cranks is advertising within a couple of seconds; past this it
 // is asleep, and saying so beats a button that never comes back. It stops
@@ -61,7 +96,7 @@ const PAIRING_TIMEOUT_MS = 20_000;
 // the native message box below is still the answer.
 let pickerReady = false;
 // Registering the listener is the app saying it can draw the picker.
-ipcMain.on('wattroom:ble-picker-ready', () => {
+ipc.on('wattroom:ble-picker-ready', () => {
 	pickerReady = true;
 });
 
@@ -87,7 +122,7 @@ function settleScan(deviceId) {
 
 // The rider picked, or closed the picker. Ignored when no request is open:
 // a stale answer must never settle the NEXT one.
-ipcMain.on('wattroom:ble-pick', (_event, deviceId) =>
+ipc.on('wattroom:ble-pick', (_event, deviceId) =>
 	settleScan(deviceId || ''),
 );
 
@@ -680,11 +715,11 @@ function watchForUpdates() {
 }
 
 // The renderer asks on mount, in case the download finished before it did.
-ipcMain.handle('wattroom:update-ready', () => updateReady);
+ipc.handle('wattroom:update-ready', () => updateReady);
 // Consecutive failures of the updater (#1940): three is "not coming".
 let updateFailures = 0;
-ipcMain.handle('wattroom:update-failed', () => updateFailures >= 3);
-ipcMain.on('wattroom:install-update', () => installUpdate());
+ipc.handle('wattroom:update-failed', () => updateFailures >= 3);
+ipc.on('wattroom:install-update', () => installUpdate());
 
 // Restarting into the update, and why "Restart" used to just close the app.
 // quitAndInstall() hands Squirrel's ShipIt a job that waits for EVERY
@@ -809,7 +844,7 @@ function setHud(on) {
 	});
 }
 
-ipcMain.on('wattroom:hud', (event, on) => {
+ipc.on('wattroom:hud', (event, on) => {
 	// The HUD's own renderer runs the app's layout and used to answer its
 	// opening with hud(false) (#1938); only the main window drives the HUD.
 	if (
@@ -842,7 +877,7 @@ const ownPath = (v) =>
 // ponytail: never pruned; one entry per conversation that ever notified.
 const shown = new Map();
 
-ipcMain.on('wattroom:notify', (event, n) => {
+ipc.on('wattroom:notify', (event, n) => {
 	if (!Notification.isSupported() || !n || typeof n !== 'object') return;
 	const title = clip(n.title, 120);
 	if (!title) return;
@@ -884,7 +919,7 @@ ipcMain.on('wattroom:notify', (event, n) => {
 // to, and the shell only ever puts the name in a menu item and sends the
 // path back. Clipped and checked like a notification's, and for the same
 // reason: remote content chooses the words, never where the app goes.
-ipcMain.on('wattroom:room', (event, r) => {
+ipc.on('wattroom:room', (event, r) => {
 	// The HUD runs the app's layout too (#1938), and it speaks for no room.
 	const win = BrowserWindow.fromWebContents(event.sender);
 	if (!win || win.isDestroyed() || win === hudWindow) return;
@@ -895,7 +930,7 @@ ipcMain.on('wattroom:room', (event, r) => {
 // The unread badge (#3008): the main window's sidebar speaks for it, never
 // the HUD, which runs the app's layout too (#1938). The count is clamped in
 // badge.js before the OS sees it.
-ipcMain.on('wattroom:badge', (event, n) => {
+ipc.on('wattroom:badge', (event, n) => {
 	const win = BrowserWindow.fromWebContents(event.sender);
 	if (!win || win.isDestroyed() || win === hudWindow) return;
 	badge.set(n, win);
@@ -905,8 +940,8 @@ ipcMain.on('wattroom:badge', (event, n) => {
 // are the two places that ask for it, and both get the same answer — whether
 // this build can do it at all, whether it is on, and one sentence when a
 // change did not take.
-ipcMain.handle('wattroom:login-item', () => loginItem.state());
-ipcMain.handle('wattroom:login-item-set', (_event, on) => {
+ipc.handle('wattroom:login-item', () => loginItem.state());
+ipc.handle('wattroom:login-item-set', (_event, on) => {
 	const error = loginItem.setEnabled(on === true);
 	// The tray carries the same switch, and a tick it did not draw itself is
 	// still its tick.
@@ -1073,7 +1108,7 @@ function keepAwake(on) {
 	if (win) visibility.throttleIfIdle(win, () => sleepBlockerId !== null);
 }
 
-ipcMain.on('wattroom:keep-awake', (_event, on) => keepAwake(Boolean(on)));
+ipc.on('wattroom:keep-awake', (_event, on) => keepAwake(Boolean(on)));
 
 // A renderer that crashes or navigates mid-ride would otherwise leave the
 // machine awake until quit.
@@ -1096,7 +1131,7 @@ app.on('browser-window-created', (_e, win) => {
 app.on('will-quit', () => keepAwake(false));
 
 // Retry from the offline screen, and the only channel the preload exposes.
-ipcMain.on('wattroom:retry', (event) => {
+ipc.on('wattroom:retry', (event) => {
 	const win = BrowserWindow.fromWebContents(event.sender);
 	if (win) load(win);
 });
