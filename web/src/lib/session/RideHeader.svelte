@@ -81,7 +81,7 @@
 				<p class="eyebrow">{band.unit}</p>
 				<p
 					class="font-display text-3xl leading-none font-bold tabular-nums {band.inBand
-						? 'text-z4'
+						? 'text-ok'
 						: 'text-muted'}"
 				>
 					{band.text}

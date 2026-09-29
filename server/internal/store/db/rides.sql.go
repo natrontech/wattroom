@@ -11,6 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addUploadXp = `-- name: AddUploadXp :exec
+insert into ride_upload_xp (user_id, day, xp)
+values ($1, (now() at time zone 'utc')::date, $2)
+on conflict (user_id) do update
+set xp  = case when ride_upload_xp.day = excluded.day
+               then ride_upload_xp.xp + excluded.xp
+               else excluded.xp end,
+    day = excluded.day
+`
+
+type AddUploadXpParams struct {
+	UserID pgtype.UUID
+	Xp     int32
+}
+
+// Count an uploaded ride's XP against today (#3044): today's row grows, an
+// earlier day's is replaced. Never lowered — a delete does not hand the
+// ceiling back, or delete-and-repost would mint without end.
+func (q *Queries) AddUploadXp(ctx context.Context, arg AddUploadXpParams) error {
+	_, err := q.db.Exec(ctx, addUploadXp, arg.UserID, arg.Xp)
+	return err
+}
+
 const amendRide = `-- name: AmendRide :execrows
 update rides
 set seconds = $2, avg_watts = $3, kj = $4, execution = $5, execution_scored = $6,
@@ -1355,6 +1378,33 @@ func (q *Queries) RequeueRideExport(ctx context.Context, arg RequeueRideExportPa
 	return result.RowsAffected(), nil
 }
 
+const rideOverlaps = `-- name: RideOverlaps :one
+select exists (
+    select 1 from rides
+    where user_id = $1
+      and started_at < $2::timestamptz
+      and started_at + make_interval(secs => seconds) > $3::timestamptz
+)::boolean
+`
+
+type RideOverlapsParams struct {
+	UserID   pgtype.UUID
+	EndsAt   pgtype.Timestamptz
+	StartsAt pgtype.Timestamptz
+}
+
+// Whether a ride over [starts_at, ends_at) would share a second with one the
+// rider already has (#3044). Nobody rides two at once, so an upload that
+// overlaps is refused — ten fabricated saves in a minute earn one ride. The
+// span is the ride's own `seconds`, which leaves pauses out, so this can only
+// under-count an overlap and never refuse a ride that did not have one.
+func (q *Queries) RideOverlaps(ctx context.Context, arg RideOverlapsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, rideOverlaps, arg.UserID, arg.EndsAt, arg.StartsAt)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const setRideFeel = `-- name: SetRideFeel :execrows
 update rides set rpe = $1::smallint, note = $2::text
 where id = $3 and user_id = $4
@@ -1479,6 +1529,22 @@ type StartRideExportParams struct {
 func (q *Queries) StartRideExport(ctx context.Context, arg StartRideExportParams) error {
 	_, err := q.db.Exec(ctx, startRideExport, arg.RideID, arg.Destination)
 	return err
+}
+
+const uploadXpToday = `-- name: UploadXpToday :one
+select coalesce((
+    select xp from ride_upload_xp
+    where user_id = $1 and day = (now() at time zone 'utc')::date
+), 0)::integer
+`
+
+// The XP uploaded rides have minted for this rider in the current UTC day
+// (#3044) — zero when their row is from an earlier day or absent.
+func (q *Queries) UploadXpToday(ctx context.Context, userID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, uploadXpToday, userID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const userTotalXp = `-- name: UserTotalXp :one

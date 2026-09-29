@@ -32,6 +32,8 @@ export const TOKENS = [
 	'paper',
 	'on-neon',
 	'danger',
+	'ok',
+	'warn',
 	'z1',
 	'z2',
 	'z3',
@@ -250,6 +252,8 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 		paper: at(f.paper, spec.surfaceHue),
 		'on-neon': '',
 		danger: '',
+		ok: '',
+		warn: '',
 		z1: '',
 		z2: '',
 		z3: '',
@@ -308,6 +312,23 @@ export function deriveTheme(spec: ThemeSpec): Theme {
 	// Off the neon the theme actually ships, pinned or derived — so after the
 	// merge — unless a theme pins its own.
 	if (!spec.exact?.['on-neon']) shipped['on-neon'] = onNeon(shipped);
+	// Status words (#2969) — "on target", "in voice", "reconnecting…" — speak
+	// in Z4 and Z5, but the ramp is fitted to a fill's floor, and a word on
+	// paper does not clear it. So they get the zones this theme ships, pulled
+	// to the text floor the way danger is: untouched wherever they clear it.
+	for (const [token, zone] of [
+		['ok', 'z4'],
+		['warn', 'z5'],
+	] as const)
+		if (!spec.exact?.[token])
+			shipped[token] = oklchToHex(
+				fitContrast(
+					hexToOklch(shipped[zone]),
+					backgrounds,
+					CONTRAST.text,
+					away,
+				),
+			);
 	return {
 		id: spec.id,
 		identity: spec.identity,

@@ -356,7 +356,7 @@ session bonus is 5, and achievements pay once.
 
 | Source                  | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Riding**              | `1 kJ = 1 XP` + execution bonus + streak bonus (Stats formulas above).                                                                                                                                                                                                                                                                                                                                                                        |
+| **Riding**              | `1 kJ = 1 XP` + execution bonus + streak bonus (Stats formulas above). A ride the browser **uploads** — solo, free or recovered, `POST /api/rides` — is the client's word, so it is bounded ([#3044](https://github.com/natrontech/wattroom/issues/3044)): it is refused when it shares a second with a ride already on the account (nobody rides two at once), and uploaded rides pay at most **6,000 XP per rider per UTC save day** (about 6 h at 280 W). A ride past the ceiling is saved with what is left of it, down to 0, and says so in its XP. Deleting a ride does not return its share of the day — otherwise delete-and-repost mints without end, since the deleted ride's XP stays (below). A session ride, saved by the hub from seconds it watched arrive, is outside the ceiling. |
 | **Lounge presence**     | **1 XP per 5 full minutes in voice** — in any voice channel's call — capped at **24 XP per rider per UTC day**. Leaving resets the five-minute count. Presence is what LiveKit's join/leave webhooks say — the server cannot hear who talks (mute state is client-reported), so "talking" is measured as being on the call, and every surface says "in voice", never "talking". Blocks past the cap are recorded at 0 XP so lounge hours keep counting toward Lounge Lizard. |
 | **Session voice bonus** | **5 XP per group session** the rider was in voice for **at least half of** the running timeline (pauses excluded). A group session has **≥ 2 saved rides** and **≥ 10 min** of timeline. Riders and listeners alike — a coach without a trainer on the call earns it.                                                                                                                                                                         |
 | **Achievements**        | One-time **100 (easy) / 250 (medium) / 500 (hard)** XP, paid the day the shelf gets the trophy.                                                                                                                                                                                                                                                                                                                                               |
@@ -567,6 +567,20 @@ ERG 0 W: nobody is riding the trainer then.
 | Collective Ramp | Backyard rules on the **session-average** %FTP; line starts 75 %, +4 %/round; score = rounds survived                                                                                   |
 
 Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued pedalling on reconnect).
+
+## The roadside ([ADR-0064](decisions/0064-the-roadside.md) — defaults, tune in alpha)
+
+The **roadside** is everyone in a voice channel who is not riding a given
+rider's session, eliminated riders included. It paints, sounds and informs; it
+never changes a rider's resistance, nothing it does reaches a trainer, and it
+picks **when, never who** ([ADR-0064](decisions/0064-the-roadside.md)).
+
+- **Marks**: at most **24** per ride.
+- **Sounds**: at most **12** roadside sounds a minute reach any one rider.
+- **A Prime**: best 5 s W/kg inside the 15 s sprint window, and never within
+  **5 min** of another sprint.
+- **Flashes**: at most one dim flash per **10 s**, and none under reduced
+  motion.
 
 ## Route rides (defaults — tune in alpha; [ADR-0062](decisions/0062-the-horizon-may-be-a-road.md))
 

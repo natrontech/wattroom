@@ -90,7 +90,7 @@
 				{#if kase === 'riding-bars' && i < n}<RidingBars />{/if}
 				{#if kase === 'speaking-mic' && i < n}
 					<!-- SidePanel.svelte, while the rider speaks -->
-					<Mic size={11} class="text-z4 shrink-0 motion-safe:animate-pulse" />
+					<Mic size={11} class="text-ok shrink-0 motion-safe:animate-pulse" />
 				{/if}
 			</div>
 		{/each}

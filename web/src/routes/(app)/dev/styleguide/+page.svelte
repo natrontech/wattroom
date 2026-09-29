@@ -119,7 +119,7 @@
 					</div>
 					<div class="mt-5 grid grid-cols-2 gap-3">
 						<div class="border-muted/20 rounded border p-3">
-							<div class="text-z4 text-[10px] font-semibold uppercase">
+							<div class="text-ok text-[10px] font-semibold uppercase">
 								Right
 							</div>
 							<div
@@ -180,7 +180,7 @@
 		{/each}
 	</div>
 	<div class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6">
-		<svg viewBox="0 0 400 60" class="text-z4 glow-stroke h-16 w-full">
+		<svg viewBox="0 0 400 60" class="text-ok glow-stroke h-16 w-full">
 			<polyline
 				points="0,48 40,44 80,20 120,24 160,18 200,40 240,16 280,20 320,44 360,12 400,16"
 				fill="none"
@@ -201,7 +201,7 @@
 	<h2 class="eyebrow mt-12">Data glows, chrome doesn't</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-2">
 		<div class="border-z4/40 bg-surface-raised rounded-lg border p-6">
-			<div class="text-z4 text-xs font-medium tracking-wider uppercase">
+			<div class="text-ok text-xs font-medium tracking-wider uppercase">
 				Right
 			</div>
 			<div class="mt-5 flex items-end gap-6">

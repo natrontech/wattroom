@@ -174,13 +174,13 @@
 				<h2 class="font-display font-bold">{dump.device}</h2>
 				<span
 					class="rounded px-2 py-0.5 text-xs {dump.hasFtms
-						? 'bg-z4/20 text-z4'
+						? 'bg-z4/20 text-ok'
 						: 'bg-danger/20 text-danger'}"
 					>FTMS {dump.hasFtms ? 'present' : 'absent'}</span
 				>
 				<span
 					class="rounded px-2 py-0.5 text-xs {dump.hasWcps
-						? 'bg-z4/20 text-z4'
+						? 'bg-z4/20 text-ok'
 						: 'bg-surface text-muted'}"
 					>WCPS {dump.hasWcps ? 'present' : 'absent'}</span
 				>

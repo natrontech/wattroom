@@ -115,7 +115,7 @@
 				<li>
 					{#if step.done}
 						<p class="text-muted flex items-center gap-3 py-2 text-sm">
-							<Check size={16} class="text-z4 shrink-0" />
+							<Check size={16} class="text-ok shrink-0" />
 							<span class="line-through">{step.label}</span>
 						</p>
 					{:else if step.ask}
