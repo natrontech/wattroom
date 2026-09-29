@@ -98,26 +98,65 @@ test('the shell keeps a log where a rider can find it (#3012)', async () => {
 	await app.close();
 });
 
-// The page hears its window hide and show (#3005, #3079): a close hides the
-// window rather than destroying it, and the page leaves voice when it does.
-test('the page hears its window hide and come back', async () => {
-	const app = await launch(DEAD_URL);
+// The page hears a close to the tray and the window coming back (#3005,
+// #3079), and nothing else (#3509): a close hides the window rather than
+// destroying it, and the page leaves voice when it does. Only macOS is
+// certain to have a tray, and without one a close is a close.
+const heard = async (app) => {
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
 	await win.evaluate(() => {
 		window.__seen = [];
 		window.wattroom.onVisibility((visible) => window.__seen.push(visible));
 	});
-	const main = (act) =>
-		app.evaluate(({ BrowserWindow }, how) => {
-			BrowserWindow.getAllWindows()[0][how]();
-		}, act);
-	await main('hide');
+	return win;
+};
+const throttled = (app) =>
+	app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].webContents.getBackgroundThrottling(),
+	);
+
+test('the page hears a close to the tray, and the window coming back', async () => {
+	test.skip(process.platform !== 'darwin', 'a tray is certain only on macOS');
+	const app = await launch(DEAD_URL);
+	const win = await heard(app);
+	await app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].close(),
+	);
 	await expect.poll(() => win.evaluate(() => window.__seen)).toEqual([false]);
-	await main('show');
+	expect(await throttled(app)).toBe(true);
+	// The Dock's way back: 'activate' opens the window the close put away.
+	await app.evaluate(({ app: a }) => a.emit('activate'));
 	await expect
 		.poll(() => win.evaluate(() => window.__seen))
 		.toEqual([false, true]);
+	expect(await throttled(app)).toBe(false);
+	await app.close();
+});
+
+// macOS fires 'hide' and 'show' whenever the window is minimised, covered,
+// behind a fullscreen app or on another Space (#3509): the rider is still
+// there, and still in the call.
+test('a covered or minimised window keeps the page in the call', async () => {
+	const app = await launch(DEAD_URL);
+	const win = await heard(app);
+	await app.evaluate(async ({ BrowserWindow }) => {
+		const [w] = BrowserWindow.getAllWindows();
+		// What Electron's occlusion delegate emits, as it emits it.
+		w.emit('hide');
+		w.emit('show');
+		w.minimize();
+		await new Promise((done) => setTimeout(done, 500));
+	});
+	// A ride ending while the window is down is no reason to throttle it: it was never closed.
+	await win.evaluate(() => {
+		window.wattroom.keepAwake(true);
+		window.wattroom.keepAwake(false);
+	});
+	await new Promise((done) => setTimeout(done, 500));
+	expect(await throttled(app)).toBe(false);
+	await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].restore());
+	expect(await win.evaluate(() => window.__seen)).toEqual([]);
 	await app.close();
 });
 

@@ -217,6 +217,7 @@ function focusWindow(win) {
 	if (win.isMinimized()) win.restore();
 	win.show();
 	win.focus();
+	visibility.shown(win);
 }
 
 /**
