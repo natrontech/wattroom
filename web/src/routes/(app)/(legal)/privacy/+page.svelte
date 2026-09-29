@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { liveNumbersLine } from '$lib/privacy-copy';
+	import { liveNumbersLine, routePrivacyLine } from '$lib/privacy-copy';
 </script>
 
 <svelte:head>
@@ -125,6 +125,10 @@
 			replaced by an ellipsis, the build, your browser and trainer, and those two
 			minutes. Deleting your account removes the report from our disk; the public
 			issue stays, because nothing in it names you.
+		</li>
+		<li>
+			<strong class="text-ink font-medium">Routes.</strong>
+			{routePrivacyLine}
 		</li>
 		<li>
 			<strong class="text-ink font-medium">Voice, camera, screenshare.</strong>

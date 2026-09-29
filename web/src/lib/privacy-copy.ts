@@ -10,3 +10,11 @@
  */
 export const liveNumbersLine =
 	'While you ride in a voice channel, whoever has it open sees your live watts and cadence, and your heart rate until you stop sharing it. Nobody else does.';
+
+/**
+ * What happens to a route a rider imports (ADR-0063, #3057), said once: the
+ * importer says it at the moment of saving, and the privacy page says the
+ * same thing in its list.
+ */
+export const routePrivacyLine =
+	'A route’s map is sealed and only you can open it. A crew you ride it with sees its road — heights and turns, never where it is or its two ends — and a file from Strava rides with you alone. Deleting the route, or your account, erases it.';

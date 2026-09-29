@@ -17,6 +17,7 @@ import {
 	ShelterSecondWheel,
 	ShelterThirdWheel,
 } from '$lib/protocol';
+import { roadStep, type Road } from './road';
 
 /**
  * The pace model (#3048): watts to speed on a road, the one the client's
@@ -247,4 +248,18 @@ export function referenceSpeed(grade: number): number {
 		ReferenceRiderKg + BikeKg,
 		PaceDefaultCdA,
 	);
+}
+
+/**
+ * How long the reference rider takes over a road, in seconds: what a route's
+ * legs are cut by (docs/SPEC.md "Leg", #3057), whoever is about to ride it.
+ */
+export function referenceSeconds(road: Road): number {
+	const step = roadStep(road);
+	let seconds = 0;
+	for (let i = 1; i < road.heights.length; i++)
+		seconds +=
+			step /
+			referenceSpeed(((road.heights[i] - road.heights[i - 1]) / step) * 100);
+	return seconds;
 }

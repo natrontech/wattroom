@@ -17,6 +17,8 @@
 	import {
 		IMPORT_EXTENSIONS,
 		importWorkoutFile,
+		isRouteFile,
+		readRouteFile,
 		type Imported,
 	} from '$lib/workout/import';
 	import {
@@ -25,6 +27,7 @@
 		openPull,
 		type PlannedWorkout,
 	} from '$lib/workout/import/intervals';
+	import RouteImport from './RouteImport.svelte';
 
 	/**
 	 * Bringing a plan in from somewhere else (#2327). The rider already has
@@ -34,6 +37,9 @@
 	 *
 	 * The preview is the point: a converted file has lost whatever our steps
 	 * cannot say, and this is where that gets read before anything is stored.
+	 *
+	 * A .gpx or .tcx is a route instead (#3057): RouteImport takes the file's
+	 * text from here and does the rest.
 	 */
 
 	const custom = customWorkouts();
@@ -49,6 +55,8 @@
 	let reading = $state(false);
 	let error = $state<string | null>(null);
 	let imported = $state<Imported | null>(null);
+	// A route file's text, once read; RouteImport converts it.
+	let routeSource = $state<string | null>(null);
 	let fileName = $state('');
 	let saving = $state(false);
 	// A save the server refused (#2627) is not a file that cannot be read: it
@@ -60,7 +68,9 @@
 	const total = $derived(imported ? durationSeconds(imported.workout) : 0);
 	// Nothing picked yet: the empty state draws its own dashed box, so the
 	// drop surface around it stays invisible until a drag lights it up.
-	const idle = $derived(!reading && !imported && !error);
+	const idle = $derived(
+		!reading && !imported && !error && routeSource === null,
+	);
 
 	// Never render a button that will fail (errors.md): a new workout on a
 	// full shelf is a 429, and a shelf that could not be read at all must not
@@ -122,7 +132,15 @@
 		error = null;
 		saveError = null;
 		imported = null;
+		routeSource = null;
 		fileName = file.name;
+		if (isRouteFile(file.name)) {
+			const read = await readRouteFile(file);
+			reading = false;
+			if (read.ok) routeSource = read.source;
+			else error = read.error;
+			return;
+		}
 		const outcome = await importWorkoutFile(file, riderFtp);
 		reading = false;
 		if (outcome.ok) imported = outcome.imported;
@@ -162,13 +180,14 @@
 	}
 </script>
 
-<svelte:head><title>Import a workout · WattRoom</title></svelte:head>
+<svelte:head><title>Import a workout or a route · WattRoom</title></svelte:head>
 
 <main class="page">
-	<h1 class="page-title">Import a workout</h1>
+	<h1 class="page-title">Import a workout or a route</h1>
 	<p class="text-muted mt-1 text-xs">
-		A Zwift <code>.zwo</code> or a <code>.erg</code> course file becomes a WattRoom
-		workout on your shelf. It stays yours — importing shares nothing.
+		A Zwift <code>.zwo</code> or a <code>.erg</code> course file becomes a
+		WattRoom workout on your shelf; a <code>.gpx</code> or <code>.tcx</code> route
+		becomes a road you can ride. It stays yours — importing shares nothing.
 	</p>
 
 	<input
@@ -177,7 +196,7 @@
 		accept={IMPORT_EXTENSIONS.join(',')}
 		onchange={pick}
 		class="sr-only"
-		aria-label="Choose a workout file"
+		aria-label="Choose a workout or route file"
 	/>
 
 	{#if offerPull || pull}
@@ -261,12 +280,13 @@
 			{#if reading}
 				<!-- Reading is usually instant; a file on a slow volume is not. -->
 				<Skeleton class="h-24" rows={2} />
-			{:else if !imported && !error}
+			{:else if idle}
 				<EmptyState>
 					{#snippet icon()}<FileUp size={20} class="text-muted" />{/snippet}
-					Drop a <code>.zwo</code> or <code>.erg</code> here, or choose one. You
-					will see exactly what it became — and what it could not bring — before
-					anything is saved.
+					Drop a workout (<code>.zwo</code>, <code>.erg</code>) or a route (<code
+						>.gpx</code
+					>, <code>.tcx</code>) here, or choose one. You will see exactly what
+					it became — and what it could not bring — before anything is saved.
 					{#snippet cta()}
 						<button
 							onclick={() => picker?.click()}
@@ -283,7 +303,14 @@
 					>
 				</div>
 
-				{#if error}
+				{#if routeSource !== null}
+					{#key routeSource}
+						<RouteImport
+							source={routeSource}
+							onanother={() => picker?.click()}
+						/>
+					{/key}
+				{:else if error}
 					<!-- The refusal names what is wrong with the file, so it reads
 					     here rather than as a toast that scrolls away. -->
 					<div class="mt-3">
@@ -374,9 +401,11 @@
 		</div>
 	</section>
 
-	<p class="text-muted mt-6 text-xs">
-		A converted workout is a WattRoom workout: every target scales to your FTP,
-		and you can reshape it in the editor afterwards.
-		<a href="/workouts" class="hover:text-ink underline">Back to workouts</a>
-	</p>
+	{#if routeSource === null}
+		<p class="text-muted mt-6 text-xs">
+			A converted workout is a WattRoom workout: every target scales to your
+			FTP, and you can reshape it in the editor afterwards.
+			<a href="/workouts" class="hover:text-ink underline">Back to workouts</a>
+		</p>
+	{/if}
 </main>
