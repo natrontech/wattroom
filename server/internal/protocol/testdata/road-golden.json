@@ -122,6 +122,45 @@
       ]
     },
     {
+      "name": "coasting down 8 % into a 10 m hairpin",
+      "cda": 0.32,
+      "mass": 83,
+      "speed": 17.7372173319331,
+      "bends": [
+        {
+          "fromM": 200,
+          "toM": 231.41592653589794,
+          "radiusM": 10
+        }
+      ],
+      "legs": [
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 15.603114574876798,
+          "distance": 176.79499175114066
+        },
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 10.025286479631975,
+          "distance": 266.51789437042225
+        },
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 13.939543203585453,
+          "distance": 388.18546054632253
+        }
+      ]
+    },
+    {
       "name": "the reference rider from a standstill on the flat",
       "cda": 0.4,
       "mass": 83,
@@ -238,6 +277,45 @@
           "shelter": 0,
           "speed": 0,
           "distance": 0
+        }
+      ]
+    },
+    {
+      "name": "coasting down 8 % into a 10 m hairpin",
+      "cda": 0.4,
+      "mass": 83,
+      "speed": 15.864649474355945,
+      "bends": [
+        {
+          "fromM": 200,
+          "toM": 231.41592653589794,
+          "radiusM": 10
+        }
+      ],
+      "legs": [
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 15.864649474355945,
+          "distance": 158.64649474355937
+        },
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 9.25765324081479,
+          "distance": 255.04199521114856
+        },
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 12.91005022577238,
+          "distance": 367.87236010685643
         }
       ]
     }

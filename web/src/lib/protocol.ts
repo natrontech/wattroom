@@ -654,6 +654,18 @@ export const PaceDefaultCdA = 0.32;
  */
 export const PaceSubsteps = 4;
 /**
+ * Corners (#3204, defaults — tune in alpha): the sideways acceleration a
+ * rider takes a bend at, in g — 0.6 g is a 31° lean, so a corner of
+ * radius r holds √(0.6·g·r) — and how hard the pace brakes to meet it,
+ * in m/s². No brake control: a rider on a trainer never touches one.
+ */
+export const PaceCornerG = 0.6;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const PaceBrakeMps2 = 4;
+/**
  * The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
  * whom a road's estimates are made for when no real rider is in question.
  */

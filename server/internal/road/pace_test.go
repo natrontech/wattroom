@@ -35,7 +35,40 @@ type vector struct {
 	CdA   float64 `json:"cda"`
 	Mass  float64 `json:"mass"`
 	Speed float64 `json:"speed"` // m/s at the start
-	Legs  []leg   `json:"legs"`
+	// Where the road bends (#3204), metres from the vector's start; absent
+	// is a road with no bends.
+	Bends []bend `json:"bends,omitempty"`
+	Legs  []leg  `json:"legs"`
+}
+
+// bend is a stretch of road on a circle of this radius.
+type bend struct {
+	FromM   float64 `json:"fromM"`
+	ToM     float64 `json:"toM"`
+	RadiusM float64 `json:"radiusM"`
+}
+
+// bendStep is the resampling a road's curvature is read at (docs/SPEC.md,
+// every 10 m), and the one both twins build a vector's road on.
+const bendStep = 10
+
+// curvatureOf samples a vector's bends every bendStep metres, two samples
+// past the last so the road runs straight after it.
+func curvatureOf(bends []bend) []float64 {
+	end := 0.0
+	for _, b := range bends {
+		end = math.Max(end, b.ToM)
+	}
+	k := make([]float64, int(math.Ceil(end/bendStep))+3)
+	for i := range k {
+		at := float64(i * bendStep)
+		for _, b := range bends {
+			if at >= b.FromM && at <= b.ToM {
+				k[i] = 1 / b.RadiusM
+			}
+		}
+	}
+	return k
 }
 
 type golden struct {
@@ -69,6 +102,13 @@ func vectors() []vector {
 				}},
 			vector{Name: "rolling down 10 % from a standstill", CdA: cda, Mass: reference,
 				Legs: []leg{{Seconds: 120, Grade: -10}}},
+			// #3204: coasting down −8 % at the speed it settles on, into a
+			// 10 m hairpin 200 m on — braked for, ridden through at the
+			// bend's limit, and ridden out of.
+			vector{Name: "coasting down 8 % into a 10 m hairpin", CdA: cda, Mass: reference,
+				Speed: SteadySpeed(0, -8, reference, cda, 0),
+				Bends: []bend{{FromM: 200, ToM: 200 + math.Pi*10, RadiusM: 10}},
+				Legs:  []leg{{Seconds: 10, Grade: -8}, {Seconds: 10, Grade: -8}, {Seconds: 10, Grade: -8}}},
 		)
 	}
 	return out
@@ -77,6 +117,9 @@ func vectors() []vector {
 // ride replays a vector's legs through Pace and returns them with where each ended.
 func ride(v vector) []leg {
 	p := Pace{Speed: v.Speed}
+	if v.Bends != nil {
+		p.Limit = CornerLimit(curvatureOf(v.Bends), bendStep)
+	}
 	out := make([]leg, len(v.Legs))
 	for i, l := range v.Legs {
 		for range l.Seconds {
@@ -183,4 +226,99 @@ func TestReferenceRider(t *testing.T) {
 
 func near(got, want, rel float64) bool {
 	return math.Abs(got-want) <= rel*math.Max(math.Abs(want), 1)
+}
+
+// hairpinRoad is the golden vector's road: a 10 m hairpin 200 m on.
+func hairpinRoad() func(float64) float64 {
+	return CornerLimit(curvatureOf([]bend{{FromM: 200, ToM: 200 + math.Pi*10, RadiusM: 10}}), bendStep)
+}
+
+// #3204's acceptance: down −8 % at the speed it coasts to, the pace meets a
+// 10 m hairpin at no more than 27.6 km/h — a 31° lean, not the 73° the
+// unbraked model leant — and starts braking about 32 m before it.
+func TestAHairpinIsMetAtItsLimitAndBrakedForAhead(t *testing.T) {
+	mass := float64(protocol.ReferenceRiderKg + protocol.BikeKg)
+	coast := SteadySpeed(0, -8, mass, protocol.PaceDefaultCdA, 0)
+	limit := hairpinRoad()
+
+	// √(0.6·g·10 m) is 7.67 m/s: the issue's 27.6 km/h, to its decimal.
+	apex := limit(215)
+	if kmh := math.Round(apex*36) / 10; kmh > 27.6 {
+		t.Errorf("the hairpin allows %.2f km/h, want at most 27.6", apex*3.6)
+	}
+	brakesAt := 0.0
+	for d := 0.0; d < 200; d += 0.1 {
+		if limit(d) < coast {
+			brakesAt = d
+			break
+		}
+	}
+	if before := 200 - brakesAt; before < 30 || before > 34 {
+		t.Errorf("braking starts %.1f m before the hairpin, want about 32", before)
+	}
+
+	p := Pace{Speed: coast, Limit: limit}
+	braked := false
+	inside := 0
+	for range 30 {
+		p.Step(0, -8, mass, protocol.PaceDefaultCdA, 0)
+		braked = braked || p.Braking
+		if p.Speed > limit(p.Distance)+1e-9 {
+			t.Fatalf("at %.1f m the pace rides %.2f m/s over a limit of %.2f", p.Distance, p.Speed, limit(p.Distance))
+		}
+		// The bend as the road samples it, every 10 m: 200 to 230 m.
+		if p.Distance >= 200 && p.Distance <= 230 {
+			inside++
+			if p.Speed > apex+1e-9 {
+				t.Fatalf("inside the hairpin at %.2f km/h", p.Speed*3.6)
+			}
+		}
+	}
+	if inside == 0 {
+		t.Error("no second ended inside the hairpin, so nothing above was checked there")
+	}
+	if !braked {
+		t.Error("the pace never said it was braking")
+	}
+}
+
+// Braking only ever caps: a road that never bends leaves the pace exactly as
+// it was, and never says it braked.
+func TestAStraightNeverBrakes(t *testing.T) {
+	mass := float64(protocol.ReferenceRiderKg + protocol.BikeKg)
+	free := Pace{Speed: 3}
+	capped := Pace{Speed: 3, Limit: CornerLimit(make([]float64, 200), bendStep)}
+	for s := range 300 {
+		grade := []float64{-10, 0, 6}[s/100]
+		free.Step(400, grade, mass, protocol.PaceDefaultCdA, 0)
+		capped.Step(400, grade, mass, protocol.PaceDefaultCdA, 0)
+		if capped.Braking || capped.Speed != free.Speed || capped.Distance != free.Distance {
+			t.Fatalf("second %d: a straight road braked (%v) or moved the pace: %+v vs %+v", s, capped.Braking, capped, free)
+		}
+	}
+}
+
+// Extra watts never cost time, bend or no bend: the stronger rider is past
+// every metre of the hairpin road no later than the weaker one.
+func TestExtraWattsNeverLowerSpeed(t *testing.T) {
+	mass := float64(protocol.ReferenceRiderKg + protocol.BikeKg)
+	arrival := func(watts, grade float64) []int {
+		p := Pace{Speed: 5, Limit: hairpinRoad()}
+		var at []int
+		for s := 1; len(at) < 40 && s < 600; s++ {
+			p.Step(watts, grade, mass, protocol.PaceDefaultCdA, 0)
+			for len(at) < 40 && p.Distance >= float64(10*(len(at)+1)) {
+				at = append(at, s)
+			}
+		}
+		return at
+	}
+	for _, grade := range []float64{-8, 0, 5} {
+		weak, strong := arrival(150, grade), arrival(300, grade)
+		for i := range weak {
+			if strong[i] > weak[i] {
+				t.Fatalf("at %.0f %%: 300 W reached %d m at %d s, 150 W at %d s", grade, 10*(i+1), strong[i], weak[i])
+			}
+		}
+	}
 }
