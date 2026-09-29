@@ -254,7 +254,7 @@ func TestBackfillSurvivesAnIdleRoom(t *testing.T) {
 func TestCheerShapeAndBound(t *testing.T) {
 	rm := newRoom("test")
 	for i := 0; i < 50; i++ {
-		rm.cheer(protocol.Cheer{Emoji: "🔥", From: "jan"})
+		rm.cheer(protocol.Cheer{Emoji: "🔥", From: "jan"}, "jan")
 	}
 	if len(rm.cheers) != 32 {
 		t.Fatalf("cheer buffer unbounded: %d", len(rm.cheers))

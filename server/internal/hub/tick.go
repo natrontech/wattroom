@@ -155,7 +155,8 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			Roster: make([]protocol.Rider, 0, len(rm.clients)),
 		}
 		rm.metrics = make(map[string]protocol.RiderMetrics)
-		rm.cheers = nil
+		cheerFrom := rm.cheerFrom
+		rm.cheers, rm.cheerFrom = nil, nil
 		rm.board = nil
 		// Who the session has seen, sampled once a second while the timeline
 		// runs (ADR-0034). Cheap, and it needs no join/leave hook: the roster
@@ -285,6 +286,14 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 					frame = full
 				} else {
 					kind = light
+				}
+			}
+			// A cheer from someone hidden from this rider, or whom they hid,
+			// is cut from their copy alone (#3202) — a rare second, so the
+			// frame is marshalled for them rather than cached for the room.
+			if frame != nil {
+				if own, cut := rm.cheersFor(c.rider.ID, tick.Cheers, cheerFrom); cut {
+					frame = frames.withCheers(kind, own)
 				}
 			}
 			// Marked heard only when the frame was actually queued: a dropped

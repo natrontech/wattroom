@@ -159,6 +159,7 @@ type Hub struct {
 	// against LiveKit's own participant list (#234).
 	voice map[string]map[string]voiceEntry
 	xp    XpKeeper
+	hider Hider
 	// What makes a finished session durable (ADR-0034). Nil = no database,
 	// and a session leaves nothing.
 	recaps RecapKeeper
@@ -466,6 +467,7 @@ func (h *Hub) room(channel string) *room {
 		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(channel, ev) }
 		rm.forget = func() bool { return h.forgetRoom(rm) }
 		rm.xp = h.xp
+		rm.hider = h.hider
 		rm.recaps = h.recaps
 		// Voice can be live before the first socket opens the room — seed
 		// it, unlocked: nobody else can hold this room yet.

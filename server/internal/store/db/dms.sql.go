@@ -50,16 +50,19 @@ func (q *Queries) AddDmReaction(ctx context.Context, arg AddDmReactionParams) (i
 }
 
 const countDmReaction = `-- name: CountDmReaction :one
-select count(*) from dm_reactions where message_id = $1 and emoji = $2
+select count(*) from dm_reactions
+where message_id = $1 and emoji = $2 and not rider_hidden(user_id, $3)
 `
 
 type CountDmReactionParams struct {
 	MessageID pgtype.UUID
 	Emoji     string
+	Viewer    pgtype.UUID
 }
 
+// The toggle's answer, counted as the thread counts it for this viewer.
 func (q *Queries) CountDmReaction(ctx context.Context, arg CountDmReactionParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countDmReaction, arg.MessageID, arg.Emoji)
+	row := q.db.QueryRow(ctx, countDmReaction, arg.MessageID, arg.Emoji, arg.Viewer)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -328,6 +331,8 @@ from (
      and ((f.requester_id = $1 and f.addressee_id = peer.id)
        or (f.requester_id = peer.id and f.addressee_id = $1))
     where (m.sender_id = $1 or m.recipient_id = $1)
+      -- A hidden pair's thread leaves both lists, as an unfriending's does.
+      and not rider_hidden($1, peer.id)
       and (m.expires_at is null or m.expires_at > now())
     order by peer.id, m.created_at desc
     limit 1000 -- an engineering bound (#1416): peers are friends, and friends are few
@@ -405,6 +410,8 @@ from dm_reactions r
 join dm_messages m on m.id = r.message_id
 where least(m.sender_id, m.recipient_id) = least($1::uuid, $2::uuid)
   and greatest(m.sender_id, m.recipient_id) = greatest($1::uuid, $2::uuid)
+  -- A hidden pair's reactions never reach each other (#3202).
+  and not rider_hidden(r.user_id, $3)
 group by r.message_id, r.emoji
 `
 
@@ -634,6 +641,7 @@ where exists (
       and ((f.requester_id = $1 and f.addressee_id = $2)
         or (f.requester_id = $2 and f.addressee_id = $1))
 )
+and not rider_hidden($1, $2)
 returning id
 `
 
@@ -646,6 +654,7 @@ type SaveDmImageParams struct {
 
 // Gated identically to SendDm (#285): an image is a message body, so it must
 // clear the same friendship bar before a single byte is stored.
+// A hidden pair's thread is closed (#3202), refused by the same zero rows.
 func (q *Queries) SaveDmImage(ctx context.Context, arg SaveDmImageParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, saveDmImage,
 		arg.SenderID,
@@ -667,6 +676,7 @@ where exists (
       and ((f.requester_id = $1 and f.addressee_id = $2)
         or (f.requester_id = $2 and f.addressee_id = $1))
 )
+and not rider_hidden($1, $2)
 and ($4::uuid is null or exists (
     select 1 from dm_images i
     where i.id = $4
@@ -691,6 +701,7 @@ type SendDmRow struct {
 
 // The friendship row IS the permission (ADR-0012 amended): no accepted
 // friendship, no insert — the caller reads zero rows back and refuses.
+// A hidden pair's thread is closed (#3202), refused by the same zero rows.
 // An attached image must belong to THIS pair. Serving already scopes by pair,
 // so a foreign id could never be viewed — but referencing one would pin its
 // bytes past the sweep, which is how a client escapes the storage bound.
@@ -716,6 +727,7 @@ where exists (
       and ((f.requester_id = $1 and f.addressee_id = $2)
         or (f.requester_id = $2 and f.addressee_id = $1))
 )
+and not rider_hidden($1, $2)
 returning id, created_at
 `
 
@@ -732,6 +744,7 @@ type SendDmPokeRow struct {
 
 // A poke is a line of its own (#2721), gated exactly like SendDm: the
 // friendship row is the permission, and zero rows back is the refusal.
+// A hidden pair's thread is closed (#3202), refused by the same zero rows.
 func (q *Queries) SendDmPoke(ctx context.Context, arg SendDmPokeParams) (SendDmPokeRow, error) {
 	row := q.db.QueryRow(ctx, sendDmPoke, arg.SenderID, arg.RecipientID, arg.Text)
 	var i SendDmPokeRow

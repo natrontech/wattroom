@@ -277,6 +277,10 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 		}
 		target = user.ID
 	}
+	otherHid, ok := s.acrossHidden(w, r, me.ID, target)
+	if !ok {
+		return
+	}
 	n, err := s.store.Queries.CreateFriendRequest(r.Context(), db.CreateFriendRequestParams{
 		RequesterID: me.ID, AddresseeID: target,
 	})
@@ -284,7 +288,7 @@ func (s *Service) handleRequest(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "create friend request", err, "The request could not be sent.", "user", store.UUIDString(me.ID))
 		return
 	}
-	if n == 0 {
+	if n == 0 && !otherHid {
 		httpx.WriteError(w, http.StatusConflict, "conflict", "There is already a request or friendship with them.")
 		return
 	}

@@ -475,6 +475,14 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 					"status": row.Status, "since": row.CreatedAt.Time}
 			})
 		}},
+		{"hidden-riders.json", func() (any, error) {
+			// The riders I hid (#3202): mine to see in Settings, by name. Who
+			// hid me is theirs — the one thing the block never tells.
+			rows, err := s.store.Queries.ExportUserHiddenRiders(r.Context(), user.ID)
+			return mapRows(rows, err, func(row db.ExportUserHiddenRidersRow) any {
+				return map[string]any{"name": row.DisplayName, "since": row.CreatedAt.Time}
+			})
+		}},
 		{"dismissed-requests.json", func() (any, error) {
 			// The asks of mine that were dismissed (ADR-0012 amendment): told
 			// to me, so mine to take along (#1654).

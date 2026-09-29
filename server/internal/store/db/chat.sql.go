@@ -12,16 +12,19 @@ import (
 )
 
 const countChatReaction = `-- name: CountChatReaction :one
-select count(*) from chat_reactions where message_id = $1 and emoji = $2
+select count(*) from chat_reactions
+where message_id = $1 and emoji = $2 and not rider_hidden(user_id, $3)
 `
 
 type CountChatReactionParams struct {
 	MessageID pgtype.UUID
 	Emoji     string
+	Viewer    pgtype.UUID
 }
 
+// The toggle's answer, counted as the list counts it for this viewer (#3202).
 func (q *Queries) CountChatReaction(ctx context.Context, arg CountChatReactionParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countChatReaction, arg.MessageID, arg.Emoji)
+	row := q.db.QueryRow(ctx, countChatReaction, arg.MessageID, arg.Emoji, arg.Viewer)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

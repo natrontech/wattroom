@@ -288,6 +288,8 @@ select r.message_id, r.emoji,
 from chat_reactions r
 join chat_messages m on m.id = r.message_id
 where m.channel_id = $2
+  -- A hidden rider's reactions never reach the other, either way (#3202).
+  and not rider_hidden(r.user_id, $1)
 group by r.message_id, r.emoji
 `
 
