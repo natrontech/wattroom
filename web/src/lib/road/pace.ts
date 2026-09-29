@@ -1,6 +1,8 @@
 import {
 	BikeKg,
 	PaceAirDensity,
+	PaceBrakeMps2,
+	PaceCornerG,
 	PaceCrr,
 	PaceDrivetrainEfficiency,
 	PaceGravity,
@@ -61,10 +63,52 @@ export function nextSpeed(
 	return energy > 0 ? Math.sqrt((2 * energy) / mass) : 0;
 }
 
-/** One rider's speed and distance on a road, advanced a second at a time. */
-export function createPace(speed = 0) {
+/**
+ * The fastest a rider may go at a distance along a road whose curvature
+ * (1/m, either sign) is sampled every `step` metres (#3204). A bend of radius
+ * r holds √(aLat·r); ahead of it the limit rises by what braking at
+ * PaceBrakeMps2 sheds, so the pace slows into the bend and never has to stop
+ * dead at its apex. Past the last sample, and on a road that never bends,
+ * there is no limit. The Go twin is road.CornerLimit.
+ */
+export function cornerLimit(
+	curvature: ArrayLike<number>,
+	step: number,
+): (distance: number) => number {
+	const aLat = PaceCornerG * PaceGravity;
+	const env = new Float64Array(curvature.length);
+	for (let i = curvature.length - 1; i >= 0; i--) {
+		const k = Math.abs(curvature[i]);
+		env[i] = k > 0 ? Math.sqrt(aLat / k) : Infinity;
+		if (i + 1 < env.length)
+			env[i] = Math.min(
+				env[i],
+				Math.sqrt(env[i + 1] * env[i + 1] + 2 * PaceBrakeMps2 * step),
+			);
+	}
+	return (d) => {
+		if (env.length === 0 || d >= (env.length - 1) * step) return Infinity;
+		if (d <= 0) return env[0];
+		const i = Math.floor(d / step);
+		const t = d / step - i;
+		const a = env[i];
+		const b = env[i + 1];
+		if (b === Infinity) return t > 0 ? b : a;
+		// Braking at a constant rate is linear in v², so between samples the
+		// envelope is too.
+		return Math.sqrt(a * a + (b * b - a * a) * t);
+	};
+}
+
+/**
+ * One rider's speed and distance on a road, advanced a second at a time.
+ * `limit` is cornerLimit's envelope, offset to where this pace started;
+ * without one the road never bends.
+ */
+export function createPace(speed = 0, limit?: (distance: number) => number) {
 	let v = speed;
 	let d = 0;
+	let braking = false;
 	return {
 		/** m/s */
 		get speed() {
@@ -73,6 +117,10 @@ export function createPace(speed = 0) {
 		/** Metres ridden since the pace was created. */
 		get distance() {
 			return d;
+		},
+		/** The last step held the rider under the limit: the figure sits up for the bend (#3071). */
+		get braking() {
+			return braking;
 		},
 		/**
 		 * One second at these watts, on this grade (%), for this total mass
@@ -88,14 +136,25 @@ export function createPace(speed = 0) {
 			shelter: number,
 		): void {
 			const dt = 1 / PaceSubsteps;
+			braking = false;
 			for (let i = 0; i < PaceSubsteps; i++) {
-				const next = nextSpeed(
+				let next = nextSpeed(
 					v,
 					mass,
 					PaceDrivetrainEfficiency * watts,
 					resistance(v, grade, mass, cda, shelter),
 					dt,
 				);
+				// Held to the road where this substep ends, at the farthest it
+				// could reach: the envelope only falls toward a bend, so that is
+				// the stricter end, and the apex is met, not overshot.
+				if (limit) {
+					const cap = limit(d + ((v + next) / 2) * dt);
+					if (next > cap) {
+						next = cap;
+						braking = true;
+					}
+				}
 				d += ((v + next) / 2) * dt;
 				v = next;
 			}
