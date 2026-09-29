@@ -772,6 +772,78 @@ The pages built on it (`/vs/*`) add:
   - iMessage reportedly crops toward a square (unverified), hence the centred cards.
   - Avoid WebP for Slack and Discord.
 
+## 20. How often two riders share a road (research for #3318; run of 2026-09-29)
+
+ADR-0076 parks the always-on open road behind a measured condition, and that
+rests on how empty a road is at WattRoom's size. This is the model, its inputs
+and its answer. `scripts/road-density.py` computes every number below; run it
+to reproduce the table.
+
+**The model.** The chance that someone else is on my 5 km of road, when R
+riders spread over stretches ridden with Zipf popularity p:
+
+`P(meet) ≈ 1 − exp(−(R − 1) / M_eff)`, with `M_eff = 1 / Σ p²`
+
+M_eff is the effective number of stretches: how many equally popular stretches
+would give the same chance of company. For the async counterpart and the alpha
+instance, λ is the mean number of other riders on one road at a moment of
+prime time: rides a week × ride hours ÷ prime-time hours.
+
+**Inputs (facts, dated).**
+
+- Swiss roads: 85,151 km (BFS, 2025:
+  https://www.bfs.admin.ch/bfs/de/home/statistiken/mobilitaet-verkehr/verkehrsinfrastruktur-fahrzeuge/streckenlaenge.html).
+- Zwift roads: 408.5 km, or 834.7 km with Climb Portal and Gravel Mountain
+  (https://zwiftinsider.com/how-many-km-of-road/, updated 2025-10-15).
+- Zwift's peak: about 40,600 concurrent riders
+  (https://the5krunner.com/2026/01/23/peak-zwift-2026-indoor-cycling-trends/, 2026-01-23).
+
+**Assumptions (guesses, each labelled; change them in the script).**
+
+- 100 WattRoom riders online at once, **40** of them solo on a road.
+- Home roads: Swiss 5 km stretches ridden with Zipf popularity, exponent
+  **0.5** (spread out) to **0.8** (bunched near where riders live).
+- The library: **12** roads of about 20 km (4 stretches each), ridden with Zipf
+  exponent **0.8**; **half** of the solo road riders are on one.
+- A col of the month draws **75 %** of the library's riders.
+- Zwift's stretches ridden with Zipf exponent **0.8**.
+- The alpha instance: **40** active riders, **3** one-hour rides a week each,
+  **30 %** of rides solo on the 12 library roads, **21** prime-time hours a week
+  (three hours an evening).
+
+**The answer.**
+
+| Where | Result |
+| --- | --- |
+| Home roads (17,030 stretches) | **0.6–9 %** chance someone else is on my 5 km |
+| The 12-road library (20 riders) | about **46 %** |
+| A col of the month | about **93 %** |
+| Zwift at peak, spread evenly over 834.7 / 408.5 km | about **243 / 495** others per 5 km |
+| Zwift at peak, Zipf 0.8 over 408.5 km | about **1,505** others per 5 km |
+
+**The alpha instance ADR-0076 quotes.** 40 × 3 × 30 % = 36 solo library rides a
+week, **3** a road. λ ≈ **0.14**, so at any given moment **87 %** of those rides
+have nobody else on their road. Over the whole hour, counting anyone who
+starts within an hour either side, it is **75 %**.
+
+**The async counterpart.** Over **90** days those rides leave about **39**
+efforts on an average library road, and about **120** on the most popular one.
+Ghosts and times on a climb fill up; live company does not.
+
+**ADR-0076's reopen condition, in the same units.** At least **60** solo rides
+a week on one road gives λ ≈ **2.9**. Nobody else is there at a given moment
+only **6 %** of the time.
+
+**What that leaves for strangers.** At WattRoom's size a road is empty. A
+rider meets someone live only where riders are concentrated on purpose — a
+library climb, a col of the month, a scheduled open ride — and meets them far
+more often across time, as ghosts and times, than at the same moment. Zwift's
+roads are full because tens of thousands of riders share a few hundred
+kilometres, and no amount of design makes 40 riders on 85,000 km feel like
+that. The lab run that planned ADR-0076 quoted 0.5–12 %, about 49 % and about
+500–2,000 with assumptions it did not record. The table above is the same
+model with the assumptions written down.
+
 ## Ranked risks to the plan
 
 1. ~~Kickr v2 lacks FTMS~~ **Resolved → planned work** — confirmed the v2 is WCPS-only; full protocol mapped (§9) and the WcpsTrainer driver is now M1 scope. Residual risk (low): protocol facts come from reverse-engineered implementations, not Wahoo docs — verify against the real v2 early in M1.
