@@ -200,6 +200,68 @@ test('the window comes back where it was, unless that is off every display', asy
 	await third.close();
 });
 
+// Saved as it changes (#3013): a crash, a force-quit or a power cut mid-ride
+// keeps where the window was, and a rider who rides fullscreen gets it back.
+const savedState = (dir) => {
+	const file = path.join(dir, 'window.json');
+	return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : null;
+};
+
+test('where the window was survives the shell being killed', async () => {
+	const app = await launch(DEAD_URL);
+	await expect((await app.firstWindow()).locator('#retry')).toBeVisible();
+	const set = await app.evaluate(({ BrowserWindow }) => {
+		const [w] = BrowserWindow.getAllWindows();
+		w.setBounds({ x: 60, y: 80, width: 880, height: 640 });
+		return w.getBounds();
+	});
+	await expect
+		.poll(() => savedState(app.userData)?.width)
+		.toBe(set.width);
+	app.process().kill('SIGKILL');
+	expect(savedState(app.userData)).toMatchObject({
+		width: set.width,
+		height: set.height,
+		maximized: false,
+		fullScreen: false,
+	});
+});
+
+test('fullscreen comes back fullscreen, and leaving it is kept too', async () => {
+	test.skip(
+		process.platform === 'linux',
+		'xvfb runs no window manager to go fullscreen',
+	);
+	const toggle = (app, on) =>
+		app.evaluate(
+			({ BrowserWindow }, want) =>
+				new Promise((done) => {
+					const [w] = BrowserWindow.getAllWindows();
+					w.once(want ? 'enter-full-screen' : 'leave-full-screen', done);
+					w.setFullScreen(want);
+				}),
+			on,
+		);
+	const first = await launch(DEAD_URL);
+	await expect((await first.firstWindow()).locator('#retry')).toBeVisible();
+	await toggle(first, true);
+	await expect.poll(() => savedState(first.userData)?.fullScreen).toBe(true);
+	first.process().kill('SIGKILL');
+
+	const second = await launch(DEAD_URL, first.userData);
+	await expect((await second.firstWindow()).locator('#retry')).toBeVisible();
+	await expect
+		.poll(() =>
+			second.evaluate(({ BrowserWindow }) =>
+				BrowserWindow.getAllWindows()[0].isFullScreen(),
+			),
+		)
+		.toBe(true);
+	await toggle(second, false);
+	await expect.poll(() => savedState(second.userData)?.fullScreen).toBe(false);
+	await second.close();
+});
+
 test('the window opens and the bridge carries what the app looks for', async () => {
 	const app = await launch(DEAD_URL);
 	const win = await app.firstWindow();
