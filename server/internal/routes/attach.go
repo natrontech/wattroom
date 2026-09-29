@@ -86,12 +86,20 @@ func (a *Attacher) SharedName(ctx context.Context, workoutJSON, name string) (st
 
 // SharedName is Attacher.SharedName for a caller holding only the queries: a
 // name needs no road, so no key.
+//
+// It reads the route leniently, unlike RoadOf: a client uploads the copy it
+// was handed — a session's tick or its own library, with the cut attached —
+// and that copy names the same route.
 func SharedName(ctx context.Context, q *db.Queries, workoutJSON, name string) (string, error) {
-	ref, err := workout.RoadOf(workoutJSON)
-	if err != nil || ref == nil {
+	var w struct {
+		Road *struct {
+			RouteID string `json:"routeId"`
+		} `json:"road"`
+	}
+	if json.Unmarshal([]byte(workoutJSON), &w) != nil || w.Road == nil {
 		return name, nil
 	}
-	id, err := store.ParseUUID(ref.RouteID)
+	id, err := store.ParseUUID(w.Road.RouteID)
 	if err != nil {
 		return name, nil
 	}
@@ -100,7 +108,7 @@ func SharedName(ctx context.Context, q *db.Queries, workoutJSON, name string) (s
 		return name, nil
 	}
 	if err != nil {
-		return "", fmt.Errorf("routes: read name of %s: %w", ref.RouteID, err)
+		return "", fmt.Errorf("routes: read name of %s: %w", w.Road.RouteID, err)
 	}
 	return gen, nil
 }
