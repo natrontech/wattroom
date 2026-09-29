@@ -679,7 +679,7 @@ window's 4 Hz ticks. Its pace:
 
 A rider's bias never moves the bunch.
 
-## The world (defaults — tune in alpha; [ADR-0066](decisions/0066-the-world-is-the-ride-view.md))
+## The world (defaults — tune in alpha; [ADR-0066](decisions/0066-the-world-is-the-ride-view.md), [ADR-0072](decisions/0072-light-in-the-world.md))
 
 | Parameter           | Value                                                                                                                   |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
@@ -692,6 +692,9 @@ A rider's bias never moves the bunch.
 | Fallback            | to the Skyline when more than **20 %** of vsync-divisor intervals are missed over **10 s**; one-way for the ride        |
 | Keep-clear corridor | the middle **40 %** of the width and **55 %** of the height                                                             |
 | GPU gate            | set by the first `make perf-scenes` measurement; proposal: at most **5** points of GPU on #2998's rig                  |
+| Ride sky            | lit by the sky only; sun **−4°** at the start to **−8°** at the finish by the ride's progress, **−6°** with no known end |
+| Alpenglow           | OKLCH hue **58–60°**                                                                                                     |
+| Flashes             | WCAG 2.3.1, and at most one dim flash per **10 s** over **25 %** of a 10° field; none under reduced motion               |
 
 ## Rider animation (defaults — tune in alpha; #3066)
 
