@@ -66,12 +66,72 @@ func RideMode(workoutJSON string, inSession bool) string {
 	return "free"
 }
 
-// Timeable is ADR-0074's rule, written at save: a time is the rider's when
-// their own watts moved their dot along a road — a free ride on one — and it
-// was not ridden mostly in someone's shelter. A workout on a road measures
-// the workout, and a ride with no road has no time to keep.
-func Timeable(mode string, onRoad bool, meanShelter float64) bool {
-	return onRoad && mode == "free" && meanShelter <= protocol.MaxTimeableShelter
+// How a trainer was driven along a road (#3516, ADR-0074, ADR-0084): by the
+// road's grade in SIM, the same through gears, or "Don't make me shift" —
+// ERG by the road, where WattRoom chose the watts. A save names one on a
+// road ride; the client's own words (ride-grade.ts's ergByRoad).
+const (
+	DriveSIM       = "sim"
+	DriveGears     = "gears"
+	DriveERGByRoad = "ergByRoad"
+)
+
+// KnownDrive says whether a save's drive is one of those, or unsaid.
+func KnownDrive(drive string) bool {
+	switch drive {
+	case "", DriveSIM, DriveGears, DriveERGByRoad:
+		return true
+	}
+	return false
+}
+
+// Timeable is ADR-0074's table, written at save: a time is the rider's when
+// their own watts moved their dot along a road. A ride with no road has no
+// time to keep, and a workout on a road measures the workout — unless it is
+// road steps alone, which are timed like a free ride on the road. Either is
+// timed when the grade drove the trainer, in SIM or through gears, and it
+// was not ridden mostly in someone's shelter; "Don't make me shift" never
+// is. A road ride that does not say how it was driven is nil — not known,
+// never a guess, since the column cannot be backfilled.
+func Timeable(mode, workoutJSON string, onRoad bool, drive string, meanShelter float64) *bool {
+	no, yes := false, true
+	if !onRoad {
+		return &no
+	}
+	switch mode {
+	case "free":
+	case "workout":
+		if !roadStepsAlone(workoutJSON) {
+			return &no
+		}
+	default: // a session's game; bunch and race arrive with the sessions that ride a road
+		return &no
+	}
+	switch drive {
+	case DriveSIM, DriveGears:
+		if meanShelter > protocol.MaxTimeableShelter {
+			return &no
+		}
+		return &yes
+	case DriveERGByRoad:
+		return &no
+	}
+	return nil
+}
+
+// roadStepsAlone says whether every block of a workout is a road step — the
+// road setting the grade, never a target — ADR-0074's "solo road step".
+func roadStepsAlone(workoutJSON string) bool {
+	segments, err := workout.Parse(workoutJSON)
+	if err != nil || len(segments) == 0 {
+		return false
+	}
+	for _, s := range segments {
+		if s.Kind != "road" {
+			return false
+		}
+	}
+	return true
 }
 
 // WeightThatDay is the weight a ride keeps (ADR-0048): the rider's, when
@@ -98,9 +158,9 @@ func accountWeight(ctx context.Context, q *db.Queries, user pgtype.UUID) *int16 
 // SetHow writes how every ride was ridden onto its row: its mode, whether a
 // time on it is the rider's, and their weight that day. Mean shelter reads 0
 // until the hub computes shelter (ADR-0077).
-func SetHow(row *db.CreateRideParams, mode string, onRoad bool, weight *int16) {
-	timeable := Timeable(mode, onRoad, 0)
-	row.RideMode, row.Timeable, row.WeightKg = &mode, &timeable, weight
+func SetHow(row *db.CreateRideParams, mode, workoutJSON string, onRoad bool, drive string, weight *int16) {
+	row.RideMode, row.WeightKg = &mode, weight
+	row.Timeable = Timeable(mode, workoutJSON, onRoad, drive, 0)
 }
 
 // SetRoad writes a road ride's summary onto its row: the route, the road's

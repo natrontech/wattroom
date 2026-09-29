@@ -89,24 +89,47 @@ func TestRideMode(t *testing.T) {
 	}
 }
 
-// ADR-0074's table: only a rider's own watts on a road make a time, and not
-// a mostly-sheltered one.
+// ADR-0074's table (#3516): a time is timed when the grade drove the trainer
+// — SIM or gears — on a free ride or on road steps alone, and not a mostly
+// sheltered one; "Don't make me shift" never is, a workout with a target in
+// it measures the workout, and a road ride that does not say how it was
+// driven is not known (nil), never a guess.
 func TestTimeable(t *testing.T) {
+	const (
+		free         = `{"name":"Free","unscored":true,"steps":[]}`
+		erg          = `{"name":"Road ERG","steps":[{"type":"steady","seconds":600,"target":0.8}]}`
+		steps        = `{"name":"Road steps","steps":[{"type":"road","seconds":600},{"type":"repeat","times":2,"steps":[{"type":"road","seconds":300}]}]}`
+		mixed        = `{"name":"Mixed","steps":[{"type":"road","seconds":600},{"type":"steady","seconds":300,"target":0.6}]}`
+		unknown      = "unknown"
+		yes, untimed = "yes", "no"
+	)
 	for _, c := range []struct {
-		mode    string
-		onRoad  bool
-		shelter float64
-		want    bool
+		name, mode, workout string
+		onRoad              bool
+		drive               string
+		shelter             float64
+		want                string
 	}{
-		{"free", true, 0, true},
-		{"free", true, protocol.MaxTimeableShelter, true},
-		{"free", true, protocol.MaxTimeableShelter + 0.001, false},
-		{"free", false, 0, false},
-		{"workout", true, 0, false},
-		{"game", false, 0, false},
+		{"a free ride on a road in SIM", "free", free, true, DriveSIM, 0, yes},
+		{"through gears, like any SIM ride", "free", free, true, DriveGears, 0, yes},
+		{"Don't make me shift: WattRoom chose the watts", "free", free, true, DriveERGByRoad, 0, untimed},
+		{"a road ride that does not say", "free", free, true, "", 0, unknown},
+		{"sheltered to the limit", "free", free, true, DriveSIM, protocol.MaxTimeableShelter, yes},
+		{"sheltered past it", "free", free, true, DriveSIM, protocol.MaxTimeableShelter + 0.001, untimed},
+		{"no road, no time", "free", free, false, DriveSIM, 0, untimed},
+		{"a solo road step", "workout", steps, true, DriveSIM, 0, yes},
+		{"road steps by ERG", "workout", steps, true, DriveERGByRoad, 0, untimed},
+		{"road steps that do not say", "workout", steps, true, "", 0, unknown},
+		{"an ERG road workout measures the workout", "workout", erg, true, DriveSIM, 0, untimed},
+		{"a target among road steps", "workout", mixed, true, DriveSIM, 0, untimed},
+		{"a session's game", "game", free, false, "", 0, untimed},
 	} {
-		if got := Timeable(c.mode, c.onRoad, c.shelter); got != c.want {
-			t.Errorf("Timeable(%q, road %v, shelter %v) = %v, want %v", c.mode, c.onRoad, c.shelter, got, c.want)
+		got := unknown
+		if v := Timeable(c.mode, c.workout, c.onRoad, c.drive, c.shelter); v != nil {
+			got = map[bool]string{true: yes, false: untimed}[*v]
+		}
+		if got != c.want {
+			t.Errorf("%s: timed %s, want %s", c.name, got, c.want)
 		}
 	}
 }

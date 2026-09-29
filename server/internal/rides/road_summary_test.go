@@ -34,14 +34,18 @@ func storeRoute(t *testing.T, h *harness, user string) (string, string) {
 
 // freeRideOn is a two-minute free ride at 250 W whose client says it moved
 // `clientMps` a second from 1,000 m along the road.
-func freeRideOn(routeID string, clientMps float64) string {
+func freeRideOn(routeID string, clientMps float64, drive string) string {
 	samples := make([]string, 120)
 	for i := range samples {
 		samples[i] = fmt.Sprintf(`{"watts":250,"cadence":90,"m":%g}`, 1000+clientMps*float64(i))
 	}
+	driven := ""
+	if drive != "" {
+		driven = fmt.Sprintf(`,"drive":%q`, drive)
+	}
 	return fmt.Sprintf(
-		`{"workoutName":"Free ride","workoutJson":"{\"name\":\"Free ride\",\"unscored\":true,\"steps\":[]}","startedAt":%q,"samples":[%s],"routeId":%q}`,
-		nextStart().Format(time.RFC3339), strings.Join(samples, ","), routeID)
+		`{"workoutName":"Free ride","workoutJson":"{\"name\":\"Free ride\",\"unscored\":true,\"steps\":[]}","startedAt":%q,"samples":[%s],"routeId":%q%s}`,
+		nextStart().Format(time.RFC3339), strings.Join(samples, ","), routeID, driven)
 }
 
 type summary struct {
@@ -73,7 +77,7 @@ func TestARoadRideKeepsItsSummaryAndTheReplayIsTheRecord(t *testing.T) {
 	routeID, hash := storeRoute(t, h, "alice")
 
 	// The client claims 20 m/s, far past what 250 W holds on 2 %.
-	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(routeID, 20))
+	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(routeID, 20, stats.DriveSIM))
 	if status != http.StatusCreated {
 		t.Fatalf("create: %d %v", status, got)
 	}
@@ -153,9 +157,46 @@ func TestARideOnSomeoneElsesRouteIsRefused(t *testing.T) {
 		{"not-a-uuid", http.StatusBadRequest},
 		{"00000000-0000-0000-0000-000000000000", http.StatusNotFound},
 	} {
-		status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(tc.route, 8))
+		status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(tc.route, 8, stats.DriveSIM))
 		if status != tc.want || got["field"] != "routeId" {
 			t.Errorf("route %q: %d %v, want %d on routeId", tc.route, status, got, tc.want)
 		}
 	}
+}
+
+// How the trainer was driven decides the ride's time (#3516, ADR-0074):
+// "Don't make me shift" keeps the ride and never times it, a road ride that
+// does not say keeps it as not known rather than a guess, and a drive this
+// app has no word for is refused.
+func TestARoadRidesTimeFollowsHowTheTrainerWasDriven(t *testing.T) {
+	h := setup(t)
+	routeID, _ := storeRoute(t, h, "alice")
+	for _, c := range []struct {
+		drive string
+		want  *bool
+	}{
+		{stats.DriveGears, new(true)},
+		{stats.DriveERGByRoad, new(false)},
+		{"", nil},
+	} {
+		status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(routeID, 8, c.drive))
+		if status != http.StatusCreated {
+			t.Fatalf("drive %q: %d %v", c.drive, status, got)
+		}
+		id, _ := got["id"].(string)
+		if s := readSummary(t, h, id); (s.timeable == nil) != (c.want == nil) || s.timeable != nil && *s.timeable != *c.want {
+			t.Errorf("drive %q: timeable %v, want %v", c.drive, deref(s.timeable), deref(c.want))
+		}
+	}
+	if status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", freeRideOn(routeID, 8, "autopilot")); status != http.StatusBadRequest || got["field"] != "drive" {
+		t.Errorf("an unknown drive: %d %v, want 400 on drive", status, got)
+	}
+}
+
+// deref prints a *bool as the column reads: true, false, or null.
+func deref(b *bool) string {
+	if b == nil {
+		return "null"
+	}
+	return fmt.Sprint(*b)
 }
