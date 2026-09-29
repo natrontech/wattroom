@@ -95,7 +95,7 @@ first one past the highest file here, stubs included.
 | [0067](0067-racing-on-a-road.md) | Racing on a road | reserved for [#3167](https://github.com/natrontech/wattroom/issues/3167) | |
 | [0068](0068-your-own-ghost.md) | Your own ghost | reserved for [#3122](https://github.com/natrontech/wattroom/issues/3122) | |
 | [0069](0069-cosmetics-are-earned-never-bought.md) | Cosmetics are earned, never bought | reserved for [#3150](https://github.com/natrontech/wattroom/issues/3150) | |
-| [0070](0070-our-own-copy-of-openstreetmap.md) | Our own copy of OpenStreetMap | reserved for [#3120](https://github.com/natrontech/wattroom/issues/3120) | |
+| [0070](0070-our-own-copy-of-openstreetmap.md) | Our own copy of OpenStreetMap — the Alps as one pmtiles built weekly and served from our origin; Overpass only as a disclosed, quantized fallback | accepted; settles [#3120](https://github.com/natrontech/wattroom/issues/3120) | Keeps WATTROOM.md's Stream storage row (no PostGIS); the corridor and `road_segments` are ODbL derivatives beside [0063](0063-a-route-keeps-its-place-with-care.md). Marks WATTROOM.md §1's "no maps" |
 | [0071](0071-the-bike-computer-pages-slot-3.md) | The bike computer pages slot 3 | reserved for [#3063](https://github.com/natrontech/wattroom/issues/3063) | |
 | [0072](0072-light-in-the-world.md) | Light in the world — the ride stays in the cave | reserved for [#3064](https://github.com/natrontech/wattroom/issues/3064) | |
 | [0073](0073-the-rider-is-dressed-never-measured.md) | The rider is dressed, never measured | reserved for [#3065](https://github.com/natrontech/wattroom/issues/3065) | |
