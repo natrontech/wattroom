@@ -852,6 +852,27 @@ never the metres a client sent, and an imported file never sets one.
 | `board_ok`: provenance        | recorded by WattRoom and saved fresh; never imported, never Strava-origin               |
 | Crew climb times              | this week only, Monday reset, bracketed by Category D–A; fastest and most ascents       |
 
+## Road stats and collections (defaults — tune in alpha; #3123)
+
+What a rider's road riding adds up to. Location-derived stats are the rider's
+own (ADR-0063, ADR-0074); a crew gets cooperative sums, such as Everest
+together. Nothing here is ranked.
+
+| Parameter          | Value                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------- |
+| Map matching       | ways within **12 m**, covering at least **60 %** of a way's nodes                                     |
+| Mark search radius | passes **0 m**, water **60 m**, cafés **80 m**, villages **400 m**, peaks **3 km**                    |
+| Climb identity     | a climb is ADR-0082's, matched on stroke spans (Road segments and ghosts, above)                      |
+| VAM                | shown only when the average grade is at least **5 %** and the climb takes at least **3 min**          |
+| PB highlight       | needs at least **35 m** of gain; at most **3** highlights per ride                                    |
+| Col stamp          | passing within **50 m** of the pass node, with at least **50 m** of gain over the last **2 km**       |
+| Explorer tiles     | zoom **14**; a straight segment longer than **500 m** ticks nothing                                   |
+| Everest            | **8,849 m** (the 2020 survey), everywhere in the app; the ladder **8,849 / 50,000 / 100,000 m**       |
+| Everest together   | **8,849** rider-metres per UTC month                                                                  |
+| Eddington number   | in road km                                                                                            |
+| Overpass           | at most **100** requests and **10 MB** a day                                                          |
+| Famous-climbs shelf | about **12**, fixed                                                                                  |
+
 ## Races ([ADR-0067](decisions/0067-racing-on-a-road.md) — defaults, tune in alpha)
 
 - **Physics**: a rider's speed is the reference rider's (Route rides) at their **W/kg × 75 kg**, plus an **8 kg** bike, on the grade.
