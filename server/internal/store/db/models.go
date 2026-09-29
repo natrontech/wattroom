@@ -285,6 +285,7 @@ type Ride struct {
 	ClimbedM        *int32
 	WeightKg        *int16
 	MeanShelter     *float32
+	GroupSession    *bool
 }
 
 type RideExport struct {

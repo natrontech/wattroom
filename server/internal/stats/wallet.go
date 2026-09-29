@@ -19,6 +19,14 @@ import (
 // session at a time, so no two saves lock the same pair in opposite orders.
 func mintSession(ctx context.Context, q *db.Queries, kept []savedRide, rides, longest int) error {
 	group := GroupSession(rides, longest)
+	// Kept on the rides, so an amendment pays what the save decided (#3517).
+	ids := make([]pgtype.UUID, len(kept))
+	for i, ride := range kept {
+		ids[i] = ride.rideID
+	}
+	if err := q.MarkGroupSession(ctx, db.MarkGroupSessionParams{GroupSession: group, Ids: ids}); err != nil {
+		return fmt.Errorf("stats: wallet group: %w", err)
+	}
 	for _, ride := range kept {
 		if err := q.LockUser(ctx, ride.userID); err != nil {
 			return fmt.Errorf("stats: wallet lock: %w", err)
@@ -36,16 +44,20 @@ func mintSession(ctx context.Context, q *db.Queries, kept []savedRide, rides, lo
 
 // mintGrowth pays what an amended ride earns beyond its first save, under
 // the rider's row lock in the amendment's own transaction. Whether it was a
-// group session is read off the rides its session saved.
+// group session is the save's own answer, kept on the ride (#3517): judged
+// again here, a ride saved without a session id always read as solo.
 func mintGrowth(ctx context.Context, q *db.Queries, user, ride pgtype.UUID, seconds int32, watts []int, ftp int) error {
 	if err := q.LockUser(ctx, user); err != nil {
 		return fmt.Errorf("stats: wallet lock: %w", err)
 	}
-	shape, err := q.SessionShapeOfRide(ctx, ride)
+	group, err := q.RideGroupSession(ctx, ride)
 	if err != nil {
 		return fmt.Errorf("stats: wallet session: %w", err)
 	}
-	earned := wallet.Batzen(watts, ftp, GroupSession(int(shape.Rides), int(shape.Longest)))
+	// ponytail: null is a ride saved before the column, paid as solo. Only
+	// the hub amends a ride, and its live state does not outlive the restart
+	// that brought the column in.
+	earned := wallet.Batzen(watts, ftp, group != nil && *group)
 	if err := wallet.MintGrowth(ctx, q, user, ride, seconds, earned); err != nil {
 		return fmt.Errorf("stats: wallet: %w", err)
 	}

@@ -72,6 +72,13 @@ func TestASessionPaysBatzenInItsOwnTransaction(t *testing.T) {
 	if a, b := riding(alice.ID), riding(bob.ID); a != 24 || b != 24 {
 		t.Fatalf("a group session paid %d and %d, want 24 each", a, b)
 	}
+	// Alice's tail arrives: its growth is a group session's too, as the save
+	// decided (#3517). This save had no session id, and the amendment judged
+	// it again and read it as solo.
+	saver.AmendRide(ctx, voice, "", "W", workoutJSON, group, hub.RiderRecord{Rider: aliceRider, Samples: atFtp(2400)})
+	if got := riding(alice.ID); got != 48 {
+		t.Fatalf("alice's amended group ride paid %d in all, want 48: forty minutes × 1.2", got)
+	}
 	var worn bool
 	if err := st.Pool.QueryRow(ctx, "select first_worn_at is not null from wardrobe where user_id = $1", alice.ID).Scan(&worn); err != nil || !worn {
 		t.Fatalf("alice's finish after the session: worn %v (%v), want worn", worn, err)
