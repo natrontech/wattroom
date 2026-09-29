@@ -91,6 +91,39 @@ where r.id = $1 and r.user_id = $2;
 -- retry an error, but two saves racing each other no longer both insert.
 select id from rides where user_id = $1 and started_at = $2 limit 1;
 
+-- name: RideOverlaps :one
+-- Whether a ride over [starts_at, ends_at) would share a second with one the
+-- rider already has (#3044). Nobody rides two at once, so an upload that
+-- overlaps is refused — ten fabricated saves in a minute earn one ride. The
+-- span is the ride's own `seconds`, which leaves pauses out, so this can only
+-- under-count an overlap and never refuse a ride that did not have one.
+select exists (
+    select 1 from rides
+    where user_id = sqlc.arg(user_id)
+      and started_at < sqlc.arg(ends_at)::timestamptz
+      and started_at + make_interval(secs => seconds) > sqlc.arg(starts_at)::timestamptz
+)::boolean;
+
+-- name: UploadXpToday :one
+-- The XP uploaded rides have minted for this rider in the current UTC day
+-- (#3044) — zero when their row is from an earlier day or absent.
+select coalesce((
+    select xp from ride_upload_xp
+    where user_id = $1 and day = (now() at time zone 'utc')::date
+), 0)::integer;
+
+-- name: AddUploadXp :exec
+-- Count an uploaded ride's XP against today (#3044): today's row grows, an
+-- earlier day's is replaced. Never lowered — a delete does not hand the
+-- ceiling back, or delete-and-repost would mint without end.
+insert into ride_upload_xp (user_id, day, xp)
+values ($1, (now() at time zone 'utc')::date, $2)
+on conflict (user_id) do update
+set xp  = case when ride_upload_xp.day = excluded.day
+               then ride_upload_xp.xp + excluded.xp
+               else excluded.xp end,
+    day = excluded.day;
+
 -- name: DeleteRide :execrows
 -- Owner-only by the where clause. The medals awarded for this ride go with
 -- it through medals.ride_id's on-delete-cascade — no cleanup pass to forget.

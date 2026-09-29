@@ -31,13 +31,14 @@ export interface SaveFailure {
 	/** The server's own sentence (errors.md). */
 	message: string;
 	/**
-	 * The server looked at the ride and said no — under a minute, malformed —
-	 * so a retry can only be refused again. An outage or a 5xx is not final.
+	 * The server looked at the ride and said no — under a minute, malformed,
+	 * or overlapping a ride already on the account (#3044) — so a retry can
+	 * only be refused again. An outage or a 5xx is not final.
 	 */
 	final: boolean;
 }
 
-const FINAL = new Set(['validation_error', 'invalid_request']);
+const FINAL = new Set(['validation_error', 'invalid_request', 'conflict']);
 
 /** Null on success — or the saved ride, so the summary can link to it (#1331). */
 export async function uploadRide(

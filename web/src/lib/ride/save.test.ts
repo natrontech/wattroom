@@ -54,6 +54,19 @@ describe('uploadRide', () => {
 			failure: { message: 'A ride under a minute is not saved.', final: true },
 		});
 	});
+
+	it('marks a ride overlapping a saved one as final', async () => {
+		// The account already holds a ride over those seconds (#3044): a retry
+		// is refused the same way, so the card must not keep offering it.
+		api.mockResolvedValueOnce({
+			ok: false,
+			error: {
+				error: 'conflict',
+				message: 'You already have a ride saved at this time.',
+			},
+		});
+		expect(await uploadRide(ride)).toMatchObject({ failure: { final: true } });
+	});
 });
 
 // A ride that raised the curve is what makes the server suggest an FTP (and
