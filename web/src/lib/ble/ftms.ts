@@ -159,6 +159,7 @@ export class FtmsTrainer implements Trainer {
 	#logCbs = new Set<(text: string, ms?: number) => void>();
 	/** Latest full frame, including fields the Trainer interface does not carry. */
 	lastFrame: IndoorBikeData = {};
+	#heartRateAt?: number;
 	/**
 	 * Raw Indoor Bike Data notifications seen, and how many carried instantaneous
 	 * power (#520). A unit that streams frames with no power field delivers no
@@ -292,7 +293,11 @@ export class FtmsTrainer implements Trainer {
 				// and heart rate from the merged view.
 				// ponytail: a field the unit stops reporting stays at its last value;
 				// reset on the cycle's first frame (bit 0 clear) if that ever bites.
+				// Heart rate carries the time it was last reported, so a relay that
+				// stops goes stale in arbitration instead of holding (#3517).
+				const now = Date.now();
 				this.lastFrame = { ...this.lastFrame, ...data };
+				if (data.heartRate !== undefined) this.#heartRateAt = now;
 				this.frames += 1;
 				if (data.watts === undefined) return;
 				this.poweredFrames += 1;
@@ -303,9 +308,10 @@ export class FtmsTrainer implements Trainer {
 						cadence: Math.round(merged.cadence ?? 0),
 						// Already parsed out of Indoor Bike Data; it used to stop here (#44).
 						heartRate: merged.heartRate,
+						heartRateAt: this.#heartRateAt,
 						speedMps:
 							merged.speedKph === undefined ? undefined : merged.speedKph / 3.6,
-						at: Date.now(),
+						at: now,
 					});
 				}
 			},

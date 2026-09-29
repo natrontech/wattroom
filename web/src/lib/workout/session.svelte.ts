@@ -115,7 +115,9 @@ export function createRideSession({
 			at: raw.at,
 		};
 		sample = next;
-		hrHold.reading(next.heartRate, raw.at);
+		// Stamped with when the heart rate was measured, not when this sample
+		// arrived: a silent strap must age into lost, not stay fresh (#3517).
+		hrHold.reading(metrics.heartRate, metrics.heartRateAt ?? raw.at);
 		publish();
 		// Nothing is ridden during the count-in (#1800): the sample is kept, so
 		// the numbers are live the instant the clock starts, but the record, the
