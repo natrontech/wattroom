@@ -187,7 +187,11 @@ describe('a sprint block', () => {
 			expect(slope).toHaveBeenCalledWith({ gradePct: 0 });
 			session.stop();
 			await vi.advanceTimersByTimeAsync(600);
-			expect(slope).not.toHaveBeenCalledWith({ gradePct: 6 });
+			// The hill is composed now (ADR-0084), so match its grade, not its shape.
+			const hills = slope.mock.calls.filter(
+				([road]) => Math.abs(road.gradePct - 6) < 0.01,
+			);
+			expect(hills).toEqual([]);
 		} finally {
 			vi.useRealTimers();
 		}
