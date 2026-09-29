@@ -10,7 +10,7 @@ vi.mock('$lib/hud/feed', () => ({
 }));
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import { createRideSession } from './session.svelte';
-import { soloRide } from './ride-hold.svelte';
+import { soloRide } from './ride-life.svelte';
 import { DEFAULTS, toleranceBand } from './guards';
 import { COUNTDOWN_SECONDS, SIGNAL_LOST_MS } from './ride-state';
 import { SPRINT_LEAD_SECONDS } from './sprint-window.svelte';
