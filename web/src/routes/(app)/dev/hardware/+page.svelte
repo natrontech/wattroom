@@ -7,7 +7,7 @@
 		TrainerSample,
 		TrainerStatus,
 	} from '$lib/ble/trainer';
-	import { simulate } from '$lib/ride/actuation';
+	import { simulate } from '$lib/ride/actuation.svelte';
 	import { ROAD } from '$lib/ride/ride-grade';
 	import { formatClock } from '../channel/mockChannel.svelte';
 

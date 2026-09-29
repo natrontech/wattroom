@@ -63,7 +63,9 @@ export type CueId =
 	| 'shutter'
 	| 'equip'
 	| 'handup'
-	| 'prime';
+	| 'prime'
+	| 'shift-up'
+	| 'shift-down';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -486,6 +488,52 @@ export const CUES: Record<CueId, Cue> = {
 				at: 0.14,
 				dur: 0.26,
 				gain: 0.3,
+			},
+		],
+	},
+	// A virtual gear (ADR-0084, #3330): two short ticks, rising for Harder and
+	// falling for Easier — a derailleur's click, not a note, and quiet, since
+	// a road has a rider shifting every few seconds.
+	'shift-up': {
+		id: 'shift-up',
+		label: 'Shift harder',
+		hint: 'A virtual gear went harder. Two short ticks, rising.',
+		voices: [
+			{
+				type: 'noise',
+				at: 0,
+				dur: 0.018,
+				gain: 0.16,
+				filter: { from: 2400, q: 6, type: 'bandpass' },
+			},
+			{
+				type: 'noise',
+				at: 0.055,
+				dur: 0.018,
+				gain: 0.16,
+				filter: { from: 3600, q: 6, type: 'bandpass' },
+			},
+		],
+	},
+
+	'shift-down': {
+		id: 'shift-down',
+		label: 'Shift easier',
+		hint: 'A virtual gear went easier. Two short ticks, falling.',
+		voices: [
+			{
+				type: 'noise',
+				at: 0,
+				dur: 0.018,
+				gain: 0.16,
+				filter: { from: 3600, q: 6, type: 'bandpass' },
+			},
+			{
+				type: 'noise',
+				at: 0.055,
+				dur: 0.018,
+				gain: 0.16,
+				filter: { from: 2400, q: 6, type: 'bandpass' },
 			},
 		],
 	},

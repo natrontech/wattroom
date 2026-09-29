@@ -2,7 +2,7 @@ import { arbitrate } from '$lib/ble/arbitrate';
 import { publishHud } from '$lib/hud/feed';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
-import { createActuator } from '$lib/ride/actuation';
+import { createActuator } from '$lib/ride/actuation.svelte';
 import { biasPress } from '$lib/ride/easier-harder';
 import { nudgedBias, toleranceBand } from './guards';
 import { createRiderGuards } from './rider-guards.svelte';
@@ -291,6 +291,7 @@ export function createRideSession({
 		abort: life.abort,
 		stop: finish,
 		nudgeBias,
+		atEnd: actuator.atEnd,
 		/** Easier / Harder (#3328): a gear in SIM, the bias in ERG. */
 		easierHarder: (dir: 1 | -1) =>
 			actuator.easierHarder(

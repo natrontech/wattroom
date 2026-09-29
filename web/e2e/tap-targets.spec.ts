@@ -176,6 +176,17 @@ test('the header controls a pedalling rider uses are riding size', async ({
 		`'Start a session' on a free ride is ${startBox.height}px tall`,
 	).toBeGreaterThanOrEqual(RIDING);
 
+	// Easier and Harder on the free ride's grade (#3330): hit while pedalling.
+	for (const name of ['Easier', 'Harder']) {
+		const pair = coach.getByRole('button', { name, exact: true });
+		await expect(pair).toBeVisible();
+		const pairBox = await box(pair);
+		expect(
+			pairBox.height,
+			`${name} on a free ride is ${pairBox.height}px tall`,
+		).toBeGreaterThanOrEqual(RIDING);
+	}
+
 	await start.click();
 	await coach
 		.getByRole('textbox', { name: 'find a workout' })
