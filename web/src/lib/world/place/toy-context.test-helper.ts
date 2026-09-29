@@ -88,17 +88,27 @@ export function context(net: Network, route: Route, o: Toy) {
 			? saltFromWords(`${route.name}:${Math.round(length)}:${gain}`)
 			: WORLD_SALT;
 	const startFrame = frameAt(route.points[0][0], route.points[0][1]);
-	const centroid = (f: PlaceFrame) => {
-		const ps = route.points.map((p) => project(f, p[0], p[1]));
+	// The route's centroid and bounding box in each frame they are asked about, worked out once: every spot asks.
+	const once = <T>(fn: (f: PlaceFrame) => T) => {
+		const seen = new Map<string, T>();
+		return (f: PlaceFrame) => {
+			const name = nameOf(f);
+			if (!seen.has(name)) seen.set(name, fn(f));
+			return seen.get(name)!;
+		};
+	};
+	const inFrame = once((f) => route.points.map((p) => project(f, p[0], p[1])));
+	const centroid = once((f) => {
+		const ps = inFrame(f);
 		return [
 			ps.reduce((s, p) => s + p[0], 0) / ps.length,
 			ps.reduce((s, p) => s + p[1], 0) / ps.length,
 		];
-	};
-	const bboxMin = (f: PlaceFrame) => {
-		const ps = route.points.map((p) => project(f, p[0], p[1]));
+	});
+	const bboxMin = once((f) => {
+		const ps = inFrame(f);
 		return [Math.min(...ps.map((p) => p[0])), Math.min(...ps.map((p) => p[1]))];
-	};
+	});
 	/** Where a point is keyed: its frame's name, and coordinates the lattice is aligned to. */
 	const keyAt = (
 		p: LatLon,
@@ -135,13 +145,18 @@ export function context(net: Network, route: Route, o: Toy) {
 		const q = nearest(x, y);
 		return q.d <= 100 && (q.a <= 400 || q.a >= length - 400);
 	};
-	// The map's roads, for earthworks and for keeping trees off them.
-	const roadXY = net.roads.map((r) => r.points.map(xy));
+	// The map's roads, for earthworks and for keeping trees off them: every
+	// vertex with its height, and the few near the coverage for the spots in it.
+	const vertices = net.roads.flatMap((r) =>
+		r.points.map((p, i) => [...xy(p), r.heights[i]] as const),
+	);
+	const reach = (R + 20) * (R + 20);
+	const near = vertices.filter(([x, y]) => x * x + y * y <= reach);
 	const onRoad = (x: number, y: number, within: number) => {
-		for (const [ri, pts] of roadXY.entries())
-			for (const [i, [px, py]] of pts.entries())
-				if ((px - x) * (px - x) + (py - y) * (py - y) <= within * within)
-					return net.roads[ri].heights[i];
+		const pool = x * x + y * y <= R * R ? near : vertices;
+		for (const [px, py, h] of pool)
+			if ((px - x) * (px - x) + (py - y) * (py - y) <= within * within)
+				return h;
 		return null;
 	};
 	const place = (kind: string, p: LatLon, text?: string): Thing => {
