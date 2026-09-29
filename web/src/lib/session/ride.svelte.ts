@@ -1,59 +1,19 @@
 import { pairError } from '$lib/ble/pair-error';
 import { arbitrate } from '$lib/ble/arbitrate';
-import { createPersonalGuards, type GuardPhase } from '$lib/workout/guards';
 import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
-import { serverNow } from '$lib/server-clock';
-import { holdTarget, type Trainer, type TrainerStatus } from '$lib/ble/trainer';
+import { createActuator } from '$lib/ride/actuation';
+import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/session/wire';
-import { targetAt } from '$lib/workout/engine';
-import { SIGNAL_LOST_MS } from '$lib/workout/session.svelte';
-import { createSprintWindow } from '$lib/workout/sprint-window.svelte';
-import type { FreeRide } from '$lib/ride/free-ride.svelte';
-import type { Segment } from '$lib/workout/types';
-import type { GameState, SensorPairing, SprintState } from '$lib/protocol';
-import type { createRecording } from '$lib/session/recording.svelte';
+import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
+import type { RideDeps } from '$lib/session/ride-deps';
+import { createRideTarget } from '$lib/session/ride-target.svelte';
+import { createSessionSprint } from '$lib/session/ride-sprint.svelte';
 import {
 	mayActuate,
 	quietFault,
 	type TrainerFault,
 } from '$lib/session/sensor-status';
-
-interface RideDeps {
-	/** The voice channel's socket: metrics go out, targets and ticks come in. */
-	live: {
-		sendMetrics(payload: ReturnType<typeof wireMetrics>): void;
-		finish(): void;
-		readonly tick:
-			| { at?: number; game?: GameState; sprint?: SprintState }
-			| null
-			| undefined;
-		/**
-		 * The hub's answer to this tab's sensor claim (#610). Read for one
-		 * question only — whether this screen is the one driving the trainer
-		 * (#1853); the pairing surfaces read it for themselves.
-		 */
-		readonly pairing?: SensorPairing;
-	};
-	profile: {
-		readonly current: {
-			ftp: number;
-			shareHr: boolean;
-			singleSpeed: boolean;
-			sprintGrade: number;
-		};
-	};
-	recording: ReturnType<typeof createRecording>;
-	myId: () => string | undefined;
-	shared: () => { phase: string; elapsed: number } | undefined;
-	segments: () => Segment[];
-	/** On the running session's timeline, by the hub's word (ADR-0059). A
-	 *  spectator's trainer is theirs: no target, no sprint, no record. */
-	joined: () => boolean;
-	/** What an armed free ride asks of the trainer while no session drives
-	 *  it, and where its seconds go (ADR-0059). */
-	free: Pick<FreeRide, 'armed' | 'mode' | 'grade' | 'watts' | 'second'>;
-}
 
 /**
  * Riding along: the trainer, the target it holds, the trim on it, and the
@@ -114,94 +74,9 @@ export function createRide(deps: RideDeps) {
 	 */
 	const actuating = $derived(mayActuate(deps.live.pairing));
 
-	// Bias is personal: ±% on my own targets, the shared timeline untouched.
-	let bias = $state(1);
-	/**
-	 * The trim this screen is actually applying (#2075).
-	 *
-	 * A screen that writes no control point trims nothing, so a bias here
-	 * would move the number a rider reads and the resistance under their legs
-	 * not at all — and would score the ride against a plan nobody rode. Held
-	 * at 1 in all three places at once, deliberately: the target this screen
-	 * renders, the prescribed watts its guards judge, and the `bias` its
-	 * samples carry. Divergence between those is what the client's meter and
-	 * the hub's score exist not to have.
-	 *
-	 * The rider's own setting is kept rather than reset, so it returns with
-	 * the grant instead of having to be dialled in again.
-	 */
-	const effectiveBias = $derived(actuating ? bias : 1);
-	function nudgeBias(step: number) {
-		// The control is disabled where it is drawn (ux.md); this is the same
-		// answer for anything that reaches past it.
-		if (!actuating) return;
-		bias = Math.min(1.2, Math.max(0.8, Math.round((bias + step) * 100) / 100));
-	}
-
-	/**
-	 * What the session asks of this rider, before their own guards get a say —
-	 * and whether the block asking is the workout's own sprint.
-	 *
-	 * The sprint flag is not decoration: `targetAt` returns no target for a
-	 * sprint block, `?? 0` folds that into zero, and zero in ERG is a
-	 * freewheel — the rider pedalled against nothing for the whole block
-	 * (#2014). That is the session's half of #1529, which fixed the solo ride
-	 * on the assumption the session was already right. It was not: a session
-	 * flips to slope only for a sprint the SERVER armed, and nothing arms
-	 * one from the timeline.
-	 */
-	const block = $derived.by((): { watts: number; sprint: boolean } => {
-		if (!deps.joined())
-			return {
-				watts:
-					deps.free.armed && deps.free.mode === 'watts' ? deps.free.watts : 0,
-				sprint: false,
-			};
-		const game = deps.live.tick?.game;
-		const mine = game?.riders?.[deps.myId() ?? ''];
-		if (game?.phase === 'running' && mine && mine.targetPct) {
-			return {
-				watts: Math.round(mine.targetPct * deps.profile.current.ftp),
-				sprint: false,
-			};
-		}
-		const shared = deps.shared();
-		const segments = deps.segments();
-		if (!shared || shared.phase !== 'running' || segments.length === 0)
-			return { watts: 0, sprint: false };
-		const info = targetAt(segments, deps.profile.current.ftp, shared.elapsed);
-		if (!info.done && info.segment?.kind === 'sprint')
-			return { watts: 0, sprint: true };
-		return {
-			watts: Math.round((info.targetWatts ?? 0) * effectiveBias),
-			sprint: false,
-		};
-	});
-	const prescribed = $derived(block.watts);
-
-	/**
-	 * Auto-pause and the spiral release, the same machine the solo ride runs
-	 * (#788). A rider who stops, or who grinds to a halt at 40 rpm, gets their
-	 * target released in a session exactly as they would alone — and the
-	 * session's clock does not notice, because the guards mask this rider's
-	 * target and touch nothing shared.
-	 */
-	const guards = createPersonalGuards();
-	let guardsReleased = $state(false);
-	let guardPhase = $state<GuardPhase>('running');
-	let guardResumeIn = $state(0);
-	// The spiral release (docs/SPEC.md) fires in a session exactly as it does
-	// solo; solo had a banner and a cue for it and the session had nothing —
-	// the resistance vanished for ten seconds unexplained (audit 2026-09-09).
-	let spiralActive = $state(false);
-	function syncGuards() {
-		guardsReleased = guards.released;
-		guardPhase = guards.phase;
-		guardResumeIn = guards.resumeIn;
-		spiralActive = guards.spiralActive;
-	}
-
-	const target = $derived(guardsReleased ? 0 : prescribed);
+	const aim = createRideTarget(deps, () => actuating);
+	const sprint = createSessionSprint(deps);
+	const actuator = createActuator(() => trainer);
 
 	// The guards' countdowns run on a local second — the session's clock is
 	// everyone's, and a rider's own recovery must not wait on it.
@@ -209,81 +84,23 @@ export function createRide(deps: RideDeps) {
 		if (!trainer) return;
 		const id = setInterval(() => {
 			now = Date.now();
-			guards.tick();
-			syncGuards();
+			aim.tick();
 		}, 1000);
 		return () => clearInterval(id);
 	});
 
-	/**
-	 * A local re-check while a sprint is on the board (#789). The window is a
-	 * deadline, not a state the server keeps repeating: read off the last
-	 * tick's `at`, a socket that drops mid-sprint freezes the clock inside the
-	 * window and leaves SIM grade — or the single-speed 2xFTP command —
-	 * applied for as long as the drop lasts. Nothing else re-evaluates,
-	 * because no tick arrives to re-evaluate on.
-	 */
-	let sprintClock = $state(serverNow());
-	$effect(() => {
-		if (!deps.live.tick?.sprint) return;
-		const id = setInterval(() => (sprintClock = serverNow()), 250);
-		return () => clearInterval(id);
-	});
-
-	const sprintLive = $derived.by(() => {
-		const sprint = deps.live.tick?.sprint;
-		if (!sprint) return false;
-		// serverNow() is the server's clock carried on this machine's, so it
-		// keeps moving while the socket is down and stays skew-corrected when
-		// it comes back ($lib/server-clock). sprintClock is what makes this
-		// recompute without a tick.
-		const at = Math.max(sprintClock, serverNow());
-		return at >= sprint.startsAtMs && at < sprint.endsAtMs;
-	});
-	/**
-	 * The workout's own sprint blocks (#2014), as a window the session's
-	 * SprintMoment and klaxon already know how to draw — the same module the
-	 * solo ride runs (#1793). Anchored off the session's elapsed, so every rider
-	 * counts the same block in at the same moment.
-	 */
-	const blockWindow = createSprintWindow(() => {
-		const shared = deps.shared();
-		const segments = deps.segments();
-		const running = !!shared && shared.phase === 'running';
-		const info =
-			running && segments.length > 0
-				? targetAt(segments, deps.profile.current.ftp, shared.elapsed)
-				: undefined;
-		return {
-			segments,
-			segment: info?.segment,
-			index: info?.segmentIndex ?? 0,
-			clock: shared?.elapsed ?? 0,
-			done: info?.done ?? true,
-			over: !running,
-		};
-	});
-	// Re-anchored on the session's clock rather than a local interval: the window
-	// carries a deadline in server-ms, and reading it half a second after the
-	// tick that moved `elapsed` would count the block in half a second late.
-	$effect(() => {
-		void deps.shared()?.elapsed;
-		blockWindow.sync();
-	});
-
 	/** Slope, whoever asked for it: the coach's armed sprint or the workout's. */
-	const sprinting = $derived(deps.joined() && (sprintLive || block.sprint));
-	let sprintMode = false;
+	const sprinting = $derived(deps.joined() && (sprint.armedLive || aim.sprint));
 	$effect(() => {
 		if (!trainer) return;
 		// Another of this rider's screens holds the trainer claim (#1853), so
 		// this one keeps its link, its samples and its Forget and writes
 		// nothing: two tabs actuating fight at 1 Hz as soon as their bias
-		// differs. Forget the sprint mode on the way out, so a grant that
-		// comes back re-issues the slope rather than assuming the trainer is
-		// still in it — the screen that was driving may have left it in ERG.
+		// differs. Forget the sprint on the way out, so a grant that comes
+		// back re-issues the slope rather than assuming the trainer is still
+		// in it — the screen that was driving may have left it in ERG.
 		if (!actuating) {
-			sprintMode = false;
+			actuator.release();
 			return;
 		}
 		// A sprint outranks the guards, deliberately. Auto-pause is an
@@ -292,28 +109,17 @@ export function createRide(deps: RideDeps) {
 		// sounded would otherwise never be given the hill. (Tried the other
 		// way round first; the two-rider e2e is what showed the cost.)
 		if (sprinting) {
-			if (!sprintMode) {
-				sprintMode = true;
-				if (deps.profile.current.singleSpeed) {
-					void trainer.setTargetPower(deps.profile.current.ftp * 2);
-				} else {
-					const grade = deps.profile.current.sprintGrade;
-					void trainer.setSimulation(0);
-					setTimeout(() => {
-						if (sprintMode) void trainer?.setSimulation(grade);
-					}, 500);
-				}
-			}
+			const { sprintGrade, singleSpeed, ftp } = deps.profile.current;
+			actuator.sprint({ grade: sprintGrade, singleSpeed }, ftp);
 			return;
 		}
-		sprintMode = false;
 		// A free ride on a grade is a slope the rider chose, not a target
 		// to hold — and nothing for the guards to release (docs/SPEC.md).
 		if (!deps.joined() && deps.free.armed && deps.free.mode === 'grade') {
-			void trainer.setSimulation(deps.free.grade);
+			actuator.grade(deps.free.grade);
 			return;
 		}
-		void holdTarget(trainer, target);
+		actuator.hold(aim.target);
 	});
 
 	async function ride(next: Trainer) {
@@ -335,11 +141,8 @@ export function createRide(deps: RideDeps) {
 				// but the target had not changed, so the actuation effect below
 				// had nothing to say — and the trainer held no ERG target for
 				// the rest of the block. Say it again, and forget the sprint
-				// mode so a window still open re-issues its slope.
-				if (back && trainer === next && actuating) {
-					sprintMode = false;
-					void holdTarget(next, target);
-				}
+				// so a window still open re-issues its slope.
+				if (back && trainer === next && actuating) actuator.hold(aim.target);
 			}),
 		);
 		try {
@@ -358,19 +161,10 @@ export function createRide(deps: RideDeps) {
 						sample.at,
 					);
 					latest = { watts: metrics.watts, cadence: metrics.cadence };
-					// Only while a session is actually asking something of this
-					// rider. With no target there is nothing to release, and a
-					// rider resting in a voice channel between sessions is not
-					// "paused" — they are just there. Against the PRESCRIBED
-					// target, too: the one the trainer holds is zero exactly when
-					// a guard is already up.
 					const second = Math.floor(sample.at / 1000);
 					const counted = second > guardSecond;
 					if (counted) guardSecond = second;
-					if (prescribed > 0)
-						guards.sample(metrics, prescribed, counted ? 1 : 0);
-					else guards.reset();
-					syncGuards();
+					aim.sample(metrics, counted);
 					// The ⚑'s ring (#2657): this ride's own numbers from pairing
 					// on — the target the trainer was given and why — not the
 					// hub's echo, and not only while a session's clock runs.
@@ -378,14 +172,14 @@ export function createRide(deps: RideDeps) {
 						recorder.tick({
 							watts: metrics.watts,
 							cadence: metrics.cadence,
-							target,
+							target: aim.target,
 							state: sprinting
 								? 'sprint'
-								: prescribed === 0
+								: aim.prescribed === 0
 									? 'no target'
-									: spiralActive
+									: aim.spiralActive
 										? 'spiral'
-										: guardPhase,
+										: aim.guard,
 						});
 					hrSource =
 						metrics.from.heartRate === 'heart-rate' ||
@@ -396,8 +190,8 @@ export function createRide(deps: RideDeps) {
 						wireMetrics(
 							metrics,
 							deps.profile.current.shareHr,
-							effectiveBias,
-							!guards.scoring,
+							aim.bias,
+							!aim.scoring,
 						),
 					);
 					const shared = deps.shared();
@@ -487,7 +281,7 @@ export function createRide(deps: RideDeps) {
 		},
 		/** What the trim is doing, not what the rider once set it to (#2075). */
 		get bias() {
-			return effectiveBias;
+			return aim.bias;
 		},
 		/**
 		 * Does this screen write the trainer's control point? (#1853, #2075)
@@ -499,18 +293,18 @@ export function createRide(deps: RideDeps) {
 			return actuating;
 		},
 		get target() {
-			return target;
+			return aim.target;
 		},
 		/** The rider's own guard state — the session's clock is unaffected (#788). */
 		get guard() {
-			return guardPhase;
+			return aim.guard;
 		},
 		get guardResumeIn() {
-			return guardResumeIn;
+			return aim.resumeIn;
 		},
 		/** The spiral-of-death release: targets off for a few seconds, on purpose. */
 		get spiralActive() {
-			return spiralActive;
+			return aim.spiralActive;
 		},
 		/**
 		 * The workout's own sprint block as a window (#2014). The session draws
@@ -518,9 +312,9 @@ export function createRide(deps: RideDeps) {
 		 * sprint outranks it, since that is the one being scored.
 		 */
 		get blockSprint() {
-			return blockWindow.current;
+			return sprint.blockWindow;
 		},
-		nudgeBias,
+		nudgeBias: aim.nudgeBias,
 		ride,
 		unpair,
 		handOff,

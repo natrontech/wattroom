@@ -131,7 +131,7 @@ So the line moves to where the privacy actually is:
 - **Where you have read up to is stored on the server** — `dm_reads` (reader, peer, time), the same shape as `channel_reads`. It is what the unread dot and the "N new" line are computed from, so every device you are signed in on agrees.
 - **It is only ever read back to you.** The peer's thread, heads and every other answer are the same whether or not you have read their line. No read receipts, no typing indicators — the part of this ADR that was about the other person is unchanged.
 - **The push is yours alone.** Reading a text channel pings your own lobby sockets so your other devices re-fetch at once (`hub.ReadChanged`); it is never broadcast, because a ping timed to your read is a read receipt by another name. DMs pick the change up on their 10 s poll.
-- It is bookkeeping no screen shows you, so the data export leaves it out, as it does `channel_reads` (`account.go`); deleting the account takes it with the rows it points at.
+- It is bookkeeping no screen shows you, so the data export leaves it out, as it does `channel_reads` (`server/internal/account/export.go`); deleting the account takes it with the rows it points at.
 
 The rejected alternative was syncing the localStorage stamps through some side channel — the same data on the server, with more code and less honesty about it.
 

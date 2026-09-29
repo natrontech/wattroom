@@ -3,7 +3,7 @@ import { serverNow } from '$lib/server-clock';
 import { changes } from '$lib/sound/changes';
 import { play, playCountdownTick } from '$lib/sound/cues';
 import type { GuardPhase } from '$lib/workout/guards';
-import type { RideState } from '$lib/workout/session.svelte';
+import type { RideState } from '$lib/workout/ride-state';
 
 /**
  * What a ride says out loud to the rider on it: a block change, their own

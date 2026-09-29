@@ -339,7 +339,7 @@ var (
 		notifications pairing panel perf pins privacy profile progression r ramp
 		recover ride rooms schedule send sessions settings sitemap.xml sound spectator
 		styleguide summary terms theme-editor themes training trophies u
-		s v voice watch whats-new workouts
+		s v voice watch whats-new workouts world
 		de ftp-test game-modes group-workouts self-host smart-trainer-app vs zwift-alternative
 	`)
 	// Keyed by the prefix as already redacted, so a parameter under another

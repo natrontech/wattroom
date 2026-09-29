@@ -90,3 +90,12 @@ requires is back since #2804, and it covers the free ride and the Lounge.
 The places a rider reads before riding with people all say this in one shared
 sentence (`$lib/privacy-copy`): the crew's door, Settings › Your data, and the
 privacy policy.
+
+## Amendment, 2026-09-29 (#3020): a third mode, and alone
+
+[ADR-0062](0062-the-horizon-may-be-a-road.md) gives the free ride a third mode
+beside watts and grade: **route**, where the grade comes from a road and the
+trainer is in SIM. The free ride also rides **alone on `/ride`**, not only in a
+voice channel; alone, nobody sees its numbers but the rider. Time trial, recon,
+climb repeats and "ride with a friend" are ways into the free ride, not modes
+of their own.

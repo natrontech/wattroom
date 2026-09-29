@@ -12,6 +12,8 @@ This document is the north star for the project. Every major platform, UX, featu
 
 WattRoom is "Discord for indoor cycling" — the only app open on ride night (ADR-0010: room-first, ride-night-scoped). A Zwift alternative that deliberately drops the virtual world (no roads, no avatars, no 3D) and focuses on what matters for structured training: executing workouts precisely, and doing it **together**.
 
+> **Diverged 2026-09-29 (#3020, [ADR-0062](docs/decisions/0062-the-horizon-may-be-a-road.md))** — a ride may carry a road. A rider's own imported route rides in any of the five modes — free ride, workout, bunch ride, race, game — and the road decides the grade or where a block ends. Structured training together is still the point; the road is where it happens.
+
 The core insight: indoor training is boring alone. Zwift solves this with a game world. WattRoom solves it with **presence** — you hop into ~~a room~~ with your training buddies, everyone's live watts and heart rate are visible, you talk over voice, see each other on camera, and share music or videos through a synced jukebox.
 
 > **Diverged 2026-09-23 (#2461, [ADR-0058](docs/decisions/0058-the-room-dissolves-into-the-crew.md))** — you hop into your crew's voice channel. Live watts and heart rate are visible to the riders in a session there and to whoever is in that call, and to nobody else in the crew.
@@ -26,9 +28,9 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 
 ### What WattRoom is NOT
 
-- No virtual world, roads, maps or avatars
+- No virtual world, ~~roads~~, maps or avatars **Diverged 2026-09-29 (#3020, ADR-0062)**: roads are in — a route the rider imports, ridden in any mode.
 - No racing simulation, drafting physics or game mechanics
-- No content treadmill (routes, worlds, events)
+- No content treadmill (~~routes~~, worlds, events) **Diverged 2026-09-29 (#3020, ADR-0062)**: riders bring their own routes, which is no treadmill; the one thing WattRoom curates is a growing library of famous climbs, and that is a deliberate divergence from this line.
 - Not a training plan generator (integrate with existing tools later)
 
 ---
