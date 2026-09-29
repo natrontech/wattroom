@@ -61,6 +61,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/tracks"
 	"github.com/natrontech/wattroom/server/internal/unfurl"
 	"github.com/natrontech/wattroom/server/internal/usage"
+	"github.com/natrontech/wattroom/server/internal/wallet"
 )
 
 // wired is what main still needs from the wiring: what to drain on shutdown,
@@ -198,6 +199,11 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	safego.Go(log, "last-20 HR backfill", func() { stats.BackfillLast20mHR(ctx, st, log) })
 	// And the critical-power pair on rides inside the 90-day curve (#3261).
 	safego.Go(log, "critical-power backfill", func() { stats.BackfillCriticalPower(ctx, st, log) })
+	// Batzen (#3152): each account's one opening grant from the riding it did
+	// before the wallet existed; a no-op once every account has one.
+	safego.Go(log, "wallet opening grants", func() { wallet.Open(ctx, st, log) })
+	// Always private: the session source, never a personal token.
+	wallet.New(st, authService, log).Register(mux)
 	// A rider's stored roads (#3024, ADR-0063): the session source, never
 	// readAuth — a personal token is how a coach's AI reads, and no
 	// coordinate reaches an AI context.

@@ -179,7 +179,7 @@ func TestSessionClosedPaysVoiceAndCoach(t *testing.T) {
 	// Two riders is a group session; not a Crew Chief field. A short one
 	// is neither.
 	short := ev
-	short.Seconds = groupSessionMinSec - 1
+	short.Seconds = 10*60 - 1 // a second short of a group session (stats.GroupSession)
 	short.At = ev.At.Add(time.Hour)
 	short.Riders = short.Riders[:2]
 	s.sessionClosed(t.Context(), short)

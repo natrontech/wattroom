@@ -434,6 +434,15 @@ type VisibleChannel struct {
 	UserID    pgtype.UUID
 }
 
+type WalletEvent struct {
+	ID        int64
+	UserID    pgtype.UUID
+	Source    string
+	Amount    int32
+	Ref       string
+	CreatedAt pgtype.Timestamptz
+}
+
 type Workout struct {
 	ID         pgtype.UUID
 	OwnerID    pgtype.UUID
