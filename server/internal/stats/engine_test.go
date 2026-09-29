@@ -2,6 +2,7 @@ package stats
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -505,5 +506,35 @@ func TestExecutionOfARideThatEndedInTheWarmUp(t *testing.T) {
 				t.Fatalf("got %v scorable=%v, want %v scorable=%v", score, scorable, tt.score, tt.scorable)
 			}
 		})
+	}
+}
+
+// Any workout on a route scores as it would off one (#3100): the road is
+// where the dot rides, never what the blocks ask. docs/SPEC.md's "a route
+// ride is unscored" is a free ride's rule — a scored workout on a road pays
+// like any scored workout.
+func TestExecutionIsTheSameOnARoad(t *testing.T) {
+	onRoad := strings.Replace(workoutJSON, `{`,
+		`{"road":{"routeId":"3f0c2a4e-8b1d-4c5e-9f6a-7b8c9d0e1f2a","fromM":0,"toM":5000},`, 1)
+	if err := workout.Validate(onRoad); err != nil {
+		t.Fatalf("a workout on a road is refused: %v", err)
+	}
+	// A session saves the copy its tick carried: the crew's cut attached.
+	attached := strings.Replace(onRoad, `"toM":5000}`, `"toM":5000,"profile":"AQ==","originM":400}`, 1)
+	for name, samples := range map[string][]protocol.RiderMetrics{
+		"on target":        ride(flat(1, 60), flat(200, 30), flat(100, 30), flat(200, 30), flat(100, 30)),
+		"weighted":         ride(flat(1, 60), flat(200, 30), flat(300, 30), flat(200, 30), flat(300, 30)),
+		"a block unridden": ride(flat(1, 60), flat(200, 30), flat(100, 30), flat(0, 30), flat(100, 30)),
+	} {
+		off, offScorable, err := Execution(workoutJSON, 200, samples)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for form, json := range map[string]string{"on a road": onRoad, "with its cut attached": attached} {
+			on, onScorable, err := Execution(json, 200, samples)
+			if err != nil || on != off || onScorable != offScorable {
+				t.Errorf("%s, %s: %v (scorable %v, %v), off a road %v (scorable %v)", name, form, on, onScorable, err, off, offScorable)
+			}
+		}
 	}
 }
