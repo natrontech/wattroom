@@ -116,6 +116,7 @@ func (q *Queries) BestLast20mHRIn90Days(ctx context.Context, userID pgtype.UUID)
 const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
+       rides.distance_m, rides.climbed_m,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -149,6 +150,8 @@ type BestUserRideOfWorkoutRow struct {
 	Xp              int32
 	InSession       bool
 	SharedAt        pgtype.Timestamptz
+	DistanceM       *int32
+	ClimbedM        *int32
 	ExportState     *string
 	CrewID          pgtype.UUID
 	CrewName        string
@@ -183,6 +186,8 @@ func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfW
 		&i.Xp,
 		&i.InSession,
 		&i.SharedAt,
+		&i.DistanceM,
+		&i.ClimbedM,
 		&i.ExportState,
 		&i.CrewID,
 		&i.CrewName,
@@ -252,9 +257,12 @@ insert into rides (
     user_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
     ftp_watts, samples, curve, xp, norm_watts, last20m_hr,
-    crew_id, channel_id, session_id
+    crew_id, channel_id, session_id,
+    route_id, route_key, road_h, ride_mode, timeable,
+    from_m, distance_m, climbed_m, weight_kg, mean_shelter
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 returning id
 `
 
@@ -276,10 +284,22 @@ type CreateRideParams struct {
 	CrewID          pgtype.UUID
 	ChannelID       pgtype.UUID
 	SessionID       pgtype.UUID
+	RouteID         pgtype.UUID
+	RouteKey        *string
+	RoadH           *string
+	RideMode        *string
+	Timeable        *bool
+	FromM           *int32
+	DistanceM       *int32
+	ClimbedM        *int32
+	WeightKg        *int16
+	MeanShelter     *float32
 }
 
 // A session's ride names its crew, the voice channel and the session (#2443);
-// a solo ride leaves all three null.
+// a solo ride leaves all three null. The road summary (#3053) is what exists
+// only at the moment of saving: null where a ride had no road, or the saver
+// did not know.
 func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, createRide,
 		arg.UserID,
@@ -299,6 +319,16 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 		arg.CrewID,
 		arg.ChannelID,
 		arg.SessionID,
+		arg.RouteID,
+		arg.RouteKey,
+		arg.RoadH,
+		arg.RideMode,
+		arg.Timeable,
+		arg.FromM,
+		arg.DistanceM,
+		arg.ClimbedM,
+		arg.WeightKg,
+		arg.MeanShelter,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -1200,6 +1230,7 @@ func (q *Queries) ListUserRideWeeks(ctx context.Context, arg ListUserRideWeeksPa
 const listUserRides = `-- name: ListUserRides :many
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
+       rides.distance_m, rides.climbed_m,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -1235,6 +1266,8 @@ type ListUserRidesRow struct {
 	Xp              int32
 	InSession       bool
 	SharedAt        pgtype.Timestamptz
+	DistanceM       *int32
+	ClimbedM        *int32
 	ExportState     *string
 	CrewID          pgtype.UUID
 	CrewName        string
@@ -1283,6 +1316,8 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 			&i.Xp,
 			&i.InSession,
 			&i.SharedAt,
+			&i.DistanceM,
+			&i.ClimbedM,
 			&i.ExportState,
 			&i.CrewID,
 			&i.CrewName,
@@ -1303,7 +1338,9 @@ const listUserRidesFull = `-- name: ListUserRidesFull :many
 select r.id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution,
        r.execution_scored, r.norm_watts, r.ftp_watts, r.ftp_after_watts, r.xp, r.curve,
        r.shared_at, r.rpe, r.note,
-       c.name as crew_name, ch.name as channel_name
+       c.name as crew_name, ch.name as channel_name,
+       r.ride_mode, r.timeable, r.from_m, r.distance_m, r.climbed_m, r.weight_kg,
+       r.mean_shelter, r.route_key, r.road_h
 from rides r
 left join crews c on c.id = r.crew_id
 left join channels ch on ch.id = r.channel_id
@@ -1329,6 +1366,15 @@ type ListUserRidesFullRow struct {
 	Note            *string
 	CrewName        *string
 	ChannelName     *string
+	RideMode        *string
+	Timeable        *bool
+	FromM           *int32
+	DistanceM       *int32
+	ClimbedM        *int32
+	WeightKg        *int16
+	MeanShelter     *float32
+	RouteKey        *string
+	RoadH           *string
 }
 
 // Export-all (#35): every ride the rider has, summary columns only. The
@@ -1375,6 +1421,15 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 			&i.Note,
 			&i.CrewName,
 			&i.ChannelName,
+			&i.RideMode,
+			&i.Timeable,
+			&i.FromM,
+			&i.DistanceM,
+			&i.ClimbedM,
+			&i.WeightKg,
+			&i.MeanShelter,
+			&i.RouteKey,
+			&i.RoadH,
 		); err != nil {
 			return nil, err
 		}

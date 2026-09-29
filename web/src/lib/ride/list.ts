@@ -34,6 +34,9 @@ export interface ServerRide extends RideRecord {
 	sharedWithFriends: boolean;
 	/** The Strava delivery, when the ride had one (#1553). */
 	exportState?: 'pending' | 'delivered' | 'failed';
+	/** A road ride's metres and climbing, the server's replay (#3053). */
+	distanceM?: number;
+	climbedM?: number;
 }
 
 /** One page of the rides list (#1549). */
