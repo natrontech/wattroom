@@ -115,7 +115,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:    addr,
-		Handler: secured(mux),
+		Handler: secured(mux, enforcedCSP(inlineScriptHashes(builtSPA()))),
 		// Header timeout only: /ws connections are long-lived, so no blanket
 		// read/write timeouts here — the hub owns per-message deadlines.
 		ReadHeaderTimeout: 10 * time.Second,

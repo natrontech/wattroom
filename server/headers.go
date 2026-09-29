@@ -1,7 +1,17 @@
 package main
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
+	"io/fs"
 	"net/http"
+	"path"
+	"slices"
+	"strings"
+
+	xhtml "golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
 )
@@ -28,12 +38,12 @@ import (
 //     settled by trying it both ways in a browser, not from the spec: without
 //     blob: the module is refused with a bare AbortError and **no
 //     securitypolicyviolation is reported at all**, so a report-only run could
-//     never have named it. 'unsafe-inline' is for two inline scripts:
-//     app.html's theme block, and SvelteKit's boot script in the SPA
-//     fallback, whose content changes with every build — so hashing the
-//     theme block alone would not let it go; the build's own hashes would
-//     (#2965). While it stands, blob: widens nothing that is not already
-//     open. No 'unsafe-eval' and no
+//     never have named it. There is no 'unsafe-inline' (#2965): the build's
+//     inline scripts — app.html's theme block, and SvelteKit's boot script in
+//     the fallback and in every prerendered page, whose content changes with
+//     every build — are allowed by hash, read off the embedded build at boot
+//     (inlineScriptHashes), so an injected inline script runs nowhere. No
+//     'unsafe-eval' and no
 //     'wasm-unsafe-eval': the production bundle carries no eval, no
 //     `new Function` and no WebAssembly, livekit-client included.
 //   - style-src — the bundle's stylesheet, plus 'unsafe-inline' for the
@@ -66,14 +76,17 @@ import (
 //     (web/src/lib/workout/ticker.ts).
 //   - frame-ancestors / base-uri / object-src — enforced since #1775.
 //
-// One thing this should not oversell: with a third-party script host the locked
-// RMF constraints make unavoidable, plus the 'unsafe-inline' the two inline
-// scripts still need, the enforced script-src is defence-in-depth and not an
-// XSS boundary. Serving the build's hashes of both is what would change that
-// (#2965).
-const enforcedCSP = "default-src 'self'; " +
-	"script-src 'self' 'unsafe-inline' blob: https://www.youtube.com; " +
-	"style-src 'self' 'unsafe-inline'; " +
+// What it still cannot claim: the locked RMF constraints make a third-party
+// script host unavoidable, so script-src trusts whatever www.youtube.com serves.
+func enforcedCSP(scriptHashes []string) string {
+	sources := append([]string{"'self'"}, scriptHashes...)
+	sources = append(sources, "blob:", "https://www.youtube.com")
+	return "default-src 'self'; script-src " + strings.Join(sources, " ") + "; " + cspAfterScripts
+}
+
+// cspAfterScripts is every directive after script-src, which alone depends on
+// the build.
+const cspAfterScripts = "style-src 'self' 'unsafe-inline'; " +
 	"media-src 'self' blob:; font-src 'self' data:; " +
 	"connect-src 'self' wss: https:; " +
 	"frame-src https://www.youtube-nocookie.com https://www.youtube.com; " +
@@ -105,6 +118,61 @@ const enforcedCSP = "default-src 'self'; " +
 	// server (server/internal/unfurl, server/internal/avatars).
 	"img-src 'self' data: blob: https://i.ytimg.com https://*.giphy.com https://*.tenor.com"
 
+// inlineScriptHashes is a CSP hash-source for every inline script the build's
+// pages carry (#2965), read once at boot: the embedded build never changes
+// under a running process. A script with a src is 'self' and has no text to
+// hash, and a data block such as JSON-LD is never executed, so script-src has
+// nothing to say about either. The tokenizer hands a script's text back raw,
+// newlines normalised, which is the text a browser hashes.
+func inlineScriptHashes(dist fs.FS) []string {
+	var hashes []string
+	_ = fs.WalkDir(dist, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || path.Ext(p) != ".html" {
+			return nil
+		}
+		page, err := fs.ReadFile(dist, p)
+		if err != nil {
+			return nil
+		}
+		z := xhtml.NewTokenizer(bytes.NewReader(page))
+		for {
+			switch z.Next() {
+			case xhtml.ErrorToken:
+				return nil
+			case xhtml.StartTagToken:
+				if name, _ := z.TagName(); atom.Lookup(name) != atom.Script || !executableInline(z) {
+					continue
+				}
+				if z.Next() != xhtml.TextToken {
+					continue
+				}
+				sum := sha256.Sum256(z.Text())
+				hashes = append(hashes, "'sha256-"+base64.StdEncoding.EncodeToString(sum[:])+"'")
+			}
+		}
+	})
+	slices.Sort(hashes)
+	return slices.Compact(hashes)
+}
+
+// executableInline reads the attributes of the <script> the tokenizer is on:
+// its type is JavaScript, or it has none. A script with a src has no text, so
+// the caller never gets as far as hashing one.
+func executableInline(z *xhtml.Tokenizer) bool {
+	for {
+		key, val, more := z.TagAttr()
+		if string(key) == "type" {
+			t := strings.ToLower(strings.TrimSpace(string(val)))
+			if t != "" && t != "module" && !strings.Contains(t, "javascript") && !strings.Contains(t, "ecmascript") {
+				return false
+			}
+		}
+		if !more {
+			return true
+		}
+	}
+}
+
 // permissionsPolicy pins the three powerful features the app actually asks
 // for and denies the rest (#1737). WattRoom needs Web Bluetooth (the trainer
 // and its sensors — web/src/lib/ble/), the microphone (LiveKit voice) and the
@@ -129,10 +197,10 @@ const permissionsPolicy = "camera=(self), microphone=(self), bluetooth=(self), g
 // is always plain http here and gating on it would drop the header in
 // production. RFC 6797 §8.1 is what keeps dev clean — a browser must ignore
 // the header unless it arrived over a secure transport.
-func secured(next http.Handler) http.Handler {
+func secured(next http.Handler, csp string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
-		h.Set("Content-Security-Policy", enforcedCSP)
+		h.Set("Content-Security-Policy", csp)
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		h.Set("Strict-Transport-Security", "max-age=31536000")
