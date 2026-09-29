@@ -142,32 +142,34 @@ func (a *Attacher) Attach(ctx context.Context, workoutJSON string, viewer pgtype
 
 // SessionRoute is the road a session rides (#3095): the coach's own route,
 // never one from Strava, described as everyone in the channel rides it — the
-// crew's cut between the anchors, under its generated name. A route that is
+// crew's cut between the anchors, under its generated name — with that cut's
+// heights for the hub's bunch (#3028), and never its turns. A route that is
 // not the coach's reads as absent, as it does everywhere else.
-func (a *Attacher) SessionRoute(ctx context.Context, coach, routeID string) (protocol.SessionRoute, *protocol.Error, error) {
+func (a *Attacher) SessionRoute(ctx context.Context, coach, routeID string) (protocol.SessionRoute, road.Road, *protocol.Error, error) {
 	owner, err := store.ParseUUID(coach)
 	if err != nil {
-		return protocol.SessionRoute{}, nil, fmt.Errorf("routes: coach %q is not an id: %w", coach, err)
+		return protocol.SessionRoute{}, road.Road{}, nil, fmt.Errorf("routes: coach %q is not an id: %w", coach, err)
 	}
 	id, err := store.ParseUUID(routeID)
 	if err != nil {
-		return protocol.SessionRoute{}, nil, fmt.Errorf("routes: route %q is not an id: %w", routeID, err)
+		return protocol.SessionRoute{}, road.Road{}, nil, fmt.Errorf("routes: route %q is not an id: %w", routeID, err)
 	}
 	row, err := a.q.GetOwnerRoute(ctx, db.GetOwnerRouteParams{ID: id, OwnerID: owner})
 	switch {
 	case errors.Is(err, pgx.ErrNoRows):
-		return protocol.SessionRoute{}, &protocol.Error{Code: "not_found", Message: "That route is not one of yours."}, nil
+		return protocol.SessionRoute{}, road.Road{}, &protocol.Error{Code: "not_found", Message: "That route is not one of yours."}, nil
 	case err != nil:
-		return protocol.SessionRoute{}, nil, fmt.Errorf("routes: read route %s: %w", routeID, err)
+		return protocol.SessionRoute{}, road.Road{}, nil, fmt.Errorf("routes: read route %s: %w", routeID, err)
 	case row.Src == stravaSrc:
-		return protocol.SessionRoute{}, &protocol.Error{Code: "forbidden", Message: "Routes from Strava ride with you alone, never in a session."}, nil
+		return protocol.SessionRoute{}, road.Road{}, &protocol.Error{Code: "forbidden", Message: "Routes from Strava ride with you alone, never in a session."}, nil
 	}
 	ridden, err := road.UnpackRoad(row.Road)
 	if err != nil {
-		return protocol.SessionRoute{}, nil, fmt.Errorf("routes: stored road %s unreadable: %w", routeID, err)
+		return protocol.SessionRoute{}, road.Road{}, nil, fmt.Errorf("routes: stored road %s unreadable: %w", routeID, err)
 	}
 	cut, _ := ridden.Cut(protocol.RouteHiddenEndM, ridden.LengthM-protocol.RouteHiddenEndM)
-	return protocol.SessionRoute{ID: routeID, Hash: row.RoadHash, GenName: row.GenName, LengthM: cut.LengthM}, nil, nil
+	return protocol.SessionRoute{ID: routeID, Hash: row.RoadHash, GenName: row.GenName, LengthM: cut.LengthM},
+		road.Road{LengthM: cut.LengthM, Heights: cut.Heights}, nil, nil
 }
 
 // ForSession is a session's pick (#3051): the coach's own route, never one

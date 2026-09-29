@@ -130,6 +130,9 @@ func (rm *channelState) detach(log *slog.Logger, where string, fn func()) {
 // rode, everyone who was in voice, and who pressed start. Caller holds rm.mu.
 func (rm *channelState) closedLocked(state protocol.SessionState, now time.Time) *SessionClosed {
 	ev := &SessionClosed{Channel: rm.channel, SessionID: state.ID, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
+	if b := rm.session.bunch; b != nil {
+		ev.DistanceM, ev.ClimbedM = b.distance(), b.climbed
+	}
 	for _, id := range rm.seenOrder {
 		ev.Riders = append(ev.Riders, SessionRider{
 			ID: id, Rode: rm.record.count(id) >= MinRideSamples,

@@ -27,7 +27,7 @@ func (rm *channelState) startGame(mode string, rider protocol.Rider, now time.Ti
 // startGameOn is startGame on a road (#3095). The road is the session's, so
 // only a game that opens the session sets it; one inside a running session
 // rides that session's road.
-func (rm *channelState) startGameOn(mode string, route *protocol.SessionRoute, rider protocol.Rider, now time.Time) string {
+func (rm *channelState) startGameOn(mode string, route *routeRide, rider protocol.Rider, now time.Time) string {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if rm.game != nil && !rm.game.done() {
@@ -44,8 +44,8 @@ func (rm *channelState) startGameOn(mode string, route *protocol.SessionRoute, r
 	rm.gameHost = rm.session.id
 	if opens {
 		rm.session.begin(uuid.NewString(), rider.ID, rider.Name)
-		rm.session.runGame(mode, gameModeNames[mode], now)
 		rm.session.route = route
+		rm.session.runGame(mode, gameModeNames[mode], now)
 		rm.resetRunLocked(rider.ID)
 		rm.gameHost = ""
 	}
