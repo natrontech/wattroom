@@ -214,6 +214,12 @@ type MovedRoom struct {
 	VoiceChannelID pgtype.UUID
 }
 
+type Outfit struct {
+	UserID    pgtype.UUID
+	Loadout   []byte
+	UpdatedAt pgtype.Timestamptz
+}
+
 type Passkey struct {
 	CredentialID []byte
 	UserID       pgtype.UUID
@@ -441,6 +447,14 @@ type WalletEvent struct {
 	Amount    int32
 	Ref       string
 	CreatedAt pgtype.Timestamptz
+}
+
+type Wardrobe struct {
+	UserID      pgtype.UUID
+	ItemID      string
+	Source      string
+	AcquiredAt  pgtype.Timestamptz
+	FirstWornAt pgtype.Timestamptz
 }
 
 type Workout struct {
