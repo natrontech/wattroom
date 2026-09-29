@@ -4,18 +4,18 @@
 // It holds no product code: it loads the deployed web app, so the UI ships on
 // every server deploy and a desktop release only happens when the shell
 // changes. What would crowd this file lives beside it: the window's state,
-// notifications, the HUD, deep links and the updater each have a module.
+// notifications, the HUD, deep links, the updater, the Bluetooth chooser and
+// the permission handlers each have a module.
 //
-// Everything interesting here is in the four handlers (RESEARCH.md §15.1).
-// Electron is not a browser with a title bar — each of these is something
-// Chrome does for you, and each one's absence looks like a bug in WattRoom
-// rather than a missing handler.
+// Everything interesting is in the four handlers (RESEARCH.md §15.1):
+// Bluetooth (bluetooth.js), permissions and screen share (permissions.js),
+// and navigation (guardNavigation, below). Electron is not a browser with a
+// title bar — each of these is something Chrome does for you, and each one's
+// absence looks like a bug in WattRoom rather than a missing handler.
 
 const {
 	app,
 	BrowserWindow,
-	desktopCapturer,
-	dialog,
 	ipcMain,
 	Menu,
 	MenuItem,
@@ -24,11 +24,13 @@ const {
 } = require('electron');
 const path = require('node:path');
 const badge = require('./badge');
+const bluetooth = require('./bluetooth');
 const deepLink = require('./deep-link');
 const hud = require('./hud');
 const log = require('./log');
 const loginItem = require('./login-item');
 const notifications = require('./notifications');
+const permissions = require('./permissions');
 const tray = require('./tray');
 const updater = require('./updater');
 const visibility = require('./visibility');
@@ -93,87 +95,6 @@ const ipc = {
 			fromUs(event) ? fn(event, ...args) : undefined,
 		),
 };
-
-// How long a scan may find NOTHING before the rider gets an answer. A trainer
-// woken by the cranks is advertising within a couple of seconds; past this it
-// is asleep, and saying so beats a button that never comes back. It stops
-// counting the moment the first device is heard: from there the picker is on
-// screen and the decision is the rider's, not a deadline's.
-const PAIRING_TIMEOUT_MS = 20_000;
-
-// Whether the loaded web app draws the device picker (#1716). The shell and
-// the app release on separate trains, so a shell newer than wattroom.ch is an
-// ordinary state — registering the listener is the handshake, and without it
-// the native message box below is still the answer.
-let pickerReady = false;
-// Registering the listener is the app saying it can draw the picker.
-ipc.on('wattroom:ble-picker-ready', () => {
-	pickerReady = true;
-});
-
-/**
- * The Bluetooth request currently open, if any.
- *
- * Chromium runs one chooser at a time and cancels the old one when a new
- * request starts, so a single slot is the whole state machine. Module scope
- * rather than per-window, like every other ipcMain handler here: the rider's
- * answer arrives on a channel, not through a window.
- */
-let scan = null;
-
-/** Answer the chooser once, whichever emit's callback is current. */
-function settleScan(deviceId) {
-	if (!scan) return;
-	clearTimeout(scan.timer);
-	const { answer, contents } = scan;
-	scan = null;
-	if (!contents.isDestroyed()) contents.send('wattroom:ble-scan', null);
-	answer(deviceId);
-}
-
-// The rider picked, or closed the picker. Ignored when no request is open:
-// a stale answer must never settle the NEXT one.
-ipc.on('wattroom:ble-pick', (_event, deviceId) =>
-	settleScan(deviceId || ''),
-);
-
-// True only for the launch warm-up (warmBluetooth), so its chooser is answered
-// rather than shown.
-let warmingBluetooth = false;
-
-/**
- * Spend the first Bluetooth failure at launch, where nobody is waiting (#1545).
- *
- * Chromium creates the CoreBluetooth manager on the FIRST requestDevice and
- * reports the adapter powered-off until it answers, ~300 ms later. Chrome's own
- * chooser draws "turn Bluetooth on" and recovers when it does; Electron turns
- * the same signal into a cancelled chooser, and `select-bluetooth-device` never
- * fires — so nothing in this file can see that request, let alone retry it. The
- * rider's first pairing attempt of every launch failed with "User cancelled",
- * having asked them nothing.
- *
- * `true` is the user-gesture argument: requestDevice needs transient activation.
- *
- * Packaged builds only. TCC does not accept the prebuilt Electron's Info.plist,
- * so an unpackaged shell is SIGABRTed the moment anything touches CoreBluetooth
- * — a dev shell cannot pair a trainer on macOS at all, and warming one at
- * launch would kill `pnpm start` on the spot.
- */
-function warmBluetooth(win) {
-	if (!app.isPackaged) return;
-	warmingBluetooth = true;
-	win.webContents
-		.executeJavaScript(
-			`navigator.bluetooth?.requestDevice({ filters: [{ services: ['fitness_machine'] }] }).catch(() => {})`,
-			true,
-		)
-		.catch(() => {
-			/* no Web Bluetooth (the offline screen is a file:// page) */
-		})
-		.finally(() => {
-			warmingBluetooth = false;
-		});
-}
 
 /** The only origin allowed to navigate, open windows, or hold a permission. */
 function isOurs(url) {
@@ -317,7 +238,7 @@ function createWindow({ hidden = false } = {}) {
 	installHandlers(win);
 	load(win);
 	// Once: the adapter stays up for the life of the process.
-	win.webContents.once('did-finish-load', () => warmBluetooth(win));
+	win.webContents.once('did-finish-load', () => bluetooth.warm(win));
 	return win;
 }
 
@@ -329,162 +250,8 @@ function load(win) {
 }
 
 function installHandlers(win) {
-	const ses = win.webContents.session;
-
-	// 1. Bluetooth. Electron ships no chooser at all: with no listener every
-	//    request is CANCELLED (so requestDevice rejects), and with a listener
-	//    that forgets preventDefault the FIRST device is selected silently —
-	//    which in a room of advertising sensors is someone else's trainer.
-	//    RESEARCH.md §15.1.
-	//
-	//    Electron emits this the moment the scan starts — ~130 ms in, before
-	//    anything can have advertised — and again for every device it hears.
-	//    Answering that first empty list is a cancel, which is how the shell
-	//    shipped unable to pair anything at all (#1545): hold the callback and
-	//    let the scan run.
-	//
-	//    What the rider sees is the app's own modal, fed the list as the scan
-	//    grows it (#1716). It used to be `dialog.showMessageBox` with one
-	//    button per device — an OS alert in the middle of a synthwave app, and
-	//    a SNAPSHOT: it opened on the first device heard, so a second sensor
-	//    advertising a moment later was invisible until you cancelled and
-	//    started again. RESEARCH.md §15.1 named the renderer-side picker as
-	//    the upside of owning this event; this is it.
-	//
-	//    Nothing is remembered between scans any more. The shell used to skip
-	//    the picker entirely for the last device it had seen — process-wide,
-	//    across every sensor kind — which saved a tap once and then made
-	//    pairing a DIFFERENT trainer impossible for the rest of the launch.
-	//    §15.1 lists remembering as an upside of owning the chooser; it is
-	//    one only if the rider can still get past it.
-	//
-	//    The slot and its answer channel are at module scope above; only the
-	//    event itself belongs to this window.
-	win.webContents.on('select-bluetooth-device', (event, devices, callback) => {
-		event.preventDefault();
-
-		// The launch warm-up below is a request nobody asked for: never put a
-		// picker in front of a rider for it.
-		if (warmingBluetooth) {
-			callback('');
-			return;
-		}
-
-		// Every emit brings a fresh callback into the same chooser; the newest
-		// is the one to answer with. A request that supersedes another
-		// inherits its countdown, which is only ever short — and the picker is
-		// modal, so the rider cannot start a second search while one is open.
-		if (!scan) {
-			scan = {
-				// Nothing found in this long means the sensor is asleep, not that
-				// the rider is still deciding. Cancelling gives the renderer a
-				// rejection it has copy for; silence would hang the pair button.
-				timer: setTimeout(() => settleScan(''), PAIRING_TIMEOUT_MS),
-			};
-		}
-		scan.answer = callback;
-		scan.contents = win.webContents;
-
-		// The renderer's requestDevice filters already narrowed this list to
-		// FTMS/HR/CSC, so everything offered here is pairable.
-		const offer = devices.map((d) => ({
-			id: d.deviceId,
-			name: d.deviceName || d.deviceId,
-		}));
-
-		if (pickerReady) {
-			// Something is advertising, so the deadline is over — the rider is
-			// now reading a list, and a countdown would close it under them.
-			if (offer.length > 0) clearTimeout(scan.timer);
-			win.webContents.send('wattroom:ble-scan', offer);
-			return;
-		}
-
-		// A web app too old to draw the picker (see pickerReady). The message
-		// box is a snapshot: a sensor heard after it opens is not in it.
-		if (offer.length === 0 || scan.asked) return;
-		scan.asked = true;
-		chooseFrom(
-			win,
-			'Pair a sensor',
-			offer.map((d) => ({ label: d.name, value: d.id })),
-		).then(({ value: deviceId }) => settleScan(deviceId || ''));
-	});
-
-	// 2. Permissions. Electron's default is to ALLOW — with remote content that
-	//    hands camera and microphone to anything that gets the renderer to
-	//    navigate. Deny by default, allow our own origin the things a room
-	//    actually needs.
-	// 'notifications' too (#296): the app's own switch (lib/notify) asks for
-	// it, and a shell that answered no left every room event silent — the one
-	// thing a desktop app is expected to do better than a tab.
-	const ALLOWED = new Set([
-		'media',
-		'clipboard-sanitized-write',
-		'fullscreen',
-		'notifications',
-	]);
-	// Decided on the FRAME that asks (#1939), not the top page: the embedded
-	// player is a third-party frame under our page, and the top URL let it
-	// inherit the mic, notifications and fullscreen.
-	ses.setPermissionRequestHandler((contents, permission, callback, details) => {
-		const from = details?.requestingUrl ?? contents.getURL();
-		callback(isOurs(from) && ALLOWED.has(permission));
-	});
-	// The check half: most web APIs check first and only request if denied, so
-	// a handler on one and not the other is a gate with a hole in it.
-	ses.setPermissionCheckHandler(
-		(_contents, permission, origin) =>
-			origin === APP_ORIGIN && ALLOWED.has(permission),
-	);
-
-	// 3. Screen share. Electron does not implement standard getDisplayMedia, so
-	//    without this the stage (#280) silently breaks. It must also survive
-	//    cancellation — an unhandled rejection here leaves the renderer waiting
-	//    forever (electron#47980).
-	ses.setDisplayMediaRequestHandler(
-		(request, callback) => {
-			desktopCapturer
-				.getSources({ types: ['screen', 'window'] })
-				.then((sources) => {
-					if (sources.length === 0) return callback({});
-					return chooseFrom(
-						win,
-						'Share a screen',
-						sources.map((s) => ({ label: s.name, value: s.id })),
-						canShareSound() && request.audioRequested ? SOUND_ASK : null,
-					).then(({ value: id, checked: sound }) => {
-						const picked = sources.find((s) => s.id === id);
-						// callback({}) is the deny path; a cancelled picker is a
-						// refusal, not an error to surface.
-						//
-						// 'loopback' is the system-audio half of ADR-0037 (#1124):
-						// what the machine is playing, captured through WASAPI.
-						// Offered with the picture and never assumed (#1699): the
-						// tap is the whole machine, so a rider who picked one
-						// window would otherwise also send their notifications,
-						// their calls and the room's own voices back into it.
-						if (!picked) return callback({});
-						callback(
-							sound ? { video: picked, audio: 'loopback' } : { video: picked },
-						);
-					});
-				})
-				.catch(() => callback({}));
-		},
-		// The native picker on macOS, our message box everywhere else.
-		//
-		// Not a preference: with an app-supplied picker, macOS creates the
-		// loopback track and never puts data in it (electron#52738) — live
-		// readyState, no error, silence. The system picker is also what raises
-		// the TCC "record system audio" prompt, so without it a rider is never
-		// asked for the permission the capture needs.
-		//
-		// Electron ignores the flag below macOS 15, where the app picker is
-		// still the only one, so this is safe to set for all of darwin.
-		{ useSystemPicker: process.platform === 'darwin' },
-	);
-
+	bluetooth.attach(win);
+	permissions.attach(win);
 	guardNavigation(win);
 	textMenu(win);
 
@@ -569,56 +336,8 @@ function guardNavigation(win) {
 	});
 }
 
-/**
- * Whether the machine's sound can ride along with the picture (#1124, #1699).
- *
- * Windows only, and not a preference: this handler runs on macOS only below
- * 15, where an app-supplied picker gets a loopback track with no data in it
- * (electron#52738) — asking there would promise a sound that never arrives
- * and leave the share notice claiming one. Above 15 the system picker asks
- * for audio itself, and Linux Chromium has no loopback at all.
- */
-function canShareSound() {
-	return process.platform === 'win32';
-}
-
-/**
- * What the loopback tap actually takes, said plainly: it is the machine's
- * output device, not the window the rider picked — Chromium has no per-app
- * tap to offer instead. Off unless ticked: the rider chose a window, and the
- * machine is more than they chose.
- */
-const SOUND_ASK =
-	"Send this machine's sound too — everything it plays, not just what you pick";
-
-/**
- * A chooser with no UI of its own. `dialog.showMessageBox` is native, needs no
- * renderer, and cannot drift from the app's theme because it has none.
- *
- * ponytail: caps at eight entries plus Cancel — past that a message box is the
- * wrong control. The Bluetooth chooser outgrew it and now draws in the app
- * (#1716); the screen picker still fits, and its checkbox has no counterpart
- * in a renderer-side one.
- *
- * @returns the chosen value (null if cancelled), and the checkbox if asked.
- */
-async function chooseFrom(win, title, options, checkboxLabel = null) {
-	const shown = options.slice(0, 8);
-	const { response, checkboxChecked } = await dialog.showMessageBox(win, {
-		type: 'question',
-		title,
-		message: title,
-		buttons: [...shown.map((o) => o.label), 'Cancel'],
-		cancelId: shown.length,
-		defaultId: 0,
-		...(checkboxLabel ? { checkboxLabel, checkboxChecked: false } : {}),
-	});
-	return {
-		value: shown[response]?.value ?? null,
-		checked: checkboxChecked === true,
-	};
-}
-
+bluetooth.install({ ipc });
+permissions.install({ appOrigin: APP_ORIGIN, isOurs });
 updater.install({ ipc });
 hud.install({
 	ipc,
