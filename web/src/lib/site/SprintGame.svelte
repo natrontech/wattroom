@@ -4,8 +4,9 @@
 
 	// "Try the sprint" (#2995): Sprint Roulette's moment, played with a thumb.
 	// Tap the pad (or Space) as fast as you can, or hold it down — the no-mash
-	// way to play. Silent on purpose: the klaxon is a flash, never a sound on
-	// a page nobody asked to make noise. The rivals are made up.
+	// way to play. Silent on purpose: the klaxon is the frame turning the watt
+	// colour, never a sound on a page nobody asked to make noise. The rivals
+	// are made up.
 	const field = [
 		{ name: 'Mara', watts: 1190 },
 		{ name: 'Luca', watts: 980 },
@@ -186,22 +187,11 @@
 </div>
 
 <style>
-	/* The klaxon, seen rather than heard: the frame flashes in the watt
-	   colour while the countdown runs, and holds still for reduced motion. */
+	/* The klaxon, seen rather than heard: the frame holds the watt colour
+	   while the countdown runs. Held, never blinked — ADR-0079's flash budget
+	   says watt does not flash (#3447), and a steady frame needs nothing
+	   stilled for reduced motion. */
 	.klaxon {
-		animation: klaxon 0.5s steps(2, jump-none) infinite;
-	}
-	@keyframes klaxon {
-		from {
-			border-color: var(--color-watt);
-		}
-		to {
-			border-color: transparent;
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		.klaxon {
-			animation: none;
-		}
+		border-color: var(--color-watt);
 	}
 </style>
