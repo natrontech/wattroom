@@ -184,6 +184,16 @@ export function setShellPlace(place: { path: string; name: string } | null) {
 }
 
 /**
+ * The count the sidebar shows, on the Dock or taskbar icon (#3008). The shell
+ * only draws it; a no-op in a browser and in a shell older than the bridge.
+ */
+export function setShellBadge(count: number) {
+	(
+		globalThis as { wattroom?: { setBadge?: (n: number) => void } }
+	).wattroom?.setBadge?.(count);
+}
+
+/**
  * The tray asking for a path. It arrives over IPC rather than as a
  * navigation, so the app routes to it and a ride keeps its socket.
  */

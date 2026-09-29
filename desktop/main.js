@@ -25,6 +25,7 @@ const {
 } = require('electron');
 const fs = require('node:fs');
 const path = require('node:path');
+const badge = require('./badge');
 const loginItem = require('./login-item');
 const tray = require('./tray');
 const visibility = require('./visibility');
@@ -889,6 +890,15 @@ ipcMain.on('wattroom:room', (event, r) => {
 	if (!win || win.isDestroyed() || win === hudWindow) return;
 	const to = r && typeof r === 'object' ? ownPath(r.path) : '';
 	tray.setRoom(to ? { path: to, name: clip(r.name, 60) || to } : null);
+});
+
+// The unread badge (#3008): the main window's sidebar speaks for it, never
+// the HUD, which runs the app's layout too (#1938). The count is clamped in
+// badge.js before the OS sees it.
+ipcMain.on('wattroom:badge', (event, n) => {
+	const win = BrowserWindow.fromWebContents(event.sender);
+	if (!win || win.isDestroyed() || win === hudWindow) return;
+	badge.set(n, win);
 });
 
 // Launch at login (#1313). The shell owns the OS side; Settings and the tray
