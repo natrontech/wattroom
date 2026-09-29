@@ -1,8 +1,10 @@
-import type {
-	ControlMode,
-	Trainer,
-	TrainerSample,
-	TrainerStatus,
+import {
+	resolveSim,
+	type ControlMode,
+	type SimParams,
+	type Trainer,
+	type TrainerSample,
+	type TrainerStatus,
 } from './trainer';
 
 /**
@@ -75,6 +77,28 @@ export function clampTarget(watts: number, range: PowerRange): number {
 	const stepped =
 		Math.round(watts / range.incrementWatts) * range.incrementWatts;
 	return Math.min(range.maxWatts, Math.max(range.minWatts, stepped));
+}
+
+/** Round onto a field's integer grid and clamp to its width. */
+function toField(value: number, min: number, max: number): number {
+	return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+/**
+ * Indoor Bike Simulation Parameters (op 0x11), each field at its FTMS
+ * resolution and clamped to its width: wind SINT16 at 0.001 m/s, grade
+ * SINT16 at 0.01 %, Crr UINT8 at 0.0001, Cw UINT8 at 0.01 kg/m — so Crr tops
+ * out at 0.0255 and Cw at 2.55 kg/m.
+ */
+export function encodeSimulation(road: SimParams): ArrayBuffer {
+	const { gradePct, crr, cw, windMps } = resolveSim(road);
+	const payload = new DataView(new ArrayBuffer(7));
+	payload.setUint8(0, OP_SET_SIMULATION);
+	payload.setInt16(1, toField(windMps * 1000, -0x8000, 0x7fff), true);
+	payload.setInt16(3, toField(gradePct * 100, -0x8000, 0x7fff), true);
+	payload.setUint8(5, toField(crr * 10000, 0, 0xff));
+	payload.setUint8(6, toField(cw * 100, 0, 0xff));
+	return payload.buffer;
 }
 
 export interface IndoorBikeData {
@@ -279,6 +303,8 @@ export class FtmsTrainer implements Trainer {
 						cadence: Math.round(merged.cadence ?? 0),
 						// Already parsed out of Indoor Bike Data; it used to stop here (#44).
 						heartRate: merged.heartRate,
+						speedMps:
+							merged.speedKph === undefined ? undefined : merged.speedKph / 3.6,
 						at: Date.now(),
 					});
 				}
@@ -377,15 +403,9 @@ export class FtmsTrainer implements Trainer {
 		await this.#writeTarget(payload.buffer);
 	}
 
-	async setSimulation(gradePercent: number): Promise<void> {
-		const payload = new DataView(new ArrayBuffer(7));
-		payload.setUint8(0, OP_SET_SIMULATION);
-		payload.setInt16(1, 0, true); // wind speed, 0.001 m/s
-		payload.setInt16(3, Math.round(gradePercent * 100), true); // grade, 0.01 %
-		payload.setUint8(5, 40); // Crr 0.0040
-		payload.setUint8(6, 51); // Cw 0.51 kg/m
+	async setSimulation(road: SimParams): Promise<void> {
 		this.#mode = 'sim';
-		await this.#writeTarget(payload.buffer);
+		await this.#writeTarget(encodeSimulation(road));
 	}
 
 	onSample(cb: (s: TrainerSample) => void): () => void {

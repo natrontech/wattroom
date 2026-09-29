@@ -1,9 +1,15 @@
-import type {
-	ControlMode,
-	Trainer,
-	TrainerSample,
-	TrainerStatus,
+import {
+	resolveSim,
+	type ControlMode,
+	type SimParams,
+	type Trainer,
+	type TrainerSample,
+	type TrainerStatus,
 } from './trainer';
+
+/** One control write, as the trainer took it — SIM with every field resolved. */
+export type ControlWrite =
+	{ op: 'erg'; watts: number } | ({ op: 'sim' } & Required<SimParams>);
 
 export interface SimulatedTrainerOptions {
 	/** rider's steady effort in sim mode, watts */
@@ -37,7 +43,7 @@ export class SimulatedTrainer implements Trainer {
 	#status: TrainerStatus = 'disconnected';
 	#mode: ControlMode = 'erg';
 	#targetWatts = 100;
-	#gradePercent = 0;
+	#road = resolveSim({ gradePct: 0 });
 	#watts = 0;
 	#dropped = false;
 
@@ -72,6 +78,13 @@ export class SimulatedTrainer implements Trainer {
 		return this.#mode;
 	}
 
+	/** Every control write in order, so a test can count what reached the trainer. */
+	readonly writes: ControlWrite[] = [];
+	/** The road the last SIM write described, defaults resolved. */
+	get road(): Required<SimParams> {
+		return this.#road;
+	}
+
 	async connect(): Promise<void> {
 		if (this.#status === 'connected') return;
 		this.#setStatus('connecting');
@@ -90,12 +103,16 @@ export class SimulatedTrainer implements Trainer {
 		this.#assertConnected();
 		this.#mode = 'erg';
 		this.#targetWatts = Math.max(0, watts);
+		this.writes.push({ op: 'erg', watts });
 	}
 
-	async setSimulation(gradePercent: number): Promise<void> {
+	// ponytail: the effort model reads the grade only; Crr, Cw and wind are
+	// kept and logged, and ride through the shared pace model with #3050.
+	async setSimulation(road: SimParams): Promise<void> {
 		this.#assertConnected();
 		this.#mode = 'sim';
-		this.#gradePercent = gradePercent;
+		this.#road = resolveSim(road);
+		this.writes.push({ op: 'sim', ...this.#road });
 	}
 
 	onSample(cb: (s: TrainerSample) => void): () => void {
@@ -138,7 +155,7 @@ export class SimulatedTrainer implements Trainer {
 		const target =
 			this.#mode === 'erg'
 				? this.#targetWatts
-				: Math.max(0, this.#baseWatts * (1 + 0.08 * this.#gradePercent));
+				: Math.max(0, this.#baseWatts * (1 + 0.08 * this.#road.gradePct));
 		const alpha = 1 - Math.exp(-this.#tickMs / 1000 / this.#tau);
 		this.#watts += (target - this.#watts) * alpha;
 		const watts = Math.max(

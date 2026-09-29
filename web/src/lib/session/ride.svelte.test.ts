@@ -3,7 +3,12 @@ import { channelAddress } from '$lib/channel/address';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { flushSync } from 'svelte';
 import type { RiderMetrics } from '$lib/protocol';
-import type { Trainer, TrainerSample, TrainerStatus } from '$lib/ble/trainer';
+import type {
+	SimParams,
+	Trainer,
+	TrainerSample,
+	TrainerStatus,
+} from '$lib/ble/trainer';
 import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
 import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 
@@ -62,8 +67,8 @@ class FakeTrainer implements Trainer {
 	async setTargetPower(watts: number) {
 		this.commands.push(`erg:${watts}`);
 	}
-	async setSimulation(grade: number) {
-		this.commands.push(`sim:${grade}`);
+	async setSimulation(road: SimParams) {
+		this.commands.push(`sim:${road.gradePct}`);
 	}
 	onSample(cb: (sample: TrainerSample) => void) {
 		this.listener = cb;
