@@ -135,3 +135,53 @@ func (rm *room) gameRosterLocked() map[string]protocol.Rider {
 	maps.Copy(rm.gameRoster, rm.seen)
 	return rm.gameRoster
 }
+
+// gameLinger keeps a finished game's podium on the tick as long as the
+// sprint keeps its own (#1579); then the room lets the game go, instead of
+// stapling "done" to every tick until a coach pressed end.
+const gameLinger = sprintLinger
+
+// advanceGameLocked runs the game's tick and owns its ending (#1575, #1579):
+// the first tick that sees it done puts the winner on the timeline once and
+// names them for the XP ledger; gameLinger later the game is let go. Caller
+// holds rm.mu; the returned winner is handed to the keeper after the unlock.
+func (rm *room) advanceGameLocked(now time.Time) (winner string) {
+	rm.endOrphanedGameLocked(now)
+	if rm.game == nil {
+		rm.lastGame = nil
+		return ""
+	}
+	samples := make(map[string]int, len(rm.metrics))
+	for id, m := range rm.metrics {
+		// Only the session's own riders play (ADR-0059).
+		if rm.session.rides(id) {
+			samples[id] = m.Watts
+		}
+	}
+	rm.game.advance(now, samples, rm.gameRosterLocked())
+	gs := rm.game.state(now)
+	rm.lastGame = &gs
+	if !rm.game.done() {
+		return ""
+	}
+	if rm.gameDoneAt.IsZero() {
+		rm.gameDoneAt = now
+		// The game's end is its session's (#2597): this tick closes it, and
+		// the podium lingers on while the rides are saved.
+		rm.endGameSessionLocked(now)
+		if len(gs.Podium) > 0 {
+			rm.events.add(sessionLine("won", gs.Podium[0].Name, gs.Mode, time.Time{}, now), now)
+			return gs.Podium[0].RiderID
+		}
+		// Not every game ends with a winner, and the ones that do not used to
+		// end in silence: a collective ramp finishes on the room's average
+		// falling off the line and builds no podium, so the timeline said
+		// nothing about a game the whole room had just ridden (ADR-0022).
+		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
+		return ""
+	}
+	if now.Sub(rm.gameDoneAt) > gameLinger {
+		rm.game, rm.lastGame, rm.gameDoneAt, rm.gameHost = nil, nil, time.Time{}, ""
+	}
+	return ""
+}
