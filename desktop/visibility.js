@@ -57,9 +57,11 @@ function throttleIfIdle(win, rideHeld) {
  * @param win the rider's window
  * @param opts.hides whether a close hides it (false where there is no tray,
  *   and then a close is today's close)
+ * @param opts.hidden whether a login launch created it hidden: in the tray
+ *   from boot, and throttled like any window a close put there (#3510)
  * @param opts.rideHeld whether a ride holds keepAwake right now
  */
-function manage(win, { hides, rideHeld }) {
+function manage(win, { hides, hidden, rideHeld }) {
 	const tell = (visible) => {
 		if (!win.isDestroyed()) win.webContents.send('wattroom:visibility', visible);
 		throttleIfIdle(win, rideHeld);
@@ -78,6 +80,10 @@ function manage(win, { hides, rideHeld }) {
 		tell(false);
 		announceOnce();
 	});
+	if (hidden) {
+		closedToTray.add(win);
+		throttleIfIdle(win, rideHeld);
+	}
 }
 
 /**
