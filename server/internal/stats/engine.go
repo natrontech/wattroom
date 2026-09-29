@@ -141,9 +141,15 @@ func Scorable(segments []workout.Segment) bool {
 
 // Curve is the best-effort power curve (SPEC windows).
 type Curve struct {
-	Best5s  int `json:"best5s"`
-	Best1m  int `json:"best1m"`
+	Best5s int `json:"best5s"`
+	Best1m int `json:"best1m"`
+	// Best3m and Best12m are the critical-power model's two-point pair
+	// (#3261): what CP and W′ are fitted from, for the devil and a pacer.
+	// Kept, never shown as a PR or used as a rank currency — the four
+	// windows a rider sees are the other four.
+	Best3m  int `json:"best3m"`
 	Best5m  int `json:"best5m"`
+	Best12m int `json:"best12m"`
 	Best20m int `json:"best20m"`
 }
 
@@ -168,7 +174,8 @@ func PowerCurve(watts []int) Curve {
 		return int(math.Round(float64(top) / float64(window)))
 	}
 	return Curve{
-		Best5s: best(5), Best1m: best(60), Best5m: best(300), Best20m: best(1200),
+		Best5s: best(5), Best1m: best(60), Best3m: best(180), Best5m: best(300),
+		Best12m: best(720), Best20m: best(1200),
 	}
 }
 

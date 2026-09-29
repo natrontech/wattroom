@@ -197,9 +197,12 @@ func Summary(ctx context.Context, q *db.Queries, user db.User) (Response, error)
 
 	out := Response{
 		Curve: curveJSON{
-			D30: stats.Curve{Best5s: int(bests.D30Best5s), Best1m: int(bests.D30Best1m), Best5m: int(bests.D30Best5m), Best20m: int(bests.D30Best20m)},
-			D90: stats.Curve{Best5s: int(bests.D90Best5s), Best1m: int(bests.D90Best1m), Best5m: int(bests.D90Best5m), Best20m: int(bests.D90Best20m)},
-			All: stats.Curve{Best5s: int(bests.AllBest5s), Best1m: int(bests.AllBest1m), Best5m: int(bests.AllBest5m), Best20m: int(bests.AllBest20m)},
+			D30: stats.Curve{Best5s: int(bests.D30Best5s), Best1m: int(bests.D30Best1m), Best3m: int(bests.D30Best3m),
+				Best5m: int(bests.D30Best5m), Best12m: int(bests.D30Best12m), Best20m: int(bests.D30Best20m)},
+			D90: stats.Curve{Best5s: int(bests.D90Best5s), Best1m: int(bests.D90Best1m), Best3m: int(bests.D90Best3m),
+				Best5m: int(bests.D90Best5m), Best12m: int(bests.D90Best12m), Best20m: int(bests.D90Best20m)},
+			All: stats.Curve{Best5s: int(bests.AllBest5s), Best1m: int(bests.AllBest1m), Best3m: int(bests.AllBest3m),
+				Best5m: int(bests.AllBest5m), Best12m: int(bests.AllBest12m), Best20m: int(bests.AllBest20m)},
 		},
 		Rides:    make([]rideTrendJSON, 0, len(rows)),
 		Category: stats.Category(int(bests.D90Best20m), float64(user.WeightKg)),

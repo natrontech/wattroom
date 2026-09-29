@@ -5,21 +5,9 @@
 	// every kind of color vision by lightness alone. Drawn 1:1 in container
 	// pixels; neon grid per ADR-0005.
 	import ChartTip from '$lib/components/ChartTip.svelte';
+	import { SHOWN_WINDOWS as WINDOWS, type Curve } from '$lib/progression';
 
-	interface Curve {
-		best5s: number;
-		best1m: number;
-		best5m: number;
-		best20m: number;
-	}
 	let { d30, d90, all }: { d30: Curve; d90: Curve; all: Curve } = $props();
-
-	const WINDOWS = [
-		{ key: 'best5s', label: '5 s' },
-		{ key: 'best1m', label: '1 min' },
-		{ key: 'best5m', label: '5 min' },
-		{ key: 'best20m', label: '20 min' },
-	] as const;
 	const RANGES = [
 		{ curve: () => all, label: 'all time', opacity: 0.25 },
 		{ curve: () => d90, label: '90 days', opacity: 0.55 },
