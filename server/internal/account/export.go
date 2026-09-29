@@ -90,7 +90,7 @@ func (x *export) categories() []category {
 		x.playlists(), x.tracks(), x.plannedSessions(), x.workouts(), x.xp(), x.trophies(),
 		x.identities(), x.passkeys(), x.coachAccess(), x.reactions(), x.crews(), x.pins(),
 		x.scheduledSessions(), x.channelMembers(), x.soundboard(), x.rideUploads(),
-		x.avatar(), x.images(), x.emoji(), x.medals(), x.routes(), x.wallet(),
+		x.avatar(), x.images(), x.emoji(), x.medals(), x.routes(), x.wallet(), x.wardrobe(),
 	}
 }
 

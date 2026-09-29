@@ -1,0 +1,4566 @@
+{
+	"schema": "wattroom.wardrobe/3",
+	"about": "Rider & bike studio v3 catalogue: every shop slot of the research outline, swappable and visible. Presentation only: shapes, patterns, colours. Nothing here enters physics, drafting or results. Makers are invented; specs and eras are real-world descriptions. Prices are Batzen tiers; earned items carry an unlock and no price. Colours, widths, depths, lengths, heights, counts and lens categories are free on any owned item.",
+	"currency": {
+		"name": "Batzen",
+		"tiers": {
+			"S": 60,
+			"M": 150,
+			"L": 400,
+			"XL": 1200,
+			"XXL": 2400
+		},
+		"earning": {
+			"formula": "min(kJ*1000/(FTP*60), 1.2*minutes)",
+			"perHourMax": 72,
+			"perDayMax": 180,
+			"welcome": 100,
+			"openingGrantMax": 1500
+		}
+	},
+	"rules": {
+		"priceTheIdea": "A shape, pattern or era is sold; widths, depths, lengths, heights, counts, sizes, lens categories and colours are free on any owned item.",
+		"neverUnlockBy": [
+			"money",
+			"trade or gift",
+			"randomness",
+			"time-limited availability",
+			"Category",
+			"W/kg",
+			"level"
+		],
+		"conflicts": [
+			"A full frame bag leaves no room for bottles; a half frame bag leaves room for one.",
+			"Frame bags never on TT, hour or track frames.",
+			"The TT visor replaces the glasses while worn.",
+			"Knickers and tights already cover the knee: knee and leg warmers hide.",
+			"Long sleeves already cover the arm: arm warmers hide.",
+			"A rain or winter jacket brings its own long sleeves.",
+			"Delta brakes need rim brakes; electronic and down-tube shifting need a derailleur.",
+			"Chrome lugs need a steel frame; raw weave needs carbon.",
+			"Tyre width is clamped to the frame’s clearance.",
+			"Gipfelpunkte never puts dots on a white ground: a light main colour swaps with the dots."
+		],
+		"sound": "Hub voices play only in the wearer’s own mix, on the cues fader, synthesised.",
+		"light": "No item is emissive or blinks; screens are dark glass (ADR-0072)."
+	},
+	"guard": {
+		"wattHex": "#ff3d8b",
+		"wattHueBandDeg": 20,
+		"wattChromaMax": 0.1,
+		"zoneTokens": [
+			"#4a3a78",
+			"#4361ee",
+			"#00b4d8",
+			"#06d6a0",
+			"#ffa62b",
+			"#ff4d6d",
+			"#ff2e88"
+		],
+		"zoneMinDeltaE": 0.05,
+		"kitLightness": [0.2, 0.96],
+		"itemKeys": [
+			"id",
+			"slot",
+			"kind",
+			"name",
+			"brand",
+			"spec",
+			"era",
+			"blurb",
+			"tier",
+			"unlock",
+			"starter",
+			"free",
+			"crewOnly",
+			"requires",
+			"options",
+			"geometry",
+			"tubes",
+			"cockpit",
+			"parts",
+			"defaults",
+			"allowed",
+			"material",
+			"front",
+			"rear",
+			"decal",
+			"finish",
+			"depthRange",
+			"wall",
+			"tread",
+			"casing",
+			"pattern",
+			"style",
+			"fingers",
+			"tint",
+			"voice",
+			"colour"
+		],
+		"forbiddenKeys": [
+			"weight",
+			"mass",
+			"kg",
+			"aero",
+			"cda",
+			"drag",
+			"crr",
+			"rolling",
+			"watts",
+			"power",
+			"speed",
+			"stiffness",
+			"efficiency",
+			"bonus",
+			"boost",
+			"multiplier",
+			"xp",
+			"grip",
+			"fast"
+		],
+		"blockedWords": [
+			"Lycra",
+			"Velcro",
+			"BOA",
+			"Gore-Tex",
+			"Kevlar",
+			"MIPS",
+			"Di2",
+			"AXS",
+			"eTap",
+			"SPD",
+			"Keo",
+			"Speedplay",
+			"Q-Ring",
+			"Biopace",
+			"Osymetric",
+			"Tri-Spoke",
+			"Prizm",
+			"maillot jaune",
+			"Tour de France",
+			"Giro",
+			"Vuelta",
+			"Tour de Suisse",
+			"Swiss Army",
+			"rainbow jersey",
+			"arc-en-ciel",
+			"UCI",
+			"Shimano",
+			"SRAM",
+			"Campagnolo",
+			"Rapha",
+			"Assos",
+			"Oakley",
+			"Colnago",
+			"Pinarello",
+			"Wahoo",
+			"Garmin",
+			"PostAuto"
+		],
+		"unlockKinds": [
+			"earned:achievement:",
+			"earned:badge:",
+			"earned:medal:",
+			"earned:streak:",
+			"earned:season:",
+			"earned:souvenir:",
+			"earned:race:finish:",
+			"earned:together:",
+			"with:"
+		]
+	},
+	"palette": [
+		{
+			"id": "snow",
+			"hex": "#f2eff6"
+		},
+		{
+			"id": "chalk",
+			"hex": "#d6d2df"
+		},
+		{
+			"id": "fog",
+			"hex": "#a9adbb"
+		},
+		{
+			"id": "slate",
+			"hex": "#5b6072"
+		},
+		{
+			"id": "graphite",
+			"hex": "#33313c"
+		},
+		{
+			"id": "ink",
+			"hex": "#24222c"
+		},
+		{
+			"id": "enzian",
+			"hex": "#2b44b8"
+		},
+		{
+			"id": "alpine",
+			"hex": "#3f78d9"
+		},
+		{
+			"id": "glacier",
+			"hex": "#8cc4ea"
+		},
+		{
+			"id": "lake",
+			"hex": "#1d5e86"
+		},
+		{
+			"id": "teal",
+			"hex": "#23858a"
+		},
+		{
+			"id": "fir",
+			"hex": "#2d6a4f"
+		},
+		{
+			"id": "meadow",
+			"hex": "#74ad55"
+		},
+		{
+			"id": "lime",
+			"hex": "#c3d64b"
+		},
+		{
+			"id": "sun",
+			"hex": "#f2c230"
+		},
+		{
+			"id": "apricot",
+			"hex": "#f0a064"
+		},
+		{
+			"id": "rust",
+			"hex": "#c0572b"
+		},
+		{
+			"id": "brick",
+			"hex": "#8f422b"
+		},
+		{
+			"id": "sand",
+			"hex": "#d9c49c"
+		},
+		{
+			"id": "tan",
+			"hex": "#b58756"
+		},
+		{
+			"id": "leather",
+			"hex": "#7a4a2c"
+		},
+		{
+			"id": "army",
+			"hex": "#4d5a3b"
+		},
+		{
+			"id": "plum",
+			"hex": "#76509a"
+		},
+		{
+			"id": "copper",
+			"hex": "#b0693a"
+		},
+		{
+			"id": "cream",
+			"hex": "#efe3c6"
+		},
+		{
+			"id": "silver",
+			"hex": "#b9bac3"
+		},
+		{
+			"id": "honey",
+			"hex": "#c8955a"
+		},
+		{
+			"id": "night",
+			"hex": "#1f2a4a"
+		}
+	],
+	"fixed": {
+		"tyre": "#1b1a20",
+		"rubber": "#22212a",
+		"chain": "#4a4852",
+		"carbon": "#2a2932",
+		"alloy": "#8d8e98",
+		"lens": "#2a2f45"
+	},
+	"skinTones": [
+		{
+			"id": "skin.1",
+			"hex": "#f0d3be"
+		},
+		{
+			"id": "skin.2",
+			"hex": "#e2b894"
+		},
+		{
+			"id": "skin.3",
+			"hex": "#cf9d77"
+		},
+		{
+			"id": "skin.4",
+			"hex": "#b88260"
+		},
+		{
+			"id": "skin.5",
+			"hex": "#9a6a4b"
+		},
+		{
+			"id": "skin.6",
+			"hex": "#7c5339"
+		},
+		{
+			"id": "skin.7",
+			"hex": "#5f3e2b"
+		},
+		{
+			"id": "skin.8",
+			"hex": "#44291e"
+		}
+	],
+	"builds": {
+		"slim": 0.9,
+		"athletic": 1,
+		"strong": 1.12
+	},
+	"heights": [1.55, 2],
+	"params": {
+		"tyreMm": [23, 50],
+		"rimMm": [30, 80],
+		"crankMm": [165, 175],
+		"bottles": [0, 2],
+		"sockH": {
+			"low": 0.05,
+			"mid": 0.11,
+			"tall": 0.17
+		},
+		"shortsLen": ["short", "knicker", "tights"],
+		"sleeves": ["none", "short", "long"],
+		"collar": ["low", "std", "high"],
+		"brim": ["down", "up"],
+		"barMm": [360, 460]
+	},
+	"brands": [
+		{
+			"id": "foehnwerk",
+			"colours": ["#24222c", "#8cc4ea", "#5b6072"],
+			"era": "2010s–2020s"
+		},
+		{
+			"id": "gaemsli",
+			"colours": ["#2d6a4f", "#f2eff6", "#f2c230"],
+			"era": "2000s–2020s"
+		},
+		{
+			"id": "hartlot",
+			"colours": ["#8f422b", "#efe3c6", "#2b44b8"],
+			"era": "1950s–1980s"
+		},
+		{
+			"id": "murmeli",
+			"colours": ["#4d5a3b", "#d9c49c", "#c0572b"],
+			"era": "2015–2020s"
+		},
+		{
+			"id": "hemmung",
+			"colours": ["#33313c", "#b9bac3", "#b0693a"],
+			"era": "all eras"
+		},
+		{
+			"id": "rundlauf",
+			"colours": ["#a9adbb", "#b58756", "#efe3c6"],
+			"era": "all eras"
+		},
+		{
+			"id": "korkleder",
+			"colours": ["#7a4a2c", "#b58756", "#efe3c6"],
+			"era": "all eras"
+		},
+		{
+			"id": "tueftelwerk",
+			"colours": ["#33313c", "#3f78d9", "#b9bac3"],
+			"era": "1980s–2020s"
+		},
+		{
+			"id": "lismer",
+			"colours": ["#efe3c6", "#2d6a4f", "#8f422b"],
+			"era": "1950s–2020s"
+		},
+		{
+			"id": "zwirn",
+			"colours": ["#24222c", "#f2eff6", "#23858a"],
+			"era": "2000s–2020s"
+		},
+		{
+			"id": "chopf",
+			"colours": ["#f2eff6", "#f2c230", "#24222c"],
+			"era": "all eras"
+		},
+		{
+			"id": "nebelmeer",
+			"colours": ["#a9adbb", "#8cc4ea", "#5b6072"],
+			"era": "1980s–2020s"
+		}
+	],
+	"slots": [
+		{
+			"id": "frame",
+			"group": "bike",
+			"label": "Frames",
+			"camera": "bike"
+		},
+		{
+			"id": "finish",
+			"group": "bike",
+			"label": "Finishes",
+			"camera": "frameClose"
+		},
+		{
+			"id": "fork",
+			"group": "bike",
+			"label": "Forks",
+			"camera": "front"
+		},
+		{
+			"id": "wheels",
+			"group": "bike",
+			"label": "Wheels",
+			"camera": "wheel"
+		},
+		{
+			"id": "hub",
+			"group": "bike",
+			"label": "Hubs and voices",
+			"camera": "hub"
+		},
+		{
+			"id": "tyres",
+			"group": "bike",
+			"label": "Tyres",
+			"camera": "tyre"
+		},
+		{
+			"id": "groupset",
+			"group": "bike",
+			"label": "Groupsets",
+			"camera": "drive"
+		},
+		{
+			"id": "gsFinish",
+			"group": "bike",
+			"label": "Groupset finishes",
+			"camera": "drive"
+		},
+		{
+			"id": "crank",
+			"group": "bike",
+			"label": "Cranks",
+			"camera": "crank"
+		},
+		{
+			"id": "ring",
+			"group": "bike",
+			"label": "Chainrings",
+			"camera": "crank"
+		},
+		{
+			"id": "pedals",
+			"group": "bike",
+			"label": "Pedals",
+			"camera": "pedal"
+		},
+		{
+			"id": "saddle",
+			"group": "bike",
+			"label": "Saddles",
+			"camera": "saddle"
+		},
+		{
+			"id": "bars",
+			"group": "bike",
+			"label": "Bars and cockpits",
+			"camera": "cockpit"
+		},
+		{
+			"id": "tape",
+			"group": "bike",
+			"label": "Bar tape",
+			"camera": "cockpit"
+		},
+		{
+			"id": "bottles",
+			"group": "bike",
+			"label": "Bottles",
+			"camera": "bottle"
+		},
+		{
+			"id": "cages",
+			"group": "bike",
+			"label": "Cages",
+			"camera": "bottle"
+		},
+		{
+			"id": "computer",
+			"group": "bike",
+			"label": "Computers",
+			"camera": "cockpit"
+		},
+		{
+			"id": "lights",
+			"group": "bike",
+			"label": "Lights",
+			"camera": "bike"
+		},
+		{
+			"id": "bell",
+			"group": "bike",
+			"label": "Bells",
+			"camera": "cockpit"
+		},
+		{
+			"id": "bags",
+			"group": "bike",
+			"label": "Bags",
+			"camera": "bike"
+		},
+		{
+			"id": "utility",
+			"group": "bike",
+			"label": "Fenders and racks",
+			"camera": "bike"
+		},
+		{
+			"id": "charm",
+			"group": "bike",
+			"label": "Charms",
+			"camera": "saddle"
+		},
+		{
+			"id": "jersey",
+			"group": "rider",
+			"label": "Jerseys",
+			"camera": "back"
+		},
+		{
+			"id": "cut",
+			"group": "rider",
+			"label": "Jersey cuts",
+			"camera": "torso"
+		},
+		{
+			"id": "layer",
+			"group": "rider",
+			"label": "Gilets and jackets",
+			"camera": "torso"
+		},
+		{
+			"id": "shorts",
+			"group": "rider",
+			"label": "Bibs",
+			"camera": "legs"
+		},
+		{
+			"id": "warmers",
+			"group": "rider",
+			"label": "Warmers",
+			"camera": "legs"
+		},
+		{
+			"id": "socks",
+			"group": "rider",
+			"label": "Socks",
+			"camera": "feet"
+		},
+		{
+			"id": "shoes",
+			"group": "rider",
+			"label": "Shoes",
+			"camera": "feet"
+		},
+		{
+			"id": "overshoes",
+			"group": "rider",
+			"label": "Overshoes",
+			"camera": "feet"
+		},
+		{
+			"id": "gloves",
+			"group": "rider",
+			"label": "Gloves",
+			"camera": "hands"
+		},
+		{
+			"id": "helmet",
+			"group": "rider",
+			"label": "Helmets",
+			"camera": "head"
+		},
+		{
+			"id": "helmetDeco",
+			"group": "rider",
+			"label": "Helmet decoration",
+			"camera": "head"
+		},
+		{
+			"id": "glasses",
+			"group": "rider",
+			"label": "Eyewear",
+			"camera": "face"
+		},
+		{
+			"id": "lens",
+			"group": "rider",
+			"label": "Lenses",
+			"camera": "face"
+		},
+		{
+			"id": "cap",
+			"group": "rider",
+			"label": "Caps",
+			"camera": "head"
+		},
+		{
+			"id": "plate",
+			"group": "rider",
+			"label": "Race numbers",
+			"camera": "back"
+		},
+		{
+			"id": "armband",
+			"group": "rider",
+			"label": "Armbands",
+			"camera": "torso"
+		},
+		{
+			"id": "hair",
+			"group": "rider",
+			"label": "Hair",
+			"camera": "head"
+		}
+	],
+	"unlockText": {
+		"achievement:200-rides": "Ride 200 rides",
+		"achievement:dj": "Earn DJ: queue 50 tracks the channel played to the end",
+		"achievement:espresso-ride": "Earn Espresso Ride: under 25 min, 80 % above sweet spot",
+		"achievement:sufferfest-survivor": "Earn Sufferfest Survivor: 45 min at or above FTP",
+		"achievement:sprint-snob": "Earn Sprint Snob: win 10 sprint moments",
+		"achievement:hot-end": "Earn Hot End: 3 min in Z6 in one ride",
+		"achievement:lounge-lizard": "Earn Lounge Lizard: 10 h in a lounge, in voice",
+		"achievement:night-shift": "Earn Night Shift: 5 rides ended after 23:00",
+		"achievement:sunrise-club": "Earn Sunrise Club: 5 rides started before 07:00",
+		"achievement:crew-chief": "Earn Crew Chief: coach 20 sessions with 3+ riders",
+		"badge:hors-categorie": "Ride an HC climb end to end",
+		"badge:nebelmeer": "Ride above the fog sea (road badge)",
+		"badge:soigneur": "Hand up 20 bottles from the roadside",
+		"badge:chapeau": "Earn the Chapeau road badge",
+		"medal:lanterne-rouge": "Session medal: Lanterne Rouge",
+		"medal:hammer": "Session medal: Hammer",
+		"medal:metronome": "Session medal: Metronome",
+		"medal:diesel": "Session medal: Diesel",
+		"streak:10-weeks": "Keep a 10-week streak",
+		"together:10-group-sessions": "Ride 10 group sessions",
+		"race:finish:1": "Finish your first race",
+		"race:finish:10": "Finish 10 races",
+		"souvenir:climb": "Ride a library climb end to end",
+		"season:chalandamarz": "Ride 3 times around 1 March (Chalandamarz)",
+		"season:1-august": "Ride 3 times around 1 August",
+		"season:alpabzug": "Ride 3 times in September–October (Alpabzug)",
+		"season:fasnacht": "Ride 3 times in Fasnacht week",
+		"season:sechselaeuten": "Ride 3 times in Sechseläuten week",
+		"season:samichlaus": "Ride 3 times around 6 December",
+		"season:summer-solstice": "Ride 3 times around 21 June",
+		"season:winter-solstice": "Ride 3 times around 21 December"
+	},
+	"items": [
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.race",
+			"name": "Allrounder",
+			"brand": "gaemsli",
+			"starter": true,
+			"era": "2020s",
+			"material": "carbon",
+			"spec": "Round tubes, sloping top tube, disc brakes, 2×",
+			"blurb": "The road bike everyone starts on.",
+			"geometry": {
+				"stack": 565,
+				"reach": 395,
+				"hta": 73.5,
+				"sta": 73.5,
+				"headTube": 146,
+				"chainstay": 410,
+				"bbDrop": 72,
+				"forkOffset": 44.4,
+				"seatTube": 480,
+				"topTube": "sloping"
+			},
+			"tubes": {
+				"shape": "round",
+				"dt": 0.0205,
+				"tt": 0.0165,
+				"st": 0.0165,
+				"ht": 0.024,
+				"cs": 0.0115,
+				"ss": 0.0095,
+				"fork": 0.0135,
+				"stays": "dropped",
+				"dropY": 0.055
+			},
+			"cockpit": {
+				"bar": "drop",
+				"torsoDeg": 38,
+				"shoulderDeg": 86,
+				"stemDeg": -6,
+				"spacer": [0.005, 0.035],
+				"stem": [0.08, 0.13]
+			},
+			"parts": {
+				"brakes": "disc",
+				"rings": 2,
+				"derailleur": true,
+				"bottleCages": 2
+			},
+			"defaults": {
+				"wheels": "wheels.alloy",
+				"tyres": "tyre.black",
+				"tyreMm": 28,
+				"bars": "bars.drop",
+				"saddle": "saddle.race",
+				"fork": "fork.straight"
+			},
+			"allowed": {
+				"tyreMin": 25,
+				"tyreMax": 32,
+				"bars": ["bars.drop", "bars.aero", "bars.flare", "bars.clipon"],
+				"forks": ["fork.straight", "fork.aero"],
+				"bags": true,
+				"utility": false
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.aero",
+			"name": "Windkanal",
+			"brand": "foehnwerk",
+			"tier": "XL",
+			"era": "2020s",
+			"material": "carbon",
+			"spec": "Kamm-tail tubes, dropped stays, integrated cockpit",
+			"blurb": "Exactly as fast as your legs.",
+			"geometry": {
+				"stack": 555,
+				"reach": 400,
+				"hta": 73.5,
+				"sta": 73.5,
+				"headTube": 140,
+				"chainstay": 408,
+				"bbDrop": 72,
+				"forkOffset": 44,
+				"seatTube": 470,
+				"topTube": "sloping"
+			},
+			"tubes": {
+				"shape": "kamm",
+				"aspect": 2.4,
+				"dt": 0.0165,
+				"tt": 0.0125,
+				"st": 0.0135,
+				"ht": 0.022,
+				"cs": 0.011,
+				"ss": 0.0085,
+				"fork": 0.012,
+				"stays": "dropped",
+				"dropY": 0.13
+			},
+			"cockpit": {
+				"bar": "aero",
+				"torsoDeg": 34,
+				"shoulderDeg": 86,
+				"stemDeg": -10,
+				"spacer": [0.005, 0.025],
+				"stem": [0.09, 0.14]
+			},
+			"parts": {
+				"brakes": "disc",
+				"rings": 2,
+				"derailleur": true,
+				"bottleCages": 2
+			},
+			"defaults": {
+				"wheels": "wheels.carbon",
+				"tyres": "tyre.black",
+				"tyreMm": 28,
+				"bars": "bars.aero",
+				"saddle": "saddle.short",
+				"fork": "fork.aero"
+			},
+			"allowed": {
+				"tyreMin": 25,
+				"tyreMax": 30,
+				"bars": ["bars.aero", "bars.drop", "bars.clipon"],
+				"forks": ["fork.aero", "fork.straight"],
+				"bags": true,
+				"utility": false
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.climb",
+			"name": "Bergfloh",
+			"brand": "gaemsli",
+			"tier": "XL",
+			"era": "2010s",
+			"material": "carbon",
+			"spec": "Thin round tubes, near-level top tube, rim brakes",
+			"blurb": "It looks light. It rides like your legs.",
+			"geometry": {
+				"stack": 560,
+				"reach": 390,
+				"hta": 73.5,
+				"sta": 73.8,
+				"headTube": 150,
+				"chainstay": 405,
+				"bbDrop": 70,
+				"forkOffset": 43,
+				"seatTube": 520,
+				"topTube": "sloping"
+			},
+			"tubes": {
+				"shape": "round",
+				"dt": 0.0175,
+				"tt": 0.014,
+				"st": 0.0145,
+				"ht": 0.022,
+				"cs": 0.0105,
+				"ss": 0.0085,
+				"fork": 0.0125,
+				"stays": "normal"
+			},
+			"cockpit": {
+				"bar": "drop",
+				"torsoDeg": 40,
+				"shoulderDeg": 86,
+				"stemDeg": -6,
+				"spacer": [0.005, 0.035],
+				"stem": [0.08, 0.13]
+			},
+			"parts": {
+				"brakes": "rim",
+				"rings": 2,
+				"derailleur": true,
+				"bottleCages": 2
+			},
+			"defaults": {
+				"wheels": "wheels.carbon",
+				"tyres": "tyre.black",
+				"tyreMm": 26,
+				"bars": "bars.drop",
+				"saddle": "saddle.race",
+				"fork": "fork.straight"
+			},
+			"allowed": {
+				"tyreMin": 23,
+				"tyreMax": 28,
+				"bars": ["bars.drop", "bars.clipon"],
+				"forks": ["fork.straight"],
+				"bags": true,
+				"utility": false
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.endurance",
+			"name": "Langstrecke",
+			"brand": "gaemsli",
+			"tier": "XL",
+			"era": "2020s",
+			"material": "carbon",
+			"spec": "Tall stack (590), short reach, 35 mm clearance, fender mounts",
+			"blurb": "For the long day out and the longer coffee.",
+			"geometry": {
+				"stack": 590,
+				"reach": 380,
+				"hta": 72.5,
+				"sta": 73.5,
+				"headTube": 175,
+				"chainstay": 418,
+				"bbDrop": 75,
+				"forkOffset": 50,
+				"seatTube": 500,
+				"topTube": "sloping"
+			},
+			"tubes": {
+				"shape": "round",
+				"dt": 0.021,
+				"tt": 0.017,
+				"st": 0.017,
+				"ht": 0.024,
+				"cs": 0.012,
+				"ss": 0.0095,
+				"fork": 0.014,
+				"stays": "dropped",
+				"dropY": 0.07
+			},
+			"cockpit": {
+				"bar": "drop",
+				"torsoDeg": 44,
+				"shoulderDeg": 86,
+				"stemDeg": -6,
+				"spacer": [0.01, 0.05],
+				"stem": [0.07, 0.12]
+			},
+			"parts": {
+				"brakes": "disc",
+				"rings": 2,
+				"derailleur": true,
+				"bottleCages": 2
+			},
+			"defaults": {
+				"wheels": "wheels.alloy",
+				"tyres": "tyre.black",
+				"tyreMm": 32,
+				"bars": "bars.drop",
+				"saddle": "saddle.cutout",
+				"fork": "fork.straight"
+			},
+			"allowed": {
+				"tyreMin": 25,
+				"tyreMax": 35,
+				"bars": ["bars.drop", "bars.flare"],
+				"forks": ["fork.straight"],
+				"bags": true,
+				"utility": true
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.gravel",
+			"name": "Kiesweg",
+			"brand": "murmeli",
+			"tier": "XL",
+			"era": "2020s",
+			"material": "carbon",
+			"spec": "Slack 71°, 435 mm chainstays, 45 mm tyres, 1×",
+			"blurb": "Gravel on the screen, tarmac under the trainer.",
+			"geometry": {
+				"stack": 579,
+				"reach": 397,
+				"hta": 71,
+				"sta": 73.5,
+				"headTube": 165,
+				"chainstay": 435,
+				"bbDrop": 72,
+				"forkOffset": 50,
+				"seatTube": 500,
+				"topTube": "sloping"
+			},
+			"tubes": {
+				"shape": "round",
+				"dt": 0.022,
+				"tt": 0.0175,
+				"st": 0.017,
+				"ht": 0.025,
+				"cs": 0.0125,
+				"ss": 0.01,
+				"fork": 0.015,
+				"stays": "dropped",
+				"dropY": 0.04
+			},
+			"cockpit": {
+				"bar": "flare",
+				"torsoDeg": 44,
+				"shoulderDeg": 86,
+				"stemDeg": -6,
+				"spacer": [0.005, 0.06],
+				"stem": [0.07, 0.12]
+			},
+			"parts": {
+				"brakes": "disc",
+				"rings": 1,
+				"derailleur": true,
+				"bottleCages": 2
+			},
+			"defaults": {
+				"wheels": "wheels.gravel",
+				"tyres": "tyre.knob",
+				"tyreMm": 45,
+				"bars": "bars.flare",
+				"saddle": "saddle.race",
+				"fork": "fork.straight"
+			},
+			"allowed": {
+				"tyreMin": 32,
+				"tyreMax": 48,
+				"bars": ["bars.flare", "bars.drop"],
+				"forks": ["fork.straight"],
+				"bags": true,
+				"utility": true
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.cross",
+			"name": "Querfeldein",
+			"brand": "murmeli",
+			"tier": "XL",
+			"era": "2010s",
+			"material": "alloy",
+			"spec": "High bottom bracket, flat top tube to shoulder, cantilever brakes, 33 mm knobs",
+			"blurb": "Made to be carried up the steps as often as ridden.",
+			"geometry": {
+				"stack": 575,
+				"reach": 385,
+				"hta": 71.5,
+				"sta": 73.5,
+				"headTube": 150,
+				"chainstay": 425,
+				"bbDrop": 60,
+				"forkOffset": 47,
+				"seatTube": 0,
+				"topTube": "level"
+			},
+			"tubes": {
+				"shape": "round",
+				"dt": 0.021,
+				"tt": 0.0165,
+				"st": 0.0165,
+				"ht": 0.023,
+				"cs": 0.012,
+				"ss": 0.0095,
+				"fork": 0.014,
+				"stays": "normal"
+			},
+			"cockpit": {
+				"bar": "drop",
+				"torsoDeg": 42,
+				"shoulderDeg": 86,
+				"stemDeg": -6,
+				"spacer": [0.01, 0.045],
+				"stem": [0.07, 0.12]
+			},
+			"parts": {
+				"brakes": "canti",
+				"rings": 1,
+				"derailleur": true,
+				"bottleCages": 1
+			},
+			"defaults": {
+				"wheels": "wheels.gravel",
+				"tyres": "tyre.knob",
+				"tyreMm": 33,
+				"bars": "bars.drop",
+				"saddle": "saddle.race",
+				"fork": "fork.straight"
+			},
+			"allowed": {
+				"tyreMin": 30,
+				"tyreMax": 40,
+				"bars": ["bars.drop", "bars.flare"],
+				"forks": ["fork.straight", "fork.curved"],
+				"bags": true,
+				"utility": false
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.tt",
+			"name": "Zeitfahrer",
+			"brand": "foehnwerk",
+			"tier": "XL",
+			"era": "2020s",
+			"material": "carbon",
+			"spec": "78° seat angle, base bar and extensions, rear disc",
+			"blurb": "Sits you low; changes nothing else.",
+			"geometry": {
+				"stack": 516,
+				"reach": 433,
+				"hta": 73,
+				"sta": 78,
+				"headTube": 105,
+				"chainstay": 405,
+				"bbDrop": 70,
+				"forkOffset": 45,
+				"seatTube": 470,
+				"topTube": "sloping"
+			},
+			"tubes": {
+				"shape": "kamm",
+				"aspect": 2.8,
+				"dt": 0.016,
+				"tt": 0.012,
+				"st": 0.013,
+				"ht": 0.021,
+				"cs": 0.011,
+				"ss": 0.0085,
+				"fork": 0.012,
+				"stays": "dropped",
+				"dropY": 0.15
+			},
+			"cockpit": {
+				"bar": "tt",
+				"torsoDeg": 14,
+				"shoulderDeg": 90,
+				"stemDeg": -12,
+				"spacer": [0, 0.03],
+				"stem": [0.07, 0.13]
+			},
+			"parts": {
+				"brakes": "rim",
+				"rings": 1,
+				"derailleur": true,
+				"bottleCages": 1
+			},
+			"defaults": {
+				"wheels": "wheels.blade3",
+				"tyres": "tyre.black",
+				"tyreMm": 25,
+				"bars": "bars.tt",
+				"saddle": "saddle.short",
+				"fork": "fork.aero"
+			},
+			"allowed": {
+				"tyreMin": 23,
+				"tyreMax": 28,
+				"bars": ["bars.tt"],
+				"forks": ["fork.aero"],
+				"bags": false,
+				"utility": false
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.hour",
+			"name": "Stundenrad",
+			"brand": "foehnwerk",
+			"tier": "XXL",
+			"era": "1990s",
+			"material": "carbon",
+			"spec": "Monocoque hour-record machine: three-blade front, disc rear, low front end",
+			"blurb": "One hour, one gear, one line on the track. On the trainer: the same hour as everyone.",
+			"geometry": {
+				"stack": 488,
+				"reach": 445,
+				"hta": 74,
+				"sta": 77,
+				"headTube": 92,
+				"chainstay": 392,
+				"bbDrop": 60,
+				"forkOffset": 40,
+				"seatTube": 460,
+				"topTube": "sloping"
+			},
+			"tubes": {
+				"shape": "kamm",
+				"aspect": 3.4,
+				"dt": 0.018,
+				"tt": 0.0125,
+				"st": 0.0145,
+				"ht": 0.022,
+				"cs": 0.012,
+				"ss": 0.009,
+				"fork": 0.013,
+				"stays": "dropped",
+				"dropY": 0.16
+			},
+			"cockpit": {
+				"bar": "tt",
+				"torsoDeg": 12,
+				"shoulderDeg": 90,
+				"stemDeg": -14,
+				"spacer": [0, 0.02],
+				"stem": [0.08, 0.14]
+			},
+			"parts": {
+				"brakes": "none",
+				"rings": 1,
+				"derailleur": false,
+				"bottleCages": 0
+			},
+			"defaults": {
+				"wheels": "wheels.blade3",
+				"tyres": "tyre.black",
+				"tyreMm": 23,
+				"bars": "bars.tt",
+				"saddle": "saddle.short",
+				"fork": "fork.aero"
+			},
+			"allowed": {
+				"tyreMin": 23,
+				"tyreMax": 25,
+				"bars": ["bars.tt"],
+				"forks": ["fork.aero"],
+				"bags": false,
+				"utility": false
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.steel",
+			"name": "Stahlross",
+			"brand": "hartlot",
+			"tier": "XL",
+			"era": "1970s",
+			"material": "steel",
+			"spec": "Lugged steel, level top tube, quill stem, box rims",
+			"blurb": "Pairs with the Lederhelm and a slow Sunday.",
+			"geometry": {
+				"stack": 560,
+				"reach": 383,
+				"hta": 73,
+				"sta": 73,
+				"headTube": 150,
+				"chainstay": 420,
+				"bbDrop": 70,
+				"forkOffset": 45,
+				"seatTube": 0,
+				"topTube": "level"
+			},
+			"tubes": {
+				"shape": "steel",
+				"dt": 0.0145,
+				"tt": 0.0128,
+				"st": 0.0143,
+				"ht": 0.0165,
+				"cs": 0.0105,
+				"ss": 0.0085,
+				"fork": 0.0115,
+				"stays": "normal",
+				"lugs": true
+			},
+			"cockpit": {
+				"bar": "drop",
+				"stemStyle": "quill",
+				"torsoDeg": 42,
+				"shoulderDeg": 86,
+				"stemDeg": -17,
+				"spacer": [0.03, 0.07],
+				"stem": [0.08, 0.12]
+			},
+			"parts": {
+				"brakes": "rim",
+				"rings": 2,
+				"derailleur": true,
+				"bottleCages": 1
+			},
+			"defaults": {
+				"wheels": "wheels.box",
+				"tyres": "tyre.tan",
+				"tyreMm": 23,
+				"bars": "bars.drop",
+				"saddle": "saddle.leather",
+				"fork": "fork.curved"
+			},
+			"allowed": {
+				"tyreMin": 23,
+				"tyreMax": 28,
+				"bars": ["bars.drop", "bars.track", "bars.bullhorn"],
+				"forks": ["fork.curved"],
+				"bags": true,
+				"utility": true
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.zweihundert",
+			"name": "Zweihundert",
+			"brand": "hartlot",
+			"unlock": "earned:achievement:200-rides",
+			"era": "1970s",
+			"material": "steel",
+			"spec": "Stahlross with contrast lugs",
+			"blurb": "Earned by riding 200 rides; never sold.",
+			"geometry": {
+				"stack": 560,
+				"reach": 383,
+				"hta": 73,
+				"sta": 73,
+				"headTube": 150,
+				"chainstay": 420,
+				"bbDrop": 70,
+				"forkOffset": 45,
+				"seatTube": 0,
+				"topTube": "level"
+			},
+			"tubes": {
+				"shape": "steel",
+				"dt": 0.0145,
+				"tt": 0.0128,
+				"st": 0.0143,
+				"ht": 0.0165,
+				"cs": 0.0105,
+				"ss": 0.0085,
+				"fork": 0.0115,
+				"stays": "normal",
+				"lugs": true,
+				"lugContrast": true
+			},
+			"cockpit": {
+				"bar": "drop",
+				"stemStyle": "quill",
+				"torsoDeg": 42,
+				"shoulderDeg": 86,
+				"stemDeg": -17,
+				"spacer": [0.03, 0.07],
+				"stem": [0.08, 0.12]
+			},
+			"parts": {
+				"brakes": "rim",
+				"rings": 2,
+				"derailleur": true,
+				"bottleCages": 1
+			},
+			"defaults": {
+				"wheels": "wheels.box",
+				"tyres": "tyre.cream",
+				"tyreMm": 23,
+				"bars": "bars.drop",
+				"saddle": "saddle.leather",
+				"fork": "fork.curved"
+			},
+			"allowed": {
+				"tyreMin": 23,
+				"tyreMax": 28,
+				"bars": ["bars.drop", "bars.track", "bars.bullhorn"],
+				"forks": ["fork.curved"],
+				"bags": true,
+				"utility": true
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.alu90",
+			"name": "Dickrohr",
+			"brand": "foehnwerk",
+			"tier": "XL",
+			"era": "1990s",
+			"material": "alloy",
+			"spec": "Oversized welded aluminium, level top tube, quill stem, 9-speed",
+			"blurb": "Fat tubes, loud paint, the decade the brake levers learned to shift.",
+			"geometry": {
+				"stack": 552,
+				"reach": 392,
+				"hta": 73.5,
+				"sta": 73.5,
+				"headTube": 140,
+				"chainstay": 408,
+				"bbDrop": 70,
+				"forkOffset": 43,
+				"seatTube": 0,
+				"topTube": "level"
+			},
+			"tubes": {
+				"shape": "round",
+				"dt": 0.0245,
+				"tt": 0.02,
+				"st": 0.0185,
+				"ht": 0.021,
+				"cs": 0.012,
+				"ss": 0.0098,
+				"fork": 0.0125,
+				"stays": "normal",
+				"welds": true
+			},
+			"cockpit": {
+				"bar": "drop",
+				"stemStyle": "quill",
+				"torsoDeg": 38,
+				"shoulderDeg": 86,
+				"stemDeg": -10,
+				"spacer": [0.02, 0.06],
+				"stem": [0.09, 0.13]
+			},
+			"parts": {
+				"brakes": "rim",
+				"rings": 2,
+				"derailleur": true,
+				"bottleCages": 2
+			},
+			"defaults": {
+				"wheels": "wheels.alloy",
+				"tyres": "tyre.colourwall",
+				"tyreMm": 23,
+				"bars": "bars.drop",
+				"saddle": "saddle.suede",
+				"fork": "fork.curved"
+			},
+			"allowed": {
+				"tyreMin": 23,
+				"tyreMax": 25,
+				"bars": ["bars.drop", "bars.clipon"],
+				"forks": ["fork.curved", "fork.straight"],
+				"bags": true,
+				"utility": false
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.carbon03",
+			"name": "Muffe 03",
+			"brand": "gaemsli",
+			"tier": "XL",
+			"era": "2000s",
+			"material": "carbon",
+			"spec": "Carbon tubes bonded into alloy lugs, compact geometry, 10-speed",
+			"blurb": "The first carbon bike most of your club owned.",
+			"geometry": {
+				"stack": 552,
+				"reach": 388,
+				"hta": 73,
+				"sta": 73.5,
+				"headTube": 145,
+				"chainstay": 410,
+				"bbDrop": 70,
+				"forkOffset": 43,
+				"seatTube": 480,
+				"topTube": "sloping"
+			},
+			"tubes": {
+				"shape": "round",
+				"dt": 0.019,
+				"tt": 0.0155,
+				"st": 0.016,
+				"ht": 0.02,
+				"cs": 0.011,
+				"ss": 0.009,
+				"fork": 0.013,
+				"stays": "normal",
+				"lugs": true,
+				"lugContrast": true
+			},
+			"cockpit": {
+				"bar": "drop",
+				"torsoDeg": 40,
+				"shoulderDeg": 86,
+				"stemDeg": -6,
+				"spacer": [0.01, 0.04],
+				"stem": [0.08, 0.13]
+			},
+			"parts": {
+				"brakes": "rim",
+				"rings": 2,
+				"derailleur": true,
+				"bottleCages": 2
+			},
+			"defaults": {
+				"wheels": "wheels.alloy",
+				"tyres": "tyre.black",
+				"tyreMm": 23,
+				"bars": "bars.drop",
+				"saddle": "saddle.race",
+				"fork": "fork.straight"
+			},
+			"allowed": {
+				"tyreMin": 23,
+				"tyreMax": 25,
+				"bars": ["bars.drop", "bars.clipon"],
+				"forks": ["fork.straight"],
+				"bags": true,
+				"utility": false
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.rando",
+			"name": "Randonneur",
+			"brand": "hartlot",
+			"tier": "XL",
+			"era": "1950s–2020s",
+			"material": "steel",
+			"spec": "Lugged steel, 650B wheels, fenders, front rack, dynamo lamp (unlit)",
+			"blurb": "Paris to the next valley and back, with a baguette in the front bag.",
+			"geometry": {
+				"stack": 585,
+				"reach": 372,
+				"hta": 72.5,
+				"sta": 73,
+				"headTube": 175,
+				"chainstay": 440,
+				"bbDrop": 70,
+				"forkOffset": 55,
+				"seatTube": 0,
+				"topTube": "level",
+				"bead": 584
+			},
+			"tubes": {
+				"shape": "steel",
+				"dt": 0.0145,
+				"tt": 0.013,
+				"st": 0.0143,
+				"ht": 0.017,
+				"cs": 0.0105,
+				"ss": 0.0085,
+				"fork": 0.0118,
+				"stays": "normal",
+				"lugs": true
+			},
+			"cockpit": {
+				"bar": "drop",
+				"stemStyle": "quill",
+				"torsoDeg": 46,
+				"shoulderDeg": 86,
+				"stemDeg": -10,
+				"spacer": [0.03, 0.08],
+				"stem": [0.07, 0.11]
+			},
+			"parts": {
+				"brakes": "rim",
+				"rings": 2,
+				"derailleur": true,
+				"bottleCages": 1,
+				"fenders": true,
+				"frontRack": true,
+				"lamp": true
+			},
+			"defaults": {
+				"wheels": "wheels.box",
+				"tyres": "tyre.cream",
+				"tyreMm": 42,
+				"bars": "bars.drop",
+				"saddle": "saddle.leather",
+				"fork": "fork.curved"
+			},
+			"allowed": {
+				"tyreMin": 35,
+				"tyreMax": 44,
+				"bars": ["bars.drop"],
+				"forks": ["fork.curved"],
+				"bags": true,
+				"utility": false
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.track",
+			"name": "Bahnrad",
+			"brand": "hartlot",
+			"tier": "L",
+			"era": "all eras",
+			"material": "alloy",
+			"spec": "Track geometry, one fixed gear, no brakes",
+			"blurb": "On a trainer it still freewheels when your data says so.",
+			"geometry": {
+				"stack": 540,
+				"reach": 400,
+				"hta": 74,
+				"sta": 74,
+				"headTube": 125,
+				"chainstay": 390,
+				"bbDrop": 58,
+				"forkOffset": 35,
+				"seatTube": 500,
+				"topTube": "sloping"
+			},
+			"tubes": {
+				"shape": "aero",
+				"aspect": 1.7,
+				"dt": 0.019,
+				"tt": 0.016,
+				"st": 0.016,
+				"ht": 0.023,
+				"cs": 0.0115,
+				"ss": 0.009,
+				"fork": 0.0135,
+				"stays": "normal"
+			},
+			"cockpit": {
+				"bar": "track",
+				"torsoDeg": 34,
+				"shoulderDeg": 86,
+				"stemDeg": -10,
+				"spacer": [0, 0.02],
+				"stem": [0.09, 0.14]
+			},
+			"parts": {
+				"brakes": "none",
+				"rings": 1,
+				"derailleur": false,
+				"bottleCages": 0
+			},
+			"defaults": {
+				"wheels": "wheels.carbon",
+				"tyres": "tyre.black",
+				"tyreMm": 23,
+				"bars": "bars.track",
+				"saddle": "saddle.short",
+				"fork": "fork.straight"
+			},
+			"allowed": {
+				"tyreMin": 23,
+				"tyreMax": 25,
+				"bars": ["bars.track", "bars.drop", "bars.bullhorn"],
+				"forks": ["fork.straight"],
+				"bags": false,
+				"utility": false
+			}
+		},
+		{
+			"slot": "frame",
+			"kind": "shape",
+			"id": "frame.ordonnanz",
+			"name": "Ordonnanzrad 05",
+			"brand": "hartlot",
+			"tier": "XXL",
+			"era": "1905–1988",
+			"material": "steel",
+			"spec": "Black steel, one gear, coaster brake, fenders, frame bag and rack; the real one weighed 22.5 kg",
+			"blurb": "The army bicycle, built for 83 years. Nothing here changes speed, not even 22.5 kg of steel.",
+			"geometry": {
+				"stack": 650,
+				"reach": 330,
+				"hta": 68,
+				"sta": 70,
+				"headTube": 240,
+				"chainstay": 470,
+				"bbDrop": 62,
+				"forkOffset": 60,
+				"seatTube": 0,
+				"topTube": "level",
+				"ttDrop": 75
+			},
+			"tubes": {
+				"shape": "steel",
+				"dt": 0.0175,
+				"tt": 0.0165,
+				"st": 0.0165,
+				"ht": 0.019,
+				"cs": 0.0125,
+				"ss": 0.0105,
+				"fork": 0.0135,
+				"stays": "normal",
+				"lugs": true
+			},
+			"cockpit": {
+				"bar": "upright",
+				"stemStyle": "quill",
+				"torsoDeg": 66,
+				"shoulderDeg": 70,
+				"stemDeg": 10,
+				"spacer": [0.03, 0.12],
+				"stem": [0.03, 0.09]
+			},
+			"parts": {
+				"brakes": "coaster",
+				"rings": 1,
+				"derailleur": false,
+				"bottleCages": 0,
+				"fenders": true,
+				"rack": true,
+				"frameBag": true,
+				"bell": true,
+				"lamp": true
+			},
+			"defaults": {
+				"wheels": "wheels.army",
+				"tyres": "tyre.black",
+				"tyreMm": 40,
+				"bars": "bars.upright",
+				"saddle": "saddle.leather",
+				"fork": "fork.curved"
+			},
+			"allowed": {
+				"tyreMin": 37,
+				"tyreMax": 42,
+				"bars": ["bars.upright"],
+				"forks": ["fork.curved"],
+				"bags": false,
+				"utility": false
+			}
+		},
+		{
+			"slot": "fork",
+			"kind": "shape",
+			"id": "fork.straight",
+			"name": "Straight tapered",
+			"brand": "gaemsli",
+			"free": true,
+			"spec": "Straight carbon blades, tapered steerer",
+			"style": "straight"
+		},
+		{
+			"slot": "fork",
+			"kind": "shape",
+			"id": "fork.curved",
+			"name": "Raked steel",
+			"brand": "hartlot",
+			"free": true,
+			"era": "1950s–1990s",
+			"spec": "Round steel blades with a long curve at the tips",
+			"style": "curved"
+		},
+		{
+			"slot": "fork",
+			"kind": "shape",
+			"id": "fork.aero",
+			"name": "Wide-stance aero",
+			"brand": "foehnwerk",
+			"free": true,
+			"spec": "Wide crown, Kamm-tail blades",
+			"style": "aero"
+		},
+		{
+			"slot": "finish",
+			"kind": "finish",
+			"id": "finish.matte",
+			"name": "Matt",
+			"starter": true,
+			"spec": "Flat paint, no reflections",
+			"finish": "matte"
+		},
+		{
+			"slot": "finish",
+			"kind": "finish",
+			"id": "finish.gloss",
+			"name": "Glanz",
+			"free": true,
+			"spec": "Clear coat with a hard highlight",
+			"finish": "gloss"
+		},
+		{
+			"slot": "finish",
+			"kind": "finish",
+			"id": "finish.satin",
+			"name": "Seidenmatt",
+			"free": true,
+			"spec": "Soft sheen",
+			"finish": "satin"
+		},
+		{
+			"slot": "finish",
+			"kind": "finish",
+			"id": "finish.metallic",
+			"name": "Metallic flake",
+			"tier": "S",
+			"spec": "Fine flake under clear",
+			"finish": "metallic"
+		},
+		{
+			"slot": "finish",
+			"kind": "finish",
+			"id": "finish.raw",
+			"name": "Raw carbon weave",
+			"tier": "S",
+			"spec": "Unpainted twill under clear; carbon frames only",
+			"finish": "carbon",
+			"requires": {
+				"material": ["carbon"]
+			}
+		},
+		{
+			"slot": "finish",
+			"kind": "finish",
+			"id": "finish.fade",
+			"name": "Two-colour fade",
+			"tier": "S",
+			"spec": "Frame colour fades into the accent, rear to front",
+			"finish": "fade"
+		},
+		{
+			"slot": "finish",
+			"kind": "finish",
+			"id": "finish.chrome",
+			"name": "Chrome lugs",
+			"brand": "hartlot",
+			"tier": "M",
+			"era": "1950s–1980s",
+			"spec": "Polished lugs, fork crown and stays tips; steel frames only",
+			"finish": "chrome",
+			"requires": {
+				"material": ["steel"]
+			}
+		},
+		{
+			"slot": "finish",
+			"kind": "finish",
+			"id": "finish.teamlack",
+			"name": "Teamlack panels",
+			"tier": "M",
+			"spec": "Three panel layouts in frame and accent colours",
+			"finish": "teamlack",
+			"options": [
+				{
+					"id": "diagonal",
+					"name": "Diagonal split"
+				},
+				{
+					"id": "bands",
+					"name": "Bands"
+				},
+				{
+					"id": "half",
+					"name": "Top half"
+				}
+			]
+		},
+		{
+			"slot": "finish",
+			"kind": "finish",
+			"id": "finish.jahresring",
+			"name": "Jahresring rings",
+			"unlock": "earned:streak:10-weeks",
+			"spec": "Fine accent rings, one per streak milestone; permanent",
+			"finish": "rings"
+		},
+		{
+			"slot": "wheels",
+			"kind": "shape",
+			"id": "wheels.alloy",
+			"name": "Alloy 24",
+			"brand": "rundlauf",
+			"starter": true,
+			"spec": "Alloy rims, 24 spokes, 2-cross",
+			"finish": "alloy",
+			"front": {
+				"type": "spoked",
+				"depth": 0.03,
+				"spokes": 24
+			},
+			"rear": {
+				"type": "spoked",
+				"depth": 0.03,
+				"spokes": 24
+			},
+			"decal": {
+				"style": "logo",
+				"count": 2,
+				"arcDeg": 38
+			}
+		},
+		{
+			"slot": "wheels",
+			"kind": "shape",
+			"id": "wheels.carbon",
+			"name": "Carbon rims",
+			"brand": "foehnwerk",
+			"tier": "L",
+			"spec": "Rim depth 30–80 mm is yours to pick; over 65 mm is not race-legal in mass starts",
+			"finish": "carbon",
+			"depthRange": [0.03, 0.08],
+			"front": {
+				"type": "spoked",
+				"depth": 0.045,
+				"spokes": 20
+			},
+			"rear": {
+				"type": "spoked",
+				"depth": 0.045,
+				"spokes": 24
+			},
+			"decal": {
+				"style": "band",
+				"count": 2,
+				"arcDeg": 70
+			}
+		},
+		{
+			"slot": "wheels",
+			"kind": "shape",
+			"id": "wheels.box",
+			"name": "Box-section",
+			"brand": "rundlauf",
+			"tier": "M",
+			"era": "1950s–1980s",
+			"spec": "Polished box rims, 32 silver spokes, 3-cross",
+			"finish": "silver",
+			"front": {
+				"type": "spoked",
+				"depth": 0.018,
+				"spokes": 32
+			},
+			"rear": {
+				"type": "spoked",
+				"depth": 0.018,
+				"spokes": 32
+			},
+			"decal": {
+				"style": "none",
+				"count": 0,
+				"arcDeg": 0
+			}
+		},
+		{
+			"slot": "wheels",
+			"kind": "shape",
+			"id": "wheels.gravel",
+			"name": "Wide alloy",
+			"brand": "murmeli",
+			"tier": "S",
+			"spec": "25 mm internal, 28 spokes",
+			"finish": "alloy",
+			"front": {
+				"type": "spoked",
+				"depth": 0.025,
+				"spokes": 28
+			},
+			"rear": {
+				"type": "spoked",
+				"depth": 0.025,
+				"spokes": 28
+			},
+			"decal": {
+				"style": "logo",
+				"count": 2,
+				"arcDeg": 30
+			}
+		},
+		{
+			"slot": "wheels",
+			"kind": "shape",
+			"id": "wheels.disc",
+			"name": "Rear disc",
+			"brand": "foehnwerk",
+			"tier": "L",
+			"spec": "Lenticular disc behind, your pick of carbon depth in front",
+			"finish": "carbon",
+			"depthRange": [0.045, 0.08],
+			"front": {
+				"type": "spoked",
+				"depth": 0.08,
+				"spokes": 18
+			},
+			"rear": {
+				"type": "disc",
+				"depth": 0.08
+			},
+			"decal": {
+				"style": "band",
+				"count": 2,
+				"arcDeg": 70
+			}
+		},
+		{
+			"slot": "wheels",
+			"kind": "shape",
+			"id": "wheels.blade3",
+			"name": "Three-blade",
+			"brand": "foehnwerk",
+			"tier": "L",
+			"era": "1990s",
+			"spec": "Three carbon blades in front, a disc behind",
+			"finish": "carbon",
+			"front": {
+				"type": "blades",
+				"depth": 0.05,
+				"blades": 3,
+				"bladeMm": 34
+			},
+			"rear": {
+				"type": "disc",
+				"depth": 0.06
+			},
+			"decal": {
+				"style": "band",
+				"count": 2,
+				"arcDeg": 60
+			}
+		},
+		{
+			"slot": "wheels",
+			"kind": "shape",
+			"id": "wheels.blade5",
+			"name": "Five-blade",
+			"brand": "foehnwerk",
+			"tier": "L",
+			"era": "1996",
+			"spec": "Five lenticular blades front and rear, track",
+			"finish": "carbon",
+			"front": {
+				"type": "blades",
+				"depth": 0.045,
+				"blades": 5,
+				"bladeMm": 26
+			},
+			"rear": {
+				"type": "blades",
+				"depth": 0.045,
+				"blades": 5,
+				"bladeMm": 26
+			},
+			"decal": {
+				"style": "band",
+				"count": 2,
+				"arcDeg": 50
+			}
+		},
+		{
+			"slot": "wheels",
+			"kind": "shape",
+			"id": "wheels.army",
+			"name": "Army steel",
+			"brand": "hartlot",
+			"unlock": "with:frame.ordonnanz",
+			"spec": "Black steel rims, 36 spokes",
+			"finish": "steel",
+			"front": {
+				"type": "spoked",
+				"depth": 0.02,
+				"spokes": 36
+			},
+			"rear": {
+				"type": "spoked",
+				"depth": 0.02,
+				"spokes": 36
+			},
+			"decal": {
+				"style": "none",
+				"count": 0,
+				"arcDeg": 0
+			}
+		},
+		{
+			"slot": "wheels",
+			"kind": "shape",
+			"id": "wheels.vinyl",
+			"name": "Rillen",
+			"brand": "foehnwerk",
+			"unlock": "earned:achievement:dj",
+			"spec": "45 mm carbon with a vinyl-groove rim decal",
+			"finish": "carbon",
+			"front": {
+				"type": "spoked",
+				"depth": 0.045,
+				"spokes": 21
+			},
+			"rear": {
+				"type": "spoked",
+				"depth": 0.045,
+				"spokes": 24
+			},
+			"decal": {
+				"style": "grooves",
+				"count": 1,
+				"arcDeg": 360
+			}
+		},
+		{
+			"slot": "hub",
+			"kind": "sound",
+			"id": "hub.quiet",
+			"name": "Stille",
+			"brand": "hemmung",
+			"starter": true,
+			"spec": "Low-flange hub, a soft pawl whisper while you coast",
+			"style": "low",
+			"voice": "whisper"
+		},
+		{
+			"slot": "hub",
+			"kind": "sound",
+			"id": "hub.buzz",
+			"name": "Summer",
+			"brand": "hemmung",
+			"tier": "S",
+			"spec": "Straight-pull shell, a fine ratchet buzz",
+			"style": "straight",
+			"voice": "buzz"
+		},
+		{
+			"slot": "hub",
+			"kind": "sound",
+			"id": "hub.bee",
+			"name": "Hornisse",
+			"brand": "hemmung",
+			"tier": "S",
+			"spec": "High-flange shell with an anodised ring, the loud angry bee",
+			"style": "high",
+			"voice": "bee"
+		},
+		{
+			"slot": "hub",
+			"kind": "sound",
+			"id": "hub.klick",
+			"name": "Taschenuhr",
+			"brand": "hemmung",
+			"tier": "S",
+			"era": "1970s",
+			"spec": "Large-flange polished shell, slow pocket-watch clicks",
+			"style": "large",
+			"voice": "tick"
+		},
+		{
+			"slot": "tyres",
+			"kind": "shape",
+			"id": "tyre.black",
+			"name": "Black slick",
+			"brand": "rundlauf",
+			"starter": true,
+			"spec": "Width 23–50 mm is yours to pick, within the frame",
+			"wall": "black",
+			"tread": "slick",
+			"casing": "clincher"
+		},
+		{
+			"slot": "tyres",
+			"kind": "shape",
+			"id": "tyre.tan",
+			"name": "Tan wall",
+			"brand": "rundlauf",
+			"tier": "S",
+			"spec": "Gum sidewalls",
+			"wall": "tan",
+			"tread": "slick",
+			"casing": "clincher"
+		},
+		{
+			"slot": "tyres",
+			"kind": "shape",
+			"id": "tyre.cream",
+			"name": "Cream wall",
+			"brand": "rundlauf",
+			"tier": "S",
+			"era": "1960s",
+			"spec": "Cream sidewalls, fine file tread",
+			"wall": "cream",
+			"tread": "file",
+			"casing": "clincher"
+		},
+		{
+			"slot": "tyres",
+			"kind": "shape",
+			"id": "tyre.colourwall",
+			"name": "Colour wall",
+			"brand": "rundlauf",
+			"tier": "S",
+			"era": "1990s",
+			"spec": "Sidewall in any palette colour",
+			"wall": "colour",
+			"tread": "slick",
+			"casing": "clincher"
+		},
+		{
+			"slot": "tyres",
+			"kind": "shape",
+			"id": "tyre.file",
+			"name": "File tread",
+			"brand": "rundlauf",
+			"tier": "S",
+			"spec": "Herringbone file tread, black",
+			"wall": "black",
+			"tread": "file",
+			"casing": "clincher"
+		},
+		{
+			"slot": "tyres",
+			"kind": "shape",
+			"id": "tyre.knob",
+			"name": "Gravel knobs",
+			"brand": "murmeli",
+			"tier": "S",
+			"spec": "Low knobs, gum walls",
+			"wall": "tan",
+			"tread": "knob",
+			"casing": "clincher"
+		},
+		{
+			"slot": "tyres",
+			"kind": "shape",
+			"id": "tyre.tubular",
+			"name": "Silk tubular",
+			"brand": "rundlauf",
+			"tier": "M",
+			"era": "1950s–2000s",
+			"spec": "Round glued casing, honey sidewalls",
+			"wall": "honey",
+			"tread": "file",
+			"casing": "tubular"
+		},
+		{
+			"slot": "groupset",
+			"kind": "shape",
+			"id": "gs.mech",
+			"name": "Mechanical",
+			"brand": "hemmung",
+			"starter": true,
+			"spec": "Cable loops at the bar, 2×12",
+			"style": "mech"
+		},
+		{
+			"slot": "groupset",
+			"kind": "shape",
+			"id": "gs.elec",
+			"name": "Elektrisch",
+			"brand": "hemmung",
+			"tier": "M",
+			"spec": "Battery bumps on the derailleurs, no cables",
+			"style": "elec",
+			"requires": {
+				"derailleur": true
+			}
+		},
+		{
+			"slot": "groupset",
+			"kind": "shape",
+			"id": "gs.downtube",
+			"name": "Down-tube levers",
+			"brand": "hemmung",
+			"tier": "S",
+			"era": "1950s–1980s",
+			"spec": "Friction levers on the down tube, cables along the frame",
+			"style": "downtube",
+			"requires": {
+				"derailleur": true
+			}
+		},
+		{
+			"slot": "groupset",
+			"kind": "shape",
+			"id": "gs.delta",
+			"name": "Delta brakes",
+			"brand": "hemmung",
+			"tier": "S",
+			"era": "1985–1991",
+			"spec": "Triangular brake bodies; rim-brake frames only",
+			"style": "delta",
+			"requires": {
+				"brakes": ["rim"]
+			}
+		},
+		{
+			"slot": "gsFinish",
+			"kind": "finish",
+			"id": "gsf.black",
+			"name": "Black",
+			"brand": "hemmung",
+			"starter": true,
+			"finish": "#2a2932"
+		},
+		{
+			"slot": "gsFinish",
+			"kind": "finish",
+			"id": "gsf.silver",
+			"name": "Polished silver",
+			"brand": "hemmung",
+			"tier": "M",
+			"finish": "#b9bac3"
+		},
+		{
+			"slot": "gsFinish",
+			"kind": "finish",
+			"id": "gsf.copper",
+			"name": "Copper",
+			"brand": "hemmung",
+			"tier": "M",
+			"finish": "#b0693a"
+		},
+		{
+			"slot": "gsFinish",
+			"kind": "finish",
+			"id": "gsf.anodised",
+			"name": "Anodised accents",
+			"brand": "hemmung",
+			"tier": "S",
+			"spec": "Any palette colour; the watt band is blocked",
+			"finish": "anodised"
+		},
+		{
+			"slot": "crank",
+			"kind": "shape",
+			"id": "crank.four",
+			"name": "Four-arm",
+			"brand": "hemmung",
+			"starter": true,
+			"spec": "Forged four-arm spider; length 165–175 mm is yours to pick",
+			"style": "four"
+		},
+		{
+			"slot": "crank",
+			"kind": "shape",
+			"id": "crank.hohl",
+			"name": "Hohlkurbel",
+			"brand": "hemmung",
+			"tier": "S",
+			"spec": "Wide hollow arms, hidden spider",
+			"style": "hollow"
+		},
+		{
+			"slot": "crank",
+			"kind": "shape",
+			"id": "crank.five",
+			"name": "Five-arm polished",
+			"brand": "hemmung",
+			"tier": "S",
+			"era": "1970s–1990s",
+			"spec": "Slim polished arms, five-arm spider",
+			"style": "five"
+		},
+		{
+			"slot": "ring",
+			"kind": "shape",
+			"id": "ring.round",
+			"name": "Round",
+			"brand": "hemmung",
+			"starter": true,
+			"style": "round"
+		},
+		{
+			"slot": "ring",
+			"kind": "shape",
+			"id": "ring.oval83",
+			"name": "Oval 83",
+			"brand": "hemmung",
+			"tier": "S",
+			"era": "1983–1993",
+			"spec": "The 1980s ovoid ring, fattest with the cranks",
+			"style": "oval83"
+		},
+		{
+			"slot": "ring",
+			"kind": "shape",
+			"id": "ring.oval",
+			"name": "Modern oval",
+			"brand": "hemmung",
+			"tier": "S",
+			"spec": "Fattest at 3 o’clock",
+			"style": "oval"
+		},
+		{
+			"slot": "ring",
+			"kind": "shape",
+			"id": "ring.aero",
+			"name": "Aero cover ring",
+			"brand": "foehnwerk",
+			"tier": "S",
+			"spec": "A solid cover over the big ring",
+			"style": "cover"
+		},
+		{
+			"slot": "ring",
+			"kind": "shape",
+			"id": "ring.army",
+			"name": "Army maker’s ring",
+			"brand": "hartlot",
+			"unlock": "with:frame.ordonnanz",
+			"spec": "The five makers told their bikes apart by the ring",
+			"style": "army"
+		},
+		{
+			"slot": "pedals",
+			"kind": "shape",
+			"id": "pedal.road",
+			"name": "3-bolt road",
+			"brand": "hemmung",
+			"starter": true,
+			"spec": "Wide platform, 3-bolt cleat",
+			"style": "road"
+		},
+		{
+			"slot": "pedals",
+			"kind": "shape",
+			"id": "pedal.node",
+			"name": "Lollipop node",
+			"brand": "hemmung",
+			"tier": "S",
+			"spec": "Round node pedal, the cleat carries the float",
+			"style": "node"
+		},
+		{
+			"slot": "pedals",
+			"kind": "shape",
+			"id": "pedal.2bolt",
+			"name": "2-bolt double-sided",
+			"brand": "hemmung",
+			"tier": "S",
+			"spec": "Small double-sided mechanism, 2-bolt cleat",
+			"style": "twobolt"
+		},
+		{
+			"slot": "pedals",
+			"kind": "shape",
+			"id": "pedal.flat",
+			"name": "Flat",
+			"brand": "murmeli",
+			"tier": "S",
+			"spec": "Wide platform with pins",
+			"style": "flat"
+		},
+		{
+			"slot": "pedals",
+			"kind": "shape",
+			"id": "pedal.clips",
+			"name": "Toe clips and straps",
+			"brand": "korkleder",
+			"tier": "S",
+			"era": "1950s–1980s",
+			"spec": "Quill pedal, steel toe clip, leather strap",
+			"style": "clips"
+		},
+		{
+			"slot": "saddle",
+			"kind": "shape",
+			"id": "saddle.race",
+			"name": "Race",
+			"brand": "gaemsli",
+			"starter": true,
+			"style": "race"
+		},
+		{
+			"slot": "saddle",
+			"kind": "shape",
+			"id": "saddle.short",
+			"name": "Short-nose",
+			"brand": "gaemsli",
+			"tier": "S",
+			"style": "short"
+		},
+		{
+			"slot": "saddle",
+			"kind": "shape",
+			"id": "saddle.cutout",
+			"name": "Cut-out channel",
+			"brand": "gaemsli",
+			"tier": "S",
+			"style": "cutout"
+		},
+		{
+			"slot": "saddle",
+			"kind": "shape",
+			"id": "saddle.lattice",
+			"name": "3D lattice",
+			"brand": "foehnwerk",
+			"tier": "M",
+			"spec": "Printed lattice padding",
+			"style": "lattice"
+		},
+		{
+			"slot": "saddle",
+			"kind": "shape",
+			"id": "saddle.leather",
+			"name": "Sprung leather",
+			"brand": "korkleder",
+			"tier": "M",
+			"spec": "Copper rivets, coil springs",
+			"style": "leather"
+		},
+		{
+			"slot": "saddle",
+			"kind": "shape",
+			"id": "saddle.suede",
+			"name": "Suede top",
+			"brand": "korkleder",
+			"tier": "S",
+			"era": "1980s",
+			"style": "suede"
+		},
+		{
+			"slot": "bars",
+			"kind": "shape",
+			"id": "bars.drop",
+			"name": "Round drop",
+			"brand": "gaemsli",
+			"starter": true,
+			"spec": "Width 360–460 mm is yours to pick; under 400 is not race-legal in mass starts",
+			"style": "drop"
+		},
+		{
+			"slot": "bars",
+			"kind": "shape",
+			"id": "bars.aero",
+			"name": "One-piece aero cockpit",
+			"brand": "foehnwerk",
+			"tier": "M",
+			"style": "aero"
+		},
+		{
+			"slot": "bars",
+			"kind": "shape",
+			"id": "bars.flare",
+			"name": "Flared gravel",
+			"brand": "murmeli",
+			"tier": "M",
+			"style": "flare"
+		},
+		{
+			"slot": "bars",
+			"kind": "shape",
+			"id": "bars.track",
+			"name": "Track drops",
+			"brand": "hartlot",
+			"tier": "S",
+			"style": "track"
+		},
+		{
+			"slot": "bars",
+			"kind": "shape",
+			"id": "bars.bullhorn",
+			"name": "Bullhorn",
+			"brand": "hartlot",
+			"tier": "S",
+			"spec": "Forward horns, taped tips",
+			"style": "bullhorn"
+		},
+		{
+			"slot": "bars",
+			"kind": "shape",
+			"id": "bars.clipon",
+			"name": "Clip-on extensions",
+			"brand": "foehnwerk",
+			"tier": "S",
+			"spec": "Road bar with clip-on extensions and pads; posture stays on the hoods",
+			"style": "clipon"
+		},
+		{
+			"slot": "bars",
+			"kind": "shape",
+			"id": "bars.tt",
+			"name": "Base bar and extensions",
+			"brand": "foehnwerk",
+			"unlock": "with:frame.tt|frame.hour",
+			"style": "tt"
+		},
+		{
+			"slot": "bars",
+			"kind": "shape",
+			"id": "bars.upright",
+			"name": "Swept upright bar",
+			"brand": "hartlot",
+			"unlock": "with:frame.ordonnanz",
+			"style": "upright"
+		},
+		{
+			"slot": "tape",
+			"kind": "pattern",
+			"id": "tape.plain",
+			"name": "Plain wrap",
+			"brand": "korkleder",
+			"starter": true,
+			"style": "plain"
+		},
+		{
+			"slot": "tape",
+			"kind": "pattern",
+			"id": "tape.collection",
+			"name": "Band collection",
+			"brand": "korkleder",
+			"tier": "S",
+			"spec": "One purchase opens every texture",
+			"style": "collection",
+			"options": [
+				{
+					"id": "cork",
+					"name": "Cork"
+				},
+				{
+					"id": "leather",
+					"name": "Stitched leather"
+				},
+				{
+					"id": "perforated",
+					"name": "Perforated"
+				},
+				{
+					"id": "cloth",
+					"name": "Cloth and shellac"
+				},
+				{
+					"id": "twotone",
+					"name": "Two-tone"
+				}
+			]
+		},
+		{
+			"slot": "bottles",
+			"kind": "shape",
+			"id": "bottle.plastic",
+			"name": "Squeeze bottle",
+			"brand": "tueftelwerk",
+			"starter": true,
+			"spec": "0–2 bottles and their size are yours to pick",
+			"style": "plastic"
+		},
+		{
+			"slot": "bottles",
+			"kind": "shape",
+			"id": "bottle.alu",
+			"name": "Alu bottle, cork stopper",
+			"brand": "tueftelwerk",
+			"tier": "S",
+			"era": "1950s–1970s",
+			"style": "alu"
+		},
+		{
+			"slot": "bottles",
+			"kind": "shape",
+			"id": "bottle.insulated",
+			"name": "Insulated",
+			"brand": "tueftelwerk",
+			"tier": "S",
+			"style": "insulated"
+		},
+		{
+			"slot": "bottles",
+			"kind": "shape",
+			"id": "bottle.rear",
+			"name": "Behind-the-saddle pair",
+			"brand": "foehnwerk",
+			"tier": "S",
+			"spec": "Twin cages on the saddle rails",
+			"style": "rear"
+		},
+		{
+			"slot": "bottles",
+			"kind": "shape",
+			"id": "bottle.espresso",
+			"name": "Espresso bottle",
+			"brand": "tueftelwerk",
+			"unlock": "earned:achievement:espresso-ride",
+			"spec": "Dark brown with a crema cap",
+			"style": "plastic",
+			"tint": {
+				"bottle": "#4a2c20",
+				"cap": "#e7c79a"
+			}
+		},
+		{
+			"slot": "bottles",
+			"kind": "shape",
+			"id": "bottle.gruppetto",
+			"name": "Gruppetto bottle",
+			"brand": "tueftelwerk",
+			"unlock": "earned:together:10-group-sessions",
+			"spec": "Striped in your crew colours",
+			"style": "striped"
+		},
+		{
+			"slot": "cages",
+			"kind": "shape",
+			"id": "cage.alloy",
+			"name": "Alloy wire",
+			"brand": "tueftelwerk",
+			"starter": true,
+			"style": "alloy"
+		},
+		{
+			"slot": "cages",
+			"kind": "shape",
+			"id": "cage.collection",
+			"name": "Käfig collection",
+			"brand": "tueftelwerk",
+			"tier": "S",
+			"style": "collection",
+			"options": [
+				{
+					"id": "carbon",
+					"name": "Carbon"
+				},
+				{
+					"id": "side",
+					"name": "Side-load"
+				},
+				{
+					"id": "chrome",
+					"name": "Vintage chrome"
+				}
+			]
+		},
+		{
+			"slot": "computer",
+			"kind": "shape",
+			"id": "comp.none",
+			"name": "No computer",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "computer",
+			"kind": "shape",
+			"id": "comp.tacho",
+			"name": "Tacho",
+			"brand": "tueftelwerk",
+			"tier": "S",
+			"spec": "Out-front mount; dark glass, never lit, never shows numbers",
+			"style": "tacho",
+			"options": [
+				{
+					"id": "square",
+					"name": "Square"
+				},
+				{
+					"id": "round",
+					"name": "Round"
+				},
+				{
+					"id": "wide",
+					"name": "Wide"
+				}
+			]
+		},
+		{
+			"slot": "computer",
+			"kind": "shape",
+			"id": "comp.cyclo85",
+			"name": "Wired cyclometer",
+			"brand": "tueftelwerk",
+			"tier": "S",
+			"era": "1980s",
+			"spec": "Stem-top unit with its sensor wire",
+			"style": "cyclo"
+		},
+		{
+			"slot": "lights",
+			"kind": "shape",
+			"id": "light.none",
+			"name": "No lights",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "lights",
+			"kind": "shape",
+			"id": "light.clip",
+			"name": "Clip-on pair",
+			"brand": "tueftelwerk",
+			"tier": "S",
+			"spec": "Front on the bar, rear on the seat post; never lit, never blinking",
+			"style": "clip"
+		},
+		{
+			"slot": "lights",
+			"kind": "shape",
+			"id": "light.dynamo",
+			"name": "Dynamo headlamp",
+			"brand": "hartlot",
+			"tier": "S",
+			"era": "1950s",
+			"spec": "Fork-crown lamp and a bottle dynamo; unlit",
+			"style": "dynamo"
+		},
+		{
+			"slot": "bell",
+			"kind": "shape",
+			"id": "bell.none",
+			"name": "No bell",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "bell",
+			"kind": "shape",
+			"id": "bell.collection",
+			"name": "Glocke collection",
+			"brand": "tueftelwerk",
+			"tier": "S",
+			"spec": "Swiss law dropped the bell requirement in 2017; this one is for nostalgia",
+			"style": "collection",
+			"options": [
+				{
+					"id": "dome",
+					"name": "Dome ding-dong"
+				},
+				{
+					"id": "brass",
+					"name": "Brass"
+				},
+				{
+					"id": "ping",
+					"name": "Mini ping"
+				}
+			]
+		},
+		{
+			"slot": "bags",
+			"kind": "shape",
+			"id": "bag.none",
+			"name": "No bag",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "bags",
+			"kind": "shape",
+			"id": "bag.wedge",
+			"name": "Saddle wedge",
+			"brand": "murmeli",
+			"tier": "S",
+			"style": "wedge"
+		},
+		{
+			"slot": "bags",
+			"kind": "shape",
+			"id": "bag.toptube",
+			"name": "Top-tube bento",
+			"brand": "murmeli",
+			"tier": "S",
+			"style": "toptube",
+			"requires": {
+				"bags": true
+			}
+		},
+		{
+			"slot": "bags",
+			"kind": "shape",
+			"id": "bag.halfframe",
+			"name": "Half frame bag",
+			"brand": "murmeli",
+			"tier": "M",
+			"spec": "Leaves room for one bottle",
+			"style": "half",
+			"requires": {
+				"bags": true
+			}
+		},
+		{
+			"slot": "bags",
+			"kind": "shape",
+			"id": "bag.fullframe",
+			"name": "Full frame bag",
+			"brand": "murmeli",
+			"tier": "M",
+			"spec": "Fills the triangle; no bottles",
+			"style": "full",
+			"requires": {
+				"bags": true
+			}
+		},
+		{
+			"slot": "bags",
+			"kind": "shape",
+			"id": "bag.barroll",
+			"name": "Handlebar roll",
+			"brand": "murmeli",
+			"tier": "M",
+			"style": "barroll",
+			"requires": {
+				"bags": true
+			}
+		},
+		{
+			"slot": "bags",
+			"kind": "shape",
+			"id": "bag.rando",
+			"name": "Rando front bag",
+			"brand": "hartlot",
+			"tier": "M",
+			"spec": "Canvas and leather on a small front rack",
+			"style": "rando",
+			"requires": {
+				"bags": true
+			}
+		},
+		{
+			"slot": "bags",
+			"kind": "shape",
+			"id": "bag.musette",
+			"name": "Musette",
+			"brand": "zwirn",
+			"unlock": "earned:badge:soigneur",
+			"spec": "Cotton feed bag over the shoulder",
+			"style": "musette"
+		},
+		{
+			"slot": "utility",
+			"kind": "shape",
+			"id": "util.none",
+			"name": "Nothing fitted",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "utility",
+			"kind": "shape",
+			"id": "util.pendler",
+			"name": "Pendler kit",
+			"brand": "hartlot",
+			"tier": "S",
+			"spec": "Fenders and a rear rack; frames with mounts only",
+			"style": "pendler",
+			"requires": {
+				"utility": true
+			}
+		},
+		{
+			"slot": "charm",
+			"kind": "charm",
+			"id": "charm.none",
+			"name": "No charm",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "charm",
+			"kind": "charm",
+			"id": "charm.cowbell",
+			"name": "Treichel cowbell",
+			"unlock": "earned:season:chalandamarz",
+			"spec": "A tiny bell under the saddle",
+			"style": "cowbell"
+		},
+		{
+			"slot": "charm",
+			"kind": "charm",
+			"id": "charm.lampion",
+			"name": "Paper lampion",
+			"unlock": "earned:season:1-august",
+			"spec": "Hangs from the bar; never lit",
+			"style": "lampion"
+		},
+		{
+			"slot": "charm",
+			"kind": "charm",
+			"id": "charm.lantern",
+			"name": "Matte red lantern",
+			"unlock": "earned:medal:lanterne-rouge",
+			"spec": "Hangs under the saddle; never lit",
+			"style": "lantern"
+		},
+		{
+			"slot": "charm",
+			"kind": "charm",
+			"id": "charm.hammer",
+			"name": "Top-tube hammer",
+			"unlock": "earned:medal:hammer",
+			"spec": "A small hammer on the top tube",
+			"style": "hammer"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.plain",
+			"name": "Plain",
+			"brand": "zwirn",
+			"starter": true,
+			"pattern": "plain"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.yoke",
+			"name": "Shoulder yoke",
+			"brand": "zwirn",
+			"tier": "S",
+			"pattern": "yoke"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.sidepanel",
+			"name": "Side panels",
+			"brand": "zwirn",
+			"tier": "S",
+			"pattern": "sidepanel"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.hoops",
+			"name": "Hoops",
+			"brand": "zwirn",
+			"tier": "M",
+			"pattern": "hoops"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.sash",
+			"name": "Sash",
+			"brand": "zwirn",
+			"tier": "M",
+			"pattern": "sash"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.stripes",
+			"name": "Stripes",
+			"brand": "zwirn",
+			"tier": "M",
+			"pattern": "stripes"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.chevron",
+			"name": "Chevron",
+			"brand": "zwirn",
+			"tier": "M",
+			"pattern": "chevron"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.fade",
+			"name": "Nebelmeer fade",
+			"brand": "zwirn",
+			"tier": "M",
+			"pattern": "gradient"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.blocks",
+			"name": "Colour blocks",
+			"brand": "zwirn",
+			"tier": "M",
+			"era": "1990s",
+			"pattern": "blocks"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.karo",
+			"name": "Karo check",
+			"brand": "lismer",
+			"tier": "M",
+			"era": "1960s",
+			"pattern": "karo"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.topo",
+			"name": "Topo contours",
+			"brand": "zwirn",
+			"tier": "M",
+			"pattern": "topo"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.edelweiss",
+			"name": "Edelweiss",
+			"brand": "lismer",
+			"tier": "M",
+			"spec": "After the wrestlers’ festival shirt",
+			"pattern": "edelweiss"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.jass",
+			"name": "Jass card suits",
+			"brand": "lismer",
+			"tier": "M",
+			"spec": "Roses, bells and acorns",
+			"pattern": "jass"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.stickerei",
+			"name": "Stickerei lace",
+			"brand": "zwirn",
+			"tier": "L",
+			"spec": "The St. Gallen embroidery look; the flagship pattern",
+			"pattern": "stickerei"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.scherenschnitt",
+			"name": "Scherenschnitt",
+			"brand": "lismer",
+			"tier": "L",
+			"spec": "Paper-cut folk band: firs, cows, a chalet; no flags, no arms",
+			"pattern": "scherenschnitt"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.chrampfer",
+			"name": "Chrampfer pinstripe",
+			"brand": "zwirn",
+			"unlock": "earned:achievement:sufferfest-survivor",
+			"pattern": "pinstripe"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.sprinter",
+			"name": "Sprinter bands",
+			"brand": "foehnwerk",
+			"unlock": "earned:achievement:sprint-snob",
+			"pattern": "sprinter"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.gipfelpunkte",
+			"name": "Gipfelpunkte",
+			"brand": "zwirn",
+			"unlock": "earned:badge:hors-categorie",
+			"spec": "Dots, never on a white ground",
+			"pattern": "gipfelpunkte"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.nebelkit",
+			"name": "Fog-white kit",
+			"brand": "zwirn",
+			"unlock": "earned:badge:nebelmeer",
+			"pattern": "nebelkit"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.raeppli",
+			"name": "Räppli confetti",
+			"brand": "zwirn",
+			"unlock": "earned:season:fasnacht",
+			"pattern": "raeppli"
+		},
+		{
+			"slot": "jersey",
+			"kind": "pattern",
+			"id": "jp.crew",
+			"name": "Crew kit",
+			"crewOnly": true,
+			"spec": "Designed by the crew’s owner or admins; worn only in that crew’s sessions",
+			"pattern": "crew"
+		},
+		{
+			"slot": "cut",
+			"kind": "shape",
+			"id": "cut.race",
+			"name": "Race cut",
+			"brand": "zwirn",
+			"starter": true,
+			"spec": "Sleeves and collar are yours to pick",
+			"style": "race"
+		},
+		{
+			"slot": "cut",
+			"kind": "shape",
+			"id": "cut.club",
+			"name": "Club cut",
+			"brand": "zwirn",
+			"tier": "S",
+			"spec": "Relaxed body, longer sleeves",
+			"style": "club"
+		},
+		{
+			"slot": "cut",
+			"kind": "shape",
+			"id": "cut.wool",
+			"name": "Wool jersey",
+			"brand": "lismer",
+			"tier": "M",
+			"era": "1950s–1970s",
+			"spec": "Ribbed knit, button placket",
+			"style": "wool"
+		},
+		{
+			"slot": "cut",
+			"kind": "shape",
+			"id": "cut.skinsuit",
+			"name": "Skinsuit",
+			"brand": "foehnwerk",
+			"tier": "M",
+			"spec": "One piece, no pockets",
+			"style": "skinsuit"
+		},
+		{
+			"slot": "layer",
+			"kind": "shape",
+			"id": "layer.none",
+			"name": "No layer",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "layer",
+			"kind": "shape",
+			"id": "layer.gilet",
+			"name": "Gilet",
+			"brand": "zwirn",
+			"tier": "M",
+			"spec": "Wind vest over the jersey, mesh back",
+			"style": "gilet"
+		},
+		{
+			"slot": "layer",
+			"kind": "shape",
+			"id": "layer.rain",
+			"name": "Packable rain jacket",
+			"brand": "zwirn",
+			"tier": "M",
+			"style": "rain"
+		},
+		{
+			"slot": "layer",
+			"kind": "shape",
+			"id": "layer.winter",
+			"name": "Winter jacket",
+			"brand": "zwirn",
+			"tier": "M",
+			"spec": "Brushed lining, side panels",
+			"style": "winter"
+		},
+		{
+			"slot": "layer",
+			"kind": "shape",
+			"id": "layer.solstice",
+			"name": "Längste Nacht gilet",
+			"brand": "zwirn",
+			"unlock": "earned:season:winter-solstice",
+			"spec": "A star field on a night-blue gilet",
+			"style": "solstice"
+		},
+		{
+			"slot": "shorts",
+			"kind": "shape",
+			"id": "bib.plain",
+			"name": "Bib shorts",
+			"brand": "zwirn",
+			"starter": true,
+			"spec": "Shorts, 3/4 knickers or tights: length is yours to pick",
+			"style": "plain"
+		},
+		{
+			"slot": "shorts",
+			"kind": "shape",
+			"id": "bib.panels",
+			"name": "Panel collection",
+			"brand": "zwirn",
+			"tier": "S",
+			"style": "panels",
+			"options": [
+				{
+					"id": "side",
+					"name": "Side panel"
+				},
+				{
+					"id": "gripper",
+					"name": "Contrast gripper"
+				},
+				{
+					"id": "stripe",
+					"name": "Stripe"
+				}
+			]
+		},
+		{
+			"slot": "shorts",
+			"kind": "shape",
+			"id": "bib.wool",
+			"name": "Wool shorts",
+			"brand": "lismer",
+			"tier": "S",
+			"era": "1950s–1970s",
+			"spec": "Ribbed knit",
+			"style": "wool"
+		},
+		{
+			"slot": "warmers",
+			"kind": "shape",
+			"id": "warm.none",
+			"name": "No warmers",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "warmers",
+			"kind": "shape",
+			"id": "warm.collection",
+			"name": "Wärmer collection",
+			"brand": "lismer",
+			"tier": "S",
+			"style": "collection",
+			"options": [
+				{
+					"id": "arm",
+					"name": "Arm"
+				},
+				{
+					"id": "knee",
+					"name": "Knee"
+				},
+				{
+					"id": "leg",
+					"name": "Leg"
+				},
+				{
+					"id": "armleg",
+					"name": "Arm and leg"
+				}
+			]
+		},
+		{
+			"slot": "warmers",
+			"kind": "shape",
+			"id": "warm.nightbands",
+			"name": "Reflective ankle bands",
+			"unlock": "earned:achievement:night-shift",
+			"spec": "Flat silver bands; not emissive",
+			"style": "bands"
+		},
+		{
+			"slot": "socks",
+			"kind": "pattern",
+			"id": "sock.plain",
+			"name": "Plain",
+			"brand": "lismer",
+			"starter": true,
+			"spec": "Low, mid or tall is yours to pick; tall stops at the race-legal line",
+			"pattern": "plain"
+		},
+		{
+			"slot": "socks",
+			"kind": "pattern",
+			"id": "sock.stripe",
+			"name": "Cuff stripes",
+			"brand": "lismer",
+			"tier": "S",
+			"pattern": "stripe"
+		},
+		{
+			"slot": "socks",
+			"kind": "pattern",
+			"id": "sock.nordic",
+			"name": "Nordic knit",
+			"brand": "lismer",
+			"tier": "S",
+			"pattern": "nordic"
+		},
+		{
+			"slot": "socks",
+			"kind": "pattern",
+			"id": "sock.jass",
+			"name": "Jass suits",
+			"brand": "lismer",
+			"tier": "S",
+			"pattern": "jass"
+		},
+		{
+			"slot": "socks",
+			"kind": "pattern",
+			"id": "sock.edelweiss",
+			"name": "Edelweiss",
+			"brand": "lismer",
+			"tier": "S",
+			"pattern": "edelweiss"
+		},
+		{
+			"slot": "socks",
+			"kind": "pattern",
+			"id": "sock.karo",
+			"name": "Karo",
+			"brand": "lismer",
+			"tier": "S",
+			"pattern": "karo"
+		},
+		{
+			"slot": "socks",
+			"kind": "pattern",
+			"id": "sock.z6",
+			"name": "Z6 stripe",
+			"brand": "lismer",
+			"unlock": "earned:achievement:hot-end",
+			"pattern": "z6"
+		},
+		{
+			"slot": "socks",
+			"kind": "pattern",
+			"id": "sock.metronome",
+			"name": "Metronome stripes",
+			"brand": "lismer",
+			"unlock": "earned:medal:metronome",
+			"pattern": "metronome"
+		},
+		{
+			"slot": "socks",
+			"kind": "pattern",
+			"id": "sock.spring",
+			"name": "Spring meadow",
+			"brand": "lismer",
+			"unlock": "earned:season:sechselaeuten",
+			"pattern": "spring"
+		},
+		{
+			"slot": "socks",
+			"kind": "pattern",
+			"id": "sock.souvenir",
+			"name": "Climb profile",
+			"brand": "lismer",
+			"unlock": "earned:souvenir:climb",
+			"spec": "The silhouette of a climb you rode end to end",
+			"pattern": "profile"
+		},
+		{
+			"slot": "shoes",
+			"kind": "shape",
+			"id": "shoe.dial",
+			"name": "Dial closure",
+			"brand": "zwirn",
+			"starter": true,
+			"style": "dial"
+		},
+		{
+			"slot": "shoes",
+			"kind": "shape",
+			"id": "shoe.strap",
+			"name": "Three straps",
+			"brand": "zwirn",
+			"tier": "S",
+			"style": "strap"
+		},
+		{
+			"slot": "shoes",
+			"kind": "shape",
+			"id": "shoe.buckle",
+			"name": "Ratchet buckle",
+			"brand": "zwirn",
+			"tier": "S",
+			"era": "2000s",
+			"style": "buckle"
+		},
+		{
+			"slot": "shoes",
+			"kind": "shape",
+			"id": "shoe.lace",
+			"name": "Laced",
+			"brand": "gaemsli",
+			"tier": "M",
+			"style": "laced"
+		},
+		{
+			"slot": "shoes",
+			"kind": "shape",
+			"id": "shoe.vintage",
+			"name": "Slotted-cleat leather",
+			"brand": "korkleder",
+			"tier": "M",
+			"era": "1950s–1980s",
+			"style": "vintage"
+		},
+		{
+			"slot": "overshoes",
+			"kind": "shape",
+			"id": "over.none",
+			"name": "No overshoes",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "overshoes",
+			"kind": "shape",
+			"id": "over.collection",
+			"name": "Überschuhe collection",
+			"brand": "zwirn",
+			"tier": "S",
+			"style": "collection",
+			"options": [
+				{
+					"id": "aero",
+					"name": "Smooth covers"
+				},
+				{
+					"id": "winter",
+					"name": "Winter neoprene"
+				},
+				{
+					"id": "toe",
+					"name": "Toe covers"
+				}
+			]
+		},
+		{
+			"slot": "gloves",
+			"kind": "shape",
+			"id": "glove.mitt",
+			"name": "Mitts",
+			"brand": "zwirn",
+			"starter": true,
+			"fingers": "short"
+		},
+		{
+			"slot": "gloves",
+			"kind": "shape",
+			"id": "glove.none",
+			"name": "No gloves",
+			"free": true,
+			"fingers": "none"
+		},
+		{
+			"slot": "gloves",
+			"kind": "shape",
+			"id": "glove.full",
+			"name": "Full finger",
+			"brand": "zwirn",
+			"tier": "S",
+			"fingers": "full"
+		},
+		{
+			"slot": "gloves",
+			"kind": "shape",
+			"id": "glove.lobster",
+			"name": "Winter lobster",
+			"brand": "lismer",
+			"tier": "S",
+			"fingers": "lobster"
+		},
+		{
+			"slot": "helmet",
+			"kind": "shape",
+			"id": "helmet.road",
+			"name": "Vented road",
+			"brand": "chopf",
+			"starter": true,
+			"style": "road"
+		},
+		{
+			"slot": "helmet",
+			"kind": "shape",
+			"id": "helmet.aero",
+			"name": "Aero road",
+			"brand": "chopf",
+			"tier": "L",
+			"style": "aero"
+		},
+		{
+			"slot": "helmet",
+			"kind": "shape",
+			"id": "helmet.tt",
+			"name": "Teardrop with visor",
+			"brand": "foehnwerk",
+			"tier": "L",
+			"spec": "The visor replaces your glasses while you wear it",
+			"style": "tt"
+		},
+		{
+			"slot": "helmet",
+			"kind": "shape",
+			"id": "helmet.hardshell",
+			"name": "Hard-shell 1985",
+			"brand": "chopf",
+			"tier": "M",
+			"era": "1980s",
+			"style": "hardshell"
+		},
+		{
+			"slot": "helmet",
+			"kind": "shape",
+			"id": "helmet.hairnet",
+			"name": "Lederhelm hairnet",
+			"brand": "korkleder",
+			"tier": "L",
+			"era": "1920s–1980s",
+			"style": "hairnet"
+		},
+		{
+			"slot": "helmetDeco",
+			"kind": "decal",
+			"id": "deco.none",
+			"name": "No decoration",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "helmetDeco",
+			"kind": "decal",
+			"id": "deco.hc",
+			"name": "HC numerals",
+			"unlock": "earned:badge:hors-categorie",
+			"spec": "On any helmet",
+			"style": "hc"
+		},
+		{
+			"slot": "helmetDeco",
+			"kind": "decal",
+			"id": "deco.flowers",
+			"name": "Alpabzug flower crown",
+			"unlock": "earned:season:alpabzug",
+			"style": "flowers"
+		},
+		{
+			"slot": "glasses",
+			"kind": "shape",
+			"id": "glasses.wrap",
+			"name": "Wrap",
+			"brand": "nebelmeer",
+			"starter": true,
+			"style": "wrap"
+		},
+		{
+			"slot": "glasses",
+			"kind": "shape",
+			"id": "glasses.none",
+			"name": "No glasses",
+			"free": true,
+			"style": "none"
+		},
+		{
+			"slot": "glasses",
+			"kind": "shape",
+			"id": "glasses.shield",
+			"name": "Shield",
+			"brand": "nebelmeer",
+			"tier": "S",
+			"style": "shield"
+		},
+		{
+			"slot": "glasses",
+			"kind": "shape",
+			"id": "glasses.round",
+			"name": "Round",
+			"brand": "nebelmeer",
+			"tier": "S",
+			"style": "round"
+		},
+		{
+			"slot": "glasses",
+			"kind": "shape",
+			"id": "glasses.halfrim",
+			"name": "Half-rim",
+			"brand": "nebelmeer",
+			"tier": "S",
+			"style": "halfrim"
+		},
+		{
+			"slot": "glasses",
+			"kind": "shape",
+			"id": "glasses.gletscher",
+			"name": "Gletscherbrille",
+			"brand": "nebelmeer",
+			"tier": "M",
+			"era": "1950s",
+			"spec": "Round lenses with leather side shields",
+			"style": "gletscher"
+		},
+		{
+			"slot": "lens",
+			"kind": "finish",
+			"id": "lens.cat",
+			"name": "Lens categories 0–3",
+			"brand": "nebelmeer",
+			"starter": true,
+			"spec": "Clear, rose, smoke or dark",
+			"style": "tint",
+			"options": [
+				{
+					"id": "clear",
+					"name": "Cat 0 clear",
+					"hex": "#dfe6ee",
+					"alpha": 0.3
+				},
+				{
+					"id": "rose",
+					"name": "Cat 1 rose",
+					"hex": "#c9937a",
+					"alpha": 0.6
+				},
+				{
+					"id": "smoke",
+					"name": "Cat 2 smoke",
+					"hex": "#5a5e66",
+					"alpha": 0.85
+				},
+				{
+					"id": "dark",
+					"name": "Cat 3 dark",
+					"hex": "#2a2f45",
+					"alpha": 1
+				}
+			]
+		},
+		{
+			"slot": "lens",
+			"kind": "finish",
+			"id": "lens.mirror",
+			"name": "Mirror collection",
+			"brand": "nebelmeer",
+			"tier": "S",
+			"spec": "Enzian, Gletscher silver, gold, fir; the watt band is blocked",
+			"style": "mirror",
+			"options": [
+				{
+					"id": "enzian",
+					"name": "Enzian",
+					"hex": "#2f47a8",
+					"alpha": 1
+				},
+				{
+					"id": "silver",
+					"name": "Gletscher silver",
+					"hex": "#c3ccd8",
+					"alpha": 1
+				},
+				{
+					"id": "gold",
+					"name": "Gold",
+					"hex": "#d9a441",
+					"alpha": 1
+				},
+				{
+					"id": "fir",
+					"name": "Fir",
+					"hex": "#3f7a52",
+					"alpha": 1
+				}
+			]
+		},
+		{
+			"slot": "lens",
+			"kind": "finish",
+			"id": "lens.morgenrot",
+			"name": "Morgenrot",
+			"brand": "nebelmeer",
+			"unlock": "earned:achievement:sunrise-club",
+			"spec": "Warm dawn tint",
+			"style": "tint",
+			"options": [
+				{
+					"id": "morgenrot",
+					"name": "Morgenrot",
+					"hex": "#b8683c",
+					"alpha": 0.9
+				}
+			]
+		},
+		{
+			"slot": "cap",
+			"kind": "shape",
+			"id": "cap.none",
+			"name": "No cap",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "cap",
+			"kind": "shape",
+			"id": "cap.cotton",
+			"name": "Cotton cycling cap",
+			"brand": "chopf",
+			"tier": "S",
+			"spec": "Brim up or down is yours to pick",
+			"style": "cotton",
+			"pattern": "plain"
+		},
+		{
+			"slot": "cap",
+			"kind": "shape",
+			"id": "cap.winter",
+			"name": "Winter cap",
+			"brand": "lismer",
+			"tier": "S",
+			"spec": "Ear flaps, knit",
+			"style": "winter",
+			"pattern": "knit"
+		},
+		{
+			"slot": "cap",
+			"kind": "shape",
+			"id": "cap.headband",
+			"name": "Headband",
+			"brand": "lismer",
+			"tier": "S",
+			"style": "headband",
+			"pattern": "plain"
+		},
+		{
+			"slot": "cap",
+			"kind": "shape",
+			"id": "cap.stammtisch",
+			"name": "Stammtisch cap",
+			"brand": "chopf",
+			"unlock": "earned:achievement:lounge-lizard",
+			"style": "cotton",
+			"pattern": "check"
+		},
+		{
+			"slot": "cap",
+			"kind": "shape",
+			"id": "cap.diesel",
+			"name": "Diesel cap",
+			"brand": "chopf",
+			"unlock": "earned:medal:diesel",
+			"style": "cotton",
+			"pattern": "stripes"
+		},
+		{
+			"slot": "cap",
+			"kind": "shape",
+			"id": "cap.chapeau",
+			"name": "Chapeau cap",
+			"brand": "chopf",
+			"unlock": "earned:badge:chapeau",
+			"style": "cotton",
+			"pattern": "band"
+		},
+		{
+			"slot": "cap",
+			"kind": "shape",
+			"id": "cap.chlaus",
+			"name": "Samichlaus hood",
+			"unlock": "earned:season:samichlaus",
+			"spec": "Red wool with a white trim",
+			"style": "winter",
+			"pattern": "trim",
+			"colour": "#b3362b"
+		},
+		{
+			"slot": "cap",
+			"kind": "shape",
+			"id": "cap.longestday",
+			"name": "Längster Tag cap",
+			"brand": "chopf",
+			"unlock": "earned:season:summer-solstice",
+			"spec": "Sun-bleached cotton",
+			"style": "cotton",
+			"pattern": "faded"
+		},
+		{
+			"slot": "cap",
+			"kind": "shape",
+			"id": "cap.souvenir",
+			"name": "Climb-profile cap",
+			"brand": "chopf",
+			"unlock": "earned:souvenir:climb",
+			"style": "cotton",
+			"pattern": "profile"
+		},
+		{
+			"slot": "plate",
+			"kind": "decal",
+			"id": "plate.none",
+			"name": "No number",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "plate",
+			"kind": "decal",
+			"id": "plate.back",
+			"name": "Race number",
+			"unlock": "earned:race:finish:1",
+			"spec": "Pinned on the back; the number comes from the start list, never chosen",
+			"style": "back"
+		},
+		{
+			"slot": "plate",
+			"kind": "decal",
+			"id": "plate.frame",
+			"name": "Frame plate",
+			"unlock": "earned:race:finish:10",
+			"spec": "Under the saddle",
+			"style": "frame"
+		},
+		{
+			"slot": "armband",
+			"kind": "charm",
+			"id": "armband.none",
+			"name": "No armband",
+			"starter": true,
+			"style": "none"
+		},
+		{
+			"slot": "armband",
+			"kind": "charm",
+			"id": "armband.captain",
+			"name": "Captain’s armband",
+			"unlock": "earned:achievement:crew-chief",
+			"style": "captain"
+		},
+		{
+			"slot": "hair",
+			"kind": "shape",
+			"id": "hair.short",
+			"name": "Short",
+			"starter": true,
+			"style": "short"
+		},
+		{
+			"slot": "hair",
+			"kind": "shape",
+			"id": "hair.ponytail",
+			"name": "Ponytail",
+			"free": true,
+			"style": "ponytail"
+		},
+		{
+			"slot": "hair",
+			"kind": "shape",
+			"id": "hair.bun",
+			"name": "Bun",
+			"free": true,
+			"style": "bun"
+		},
+		{
+			"slot": "hair",
+			"kind": "shape",
+			"id": "hair.braid",
+			"name": "Braid",
+			"free": true,
+			"style": "braid"
+		},
+		{
+			"slot": "hair",
+			"kind": "shape",
+			"id": "hair.curls",
+			"name": "Curls",
+			"free": true,
+			"style": "curls"
+		},
+		{
+			"slot": "hair",
+			"kind": "shape",
+			"id": "hair.none",
+			"name": "None",
+			"free": true,
+			"style": "none"
+		}
+	],
+	"starterLoadout": {
+		"frame": "frame.race",
+		"finish": "finish.matte",
+		"fork": "fork.straight",
+		"wheels": "wheels.alloy",
+		"hub": "hub.quiet",
+		"tyres": "tyre.black",
+		"groupset": "gs.mech",
+		"gsFinish": "gsf.black",
+		"crank": "crank.four",
+		"ring": "ring.round",
+		"pedals": "pedal.road",
+		"saddle": "saddle.race",
+		"bars": "bars.drop",
+		"tape": "tape.plain",
+		"bottles": "bottle.plastic",
+		"cages": "cage.alloy",
+		"computer": "comp.none",
+		"lights": "light.none",
+		"bell": "bell.none",
+		"bags": "bag.none",
+		"utility": "util.none",
+		"charm": "charm.none",
+		"jersey": "jp.plain",
+		"cut": "cut.race",
+		"layer": "layer.none",
+		"shorts": "bib.plain",
+		"warmers": "warm.none",
+		"socks": "sock.plain",
+		"shoes": "shoe.dial",
+		"overshoes": "over.none",
+		"gloves": "glove.mitt",
+		"helmet": "helmet.road",
+		"helmetDeco": "deco.none",
+		"glasses": "glasses.wrap",
+		"lens": "lens.cat",
+		"cap": "cap.none",
+		"plate": "plate.none",
+		"armband": "armband.none",
+		"hair": "hair.short",
+		"opts": {
+			"lens": "dark"
+		},
+		"params": {
+			"bottles": 1,
+			"sockH": "mid",
+			"shortsLen": "short",
+			"sleeves": "short",
+			"collar": "std",
+			"brim": "down"
+		},
+		"colours": {
+			"frame": "slate",
+			"frameAccent": "snow",
+			"jerseyA": "alpine",
+			"jerseyB": "ink",
+			"jerseyC": "snow",
+			"shorts": "ink",
+			"shortsAccent": "alpine",
+			"helmet": "snow",
+			"helmetAccent": "ink",
+			"socks": "snow",
+			"sockAccent": "alpine",
+			"shoes": "snow",
+			"gloves": "ink",
+			"barTape": "ink",
+			"bottle": "snow",
+			"saddle": "ink",
+			"hair": "leather",
+			"decal": "snow",
+			"layer": "graphite",
+			"layerAccent": "sun",
+			"warmer": "ink",
+			"cap": "snow",
+			"capAccent": "enzian",
+			"bag": "graphite",
+			"overshoe": "ink",
+			"tyreWall": "sun",
+			"anodised": "alpine",
+			"armband": "sun"
+		},
+		"skin": "skin.3",
+		"body": {
+			"height": 1.8,
+			"build": "athletic"
+		}
+	},
+	"showcase": [
+		{
+			"name": "Mia",
+			"frame": "frame.aero",
+			"finish": "finish.gloss",
+			"fork": "fork.aero",
+			"wheels": "wheels.carbon",
+			"tyres": "tyre.black",
+			"bars": "bars.aero",
+			"saddle": "saddle.short",
+			"crank": "crank.hohl",
+			"pedals": "pedal.node",
+			"jersey": "jp.hoops",
+			"helmet": "helmet.aero",
+			"glasses": "glasses.shield",
+			"lens": "lens.mirror",
+			"computer": "comp.tacho",
+			"hair": "hair.ponytail",
+			"opts": {
+				"lens": "gold",
+				"computer": "wide"
+			},
+			"params": {
+				"rimMm": 60,
+				"tyreMm": 28,
+				"sockH": "tall",
+				"bottles": 2
+			},
+			"colours": {
+				"frame": "ink",
+				"frameAccent": "sun",
+				"jerseyA": "sun",
+				"jerseyB": "ink",
+				"jerseyC": "snow",
+				"shorts": "ink",
+				"shortsAccent": "sun",
+				"helmet": "ink",
+				"helmetAccent": "sun",
+				"socks": "snow",
+				"sockAccent": "ink",
+				"shoes": "snow",
+				"gloves": "ink",
+				"barTape": "ink",
+				"bottle": "sun",
+				"saddle": "ink",
+				"hair": "sand",
+				"decal": "sun"
+			},
+			"skin": "skin.2",
+			"body": {
+				"height": 1.66,
+				"build": "slim"
+			}
+		},
+		{
+			"name": "Sven",
+			"frame": "frame.race",
+			"finish": "finish.satin",
+			"wheels": "wheels.carbon",
+			"tyres": "tyre.tan",
+			"gsFinish": "gsf.silver",
+			"jersey": "jp.sash",
+			"layer": "layer.gilet",
+			"socks": "sock.stripe",
+			"computer": "comp.tacho",
+			"lights": "light.clip",
+			"bags": "bag.wedge",
+			"opts": {
+				"computer": "square"
+			},
+			"params": {
+				"rimMm": 45,
+				"tyreMm": 28
+			},
+			"colours": {
+				"frame": "fir",
+				"frameAccent": "cream",
+				"jerseyA": "snow",
+				"jerseyB": "fir",
+				"jerseyC": "lime",
+				"shorts": "graphite",
+				"shortsAccent": "fir",
+				"helmet": "fir",
+				"helmetAccent": "snow",
+				"socks": "snow",
+				"sockAccent": "fir",
+				"shoes": "graphite",
+				"gloves": "graphite",
+				"barTape": "cream",
+				"bottle": "fir",
+				"saddle": "graphite",
+				"hair": "leather",
+				"decal": "cream",
+				"layer": "graphite",
+				"layerAccent": "lime",
+				"bag": "graphite"
+			},
+			"skin": "skin.4",
+			"body": {
+				"height": 1.84,
+				"build": "athletic"
+			}
+		},
+		{
+			"name": "Tom",
+			"frame": "frame.gravel",
+			"wheels": "wheels.gravel",
+			"tyres": "tyre.knob",
+			"bars": "bars.flare",
+			"gsFinish": "gsf.copper",
+			"jersey": "jp.topo",
+			"shorts": "bib.plain",
+			"glasses": "glasses.halfrim",
+			"gloves": "glove.full",
+			"pedals": "pedal.flat",
+			"bags": "bag.fullframe",
+			"cap": "cap.cotton",
+			"tape": "tape.collection",
+			"opts": {
+				"tape": "cork",
+				"lens": "rose"
+			},
+			"params": {
+				"tyreMm": 45,
+				"sockH": "tall",
+				"shortsLen": "knicker",
+				"bottles": 0
+			},
+			"colours": {
+				"frame": "army",
+				"frameAccent": "apricot",
+				"jerseyA": "apricot",
+				"jerseyB": "army",
+				"jerseyC": "cream",
+				"shorts": "army",
+				"shortsAccent": "apricot",
+				"helmet": "cream",
+				"helmetAccent": "army",
+				"socks": "apricot",
+				"sockAccent": "army",
+				"shoes": "graphite",
+				"gloves": "army",
+				"barTape": "tan",
+				"bottle": "cream",
+				"saddle": "tan",
+				"hair": "brick",
+				"decal": "apricot",
+				"bag": "sand",
+				"cap": "army",
+				"capAccent": "apricot"
+			},
+			"skin": "skin.6",
+			"body": {
+				"height": 1.9,
+				"build": "strong"
+			}
+		},
+		{
+			"name": "Ana",
+			"frame": "frame.tt",
+			"wheels": "wheels.blade3",
+			"tyres": "tyre.black",
+			"bars": "bars.tt",
+			"saddle": "saddle.short",
+			"cut": "cut.skinsuit",
+			"jersey": "jp.fade",
+			"helmet": "helmet.tt",
+			"glasses": "glasses.none",
+			"gloves": "glove.none",
+			"overshoes": "over.collection",
+			"hair": "hair.ponytail",
+			"opts": {
+				"overshoes": "aero"
+			},
+			"params": {
+				"tyreMm": 25,
+				"sockH": "tall"
+			},
+			"colours": {
+				"frame": "snow",
+				"frameAccent": "teal",
+				"jerseyA": "teal",
+				"jerseyB": "glacier",
+				"jerseyC": "snow",
+				"shorts": "lake",
+				"shortsAccent": "glacier",
+				"helmet": "snow",
+				"helmetAccent": "teal",
+				"socks": "snow",
+				"sockAccent": "teal",
+				"shoes": "snow",
+				"gloves": "ink",
+				"barTape": "ink",
+				"bottle": "teal",
+				"saddle": "ink",
+				"hair": "ink",
+				"decal": "teal",
+				"overshoe": "teal"
+			},
+			"skin": "skin.5",
+			"body": {
+				"height": 1.72,
+				"build": "athletic"
+			}
+		},
+		{
+			"name": "Lu",
+			"frame": "frame.steel",
+			"finish": "finish.chrome",
+			"fork": "fork.curved",
+			"wheels": "wheels.box",
+			"hub": "hub.klick",
+			"tyres": "tyre.tubular",
+			"groupset": "gs.downtube",
+			"gsFinish": "gsf.silver",
+			"crank": "crank.five",
+			"pedals": "pedal.clips",
+			"saddle": "saddle.leather",
+			"tape": "tape.collection",
+			"bottles": "bottle.alu",
+			"cages": "cage.collection",
+			"cut": "cut.wool",
+			"jersey": "jp.stripes",
+			"shorts": "bib.wool",
+			"helmet": "helmet.hairnet",
+			"glasses": "glasses.round",
+			"shoes": "shoe.vintage",
+			"cap": "cap.cotton",
+			"bell": "bell.collection",
+			"opts": {
+				"tape": "cloth",
+				"cages": "chrome",
+				"bell": "brass",
+				"lens": "smoke"
+			},
+			"params": {
+				"tyreMm": 23,
+				"sockH": "low",
+				"brim": "up",
+				"collar": "std"
+			},
+			"colours": {
+				"frame": "brick",
+				"frameAccent": "cream",
+				"jerseyA": "cream",
+				"jerseyB": "brick",
+				"jerseyC": "lake",
+				"shorts": "ink",
+				"shortsAccent": "ink",
+				"helmet": "leather",
+				"helmetAccent": "tan",
+				"socks": "snow",
+				"sockAccent": "brick",
+				"shoes": "ink",
+				"gloves": "tan",
+				"barTape": "tan",
+				"bottle": "silver",
+				"saddle": "leather",
+				"hair": "ink",
+				"decal": "cream",
+				"cap": "cream",
+				"capAccent": "brick"
+			},
+			"skin": "skin.1",
+			"body": {
+				"height": 1.76,
+				"build": "slim"
+			}
+		},
+		{
+			"name": "Kim",
+			"frame": "frame.climb",
+			"wheels": "wheels.carbon",
+			"tyres": "tyre.black",
+			"jersey": "jp.gipfelpunkte",
+			"helmetDeco": "deco.hc",
+			"socks": "sock.edelweiss",
+			"params": {
+				"rimMm": 30,
+				"tyreMm": 26,
+				"bottles": 2
+			},
+			"colours": {
+				"frame": "snow",
+				"frameAccent": "enzian",
+				"jerseyA": "enzian",
+				"jerseyB": "snow",
+				"jerseyC": "ink",
+				"shorts": "enzian",
+				"shortsAccent": "snow",
+				"helmet": "enzian",
+				"helmetAccent": "snow",
+				"socks": "enzian",
+				"sockAccent": "snow",
+				"shoes": "snow",
+				"gloves": "enzian",
+				"barTape": "snow",
+				"bottle": "enzian",
+				"saddle": "snow",
+				"hair": "ink",
+				"decal": "enzian"
+			},
+			"skin": "skin.7",
+			"body": {
+				"height": 1.62,
+				"build": "slim"
+			},
+			"hair": "hair.curls"
+		},
+		{
+			"name": "Nils",
+			"frame": "frame.hour",
+			"wheels": "wheels.blade3",
+			"tyres": "tyre.black",
+			"bars": "bars.tt",
+			"saddle": "saddle.short",
+			"cut": "cut.skinsuit",
+			"jersey": "jp.sprinter",
+			"helmet": "helmet.tt",
+			"glasses": "glasses.none",
+			"gloves": "glove.none",
+			"bottles": "bottle.plastic",
+			"params": {
+				"tyreMm": 23,
+				"sockH": "tall",
+				"bottles": 0
+			},
+			"colours": {
+				"frame": "plum",
+				"frameAccent": "sun",
+				"jerseyA": "plum",
+				"jerseyB": "sun",
+				"jerseyC": "snow",
+				"shorts": "ink",
+				"shortsAccent": "plum",
+				"helmet": "sun",
+				"helmetAccent": "plum",
+				"socks": "plum",
+				"sockAccent": "sun",
+				"shoes": "ink",
+				"gloves": "ink",
+				"barTape": "ink",
+				"bottle": "snow",
+				"saddle": "ink",
+				"hair": "sand",
+				"decal": "sun"
+			},
+			"skin": "skin.3",
+			"body": {
+				"height": 1.8,
+				"build": "strong"
+			}
+		},
+		{
+			"name": "Reto",
+			"frame": "frame.ordonnanz",
+			"wheels": "wheels.army",
+			"tyres": "tyre.black",
+			"bars": "bars.upright",
+			"saddle": "saddle.leather",
+			"ring": "ring.army",
+			"crank": "crank.five",
+			"pedals": "pedal.flat",
+			"cut": "cut.wool",
+			"jersey": "jp.plain",
+			"layer": "layer.winter",
+			"shorts": "bib.wool",
+			"glasses": "glasses.none",
+			"shoes": "shoe.vintage",
+			"gloves": "glove.lobster",
+			"cap": "cap.winter",
+			"warmers": "warm.collection",
+			"opts": {
+				"warmers": "leg"
+			},
+			"params": {
+				"tyreMm": 40,
+				"sockH": "tall",
+				"shortsLen": "knicker",
+				"sleeves": "long",
+				"collar": "high",
+				"bottles": 0
+			},
+			"colours": {
+				"frame": "ink",
+				"frameAccent": "army",
+				"jerseyA": "army",
+				"jerseyB": "graphite",
+				"jerseyC": "cream",
+				"shorts": "graphite",
+				"shortsAccent": "army",
+				"helmet": "army",
+				"helmetAccent": "graphite",
+				"socks": "graphite",
+				"sockAccent": "cream",
+				"shoes": "leather",
+				"gloves": "leather",
+				"barTape": "leather",
+				"bottle": "army",
+				"saddle": "leather",
+				"hair": "brick",
+				"decal": "cream",
+				"layer": "army",
+				"layerAccent": "cream",
+				"cap": "graphite",
+				"capAccent": "cream",
+				"warmer": "graphite"
+			},
+			"skin": "skin.2",
+			"body": {
+				"height": 1.78,
+				"build": "strong"
+			}
+		},
+		{
+			"name": "Ueli",
+			"frame": "frame.rando",
+			"wheels": "wheels.box",
+			"tyres": "tyre.cream",
+			"bags": "bag.rando",
+			"lights": "light.dynamo",
+			"saddle": "saddle.leather",
+			"tape": "tape.collection",
+			"groupset": "gs.downtube",
+			"gsFinish": "gsf.silver",
+			"crank": "crank.five",
+			"jersey": "jp.karo",
+			"cut": "cut.wool",
+			"shorts": "bib.wool",
+			"helmet": "helmet.hardshell",
+			"glasses": "glasses.gletscher",
+			"shoes": "shoe.lace",
+			"bell": "bell.collection",
+			"opts": {
+				"tape": "leather",
+				"bell": "brass",
+				"lens": "smoke"
+			},
+			"params": {
+				"tyreMm": 42,
+				"shortsLen": "knicker",
+				"sockH": "tall"
+			},
+			"colours": {
+				"frame": "lake",
+				"frameAccent": "cream",
+				"jerseyA": "cream",
+				"jerseyB": "brick",
+				"jerseyC": "fir",
+				"shorts": "graphite",
+				"shortsAccent": "graphite",
+				"helmet": "cream",
+				"helmetAccent": "lake",
+				"socks": "cream",
+				"sockAccent": "brick",
+				"shoes": "leather",
+				"gloves": "tan",
+				"barTape": "tan",
+				"bottle": "silver",
+				"saddle": "leather",
+				"hair": "fog",
+				"decal": "cream",
+				"bag": "sand"
+			},
+			"skin": "skin.2",
+			"body": {
+				"height": 1.74,
+				"build": "athletic"
+			}
+		},
+		{
+			"name": "Lea",
+			"frame": "frame.endurance",
+			"finish": "finish.fade",
+			"wheels": "wheels.alloy",
+			"tyres": "tyre.colourwall",
+			"utility": "util.pendler",
+			"bags": "bag.toptube",
+			"lights": "light.clip",
+			"jersey": "jp.edelweiss",
+			"layer": "layer.rain",
+			"warmers": "warm.collection",
+			"cap": "cap.headband",
+			"hair": "hair.braid",
+			"opts": {
+				"warmers": "knee",
+				"lens": "clear"
+			},
+			"params": {
+				"tyreMm": 32
+			},
+			"colours": {
+				"frame": "teal",
+				"frameAccent": "glacier",
+				"jerseyA": "fir",
+				"jerseyB": "snow",
+				"jerseyC": "sun",
+				"layer": "glacier",
+				"layerAccent": "teal",
+				"shorts": "ink",
+				"shortsAccent": "teal",
+				"helmet": "snow",
+				"helmetAccent": "teal",
+				"socks": "snow",
+				"sockAccent": "teal",
+				"shoes": "snow",
+				"gloves": "ink",
+				"barTape": "ink",
+				"bottle": "glacier",
+				"saddle": "ink",
+				"hair": "brick",
+				"decal": "glacier",
+				"tyreWall": "glacier",
+				"warmer": "teal",
+				"cap": "teal",
+				"bag": "graphite"
+			},
+			"skin": "skin.4",
+			"body": {
+				"height": 1.7,
+				"build": "athletic"
+			}
+		}
+	],
+	"crewKitExample": {
+		"crew": "Gürbetal Gruppetto",
+		"colours": {
+			"jerseyA": "enzian",
+			"jerseyB": "snow",
+			"jerseyC": "sun"
+		}
+	},
+	"economics": {
+		"items": 210,
+		"variants": 235,
+		"buyable": 122,
+		"earnedOnly": 33,
+		"comesWith": 4,
+		"freeOrStarter": 50,
+		"crewOnly": 1,
+		"buyableByTier": {
+			"S": 66,
+			"M": 34,
+			"L": 10,
+			"XL": 10,
+			"XXL": 2
+		},
+		"totalBatzen": 29860,
+		"byGroup": {
+			"bike": 23630,
+			"rider": 6230
+		},
+		"weeksToOwnEverything": {
+			"3 rides/week (120)": 249,
+			"5 rides/week (200)": 150
+		}
+	}
+}
