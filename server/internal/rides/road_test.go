@@ -41,7 +41,11 @@ func TestARoadRideKeepsItsDistanceAndHeightInTheFit(t *testing.T) {
 	if status != http.StatusCreated {
 		t.Fatalf("create: %d %v", status, got)
 	}
-	w := exportRequest(t, h, "alice", got["id"].(string))
+	id, ok := got["id"].(string)
+	if !ok {
+		t.Fatalf("create returned no ride id: %v", got)
+	}
+	w := exportRequest(t, h, "alice", id)
 	if w.Code != http.StatusOK {
 		t.Fatalf("export: %d %s", w.Code, w.Body.String())
 	}
