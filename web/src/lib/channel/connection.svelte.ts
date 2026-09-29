@@ -3,7 +3,8 @@ import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
-import { bindRideShift } from '$lib/ride/keys';
+import { bindShiftKeys } from '$lib/ride/keys';
+import { createRideShift, type RideShift } from '$lib/ride/ride-shift';
 import { pullProfile } from '$lib/profile-sync.svelte';
 import { createChannelLive } from '$lib/channel/live.svelte';
 import { createRecording } from '$lib/session/recording.svelte';
@@ -74,6 +75,8 @@ type Connection = {
 	riding: () => boolean;
 	/** Easier / Harder acts on a ride here: the soundboard yields its keys (#3329). */
 	shifting: () => boolean;
+	/** The channel ride's one shifter: its keys and its on-screen pair press it (#3330). */
+	shift: RideShift;
 	/** The shared session and its workout, parsed once per connection. */
 	shared: () => SessionState | undefined;
 	segments: () => Segment[];
@@ -115,6 +118,7 @@ function connect(address: PlaceAddress): Connection {
 	let profile!: ReturnType<typeof createProfileStore>;
 	let recording!: ReturnType<typeof createRecording>;
 	let ride!: ReturnType<typeof createRide>;
+	let shift!: RideShift;
 	let freeRide!: FreeRide;
 	let ownRide!: OwnRide;
 	let sharedOf!: () => SessionState | undefined;
@@ -298,7 +302,8 @@ function connect(address: PlaceAddress): Connection {
 
 		// Easier / Harder from the keys and any clicker, on every page while
 		// this channel's ride shifts (#3329) — a clicker cannot see the page.
-		$effect(() => (ride.shifting ? bindRideShift(ride) : undefined));
+		shift = createRideShift(ride);
+		$effect(() => (ride.shifting ? bindShiftKeys(shift) : undefined));
 
 		// LiveKit dropping us while live gets ONE automatic rejoin with a
 		// fresh token — covers token expiry and transient drops (#219). It is
@@ -346,6 +351,7 @@ function connect(address: PlaceAddress): Connection {
 			freeRide.recording ||
 			ownRide.riding,
 		shifting: () => ride.shifting || (gearsEnabled() && ownRide.riding),
+		shift,
 		shared: sharedOf,
 		segments: segmentsOf,
 		workout: workoutOf,

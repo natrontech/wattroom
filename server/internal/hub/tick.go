@@ -176,6 +176,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 	// Before the sprint is rendered, so a block's window rides the tick
 	// that entered it rather than the one after.
 	rm.armWorkoutSprintLocked(now())
+	rm.armKomLocked(now())
 	sprintNow, sprintWinner := rm.scoreSprintLocked(now())
 	eventsNow := rm.events.drain()
 	tick := protocol.ServerTick{
@@ -198,7 +199,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 			return out
 		}(),
 		Voice:  rm.voiceIDsLocked(),
-		World:  rm.session.world(),
+		World:  rm.session.world(rm.lastGame != nil && rm.lastGame.MeterHidden),
 		Riders: rm.metrics,
 		Roster: make([]protocol.Rider, 0, len(rm.clients)),
 	}

@@ -90,17 +90,20 @@ const FLAT = bytes({ gradePct: 0 });
  */
 export function createActuator(
 	trainer: () => Trainer | null | undefined,
-	onGearReset: () => void = () => {},
+	/** The gear restarted at k = 1; `was` is the k it left. */
+	onGearReset: (was: number) => void = () => {},
 ) {
 	// What the ride wants: watts to hold, or a felt grade to ride.
 	let intent: { watts: number } | { felt: number } | undefined;
 	// In slope for a sprint, so the flip happens once per window.
 	let sprinting = false;
-	let k = 1;
+	// State, so a gear field follows k, the clamp and the real ratio (#3330).
+	let k = $state(1);
 	const ratio = ratioState();
+	let realRatio = $state<number | null>(null);
 	let shelter = 0;
 	let draftOn = false;
-	let clamp: Clamp = null;
+	let clamp = $state<Clamp>(null);
 	let entry: ReturnType<typeof setTimeout> | undefined;
 	// Another of the rider's screens took the trainer (#1853).
 	let lost = false;
@@ -232,6 +235,13 @@ export function createActuator(
 		/** A trainer sample, for the drivetrain: the real ratio and the flywheel speed. */
 		sample(sample: TrainerSample) {
 			trackRatio(ratio, sample);
+			if (ratio.ratio !== realRatio) realRatio = ratio.ratio;
+		},
+		/** A shift this way moves nothing: the gear is at an end of its range (SIM only). */
+		atEnd(dir: 1 | -1): boolean {
+			return (
+				!!intent && 'felt' in intent && gearSpace(ratio.ratio, k).atEnd(dir)
+			);
 		},
 		/** The hub's shelter, felt only while "Feel the draft" is on (ADR-0077). */
 		shelter(value: number, feel: boolean) {
@@ -263,14 +273,15 @@ export function createActuator(
 			}
 			if (lost) {
 				lost = false;
+				const was = k;
 				k = 1;
 				written = undefined;
-				onGearReset();
+				onGearReset(was);
 			}
 			return true;
 		},
 		get gear() {
-			return { k, label: gearSpace(ratio.ratio, k).label, clamp };
+			return { k, label: gearSpace(realRatio, k).label, clamp };
 		},
 	};
 }

@@ -178,7 +178,8 @@ const pokeCooldown = protocol.PokeCooldownSeconds * time.Second
 // On a road a rider rides while their virtual speed is above 0.5 m/s
 // (docs/SPEC.md "Route rides", #3028): a descent coasted at 0 W is riding
 // however long it lasts, so long as their trainer is still talking. Their
-// speed is the bunch's until the offsets (#3097) give each rider their own.
+// speed is the bunch's: an offset (#3097) only moves them within it, and a
+// rider silent past the window is Resting at its tail.
 func (rm *channelState) ridingLocked(now time.Time) (names, ids []string) {
 	riding := make(map[string]struct{}, len(rm.lastWatts))
 	for id, at := range rm.lastWatts {

@@ -35,6 +35,8 @@ export interface Metrics {
 	watts: number;
 	cadence: number;
 	heartRate?: number;
+	/** When that heart rate was measured, ms epoch: the HR hold ages it (#3517). */
+	heartRateAt?: number;
 	/** Where each number came from — the pairing screen shows this, so a rider can
 	 *  see that their meter is winning rather than having to trust it. */
 	from: {
@@ -94,9 +96,14 @@ export function arbitrate(
 	// exists — no strap is normal, and 0 bpm would be a lie.
 	if (strap?.heartRate !== undefined) {
 		out.heartRate = strap.heartRate;
+		out.heartRateAt = strap.at;
 		out.from.heartRate = 'heart-rate';
-	} else if (bike?.heartRate !== undefined) {
+	} else if (
+		bike?.heartRate !== undefined &&
+		now - (bike.heartRateAt ?? bike.at) <= ARBITRATION.staleMs
+	) {
 		out.heartRate = bike.heartRate;
+		out.heartRateAt = bike.heartRateAt ?? bike.at;
 		out.from.heartRate = 'trainer';
 	}
 

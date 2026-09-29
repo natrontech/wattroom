@@ -55,6 +55,9 @@ type createRequest struct {
 	Samples     []sampleJSON `json:"samples"`
 	// The stored route the ride rode (#3053): one of the rider's own.
 	RouteID string `json:"routeId,omitempty"`
+	// How the trainer was driven along it (#3516): stats.DriveSIM, DriveGears
+	// or DriveERGByRoad. Unsaid, the ride's time is not known.
+	Drive string `json:"drive,omitempty"`
 }
 
 // roadRefusal answers a sample off the road in the bounds protocol holds it to.
@@ -146,6 +149,11 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !stats.KnownDrive(req.Drive) {
+		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
+			"Say how the trainer was driven along the road: sim, gears or ergByRoad.", "drive")
+		return
+	}
 	route, ridden, ok := s.routeOf(w, r, user.ID, req.RouteID)
 	if !ok {
 		return
@@ -166,7 +174,7 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			"That ride could not be scored against this workout.", "workoutJson")
 		return
 	}
-	stats.SetHow(&row, stats.RideMode(req.WorkoutJSON, false), route != nil, stats.WeightThatDay(user))
+	stats.SetHow(&row, stats.RideMode(req.WorkoutJSON, false), req.WorkoutJSON, route != nil, req.Drive, stats.WeightThatDay(user))
 	if route != nil {
 		ride := stats.ReplayRoad(ridden, samples, float64(user.WeightKg)+protocol.BikeKg)
 		stats.SetRoad(&row, *route, ride)

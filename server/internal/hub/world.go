@@ -2,6 +2,7 @@ package hub
 
 import (
 	"math"
+	"sort"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -51,35 +52,42 @@ type bunch struct {
 	climbed float64
 	// The last whole second the bunch was stepped to.
 	at time.Time
-	// This second's pedalling riders, each at their %FTP.
-	heard map[string]float64
+	// This second's samples from the joined riders.
+	heard map[string]sample
+	// Every joined rider's place in it (#3097), once the plan runs.
+	places map[string]*place
+	// Where the road's KOM sprints open (#3102), the next one ahead, laps
+	// unrolled, while komLeft; how many this ride armed, and when the last
+	// one opened.
+	koms      []float64
+	komU      float64
+	komLeft   bool
+	komsArmed int
+	lastKom   time.Time
 }
 
 func newBunch(r *routeRide, now time.Time) *bunch {
-	return &bunch{
+	b := &bunch{
 		road: r.profile, fromM: r.FromM, reverse: r.Reverse, loop: r.Loop,
-		at: now, heard: make(map[string]float64),
+		at: now, heard: make(map[string]sample), places: make(map[string]*place),
+		koms: komOpenings(r.profile, r.Reverse),
 	}
+	b.komU, b.komLeft = b.komAt(b.fromM, false)
+	return b
 }
 
-// hear takes one joined rider's sample into this second's live mean: their
-// %FTP, never above bunchMaxPct, so one strong rider cannot tow the bunch.
-// Their bias is never read — a personal trim must not move everyone's road.
-func (b *bunch) hear(riderID string, watts, ftp int) {
-	if watts <= 0 || ftp <= 0 {
-		delete(b.heard, riderID)
-		return
-	}
-	b.heard[riderID] = min(float64(watts)/float64(ftp), bunchMaxPct)
+// hear takes one joined rider's sample into this second.
+func (b *bunch) hear(riderID string, m protocol.RiderMetrics, rider protocol.Rider) {
+	b.heard[riderID] = sampleOf(m, rider)
 }
 
 // ride steps the bunch through every whole second since the last, each at
-// the watts wattsAt answers for that second of the plan. A plan that is not
-// running moves nothing: paused, the bunch slows to 0 at once, and what it
-// heard meanwhile is not the first second's.
+// the second of the plan planAt answers, and every joined rider's place
+// with it. A plan that is not running moves nothing: paused, the bunch
+// slows to 0 at once, and what it heard meanwhile is not the first second's.
 // ponytail: no cap on the catch-up; the room's clock only moves by real
 // time, and the room rides the bunch on every tick, empty or not.
-func (b *bunch) ride(now time.Time, running bool, wattsAt func(at time.Time) float64) {
+func (b *bunch) ride(now time.Time, running bool, joined map[string]struct{}, planAt func(at time.Time) planned) {
 	if !running {
 		b.pace.Speed = 0
 		b.at = now
@@ -88,40 +96,67 @@ func (b *bunch) ride(now time.Time, running bool, wattsAt func(at time.Time) flo
 	}
 	for !now.Before(b.at.Add(time.Second)) {
 		b.at = b.at.Add(time.Second)
-		b.step(wattsAt(b.at))
+		p, live := planAt(b.at), b.livePct()
+		b.step(p.watts(live))
+		b.settle(joined, p, live)
 	}
 	clear(b.heard)
 }
 
-// liveWatts is the reference rider at the mean %FTP of the pedalling riders
-// heard this second; nobody pedalling rolls on at 0 W.
-func (b *bunch) liveWatts() float64 {
-	if len(b.heard) == 0 {
+// livePct is the mean %FTP of the riders pedalling this second, each capped
+// at bunchMaxPct so one strong rider cannot tow the bunch; their bias is
+// never read — a personal trim must not move everyone's road. Nobody
+// pedalling is 0.
+func (b *bunch) livePct() float64 {
+	sum, n := 0.0, 0
+	for _, s := range b.heard {
+		if pct := s.pct(); pct > 0 {
+			sum += min(pct, bunchMaxPct)
+			n++
+		}
+	}
+	if n == 0 {
 		return 0
 	}
-	sum := 0.0
-	for _, pct := range b.heard {
-		sum += pct
-	}
-	return sum / float64(len(b.heard)) * protocol.ReferenceRiderWatts
+	return sum / float64(n)
 }
 
-// planWatts is ADR-0065's table for one second of a workout: the reference
-// rider at the block's prescription, 150 % through a sprint, and the live
-// mean on a road step, a free block, or a game with no blocks at all. An
-// absolute-watts block prescribes its watts to the reference rider too.
-func planWatts(seg workout.Segment, pct float64, inBlock bool, live float64) float64 {
+// planned is one second of the plan as the bunch reads it: a sprint, a
+// prescription — as %FTP, or as watts — or neither, which rides the live
+// mean.
+type planned struct {
+	sprint        bool
+	pct, absolute float64
+}
+
+// planAt is the plan at one second of a workout: a road step, a free block,
+// or a game with no blocks at all prescribes nothing.
+func planAt(seg workout.Segment, pct float64, inBlock bool) planned {
 	switch {
 	case !inBlock:
-		return live
+		return planned{}
 	case seg.Kind == "sprint":
-		return bunchMaxPct * protocol.ReferenceRiderWatts
+		return planned{sprint: true}
 	case seg.Kind == "steady" && seg.Watts > 0:
-		return seg.Watts
-	case pct > 0:
-		return pct * protocol.ReferenceRiderWatts
+		return planned{absolute: seg.Watts}
 	}
-	return live
+	return planned{pct: pct}
+}
+
+// watts is ADR-0065's table: the reference rider at the block's
+// prescription, 150 % through a sprint, and the live mean where nothing is
+// prescribed. An absolute-watts block prescribes its watts to the reference
+// rider too.
+func (p planned) watts(livePct float64) float64 {
+	switch {
+	case p.sprint:
+		return bunchMaxPct * protocol.ReferenceRiderWatts
+	case p.absolute > 0:
+		return p.absolute
+	case p.pct > 0:
+		return p.pct * protocol.ReferenceRiderWatts
+	}
+	return livePct * protocol.ReferenceRiderWatts
 }
 
 func (b *bunch) step(watts float64) {
@@ -195,14 +230,29 @@ func (b *bunch) distance() float64 {
 // rolling is whether a rider carried by the bunch is riding on its road.
 func (b *bunch) rolling() bool { return b.pace.Speed > roadRidingMps }
 
-// world is the bunch as the tick carries it, to the centimetre.
-func (b *bunch) world() *protocol.World {
+// world is the bunch as the tick carries it, to the centimetre, and each
+// rider's place in it to the decimetre. hideOffsets withholds the places
+// while a game hides the meter: where a rider stands says how hard they ride.
+func (b *bunch) world(hideOffsets bool) *protocol.World {
 	m, lap := b.place(b.fromM + b.pace.Distance)
-	return &protocol.World{
+	w := &protocol.World{
 		BunchM:   math.Round(m*100) / 100,
 		SpeedMps: math.Round(b.pace.Speed*100) / 100,
 		Lap:      lap,
 	}
+	for id, pl := range b.places {
+		if pl.resting {
+			w.Resting = append(w.Resting, id)
+		}
+		if !hideOffsets {
+			if w.Offsets == nil {
+				w.Offsets = make(map[string]int16, len(b.places))
+			}
+			w.Offsets[id] = int16(math.Round(pl.offset * 10))
+		}
+	}
+	sort.Strings(w.Resting)
+	return w
 }
 
 // rideBunch advances the session's bunch to now (#3028). The caller has
@@ -218,19 +268,18 @@ func (s *session) rideBunch(now time.Time) {
 	}
 	// Wall-clock instant of workout second zero, as sprintBlockAt reads it.
 	origin := s.startedAt.Add(-s.banked)
-	s.bunch.ride(now, s.phase == "running", func(at time.Time) float64 {
+	s.bunch.ride(now, s.phase == "running", s.joined, func(at time.Time) planned {
 		// The second just ridden is the one that ends at `at`.
-		seg, pct, ok := workout.SegmentAt(s.segments, int(at.Sub(origin)/time.Second)-1)
-		return planWatts(seg, pct, ok, s.bunch.liveWatts())
+		return planAt(workout.SegmentAt(s.segments, int(at.Sub(origin)/time.Second)-1))
 	})
 }
 
 // world is the bunch on the tick while the session rides it; nil otherwise.
-func (s *session) world() *protocol.World {
+func (s *session) world(hideOffsets bool) *protocol.World {
 	if s.bunch == nil || s.phase == "idle" || s.phase == "done" {
 		return nil
 	}
-	return s.bunch.world()
+	return s.bunch.world(hideOffsets)
 }
 
 // onRollingRoad is whether the session's riders are being carried along a

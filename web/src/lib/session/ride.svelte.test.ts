@@ -15,6 +15,8 @@ import { effortOf, inRecoveryValley } from '$lib/roadside';
 
 // The socket's own dependencies, silenced: IndexedDB, and the module the
 // tick's clock window lives in stays real (it only does arithmetic).
+const played = vi.hoisted(() => [] as string[]);
+vi.mock('$lib/sound/cues', () => ({ play: (id: string) => played.push(id) }));
 vi.mock('$lib/ride/buffer', () => ({
 	openRideBuffer: async () => ({
 		crashSafe: true,
@@ -822,6 +824,44 @@ describe('a trainer claim the hub refused (#1853)', () => {
 		answer(socket, { held: ['trainer'] });
 		await settle();
 		expect(trainer.commands).toEqual(['erg:200']);
+
+		dispose();
+		live.close();
+	});
+
+	// #3330: the grant moving restarts the gear at k = 1 — said with a cue the
+	// way it moved and on the gear field; a gear never shifted says nothing.
+	it('says the gear is back to the real one when the grant returns', async () => {
+		const { live, socket, deps } = inASession();
+		let ride!: ReturnType<typeof createRide>;
+		const dispose = $effect.root(() => {
+			ride = createRide({
+				...deps,
+				joined: () => false,
+				free: { ...idleFree, armed: true, grade: 4 },
+			});
+		});
+		const trainer = new FakeTrainer();
+		await ride.ride(trainer);
+		await settle();
+		played.length = 0;
+
+		answer(socket, { elsewhere: { trainer: 'phone' } });
+		await settle();
+		answer(socket, { held: ['trainer'] });
+		await settle();
+		expect(played).toEqual([]);
+		expect(ride.gearResetAt).toBe(0);
+
+		expect(ride.easierHarder(1)).toEqual({ moved: true });
+		expect(ride.gear.k).toBeGreaterThan(1);
+		answer(socket, { elsewhere: { trainer: 'phone' } });
+		await settle();
+		answer(socket, { held: ['trainer'] });
+		await settle();
+		expect(ride.gear.k).toBe(1);
+		expect(played).toEqual(['shift-down']);
+		expect(ride.gearResetAt).toBeGreaterThan(0);
 
 		dispose();
 		live.close();

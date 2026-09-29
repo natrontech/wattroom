@@ -1,8 +1,13 @@
 import { pairError } from '$lib/ble/pair-error';
 import { arbitrate } from '$lib/ble/arbitrate';
 import { createFlightRecorder } from '$lib/ride/flightrecorder.svelte';
-import { createActuator } from '$lib/ride/actuation';
-import { biasPress, ergPress } from '$lib/ride/easier-harder';
+import { createActuator } from '$lib/ride/actuation.svelte';
+import {
+	biasPress,
+	EASIER_HARDER_OFF,
+	ergPress,
+} from '$lib/ride/easier-harder';
+import { play } from '$lib/sound/cues';
 import { gearsEnabled } from '$lib/ride/gears-enabled';
 import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
@@ -79,7 +84,25 @@ export function createRide(deps: RideDeps) {
 
 	const aim = createRideTarget(deps, () => actuating);
 	const sprint = createSessionSprint(deps);
-	const actuator = createActuator(() => trainer);
+	// The grant came back and the gear restarted at k = 1 (#3330): said with
+	// a cue the way it moved, and on the gear field for a few seconds.
+	let gearResetAt = $state(0);
+	const actuator = createActuator(
+		() => trainer,
+		(was) => {
+			// A gear never shifted is already the real one: nothing to say.
+			if (was === 1) return;
+			gearResetAt = Date.now();
+			play(was < 1 ? 'shift-up' : 'shift-down');
+		},
+	);
+	/** Why Easier / Harder cannot act here, or null when it can (#3329, #3330). */
+	const shiftOff = $derived.by(() => {
+		if (!gearsEnabled()) return EASIER_HARDER_OFF.gated;
+		if (!trainer) return EASIER_HARDER_OFF.noTrainer;
+		if (!actuating) return EASIER_HARDER_OFF.lost;
+		return deps.joined() || deps.free.armed ? null : EASIER_HARDER_OFF.idle;
+	});
 
 	// The guards' countdowns run on a local second — the session's clock is
 	// everyone's, and a rider's own recovery must not wait on it.
@@ -338,12 +361,18 @@ export function createRide(deps: RideDeps) {
 		},
 		/** Easier / Harder acts: this screen drives a trainer, in a session or a free ride (#3329). */
 		get shifting() {
-			return (
-				gearsEnabled() &&
-				!!trainer &&
-				actuating &&
-				(deps.joined() || deps.free.armed)
-			);
+			return shiftOff === null;
+		},
+		get shiftOff() {
+			return shiftOff;
+		},
+		atEnd: actuator.atEnd,
+		/** The gear field's k, label and clamp (ADR-0084). */
+		get gear() {
+			return actuator.gear;
+		},
+		get gearResetAt() {
+			return gearResetAt;
 		},
 		ride,
 		unpair,

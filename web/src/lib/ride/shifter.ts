@@ -137,20 +137,17 @@ const CLOCK_MS = 20;
 
 /**
  * The shifter on a real clock (#3329): what every input presses — the keys,
- * later the on-screen pair and a controller — turned into moves for `onMove`.
- * The clock runs only while a control is held or a press waits.
+ * the on-screen pair, later a controller — turned into its events for
+ * `onEvent`. The clock runs only while a control is held or a press waits.
  */
 export function createShiftDriver(
-	onMove: (dir: ShiftDir) => void,
+	onEvent: (event: ShiftEvent) => void,
+	atEnd: (dir: ShiftDir) => boolean = () => false,
 	now: () => number = () => performance.now(),
 ) {
-	// ponytail: no ends here — the ride answers a press at an end itself
-	// (#3328), and the end's cue is the gear field's (#3330).
-	const shifter = createShifter(() => false);
+	const shifter = createShifter(atEnd);
 	let clock: ReturnType<typeof setInterval> | undefined;
-	const emit = (events: ShiftEvent[]) => {
-		for (const event of events) if (event.kind === 'shift') onMove(event.dir);
-	};
+	const emit = (events: ShiftEvent[]) => events.forEach(onEvent);
 	function stop() {
 		clearInterval(clock);
 		clock = undefined;

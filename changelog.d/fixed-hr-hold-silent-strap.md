@@ -1,0 +1,1 @@
+- A heart-rate hold whose strap goes quiet now says it has lost your heart rate after three seconds and holds its watts, instead of steering on the last number it heard. A heart rate your trainer stops relaying also leaves the screen instead of staying there.

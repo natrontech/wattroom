@@ -63,7 +63,8 @@ describe('a held shift key', () => {
 		vi.useFakeTimers();
 		moves = [];
 		const driver = createShiftDriver(
-			(dir) => moves.push(dir),
+			(event) => moves.push(event.dir),
+			() => false,
 			() => Date.now(),
 		);
 		const off = bindShiftKeys(driver);

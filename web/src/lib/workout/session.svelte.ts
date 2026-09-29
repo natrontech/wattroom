@@ -2,7 +2,7 @@ import { arbitrate } from '$lib/ble/arbitrate';
 import { publishHud } from '$lib/hud/feed';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
-import { createActuator } from '$lib/ride/actuation';
+import { createActuator } from '$lib/ride/actuation.svelte';
 import { biasPress } from '$lib/ride/easier-harder';
 import { nudgedBias, toleranceBand } from './guards';
 import { createRiderGuards } from './rider-guards.svelte';
@@ -115,7 +115,9 @@ export function createRideSession({
 			at: raw.at,
 		};
 		sample = next;
-		hrHold.reading(next.heartRate, raw.at);
+		// Stamped with when the heart rate was measured, not when this sample
+		// arrived: a silent strap must age into lost, not stay fresh (#3517).
+		hrHold.reading(metrics.heartRate, metrics.heartRateAt ?? raw.at);
 		publish();
 		// Nothing is ridden during the count-in (#1800): the sample is kept, so
 		// the numbers are live the instant the clock starts, but the record, the
@@ -289,6 +291,7 @@ export function createRideSession({
 		abort: life.abort,
 		stop: finish,
 		nudgeBias,
+		atEnd: actuator.atEnd,
 		/** Easier / Harder (#3328): a gear in SIM, the bias in ERG. */
 		easierHarder: (dir: 1 | -1) =>
 			actuator.easierHarder(

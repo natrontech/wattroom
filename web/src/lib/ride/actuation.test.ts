@@ -7,7 +7,7 @@ import type {
 	TrainerStatus,
 } from '$lib/ble/trainer';
 import { DEFAULTS, nudgedBias } from '$lib/workout/guards';
-import { createActuator, simulate } from './actuation';
+import { createActuator, simulate } from './actuation.svelte';
 import { EASIER_HARDER_OFF, ergPress } from './easier-harder';
 import { nudged } from './free-ride.svelte';
 

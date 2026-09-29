@@ -518,6 +518,36 @@ describe('sensor arbitration inside a ride', () => {
 		session.stop();
 	});
 
+	it('loses an HR hold when the strap goes silent, though samples keep coming (#3517)', async () => {
+		let t = 0;
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: {
+				name: 'hold',
+				steps: [
+					{
+						type: 'steady',
+						seconds: 120,
+						target: 0.65,
+						hrHigh: 145,
+						hrHold: true,
+					},
+				],
+			},
+			ftp: 200,
+			now: () => t,
+			// The strap's last reading, at 0: it went out of range after that.
+			readings: () => ({ 'heart-rate': { heartRate: 140, at: 0 } }),
+		});
+		await startRiding(session);
+		for (; t <= 4000; t += 1000) {
+			session.onSample({ watts: 130, cadence: 90, at: t });
+			session.tick();
+		}
+		expect(session.hrHoldLost).toBe(true);
+		session.stop();
+	});
+
 	it('auto-pauses on the cadence sensor, not the trainer estimate', async () => {
 		// Kickr cadence is firmware-estimated and drops out on sprint-to-easy
 		// transitions (RESEARCH.md §11); a real sensor saying 0 is the truth.
