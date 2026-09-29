@@ -46,9 +46,11 @@
 	import {
 		onShellHandoff,
 		onShellNavigate,
+		onShellVisibility,
 		setShellPlace,
 		shellTitleBar,
 	} from '$lib/desktop';
+	import { hangUpOnHide } from '$lib/channel/hang-up-on-hide';
 	import { notify } from '$lib/notify.svelte';
 	import { toasts } from '$lib/toast.svelte';
 
@@ -210,6 +212,10 @@
 	});
 	$effect(() => {
 		onShellNavigate((to) => void goto(to));
+	});
+	// A closed desktop window hides rather than dying (#3005), and hangs up.
+	$effect(() => {
+		onShellVisibility(hangUpOnHide);
 	});
 
 	// Presence is pushed, not polled (#251): the lobby socket pings, the store

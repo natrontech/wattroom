@@ -27,6 +27,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const loginItem = require('./login-item');
 const tray = require('./tray');
+const visibility = require('./visibility');
 
 // Where the shell points. The default is production; a dev build overrides it
 // to a worktree's own Vite port (`make dev-env` prints it).
@@ -137,14 +138,19 @@ function isOurs(url) {
 }
 
 /**
- * Whether the login item started this run (#1313, login-item.js).
- *
- * Latched for the life of the process, because it decides two things: that
- * no window opens at launch, and that closing one afterwards returns the
- * shell to the tray instead of quitting something the rider asked to be
- * running.
+ * Whether the login item started this run (#1313, login-item.js): the window
+ * is then created loaded but hidden (#3005), so notifications, the lobby
+ * socket and deep links work from boot without putting a window in front of
+ * the rider.
  */
 let startedHidden = false;
+
+/**
+ * Whether there is a tray to hide into (#3005). Where there is, closing the
+ * main window hides it (visibility.js); a Linux desktop with no status
+ * notifier keeps the close that quits.
+ */
+let hasTray = false;
 
 /**
  * The rider's window, never the HUD.
@@ -170,8 +176,8 @@ function focusWindow(win) {
 }
 
 /**
- * The tray's "Open WattRoom", and the way back from a login launch — which
- * starts with no window at all, so there is nothing to focus.
+ * The tray's "Open WattRoom", the Dock, a second launch: show the rider's
+ * window, hidden or not, or make one if there is none.
  */
 function openWindow() {
 	const win = mainWindow();
@@ -233,7 +239,8 @@ function saveWindowState(win) {
 	}
 }
 
-function createWindow() {
+/** @param opts.hidden load it without showing it (a login launch, #3005) */
+function createWindow({ hidden = false } = {}) {
 	const saved = readWindowState();
 	const placed =
 		saved &&
@@ -280,9 +287,14 @@ function createWindow() {
 		},
 	});
 
-	win.once('ready-to-show', () => {
+	// Maximizing shows a window, so a hidden launch waits for the first show.
+	win.once(hidden ? 'show' : 'ready-to-show', () => {
 		if (saved?.maximized) win.maximize();
-		win.show();
+		if (!hidden) win.show();
+	});
+	visibility.manage(win, {
+		hides: hasTray,
+		rideHeld: () => sleepBlockerId !== null,
 	});
 	win.on('close', () => saveWindowState(win));
 	// The HUD shows only while this window is NOT in front (ADR-0041): in
@@ -703,6 +715,9 @@ function installUpdate() {
 	if (!autoUpdater || !updateReady || installing) return;
 	installing = true;
 	setTimeout(() => {
+		// quitAndInstall closes every window before `before-quit`, and a window
+		// that hides on close would refuse it (#3005).
+		visibility.allowClose();
 		autoUpdater.quitAndInstall();
 		app.quit();
 		// If either of those took, this timer died with the process. Reaching
@@ -961,8 +976,8 @@ if (!app.requestSingleInstanceLock()) {
 			openDeepLink(link);
 			return;
 		}
-		// A login launch has no window to raise, so this makes one — without
-		// it, clicking the installed app while the shell sat in the tray did
+		// Launching the installed app again shows the window, hidden or not —
+		// without this, clicking it while the shell sat in the tray did
 		// nothing at all.
 		openWindow();
 	});
@@ -996,18 +1011,18 @@ if (!app.requestSingleInstanceLock()) {
 				}),
 			);
 		Menu.setApplicationMenu(menu);
-		// Launched by the login item, the shell opens no window: it comes up
-		// in the tray and waits to be asked (login-item.js). Every other
-		// launch is unchanged.
+		// Launched by the login item, the shell loads its window hidden: it
+		// comes up in the tray, running, and waits to be asked (login-item.js,
+		// #3005). Every other launch shows the window.
 		startedHidden = loginItem.startedByLoginItem();
-		// Before anything can want it: with no window, this is the only
-		// WattRoom on screen. Where there is nowhere to put one — a Linux
-		// desktop with no status notifier — a hidden launch would be a
-		// process with no surface at all, so it takes the window instead and
-		// the quit rule below goes back to the ordinary one with it.
-		if (!tray.install({ open: openWindow, go: openPath }))
-			startedHidden = false;
-		if (!startedHidden) createWindow();
+		// Before any window: whether a close may hide it depends on there
+		// being a tray to hide into. Where there is nowhere to put one — a
+		// Linux desktop with no status notifier — a hidden launch would be a
+		// process with no surface at all, so it shows the window instead, and
+		// a close there quits as it always did.
+		hasTray = tray.install({ open: openWindow, go: openPath });
+		if (!hasTray) startedHidden = false;
+		createWindow({ hidden: startedHidden });
 		watchForUpdates();
 		// A cold start from a link is dropped (#1941): no sign-in was started
 		// from this run, and the rider starts the sign-in again.
@@ -1020,11 +1035,10 @@ if (!app.requestSingleInstanceLock()) {
 	});
 
 	app.on('window-all-closed', () => {
-		// Closing the window still quits, everywhere but macOS — unless the
-		// login item started this run. A rider who asked WattRoom to be
-		// running when they sign in did not ask it to stop the first time
-		// they close a window, and the tray is where they say when to (#1313).
-		if (process.platform !== 'darwin' && !startedHidden) app.quit();
+		// With a tray a close hides the window (#3005), so this is reached
+		// only on the way out. Without one, closing the window quits,
+		// everywhere but macOS.
+		if (process.platform !== 'darwin' && !hasTray) app.quit();
 	});
 }
 
@@ -1039,12 +1053,14 @@ function keepAwake(on) {
 		if (sleepBlockerId === null) {
 			sleepBlockerId = powerSaveBlocker.start('prevent-display-sleep');
 		}
-		return;
-	}
-	if (sleepBlockerId !== null) {
+	} else if (sleepBlockerId !== null) {
 		powerSaveBlocker.stop(sleepBlockerId);
 		sleepBlockerId = null;
 	}
+	// A ride in a hidden window keeps its timers at full rate; the hidden
+	// window with no ride gets throttled again (#3005).
+	const win = mainWindow();
+	if (win) visibility.throttleIfIdle(win, () => sleepBlockerId !== null);
 }
 
 ipcMain.on('wattroom:keep-awake', (_event, on) => keepAwake(Boolean(on)));

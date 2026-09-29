@@ -78,6 +78,48 @@ function clickTray(app, label, checked = undefined) {
 	}, [label, checked]);
 }
 
+// The page hears its window hide and show (#3005, #3079): a close hides the
+// window rather than destroying it, and the page leaves voice when it does.
+test('the page hears its window hide and come back', async () => {
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	await win.evaluate(() => {
+		window.__seen = [];
+		window.wattroom.onVisibility((visible) => window.__seen.push(visible));
+	});
+	const main = (act) =>
+		app.evaluate(({ BrowserWindow }, how) => {
+			BrowserWindow.getAllWindows()[0][how]();
+		}, act);
+	await main('hide');
+	await expect.poll(() => win.evaluate(() => window.__seen)).toEqual([false]);
+	await main('show');
+	await expect
+		.poll(() => win.evaluate(() => window.__seen))
+		.toEqual([false, true]);
+	await app.close();
+});
+
+// Where there is a tray, closing the window hides it (#3005), so the app keeps
+// running behind it. Only macOS is certain to have one: a headless Linux runner
+// may have no status notifier, and there a close still quits.
+test('closing the window hides it where there is a tray', async () => {
+	test.skip(process.platform !== 'darwin', 'a tray is certain only on macOS');
+	const app = await launch(DEAD_URL);
+	const win = await app.firstWindow();
+	await expect(win.locator('#retry')).toBeVisible();
+	await app.evaluate(({ BrowserWindow }) =>
+		BrowserWindow.getAllWindows()[0].close(),
+	);
+	const state = await app.evaluate(({ BrowserWindow }) => {
+		const [w] = BrowserWindow.getAllWindows();
+		return { alive: Boolean(w) && !w.isDestroyed(), visible: w?.isVisible() };
+	});
+	expect(state).toEqual({ alive: true, visible: false });
+	await app.close();
+});
+
 test('the window comes back where it was, unless that is off every display', async () => {
 	const first = await launch(DEAD_URL);
 	const win = await first.firstWindow();
@@ -166,6 +208,7 @@ test('the window opens and the bridge carries what the app looks for', async () 
 		'onNavigate',
 		'onNotification',
 		'onUpdate',
+		'onVisibility',
 		'pickDevice',
 		'platform',
 		'retry',
@@ -839,26 +882,27 @@ test('launch at login writes the autostart file, and takes it away again', async
 	await app.close();
 });
 
-test('a login launch opens no window, and closing one later goes back to the tray', async () => {
+test('a login launch loads its window hidden, and closing it goes back to the tray', async () => {
 	const app = await launch(DEAD_URL, null, ['--hidden']);
 	let gone = false;
 	app.on('close', () => (gone = true));
-	// Nothing on screen: the shell is in the tray waiting to be asked.
-	await new Promise((r) => setTimeout(r, 2000));
-	expect(
-		await app.evaluate(
-			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
-		),
-	).toBe(0);
-
-	// The tray is the way in.
-	await clickTray(app, 'Open WattRoom');
+	const shown = () =>
+		app.evaluate(({ BrowserWindow }) =>
+			BrowserWindow.getAllWindows().map((w) => w.isVisible()),
+		);
+	// Loaded and running, but nothing on screen (#3005): notifications and the
+	// lobby socket live in the page, so the page is there from boot.
 	const win = await app.firstWindow();
 	await expect(win.locator('#retry')).toBeVisible();
+	await new Promise((r) => setTimeout(r, 1000));
+	expect(await shown()).toEqual([false]);
 
-	// Closing it must not quit: the rider asked WattRoom to be running when
-	// they sign in, and quit is a menu item, not a window control. On Linux
-	// and Windows, without the latch, this IS the quit.
+	// The tray is the way in, and it shows that same window.
+	await clickTray(app, 'Open WattRoom');
+	await expect.poll(shown).toEqual([true]);
+
+	// Closing it must not quit: quit is a menu item, not a window control.
+	// On Linux and Windows the close box used to BE the quit.
 	await app.evaluate(({ BrowserWindow }) =>
 		BrowserWindow.getAllWindows()[0].close(),
 	);
@@ -867,11 +911,7 @@ test('a login launch opens no window, and closing one later goes back to the tra
 	// against a shell that was on its way out.
 	await new Promise((r) => setTimeout(r, 2000));
 	expect(gone, 'the shell quit with its window').toBe(false);
-	expect(
-		await app.evaluate(
-			({ BrowserWindow }) => BrowserWindow.getAllWindows().length,
-		),
-	).toBe(0);
+	expect(await shown()).toEqual([false]);
 	expect(await trayLabels(app)).toContain('Open WattRoom');
 
 	await app.close();

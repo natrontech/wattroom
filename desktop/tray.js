@@ -2,8 +2,9 @@
 //
 // A menu-bar / system-tray presence, and the thing that makes "WattRoom is
 // running without a window" a state a rider can see and get out of. Launched
-// by the login item the shell opens no window at all, so without this there
-// would be nothing on screen saying it is there.
+// by the login item, or with its window closed, the shell runs with its window
+// hidden (#3005), so without this there would be nothing on screen saying it
+// is there.
 //
 // #1313's three items, plus one: the window, the room the app is connected
 // to if there is one, quit — and the launch-at-login switch, because the
@@ -88,8 +89,8 @@ function refresh() {
 }
 
 /**
- * @param handlers `open` brings the rider's window back (creating one if the
- * login item started the shell without), `go` takes it to a path.
+ * @param handlers `open` brings the rider's window back (showing it if it is
+ * hidden, creating one if there is none), `go` takes it to a path.
  * @returns whether there is a tray. False on a Linux desktop with no status
  * notifier to put one in, where `new Tray` throws — and the shell must not
  * die at launch over an icon, nor come up windowless with nowhere to be
