@@ -1,6 +1,7 @@
 import { ducking, onDuck } from '$lib/sound/duck';
 import { DUCK_ATTACK_MS, DUCK_DEFAULT } from '$lib/sound/ducking';
 import { CUES, type CueId } from '$lib/sound/cue-catalogue';
+import { makeLimiter, scheduleVoices } from '$lib/sound/cue-graph';
 import { glideTo } from '$lib/sound/glide';
 
 /**
@@ -19,7 +20,7 @@ import { glideTo } from '$lib/sound/glide';
 let ctx: AudioContext | undefined;
 let master: GainNode | undefined;
 /** Shared with the soundboard (#877) — see `bus()`. */
-let limiter: DynamicsCompressorNode | undefined;
+let limiter: AudioNode | undefined;
 
 /** Volume the cues sit at. They are mixed *under* voice — this is not the headroom. */
 let volume = 0.7;
@@ -76,18 +77,8 @@ function ensure(): { ctx: AudioContext; master: GainNode } | null {
 		document.addEventListener('pointerdown', unlock);
 		document.addEventListener('keydown', unlock);
 		master = ctx.createGain();
-		// A limiter after the master (#152): cues pile up — klaxon, a cheer
-		// burst and a block change can land in the same second — and a summed
-		// peak past 1.0 hard-clips, which is harsh on laptop speakers and
-		// headphones alike. Squash the pileup instead.
-		limiter = ctx.createDynamicsCompressor();
-		limiter.threshold.value = -6;
-		limiter.knee.value = 4;
-		limiter.ratio.value = 12;
-		limiter.attack.value = 0.003;
-		limiter.release.value = 0.25;
+		limiter = makeLimiter(ctx, ctx.destination);
 		master.connect(limiter);
-		limiter.connect(ctx.destination);
 		master.gain.value = level();
 	}
 	// Browsers start the context suspended until a user gesture; every play attempt retries.
@@ -150,53 +141,7 @@ export function play(id: CueId, semitonesUp = 0): void {
 	const now = context.currentTime + 0.01;
 	const shift = Math.pow(2, semitonesUp / 12);
 
-	for (const voice of CUES[id].voices) {
-		const osc = context.createOscillator();
-		osc.type = voice.type;
-		osc.detune.value = voice.detune ?? 0;
-
-		const start = now + voice.at;
-		const end = start + voice.dur;
-		osc.frequency.setValueAtTime(voice.freq * shift, start);
-		if (voice.to)
-			osc.frequency.exponentialRampToValueAtTime(voice.to * shift, end);
-
-		let node: AudioNode = osc;
-
-		if (voice.filter) {
-			const filter = context.createBiquadFilter();
-			filter.type = 'lowpass';
-			filter.Q.value = voice.filter.q ?? 1;
-			filter.frequency.setValueAtTime(voice.filter.from, start);
-			if (voice.filter.to)
-				filter.frequency.exponentialRampToValueAtTime(voice.filter.to, end);
-			node.connect(filter);
-			node = filter;
-		}
-
-		const env = context.createGain();
-		const peak = voice.gain ?? 0.3;
-		// Short attack keeps it percussive; exponential release never reaches 0, so floor it.
-		env.gain.setValueAtTime(0.0001, start);
-		env.gain.exponentialRampToValueAtTime(peak, start + 0.008);
-		env.gain.exponentialRampToValueAtTime(0.0001, end);
-		node.connect(env);
-		env.connect(out);
-
-		if (voice.wobble) {
-			const lfo = context.createOscillator();
-			const depth = context.createGain();
-			lfo.frequency.value = voice.wobble.rate;
-			depth.gain.value = voice.wobble.depth;
-			lfo.connect(depth);
-			depth.connect(osc.detune);
-			lfo.start(start);
-			lfo.stop(end);
-		}
-
-		osc.start(start);
-		osc.stop(end + 0.02);
-	}
+	scheduleVoices(context, out, CUES[id].voices, now, shift);
 }
 
 /** 3-2-1 rise up the minor triad so each tick tells you how many are left; 'go' resolves above them. */
