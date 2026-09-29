@@ -1,6 +1,7 @@
 package intervals
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"io"
@@ -91,7 +92,7 @@ func setup(t *testing.T, configured bool) (*http.ServeMux, *fakeIntervals, *Serv
 }
 
 func get(mux http.Handler, target, rider string, cookies ...*http.Cookie) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodGet, target, nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, target, nil)
 	if rider != "" {
 		req.Header.Set("X-Rider", rider)
 	}
