@@ -131,3 +131,8 @@ session, never inside it.**
   session. Joining the session saves it first.
 - **Nothing changes inside a session.** Riding a different plan inside one is
   not planned.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+Riding an open ride from a voice channel is a **free ride** there. The open
+ride's position frame is a **second audience**, and it carries **no numbers**.

@@ -114,3 +114,8 @@ was given one room's. A feed that goes quiet is recoverable by subscribing
 once more; a feed that quietly says more is not recoverable at all. The crew's
 settings page says so once, and the release notes say so before anybody
 upgrades.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+An open ride stays in its **crew's feed, marked open**. A stranger who joins
+gets a **single-event `.ics`** for that ride, never a feed.

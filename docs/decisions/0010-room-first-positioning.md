@@ -153,3 +153,9 @@ channel's name in the sidebar did not arrive, they chose.
   reload — the line of names is the resting state.
 
 Point 1 of the ADR-0058 amendment below reads with this exception.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+Decision 4's privacy ADR is [ADR-0076](0076-shared-roads-not-an-open-
+world.md). Presence outside a crew exists only on open rides, and there only
+as **unnamed markers**: a position, a speed and a coarse kit.

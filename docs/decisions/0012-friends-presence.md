@@ -144,3 +144,8 @@ The decision above deferred a block list "until rooms grow past hand-picked crew
 - **It never parts a crew.** Inside a shared crew, sessions, voice and live numbers stay shared — that is the crew ban's job, and the hiding rider is told so in one line: “You still ride together in *crew*. An admin can remove a member.”
 - **Reversible, so no confirm** (errors.md): nothing between the two is deleted, the friendship row included, so showing them again — from the toast's undo or *Hidden riders* in Settings — puts everything back as it was.
 - **Privacy.** The list is the hiding rider's alone: in their export (`hidden-riders.json`), never shown to the rider hidden, and purged in both directions with either account. The hub keeps an in-memory copy of the pairs to sort cheers and pokes per socket; nothing about a block is persisted anywhere else.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+A marker on an open ride has **no card, no request and no DM**. Hiding a
+marker stores a label only, never who it was.
