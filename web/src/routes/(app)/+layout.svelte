@@ -80,6 +80,11 @@
 		dmHeads.start();
 		return () => dmHeads.stop();
 	});
+	// …and follow the lobby ping (#2937): a line or a read pings the riders it
+	// concerns, so the list is current without a poll.
+	$effect(() => {
+		if (account.me) dmHeads.follow(presence.version);
+	});
 
 	// Friend events arrive the same way (#876): someone asking, someone
 	// accepting. Off the lobby ping — the friends endpoints ping it now — so

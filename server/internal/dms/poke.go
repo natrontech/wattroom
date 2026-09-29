@@ -15,12 +15,6 @@ import (
 	"github.com/natrontech/wattroom/server/internal/store/db"
 )
 
-// Live is the hub's half of a poke: the rider hears it now, in whichever
-// channel they are in. The thread row is the record; this is the tap.
-type Live interface {
-	PokeRider(riderID string, poke protocol.Poke)
-}
-
 // pokePair keys the cooldown by who pokes whom: one friend cannot evade it
 // with a second tab, and may still poke somebody else.
 type pokePair struct{ from, to pgtype.UUID }
@@ -69,6 +63,7 @@ func (s *Service) handlePoke(w http.ResponseWriter, r *http.Request) {
 		s.log.Warn("prune dms", "err", err)
 	}
 	at := sent.CreatedAt.Time.UnixMilli()
+	s.changed(me.ID, peer)
 	if s.live != nil {
 		s.live.PokeRider(store.UUIDString(peer), protocol.Poke{
 			To: store.UUIDString(peer), FromID: store.UUIDString(me.ID),

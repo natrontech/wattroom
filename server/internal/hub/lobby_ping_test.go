@@ -68,3 +68,22 @@ func TestAChannelPingReachesOnlyItsAudience(t *testing.T) {
 		t.Errorf("the stranger heard the channel: %s", stranger.take())
 	}
 }
+
+// A conversation pings its two riders, every device of each, and nobody
+// else (#2937): the moment two people talk is theirs.
+func TestADmPingsBothSidesAndNobodyElse(t *testing.T) {
+	phone := &lobbyClient{ping: make(chan struct{}, 1)}
+	desktop := &lobbyClient{ping: make(chan struct{}, 1)}
+	peer := &lobbyClient{ping: make(chan struct{}, 1)}
+	bystander := &lobbyClient{ping: make(chan struct{}, 1)}
+	h := &Hub{lobby: map[*lobbyClient]string{phone: "me", desktop: "me", peer: "them", bystander: "else"}}
+	h.DmChanged("me", "them")
+	for name, c := range map[string]struct {
+		client *lobbyClient
+		pinged bool
+	}{"phone": {phone, true}, "desktop": {desktop, true}, "peer": {peer, true}, "bystander": {bystander, false}} {
+		if got := len(c.client.ping) == 1; got != c.pinged {
+			t.Errorf("%s pinged = %v, want %v", name, got, c.pinged)
+		}
+	}
+}
