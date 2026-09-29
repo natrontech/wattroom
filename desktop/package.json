@@ -31,6 +31,8 @@
       "preload.js",
       "login-item.js",
       "tray.js",
+      "badge.js",
+      "visibility.js",
       "offline.html",
       "package.json",
       "icons/*.png"
