@@ -53,7 +53,12 @@
 		const id = setInterval(() => {
 			if (!trainer || trainer.frames === frames) return;
 			frames = trainer.frames;
-			hwlog('frames', { frames, powered: trainer.poweredFrames });
+			// A unit that never sends power leaves its bytes here (#520, #3377).
+			hwlog('frames', {
+				frames,
+				powered: trainer.poweredFrames,
+				raw: trainer.pendingRaw,
+			});
 		}, 1000);
 		return () => clearInterval(id);
 	});
@@ -77,6 +82,8 @@
 				heartRate: trainer?.lastFrame.heartRate,
 				target,
 				mode: trainer?.mode,
+				// The notifications this sample was read from, as sent (#3377).
+				raw: trainer?.lastRaw,
 			});
 		});
 		trainer.onLog((text, ms) => {
