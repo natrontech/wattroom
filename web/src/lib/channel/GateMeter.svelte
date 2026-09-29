@@ -57,7 +57,7 @@
 		<div
 			class="h-full rounded-full {transmitting
 				? 'bg-z4'
-				: 'bg-muted/60'} transition-[width] duration-100"
+				: 'bg-muted/60'} transition-[width] duration-(--dur-press)"
 			style="width: {gatePct(level)}%"
 		></div>
 	</div>

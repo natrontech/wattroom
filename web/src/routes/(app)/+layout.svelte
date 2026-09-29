@@ -21,7 +21,7 @@
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { soloRide } from '$lib/workout/ride-hold.svelte';
+	import { soloRide } from '$lib/workout/ride-life.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
@@ -415,7 +415,7 @@
 		<div
 			bind:this={drawerBox}
 			inert={device.narrow && !navDrawer.open}
-			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 {navDrawer.open
+			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-(--dur-base) md:static md:z-auto md:translate-x-0 {navDrawer.open
 				? 'translate-x-0 shadow-2xl'
 				: '-translate-x-full'}"
 			style={titleBar ? `top: ${titleBar}px` : ''}
