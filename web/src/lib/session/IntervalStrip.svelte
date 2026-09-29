@@ -37,7 +37,7 @@
 			: 'px-5 py-3'}"
 	>
 		<div class="min-w-0">
-			<p class="eyebrow {big ? 'text-[1.5vh]' : ''}">
+			<p class="eyebrow {big ? 'text-[3vh]' : ''}">
 				block {block.index} of {block.count}
 			</p>
 			<p
@@ -49,7 +49,7 @@
 				<!-- The band is the block's point; colour answers "am I doing it". -->
 				<p
 					class="font-display font-semibold tabular-nums {big
-						? 'text-[2.2vh]'
+						? 'text-[3vh]'
 						: 'text-sm'} {b.inBand ? 'text-ok' : 'text-warn'}"
 				>
 					at {b.text}
@@ -60,29 +60,25 @@
 		<div class="ml-auto text-right">
 			<p
 				class="font-display leading-none font-bold tabular-nums {big
-					? 'text-[7vh]'
+					? 'text-[9vh]'
 					: 'text-4xl'}"
 			>
 				{formatClock(block.secondsLeft)}
 			</p>
-			<p class="eyebrow {big ? 'text-[1.5vh]' : ''}">left in block</p>
+			<p class="eyebrow {big ? 'text-[3vh]' : ''}">left in block</p>
 		</div>
 
 		{#if block.next}
 			<div class="border-ink/10 border-l pl-[3%] text-right">
-				<p class="eyebrow {big ? 'text-[1.5vh]' : ''}">next</p>
+				<p class="eyebrow {big ? 'text-[3vh]' : ''}">next</p>
 				<p
 					class="font-display font-semibold tabular-nums {big
-						? 'text-[2.4vh]'
+						? 'text-[3vh]'
 						: 'text-base'}"
 				>
 					{block.next.label}
 				</p>
-				<p
-					class="text-muted font-mono text-[11px] tabular-nums {big
-						? 'text-[1.5vh]'
-						: ''}"
-				>
+				<p class="text-muted num {big ? 'text-[3vh]' : 'text-[11px]'}">
 					{block.next.watts} W · {formatClock(block.next.seconds)}
 				</p>
 			</div>
