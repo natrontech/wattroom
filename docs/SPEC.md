@@ -665,6 +665,20 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
 | Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
 
+## The world (defaults — tune in alpha; [ADR-0066](decisions/0066-the-world-is-the-ride-view.md))
+
+| Parameter           | Value                                                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Pixels              | about **1.0 MP** a frame; **0.5 MP** on the low tier                                                                    |
+| Frame rate          | **30 fps** on a vsync divisor                                                                                           |
+| High tier           | at most **60** draws and **400k** triangles                                                                             |
+| … figures           | at most **110k** triangles: **3** at LOD0 (**14k** each) and **9** at LOD1 (**7k** each)                                |
+| … dressing          | at most **24** draws and **180k** triangles                                                                             |
+| Low tier            | at most **30** draws and **150k** triangles; dressing **12** draws and **70k**                                          |
+| Fallback            | to the Skyline when more than **20 %** of vsync-divisor intervals are missed over **10 s**; one-way for the ride        |
+| Keep-clear corridor | the middle **40 %** of the width and **55 %** of the height                                                             |
+| GPU gate            | set by the first `make perf-scenes` measurement; proposal: at most **5** points of GPU on #2998's rig                  |
+
 ## Rider animation (defaults — tune in alpha; #3066)
 
 How a rider's figure in a ride world moves. Every number here replaced one the world prototype
