@@ -78,11 +78,7 @@
 				>
 					{block.next.label}
 				</p>
-				<p
-					class="text-muted font-mono tabular-nums {big
-						? 'text-[3vh]'
-						: 'text-[11px]'}"
-				>
+				<p class="text-muted num {big ? 'text-[3vh]' : 'text-[11px]'}">
 					{block.next.watts} W · {formatClock(block.next.seconds)}
 				</p>
 			</div>
