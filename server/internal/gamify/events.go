@@ -14,14 +14,12 @@ import (
 )
 
 // Session voice bonus (docs/SPEC.md XP sources, defaults — tune in alpha):
-// paid to everyone who was in voice for at least half of a group session —
-// one with at least two saved rides and ten minutes of timeline. Crew Chief
+// paid to everyone who was in voice for at least half of a group session
+// (stats.GroupSession). Crew Chief
 // counts the sessions a coach started with a medal-sized field.
 const (
-	SessionVoiceXP     = 5
-	groupSessionRiders = 2
-	groupSessionMinSec = 10 * 60
-	crewChiefRiders    = 3
+	SessionVoiceXP  = 5
+	crewChiefRiders = 3
 )
 
 // SprintWon implements hub.XpKeeper: the win pays nothing itself and counts
@@ -72,7 +70,7 @@ func (s *Service) sessionClosed(ctx context.Context, ev hub.SessionClosed) {
 	if ref == "" {
 		ref = ev.Channel + "@" + millis(ev.At)
 	}
-	if rode >= groupSessionRiders && ev.Seconds >= groupSessionMinSec {
+	if stats.GroupSession(rode, ev.Seconds) {
 		for _, r := range ev.Riders {
 			if r.VoiceSeconds*2 >= ev.Seconds {
 				s.record(ctx, r.ID, sourceSession, SessionVoiceXP, ref, ev.At)

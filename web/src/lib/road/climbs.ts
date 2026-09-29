@@ -8,8 +8,26 @@
  * The rule is docs/SPEC.md's "Climbs", Garmin's: at least 500 m, at least 3 %
  * on average, and a score — length in m × average % — of at least 1,500,
  * which is 100 × the height gained. Classes by score, always in Roman
- * numerals; below the lowest a climb shows without one.
+ * numerals; below the lowest a climb shows without one. The numbers are
+ * protocol's, and the Go twin (server/internal/road, #3238) runs the same
+ * operations in the same order on them: every step here is one of the four
+ * IEEE-exact operators or a floor, so both land on the same centimetre, and
+ * a climb's metres — which feed its key (#3137) — are floored centimetres
+ * as #3224's keys are.
  */
+import {
+	ClimbClassHC,
+	ClimbClassI,
+	ClimbClassII,
+	ClimbClassIII,
+	ClimbClassIV,
+	ClimbDipLossM,
+	ClimbDipM,
+	ClimbMinM,
+	ClimbMinPct,
+	ClimbMinScore,
+	MaxClimbs,
+} from '$lib/protocol';
 import { roadStep, type Road } from './road';
 
 export type ClimbClass = 'IV' | 'III' | 'II' | 'I' | 'HC';
@@ -23,29 +41,14 @@ export type Climb = {
 	cls: ClimbClass | null;
 };
 
-export const MIN_CLIMB_M = 500;
-export const MIN_CLIMB_PCT = 3;
-export const MIN_CLIMB_SCORE = 1500;
-
 /** Each class's floor: a climb is in it when its score is above this. Hardest first. */
 const CLASSES: [ClimbClass, number][] = [
-	['HC', 80_000],
-	['I', 64_000],
-	['II', 32_000],
-	['III', 16_000],
-	['IV', 8_000],
+	['HC', ClimbClassHC],
+	['I', ClimbClassI],
+	['II', ClimbClassII],
+	['III', ClimbClassIII],
+	['IV', ClimbClassIV],
 ];
-
-/**
- * A dip inside a climb that loses less than this, and is back above the top
- * it left within DIP_M, does not end the climb (#3047): a bridge over a side
- * valley, a short false flat that runs downhill.
- */
-const DIP_LOSS_M = 20;
-const DIP_M = 300;
-
-/** The most climbs a road keeps: its hardest, in road order. */
-export const MAX_CLIMBS = 32;
 
 export const scoreOf = (gainM: number) => 100 * gainM;
 
@@ -53,7 +56,8 @@ export function classOf(score: number): ClimbClass | null {
 	return CLASSES.find(([, floor]) => score > floor)?.[0] ?? null;
 }
 
-const cm = (m: number) => Math.round(m * 100) / 100;
+/** Metres floored to the centimetre: how a climb's metres enter its key (#3224). */
+const cm = (m: number) => Math.floor(m * 100) / 100;
 
 export function climbsOf(road: Road): Climb[] {
 	const h = road.heights;
@@ -69,28 +73,32 @@ export function climbsOf(road: Road): Climb[] {
 		while (++j < h.length) {
 			if (h[j] > h[top]) top = j;
 			else if (h[j] <= h[start]) start = top = j;
-			else if (h[top] - h[j] >= DIP_LOSS_M || (j - top) * step >= DIP_M) break;
+			// A dip that loses ClimbDipLossM, or is not back over the top
+			// within ClimbDipM, ends the climb: a bridge over a side valley or
+			// a short false flat running downhill does not.
+			else if (h[top] - h[j] >= ClimbDipLossM || (j - top) * step >= ClimbDipM)
+				break;
 		}
 		// The earliest start whose average to the top still holds the grade:
 		// a long flat run-in does not dilute a steep climb out of existence.
 		const holds = (s: number) =>
-			h[top] - h[s] >= (MIN_CLIMB_PCT / 100) * (top - s) * step;
+			h[top] - h[s] >= (ClimbMinPct / 100) * (top - s) * step;
 		while (start < top && !holds(start)) start++;
 		const length = (top - start) * step;
-		const gain = h[top] - h[start];
-		if (length >= MIN_CLIMB_M && scoreOf(gain) >= MIN_CLIMB_SCORE)
+		const gainM = cm(h[top] - h[start]);
+		if (length >= ClimbMinM && scoreOf(gainM) >= ClimbMinScore)
 			found.push({
 				startM: cm(start * step),
 				topM: cm(top * step),
-				gainM: cm(gain),
-				cls: classOf(scoreOf(gain)),
+				gainM,
+				cls: classOf(scoreOf(gainM)),
 			});
 		i = Math.max(top, i + 1);
 	}
 	return found
 		.map((c, k) => ({ c, k }))
 		.sort((p, q) => q.c.gainM - p.c.gainM || p.k - q.k)
-		.slice(0, MAX_CLIMBS)
+		.slice(0, MaxClimbs)
 		.sort((p, q) => p.k - q.k)
 		.map(({ c }) => c);
 }

@@ -25,7 +25,7 @@ func (saverFunc) AmendRide(context.Context, string, string, string, string, time
 // session's save starts retrying, and an untracked goroutine died with it.
 func TestDrainWaitsForTheSessionSave(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
-	rm := h.room("drain")
+	rm := h.stateOf("drain")
 	release := make(chan struct{})
 	saver := saverFunc(func(time.Time, []RiderRecord) { <-release })
 	rm.handOff(slog.New(slog.DiscardHandler), time.Now, saver, &sessionEnd{
@@ -47,7 +47,7 @@ func TestDrainWaitsForTheSessionSave(t *testing.T) {
 // they walked in, or never came.
 func TestEmptyRoomStillClosesAndSavesTheSession(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		rm := newRoom("late")
+		rm := newChannelState("late")
 		rm.now = time.Now
 		saved := make(chan []RiderRecord, 1)
 		var savedAt time.Time
@@ -119,7 +119,7 @@ func TestAPausedSessionEveryoneLeftEndsAndSaves(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
-				rm := newRoom("abandoned")
+				rm := newChannelState("abandoned")
 				rm.now = time.Now
 				saved := make(chan []RiderRecord, 2)
 				saver := saverFunc(func(_ time.Time, riders []RiderRecord) { saved <- riders })
@@ -178,7 +178,7 @@ func TestAPausedSessionEveryoneLeftEndsAndSaves(t *testing.T) {
 // to be dated "now minus nothing": at its end.
 func TestRideIsDatedAtItsStartWhenARiderCrossesTheEnd(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		rm := newRoom("crossing")
+		rm := newChannelState("crossing")
 		rm.now = time.Now
 		saved := make(chan []RiderRecord, 1)
 		var savedAt time.Time
@@ -232,7 +232,7 @@ func TestWorkoutSprintBlockGetsAPodium(t *testing.T) {
 			`{"type":"steady","seconds":20,"target":0.6},` +
 			`{"type":"sprint","seconds":10},` +
 			`{"type":"steady","seconds":30,"target":0.5}]}`
-		rm := newRoom("podium")
+		rm := newChannelState("podium")
 		rm.now = time.Now
 		go rm.run(slog.New(slog.DiscardHandler), time.Now, nil)
 		rm.mu.Lock()
@@ -291,7 +291,7 @@ func TestAClosedSessionsScoresReachOnlyItsRiders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rm := newRoom("afterglow")
+	rm := newChannelState("afterglow")
 	ana := &client{rider: protocol.Rider{ID: "ana", Name: "Ana"}, out: make(chan []byte, clientQueue)}
 	cat := &client{rider: protocol.Rider{ID: "cat", Name: "Cat"}, out: make(chan []byte, clientQueue)}
 	// Ana rode the session and it has closed; Cat arrives after.

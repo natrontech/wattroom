@@ -148,8 +148,8 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	// must not forget a room in the window where this rider has its pointer
 	// and has not joined with it yet. Registered before the writer's defer, so
 	// it runs after rm.leave below.
-	rm := h.holdRoom(channel)
-	defer h.releaseRoom(channel)
+	rm := h.holdChannel(channel)
+	defer h.releaseChannel(channel)
 	c := &client{rider: rider, conn: conn, session: h.sessionOf(r), out: make(chan []byte, clientQueue)}
 	// This socket's own writer, so the room's tick never waits on it (#670).
 	writerDone := make(chan struct{})

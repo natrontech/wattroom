@@ -13,7 +13,7 @@ import (
 
 // passRoom is a channel on a hand-moved clock, a session Ana opened and
 // started, and the riders' sockets by id.
-func passRoom(t *testing.T, now *time.Time, riders ...protocol.Rider) (*room, map[string]*client) {
+func passRoom(t *testing.T, now *time.Time, riders ...protocol.Rider) (*channelState, map[string]*client) {
 	t.Helper()
 	rm := presenceRoom(now)
 	clients := map[string]*client{}
@@ -34,19 +34,19 @@ func passRoom(t *testing.T, now *time.Time, riders ...protocol.Rider) (*room, ma
 }
 
 // sampleFrom is one sample from each rider, in this order, at the room's now.
-func sampleFrom(rm *room, clients map[string]*client, ids ...string) {
+func sampleFrom(rm *channelState, clients map[string]*client, ids ...string) {
 	for _, id := range ids {
 		rm.setMetrics(clients[id], protocol.RiderMetrics{Watts: 150, Cadence: 90, Seq: 1})
 	}
 }
 
-func sweep(rm *room, now time.Time) {
+func sweep(rm *channelState, now time.Time) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.sayDepartedLocked(now)
 }
 
-func coachOf(rm *room) string { return rm.session.coach }
+func coachOf(rm *channelState) string { return rm.session.coach }
 
 func TestCoachGonePassesSession(t *testing.T) {
 	ana, ben, cat := protocol.Rider{ID: "ana", Name: "Ana"}, protocol.Rider{ID: "ben", Name: "Ben"}, protocol.Rider{ID: "cat", Name: "Cat"}

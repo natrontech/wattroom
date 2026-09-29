@@ -24,7 +24,7 @@ import (
 // control again once the gap has passed.
 func TestSessionControlsAreThrottledPerRiderAndControl(t *testing.T) {
 	h, clock, url := controlHub(t)
-	rm := h.room("velvet")
+	rm := h.stateOf("velvet")
 	tab := dial(t, url, "jan:owner")
 	otherTab := dial(t, url, "jan:owner")
 	eventually(t, "both of jan's tabs joined", func() bool {
@@ -91,7 +91,7 @@ func TestSessionControlsAreThrottledPerRiderAndControl(t *testing.T) {
 // none of them answers.
 func TestSessionJoinAndLeaveTakeNoAllowance(t *testing.T) {
 	h, _, url := controlHub(t)
-	rm := h.room("velvet")
+	rm := h.stateOf("velvet")
 	coach := dial(t, url, "jan:owner")
 	tab := dial(t, url, "ana:member")
 	otherTab := dial(t, url, "ana:member")

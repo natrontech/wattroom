@@ -59,6 +59,9 @@ type savedRide struct {
 	rideID pgtype.UUID
 	userID pgtype.UUID
 	facts  RideFacts
+	// What the wallet mints from (#3152): the watts and the FTP ridden at.
+	watts []int
+	ftp   int
 }
 
 // save persists every rider's ride in one transaction (docs/SPEC.md:
@@ -89,6 +92,9 @@ func (s *Saver) save(
 	rideIDs := make(map[string]pgtype.UUID)
 	alreadySaved := map[string]bool{}
 	kept := make([]savedRide, 0, len(riders))
+	// The session's timeline, as long as its longest rider rode it: with the
+	// rides saved, whether this was a group session (#3152).
+	longest := 0
 	for join, rider := range riders {
 		if len(rider.Samples) < hub.MinRideSamples {
 			continue
@@ -124,6 +130,7 @@ func (s *Saver) save(
 		}
 		kept = append(kept, savedRide{
 			rideID: rideID, userID: row.UserID, facts: Facts(start, rider.Rider.FtpWatts, watts),
+			watts: watts, ftp: int(row.FtpWatts),
 		})
 		curve := PowerCurve(watts)
 		wkg := 0.0
@@ -134,6 +141,7 @@ func (s *Saver) save(
 		// a rider who joined late would otherwise be judged on the blocks of
 		// minute 0, and never reach the last one.
 		timeline := onTimeline(rider.Samples)
+		longest = max(longest, len(timeline))
 		results = append(results, RiderResult{
 			UserID: rider.Rider.ID, JoinOrder: join,
 			Execution: float64(row.Execution),
@@ -142,6 +150,12 @@ func (s *Saver) save(
 			Best5sWkg: wkg,
 			Completed: Completed(segments, len(timeline)),
 		})
+	}
+
+	// Batzen in the same transaction (#3152), never through the gamify queue:
+	// a ride saved is a ride paid.
+	if err := mintSession(ctx, q, kept, len(rideIDs), longest); err != nil {
+		return err
 	}
 
 	// Medals in the same transaction (#28): the session either closes with its
@@ -405,7 +419,15 @@ func (s *Saver) AmendRide(
 			s.log.Warn("ride amendment skipped", "err", err, "rider", rider.Rider.ID)
 			return nil
 		}
-		q := s.store.Queries
+		// One transaction, the growth's Batzen with it (#3152): a retry re-runs
+		// the whole closure, and an amendment that landed without its mint
+		// would find nothing left to grow.
+		tx, err := s.store.Pool.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("stats: amend begin: %w", err)
+		}
+		defer func() { _ = tx.Rollback(ctx) }()
+		q := s.store.Queries.WithTx(tx)
 		existing, err := q.FindRideAt(ctx, db.FindRideAtParams{UserID: row.UserID, StartedAt: row.StartedAt})
 		if err != nil {
 			s.log.Info("no ride to amend", "channel", channel, "rider", rider.Rider.ID)
@@ -431,6 +453,12 @@ func (s *Saver) AmendRide(
 				rideID: existing, userID: row.UserID,
 				facts: Facts(start, rider.Rider.FtpWatts, watts),
 			}
+			if err := mintGrowth(ctx, q, row.UserID, existing, row.Seconds, watts, int(row.FtpWatts)); err != nil {
+				return err
+			}
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return fmt.Errorf("stats: amend commit: %w", err)
 		}
 		return nil
 	})

@@ -33,7 +33,7 @@ func (h *Hub) PostRecap(channel string, recap protocol.SessionRecap) {
 	}
 }
 
-func (rm *room) recapWritten(recap protocol.SessionRecap) {
+func (rm *channelState) recapWritten(recap protocol.SessionRecap) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.recap = &recap
@@ -57,7 +57,7 @@ type span struct {
 // session runs. Sampling beats hooking join and leave: it needs no grace
 // window, folds a rider's several screens by itself, and cannot drift out of
 // step with the roster the room is drawing. Caller holds rm.mu.
-func (rm *room) sawLocked(now time.Time) {
+func (rm *channelState) sawLocked(now time.Time) {
 	// The card's clock starts at the first tick that saw anybody, and it is
 	// wall-clock on purpose: the bars are wall-clock, and `state.Elapsed`
 	// is not — it excludes pauses, and a coach ending a session early zeroes
@@ -76,7 +76,7 @@ func (rm *room) sawLocked(now time.Time) {
 
 // lastPresentLocked is the last tick anybody was seen in the session, or the
 // zero time before anyone was. Caller holds rm.mu.
-func (rm *room) lastPresentLocked() time.Time {
+func (rm *channelState) lastPresentLocked() time.Time {
 	var last time.Time
 	for _, s := range rm.present {
 		if s.to.After(last) {
@@ -90,7 +90,7 @@ func (rm *room) lastPresentLocked() time.Time {
 // rider arrived — which is the order the room filled up in, and the order the
 // bars read down the card. Ties break on name so a map's iteration order
 // never reaches a rider's screen. Caller holds rm.mu.
-func (rm *room) recapLocked(state protocol.SessionState, now time.Time) protocol.SessionRecap {
+func (rm *channelState) recapLocked(state protocol.SessionState, now time.Time) protocol.SessionRecap {
 	out := protocol.SessionRecap{
 		Workout:   state.WorkoutName,
 		StartedAt: rm.presentSince.UnixMilli(),

@@ -15,9 +15,9 @@ import (
 
 // timelineRoom is a running session of two ten-minute blocks, with the
 // clock at timeline second 0 and a hand to move it.
-func timelineRoom(t *testing.T) (*room, time.Time, func(second int)) {
+func timelineRoom(t *testing.T) (*channelState, time.Time, func(second int)) {
 	t.Helper()
-	rm := newRoom("timeline")
+	rm := newChannelState("timeline")
 	rm.session.pick("Two blocks", `{"steps":[{"type":"steady","seconds":600,"target":0.5},{"type":"steady","seconds":600,"target":1.0}]}`, 1200)
 	joinRide(rm, "ana")
 	t0 := time.Unix(1_000_000, 0)

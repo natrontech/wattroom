@@ -10,7 +10,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
-func (rm *room) join(c *client) {
+func (rm *channelState) join(c *client) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	// Whether this is the rider arriving or only another of their screens
@@ -33,7 +33,7 @@ func (rm *room) join(c *client) {
 }
 
 // presentLocked is whether any socket in this room belongs to that rider.
-func (rm *room) presentLocked(riderID string) bool {
+func (rm *channelState) presentLocked(riderID string) bool {
 	for c := range rm.clients {
 		if c.rider.ID == riderID {
 			return true
@@ -44,7 +44,7 @@ func (rm *room) presentLocked(riderID string) bool {
 
 // sayDepartedLocked announces everyone whose grace window has run out. Called
 // from the tick, which is the only clock the room has.
-func (rm *room) sayDepartedLocked(now time.Time) {
+func (rm *channelState) sayDepartedLocked(now time.Time) {
 	for riderID, at := range rm.departed {
 		if now.Sub(at) < presenceGrace {
 			continue
@@ -67,7 +67,7 @@ func (rm *room) sayDepartedLocked(now time.Time) {
 	}
 }
 
-func (rm *room) leave(c *client) {
+func (rm *channelState) leave(c *client) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	delete(rm.clients, c)
@@ -111,7 +111,7 @@ func (rm *room) leave(c *client) {
 // reason is one of protocol.AwayReasons or "" for the plain away; anything
 // else is dropped to "" rather than refused, because the state is the point
 // and an unknown word is a client this server is older than.
-func (rm *room) setAway(riderID string, away bool, reason string) {
+func (rm *channelState) setAway(riderID string, away bool, reason string) {
 	if !away || !slices.Contains(protocol.AwayReasons, reason) {
 		reason = ""
 	}

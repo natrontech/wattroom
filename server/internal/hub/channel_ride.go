@@ -21,7 +21,7 @@ func validMetrics(m protocol.RiderMetrics) bool {
 		m.RoadInBounds()
 }
 
-func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
+func (rm *channelState) setMetrics(c *client, m protocol.RiderMetrics) {
 	now := rm.now()
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
@@ -74,7 +74,7 @@ func (rm *room) setMetrics(c *client, m protocol.RiderMetrics) {
 // room comes back idle, and dropping the replay then is exactly the data loss
 // this exists to prevent. The record is bounded per rider and reset on the
 // next start, so out-of-session samples cost nothing and hurt nobody.
-func (rm *room) backfill(c *client, samples []protocol.RiderMetrics, log *slog.Logger, saver SessionSaver) {
+func (rm *channelState) backfill(c *client, samples []protocol.RiderMetrics, log *slog.Logger, saver SessionSaver) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rider := c.rider // under the lock, as in setMetrics (#2229)
@@ -144,7 +144,7 @@ func (rm *room) backfill(c *client, samples []protocol.RiderMetrics, log *slog.L
 // replayReachLocked is the last timeline second a replayed sample may carry,
 // and whether the record belongs to a session at all: the one running, or the
 // one that closed and may still be amended (#1536). Caller holds rm.mu.
-func (rm *room) replayReachLocked() (int, bool) {
+func (rm *channelState) replayReachLocked() (int, bool) {
 	switch {
 	case rm.session.open():
 		return rm.session.state(rm.now()).Elapsed, true
@@ -156,7 +156,7 @@ func (rm *room) replayReachLocked() (int, bool) {
 
 // cheer queues one reaction for the next tick; bounded so a hostile burst
 // cannot grow the payload (the per-client rate limit already makes this rare).
-func (rm *room) cheer(c protocol.Cheer, fromID string) {
+func (rm *channelState) cheer(c protocol.Cheer, fromID string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if len(rm.cheers) < 32 {
@@ -185,7 +185,7 @@ const soundingCeiling = 60 * time.Second
 // the airhorn is not over in a second: a rider who joins halfway through one
 // has no fire to read, and used to arrive into a room where somebody was
 // visibly playing nothing.
-func (rm *room) fire(b protocol.Board) {
+func (rm *channelState) fire(b protocol.Board) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if b.ClipID == "" {
@@ -216,7 +216,7 @@ func (rm *room) fire(b protocol.Board) {
 // and how far into it the room already is. Empty once nothing is, or once the
 // ceiling has passed — the entry is dropped then, so a room that ran for hours
 // holds one per rider who fired, not one per fire.
-func (rm *room) soundingLocked(riderID string, now time.Time) (string, int64) {
+func (rm *channelState) soundingLocked(riderID string, now time.Time) (string, int64) {
 	live, ok := rm.sounding[riderID]
 	if !ok {
 		return "", 0
@@ -235,13 +235,13 @@ func (rm *room) soundingLocked(riderID string, now time.Time) (string, int64) {
 // mood is what this room's timeline is asking for right now (#270), for the
 // autoplay read that happens outside the lock. Taken under the lock and
 // returned by value: the caller must not hold a pointer into live state.
-func (rm *room) mood(now time.Time) SessionMood {
+func (rm *channelState) mood(now time.Time) SessionMood {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	return rm.session.mood(now)
 }
 
-func (rm *room) armIfRunning(now time.Time) bool {
+func (rm *channelState) armIfRunning(now time.Time) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if rm.session.phase != "running" {
@@ -260,7 +260,7 @@ func (rm *room) armIfRunning(now time.Time) bool {
 //
 // Checked and applied under one lock, so two riders picking at the same
 // moment cannot both open the channel's one session.
-func (rm *room) control(c protocol.Control, rider protocol.Rider, now time.Time) (code, message string) {
+func (rm *channelState) control(c protocol.Control, rider protocol.Rider, now time.Time) (code, message string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if code, message := rm.refusalLocked(c.Action, rider); code != "" {
@@ -304,7 +304,7 @@ func (rm *room) control(c protocol.Control, rider protocol.Rider, now time.Time)
 
 // refusalLocked is who may do what to the channel's session (#2438). Caller
 // holds rm.mu.
-func (rm *room) refusalLocked(action string, rider protocol.Rider) (code, message string) {
+func (rm *channelState) refusalLocked(action string, rider protocol.Rider) (code, message string) {
 	s := rm.session
 	coaching := s.coachName
 	if coaching == "" {
@@ -363,7 +363,7 @@ func (rm *room) refusalLocked(action string, rider protocol.Rider) (code, messag
 // joining is explicit (ADR-0059), and a hand-off used to draft whoever it
 // named onto the timeline, their trainer with it. Caller holds rm.mu and has
 // checked that from is the coach.
-func (rm *room) handOffLocked(from, to string, now time.Time) (code, message string) {
+func (rm *channelState) handOffLocked(from, to string, now time.Time) (code, message string) {
 	name := rm.nameOfLocked(to)
 	if to == from || name == "" || !rm.session.rides(to) {
 		return "invalid_request", "Hand the session to someone riding in it."
@@ -380,7 +380,7 @@ func (rm *room) handOffLocked(from, to string, now time.Time) (code, message str
 // paused one would hold the channel for good. With nobody riding it stays
 // where it is, and a crew admin's End is the way out (#2598). Caller holds
 // rm.mu.
-func (rm *room) passSessionLocked(now time.Time) {
+func (rm *channelState) passSessionLocked(now time.Time) {
 	for _, id := range rm.seenOrder {
 		at, pedalling := rm.lastWatts[id]
 		// Still riding it: one who pressed Leave the ride is a free rider

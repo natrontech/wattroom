@@ -25,6 +25,7 @@
 		ftp,
 		trace,
 		compact = false,
+		tv = false,
 		ceiling = CEILING,
 		selectedPath = null,
 		onSelect,
@@ -37,6 +38,8 @@
 		ftp: number;
 		trace: TracePoint[];
 		compact?: boolean;
+		/** TV mode (#3407): the FTP label reads at 3 m, like every TV word. */
+		tv?: boolean;
 		/**
 		 * Top of the vertical scale, as a fraction of FTP. The ramp test rides
 		 * far above the FTP it exists to correct, so 1.5 × FTP flat-tops its
@@ -370,7 +373,9 @@
 	{#if !compact}
 		<!-- HTML, not <text>: preserveAspectRatio="none" would stretch glyphs. -->
 		<span
-			class="text-muted pointer-events-none absolute right-1.5 -translate-y-full font-mono text-[9px] tracking-widest"
+			class="text-muted pointer-events-none absolute right-1.5 -translate-y-full font-mono tracking-widest {tv
+				? 'text-[3vh] leading-none'
+				: 'text-[9px]'}"
 			style="top: {(y(1) / H) * 100}%">FTP</span
 		>
 	{/if}

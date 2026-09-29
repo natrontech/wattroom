@@ -17,7 +17,7 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		before    func(h *Hub, rm *room)
+		before    func(h *Hub, rm *channelState)
 		wantCode  string
 		wantPhase string
 		wantName  string
@@ -26,12 +26,12 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 	}{
 		{
 			name:      "an empty channel counts down the plan with its starter coaching",
-			before:    func(*Hub, *room) {},
+			before:    func(*Hub, *channelState) {},
 			wantPhase: "countdown", wantName: "Thursday", wantTotal: 600, wantCoach: "alice",
 		},
 		{
 			name: "a pick of the starter's own, left idle, gives way to the plan",
-			before: func(h *Hub, rm *room) {
+			before: func(h *Hub, rm *channelState) {
 				if code, msg := rm.control(pick, alice, h.now()); code != "" {
 					t.Fatalf("pick: %s %s", code, msg)
 				}
@@ -40,7 +40,7 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 		},
 		{
 			name: "the plan already under way is started, not refused",
-			before: func(h *Hub, rm *room) {
+			before: func(h *Hub, rm *channelState) {
 				if _, code, msg := h.OpenSession("track", alice, "Thursday", plan); code != "" {
 					t.Fatalf("first start: %s %s", code, msg)
 				}
@@ -49,7 +49,7 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 		},
 		{
 			name: "a different ride of the starter's own is not the plan (#2606)",
-			before: func(h *Hub, rm *room) {
+			before: func(h *Hub, rm *channelState) {
 				for _, c := range []protocol.Control{pick, {Action: "start"}} {
 					if code, msg := rm.control(c, alice, h.now()); code != "" {
 						t.Fatalf("%s: %s %s", c.Action, code, msg)
@@ -61,7 +61,7 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 		},
 		{
 			name: "someone else's session keeps the channel, and says who",
-			before: func(h *Hub, rm *room) {
+			before: func(h *Hub, rm *channelState) {
 				if code, msg := rm.control(pick, bob, h.now()); code != "" {
 					t.Fatalf("pick: %s %s", code, msg)
 				}
@@ -73,7 +73,7 @@ func TestOpenSessionStartsThePlan(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
-			rm := h.room("track")
+			rm := h.stateOf("track")
 			tt.before(h, rm)
 
 			id, code, _ := h.OpenSession("track", alice, "Thursday", plan)

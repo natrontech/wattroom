@@ -18,6 +18,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
+	"github.com/natrontech/wattroom/server/internal/wallet"
 	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
@@ -218,6 +219,16 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "solo ride xp ceiling write failed", err, "The ride could not be saved. It stays on this device.")
 		return
 	}
+	watts := make([]int, len(samples))
+	for i, sample := range samples {
+		watts[i] = sample.Watts
+	}
+	// Batzen in the ride's own transaction, under the lock taken above (#3152):
+	// the day's cap holds under two saves at once.
+	if err := wallet.MintRide(r.Context(), q, user.ID, id, wallet.Batzen(watts, int(row.FtpWatts), false)); err != nil {
+		httpx.Fail(w, s.log, "solo ride wallet mint failed", err, "The ride could not be saved. It stays on this device.")
+		return
+	}
 	if err := tx.Commit(r.Context()); err != nil {
 		httpx.Fail(w, s.log, "solo ride save commit failed", err, "The ride could not be saved. It stays on this device.")
 		return
@@ -226,10 +237,6 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 		s.uploader.RideSaved(id)
 	}
 	if s.keeper != nil {
-		watts := make([]int, len(samples))
-		for i, sample := range samples {
-			watts[i] = sample.Watts
-		}
 		s.keeper.RideSaved(user.ID, stats.Facts(req.StartedAt, int(user.FtpWatts), watts))
 	}
 	s.log.Info("solo ride saved", "seconds", row.Seconds, "kj", row.Kj)

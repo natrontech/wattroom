@@ -16,7 +16,7 @@ import (
 )
 
 func TestQueuePokeTargetsEverySocketOfOneRider(t *testing.T) {
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	sender := &client{rider: protocol.Rider{ID: "jan"}}
 	targetDesk := &client{rider: protocol.Rider{ID: "sven"}}
 	targetPhone := &client{rider: protocol.Rider{ID: "sven"}}
@@ -47,7 +47,7 @@ func TestQueuePokeTargetsEverySocketOfOneRider(t *testing.T) {
 }
 
 func TestPokeCooldownIsPerSenderAndTarget(t *testing.T) {
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	now := time.Unix(100, 0)
 	if !rm.allow("poke:sven", "jan", now, pokeCooldown) {
 		t.Fatal("first poke was refused")
@@ -239,7 +239,7 @@ func roadside(t *testing.T) (h *Hub, jan, sven *websocket.Conn) {
 	eventually(t, "all three joined", func() bool {
 		return h.Presence("velvet").Connected == 3
 	})
-	joinRide(h.room("velvet"), "sven")
+	joinRide(h.stateOf("velvet"), "sven")
 	return h, jan, sven
 }
 

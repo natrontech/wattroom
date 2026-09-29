@@ -12,11 +12,11 @@ import (
 var (
 	metricRiders = promauto.With(metrics.Registry).NewGauge(prometheus.GaugeOpts{
 		Name: "wattroom_room_riders",
-		Help: "Riders currently connected across all rooms.",
+		Help: "Riders currently connected across all voice channels.",
 	})
 	metricTicks = promauto.With(metrics.Registry).NewCounter(prometheus.CounterOpts{
 		Name: "wattroom_room_ticks_total",
-		Help: "Room tick broadcasts sent.",
+		Help: "Voice channel tick broadcasts sent.",
 	})
 	// A socket that has fallen behind its queue (#670). One rider on bad wifi
 	// producing a trickle is normal; a climbing rate is a room where somebody
@@ -63,11 +63,11 @@ func (h *Hub) registerRideGauges() {
 	// Register rather than a package-level sync.Once: no new mutable state.
 	_ = metrics.Registry.Register(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 		Name: "wattroom_room_riding",
-		Help: "Riders with a live sample in the last 10s, across all rooms.",
+		Help: "Riders with a live sample in the last 10s, across all voice channels.",
 	}, h.ridingCount))
 	_ = metrics.Registry.Register(prometheus.NewGaugeFunc(prometheus.GaugeOpts{
 		Name: "wattroom_room_spectators",
-		Help: "Sockets in rooms with a running session, held by someone not riding it.",
+		Help: "Sockets in voice channels with a running session, held by someone not riding it.",
 	}, h.spectatorCount))
 }
 
@@ -77,7 +77,7 @@ func (h *Hub) registerRideGauges() {
 // cannot wedge a tick, and the critical section is a map scan with no I/O in
 // it; the tick loop releases rm.mu before it writes to any socket.
 func (h *Hub) ridingCount() float64 {
-	rooms := h.liveRooms()
+	rooms := h.liveChannels()
 
 	now := h.now()
 	riding := 0
@@ -93,7 +93,7 @@ func (h *Hub) ridingCount() float64 {
 // time, never the hub's alongside it.
 func (h *Hub) spectatorCount() float64 {
 	watching := 0
-	for _, rm := range h.liveRooms() {
+	for _, rm := range h.liveChannels() {
 		rm.mu.Lock()
 		watching += rm.spectatorsLocked()
 		rm.mu.Unlock()
@@ -106,7 +106,7 @@ func (h *Hub) spectatorCount() float64 {
 // rider a game has put out. Sockets, not riders: the gauge is load. Nothing
 // while no session runs, since then there is nothing to watch. The caller
 // holds rm.mu.
-func (rm *room) spectatorsLocked() int {
+func (rm *channelState) spectatorsLocked() int {
 	if rm.session.phase != "running" {
 		return 0
 	}

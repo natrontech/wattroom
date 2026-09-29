@@ -127,7 +127,7 @@ func (f *fakeLive) Move(channel, userID string, to protocol.Moved) error {
 	return nil
 }
 
-func (f *fakeLive) CloseRoom(channel string) {
+func (f *fakeLive) CloseChannel(channel string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.closed = append(f.closed, channel)

@@ -99,3 +99,21 @@ discarded in the same Dockerfile.
   ([ADR-0019](0019-tagged-releases-and-a-self-converging-vm.md)). A bot's pull
   request is an ordinary pull request and merges through the same five required
   contexts as any other.
+
+## Amendment, 2026-09-29 (#2866): images are pinned too
+
+"No `docker`" rested on a false premise. The `node:` and `golang:` stages are
+not builders discarded: they produce the SPA and the Go binary, and those are
+what ship. A tag moved upstream therefore reached production with nothing in
+this repository changing, which is exactly what this ADR's rule exists to stop.
+
+So the rule now covers images: **every `FROM` in the Dockerfile is named by its
+multi-arch index digest** (`image:tag@sha256:…`), and Dependabot gains a fifth
+ecosystem, `docker` at `/`, monthly and grouped like the others. It moves the
+digests. It is told to ignore version changes to `node` and `golang`, whose
+tags track ci.yml's `web` job and go.mod by hand; the distroless runtime moves
+freely. `air`, run by `make dev-server` on every agent and developer box, is
+pinned to a version as `sqlc` and `golangci-lint` already were.
+
+`deploy/docker-compose.prod.yml` stays on tags (`postgres:18`, `caddy:2`): it is
+the self-hosting reference, and a self-hoster wants patch releases.
