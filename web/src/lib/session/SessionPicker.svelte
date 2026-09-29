@@ -134,6 +134,9 @@
 		shelf.find((entry) => entry.id === pickedId) ?? shelf[0],
 	);
 	const segments = $derived(picked ? flatten(picked.workout) : []);
+	// A heart-rate hold rides alone (#67): the hub refuses it, so the picker
+	// says so rather than offering a start that would fail (ux.md).
+	const ridesAlone = $derived(segments.some((seg) => seg.hrHold));
 	const total = $derived(picked ? durationSeconds(picked.workout) : 0);
 
 	// Zone breakdown: where the time actually goes, in the graph's colours.
@@ -336,7 +339,12 @@
 					     The other intent is a link, not a second section: two equal
 					     panels under the preview is what made this feel weird. -->
 					<div class="border-ink/5 mt-auto border-t pt-4">
-						{#if mode === 'start' && onStart}
+						{#if ridesAlone}
+							<p class="text-muted text-sm">
+								This workout holds your heart rate, and that rides alone: ride
+								it on your own, or take the hold off its steps.
+							</p>
+						{:else if mode === 'start' && onStart}
 							{#if trainer}
 								<div class="mb-4">
 									<p class="mb-2 text-sm font-medium">

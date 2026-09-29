@@ -844,3 +844,37 @@ describe('a solo ride left stopped', () => {
 		session.stop();
 	});
 });
+
+describe('a heart-rate hold (#67, ADR-0008)', () => {
+	it('carries no weight in execution', async () => {
+		const session = createRideSession({
+			trainer: new SimulatedTrainer(),
+			workout: {
+				name: 'hold',
+				steps: [
+					{
+						type: 'steady',
+						seconds: 120,
+						target: 0.65,
+						hrHigh: 145,
+						hrHold: true,
+					},
+				],
+			},
+			ftp: 200,
+		});
+		await startRiding(session);
+		for (let i = 0; i < 30; i++) {
+			session.onSample({
+				watts: 130,
+				cadence: 90,
+				heartRate: 140,
+				at: i * 1000,
+			});
+			session.tick();
+		}
+		expect(session.target).toBe(130);
+		expect(session.scored).toBe(false);
+		session.stop();
+	});
+});

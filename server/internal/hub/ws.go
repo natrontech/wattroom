@@ -306,5 +306,9 @@ func checkPick(c protocol.Control) string {
 		msg, _ := workout.RefusalMessage(err)
 		return msg
 	}
+	if err := workout.CheckRidesAlone(segments); err != nil {
+		msg, _ := workout.RefusalMessage(err)
+		return msg
+	}
 	return ""
 }

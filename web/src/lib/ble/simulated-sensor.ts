@@ -7,6 +7,12 @@ export interface SimulatedSensorOptions {
 	workingBpm?: number;
 	/** How slowly heart rate chases effort — the whole point of simulating it. */
 	tauSeconds?: number;
+	/**
+	 * Where effort takes it right now, bpm, when a test wants heart rate to
+	 * answer power (the HR hold's controller test, #67). The gain lives in
+	 * the test, not in the product; absent, it chases workingBpm.
+	 */
+	chase?: () => number;
 	watts?: number;
 	cadence?: number;
 	tickMs?: number;
@@ -55,7 +61,8 @@ export function createSimulatedSensor(
 		const reading: SensorReading = { at: now() };
 		if (kind === 'heart-rate') {
 			// First-order lag toward the working rate, plus a beat of jitter.
-			bpm += ((working - bpm) * tickMs) / 1000 / tau;
+			const toward = opts.chase?.() ?? working;
+			bpm += ((toward - bpm) * tickMs) / 1000 / tau;
 			reading.heartRate = Math.round(bpm + (rng() - 0.5) * 2);
 		}
 		if (kind === 'power-meter') {
