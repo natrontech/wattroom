@@ -1,9 +1,18 @@
 import { account } from '$lib/account.svelte';
+import { MaxTrainerGrade } from '$lib/protocol';
+import { ROAD } from '$lib/ride/ride-grade';
 import { MIN_SAMPLES, openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
 import { uploadRide, type RideUpload, type SaveFailure } from '$lib/ride/save';
 
-/** docs/SPEC.md's free ride (ADR-0059) — defaults, tune in alpha. */
-export const GRADE = { step: 0.5, min: -5, max: 15 } as const;
+/**
+ * docs/SPEC.md's free ride (ADR-0059) — defaults, tune in alpha. Its grade
+ * range is the felt grade's: the felt floor, and ADR-0062's one ceiling.
+ */
+export const GRADE = {
+	step: 0.5,
+	min: ROAD.feltMin,
+	max: MaxTrainerGrade,
+} as const;
 export const WATTS = { step: 10, min: 50, max: 1000 } as const;
 const OPENING_FTP_FRACTION = 0.55;
 

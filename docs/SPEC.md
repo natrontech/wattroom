@@ -52,6 +52,9 @@
 | **Workout on a route** | Code name **scenery**: a workout ridden by time, the road only shown ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)). |
 | **Bunch ride** | A **session** riding one road together, on one position the hub owns ([ADR-0065](decisions/0065-riding-a-road-together.md)). One of the five **modes**, never a game mode. |
 | **Felt grade** | The grade a rider feels on a road: difficulty × the road's grade, halved again on descents, clamped and slewed (Route rides below). The dot always moves by the road's own grade; difficulty never changes speed, time, XP or Batzen ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)). |
+| **Virtual gear** | A multiplier on the road the trainer simulates ([ADR-0084](decisions/0084-wattroom-shifts.md)). It changes cadence and torque, never the speed the watts buy. |
+| **Real gear** | The chainring and cog on the bike. A virtual gear rides on top of it. |
+| **Easier / Harder** | The ride's one pair of controls ([ADR-0084](decisions/0084-wattroom-shifts.md)): a gear in SIM; bias or watts in ERG. |
 | **Skyline** | The 2D road profile: the world's automatic fallback when the 3D view cannot run ([ADR-0066](decisions/0066-the-world-is-the-ride-view.md)). |
 | **Climb** | A stretch of road at least 500 m long, averaging at least 3 %, whose score (length in m × average %) is at least 1,500 (Route rides below). A climb belongs to the map, not to one route ([ADR-0082](decisions/0082-a-climb-belongs-to-the-map.md)). |
 | **Climb class** | A climb's difficulty by its score: **IV**, **III**, **II**, **I**, **HC**, always in Roman numerals (Route rides below). |
@@ -115,7 +118,7 @@ Session controls — pick, start, pause, resume, end, arm a sprint, hand off, st
 
 Caps (defaults — tune in alpha): a rider **founds at most 3 crews**, counted over the crews they founded and still own, so handing one on frees the slot, and so does one going. A crew has no delete button (#1935): **a crew with nothing left in it goes** — no channel and nobody in it but its owner — with the owner's delete of its last channel or its last member's leave, never with a ban (#2079, #2837). A crew with a channel never goes that way; its channels are what it holds (ADR-0058). A crew holds at most **20 text channels** and **10 voice channels**. A voice channel runs **one session** at a time — that one is not a default but the model (ADR-0058), and a second start is refused rather than counted. Membership is uncapped.
 
-Names, counted in characters (not bytes, #1986): a crew or channel name is 1–60, a workout name (planned, ridden or saved) 1–80, a token name 1–60, a chat or direct message 1–500, a display name 1–60.
+Names, counted in characters (not bytes, #1986): a crew or channel name is 1–60, a workout name (planned, ridden or saved) 1–80, a route name 1–80 ([#3024](https://github.com/natrontech/wattroom/issues/3024)), a token name 1–60, a chat or direct message 1–500, a display name 1–60.
 
 Shelf ceilings (#1414, defaults — tune in alpha). A crew holds at most **100
 planned sessions** — counted the way the crew's own schedule counts them,
@@ -186,7 +189,7 @@ Session lifecycle: a voice channel idles (voice and jukebox) → a member who ma
 
 A ride **alone** has the same lifecycle with the roster removed: rider picks workout → **3 s count-in** → their own timeline runs → closes when it ends (or they end it) → the ride is saved to their account. The count-in is a session's, shortened because nobody else is being waited for — same 3-2-1-go cues, same one-digit screen, and the same three seconds the resume countdown gets below. It is **not** an exception to ADR-0046's parity rule: the clock starts when the count-in ends, so the first block's target reaches the trainer then and not at the tap. A rider who changes their mind during it cancels back to the setup screen with the trainer still paired — nothing was ridden, so nothing is saved. The ramp test counts in the same way; it is a workout, not a third thing.
 
-A **free ride** ([ADR-0059](decisions/0059-a-voice-channel-rides-without-a-session.md)) has no timeline and no count-in. One control, one toggle between two modes: **grade** in **0.5 %** steps from **−5 %** to **+15 %**, where it opens, at **0 %**; and **watts** in **10 W** steps from **50 W** to **1000 W**, opening at **55 % of FTP** rounded to 10 W (defaults — tune in alpha). A one-gear setup (`singleSpeed`, a Zwift Cog) opens in **watts** instead, since the slope has no usable range there; grade stays one tap away. The ride guards below apply in watts mode only, since grade holds no target to release. It records from the first pedal stroke to **End ride**, is saved as the empty, unscored workout "Free ride", and follows the solo ride's minute rule. A session in the channel leaves it alone; joining one saves the free ride first. A third mode rides a **road** ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)): the grade is the road's **felt grade**, the step control goes, and the numbers are under Route rides. The free ride rides alone on `/ride` too, in all three modes.
+A **free ride** ([ADR-0059](decisions/0059-a-voice-channel-rides-without-a-session.md)) has no timeline and no count-in. One control, one toggle between two modes: **grade** in **0.5 %** steps from **−5 %** to **+15 %**, where it opens, at **0 %**; and **watts** in **10 W** steps from **50 W** to **1000 W**, opening at **55 % of FTP** rounded to 10 W (defaults — tune in alpha). A one-gear setup (`singleSpeed`, a Zwift Cog) opens in **watts** instead, since the slope has no usable range there; grade stays one tap away. The ride guards below apply in watts mode only, since grade holds no target to release. It records from the first pedal stroke to **End ride**, is saved as the empty, unscored workout "Free ride", and follows the solo ride's minute rule. A session in the channel leaves it alone; joining one saves the free ride first. A third mode rides a **road** ([ADR-0062](decisions/0062-the-horizon-may-be-a-road.md)): the grade is the road's **felt grade**, the step control goes, and the numbers are under Route rides. The free ride rides alone on `/ride` too, in all three modes. In grade mode the rider also shifts: Easier and Harder move a virtual gear (see Virtual gears).
 
 ## Workout JSON (draft — M1 finalizes)
 
@@ -516,6 +519,85 @@ ERG 0 W — zero in ERG is a freewheel, and a
 rider pedalling through a release felt nothing under their legs. Stop and leaving still write
 ERG 0 W: nobody is riding the trainer then.
 
+## Virtual gears (defaults — tune in alpha; [ADR-0084](decisions/0084-wattroom-shifts.md))
+
+When the ride is in SIM (a road, a race, the free ride's grade, a sprint slope), the rider shifts virtual gears with one pair of controls, **Easier** and **Harder**. A virtual gear multiplies whatever real gear is on the bike.
+
+Every number below is a **default**, to be tuned in alpha and re-measured by the gears hardware session, unless it is marked *physics* (not tunable) or *rule* (a hard constraint from ADR-0084).
+
+**The gear table**
+- **Gears (default).** 24 gears, geometric from ratio **0.72** to **5.30**, one step = (5.30/0.72)^(1/23) ≈ **9.07 %**. The code computes the ratios; the display rounds them to 0.72 0.79 0.86 0.93 1.02 1.11 1.21 1.32 1.44 1.57 1.72 1.87 2.04 2.23 2.43 2.65 2.89 3.15 3.43 3.75 4.09 4.46 4.86 5.30.
+- **Start (default).** Every ride starts at k = **1**, the rider's real gear and today's resistance. A Cog on 34×14 is gear 15.
+- **A shift (default).** It goes to the table neighbour of the gear shown, so from a real ratio between two table gears the first step is between half a step and one and a half (**4.4–13.6 %**). With no real ratio known, k steps by **×1.0907**, bounded to **0.30 … 2.2**, and the gear shows as **±n**.
+
+**Real gears**
+- **Real ratio (default).** The median of trainer speed ÷ (cadence × **2.096 m**) over the last **7** samples at **60–110 rpm**.
+  - A real shift is when that median sits **≥ 5 %** from the current ratio on **3** consecutive samples. k stays, and the gear shown re-anchors.
+  - In the lab: no false re-labels in 10 h at 2 % per-sample noise, and a 42×14 → 42×17 move re-labels after 5 s.
+  - If P1 measures per-sample noise above 2 %, the window becomes **9**.
+  - If the ratio moves with grade (a trainer that reports modelled speed), detection is off and the gear shows as ±n.
+- **Who reads the trainer's speed (rule).** Only the drivetrain does. The dot, timing and the bike computer's speed never do.
+
+**What goes to the trainer**
+- **The transform (physics).** k = virtual ratio ÷ real ratio.
+  - sin θ' = k · (m/m_t) · sin θ_felt
+  - Crr' · cos θ' = k · (m/m_t) · Crr · cos θ_felt
+  - Cw' = k³ · Cw · (1 − shelter)
+  - wind' = wind ÷ k
+
+  The base values are Crr **0.004** and Cw **0.51 kg/m** (what ftms.ts sends today). m/m_t is **1** until its own issue decides otherwise.
+- **Input (rule).** A road's grade goes through the route-rides felt rule (#3020). A slope the rider set by hand (the free ride) and a sprint slope are felt as given.
+- **Shelter (rule).** Cw carries (1 − shelter) only while "Feel the draft" is on (ADR-0077). The dot always gets the hub's shelter.
+- **Write range (default + rule).** The grade written stays within **MinTrainerGrade (−10 %, until P11)** … **MaxTrainerGrade (+15 %, #3020)**. Both live in protocol/limits.go and are the same for every trainer. A Cw above **2.55 kg/m** (the UINT8 field) folds into grade at the last flywheel speed.
+- **At the limit (default).** After **3 s** clamped, one persistent status line shows. It goes after **3 s** clear.
+  - "Your trainer is at its limit in this gear — shift easier."
+  - At the ceiling with a cassette: "Your trainer is at its limit in this gear — shift easier, or move your chain to a smaller cog."
+- **Writes (rule).**
+  - A shift writes one FTMS 0x11 at once, through the trainer queue, where a newer write supersedes a queued one.
+  - A shift carries the current shelter. It is exempt from the felt-grade slew (1 %/s) and from the drafting Cw spacing.
+  - A shift never changes mode, and nothing is written between the old gear and the new one.
+  - Terrain writes happen when the composed bytes change.
+  - Entering SIM from ERG writes 0 % for **500 ms** first. That is the only write that is not the target road. A shift inside it moves k only, and the timed write reads the gear when it fires.
+  - A reconnect re-issues the current state, recomputed.
+  - WattRoom never sends a pulse (ADR-0084 defines one).
+
+**The shifter (default)**
+- Debounce: **40 ms** per input source.
+- Rate: at most one shift per **100 ms**. Up to **3** more presses queue, and opposite presses cancel out.
+- Hold: a held control repeats after **400 ms**, then every **200 ms**.
+- Ends: nothing moves, and one `block` cue plays per press. A held repeat plays none.
+- A source that disconnects releases whatever it held. A window that loses focus releases every held key.
+- There is no auto-shift, no countdown and no easing between gears (rule).
+
+**Controls and feedback**
+- **Easier / Harder (rule: Jan, 2026-09-28).**
+  - In SIM: a gear.
+  - In an ERG workout: bias **±1 %**, within **0.8–1.2** (#795).
+  - In the free ride's watts mode: **±10 W**.
+  - Anywhere else: disabled, with a one-line hint.
+- **Grade mode (default; amends ADR-0059).** The grade pair (**0.5 %** steps, as today) sits above. Easier / Harder sit below, full width, with the gear between them. Both are `btn-lg`. On a road the pair is Easier / Harder only.
+- **Announce (default).**
+  - `shift-up` and `shift-down` cues on the cues bus: two short ticks, rising or falling.
+  - The gear field reads "Gear 15", or "+3" when no real ratio is known.
+  - It is neon, never the watt accent, and never glows. It pulses once on a change, not at all under `prefers-reduced-motion`, and is aria-live polite.
+- **Keys (default).**
+  - Harder: `.` `+` `=` Numpad+. Easier: `,` `-` Numpad−. PgUp / PgDn are Harder / Easier.
+  - No modifier key. `event.repeat` is ignored, because the shifter does the repeating. Keydown and keyup are press and release.
+- **Phone (default).** Taps only, as a full-width pair. Each tap is answered with the gear, and whether it is at an end.
+- **The trainer grant moves (default).** When another of the rider's screens takes the trainer, k restarts at 1 with a cue and "Gear back to your real gear". A reconnect keeps k.
+
+**What the gear never touches (rule)**
+- Reported watts are never multiplied by k.
+- The pace model, timing, XP and the tick take no gear.
+- The gear stays on the rider's device and is not stored with the ride.
+
+**Fallbacks**
+- **ERG-by-gear (default; only for a trainer without usable SIM).**
+  - Target = (felt road force at speed k·v) × k·v, where v is the trainer's own speed.
+  - Floor **50 W**. Never ERG 0 W (#2658).
+  - Ceiling: the trainer's Supported Power Range (0x2AD8).
+- **Don't make me shift (default).** The singleSpeed setting, renamed. Wherever SIM would put the rider on a slope, ERG-by-road holds FTP × clamp(0.60 + 0.03 × grade %, 0.50, 0.90), ± bias (#3025). Rides on it are stored but untimeable (rule: Jan, 2026-09-28; ADR-0074's who-chose-the-watts rule, since WattRoom chose the watts).
+
 ## Medals (per group session)
 
 - **Diesel** — lowest power variability (coefficient of variation) across steady steps
@@ -633,7 +715,9 @@ What v0 ships (#3022):
 | Stored grade                 | **−15 … +20 %**                                                                                                                         |
 | Felt grade                   | difficulty × grade, **× 0.5** again on descents; clamped to **−5 … +15 %**; slewed at most **1 %/s**                                    |
 | Difficulty                   | **50 %**; **100 %** under Advanced                                                                                                      |
-| Entering a road              | **0 %** for **500 ms**, then the road                                                                                                   |
+| Entering a road              | **0 %** for **500 ms** on entering SIM from ERG, then the road |
+| Look-ahead                   | the felt grade is read **1 s** ahead of the rider, at the dot's speed                                                                   |
+| One gear on a road           | ERG-by-road instead of SIM: FTP × clamp(**0.60** + **0.03** × the road's grade %, **0.50**, **0.90**), and **0.50** on descents steeper than **−2 %**; ± bias |
 | Grade written to the trainer | `MinTrainerGrade` **−10 %** (a default until hardware check P11) … `MaxTrainerGrade` **+15 %**, both in `protocol/limits.go`, one range for every trainer |
 | Reference rider              | **75 kg** rider + **8 kg** bike at **225 W**                                                                                            |
 | Pace model                   | Martin et al. 1998, stepped once a second in **4** substeps (`$lib/road/pace.ts` and its Go twin `internal/road`, held to **0.1 %** by shared golden vectors): Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, CdA **0.32 m²** until the Kickr sessions measure it. The pace model and FTMS share this one CdA; the factor between it and the Cw FTMS is sent (**0.51 kg/m** today, `SIM_DEFAULTS`) is what that session measures, and this row does not assert it |
@@ -681,6 +765,14 @@ never the metres a client sent, and an imported file never sets one.
 | `board_ok`: provenance        | recorded by WattRoom and saved fresh; never imported, never Strava-origin               |
 | Crew climb times              | this week only, Monday reset, bracketed by Category D–A; fastest and most ascents       |
 
+## Races ([ADR-0067](decisions/0067-racing-on-a-road.md) — defaults, tune in alpha)
+
+- **Physics**: a rider's speed is the reference rider's (Route rides) at their **W/kg × 75 kg**, plus an **8 kg** bike, on the grade.
+- **Race FTP**: the profile FTP, or the FTP suggestion (Stats formulas) when it is higher, frozen at the flag.
+- **Race weight**: frozen at the flag. A weight changed within **14 days**, or a weight or FTP from the default source, rides unranked.
+- **Weight confirmation**: once every **90 days**, one tap through the FTP prompt, never a gate; a weight not confirmed within 90 days rides unranked.
+- **Results**: per Category D–A on the closing card only; a lone rider reads "rode alone in C". A restart voids the race. On an open ride each rider sees only their own placing.
+
 ## Riding a road together (defaults — tune in alpha; [ADR-0065](decisions/0065-riding-a-road-together.md))
 
 The bunch's one position advances once per whole second, never on a sprint
@@ -711,6 +803,15 @@ A rider's bias never moves the bunch.
 | Ride sky            | lit by the sky only; sun **−4°** at the start to **−8°** at the finish by the ride's progress, **−6°** with no known end |
 | Alpenglow           | OKLCH hue **58–60°**                                                                                                     |
 | Flashes             | WCAG 2.3.1, and at most one dim flash per **10 s** over **25 %** of a 10° field; none under reduced motion               |
+
+## The figure ([ADR-0073](decisions/0073-the-rider-is-dressed-never-measured.md) — defaults, tune in alpha)
+
+- **Proportions**: stylised athletic, about **7 heads** tall, head scale **1.08**. No face.
+- **Build**: slim, athletic or strong — the rider's choice, never derived from weight.
+- **Height**: the rider's choice; the range is [#3413](https://github.com/natrontech/wattroom/issues/3413)'s.
+- **Skin**: one of **8** free swatches, never sold; the values are #3413's. The neutral figure's tone is none of the 8.
+- **Neutral figure** (until the rider chooses): athletic build, a middle height, the neutral tone.
+- **The live zone** is a flat ground ring under the bike, never the jersey.
 
 ## Rider animation (defaults — tune in alpha; #3066)
 

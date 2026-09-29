@@ -139,6 +139,26 @@ count fails, so a `0` is only worth acting on beside a fresh
 `WattroomTokenSealCountStale` is the rule that watches that. Without Prometheus
 at all, the server logs the number whenever it changes, `sealed` or not.
 
+### Rotating `WATTROOM_TOKEN_KEY`
+
+The key seals two things, and a rotation treats them differently:
+
+- **Strava refresh tokens** are not re-sealed. A rotated key makes them
+  unreadable, and riders reconnect Strava (ADR-0035).
+- **Routes** riders keep are re-sealed, because a route cannot be reconnected
+  (ADR-0063). Each route records the version of the key that sealed it.
+
+To rotate, deploy with `WATTROOM_TOKEN_KEY` set to the new key, then run the
+re-seal once with the old key beside it:
+
+    docker compose exec -e WATTROOM_TOKEN_KEY_PREVIOUS='<the old key>' wattroom /wattroom reseal-routes
+
+It moves every route sealed under the old key to the new one and logs how many
+it moved. It is safe to run twice and safe beside a running server. Until it has
+run, a route sealed under the old key keeps its heights, but its map will not
+open, and the rider's export says it is incomplete. A server with no key at all
+never stores a route's map, only its heights.
+
 ### How much is it used?
 
 The same endpoint carries usage counts (#2913), recounted from the database
