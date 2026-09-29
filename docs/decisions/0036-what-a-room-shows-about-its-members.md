@@ -240,3 +240,13 @@ The migration that ships this takes members of crews whose board is off today
 off the board. The rows cannot tell a default from a rider who switched
 themselves on while the board was off, so both go off, which is the narrow
 side. Nobody can see any difference until the board is turned on.
+
+## Amendment, 2026-09-29 (#3121): climb times join the weekly board
+
+[ADR-0074](0074-a-time-is-yours-when-your-watts-moved-your-dot.md) lets the
+crew's **weekly board** carry climb times — the fastest, and the most ascents —
+beside its kJ and time ridden, on this ADR's terms and no others: off until
+the crew's owner or an admin turns it on, only riders who are `on_board`, this
+week only with the Monday reset, bracketed by Category D–A. Only efforts that
+are `timeable` and `board_ok` count, and flat stretches are never on it. It is
+still the one ordered surface a crew has, and never its front page.

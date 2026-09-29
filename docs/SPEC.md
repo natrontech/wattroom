@@ -665,6 +665,20 @@ Privacy rules, not alpha defaults: loosening any of these takes an ADR.
 | A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
 | Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
 
+## Road times ([ADR-0074](decisions/0074-a-time-is-yours-when-your-watts-moved-your-dot.md) — defaults, tune in alpha)
+
+A road time is the server's replay of the rider's watts on the map's profile,
+never the metres a client sent, and an imported file never sets one.
+
+| Rule                          | Value                                                                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------- |
+| Shelter                       | an effort whose mean shelter exceeds **5 %** is untimeable; any tow makes the ride untimeable |
+| `board_ok`: account           | at least **14 days** old, with at least **5** saved rides                               |
+| `board_ok`: weight            | set at least **7 days** before the ride, and not dropped by more than **2 kg** since     |
+| `board_ok`: plausibility      | no more than **110 %** of the rider's own **90-day** best at that duration              |
+| `board_ok`: provenance        | recorded by WattRoom and saved fresh; never imported, never Strava-origin               |
+| Crew climb times              | this week only, Monday reset, bracketed by Category D–A; fastest and most ascents       |
+
 ## Riding a road together (defaults — tune in alpha; [ADR-0065](decisions/0065-riding-a-road-together.md))
 
 The bunch's one position advances once per whole second, never on a sprint
