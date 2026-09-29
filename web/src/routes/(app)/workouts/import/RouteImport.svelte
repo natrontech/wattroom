@@ -1,7 +1,9 @@
 <script lang="ts">
 	import Lock from '@lucide/svelte/icons/lock';
 	import { account } from '$lib/account.svelte';
+	import { goto } from '$app/navigation';
 	import { api } from '$lib/api';
+	import { roadsEnabled } from '$lib/ride/roads';
 	import Banner from '$lib/components/Banner.svelte';
 	import RoutePreview from '$lib/components/RoutePreview.svelte';
 	import { device, isSpectator } from '$lib/device.svelte';
@@ -28,13 +30,17 @@
 	// rename refused after the route was stored is said beside it, since
 	// saving again would store a second copy.
 	let saveError = $state<string | null>(null);
-	let saved = $state<{ name: string; renameError: string | null } | null>(null);
+	let saved = $state<{
+		id: string;
+		name: string;
+		renameError: string | null;
+	} | null>(null);
 
 	// A phone watching from the sofa has no trainer to ride it on.
 	const spectator = $derived(isSpectator(device));
 
-	async function save() {
-		if (!imported || saving) return;
+	async function save(): Promise<string | null> {
+		if (!imported || saving) return null;
 		const { route, src, eleSource } = imported;
 		saving = true;
 		saveError = null;
@@ -51,7 +57,7 @@
 		if (!created.ok) {
 			saving = false;
 			saveError = created.error.message;
-			return;
+			return null;
 		}
 		const name = rename.trim();
 		let renameError: string | null = null;
@@ -64,10 +70,18 @@
 		}
 		saving = false;
 		saved = {
+			id: created.data.id,
 			name: renameError ? route.name : name || route.name,
 			renameError,
 		};
 		toasts.push(`Saved “${saved.name}” to your routes.`);
+		return saved.id;
+	}
+
+	/** Ride it now (#3027): saved first, as a ride on a road rides a route. */
+	async function rideNow() {
+		const id = saved?.id ?? (await save());
+		if (id) await goto(`/ride?road=${encodeURIComponent(id)}`);
 	}
 </script>
 
@@ -149,7 +163,16 @@
 			class="btn btn-primary btn-lg">Save to my routes</button
 		>
 		{#if !spectator}
-			<button disabled class="btn btn-ghost btn-lg">Ride it now</button>
+			<!-- Behind the roads dev gate (#3027); a disabled control says why
+			     (ux.md: never a press that fails). -->
+			<button
+				onclick={() => void rideNow()}
+				disabled={saving || !roadsEnabled()}
+				title={roadsEnabled()
+					? undefined
+					: 'Riding a road opens once the trainer numbers are final.'}
+				class="btn btn-ghost btn-lg">Ride it now</button
+			>
 		{/if}
 		<button disabled class="btn btn-ghost btn-lg">Plan it for a crew</button>
 		{#if imported.src === 'stravagpx'}
@@ -162,8 +185,10 @@
 	</div>
 	<p class="text-muted mt-2 text-xs">
 		{#if imported.src === 'stravagpx'}
-			Files from Strava ride with you alone, never in a crew's plan. Riding it
-			arrives with route rides.
+			Files from Strava ride with you alone, never in a crew's plan.
+			{#if !roadsEnabled()}Riding it arrives with route rides.{/if}
+		{:else if roadsEnabled()}
+			Planning it for a crew arrives with route rides.
 		{:else}
 			Riding it and planning it for a crew arrive with route rides.
 		{/if}
