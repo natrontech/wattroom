@@ -14,7 +14,6 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/natrontech/wattroom/server/internal/jobmetrics"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/safego"
 )
@@ -41,51 +40,6 @@ type SessionSaver interface {
 	// buffer after it. The saver grows the saved ride from it, or does
 	// nothing if there was no ride to grow.
 	AmendRide(ctx context.Context, channel, session, workoutName, workoutJSON string, startedAt time.Time, rider RiderRecord)
-}
-
-// AutoplaySource answers what a room's autoplay should draw from (#627),
-// read once per trigger — a rider joining an idle deck, or the deck running
-// dry (#676) — and always outside the room's lock (server/AGENTS.md: DB I/O
-// never happens while holding a room mutex). Defined here, where it is
-// consumed; the playlists service implements it. Nil, or ok=false, means
-// nothing to play: autoplay stays silent. tracks already carries whatever
-// order (list order or shuffled) the caller's autoplay setting currently
-// means. mood is what the room's timeline is asking for at the moment of the
-// read (#270); the zero value means no preference, and every source is free
-// to ignore it.
-type AutoplaySource interface {
-	Autoplay(ctx context.Context, channel string, mood SessionMood) (tracks []protocol.JukeboxCommand, ok bool)
-}
-
-// TrackHistory hears what a room did with a pool track (#269, ADR-0015):
-// played it through, or skipped past it. Defined here, where it is consumed;
-// the playlists service implements it. Nil means no history is kept, and
-// smart shuffle degrades to a plain random draw — which is exactly what an
-// empty history already weights to.
-//
-// Called outside every room lock, from the goroutine that ran the deck
-// command, and BEFORE the same command's autoplay refill: the implementation
-// may block briefly on its own write, and should, or the track that just
-// ended is not yet in the history the refill weights against.
-type TrackHistory interface {
-	TrackEnded(ctx context.Context, channel string, play Play)
-	// Recent is the room's "just played" as the log remembers it (#1432),
-	// newest first, at most n — what a room the hub has just created shows
-	// until it plays something of its own. Called from the autoplay worker,
-	// outside every lock.
-	Recent(ctx context.Context, channel string, n int) []protocol.JukeboxEntry
-}
-
-// Play is one thing a deck finished with (#269, #1432): a library track by
-// id, or a video by its YouTube id and the title the deck showed. QueuedBy
-// is who queued it — empty for autoplay — and Skipped says whether the room
-// let it end or pushed past it.
-type Play struct {
-	TrackID  string
-	VideoID  string
-	Title    string
-	QueuedBy string
-	Skipped  bool
 }
 
 // MinRideSamples is the saver's threshold: fewer than a minute of samples is
@@ -159,6 +113,9 @@ type Hub struct {
 	// against LiveKit's own participant list (#234).
 	voice map[string]map[string]voiceEntry
 	xp    XpKeeper
+	// Who a hub-born change concerns (#2324); nil tells everyone.
+	audiences Audiences
+	hider     Hider
 	// What makes a finished session durable (ADR-0034). Nil = no database,
 	// and a session leaves nothing.
 	recaps RecapKeeper
@@ -187,27 +144,9 @@ type Hub struct {
 	autoplays chan autoplayJob
 }
 
-// autoplayJob is one idle deck worth checking — enough to read the room's
-// autoplay plan and hand it back to the room that asked.
-type autoplayJob struct {
-	rm      *room
-	channel string
-	// A room the hub just created (#1432): read its "just played" from the
-	// log instead of an autoplay plan.
-	seed bool
-}
-
 // SetXpKeeper wires the trophy case in (#467) — before the first room
 // opens, since rooms capture it at creation. Nil stays valid.
 func (h *Hub) SetXpKeeper(k XpKeeper) { h.xp = k }
-
-// SetPlaylistSource wires autoplay's read side in (#627), like SetXpKeeper.
-// Nil stays valid — autoplay just never fires.
-func (h *Hub) SetPlaylistSource(k AutoplaySource) { h.playlists = k }
-
-// SetTrackHistory wires the play/skip log smart shuffle reads (#269) — like
-// every other keeper, before the first room exists.
-func (h *Hub) SetTrackHistory(k TrackHistory) { h.history = k }
 
 func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	h := &Hub{log: log, access: access, saver: saver, now: time.Now,
@@ -219,97 +158,8 @@ func New(log *slog.Logger, access Access, saver SessionSaver) *Hub {
 	// Supervised (#651): a poison job costs one log line and is skipped, not
 	// the rest of the process's autoplay.
 	safego.Supervise(log, h.now, "hub autoplay worker", nil, h.autoplayWorker)
-	h.registerRidingMetric()
+	h.registerRideGauges()
 	return h
-}
-
-// autoplayWorker drains the autoplay-trigger queue (#627): a stalled
-// database backs up this queue, never a joining rider's upgrade or any tick.
-// Exits when the process does — the hub has no shutdown, it lives as long as
-// the server.
-// ponytail: one worker for the whole hub; per-channel workers if a slow read
-// ever lets one loud channel starve the rest.
-func (h *Hub) autoplayWorker() {
-	for job := range h.autoplays {
-		if job.seed {
-			if h.history != nil {
-				ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-				entries := h.history.Recent(ctx, job.channel, maxHistory)
-				cancel()
-				job.rm.mu.Lock()
-				job.rm.music.seedHistory(entries)
-				job.rm.mu.Unlock()
-			}
-			continue
-		}
-		// Read the mood at the moment of the REFILL, not when the job was
-		// queued: the worker can lag a busy hub, and a block that has since
-		// ended is not what the room is riding.
-		//
-		// Bounded (#2874): this one worker serves every channel, so a read
-		// that hung would stall autoplay everywhere while the queue filled.
-		ctx, cancel := context.WithTimeout(context.Background(), autoplayBudget)
-		tracks, ok := h.playlists.Autoplay(ctx, job.channel, job.rm.mood(h.now()))
-		jobmetrics.Ran(autoplayJobName, ctx.Err())
-		cancel()
-		job.rm.applyAutoplay(tracks, ok, h.now())
-	}
-}
-
-// autoplayBudget bounds one autoplay read: a channel's settings and one
-// playlist's tracks, or smart shuffle's history — gamify's jobBudget shape.
-const autoplayBudget = 5 * time.Second
-
-// autoplayJobName is the worker's name to the operator's metrics
-// (jobmetrics): its runs, the reads that timed out, the jobs a full queue
-// dropped.
-const autoplayJobName = "hub autoplay"
-
-// recordTrackEvent logs one pool track the deck finished with (#269). The
-// deck has already moved on, so nothing is waiting on this — but it runs
-// before the refill that reads it back, which is why it is not fired into a
-// goroutine. The timeout bounds a rider's WS read loop; a history line lost
-// to a slow database costs one nudge in a weighting, so it is logged and
-// dropped rather than retried.
-func (h *Hub) recordTrackEvent(channel string, ev trackEvent) {
-	if h.history == nil {
-		return
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	h.history.TrackEnded(ctx, channel, Play{
-		TrackID: ev.trackID, VideoID: ev.videoID, Title: ev.title,
-		QueuedBy: ev.queuedBy, Skipped: ev.skipped,
-	})
-}
-
-// triggerAutoplay checks a room's deck and, if it is idle, enqueues the DB
-// read that decides what autoplay puts on it (#627). Fired by a join and by
-// the deck running dry (#676). The check-then-enqueue happens
-// outside any I/O; the worker re-checks idle under the room's lock before
-// seeding, so two riders joining the same instant cannot double-queue the
-// room's playlist. Nothing here re-fires itself: a loop needs a real "ended"
-// from a client each pass, and a source with nothing to play — autoplay off,
-// an empty playlist — leaves the deck idle and the queue quiet.
-func (h *Hub) triggerAutoplay(rm *room, channel string) {
-	if h.playlists == nil {
-		return
-	}
-	rm.mu.Lock()
-	idle := rm.music.state.Current == nil
-	rm.mu.Unlock()
-	if !idle {
-		return
-	}
-	select {
-	case h.autoplays <- autoplayJob{rm: rm, channel: channel}:
-	default:
-		// Full queue: the room just stays idle until the next join, which
-		// will try again — better than a joining rider's upgrade or read
-		// loop blocking.
-		h.log.Warn("autoplay queue full, skipping", "channel", channel)
-		jobmetrics.Dropped(autoplayJobName)
-	}
 }
 
 // CloseRoom forgets everything live about a voice channel that has been
@@ -424,26 +274,18 @@ func (h *Hub) OpenSession(channel string, rider protocol.Rider, workoutName, wor
 	return rm.session.id, "", ""
 }
 
-// QueuePlaylist appends a saved playlist's tracks onto a room's live queue
-// (#627) — a rider pressed "queue" from the playlists panel, which is a plain
-// plain HTTP call, not a WS command. Returns false when nobody is
-// connected to seed a deck for; the caller (who is presumably looking at
-// this room's jukebox right now) should not normally see that. addedCount is
-// how many tracks actually landed, for the response — the queue's own caps
-// (jukebox.go's maxQueue/maxQueuedTracks) can stop it short.
-func (h *Hub) QueuePlaylist(channel, riderID, addedBy string, tracks []protocol.JukeboxCommand) (addedCount int, ok bool) {
-	rm := h.occupied(channel)
-	if rm == nil {
-		return 0, false
+// liveRooms copies the hub's room pointers and lets the hub's lock go, so a
+// caller then takes one room's lock at a time and never holds both: the lock
+// order every read across rooms keeps, and why a metrics scrape cannot wedge
+// a tick.
+func (h *Hub) liveRooms() []*room {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	rooms := make([]*room, 0, len(h.rooms))
+	for _, rm := range h.rooms {
+		rooms = append(rooms, rm)
 	}
-	now := h.now()
-	for _, cmd := range tracks {
-		if _, added := rm.jukebox(cmd, riderID, addedBy, now); !added {
-			break // cap hit or a bad entry slipped through — stop, don't skip holes
-		}
-		addedCount++
-	}
-	return addedCount, true
+	return rooms
 }
 
 func (h *Hub) room(channel string) *room {
@@ -461,11 +303,12 @@ func (h *Hub) room(channel string) *room {
 		// room exists, and a later write races every room goroutine reading it.
 		rm.now = h.now
 		rm.pending = &h.handoffs
-		rm.changed = h.PresenceChanged
+		rm.changed = func(riders []string) { h.tellChannel(channel, riders...) }
 		rm.deckIdled = func() { h.triggerAutoplay(rm, channel) }
 		rm.deckPlayed = func(ev trackEvent) { h.recordTrackEvent(channel, ev) }
 		rm.forget = func() bool { return h.forgetRoom(rm) }
 		rm.xp = h.xp
+		rm.hider = h.hider
 		rm.recaps = h.recaps
 		// Voice can be live before the first socket opens the room — seed
 		// it, unlocked: nobody else can hold this room yet.
@@ -517,36 +360,4 @@ func (h *Hub) launchRoom(rm *room) {
 	safego.SuperviseThen(h.log, h.now, "room "+rm.channel, rm.stop,
 		func() { rm.run(h.log, h.now, h.saver) },
 		func() { h.CloseRoom(rm.channel) })
-}
-
-// maxSocketsPerRider is generous — a phone, a laptop, a TV and a few tabs —
-// and far under what makes join and leave O(lobby) for one account (#1415).
-const maxSocketsPerRider = 16
-
-// admitSocket counts one more open socket for the rider, refusing past the cap.
-func (h *Hub) admitSocket(riderID string) bool {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if h.sockets[riderID] >= maxSocketsPerRider {
-		return false
-	}
-	h.sockets[riderID]++
-	return true
-}
-
-func (h *Hub) releaseSocket(riderID string) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	releaseCount(h.sockets, riderID)
-}
-
-// releaseCount drops one from a counter map, deleting the key on the last —
-// what keeps h.sockets and h.holds bounded by what is live rather than by
-// everything that ever was. Caller holds h.mu.
-func releaseCount(counts map[string]int, key string) {
-	if counts[key] <= 1 {
-		delete(counts, key)
-		return
-	}
-	counts[key]--
 }

@@ -82,7 +82,7 @@ func (s *Service) handleFoundCrew(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "found crew failed", err, "The crew could not be started. Try again.", "user", store.UUIDString(user.ID))
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusCreated, crewRefJSON{
 		Id: store.UUIDString(crew.ID), Name: crew.Name, Code: *crew.Code,
 		Founded: true, Role: "owner", Named: true,

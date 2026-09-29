@@ -23,7 +23,10 @@
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import { device } from '$lib/device.svelte';
-	import { crewOf, followedRider } from '$lib/session/follow';
+	import { followedRider } from '$lib/channel/followed-rider';
+	import { crewOf } from '$lib/session/follow';
+	import { bottleFor } from '$lib/roadside';
+	import RoadsideDeck from '$lib/channel/RoadsideDeck.svelte';
 	import { pictureKey } from '$lib/channel/stage';
 	import { formatClock } from '$lib/format';
 	import { useChannel } from '$lib/channel/context';
@@ -60,6 +63,8 @@
 	// crewOf below decides whether your own tile belongs in the strip.
 	const inRide = $derived(channel.riders.filter((r) => r.inSession || r.you));
 	const followed = $derived(followedRider(inRide, channel.focusId));
+	// Who this screen's bottle goes to, from the roadside (#3022).
+	const watched = $derived(bottleFor(channel.riders, channel.focusId));
 	const bands = $derived(
 		blockBands(channel.block, followed?.cadence ?? 0, followed?.hr ?? 0),
 	);
@@ -96,7 +101,7 @@
 			{#each bands as band (band.unit)}
 				<p
 					class="font-display text-lg leading-none font-bold tabular-nums {band.inBand
-						? 'text-z4'
+						? 'text-ok'
 						: 'text-muted'}"
 				>
 					{band.text}
@@ -152,7 +157,9 @@
 					canControl={channel.canControl && !device.spectator}
 					end={() => void endGame(channel)}
 					me={account.me?.id}
-				/>
+				>
+					{#snippet roadside()}<RoadsideDeck to={watched} />{/snippet}
+				</GamePanel>
 				{#if followed && !channel.game.meterHidden}
 					<!-- The rider's own watts under the game (audit 2026-09-09):
 					     the panel says the line and who is left, never what you
@@ -161,6 +168,7 @@
 						<Instrument
 							watts={followed.watts}
 							stale={followed.you ? channel.youStale : followed.stale}
+							idle={followed.you && channel.youUnmeasured}
 							target={followed.target}
 							ftp={followed.ftp}
 							compact
@@ -192,6 +200,7 @@
 						<Instrument
 							watts={followed.watts}
 							stale={followed.you ? channel.youStale : followed.stale}
+							idle={followed.you && channel.youUnmeasured}
 							target={followed.target}
 							ftp={followed.ftp}
 							compact={focus === 'media'}
@@ -242,6 +251,13 @@
 			{/if}
 		{/if}
 
+		{#if !channel.you.inSession}
+			<!-- The roadside's deck (#3022): a phone beside the bike is the
+			     roadside, and its thumbs are the crowd. -->
+			<section class="px-4 pt-4">
+				<RoadsideDeck to={watched} />
+			</section>
+		{/if}
 		{#if device.spectator}
 			<!-- Says why there is nothing to pair, once, where the numbers are —
 			     not a banner on every place (ux.md: teach, never apologise). -->

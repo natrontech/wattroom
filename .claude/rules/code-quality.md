@@ -18,10 +18,13 @@ Read the whole file first; grep for callers before changing a signature and upda
 
 Soft ceilings — split in the same change when crossed: Go files ~400 lines, Svelte components ~500, TS modules ~300.
 
+Pure data tables are exempt rather than split: `web/src/lib/workout/library.ts`, `web/src/lib/sound/cue-catalogue.ts` and `web/src/lib/themes.ts` are lists of entries, and cutting a list in two makes it harder to read, not easier. Their length is the content; logic that grows beside it still leaves (#3358).
+
 ## Done-checklist for any change
 
 - [ ] No new duplication (function, type, magic number)
 - [ ] Any test written for a silent failure — one that would ship quietly rather than error — was seen to fail: break the code the way it would realistically break, confirm red, restore. A test you never saw fail is decoration
 - [ ] Colors/durations from theme tokens, product numbers from docs/SPEC.md
+- [ ] Anything that animates without end has a `/dev/perf` case and was measured with `make perf` — a glow over moving content cost a third of a GPU before anyone looked (docs/PERFORMANCE.md)
 - [ ] No dead or commented-out code
 - [ ] `make ci` green

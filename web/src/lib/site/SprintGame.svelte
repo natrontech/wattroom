@@ -1,6 +1,5 @@
 <script lang="ts">
 	import Zap from '@lucide/svelte/icons/zap';
-	import { reducedMotion } from '$lib/motion';
 	import { bestFive, follow, SPRINT, target } from './sprint';
 
 	// "Try the sprint" (#2995): Sprint Roulette's moment, played with a thumb.
@@ -97,7 +96,7 @@
 
 <div
 	class="shell-card bg-surface-raised/60 relative w-full overflow-hidden p-5 backdrop-blur sm:p-6 {phase ===
-		'armed' && !reducedMotion()
+	'armed'
 		? 'klaxon'
 		: ''}"
 >
@@ -188,7 +187,7 @@
 
 <style>
 	/* The klaxon, seen rather than heard: the frame flashes in the watt
-	   colour while the countdown runs. Reduced motion gets no class at all. */
+	   colour while the countdown runs, and holds still for reduced motion. */
 	.klaxon {
 		animation: klaxon 0.5s steps(2, jump-none) infinite;
 	}
@@ -198,6 +197,11 @@
 		}
 		to {
 			border-color: transparent;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.klaxon {
+			animation: none;
 		}
 	}
 </style>

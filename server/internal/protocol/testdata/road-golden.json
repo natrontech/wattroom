@@ -1,0 +1,1717 @@
+{
+  "about": "The pace model's golden vectors (#3048), written by `go test ./internal/road -run TestGolden -update` and replayed by web/src/lib/road/pace.test.ts; the two twins agree within 0.1 %.",
+  "vectors": [
+    {
+      "name": "the reference rider from a standstill on the flat",
+      "cda": 0.32,
+      "mass": 83,
+      "speed": 0,
+      "legs": [
+        {
+          "seconds": 300,
+          "watts": 225,
+          "grade": 0,
+          "shelter": 0,
+          "speed": 9.831205717453125,
+          "distance": 2854.0611089288304
+        }
+      ]
+    },
+    {
+      "name": "the reference rider up 8 %",
+      "cda": 0.32,
+      "mass": 83,
+      "speed": 5,
+      "legs": [
+        {
+          "seconds": 300,
+          "watts": 225,
+          "grade": 8,
+          "shelter": 0,
+          "speed": 3.1153439396958373,
+          "distance": 942.7166426488263
+        }
+      ]
+    },
+    {
+      "name": "over a crest, coasting down and riding on",
+      "cda": 0.32,
+      "mass": 83,
+      "speed": 4,
+      "legs": [
+        {
+          "seconds": 60,
+          "watts": 225,
+          "grade": 8,
+          "shelter": 0,
+          "speed": 3.115343961586428,
+          "distance": 190.30308311362222
+        },
+        {
+          "seconds": 60,
+          "watts": 0,
+          "grade": -6,
+          "shelter": 0,
+          "speed": 14.974303179820573,
+          "distance": 892.932924422363
+        },
+        {
+          "seconds": 60,
+          "watts": 150,
+          "grade": 0,
+          "shelter": 0,
+          "speed": 8.572928046430606,
+          "distance": 1495.8134728318616
+        }
+      ]
+    },
+    {
+      "name": "sheltered in a bunch",
+      "cda": 0.32,
+      "mass": 83,
+      "speed": 9,
+      "legs": [
+        {
+          "seconds": 300,
+          "watts": 225,
+          "grade": 0,
+          "shelter": 0.3,
+          "speed": 10.996661502033303,
+          "distance": 3265.2098843702465
+        }
+      ]
+    },
+    {
+      "name": "a heavy rider who stops pedalling",
+      "cda": 0.32,
+      "mass": 108,
+      "speed": 6,
+      "legs": [
+        {
+          "seconds": 200,
+          "watts": 300,
+          "grade": 3,
+          "shelter": 0,
+          "speed": 6.552649234626422,
+          "distance": 1304.3755497448021
+        },
+        {
+          "seconds": 120,
+          "watts": 0,
+          "grade": 0,
+          "shelter": 0,
+          "speed": 0,
+          "distance": 1604.461029942447
+        }
+      ]
+    },
+    {
+      "name": "rolling down 10 % from a standstill",
+      "cda": 0.32,
+      "mass": 83,
+      "speed": 0,
+      "legs": [
+        {
+          "seconds": 120,
+          "watts": 0,
+          "grade": -10,
+          "shelter": 0,
+          "speed": 0,
+          "distance": 0
+        }
+      ]
+    },
+    {
+      "name": "225 W on the flat, alone, behind a wheel, deep in a line",
+      "cda": 0.32,
+      "mass": 83,
+      "speed": 9.831205718812791,
+      "legs": [
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 0,
+          "shelter": 0,
+          "speed": 9.831205718812791,
+          "distance": 1179.7446862575366
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 0,
+          "shelter": 0.35,
+          "speed": 11.252622226494523,
+          "distance": 2504.896526104913
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 0,
+          "shelter": 0.5,
+          "speed": 12.208746106591894,
+          "distance": 3949.9782035066
+        }
+      ]
+    },
+    {
+      "name": "225 W at 3 %, alone, behind a wheel, deep in a line",
+      "cda": 0.32,
+      "mass": 83,
+      "speed": 6.200672414923611,
+      "legs": [
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 3,
+          "shelter": 0,
+          "speed": 6.200672414923611,
+          "distance": 744.0806897908398
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 3,
+          "shelter": 0.35,
+          "speed": 6.578612234451144,
+          "distance": 1528.9804843162121
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 3,
+          "shelter": 0.5,
+          "speed": 6.783830462314344,
+          "distance": 2340.2927121431903
+        }
+      ]
+    },
+    {
+      "name": "225 W at 6 %, alone, behind a wheel, deep in a line",
+      "cda": 0.32,
+      "mass": 83,
+      "speed": 3.9626280522009476,
+      "legs": [
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 6,
+          "shelter": 0,
+          "speed": 3.9626280522009476,
+          "distance": 475.51536626410956
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 6,
+          "shelter": 0.35,
+          "speed": 4.036079810171651,
+          "distance": 959.4349582647407
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 6,
+          "shelter": 0.5,
+          "speed": 4.070093643841365,
+          "distance": 1447.6491690232244
+        }
+      ]
+    },
+    {
+      "name": "coasting down 8 % into a 10 m hairpin",
+      "cda": 0.32,
+      "mass": 83,
+      "speed": 17.7372173319331,
+      "bends": [
+        {
+          "fromM": 200,
+          "toM": 231.41592653589794,
+          "radiusM": 10
+        }
+      ],
+      "legs": [
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 15.603114574876798,
+          "distance": 176.79499175114066
+        },
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 10.025286479631975,
+          "distance": 266.51789437042225
+        },
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 13.939543203585453,
+          "distance": 388.18546054632253
+        }
+      ]
+    },
+    {
+      "name": "the reference rider from a standstill on the flat",
+      "cda": 0.4,
+      "mass": 83,
+      "speed": 0,
+      "legs": [
+        {
+          "seconds": 300,
+          "watts": 225,
+          "grade": 0,
+          "shelter": 0,
+          "speed": 9.161938005112164,
+          "distance": 2671.901664024586
+        }
+      ]
+    },
+    {
+      "name": "the reference rider up 8 %",
+      "cda": 0.4,
+      "mass": 83,
+      "speed": 5,
+      "legs": [
+        {
+          "seconds": 300,
+          "watts": 225,
+          "grade": 8,
+          "shelter": 0,
+          "speed": 3.0956537513699347,
+          "distance": 936.6693651490334
+        }
+      ]
+    },
+    {
+      "name": "over a crest, coasting down and riding on",
+      "cda": 0.4,
+      "mass": 83,
+      "speed": 4,
+      "legs": [
+        {
+          "seconds": 60,
+          "watts": 225,
+          "grade": 8,
+          "shelter": 0,
+          "speed": 3.0956537656066865,
+          "distance": 189.11297958981362
+        },
+        {
+          "seconds": 60,
+          "watts": 0,
+          "grade": -6,
+          "shelter": 0,
+          "speed": 13.494098836671352,
+          "distance": 842.6982052179189
+        },
+        {
+          "seconds": 60,
+          "watts": 150,
+          "grade": 0,
+          "shelter": 0,
+          "speed": 7.938522608331943,
+          "distance": 1387.5540054315447
+        }
+      ]
+    },
+    {
+      "name": "sheltered in a bunch",
+      "cda": 0.4,
+      "mass": 83,
+      "speed": 9,
+      "legs": [
+        {
+          "seconds": 300,
+          "watts": 225,
+          "grade": 0,
+          "shelter": 0.3,
+          "speed": 10.253335674932273,
+          "distance": 3057.649774202805
+        }
+      ]
+    },
+    {
+      "name": "a heavy rider who stops pedalling",
+      "cda": 0.4,
+      "mass": 108,
+      "speed": 6,
+      "legs": [
+        {
+          "seconds": 200,
+          "watts": 300,
+          "grade": 3,
+          "shelter": 0,
+          "speed": 6.345541543162369,
+          "distance": 1265.5959101637418
+        },
+        {
+          "seconds": 120,
+          "watts": 0,
+          "grade": 0,
+          "shelter": 0,
+          "speed": 0,
+          "distance": 1529.2990341081058
+        }
+      ]
+    },
+    {
+      "name": "rolling down 10 % from a standstill",
+      "cda": 0.4,
+      "mass": 83,
+      "speed": 0,
+      "legs": [
+        {
+          "seconds": 120,
+          "watts": 0,
+          "grade": -10,
+          "shelter": 0,
+          "speed": 0,
+          "distance": 0
+        }
+      ]
+    },
+    {
+      "name": "225 W on the flat, alone, behind a wheel, deep in a line",
+      "cda": 0.4,
+      "mass": 83,
+      "speed": 9.161938005146789,
+      "legs": [
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 0,
+          "shelter": 0,
+          "speed": 9.161938005146789,
+          "distance": 1099.4325606176044
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 0,
+          "shelter": 0.35,
+          "speed": 10.494289387810378,
+          "distance": 2338.322424210353
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 0,
+          "shelter": 0.5,
+          "speed": 11.3917012331718,
+          "distance": 3688.99637400366
+        }
+      ]
+    },
+    {
+      "name": "225 W at 3 %, alone, behind a wheel, deep in a line",
+      "cda": 0.4,
+      "mass": 83,
+      "speed": 5.9881351622253405,
+      "legs": [
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 3,
+          "shelter": 0,
+          "speed": 5.9881351622253405,
+          "distance": 718.5762194670355
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 3,
+          "shelter": 0.35,
+          "speed": 6.388704528840534,
+          "distance": 1480.8524032353914
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 3,
+          "shelter": 0.5,
+          "speed": 6.610583451020073,
+          "distance": 2271.397143997029
+        }
+      ]
+    },
+    {
+      "name": "225 W at 6 %, alone, behind a wheel, deep in a line",
+      "cda": 0.4,
+      "mass": 83,
+      "speed": 3.914538739556334,
+      "legs": [
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 6,
+          "shelter": 0,
+          "speed": 3.914538739556334,
+          "distance": 469.7446487467566
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 6,
+          "shelter": 0.35,
+          "speed": 4.001011985097557,
+          "distance": 949.399991443341
+        },
+        {
+          "seconds": 120,
+          "watts": 225,
+          "grade": 6,
+          "shelter": 0.5,
+          "speed": 4.041634895160881,
+          "distance": 1434.1673720038286
+        }
+      ]
+    },
+    {
+      "name": "coasting down 8 % into a 10 m hairpin",
+      "cda": 0.4,
+      "mass": 83,
+      "speed": 15.864649474355945,
+      "bends": [
+        {
+          "fromM": 200,
+          "toM": 231.41592653589794,
+          "radiusM": 10
+        }
+      ],
+      "legs": [
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 15.864649474355945,
+          "distance": 158.64649474355937
+        },
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 9.25765324081479,
+          "distance": 255.04199521114856
+        },
+        {
+          "seconds": 10,
+          "watts": 0,
+          "grade": -8,
+          "shelter": 0,
+          "speed": 12.91005022577238,
+          "distance": 367.87236010685643
+        }
+      ]
+    }
+  ],
+  "shelters": [
+    {
+      "gapM": -0.5,
+      "laneDelta": -2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": -2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": -2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": -2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": -2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": -1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": -1,
+      "lineIndex": 1,
+      "shelter": 0.175
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": -1,
+      "lineIndex": 2,
+      "shelter": 0.225
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": -1,
+      "lineIndex": 3,
+      "shelter": 0.25
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": -1,
+      "lineIndex": 7,
+      "shelter": 0.25
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 0,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 0,
+      "lineIndex": 1,
+      "shelter": 0.35
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 0,
+      "lineIndex": 2,
+      "shelter": 0.45
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 0,
+      "lineIndex": 3,
+      "shelter": 0.5
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 0,
+      "lineIndex": 7,
+      "shelter": 0.5
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 1,
+      "lineIndex": 1,
+      "shelter": 0.175
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 1,
+      "lineIndex": 2,
+      "shelter": 0.225
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 1,
+      "lineIndex": 3,
+      "shelter": 0.25
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 1,
+      "lineIndex": 7,
+      "shelter": 0.25
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": -0.5,
+      "laneDelta": 2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": -2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": -2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": -2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": -2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": -2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": -1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": -1,
+      "lineIndex": 1,
+      "shelter": 0.175
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": -1,
+      "lineIndex": 2,
+      "shelter": 0.225
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": -1,
+      "lineIndex": 3,
+      "shelter": 0.25
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": -1,
+      "lineIndex": 7,
+      "shelter": 0.25
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 0,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 0,
+      "lineIndex": 1,
+      "shelter": 0.35
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 0,
+      "lineIndex": 2,
+      "shelter": 0.45
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 0,
+      "lineIndex": 3,
+      "shelter": 0.5
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 0,
+      "lineIndex": 7,
+      "shelter": 0.5
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 1,
+      "lineIndex": 1,
+      "shelter": 0.175
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 1,
+      "lineIndex": 2,
+      "shelter": 0.225
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 1,
+      "lineIndex": 3,
+      "shelter": 0.25
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 1,
+      "lineIndex": 7,
+      "shelter": 0.25
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 0.3,
+      "laneDelta": 2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": -2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": -2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": -2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": -2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": -2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": -1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": -1,
+      "lineIndex": 1,
+      "shelter": 0.175
+    },
+    {
+      "gapM": 1,
+      "laneDelta": -1,
+      "lineIndex": 2,
+      "shelter": 0.225
+    },
+    {
+      "gapM": 1,
+      "laneDelta": -1,
+      "lineIndex": 3,
+      "shelter": 0.25
+    },
+    {
+      "gapM": 1,
+      "laneDelta": -1,
+      "lineIndex": 7,
+      "shelter": 0.25
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 0,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 0,
+      "lineIndex": 1,
+      "shelter": 0.35
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 0,
+      "lineIndex": 2,
+      "shelter": 0.45
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 0,
+      "lineIndex": 3,
+      "shelter": 0.5
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 0,
+      "lineIndex": 7,
+      "shelter": 0.5
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 1,
+      "lineIndex": 1,
+      "shelter": 0.175
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 1,
+      "lineIndex": 2,
+      "shelter": 0.225
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 1,
+      "lineIndex": 3,
+      "shelter": 0.25
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 1,
+      "lineIndex": 7,
+      "shelter": 0.25
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 1,
+      "laneDelta": 2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": -2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": -2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": -2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": -2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": -2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": -1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": -1,
+      "lineIndex": 1,
+      "shelter": 0.13299999999999998
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": -1,
+      "lineIndex": 2,
+      "shelter": 0.171
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": -1,
+      "lineIndex": 3,
+      "shelter": 0.19
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": -1,
+      "lineIndex": 7,
+      "shelter": 0.19
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 0,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 0,
+      "lineIndex": 1,
+      "shelter": 0.26599999999999996
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 0,
+      "lineIndex": 2,
+      "shelter": 0.342
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 0,
+      "lineIndex": 3,
+      "shelter": 0.38
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 0,
+      "lineIndex": 7,
+      "shelter": 0.38
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 1,
+      "lineIndex": 1,
+      "shelter": 0.13299999999999998
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 1,
+      "lineIndex": 2,
+      "shelter": 0.171
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 1,
+      "lineIndex": 3,
+      "shelter": 0.19
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 1,
+      "lineIndex": 7,
+      "shelter": 0.19
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 2.2,
+      "laneDelta": 2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": -2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": -2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": -2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": -2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": -2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": -1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": -1,
+      "lineIndex": 1,
+      "shelter": 0.0875
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": -1,
+      "lineIndex": 2,
+      "shelter": 0.1125
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": -1,
+      "lineIndex": 3,
+      "shelter": 0.125
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": -1,
+      "lineIndex": 7,
+      "shelter": 0.125
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 0,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 0,
+      "lineIndex": 1,
+      "shelter": 0.175
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 0,
+      "lineIndex": 2,
+      "shelter": 0.225
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 0,
+      "lineIndex": 3,
+      "shelter": 0.25
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 0,
+      "lineIndex": 7,
+      "shelter": 0.25
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 1,
+      "lineIndex": 1,
+      "shelter": 0.0875
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 1,
+      "lineIndex": 2,
+      "shelter": 0.1125
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 1,
+      "lineIndex": 3,
+      "shelter": 0.125
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 1,
+      "lineIndex": 7,
+      "shelter": 0.125
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 3.5,
+      "laneDelta": 2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": -2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": -2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": -2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": -2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": -2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": -1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": -1,
+      "lineIndex": 1,
+      "shelter": 0.003499999999999987
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": -1,
+      "lineIndex": 2,
+      "shelter": 0.004499999999999984
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": -1,
+      "lineIndex": 3,
+      "shelter": 0.004999999999999982
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": -1,
+      "lineIndex": 7,
+      "shelter": 0.004999999999999982
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 0,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 0,
+      "lineIndex": 1,
+      "shelter": 0.006999999999999974
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 0,
+      "lineIndex": 2,
+      "shelter": 0.008999999999999968
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 0,
+      "lineIndex": 3,
+      "shelter": 0.009999999999999964
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 0,
+      "lineIndex": 7,
+      "shelter": 0.009999999999999964
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 1,
+      "lineIndex": 1,
+      "shelter": 0.003499999999999987
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 1,
+      "lineIndex": 2,
+      "shelter": 0.004499999999999984
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 1,
+      "lineIndex": 3,
+      "shelter": 0.004999999999999982
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 1,
+      "lineIndex": 7,
+      "shelter": 0.004999999999999982
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 5.9,
+      "laneDelta": 2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": -2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": -2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": -2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": -2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": -2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": -1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": -1,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": -1,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": -1,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": -1,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 0,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 0,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 0,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 0,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 0,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 1,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 1,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 1,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 1,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 6,
+      "laneDelta": 2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": -2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": -2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": -2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": -2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": -2,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": -1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": -1,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": -1,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": -1,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": -1,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 0,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 0,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 0,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 0,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 0,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 1,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 1,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 1,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 1,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 1,
+      "lineIndex": 7,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 2,
+      "lineIndex": 0,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 2,
+      "lineIndex": 1,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 2,
+      "lineIndex": 2,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 2,
+      "lineIndex": 3,
+      "shelter": 0
+    },
+    {
+      "gapM": 7.5,
+      "laneDelta": 2,
+      "lineIndex": 7,
+      "shelter": 0
+    }
+  ]
+}

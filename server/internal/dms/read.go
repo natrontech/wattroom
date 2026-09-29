@@ -153,6 +153,11 @@ func (s *Service) handleRead(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "mark dm read", err, "That conversation could not be marked read.")
 		return
 	}
+	// The reader's other devices clear their dot now (#2937); the peer hears
+	// nothing.
+	if s.live != nil {
+		s.live.ReadChanged(store.UUIDString(me.ID))
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

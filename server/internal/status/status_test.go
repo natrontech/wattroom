@@ -31,7 +31,8 @@ type world struct {
 
 type countingLobby struct{ n *atomic.Int64 }
 
-func (l countingLobby) PresenceChanged() { l.n.Add(1) }
+func (l countingLobby) PresenceChanged()            { l.n.Add(1) }
+func (l countingLobby) PresenceChangedFor([]string) { l.n.Add(1) }
 
 // setup: alice owns a crew bob is a member of; dave is in none of it.
 func setup(t *testing.T) world {

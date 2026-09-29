@@ -75,38 +75,7 @@ func (s *Service) encode(ride db.GetRideForUploadRow) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	samples := make([]fitexport.Sample, len(metrics))
-	for i, m := range metrics {
-		samples[i] = fitexport.Sample{
-			Second:    i,
-			Watts:     clampU16(m.Watts),
-			Cadence:   clampU8(m.Cadence),
-			HeartRate: clampU8(m.HR),
-		}
-	}
-	return fitexport.Encode(fitexport.Ride{
-		StartedAt: ride.StartedAt.Time, Samples: samples,
-	})
-}
-
-func clampU16(v int) uint16 {
-	if v < 0 {
-		return 0
-	}
-	if v > 65535 {
-		return 65535
-	}
-	return uint16(v)
-}
-
-func clampU8(v int) uint8 {
-	if v < 0 {
-		return 0
-	}
-	if v > 255 {
-		return 255
-	}
-	return uint8(v)
+	return fitexport.Encode(fitexport.FromMetrics(ride.StartedAt.Time, metrics))
 }
 
 // post sends the multipart upload; external_id is the ride's UUID so a

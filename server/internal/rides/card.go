@@ -62,9 +62,9 @@ func (s *Service) handleCard(w http.ResponseWriter, r *http.Request) {
 	}
 	// Where it was ridden, for the card's "in …": the voice channel, else
 	// the crew (#2558) — never a room.
-	card.RoomName = row.ChannelName
-	if card.RoomName == "" {
-		card.RoomName = row.CrewName
+	card.Place = row.ChannelName
+	if card.Place == "" {
+		card.Place = row.CrewName
 	}
 	var curve stats.Curve
 	if json.Unmarshal(row.Curve, &curve) == nil {

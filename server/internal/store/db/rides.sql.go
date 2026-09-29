@@ -11,6 +11,29 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addUploadXp = `-- name: AddUploadXp :exec
+insert into ride_upload_xp (user_id, day, xp)
+values ($1, (now() at time zone 'utc')::date, $2)
+on conflict (user_id) do update
+set xp  = case when ride_upload_xp.day = excluded.day
+               then ride_upload_xp.xp + excluded.xp
+               else excluded.xp end,
+    day = excluded.day
+`
+
+type AddUploadXpParams struct {
+	UserID pgtype.UUID
+	Xp     int32
+}
+
+// Count an uploaded ride's XP against today (#3044): today's row grows, an
+// earlier day's is replaced. Never lowered — a delete does not hand the
+// ceiling back, or delete-and-repost would mint without end.
+func (q *Queries) AddUploadXp(ctx context.Context, arg AddUploadXpParams) error {
+	_, err := q.db.Exec(ctx, addUploadXp, arg.UserID, arg.Xp)
+	return err
+}
+
 const amendRide = `-- name: AmendRide :execrows
 update rides
 set seconds = $2, avg_watts = $3, kj = $4, execution = $5, execution_scored = $6,
@@ -93,6 +116,7 @@ func (q *Queries) BestLast20mHRIn90Days(ctx context.Context, userID pgtype.UUID)
 const bestUserRideOfWorkout = `-- name: BestUserRideOfWorkout :one
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
+       rides.distance_m, rides.climbed_m,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -126,6 +150,8 @@ type BestUserRideOfWorkoutRow struct {
 	Xp              int32
 	InSession       bool
 	SharedAt        pgtype.Timestamptz
+	DistanceM       *int32
+	ClimbedM        *int32
 	ExportState     *string
 	CrewID          pgtype.UUID
 	CrewName        string
@@ -160,6 +186,8 @@ func (q *Queries) BestUserRideOfWorkout(ctx context.Context, arg BestUserRideOfW
 		&i.Xp,
 		&i.InSession,
 		&i.SharedAt,
+		&i.DistanceM,
+		&i.ClimbedM,
 		&i.ExportState,
 		&i.CrewID,
 		&i.CrewName,
@@ -229,9 +257,12 @@ insert into rides (
     user_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
     ftp_watts, samples, curve, xp, norm_watts, last20m_hr,
-    crew_id, channel_id, session_id
+    crew_id, channel_id, session_id,
+    route_id, route_key, road_h, ride_mode, timeable,
+    from_m, distance_m, climbed_m, weight_kg, mean_shelter
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 returning id
 `
 
@@ -253,10 +284,22 @@ type CreateRideParams struct {
 	CrewID          pgtype.UUID
 	ChannelID       pgtype.UUID
 	SessionID       pgtype.UUID
+	RouteID         pgtype.UUID
+	RouteKey        *string
+	RoadH           *string
+	RideMode        *string
+	Timeable        *bool
+	FromM           *int32
+	DistanceM       *int32
+	ClimbedM        *int32
+	WeightKg        *int16
+	MeanShelter     *float32
 }
 
 // A session's ride names its crew, the voice channel and the session (#2443);
-// a solo ride leaves all three null.
+// a solo ride leaves all three null. The road summary (#3053) is what exists
+// only at the moment of saving: null where a ride had no road, or the saver
+// did not know.
 func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, createRide,
 		arg.UserID,
@@ -276,6 +319,16 @@ func (q *Queries) CreateRide(ctx context.Context, arg CreateRideParams) (pgtype.
 		arg.CrewID,
 		arg.ChannelID,
 		arg.SessionID,
+		arg.RouteID,
+		arg.RouteKey,
+		arg.RoadH,
+		arg.RideMode,
+		arg.Timeable,
+		arg.FromM,
+		arg.DistanceM,
+		arg.ClimbedM,
+		arg.WeightKg,
+		arg.MeanShelter,
 	)
 	var id pgtype.UUID
 	err := row.Scan(&id)
@@ -389,7 +442,16 @@ select
     coalesce(max((curve->>'best5s')::int),  0)::int as all_best5s,
     coalesce(max((curve->>'best1m')::int),  0)::int as all_best1m,
     coalesce(max((curve->>'best5m')::int),  0)::int as all_best5m,
-    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m
+    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m,
+    -- The critical-power pair (#3261), carried beside the four windows and
+    -- never drawn among them. A ride saved before it has no key, and max
+    -- skips it.
+    coalesce(max((curve->>'best3m')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best3m,
+    coalesce(max((curve->>'best12m')::int) filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best12m,
+    coalesce(max((curve->>'best3m')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best3m,
+    coalesce(max((curve->>'best12m')::int) filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best12m,
+    coalesce(max((curve->>'best3m')::int),  0)::int as all_best3m,
+    coalesce(max((curve->>'best12m')::int), 0)::int as all_best12m
 from rides
 where user_id = $1
 `
@@ -407,6 +469,12 @@ type CurveBestsRow struct {
 	AllBest1m  int32
 	AllBest5m  int32
 	AllBest20m int32
+	D30Best3m  int32
+	D30Best12m int32
+	D90Best3m  int32
+	D90Best12m int32
+	AllBest3m  int32
+	AllBest12m int32
 }
 
 // Progression overlay (#222): best per SPEC curve window over three ranges,
@@ -427,6 +495,12 @@ func (q *Queries) CurveBests(ctx context.Context, userID pgtype.UUID) (CurveBest
 		&i.AllBest1m,
 		&i.AllBest5m,
 		&i.AllBest20m,
+		&i.D30Best3m,
+		&i.D30Best12m,
+		&i.D90Best3m,
+		&i.D90Best12m,
+		&i.AllBest3m,
+		&i.AllBest12m,
 	)
 	return i, err
 }
@@ -937,6 +1011,41 @@ func (q *Queries) ListRideMedals(ctx context.Context, rideID pgtype.UUID) ([]Lis
 	return items, nil
 }
 
+const listRidesMissingCriticalPower = `-- name: ListRidesMissingCriticalPower :many
+select id, samples from rides
+where started_at >= now() - interval '90 days'
+  and curve is not null and not (curve ? 'best3m')
+limit $1
+`
+
+type ListRidesMissingCriticalPowerRow struct {
+	ID      pgtype.UUID
+	Samples []byte
+}
+
+// The #3261 backfill's read: rides inside the 90-day curve whose curve has no
+// 3-minute best yet, blob and all, read once each. A ride with no curve at
+// all has nothing to add the pair to.
+func (q *Queries) ListRidesMissingCriticalPower(ctx context.Context, limit int32) ([]ListRidesMissingCriticalPowerRow, error) {
+	rows, err := q.db.Query(ctx, listRidesMissingCriticalPower, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListRidesMissingCriticalPowerRow
+	for rows.Next() {
+		var i ListRidesMissingCriticalPowerRow
+		if err := rows.Scan(&i.ID, &i.Samples); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRidesMissingLast20mHR = `-- name: ListRidesMissingLast20mHR :many
 select id, samples from rides where last20m_hr is null limit $1
 `
@@ -1121,6 +1230,7 @@ func (q *Queries) ListUserRideWeeks(ctx context.Context, arg ListUserRideWeeksPa
 const listUserRides = `-- name: ListUserRides :many
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
+       rides.distance_m, rides.climbed_m,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -1156,6 +1266,8 @@ type ListUserRidesRow struct {
 	Xp              int32
 	InSession       bool
 	SharedAt        pgtype.Timestamptz
+	DistanceM       *int32
+	ClimbedM        *int32
 	ExportState     *string
 	CrewID          pgtype.UUID
 	CrewName        string
@@ -1204,6 +1316,8 @@ func (q *Queries) ListUserRides(ctx context.Context, arg ListUserRidesParams) ([
 			&i.Xp,
 			&i.InSession,
 			&i.SharedAt,
+			&i.DistanceM,
+			&i.ClimbedM,
 			&i.ExportState,
 			&i.CrewID,
 			&i.CrewName,
@@ -1224,7 +1338,9 @@ const listUserRidesFull = `-- name: ListUserRidesFull :many
 select r.id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution,
        r.execution_scored, r.norm_watts, r.ftp_watts, r.ftp_after_watts, r.xp, r.curve,
        r.shared_at, r.rpe, r.note,
-       c.name as crew_name, ch.name as channel_name
+       c.name as crew_name, ch.name as channel_name,
+       r.ride_mode, r.timeable, r.from_m, r.distance_m, r.climbed_m, r.weight_kg,
+       r.mean_shelter, r.route_key, r.road_h
 from rides r
 left join crews c on c.id = r.crew_id
 left join channels ch on ch.id = r.channel_id
@@ -1250,6 +1366,15 @@ type ListUserRidesFullRow struct {
 	Note            *string
 	CrewName        *string
 	ChannelName     *string
+	RideMode        *string
+	Timeable        *bool
+	FromM           *int32
+	DistanceM       *int32
+	ClimbedM        *int32
+	WeightKg        *int16
+	MeanShelter     *float32
+	RouteKey        *string
+	RoadH           *string
 }
 
 // Export-all (#35): every ride the rider has, summary columns only. The
@@ -1296,6 +1421,15 @@ func (q *Queries) ListUserRidesFull(ctx context.Context, userID pgtype.UUID) ([]
 			&i.Note,
 			&i.CrewName,
 			&i.ChannelName,
+			&i.RideMode,
+			&i.Timeable,
+			&i.FromM,
+			&i.DistanceM,
+			&i.ClimbedM,
+			&i.WeightKg,
+			&i.MeanShelter,
+			&i.RouteKey,
+			&i.RoadH,
 		); err != nil {
 			return nil, err
 		}
@@ -1353,6 +1487,51 @@ func (q *Queries) RequeueRideExport(ctx context.Context, arg RequeueRideExportPa
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const rideOverlaps = `-- name: RideOverlaps :one
+select exists (
+    select 1 from rides
+    where user_id = $1
+      and started_at < $2::timestamptz
+      and started_at + make_interval(secs => seconds) > $3::timestamptz
+)::boolean
+`
+
+type RideOverlapsParams struct {
+	UserID   pgtype.UUID
+	EndsAt   pgtype.Timestamptz
+	StartsAt pgtype.Timestamptz
+}
+
+// Whether a ride over [starts_at, ends_at) would share a second with one the
+// rider already has (#3044). Nobody rides two at once, so an upload that
+// overlaps is refused — ten fabricated saves in a minute earn one ride. The
+// span is the ride's own `seconds`, which leaves pauses out, so this can only
+// under-count an overlap and never refuse a ride that did not have one.
+func (q *Queries) RideOverlaps(ctx context.Context, arg RideOverlapsParams) (bool, error) {
+	row := q.db.QueryRow(ctx, rideOverlaps, arg.UserID, arg.EndsAt, arg.StartsAt)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const setRideCriticalPower = `-- name: SetRideCriticalPower :exec
+update rides
+set curve = curve || jsonb_build_object('best3m', $1::int, 'best12m', $2::int)
+where id = $3
+`
+
+type SetRideCriticalPowerParams struct {
+	Best3m  int32
+	Best12m int32
+	ID      pgtype.UUID
+}
+
+// Adds the pair to a ride's curve and touches nothing else in it.
+func (q *Queries) SetRideCriticalPower(ctx context.Context, arg SetRideCriticalPowerParams) error {
+	_, err := q.db.Exec(ctx, setRideCriticalPower, arg.Best3m, arg.Best12m, arg.ID)
+	return err
 }
 
 const setRideFeel = `-- name: SetRideFeel :execrows
@@ -1479,6 +1658,22 @@ type StartRideExportParams struct {
 func (q *Queries) StartRideExport(ctx context.Context, arg StartRideExportParams) error {
 	_, err := q.db.Exec(ctx, startRideExport, arg.RideID, arg.Destination)
 	return err
+}
+
+const uploadXpToday = `-- name: UploadXpToday :one
+select coalesce((
+    select xp from ride_upload_xp
+    where user_id = $1 and day = (now() at time zone 'utc')::date
+), 0)::integer
+`
+
+// The XP uploaded rides have minted for this rider in the current UTC day
+// (#3044) — zero when their row is from an earlier day or absent.
+func (q *Queries) UploadXpToday(ctx context.Context, userID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, uploadXpToday, userID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const userTotalXp = `-- name: UserTotalXp :one

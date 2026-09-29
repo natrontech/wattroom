@@ -4,10 +4,8 @@
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
 	import { SimulatedTrainer } from '$lib/ble/simulated';
 	import type { Trainer } from '$lib/ble/trainer';
-	import {
-		createRideSession,
-		signalLost as isSignalLost,
-	} from '$lib/workout/session.svelte';
+	import { createRideSession } from '$lib/workout/session.svelte';
+	import { signalLost as isSignalLost } from '$lib/workout/ride-state';
 	import { createRideSounds, guardOfRide } from '$lib/ride/ride-sounds.svelte';
 	import { byId } from '$lib/workout/library';
 	import { customWorkouts } from '$lib/workout/custom.svelte';
@@ -37,6 +35,10 @@
 	import { describeBlock } from '$lib/workout/block';
 	import SessionSummary from '$lib/ride/SessionSummary.svelte';
 	import { downloadRideCard } from '$lib/ride/card';
+	import RideDoors from '$lib/ride/RideDoors.svelte';
+	import SoloGames from '$lib/ride/SoloGames.svelte';
+	import { doorsFor } from '$lib/crew-lounge';
+	import { crewLive } from '$lib/nav/crew-live.svelte';
 
 	// The library is the source of workouts now; ?w=<id> selects one, and the default
 	// is the session most people ride.
@@ -64,6 +66,13 @@
 	const wanted = $derived(!!requested && !byId(requested));
 	const shelfPending = $derived(wanted && !custom.loaded);
 	const shelfMissing = $derived(wanted && custom.loaded && !saved);
+
+	// The two doors (#3274): a rider with a crew chooses between riding alone
+	// and riding in the crew's lounge. Not when a workout was already picked —
+	// the lounge's free ride has none, and Home's "Ride alone" arrives here
+	// with ?alone, so that choice stays one tap.
+	let alone = $state(page.url.searchParams.has('alone') || !!requested);
+	const doors = $derived(!alone && doorsFor(crewLive));
 
 	// FTP comes from the profile, set by hand or measured by a ramp test (#14).
 	const profile = createProfileStore();
@@ -525,6 +534,8 @@
 					{/if}
 				{/snippet}
 			</Banner>
+		{:else if doors}
+			<RideDoors onAlone={() => (alone = true)} />
 		{:else}
 			<PreRide
 				{workout}
@@ -545,6 +556,11 @@
 				}}
 				onError={(message) => (error = message)}
 			/>
+		{/if}
+		<!-- A game from the solo ride (#3276) — not once a workout was picked,
+		     which is its own ride. -->
+		{#if !requested && !shelfPending && !shelfMissing}
+			<SoloGames />
 		{/if}
 	{:else if session.state === 'countdown'}
 		<!-- Sound AND visual (.claude/rules/ux.md): the cue alone reaches a

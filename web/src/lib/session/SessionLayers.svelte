@@ -30,7 +30,8 @@
 <script lang="ts">
 	import { account } from '$lib/account.svelte';
 	import { useChannel } from '$lib/channel/context';
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
+	import { takeGameDoor } from '$lib/session/game-door';
 	import { page } from '$app/state';
 	import { sessionPath } from '$lib/channel/address';
 	import { liveSessionId } from '$lib/channel/tick-session';
@@ -169,6 +170,20 @@
 		const to = sessionPath(channel.address.crew, id);
 		if (page.url.pathname !== to) void goto(to, GO);
 	});
+	// A game door (#3276): /ride sent this rider here to start one. Started
+	// once, by this tab, as the picker's own Start game does — and the mode
+	// comes off the address, so a reload starts nothing.
+	let doorTaken = false;
+	$effect(() => {
+		if (doorTaken) return;
+		doorTaken = true;
+		const door = takeGameDoor(page.url);
+		if (!door) return;
+		replaceState(door.rest, page.state);
+		if (device.spectator) return;
+		live.control('game', undefined, door.mode);
+		following = true;
+	});
 	let startAfterPick = $state<string | null>(null);
 	$effect(() => {
 		const state = live.tick?.state;
@@ -188,6 +203,7 @@
 {#if layers.tv}
 	<TvOverlay
 		{riders}
+		idle={channel.youUnmeasured}
 		{segments}
 		total={shared?.totalSeconds ?? 0}
 		elapsed={shared?.elapsed ?? 0}

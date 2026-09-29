@@ -1,7 +1,4 @@
 <script lang="ts">
-	import { people } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
-	import { account } from '$lib/account.svelte';
 	import type { Snippet } from 'svelte';
 	import { play } from '$lib/sound/cues';
 	import Logo from '$lib/brand/Logo.svelte';
@@ -252,15 +249,8 @@
 								<span class="truncate {rider.you ? 'font-medium' : ''}"
 									>{rider.you ? 'You' : rider.name}</span
 								>
-								<StatusMark
-									line={rider.you
-										? account.me?.statusLine
-										: people.face(rider.id)?.statusLine}
-									size={13}
-								/>
 								{#if rider.execution !== undefined}
-									<span
-										class="text-muted ml-auto font-mono text-xs tabular-nums"
+									<span class="text-muted num ml-auto text-xs"
 										>{Math.round(rider.execution * 100)}%</span
 									>
 								{/if}
@@ -276,13 +266,9 @@
 					<h2 class="eyebrow flex items-center gap-1.5">
 						<Trophy size={13} class="text-neon" aria-hidden="true" /> progress
 					</h2>
-					<span class="text-muted ml-auto font-mono text-[11px] tabular-nums"
-						>+{xp} XP</span
-					>
+					<span class="text-muted num ml-auto text-[11px]">+{xp} XP</span>
 				</div>
-				<ul
-					class="text-muted mt-3 space-y-1 font-mono text-[11px] tabular-nums"
-				>
+				<ul class="text-muted num mt-3 space-y-1 text-[11px]">
 					<li class="flex">
 						<span>{kj} kJ ridden</span><span class="ml-auto">+{kj}</span>
 					</li>

@@ -29,6 +29,9 @@
 	import RecoveredNotice from '$lib/ride/RecoveredNotice.svelte';
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import { crewLive } from '$lib/nav/crew-live.svelte';
+	import RideDoors from '$lib/ride/RideDoors.svelte';
+	import { doorsFor } from '$lib/crew-lounge';
+	import { goto } from '$app/navigation';
 	import { sessionPath } from '$lib/channel/address';
 
 	// Home (#212): the between-rides overview — who is around, what is
@@ -383,6 +386,15 @@
 		     instead of stopping at 48rem. -->
 		<div class="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
 			<div class="min-w-0 space-y-8">
+				<!-- The two doors (#3274): alone, or where the crew can drop in. -->
+				{#if doorsFor(crewLive)}
+					<section>
+						<h2 class="eyebrow">Ride</h2>
+						<div class="mt-3">
+							<RideDoors onAlone={() => void goto('/ride?alone')} />
+						</div>
+					</section>
+				{/if}
 				<!-- Around right now: the reason to open the app — people. -->
 				<section>
 					<h2 class="eyebrow">Around right now</h2>

@@ -21,7 +21,7 @@
 	import { theme } from '$lib/theme.svelte';
 	import { palette } from '$lib/palette.svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
-	import { soloRide } from '$lib/workout/session.svelte';
+	import { soloRide } from '$lib/workout/ride-life.svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import { pullProfile } from '$lib/profile-sync.svelte';
 	import { dmHeads } from '$lib/dm/heads.svelte';
@@ -79,6 +79,11 @@
 		if (!account.me) return;
 		dmHeads.start();
 		return () => dmHeads.stop();
+	});
+	// …and follow the lobby ping (#2937): a line or a read pings the riders it
+	// concerns, so the list is current without a poll.
+	$effect(() => {
+		if (account.me) dmHeads.follow(presence.version);
 	});
 
 	// Friend events arrive the same way (#876): someone asking, someone
@@ -410,7 +415,7 @@
 		<div
 			bind:this={drawerBox}
 			inert={device.narrow && !navDrawer.open}
-			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-200 md:static md:z-auto md:translate-x-0 {navDrawer.open
+			class="fixed inset-y-0 left-0 z-50 shrink-0 transition-transform duration-(--dur-base) md:static md:z-auto md:translate-x-0 {navDrawer.open
 				? 'translate-x-0 shadow-2xl'
 				: '-translate-x-full'}"
 			style={titleBar ? `top: ${titleBar}px` : ''}
@@ -476,13 +481,15 @@
 						onSound={(on) => void av.setShareSound(on)}
 					/>
 				{/await}
-				{#if channelConnection.ridingAway(page.url.pathname)}
-					<!-- The ride's status, off its place (#2885): the place's shell
-					     draws it there and is not mounted here, and the ride records
-					     on while the rider reads chat. A dropped connection or a lost
-					     trainer is ride-critical wherever the rider is (errors.md). -->
+				{#if channelConnection.rideStatusUnshown()}
+					<!-- The ride's status wherever no page draws it: off its place
+					     (#2885), where the ride records on while the rider reads
+					     chat, and on it when the place's page failed to load and
+					     its shell never mounted (#2986). A dropped connection or a
+					     lost trainer is ride-critical wherever the rider is
+					     (errors.md). -->
 					{#await import('$lib/channel/ChannelStatus.svelte') then { default: ChannelStatus }}
-						<ChannelStatus />
+						<ChannelStatus frame />
 					{/await}
 				{/if}
 			{/if}

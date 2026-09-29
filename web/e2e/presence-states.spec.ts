@@ -254,10 +254,21 @@ test('a DM off a ride still toasts, exactly as it did', async ({ riders }) => {
 	// so the empty one has to land before the line does.
 	await a.waitForTimeout(500);
 	arrived = true;
+	// The heads follow the lobby ping (#2937): a real DM pings the recipient,
+	// and this mocked one sends nothing, so the spec sends the ping — the
+	// rider's own status line, set and cleared, which pings their own sockets
+	// (#2324). The fallback read is a minute away and is not what this tests.
+	await a.evaluate(async () => {
+		await fetch('/api/me/status', {
+			method: 'PUT',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ text: 'pinging' }),
+		});
+		await fetch('/api/me/status', { method: 'DELETE' });
+	});
 
 	const toast = a
 		.getByRole('region', { name: 'notifications' })
 		.getByText('Ruben Writes: on my way');
-	// The heads poll is 10 s; one round of it is what this is waiting for.
 	await expect(toast).toBeVisible({ timeout: 20_000 });
 });

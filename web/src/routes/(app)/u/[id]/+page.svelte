@@ -442,7 +442,7 @@
 											>
 											{#if ride.medals?.length}
 												<span
-													class="text-z5 ml-auto flex items-center gap-1 text-[11px]"
+													class="text-muted ml-auto flex items-center gap-1 text-[11px]"
 													><Award size={12} />
 													{ride.medals.map(medalName).join(', ')}</span
 												>

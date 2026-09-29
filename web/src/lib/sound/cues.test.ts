@@ -29,11 +29,21 @@ function fakeParam() {
 	};
 }
 
+/** When each source was told to start, and where each cue was panned. */
+const starts: number[] = [];
+const pans: number[] = [];
+
 function fakeNode() {
 	return {
 		connect: () => {},
-		start: () => {},
+		start: (at: number) => void starts.push(at),
 		stop: () => {},
+		set buffer(_: unknown) {},
+		pan: {
+			set value(v: number) {
+				pans.push(v);
+			},
+		},
 		gain: fakeParam(),
 		frequency: fakeParam(),
 		detune: fakeParam(),
@@ -59,6 +69,10 @@ class FakeAudioContext {
 	createDynamicsCompressor = fakeNode;
 	createOscillator = fakeNode;
 	createBiquadFilter = fakeNode;
+	createStereoPanner = fakeNode;
+	createBufferSource = fakeNode;
+	sampleRate = 8;
+	createBuffer = () => ({ getChannelData: () => new Float32Array(8) });
 	resume = async () => {};
 }
 
@@ -217,8 +231,141 @@ describe('the suspended context', () => {
 		document.dispatchEvent(new Event('pointerdown'));
 		expect(off.mock.calls.map(([kind]) => kind)).toEqual([
 			'pointerdown',
+			'pointerup',
+			'touchend',
 			'keydown',
 		]);
 		off.mockRestore();
+	});
+
+	/**
+	 * A phone's context (#3022): a resume takes only inside a user
+	 * activation, which a touch's pointerdown is not — the tap counts when it
+	 * lifts. Listening for the press alone left every phone silent.
+	 */
+	function phone() {
+		const phone = { activated: false, made: 0 };
+		class Phone extends FakeAudioContext {
+			state = 'suspended';
+			constructor() {
+				super();
+				phone.made++;
+			}
+			resume = async () => {
+				if (phone.activated) this.state = 'running';
+			};
+		}
+		vi.stubGlobal('AudioContext', Phone);
+		return phone;
+	}
+	const stateOf = (cues: Awaited<ReturnType<typeof freshCues>>) =>
+		(cues.bus()?.ctx as unknown as { state: string }).state;
+
+	it.each(['pointerup', 'touchend'])(
+		'resumes on the %s that ends a tap, not only on the press',
+		async (lift) => {
+			const device = phone();
+			const cues = await freshCues();
+			cues.play('go'); // a sound asked outside any gesture: still shut
+			document.dispatchEvent(new Event('pointerdown'));
+			expect(stateOf(cues)).toBe('suspended');
+
+			device.activated = true;
+			document.dispatchEvent(new Event(lift));
+			device.activated = false;
+			await Promise.resolve();
+			expect(stateOf(cues)).toBe('running');
+			vi.stubGlobal('AudioContext', FakeAudioContext);
+		},
+	);
+
+	it('opens the bus from inside a deck tap before anything asked for sound', async () => {
+		const device = phone();
+		const cues = await freshCues();
+		expect(device.made).toBe(0);
+
+		device.activated = true; // inside the click handler
+		cues.unlockCues();
+		device.activated = false;
+		await Promise.resolve();
+		expect(device.made).toBe(1);
+		expect(stateOf(cues)).toBe('running');
+		vi.stubGlobal('AudioContext', FakeAudioContext);
+	});
+});
+
+describe('the cowbell (#3022)', () => {
+	// The catalogue can say bandpass all it likes; the engine is what rings it.
+	it('rings through a bandpass, where every other cue takes the lowpass', async () => {
+		const filters: { type: string }[] = [];
+		class Recording extends FakeAudioContext {
+			createBiquadFilter = () => {
+				const filter = fakeNode();
+				filters.push(filter);
+				return filter;
+			};
+		}
+		vi.stubGlobal('AudioContext', Recording);
+		const cues = await freshCues();
+		cues.play('cowbell');
+		expect(filters.map((filter) => filter.type)).toEqual([
+			'bandpass',
+			'bandpass',
+		]);
+		filters.length = 0;
+		cues.play('klaxon');
+		expect(filters.map((filter) => filter.type)).toEqual([
+			'lowpass',
+			'lowpass',
+		]);
+		vi.stubGlobal('AudioContext', FakeAudioContext);
+	});
+});
+
+/**
+ * A cue lands on its motion's hit (#3209): scheduled on the audio clock, not
+ * whenever the call happened to run, and placed on a side.
+ */
+describe('when and where a cue sounds', () => {
+	beforeEach(() => {
+		vi.spyOn(console, 'debug').mockImplementation(() => {});
+		starts.length = 0;
+		pans.length = 0;
+		now = 5;
+	});
+
+	it('starts inMs after the audio clock, to the millisecond', async () => {
+		const cues = await freshCues();
+		cues.play('shutter');
+		const soon = starts.splice(0);
+		cues.play('shutter', { inMs: 250 });
+		const later = starts.splice(0);
+		expect(soon).toHaveLength(1);
+		expect(soon[0]).toBeCloseTo(5 + 0.01, 3);
+		expect(later[0] - soon[0]).toBeCloseTo(0.25, 3);
+	});
+
+	it('keeps every voice of a cue in step, however far ahead', async () => {
+		const cues = await freshCues();
+		cues.play('prime', { inMs: 400 });
+		expect(starts).toEqual([
+			expect.closeTo(5.41, 3),
+			expect.closeTo(5.41 + 0.14, 3),
+		]);
+	});
+
+	it('never schedules into the past', async () => {
+		const cues = await freshCues();
+		cues.play('shutter', { inMs: -500 });
+		expect(starts[0]).toBeCloseTo(5.01, 3);
+	});
+
+	it('pans, and clamps short of one ear', async () => {
+		const cues = await freshCues();
+		cues.play('equip', { pan: -0.3 });
+		cues.play('equip', { pan: 1 });
+		cues.play('equip', { pan: -4 });
+		cues.play('equip');
+		expect(pans).toEqual([-0.3, cues.PAN_LIMIT, -cues.PAN_LIMIT, 0]);
 	});
 });

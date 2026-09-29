@@ -6,7 +6,7 @@ const served = vi.hoisted(() => ({
 	rides: [] as {
 		id: string;
 		startedAt: string;
-		room?: boolean;
+		inSession?: boolean;
 		channel?: { id: string };
 		xp?: number;
 	}[],
@@ -43,7 +43,7 @@ async function setup(
 ) {
 	let phase = $state<string | undefined>('idle');
 	let workout = $state('Openers');
-	const recording = createRecording();
+	const recording = createRecording({ ftp: () => 200 });
 	let summary!: ReturnType<typeof createSummary>;
 	const off = $effect.root(() => {
 		summary = createSummary({
@@ -85,7 +85,7 @@ function ride(recording: ReturnType<typeof createRecording>, seconds: number) {
 // mid-session used to read as the edge into a session and wiped the graph's
 // power line and the summary's samples with it (#2654).
 it('a summary mounted mid-ride leaves the recording alone', async () => {
-	const recording = createRecording();
+	const recording = createRecording({ ftp: () => 200 });
 	const workout = 'Openers';
 	recording.follow('running');
 	ride(recording, 90);
@@ -123,7 +123,7 @@ describe('the late joiner finds their ride (#1537)', () => {
 			{
 				id: 'r1',
 				startedAt: new Date(timelineStart).toISOString(),
-				room: true,
+				inSession: true,
 				xp: 42,
 			},
 		];
@@ -140,7 +140,7 @@ describe('the late joiner finds their ride (#1537)', () => {
 	});
 });
 
-// A voice channel's session saves a crew ride — `room` unset, the channel
+// A voice channel's session saves a crew ride — `inSession` unset, the channel
 // named (#2443) — and its medal hangs off that ride (#2522): the summary used
 // to look for a room ride and a room's medals, and found neither.
 describe('the summary finds a crew ride and its medal (#2522)', () => {

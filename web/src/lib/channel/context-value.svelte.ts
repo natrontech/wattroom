@@ -3,6 +3,8 @@ import type { ChannelContext, ChannelStageSource } from '$lib/channel/context';
 import type { channelConnection } from '$lib/channel/connection.svelte';
 import type { createRiders } from '$lib/channel/riders.svelte';
 import type { Segment } from '$lib/workout/types';
+import { unmeasured } from '$lib/session/sensor-status';
+import { sensors } from '$lib/sensors.svelte';
 
 /**
  * ADR-0020's contract, built (#686). The shell keeps the state and the places
@@ -151,6 +153,18 @@ export function channelContextValue(deps: ContextDeps): ChannelContext {
 		},
 		get youStale() {
 			return !!ride.fault || roster.you.stale;
+		},
+		// A number above zero has a source by definition, whatever the claim
+		// says — the answer to it may simply not have arrived yet.
+		get youUnmeasured() {
+			return (
+				roster.you.watts === 0 &&
+				unmeasured(
+					ride.trainer,
+					live.pairing,
+					sensors.slot('power-meter').status === 'connected',
+				)
+			);
 		},
 		get trainerName() {
 			return ride.trainer?.name ?? '';

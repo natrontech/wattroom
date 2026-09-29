@@ -34,6 +34,13 @@ type harness struct {
 
 func setup(t *testing.T) *harness {
 	t.Helper()
+	return setupWith(t, slog.New(slog.DiscardHandler))
+}
+
+// setupWith is setup with the service logging to log, for a test that reads
+// what a save logged.
+func setupWith(t *testing.T, log *slog.Logger) *harness {
+	t.Helper()
 	st := storetest.Open(t)
 
 	users := &testx.Users{ByToken: map[string]db.User{}}
@@ -50,7 +57,7 @@ func setup(t *testing.T) *harness {
 		})
 	}
 	mux := http.NewServeMux()
-	New(st, users, slog.New(slog.DiscardHandler)).Register(mux)
+	New(st, users, log).Register(mux)
 	return &harness{mux: mux, store: st, users: users}
 }
 
@@ -144,8 +151,10 @@ func call(t *testing.T, mux *http.ServeMux, user, method, path, body string) (in
 	return w.Code, decoded
 }
 
-// Each body starts at its own second: a save at the same start is the same
-// ride now (FindRideAt), and two rides a test means two start times.
+// Each body starts at its own time: a save at the same start is the same
+// ride now (FindRideAt), and two rides a test means two start times — six
+// hours apart, the longest ride a save accepts, because two that shared a
+// second would be refused as the overlap they are (#3044).
 var rideBodies atomic.Int64
 
 // rideBase is read from the clock ONCE, truncated to the second the wire
@@ -158,8 +167,13 @@ var rideBodies atomic.Int64
 // the counter alone decides the start.
 var rideBase = time.Now().Truncate(time.Second).Add(-time.Hour)
 
+// nextStart is the next fixture ride's start.
+func nextStart() time.Time {
+	return rideBase.Add(-time.Duration(rideBodies.Add(1)) * maxSamples * time.Second)
+}
+
 func rideBody(seconds, watts int) string {
-	return rideBodyAt(seconds, watts, rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second))
+	return rideBodyAt(seconds, watts, nextStart())
 }
 
 // rideBodyAt is rideBody with the start chosen by the test.
@@ -189,7 +203,7 @@ func TestSoloRideScoresTheRidersOwnTrim(t *testing.T) {
 	}
 	body := fmt.Sprintf(
 		`{"workoutName":"Openers","workoutJson":"{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":120,\"target\":0.8}]}","startedAt":%q,"samples":[%s]}`,
-		rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second).Format(time.RFC3339),
+		nextStart().Format(time.RFC3339),
 		strings.Join(samples, ","))
 
 	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
@@ -232,7 +246,7 @@ func TestSoloRideScoresByTheWorkoutClock(t *testing.T) {
 	}
 	body := fmt.Sprintf(
 		`{"workoutName":"Two blocks","workoutJson":"{\"name\":\"Two blocks\",\"steps\":[{\"type\":\"steady\",\"seconds\":60,\"target\":0.8},{\"type\":\"steady\",\"seconds\":60,\"target\":0.4}]}","startedAt":%q,"samples":[%s]}`,
-		rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second).Format(time.RFC3339),
+		nextStart().Format(time.RFC3339),
 		strings.Join(samples, ","))
 
 	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
@@ -325,7 +339,7 @@ func TestSoloRideSkipsReleasedSeconds(t *testing.T) {
 	}
 	body := fmt.Sprintf(
 		`{"workoutName":"Openers","workoutJson":"{\"name\":\"Openers\",\"steps\":[{\"type\":\"steady\",\"seconds\":120,\"target\":0.8}]}","startedAt":%q,"samples":[%s]}`,
-		rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second).Format(time.RFC3339),
+		nextStart().Format(time.RFC3339),
 		strings.Join(samples, ","))
 	status, got := call(t, h.mux, "alice", http.MethodPost, "/api/rides", body)
 	if status != http.StatusCreated {
@@ -582,7 +596,8 @@ func TestRideDetailNamesItsCrewAndMedals(t *testing.T) {
 	if len(medals) != 1 {
 		t.Fatalf("medals: %v", medals)
 	}
-	if medal, _ := medals[0].(map[string]any); medal["kind"] != "diesel" || medal["roomName"] != "Pain Cave" {
+	// The crew's name, under its own key and — for one release — the old one (#3361).
+	if medal, _ := medals[0].(map[string]any); medal["kind"] != "diesel" || medal["crewName"] != "Pain Cave" || medal["roomName"] != "Pain Cave" {
 		t.Fatalf("medal: %v", medals[0])
 	}
 }
@@ -934,7 +949,7 @@ func TestRampTestIsSavedUnscoredAndPaysNoExecutionBonus(t *testing.T) {
 	body := func(flag string) string {
 		return fmt.Sprintf(
 			`{"workoutName":"Ramp test","workoutJson":"{\"name\":\"Ramp test\",%s\"steps\":[%s]}","startedAt":%q,"samples":[%s]}`,
-			flag, steps, rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second).Format(time.RFC3339),
+			flag, steps, nextStart().Format(time.RFC3339),
 			strings.Join(samples, ","))
 	}
 
@@ -988,7 +1003,7 @@ func TestAFreeRideSavesWithNoWorkout(t *testing.T) {
 	body := func(flag string) string {
 		return fmt.Sprintf(
 			`{"workoutName":"Free ride","workoutJson":"{\"name\":\"Free ride\",%s\"steps\":[]}","startedAt":%q,"samples":[%s]}`,
-			flag, rideBase.Add(-time.Duration(rideBodies.Add(1))*time.Second).Format(time.RFC3339),
+			flag, nextStart().Format(time.RFC3339),
 			strings.Join(samples, ","))
 	}
 

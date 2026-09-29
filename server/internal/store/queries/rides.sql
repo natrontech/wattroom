@@ -1,13 +1,18 @@
 -- name: CreateRide :one
 -- A session's ride names its crew, the voice channel and the session (#2443);
--- a solo ride leaves all three null.
+-- a solo ride leaves all three null. The road summary (#3053) is what exists
+-- only at the moment of saving: null where a ride had no road, or the saver
+-- did not know.
 insert into rides (
     user_id, workout_name, started_at,
     seconds, avg_watts, kj, execution, execution_scored,
     ftp_watts, samples, curve, xp, norm_watts, last20m_hr,
-    crew_id, channel_id, session_id
+    crew_id, channel_id, session_id,
+    route_id, route_key, road_h, ride_mode, timeable,
+    from_m, distance_m, climbed_m, weight_kg, mean_shelter
 )
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+        $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 returning id;
 
 -- name: ListUserRides :many
@@ -26,6 +31,7 @@ returning id;
 -- no foreign key, so it outlives a crew whose deletion sets the other two null.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
+       rides.distance_m, rides.climbed_m,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -45,6 +51,7 @@ limit $2;
 -- columns as ListUserRides so one JSON mapping serves both.
 select rides.id, workout_name, started_at, seconds, avg_watts, kj, execution, execution_scored, ftp_watts, xp,
        (rides.crew_id is not null or rides.channel_id is not null or rides.session_id is not null)::boolean as in_session, shared_at,
+       rides.distance_m, rides.climbed_m,
        e.state as export_state,
        rides.crew_id, coalesce(c.name, '')::text as crew_name,
        rides.channel_id, coalesce(ch.name, '')::text as channel_name
@@ -90,6 +97,39 @@ where r.id = $1 and r.user_id = $2;
 -- started_at)` stands behind it now (#2064): this read still spares the
 -- retry an error, but two saves racing each other no longer both insert.
 select id from rides where user_id = $1 and started_at = $2 limit 1;
+
+-- name: RideOverlaps :one
+-- Whether a ride over [starts_at, ends_at) would share a second with one the
+-- rider already has (#3044). Nobody rides two at once, so an upload that
+-- overlaps is refused — ten fabricated saves in a minute earn one ride. The
+-- span is the ride's own `seconds`, which leaves pauses out, so this can only
+-- under-count an overlap and never refuse a ride that did not have one.
+select exists (
+    select 1 from rides
+    where user_id = sqlc.arg(user_id)
+      and started_at < sqlc.arg(ends_at)::timestamptz
+      and started_at + make_interval(secs => seconds) > sqlc.arg(starts_at)::timestamptz
+)::boolean;
+
+-- name: UploadXpToday :one
+-- The XP uploaded rides have minted for this rider in the current UTC day
+-- (#3044) — zero when their row is from an earlier day or absent.
+select coalesce((
+    select xp from ride_upload_xp
+    where user_id = $1 and day = (now() at time zone 'utc')::date
+), 0)::integer;
+
+-- name: AddUploadXp :exec
+-- Count an uploaded ride's XP against today (#3044): today's row grows, an
+-- earlier day's is replaced. Never lowered — a delete does not hand the
+-- ceiling back, or delete-and-repost would mint without end.
+insert into ride_upload_xp (user_id, day, xp)
+values ($1, (now() at time zone 'utc')::date, $2)
+on conflict (user_id) do update
+set xp  = case when ride_upload_xp.day = excluded.day
+               then ride_upload_xp.xp + excluded.xp
+               else excluded.xp end,
+    day = excluded.day;
 
 -- name: DeleteRide :execrows
 -- Owner-only by the where clause. The medals awarded for this ride go with
@@ -248,6 +288,21 @@ select id, samples from rides where last20m_hr is null limit $1;
 -- name: SetRideLast20mHR :exec
 update rides set last20m_hr = $2 where id = $1;
 
+-- name: ListRidesMissingCriticalPower :many
+-- The #3261 backfill's read: rides inside the 90-day curve whose curve has no
+-- 3-minute best yet, blob and all, read once each. A ride with no curve at
+-- all has nothing to add the pair to.
+select id, samples from rides
+where started_at >= now() - interval '90 days'
+  and curve is not null and not (curve ? 'best3m')
+limit $1;
+
+-- name: SetRideCriticalPower :exec
+-- Adds the pair to a ride's curve and touches nothing else in it.
+update rides
+set curve = curve || jsonb_build_object('best3m', sqlc.arg(best3m)::int, 'best12m', sqlc.arg(best12m)::int)
+where id = sqlc.arg(id);
+
 -- name: CurveBests :one
 -- Progression overlay (#222): best per SPEC curve window over three ranges,
 -- summary columns only — the sample blob stays cold.
@@ -263,7 +318,16 @@ select
     coalesce(max((curve->>'best5s')::int),  0)::int as all_best5s,
     coalesce(max((curve->>'best1m')::int),  0)::int as all_best1m,
     coalesce(max((curve->>'best5m')::int),  0)::int as all_best5m,
-    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m
+    coalesce(max((curve->>'best20m')::int), 0)::int as all_best20m,
+    -- The critical-power pair (#3261), carried beside the four windows and
+    -- never drawn among them. A ride saved before it has no key, and max
+    -- skips it.
+    coalesce(max((curve->>'best3m')::int)  filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best3m,
+    coalesce(max((curve->>'best12m')::int) filter (where started_at >= now() - interval '30 days'), 0)::int as d30_best12m,
+    coalesce(max((curve->>'best3m')::int)  filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best3m,
+    coalesce(max((curve->>'best12m')::int) filter (where started_at >= now() - interval '90 days'), 0)::int as d90_best12m,
+    coalesce(max((curve->>'best3m')::int),  0)::int as all_best3m,
+    coalesce(max((curve->>'best12m')::int), 0)::int as all_best12m
 from rides
 where user_id = $1;
 
@@ -320,7 +384,9 @@ update rides set norm_watts = $2 where id = $1;
 select r.id, r.workout_name, r.started_at, r.seconds, r.avg_watts, r.kj, r.execution,
        r.execution_scored, r.norm_watts, r.ftp_watts, r.ftp_after_watts, r.xp, r.curve,
        r.shared_at, r.rpe, r.note,
-       c.name as crew_name, ch.name as channel_name
+       c.name as crew_name, ch.name as channel_name,
+       r.ride_mode, r.timeable, r.from_m, r.distance_m, r.climbed_m, r.weight_kg,
+       r.mean_shelter, r.route_key, r.road_h
 from rides r
 left join crews c on c.id = r.crew_id
 left join channels ch on ch.id = r.channel_id

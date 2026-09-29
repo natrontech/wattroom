@@ -5,13 +5,10 @@
 package rides
 
 import (
-	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 
@@ -20,11 +17,9 @@ import (
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/keyset"
-	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
-	"github.com/natrontech/wattroom/server/internal/workout"
 )
 
 // Bounds mirror the WS metrics gate and fitexport: attacker-controlled
@@ -48,6 +43,12 @@ const (
 	// and they are what GET /api/me/export builds in memory.
 	savesPerWindow = 10
 	saveWindow     = time.Minute
+	// What uploaded rides may pay a rider in one UTC save day, whatever they
+	// claim (#3044, docs/SPEC.md's XP sources): about six hours at 280 W.
+	// The samples here are the client's word, and without it one scripted
+	// save was worth ~65,000 XP. A ride the hub saved from a live session is
+	// outside it — the server watched those seconds arrive.
+	maxUploadXpPerDay = 6000
 )
 
 type UserSource interface {
@@ -96,31 +97,6 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/rides/{id}", s.handleDelete)
 }
 
-type sampleJSON struct {
-	Watts   int `json:"watts"`
-	HR      int `json:"hr,omitempty"`
-	Cadence int `json:"cadence,omitempty"`
-	// The trim this second was ridden at (#1530). The room's samples have
-	// carried it since #795 and a solo ride's did not, so the same ride
-	// scored one number on the summary and another on its own page: the live
-	// meter bands the BIASED target and this side re-scored the workout as
-	// written. Absent (0) is a ride with no trim — protocol.BiasOr's default.
-	Bias float64 `json:"bias,omitempty"`
-	// The workout second this sample was ridden at (#1733); the score keys on
-	// it, so a pause mid-block no longer shifts every later second onto the
-	// wrong block. Absent (0 throughout) scores by index, as before.
-	Clock int `json:"clock,omitempty"`
-	// The rider's guard had the trainer off the target (#1796); not scored.
-	Released bool `json:"released,omitempty"`
-}
-
-type createRequest struct {
-	WorkoutName string       `json:"workoutName"`
-	WorkoutJSON string       `json:"workoutJson"`
-	StartedAt   time.Time    `json:"startedAt"`
-	Samples     []sampleJSON `json:"samples"`
-}
-
 type rideJSON struct {
 	ID          string  `json:"id"`
 	WorkoutName string  `json:"workoutName"`
@@ -137,6 +113,10 @@ type rideJSON struct {
 	// True for rides ridden with a crew — the list marks them. The key is the
 	// list's from before crews (#2558).
 	Room bool `json:"room,omitempty"`
+	// The same flag under a word ADR-0058 did not retire (#2959). Personal-
+	// token tooling reads `room`, so it stays one release beside this and
+	// then goes (#3461).
+	InSession bool `json:"inSession,omitempty"`
 	// The crew it was ridden with and the voice channel it was ridden in
 	// (#2443); nil for a solo ride.
 	Crew    *placeJSON `json:"crew,omitempty"`
@@ -148,6 +128,10 @@ type rideJSON struct {
 	// ride has one (#1553), so the list can mark a failed upload; empty for a
 	// ride that was never sent. The detail carries the whole record.
 	ExportState string `json:"exportState,omitempty"`
+	// A road ride's metres and climbing (#3053), the server's replay of them;
+	// absent on a ride with no road.
+	DistanceM *int32 `json:"distanceM,omitempty"`
+	ClimbedM  *int32 `json:"climbedM,omitempty"`
 }
 
 // placeJSON names where a ride happened — a crew, or a channel of one.
@@ -211,8 +195,9 @@ func rideJSONOf(row db.ListUserRidesRow) rideJSON {
 		StartedAt: row.StartedAt.Time.Format(time.RFC3339),
 		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
 		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(row.FtpWatts), Xp: int(row.Xp),
-		Room: row.InSession, SharedWithFriends: row.SharedAt.Valid,
+		Room: row.InSession, InSession: row.InSession, SharedWithFriends: row.SharedAt.Valid,
 		Crew: placeOf(row.CrewID, row.CrewName), Channel: placeOf(row.ChannelID, row.ChannelName),
+		DistanceM: row.DistanceM, ClimbedM: row.ClimbedM,
 	}
 	if row.ExportState != nil {
 		out.ExportState = *row.ExportState
@@ -290,138 +275,5 @@ func (s *Service) handleShare(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"id": store.UUIDString(id), "sharedWithFriends": *body.SharedWithFriends,
-	})
-}
-
-func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
-	user, ok := s.users.RequireUser(w, r, "Not signed in.")
-	if !ok {
-		return
-	}
-	if !s.saves.Spend(user.ID) {
-		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
-			"Too many rides saved in one minute — give it a moment and try again.")
-		return
-	}
-	// A ride body outgrows DecodeStrict's 64 KB — an hour is ~100 KB of JSON.
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	var req createRequest
-	if err := dec.Decode(&req); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid_request", "That request could not be read.")
-		return
-	}
-
-	req.WorkoutName = strings.TrimSpace(req.WorkoutName)
-	if req.WorkoutName == "" || utf8.RuneCountInString(req.WorkoutName) > 80 {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A workout name has to be 1-80 characters.", "workoutName")
-		return
-	}
-	// An empty workout is a free ride's (ADR-0059), and only when it says
-	// so: unmarked, it is a client that lost its steps.
-	if segments, err := workout.Parse(req.WorkoutJSON); err != nil ||
-		(len(segments) == 0 && !workout.Unscored(req.WorkoutJSON)) {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"That is not a workout the engine can ride.", "workoutJson")
-		return
-	}
-	if req.StartedAt.IsZero() || req.StartedAt.After(time.Now().Add(time.Minute)) {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A ride starts at a real time in the past.", "startedAt")
-		return
-	}
-	if len(req.Samples) < minSamples {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A ride under a minute is not saved — the same rule a session uses.", "samples")
-		return
-	}
-	if len(req.Samples) > maxSamples {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"A ride longer than six hours is not something this saves.", "samples")
-		return
-	}
-	samples := make([]protocol.RiderMetrics, len(req.Samples))
-	for i, sample := range req.Samples {
-		if sample.Watts < 0 || sample.Watts > maxWatts ||
-			sample.Cadence < 0 || sample.Cadence > maxCadence ||
-			sample.HR < 0 || sample.HR > maxHR {
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"A sample is out of range — watts 0-3000, cadence 0-250, heart rate 0-250.", "samples")
-			return
-		}
-		// The bounds are the trim's own (workout/guards DEFAULTS.biasMin/Max,
-		// and what protocol.BiasOr clamps to) rather than numbers invented
-		// here; 0 is a sample from a ride that sends none.
-		if sample.Bias != 0 && (sample.Bias < minBias || sample.Bias > maxBias) {
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"A sample's bias is out of range — 0.8 to 1.2.", "samples")
-			return
-		}
-		// A workout second past the six-hour ceiling is no second of any
-		// workout this saves — the same bound the sample count has.
-		if sample.Clock < 0 || sample.Clock > maxSamples {
-			httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-				"A sample's workout second is out of range.", "samples")
-			return
-		}
-		samples[i] = protocol.RiderMetrics{
-			Watts: sample.Watts, HR: sample.HR, Cadence: sample.Cadence, Bias: sample.Bias, Clock: sample.Clock, Released: sample.Released, Seq: i,
-		}
-	}
-
-	row, err := stats.BuildRideRow(user.ID, req.WorkoutName,
-		req.WorkoutJSON, req.StartedAt, int(user.FtpWatts), samples)
-	if err != nil {
-		httpx.WriteFieldError(w, http.StatusBadRequest, "validation_error",
-			"That ride could not be scored against this workout.", "workoutJson")
-		return
-	}
-	row.Xp += stats.StreakXP(r.Context(), s.store.Queries, user.ID, req.StartedAt)
-	// Under the rider's row lock, and only if it is not there yet (audit
-	// 2026-09-09): the recovery card retries a POST whose answer was lost, and
-	// the ride has no key of its own.
-	tx, err := s.store.Pool.Begin(r.Context())
-	if err != nil {
-		httpx.Fail(w, s.log, "solo ride save begin failed", err, "The ride could not be saved. It stays on this device.")
-		return
-	}
-	defer func() { _ = tx.Rollback(r.Context()) }()
-	q := s.store.Queries.WithTx(tx)
-	if err := q.LockUser(r.Context(), user.ID); err != nil {
-		httpx.Fail(w, s.log, "solo ride save lock failed", err, "The ride could not be saved. It stays on this device.")
-		return
-	}
-	if existing, err := q.FindRideAt(r.Context(), db.FindRideAtParams{UserID: user.ID, StartedAt: row.StartedAt}); err == nil {
-		// Already saved: the same answer as the first time, no second row.
-		httpx.WriteJSON(w, http.StatusOK, map[string]string{"id": store.UUIDString(existing)})
-		return
-	}
-	id, err := q.CreateRide(r.Context(), row)
-	if err != nil {
-		httpx.Fail(w, s.log, "solo ride save failed", err, "The ride could not be saved. It stays on this device.")
-		return
-	}
-	if err := tx.Commit(r.Context()); err != nil {
-		httpx.Fail(w, s.log, "solo ride save commit failed", err, "The ride could not be saved. It stays on this device.")
-		return
-	}
-	if s.uploader != nil {
-		s.uploader.RideSaved(id)
-	}
-	if s.keeper != nil {
-		watts := make([]int, len(samples))
-		for i, sample := range samples {
-			watts[i] = sample.Watts
-		}
-		s.keeper.RideSaved(user.ID, stats.Facts(req.StartedAt, int(user.FtpWatts), watts))
-	}
-	s.log.Info("solo ride saved", "seconds", row.Seconds, "kj", row.Kj)
-	httpx.WriteJSON(w, http.StatusCreated, rideJSON{
-		ID: store.UUIDString(id), WorkoutName: req.WorkoutName,
-		StartedAt: req.StartedAt.Format(time.RFC3339),
-		Seconds:   int(row.Seconds), AvgWatts: int(row.AvgWatts), Kj: int(row.Kj),
-		Execution: float64(row.Execution), ExecutionScored: row.ExecutionScored, Ftp: int(user.FtpWatts), Xp: int(row.Xp),
 	})
 }

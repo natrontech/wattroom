@@ -175,7 +175,7 @@ func (s *Service) handleJoinCrew(w http.ResponseWriter, r *http.Request) {
 		// The invite is answered (#2144): a rider who leaves again must not
 		// be sent back to this door from every landing.
 		_ = s.store.Queries.SetPendingCrewCode(r.Context(), db.SetPendingCrewCodeParams{ID: user.ID})
-		s.changed()
+		s.changed(r.Context(), crew.ID)
 		// The role AFTER the join: the row just written (audit 2026-09-09).
 		role = "member"
 	}
@@ -235,6 +235,6 @@ func (s *Service) handleLeaveCrew(w http.ResponseWriter, r *http.Request) {
 		s.evict(store.UUIDString(id), store.UUIDString(user.ID))
 	}
 	s.log.Info("crew left", "crew", store.UUIDString(crew.ID), "rider", store.UUIDString(user.ID), "crewDeleted", swept > 0)
-	s.changed()
+	s.changed(r.Context(), crew.ID, user.ID)
 	w.WriteHeader(http.StatusNoContent)
 }

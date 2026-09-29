@@ -217,18 +217,26 @@ describe('channelConnection', () => {
 
 	// #2885: the ride's status lives in the place's shell, so a rider who
 	// pedals on into a chat channel lost every word of a dropped connection.
-	it('says a held ride is away from its place only off the place', () => {
+	// #2986: and on the place's own path when its page failed to load, where
+	// no shell mounted — which is why it is counted, not read off the path.
+	it("says a held ride's status is unshown exactly while no page draws it", () => {
 		const connection = channelConnection.join(
 			channelAddress('c', 'lounge', 'Lounge'),
 		);
-		const chat = '/crew/c/c/talk';
-		expect(channelConnection.ridingAway(chat)).toBe(false);
+		expect(channelConnection.rideStatusUnshown()).toBe(false); // no ride held
 
 		connection.freeRide.arm();
 		connection.freeRide.second({ watts: 150, cadence: 90, hr: 0 });
+		// The chat channel, or the lounge's own page that would not load.
+		expect(channelConnection.rideStatusUnshown()).toBe(true);
 
-		expect(channelConnection.ridingAway(chat)).toBe(true);
-		expect(channelConnection.ridingAway('/crew/c/v/lounge')).toBe(false);
+		const shell = channelConnection.showingStatus();
+		const layers = channelConnection.showingStatus();
+		expect(channelConnection.rideStatusUnshown()).toBe(false);
+		shell();
+		expect(channelConnection.rideStatusUnshown()).toBe(false); // the layers still draw it
+		layers();
+		expect(channelConnection.rideStatusUnshown()).toBe(true);
 	});
 
 	it('claims the trainer for this tab, and releases it on unpair', async () => {

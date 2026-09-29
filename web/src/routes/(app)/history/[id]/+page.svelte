@@ -18,7 +18,11 @@
 	import RideComparison from '$lib/ride/RideComparison.svelte';
 	import type { RideRecord } from '$lib/history.svelte';
 	import { api } from '$lib/api';
-	import { fetchProgression, type Progression } from '$lib/progression';
+	import {
+		fetchProgression,
+		SHOWN_WINDOWS,
+		type Progression,
+	} from '$lib/progression';
 	import { apiBlob } from '$lib/api';
 	import { downloadBlob } from '$lib/download';
 	import { zoneSeconds } from '$lib/ride/stats';
@@ -151,16 +155,12 @@
 			: [],
 	);
 	/** SPEC's four curve windows as the page's cells (#1691). */
-	const curveCells = $derived<[string, number][]>(
-		ride?.curve
-			? [
-					['best 5 s', ride.curve.best5s],
-					['best 1 min', ride.curve.best1m],
-					['best 5 min', ride.curve.best5m],
-					['best 20 min', ride.curve.best20m],
-				]
-			: [],
-	);
+	const curveCells = $derived.by<[string, number][]>(() => {
+		const curve = ride?.curve;
+		return curve
+			? SHOWN_WINDOWS.map((w) => [`best ${w.label}`, curve[w.key]])
+			: [];
+	});
 	const stats = $derived(
 		ride
 			? [
@@ -423,7 +423,7 @@
 									>{medalName(medal.kind)}</span
 								>
 								<span class="text-muted block text-[10px]">
-									{MEDAL_META[medal.kind]?.criterion ?? medal.roomName}
+									{MEDAL_META[medal.kind]?.criterion ?? medal.crewName}
 								</span>
 							</span>
 						</li>

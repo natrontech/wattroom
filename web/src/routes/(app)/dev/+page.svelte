@@ -21,6 +21,16 @@
 			hint: 'Direct messages, unread first, and a total for what is waiting (#451)',
 		},
 		{
+			href: '/dev/world',
+			label: 'Ride world',
+			hint: 'A GPX becomes terrain, a road and riders — the prototype in plain three.js (#3021)',
+		},
+		{
+			href: '/dev/road',
+			label: 'Road pipeline',
+			hint: 'What $lib/road makes of a route: spikes, smoothing, the heights and turns it keeps (#3023)',
+		},
+		{
 			href: '/dev/themes',
 			label: 'Theme gallery',
 			hint: 'Every theme against the surfaces that carry colour, cave and desk (#399)',

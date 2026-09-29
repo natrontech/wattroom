@@ -36,7 +36,7 @@ test('the sprint settings are on Equipment, with the trainer, not on Profile', a
 		page.getByRole('heading', { name: 'Sprint moments' }),
 	).toBeVisible();
 	await expect(
-		page.getByRole('checkbox', { name: /Sprints stay in ERG/ }),
+		page.getByRole('checkbox', { name: /One gear \(Zwift Cog\)/ }),
 	).toBeVisible();
 
 	// The grade is one number behind that checkbox, so it is folded (ux.md's
@@ -65,7 +65,7 @@ test('the sprint settings are on Equipment, with the trainer, not on Profile', a
 
 	// Profile no longer carries either of them.
 	await page.goto('/settings/profile');
-	await expect(page.getByText(/Sprints stay in ERG/)).toHaveCount(0);
+	await expect(page.getByText(/One gear \(Zwift Cog\)/)).toHaveCount(0);
 	await expect(
 		page.getByRole('spinbutton', { name: /sprint grade/ }),
 	).toHaveCount(0);

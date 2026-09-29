@@ -1,8 +1,13 @@
 /**
- * DM conversation heads, polled GLOBALLY (audit #219): the blip, the hidden-tab
+ * DM conversation heads, kept GLOBALLY (audit #219): the blip, the hidden-tab
  * notification and the unread badges must work while you sit in a voice channel
  * — which is where riders actually are — not only on the two pages that
  * happened to mount the friends panel. Started once from the layout.
+ *
+ * They follow the lobby ping (#2937): a line, an edit, a reaction or a poke
+ * pings both riders' sockets, and a read pings the reader's own. It used to be
+ * a 10 s poll from every tab — six reads a minute on a session page mid-ride,
+ * for a list that almost never changes. The poll is now only the fallback.
  */
 import { api } from '$lib/api';
 import { dm } from '$lib/dm/dm.svelte';
@@ -55,8 +60,20 @@ let error = $state<string | null>(null);
 let started = false;
 let first = true;
 let timer: ReturnType<typeof setInterval> | undefined;
+// The lobby ping's count this list last answered; null until the layout
+// first reports one, which is the count start() already fetched against.
+let heardVersion: number | null = null;
+let lastPoll = 0;
+
+/**
+ * How stale the list may get when no ping arrives — a dead socket, or a page
+ * with no lobby. The presence feed re-reads on this beat too, and each of its
+ * reads pings the list, so this fires only when that feed is not running.
+ */
+export const FALLBACK_MS = 60_000;
 
 async function poll() {
+	lastPoll = Date.now();
 	const res = await api<{ conversations: DmHead[] }>('/api/dms');
 	loaded = true;
 	if (!res.ok) {
@@ -131,10 +148,17 @@ export const dmHeads = {
 		if (started || typeof window === 'undefined') return;
 		started = true;
 		void poll();
-		// Also how a read on another device reaches this one (#2711).
-		// ponytail: up to 10 s late; ping the reader's lobby sockets, as a
-		// channel read does, if that ever shows.
-		timer = setInterval(() => void poll(), 10_000);
+		timer = setInterval(() => {
+			if (Date.now() - lastPoll >= FALLBACK_MS) void poll();
+		}, FALLBACK_MS / 2);
+	},
+	/**
+	 * The lobby ping's count, from the layout: a change is a ping, so ask
+	 * again. The first count seen is the one start() already answered.
+	 */
+	follow(version: number) {
+		if (heardVersion !== null && version !== heardVersion) void poll();
+		heardVersion = version;
 	},
 	/**
 	 * On sign-out (#1515): the poll used to outlive the session — six 401s a
@@ -143,6 +167,7 @@ export const dmHeads = {
 	stop() {
 		clearInterval(timer);
 		timer = undefined;
+		heardVersion = null;
 		started = false;
 		first = true;
 		loaded = false;

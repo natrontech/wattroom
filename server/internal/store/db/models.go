@@ -269,6 +269,16 @@ type Ride struct {
 	CrewID          pgtype.UUID
 	ChannelID       pgtype.UUID
 	SessionID       pgtype.UUID
+	RouteID         pgtype.UUID
+	RouteKey        *string
+	RoadH           *string
+	RideMode        *string
+	Timeable        *bool
+	FromM           *int32
+	DistanceM       *int32
+	ClimbedM        *int32
+	WeightKg        *int16
+	MeanShelter     *float32
 }
 
 type RideExport struct {
@@ -281,6 +291,35 @@ type RideExport struct {
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 	StaleSince  pgtype.Timestamptz
+}
+
+type RideUploadXp struct {
+	UserID pgtype.UUID
+	Day    pgtype.Date
+	Xp     int32
+}
+
+type RiderBlock struct {
+	BlockerID pgtype.UUID
+	BlockedID pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+}
+
+type Route struct {
+	ID         pgtype.UUID
+	OwnerID    pgtype.UUID
+	Src        string
+	Name       string
+	GenName    string
+	Road       []byte
+	RoadHash   string
+	LengthM    int32
+	GainM      int32
+	Climbs     []byte
+	EleSource  string
+	GeomSealed []byte
+	KeyVersion *int32
+	CreatedAt  pgtype.Timestamptz
 }
 
 type ScheduledSession struct {

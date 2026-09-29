@@ -44,7 +44,7 @@ export function curvePoints(
 }
 
 /** docs/SPEC.md: under this the rolling-4th-power estimate is not meaningful. */
-const NP_MIN_SECONDS = 20 * 60;
+export const NP_MIN_SECONDS = 20 * 60;
 
 /**
  * Normalised power: 30 s rolling average, fourth power, mean, fourth root —

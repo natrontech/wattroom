@@ -18,9 +18,9 @@ import (
 // (ADR-0038, second amendment). Split from crews.go (#1234).
 
 // releaseCrew hands the crew on or removes it, never leaving it ownerless:
-// docs/SPEC.md's successor, and with nobody left the crew goes — and the
-// room rows still pointing at it with it (rooms.crew_id cascades since
-// #2558). The successor comes back, or false when the crew went.
+// docs/SPEC.md's successor, and with nobody left the crew goes — its
+// channels, pins and emoji with it (each crew_id cascades). The successor
+// comes back, or false when the crew went.
 func (s *Service) releaseCrew(ctx context.Context, q *db.Queries, crew, owner pgtype.UUID) (pgtype.UUID, bool, error) {
 	next, err := q.PickCrewSuccessor(ctx, db.PickCrewSuccessorParams{CrewID: crew, Departing: owner})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -153,7 +153,7 @@ func (s *Service) handleTransferCrew(w http.ResponseWriter, r *http.Request) {
 	// new owner could not end another rider's session until they reconnected
 	// (#2808, the #278 shape).
 	s.reauthorize(r.Context(), crew.ID, target, actor.ID)
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusOK, crewRefJSON{
 		Id: store.UUIDString(crew.ID), Name: crew.Name, Icon: crew.Icon, Role: "admin",
 	})

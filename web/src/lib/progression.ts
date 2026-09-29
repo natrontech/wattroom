@@ -13,6 +13,20 @@ export interface Curve {
 	best20m: number;
 }
 
+/**
+ * The curve windows a rider is shown, in order: docs/SPEC.md's four, and the
+ * only ones any surface may draw as a best. The server also keeps 3 and 12
+ * minutes (#3261), the critical-power model's pair, and those are never shown
+ * as a PR or used as a rank currency — which is why they are not here, and
+ * why every surface takes its windows from here rather than its own list.
+ */
+export const SHOWN_WINDOWS = [
+	{ key: 'best5s', label: '5 s' },
+	{ key: 'best1m', label: '1 min' },
+	{ key: 'best5m', label: '5 min' },
+	{ key: 'best20m', label: '20 min' },
+] as const satisfies readonly { key: keyof Curve; label: string }[];
+
 export interface TrendRide {
 	id: string;
 	date: string;

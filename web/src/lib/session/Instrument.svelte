@@ -29,6 +29,7 @@
 		targetLabel = 'target',
 		fullScale = undefined,
 		stale = false,
+		idle = false,
 	}: {
 		watts: number;
 		target: number;
@@ -49,13 +50,20 @@
 		 * away reads the number, not the banner above it.
 		 */
 		stale?: boolean;
+		/**
+		 * Nothing is paired that could measure (#2941). The same quiet face as
+		 * `stale`, but not a fault, so it says what to do instead of "no
+		 * signal" — capability gating, not an error (ux.md).
+		 */
+		idle?: boolean;
 	} = $props();
 
+	const quiet = $derived(stale || idle);
 	const pct = (w: number) => fillPct(w, ftp, fullScale);
-	const shown = $derived(stale ? 0 : watts);
+	const shown = $derived(quiet ? 0 : watts);
 	const state = $derived(targetState({ watts: shown, target }));
 	const zone = $derived(zoneOf(shown, ftp));
-	const numeral = $derived(stale ? 'text-muted' : 'text-watt glow-text-strong');
+	const numeral = $derived(quiet ? 'text-muted' : 'text-watt glow-text-strong');
 </script>
 
 {#snippet track(height: string)}
@@ -79,9 +87,13 @@
 			<!-- Literal zone class: Tailwind scans source text, so a composed
 			     `bg-z3/60` is never generated (zones.ts). Full strength — the ramp
 			     is contrast-gated at 3:1 and dimming it voids that. -->
+			<!-- Scaled, not sized (#2998): a width transition repaints the fill
+			     on every frame of its glide, and with it anything sharing its
+			     layer — the glowing number above, once, cost 18% GPU. A solid
+			     colour clipped by the track looks the same either way. -->
 			<div
-				class="absolute inset-y-0 left-0 transition-[width] duration-500 ease-out"
-				style="width: {pct(shown)}%"
+				class="ease-live absolute inset-0 origin-left transition-transform duration-[250ms]"
+				style="transform: scaleX({pct(shown) / 100})"
 			>
 				<div
 					data-testid="gauge-fill"
@@ -104,20 +116,22 @@
 		<span class="flex shrink-0 items-baseline gap-1.5">
 			<span
 				class="font-display {numeral} text-4xl leading-none font-bold tabular-nums"
-				>{stale ? '—' : watts}</span
+				>{quiet ? '—' : watts}</span
 			>
 			<span class="eyebrow">w</span>
 		</span>
 		<span class="min-w-0 flex-1">{@render track('h-3')}</span>
 		<span
 			class="shrink-0 text-xs tabular-nums {state.inBand
-				? 'text-z4'
+				? 'text-ok'
 				: 'text-muted'}"
-			>{stale
-				? 'no signal'
-				: state.has
-					? `${targetLabel} ${target} W`
-					: 'no target'}</span
+			>{idle
+				? 'no trainer'
+				: stale
+					? 'no signal'
+					: state.has
+						? `${targetLabel} ${target} W`
+						: 'no target'}</span
 		>
 	</div>
 {:else}
@@ -125,22 +139,28 @@
 	     about 130 of number, "watts" and zone line, and the rest spilled up
 	     over whatever named the number — a phone's "watching …". The floor
 	     reserves all three lines so the zone line arriving moves nothing. -->
+	<!-- The number glides by `transform`, measured in the readout's own width
+	     (cqw), never by `left` (#2998): moving it by layout repainted its
+	     glow's two large blurs on every frame of each second's glide, ~24%
+	     GPU on a MacBook. A transform only moves what was drawn. The glide
+	     is 250 ms, as is the fill's (#3199): while the big glowing number
+	     moves, a 5K 165 Hz display is recomposited at its full rate. -->
 	<div
 		data-testid="instrument-readout"
-		class="flex items-end {tv ? 'min-h-[22vh]' : 'min-h-32'}"
+		class="@container flex items-end {tv ? 'min-h-[22vh]' : 'min-h-32'}"
 	>
 		<div
-			class="relative w-max -translate-x-1/2 text-center transition-[left] duration-500 ease-out"
-			style="left: clamp({tv ? '10vh' : '5rem'}, {pct(shown)}%, calc(100% - {tv
-				? '10vh'
-				: '5rem'}))"
+			class="ease-live w-max text-center transition-transform duration-[250ms]"
+			style="transform: translateX(calc(clamp({tv ? '10vh' : '5rem'}, {pct(
+				shown,
+			)}cqw, 100cqw - {tv ? '10vh' : '5rem'}) - 50%))"
 		>
 			<span
 				class="font-display {numeral} block leading-[0.85] font-bold tabular-nums {tv
 					? 'text-[16vh]'
-					: 'text-[6.5rem]'}">{stale ? '—' : watts}</span
+					: 'text-[6.5rem]'}">{quiet ? '—' : watts}</span
 			>
-			<span class="eyebrow {tv ? 'text-[1.6vh]' : ''}">watts</span>
+			<span class="eyebrow {tv ? 'text-[3vh]' : ''}">watts</span>
 			<!-- The zone you are actually in, named (#1531, ADR-0046): the gauge
 			     has been tinted by it since #386 and never said which one, so the
 			     colour was a code with no key on the one screen that could give
@@ -150,9 +170,9 @@
 				     fill's floor, and Z1 written in its own colour was 2.1:1. -->
 				<span
 					class="eyebrow flex items-center justify-center gap-1 {tv
-						? 'text-[1.6vh]'
+						? 'text-[3vh]'
 						: ''}"
-					><ZoneDot {zone} class={tv ? 'size-[1vh]' : 'size-1.5'} />z{zone}
+					><ZoneDot {zone} class={tv ? 'size-[1.8vh]' : 'size-1.5'} />z{zone}
 					{ZONE_NAMES[zone]}</span
 				>
 			{/if}
@@ -165,18 +185,20 @@
 
 	<div
 		class="text-muted flex items-baseline tabular-nums {tv
-			? 'mt-[1vh] text-[1.8vh]'
+			? 'mt-[1vh] text-[3vh]'
 			: 'mt-2 text-xs'}"
 	>
 		<span>0</span>
 		<span
-			class="mx-auto {tv ? 'text-[2.6vh]' : 'text-sm'} {state.inBand
-				? 'text-z4'
+			class="mx-auto {tv ? 'text-[3vh]' : 'text-sm'} {state.inBand
+				? 'text-ok'
 				: state.delta > 0
-					? 'text-z5'
+					? 'text-warn'
 					: 'text-muted'}"
 		>
-			{#if stale}
+			{#if idle}
+				no trainer — pair one to see your watts
+			{:else if stale}
 				no signal
 			{:else if !state.has}
 				no {targetLabel} — spin easy

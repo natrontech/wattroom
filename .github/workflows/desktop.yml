@@ -60,6 +60,9 @@ jobs:
       - name: fetch the Electron binary
         working-directory: desktop
         run: test -d node_modules/electron/dist || node node_modules/electron/install.js
+      # Real key presses for the shortcut test (#3007): Playwright's keys go to
+      # the page and never reach the menu's accelerators.
+      - run: sudo apt-get install -y --no-install-recommends xdotool
       # Electron needs an X server, and Playwright's _electron launches the real
       # binary rather than a headless browser.
       - name: smoke

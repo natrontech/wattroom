@@ -93,3 +93,11 @@ sign-out-everywhere and recovery both left standing.
   so the owner hears about a token they did not make.
 - Deleting the account still cascades them away. Signing out everywhere else
   does not revoke them yet; whether it should is a separate decision.
+
+## Amendment — signing out everywhere else leaves tokens, and shows them (2026-09-29, #2902)
+
+The question the last amendment left open is answered: **no**. Signing out everywhere else ends the other sessions and leaves every personal token standing. A token is how a coach's tooling reads a rider's rides, and revoking it from a one-click button would stop someone else's tooling without warning — the cost errors.md says an action must ask before it pays, on a button that exists to be pressed quickly.
+
+- **Its result lists the tokens that survived** — name, created, last used — each with its own Revoke, and one line saying tokens are not signed out and to revoke any the rider did not make. A rider signing out after a borrowed session sees at once whether that session left a way back in.
+- **The rows and the Revoke are Coach access's own** (`lib/profile/TokenList.svelte`), confirm included: a revoke has no undo and stops tooling someone else runs, wherever it is pressed.
+- **Recovery stays the path that clears everything**, and the mint alarm (ADR-0030) still tells the owner the moment a token appears.

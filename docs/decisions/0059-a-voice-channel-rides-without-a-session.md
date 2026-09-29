@@ -5,7 +5,7 @@
 - Amends: WATTROOM.md's Privacy row — live numbers reach the voice channel outside a session too
 - Extends: [ADR-0058](0058-the-room-dissolves-into-the-crew.md) — a session runs in a voice channel; this says who is in it
 - Beside: [ADR-0046](0046-one-riding-surface.md) — the free ride is that surface with no workout, not a fourth one
-- Leaves open: [#2329](https://github.com/natrontech/wattroom/issues/2329) — a personal workout inside a session
+- Leaves open: [#2329](https://github.com/natrontech/wattroom/issues/2329) — a personal workout inside a session. **Answered 2026-09-29 (#3340)**: your own workout rides beside the session, never inside it (the amendment below).
 
 ## Context
 
@@ -90,3 +90,49 @@ requires is back since #2804, and it covers the free ride and the Lounge.
 The places a rider reads before riding with people all say this in one shared
 sentence (`$lib/privacy-copy`): the crew's door, Settings › Your data, and the
 privacy policy.
+
+## Amendment, 2026-09-29 (#3020): a third mode, and alone
+
+[ADR-0062](0062-the-horizon-may-be-a-road.md) gives the free ride a third mode
+beside watts and grade: **route**, where the grade comes from a road and the
+trainer is in SIM. The free ride also rides **alone on `/ride`**, not only in a
+voice channel; alone, nobody sees its numbers but the rider. Time trial, recon,
+climb repeats and "ride with a friend" are ways into the free ride, not modes
+of their own.
+
+## Amendment, 2026-09-29 (#3322): grade mode carries a second pair
+
+[ADR-0084](0084-wattroom-shifts.md) lets a rider shift virtual gears. In the
+free ride's **grade** mode the grade pair stays, because it sets the road, and
+**Easier / Harder** join it below to set the gear. On a road the road sets the
+grade, so only Easier / Harder remain. In **watts** mode Easier / Harder move
+the target by 10 W.
+
+## Amendment, 2026-09-29 (#3340): your own workout rides beside the session
+
+#2329 asked for a rider on their own plan in the same session. This ADR
+answered the spin-easy half beside the session. On 2026-09-29, taking the
+recorded recommendation (the decision comment on #2329 has the reasoning), the
+other half was answered the same way: **your own workout also rides beside the
+session, never inside it.**
+
+- A voice channel's riding surface offers **your own workout** beside Free
+  ride, from the same library and picker as `/ride`. It is still ADR-0046's
+  one riding surface.
+- It follows SPEC's **ride-alone lifecycle**: a 3 s count-in, the rider owns
+  the clock (`+1 min`, `Skip block`), and the ride saves and scores like a ride
+  alone.
+- Its **audience is the free ride's** (the 2026-09-25 amendment above): live
+  numbers go to whoever has the channel open, and so does heart rate until the
+  rider stops sharing it. The workout's name and steps are shown to nobody, as
+  the session recap never shows a per-rider workout.
+- It is a **spectator** of any session in the channel, with the free ride's
+  exclusions: its trainer is not driven, and nothing of it counts toward the
+  session. Joining the session saves it first.
+- **Nothing changes inside a session.** Riding a different plan inside one is
+  not planned.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+Riding an open ride from a voice channel is a **free ride** there. The open
+ride's position frame is a **second audience**, and it carries **no numbers**.

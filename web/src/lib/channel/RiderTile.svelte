@@ -98,7 +98,7 @@
 		? 'cave'
 		: ''} {stretch
 		? 'h-full'
-		: 'aspect-video'} transition-shadow duration-200 {tileFrame(
+		: 'aspect-video'} transition-shadow duration-(--dur-quick) {tileFrame(
 		rider.speaking,
 		rider.away,
 	)}"
@@ -247,7 +247,7 @@
 		     camera, and the dimmed watts above already read "last known". -->
 		<div class="absolute inset-x-0 bottom-2.5 flex justify-center">
 			<span
-				class="bg-surface/85 text-z5 rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
+				class="bg-surface/85 text-warn rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase"
 				>no signal</span
 			>
 		</div>
@@ -255,7 +255,7 @@
 
 	{#if live && extras.length && !rider.stale}
 		<div
-			class="text-ink absolute right-2.5 bottom-3 flex gap-3 font-mono text-xs font-medium tabular-nums"
+			class="text-ink num absolute right-2.5 bottom-3 flex gap-3 text-xs font-medium"
 		>
 			{#each extras as extra (extra.key)}
 				<span class={extra.key === 'wkg' ? 'hidden @[10rem]:inline' : ''}
@@ -271,7 +271,9 @@
 	<div class="bg-edge absolute inset-x-0 bottom-0 h-1.5">
 		{#if live}
 			<div
-				class="h-full transition-[width] duration-500 ease-out {ZONE_BG[zone]}"
+				class="ease-live h-full transition-[width] duration-(--dur-live) {ZONE_BG[
+					zone
+				]}"
 				style="width: {fill}%"
 			></div>
 		{/if}

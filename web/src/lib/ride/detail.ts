@@ -5,13 +5,15 @@ import type { RidePlace } from './list';
  * sends, and the two calls the detail page and the list row share.
  */
 import { api, type ApiResult } from '$lib/api';
+import type { Curve } from '$lib/progression';
 import type { RideFeel } from './feel';
 import type { RideSample } from './stats';
 
 export interface RideMedal {
 	/** docs/SPEC.md kind — names come from $lib/medals, never retyped. */
 	kind: string;
-	roomName: string;
+	/** The crew it was won in (#3361: `roomName` before crews). */
+	crewName: string;
 	awardedAt: string;
 }
 
@@ -33,7 +35,7 @@ export interface RideDetail {
 	/** #1143: false when the workout prescribed nothing to score. */
 	executionScored?: boolean;
 	/** Ridden in a session, whatever became of its crew (#2630). */
-	room?: boolean;
+	inSession?: boolean;
 	/** Whether the rider may still enter `crew` — named, not linked, if not. */
 	crewMember?: boolean;
 	ftp: number;
@@ -41,7 +43,7 @@ export interface RideDetail {
 	/** Per-ride opt-in (ADR-0024): shown and flipped on the page (#1691). */
 	sharedWithFriends: boolean;
 	/** The ride's own power curve (SPEC), absent when none was stored. */
-	curve?: { best5s: number; best1m: number; best5m: number; best20m: number };
+	curve?: Curve;
 	/** Where it was ridden (#2443); absent for a solo ride. */
 	crew?: RidePlace;
 	channel?: RidePlace;

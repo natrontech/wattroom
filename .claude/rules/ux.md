@@ -35,6 +35,16 @@ The standard is **375 × 812**, and it applies to every surface outside a sessio
 - Opening a text-first task, such as a text channel or private conversation, puts focus in its primary input after navigation so typing works immediately. Apply this when switching conversations too.
 - Focus follows deliberate navigation, never incoming messages, polling, or background renders. Preserve focus when the rider chooses another control or opens a dialog, and avoid incidental scrolling when focusing.
 
+## Motion ([ADR-0079](../../docs/decisions/0079-motion-announces-the-camera-stays-still.md))
+
+- **Live numbers snap.** A bar settles through `transform` over `--dur-live`; only a result rolls, and only once.
+- **Juice goes on things, never on the screen**: a chip, a flag, a bell, confetti from a hand. No shake, bob, roll, overshoot, blur or speed lines anywhere a rider pedals.
+- **One stage moment at a time**, through the moments queue; every motion names its cue and its hit time.
+- **A cue exists only where its model exists** — no draft wake without draft physics.
+- **Reduced motion keeps every sound** and turns each motion into a held stamp. The world answers to the one per-device World control; the rest of the app follows the OS setting.
+- **Flashes**: WCAG 2.3.1 at most, one luminance flash per 10 s over 25 % of a 10° field, and `--color-z6`, `--color-z7`, `--color-danger` and `--color-watt` never blink.
+- Durations and easings come from the motion tokens (docs/SPEC.md, "Motion"), never literals.
+
 ## Right-click
 
 - Every object with more than one action gets a context menu (`contextMenu` from `$lib/context-menu.svelte`, drawn by `ContextMenuHost`): a channel in the sidebar, a rider's tile, a track in the queue, the stage, a message. Right-click on a desk, long-press on touch.

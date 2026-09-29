@@ -165,3 +165,13 @@ still also offers a free single-hue custom entry (`customTheme()` in
 `themes.ts`) alongside the ten curated themes. #692 proposes removing it so
 the set is closed, but as of this amendment the custom entry still ships —
 the picker is eleven-wide today, not ten.
+
+## Amendment, 2026-09-29 (#3064): the cave has a sky
+
+[ADR-0072](0072-light-in-the-world.md) carries both rules into the 3D world.
+**The cave never sees daylight**: a ride's sky is blue hour or night, darkening
+from sun −4° to −8° as the ride goes, and golden hour is for desk previews
+only. **Only live data glows**: in the world that is the rider's own trail and
+dot (the followed rider's, on a spectator's screen); lamps, windows and fires
+are flat colour, with no bloom and no emissive materials. Warm light in the
+world sits at an OKLCH hue of 58–60°, clear of every dark identity's watt.

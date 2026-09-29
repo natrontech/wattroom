@@ -9,6 +9,8 @@ where exists (
       and ((f.requester_id = $1 and f.addressee_id = $2)
         or (f.requester_id = $2 and f.addressee_id = $1))
 )
+-- A hidden pair's thread is closed (#3202), refused by the same zero rows.
+and not rider_hidden($1, $2)
 -- An attached image must belong to THIS pair. Serving already scopes by pair,
 -- so a foreign id could never be viewed — but referencing one would pin its
 -- bytes past the sweep, which is how a client escapes the storage bound.
@@ -31,6 +33,8 @@ where exists (
       and ((f.requester_id = $1 and f.addressee_id = $2)
         or (f.requester_id = $2 and f.addressee_id = $1))
 )
+-- A hidden pair's thread is closed (#3202), refused by the same zero rows.
+and not rider_hidden($1, $2)
 returning id, created_at;
 
 -- name: SaveDmImage :one
@@ -44,6 +48,8 @@ where exists (
       and ((f.requester_id = $1 and f.addressee_id = $2)
         or (f.requester_id = $2 and f.addressee_id = $1))
 )
+-- A hidden pair's thread is closed (#3202), refused by the same zero rows.
+and not rider_hidden($1, $2)
 returning id;
 
 -- name: GetDmImage :one
@@ -150,6 +156,8 @@ from dm_reactions r
 join dm_messages m on m.id = r.message_id
 where least(m.sender_id, m.recipient_id) = least($1::uuid, $2::uuid)
   and greatest(m.sender_id, m.recipient_id) = greatest($1::uuid, $2::uuid)
+  -- A hidden pair's reactions never reach each other (#3202).
+  and not rider_hidden(r.user_id, $3)
 group by r.message_id, r.emoji;
 
 -- name: AddDmReaction :execrows
@@ -177,7 +185,9 @@ where r.message_id = $1 and r.user_id = $2 and r.emoji = $3
   and greatest(m.sender_id, m.recipient_id) = greatest($4::uuid, $5::uuid);
 
 -- name: CountDmReaction :one
-select count(*) from dm_reactions where message_id = $1 and emoji = $2;
+-- The toggle's answer, counted as the thread counts it for this viewer.
+select count(*) from dm_reactions
+where message_id = @message_id and emoji = @emoji and not rider_hidden(user_id, @viewer);
 
 -- name: ListDmHeads :many
 -- The conversation list: my FRIENDS with their latest line, one row per
@@ -220,6 +230,8 @@ from (
      and ((f.requester_id = $1 and f.addressee_id = peer.id)
        or (f.requester_id = peer.id and f.addressee_id = $1))
     where (m.sender_id = $1 or m.recipient_id = $1)
+      -- A hidden pair's thread leaves both lists, as an unfriending's does.
+      and not rider_hidden($1, peer.id)
       and (m.expires_at is null or m.expires_at > now())
     order by peer.id, m.created_at desc
     limit 1000 -- an engineering bound (#1416): peers are friends, and friends are few

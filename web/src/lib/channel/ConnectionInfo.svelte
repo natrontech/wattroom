@@ -52,7 +52,7 @@
 				<dt class="eyebrow">Ping</dt>
 				<dd
 					data-testid="connection-ping"
-					class="text-ink justify-self-end font-mono text-lg tabular-nums"
+					class="text-ink num justify-self-end text-lg"
 					aria-label={ping > 0 ? `${ping} milliseconds` : 'ping not measured'}
 				>
 					{#if ping > 0}

@@ -20,9 +20,15 @@
 		DISCONNECT_GRACE_SECONDS,
 		ELIMINATION_MODES,
 	} from '$lib/session/modes';
+	import { onMount } from 'svelte';
 	import { channelConnection } from '$lib/channel/connection.svelte';
 	import { dropClock } from '$lib/channel/drop-clock.svelte';
 	import { trainerForChannel } from '$lib/ride/solo-trainer.svelte';
+
+	// `frame`: the one the app's frame draws while no page does (#2986). Every
+	// other instance registers, so the frame knows a page is drawing it.
+	let { frame = false }: { frame?: boolean } = $props();
+	onMount(() => (frame ? undefined : channelConnection.showingStatus()));
 
 	const connection = $derived(channelConnection.current);
 	const live = $derived(connection?.live);
@@ -43,6 +49,9 @@
 </script>
 
 {#if connection && live && av && rideCtl}
+	<!-- Where the ride's status is drawn, faults or not (#2986): one on every
+	     screen that holds a ride, never none and never two. -->
+	<span hidden data-testid="ride-status"></span>
 	<!-- Channel-level status belongs to the shell, not to a place: a dropped
 	     connection is true on every one of them, and errors.md wants it
 	     persistent rather than a toast the rider will not see. -->

@@ -4,30 +4,43 @@
  * the engine that plays it. Split for size (code-quality.md).
  */
 
-export interface Voice {
-	type: OscillatorType;
-	/** start frequency in Hz */
-	freq: number;
-	/** sweep to this frequency across the voice's life */
-	to?: number;
+/** What every voice has, whatever makes the sound. */
+interface Envelope {
 	/** offset from cue start, seconds */
 	at: number;
 	dur: number;
 	/** peak gain before the master mix, 0–1 */
 	gain?: number;
+	/**
+	 * A filter sweep: lowpass unless it says otherwise — the single most
+	 * synthwave-sounding thing available. A bandpass is for a struck metal
+	 * body, which is all partials and no floor (the cowbell).
+	 */
+	filter?: { from: number; to?: number; q?: number; type?: 'bandpass' };
+}
+
+export interface Voice extends Envelope {
+	type: OscillatorType;
+	/** start frequency in Hz */
+	freq: number;
+	/** sweep to this frequency across the voice's life */
+	to?: number;
 	/** cents; a little detune is what stops a square wave sounding like a phone */
 	detune?: number;
-	/** lowpass sweep — the single most synthwave-sounding thing available */
-	filter?: { from: number; to?: number; q?: number };
 	/** pitch wobble, for klaxons */
 	wobble?: { rate: number; depth: number };
+}
+
+/** White noise through the filter — a click, not a note (#3209). */
+export interface NoiseVoice extends Envelope {
+	type: 'noise';
 }
 
 export interface Cue {
 	id: CueId;
 	label: string;
 	hint: string;
-	voices: Voice[];
+	voices: (Voice | NoiseVoice)[];
 }
 
 export type CueId =
@@ -38,6 +51,7 @@ export type CueId =
 	| 'elimination'
 	| 'fanfare'
 	| 'cheer'
+	| 'cowbell'
 	| 'reaction'
 	| 'block'
 	| 'join'
@@ -45,7 +59,11 @@ export type CueId =
 	| 'chat'
 	| 'fault'
 	| 'recover'
-	| 'handoff';
+	| 'handoff'
+	| 'shutter'
+	| 'equip'
+	| 'handup'
+	| 'prime';
 
 /** A minor triad reads as tension, a major one as reward — the whole emotional vocabulary. */
 const A4 = 440;
@@ -225,6 +243,34 @@ export const CUES: Record<CueId, Cue> = {
 		],
 	},
 
+	// The roadside's one fixed sound (#3022, ADR-0064): the TR-808 cowbell,
+	// which is two square waves a little under a fifth apart — 540 and 800 Hz,
+	// the 808's own pair — rung through one bandpass. Over in a third of a
+	// second, so a crowd of them is a clatter rather than a drone.
+	cowbell: {
+		id: 'cowbell',
+		label: 'Cowbell',
+		hint: 'Someone at the roadside rang the bell for you. The one sound a spectator can make that is not a rider reaction.',
+		voices: [
+			{
+				type: 'square',
+				freq: 540,
+				at: 0,
+				dur: 0.3,
+				gain: 0.34,
+				filter: { from: 880, q: 3, type: 'bandpass' },
+			},
+			{
+				type: 'square',
+				freq: 800,
+				at: 0,
+				dur: 0.3,
+				gain: 0.3,
+				filter: { from: 880, q: 3, type: 'bandpass' },
+			},
+		],
+	},
+
 	reaction: {
 		id: 'reaction',
 		label: 'Rider reaction',
@@ -370,6 +416,76 @@ export const CUES: Record<CueId, Cue> = {
 				dur: 0.22,
 				gain: 0.26,
 				filter: { from: 1200, to: 2400 },
+			},
+		],
+	},
+
+	// The roadside and the world (#3209, ADR-0064): presence, never a ride
+	// control, so each is quieter than anything a session says to the rider.
+	shutter: {
+		id: 'shutter',
+		label: 'Photo',
+		hint: 'A photo was taken. A 30 ms click of filtered noise — a shutter, not a chime.',
+		voices: [
+			{
+				type: 'noise',
+				at: 0,
+				dur: 0.03,
+				gain: 0.2,
+				filter: { from: 6000, to: 2500 },
+			},
+		],
+	},
+
+	equip: {
+		id: 'equip',
+		label: 'Kit on',
+		hint: 'Something new went on your bike or your kit. Two soft notes; nothing to act on.',
+		voices: [
+			{ type: 'triangle', freq: note(4), at: 0, dur: 0.08, gain: 0.16 },
+			{ type: 'triangle', freq: note(11), at: 0.08, dur: 0.14, gain: 0.18 },
+		],
+	},
+
+	handup: {
+		id: 'handup',
+		label: 'Hand-up',
+		hint: 'A bottle from the roadside. Presence only (ADR-0064): it sounds, and changes nothing you ride.',
+		voices: [
+			{
+				type: 'triangle',
+				freq: note(0),
+				to: note(7),
+				at: 0,
+				dur: 0.12,
+				gain: 0.2,
+			},
+		],
+	},
+
+	// A spectator opened a scored window (ADR-0064). Rising like the klaxon,
+	// but two triangles where it has two detuned saws: a Prime changes what
+	// is scored, never the trainer, so it must not sound like "sprint now".
+	prime: {
+		id: 'prime',
+		label: 'Prime open',
+		hint: 'A spectator opened a Prime — a scored window that leaves your trainer alone. Gentler than the sprint klaxon.',
+		voices: [
+			{
+				type: 'triangle',
+				freq: note(5),
+				to: note(7),
+				at: 0,
+				dur: 0.14,
+				gain: 0.28,
+			},
+			{
+				type: 'triangle',
+				freq: note(12),
+				to: note(14),
+				at: 0.14,
+				dur: 0.26,
+				gain: 0.3,
 			},
 		],
 	},

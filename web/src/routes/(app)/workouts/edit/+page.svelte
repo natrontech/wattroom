@@ -232,7 +232,7 @@
 			aria-label="Workout name"
 			class="font-display border-muted/25 focus:border-muted/60 rounded border bg-transparent px-2 py-0.5 text-2xl font-bold tracking-tight outline-none"
 		/>
-		<span class="text-muted font-mono text-xs tabular-nums">
+		<span class="text-muted num text-xs">
 			{formatClock(total)} · {segments.length === 1
 				? '1 block'
 				: `${segments.length} blocks`}
@@ -357,8 +357,7 @@
 								: 'text-muted hover:text-ink'}"
 						>
 							{entry.workout.name}
-							<span
-								class="text-muted-dim block font-mono text-[10px] tabular-nums"
+							<span class="text-muted-dim num block text-[10px]"
 								>{formatClock(durationSeconds(entry.workout))} · yours</span
 							>
 						</button>
@@ -374,8 +373,7 @@
 								: 'text-muted hover:text-ink'}"
 						>
 							{entry.workout.name}
-							<span
-								class="text-muted-dim block font-mono text-[10px] tabular-nums"
+							<span class="text-muted-dim num block text-[10px]"
 								>{formatClock(durationSeconds(entry.workout))}</span
 							>
 						</button>

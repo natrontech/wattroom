@@ -2,7 +2,13 @@
 	import { FtmsTrainer } from '$lib/ble/ftms';
 	import { enumerateGatt, type GattDump } from '$lib/ble/enumerate';
 	import { hwlog } from '$lib/ble/hwlog';
-	import type { TrainerSample, TrainerStatus } from '$lib/ble/trainer';
+	import type {
+		SimParams,
+		TrainerSample,
+		TrainerStatus,
+	} from '$lib/ble/trainer';
+	import { simulate } from '$lib/ride/actuation';
+	import { ROAD } from '$lib/ride/ride-grade';
 	import { formatClock } from '../channel/mockChannel.svelte';
 
 	/**
@@ -91,11 +97,61 @@
 	}
 
 	async function sendGrade(grade: number) {
+		if (!trainer) return;
 		try {
-			await trainer?.setSimulation(grade);
+			await simulate(trainer, grade);
 			note(`set simulation → ${grade}% grade`);
 		} catch (error) {
 			note(error instanceof Error ? error.message : String(error), true);
+		}
+	}
+
+	/**
+	 * The route checklist's probes (#3025, docs/HARDWARE-SESSIONS.md): one SIM
+	 * write a second, each logged with what the trainer reported that second,
+	 * so the Kickr sitting (#3350) shows how a trainer follows a road.
+	 */
+	let probing = $state<string | null>(null);
+	const PROBE_TOP = 8;
+	const ramp = Array.from(
+		{ length: PROBE_TOP / ROAD.slewPerSecond + 1 },
+		(_, i) => i * ROAD.slewPerSecond,
+	);
+	const probes: Record<string, SimParams[]> = {
+		// The felt grade's slew, up and down, with a hold between.
+		'grade slew': [
+			...ramp,
+			...Array<number>(20).fill(PROBE_TOP),
+			...ramp.toReversed(),
+		].map((gradePct) => ({ gradePct })),
+		// Flat, one real gear, steady cadence: power should drop and recover.
+		'Cw steps': [0.51, 0.33, 0.26, 0.51].flatMap((cw) =>
+			Array<SimParams>(30).fill({ gradePct: 0, cw }),
+		),
+	};
+
+	async function probe(name: string) {
+		if (!trainer || probing) return;
+		probing = name;
+		note(`${name} probe: ${probes[name].length} s, one write a second`);
+		try {
+			for (const road of probes[name]) {
+				if (status !== 'connected') throw new Error('trainer dropped');
+				await trainer.setSimulation(road);
+				hwlog('probe', {
+					probe: name,
+					...road,
+					watts: sample?.watts,
+					cadence: sample?.cadence,
+					speedKph: speed,
+				});
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+			}
+			note(`${name} probe done`);
+		} catch (error) {
+			note(error instanceof Error ? error.message : String(error), true);
+		} finally {
+			probing = null;
 		}
 	}
 
@@ -174,13 +230,13 @@
 				<h2 class="font-display font-bold">{dump.device}</h2>
 				<span
 					class="rounded px-2 py-0.5 text-xs {dump.hasFtms
-						? 'bg-z4/20 text-z4'
+						? 'bg-z4/20 text-ok'
 						: 'bg-danger/20 text-danger'}"
 					>FTMS {dump.hasFtms ? 'present' : 'absent'}</span
 				>
 				<span
 					class="rounded px-2 py-0.5 text-xs {dump.hasWcps
-						? 'bg-z4/20 text-z4'
+						? 'bg-z4/20 text-ok'
 						: 'bg-surface text-muted'}"
 					>WCPS {dump.hasWcps ? 'present' : 'absent'}</span
 				>
@@ -333,12 +389,30 @@
 			range — you cannot shift to meet the grade.
 		</p>
 		<div class="mt-3 flex flex-wrap gap-2">
-			{#each [0, 2, 5, 8] as grade (grade)}
+			{#each [ROAD.feltMin, 0, 2, 5, 8] as grade (grade)}
 				<button
 					onclick={() => sendGrade(grade)}
 					disabled={!connected}
 					class="border-muted/25 hover:border-muted/60 rounded border px-3 py-2 text-xs disabled:opacity-40"
 					>{grade}%</button
+				>
+			{/each}
+		</div>
+
+		<h2 class="font-display mt-6 font-bold">Probes</h2>
+		<p class="text-muted mt-1 text-xs">
+			The route checklist (docs/HARDWARE-SESSIONS.md): hold one gear and a
+			steady cadence while a probe runs; every second is logged.
+		</p>
+		<div class="mt-3 flex flex-wrap gap-2">
+			{#each Object.keys(probes) as name (name)}
+				<button
+					onclick={() => probe(name)}
+					disabled={!connected || !!probing}
+					class="border-muted/25 hover:border-muted/60 rounded border px-3 py-2 text-xs disabled:opacity-40"
+					>{probing === name
+						? `${name} running…`
+						: `${name} (${probes[name].length} s)`}</button
 				>
 			{/each}
 		</div>

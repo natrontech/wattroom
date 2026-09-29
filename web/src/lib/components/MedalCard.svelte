@@ -119,7 +119,7 @@
 		<div class="mt-auto">
 			<p class="text-sm">{placeName}</p>
 			<p class="text-muted text-xs">Sweet Spot 2×20 · 25 Aug 2026</p>
-			<p class="text-muted mt-3 font-mono text-[11px] tabular-nums">
+			<p class="text-muted num mt-3 text-[11px]">
 				{medal.kj} kJ{#if medal.xp !== undefined}
 					· {medal.xp} XP{/if}
 			</p>

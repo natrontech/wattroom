@@ -41,11 +41,16 @@ const fallbackPage = "spa.html"
 // request time (the embedded FS is read-only, and only the server knows what
 // a /c/{code} link points at).
 func spaHandler(social *og.Service) http.Handler {
+	return serveSPA(builtSPA(), social)
+}
+
+// builtSPA is the embedded build, rooted where the server serves it from.
+func builtSPA() fs.FS {
 	dist, err := fs.Sub(webdist, "webdist")
 	if err != nil {
 		panic(err)
 	}
-	return serveSPA(dist, social)
+	return dist
 }
 
 // serveSPA is spaHandler with the build handed in, so a test can supply one:

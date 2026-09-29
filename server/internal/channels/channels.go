@@ -5,12 +5,14 @@
 package channels
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/audience"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/store"
@@ -29,8 +31,10 @@ type UserSource interface {
 // they reload, and a voice row lists nobody in it.
 type Live interface {
 	// The lobby ping (#570): a channel changes because somebody else changed
-	// it, and the ping is how every other client hears and re-fetches.
+	// it, and the ping is how every other client hears and re-fetches — the
+	// crew's members (#2324), or everyone when that lookup failed.
 	PresenceChanged()
+	PresenceChangedFor(audience []string)
 	// Who is in a voice channel right now.
 	Presence(channel string) protocol.ChannelPresence
 	// The session running in a voice channel, if one is (#2438).
@@ -94,13 +98,15 @@ func (s *Service) evict(channel, userID string) {
 	}
 }
 
-// changed pings every lobby socket; the ping carries no data.
-// ponytail: one ping for every crew, not just this crew's members — the lobby
-// has no per-crew routing yet (#2444), and a channel edit is a rare event.
-func (s *Service) changed() {
-	if s.live != nil {
-		s.live.PresenceChanged()
+// changed pings the lobby sockets of the crew's members (#2324); the ping
+// carries no data. `also` is a rider the crew no longer holds — the owner
+// whose last channel took the crew with it.
+func (s *Service) changed(ctx context.Context, crew pgtype.UUID, also ...pgtype.UUID) {
+	if s.live == nil {
+		return
 	}
+	who, err := audience.Crew(context.WithoutCancel(ctx), s.store.Queries, crew, also...)
+	audience.Tell(s.live, s.log, who, err)
 }
 
 func (s *Service) Register(mux *http.ServeMux) {

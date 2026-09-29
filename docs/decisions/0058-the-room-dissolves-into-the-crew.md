@@ -448,3 +448,8 @@ the channel starts. What the session leaves the crew is
 [0034](0034-a-session-leaves-one-recap.md)'s recap, which carries presence and
 time and never a rider's number, and each rider's own numbers stay on their
 own ride.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+The object model gains the **open ride**: a planned session a crew opened to
+everyone, run in an **open-ride room** of its own beside the voice channels.

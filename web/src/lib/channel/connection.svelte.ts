@@ -1,3 +1,4 @@
+import { rememberRodeIn } from '$lib/crew-lounge';
 import { account } from '$lib/account.svelte';
 import { createProfileStore } from '$lib/profile.svelte';
 import { spaceBelongsTo } from '$lib/channel/ptt-keys';
@@ -15,6 +16,8 @@ import { parseSharedWorkout } from '$lib/workout/shared';
 import { play } from '$lib/sound/cues';
 import { applyAway, noEcho, pressed } from '$lib/channel/away-echo';
 import { connectionCues } from '$lib/channel/connection-cues.svelte';
+import { bottleHandUps } from '$lib/channel/bottles.svelte';
+import { effortOf } from '$lib/roadside';
 import { followMoves } from '$lib/channel/follow-move.svelte';
 import { toasts } from '$lib/toast.svelte';
 import type { SessionState } from '$lib/protocol';
@@ -68,6 +71,11 @@ type Connection = {
 };
 
 let current = $state<Connection | null>(null);
+// How many ChannelStatus a page has mounted for the live place (#2986): the
+// shell's and a session's layers each register theirs. The frame draws one
+// exactly when a held ride has none — which a path cannot say, because a
+// place's own page can fail to load and leave its path with no shell.
+let statusShown = $state(0);
 
 // The AV half loads with the channel, not with the shell (#1514): av.svelte.ts
 // and what it pulls — device choices, the mic chain, the stage — were the
@@ -130,7 +138,7 @@ function connect(address: PlaceAddress): Connection {
 		// dropped as a duplicate. The tiles kept moving, which is why it read
 		// as half-working; the execution meter and the saved ride did not.
 		profile = createProfileStore();
-		recording = createRecording();
+		recording = createRecording({ ftp: () => profile.current.ftp });
 		// The account is the truth for FTP and weight (ADR-0009). The root
 		// layout pulls on boot; a connection that outlives many pages has to
 		// pull too, or a ramp-measured FTP never reaches the session's targets.
@@ -146,7 +154,10 @@ function connect(address: PlaceAddress): Connection {
 		// Here and not in a page: the recording outlives every page (#2654).
 		$effect(() => recording.follow(shared?.phase));
 
-		freeRide = createFreeRide({ ftp: () => profile.current.ftp });
+		freeRide = createFreeRide({
+			ftp: () => profile.current.ftp,
+			singleSpeed: () => profile.current.singleSpeed,
+		});
 		ride = createRide({
 			live,
 			profile,
@@ -156,6 +167,16 @@ function connect(address: PlaceAddress): Connection {
 			segments: () => parsed.segments,
 			joined,
 			free: freeRide,
+		});
+		// The lounge is where you last rode (#3274): noted on this device when
+		// the roster first says you are riding here — a free ride or a session.
+		let notedRiding = false;
+		$effect(() => {
+			const riding = !!live.tick?.roster.find(
+				(r) => r.id === account.me?.id && r.riding,
+			);
+			if (riding && !notedRiding) rememberRodeIn(address.crew, address.channel);
+			notedRiding = riding;
 		});
 		// Joining a session saves the free ride first (docs/SPEC.md): the
 		// session's trainer and record take over from here. On the step in,
@@ -219,6 +240,12 @@ function connect(address: PlaceAddress): Connection {
 
 		// Everything the connection says out loud (connection-cues.svelte.ts).
 		connectionCues({ address, live, av });
+		// A bottle from the roadside waits for this rider's valley (#3022).
+		bottleHandUps({
+			address,
+			live,
+			effort: () => effortOf(ride.effort, live.tick?.game, account.me?.id),
+		});
 		followMoves({ address, live, av });
 
 		// PTT keys work on EVERY page while in voice — and a keyup lost to
@@ -331,16 +358,24 @@ export const channelConnection = {
 		);
 	},
 	/**
-	 * A ride is held — a free ride, or the session you joined — and `pathname`
-	 * is not its place (#2885): the place's own shell carries the ride's status
-	 * and is not mounted here, so the frame has to.
+	 * A ride is held — a free ride, or the session you joined — and nothing on
+	 * screen draws its status: off its place (#2885), or on it with the page
+	 * failed to load and no shell mounted (#2986). The frame draws it then; a
+	 * ride-critical error is persistent status wherever the rider is.
 	 */
-	ridingAway(pathname: string): boolean {
+	rideStatusUnshown(): boolean {
 		return (
 			!!current &&
 			(current.freeRide.recording || current.joined()) &&
-			!this.onPlacePath(pathname)
+			statusShown === 0
 		);
+	},
+	/** A page's ChannelStatus mounted; the function it returns unmounts it. */
+	showingStatus(): () => void {
+		statusShown++;
+		return () => {
+			statusShown--;
+		};
 	},
 	/** Idempotent per place; switching places leaves the old one first. */
 	join(address: PlaceAddress) {

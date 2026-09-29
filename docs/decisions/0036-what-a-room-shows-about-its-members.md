@@ -240,3 +240,28 @@ The migration that ships this takes members of crews whose board is off today
 off the board. The rows cannot tell a default from a rider who switched
 themselves on while the board was off, so both go off, which is the narrow
 side. Nobody can see any difference until the board is turned on.
+
+## Amendment, 2026-09-29 (#3121): climb times join the weekly board
+
+[ADR-0074](0074-a-time-is-yours-when-your-watts-moved-your-dot.md) lets the
+crew's **weekly board** carry climb times — the fastest, and the most ascents —
+beside its kJ and time ridden, on this ADR's terms and no others: off until
+the crew's owner or an admin turns it on, only riders who are `on_board`, this
+week only with the Monday reset, bracketed by Category D–A. Only efforts that
+are `timeable` and `board_ok` count, and flat stretches are never on it. It is
+still the one ordered surface a crew has, and never its front page.
+
+## Amendment, 2026-09-29 (#3277): a member may let their rides count
+
+[ADR-0080](0080-a-crews-season-is-a-tour.md) gives a crew a cooperative tour.
+Point 3 — nothing else derived from another member's rides, **by default** —
+stands, and gains one opt-in: **"My rides count for ⟨crew⟩"**, on the
+membership, off by default and not retroactive. A counted ride adds tour metres
+to the crew's caravan; the crew sees a kilometre and an unordered list of who
+moved it this week, never a number per member. Leaving the crew takes the
+opt-in with it.
+
+## Amendment, 2026-09-29 (#3299): open rides ([ADR-0076](0076-shared-roads-not-an-open-world.md))
+
+An open ride **orders nobody**. Its race formats show each rider only their
+own placing, once, on the closing card, and nothing is stored.

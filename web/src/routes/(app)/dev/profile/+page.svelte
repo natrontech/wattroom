@@ -144,7 +144,7 @@
 									<span
 										class="ml-auto flex items-center gap-1 text-[11px] {ride.medal ===
 										'gold'
-											? 'text-z5'
+											? 'text-warn'
 											: 'text-muted'}"><Award size={12} /> {ride.medal}</span
 									>
 								{/if}

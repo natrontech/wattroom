@@ -1,3 +1,4 @@
+import BellRing from '@lucide/svelte/icons/bell-ring';
 import BicepsFlexed from '@lucide/svelte/icons/biceps-flexed';
 import Bike from '@lucide/svelte/icons/bike';
 import Coffee from '@lucide/svelte/icons/coffee';
@@ -98,7 +99,19 @@ export const EMOJI_TO_KEY: Record<string, string> = {
 	'👍': 'thumbs-up',
 };
 
-const ALL_ICONS: Record<string, Icon> = { ...MARK_ICONS, ...CHEER_ICONS };
+/**
+ * The roadside's cowbell (#3022, ADR-0064): one fixed key every deck sends,
+ * whatever the rider's own set holds, and the one cheer that rings a sound
+ * of its own. Drawn wherever a cheer is; offered in nobody's reaction set,
+ * so it stays the same bell for everyone.
+ */
+export const BELL = 'bell-ring';
+
+const ALL_ICONS: Record<string, Icon> = {
+	...MARK_ICONS,
+	...CHEER_ICONS,
+	[BELL]: BellRing,
+};
 
 /** The icon key a stored value means: a key as-is, a known emoji translated. */
 export function keyFor(value: string): string {

@@ -10,6 +10,7 @@
 
 	let {
 		riders,
+		idle = false,
 		segments,
 		total,
 		elapsed,
@@ -20,6 +21,8 @@
 		code = '',
 	}: {
 		riders: LiveRider[];
+		/** Your instrument has nothing paired to read (#2941). */
+		idle?: boolean;
 		segments: import('$lib/workout/types').Segment[];
 		total: number;
 		elapsed: number;
@@ -51,13 +54,13 @@
 			<h1 class="font-display text-[6vh] leading-none font-bold">
 				{placeName}
 			</h1>
-			<p class="text-muted mt-[2vh] text-[2.4vh]">
+			<p class="text-muted mt-[2vh] text-[3vh]">
 				{riders.length
 					? riders.map((rider) => rider.name).join(' · ')
 					: 'Nobody riding yet'}
 			</p>
 			{#if code}
-				<p class="text-muted mt-[6vh] text-[1.8vh] tracking-[0.2em] uppercase">
+				<p class="text-muted mt-[6vh] text-[3vh] tracking-[0.2em] uppercase">
 					crew code
 				</p>
 				<p
@@ -66,7 +69,7 @@
 					{code}
 				</p>
 			{/if}
-			<p class="text-muted mt-[6vh] text-[2vh]">
+			<p class="text-muted mt-[6vh] text-[3vh]">
 				No session yet — start one from the laptop.
 			</p>
 		</div>
@@ -75,9 +78,9 @@
 			<h1 class="font-display text-[3.4vh] leading-none font-bold">
 				{placeName}
 			</h1>
-			<span class="text-muted text-[2.2vh]">{workoutName}</span>
+			<span class="text-muted text-[3vh]">{workoutName}</span>
 			<span
-				class="font-display ml-auto text-[4.5vh] leading-none font-bold tabular-nums"
+				class="font-display ml-auto text-[5vh] leading-none font-bold tabular-nums"
 				>{formatClock(elapsed)}</span
 			>
 		</header>
@@ -93,6 +96,7 @@
 					target={you.target}
 					ftp={you.ftp}
 					stale={you.stale}
+					{idle}
 					tv
 				/>
 				<div class="mt-[2.5vh]">
@@ -104,22 +108,22 @@
 						big
 					/>
 				</div>
-				<div class="mt-[2vh] flex items-baseline gap-[2.5vw] text-[2.4vh]">
+				<div class="mt-[2vh] flex items-baseline gap-[2.5vw] text-[6vh]">
 					<span class="text-ink"
 						>{you.cadence}
-						<span class="text-muted text-[1.6vh]">rpm</span></span
+						<span class="text-muted text-[3vh]">rpm</span></span
 					>
 					<!-- Only with something reporting it: a permanent "0 bpm" at three
 					     metres reads as a broken strap (#1531). -->
 					{#if you.hr > 0}
 						<span class="text-ink"
-							>{you.hr} <span class="text-muted text-[1.6vh]">bpm</span></span
+							>{you.hr} <span class="text-muted text-[3vh]">bpm</span></span
 						>
 					{/if}
 					{#if you.watts > 0}
 						<span
 							class="font-display text-ink flex items-center gap-[0.8vh] font-bold"
-							><ZoneDot {zone} class="size-[1.6vh]" />Z{zone}</span
+							><ZoneDot {zone} class="size-[3vh]" />Z{zone}</span
 						>
 					{/if}
 				</div>
@@ -133,17 +137,17 @@
 					{#each others as rider (rider.id)}
 						{@const riderZone = zoneOf(rider.watts, rider.ftp)}
 						<div class="flex items-center gap-[1.2vw]">
-							<span class="w-[7vw] truncate text-[2.6vh]">{rider.name}</span>
+							<span class="w-[7vw] truncate text-[3vh]">{rider.name}</span>
 							<ProgressBar
 								pct={fillPct(rider.watts, rider.ftp)}
 								h="h-[1.6vh]"
 								fill="{ZONE_BG[
 									riderZone
-								]} transition-[width] duration-500 ease-out"
+								]} transition-[width] duration-(--dur-live) ease-live"
 								class="flex-1"
 							/>
 							<span
-								class="font-display w-[6vw] text-right text-[3.2vh] font-bold tabular-nums"
+								class="font-display w-[7vw] text-right text-[5vh] font-bold tabular-nums"
 								>{rider.watts}</span
 							>
 						</div>

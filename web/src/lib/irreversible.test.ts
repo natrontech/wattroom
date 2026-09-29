@@ -75,7 +75,7 @@ const GUARDED: Guarded[] = [
 		asks: /confirm\(/,
 	},
 	{
-		file: 'lib/profile/CoachAccess.svelte',
+		file: 'lib/profile/TokenList.svelte',
 		action: 'revoke a coach token — the secret is never shown again',
 		asks: /confirm\(/,
 	},

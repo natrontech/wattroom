@@ -230,7 +230,7 @@
 	     under the player with no grip left to reach. -->
 	<div
 		data-pane={PANE}
-		class="bg-surface ring-ink/15 fixed top-32 left-4 rounded-lg p-1.5 shadow-2xl ring-1 transition-[width] duration-200 motion-reduce:transition-none md:left-72 {face ===
+		class="bg-surface ring-ink/15 fixed top-32 left-4 rounded-lg p-1.5 shadow-2xl ring-1 transition-[width] duration-(--dur-base) motion-reduce:transition-none md:left-72 {face ===
 		'trim'
 			? 'w-[min(600px,calc(100vw-2rem))]'
 			: 'w-[364px]'} {covered ? 'z-30' : 'z-[57]'}"

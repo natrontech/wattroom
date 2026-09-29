@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { people } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import { serverNow } from '$lib/server-clock';
 	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { account } from '$lib/account.svelte';
@@ -11,6 +9,8 @@
 	import { gameMode } from '$lib/session/modes';
 	import { PLACES } from '$lib/session/podium';
 	import Heart from '@lucide/svelte/icons/heart';
+	import { atRoadside } from '$lib/roadside';
+	import type { Snippet } from 'svelte';
 	import type { GameState } from '$lib/protocol';
 
 	// One panel, seven heroes (#39's modes design): the server owns every rule;
@@ -21,6 +21,7 @@
 		end,
 		canControl,
 		me,
+		roadside,
 	}: {
 		game: GameState;
 		/** Names for ids — the tick's roster, or the channel's riders (#1589). */
@@ -29,6 +30,9 @@
 		canControl: boolean;
 		/** The viewer's rider id: their own elimination is status (#1590). */
 		me?: string;
+		/** The deck an eliminated rider is handed (#3022) — the caller knows
+		 *  who they are watching. */
+		roadside?: Snippet;
 	} = $props();
 
 	const profile = createProfileStore();
@@ -92,7 +96,7 @@
 			<span class="text-muted text-xs">round {game.round}</span>
 		{/if}
 		{#if game.roundEndsAtMs && game.phase === 'running' && game.mode !== 'sprint-roulette'}
-			<span class="text-muted font-mono text-xs tabular-nums"
+			<span class="text-muted num text-xs"
 				>{formatClock(Math.round(roundLeft))}</span
 			>
 		{/if}
@@ -103,19 +107,22 @@
 		{/if}
 	</div>
 
-	{#if me && game.riders?.[me]?.eliminated && game.phase !== 'done'}
+	{#if atRoadside(game, me)}
 		<!-- The moment the mode is about, addressed to the person it happened
-		     to (#1590): it was a comma in the smallest type on screen. Persistent
-		     status, never a toast (errors.md). -->
-		<p
-			role="status"
-			class="border-z5/40 bg-z5/10 mt-4 rounded-lg border px-4 py-3 text-sm"
-		>
-			<span class="font-medium">You're out this game.</span>
-			<span class="text-muted"
-				>Spin easy — you're still riding, and the panel shows how it ends.</span
-			>
-		</p>
+		     to (#1590): it was a comma in the smallest type on screen. And where
+		     it leaves them (#3022): at the roadside, with the deck in reach —
+		     out of the game, not out of the ride. Persistent status, never a
+		     toast (errors.md). -->
+		<div class="border-z5/40 bg-z5/10 mt-4 rounded-lg border px-4 py-3">
+			<p role="status" class="text-sm">
+				<span class="font-medium">You're out — you're at the roadside now.</span
+				>
+				<span class="text-muted"
+					>Spin easy, you're still riding. Cheer the ones still in.</span
+				>
+			</p>
+			{#if roadside}<div class="mt-3">{@render roadside()}</div>{/if}
+		</div>
 	{/if}
 
 	{#if game.phase === 'done' && game.podium}
@@ -135,7 +142,6 @@
 						{/if}
 					</span>
 					<span class="font-medium">{score.name}</span>
-					<StatusMark line={people.face(score.riderId)?.statusLine} size={14} />
 					{#if game.mode === 'sprint-roulette'}
 						<span class="font-display ml-auto font-bold tabular-nums"
 							>{score.wkg.toFixed(1)} w/kg</span
@@ -218,7 +224,6 @@
 						: 'border-muted/20'}"
 				>
 					{name(id)}
-					<StatusMark line={people.face(id)?.statusLine} size={12} />
 					<span
 						class="inline-flex items-center gap-0.5"
 						aria-label="{lives} {lives === 1 ? 'life' : 'lives'} left"
@@ -248,7 +253,7 @@
 					your power is hidden until the hole ends
 				</div>
 			{/if}
-			<p class="text-muted mt-4 font-mono text-xs tabular-nums">
+			<p class="text-muted num mt-4 text-xs">
 				strokes so far: {Math.round(
 					game.riders?.[account.me?.id ?? '']?.score ?? 0,
 				)}
@@ -277,9 +282,8 @@
 						<p class="eyebrow">best {i + 1}</p>
 						<p class="font-display mt-1 flex items-center gap-1.5 font-bold">
 							<span class="truncate">{name(id)}</span>
-							<StatusMark line={people.face(id)?.statusLine} size={14} />
 						</p>
-						<p class="font-mono text-xs tabular-nums">
+						<p class="num text-xs">
 							{(rider.score ?? 0).toFixed(1)} w/kg
 						</p>
 					</div>
@@ -290,12 +294,9 @@
 		<ul class="mt-4 space-y-2">
 			{#each standing as [id, rider], i (id)}
 				<li class="flex items-center gap-3">
-					<span class="text-muted w-5 font-mono text-xs tabular-nums"
-						>{i + 1}</span
-					>
+					<span class="text-muted num w-5 text-xs">{i + 1}</span>
 					<span class="flex w-20 items-center gap-1 text-sm">
 						<span class="truncate">{name(id)}</span>
-						<StatusMark line={people.face(id)?.statusLine} size={12} />
 					</span>
 					<ProgressBar
 						pct={((rider.score ?? 0) /
@@ -322,10 +323,6 @@
 				<p class="eyebrow">on the front</p>
 				<p class="font-display text-ink mt-1 text-2xl font-bold">
 					{front ? name(front[0]) : '—'}
-					{#if front}<StatusMark
-							line={people.face(front[0])?.statusLine}
-							size={18}
-						/>{/if}
 				</p>
 				<p class="text-muted mt-1 text-xs">
 					110 % FTP · rest sit at 55 % · rotates in {formatClock(

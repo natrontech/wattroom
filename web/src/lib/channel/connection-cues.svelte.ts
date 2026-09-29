@@ -101,7 +101,7 @@ export function connectionCues({
 			// A rider the last tick did not have is arriving, not coming
 			// back: that is the cue above's event, not this one's.
 			if (was === undefined || was === !!rider.away) continue;
-			play(rider.away ? 'leave' : 'join', -7);
+			play(rider.away ? 'leave' : 'join', { semitones: -7 });
 		}
 	});
 
@@ -133,7 +133,7 @@ export function connectionCues({
 		knownVoice = now;
 		if (before === null) return;
 		for (const change of comingsAndGoings(before, now, account.me?.id))
-			play(change.live ? 'join' : 'leave', 7);
+			play(change.live ? 'join' : 'leave', { semitones: 7 });
 	});
 
 	// Someone else's screen appearing announces itself (#664): while the
@@ -182,13 +182,18 @@ export function connectionCues({
 			const phase = untrack(() => live.tick?.state.phase);
 			if (phase !== 'running' && phase !== 'paused') return false;
 			// A text channel's line waits in the sidebar's unread (#2531); only
-			// a DM or a poke, which has no row on this screen, is written into
-			// the timeline — a poke by who sent it, the whole point of one.
+			// a DM, a poke or a bottle, which have no row on this screen, is
+			// written into the timeline — a poke by who sent it, the whole
+			// point of one.
 			if (arrival.kind === 'dm')
 				live.pushEvent(dmArrivalEvent(arrival.title, arrival.at));
-			if (arrival.kind === 'poke')
+			if (arrival.kind === 'poke' || arrival.kind === 'bottle')
 				live.pushEvent(
-					dmArrivalEvent(arrival.from ?? arrival.title, arrival.at, 'poked'),
+					dmArrivalEvent(
+						arrival.from ?? arrival.title,
+						arrival.at,
+						arrival.kind === 'poke' ? 'poked' : 'bottled',
+					),
 				);
 			return true;
 		}),

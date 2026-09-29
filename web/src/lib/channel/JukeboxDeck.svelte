@@ -278,7 +278,7 @@
 			>
 				<span class="bg-muted/20 block h-1.5 rounded-full">
 					<span
-						class="bg-watt relative block h-full rounded-full transition-[width] duration-200"
+						class="bg-watt relative block h-full rounded-full transition-[width] duration-(--dur-base)"
 						style="width: {progress}%"
 					>
 						<span
@@ -287,9 +287,7 @@
 					</span>
 				</span>
 			</button>
-			<div
-				class="text-muted flex justify-between font-mono text-[10px] tabular-nums"
-			>
+			<div class="text-muted num flex justify-between text-[10px]">
 				<span>{formatClockLong(elapsed)}</span>
 				<span>{duration > 0 ? formatClockLong(duration) : '–:––'}</span>
 			</div>

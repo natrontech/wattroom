@@ -164,7 +164,7 @@ Trainer interface: setTargetPower(w) · setSim(grade) · streams(power, cadence,
 So the actual alpha hardware is one Kickr Core plus several Kickr Core v2 — **all FTMS**. Nobody on the team owns a pre-FTMS Wahoo. That removes the justification for WcpsTrainer being M1 scope ([WATTROOM.md](../WATTROOM.md) line 105: "Alpha hardware = one Core + several v2s, so WCPS is M1 scope, not a fallback"), and with it the premise of #43 and #4.
 
 Not re-decided here — it changes a locked doc, so it needs an ADR. The WCPS protocol map below stays either way: it is correct research, and it is what a rider who *does* bring a 2016 v2 would need.
-- **Zwift Cog / virtual shifting**: irrelevant in ERG (trainer holds watts regardless of gear — the Cog works fine, as with TrainerRoad/MyWhoosh). In **slope mode** a Cog'd trainer is one fixed gear: virtual shifting is Zwift-proprietary (Click/Play pair only with the Zwift app; patented — US11986700/US12465816), no third-party API shipped yet despite announcements. Consequence: sprint moments get a per-rider sprint-grade setting instead of shifting (#31); don't implement app-side virtual shifting unless the official API lands. ([DC Rainmaker](https://www.dcrainmaker.com/2024/02/wahoo-kickr-review.html), [Makinolo protocol analysis](https://www.makinolo.com/blog/2023/11/06/virtual-gear-shifting-in-indoor-training/), [Zwift Cog third-party guide](https://www.gatebreakendurance.com/cycling/zwift-cog-with-other-cycling-apps/))
+- **Zwift Cog / virtual shifting**: irrelevant in ERG (trainer holds watts regardless of gear — the Cog works fine, as with TrainerRoad/MyWhoosh). In **slope mode** a Cog'd trainer is one fixed gear: virtual shifting is Zwift-proprietary (Click/Play pair only with the Zwift app; patented — US11986700/US12465816), no third-party API shipped yet despite announcements. ~~Consequence: sprint moments get a per-rider sprint-grade setting instead of shifting (#31); don't implement app-side virtual shifting unless the official API lands.~~ (written 2026-07-22, struck 2026-09-29) **Revised 2026-09-29 (#3322, [ADR-0084](decisions/0084-wattroom-shifts.md))**: the claims were read from the USPTO full text on 2026-09-28. [US 11,986,700](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/11986700) (filed 2021-12-31, granted 2024-05-21) needs, in every independent claim, a shift or braking made by "at least one rapid near-cessation of resistance"; a resistance per virtual gear is not claimed on its own. [US 12,465,816](https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/12465816) (filed 2023-06-13, granted 2025-11-11) claims a three-part link, the shape of Zwift's ZAP. Pending and not enforceable until granted: 18/640,559 (a '700 continuation: auto-shift, a countdown, a smooth transition), 18/334,110 (a separate gear-shifting device feeding a virtual world) and 19/360,268 (a '816 continuation); a grant with its published claims substantially unchanged can reach back to publication (35 USC §154(d)). No EP or CH right to virtual shifting is granted; EP4631586 and any further divisional of EP4205825 stay on watch. Prior art runs from ICON's US 2013/0059698 (2011) through the Wattbike Atom (2017), the Tacx NEO Bike and KICKR BIKE (2019) and Wahoo's US 2021/0060380 to qdomyos-zwift's app-side gears (2021). WattRoom ships virtual gears without a freedom-to-operate opinion (Jan, 2026-09-28), inside ADR-0084's hard rules (no resistance dip on a shift, no auto-shift or easing, no Zwift protocol), and checks the pending applications at the first release of each week (#3323). Not legal advice. ([DC Rainmaker](https://www.dcrainmaker.com/2024/02/wahoo-kickr-review.html), [Makinolo protocol analysis](https://www.makinolo.com/blog/2023/11/06/virtual-gear-shifting-in-indoor-training/), [Zwift Cog third-party guide](https://www.gatebreakendurance.com/cycling/zwift-cog-with-other-cycling-apps/))
 
 ## 10. Implementation depth: media & realtime (verified 3–0 unless noted; run of 2026-08-25)
 
@@ -206,7 +206,7 @@ Not re-decided here — it changes a locked doc, so it needs an ADR. The WCPS pr
 **Multi-source arbitration (TrainerRoad's mature pattern, adopt as-is):** a paired power meter **always wins** display/record over the trainer; PowerMatch closes the loop by offsetting the ERG command by the measured meter↔trainer delta (default sensitivity 0.5). Cadence: dedicated sensor > power-meter crank data > trainer estimate.
 
 **Zwift accessories (reverse-engineered state):**
-- Play/Ride controllers expose proprietary service `00000001-19ca-4651-86e5-fa29dcdd09d1` speaking protobuf "ZAP" messages; Ride-family button presses are message 0x23 with an **active-low** 32-bit bitmap. But the **handshake/encryption story is unresolved** (all three competing accounts refuted each other) — reading Click/Play buttons from Web Bluetooth is NOT currently viable to plan on. Sprint-grade-instead-of-shifting stands validated: virtual shifting runs on Zwift's closed per-agreement trainer protocol (Elite/JetBlack/Van Rysel firmware deals; SHIFTR/BikeControl exist precisely to bridge it).
+- Play/Ride controllers expose proprietary service `00000001-19ca-4651-86e5-fa29dcdd09d1` speaking protobuf "ZAP" messages; Ride-family button presses are message 0x23 with an **active-low** 32-bit bitmap. ~~But the **handshake/encryption story is unresolved** (all three competing accounts refuted each other) — reading Click/Play buttons from Web Bluetooth is NOT currently viable to plan on. Sprint-grade-instead-of-shifting stands validated: virtual shifting runs on Zwift's closed per-agreement trainer protocol (Elite/JetBlack/Van Rysel firmware deals; SHIFTR/BikeControl exist precisely to bridge it).~~ (written 2026-08-25, struck 2026-09-29) **Revised 2026-09-29 (#3322, [ADR-0084](decisions/0084-wattroom-shifts.md))**: the Play and Ride handshakes are documented (Makinolo, 2023-10-08 and 2024-07-26); Click v2 adds a daily unlock; OpenBikeControl exists as an open controller protocol (MIT, spec v1); and Rouvy has belonged to Zwift since 2026-04-29. WattRoom speaks none of Zwift's protocols. Its shift input is its own: the on-screen Easier / Harder pair, the keyboard, the rider's phone as a remote, and OpenBikeControl controllers over Web Bluetooth.
 - **Tacx NEO generation** needs FE-C tunneled over BLE: service `6e40fec1-b5a3-f393-e0a9-e50e24dcca9e`, FEC_TX `…fec2` notify / FEC_RX `…fec3` write (Nordic-UART framing of ANT+ FE-C pages; pycycling has a clean reference module). A future `FecTrainer` driver slots behind the same `Trainer` interface if a NEO owner joins.
 - Pre-2020 proprietary-BLE trainers: shipping apps simply declare them unsupported (ANT+-dongle advice doesn't transfer to Web Bluetooth). **M1 support line = FTMS + WCPS is validated.**
 
@@ -771,6 +771,78 @@ The pages built on it (`/vs/*`) add:
   - WhatsApp wants under 600 KB ([Meta](https://developers.facebook.com/documentation/business-messaging/whatsapp/link-previews)).
   - iMessage reportedly crops toward a square (unverified), hence the centred cards.
   - Avoid WebP for Slack and Discord.
+
+## 20. How often two riders share a road (research for #3318; run of 2026-09-29)
+
+ADR-0076 parks the always-on open road behind a measured condition, and that
+rests on how empty a road is at WattRoom's size. This is the model, its inputs
+and its answer. `scripts/road-density.py` computes every number below; run it
+to reproduce the table.
+
+**The model.** The chance that someone else is on my 5 km of road, when R
+riders spread over stretches ridden with Zipf popularity p:
+
+`P(meet) ≈ 1 − exp(−(R − 1) / M_eff)`, with `M_eff = 1 / Σ p²`
+
+M_eff is the effective number of stretches: how many equally popular stretches
+would give the same chance of company. For the async counterpart and the alpha
+instance, λ is the mean number of other riders on one road at a moment of
+prime time: rides a week × ride hours ÷ prime-time hours.
+
+**Inputs (facts, dated).**
+
+- Swiss roads: 85,151 km (BFS, 2025:
+  https://www.bfs.admin.ch/bfs/de/home/statistiken/mobilitaet-verkehr/verkehrsinfrastruktur-fahrzeuge/streckenlaenge.html).
+- Zwift roads: 408.5 km, or 834.7 km with Climb Portal and Gravel Mountain
+  (https://zwiftinsider.com/how-many-km-of-road/, updated 2025-10-15).
+- Zwift's peak: about 40,600 concurrent riders
+  (https://the5krunner.com/2026/01/23/peak-zwift-2026-indoor-cycling-trends/, 2026-01-23).
+
+**Assumptions (guesses, each labelled; change them in the script).**
+
+- 100 WattRoom riders online at once, **40** of them solo on a road.
+- Home roads: Swiss 5 km stretches ridden with Zipf popularity, exponent
+  **0.5** (spread out) to **0.8** (bunched near where riders live).
+- The library: **12** roads of about 20 km (4 stretches each), ridden with Zipf
+  exponent **0.8**; **half** of the solo road riders are on one.
+- A col of the month draws **75 %** of the library's riders.
+- Zwift's stretches ridden with Zipf exponent **0.8**.
+- The alpha instance: **40** active riders, **3** one-hour rides a week each,
+  **30 %** of rides solo on the 12 library roads, **21** prime-time hours a week
+  (three hours an evening).
+
+**The answer.**
+
+| Where | Result |
+| --- | --- |
+| Home roads (17,030 stretches) | **0.6–9 %** chance someone else is on my 5 km |
+| The 12-road library (20 riders) | about **46 %** |
+| A col of the month | about **93 %** |
+| Zwift at peak, spread evenly over 834.7 / 408.5 km | about **243 / 495** others per 5 km |
+| Zwift at peak, Zipf 0.8 over 408.5 km | about **1,505** others per 5 km |
+
+**The alpha instance ADR-0076 quotes.** 40 × 3 × 30 % = 36 solo library rides a
+week, **3** a road. λ ≈ **0.14**, so at any given moment **87 %** of those rides
+have nobody else on their road. Over the whole hour, counting anyone who
+starts within an hour either side, it is **75 %**.
+
+**The async counterpart.** Over **90** days those rides leave about **39**
+efforts on an average library road, and about **120** on the most popular one.
+Ghosts and times on a climb fill up; live company does not.
+
+**ADR-0076's reopen condition, in the same units.** At least **60** solo rides
+a week on one road gives λ ≈ **2.9**. Nobody else is there at a given moment
+only **6 %** of the time.
+
+**What that leaves for strangers.** At WattRoom's size a road is empty. A
+rider meets someone live only where riders are concentrated on purpose — a
+library climb, a col of the month, a scheduled open ride — and meets them far
+more often across time, as ghosts and times, than at the same moment. Zwift's
+roads are full because tens of thousands of riders share a few hundred
+kilometres, and no amount of design makes 40 riders on 85,000 km feel like
+that. The lab run that planned ADR-0076 quoted 0.5–12 %, about 49 % and about
+500–2,000 with assumptions it did not record. The table above is the same
+model with the assumptions written down.
 
 ## Ranked risks to the plan
 

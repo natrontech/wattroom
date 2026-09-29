@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DEFAULTS } from '$lib/workout/guards';
-import { COUNTDOWN_SECONDS, SIGNAL_LOST_MS } from '$lib/workout/session.svelte';
+import { COUNTDOWN_SECONDS, SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 import { SPRINT_LEAD_SECONDS } from '$lib/workout/sprint-window.svelte';
 
 /**

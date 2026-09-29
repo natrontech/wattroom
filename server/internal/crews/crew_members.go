@@ -136,7 +136,7 @@ func (s *Service) handleSetCrewPrefs(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "set crew prefs failed", err, "That could not be saved. Try again.", "crew", store.UUIDString(crew.ID))
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusOK, riderPrefsJSON{Notify: prefs.Notify, OnBoard: prefs.OnBoard})
 }
 

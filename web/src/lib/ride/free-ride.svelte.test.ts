@@ -44,6 +44,44 @@ describe('the free ride’s control (docs/SPEC.md)', () => {
 	});
 });
 
+describe('where a free ride opens (#3203)', () => {
+	// A one-gear setup (Zwift Cog) has no usable slope, so it opens in watts.
+	it.each([
+		{ singleSpeed: undefined, opens: 'grade' },
+		{ singleSpeed: false, opens: 'grade' },
+		{ singleSpeed: true, opens: 'watts' },
+	] as const)(
+		'singleSpeed $singleSpeed opens in $opens',
+		({ singleSpeed, opens }) => {
+			const free = createFreeRide({
+				ftp: () => 200,
+				singleSpeed: singleSpeed === undefined ? undefined : () => singleSpeed,
+			});
+			expect(free.mode).toBe(opens);
+			expect(free.watts).toBe(openingWatts(200));
+		},
+	);
+
+	it('keeps grade one tap away on one gear, and the pick sticks', () => {
+		const free = createFreeRide({ ftp: () => 200, singleSpeed: () => true });
+		free.setMode('grade');
+		expect(free.mode).toBe('grade');
+		free.nudge(1);
+		expect(free.grade).toBe(0.5);
+	});
+
+	it('follows a profile that arrives after the connection did', () => {
+		let singleSpeed = false;
+		const free = createFreeRide({
+			ftp: () => 200,
+			singleSpeed: () => singleSpeed,
+		});
+		expect(free.mode).toBe('grade');
+		singleSpeed = true;
+		expect(free.mode).toBe('watts');
+	});
+});
+
 describe('recording a free ride', () => {
 	beforeEach(() => {
 		uploads.length = 0;

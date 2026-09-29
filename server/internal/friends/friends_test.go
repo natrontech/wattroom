@@ -27,7 +27,8 @@ type fakePresence struct {
 	pings  int
 }
 
-func (f *fakePresence) PresenceChanged() { f.pings++ }
+func (f *fakePresence) PresenceChanged()            { f.pings++ }
+func (f *fakePresence) PresenceChangedFor([]string) { f.pings++ }
 
 func (f *fakePresence) Riding(ids []string) map[string]bool {
 	out := map[string]bool{}

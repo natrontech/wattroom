@@ -46,7 +46,13 @@ const each = THEMES.map((t) => [t.name, t] as const);
 /** The issue gate, applied to every catalogue entry. */
 function expectLegible(theme: Theme, label: string) {
 	const ref = reference(theme.family, THEMES);
-	for (const token of ['ink', 'muted', 'muted-dim'] as TokenName[]) {
+	for (const token of [
+		'ink',
+		'muted',
+		'muted-dim',
+		'ok',
+		'warn',
+	] as TokenName[]) {
 		expect(worst(theme, token), `${label} ${token}`).toBeGreaterThanOrEqual(
 			CONTRAST.text,
 		);
@@ -151,6 +157,13 @@ describe('the catalogue', () => {
 		expect(themeById('outrun-day')!.tokens['muted-dim']).toBe('#71659d');
 		expect(k['on-neon']).toBe('#ffffff');
 		expect(themeById('outrun-day')!.tokens['on-neon']).toBe('#ffffff');
+		// The status words: the cave's Z4 and Z5 already clear the text floor
+		// and ship as they are; the day half is pulled to it (#2969).
+		expect([k.ok, k.warn]).toEqual([k.z4, k.z5]);
+		expect(k.ok).toBe('#06d6a0');
+		expect(k.warn).toBe('#ffa62b');
+		expect(themeById('outrun-day')!.tokens.ok).toBe('#027e5f');
+		expect(themeById('outrun-day')!.tokens.warn).toBe('#a35d01');
 	});
 
 	it('gives every identity one theme in each family', () => {
@@ -219,6 +232,8 @@ describe('the APCA report', () => {
 				'watt',
 				'neon',
 				'danger',
+				'ok',
+				'warn',
 				...ZONES,
 				'paper-ink',
 				'paper-danger',

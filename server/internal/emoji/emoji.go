@@ -9,6 +9,7 @@
 package emoji
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -20,6 +21,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/audience"
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/channels"
 	"github.com/natrontech/wattroom/server/internal/httpx"
@@ -35,10 +37,12 @@ type Crews interface {
 }
 
 // Lobby is how the crew's other clients hear the set changed (#570), so a
-// picker open elsewhere re-fetches. Satisfied by the hub. Optional: without
-// it they see a new emoji on their next load.
+// picker open elsewhere re-fetches — the crew's own members since #2324.
+// Satisfied by the hub. Optional: without it they see a new emoji on their
+// next load.
 type Lobby interface {
 	PresenceChanged()
+	PresenceChangedFor(audience []string)
 }
 
 // uploadsPerHour is chat's picture ceiling (#1982): the crew's cap bounds
@@ -84,10 +88,12 @@ func emojiOf(id pgtype.UUID, name string, userID pgtype.UUID, createdAt pgtype.T
 	}
 }
 
-func (s *Service) changed() {
-	if s.lobby != nil {
-		s.lobby.PresenceChanged()
+func (s *Service) changed(ctx context.Context, crew pgtype.UUID) {
+	if s.lobby == nil {
+		return
 	}
+	who, err := audience.Crew(context.WithoutCancel(ctx), s.store.Queries, crew)
+	audience.Tell(s.lobby, s.log, who, err)
 }
 
 func (s *Service) handleList(w http.ResponseWriter, r *http.Request) {
@@ -174,7 +180,7 @@ func (s *Service) handleUpload(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "emoji commit failed", err, "The emoji could not be saved. Try again.", "crew", crewID)
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), crew)
 	httpx.WriteJSON(w, http.StatusCreated, emojiOf(row.ID, row.Name, row.UserID, row.CreatedAt))
 }
 
@@ -245,6 +251,6 @@ func (s *Service) handleDelete(w http.ResponseWriter, r *http.Request) {
 		s.log.Info("crew emoji deleted by a crew admin",
 			"crew", crewID, "emoji", store.UUIDString(id), "by", store.UUIDString(me.ID), "uploader", store.UUIDString(uploader))
 	}
-	s.changed()
+	s.changed(r.Context(), crew)
 	w.WriteHeader(http.StatusNoContent)
 }

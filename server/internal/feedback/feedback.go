@@ -108,6 +108,9 @@ type Service struct {
 
 	mu       sync.Mutex
 	lastSeen map[string]time.Time
+	// fileMu orders appends against the purge's rewrite of reports.jsonl
+	// (#2906): an append between its read and its rename would be lost.
+	fileMu sync.Mutex
 }
 
 func New(sessions Sessions, issuer Issuer, ring *LogRing, log *slog.Logger) *Service {
@@ -208,6 +211,8 @@ func (s *Service) handleSubmit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) append(v any) error {
+	s.fileMu.Lock()
+	defer s.fileMu.Unlock()
 	if err := os.MkdirAll(s.dir, 0o750); err != nil {
 		return err
 	}
@@ -336,10 +341,10 @@ var (
 		account appearance board brand c card channel chat components crew crews data dev directory
 		dm download edit editor enter equipment friends hardware history home
 		hud import legal licenses login medal members messages modes music
-		notifications pairing panel pins privacy profile progression r ramp
-		recover ride rooms schedule sessions settings sitemap.xml sound spectator
+		notifications pairing panel perf pins privacy profile progression r ramp
+		recover ride road rooms schedule send sessions settings sitemap.xml sound spectator
 		styleguide summary terms theme-editor themes training trophies u
-		s v voice watch whats-new workouts
+		s v voice watch whats-new workouts world
 		de ftp-test game-modes group-workouts self-host smart-trainer-app vs zwift-alternative
 	`)
 	// Keyed by the prefix as already redacted, so a parameter under another

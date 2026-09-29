@@ -41,6 +41,19 @@ const writeTimeout = 5 * time.Second
 // the socket died with it, replay and all (audit 2026-09-09).
 const maxFrame = 512 << 10
 
+// controlMinGap is how soon one rider may send the same session control again
+// (docs/SPEC.md, #3019): four a second. No coach needs the same control twice
+// inside a quarter second — a double tap is one intent — and nothing else
+// stopped a looping client re-validating a 64 KiB pick as fast as its socket
+// delivered.
+//
+// Per control, not per rider: the client sends its own start on the first tick
+// that shows its pick landed. Ticks are 1 Hz, so the start reaches the hub a
+// round trip plus anything up to a second after the pick, and one allowance
+// shared by the two would refuse up to one start in four. Join and leave take
+// no allowance at all; the read loop says why.
+const controlMinGap = 250 * time.Millisecond
+
 type client struct {
 	rider protocol.Rider
 	conn  *websocket.Conn
@@ -153,7 +166,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		Connection: &protocol.OwnConnection{IP: httpx.ClientAddr(r)},
 	})
 	rm.join(c)
-	h.PresenceChanged()
+	h.tellChannel(channel, rider.ID)
 	h.log.Info("rider joined", "channel", channel, "rider", rider.ID)
 	// Autoplay (#627): a rider joining an idle deck may be the room coming
 	// back to life. The check is async — never block this rider's upgrade on
@@ -162,7 +175,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		rm.leave(c)
 		_ = conn.CloseNow()
-		h.PresenceChanged()
+		h.tellChannel(channel, rider.ID)
 		h.log.Info("rider left", "channel", channel, "rider", rider.ID)
 	}()
 
@@ -172,159 +185,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		if err := wsjson.Read(ctx, conn, &msg); err != nil {
 			return
 		}
-		if msg.Sensors != nil {
-			// Claims are per rider and cost one comparison per kind, so they
-			// need no rate limit of their own — a client repeating itself
-			// changes nothing and queues nothing.
-			if rm.claimSensors(c, *msg.Sensors) {
-				rm.announcePairing(rider.ID)
-			}
-		}
-		if msg.Poke != nil {
-			to := strings.TrimSpace(msg.Poke.To)
-			if to == "" || to == rider.ID {
-				h.writeError(c, "validation_error", "Choose another rider to poke.")
-				continue
-			}
-			if !rm.hasRider(to) {
-				h.writeError(c, "invalid_request", "That rider is no longer in this voice channel.")
-				continue
-			}
-			// The target is part of the rate-limit key: one rider cannot evade
-			// the cooldown with another tab, but may still poke somebody else.
-			if !rm.allow("poke:"+to, rider.ID, h.now(), pokeCooldown) {
-				// A cooldown that drops in silence reads as a broken button,
-				// and the sender pokes again (errors.md).
-				h.writeError(c, "rate_limited", "You just poked them — give them a moment to notice.")
-				continue
-			}
-			poke := protocol.Poke{
-				To: to, FromID: rider.ID, From: rider.Name, At: h.now().UnixMilli(),
-			}
-			if !rm.queuePoke(to, poke) {
-				h.writeError(c, "invalid_request", "That rider is no longer in this voice channel.")
-				continue
-			}
-			// The sender's answer (#2721): this socket's own copy, which the
-			// client reads as "it landed" because it is from them. Silence on
-			// success read as a button that did nothing.
-			c.sendJSON(h.log, protocol.ServerMessage{Poke: &poke})
-		}
-		if msg.Device != nil {
-			// Untrusted input, bounded at the boundary to the closed set
-			// (errors.md): the room renders this, and anything outside the
-			// three words is dropped rather than shown to everyone. Costs one
-			// comparison and changes nothing when repeated, so no rate limit
-			// of its own — the same reasoning as the sensor claim above.
-			rm.setDeviceKind(c, msg.Device.Kind)
-		}
-		if msg.Away != nil {
-			// Unlimited like a sensor claim, and for the same reason: it is
-			// one map write per rider, so a client repeating itself changes
-			// nothing and queues nothing. The state rides the next tick.
-			rm.setAway(rider.ID, msg.Away.Away, msg.Away.Reason)
-		}
-		if msg.Metrics != nil {
-			// Rate-shaped like every other channel (audit 2026-09-09): a trainer
-			// notifies at 4 Hz at most, so 10/s is headroom, and the record
-			// admits one sample per second anyway.
-			if m := *msg.Metrics; validMetrics(m) && rm.allow("metrics", rider.ID, h.now(), metricsMinGap) {
-				rm.setMetrics(c, m)
-			}
-		}
-		if msg.Board != nil {
-			switch {
-			case msg.Board.ClipID == "":
-				// A stop (#1321) takes no cooldown: it only ever makes the room
-				// quieter, and the fire it takes back is half a second old.
-				// fire() is what bounds a rider's stops.
-				rm.fire(protocol.Board{FromID: rider.ID, From: rider.Name})
-			case protocol.IsClipID(msg.Board.ClipID) && rm.allow("board", rider.ID, h.now(), time.Second):
-				// One fire a second per rider (docs/SPEC.md), the same ceiling a
-				// cheer takes — and on the server, because a client asking nicely
-				// is not a limit.
-				rm.fire(protocol.Board{ClipID: msg.Board.ClipID, FromID: rider.ID, From: rider.Name})
-			}
-		}
-		if msg.Cheer != nil {
-			if protocol.IsReaction(msg.Cheer.Emoji) && rm.allow("cheer", rider.ID, h.now(), time.Second) {
-				rm.cheer(protocol.Cheer{Emoji: msg.Cheer.Emoji, From: rider.Name})
-			}
-		}
-		if msg.Jukebox != nil {
-			// Any member; the jukebox validates its own input. Throttled like
-			// every other input — it was the one unlimited channel (audit #219).
-			if rm.allow("jukebox", rider.ID, h.now(), 300*time.Millisecond) {
-				if played, _, refusal := rm.jukeboxWithRefusal(*msg.Jukebox, rider.ID, rider.Name, h.now()); refusal != "" {
-					h.writeError(c, jukeboxCode(refusal.code()), refusal.message())
-				} else if played != nil && h.xp != nil {
-					h.xp.TrackPlayed(channel, played.riderID, played.ref, h.now())
-				}
-			} else {
-				// Skip, pause, queue: deliberate taps a rider watches for a
-				// result, so a refused one has to say so (#2232). Every other
-				// way this channel refuses already answers — the jukebox's own
-				// refusals right above — and the throttle was the one that did
-				// not, which reads as the button not working.
-				h.writeError(c, jukeboxCode("rate_limited"), "That was quick — give the deck a moment.")
-			}
-		}
-		if msg.Backfill != nil {
-			// A reconnect's replay: into the ride record only — stale samples
-			// must never repaint anyone's live tile. Batch size is bounded like
-			// every other client input.
-			samples := msg.Backfill.Samples
-			if len(samples) > protocol.MaxBackfillBatch {
-				h.log.Warn("backfill truncated", "channel", channel, "rider", rider.ID, "samples", len(samples), "kept", protocol.MaxBackfillBatch)
-				samples = samples[:protocol.MaxBackfillBatch]
-			}
-			// One batch a second: it runs 600 validations under the room's
-			// lock, and it was the one channel a member could loop unlimited
-			// (audit 2026-09-09).
-			if !rm.allow("backfill", rider.ID, h.now(), time.Second) {
-				continue
-			}
-			rm.backfill(c, samples, h.log, h.saver)
-			h.log.Debug("backfill received", "channel", channel, "rider", rider.ID, "samples", len(samples))
-		}
-		if msg.Control != nil {
-			// The rider on THIS socket, not the copy captured when it opened:
-			// a crew role change mid-session has to land without a reconnect.
-			rider := rm.riderOf(c)
-			if code, refusal := rm.refusal(msg.Control.Action, rider); code != "" {
-				h.writeError(c, code, refusal)
-				continue
-			}
-			if msg.Control.Action == "game" {
-				if refusal := rm.startGame(msg.Control.GameMode, rider, h.now()); refusal != "" {
-					h.writeError(c, "invalid_request", refusal)
-				}
-				continue
-			}
-			if msg.Control.Action == "game-end" {
-				if !rm.endGame(h.now()) {
-					h.writeError(c, "invalid_request", "No game is running.")
-				}
-				continue
-			}
-			if msg.Control.Action == "sprint" {
-				// Arm sprint moments: the coach's (matrix), only mid-session.
-				if rm.armIfRunning(h.now()) {
-					continue
-				}
-				h.writeError(c, "invalid_request", "Sprints arm during a running session.")
-				continue
-			}
-			if msg.Control.Action == "pick" {
-				if refusal := checkPick(*msg.Control); refusal != "" {
-					h.writeError(c, "validation_error", refusal)
-					continue
-				}
-			}
-			if code, refusal := rm.control(*msg.Control, rider, h.now()); code != "" {
-				h.writeError(c, code, refusal)
-			}
-		}
+		h.handleMessage(c, rm, channel, rider, msg)
 	}
 }
 

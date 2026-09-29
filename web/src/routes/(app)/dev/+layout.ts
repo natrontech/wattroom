@@ -1,8 +1,3 @@
-import { dev } from '$app/environment';
-import { error } from '@sveltejs/kit';
+import { devOnly } from '$lib/dev-only';
 
-// Mock screens for design iteration — never reachable in a production build.
-// ponytail: the route chunks still ship (a few KB, lazily loaded); gate the door, not the bundle.
-export const load = () => {
-	if (!dev) error(404, 'Not found');
-};
+export const load = devOnly;

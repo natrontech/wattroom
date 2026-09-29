@@ -25,8 +25,9 @@ import (
 
 type medalJSON struct {
 	Kind string `json:"kind"`
-	// Where it was won — the crew's name since #2558. The key is the page's
-	// from before crews, kept so no client has to learn a new one.
+	// Where it was won: the crew's name (#2558).
+	CrewName string `json:"crewName"`
+	// The same, under its name from before crews, for one release (#3361).
 	RoomName  string `json:"roomName"`
 	AwardedAt string `json:"awardedAt"`
 }
@@ -121,11 +122,7 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not_found", "This ride has no samples to export.")
 		return
 	}
-	samples := make([]fitexport.Sample, len(metrics))
-	for i, m := range metrics {
-		samples[i] = fitexport.Sample{Second: i, Watts: uint16(max(0, min(65535, m.Watts))), Cadence: uint8(max(0, min(255, m.Cadence))), HeartRate: uint8(max(0, min(255, m.HR)))}
-	}
-	data, err := fitexport.Encode(fitexport.Ride{StartedAt: row.StartedAt.Time, Samples: samples})
+	data, err := fitexport.Encode(fitexport.FromMetrics(row.StartedAt.Time, metrics))
 	if err != nil {
 		httpx.Fail(w, s.log, "ride export encode failed", err, "That ride could not be exported.")
 		return
@@ -166,6 +163,8 @@ type rideDetailJSON struct {
 	// Ridden in a session, whether or not its crew is still there (#2630):
 	// the list's `room`, so one sentence says where a ride was on both.
 	Room bool `json:"room,omitempty"`
+	// `room` under the list's new name (#2959); `room` goes in #3461.
+	InSession bool `json:"inSession,omitempty"`
 	// Whether the rider may still enter the crew named above (#2630): a crew
 	// they left, or that banned them, is named and not linked.
 	CrewMember bool `json:"crewMember,omitempty"`
@@ -253,10 +252,11 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 	out.Crew, out.Channel = placeOf(row.CrewID, row.CrewName), placeOf(row.ChannelID, row.ChannelName)
 	out.Room = row.CrewID.Valid || row.ChannelID.Valid || row.SessionID.Valid
+	out.InSession = out.Room
 	out.CrewMember = row.CrewMember
 	for _, medal := range medalRows {
 		out.Medals = append(out.Medals, medalJSON{
-			Kind: medal.Kind, RoomName: medal.CrewName,
+			Kind: medal.Kind, CrewName: medal.CrewName, RoomName: medal.CrewName,
 			AwardedAt: medal.AwardedAt.Time.Format(time.RFC3339),
 		})
 	}

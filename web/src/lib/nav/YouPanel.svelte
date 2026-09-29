@@ -182,11 +182,11 @@
 					     the button below says "I'm back" (#807). -->
 					<span class="block truncate text-[10px]">
 						{#if voiceStatus === 'live'}
-							<span class="text-z4">in voice</span>{camOn ? ' · camera on' : ''}
+							<span class="text-ok">in voice</span>{camOn ? ' · camera on' : ''}
 						{:else if voiceStatus === 'connecting'}
 							<span class="text-muted">joining voice…</span>
 						{:else if voiceStatus === 'reconnecting'}
-							<span class="text-z5">voice reconnecting…</span>
+							<span class="text-warn">voice reconnecting…</span>
 						{:else if voiceStatus === 'failed'}
 							<span class="text-danger">voice failed</span>
 						{/if}
@@ -279,7 +279,7 @@
 				<button
 					onclick={() => onMic?.()}
 					class="flex h-11 flex-1 items-center justify-center rounded {micOn
-						? 'text-z4'
+						? 'text-ok'
 						: 'text-danger'}"
 					title="{micOn ? 'mute' : 'unmute'} · {MENU_HINT}"
 					aria-label="microphone"
@@ -294,7 +294,7 @@
 				<button
 					onclick={() => onCam?.()}
 					class="flex h-11 flex-1 items-center justify-center rounded {camOn
-						? 'text-z4'
+						? 'text-ok'
 						: 'text-muted-dim hover:text-muted'}"
 					title={camOn ? 'turn camera off' : 'turn camera on'}
 					aria-label="camera"

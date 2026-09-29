@@ -54,3 +54,69 @@ func TestAnUnreadableBlobStoresTheAverageNotZero(t *testing.T) {
 		t.Errorf("norm_watts = %d, want the ride's own 187 W average — what the readers' coalesce would have chosen", *norm)
 	}
 }
+
+// The 3- and 12-minute bests reach the rides already inside the 90-day curve
+// (#3261), once: a second pass changes nothing, the four windows the ride
+// already had stay as they were, and a ride older than the curve is left out.
+func TestCriticalPowerBackfillIsIdempotent(t *testing.T) {
+	st := storetest.Open(t)
+	ctx := context.Background()
+	user, err := st.Queries.CreateUser(ctx, db.CreateUserParams{DisplayName: "cp-backfill", FtpWatts: 250, WeightKg: 75})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = st.Pool.Exec(context.Background(), "delete from users where id = $1", user.ID) })
+
+	// Fifteen minutes at 200 W opening with three at 400: 3 min 400, 12 min
+	// (180×400 + 540×200) / 720 = 250.
+	samples := flat(200, 900)
+	for i := range 180 {
+		samples[i].Watts = 400
+	}
+	legacy := []byte(`{"best5s": 400, "best1m": 400, "best5m": 320, "best20m": 0}`)
+	save := func(ago time.Duration) pgtype.UUID {
+		t.Helper()
+		row, err := BuildRideRow(user.ID, "Openers", `{"name":"Openers","steps":[{"type":"steady","seconds":900,"target":0.8}]}`,
+			time.Now().Add(-ago), 250, samples)
+		if err != nil {
+			t.Fatal(err)
+		}
+		row.Curve = legacy // saved before the pair was kept
+		id, err := st.Queries.CreateRide(ctx, row)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	recent, old := save(24*time.Hour), save(120*24*time.Hour)
+	curveOf := func(id pgtype.UUID) map[string]int {
+		t.Helper()
+		var curve map[string]int
+		if err := st.Pool.QueryRow(ctx, "select curve from rides where id = $1", id).Scan(&curve); err != nil {
+			t.Fatal(err)
+		}
+		return curve
+	}
+
+	BackfillCriticalPower(ctx, st, slog.New(slog.DiscardHandler))
+	first := curveOf(recent)
+	want := map[string]int{"best5s": 400, "best1m": 400, "best3m": 400, "best5m": 320, "best12m": 250, "best20m": 0}
+	for key, value := range want {
+		if first[key] != value {
+			t.Errorf("after the backfill, %s = %d, want %d: %v", key, first[key], value, first)
+		}
+	}
+	if _, touched := curveOf(old)["best3m"]; touched {
+		t.Errorf("a ride older than the 90-day curve was backfilled: %v", curveOf(old))
+	}
+
+	// The second pass reads nothing and writes nothing: a pair already there
+	// is left as it is, even one this pass would have computed differently.
+	if _, err := st.Pool.Exec(ctx, `update rides set curve = jsonb_set(curve, '{best3m}', '1') where id = $1`, recent); err != nil {
+		t.Fatal(err)
+	}
+	BackfillCriticalPower(ctx, st, slog.New(slog.DiscardHandler))
+	if got := curveOf(recent)["best3m"]; got != 1 {
+		t.Fatalf("the second pass rewrote a curve that already had the pair: best3m = %d, want the 1 it was left at", got)
+	}
+}
