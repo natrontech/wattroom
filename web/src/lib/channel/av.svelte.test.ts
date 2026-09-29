@@ -353,6 +353,7 @@ function withOutputGraph<T>(
 			return { connect() {}, disconnect() {} };
 		}
 		createGain() {
+			const speakers = this.destination;
 			const node = {
 				gain: {
 					value: 1,
@@ -361,7 +362,11 @@ function withOutputGraph<T>(
 					},
 				},
 				disconnected: false,
-				connect() {},
+				// The limiter's own trim runs into the speakers (cue-graph.ts);
+				// a fader runs into the limiter, and only faders are listed.
+				connect(to: unknown) {
+					if (to === speakers) gains.splice(gains.indexOf(node), 1);
+				},
 				disconnect() {
 					node.disconnected = true;
 				},
