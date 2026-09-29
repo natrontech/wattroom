@@ -146,7 +146,10 @@ function connect(address: PlaceAddress): Connection {
 		// Here and not in a page: the recording outlives every page (#2654).
 		$effect(() => recording.follow(shared?.phase));
 
-		freeRide = createFreeRide({ ftp: () => profile.current.ftp });
+		freeRide = createFreeRide({
+			ftp: () => profile.current.ftp,
+			singleSpeed: () => profile.current.singleSpeed,
+		});
 		ride = createRide({
 			live,
 			profile,

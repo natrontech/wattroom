@@ -47,10 +47,21 @@ export function nudged(mode: FreeMode, value: number, dir: 1 | -1): number {
  * put one on Strava. It records the seconds the rider pedals — a rest is not
  * ride time, as auto-paused time is not (docs/SPEC.md) — and it is kept in
  * the crash buffer, so a ride that never reaches End ride is offered back.
+ *
+ * It opens in grade, except on a one-gear setup (`singleSpeed`), where the
+ * slope has no usable range and it opens in watts (#3203). Read when asked,
+ * not when created: the profile arrives after the connection does.
  */
-export function createFreeRide(deps: { ftp: () => number }) {
+export function createFreeRide(deps: {
+	ftp: () => number;
+	singleSpeed?: () => boolean;
+}) {
 	let armed = $state(false);
-	let mode = $state<FreeMode>('grade');
+	/** The mode the rider picked; null until they pick one. */
+	let picked = $state<FreeMode | null>(null);
+	const mode = $derived<FreeMode>(
+		picked ?? (deps.singleSpeed?.() ? 'watts' : 'grade'),
+	);
 	let grade = $state(0);
 	let watts = $state<number | null>(null);
 	let startedAt = $state<number | null>(null);
@@ -92,7 +103,7 @@ export function createFreeRide(deps: { ftp: () => number }) {
 		},
 		setMode(next: FreeMode) {
 			if (next === 'watts' && watts === null) watts = openingWatts(deps.ftp());
-			mode = next;
+			picked = next;
 		},
 		nudge(dir: 1 | -1) {
 			if (mode === 'grade') grade = nudged('grade', grade, dir);
