@@ -129,7 +129,12 @@ func TestAnAddressReachesItsOwnSocketAndNoOther(t *testing.T) {
 // see another's ping (#2131). The peer only has to READ: pongs are answered
 // from a coder/websocket client's read loop.
 func TestARidersPingReachesTheRoster(t *testing.T) {
-	_, base := keepaliveHub(t)
+	h, base := keepaliveHub(t)
+	// A pong deadline no scheduling stall reaches (#2920). This test needs the
+	// round trip measured, never a missed pong; at 100 ms a loaded machine that
+	// was slow to answer had kim's socket closed under the next read. The
+	// tests that are about a missed pong keep keepaliveHub's short one.
+	h.keepalive.pong = 5 * time.Second
 	url := base + "/ws/channels/velvet"
 	jan := dial(t, url, "jan:owner")
 	go func() {
