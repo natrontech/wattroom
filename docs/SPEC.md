@@ -880,6 +880,23 @@ together. Nothing here is ranked.
 - **Race weight**: frozen at the flag. A weight changed within **14 days**, or a weight or FTP from the default source, rides unranked.
 - **Weight confirmation**: once every **90 days**, one tap through the FTP prompt, never a gate; a weight not confirmed within 90 days rides unranked.
 - **Results**: per Category D–A on the closing card only; a lone rider reads "rode alone in C". A restart voids the race. On an open ride each rider sees only their own placing.
+- **Start**: a **10 s** countdown, then a **3-minute** neutral zone at **0 %**, then the km-0 klaxon.
+- **Riders**: a race starts with at least **2**; points need at least **3**. Disconnect grace **30 s**.
+- **Tick**: **4 Hz** once the leader's ETA to the finish is **30 s** or less.
+- **Category par** (W/kg): **D 2.2**, **C 2.85**, **B 3.6**, **A 4.3**. The pacer rides the same par (ADR-0068).
+- **Shelter**: the open field of [ADR-0077](decisions/0077-the-wind-is-shared.md); results stay per Category.
+- **Critical power**: its lines are #3262's.
+
+| Format     | Parameters                                                                                                                         |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Devil      | starts **45 s** ahead at **95 %** of par; a spectator's tug moves it **±1** point per **20 s**, within **88–102 %**, frozen while a rider is within **300 m** |
+| Last Light | **10**, **20** or **30 min**, default **20**; the fog closes from **3 km** to **150 m** over the final **60 s**                      |
+| Wheelrace  | par time **15–45 min**, default **30**; hard close at par **+15 %**                                                                |
+| The Col    | the summit café waits at most **5 min**                                                                                            |
+
+**The crowd on a climb**: density ρ(d) = ρmax · (1 − d/1500)², with ρmax
+**0.6/m** on class I and HC climbs and **0.25/m** on III–IV; at most **400**
+figures in the crowd (**120** on the low tier).
 
 ## Drafting (defaults — tune in alpha; [ADR-0077](decisions/0077-the-wind-is-shared.md))
 
