@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { people } from '$lib/people.svelte';
-	import StatusMark from '$lib/status-line/StatusMark.svelte';
 	import type { SprintState } from '$lib/protocol';
 	import type { LiveRider } from '$lib/channel/types';
 	import { PLACES } from '$lib/session/podium';
@@ -124,7 +122,6 @@
 								class="truncate text-lg {rider.you ? 'font-semibold' : ''}"
 								data-testid="sprint-name">{rider.name}</span
 							>
-							<StatusMark line={people.face(rider.id)?.statusLine} size={16} />
 						</span>
 						<span
 							class="bg-surface hidden h-3 w-48 shrink-0 overflow-hidden rounded-full sm:block"
@@ -171,10 +168,6 @@
 						/>
 						<span class="flex min-w-0 flex-1 items-center gap-1.5">
 							<span class="truncate text-left font-medium">{score.name}</span>
-							<StatusMark
-								line={people.face(score.riderId)?.statusLine}
-								size={16}
-							/>
 						</span>
 						<span
 							class="font-display text-2xl font-bold tabular-nums {i === 0
