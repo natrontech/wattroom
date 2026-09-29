@@ -166,7 +166,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 		Connection: &protocol.OwnConnection{IP: httpx.ClientAddr(r)},
 	})
 	rm.join(c)
-	h.PresenceChanged()
+	h.tellChannel(channel, rider.ID)
 	h.log.Info("rider joined", "channel", channel, "rider", rider.ID)
 	// Autoplay (#627): a rider joining an idle deck may be the room coming
 	// back to life. The check is async — never block this rider's upgrade on
@@ -175,7 +175,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		rm.leave(c)
 		_ = conn.CloseNow()
-		h.PresenceChanged()
+		h.tellChannel(channel, rider.ID)
 		h.log.Info("rider left", "channel", channel, "rider", rider.ID)
 	}()
 

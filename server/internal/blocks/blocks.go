@@ -21,6 +21,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/audience"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -32,9 +33,10 @@ type UserSource interface {
 }
 
 // Pinger is the lobby ping: both riders' friends lists and DM heads change,
-// and every open panel refetches rather than waiting for its poll.
+// and their open panels re-fetch rather than wait for a poll — theirs alone
+// (#2324).
 type Pinger interface {
-	PresenceChanged()
+	PresenceChangedFor(audience []string)
 }
 
 // Service owns the rider_blocks rows and the hub's copy of them.
@@ -153,7 +155,7 @@ func (s *Service) handleHide(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.set(me.ID, target, true)
-	s.presence.PresenceChanged()
+	s.presence.PresenceChangedFor(audience.Pair(me.ID, target))
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
@@ -177,6 +179,6 @@ func (s *Service) handleUnhide(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.set(me.ID, target, false)
-	s.presence.PresenceChanged()
+	s.presence.PresenceChangedFor(audience.Pair(me.ID, target))
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }

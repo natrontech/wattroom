@@ -43,7 +43,7 @@ func (s *Service) handleNameMember(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "name channel member failed", err, "They could not be let in.", "channel", store.UUIDString(channel.ID))
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), channel.CrewID)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -71,6 +71,6 @@ func (s *Service) handleUnnameMember(w http.ResponseWriter, r *http.Request) {
 	if channel.Private && channel.Kind == kindVoice {
 		s.reauthorize(r.Context(), []db.Channel{channel}, []string{store.UUIDString(target)})
 	}
-	s.changed()
+	s.changed(r.Context(), channel.CrewID)
 	w.WriteHeader(http.StatusNoContent)
 }

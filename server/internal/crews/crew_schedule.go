@@ -1,6 +1,7 @@
 package crews
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -214,7 +215,7 @@ func (s *Service) handleCrewPlan(w http.ResponseWriter, r *http.Request) {
 	if s.notifier != nil {
 		s.notifier.SessionPlanned(crew.ID, channel, name, req.StartsAt, user.ID)
 	}
-	s.announceIn(channel, "planned", user.DisplayName, name, req.StartsAt)
+	s.announceIn(r.Context(), crew.ID, channel, "planned", user.DisplayName, name, req.StartsAt)
 	out := scheduledJSON{
 		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName, WorkoutJSON: string(row.WorkoutJson),
 		StartsAt: row.StartsAt.Time.Format(time.RFC3339), CreatedBy: user.DisplayName, Mine: true,
@@ -227,15 +228,15 @@ func (s *Service) handleCrewPlan(w http.ResponseWriter, r *http.Request) {
 
 // announceIn is announce for a crew's plan (#359, #570): the line lands on
 // the timeline of the channel the plan names, and the lobby ping is what
-// makes every schedule on screen re-fetch.
-func (s *Service) announceIn(channel pgtype.UUID, verb, actor, workout string, startsAt time.Time) {
+// makes every schedule on screen re-fetch — the crew's (#2324).
+func (s *Service) announceIn(ctx context.Context, crew, channel pgtype.UUID, verb, actor, workout string, startsAt time.Time) {
 	if s.presence == nil {
 		return
 	}
 	if channel.Valid {
 		s.presence.SessionAnnounce(store.UUIDString(channel), verb, actor, workout, startsAt)
 	}
-	s.presence.PresenceChanged()
+	s.changed(ctx, crew)
 }
 
 // crewPlan is the plan in the URL, if the caller may see it.
@@ -306,7 +307,7 @@ func (s *Service) handleCrewMove(w http.ResponseWriter, r *http.Request) {
 		if s.notifier != nil {
 			s.notifier.SessionRescheduled(crew.ID, plan.ChannelID, plan.WorkoutName, req.StartsAt, user.ID)
 		}
-		s.announceIn(plan.ChannelID, "moved", user.DisplayName, plan.WorkoutName, req.StartsAt)
+		s.announceIn(r.Context(), crew.ID, plan.ChannelID, "moved", user.DisplayName, plan.WorkoutName, req.StartsAt)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -333,7 +334,7 @@ func (s *Service) handleCrewCancel(w http.ResponseWriter, r *http.Request) {
 	if s.notifier != nil && row.StartsAt.Time.After(time.Now()) {
 		s.notifier.SessionCancelled(crew.ID, row.ChannelID, row.WorkoutName, row.StartsAt.Time, user.ID)
 	}
-	s.announceIn(row.ChannelID, "cancelled", user.DisplayName, row.WorkoutName, time.Time{})
+	s.announceIn(r.Context(), crew.ID, row.ChannelID, "cancelled", user.DisplayName, row.WorkoutName, time.Time{})
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -426,9 +427,7 @@ func (s *Service) handleCrewStarted(w http.ResponseWriter, r *http.Request) {
 	}
 	// The plan leaves every schedule on screen; the session's own start is
 	// what the channel's timeline says, on the tick.
-	if s.presence != nil {
-		s.presence.PresenceChanged()
-	}
+	s.changed(r.Context(), crew.ID)
 	// The session's id too (#2599): the starter goes to the ride, not to the
 	// channel's lobby with the count-in already running.
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"channelId": store.UUIDString(channel), "sessionId": sessionID})

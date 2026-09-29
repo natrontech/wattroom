@@ -102,7 +102,8 @@ func (f *fakeLive) LiveSession(channel string) (protocol.LiveSession, bool) {
 	return live, ok
 }
 
-func (f *fakeLive) PresenceChanged() {}
+func (f *fakeLive) PresenceChanged()            {}
+func (f *fakeLive) PresenceChangedFor([]string) {}
 
 func (f *fakeLive) Presence(channel string) protocol.ChannelPresence {
 	f.mu.Lock()

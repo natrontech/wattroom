@@ -161,3 +161,12 @@ one, slot 5 may be **the road ahead** instead of the interval graph, and under a
 shared screen it becomes a **40 px strip**. The five slots, their order and the
 parity rule are unchanged: a road a session has, a rider alone has too. What
 fills slot 2 on a road is [ADR-0066](0066-the-world-is-the-ride-view.md)'s.
+
+## Amendment, 2026-09-29 (#3062): on a road, the slots dock around the world
+
+[ADR-0066](0066-the-world-is-the-ride-view.md) makes the world slot 2 on any
+ride with a road. There, the five slots become **docks** around the world's
+canvas, leaving a keep-clear corridor in the middle 40 % of the width and 55 %
+of the height. Slot 2's focus order gains the world: sprint > a game without a
+road > a shared screen > the world > the instrument. A ride with no road keeps
+the surface as this ADR drew it, and the parity rule is unchanged.

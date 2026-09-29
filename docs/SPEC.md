@@ -634,7 +634,7 @@ What v0 ships (#3022):
 | Entering a road              | **0 %** for **500 ms**, then the road                                                                                                   |
 | Grade written to the trainer | `MinTrainerGrade` **−10 %** (a default until hardware check P11) … `MaxTrainerGrade` **+15 %**, both in `protocol/limits.go`, one range for every trainer |
 | Reference rider              | **75 kg** rider + **8 kg** bike at **225 W**                                                                                            |
-| Pace model                   | Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, and the Cw FTMS is sent (**0.51 kg/m**, `ftms.ts`) — one Cw for both; a hardware session measures it and this row does not assert it |
+| Pace model                   | Martin et al. 1998, stepped once a second in **4** substeps (`$lib/road/pace.ts` and its Go twin `internal/road`, held to **0.1 %** by shared golden vectors): Crr **0.004**, ρ **1.225 kg/m³**, drivetrain η **0.97**, CdA **0.32 m²** until the Kickr sessions measure it. The pace model and FTMS share this one CdA; the factor between it and the Cw FTMS is sent (**0.51 kg/m** today, `SIM_DEFAULTS`) is what that session measures, and this row does not assert it |
 | Riding on a road             | virtual speed above **0.5 m/s** — presence, auto-pause, auto-end and the recording rule read this                                        |
 | Leg                          | at most **6 h**                                                                                                                         |
 
@@ -678,6 +678,20 @@ window's 4 Hz ticks. Its pace:
 | a road step                             | the live mean %FTP of the pedalling riders, each capped at **150 %** |
 
 A rider's bias never moves the bunch.
+
+## The world (defaults — tune in alpha; [ADR-0066](decisions/0066-the-world-is-the-ride-view.md))
+
+| Parameter           | Value                                                                                                                   |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Pixels              | about **1.0 MP** a frame; **0.5 MP** on the low tier                                                                    |
+| Frame rate          | **30 fps** on a vsync divisor                                                                                           |
+| High tier           | at most **60** draws and **400k** triangles                                                                             |
+| … figures           | at most **110k** triangles: **3** at LOD0 (**14k** each) and **9** at LOD1 (**7k** each)                                |
+| … dressing          | at most **24** draws and **180k** triangles                                                                             |
+| Low tier            | at most **30** draws and **150k** triangles; dressing **12** draws and **70k**                                          |
+| Fallback            | to the Skyline when more than **20 %** of vsync-divisor intervals are missed over **10 s**; one-way for the ride        |
+| Keep-clear corridor | the middle **40 %** of the width and **55 %** of the height                                                             |
+| GPU gate            | set by the first `make perf-scenes` measurement; proposal: at most **5** points of GPU on #2998's rig                  |
 
 ## Rider animation (defaults — tune in alpha; #3066)
 

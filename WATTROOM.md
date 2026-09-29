@@ -14,6 +14,8 @@ WattRoom is "Discord for indoor cycling" — the only app open on ride night (AD
 
 > **Diverged 2026-09-29 (#3020, [ADR-0062](docs/decisions/0062-the-horizon-may-be-a-road.md))** — a ride may carry a road. A rider's own imported route rides in any of the five modes — free ride, workout, bunch ride, race, game — and the road decides the grade or where a block ends. Structured training together is still the point; the road is where it happens.
 
+> **Diverged 2026-09-29 (#3062, [ADR-0066](docs/decisions/0066-the-world-is-the-ride-view.md))** — on a road the ride view is a 3D world: the rider's own road, drawn in plain three.js, with the numbers docked around it and the 2D Skyline as the fallback. It is a view of the training, not a game world to explore; the point is still riding the work together.
+
 The core insight: indoor training is boring alone. Zwift solves this with a game world. WattRoom solves it with **presence** — you hop into ~~a room~~ with your training buddies, everyone's live watts and heart rate are visible, you talk over voice, see each other on camera, and share music or videos through a synced jukebox.
 
 > **Diverged 2026-09-23 (#2461, [ADR-0058](docs/decisions/0058-the-room-dissolves-into-the-crew.md))** — you hop into your crew's voice channel. Live watts and heart rate are visible to the riders in a session there and to whoever is in that call, and to nobody else in the crew.
@@ -28,7 +30,7 @@ The core insight: indoor training is boring alone. Zwift solves this with a game
 
 ### What WattRoom is NOT
 
-- No virtual world, ~~roads~~, ~~maps~~ or avatars **Diverged 2026-09-29 (#3020, ADR-0062)**: roads are in — a route the rider imports, ridden in any mode. **Diverged 2026-09-29 (#3120, ADR-0070)**: maps are in, as our own copy of OpenStreetMap served from wattroom.ch, so no map company sees where a rider rides.
+- No ~~virtual world~~, ~~roads~~, ~~maps~~ or avatars **Diverged 2026-09-29 (#3020, ADR-0062)**: roads are in — a route the rider imports, ridden in any mode. **Diverged 2026-09-29 (#3120, ADR-0070)**: maps are in, as our own copy of OpenStreetMap served from wattroom.ch, so no map company sees where a rider rides. **Diverged 2026-09-29 (#3062, ADR-0066)**: on a road the ride view is a 3D world, with the 2D Skyline taking over wherever it cannot run.
 - No racing simulation, drafting physics or game mechanics **Diverged 2026-09-29 (#3093, ADR-0065)**: on a road, a power model moves a bunch's one shared position, paced by the workout. The bunch has no drafting, no power-ups and no ranking.
 - No content treadmill (~~routes~~, worlds, events) **Diverged 2026-09-29 (#3020, ADR-0062)**: riders bring their own routes, which is no treadmill; the one thing WattRoom curates is a growing library of famous climbs, and that is a deliberate divergence from this line.
 - Not a training plan generator (integrate with existing tools later)

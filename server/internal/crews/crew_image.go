@@ -53,7 +53,7 @@ func (s *Service) handleSetCrewImage(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "crew image save failed", err, "The picture could not be saved.", "crew", store.UUIDString(crew.ID))
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	httpx.WriteJSON(w, http.StatusOK, map[string]string{"imageUrl": crewImageURL(crew.ID, true)})
 }
 
@@ -70,7 +70,7 @@ func (s *Service) handleClearCrewImage(w http.ResponseWriter, r *http.Request) {
 		httpx.Fail(w, s.log, "crew image clear failed", err, "The picture could not be removed.", "crew", store.UUIDString(crew.ID))
 		return
 	}
-	s.changed()
+	s.changed(r.Context(), crew.ID)
 	w.WriteHeader(http.StatusNoContent)
 }
 

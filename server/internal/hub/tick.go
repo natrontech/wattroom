@@ -57,6 +57,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 	// rail shows for rooms you are NOT in — ping the lobby only when one of
 	// them changes between ticks, never per tick.
 	lastPhase, lastRiding := "", ""
+	var lastRiders []string
 	lastTick := now()
 	for {
 		select {
@@ -250,8 +251,10 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		// Chat pings the lobby from its own HTTP write (#2437); the tick
 		// pings for what only it sees change.
 		if rm.changed != nil && (tick.State.Phase != lastPhase || ridingKey != lastRiding) {
-			lastPhase, lastRiding = tick.State.Phase, ridingKey
-			rm.changed()
+			// Both sets: whoever stopped riding reads as stopped on a friend's
+			// list, just as whoever started reads as riding (#2324).
+			rm.changed(append(append([]string(nil), lastRiders...), ridingIDs...))
+			lastPhase, lastRiding, lastRiders = tick.State.Phase, ridingKey, ridingIDs
 		}
 		// Stable roster order, so tiles do not shuffle every second.
 		sort.Slice(tick.Roster, func(i, j int) bool { return tick.Roster[i].ID < tick.Roster[j].ID })

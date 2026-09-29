@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/audience"
 	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -36,8 +37,10 @@ type Presence interface {
 	// the timeline of the people standing in the channel it names.
 	SessionAnnounce(channel, verb, actor, workout string, startsAt time.Time)
 	// Something changed because somebody else changed it (#570) — the lobby
-	// ping is how every other client hears, and re-fetches.
+	// ping is how every other client hears, and re-fetches. Addressed to the
+	// crew's members since #2324; to everyone only when that lookup failed.
 	PresenceChanged()
+	PresenceChangedFor(audience []string)
 	// A planned session's start opens it in its voice channel (#2440), and
 	// answers the channel's one-session rule: the session's id when it
 	// opened, or a code and a message.
@@ -153,13 +156,15 @@ func (s *Service) reauthorize(ctx context.Context, crew pgtype.UUID, riders ...p
 	}
 }
 
-// changed pings every lobby socket: something durable about a crew moved —
-// its plan, its members, their roles, its name — and the clients showing it
-// re-fetch (#251, #570).
-// ponytail: one ping for everyone, not just this crew's members — the lobby
-// has no per-crew routing yet, and a crew mutation is a rare event.
-func (s *Service) changed() {
-	if s.presence != nil {
-		s.presence.PresenceChanged()
+// changed pings the lobby sockets of the crew's members: something durable
+// about the crew moved — its plan, its members, their roles, its name — and
+// the clients showing it re-fetch (#251, #570). Only them (#2324): nobody
+// outside the crew has it on screen. `also` is a rider on their way out — a
+// leave, a ban — whose screen still shows it.
+func (s *Service) changed(ctx context.Context, crew pgtype.UUID, also ...pgtype.UUID) {
+	if s.presence == nil {
+		return
 	}
+	who, err := audience.Crew(context.WithoutCancel(ctx), s.store.Queries, crew, also...)
+	audience.Tell(s.presence, s.log, who, err)
 }
