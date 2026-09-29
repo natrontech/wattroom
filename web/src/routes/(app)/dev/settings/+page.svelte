@@ -39,7 +39,7 @@
 		The owner and admins shape the crew; coaches run its sessions.
 	</p>
 
-	<section class="border-muted/15 bg-surface-raised mt-8 rounded-lg border p-6">
+	<section class="border-frame bg-surface-raised mt-8 rounded-lg border p-6">
 		<label class="block">
 			<span class="eyebrow">crew name</span>
 			<input
@@ -49,7 +49,7 @@
 		</label>
 	</section>
 
-	<section class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6">
+	<section class="border-frame bg-surface-raised mt-3 rounded-lg border p-6">
 		<h2 class="font-display font-bold">Sound pack</h2>
 		<div class="mt-3 grid gap-2">
 			{#each packs as option (option.id)}
@@ -57,7 +57,7 @@
 					class="flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 {pack ===
 					option.id
 						? 'border-ink/40'
-						: 'border-muted/15'}"
+						: 'border-frame'}"
 				>
 					<input type="radio" bind:group={pack} value={option.id} />
 					<span class="min-w-0">
@@ -79,7 +79,7 @@
 		</p>
 	</section>
 
-	<section class="border-muted/15 bg-surface-raised mt-3 rounded-lg border p-6">
+	<section class="border-frame bg-surface-raised mt-3 rounded-lg border p-6">
 		<h2 class="font-display font-bold">Who's in here</h2>
 		<ul class="divide-ink/5 mt-3 divide-y">
 			{#each members as member (member.name)}
@@ -101,7 +101,7 @@
 		</p>
 	</section>
 
-	<section class="border-muted/15 mt-3 rounded-lg border p-6">
+	<section class="border-frame mt-3 rounded-lg border p-6">
 		<h2 class="font-display font-bold">Delete crew</h2>
 		<p class="text-muted mt-1.5 text-xs">
 			Removes the crew, its medal history and its streak for everyone in it.

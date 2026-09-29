@@ -30,7 +30,7 @@
 
 <div class="cave bg-surface text-ink flex h-screen flex-col">
 	<nav
-		class="border-muted/15 bg-surface/90 z-10 flex shrink-0 flex-wrap items-center gap-1 border-b px-4 py-2 backdrop-blur"
+		class="border-frame bg-surface/90 z-10 flex shrink-0 flex-wrap items-center gap-1 border-b px-4 py-2 backdrop-blur"
 	>
 		<a
 			href="/dev"

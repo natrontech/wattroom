@@ -59,7 +59,7 @@
 			<li>
 				<a
 					href={screen.href}
-					class="border-muted/15 bg-surface-raised hover:border-muted/40 block rounded-lg border px-5 py-4 transition-colors"
+					class="border-frame bg-surface-raised hover:border-muted/40 block rounded-lg border px-5 py-4 transition-colors"
 				>
 					<span class="font-medium">{screen.label}</span>
 					<span class="text-muted mt-0.5 block text-sm">{screen.hint}</span>

@@ -223,9 +223,7 @@
 	</div>
 
 	{#if dump}
-		<section
-			class="border-muted/15 bg-surface-raised mt-4 rounded-lg border p-6"
-		>
+		<section class="border-frame bg-surface-raised mt-4 rounded-lg border p-6">
 			<div class="flex flex-wrap items-baseline gap-4">
 				<h2 class="font-display font-bold">{dump.device}</h2>
 				<span
@@ -287,7 +285,7 @@
 	{/if}
 
 	<div
-		class="border-muted/15 bg-surface-raised mt-4 grid grid-cols-2 gap-6 rounded-lg border p-6 sm:grid-cols-5"
+		class="border-frame bg-surface-raised mt-4 grid grid-cols-2 gap-6 rounded-lg border p-6 sm:grid-cols-5"
 	>
 		<div>
 			<div
@@ -351,7 +349,7 @@
 		</p>
 	{/if}
 
-	<div class="border-muted/15 mt-3 rounded-lg border p-6">
+	<div class="border-frame mt-3 rounded-lg border p-6">
 		<h2 class="font-display font-bold">ERG</h2>
 		<p class="text-muted mt-1 text-xs">
 			Set a target and confirm the trainer holds it regardless of gear. This is
@@ -418,7 +416,7 @@
 		</div>
 	</div>
 
-	<div class="border-muted/15 mt-3 rounded-lg border p-6">
+	<div class="border-frame mt-3 rounded-lg border p-6">
 		<h2 class="font-display font-bold">GATT log</h2>
 		<ul class="mt-3 space-y-1 font-mono text-[11px]">
 			{#each log as entry, i (i)}

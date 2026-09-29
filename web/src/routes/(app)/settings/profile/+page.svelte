@@ -386,7 +386,7 @@
 						<div class="mt-2 flex flex-wrap gap-1.5">
 							{#each hrZoneRanges(lthr) as range (range.zone)}
 								<span
-									class="border-muted/15 bg-surface-raised rounded-full border px-3 py-1.5 text-[11px]"
+									class="border-frame bg-surface-raised rounded-full border px-3 py-1.5 text-[11px]"
 								>
 									<span
 										class="text-ink inline-flex items-center gap-1 font-semibold"
