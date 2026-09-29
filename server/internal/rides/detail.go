@@ -25,8 +25,9 @@ import (
 
 type medalJSON struct {
 	Kind string `json:"kind"`
-	// Where it was won — the crew's name since #2558. The key is the page's
-	// from before crews, kept so no client has to learn a new one.
+	// Where it was won: the crew's name (#2558).
+	CrewName string `json:"crewName"`
+	// The same, under its name from before crews, for one release (#3361).
 	RoomName  string `json:"roomName"`
 	AwardedAt string `json:"awardedAt"`
 }
@@ -252,7 +253,7 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 	out.CrewMember = row.CrewMember
 	for _, medal := range medalRows {
 		out.Medals = append(out.Medals, medalJSON{
-			Kind: medal.Kind, RoomName: medal.CrewName,
+			Kind: medal.Kind, CrewName: medal.CrewName, RoomName: medal.CrewName,
 			AwardedAt: medal.AwardedAt.Time.Format(time.RFC3339),
 		})
 	}

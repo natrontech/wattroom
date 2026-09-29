@@ -15,11 +15,13 @@ describe("a rider's page prose", () => {
 	});
 
 	it('names the voice channel only when the server did (ADR-0012 boundary)', () => {
-		expect(ridePlace({ inRoom: true, roomName: 'Schwitzchaste' })).toBe(
+		// The names since ADR-0058 (#3361); the old ones are the server's to
+		// send for a release, not the page's to read.
+		expect(ridePlace({ withCrew: true, channelName: 'Schwitzchaste' })).toBe(
 			'Schwitzchaste',
 		);
-		expect(ridePlace({ inRoom: true })).toBe('in a session');
-		expect(ridePlace({ inRoom: false })).toBe('solo');
+		expect(ridePlace({ withCrew: true })).toBe('in a session');
+		expect(ridePlace({ withCrew: false })).toBe('solo');
 	});
 
 	it('sums medals across kinds', () => {

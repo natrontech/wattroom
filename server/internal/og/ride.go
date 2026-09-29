@@ -69,8 +69,9 @@ var (
 type RideCard struct {
 	WorkoutName string
 	StartedAt   time.Time
-	// RoomName is empty for a solo ride.
-	RoomName  string
+	// Where it was ridden — the voice channel, else the crew; empty for a
+	// solo ride.
+	Place     string
 	Seconds   int
 	AvgWatts  int
 	NormWatts int
@@ -132,8 +133,8 @@ func RenderRide(c RideCard) ([]byte, error) {
 	gradientBar(img, image.Rect(cardMargin, 206, cardMargin+160, 212))
 
 	where := "Solo ride"
-	if c.RoomName != "" {
-		where = "in " + c.RoomName
+	if c.Place != "" {
+		where = "in " + c.Place
 	}
 	subFace, sub, err := s.fit(where, cardWidth, 30, 22)
 	if err != nil {

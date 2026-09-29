@@ -12,7 +12,8 @@ import type { RideSample } from './stats';
 export interface RideMedal {
 	/** docs/SPEC.md kind — names come from $lib/medals, never retyped. */
 	kind: string;
-	roomName: string;
+	/** The crew it was won in (#3361: `roomName` before crews). */
+	crewName: string;
 	awardedAt: string;
 }
 

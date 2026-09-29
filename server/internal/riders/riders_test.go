@@ -291,9 +291,13 @@ func TestFriendSeesSharedRidesAndTheMonth(t *testing.T) {
 		t.Fatalf("shared rides: %v", body["sharedRides"])
 	}
 	ride, _ := shared[0].(map[string]any)
-	// The ride was in a channel alice may not enter: "in a room", unnamed.
-	if ride["kj"] != float64(400) || ride["inRoom"] != true || ride["roomName"] != nil {
+	// The ride was in a channel alice may not enter: with the crew, unnamed —
+	// under the names since ADR-0058 and, for one release, the old ones (#3361).
+	if ride["kj"] != float64(400) || ride["withCrew"] != true || ride["channelName"] != nil {
 		t.Fatalf("shared ride: %v", ride)
+	}
+	if ride["inRoom"] != true || ride["roomName"] != nil {
+		t.Fatalf("a tab from before the deploy reads the old names: %v", ride)
 	}
 	month, _ := body["month"].(map[string]any)
 	if month["rides"] != float64(2) || month["kj"] != float64(650) || month["seconds"] != float64(3600) {

@@ -9,8 +9,8 @@ import "time"
 // a ride finished at 21:00 CET was on today in one place and tomorrow in
 // three others. Everything rider-scoped now buckets here.
 //
-// Room-scoped buckets stay at UTC on purpose: a room's riders are in several
-// zones and a room has no zone of its own.
+// Crew-scoped buckets stay at UTC on purpose: a crew's riders are in several
+// zones and a crew has no zone of its own.
 
 // Zone is the zone a rider's own days are counted in: the one the browser
 // reported, or UTC when it never did or reported a name we will not use.

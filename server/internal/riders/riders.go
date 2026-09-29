@@ -147,8 +147,11 @@ type sharedRideJSON struct {
 	// docs/SPEC.md medal kinds won on this ride, if any.
 	Medals []string `json:"medals,omitempty"`
 	// Ridden with a crew; the voice channel is named only when the viewer
-	// may enter it (ListSharedRides). The field names are the page's until
-	// #2457.
+	// may enter it (ListSharedRides).
+	WithCrew    bool   `json:"withCrew"`
+	ChannelName string `json:"channelName,omitempty"`
+	// The same two under their names from before crews (ADR-0058), for one
+	// release, so a tab loaded before the deploy still reads them (#3361).
 	InRoom   bool   `json:"inRoom"`
 	RoomName string `json:"roomName,omitempty"`
 }
@@ -299,7 +302,8 @@ func (s *Service) handleGet(w http.ResponseWriter, r *http.Request) {
 				Seconds:   int(row.Seconds), Kj: int(row.Kj), Execution: float64(row.Execution),
 				ExecutionScored: row.ExecutionScored,
 				Medals:          strings.Fields(row.MedalKinds),
-				InRoom:          row.InRoom, RoomName: row.RoomName,
+				WithCrew:        row.WithCrew, ChannelName: row.ChannelName,
+				InRoom: row.WithCrew, RoomName: row.ChannelName,
 			})
 		}
 	}
