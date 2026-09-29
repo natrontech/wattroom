@@ -87,7 +87,6 @@
 	"lib/session/GamePanel.svelte": 8,
 	"lib/session/Instrument.svelte": 1,
 	"lib/session/PlanCard.svelte": 1,
-	"lib/session/SecondaryRow.svelte": 1,
 	"lib/session/SensorOverview.svelte": 4,
 	"lib/session/SessionControls.svelte": 7,
 	"lib/session/SessionPicker.svelte": 6,

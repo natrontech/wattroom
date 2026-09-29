@@ -206,4 +206,15 @@ test('the header controls a pedalling rider uses are riding size', async ({
 		unpairBox.height,
 		`Unpair in a running session is ${unpairBox.height}px tall`,
 	).toBeGreaterThanOrEqual(RIDING);
+
+	// The bike computer's page dots (#3088): a page is turned mid-interval.
+	const dots = coach.getByTestId('computer-dot');
+	await expect(dots.first()).toBeVisible({ timeout: 15_000 });
+	for (const dot of await dots.all()) {
+		const dotBox = await box(dot);
+		expect(
+			Math.min(dotBox.width, dotBox.height),
+			`a page dot is ${dotBox.width}×${dotBox.height}px`,
+		).toBeGreaterThanOrEqual(RIDING);
+	}
 });

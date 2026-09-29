@@ -17,7 +17,8 @@
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
 	import { worldSlotOn } from '$lib/world/flag';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
-	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
+	import BiasTrim from '$lib/session/BiasTrim.svelte';
+	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
 	import MonitorUp from '@lucide/svelte/icons/monitor-up';
@@ -328,7 +329,7 @@
 					<div
 						class={inWorld
 							? 'flex flex-col items-start gap-3'
-							: 'flex items-center gap-6'}
+							: 'flex flex-wrap items-center gap-6'}
 					>
 						{#if inFocus === 'media' || inFocus === 'game' || inWorld}
 							<!-- Under the player, never over it (RMF). -->
@@ -343,22 +344,27 @@
 								/>
 							</div>
 						{/if}
-						<SecondaryRow
-							cadence={channel.you.cadence}
-							stale={channel.youStale}
-							hr={channel.you.hr}
-							watts={channel.you.watts}
-							kg={channel.you.kg}
+						<div class="min-w-0 flex-1">
+							<BikeComputer
+								cadence={channel.you.cadence}
+								stale={channel.youStale}
+								hr={channel.you.hr}
+								watts={channel.you.watts}
+								kg={channel.you.kg}
+								lthr={channelConnection.current?.profile.current.lthr}
+								execution={riding.length <= 1 && channel.you.inSession
+									? channel.you.execution
+									: undefined}
+								target={channel.you.target > 0 ? channel.you.target : undefined}
+								stats={channelConnection.current?.recording.live}
+							/>
+						</div>
+						<BiasTrim
 							bias={channel.bias}
-							lthr={channelConnection.current?.profile.current.lthr}
-							small={inFocus === 'media'}
 							onBias={channel.trainer && channel.actuating
 								? (step) => channel.nudgeBias(step)
 								: undefined}
-							execution={riding.length <= 1 && channel.you.inSession
-								? channel.you.execution
-								: undefined}
-							biasHint={targetsNote
+							hint={targetsNote
 								? `${targetsNote} — trim them there`
 								: undefined}
 						/>

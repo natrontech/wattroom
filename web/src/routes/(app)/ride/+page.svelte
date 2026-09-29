@@ -562,6 +562,7 @@
 		     inside it (#2156). -->
 		{@const ride = session}
 		<TvOverlay
+			stats={session.live}
 			riders={[tvRider]}
 			segments={session.segments}
 			total={session.total}
