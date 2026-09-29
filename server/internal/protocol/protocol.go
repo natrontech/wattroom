@@ -15,6 +15,7 @@ type ClientMessage struct {
 	Poke     *Poke           `json:"poke,omitempty"`
 	Away     *AwayState      `json:"away,omitempty"`
 	Device   *DeviceKind     `json:"device,omitempty"`
+	Roadside *Roadside       `json:"roadside,omitempty"`
 }
 
 // ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -51,6 +52,8 @@ type ServerTick struct {
 	Game *GameState `json:"game,omitempty"`
 	// The bunch on the session's road (ADR-0065), while it rides one.
 	World *World `json:"world,omitempty"`
+	// What the roadside has put on that road (ADR-0064, #3029), beside it.
+	Roadside *RoadsideState `json:"roadside,omitempty"`
 	// Live execution per rider (#27) — the SPEC score so far this session.
 	Execution map[string]float64 `json:"execution,omitempty"`
 	// Who the LiveKit webhooks say is in voice (#467), by rider id. A client

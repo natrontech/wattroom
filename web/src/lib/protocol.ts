@@ -949,6 +949,7 @@ export interface ClientMessage {
   poke?: Poke;
   away?: AwayState;
   device?: DeviceKind;
+  roadside?: Roadside;
 }
 /**
  * ServerTick is a voice channel's coalesced 1 Hz broadcast: every rider's
@@ -1001,6 +1002,10 @@ export interface ServerTick {
    * The bunch on the session's road (ADR-0065), while it rides one.
    */
   world?: World;
+  /**
+   * What the roadside has put on that road (ADR-0064, #3029), beside it.
+   */
+  roadside?: RoadsideState;
   /**
    * Live execution per rider (#27) — the SPEC score so far this session.
    */
@@ -1362,6 +1367,68 @@ export interface ChannelPresence {
   workoutName?: string;
   elapsedSec?: number /* int */;
 }
+
+//////////
+// source: roadside.go
+
+/**
+ * Roadside is one roadside verb (ADR-0064, #3029): something a spectator
+ * puts on the session's road. It paints, sounds and informs, and nothing it
+ * does reaches a rider's trainer, place or score. A refused one is answered
+ * with a `roadside_` code.
+ */
+export interface Roadside {
+  kind: RoadsideKind;
+  /**
+   * Where on the road, in metres along the crew's cut in the direction
+   * ridden, as World.BunchM reads it; Lap counts a looped road's laps.
+   */
+  atM: number /* float64 */;
+  lap?: number /* int */;
+}
+/**
+ * RoadsideKind is the closed set of roadside verbs. Anything else is refused
+ * at the socket.
+ */
+export type RoadsideKind = string;
+/**
+ * RoadsideKindStand is where a spectator watches from: ahead of the bunch,
+ * moved at most once a minute, frozen as the riders close on it, and gone
+ * once they pass it (docs/SPEC.md "The roadside").
+ */
+export const RoadsideKindStand: RoadsideKind = "stand";
+/**
+ * RoadsideState is what the roadside has put on the session's road, on the
+ * tick while a bunch rides it. Rev moves with every change — a stand placed,
+ * moved, passed or let go — so a client redraws only when it does.
+ */
+export interface RoadsideState {
+  rev: number /* int64 */;
+  stands?: RoadsideStand[];
+}
+/**
+ * RoadsideStand is one spectator's stand, where Roadside put it.
+ */
+export interface RoadsideStand {
+  riderId: string;
+  atM: number /* float64 */;
+  lap?: number /* int */;
+}
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute.
+ */
+export const RoadsideStandMinAheadM = 300;
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute.
+ */
+export const RoadsideStandMaxAheadM = 5000;
+/**
+ * docs/SPEC.md "The roadside" (defaults — tune in alpha): a stand is 300 m –
+ * 5 km ahead of the bunch, and moves at most once a minute.
+ */
+export const RoadsideStandMoveSeconds = 60;
 
 //////////
 // source: sensors.go

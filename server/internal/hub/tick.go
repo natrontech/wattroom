@@ -167,6 +167,7 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 	// advances anything, and running is the only phase with a block.
 	state.TargetRpm = rm.session.mood(now()).TargetRPM()
 	rm.session.rideBunch(now())
+	rm.settleRoadsideLocked()
 	rm.sayPhaseLocked(state, now())
 	// Whoever has been gone longer than the grace window (#984). The tick
 	// is the room's only clock, and the line has to be resolved before the
@@ -198,10 +199,11 @@ func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, savin
 			}
 			return out
 		}(),
-		Voice:  rm.voiceIDsLocked(),
-		World:  rm.session.world(rm.lastGame != nil && rm.lastGame.MeterHidden),
-		Riders: rm.metrics,
-		Roster: make([]protocol.Rider, 0, len(rm.clients)),
+		Voice:    rm.voiceIDsLocked(),
+		World:    rm.session.world(rm.lastGame != nil && rm.lastGame.MeterHidden),
+		Roadside: rm.session.roadside(),
+		Riders:   rm.metrics,
+		Roster:   make([]protocol.Rider, 0, len(rm.clients)),
 	}
 	rm.metrics = make(map[string]protocol.RiderMetrics)
 	cheerFrom := rm.cheerFrom
