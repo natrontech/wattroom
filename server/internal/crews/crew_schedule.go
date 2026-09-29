@@ -103,7 +103,7 @@ func (s *Service) handleCrewSchedule(w http.ResponseWriter, r *http.Request) {
 	for _, row := range rows {
 		id := store.UUIDString(row.ID)
 		entry := scheduledJSON{
-			ID: id, WorkoutName: row.WorkoutName, WorkoutJSON: string(row.WorkoutJson),
+			ID: id, WorkoutName: row.WorkoutName, WorkoutJSON: s.readable(r.Context(), row.WorkoutJson, user.ID),
 			StartsAt: row.StartsAt.Time.Format(time.RFC3339), CreatedBy: row.CreatedBy,
 			Going: going[id], Out: out[id], YourAnswer: yours[id],
 			// Never below zero: someone can answer and leave between reads.
@@ -163,6 +163,10 @@ func (s *Service) handleCrewPlan(w http.ResponseWriter, r *http.Request) {
 	if !valid {
 		return
 	}
+	route, ok := s.planRoad(w, r, req.WorkoutJSON, user.ID)
+	if !ok {
+		return
+	}
 	channel, ok := s.enterableChannel(w, r, crew.ID, user.ID, req.ChannelID)
 	if !ok {
 		return
@@ -200,7 +204,7 @@ func (s *Service) handleCrewPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	row, err := q.CreateCrewPlan(r.Context(), db.CreateCrewPlanParams{
 		CrewID: crew.ID, ChannelID: channel, WorkoutName: name, WorkoutJson: []byte(req.WorkoutJSON),
-		StartsAt: pgTime(req.StartsAt), CreatedBy: user.ID,
+		StartsAt: pgTime(req.StartsAt), CreatedBy: user.ID, RouteID: route,
 	})
 	if err != nil {
 		httpx.Fail(w, s.log, "plan failed", err, "The session could not be planned. Try again.", "crew", crewID)
@@ -217,7 +221,7 @@ func (s *Service) handleCrewPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	s.announceIn(r.Context(), crew.ID, channel, "planned", user.DisplayName, name, req.StartsAt)
 	out := scheduledJSON{
-		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName, WorkoutJSON: string(row.WorkoutJson),
+		ID: store.UUIDString(row.ID), WorkoutName: row.WorkoutName, WorkoutJSON: s.readable(r.Context(), row.WorkoutJson, user.ID),
 		StartsAt: row.StartsAt.Time.Format(time.RFC3339), CreatedBy: user.DisplayName, Mine: true,
 	}
 	if channel.Valid {

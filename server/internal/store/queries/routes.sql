@@ -56,3 +56,9 @@ from routes
 where owner_id = sqlc.arg(user_id)
 order by created_at
 limit sqlc.arg(lim);
+
+-- name: GetRouteRoad :one
+-- A route's road, its source and whose it is (#3051): what a workout read
+-- cuts to its reader. Deliberately not owner-scoped — the cut is the
+-- audience rule, and routes.Attacher is the one place that applies it.
+select owner_id, src, road from routes where id = $1;
