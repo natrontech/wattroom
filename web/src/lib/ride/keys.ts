@@ -1,9 +1,6 @@
 import { isTyping } from '$lib/keys';
-import {
-	createShiftDriver,
-	type ShiftDir,
-	type ShiftDriver,
-} from '$lib/ride/shifter';
+import { createRideShift } from '$lib/ride/ride-shift';
+import type { ShiftDir, ShiftDriver } from '$lib/ride/shifter';
 
 /**
  * Easier / Harder from the keyboard (ADR-0084, #3329), and from anything that
@@ -79,10 +76,10 @@ export function bindShiftKeys(
 }
 
 /** The keys shifting one ride, each move one Easier / Harder press (#3328). */
-export function bindRideShift(ride: {
-	easierHarder(dir: ShiftDir): unknown;
-}): () => void {
-	const driver = createShiftDriver((dir) => ride.easierHarder(dir));
+export function bindRideShift(
+	ride: Parameters<typeof createRideShift>[0],
+): () => void {
+	const driver = createRideShift(ride);
 	const unbind = bindShiftKeys(driver);
 	return () => {
 		unbind();

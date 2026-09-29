@@ -20,6 +20,8 @@
 	import { deviceWord } from '$lib/device.svelte';
 	import { GRADE, WATTS, type FreeMode } from '$lib/ride/free-ride.svelte';
 	import { modeLine } from '$lib/ride/mode-copy';
+	import { gearsEnabled } from '$lib/ride/gears-enabled';
+	import GearShift from '$lib/ride/GearShift.svelte';
 	import Minus from '@lucide/svelte/icons/minus';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Radio from '@lucide/svelte/icons/radio';
@@ -177,6 +179,19 @@
 			<p class="text-muted -mt-3 text-center text-sm">
 				{modeLine(free?.mode ?? 'grade', !!conn?.profile.current.singleSpeed)}
 			</p>
+			<!-- Grade mode shifts too (ADR-0084, amending ADR-0059): Easier and
+			     Harder below the grade pair, full width, the gear between. -->
+			{#if !watts && conn && gearsEnabled()}
+				<div class="mx-auto w-full max-w-xl">
+					<GearShift
+						shift={conn.shift}
+						gear={conn.ride.gear}
+						off={conn.ride.shiftOff}
+						resetAt={conn.ride.gearResetAt}
+						cassette={!conn.profile.current.singleSpeed}
+					/>
+				</div>
+			{/if}
 			<div>
 				<SecondaryRow
 					cadence={channel.you.cadence}

@@ -9,7 +9,7 @@ import {
 import { SimulatedTrainer } from '$lib/ble/simulated';
 import { at } from '$lib/road/along';
 import { createPace } from '$lib/road/pace';
-import { createActuator } from './actuation';
+import { createActuator } from './actuation.svelte';
 import { createRideGrade, feltGrade, ROAD } from './ride-grade';
 import { gradedRoad, stretch } from './road.test-helper';
 
