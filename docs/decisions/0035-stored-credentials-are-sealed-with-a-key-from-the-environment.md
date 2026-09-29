@@ -103,3 +103,17 @@ credential this removes is write-scoped rather than a login.
   and breaks the auto-upload promise in WATTROOM.md, which is the reason the
   integration exists.
 - **A managed key service.** Contradicts [0002](0002-single-vm-compose-deploy.md).
+
+## Amendment, 2026-09-29 (#3042): a route is sealed differently
+
+[ADR-0063](0063-a-route-keeps-its-place-with-care.md) seals a route's
+coordinates with this key, and departs from two of this ADR's rules for them:
+
+- **Rotation is a re-seal, not a re-authorisation.** A route cannot be
+  fetched again from anybody, so its rows carry a `key_version` and a
+  documented command re-seals them under a new key.
+- **No key means no coordinates.** A server without the key stores a route's
+  heights and refuses its coordinates; it never writes them in the clear. A
+  missing credential costs a reconnect; a leaked route costs a home address.
+
+Credentials keep this ADR's rules as written.
