@@ -47,7 +47,7 @@ func (f *fakeXp) SessionClosed(ev SessionClosed) {
 func TestVoiceFeedsTheRoom(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), nil, nil)
 	h.VoiceJoined("velvet", "kim-id#a", "Kim") // before any socket opened the room
-	rm := h.room("velvet")
+	rm := h.stateOf("velvet")
 	inVoice := func(id string) bool {
 		rm.mu.Lock()
 		defer rm.mu.Unlock()
@@ -83,7 +83,7 @@ func TestVoiceFeedsTheRoom(t *testing.T) {
 // seconds, listeners who never pedalled, and who pressed start. Voice time
 // counts only while the timeline runs.
 func TestSessionClosedNamesRidersAndListeners(t *testing.T) {
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	rm.xp = &fakeXp{}
 	t0 := time.Unix(1000, 0)
 	if !ran(rm.control(protocol.Control{Action: "pick", WorkoutName: "w", WorkoutJSON: "{}", TotalSeconds: 60}, as("coach"), t0)) {
@@ -142,7 +142,7 @@ func TestSessionClosedNamesRidersAndListeners(t *testing.T) {
 // The winner is named on the one tick that scores the sprint, and only
 // when somebody else sprinted too.
 func TestSprintWinnerNamedOnce(t *testing.T) {
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	rm.seen = map[string]protocol.Rider{
 		"kim":  {ID: "kim", Name: "Kim", WeightKg: 70},
 		"lena": {ID: "lena", Name: "Lena", WeightKg: 70},
@@ -183,7 +183,7 @@ func TestSprintWinnerNamedOnce(t *testing.T) {
 // A track credits whoever queued it when it plays to the end — never when
 // it is skipped — under a ref unique to that play.
 func TestJukeboxCreditsTracksPlayedThrough(t *testing.T) {
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	now := time.Unix(1000, 0)
 	if played, ok := rm.jukebox(protocol.JukeboxCommand{Action: "add", VideoID: "dQw4w9WgXcQ", Title: "one"}, "kim", "Kim", now); !ok || played != nil {
 		t.Fatalf("add: ok %v played %+v", ok, played)
@@ -220,7 +220,7 @@ func TestJukeboxCreditsTracksPlayedThrough(t *testing.T) {
 // #2834). Every client reports it, so the anchor still makes the first report
 // advance and every echo, "unplayable" or "ended", a no-op.
 func TestAnUnplayableTrackAdvancesWithoutCredit(t *testing.T) {
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	var logged []trackEvent
 	rm.deckPlayed = func(ev trackEvent) { logged = append(logged, ev) }
 	now := time.Unix(1000, 0)

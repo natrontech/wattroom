@@ -11,7 +11,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/protocol"
 )
 
-type room struct {
+type channelState struct {
 	// The room's clock. time.Now in production; the tests move it so a
 	// sample's timeline second is theirs to choose (#791).
 	now     func() time.Time
@@ -174,7 +174,7 @@ const pokeCooldown = protocol.PokeCooldownSeconds * time.Second
 // times a minute, because coasting into a corner, freewheeling between
 // intervals and reaching for a bottle are all 0 W. Ten seconds of no watts
 // is sitting down; two is riding a bike.
-func (rm *room) ridingLocked(now time.Time) (names, ids []string) {
+func (rm *channelState) ridingLocked(now time.Time) (names, ids []string) {
 	riders := make([]protocol.Rider, 0, len(rm.lastWatts))
 	for id, at := range rm.lastWatts {
 		if now.Sub(at) > ridingWindow {
@@ -204,7 +204,7 @@ func (rm *room) ridingLocked(now time.Time) (names, ids []string) {
 // apart from ridingLocked on purpose (#1016): the rider-facing word got
 // stricter, and a restart during somebody's rest interval is exactly what
 // the guard exists to prevent. The caller holds rm.mu.
-func (rm *room) liveTrainersLocked(now time.Time) int {
+func (rm *channelState) liveTrainersLocked(now time.Time) int {
 	live := 0
 	for _, at := range rm.lastMetric {
 		if now.Sub(at) <= ridingWindow {
@@ -214,7 +214,7 @@ func (rm *room) liveTrainersLocked(now time.Time) int {
 	return live
 }
 
-func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bool {
+func (rm *channelState) allow(kind, riderID string, now time.Time, min time.Duration) bool {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	if rm.lastInput == nil {
@@ -228,8 +228,8 @@ func (rm *room) allow(kind, riderID string, now time.Time, min time.Duration) bo
 	return true
 }
 
-func newRoom(channel string) *room {
-	return &room{
+func newChannelState(channel string) *channelState {
+	return &channelState{
 		now:           time.Now,
 		channel:       channel,
 		stop:          make(chan struct{}),
@@ -253,14 +253,14 @@ func newRoom(channel string) *room {
 
 // riderOf reads a client's rider under the room lock — SetRole can change
 // its role while that client's read loop is blocked on the next message.
-func (rm *room) riderOf(c *client) protocol.Rider {
+func (rm *channelState) riderOf(c *client) protocol.Rider {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	return c.rider
 }
 
 // refusal is refusalLocked for a caller that does not hold the lock.
-func (rm *room) refusal(action string, rider protocol.Rider) (code, message string) {
+func (rm *channelState) refusal(action string, rider protocol.Rider) (code, message string) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	return rm.refusalLocked(action, rider)
@@ -272,7 +272,7 @@ func (rm *room) refusal(action string, rider protocol.Rider) (code, message stri
 const autoplayActor = "Autoplay"
 
 // nameOfLocked is what to call a rider who is in the room right now.
-func (rm *room) nameOfLocked(riderID string) string {
+func (rm *channelState) nameOfLocked(riderID string) string {
 	for c := range rm.clients {
 		if c.rider.ID == riderID {
 			return c.rider.Name

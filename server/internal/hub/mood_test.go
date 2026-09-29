@@ -89,7 +89,7 @@ func TestAutoplayIsToldWhatTheRoomIsRiding(t *testing.T) {
 	spy := &moodSpy{seen: make(chan SessionMood, 1)}
 	h.SetPlaylistSource(spy)
 
-	rm := h.room("mood-room")
+	rm := h.stateOf("mood-room")
 	rm.mu.Lock()
 	rm.session.apply(protocol.Control{Action: "pick", WorkoutName: "Bands", WorkoutJSON: moodWorkout, TotalSeconds: 240}, h.now())
 	// Started far enough in the past that the countdown is over; the tick's

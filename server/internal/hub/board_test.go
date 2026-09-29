@@ -9,7 +9,7 @@ import (
 )
 
 func TestFireBufferIsBounded(t *testing.T) {
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	for range 50 {
 		rm.fire(protocol.Board{ClipID: "3f2504e0-4f89-11d3-9a0c-0305e82c3301", FromID: "jan", From: "Jan"})
 	}
@@ -21,7 +21,7 @@ func TestFireBufferIsBounded(t *testing.T) {
 // SPEC: one fire a second per rider. The limiter is per rider, not per room —
 // a second rider firing must not be refused because the first just did.
 func TestFireIsOneASecondPerRider(t *testing.T) {
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	at := time.Unix(100, 0)
 	if !rm.allow("board", "jan", at, time.Second) {
 		t.Fatal("first fire refused")
@@ -60,7 +60,7 @@ func TestFireShapeCheckIsConsulted(t *testing.T) {
 // second stop with nothing of the rider's fired in between says nothing and
 // is dropped, while a stop after a fresh fire, or from another rider, stands.
 func TestStopIsQueuedOncePerFire(t *testing.T) {
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	shot := protocol.Board{ClipID: "3f2504e0-4f89-11d3-9a0c-0305e82c3301", FromID: "jan", From: "Jan"}
 	stop := protocol.Board{FromID: "jan", From: "Jan"}
 	svensStop := protocol.Board{FromID: "sven", From: "Sven"}
@@ -80,7 +80,7 @@ func TestStopIsQueuedOncePerFire(t *testing.T) {
 func TestTheRoomRemembersWhatIsStillSounding(t *testing.T) {
 	const clip = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
 	at := time.Unix(100, 0)
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	rm.now = func() time.Time { return at }
 
 	if id, _ := rm.soundingLocked("jan", at); id != "" {
@@ -110,7 +110,7 @@ func TestTheRoomRemembersWhatIsStillSounding(t *testing.T) {
 // rider through the door starts a sound the room has already ended.
 func TestAStopClearsWhatIsSounding(t *testing.T) {
 	at := time.Unix(100, 0)
-	rm := newRoom("velvet")
+	rm := newChannelState("velvet")
 	rm.now = func() time.Time { return at }
 	rm.fire(protocol.Board{ClipID: "3f2504e0-4f89-11d3-9a0c-0305e82c3301", FromID: "jan", From: "Jan"})
 	rm.fire(protocol.Board{FromID: "jan", From: "Jan"})

@@ -244,7 +244,7 @@ func TestTheAutoplayReadHasADeadline(t *testing.T) {
 	h := New(slog.New(slog.DiscardHandler), fakeAccess{}, nil)
 	spy := &deadlineSpy{bounded: make(chan bool, 1)}
 	h.SetPlaylistSource(spy)
-	h.triggerAutoplay(newRoom("deadline"), "deadline")
+	h.triggerAutoplay(newChannelState("deadline"), "deadline")
 	select {
 	case bounded := <-spy.bounded:
 		if !bounded {

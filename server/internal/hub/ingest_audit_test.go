@@ -39,7 +39,7 @@ func TestValidMetricsBounds(t *testing.T) {
 
 // A start the phase refuses must not wipe the running ride (audit 2026-09-09).
 func TestARefusedStartKeepsTheRecord(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	t0 := time.Unix(1000, 0)
 	if !ran(rm.control(protocol.Control{Action: "pick", WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"steady","seconds":600,"target":0.8}]}`, TotalSeconds: 600}, as("jan"), t0)) {
 		t.Fatal("pick refused")
@@ -180,7 +180,7 @@ func TestARecordOutlastsSixHours(t *testing.T) {
 // A place on a road rides into the record and never onto the tick (#3052):
 // the owner's heights are absolute, and ADR-0063 keeps those with them.
 func TestARoadPlaceIsRecordedButNeverBroadcast(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	t0 := time.Unix(1000, 0)
 	if !ran(rm.control(protocol.Control{Action: "pick", WorkoutName: "x", WorkoutJSON: `{"steps":[{"type":"steady","seconds":600,"target":0.8}]}`, TotalSeconds: 600}, as("jan"), t0)) {
 		t.Fatal("pick refused")

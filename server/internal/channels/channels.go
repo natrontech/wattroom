@@ -50,7 +50,7 @@ type Live interface {
 	// to go to another. hub.ErrNotInChannel, hub.ErrRiding.
 	Move(channel, userID string, to protocol.Moved) error
 	// A deleted voice channel's live state dies with it (#618).
-	CloseRoom(channel string)
+	CloseChannel(channel string)
 }
 
 // VoiceEjector is LiveKit's half of a kick — satisfied by *av.Service, and

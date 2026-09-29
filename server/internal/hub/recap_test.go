@@ -17,13 +17,13 @@ import (
 // the point of sampling: the roster is the truth, whatever the sockets did.
 
 // sawAt marks whoever is in the room at that second, the way the tick does.
-func sawAt(rm *room, seconds int) {
+func sawAt(rm *channelState, seconds int) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.sawLocked(pat(seconds))
 }
 
-func recapAt(rm *room, seconds, elapsed int) protocol.SessionRecap {
+func recapAt(rm *channelState, seconds, elapsed int) protocol.SessionRecap {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	return rm.recapLocked(protocol.SessionState{WorkoutName: "Openers", Elapsed: elapsed}, pat(seconds))
@@ -219,9 +219,9 @@ func (c *recapCatcher) saved() []protocol.SessionRecap {
 // Only inside a synctest bubble, and the caller defers stop(): a t.Fatal
 // unwinds the bubble's own goroutine, and a tick loop still running when it
 // does panics the bubble over whatever actually failed.
-func tickingRoom(t *testing.T, riders ...string) (rm *room, saved *recapCatcher, stop func()) {
+func tickingRoom(t *testing.T, riders ...string) (rm *channelState, saved *recapCatcher, stop func()) {
 	t.Helper()
-	rm = newRoom("velvet")
+	rm = newChannelState("velvet")
 	rm.now = time.Now
 	saved = &recapCatcher{}
 	rm.recaps = saved
@@ -233,14 +233,14 @@ func tickingRoom(t *testing.T, riders ...string) (rm *room, saved *recapCatcher,
 }
 
 // coach drives the session the way a coach's socket does.
-func coach(t *testing.T, rm *room, c protocol.Control) {
+func coach(t *testing.T, rm *channelState, c protocol.Control) {
 	t.Helper()
 	if !ran(rm.control(c, as("jan"), time.Now())) {
 		t.Fatalf("the session refused %q", c.Action)
 	}
 }
 
-func startSession(t *testing.T, rm *room) {
+func startSession(t *testing.T, rm *channelState) {
 	t.Helper()
 	coach(t, rm, protocol.Control{Action: "pick", WorkoutName: "Openers", WorkoutJSON: "{}", TotalSeconds: 600})
 	coach(t, rm, protocol.Control{Action: "start"})
@@ -250,7 +250,7 @@ func TestOnlyASessionThatRanLeavesARecap(t *testing.T) {
 	tests := []struct {
 		name   string
 		riders []string
-		ride   func(t *testing.T, rm *room)
+		ride   func(t *testing.T, rm *channelState)
 		want   bool
 	}{
 		{
@@ -258,7 +258,7 @@ func TestOnlyASessionThatRanLeavesARecap(t *testing.T) {
 			// seconds left a durable card for a session nobody rode.
 			name:   "a countdown the coach cancels",
 			riders: []string{"jan"},
-			ride: func(t *testing.T, rm *room) {
+			ride: func(t *testing.T, rm *channelState) {
 				startSession(t, rm)
 				time.Sleep(4 * time.Second)
 				coach(t, rm, protocol.Control{Action: "end"})
@@ -269,7 +269,7 @@ func TestOnlyASessionThatRanLeavesARecap(t *testing.T) {
 			// A full room does not make a cancelled countdown a session.
 			name:   "a countdown cancelled with the room full",
 			riders: []string{"jan", "kim", "lena"},
-			ride: func(t *testing.T, rm *room) {
+			ride: func(t *testing.T, rm *channelState) {
 				startSession(t, rm)
 				time.Sleep(9 * time.Second)
 				coach(t, rm, protocol.Control{Action: "end"})
@@ -279,7 +279,7 @@ func TestOnlyASessionThatRanLeavesARecap(t *testing.T) {
 		{
 			name:   "the countdown runs out and the timeline rides",
 			riders: []string{"jan", "kim"},
-			ride: func(t *testing.T, rm *room) {
+			ride: func(t *testing.T, rm *channelState) {
 				startSession(t, rm)
 				time.Sleep(countdownSeconds*time.Second + 30*time.Second)
 				coach(t, rm, protocol.Control{Action: "end"})
@@ -290,7 +290,7 @@ func TestOnlyASessionThatRanLeavesARecap(t *testing.T) {
 			// One tick of running is a session; the gate must not need two.
 			name:   "the timeline rides for a single tick",
 			riders: []string{"jan"},
-			ride: func(t *testing.T, rm *room) {
+			ride: func(t *testing.T, rm *channelState) {
 				startSession(t, rm)
 				time.Sleep(countdownSeconds*time.Second + 2*time.Second)
 				coach(t, rm, protocol.Control{Action: "end"})
@@ -300,7 +300,7 @@ func TestOnlyASessionThatRanLeavesARecap(t *testing.T) {
 		{
 			name:   "a session paused and then ended",
 			riders: []string{"jan"},
-			ride: func(t *testing.T, rm *room) {
+			ride: func(t *testing.T, rm *channelState) {
 				startSession(t, rm)
 				time.Sleep(countdownSeconds*time.Second + 20*time.Second)
 				coach(t, rm, protocol.Control{Action: "pause"})
@@ -313,7 +313,7 @@ func TestOnlyASessionThatRanLeavesARecap(t *testing.T) {
 			// The clock closes a session as readily as a coach does.
 			name:   "the timeline running out on its own",
 			riders: []string{"jan"},
-			ride: func(t *testing.T, rm *room) {
+			ride: func(t *testing.T, rm *channelState) {
 				coach(t, rm, protocol.Control{Action: "pick", WorkoutName: "Openers", WorkoutJSON: "{}", TotalSeconds: 20})
 				coach(t, rm, protocol.Control{Action: "start"})
 				time.Sleep(countdownSeconds*time.Second + 25*time.Second)

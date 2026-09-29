@@ -40,8 +40,8 @@ func forgetHub(t *testing.T) (*Hub, *lines) {
 	h := New(slog.New(slog.NewTextHandler(out, nil)), fakeAccess{}, nil)
 	t.Cleanup(func() {
 		h.mu.Lock()
-		rooms := make([]*room, 0, len(h.rooms))
-		for _, rm := range h.rooms {
+		rooms := make([]*channelState, 0, len(h.states))
+		for _, rm := range h.states {
 			rooms = append(rooms, rm)
 		}
 		h.mu.Unlock()
@@ -54,10 +54,10 @@ func forgetHub(t *testing.T) (*Hub, *lines) {
 }
 
 // live is the hub's room at channel, or nil once it has been forgotten.
-func live(h *Hub, channel string) *room {
+func live(h *Hub, channel string) *channelState {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return h.rooms[channel]
+	return h.states[channel]
 }
 
 // A channel anyone had ever joined kept its tick goroutine, jukebox queue, chat
@@ -66,22 +66,22 @@ func live(h *Hub, channel string) *room {
 func TestAnEmptyRoomIsForgottenOnceItHasBeenIdleLongEnough(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h, out := forgetHub(t)
-		rm := h.room("quiet")
+		rm := h.stateOf("quiet")
 		rm.mu.Lock()
 		rm.music.state.Queue = []protocol.JukeboxEntry{{ID: "1", VideoID: "abc", Title: "Left behind"}}
 		rm.mu.Unlock()
 
 		// Well inside the window, the room is still the hub's.
-		time.Sleep(roomIdleTTL - time.Minute)
+		time.Sleep(channelIdleTTL - time.Minute)
 		synctest.Wait()
 		if live(h, "quiet") != rm {
-			t.Fatalf("forgotten %v early", roomIdleTTL-time.Minute)
+			t.Fatalf("forgotten %v early", channelIdleTTL-time.Minute)
 		}
 
 		time.Sleep(2 * time.Minute)
 		synctest.Wait()
 		if got := live(h, "quiet"); got != nil {
-			t.Fatalf("still in the hub after %v idle", roomIdleTTL)
+			t.Fatalf("still in the hub after %v idle", channelIdleTTL)
 		}
 		// The map delete alone would leave the goroutine running: the room's
 		// own tick is what decides, and the line is written where it returns.
@@ -96,10 +96,10 @@ func TestAnEmptyRoomIsForgottenOnceItHasBeenIdleLongEnough(t *testing.T) {
 func TestARoomWithALiveSocketIsNotForgotten(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h, _ := forgetHub(t)
-		rm := h.room("busy")
+		rm := h.stateOf("busy")
 		rm.join(sock("jan"))
 
-		time.Sleep(roomIdleTTL + time.Minute)
+		time.Sleep(channelIdleTTL + time.Minute)
 		synctest.Wait()
 		if live(h, "busy") != rm {
 			t.Fatalf("forgot a room with a rider standing in it")
@@ -114,17 +114,17 @@ func TestARoomWithALiveSocketIsNotForgotten(t *testing.T) {
 func TestARoomWithVoiceAndNoSocketsIsNotForgotten(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h, _ := forgetHub(t)
-		rm := h.room("lounge")
+		rm := h.stateOf("lounge")
 		h.VoiceJoined("lounge", "r-jan|tab-1", "Jan")
 
-		time.Sleep(roomIdleTTL + time.Minute)
+		time.Sleep(channelIdleTTL + time.Minute)
 		synctest.Wait()
 		if live(h, "lounge") != rm {
 			t.Fatal("forgot a room with somebody in the voice channel")
 		}
 
 		h.VoiceLeft("lounge", "r-jan|tab-1")
-		time.Sleep(roomIdleTTL - time.Minute)
+		time.Sleep(channelIdleTTL - time.Minute)
 		synctest.Wait()
 		if live(h, "lounge") != rm {
 			t.Fatal("the idle window did not restart when voice emptied")
@@ -137,22 +137,22 @@ func TestARoomWithVoiceAndNoSocketsIsNotForgotten(t *testing.T) {
 	})
 }
 
-// A rider handed the room by holdRoom has not joined with it yet, so the tick
+// A rider handed the room by holdChannel has not joined with it yet, so the tick
 // still sees an empty room. Forgetting it there would leave them in a room
 // with no clock and no entry in the hub (#751's shape).
 func TestARoomASocketIsArrivingAtIsNotForgotten(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h, _ := forgetHub(t)
-		rm := h.holdRoom("arriving")
+		rm := h.holdChannel("arriving")
 
-		time.Sleep(roomIdleTTL + time.Minute)
+		time.Sleep(channelIdleTTL + time.Minute)
 		synctest.Wait()
 		if live(h, "arriving") != rm {
 			t.Fatal("forgot a room a socket was still arriving at")
 		}
 
 		// The socket gave up before it ever joined: now there is nobody.
-		h.releaseRoom("arriving")
+		h.releaseChannel("arriving")
 		time.Sleep(2 * tickInterval)
 		synctest.Wait()
 		if live(h, "arriving") != nil {
@@ -166,20 +166,20 @@ func TestARoomASocketIsArrivingAtIsNotForgotten(t *testing.T) {
 func TestAForgottenRoomComesBackOnTheNextJoin(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h, _ := forgetHub(t)
-		rm := h.room("reform")
+		rm := h.stateOf("reform")
 		rm.mu.Lock()
 		rm.music.state.Queue = []protocol.JukeboxEntry{{ID: "1", VideoID: "abc", Title: "Left behind"}}
 		rm.seen["jan"] = protocol.Rider{ID: "jan", Name: "Jan"}
 		rm.mu.Unlock()
 
-		time.Sleep(roomIdleTTL + time.Minute)
+		time.Sleep(channelIdleTTL + time.Minute)
 		synctest.Wait()
 		if live(h, "reform") != nil {
 			t.Fatal("the idle room was not forgotten")
 		}
 
-		fresh := h.holdRoom("reform")
-		defer h.releaseRoom("reform")
+		fresh := h.holdChannel("reform")
+		defer h.releaseChannel("reform")
 		if fresh == rm {
 			t.Fatal("the rebuilt room is the forgotten room")
 		}
@@ -202,13 +202,13 @@ func TestAForgottenRoomComesBackOnTheNextJoin(t *testing.T) {
 func TestARoomWithAnUnfinishedSessionKeepsItsClock(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h, _ := forgetHub(t)
-		rm := h.room("running")
+		rm := h.stateOf("running")
 		rm.mu.Lock()
 		rm.session.pick("Openers", "{}", 24*3600)
 		rm.session.start(time.Now())
 		rm.mu.Unlock()
 
-		time.Sleep(roomIdleTTL + time.Minute)
+		time.Sleep(channelIdleTTL + time.Minute)
 		synctest.Wait()
 		if live(h, "running") != rm {
 			t.Fatal("forgot a room whose session is running, with its samples unsaved")

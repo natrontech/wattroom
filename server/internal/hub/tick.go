@@ -36,8 +36,8 @@ func bestScreen(candidate, held *client) bool {
 // The ticker runs on while the room is empty — this clock is the only thing
 // that will close and save a session whose last rider shut the tab — and the
 // room is let go of entirely once it has been empty, quiet and between
-// sessions for roomIdleTTL (forget.go).
-func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) {
+// sessions for channelIdleTTL (forget.go).
+func (rm *channelState) run(log *slog.Logger, now func() time.Time, saver SessionSaver) {
 	// A timer, not a ticker: the interval bursts to 4 Hz while a sprint window
 	// is live (SPEC) and returns to 1 Hz after.
 	timer := time.NewTimer(tickInterval)
@@ -83,7 +83,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			// drops the room and this goroutine ends. Only the hub can say
 			// so — a socket may be arriving that this tick cannot see — and
 			// the next join builds a fresh room (ADR-0052's re-form path).
-			if idleFor >= roomIdleTTL && rm.forget != nil && rm.forget() {
+			if idleFor >= channelIdleTTL && rm.forget != nil && rm.forget() {
 				logger(log).Info("room forgotten", "channel", rm.channel, "idle", idleFor)
 				return
 			}
@@ -124,7 +124,7 @@ type tickOut struct {
 // tickEmptyLocked is a tick with nobody in the channel: the clock still
 // closes a session and says what happened, and says how long the room has
 // been idle for the hub to let go of it. Caller holds rm.mu.
-func (rm *room) tickEmptyLocked(now func() time.Time, saving bool) (*sessionEnd, time.Duration) {
+func (rm *channelState) tickEmptyLocked(now func() time.Time, saving bool) (*sessionEnd, time.Duration) {
 	rm.endAbandonedGameLocked(now())
 	rm.endAbandonedSessionLocked(now())
 	// Nobody to tick to, but the clock still runs (audit 2026-09-09):
@@ -152,7 +152,7 @@ func (rm *room) tickEmptyLocked(now func() time.Time, saving bool) (*sessionEnd,
 
 // tickLocked advances the channel one tick and builds what it sends. Caller
 // holds rm.mu; nothing here does I/O.
-func (rm *room) tickLocked(now func() time.Time, dt time.Duration, saving bool) tickOut {
+func (rm *channelState) tickLocked(now func() time.Time, dt time.Duration, saving bool) tickOut {
 	// Somebody is here: the idle window starts over when they go.
 	rm.emptySince = time.Time{}
 	rm.abandonedSince = time.Time{}
@@ -246,7 +246,7 @@ func (rm *room) tickLocked(now func() time.Time, dt time.Duration, saving bool) 
 // rosterLocked fills the tick's roster — one entry per rider, however many
 // sockets they hold — and hands back every socket, and who is riding. Caller
 // holds rm.mu.
-func (rm *room) rosterLocked(tick *protocol.ServerTick, now func() time.Time) (clients []*client, ridingKey string, ridingIDs []string) {
+func (rm *channelState) rosterLocked(tick *protocol.ServerTick, now func() time.Time) (clients []*client, ridingKey string, ridingIDs []string) {
 	clients = make([]*client, 0, len(rm.clients))
 	// One roster entry per rider, however many sockets they hold — the same
 	// person on a dashboard and a phone is one presence, and duplicate ids
@@ -305,7 +305,7 @@ func (rm *room) rosterLocked(tick *protocol.ServerTick, now func() time.Time) (c
 
 // announceTick tells whoever listens outside the channel what the tick
 // changed: the lobby, the saver, the XP keeper. Runs after rm.mu is released.
-func (rm *room) announceTick(log *slog.Logger, now func() time.Time, saver SessionSaver, out *tickOut, last *tickMemory) {
+func (rm *channelState) announceTick(log *slog.Logger, now func() time.Time, saver SessionSaver, out *tickOut, last *tickMemory) {
 	// Chat pings the lobby from its own HTTP write (#2437); the tick
 	// pings for what only it sees change.
 	if rm.changed != nil && (out.tick.State.Phase != last.phase || out.ridingKey != last.riding) {
@@ -330,7 +330,7 @@ func (rm *room) announceTick(log *slog.Logger, now func() time.Time, saver Sessi
 // phase worth talking about (#359), once per crossing. The transition is the
 // trigger, never the control message: the clock closes a session as readily
 // as a coach does, and a rider staring at the stage hears about both.
-func (rm *room) sayPhaseLocked(state protocol.SessionState, now time.Time) {
+func (rm *channelState) sayPhaseLocked(state protocol.SessionState, now time.Time) {
 	if state.Phase == rm.phaseSaid {
 		return
 	}
@@ -349,7 +349,7 @@ func (rm *room) sayPhaseLocked(state protocol.SessionState, now time.Time) {
 
 // tickIntervalLocked is the room's clock: 4 Hz through a sprint window —
 // the room's own, or a game's (#1578) — and 1 Hz otherwise. Caller holds rm.mu.
-func (rm *room) tickIntervalLocked(now time.Time) time.Duration {
+func (rm *channelState) tickIntervalLocked(now time.Time) time.Duration {
 	inside := func(start, end time.Time) bool {
 		return now.After(start.Add(-time.Second)) && now.Before(end.Add(time.Second))
 	}

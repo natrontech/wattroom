@@ -44,7 +44,7 @@ func (h *Hub) sessionOf(r *http.Request) []byte {
 // removal (#223), which must eject, not drift.
 func (h *Hub) Kick(channel, userID string) {
 	h.mu.Lock()
-	rm := h.rooms[channel]
+	rm := h.states[channel]
 	h.mu.Unlock()
 	if rm == nil {
 		return
@@ -120,8 +120,8 @@ func (h *Hub) sever(match func(userID string, session []byte) bool) (closed int,
 			conns = append(conns, c.conn)
 		}
 	}
-	rooms := make([]*room, 0, len(h.rooms))
-	for _, rm := range h.rooms {
+	rooms := make([]*channelState, 0, len(h.states))
+	for _, rm := range h.states {
 		rooms = append(rooms, rm)
 	}
 	h.mu.Unlock()
@@ -138,7 +138,7 @@ func (h *Hub) sever(match func(userID string, session []byte) bool) (closed int,
 }
 
 // connsWhere is every socket in the room that match picks.
-func (rm *room) connsWhere(match func(*client) bool) []*websocket.Conn {
+func (rm *channelState) connsWhere(match func(*client) bool) []*websocket.Conn {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	var conns []*websocket.Conn

@@ -41,7 +41,7 @@ type armedSprintKey struct {
 // picked and no longer.
 //
 // Caller holds rm.mu.
-func (rm *room) armWorkoutSprintLocked(now time.Time) {
+func (rm *channelState) armWorkoutSprintLocked(now time.Time) {
 	block, ok := rm.session.sprintBlockAt(now, sprintKlaxon)
 	if !ok {
 		return
@@ -59,7 +59,7 @@ func (rm *room) armWorkoutSprintLocked(now time.Time) {
 
 // scoreSprintLocked renders the sprint for the tick and names the winner on
 // the one tick that scores it (#467). Caller holds rm.mu.
-func (rm *room) scoreSprintLocked(now time.Time) (*protocol.SprintState, string) {
+func (rm *channelState) scoreSprintLocked(now time.Time) (*protocol.SprintState, string) {
 	scoredBefore := rm.sprint != nil && rm.sprint.scored
 	// Scored against who is still here (#1577): leave at second six of
 	// fifteen and the podium — and its XP — used to be yours anyway.

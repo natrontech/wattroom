@@ -40,7 +40,7 @@ func (*liveRecorder) LiveSession(string) (protocol.LiveSession, bool) {
 
 func (*liveRecorder) Move(string, string, protocol.Moved) error { return nil }
 
-func (*liveRecorder) CloseRoom(string) {}
+func (*liveRecorder) CloseChannel(string) {}
 
 // gate puts the real channels' gate in front of a recording hub, so what a
 // crew handler asks is answered by mayEnter over the rows it just wrote.

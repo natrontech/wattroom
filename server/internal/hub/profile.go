@@ -6,7 +6,7 @@ package hub
 // scoring against the old one while the rider's own trainer held targets
 // from the new, and they read off target however well they held it.
 func (h *Hub) SetProfile(userID, name string, ftpWatts, weightKg int) {
-	rooms := h.liveRooms()
+	rooms := h.liveChannels()
 	for _, rm := range rooms {
 		rm.setProfile(userID, name, ftpWatts, weightKg)
 	}
@@ -15,7 +15,7 @@ func (h *Hub) SetProfile(userID, name string, ftpWatts, weightKg int) {
 // setProfile is SetProfile for one room. The seen copy moves with it, since
 // the next sample would overwrite it anyway and a podium read before that
 // must not name the rider by their old name.
-func (rm *room) setProfile(userID, name string, ftpWatts, weightKg int) {
+func (rm *channelState) setProfile(userID, name string, ftpWatts, weightKg int) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	for c := range rm.clients {

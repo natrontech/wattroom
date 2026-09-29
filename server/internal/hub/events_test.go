@@ -209,7 +209,7 @@ func TestPendingEventsAreBounded(t *testing.T) {
 // showed nothing but music.
 
 func TestSessionPhaseSpeaksOncePerCrossing(t *testing.T) {
-	rm := newRoom("test")
+	rm := newChannelState("test")
 	at := func(s int) time.Time { return time.Unix(int64(s), 0) }
 	rm.session.pick("Sweet Spot", `{"name":"S","steps":[{"type":"steady","seconds":60,"target":0.9}]}`, 60)
 

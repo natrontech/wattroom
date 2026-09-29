@@ -79,7 +79,7 @@ func (h *Hub) voiceRidersLocked(channel string) map[string]struct{} {
 // as Presence.
 func (h *Hub) voiceChangedLocked(channel string, moved ...string) func() {
 	tell := func() { h.tellChannel(channel, moved...) }
-	rm, live := h.rooms[channel]
+	rm, live := h.states[channel]
 	if !live {
 		return tell
 	}
@@ -206,7 +206,7 @@ func (h *Hub) VoiceSync(channel string, present map[string]string, since time.Ti
 }
 
 // setVoice replaces who the hub says is in the channel (#467).
-func (rm *room) setVoice(riders map[string]struct{}) {
+func (rm *channelState) setVoice(riders map[string]struct{}) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
 	rm.voiceNow = riders
@@ -214,7 +214,7 @@ func (rm *room) setVoice(riders map[string]struct{}) {
 
 // voiceIDsLocked is who the hub says is in the channel, in the shape the tick
 // carries it. Sorted so a tick does not churn on map order. Caller holds rm.mu.
-func (rm *room) voiceIDsLocked() []string {
+func (rm *channelState) voiceIDsLocked() []string {
 	if len(rm.voiceNow) == 0 {
 		return nil
 	}
@@ -228,7 +228,7 @@ func (rm *room) voiceIDsLocked() []string {
 
 // accrueVoiceLocked adds one tick's worth of voice time to everyone in the
 // channel while the timeline runs (#467). Caller holds rm.mu.
-func (rm *room) accrueVoiceLocked(phase string, dt time.Duration) {
+func (rm *channelState) accrueVoiceLocked(phase string, dt time.Duration) {
 	if phase != "running" {
 		return
 	}
