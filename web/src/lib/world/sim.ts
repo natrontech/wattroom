@@ -1,9 +1,18 @@
 // The ride: every rider is (distance along the route, speed). The world is
 // drawn from that pair alone, which is also all a session would ever put
 // on the wire per rider — one number more than today's tick.
-import { step, trainerGrade } from './physics';
+import { PaceDefaultCdA } from '$lib/protocol';
+import { createPace, type Pace } from '$lib/road/pace';
 import { type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
+
+// What the trainer is told. Zwift's default "trainer difficulty" halves the
+// grade so a 12 % ramp does not stall a rider on a direct-drive; descents
+// are sent flat because a trainer cannot push the pedals.
+// ponytail: the dev world's stand-in for rideGrade() (#3025).
+function trainerGrade(routeGrade: number, difficulty = 0.5): number {
+	return Math.max(0, routeGrade * difficulty);
+}
 
 export type SimRider = {
 	id: string;
@@ -15,9 +24,14 @@ export type SimRider = {
 	d: number; // metres along the route
 	v: number; // m/s
 	lap: number;
+	/** The shared pace model (#3048), stepped once a second. */
+	pace: Pace;
+	/** Where the last whole second left the rider, and how far into the next. */
+	at: number;
+	into: number;
 };
 
-export type Env = { windMs: number; difficulty: number };
+export type Env = { difficulty: number };
 
 // A bot rides like a person: harder on climbs, soft on descents, a little noise.
 export function botWatts(r: SimRider, grade: number, t: number): number {
@@ -33,13 +47,21 @@ export function advance(
 	riders: SimRider[],
 	dt: number,
 	t: number,
-	env: Env,
 ): void {
 	for (const r of riders) {
-		const g = at(route, r.d).grade;
-		if (!r.you) r.watts = botWatts(r, g, t);
-		r.v = step(r.v, r.watts, g, { mass: r.mass }, dt, env.windMs);
-		r.d += r.v * dt;
+		// Whole seconds through the pace model, as a session steps it; the
+		// frames between them extrapolate at the last second's speed. Six
+		// frames of a sixth sum to 0.999…, so a second is whole a hair early.
+		for (r.into += dt; r.into > 1 - 1e-9; r.into -= 1) {
+			const g = at(route, r.at).grade;
+			if (!r.you) r.watts = botWatts(r, g, t);
+			const before = r.pace.distance;
+			r.pace.step(r.watts, g, r.mass, PaceDefaultCdA, 0);
+			r.at += r.pace.distance - before;
+			if (!route.loop) r.at = Math.min(r.at, route.length);
+		}
+		r.v = r.pace.speed;
+		r.d = r.at + r.v * r.into;
 		if (route.loop && r.d >= route.length * (r.lap + 1)) r.lap++;
 		if (!route.loop) r.d = Math.min(r.d, route.length);
 	}
@@ -68,6 +90,9 @@ export function defaultRiders(watts: number, ftp: number): SimRider[] {
 		d: i * 7,
 		v: 8,
 		lap: 0,
+		pace: createPace(8),
+		at: i * 7,
+		into: 0,
 	});
 	return [
 		mk('you', 'You', 80, ftp, 0),

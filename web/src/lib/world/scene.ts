@@ -60,7 +60,7 @@ export function mount(
 	const { route, world } = opts;
 	let mode: CameraMode = opts.camera ?? 'chase';
 	let speedup = opts.speedup ?? 1;
-	const env: Env = { windMs: 0, difficulty: 0.5 };
+	const env: Env = { difficulty: 0.5 };
 	const riders = defaultRiders(opts.watts ?? 200, opts.ftp);
 	const you = riders.find((r) => r.you) ?? riders[0];
 	const pedal: Pedalling[] = riders.map(() => ({
@@ -161,7 +161,7 @@ export function mount(
 		t += dt;
 		sight.uTime.value += real;
 		const n = Math.max(1, Math.ceil(dt / SUBSTEP));
-		for (let k = 0; k < n; k++) advance(route, riders, dt / n, t, env);
+		for (let k = 0; k < n; k++) advance(route, riders, dt / n, t);
 		const me = crew.update(route, pedal, dt, real, mode === 'orbit');
 		if (controls) controls.update();
 		else rig.update(camera, mode === 'heli' ? 'heli' : 'chase', you, me, real);

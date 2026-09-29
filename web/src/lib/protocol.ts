@@ -589,6 +589,55 @@ export const MinRoadGradePct = -15;
  */
 export const MaxRoadGradePct = 20;
 /**
+ * The pace model (docs/SPEC.md "Route rides", #3048): what turns a
+ * rider's watts into speed on a road. The client's dot, the hub's bunch,
+ * stats replay and races all read this one model, in $lib/road/pace.ts
+ * and internal/road — two that disagree put riders on different metres
+ * on different screens.
+ */
+export const PaceCrr = 0.004;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const PaceAirDensity = 1.225; // kg/m³
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const PaceDrivetrainEfficiency = 0.97;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const PaceGravity = 9.80665; // m/s², standard gravity
+/**
+ * The CdA a road is ridden at, m², until the Kickr sessions measure one
+ * (#3025, #3331). The golden vectors carry CdA as an input, so a measured
+ * value adds vectors at it and moves this default.
+ */
+export const PaceDefaultCdA = 0.32;
+/**
+ * Substeps in each one-second step. Not a SPEC number, but both twins
+ * have to take the same ones to land on the same metre.
+ */
+export const PaceSubsteps = 4;
+/**
+ * The reference rider (docs/SPEC.md): 75 kg on an 8 kg bike at 225 W —
+ * whom a road's estimates are made for when no real rider is in question.
+ */
+export const ReferenceRiderKg = 75;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const BikeKg = 8;
+/**
+ * From docs/SPEC.md: the rider's two numbers (ADR-0048) and the anchor the HR
+ * zones derive from (ADR-0014). Both sides read these; neither retypes them.
+ */
+export const ReferenceRiderWatts = 225;
+/**
  * One reconnect replay frame, in samples: an hour of the ride buffer's
  * one row a second (audit 2026-09-09). The hub takes one frame a second
  * per rider and cuts a longer one, so the client sends a longer outage
