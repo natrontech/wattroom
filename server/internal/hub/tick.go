@@ -56,8 +56,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 	// Presence push (#251): phase and the riding set are the live signals the
 	// rail shows for rooms you are NOT in — ping the lobby only when one of
 	// them changes between ticks, never per tick.
-	lastPhase, lastRiding := "", ""
-	var lastRiders []string
+	var last tickMemory
 	lastTick := now()
 	for {
 		select {
@@ -76,28 +75,7 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 		lastTick = now()
 		timer.Reset(rm.tickIntervalLocked(now()))
 		if len(rm.clients) == 0 {
-			rm.endAbandonedGameLocked(now())
-			rm.endAbandonedSessionLocked(now())
-			// Nobody to tick to, but the clock still runs (audit 2026-09-09):
-			// a session whose last rider closed the tab at minute 58 ends at
-			// 60 and saves then, dated right — not on the next visit.
-			state := rm.session.state(now())
-			// Said now, at the moment it happened: skipping the line here
-			// left phaseSaid at "running", and the next visitor watched the
-			// session "end" live, hours late (audit 2026-09-09).
-			rm.sayPhaseLocked(state, now())
-			// The departures too, for the same reason (#2230). Skipped here,
-			// the last riders stay parked in `departed` — so the room's
-			// timeline loses the "left" line, and the first rider back hours
-			// later is read as a flap and loses their "joined" one as well.
-			// Silence in both directions, which is the opposite of what the
-			// 15 s grace was for (#984).
-			rm.sayDepartedLocked(now())
-			ended := rm.closeLocked(state, now(), saver != nil)
-			// Resolved here, after the close above: a session that has just
-			// crossed to done releases the room from this tick on, and one
-			// still running holds it however empty the room is (forget.go).
-			idleFor := rm.idleForLocked(state, now())
+			ended, idleFor := rm.tickEmptyLocked(now, saver != nil)
 			locked = false
 			rm.mu.Unlock()
 			rm.handOff(log, now, saver, ended)
@@ -111,215 +89,240 @@ func (rm *room) run(log *slog.Logger, now func() time.Time, saver SessionSaver) 
 			}
 			continue
 		}
-		// Somebody is here: the idle window starts over when they go.
-		rm.emptySince = time.Time{}
-		rm.abandonedSince = time.Time{}
-		gameWinner := rm.advanceGameLocked(now())
-		// Resolved before the drain so a transition's own line rides the tick
-		// that carries the transition, not the one after it.
-		state := rm.session.state(now())
-		// After state() has promoted a finished countdown: mood() never
-		// advances anything, and running is the only phase with a block.
-		state.TargetRpm = rm.session.mood(now()).TargetRPM()
-		rm.sayPhaseLocked(state, now())
-		// Whoever has been gone longer than the grace window (#984). The tick
-		// is the room's only clock, and the line has to be resolved before the
-		// drain below or it waits a whole second for the next one.
-		rm.sayDepartedLocked(now())
-		rm.accrueVoiceLocked(state.Phase, dt)
-		// Before the sprint is rendered, so a block's window rides the tick
-		// that entered it rather than the one after.
-		rm.armWorkoutSprintLocked(now())
-		sprintNow, sprintWinner := rm.scoreSprintLocked(now())
-		eventsNow := rm.events.drain()
-		tick := protocol.ServerTick{
-			At:         now().UnixMilli(),
-			State:      state,
-			Jukebox:    new(rm.music.snapshot()),
-			JukeboxRev: rm.music.rev,
-			Cheers:     rm.cheers,
-			Board:      rm.board,
-			Events:     eventsNow,
-			Sprint:     sprintNow,
-			Game:       rm.lastGame,
-			Execution: func() map[string]float64 {
-				out := make(map[string]float64, len(rm.seen))
-				for id := range rm.seen {
-					if score, scored := rm.record.execution(id); scored {
-						out[id] = score
-					}
-				}
-				return out
-			}(),
-			Voice:  rm.voiceIDsLocked(),
-			Riders: rm.metrics,
-			Roster: make([]protocol.Rider, 0, len(rm.clients)),
-		}
-		rm.metrics = make(map[string]protocol.RiderMetrics)
-		cheerFrom := rm.cheerFrom
-		rm.cheers, rm.cheerFrom = nil, nil
-		rm.board = nil
-		// Who the session has seen, sampled once a second while the timeline
-		// runs (ADR-0034). Cheap, and it needs no join/leave hook: the roster
-		// is right here, already folded across a rider's several screens.
-		//
-		// The countdown is not the session (#1539): a coach who starts and
-		// cancels inside the ten seconds rode nothing, and both docs/SPEC.md
-		// and ADR-0034 say a session that never started leaves nothing. An
-		// empty presence map is how closeLocked hears that, so this gate is
-		// the whole of it — and it is what `countdown` already means to the
-		// rest of the timeline, which mood() and sprintBlockAt() both refuse.
-		if tick.State.Phase == "running" || tick.State.Phase == "paused" {
-			rm.sawLocked(now())
-		}
-		// Once it has closed, the scores go only to the session's riders
-		// (#2819) — nil while it runs, when the channel watches it live, and
-		// when there is nothing to score, so everyone shares one frame.
-		var rode map[string]struct{}
-		if tick.State.Phase != "running" && tick.State.Phase != "paused" && len(tick.Execution) > 0 {
-			rode = make(map[string]struct{}, len(rm.seen))
-			for id := range rm.seen {
-				rode[id] = struct{}{}
-			}
-		}
-		// The session just closed: hand the ride record to the saver exactly
-		// once. Snapshot under the lock, persist outside it (hub discipline:
-		// no I/O while holding a room mutex).
-		ended := rm.closeLocked(tick.State, now(), saver != nil)
-		// The stored row, on the first tick after the write came back.
-		tick.Recap = rm.recap
-		rm.recap = nil
-		clients := make([]*client, 0, len(rm.clients))
-		// One roster entry per rider, however many sockets they hold — the same
-		// person on a dashboard and a phone is one presence, and duplicate ids
-		// are poison to keyed rendering downstream.
-		seen := make(map[string]struct{}, len(rm.clients))
-		riding, ridingIDs := rm.ridingLocked(now())
-		pedalling := make(map[string]struct{}, len(ridingIDs))
-		for _, id := range ridingIDs {
-			pedalling[id] = struct{}{}
-		}
-		// A rider's connection is the best of their sockets (#2131): the same
-		// person on a dashboard and a phone is one roster entry, and what
-		// describes them is their best screen rather than whichever socket the
-		// map happened to yield first.
-		//
-		// One socket, not two facts: the ping and the device word come from
-		// the same client record, so the roster never says "12 ms" about the
-		// laptop and "phone" about the handset sitting next to it. Collected
-		// across every socket and applied after the roster is built, because
-		// the entry itself is appended from the first socket seen.
-		best := make(map[string]*client, len(rm.clients))
-		for c := range rm.clients {
-			clients = append(clients, c)
-			if was, had := best[c.rider.ID]; !had || bestScreen(c, was) {
-				best[c.rider.ID] = c
-			}
-			if _, dup := seen[c.rider.ID]; !dup {
-				seen[c.rider.ID] = struct{}{}
-				// The socket's captured rider plus the room's live view of
-				// them: away is room state, not something a socket carries,
-				// and riding is the window the room holds rather than the
-				// watts on this one sample (#1016).
-				rider := c.rider
-				rider.AwayReason, rider.Away = rm.away[c.rider.ID]
-				_, rider.Riding = pedalling[c.rider.ID]
-				rider.InSession = rm.session.rides(c.rider.ID)
-				// And what their board still has going, so a rider who joined
-				// mid-clip catches up (#1681). Read here rather than drained:
-				// a fire is one tick, the sound it started is not.
-				rider.Sounding, rider.SoundingMs = rm.soundingLocked(c.rider.ID, now())
-				tick.Roster = append(tick.Roster, rider)
-			}
-		}
-		for i := range tick.Roster {
-			if on, found := best[tick.Roster[i].ID]; found {
-				// Zero when nothing has been measured yet, which omitempty
-				// then drops — the client draws that as "no reading", never
-				// as a round trip of nothing.
-				tick.Roster[i].PingMs = on.ping()
-				tick.Roster[i].Device = on.deviceKind
-			}
-		}
-		ridingKey := strings.Join(riding, "\n")
-		// Claim answers ride out with this tick but not IN it (#610): a
-		// rider's device inventory is theirs, and the tick goes to the room.
-		pairing := rm.drainPairingLocked()
-		pokes := rm.drainPokesLocked()
+		out := rm.tickLocked(now, dt, saver != nil)
 		locked = false
 		rm.mu.Unlock()
-		// Chat pings the lobby from its own HTTP write (#2437); the tick
-		// pings for what only it sees change.
-		if rm.changed != nil && (tick.State.Phase != lastPhase || ridingKey != lastRiding) {
-			// Both sets: whoever stopped riding reads as stopped on a friend's
-			// list, just as whoever started reads as riding (#2324).
-			rm.changed(append(append([]string(nil), lastRiders...), ridingIDs...))
-			lastPhase, lastRiding, lastRiders = tick.State.Phase, ridingKey, ridingIDs
-		}
-		// Stable roster order, so tiles do not shuffle every second.
-		sort.Slice(tick.Roster, func(i, j int) bool { return tick.Roster[i].ID < tick.Roster[j].ID })
+		rm.announceTick(log, now, saver, &out, &last)
+		rm.sendTick(log, &out)
+	}
+}
 
-		rm.handOff(log, now, saver, ended)
-		if sprintWinner != "" && rm.xp != nil {
-			rm.xp.SprintWon(rm.channel, sprintWinner, now())
-		}
-		if gameWinner != "" && rm.xp != nil {
-			rm.xp.GameWon(rm.channel, gameWinner, rm.gameMode, now())
-		}
+// tickMemory is what one tick remembers of the last, to ping the lobby only
+// when the phase or the riding set changed (#251).
+type tickMemory struct {
+	phase, riding string
+	riders        []string
+}
 
-		metricTicks.Inc()
-		frames := tickFrames{tick: &tick, log: log, channel: rm.channel}
-		for _, c := range clients {
-			_, scores := rode[c.rider.ID]
-			scores = scores || rode == nil
-			// Half a tick is worse than none: a frame that did not marshal
-			// is skipped, and said so. The workout (#1710) and the deck
-			// (#2838) ride only to a socket that has not heard them; a full
-			// frame that fails to marshal falls back to the light one and
-			// leaves both owed.
-			light := frameKind{scores: scores}
-			kind := frameKind{
-				scores:  scores,
-				workout: c.workoutSent != tick.State.WorkoutHash,
-				deck:    c.jukeboxSent != tick.JukeboxRev,
-			}
-			frame := frames.frame(light)
-			if frame != nil && kind != light {
-				if full := frames.frame(kind); full != nil {
-					frame = full
-				} else {
-					kind = light
+// tickOut is one tick as its locked half built it, for the half that runs
+// after rm.mu is released: telling the lobby and the XP keeper, and sending
+// every socket its frame.
+type tickOut struct {
+	tick         protocol.ServerTick
+	cheerFrom    []string
+	rode         map[string]struct{}
+	ended        *sessionEnd
+	clients      []*client
+	ridingKey    string
+	ridingIDs    []string
+	pairing      map[*client]protocol.SensorPairing
+	pokes        map[*client][]protocol.Poke
+	gameWinner   string
+	sprintWinner string
+}
+
+// tickEmptyLocked is a tick with nobody in the channel: the clock still
+// closes a session and says what happened, and says how long the room has
+// been idle for the hub to let go of it. Caller holds rm.mu.
+func (rm *room) tickEmptyLocked(now func() time.Time, saving bool) (*sessionEnd, time.Duration) {
+	rm.endAbandonedGameLocked(now())
+	rm.endAbandonedSessionLocked(now())
+	// Nobody to tick to, but the clock still runs (audit 2026-09-09):
+	// a session whose last rider closed the tab at minute 58 ends at
+	// 60 and saves then, dated right — not on the next visit.
+	state := rm.session.state(now())
+	// Said now, at the moment it happened: skipping the line here
+	// left phaseSaid at "running", and the next visitor watched the
+	// session "end" live, hours late (audit 2026-09-09).
+	rm.sayPhaseLocked(state, now())
+	// The departures too, for the same reason (#2230). Skipped here,
+	// the last riders stay parked in `departed` — so the room's
+	// timeline loses the "left" line, and the first rider back hours
+	// later is read as a flap and loses their "joined" one as well.
+	// Silence in both directions, which is the opposite of what the
+	// 15 s grace was for (#984).
+	rm.sayDepartedLocked(now())
+	ended := rm.closeLocked(state, now(), saving)
+	// Resolved here, after the close above: a session that has just
+	// crossed to done releases the room from this tick on, and one
+	// still running holds it however empty the room is (forget.go).
+	idleFor := rm.idleForLocked(state, now())
+	return ended, idleFor
+}
+
+// tickLocked advances the channel one tick and builds what it sends. Caller
+// holds rm.mu; nothing here does I/O.
+func (rm *room) tickLocked(now func() time.Time, dt time.Duration, saving bool) tickOut {
+	// Somebody is here: the idle window starts over when they go.
+	rm.emptySince = time.Time{}
+	rm.abandonedSince = time.Time{}
+	gameWinner := rm.advanceGameLocked(now())
+	// Resolved before the drain so a transition's own line rides the tick
+	// that carries the transition, not the one after it.
+	state := rm.session.state(now())
+	// After state() has promoted a finished countdown: mood() never
+	// advances anything, and running is the only phase with a block.
+	state.TargetRpm = rm.session.mood(now()).TargetRPM()
+	rm.sayPhaseLocked(state, now())
+	// Whoever has been gone longer than the grace window (#984). The tick
+	// is the room's only clock, and the line has to be resolved before the
+	// drain below or it waits a whole second for the next one.
+	rm.sayDepartedLocked(now())
+	rm.accrueVoiceLocked(state.Phase, dt)
+	// Before the sprint is rendered, so a block's window rides the tick
+	// that entered it rather than the one after.
+	rm.armWorkoutSprintLocked(now())
+	sprintNow, sprintWinner := rm.scoreSprintLocked(now())
+	eventsNow := rm.events.drain()
+	tick := protocol.ServerTick{
+		At:         now().UnixMilli(),
+		State:      state,
+		Jukebox:    new(rm.music.snapshot()),
+		JukeboxRev: rm.music.rev,
+		Cheers:     rm.cheers,
+		Board:      rm.board,
+		Events:     eventsNow,
+		Sprint:     sprintNow,
+		Game:       rm.lastGame,
+		Execution: func() map[string]float64 {
+			out := make(map[string]float64, len(rm.seen))
+			for id := range rm.seen {
+				if score, scored := rm.record.execution(id); scored {
+					out[id] = score
 				}
 			}
-			// A cheer from someone hidden from this rider, or whom they hid,
-			// is cut from their copy alone (#3202) — a rare second, so the
-			// frame is marshalled for them rather than cached for the room.
-			if frame != nil {
-				if own, cut := rm.cheersFor(c.rider.ID, tick.Cheers, cheerFrom); cut {
-					frame = frames.withCheers(kind, own)
-				}
-			}
-			// Marked heard only when the frame was actually queued: a dropped
-			// frame (slow socket) leaves it owed, and the next tick tries
-			// again rather than believing it arrived.
-			if frame != nil && c.send(frame) {
-				if kind.workout {
-					c.workoutSent = tick.State.WorkoutHash
-				}
-				if kind.deck {
-					c.jukeboxSent = tick.JukeboxRev
-				}
-			}
-			// Addressed to this socket alone, so it cannot be folded into the
-			// tick — but it rides the same queue, so it keeps its order.
-			if answer, ok := pairing[c]; ok {
-				c.sendJSON(log, protocol.ServerMessage{Pairing: &answer})
-			}
-			for _, pending := range pokes[c] {
-				poke := pending
-				c.sendJSON(log, protocol.ServerMessage{Poke: &poke})
-			}
+			return out
+		}(),
+		Voice:  rm.voiceIDsLocked(),
+		Riders: rm.metrics,
+		Roster: make([]protocol.Rider, 0, len(rm.clients)),
+	}
+	rm.metrics = make(map[string]protocol.RiderMetrics)
+	cheerFrom := rm.cheerFrom
+	rm.cheers, rm.cheerFrom = nil, nil
+	rm.board = nil
+	// Who the session has seen, sampled once a second while the timeline
+	// runs (ADR-0034). Cheap, and it needs no join/leave hook: the roster
+	// is right here, already folded across a rider's several screens.
+	//
+	// The countdown is not the session (#1539): a coach who starts and
+	// cancels inside the ten seconds rode nothing, and both docs/SPEC.md
+	// and ADR-0034 say a session that never started leaves nothing. An
+	// empty presence map is how closeLocked hears that, so this gate is
+	// the whole of it — and it is what `countdown` already means to the
+	// rest of the timeline, which mood() and sprintBlockAt() both refuse.
+	if tick.State.Phase == "running" || tick.State.Phase == "paused" {
+		rm.sawLocked(now())
+	}
+	// Once it has closed, the scores go only to the session's riders
+	// (#2819) — nil while it runs, when the channel watches it live, and
+	// when there is nothing to score, so everyone shares one frame.
+	var rode map[string]struct{}
+	if tick.State.Phase != "running" && tick.State.Phase != "paused" && len(tick.Execution) > 0 {
+		rode = make(map[string]struct{}, len(rm.seen))
+		for id := range rm.seen {
+			rode[id] = struct{}{}
 		}
+	}
+	// The session just closed: hand the ride record to the saver exactly
+	// once. Snapshot under the lock, persist outside it (hub discipline:
+	// no I/O while holding a room mutex).
+	ended := rm.closeLocked(tick.State, now(), saving)
+	// The stored row, on the first tick after the write came back.
+	tick.Recap = rm.recap
+	rm.recap = nil
+	clients, ridingKey, ridingIDs := rm.rosterLocked(&tick, now)
+	// Claim answers ride out with this tick but not IN it (#610): a
+	// rider's device inventory is theirs, and the tick goes to the room.
+	pairing := rm.drainPairingLocked()
+	pokes := rm.drainPokesLocked()
+	return tickOut{
+		tick: tick, cheerFrom: cheerFrom, rode: rode, ended: ended, clients: clients,
+		ridingKey: ridingKey, ridingIDs: ridingIDs, pairing: pairing, pokes: pokes,
+		gameWinner: gameWinner, sprintWinner: sprintWinner,
+	}
+}
+
+// rosterLocked fills the tick's roster — one entry per rider, however many
+// sockets they hold — and hands back every socket, and who is riding. Caller
+// holds rm.mu.
+func (rm *room) rosterLocked(tick *protocol.ServerTick, now func() time.Time) (clients []*client, ridingKey string, ridingIDs []string) {
+	clients = make([]*client, 0, len(rm.clients))
+	// One roster entry per rider, however many sockets they hold — the same
+	// person on a dashboard and a phone is one presence, and duplicate ids
+	// are poison to keyed rendering downstream.
+	seen := make(map[string]struct{}, len(rm.clients))
+	riding, ridingIDs := rm.ridingLocked(now())
+	pedalling := make(map[string]struct{}, len(ridingIDs))
+	for _, id := range ridingIDs {
+		pedalling[id] = struct{}{}
+	}
+	// A rider's connection is the best of their sockets (#2131): the same
+	// person on a dashboard and a phone is one roster entry, and what
+	// describes them is their best screen rather than whichever socket the
+	// map happened to yield first.
+	//
+	// One socket, not two facts: the ping and the device word come from
+	// the same client record, so the roster never says "12 ms" about the
+	// laptop and "phone" about the handset sitting next to it. Collected
+	// across every socket and applied after the roster is built, because
+	// the entry itself is appended from the first socket seen.
+	best := make(map[string]*client, len(rm.clients))
+	for c := range rm.clients {
+		clients = append(clients, c)
+		if was, had := best[c.rider.ID]; !had || bestScreen(c, was) {
+			best[c.rider.ID] = c
+		}
+		if _, dup := seen[c.rider.ID]; !dup {
+			seen[c.rider.ID] = struct{}{}
+			// The socket's captured rider plus the room's live view of
+			// them: away is room state, not something a socket carries,
+			// and riding is the window the room holds rather than the
+			// watts on this one sample (#1016).
+			rider := c.rider
+			rider.AwayReason, rider.Away = rm.away[c.rider.ID]
+			_, rider.Riding = pedalling[c.rider.ID]
+			rider.InSession = rm.session.rides(c.rider.ID)
+			// And what their board still has going, so a rider who joined
+			// mid-clip catches up (#1681). Read here rather than drained:
+			// a fire is one tick, the sound it started is not.
+			rider.Sounding, rider.SoundingMs = rm.soundingLocked(c.rider.ID, now())
+			tick.Roster = append(tick.Roster, rider)
+		}
+	}
+	for i := range tick.Roster {
+		if on, found := best[tick.Roster[i].ID]; found {
+			// Zero when nothing has been measured yet, which omitempty
+			// then drops — the client draws that as "no reading", never
+			// as a round trip of nothing.
+			tick.Roster[i].PingMs = on.ping()
+			tick.Roster[i].Device = on.deviceKind
+		}
+	}
+	ridingKey = strings.Join(riding, "\n")
+	return clients, ridingKey, ridingIDs
+}
+
+// announceTick tells whoever listens outside the channel what the tick
+// changed: the lobby, the saver, the XP keeper. Runs after rm.mu is released.
+func (rm *room) announceTick(log *slog.Logger, now func() time.Time, saver SessionSaver, out *tickOut, last *tickMemory) {
+	// Chat pings the lobby from its own HTTP write (#2437); the tick
+	// pings for what only it sees change.
+	if rm.changed != nil && (out.tick.State.Phase != last.phase || out.ridingKey != last.riding) {
+		// Both sets: whoever stopped riding reads as stopped on a friend's
+		// list, just as whoever started reads as riding (#2324).
+		rm.changed(append(append([]string(nil), last.riders...), out.ridingIDs...))
+		last.phase, last.riding, last.riders = out.tick.State.Phase, out.ridingKey, out.ridingIDs
+	}
+	// Stable roster order, so tiles do not shuffle every second.
+	sort.Slice(out.tick.Roster, func(i, j int) bool { return out.tick.Roster[i].ID < out.tick.Roster[j].ID })
+
+	rm.handOff(log, now, saver, out.ended)
+	if out.sprintWinner != "" && rm.xp != nil {
+		rm.xp.SprintWon(rm.channel, out.sprintWinner, now())
+	}
+	if out.gameWinner != "" && rm.xp != nil {
+		rm.xp.GameWon(rm.channel, out.gameWinner, rm.gameMode, now())
 	}
 }
 
@@ -344,106 +347,6 @@ func (rm *room) sayPhaseLocked(state protocol.SessionState, now time.Time) {
 	}
 }
 
-// armedSprintKey names one sprint block of one run of the timeline. Both
-// halves matter: the block's second tells two sprints of the same workout
-// apart, and the run number lets go of the latch when the session is
-// restarted or a new workout picked (session.run). Plain ints, so the latch
-// compares by value and never by an instant derived twice.
-//
-// The zero value cannot collide with a real block: session.run is 0 until
-// start() bumps it, and only a running timeline has a block at all.
-type armedSprintKey struct {
-	run    int
-	second int
-}
-
-// armWorkoutSprintLocked gives a workout's `{"type":"sprint"}` block the
-// server-side sprint moment a coach's button gets (#2016): the podium, the
-// 4 Hz tick burst and Sprint Snob XP. docs/SPEC.md's glossary has always
-// said a sprint moment is "coach- or workout-armed"; only the coach half
-// existed. #2014 gave the block a client-computed window, which covers the
-// slope flip and the countdown but nothing the server scores.
-//
-// Armed once per block, and never over a sprint that is still running: a
-// coach who armed one seconds before the block keeps their window and its
-// podium, rather than having the samples wiped out from under it. The latch
-// is set either way, so the declined block is not retried a second later
-// with most of its window already gone.
-//
-// The window's length is the coach's to choose only as far as the workout
-// boundary allows: workout.Validate bounds every step, so the 4 Hz burst
-// this puts the room on lasts as long as the block the room's own coach
-// picked and no longer.
-//
-// Caller holds rm.mu.
-func (rm *room) armWorkoutSprintLocked(now time.Time) {
-	block, ok := rm.session.sprintBlockAt(now, sprintKlaxon)
-	if !ok {
-		return
-	}
-	key := armedSprintKey{run: rm.session.run, second: block.second}
-	if rm.armedBlock == key {
-		return
-	}
-	rm.armedBlock = key
-	if sp := rm.sprint; sp != nil && now.Before(sp.endsAt) {
-		return
-	}
-	rm.armSprintWindow(block.startsAt, block.endsAt)
-}
-
-// scoreSprintLocked renders the sprint for the tick and names the winner on
-// the one tick that scores it (#467). Caller holds rm.mu.
-func (rm *room) scoreSprintLocked(now time.Time) (*protocol.SprintState, string) {
-	scoredBefore := rm.sprint != nil && rm.sprint.scored
-	// Scored against who is still here (#1577): leave at second six of
-	// fifteen and the podium — and its XP — used to be yours anyway.
-	roster := rm.seen
-	if rm.sprint != nil && !scoredBefore {
-		roster = make(map[string]protocol.Rider, len(rm.seen))
-		for id, rider := range rm.seen {
-			if rm.presentLocked(id) {
-				roster[id] = rider
-			}
-		}
-	}
-	state := rm.sprint.state(now, roster)
-	if scoredBefore || rm.sprint == nil || !rm.sprint.scored || len(rm.sprint.results) < minSprintField {
-		return state, ""
-	}
-	return state, rm.sprint.results[0].RiderID
-}
-
-// closedLocked is the session as the XpKeeper hears it (#467): everyone who
-// rode, everyone who was in voice, and who pressed start. Caller holds rm.mu.
-func (rm *room) closedLocked(state protocol.SessionState, now time.Time) *SessionClosed {
-	ev := &SessionClosed{Channel: rm.channel, SessionID: state.ID, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
-	for _, id := range rm.seenOrder {
-		ev.Riders = append(ev.Riders, SessionRider{
-			ID: id, Rode: rm.record.count(id) >= MinRideSamples,
-			VoiceSeconds: int(rm.voiceMs[id] / 1000),
-		})
-	}
-	// Voice-only people — a coach without a trainer, a spectator on the
-	// call — in a stable order, since the map has none.
-	var listeners []string
-	for id := range rm.voiceMs {
-		if _, rode := rm.seen[id]; !rode {
-			listeners = append(listeners, id)
-		}
-	}
-	sort.Strings(listeners)
-	for _, id := range listeners {
-		ev.Riders = append(ev.Riders, SessionRider{ID: id, VoiceSeconds: int(rm.voiceMs[id] / 1000)})
-	}
-	return ev
-}
-
-// gameLinger keeps a finished game's podium on the tick as long as the
-// sprint keeps its own (#1579); then the room lets the game go, instead of
-// stapling "done" to every tick until a coach pressed end.
-const gameLinger = sprintLinger
-
 // tickIntervalLocked is the room's clock: 4 Hz through a sprint window —
 // the room's own, or a game's (#1578) — and 1 Hz otherwise. Caller holds rm.mu.
 func (rm *room) tickIntervalLocked(now time.Time) time.Duration {
@@ -459,49 +362,4 @@ func (rm *room) tickIntervalLocked(now time.Time) time.Duration {
 		}
 	}
 	return tickInterval
-}
-
-// advanceGameLocked runs the game's tick and owns its ending (#1575, #1579):
-// the first tick that sees it done puts the winner on the timeline once and
-// names them for the XP ledger; gameLinger later the game is let go. Caller
-// holds rm.mu; the returned winner is handed to the keeper after the unlock.
-func (rm *room) advanceGameLocked(now time.Time) (winner string) {
-	rm.endOrphanedGameLocked(now)
-	if rm.game == nil {
-		rm.lastGame = nil
-		return ""
-	}
-	samples := make(map[string]int, len(rm.metrics))
-	for id, m := range rm.metrics {
-		// Only the session's own riders play (ADR-0059).
-		if rm.session.rides(id) {
-			samples[id] = m.Watts
-		}
-	}
-	rm.game.advance(now, samples, rm.gameRosterLocked())
-	gs := rm.game.state(now)
-	rm.lastGame = &gs
-	if !rm.game.done() {
-		return ""
-	}
-	if rm.gameDoneAt.IsZero() {
-		rm.gameDoneAt = now
-		// The game's end is its session's (#2597): this tick closes it, and
-		// the podium lingers on while the rides are saved.
-		rm.endGameSessionLocked(now)
-		if len(gs.Podium) > 0 {
-			rm.events.add(sessionLine("won", gs.Podium[0].Name, gs.Mode, time.Time{}, now), now)
-			return gs.Podium[0].RiderID
-		}
-		// Not every game ends with a winner, and the ones that do not used to
-		// end in silence: a collective ramp finishes on the room's average
-		// falling off the line and builds no podium, so the timeline said
-		// nothing about a game the whole room had just ridden (ADR-0022).
-		rm.events.add(gameEndedLine(gs.Mode, gs.Round, now), now)
-		return ""
-	}
-	if now.Sub(rm.gameDoneAt) > gameLinger {
-		rm.game, rm.lastGame, rm.gameDoneAt, rm.gameHost = nil, nil, time.Time{}, ""
-	}
-	return ""
 }

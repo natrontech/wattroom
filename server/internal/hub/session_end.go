@@ -3,6 +3,7 @@ package hub
 import (
 	"context"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/protocol"
@@ -123,4 +124,29 @@ func (rm *room) detach(log *slog.Logger, where string, fn func()) {
 		defer rm.pending.Done()
 		fn()
 	})
+}
+
+// closedLocked is the session as the XpKeeper hears it (#467): everyone who
+// rode, everyone who was in voice, and who pressed start. Caller holds rm.mu.
+func (rm *room) closedLocked(state protocol.SessionState, now time.Time) *SessionClosed {
+	ev := &SessionClosed{Channel: rm.channel, SessionID: state.ID, StartedBy: rm.startedBy, Seconds: state.Elapsed, At: now}
+	for _, id := range rm.seenOrder {
+		ev.Riders = append(ev.Riders, SessionRider{
+			ID: id, Rode: rm.record.count(id) >= MinRideSamples,
+			VoiceSeconds: int(rm.voiceMs[id] / 1000),
+		})
+	}
+	// Voice-only people — a coach without a trainer, a spectator on the
+	// call — in a stable order, since the map has none.
+	var listeners []string
+	for id := range rm.voiceMs {
+		if _, rode := rm.seen[id]; !rode {
+			listeners = append(listeners, id)
+		}
+	}
+	sort.Strings(listeners)
+	for _, id := range listeners {
+		ev.Riders = append(ev.Riders, SessionRider{ID: id, VoiceSeconds: int(rm.voiceMs[id] / 1000)})
+	}
+	return ev
 }
