@@ -160,7 +160,7 @@
 					? 'text-[16vh]'
 					: 'text-[6.5rem]'}">{quiet ? '—' : watts}</span
 			>
-			<span class="eyebrow {tv ? 'text-[1.6vh]' : ''}">watts</span>
+			<span class="eyebrow {tv ? 'text-[3vh]' : ''}">watts</span>
 			<!-- The zone you are actually in, named (#1531, ADR-0046): the gauge
 			     has been tinted by it since #386 and never said which one, so the
 			     colour was a code with no key on the one screen that could give
@@ -170,9 +170,9 @@
 				     fill's floor, and Z1 written in its own colour was 2.1:1. -->
 				<span
 					class="eyebrow flex items-center justify-center gap-1 {tv
-						? 'text-[1.6vh]'
+						? 'text-[3vh]'
 						: ''}"
-					><ZoneDot {zone} class={tv ? 'size-[1vh]' : 'size-1.5'} />z{zone}
+					><ZoneDot {zone} class={tv ? 'size-[1.8vh]' : 'size-1.5'} />z{zone}
 					{ZONE_NAMES[zone]}</span
 				>
 			{/if}
@@ -185,12 +185,12 @@
 
 	<div
 		class="text-muted flex items-baseline tabular-nums {tv
-			? 'mt-[1vh] text-[1.8vh]'
+			? 'mt-[1vh] text-[3vh]'
 			: 'mt-2 text-xs'}"
 	>
 		<span>0</span>
 		<span
-			class="mx-auto {tv ? 'text-[2.6vh]' : 'text-sm'} {state.inBand
+			class="mx-auto {tv ? 'text-[3vh]' : 'text-sm'} {state.inBand
 				? 'text-ok'
 				: state.delta > 0
 					? 'text-warn'
