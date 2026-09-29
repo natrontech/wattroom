@@ -72,7 +72,7 @@ type export struct {
 		bytes []byte
 	}
 	// The key a route's map opens with (#3024), and what routes.json found:
-	// the GPX files to write, and how many routes had a map to write one of.
+	// the routes to write a GPX of, and how many had a map to write one of.
 	keys            *secrets.Cipher
 	routeFiles      []routeFile
 	routesWithPlace int
@@ -331,10 +331,10 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 		}
 		clipsWritten++
 	}
-	for _, file := range x.routeFiles {
-		if !writeUpload(file.name, file.gpx) {
-			return
-		}
+	routesWritten, err := x.writeRoutes(archive.Create, x.gpx)
+	if err != nil {
+		fail("export write routes", err)
+		return
 	}
 	if !writeJSON("manifest.json", map[string]any{
 		"generatedAt": time.Now().UTC(),
@@ -348,10 +348,10 @@ func (s *Service) handleExport(w http.ResponseWriter, r *http.Request) {
 			"clips":  map[string]int{"rows": len(x.clipIDs), "written": clipsWritten},
 			// A route's GPX needs its map (#3024): one stored without a key
 			// has heights only, in routes.json, and is not owed a file.
-			"routes": map[string]int{"withMap": x.routesWithPlace, "written": len(x.routeFiles)},
+			"routes": map[string]int{"withMap": x.routesWithPlace, "written": routesWritten},
 		},
 		"complete": samplesWritten == len(rides) && clipsWritten == len(x.clipIDs) &&
-			len(x.routeFiles) == x.routesWithPlace &&
+			routesWritten == x.routesWithPlace &&
 			!slices.ContainsFunc(manifest, func(e entry) bool { return !e.Ok || e.Truncated }),
 	}) {
 		return

@@ -3,6 +3,9 @@ package account
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
+	"io"
+	"slices"
 	"strings"
 	"testing"
 
@@ -128,5 +131,36 @@ func TestExportCarriesTheRidersRoutes(t *testing.T) {
 	}
 	if !strings.Contains(files["manifest.json"], `"complete": false`) {
 		t.Errorf("an export missing a GPX called itself complete: %s", files["manifest.json"])
+	}
+}
+
+// writerFunc is an io.Writer that reports each write.
+type writerFunc func(p []byte) (int, error)
+
+func (f writerFunc) Write(p []byte) (int, error) { return f(p) }
+
+// Each route's GPX is built and written before the next is built (#3580):
+// 200 routes of 50,000 points built up front held 660 MB at once. A route
+// whose file cannot be built is left out, and counted as not written.
+func TestRouteFilesAreBuiltOneAtATime(t *testing.T) {
+	x := &export{routeFiles: []routeFile{{name: "a"}, {name: "b"}, {name: "broken"}, {name: "c"}}}
+	var events []string
+	build := func(f routeFile) ([]byte, error) {
+		if f.name == "broken" {
+			return nil, errors.New("sealed under another key")
+		}
+		events = append(events, "build "+f.name)
+		return []byte(f.name), nil
+	}
+	create := func(name string) (io.Writer, error) {
+		return writerFunc(func(p []byte) (int, error) {
+			events = append(events, "write "+name)
+			return len(p), nil
+		}), nil
+	}
+	written, err := x.writeRoutes(create, build)
+	want := []string{"build a", "write a", "build b", "write b", "build c", "write c"}
+	if err != nil || written != 3 || !slices.Equal(events, want) {
+		t.Fatalf("wrote %d (%v) in the order %v, want 3 in %v", written, err, events, want)
 	}
 }
