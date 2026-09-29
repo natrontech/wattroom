@@ -324,3 +324,37 @@ recorded recommendation (option 1b):
 
 The page hears a hide and a show through one preload signal, `onVisibility`,
 which #3079 reuses.
+
+## Amendment, 2026-09-29 (#2818): Linux downloads its updates, and Windows is signed by an interim
+
+The #1303 amendment made the shell install its own updates everywhere, and
+this ADR had shipped Windows unsigned when an update was only a nudge. Nobody
+weighed the two together. An update installs whatever the releases repo
+serves, so the question is what checks it first. macOS checks the Developer ID
+(Squirrel.Mac refuses anything else). Windows checks Authenticode against the
+`publisherName` in `app-update.yml`, but only because the build step's
+`CSC_LINK` reaches the Windows runner and signs it with the Apple certificate.
+Linux (the AppImage and the deb) checks only a sha512 published beside the
+binary, which anyone who can write a release can also write. Decided on
+2026-09-29, taking the recorded recommendation:
+
+- **Linux goes back to the download offer.** The shell still reads the feed,
+  and a newer version brings up the #1940 download offer on home at once,
+  instead of after three failed updates. It never downloads or installs by
+  itself. macOS and Windows keep self-install. This narrows the #1303
+  amendment above to those two.
+- **The Apple certificate on Windows is an interim, not a chosen identity.**
+  It stays, because removing it alone turns the Windows check off, and the
+  workflow says so beside `CSC_LINK`. Every build reports the Windows
+  Authenticode status in its job summary and warns when it is not Valid. A
+  real Windows identity (Azure Trusted Signing, with `win.publisherName` set to
+  the full DN) comes when the Windows revisit trigger above fires.
+- **Rejected: a signature check of our own around electron-updater** (an
+  ed25519 key compiled into the shell, checked against the manifests before
+  install). It would cover Linux without money, but it is code on the most
+  sensitive path the shell has, and Linux riders lose little by clicking a
+  download.
+- **No approval gate on the publish job.** With Linux gated, a bare
+  `RELEASES_REPO_TOKEN` can publish a release, but no shell installs one
+  without a signature it does not hold. Immutable releases on the releases
+  repo are a settings click for the maintainer, tracked on their own.
