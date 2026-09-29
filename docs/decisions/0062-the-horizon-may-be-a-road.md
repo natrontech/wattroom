@@ -83,8 +83,13 @@ cadence or watts alone: a rider freewheeling down a descent is riding.
   written. The felt floor stays −5 %; the room below it is for virtual gears
   (ADR-0084).
 - Entering a road writes 0 % for 500 ms before the road's grade.
-- The pace model and FTMS share **one Cw**: the one `ftms.ts` sends. A hardware
-  session measures whether it holds, and this ADR does not assert it.
+- ~~The pace model and FTMS share **one Cw**: the one `ftms.ts` sends. A hardware
+  session measures whether it holds, and this ADR does not assert it.~~
+  **Diverged 2026-09-29 (#3393, ADR-0062)**: a transcription error, corrected to
+  what #3020 decided — the pace model and FTMS share **one CdA**. The factor
+  between it and the Cw that FTMS is sent is measured in the Kickr session, and
+  this ADR does not assert it. Read literally, 0.51 kg/m as ½ρ·CdA is a CdA of
+  0.83 m², which no cyclist rides.
 
 The numbers are in docs/SPEC.md's "Route rides" section. No road number
 appears in code before it appears there.
@@ -144,7 +149,7 @@ link to an ADR file that does not exist yet.
   person and an **avatar** is their profile picture; the **geo pack** is the
   pmtiles file and a **corridor** is one route's enrichment; the bike
   computer's page table is `computer-pages.ts`, never a third `pages.ts`.
-- Revisit: the Cw once the hardware session has measured it, `MinTrainerGrade`
+- Revisit: the CdA-to-Cw factor once the hardware session has measured it, `MinTrainerGrade`
   after P11, and the 50 % difficulty in alpha.
 - Implementation: `$lib/road`
   ([#3023](https://github.com/natrontech/wattroom/issues/3023)), the road
