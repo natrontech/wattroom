@@ -42,6 +42,7 @@ import (
 	"github.com/natrontech/wattroom/server/internal/housekeeping"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/hub"
+	"github.com/natrontech/wattroom/server/internal/intervals"
 	"github.com/natrontech/wattroom/server/internal/mcp"
 	"github.com/natrontech/wattroom/server/internal/notify"
 	"github.com/natrontech/wattroom/server/internal/og"
@@ -182,6 +183,9 @@ func wire(ctx context.Context, st *store.Store, mux *http.ServeMux, baseURL stri
 	shelf := customworkouts.New(st, authService, log)
 	shelf.SetRoads(roads)
 	shelf.Register(mux)
+	// A rider's planned week from intervals.icu, pulled into the importer
+	// (#2327); hidden unless the operator registered a client.
+	intervals.New(authService, log, baseURL).Register(mux)
 	// Personal read tokens (ADR-0017): bearer auth for GETs of own data
 	// and the MCP coach endpoint. Cookie auth stays the write path.
 	tokenService := tokens.New(st, authService, authService, log)
