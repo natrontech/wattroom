@@ -215,6 +215,7 @@
 		workoutName={shared?.workoutName ?? ''}
 		playing={!!live.tick?.jukebox?.current}
 		sprint={live.tick?.sprint ?? connection.ride.blockSprint}
+		stats={connection.recording.live}
 		game={live.tick?.game ?? null}
 		countdown={phase === 'countdown'
 			? {

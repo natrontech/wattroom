@@ -15,7 +15,7 @@
 	import Instrument from '$lib/session/Instrument.svelte';
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import CrewStrip from '$lib/session/CrewStrip.svelte';
-	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
+	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import Stage from '$lib/channel/Stage.svelte';
@@ -210,7 +210,10 @@
 						<!-- No bias: the trim belongs to a target this device is not
 						     holding. A dead control with a tooltip is still a
 						     control (#565, ux.md). -->
-						<SecondaryRow
+						<!-- POWER reads your own ride's numbers, so following a
+						     crewmate leaves RIDE alone. -->
+						<BikeComputer
+							phone
 							cadence={followed.cadence}
 							stale={followed.you ? channel.youStale : followed.stale}
 							hr={followed.hr}
@@ -219,7 +222,9 @@
 							lthr={followed.you
 								? channelConnection.current?.profile.current.lthr
 								: undefined}
-							small={focus === 'media'}
+							stats={followed.you
+								? channelConnection.current?.recording.live
+								: undefined}
 						/>
 					</div>
 				</section>

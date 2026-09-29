@@ -25,7 +25,8 @@
 	import Instrument from '$lib/session/Instrument.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
 	import RidingSurface from '$lib/session/RidingSurface.svelte';
-	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
+	import BiasTrim from '$lib/session/BiasTrim.svelte';
+	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import SprintMoment from '$lib/session/SprintMoment.svelte';
 	import type { Block } from '$lib/workout/block';
 	import type { createRideSession } from '$lib/workout/session.svelte';
@@ -170,17 +171,25 @@
 	{/snippet}
 
 	{#snippet numbers()}
-		<SecondaryRow
-			cadence={session.sample?.cadence ?? 0}
-			stale={signalLost}
-			hr={session.sample?.heartRate ?? 0}
-			{watts}
-			{kg}
-			{lthr}
-			bias={session.bias}
-			execution={session.scored ? session.execution : undefined}
-			onBias={(step) => session.nudgeBias(step)}
-		/>
+		<div class="flex flex-wrap items-end gap-4">
+			<div class="min-w-0 flex-1">
+				<BikeComputer
+					cadence={session.sample?.cadence ?? 0}
+					stale={signalLost}
+					hr={session.sample?.heartRate ?? 0}
+					{watts}
+					{kg}
+					{lthr}
+					execution={session.scored ? session.execution : undefined}
+					target={target > 0 ? target : undefined}
+					stats={session.live}
+				/>
+			</div>
+			<BiasTrim
+				bias={session.bias}
+				onBias={(step) => session.nudgeBias(step)}
+			/>
+		</div>
 
 		{#if flagNotice}
 			<!-- Consent in plain words, at the moment of the tap, never blocking. -->

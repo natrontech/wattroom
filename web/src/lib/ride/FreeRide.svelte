@@ -12,7 +12,7 @@
 	import { formatClock } from '$lib/format';
 	import Banner from '$lib/components/Banner.svelte';
 	import Instrument from '$lib/session/Instrument.svelte';
-	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
+	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import HrShare from '$lib/channel/HrShare.svelte';
 	import SessionControls from '$lib/session/SessionControls.svelte';
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
@@ -193,13 +193,18 @@
 				</div>
 			{/if}
 			<div>
-				<SecondaryRow
+				<BikeComputer
 					cadence={channel.you.cadence}
 					stale={channel.youStale}
 					hr={channel.you.hr}
 					watts={channel.you.watts}
 					kg={channel.you.kg}
 					lthr={conn?.profile.current.lthr}
+					stats={free?.live}
+					grade={watts ? undefined : free?.grade}
+					gear={!watts && conn && gearsEnabled()
+						? conn.ride.gear.label
+						: undefined}
 				/>
 				<!-- A free ride shows the call your numbers (ADR-0059), heart rate
 				     included, so it says so under them (ADR-0008, #2804). -->

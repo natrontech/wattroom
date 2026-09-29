@@ -16,6 +16,7 @@ const TV = [
 	'lib/session/Instrument.svelte',
 	'lib/session/IntervalStrip.svelte',
 	'lib/components/IntervalGraph.svelte',
+	'lib/session/BikeComputer.svelte',
 ];
 const FLOOR_VH = 2.9;
 
@@ -38,12 +39,15 @@ describe('TV mode reads at three metres (#3067)', () => {
 
 	// A shared component draws its TV sizes only when told it is on the TV:
 	// the graph's FTP label read 0.8vh there until TvMode said so (#3407).
-	it('tells the interval graph it is on the TV', () => {
-		const tags =
-			code(readFileSync(join(SRC, 'lib/session/TvMode.svelte'), 'utf8')).match(
-				/<IntervalGraph\b[\s\S]*?\/>/g,
-			) ?? [];
-		expect(tags.length).toBeGreaterThan(0);
-		for (const tag of tags) expect(tag).toMatch(/\btv\b/);
-	});
+	it.each(['IntervalGraph', 'BikeComputer'])(
+		'tells the %s it is on the TV',
+		(component) => {
+			const tags =
+				code(
+					readFileSync(join(SRC, 'lib/session/TvMode.svelte'), 'utf8'),
+				).match(new RegExp(`<${component}\\b[\\s\\S]*?\\/>`, 'g')) ?? [];
+			expect(tags.length).toBeGreaterThan(0);
+			for (const tag of tags) expect(tag).toMatch(/\btv\b/);
+		},
+	);
 });

@@ -10,8 +10,7 @@
 	 * tap here sound the same.
 	 */
 	import { untrack } from 'svelte';
-	import { DUR, EASE } from '$lib/motion/tokens';
-	import { prefersReducedMotion } from '$lib/motion';
+	import { pulse } from '$lib/motion/transitions';
 	import type { Clamp } from '$lib/ride/drivetrain';
 	import { createLimitWatch, limitLine } from '$lib/ride/limit-line';
 	import type { RideShift } from '$lib/ride/ride-shift';
@@ -51,14 +50,7 @@
 		const label = gear.label;
 		if (label === seen) return;
 		seen = label;
-		if (prefersReducedMotion.current) return;
-		field?.animate?.(
-			[{ transform: 'scale(1.15)' }, { transform: 'scale(1)' }],
-			{
-				duration: DUR.reveal,
-				easing: `cubic-bezier(${EASE.arrive.join(',')})`,
-			},
-		);
+		pulse(field);
 	});
 
 	// The limit line waits out a clamp that only brushes the limit.

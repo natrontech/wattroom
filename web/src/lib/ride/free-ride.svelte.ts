@@ -2,6 +2,7 @@ import { account } from '$lib/account.svelte';
 import { MaxTrainerGrade, MinRideSamples } from '$lib/protocol';
 import { ROAD } from '$lib/ride/ride-grade';
 import { openRideBuffer, type RideBuffer } from '$lib/ride/buffer';
+import { createLiveStats } from '$lib/ride/live-stats.svelte';
 import { uploadRide, type RideUpload, type SaveFailure } from '$lib/ride/save';
 
 /**
@@ -78,6 +79,9 @@ export function createFreeRide(deps: {
 	let saving = $state(false);
 	let outcome = $state<FreeRideOutcome | null>(null);
 	let samples: RideUpload['samples'] = [];
+	// The bike computer's numbers (#3068, #3088): no blocks and no target —
+	// a free ride is unscored — so its block numbers are the ride's.
+	const live = createLiveStats(deps.ftp);
 	let rideId = '';
 	let buffer: RideBuffer | null = null;
 
@@ -100,6 +104,9 @@ export function createFreeRide(deps: {
 		},
 		get seconds() {
 			return seconds;
+		},
+		get live() {
+			return live.current;
 		},
 		get saving() {
 			return saving;
@@ -125,6 +132,7 @@ export function createFreeRide(deps: {
 				startedAt = Date.now();
 				outcome = null;
 				samples = [];
+				live.reset();
 				rideId = crypto.randomUUID();
 				buffer = null;
 				const opening = rideId;
@@ -141,6 +149,7 @@ export function createFreeRide(deps: {
 			}
 			samples.push(sample);
 			seconds = samples.length;
+			live.push({ watts: sample.watts });
 			buffer?.append({
 				seq: samples.length,
 				watts: sample.watts,

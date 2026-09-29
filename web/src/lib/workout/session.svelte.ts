@@ -9,6 +9,7 @@ import { createRiderGuards } from './rider-guards.svelte';
 import { wireSoloGuards } from './solo-guards';
 import { createHrHold } from './hr-hold.svelte';
 import { countsToward, createRideRecord } from './ride-record.svelte';
+import { createLiveStats } from '$lib/ride/live-stats.svelte';
 import { createRideClock } from './ride-clock.svelte';
 import { createRideLife } from './ride-life.svelte';
 import { signalLost, type RideOptions, type RideState } from './ride-state';
@@ -40,6 +41,8 @@ export function createRideSession({
 	 */
 	const guards = createRiderGuards();
 	const record = createRideRecord(ftp);
+	// The bike computer's numbers (#3068, #3088), one second per recorded one.
+	const live = createLiveStats(() => ftp);
 	// A step that holds heart rate moves its own watts (#67).
 	const hrHold = createHrHold(ftp);
 	const life = createRideLife(trainer, {
@@ -137,8 +140,18 @@ export function createRideSession({
 			!guards.scoring,
 		);
 		onRecord?.(recorded);
-		if (countsToward({ state, target, pedalling, segment: clock.info.segment }))
-			record.score(next.watts, target, bias);
+		const scored = countsToward({
+			state,
+			target,
+			pedalling,
+			segment: clock.info.segment,
+		});
+		live.push({
+			watts: next.watts,
+			block: clock.info.segmentIndex,
+			target: scored ? target : undefined,
+		});
+		if (scored) record.score(next.watts, target, bias);
 	}
 
 	// The HUD feed (ADR-0041, #1665): the session publishes, not the screen,
@@ -223,6 +236,10 @@ export function createRideSession({
 			return record.trace;
 		},
 		/** The ride as recorded, for .fit export. */
+		/** The ride's live numbers so far (#3068). */
+		get live() {
+			return live.current;
+		},
 		get recording() {
 			return record.recording;
 		},

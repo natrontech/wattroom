@@ -17,7 +17,7 @@ const read = (file: string) => code(readFileSync(join(SRC, file), 'utf8'));
 const riding = FILES.filter((file) => file.endsWith('.svelte')).filter(
 	(file) => {
 		const source = read(file);
-		return source.includes('<SecondaryRow') && source.includes('useChannel()');
+		return source.includes('<BikeComputer') && source.includes('useChannel()');
 	},
 );
 

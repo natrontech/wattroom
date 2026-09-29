@@ -54,3 +54,15 @@ export const reorder = (
 	node: Element,
 	fromTo: { from: DOMRect; to: DOMRect },
 ) => flip(node, fromTo, { duration: still() ? 0 : DUR.base, easing: moving });
+
+/**
+ * One pulse on a value that changed — the gear after a shift (ADR-0084).
+ * Once, never looping, and nothing for a rider who asked for stillness.
+ */
+export function pulse(node: Element | undefined) {
+	if (!node || still()) return;
+	node.animate?.([{ transform: 'scale(1.15)' }, { transform: 'scale(1)' }], {
+		duration: DUR.reveal,
+		easing: `cubic-bezier(${EASE.arrive.join(',')})`,
+	});
+}

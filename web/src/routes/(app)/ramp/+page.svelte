@@ -3,7 +3,7 @@
 	import IntervalGraph from '$lib/components/IntervalGraph.svelte';
 	import CountdownScreen from '$lib/session/CountdownScreen.svelte';
 	import RideHeader from '$lib/session/RideHeader.svelte';
-	import SecondaryRow from '$lib/session/SecondaryRow.svelte';
+	import BikeComputer from '$lib/session/BikeComputer.svelte';
 	import { describeBlock } from '$lib/workout/block';
 	import Banner from '$lib/components/Banner.svelte';
 	import RecoveredRides from '$lib/ride/RecoveredRides.svelte';
@@ -556,13 +556,15 @@
 			<!-- The test records heart rate for its whole length and reads the
 			     peak to suggest an LTHR, and never showed the rider a bpm
 			     (#1531). -->
-			<SecondaryRow
+			<BikeComputer
 				cadence={session.sample?.cadence ?? 0}
 				stale={signalLost}
 				hr={session.sample?.heartRate ?? 0}
 				watts={session.sample?.watts ?? 0}
 				kg={profile.current.kg}
 				lthr={profile.current.lthr}
+				target={session.target > 0 ? session.target : undefined}
+				stats={session.live}
 			/>
 
 			<!-- The staircase, and how far up it you are. -->
@@ -619,6 +621,7 @@
 	     inside it (#2156). -->
 	{@const ride = session}
 	<TvOverlay
+		stats={session?.live}
 		riders={[
 			{
 				id: 'you',

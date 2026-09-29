@@ -13,6 +13,8 @@ import type { Trainer, TrainerStatus } from '$lib/ble/trainer';
 import { sensors } from '$lib/sensors.svelte';
 import { wireMetrics } from '$lib/session/wire';
 import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
+import { targetAt } from '$lib/workout/engine';
+import { countsToward } from '$lib/workout/ride-record.svelte';
 import type { RideDeps } from '$lib/session/ride-deps';
 import { createRideTarget } from '$lib/session/ride-target.svelte';
 import { createSessionSprint } from '$lib/session/ride-sprint.svelte';
@@ -216,9 +218,25 @@ export function createRide(deps: RideDeps) {
 						),
 					);
 					const shared = deps.shared();
-					if (shared?.phase === 'running' && deps.joined())
-						deps.recording.record(shared.elapsed, metrics.watts);
-					else if (counted && !deps.joined())
+					if (shared?.phase === 'running' && deps.joined()) {
+						// The block and the scored target, for the bike computer's
+						// block numbers (#3088), by the rule the solo ride scores by.
+						const at = targetAt(
+							deps.segments(),
+							deps.profile.current.ftp,
+							shared.elapsed,
+						);
+						const scored = countsToward({
+							state: 'running',
+							target: aim.target,
+							pedalling: aim.scoring,
+							segment: at.segment,
+						});
+						deps.recording.record(shared.elapsed, metrics.watts, {
+							block: at.segmentIndex,
+							target: scored ? aim.target : undefined,
+						});
+					} else if (counted && !deps.joined())
 						deps.free.second({
 							watts: metrics.watts,
 							cadence: metrics.cadence,

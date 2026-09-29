@@ -69,3 +69,40 @@ test('a progress bar stays visible in forced colours', async ({ page }) => {
 		fill: true,
 	});
 });
+
+test("the bike computer's page dots stay drawn in forced colours", async ({
+	page,
+}) => {
+	await signInTo(page, '/ride?w=smoke-test');
+	await page.getByRole('button', { name: 'Ride simulated' }).click();
+	await page.getByRole('button', { name: 'Start the ride' }).click({
+		timeout: 15_000,
+	});
+	const current = page.getByRole('button', { name: 'RIDE page' });
+	await expect(current).toHaveAttribute('aria-current', 'page', {
+		timeout: 15_000,
+	});
+	// Each dot keeps its ring, and the page you are on keeps its fill: a
+	// background alone is painted over with Canvas (#3088).
+	const mark = (dot: Locator) =>
+		dot.evaluate((button) => {
+			const dotMark = button.querySelector('span')!;
+			const probe = document.createElement('div');
+			probe.style.cssText =
+				'background-color: Canvas; forced-color-adjust: none';
+			document.body.append(probe);
+			const canvas = getComputedStyle(probe).backgroundColor;
+			probe.remove();
+			const style = getComputedStyle(dotMark);
+			return {
+				ring: style.borderTopWidth !== '0px',
+				fill:
+					style.backgroundColor !== canvas &&
+					!/rgba\(.*,\s*0\)$/.test(style.backgroundColor),
+			};
+		});
+	expect(await mark(current)).toEqual({ ring: true, fill: true });
+	expect(
+		(await mark(page.getByRole('button', { name: 'POWER page' }))).ring,
+	).toBe(true);
+});
