@@ -105,6 +105,7 @@ One table, because there is one place roles live: the crew ([ADR-0058](decisions
 | Ride (metrics on dashboard) | ✓ | ✓ | ✓ | – |
 | Voice/camera | ✓ | ✓ | ✓ | ✓ |
 | Cheers | ✓ | ✓ | ✓ | ✓ |
+| Hand a bottle up to a rider riding the session (#3022) | ✓ | ✓ | ✓ | ✓ |
 
 ‡ **Only while they are the session's coach** — whoever started it, until they hand it to someone in the session (#2438). Being the crew's owner or an admin does not make anyone coach. The one lever the owner and admins hold over a session somebody else is running is **ending** it, which is what a voice channel needs when a session is left running in it: there is one session per channel, so an abandoned one would hold the channel shut.
 
@@ -571,16 +572,54 @@ Elimination modes: 30 s disconnect grace (IndexedDB buffer proves continued peda
 ## The roadside ([ADR-0064](decisions/0064-the-roadside.md) — defaults, tune in alpha)
 
 The **roadside** is everyone in a voice channel who is not riding a given
-rider's session, eliminated riders included. It paints, sounds and informs; it
-never changes a rider's resistance, nothing it does reaches a trainer, and it
-picks **when, never who** ([ADR-0064](decisions/0064-the-roadside.md)).
+rider's session: a phone propped beside the bike, a desk in the lounge, a rider
+a game has put out. It paints, sounds and informs; it never changes a rider's
+resistance, nothing it does reaches a trainer, and it picks **when, never who**
+([ADR-0064](decisions/0064-the-roadside.md)).
 
 - **Marks**: at most **24** per ride.
 - **Sounds**: at most **12** roadside sounds a minute reach any one rider.
+  The cowbell counts against it; a ring past the ceiling stays silent, and the
+  cheer still floats up.
 - **A Prime**: best 5 s W/kg inside the 15 s sprint window, and never within
   **5 min** of another sprint.
 - **Flashes**: at most one dim flash per **10 s**, and none under reduced
   motion.
+
+What v0 ships (#3022):
+
+- **The cowbell.** Every deck carries the fixed `bell-ring` key after the
+  rider's own four cheers, whatever their reaction set holds. It is a cheer —
+  the same **one a second** per rider — that rings the cowbell cue instead of
+  the cheer's blip: the TR-808's, two square voices at **540 Hz** and
+  **800 Hz** through one bandpass at **880 Hz**, **0.3 s** long. **Once a
+  tick**, however many rang it, and within the sound ceiling above.
+- **A bottle** goes to a rider **riding the session** in the voice channel you
+  share, and to nobody else; the hub refuses the rest and says why. **One per
+  sender and rider every 10 s** — the poke's cooldown, on a key of its own, so
+  a bottle never spends the poke. It is never a DM line. The rider's screen
+  **holds it until their next recovery valley**: the ride asks nothing harder
+  than **Z1** (≤ 55 % FTP, the zones above) or nothing at all — paused,
+  stopped, off the ride — and no sprint is on. What the ride asks is the
+  block's prescription, so the spiral release's ten seconds at 0 W are not a
+  valley. A running game asks what its mode does: a ramp's or the relay's own
+  target, Floor is Lava's called zone, Watt Golf's hole (60–110 %, so never a
+  valley), a Sprint Roulette window from its klaxon; a Points Race, whose
+  sprints come unannounced, and any mode the screen does not know are never a
+  valley while they run. A rider a game has put out is asked only their own
+  easy spin. Then it is announced like a poke: the cue, and a line in the
+  timeline mid-ride. Held in memory, so a reload lets go of a bottle not yet
+  taken.
+- **Eliminated riders** — Backyard Ramp and Floor is Lava put riders out one
+  at a time — are told they are at the roadside, with the deck, for as long as
+  the game runs.
+- **Phones hear the first tap.** The cue bus opens on the tap that lifts (a
+  touch's press is not a gesture a browser lets sound start in), and a tap on
+  the deck opens it from inside the tap.
+- **One gauge**, for the service rather than about anybody:
+  `wattroom_room_spectators`, the sockets in voice channels whose session is
+  running, held by someone not riding it. Unlabelled, beside
+  `wattroom_room_riding` — WATTROOM.md rules out product analytics.
 
 ## Route rides (defaults — tune in alpha; [ADR-0062](decisions/0062-the-horizon-may-be-a-road.md))
 

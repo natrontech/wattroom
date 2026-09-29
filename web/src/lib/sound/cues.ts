@@ -47,15 +47,25 @@ function settle(ms: number): void {
 }
 
 /**
+ * The gestures a browser lets a suspended context resume in (#1681, #3022).
+ *
+ * `pointerdown` was a desk's list. A touch's pointerdown is not a user
+ * activation — the HTML standard counts a touch when it lifts, at
+ * `pointerup` and `touchend` — so on a phone every tap went by and the
+ * context stayed shut: the roadside's whole audience heard nothing. Nothing
+ * listened for a KEY either, which is the board's whole pitch: hitting a pad
+ * without looking.
+ */
+const GESTURES = ['pointerdown', 'pointerup', 'touchend', 'keydown'] as const;
+
+/**
  * Resume a context the browser started suspended. Registered on the first
- * gesture of either kind and removed once it takes (#1681).
+ * gesture of any kind above and removed once it takes.
  *
  * `ensure` already asks on every play, but a refused `resume()` is never
  * retried — and the ask arrives a tick after the press, inside a WebSocket
- * message rather than the gesture. Nothing was listening for a KEY at all,
- * which is the board's whole pitch: hitting a pad without looking. So a rider
- * who had not happened to click anything heard nothing — their own clip or
- * anyone else's — until they opened the panel, which is a click.
+ * message rather than the gesture. So a rider who had not happened to make
+ * the right gesture heard nothing — their own clip or anyone else's.
  */
 function unlock(): void {
 	if (!ctx) return;
@@ -63,8 +73,7 @@ function unlock(): void {
 		void ctx.resume();
 		return;
 	}
-	document.removeEventListener('pointerdown', unlock);
-	document.removeEventListener('keydown', unlock);
+	for (const gesture of GESTURES) document.removeEventListener(gesture, unlock);
 }
 
 function ensure(): { ctx: AudioContext; master: GainNode } | null {
@@ -73,8 +82,7 @@ function ensure(): { ctx: AudioContext; master: GainNode } | null {
 		ctx = new AudioContext();
 		// Only once something has asked for sound: a page that never makes one
 		// gets no listeners and no context to resume.
-		document.addEventListener('pointerdown', unlock);
-		document.addEventListener('keydown', unlock);
+		for (const gesture of GESTURES) document.addEventListener(gesture, unlock);
 		master = ctx.createGain();
 		// A limiter after the master (#152): cues pile up — klaxon, a cheer
 		// burst and a block change can land in the same second — and a summed
@@ -93,6 +101,16 @@ function ensure(): { ctx: AudioContext; master: GainNode } | null {
 	// Browsers start the context suspended until a user gesture; every play attempt retries.
 	if (ctx.state === 'suspended') void ctx.resume();
 	return { ctx, master: master! };
+}
+
+/**
+ * Open the cue bus from inside a tap that wants to hear its own answer — the
+ * roadside deck, whose cowbell comes back a tick later (#3022). The context
+ * is made and resumed inside the gesture, the one moment a phone allows it,
+ * rather than waiting for a sound to ask and the NEXT tap to let it out.
+ */
+export function unlockCues(): void {
+	ensure();
 }
 
 /**
@@ -165,7 +183,7 @@ export function play(id: CueId, semitonesUp = 0): void {
 
 		if (voice.filter) {
 			const filter = context.createBiquadFilter();
-			filter.type = 'lowpass';
+			filter.type = voice.filter.type ?? 'lowpass';
 			filter.Q.value = voice.filter.q ?? 1;
 			filter.frequency.setValueAtTime(voice.filter.from, start);
 			if (voice.filter.to)
