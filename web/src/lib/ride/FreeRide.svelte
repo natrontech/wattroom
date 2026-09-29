@@ -114,6 +114,7 @@
 			<Instrument
 				watts={channel.you.watts}
 				stale={channel.youStale}
+				idle={channel.youUnmeasured}
 				target={watts ? (free?.watts ?? 0) : 0}
 				ftp={channel.you.ftp}
 			/>

@@ -22,6 +22,7 @@
 
 	let {
 		riders,
+		idle = false,
 		segments,
 		total = 0,
 		elapsed = 0,
@@ -39,6 +40,8 @@
 		onExit,
 	}: {
 		riders: LiveRider[];
+		/** Your instrument has nothing paired to read (#2941). */
+		idle?: boolean;
 		segments: Segment[];
 		total?: number;
 		elapsed?: number;
@@ -138,6 +141,7 @@
 	{:else}
 		<TvMode
 			{riders}
+			{idle}
 			{segments}
 			{total}
 			{elapsed}

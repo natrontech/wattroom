@@ -33,6 +33,10 @@ const CHANNEL_TO_SESSION: Record<string, { modules: string[]; why: string }> = {
 		],
 		why: "the channel's page shows the session running in it, and is where one is started — with the trainer card for a rider still unpaired (#2594), and the plan due in it (#2606)",
 	},
+	'lib/channel/context-value.svelte.ts': {
+		modules: ['sensor-status'],
+		why: 'the context says whether anything you paired measures power (#2941), by the rule Start already asks before a session (#2594)',
+	},
 	'lib/channel/connection.svelte.ts': {
 		modules: ['ride.svelte', 'recording.svelte'],
 		why: 'the trainer and what it recorded belong to the connection, not a page (#521)',

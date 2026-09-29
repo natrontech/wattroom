@@ -79,6 +79,12 @@ export interface ChannelContext {
 	 * channel has stopped echoing them. What the instrument dims on.
 	 */
 	readonly youStale: boolean;
+	/**
+	 * Nothing the rider has paired measures power, here or on another of
+	 * their screens (#2941). Not a fault — the instrument asks for a trainer
+	 * rather than saying "no signal".
+	 */
+	readonly youUnmeasured: boolean;
 	readonly trainer: unknown;
 	/** What this tab is paired to, for a ⚑ report's context (#1631). '' = nothing. */
 	readonly trainerName: string;
