@@ -31,7 +31,14 @@ test('a route on the shelf opens, renames, and deletes behind its question', asy
 	await expect(
 		page.getByRole('heading', { name: /^Road · 3\.0 km/ }),
 	).toBeVisible();
-	await expect(page.getByRole('img', { name: /from above/ })).toBeVisible();
+	// The map, when this server holds the key that seals one; its heights and
+	// the line saying why, when it does not — CI runs without the key.
+	const { hasPlace } = (await (
+		await page.request.get(`/api/routes/${id}`)
+	).json()) as { hasPlace: boolean };
+	if (hasPlace)
+		await expect(page.getByRole('img', { name: /from above/ })).toBeVisible();
+	else await expect(page.getByText(/heights, not its map/)).toBeVisible();
 	await expect(page.getByRole('list', { name: 'Climbs' })).toContainText('IV');
 	await expect(page.getByRole('button', { name: 'Ride it' })).toBeDisabled();
 
