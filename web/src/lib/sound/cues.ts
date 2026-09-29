@@ -159,27 +159,77 @@ export function setDuckLevel(next: number): void {
 	}
 }
 
-export function play(id: CueId, semitonesUp = 0): void {
+/**
+ * When and where a cue sounds (#3209). `inMs` puts it on the audio clock that
+ * far ahead, so a sound lands on the frame its motion hits rather than
+ * whenever the call happened to run — audio may trail a visual hit by 40 ms
+ * and lead it by 20. `pan` puts it on a side, -1 left to 1 right.
+ */
+export interface CueTiming {
+	semitones?: number;
+	inMs?: number;
+	pan?: number;
+}
+
+/** Past this a cue is in one ear, which reads as a broken headphone, not a place. */
+export const PAN_LIMIT = 0.8;
+
+/** A second of white noise, made once: a shutter's click has no pitch. */
+let noise: AudioBuffer | undefined;
+function noiseSource(context: AudioContext): AudioBufferSourceNode {
+	if (!noise) {
+		noise = context.createBuffer(1, context.sampleRate, context.sampleRate);
+		const samples = noise.getChannelData(0);
+		for (let i = 0; i < samples.length; i++) samples[i] = Math.random() * 2 - 1;
+	}
+	const source = context.createBufferSource();
+	source.buffer = noise;
+	return source;
+}
+
+export function play(
+	id: CueId,
+	{ semitones = 0, inMs = 0, pan = 0 }: CueTiming = {},
+): void {
 	// debug-level so sound issues are diagnosable without ears on the machine
-	console.debug('[cue]', id, semitonesUp || '');
+	console.debug('[cue]', id, semitones || '');
 	const audio = ensure();
 	if (!audio) return;
 	const { ctx: context, master: out } = audio;
-	const now = context.currentTime + 0.01;
-	const shift = Math.pow(2, semitonesUp / 12);
+	const now = context.currentTime + Math.max(0, inMs) / 1000 + 0.01;
+	const shift = Math.pow(2, semitones / 12);
+	// A panner per cue, not one on the bus: two cues overlapping from
+	// different sides would otherwise drag each other to the last one's.
+	const side = context.createStereoPanner();
+	side.pan.value = Math.min(PAN_LIMIT, Math.max(-PAN_LIMIT, pan));
+	side.connect(out);
 
 	for (const voice of CUES[id].voices) {
-		const osc = context.createOscillator();
-		osc.type = voice.type;
-		osc.detune.value = voice.detune ?? 0;
-
 		const start = now + voice.at;
 		const end = start + voice.dur;
-		osc.frequency.setValueAtTime(voice.freq * shift, start);
-		if (voice.to)
-			osc.frequency.exponentialRampToValueAtTime(voice.to * shift, end);
+		let source: AudioScheduledSourceNode;
+		if (voice.type === 'noise') source = noiseSource(context);
+		else {
+			const osc = context.createOscillator();
+			osc.type = voice.type;
+			osc.detune.value = voice.detune ?? 0;
+			osc.frequency.setValueAtTime(voice.freq * shift, start);
+			if (voice.to)
+				osc.frequency.exponentialRampToValueAtTime(voice.to * shift, end);
+			if (voice.wobble) {
+				const lfo = context.createOscillator();
+				const depth = context.createGain();
+				lfo.frequency.value = voice.wobble.rate;
+				depth.gain.value = voice.wobble.depth;
+				lfo.connect(depth);
+				depth.connect(osc.detune);
+				lfo.start(start);
+				lfo.stop(end);
+			}
+			source = osc;
+		}
 
-		let node: AudioNode = osc;
+		let node: AudioNode = source;
 
 		if (voice.filter) {
 			const filter = context.createBiquadFilter();
@@ -199,21 +249,10 @@ export function play(id: CueId, semitonesUp = 0): void {
 		env.gain.exponentialRampToValueAtTime(peak, start + 0.008);
 		env.gain.exponentialRampToValueAtTime(0.0001, end);
 		node.connect(env);
-		env.connect(out);
+		env.connect(side);
 
-		if (voice.wobble) {
-			const lfo = context.createOscillator();
-			const depth = context.createGain();
-			lfo.frequency.value = voice.wobble.rate;
-			depth.gain.value = voice.wobble.depth;
-			lfo.connect(depth);
-			depth.connect(osc.detune);
-			lfo.start(start);
-			lfo.stop(end);
-		}
-
-		osc.start(start);
-		osc.stop(end + 0.02);
+		source.start(start);
+		source.stop(end + 0.02);
 	}
 }
 
@@ -221,7 +260,7 @@ export function play(id: CueId, semitonesUp = 0): void {
 const TICK_STEPS: Record<number, number> = { 3: 0, 2: 3, 1: 7 };
 
 export function playCountdownTick(secondsLeft: number): void {
-	play('countdown', TICK_STEPS[secondsLeft] ?? 0);
+	play('countdown', { semitones: TICK_STEPS[secondsLeft] ?? 0 });
 }
 
 /** The full 3-2-1-go sequence, at real cadence. */

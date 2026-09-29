@@ -300,6 +300,8 @@ func main() {
 		// The same, for last20m_hr on rides saved before #1620 — so a rider's
 		// existing 30-minute efforts can suggest an LTHR, not only future ones.
 		safego.Go(log, "last-20 HR backfill", func() { stats.BackfillLast20mHR(ctx, st, log) })
+		// And the critical-power pair on rides inside the 90-day curve (#3261).
+		safego.Go(log, "critical-power backfill", func() { stats.BackfillCriticalPower(ctx, st, log) })
 		ridesService := rides.New(st, readAuth, log)
 		if uploader != nil {
 			ridesService.SetUploader(uploader)

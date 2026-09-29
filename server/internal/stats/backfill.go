@@ -127,3 +127,54 @@ func BackfillLast20mHR(ctx context.Context, st *store.Store, log *slog.Logger) {
 		}
 	}
 }
+
+// BackfillCriticalPower adds the 3- and 12-minute bests (#3261) to the curve
+// of every ride inside the 90-day curve that was saved before they were kept,
+// reading each blob exactly once. Idempotent: a curve that has the pair is
+// never read again, so running it on every start is free once done. Exits
+// when no rows remain, on the first error, or when ctx ends. ponytail: serial
+// batches of 100, BackfillNormWatts' shape and reasoning.
+//
+// A blob that will not decode stores 0 for both: PowerCurve's own answer for
+// a window it has no data for, and what takes the row out of the queue.
+func BackfillCriticalPower(ctx context.Context, st *store.Store, log *slog.Logger) {
+	filled := 0
+	for {
+		rows, err := st.Queries.ListRidesMissingCriticalPower(ctx, 100)
+		if err != nil {
+			if ctx.Err() == nil {
+				log.Error("critical-power backfill list failed", "err", err)
+			}
+			return
+		}
+		if len(rows) == 0 {
+			if filled > 0 {
+				log.Info("critical-power backfill done", "rides", filled)
+			}
+			return
+		}
+		for _, row := range rows {
+			var curve Curve
+			if samples, err := DecodeSamples(row.Samples); err == nil {
+				watts := make([]int, len(samples))
+				for i, sample := range samples {
+					watts[i] = sample.Watts
+				}
+				curve = PowerCurve(watts)
+			} else {
+				log.Warn("critical-power backfill: unreadable samples, stored none",
+					"err", err, "ride", store.UUIDString(row.ID))
+			}
+			err := st.Queries.SetRideCriticalPower(ctx, db.SetRideCriticalPowerParams{
+				ID: row.ID, Best3m: int32(curve.Best3m), Best12m: int32(curve.Best12m), //nolint:gosec // samples bounded 0-3000
+			})
+			if err != nil {
+				if ctx.Err() == nil {
+					log.Error("critical-power backfill update failed", "err", err)
+				}
+				return
+			}
+			filled++
+		}
+	}
+}

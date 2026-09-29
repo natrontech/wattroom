@@ -33,7 +33,7 @@ describe('the cowbell (#3022)', () => {
 	// SPEC's roadside: the TR-808's two square voices through one bandpass.
 	it('is two square voices, 540 and 800 Hz, rung through a bandpass', () => {
 		const { voices } = CUES.cowbell;
-		expect(voices.map((v) => [v.type, v.freq])).toEqual([
+		expect(voices.map((v) => [v.type, 'freq' in v && v.freq])).toEqual([
 			['square', 540],
 			['square', 800],
 		]);

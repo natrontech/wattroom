@@ -339,7 +339,7 @@ Bounds, enforced identically by the schema CHECKs, the profile PATCH and the web
 - **Execution score** (per ride): `% of riding seconds inside the band`, weighted by step intensity (each second weighs `target/FTP`, so nailing VO2 intervals counts more than nailing recovery). Warmup, cooldown and road steps excluded. Auto-paused time excluded. Because the band is biased, execution is not like-for-like between riders — one at 0.8 rides 20 % easier and can still score 1.0; Metronome and the execution bonus reward riding the plan you set, not the hardest plan.
 - **XP**: `1 kJ = 1 XP`, plus per-ride bonus `execution% × 50`, plus streak bonus `25 × current-week-streak` (capped at 250) — the **rider streak**, their own weeks wherever they rode, never the crew streak its Home displays (Glossary). Level thresholds: level n requires `500 × n^1.6` cumulative XP (a winter of 3 rides/week ≈ level 25–30).
 - **Category** from best 20-min w/kg over rolling 90 days: **D < 2.5, C 2.5–3.2, B 3.2–4.0, A ≥ 4.0**. Recompute on ride completion; category changes announce in the session (up: fanfare; down: silently).
-- **Power curve**: best-effort 5 s / 1 min / 5 min / 20 min per ride, merged into the 90-day rolling curve.
+- **Power curve**: best-effort 5 s / 1 min / 5 min / 20 min per ride, merged into the 90-day rolling curve. 3 and 12 min are kept too, per ride and in the 90-day curve, for the critical-power model (CP and W′ from the standard two-point pair, [#3261](https://github.com/natrontech/wattroom/issues/3261)), and are never shown as PRs or rank currencies.
 - **FTP suggestions**: when 90-day `0.95 × best-20-min` exceeds set FTP by >2 %, prompt (never auto-apply).
 - **FTP history** (the trend chart, #222/#1572): the line is the FTP each ride was **scored against**, captured on the ride row — a record, never a reconstruction. A ramp test additionally records the FTP it **produced** on its own ride, set only once the rider accepts the number, and that is drawn as its own mark rather than bending the line; without it a test's result would not appear until the rider's next ride. Fewer than two rides is not a trend and draws the empty state instead.
 - **Ramp test**: 5-min warmup (35 → 50 % FTP), then target starts at 100 W **(default)**, +20 W/min for up to 25 steps; FTP = 75 % of **best rolling 60 s** (rolling, not per-step — riders fail mid-step and their best minute straddles the boundary). The 75 % is Ric Stern's MAP→FTP midpoint of a 72–77 % band, ±5 % for most riders and worse at the extremes (RESEARCH §17.1).
@@ -649,6 +649,21 @@ scored workout (ADR-0062's table).
 - its class by score: **IV** above 8,000, **III** above 16,000, **II** above
   32,000, **I** above 64,000, **HC** above 80,000 — always in Roman numerals;
 - the climb card opens by itself for class **IV** and harder.
+
+## A route's place ([ADR-0063](decisions/0063-a-route-keeps-its-place-with-care.md))
+
+Privacy rules, not alpha defaults: loosening any of these takes an ADR.
+
+| Parameter                     | Value                                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| Privacy zone                  | a circle of **200–1,600 m**, about a fixed random offset from the point it hides                |
+| Default                       | **400 m** hidden at both ends of every route                                                    |
+| km-0 anchor                   | at least **1,000 m** outside every zone                                                         |
+| A crew's corridor             | at most **±1,000 m**, stopping at the anchor; tiles withheld within max(anchor distance, **1,000 m**) of the true ends and of any zone |
+| An effort near a private end  | within **1,000 m** of the ride's ends: marked at save                                           |
+| An effort near a zone         | within **1,000 m** of any zone: hidden at read time                                             |
+| A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
+| Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
 
 ## Rider animation (defaults — tune in alpha; #3066)
 

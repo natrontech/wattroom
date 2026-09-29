@@ -91,7 +91,7 @@ export function createRideSounds(deps: RideSoundDeps) {
 	// The spiral release (docs/SPEC.md): the target drops on purpose, and
 	// comes back — said the way auto-pause is, since it feels the same.
 	const heardSpiral = changes<boolean>((on) =>
-		play(on ? 'block' : 'go', on ? -5 : 0),
+		play(on ? 'block' : 'go', { semitones: on ? -5 : 0 }),
 	);
 	$effect(() => heardSpiral(deps.spiral() ?? false));
 
@@ -107,7 +107,7 @@ export function createRideSounds(deps: RideSoundDeps) {
 	// see coming — it fires when they have stopped looking — and the resume
 	// countdown exists so picking up is not a jump-scare (docs/SPEC.md).
 	const heardGuard = changes<GuardPhase | undefined>((next, previous) => {
-		if (next === 'autopaused') play('block', -5);
+		if (next === 'autopaused') play('block', { semitones: -5 });
 		else if (next === 'resuming') playCountdownTick(3);
 		else if (next === 'running' && previous === 'resuming') play('go');
 	});

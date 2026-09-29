@@ -31,7 +31,7 @@
 		// The cowbell is the roadside's sound, so it answers to its ceiling.
 		for (const cue of cheerCues(batch))
 			if (cue.id !== 'cowbell' || roadsideSound(Date.now()))
-				play(cue.id, cue.semitones);
+				play(cue.id, { semitones: cue.semitones });
 		const next = batch.map((cheer) => ({
 			...cheer,
 			key: counter++,

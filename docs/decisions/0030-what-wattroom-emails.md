@@ -179,3 +179,12 @@ key nobody knew to look for.
 same shape as a passkey being added — a new standing way into the account's
 data, which the rider can act on precisely by revoking it on Settings › Data.
 The mail leaves the token's name out, because whoever minted it chose it.
+
+## Amendment, 2026-09-29 (#3042): no place name, anywhere a mail goes
+
+[ADR-0063](0063-a-route-keeps-its-place-with-care.md) lets a route keep its
+place. What is never sent gains one line: **a mail's subject and lead, an ICS
+event and a Strava title never carry a place name** — not the owner's own
+name for a route, and not a generated one that names a place. A route in a
+planned session reaches a mail as its numeric name ("Road · 52.9 km ·
+1,312 m") or not at all.
