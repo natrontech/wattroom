@@ -25,6 +25,7 @@
 	import SensorOverview from '$lib/session/SensorOverview.svelte';
 	import { heldTrainer } from '$lib/session/sensor-status';
 	import { sensors } from '$lib/sensors.svelte';
+	import { SIGNAL_LOST_MS } from '$lib/workout/ride-state';
 
 	let { route, from = 0 }: { route: RideableRoute; from?: number } = $props();
 
@@ -46,11 +47,25 @@
 
 	let watts = $state(0);
 	let ended = $state(false);
+	// The instrument says when its numbers are not live (#2851): a trainer
+	// silent past the rides' one number, SIGNAL_LOST_MS.
+	let lastAt = $state(0);
+	let now = $state(Date.now());
 	$effect(() => {
 		const trainer = solo.trainer;
 		if (!trainer) return;
-		return trainer.onSample((s) => (watts = s.watts));
+		lastAt = Date.now();
+		const tick = setInterval(() => (now = Date.now()), 1000);
+		const off = trainer.onSample((s) => {
+			watts = s.watts;
+			lastAt = Date.now();
+		});
+		return () => {
+			clearInterval(tick);
+			off();
+		};
 	});
+	const stale = $derived(!!solo.trainer && now - lastAt > SIGNAL_LOST_MS);
 
 	function start() {
 		const trainer = trainers.handOff();
@@ -80,7 +95,7 @@
 <div class="m-auto flex w-full max-w-2xl flex-col gap-6">
 	<header class="flex flex-wrap items-center gap-3">
 		<p class="eyebrow">free ride</p>
-		<h1 class="font-display min-w-0 truncate text-xl font-bold">
+		<h1 class="page-title-sm min-w-0 truncate">
 			{route.name}
 		</h1>
 		<span class="font-display ml-auto text-2xl font-bold tabular-nums"
@@ -119,6 +134,8 @@
 	{:else if solo.trainer}
 		<Instrument
 			{watts}
+			{stale}
+			idle={!solo.trainer}
 			target={free.mode === 'watts' ? free.targetWatts : 0}
 			ftp={profile.current.ftp}
 		/>
