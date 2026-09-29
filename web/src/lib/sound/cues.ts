@@ -185,8 +185,13 @@ export function play(
 	side.pan.value = Math.min(PAN_LIMIT, Math.max(-PAN_LIMIT, pan));
 	side.connect(out);
 
-	scheduleVoices(context, side, CUES[id].voices, now, shift, () =>
-		(noise ??= makeNoise(context)),
+	scheduleVoices(
+		context,
+		side,
+		CUES[id].voices,
+		now,
+		shift,
+		() => (noise ??= makeNoise(context)),
 	);
 }
 
