@@ -416,18 +416,27 @@ test('a message from a frame that is not ours is refused', async () => {
 
 // The wrapper is only a guarantee if nothing goes around it (#3010): every
 // handler in main.js registers through `ipc.on` / `ipc.handle`.
-test('main.js registers no IPC handler around the sender check', () => {
-	const source = require('node:fs')
-		.readFileSync(require('node:path').join(__dirname, 'main.js'), 'utf8')
-		.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
-	const wrapper = source.slice(
-		source.indexOf('const ipc = {'),
-		source.indexOf('};', source.indexOf('const ipc = {')),
+test('no module the shell loads registers an IPC handler around the sender check', () => {
+	const strip = (f) =>
+		require('node:fs')
+			.readFileSync(require('node:path').join(__dirname, f), 'utf8')
+			.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+	const main = strip('main.js');
+	const wrapper = main.slice(
+		main.indexOf('const ipc = {'),
+		main.indexOf('};', main.indexOf('const ipc = {')),
 	);
 	expect(wrapper).toContain('fromUs(event)');
-	expect(
-		source.replace(wrapper, '').match(/ipcMain\.(on|handle)\(/g) ?? [],
-	).toEqual([]);
+	// The modules main.js hands `ipc` to (#3014) are held to it too.
+	const bare = require('./reached')
+		.reached()
+		.filter((f) => f.endsWith('.js'))
+		.flatMap((f) =>
+			((f === 'main.js' ? main.replace(wrapper, '') : strip(f)).match(
+				/ipcMain\.(on|handle)\(/g,
+			) ?? []).map(() => f),
+		);
+	expect(bare).toEqual([]);
 });
 
 // #3006: Electron draws no context menu, so a text field had no paste. Real

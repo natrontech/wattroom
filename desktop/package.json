@@ -34,6 +34,11 @@
       "tray.js",
       "badge.js",
       "visibility.js",
+      "window-state.js",
+      "notifications.js",
+      "hud.js",
+      "deep-link.js",
+      "updater.js",
       "offline.html",
       "package.json",
       "icons/*.png"
