@@ -202,6 +202,21 @@ export function createPace(speed = 0, limit?: (distance: number) => number) {
 
 export type Pace = ReturnType<typeof createPace>;
 
+/**
+ * One second of the dot (ADR-0084): it moves by the watts the rider made, on
+ * the road's own grade — never by the trainer's speed, and never by a gear.
+ */
+export function dotSecond(
+	pace: Pace,
+	sample: { watts: number },
+	grade: number,
+	mass: number,
+	cda: number,
+	shelter: number,
+): void {
+	pace.step(sample.watts, grade, mass, cda, shelter);
+}
+
 /** The speed these watts hold on this grade once the rider settles, m/s. */
 export function steadySpeed(
 	watts: number,

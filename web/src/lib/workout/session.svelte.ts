@@ -90,6 +90,7 @@ export function createRideSession({
 		// outranks both (RESEARCH.md §11). Resolved here so the whole ride — targets,
 		// auto-pause, execution, the .fit — reads one agreed set of numbers.
 		const metrics = arbitrate({ trainer: raw, sensors: readings() }, raw.at);
+		actuator.sample(raw);
 		// After the end nothing is recorded (#1795): the trainer is let go,
 		// but a sample already in flight — or a test's — must not stretch the
 		// export past the ride the account was handed.

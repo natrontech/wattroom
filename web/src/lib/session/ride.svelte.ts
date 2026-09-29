@@ -97,13 +97,8 @@ export function createRide(deps: RideDeps) {
 		// Another of this rider's screens holds the trainer claim (#1853), so
 		// this one keeps its link, its samples and its Forget and writes
 		// nothing: two tabs actuating fight at 1 Hz as soon as their bias
-		// differs. Forget the sprint on the way out, so a grant that comes
-		// back re-issues the slope rather than assuming the trainer is still
-		// in it — the screen that was driving may have left it in ERG.
-		if (!actuating) {
-			actuator.release();
-			return;
-		}
+		// differs. A grant that comes back starts afresh (the actuator's).
+		if (!actuator.grant(actuating)) return;
 		// A sprint outranks the guards, deliberately. Auto-pause is an
 		// INFERENCE that the rider left; the klaxon is an announced event they
 		// are about to answer, and a rider who was sitting at zero when it
@@ -139,11 +134,10 @@ export function createRide(deps: RideDeps) {
 				const back = s === 'connected' && status !== 'connected';
 				status = s;
 				// The link came back (#1846): the driver re-requested control,
-				// but the target had not changed, so the actuation effect below
-				// had nothing to say — and the trainer held no ERG target for
-				// the rest of the block. Say it again, and forget the sprint
-				// so a window still open re-issues its slope.
-				if (back && trainer === next && actuating) actuator.hold(aim.target);
+				// but nothing the ride wanted had changed, so the actuation
+				// effect had nothing to say — and the trainer held no target for
+				// the rest of the block. Say it again, recomputed.
+				if (back && trainer === next && actuating) actuator.reissue();
 			}),
 		);
 		try {
@@ -157,6 +151,7 @@ export function createRide(deps: RideDeps) {
 			unsubscribe.push(
 				next.onSample((sample) => {
 					lastSampleAt = sample.at;
+					actuator.sample(sample);
 					const metrics = arbitrate(
 						{ trainer: sample, sensors: sensors.readings },
 						sample.at,
