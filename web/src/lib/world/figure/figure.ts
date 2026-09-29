@@ -29,7 +29,14 @@ export type FigureOptions = {
 };
 
 export type Figure = THREE.SkinnedMesh & {
-	userData: { rig: Rig; kit: Kit; bones: Record<string, THREE.Bone> };
+	userData: {
+		rig: Rig;
+		kit: Kit;
+		bones: Record<string, THREE.Bone>;
+		/** Written by the pose (pose.ts) each frame. */
+		lastWheel?: number;
+		wheelDelta?: number;
+	};
 };
 
 /** Every vertex's colour from its slot. */
