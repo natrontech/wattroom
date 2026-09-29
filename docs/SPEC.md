@@ -611,6 +611,21 @@ scored workout (ADR-0062's table).
   32,000, **I** above 64,000, **HC** above 80,000 — always in Roman numerals;
 - the climb card opens by itself for class **IV** and harder.
 
+## A route's place ([ADR-0063](decisions/0063-a-route-keeps-its-place-with-care.md))
+
+Privacy rules, not alpha defaults: loosening any of these takes an ADR.
+
+| Parameter                     | Value                                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| Privacy zone                  | a circle of **200–1,600 m**, about a fixed random offset from the point it hides                |
+| Default                       | **400 m** hidden at both ends of every route                                                    |
+| km-0 anchor                   | at least **1,000 m** outside every zone                                                         |
+| A crew's corridor             | at most **±1,000 m**, stopping at the anchor; tiles withheld within max(anchor distance, **1,000 m**) of the true ends and of any zone |
+| An effort near a private end  | within **1,000 m** of the ride's ends: marked at save                                           |
+| An effort near a zone         | within **1,000 m** of any zone: hidden at read time                                             |
+| A crew member's cached copy   | IndexedDB, expires after **7 days**, capped at **50 MB**                                        |
+| Generated name                | `Road · 52.9 km · 1,312 m` — distance and climbing — until the geo pack can name places outside every zone |
+
 ## Rider animation (defaults — tune in alpha; #3066)
 
 How a rider's figure in a ride world moves. Every number here replaced one the world prototype
