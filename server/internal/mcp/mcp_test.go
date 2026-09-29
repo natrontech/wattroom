@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -284,7 +285,12 @@ func TestListRidesCarriesNoRoadSummary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, leak := range []string{"12345", "12.3", "678", "a-road-hash", "distance", "climb", "rideMode", "routeId", "road", "km", "gainM"} {
+	for _, leak := range []float64{12345, 12.3, 678} {
+		if slices.Contains(numbersIn(t, body), leak) {
+			t.Errorf("list_rides carries %v: %s", leak, raw)
+		}
+	}
+	for _, leak := range []string{"a-road-hash", "distance", "climb", "rideMode", "routeId", "road", "km", "gainM"} {
 		if strings.Contains(strings.ToLower(string(raw)), strings.ToLower(leak)) {
 			t.Errorf("list_rides carries %q: %s", leak, raw)
 		}
@@ -325,9 +331,14 @@ func TestListRidesNamesNoPlace(t *testing.T) {
 	if leak := testx.Leak(string(raw)); leak != "" {
 		t.Errorf("list_rides carries %q: %s", leak, raw)
 	}
-	for _, leak := range []string{store.UUIDString(route.ID), "20417", "20.4", "533"} {
-		if strings.Contains(string(raw), leak) {
-			t.Errorf("list_rides carries %q: %s", leak, raw)
+	if strings.Contains(string(raw), store.UUIDString(route.ID)) {
+		t.Errorf("list_rides carries the route's id: %s", raw)
+	}
+	// The ride's own metres, looked for as numbers: as substrings of the
+	// answer they also matched inside the ride's random id (#3570).
+	for _, leak := range []float64{20417, 20.4, 533} {
+		if slices.Contains(numbersIn(t, body), leak) {
+			t.Errorf("list_rides carries %v: %s", leak, raw)
 		}
 	}
 	for _, want := range []string{`\"workout\":\"Route ride\"`, `\"km\":52.9`, `\"gainM\":1312`} {
@@ -369,4 +380,47 @@ func TestListRidesCarriesInSessionBesideRoom(t *testing.T) {
 	if !has || in != ride["room"] || in != false {
 		t.Fatalf("a solo ride: inSession %v (present %v), room %v", in, has, ride["room"])
 	}
+}
+
+// numbersIn is every number in a tool call's answer, its text payload decoded
+// too: a value is looked for there, never as a substring of the raw answer,
+// where it also matches inside a random id (#3570).
+func numbersIn(t *testing.T, body map[string]any) []float64 {
+	t.Helper()
+	result, _ := body["result"].(map[string]any)
+	content, _ := result["content"].([]any)
+	var out []float64
+	for _, c := range content {
+		part, _ := c.(map[string]any)
+		text, _ := part["text"].(string)
+		var payload any
+		if err := json.Unmarshal([]byte(text), &payload); err != nil {
+			t.Fatalf("a tool's text is not JSON: %v", err)
+		}
+		out = append(out, walkNumbers(payload)...)
+	}
+	if out == nil {
+		t.Fatalf("the answer holds no number at all, so nothing was checked: %v", body)
+	}
+	return out
+}
+
+func walkNumbers(v any) []float64 {
+	switch v := v.(type) {
+	case float64:
+		return []float64{v}
+	case []any:
+		var out []float64
+		for _, e := range v {
+			out = append(out, walkNumbers(e)...)
+		}
+		return out
+	case map[string]any:
+		var out []float64
+		for _, e := range v {
+			out = append(out, walkNumbers(e)...)
+		}
+		return out
+	}
+	return nil
 }
