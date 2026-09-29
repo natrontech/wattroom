@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"net/http"
 
@@ -38,6 +39,11 @@ var (
 func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 	user, ok := s.users.RequireUser(w, r, "Sign in to keep a route.")
 	if !ok {
+		return
+	}
+	if !s.saves.Spend(user.ID) {
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			"Too many routes kept in one minute — give it a moment and try again.")
 		return
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
@@ -88,13 +94,42 @@ func (s *Service) handleCreate(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// docs/SPEC.md's shelf ceiling, counted with the rider's row locked in
+	// the transaction that inserts (#3416, customworkouts' shape): two saves
+	// at 199 cannot both get through.
+	tx, err := s.store.Pool.Begin(r.Context())
+	if err != nil {
+		httpx.Fail(w, s.log, "route create begin failed", err, "The route could not be kept. Try again.")
+		return
+	}
+	defer func() { _ = tx.Rollback(r.Context()) }()
+	q := s.store.Queries.WithTx(tx)
+	held := int32(0)
+	if err = q.LockUser(r.Context(), user.ID); err == nil {
+		held, err = q.CountUserRoutes(r.Context(), user.ID)
+	}
+	if err != nil {
+		// Closed, not open: a count that failed must not wave the cap through.
+		httpx.Fail(w, s.log, "route count failed", err, "The route could not be kept. Try again.")
+		return
+	}
+	if held >= maxRoutesPerAccount {
+		// A ceiling, not a wait (errors.md): nothing clears on its own, so the
+		// one move that works is named.
+		httpx.WriteError(w, http.StatusTooManyRequests, "rate_limited",
+			fmt.Sprintf("You have %d routes, the most an account can hold. Delete one to make room.", maxRoutesPerAccount))
+		return
+	}
 	name := rd.Name()
-	created, err := s.store.Queries.CreateRoute(r.Context(), db.CreateRouteParams{
+	created, err := q.CreateRoute(r.Context(), db.CreateRouteParams{
 		OwnerID: user.ID, Src: req.Src, Name: name, GenName: name,
 		Road: bare(rd), RoadSealed: roadSealed, RoadHash: roadHash(req.Road),
 		LengthM: int32(math.Round(rd.LengthM)), GainM: int32(math.Round(rd.GainM())), //nolint:gosec // bounded by UnpackRoad
 		Climbs: climbs, EleSource: req.EleSource, GeomSealed: sealed, KeyVersion: version,
 	})
+	if err == nil {
+		err = tx.Commit(r.Context())
+	}
 	if err != nil {
 		httpx.Fail(w, s.log, "create route failed", err, "The route could not be kept. Try again.")
 		return

@@ -125,3 +125,8 @@ on conflict (route_id, crew_id) do update set shared = excluded.shared, decided_
 -- /shape, which cuts it to the span between the anchors. Not owner-scoped —
 -- routes.Service's audience is the rule, and the only caller asks it first.
 select owner_id, src, geom_sealed, key_version, length_m from routes where id = $1;
+
+-- name: CountUserRoutes :one
+-- The routes one rider keeps, against docs/SPEC.md's shelf ceiling (#3416):
+-- read under their row lock in the transaction that inserts.
+select count(*)::integer from routes where owner_id = $1;

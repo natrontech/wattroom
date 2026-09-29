@@ -151,9 +151,11 @@ Names, counted in characters (not bytes, #1986): a crew or channel name is 1–6
 Shelf ceilings (#1414, defaults — tune in alpha). A crew holds at most **100
 planned sessions** — counted the way the crew's own schedule counts them,
 upcoming and not yet started, so a plan that ran, was cancelled or fell past its
-grace gives its slot back. An account holds at most **200 saved workouts**.
+grace gives its slot back. An account holds at most **200 saved workouts** and
+**200 routes** ([#3416](https://github.com/natrontech/wattroom/issues/3416)),
+and keeps at most **10 routes a minute** — the saves budget rides already have.
 **Rides are not capped**: a rider's history is the product, and nothing may
-delete or refuse it. A ceiling — these two, the crew and channel caps above — is
+delete or refuse it. A ceiling — these, the crew and channel caps above — is
 refused with **429 `rate_limited`** (errors.md, the same shape as the ten-token
 cap) and the message names the number and the remedy — never a wait, because a
 ceiling does not clear on its own.

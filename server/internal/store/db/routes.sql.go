@@ -11,6 +11,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countUserRoutes = `-- name: CountUserRoutes :one
+select count(*)::integer from routes where owner_id = $1
+`
+
+// The routes one rider keeps, against docs/SPEC.md's shelf ceiling (#3416):
+// read under their row lock in the transaction that inserts.
+func (q *Queries) CountUserRoutes(ctx context.Context, ownerID pgtype.UUID) (int32, error) {
+	row := q.db.QueryRow(ctx, countUserRoutes, ownerID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const createRoute = `-- name: CreateRoute :one
 insert into routes (
     owner_id, src, name, gen_name, road, road_hash, length_m, gain_m,

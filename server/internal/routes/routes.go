@@ -24,6 +24,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/natrontech/wattroom/server/internal/budget"
 	"github.com/natrontech/wattroom/server/internal/httpx"
 	"github.com/natrontech/wattroom/server/internal/road"
 	"github.com/natrontech/wattroom/server/internal/secrets"
@@ -42,6 +43,12 @@ const (
 	maxClimbs = 32
 	// docs/SPEC.md's names: a route's, like a workout's, is 1–80 characters.
 	maxNameRunes = 80
+	// docs/SPEC.md's shelf ceilings (#3416): the routes an account keeps, and
+	// the saves one may make in a minute — the numbers custom workouts and
+	// rides already use.
+	maxRoutesPerAccount = 200
+	savesPerWindow      = 10
+	saveWindow          = time.Minute
 )
 
 // Users is who is asking. The session source, never the token one.
@@ -54,12 +61,14 @@ type Service struct {
 	users  Users
 	keys   *secrets.Cipher
 	riding Riding
+	saves  *budget.Budget[pgtype.UUID]
 	log    *slog.Logger
 }
 
 // New takes the server's key; nil, or one not configured, stores roads only.
 func New(st *store.Store, users Users, keys *secrets.Cipher, log *slog.Logger) *Service {
-	return &Service{store: st, users: users, keys: keys, log: log}
+	return &Service{store: st, users: users, keys: keys, log: log,
+		saves: budget.New[pgtype.UUID](savesPerWindow, saveWindow)}
 }
 
 func (s *Service) Register(mux *http.ServeMux) {
