@@ -97,7 +97,7 @@ func TestAnotherRidersRideIsNeverYourGhost(t *testing.T) {
 	}
 	_, got := h.call(t, "alice", http.MethodGet, "/api/routes/"+route+"/attempts", nil)
 	attempts, _ := got["attempts"].([]any)
-	if len(attempts) != 1 || attempts[0].(map[string]any)["rideId"] != mine {
+	if len(attempts) != 1 || entry(attempts, 0)["rideId"] != mine {
 		t.Errorf("alice's attempts are %v, want her one ride", attempts)
 	}
 }
@@ -118,8 +118,9 @@ func TestAttemptsAndTheClimbsBest(t *testing.T) {
 	}
 	attempts, _ := got["attempts"].([]any)
 	var kinds []string
-	for _, a := range attempts {
-		kinds = append(kinds, a.(map[string]any)["kind"].(string))
+	for i := range attempts {
+		kind, _ := entry(attempts, i)["kind"].(string)
+		kinds = append(kinds, kind)
 	}
 	if len(kinds) != 3 || kinds[0] != "together" || kinds[1] != "timed" || kinds[2] != "timed" {
 		t.Errorf("kinds newest first are %v, want together, timed, timed", kinds)
@@ -128,9 +129,18 @@ func TestAttemptsAndTheClimbsBest(t *testing.T) {
 	if len(bests) != 1 {
 		t.Fatalf("climb bests: %v", bests)
 	}
-	best := bests[0].(map[string]any)
+	best := entry(bests, 0)
 	// 1 km at 8 m/s: 125 s — the session's faster pass timed nothing.
 	if best["rideId"] != fast || best["seconds"] != float64(125) {
 		t.Errorf("the climb's best is %v, want %s in 125 s (not %s)", best, fast, slow)
 	}
+}
+
+// entry is one object of a JSON array the harness decoded; nil when it is not one.
+func entry(list []any, i int) map[string]any {
+	if i >= len(list) {
+		return nil
+	}
+	m, _ := list[i].(map[string]any)
+	return m
 }
