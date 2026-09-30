@@ -960,6 +960,15 @@ export interface Backfill {
 // source: open_ride.go
 
 /**
+ * OpenRideMessage is what an open ride's socket carries down (#3303): the
+ * tick, or the refusal a rider is told. The roster, names, calls and the
+ * closing card join it with the door (#3304).
+ */
+export interface OpenRideMessage {
+  tick?: OpenRideTick;
+  error?: Error;
+}
+/**
  * OpenRideSample is a rider's second, up at 1 Hz: what the bunch needs to move
  * them, and no heart rate or cadence, which it does not.
  */

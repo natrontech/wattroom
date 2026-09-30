@@ -55,7 +55,7 @@ func TestAnOpenRideCarriesNothingAboutAnyone(t *testing.T) {
 			walk(t, path+"."+f.Name, f.Type)
 		}
 	}
-	for _, v := range []any{OpenRideRider{}, OpenRideKit{}, OpenRideTick{}, OpenRideClosing{}} {
+	for _, v := range []any{OpenRideRider{}, OpenRideKit{}, OpenRideTick{}, OpenRideClosing{}, OpenRideMessage{}} {
 		typ := reflect.TypeOf(v)
 		walk(t, typ.Name(), typ)
 	}
