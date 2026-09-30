@@ -4,6 +4,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { at } from '$lib/road/along';
 import { toRoute, type Route } from '$lib/road/route';
 import { STYLES } from '../../routes/(app)/dev/world/styles';
+import { pageGrids } from './chunks/grids';
 import { compose, type Composed } from './compose';
 import type { Family } from './family';
 import { yOf } from './geometry';
@@ -18,7 +19,7 @@ import { generate, type World } from './world';
  * it from the chase camera — frustum culled, instanced and batched meshes
  * counted as the GPU sees them, with WEBGL_multi_draw on and off.
  *
- * Today's world is over three lines, each named with the issue that brings
+ * Today's world is over two lines, each named with the issue that brings
  * it under; an entry that stops being over fails as stale, so the list can only
  * shrink. The low tier (30 draws, 150k; dressing 12 and 70k) gets its row
  * when a scene can be built low (#3080). Corridor decode (20 ms) waits for a
@@ -39,8 +40,6 @@ type Line = keyof typeof HIGH;
 const OVER: Partial<Record<Line, string>> = {
 	draws:
 		"#3642 batches the set pieces: every kit kind and every face of a sign's board is its own draw today",
-	triangles:
-		'#3606 streams the ground and the road chunk by chunk; the whole world is one mesh of each, never culled',
 	'dressing.draws':
 		"#3642 batches the set pieces: every kit kind and every face of a sign's board is its own draw; the props are three",
 };
@@ -307,7 +306,11 @@ describe('the ride’s scene budget, high tier (#3083)', () => {
 	beforeAll(() => {
 		route = toRoute(syntheticPoints());
 		world = generate(route);
-		w = compose({ route, world, style, ftp: 250 }, null);
+		// Every chunk within reach, built at once: the ground as a ride holds it once the worker is done.
+		w = compose(
+			{ route, world, style, ftp: 250, grids: pageGrids(world) },
+			null,
+		);
 		w.camera.aspect = 16 / 9;
 		w.camera.updateProjectionMatrix();
 		// At the start, the riders in view, a few frames in.

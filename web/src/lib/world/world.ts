@@ -16,8 +16,15 @@ import { hashSeed } from './rand';
 import type { Route } from '$lib/road/route';
 import type { Names } from './names';
 import { setPieces, type Arch, type Piece, type Sign } from './setpieces';
-import { corridor, createTerrain, type TerrainMesh } from './terrain-mesh';
+import {
+	corridor,
+	createTerrain,
+	placeLevel,
+	type Grid,
+	type TerrainMesh,
+} from './terrain-mesh';
 import { makeGround } from './terrain/ground';
+import type { Line } from './terrain/lines';
 import { createPlacer } from './props/placer';
 import { scatter, villageSites, type Prop } from './props/scatter';
 import type { Placement } from './placement/types';
@@ -26,11 +33,19 @@ import { drawnRows } from './terrain/road-profile';
 export type World = {
 	/** The far skyline's seed: the backdrop is still drawn from the route. */
 	seed: number;
-	/** The drawn ground's extent: minX, minZ, maxX, maxZ. */
+	/** The corridor's extent, what the props are placed over: minX, minZ, maxX, maxZ. */
 	bounds: [number, number, number, number];
-	mesh: TerrainMesh; // chunk by chunk on the lattice, fine near the road, one crack-free surface
-	/** The drawn ground's outline, as segments: where a plinth stands. */
-	rim: number[];
+	/** The whole corridor as one mesh, built when first asked: the diorama's ground. A ride streams grid() instead. */
+	readonly mesh: TerrainMesh;
+	/** The corridor's outline, as segments: where a plinth stands. Built with the mesh. */
+	readonly rim: number[];
+	/** A chunk's drawn ground, built on this thread; the same bytes the build worker makes of `roads` and `salt`. */
+	grid: (ci: number, cj: number) => Grid | null;
+	/** A chunk's ground if something has built it already, without building it. */
+	peek: (ci: number, cj: number) => Grid | null | undefined;
+	/** The roads the ground is shaped by, and the salt it is keyed by: what a worker builds the same ground from. */
+	roads: Line[];
+	salt: Salt;
 	heightAt: (x: number, z: number) => number; // the drawn surface, for anything that stands on it
 	roadSurfaceAt: (x: number, z: number) => number | null;
 	/** Every prop as #3219's gates see it, in the order it was admitted. */
@@ -59,20 +74,23 @@ export function generate(
 
 	// The ground's road is the drawn one, so earthworks and furniture follow the ribbon.
 	const rows = drawnRows(route);
-	const ground = makeGround(
-		[
-			{
-				key: 'route',
-				x: rows.map((p) => p.x),
-				z: rows.map((p) => p.z),
-				h: rows.map((p) => p.ele),
-			},
-		],
-		{ salt: opts.salt ?? DEV_SALT },
-	);
+	const salt = opts.salt ?? DEV_SALT;
+	const roads: Line[] = [
+		{
+			key: 'route',
+			x: rows.map((p) => p.x),
+			z: rows.map((p) => p.z),
+			h: rows.map((p) => p.ele),
+		},
+	];
+	const ground = makeGround(roads, { salt });
 	const cover = corridor(ground.lines, opts.margin ?? 1400);
-	const terrain = createTerrain(ground, cover.level, landUse(ground.noise));
-	const mesh = terrain.mesh(cover.chunks);
+	// The place's levels, not the corridor's: a streamed chunk is the one the props stood on.
+	const terrain = createTerrain(
+		ground,
+		placeLevel(ground.lines),
+		landUse(ground.noise),
+	);
 	const bounds: World['bounds'] = [Infinity, Infinity, -Infinity, -Infinity];
 	for (const [ci, cj] of cover.chunks) {
 		bounds[0] = Math.min(bounds[0], ci * CHUNK_M);
@@ -85,7 +103,7 @@ export function generate(
 	const { roadSurfaceAt } = ground;
 
 	const place = {
-		salt: opts.salt ?? DEV_SALT,
+		salt,
 		ground,
 		heightAt,
 		biomeAt,
@@ -107,11 +125,25 @@ export function generate(
 		}))
 		.sort((a, b) => a.d - b.d);
 	const markers = markersFor(route, villageNames);
+	let whole: { mesh: TerrainMesh; rim: number[] } | null = null;
+	const diorama = () =>
+		(whole ??= {
+			mesh: terrain.mesh(cover.chunks),
+			rim: terrain.rim(cover.chunks),
+		});
 	return {
 		seed,
 		bounds,
-		mesh,
-		rim: terrain.rim(cover.chunks),
+		get mesh() {
+			return diorama().mesh;
+		},
+		get rim() {
+			return diorama().rim;
+		},
+		grid: terrain.chunk,
+		peek: terrain.peek,
+		roads,
+		salt,
 		placements: placer.placements,
 		heightAt,
 		roadSurfaceAt,
