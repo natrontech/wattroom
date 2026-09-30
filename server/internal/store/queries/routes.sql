@@ -130,3 +130,28 @@ select owner_id, src, geom_sealed, key_version, length_m from routes where id = 
 -- The routes one rider keeps, against docs/SPEC.md's shelf ceiling (#3416):
 -- read under their row lock in the transaction that inserts.
 select count(*)::integer from routes where owner_id = $1;
+
+-- name: ListRouteAttempts :many
+-- A rider's rides of one road (#3033), newest first: every ride saved
+-- against the road's key — a re-import of the same road counts (ADR-0068) —
+-- and only the rider's own, so nobody else's ride is ever an attempt or a
+-- ghost. A page of the latest.
+select id, started_at, seconds, distance_m, climbed_m, from_m, ride_mode,
+       timeable, (session_id is not null)::boolean as together, road_h
+from rides
+where user_id = $1 and route_key = $2
+order by started_at desc
+limit 100;
+
+-- name: ListTimedRouteSamples :many
+-- The per-second records of a rider's timeable rides of one road (#3033),
+-- for its per-climb bests: the latest few, their own only.
+select id, samples
+from rides
+where user_id = $1 and route_key = $2 and timeable
+order by started_at desc
+limit 30;
+
+-- name: GetOwnRideSamples :one
+-- One of the rider's own rides' per-second record, the ghost's (#3033).
+select samples from rides where id = $1 and user_id = $2;

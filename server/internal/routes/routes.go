@@ -78,6 +78,8 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/routes/{id}", s.handleRename)
 	mux.HandleFunc("DELETE /api/routes/{id}", s.handleDelete)
 	mux.HandleFunc("GET /api/routes/{id}/shape", s.handleShape)
+	mux.HandleFunc("GET /api/routes/{id}/attempts", s.handleAttempts)
+	mux.HandleFunc("GET /api/routes/{id}/ghost", s.handleGhost)
 	mux.HandleFunc("GET /api/world", s.handleWorld)
 	mux.HandleFunc("GET /api/routes/{id}/road", s.handleRoad)
 	mux.HandleFunc("PUT /api/routes/{id}/crews/{crew}", s.handleConsent)
