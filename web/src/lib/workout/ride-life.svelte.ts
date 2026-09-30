@@ -35,6 +35,8 @@ export function createRideLife(
 		state: () => RideState;
 		/** The link came back (#1846): say what the ride wants again. */
 		back: () => void;
+		/** Another trainer took over (repair): write it what the ride wants. */
+		swapped: () => void;
 	},
 ) {
 	let life = $state<RideLife>('idle');
@@ -169,13 +171,21 @@ export function createRideLife(
 			life = 'done';
 			return true;
 		},
-		/** Listen to `next` instead; the old trainer is returned for the caller to let go. */
-		swap(next: Trainer): Trainer {
+		/**
+		 * Ride on with another trainer (#1847): the recovery card used to pair
+		 * into the slot that let go at Start, so the ride stayed subscribed to
+		 * the first instance and the rider got two links and no watts. The old
+		 * instance is let go — its own reattach loop would otherwise keep a
+		 * second client on the same hardware.
+		 */
+		repair(next: Trainer) {
+			if (ride.state() === 'done') return;
 			const old = trainer;
 			deafen();
 			trainer = next;
 			listen();
-			return old;
+			ride.swapped();
+			void old.disconnect();
 		},
 	};
 }

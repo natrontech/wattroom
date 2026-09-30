@@ -1,10 +1,7 @@
 import { arbitrate } from '$lib/ble/arbitrate';
-import { publishHud } from '$lib/hud/feed';
 import { DEFAULT_PROFILE } from '$lib/profile.svelte';
-import type { Trainer, TrainerSample } from '$lib/ble/trainer';
+import type { TrainerSample } from '$lib/ble/trainer';
 import { createActuator } from '$lib/ride/actuation.svelte';
-import { biasPress } from '$lib/ride/easier-harder';
-import { nudgedBias, toleranceBand } from './guards';
 import { createRiderGuards } from './rider-guards.svelte';
 import { wireSoloGuards } from './solo-guards';
 import { createHrHold } from './hr-hold.svelte';
@@ -13,7 +10,9 @@ import { createLiveStats } from '$lib/ride/live-stats.svelte';
 import { createRideClock } from './ride-clock.svelte';
 import { createRideLife } from './ride-life.svelte';
 import { createRoadDot } from './road-dot.svelte';
-import { signalLost, type RideOptions, type RideState } from './ride-state';
+import { createRideHud } from './ride-hud';
+import { createSoloAim } from './solo-aim.svelte';
+import type { RideOptions, RideState } from './ride-state';
 
 /**
  * Owns one ride: advances the workout clock, holds the trainer on target, and
@@ -35,7 +34,6 @@ export function createRideSession({
 	kg = () => 0,
 }: RideOptions) {
 	const startedAt = new Date(startedAtMs ?? now());
-	let bias = $state(1);
 	let sample = $state<TrainerSample | null>(null);
 	/**
 	 * Auto-pause and the spiral release, shared with the group path so a rider
@@ -53,6 +51,10 @@ export function createRideSession({
 		now,
 		state: () => state,
 		back: () => actuator.reissue(),
+		swapped: () => {
+			actuator.release();
+			applyTarget();
+		},
 	});
 	/** The ride's life, and while it rides, the guards' word on how (#3369). */
 	const state = $derived<RideState>(
@@ -63,29 +65,23 @@ export function createRideSession({
 	// position is the clock.
 	const dot = createRoadDot(workout, kg);
 	const clock = createRideClock(workout, ftp, {
-		bias: () => bias,
+		bias: () => aim.bias,
 		over: () => state === 'done',
 		road: dot.position,
 	});
 
-	/**
-	 * Released during spiral guard and while auto-paused — both mean "no
-	 * target" — and zero through the count-in, which has not asked for one
-	 * yet (#1800).
-	 */
-	const target = $derived(
-		state === 'autopaused' || state === 'countdown' || guards.spiralActive
-			? 0
-			: hrHold.watts(clock.info.segment, clock.info.targetWatts ?? 0),
-	);
-
-	const inBand = $derived(
-		target > 0 &&
-			sample !== null &&
-			Math.abs(sample.watts - target) <= toleranceBand(target),
-	);
-
 	const actuator = createActuator(() => life.trainer);
+	const aim = createSoloAim({
+		actuator,
+		clock: () => clock,
+		guards,
+		hrHold,
+		state: () => state,
+		sample: () => sample,
+		sprint,
+		ftp,
+	});
+	const applyTarget = aim.apply;
 	const guarding = wireSoloGuards(guards, {
 		state: () => state,
 		prescribed: () => clock.info.targetWatts ?? 0,
@@ -93,19 +89,6 @@ export function createRideSession({
 		record,
 		end: finish,
 	});
-
-	function applyTarget() {
-		// Nothing reaches the trainer during the count-in (#1800). This is the
-		// one chokepoint for every target write — start(), the ticker, a bias
-		// nudge, skip/extend and repair() all come through here — so the first
-		// block's target lands when the clock does and not three seconds early.
-		if (state === 'countdown') return;
-		// A sprint outranks the guards, for the reason a group session gives
-		// (session/ride.svelte.ts): auto-pause is an INFERENCE that the rider
-		// left, a sprint is an announced effort they are about to answer.
-		if (clock.sprinting) actuator.sprint(sprint(), ftp);
-		else actuator.hold(target);
-	}
 
 	function onSample(raw: TrainerSample) {
 		// A paired power meter outranks the trainer, and a dedicated cadence sensor
@@ -149,10 +132,11 @@ export function createRideSession({
 			road
 				? { ...next, virtualMps: road.virtualMps, m: dot.m, alt: road.alt }
 				: next,
-			bias,
+			aim.bias,
 			!guards.scoring,
 		);
 		onRecord?.(recorded);
+		const target = aim.target;
 		const scored = countsToward({
 			state,
 			target,
@@ -164,28 +148,18 @@ export function createRideSession({
 			block: clock.info.segmentIndex,
 			target: scored ? target : undefined,
 		});
-		if (scored) record.score(next.watts, target, bias);
+		if (scored) record.score(next.watts, target, aim.bias);
 	}
 
-	// The HUD feed (ADR-0041, #1665): the session publishes, not the screen,
-	// so the floating window follows the ride off /ride — and carries the
-	// fault the screen would be shouting about.
-	function publish() {
-		if (state === 'idle' || state === 'countdown' || state === 'done') return;
-		publishHud({
-			watts: sample?.watts ?? 0,
-			target,
-			remaining: Math.max(0, clock.total - clock.seconds),
-			label: workout.name,
-			// The rule both riding pages draw their banner from (#2158) — the
-			// HUD used to need a first sample, so the rider who alt-tabbed
-			// away from a trainer that never sends watts had the one surface
-			// they were looking at saying nothing at all (#2200).
-			fault: signalLost({ state, sample }, life.ridingSince, now())
-				? 'trainer'
-				: undefined,
-		});
-	}
+	const publish = createRideHud({
+		label: workout.name,
+		state: () => state,
+		sample: () => sample,
+		target: () => aim.target,
+		remaining: () => clock.total - clock.seconds,
+		ridingSince: () => life.ridingSince,
+		now,
+	});
 
 	/**
 	 * Advance the ride by `seconds`. Normally one, but a throttled or delayed tick
@@ -216,11 +190,6 @@ export function createRideSession({
 		clock.sync();
 	}
 
-	function nudgeBias(step: number) {
-		bias = nudgedBias(bias, step);
-		applyTarget();
-	}
-
 	/**
 	 * The end of the ride, whichever door it came through: the clock running
 	 * out, a rider gone (#2622) or End. It used to live in stop() alone
@@ -248,11 +217,11 @@ export function createRideSession({
 		get trace() {
 			return record.trace;
 		},
-		/** The ride as recorded, for .fit export. */
 		/** The ride's live numbers so far (#3068). */
 		get live() {
 			return live.current;
 		},
+		/** The ride as recorded, for .fit export. */
 		get recording() {
 			return record.recording;
 		},
@@ -260,10 +229,10 @@ export function createRideSession({
 			return startedAt;
 		},
 		get target() {
-			return target;
+			return aim.target;
 		},
 		get bias() {
-			return bias;
+			return aim.bias;
 		},
 		get info() {
 			return clock.info;
@@ -276,7 +245,7 @@ export function createRideSession({
 			return record.scored;
 		},
 		get inBand() {
-			return inBand;
+			return aim.inBand;
 		},
 		get resumeIn() {
 			return guards.resumeIn;
@@ -295,20 +264,8 @@ export function createRideSession({
 		get trainerStatus() {
 			return life.status;
 		},
-		/**
-		 * Ride on with another trainer (#1847): the recovery card used to pair
-		 * into the slot that let go at Start, so the ride stayed subscribed
-		 * to the first instance and the rider got two links and no watts.
-		 * The old instance is let go — its own reattach loop would otherwise
-		 * keep a second client on the same hardware.
-		 */
-		repair(next: Trainer) {
-			if (state === 'done') return;
-			const old = life.swap(next);
-			actuator.release();
-			applyTarget();
-			void old.disconnect();
-		},
+		/** Ride on with another trainer (#1847): see the life's repair. */
+		repair: life.repair,
 		/** The sprint block on screen, or the one about to be — null otherwise. */
 		get sprint() {
 			return clock.window;
@@ -320,25 +277,18 @@ export function createRideSession({
 		start: life.start,
 		abort: life.abort,
 		stop: finish,
-		nudgeBias,
+		nudgeBias: aim.nudgeBias,
 		atEnd: actuator.atEnd,
-		/** Easier / Harder (#3328): a gear in SIM, the bias in ERG. */
-		easierHarder: (dir: 1 | -1) =>
-			actuator.easierHarder(
-				dir,
-				biasPress(() => bias, nudgeBias),
-			),
+		easierHarder: aim.easierHarder,
 		/** Jump to the start of the next block. */
 		skip() {
-			// On a road the road decides where a block ends (#3499).
-			if (dot.pinned || !clock.skip()) return;
+			if (!clock.skip()) return;
 			applyTarget();
 			clock.sync();
 		},
 		/** Hold the current block longer (see the clock's extend). */
 		extend(seconds: number) {
-			if (dot.pinned) return;
-			clock.extend(seconds);
+			if (!clock.extend(seconds)) return;
 			applyTarget();
 			clock.sync();
 		},
