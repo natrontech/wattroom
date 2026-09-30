@@ -103,6 +103,8 @@ export function createFreeRide(deps: {
 					id: onRoad.route.id,
 					name: onRoad.route.name,
 					length: onRoad.route.road.length,
+					/** The road's own heights, for the Skyline (#3059). */
+					profile: onRoad.route.road,
 					...here,
 				}
 			: null,

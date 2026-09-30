@@ -18,6 +18,7 @@
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import { modeLine } from '$lib/ride/mode-copy';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
+	import Skyline from '$lib/ride/Skyline.svelte';
 	import type { RideableRoute } from '$lib/ride/roads';
 	import { createSoloRoadRide } from '$lib/ride/solo-road.svelte';
 	import { soloTrainer } from '$lib/ride/solo-trainer.svelte';
@@ -172,6 +173,12 @@
 				resetAt={0}
 				cassette={!profile.current.singleSpeed}
 			/>
+		{/if}
+		{#if free.road}
+			<!-- The horizon (#3059): the road ahead and your dot. -->
+			<div class="h-40">
+				<Skyline road={route.road} m={free.road.m} mps={free.road.virtualMps} />
+			</div>
 		{/if}
 		<button onclick={() => void end()} class="btn btn-primary btn-lg"
 			>End ride</button

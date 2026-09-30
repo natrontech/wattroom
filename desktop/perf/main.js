@@ -29,6 +29,8 @@ const DEFAULT_CASES = [
 	'screen-share&fps=15',
 	'screen-share&fps=15&bar=0',
 	'camera&n=1',
+	// The Skyline (#3059): the road stepped at 10 Hz under a moving dot.
+	'skyline',
 ];
 const CASES =
 	process.env.PERF_CASES?.split(/\s+/).filter(Boolean) ?? DEFAULT_CASES;
