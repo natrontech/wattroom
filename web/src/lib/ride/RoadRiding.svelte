@@ -73,7 +73,7 @@
 	// the start; a link that says where to start (Resume at km) already did.
 	let carry = $state<number | null>(null);
 	untrack(() => {
-		if (!from)
+		if (!from && !route.borrowed)
 			void carryOnFrom(route.id, route.road.length).then((m) => (carry = m));
 	});
 
@@ -152,7 +152,11 @@
 				class="btn btn-primary btn-lg">Start riding</button
 			>
 		{/if}
-		{#if from > 0}
+		{#if route.borrowed}
+			<p class="text-muted text-sm">
+				The crew’s road, from where the session starts. It saves as a free ride.
+			</p>
+		{:else if from > 0}
 			<p class="text-muted text-sm">
 				Carrying on from km {formatKm(from)}.
 			</p>

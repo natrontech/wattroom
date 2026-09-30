@@ -56,6 +56,12 @@
 	// dev gate; `from` is where a recovered ride on it stopped.
 	const roadId = roadsEnabled() ? page.url.searchParams.get('road') : null;
 	const roadFrom = Math.max(0, Number(page.url.searchParams.get('from')) || 0);
+	// A planned session's road, ridden first (#3621): the crew's cut of it.
+	const planRoad = (() => {
+		const crew = page.url.searchParams.get('crew');
+		const id = page.url.searchParams.get('plan');
+		return roadsEnabled() && crew && id ? { crew, id } : null;
+	})();
 	// Derived, not once: the shelf loads async — read at init it is always
 	// empty, and every custom ride silently fell back to the default.
 	const saved = $derived(custom.byId(requested));
@@ -503,8 +509,8 @@
 <!-- px-4 on a phone is the kit's gutter (`page`, ux.md's 16 px); the ride
      surface is not a `page` — it fills the window — so it spells the two. -->
 <main class="bg-surface text-ink flex min-h-screen flex-col px-4 py-5 sm:px-6">
-	{#if roadId && !requested}
-		<SoloRoadRide {roadId} from={roadFrom} />
+	{#if (roadId || planRoad) && !requested}
+		<SoloRoadRide {roadId} plan={planRoad} from={roadFrom} />
 	{:else if roadPending}
 		<Skeleton class="h-8 w-56" />
 		<Skeleton class="mt-6 h-48" />
