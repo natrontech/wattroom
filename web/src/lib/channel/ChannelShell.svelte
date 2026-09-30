@@ -186,6 +186,7 @@
 				elapsed: free.seconds,
 				label: FREE_RIDE_NAME,
 				fault,
+				road: free.road?.readout,
 			});
 			return;
 		}
@@ -198,6 +199,8 @@
 			),
 			label: shared?.workoutName || 'Session ride',
 			fault,
+			// Slot 1's own readout, so the two never part (#3639).
+			road: roster.block?.road,
 		});
 	});
 

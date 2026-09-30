@@ -378,6 +378,7 @@
 					workout,
 					ftp,
 					session.trace,
+					session.road?.readout,
 				)
 			: null,
 	);

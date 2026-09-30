@@ -90,7 +90,14 @@ export function createRideSession({
 		end: finish,
 	});
 
+	// The HUD hears each sample once it is taken, the dot moved: slot 1 and
+	// the HUD then say the same second of the road (#3639).
 	function onSample(raw: TrainerSample) {
+		take(raw);
+		publish();
+	}
+
+	function take(raw: TrainerSample) {
 		// A paired power meter outranks the trainer, and a dedicated cadence sensor
 		// outranks both (RESEARCH.md §11). Resolved here so the whole ride — targets,
 		// auto-pause, execution, the .fit — reads one agreed set of numbers.
@@ -110,7 +117,6 @@ export function createRideSession({
 		// Stamped with when the heart rate was measured, not when this sample
 		// arrived: a silent strap must age into lost, not stay fresh (#3517).
 		hrHold.reading(metrics.heartRate, metrics.heartRateAt ?? raw.at);
-		publish();
 		// Nothing is ridden during the count-in (#1800): the sample is kept, so
 		// the numbers are live the instant the clock starts, but the record, the
 		// score and the guards belong to a ride that has not begun.
@@ -159,6 +165,7 @@ export function createRideSession({
 		remaining: () => clock.total - clock.seconds,
 		ridingSince: () => life.ridingSince,
 		now,
+		road: () => dot.summary?.readout,
 	});
 
 	/**

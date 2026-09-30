@@ -105,6 +105,10 @@ test('any workout rides on your own route by the clock, and saves on it', async 
 			{ message: 'the dot never left km 0', timeout: 30_000 },
 		)
 		.toBeGreaterThan(0);
+	// Slot 1 says where on the road, as the HUD is told (#3639).
+	await expect(page.getByTestId('block-road')).toHaveText(
+		/^km \d\.\d of 3\.0 · -?\d+\.\d %/,
+	);
 
 	await page.setViewportSize({ width: 375, height: 812 });
 	await expect

@@ -1,4 +1,5 @@
 import { ZONE_NAMES, zoneOf } from '$lib/components/zones';
+import type { RoadReadout } from '$lib/road/readout';
 import type { TracePoint } from '$lib/components/trace';
 import { toleranceBand } from '$lib/workout/guards';
 import type { Segment, TargetInfo, Workout } from '$lib/workout/types';
@@ -34,6 +35,8 @@ export interface Block {
 	 */
 	last: { watts: number; onTarget: number } | null;
 	next: { label: string; watts: number; seconds: number } | null;
+	/** Where a ride on a road is (#3639): the readout the HUD is sent too. */
+	road?: RoadReadout;
 }
 
 /**
@@ -114,6 +117,8 @@ export function describeBlock(
 	ftp: number,
 	/** The rider's own trace, for the finished block's line; none, no line. */
 	trace: TracePoint[] = [],
+	/** Where on its road the ride is this second (#3639); off a road, none. */
+	road?: RoadReadout,
 ): Block {
 	const label = (seg: Segment | undefined): string => {
 		if (!seg) return '';
@@ -176,5 +181,6 @@ export function describeBlock(
 					seconds: upcoming.seconds,
 				}
 			: null,
+		...(road && { road }),
 	};
 }

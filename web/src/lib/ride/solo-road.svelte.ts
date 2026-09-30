@@ -1,8 +1,9 @@
 import { arbitrate } from '$lib/ble/arbitrate';
 import type { SensorKind, SensorReading } from '$lib/ble/sensor';
 import type { Trainer, TrainerSample } from '$lib/ble/trainer';
+import { publishHud } from '$lib/hud/feed';
 import { createActuator } from '$lib/ride/actuation.svelte';
-import type { FreeRide } from '$lib/ride/free-ride.svelte';
+import { FREE_RIDE_NAME, type FreeRide } from '$lib/ride/free-ride.svelte';
 import { createRideShift } from '$lib/ride/ride-shift';
 import type { RideableRoute } from '$lib/ride/roads';
 import { acquireWakeLock, type WakeLock } from '$lib/workout/wakelock';
@@ -75,6 +76,17 @@ export function createSoloRoadRide(deps: {
 			hr: ranked.heartRate ?? 0,
 			at: raw.at,
 		});
+		// The HUD feed (ADR-0041), as a free ride in a channel publishes it,
+		// with where on the road (#3639).
+		if (deps.free.recording)
+			publishHud({
+				watts: ranked.watts,
+				target: deps.free.targetWatts,
+				remaining: 0,
+				elapsed: deps.free.seconds,
+				label: FREE_RIDE_NAME,
+				road: deps.free.road?.readout,
+			});
 	}
 
 	// A gear on the road's grade; in watts mode the road sets the watts, so
