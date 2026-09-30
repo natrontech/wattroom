@@ -5,6 +5,15 @@
 - Beside: [0005](0005-synthwave-visual-identity.md) (the cave and the glow rule, which the global rules check), [0071](0071-the-bike-computer-pages-slot-3.md) (the page control and PgUp/PgDn, standing deviations D14 and D15)
 - Decided by Jan, 2026-09-30, in the design audit: "we need a mockup / design comparison verification during implementation"
 
+> **Amended 2026-09-30 (#3606, #3663).** A PR is not failed for what it inherits. A finding counts as inherited when three things hold:
+> - main fails it the same way;
+> - the PR's issue owns none of its items;
+> - an open issue owns the fix.
+>
+> An inherited finding is listed and does not count toward the verdict, even for rules no justification covers. Those rules bind the PR that owns the surface.
+>
+> Without this, a world-internals PR could pass only after every riding surface it draws on was fixed, and two finished PRs sat in draft for that reason. Jan chose it over keeping the gate strict, and over exempting world internals, which would not have freed either PR. The mechanics are in DESIGN-CHECK §8.
+
 ## Context
 
 Agents build rider-facing screens from an issue's text, and their own tests
