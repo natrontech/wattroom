@@ -145,12 +145,10 @@
 			(t, s) => Math.max(t, s.startSeconds + s.seconds),
 			0,
 		);
-		live.pickAndStart({
-			name: picked.name,
-			json: JSON.stringify(picked),
-			totalSeconds: total,
+		live.pickAndStart(
+			{ name: picked.name, json: JSON.stringify(picked), totalSeconds: total },
 			route,
-		});
+		);
 		layers.setup.open = false;
 	}
 
