@@ -1,4 +1,4 @@
-import type { FreeMode } from '$lib/ride/free-ride.svelte';
+import type { FreeMode } from '$lib/ride/free-ride-controls';
 
 /**
  * What the free ride's two modes do, said once (#3203). A rider asked for a

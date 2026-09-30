@@ -23,12 +23,8 @@ vi.mock('$lib/ride/buffer', () => ({
 
 import { ergByRoad } from './ride-grade';
 import type { RideableRoute } from './roads';
-import {
-	createFreeRide,
-	FREE_RIDE_JSON,
-	nudged,
-	openingWatts,
-} from './free-ride.svelte';
+import { nudged, openingWatts } from './free-ride-controls';
+import { createFreeRide, FREE_RIDE_JSON } from './free-ride.svelte';
 
 describe('the free ride’s control (docs/SPEC.md)', () => {
 	it('opens watts at 55 % of FTP on the 10 W grid', () => {
@@ -214,8 +210,13 @@ describe('a free ride on a road', () => {
 		expect(saved.routeId).toBe('route-1');
 		expect(['sim', 'gears']).toContain(saved.drive);
 		expect(saved.samples).toHaveLength(90);
+		// A sample keeps where its second began, as the server's replay steps
+		// it (#3615): a ride from km 0 starts at 0, and the last is a second
+		// behind the dot.
+		expect(saved.samples[0].m).toBe(0);
 		const last = saved.samples.at(-1)!;
-		expect(last.m).toBeCloseTo(free.road!.m, 6);
+		expect(last.m).toBeLessThan(free.road!.m);
+		expect(free.road!.m - last.m).toBeLessThan(10);
 		expect(last.alt).toBeCloseTo(100 + (last.m / 20) * 0.8, 6);
 		// Forward only, as the server's bound holds it.
 		for (let i = 1; i < saved.samples.length; i++)

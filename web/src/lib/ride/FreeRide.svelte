@@ -19,10 +19,11 @@
 	import TrainerOverview from '$lib/session/TrainerOverview.svelte';
 	import { trainerTargetsNote } from '$lib/session/sensor-status';
 	import { deviceWord } from '$lib/device.svelte';
-	import { GRADE, WATTS, type FreeMode } from '$lib/ride/free-ride.svelte';
+	import { GRADE, WATTS, type FreeMode } from '$lib/ride/free-ride-controls';
 	import { modeLine } from '$lib/ride/mode-copy';
 	import { gearsEnabled } from '$lib/ride/gears-enabled';
 	import GearShift from '$lib/ride/GearShift.svelte';
+	import { createGhostSplit } from '$lib/ride/ghost-split.svelte';
 	import RoadEnd from '$lib/ride/RoadEnd.svelte';
 	import { endRideLabel, roadEndOffered } from '$lib/ride/road-end';
 	import RoadPick from '$lib/ride/RoadPick.svelte';
@@ -63,6 +64,9 @@
 	// Riding the session instead: the trainer follows it, so the controls
 	// here would set nothing.
 	const riding = $derived(!!session && channel.you.inSession);
+	// Your ghost on your own road, raced alone — never in a session (#3615,
+	// ADR-0068).
+	const ghost = createGhostSplit(() => (riding ? null : free));
 	const modes: { id: FreeMode; label: string }[] = $derived([
 		{ id: 'grade', label: road ? 'Road' : 'Grade' },
 		{ id: 'watts', label: 'Watts' },
@@ -230,6 +234,7 @@
 					stats={free?.live}
 					grade={watts ? undefined : free?.grade}
 					{...road && roadContext(road)}
+					split={ghost.split ?? undefined}
 					gear={!watts && conn && gearsEnabled()
 						? conn.ride.gear.label
 						: undefined}

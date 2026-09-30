@@ -114,6 +114,26 @@ describe('RIDE on a road (#3628)', () => {
 	});
 });
 
+describe('RIDE against your ghost (#3615)', () => {
+	it('shows the split beside the road, plain — a ghost is a memory', () => {
+		const fields = fieldsFor(
+			'ride',
+			ride({ split: { seconds: -12.3, best: true } }),
+		);
+		expect(field(fields, 'split')).toEqual({
+			key: 'split',
+			label: 'vs best',
+			value: '−0:12',
+		});
+		const last = fieldsFor(
+			'ride',
+			ride({ split: { seconds: 8, best: false } }),
+		);
+		expect(field(last, 'split').label).toBe('vs last');
+		expect(field(last, 'split').value).toBe('+0:08');
+	});
+});
+
 describe('POWER (ADR-0071)', () => {
 	it('is the rolling powers, the block, NormPower, Intensity, the work and Load', () => {
 		const fields = fieldsFor('power', ride({ target: 240 }));
