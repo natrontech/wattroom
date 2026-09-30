@@ -54,14 +54,25 @@ func (s *Service) Authorize(r *http.Request, id string) (protocol.Rider, string,
 		s.log.Warn("total xp unavailable for roster", "err", err, "channel", id)
 		xp = 0
 	}
-	return protocol.Rider{
+	// The look rides with the identity too (#3155), read from the store and
+	// never through the wardrobe: cosmetics stay out of what moves anyone.
+	// None read joins in the starter kit.
+	look, err := s.store.Queries.UserLookHash(r.Context(), user.ID)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		s.log.Warn("look unavailable for roster", "err", err, "channel", id)
+	}
+	rider := protocol.Rider{
 		ID:       store.UUIDString(user.ID),
 		Name:     user.DisplayName,
 		Role:     liveRole(role),
 		FtpWatts: int(user.FtpWatts),
 		WeightKg: int(user.WeightKg),
 		TotalXp:  xp,
-	}, store.UUIDString(ch.ID), nil
+	}
+	if look != nil {
+		rider.Look = *look
+	}
+	return rider, store.UUIDString(ch.ID), nil
 }
 
 // liveRole is the crew role as a voice channel carries it: the door's answer,
