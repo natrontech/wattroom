@@ -75,8 +75,8 @@
 	<div class="text-muted mt-5 flex flex-col gap-4 leading-relaxed">
 		<p>
 			A game about position is a game about drafting, route choice and who is
-			where. WattRoom’s games are about the thing you are actually training — how much power you can hold, how precisely, and for
-			how long.
+			where. WattRoom’s games are about the thing you are actually training —
+			how much power you can hold, how precisely, and for how long.
 		</p>
 		<p>
 			And because every target is a share of your own FTP, the games work for a

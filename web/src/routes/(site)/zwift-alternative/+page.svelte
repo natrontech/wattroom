@@ -120,7 +120,10 @@
 		<ul
 			class="text-muted mt-5 flex list-disc flex-col gap-2 pl-5 leading-relaxed"
 		>
-			<li>A drafting game. Nobody sits on a wheel: a game is decided by watts alone.</li>
+			<li>
+				A drafting game. Nobody sits on a wheel: a game is decided by watts
+				alone.
+			</li>
 			<li>
 				A racing scene. Games happen inside your crew, not on a public calendar.
 			</li>
