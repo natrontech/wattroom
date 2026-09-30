@@ -55,8 +55,8 @@
 		phone
 			? 'grid grid-cols-3 gap-x-3 gap-y-2'
 			: tv
-				? 'flex flex-wrap items-end gap-x-[2.5vw] gap-y-[2vh]'
-				: 'flex flex-wrap gap-x-8 gap-y-3',
+				? 'flex flex-wrap items-start gap-x-[2.5vw] gap-y-[2vh]'
+				: 'flex flex-wrap items-start gap-x-6 gap-y-3',
 	);
 
 	// The gear pulses once when it changes (ADR-0084), never on arrival.
@@ -88,16 +88,42 @@
 	aria-label="bike computer, {PAGE_NAMES[shown]} page"
 	class="panel relative"
 >
-	<!-- On the TV the page's name sits in the row of numbers, so the panel is
-	     one row tall and the horizon under it keeps its height. -->
+	<!-- The page's name and its dots sit in the row of numbers, so a page is
+	     one row tall where it fits and the focus above keeps its height (#3597);
+	     a phone's grid puts them above and below. -->
 	{#snippet name()}
 		<p
-			class="{size.word} text-muted leading-none tracking-[0.2em] {tv
-				? 'self-start'
-				: 'mb-2'}"
+			class="{size.word} text-muted leading-none tracking-[0.2em] {phone
+				? 'mb-2'
+				: ''}"
 		>
 			{PAGE_NAMES[shown]}
 		</p>
+	{/snippet}
+	{#snippet dots()}
+		<div
+			class="relative flex {phone
+				? 'mt-1 -mb-2 justify-center'
+				: 'ml-auto self-center'}"
+		>
+			{#each pages as p (p)}
+				<button
+					type="button"
+					data-testid="computer-dot"
+					onclick={() => (page = p)}
+					aria-label="{PAGE_NAMES[p]} page"
+					aria-current={p === shown ? 'page' : undefined}
+					class="flex h-11 w-11 items-center justify-center"
+				>
+					<span
+						class="size-2.5 rounded-full border forced-color-adjust-none {p ===
+						shown
+							? 'bg-neon border-neon forced-colors:bg-[Highlight]'
+							: 'border-muted'}"
+					></span>
+				</button>
+			{/each}
+		</div>
 	{/snippet}
 	{#snippet strip(bars: number[])}
 		<!-- Time in each zone as one strip of seven, each as wide as its time:
@@ -117,9 +143,20 @@
 		</div>
 	{/snippet}
 
-	{#if !tv}{@render name()}{/if}
+	{#if turns && !tv}
+		<!-- The whole panel turns the page (ADR-0071). First, so the dots — the
+		     only other positioned thing in it — paint above it. Not on the TV,
+		     which has nothing to walk over and tap: its keys do. -->
+		<button
+			type="button"
+			onclick={() => turn(1)}
+			aria-label="next page, {PAGE_NAMES[turned(pages, shown, 1)]}"
+			class="focus-visible:outline-neon absolute inset-0 rounded-lg focus-visible:outline-2"
+		></button>
+	{/if}
+	{#if phone}{@render name()}{/if}
 	<div class={layout}>
-		{#if tv}{@render name()}{/if}
+		{#if !phone}{@render name()}{/if}
 		{#each fields as field (field.key)}
 			<div data-testid="computer-field" data-field={field.key} class="min-w-0">
 				<span
@@ -137,48 +174,21 @@
 						>{field.value}</span
 					>
 				{:else}
+					<!-- A space, not a margin, between number and unit: "78 rpm"
+					     is what a screen reader and a search both read. -->
 					<span
 						class="num mt-1 block {size.value} leading-none font-bold {field.glow
 							? 'text-watt glow-text'
 							: 'text-ink'}"
-						>{field.value}{#if field.unit}<span
-								class="text-muted {size.unit} ml-1 font-normal"
-								>{field.unit}</span
+						>{field.value}{#if field.unit}{' '}<span
+								class="text-muted {size.unit} font-normal">{field.unit}</span
 							>{/if}</span
 					>
 				{/if}
 			</div>
 		{/each}
+		{#if turns && !tv && !phone}{@render dots()}{/if}
 	</div>
 	{#if zoneStrip}{@render strip(zoneStrip)}{/if}
-
-	{#if turns && !tv}
-		<!-- The whole panel turns the page (ADR-0071); the dots sit above it.
-		     Not on the TV, which has nothing to walk over and tap: its keys do. -->
-		<button
-			type="button"
-			onclick={() => turn(1)}
-			aria-label="next page, {PAGE_NAMES[turned(pages, shown, 1)]}"
-			class="focus-visible:outline-neon absolute inset-0 rounded-lg focus-visible:outline-2"
-		></button>
-		<div class="relative mt-1 -mb-2 flex justify-center">
-			{#each pages as p (p)}
-				<button
-					type="button"
-					data-testid="computer-dot"
-					onclick={() => (page = p)}
-					aria-label="{PAGE_NAMES[p]} page"
-					aria-current={p === shown ? 'page' : undefined}
-					class="flex h-11 w-11 items-center justify-center"
-				>
-					<span
-						class="size-2.5 rounded-full border forced-color-adjust-none {p ===
-						shown
-							? 'bg-neon border-neon forced-colors:bg-[Highlight]'
-							: 'border-muted'}"
-					></span>
-				</button>
-			{/each}
-		</div>
-	{/if}
+	{#if turns && phone}{@render dots()}{/if}
 </section>

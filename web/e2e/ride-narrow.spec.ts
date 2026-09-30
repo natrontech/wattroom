@@ -102,12 +102,12 @@ test('the numbers row fits 360px once heart rate and execution are on it', async
 	});
 	await page.getByRole('button', { name: 'Start the ride' }).click();
 
-	const row = page.getByTestId('ride-numbers');
+	const row = page.getByTestId('bike-computer');
 	await expect(row.getByText('bpm', { exact: true })).toBeVisible({
 		timeout: 20_000,
 	});
 	// Execution counts from the first scored second: past the 30 s warm-up.
-	await expect(row.getByText('execution', { exact: true })).toBeVisible({
+	await expect(row.getByText('Execution', { exact: true })).toBeVisible({
 		timeout: 45_000,
 	});
 
