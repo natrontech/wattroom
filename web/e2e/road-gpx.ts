@@ -38,7 +38,9 @@ export function climbGpx(): string {
 
 /**
  * A pass road: a kilometre's approach at 3 %, then eight 700 m legs at 8.8 %
- * joined by seven hairpins of 25 m radius — about 7.1 km and 570 m up.
+ * joined by seven hairpins of 25 m radius — about 7.1 km and 570 m up. The
+ * approach climbs to the foot of the stack from outside it: run the other
+ * way, it passed under its own hairpins, and a world drew it as a trench (#3725).
  */
 export function hairpinGpx(): string {
 	const points: Point[] = [];
@@ -53,7 +55,7 @@ export function hairpinGpx(): string {
 		points.push({ x, y, ele });
 	};
 	points.push({ x, y, ele });
-	for (let i = 0; i < 100; i++) step(0, -10, 0.03);
+	for (let i = 0; i < 100; i++) step(0, 10, 0.03);
 	const R = 25;
 	for (let leg = 0; leg < 8; leg++) {
 		const dir = leg % 2 ? -1 : 1;
