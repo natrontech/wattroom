@@ -43,6 +43,9 @@ func TestSchemaChecksMatchTheProtocolBounds(t *testing.T) {
 		// The weight a ride was ridden at (#3053) is the rider's own, copied
 		// at save, so it holds to the rider's bound.
 		{"rides", "weight_kg", protocol.MinWeightKg, protocol.MaxWeightKg},
+		// A ride's average of samples the gate bounds (#3360): a wider
+		// MaxWatts would pass the gate and fail the insert.
+		{"rides", "avg_watts", 0, protocol.MaxWatts},
 	} {
 		t.Run(want.table+"."+want.column, func(t *testing.T) {
 			var def string

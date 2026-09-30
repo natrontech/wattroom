@@ -108,13 +108,24 @@ const (
 
 	// A text channel keeps its newest lines (docs/SPEC.md "Text channel
 	// chat", default — tune in alpha): the prune on every write keeps this
-	// many, and a backlog read returns at most this many.
+	// many, and a backlog read returns at most this many. A DM pair keeps the
+	// same: SPEC's one 500-message bound, which a temporary line counts
+	// toward in either.
 	MaxChannelLines = 500
 
 	// A ride the saver keeps is at least a minute of samples: fewer is a
 	// misclick, not a ride. The hub's saver, POST /api/rides, the browser's
 	// crash recovery and the closing summary all hold this one line.
 	MinRideSamples = 60
+	// A recorded sample's bounds (watts 0–3000; a track sprinter peaks near
+	// 2000 W): the WS metrics gate, POST /api/rides and a FIT export all
+	// refuse a sample outside them.
+	MaxWatts     = 3000
+	MaxCadence   = 250
+	MaxHeartRate = 250
+	// An uploaded or exported ride is at most 6 h at 1 Hz — longer than any
+	// indoor session anyone rides — so a request cannot allocate past it.
+	MaxRideSamples = 6 * 60 * 60
 	// A rider's bias, the trim on their own targets (#795, docs/SPEC.md):
 	// the workout clamps it here, and the server refuses a sample outside.
 	MinBias = 0.8
