@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/natrontech/wattroom/server/internal/httpx"
+	"github.com/natrontech/wattroom/server/internal/protocol"
 	"github.com/natrontech/wattroom/server/internal/stats"
 	"github.com/natrontech/wattroom/server/internal/store"
 	"github.com/natrontech/wattroom/server/internal/store/db"
@@ -205,7 +206,7 @@ func Summary(ctx context.Context, q *db.Queries, user db.User) (Response, error)
 				Best5m: int(bests.AllBest5m), Best12m: int(bests.AllBest12m), Best20m: int(bests.AllBest20m)},
 		},
 		Rides:    make([]rideTrendJSON, 0, len(rows)),
-		Category: stats.Category(int(bests.D90Best20m), float64(user.WeightKg)),
+		Category: protocol.Category(int(bests.D90Best20m), float64(user.WeightKg)),
 		Load:     buildLoad(rows, first.Time, time.Now(), stats.Zone(user.Timezone)),
 	}
 	if user.WeightKg > 0 {

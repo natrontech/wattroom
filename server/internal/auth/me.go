@@ -370,7 +370,7 @@ func (s *Service) fullMe(ctx context.Context, user db.User) meResponse {
 	// holding no sign-in provider at all, and nothing anywhere said so.
 	if best, err := s.store.Queries.Best20mIn90Days(ctx, user.ID); err != nil {
 		s.log.Warn("me: best 20m unavailable", "err", err, "user", store.UUIDString(user.ID))
-	} else if suggested, ok := stats.SuggestFTP(int(best), int(user.FtpWatts)); ok {
+	} else if suggested, ok := protocol.SuggestFTP(int(best), int(user.FtpWatts)); ok {
 		response.SuggestedFtp = suggested
 		response.Best20m = int(best)
 	}

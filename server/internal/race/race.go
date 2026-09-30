@@ -95,6 +95,39 @@ func (r *Race) Step(at time.Time, watts map[string]int) {
 	}
 }
 
+// Klaxon is when the race leaves km 0: the flag plus the neutral zone, and
+// later by any time the race spent neutralised before it.
+func (r *Race) Klaxon() time.Time { return r.klaxon }
+
+// Neutralised takes the span [from, to) out of the race (#3658): the coach
+// held it, so nobody moved and nobody's silence in it counts against the
+// disconnect grace. A neutral zone the hold reached ends that much later.
+// The owner does not Step inside the span.
+func (r *Race) Neutralised(from, to time.Time) {
+	held := to.Sub(from)
+	if held <= 0 {
+		return
+	}
+	if r.klaxon.After(from) {
+		r.klaxon = r.klaxon.Add(held)
+	}
+	for _, rc := range r.racers {
+		rc.heardAt = rc.heardAt.Add(held)
+	}
+}
+
+// LeaderETA is how long the racer farthest along, still riding, takes to the
+// line at their speed now; false when nobody is riding towards it.
+func (r *Race) LeaderETA() (time.Duration, bool) {
+	riding := r.riding()
+	if len(riding) == 0 || riding[0].pace.Speed <= 0 {
+		return 0, false
+	}
+	lead := riding[0]
+	left := max(0, r.profile.LengthM-lead.pace.Distance)
+	return time.Duration(left / lead.pace.Speed * float64(time.Second)), true
+}
+
 // asReference is ADR-0067's physics: the reference rider's watts at this
 // rider's W/kg, so weight neither buys speed nor costs it.
 func asReference(watts int, weightKg float64) float64 {

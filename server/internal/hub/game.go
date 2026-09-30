@@ -108,6 +108,7 @@ func appendEliminated(order, gone []string) []string {
 const (
 	refuseNoSuchMode  = "That game mode does not exist."
 	refuseGameRunning = "A game is already running — end it first."
+	refuseRaceRoad    = "A race rides a road of its own — pick a road, with no session running."
 )
 
 // gameModeNames is what a game session is called on the rides, the recap and
@@ -121,17 +122,21 @@ var gameModeNames = map[string]string{
 	"sprint-roulette": "Sprint Roulette",
 	"points-race":     "Points Race",
 	"team-relay":      "Team Relay",
+	modeRace:          "Race",
 }
 
 // gameWorkoutJSON is a game session's workout: no steps, and unscored, as the
 // ramp test is — there is no prescribed target to have ridden well, so the
 // ride saves with its execution "not scored" rather than failing to parse.
-func gameWorkoutJSON(name string) string {
+//
+// A race's says so, so its rides save as races (ADR-0062's ride_mode).
+func gameWorkoutJSON(mode, name string) string {
 	b, _ := json.Marshal(struct {
 		Name     string `json:"name"`
 		Unscored bool   `json:"unscored"`
+		Race     bool   `json:"race,omitempty"`
 		Steps    []any  `json:"steps"`
-	}{name, true, []any{}})
+	}{name, true, mode == modeRace, []any{}})
 	return string(b)
 }
 
