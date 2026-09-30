@@ -8,7 +8,13 @@
 	import Skeleton from '$lib/components/Skeleton.svelte';
 	import type { FreeRide } from '$lib/ride/free-ride.svelte';
 	import { formatKm as km } from '$lib/format';
-	import { loadRoad, myRoutes, type RouteSummary } from '$lib/ride/roads';
+	import {
+		carryOnFrom,
+		loadRoad,
+		myRoutes,
+		type RideableRoute,
+		type RouteSummary,
+	} from '$lib/ride/roads';
 
 	let { free }: { free: FreeRide } = $props();
 
@@ -16,6 +22,10 @@
 	let routes = $state<RouteSummary[] | null>(null);
 	let error = $state<string | null>(null);
 	let loading = $state<string | null>(null);
+	// A road the rider stopped short on last time (#3205): where to start.
+	let choosing = $state.raw<{ route: RideableRoute; carry: number } | null>(
+		null,
+	);
 
 	async function show() {
 		open = true;
@@ -30,12 +40,20 @@
 		loading = id;
 		error = null;
 		const result = await loadRoad(id);
-		loading = null;
 		if (!result.ok) {
+			loading = null;
 			error = result.error;
 			return;
 		}
-		free.ride(result.route);
+		const carry = await carryOnFrom(result.route.id, result.route.road.length);
+		loading = null;
+		if (carry !== null) choosing = { route: result.route, carry };
+		else onto(result.route, 0);
+	}
+
+	function onto(route: RideableRoute, from: number) {
+		free.ride(route, from);
+		choosing = null;
 		open = false;
 	}
 </script>
@@ -52,10 +70,27 @@
 				onclick={() => free.leaveRoad()}
 				class="btn btn-ghost btn-xs ml-auto">Leave the road</button
 			>
+		{:else if free.road.lap === 0 && !free.road.atEnd}
+			<span class="text-muted ml-auto text-xs"
+				>Save it, and carry on from here next time.</span
+			>
 		{/if}
 	</div>
 {:else if !free.recording}
-	{#if !open}
+	{#if choosing}
+		{@const { route, carry } = choosing}
+		<div class="flex flex-wrap items-center gap-3">
+			<span class="min-w-0 flex-1 truncate text-sm font-semibold"
+				>{route.name}</span
+			>
+			<button onclick={() => onto(route, carry)} class="btn btn-primary"
+				>Carry on from km {km(carry)}</button
+			>
+			<button onclick={() => onto(route, 0)} class="btn btn-secondary"
+				>From the start</button
+			>
+		</div>
+	{:else if !open}
 		<button onclick={show} class="btn btn-secondary">Ride a road</button>
 	{:else if error}
 		<Banner tone="error">

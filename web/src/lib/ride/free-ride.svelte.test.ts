@@ -233,6 +233,41 @@ describe('a free ride on a road', () => {
 		expect((uploads[0] as { drive: string }).drive).toBe('ergByRoad');
 	});
 
+	it('rides back the way it came at the end: one ride, two laps (#3205)', async () => {
+		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
+		free.arm();
+		free.ride(climb);
+		ride(free, 400, 30);
+		free.turn('back'); // not at the end yet: nothing to turn
+		expect(free.road!.atEnd).toBe(false);
+		let t = 1_030_000;
+		while (!free.road!.atEnd) {
+			expect(t, 'never reached the end').toBeLessThan(2_000_000);
+			ride(free, 400, 1, t);
+			t += 1000;
+		}
+		free.turn('back');
+		ride(free, 200, 20, t);
+		expect(free.road!.m).toBeLessThan(2000);
+		await free.end();
+		const samples = (
+			uploads[0] as {
+				samples: { m: number; lap?: number; reverse?: boolean }[];
+			}
+		).samples;
+		const back = samples.findIndex((s) => s.lap === 1);
+		expect(back).toBeGreaterThan(0);
+		expect(samples.slice(0, back).every((s) => s.lap === undefined)).toBe(true);
+		expect(samples[back]).toMatchObject({ lap: 1, reverse: true });
+		const after = samples.slice(back + 1);
+		expect(after.every((s) => s.lap === 1 && s.reverse === undefined)).toBe(
+			true,
+		);
+		// Down the stored road, as the server's bound holds a reversed lap.
+		for (let i = back + 1; i < samples.length; i++)
+			expect(samples[i].m).toBeLessThanOrEqual(samples[i - 1].m);
+	});
+
 	it('keeps its road once the ride has started', () => {
 		const free = createFreeRide({ ftp: () => 250, kg: () => 75 });
 		free.arm();

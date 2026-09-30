@@ -92,11 +92,14 @@ export function createSoloRoadRide(deps: {
 			return guards.phase;
 		},
 		shift,
-		/** On the road with this trainer, recording from the first stroke. */
-		start(next: Trainer) {
+		/**
+		 * On the road with this trainer, recording from the first stroke —
+		 * from `from`, or where the page opened it.
+		 */
+		start(next: Trainer, from = deps.from ?? 0) {
 			if (trainer) return;
 			deps.free.arm();
-			deps.free.ride(deps.route, deps.from ?? 0);
+			deps.free.ride(deps.route, from);
 			trainer = next;
 			off = next.onSample(onSample);
 			wakeLock = acquireWakeLock();

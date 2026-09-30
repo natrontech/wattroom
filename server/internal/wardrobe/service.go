@@ -41,6 +41,7 @@ func (s *Service) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/me/wardrobe/{item}", s.handleBuy)
 	mux.HandleFunc("DELETE /api/me/wardrobe/{item}", s.handleUndo)
 	mux.HandleFunc("PUT /api/me/outfit", s.handleOutfit)
+	mux.HandleFunc("GET /api/looks/{hash}", s.handleLook)
 }
 
 // refusal is an answer the rider reads, carried out of the locked
@@ -162,6 +163,9 @@ func (s *Service) handleUndo(w http.ResponseWriter, r *http.Request) {
 			return errors.Join(err, errors.New("wardrobe: the item was not removed"))
 		}
 		if err := q.TakeOffItem(r.Context(), db.TakeOffItemParams{UserID: user.ID, Slot: it.Slot, ItemID: it.ID}); err != nil {
+			return err
+		}
+		if err := rewear(r.Context(), q, user.ID); err != nil {
 			return err
 		}
 		if err := wallet.Refund(r.Context(), q, user.ID, purchaseRef(it.ID, owned.AcquiredAt), it.Price()); err != nil {
