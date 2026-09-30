@@ -10,6 +10,7 @@ import { setPieces } from './setpieces';
 import { build, origin, routeLines } from './terrain/network.test-helper';
 import type { Line } from './terrain/lines';
 import type { Turn } from './props/roads';
+import { BUILD_MS } from './world.test-helper';
 
 /**
  * Set pieces by place (#3077): the same pieces, signs and arches in the same
@@ -89,13 +90,17 @@ describe('the same place stands the same set pieces (#3226)', () => {
 		expect(unmatched(a, C)).toBe(0);
 	});
 
-	it('would not, keyed by another salt', () => {
-		const a = things(A);
-		const other = things(
-			setOf(routeLines.B(), [hashSeed('Toyjoch climb'), 1, 2, 3]),
-		);
-		expect(unmatched(a, other)).toBeGreaterThan(a.length / 2);
-	});
+	it(
+		'would not, keyed by another salt',
+		() => {
+			const a = things(A);
+			const other = things(
+				setOf(routeLines.B(), [hashSeed('Toyjoch climb'), 1, 2, 3]),
+			);
+			expect(unmatched(a, other)).toBeGreaterThan(a.length / 2);
+		},
+		BUILD_MS,
+	);
 
 	it('keeps each kind apart as O9 asks, at the faster direction’s pace', () => {
 		A.lines.forEach((line, k) => {

@@ -19,6 +19,7 @@ import {
 	type BuiltWorld,
 } from './shared';
 import { buildToy, type Mutant } from './toy-world.test-helper';
+import { BUILD_MS } from '../world.test-helper';
 
 /**
  * Same road, same world (#3226): on a synthetic network, worlds built from a
@@ -93,17 +94,22 @@ describe('same road, same world on the shared stretch (#3226)', () => {
 				expect(check(worlds[a], worlds[b]), `${a} vs ${b}`).toBe(true);
 		});
 
+	// Each case builds all four routes' worlds keyed the mutant's way.
 	for (const [name, mutant] of MUTANTS)
-		it(`catches a world keyed by the route (${mutant}) on ${name}`, () => {
-			const keyedByRoute = Object.fromEntries(
-				Object.entries(R).map(([k, r]) => [k, build(r, mutant)]),
-			) as Record<keyof typeof R, BuiltWorld>;
-			expect(
-				PAIRS.some(
-					([a, b]) => !PREDICATES[name](keyedByRoute[a], keyedByRoute[b]),
-				),
-			).toBe(true);
-		});
+		it(
+			`catches a world keyed by the route (${mutant}) on ${name}`,
+			() => {
+				const keyedByRoute = Object.fromEntries(
+					Object.entries(R).map(([k, r]) => [k, build(r, mutant)]),
+				) as Record<keyof typeof R, BuiltWorld>;
+				expect(
+					PAIRS.some(
+						([a, b]) => !PREDICATES[name](keyedByRoute[a], keyedByRoute[b]),
+					),
+				).toBe(true);
+			},
+			BUILD_MS,
+		);
 });
 
 describe('across a UTM zone line', () => {

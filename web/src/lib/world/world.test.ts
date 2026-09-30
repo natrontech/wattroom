@@ -6,7 +6,7 @@ import { toRoute, type Route } from '$lib/road/route';
 import { at } from '$lib/road/along';
 import { syntheticGpx, syntheticPoints } from './synthetic';
 import { generate, type World } from './world';
-import { folds, worstRiseThroughRoad } from './world.test-helper';
+import { BUILD_MS, folds, worstRiseThroughRoad } from './world.test-helper';
 import { check } from './placement/check';
 import type { Placement } from './placement/types';
 import { bendsOf } from './terrain/road-frame';
@@ -20,9 +20,6 @@ import { across, bankOf, drawnRows, ROAD_W } from './terrain/road-profile';
 
 let route: Route;
 let world: World;
-// A build takes about 1.5 s alone (ADR-0081: keyed by place is the slower
-// build) and several times that beside the rest of the suite.
-const BUILD_MS = 30_000;
 
 beforeAll(() => {
 	route = toRoute(syntheticPoints());
@@ -235,16 +232,13 @@ describe('the world', () => {
 				base: p.y,
 				height: 1,
 			}));
-		const road = {
-			points: Array.from(route.x, (x, i) => [x, route.z[i]] as const),
-			halfWidth: ROAD_W / 2,
-		};
 		// Where the ribbon is drawn it is the ground a post stands on.
 		const drawn = (x: number, z: number) =>
 			world.roadSurfaceAt(x, z) ?? world.heightAt(x, z);
 		expect(posts.length).toBeGreaterThan(100);
-		// Standing on it is the ground's; how far from the edge each post stands is the set pieces' (#3077).
-		const standing = check(posts, [road], drawn).filter(
+		// Standing on it is the ground's; how far from the edge each post stands is the set pieces'
+		// (#3077), so no road is asked: O1 against 28 km of route took 5 s a run (#3503).
+		const standing = check(posts, [], drawn).filter(
 			(v) => v.rule === 'O2' || v.rule === 'O3',
 		);
 		expect(standing).toEqual([]);
