@@ -57,13 +57,16 @@ function specOf(g: THREE.BufferGeometry): KitSpec {
 	for (let i = 0; i < pos.count; i++)
 		if (pos.getY(i) <= low + CONTACT_M)
 			box.expandByPoint(v.fromBufferAttribute(pos, i));
+	// Millimetres: three builds a cone's rim with Math.cos, whose last bit an
+	// engine chooses, and nothing here may reach a placement unrounded.
+	const mm = (v: number) => Math.round(v * 1000) / 1000;
 	return {
-		hw: (box.max.x - box.min.x) / 2,
-		hd: (box.max.z - box.min.z) / 2,
-		cx: (box.max.x + box.min.x) / 2,
-		cz: (box.max.z + box.min.z) / 2,
-		height: high,
-		plinth: Math.max(0, -low),
+		hw: mm((box.max.x - box.min.x) / 2),
+		hd: mm((box.max.z - box.min.z) / 2),
+		cx: mm((box.max.x + box.min.x) / 2),
+		cz: mm((box.max.z + box.min.z) / 2),
+		height: mm(high),
+		plinth: mm(Math.max(0, -low)),
 	};
 }
 

@@ -109,7 +109,7 @@ export function makeCrew(riders: SimRider[], style: Style) {
 	});
 
 	const trail = style.trail ? makeTrail(style.trail) : null;
-	if (trail) group.add(tag('marks', trail.mesh));
+	if (trail) group.add(tag('marks', trail.mesh, 'trail'));
 	let sinceSample = 0;
 	const you = new THREE.Vector3();
 

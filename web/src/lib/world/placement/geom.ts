@@ -13,7 +13,9 @@ export function pointSegment(p: P2, a: P2, b: P2): number {
 	const ab = sub(b, a);
 	const len2 = dot(ab, ab) || 1e-12;
 	const t = Math.min(Math.max(dot(sub(p, a), ab) / len2, 0), 1);
-	return Math.hypot(p[0] - a[0] - t * ab[0], p[1] - a[1] - t * ab[1]);
+	const x = p[0] - a[0] - t * ab[0];
+	const z = p[1] - a[1] - t * ab[1];
+	return Math.sqrt(x * x + z * z);
 }
 
 function segmentsCross(a: P2, b: P2, c: P2, d: P2): boolean {

@@ -62,7 +62,7 @@ export type Placement = {
 	mayOverlap?: readonly string[];
 };
 
-export type Rule = 'O1' | 'O2' | 'O3' | 'O4' | 'O5';
+export type Rule = 'O1' | 'O2' | 'O3' | 'O4' | 'O5' | 'O9' | 'O11' | 'O13';
 export type Violation = {
 	rule: Rule;
 	id: string;

@@ -36,7 +36,9 @@ function edgeClearance(
 	let k = 0;
 	let best = Infinity;
 	for (const [i, p] of road.points.entries()) {
-		const d = Math.hypot(p[0] - c[0], p[1] - c[1]);
+		const dx = p[0] - c[0];
+		const dz = p[1] - c[1];
+		const d = dx * dx + dz * dz;
 		if (d < best) [best, k] = [d, i];
 	}
 	const pt = road.points;
@@ -157,7 +159,7 @@ export function o3(p: Placement, ground: Ground): Violation[] {
 }
 
 const unit = (a: P2) => {
-	const n = Math.hypot(a[0], a[1]) || 1;
+	const n = Math.sqrt(a[0] * a[0] + a[1] * a[1]) || 1;
 	return [a[0] / n, a[1] / n] as const;
 };
 
@@ -165,7 +167,7 @@ export function o4(p: Placement): Violation[] {
 	const out: Violation[] = [];
 	if (p.up) {
 		const [x, y, z] = p.up;
-		const cos = y / (Math.hypot(x, y, z) || 1);
+		const cos = y / (Math.sqrt(x * x + y * y + z * z) || 1);
 		if (cos < GATES.upright)
 			out.push(
 				v(
