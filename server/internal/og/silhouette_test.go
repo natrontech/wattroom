@@ -5,11 +5,12 @@ import (
 	"image"
 	"image/color"
 	"os"
-	"path/filepath"
 	"testing"
 )
 
 var update = flag.Bool("update", false, "rewrite the poster's golden image")
+
+const posterGoldenPath = "testdata/poster.golden.png"
 
 // roadCard is a road ride (#3142): 3 km flat, a 6 km climb, 3 km down, at a
 // flat 220 W — so anything in the silhouette's shape comes from the road,
@@ -61,7 +62,7 @@ func TestAPosterDrawsTheRoadItRode(t *testing.T) {
 		return topEdge(img, traceBox, traceBox.Min.X+int(frac*float64(traceBox.Dx())))
 	}
 	start, summit, end := at(0.1), at(0.74), at(0.98)
-	if !(summit < start-60 && summit < end-60) {
+	if summit >= start-60 || summit >= end-60 {
 		t.Errorf("the silhouette's top sits at %d, %d and %d px along the road; want the summit well above both ends", start, summit, end)
 	}
 }
@@ -83,17 +84,16 @@ func TestACardWithoutARoadIsStillATrace(t *testing.T) {
 // `go test ./internal/og -run Golden -update` rewrites it after a deliberate
 // change, which the reviewer then looks at.
 func TestThePosterMatchesItsGoldenImage(t *testing.T) {
-	path := filepath.Join("testdata", "poster.golden.png")
 	got := mustRender(t, roadCard())
 	if *update {
-		if err := os.MkdirAll("testdata", 0o755); err != nil {
+		if err := os.MkdirAll("testdata", 0o750); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(path, got, 0o644); err != nil {
+		if err := os.WriteFile(posterGoldenPath, got, 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	want, err := os.ReadFile(path)
+	want, err := os.ReadFile(posterGoldenPath)
 	if err != nil {
 		t.Fatalf("no golden poster (run with -update): %v", err)
 	}
