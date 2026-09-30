@@ -4,18 +4,10 @@
 import * as THREE from 'three';
 import { backdrop } from './backdrop';
 import { tag } from './family';
+import { batchProps } from './props/batch';
 import { arch, board, kits } from './furniture';
-import {
-	instanced,
-	plinth,
-	road,
-	roadMaterial,
-	ROAD_W,
-	terrain,
-	yOf,
-} from './geometry';
+import { plinth, road, roadMaterial, ROAD_W, terrain, yOf } from './geometry';
 import { PROP_RAMP, ramp, toon, type Sight } from './materials';
-import * as P from './props';
 import { prng } from './rand';
 import type { Route } from '$lib/road/route';
 import { skyMaterial, sunDir, terrainMaterial, type Style } from './styles';
@@ -24,6 +16,8 @@ import type { World } from './world';
 
 export type Stage = {
 	group: THREE.Group;
+	/** Brings what the stage draws to where the eye now is: the props' rings. */
+	update(eye: THREE.Vector3): void;
 	backdrop: THREE.Object3D; // the horizon, hidden from the orbit view
 	overview: THREE.Object3D; // a fat road, drawn only from the orbit view
 };
@@ -151,40 +145,12 @@ export function buildStage(
 	const treeMat = toon(gradient, sight, { wind: true, fade: true });
 	const houseMat = toon(gradient, sight, { fade: true });
 	const plain = toon(gradient, sight);
-	const T = world.trees;
-	const H = world.houses;
-	const kind = (arr: Float32Array, stride: number, k: number) => (i: number) =>
-		arr[i * stride + 4] === k;
-	const place = (
-		geo: THREE.BufferGeometry,
-		mat: THREE.Material,
-		data: Float32Array,
-		stride: number,
-		opts: Parameters<typeof instanced>[5],
-	) =>
-		group.add(tag('dressing', instanced(route, geo, mat, data, stride, opts)));
-	place(P.spruce(c), treeMat, T, 6, {
-		keep: kind(T, 6, 0),
-		scale: (i) => T[i * 6 + 3],
-		rot: (i) => T[i * 6 + 5],
+	const props = batchProps(route, world.props, c, {
+		trees: treeMat,
+		buildings: houseMat,
+		stock: plain,
 	});
-	place(P.broadleaf(c), treeMat, T, 6, {
-		keep: kind(T, 6, 1),
-		scale: (i) => T[i * 6 + 3],
-		rot: (i) => T[i * 6 + 5],
-	});
-	const buildings = [P.house, P.church, P.barn, P.hut];
-	buildings.forEach((model, k) =>
-		place(model(c), houseMat, H, 5, {
-			keep: kind(H, 5, k),
-			rot: (i) => H[i * 5 + 3],
-		}),
-	);
-	place(P.cow(c), plain, world.cows, 4, { rot: (i) => world.cows[i * 4 + 3] });
-	place(P.rock(c), plain, world.rocks, 5, {
-		scale: (i) => world.rocks[i * 5 + 3],
-		rot: (i) => world.rocks[i * 5 + 4],
-	});
+	for (const mesh of props.meshes) group.add(tag('dressing', mesh));
 	if (style.stars) group.add(tag('sky', stars(style.stars)));
 
 	const leafy = toon(gradient, sight, { wind: true, fade: true });
@@ -206,7 +172,7 @@ export function buildStage(
 			),
 		);
 
-	return { group, backdrop: horizon, overview };
+	return { group, backdrop: horizon, overview, update: props.update };
 }
 
 // The summit, where the orbit view looks from and at.

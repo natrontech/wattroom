@@ -2,6 +2,7 @@
 	// The ride world with a desk's worth of controls: your watts, the art
 	// style, the camera, time, and a GPX of your own. It owns the canvas and
 	// hands it to scene.ts; everything three.js happens there.
+	import { FAMILY } from './props/batch';
 	import { onMount, untrack } from 'svelte';
 	import { createProfileStore } from '$lib/profile.svelte';
 	import Profile from './Profile.svelte';
@@ -274,9 +275,11 @@
 			{/if}
 			<p class="text-muted m-0 text-xs sm:text-right">
 				{world.names.pass} ({Math.round(route.maxEle)} m) under the {world.names
-					.peak} · {route.name} up · built in {Math.round(built.ms)} ms · {world
-					.trees.length / 6}
-				trees, {world.houses.length / 5} houses
+					.peak} · {route.name} up · built in {Math.round(built.ms)} ms · {world.props.filter(
+					(p) => p.kind === 'spruce' || p.kind === 'broadleaf',
+				).length}
+				trees, {world.props.filter((p) => FAMILY[p.kind] === 'buildings')
+					.length} houses
 			</p>
 			<p class="text-muted m-0 text-xs sm:text-right">
 				A GPX you load stays in this tab. Everything beside the road is
