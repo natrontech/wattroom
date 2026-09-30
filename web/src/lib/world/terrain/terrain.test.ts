@@ -1,21 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { landUse } from '../land';
 import { CHUNK_M } from '../place/lattice';
-import {
-	at,
-	camera,
-	network,
-	WORLD_SALT,
-	type LatLon,
-	type Road,
-} from '../place/network.test-helper';
-import { lv95, originOf } from '../place/project';
+import { at, type LatLon } from '../place/network.test-helper';
 import { groundGap, type BuiltWorld } from '../place/shared';
 import { hashSeed } from '../rand';
-import { around, createTerrain } from '../terrain-mesh';
-import { makeGround } from './ground';
 import { PATCH_M } from './junctions';
 import type { Line } from './lines';
+import {
+	build,
+	climb,
+	descent,
+	lineOf,
+	local,
+	routeLines,
+	valley,
+} from './network.test-helper';
 
 /**
  * The place's ground (#3075) on #3226's synthetic network: a pass with five
@@ -24,37 +22,9 @@ import type { Line } from './lines';
  * ground must not care.
  */
 
-const [ce, cn] = lv95(...camera());
-const origin = originOf(ce, cn);
-const local = (p: LatLon): [number, number] => {
-	const [e, n] = lv95(p[0], p[1]);
-	return [e - origin[0], origin[1] - n];
-};
-const [camX, camZ] = local(camera());
-
-function lineOf(r: Road, back = false, lift = 0): Line {
-	const pts = (back ? [...r.points].reverse() : r.points).map(local);
-	const hs = back ? [...r.heights].reverse() : r.heights;
-	return {
-		key: r.key,
-		x: pts.map((p) => p[0]),
-		z: pts.map((p) => p[1]),
-		h: hs.map((v) => v + lift),
-	};
-}
-
-function build(lines: Line[], salt = WORLD_SALT) {
-	const ground = makeGround(lines, { salt, origin });
-	const cover = around(ground.lines, camX, camZ);
-	const terrain = createTerrain(ground, cover.level, landUse(ground.noise));
-	return { ground, cover, terrain };
-}
-
-const [climb, valley, descent] = network().roads;
-// Each route's own order and direction: the loop, the climb as its own file, the climb ridden down.
-const A = build([lineOf(valley), lineOf(climb), lineOf(descent)]);
-const B = build([lineOf(climb), lineOf(valley), lineOf(descent)]);
-const C = build([lineOf(climb, true), lineOf(descent), lineOf(valley)]);
+const A = build(routeLines.A());
+const B = build(routeLines.B());
+const C = build(routeLines.C());
 
 const world = (w: typeof A): BuiltWorld => ({
 	ground: (lat, lon) => w.terrain.heightAt(...local([lat, lon])),

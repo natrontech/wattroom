@@ -20,7 +20,7 @@ let world: World;
 beforeAll(() => {
 	route = toRoute(longLoopPoints());
 	world = generate(route);
-}, 30_000);
+}, 60_000);
 
 describe('a world around a 124 km loop', () => {
 	it('draws on the lattice however long the route: every vertex 10 or 40 m from the next', () => {

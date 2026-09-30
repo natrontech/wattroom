@@ -192,10 +192,27 @@ export function makeGround(given: readonly Line[], opts: GroundOpts) {
 	/** Metres to the nearest road, read between 40 m lattice points: a cheap first cut. */
 	const roadDist = dist;
 
+	/**
+	 * Whether (x, z) keeps `base` metres from every road — more on the inside
+	 * of a bend, where the chase camera's sightline cuts the corner.
+	 */
+	function clearOf(x: number, z: number, base: number): boolean {
+		const hit = index.nearest(x, z, 2);
+		if (!hit) return true; // past two index rings (80 m), beyond any clearance
+		const k = frame.curvature(hit.i, hit.t);
+		if (Math.sign(k) !== hit.side || Math.abs(k) < 1 / 400)
+			return hit.d >= base;
+		const r = 1 / Math.abs(k);
+		const half = 18; // half the chord from the chase camera (~8 m behind) to its gaze (~18 m ahead)
+		const sag = r <= half ? r : r - Math.sqrt(r * r - half * half);
+		return hit.d >= base + sag + 4;
+	}
+
 	return {
 		heightAt,
 		roadSurfaceAt,
 		roadDist,
+		clearOf,
 		nearest: index.nearest,
 		noise,
 		lines,

@@ -44,10 +44,19 @@ const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
 const cyl = (top: number, bottom: number, h: number, seg: number) =>
 	new THREE.CylinderGeometry(top, bottom, h, seg);
 
+// A tree's trunk runs this far on below the ground, as a building's foundation
+// does: its plinth, so a tree on a hillside stands on its uphill side and its
+// root fills the downhill one (#3076). It covers the steepest forest land.ts
+// grows (0.85) under the widest trunk (1 m at the largest scale, 1.45).
+export const ROOT_M = 1.2;
+
 // A spruce: three stacked cones, slightly offset so it never looks stamped.
 export function spruce(c: PropColors) {
 	return merge([
-		tint(cyl(0.35, 0.5, 3, 5).translate(0, 1.5, 0), c.trunk),
+		tint(
+			cyl(0.35, 0.5, 3 + ROOT_M, 5).translate(0, (3 - ROOT_M) / 2, 0),
+			c.trunk,
+		),
 		tint(
 			new THREE.ConeGeometry(4.2, 7, 7).translate(0, 5.5, 0),
 			c.spruce,
@@ -84,7 +93,10 @@ function leafBlob(
 // A broadleaf: a trunk and two lumpy blobs.
 export function broadleaf(c: PropColors) {
 	return merge([
-		tint(cyl(0.3, 0.45, 4.5, 5).translate(0, 2.25, 0), c.trunk),
+		tint(
+			cyl(0.3, 0.45, 4.5 + ROOT_M, 5).translate(0, (4.5 - ROOT_M) / 2, 0),
+			c.trunk,
+		),
 		leafBlob(c, 0, 3.6, 0, 6.6, 0),
 		leafBlob(c, 0, 2.6, 1.6, 8.2, -0.8),
 		leafBlob(c, 0, 2.2, -1.5, 7.8, 1),

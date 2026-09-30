@@ -163,31 +163,27 @@ export function buildStage(
 		opts: Parameters<typeof instanced>[5],
 	) =>
 		group.add(tag('dressing', instanced(route, geo, mat, data, stride, opts)));
-	place(P.spruce(c), treeMat, T, 5, {
-		keep: kind(T, 5, 0),
-		scale: (i) => T[i * 5 + 3],
-		rot: (i) => i * 2.4,
-		sink: 0.6,
+	place(P.spruce(c), treeMat, T, 6, {
+		keep: kind(T, 6, 0),
+		scale: (i) => T[i * 6 + 3],
+		rot: (i) => T[i * 6 + 5],
 	});
-	place(P.broadleaf(c), treeMat, T, 5, {
-		keep: kind(T, 5, 1),
-		scale: (i) => T[i * 5 + 3],
-		rot: (i) => i * 1.7,
-		sink: 0.6,
+	place(P.broadleaf(c), treeMat, T, 6, {
+		keep: kind(T, 6, 1),
+		scale: (i) => T[i * 6 + 3],
+		rot: (i) => T[i * 6 + 5],
 	});
 	const buildings = [P.house, P.church, P.barn, P.hut];
 	buildings.forEach((model, k) =>
 		place(model(c), houseMat, H, 5, {
 			keep: kind(H, 5, k),
 			rot: (i) => H[i * 5 + 3],
-			sink: k === 3 ? 0.6 : 0.8,
 		}),
 	);
 	place(P.cow(c), plain, world.cows, 4, { rot: (i) => world.cows[i * 4 + 3] });
-	place(P.rock(c), plain, world.rocks, 4, {
-		scale: (i) => world.rocks[i * 4 + 3],
-		rot: (i) => i * 1.3,
-		sink: 0.3,
+	place(P.rock(c), plain, world.rocks, 5, {
+		scale: (i) => world.rocks[i * 5 + 3],
+		rot: (i) => world.rocks[i * 5 + 4],
 	});
 	if (style.stars) group.add(tag('sky', stars(style.stars)));
 

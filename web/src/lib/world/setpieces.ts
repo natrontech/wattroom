@@ -4,7 +4,8 @@
 // Restraint is part of the rule: small kits are ≤ 2 m and ≥ 6 m off the
 // asphalt, no kit repeats within four of its class, an empty meadow counts.
 import { Biome } from './biome';
-import type { Ground } from './dress';
+import type { Biome as BiomeT } from './biome';
+import type { Field, Nearest } from './field';
 import { clearOf } from './field';
 import { namesFor } from './names';
 import type { Marker } from './markers';
@@ -51,7 +52,17 @@ export type Sign = {
 };
 export type Arch = { d: number; label: string };
 
-type Ctx = Ground & { villages: { d: number; name: string }[] };
+type Ctx = {
+	rand: () => number;
+	field: Field;
+	nearest: Nearest;
+	heightAt: (x: number, z: number) => number;
+	/** Null where no ground is drawn: nothing stands there. */
+	biomeAt: (x: number, z: number) => BiomeT | null;
+	/** The road's own surface where a road runs: what road furniture stands on. */
+	roadSurfaceAt: (x: number, z: number) => number | null;
+	villages: { d: number; name: string }[];
+};
 
 export const FLAGS = 4; // flagpoles at the summit, one colour each from the style
 
