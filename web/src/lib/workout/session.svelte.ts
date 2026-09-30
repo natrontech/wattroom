@@ -12,6 +12,7 @@ import { countsToward, createRideRecord } from './ride-record.svelte';
 import { createLiveStats } from '$lib/ride/live-stats.svelte';
 import { createRideClock } from './ride-clock.svelte';
 import { createRideLife } from './ride-life.svelte';
+import { createRoadDot } from './road-dot.svelte';
 import { signalLost, type RideOptions, type RideState } from './ride-state';
 
 /**
@@ -31,6 +32,7 @@ export function createRideSession({
 		singleSpeed: DEFAULT_PROFILE.singleSpeed,
 	}),
 	onRecord,
+	kg = () => 0,
 }: RideOptions) {
 	const startedAt = new Date(startedAtMs ?? now());
 	let bias = $state(1);
@@ -57,9 +59,13 @@ export function createRideSession({
 		life.life === 'riding' ? guards.phase : life.life,
 	);
 
+	// A road workout's blocks end at their metres (#3499): the dot's
+	// position is the clock.
+	const dot = createRoadDot(workout, kg);
 	const clock = createRideClock(workout, ftp, {
 		bias: () => bias,
 		over: () => state === 'done',
+		road: dot.position,
 	});
 
 	/**
@@ -130,12 +136,19 @@ export function createRideSession({
 		// guards look at every one — a stop is noticed by the sample that
 		// stopped, not by the second's first.
 		const admit = record.admits(raw.at);
-		const pedalling = guarding.sample(next, admit);
+		// On a road a coasted descent is riding (#3056).
+		const pedalling = guarding.sample(
+			{ ...next, virtualMps: dot.here?.virtualMps },
+			admit,
+		);
 		if (!admit) return;
+		const road = dot.second(next.watts, raw.at);
 		const recorded = record.add(
 			raw.at,
 			clock.seconds,
-			next,
+			road
+				? { ...next, virtualMps: road.virtualMps, m: dot.m, alt: road.alt }
+				: next,
 			bias,
 			!guards.scoring,
 		);
@@ -317,15 +330,24 @@ export function createRideSession({
 			),
 		/** Jump to the start of the next block. */
 		skip() {
-			if (!clock.skip()) return;
+			// On a road the road decides where a block ends (#3499).
+			if (dot.pinned || !clock.skip()) return;
 			applyTarget();
 			clock.sync();
 		},
 		/** Hold the current block longer (see the clock's extend). */
 		extend(seconds: number) {
+			if (dot.pinned) return;
 			clock.extend(seconds);
 			applyTarget();
 			clock.sync();
+		},
+		/**
+		 * A road workout's place on its road (#3499): where the dot is and
+		 * where the ride ends, in metres along the owner's road. Null off one.
+		 */
+		get road() {
+			return dot.summary;
 		},
 		/** Exposed for the ride screen's clock display and tests. */
 		tick,

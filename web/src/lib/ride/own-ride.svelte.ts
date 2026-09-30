@@ -1,3 +1,4 @@
+import { byReference } from '$lib/workout/road-workout';
 import { account } from '$lib/account.svelte';
 import { pairError } from '$lib/ble/pair-error';
 import type { Trainer } from '$lib/ble/trainer';
@@ -36,6 +37,7 @@ export function createOwnRide(deps: {
 			shareHr: boolean;
 			sprintGrade: number;
 			singleSpeed: boolean;
+			kg: number;
 		};
 	};
 	joined: () => boolean;
@@ -151,7 +153,8 @@ export function createOwnRide(deps: {
 					ownerId: account.me?.id,
 					startedAt,
 					workoutName: next.name,
-					workoutJson: JSON.stringify(next),
+					workoutJson: JSON.stringify(byReference(next)),
+					...(next.road && { routeId: next.road.routeId }),
 				});
 				noCrashSafety = !buffer.crashSafe;
 				const profile = deps.profile.current;
@@ -159,6 +162,7 @@ export function createOwnRide(deps: {
 					trainer,
 					workout: next,
 					ftp: profile.ftp,
+					kg: () => deps.profile.current.kg,
 					startedAt,
 					readings: () => sensors.readings,
 					sprint: () => ({

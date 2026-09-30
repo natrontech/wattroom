@@ -51,26 +51,47 @@ function mix(h: number, k: number): number {
 	return (Math.imul(h, 5) + 0xe6546b64) | 0;
 }
 
-/**
- * The key for one decision: murmur3's block mix over the salt, the kind and
- * each integer (a safe integer, in two 32-bit halves), then its finaliser.
- */
-export function keyed(salt: Salt, kind: Kind, ...ints: number[]): number {
+const prefix = (salt: Salt, kind: Kind) => {
 	let h = 0;
 	for (const word of salt) h = mix(h, word);
-	h = mix(h, KINDS.indexOf(kind));
-	for (const n of ints) {
-		if (!Number.isSafeInteger(n)) throw new Error(`not an integer: ${n}`);
-		h = mix(h, n | 0);
-		h = mix(h, Math.floor(n / TWO_32) | 0);
-	}
-	h ^= 4 * (5 + 2 * ints.length);
+	return mix(h, KINDS.indexOf(kind));
+};
+
+function mixInt(h: number, n: number): number {
+	if (!Number.isSafeInteger(n)) throw new Error(`not an integer: ${n}`);
+	return mix(mix(h, n | 0), Math.floor(n / TWO_32) | 0);
+}
+
+function finish(h: number, count: number): number {
+	h ^= 4 * (5 + 2 * count);
 	h ^= h >>> 16;
 	h = Math.imul(h, 0x85ebca6b);
 	h ^= h >>> 13;
 	h = Math.imul(h, 0xc2b2ae35);
 	h ^= h >>> 16;
 	return h >>> 0;
+}
+
+/**
+ * The key for one decision: murmur3's block mix over the salt, the kind and
+ * each integer (a safe integer, in two 32-bit halves), then its finaliser.
+ */
+export function keyed(salt: Salt, kind: Kind, ...ints: number[]): number {
+	let h = prefix(salt, kind);
+	for (const n of ints) h = mixInt(h, n);
+	return finish(h, ints.length);
+}
+
+/**
+ * keyed(salt, kind, a, b[, c]) for a loop that asks millions of times: the
+ * salt and kind mixed once, and no array per call. The same keys, bit for bit.
+ */
+export function keyer(salt: Salt, kind: Kind) {
+	const p = prefix(salt, kind);
+	return (a: number, b: number, c?: number): number =>
+		c === undefined
+			? finish(mixInt(mixInt(p, a), b), 2)
+			: finish(mixInt(mixInt(mixInt(p, a), b), c), 3);
 }
 
 /** A key as a fraction in [0, 1). */

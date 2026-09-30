@@ -18,6 +18,7 @@ import * as P from './props';
 import { prng } from './rand';
 import type { Route } from '$lib/road/route';
 import { skyMaterial, sunDir, terrainMaterial, type Style } from './styles';
+import { SHOULDER } from './terrain/road-profile';
 import type { World } from './world';
 
 export type Stage = {
@@ -84,7 +85,8 @@ export function buildStage(
 
 	// Snow only where the route earns it — never on a flat loop.
 	const alpine = route.maxEle > 1000 || route.gain / (route.length / 1000) > 20;
-	const radius = Math.hypot(world.nx * world.cell, world.nz * world.cell) / 2;
+	const [minX, minZ, maxX, maxZ] = world.bounds;
+	const radius = Math.hypot(maxX - minX, maxZ - minZ) / 2;
 	const horizon = new THREE.Mesh(
 		backdrop(
 			route,
@@ -120,7 +122,7 @@ export function buildStage(
 		);
 	group.add(
 		new THREE.Mesh(
-			road(route, { width: ROAD_W, shoulder: 1.6 }),
+			road(route, { width: ROAD_W, shoulder: SHOULDER }),
 			roadMaterial(style.road),
 		),
 	);

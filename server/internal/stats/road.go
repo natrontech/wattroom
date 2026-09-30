@@ -29,26 +29,77 @@ type RoadRide struct {
 // above which the save logs it (#3053).
 const ReplayGapLogged = 0.01
 
+// Lap is one pass along a stored road within one ride (#3598): the sample it
+// starts at, and whether it runs down the stored road — "Ride back the way you
+// came" — rather than up it.
+type Lap struct {
+	Start   int
+	Reverse bool
+}
+
 // ReplayRoad rides the samples' watts along the road again, a second a
-// sample, from where the first sample stood, with the one pace model (#3048).
-// The server's replay is the only clock (ADR-0074): the distance a road ride
-// keeps is this one, never the metres the client sent.
-func ReplayRoad(r road.Road, samples []protocol.RiderMetrics, massKg float64) RoadRide {
-	from := min(max(samples[0].M, 0), r.LengthM)
-	p := road.Pace{}
-	for _, s := range samples {
-		at := from + p.Distance
-		if at >= r.LengthM {
-			break
-		}
-		p.Step(float64(s.Watts), r.GradeAt(at), massKg, protocol.PaceDefaultCdA, 0)
+// sample, lap by lap from where each lap's first sample stood and in its own
+// direction, with the one pace model (#3048). The server's replay is the only
+// clock (ADR-0074): the distance a road ride keeps is this one, never the
+// metres the client sent. No laps is one pass up the road from the first
+// sample, which is every ride saved before laps.
+func ReplayRoad(r road.Road, samples []protocol.RiderMetrics, laps []Lap, massKg float64) RoadRide {
+	if len(laps) == 0 {
+		laps = []Lap{{}}
 	}
-	distance := min(p.Distance, r.LengthM-from)
-	out := RoadRide{FromM: from, DistanceM: distance, ClimbedM: r.ClimbedBetween(from, from+distance)}
-	if reported := samples[len(samples)-1].M - samples[0].M; distance > 0 {
-		out.Gap = math.Abs(reported-distance) / distance
+	var out RoadRide
+	reported := 0.0
+	for i, lap := range laps {
+		end := len(samples)
+		if i+1 < len(laps) {
+			end = laps[i+1].Start
+		}
+		part := samples[lap.Start:end]
+		if len(part) == 0 {
+			continue
+		}
+		from, distance, climbed := replayLap(r, part, lap.Reverse, massKg)
+		if i == 0 {
+			out.FromM = from
+		}
+		out.DistanceM += distance
+		out.ClimbedM += climbed
+		reported += math.Abs(part[len(part)-1].M - part[0].M)
+	}
+	if out.DistanceM > 0 {
+		out.Gap = math.Abs(reported-out.DistanceM) / out.DistanceM
 	}
 	return out
+}
+
+// replayLap is one lap: where on the stored road it started, how far it went
+// and what it climbed in the direction it was ridden. A reversed lap rides
+// the road turned round, so its climbs are the stored road's descents.
+func replayLap(r road.Road, samples []protocol.RiderMetrics, reverse bool, massKg float64) (from, distance, climbed float64) {
+	from = min(max(samples[0].M, 0), r.LengthM)
+	ridden, start := r, from
+	if reverse {
+		ridden, start = turnedRound(r), r.LengthM-from
+	}
+	p := road.Pace{}
+	for _, s := range samples {
+		at := start + p.Distance
+		if at >= ridden.LengthM {
+			break
+		}
+		p.Step(float64(s.Watts), ridden.GradeAt(at), massKg, protocol.PaceDefaultCdA, 0)
+	}
+	distance = min(p.Distance, ridden.LengthM-start)
+	return from, distance, ridden.ClimbedBetween(start, start+distance)
+}
+
+// turnedRound is the road ridden from its far end: its heights in reverse.
+func turnedRound(r road.Road) road.Road {
+	h := make([]float64, len(r.Heights))
+	for i, v := range r.Heights {
+		h[len(h)-1-i] = v
+	}
+	return road.Road{LengthM: r.LengthM, Heights: h}
 }
 
 // RideMode is ADR-0062's word for how a ride was ridden. An empty workout

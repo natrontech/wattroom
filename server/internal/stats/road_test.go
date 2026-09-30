@@ -33,7 +33,7 @@ func rodeAt(seconds, watts int, from, clientMps float64) []protocol.RiderMetrics
 func TestReplayRoadIsThePaceAlongTheRoad(t *testing.T) {
 	r := storedRoad(t, 20_000, 0)
 	mass := float64(protocol.ReferenceRiderKg + protocol.BikeKg)
-	got := ReplayRoad(r, rodeAt(600, 225, 3000, 9), mass)
+	got := ReplayRoad(r, rodeAt(600, 225, 3000, 9), nil, mass)
 
 	p := road.Pace{}
 	for range 600 {
@@ -46,7 +46,7 @@ func TestReplayRoadIsThePaceAlongTheRoad(t *testing.T) {
 
 func TestReplayRoadStopsAtTheRoadsEnd(t *testing.T) {
 	r := storedRoad(t, 2000, 40)
-	got := ReplayRoad(r, rodeAt(3600, 300, 500, 9), 83)
+	got := ReplayRoad(r, rodeAt(3600, 300, 500, 9), nil, 83)
 	if math.Abs(got.DistanceM-(2000-509)) > 1e-9 {
 		t.Fatalf("distance %.2f m, want the 1491 m left of the road", got.DistanceM)
 	}
@@ -60,13 +60,61 @@ func TestReplayRoadStopsAtTheRoadsEnd(t *testing.T) {
 func TestReplayRoadMeasuresTheClientsGap(t *testing.T) {
 	r := storedRoad(t, 20_000, 0)
 	mass := 83.0
-	honest := ReplayRoad(r, rodeAt(600, 225, 0, 0), mass)
+	honest := ReplayRoad(r, rodeAt(600, 225, 0, 0), nil, mass)
 	perSecond := honest.DistanceM / 600
-	if got := ReplayRoad(r, rodeAt(600, 225, 0, perSecond), mass).Gap; got > 0.002 {
+	if got := ReplayRoad(r, rodeAt(600, 225, 0, perSecond), nil, mass).Gap; got > 0.002 {
 		t.Errorf("a client that rode the replay's pace parts by %.4f", got)
 	}
-	if got := ReplayRoad(r, rodeAt(600, 225, 0, perSecond*1.05), mass).Gap; got < ReplayGapLogged {
+	if got := ReplayRoad(r, rodeAt(600, 225, 0, perSecond*1.05), nil, mass).Gap; got < ReplayGapLogged {
 		t.Errorf("a client 5 %% ahead parts by only %.4f", got)
+	}
+}
+
+// A road ride with laps (#3598): each lap rides from where its first sample
+// stood, its own way, and the ride keeps the sum — distance, and climbing
+// counted the way each lap was ridden. A road 2 km long, 2 % up: an hour at
+// 300 W reaches its end, so every lap here rides to one.
+func TestARoadRideWithLapsRidesEachLapItsWay(t *testing.T) {
+	up := storedRoad(t, 2000, 40)
+	down := turnedRound(up)
+	lapped := func(first, second []protocol.RiderMetrics) []protocol.RiderMetrics {
+		return append(append([]protocol.RiderMetrics{}, first...), second...)
+	}
+	const lap = 3600
+	for _, c := range []struct {
+		name              string
+		road              road.Road
+		samples           []protocol.RiderMetrics
+		laps              []Lap
+		from, dist, climb float64
+	}{
+		{
+			// Out to the top and back down the way you came: the climb once.
+			"an out-and-back up the hill", up,
+			lapped(rodeAt(lap, 300, 0, 9), rodeAt(lap, 300, 2000, -9)),
+			[]Lap{{Start: 0}, {Start: lap, Reverse: true}},
+			9, 1991 + 1991, 40 * 1991 / 2000.0,
+		},
+		{
+			// Down the stored road, then back up it: the return is the climb.
+			"an out-and-back down the hill", down,
+			lapped(rodeAt(lap, 300, 0, 9), rodeAt(lap, 300, 2000, -9)),
+			[]Lap{{Start: 0}, {Start: lap, Reverse: true}},
+			9, 1991 + 1991, 40 * 1991 / 2000.0,
+		},
+		{
+			// Ride it again from the start: the climb twice.
+			"a two-lap repeat", up,
+			lapped(rodeAt(lap, 300, 0, 9), rodeAt(lap, 300, 0, 9)),
+			[]Lap{{Start: 0}, {Start: lap}},
+			9, 2 * 1991, 2 * 40 * 1991 / 2000.0,
+		},
+	} {
+		got := ReplayRoad(c.road, c.samples, c.laps, 83)
+		if got.FromM != c.from || math.Abs(got.DistanceM-c.dist) > 1e-6 || math.Abs(got.ClimbedM-c.climb) > 0.01 {
+			t.Errorf("%s: from %v m, %.2f m, climbing %.2f m; want from %v, %.2f m, climbing %.2f m",
+				c.name, got.FromM, got.DistanceM, got.ClimbedM, c.from, c.dist, c.climb)
+		}
 	}
 }
 
