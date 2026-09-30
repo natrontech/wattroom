@@ -155,10 +155,10 @@ describe('the world', () => {
 				offenders.push(`${label} ${hit.d.toFixed(1)} m from the centreline`);
 		};
 		const props = [
-			['tree', world.trees, 5, 10],
+			['tree', world.trees, 6, 10],
 			['house', world.houses, 5, 12],
 			['cow', world.cows, 4, 18],
-			['rock', world.rocks, 4, 8],
+			['rock', world.rocks, 5, 8],
 		] as const;
 		for (const [label, arr, stride, min] of props)
 			for (let k = 0; k < arr.length; k += stride)

@@ -2,11 +2,10 @@
 // keyed by a salt in the key frame's lattice and shaped by the roads through
 // it, so whichever route reaches a spot finds the same ground there. This
 // dev path has one road, the route itself, in the route's own frame, until a
-// served road and the map's strokes arrive (#3057, #3239). The props and set
-// pieces still draw from the route's seed until they are keyed by place too
-// (#3076, #3077). Nothing about the world is ever sent over the wire — only
+// served road and the map's strokes arrive (#3057, #3239). The props are
+// keyed by place too (#3076); the set pieces still draw from the route's
+// seed until #3077 anchors them to the road. Nothing about the world is ever sent over the wire — only
 // the route and each rider's distance along it.
-import { dress, type Props } from './dress';
 import { makeField, roadIndex } from './field';
 import { landUse } from './land';
 import { markersFor, type Marker } from './markers';
@@ -18,10 +17,21 @@ import type { Names } from './names';
 import { setPieces, type Arch, type Piece, type Sign } from './setpieces';
 import { corridor, createTerrain, type TerrainMesh } from './terrain-mesh';
 import { makeGround } from './terrain/ground';
+import { scatter, type Prop } from './props/scatter';
+import type { Placement } from './placement/types';
 import { drawnRows } from './terrain/road-profile';
 
+/** What stands beside the road, as the stage draws it. */
+export type Props = {
+	trees: Float32Array; // x, base, z, scale, kind (0 spruce, 1 broadleaf), rotY ×N
+	houses: Float32Array; // x, base, z, rotY, kind (0 house, 1 church, 2 barn, 3 hut) ×N
+	cows: Float32Array; // x, base, z, rotY ×N
+	rocks: Float32Array; // x, base, z, scale, rotY ×N
+	villageNames: { d: number; name: string }[];
+};
+
 export type World = {
-	/** The props' and set pieces' seed, until #3076 and #3077 key them by place. */
+	/** The set pieces' seed, until #3077 keys them by place. */
 	seed: number;
 	/** The drawn ground's extent: minX, minZ, maxX, maxZ. */
 	bounds: [number, number, number, number];
@@ -30,6 +40,8 @@ export type World = {
 	rim: number[];
 	heightAt: (x: number, z: number) => number; // the drawn surface, for anything that stands on it
 	roadSurfaceAt: (x: number, z: number) => number | null;
+	/** Every prop as #3219's gates see it, in the order it was admitted. */
+	placements: Placement[];
 	markers: Marker[];
 	pieces: Piece[];
 	signs: Sign[];
@@ -77,16 +89,44 @@ export function generate(
 	const { heightAt, biomeAt } = terrain;
 	const { roadSurfaceAt } = ground;
 
-	const props = dress(route, {
-		rand,
-		field,
-		nearest,
+	const placed = scatter({
+		salt: opts.salt ?? DEV_SALT,
+		ground,
 		heightAt,
 		biomeAt,
-		roadSurfaceAt,
-		roadDistAt: ground.roadDist,
-		bounds,
+		chunks: cover.chunks,
 	});
+	const HOUSE = { house: 0, church: 1, barn: 2, hut: 3 } as const;
+	const pick = (kinds: readonly string[], row: (p: Prop) => number[]) =>
+		new Float32Array(
+			placed.props.filter((p) => kinds.includes(p.kind)).flatMap(row),
+		);
+	const props: Props = {
+		trees: pick(['spruce', 'broadleaf'], (p) => [
+			p.x,
+			p.base,
+			p.z,
+			p.scale,
+			p.kind === 'broadleaf' ? 1 : 0,
+			p.rot,
+		]),
+		houses: pick(Object.keys(HOUSE), (p) => [
+			p.x,
+			p.base,
+			p.z,
+			p.rot,
+			HOUSE[p.kind as keyof typeof HOUSE],
+		]),
+		cows: pick(['cow'], (p) => [p.x, p.base, p.z, p.rot]),
+		rocks: pick(['rock'], (p) => [p.x, p.base, p.z, p.scale, p.rot]),
+		// Where each village stands along the route, for the markers and set pieces that read it so.
+		villageNames: placed.villages
+			.map((v) => ({
+				d: (nearest(v.x, v.z)?.i ?? 0) * route.step,
+				name: v.name,
+			}))
+			.sort((a, b) => a.d - b.d),
+	};
 	const markers = markersFor(route, props.villageNames);
 	const set = setPieces(route, markers, {
 		rand,
@@ -102,6 +142,7 @@ export function generate(
 		bounds,
 		mesh,
 		rim: terrain.rim(cover.chunks),
+		placements: placed.placements,
 		heightAt,
 		roadSurfaceAt,
 		...props,
