@@ -3,16 +3,16 @@
 // decision's number, so a descender meets the objects a climber met, only
 // sooner. The rhythm is per metre at the uphill reference pace — something
 // small every 20–40 s, something medium every 3–5 min, a chapel 15 min apart
-// — and a slot is skipped where #3221's O9 would find its kind too near its
-// last, measured at the faster direction's pace. A slot looks back one draw,
-// so a chunk builds alone. Signs stand for their own traffic: a climb board
-// at the foot for whoever climbs it, hairpins numbered from the top, a pass's
-// sign each way. Everything stands through #3219's gates.
+// — and a piece is skipped where #3221's O9 would find its kind too near the
+// last one stood on the stroke, measured at the faster direction's pace.
+// Signs stand for their own traffic: a climb board at the foot for whoever
+// climbs it, hairpins numbered from the top, a pass's sign each way.
+// Everything stands through #3219's gates.
 import { Biome } from './biome';
 import { keyer, unit, type Salt } from './place/keyed';
 import { namesFor, type Names } from './names';
 import type { Class } from './placement/types';
-import { RHYTHM } from './placement/stream';
+import { RHYTHM, type Passing, type Size } from './placement/stream';
 import type { KitKind } from './props/kit';
 import type { Placer } from './props/placer';
 import { rhythmOf } from './props/rhythm';
@@ -95,6 +95,15 @@ const SMALL_KINDS = [
 	'fence',
 ] as const;
 const MEDIUM_KINDS = ['farmstead', 'fountain'] as const;
+/** What O9 spaces each kind by; the rest are small. */
+const SIZE: Partial<Record<PieceKind | 'herd', Size>> = {
+	house: 'medium',
+	barn: 'medium',
+	fountain: 'medium',
+	hut: 'medium',
+	herd: 'medium',
+	chapel: 'landmark',
+};
 const TILE_M = 5000;
 
 /** Where a kind may stand. */
@@ -113,12 +122,15 @@ export function setPieces(c: Ctx): {
 	signs: Sign[];
 	arches: Arch[];
 	names: Names;
+	/** What a rider passes along each stroke, as #3221's O9 reads it: furniture aside, a herd as one. */
+	streams: Passing[][];
 } {
 	const { salt, ground, heightAt, biomeAt, placer } = c;
 	const [e0, n0] = c.origin ?? [0, 0];
 	const pieces: Piece[] = [];
 	const signs: Sign[] = [];
 	const arches: Arch[] = [];
+	const streams: Passing[][] = [];
 	const key = keyer(salt, 'setpiece');
 	const tileNames = (x: number, z: number) =>
 		namesFor(
@@ -136,6 +148,41 @@ export function setPieces(c: Ctx): {
 		const stroke = hashOf(line.key);
 		const r = rhythmOf(line);
 		const w = r.walk;
+		const stream: Passing[] = [];
+		streams.push(stream);
+		/** Whether O9 would find this kind too near the last of it on the stroke. */
+		const tooSoon = (
+			kind: PieceKind | 'herd',
+			at: number,
+			colourway?: string,
+		) =>
+			stream.some(
+				(q) =>
+					q.kind === kind &&
+					q.colourway === colourway &&
+					Math.abs(r.fast(at) - r.fast(q.along)) <
+						Math.max(RHYTHM.apart[SIZE[kind] ?? 'small'], RHYTHM.apart[q.size]),
+			);
+		const pass = (
+			kind: PieceKind | 'herd',
+			at: number,
+			side: number,
+			off: number,
+			x: number,
+			z: number,
+			colourway?: string,
+		) =>
+			stream.push({
+				id: `${kind}-${stream.length}`,
+				kind,
+				colourway,
+				size: SIZE[kind] ?? 'small',
+				along: at,
+				side: side < 0 ? -1 : 1,
+				offset: off,
+				source: 'generated',
+				at: [x, z],
+			});
 		const u = (slot: number, d: number) => unit(key(stroke, slot, d));
 		/** The n-th piece of a slot's group, as a slot of its own. */
 		const sub = (slot: number, n: number) => slot * 16 + n;
@@ -157,16 +204,24 @@ export function setPieces(c: Ctx): {
 			for (const shift of [0, 15, -15, 30, -30, 45, -45, 60, -60]) {
 				const at = s + shift;
 				if (at < 0 || at > r.length) continue;
+				const colourway = extra.flag?.toString();
+				const counted = cls !== 'furniture' && kind !== 'cow';
+				if (counted && tooSoon(kind, at, colourway)) return null;
 				const p = w.at(at);
-				const x = p.x + p.lx * off * side;
-				const z = p.z + p.lz * off * side;
-				if (!ground.clearOf(x, z, need) || biomeAt(x, z) === null) continue;
-				const turn =
-					extra.turn ?? facing(at, side, Math.round((u(slot, 90) - 0.5) * 14));
-				const base = placer.stand(kind, cls, x, z, turn);
-				if (base === null) continue;
-				pieces.push({ kind, x, y: base, z, turn, ...extra });
-				return at;
+				// The keyed side first, then across: on a mountainside one side is often a fill too steep to stand on.
+				for (const hand of [side, -side]) {
+					const x = p.x + p.lx * off * hand;
+					const z = p.z + p.lz * off * hand;
+					if (!ground.clearOf(x, z, need) || biomeAt(x, z) === null) continue;
+					const turn =
+						extra.turn ??
+						facing(at, hand, Math.round((u(slot, 90) - 0.5) * 14));
+					const base = placer.stand(kind, cls, x, z, turn);
+					if (base === null) continue;
+					pieces.push({ kind, x, y: base, z, turn, ...extra });
+					if (counted) pass(kind, at, hand, off, x, z, colourway);
+					return at;
+				}
 			}
 			return null;
 		}
@@ -186,10 +241,21 @@ export function setPieces(c: Ctx): {
 			const z = p.z - p.lz * off * dir;
 			const turn = dir > 0 ? turnBy(p.along, deg(180)) : p.along;
 			signs.push({ x, y: heightAt(x, z), z, turn, lines, look, w: sw, h: sh });
+			// A sign's face is seen by its own traffic only: its words and its direction are its identity.
+			stream.push({
+				id: `${look}-${stream.length}`,
+				kind: look,
+				variant: `${lines.join('|')}|${dir}`,
+				size: 'small',
+				along: s,
+				side: dir > 0 ? -1 : 1,
+				offset: off,
+				source: 'generated',
+				at: [x, z],
+			});
 		}
 
-		// Small, every 20–40 s uphill: the kinds in a keyed round, each skipped
-		// where its last scheduled slot is under O9's 45 s at the faster pace.
+		// Small, every 20–40 s uphill: the kinds in a keyed round.
 		const round = [...SMALL_KINDS].sort(
 			(a, b) =>
 				unit(key(stroke, -1, SMALL_KINDS.indexOf(a))) -
@@ -197,16 +263,9 @@ export function setPieces(c: Ctx): {
 		);
 		const small = (i: number) =>
 			r.at((i + 0.5) * SMALL.every + (u(i, 0) - 0.5) * 2 * SMALL.spread);
-		const buffer = 120 / 15; // a retry moves a slot up to 60 m either way: seconds at a descent's pace
 		for (let i = 0; (i + 0.5) * SMALL.every < r.total; i++) {
 			const kind = round[i % round.length];
 			const s = small(i);
-			if (
-				i >= round.length &&
-				r.fast(s) - r.fast(small(i - round.length)) <
-					RHYTHM.apart.small + buffer
-			)
-				continue;
 			const side = u(i, 1) < 0.5 ? -1 : 1;
 			const off = 9.5 + u(i, 2) * 7;
 			const p = w.at(s);
@@ -217,7 +276,7 @@ export function setPieces(c: Ctx): {
 			put(kind, 'kit', s, side, off, 9.2, i);
 		}
 
-		// Medium, every 3–5 min uphill: a farmstead or a fountain, alternately, each spaced as O9 asks.
+		// Medium, every 3–5 min uphill: a farmstead or a fountain, alternately.
 		const medium = (m: number) =>
 			r.at(
 				(m + 0.5) * MEDIUM.every + (u(1e6 + m, 0) - 0.5) * 2 * MEDIUM.spread,
@@ -226,12 +285,6 @@ export function setPieces(c: Ctx): {
 			const slot = 1e6 + m;
 			const kind = MEDIUM_KINDS[m % MEDIUM_KINDS.length];
 			const s = medium(m);
-			if (
-				m >= MEDIUM_KINDS.length &&
-				r.fast(s) - r.fast(medium(m - MEDIUM_KINDS.length)) <
-					RHYTHM.apart.medium + buffer
-			)
-				continue;
 			const side = u(slot, 1) < 0.5 ? -1 : 1;
 			if (kind === 'fountain') {
 				if (put('fountain', 'kit', s, side, 10.5, 9.5, slot) !== null)
@@ -249,36 +302,38 @@ export function setPieces(c: Ctx): {
 			put('woodpile', 'kit', at - 8, side, 23, 12, sub(slot, 2));
 			put('bales', 'kit', at - 30, side, 40, 12, sub(slot, 3));
 			const herd = 3 + Math.floor(u(slot, 3) * 4);
+			if (tooSoon('herd', at + 30)) continue;
 			const facingHerd = deg(Math.floor(u(slot, 4) * 360));
+			let grazing = 0;
 			for (let h = 0; h < herd; h++)
-				put(
-					'cow',
-					'kit',
-					at + 30 + h * 4,
-					side,
-					55 + u(slot, 10 + h) * 25,
-					20,
-					sub(slot, 4 + h),
-					{
-						turn: turnBy(
-							facingHerd,
-							deg(Math.round((u(slot, 20 + h) - 0.5) * 80)),
-						),
-					},
-				);
+				if (
+					put(
+						'cow',
+						'kit',
+						at + 30 + h * 4,
+						side,
+						55 + u(slot, 10 + h) * 25,
+						20,
+						sub(slot, 4 + h),
+						{
+							turn: turnBy(
+								facingHerd,
+								deg(Math.round((u(slot, 20 + h) - 0.5) * 80)),
+							),
+						},
+					) !== null
+				)
+					grazing++;
+			const cow = w.at(at + 30);
+			if (grazing > 0) pass('herd', at + 30, side, 65, cow.x, cow.z);
 		}
 
-		// A chapel under a linden, 15 min apart uphill and never within O9's 12 min at the faster pace.
+		// A chapel under a linden, 15 min apart uphill.
 		const chapel = (q: number) =>
 			r.at((q + 0.5) * CHAPEL + (u(2e6 + q, 0) - 0.5) * 120);
 		for (let q = 0; (q + 0.5) * CHAPEL < r.total; q++) {
 			const slot = 2e6 + q;
 			const s = chapel(q);
-			if (
-				q > 0 &&
-				r.fast(s) - r.fast(chapel(q - 1)) < RHYTHM.apart.landmark + buffer
-			)
-				continue;
 			const side = u(slot, 1) < 0.5 ? -1 : 1;
 			const at = put('chapel', 'building', s, side, 28, 18, slot);
 			if (at === null) continue;
@@ -386,6 +441,7 @@ export function setPieces(c: Ctx): {
 		pieces,
 		signs,
 		arches,
+		streams,
 		names: names ?? tileNames(first?.x[0] ?? 0, first?.z[0] ?? 0),
 	};
 }

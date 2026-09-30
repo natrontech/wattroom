@@ -118,6 +118,9 @@ export function generate(
 		props: placed.props,
 		villageNames,
 		markers,
-		...set,
+		pieces: set.pieces,
+		signs: set.signs,
+		arches: set.arches,
+		names: set.names,
 	};
 }
