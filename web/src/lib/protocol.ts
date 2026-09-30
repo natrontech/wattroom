@@ -1244,6 +1244,27 @@ export const RaceWeightFreezeDays = 14;
  */
 export const RaceWeightConfirmDays = 90;
 /**
+ * A race's start and its field (docs/SPEC.md "Races" — defaults, tune in
+ * alpha): the neutral zone ridden at 0 % between the countdown and the km-0
+ * klaxon, the riders a race needs to start, and how long a silent rider keeps
+ * their place before they are out of it.
+ */
+export const RaceNeutralSeconds = 3 * 60;
+/**
+ * A race's start and its field (docs/SPEC.md "Races" — defaults, tune in
+ * alpha): the neutral zone ridden at 0 % between the countdown and the km-0
+ * klaxon, the riders a race needs to start, and how long a silent rider keeps
+ * their place before they are out of it.
+ */
+export const RaceMinRiders = 2;
+/**
+ * A race's start and its field (docs/SPEC.md "Races" — defaults, tune in
+ * alpha): the neutral zone ridden at 0 % between the countdown and the km-0
+ * klaxon, the riders a race needs to start, and how long a silent rider keeps
+ * their place before they are out of it.
+ */
+export const RaceDisconnectSeconds = 30;
+/**
  * Why a race rides a rider unranked (ADR-0067). They still race; this is what
  * the closing card tells them kept them off the results.
  */
@@ -1938,4 +1959,19 @@ export interface World {
    * together"), by rider id.
    */
   resting?: string[];
+  /**
+   * Each racer's own place in a race (#3032, ADR-0067), by rider id: a
+   * race rides no shared bunch. Races only.
+   */
+  racers?: { [key: string]: RaceRider};
+}
+/**
+ * RaceRider is one racer on the tick: metres from the km-0 klaxon, their
+ * speed, and when they crossed the line — to the millisecond, inside the
+ * second they crossed it in — once they have.
+ */
+export interface RaceRider {
+  m: number /* float64 */;
+  v: number /* float64 */;
+  finishMs?: number /* int64 */;
 }
