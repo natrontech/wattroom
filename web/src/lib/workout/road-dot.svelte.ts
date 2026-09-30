@@ -9,6 +9,8 @@ import type { Segment, Workout } from './types';
  */
 export function createRoadDot(workout: Workout, kg: () => number) {
 	const pinned = roadOf(workout);
+	// Blocks end at the dot's metres only on a road that pins them (#3499).
+	const pins = pinned?.stepEndM;
 	const ride = pinned
 		? createRoadRide(pinned.road, { kg, from: pinned.fromM - pinned.originM })
 		: null;
@@ -28,13 +30,22 @@ export function createRoadDot(workout: Workout, kg: () => number) {
 		/** Where the dot is and where the ride ends, on the owner's road. */
 		get summary() {
 			return pinned
-				? { m, fromM: pinned.fromM, toM: pinned.toM, routeId: pinned.routeId }
+				? {
+						m,
+						fromM: pinned.fromM,
+						toM: pinned.toM,
+						routeId: pinned.routeId,
+						/** The road decides where a block ends (#3499). */
+						pinned: !!pins,
+					}
 				: null;
 		},
 		/** The workout second the dot puts the rider at; for the ride clock. */
-		position: pinned
-			? (segments: readonly Segment[]) => roadSecond(segments, pinned, m)
-			: undefined,
+		position:
+			pinned && pins
+				? (segments: readonly Segment[]) =>
+						roadSecond(segments, { fromM: pinned.fromM, stepEndM: pins }, m)
+				: undefined,
 		/** One ride second at these watts; null off a road. */
 		second(watts: number, at: number): RoadSecond | null {
 			if (!ride) return null;

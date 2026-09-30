@@ -1,4 +1,5 @@
-import { unpackRoad, type Road } from '$lib/road/road';
+import { packRoad, unpackRoad, type Road } from '$lib/road/road';
+import { base64Of } from './import/route';
 import type { Segment, Workout } from './types';
 
 /**
@@ -17,17 +18,19 @@ export interface PinnedRoad {
 	originM: number;
 	fromM: number;
 	toM: number;
-	stepEndM: number[];
+	/** Where each block ends; absent on any workout on a route (#3100). */
+	stepEndM?: number[];
 }
 
 /**
- * The pinned road a solo ride rides, or null: a workout with no road, a road
- * with no pins (any workout on a route, #3100, whose blocks end by the clock),
- * or one whose road did not come back with it.
+ * The road a solo ride rides, or null: a workout with no road, or one whose
+ * road did not come back with it. A road with pins ends its blocks at their
+ * metres; one without (any workout on a route, #3100) by the clock, with the
+ * dot riding it all the same (#3594).
  */
 export function roadOf(workout: Workout): PinnedRoad | null {
 	const ref = workout.road;
-	if (!ref?.stepEndM?.length || !ref.profile) return null;
+	if (!ref?.profile) return null;
 	try {
 		const bytes = Uint8Array.from(atob(ref.profile), (c) => c.charCodeAt(0));
 		return {
@@ -36,11 +39,28 @@ export function roadOf(workout: Workout): PinnedRoad | null {
 			originM: ref.originM ?? 0,
 			fromM: ref.fromM,
 			toM: ref.toM,
-			stepEndM: ref.stepEndM,
+			...(ref.stepEndM?.length && { stepEndM: ref.stepEndM }),
 		};
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * A workout on one of the rider's own roads, loaded here rather than read
+ * back from the shelf (#3594): the road attached as the server attaches it
+ * for its owner — the whole road, from its first metre.
+ */
+export function withProfile(workout: Workout, road: Road): Workout {
+	if (!workout.road) return workout;
+	return {
+		...workout,
+		road: {
+			...workout.road,
+			profile: base64Of(packRoad(road)),
+			originM: 0,
+		},
+	};
 }
 
 /**
@@ -64,7 +84,7 @@ export function byReference(workout: Workout): Workout {
  */
 export function roadSecond(
 	segments: readonly Segment[],
-	road: Pick<PinnedRoad, 'fromM' | 'stepEndM'>,
+	road: { fromM: number; stepEndM: number[] },
 	m: number,
 ): number {
 	const i = road.stepEndM.findIndex((end) => m < end);
