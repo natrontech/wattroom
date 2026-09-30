@@ -8,8 +8,15 @@ import { signInTo } from './signin';
  * can stop on a machine: its GPU context lost, its frames missed.
  */
 
-/** A solo ride with the world on and 3D chosen, so a runner asking for reduced motion still draws it. */
-async function rideInTheWorld(page: Page) {
+/**
+ * A solo ride with the world on and 3D chosen, so a runner asking for reduced
+ * motion still draws it, up to the moment the world first draws — and with
+ * `lose`, its GPU context lost right then, in the page and in the same
+ * breath: a runner without a GPU misses its frames and leaves for the flat
+ * road on its own ten seconds later, sooner than a round trip comes back
+ * from a page software GL keeps busy.
+ */
+async function rideInTheWorld(page: Page, lose = false) {
 	await page.addInitScript(() => {
 		localStorage.setItem('wattroom.world-slot.v1', '1');
 		localStorage.setItem('wattroom.flat-road.v1', '0');
@@ -24,15 +31,24 @@ async function rideInTheWorld(page: Page) {
 	await expect(page.getByRole('button', { name: 'End ride' })).toBeVisible({
 		timeout: 30_000,
 	});
-	const canvas = page.locator('[data-surface=docked] canvas');
 	// Drawing: the renderer has sized its canvas off the 300 px default.
 	// Building a world holds a loaded runner's main thread for a while.
-	await expect
-		.poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width), {
-			timeout: 60_000,
-		})
-		.not.toBe(300);
-	return canvas;
+	await page.waitForFunction(
+		(lose) => {
+			const canvas = document.querySelector<HTMLCanvasElement>(
+				'[data-surface=docked] canvas',
+			);
+			if (!canvas || canvas.width === 300) return false;
+			if (lose)
+				canvas
+					.getContext('webgl2')
+					?.getExtension('WEBGL_lose_context')
+					?.loseContext();
+			return true;
+		},
+		lose,
+		{ polling: 100, timeout: 60_000 },
+	);
 }
 
 async function onTheFlatRoad(page: Page, why: RegExp) {
@@ -46,10 +62,7 @@ async function onTheFlatRoad(page: Page, why: RegExp) {
 test('a lost GPU context hands the ride to the flat road, and 3D comes back on asking', async ({
 	page,
 }) => {
-	const canvas = await rideInTheWorld(page);
-	await canvas.evaluate((c: HTMLCanvasElement) =>
-		c.getContext('webgl2')!.getExtension('WEBGL_lose_context')!.loseContext(),
-	);
+	await rideInTheWorld(page, true);
 	await onTheFlatRoad(page, /graphics driver/);
 
 	await page.getByRole('button', { name: 'Try 3D again' }).click();
