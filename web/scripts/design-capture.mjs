@@ -116,7 +116,7 @@ const browser = await chromium.launch({
 	],
 });
 
-async function open(device, scheme = SCHEME) {
+async function open(device, scheme = SCHEME, signIn = true) {
 	const ctx = await browser.newContext({ ...device, colorScheme: scheme });
 	await ctx.addInitScript(() =>
 		localStorage.setItem(
@@ -128,7 +128,7 @@ async function open(device, scheme = SCHEME) {
 	page.on('dialog', (d) => d.accept());
 	const errors = [];
 	page.on('pageerror', (e) => errors.push(e.message.split('\n')[0]));
-	await page.goto(`${BASE}/api/auth/dev/start?as=Designer`);
+	if (signIn) await page.goto(`${BASE}/api/auth/dev/start?as=Designer`);
 	return { ctx, page, errors };
 }
 
@@ -227,9 +227,10 @@ async function assertRiding(page, world) {
 async function fullPage(page) {
 	const height = await page.evaluate(() => {
 		const body = document.querySelector('[data-testid=page-body]');
+		// The public site scrolls the document; the app, its page body.
 		return body
 			? Math.ceil(body.getBoundingClientRect().top + body.scrollHeight)
-			: 0;
+			: document.documentElement.scrollHeight;
 	});
 	const { width, height: now } = page.viewportSize();
 	if (height > now) {
@@ -454,6 +455,27 @@ const roadRide = (query) => async (page) =>
 	`/ride?${query}road=${await fixtureRoad(page)}`;
 
 const SURFACES = Object.fromEntries([
+	[
+		'landing',
+		async () => {
+			// Signed out, as a stranger meets it: the landing on the desk and a
+			// phone, then the public pages that share its copy.
+			for (const [device, id, path] of [
+				[DESK, 'landing', '/'],
+				[PHONE, 'landing-phone', '/'],
+				[DESK, 'landing-de', '/de'],
+				[DESK, 'landing-game-modes', '/game-modes'],
+				[DESK, 'landing-zwift-alternative', '/zwift-alternative'],
+				[DESK, 'landing-smart-trainer-app', '/smart-trainer-app'],
+			]) {
+				await current?.ctx.close();
+				const { page, errors } = await use(device, undefined, false);
+				await page.goto(BASE + path);
+				await page.waitForTimeout(2500);
+				await shot(page, id, errors, true);
+			}
+		},
+	],
 	page_('home', DESK, '/home'),
 	page_('phone-home', PHONE, '/home'),
 	page_('workouts', DESK, async (page) => {
@@ -529,8 +551,8 @@ const SURFACES = Object.fromEntries([
 ]);
 
 let current = null;
-async function use(device, scheme) {
-	current = await open(device, scheme);
+async function use(device, scheme, signIn) {
+	current = await open(device, scheme, signIn);
 	return current;
 }
 

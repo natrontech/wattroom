@@ -43,7 +43,7 @@ export const OURS = {
 	together:
 		'Anyone in the voice channel starts any workout; every trainer holds its own rider’s FTP',
 	voice: 'Voice and camera built in, one tap',
-	world: 'None: tiles, numbers and the interval chart',
+	world: 'Routes you import, with their profile and climbs; on a ride, tiles, numbers and the interval chart',
 	openSource: 'Yes (AGPL), and self-hostable',
 } as const;
 
@@ -69,7 +69,7 @@ export const RIVALS: readonly Rival[] = [
 		pickUs: [
 			'Your crew wants to talk while it rides, without a second app.',
 			'Any workout, started by anyone in the channel, without setting up a Meetup first.',
-			'Games decided by watts alone: no drafting, no power-ups, no avatars.',
+			'Games decided by watts alone: no drafting, no power-ups.',
 			'It costs nothing, runs in a browser tab, and the code is open.',
 		],
 		sources: [

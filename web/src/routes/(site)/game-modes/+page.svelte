@@ -36,7 +36,7 @@
 <PageHero
 	eyebrow="Indoor cycling game modes"
 	title="Seven games where your watts are the whole game"
-	lede="No world, no drafting, no power-ups. Every WattRoom game is decided by power alone and measured against each rider’s own FTP, so the smallest engine in the crew can win. Played in your crew’s voice channel, with everyone yelling."
+	lede="No drafting, no power-ups. Every WattRoom game is decided by power alone and measured against each rider’s own FTP, so the smallest engine in the crew can win. Played in your crew’s voice channel, with everyone yelling."
 />
 
 <section class="mx-auto w-full max-w-6xl px-4 sm:px-6">
@@ -71,12 +71,11 @@
 </section>
 
 <section class="mx-auto mt-24 w-full max-w-3xl px-4 sm:px-6">
-	<SectionHead title="Why games without a world?" />
+	<SectionHead title="Why games decided by watts?" />
 	<div class="text-muted mt-5 flex flex-col gap-4 leading-relaxed">
 		<p>
-			A virtual world makes the ride about the world: drafting, route choice,
-			whose avatar is where. WattRoom’s games are about the thing you are
-			actually training — how much power you can hold, how precisely, and for
+			A game about position is a game about drafting, route choice and who is
+			where. WattRoom’s games are about the thing you are actually training — how much power you can hold, how precisely, and for
 			how long.
 		</p>
 		<p>

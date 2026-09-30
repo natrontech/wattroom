@@ -61,7 +61,7 @@
 	<PageHero
 		eyebrow="Die kostenlose Zwift-Alternative"
 		title="Rollentraining mit Freunden statt allein"
-		lede="Eine Crew, ein strukturiertes Workout, jede Rolle auf die FTP ihres Fahrers — und ein Sprachkanal, damit ihr gemeinsam leiden könnt. Ohne Abo, ohne Installation, direkt im Browser. Keine virtuelle Welt: Deine Watt sind das Spiel."
+		lede="Eine Crew, ein strukturiertes Workout, jede Rolle auf die FTP ihres Fahrers — und ein Sprachkanal, damit ihr gemeinsam leiden könnt. Ohne Abo, ohne Installation, direkt im Browser. Deine Watt sind das Spiel."
 	>
 		<a href="/login" class="btn btn-primary btn-lg">Crew gründen</a>
 		<a href="/" class="btn btn-secondary btn-lg" hreflang="en">English</a>

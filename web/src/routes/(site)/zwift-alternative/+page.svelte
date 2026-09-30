@@ -62,7 +62,7 @@
 		},
 		{
 			q: 'Is there racing?',
-			a: 'Not the way Zwift has it: there is no world, no drafting and no public race calendar. There are seven game modes decided by watts alone — sprints, eliminations, Watt Golf — played inside your own crew.',
+			a: 'Not the way Zwift has it: there is no drafting and no public race calendar. There are seven game modes decided by watts alone — sprints, eliminations, Watt Golf — played inside your own crew.',
 		},
 		{
 			q: 'Does my trainer work?',
@@ -80,7 +80,7 @@
 <PageHero
 	eyebrow="A free Zwift alternative"
 	title="Ride with your friends, not in a video game"
-	lede="WattRoom is for crews who want to train together: a standing space with text and voice channels, structured ERG workouts ridden in sync with every trainer on its own FTP, and games decided by watts. No subscription, no install, no world to steer."
+	lede="WattRoom is for crews who want to train together: a standing space with text and voice channels, structured ERG workouts ridden in sync with every trainer on its own FTP, and games decided by watts. No subscription, no install."
 />
 
 <section class="mx-auto w-full max-w-6xl px-4 sm:px-6">
@@ -120,7 +120,7 @@
 		<ul
 			class="text-muted mt-5 flex list-disc flex-col gap-2 pl-5 leading-relaxed"
 		>
-			<li>A world. There are no roads, no avatars and no drafting.</li>
+			<li>A drafting game. Nobody sits on a wheel: a game is decided by watts alone.</li>
 			<li>
 				A racing scene. Games happen inside your crew, not on a public calendar.
 			</li>
